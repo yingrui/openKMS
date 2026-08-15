@@ -100,8 +100,8 @@ Some practical guidance:
 - **`kb ask` vs `kb search`.** `ask` proxies to the QA agent and returns a grounded *answer* (with citations). `search` is **hybrid** (BM25 + dense + RRF + cross-encoder rerank) and returns *raw chunks + FAQ matches*. Use `ask` when the user wants an answer; use `search` when you need source material to reason over yourself.
 - **KB wiki indexing.** Link with **`kb wiki-spaces link`**, then **`kb wiki-spaces reindex`** or **`kb index`**. Poll **`jobs get`**.
 - **`ontology ask` is a 3-call chain.** Use when the question is graph-shaped. Use individual subcommands when you need to inspect Cypher.
-- **Ontology Functions vs Actions vs Connectors.** Functions = read/compute Python logic (`ontology functions …`). Action types = intentional writes bound to an object type (`ontology action-types …`). Connector **sync** loads external datasets (e.g. Tushare) — not an Action. Prefer not Neo4j-indexing huge daily fact tables; index master data (e.g. Stock) and analysis objects.
-- **Authoring Function source.** Before writing `--source-code-file`, read **[references/functions-authoring.md](references/functions-authoring.md)** (`@function`, `Client` search/fetch/execute_function, `uses=`, allowed imports, CLI validate→publish). Do not invent HTTP inside Function code.
+- **Ontology Functions vs Actions vs Connectors.** Functions = read/compute Python logic (`ontology functions …`). Action types = register intentional ops bound to an object type (`ontology action-types …`); today execute runs the bound Function and audits — **durable object writes from Actions are deferred** (do not rely on Actions to persist Watchlist-style edits). Connector **sync** loads external datasets (e.g. Tushare) — not an Action. Prefer not Neo4j-indexing huge daily fact tables; index master data (e.g. Stock) and analysis objects. Domain types/Functions (Stock, screens) are **tenant DIY**, not platform seeds — see Workflow **G**.
+- **Authoring Function source.** Before writing `--source-code-file`, read **[references/functions-authoring.md](references/functions-authoring.md)** (`@function`, `Client` search/fetch/execute_function, `uses=`, allowed imports, CLI validate→publish). Do not invent HTTP inside Function code. `Client` is read/compose only; `create_edit_batch` is inspect-only until Action apply ships.
 - **Object type properties** may use `string`, `integer`, `number`, `boolean`, `date`, `datetime`, `uuid` in `--properties-json`.
 - **Permission model is enforced server-side.** API key carries the user's scope. List endpoints filter to readable channels; per-id GET returns 404 (not 403) when out of scope.
 - **Write commands and confirm gating.** Every mutating CLI subcommand: `--dry-run` prints planned call; `-y`/`--yes` skips prompt; **on a non-TTY without `--yes` exit 2**.
@@ -297,7 +297,10 @@ python scripts/cli.py articles review run --id <art_id> --yes
 python scripts/cli.py articles markdown --id <art_id>   # read body, apply suggestions, edit locally
 ```
 
-**G. Tushare datasets → Stock object type → Function (agent playbook).**
+**G. Tenant DIY: Tushare datasets → Stock object type → read-only Function (not a platform seed).**
+
+Domain schema and Function source are **operator content**. Platform already supports OT bind + Neo4j index + Function publish; do **not** invent product APIs or Action write-back for this path.
+
 ```bash
 python scripts/cli.py data-sources list          # note Neo4j id + ontology PG id
 python scripts/cli.py connectors list            # find Tushare connector; inspect outputs → dataset ids
@@ -319,6 +322,8 @@ python scripts/cli.py ontology functions execute-by-api-name \
   --api-name stockProfile --input-json '{"ts_code":"000001.SZ"}' --yes
 ```
 Author `stock_profile.py` per [references/functions-authoring.md](references/functions-authoring.md) (not ad-hoc curl).
+
+Workbench types (Watchlist / ScreenRun) and Explorer “write Actions”: create instances via Object Explorer / `ontology objects` for **non-dataset** types if needed; do **not** expect Action execute to persist edits until platform Action apply ships.
 
 ## Reference (progressive disclosure)
 

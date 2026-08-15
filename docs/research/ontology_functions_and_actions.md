@@ -139,8 +139,10 @@ sequenceDiagram
 | Codegen + regenerate on publish | Done |
 | Editor hooks / queries sidebar / Observability tab | Done |
 | External same-package Client | Done (docs + path) |
-| Edit batch apply via Actions | Foundation only (`create_edit_batch`) |
+| Edit batch apply via Actions | Foundation only (`create_edit_batch`) — **deferred** as product work; see [Manager alignment — Action write-back](ontology_manager_alignment.md#product-decision-action-write-back-b1) |
+| Dataset/Neo4j Action `object_id` | **Deferred** with edit-batch apply (PG `ObjectInstance` only today) |
 | Web API function source / TS runtime / Dev Console apps | Out of scope |
+| Domain ontologies (e.g. Tushare market Stock/Watchlist) | **Not product** — tenant DIY via Manager / [openkms-skill](../features/openkms-skill.md) |
 
 ---
 

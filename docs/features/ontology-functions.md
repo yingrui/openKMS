@@ -2,7 +2,7 @@
 
 Author and run **Python Ontology Functions** — Palantir-style logic on top of the object/link schema. Functions are stored in PostgreSQL, edited in **Function Editor**, published in **Ontology Manager**, and executed in a subprocess via **ontology-function-service** (`:8105`).
 
-**Related:** [Ontology](ontology.md) · [Ontology SDK](ontology-sdk.md) · [Research](../research/ontology_functions_and_actions.md)
+**Related:** [Ontology](ontology.md) · [Ontology SDK](ontology-sdk.md) · [Research](../research/ontology_functions_and_actions.md) · [Manager alignment (platform vs DIY)](../research/ontology_manager_alignment.md)
 
 ## Suite Apps
 
@@ -47,7 +47,7 @@ Backend logic: `function_service.py`, `execution_service.py`, `sdk_codegen.py`.
 | POST | `/api/ontology/functions/by-api-name/{apiName}/execute` | Run published by api name |
 | GET | `/api/ontology/functions/{id}/executions` | Observability |
 
-Groups: `/api/ontology/groups`. Action types: `/api/ontology/action-types` (honor optional pinned `function_version`).
+Groups: `/api/ontology/groups`. Action types: `/api/ontology/action-types` (honor optional pinned `function_version`). Action execute runs the bound Function and audits; **durable object writes from Actions are deferred** ([alignment](../research/ontology_manager_alignment.md#product-decision-action-write-back-b1)). Domain object types and Function source remain tenant content, not platform seeds.
 
 ## Runtime
 

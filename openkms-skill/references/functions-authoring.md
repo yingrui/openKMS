@@ -84,11 +84,11 @@ Seed check: published **`helloGreeting`** with `{"name":"openKMS"}`.
 
 | Layer | Role |
 |-------|------|
-| **Function** | Read / compute / compose; return a dict |
-| **Action type** | Intentional write UX; often binds a Function; execute with `ontology action-types execute` |
+| **Function** | Read / compute / compose; return a dict (`Client` is read/compose only) |
+| **Action type** | Registers an intentional op; execute runs the bound Function + audit. **Durable object writes from Actions are deferred** — do not rely on Actions to persist Watchlist-style edits |
 | **Connector sync** | Load external datasets (e.g. Tushare) — **never** implement sync inside a Function |
 
-Edits: `create_edit_batch` / `@function(edits=[…])` exist as foundations; prefer Action types for user-facing writes until edit-apply is the documented path.
+Edits: `create_edit_batch` / `@function(edits=[…])` are **inspect-only** until Action apply ships. Domain types (Stock, screens) are **tenant DIY**, not platform seeds — skill Workflow **G**.
 
 ## Do not
 
@@ -96,3 +96,4 @@ Edits: `create_edit_batch` / `@function(edits=[…])` exist as foundations; pref
 - Call Tushare or other vendors from Function code — use connector-backed datasets + object types.
 - Neo4j-index huge daily fact tables just to query them from Functions — search dataset-backed OTs or keep facts as datasets.
 - Blind-retry `publish` when validate/uses errors appear on stderr — fix source or publish dependencies first.
+- Expect `ontology action-types execute` to create/update object instances until platform Action apply is implemented.

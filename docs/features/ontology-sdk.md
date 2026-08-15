@@ -69,7 +69,7 @@ def execute(input: dict, client) -> dict:
     return {"edits": batch.get_edits()}
 ```
 
-`create_edit_batch` records intended Ontology edits. Applying those edits via Actions / object write APIs is the next product step; authors can return the edit list today for inspection.
+`create_edit_batch` records intended Ontology edits. Applying those edits via Actions / object write APIs is **deferred** (inspect-only today). Product decision and DIY blockers: [Manager alignment](../research/ontology_manager_alignment.md#product-decision-action-write-back-b1).
 
 ## Input schema
 

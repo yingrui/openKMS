@@ -16,6 +16,7 @@ sync_skill_tree() {
     --exclude='sync-skill-tree.sh' \
     --exclude='__pycache__/' \
     --exclude='.pytest_cache/' \
+    --exclude='.DS_Store' \
     --exclude='*.pyc' \
     "${src}/" "${dest}/"
 }
