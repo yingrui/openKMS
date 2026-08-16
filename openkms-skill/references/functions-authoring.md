@@ -20,7 +20,7 @@ Rules:
 - Entrypoint name defaults to **`execute`**.
 - Signature: `(input: dict, client: Client) -> dict` (return must be JSON-serializable).
 - Decorate with **`@function`** (or `@function(uses=[...])` / `@function(edits=[...])`).
-- Allowed top-level imports only: `openkms_functions`, `openkms_ontology_sdk`, `typing`, `datetime`, `json`, `math`, `re`, `decimal`.
+- Allowed top-level imports only: `openkms_functions`, `typing`, `datetime`, `json`, `math`, `re`, `decimal`.
 
 ## Client API (runtime-injected)
 
@@ -32,7 +32,7 @@ Rules:
 | `client("ObjectTypeName").fetch_one(object_id)` | One instance by id |
 | `client.get_links("LinkTypeName", source_id=…, limit=N)` | Link rows filtered by `source_object_id` on the server |
 | `client("publishedApiName").execute_function({…})` | Call another **published** Function |
-| `client(sdkMarker).execute_function({…})` | Same, using generated `openkms_ontology_sdk` marker |
+| `client("apiName").execute_function({…})` | Compose another published Function by api name |
 
 Object-type argument is the ontology **object type `name`** (e.g. `Stock`), not the dataset table name.
 
@@ -59,7 +59,7 @@ def execute(input: dict, client: Client) -> dict:
     return {"greeting": greeting}
 ```
 
-- `uses=[…]` values are other Functions’ **`api_name`** strings (or SDK markers).
+- `uses=[…]` values are other Functions’ **`api_name` strings**.
 - **Publish fails** if a dependency is missing or unpublished.
 
 ## input_schema

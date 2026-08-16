@@ -109,7 +109,7 @@ Compose **`environment`** sets DB/MinIO URLs, local auth defaults, `OPENKMS_VLM_
 
 For KB Q&A in the UI, set each knowledge base **Agent URL** to **`http://qa-agent:8103`** (hostname on the Docker network, not `localhost`). The backend proxies `/ask` and `/ask/stream` to that URL.
 
-**Ontology Function Service (ofs):** **http://localhost:8105** on the host; inside the stack the backend calls **`http://ontology-function-service:8105`**. Publish regenerates **`openkms_ontology_sdk`** into the shared **`ontology_sdk_data`** volume (`OPENKMS_ONTOLOGY_SDK_OUTPUT_DIR=/data/ontology-sdk` on backend; mounted at `/app/openkms_ontology_sdk` in ofs). Live Preview / execute fail if this service is down.
+**Ontology Function Service (ofs):** **http://localhost:8105** on the host; inside the stack the backend calls **`http://ontology-function-service:8105`**. Authors use **`openkms_functions.Client`** with string api names. Prefer **`127.0.0.1`** (not `localhost`) for local `OPENKMS_ONTOLOGY_FUNCTION_SERVICE_URL` / `OPENKMS_BACKEND_URL` so macOS IPv6 does not send execute to a Docker OFS while the API is IPv4-only. When OFS is in Docker and the API is on the host, set **`OPENKMS_FUNCTION_CLIENT_BASE_URL=http://host.docker.internal:8102`**. Live Preview / execute fail if this service is down.
 
 Local auth + metadata extraction: defaults **`OPENKMS_CLI_BASIC_*`** in compose (`openkms-cli` / `change-me`); override in **`docker/.env`** if needed.
 

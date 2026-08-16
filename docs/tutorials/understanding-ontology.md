@@ -182,7 +182,7 @@ def execute(input: dict, client: Client) -> dict:
     }
 ```
 
-Publish as `suggestWorkItemPriority`. Execute with the id of `WI-3`.
+Publish as `suggestWorkItemPriority`. Execute with the id of `WI-3`. Use `client("WorkItem")` / `client("suggestWorkItemPriority")` string api names via `openkms_functions`.
 
 For dependency closure, BFS with server-filtered links:
 

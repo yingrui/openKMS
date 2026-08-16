@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Example external caller using the same Client as Function authors.
+"""Example external caller using openkms_functions.Client (string api names).
 
 Usage:
   OPENKMS_API_URL=http://localhost:8102 OPENKMS_API_KEY=… \
@@ -25,12 +25,7 @@ def main() -> int:
         print("Set OPENKMS_API_KEY", file=sys.stderr)
         return 1
     client = Client(base, token)
-    try:
-        from openkms_ontology_sdk import helloGreeting
-
-        result = client(helloGreeting).execute_function({"name": "openKMS"})
-    except Exception:
-        result = client("helloGreeting").execute_function({"name": "openKMS"})
+    result = client("helloGreeting").execute_function({"name": "openKMS"})
     print(result)
     return 0
 

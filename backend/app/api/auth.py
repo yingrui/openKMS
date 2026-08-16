@@ -21,7 +21,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
-from app.database import get_db
+from app.database import async_session_maker, get_db
 from app.models.user import User
 from app.models.user_api_key import UserApiKey
 from app.models.user_preference import UserPreference
@@ -180,8 +180,14 @@ async def _authenticate_personal_api_key(request: Request, db: AsyncSession, tok
         return None
     if not _verify_api_key_secret(secret, row.secret_hash):
         return None
-    row.last_used_at = datetime.now(timezone.utc)
-    await db.flush()
+    # Touch last_used_at in its own short transaction. Flushing on the request
+    # session would hold a row lock until the handler finishes — nested Client
+    # calls during function execute (same API key) then deadlock on auth.
+    async with async_session_maker() as touch_db:
+        touch = await touch_db.get(UserApiKey, key_id)
+        if touch is not None and touch.revoked_at is None:
+            touch.last_used_at = datetime.now(timezone.utc)
+            await touch_db.commit()
 
     if row.auth_mode == "local":
         user = await db.get(User, row.owner_sub)

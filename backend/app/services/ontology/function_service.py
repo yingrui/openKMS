@@ -368,14 +368,6 @@ async def publish_function(
     fn.development_status = "active"
     await db.commit()
     await db.refresh(fn)
-    try:
-        from app.services.ontology.sdk_codegen import generate_ontology_sdk
-
-        await generate_ontology_sdk(db)
-    except Exception:  # noqa: BLE001 — publish succeeds even if SDK write fails
-        import logging
-
-        logging.getLogger(__name__).exception("Failed to regenerate openkms_ontology_sdk after publish")
     return fn
 
 

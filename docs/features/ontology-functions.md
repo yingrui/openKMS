@@ -28,11 +28,11 @@ def execute(input: dict, client: Client) -> dict:
 
 - **`@function(uses=[…])`** — publish fails if a dependency is missing or unpublished.
 - **Published queries** sidebar inserts composition snippets.
-- **`openkms_ontology_sdk`** regenerates on publish (see [Ontology SDK](ontology-sdk.md)).
+- Prefer **`client("apiName")`** strings via **`openkms_functions.Client`** (see [Ontology SDK / Client](ontology-sdk.md)). There is no generated ontology marker package.
 - Legacy `execute(input, ctx)` still supported with a deprecation warning.
 - When `input_schema` is set (JSON Schema object), execute validates required fields and property types before ofs runs.
 
-Backend logic: `function_service.py`, `execution_service.py`, `sdk_codegen.py`.
+Backend logic: `function_service.py`, `execution_service.py`.
 
 ## API
 
@@ -42,7 +42,7 @@ Backend logic: `function_service.py`, `execution_service.py`, `sdk_codegen.py`.
 | POST | `/api/ontology/functions` | Create function + v1 (validated) |
 | POST | `/api/ontology/functions/{id}/versions` | Save draft version |
 | POST | `/api/ontology/functions/{id}/validate` | Static validate |
-| POST | `/api/ontology/functions/{id}/publish` | Publish + regenerate SDK |
+| POST | `/api/ontology/functions/{id}/publish` | Publish version |
 | POST | `/api/ontology/functions/{id}/execute` | Run draft or `use_published` |
 | POST | `/api/ontology/functions/by-api-name/{apiName}/execute` | Run published by api name |
 | GET | `/api/ontology/functions/{id}/executions` | Observability |
@@ -60,7 +60,7 @@ Groups: `/api/ontology/groups` (related resources: `GET /api/ontology/groups/{id
 
 Start ofs locally: `cd ontology-function-service && ./dev.sh`.
 
-**Docker Compose:** service **`ontology-function-service`** (host **`:8105`**). Backend uses **`OPENKMS_ONTOLOGY_FUNCTION_SERVICE_URL=http://ontology-function-service:8105`**. Generated SDK is shared via volume **`ontology_sdk_data`**. See repo `docker/README.md`.
+**Docker Compose:** service **`ontology-function-service`** (host **`:8105`**). Backend uses **`OPENKMS_ONTOLOGY_FUNCTION_SERVICE_URL=http://ontology-function-service:8105`**. See repo `docker/README.md`.
 
 ## Seed
 

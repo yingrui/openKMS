@@ -104,7 +104,7 @@ Backlog → 进行中 → 评审 → 完成
 **C. Explorer 种板** — 一个 Demo Project；Ada / Lin；WI-1（done）、WI-2（in_progress）、WI-3（backlog）；WI-3 **dependsOn** WI-2。  
 **看板：** WorkItem 列表按 `status` 筛/排 = 本教程的看板视图。可选 Index 后 Cypher 查依赖。  
 
-**D. 发布一个 FoO** — 如 `suggestWorkItemPriority(work_item_id)`；依赖闭包用 `get_links(..., source_id=)` BFS；产能用 `search(filters={"status": "in_progress"})`（完整示例见[英文教程](understanding-ontology.md)）。  
+**D. 发布一个 FoO** — 如 `suggestWorkItemPriority(work_item_id)`；依赖闭包用 `get_links(..., source_id=)` BFS；产能用 `search(filters={"status": "in_progress"})`（完整示例见[英文教程](understanding-ontology.md)）。使用 `client("WorkItem")` 等字符串 api name（`openkms_functions`）。  
 
 **E. Action「移到 Done」** — Function 返回 `{"edits": batch.modify(...).get_edits()}`，绑定到 WorkItem 并执行；平台会 **apply modify**。可视化分列留给 **App Builder + A2UI**，不在 Explorer。
 

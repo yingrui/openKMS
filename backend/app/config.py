@@ -151,9 +151,11 @@ class Settings(BaseSettings):
     )
 
     # --- Backend URL for CLI (worker passes to openkms-cli --api-url) ---
-    openkms_backend_url: str = Field(default="http://localhost:8102", validation_alias="OPENKMS_BACKEND_URL")
+    # Prefer 127.0.0.1 over localhost: on macOS, localhost often resolves to ::1 first,
+    # and Docker Desktop/OrbStack may bind OFS on IPv6 while the host API is IPv4-only.
+    openkms_backend_url: str = Field(default="http://127.0.0.1:8102", validation_alias="OPENKMS_BACKEND_URL")
     ontology_function_service_url: str = Field(
-        default="http://localhost:8105",
+        default="http://127.0.0.1:8105",
         validation_alias="OPENKMS_ONTOLOGY_FUNCTION_SERVICE_URL",
     )
     ontology_function_timeout_seconds: int = Field(
@@ -162,10 +164,13 @@ class Settings(BaseSettings):
         le=300,
         validation_alias="OPENKMS_ONTOLOGY_FUNCTION_TIMEOUT_SECONDS",
     )
-    ontology_sdk_output_dir: str | None = Field(
+    # URL the Client *inside* ofs uses to call this API (execute payload backend_url).
+    # Defaults to openkms_backend_url. Set to http://host.docker.internal:8102 when ofs
+    # runs in Docker and the API is on the host; in full Compose use http://backend:8102.
+    ontology_function_client_base_url: str | None = Field(
         default=None,
-        validation_alias="OPENKMS_ONTOLOGY_SDK_OUTPUT_DIR",
-        description="Directory for generated openkms_ontology_sdk (defaults to repo ontology-function-service/openkms_ontology_sdk).",
+        validation_alias="OPENKMS_FUNCTION_CLIENT_BASE_URL",
+        description="Base URL for openkms_functions.Client inside ofs; defaults to OPENKMS_BACKEND_URL.",
     )
 
     # --- Worker: document pipeline subprocess (openkms-cli pipeline run) ---

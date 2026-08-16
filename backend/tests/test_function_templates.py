@@ -68,8 +68,11 @@ def execute(input: dict, client: Client) -> dict:
 
 
 def test_extract_function_uses_names() -> None:
+    # Name in uses=[] is treated as api_name hint; prefer string literals in real code.
     source = '''from openkms_functions import Client, function
-from openkms_ontology_sdk import helloGreeting
+
+class helloGreeting:
+    api_name = "helloGreeting"
 
 @function(uses=[helloGreeting])
 def execute(input: dict, client: Client) -> dict:

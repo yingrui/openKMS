@@ -22,7 +22,6 @@ COPY --from=ghcr.io/astral-sh/uv:latest /uv /usr/local/bin/uv
 COPY ontology-function-service/pyproject.toml ontology-function-service/uv.lock ./
 COPY ontology-function-service/ofs ./ofs
 COPY ontology-function-service/openkms_functions ./openkms_functions
-COPY ontology-function-service/openkms_ontology_sdk /opt/ontology-sdk-seed
 COPY docker/ofs-entrypoint.sh /usr/local/bin/ofs-entrypoint.sh
 RUN chmod +x /usr/local/bin/ofs-entrypoint.sh
 

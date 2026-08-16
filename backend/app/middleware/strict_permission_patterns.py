@@ -2,14 +2,17 @@
 
 Paths outside ``/api`` (e.g. ``/internal-api/...``) are not evaluated here, so they can
 use separate ingress or future middleware without sharing the same pattern catalog.
+
+Implemented as pure ASGI (not BaseHTTPMiddleware) so nested HTTP from Ontology
+Function Client → same process does not deadlock while execute awaits ofs.
 """
 
 from __future__ import annotations
 
 from fastapi import HTTPException
-from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
-from starlette.responses import JSONResponse, Response
+from starlette.responses import JSONResponse
+from starlette.types import ASGIApp, Receive, Scope, Send
 
 from app.api.auth import (
     authenticate_request,
@@ -60,62 +63,82 @@ def _norm_path(path: str) -> str:
     return p or "/"
 
 
-class StrictPermissionPatternMiddleware(BaseHTTPMiddleware):
-    async def dispatch(self, request: Request, call_next) -> Response:
-        if not settings.enforce_permission_patterns_strict:
-            return await call_next(request)
+class StrictPermissionPatternMiddleware:
+    def __init__(self, app: ASGIApp):
+        self.app = app
 
+    async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
+        if scope["type"] != "http":
+            await self.app(scope, receive, send)
+            return
+
+        if not settings.enforce_permission_patterns_strict:
+            await self.app(scope, receive, send)
+            return
+
+        request = Request(scope, receive)
         method = request.method.upper()
         path = _norm_path(request.url.path)
 
         if not path.startswith("/api"):
-            return await call_next(request)
+            await self.app(scope, receive, send)
+            return
 
         if method == "OPTIONS":
-            return await call_next(request)
+            await self.app(scope, receive, send)
+            return
 
         if (method, path) in _OPENAPI_EXACT:
-            return await call_next(request)
+            await self.app(scope, receive, send)
+            return
 
         if (method, path) in _UNAUTH_EXACT:
-            return await call_next(request)
+            await self.app(scope, receive, send)
+            return
 
         try:
             async with async_session_maker() as db:
                 await authenticate_request(request, db)
         except HTTPException as e:
             if e.status_code == 401:
-                return JSONResponse({"detail": e.detail}, status_code=401)
+                await JSONResponse({"detail": e.detail}, status_code=401)(scope, receive, send)
+                return
             raise
 
         payload = request.state.openkms_jwt_payload
         if jwt_payload_is_admin(payload):
-            return await call_next(request)
+            await self.app(scope, receive, send)
+            return
         sub = payload.get("sub")
         if sub == "local-cli":
-            return await call_next(request)
+            await self.app(scope, receive, send)
+            return
 
         if (method, path) in _AUTH_PATTERN_SKIP_EXACT:
-            return await call_next(request)
+            await self.app(scope, receive, send)
+            return
 
         if path.startswith("/api/auth/api-keys"):
-            return await call_next(request)
+            await self.app(scope, receive, send)
+            return
 
         if not isinstance(sub, str):
-            return JSONResponse({"detail": "Forbidden"}, status_code=403)
+            await JSONResponse({"detail": "Forbidden"}, status_code=403)(scope, receive, send)
+            return
 
         async with async_session_maker() as db:
             rules = await get_compiled_pattern_rules(db, float(settings.permission_pattern_cache_ttl_seconds))
             required_keys = resolve_required_permission_keys(method, path, rules)
 
             if required_keys is None:
-                return JSONResponse(
+                await JSONResponse(
                     {
                         "detail": "No permission pattern covers this API path. "
                         "Add a backend_api_patterns entry in security_permissions or disable strict mode."
                     },
                     status_code=403,
-                )
+                )(scope, receive, send)
+                return
 
             if settings.auth_mode == "local":
                 perms = await resolve_user_permission_keys(db, sub)
@@ -123,10 +146,11 @@ class StrictPermissionPatternMiddleware(BaseHTTPMiddleware):
                 perms = await resolve_oidc_permission_keys(db, payload)
 
         if PERM_ALL in perms or (required_keys and perms.intersection(required_keys)):
-            return await call_next(request)
+            await self.app(scope, receive, send)
+            return
 
         need = ", ".join(sorted(required_keys))
-        return JSONResponse(
+        await JSONResponse(
             {"detail": f"Missing permission: need one of ({need})"},
             status_code=403,
-        )
+        )(scope, receive, send)

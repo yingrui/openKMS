@@ -15,7 +15,7 @@ Research note for the Palantir-aligned **Ontology Logic** layer in openKMS: thre
 | Python Logic authoring | Code Repositories / Functions | **Function Editor** (`/function-editor`) |
 | Function storage | Foundry versioned repos | **PostgreSQL** `ontology_functions` + versions |
 | Execution | Restricted serverless | **ofs** subprocess on `:8105` |
-| Author + caller SDK | `@osdk/client` + generated ontology SDK | **`openkms_functions.Client`** + **`openkms_ontology_sdk`** |
+| Author + caller SDK | `@osdk/client` (+ optional generated ontology SDK) | **`openkms_functions.Client`** (string api names; no generated marker package) |
 | Entry registration | `@function` / `export default` | **`@function`** + DB `entrypoint` |
 
 **Core Palantir lesson:** function authors and external apps share one client language (`client(Entity).method(...)`). Only construction differs (injected vs explicit token).
@@ -24,14 +24,13 @@ Research note for the Palantir-aligned **Ontology Logic** layer in openKMS: thre
 
 ## Palantir OSDK model (two layers)
 
+Palantir splits **platform Client** (`@osdk/client`) from an optional **generated ontology SDK** (typed definitions). openKMS currently implements only the platform Client as **`openkms_functions`**, with string api names:
+
 ```mermaid
 flowchart TB
-  subgraph platform [Platform packages]
-    ClientPkg["@osdk/client / openkms_functions.Client"]
-    Helpers["@osdk/functions / openkms_functions.edits"]
-  end
-  subgraph generated [Generated ontology SDK]
-    Types["Object types + query markers"]
+  subgraph platform [Platform package]
+    ClientPkg["openkms_functions.Client"]
+    Helpers["@function / create_edit_batch"]
   end
   subgraph authors [Function runtime]
     Decorated["@function def fn(input, client)"]
@@ -41,18 +40,16 @@ flowchart TB
   end
   ClientPkg --> authors
   ClientPkg --> external
-  generated --> authors
-  generated --> external
   Helpers --> authors
 ```
 
 | Concern | Palantir | openKMS |
 |---------|----------|---------|
 | Register entry | `@function(api_name=…)` / TS default export | `@function` + `entrypoint` column |
-| Ontology read | `client(Aircraft).fetchOne` | `client(Employee).fetch_one` / `.search` |
-| Compose functions | `client(query).executeFunction` | `client(query).execute_function` |
+| Ontology read | `client(Aircraft).fetchOne` | `client("Employee").fetch_one` / `.search` |
+| Compose functions | `client(query).executeFunction` | `client("query").execute_function` |
 | Dependencies | `@Uses` / resource imports | `@function(uses=[…])` publish gate |
-| Writes | Edit batch → Action | `create_edit_batch` (apply via Actions next) |
+| Writes | Edit batch → Action | `create_edit_batch` (apply via Actions) |
 
 `execute` as a function name is **not** required by Palantir; openKMS keeps it as the default entrypoint for templates and legacy code.
 
@@ -63,7 +60,7 @@ flowchart TB
 ### Ontology Manager
 
 - Groups, object/link types, datasets
-- Functions: registry, publish (triggers SDK regen), Observability tab
+- Functions: registry, publish, Observability tab
 - Actions: types, execute, logs
 
 ### Object Explorer
@@ -83,7 +80,7 @@ flowchart TB
 |-------|--------|
 | HTTP | Thin routers in `app/api/ontology_*.py` |
 | Shared deps | `app/api/ontology/deps.py` — token, api_name, JWT user |
-| Services | `function_service.py`, `execution_service.py`, `sdk_codegen.py` |
+| Services | `function_service.py`, `execution_service.py` |
 | Runtime | `function_runtime.py` → ofs HTTP |
 | Validation | `function_templates.py`, `input_schema.py` |
 
@@ -91,15 +88,18 @@ flowchart TB
 
 ## Author SDK
 
+Prefer **string api names** (no generated import required):
+
 ```python
 from openkms_functions import Client, function, create_edit_batch
-from openkms_ontology_sdk import helloGreeting
 
 @function(uses=["helloGreeting"])
 def execute(input: dict, client: Client) -> dict:
-    greeting = client(helloGreeting).execute_function({"name": input.get("name", "")})
+    greeting = client("helloGreeting").execute_function({"name": input.get("name", "")})
     return {"greeting": greeting}
 ```
+
+openKMS does **not** ship a generated ontology marker package; Palantir’s generated OSDK layer is deferred.
 
 Legacy `def execute(input, ctx)` still works (deprecation warning).
 
@@ -136,7 +136,7 @@ sequenceDiagram
 | Three Apps + PG + ofs MVP | Done |
 | Service-layer refactor + tests | Done |
 | `@function` + unified Client + composition | Done |
-| Codegen + regenerate on publish | Done |
+| Codegen / generated ontology marker SDK | **Not shipped** — string api names on `openkms_functions.Client` only |
 | Editor hooks / queries sidebar / Observability tab | Done |
 | External same-package Client | Done (docs + path) |
 | Edit batch apply via Actions | Foundation only (`create_edit_batch`) — **deferred** as product work; see [Manager alignment — Action write-back](ontology_manager_alignment.md#product-decision-action-write-back-b1) |

@@ -15,7 +15,7 @@ def execute(input: dict, client: Client) -> dict:
     return {"ok": True, "message": "Hello from openKMS Function"}
 '''
 
-_ALLOWED_TOP_LEVEL_IMPORTS = frozenset({"openkms_functions", "openkms_ontology_sdk", "typing", "datetime", "json", "math", "re", "decimal"})
+_ALLOWED_TOP_LEVEL_IMPORTS = frozenset({"openkms_functions", "typing", "datetime", "json", "math", "re", "decimal"})
 
 
 def _is_function_decorator(dec: ast.expr) -> bool:
@@ -34,9 +34,9 @@ def _literal_api_name(node: ast.expr) -> str | None:
     if isinstance(node, ast.Constant) and isinstance(node.value, str):
         return node.value
     if isinstance(node, ast.Attribute) and node.attr == "api_name":
-        # client(helloGreeting) style marker from openkms_ontology_sdk
+        # client(Name) marker style — resolve via Name below when used as uses=[marker]
         if isinstance(node.value, ast.Name):
-            return None  # resolve via Name below when used as uses=[helloGreeting]
+            return None
         return None
     if isinstance(node, ast.Name):
         return node.id

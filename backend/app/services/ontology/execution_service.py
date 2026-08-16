@@ -113,6 +113,9 @@ async def execute_function_and_audit(
     stack.append(fn.api_name)
 
     exec_id = new_execution_id()
+    # Release any open transaction before awaiting OFS so nested Client HTTP
+    # (same process, same API key) is not blocked on row locks / idle-in-transaction.
+    await db.commit()
     outcome = await _run_ofs(
         ver=ver,
         fn=fn,
@@ -207,6 +210,7 @@ async def execute_action_and_audit(
     caller_token: str,
 ) -> OntologyActionExecuteResponse:
     log_id = new_action_log_id()
+    await db.commit()
     outcome = await _run_ofs(
         ver=ver,
         fn=fn,
