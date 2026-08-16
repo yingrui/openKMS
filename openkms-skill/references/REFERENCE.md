@@ -175,6 +175,7 @@ All write subcommands accept `--yes` / `--dry-run`. Without `--yes` on non-TTY s
 |---|---|---|---|
 | `ontology functions list` | GET | `/api/ontology/functions` | |
 | `ontology functions get` | GET | `/api/ontology/functions/{id}` | |
+| `ontology functions update` *(write)* | PATCH | `/api/ontology/functions/{id}` | Optional `status=archived` before delete. |
 | `ontology functions create` *(write)* | POST | `/api/ontology/functions` | `api_name`, `display_name`, optional `source_code` / schemas. |
 | `ontology functions save-version` *(write)* | POST | `/api/ontology/functions/{id}/versions` | Body requires `source_code`. |
 | `ontology functions validate` *(write)* | POST | `/api/ontology/functions/{id}/validate` | Body `OntologyFunctionVersionCreate` (source required). |
@@ -182,6 +183,7 @@ All write subcommands accept `--yes` / `--dry-run`. Without `--yes` on non-TTY s
 | `ontology functions execute` *(write)* | POST | `/api/ontology/functions/{id}/execute` | Body `{input, version_id?, use_published?}`. |
 | `ontology functions execute-by-api-name` *(write)* | POST | `/api/ontology/functions/by-api-name/{api_name}/execute` | Published only. |
 | `ontology functions executions` | GET | `/api/ontology/functions/{id}/executions` | |
+| `ontology functions delete` *(write)* | DELETE | `/api/ontology/functions/{id}` | |
 | `ontology action-types list` | GET | `/api/ontology/action-types` | |
 | `ontology action-types get` | GET | `/api/ontology/action-types/{id}` | |
 | `ontology action-types create` *(write)* | POST | `/api/ontology/action-types` | |

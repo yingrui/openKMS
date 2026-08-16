@@ -236,7 +236,7 @@ async def update_function(db: AsyncSession, function_id: str, body: OntologyFunc
 
 async def delete_function(db: AsyncSession, function_id: str) -> None:
     fn = await get_function(db, function_id)
-    if fn.published_version_id:
+    if fn.published_version_id and fn.status != "archived":
         raise HTTPException(status_code=400, detail="Archive or unpublish before delete")
     bound = (
         await db.execute(

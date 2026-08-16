@@ -1,4 +1,4 @@
-"""ontology functions — list/get/create/versions/validate/publish/execute."""
+"""ontology functions — list/get/create/versions/validate/publish/execute/delete."""
 from __future__ import annotations
 
 import argparse
@@ -188,6 +188,52 @@ def cmd_executions(ns: argparse.Namespace) -> None:
     print_json(r.json())
 
 
+def cmd_delete(ns: argparse.Namespace) -> None:
+    path = f"/api/ontology/functions/{ns.id}"
+    confirm_or_abort(
+        action=f"delete function {ns.id}",
+        method="DELETE",
+        path=path,
+        body=None,
+        yes=ns.yes,
+        dry_run=ns.dry_run,
+    )
+    with client() as s:
+        r = s.delete(path)
+    r.raise_for_status()
+    print(f"deleted function {ns.id}")
+
+
+def cmd_update(ns: argparse.Namespace) -> None:
+    body: dict[str, Any] = {}
+    if ns.display_name is not None:
+        body["display_name"] = ns.display_name
+    if ns.description is not None:
+        body["description"] = ns.description
+    if ns.object_type_id is not None:
+        body["object_type_id"] = ns.object_type_id
+    if ns.status is not None:
+        body["status"] = ns.status
+    if ns.development_status is not None:
+        body["development_status"] = ns.development_status
+    if not body:
+        print("update: provide at least one field to change", file=sys.stderr)
+        sys.exit(2)
+    path = f"/api/ontology/functions/{ns.id}"
+    confirm_or_abort(
+        action=f"update function {ns.id}",
+        method="PATCH",
+        path=path,
+        body=body,
+        yes=ns.yes,
+        dry_run=ns.dry_run,
+    )
+    with client() as s:
+        r = s.patch(path, json=body)
+    r.raise_for_status()
+    print_json(r.json())
+
+
 def add_subparser(sub) -> None:
     p = sub.add_parser("functions", help="Ontology Functions (Python logic)")
     sp = p.add_subparsers(dest="fn_cmd", required=True)
@@ -197,6 +243,16 @@ def add_subparser(sub) -> None:
     gt = sp.add_parser("get", help="Get function")
     gt.add_argument("--id", required=True)
     gt.set_defaults(fn=cmd_get)
+
+    up = sp.add_parser("update", help="Patch function metadata/status (PATCH /api/ontology/functions/{id})")
+    up.add_argument("--id", required=True)
+    up.add_argument("--display-name", default=None)
+    up.add_argument("--description", default=None)
+    up.add_argument("--object-type-id", default=None)
+    up.add_argument("--status", choices=["active", "archived"], default=None)
+    up.add_argument("--development-status", default=None)
+    add_write_flags(up)
+    up.set_defaults(fn=cmd_update)
 
     cr = sp.add_parser("create", help="Create function (+ optional initial source)")
     cr.add_argument("--api-name", required=True)
@@ -250,3 +306,8 @@ def add_subparser(sub) -> None:
     el = sp.add_parser("executions", help="List recent executions")
     el.add_argument("--id", required=True)
     el.set_defaults(fn=cmd_executions)
+
+    dl = sp.add_parser("delete", help="Delete function (DELETE /api/ontology/functions/{id})")
+    dl.add_argument("--id", required=True)
+    add_write_flags(dl)
+    dl.set_defaults(fn=cmd_delete)
