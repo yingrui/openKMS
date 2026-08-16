@@ -234,7 +234,9 @@ async def execute_action_and_audit(
                 status = "error"
                 error = "; ".join(apply_result.errors)
                 applied = {
+                    "created_ids": [],
                     "modified_ids": [],
+                    "deleted_ids": [],
                     "skipped": apply_result.skipped,
                     "errors": apply_result.errors,
                 }

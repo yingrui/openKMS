@@ -12,7 +12,7 @@
 
 **功能参考：** [本体](../features/ontology.md) · [Ontology Functions](../features/ontology-functions.md) · [目标](../goals.md)
 
-> openKMS **不在 Object Explorer 交付看板 UI**。「看板」= 带 **status/列** 的工作项，在 Explorer 浏览，可选 Neo4j 看依赖，用 FoO 决策，用 Action **改 status**（`modify` 写回）。可视化看板留给未来的 **App Builder**（[A2UI](https://a2ui.org/)），与本教程无关。
+> openKMS **不在 Object Explorer 交付看板 UI**。「看板」= 带 **status/列** 的工作项，在 Explorer 浏览，可选 Neo4j 看依赖，用 FoO 决策，用 Actions **创建 / 更新 / 移动 / 删除**卡片（`edits` 写回）。可视化看板留给未来的 **App Builder**（[A2UI](https://a2ui.org/)），与本教程无关。
 
 英文源：[Build a simple Kanban on the ontology](understanding-ontology.md)
 
@@ -45,7 +45,7 @@ Backlog → 进行中 → 评审 → 完成
 3. 创建 **Project · WorkItem · Person** 及链接。  
 4. 用 **status** 当列，在 Explorer 里看到「板」。  
 5. 发布一个帮 AI **定优先级 / 析依赖 / 看产能** 的 FoO。  
-6. （可选）绑定 Action，通过 `edits.modify` **移动**卡片（改 `status`）。
+6. （可选）绑定 Actions，通过 `edits` **创建 / 更新 / 移动 / 删除**卡片（平台 apply `create` / `modify` / `delete`）。
 
 ---
 
@@ -106,7 +106,7 @@ Backlog → 进行中 → 评审 → 完成
 
 **D. 发布一个 FoO** — 如 `suggestWorkItemPriority(work_item_id)`；依赖闭包用 `get_links(..., source_id=)` BFS；产能用 `search(filters={"status": "in_progress"})`（完整示例见[英文教程](understanding-ontology.md)）。使用 `client("WorkItem")` 等字符串 api name（`openkms_functions`）。  
 
-**E. Action「移到 Done」** — Function 返回 `{"edits": batch.modify(...).get_edits()}`，绑定到 WorkItem 并执行；平台会 **apply modify**。可视化分列留给 **App Builder + A2UI**，不在 Explorer。
+**E. Actions：创建 / 更新 / 移到 Done / 删除** — Function 返回 `{"edits": batch.create|modify|delete(...).get_edits()}`，绑定到 WorkItem 并执行；平台会 **apply create / modify / delete**（响应含 `applied.created_ids` / `modified_ids` / `deleted_ids`）。完整示例见[英文教程](understanding-ontology.md)。可视化分列留给 **App Builder + A2UI**，不在 Explorer。
 
 ---
 
@@ -118,7 +118,7 @@ Backlog → 进行中 → 评审 → 完成
 | 板 | ≥3 张卡、不同 `status`，Explorer 可见 |
 | 关系 | 至少一条 dependsOn、一条 assignedTo |
 | 决策 | 已发布 FoO 对卡片 id 返回 JSON |
-| 写回 | Action「移到 Done」持久化 `status` |
+| 写回 | Actions 创建 / 更新 / 移动 / 删除经 `edits` 持久化 |
 | 叙事 | 板状态 = 本体知识；FoO = 共享规则；看板 UI = 日后 App Builder |
 
 ---

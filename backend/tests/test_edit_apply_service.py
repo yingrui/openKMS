@@ -1,4 +1,4 @@
-"""Tests for Action edit-batch apply (modify on object instances)."""
+"""Tests for Action edit-batch apply (create / modify / delete on object instances)."""
 
 from __future__ import annotations
 
@@ -93,15 +93,105 @@ def test_apply_rejects_unknown_instance():
     asyncio.run(_run())
 
 
-def test_apply_skips_create_ops():
+def test_apply_create_adds_instance():
+    async def _run() -> None:
+        ot = SimpleNamespace(id="ot-wi", name="WorkItem")
+        db = AsyncMock()
+        added: list[object] = []
+
+        async def fake_execute(stmt):
+            r = MagicMock()
+            r.scalar_one_or_none.return_value = ot
+            return r
+
+        db.execute = fake_execute
+        db.get = AsyncMock(return_value=None)
+        db.add = lambda obj: added.append(obj)
+
+        result = await apply_edit_batch_to_objects(
+            db,
+            [
+                {
+                    "op": "create",
+                    "object_type": "WorkItem",
+                    "primary_key": "wi-new",
+                    "properties": {"title": "New", "status": "backlog"},
+                }
+            ],
+            allowed_object_type_id="ot-wi",
+        )
+        assert result.created_ids == ["wi-new"]
+        assert len(added) == 1
+        assert added[0].id == "wi-new"
+        assert added[0].data == {"title": "New", "status": "backlog"}
+        assert result.errors == []
+
+    asyncio.run(_run())
+
+
+def test_apply_create_generates_primary_key_when_omitted():
+    async def _run() -> None:
+        ot = SimpleNamespace(id="ot-wi", name="WorkItem")
+        db = AsyncMock()
+        added: list[object] = []
+
+        async def fake_execute(stmt):
+            r = MagicMock()
+            r.scalar_one_or_none.return_value = ot
+            return r
+
+        db.execute = fake_execute
+        db.get = AsyncMock(return_value=None)
+        db.add = lambda obj: added.append(obj)
+
+        result = await apply_edit_batch_to_objects(
+            db,
+            [{"op": "create", "object_type": "WorkItem", "properties": {"title": "Auto"}}],
+            allowed_object_type_id="ot-wi",
+        )
+        assert len(result.created_ids) == 1
+        assert result.created_ids[0]
+        assert added[0].id == result.created_ids[0]
+
+    asyncio.run(_run())
+
+
+def test_apply_delete_removes_instance():
+    async def _run() -> None:
+        ot = SimpleNamespace(id="ot-wi", name="WorkItem")
+        inst = SimpleNamespace(id="wi-1", object_type_id="ot-wi", data={})
+        db = AsyncMock()
+
+        async def fake_execute(stmt):
+            r = MagicMock()
+            r.scalar_one_or_none.return_value = ot
+            return r
+
+        db.execute = fake_execute
+        db.get = AsyncMock(return_value=inst)
+        db.delete = AsyncMock()
+
+        result = await apply_edit_batch_to_objects(
+            db,
+            [{"op": "delete", "object_type": "WorkItem", "primary_key": "wi-1"}],
+            allowed_object_type_id="ot-wi",
+        )
+        assert result.deleted_ids == ["wi-1"]
+        db.delete.assert_awaited_once_with(inst)
+        assert result.errors == []
+
+    asyncio.run(_run())
+
+
+def test_apply_skips_unknown_ops():
     async def _run() -> None:
         db = AsyncMock()
         result = await apply_edit_batch_to_objects(
             db,
-            [{"op": "create", "object_type": "WorkItem", "primary_key": "x", "properties": {}}],
+            [{"op": "link_create", "object_type": "WorkItem"}],
         )
-        assert result.modified_ids == []
         assert result.skipped
+        assert result.created_ids == []
 
     asyncio.run(_run())
 
@@ -149,7 +239,13 @@ def test_execute_action_applies_edits_on_ok(monkeypatch: pytest.MonkeyPatch) -> 
             caller_token="tok",
         )
         assert resp.status == "ok"
-        assert resp.applied == {"modified_ids": ["wi-1"], "skipped": [], "errors": []}
+        assert resp.applied == {
+            "created_ids": [],
+            "modified_ids": ["wi-1"],
+            "deleted_ids": [],
+            "skipped": [],
+            "errors": [],
+        }
         db.add.assert_called()
         db.commit.assert_called()
 

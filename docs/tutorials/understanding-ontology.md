@@ -12,7 +12,7 @@
 
 **Product reference:** [Ontology](../features/ontology.md) · [Ontology Functions](../features/ontology-functions.md) · [Goals](../goals.md)
 
-> openKMS does **not** ship a Kanban board UI in Object Explorer. “Board” means: typed work items with a **status/column** property, browseable in Object Explorer, optionally graphed in Neo4j, with FoO for AI-assisted decisions and Actions to **move cards** (`modify` apply). A visual board belongs to a future **App Builder** app ([A2UI](https://a2ui.org/), same family as Knowledge Map Overview)—not this tutorial.
+> openKMS does **not** ship a Kanban board UI in Object Explorer. “Board” means: typed work items with a **status/column** property, browseable in Object Explorer, optionally graphed in Neo4j, with FoO for AI-assisted decisions and Actions to **create / update / move / delete** cards (`edits` apply). A visual board belongs to a future **App Builder** app ([A2UI](https://a2ui.org/), same family as Knowledge Map Overview)—not this tutorial.
 
 ---
 
@@ -45,7 +45,7 @@ By the end you can:
 3. Create **Project · WorkItem · Person** (and links) for a toy board.  
 4. Put a few cards in columns via a **status** property and find them in Object Explorer.  
 5. Publish one **FoO** that helps an AI decide (priority, dependencies, or capacity).  
-6. (Optional) Bind an Action that **moves** a card by applying `status` via `edits.modify`.
+6. (Optional) Bind Actions that **create / update / move / delete** cards via `edits` (`create` / `modify` / `delete` apply).
 
 ---
 
@@ -59,7 +59,7 @@ Instance                   → one project, one card, one person
 Link type                  → belongsTo / assignedTo / dependsOn
 Index (Neo4j)              → Cypher (“what blocks WI-2?”)
 Function (FoO)             → suggestWorkItemPriority / workItemDependencyClosure
-Action                     → “move to Done” (returns edits.modify; platform applies)
+Action                     → create / update / move / delete (edits create|modify|delete; platform applies)
 App Builder (later)        → visual Kanban columns via A2UI
 ```
 
@@ -211,9 +211,43 @@ def execute(input: dict, client: Client) -> dict:
 
 Capacity-style FoO can use property filters: `client("WorkItem").search(filters={"status": "in_progress"}, limit=200)`.
 
-### Step E — Action: move card to Done
+### Step E — Actions: create / update / move / delete WorkItems
 
-1. Publish a Function that returns edits (instance id = Action `object_id`):
+Publish Functions that return `edits`, then bind each as an Action type on **WorkItem**. Action execute applies **`create` / `modify` / `delete`** on Explorer-style object instances (`applied.created_ids` / `modified_ids` / `deleted_ids`).
+
+**Create** (no existing card — run from Action types UI or API without a row `object_id`):
+
+```python
+from openkms_functions import Client, create_edit_batch, function
+
+
+@function(edits=["WorkItem"])
+def execute(input: dict, client: Client) -> dict:
+    title = (input.get("title") or "Untitled").strip()
+    status = (input.get("status") or "backlog").strip()
+    batch = create_edit_batch()
+    # Omit primary_key to let the platform assign a UUID (returned in applied.created_ids).
+    batch.create("WorkItem", title=title, status=status)
+    return {"edits": batch.get_edits()}
+```
+
+**Update** (edit fields on the Action’s `object_id`):
+
+```python
+from openkms_functions import Client, create_edit_batch, function
+
+_ALLOWED = ("title", "status", "description", "priority", "estimate")
+
+
+@function(edits=["WorkItem"])
+def execute(input: dict, client: Client) -> dict:
+    oid = (input.get("object_id") or "").strip()
+    props = {k: input[k] for k in _ALLOWED if k in input and input[k] is not None}
+    batch = create_edit_batch()
+    batch.modify("WorkItem", primary_key=oid, **props)
+    return {"edits": batch.get_edits()}
+```
+**Move to Done** (column change via `modify`):
 
 ```python
 from openkms_functions import Client, create_edit_batch, function
@@ -227,8 +261,21 @@ def execute(input: dict, client: Client) -> dict:
     return {"edits": batch.get_edits()}
 ```
 
-2. Create an Action type on **WorkItem**, bind that Function, activate.  
-3. In Object Explorer, run the Action on `WI-3` — `status` should become `done` (platform **modify apply**). Response may include `applied.modified_ids`.
+**Delete**:
+
+```python
+from openkms_functions import Client, create_edit_batch, function
+
+
+@function(edits=["WorkItem"])
+def execute(input: dict, client: Client) -> dict:
+    oid = (input.get("object_id") or "").strip()
+    batch = create_edit_batch()
+    batch.delete("WorkItem", primary_key=oid)
+    return {"edits": batch.get_edits()}
+```
+
+For each: create an Action type on **WorkItem**, bind the Function, activate. Try create from Manager Action execute; try update/move/delete on a card in Object Explorer.
 
 A visual column board is **not** part of Object Explorer; build that later with **App Builder** + A2UI on the same APIs.
 
@@ -242,7 +289,7 @@ A visual column board is **not** part of Object Explorer; build that later with 
 | Board | ≥3 WorkItems with different `status` values; visible in Explorer |
 | Relations | At least one **dependsOn** and one **assignedTo** |
 | Decision | Published FoO returns JSON for a card id |
-| Write | Action “move to Done” persists `status` via `edits.modify` |
+| Write | Actions create / update / move / delete persist via `edits` (`applied.created_ids` / `modified_ids` / `deleted_ids`) |
 | Story | You can explain: board state = ontology knowledge; FoO = shared decision rule; board UI = App Builder later |
 
 ---

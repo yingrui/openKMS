@@ -50,11 +50,13 @@ from openkms_functions import create_edit_batch, function
 @function(edits=["WorkItem"])
 def execute(input: dict, client) -> dict:
     batch = create_edit_batch()
-    batch.modify("WorkItem", primary_key=input["id"], status="done")
+    batch.create("WorkItem", title=input.get("title") or "Untitled", status="backlog")
+    # batch.modify("WorkItem", primary_key=input["id"], status="done")
+    # batch.delete("WorkItem", primary_key=input["id"])
     return {"edits": batch.get_edits()}
 ```
 
-When a Function returns `{"edits": batch.get_edits()}` from an **Action** execute, the platform **applies `modify` ops** onto resolvable object instances. See [Manager alignment](../research/ontology_manager_alignment.md#product-decision-action-write-back-b1).
+When a Function returns `{"edits": batch.get_edits()}` from an **Action** execute, the platform **applies `create` / `modify` / `delete`** onto resolvable object instances. Omit `primary_key` on `create` to let apply assign a UUID (`applied.created_ids`). See [Manager alignment](../research/ontology_manager_alignment.md#product-decision-action-write-back-b1) · Kanban lab [Understanding the ontology](../tutorials/understanding-ontology.md).
 
 ## Input schema
 

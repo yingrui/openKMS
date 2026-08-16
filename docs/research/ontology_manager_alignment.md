@@ -54,10 +54,10 @@ Domain market-analysis schemas and Functions are **not** openKMS product deliver
 | Gap | Impact | Evidence |
 |-----|--------|----------|
 | **Action `object_id` for dataset / Neo4j synthetic ids** | Explorer rows for dataset/Neo4j-backed objects use synthetic ids (e.g. key property). Triggering an Action with that id **404**s | Action execute resolves hand-created / Explorer instance ids only |
-| **Action `create` / `delete` apply** | `modify` apply ships for resolvable instances; create/delete edit ops are still skipped | `edit_apply_service` (backend) |
+| **Action link create/delete apply** | Object instance CRUD via edits ships; link-edge edits are not yet an edit-batch op | `edit_apply_service` (objects only) |
 | **Action “Rules” ≈ Function binder** | Not full submission criteria / parameter forms / multi-step edit rules | Manager Action Rules UI |
 
-**DIY without waiting on blockers:** schema + FoO reads + **Action `modify` write-back** on Explorer-created instances (e.g. Kanban WorkItem `status`).  
+**DIY without waiting on blockers:** schema + FoO reads + **Action object write-back** (`create` / `modify` / `delete`) on Explorer-created instances (e.g. Kanban WorkItem).  
 **Still blocked:** Object Explorer row Actions that **persist** against dataset-backed masters (synthetic `object_id`).
 
 ### Soft gaps (P1–P2 UX) — deferred, decoupled from domain DIY
@@ -77,16 +77,16 @@ Do **not** schedule soft UX with market-analysis work.
 
 ## Product decision: Action write-back (B1)
 
-**Decision (2026-08-16): ship narrow `modify` apply; keep synthetic `object_id` deferred.**
+**Decision (2026-08-17): ship object-instance `create` / `modify` / `delete` apply; keep synthetic `object_id` deferred.**
 
 | Choice | Meaning |
 |--------|---------|
-| **Shipped** | After a successful Action OFS run, `output.edits` with `op == "modify"` merge properties onto resolvable object instances (instance id as `primary_key`). Response includes `applied` summary. |
-| **Still deferred** | Dataset / Neo4j synthetic Action `object_id`; edit `create` / `delete` apply; ofs `Client` write methods. |
+| **Shipped** | After a successful Action OFS run, `output.edits` with `op` in `create` / `modify` / `delete` apply onto resolvable object instances (instance id as `primary_key`; `create` may omit `primary_key` and receive a generated UUID). Response includes `applied` (`created_ids` / `modified_ids` / `deleted_ids`). |
+| **Still deferred** | Dataset / Neo4j synthetic Action `object_id`; link create/delete as edit ops; ofs `Client` write methods. |
 
-Rationale: Kanban-style DIY and App Builder boards need durable column moves on Explorer-created objects without waiting for full Foundry-parity Action rules. Dataset-backed masters remain read/compute until a separate plan resolves synthetic ids.
+Rationale: Kanban DIY and App Builder boards need full card CRUD (not only column moves) on Explorer-created objects. Dataset-backed masters remain read/compute until a separate plan resolves synthetic ids.
 
-Earlier (2026-08-15) full deferral is superseded for `modify` only.
+Earlier (2026-08-16) `modify`-only shipping is superseded for object-instance edits.
 
 ---
 
@@ -139,8 +139,8 @@ Earlier (2026-08-15) full deferral is superseded for `modify` only.
 | Three apps + redirects | ✅ Shipped |
 | Cypher Explore in Object Explorer | ✅ |
 | OT/LT/datasets in Manager | ✅ |
-| Groups / Functions / Action types | ✅ Registry + execute + **modify apply** |
-| Edit create/delete apply + synthetic Action object_id | ⏸ Deferred (see product decision) |
+| Groups / Functions / Action types | ✅ Registry + execute + **create/modify/delete apply** |
+| Edit link create/delete + synthetic Action object_id | ⏸ Deferred (see product decision) |
 | Discover / group Home / global draft chrome | ⏸ P1–P2 / skip |
 
 ---
@@ -154,5 +154,6 @@ Earlier (2026-08-15) full deferral is superseded for `modify` only.
 - [x] No "Code Repository" user-facing copy
 - [x] Capability audit + DIY blockers documented (this page)
 - [x] Action `modify` apply on resolvable object instances (2026-08-16)
-- [ ] Action `create`/`delete` apply + dataset/Neo4j synthetic `object_id` — separate plan when needed
+- [x] Action `create` / `delete` apply on resolvable object instances (2026-08-17)
+- [ ] Link create/delete edit ops + dataset/Neo4j synthetic `object_id` — separate plan when needed
 - [ ] App Builder Kanban (A2UI) — presentation follow-on, not Object Explorer

@@ -212,7 +212,7 @@ def execute(input: dict, client: Client) -> dict:
 
 Publish as `getAdjCloseSeries`. Next FoO ideas: `getLatestBasics`, `getTradeWindow`, `screenStocks`, `marketBreadth`.
 
-**Workbench:** Watchlist/Screen OTs may be created manually; Action **apply** for writes is deferred ([alignment](../research/ontology_manager_alignment.md#diy-blockers-platform-hard-gaps)).
+**Workbench:** Watchlist/Screen OTs may be created manually; Action **apply** persists `create`/`modify`/`delete` on Explorer-created instances. Dataset/Neo4j **synthetic** Action `object_id` remains deferred ([alignment](../research/ontology_manager_alignment.md#diy-blockers-platform-hard-gaps)).
 
 ---
 

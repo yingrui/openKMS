@@ -85,10 +85,10 @@ Seed check: published **`helloGreeting`** with `{"name":"openKMS"}`.
 | Layer | Role |
 |-------|------|
 | **Function** | Read / compute / compose; return a dict (`Client` is read/compose only) |
-| **Action type** | Intentional op; execute runs the bound Function + audit, then **applies `modify` edits** on resolvable object instances. Dataset/Neo4j synthetic ids and create/delete apply are still deferred |
+| **Action type** | Intentional op; execute runs the bound Function + audit, then **applies `create` / `modify` / `delete` edits** on resolvable object instances. Dataset/Neo4j synthetic ids and link edit ops remain deferred |
 | **Connector sync** | Load external datasets (e.g. Tushare) — **never** implement sync inside a Function |
 
-Edits: return `{"edits": create_edit_batch().…get_edits()}` from an Action-bound Function to persist `modify` property merges. Domain types (Stock, screens) are **tenant DIY**, not platform seeds — skill Workflow **G**.
+Edits: return `{"edits": create_edit_batch().…get_edits()}` from an Action-bound Function to persist object creates, property merges, or deletes. Domain types (Stock, screens, Kanban WorkItem) are **tenant DIY**, not platform seeds — skill Workflow **G**.
 
 ## Do not
 

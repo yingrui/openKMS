@@ -47,7 +47,7 @@ Backend logic: `function_service.py`, `execution_service.py`.
 | POST | `/api/ontology/functions/by-api-name/{apiName}/execute` | Run published by api name |
 | GET | `/api/ontology/functions/{id}/executions` | Observability |
 
-Groups: `/api/ontology/groups` (related resources: `GET /api/ontology/groups/{id}/related`). Action types: `/api/ontology/action-types` (honor optional pinned `function_version`). Action execute runs the bound Function, audits, and **applies `output.edits` `modify` ops** onto resolvable object instances (`applied` in the response). Dataset/Neo4j synthetic `object_id` and create/delete apply remain deferred ([alignment](../research/ontology_manager_alignment.md#product-decision-action-write-back-b1)). Object list supports `prop.<name>=` equality; link list supports `source_object_id`. Domain object types and Function source remain tenant content, not platform seeds.
+Groups: `/api/ontology/groups` (related resources: `GET /api/ontology/groups/{id}/related`). Action types: `/api/ontology/action-types` (honor optional pinned `function_version`). Action execute runs the bound Function, audits, and **applies `output.edits` `create` / `modify` / `delete` ops** onto resolvable object instances (`applied.created_ids` / `modified_ids` / `deleted_ids`). Dataset/Neo4j synthetic `object_id` remains deferred ([alignment](../research/ontology_manager_alignment.md#product-decision-action-write-back-b1)). Object list supports `prop.<name>=` equality; link list supports `source_object_id`. Domain object types and Function source remain tenant content, not platform seeds.
 
 ## Runtime
 
