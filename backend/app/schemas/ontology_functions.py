@@ -126,6 +126,39 @@ class OntologyGroupUpdate(BaseModel):
     object_type_ids: list[str] | None = None
 
 
+class OntologyGroupRelatedLinkType(BaseModel):
+    id: str
+    name: str
+    source_object_type_id: str
+    target_object_type_id: str
+    source_object_type_name: str | None = None
+    target_object_type_name: str | None = None
+
+
+class OntologyGroupRelatedFunction(BaseModel):
+    id: str
+    api_name: str
+    display_name: str
+    object_type_id: str | None = None
+
+
+class OntologyGroupRelatedAction(BaseModel):
+    id: str
+    api_name: str
+    display_name: str
+    object_type_id: str
+    status: str
+
+
+class OntologyGroupRelatedResponse(BaseModel):
+    """Link types / Functions / Actions derived from the group's object types."""
+
+    object_type_ids: list[str] = Field(default_factory=list)
+    link_types: list[OntologyGroupRelatedLinkType] = Field(default_factory=list)
+    functions: list[OntologyGroupRelatedFunction] = Field(default_factory=list)
+    action_types: list[OntologyGroupRelatedAction] = Field(default_factory=list)
+
+
 class OntologyActionTypeResponse(BaseModel):
     id: str
     api_name: str

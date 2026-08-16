@@ -46,3 +46,42 @@ export async function updateOntologyGroup(
 export async function deleteOntologyGroup(id: string): Promise<void> {
   await ontologyFetch<void>(`${base}/${id}`, { method: 'DELETE' }, 'Failed to delete group');
 }
+
+export interface OntologyGroupRelatedLinkType {
+  id: string;
+  name: string;
+  source_object_type_id: string;
+  target_object_type_id: string;
+  source_object_type_name?: string | null;
+  target_object_type_name?: string | null;
+}
+
+export interface OntologyGroupRelatedFunction {
+  id: string;
+  api_name: string;
+  display_name: string;
+  object_type_id?: string | null;
+}
+
+export interface OntologyGroupRelatedAction {
+  id: string;
+  api_name: string;
+  display_name: string;
+  object_type_id: string;
+  status: string;
+}
+
+export interface OntologyGroupRelatedResponse {
+  object_type_ids: string[];
+  link_types: OntologyGroupRelatedLinkType[];
+  functions: OntologyGroupRelatedFunction[];
+  action_types: OntologyGroupRelatedAction[];
+}
+
+export async function fetchOntologyGroupRelated(id: string): Promise<OntologyGroupRelatedResponse> {
+  return ontologyFetch<OntologyGroupRelatedResponse>(
+    `${base}/${id}/related`,
+    undefined,
+    'Failed to fetch group related resources',
+  );
+}

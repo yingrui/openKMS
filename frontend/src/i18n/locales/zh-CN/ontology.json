@@ -146,7 +146,15 @@
     "deleted": "分组已删除",
     "deleteConfirm": "删除分组「{{name}}」？",
     "overview": "概览",
-    "kind": "分组"
+    "kind": "分组",
+    "relatedResources": "关联资源",
+    "relatedResourcesHint": "根据本分组已保存的对象类型推导。未绑定对象类型的函数不会出现。",
+    "relatedLinkTypes": "链接类型",
+    "relatedFunctions": "函数",
+    "relatedActions": "操作",
+    "relatedNone": "组内类型暂无关联项。",
+    "relatedEmptyNoTypes": "请先在概览中保存对象类型，再查看关联的链接类型、函数与操作。",
+    "relatedLoadFailed": "加载关联资源失败"
   },
   "objectTypes": {
     "title": "对象类型",

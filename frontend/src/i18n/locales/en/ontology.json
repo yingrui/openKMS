@@ -146,7 +146,15 @@
     "saved": "Group saved",
     "saveFailed": "Failed to save group",
     "deleted": "Group deleted",
-    "deleteConfirm": "Delete group \"{{name}}\"?"
+    "deleteConfirm": "Delete group \"{{name}}\"?",
+    "relatedResources": "Related resources",
+    "relatedResourcesHint": "Derived from object types saved on this group. Unbound functions are not listed.",
+    "relatedLinkTypes": "Link types",
+    "relatedFunctions": "Functions",
+    "relatedActions": "Actions",
+    "relatedNone": "None for the types in this group.",
+    "relatedEmptyNoTypes": "Save object types on this group first, then related link types, functions, and actions will appear here.",
+    "relatedLoadFailed": "Failed to load related resources"
   },
   "objectTypes": {
     "title": "Object Types",

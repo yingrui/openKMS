@@ -140,6 +140,12 @@ const ActionLogTab = lazy(() =>
 const GroupDetailPage = lazy(() =>
   import('./pages/ontology-manager/GroupDetailPage').then((m) => ({ default: m.GroupDetailPage })),
 );
+const GroupOverviewTab = lazy(() =>
+  import('./pages/ontology-manager/GroupDetailPage').then((m) => ({ default: m.GroupOverviewTab })),
+);
+const GroupRelatedTab = lazy(() =>
+  import('./pages/ontology-manager/GroupDetailPage').then((m) => ({ default: m.GroupRelatedTab })),
+);
 const ObjectTypeManagerDetailPage = lazy(() =>
   import('./pages/ontology-manager/ObjectTypeDetailPage').then((m) => ({ default: m.ObjectTypeDetailPage })),
 );
@@ -380,7 +386,10 @@ function App() {
               <Route path="observability" element={<FunctionObservabilityTab />} />
             </Route>
             <Route path="groups" element={<GroupsListPage />} />
-            <Route path="groups/:groupId" element={<GroupDetailPage />} />
+            <Route path="groups/:groupId" element={<GroupDetailPage />}>
+              <Route index element={<GroupOverviewTab />} />
+              <Route path="related" element={<GroupRelatedTab />} />
+            </Route>
             <Route path="action-types" element={<ActionsListPage />} />
             <Route path="action-types/:actionTypeId" element={<ActionDetailPage />}>
               <Route index element={<ActionOverviewTab />} />

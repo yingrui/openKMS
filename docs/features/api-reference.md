@@ -273,6 +273,7 @@ The bundled **openkms-skill** CLI wraps **lifecycle** and **relationships** the 
 | POST | `/api/link-types/index-to-neo4j` | Index link types to Neo4j: M:M junction, M:1/1:M from source dataset when configured, else saved link instances (admin-only) |
 | POST | `/api/link-types/{id}/index-to-neo4j` | Index one link type to Neo4j (same rules as bulk; 400 if nothing to index) (admin-only) |
 | POST | `/api/ontology/explore` | Execute read-only Cypher query against Neo4j (body: `{ cypher }`); used by Object Explorer |
+| GET | `/api/ontology/groups/{id}/related` | Link types / Functions / Actions derived from the group's saved object types (`ontology:read`) |
 | POST | `/api/ontology/action-types/{id}/execute` | Run Action: OFS Function + audit; applies `output.edits` **modify** ops on resolvable object instances; response may include `applied` |
 | GET | `/api/data-sources` | List data sources (`limit`, `offset`; `console:data_sources`) |
 | POST | `/api/data-sources` | Create data source (`console:data_sources`) |
