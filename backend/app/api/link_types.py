@@ -110,6 +110,8 @@ def _query_neo4j_relationships(
     tgt_key: str,
     limit: int,
     offset: int,
+    *,
+    source_key_value: str | None = None,
 ) -> tuple[list[dict], int]:
     """Query relationships from Neo4j. Returns (rows with source_key_value, target_key_value, source_data, target_data), total."""
     def _serialize_val(v):
@@ -127,16 +129,25 @@ def _query_neo4j_relationships(
         props = dict(node) if hasattr(node, "keys") else {}
         return {k: _serialize_val(v) for k, v in props.items() if v is not None}
 
+    where = ""
+    params: dict = {"offset": offset, "limit": limit}
+    if source_key_value is not None and source_key_value != "":
+        safe_src_key = re.sub(r"[^a-zA-Z0-9_]", "_", src_key) or "id"
+        where = f"WHERE toString(a.`{safe_src_key}`) = $source_key_value"
+        params["source_key_value"] = source_key_value
+
     with driver.session() as session:
+        count_params = {k: v for k, v in params.items() if k not in ("offset", "limit")}
         count_result = session.run(
-            f"MATCH (a:{src_label})-[r:{rel_type}]->(b:{tgt_label}) RETURN count(r) AS c"
+            f"MATCH (a:{src_label})-[r:{rel_type}]->(b:{tgt_label}) {where} RETURN count(r) AS c",
+            **count_params,
         )
         total = count_result.single()["c"] or 0
 
         result = session.run(
-            f"MATCH (a:{src_label})-[r:{rel_type}]->(b:{tgt_label}) RETURN a, b SKIP $offset LIMIT $limit",
-            offset=offset,
-            limit=limit,
+            f"MATCH (a:{src_label})-[r:{rel_type}]->(b:{tgt_label}) {where} "
+            f"RETURN a, b SKIP $offset LIMIT $limit",
+            **params,
         )
         rows = []
         for record in result:
@@ -664,13 +675,22 @@ async def list_link_instances(
     request: Request,
     limit: int = Query(500, ge=1, le=1000),
     offset: int = Query(0, ge=0),
+    source_object_id: str | None = None,
+    source_key_value: str | None = None,
     db: AsyncSession = Depends(get_db),
 ):
-    """List link instances. Links page loads from Neo4j when a Neo4j data source exists."""
+    """List link instances. Links page loads from Neo4j when a Neo4j data source exists.
+
+    Optional filters: ``source_object_id`` (hand-created links) and/or ``source_key_value``
+    (dataset / Neo4j-backed links). When only ``source_object_id`` is set on indexed paths,
+    it is also matched against the source key value.
+    """
     link_type = await db.get(LinkType, link_type_id)
     if not link_type:
         raise HTTPException(status_code=404, detail="Link type not found")
     await _require_link_type_read(request, db, link_type_id)
+
+    neo4j_source_key = source_key_value or source_object_id
 
     neo4j_ds = await _get_first_neo4j_datasource(db)
     if neo4j_ds:
@@ -692,7 +712,15 @@ async def list_link_instances(
 
                 def _query(driver):
                     return _query_neo4j_relationships(
-                        driver, src_label, tgt_label, rel_type, src_key, tgt_key, limit, offset
+                        driver,
+                        src_label,
+                        tgt_label,
+                        rel_type,
+                        src_key,
+                        tgt_key,
+                        limit,
+                        offset,
+                        source_key_value=neo4j_source_key,
                     )
 
                 rows, total = await run_with_neo4j_driver(neo4j_ds, _query)
@@ -737,6 +765,8 @@ async def list_link_instances(
             src_val = row.get(src_col)
             tgt_val = row.get(tgt_col)
             if src_val is not None and tgt_val is not None:
+                if neo4j_source_key is not None and str(src_val) != neo4j_source_key:
+                    continue
                 items.append(
                     LinkInstanceResponse(
                         id=f"dataset:{offset + i}",
@@ -751,7 +781,10 @@ async def list_link_instances(
                         updated_at=None,
                     )
                 )
-        return LinkInstanceListResponse(items=items, total=total)
+        return LinkInstanceListResponse(
+            items=items,
+            total=len(items) if neo4j_source_key else total,
+        )
     # many-to-one / one-to-many: from source dataset
     if (
         link_type.cardinality in ("many-to-one", "one-to-many")
@@ -776,6 +809,8 @@ async def list_link_instances(
                 src_val = row.get(src_id_col)
                 if src_val is None:
                     continue
+                if neo4j_source_key is not None and str(src_val) != neo4j_source_key:
+                    continue
                 items.append(
                     LinkInstanceResponse(
                         id=f"dataset:{offset + i}",
@@ -790,18 +825,36 @@ async def list_link_instances(
                         updated_at=None,
                     )
                 )
-            return LinkInstanceListResponse(items=items, total=total)
+            return LinkInstanceListResponse(
+                items=items,
+                total=len(items) if neo4j_source_key else total,
+            )
     # Otherwise: from link_instances table
+    where = [LinkInstance.link_type_id == link_type_id]
+    if source_object_id:
+        where.append(LinkInstance.source_object_id == source_object_id)
+    total = int(
+        (await db.execute(select(func.count()).select_from(LinkInstance).where(*where))).scalar_one()
+    )
     result = await db.execute(
         select(LinkInstance)
-        .where(LinkInstance.link_type_id == link_type_id)
+        .where(*where)
         .order_by(LinkInstance.created_at.desc())
+        .offset(offset)
+        .limit(limit)
     )
     links = result.scalars().all()
     items = []
     for li in links:
         source_obj = await db.get(ObjectInstance, li.source_object_id)
         target_obj = await db.get(ObjectInstance, li.target_object_id)
+        if source_key_value is not None and source_key_value != "":
+            src_data = (source_obj.data or {}) if source_obj else {}
+            # Optional key-value filter on hand-created path: match any property or id
+            if str(li.source_object_id) != source_key_value and source_key_value not in {
+                str(v) for v in src_data.values()
+            }:
+                continue
         items.append(
             LinkInstanceResponse(
                 id=li.id,
@@ -814,7 +867,7 @@ async def list_link_instances(
                 updated_at=li.updated_at,
             )
         )
-    return LinkInstanceListResponse(items=items, total=len(items))
+    return LinkInstanceListResponse(items=items, total=total if not source_key_value else len(items))
 
 
 @router.post("/{link_type_id}/links", response_model=LinkInstanceResponse, status_code=201)

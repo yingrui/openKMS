@@ -255,7 +255,7 @@ The bundled **openkms-skill** CLI wraps **lifecycle** and **relationships** the 
 | GET | `/api/object-types/{id}` | Get object type; ?count_from_neo4j=true for instance_count from Neo4j |
 | PUT | `/api/object-types/{id}` | Update object type (admin-only) |
 | DELETE | `/api/object-types/{id}` | Delete object type (admin-only) |
-| GET | `/api/object-types/{id}/objects` | List object instances (read ACL on parent type; from Neo4j when available; optional ?search=, ?limit=, ?offset=) |
+| GET | `/api/object-types/{id}/objects` | List object instances (read ACL on parent type; from Neo4j when available; optional `?search=`, `?prop.<name>=` equality filters, `?limit=`, `?offset=`) |
 | POST | `/api/object-types/{id}/objects` | Create object instance (admin-only + write ACL on parent type) |
 | GET | `/api/object-types/{id}/objects/{obj_id}` | Get object instance (read ACL on parent type) |
 | PUT | `/api/object-types/{id}/objects/{obj_id}` | Update object instance (admin-only + write ACL on parent type) |
@@ -267,12 +267,13 @@ The bundled **openkms-skill** CLI wraps **lifecycle** and **relationships** the 
 | GET | `/api/link-types/{id}` | Get link type; ?count_from_neo4j=true for link_count from Neo4j |
 | PUT | `/api/link-types/{id}` | Update link type (admin-only) |
 | DELETE | `/api/link-types/{id}` | Delete link type (admin-only) |
-| GET | `/api/link-types/{id}/links` | List link instances (from Neo4j when available; ?limit=, ?offset=) |
+| GET | `/api/link-types/{id}/links` | List link instances (from Neo4j when available; `?limit=`, `?offset=`, optional `?source_object_id=`, `?source_key_value=`) |
 | POST | `/api/link-types/{id}/links` | Create link instance (admin-only; rejected when link type uses junction dataset) |
 | DELETE | `/api/link-types/{id}/links/{link_id}` | Delete link instance (admin-only; rejected when link type uses junction dataset) |
 | POST | `/api/link-types/index-to-neo4j` | Index link types to Neo4j: M:M junction, M:1/1:M from source dataset when configured, else saved link instances (admin-only) |
 | POST | `/api/link-types/{id}/index-to-neo4j` | Index one link type to Neo4j (same rules as bulk; 400 if nothing to index) (admin-only) |
 | POST | `/api/ontology/explore` | Execute read-only Cypher query against Neo4j (body: `{ cypher }`); used by Object Explorer |
+| POST | `/api/ontology/action-types/{id}/execute` | Run Action: OFS Function + audit; applies `output.edits` **modify** ops on resolvable object instances; response may include `applied` |
 | GET | `/api/data-sources` | List data sources (`limit`, `offset`; `console:data_sources`) |
 | POST | `/api/data-sources` | Create data source (`console:data_sources`) |
 | GET | `/api/data-sources/{id}` | Get data source (`console:data_sources`) |

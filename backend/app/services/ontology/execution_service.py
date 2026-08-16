@@ -30,6 +30,7 @@ from fastapi import HTTPException
 from app.services.ontology.function_runtime import FunctionExecutionError, execute_in_ofs
 from app.services.ontology.function_service import get_function, get_function_by_api_name, resolve_version_for_execute
 from app.services.ontology.input_schema import validate_input_against_schema
+from app.services.ontology.edit_apply_service import apply_edit_batch_to_objects, extract_edits
 
 
 def new_execution_id() -> str:
@@ -212,24 +213,46 @@ async def execute_action_and_audit(
         input_payload=input_payload,
         caller_token=caller_token,
     )
+    applied: dict | None = None
+    status = outcome.status
+    error = outcome.error
+    if outcome.status == "ok":
+        edits = extract_edits(outcome.output)
+        if edits:
+            apply_result = await apply_edit_batch_to_objects(
+                db,
+                edits,
+                allowed_object_type_id=at.object_type_id,
+            )
+            applied = apply_result.as_dict()
+            if apply_result.errors:
+                await db.rollback()
+                status = "error"
+                error = "; ".join(apply_result.errors)
+                applied = {
+                    "modified_ids": [],
+                    "skipped": apply_result.skipped,
+                    "errors": apply_result.errors,
+                }
     log = OntologyActionLog(
         id=log_id,
         action_type_id=at.id,
         object_id=object_id,
         caller_user_id=caller_user_id,
-        status=outcome.status,
+        status=status,
         input_payload=input_payload,
         output_payload=outcome.output,
-        error_message=outcome.error,
+        error_message=error,
     )
     db.add(log)
     await db.commit()
     return OntologyActionExecuteResponse(
-        status=outcome.status,
+        status=status,
         output=outcome.output,
-        error=outcome.error,
+        error=error,
         duration_ms=outcome.duration_ms,
         log_id=log_id,
+        applied=applied,
     )
 
 

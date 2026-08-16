@@ -24,7 +24,8 @@
 | [Agent（项目工作区）](features/openkms-agents.md) | Deep Agents 对话、文件、本地/远程 git、计划模式、openKMS 研究工具 |
 | [Wiki Copilot 与知识库问答](features/wiki-spaces.md) | 维基空间与知识库内嵌助手 |
 | [openkms-skill](features/openkms-skill.md) | Agent Skill + CLI（`openkms-skill/`）；可用于应用内 Agents、Claude Code、OpenCode 等；不能替代领域内维护助手 |
-| [教程：Tushare 市场分析本体（DIY）](tutorials/tushare-market-ontology.md) | 操作指南：同步 → Stock 对象类型 → 发布只读 Function（租户内容，非产品种子） |
+| [教程：认识本体（看板实验）](tutorials/understanding-ontology.md) | 通过搭建迷你看板学习本体（Project / WorkItem / Person + 决策 FoO） |
+| [教程：Tushare 市场分析本体（DIY）](tutorials/tushare-market-ontology.md) | 领域案例：同步 → Stock → FoO（需先读本体入门） |
 
 ## 横切参考
 

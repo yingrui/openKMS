@@ -111,6 +111,19 @@ Strong success criteria let you loop independently. Weak criteria ("make it work
 
 User-visible text: **what** the feature does, not **how** it is stored or called. Avoid file paths, bucket names, `s3://`, MinIO/presigned jargon, raw `/api/…` URLs, env vars—unless the screen is for admins/operators. Console technical pages may be denser.
 
+### openKMS project terms (plans, docs, chat, commits)
+
+Use **product / domain vocabulary** from openKMS (Manager, Explorer, object type, instance, Function, Action, channel, wiki, …), not storage or infra labels—unless the task is literally migrations, SQLAlchemy models, Docker, or ops.
+
+| Prefer | Avoid (as the default way to talk about features) |
+|--------|-----------------------------------------------------|
+| object type, link type, object / instance, link | “PG instance”, “Postgres objects”, “DB rows as cards” |
+| dataset-backed / indexed object | naming user-facing objects after the backing store |
+| hand-created / Explorer-created instance | “PG-only objects” as a product category |
+| Action apply / write-back on objects | “Action writes to Postgres” |
+
+Code and review notes may still mention table/model names, JSONB, Neo4j, Alembic—keep that in implementation context, not as the default vocabulary for goals, tutorials, or plans.
+
 ### Assistant replies (Cursor)
 
 - Match answer length to the task; no filler or "say the word" closings.

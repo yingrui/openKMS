@@ -299,7 +299,7 @@ python scripts/cli.py articles markdown --id <art_id>   # read body, apply sugge
 
 **G. Tenant DIY: Tushare datasets → Stock object type → read-only Function (not a platform seed).**
 
-Domain schema and Function source are **operator content**. Step-by-step docs: repository **`docs/tutorials/tushare-market-ontology.md`**. Platform already supports OT bind + Neo4j index + Function publish; do **not** invent product APIs or Action write-back for this path.
+Domain schema and Function source are **operator content**. Concepts: **`docs/tutorials/understanding-ontology.md`**. Lab: **`docs/tutorials/tushare-market-ontology.md`**. Platform already supports OT bind + Neo4j index + Function publish; do **not** invent product APIs or Action write-back for this path.
 
 ```bash
 python scripts/cli.py data-sources list          # note Neo4j id + ontology PG id

@@ -28,9 +28,9 @@ Rules:
 
 | Call | Meaning |
 |------|---------|
-| `client("ObjectTypeName").search(limit=N, filters={"search": "…"})` | List instances (OT **name** or id) |
+| `client("ObjectTypeName").search(limit=N, filters={"search": "…", "status": "in_progress"})` | List instances; non-`search` keys become `prop.<name>=` equality filters |
 | `client("ObjectTypeName").fetch_one(object_id)` | One instance by id |
-| `client.get_links("LinkTypeName", source_id=…, limit=N)` | Link rows |
+| `client.get_links("LinkTypeName", source_id=…, limit=N)` | Link rows filtered by `source_object_id` on the server |
 | `client("publishedApiName").execute_function({…})` | Call another **published** Function |
 | `client(sdkMarker).execute_function({…})` | Same, using generated `openkms_ontology_sdk` marker |
 
@@ -85,10 +85,10 @@ Seed check: published **`helloGreeting`** with `{"name":"openKMS"}`.
 | Layer | Role |
 |-------|------|
 | **Function** | Read / compute / compose; return a dict (`Client` is read/compose only) |
-| **Action type** | Registers an intentional op; execute runs the bound Function + audit. **Durable object writes from Actions are deferred** — do not rely on Actions to persist Watchlist-style edits |
+| **Action type** | Intentional op; execute runs the bound Function + audit, then **applies `modify` edits** on resolvable object instances. Dataset/Neo4j synthetic ids and create/delete apply are still deferred |
 | **Connector sync** | Load external datasets (e.g. Tushare) — **never** implement sync inside a Function |
 
-Edits: `create_edit_batch` / `@function(edits=[…])` are **inspect-only** until Action apply ships. Domain types (Stock, screens) are **tenant DIY**, not platform seeds — skill Workflow **G**.
+Edits: return `{"edits": create_edit_batch().…get_edits()}` from an Action-bound Function to persist `modify` property merges. Domain types (Stock, screens) are **tenant DIY**, not platform seeds — skill Workflow **G**.
 
 ## Do not
 
@@ -96,4 +96,4 @@ Edits: `create_edit_batch` / `@function(edits=[…])` are **inspect-only** until
 - Call Tushare or other vendors from Function code — use connector-backed datasets + object types.
 - Neo4j-index huge daily fact tables just to query them from Functions — search dataset-backed OTs or keep facts as datasets.
 - Blind-retry `publish` when validate/uses errors appear on stderr — fix source or publish dependencies first.
-- Expect `ontology action-types execute` to create/update object instances until platform Action apply is implemented.
+- Expect Action execute to update **dataset-backed** synthetic ids until that resolution ships.

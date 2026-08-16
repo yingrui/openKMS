@@ -1,8 +1,8 @@
 """Ontology edit batch helpers (Palantir @osdk/functions Edits analogue).
 
 Functions that declare ``@function(edits=[...])`` should return a list of edit
-dicts (or call ``batch.get_edits()``). Applying edits to the Ontology is done
-by function-backed Actions / object write APIs — authors declare intent here.
+dicts (or call ``batch.get_edits()``). Action execute applies ``modify`` ops onto
+resolvable object instances; ``create`` / ``delete`` remain deferred.
 """
 
 from __future__ import annotations

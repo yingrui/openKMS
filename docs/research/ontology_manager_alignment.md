@@ -28,7 +28,7 @@ Each UI or IA choice must answer:
 | **Platform** (Ontology Manager / Logic) | Product engineering | OT/LT CRUD, dataset bind, Neo4j index, Function author→publish→run, Action **type** registry |
 | **Domain ontology** (tenant content) | Operators / domain owners (DIY) | Stock / Watchlist types, `screenStocks` source, Tushare mapping choices, analysis notes |
 
-Domain market-analysis schemas and Functions are **not** openKMS product deliverables. Operators follow the [Tushare market ontology tutorial](../tutorials/tushare-market-ontology.md); agents use [openkms-skill](../features/openkms-skill.md) Workflow G.
+Domain market-analysis schemas and Functions are **not** openKMS product deliverables. Learn concepts in [Understanding the ontology](../tutorials/understanding-ontology.md); operators follow the [Tushare case study](../tutorials/tushare-market-ontology.md); agents use [openkms-skill](../features/openkms-skill.md) Workflow G.
 
 ---
 
@@ -53,12 +53,12 @@ Domain market-analysis schemas and Functions are **not** openKMS product deliver
 
 | Gap | Impact | Evidence |
 |-----|--------|----------|
-| **Action does not apply object writes** | `execute` runs the bound Function and logs; `create_edit_batch` is inspect-only. Palantir-style “add to watchlist” durable writes are missing | [Ontology SDK](../features/ontology-sdk.md); [Functions research](ontology_functions_and_actions.md) phasing; ofs `Client` is read/compose |
-| **Action `object_id` resolves PG `ObjectInstance` only** | Explorer rows for dataset/Neo4j-backed objects use synthetic ids (e.g. key property). Triggering an Action with that id **404**s | Action execute vs object list id synthesis |
+| **Action `object_id` for dataset / Neo4j synthetic ids** | Explorer rows for dataset/Neo4j-backed objects use synthetic ids (e.g. key property). Triggering an Action with that id **404**s | Action execute resolves hand-created / Explorer instance ids only |
+| **Action `create` / `delete` apply** | `modify` apply ships for resolvable instances; create/delete edit ops are still skipped | `edit_apply_service` (backend) |
 | **Action “Rules” ≈ Function binder** | Not full submission criteria / parameter forms / multi-step edit rules | Manager Action Rules UI |
 
-**DIY without waiting on blockers:** read-only Functions + Manager schema + Explorer browse / Cypher.  
-**DIY that needs blockers fixed:** Object Explorer row Actions that **persist** Watchlist / ScreenRun-style objects against dataset-backed masters.
+**DIY without waiting on blockers:** schema + FoO reads + **Action `modify` write-back** on Explorer-created instances (e.g. Kanban WorkItem `status`).  
+**Still blocked:** Object Explorer row Actions that **persist** against dataset-backed masters (synthetic `object_id`).
 
 ### Soft gaps (P1–P2 UX) — deferred, decoupled from domain DIY
 
@@ -69,21 +69,24 @@ Domain market-analysis schemas and Functions are **not** openKMS product deliver
 | Manager top bar ⌘K / Discard·Save draft | P2 | Needs draft infra |
 | Global ontology Draft | Skipped | Function-level publish is enough |
 | OT wizard Action stubs without auto-bind | Soft | Bind Functions manually on Action types |
+| Kanban / board UI in Suite Apps | Follow-on | Presentation belongs to **App Builder** (+ A2UI), not Object Explorer |
 
-Do **not** schedule these with market-analysis or Action-write work.
+Do **not** schedule soft UX with market-analysis work.
 
 ---
 
 ## Product decision: Action write-back (B1)
 
-**Decision (2026-08-15): defer** edit-batch **apply** and dataset/Neo4j Action `object_id` resolution.
+**Decision (2026-08-16): ship narrow `modify` apply; keep synthetic `object_id` deferred.**
 
 | Choice | Meaning |
 |--------|---------|
-| **Defer (current)** | Domain DIY stays on **read-only Functions** + manual/CLI instance creates for non-dataset workbench types. No Action-write epic opened for market analysis. |
-| **Later (separate plan)** | If operators need Explorer “write Actions” on dataset-backed objects, open a dedicated short plan: edit-batch apply + resolve `object_id` by OT key / Neo4j id — **decoupled** from any domain Stock/Watchlist content. |
+| **Shipped** | After a successful Action OFS run, `output.edits` with `op == "modify"` merge properties onto resolvable object instances (instance id as `primary_key`). Response includes `applied` summary. |
+| **Still deferred** | Dataset / Neo4j synthetic Action `object_id`; edit `create` / `delete` apply; ofs `Client` write methods. |
 
-Rationale: Manager skeleton is already sufficient for schema + published compute; Action apply is the only material platform gap, and it is not required for read/compute DIY.
+Rationale: Kanban-style DIY and App Builder boards need durable column moves on Explorer-created objects without waiting for full Foundry-parity Action rules. Dataset-backed masters remain read/compute until a separate plan resolves synthetic ids.
+
+Earlier (2026-08-15) full deferral is superseded for `modify` only.
 
 ---
 
@@ -136,8 +139,8 @@ Rationale: Manager skeleton is already sufficient for schema + published compute
 | Three apps + redirects | ✅ Shipped |
 | Cypher Explore in Object Explorer | ✅ |
 | OT/LT/datasets in Manager | ✅ |
-| Groups / Functions / Action types | ✅ Registry + execute |
-| Edit-batch apply + dataset Action object_id | ⏸ Deferred (see product decision) |
+| Groups / Functions / Action types | ✅ Registry + execute + **modify apply** |
+| Edit create/delete apply + synthetic Action object_id | ⏸ Deferred (see product decision) |
 | Discover / group Home / global draft chrome | ⏸ P1–P2 / skip |
 
 ---
@@ -150,5 +153,6 @@ Rationale: Manager skeleton is already sufficient for schema + published compute
 - [x] Cypher page height (`check:app-layout`)
 - [x] No "Code Repository" user-facing copy
 - [x] Capability audit + DIY blockers documented (this page)
-- [x] Action write-back deferred as product decision
-- [ ] Action edit-batch apply + dataset/Neo4j `object_id` — **only if** operators reopen that decision
+- [x] Action `modify` apply on resolvable object instances (2026-08-16)
+- [ ] Action `create`/`delete` apply + dataset/Neo4j synthetic `object_id` — separate plan when needed
+- [ ] App Builder Kanban (A2UI) — presentation follow-on, not Object Explorer

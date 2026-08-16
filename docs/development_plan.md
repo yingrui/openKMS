@@ -81,7 +81,7 @@ Product direction (not a commitment order). Shipped basics live under **Current 
 3. **Multimodal knowledge** — **Image and video** (and related assets) as managed evidence: model registry support, ingestion/derivatives, search/RAG — see [knowledge-types](features/knowledge-types.md#rich-media-and-3d).
 4. **Evaluation for quality** — Turn evaluations from pass/fail runs into **actionable improvement** for KBs, wiki, and corpora (gaps, suggested edits, regression tracking).
 5. **Policy & lifecycle impact** — When rules change, surface dependents and review queues for **knowledge administrators** and **legal/compliance / standards** roles (see [Policy & lifecycle](#policy--lifecycle-medium)).
-6. **Ontology logic** — **Shipped:** three Suite Apps; PG function versions; ofs executor; `@function` + `Client`; SDK regen on publish; Action **types** (bind Function, execute, audit). **Deferred:** Action edit-batch **apply** and dataset/Neo4j Action `object_id` ([Manager alignment](research/ontology_manager_alignment.md#product-decision-action-write-back-b1)). Domain ontologies (e.g. market analysis) are tenant DIY, not product seeds. See [Ontology Functions](features/ontology-functions.md) · [Ontology SDK](features/ontology-sdk.md) · [Tutorial](tutorials/tushare-market-ontology.md).
+6. **Ontology logic** — **Shipped:** three Suite Apps; function versions; ofs executor; `@function` + `Client`; SDK regen on publish; Action **types** (bind Function, execute, audit); Action **`modify` apply** on resolvable object instances from `output.edits`; object list `prop.<name>=` filters; link list `source_object_id`. **Deferred:** Action `create`/`delete` apply; dataset/Neo4j synthetic Action `object_id` ([Manager alignment](research/ontology_manager_alignment.md#product-decision-action-write-back-b1)). Kanban **UI** is App Builder (+ A2UI) follow-on, not Object Explorer. Domain ontologies (e.g. market analysis) are tenant DIY, not product seeds. See [Ontology Functions](features/ontology-functions.md) · [Ontology SDK](features/ontology-sdk.md) · [Understanding ontology](tutorials/understanding-ontology.md) · [Tushare DIY](tutorials/tushare-market-ontology.md).
 
 ## Backlog {#backlog}
 
@@ -162,9 +162,10 @@ Today: [Documents](features/documents.md) lifecycle + relationships; `is_current
 
 | Item | Notes |
 |------|--------|
-| Action edit-batch apply + dataset/Neo4j `object_id` | **Deferred** product decision — reopen only if operators need Explorer write Actions on dataset-backed objects. See [Manager alignment](research/ontology_manager_alignment.md#capability-audit-shipped-vs-diy-blockers). |
+| Action `modify` apply (resolvable instance ids) | **Shipped** — merge `output.edits` after Action OFS ok. |
+| Action `create`/`delete` apply + dataset/Neo4j synthetic `object_id` | **Deferred** — see [Manager alignment](research/ontology_manager_alignment.md#capability-audit-shipped-vs-diy-blockers). |
 | Discover / Explorer Home by group / global draft chrome | P1–P2 UX — **decoupled** from domain DIY and from Action-write work |
-| Domain ontologies (Stock, screens, watchlists, …) | **Not backlog** — tenant DIY: [tutorial](tutorials/tushare-market-ontology.md) · [openkms-skill](features/openkms-skill.md) Workflow G |
+| Domain ontologies (Stock, screens, watchlists, …) | **Not backlog** — tenant DIY: [understanding ontology](tutorials/understanding-ontology.md) · [Tushare case](tutorials/tushare-market-ontology.md) · [openkms-skill](features/openkms-skill.md) Workflow G |
 
 Shipped: [Ontology](features/ontology.md) · [Ontology Functions](features/ontology-functions.md) · [Manager alignment](research/ontology_manager_alignment.md).
 

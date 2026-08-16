@@ -25,4 +25,4 @@
 python scripts/cli.py ping
 ```
 
-Agent **只能**走 bundled CLI。写 Function 源码前读 `references/functions-authoring.md`。控制面 API（feature toggles、schedules hub 等）不包装。领域本体（如 Tushare → Stock → 只读 Function）是**租户 DIY**（见英文 `SKILL.md` Workflow G 与[教程](../tutorials/tushare-market-ontology.md)），不是平台种子；Action 写回对象仍延后，见 [Manager 对齐说明](../research/ontology_manager_alignment.md)。
+Agent **只能**走 bundled CLI。写 Function 源码前读 `references/functions-authoring.md`。控制面 API（feature toggles、schedules hub 等）不包装。领域本体是**租户 DIY**（见 `SKILL.md` Workflow G、[认识本体](../tutorials/understanding-ontology.md)、[Tushare 案例](../tutorials/tushare-market-ontology.md)），不是平台种子；Action 写回对象仍延后，见 [Manager 对齐说明](../research/ontology_manager_alignment.md)。

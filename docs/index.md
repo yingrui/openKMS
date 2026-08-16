@@ -42,7 +42,8 @@ Content lives in **channel trees** (like folder hierarchies). Typical surfaces:
 |---|---|
 | Understand **why** openKMS exists (vision & business problems) | [Goals & vision](goals.md) |
 | Try it locally with Docker or on the host | [Quickstart](quickstart.md) |
-| DIY a Tushare → Stock → Function ontology | [Tutorial: Tushare market ontology](tutorials/tushare-market-ontology.md) |
+| Learn ontology by building a mini Kanban | [Tutorial: Understanding the ontology (Kanban lab)](tutorials/understanding-ontology.md) |
+| DIY a Tushare → Stock → Function case study | [Tutorial: Tushare market ontology](tutorials/tushare-market-ontology.md) |
 | Understand the system | [Architecture](architecture.md) · [Functionalities](functionalities.md) |
 | Find a specific feature or API | [Functionalities](functionalities.md) → `features/*.md` |
 | HTTP or schema reference | [API reference](features/api-reference.md) · [Data models](features/data-models.md) |

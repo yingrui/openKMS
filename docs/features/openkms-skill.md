@@ -62,6 +62,6 @@ python scripts/cli.py ping
 
 Coverage includes data-sources, datasets, connectors (e.g. Tushare sync/probe), jobs, channels, documents/articles/wiki/KB, glossaries, knowledge-map, comments, media, evaluations, and ontology (objects/links, functions, action-types, groups). Function **source** authoring: `references/functions-authoring.md`. CLI↔HTTP: `references/REFERENCE.md`. Control-plane APIs (feature toggles, schedules hub, Console admin) are **not** wrapped.
 
-Domain ontologies (e.g. Tushare → Stock → read-only Functions) are **tenant DIY** via `SKILL.md` Workflow **G** — not platform seeds. Step-by-step: [Tutorial — Tushare market ontology](../tutorials/tushare-market-ontology.md). Action execute does not yet apply durable object writes; see [Manager alignment](../research/ontology_manager_alignment.md).
+Domain ontologies (e.g. Tushare → Stock → read-only Functions) are **tenant DIY** via `SKILL.md` Workflow **G** — not platform seeds. Concepts: [Understanding the ontology](../tutorials/understanding-ontology.md). Lab: [Tushare DIY](../tutorials/tushare-market-ontology.md). Action execute does not yet apply durable object writes; see [Manager alignment](../research/ontology_manager_alignment.md).
 
 **Mutations** require `-y`/`--yes` or `--dry-run` (non-TTY without `--yes` exits 2). Optional `default_document_channel_id` / `default_article_channel_id` in `config.yml`.

@@ -1,90 +1,116 @@
-# Tutorial: Build a Tushare market-analysis ontology (DIY)
+# Tutorial: Tushare market-analysis ontology (DIY case study)
 
-This is a **hands-on operator guide**. You use shipped Ontology Manager / Function Editor / Connectors to model **your** A-share daily data—not a platform seed. Domain types and Function source stay in **your** deployment.
+**Prerequisite:** [Understanding the ontology (Kanban lab)](understanding-ontology.md).  
+This page is a **market domain lab**. It assumes you already built (or understood) the mini Kanban ontology path—datasets vs object types, FoO, index choices.
 
-**Time:** about 30–60 minutes after Tushare credentials work.  
-**Outcome:** a **Stock** object type on `stock_basic`, Neo4j-indexed, plus one published Function (`stockProfile`) you can run from Manager or [openkms-skill](../features/openkms-skill.md).
+You build **tenant content** in your deployment: A-share daily data from [Tushare](https://tushare.pro) → **Stock** + **Functions on Objects (FoO)**. Not a platform seed.
 
-Related product docs: [Connectors](../features/connectors.md) · [Ontology](../features/ontology.md) · [Ontology Functions](../features/ontology-functions.md) · [Platform vs DIY](../research/ontology_manager_alignment.md)
+| | |
+|--|--|
+| **Audience** | Readers who finished the ontology intro (or equivalent) |
+| **Time** | ~45–60 min lab after credentials work |
+| **Outcome** | Live Stock type + published FoO Functions (`stockProfile`, series contract) |
+
+**Related:** [Connectors — Tushare](../features/connectors.md#tushare-sync) · [Ontology Functions](../features/ontology-functions.md) · [openkms-skill](../features/openkms-skill.md) · [Platform vs DIY](../research/ontology_manager_alignment.md)
+
+> **Design target / Future requirements** below are product direction (TSP, series store). They are **not** shipped. Use FoO series Functions until then. Feature docs stay unchanged until implementation.
 
 ---
 
-## What you will (and will not) build
+## 1. Why this case study?
 
-| Build | Skip for now |
-|-------|----------------|
-| Tushare sync → six Postgres datasets | Indexing every daily bar into Neo4j |
-| Object type **Stock** (master data) on `stock_basic` | Empty “fundamentals / northbound” types (connector has no such tables) |
-| Read-only Function(s) over dataset-backed objects | Explorer Actions that **persist** Watchlist rows (Action write-back is [deferred](../research/ontology_manager_alignment.md#product-decision-action-write-back-b1)) |
+Market data is a stress test for ontology design:
 
-Mental model:
+- **Masters** (stocks) are few and stable → good object types + Neo4j index.  
+- **Facts** (daily OHLCV, PE, adj factors) are huge → belong in **datasets**, queried by FoO—not millions of graph nodes.  
+- Analysts and agents need **governed** answers (“profile”, “adj-close series”, “screen”) more than ad-hoc SQL.
+
+That matches the intro tutorial’s anti-patterns and Palantir’s split between objects and time series ([TSP overview](https://www.palantir.com/docs/foundry/time-series/time-series-overview/)). openKMS interim: FoO returns `points[]` instead of native TSP.
 
 ```text
-Connector sync  →  Datasets (facts in Postgres)
+Connector sync  →  Datasets (six Tushare tables)
                       ↓
-              Object Types (semantics)  →  Neo4j index for masters only
+              Object type Stock  →  Neo4j index (masters only)
                       ↓
-         Ontology Functions (governed compute)
+         FoO: stockProfile / getAdjCloseSeries / screens
 ```
 
 ---
 
-## Prerequisites
+## 2. Design choices for market data
 
-1. openKMS running (see [Quickstart](../quickstart.md)); **ontology-function-service** up if you will Live Preview / execute Functions (Compose service on `:8105`).
-2. Permissions roughly: connectors + datasets + ontology object types + functions (+ Neo4j data source configured in Console).
-3. A [Tushare](https://tushare.pro) token with access to the daily APIs you plan to sync.
-4. Optional but recommended: [openkms-skill](../features/openkms-skill.md) configured with a personal API key for CLI steps.
+| Concern | Palantir-aligned intent | What you do now |
+|---------|-------------------------|-----------------|
+| Identity | Stock OT + object index | Bind `stock_basic` → Stock; Index Neo4j |
+| Price / PE over time | TSP on Stock + time series sync/DB | FoO `(ts_code, start, end) → points[]` |
+| Daily bars as peer objects | Avoid | Keep fact tables as datasets only |
+| Logic shape | FoO (Function + object id) | `stockProfile`, `getAdjCloseSeries`, … |
 
-Confirm data sources (skill):
+**Vocabulary:** Tushare **connector sync** fills Postgres datasets. Palantir **time series sync** indexes `(series_id, timestamp, value)` into a series DB. They are not the same. See intro §4.9.
+
+**FoO style (required for this lab):**
+
+```text
+getAdjCloseSeries(ts_code, start, end) → { points: [{ date, value }, ...] }
+stockProfile(ts_code)                  → { stock, ... }
+```
+
+Not OOP `Stock.getAdjCloseSeries()`. Not calling Tushare inside Function source.
+
+---
+
+## 3. What Tushare puts in datasets
+
+After connector sync (defaults under schema `tushare`):
+
+| Slot / table | Grain | Role here |
+|--------------|-------|-----------|
+| `stock_basic` | One row per `ts_code` | Backing dataset for **Stock** |
+| `trade_calendar` | Exchange + day | Helpers / optional TradeDay later |
+| `stock_trade_daily` | Code + trade date | Fact → series / returns FoO |
+| `daily_basic` | same | Fact → PE, turnover, limits |
+| `stock_adj_daily` | same | Fact → adj factor |
+| `dividends` | Code + ex date | Event facts |
+
+**Checkpoint mindset:** Sync ⇒ datasets exist and have rows. **Stock** exists only after you create the object type (intro: dataset ≠ object type).
+
+---
+
+## 4. Lab prerequisites
+
+1. Read [Understanding the ontology](understanding-ontology.md).  
+2. openKMS + **ontology-function-service** ([Quickstart](../quickstart.md)).  
+3. Permissions: connectors, datasets, object types, functions; Neo4j if indexing.  
+4. Tushare token. Optional: [openkms-skill](../features/openkms-skill.md).
 
 ```bash
 python scripts/cli.py data-sources list
-# Note: ontology Postgres data-source id, and Neo4j data-source id (for index).
 ```
+
+| Build | Skip |
+|-------|------|
+| Six datasets + Stock + FoO | Full daily Neo4j index; empty “fundamentals” OTs; native TSP; Action write-back for Watchlist |
 
 ---
 
-## Step 1 — Create and wire the Tushare connector
+## 5. Step 1 — Connector and datasets
 
-**UI**
+**UI:** Connectors → kind `tushare` → `TUSHARE_TOKEN` → Provision all six slots → Run sync → **Manager → Datasets** → open `stock_basic` → **Data / Columns / Usage**.
 
-1. Open **Connectors** → create kind **`tushare`**.
-2. Set secret **`TUSHARE_TOKEN`**, leave `api_base_url` default unless you use a proxy.
-3. On **Output datasets**, for each slot use **Provision dataset** (or bind existing datasets):  
-   `trade_calendar`, `stock_basic`, `stock_trade_daily`, `daily_basic`, `stock_adj_daily`, `dividends`.
-4. **Run sync now** (optional date range). Wait for job **`run_connector_sync`** under Job runs.
-5. Optional: **Probe** tab to hit live `daily` without writing.
-
-**CLI** (after the connector exists):
+**CLI:**
 
 ```bash
 python scripts/cli.py connectors list
 python scripts/cli.py connectors sync --id <CONN_ID> --yes
-python scripts/cli.py jobs get --id <JOB_ID>   # poll until completed
+python scripts/cli.py jobs get --id <JOB_ID>
 python scripts/cli.py datasets metadata --id <STOCK_BASIC_DATASET_ID>
 ```
 
-**Check:** dataset `stock_basic` has rows; primary key column is `ts_code`.
-
-Slot → table map: [Connectors — Tushare](../features/connectors.md#tushare-sync).
-
 ---
 
-## Step 2 — Create the Stock object type
+## 6. Step 2 — Object type Stock
 
-Treat **Stock** as master data. Prefer **not** creating Neo4j nodes for every `DailyBar` row (millions of `(ts_code, trade_date)` pairs belong in SQL / Function queries).
-
-**UI (Ontology Manager)**
-
-1. **Object types** → **New**.
-2. Name: `Stock`. Mark **Master data**. Display property: `name` (or `ts_code`).
-3. Bind dataset = your `stock_basic` dataset. Key property: **`ts_code`**.
-4. Expose analysis-friendly properties (names must match dataset columns), for example:
-   - `ts_code`, `name`, `industry`, `area`, `market`, `list_date`, `is_hs` (strings)
-5. Save. On the type (or list Actions), **Index to Neo4j** when a Neo4j data source exists.
-
-**CLI**
+Bind `stock_basic`, key `ts_code`, master data, display `name`; **Index only Stock**.
 
 ```bash
 python scripts/cli.py ontology objects create-type \
@@ -110,17 +136,11 @@ python scripts/cli.py ontology objects sync-neo4j-type \
   --yes
 ```
 
-**Check:** Object Explorer → **Objects** → filter type Stock; or Cypher Explore for a known `ts_code`.
-
-Optional later: Object type **TradeDay** on `trade_calendar` (composite key `exchange` + `cal_date`). Fact tables (`stock_trade_daily`, …) can stay **datasets only** until you need Explorer browsing.
+Confirm: `stock_basic` **Usage** lists Stock; daily datasets still have no OT.
 
 ---
 
-## Step 3 — Author and publish `stockProfile`
-
-Functions are **versioned, published compute**—not another sync path. Do not call Tushare from Function source; read ontology / datasets via the injected `Client`.
-
-Create a file `stock_profile.py`:
+## 7. Step 3 — FoO `stockProfile`
 
 ```python
 from openkms_functions import Client, function
@@ -134,27 +154,16 @@ def execute(input: dict, client: Client) -> dict:
 
     rows = client("Stock").search(limit=20, filters={"search": ts_code})
     stock = next(
-        (r for r in rows if str(r.get("ts_code") or r.get("id") or "") == ts_code
-         or str(r.get("properties", {}).get("ts_code", "")) == ts_code),
+        (
+            r
+            for r in rows
+            if str(r.get("ts_code") or r.get("id") or "") == ts_code
+            or str((r.get("properties") or {}).get("ts_code", "")) == ts_code
+        ),
         rows[0] if rows else None,
     )
-    return {
-        "ts_code": ts_code,
-        "found": stock is not None,
-        "stock": stock,
-        "hint": "Extend with more Functions that join daily_basic / adj_factor datasets as you grow.",
-    }
+    return {"ts_code": ts_code, "found": stock is not None, "stock": stock}
 ```
-
-Authoring rules: skill package `openkms-skill/references/functions-authoring.md` (allowed imports, `@function`, `uses=`). See also [openkms-skill](../features/openkms-skill.md).
-
-**UI**
-
-1. **Function Editor** → create function api name `stockProfile`.
-2. Paste source → **Validate** / Live Preview with `{"ts_code":"000001.SZ"}`.
-3. **Ontology Manager → Functions** → **Publish**.
-
-**CLI**
 
 ```bash
 python scripts/cli.py ontology functions create \
@@ -163,65 +172,96 @@ python scripts/cli.py ontology functions create \
   --source-code-file ./stock_profile.py \
   --input-schema-json '{"type":"object","required":["ts_code"],"properties":{"ts_code":{"type":"string"}}}' \
   --yes
-
-python scripts/cli.py ontology functions validate --id <FN_ID> --source-code-file ./stock_profile.py --yes
-python scripts/cli.py ontology functions publish --id <FN_ID> --yes
-python scripts/cli.py ontology functions execute-by-api-name \
-  --api-name stockProfile \
-  --input-json '{"ts_code":"000001.SZ"}' \
-  --yes
+# validate → publish → execute-by-api-name '{"ts_code":"000001.SZ"}'
 ```
 
-**Check:** JSON includes your stock row (or a clear `found: false` if that code is not in the synced universe).
+---
+
+## 8. Step 4 — FoO series (TSP stand-in)
+
+| Input | Output |
+|-------|--------|
+| `ts_code`, `start`, `end` | `{ "metric": "adj_close", "points": [{"date","value"}, ...], "convention": "..." }` |
+
+```python
+from openkms_functions import Client, function
+
+
+@function
+def execute(input: dict, client: Client) -> dict:
+    ts_code = (input.get("ts_code") or "").strip()
+    start = (input.get("start") or "").strip()
+    end = (input.get("end") or "").strip()
+    if not ts_code or not start or not end:
+        return {"error": "ts_code, start, and end are required"}
+
+    if not client("Stock").search(limit=5, filters={"search": ts_code}):
+        return {"ts_code": ts_code, "found": False, "points": []}
+
+    points: list[dict] = []  # fill from daily + adj datasets; prefer future R2 Client API
+    return {
+        "ts_code": ts_code,
+        "metric": "adj_close",
+        "start": start,
+        "end": end,
+        "found": True,
+        "points": points,
+        "convention": "document your adj formula here",
+    }
+```
+
+Publish as `getAdjCloseSeries`. Next FoO ideas: `getLatestBasics`, `getTradeWindow`, `screenStocks`, `marketBreadth`.
+
+**Workbench:** Watchlist/Screen OTs may be created manually; Action **apply** for writes is deferred ([alignment](../research/ontology_manager_alignment.md#diy-blockers-platform-hard-gaps)).
 
 ---
 
-## Step 4 — Suggested next Functions (still DIY)
+## 9. Market-specific anti-patterns
 
-Add these as separate published Functions when you need them. Prefer composition with `@function(uses=[...])`.
+| Avoid | Prefer |
+|-------|--------|
+| Neo4j for all daily bars | Dataset + FoO series |
+| Tushare calls inside Functions | Connector sync |
+| Action named “sync market” | Connector Run sync / schedule |
+| Skipping Datasets UI after sync | Confirm Data/Columns before Stock OT |
 
-| apiName | Purpose |
-|---------|---------|
-| `getTradeWindow` | Last *N* open calendar dates |
-| `getAdjCloseSeries` | Adjusted close series (pick **one** adjustment convention and stick to it) |
-| `getLatestBasics` | Latest PE/PB/turnover/mkt cap from `daily_basic` |
-| `screenStocks` | Cross-sectional filter (industry, PE band, …) |
-| `marketBreadth` | Up/down / limit counts for a trade date |
-
-Keep heavy joins in Function logic over datasets; do not Neo4j-index full daily tables “just in case.”
+General anti-patterns: [Understanding ontology §6](understanding-ontology.md#6-anti-patterns).
 
 ---
 
-## Workbench objects (Watchlist / Screen) — current limits
+## 10. Future platform requirements (from this case)
 
-You *may* create non-dataset object types such as **Watchlist** / **ScreenRun** and create instances in Object Explorer or via CLI.
+Track for product work; not in feature docs until built.
 
-What is **not** ready yet:
-
-- Action execute that **applies** object edits (`create_edit_batch` is inspect-only).
-- Reliable Actions on dataset-backed Stock rows whose ids are Neo4j/dataset synthetic keys (execute still resolves PG `ObjectInstance` ids).
-
-Until Action write-back ships, treat Watchlists as manual instance CRUD, or keep screening results in Function output / notes. See [Manager alignment — DIY blockers](../research/ontology_manager_alignment.md#diy-blockers-platform-hard-gaps).
-
----
-
-## Troubleshooting
-
-| Symptom | What to check |
-|---------|----------------|
-| Sync job fails / empty tables | Token privileges; rate limits; job logs; Probe without dates |
-| Stock list empty in Explorer | Dataset bind + key property; re-run Neo4j index for the type |
-| Function import / `Client` errors | ofs running; skill/authoring allowed imports; publish before `execute-by-api-name` |
-| `uses=` publish fails | Dependency Function must exist and be **published** |
-| Want “Add to Watchlist” on a Stock row | Deferred platform gap — not a missing Stock type |
+| ID | Requirement |
+|----|-------------|
+| **R1** | FoO templates (object identity inputs) |
+| **R2** | Client API to query dataset rows (date / key filters) |
+| **R3** | Shared series `points[]` JSON Schema |
+| **R4** | TSP on object types (Capabilities-like UI) |
+| **R5** | Time series sync + series store |
+| **R6** | Explorer series preview for a Stock |
+| **R7** | Docs: series ≠ full Neo4j facts |
+| **R8** | Action write-back + dataset/Neo4j object ids |
 
 ---
 
-## Related
+## 11. Troubleshooting
 
-| Doc | Why |
-|-----|-----|
-| [openkms-skill](../features/openkms-skill.md) | CLI Workflow **G** (same path for agents) |
-| [Ontology SDK](../features/ontology-sdk.md) | `@function`, `Client`, edit-batch foundation |
-| [Object Explorer](../features/object-explorer.md) | Browse Stocks / Cypher |
-| [Manager alignment](../research/ontology_manager_alignment.md) | What is platform vs your content |
+| Symptom | Check |
+|---------|--------|
+| Empty datasets | Token, job logs, Probe, provision |
+| Stock missing in Explorer | Bind + key; re-index |
+| Cannot read daily rows in Function | Until **R2**, expected limitation |
+| Want native `Stock.close` | **R4–R5**; use `getAdjCloseSeries` |
+
+---
+
+## 12. Related
+
+| Doc | Role |
+|-----|------|
+| [Understanding the ontology](understanding-ontology.md) | Concepts (read first) |
+| [openkms-skill](../features/openkms-skill.md) | CLI Workflow G |
+| [Palantir time series](https://www.palantir.com/docs/foundry/time-series/time-series-overview/) | TSP model (external) |
+| [Palantir FoO](https://www.palantir.com/docs/foundry/functions/functions-on-objects/) | FoO naming (external) |

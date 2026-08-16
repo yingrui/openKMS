@@ -173,6 +173,7 @@ class OntologyActionExecuteResponse(BaseModel):
     error: str | None = None
     duration_ms: int | None = None
     log_id: str | None = None
+    applied: dict | None = None
 
 
 class OntologyActionLogResponse(BaseModel):

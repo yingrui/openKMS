@@ -20,6 +20,7 @@ from app.models.dataset import Dataset
 from app.services.ontology.neo4j_async import open_neo4j_driver, run_with_neo4j_driver
 from app.models.object_instance import ObjectInstance
 from app.models.object_type import ObjectType
+from app.services.ontology.query_filters import parse_prop_filters, row_matches_prop_filters
 from app.schemas.ontology import (
     ObjectInstanceCreate,
     ObjectInstanceListResponse,
@@ -175,43 +176,35 @@ def _query_neo4j_nodes(
     limit: int,
     offset: int,
     id_prop: str,
+    prop_filters: dict[str, str] | None = None,
 ) -> tuple[list[dict], int]:
     """Query nodes from Neo4j by label. Returns (rows, total)."""
     search_trimmed = search.strip() if search else None
+    prop_filters = prop_filters or {}
+    where_parts: list[str] = []
+    params: dict = {"offset": offset, "limit": limit}
+    if search_trimmed:
+        where_parts.append(
+            "any(k IN keys(n) WHERE toLower(toString(n[k])) CONTAINS toLower($search))"
+        )
+        params["search"] = search_trimmed
+    for i, (name, value) in enumerate(prop_filters.items()):
+        pname = f"pf_{i}"
+        # Property names already validated in parse_prop_filters
+        where_parts.append(f"toString(n.`{name}`) = ${pname}")
+        params[pname] = value
+    where_clause = f"WHERE {' AND '.join(where_parts)}" if where_parts else ""
     with driver.session() as session:
-        # Count query
-        if search_trimmed:
-            count_result = session.run(
-                f"""
-                MATCH (n:{label})
-                WHERE any(k IN keys(n) WHERE toLower(toString(n[k])) CONTAINS toLower($search))
-                RETURN count(n) AS c
-                """,
-                search=search_trimmed,
-            )
-        else:
-            count_result = session.run(f"MATCH (n:{label}) RETURN count(n) AS c")
+        count_result = session.run(
+            f"MATCH (n:{label}) {where_clause} RETURN count(n) AS c",
+            **{k: v for k, v in params.items() if k not in ("offset", "limit")},
+        )
         total = count_result.single()["c"] or 0
 
-        # Data query
-        if search_trimmed:
-            result = session.run(
-                f"""
-                MATCH (n:{label})
-                WHERE any(k IN keys(n) WHERE toLower(toString(n[k])) CONTAINS toLower($search))
-                RETURN n
-                SKIP $offset LIMIT $limit
-                """,
-                search=search_trimmed,
-                offset=offset,
-                limit=limit,
-            )
-        else:
-            result = session.run(
-                f"MATCH (n:{label}) RETURN n SKIP $offset LIMIT $limit",
-                offset=offset,
-                limit=limit,
-            )
+        result = session.run(
+            f"MATCH (n:{label}) {where_clause} RETURN n SKIP $offset LIMIT $limit",
+            **params,
+        )
         def _serialize_val(v):
             if v is None:
                 return None
@@ -568,13 +561,17 @@ async def list_object_instances(
     offset: int = Query(0, ge=0),
     db: AsyncSession = Depends(get_db),
 ):
-    """List object instances. Objects page loads from Neo4j when a Neo4j data source exists."""
+    """List object instances. Objects page loads from Neo4j when a Neo4j data source exists.
+
+    Property equality filters: ``prop.<name>=value`` (repeatable).
+    """
     obj_type = await db.get(ObjectType, object_type_id)
     if not obj_type:
         raise HTTPException(status_code=404, detail="Object type not found")
     await _require_object_type_read(request, db, object_type_id)
 
     id_prop = _resolve_id_property(obj_type)
+    prop_filters = parse_prop_filters(request)
 
     neo4j_ds = await _get_first_neo4j_datasource(db)
     if neo4j_ds:
@@ -584,7 +581,9 @@ async def list_object_instances(
             label = _neo4j_safe_label(obj_type.name)
 
             def _query(driver):
-                return _query_neo4j_nodes(driver, label, search, limit, offset, id_prop)
+                return _query_neo4j_nodes(
+                    driver, label, search, limit, offset, id_prop, prop_filters=prop_filters
+                )
 
             rows, total = await run_with_neo4j_driver(neo4j_ds, _query)
             return ObjectInstanceListResponse(
@@ -607,6 +606,7 @@ async def list_object_instances(
 
     if obj_type.dataset_id:
         try:
+            # Fetch a page then filter in memory (dataset SQL path has no prop pushdown yet).
             rows, total = await fetch_dataset_rows(db, obj_type.dataset_id, limit=limit, offset=offset)
         except ValueError as e:
             raise HTTPException(status_code=400, detail=str(e)) from e
@@ -622,6 +622,8 @@ async def list_object_instances(
             if row_id is None:
                 continue
             data = {k: v for k, v in row.items() if v is not None}
+            if not row_matches_prop_filters(data, prop_filters):
+                continue
             items.append(
                 ObjectInstanceResponse(
                     id=str(row_id),
@@ -631,12 +633,14 @@ async def list_object_instances(
                     updated_at=None,
                 )
             )
-        return ObjectInstanceListResponse(items=items, total=total)
+        return ObjectInstanceListResponse(items=items, total=len(items) if prop_filters else total)
     else:
         filters = [ObjectInstance.object_type_id == object_type_id]
         if search and search.strip():
             pattern = f"%{search.strip()}%"
             filters.append(cast(ObjectInstance.data, String).ilike(pattern))
+        for name, value in prop_filters.items():
+            filters.append(ObjectInstance.data.contains({name: value}))
         total = int(
             (await db.execute(select(func.count()).select_from(ObjectInstance).where(*filters))).scalar_one()
         )

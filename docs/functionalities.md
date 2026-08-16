@@ -28,7 +28,8 @@ Per-feature reference, split by topic. The full content used to live in this sin
 | [Agents (project workspaces)](features/openkms-agents.md) | Deep Agents chat, files, local/remote git, plan mode, openKMS research tools |
 | [Wiki Copilot](features/wiki-spaces.md) | In-app LangGraph assistant per wiki space (distinct from qa-agent) |
 | [openkms-skill](features/openkms-skill.md) | Agent Skill + CLI (`openkms-skill/`); openKMS Agents, Claude Code, OpenCode, etc. — not a substitute for domain in-app assistants |
-| [Tutorial: Tushare market ontology (DIY)](tutorials/tushare-market-ontology.md) | Operator how-to: sync → Stock OT → publish read-only Functions (tenant content, not a product seed) |
+| [Tutorial: Understanding the ontology (Kanban lab)](tutorials/understanding-ontology.md) | Learn ontology by building a mini Kanban (Project / WorkItem / Person + decision FoO) |
+| [Tutorial: Tushare market ontology (DIY)](tutorials/tushare-market-ontology.md) | Domain case study: sync → Stock → FoO (requires ontology intro) |
 
 ## Cross-cutting reference
 

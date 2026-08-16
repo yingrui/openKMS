@@ -96,10 +96,18 @@ class Client:
         limit: int = 100,
     ) -> list[dict]:
         type_id = self._resolve_object_type_id(object_type_api_name)
+        query: dict[str, str] = {"limit": str(limit)}
+        for key, value in (filters or {}).items():
+            if value is None:
+                continue
+            if key == "search":
+                query["search"] = str(value)
+            else:
+                query[f"prop.{key}"] = str(value)
         data = self._request(
             "GET",
             f"/api/object-types/{type_id}/objects",
-            query={"limit": str(limit), "search": (filters or {}).get("search", "")},
+            query=query,
         )
         items = data.get("items") if isinstance(data, dict) else data
         return list(items or [])
@@ -112,20 +120,16 @@ class Client:
         limit: int = 100,
     ) -> list[dict]:
         link_type_id = self._resolve_link_type_id(link_type_api_name)
+        query: dict[str, str] = {"limit": str(limit)}
+        if source_id:
+            query["source_object_id"] = source_id
         data = self._request(
             "GET",
             f"/api/link-types/{link_type_id}/links",
-            query={"limit": str(limit)},
+            query=query,
         )
         links = data.get("items") if isinstance(data, dict) else data
-        result = list(links or [])
-        if source_id:
-            result = [
-                link
-                for link in result
-                if link.get("source_id") == source_id or link.get("source_instance_id") == source_id
-            ]
-        return result
+        return list(links or [])
 
     def execute_function(self, api_name: str, params: dict | None = None) -> dict:
         """Call a published function by api_name (function composition)."""

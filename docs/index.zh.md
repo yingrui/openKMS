@@ -42,7 +42,8 @@ openKMS 把这些视为**同一张网络**，而非割裂的「给人用的 KM�
 |-----------|------|
 | 理解 openKMS **为何存在**（愿景与业务问题） | [目标与愿景](goals.md) |
 | 用 Docker 或本机快速试用 | [快速开始](quickstart.md) |
-| 自己动手：Tushare → Stock → Function 本体 | [教程：Tushare 市场分析本体](tutorials/tushare-market-ontology.md) |
+| 通过搭迷你看板学习本体 | [教程：认识本体（看板实验）](tutorials/understanding-ontology.md) |
+| 自己动手：Tushare → Stock → Function 案例 | [教程：Tushare 市场分析本体](tutorials/tushare-market-ontology.md) |
 | 理解系统整体 | [架构](architecture.md) · [功能索引](functionalities.md) |
 | 查找具体功能或 API | [功能索引](functionalities.md) → `features/*.md` |
 | HTTP 或 schema 参考 | [API 参考](features/api-reference.md) · [数据模型](features/data-models.md) |
