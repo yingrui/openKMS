@@ -17,7 +17,7 @@
 | [知识地图与首页](features/knowledge-map.md) | 知识地图术语、资源链接、首页 hub 图谱 |
 | [全局搜索](features/global-search.md) | `/search` 页：文档、文章、维基空间、知识库（名称、通道、更新时间筛选） |
 | [本体 — 对象、关系与数据集](features/ontology.md) | 对象/关系类型、实例、Object Explorer、数据源、数据集 |
-| [应用构建器与应用](features/app-builder.md) | 状态列板 A2UI：在 App Builder 填写绑定，在 Apps 运行已发布应用 |
+| [应用构建器与应用](features/app-builder.md) | 本体 A2UI 应用：在 App Builder 填写绑定，在 Apps 运行已发布应用 |
 | [流水线、任务与模型](features/pipelines-and-jobs.md) | 流水线模板、procrastinate 任务、Provider/模型注册（多模态图像/视频模型规划中） |
 | [数据安全](features/data-security.md) | 双层模型（操作 RBAC + 资源 ACL）、组、共享、继承、 enforcement |
 | [控制台与认证](features/console-and-auth.md) | 权限目录、Console UX、OIDC/本地认证、系统设置、用户设置（API 密钥）、功能开关 |

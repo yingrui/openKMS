@@ -61,7 +61,7 @@ export function AppBuilderWizardPage() {
               const app = await createOntologyApp({
                 name: name.trim(),
                 api_name: apiName.trim(),
-                template_id: 'status_board',
+                template_id: 'a2ui',
                 bindings: {
                   objectType: bindings.objectType.trim(),
                   columnProperty: (bindings.columnProperty || '').trim(),
@@ -183,8 +183,6 @@ export function AppBuilderWizardPage() {
           {t('wizardMissingHint')}{' '}
           <Link to="/ontology-manager/object-types">{t('manager')}</Link> ·{' '}
           <Link to="/function-editor">{t('functionEditor')}</Link>
-          {' · '}
-          {t('tutorialExample')}
         </p>
 
         <div className="app-builder-page__actions">

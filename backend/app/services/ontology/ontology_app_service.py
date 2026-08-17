@@ -172,7 +172,7 @@ async def create_app(
         name=body.name,
         api_name=body.api_name,
         description=body.description,
-        template_id=body.template_id or "status_board",
+        template_id=body.template_id or "a2ui",
         bindings=bindings,
         draft_a2ui=pack_a2ui_document(messages),
         published_a2ui=None,

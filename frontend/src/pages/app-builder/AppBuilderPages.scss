@@ -4,14 +4,11 @@
   gap: 1rem;
 }
 
-.app-builder-page__suggested {
-  padding: 1rem;
-  border: 1px dashed var(--border, #ccc);
-  border-radius: 0.5rem;
+.app-builder-page__header {
   display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
+  justify-content: space-between;
   align-items: flex-start;
+  gap: 1rem;
 }
 
 .app-builder-page__list {

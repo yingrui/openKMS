@@ -24,7 +24,7 @@ class OntologyAppCreate(BaseModel):
     name: str = Field(min_length=1, max_length=256)
     api_name: str = Field(min_length=1, max_length=128)
     description: str | None = None
-    template_id: str = "status_board"
+    template_id: str = "a2ui"
     bindings: OntologyAppBindings
 
 

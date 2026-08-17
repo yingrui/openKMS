@@ -1,8 +1,8 @@
 # App Builder & Apps
 
-**App Builder** authors ontology-backed A2UI apps. The first template is a **status board** (columns from a property on an object type). **Apps** is the published gallery and full-bleed Run surface — end users never need Builder.
+**App Builder** authors ontology-backed A2UI apps. **Apps** is the published gallery and full-bleed Run surface — end users never need Builder.
 
-The platform does **not** ship domain types (e.g. WorkItem) or Action api names. Authors supply bindings that already exist in their tenant. Tutorials may show a Kanban-style lab as an example; that is tenant DIY, not product defaults.
+Authors open **New app**, enter a name, and bind api names that already exist in their tenant. The platform does **not** suggest domain templates or seed Object Types / Actions.
 
 **Related:** [Ontology Functions](ontology-functions.md) · [Ontology](ontology.md) · [Understanding the ontology (Kanban lab)](../tutorials/understanding-ontology.md) · [Knowledge Map](knowledge-map.md) (Overview A2UI designer pattern)
 
@@ -10,22 +10,22 @@ The platform does **not** ship domain types (e.g. WorkItem) or Action api names.
 
 | App | Route | Layout | Role |
 |-----|-------|--------|------|
-| **App Builder** | `/app-builder` | Ontology-style left rail (list / new); full-bleed Design | Author: bindings wizard, A2UI design, publish |
+| **App Builder** | `/app-builder` | Ontology-style left rail (list / new); full-bleed Design | Author: bindings form, A2UI design, publish |
 | **Apps** | `/apps` | No ontology rail | End user: published gallery + Run |
 
 | Route | Role |
 |-------|------|
-| `/app-builder` | Draft + published apps; **Suggested: Status board** |
-| `/app-builder/new` | Empty bindings wizard (does **not** create OT/Actions/FoOs) |
+| `/app-builder` | Draft + published apps; **New app** |
+| `/app-builder/new` | Bindings form (does **not** create OT/Actions/FoOs) |
 | `/app-builder/:appId/design` | 3-pane designer (chat \| live draft \| publish) |
 | `/apps` | Published gallery only |
 | `/apps/:appId` | Run **published** A2UI only (404 if draft) |
 
 Permissions reuse `ontology:read` / `ontology:write` (no separate `apps:*` keys in v1).
 
-## Status board bindings
+## Bindings
 
-Wizard requires user-entered api names; server resolves ids and `bindings_hash` at create/update/publish. Example shape (values are **author-chosen**, not platform seeds):
+Wizard requires user-entered api names; server resolves ids and `bindings_hash` at create/update/publish. Example shape (values are **author-chosen**):
 
 ```json
 {
@@ -43,7 +43,7 @@ Wizard requires user-entered api names; server resolves ids and `bindings_hash` 
 
 Missing or unknown bindings block create/update (400 with `missing_bindings`). Stale hash → gallery **Stale** badge and Run banner; writers repair in Design.
 
-**Writes** on the board go through Action execute only (no direct instance PUT). Links are read/display only in v1.
+**Writes** go through Action execute only (no direct instance PUT). Links are read/display only in v1.
 
 ## A2UI catalog
 
@@ -77,7 +77,7 @@ Create synthesizes draft A2UI from the submitted bindings. Designer NDJSON chat 
 
 ## Data model
 
-Table `ontology_apps`: `id`, `name`, `api_name` (unique), `description`, `template_id` (`status_board`; older rows may still say `kanban`), `bindings` JSONB, `draft_a2ui` / `published_a2ui` JSONB (`format: a2ui_v0_9`, `messages`), `bindings_hash`, `status` (`draft` \| `published`), `created_by`, timestamps.
+Table `ontology_apps`: `id`, `name`, `api_name` (unique), `description`, `template_id` (e.g. `a2ui`), `bindings` JSONB, `draft_a2ui` / `published_a2ui` JSONB (`format: a2ui_v0_9`, `messages`), `bindings_hash`, `status` (`draft` \| `published`), `created_by`, timestamps.
 
 ## Out of scope (v1)
 

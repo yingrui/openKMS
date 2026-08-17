@@ -23,20 +23,19 @@ export function AppBuilderListPage() {
 
   return (
     <div className="app-builder-page">
-      <header className="page-header">
-        <h1>{t('title')}</h1>
-        <p className="page-subtitle">{t('subtitle')}</p>
+      <header className="page-header app-builder-page__header">
+        <div>
+          <h1>{t('title')}</h1>
+          <p className="page-subtitle">{t('subtitle')}</p>
+        </div>
+        <Link to="/app-builder/new" className="btn btn-primary">
+          {t('newApp')}
+        </Link>
       </header>
 
-      <div className="app-builder-page__suggested">
-        <h2>{t('suggestedBoard')}</h2>
-        <p>{t('suggestedBoardHint')}</p>
-        <Link to="/app-builder/new" className="btn btn-primary">
-          {t('createBoard')}
-        </Link>
-      </div>
-
       {error ? <p className="app-builder-page__error">{error}</p> : null}
+
+      {!apps.length && !error ? <p className="app-builder-page__muted">{t('emptyList')}</p> : null}
 
       <ul className="app-builder-page__list">
         {apps.map((app) => (
@@ -71,7 +70,6 @@ export function AppBuilderListPage() {
           </li>
         ))}
       </ul>
-      {!apps.length ? <p className="app-builder-page__muted">{t('emptyList')}</p> : null}
     </div>
   );
 }

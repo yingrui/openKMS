@@ -18,7 +18,7 @@ class OntologyApp(Base):
     name: Mapped[str] = mapped_column(String(256), nullable=False)
     api_name: Mapped[str] = mapped_column(String(128), nullable=False, unique=True, index=True)
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
-    template_id: Mapped[str] = mapped_column(String(64), nullable=False, default="status_board", server_default="status_board")
+    template_id: Mapped[str] = mapped_column(String(64), nullable=False, default="a2ui", server_default="a2ui")
     bindings: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
     draft_a2ui: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
     published_a2ui: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
