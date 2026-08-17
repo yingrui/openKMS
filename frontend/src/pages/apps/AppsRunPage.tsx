@@ -37,12 +37,9 @@ export function AppsRunPage() {
   return (
     <div className="apps-page apps-page--run">
       <header className="apps-page__run-header">
-        <div>
-          <Link to="/apps" className="apps-page__back">
-            {t('backToGallery')}
-          </Link>
-          <h1>{app.name}</h1>
-        </div>
+        <Link to="/apps" className="apps-page__back">
+          {t('backToGallery')}
+        </Link>
         {canEdit ? (
           <Link to={`/app-builder/${app.id}/design`} className="btn btn-secondary">
             {t('editInBuilder')}

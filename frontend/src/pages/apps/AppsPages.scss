@@ -58,12 +58,10 @@
   display: flex;
   justify-content: space-between;
   gap: 1rem;
-  align-items: flex-start;
+  align-items: center;
 }
 
 .apps-page__back {
-  display: inline-block;
-  margin-bottom: 0.35rem;
   font-size: 0.875rem;
 }
 
