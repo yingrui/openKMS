@@ -30,7 +30,9 @@ from fastapi import HTTPException
 from app.services.ontology.function_runtime import FunctionExecutionError, execute_in_ofs
 from app.services.ontology.function_service import get_function, get_function_by_api_name, resolve_version_for_execute
 from app.services.ontology.input_schema import validate_input_against_schema
+from app.models.object_type import ObjectType
 from app.services.ontology.edit_apply_service import apply_edit_batch_to_objects, extract_edits
+from app.services.ontology.object_neo4j_store import sync_edit_apply_result_to_neo4j
 
 
 def new_execution_id() -> str:
@@ -240,6 +242,24 @@ async def execute_action_and_audit(
                     "skipped": apply_result.skipped,
                     "errors": apply_result.errors,
                 }
+            else:
+                # Persist queue rows before Neo4j sync so MERGE can reload them.
+                await db.flush()
+                ot = await db.get(ObjectType, at.object_type_id)
+                if ot and not ot.dataset_id:
+                    try:
+                        await sync_edit_apply_result_to_neo4j(db, ot, applied)
+                    except Exception as e:
+                        await db.rollback()
+                        status = "error"
+                        error = f"Neo4j sync failed (queue not committed): {e}"
+                        applied = {
+                            "created_ids": [],
+                            "modified_ids": [],
+                            "deleted_ids": [],
+                            "skipped": apply_result.skipped,
+                            "errors": [error],
+                        }
     log = OntologyActionLog(
         id=log_id,
         action_type_id=at.id,

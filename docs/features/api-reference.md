@@ -255,13 +255,13 @@ The bundled **openkms-skill** CLI wraps **lifecycle** and **relationships** the 
 | GET | `/api/object-types/{id}` | Get object type; ?count_from_neo4j=true for instance_count from Neo4j |
 | PUT | `/api/object-types/{id}` | Update object type (admin-only) |
 | DELETE | `/api/object-types/{id}` | Delete object type (admin-only) |
-| GET | `/api/object-types/{id}/objects` | List object instances (read ACL on parent type; no-dataset types from Postgres `object_instances`; dataset-backed from Neo4j when available else dataset SQL; optional `?search=`, `?prop.<name>=` equality filters, `?limit=`, `?offset=`) |
-| POST | `/api/object-types/{id}/objects` | Create object instance (admin-only + write ACL on parent type) |
-| GET | `/api/object-types/{id}/objects/{obj_id}` | Get object instance (read ACL on parent type) |
-| PUT | `/api/object-types/{id}/objects/{obj_id}` | Update object instance (admin-only + write ACL on parent type) |
-| DELETE | `/api/object-types/{id}/objects/{obj_id}` | Delete object instance (admin-only + write ACL on parent type) |
+| GET | `/api/object-types/{id}/objects` | List object instances (read ACL on parent type; no-dataset types from Neo4j only — empty if no Neo4j DS; dataset-backed from Neo4j when available else dataset SQL; optional `?search=`, `?prop.<name>=` equality filters, `?limit=`, `?offset=`) |
+| POST | `/api/object-types/{id}/objects` | Create object instance into apply queue + same-request Neo4j sync when DS exists (admin-only + write ACL; no-dataset types only) |
+| GET | `/api/object-types/{id}/objects/{obj_id}` | Get object instance (read ACL; no-dataset from Neo4j) |
+| PUT | `/api/object-types/{id}/objects/{obj_id}` | Update object instance queue row + same-request Neo4j sync (admin-only + write ACL; no-dataset types only) |
+| DELETE | `/api/object-types/{id}/objects/{obj_id}` | Delete queue row + same-request Neo4j DETACH DELETE (admin-only + write ACL; no-dataset types only) |
 | POST | `/api/object-types/index-to-neo4j` | Index object types that have a linked dataset or stored instances to Neo4j as nodes (admin-only; body: neo4j_data_source_id) |
-| POST | `/api/object-types/{id}/index-to-neo4j` | Index one object type to Neo4j from its dataset, or from `object_instances` when there is no dataset (admin-only; body: neo4j_data_source_id; 400 if neither applies) |
+| POST | `/api/object-types/{id}/index-to-neo4j` | Index one object type to Neo4j from its dataset, or drain the `object_instances` apply queue when there is no dataset (admin-only; body: neo4j_data_source_id; 400 if neither applies) |
 | GET | `/api/link-types` | List link types (authenticated); ?count_from_neo4j=true for link_count from Neo4j |
 | POST | `/api/link-types` | Create link type (admin-only) |
 | GET | `/api/link-types/{id}` | Get link type; ?count_from_neo4j=true for link_count from Neo4j |

@@ -1,7 +1,8 @@
-"""Apply Function edit batches to object instances (Action execute path).
+"""Apply Function edit batches to the object_instances apply queue.
 
-Applies ``create`` / ``modify`` / ``delete`` on resolvable ``ObjectInstance`` rows
-(instance id as ``primary_key``). Dataset / Neo4j synthetic ids are not applied.
+Applies ``create`` / ``modify`` / ``delete`` on resolvable queue rows (instance id as
+``primary_key``). Dataset-backed object types are rejected. Callers sync the queue
+into Neo4j in the same request when a Neo4j data source exists.
 """
 
 from __future__ import annotations
@@ -14,6 +15,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.object_instance import ObjectInstance
 from app.models.object_type import ObjectType
+from app.services.ontology.object_neo4j_store import fetch_object_from_neo4j
 
 
 @dataclass
@@ -72,6 +74,11 @@ async def _resolve_ot_for_edit(
             f"edit object type {object_type} does not match action object type"
         )
         return None
+    if getattr(ot, "dataset_id", None):
+        result.errors.append(
+            f"cannot apply {op} to dataset-backed object type {object_type}"
+        )
+        return None
     return ot
 
 
@@ -81,7 +88,7 @@ async def apply_edit_batch_to_objects(
     *,
     allowed_object_type_id: str | None = None,
 ) -> EditApplyResult:
-    """Apply create / modify / delete edits onto object instances.
+    """Apply create / modify / delete edits onto the object_instances queue.
 
     Unknown ids / type mismatches are recorded in ``errors`` / ``skipped`` and do not
     raise — callers may still audit the Action as ok with partial apply, or treat
@@ -135,6 +142,25 @@ async def _apply_create(
     result.created_ids.append(pk)
 
 
+async def _ensure_queue_row(
+    db: AsyncSession,
+    ot: ObjectType,
+    primary_key: str,
+) -> ObjectInstance | None:
+    """Return queue row; if missing, seed from Neo4j node props when present."""
+    instance = await db.get(ObjectInstance, primary_key)
+    if instance:
+        return instance
+    props = await fetch_object_from_neo4j(db, ot, primary_key)
+    if not props:
+        return None
+    data = {k: v for k, v in props.items() if k != "id"}
+    instance = ObjectInstance(id=primary_key, object_type_id=ot.id, data=data)
+    db.add(instance)
+    await db.flush()
+    return instance
+
+
 async def _apply_modify(
     db: AsyncSession,
     result: EditApplyResult,
@@ -157,7 +183,7 @@ async def _apply_modify(
     if not ot:
         return
 
-    instance = await db.get(ObjectInstance, str(primary_key))
+    instance = await _ensure_queue_row(db, ot, str(primary_key))
     if not instance:
         result.errors.append(f"object instance not found: {primary_key}")
         return
@@ -190,12 +216,17 @@ async def _apply_delete(
         return
 
     instance = await db.get(ObjectInstance, str(primary_key))
-    if not instance:
-        result.errors.append(f"object instance not found: {primary_key}")
-        return
-    if instance.object_type_id != ot.id:
-        result.errors.append(f"instance {primary_key} is not of type {edit.get('object_type')}")
+    if instance:
+        if instance.object_type_id != ot.id:
+            result.errors.append(f"instance {primary_key} is not of type {edit.get('object_type')}")
+            return
+        await db.delete(instance)
+        result.deleted_ids.append(str(primary_key))
         return
 
-    await db.delete(instance)
+    # Queue miss: still record delete so same-request Neo4j sync can remove the node.
+    props = await fetch_object_from_neo4j(db, ot, str(primary_key))
+    if not props:
+        result.errors.append(f"object instance not found: {primary_key}")
+        return
     result.deleted_ids.append(str(primary_key))

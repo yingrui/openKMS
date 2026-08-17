@@ -139,8 +139,7 @@ Schema for every persisted table. Grouped by area; see the matching feature page
 ### ObjectInstance
 
 - `id`, `object_type_id` (FK), `data` (JSONB: property values), `created_at`, `updated_at`
-- Instance of an object type
-
+- Apply queue for Action/REST writes on object types without a linked dataset; query/list SoT is Neo4j (same-request sync when a Neo4j data source exists). No sync-status column in v1.
 ### LinkType
 
 - `id`, `name`, `description`, `source_object_type_id` (FK), `target_object_type_id` (FK), `cardinality` (one-to-one | one-to-many | many-to-many), `dataset_id` (FK → datasets, nullable, for many-to-many), `source_key_property`, `target_key_property`, `source_dataset_column`, `target_dataset_column` (nullable, junction table columns for M:M), `created_by` (nullable; creator subject for sharing owner bootstrap), `created_by_name` (nullable), `created_at`, `updated_at`

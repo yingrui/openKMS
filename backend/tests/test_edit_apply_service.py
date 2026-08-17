@@ -226,8 +226,14 @@ def test_execute_action_applies_edits_on_ok(monkeypatch: pytest.MonkeyPatch) -> 
 
         monkeypatch.setattr(execution_service, "_run_ofs", fake_run_ofs)
         monkeypatch.setattr(execution_service, "apply_edit_batch_to_objects", fake_apply)
+        monkeypatch.setattr(
+            execution_service,
+            "sync_edit_apply_result_to_neo4j",
+            AsyncMock(),
+        )
 
         db = AsyncMock()
+        db.get = AsyncMock(return_value=SimpleNamespace(id="ot-wi", dataset_id=None, name="WorkItem"))
         resp = await execution_service.execute_action_and_audit(
             db,
             at,
@@ -248,6 +254,34 @@ def test_execute_action_applies_edits_on_ok(monkeypatch: pytest.MonkeyPatch) -> 
         }
         db.add.assert_called()
         db.commit.assert_called()
+
+    asyncio.run(_run())
+
+
+def test_apply_rejects_dataset_backed_type():
+    async def _run() -> None:
+        ot = SimpleNamespace(id="ot-stock", name="Stock", dataset_id="ds-1")
+        db = AsyncMock()
+
+        async def fake_execute(stmt):
+            r = MagicMock()
+            r.scalar_one_or_none.return_value = ot
+            return r
+
+        db.execute = fake_execute
+        result = await apply_edit_batch_to_objects(
+            db,
+            [
+                {
+                    "op": "create",
+                    "object_type": "Stock",
+                    "properties": {"name": "x"},
+                }
+            ],
+            allowed_object_type_id="ot-stock",
+        )
+        assert result.created_ids == []
+        assert any("dataset-backed" in e for e in result.errors)
 
     asyncio.run(_run())
 

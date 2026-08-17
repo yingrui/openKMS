@@ -11,7 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.api.auth import require_any_permission, require_auth
 from app.api.ontology.deps import jwt_user_from_request, require_caller_token, validate_api_name
 from app.database import get_db
-from app.models.object_instance import ObjectInstance
+from app.models.object_type import ObjectType
 from app.models.ontology_function import OntologyActionLog, OntologyActionType
 from app.schemas.ontology_functions import (
     OntologyActionExecuteRequest,
@@ -23,6 +23,7 @@ from app.schemas.ontology_functions import (
 )
 from app.services.ontology.constants import ACTION_TYPE_ID_PREFIX, ID_HEX_LENGTH
 from app.services.ontology import execution_service
+from app.services.ontology.object_neo4j_store import resolve_object_props_for_action
 from app.services.permissions.permission_catalog import PERM_ONTOLOGY_READ, PERM_ONTOLOGY_WRITE
 
 router = APIRouter(prefix="/ontology/action-types", tags=["ontology-action-types"], dependencies=[Depends(require_auth)])
@@ -159,13 +160,16 @@ async def execute_action_type(
     input_payload = dict(body.input or {})
     object_id = body.object_id
     if object_id:
-        instance = await db.get(ObjectInstance, object_id)
-        if not instance:
+        ot = await db.get(ObjectType, at.object_type_id)
+        if not ot:
+            raise HTTPException(status_code=404, detail="Object type not found")
+        resolved = await resolve_object_props_for_action(db, ot, object_id)
+        if not resolved:
             raise HTTPException(status_code=404, detail="Object instance not found")
-        if instance.object_type_id != at.object_type_id:
-            raise HTTPException(status_code=400, detail="Object type does not match action")
-        input_payload.setdefault("object_id", instance.id)
-        input_payload.setdefault("object", instance.data or {})
+        canonical_id, props = resolved
+        input_payload.setdefault("object_id", canonical_id)
+        input_payload.setdefault("object", props)
+        object_id = canonical_id
 
     uid, _ = jwt_user_from_request(request)
     return await execution_service.execute_action_and_audit(

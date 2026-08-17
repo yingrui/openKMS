@@ -139,7 +139,7 @@ sequenceDiagram
 | Codegen / generated ontology marker SDK | **Not shipped** — string api names on `openkms_functions.Client` only |
 | Editor hooks / queries sidebar / Observability tab | Done |
 | External same-package Client | Done (docs + path) |
-| Edit batch apply via Actions | Foundation only (`create_edit_batch`) — **deferred** as product work; see [Manager alignment — Action write-back](ontology_manager_alignment.md#product-decision-action-write-back-b1) |
+| Edit batch apply via Actions | Shipped for no-dataset types: queue in `object_instances` + same-request Neo4j sync; see [Manager alignment — Action write-back](ontology_manager_alignment.md#product-decision-action-write-back-b1) |
 | Dataset/Neo4j Action `object_id` | **Deferred** (Action execute resolves Explorer-created instance ids; `modify` apply ships for those) |
 | Web API function source / TS runtime / Dev Console apps | Out of scope |
 | Domain ontologies (e.g. Tushare market Stock/Watchlist) | **Not product** — tenant DIY via Manager / [openkms-skill](../features/openkms-skill.md) |

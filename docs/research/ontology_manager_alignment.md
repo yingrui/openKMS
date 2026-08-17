@@ -77,14 +77,25 @@ Do **not** schedule soft UX with market-analysis work.
 
 ## Product decision: Action write-back (B1)
 
-**Decision (2026-08-17): ship object-instance `create` / `modify` / `delete` apply; keep synthetic `object_id` deferred.**
+**Decision (2026-08-17): ship object-instance `create` / `modify` / `delete` apply; keep synthetic dataset `object_id` deferred.**
+
+**Storage (2026-08-17 follow-up):** For object types **without** a linked dataset:
+
+| Role | Store |
+|------|--------|
+| **Apply queue** | Postgres `object_instances` — Action/REST edits always land here first |
+| **Query SoT** | Ontology Neo4j data source — list/get/Apps never read the queue table |
+| **Same-request sync** | When a Neo4j DS exists, MERGE/DELETE queue changes into Neo4j in the same Action/REST request (no background sync worker; no `synced_at` flag in v1) |
+| **Drain** | `POST …/index-to-neo4j` on a no-dataset type merges all current queue rows (e.g. after Neo4j is configured later) |
+
+Dataset-backed types: Dataset remains the source; Neo4j is an index projection. Action edits against dataset-backed types are rejected.
 
 | Choice | Meaning |
 |--------|---------|
-| **Shipped** | After a successful Action OFS run, `output.edits` with `op` in `create` / `modify` / `delete` apply onto resolvable object instances (instance id as `primary_key`; `create` may omit `primary_key` and receive a generated UUID). Response includes `applied` (`created_ids` / `modified_ids` / `deleted_ids`). |
-| **Still deferred** | Dataset / Neo4j synthetic Action `object_id`; link create/delete as edit ops; ofs `Client` write methods. |
+| **Shipped** | After a successful Action OFS run, `output.edits` with `op` in `create` / `modify` / `delete` apply onto the queue (`primary_key` = instance id; `create` may omit `primary_key` and receive a generated UUID), then same-request Neo4j sync when a Neo4j DS exists. Response includes `applied` (`created_ids` / `modified_ids` / `deleted_ids`). Neo4j sync failure marks the Action as error (queue transaction rolled back). |
+| **Still deferred** | Action write-back that mutates Dataset rows; link create/delete as edit ops; ofs `Client` write methods. |
 
-Rationale: Kanban DIY and App Builder boards need full card CRUD (not only column moves) on Explorer-created objects. Dataset-backed masters remain read/compute until a separate plan resolves synthetic ids.
+Rationale: Kanban DIY and App Builder boards need full card CRUD on Explorer-created objects, with Neo4j as the graph/query surface and `object_instances` as a durable apply queue (including when Neo4j is not yet configured).
 
 Earlier (2026-08-16) `modify`-only shipping is superseded for object-instance edits.
 
