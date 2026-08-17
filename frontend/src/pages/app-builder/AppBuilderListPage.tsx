@@ -6,6 +6,7 @@ import {
   listOntologyApps,
   type OntologyAppResponse,
 } from '../../data/ontologyAppsApi';
+import { EmptyState } from '../../styles/design-system';
 import './AppBuilderPages.scss';
 
 export function AppBuilderListPage() {
@@ -33,9 +34,18 @@ export function AppBuilderListPage() {
         </Link>
       </header>
 
-      {error ? <p className="app-builder-page__error">{error}</p> : null}
+      {error ? <p className="app-builder-page__error" role="alert">{error}</p> : null}
 
-      {!apps.length && !error ? <p className="app-builder-page__muted">{t('emptyList')}</p> : null}
+      {!apps.length && !error ? (
+        <EmptyState
+          title={t('emptyList')}
+          action={
+            <Link to="/app-builder/new" className="btn btn-primary">
+              {t('newApp')}
+            </Link>
+          }
+        />
+      ) : null}
 
       <ul className="app-builder-page__list">
         {apps.map((app) => (
@@ -43,7 +53,7 @@ export function AppBuilderListPage() {
             <div>
               <strong>{app.name}</strong>
               <div className="app-builder-page__meta">
-                {app.api_name} · {app.status}
+                {app.status}
                 {app.bindings_stale ? ` · ${t('stale')}` : ''}
               </div>
             </div>

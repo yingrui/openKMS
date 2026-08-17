@@ -561,7 +561,14 @@ async def list_object_instances(
     offset: int = Query(0, ge=0),
     db: AsyncSession = Depends(get_db),
 ):
-    """List object instances. Objects page loads from Neo4j when a Neo4j data source exists.
+    """List object instances.
+
+    Types with a linked dataset: prefer Neo4j when a Neo4j data source exists (indexed
+    projection), else the dataset SQL path.
+
+    Types without a dataset: always read ``object_instances`` (Postgres). Action execute
+    writes there; listing Neo4j first would hide Action-created rows and return ids that
+    modify/delete cannot resolve.
 
     Property equality filters: ``prop.<name>=value`` (repeatable).
     """
@@ -572,6 +579,40 @@ async def list_object_instances(
 
     id_prop = _resolve_id_property(obj_type)
     prop_filters = parse_prop_filters(request)
+
+    # Action-managed types (no dataset) use Postgres as source of truth.
+    if not obj_type.dataset_id:
+        filters = [ObjectInstance.object_type_id == object_type_id]
+        if search and search.strip():
+            pattern = f"%{search.strip()}%"
+            filters.append(cast(ObjectInstance.data, String).ilike(pattern))
+        for name, value in prop_filters.items():
+            filters.append(ObjectInstance.data.contains({name: value}))
+        total = int(
+            (await db.execute(select(func.count()).select_from(ObjectInstance).where(*filters))).scalar_one()
+        )
+        query = (
+            select(ObjectInstance)
+            .where(*filters)
+            .order_by(ObjectInstance.created_at.desc())
+            .offset(offset)
+            .limit(limit)
+        )
+        result = await db.execute(query)
+        instances = result.scalars().all()
+        return ObjectInstanceListResponse(
+            items=[
+                ObjectInstanceResponse(
+                    id=o.id,
+                    object_type_id=o.object_type_id,
+                    data=o.data or {},
+                    created_at=o.created_at,
+                    updated_at=o.updated_at,
+                )
+                for o in instances
+            ],
+            total=total,
+        )
 
     neo4j_ds = await _get_first_neo4j_datasource(db)
     if neo4j_ds:
@@ -604,68 +645,35 @@ async def list_object_instances(
         except Exception:
             pass
 
-    if obj_type.dataset_id:
-        try:
-            # Fetch a page then filter in memory (dataset SQL path has no prop pushdown yet).
-            rows, total = await fetch_dataset_rows(db, obj_type.dataset_id, limit=limit, offset=offset)
-        except ValueError as e:
-            raise HTTPException(status_code=400, detail=str(e)) from e
-        id_col = (
-            obj_type.key_property
-            if obj_type.key_property and rows and rows[0] and obj_type.key_property in rows[0]
-            else ("id" if (rows and rows[0] and "id" in rows[0])
-                  else (list(rows[0].keys())[0] if rows else "id"))
-        )
-        items = []
-        for row in rows:
-            row_id = row.get(id_col, row.get(list(row.keys())[0]) if row else None)
-            if row_id is None:
-                continue
-            data = {k: v for k, v in row.items() if v is not None}
-            if not row_matches_prop_filters(data, prop_filters):
-                continue
-            items.append(
-                ObjectInstanceResponse(
-                    id=str(row_id),
-                    object_type_id=object_type_id,
-                    data=data,
-                    created_at=None,
-                    updated_at=None,
-                )
+    try:
+        # Fetch a page then filter in memory (dataset SQL path has no prop pushdown yet).
+        rows, total = await fetch_dataset_rows(db, obj_type.dataset_id, limit=limit, offset=offset)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e)) from e
+    id_col = (
+        obj_type.key_property
+        if obj_type.key_property and rows and rows[0] and obj_type.key_property in rows[0]
+        else ("id" if (rows and rows[0] and "id" in rows[0])
+              else (list(rows[0].keys())[0] if rows else "id"))
+    )
+    items = []
+    for row in rows:
+        row_id = row.get(id_col, row.get(list(row.keys())[0]) if row else None)
+        if row_id is None:
+            continue
+        data = {k: v for k, v in row.items() if v is not None}
+        if not row_matches_prop_filters(data, prop_filters):
+            continue
+        items.append(
+            ObjectInstanceResponse(
+                id=str(row_id),
+                object_type_id=object_type_id,
+                data=data,
+                created_at=None,
+                updated_at=None,
             )
-        return ObjectInstanceListResponse(items=items, total=len(items) if prop_filters else total)
-    else:
-        filters = [ObjectInstance.object_type_id == object_type_id]
-        if search and search.strip():
-            pattern = f"%{search.strip()}%"
-            filters.append(cast(ObjectInstance.data, String).ilike(pattern))
-        for name, value in prop_filters.items():
-            filters.append(ObjectInstance.data.contains({name: value}))
-        total = int(
-            (await db.execute(select(func.count()).select_from(ObjectInstance).where(*filters))).scalar_one()
         )
-        query = (
-            select(ObjectInstance)
-            .where(*filters)
-            .order_by(ObjectInstance.created_at.desc())
-            .offset(offset)
-            .limit(limit)
-        )
-        result = await db.execute(query)
-        instances = result.scalars().all()
-        return ObjectInstanceListResponse(
-            items=[
-                ObjectInstanceResponse(
-                    id=o.id,
-                    object_type_id=o.object_type_id,
-                    data=o.data or {},
-                    created_at=o.created_at,
-                    updated_at=o.updated_at,
-                )
-                for o in instances
-            ],
-            total=total,
-        )
+    return ObjectInstanceListResponse(items=items, total=len(items) if prop_filters else total)
 
 
 @router.post("/{object_type_id}/objects", response_model=ObjectInstanceResponse, status_code=201)

@@ -9,10 +9,12 @@ from pydantic import BaseModel, Field
 
 
 class OntologyAppBindings(BaseModel):
-    objectType: str = Field(min_length=1)
-    columnProperty: str = Field(min_length=1)
-    columns: list[str] = Field(min_length=1)
-    cardTitleProperty: str = Field(min_length=1)
+    """Board bindings — all optional until the designer / author fills them."""
+
+    objectType: str | None = None
+    columnProperty: str | None = None
+    columns: list[str] | None = None
+    cardTitleProperty: str | None = None
     createAction: str | None = None
     updateAction: str | None = None
     setStatusAction: str | None = None
@@ -25,7 +27,7 @@ class OntologyAppCreate(BaseModel):
     api_name: str = Field(min_length=1, max_length=128)
     description: str | None = None
     template_id: str = "a2ui"
-    bindings: OntologyAppBindings
+    bindings: OntologyAppBindings | None = None
 
 
 class OntologyAppUpdate(BaseModel):

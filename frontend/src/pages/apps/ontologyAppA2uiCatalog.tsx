@@ -262,10 +262,14 @@ function OntoKanbanBoardImpl({ props }: { props: Record<string, string> }) {
                   void runAction(createAction, {
                     title: createTitle.trim(),
                     status: columns[0] || 'backlog',
-                  }).then(() => {
-                    setCreateTitle('');
-                    setShowCreate(false);
-                  });
+                  })
+                    .then(() => {
+                      setCreateTitle('');
+                      setShowCreate(false);
+                    })
+                    .catch((e) => {
+                      setError(e instanceof Error ? e.message : String(e));
+                    });
                 }}
               >
                 Create

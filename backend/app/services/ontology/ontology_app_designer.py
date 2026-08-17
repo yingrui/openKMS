@@ -1,10 +1,10 @@
-"""NDJSON Ontology App Designer chat (A2UI via set_a2ui_messages)."""
+"""NDJSON Ontology App Designer chat (set_bindings + set_a2ui_messages)."""
 
 from __future__ import annotations
 
 import json
 import logging
-from collections.abc import AsyncIterator
+from collections.abc import AsyncIterator, Awaitable, Callable
 from typing import Any
 
 from openai import AsyncOpenAI
@@ -22,12 +22,45 @@ from app.services.knowledge_map.knowledge_map_html import (
 from app.services.ontology.ontology_app_a2ui import (
     ONTOLOGY_APP_A2UI_CATALOG_ID,
     ONTOLOGY_APP_A2UI_SURFACE_ID,
+    bindings_board_ready,
+    synthesize_status_board_a2ui_messages,
     validate_ontology_app_a2ui_messages,
 )
 
 logger = logging.getLogger(__name__)
 
 _MAX_TOOL_ROUNDS = 8
+
+ApplyBindingsFn = Callable[[dict[str, Any]], Awaitable[dict[str, Any]]]
+
+_SET_BINDINGS_TOOL: dict[str, Any] = {
+    "type": "function",
+    "function": {
+        "name": "set_bindings",
+        "description": (
+            "Link the app to existing ontology api names from ONTOLOGY_SNAPSHOT. "
+            "Does not create Object Types, Actions, or Functions. "
+            "Required: objectType, columnProperty, columns (array of strings), cardTitleProperty. "
+            "Optional: createAction, updateAction, setStatusAction, deleteAction, suggestFunction. "
+            "On success the server stores bindings and synthesizes a board A2UI draft."
+        ),
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "objectType": {"type": "string"},
+                "columnProperty": {"type": "string"},
+                "columns": {"type": "array", "items": {"type": "string"}},
+                "cardTitleProperty": {"type": "string"},
+                "createAction": {"type": "string"},
+                "updateAction": {"type": "string"},
+                "setStatusAction": {"type": "string"},
+                "deleteAction": {"type": "string"},
+                "suggestFunction": {"type": "string"},
+            },
+            "required": ["objectType", "columnProperty", "columns", "cardTitleProperty"],
+        },
+    },
+}
 
 _SET_A2UI_TOOL: dict[str, Any] = {
     "type": "function",
@@ -41,7 +74,7 @@ _SET_A2UI_TOOL: dict[str, Any] = {
             "Custom: OntoKanbanBoard (objectType, columnProperty, columns CSV, cardTitleProperty, "
             "createAction, updateAction, setStatusAction, deleteAction, suggestFunction), "
             "OntoActionButton, OntoFunctionButton, OntoObjectLink. "
-            "Only use api_names from BINDINGS."
+            "Only use api_names from BINDINGS. Call set_bindings first if BINDINGS are empty."
         ),
         "parameters": {
             "type": "object",
@@ -58,14 +91,17 @@ _SET_A2UI_TOOL: dict[str, Any] = {
 
 _SYSTEM = f"""You are **Ontology App Designer** using **A2UI**.
 
-You reshape a status-column board app UI as declarative A2UI JSON.
+You help the author build an ontology-backed app UI by **linking** existing Object Types, Actions, and Functions — never invent or create them.
 
 Rules:
-- Reply briefly in the user language, then call **set_a2ui_messages**.
+- Reply briefly in the user language.
+- Use ONTOLOGY_SNAPSHOT to pick real api names. If something is missing, tell the user to create it in Ontology Manager or Function Editor.
+- When bindings are empty or incomplete, call **set_bindings** with objectType, columnProperty, columns, cardTitleProperty, and any Actions/FoO from the snapshot.
+- **columns** must be the exact stored property values used in filters and Actions (e.g. backlog, in_progress, done) — never display labels like "To Do" unless those strings are what instances actually store.
+- After bindings exist, call **set_a2ui_messages** to reshape layout if needed (or rely on the synthesized board from set_bindings).
 - createSurface surfaceId="{ONTOLOGY_APP_A2UI_SURFACE_ID}" catalogId="{ONTOLOGY_APP_A2UI_CATALOG_ID}".
-- updateComponents must include id **"root"** (Column).
-- Prefer one OntoKanbanBoard wired to BINDINGS api_names supplied by the author.
-- Never invent Action/Function/ObjectType api names — only BINDINGS.
+- updateComponents must include id **"root"**.
+- Prefer one OntoKanbanBoard wired to BINDINGS.
 - Never emit HTML.
 """
 
@@ -77,6 +113,8 @@ async def iter_ontology_app_designer_chat_ndjson(
     *,
     working_a2ui_messages: list[dict[str, Any]] | None = None,
     app_name: str = "App",
+    ontology_snapshot: dict[str, Any] | None = None,
+    apply_bindings: ApplyBindingsFn | None = None,
 ) -> AsyncIterator[dict[str, Any]]:
     base_url = (model_config.get("base_url") or "").rstrip("/")
     if not base_url:
@@ -85,8 +123,9 @@ async def iter_ontology_app_designer_chat_ndjson(
         base_url = f"{base_url}/v1"
 
     working: list[dict[str, Any]] = list(working_a2ui_messages or [])
+    current_bindings: dict[str, Any] = dict(bindings or {})
     if working:
-        working = validate_ontology_app_a2ui_messages(working)
+        working = validate_ontology_app_a2ui_messages(working, bindings=current_bindings or None)
 
     client = AsyncOpenAI(base_url=base_url, api_key=model_config.get("api_key") or "no-key")
     model_name = model_config.get("model_name", "gpt-4o-mini")
@@ -99,7 +138,9 @@ async def iter_ontology_app_designer_chat_ndjson(
             "role": "user",
             "content": (
                 f"APP_NAME: {app_name}\n\nBINDINGS:\n"
-                + json.dumps(bindings, ensure_ascii=False, indent=2)
+                + json.dumps(current_bindings, ensure_ascii=False, indent=2)
+                + "\n\nONTOLOGY_SNAPSHOT:\n"
+                + json.dumps(ontology_snapshot or {}, ensure_ascii=False, indent=2)[:60_000]
                 + "\n\nCURRENT_A2UI_MESSAGES:\n"
                 + json.dumps(working, ensure_ascii=False, indent=2)[:80_000]
             ),
@@ -115,6 +156,7 @@ async def iter_ontology_app_designer_chat_ndjson(
     if len(openai_messages) < 3:
         raise ValueError("Add at least one user message")
 
+    tools = [_SET_BINDINGS_TOOL, _SET_A2UI_TOOL]
     last_text = ""
     for _round in range(_MAX_TOOL_ROUNDS):
         _inject_reasoning_content_on_assistant_rows(openai_messages, use_shim=use_shim)
@@ -122,7 +164,7 @@ async def iter_ontology_app_designer_chat_ndjson(
             stream = await client.chat.completions.create(
                 model=model_name,
                 messages=openai_messages,
-                tools=[_SET_A2UI_TOOL],
+                tools=tools,
                 tool_choice="auto",
                 temperature=0.35,
                 max_tokens=16384,
@@ -161,7 +203,12 @@ async def iter_ontology_app_designer_chat_ndjson(
         if finish_reason == "tool_calls" and not tool_calls_openai:
             raise ValueError("Designer stream ended with tool_calls but incomplete tool call data")
         if not tool_calls_openai:
-            yield {"type": "done", "content": content_buf, "a2ui_messages": working}
+            yield {
+                "type": "done",
+                "content": content_buf,
+                "a2ui_messages": working,
+                "bindings": current_bindings,
+            }
             return
 
         asst: dict[str, Any] = {
@@ -191,20 +238,51 @@ async def iter_ontology_app_designer_chat_ndjson(
             tid = str(tc.get("id") or "")
             args_preview = str(fn.get("arguments") or "")[:6000]
             yield {"type": "tool_start", "run_id": tid, "name": name, "input": args_preview}
-            if name != "set_a2ui_messages":
-                tool_payload_obj: dict[str, Any] = {"ok": False, "error": f"unknown tool: {name}"}
-            else:
+            tool_payload_obj: dict[str, Any]
+            if name == "set_bindings":
+                try:
+                    args = json.loads(fn.get("arguments") or "{}")
+                    if not isinstance(args, dict):
+                        raise ValueError("set_bindings arguments must be an object")
+                    if apply_bindings is None:
+                        raise ValueError("set_bindings is not available")
+                    result = await apply_bindings(args)
+                    current_bindings = dict(result.get("bindings") or args)
+                    msgs = result.get("a2ui_messages")
+                    if isinstance(msgs, list):
+                        working = msgs
+                    elif bindings_board_ready(current_bindings):
+                        working = synthesize_status_board_a2ui_messages(
+                            current_bindings, title=app_name
+                        )
+                    tool_payload_obj = {
+                        "ok": True,
+                        "bindings": current_bindings,
+                        "messages": working,
+                    }
+                except Exception as e:
+                    tool_payload_obj = {"ok": False, "error": str(e)}
+            elif name == "set_a2ui_messages":
                 try:
                     args = json.loads(fn.get("arguments") or "{}")
                     raw_msgs = args.get("messages")
                     if not isinstance(raw_msgs, list):
                         raise ValueError("messages must be a list")
-                    working = validate_ontology_app_a2ui_messages(raw_msgs)
+                    working = validate_ontology_app_a2ui_messages(
+                        raw_msgs, bindings=current_bindings or None
+                    )
                     tool_payload_obj = {"ok": True, "messages": working}
                 except Exception as e:
                     tool_payload_obj = {"ok": False, "error": str(e)}
+            else:
+                tool_payload_obj = {"ok": False, "error": f"unknown tool: {name}"}
             tool_payload = json.dumps(tool_payload_obj, ensure_ascii=False)
             openai_messages.append({"role": "tool", "tool_call_id": tid, "content": tool_payload})
             yield {"type": "tool_end", "run_id": tid, "name": name, "output": tool_payload}
 
-    yield {"type": "done", "content": last_text, "a2ui_messages": working}
+    yield {
+        "type": "done",
+        "content": last_text,
+        "a2ui_messages": working,
+        "bindings": current_bindings,
+    }

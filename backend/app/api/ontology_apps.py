@@ -277,17 +277,41 @@ async def designer_chat(
         raise HTTPException(status_code=400, detail="No LLM configured for agents")
     uid, _ = jwt_user_from_request(request)
     user_text = last_user_content(body.messages) or ""
+    snapshot = await apps_svc.build_ontology_snapshot(db)
+    initial_bindings = dict(app.bindings or {})
 
     async def ndjson():
         last_assistant = ""
         last_a2ui: list[dict] | None = None
+
+        async def apply_bindings(raw: dict) -> dict:
+            from app.database import async_session_maker
+
+            async with async_session_maker() as s:
+                row = await apps_svc.get_app(s, app_id)
+                try:
+                    row = await apps_svc.apply_bindings(s, row, raw, synthesize=True)
+                except HTTPException as he:
+                    detail = he.detail
+                    if isinstance(detail, dict):
+                        miss = detail.get("missing_bindings") or []
+                        msg = str(detail.get("message") or "Invalid bindings")
+                        if miss:
+                            msg = f"{msg}: {', '.join(str(m) for m in miss)}"
+                        raise ValueError(msg) from he
+                    raise ValueError(str(detail)) from he
+                msgs = normalize_stored_a2ui_document(row.draft_a2ui) or []
+                return {"bindings": row.bindings or {}, "a2ui_messages": msgs}
+
         try:
             async for ev in iter_ontology_app_designer_chat_ndjson(
                 body.messages,
-                app.bindings or {},
+                initial_bindings,
                 model_config,
                 working_a2ui_messages=body.working_a2ui_messages,
                 app_name=app.name,
+                ontology_snapshot=snapshot,
+                apply_bindings=apply_bindings,
             ):
                 if ev.get("type") == "done":
                     last_assistant = str(ev.get("content") or "")
@@ -306,6 +330,7 @@ async def designer_chat(
 
             async with async_session_maker() as s:
                 row = await apps_svc.get_app(s, app_id)
+                # Bindings may already be applied via set_bindings; only persist A2UI here.
                 await apps_svc.update_app(s, row, OntologyAppUpdate(draft_a2ui_messages=last_a2ui))
 
     return StreamingResponse(ndjson(), media_type="application/x-ndjson")

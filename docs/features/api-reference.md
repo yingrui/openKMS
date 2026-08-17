@@ -255,7 +255,7 @@ The bundled **openkms-skill** CLI wraps **lifecycle** and **relationships** the 
 | GET | `/api/object-types/{id}` | Get object type; ?count_from_neo4j=true for instance_count from Neo4j |
 | PUT | `/api/object-types/{id}` | Update object type (admin-only) |
 | DELETE | `/api/object-types/{id}` | Delete object type (admin-only) |
-| GET | `/api/object-types/{id}/objects` | List object instances (read ACL on parent type; from Neo4j when available; optional `?search=`, `?prop.<name>=` equality filters, `?limit=`, `?offset=`) |
+| GET | `/api/object-types/{id}/objects` | List object instances (read ACL on parent type; no-dataset types from Postgres `object_instances`; dataset-backed from Neo4j when available else dataset SQL; optional `?search=`, `?prop.<name>=` equality filters, `?limit=`, `?offset=`) |
 | POST | `/api/object-types/{id}/objects` | Create object instance (admin-only + write ACL on parent type) |
 | GET | `/api/object-types/{id}/objects/{obj_id}` | Get object instance (read ACL on parent type) |
 | PUT | `/api/object-types/{id}/objects/{obj_id}` | Update object instance (admin-only + write ACL on parent type) |
@@ -276,7 +276,7 @@ The bundled **openkms-skill** CLI wraps **lifecycle** and **relationships** the 
 | GET | `/api/ontology/groups/{id}/related` | Link types / Functions / Actions derived from the group's saved object types (`ontology:read`) |
 | POST | `/api/ontology/action-types/{id}/execute` | Run Action: OFS Function + audit; applies `output.edits` **create** / **modify** / **delete** ops on resolvable object instances; response may include `applied` |
 | GET | `/api/ontology/apps` | List ontology apps (`?status=published`); `ontology:read` |
-| POST | `/api/ontology/apps` | Create app + synthesize draft A2UI (`ontology:write`) |
+| POST | `/api/ontology/apps` | Create app (name + api_name; optional bindings; stub A2UI if unbound) (`ontology:write`) |
 | GET | `/api/ontology/apps/{id}` | Published run document only (404 if draft) |
 | GET | `/api/ontology/apps/{id}/design` | Draft A2UI for App Builder |
 | PATCH | `/api/ontology/apps/{id}` | Update metadata / bindings / draft |

@@ -2,7 +2,7 @@ import { config } from '../config';
 import { ontologyFetch } from './ontologyFetch';
 
 export type OntologyAppBindings = {
-  objectType: string;
+  objectType?: string;
   columnProperty?: string;
   columns?: string[];
   cardTitleProperty?: string;
@@ -54,7 +54,7 @@ export async function createOntologyApp(body: {
   api_name: string;
   description?: string;
   template_id?: string;
-  bindings: OntologyAppBindings;
+  bindings?: OntologyAppBindings;
 }): Promise<OntologyAppResponse> {
   return ontologyFetch<OntologyAppResponse>(
     base,
@@ -125,8 +125,51 @@ export type DesignerNdjsonEvent =
   | { type: 'delta'; t: string }
   | { type: 'tool_start'; run_id: string; name: string; input: string }
   | { type: 'tool_end'; run_id: string; name: string; output: string }
-  | { type: 'done'; content: string; a2ui_messages?: Record<string, unknown>[] }
+  | {
+      type: 'done';
+      content: string;
+      a2ui_messages?: Record<string, unknown>[];
+      bindings?: OntologyAppBindings;
+    }
   | { type: 'error'; message: string };
+
+export type DesignerConversation = {
+  id: string;
+  title?: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+export async function listOntologyAppDesignerConversations(
+  appId: string,
+): Promise<DesignerConversation[]> {
+  const res = await ontologyFetch<{ conversations: DesignerConversation[] }>(
+    `${base}/${appId}/designer/conversations`,
+    undefined,
+    'Failed to list conversations',
+  );
+  return res.conversations || [];
+}
+
+export async function createOntologyAppDesignerConversation(appId: string): Promise<DesignerConversation> {
+  return ontologyFetch<DesignerConversation>(
+    `${base}/${appId}/designer/conversations`,
+    { method: 'POST', body: '{}' },
+    'Failed to create conversation',
+  );
+}
+
+export async function fetchOntologyAppDesignerSession(
+  appId: string,
+  conversationId?: string | null,
+): Promise<{ conversation_id: string | null; messages: { id: string; role: string; content: string }[] }> {
+  const qs = conversationId ? `?conversation_id=${encodeURIComponent(conversationId)}` : '';
+  return ontologyFetch(
+    `${base}/${appId}/designer/session${qs}`,
+    undefined,
+    'Failed to load session',
+  );
+}
 
 export async function postOntologyAppDesignerChatStream(
   appId: string,
