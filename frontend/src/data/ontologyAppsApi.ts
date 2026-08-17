@@ -159,6 +159,17 @@ export async function createOntologyAppDesignerConversation(appId: string): Prom
   );
 }
 
+export async function deleteOntologyAppDesignerConversation(
+  appId: string,
+  conversationId: string,
+): Promise<void> {
+  await ontologyFetch(
+    `${base}/${appId}/designer/conversations/${encodeURIComponent(conversationId)}`,
+    { method: 'DELETE' },
+    'Failed to delete conversation',
+  );
+}
+
 export async function fetchOntologyAppDesignerSession(
   appId: string,
   conversationId?: string | null,

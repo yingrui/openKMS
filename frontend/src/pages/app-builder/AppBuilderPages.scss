@@ -55,22 +55,41 @@
   max-width: 28rem;
 }
 
+/* Design workspace: fill editor shell height (same pattern as KM Overview / Function Editor). */
 .app-builder-design {
   display: grid;
-  grid-template-columns: minmax(14rem, 18rem) 1fr minmax(12rem, 16rem);
+  grid-template-columns: minmax(16rem, 20rem) minmax(0, 1fr) minmax(12rem, 16rem);
   gap: var(--space-3);
-  min-height: calc(100vh - 7rem);
+  height: 100%;
+  min-height: 0;
+  min-width: 0;
+  align-items: stretch;
+  margin: calc(-1 * var(--app-page-padding-y, 24px)) calc(-1 * var(--app-page-padding-x, 24px));
+  padding: var(--app-page-padding-y, 24px) var(--app-page-padding-x, 24px);
+  box-sizing: border-box;
+}
+
+.app-builder-design__chat,
+.app-builder-design__rail,
+.app-builder-design__canvas {
+  min-height: 0;
+  min-width: 0;
 }
 
 .app-builder-design__chat,
 .app-builder-design__rail {
   border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
-  padding: var(--space-3);
   display: flex;
   flex-direction: column;
-  gap: var(--space-2);
   background: var(--color-bg-elevated, var(--color-bg));
+  overflow: hidden;
+}
+
+.app-builder-design__rail {
+  padding: var(--space-3);
+  gap: var(--space-2);
+  overflow-y: auto;
 }
 
 .app-builder-design__canvas {
@@ -82,18 +101,75 @@
 }
 
 .app-builder-design__chat-head {
+  flex-shrink: 0;
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: space-between;
   gap: var(--space-2);
+  padding: var(--space-3);
+  border-bottom: 1px solid var(--color-border);
+  background: var(--color-bg-muted);
 }
 
 .app-builder-design__chat-head h2 {
   margin: 0;
   font-size: var(--text-md);
+  font-weight: 600;
+}
+
+.app-builder-design__chat-sub {
+  margin: 0.15rem 0 0;
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+  line-height: 1.4;
+}
+
+.app-builder-design__chats {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.app-builder-design__icon-btn {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.1rem;
+  height: 2.1rem;
+  padding: 0;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm, 0.25rem);
+  background: var(--color-bg-elevated, var(--color-bg));
+  color: var(--color-accent);
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+}
+
+.app-builder-design__icon-btn:hover:not(:disabled) {
+  background: var(--color-bg-muted);
+}
+
+.app-builder-design__icon-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.app-builder-design__icon-btn--danger {
+  color: var(--color-danger, #b91c1c);
+}
+
+.app-builder-design__icon-btn--danger:hover:not(:disabled) {
+  border-color: var(--color-danger, #b91c1c);
+  background: color-mix(in srgb, var(--color-danger, #b91c1c) 10%, transparent);
 }
 
 .app-builder-design__conv-select {
+  flex: 1 1 auto;
+  min-width: 0;
   font: inherit;
   font-size: var(--text-sm);
   padding: var(--padding-compact-y) var(--space-3);
@@ -123,33 +199,69 @@
   color: var(--color-text-secondary);
 }
 
-.app-builder-design__log {
+.app-builder-design__thread {
   flex: 1;
-  overflow: auto;
+  min-height: 0;
+  overflow-y: auto;
   display: flex;
   flex-direction: column;
   gap: var(--space-2);
+  padding: var(--space-3);
   font-size: var(--text-sm);
+}
+
+.app-builder-design__thread-end {
+  height: 1px;
+  flex-shrink: 0;
+}
+
+.app-builder-design__msg {
+  border-radius: var(--radius-md);
+  padding: var(--space-2) var(--space-3);
+  line-height: 1.45;
+  max-width: 100%;
+}
+
+.app-builder-design__msg-label {
+  display: block;
+  font-size: 0.65rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--color-text-muted);
+  margin-bottom: 0.25rem;
+}
+
+.app-builder-design__msg-body {
+  white-space: pre-wrap;
+  word-break: break-word;
 }
 
 .app-builder-design__msg--user {
   align-self: flex-end;
+  max-width: 95%;
   background: color-mix(in srgb, var(--color-accent) 14%, transparent);
-  padding: var(--space-2) var(--space-3);
-  border-radius: var(--radius-md);
+  border: 1px solid color-mix(in srgb, var(--color-accent) 22%, var(--color-border));
 }
 
 .app-builder-design__msg--assistant {
-  align-self: flex-start;
+  align-self: stretch;
   background: var(--color-bg-muted);
-  padding: var(--space-2) var(--space-3);
-  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border);
+}
+
+.app-builder-design__msg--streaming {
+  color: var(--color-text-muted);
 }
 
 .app-builder-design__composer {
+  flex-shrink: 0;
   display: flex;
   flex-direction: column;
   gap: var(--space-2);
+  padding: var(--space-3);
+  border-top: 1px solid var(--color-border);
+  background: var(--color-bg-muted);
 }
 
 .app-builder-design__composer textarea {
@@ -158,16 +270,37 @@
   padding: var(--padding-compact-y) var(--space-3);
   border-radius: var(--radius-md);
   border: 1px solid var(--color-border);
-  background: var(--color-bg-muted);
+  background: var(--color-bg-elevated, var(--color-bg));
   color: var(--color-text);
   resize: vertical;
-  min-height: 4.5rem;
+  min-height: 4.25rem;
+  max-height: min(40vh, 220px);
 
   &:focus {
     outline: none;
     border-color: var(--color-accent);
     box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-accent) 18%, transparent);
   }
+}
+
+.app-builder-design__composer-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+
+.app-builder-design__composer-hint {
+  margin: 0;
+  flex: 1;
+  min-width: 0;
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+  line-height: 1.35;
+}
+
+.app-builder-design__composer-error {
+  margin: 0;
 }
 
 .app-builder-design__rail .btn {
@@ -177,5 +310,12 @@
 @media (max-width: 960px) {
   .app-builder-design {
     grid-template-columns: 1fr;
+    height: auto;
+    min-height: calc(100dvh - 7rem);
+  }
+
+  .app-builder-design__chat {
+    min-height: min(28rem, 55dvh);
+    max-height: min(36rem, 65dvh);
   }
 }
