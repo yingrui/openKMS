@@ -80,8 +80,8 @@ export function OntologyAppA2uiSurface({ a2uiMessages }: Props) {
     }
   }, [a2uiMessages]);
 
-  if (error) return <p className="onto-kanban__error">{error}</p>;
-  if (!surface) return <p className="onto-kanban__muted">Rendering…</p>;
+  if (error) return <p className="onto-a2ui-error">{error}</p>;
+  if (!surface) return <p className="onto-a2ui-muted">Rendering…</p>;
 
   return (
     <div className="onto-app-a2ui a2ui-light">

@@ -3,23 +3,20 @@
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Any
+from typing import Any, Literal
 
 from pydantic import BaseModel, Field
 
 
 class OntologyAppBindings(BaseModel):
-    """Board bindings — all optional until the designer / author fills them."""
+    """Resource allowlist for an app (all lanes). Not a UI layout."""
 
-    objectType: str | None = None
-    columnProperty: str | None = None
-    columns: list[str] | None = None
-    cardTitleProperty: str | None = None
-    createAction: str | None = None
-    updateAction: str | None = None
-    setStatusAction: str | None = None
-    deleteAction: str | None = None
-    suggestFunction: str | None = None
+    objectTypes: list[str] | None = None
+    actions: list[str] | None = None
+    functions: list[str] | None = None
+
+
+ArtifactKind = Literal["a2ui", "module"]
 
 
 class OntologyAppCreate(BaseModel):
@@ -27,6 +24,7 @@ class OntologyAppCreate(BaseModel):
     api_name: str = Field(min_length=1, max_length=128)
     description: str | None = None
     template_id: str = "a2ui"
+    """Stored artifact kind for now (a2ui | module). module runner is not implemented yet."""
     bindings: OntologyAppBindings | None = None
 
 
@@ -47,6 +45,7 @@ class OntologyAppResponse(BaseModel):
     api_name: str
     description: str | None = None
     template_id: str
+    artifact_kind: str = "a2ui"
     bindings: dict[str, Any]
     status: str
     bindings_hash: str | None = None

@@ -2,15 +2,9 @@ import { config } from '../config';
 import { ontologyFetch } from './ontologyFetch';
 
 export type OntologyAppBindings = {
-  objectType?: string;
-  columnProperty?: string;
-  columns?: string[];
-  cardTitleProperty?: string;
-  createAction?: string | null;
-  updateAction?: string | null;
-  setStatusAction?: string | null;
-  deleteAction?: string | null;
-  suggestFunction?: string | null;
+  objectTypes?: string[];
+  actions?: string[];
+  functions?: string[];
 };
 
 export type OntologyAppResponse = {
@@ -19,6 +13,7 @@ export type OntologyAppResponse = {
   api_name: string;
   description?: string | null;
   template_id: string;
+  artifact_kind?: string;
   bindings: OntologyAppBindings;
   status: string;
   bindings_hash?: string | null;

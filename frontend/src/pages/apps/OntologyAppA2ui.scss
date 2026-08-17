@@ -4,78 +4,46 @@
   min-height: 12rem;
 }
 
-.onto-kanban {
+.onto-a2ui-list {
   display: flex;
   flex-direction: column;
-  gap: 0.75rem;
+  gap: 0.5rem;
 }
 
-.onto-kanban__toolbar,
-.onto-kanban__row,
-.onto-kanban__detail-head {
+.onto-a2ui-list__toolbar {
   display: flex;
   flex-wrap: wrap;
   gap: 0.5rem;
   align-items: center;
 }
 
-.onto-kanban__columns {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr));
-  gap: 0.75rem;
-}
-
-.onto-kanban__col {
-  background: var(--surface-muted, #f4f4f5);
-  border-radius: 0.5rem;
-  padding: 0.5rem;
-  min-height: 12rem;
-}
-
-.onto-kanban__col-title {
-  font-weight: 600;
-  margin-bottom: 0.5rem;
-  text-transform: capitalize;
-}
-
-.onto-kanban__cards {
+.onto-a2ui-list__items {
+  list-style: none;
+  margin: 0;
+  padding: 0;
   display: flex;
   flex-direction: column;
-  gap: 0.4rem;
+  gap: 0.35rem;
 }
 
-.onto-kanban__card {
-  text-align: left;
+.onto-a2ui-list__item {
   border: 1px solid var(--border, #ddd);
   background: var(--surface, #fff);
   border-radius: 0.35rem;
-  padding: 0.5rem 0.6rem;
-  cursor: grab;
+  padding: 0.5rem 0.65rem;
 }
 
-.onto-kanban__card--selected {
-  outline: 2px solid var(--accent, #2563eb);
-}
-
-.onto-kanban__detail {
-  border-top: 1px solid var(--border, #ddd);
-  padding-top: 0.75rem;
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-}
-
-.onto-kanban__muted {
+.onto-a2ui-muted {
   color: var(--text-muted, #666);
   font-size: 0.875rem;
 }
 
-.onto-kanban__error {
+.onto-a2ui-error {
   color: var(--danger, #b91c1c);
   font-size: 0.875rem;
 }
 
-.onto-kanban__fo {
+.onto-a2ui-fo {
   background: var(--surface-muted, #f4f4f5);
   padding: 0.5rem;
   border-radius: 0.35rem;
@@ -84,17 +52,13 @@
   font-size: 0.8rem;
 }
 
-.onto-kanban__link {
+.onto-a2ui-link {
   color: var(--accent, #2563eb);
-}
-
-.onto-kanban__row .ds-control {
-  flex: 1;
-  min-width: 0;
 }
 
 .onto-a2ui-inline {
   display: inline-flex;
   flex-direction: column;
   gap: 0.35rem;
+  align-items: flex-start;
 }

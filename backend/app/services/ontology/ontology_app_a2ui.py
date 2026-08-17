@@ -1,4 +1,4 @@
-"""Synthesize / validate A2UI for Ontology Apps."""
+"""Synthesize / validate A2UI for Ontology Apps (platform primitives, not product UIs)."""
 
 from __future__ import annotations
 
@@ -9,17 +9,11 @@ ONTOLOGY_APP_A2UI_SURFACE_ID = "ontology-app"
 A2UI_VERSION = "v0.9"
 A2UI_DOC_FORMAT = "a2ui_v0_9"
 
-BOARD_PROP_KEYS = (
-    "objectType",
-    "columnProperty",
-    "columns",
-    "cardTitleProperty",
-    "createAction",
-    "updateAction",
-    "setStatusAction",
-    "deleteAction",
-    "suggestFunction",
-)
+REMOVED_COMPONENTS = frozenset({"OntoKanbanBoard"})
+
+ONTOLOGY_COMPONENTS_WITH_OBJECT_TYPE = frozenset({"OntoObjectList"})
+ONTOLOGY_COMPONENTS_WITH_ACTION = frozenset({"OntoActionButton", "OntoActionForm"})
+ONTOLOGY_COMPONENTS_WITH_FUNCTION = frozenset({"OntoFunctionButton"})
 
 
 def pack_a2ui_document(messages: list[dict[str, Any]]) -> dict[str, Any]:
@@ -37,20 +31,46 @@ def normalize_stored_a2ui_document(raw: Any) -> list[dict[str, Any]] | None:
     return [m for m in messages if isinstance(m, dict)]
 
 
-def bindings_board_ready(bindings: dict[str, Any] | None) -> bool:
-    b = bindings or {}
-    if not str(b.get("objectType") or "").strip():
-        return False
-    if not str(b.get("columnProperty") or "").strip():
-        return False
-    if not str(b.get("cardTitleProperty") or "").strip():
-        return False
-    columns = b.get("columns") or []
-    if isinstance(columns, list):
-        cols = [str(c).strip() for c in columns if str(c).strip()]
-    else:
-        cols = [c.strip() for c in str(columns).split(",") if c.strip()]
-    return bool(cols)
+def normalize_resources(raw: dict[str, Any] | None) -> dict[str, Any]:
+    """Keep only objectTypes / actions / functions string lists."""
+    b = raw or {}
+    out: dict[str, Any] = {}
+    for key in ("objectTypes", "actions", "functions"):
+        val = b.get(key)
+        if not isinstance(val, list):
+            continue
+        items = [str(x).strip() for x in val if str(x).strip()]
+        if items:
+            out[key] = list(dict.fromkeys(items))
+    return out
+
+
+def resources_nonempty(resources: dict[str, Any] | None) -> bool:
+    r = resources or {}
+    return bool(r.get("objectTypes") or r.get("actions") or r.get("functions"))
+
+
+def reject_legacy_board_bindings(raw: dict[str, Any] | None) -> None:
+    """Hard-fail old kanban-shaped bindings (no projection)."""
+    if not raw:
+        return
+    legacy = (
+        "objectType",
+        "columnProperty",
+        "columns",
+        "cardTitleProperty",
+        "createAction",
+        "updateAction",
+        "setStatusAction",
+        "deleteAction",
+        "suggestFunction",
+    )
+    hit = [k for k in legacy if k in raw and raw.get(k) not in (None, "", [])]
+    if hit and not resources_nonempty(raw):
+        raise ValueError(
+            "Legacy board bindings are no longer supported "
+            f"({', '.join(hit)}). Use objectTypes, actions, and functions, then rebuild the A2UI layout."
+        )
 
 
 def synthesize_stub_a2ui_messages(*, title: str) -> list[dict[str, Any]]:
@@ -63,7 +83,8 @@ def synthesize_stub_a2ui_messages(*, title: str) -> list[dict[str, Any]]:
             "component": "Text",
             "text": (
                 "Describe the app to the designer. Link existing Object Types, "
-                "Actions, and Functions — Builder does not create them."
+                "Actions, and Functions — Builder does not create them. "
+                "Compose OntoObjectList, OntoActionForm, and layout components in Source."
             ),
             "variant": "body",
         },
@@ -87,83 +108,48 @@ def synthesize_stub_a2ui_messages(*, title: str) -> list[dict[str, Any]]:
     ]
 
 
-def synthesize_status_board_a2ui_messages(
-    bindings: dict[str, Any],
-    *,
-    title: str,
-    subtitle: str | None = None,
-) -> list[dict[str, Any]]:
-    """Board surface: title + OntoKanbanBoard wired to author-supplied bindings."""
-    object_type = str(bindings.get("objectType") or "").strip()
-    if not object_type:
-        raise ValueError("bindings.objectType is required")
-
-    columns = bindings.get("columns") or []
-    if isinstance(columns, list):
-        cols = [str(c).strip() for c in columns if str(c).strip()]
-    else:
-        cols = [c.strip() for c in str(columns).split(",") if c.strip()]
-    if not cols:
-        raise ValueError("bindings.columns must include at least one value")
-    columns_csv = ",".join(cols)
-
-    column_property = str(bindings.get("columnProperty") or "").strip()
-    if not column_property:
-        raise ValueError("bindings.columnProperty is required")
-    card_title = str(bindings.get("cardTitleProperty") or "").strip()
-    if not card_title:
-        raise ValueError("bindings.cardTitleProperty is required")
-
-    board_props: dict[str, str] = {
-        "objectType": object_type,
-        "columnProperty": column_property,
-        "columns": columns_csv,
-        "cardTitleProperty": card_title,
-    }
-    for key in (
-        "createAction",
-        "updateAction",
-        "setStatusAction",
-        "deleteAction",
-        "suggestFunction",
-    ):
-        val = bindings.get(key)
-        if val:
-            board_props[key] = str(val)
-
-    components: list[dict[str, Any]] = [
-        {"id": "root", "component": "Column", "children": ["title", "subtitle", "board"]},
-        {"id": "title", "component": "Text", "text": title, "variant": "h1"},
-        {
-            "id": "subtitle",
-            "component": "Text",
-            "text": subtitle
-            or "Live board from ontology objects. Mutations run through Actions.",
-            "variant": "body",
-        },
-        {"id": "board", "component": "OntoKanbanBoard", **board_props},
-    ]
-
-    surface_id = ONTOLOGY_APP_A2UI_SURFACE_ID
-    return [
-        {
-            "version": A2UI_VERSION,
-            "createSurface": {
-                "surfaceId": surface_id,
-                "catalogId": ONTOLOGY_APP_A2UI_CATALOG_ID,
-            },
-        },
-        {
-            "version": A2UI_VERSION,
-            "updateComponents": {
-                "surfaceId": surface_id,
-                "components": components,
-            },
-        },
-    ]
+def iter_a2ui_components(messages: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    out: list[dict[str, Any]] = []
+    for msg in messages:
+        uc = msg.get("updateComponents")
+        if not isinstance(uc, dict):
+            continue
+        comps = uc.get("components") or []
+        if isinstance(comps, list):
+            for c in comps:
+                if isinstance(c, dict):
+                    out.append(c)
+    return out
 
 
-synthesize_kanban_a2ui_messages = synthesize_status_board_a2ui_messages
+def collect_a2ui_resource_refs(messages: list[dict[str, Any]]) -> dict[str, set[str]]:
+    ots: set[str] = set()
+    actions: set[str] = set()
+    functions: set[str] = set()
+    for c in iter_a2ui_components(messages):
+        name = str(c.get("component") or "")
+        if name in REMOVED_COMPONENTS:
+            continue
+        if name in ONTOLOGY_COMPONENTS_WITH_OBJECT_TYPE or name == "OntoObjectLink":
+            ot = str(c.get("objectType") or "").strip()
+            if ot:
+                ots.add(ot)
+        if name in ONTOLOGY_COMPONENTS_WITH_ACTION:
+            api = str(c.get("actionApiName") or "").strip()
+            if api:
+                actions.add(api)
+        if name in ONTOLOGY_COMPONENTS_WITH_FUNCTION:
+            api = str(c.get("functionApiName") or "").strip()
+            if api:
+                functions.add(api)
+    return {"objectTypes": ots, "actions": actions, "functions": functions}
+
+
+def a2ui_uses_removed_components(messages: list[dict[str, Any]] | None) -> bool:
+    for c in iter_a2ui_components(messages or []):
+        if str(c.get("component") or "") in REMOVED_COMPONENTS:
+            return True
+    return False
 
 
 def validate_ontology_app_a2ui_messages(
@@ -171,9 +157,10 @@ def validate_ontology_app_a2ui_messages(
     *,
     bindings: dict[str, Any] | None = None,
 ) -> list[dict[str, Any]]:
-    """Require createSurface + root; optionally ensure board props match BINDINGS."""
+    """Require createSurface + root; reject removed components; refs ⊆ resources."""
     if not messages:
         raise ValueError("a2ui_messages must not be empty")
+    resources = normalize_resources(bindings)
     has_surface = False
     has_root = False
     for msg in messages:
@@ -184,46 +171,35 @@ def validate_ontology_app_a2ui_messages(
             if cs.get("catalogId") != ONTOLOGY_APP_A2UI_CATALOG_ID:
                 raise ValueError(f"catalogId must be {ONTOLOGY_APP_A2UI_CATALOG_ID}")
             has_surface = True
-        uc = msg.get("updateComponents")
-        if isinstance(uc, dict):
-            comps = uc.get("components") or []
-            if isinstance(comps, list):
-                for c in comps:
-                    if not isinstance(c, dict):
-                        continue
-                    if c.get("id") == "root":
-                        has_root = True
-                    if bindings and c.get("component") == "OntoKanbanBoard":
-                        _validate_board_against_bindings(c, bindings)
-                    if bindings and c.get("component") == "OntoActionButton":
-                        api = str(c.get("actionApiName") or "")
-                        allowed = {
-                            str(bindings.get(k) or "")
-                            for k in ("createAction", "updateAction", "setStatusAction", "deleteAction")
-                            if bindings.get(k)
-                        }
-                        if api and api not in allowed:
-                            raise ValueError(f"OntoActionButton actionApiName not in BINDINGS: {api}")
-                    if bindings and c.get("component") == "OntoFunctionButton":
-                        api = str(c.get("functionApiName") or "")
-                        sug = str(bindings.get("suggestFunction") or "")
-                        if api and sug and api != sug:
-                            raise ValueError(f"OntoFunctionButton functionApiName not in BINDINGS: {api}")
+
+    for c in iter_a2ui_components(messages):
+        if c.get("id") == "root":
+            has_root = True
+        name = str(c.get("component") or "")
+        if name in REMOVED_COMPONENTS:
+            raise ValueError(
+                f"Component {name} was removed. Rebuild the layout with "
+                "OntoObjectList, OntoActionForm, and other platform primitives."
+            )
+
     if not has_surface:
         raise ValueError("missing createSurface")
     if not has_root:
         raise ValueError("missing component id root")
+
+    if resources:
+        allowed_ot = set(resources.get("objectTypes") or [])
+        allowed_act = set(resources.get("actions") or [])
+        allowed_fn = set(resources.get("functions") or [])
+        refs = collect_a2ui_resource_refs(messages)
+        for ot in refs["objectTypes"]:
+            if allowed_ot and ot not in allowed_ot:
+                raise ValueError(f"objectType {ot!r} is not in resources.objectTypes")
+        for api in refs["actions"]:
+            if allowed_act and api not in allowed_act:
+                raise ValueError(f"actionApiName {api!r} is not in resources.actions")
+        for api in refs["functions"]:
+            if allowed_fn and api not in allowed_fn:
+                raise ValueError(f"functionApiName {api!r} is not in resources.functions")
+
     return messages
-
-
-def _validate_board_against_bindings(comp: dict[str, Any], bindings: dict[str, Any]) -> None:
-    ot = str(bindings.get("objectType") or "").strip()
-    if ot and str(comp.get("objectType") or "") not in ("", ot):
-        raise ValueError(f"OntoKanbanBoard objectType must match BINDINGS ({ot})")
-    for key in ("createAction", "updateAction", "setStatusAction", "deleteAction", "suggestFunction"):
-        bound = bindings.get(key)
-        if not bound:
-            continue
-        prop = comp.get(key)
-        if prop and str(prop) != str(bound):
-            raise ValueError(f"OntoKanbanBoard {key} must match BINDINGS ({bound})")

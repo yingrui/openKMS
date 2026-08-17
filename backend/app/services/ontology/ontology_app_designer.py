@@ -1,4 +1,4 @@
-"""NDJSON Ontology App Designer chat (set_bindings + set_a2ui_messages)."""
+"""NDJSON Ontology App Designer chat (set_resources + set_a2ui_messages)."""
 
 from __future__ import annotations
 
@@ -22,8 +22,7 @@ from app.services.knowledge_map.knowledge_map_html import (
 from app.services.ontology.ontology_app_a2ui import (
     ONTOLOGY_APP_A2UI_CATALOG_ID,
     ONTOLOGY_APP_A2UI_SURFACE_ID,
-    bindings_board_ready,
-    synthesize_status_board_a2ui_messages,
+    synthesize_stub_a2ui_messages,
     validate_ontology_app_a2ui_messages,
 )
 
@@ -33,31 +32,23 @@ _MAX_TOOL_ROUNDS = 8
 
 ApplyBindingsFn = Callable[[dict[str, Any]], Awaitable[dict[str, Any]]]
 
-_SET_BINDINGS_TOOL: dict[str, Any] = {
+_SET_RESOURCES_TOOL: dict[str, Any] = {
     "type": "function",
     "function": {
-        "name": "set_bindings",
+        "name": "set_resources",
         "description": (
-            "Link the app to existing ontology api names from ONTOLOGY_SNAPSHOT. "
-            "Does not create Object Types, Actions, or Functions. "
-            "Required: objectType, columnProperty, columns (array of strings), cardTitleProperty. "
-            "Optional: createAction, updateAction, setStatusAction, deleteAction, suggestFunction. "
-            "On success the server stores bindings and synthesizes a board A2UI draft."
+            "Declare which existing ontology api names this app may use. "
+            "Does not create Object Types, Actions, or Functions, and does not change the UI. "
+            "Pass objectTypes, actions, and/or functions as string arrays from ONTOLOGY_SNAPSHOT. "
+            "After resources are set, call set_a2ui_messages to compose the layout."
         ),
         "parameters": {
             "type": "object",
             "properties": {
-                "objectType": {"type": "string"},
-                "columnProperty": {"type": "string"},
-                "columns": {"type": "array", "items": {"type": "string"}},
-                "cardTitleProperty": {"type": "string"},
-                "createAction": {"type": "string"},
-                "updateAction": {"type": "string"},
-                "setStatusAction": {"type": "string"},
-                "deleteAction": {"type": "string"},
-                "suggestFunction": {"type": "string"},
+                "objectTypes": {"type": "array", "items": {"type": "string"}},
+                "actions": {"type": "array", "items": {"type": "string"}},
+                "functions": {"type": "array", "items": {"type": "string"}},
             },
-            "required": ["objectType", "columnProperty", "columns", "cardTitleProperty"],
         },
     },
 }
@@ -71,10 +62,13 @@ _SET_A2UI_TOOL: dict[str, Any] = {
             f"'{ONTOLOGY_APP_A2UI_CATALOG_ID}' and surfaceId '{ONTOLOGY_APP_A2UI_SURFACE_ID}'. "
             "Must include component id 'root'. "
             "Column/Row/List use children:[id,...]. Card/Button use child:'oneId'. "
-            "Custom: OntoKanbanBoard (objectType, columnProperty, columns CSV, cardTitleProperty, "
-            "createAction, updateAction, setStatusAction, deleteAction, suggestFunction), "
-            "OntoActionButton, OntoFunctionButton, OntoObjectLink. "
-            "Only use api_names from BINDINGS. Call set_bindings first if BINDINGS are empty."
+            "Platform primitives: OntoObjectList (objectType, titleProperty, optional "
+            "filterProperty+filterValue), OntoActionForm (actionApiName, label), "
+            "OntoActionButton (actionApiName, label, optional objectId), "
+            "OntoFunctionButton (functionApiName, label), OntoObjectLink "
+            "(objectTypeId, objectId, label). "
+            "Never use OntoKanbanBoard (removed). "
+            "Only reference api_names from RESOURCES. Call set_resources first if RESOURCES are empty."
         ),
         "parameters": {
             "type": "object",
@@ -89,20 +83,37 @@ _SET_A2UI_TOOL: dict[str, Any] = {
     },
 }
 
-_SYSTEM = f"""You are **Ontology App Designer** using **A2UI**.
+_SYSTEM = f"""You are **Ontology App Designer** for the openKMS **platform**.
 
-You help the author build an ontology-backed app UI by **linking** existing Object Types, Actions, and Functions — never invent or create them.
+You help authors build ontology-backed apps by **linking** existing Object Types, Actions, and Functions and **composing** A2UI from platform primitives — never invent ontology assets, never emit HTML, never use removed components (OntoKanbanBoard).
 
-Rules:
+## Intent → layout (choose; do not default to a board)
+
+| User intent | Compose |
+|-------------|---------|
+| List / browse / table | Text + OntoObjectList (± OntoActionForm for create) |
+| Create / intake form | Emphasize OntoActionForm; list optional |
+| Columns by status/stage ("kanban-like") | Several OntoObjectList with different filterProperty/filterValue + optional global OntoActionForm — NOT a board component |
+| Deep link | OntoObjectLink |
+| Read-only suggestion | OntoFunctionButton |
+| Needs drag-and-drop or heavy custom UI | Say the platform a2ui lane cannot do that yet; stay within primitives |
+
+## Recipes (complete shapes — Create labels live in Source as OntoActionForm)
+
+1) Single list + create — prefer this when the user asks for a simple app.
+2) Read-only list — no OntoActionForm.
+3) Multi-column filters — Row of Columns each with OntoObjectList + one Form.
+
+## Protocol
+
 - Reply briefly in the user language.
-- Use ONTOLOGY_SNAPSHOT to pick real api names. If something is missing, tell the user to create it in Ontology Manager or Function Editor.
-- When bindings are empty or incomplete, call **set_bindings** with objectType, columnProperty, columns, cardTitleProperty, and any Actions/FoO from the snapshot.
-- **columns** must be the exact stored property values used in filters and Actions (e.g. backlog, in_progress, done) — never display labels like "To Do" unless those strings are what instances actually store.
-- After bindings exist, call **set_a2ui_messages** to reshape layout if needed (or rely on the synthesized board from set_bindings).
+- Use ONTOLOGY_SNAPSHOT for real names and Action input_schema summaries.
+- If resources are empty, call **set_resources** first (objectTypes / actions / functions arrays).
+- Then call **set_a2ui_messages** to set the full tree. Changing button copy = edit Source nodes, do not invent platform widgets.
+- **Never** emit `OntoKanbanBoard` (removed). Use multiple `OntoObjectList` + `OntoActionForm` instead.
 - createSurface surfaceId="{ONTOLOGY_APP_A2UI_SURFACE_ID}" catalogId="{ONTOLOGY_APP_A2UI_CATALOG_ID}".
 - updateComponents must include id **"root"**.
-- Prefer one OntoKanbanBoard wired to BINDINGS.
-- Never emit HTML.
+- filter values must match stored property values on instances, not display labels, unless those strings are what is stored.
 """
 
 
@@ -124,26 +135,38 @@ async def iter_ontology_app_designer_chat_ndjson(
 
     working: list[dict[str, Any]] = list(working_a2ui_messages or [])
     current_bindings: dict[str, Any] = dict(bindings or {})
+    working_note = ""
     if working:
-        working = validate_ontology_app_a2ui_messages(working, bindings=current_bindings or None)
+        try:
+            working = validate_ontology_app_a2ui_messages(working, bindings=current_bindings or None)
+        except ValueError as e:
+            # Old drafts may still contain OntoKanbanBoard / invalid trees — don't block the designer.
+            working = synthesize_stub_a2ui_messages(title=app_name)
+            working_note = (
+                f"CURRENT_A2UI was invalid ({e}). It was replaced with a stub for this session; "
+                "call set_resources (if needed) then set_a2ui_messages to rebuild."
+            )
 
     client = AsyncOpenAI(base_url=base_url, api_key=model_config.get("api_key") or "no-key")
     model_name = model_config.get("model_name", "gpt-4o-mini")
     use_shim = _wiki_use_llm_reasoning_content_shim(base_url)
     extra_body = _wiki_agent_chat_extra_body()
 
+    context_bits = [
+        f"APP_NAME: {app_name}",
+        "RESOURCES:\n" + json.dumps(current_bindings, ensure_ascii=False, indent=2),
+        "ONTOLOGY_SNAPSHOT:\n"
+        + json.dumps(ontology_snapshot or {}, ensure_ascii=False, indent=2)[:60_000],
+        "CURRENT_A2UI_MESSAGES:\n" + json.dumps(working, ensure_ascii=False, indent=2)[:80_000],
+    ]
+    if working_note:
+        context_bits.insert(1, "NOTE:\n" + working_note)
+
     openai_messages: list[dict[str, Any]] = [
         {"role": "system", "content": _SYSTEM},
         {
             "role": "user",
-            "content": (
-                f"APP_NAME: {app_name}\n\nBINDINGS:\n"
-                + json.dumps(current_bindings, ensure_ascii=False, indent=2)
-                + "\n\nONTOLOGY_SNAPSHOT:\n"
-                + json.dumps(ontology_snapshot or {}, ensure_ascii=False, indent=2)[:60_000]
-                + "\n\nCURRENT_A2UI_MESSAGES:\n"
-                + json.dumps(working, ensure_ascii=False, indent=2)[:80_000]
-            ),
+            "content": "\n\n".join(context_bits),
         },
     ]
     for msg in conversation[-32:]:
@@ -156,7 +179,7 @@ async def iter_ontology_app_designer_chat_ndjson(
     if len(openai_messages) < 3:
         raise ValueError("Add at least one user message")
 
-    tools = [_SET_BINDINGS_TOOL, _SET_A2UI_TOOL]
+    tools = [_SET_RESOURCES_TOOL, _SET_A2UI_TOOL]
     last_text = ""
     for _round in range(_MAX_TOOL_ROUNDS):
         _inject_reasoning_content_on_assistant_rows(openai_messages, use_shim=use_shim)
@@ -239,26 +262,20 @@ async def iter_ontology_app_designer_chat_ndjson(
             args_preview = str(fn.get("arguments") or "")[:6000]
             yield {"type": "tool_start", "run_id": tid, "name": name, "input": args_preview}
             tool_payload_obj: dict[str, Any]
-            if name == "set_bindings":
+            if name in ("set_resources", "set_bindings"):
                 try:
                     args = json.loads(fn.get("arguments") or "{}")
                     if not isinstance(args, dict):
-                        raise ValueError("set_bindings arguments must be an object")
+                        raise ValueError("set_resources arguments must be an object")
                     if apply_bindings is None:
-                        raise ValueError("set_bindings is not available")
+                        raise ValueError("set_resources is not available")
                     result = await apply_bindings(args)
                     current_bindings = dict(result.get("bindings") or args)
-                    msgs = result.get("a2ui_messages")
-                    if isinstance(msgs, list):
-                        working = msgs
-                    elif bindings_board_ready(current_bindings):
-                        working = synthesize_status_board_a2ui_messages(
-                            current_bindings, title=app_name
-                        )
                     tool_payload_obj = {
                         "ok": True,
                         "bindings": current_bindings,
                         "messages": working,
+                        "note": "Resources updated. Call set_a2ui_messages to compose the UI.",
                     }
                 except Exception as e:
                     tool_payload_obj = {"ok": False, "error": str(e)}

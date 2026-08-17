@@ -8,7 +8,12 @@ import {
   executeOntologyAction,
   fetchOntologyActionTypes,
 } from '../../data/ontologyActionsApi';
-import { executeOntologyFunctionByApiName } from '../../data/ontologyFunctionsApi';
+import {
+  executeOntologyFunctionByApiName,
+  fetchFunctionVersion,
+  fetchFunctionVersions,
+  fetchOntologyFunction,
+} from '../../data/ontologyFunctionsApi';
 import { Dialog, FormField } from '../../styles/design-system';
 import './OntologyAppA2ui.scss';
 
@@ -16,317 +21,283 @@ export const ONTOLOGY_APP_A2UI_CATALOG_ID =
   'https://openkms.local/a2ui/catalogs/ontology-app/v1.json';
 export const ONTOLOGY_APP_A2UI_SURFACE_ID = 'ontology-app';
 
-type BoardCard = { id: string; title: string; data: Record<string, unknown> };
+const MUTATED_EVENT = 'ontology-app:mutated';
 
-function OntoKanbanBoardImpl({ props }: { props: Record<string, string> }) {
+function emitMutated() {
+  window.dispatchEvent(new CustomEvent(MUTATED_EVENT));
+}
+
+function useOntologyMutated(reload: () => void) {
+  useEffect(() => {
+    const onMut = () => reload();
+    window.addEventListener(MUTATED_EVENT, onMut);
+    return () => window.removeEventListener(MUTATED_EVENT, onMut);
+  }, [reload]);
+}
+
+async function resolveObjectTypeId(objectType: string): Promise<string> {
+  const types = await fetchObjectTypes();
+  const hit = types.items.find((t) => t.name === objectType || t.id === objectType);
+  if (!hit) throw new Error(`Object type not found: ${objectType}`);
+  return hit.id;
+}
+
+async function resolveActionId(actionApiName: string): Promise<string> {
+  const acts = await fetchOntologyActionTypes();
+  const hit = acts.find((a) => a.api_name === actionApiName);
+  if (!hit) throw new Error(`Action not found: ${actionApiName}`);
+  return hit.id;
+}
+
+type ListRow = { id: string; title: string; data: Record<string, unknown> };
+
+function OntoObjectListImpl({ props }: { props: Record<string, string> }) {
   const objectType = props.objectType || '';
-  const columnProperty = props.columnProperty || '';
-  const columnsCsv = props.columns || '';
-  const columns = useMemo(
-    () =>
-      columnsCsv
-        .split(',')
-        .map((c) => c.trim())
-        .filter(Boolean),
-    [columnsCsv],
-  );
-  const titleProp = props.cardTitleProperty || '';
-  const createAction = props.createAction || '';
-  const updateAction = props.updateAction || '';
-  const setStatusAction = props.setStatusAction || '';
-  const deleteAction = props.deleteAction || '';
-  const suggestFunction = props.suggestFunction || '';
+  const titleProp = props.titleProperty || 'title';
+  const filterProperty = props.filterProperty || '';
+  const filterValue = props.filterValue || '';
 
-  const [typeId, setTypeId] = useState<string | null>(null);
-  const [cardsByCol, setCardsByCol] = useState<Record<string, BoardCard[]>>({});
+  const [rows, setRows] = useState<ListRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [busy, setBusy] = useState(false);
-  const [foResult, setFoResult] = useState<string | null>(null);
-  const [showCreate, setShowCreate] = useState(false);
-  const [createTitle, setCreateTitle] = useState('');
-  const [editTitle, setEditTitle] = useState('');
 
-  const actionIdByApi = useMemo(() => ({ current: {} as Record<string, string> }), []);
-
-  const refresh = useCallback(async () => {
-    if (!objectType || !columnProperty || !titleProp || !columns.length) {
-      setError('Board bindings are incomplete');
+  const load = useCallback(async () => {
+    if (!objectType) {
+      setError('objectType is required');
       setLoading(false);
       return;
     }
     setLoading(true);
     setError(null);
     try {
-      const ots = await fetchObjectTypes();
-      const items = ots.items || [];
-      const ot = items.find((t) => t.name === objectType || t.id === objectType);
-      if (!ot) throw new Error(`Object type not found: ${objectType}`);
-      setTypeId(ot.id);
-
-      const acts = await fetchOntologyActionTypes({ object_type_id: ot.id });
-      const map: Record<string, string> = {};
-      for (const a of acts) map[a.api_name] = a.id;
-      actionIdByApi.current = map;
-
-      const next: Record<string, BoardCard[]> = {};
-      for (const col of columns) {
-        const page = await fetchObjectInstances(ot.id, {
-          limit: 100,
-          propFilters: { [columnProperty]: col },
-        });
-        const rows = page.items || [];
-        next[col] = rows.map((r) => ({
-          id: r.id,
-          title: String((r.data || {})[titleProp] ?? r.id),
-          data: (r.data || {}) as Record<string, unknown>,
-        }));
+      const typeId = await resolveObjectTypeId(objectType);
+      const res = await fetchObjectInstances(typeId, { limit: 200 });
+      const next: ListRow[] = [];
+      for (const item of res.items || []) {
+        const data = (item.data || {}) as Record<string, unknown>;
+        if (filterProperty) {
+          const v = data[filterProperty];
+          if (String(v ?? '') !== filterValue) continue;
+        }
+        const title = String(data[titleProp] ?? item.id ?? '');
+        next.push({ id: String(item.id), title: title || String(item.id), data });
       }
-      setCardsByCol(next);
+      setRows(next);
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
     } finally {
       setLoading(false);
     }
-  }, [actionIdByApi, columnProperty, columns, objectType, titleProp]);
+  }, [objectType, titleProp, filterProperty, filterValue]);
 
   useEffect(() => {
-    void refresh();
-  }, [refresh]);
-
-  const runAction = async (apiName: string, input: Record<string, unknown>, objectId?: string) => {
-    const id = actionIdByApi.current[apiName];
-    if (!id) throw new Error(`Action not found: ${apiName}`);
-    setBusy(true);
-    setError(null);
-    try {
-      const res = await executeOntologyAction(id, { object_id: objectId, input });
-      if (res.status !== 'ok') throw new Error(res.error || 'Action failed');
-      await refresh();
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  const onDropTo = async (col: string, cardId: string) => {
-    if (!setStatusAction) return;
-    await runAction(setStatusAction, { object_id: cardId, status: col }, cardId);
-  };
-
-  const selected = useMemo(() => {
-    if (!selectedId) return null;
-    for (const col of columns) {
-      const hit = (cardsByCol[col] || []).find((c) => c.id === selectedId);
-      if (hit) return hit;
-    }
-    return null;
-  }, [cardsByCol, columns, selectedId]);
-
-  useEffect(() => {
-    if (selected) setEditTitle(selected.title);
-  }, [selected]);
+    void load();
+  }, [load]);
+  useOntologyMutated(load);
 
   return (
-    <div className="onto-kanban">
-      <div className="onto-kanban__toolbar">
-        {createAction ? (
-          <button type="button" className="btn btn-primary" disabled={busy} onClick={() => setShowCreate(true)}>
-            Add card
-          </button>
+    <div className="onto-a2ui-list">
+      <div className="onto-a2ui-list__toolbar">
+        {filterProperty ? (
+          <span className="onto-a2ui-muted">
+            {filterProperty}={filterValue || '∅'}
+          </span>
         ) : null}
-        <button type="button" className="btn btn-secondary" disabled={busy || loading} onClick={() => void refresh()}>
+        <button type="button" className="btn btn-secondary btn-sm" disabled={loading} onClick={() => void load()}>
           Refresh
         </button>
-        {error ? <span className="onto-kanban__error">{error}</span> : null}
       </div>
-
-      {loading ? <p className="onto-kanban__muted">Loading board…</p> : null}
-
-      <div className="onto-kanban__columns">
-        {columns.map((col) => (
-          <div
-            key={col}
-            className="onto-kanban__col"
-            onDragOver={(e) => e.preventDefault()}
-            onDrop={(e) => {
-              e.preventDefault();
-              const id = e.dataTransfer.getData('text/plain');
-              if (id) void onDropTo(col, id);
-            }}
-          >
-            <div className="onto-kanban__col-title">{col}</div>
-            <div className="onto-kanban__cards">
-              {(cardsByCol[col] || []).map((card) => (
-                <button
-                  key={card.id}
-                  type="button"
-                  className={`onto-kanban__card${selectedId === card.id ? ' onto-kanban__card--selected' : ''}`}
-                  draggable={Boolean(setStatusAction)}
-                  onDragStart={(e) => e.dataTransfer.setData('text/plain', card.id)}
-                  onClick={() => setSelectedId(card.id)}
-                >
-                  {card.title}
-                </button>
-              ))}
-            </div>
-          </div>
+      {error ? <p className="onto-a2ui-error">{error}</p> : null}
+      {loading ? <p className="onto-a2ui-muted">Loading…</p> : null}
+      {!loading && !rows.length ? <p className="onto-a2ui-muted">No objects</p> : null}
+      <ul className="onto-a2ui-list__items">
+        {rows.map((r) => (
+          <li key={r.id} className="onto-a2ui-list__item">
+            {r.title}
+          </li>
         ))}
-      </div>
+      </ul>
+    </div>
+  );
+}
 
-      {selected && typeId ? (
-        <div className="onto-kanban__detail">
-          <div className="onto-kanban__detail-head">
-            <strong>{selected.title}</strong>
-            <Link to={`/object-explorer/objects/${typeId}`} className="onto-kanban__link">
-              Open in Explorer
-            </Link>
-          </div>
-          {updateAction ? (
-            <div className="onto-kanban__row">
-              <input
-                className="ds-control"
-                value={editTitle}
-                onChange={(e) => setEditTitle(e.target.value)}
-              />
-              <button
-                type="button"
-                className="btn btn-secondary"
-                disabled={busy}
-                onClick={() =>
-                  void runAction(updateAction, { object_id: selected.id, title: editTitle }, selected.id)
-                }
-              >
-                Save
-              </button>
-            </div>
-          ) : null}
-          {suggestFunction ? (
-            <button
-              type="button"
-              className="btn btn-secondary"
-              disabled={busy}
-              onClick={() => {
-                void (async () => {
-                  setBusy(true);
-                  try {
-                    const res = await executeOntologyFunctionByApiName(suggestFunction, {
-                      input: { work_item_id: selected.id },
-                      use_published: true,
-                    });
-                    setFoResult(JSON.stringify(res.output ?? res, null, 2));
-                  } catch (e) {
-                    setError(e instanceof Error ? e.message : String(e));
-                  } finally {
-                    setBusy(false);
-                  }
-                })();
-              }}
-            >
-              Suggest priority
-            </button>
-          ) : null}
-          {deleteAction ? (
-            <button
-              type="button"
-              className="btn btn-danger"
-              disabled={busy}
-              onClick={() => {
-                if (!window.confirm('Delete this card?')) return;
-                void runAction(deleteAction, { object_id: selected.id }, selected.id).then(() =>
-                  setSelectedId(null),
-                );
-              }}
-            >
-              Delete
-            </button>
-          ) : null}
-          {foResult ? <pre className="onto-kanban__fo">{foResult}</pre> : null}
-        </div>
-      ) : null}
+type SchemaField = { name: string; type: string };
 
+function fieldsFromInputSchema(schema: Record<string, unknown> | null | undefined): SchemaField[] {
+  if (!schema || typeof schema !== 'object') return [];
+  const props = schema.properties;
+  if (!props || typeof props !== 'object') return [];
+  const skip = new Set(['object_id', 'object']);
+  const out: SchemaField[] = [];
+  for (const [name, def] of Object.entries(props as Record<string, unknown>)) {
+    if (skip.has(name)) continue;
+    const t =
+      def && typeof def === 'object' && 'type' in def
+        ? String((def as { type?: unknown }).type || 'string')
+        : 'string';
+    out.push({ name, type: t });
+  }
+  return out;
+}
+
+function OntoActionFormImpl({ props }: { props: Record<string, string> }) {
+  const actionApiName = props.actionApiName || '';
+  const label = props.label || actionApiName || 'Submit';
+  const fieldWhitelist = useMemo(
+    () =>
+      (props.fields || '')
+        .split(',')
+        .map((s) => s.trim())
+        .filter(Boolean),
+    [props.fields],
+  );
+
+  const [open, setOpen] = useState(false);
+  const [fields, setFields] = useState<SchemaField[]>([]);
+  const [values, setValues] = useState<Record<string, string>>({});
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const loadSchema = useCallback(async () => {
+    if (!actionApiName) return;
+    setError(null);
+    try {
+      const acts = await fetchOntologyActionTypes();
+      const act = acts.find((a) => a.api_name === actionApiName);
+      if (!act) throw new Error(`Action not found: ${actionApiName}`);
+      let schema: Record<string, unknown> | null = null;
+      if (act.function_id) {
+        const fn = await fetchOntologyFunction(act.function_id);
+        if (fn.published_version_id) {
+          const ver = await fetchFunctionVersion(fn.id, fn.published_version_id);
+          schema = (ver.input_schema as Record<string, unknown>) || null;
+        } else {
+          const versions = await fetchFunctionVersions(fn.id);
+          const latest = versions[0];
+          schema = (latest?.input_schema as Record<string, unknown>) || null;
+        }
+      }
+      let next = fieldsFromInputSchema(schema);
+      if (!next.length) {
+        next = [{ name: 'title', type: 'string' }];
+      }
+      if (fieldWhitelist.length) {
+        next = next.filter((f) => fieldWhitelist.includes(f.name));
+      }
+      setFields(next);
+      const init: Record<string, string> = {};
+      for (const f of next) init[f.name] = '';
+      setValues(init);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+    }
+  }, [actionApiName, fieldWhitelist]);
+
+  useEffect(() => {
+    if (open) void loadSchema();
+  }, [open, loadSchema]);
+
+  return (
+    <span className="onto-a2ui-inline">
+      <button
+        type="button"
+        className="btn btn-primary btn-sm"
+        disabled={!actionApiName}
+        onClick={() => setOpen(true)}
+      >
+        {label}
+      </button>
       <Dialog
-        open={showCreate}
+        open={open}
         onClose={() => {
-          if (!busy) {
-            setShowCreate(false);
-            setCreateTitle('');
-          }
+          if (!busy) setOpen(false);
         }}
         closeDisabled={busy}
-        title="New card"
+        title={label}
         size="sm"
         footer={
           <>
-            <button
-              type="button"
-              className="btn btn-secondary"
-              disabled={busy}
-              onClick={() => {
-                setShowCreate(false);
-                setCreateTitle('');
-              }}
-            >
+            <button type="button" className="btn btn-secondary" disabled={busy} onClick={() => setOpen(false)}>
               Cancel
             </button>
             <button
               type="submit"
-              form="onto-kanban-create-form"
+              form="onto-a2ui-action-form"
               className="btn btn-primary"
-              disabled={busy || !createTitle.trim()}
+              disabled={busy || !actionApiName}
             >
-              Create
+              {busy ? '…' : 'Submit'}
             </button>
           </>
         }
       >
         <form
-          id="onto-kanban-create-form"
+          id="onto-a2ui-action-form"
           onSubmit={(e) => {
             e.preventDefault();
-            const title = createTitle.trim();
-            if (!title || busy) return;
-            void runAction(createAction, {
-              title,
-              status: columns[0] || 'backlog',
-            })
-              .then(() => {
-                setCreateTitle('');
-                setShowCreate(false);
-              })
-              .catch((err) => {
+            if (!actionApiName || busy) return;
+            setBusy(true);
+            setError(null);
+            void (async () => {
+              try {
+                const id = await resolveActionId(actionApiName);
+                const input: Record<string, unknown> = {};
+                for (const f of fields) {
+                  const raw = values[f.name] ?? '';
+                  if (f.type === 'number' || f.type === 'integer') {
+                    input[f.name] = raw === '' ? undefined : Number(raw);
+                  } else if (f.type === 'boolean') {
+                    input[f.name] = raw === 'true' || raw === '1';
+                  } else {
+                    input[f.name] = raw;
+                  }
+                }
+                const res = await executeOntologyAction(id, { input });
+                if (res.status !== 'ok') throw new Error(res.error || 'Action failed');
+                setOpen(false);
+                emitMutated();
+              } catch (err) {
                 setError(err instanceof Error ? err.message : String(err));
-              });
+              } finally {
+                setBusy(false);
+              }
+            })();
           }}
         >
-          <FormField label="Title">
-            <input
-              type="text"
-              autoFocus
-              value={createTitle}
-              onChange={(e) => setCreateTitle(e.target.value)}
-              placeholder="Title"
-              disabled={busy}
-            />
-          </FormField>
+          {error ? <p className="onto-a2ui-error">{error}</p> : null}
+          {fields.map((f) => (
+            <FormField key={f.name} label={f.name}>
+              <input
+                className="ds-control"
+                type={f.type === 'number' || f.type === 'integer' ? 'number' : 'text'}
+                value={values[f.name] ?? ''}
+                disabled={busy}
+                onChange={(e) => setValues((prev) => ({ ...prev, [f.name]: e.target.value }))}
+              />
+            </FormField>
+          ))}
         </form>
       </Dialog>
-    </div>
+    </span>
   );
 }
 
-const OntoKanbanBoardApi = {
-  name: 'OntoKanbanBoard',
+const OntoObjectListApi = {
+  name: 'OntoObjectList',
   schema: z.object({
     objectType: z.string(),
-    columnProperty: z.string().optional(),
-    columns: z.string().optional(),
-    cardTitleProperty: z.string().optional(),
-    createAction: z.string().optional(),
-    updateAction: z.string().optional(),
-    setStatusAction: z.string().optional(),
-    deleteAction: z.string().optional(),
-    suggestFunction: z.string().optional(),
+    titleProperty: z.string().optional(),
+    filterProperty: z.string().optional(),
+    filterValue: z.string().optional(),
+  }),
+} as never;
+
+const OntoActionFormApi = {
+  name: 'OntoActionForm',
+  schema: z.object({
+    actionApiName: z.string(),
+    label: z.string().optional(),
+    fields: z.string().optional(),
   }),
 } as never;
 
@@ -357,9 +328,15 @@ const OntoObjectLinkApi = {
   }),
 } as never;
 
-const OntoKanbanBoard = createComponentImplementation(OntoKanbanBoardApi, ({ props }: { props: Record<string, string> }) => (
-  <OntoKanbanBoardImpl props={props} />
-));
+const OntoObjectList = createComponentImplementation(
+  OntoObjectListApi,
+  ({ props }: { props: Record<string, string> }) => <OntoObjectListImpl props={props} />,
+);
+
+const OntoActionForm = createComponentImplementation(
+  OntoActionFormApi,
+  ({ props }: { props: Record<string, string> }) => <OntoActionFormImpl props={props} />,
+);
 
 const OntoActionButton = createComponentImplementation(
   OntoActionButtonApi,
@@ -373,14 +350,13 @@ const OntoActionButton = createComponentImplementation(
           onClick={() => {
             void (async () => {
               try {
-                const acts = await fetchOntologyActionTypes();
-                const hit = acts.find((a) => a.api_name === props.actionApiName);
-                if (!hit) throw new Error(`Action not found: ${props.actionApiName}`);
-                const res = await executeOntologyAction(hit.id, {
+                const id = await resolveActionId(props.actionApiName);
+                const res = await executeOntologyAction(id, {
                   object_id: props.objectId,
                   input: props.objectId ? { object_id: props.objectId } : {},
                 });
                 setMsg(res.status === 'ok' ? 'ok' : res.error || 'error');
+                if (res.status === 'ok') emitMutated();
               } catch (e) {
                 setMsg(e instanceof Error ? e.message : String(e));
               }
@@ -389,7 +365,7 @@ const OntoActionButton = createComponentImplementation(
         >
           {props.label || props.actionApiName}
         </button>
-        {msg ? <span className="onto-kanban__muted">{msg}</span> : null}
+        {msg ? <span className="onto-a2ui-muted">{msg}</span> : null}
       </span>
     );
   },
@@ -407,8 +383,10 @@ const OntoFunctionButton = createComponentImplementation(
           onClick={() => {
             void (async () => {
               try {
+                const input: Record<string, unknown> = {};
+                if (props.objectId) input.object_id = props.objectId;
                 const res = await executeOntologyFunctionByApiName(props.functionApiName, {
-                  input: props.objectId ? { work_item_id: props.objectId } : {},
+                  input,
                   use_published: true,
                 });
                 setOut(JSON.stringify(res.output ?? res, null, 2));
@@ -420,7 +398,7 @@ const OntoFunctionButton = createComponentImplementation(
         >
           {props.label || props.functionApiName}
         </button>
-        {out ? <pre className="onto-kanban__fo">{out}</pre> : null}
+        {out ? <pre className="onto-a2ui-fo">{out}</pre> : null}
       </span>
     );
   },
@@ -429,7 +407,7 @@ const OntoFunctionButton = createComponentImplementation(
 const OntoObjectLink = createComponentImplementation(
   OntoObjectLinkApi,
   ({ props }: { props: Record<string, string> }) => (
-    <Link className="onto-kanban__link" to={`/object-explorer/objects/${props.objectTypeId}`}>
+    <Link className="onto-a2ui-link" to={`/object-explorer/objects/${props.objectTypeId}`}>
       {props.label || props.objectId}
     </Link>
   ),
@@ -440,6 +418,6 @@ const basicFunctions = basicCatalog.functions ? [...basicCatalog.functions.value
 
 export const ontologyAppCatalog = new Catalog(
   ONTOLOGY_APP_A2UI_CATALOG_ID,
-  [...basicComponents, OntoKanbanBoard, OntoActionButton, OntoFunctionButton, OntoObjectLink] as never[],
+  [...basicComponents, OntoObjectList, OntoActionForm, OntoActionButton, OntoFunctionButton, OntoObjectLink] as never[],
   basicFunctions as never[],
 );

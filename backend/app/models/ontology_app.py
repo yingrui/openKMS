@@ -1,4 +1,4 @@
-"""Ontology Apps — App Builder authored A2UI apps over ontology bindings."""
+"""Ontology Apps — App Builder authored apps (resources + runnable artifact)."""
 
 from datetime import datetime
 

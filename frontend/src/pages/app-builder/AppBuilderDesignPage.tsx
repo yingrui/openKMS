@@ -21,7 +21,7 @@ import { useConfirm } from '../../contexts/ConfirmContext';
 import { OntologyAppA2uiSurface } from '../apps/OntologyAppA2uiSurface';
 import './AppBuilderPages.scss';
 
-function formatBindings(b: OntologyAppBindings | Record<string, unknown> | undefined): string {
+function formatResources(b: OntologyAppBindings | Record<string, unknown> | undefined): string {
   if (!b || !Object.keys(b).length) return '—';
   const lines: string[] = [];
   for (const [k, v] of Object.entries(b)) {
@@ -29,6 +29,16 @@ function formatBindings(b: OntologyAppBindings | Record<string, unknown> | undef
     lines.push(`${k}: ${Array.isArray(v) ? v.join(', ') : String(v)}`);
   }
   return lines.length ? lines.join('\n') : '—';
+}
+
+function a2uiHasRemovedComponent(messages: Record<string, unknown>[]): boolean {
+  for (const msg of messages) {
+    const upd = msg.updateComponents as { components?: Record<string, unknown>[] } | undefined;
+    for (const c of upd?.components || []) {
+      if (c.component === 'OntoKanbanBoard') return true;
+    }
+  }
+  return false;
 }
 
 export function AppBuilderDesignPage() {
@@ -45,14 +55,20 @@ export function AppBuilderDesignPage() {
   const [error, setError] = useState<string | null>(null);
   const [conversations, setConversations] = useState<DesignerConversation[]>([]);
   const [conversationId, setConversationId] = useState<string | null>(null);
-  const [canvasMode, setCanvasMode] = useState<'preview' | 'source' | 'bindings'>('preview');
+  const [canvasMode, setCanvasMode] = useState<'preview' | 'source'>('preview');
   const threadEndRef = useRef<HTMLDivElement | null>(null);
   const streamingRef = useRef('');
 
   const reloadApp = useCallback(async () => {
     const design = await fetchOntologyAppDesign(appId);
     setApp(design);
-    setWorking(design.a2ui_messages || []);
+    let msgs = design.a2ui_messages || [];
+    if (a2uiHasRemovedComponent(msgs)) {
+      const healed = await synthesizeOntologyApp(appId);
+      setApp(healed);
+      msgs = healed.a2ui_messages || [];
+    }
+    setWorking(msgs);
     return design;
   }, [appId]);
 
@@ -94,6 +110,8 @@ export function AppBuilderDesignPage() {
     setStreaming('');
     streamingRef.current = '';
     setError(null);
+    const workingForChat = a2uiHasRemovedComponent(working) ? [] : working;
+    if (workingForChat !== working) setWorking([]);
     void postOntologyAppDesignerChatStream(
       appId,
       next,
@@ -114,7 +132,16 @@ export function AppBuilderDesignPage() {
             if (payload.ok && payload.bindings) {
               setApp((prev) => (prev ? { ...prev, bindings: payload.bindings! } : prev));
             }
-            if (!payload.ok && payload.error) setError(payload.error);
+            if (!payload.ok && payload.error) {
+              // LLM may still emit removed components — keep chat usable; do not leave board in canvas.
+              setError(payload.error);
+              if (/OntoKanbanBoard|removed/i.test(payload.error)) {
+                void synthesizeOntologyApp(appId).then((d) => {
+                  setApp(d);
+                  setWorking(d.a2ui_messages || []);
+                });
+              }
+            }
           } catch {
             /* ignore */
           }
@@ -124,7 +151,17 @@ export function AppBuilderDesignPage() {
           setChatLog((prev) => [...prev, { role: 'assistant', content }]);
           setStreaming('');
           streamingRef.current = '';
-          if (ev.a2ui_messages) setWorking(ev.a2ui_messages);
+          if (ev.a2ui_messages) {
+            const msgs = ev.a2ui_messages;
+            if (a2uiHasRemovedComponent(msgs)) {
+              void synthesizeOntologyApp(appId).then((d) => {
+                setApp(d);
+                setWorking(d.a2ui_messages || []);
+              });
+            } else {
+              setWorking(msgs);
+            }
+          }
           if (ev.bindings) {
             setApp((prev) => (prev ? { ...prev, bindings: ev.bindings! } : prev));
           }
@@ -132,7 +169,7 @@ export function AppBuilderDesignPage() {
         }
         if (ev.type === 'error') setError(ev.message);
       },
-      { workingA2uiMessages: working, conversationId },
+      { workingA2uiMessages: workingForChat, conversationId },
     )
       .catch((err) => setError(err instanceof Error ? err.message : String(err)))
       .finally(() => setBusy(false));
@@ -185,7 +222,12 @@ export function AppBuilderDesignPage() {
   if (error && !app) return <div className="app-builder-page app-builder-page__error">{error}</div>;
   if (!app) return <div className="app-builder-page">{t('loading')}</div>;
 
-  const canPublish = Boolean(app.bindings?.objectType) && !(app.missing_bindings?.length);
+  const canPublish = Boolean(
+    (app.bindings?.objectTypes?.length ||
+      app.bindings?.actions?.length ||
+      app.bindings?.functions?.length) &&
+      !(app.missing_bindings?.length),
+  );
 
   return (
     <div className="app-builder-design">
@@ -335,42 +377,15 @@ export function AppBuilderDesignPage() {
           >
             {t('source')}
           </button>
-          <button
-            type="button"
-            role="tab"
-            className={
-              canvasMode === 'bindings'
-                ? 'app-builder-design__canvas-tab app-builder-design__canvas-tab--active'
-                : 'app-builder-design__canvas-tab'
-            }
-            aria-selected={canvasMode === 'bindings'}
-            onClick={() => setCanvasMode('bindings')}
-          >
-            {t('bindings')}
-          </button>
         </div>
         <div className="app-builder-design__canvas-body">
           {canvasMode === 'preview' ? (
             <OntologyAppA2uiSurface a2uiMessages={working} />
-          ) : null}
-          {canvasMode === 'source' ? (
+          ) : (
             <pre className="app-builder-design__source" tabIndex={0}>
               {working.length ? JSON.stringify(working, null, 2) : '[]'}
             </pre>
-          ) : null}
-          {canvasMode === 'bindings' ? (
-            <div className="app-builder-design__bindings-pane">
-              <p className="app-builder-page__muted">{t('bindingsHint')}</p>
-              <pre className="app-builder-design__bindings" tabIndex={0}>
-                {formatBindings(app.bindings)}
-              </pre>
-              {app.missing_bindings?.length ? (
-                <p className="app-builder-page__error" role="alert">
-                  {t('missing')}: {app.missing_bindings.join(', ')}
-                </p>
-              ) : null}
-            </div>
-          ) : null}
+          )}
         </div>
       </main>
 
@@ -378,12 +393,27 @@ export function AppBuilderDesignPage() {
         <h2>{t('publishRail')}</h2>
         <p className="app-builder-page__muted">
           {app.status} {app.bindings_stale ? `· ${t('stale')}` : ''}
+          {app.artifact_kind ? ` · ${app.artifact_kind}` : ''}
         </p>
+        {app.missing_bindings?.includes('legacy_board_bindings') ? (
+          <p className="app-builder-page__error" role="alert">
+            {t('legacyBoardHint')}
+          </p>
+        ) : null}
+        <p className="app-builder-page__muted">{t('resources')}</p>
+        <pre className="app-builder-design__bindings">{formatResources(app.bindings)}</pre>
+        {app.missing_bindings?.filter((m) => m !== 'legacy_board_bindings').length ? (
+          <p className="app-builder-page__error" role="alert">
+            {t('missing')}:{' '}
+            {app.missing_bindings.filter((m) => m !== 'legacy_board_bindings').join(', ')}
+          </p>
+        ) : null}
         <button
           type="button"
           className="btn btn-secondary"
           disabled={busy}
           onClick={() => {
+            setError(null);
             void synthesizeOntologyApp(appId).then((d) => {
               setApp(d);
               setWorking(d.a2ui_messages || []);

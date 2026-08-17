@@ -114,6 +114,7 @@ async def get_ontology_app_design(
     _: None = Depends(require_any_permission(PERM_ONTOLOGY_WRITE)),
 ):
     app = await apps_svc.get_app(db, app_id)
+    app = await apps_svc.heal_draft_if_removed_components(db, app)
     messages = normalize_stored_a2ui_document(app.draft_a2ui) or []
     stale, missing = await apps_svc.enrich_stale(db, app)
     base = apps_svc.to_response_base(app, stale=stale, missing=missing)
@@ -290,7 +291,7 @@ async def designer_chat(
             async with async_session_maker() as s:
                 row = await apps_svc.get_app(s, app_id)
                 try:
-                    row = await apps_svc.apply_bindings(s, row, raw, synthesize=True)
+                    row = await apps_svc.apply_bindings(s, row, raw, synthesize=False)
                 except HTTPException as he:
                     detail = he.detail
                     if isinstance(detail, dict):
@@ -330,7 +331,7 @@ async def designer_chat(
 
             async with async_session_maker() as s:
                 row = await apps_svc.get_app(s, app_id)
-                # Bindings may already be applied via set_bindings; only persist A2UI here.
+                # Resources may already be applied via set_resources; only persist A2UI here.
                 await apps_svc.update_app(s, row, OntologyAppUpdate(draft_a2ui_messages=last_a2ui))
 
     return StreamingResponse(ndjson(), media_type="application/x-ndjson")

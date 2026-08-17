@@ -12,7 +12,7 @@
 
 **Product reference:** [Ontology](../features/ontology.md) · [Ontology Functions](../features/ontology-functions.md) · [Goals](../goals.md)
 
-> openKMS does **not** ship a Kanban board UI in Object Explorer. “Board” means: typed work items with a **status/column** property, browseable in Object Explorer, optionally graphed in Neo4j, with FoO for AI-assisted decisions and Actions to **create / update / move / delete** cards (`edits` apply). A visual board is **[App Builder](../features/app-builder.md)** (+ A2UI, same family as Knowledge Map Overview)—published boards run under **Apps**.
+> openKMS does **not** ship a Kanban board UI in Object Explorer. “Board” means: typed work items with a **status/column** property, browseable in Object Explorer, optionally graphed in Neo4j, with FoO for AI-assisted decisions and Actions to **create / update / move / delete** cards (`edits` apply). A visual app is built with **[App Builder](../features/app-builder.md)** using platform primitives (`OntoObjectList`, `OntoActionForm`, …)—not a built-in kanban widget. Published apps run under **Apps**.
 
 ---
 

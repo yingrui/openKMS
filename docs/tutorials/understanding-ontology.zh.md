@@ -12,7 +12,7 @@
 
 **功能参考：** [本体](../features/ontology.md) · [Ontology Functions](../features/ontology-functions.md) · [目标](../goals.md)
 
-> openKMS **不在 Object Explorer 交付看板 UI**。「看板」= 带 **status/列** 的工作项，在 Explorer 浏览，可选 Neo4j 看依赖，用 FoO 决策，用 Actions **创建 / 更新 / 移动 / 删除**卡片（`edits` 写回）。可视化看板见 **[App Builder](../features/app-builder.md)**（A2UI），已发布应用在 **Apps** 中运行。
+> openKMS **不在 Object Explorer 交付看板 UI**。「看板」= 带 **status/列** 的工作项，在 Explorer 浏览，可选 Neo4j 看依赖，用 FoO 决策，用 Actions **创建 / 更新 / 移动 / 删除**卡片（`edits` 写回）。可视化应用用 **[App Builder](../features/app-builder.md)** 的平台积木（`OntoObjectList`、`OntoActionForm` 等）组装，**没有**内置看板组件。已发布应用在 **Apps** 中运行。
 
 英文源：[Build a simple Kanban on the ontology](understanding-ontology.md)
 
@@ -147,4 +147,4 @@ Backlog → 进行中 → 评审 → 完成
 
 ## 9. 接下来
 
-加强同一块板上的 FoO · **[App Builder + A2UI 看板](../features/app-builder.md)** · 接到真实跟踪工具的数据集 · [Tushare 案例](tushare-market-ontology.md) · [Ontology Functions](../features/ontology-functions.md)
+加强同一块板上的 FoO · **[App Builder](../features/app-builder.md)** · 接到真实跟踪工具的数据集 · [Tushare 案例](tushare-market-ontology.md) · [Ontology Functions](../features/ontology-functions.md)
