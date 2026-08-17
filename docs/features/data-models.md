@@ -151,6 +151,11 @@ Schema for every persisted table. Grouped by area; see the matching feature page
 - `id`, `link_type_id` (FK), `source_object_id` (FK), `target_object_id` (FK), `created_at`, `updated_at`
 - Instance of a link type connecting two object instances
 
+### OntologyApp
+
+- `id`, `name`, `api_name` (unique), `description`, `template_id` (e.g. `status_board`), `bindings` (JSONB), `draft_a2ui` / `published_a2ui` (JSONB `{ format: "a2ui_v0_9", messages }`), `bindings_hash`, `status` (`draft` \| `published`), `created_by`, `created_by_name`, `created_at`, `updated_at`
+- App Builder drafts and Apps published run documents; see [App Builder & Apps](app-builder.md)
+
 ### DataSource
 
 - `id`, `name`, `kind` (postgresql | neo4j), `host`, `port`, `database`, `username_encrypted`, `password_encrypted`, `options` (JSONB), `created_at`, `updated_at`

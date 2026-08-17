@@ -19,6 +19,7 @@ Per-feature reference, split by topic. The full content used to live in this sin
 | [Global search](features/global-search.md) | `/search` page: documents, articles, wiki spaces, knowledge bases, media (name, channel, updated filters) |
 | [Ontology — objects, links, datasets](features/ontology.md) | Object/link types, instances, data sources, datasets |
 | [Ontology Functions](features/ontology-functions.md) | Three Suite Apps (Manager, Object Explorer, Function Editor), PG-backed functions, ofs runtime |
+| [App Builder & Apps](features/app-builder.md) | Status-board A2UI apps: author bindings in App Builder, run published boards in Apps |
 | [Ontology Function Client](features/ontology-sdk.md) | `openkms_functions` Client / `@function` / edits; string api names |
 | [Object Explorer](features/object-explorer.md) | Cypher exploration, list view, instance graph layout and rendering |
 | [Pipelines, jobs & models](features/pipelines-and-jobs.md) | Pipeline templates, procrastinate jobs, provider/model registry (multimodal image/video models planned) |

@@ -36,6 +36,7 @@ from app.api.ontology_explore import router as ontology_explore_router
 from app.api.ontology_functions import router as ontology_functions_router
 from app.api.ontology_groups import router as ontology_groups_router
 from app.api.ontology_action_types import router as ontology_action_types_router
+from app.api.ontology_apps import router as ontology_apps_router
 from app.api.providers import router as providers_router
 from app.api.connectors import router as connectors_router
 from app.api.schedules import router as schedules_router
@@ -162,6 +163,7 @@ app.include_router(ontology_explore_router, prefix="/api")
 app.include_router(ontology_functions_router, prefix="/api")
 app.include_router(ontology_groups_router, prefix="/api")
 app.include_router(ontology_action_types_router, prefix="/api")
+app.include_router(ontology_apps_router, prefix="/api")
 app.include_router(connectors_router, prefix="/api")
 app.include_router(schedules_router, prefix="/api")
 app.include_router(data_sources_router, prefix="/api")

@@ -206,7 +206,11 @@ function extractErrorMessage(bodyText: string, fallback: string): string {
     if (detail && typeof detail === 'object' && !Array.isArray(detail)) {
       const message = (detail as { message?: unknown }).message;
       const errors = (detail as { errors?: unknown }).errors;
+      const missing = (detail as { missing_bindings?: unknown }).missing_bindings;
       if (typeof message === 'string' && Array.isArray(errors)) return `${message}: ${errors.join('; ')}`;
+      if (typeof message === 'string' && Array.isArray(missing) && missing.length) {
+        return `${message}: ${missing.join(', ')}`;
+      }
       if (typeof message === 'string' && message) return message;
     }
     if (Array.isArray(detail) && detail.length > 0) {

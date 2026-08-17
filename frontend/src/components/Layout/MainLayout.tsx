@@ -13,8 +13,10 @@ import { ConfirmProvider } from '../../contexts/ConfirmContext';
 import { ManagerNavRail } from '../ontology/ManagerNavRail';
 import { ExplorerNavRail } from '../ontology/ExplorerNavRail';
 import { FunctionEditorNavRail } from '../ontology/FunctionEditorNavRail';
+import { AppBuilderNavRail } from '../ontology/AppBuilderNavRail';
 import {
   getOntologySubApp,
+  isAppBuilderDesignPath,
   isFunctionEditorWorkspacePath,
   isObjectExplorerExplorePath,
   isOntologySuitePath,
@@ -25,6 +27,7 @@ function OntologyRail({ subApp }: { subApp: ReturnType<typeof getOntologySubApp>
   if (subApp === 'ontology-manager') return <ManagerNavRail />;
   if (subApp === 'object-explorer') return <ExplorerNavRail />;
   if (subApp === 'function-editor') return <FunctionEditorNavRail />;
+  if (subApp === 'app-builder') return <AppBuilderNavRail />;
   return null;
 }
 
@@ -98,9 +101,14 @@ function MainLayoutInner() {
   const isSearchPage = location.pathname === '/search';
 
   const ontologySubApp = getOntologySubApp(location.pathname);
-  const showOntologyRail = isOntologySuitePath(location.pathname) && !isFunctionEditorWorkspacePath(location.pathname);
+  const showOntologyRail =
+    isOntologySuitePath(location.pathname) &&
+    !isFunctionEditorWorkspacePath(location.pathname) &&
+    !isAppBuilderDesignPath(location.pathname);
   const isExplorePage = isObjectExplorerExplorePath(location.pathname);
-  const isEditorWorkspace = isFunctionEditorWorkspacePath(location.pathname);
+  const isEditorWorkspace =
+    isFunctionEditorWorkspacePath(location.pathname) || isAppBuilderDesignPath(location.pathname);
+  const isAppsRun = /^\/apps\/[^/]+$/.test(location.pathname);
 
   const sidebarCollapsed = true;
   const onArticles =
@@ -116,6 +124,7 @@ function MainLayoutInner() {
   if (ontologySubApp === 'ontology-manager') ontologyRailModifier = ' app-content--with-ontology-manager-rail';
   else if (ontologySubApp === 'object-explorer') ontologyRailModifier = ' app-content--with-object-explorer-rail';
   else if (ontologySubApp === 'function-editor') ontologyRailModifier = ' app-content--with-function-editor-rail';
+  else if (ontologySubApp === 'app-builder') ontologyRailModifier = ' app-content--with-function-editor-rail';
 
   let ontologyOutlet: ReactNode = <Outlet />;
   if (showOntologyRail) {
@@ -183,7 +192,7 @@ function MainLayoutInner() {
         {!showAuthRequired && !showPathDenied && (
           <SidebarLayoutProvider sidebarCollapsed={sidebarCollapsed}>
             <div
-              className={`app-content ${isDetailPage ? 'app-content--compact' : ''}${isHome ? ' app-content--home' : ''}${isSearchPage ? ' app-content--search' : ''}${isExplorePage ? ' app-content--object-explorer' : ''}${isEditorWorkspace ? ' app-content--function-editor-workspace' : ''}${showChannelRail ? ' app-content--with-channel-rail' : ''}${ontologyRailModifier}`}
+              className={`app-content ${isDetailPage ? 'app-content--compact' : ''}${isHome ? ' app-content--home' : ''}${isSearchPage ? ' app-content--search' : ''}${isExplorePage ? ' app-content--object-explorer' : ''}${isEditorWorkspace ? ' app-content--function-editor-workspace' : ''}${isAppsRun ? ' app-content--function-editor-workspace' : ''}${showChannelRail ? ' app-content--with-channel-rail' : ''}${ontologyRailModifier}`}
             >
               {ontologyOutlet}
             </div>

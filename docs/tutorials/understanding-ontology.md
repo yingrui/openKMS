@@ -12,7 +12,7 @@
 
 **Product reference:** [Ontology](../features/ontology.md) · [Ontology Functions](../features/ontology-functions.md) · [Goals](../goals.md)
 
-> openKMS does **not** ship a Kanban board UI in Object Explorer. “Board” means: typed work items with a **status/column** property, browseable in Object Explorer, optionally graphed in Neo4j, with FoO for AI-assisted decisions and Actions to **create / update / move / delete** cards (`edits` apply). A visual board belongs to a future **App Builder** app ([A2UI](https://a2ui.org/), same family as Knowledge Map Overview)—not this tutorial.
+> openKMS does **not** ship a Kanban board UI in Object Explorer. “Board” means: typed work items with a **status/column** property, browseable in Object Explorer, optionally graphed in Neo4j, with FoO for AI-assisted decisions and Actions to **create / update / move / delete** cards (`edits` apply). A visual board is **[App Builder](../features/app-builder.md)** (+ A2UI, same family as Knowledge Map Overview)—published boards run under **Apps**.
 
 ---
 
@@ -60,7 +60,7 @@ Link type                  → belongsTo / assignedTo / dependsOn
 Index (Neo4j)              → Cypher (“what blocks WI-2?”)
 Function (FoO)             → suggestWorkItemPriority / workItemDependencyClosure
 Action                     → create / update / move / delete (edits create|modify|delete; platform applies)
-App Builder (later)        → visual Kanban columns via A2UI
+App Builder + Apps         → visual Kanban columns via A2UI
 ```
 
 **Dataset vs object type:** a dataset is a *table registration*; an object type says those rows (or hand-created instances) *mean* WorkItems. For this lab you may **skip datasets** and create instances directly in Object Explorer—fastest path for teaching. Add datasets when you sync from Jira/Linear or seed Postgres.
@@ -277,7 +277,7 @@ def execute(input: dict, client: Client) -> dict:
 
 For each: create an Action type on **WorkItem**, bind the Function, activate. Try create from Manager Action execute; try update/move/delete on a card in Object Explorer.
 
-A visual column board is **not** part of Object Explorer; build that later with **App Builder** + A2UI on the same APIs.
+A visual column board is **not** part of Object Explorer; build it with **[App Builder](../features/app-builder.md)** + A2UI on the same APIs, then open the published app under **Apps**.
 
 ---
 
@@ -290,7 +290,7 @@ A visual column board is **not** part of Object Explorer; build that later with 
 | Relations | At least one **dependsOn** and one **assignedTo** |
 | Decision | Published FoO returns JSON for a card id |
 | Write | Actions create / update / move / delete persist via `edits` (`applied.created_ids` / `modified_ids` / `deleted_ids`) |
-| Story | You can explain: board state = ontology knowledge; FoO = shared decision rule; board UI = App Builder later |
+| Story | You can explain: board state = ontology knowledge; FoO = shared decision rule; board UI = App Builder → Apps |
 
 ---
 
@@ -326,7 +326,7 @@ Full stack glossary remains in older revisions’ spirit: data source, dataset, 
 | Path | When |
 |------|------|
 | Enrich FoO (`workItemDependencyClosure`, `teamCapacitySnapshot`) | You want stronger AI decisions on the same board |
-| App Builder Kanban (A2UI) | You want a visual column board (not Object Explorer) |
+| [App Builder Kanban (A2UI)](../features/app-builder.md) | You want a visual column board (not Object Explorer) |
 | Bind datasets / connector sync from a real tracker | You outgrow hand-entered cards |
 | [Tushare market ontology DIY](tushare-market-ontology.md) | Practice the same pattern on market data |
 | [Ontology Functions](../features/ontology-functions.md) | Deeper authoring / SDK |

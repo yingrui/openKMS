@@ -1,0 +1,115 @@
+.onto-app-a2ui.a2ui-light {
+  --a2ui-bg: var(--surface, #fff);
+  --a2ui-fg: var(--text, #1a1a1a);
+  min-height: 12rem;
+}
+
+.onto-kanban {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.onto-kanban__toolbar,
+.onto-kanban__row,
+.onto-kanban__detail-head {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.onto-kanban__columns {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr));
+  gap: 0.75rem;
+}
+
+.onto-kanban__col {
+  background: var(--surface-muted, #f4f4f5);
+  border-radius: 0.5rem;
+  padding: 0.5rem;
+  min-height: 12rem;
+}
+
+.onto-kanban__col-title {
+  font-weight: 600;
+  margin-bottom: 0.5rem;
+  text-transform: capitalize;
+}
+
+.onto-kanban__cards {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.onto-kanban__card {
+  text-align: left;
+  border: 1px solid var(--border, #ddd);
+  background: var(--surface, #fff);
+  border-radius: 0.35rem;
+  padding: 0.5rem 0.6rem;
+  cursor: grab;
+}
+
+.onto-kanban__card--selected {
+  outline: 2px solid var(--accent, #2563eb);
+}
+
+.onto-kanban__detail {
+  border-top: 1px solid var(--border, #ddd);
+  padding-top: 0.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.onto-kanban__muted {
+  color: var(--text-muted, #666);
+  font-size: 0.875rem;
+}
+
+.onto-kanban__error {
+  color: var(--danger, #b91c1c);
+  font-size: 0.875rem;
+}
+
+.onto-kanban__fo {
+  background: var(--surface-muted, #f4f4f5);
+  padding: 0.5rem;
+  border-radius: 0.35rem;
+  overflow: auto;
+  max-height: 12rem;
+  font-size: 0.8rem;
+}
+
+.onto-kanban__link {
+  color: var(--accent, #2563eb);
+}
+
+.onto-kanban__modal {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.35);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 40;
+}
+
+.onto-kanban__modal-card {
+  background: var(--surface, #fff);
+  border-radius: 0.5rem;
+  padding: 1rem;
+  min-width: 18rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.onto-a2ui-inline {
+  display: inline-flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}

@@ -174,10 +174,17 @@ export interface ObjectInstanceListResponse {
 
 export async function fetchObjectInstances(
   objectTypeId: string,
-  params?: { search?: string }
+  params?: { search?: string; limit?: number; propFilters?: Record<string, string> }
 ): Promise<ObjectInstanceListResponse> {
+  const query: Record<string, string | number | boolean | undefined> = {
+    search: params?.search,
+    limit: params?.limit,
+  };
+  for (const [k, v] of Object.entries(params?.propFilters || {})) {
+    query[`prop.${k}`] = v;
+  }
   return request<ObjectInstanceListResponse>(`/api/object-types/${objectTypeId}/objects`, {
-    query: { search: params?.search },
+    query,
   });
 }
 

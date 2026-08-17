@@ -1,0 +1,12 @@
+{
+  "galleryTitle": "Apps",
+  "gallerySubtitle": "Published ontology apps. Open any board without entering App Builder.",
+  "loading": "Loading…",
+  "emptyGallery": "No published apps yet.",
+  "goToBuilder": "Create in App Builder",
+  "stale": "Stale",
+  "backToGallery": "All apps",
+  "editInBuilder": "Edit in App Builder",
+  "staleBanner": "Some bindings no longer resolve. The board may misbehave.",
+  "repair": "Repair"
+}

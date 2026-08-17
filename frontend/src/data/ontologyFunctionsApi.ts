@@ -153,6 +153,23 @@ export async function executeOntologyFunction(
   );
 }
 
+export async function executeOntologyFunctionByApiName(
+  apiName: string,
+  body: { input?: Record<string, unknown>; use_published?: boolean },
+): Promise<OntologyExecutionResult> {
+  return ontologyFetch<OntologyExecutionResult>(
+    `${base}/by-api-name/${encodeURIComponent(apiName)}/execute`,
+    {
+      method: 'POST',
+      body: JSON.stringify({
+        input: body.input || {},
+        use_published: body.use_published ?? true,
+      }),
+    },
+    'Execute failed',
+  );
+}
+
 export async function fetchFunctionExecutions(functionId: string): Promise<OntologyFunctionExecutionResponse[]> {
   return ontologyFetch<OntologyFunctionExecutionResponse[]>(
     `${base}/${functionId}/executions`,

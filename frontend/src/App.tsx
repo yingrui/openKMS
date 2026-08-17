@@ -185,6 +185,21 @@ const FunctionEditorListPage = lazy(() =>
 const FunctionEditorWorkspacePage = lazy(() =>
   import('./pages/function-editor/FunctionEditorWorkspacePage').then((m) => ({ default: m.FunctionEditorWorkspacePage })),
 );
+const AppBuilderListPage = lazy(() =>
+  import('./pages/app-builder/AppBuilderListPage').then((m) => ({ default: m.AppBuilderListPage })),
+);
+const AppBuilderWizardPage = lazy(() =>
+  import('./pages/app-builder/AppBuilderWizardPage').then((m) => ({ default: m.AppBuilderWizardPage })),
+);
+const AppBuilderDesignPage = lazy(() =>
+  import('./pages/app-builder/AppBuilderDesignPage').then((m) => ({ default: m.AppBuilderDesignPage })),
+);
+const AppsGalleryPage = lazy(() =>
+  import('./pages/apps/AppsGalleryPage').then((m) => ({ default: m.AppsGalleryPage })),
+);
+const AppsRunPage = lazy(() =>
+  import('./pages/apps/AppsRunPage').then((m) => ({ default: m.AppsRunPage })),
+);
 const ObjectExplorer = lazy(() => import('./pages/ontology/ObjectExplorer').then((m) => ({ default: m.ObjectExplorer })));
 const DocumentDetail = lazy(() => import('./pages/documents/DocumentDetail').then((m) => ({ default: m.DocumentDetail })));
 const WikiSpaceSettings = lazy(() =>
@@ -412,6 +427,15 @@ function App() {
             <Route index element={<FunctionEditorListPage />} />
             <Route path="new" element={<FunctionEditorWorkspacePage />} />
             <Route path=":functionId" element={<FunctionEditorWorkspacePage />} />
+          </Route>
+          <Route path="app-builder" element={<Outlet />}>
+            <Route index element={<AppBuilderListPage />} />
+            <Route path="new" element={<AppBuilderWizardPage />} />
+            <Route path=":appId/design" element={<AppBuilderDesignPage />} />
+          </Route>
+          <Route path="apps" element={<Outlet />}>
+            <Route index element={<AppsGalleryPage />} />
+            <Route path=":appId" element={<AppsRunPage />} />
           </Route>
           <Route path="ontology/*" element={<LegacyOntologyRedirect />} />
           <Route path="objects/*" element={<LegacyObjectsRedirect />} />

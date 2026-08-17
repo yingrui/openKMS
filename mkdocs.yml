@@ -180,6 +180,7 @@ nav:
       - Global search: features/global-search.md
       - Ontology — objects, links, datasets: features/ontology.md
       - Ontology Functions: features/ontology-functions.md
+      - App Builder & Apps: features/app-builder.md
       - Ontology Function Client: features/ontology-sdk.md
       - Object Explorer: features/object-explorer.md
       - Connectors: features/connectors.md

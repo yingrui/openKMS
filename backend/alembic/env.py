@@ -60,6 +60,7 @@ import app.models.job_run_worker_log  # noqa: F401 - register models with Base.m
 import app.models.scheduled_trigger  # noqa: F401 - register models with Base.metadata
 import app.models.content_comment  # noqa: F401 - register models with Base.metadata
 import app.models.ontology_function  # noqa: F401 - register models with Base.metadata
+import app.models.ontology_app  # noqa: F401 - register models with Base.metadata
 
 config = context.config
 

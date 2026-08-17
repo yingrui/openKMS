@@ -1,0 +1,12 @@
+{
+  "galleryTitle": "应用",
+  "gallerySubtitle": "已发布的本体应用。无需进入应用构建器即可打开。",
+  "loading": "加载中…",
+  "emptyGallery": "还没有已发布的应用。",
+  "goToBuilder": "在应用构建器中创建",
+  "stale": "过期",
+  "backToGallery": "全部应用",
+  "editInBuilder": "在应用构建器中编辑",
+  "staleBanner": "部分绑定已失效，看板可能异常。",
+  "repair": "修复"
+}

@@ -15,6 +15,8 @@ import {
   Network,
   Plug,
   Compass,
+  LayoutTemplate,
+  LayoutGrid,
 } from 'lucide-react';
 import type { FeatureToggleKey } from '../data/featureTogglesApi';
 
@@ -205,6 +207,32 @@ export const APP_MODULES: AppModule[] = [
     showInMainSidebar: true,
     showInConsoleNav: false,
     isActive: functionEditorActive,
+  },
+  {
+    id: 'app-builder',
+    kind: 'suite_app',
+    order: 83,
+    homePath: '/app-builder',
+    icon: LayoutTemplate,
+    labelKey: 'appBuilder',
+    taglineKey: 'appTaglineAppBuilder',
+    showInLauncher: true,
+    showInMainSidebar: true,
+    showInConsoleNav: false,
+    isActive: (p) => p === '/app-builder' || p.startsWith('/app-builder/'),
+  },
+  {
+    id: 'apps',
+    kind: 'suite_app',
+    order: 84,
+    homePath: '/apps',
+    icon: LayoutGrid,
+    labelKey: 'apps',
+    taglineKey: 'appTaglineApps',
+    showInLauncher: true,
+    showInMainSidebar: true,
+    showInConsoleNav: false,
+    isActive: (p) => p === '/apps' || (p.startsWith('/apps/') && !p.startsWith('/app-builder')),
   },
   {
     id: 'evaluations',
