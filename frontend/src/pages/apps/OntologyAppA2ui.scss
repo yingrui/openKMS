@@ -88,24 +88,9 @@
   color: var(--accent, #2563eb);
 }
 
-.onto-kanban__modal {
-  position: fixed;
-  inset: 0;
-  background: rgba(0, 0, 0, 0.35);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 40;
-}
-
-.onto-kanban__modal-card {
-  background: var(--surface, #fff);
-  border-radius: 0.5rem;
-  padding: 1rem;
-  min-width: 18rem;
-  display: flex;
-  flex-direction: column;
-  gap: 0.75rem;
+.onto-kanban__row .ds-control {
+  flex: 1;
+  min-width: 0;
 }
 
 .onto-a2ui-inline {

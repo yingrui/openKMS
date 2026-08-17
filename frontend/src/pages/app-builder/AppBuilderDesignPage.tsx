@@ -45,6 +45,7 @@ export function AppBuilderDesignPage() {
   const [error, setError] = useState<string | null>(null);
   const [conversations, setConversations] = useState<DesignerConversation[]>([]);
   const [conversationId, setConversationId] = useState<string | null>(null);
+  const [canvasMode, setCanvasMode] = useState<'preview' | 'source' | 'bindings'>('preview');
   const threadEndRef = useRef<HTMLDivElement | null>(null);
   const streamingRef = useRef('');
 
@@ -303,7 +304,74 @@ export function AppBuilderDesignPage() {
       </aside>
 
       <main className="app-builder-design__canvas">
-        <OntologyAppA2uiSurface a2uiMessages={working} />
+        <div
+          className="app-builder-design__canvas-tabs"
+          role="tablist"
+          aria-label={t('canvasModeAria')}
+        >
+          <button
+            type="button"
+            role="tab"
+            className={
+              canvasMode === 'preview'
+                ? 'app-builder-design__canvas-tab app-builder-design__canvas-tab--active'
+                : 'app-builder-design__canvas-tab'
+            }
+            aria-selected={canvasMode === 'preview'}
+            onClick={() => setCanvasMode('preview')}
+          >
+            {t('preview')}
+          </button>
+          <button
+            type="button"
+            role="tab"
+            className={
+              canvasMode === 'source'
+                ? 'app-builder-design__canvas-tab app-builder-design__canvas-tab--active'
+                : 'app-builder-design__canvas-tab'
+            }
+            aria-selected={canvasMode === 'source'}
+            onClick={() => setCanvasMode('source')}
+          >
+            {t('source')}
+          </button>
+          <button
+            type="button"
+            role="tab"
+            className={
+              canvasMode === 'bindings'
+                ? 'app-builder-design__canvas-tab app-builder-design__canvas-tab--active'
+                : 'app-builder-design__canvas-tab'
+            }
+            aria-selected={canvasMode === 'bindings'}
+            onClick={() => setCanvasMode('bindings')}
+          >
+            {t('bindings')}
+          </button>
+        </div>
+        <div className="app-builder-design__canvas-body">
+          {canvasMode === 'preview' ? (
+            <OntologyAppA2uiSurface a2uiMessages={working} />
+          ) : null}
+          {canvasMode === 'source' ? (
+            <pre className="app-builder-design__source" tabIndex={0}>
+              {working.length ? JSON.stringify(working, null, 2) : '[]'}
+            </pre>
+          ) : null}
+          {canvasMode === 'bindings' ? (
+            <div className="app-builder-design__bindings-pane">
+              <p className="app-builder-page__muted">{t('bindingsHint')}</p>
+              <pre className="app-builder-design__bindings" tabIndex={0}>
+                {formatBindings(app.bindings)}
+              </pre>
+              {app.missing_bindings?.length ? (
+                <p className="app-builder-page__error" role="alert">
+                  {t('missing')}: {app.missing_bindings.join(', ')}
+                </p>
+              ) : null}
+            </div>
+          ) : null}
+        </div>
       </main>
 
       <aside className="app-builder-design__rail">
@@ -311,13 +379,6 @@ export function AppBuilderDesignPage() {
         <p className="app-builder-page__muted">
           {app.status} {app.bindings_stale ? `· ${t('stale')}` : ''}
         </p>
-        <h3 className="app-builder-design__rail-sub">{t('bindings')}</h3>
-        <pre className="app-builder-design__bindings">{formatBindings(app.bindings)}</pre>
-        {app.missing_bindings?.length ? (
-          <p className="app-builder-page__error">
-            {t('missing')}: {app.missing_bindings.join(', ')}
-          </p>
-        ) : null}
         <button
           type="button"
           className="btn btn-secondary"

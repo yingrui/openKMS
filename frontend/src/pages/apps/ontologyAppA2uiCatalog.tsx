@@ -9,6 +9,7 @@ import {
   fetchOntologyActionTypes,
 } from '../../data/ontologyActionsApi';
 import { executeOntologyFunctionByApiName } from '../../data/ontologyFunctionsApi';
+import { Dialog, FormField } from '../../styles/design-system';
 import './OntologyAppA2ui.scss';
 
 export const ONTOLOGY_APP_A2UI_CATALOG_ID =
@@ -183,7 +184,11 @@ function OntoKanbanBoardImpl({ props }: { props: Record<string, string> }) {
           </div>
           {updateAction ? (
             <div className="onto-kanban__row">
-              <input value={editTitle} onChange={(e) => setEditTitle(e.target.value)} />
+              <input
+                className="ds-control"
+                value={editTitle}
+                onChange={(e) => setEditTitle(e.target.value)}
+              />
               <button
                 type="button"
                 className="btn btn-secondary"
@@ -240,44 +245,72 @@ function OntoKanbanBoardImpl({ props }: { props: Record<string, string> }) {
         </div>
       ) : null}
 
-      {showCreate ? (
-        <div className="onto-kanban__modal">
-          <div className="onto-kanban__modal-card">
-            <h3>New card</h3>
+      <Dialog
+        open={showCreate}
+        onClose={() => {
+          if (!busy) {
+            setShowCreate(false);
+            setCreateTitle('');
+          }
+        }}
+        closeDisabled={busy}
+        title="New card"
+        size="sm"
+        footer={
+          <>
+            <button
+              type="button"
+              className="btn btn-secondary"
+              disabled={busy}
+              onClick={() => {
+                setShowCreate(false);
+                setCreateTitle('');
+              }}
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              form="onto-kanban-create-form"
+              className="btn btn-primary"
+              disabled={busy || !createTitle.trim()}
+            >
+              Create
+            </button>
+          </>
+        }
+      >
+        <form
+          id="onto-kanban-create-form"
+          onSubmit={(e) => {
+            e.preventDefault();
+            const title = createTitle.trim();
+            if (!title || busy) return;
+            void runAction(createAction, {
+              title,
+              status: columns[0] || 'backlog',
+            })
+              .then(() => {
+                setCreateTitle('');
+                setShowCreate(false);
+              })
+              .catch((err) => {
+                setError(err instanceof Error ? err.message : String(err));
+              });
+          }}
+        >
+          <FormField label="Title">
             <input
+              type="text"
               autoFocus
-              placeholder="Title"
               value={createTitle}
               onChange={(e) => setCreateTitle(e.target.value)}
+              placeholder="Title"
+              disabled={busy}
             />
-            <div className="onto-kanban__row">
-              <button type="button" className="btn btn-secondary" onClick={() => setShowCreate(false)}>
-                Cancel
-              </button>
-              <button
-                type="button"
-                className="btn btn-primary"
-                disabled={busy || !createTitle.trim()}
-                onClick={() => {
-                  void runAction(createAction, {
-                    title: createTitle.trim(),
-                    status: columns[0] || 'backlog',
-                  })
-                    .then(() => {
-                      setCreateTitle('');
-                      setShowCreate(false);
-                    })
-                    .catch((e) => {
-                      setError(e instanceof Error ? e.message : String(e));
-                    });
-                }}
-              >
-                Create
-              </button>
-            </div>
-          </div>
-        </div>
-      ) : null}
+          </FormField>
+        </form>
+      </Dialog>
     </div>
   );
 }

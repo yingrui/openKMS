@@ -17,7 +17,7 @@
 |-------|------|
 | `/app-builder` | Draft + published apps; **New app** |
 | `/app-builder/new` | Name only → create stub draft → Design |
-| `/app-builder/:appId/design` | Chat \| live A2UI \| bindings / publish |
+| `/app-builder/:appId/design` | Chat \| Preview / Source / Bindings \| publish |
 | `/apps` | Published gallery only |
 | `/apps/:appId` | Run **published** A2UI only (404 if draft) |
 

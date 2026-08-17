@@ -93,11 +93,87 @@
 }
 
 .app-builder-design__canvas {
+  display: flex;
+  flex-direction: column;
   border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
+  overflow: hidden;
+  background: var(--color-bg-elevated, var(--color-bg));
+}
+
+.app-builder-design__canvas-tabs {
+  flex-shrink: 0;
+  display: flex;
+  gap: var(--space-1);
+  padding: var(--space-2) var(--space-3);
+  border-bottom: 1px solid var(--color-border);
+  background: var(--color-bg-muted);
+}
+
+.app-builder-design__canvas-tab {
+  appearance: none;
+  margin: 0;
+  padding: 0.35rem 0.75rem;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--color-text-muted);
+  font: inherit;
+  font-size: var(--text-sm);
+  cursor: pointer;
+}
+
+.app-builder-design__canvas-tab:hover {
+  color: var(--color-text);
+}
+
+.app-builder-design__canvas-tab--active {
+  border-color: var(--color-border);
+  background: var(--color-bg-elevated, var(--color-bg));
+  color: var(--color-text);
+  font-weight: 600;
+}
+
+.app-builder-design__canvas-body {
+  flex: 1;
+  min-height: 0;
   padding: var(--space-3);
   overflow: auto;
-  background: var(--color-bg-elevated, var(--color-bg));
+}
+
+.app-builder-design__source {
+  margin: 0;
+  padding: 0;
+  font-family: var(--font-mono, ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace);
+  font-size: var(--text-xs);
+  line-height: 1.45;
+  white-space: pre-wrap;
+  word-break: break-word;
+  color: var(--color-text);
+}
+
+.app-builder-design__bindings-pane {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  max-width: 40rem;
+}
+
+.app-builder-design__bindings-pane .app-builder-page__muted {
+  margin: 0;
+}
+
+.app-builder-design__bindings {
+  margin: 0;
+  padding: var(--space-3);
+  font-family: var(--font-mono, ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace);
+  font-size: var(--text-xs);
+  line-height: 1.45;
+  white-space: pre-wrap;
+  word-break: break-word;
+  background: var(--color-bg-muted);
+  border-radius: var(--radius-md);
+  color: var(--color-text);
 }
 
 .app-builder-design__chat-head {
@@ -177,26 +253,6 @@
   border: 1px solid var(--color-border);
   background: var(--color-bg-muted);
   color: var(--color-text);
-}
-
-.app-builder-design__rail-sub {
-  margin: var(--space-2) 0 var(--space-1);
-  font-size: var(--text-sm);
-  font-weight: var(--font-weight-medium, 500);
-  color: var(--color-text-secondary);
-}
-
-.app-builder-design__bindings {
-  margin: 0;
-  padding: var(--space-2);
-  font-size: var(--text-xs, 0.75rem);
-  white-space: pre-wrap;
-  word-break: break-word;
-  background: var(--color-bg-muted);
-  border-radius: var(--radius-md);
-  max-height: 12rem;
-  overflow: auto;
-  color: var(--color-text-secondary);
 }
 
 .app-builder-design__thread {
