@@ -14,11 +14,11 @@ from app.services.agent.shared import (
     _wiki_use_llm_reasoning_content_shim,
 )
 from app.services.knowledge_map.knowledge_map_html import (
-    _inject_reasoning_content_on_assistant_rows,
     _merge_stream_tool_call_slots,
     _reasoning_delta_append,
     _tool_calls_from_stream_slots,
 )
+from app.services.openai_compat import inject_reasoning_content_on_assistant_rows
 from app.services.knowledge_map.knowledge_map_overview_a2ui import (
     KM_OVERVIEW_A2UI_CATALOG_ID,
     KM_OVERVIEW_A2UI_SURFACE_ID,
@@ -143,7 +143,7 @@ async def iter_overview_designer_chat_ndjson(
 
     last_text = ""
     for _round in range(_MAX_TOOL_ROUNDS):
-        _inject_reasoning_content_on_assistant_rows(openai_messages, use_shim=use_shim)
+        inject_reasoning_content_on_assistant_rows(openai_messages, use_shim=use_shim)
         try:
             stream = await client.chat.completions.create(
                 model=model_name,

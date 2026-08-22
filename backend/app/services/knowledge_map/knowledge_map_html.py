@@ -21,6 +21,7 @@ from app.services.agent.shared import (
     _wiki_agent_chat_extra_body,
     _wiki_use_llm_reasoning_content_shim,
 )
+from app.services.openai_compat import inject_reasoning_content_on_assistant_rows
 
 logger = logging.getLogger(__name__)
 
@@ -556,15 +557,6 @@ def _reasoning_content_from_completion_message(msg: Any) -> str | None:
     return str(rc)
 
 
-def _inject_reasoning_content_on_assistant_rows(messages: list[dict[str, Any]], *, use_shim: bool) -> None:
-    """Match wiki copilot: some gateways require ``reasoning_content`` on every assistant row in tool loops."""
-    if not use_shim:
-        return
-    for row in messages:
-        if isinstance(row, dict) and row.get("role") == "assistant":
-            row["reasoning_content"] = row.get("reasoning_content") or ""
-
-
 def _tool_result_payload_for_html(html: str) -> str:
     if len(html) <= _MAX_TOOL_RESULT_HTML:
         return json.dumps({"ok": True, "html": html})
@@ -633,7 +625,7 @@ async def designer_chat_via_llm(
 
     last_text = ""
     for _round in range(10):
-        _inject_reasoning_content_on_assistant_rows(openai_messages, use_shim=use_rc_shim)
+        inject_reasoning_content_on_assistant_rows(openai_messages, use_shim=use_rc_shim)
         try:
             response = await client.chat.completions.create(
                 model=model_name,
@@ -799,7 +791,7 @@ async def iter_designer_chat_llm_stream_events(
 
     last_text = ""
     for _round in range(10):
-        _inject_reasoning_content_on_assistant_rows(openai_messages, use_shim=use_rc_shim)
+        inject_reasoning_content_on_assistant_rows(openai_messages, use_shim=use_rc_shim)
         try:
             stream = await client.chat.completions.create(
                 model=model_name,

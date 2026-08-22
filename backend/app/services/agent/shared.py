@@ -105,55 +105,19 @@ def _ndjson_line(payload: Any) -> bytes:
 
 
 def _wiki_agent_chat_extra_body() -> dict[str, Any]:
+    """Wiki / designer paths: merge OPENKMS_AGENT_LLM_EXTRA_BODY; force thinking off."""
     from app.config import settings
-    extra: dict[str, Any] = {}
-    raw = (settings.agent_llm_extra_body_json or "").strip()
-    if raw:
-        import json
-        try:
-            extra.update(json.loads(raw))
-        except json.JSONDecodeError:
-            pass
-    extra.setdefault("enable_thinking", False)
-    return extra
+    from app.services.openai_compat import chat_extra_body_disable_thinking
+
+    return chat_extra_body_disable_thinking(settings.agent_llm_extra_body_json)
 
 
 def _wiki_use_llm_reasoning_content_shim(base_url: str) -> bool:
-    from urllib.parse import urlparse
+    """Wiki / designer paths: whether to inject reasoning_content for this gateway."""
     from app.config import settings
-    raw = (settings.agent_llm_reasoning_content_shim or "").strip().lower()
-    if raw in ("0", "false", "no", "off"):
-        return False
-    if raw in ("1", "true", "yes", "on", "force"):
-        return True
-    try:
-        host = (urlparse(base_url).hostname or "").lower()
-    except ValueError:
-        host = ""
-    if host == "api.openai.com":
-        return False
-    return True
+    from app.services.openai_compat import use_reasoning_content_shim
 
-
-class _WikiReasoningContentShimChatOpenAI:
-    """OpenAI chat-completions path only: inject reasoning_content on assistant dicts when the gateway requires it."""
-
-    @staticmethod
-    def patch():
-        """Apply the reasoning content shim by monkey-patching ChatOpenAI."""
-        from langchain_core.language_models import LanguageModelInput
-        from langchain_openai import ChatOpenAI
-        import types
-
-        original = ChatOpenAI._get_request_payload
-
-        def patched(self, input_: LanguageModelInput, *, stop=None, **kwargs):
-            payload = original(self, input_, stop=stop, **kwargs)
-            raw_messages = payload.get("messages")
-            if isinstance(raw_messages, list):
-                for row in raw_messages:
-                    if isinstance(row, dict) and row.get("role") == "assistant":
-                        row["reasoning_content"] = row.get("reasoning_content") or ""
-            return payload
-
-        ChatOpenAI._get_request_payload = patched
+    return use_reasoning_content_shim(
+        base_url,
+        setting=settings.agent_llm_reasoning_content_shim,
+    )

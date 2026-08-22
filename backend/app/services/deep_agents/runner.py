@@ -10,7 +10,6 @@ from uuid import uuid4
 
 from deepagents import create_deep_agent
 from langchain_core.messages import AIMessage, BaseMessage, HumanMessage, ToolMessage
-from langchain_openai import ChatOpenAI
 from langgraph.errors import GraphRecursionError
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -23,6 +22,7 @@ from app.services.agent.shared import (
     assistant_lc_content_from_db_row,
     truncate_wiki_tool_output_for_storage,
 )
+from app.services.deep_agents.llm_chat import build_deep_agent_chat_openai
 from app.services.deep_agents.context_compaction import compact_project_context_if_needed
 from app.services.deep_agents.checkpointer import get_checkpointer
 from app.services.deep_agents.env import build_project_shell_env
@@ -83,14 +83,14 @@ def _tool_traces_from_messages(messages: list[Any]) -> list[dict[str, str]]:
     return out
 
 
-async def _build_llm(db: AsyncSession, *, streaming: bool) -> ChatOpenAI | None:
+async def _build_llm(db: AsyncSession, *, streaming: bool):
     cfg = await resolve_agent_llm_config(db, model_id=settings.deep_agent_model_id)
     if not cfg or not cfg.get("base_url"):
         return None
-    return ChatOpenAI(
+    return build_deep_agent_chat_openai(
         base_url=_normalize_openai_base_url(cfg["base_url"]),
         api_key=cfg.get("api_key") or "not-needed",
-        model=cfg.get("model_name") or "gpt-4o-mini",
+        model_name=cfg.get("model_name") or "gpt-4o-mini",
         max_tokens=settings.agent_max_output_tokens,
         streaming=streaming,
         temperature=0.2,

@@ -14,6 +14,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.config import settings
 from app.services.agent.llm import resolve_agent_llm_config
 from app.services.deep_agents.env import build_project_shell_env
+from app.services.deep_agents.llm_chat import build_deep_agent_chat_openai
 from app.services.deep_agents.project_backend import ProjectWorkspaceBackend
 from app.services.deep_agents.stream_events import ProjectStreamPart
 from app.services.project_fs import project_root, read_agents_md, read_lessons_json, read_memory_md
@@ -103,11 +104,10 @@ async def iter_improvement_stream_parts(
         yield {"type": "fatal", "message": "No LLM configured for agents"}
         return
 
-    from langchain_openai import ChatOpenAI
-    llm = ChatOpenAI(
+    llm = build_deep_agent_chat_openai(
         base_url=_normalize_openai_base_url(cfg["base_url"]),
         api_key=cfg.get("api_key") or "not-needed",
-        model=cfg.get("model_name") or "gpt-4o-mini",
+        model_name=cfg.get("model_name") or "gpt-4o-mini",
         max_tokens=settings.agent_max_output_tokens,
         streaming=True,
         temperature=0.3,

@@ -75,6 +75,8 @@ LangGraph **checkpoints** (HITL resume) use Postgres tables `checkpoints`, `chec
 | `OPENKMS_PROJECTS_ROOT` | `data/projects` (local) / `/data/projects` (Docker) | One folder per project UUID |
 | `OPENKMS_AGENT_SKILLS_ROOT` | `data/agent-skills` | Global skills registry |
 | `OPENKMS_DEEP_AGENT_MODEL_ID` | — | Falls back to `OPENKMS_AGENT_MODEL_ID` |
+| `OPENKMS_AGENT_LLM_EXTRA_BODY` | unset | Deep Agents façade (`deep_agents/llm_chat.py`); **`enable_thinking`** always forced **false** |
+| `OPENKMS_AGENT_LLM_REASONING_CONTENT_SHIM` | unset (**auto**) | Same façade: inject empty **`reasoning_content`** on assistant rows for non-`api.openai.com` bases |
 | `OPENKMS_AGENT_SANDBOX_TIMEOUT_SECONDS` | `60` | Python sandbox in project dir |
 | `OPENKMS_AGENT_LOG_LEVEL` | `INFO` | Project agent turn logs (`agent_turn_start` / `agent_turn_done` at INFO; **`agent_turn_failed` at ERROR**). Use `DEBUG` for verbose deep-agents detail. |
 | `OPENKMS_BACKEND_LOG_LEVEL` | — | Root log level for all `app.*` loggers when set (default INFO). |
@@ -112,6 +114,7 @@ Docker: `projects_data` volume on `backend` and `worker` (include `agent-skills`
 | Mid-turn UI frozen after fast session switch | Older SPA builds could drop the live NDJSON bridge without re-attaching poll. | Current SPA aborts NDJSON on leave, marks `running` optimistically, and polls when the session is visible again. Hard-refresh if on an old bundle. |
 | **`409` A turn is already running** | Another interactive turn for the session has `last_turn.status=running` (or a stale one under ~2h). | Wait / reopen session; if the API process died mid-turn, wait for stale timeout or inspect `last_turn`. |
 | **`agent_turn_failed`** in backend logs with LLM/tool text; error line in chat after refresh | In-app failure (misconfigured model, recursion limit, tool error). HTTP **200** + NDJSON **`error`**. | `docker compose logs -f backend 2>&1 \| rg 'ERROR.*agent_turn'`; conversation **`context.last_turn`**. |
+| 400 **`reasoning_content` … must be passed back** (DeepSeek thinking) | Thinking mode on + tools; history missing **`reasoning_content`**. Deep Agents disables thinking + shims via **`deep_agents/llm_chat.py`**. | Redeploy backend; or set **`OPENKMS_AGENT_LLM_REASONING_CONTENT_SHIM=true`**. |
 | **`another command is already in progress`** (psycopg) on revert + resend | Fixed: checkpointer now uses **`AsyncConnectionPool`**. Redeploy backend if still seen on an old image. | Ensure no overlapping streams on the same session (wait for revert toast before resend). |
 | Empty chat after reload, toast on load | **`GET …/messages`** failed (auth/network). | Browser network tab; backend access log. |
 
