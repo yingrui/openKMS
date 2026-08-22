@@ -21,10 +21,8 @@ from app.models.scheduled_trigger import (
 from app.services.agent.agent_session_api_key import ensure_session_api_key, get_session_bearer_token, revoke_session_api_key
 from app.services.agent.agent_skill_install import ensure_skills_materialized
 from app.services.connectors.schedule import validate_cron_expression, validate_timezone
-from app.services.deep_agents.runner import (
-    new_id,
-    run_project_turn,
-)
+from app.services.agent.shared import new_id
+from app.services.deep_agents.runner import run_project_turn
 from app.services.feature_toggles import is_feature_enabled
 from app.services.permissions.permission_resolution import jwt_realm_role_names
 

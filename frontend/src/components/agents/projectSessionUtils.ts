@@ -2,7 +2,7 @@
 
 import type { AgentConversationResponse } from '../../data/agentApi';
 
-/** Keep in sync with backend `durable_stream.STALE_RUNNING_SECONDS`. */
+/** Keep in sync with backend `deep_agents.constants.STALE_RUNNING_SECONDS`. */
 export const AGENT_TURN_STALE_MS = 2 * 60 * 60 * 1000;
 
 export function sessionLabel(c: AgentConversationResponse): string {

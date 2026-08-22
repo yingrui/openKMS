@@ -15,6 +15,11 @@ from app.services.openai_compat import (
 )
 
 
+def normalize_openai_base_url(url: str) -> str:
+    b = (url or "").rstrip("/")
+    return b if b.endswith("/v1") else f"{b}/v1"
+
+
 def deep_agent_chat_extra_body() -> dict[str, Any]:
     return chat_extra_body_disable_thinking(settings.agent_llm_extra_body_json)
 

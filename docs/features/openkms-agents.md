@@ -41,9 +41,20 @@ When the agent pauses for approval, the turn is persisted as **`context.last_tur
 
 ### Context compaction (long sessions)
 
-Deep Agents automatically compacts older turns when the model context budget is exceeded. Evicted history is offloaded to `conversation_history/` in the project workspace; the agent keeps working from a structured internal summary. **Compaction summaries are not shown in chat** (they are filtered from the stream and stripped before persistence). In a single long turn with many tool calls, compaction may run more than once as context grows — that is normal and stays internal.
+Deep Agents compacts older turns when the model context budget is exceeded. Evicted history is offloaded to `conversation_history/` in the project workspace; the agent keeps working from a structured internal summary. **Compaction summaries are not shown in chat** (they are filtered from the stream and stripped before persistence). In a single long turn with many tool calls, compaction may run more than once as context grows — that is normal and stays internal.
 
-LangGraph **checkpoints** (HITL resume) use Postgres tables `checkpoints`, `checkpoint_blobs`, `checkpoint_writes` with **`thread_id` = conversation id**. The backend checkpointer uses a **connection pool** so concurrent turns (and revert-then-resend) do not share one psycopg connection. Revert deletes checkpoint rows on the same SQLAlchemy transaction as message deletes (`DELETE …/messages/from/{id}`).
+**Before each workspace turn** (interactive chat and scheduled runs), the backend may run the same pre-turn compaction step when the LangGraph checkpoint is over budget (`deep_agents/turn_prepare.py`). In-turn compaction inside Deep Agents still applies during long tool loops.
+
+### Checkpoint-first context (agent memory vs chat UI)
+
+| Layer | Role |
+|-------|------|
+| **`agent_messages` (Postgres)** | What users see in the thread — user/assistant text and persisted tool trace pills for the UI |
+| **LangGraph checkpoint (`thread_id` = conversation id)** | What the agent uses on the next turn — full tool messages, subagent state, compaction events |
+
+On **revert**, checkpoint rows are deleted with the truncated messages so the next turn re-seeds from DB. On **normal follow-up turns**, only the **latest user message** is appended to the checkpoint thread (tool outputs are not re-injected from `agent_messages`, avoiding duplicate tokens). HITL **resume** continues from the interrupted checkpoint via `Command(resume=…)` without re-sending DB history.
+
+LangGraph **checkpoints** use Postgres tables `checkpoints`, `checkpoint_blobs`, `checkpoint_writes` with **`thread_id` = conversation id**. The backend checkpointer uses a **connection pool** so concurrent turns (and revert-then-resend) do not share one psycopg connection. Revert deletes checkpoint rows on the same SQLAlchemy transaction as message deletes (`DELETE …/messages/from/{id}`).
 
 ## Skills
 
@@ -64,7 +75,7 @@ LangGraph **checkpoints** (HITL resume) use Postgres tables `checkpoints`, `chec
 - **Stateless:** new chat session each run; optional **delete session** after completion.
 - **Stateful:** reuses one existing session (`conversation_id`); keeps context between runs.
 - **Not supported:** plan mode.
-- **Unattended:** HITL is disabled; tool approvals are auto-approved. Context is compacted before each run when over the model budget (same rules as in-turn summarization).
+- **Unattended:** HITL is disabled; tool approvals are auto-approved. Context is compacted before each run when over the model budget (same pre-turn step as interactive chat; see **Context compaction** above).
 - Auth uses a **session API key** minted for the schedule owner (`owner_sub` + optional realm roles in `config`).
 - All rows appear in **Job runs → Schedules** (`/job-runs/schedules`); worker task **`run_scheduled_project_agent`**.
 
@@ -119,6 +130,18 @@ Docker: `projects_data` volume on `backend` and `worker` (include `agent-skills`
 | Empty chat after reload, toast on load | **`GET …/messages`** failed (auth/network). | Browser network tab; backend access log. |
 
 Local dev (**`./dev.sh`**, Vite **5173**) has no nginx; long-turn timeouts are uncommon unless a host reverse proxy sits in front.
+
+### Implementation layout
+
+| Module | Role |
+|--------|------|
+| `deep_agents/factory.py` | Build workspace and improvement Deep Agents |
+| `deep_agents/turn_prepare.py` | Pre-turn compaction + checkpoint-first message input |
+| `deep_agents/llm_chat.py` | ChatOpenAI + thinking / `reasoning_content` shim |
+| `agent/tool_transcripts.py` | Persisted tool traces for UI replay (`wiki_tool_traces_v1`) |
+| `deep_agents/constants.py` | `STALE_RUNNING_SECONDS` (sync with frontend) |
+
+Remaining gaps: [Tech debt — Project agents](../tech_debt.md#project-agents-deep-agents).
 
 ## Project folder
 

@@ -1,4 +1,4 @@
-"""Pre-run context compaction for unattended scheduled agent turns."""
+"""Context compaction before project agent turns (interactive + scheduled)."""
 
 from __future__ import annotations
 
@@ -22,10 +22,11 @@ async def compact_project_context_if_needed(
     backend: Any,
     max_rounds: int = _MAX_COMPACTION_ROUNDS,
 ) -> int:
-    """Summarize checkpoint context when over the model budget (scheduled runs).
+    """Summarize checkpoint context when over the model budget.
 
     Uses the same thresholds as deepagents ``SummarizationMiddleware``. Updates
     ``_summarization_event`` on the LangGraph thread without mutating raw messages.
+    Called before interactive and scheduled turns when the thread already has state.
     """
     mw = create_summarization_middleware(llm, backend)
     rounds = 0
@@ -64,7 +65,7 @@ async def compact_project_context_if_needed(
         await agent.aupdate_state(cfg, {"_summarization_event": new_event})
         rounds += 1
         logger.info(
-            "Scheduled agent compacted context (round %s, summarized %s messages)",
+            "Project agent compacted context (round %s, summarized %s messages)",
             rounds,
             len(to_summarize),
         )

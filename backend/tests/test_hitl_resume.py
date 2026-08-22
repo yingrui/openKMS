@@ -5,9 +5,9 @@ from __future__ import annotations
 from types import SimpleNamespace
 
 from app.services.deep_agents.hitl import interrupt_map
-from app.services.deep_agents.runner import (
-    _build_hitl_resume_payload,
-    _count_pending_hitl_decisions,
+from app.services.deep_agents.hitl import (
+    build_hitl_resume_payload,
+    count_pending_hitl_decisions,
 )
 
 
@@ -18,7 +18,7 @@ def test_count_pending_hitl_decisions_single():
             "review_configs": [],
         }
     )
-    assert _count_pending_hitl_decisions([intr]) == 1
+    assert count_pending_hitl_decisions([intr]) == 1
 
 
 def test_count_pending_hitl_decisions_batch():
@@ -32,11 +32,11 @@ def test_count_pending_hitl_decisions_batch():
             "review_configs": [],
         }
     )
-    assert _count_pending_hitl_decisions([intr]) == 3
+    assert count_pending_hitl_decisions([intr]) == 3
 
 
 def test_build_hitl_resume_payload_approve_all():
-    payload = _build_hitl_resume_payload(decision="approve", count=5)
+    payload = build_hitl_resume_payload(decision="approve", count=5)
     assert payload == {
         "decisions": [
             {"type": "approve"},
@@ -49,7 +49,7 @@ def test_build_hitl_resume_payload_approve_all():
 
 
 def test_build_hitl_resume_payload_reject_with_message():
-    payload = _build_hitl_resume_payload(decision="reject", count=2, message="stop")
+    payload = build_hitl_resume_payload(decision="reject", count=2, message="stop")
     assert payload["decisions"] == [
         {"type": "reject", "message": "stop"},
         {"type": "reject", "message": "stop"},

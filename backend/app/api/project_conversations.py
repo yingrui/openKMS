@@ -13,10 +13,12 @@ from sqlalchemy import delete, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
+from app.services.agent.ndjson import ndjson_line
 from app.services.agent.shared import (
     _bump_conversation_timestamp,
     _maybe_set_conversation_title_from_first_user_message,
     _msg_to_out,
+    new_id,
 )
 from app.api.auth import require_permission
 from app.api.deps import get_jwt_sub
@@ -27,7 +29,7 @@ from app.models.project import Project
 from app.schemas.agent import AgentConversationResponse, AgentMessageListResponse, AgentMessagePostResponse
 from app.schemas.project import ProjectConversationCreate, ProjectConversationPatch, ProjectMessageCreate, ProjectMessageResume
 from app.services.agent.llm import resolve_agent_llm_config
-from app.services.agent.shared import WIKI_TOOL_TRANSCRIPTS_KEY
+from app.services.agent.tool_transcripts import AGENT_TOOL_TRANSCRIPTS_KEY
 from app.services.agent.conversation_title import suggest_conversation_title
 from app.services.agent.agent_session_api_key import ensure_session_api_key, revoke_session_api_key
 from app.services.agent.agent_skill_install import ensure_skills_materialized
@@ -41,17 +43,15 @@ from app.services.deep_agents.durable_stream import (
     run_project_turn_background,
 )
 from app.services.deep_agents.observability import AgentTurnContext
-from app.services.deep_agents.runner import iter_project_stream_parts, new_id, resume_project_interrupt, run_project_turn
+from app.services.deep_agents.runner import iter_project_stream_parts, resume_project_interrupt, run_project_turn
 from app.services.permissions.permission_catalog import PERM_PROJECTS_READ, PERM_PROJECTS_WRITE
 from app.services.project_fs import read_lessons_json, write_lessons_json
 from app.services.agent.session_review import merge_lessons, review_session
 from app.services.agent.improvement_runner import iter_improvement_stream_parts
+from app.services.openai_compat import chat_extra_body_disable_thinking
+from app.services.deep_agents.llm_chat import normalize_openai_base_url
 
 router = APIRouter()
-
-
-def _ndjson_line(obj: dict) -> bytes:
-    return (json.dumps(obj, ensure_ascii=False, default=str) + "\n").encode()
 
 
 def _conv_to_out(c: AgentConversation) -> AgentConversationResponse:
@@ -393,13 +393,12 @@ async def generate_skill_route(
     wfi = str(event.get("what_fixed_it") or "")
     ctx = str(event.get("context") or "")
 
-    base_url = (model_config.get("base_url") or "").rstrip("/")
-    if not base_url.endswith("/v1"):
-        base_url = f"{base_url}/v1"
+    base_url = normalize_openai_base_url(model_config.get("base_url") or "")
 
     from openai import AsyncOpenAI
     client = AsyncOpenAI(base_url=base_url, api_key=model_config.get("api_key") or "no-key")
     model_name = model_config.get("model_name") or "gpt-4o-mini"
+    extra_body = chat_extra_body_disable_thinking(settings.agent_llm_extra_body_json)
 
     system_prompt = (
         "You generate SKILL.md files for agent capabilities. "
@@ -433,6 +432,7 @@ async def generate_skill_route(
             ],
             temperature=0.4,
             max_tokens=2048,
+            extra_body=extra_body,
         )
         content = (response.choices[0].message.content or "").strip()
     except Exception as e:
@@ -475,9 +475,9 @@ async def chat_improvements_route(
             user_message=user_message,
         ):
             if part.get("type") == "fatal":
-                yield _ndjson_line({"type": "error", "detail": part.get("message", "Unknown error")})
+                yield ndjson_line({"type": "error", "detail": part.get("message", "Unknown error")})
                 return
-            yield _ndjson_line(part)
+            yield ndjson_line(part)
 
     return StreamingResponse(
         stream(),
@@ -679,7 +679,7 @@ async def resume_message(
     if last_asst is not None:
         content_prefix = last_asst.content or ""
         if isinstance(last_asst.tool_calls, dict):
-            raw = last_asst.tool_calls.get(WIKI_TOOL_TRANSCRIPTS_KEY)
+            raw = last_asst.tool_calls.get(AGENT_TOOL_TRANSCRIPTS_KEY)
             if isinstance(raw, list):
                 existing_traces = [t for t in raw if isinstance(t, dict)]
 

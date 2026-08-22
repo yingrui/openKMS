@@ -4,27 +4,19 @@ from __future__ import annotations
 
 import logging
 from collections.abc import AsyncIterator
-from typing import Any
 
-from deepagents import create_deep_agent
 from langchain_core.messages import HumanMessage
 from langgraph.errors import GraphRecursionError
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.config import settings
-from app.services.agent.llm import resolve_agent_llm_config
-from app.services.deep_agents.env import build_project_shell_env
-from app.services.deep_agents.llm_chat import build_deep_agent_chat_openai
-from app.services.deep_agents.project_backend import ProjectWorkspaceBackend
-from app.services.deep_agents.stream_events import ProjectStreamPart
-from app.services.project_fs import project_root, read_agents_md, read_lessons_json, read_memory_md
+from app.services.deep_agents.factory import (
+    build_improvement_deep_agent,
+    ephemeral_runnable_config,
+)
+from app.services.deep_agents.stream_events import ProjectStreamPart, iter_langgraph_stream_parts
+from app.services.project_fs import read_agents_md, read_lessons_json, read_memory_md
 
 logger = logging.getLogger(__name__)
-
-
-def _normalize_openai_base_url(url: str) -> str:
-    b = (url or "").rstrip("/")
-    return b if b.endswith("/v1") else f"{b}/v1"
 
 
 def _format_lessons_for_prompt(raw_lessons: str) -> str:
@@ -99,72 +91,36 @@ async def iter_improvement_stream_parts(
     bearer_token: str,
     user_message: str,
 ) -> AsyncIterator[ProjectStreamPart]:
-    cfg = await resolve_agent_llm_config(db, model_id=settings.deep_agent_model_id)
-    if not cfg or not cfg.get("base_url"):
-        yield {"type": "fatal", "message": "No LLM configured for agents"}
-        return
-
-    llm = build_deep_agent_chat_openai(
-        base_url=_normalize_openai_base_url(cfg["base_url"]),
-        api_key=cfg.get("api_key") or "not-needed",
-        model_name=cfg.get("model_name") or "gpt-4o-mini",
-        max_tokens=settings.agent_max_output_tokens,
-        streaming=True,
-        temperature=0.3,
-    )
-
     agents_md = read_agents_md(project_id)
     memory_md = read_memory_md(project_id)
     raw_lessons = read_lessons_json(project_id)
     lessons_text = _format_lessons_for_prompt(raw_lessons)
 
-    root = str(project_root(project_id))
-    shell_env = build_project_shell_env(project_id, bearer_token, project_settings)
-    backend = ProjectWorkspaceBackend(
-        root_dir=root,
-        virtual_mode=True,
-        inherit_env=True,
-        env=shell_env,
-        timeout=settings.agent_sandbox_timeout_seconds,
+    agent, err = await build_improvement_deep_agent(
+        db,
+        project_id=project_id,
+        project_name=project_name,
+        project_settings=project_settings,
+        bearer_token=bearer_token,
+        system_prompt=build_improvement_system_prompt(
+            project_name, agents_md, memory_md, lessons_text,
+        ),
     )
-
-    skills_paths: list[str] = []
-    try:
-        from app.services.deep_agents.skills.loader import list_skill_paths
-        skills_paths = list_skill_paths(project_id)
-    except Exception:
-        pass
-
-    try:
-        agent = create_deep_agent(
-            model=llm,
-            system_prompt=build_improvement_system_prompt(
-                project_name, agents_md, memory_md, lessons_text,
-            ),
-            skills=skills_paths or None,
-            backend=backend,
-        )
-    except Exception as e:
-        logger.exception("create_deep_agent failed for improvement agent")
-        yield {"type": "fatal", "message": str(e)}
+    if err or not agent:
+        yield {"type": "fatal", "message": err or "Agent failed to initialize"}
         return
 
     messages = [HumanMessage(content=user_message)]
+    cfg = ephemeral_runnable_config(thread_prefix="improvement")
 
-    from uuid import uuid4
-    cfg = {
-        "configurable": {
-            "thread_id": f"improvement-{uuid4()}",
-        },
-        "recursion_limit": 25,
-    }
-
-    from app.services.deep_agents.stream_events import iter_langgraph_stream_parts
     try:
         async for part in iter_langgraph_stream_parts(agent, {"messages": messages}, cfg):
             yield part
     except GraphRecursionError:
-        yield {"type": "fatal", "message": "Agent hit recursion limit — the task may be too complex. Try a simpler request."}
+        yield {
+            "type": "fatal",
+            "message": "Agent hit recursion limit — the task may be too complex. Try a simpler request.",
+        }
     except Exception as e:
         logger.exception("improvement agent streaming failed")
         yield {"type": "fatal", "message": str(e)}

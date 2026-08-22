@@ -8,7 +8,6 @@ away does not cancel work or roll back the chat turn.
 from __future__ import annotations
 
 import asyncio
-import json
 import logging
 import time
 from collections.abc import AsyncIterator, Awaitable, Callable
@@ -20,7 +19,10 @@ from sqlalchemy.orm import selectinload
 
 from app.database import async_session_maker
 from app.models.agent_models import AgentConversation, AgentMessage
-from app.services.agent.shared import WIKI_TOOL_TRANSCRIPTS_KEY, _bump_conversation_timestamp, _msg_to_out
+from app.services.agent.ndjson import ndjson_line
+from app.services.agent.tool_transcripts import tool_payload_from_traces
+from app.services.agent.shared import _bump_conversation_timestamp, _msg_to_out
+from app.services.deep_agents.constants import STALE_RUNNING_SECONDS
 from app.services.deep_agents.observability import AgentTurnContext
 from app.services.deep_agents.stream_accumulator import ProjectStreamAccumulator
 
@@ -28,19 +30,13 @@ logger = logging.getLogger(__name__)
 
 _BACKGROUND_TASKS: set[asyncio.Task[Any]] = set()
 _PERSIST_INTERVAL_S = 2.0
-# Keep in sync with frontend `AGENT_TURN_STALE_MS`.
-STALE_RUNNING_SECONDS = 2 * 60 * 60
 _SENTINEL = object()
 
 PartsFactory = Callable[[AsyncSession, AgentConversation], AsyncIterator[dict[str, Any]]]
 
 
-def _ndjson_line(obj: dict) -> bytes:
-    return (json.dumps(obj, ensure_ascii=False, default=str) + "\n").encode()
-
-
 def _error_ndjson_line(err: str, asst: AgentMessage) -> bytes:
-    return _ndjson_line(
+    return ndjson_line(
         {
             "type": "error",
             "detail": err,
@@ -70,10 +66,6 @@ def conversation_turn_is_active(conversation: AgentConversation) -> bool:
         t = t.replace(tzinfo=timezone.utc)
     age = (datetime.now(timezone.utc) - t).total_seconds()
     return age < STALE_RUNNING_SECONDS
-
-
-def tool_payload_from_traces(traces: list[dict[str, str]]) -> dict[str, Any] | None:
-    return {WIKI_TOOL_TRANSCRIPTS_KEY: traces} if traces else None
 
 
 async def prepare_streaming_turn(
@@ -229,7 +221,7 @@ async def _iter_ndjson_from_bridge(bridge: ClientBridge) -> AsyncIterator[bytes]
             if isinstance(item, bytes):
                 yield item
             elif isinstance(item, dict):
-                yield _ndjson_line(item)
+                yield ndjson_line(item)
     finally:
         bridge.stop_listening()
 

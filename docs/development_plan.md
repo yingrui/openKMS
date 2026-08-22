@@ -49,7 +49,7 @@ Shipped product scope follows the same index as [Functionalities](./functionalit
 | [Console & authentication](features/console-and-auth.md) | Permission catalog, Console UX, OIDC/local auth, system settings, user Settings (API keys), feature toggles |
 | [Connectors](features/connectors.md) | Tushare sync + Zhipu search shipped; more sync kinds and downstream hooks ([backlog](#connectors-high)) |
 | [Wiki Copilot & map designer](features/wiki-spaces.md) | Wiki Copilot, knowledge map HTML Copilot (**in-app**; distinct from qa-agent) |
-| [Agents (project workspaces)](features/openkms-agents.md) | Deep Agents chat per project (files, git, plan mode, openKMS research tools, optional `web_search` via connector) |
+| [Agents (project workspaces)](features/openkms-agents.md) | Deep Agents chat per project (files, git, plan mode, openKMS research tools, optional `web_search` via connector); runtime debt in [Tech debt — Project agents](tech_debt.md#project-agents-deep-agents) |
 | [openkms-skill](features/openkms-skill.md) | Agent Skill + CLI (`openkms-skill/`); hosts include openKMS Agents, Claude Code, OpenCode; complements delivery APIs and in-app assistants |
 | In-app agents (cross-cutting) | **Partial:** wiki/map/project copilots above; **eval assist** API only; **no** unified **maintenance** assistant across wiki/documents/map ([backlog](#in-product-agents-high)) — **excludes** KB Q&A delivery |
 
