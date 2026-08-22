@@ -19,6 +19,7 @@ import {
   fetchOntologyActionTypes,
   type OntologyActionTypeResponse,
 } from '../../data/ontologyFunctionsApi';
+import { isRunnableAction } from '../ontology-manager/actionRuleTypes';
 import './ObjectTypeDetail.scss';
 
 export function ObjectTypeDetail() {
@@ -46,7 +47,7 @@ export function ObjectTypeDetail() {
   const [actions, setActions] = useState<OntologyActionTypeResponse[]>([]);
   const [runningActionKey, setRunningActionKey] = useState<string | null>(null);
 
-  const runnableActions = actions.filter((a) => a.status === 'active' && a.function_id);
+  const runnableActions = actions.filter((a) => isRunnableAction(a));
 
   const loadType = useCallback(async () => {
     if (!typeId) return;

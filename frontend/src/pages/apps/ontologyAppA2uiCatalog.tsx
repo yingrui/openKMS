@@ -14,6 +14,11 @@ import {
   fetchFunctionVersions,
   fetchOntologyFunction,
 } from '../../data/ontologyFunctionsApi';
+import {
+  inputSchemaFromObjectTypeProperties,
+  isBuiltinObjectRule,
+  writableFieldsFromParameters,
+} from '../ontology-manager/actionRuleTypes';
 import { Dialog, FormField } from '../../styles/design-system';
 import './OntologyAppA2ui.scss';
 
@@ -166,7 +171,14 @@ function OntoActionFormImpl({ props }: { props: Record<string, string> }) {
       const act = acts.find((a) => a.api_name === actionApiName);
       if (!act) throw new Error(`Action not found: ${actionApiName}`);
       let schema: Record<string, unknown> | null = null;
-      if (act.function_id) {
+      if (isBuiltinObjectRule(act.rule_type)) {
+        const types = await fetchObjectTypes();
+        const ot = types.items.find((row) => row.id === act.object_type_id);
+        if (ot) {
+          const fieldNames = writableFieldsFromParameters(act.parameters);
+          schema = inputSchemaFromObjectTypeProperties(ot.properties ?? [], fieldNames);
+        }
+      } else if (act.function_id) {
         const fn = await fetchOntologyFunction(act.function_id);
         if (fn.published_version_id) {
           const ver = await fetchFunctionVersion(fn.id, fn.published_version_id);

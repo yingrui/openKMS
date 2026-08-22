@@ -31,6 +31,7 @@ from app.services.ontology.function_runtime import FunctionExecutionError, execu
 from app.services.ontology.function_service import get_function, get_function_by_api_name, resolve_version_for_execute
 from app.services.ontology.input_schema import validate_input_against_schema
 from app.models.object_type import ObjectType
+from app.services.ontology.builtin_action_service import build_edits_for_builtin_action
 from app.services.ontology.edit_apply_service import apply_edit_batch_to_objects, extract_edits
 from app.services.ontology.object_neo4j_store import sync_edit_apply_result_to_neo4j
 
@@ -200,6 +201,114 @@ async def execute_published_by_api_name(
     )
 
 
+async def _apply_edits_and_audit(
+    db: AsyncSession,
+    at: OntologyActionType,
+    *,
+    input_payload: dict,
+    object_id: str | None,
+    caller_user_id: str | None,
+    edits: list[dict],
+    output: dict | None,
+    duration_ms: int | None,
+    pre_apply_errors: list[str] | None = None,
+) -> OntologyActionExecuteResponse:
+    """Apply edit batch, sync Neo4j, write audit log."""
+    log_id = new_action_log_id()
+    applied: dict | None = None
+    status = "ok"
+    error: str | None = None
+
+    if pre_apply_errors:
+        status = "error"
+        error = "; ".join(pre_apply_errors)
+    elif edits:
+        apply_result = await apply_edit_batch_to_objects(
+            db,
+            edits,
+            allowed_object_type_id=at.object_type_id,
+        )
+        applied = apply_result.as_dict()
+        if apply_result.errors:
+            await db.rollback()
+            status = "error"
+            error = "; ".join(apply_result.errors)
+            applied = {
+                "created_ids": [],
+                "modified_ids": [],
+                "deleted_ids": [],
+                "skipped": apply_result.skipped,
+                "errors": apply_result.errors,
+            }
+        else:
+            await db.flush()
+            ot = await db.get(ObjectType, at.object_type_id)
+            if ot and not ot.dataset_id:
+                try:
+                    await sync_edit_apply_result_to_neo4j(db, ot, applied)
+                except Exception as e:
+                    await db.rollback()
+                    status = "error"
+                    error = f"Neo4j sync failed (queue not committed): {e}"
+                    applied = {
+                        "created_ids": [],
+                        "modified_ids": [],
+                        "deleted_ids": [],
+                        "skipped": apply_result.skipped,
+                        "errors": [error],
+                    }
+
+    log = OntologyActionLog(
+        id=log_id,
+        action_type_id=at.id,
+        object_id=object_id,
+        caller_user_id=caller_user_id,
+        status=status,
+        input_payload=input_payload,
+        output_payload=output,
+        error_message=error,
+    )
+    db.add(log)
+    await db.commit()
+    return OntologyActionExecuteResponse(
+        status=status,
+        output=output,
+        error=error,
+        duration_ms=duration_ms,
+        log_id=log_id,
+        applied=applied,
+    )
+
+
+async def execute_builtin_action_and_audit(
+    db: AsyncSession,
+    at: OntologyActionType,
+    ot: ObjectType,
+    *,
+    input_payload: dict,
+    object_id: str | None,
+    caller_user_id: str | None,
+) -> OntologyActionExecuteResponse:
+    edits, errors = build_edits_for_builtin_action(
+        at=at,
+        ot=ot,
+        input_payload=input_payload,
+        object_id=object_id,
+    )
+    output = {"edits": edits} if edits else None
+    return await _apply_edits_and_audit(
+        db,
+        at,
+        input_payload=input_payload,
+        object_id=object_id,
+        caller_user_id=caller_user_id,
+        edits=edits,
+        output=output,
+        duration_ms=0,
+        pre_apply_errors=errors or None,
+    )
+
+
 async def execute_action_and_audit(
     db: AsyncSession,
     at: OntologyActionType,
@@ -211,7 +320,6 @@ async def execute_action_and_audit(
     caller_user_id: str | None,
     caller_token: str,
 ) -> OntologyActionExecuteResponse:
-    log_id = new_action_log_id()
     await db.commit()
     outcome = await _run_ofs(
         ver=ver,
@@ -219,66 +327,17 @@ async def execute_action_and_audit(
         input_payload=input_payload,
         caller_token=caller_token,
     )
-    applied: dict | None = None
-    status = outcome.status
-    error = outcome.error
-    if outcome.status == "ok":
-        edits = extract_edits(outcome.output)
-        if edits:
-            apply_result = await apply_edit_batch_to_objects(
-                db,
-                edits,
-                allowed_object_type_id=at.object_type_id,
-            )
-            applied = apply_result.as_dict()
-            if apply_result.errors:
-                await db.rollback()
-                status = "error"
-                error = "; ".join(apply_result.errors)
-                applied = {
-                    "created_ids": [],
-                    "modified_ids": [],
-                    "deleted_ids": [],
-                    "skipped": apply_result.skipped,
-                    "errors": apply_result.errors,
-                }
-            else:
-                # Persist queue rows before Neo4j sync so MERGE can reload them.
-                await db.flush()
-                ot = await db.get(ObjectType, at.object_type_id)
-                if ot and not ot.dataset_id:
-                    try:
-                        await sync_edit_apply_result_to_neo4j(db, ot, applied)
-                    except Exception as e:
-                        await db.rollback()
-                        status = "error"
-                        error = f"Neo4j sync failed (queue not committed): {e}"
-                        applied = {
-                            "created_ids": [],
-                            "modified_ids": [],
-                            "deleted_ids": [],
-                            "skipped": apply_result.skipped,
-                            "errors": [error],
-                        }
-    log = OntologyActionLog(
-        id=log_id,
-        action_type_id=at.id,
+    edits = extract_edits(outcome.output) if outcome.status == "ok" else []
+    return await _apply_edits_and_audit(
+        db,
+        at,
+        input_payload=input_payload,
         object_id=object_id,
         caller_user_id=caller_user_id,
-        status=status,
-        input_payload=input_payload,
-        output_payload=outcome.output,
-        error_message=error,
-    )
-    db.add(log)
-    await db.commit()
-    return OntologyActionExecuteResponse(
-        status=status,
+        edits=edits,
         output=outcome.output,
-        error=error,
         duration_ms=outcome.duration_ms,
-        log_id=log_id,
-        applied=applied,
+        pre_apply_errors=[outcome.error] if outcome.status != "ok" and outcome.error else None,
     )
 
 

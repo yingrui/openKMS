@@ -106,7 +106,7 @@ Backlog → 进行中 → 评审 → 完成
 
 **D. 发布一个 FoO** — 如 `suggestWorkItemPriority(work_item_id)`；依赖闭包用 `get_links(..., source_id=)` BFS；产能用 `search(filters={"status": "in_progress"})`（完整示例见[英文教程](understanding-ontology.md)）。使用 `client("WorkItem")` 等字符串 api name（`openkms_functions`）。  
 
-**E. Actions：创建 / 更新 / 移到 Done / 删除** — Function 返回 `{"edits": batch.create|modify|delete(...).get_edits()}`，绑定到 WorkItem 并执行；平台会 **apply create / modify / delete**（响应含 `applied.created_ids` / `modified_ids` / `deleted_ids`）。完整示例见[英文教程](understanding-ontology.md)。可视化分列用 **[App Builder](../features/app-builder.md) + Apps**，不在 Explorer。
+**E. Actions：创建 / 更新 / 移到 Done / 删除** — 在 **Ontology Manager → 操作类型** 为 WorkItem 创建内置规则（`object_create` / `object_modify` / `object_delete`），无需为简单 CRUD 绑定 Function。Rules 页可限制可写字段；`moveWorkItemToDone` 类动作可在 parameters 里设 `defaults`（如 `status: done`）。自定义逻辑仍用 Function 规则。执行后平台 **apply create / modify / delete**（响应含 `applied.*_ids`）。可视化分列用 **[App Builder](../features/app-builder.md) + Apps**。
 
 ---
 

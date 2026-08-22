@@ -231,7 +231,7 @@
         "actions": "Actions",
         "review": "Review"
       },
-      "actionsHint": "Optionally create action type stubs for this object type. You can bind Functions later.",
+      "actionsHint": "Optionally create built-in create / edit / delete actions for this object type.",
       "actionsToCreate": "Action types",
       "noActions": "None",
       "propertyCount": "{{count}} properties",
@@ -242,9 +242,9 @@
         "delete": "Delete"
       },
       "actionHint": {
-        "create": "Stub for creating a new instance.",
-        "edit": "Stub for updating an existing instance.",
-        "delete": "Stub for deleting an instance."
+        "create": "Built-in create action — ready to run without a Function.",
+        "edit": "Built-in edit action — ready to run without a Function.",
+        "delete": "Built-in delete action — ready to run without a Function."
       },
       "actionDisplay": {
         "create": "Create {{name}}",
@@ -293,7 +293,7 @@
   },
   "actions": {
     "title": "Action types",
-    "subtitle": "Action types bind published functions to object types.",
+    "subtitle": "Define how object instances are created, updated, or deleted — with built-in rules or a Function for custom logic.",
     "apiName": "Identifier",
     "displayName": "Display name",
     "objectType": "Object type",
@@ -307,11 +307,31 @@
     "deleted": "Action type deleted",
     "deleteConfirm": "Delete action type \"{{name}}\"?",
     "emptyList": "No action types yet.",
-    "createHint": "Choose an object type and display name. You can bind a published function now or later.",
+    "createHint": "Pick an object type and intent. Create, edit, and delete actions run immediately — no Function required.",
     "formRequired": "Display name and object type are required.",
     "noObjectTypes": "No object types — create one first",
     "noFunction": "None (configure later)",
     "publishFirstHint": "Publish a function in Ontology Manager before binding it here.",
+    "functionCustomHint": "Custom actions run a published Function. Bind one here or on the Rules tab.",
+    "writableFields": "Writable fields",
+    "writableFieldsHint": "Leave all checked to allow every property on the object type. Uncheck fields this action should ignore.",
+    "ruleTypeLabel": {
+      "object_create": "Create object",
+      "object_modify": "Modify object",
+      "object_delete": "Delete object",
+      "function": "Function"
+    },
+    "builtinHint": {
+      "create": "Creates a new instance from submitted property values. No Function binding.",
+      "edit": "Updates property values on an existing instance. No Function binding.",
+      "delete": "Deletes an instance by object id. No Function binding."
+    },
+    "builtinRulesHint": {
+      "default": "Built-in rule — runs on the platform without a Function.",
+      "object_create": "On execute, creates a new instance using the selected property values.",
+      "object_modify": "On execute, merges submitted property values into the target instance.",
+      "object_delete": "On execute, deletes the target instance."
+    },
     "wizard": {
       "stepsLabel": "Create steps",
       "back": "Back",
@@ -321,7 +341,7 @@
         "define": "Define",
         "review": "Review"
       },
-      "targetHint": "Pick the object type this action type applies to, and optionally a create/edit/delete intent for naming.",
+      "targetHint": "Pick the object type and what this action should do. Create, edit, and delete are built-in — custom actions use a Function.",
       "objectTypeRequired": "Select an object type to continue.",
       "intentLabel": "Intent",
       "intent": {
@@ -336,7 +356,9 @@
     "general": "General",
     "generalHint": "Display name, status, and identity for this action type.",
     "rules": "Rules",
-    "rulesSubtitle": "Bind a published function that runs when this action type is invoked.",
+    "rulesSubtitle": "Configure how this action runs.",
+    "rulesBuiltinSubtitle": "Built-in object rule — choose which properties callers may write.",
+    "rulesFunctionSubtitle": "Bind a published Function that runs when this action is invoked.",
     "log": "Log",
     "logs": "Log",
     "noDescription": "No description",

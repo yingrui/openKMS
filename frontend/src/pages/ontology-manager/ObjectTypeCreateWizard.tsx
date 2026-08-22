@@ -13,6 +13,7 @@ import {
   updateOntologyGroup,
   type OntologyGroupResponse,
 } from '../../data/ontologyFunctionsApi';
+import { intentToRuleType } from './actionRuleTypes';
 import {
   ontologyTypeFromColumn,
   PropertiesEditor,
@@ -230,7 +231,7 @@ export function ObjectTypeCreateWizard({
               display_name: t(`objectTypes.wizard.actionDisplay.${tmpl.id}`, { name: otName }),
               description: t(`objectTypes.wizard.actionDescription.${tmpl.id}`, { name: otName }),
               object_type_id: created.id,
-              rule_type: 'function',
+              rule_type: intentToRuleType(tmpl.id),
             });
             createdOk = true;
             break;

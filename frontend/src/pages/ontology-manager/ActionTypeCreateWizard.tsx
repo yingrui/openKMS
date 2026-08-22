@@ -11,12 +11,16 @@ import {
   ACTION_TEMPLATES,
   actionApiName,
   toCamelCaseApiName,
-  type ActionTemplateId,
 } from './ObjectTypeCreateWizard';
+import {
+  FUNCTION_RULE_TYPE,
+  intentToRuleType,
+  type ActionIntentId,
+} from './actionRuleTypes';
 
 const STEPS = ['target', 'define', 'review'] as const;
 
-type IntentId = ActionTemplateId | 'custom';
+type IntentId = ActionIntentId;
 
 type Props = {
   open: boolean;
@@ -61,6 +65,9 @@ export function ActionTypeCreateWizard({
     () => objectTypes.find((ot) => ot.id === objectTypeId),
     [objectTypes, objectTypeId],
   );
+
+  const ruleType = useMemo(() => intentToRuleType(intent), [intent]);
+  const isBuiltinRule = ruleType !== FUNCTION_RULE_TYPE;
 
   const selectedFn = useMemo(
     () => publishedFunctions.find((fn) => fn.id === functionId),
@@ -140,9 +147,9 @@ export function ActionTypeCreateWizard({
         display_name: displayName.trim(),
         description: description.trim() || undefined,
         object_type_id: objectTypeId,
-        rule_type: 'function',
-        function_id: selectedFn?.id,
-        function_version: selectedFn?.published_version ?? undefined,
+        rule_type: ruleType,
+        function_id: isBuiltinRule ? undefined : selectedFn?.id,
+        function_version: isBuiltinRule ? undefined : selectedFn?.published_version ?? undefined,
       });
       toast.success(t('actions.created'));
       onClose();
@@ -327,23 +334,30 @@ export function ActionTypeCreateWizard({
                 disabled={submitting}
               />
             </FormField>
-            <FormField label={t('actions.function')}>
-              <select
-                value={functionId}
-                onChange={(e) => setFunctionId(e.target.value)}
-                disabled={submitting}
-              >
-                <option value="">{t('actions.noFunction')}</option>
-                {publishedFunctions.map((fn) => (
-                  <option key={fn.id} value={fn.id}>
-                    {fn.api_name} (v{fn.published_version})
-                  </option>
-                ))}
-              </select>
-              {publishedFunctions.length === 0 && (
-                <span className="console-modal-hint">{t('actions.publishFirstHint')}</span>
-              )}
-            </FormField>
+            {isBuiltinRule ? (
+              <p className="console-modal-hint">{t(`actions.builtinHint.${intent}`)}</p>
+            ) : (
+              <FormField label={t('actions.function')}>
+                <select
+                  value={functionId}
+                  onChange={(e) => setFunctionId(e.target.value)}
+                  disabled={submitting}
+                >
+                  <option value="">{t('actions.noFunction')}</option>
+                  {publishedFunctions.map((fn) => (
+                    <option key={fn.id} value={fn.id}>
+                      {fn.api_name} (v{fn.published_version})
+                    </option>
+                  ))}
+                </select>
+                {publishedFunctions.length === 0 && (
+                  <span className="console-modal-hint">{t('actions.publishFirstHint')}</span>
+                )}
+                <span className="console-modal-hint console-modal-hint--block">
+                  {t('actions.functionCustomHint')}
+                </span>
+              </FormField>
+            )}
           </div>
         )}
 
@@ -368,13 +382,19 @@ export function ActionTypeCreateWizard({
                   <dd>{description.trim() || t('actions.noDescription')}</dd>
                 </div>
                 <div>
-                  <dt>{t('actions.function')}</dt>
-                  <dd>
-                    {selectedFn
-                      ? `${selectedFn.api_name} (v${selectedFn.published_version})`
-                      : t('actions.noFunction')}
-                  </dd>
+                  <dt>{t('actions.ruleType')}</dt>
+                  <dd>{t(`actions.ruleTypeLabel.${ruleType}`, { defaultValue: ruleType })}</dd>
                 </div>
+                {!isBuiltinRule ? (
+                  <div>
+                    <dt>{t('actions.function')}</dt>
+                    <dd>
+                      {selectedFn
+                        ? `${selectedFn.api_name} (v${selectedFn.published_version})`
+                        : t('actions.noFunction')}
+                    </dd>
+                  </div>
+                ) : null}
               </dl>
             </div>
             <FormField label={t('actions.apiName')} hint={t('actions.wizard.apiNameHint')}>

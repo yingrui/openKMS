@@ -22,6 +22,7 @@ from app.schemas.ontology_functions import (
     OntologyActionTypeUpdate,
 )
 from app.services.ontology.constants import ACTION_TYPE_ID_PREFIX, ID_HEX_LENGTH
+from app.services.ontology.action_rule_types import is_builtin_object_rule, normalize_rule_type
 from app.services.ontology import execution_service
 from app.services.ontology.object_neo4j_store import resolve_object_props_for_action
 from app.services.permissions.permission_catalog import PERM_ONTOLOGY_READ, PERM_ONTOLOGY_WRITE
@@ -51,6 +52,22 @@ async def _get_action_type(db: AsyncSession, action_type_id: str) -> OntologyAct
     if not at:
         raise HTTPException(status_code=404, detail="Action type not found")
     return at
+
+
+def _validate_action_type_fields(
+    *,
+    rule_type: str,
+    function_id: str | None,
+) -> None:
+    try:
+        rt = normalize_rule_type(rule_type)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e)) from e
+    if is_builtin_object_rule(rt) and function_id:
+        raise HTTPException(
+            status_code=400,
+            detail="Built-in object actions cannot bind a function",
+        )
 
 
 @router.get("", response_model=list[OntologyActionTypeResponse])
@@ -83,6 +100,7 @@ async def create_action_type(
     _: None = Depends(require_any_permission(PERM_ONTOLOGY_WRITE)),
 ):
     validate_api_name(body.api_name)
+    _validate_action_type_fields(rule_type=body.rule_type, function_id=body.function_id)
     exists = (
         await db.execute(select(OntologyActionType.id).where(OntologyActionType.api_name == body.api_name))
     ).scalar_one_or_none()
@@ -116,6 +134,10 @@ async def update_action_type(
     _: None = Depends(require_any_permission(PERM_ONTOLOGY_WRITE)),
 ):
     at = await _get_action_type(db, action_type_id)
+    next_rule_type = body.rule_type if body.rule_type is not None else at.rule_type
+    next_function_id = at.function_id if body.function_id is None else body.function_id
+    if body.rule_type is not None or body.function_id is not None:
+        _validate_action_type_fields(rule_type=next_rule_type, function_id=next_function_id)
     for field in ("display_name", "description", "rule_type", "function_id", "function_version", "parameters", "status"):
         val = getattr(body, field)
         if val is not None:
@@ -147,15 +169,6 @@ async def execute_action_type(
     at = await _get_action_type(db, action_type_id)
     if at.status != "active":
         raise HTTPException(status_code=400, detail="Action type is not active")
-    if not at.function_id:
-        raise HTTPException(status_code=400, detail="Action has no bound function")
-
-    try:
-        fn, ver = await execution_service.resolve_published_version_for_function(
-            db, at.function_id, pinned_version=at.function_version
-        )
-    except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e)) from e
 
     input_payload = dict(body.input or {})
     object_id = body.object_id
@@ -172,6 +185,30 @@ async def execute_action_type(
         object_id = canonical_id
 
     uid, _ = jwt_user_from_request(request)
+
+    if is_builtin_object_rule(at.rule_type):
+        ot = await db.get(ObjectType, at.object_type_id)
+        if not ot:
+            raise HTTPException(status_code=404, detail="Object type not found")
+        return await execution_service.execute_builtin_action_and_audit(
+            db,
+            at,
+            ot,
+            input_payload=input_payload,
+            object_id=object_id,
+            caller_user_id=uid,
+        )
+
+    if not at.function_id:
+        raise HTTPException(status_code=400, detail="Action has no bound function")
+
+    try:
+        fn, ver = await execution_service.resolve_published_version_for_function(
+            db, at.function_id, pinned_version=at.function_version
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e)) from e
+
     return await execution_service.execute_action_and_audit(
         db,
         at,

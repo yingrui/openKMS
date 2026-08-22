@@ -14,6 +14,7 @@ import {
 } from '../../data/ontologyFunctionsApi';
 import { useConfirm } from '../../contexts/ConfirmContext';
 import { ActionTypeCreateWizard } from './ActionTypeCreateWizard';
+import { isBuiltinObjectRule } from './actionRuleTypes';
 import '../ontology/ontology-admin.scss';
 
 function statusBadgeClass(status: string): string {
@@ -130,7 +131,7 @@ export function ActionsListPage() {
                   <th>{t('actions.apiName')}</th>
                   <th>{t('actions.displayName')}</th>
                   <th>{t('actions.objectType')}</th>
-                  <th>{t('actions.function')}</th>
+                  <th>{t('actions.ruleType')}</th>
                   <th>{t('actions.status')}</th>
                   <th className="console-table-actions">{t('shared.actions')}</th>
                 </tr>
@@ -151,9 +152,11 @@ export function ActionsListPage() {
                       {objectTypeNameById.get(action.object_type_id) ?? action.object_type_id}
                     </td>
                     <td className="console-table-muted">
-                      {action.function_id
-                        ? functionNameById.get(action.function_id) ?? action.function_id
-                        : '—'}
+                      {isBuiltinObjectRule(action.rule_type)
+                        ? t(`actions.ruleTypeLabel.${action.rule_type}`, { defaultValue: action.rule_type })
+                        : action.function_id
+                          ? functionNameById.get(action.function_id) ?? action.function_id
+                          : t('actions.noFunction')}
                     </td>
                     <td>
                       <span className={statusBadgeClass(action.status)}>{action.status}</span>

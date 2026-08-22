@@ -231,7 +231,7 @@
         "actions": "操作类型",
         "review": "确认"
       },
-      "actionsHint": "可选：为该对象类型创建操作类型空壳，稍后可绑定函数。",
+      "actionsHint": "可选：为该对象类型创建内置的创建 / 编辑 / 删除操作。",
       "actionsToCreate": "将创建的操作类型",
       "noActions": "无",
       "propertyCount": "{{count}} 个属性",
@@ -242,9 +242,9 @@
         "delete": "删除"
       },
       "actionHint": {
-        "create": "用于新建实例的操作类型空壳。",
-        "edit": "用于更新实例的操作类型空壳。",
-        "delete": "用于删除实例的操作类型空壳。"
+        "create": "内置创建操作 — 无需函数即可运行。",
+        "edit": "内置编辑操作 — 无需函数即可运行。",
+        "delete": "内置删除操作 — 无需函数即可运行。"
       },
       "actionDisplay": {
         "create": "创建 {{name}}",
@@ -293,7 +293,7 @@
   },
   "actions": {
     "title": "操作类型",
-    "subtitle": "操作类型将已发布函数绑定到对象类型。",
+    "subtitle": "定义如何创建、更新或删除对象实例 — 可用内置规则，或通过函数实现自定义逻辑。",
     "apiName": "标识符",
     "displayName": "显示名称",
     "objectType": "对象类型",
@@ -307,11 +307,31 @@
     "deleted": "操作类型已删除",
     "deleteConfirm": "删除操作类型「{{name}}」？",
     "emptyList": "暂无操作类型。",
-    "createHint": "选择对象类型与显示名称；可现在绑定已发布函数，也可稍后配置。",
+    "createHint": "选择对象类型与意图。创建、编辑、删除类操作可直接运行，无需绑定函数。",
     "formRequired": "请填写显示名称并选择对象类型。",
     "noObjectTypes": "暂无对象类型 — 请先创建",
     "noFunction": "无（稍后配置）",
     "publishFirstHint": "请先在 Ontology Manager 中发布函数，再在此绑定。",
+    "functionCustomHint": "自定义操作通过已发布函数运行。可在此或「规则」页绑定。",
+    "writableFields": "可写字段",
+    "writableFieldsHint": "全部勾选表示允许对象类型的所有属性；取消勾选则忽略该字段。",
+    "ruleTypeLabel": {
+      "object_create": "创建对象",
+      "object_modify": "修改对象",
+      "object_delete": "删除对象",
+      "function": "函数"
+    },
+    "builtinHint": {
+      "create": "根据提交的属性值创建新实例，无需绑定函数。",
+      "edit": "更新已有实例的属性值，无需绑定函数。",
+      "delete": "按对象 id 删除实例，无需绑定函数。"
+    },
+    "builtinRulesHint": {
+      "default": "内置规则 — 由平台直接执行，无需函数。",
+      "object_create": "执行时根据所选属性值创建新实例。",
+      "object_modify": "执行时将提交的属性值合并到目标实例。",
+      "object_delete": "执行时删除目标实例。"
+    },
     "wizard": {
       "stepsLabel": "创建步骤",
       "back": "上一步",
@@ -321,7 +341,7 @@
         "define": "定义",
         "review": "确认"
       },
-      "targetHint": "选择此操作类型作用的对象类型；可选创建/编辑/删除意图以辅助命名。",
+      "targetHint": "选择对象类型及操作意图。创建、编辑、删除为内置规则；自定义操作需绑定函数。",
       "objectTypeRequired": "请先选择对象类型。",
       "intentLabel": "意图",
       "intent": {
@@ -344,7 +364,9 @@
     "logError": "错误",
     "noLogs": "暂无运行记录。可在 Object Explorer 的对象列表中触发此操作类型。",
     "rules": "规则",
-    "rulesSubtitle": "绑定在触发此操作类型时运行的已发布函数。",
+    "rulesSubtitle": "配置此操作的运行方式。",
+    "rulesBuiltinSubtitle": "内置对象规则 — 选择调用方可写入的属性。",
+    "rulesFunctionSubtitle": "绑定触发此操作时运行的已发布函数。",
     "log": "日志",
     "kind": "操作类型",
     "general": "常规",

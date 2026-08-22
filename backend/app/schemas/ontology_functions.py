@@ -168,7 +168,7 @@ class OntologyActionTypeResponse(BaseModel):
     rule_type: str
     function_id: str | None = None
     function_version: int | None = None
-    parameters: list | None = None
+    parameters: dict | list | None = None
     status: str
     created_at: datetime
     updated_at: datetime
@@ -182,7 +182,7 @@ class OntologyActionTypeCreate(BaseModel):
     rule_type: str = "function"
     function_id: str | None = None
     function_version: int | None = None
-    parameters: list | None = None
+    parameters: dict | list | None = None
 
 
 class OntologyActionTypeUpdate(BaseModel):
@@ -191,7 +191,7 @@ class OntologyActionTypeUpdate(BaseModel):
     rule_type: str | None = None
     function_id: str | None = None
     function_version: int | None = None
-    parameters: list | None = None
+    parameters: dict | list | None = None
     status: str | None = None
 
 

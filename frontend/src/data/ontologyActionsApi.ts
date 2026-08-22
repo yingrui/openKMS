@@ -10,7 +10,7 @@ export interface OntologyActionTypeResponse {
   rule_type: string;
   function_id?: string | null;
   function_version?: number | null;
-  parameters?: unknown[] | null;
+  parameters?: Record<string, unknown> | unknown[] | null;
   status: string;
   created_at: string;
   updated_at: string;
@@ -50,6 +50,7 @@ export async function updateOntologyActionType(
     description?: string;
     function_id?: string | null;
     function_version?: number | null;
+    parameters?: Record<string, unknown> | unknown[] | null;
     status?: string;
   },
 ): Promise<OntologyActionTypeResponse> {
@@ -87,6 +88,7 @@ export async function createOntologyActionType(body: {
   rule_type?: string;
   function_id?: string;
   function_version?: number;
+  parameters?: Record<string, unknown> | unknown[];
 }): Promise<OntologyActionTypeResponse> {
   return ontologyFetch<OntologyActionTypeResponse>(
     base,

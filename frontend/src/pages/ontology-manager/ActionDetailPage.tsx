@@ -1,4 +1,4 @@
-import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
+import { createContext, useCallback, useContext, useEffect, useMemo, useState, type Dispatch, type SetStateAction } from 'react';
 import { Outlet, useParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { Save } from 'lucide-react';
@@ -22,11 +22,16 @@ import {
   EntityViewStat,
   EntityViewStats,
 } from './EntityViewShell';
+import {
+  isBuiltinObjectRule,
+  writableFieldsFromParameters,
+} from './actionRuleTypes';
 import '../ontology/ontology-admin.scss';
 
 type ActionDetailContext = {
   action: OntologyActionTypeResponse;
   logs: OntologyActionLogResponse[];
+  objectType: ObjectTypeResponse | null;
   objectTypeName: string;
   publishedFunctions: OntologyFunctionResponse[];
   displayName: string;
@@ -37,6 +42,8 @@ type ActionDetailContext = {
   setStatus: (v: string) => void;
   functionId: string;
   setFunctionId: (v: string) => void;
+  writableFields: string[];
+  setWritableFields: Dispatch<SetStateAction<string[]>>;
   saving: boolean;
   onSave: () => Promise<void>;
 };
@@ -47,6 +54,10 @@ function useActionDetail(): ActionDetailContext {
   const ctx = useContext(ActionDetailCtx);
   if (!ctx) throw new Error('useActionDetail requires ActionDetailPage');
   return ctx;
+}
+
+function allPropertyNames(ot: ObjectTypeResponse | null): string[] {
+  return (ot?.properties ?? []).map((p) => p.name).filter(Boolean);
 }
 
 export function ActionDetailPage() {
@@ -63,16 +74,19 @@ export function ActionDetailPage() {
   const [description, setDescription] = useState('');
   const [status, setStatus] = useState('active');
   const [functionId, setFunctionId] = useState('');
+  const [writableFields, setWritableFields] = useState<string[]>([]);
 
   const publishedFunctions = useMemo(
     () => functions.filter((fn) => fn.published_version != null),
     [functions],
   );
 
-  const objectTypeName = useMemo(() => {
-    if (!action) return '—';
-    return objectTypes.find((ot) => ot.id === action.object_type_id)?.name ?? action.object_type_id;
+  const objectType = useMemo(() => {
+    if (!action) return null;
+    return objectTypes.find((ot) => ot.id === action.object_type_id) ?? null;
   }, [action, objectTypes]);
+
+  const objectTypeName = objectType?.name ?? action?.object_type_id ?? '—';
 
   const load = useCallback(async () => {
     if (!actionId) return;
@@ -92,6 +106,9 @@ export function ActionDetailPage() {
       setDescription(at.description ?? '');
       setStatus(at.status);
       setFunctionId(at.function_id ?? '');
+      const ot = typesRes.items.find((row) => row.id === at.object_type_id) ?? null;
+      const savedFields = writableFieldsFromParameters(at.parameters);
+      setWritableFields(savedFields.length ? savedFields : allPropertyNames(ot));
     } catch (e: unknown) {
       toast.error(e instanceof Error ? e.message : t('actions.loadFailed'));
     } finally {
@@ -104,17 +121,30 @@ export function ActionDetailPage() {
   }, [load]);
 
   const onSave = useCallback(async () => {
-    if (!actionId) return;
+    if (!actionId || !action) return;
     const selectedFn = publishedFunctions.find((fn) => fn.id === functionId);
+    const isBuiltin = isBuiltinObjectRule(action.rule_type);
     setSaving(true);
     try {
-      const updated = await updateOntologyActionType(actionId, {
+      const body: Parameters<typeof updateOntologyActionType>[1] = {
         display_name: displayName.trim(),
         description: description.trim() || undefined,
         status,
-        function_id: selectedFn?.id ?? null,
-        function_version: selectedFn?.published_version ?? null,
-      });
+      };
+      if (isBuiltin) {
+        body.function_id = null;
+        body.function_version = null;
+        const allNames = allPropertyNames(objectType);
+        const fields =
+          writableFields.length && writableFields.length < allNames.length
+            ? writableFields
+            : undefined;
+        body.parameters = fields ? { fields } : {};
+      } else {
+        body.function_id = selectedFn?.id ?? null;
+        body.function_version = selectedFn?.published_version ?? null;
+      }
+      const updated = await updateOntologyActionType(actionId, body);
       setAction(updated);
       toast.success(t('actions.saved'));
     } catch (e: unknown) {
@@ -122,7 +152,18 @@ export function ActionDetailPage() {
     } finally {
       setSaving(false);
     }
-  }, [actionId, publishedFunctions, functionId, displayName, description, status, t]);
+  }, [
+    actionId,
+    action,
+    publishedFunctions,
+    functionId,
+    displayName,
+    description,
+    status,
+    objectType,
+    writableFields,
+    t,
+  ]);
 
   const value = useMemo(
     () =>
@@ -130,6 +171,7 @@ export function ActionDetailPage() {
         ? {
             action,
             logs,
+            objectType,
             objectTypeName,
             publishedFunctions,
             displayName,
@@ -140,6 +182,8 @@ export function ActionDetailPage() {
             setStatus,
             functionId,
             setFunctionId,
+            writableFields,
+            setWritableFields,
             saving,
             onSave,
           }
@@ -147,12 +191,14 @@ export function ActionDetailPage() {
     [
       action,
       logs,
+      objectType,
       objectTypeName,
       publishedFunctions,
       displayName,
       description,
       status,
       functionId,
+      writableFields,
       saving,
       onSave,
     ],
@@ -214,7 +260,10 @@ export function ActionOverviewTab() {
       <EntityViewStats>
         <EntityViewStat label={t('actions.apiName')} value={action.api_name} />
         <EntityViewStat label={t('actions.objectType')} value={objectTypeName} />
-        <EntityViewStat label={t('actions.ruleType')} value={action.rule_type} />
+        <EntityViewStat
+          label={t('actions.ruleType')}
+          value={t(`actions.ruleTypeLabel.${action.rule_type}`, { defaultValue: action.rule_type })}
+        />
       </EntityViewStats>
       <EntityViewPanel title={t('actions.general')} description={t('actions.generalHint')}>
         <div className="entity-view__form">
@@ -249,18 +298,33 @@ export function ActionRulesTab() {
   const { t } = useTranslation('ontology');
   const {
     action,
+    objectType,
     publishedFunctions,
     functionId,
     setFunctionId,
+    writableFields,
+    setWritableFields,
     saving,
     onSave,
   } = useActionDetail();
+
+  const isBuiltin = isBuiltinObjectRule(action.rule_type);
+  const propertyNames = allPropertyNames(objectType);
+
+  const toggleField = (name: string) => {
+    setWritableFields((prev) => {
+      if (prev.includes(name)) return prev.filter((f) => f !== name);
+      return [...prev, name];
+    });
+  };
 
   return (
     <>
       <EntityViewHeader
         title={t('actions.rules')}
-        subtitle={t('actions.rulesSubtitle')}
+        subtitle={
+          isBuiltin ? t('actions.rulesBuiltinSubtitle') : t('actions.rulesFunctionSubtitle')
+        }
         actions={
           <button type="button" className="btn btn-primary" onClick={() => void onSave()} disabled={saving}>
             <Save size={16} aria-hidden />
@@ -269,28 +333,63 @@ export function ActionRulesTab() {
         }
       />
       <EntityViewStats>
-        <EntityViewStat label={t('actions.ruleType')} value={action.rule_type} />
+        <EntityViewStat
+          label={t('actions.ruleType')}
+          value={t(`actions.ruleTypeLabel.${action.rule_type}`, { defaultValue: action.rule_type })}
+        />
       </EntityViewStats>
       <EntityViewPanel>
-        <div className="entity-view__form">
-          <EntityViewField
-            label={t('actions.function')}
-            hint={publishedFunctions.length === 0 ? t('actions.publishFirstHint') : undefined}
-          >
-            <select
-              className="console-form-control"
-              value={functionId}
-              onChange={(e) => setFunctionId(e.target.value)}
+        {isBuiltin ? (
+          <div className="entity-view__form">
+            <p className="console-modal-hint">
+              {t(`actions.builtinRulesHint.${action.rule_type}`, {
+                defaultValue: t('actions.builtinRulesHint.default'),
+              })}
+            </p>
+            {action.rule_type !== 'object_delete' && propertyNames.length > 0 ? (
+              <fieldset className="object-type-create-wizard__intent">
+                <legend>{t('actions.writableFields')}</legend>
+                <p className="console-modal-hint">{t('actions.writableFieldsHint')}</p>
+                <ul className="object-type-create-wizard__action-list">
+                  {propertyNames.map((name) => (
+                    <li key={name}>
+                      <label className="object-type-create-wizard__checkbox">
+                        <input
+                          type="checkbox"
+                          className="ds-checkbox"
+                          checked={writableFields.includes(name)}
+                          onChange={() => toggleField(name)}
+                        />
+                        <span>{name}</span>
+                      </label>
+                    </li>
+                  ))}
+                </ul>
+              </fieldset>
+            ) : null}
+          </div>
+        ) : (
+          <div className="entity-view__form">
+            <EntityViewField
+              label={t('actions.function')}
+              hint={publishedFunctions.length === 0 ? t('actions.publishFirstHint') : undefined}
             >
-              <option value="">{t('actions.noFunction')}</option>
-              {publishedFunctions.map((fn) => (
-                <option key={fn.id} value={fn.id}>
-                  {fn.api_name} (v{fn.published_version})
-                </option>
-              ))}
-            </select>
-          </EntityViewField>
-        </div>
+              <select
+                className="console-form-control"
+                value={functionId}
+                onChange={(e) => setFunctionId(e.target.value)}
+              >
+                <option value="">{t('actions.noFunction')}</option>
+                {publishedFunctions.map((fn) => (
+                  <option key={fn.id} value={fn.id}>
+                    {fn.api_name} (v{fn.published_version})
+                  </option>
+                ))}
+              </select>
+            </EntityViewField>
+            <p className="console-modal-hint">{t('actions.functionCustomHint')}</p>
+          </div>
+        )}
       </EntityViewPanel>
     </>
   );

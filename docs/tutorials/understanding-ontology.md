@@ -213,69 +213,23 @@ Capacity-style FoO can use property filters: `client("WorkItem").search(filters=
 
 ### Step E — Actions: create / update / move / delete WorkItems
 
-Publish Functions that return `edits`, then bind each as an Action type on **WorkItem**. Action execute applies **`create` / `modify` / `delete`** on Explorer-style object instances (`applied.created_ids` / `modified_ids` / `deleted_ids`).
+In **Ontology Manager → Action types**, create **WorkItem** actions with built-in rules — no Function required for simple CRUD:
 
-**Create** (no existing card — run from Action types UI or API without a row `object_id`):
+| Intent | Rule type | Example api_name |
+|--------|-----------|------------------|
+| Create | `object_create` | `createWorkItem` |
+| Edit | `object_modify` | `updateWorkItem` |
+| Delete | `object_delete` | `deleteWorkItem` |
 
-```python
-from openkms_functions import Client, create_edit_batch, function
+On the **Rules** tab you can limit writable fields (e.g. only `status` for a column-move action). Optional **`defaults`** in parameters (e.g. `{"status": "done"}`) pre-fill values on modify — useful for a **Move to Done** action that only needs `object_id`.
 
+Action execute applies **`create` / `modify` / `delete`** on Explorer-style object instances (`applied.created_ids` / `modified_ids` / `deleted_ids`).
 
-@function(edits=["WorkItem"])
-def execute(input: dict, client: Client) -> dict:
-    title = (input.get("title") or "Untitled").strip()
-    status = (input.get("status") or "backlog").strip()
-    batch = create_edit_batch()
-    # Omit primary_key to let the platform assign a UUID (returned in applied.created_ids).
-    batch.create("WorkItem", title=title, status=status)
-    return {"edits": batch.get_edits()}
-```
+**Custom logic** (cross-type checks, computed fields, multi-step edits) still uses a published Function bound to a **`function`** rule type.
 
-**Update** (edit fields on the Action’s `object_id`):
+When creating a **WorkItem** object type, the Manager wizard can tick Create / Edit / Delete to add matching built-in action types automatically.
 
-```python
-from openkms_functions import Client, create_edit_batch, function
-
-_ALLOWED = ("title", "status", "description", "priority", "estimate")
-
-
-@function(edits=["WorkItem"])
-def execute(input: dict, client: Client) -> dict:
-    oid = (input.get("object_id") or "").strip()
-    props = {k: input[k] for k in _ALLOWED if k in input and input[k] is not None}
-    batch = create_edit_batch()
-    batch.modify("WorkItem", primary_key=oid, **props)
-    return {"edits": batch.get_edits()}
-```
-**Move to Done** (column change via `modify`):
-
-```python
-from openkms_functions import Client, create_edit_batch, function
-
-
-@function(edits=["WorkItem"])
-def execute(input: dict, client: Client) -> dict:
-    oid = (input.get("object_id") or "").strip()
-    batch = create_edit_batch()
-    batch.modify("WorkItem", primary_key=oid, status="done")
-    return {"edits": batch.get_edits()}
-```
-
-**Delete**:
-
-```python
-from openkms_functions import Client, create_edit_batch, function
-
-
-@function(edits=["WorkItem"])
-def execute(input: dict, client: Client) -> dict:
-    oid = (input.get("object_id") or "").strip()
-    batch = create_edit_batch()
-    batch.delete("WorkItem", primary_key=oid)
-    return {"edits": batch.get_edits()}
-```
-
-For each: create an Action type on **WorkItem**, bind the Function, activate. Try create from Manager Action execute; try update/move/delete on a card in Object Explorer.
+Try create from an App or API; try update / move / delete on a card in Object Explorer.
 
 A visual column board is **not** part of Object Explorer; build it with **[App Builder](../features/app-builder.md)** + A2UI on the same APIs, then open the published app under **Apps**.
 
