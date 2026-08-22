@@ -24,13 +24,32 @@ from app.schemas.ontology_functions import (
 from app.services.ontology.constants import ACTION_TYPE_ID_PREFIX, ID_HEX_LENGTH
 from app.services.ontology.action_rule_types import is_builtin_object_rule, normalize_rule_type
 from app.services.ontology import execution_service
+from app.services.ontology.builtin_action_service import input_schema_for_action
+from app.services.ontology.input_schema import validate_input_against_schema
 from app.services.ontology.object_neo4j_store import resolve_object_props_for_action
 from app.services.permissions.permission_catalog import PERM_ONTOLOGY_READ, PERM_ONTOLOGY_WRITE
 
 router = APIRouter(prefix="/ontology/action-types", tags=["ontology-action-types"], dependencies=[Depends(require_auth)])
 
 
-def _to_response(at: OntologyActionType) -> OntologyActionTypeResponse:
+async def _resolve_input_schema(db: AsyncSession, at: OntologyActionType) -> dict | None:
+    if is_builtin_object_rule(at.rule_type):
+        ot = await db.get(ObjectType, at.object_type_id)
+        if not ot:
+            return None
+        return input_schema_for_action(at, ot)
+    if not at.function_id:
+        return None
+    try:
+        _, ver = await execution_service.resolve_published_version_for_function(
+            db, at.function_id, pinned_version=at.function_version
+        )
+    except ValueError:
+        return None
+    return ver.input_schema if isinstance(ver.input_schema, dict) else None
+
+
+async def _to_response(db: AsyncSession, at: OntologyActionType) -> OntologyActionTypeResponse:
     return OntologyActionTypeResponse(
         id=at.id,
         api_name=at.api_name,
@@ -44,6 +63,7 @@ def _to_response(at: OntologyActionType) -> OntologyActionTypeResponse:
         status=at.status,
         created_at=at.created_at,
         updated_at=at.updated_at,
+        input_schema=await _resolve_input_schema(db, at),
     )
 
 
@@ -80,7 +100,7 @@ async def list_action_types(
     if object_type_id:
         q = q.where(OntologyActionType.object_type_id == object_type_id)
     rows = (await db.execute(q)).scalars().all()
-    return [_to_response(r) for r in rows]
+    return [await _to_response(db, r) for r in rows]
 
 
 @router.get("/{action_type_id}", response_model=OntologyActionTypeResponse)
@@ -89,7 +109,7 @@ async def get_action_type(
     db: AsyncSession = Depends(get_db),
     _: None = Depends(require_any_permission(PERM_ONTOLOGY_READ)),
 ):
-    return _to_response(await _get_action_type(db, action_type_id))
+    return await _to_response(db, await _get_action_type(db, action_type_id))
 
 
 @router.post("", response_model=OntologyActionTypeResponse, status_code=201)
@@ -123,7 +143,7 @@ async def create_action_type(
     db.add(at)
     await db.commit()
     await db.refresh(at)
-    return _to_response(at)
+    return await _to_response(db, at)
 
 
 @router.patch("/{action_type_id}", response_model=OntologyActionTypeResponse)
@@ -144,7 +164,7 @@ async def update_action_type(
             setattr(at, field, val)
     await db.commit()
     await db.refresh(at)
-    return _to_response(at)
+    return await _to_response(db, at)
 
 
 @router.delete("/{action_type_id}", status_code=204)
@@ -190,6 +210,11 @@ async def execute_action_type(
         ot = await db.get(ObjectType, at.object_type_id)
         if not ot:
             raise HTTPException(status_code=404, detail="Object type not found")
+        schema_errors = validate_input_against_schema(
+            input_payload, input_schema_for_action(at, ot)
+        )
+        if schema_errors:
+            raise HTTPException(status_code=400, detail="; ".join(schema_errors))
         return await execution_service.execute_builtin_action_and_audit(
             db,
             at,

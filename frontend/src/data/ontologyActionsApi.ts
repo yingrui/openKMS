@@ -14,6 +14,8 @@ export interface OntologyActionTypeResponse {
   status: string;
   created_at: string;
   updated_at: string;
+  /** Computed JSON Schema for Action input (built-in or Function). */
+  input_schema?: Record<string, unknown> | null;
 }
 
 export interface OntologyActionLogResponse {

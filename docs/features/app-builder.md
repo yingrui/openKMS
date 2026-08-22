@@ -50,14 +50,15 @@ Catalog id: `https://openkms.local/a2ui/catalogs/ontology-app/v1.json`.
 | Component | Behavior |
 |-----------|----------|
 | `OntoObjectList` | List instances; optional `filterProperty` / `filterValue`; Refresh |
-| `OntoActionForm` | Button + dialog; fields from Function `input_schema`; Action execute |
-| `OntoActionButton` | One-shot Action by api_name |
+| `OntoActionButton` | One-shot Action by api_name (no form) |
 | `OntoFunctionButton` | Published FoO; result panel |
 | `OntoObjectLink` | Navigate to Object Explorer |
 
-Layout uses A2UI basic (`Column`, `Row`, `Text`, …). Create stores a **stub** until the designer composes a layout. NDJSON (`surface=ontology_app_designer`): `set_resources` + `set_a2ui_messages`.
+Layout uses A2UI basic (`Column`, `Row`, `Text`, `Button`, `Modal`, `TextField`, …). Create stores a **stub** until the designer composes a layout. NDJSON (`surface=ontology_app_designer`): `set_resources` + `set_a2ui_messages`.
 
-Multi-column “kanban-like” UIs are **composed** from several filtered lists + a form — there is no `OntoKanbanBoard`.
+**Create dialog pattern (Source):** `Modal` (`trigger` = `Button` with `Text` child; `content` = `Column` of `TextField`s bound to DataModel paths + Submit `Button`). Submit uses `action.event` with `name: executeAction` and context `{ actionApiName, inputPath }`. The app host reads the DataModel at `inputPath` and runs Action execute. Action **input shape** comes from the Action (built-in writable fields / Function `input_schema`) — there is no `OntoActionForm` component.
+
+Multi-column “kanban-like” UIs are **composed** from several filtered lists + a Modal form — there is no `OntoKanbanBoard`.
 
 ## Artifact kinds
 

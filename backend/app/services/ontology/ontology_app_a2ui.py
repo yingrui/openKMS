@@ -9,10 +9,10 @@ ONTOLOGY_APP_A2UI_SURFACE_ID = "ontology-app"
 A2UI_VERSION = "v0.9"
 A2UI_DOC_FORMAT = "a2ui_v0_9"
 
-REMOVED_COMPONENTS = frozenset({"OntoKanbanBoard"})
+REMOVED_COMPONENTS = frozenset({"OntoKanbanBoard", "OntoActionForm"})
 
 ONTOLOGY_COMPONENTS_WITH_OBJECT_TYPE = frozenset({"OntoObjectList"})
-ONTOLOGY_COMPONENTS_WITH_ACTION = frozenset({"OntoActionButton", "OntoActionForm"})
+ONTOLOGY_COMPONENTS_WITH_ACTION = frozenset({"OntoActionButton"})
 ONTOLOGY_COMPONENTS_WITH_FUNCTION = frozenset({"OntoFunctionButton"})
 
 
@@ -84,7 +84,7 @@ def synthesize_stub_a2ui_messages(*, title: str) -> list[dict[str, Any]]:
             "text": (
                 "Describe the app to the designer. Link existing Object Types, "
                 "Actions, and Functions — Builder does not create them. "
-                "Compose OntoObjectList, OntoActionForm, and layout components in Source."
+                "Compose OntoObjectList, Modal, TextField, Button, and layout in Source."
             ),
             "variant": "body",
         },
@@ -122,6 +122,25 @@ def iter_a2ui_components(messages: list[dict[str, Any]]) -> list[dict[str, Any]]
     return out
 
 
+def _literal_action_api_name(value: Any) -> str | None:
+    if isinstance(value, str) and value.strip():
+        return value.strip()
+    return None
+
+
+def _action_api_from_event_action(action: Any) -> str | None:
+    """Pull actionApiName from Button (or any) action.event.context when literal."""
+    if not isinstance(action, dict):
+        return None
+    event = action.get("event")
+    if not isinstance(event, dict):
+        return None
+    ctx = event.get("context")
+    if not isinstance(ctx, dict):
+        return None
+    return _literal_action_api_name(ctx.get("actionApiName"))
+
+
 def collect_a2ui_resource_refs(messages: list[dict[str, Any]]) -> dict[str, set[str]]:
     ots: set[str] = set()
     actions: set[str] = set()
@@ -138,6 +157,9 @@ def collect_a2ui_resource_refs(messages: list[dict[str, Any]]) -> dict[str, set[
             api = str(c.get("actionApiName") or "").strip()
             if api:
                 actions.add(api)
+        nested = _action_api_from_event_action(c.get("action"))
+        if nested:
+            actions.add(nested)
         if name in ONTOLOGY_COMPONENTS_WITH_FUNCTION:
             api = str(c.get("functionApiName") or "").strip()
             if api:
@@ -179,7 +201,7 @@ def validate_ontology_app_a2ui_messages(
         if name in REMOVED_COMPONENTS:
             raise ValueError(
                 f"Component {name} was removed. Rebuild the layout with "
-                "OntoObjectList, OntoActionForm, and other platform primitives."
+                "OntoObjectList, Modal, TextField, Button, and other platform primitives."
             )
 
     if not has_surface:

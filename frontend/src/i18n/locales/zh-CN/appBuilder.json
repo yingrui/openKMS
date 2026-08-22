@@ -41,5 +41,5 @@
   "unpublish": "取消发布",
   "backToList": "返回列表",
   "missing": "缺失资源",
-  "legacyBoardHint": "此应用仍是旧看板布局/绑定。请点「重置布局」，再让设计器用 OntoObjectList + OntoActionForm 重搭。"
+  "legacyBoardHint": "此应用仍是旧看板布局/绑定。请点「重置布局」，再让设计器用 OntoObjectList + Modal/TextField 表单重搭。"
 }

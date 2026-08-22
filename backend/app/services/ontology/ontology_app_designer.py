@@ -62,12 +62,15 @@ _SET_A2UI_TOOL: dict[str, Any] = {
             f"'{ONTOLOGY_APP_A2UI_CATALOG_ID}' and surfaceId '{ONTOLOGY_APP_A2UI_SURFACE_ID}'. "
             "Must include component id 'root'. "
             "Column/Row/List use children:[id,...]. Card/Button use child:'oneId'. "
+            "Button label text must be a Text child (Button has no label prop). "
+            "Create/edit dialogs: A2UI Modal (trigger=Button id, content=Column of TextFields + Submit Button). "
+            "TextField value={path:'/…'}; Submit Button action.event name=executeAction with context "
+            "{actionApiName, inputPath} (literals). Host reads DataModel at inputPath and executes the Action. "
+            "Never emit OntoActionForm or OntoKanbanBoard (removed). "
             "Platform primitives: OntoObjectList (objectType, titleProperty, optional "
-            "filterProperty+filterValue), OntoActionForm (actionApiName, label), "
-            "OntoActionButton (actionApiName, label, optional objectId), "
+            "filterProperty+filterValue), OntoActionButton (actionApiName, label, optional objectId), "
             "OntoFunctionButton (functionApiName, label), OntoObjectLink "
-            "(objectTypeId, objectId, label). "
-            "Never use OntoKanbanBoard (removed). "
+            "(objectTypeId, objectId, label), plus basic Modal/TextField/Button/Column/Row/Text. "
             "Only reference api_names from RESOURCES. Call set_resources first if RESOURCES are empty."
         ),
         "parameters": {
@@ -91,26 +94,28 @@ You help authors build ontology-backed apps by **linking** existing Object Types
 
 | User intent | Compose |
 |-------------|---------|
-| List / browse / table | Text + OntoObjectList (± OntoActionForm for create) |
-| Create / intake form | Emphasize OntoActionForm; list optional |
-| Columns by status/stage ("kanban-like") | Several OntoObjectList with different filterProperty/filterValue + optional global OntoActionForm — NOT a board component |
+| List / browse / table | Text + OntoObjectList (± Modal create form) |
+| Create / intake form | Modal: trigger Button; content Column of TextFields + Submit Button (executeAction) |
+| Columns by status/stage ("kanban-like") | Several OntoObjectList with different filterProperty/filterValue + one Modal create — NOT a board component |
 | Deep link | OntoObjectLink |
 | Read-only suggestion | OntoFunctionButton |
 | Needs drag-and-drop or heavy custom UI | Say the platform a2ui lane cannot do that yet; stay within primitives |
 
-## Recipes (complete shapes — Create labels live in Source as OntoActionForm)
+## Recipes (create UI = Modal + TextField + Button event in Source)
 
-1) Single list + create — prefer this when the user asks for a simple app.
-2) Read-only list — no OntoActionForm.
-3) Multi-column filters — Row of Columns each with OntoObjectList + one Form.
+1) Single list + create — Modal.trigger = Button (child Text); Modal.content = Column([Text heading, TextFields bound to `/actionApiName/…`, Submit Button]).
+2) Submit Button: `action: {{ event: {{ name: "executeAction", context: {{ actionApiName: "<api>", inputPath: "/<api>" }} }} }}`.
+3) Expand TextFields from Action `input_schema` in ONTOLOGY_SNAPSHOT (skip object_id). Optional `updateDataModel` for defaults.
+4) Multi-column filters — Row of Columns each with OntoObjectList + one create Modal.
+5) Read-only list — no form.
 
 ## Protocol
 
 - Reply briefly in the user language.
 - Use ONTOLOGY_SNAPSHOT for real names and Action input_schema summaries.
 - If resources are empty, call **set_resources** first (objectTypes / actions / functions arrays).
-- Then call **set_a2ui_messages** to set the full tree. Changing button copy = edit Source nodes, do not invent platform widgets.
-- **Never** emit `OntoKanbanBoard` (removed). Use multiple `OntoObjectList` + `OntoActionForm` instead.
+- Then call **set_a2ui_messages** to set the full tree. Changing button copy = edit Source Text nodes, do not invent platform widgets.
+- **Never** emit `OntoKanbanBoard` or `OntoActionForm` (removed). Forms are basic TextField + Button events.
 - createSurface surfaceId="{ONTOLOGY_APP_A2UI_SURFACE_ID}" catalogId="{ONTOLOGY_APP_A2UI_CATALOG_ID}".
 - updateComponents must include id **"root"**.
 - filter values must match stored property values on instances, not display labels, unless those strings are what is stored.

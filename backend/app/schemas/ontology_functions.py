@@ -172,6 +172,8 @@ class OntologyActionTypeResponse(BaseModel):
     status: str
     created_at: datetime
     updated_at: datetime
+    #: Computed JSON Schema for Action input (built-in OT×fields, or bound Function).
+    input_schema: dict | None = None
 
 
 class OntologyActionTypeCreate(BaseModel):

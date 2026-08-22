@@ -62,3 +62,23 @@
   gap: 0.35rem;
   align-items: flex-start;
 }
+
+.onto-a2ui-action-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  min-width: min(20rem, 100%);
+}
+
+.onto-a2ui-action-form__title {
+  margin: 0;
+  font-weight: 600;
+  font-size: 1rem;
+}
+
+.onto-a2ui-action-form__actions {
+  display: flex;
+  gap: 0.5rem;
+  justify-content: flex-end;
+  margin-top: 0.25rem;
+}

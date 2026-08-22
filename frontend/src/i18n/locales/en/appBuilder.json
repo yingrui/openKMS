@@ -41,5 +41,5 @@
   "unpublish": "Unpublish",
   "backToList": "Back to list",
   "missing": "Missing resources",
-  "legacyBoardHint": "This app still has the old board layout/bindings. Click Reset layout, then ask the designer again to compose OntoObjectList + OntoActionForm."
+  "legacyBoardHint": "This app still has the old board layout/bindings. Click Reset layout, then ask the designer again to compose OntoObjectList + Modal/TextField forms."
 }

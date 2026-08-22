@@ -75,13 +75,22 @@ def test_validate_action_must_be_in_resources():
             "updateComponents": {
                 "surfaceId": "ontology-app",
                 "components": [
-                    {"id": "root", "component": "Column", "children": ["form"]},
+                    {"id": "root", "component": "Column", "children": ["submit"]},
                     {
-                        "id": "form",
-                        "component": "OntoActionForm",
-                        "actionApiName": "createWorkItem",
-                        "label": "Add",
+                        "id": "submit",
+                        "component": "Button",
+                        "child": "submitText",
+                        "action": {
+                            "event": {
+                                "name": "executeAction",
+                                "context": {
+                                    "actionApiName": "createWorkItem",
+                                    "inputPath": "/createWorkItem",
+                                },
+                            }
+                        },
                     },
+                    {"id": "submitText", "component": "Text", "text": "Create"},
                 ],
             },
         },
@@ -95,6 +104,31 @@ def test_validate_action_must_be_in_resources():
         msgs,
         bindings={"objectTypes": ["WorkItem"], "actions": ["createWorkItem"]},
     )
+
+
+def test_validate_rejects_onto_action_form():
+    msgs = synthesize_stub_a2ui_messages(title="T")
+    bad = [
+        m
+        if "updateComponents" not in m
+        else {
+            **m,
+            "updateComponents": {
+                **m["updateComponents"],
+                "components": [
+                    *m["updateComponents"]["components"],
+                    {
+                        "id": "form",
+                        "component": "OntoActionForm",
+                        "actionApiName": "createWorkItem",
+                    },
+                ],
+            },
+        }
+        for m in msgs
+    ]
+    with pytest.raises(ValueError, match="removed"):
+        validate_ontology_app_a2ui_messages(bad)
 
 
 def test_pack_and_normalize_roundtrip():

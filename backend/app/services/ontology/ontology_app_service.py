@@ -15,6 +15,8 @@ from app.models.object_type import ObjectType
 from app.models.ontology_app import OntologyApp
 from app.models.ontology_function import OntologyActionType, OntologyFunction, OntologyFunctionVersion
 from app.schemas.ontology_apps import OntologyAppBindings, OntologyAppCreate, OntologyAppUpdate
+from app.services.ontology.action_rule_types import is_builtin_object_rule
+from app.services.ontology.builtin_action_service import input_schema_for_action
 from app.services.ontology.ontology_app_a2ui import (
     a2ui_uses_removed_components,
     normalize_resources,
@@ -380,6 +382,22 @@ def _property_names(ot: ObjectType) -> list[str]:
     return names[:40]
 
 
+def _summarize_input_schema(schema: dict[str, Any] | None) -> dict[str, Any] | None:
+    if not isinstance(schema, dict):
+        return None
+    props = schema.get("properties") or {}
+    required = schema.get("required") or []
+    if not isinstance(props, dict):
+        return None
+    return {
+        "required": required if isinstance(required, list) else [],
+        "properties": {
+            k: {"type": (v or {}).get("type") if isinstance(v, dict) else None}
+            for k, v in list(props.items())[:24]
+        },
+    }
+
+
 async def build_ontology_snapshot(db: AsyncSession, *, limit: int = 200) -> dict[str, Any]:
     """Compact live ontology for designer prompts (link only — no create)."""
     ots = list((await db.execute(select(ObjectType).order_by(ObjectType.name).limit(limit))).scalars().all())
@@ -398,31 +416,28 @@ async def build_ontology_snapshot(db: AsyncSession, *, limit: int = 200) -> dict
         .scalars()
         .all()
     )
-    ot_by_id = {o.id: o.name for o in ots}
+    ot_by_id = {o.id: o for o in ots}
     fn_by_id = {f.id: f for f in fns}
 
     action_rows: list[dict[str, Any]] = []
     for a in acts:
         schema_summary: dict[str, Any] | None = None
-        fn = fn_by_id.get(a.function_id) if a.function_id else None
-        if fn and fn.published_version_id:
-            ver = await db.get(OntologyFunctionVersion, fn.published_version_id)
-            if ver and isinstance(ver.input_schema, dict):
-                props = ver.input_schema.get("properties") or {}
-                required = ver.input_schema.get("required") or []
-                if isinstance(props, dict):
-                    schema_summary = {
-                        "required": required if isinstance(required, list) else [],
-                        "properties": {
-                            k: {"type": (v or {}).get("type") if isinstance(v, dict) else None}
-                            for k, v in list(props.items())[:24]
-                        },
-                    }
+        if is_builtin_object_rule(a.rule_type):
+            ot = ot_by_id.get(a.object_type_id)
+            if ot:
+                schema_summary = _summarize_input_schema(input_schema_for_action(a, ot))
+        else:
+            fn = fn_by_id.get(a.function_id) if a.function_id else None
+            if fn and fn.published_version_id:
+                ver = await db.get(OntologyFunctionVersion, fn.published_version_id)
+                if ver and isinstance(ver.input_schema, dict):
+                    schema_summary = _summarize_input_schema(ver.input_schema)
+        ot_obj = ot_by_id.get(a.object_type_id)
         action_rows.append(
             {
                 "api_name": a.api_name,
                 "display_name": a.display_name,
-                "object_type": ot_by_id.get(a.object_type_id) or a.object_type_id,
+                "object_type": (ot_obj.name if ot_obj else None) or a.object_type_id,
                 "input_schema": schema_summary,
             }
         )
@@ -435,7 +450,6 @@ async def build_ontology_snapshot(db: AsyncSession, *, limit: int = 200) -> dict
         "functions": [{"api_name": f.api_name, "display_name": f.display_name} for f in fns],
         "catalog_primitives": [
             "OntoObjectList",
-            "OntoActionForm",
             "OntoActionButton",
             "OntoFunctionButton",
             "OntoObjectLink",
@@ -444,5 +458,7 @@ async def build_ontology_snapshot(db: AsyncSession, *, limit: int = 200) -> dict
             "Text",
             "Card",
             "Button",
+            "Modal",
+            "TextField",
         ],
     }
