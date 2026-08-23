@@ -1,5 +1,5 @@
 // Shared A2UI surface theme + primitive polish for openKMS hosts (Apps, Knowledge Map, …).
-// Maps suite tokens → @a2ui/react CSS variables; not app-specific layout recipes.
+// Token bridge + catalog primitives only — no layout recipes that assume boards / list shapes.
 
 @mixin platform-theme {
   color-scheme: light;
@@ -22,13 +22,16 @@
   --a2ui-card-background: var(--color-bg-elevated, var(--color-surface));
   --a2ui-card-border: 1px solid var(--color-border);
   --a2ui-card-border-radius: var(--radius-lg);
-  --a2ui-card-box-shadow: none;
-  --a2ui-card-padding: var(--space-4);
+  --a2ui-card-box-shadow: var(--shadow-sm);
+  --a2ui-card-padding: var(--space-5);
   --a2ui-card-margin: 0 0 var(--space-3);
   --a2ui-row-gap: var(--space-3);
-  --a2ui-column-gap: var(--space-3);
-  --a2ui-list-gap: var(--space-2);
+  --a2ui-column-gap: var(--space-4);
+  --a2ui-list-gap: var(--space-3);
+  --a2ui-list-padding: 0;
   --a2ui-modal-padding: var(--space-5);
+  --a2ui-modal-border-radius: var(--radius-lg);
+  --a2ui-modal-overlay-color: var(--overlay-backdrop);
   --a2ui-text-a-color: var(--color-accent);
   --a2ui-text-caption-color: var(--color-text-muted);
   background: var(--color-surface);
@@ -37,16 +40,17 @@
 }
 
 @mixin platform-components {
+  /* Card — catalog primitive (Source wraps content; do not fake cards on Row/Column) */
   .a2ui-card {
     border: 1px solid var(--color-border);
     border-radius: var(--radius-lg);
     background: var(--color-bg-elevated, var(--color-surface));
-    box-shadow: none;
-    padding: var(--space-4);
-    margin: 0 0 var(--space-3);
+    box-shadow: var(--shadow-sm);
+    padding: var(--a2ui-card-padding);
+    margin: var(--a2ui-card-margin);
   }
 
-  /* Text module classes from @a2ui/react/v0_9 */
+  /* Text variants from @a2ui/react/v0_9 */
   .a2uiText,
   .a2uiCaption,
   .body,
@@ -79,6 +83,12 @@
     margin: 0 0 var(--space-2);
   }
 
+  .h4 {
+    font-size: 1rem;
+    font-weight: 600;
+    margin: 0;
+  }
+
   a:not([class]) {
     color: var(--color-accent);
     text-decoration: none;
@@ -89,23 +99,13 @@
     }
   }
 
-  /* Row with multiple Column children — equal-width columns (boards, split panes). */
+  /* Equal-width flex children in multi-column Rows — layout only, no panel chrome */
   div[style*='flex-direction: row']:has(> div[style*='flex-direction: column']:nth-child(2)) {
     width: 100%;
 
     > div[style*='flex-direction: column'] {
       flex: 1 1 0;
       min-width: 0;
-    }
-  }
-
-  /* List-stamped row templates */
-  div[style*='flex-direction: column'][style*='gap'] > div[style*='flex-direction: row'] {
-    padding: var(--space-2) 0;
-    border-bottom: 1px solid color-mix(in srgb, var(--color-border) 70%, transparent);
-
-    &:last-child {
-      border-bottom: none;
     }
   }
 
@@ -120,6 +120,121 @@
     clip: rect(0, 0, 0, 0);
     white-space: nowrap;
     border: 0;
+  }
+
+  /*
+   * Modal / TextField / Button — @a2ui/react v0.9 CSS modules often empty;
+   * polish known catalog hosts only (not board/list layout recipes).
+   */
+  .a2ui-modal-overlay {
+    padding: var(--space-4);
+    background: var(--a2ui-modal-overlay-color) !important;
+
+    > div {
+      box-sizing: border-box;
+      width: min(28rem, calc(100vw - 2rem));
+      max-width: 100%;
+      box-shadow: var(--shadow-lg);
+      border: 1px solid var(--color-border);
+      gap: var(--space-3);
+    }
+  }
+
+  .a2ui-modal-close {
+    width: var(--tap-min, 2.5rem);
+    height: var(--tap-min, 2.5rem);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: var(--radius-md);
+    color: var(--color-text-muted) !important;
+    font-size: 1.25rem !important;
+    line-height: 1;
+
+    &:hover {
+      background: var(--color-bg-muted);
+      color: var(--color-text) !important;
+    }
+  }
+
+  label {
+    display: block;
+    margin: 0 0 var(--space-1);
+    font-size: var(--text-sm, 0.875rem);
+    font-weight: 500;
+    color: var(--color-text-secondary, var(--color-text-muted));
+  }
+
+  input:not([type='checkbox']):not([type='radio']):not([type='file']):not([type='hidden']),
+  textarea {
+    display: block;
+    width: 100%;
+    box-sizing: border-box;
+    margin: 0 0 var(--space-3);
+    font: inherit;
+    font-size: var(--text-base, 1rem);
+    line-height: 1.4;
+    padding: var(--padding-compact-y, 0.5rem) var(--space-3);
+    border-radius: var(--radius-md);
+    border: 1px solid var(--color-border);
+    background: var(--color-bg-muted, var(--color-surface));
+    color: var(--color-text);
+    transition:
+      border-color 0.15s ease,
+      box-shadow 0.15s ease;
+
+    &:focus {
+      outline: none;
+      border-color: var(--color-accent);
+      box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-accent) 18%, transparent);
+    }
+  }
+
+  /* Default buttons — neutral; Modal CTAs / openers get accent (CSS modules often empty) */
+  button:not(.a2ui-modal-close):not(.a2ui-tabs-header):not(.a2ui-tab-button) {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--space-2);
+    margin: var(--space-2) 0 0;
+    padding: var(--space-2) var(--space-4);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    background: var(--color-bg-elevated, var(--color-surface));
+    color: var(--color-text);
+    font: inherit;
+    font-weight: 560;
+    cursor: pointer;
+    transition:
+      background-color 0.15s ease,
+      border-color 0.15s ease;
+
+    &:hover {
+      background: var(--color-bg-muted);
+    }
+
+    .a2uiText,
+    .a2uiText * {
+      color: inherit;
+      margin: 0;
+    }
+  }
+
+  .a2ui-modal-trigger > button,
+  .a2ui-modal-overlay button:not(.a2ui-modal-close) {
+    margin: 0;
+    border: none;
+    background: var(--color-accent);
+    color: #fff;
+
+    &:hover {
+      background: color-mix(in srgb, var(--color-accent) 82%, black);
+    }
+
+    .a2uiText,
+    .a2uiText * {
+      color: inherit;
+    }
   }
 }
 

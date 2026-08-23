@@ -36,7 +36,7 @@ Export surface for TSX: **`styles/design-system/index.ts`** (`Dialog`, `EmptySta
 
 | Piece | Role |
 |-------|------|
-| **`design-system/_a2ui-platform.scss`** | Token bridge + primitive polish (Row/Column boards, List row separators, headings, Card, hidden programmatic Modal triggers) |
+| **`design-system/_a2ui-platform.scss`** | Token bridge + primitive polish (Card, Text variants, Modal/TextField/Button, equal-width Row children). No board/list chrome — Source uses `Card` / `variant`. |
 | **Host wrapper** | e.g. `.onto-app-a2ui.a2ui-platform-surface` — min-height / host-only errors only |
 | **Catalog components** | `OntoObjectList`, `KmOverviewNodeLink`, … — behavior + domain wiring, not visual theme |
 
@@ -123,6 +123,7 @@ Six compile-time tokens in **`_tokens.scss`** — use **`@include max-width(ds.$
 | `.app-content--search` | Wider search gutters |
 | `.app-content--with-*-rail` → `padding: 0` | Gutter on pane only; `:not(rail…)` avoids double padding on ≤768 detail |
 | `.app-content--function-editor-workspace` | Full-height IDE |
+| `.app-content--apps-run` → `padding: 0` | Apps Run gutters on `.apps-page--run` (not editor workspace) |
 | `.app-content--compact:has(.kb-detail--qa-fullpage)` | KB Q&A full page |
 | `.app-content--compact .wiki-page-editor-outer` | Wiki editor edge-to-edge |
 | `body.openkms-kb-qa-fullpage` / `openkms-agents-fullpage` | Hide header; phone IA (≤ `$bp-md-min`) is chat-primary + full-width Sessions / Chats panel (Agents also has Files) — not a stacked rail that eats chat height |

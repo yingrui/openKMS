@@ -231,6 +231,16 @@ body:has(.app-content--with-channel-rail) .app-main {
   overflow: hidden;
 }
 
+/* app-layout-exception: Apps Run — page owns gutters (not full-bleed editor workspace). */
+.app-content--apps-run {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  padding: 0;
+  overflow-y: auto;
+}
+
 .ontology-section-layout {
   display: flex;
   flex: 1;

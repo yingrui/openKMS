@@ -1,11 +1,15 @@
 .apps-page {
   display: flex;
   flex-direction: column;
-  gap: 1rem;
+  gap: var(--space-4);
 }
 
+/* Gutter owner when .app-content--apps-run has padding: 0 (see App.scss / design-system). */
 .apps-page--run {
-  min-height: calc(100vh - 8rem);
+  box-sizing: border-box;
+  flex: 1;
+  min-height: calc(100vh - var(--header-height, 56px));
+  padding: var(--app-page-padding-y) var(--app-page-padding-x);
 }
 
 .apps-page__list {

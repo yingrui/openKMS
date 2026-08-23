@@ -192,7 +192,7 @@ function MainLayoutInner() {
         {!showAuthRequired && !showPathDenied && (
           <SidebarLayoutProvider sidebarCollapsed={sidebarCollapsed}>
             <div
-              className={`app-content ${isDetailPage ? 'app-content--compact' : ''}${isHome ? ' app-content--home' : ''}${isSearchPage ? ' app-content--search' : ''}${isExplorePage ? ' app-content--object-explorer' : ''}${isEditorWorkspace ? ' app-content--function-editor-workspace' : ''}${isAppsRun ? ' app-content--function-editor-workspace' : ''}${showChannelRail ? ' app-content--with-channel-rail' : ''}${ontologyRailModifier}`}
+              className={`app-content ${isDetailPage ? 'app-content--compact' : ''}${isHome ? ' app-content--home' : ''}${isSearchPage ? ' app-content--search' : ''}${isExplorePage ? ' app-content--object-explorer' : ''}${isEditorWorkspace ? ' app-content--function-editor-workspace' : ''}${isAppsRun ? ' app-content--apps-run' : ''}${showChannelRail ? ' app-content--with-channel-rail' : ''}${ontologyRailModifier}`}
             >
               {ontologyOutlet}
             </div>
