@@ -84,7 +84,7 @@ def synthesize_stub_a2ui_messages(*, title: str) -> list[dict[str, Any]]:
             "text": (
                 "Describe the app to the designer. Link existing Object Types, "
                 "Actions, and Functions — Builder does not create them. "
-                "Compose OntoObjectList, Modal, TextField, Button, and layout in Source."
+                "Compose OntoObjectList (data loader) + List row templates, Modal, TextField, Button in Source."
             ),
             "variant": "body",
         },
@@ -174,6 +174,20 @@ def a2ui_uses_removed_components(messages: list[dict[str, Any]] | None) -> bool:
     return False
 
 
+def a2ui_needs_list_pattern_upgrade(messages: list[dict[str, Any]] | None) -> bool:
+    """True when draft still uses legacy OntoObjectList-as-UI (no dataPath / List template)."""
+    if not messages:
+        return False
+    for c in iter_a2ui_components(messages):
+        if str(c.get("component") or "") != "OntoObjectList":
+            continue
+        if not str(c.get("dataPath") or "").strip():
+            return True
+        if c.get("editActionApiName") or c.get("actionApiName"):
+            return True
+    return False
+
+
 def validate_ontology_app_a2ui_messages(
     messages: list[dict[str, Any]],
     *,
@@ -201,7 +215,12 @@ def validate_ontology_app_a2ui_messages(
         if name in REMOVED_COMPONENTS:
             raise ValueError(
                 f"Component {name} was removed. Rebuild the layout with "
-                "OntoObjectList, Modal, TextField, Button, and other platform primitives."
+                "OntoObjectList (loads DataModel), List templates, Modal, TextField, Button, and other platform primitives."
+            )
+        if name == "OntoObjectList" and not str(c.get("dataPath") or "").strip():
+            raise ValueError(
+                f"OntoObjectList {c.get('id')!r} requires dataPath. "
+                "Use loader + List row template (see synthesize_kanban_a2ui_messages)."
             )
 
     if not has_surface:

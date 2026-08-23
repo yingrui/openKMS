@@ -1,15 +1,22 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { MessageProcessor } from '@a2ui/web_core/v0_9';
 import { A2uiSurface } from '@a2ui/react/v0_9';
 import { executeOntologyAction } from '../../data/ontologyActionsApi';
 import {
   closeNearestA2uiModal,
+  decorateA2uiDom,
+  EDIT_MODAL_OPEN_MARKER,
   emitOntologyAppMutated,
   EXECUTE_ACTION_EVENT,
+  LOAD_OBJECT_FOR_EDIT_EVENT,
   ontologyAppCatalog,
   ONTOLOGY_APP_A2UI_SURFACE_ID,
+  openProgrammaticA2uiModal,
   resolveActionByApiName,
 } from './ontologyAppA2uiCatalog';
+import {
+  normalizeOntologyAppA2uiMessages,
+} from './ontologyAppA2uiNormalize';
 import './OntologyAppA2ui.scss';
 
 type Props = {
@@ -31,38 +38,6 @@ type SurfaceLike = {
   componentsModel?: { get: (id: string) => unknown };
 };
 
-function normalizeA2uiMessages(messages: Record<string, unknown>[]): Record<string, unknown>[] {
-  return messages.map((msg) => {
-    const upd = msg.updateComponents as
-      | { surfaceId?: string; components?: Record<string, unknown>[] }
-      | undefined;
-    if (!upd?.components) return msg;
-    const extras: Record<string, unknown>[] = [];
-    const fixed = upd.components.map((comp) => {
-      const c = { ...comp };
-      const name = c.component;
-      if ((name === 'Card' || name === 'Button') && 'children' in c && !('child' in c)) {
-        const kids = c.children;
-        delete c.children;
-        if (Array.isArray(kids) && kids.length === 1 && typeof kids[0] === 'string') {
-          c.child = kids[0];
-        } else if (Array.isArray(kids) && kids.length > 0 && kids.every((k) => typeof k === 'string')) {
-          const wrapId = `${String(c.id ?? 'wrap')}-inner`;
-          extras.push({ id: wrapId, component: 'Column', children: kids });
-          c.child = wrapId;
-        } else if (typeof kids === 'string') {
-          c.child = kids;
-        }
-      }
-      return c;
-    });
-    return {
-      ...msg,
-      updateComponents: { ...upd, components: [...extras, ...fixed] },
-    };
-  });
-}
-
 function asRecord(value: unknown): Record<string, unknown> {
   if (value && typeof value === 'object' && !Array.isArray(value)) {
     return { ...(value as Record<string, unknown>) };
@@ -82,6 +57,7 @@ function coerceInputBySchema(
   const out: Record<string, unknown> = {};
   for (const [key, value] of Object.entries(raw)) {
     if (value === '' || value === undefined || value === null) continue;
+    if (key === 'objectId' || key === 'id') continue;
     const def = props[key];
     const expected =
       def && typeof def === 'object' && 'type' in def
@@ -116,6 +92,22 @@ function coerceInputBySchema(
   return out;
 }
 
+function handleLoadObjectForEdit(surf: SurfaceLike, action: A2uiClientAction) {
+  const inputPath = String(action.context.inputPath ?? '/editWorkItem').trim() || '/editWorkItem';
+  const payload: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(action.context)) {
+    if (key === 'inputPath' || value === undefined || value === null || value === '') continue;
+    payload[key] = value;
+  }
+  const objectId = payload.objectId ?? payload.id;
+  if (objectId != null) {
+    payload.objectId = String(objectId);
+    delete payload.id;
+  }
+  surf.dataModel.set(inputPath, payload);
+  openProgrammaticA2uiModal(EDIT_MODAL_OPEN_MARKER);
+}
+
 async function handleExecuteAction(surf: SurfaceLike, action: A2uiClientAction) {
   const actionApiName = String(action.context.actionApiName ?? '').trim();
   if (!actionApiName) {
@@ -123,7 +115,10 @@ async function handleExecuteAction(surf: SurfaceLike, action: A2uiClientAction) 
     return;
   }
   const inputPath = String(action.context.inputPath ?? '').trim();
-  const objectIdRaw = action.context.objectId ?? action.context.object_id;
+  const objectIdRaw =
+    action.context.objectId ??
+    action.context.object_id ??
+    (inputPath ? asRecord(surf.dataModel.get(inputPath)).objectId : undefined);
   const objectId = objectIdRaw != null && String(objectIdRaw).trim() ? String(objectIdRaw).trim() : undefined;
 
   let input: Record<string, unknown> = {};
@@ -161,6 +156,7 @@ async function handleExecuteAction(surf: SurfaceLike, action: A2uiClientAction) 
 export function OntologyAppA2uiSurface({ a2uiMessages }: Props) {
   const [error, setError] = useState<string | null>(null);
   const [surface, setSurface] = useState<SurfaceLike | null>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (!a2uiMessages.length) {
@@ -171,7 +167,7 @@ export function OntologyAppA2uiSurface({ a2uiMessages }: Props) {
     let sub: { unsubscribe: () => void } | null = null;
     try {
       const processor = new MessageProcessor([ontologyAppCatalog]);
-      processor.processMessages(normalizeA2uiMessages(a2uiMessages) as never[]);
+      processor.processMessages(normalizeOntologyAppA2uiMessages(a2uiMessages) as never[]);
       const surfaces = Array.from(processor.model.surfacesMap.values());
       const surf = (surfaces.find((s) => (s as SurfaceLike).id === ONTOLOGY_APP_A2UI_SURFACE_ID) ??
         surfaces[0]) as SurfaceLike | undefined;
@@ -187,8 +183,13 @@ export function OntologyAppA2uiSurface({ a2uiMessages }: Props) {
         return;
       }
       sub = surf.onAction.subscribe((action) => {
-        if (action.name !== EXECUTE_ACTION_EVENT) return;
-        void handleExecuteAction(surf, action);
+        if (action.name === EXECUTE_ACTION_EVENT) {
+          void handleExecuteAction(surf, action);
+          return;
+        }
+        if (action.name === LOAD_OBJECT_FOR_EDIT_EVENT) {
+          handleLoadObjectForEdit(surf, action);
+        }
       });
       setSurface(surf);
       setError(null);
@@ -201,11 +202,20 @@ export function OntologyAppA2uiSurface({ a2uiMessages }: Props) {
     };
   }, [a2uiMessages]);
 
+  useEffect(() => {
+    if (!surface || !containerRef.current) return;
+    decorateA2uiDom(containerRef.current);
+    const t = window.setTimeout(() => {
+      if (containerRef.current) decorateA2uiDom(containerRef.current);
+    }, 0);
+    return () => window.clearTimeout(t);
+  }, [surface, a2uiMessages]);
+
   if (error) return <p className="onto-a2ui-error">{error}</p>;
   if (!surface) return <p className="onto-a2ui-muted">Rendering…</p>;
 
   return (
-    <div className="onto-app-a2ui a2ui-light">
+    <div ref={containerRef} className="onto-app-a2ui a2ui-light">
       <A2uiSurface surface={surface as never} />
     </div>
   );

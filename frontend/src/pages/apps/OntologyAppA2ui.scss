@@ -4,33 +4,30 @@
   min-height: 12rem;
 }
 
-.onto-a2ui-list {
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-}
-
-.onto-a2ui-list__toolbar {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem;
-  align-items: center;
-}
-
-.onto-a2ui-list__items {
-  list-style: none;
-  margin: 0;
+/* Programmatic edit-modal opener (host clicks trigger with marker text). */
+.onto-app-a2ui .onto-a2ui-hidden-modal-trigger {
+  position: absolute;
+  width: 1px;
+  height: 1px;
   padding: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 0.35rem;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
 }
 
-.onto-a2ui-list__item {
-  border: 1px solid var(--border, #ddd);
-  background: var(--surface, #fff);
-  border-radius: 0.35rem;
-  padding: 0.5rem 0.65rem;
+.onto-app-a2ui > div > div:last-child {
+  display: flex;
+  flex-direction: row;
+  align-items: stretch;
+  gap: var(--a2ui-row-gap, 1rem);
+  width: 100%;
+}
+
+.onto-app-a2ui > div > div:last-child > div {
+  flex: 1 1 0;
+  min-width: 0;
 }
 
 .onto-a2ui-muted {

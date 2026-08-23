@@ -15,8 +15,12 @@ export const ONTOLOGY_APP_A2UI_CATALOG_ID =
   'https://openkms.local/a2ui/catalogs/ontology-app/v1.json';
 export const ONTOLOGY_APP_A2UI_SURFACE_ID = 'ontology-app';
 
-/** Host event name: Button action.event → execute Action from DataModel. */
+/** Host event: Button → execute Action from DataModel. */
 export const EXECUTE_ACTION_EVENT = 'executeAction';
+/** Host event: row edit → populate edit form + open modal. */
+export const LOAD_OBJECT_FOR_EDIT_EVENT = 'loadObjectForEdit';
+/** Hidden Modal trigger marker (Text child content). */
+export const EDIT_MODAL_OPEN_MARKER = '__onto_edit_open__';
 
 const MUTATED_EVENT = 'ontology-app:mutated';
 
@@ -58,83 +62,99 @@ export function closeNearestA2uiModal(from?: HTMLElement | null) {
     ?.click();
 }
 
-type ListRow = { id: string; title: string; data: Record<string, unknown> };
+/** Hide programmatic edit-modal trigger and mark kanban board row for layout. */
+export function decorateA2uiDom(root: HTMLElement) {
+  root.querySelectorAll<HTMLElement>('.a2ui-modal-trigger').forEach((trigger) => {
+    if (trigger.textContent?.trim() === EDIT_MODAL_OPEN_MARKER) {
+      trigger.classList.add('onto-a2ui-hidden-modal-trigger');
+    }
+  });
+}
 
-function OntoObjectListImpl({ props }: { props: Record<string, string> }) {
+/** Open Modal whose trigger Text matches a programmatic marker. */
+export function openProgrammaticA2uiModal(markerText: string) {
+  const triggers = document.querySelectorAll<HTMLElement>('.onto-app-a2ui .a2ui-modal-trigger');
+  for (const trigger of triggers) {
+    if (trigger.textContent?.trim() === markerText) {
+      trigger.click();
+      return;
+    }
+  }
+}
+
+type DataContextLike = {
+  set: (path: string, value: unknown) => void;
+};
+
+function parseRowFields(raw: string | undefined, titleProp: string): string[] {
+  const fromProp = (raw || '')
+    .split(',')
+    .map((s) => s.trim())
+    .filter(Boolean);
+  const fields = fromProp.length ? fromProp : [titleProp, 'status', 'estimate', 'priority'];
+  return [...new Set(['id', titleProp, ...fields])];
+}
+
+/**
+ * Loads object instances into DataModel at `dataPath` for A2UI List templates.
+ * Does not render rows — compose with basic `List` + row template in Source.
+ */
+function OntoObjectListLoader({
+  props,
+  context,
+}: {
+  props: Record<string, string>;
+  context: { dataContext: DataContextLike };
+}) {
   const objectType = props.objectType || '';
+  const dataPath = props.dataPath || '';
   const titleProp = props.titleProperty || 'title';
   const filterProperty = props.filterProperty || '';
   const filterValue = props.filterValue || '';
-
-  const [rows, setRows] = useState<ListRow[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const rowFields = parseRowFields(props.rowFields, titleProp);
 
   const load = useCallback(async () => {
-    if (!objectType) {
-      setError('objectType is required');
-      setLoading(false);
-      return;
-    }
-    setLoading(true);
-    setError(null);
+    if (!objectType || !dataPath) return;
     try {
       const typeId = await resolveObjectTypeId(objectType);
       const res = await fetchObjectInstances(typeId, { limit: 200 });
-      const next: ListRow[] = [];
+      const rows: Record<string, unknown>[] = [];
       for (const item of res.items || []) {
         const data = (item.data || {}) as Record<string, unknown>;
-        if (filterProperty) {
-          const v = data[filterProperty];
-          if (String(v ?? '') !== filterValue) continue;
+        if (filterProperty && String(data[filterProperty] ?? '') !== filterValue) continue;
+        const row: Record<string, unknown> = { id: String(item.id) };
+        for (const field of rowFields) {
+          if (field === 'id') continue;
+          const value = data[field];
+          if (value !== undefined && value !== null) row[field] = value;
         }
-        const title = String(data[titleProp] ?? item.id ?? '');
-        next.push({ id: String(item.id), title: title || String(item.id), data });
+        if (row[titleProp] == null) {
+          row[titleProp] = String(item.id);
+        }
+        rows.push(row);
       }
-      setRows(next);
+      context.dataContext.set(dataPath, rows);
     } catch (e) {
-      setError(e instanceof Error ? e.message : String(e));
-    } finally {
-      setLoading(false);
+      console.error('OntoObjectList load failed:', e instanceof Error ? e.message : String(e));
+      context.dataContext.set(dataPath, []);
     }
-  }, [objectType, titleProp, filterProperty, filterValue]);
+  }, [objectType, dataPath, titleProp, filterProperty, filterValue, rowFields, context.dataContext]);
 
   useEffect(() => {
     void load();
   }, [load]);
   useOntologyMutated(load);
 
-  return (
-    <div className="onto-a2ui-list">
-      <div className="onto-a2ui-list__toolbar">
-        {filterProperty ? (
-          <span className="onto-a2ui-muted">
-            {filterProperty}={filterValue || '∅'}
-          </span>
-        ) : null}
-        <button type="button" className="btn btn-secondary btn-sm" disabled={loading} onClick={() => void load()}>
-          Refresh
-        </button>
-      </div>
-      {error ? <p className="onto-a2ui-error">{error}</p> : null}
-      {loading ? <p className="onto-a2ui-muted">Loading…</p> : null}
-      {!loading && !rows.length ? <p className="onto-a2ui-muted">No objects</p> : null}
-      <ul className="onto-a2ui-list__items">
-        {rows.map((r) => (
-          <li key={r.id} className="onto-a2ui-list__item">
-            {r.title}
-          </li>
-        ))}
-      </ul>
-    </div>
-  );
+  return null;
 }
 
 const OntoObjectListApi = {
   name: 'OntoObjectList',
   schema: z.object({
     objectType: z.string(),
+    dataPath: z.string(),
     titleProperty: z.string().optional(),
+    rowFields: z.string().optional(),
     filterProperty: z.string().optional(),
     filterValue: z.string().optional(),
   }),
@@ -169,7 +189,7 @@ const OntoObjectLinkApi = {
 
 const OntoObjectList = createComponentImplementation(
   OntoObjectListApi,
-  ({ props }: { props: Record<string, string> }) => <OntoObjectListImpl props={props} />,
+  ({ props, context }) => <OntoObjectListLoader props={props} context={context} />,
 );
 
 const OntoActionButton = createComponentImplementation(

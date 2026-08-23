@@ -18,6 +18,7 @@ from app.schemas.ontology_apps import OntologyAppBindings, OntologyAppCreate, On
 from app.services.ontology.action_rule_types import is_builtin_object_rule
 from app.services.ontology.builtin_action_service import input_schema_for_action
 from app.services.ontology.ontology_app_a2ui import (
+    a2ui_needs_list_pattern_upgrade,
     a2ui_uses_removed_components,
     normalize_resources,
     normalize_stored_a2ui_document,
@@ -26,6 +27,10 @@ from app.services.ontology.ontology_app_a2ui import (
     resources_nonempty,
     synthesize_stub_a2ui_messages,
     validate_ontology_app_a2ui_messages,
+)
+from app.services.ontology.ontology_app_kanban_a2ui import (
+    KANBAN_WORK_ITEM_RESOURCES,
+    synthesize_kanban_a2ui_messages,
 )
 
 APP_ID_PREFIX = "oa-"
@@ -288,11 +293,38 @@ async def apply_bindings(
 
 
 async def heal_draft_if_removed_components(db: AsyncSession, app: OntologyApp) -> OntologyApp:
-    """Persist stub when draft still references removed catalog components (e.g. OntoKanbanBoard)."""
+    """Upgrade legacy layouts: removed components → stub; legacy list-as-UI → kanban template."""
     messages = normalize_stored_a2ui_document(app.draft_a2ui) or []
-    if not a2ui_uses_removed_components(messages):
-        return app
-    return await synthesize_draft(db, app)
+    if a2ui_uses_removed_components(messages):
+        return await synthesize_draft(db, app)
+    if a2ui_needs_list_pattern_upgrade(messages):
+        return await apply_kanban_template(db, app)
+    return app
+
+
+async def apply_kanban_template(db: AsyncSession, app: OntologyApp) -> OntologyApp:
+    """Apply canonical WorkItem kanban A2UI + resources (loader + List + create/edit Modals)."""
+    cleaned = bindings_as_dict(KANBAN_WORK_ITEM_RESOURCES)
+    resolved, missing = await resolve_bindings_snapshot(db, cleaned)
+    if missing:
+        raise HTTPException(
+            status_code=400,
+            detail={
+                "message": "Cannot apply kanban template until WorkItem Actions exist",
+                "missing_bindings": missing,
+            },
+        )
+    messages = synthesize_kanban_a2ui_messages(title=app.name)
+    validate_ontology_app_a2ui_messages(messages, bindings=cleaned)
+    app.bindings = cleaned
+    app.bindings_hash = compute_bindings_hash(resolved)
+    doc = pack_a2ui_document(messages)
+    app.draft_a2ui = doc
+    if app.status == "published":
+        app.published_a2ui = doc
+    await db.commit()
+    await db.refresh(app)
+    return app
 
 
 async def synthesize_draft(db: AsyncSession, app: OntologyApp) -> OntologyApp:

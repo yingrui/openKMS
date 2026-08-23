@@ -67,8 +67,11 @@ _SET_A2UI_TOOL: dict[str, Any] = {
             "TextField value={path:'/…'}; Submit Button action.event name=executeAction with context "
             "{actionApiName, inputPath} (literals). Host reads DataModel at inputPath and executes the Action. "
             "Never emit OntoActionForm or OntoKanbanBoard (removed). "
-            "Platform primitives: OntoObjectList (objectType, titleProperty, optional "
-            "filterProperty+filterValue), OntoActionButton (actionApiName, label, optional objectId), "
+            "Platform primitives: OntoObjectList (objectType, dataPath, titleProperty, optional "
+            "rowFields, filterProperty+filterValue) loads instances into DataModel; compose a basic "
+            "List with children {componentId, path} for row templates. Row edit: Button event "
+            "loadObjectForEdit with field paths + shared edit Modal. "
+            "OntoActionButton (actionApiName, label, optional objectId), "
             "OntoFunctionButton (functionApiName, label), OntoObjectLink "
             "(objectTypeId, objectId, label), plus basic Modal/TextField/Button/Column/Row/Text. "
             "Only reference api_names from RESOURCES. Call set_resources first if RESOURCES are empty."
@@ -94,20 +97,23 @@ You help authors build ontology-backed apps by **linking** existing Object Types
 
 | User intent | Compose |
 |-------------|---------|
-| List / browse / table | Text + OntoObjectList (± Modal create form) |
+| List / browse / table | OntoObjectList (dataPath) + List row template (± Modal forms) |
 | Create / intake form | Modal: trigger Button; content Column of TextFields + Submit Button (executeAction) |
-| Columns by status/stage ("kanban-like") | Several OntoObjectList with different filterProperty/filterValue + one Modal create — NOT a board component |
+| Columns by status/stage ("kanban-like") | Per column: OntoObjectList + List; shared create/edit Modals |
 | Deep link | OntoObjectLink |
 | Read-only suggestion | OntoFunctionButton |
 | Needs drag-and-drop or heavy custom UI | Say the platform a2ui lane cannot do that yet; stay within primitives |
 
 ## Recipes (create UI = Modal + TextField + Button event in Source)
 
-1) Single list + create — Modal.trigger = Button (child Text); Modal.content = Column([Text heading, TextFields bound to `/actionApiName/…`, Submit Button]).
-2) Submit Button: `action: {{ event: {{ name: "executeAction", context: {{ actionApiName: "<api>", inputPath: "/<api>" }} }} }}`.
-3) Expand TextFields from Action `input_schema` in ONTOLOGY_SNAPSHOT (skip object_id). Optional `updateDataModel` for defaults.
-4) Multi-column filters — Row of Columns each with OntoObjectList + one create Modal.
-5) Read-only list — no form.
+Canonical WorkItem kanban (backend `synthesize_kanban_a2ui_messages`): resources {{objectTypes:[WorkItem], actions:[createWorkItem,updateWorkItem], functions:[suggestWorkItemPriority]}}.
+
+1) Data — OntoObjectList writes `/lists/<key>` arrays; List stamps `workItemRow` per item.
+2) Row template — Row with Text `{{path:title}}` + edit Button `loadObjectForEdit` (paths relative to row item: `title`, `id` — not `/title` or `./title`).
+3) Shared edit Modal — hidden trigger Text `__onto_edit_open__`; form TextFields on `/editWorkItem/*`; Save `executeAction` + `updateWorkItem`.
+4) Create Modal — same as before with `createWorkItem`.
+
+**Anti-patterns:** OntoObjectList without `dataPath`; `editActionApiName` on loader; rendering list rows in React catalog; OntoKanbanBoard; OntoActionForm.
 
 ## Protocol
 
