@@ -152,7 +152,7 @@ Schema for every persisted table. Grouped by area; see the matching feature page
 
 ### AppBuilderApp (`ontology_apps` table)
 
-- `id`, `name`, `api_name` (unique), `description`, `template_id` (e.g. `a2ui`), `bindings` (JSONB), `draft_a2ui` / `published_a2ui` (JSONB `{ format: "a2ui_v0_9", messages }`), `bindings_hash`, `status` (`draft` \| `published`), `created_by`, `created_by_name`, `created_at`, `updated_at`
+- `id`, `name`, `api_name` (unique), `description`, `template_id` (e.g. `a2ui`), `bindings` (JSONB — **resource allowlist**: `objectTypes` / `actions` / `functions` api names; column name is historical), `draft_a2ui` / `published_a2ui` (JSONB `{ format: "a2ui_v0_9", messages }`), `bindings_hash`, `status` (`draft` \| `published`), `created_by`, `created_by_name`, `created_at`, `updated_at`
 - App Builder drafts and Apps published run documents; see [App Builder & Apps](app-builder.md)
 
 ### DataSource

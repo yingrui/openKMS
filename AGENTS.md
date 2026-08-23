@@ -1,204 +1,134 @@
 # openKMS — AGENTS.md
 
-> Migrated from `.cursor/rules/`. Sections below correspond to the original rule files.
+Agent 工作指南（原 `.cursor/rules/` 合并版）。
 
 ---
 
-## Project Overview
+## 项目速览
 
-**Source:** `.cursor/rules/project-overview.mdc`
+文档 / 频道 / 文章 / KB·RAG / wiki 知识系统。
 
-Knowledge system: documents (PaddleOCR-VL), channels, articles, KBs/RAG, wiki.
-
-| Area | Path |
+| 区域 | 路径 |
 |------|------|
-| Backend | `backend/app/` (FastAPI, async SQLAlchemy) |
-| Frontend | `frontend/src/` (React 19, Vite) |
-| Docker | `docker/` — see `docker/README.md` |
+| Backend | `backend/app/`（FastAPI + async SQLAlchemy） |
+| Frontend | `frontend/src/`（React 19 + Vite） |
+| App Builder | `backend/app/services/app_builder/`、`backend/app/api/app_builder.py`、`frontend/src/pages/app-builder/` |
+| Docker | `docker/`（见 `docker/README.md`） |
 | Docs | `docs/` |
 | VLM | `vlm-server/` |
 
-**Ports:** backend 8102, Vite 5173, Docker UI 8082 (nginx), VLM 8101, qa-agent 8103, docs (`mkdocs serve`) 8104. **Config:** `OPENKMS_*` in `backend/.env`; frontend `config/index.ts`.
+**端口：** backend 8102 · Vite 5173 · Docker UI 8082 · VLM 8101 · qa-agent 8103 · docs 8104  
+**配置：** `OPENKMS_*` → `backend/.env`；前端 → `config/index.ts`
 
 ---
 
-## First Principles (对话与决策)
+## 第一性原理（决策优先）
 
-**Source:** `.cursor/rules/first-principles.mdc`
+从需求本质出发，不从惯例或模板出发。与下文 Karpathy / 写作规范并用；**「该不该做 / 为什么做」冲突时以本条为准。**
 
-以第一性原理！从原始需求和问题本质出发，不从惯例或模板出发。
-
-1. 不要假设我清楚自己想要什么。动机或目标不清晰时，停下来讨论。
-2. 目标清晰但路径不是最短的，直接告诉我并建议更好的办法。
-3. 遇到问题追根因，不打补丁。每个决策都要能回答「为什么」。
-4. 输出说重点，砍掉一切不改变决策的信息。
-
-（与 Karpathy guidelines、Writing style 同用；若有冲突，以本条对「为何做 / 是否该做」的追问为准。）
+1. 动机不清 → 先讨论，别假设用户知道要什么  
+2. 路径绕远 → 直说并给更短方案  
+3. 遇问题追根因，不打补丁；每个决策能答「为什么」  
+4. 输出只留影响决策的信息  
 
 ---
 
-## Karpathy Behavioral Guidelines
+## 编码行为（Karpathy 精简版）
 
-**Source:** `.cursor/rules/karpathy-guidelines.mdc`
+ trivial 任务可酌情放宽；默认偏谨慎。
 
-Behavioral guidelines to reduce common LLM coding mistakes. Merge with project-specific instructions as needed.
-
-**Tradeoff:** These guidelines bias toward caution over speed. For trivial tasks, use judgment.
-
-### 1. Think Before Coding
-
-**Don't assume. Don't hide confusion. Surface tradeoffs.**
-
-Before implementing:
-- State your assumptions explicitly. If uncertain, ask.
-- If multiple interpretations exist, present them - don't pick silently.
-- If a simpler approach exists, say so. Push back when warranted.
-- If something is unclear, stop. Name what's confusing. Ask.
-
-### 2. Simplicity First
-
-**Minimum code that solves the problem. Nothing speculative.**
-
-- No features beyond what was asked.
-- No abstractions for single-use code.
-- No "flexibility" or "configurability" that wasn't requested.
-- No error handling for impossible scenarios.
-- If you write 200 lines and it could be 50, rewrite it.
-
-Ask yourself: "Would a senior engineer say this is overcomplicated?" If yes, simplify.
-
-### 3. Surgical Changes
-
-**Touch only what you must. Clean up only your own mess.**
-
-When editing existing code:
-- Don't "improve" adjacent code, comments, or formatting.
-- Don't refactor things that aren't broken.
-- Match existing style, even if you'd do it differently.
-- If you notice unrelated dead code, mention it - don't delete it.
-
-When your changes create orphans:
-- Remove imports/variables/functions that YOUR changes made unused.
-- Don't remove pre-existing dead code unless asked.
-
-The test: Every changed line should trace directly to the user's request.
-
-### 4. Goal-Driven Execution
-
-**Define success criteria. Loop until verified.**
-
-Transform tasks into verifiable goals:
-- "Add validation" → "Write tests for invalid inputs, then make them pass"
-- "Fix the bug" → "Write a test that reproduces it, then make it pass"
-- "Refactor X" → "Ensure tests pass before and after"
-
-For multi-step tasks, state a brief plan:
-```
-1. [Step] → verify: [check]
-2. [Step] → verify: [check]
-3. [Step] → verify: [check]
-```
-
-Strong success criteria let you loop independently. Weak criteria ("make it work") require constant clarification.
+**先想后写：** 假设写清；多义并列说明；有更简方案要提；不懂就停问。  
+**最小实现：** 只做被要求的；不单次抽象；不写不可能分支的防御；200 行能 50 行就重写。  
+**手术式改动：** 只动任务相关行；不顺手改相邻代码/格式；匹配现有风格；**替换**模块/API/符号时同任务删旧实现，**不留 legacy alias**（除非用户明确要求过渡期）；预存死代码仅提及不删，除非用户要求。  
+**可验证交付：** 把任务写成可检查结果（测例、build、grep）；多步任务列 `步骤 → 验证`。
 
 ---
 
-## Writing Style
+## 用语与输出
 
-**Source:** `.cursor/rules/writing-style.mdc`
+**SPA 可见文案：** 说功能做什么，不说存储/API/路径/bucket/env（运维页除外）。  
+**计划/文档/对话/提交：** 用产品域词汇（Manager、Explorer、object type、instance、Function、Action、channel、wiki…），默认不用 PG/Neo4j/JSONB 当功能名（迁移/SQL/Docker/ops 上下文除外）。
 
-### SPA (`frontend/src/`)
+| 用 | 别用（谈功能时） |
+|----|------------------|
+| object type / instance / link | PG instance、DB 行当卡片 |
+| dataset-backed / indexed | 用存储命名用户对象 |
+| Explorer 创建实例 | PG-only 对象（产品类别） |
+| Action apply / 写回 | Action 写 Postgres |
 
-User-visible text: **what** the feature does, not **how** it is stored or called. Avoid file paths, bucket names, `s3://`, MinIO/presigned jargon, raw `/api/…` URLs, env vars—unless the screen is for admins/operators. Console technical pages may be denser.
-
-### openKMS project terms (plans, docs, chat, commits)
-
-Use **product / domain vocabulary** from openKMS (Manager, Explorer, object type, instance, Function, Action, channel, wiki, …), not storage or infra labels—unless the task is literally migrations, SQLAlchemy models, Docker, or ops.
-
-| Prefer | Avoid (as the default way to talk about features) |
-|--------|-----------------------------------------------------|
-| object type, link type, object / instance, link | “PG instance”, “Postgres objects”, “DB rows as cards” |
-| dataset-backed / indexed object | naming user-facing objects after the backing store |
-| hand-created / Explorer-created instance | “PG-only objects” as a product category |
-| Action apply / write-back on objects | “Action writes to Postgres” |
-
-Code and review notes may still mention table/model names, JSONB, Neo4j, Alembic—keep that in implementation context, not as the default vocabulary for goals, tutorials, or plans.
-
-### Assistant replies (Cursor)
-
-- Match answer length to the task; no filler or "say the word" closings.
-- Use **markdown links** for web URLs; use **path links** or code citation blocks for repo code (per project citation rules).
-- Prefer plain words over buzzwords; spell out uncommon acronyms once if needed.
-
-### Commits and PRs
-
-Short **imperative** subject (`Add article channels API`). Body only when the reason or risk is not obvious.
-
-**Do not commit without explicit permission.** Agents must not `git commit`, `git commit --amend`, or push unless the user explicitly asks. When the user says "commit", only stage files owned by the current task — never include unrelated working-tree changes.
-
-### Docs in `docs/`
-
-Technical detail is fine there; keep tables and headings consistent with surrounding files.
+**回复：** 长短匹配任务；无套话收尾；外链用 markdown link，代码用 path/citation。  
+**提交：** 祈使句主题；**无用户明示禁止 commit/push**；用户说 commit 时只 stage 本任务文件。  
+**docs/：** 技术细节可写密；表格/标题与邻页一致。
 
 ---
 
-## Docs Before Commit
+## 提交前文档
 
-**Source:** `.cursor/rules/docs-before-commit.mdc`
+有 commit 意图时，**只更新 staged 相关页：**
 
-If the user asks for a commit (or you are committing), review staged changes and update **only what changed**:
-
-| File | When |
+| 文件 | 何时 |
 |------|------|
-| `docs/architecture.md` | New modules, flows, layout, config |
-| `docs/development_plan.md` | Tasks done/added, plan shifts |
-| `docs/features/<area>.md` | Features and UI surfaces for that area |
-| `docs/features/api-reference.md` | New / changed HTTP endpoints |
-| `docs/features/data-models.md` | New tables / columns |
-| `docs/design-system.md` | Design system — update when shared SCSS patterns, tokens, conventions, or cross-route layout primitives change |
+| `docs/architecture.md` | 新模块/流程/布局/配置 |
+| `docs/development_plan.md` | 任务完成/计划变更 |
+| `docs/features/<area>.md` | 功能/UI 变更 |
+| `docs/features/api-reference.md` | HTTP 路由变更 |
+| `docs/features/data-models.md` | 表/列变更 |
+| `docs/design-system.md` | 共享 SCSS/token/布局原语 |
 
-`docs/functionalities.md` is the routing index — only edit it when adding or removing a feature page.
-
-### Multilingual docs (mkdocs-static-i18n)
-
-English pages (`docs/**/*.md` without a locale suffix) are the **source of truth**. Chinese pages (`*.zh.md`) are **translations** — update English first, then refresh the matching `.zh.md` when one exists. Markdown links omit the locale suffix (write `goals.md`, not `goals.zh.md`).
-
-### Verify before commit
-
-If staged changes touch `docs/**`, `mkdocs.yml`, or `docs/requirements.txt`, run before committing:
-
-```bash
-mkdocs build --strict --site-dir _site
-```
-
-Stage doc updates with the code commit.
+`docs/functionalities.md` 仅增删功能页时改。英文 `docs/**/*.md` 为源；有 `.zh.md` 则英先中后；链接不带 `.zh` 后缀。  
+动 `docs/**` / `mkdocs.yml` → 提交前 `mkdocs build --strict --site-dir _site`。
 
 ---
 
-## Alembic Migrations
+## Alembic
 
-**Source:** `.cursor/rules/alembic-migrations.mdc`
+- 改 `backend/app/models/` → `alembic revision --autogenerate` → review → `upgrade head`  
+- 改 **`permission_default_patterns.py`** → 另加 **refresh migration** 重刷 `security_permissions`（参考 `c3d4e5f6a7b8_*` / `j1k2l3m4n5o6_*`）；只改 Python 默认值**不会**更新已有库  
+- API 启动**不**建表；本地 `backend/dev.sh`（pgvector + Alembic）；Docker CMD 先 Alembic 再 uvicorn  
+- 新 model 注册 `backend/alembic/env.py`；Procrastinate 表排除  
 
-- Any change to `backend/app/models/` → **migration** (`cd backend && alembic revision --autogenerate -m "…"`), **review**, then `alembic upgrade head`.
-- The API **does not** create tables or extensions at startup. **Local:** `backend/dev.sh` → `scripts/ensure_pgvector.py`, then Alembic. **Docker:** `CMD` runs Alembic (bootstrap creates `vector` if needed), then uvicorn.
-- Register new models in `backend/alembic/env.py`. Do not migrate Procrastinate tables (`include_name` excludes them).
+> **维护：** 细则（refresh migration 模板、env 注册清单等）日后可迁至 `docs/`，本节改外链 + 要点即可。
 
 ---
 
-## Frontend Build Verification
+## 前端验证
 
-**Source:** `.cursor/rules/frontend-build.mdc`
+- 动 `frontend/src/**` → `frontend/` 下 `npm run build`（`tsc -b && vite build`）；**`tsc --noEmit` 不够**  
+- 动 app shell（`App.scss`、`app-page.scss`、`ChannelSectionLayout*`、`MainLayout.tsx`）→ `npm run check:app-layout`  
+- 动 Suite App 列表/顺序（`appModules.ts` 等）→ 只在 `APP_MODULES` 设 `order` → `npm run check:app-modules`  
 
-- Any change to `frontend/src/**` → verify with `npm run build` (which runs `tsc -b && vite build`) before marking the task complete.
-- When changing **app shell layout** (`App.scss`, `styles/app-page.scss`, `ChannelSectionLayout*`, `MainLayout.tsx`) → also run **`npm run check:app-layout`** from `frontend/`.
-- When changing **suite app list or order** (`config/appModules.ts`, `useAppModules.ts`, `Sidebar`, `AppLauncher`, `Home` Apps) → set **`order`** on each module in `APP_MODULES` only; run **`npm run check:app-modules`**. App Rail, Launcher, and Home Apps share the same sorted list.
-- **`tsc --noEmit` alone is not sufficient**; `tsc -b` with project references catches cross-package type errors that `--noEmit` may miss.
-- Run from the `frontend/` directory.
+**页边距：** `--app-page-padding-x/y` 只放在 `.app-content` 或 `.app-page-pane`；不与页面根叠 padding；用全局 `.page-header` / `.page-subtitle`；全出血路由 SCSS 注释 `app-layout-exception:` 并登记 `docs/design-system.md`。
 
-### App page layout (gutters)
+> **维护：** 细则（gutter 例外表、check 脚本说明等）日后可迁至 `docs/design-system.md` / `docs/developer/`，本节改外链 + 要点即可。
 
-- **Single gutter source:** `--app-page-padding-x/y` applied only in **`.app-content`** (main column) or **`.app-page-pane`** (channel / ontology second column).
-- **Do not** stack padding on `.app-content` and the page root (e.g. Home wrapper).
-- Use global **`.page-header`** / **`.page-subtitle`** — avoid copying `h1` typography into each `*Index.scss`.
-- Full-bleed routes: comment **`app-layout-exception:`** in SCSS and add a row to **`docs/design-system.md` § App shell layout**.
-- Details: **`docs/design-system.md`** (App shell layout + conventions §11).
+---
+
+## App Builder & A2UI
+
+详 `docs/features/app-builder.md`。
+
+**平台 vs 租户 App**
+
+| 平台代码 | DB 里 published Source |
+|----------|------------------------|
+| catalog + host（`executeAction`、`loadObjectForEdit`、`OntoObjectList` 加载器） | 布局、文案、过滤、Modal↔Action  wiring |
+| `_a2ui-platform.scss` 通用 A2UI 样式 | resource allowlist + `draft_a2ui` / `published_a2ui` |
+| 校验、Designer NDJSON、发布门禁 | 领域 UX（如多列看板 = 多个过滤 List + Modal 组合） |
+
+**禁止：** 平台写领域 UI（看板 widget、应用名按钮、board 形 binding、按域名 synthesize）；load 时 silent heal/normalize/auto-synthesize → **校验失败可见**，仅 **`POST …/synthesize`** 显式重置 stub。  
+**已废弃：** `OntoKanbanBoard`、`OntoActionForm`、`ontology_app_kanban_a2ui.py`、board binding、load-time auto-heal。
+
+**放置：** 后端 `app_builder/` + `api/app_builder.py`（非 `ontology/`）；API 仅 **`/api/app-builder/apps`**，迁路由即删旧路；表名 `ontology_apps` 仅历史存储；前端 `appBuilderApi.ts`、`pages/app-builder/a2ui/`。
+
+**A2UI Source 坑（高频）**
+
+1. `List` 行模板用**相对** path（`title`），勿 `/title`（从 DataModel 根解析 → 标题空）  
+2. `OntoObjectList` 仅 loader；展示用 basic `List` + 行模板  
+3. 建/编弹窗 = `Modal` + `TextField` + `executeAction` / `loadObjectForEdit`；输入形来自 Action，无平台 form 组件  
+4. 多列板在 Source 组合，无平台 widget  
+5. 样式只 polish  primitive；勿写某 App 专用 SCSS  
+
+新失败模式加 `app_builder/a2ui.py` 校验，勿 per-app hack。  
+FastAPI：`_register_routes(router)` 前 router **必须有 prefix**，否则 `@get("")` 导入崩溃。
+
+**App Builder 任务验收：** `pytest backend/tests/test_app_builder_a2ui.py` · 动前端则 `npm run build` · 动权限/模型则 `alembic upgrade head` · grep 无 `OntoKanbanBoard`/`/api/ontology/apps`/`ontology_app_kanban`。

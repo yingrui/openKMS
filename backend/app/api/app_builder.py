@@ -317,8 +317,5 @@ def _register_routes(api: APIRouter) -> None:
         return StreamingResponse(ndjson(), media_type="application/x-ndjson")
 
 
-router = APIRouter(prefix="/ontology/apps", tags=["ontology-apps"])
+router = APIRouter(prefix="/app-builder/apps", tags=["app-builder"])
 _register_routes(router)
-
-app_builder_apps_router = APIRouter(prefix="/app-builder/apps", tags=["app-builder"])
-_register_routes(app_builder_apps_router)

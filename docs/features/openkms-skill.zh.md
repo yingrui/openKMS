@@ -25,4 +25,4 @@
 python scripts/cli.py ping
 ```
 
-Agent **只能**走 bundled CLI。写 Function 源码前读 `references/functions-authoring.md`。控制面 API（feature toggles、schedules hub 等）不包装。领域本体是**租户 DIY**（见 `SKILL.md` Workflow G、[认识本体](../tutorials/understanding-ontology.md)、[Tushare 案例](../tutorials/tushare-market-ontology.md)），不是平台种子；Action 写回对象仍延后，见 [Manager 对齐说明](../research/ontology_manager_alignment.md)。
+Agent **只能**走 bundled CLI。写 Function 源码前读 `references/functions-authoring.md`。控制面 API（feature toggles、schedules hub 等）不包装。**App Builder** 应用走 **`/api/app-builder/apps`**（见 [应用构建器](app-builder.md)）；bundled CLI 尚未包装 patch/publish。领域本体是**租户 DIY**（见 `SKILL.md` Workflow G、[认识本体](../tutorials/understanding-ontology.md)、[Tushare 案例](../tutorials/tushare-market-ontology.md)），不是平台种子；Action 对可解析实例的 **create / modify / delete apply** 已交付，dataset/Neo4j 合成 `object_id` 仍延后，见 [Manager 对齐说明](../research/ontology_manager_alignment.md)。

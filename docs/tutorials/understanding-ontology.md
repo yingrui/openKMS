@@ -280,7 +280,7 @@ Full stack glossary remains in older revisions’ spirit: data source, dataset, 
 | Path | When |
 |------|------|
 | Enrich FoO (`workItemDependencyClosure`, `teamCapacitySnapshot`) | You want stronger AI decisions on the same board |
-| [App Builder Kanban (A2UI)](../features/app-builder.md) | You want a visual column board (not Object Explorer) |
+| [App Builder (A2UI apps)](../features/app-builder.md) | You want a visual column board or other composed app (not Object Explorer) |
 | Bind datasets / connector sync from a real tracker | You outgrow hand-entered cards |
 | [Tushare market ontology DIY](tushare-market-ontology.md) | Practice the same pattern on market data |
 | [Ontology Functions](../features/ontology-functions.md) | Deeper authoring / SDK |

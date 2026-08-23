@@ -160,11 +160,11 @@ Earlier (2026-08-16) `modify`-only shipping is superseded for object-instance ed
 
 - [x] Three App Rail icons; `check:app-modules` passes
 - [x] Old routes redirect
-- [x] Permission patterns include new and legacy paths
+- [x] Permission patterns include App Builder routes (`/api/app-builder/apps`)
 - [x] Cypher page height (`check:app-layout`)
 - [x] No "Code Repository" user-facing copy
 - [x] Capability audit + DIY blockers documented (this page)
 - [x] Action `modify` apply on resolvable object instances (2026-08-16)
 - [x] Action `create` / `delete` apply on resolvable object instances (2026-08-17)
 - [ ] Link create/delete edit ops + dataset/Neo4j synthetic `object_id` — separate plan when needed
-- [ ] App Builder Kanban (A2UI) — presentation follow-on, not Object Explorer
+- [x] App Builder + Apps (A2UI) — platform primitives + tenant Source; not Object Explorer

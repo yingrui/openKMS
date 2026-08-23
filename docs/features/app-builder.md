@@ -43,6 +43,20 @@ UI wiring lives in the **A2UI Source** (component props), not in a board-shaped 
 
 **Writes** go through Action execute only.
 
+## Platform vs published app
+
+| Platform (openKMS code) | Published app (tenant A2UI Source in DB) |
+|---------------------------|------------------------------------------|
+| Catalog + host hooks (`executeAction`, `loadObjectForEdit`, `OntoObjectList` loader) | Layout, copy, filters, which Action opens which Modal |
+| Shared A2UI styling (`_a2ui-platform.scss`) | Resource allowlist + `draft_a2ui` / `published_a2ui` |
+| Validation, Designer NDJSON, publish gates | Domain UX (e.g. column boards composed from filtered lists) |
+
+The platform must **not** ship domain UI (no Kanban widget, no app-named buttons, no board-shaped binding keys, no synthesizers that emit a named product layout). Kanban-style boards are **tenant content** composed in Source — see [Understanding the ontology](../tutorials/understanding-ontology.md).
+
+**Validation:** invalid Source or removed catalog components **fail** at save/publish and surface in Design — the server does **not** silently replace draft JSON on load. Use **Reset layout** (`POST …/synthesize`) to return to a generic stub, then re-compose with the Designer.
+
+**Removed catalog components** (reject at validation): `OntoKanbanBoard`, `OntoActionForm`. Use basic `Modal` + `TextField` + `executeAction` instead.
+
 ## A2UI catalog (a2ui lane)
 
 Catalog id: `https://openkms.local/a2ui/catalogs/ontology-app/v1.json`.
@@ -81,7 +95,7 @@ Frontend: `frontend/src/pages/app-builder/` (Design UI), `frontend/src/pages/app
 
 ## API
 
-`/api/app-builder/apps` (`ontology:read` / `ontology:write`). Legacy alias: `/api/ontology/apps` (same routes).
+`/api/app-builder/apps` (`ontology:read` / `ontology:write`):
 
 | Method | Path | Description |
 |--------|------|-------------|

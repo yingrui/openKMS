@@ -11,7 +11,7 @@ flowchart TB
   end
 
   subgraph Backend["Backend (FastAPI)"]
-    API["knowledge-map (/api/knowledge-map, incl. overview A2UI + NDJSON designer; legacy map-html), home, document-channels, article-channels, articles, documents, knowledge-bases, wiki-spaces, glossaries, pipelines, jobs, models, object-types, link-types, data-sources, datasets, feature-toggles"]
+    API["knowledge-map (/api/knowledge-map, incl. overview A2UI + NDJSON designer; legacy map-html), home, app-builder (/api/app-builder/apps), document-channels, article-channels, articles, documents, knowledge-bases, wiki-spaces, glossaries, pipelines, jobs, models, object-types, link-types, data-sources, datasets, feature-toggles"]
   end
 
   subgraph Storage["Data & Processing"]
@@ -92,7 +92,7 @@ flowchart TB
   Providers --> Pages
 ```
 
-Ontology SPA sources live under `frontend/src/pages/ontology/`. Console admin screens live under `frontend/src/pages/console/`.
+Ontology SPA sources live under `frontend/src/pages/ontology/`. **App Builder** and **Apps** live under `frontend/src/pages/app-builder/` and `frontend/src/pages/apps/`. Console admin screens live under `frontend/src/pages/console/`.
 
 ### Layout (`frontend/src/`)
 
@@ -114,7 +114,7 @@ frontend/src/
 ├── App.tsx, main.tsx, index.scss
 ├── pages/
 │   ├── documents/, articles/, wiki/, knowledge-bases/, knowledge-map/
-│   ├── evaluation/, glossaries/, ontology/, console/
+│   ├── evaluation/, glossaries/, ontology/, app-builder/, apps/, console/
 │   ├── agents/, pipelines/, jobs/, models/, auth/, connectors/
 │   └── Home.tsx, Profile.tsx, UserSettings.tsx, GlobalSearch.tsx
 ├── components/
