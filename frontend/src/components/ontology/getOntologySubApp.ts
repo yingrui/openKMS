@@ -5,6 +5,8 @@ export type OntologySubApp =
   | 'app-builder'
   | null;
 
+import { isAppBuilderPath } from '../app-builder/routing';
+
 export function getOntologySubApp(pathname: string): OntologySubApp {
   if (
     pathname === '/ontology-manager' ||
@@ -25,7 +27,7 @@ export function getOntologySubApp(pathname: string): OntologySubApp {
   if (pathname === '/function-editor' || pathname.startsWith('/function-editor/')) {
     return 'function-editor';
   }
-  if (pathname === '/app-builder' || pathname.startsWith('/app-builder/')) {
+  if (isAppBuilderPath(pathname)) {
     return 'app-builder';
   }
   return null;
@@ -43,7 +45,4 @@ export function isFunctionEditorWorkspacePath(pathname: string): boolean {
   return /^\/function-editor\/[^/]+$/.test(pathname);
 }
 
-/** Full-bleed design canvas (hide App Builder nav rail). */
-export function isAppBuilderDesignPath(pathname: string): boolean {
-  return /^\/app-builder\/[^/]+\/design$/.test(pathname);
-}
+export { isAppBuilderDesignPath, isAppBuilderPath } from '../app-builder/routing';

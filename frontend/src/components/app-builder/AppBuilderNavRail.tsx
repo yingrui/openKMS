@@ -2,7 +2,7 @@ import { NavLink, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { LayoutTemplate, List, Plus } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
-import './OntologyNavRail.scss';
+import '../ontology/OntologyNavRail.scss';
 
 export function AppBuilderNavRail() {
   const { t } = useTranslation('layout');

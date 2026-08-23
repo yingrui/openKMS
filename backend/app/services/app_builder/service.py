@@ -1,4 +1,4 @@
-"""CRUD, resource resolution, publish/unpublish for Ontology Apps."""
+"""CRUD, resource resolution, publish/unpublish for App Builder apps."""
 
 from __future__ import annotations
 
@@ -12,25 +12,19 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.object_type import ObjectType
-from app.models.ontology_app import OntologyApp
+from app.models.app_builder import AppBuilderApp
 from app.models.ontology_function import OntologyActionType, OntologyFunction, OntologyFunctionVersion
-from app.schemas.ontology_apps import OntologyAppBindings, OntologyAppCreate, OntologyAppUpdate
+from app.schemas.app_builder import AppBuilderBindings, AppBuilderCreate, AppBuilderUpdate
 from app.services.ontology.action_rule_types import is_builtin_object_rule
 from app.services.ontology.builtin_action_service import input_schema_for_action
-from app.services.ontology.ontology_app_a2ui import (
-    a2ui_needs_list_pattern_upgrade,
-    a2ui_uses_removed_components,
+from app.services.app_builder.a2ui import (
     normalize_resources,
     normalize_stored_a2ui_document,
     pack_a2ui_document,
     reject_legacy_board_bindings,
     resources_nonempty,
     synthesize_stub_a2ui_messages,
-    validate_ontology_app_a2ui_messages,
-)
-from app.services.ontology.ontology_app_kanban_a2ui import (
-    KANBAN_WORK_ITEM_RESOURCES,
-    synthesize_kanban_a2ui_messages,
+    validate_app_a2ui_messages,
 )
 
 APP_ID_PREFIX = "oa-"
@@ -41,10 +35,10 @@ def new_app_id() -> str:
     return f"{APP_ID_PREFIX}{uuid.uuid4().hex[:ID_HEX]}"
 
 
-def bindings_as_dict(bindings: OntologyAppBindings | dict[str, Any] | None) -> dict[str, Any]:
+def bindings_as_dict(bindings: AppBuilderBindings | dict[str, Any] | None) -> dict[str, Any]:
     if bindings is None:
         return {}
-    if isinstance(bindings, OntologyAppBindings):
+    if isinstance(bindings, AppBuilderBindings):
         raw = bindings.model_dump(exclude_none=True)
     else:
         raw = dict(bindings)
@@ -52,7 +46,7 @@ def bindings_as_dict(bindings: OntologyAppBindings | dict[str, Any] | None) -> d
     return normalize_resources(raw)
 
 
-def artifact_kind_of(app: OntologyApp) -> str:
+def artifact_kind_of(app: AppBuilderApp) -> str:
     tid = (app.template_id or "a2ui").strip() or "a2ui"
     return tid if tid in ("a2ui", "module") else "a2ui"
 
@@ -109,7 +103,7 @@ async def compute_live_bindings_hash(db: AsyncSession, bindings: dict[str, Any])
     return compute_bindings_hash(resolved), missing
 
 
-def to_response_base(app: OntologyApp, *, stale: bool = False, missing: list[str] | None = None) -> dict[str, Any]:
+def to_response_base(app: AppBuilderApp, *, stale: bool = False, missing: list[str] | None = None) -> dict[str, Any]:
     kind = artifact_kind_of(app)
     return {
         "id": app.id,
@@ -132,7 +126,7 @@ def to_response_base(app: OntologyApp, *, stale: bool = False, missing: list[str
     }
 
 
-async def enrich_stale(db: AsyncSession, app: OntologyApp) -> tuple[bool, list[str]]:
+async def enrich_stale(db: AsyncSession, app: AppBuilderApp) -> tuple[bool, list[str]]:
     bindings = app.bindings or {}
     if not bindings:
         return False, []
@@ -148,8 +142,8 @@ async def enrich_stale(db: AsyncSession, app: OntologyApp) -> tuple[bool, list[s
     return False, []
 
 
-async def get_app(db: AsyncSession, app_id: str) -> OntologyApp:
-    app = await db.get(OntologyApp, app_id)
+async def get_app(db: AsyncSession, app_id: str) -> AppBuilderApp:
+    app = await db.get(AppBuilderApp, app_id)
     if not app:
         raise HTTPException(status_code=404, detail="App not found")
     return app
@@ -157,22 +151,22 @@ async def get_app(db: AsyncSession, app_id: str) -> OntologyApp:
 
 async def list_apps(
     db: AsyncSession, *, status: str | None = None
-) -> list[OntologyApp]:
-    q = select(OntologyApp).order_by(OntologyApp.updated_at.desc())
+) -> list[AppBuilderApp]:
+    q = select(AppBuilderApp).order_by(AppBuilderApp.updated_at.desc())
     if status:
-        q = q.where(OntologyApp.status == status)
+        q = q.where(AppBuilderApp.status == status)
     return list((await db.execute(q)).scalars().all())
 
 
 async def create_app(
     db: AsyncSession,
-    body: OntologyAppCreate,
+    body: AppBuilderCreate,
     *,
     created_by: str | None,
     created_by_name: str | None,
-) -> OntologyApp:
+) -> AppBuilderApp:
     exists = (
-        await db.execute(select(OntologyApp.id).where(OntologyApp.api_name == body.api_name))
+        await db.execute(select(AppBuilderApp.id).where(AppBuilderApp.api_name == body.api_name))
     ).scalar_one_or_none()
     if exists:
         raise HTTPException(status_code=409, detail="api_name already exists")
@@ -202,7 +196,7 @@ async def create_app(
         bindings_hash = compute_bindings_hash(resolved) if resolved else None
 
     messages = synthesize_stub_a2ui_messages(title=body.name)
-    app = OntologyApp(
+    app = AppBuilderApp(
         id=new_app_id(),
         name=body.name,
         api_name=body.api_name,
@@ -222,7 +216,7 @@ async def create_app(
     return app
 
 
-async def update_app(db: AsyncSession, app: OntologyApp, body: OntologyAppUpdate) -> OntologyApp:
+async def update_app(db: AsyncSession, app: AppBuilderApp, body: AppBuilderUpdate) -> AppBuilderApp:
     if body.name is not None:
         app.name = body.name
     if body.description is not None:
@@ -246,7 +240,7 @@ async def update_app(db: AsyncSession, app: OntologyApp, body: OntologyAppUpdate
             app.bindings_hash = None
     if body.draft_a2ui_messages is not None:
         try:
-            validated = validate_ontology_app_a2ui_messages(
+            validated = validate_app_a2ui_messages(
                 body.draft_a2ui_messages, bindings=app.bindings or {}
             )
         except ValueError as e:
@@ -259,11 +253,11 @@ async def update_app(db: AsyncSession, app: OntologyApp, body: OntologyAppUpdate
 
 async def apply_bindings(
     db: AsyncSession,
-    app: OntologyApp,
+    app: AppBuilderApp,
     bindings: dict[str, Any],
     *,
     synthesize: bool = False,
-) -> OntologyApp:
+) -> AppBuilderApp:
     """Validate and store resources. Never synthesizes product UI (stub only if synthesize)."""
     try:
         cleaned = bindings_as_dict(bindings)
@@ -292,42 +286,7 @@ async def apply_bindings(
     return app
 
 
-async def heal_draft_if_removed_components(db: AsyncSession, app: OntologyApp) -> OntologyApp:
-    """Upgrade legacy layouts: removed components → stub; legacy list-as-UI → kanban template."""
-    messages = normalize_stored_a2ui_document(app.draft_a2ui) or []
-    if a2ui_uses_removed_components(messages):
-        return await synthesize_draft(db, app)
-    if a2ui_needs_list_pattern_upgrade(messages):
-        return await apply_kanban_template(db, app)
-    return app
-
-
-async def apply_kanban_template(db: AsyncSession, app: OntologyApp) -> OntologyApp:
-    """Apply canonical WorkItem kanban A2UI + resources (loader + List + create/edit Modals)."""
-    cleaned = bindings_as_dict(KANBAN_WORK_ITEM_RESOURCES)
-    resolved, missing = await resolve_bindings_snapshot(db, cleaned)
-    if missing:
-        raise HTTPException(
-            status_code=400,
-            detail={
-                "message": "Cannot apply kanban template until WorkItem Actions exist",
-                "missing_bindings": missing,
-            },
-        )
-    messages = synthesize_kanban_a2ui_messages(title=app.name)
-    validate_ontology_app_a2ui_messages(messages, bindings=cleaned)
-    app.bindings = cleaned
-    app.bindings_hash = compute_bindings_hash(resolved)
-    doc = pack_a2ui_document(messages)
-    app.draft_a2ui = doc
-    if app.status == "published":
-        app.published_a2ui = doc
-    await db.commit()
-    await db.refresh(app)
-    return app
-
-
-async def synthesize_draft(db: AsyncSession, app: OntologyApp) -> OntologyApp:
+async def synthesize_draft(db: AsyncSession, app: AppBuilderApp) -> AppBuilderApp:
     """Reset layout to stub. Clear legacy board bindings so the designer can set_resources cleanly."""
     bindings = app.bindings or {}
     try:
@@ -343,10 +302,10 @@ async def synthesize_draft(db: AsyncSession, app: OntologyApp) -> OntologyApp:
 
 async def publish_app(
     db: AsyncSession,
-    app: OntologyApp,
+    app: AppBuilderApp,
     *,
     a2ui_messages: list[dict[str, Any]] | None = None,
-) -> OntologyApp:
+) -> AppBuilderApp:
     if artifact_kind_of(app) != "a2ui":
         raise HTTPException(status_code=400, detail="Only a2ui apps can be published in this release")
     bindings = normalize_resources(app.bindings or {})
@@ -369,13 +328,13 @@ async def publish_app(
         )
     try:
         if a2ui_messages is not None:
-            messages = validate_ontology_app_a2ui_messages(a2ui_messages, bindings=bindings)
+            messages = validate_app_a2ui_messages(a2ui_messages, bindings=bindings)
             app.draft_a2ui = pack_a2ui_document(messages)
         else:
             messages = normalize_stored_a2ui_document(app.draft_a2ui)
             if not messages:
                 raise ValueError("Draft A2UI is empty — ask the designer to set the layout")
-            messages = validate_ontology_app_a2ui_messages(messages, bindings=bindings)
+            messages = validate_app_a2ui_messages(messages, bindings=bindings)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e)) from e
     app.published_a2ui = pack_a2ui_document(messages)
@@ -386,7 +345,7 @@ async def publish_app(
     return app
 
 
-async def unpublish_app(db: AsyncSession, app: OntologyApp) -> OntologyApp:
+async def unpublish_app(db: AsyncSession, app: AppBuilderApp) -> AppBuilderApp:
     app.status = "draft"
     app.published_a2ui = None
     await db.commit()
@@ -394,8 +353,8 @@ async def unpublish_app(db: AsyncSession, app: OntologyApp) -> OntologyApp:
     return app
 
 
-async def delete_app(db: AsyncSession, app: OntologyApp) -> None:
-    from app.services.ontology.ontology_app_session import delete_all_conversations_for_app
+async def delete_app(db: AsyncSession, app: AppBuilderApp) -> None:
+    from app.services.app_builder.session import delete_all_conversations_for_app
 
     await delete_all_conversations_for_app(db, app.id)
     await db.delete(app)

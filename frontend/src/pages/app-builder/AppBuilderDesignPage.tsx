@@ -3,25 +3,25 @@ import { Link, useNavigate, useParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { MessageCirclePlus, Trash2 } from 'lucide-react';
 import {
-  createOntologyAppDesignerConversation,
-  deleteOntologyAppDesignerConversation,
-  fetchOntologyAppDesign,
-  fetchOntologyAppDesignerSession,
-  listOntologyAppDesignerConversations,
-  postOntologyAppDesignerChatStream,
-  publishOntologyApp,
-  synthesizeOntologyApp,
-  unpublishOntologyApp,
-  updateOntologyApp,
+  createDesignerConversation,
+  deleteDesignerConversation,
+  fetchAppDesign,
+  fetchDesignerSession,
+  listDesignerConversations,
+  postDesignerChatStream,
+  publishApp,
+  synthesizeApp,
+  unpublishApp,
+  updateApp,
+  type AppBuilderBindings,
+  type AppBuilderDesignResponse,
   type DesignerConversation,
-  type OntologyAppBindings,
-  type OntologyAppDesignResponse,
-} from '../../data/ontologyAppsApi';
+} from '../../data/appBuilderApi';
 import { useConfirm } from '../../contexts/ConfirmContext';
-import { OntologyAppA2uiSurface } from '../apps/OntologyAppA2uiSurface';
+import { AppA2uiSurface } from './a2ui/AppA2uiSurface';
 import './AppBuilderPages.scss';
 
-function formatResources(b: OntologyAppBindings | Record<string, unknown> | undefined): string {
+function formatResources(b: AppBuilderBindings | Record<string, unknown> | undefined): string {
   if (!b || !Object.keys(b).length) return '—';
   const lines: string[] = [];
   for (const [k, v] of Object.entries(b)) {
@@ -31,11 +31,13 @@ function formatResources(b: OntologyAppBindings | Record<string, unknown> | unde
   return lines.length ? lines.join('\n') : '—';
 }
 
+const REMOVED_A2UI_COMPONENTS = new Set(['OntoKanbanBoard', 'OntoActionForm']);
+
 function a2uiHasRemovedComponent(messages: Record<string, unknown>[]): boolean {
   for (const msg of messages) {
     const upd = msg.updateComponents as { components?: Record<string, unknown>[] } | undefined;
     for (const c of upd?.components || []) {
-      if (c.component === 'OntoKanbanBoard') return true;
+      if (REMOVED_A2UI_COMPONENTS.has(String(c.component || ''))) return true;
     }
   }
   return false;
@@ -46,7 +48,7 @@ export function AppBuilderDesignPage() {
   const { t } = useTranslation('appBuilder');
   const navigate = useNavigate();
   const confirm = useConfirm();
-  const [app, setApp] = useState<OntologyAppDesignResponse | null>(null);
+  const [app, setApp] = useState<AppBuilderDesignResponse | null>(null);
   const [working, setWorking] = useState<Record<string, unknown>[]>([]);
   const [chatInput, setChatInput] = useState('');
   const [chatLog, setChatLog] = useState<{ role: string; content: string }[]>([]);
@@ -60,15 +62,9 @@ export function AppBuilderDesignPage() {
   const streamingRef = useRef('');
 
   const reloadApp = useCallback(async () => {
-    const design = await fetchOntologyAppDesign(appId);
+    const design = await fetchAppDesign(appId);
     setApp(design);
-    let msgs = design.a2ui_messages || [];
-    if (a2uiHasRemovedComponent(msgs)) {
-      const healed = await synthesizeOntologyApp(appId);
-      setApp(healed);
-      msgs = healed.a2ui_messages || [];
-    }
-    setWorking(msgs);
+    setWorking(design.a2ui_messages || []);
     return design;
   }, [appId]);
 
@@ -76,16 +72,16 @@ export function AppBuilderDesignPage() {
     void (async () => {
       try {
         await reloadApp();
-        let convs = await listOntologyAppDesignerConversations(appId);
+        let convs = await listDesignerConversations(appId);
         if (!convs.length) {
-          const created = await createOntologyAppDesignerConversation(appId);
+          const created = await createDesignerConversation(appId);
           convs = [created];
         }
         setConversations(convs);
         const active = convs[0]?.id ?? null;
         setConversationId(active);
         if (active) {
-          const session = await fetchOntologyAppDesignerSession(appId, active);
+          const session = await fetchDesignerSession(appId, active);
           setChatLog(
             (session.messages || []).map((m) => ({ role: m.role, content: m.content })),
           );
@@ -110,9 +106,7 @@ export function AppBuilderDesignPage() {
     setStreaming('');
     streamingRef.current = '';
     setError(null);
-    const workingForChat = a2uiHasRemovedComponent(working) ? [] : working;
-    if (workingForChat !== working) setWorking([]);
-    void postOntologyAppDesignerChatStream(
+    void postDesignerChatStream(
       appId,
       next,
       (ev) => {
@@ -125,7 +119,7 @@ export function AppBuilderDesignPage() {
             const payload = JSON.parse(ev.output) as {
               ok?: boolean;
               messages?: Record<string, unknown>[];
-              bindings?: OntologyAppBindings;
+              bindings?: AppBuilderBindings;
               error?: string;
             };
             if (payload.ok && payload.messages) setWorking(payload.messages);
@@ -133,14 +127,7 @@ export function AppBuilderDesignPage() {
               setApp((prev) => (prev ? { ...prev, bindings: payload.bindings! } : prev));
             }
             if (!payload.ok && payload.error) {
-              // LLM may still emit removed components — keep chat usable; do not leave board in canvas.
               setError(payload.error);
-              if (/OntoKanbanBoard|removed/i.test(payload.error)) {
-                void synthesizeOntologyApp(appId).then((d) => {
-                  setApp(d);
-                  setWorking(d.a2ui_messages || []);
-                });
-              }
             }
           } catch {
             /* ignore */
@@ -152,15 +139,7 @@ export function AppBuilderDesignPage() {
           setStreaming('');
           streamingRef.current = '';
           if (ev.a2ui_messages) {
-            const msgs = ev.a2ui_messages;
-            if (a2uiHasRemovedComponent(msgs)) {
-              void synthesizeOntologyApp(appId).then((d) => {
-                setApp(d);
-                setWorking(d.a2ui_messages || []);
-              });
-            } else {
-              setWorking(msgs);
-            }
+            setWorking(ev.a2ui_messages);
           }
           if (ev.bindings) {
             setApp((prev) => (prev ? { ...prev, bindings: ev.bindings! } : prev));
@@ -169,7 +148,7 @@ export function AppBuilderDesignPage() {
         }
         if (ev.type === 'error') setError(ev.message);
       },
-      { workingA2uiMessages: workingForChat, conversationId },
+      { workingA2uiMessages: working, conversationId },
     )
       .catch((err) => setError(err instanceof Error ? err.message : String(err)))
       .finally(() => setBusy(false));
@@ -177,7 +156,7 @@ export function AppBuilderDesignPage() {
 
   const onNewChat = useCallback(() => {
     if (busy) return;
-    void createOntologyAppDesignerConversation(appId).then((c) => {
+    void createDesignerConversation(appId).then((c) => {
       setConversations((prev) => [c, ...prev]);
       setConversationId(c.id);
       setChatLog([]);
@@ -196,17 +175,17 @@ export function AppBuilderDesignPage() {
       });
       if (!ok) return;
       try {
-        await deleteOntologyAppDesignerConversation(appId, id);
+        await deleteDesignerConversation(appId, id);
         const next = conversations.filter((c) => c.id !== id);
         setConversations(next);
         if (conversationId === id) {
           const fallback = next[0]?.id ?? null;
           setConversationId(fallback);
           if (fallback) {
-            const session = await fetchOntologyAppDesignerSession(appId, fallback);
+            const session = await fetchDesignerSession(appId, fallback);
             setChatLog((session.messages || []).map((m) => ({ role: m.role, content: m.content })));
           } else {
-            const created = await createOntologyAppDesignerConversation(appId);
+            const created = await createDesignerConversation(appId);
             setConversations([created]);
             setConversationId(created.id);
             setChatLog([]);
@@ -263,7 +242,7 @@ export function AppBuilderDesignPage() {
                 const id = e.target.value || null;
                 setConversationId(id);
                 if (!id) return;
-                void fetchOntologyAppDesignerSession(appId, id).then((session) => {
+                void fetchDesignerSession(appId, id).then((session) => {
                   setChatLog((session.messages || []).map((m) => ({ role: m.role, content: m.content })));
                 });
               }}
@@ -380,7 +359,7 @@ export function AppBuilderDesignPage() {
         </div>
         <div className="app-builder-design__canvas-body">
           {canvasMode === 'preview' ? (
-            <OntologyAppA2uiSurface a2uiMessages={working} />
+            <AppA2uiSurface a2uiMessages={working} />
           ) : (
             <pre className="app-builder-design__source" tabIndex={0}>
               {working.length ? JSON.stringify(working, null, 2) : '[]'}
@@ -395,6 +374,11 @@ export function AppBuilderDesignPage() {
           {app.status} {app.bindings_stale ? `· ${t('stale')}` : ''}
           {app.artifact_kind ? ` · ${app.artifact_kind}` : ''}
         </p>
+        {a2uiHasRemovedComponent(working) ? (
+          <p className="app-builder-page__error" role="alert">
+            {t('removedComponentsHint')}
+          </p>
+        ) : null}
         {app.missing_bindings?.includes('legacy_board_bindings') ? (
           <p className="app-builder-page__error" role="alert">
             {t('legacyBoardHint')}
@@ -414,7 +398,7 @@ export function AppBuilderDesignPage() {
           disabled={busy}
           onClick={() => {
             setError(null);
-            void synthesizeOntologyApp(appId).then((d) => {
+            void synthesizeApp(appId).then((d) => {
               setApp(d);
               setWorking(d.a2ui_messages || []);
             });
@@ -428,8 +412,8 @@ export function AppBuilderDesignPage() {
           disabled={busy || !canPublish}
           title={!canPublish ? t('publishNeedsBindings') : undefined}
           onClick={() => {
-            void updateOntologyApp(appId, { draft_a2ui_messages: working })
-              .then(() => publishOntologyApp(appId, working))
+            void updateApp(appId, { draft_a2ui_messages: working })
+              .then(() => publishApp(appId, working))
               .then((run) => navigate(`/apps/${run.id}`))
               .catch((err) => setError(err instanceof Error ? err.message : String(err)));
           }}
@@ -440,7 +424,7 @@ export function AppBuilderDesignPage() {
           <button
             type="button"
             className="btn btn-secondary"
-            onClick={() => void unpublishOntologyApp(appId).then(() => reloadApp())}
+            onClick={() => void unpublishApp(appId).then(() => reloadApp())}
           >
             {t('unpublish')}
           </button>

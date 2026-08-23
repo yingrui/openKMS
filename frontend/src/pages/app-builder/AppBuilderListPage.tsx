@@ -1,21 +1,17 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import {
-  deleteOntologyApp,
-  listOntologyApps,
-  type OntologyAppResponse,
-} from '../../data/ontologyAppsApi';
+import { deleteApp, listApps, type AppBuilderAppResponse } from '../../data/appBuilderApi';
 import { EmptyState } from '../../styles/design-system';
 import './AppBuilderPages.scss';
 
 export function AppBuilderListPage() {
   const { t } = useTranslation('appBuilder');
-  const [apps, setApps] = useState<OntologyAppResponse[]>([]);
+  const [apps, setApps] = useState<AppBuilderAppResponse[]>([]);
   const [error, setError] = useState<string | null>(null);
 
   const reload = async () => {
-    setApps(await listOntologyApps());
+    setApps(await listApps());
   };
 
   useEffect(() => {
@@ -71,7 +67,7 @@ export function AppBuilderListPage() {
                 className="btn btn-danger"
                 onClick={() => {
                   if (!window.confirm(t('confirmDelete'))) return;
-                  void deleteOntologyApp(app.id).then(reload);
+                  void deleteApp(app.id).then(reload);
                 }}
               >
                 {t('delete')}

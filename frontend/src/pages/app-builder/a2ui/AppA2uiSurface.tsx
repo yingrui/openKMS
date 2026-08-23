@@ -1,23 +1,21 @@
 import { useEffect, useRef, useState } from 'react';
 import { MessageProcessor } from '@a2ui/web_core/v0_9';
 import { A2uiSurface } from '@a2ui/react/v0_9';
-import { executeOntologyAction } from '../../data/ontologyActionsApi';
+import { executeOntologyAction } from '../../../data/ontologyActionsApi';
 import {
   closeNearestA2uiModal,
   decorateA2uiDom,
   EDIT_MODAL_OPEN_MARKER,
-  emitOntologyAppMutated,
+  emitAppBuilderMutated,
   EXECUTE_ACTION_EVENT,
   LOAD_OBJECT_FOR_EDIT_EVENT,
-  ontologyAppCatalog,
-  ONTOLOGY_APP_A2UI_SURFACE_ID,
+  appBuilderCatalog,
+  APP_BUILDER_A2UI_SURFACE_ID,
   openProgrammaticA2uiModal,
   resolveActionByApiName,
-} from './ontologyAppA2uiCatalog';
-import {
-  normalizeOntologyAppA2uiMessages,
-} from './ontologyAppA2uiNormalize';
-import './OntologyAppA2ui.scss';
+} from './catalog';
+import { validateAppA2uiMessages } from './validate';
+import './AppA2uiSurface.scss';
 
 type Props = {
   a2uiMessages: Record<string, unknown>[];
@@ -146,14 +144,14 @@ async function handleExecuteAction(surf: SurfaceLike, action: A2uiClientAction) 
         /* ignore clear failures */
       }
     }
-    emitOntologyAppMutated();
+    emitAppBuilderMutated();
     closeNearestA2uiModal();
   } catch (e) {
     console.error(e instanceof Error ? e.message : String(e));
   }
 }
 
-export function OntologyAppA2uiSurface({ a2uiMessages }: Props) {
+export function AppA2uiSurface({ a2uiMessages }: Props) {
   const [error, setError] = useState<string | null>(null);
   const [surface, setSurface] = useState<SurfaceLike | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -166,10 +164,11 @@ export function OntologyAppA2uiSurface({ a2uiMessages }: Props) {
     }
     let sub: { unsubscribe: () => void } | null = null;
     try {
-      const processor = new MessageProcessor([ontologyAppCatalog]);
-      processor.processMessages(normalizeOntologyAppA2uiMessages(a2uiMessages) as never[]);
+      const processor = new MessageProcessor([appBuilderCatalog]);
+      validateAppA2uiMessages(a2uiMessages);
+      processor.processMessages(a2uiMessages as never[]);
       const surfaces = Array.from(processor.model.surfacesMap.values());
-      const surf = (surfaces.find((s) => (s as SurfaceLike).id === ONTOLOGY_APP_A2UI_SURFACE_ID) ??
+      const surf = (surfaces.find((s) => (s as SurfaceLike).id === APP_BUILDER_A2UI_SURFACE_ID) ??
         surfaces[0]) as SurfaceLike | undefined;
       if (!surf) {
         setError('No A2UI surface was created');
@@ -215,7 +214,7 @@ export function OntologyAppA2uiSurface({ a2uiMessages }: Props) {
   if (!surface) return <p className="onto-a2ui-muted">Rendering…</p>;
 
   return (
-    <div ref={containerRef} className="onto-app-a2ui a2ui-light">
+    <div ref={containerRef} className="onto-app-a2ui a2ui-platform-surface a2ui-light">
       <A2uiSurface surface={surface as never} />
     </div>
   );

@@ -117,7 +117,7 @@ export function KnowledgeMapOverviewA2uiSurface({ view, a2uiMessages }: Props) {
         </div>
       ) : null}
 
-      <div className="km-overview-a2ui a2ui-light">
+      <div className="km-overview-a2ui a2ui-platform-surface a2ui-light">
         {!render.error && render.surfaces.length === 0 ? (
           <p className="km-overview-empty">{t('overviewEmptySections')}</p>
         ) : null}

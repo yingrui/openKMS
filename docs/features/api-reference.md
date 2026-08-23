@@ -275,16 +275,16 @@ The bundled **openkms-skill** CLI wraps **lifecycle** and **relationships** the 
 | POST | `/api/ontology/explore` | Execute read-only Cypher query against Neo4j (body: `{ cypher }`); used by Object Explorer |
 | GET | `/api/ontology/groups/{id}/related` | Link types / Functions / Actions derived from the group's saved object types (`ontology:read`) |
 | POST | `/api/ontology/action-types/{id}/execute` | Run Action: OFS Function + audit; applies `output.edits` **create** / **modify** / **delete** ops on resolvable object instances; response may include `applied` |
-| GET | `/api/ontology/apps` | List ontology apps (`?status=published`); `ontology:read` |
-| POST | `/api/ontology/apps` | Create app (name + api_name; optional bindings; stub A2UI if unbound) (`ontology:write`) |
-| GET | `/api/ontology/apps/{id}` | Published run document only (404 if draft) |
-| GET | `/api/ontology/apps/{id}/design` | Draft A2UI for App Builder |
-| PATCH | `/api/ontology/apps/{id}` | Update metadata / bindings / draft |
-| DELETE | `/api/ontology/apps/{id}` | Delete app |
-| POST | `/api/ontology/apps/{id}/synthesize` | Reset draft from bindings |
-| POST | `/api/ontology/apps/{id}/publish` | Publish draft (optional `a2ui_messages`) |
-| POST | `/api/ontology/apps/{id}/unpublish` | Clear published; status → draft |
-| POST | `/api/ontology/apps/{id}/designer/chat` | NDJSON App Builder designer stream |
+| GET | `/api/app-builder/apps` | List apps (`?status=published`); `ontology:read` — same handlers as legacy `/api/ontology/apps` |
+| POST | `/api/app-builder/apps` | Create app (name + api_name; optional bindings; stub A2UI if unbound) (`ontology:write`) |
+| GET | `/api/app-builder/apps/{id}` | Published run document only (404 if draft) |
+| GET | `/api/app-builder/apps/{id}/design` | Draft A2UI for App Builder |
+| PATCH | `/api/app-builder/apps/{id}` | Update metadata / bindings / draft |
+| DELETE | `/api/app-builder/apps/{id}` | Delete app |
+| POST | `/api/app-builder/apps/{id}/synthesize` | Reset draft from bindings |
+| POST | `/api/app-builder/apps/{id}/publish` | Publish draft (optional `a2ui_messages`) |
+| POST | `/api/app-builder/apps/{id}/unpublish` | Clear published; status → draft |
+| POST | `/api/app-builder/apps/{id}/designer/chat` | NDJSON App Builder designer stream |
 | GET | `/api/data-sources` | List data sources (`limit`, `offset`; `console:data_sources`) |
 | POST | `/api/data-sources` | Create data source (`console:data_sources`) |
 | GET | `/api/data-sources/{id}` | Get data source (`console:data_sources`) |

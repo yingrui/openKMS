@@ -4,8 +4,8 @@ from __future__ import annotations
 
 from typing import Any
 
-ONTOLOGY_APP_A2UI_CATALOG_ID = "https://openkms.local/a2ui/catalogs/ontology-app/v1.json"
-ONTOLOGY_APP_A2UI_SURFACE_ID = "ontology-app"
+APP_BUILDER_A2UI_CATALOG_ID = "https://openkms.local/a2ui/catalogs/ontology-app/v1.json"
+APP_BUILDER_A2UI_SURFACE_ID = "ontology-app"
 A2UI_VERSION = "v0.9"
 A2UI_DOC_FORMAT = "a2ui_v0_9"
 
@@ -89,13 +89,13 @@ def synthesize_stub_a2ui_messages(*, title: str) -> list[dict[str, Any]]:
             "variant": "body",
         },
     ]
-    surface_id = ONTOLOGY_APP_A2UI_SURFACE_ID
+    surface_id = APP_BUILDER_A2UI_SURFACE_ID
     return [
         {
             "version": A2UI_VERSION,
             "createSurface": {
                 "surfaceId": surface_id,
-                "catalogId": ONTOLOGY_APP_A2UI_CATALOG_ID,
+                "catalogId": APP_BUILDER_A2UI_CATALOG_ID,
             },
         },
         {
@@ -174,21 +174,66 @@ def a2ui_uses_removed_components(messages: list[dict[str, Any]] | None) -> bool:
     return False
 
 
-def a2ui_needs_list_pattern_upgrade(messages: list[dict[str, Any]] | None) -> bool:
-    """True when draft still uses legacy OntoObjectList-as-UI (no dataPath / List template)."""
-    if not messages:
-        return False
+def _iter_path_bindings(value: Any) -> list[str]:
+    """Collect { path: "..." } bindings from nested component props."""
+    paths: list[str] = []
+    if isinstance(value, dict):
+        if "path" in value and isinstance(value.get("path"), str):
+            paths.append(value["path"])
+        for child in value.values():
+            paths.extend(_iter_path_bindings(child))
+    elif isinstance(value, list):
+        for item in value:
+            paths.extend(_iter_path_bindings(item))
+    return paths
+
+
+def _component_children_ids(comp: dict[str, Any]) -> list[str]:
+    children = comp.get("children")
+    if isinstance(children, list):
+        return [str(x) for x in children if str(x).strip()]
+    child = comp.get("child")
+    if isinstance(child, str) and child.strip():
+        return [child.strip()]
+    return []
+
+
+def _validate_list_row_template_paths(messages: list[dict[str, Any]]) -> None:
+    """List row templates scope DataContext to each item — paths must be relative (title), not /title."""
+    by_id: dict[str, dict[str, Any]] = {}
+    row_template_ids: set[str] = set()
     for c in iter_a2ui_components(messages):
-        if str(c.get("component") or "") != "OntoObjectList":
+        cid = str(c.get("id") or "")
+        if cid:
+            by_id[cid] = c
+        if str(c.get("component") or "") != "List":
             continue
-        if not str(c.get("dataPath") or "").strip():
-            return True
-        if c.get("editActionApiName") or c.get("actionApiName"):
-            return True
-    return False
+        children = c.get("children")
+        if not isinstance(children, dict):
+            continue
+        template_id = str(children.get("componentId") or "").strip()
+        if template_id:
+            row_template_ids.add(template_id)
+
+    def walk(comp_id: str, seen: set[str]) -> None:
+        if comp_id in seen or comp_id not in by_id:
+            return
+        seen.add(comp_id)
+        comp = by_id[comp_id]
+        for path in _iter_path_bindings(comp):
+            if path.startswith("/") and path.count("/") == 1 and path not in ("/",):
+                raise ValueError(
+                    f"List row template {comp_id!r} uses absolute path {path!r}. "
+                    "Inside List items use relative field names (title, id, status), not /title."
+                )
+        for child_id in _component_children_ids(comp):
+            walk(child_id, seen)
+
+    for template_id in row_template_ids:
+        walk(template_id, set())
 
 
-def validate_ontology_app_a2ui_messages(
+def validate_app_a2ui_messages(
     messages: list[dict[str, Any]],
     *,
     bindings: dict[str, Any] | None = None,
@@ -204,8 +249,8 @@ def validate_ontology_app_a2ui_messages(
             cs = msg["createSurface"]
             if not isinstance(cs, dict):
                 raise ValueError("createSurface must be an object")
-            if cs.get("catalogId") != ONTOLOGY_APP_A2UI_CATALOG_ID:
-                raise ValueError(f"catalogId must be {ONTOLOGY_APP_A2UI_CATALOG_ID}")
+            if cs.get("catalogId") != APP_BUILDER_A2UI_CATALOG_ID:
+                raise ValueError(f"catalogId must be {APP_BUILDER_A2UI_CATALOG_ID}")
             has_surface = True
 
     for c in iter_a2ui_components(messages):
@@ -220,13 +265,15 @@ def validate_ontology_app_a2ui_messages(
         if name == "OntoObjectList" and not str(c.get("dataPath") or "").strip():
             raise ValueError(
                 f"OntoObjectList {c.get('id')!r} requires dataPath. "
-                "Use loader + List row template (see synthesize_kanban_a2ui_messages)."
+                "Use OntoObjectList as a DataModel loader with dataPath, plus a List row template."
             )
 
     if not has_surface:
         raise ValueError("missing createSurface")
     if not has_root:
         raise ValueError("missing component id root")
+
+    _validate_list_row_template_paths(messages)
 
     if resources:
         allowed_ot = set(resources.get("objectTypes") or [])

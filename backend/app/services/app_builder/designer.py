@@ -19,11 +19,11 @@ from app.services.knowledge_map.knowledge_map_html import (
     _tool_calls_from_stream_slots,
 )
 from app.services.openai_compat import inject_reasoning_content_on_assistant_rows
-from app.services.ontology.ontology_app_a2ui import (
-    ONTOLOGY_APP_A2UI_CATALOG_ID,
-    ONTOLOGY_APP_A2UI_SURFACE_ID,
+from app.services.app_builder.a2ui import (
+    APP_BUILDER_A2UI_CATALOG_ID,
+    APP_BUILDER_A2UI_SURFACE_ID,
     synthesize_stub_a2ui_messages,
-    validate_ontology_app_a2ui_messages,
+    validate_app_a2ui_messages,
 )
 
 logger = logging.getLogger(__name__)
@@ -59,7 +59,7 @@ _SET_A2UI_TOOL: dict[str, Any] = {
         "name": "set_a2ui_messages",
         "description": (
             "Replace the Ontology App A2UI v0.9 message list. Use catalogId "
-            f"'{ONTOLOGY_APP_A2UI_CATALOG_ID}' and surfaceId '{ONTOLOGY_APP_A2UI_SURFACE_ID}'. "
+            f"'{APP_BUILDER_A2UI_CATALOG_ID}' and surfaceId '{APP_BUILDER_A2UI_SURFACE_ID}'. "
             "Must include component id 'root'. "
             "Column/Row/List use children:[id,...]. Card/Button use child:'oneId'. "
             "Button label text must be a Text child (Button has no label prop). "
@@ -106,12 +106,13 @@ You help authors build ontology-backed apps by **linking** existing Object Types
 
 ## Recipes (create UI = Modal + TextField + Button event in Source)
 
-Canonical WorkItem kanban (backend `synthesize_kanban_a2ui_messages`): resources {{objectTypes:[WorkItem], actions:[createWorkItem,updateWorkItem], functions:[suggestWorkItemPriority]}}.
+Canonical kanban-like layout: resources from ONTOLOGY_SNAPSHOT; compose Card columns + List row Card in Source.
 
-1) Data — OntoObjectList writes `/lists/<key>` arrays; List stamps `workItemRow` per item.
-2) Row template — Row with Text `{{path:title}}` + edit Button `loadObjectForEdit` (paths relative to row item: `title`, `id` — not `/title` or `./title`).
-3) Shared edit Modal — hidden trigger Text `__onto_edit_open__`; form TextFields on `/editWorkItem/*`; Save `executeAction` + `updateWorkItem`.
-4) Create Modal — same as before with `createWorkItem`.
+1) Data — OntoObjectList writes `/lists/<key>` arrays; List stamps a row template (Card) per item.
+2) Row template — Card > Row: title Text + status caption + edit Button (`loadObjectForEdit`; paths `title`, `id`, … relative to row).
+3) Columns — each status column: Card > Column (h3 title + loader + List).
+4) Header — Row with page title + create Modal trigger.
+5) Shared edit Modal — hidden trigger Text `__onto_edit_open__`; form on `/editWorkItem/*`; Save `executeAction` + `updateWorkItem`.
 
 **Anti-patterns:** OntoObjectList without `dataPath`; `editActionApiName` on loader; rendering list rows in React catalog; OntoKanbanBoard; OntoActionForm.
 
@@ -122,13 +123,13 @@ Canonical WorkItem kanban (backend `synthesize_kanban_a2ui_messages`): resources
 - If resources are empty, call **set_resources** first (objectTypes / actions / functions arrays).
 - Then call **set_a2ui_messages** to set the full tree. Changing button copy = edit Source Text nodes, do not invent platform widgets.
 - **Never** emit `OntoKanbanBoard` or `OntoActionForm` (removed). Forms are basic TextField + Button events.
-- createSurface surfaceId="{ONTOLOGY_APP_A2UI_SURFACE_ID}" catalogId="{ONTOLOGY_APP_A2UI_CATALOG_ID}".
+- createSurface surfaceId="{APP_BUILDER_A2UI_SURFACE_ID}" catalogId="{APP_BUILDER_A2UI_CATALOG_ID}".
 - updateComponents must include id **"root"**.
 - filter values must match stored property values on instances, not display labels, unless those strings are what is stored.
 """
 
 
-async def iter_ontology_app_designer_chat_ndjson(
+async def iter_app_builder_designer_chat_ndjson(
     conversation: list[dict[str, str]],
     bindings: dict[str, Any],
     model_config: dict[str, str],
@@ -149,13 +150,12 @@ async def iter_ontology_app_designer_chat_ndjson(
     working_note = ""
     if working:
         try:
-            working = validate_ontology_app_a2ui_messages(working, bindings=current_bindings or None)
+            validate_app_a2ui_messages(working, bindings=current_bindings or None)
         except ValueError as e:
-            # Old drafts may still contain OntoKanbanBoard / invalid trees — don't block the designer.
-            working = synthesize_stub_a2ui_messages(title=app_name)
             working_note = (
-                f"CURRENT_A2UI was invalid ({e}). It was replaced with a stub for this session; "
-                "call set_resources (if needed) then set_a2ui_messages to rebuild."
+                f"CURRENT_A2UI is invalid ({e}). "
+                "Do not treat it as runnable. Call set_a2ui_messages with a valid layout "
+                "(OntoObjectList + dataPath, List templates, Modal, TextField, Button)."
             )
 
     client = AsyncOpenAI(base_url=base_url, api_key=model_config.get("api_key") or "no-key")
@@ -296,7 +296,7 @@ async def iter_ontology_app_designer_chat_ndjson(
                     raw_msgs = args.get("messages")
                     if not isinstance(raw_msgs, list):
                         raise ValueError("messages must be a list")
-                    working = validate_ontology_app_a2ui_messages(
+                    working = validate_app_a2ui_messages(
                         raw_msgs, bindings=current_bindings or None
                     )
                     tool_payload_obj = {"ok": True, "messages": working}

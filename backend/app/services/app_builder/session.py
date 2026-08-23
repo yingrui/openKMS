@@ -12,7 +12,7 @@ from app.models.agent_models import AgentConversation, AgentMessage
 
 logger = logging.getLogger(__name__)
 
-ONTOLOGY_APP_DESIGNER_SURFACE = "ontology_app_designer"
+APP_BUILDER_DESIGNER_SURFACE = "ontology_app_designer"
 
 
 async def get_app_conversation_owned(
@@ -22,7 +22,7 @@ async def get_app_conversation_owned(
     if (
         not c
         or c.user_sub != user_sub
-        or c.surface != ONTOLOGY_APP_DESIGNER_SURFACE
+        or c.surface != APP_BUILDER_DESIGNER_SURFACE
         or (c.context or {}).get("app_id") != app_id
     ):
         return None
@@ -36,7 +36,7 @@ async def list_app_conversations(
         select(AgentConversation)
         .where(
             AgentConversation.user_sub == user_sub,
-            AgentConversation.surface == ONTOLOGY_APP_DESIGNER_SURFACE,
+            AgentConversation.surface == APP_BUILDER_DESIGNER_SURFACE,
         )
         .order_by(AgentConversation.updated_at.desc())
         .limit(limit * 3)
@@ -48,7 +48,7 @@ async def list_app_conversations(
 async def create_app_conversation(db: AsyncSession, user_sub: str, app_id: str) -> AgentConversation:
     c = AgentConversation(
         user_sub=user_sub,
-        surface=ONTOLOGY_APP_DESIGNER_SURFACE,
+        surface=APP_BUILDER_DESIGNER_SURFACE,
         context={"app_id": app_id},
         title=None,
     )
@@ -115,7 +115,7 @@ async def delete_app_conversation(db: AsyncSession, user_sub: str, app_id: str, 
 async def delete_all_conversations_for_app(db: AsyncSession, app_id: str) -> int:
     """Remove designer chats for an app (all users). Call before deleting the app row."""
     r = await db.execute(
-        select(AgentConversation).where(AgentConversation.surface == ONTOLOGY_APP_DESIGNER_SURFACE)
+        select(AgentConversation).where(AgentConversation.surface == APP_BUILDER_DESIGNER_SURFACE)
     )
     rows = [c for c in r.scalars().all() if (c.context or {}).get("app_id") == app_id]
     for c in rows:

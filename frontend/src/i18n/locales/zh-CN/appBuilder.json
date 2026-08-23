@@ -41,5 +41,6 @@
   "unpublish": "取消发布",
   "backToList": "返回列表",
   "missing": "缺失资源",
-  "legacyBoardHint": "此应用仍是旧看板布局/绑定。请点「重置布局」，再让设计器用 OntoObjectList + Modal/TextField 表单重搭。"
+  "removedComponentsHint": "Source 仍含已移除组件（OntoKanbanBoard 或 OntoActionForm）。请点「重置布局」，再让设计器用 OntoObjectList + List + Modal/TextField 重搭。",
+  "legacyBoardHint": "资源仍是旧看板字段（objectType、columns 等）。请点「重置布局」，设置 objectTypes/actions/functions，再重新组装布局。"
 }

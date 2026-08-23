@@ -1,4 +1,4 @@
-"""Schemas for Ontology Apps (App Builder / Apps runtime)."""
+"""Schemas for App Builder / Apps runtime."""
 
 from __future__ import annotations
 
@@ -8,7 +8,7 @@ from typing import Any, Literal
 from pydantic import BaseModel, Field
 
 
-class OntologyAppBindings(BaseModel):
+class AppBuilderBindings(BaseModel):
     """Resource allowlist for an app (all lanes). Not a UI layout."""
 
     objectTypes: list[str] | None = None
@@ -19,27 +19,27 @@ class OntologyAppBindings(BaseModel):
 ArtifactKind = Literal["a2ui", "module"]
 
 
-class OntologyAppCreate(BaseModel):
+class AppBuilderCreate(BaseModel):
     name: str = Field(min_length=1, max_length=256)
     api_name: str = Field(min_length=1, max_length=128)
     description: str | None = None
     template_id: str = "a2ui"
     """Stored artifact kind for now (a2ui | module). module runner is not implemented yet."""
-    bindings: OntologyAppBindings | None = None
+    bindings: AppBuilderBindings | None = None
 
 
-class OntologyAppUpdate(BaseModel):
+class AppBuilderUpdate(BaseModel):
     name: str | None = None
     description: str | None = None
-    bindings: OntologyAppBindings | None = None
+    bindings: AppBuilderBindings | None = None
     draft_a2ui_messages: list[dict[str, Any]] | None = None
 
 
-class OntologyAppPublishIn(BaseModel):
+class AppBuilderPublishIn(BaseModel):
     a2ui_messages: list[dict[str, Any]] | None = None
 
 
-class OntologyAppResponse(BaseModel):
+class AppBuilderResponse(BaseModel):
     id: str
     name: str
     api_name: str
@@ -59,15 +59,15 @@ class OntologyAppResponse(BaseModel):
     has_published: bool = False
 
 
-class OntologyAppDesignResponse(OntologyAppResponse):
+class AppBuilderDesignResponse(AppBuilderResponse):
     a2ui_messages: list[dict[str, Any]] = Field(default_factory=list)
 
 
-class OntologyAppRunResponse(OntologyAppResponse):
+class AppBuilderRunResponse(AppBuilderResponse):
     a2ui_messages: list[dict[str, Any]] = Field(default_factory=list)
 
 
-class OntologyAppDesignerChatIn(BaseModel):
+class AppBuilderDesignerChatIn(BaseModel):
     messages: list[dict[str, str]]
     working_a2ui_messages: list[dict[str, Any]] | None = None
     conversation_id: str | None = None

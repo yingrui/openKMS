@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { fetchOntologyAppRun, type OntologyAppRunResponse } from '../../data/ontologyAppsApi';
-import { OntologyAppA2uiSurface } from './OntologyAppA2uiSurface';
+import { fetchAppRun, type AppBuilderRunResponse } from '../../data/appBuilderApi';
+import { AppA2uiSurface } from '../app-builder/a2ui/AppA2uiSurface';
 import { useAuth } from '../../contexts/AuthContext';
 import './AppsPages.scss';
 
@@ -11,13 +11,13 @@ export function AppsRunPage() {
   const { t } = useTranslation('apps');
   const { canAccessPath } = useAuth();
   const canEdit = canAccessPath('/app-builder');
-  const [app, setApp] = useState<OntologyAppRunResponse | null>(null);
+  const [app, setApp] = useState<AppBuilderRunResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     void (async () => {
       try {
-        setApp(await fetchOntologyAppRun(appId));
+        setApp(await fetchAppRun(appId));
       } catch (e) {
         setError(e instanceof Error ? e.message : String(e));
       }
@@ -54,7 +54,7 @@ export function AppsRunPage() {
           ) : null}
         </div>
       ) : null}
-      <OntologyAppA2uiSurface a2uiMessages={app.a2ui_messages} />
+      <AppA2uiSurface a2uiMessages={app.a2ui_messages} />
     </div>
   );
 }

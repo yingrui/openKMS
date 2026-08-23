@@ -9,7 +9,7 @@ from sqlalchemy.orm import Mapped, mapped_column
 from app.database import Base
 
 
-class OntologyApp(Base):
+class AppBuilderApp(Base):
     """Published or draft A2UI app bound to ontology Object Types / Actions / Functions."""
 
     __tablename__ = "ontology_apps"

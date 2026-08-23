@@ -37,9 +37,9 @@ Designer tool `set_resources` stores allowlisted api names; server resolves ids 
 }
 ```
 
-UI wiring lives in the **A2UI Source** (component props), not in a board-shaped bindings table. Legacy kanban binding keys are rejected.
+UI wiring lives in the **A2UI Source** (component props), not in a board-shaped bindings table. Old board-shaped binding keys are rejected at save time.
 
-**Publish** requires non-empty, resolvable resources and a valid A2UI draft (no removed components). Stale hash → gallery **Stale** badge and Run banner.
+**Publish** requires non-empty, resolvable resources and valid A2UI Source (no removed components). Stale hash → gallery **Stale** badge and Run banner.
 
 **Writes** go through Action execute only.
 
@@ -56,13 +56,11 @@ Catalog id: `https://openkms.local/a2ui/catalogs/ontology-app/v1.json`.
 
 Layout uses A2UI basic (`Column`, `Row`, `Text`, `Button`, `Modal`, `TextField`, …). Create stores a **stub** until the designer composes a layout. NDJSON (`surface=ontology_app_designer`): `set_resources` + `set_a2ui_messages`.
 
-**List pattern (Source):** `OntoObjectList` (`dataPath`, `objectType`, optional filters) + `List` with `children: { componentId, path }` row template. Row edit: `Button` → `loadObjectForEdit`; shared edit `Modal` + `executeAction` (`updateWorkItem`).
+**List pattern (Source):** `OntoObjectList` (`dataPath`, `objectType`, optional filters) + `List` with `children: { componentId, path }` row template. **Inside the row template**, bind fields with **relative** paths (`title`, `id`) — not `/title` (that resolves to the DataModel root, so text stays empty). Row edit: `Button` → `loadObjectForEdit`; shared edit `Modal` + `executeAction` (`updateWorkItem`).
 
 **Create dialog pattern (Source):** `Modal` (`trigger` = `Button` with `Text` child; `content` = `Column` of `TextField`s bound to DataModel paths + Submit `Button`). Submit uses `action.event` with `name: executeAction` and context `{ actionApiName, inputPath }`. The app host reads the DataModel at `inputPath` and runs Action execute. Action **input shape** comes from the Action (built-in writable fields / Function `input_schema`) — there is no `OntoActionForm` component.
 
-Multi-column “kanban-like” UIs are **composed** from several filtered lists + a Modal form — there is no `OntoKanbanBoard`.
-
-**Canonical WorkItem kanban:** backend `synthesize_kanban_a2ui_messages` (three status columns, loader + `List` + shared create/edit Modals). Opening **Design** auto-upgrades legacy drafts that still use `OntoObjectList` without `dataPath` or with `editActionApiName`.
+Multi-column “kanban-like” UIs are **composed** in Source from filtered lists + Modals — there is no `OntoKanbanBoard`. Invalid or removed-component Source fails validation; use **Reset layout** (`POST …/synthesize`) then the Designer to compose again.
 
 ## Artifact kinds
 
@@ -71,22 +69,32 @@ Multi-column “kanban-like” UIs are **composed** from several filtered lists 
 | `a2ui` | Supported — AI designer + platform primitives |
 | `module` | Reserved — hosted custom module (future) |
 
+## Backend code
+
+| Layer | Path |
+|-------|------|
+| HTTP | `backend/app/api/app_builder.py` |
+| Services | `backend/app/services/app_builder/` — `a2ui.py`, `designer.py`, `service.py`, `session.py` |
+| Model / schemas | `backend/app/models/app_builder.py`, `backend/app/schemas/app_builder.py` |
+
+Frontend: `frontend/src/pages/app-builder/` (Design UI), `frontend/src/pages/app-builder/a2ui/` (Run/Preview surface + catalog), `frontend/src/data/appBuilderApi.ts`, `frontend/src/components/app-builder/` (`AppBuilderNavRail.tsx`, `routing.ts`). Apps gallery/run shells live under `frontend/src/pages/apps/`.
+
 ## API
 
-`/api/ontology/apps` (`ontology:read` / `ontology:write`):
+`/api/app-builder/apps` (`ontology:read` / `ontology:write`). Legacy alias: `/api/ontology/apps` (same routes).
 
 | Method | Path | Description |
 |--------|------|-------------|
-| GET | `/api/ontology/apps` | List (`?status=published`) |
-| POST | `/api/ontology/apps` | Create (name + api_name; resources optional) |
-| GET | `/api/ontology/apps/{id}` | Published run (404 if draft) |
-| GET | `/api/ontology/apps/{id}/design` | Draft for Builder |
-| PATCH | `/api/ontology/apps/{id}` | Update metadata / resources / draft |
-| DELETE | `/api/ontology/apps/{id}` | Delete app |
-| POST | `/api/ontology/apps/{id}/synthesize` | Reset draft to stub layout |
-| POST | `/api/ontology/apps/{id}/publish` | Publish (requires resolved resources + valid A2UI) |
-| POST | `/api/ontology/apps/{id}/unpublish` | Clear published |
-| POST | `/api/ontology/apps/{id}/designer/chat` | NDJSON designer stream |
+| GET | `/api/app-builder/apps` | List (`?status=published`) |
+| POST | `/api/app-builder/apps` | Create (name + api_name; resources optional) |
+| GET | `/api/app-builder/apps/{id}` | Published run (404 if draft) |
+| GET | `/api/app-builder/apps/{id}/design` | Draft for Builder |
+| PATCH | `/api/app-builder/apps/{id}` | Update metadata / resources / draft |
+| DELETE | `/api/app-builder/apps/{id}` | Delete app |
+| POST | `/api/app-builder/apps/{id}/synthesize` | Reset draft to stub layout |
+| POST | `/api/app-builder/apps/{id}/publish` | Publish (requires resolved resources + valid A2UI) |
+| POST | `/api/app-builder/apps/{id}/unpublish` | Clear published |
+| POST | `/api/app-builder/apps/{id}/designer/chat` | NDJSON designer stream |
 
 ## Data model
 

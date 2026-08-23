@@ -3,17 +3,17 @@ import { Link } from 'react-router-dom';
 import { z } from 'zod';
 import { Catalog } from '@a2ui/web_core/v0_9';
 import { basicCatalog, createComponentImplementation } from '@a2ui/react/v0_9';
-import { fetchObjectTypes, fetchObjectInstances } from '../../data/ontologyApi';
+import { fetchObjectTypes, fetchObjectInstances } from '../../../data/ontologyApi';
 import {
   executeOntologyAction,
   fetchOntologyActionTypes,
-} from '../../data/ontologyActionsApi';
-import { executeOntologyFunctionByApiName } from '../../data/ontologyFunctionsApi';
-import './OntologyAppA2ui.scss';
+} from '../../../data/ontologyActionsApi';
+import { executeOntologyFunctionByApiName } from '../../../data/ontologyFunctionsApi';
+import './AppA2uiSurface.scss';
 
-export const ONTOLOGY_APP_A2UI_CATALOG_ID =
+export const APP_BUILDER_A2UI_CATALOG_ID =
   'https://openkms.local/a2ui/catalogs/ontology-app/v1.json';
-export const ONTOLOGY_APP_A2UI_SURFACE_ID = 'ontology-app';
+export const APP_BUILDER_A2UI_SURFACE_ID = 'ontology-app';
 
 /** Host event: Button → execute Action from DataModel. */
 export const EXECUTE_ACTION_EVENT = 'executeAction';
@@ -22,9 +22,9 @@ export const LOAD_OBJECT_FOR_EDIT_EVENT = 'loadObjectForEdit';
 /** Hidden Modal trigger marker (Text child content). */
 export const EDIT_MODAL_OPEN_MARKER = '__onto_edit_open__';
 
-const MUTATED_EVENT = 'ontology-app:mutated';
+const MUTATED_EVENT = 'app-builder:mutated';
 
-export function emitOntologyAppMutated() {
+export function emitAppBuilderMutated() {
   window.dispatchEvent(new CustomEvent(MUTATED_EVENT));
 }
 
@@ -66,7 +66,7 @@ export function closeNearestA2uiModal(from?: HTMLElement | null) {
 export function decorateA2uiDom(root: HTMLElement) {
   root.querySelectorAll<HTMLElement>('.a2ui-modal-trigger').forEach((trigger) => {
     if (trigger.textContent?.trim() === EDIT_MODAL_OPEN_MARKER) {
-      trigger.classList.add('onto-a2ui-hidden-modal-trigger');
+      trigger.classList.add('a2ui-platform-hidden-trigger');
     }
   });
 }
@@ -210,7 +210,7 @@ const OntoActionButton = createComponentImplementation(
                   input: props.objectId ? { object_id: props.objectId } : {},
                 });
                 setMsg(res.status === 'ok' ? 'ok' : res.error || 'error');
-                if (res.status === 'ok') emitOntologyAppMutated();
+                if (res.status === 'ok') emitAppBuilderMutated();
               } catch (e) {
                 setMsg(e instanceof Error ? e.message : String(e));
               }
@@ -270,8 +270,8 @@ const OntoObjectLink = createComponentImplementation(
 const basicComponents = [...basicCatalog.components.values()];
 const basicFunctions = basicCatalog.functions ? [...basicCatalog.functions.values()] : [];
 
-export const ontologyAppCatalog = new Catalog(
-  ONTOLOGY_APP_A2UI_CATALOG_ID,
+export const appBuilderCatalog = new Catalog(
+  APP_BUILDER_A2UI_CATALOG_ID,
   [...basicComponents, OntoObjectList, OntoActionButton, OntoFunctionButton, OntoObjectLink] as never[],
   basicFunctions as never[],
 );

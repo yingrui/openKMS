@@ -13,7 +13,7 @@ import { ConfirmProvider } from '../../contexts/ConfirmContext';
 import { ManagerNavRail } from '../ontology/ManagerNavRail';
 import { ExplorerNavRail } from '../ontology/ExplorerNavRail';
 import { FunctionEditorNavRail } from '../ontology/FunctionEditorNavRail';
-import { AppBuilderNavRail } from '../ontology/AppBuilderNavRail';
+import { AppBuilderNavRail } from '../app-builder/AppBuilderNavRail';
 import {
   getOntologySubApp,
   isAppBuilderDesignPath,

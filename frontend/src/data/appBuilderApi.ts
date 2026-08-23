@@ -1,20 +1,20 @@
 import { config } from '../config';
 import { ontologyFetch } from './ontologyFetch';
 
-export type OntologyAppBindings = {
+export type AppBuilderBindings = {
   objectTypes?: string[];
   actions?: string[];
   functions?: string[];
 };
 
-export type OntologyAppResponse = {
+export type AppBuilderAppResponse = {
   id: string;
   name: string;
   api_name: string;
   description?: string | null;
   template_id: string;
   artifact_kind?: string;
-  bindings: OntologyAppBindings;
+  bindings: AppBuilderBindings;
   status: string;
   bindings_hash?: string | null;
   bindings_stale: boolean;
@@ -27,78 +27,78 @@ export type OntologyAppResponse = {
   has_published: boolean;
 };
 
-export type OntologyAppDesignResponse = OntologyAppResponse & {
+export type AppBuilderDesignResponse = AppBuilderAppResponse & {
   a2ui_messages: Record<string, unknown>[];
 };
 
-export type OntologyAppRunResponse = OntologyAppResponse & {
+export type AppBuilderRunResponse = AppBuilderAppResponse & {
   a2ui_messages: Record<string, unknown>[];
 };
 
-const base = `${config.apiUrl}/api/ontology/apps`;
+const base = `${config.apiUrl}/api/app-builder/apps`;
 
-export async function listOntologyApps(params?: { status?: string }): Promise<OntologyAppResponse[]> {
+export async function listApps(params?: { status?: string }): Promise<AppBuilderAppResponse[]> {
   const qs = new URLSearchParams();
   if (params?.status) qs.set('status', params.status);
   const suffix = qs.toString() ? `?${qs}` : '';
-  return ontologyFetch<OntologyAppResponse[]>(`${base}${suffix}`, undefined, 'Failed to list apps');
+  return ontologyFetch<AppBuilderAppResponse[]>(`${base}${suffix}`, undefined, 'Failed to list apps');
 }
 
-export async function createOntologyApp(body: {
+export async function createApp(body: {
   name: string;
   api_name: string;
   description?: string;
   template_id?: string;
-  bindings?: OntologyAppBindings;
-}): Promise<OntologyAppResponse> {
-  return ontologyFetch<OntologyAppResponse>(
+  bindings?: AppBuilderBindings;
+}): Promise<AppBuilderAppResponse> {
+  return ontologyFetch<AppBuilderAppResponse>(
     base,
     { method: 'POST', body: JSON.stringify(body) },
     'Failed to create app',
   );
 }
 
-export async function fetchOntologyAppRun(appId: string): Promise<OntologyAppRunResponse> {
-  return ontologyFetch<OntologyAppRunResponse>(`${base}/${appId}`, undefined, 'Failed to load app');
+export async function fetchAppRun(appId: string): Promise<AppBuilderRunResponse> {
+  return ontologyFetch<AppBuilderRunResponse>(`${base}/${appId}`, undefined, 'Failed to load app');
 }
 
-export async function fetchOntologyAppDesign(appId: string): Promise<OntologyAppDesignResponse> {
-  return ontologyFetch<OntologyAppDesignResponse>(`${base}/${appId}/design`, undefined, 'Failed to load design');
+export async function fetchAppDesign(appId: string): Promise<AppBuilderDesignResponse> {
+  return ontologyFetch<AppBuilderDesignResponse>(`${base}/${appId}/design`, undefined, 'Failed to load design');
 }
 
-export async function updateOntologyApp(
+export async function updateApp(
   appId: string,
   body: {
     name?: string;
     description?: string;
-    bindings?: OntologyAppBindings;
+    bindings?: AppBuilderBindings;
     draft_a2ui_messages?: Record<string, unknown>[];
   },
-): Promise<OntologyAppResponse> {
-  return ontologyFetch<OntologyAppResponse>(
+): Promise<AppBuilderAppResponse> {
+  return ontologyFetch<AppBuilderAppResponse>(
     `${base}/${appId}`,
     { method: 'PATCH', body: JSON.stringify(body) },
     'Failed to update app',
   );
 }
 
-export async function deleteOntologyApp(appId: string): Promise<void> {
+export async function deleteApp(appId: string): Promise<void> {
   await ontologyFetch<unknown>(`${base}/${appId}`, { method: 'DELETE' }, 'Failed to delete app');
 }
 
-export async function synthesizeOntologyApp(appId: string): Promise<OntologyAppDesignResponse> {
-  return ontologyFetch<OntologyAppDesignResponse>(
+export async function synthesizeApp(appId: string): Promise<AppBuilderDesignResponse> {
+  return ontologyFetch<AppBuilderDesignResponse>(
     `${base}/${appId}/synthesize`,
     { method: 'POST', body: '{}' },
     'Failed to synthesize',
   );
 }
 
-export async function publishOntologyApp(
+export async function publishApp(
   appId: string,
   a2uiMessages?: Record<string, unknown>[],
-): Promise<OntologyAppRunResponse> {
-  return ontologyFetch<OntologyAppRunResponse>(
+): Promise<AppBuilderRunResponse> {
+  return ontologyFetch<AppBuilderRunResponse>(
     `${base}/${appId}/publish`,
     {
       method: 'POST',
@@ -108,8 +108,8 @@ export async function publishOntologyApp(
   );
 }
 
-export async function unpublishOntologyApp(appId: string): Promise<OntologyAppResponse> {
-  return ontologyFetch<OntologyAppResponse>(
+export async function unpublishApp(appId: string): Promise<AppBuilderAppResponse> {
+  return ontologyFetch<AppBuilderAppResponse>(
     `${base}/${appId}/unpublish`,
     { method: 'POST', body: '{}' },
     'Failed to unpublish',
@@ -124,7 +124,7 @@ export type DesignerNdjsonEvent =
       type: 'done';
       content: string;
       a2ui_messages?: Record<string, unknown>[];
-      bindings?: OntologyAppBindings;
+      bindings?: AppBuilderBindings;
     }
   | { type: 'error'; message: string };
 
@@ -135,9 +135,7 @@ export type DesignerConversation = {
   updated_at: string;
 };
 
-export async function listOntologyAppDesignerConversations(
-  appId: string,
-): Promise<DesignerConversation[]> {
+export async function listDesignerConversations(appId: string): Promise<DesignerConversation[]> {
   const res = await ontologyFetch<{ conversations: DesignerConversation[] }>(
     `${base}/${appId}/designer/conversations`,
     undefined,
@@ -146,7 +144,7 @@ export async function listOntologyAppDesignerConversations(
   return res.conversations || [];
 }
 
-export async function createOntologyAppDesignerConversation(appId: string): Promise<DesignerConversation> {
+export async function createDesignerConversation(appId: string): Promise<DesignerConversation> {
   return ontologyFetch<DesignerConversation>(
     `${base}/${appId}/designer/conversations`,
     { method: 'POST', body: '{}' },
@@ -154,10 +152,7 @@ export async function createOntologyAppDesignerConversation(appId: string): Prom
   );
 }
 
-export async function deleteOntologyAppDesignerConversation(
-  appId: string,
-  conversationId: string,
-): Promise<void> {
+export async function deleteDesignerConversation(appId: string, conversationId: string): Promise<void> {
   await ontologyFetch(
     `${base}/${appId}/designer/conversations/${encodeURIComponent(conversationId)}`,
     { method: 'DELETE' },
@@ -165,7 +160,7 @@ export async function deleteOntologyAppDesignerConversation(
   );
 }
 
-export async function fetchOntologyAppDesignerSession(
+export async function fetchDesignerSession(
   appId: string,
   conversationId?: string | null,
 ): Promise<{ conversation_id: string | null; messages: { id: string; role: string; content: string }[] }> {
@@ -177,7 +172,7 @@ export async function fetchOntologyAppDesignerSession(
   );
 }
 
-export async function postOntologyAppDesignerChatStream(
+export async function postDesignerChatStream(
   appId: string,
   messages: { role: string; content: string }[],
   onEvent: (ev: DesignerNdjsonEvent) => void,

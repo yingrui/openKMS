@@ -26,8 +26,22 @@ SCSS tokens, shared layouts, and UI conventions for the SPA (`frontend/src/style
 | **`_field.scss`** / **`FormField.tsx`** | Labeled text field stack (`.ds-field`) + shared control look (`.ds-control`). |
 | **`_index.scss`** | Optional Sass barrel (`@forward` tokens + mixins). |
 | **`knowledge-map/`** | Map-only compile-time sizes. |
+| **`_a2ui-platform.scss`** | Shared **A2UI platform** theme: maps suite `var(--color-*)` → `--a2ui-*` tokens, typography, Card/List/Row polish. Host surfaces add **`.a2ui-platform-surface`**; not app-specific recipes. |
 
 Export surface for TSX: **`styles/design-system/index.ts`** (`Dialog`, `EmptyState`, `PanelToolbar`, `Metric` / `MetricGrid`, `CheckRow`, `CheckList` / `CheckListItem`, `FormField`, `Pagination`, …).
+
+## A2UI platform surfaces
+
+**Google A2UI** renders in Light DOM. openKMS hosts (Ontology Apps, Knowledge Map overview, …) wrap content in **`.a2ui-platform-surface`** and call **`ensureA2uiPlatformStyles()`** once at startup (`src/a2uiPlatform.ts` → `@a2ui/react/styles` `injectStyles()`).
+
+| Piece | Role |
+|-------|------|
+| **`design-system/_a2ui-platform.scss`** | Token bridge + primitive polish (Row/Column boards, List row separators, headings, Card, hidden programmatic Modal triggers) |
+| **Host wrapper** | e.g. `.onto-app-a2ui.a2ui-platform-surface` — min-height / host-only errors only |
+| **Catalog components** | `OntoObjectList`, `KmOverviewNodeLink`, … — behavior + domain wiring, not visual theme |
+
+App **Source** composes A2UI primitives; **platform SCSS** makes those primitives match openKMS. Do not add Kanban- or app-named layout rules to host SCSS — extend `_a2ui-platform.scss` when a primitive pattern is reusable.
+
 
 ## Shared UI primitives
 

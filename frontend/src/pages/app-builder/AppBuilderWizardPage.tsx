@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { createOntologyApp } from '../../data/ontologyAppsApi';
+import { createApp } from '../../data/appBuilderApi';
 import { FormField } from '../../styles/design-system';
 import './AppBuilderPages.scss';
 
@@ -21,7 +21,7 @@ async function createWithUniqueApiName(name: string): Promise<{ id: string }> {
   while (attempt < 8) {
     const api_name = attempt === 0 ? base : `${base}${attempt + 1}`;
     try {
-      return await createOntologyApp({ name, api_name, template_id: 'a2ui' });
+      return await createApp({ name, api_name, template_id: 'a2ui' });
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
       if (!/already exists|409|api_name/i.test(msg) || attempt === 7) throw err;

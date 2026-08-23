@@ -1,19 +1,19 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { listOntologyApps, type OntologyAppResponse } from '../../data/ontologyAppsApi';
+import { listApps, type AppBuilderAppResponse } from '../../data/appBuilderApi';
 import './AppsPages.scss';
 
 export function AppsGalleryPage() {
   const { t } = useTranslation('apps');
-  const [apps, setApps] = useState<OntologyAppResponse[]>([]);
+  const [apps, setApps] = useState<AppBuilderAppResponse[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     void (async () => {
       try {
-        setApps(await listOntologyApps({ status: 'published' }));
+        setApps(await listApps({ status: 'published' }));
       } catch (e) {
         setError(e instanceof Error ? e.message : String(e));
       } finally {
