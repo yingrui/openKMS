@@ -12,6 +12,14 @@
   padding: var(--app-page-padding-y) var(--app-page-padding-x);
 }
 
+/* Run surface mirrors Preview's canvas: white box + border + inner padding.
+   A white surface on the near-white page reads as "no spacing"; the border makes the gutter visible. */
+.apps-page--run .onto-app-a2ui.a2ui-platform-surface {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: var(--space-3);
+}
+
 .apps-page__list {
   list-style: none;
   margin: 0;
