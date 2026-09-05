@@ -291,3 +291,81 @@ def validate_app_a2ui_messages(
                 raise ValueError(f"functionApiName {api!r} is not in resources.functions")
 
     return messages
+
+
+def component_id() -> str:
+    from uuid import uuid4
+
+    return str(uuid4())
+
+
+def synthesize_stub_components(*, title: str) -> list[dict[str, Any]]:
+    """Single default stub artifact — the author describes the app to the designer."""
+    return [
+        {
+            "id": component_id(),
+            "name": title or "Main",
+            "position": 0,
+            "is_default": True,
+            "messages": synthesize_stub_a2ui_messages(title=title or "App"),
+        }
+    ]
+
+
+def normalize_component(raw: dict[str, Any], *, position: int) -> dict[str, Any]:
+    """Coerce one component dict to the canonical shape; validates its messages."""
+    cid = str(raw.get("id") or component_id()).strip() or component_id()
+    name = str(raw.get("name") or "").strip() or "Untitled"
+    messages = raw.get("messages")
+    if not isinstance(messages, list):
+        raise ValueError(f"component {cid!r} requires a messages list")
+    return {
+        "id": cid,
+        "name": name,
+        "position": int(raw.get("position", position)),
+        "is_default": bool(raw.get("is_default", False)),
+        "messages": messages,
+    }
+
+
+def validate_app_components(
+    components: list[dict[str, Any]],
+    *,
+    bindings: dict[str, Any] | None = None,
+) -> list[dict[str, Any]]:
+    """Validate a whole artifact set: non-empty, unique ids, valid messages, one default."""
+    if not components:
+        raise ValueError("at least one component is required")
+    out: list[dict[str, Any]] = []
+    seen: set[str] = set()
+    for i, c in enumerate(components):
+        if not isinstance(c, dict):
+            raise ValueError("component must be an object")
+        normalized = normalize_component(c, position=i)
+        cid = normalized["id"]
+        if cid in seen:
+            raise ValueError(f"duplicate component id {cid!r}")
+        seen.add(cid)
+        validate_app_a2ui_messages(normalized["messages"], bindings=bindings)
+        out.append(normalized)
+
+    out.sort(key=lambda c: (c["position"], c["name"]))
+    for i, c in enumerate(out):
+        c["position"] = i
+
+    defaults = [c for c in out if c["is_default"]]
+    if len(defaults) != 1:
+        for c in out:
+            c["is_default"] = False
+        out[0]["is_default"] = True
+    return out
+
+
+def serialize_component(comp: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "id": comp["id"],
+        "name": comp["name"],
+        "position": comp["position"],
+        "is_default": comp["is_default"],
+        "messages": comp["messages"],
+    }

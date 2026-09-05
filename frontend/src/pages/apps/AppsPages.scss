@@ -73,6 +73,11 @@
   align-items: center;
 }
 
+.apps-page__run-title {
+  font-weight: 600;
+  color: var(--color-text);
+}
+
 .apps-page__back {
   font-size: 0.875rem;
 }
@@ -85,4 +90,28 @@
   background: #fffbeb;
   border: 1px solid #fcd34d;
   border-radius: 0.35rem;
+}
+
+.apps-page__tabs {
+  display: flex;
+  gap: var(--space-2);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.apps-page__tab {
+  appearance: none;
+  border: none;
+  background: transparent;
+  padding: var(--space-2) var(--space-3);
+  font: inherit;
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+}
+
+.apps-page__tab.is-active {
+  color: var(--color-text);
+  border-bottom-color: var(--color-accent);
+  font-weight: 600;
 }

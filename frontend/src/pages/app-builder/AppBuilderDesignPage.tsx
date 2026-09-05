@@ -14,12 +14,16 @@ import {
   unpublishApp,
   updateApp,
   type AppBuilderBindings,
+  type AppBuilderComponent,
   type AppBuilderDesignResponse,
   type DesignerConversation,
 } from '../../data/appBuilderApi';
 import { useConfirm } from '../../contexts/ConfirmContext';
 import { AppA2uiSurface } from './a2ui/AppA2uiSurface';
 import './AppBuilderPages.scss';
+
+const A2UI_CATALOG_ID = 'https://openkms.local/a2ui/catalogs/ontology-app/v1.json';
+const A2UI_SURFACE_ID = 'ontology-app';
 
 function formatResources(b: AppBuilderBindings | Record<string, unknown> | undefined): string {
   if (!b || !Object.keys(b).length) return '—';
@@ -29,6 +33,23 @@ function formatResources(b: AppBuilderBindings | Record<string, unknown> | undef
     lines.push(`${k}: ${Array.isArray(v) ? v.join(', ') : String(v)}`);
   }
   return lines.length ? lines.join('\n') : '—';
+}
+
+function newComponentStub(name: string): Record<string, unknown>[] {
+  return [
+    { version: 'v0.9', createSurface: { surfaceId: A2UI_SURFACE_ID, catalogId: A2UI_CATALOG_ID } },
+    {
+      version: 'v0.9',
+      updateComponents: {
+        surfaceId: A2UI_SURFACE_ID,
+        components: [
+          { id: 'root', component: 'Column', children: ['title', 'hint'] },
+          { id: 'title', component: 'Text', text: name, variant: 'h1' },
+          { id: 'hint', component: 'Text', text: 'Describe this component to the designer.', variant: 'body' },
+        ],
+      },
+    },
+  ];
 }
 
 const REMOVED_A2UI_COMPONENTS = new Set(['OntoKanbanBoard', 'OntoActionForm']);
@@ -49,7 +70,11 @@ export function AppBuilderDesignPage() {
   const navigate = useNavigate();
   const confirm = useConfirm();
   const [app, setApp] = useState<AppBuilderDesignResponse | null>(null);
-  const [working, setWorking] = useState<Record<string, unknown>[]>([]);
+  const [components, setComponents] = useState<AppBuilderComponent[]>([]);
+  const [activeId, setActiveId] = useState<string | null>(null);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editValue, setEditValue] = useState('');
+  const dragIndex = useRef<number | null>(null);
   const [chatInput, setChatInput] = useState('');
   const [chatLog, setChatLog] = useState<{ role: string; content: string }[]>([]);
   const [streaming, setStreaming] = useState('');
@@ -61,10 +86,20 @@ export function AppBuilderDesignPage() {
   const threadEndRef = useRef<HTMLDivElement | null>(null);
   const streamingRef = useRef('');
 
+  const activeComponent =
+    components.find((c) => c.id === activeId) ?? components[0];
+  const activeMessages = activeComponent?.messages ?? [];
+
   const reloadApp = useCallback(async () => {
     const design = await fetchAppDesign(appId);
     setApp(design);
-    setWorking(design.a2ui_messages || []);
+    const comps = design.components || [];
+    setComponents(comps);
+    setActiveId((prev) => {
+      if (prev && comps.some((c) => c.id === prev)) return prev;
+      const def = comps.find((c) => c.is_default) ?? comps[0];
+      return def ? def.id : null;
+    });
     return design;
   }, [appId]);
 
@@ -96,6 +131,77 @@ export function AppBuilderDesignPage() {
     threadEndRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' });
   }, [chatLog, streaming]);
 
+  const saveComponents = useCallback(
+    (next: AppBuilderComponent[]) => {
+      setComponents(next);
+      void updateApp(appId, { components: next }).catch((err) =>
+        setError(err instanceof Error ? err.message : String(err)),
+      );
+    },
+    [appId],
+  );
+
+  const addComponent = useCallback(() => {
+    const name = `${t('newComponent')} ${components.length + 1}`;
+    const comp: AppBuilderComponent = {
+      id: crypto.randomUUID(),
+      name,
+      position: components.length,
+      is_default: true,
+      messages: newComponentStub(name),
+    };
+    const next = components.map((c) => ({ ...c, is_default: false })).concat(comp);
+    setActiveId(comp.id);
+    saveComponents(next);
+  }, [components, saveComponents, t]);
+
+  const removeComponent = useCallback(
+    async (id: string) => {
+      if (components.length <= 1) return;
+      const target = components.find((c) => c.id === id);
+      if (!target) return;
+      const ok = await confirm({
+        title: t('deleteComponent'),
+        message: `${t('deleteComponentConfirm')} ${target.name}`,
+        confirmLabel: t('delete'),
+        cancelLabel: t('cancel'),
+        danger: true,
+      });
+      if (!ok) return;
+      const remaining = components.filter((c) => c.id !== id);
+      const wasDefault = target.is_default;
+      let next = remaining.map((c, i) => ({ ...c, position: i }));
+      if (wasDefault && next.length) {
+        next = next.map((c, i) => ({ ...c, is_default: i === 0 }));
+      }
+      if (activeId === id) setActiveId(next[0]?.id ?? null);
+      saveComponents(next);
+    },
+    [activeId, components, confirm, saveComponents, t],
+  );
+
+  const commitRename = useCallback(() => {
+    if (!editingId) return;
+    const name = editValue.trim();
+    if (name) {
+      saveComponents(
+        components.map((c) => (c.id === editingId ? { ...c, name } : c)),
+      );
+    }
+    setEditingId(null);
+  }, [components, editingId, editValue, saveComponents]);
+
+  const reorder = useCallback(
+    (from: number, to: number) => {
+      if (from === to) return;
+      const next = [...components];
+      const [moved] = next.splice(from, 1);
+      next.splice(to, 0, moved);
+      saveComponents(next.map((c, i) => ({ ...c, position: i })));
+    },
+    [components, saveComponents],
+  );
+
   const sendChat = useCallback(() => {
     const text = chatInput.trim();
     if (!text || busy) return;
@@ -122,7 +228,13 @@ export function AppBuilderDesignPage() {
               bindings?: AppBuilderBindings;
               error?: string;
             };
-            if (payload.ok && payload.messages) setWorking(payload.messages);
+            if (payload.ok && payload.messages) {
+              setComponents((prev) =>
+                prev.map((c) =>
+                  c.id === activeId ? { ...c, messages: payload.messages! } : c,
+                ),
+              );
+            }
             if (payload.ok && payload.bindings) {
               setApp((prev) => (prev ? { ...prev, bindings: payload.bindings! } : prev));
             }
@@ -139,7 +251,10 @@ export function AppBuilderDesignPage() {
           setStreaming('');
           streamingRef.current = '';
           if (ev.a2ui_messages) {
-            setWorking(ev.a2ui_messages);
+            const msgs = ev.a2ui_messages;
+            setComponents((prev) =>
+              prev.map((c) => (c.id === activeId ? { ...c, messages: msgs } : c)),
+            );
           }
           if (ev.bindings) {
             setApp((prev) => (prev ? { ...prev, bindings: ev.bindings! } : prev));
@@ -148,11 +263,11 @@ export function AppBuilderDesignPage() {
         }
         if (ev.type === 'error') setError(ev.message);
       },
-      { workingA2uiMessages: working, conversationId },
+      { workingA2uiMessages: activeMessages, conversationId, componentId: activeId },
     )
       .catch((err) => setError(err instanceof Error ? err.message : String(err)))
       .finally(() => setBusy(false));
-  }, [appId, busy, chatInput, chatLog, conversationId, reloadApp, t, working]);
+  }, [appId, activeId, activeMessages, busy, chatInput, chatLog, conversationId, reloadApp, t]);
 
   const onNewChat = useCallback(() => {
     if (busy) return;
@@ -326,6 +441,85 @@ export function AppBuilderDesignPage() {
 
       <main className="app-builder-design__canvas">
         <div
+          className="app-builder-design__component-tabs"
+          role="tablist"
+          aria-label={t('componentTabsAria')}
+        >
+          {components.map((c, i) => (
+            <div
+              key={c.id}
+              className={`app-builder-design__component-tab${c.id === activeId ? ' is-active' : ''}`}
+              draggable
+              onDragStart={(e) => {
+                dragIndex.current = i;
+                e.dataTransfer.effectAllowed = 'move';
+              }}
+              onDragOver={(e) => e.preventDefault()}
+              onDrop={(e) => {
+                e.preventDefault();
+                const from = dragIndex.current;
+                dragIndex.current = null;
+                if (from === null) return;
+                reorder(from, i);
+              }}
+            >
+              {editingId === c.id ? (
+                <input
+                  className="app-builder-design__component-rename"
+                  autoFocus
+                  value={editValue}
+                  onChange={(e) => setEditValue(e.target.value)}
+                  onBlur={commitRename}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') commitRename();
+                    if (e.key === 'Escape') setEditingId(null);
+                  }}
+                  aria-label={t('renameComponent')}
+                />
+              ) : (
+                <button
+                  type="button"
+                  role="tab"
+                  aria-selected={c.id === activeId}
+                  className="app-builder-design__component-tab-btn"
+                  onClick={() => setActiveId(c.id)}
+                  onDoubleClick={() => {
+                    setEditingId(c.id);
+                    setEditValue(c.name);
+                  }}
+                  title={`${c.name}${c.is_default ? ` · ${t('defaultComponent')}` : ''}`}
+                >
+                  {c.name}
+                </button>
+              )}
+              {c.is_default ? (
+                <span className="app-builder-design__component-default" title={t('defaultComponent')} aria-hidden>
+                  ●
+                </span>
+              ) : null}
+              <button
+                type="button"
+                className="app-builder-design__component-close"
+                aria-label={t('deleteComponent')}
+                title={t('deleteComponent')}
+                onClick={() => void removeComponent(c.id)}
+              >
+                ×
+              </button>
+            </div>
+          ))}
+          <button
+            type="button"
+            className="app-builder-design__component-add"
+            aria-label={t('newComponent')}
+            title={t('newComponent')}
+            onClick={addComponent}
+          >
+            +
+          </button>
+        </div>
+
+        <div
           className="app-builder-design__canvas-tabs"
           role="tablist"
           aria-label={t('canvasModeAria')}
@@ -359,10 +553,10 @@ export function AppBuilderDesignPage() {
         </div>
         <div className="app-builder-design__canvas-body">
           {canvasMode === 'preview' ? (
-            <AppA2uiSurface a2uiMessages={working} />
+            <AppA2uiSurface a2uiMessages={activeMessages} />
           ) : (
             <pre className="app-builder-design__source" tabIndex={0}>
-              {working.length ? JSON.stringify(working, null, 2) : '[]'}
+              {activeMessages.length ? JSON.stringify(activeMessages, null, 2) : '[]'}
             </pre>
           )}
         </div>
@@ -372,9 +566,9 @@ export function AppBuilderDesignPage() {
         <h2>{t('publishRail')}</h2>
         <p className="app-builder-page__muted">
           {app.status} {app.bindings_stale ? `· ${t('stale')}` : ''}
-          {app.artifact_kind ? ` · ${app.artifact_kind}` : ''}
+          {app.app_kind ? ` · ${app.app_kind}` : ''}
         </p>
-        {a2uiHasRemovedComponent(working) ? (
+        {a2uiHasRemovedComponent(activeMessages) ? (
           <p className="app-builder-page__error" role="alert">
             {t('removedComponentsHint')}
           </p>
@@ -400,7 +594,10 @@ export function AppBuilderDesignPage() {
             setError(null);
             void synthesizeApp(appId).then((d) => {
               setApp(d);
-              setWorking(d.a2ui_messages || []);
+              setComponents(d.components || []);
+              setActiveId(
+                d.components?.find((c) => c.is_default)?.id ?? d.components?.[0]?.id ?? null,
+              );
             });
           }}
         >
@@ -412,8 +609,8 @@ export function AppBuilderDesignPage() {
           disabled={busy || !canPublish}
           title={!canPublish ? t('publishNeedsBindings') : undefined}
           onClick={() => {
-            void updateApp(appId, { draft_a2ui_messages: working })
-              .then(() => publishApp(appId, working))
+            void updateApp(appId, { components })
+              .then(() => publishApp(appId, components))
               .then((run) => navigate(`/apps/${run.id}`))
               .catch((err) => setError(err instanceof Error ? err.message : String(err)));
           }}
@@ -431,6 +628,9 @@ export function AppBuilderDesignPage() {
         ) : null}
         <Link to="/app-builder" className="btn btn-secondary">
           {t('backToList')}
+        </Link>
+        <Link to={`/app-builder/${appId}/settings`} className="btn btn-secondary">
+          {t('settings')}
         </Link>
       </aside>
     </div>

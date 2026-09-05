@@ -14,6 +14,7 @@ from app.api.auth import require_any_permission
 from app.api.ontology.deps import jwt_user_from_request, validate_api_name
 from app.database import get_db
 from app.schemas.app_builder import (
+    AppBuilderComponent,
     AppBuilderCreate,
     AppBuilderDesignResponse,
     AppBuilderDesignerChatIn,
@@ -21,10 +22,10 @@ from app.schemas.app_builder import (
     AppBuilderResponse,
     AppBuilderRunResponse,
     AppBuilderUpdate,
+    AppBuilderVersionOut,
 )
 from app.services.agent.llm import resolve_agent_llm_config
 from app.services.app_builder import service as apps_svc
-from app.services.app_builder.a2ui import normalize_stored_a2ui_document
 from app.services.app_builder.designer import iter_app_builder_designer_chat_ndjson
 from app.services.app_builder.session import (
     create_app_conversation,
@@ -64,7 +65,21 @@ class DesignerSessionOut(BaseModel):
 
 async def _to_list_item(db: AsyncSession, app) -> AppBuilderResponse:
     stale, missing = await apps_svc.enrich_stale(db, app)
-    return AppBuilderResponse(**apps_svc.to_response_base(app, stale=stale, missing=missing))
+    has_draft = await apps_svc.has_draft_components(db, app.id)
+    published_version = await apps_svc.current_published_version(db, app)
+    return AppBuilderResponse(
+        **apps_svc.to_response_base(
+            app,
+            stale=stale,
+            missing=missing,
+            has_draft=has_draft,
+            published_version=published_version,
+        )
+    )
+
+
+def _components_out(components: list[dict[str, Any]]) -> list[AppBuilderComponent]:
+    return [AppBuilderComponent(**c) for c in components]
 
 
 def _register_routes(api: APIRouter) -> None:
@@ -92,12 +107,13 @@ def _register_routes(api: APIRouter) -> None:
     async def get_app_run(app_id: str, db: AsyncSession = Depends(get_db)):
         """Published runtime document only (404 if draft / unpublished)."""
         app = await apps_svc.get_app(db, app_id)
-        messages = normalize_stored_a2ui_document(app.published_a2ui)
-        if app.status != "published" or not messages:
+        components = await apps_svc.published_components_dicts(db, app)
+        if app.status != "published" or not components:
             raise HTTPException(status_code=404, detail="Published app not found")
         stale, missing = await apps_svc.enrich_stale(db, app)
-        base = apps_svc.to_response_base(app, stale=stale, missing=missing)
-        return AppBuilderRunResponse(**base, a2ui_messages=messages)
+        published_version = await apps_svc.current_published_version(db, app)
+        base = apps_svc.to_response_base(app, stale=stale, missing=missing, published_version=published_version)
+        return AppBuilderRunResponse(**base, components=_components_out(components))
 
     @api.get("/{app_id}/design", response_model=AppBuilderDesignResponse, dependencies=_read_deps)
     async def get_app_design(
@@ -106,10 +122,10 @@ def _register_routes(api: APIRouter) -> None:
         _: None = Depends(require_any_permission(PERM_ONTOLOGY_WRITE)),
     ):
         app = await apps_svc.get_app(db, app_id)
-        messages = normalize_stored_a2ui_document(app.draft_a2ui) or []
+        components = await apps_svc.draft_components_dicts(db, app.id)
         stale, missing = await apps_svc.enrich_stale(db, app)
         base = apps_svc.to_response_base(app, stale=stale, missing=missing)
-        return AppBuilderDesignResponse(**base, a2ui_messages=messages)
+        return AppBuilderDesignResponse(**base, components=_components_out(components))
 
     @api.patch("/{app_id}", response_model=AppBuilderResponse, dependencies=_read_deps)
     async def update_app(
@@ -140,25 +156,31 @@ def _register_routes(api: APIRouter) -> None:
     ):
         app = await apps_svc.get_app(db, app_id)
         app = await apps_svc.synthesize_draft(db, app)
-        messages = normalize_stored_a2ui_document(app.draft_a2ui) or []
+        components = await apps_svc.draft_components_dicts(db, app.id)
         stale, missing = await apps_svc.enrich_stale(db, app)
         base = apps_svc.to_response_base(app, stale=stale, missing=missing)
-        return AppBuilderDesignResponse(**base, a2ui_messages=messages)
+        return AppBuilderDesignResponse(**base, components=_components_out(components))
 
     @api.post("/{app_id}/publish", response_model=AppBuilderRunResponse, dependencies=_read_deps)
     async def publish_app(
         app_id: str,
+        request: Request,
         body: AppBuilderPublishIn | None = None,
         db: AsyncSession = Depends(get_db),
         _: None = Depends(require_any_permission(PERM_ONTOLOGY_WRITE)),
     ):
         app = await apps_svc.get_app(db, app_id)
-        msgs = body.a2ui_messages if body else None
-        app = await apps_svc.publish_app(db, app, a2ui_messages=msgs)
-        messages = normalize_stored_a2ui_document(app.published_a2ui) or []
+        uid, uname = jwt_user_from_request(request)
+        raw_components = None
+        if body and body.components is not None:
+            raw_components = [c.model_dump() for c in body.components]
+        app = await apps_svc.publish_app(
+            db, app, components=raw_components, created_by=uid, created_by_name=uname
+        )
+        components = await apps_svc.published_components_dicts(db, app)
         stale, missing = await apps_svc.enrich_stale(db, app)
         base = apps_svc.to_response_base(app, stale=stale, missing=missing)
-        return AppBuilderRunResponse(**base, a2ui_messages=messages)
+        return AppBuilderRunResponse(**base, components=_components_out(components))
 
     @api.post("/{app_id}/unpublish", response_model=AppBuilderResponse, dependencies=_read_deps)
     async def unpublish_app(
@@ -168,6 +190,40 @@ def _register_routes(api: APIRouter) -> None:
     ):
         app = await apps_svc.get_app(db, app_id)
         app = await apps_svc.unpublish_app(db, app)
+        return await _to_list_item(db, app)
+
+    @api.get("/{app_id}/versions", response_model=list[AppBuilderVersionOut], dependencies=_read_deps)
+    async def list_versions(
+        app_id: str,
+        db: AsyncSession = Depends(get_db),
+        _: None = Depends(require_any_permission(PERM_ONTOLOGY_WRITE)),
+    ):
+        app = await apps_svc.get_app(db, app_id)
+        rows = await apps_svc.list_published_versions(db, app.id)
+        return [
+            AppBuilderVersionOut(
+                id=v.id,
+                version=v.version,
+                created_at=v.created_at,
+                created_by_name=v.created_by_name,
+                is_current=v.id == app.published_version_id,
+            )
+            for v in rows
+        ]
+
+    @api.post(
+        "/{app_id}/versions/{version_id}/rollback",
+        response_model=AppBuilderResponse,
+        dependencies=_read_deps,
+    )
+    async def rollback_version(
+        app_id: str,
+        version_id: str,
+        db: AsyncSession = Depends(get_db),
+        _: None = Depends(require_any_permission(PERM_ONTOLOGY_WRITE)),
+    ):
+        app = await apps_svc.get_app(db, app_id)
+        app = await apps_svc.rollback_to_version(db, app, version_id)
         return await _to_list_item(db, app)
 
     @api.get("/{app_id}/designer/conversations", response_model=DesignerConversationListOut, dependencies=_read_deps)
@@ -283,8 +339,7 @@ def _register_routes(api: APIRouter) -> None:
                                 msg = f"{msg}: {', '.join(str(m) for m in miss)}"
                             raise ValueError(msg) from he
                         raise ValueError(str(detail)) from he
-                    msgs = normalize_stored_a2ui_document(row.draft_a2ui) or []
-                    return {"bindings": row.bindings or {}, "a2ui_messages": msgs}
+                    return {"bindings": row.bindings or {}}
 
             try:
                 async for ev in iter_app_builder_designer_chat_ndjson(
@@ -312,7 +367,7 @@ def _register_routes(api: APIRouter) -> None:
 
                 async with async_session_maker() as s:
                     row = await apps_svc.get_app(s, app_id)
-                    await apps_svc.update_app(s, row, AppBuilderUpdate(draft_a2ui_messages=last_a2ui))
+                    await apps_svc.update_component_messages(s, row, body.component_id, last_a2ui)
 
         return StreamingResponse(ndjson(), media_type="application/x-ndjson")
 

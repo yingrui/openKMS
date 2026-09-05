@@ -13,7 +13,7 @@ export type AppBuilderAppResponse = {
   api_name: string;
   description?: string | null;
   template_id: string;
-  artifact_kind?: string;
+  app_kind?: string;
   bindings: AppBuilderBindings;
   status: string;
   bindings_hash?: string | null;
@@ -23,16 +23,25 @@ export type AppBuilderAppResponse = {
   created_by_name?: string | null;
   created_at: string;
   updated_at: string;
+  published_version?: number | null;
   has_draft: boolean;
   has_published: boolean;
 };
 
+export type AppBuilderComponent = {
+  id: string;
+  name: string;
+  position: number;
+  is_default: boolean;
+  messages: Record<string, unknown>[];
+};
+
 export type AppBuilderDesignResponse = AppBuilderAppResponse & {
-  a2ui_messages: Record<string, unknown>[];
+  components: AppBuilderComponent[];
 };
 
 export type AppBuilderRunResponse = AppBuilderAppResponse & {
-  a2ui_messages: Record<string, unknown>[];
+  components: AppBuilderComponent[];
 };
 
 const base = `${config.apiUrl}/api/app-builder/apps`;
@@ -70,9 +79,9 @@ export async function updateApp(
   appId: string,
   body: {
     name?: string;
-    description?: string;
+    description?: string | null;
     bindings?: AppBuilderBindings;
-    draft_a2ui_messages?: Record<string, unknown>[];
+    components?: AppBuilderComponent[];
   },
 ): Promise<AppBuilderAppResponse> {
   return ontologyFetch<AppBuilderAppResponse>(
@@ -96,13 +105,13 @@ export async function synthesizeApp(appId: string): Promise<AppBuilderDesignResp
 
 export async function publishApp(
   appId: string,
-  a2uiMessages?: Record<string, unknown>[],
+  components?: AppBuilderComponent[],
 ): Promise<AppBuilderRunResponse> {
   return ontologyFetch<AppBuilderRunResponse>(
     `${base}/${appId}/publish`,
     {
       method: 'POST',
-      body: JSON.stringify(a2uiMessages ? { a2ui_messages: a2uiMessages } : {}),
+      body: JSON.stringify(components ? { components } : {}),
     },
     'Failed to publish',
   );
@@ -113,6 +122,30 @@ export async function unpublishApp(appId: string): Promise<AppBuilderAppResponse
     `${base}/${appId}/unpublish`,
     { method: 'POST', body: '{}' },
     'Failed to unpublish',
+  );
+}
+
+export type AppBuilderVersion = {
+  id: string;
+  version: number;
+  created_at: string;
+  created_by_name?: string | null;
+  is_current: boolean;
+};
+
+export async function listAppVersions(appId: string): Promise<AppBuilderVersion[]> {
+  return ontologyFetch<AppBuilderVersion[]>(
+    `${base}/${appId}/versions`,
+    undefined,
+    'Failed to list versions',
+  );
+}
+
+export async function rollbackApp(appId: string, versionId: string): Promise<AppBuilderAppResponse> {
+  return ontologyFetch<AppBuilderAppResponse>(
+    `${base}/${appId}/versions/${encodeURIComponent(versionId)}/rollback`,
+    { method: 'POST', body: '{}' },
+    'Failed to rollback',
   );
 }
 
@@ -179,6 +212,7 @@ export async function postDesignerChatStream(
   opts?: {
     workingA2uiMessages?: Record<string, unknown>[];
     conversationId?: string | null;
+    componentId?: string | null;
     signal?: AbortSignal;
   },
 ): Promise<void> {
@@ -190,6 +224,7 @@ export async function postDesignerChatStream(
       messages,
       working_a2ui_messages: opts?.workingA2uiMessages,
       conversation_id: opts?.conversationId ?? undefined,
+      component_id: opts?.componentId ?? undefined,
       stream: true,
     }),
     signal: opts?.signal,

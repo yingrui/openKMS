@@ -8,5 +8,6 @@
   "backToGallery": "全部应用",
   "editInBuilder": "在应用构建器中编辑",
   "staleBanner": "部分绑定已失效，看板可能异常。",
-  "repair": "修复"
+  "repair": "修复",
+  "componentsAria": "组件"
 }

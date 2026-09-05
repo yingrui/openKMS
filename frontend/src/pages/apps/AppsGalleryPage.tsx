@@ -43,6 +43,9 @@ export function AppsGalleryPage() {
           <li key={app.id}>
             <Link to={`/apps/${app.id}`} className="apps-page__card">
               <strong>{app.name}</strong>
+              {app.published_version ? (
+                <span className="apps-page__badge">v{app.published_version}</span>
+              ) : null}
               <span className="apps-page__meta">{app.api_name}</span>
               {app.bindings_stale ? <span className="apps-page__badge">{t('stale')}</span> : null}
             </Link>

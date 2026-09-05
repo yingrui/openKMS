@@ -8,5 +8,6 @@
   "backToGallery": "All apps",
   "editInBuilder": "Edit in App Builder",
   "staleBanner": "Some bindings no longer resolve. The board may misbehave.",
-  "repair": "Repair"
+  "repair": "Repair",
+  "componentsAria": "Components"
 }

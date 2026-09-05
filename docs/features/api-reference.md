@@ -278,12 +278,14 @@ The bundled **openkms-skill** CLI wraps **lifecycle** and **relationships** the 
 | GET | `/api/app-builder/apps` | List apps (`?status=published`); `ontology:read` |
 | POST | `/api/app-builder/apps` | Create app (name + api_name; optional resource allowlist in `bindings`; stub A2UI if unbound) (`ontology:write`) |
 | GET | `/api/app-builder/apps/{id}` | Published run document only (404 if draft) |
-| GET | `/api/app-builder/apps/{id}/design` | Draft A2UI for App Builder |
-| PATCH | `/api/app-builder/apps/{id}` | Update metadata / resource allowlist (`bindings`) / draft |
+| GET | `/api/app-builder/apps/{id}/design` | Draft artifacts for App Builder |
+| PATCH | `/api/app-builder/apps/{id}` | Update metadata / resource allowlist (`bindings`) / `components` |
 | DELETE | `/api/app-builder/apps/{id}` | Delete app |
-| POST | `/api/app-builder/apps/{id}/synthesize` | Reset draft to **stub** layout (explicit; does not synthesize domain UI) |
-| POST | `/api/app-builder/apps/{id}/publish` | Publish draft (requires resolved resources + valid A2UI; optional `a2ui_messages`) |
+| POST | `/api/app-builder/apps/{id}/synthesize` | Reset draft to **stub** artifact (explicit; does not synthesize domain UI) |
+| POST | `/api/app-builder/apps/{id}/publish` | Publish draft (requires resolved resources + valid components; snapshot → new version) |
 | POST | `/api/app-builder/apps/{id}/unpublish` | Clear published; status → draft |
+| GET | `/api/app-builder/apps/{id}/versions` | List published versions |
+| POST | `/api/app-builder/apps/{id}/versions/{version_id}/rollback` | Rollback published to a version |
 | POST | `/api/app-builder/apps/{id}/designer/chat` | NDJSON App Builder designer stream |
 | GET | `/api/data-sources` | List data sources (`limit`, `offset`; `console:data_sources`) |
 | POST | `/api/data-sources` | Create data source (`console:data_sources`) |

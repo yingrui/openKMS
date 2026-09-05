@@ -194,6 +194,9 @@ const AppBuilderWizardPage = lazy(() =>
 const AppBuilderDesignPage = lazy(() =>
   import('./pages/app-builder/AppBuilderDesignPage').then((m) => ({ default: m.AppBuilderDesignPage })),
 );
+const AppBuilderSettingsPage = lazy(() =>
+  import('./pages/app-builder/AppBuilderSettingsPage').then((m) => ({ default: m.AppBuilderSettingsPage })),
+);
 const AppsGalleryPage = lazy(() =>
   import('./pages/apps/AppsGalleryPage').then((m) => ({ default: m.AppsGalleryPage })),
 );
@@ -432,6 +435,7 @@ function App() {
             <Route index element={<AppBuilderListPage />} />
             <Route path="new" element={<AppBuilderWizardPage />} />
             <Route path=":appId/design" element={<AppBuilderDesignPage />} />
+            <Route path=":appId/settings" element={<AppBuilderSettingsPage />} />
           </Route>
           <Route path="apps" element={<Outlet />}>
             <Route index element={<AppsGalleryPage />} />

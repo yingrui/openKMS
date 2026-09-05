@@ -12,12 +12,16 @@ export function AppsRunPage() {
   const { canAccessPath } = useAuth();
   const canEdit = canAccessPath('/app-builder');
   const [app, setApp] = useState<AppBuilderRunResponse | null>(null);
+  const [activeId, setActiveId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     void (async () => {
       try {
-        setApp(await fetchAppRun(appId));
+        const run = await fetchAppRun(appId);
+        setApp(run);
+        const comps = run.components || [];
+        setActiveId(comps.find((c) => c.is_default)?.id ?? comps[0]?.id ?? null);
       } catch (e) {
         setError(e instanceof Error ? e.message : String(e));
       }
@@ -34,12 +38,19 @@ export function AppsRunPage() {
   }
   if (!app) return <div className="apps-page">{t('loading')}</div>;
 
+  const components = app.components || [];
+  const active = components.find((c) => c.id === activeId) ?? components[0];
+
   return (
     <div className="apps-page apps-page--run">
       <header className="apps-page__run-header">
         <Link to="/apps" className="apps-page__back">
           {t('backToGallery')}
         </Link>
+        <span className="apps-page__run-title">
+          {app.name}
+          {app.published_version ? ` · v${app.published_version}` : ''}
+        </span>
         {canEdit ? (
           <Link to={`/app-builder/${app.id}/design`} className="btn btn-secondary">
             {t('editInBuilder')}
@@ -54,7 +65,25 @@ export function AppsRunPage() {
           ) : null}
         </div>
       ) : null}
-      <AppA2uiSurface a2uiMessages={app.a2ui_messages} />
+
+      {components.length > 1 ? (
+        <div className="apps-page__tabs" role="tablist" aria-label={t('componentsAria')}>
+          {components.map((c) => (
+            <button
+              key={c.id}
+              type="button"
+              role="tab"
+              aria-selected={active?.id === c.id}
+              className={`apps-page__tab${active?.id === c.id ? ' is-active' : ''}`}
+              onClick={() => setActiveId(c.id)}
+            >
+              {c.name}
+            </button>
+          ))}
+        </div>
+      ) : null}
+
+      <AppA2uiSurface a2uiMessages={active?.messages ?? []} />
     </div>
   );
 }

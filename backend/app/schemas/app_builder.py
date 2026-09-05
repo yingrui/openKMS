@@ -16,7 +16,17 @@ class AppBuilderBindings(BaseModel):
     functions: list[str] | None = None
 
 
-ArtifactKind = Literal["a2ui", "module"]
+AppKind = Literal["a2ui", "module"]
+
+
+class AppBuilderComponent(BaseModel):
+    """One artifact: an A2UI surface (messages) with name / order / default flag."""
+
+    id: str
+    name: str = ""
+    position: int = 0
+    is_default: bool = False
+    messages: list[dict[str, Any]] = Field(default_factory=list)
 
 
 class AppBuilderCreate(BaseModel):
@@ -24,7 +34,7 @@ class AppBuilderCreate(BaseModel):
     api_name: str = Field(min_length=1, max_length=128)
     description: str | None = None
     template_id: str = "a2ui"
-    """Stored artifact kind for now (a2ui | module). module runner is not implemented yet."""
+    """Stored app kind for now (a2ui | module). module runner is not implemented yet."""
     bindings: AppBuilderBindings | None = None
 
 
@@ -32,11 +42,11 @@ class AppBuilderUpdate(BaseModel):
     name: str | None = None
     description: str | None = None
     bindings: AppBuilderBindings | None = None
-    draft_a2ui_messages: list[dict[str, Any]] | None = None
+    components: list[AppBuilderComponent] | None = None
 
 
 class AppBuilderPublishIn(BaseModel):
-    a2ui_messages: list[dict[str, Any]] | None = None
+    components: list[AppBuilderComponent] | None = None
 
 
 class AppBuilderResponse(BaseModel):
@@ -45,7 +55,7 @@ class AppBuilderResponse(BaseModel):
     api_name: str
     description: str | None = None
     template_id: str
-    artifact_kind: str = "a2ui"
+    app_kind: str = "a2ui"
     bindings: dict[str, Any]
     status: str
     bindings_hash: str | None = None
@@ -55,20 +65,30 @@ class AppBuilderResponse(BaseModel):
     created_by_name: str | None = None
     created_at: datetime
     updated_at: datetime
+    published_version: int | None = None
     has_draft: bool = False
     has_published: bool = False
 
 
+class AppBuilderVersionOut(BaseModel):
+    id: str
+    version: int
+    created_at: datetime
+    created_by_name: str | None = None
+    is_current: bool = False
+
+
 class AppBuilderDesignResponse(AppBuilderResponse):
-    a2ui_messages: list[dict[str, Any]] = Field(default_factory=list)
+    components: list[AppBuilderComponent] = Field(default_factory=list)
 
 
 class AppBuilderRunResponse(AppBuilderResponse):
-    a2ui_messages: list[dict[str, Any]] = Field(default_factory=list)
+    components: list[AppBuilderComponent] = Field(default_factory=list)
 
 
 class AppBuilderDesignerChatIn(BaseModel):
     messages: list[dict[str, str]]
     working_a2ui_messages: list[dict[str, Any]] | None = None
     conversation_id: str | None = None
+    component_id: str | None = None
     stream: bool = True

@@ -57,6 +57,9 @@ export function AppBuilderListPage() {
               <Link to={`/app-builder/${app.id}/design`} className="btn btn-secondary">
                 {t('design')}
               </Link>
+              <Link to={`/app-builder/${app.id}/settings`} className="btn btn-secondary">
+                {t('settings')}
+              </Link>
               {app.status === 'published' ? (
                 <Link to={`/apps/${app.id}`} className="btn btn-secondary">
                   {t('open')}

@@ -152,8 +152,18 @@ Schema for every persisted table. Grouped by area; see the matching feature page
 
 ### AppBuilderApp (`ontology_apps` table)
 
-- `id`, `name`, `api_name` (unique), `description`, `template_id` (e.g. `a2ui`), `bindings` (JSONB — **resource allowlist**: `objectTypes` / `actions` / `functions` api names; column name is historical), `draft_a2ui` / `published_a2ui` (JSONB `{ format: "a2ui_v0_9", messages }`), `bindings_hash`, `status` (`draft` \| `published`), `created_by`, `created_by_name`, `created_at`, `updated_at`
-- App Builder drafts and Apps published run documents; see [App Builder & Apps](app-builder.md)
+- `id`, `name`, `api_name` (unique), `description`, `template_id` (e.g. `a2ui`), `bindings` (JSONB — **resource allowlist**: `objectTypes` / `actions` / `functions` api names; column name is historical), `published_version_id`, `bindings_hash`, `status` (`draft` \| `published`), `created_by`, `created_by_name`, `created_at`, `updated_at`
+- App Builder identity + resource allowlist; see [App Builder & Apps](app-builder.md)
+
+### AppBuilderComponent (`app_components` table)
+
+- `id`, `app_id` (FK → `ontology_apps`, cascade), `name`, `position`, `is_default`, `a2ui_messages` (JSONB — one A2UI surface message list), `created_at`, `updated_at`
+- Draft artifacts (one per A2UI surface) of an app
+
+### AppBuilderPublishedVersion (`app_published_versions` table)
+
+- `id`, `app_id` (FK → `ontology_apps`, cascade), `version` (monotonic per app), `components` (JSONB snapshot of `app_components`), `bindings` (JSONB snapshot), `created_by`, `created_by_name`, `created_at`
+- Immutable publish snapshots for rollback; `ontology_apps.published_version_id` points at the live one
 
 ### DataSource
 

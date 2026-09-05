@@ -8,23 +8,23 @@ import uuid
 from typing import Any
 
 from fastapi import HTTPException
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.object_type import ObjectType
-from app.models.app_builder import AppBuilderApp
+from app.models.app_builder import AppBuilderApp, AppBuilderComponent, AppBuilderPublishedVersion
 from app.models.ontology_function import OntologyActionType, OntologyFunction, OntologyFunctionVersion
 from app.schemas.app_builder import AppBuilderBindings, AppBuilderCreate, AppBuilderUpdate
 from app.services.ontology.action_rule_types import is_builtin_object_rule
 from app.services.ontology.builtin_action_service import input_schema_for_action
 from app.services.app_builder.a2ui import (
+    component_id,
     normalize_resources,
-    normalize_stored_a2ui_document,
-    pack_a2ui_document,
     reject_legacy_board_bindings,
     resources_nonempty,
-    synthesize_stub_a2ui_messages,
+    synthesize_stub_components,
     validate_app_a2ui_messages,
+    validate_app_components,
 )
 
 APP_ID_PREFIX = "oa-"
@@ -46,9 +46,20 @@ def bindings_as_dict(bindings: AppBuilderBindings | dict[str, Any] | None) -> di
     return normalize_resources(raw)
 
 
-def artifact_kind_of(app: AppBuilderApp) -> str:
+def app_kind_of(app: AppBuilderApp) -> str:
     tid = (app.template_id or "a2ui").strip() or "a2ui"
     return tid if tid in ("a2ui", "module") else "a2ui"
+
+
+def component_to_dict(c: AppBuilderComponent) -> dict[str, Any]:
+    messages = c.a2ui_messages if isinstance(c.a2ui_messages, list) else []
+    return {
+        "id": c.id,
+        "name": c.name or "",
+        "position": c.position or 0,
+        "is_default": bool(c.is_default),
+        "messages": messages,
+    }
 
 
 async def resolve_bindings_snapshot(
@@ -103,15 +114,22 @@ async def compute_live_bindings_hash(db: AsyncSession, bindings: dict[str, Any])
     return compute_bindings_hash(resolved), missing
 
 
-def to_response_base(app: AppBuilderApp, *, stale: bool = False, missing: list[str] | None = None) -> dict[str, Any]:
-    kind = artifact_kind_of(app)
+def to_response_base(
+    app: AppBuilderApp,
+    *,
+    stale: bool = False,
+    missing: list[str] | None = None,
+    has_draft: bool = False,
+    published_version: int | None = None,
+) -> dict[str, Any]:
+    kind = app_kind_of(app)
     return {
         "id": app.id,
         "name": app.name,
         "api_name": app.api_name,
         "description": app.description,
         "template_id": app.template_id,
-        "artifact_kind": kind,
+        "app_kind": kind,
         "bindings": app.bindings or {},
         "status": app.status,
         "bindings_hash": app.bindings_hash,
@@ -121,8 +139,9 @@ def to_response_base(app: AppBuilderApp, *, stale: bool = False, missing: list[s
         "created_by_name": app.created_by_name,
         "created_at": app.created_at,
         "updated_at": app.updated_at,
-        "has_draft": normalize_stored_a2ui_document(app.draft_a2ui) is not None,
-        "has_published": normalize_stored_a2ui_document(app.published_a2ui) is not None,
+        "published_version": published_version,
+        "has_draft": has_draft,
+        "has_published": app.published_version_id is not None,
     }
 
 
@@ -158,6 +177,94 @@ async def list_apps(
     return list((await db.execute(q)).scalars().all())
 
 
+async def list_draft_components(db: AsyncSession, app_id: str) -> list[AppBuilderComponent]:
+    q = (
+        select(AppBuilderComponent)
+        .where(AppBuilderComponent.app_id == app_id)
+        .order_by(AppBuilderComponent.position, AppBuilderComponent.created_at)
+    )
+    return list((await db.execute(q)).scalars().all())
+
+
+async def has_draft_components(db: AsyncSession, app_id: str) -> bool:
+    q = select(AppBuilderComponent.id).where(AppBuilderComponent.app_id == app_id).limit(1)
+    return (await db.execute(q)).scalar_one_or_none() is not None
+
+
+async def get_default_component(db: AsyncSession, app_id: str) -> AppBuilderComponent | None:
+    q = (
+        select(AppBuilderComponent)
+        .where(AppBuilderComponent.app_id == app_id, AppBuilderComponent.is_default.is_(True))
+        .limit(1)
+    )
+    comp = (await db.execute(q)).scalar_one_or_none()
+    if comp:
+        return comp
+    rows = await list_draft_components(db, app_id)
+    return rows[0] if rows else None
+
+
+async def draft_components_dicts(db: AsyncSession, app_id: str) -> list[dict[str, Any]]:
+    return [component_to_dict(c) for c in await list_draft_components(db, app_id)]
+
+
+async def published_components_dicts(db: AsyncSession, app: AppBuilderApp) -> list[dict[str, Any]]:
+    if not app.published_version_id:
+        return []
+    version = await db.get(AppBuilderPublishedVersion, app.published_version_id)
+    if not version or not isinstance(version.components, list):
+        return []
+    return [c for c in version.components if isinstance(c, dict)]
+
+
+async def current_published_version(db: AsyncSession, app: AppBuilderApp) -> int | None:
+    if not app.published_version_id:
+        return None
+    version = await db.get(AppBuilderPublishedVersion, app.published_version_id)
+    return version.version if version else None
+
+
+async def list_published_versions(db: AsyncSession, app_id: str) -> list[AppBuilderPublishedVersion]:
+    q = (
+        select(AppBuilderPublishedVersion)
+        .where(AppBuilderPublishedVersion.app_id == app_id)
+        .order_by(AppBuilderPublishedVersion.version.desc())
+    )
+    return list((await db.execute(q)).scalars().all())
+
+
+async def rollback_to_version(
+    db: AsyncSession, app: AppBuilderApp, version_id: str
+) -> AppBuilderApp:
+    version = await db.get(AppBuilderPublishedVersion, version_id)
+    if not version or version.app_id != app.id:
+        raise HTTPException(status_code=404, detail="Version not found")
+    app.published_version_id = version.id
+    app.status = "published"
+    await db.commit()
+    await db.refresh(app)
+    return app
+
+
+async def _replace_draft_components(
+    db: AsyncSession, app: AppBuilderApp, components: list[dict[str, Any]]
+) -> None:
+    for old in await list_draft_components(db, app.id):
+        await db.delete(old)
+    await db.flush()
+    for c in components:
+        db.add(
+            AppBuilderComponent(
+                id=c["id"],
+                app_id=app.id,
+                name=c["name"],
+                position=c["position"],
+                is_default=c["is_default"],
+                a2ui_messages=c["messages"],
+            )
+        )
+
+
 async def create_app(
     db: AsyncSession,
     body: AppBuilderCreate,
@@ -177,7 +284,7 @@ async def create_app(
     if template_id == "module":
         raise HTTPException(
             status_code=400,
-            detail="artifact_kind module is reserved; only a2ui apps can be created in this release",
+            detail="app_kind module is reserved; only a2ui apps can be created in this release",
         )
 
     try:
@@ -195,7 +302,6 @@ async def create_app(
             )
         bindings_hash = compute_bindings_hash(resolved) if resolved else None
 
-    messages = synthesize_stub_a2ui_messages(title=body.name)
     app = AppBuilderApp(
         id=new_app_id(),
         name=body.name,
@@ -203,14 +309,27 @@ async def create_app(
         description=body.description,
         template_id=template_id,
         bindings=bindings,
-        draft_a2ui=pack_a2ui_document(messages),
-        published_a2ui=None,
+        published_version_id=None,
         bindings_hash=bindings_hash,
         status="draft",
         created_by=created_by,
         created_by_name=created_by_name,
     )
     db.add(app)
+    await db.flush()
+
+    for c in synthesize_stub_components(title=body.name):
+        db.add(
+            AppBuilderComponent(
+                id=c["id"],
+                app_id=app.id,
+                name=c["name"],
+                position=c["position"],
+                is_default=c["is_default"],
+                a2ui_messages=c["messages"],
+            )
+        )
+
     await db.commit()
     await db.refresh(app)
     return app
@@ -238,17 +357,38 @@ async def update_app(db: AsyncSession, app: AppBuilderApp, body: AppBuilderUpdat
         else:
             app.bindings = {}
             app.bindings_hash = None
-    if body.draft_a2ui_messages is not None:
+    if body.components is not None:
+        raw = [c.model_dump() for c in body.components]
         try:
-            validated = validate_app_a2ui_messages(
-                body.draft_a2ui_messages, bindings=app.bindings or {}
-            )
+            validated = validate_app_components(raw, bindings=app.bindings or {})
         except ValueError as e:
             raise HTTPException(status_code=400, detail=str(e)) from e
-        app.draft_a2ui = pack_a2ui_document(validated)
+        await _replace_draft_components(db, app, validated)
     await db.commit()
     await db.refresh(app)
     return app
+
+
+async def update_component_messages(
+    db: AsyncSession,
+    app: AppBuilderApp,
+    component_id: str | None,
+    messages: list[dict[str, Any]],
+) -> AppBuilderComponent | None:
+    comp = None
+    if component_id:
+        candidate = await db.get(AppBuilderComponent, component_id)
+        if candidate and candidate.app_id == app.id:
+            comp = candidate
+    if comp is None:
+        comp = await get_default_component(db, app.id)
+    if comp is None:
+        raise HTTPException(status_code=400, detail="App has no component to update")
+    validated = validate_app_a2ui_messages(messages, bindings=app.bindings or {})
+    comp.a2ui_messages = validated
+    await db.commit()
+    await db.refresh(comp)
+    return comp
 
 
 async def apply_bindings(
@@ -280,33 +420,46 @@ async def apply_bindings(
     app.bindings = cleaned
     app.bindings_hash = compute_bindings_hash(resolved)
     if synthesize:
-        app.draft_a2ui = pack_a2ui_document(synthesize_stub_a2ui_messages(title=app.name))
+        await _replace_draft_components(db, app, synthesize_stub_components(title=app.name))
     await db.commit()
     await db.refresh(app)
     return app
 
 
 async def synthesize_draft(db: AsyncSession, app: AppBuilderApp) -> AppBuilderApp:
-    """Reset layout to stub. Clear legacy board bindings so the designer can set_resources cleanly."""
+    """Reset draft to a single stub component. Clear legacy board bindings."""
     bindings = app.bindings or {}
     try:
         reject_legacy_board_bindings(bindings)
     except ValueError:
         app.bindings = {}
         app.bindings_hash = None
-    app.draft_a2ui = pack_a2ui_document(synthesize_stub_a2ui_messages(title=app.name))
+    await _replace_draft_components(db, app, synthesize_stub_components(title=app.name))
     await db.commit()
     await db.refresh(app)
     return app
+
+
+async def _next_version_number(db: AsyncSession, app_id: str) -> int:
+    current = (
+        await db.execute(
+            select(func.max(AppBuilderPublishedVersion.version)).where(
+                AppBuilderPublishedVersion.app_id == app_id
+            )
+        )
+    ).scalar_one_or_none()
+    return (current or 0) + 1
 
 
 async def publish_app(
     db: AsyncSession,
     app: AppBuilderApp,
     *,
-    a2ui_messages: list[dict[str, Any]] | None = None,
+    components: list[dict[str, Any]] | None = None,
+    created_by: str | None = None,
+    created_by_name: str | None = None,
 ) -> AppBuilderApp:
-    if artifact_kind_of(app) != "a2ui":
+    if app_kind_of(app) != "a2ui":
         raise HTTPException(status_code=400, detail="Only a2ui apps can be published in this release")
     bindings = normalize_resources(app.bindings or {})
     if not resources_nonempty(bindings):
@@ -326,18 +479,27 @@ async def publish_app(
                 "missing_bindings": missing,
             },
         )
-    try:
-        if a2ui_messages is not None:
-            messages = validate_app_a2ui_messages(a2ui_messages, bindings=bindings)
-            app.draft_a2ui = pack_a2ui_document(messages)
-        else:
-            messages = normalize_stored_a2ui_document(app.draft_a2ui)
-            if not messages:
-                raise ValueError("Draft A2UI is empty — ask the designer to set the layout")
-            messages = validate_app_a2ui_messages(messages, bindings=bindings)
-    except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e)) from e
-    app.published_a2ui = pack_a2ui_document(messages)
+
+    if components is not None:
+        validated = validate_app_components(components, bindings=bindings)
+    else:
+        draft = [component_to_dict(c) for c in await list_draft_components(db, app.id)]
+        if not draft:
+            raise ValueError("Draft is empty — ask the designer to set the layout")
+        validated = validate_app_components(draft, bindings=bindings)
+
+    version = AppBuilderPublishedVersion(
+        id=component_id(),
+        app_id=app.id,
+        version=await _next_version_number(db, app.id),
+        components=validated,
+        bindings=bindings,
+        created_by=created_by or app.created_by,
+        created_by_name=created_by_name or app.created_by_name,
+    )
+    db.add(version)
+    await db.flush()
+    app.published_version_id = version.id
     app.status = "published"
     app.bindings_hash = compute_bindings_hash(resolved)
     await db.commit()
@@ -347,7 +509,7 @@ async def publish_app(
 
 async def unpublish_app(db: AsyncSession, app: AppBuilderApp) -> AppBuilderApp:
     app.status = "draft"
-    app.published_a2ui = None
+    app.published_version_id = None
     await db.commit()
     await db.refresh(app)
     return app
@@ -357,6 +519,11 @@ async def delete_app(db: AsyncSession, app: AppBuilderApp) -> None:
     from app.services.app_builder.session import delete_all_conversations_for_app
 
     await delete_all_conversations_for_app(db, app.id)
+    for c in await list_draft_components(db, app.id):
+        await db.delete(c)
+    q = select(AppBuilderPublishedVersion).where(AppBuilderPublishedVersion.app_id == app.id)
+    for v in (await db.execute(q)).scalars().all():
+        await db.delete(v)
     await db.delete(app)
     await db.commit()
 

@@ -1,6 +1,6 @@
 # App Builder & Apps
 
-**App Builder** is the openKMS **platform** authoring surface for ontology-backed apps. An **App** is a product identity + **resource allowlist** + a runnable **artifact**. **A2UI** is the first-class AI-fast lane (`artifact_kind` / `template_id`: `a2ui`); a **`module`** lane is reserved for hosted custom frontends (not implemented yet).
+**App Builder** is the openKMS **platform** authoring surface for ontology-backed apps. An **App** is a product identity + **resource allowlist** + a set of **artifacts** (each one an A2UI surface). **A2UI** is the first-class AI-fast lane (`app_kind` from `template_id`: `a2ui`); a **`module`** lane is reserved for hosted custom frontends (not implemented yet).
 
 **Apps** is the published gallery and Run host.
 
@@ -19,9 +19,10 @@
 |-------|------|
 | `/app-builder` | Draft + published apps; **New app** |
 | `/app-builder/new` | Name only → create stub draft → Design |
-| `/app-builder/:appId/design` | Chat \| Preview / Source \| publish |
+| `/app-builder/:appId/design` | Chat \| artifacts tabs \| Preview / Source \| publish |
+| `/app-builder/:appId/settings` | General (name / description) \| versions + rollback |
 | `/apps` | Published gallery only |
-| `/apps/:appId` | Run **published** a2ui artifact (404 if draft) |
+| `/apps/:appId` | Run **published** a2ui app (404 if draft) |
 
 Permissions reuse `ontology:read` / `ontology:write`.
 
@@ -48,7 +49,7 @@ UI wiring lives in the **A2UI Source** (component props), not in a board-shaped 
 | Platform (openKMS code) | Published app (tenant A2UI Source in DB) |
 |---------------------------|------------------------------------------|
 | Catalog + host hooks (`executeAction`, `loadObjectForEdit`, `OntoObjectList` loader) | Layout, copy, filters, which Action opens which Modal |
-| Shared A2UI styling (`_a2ui-platform.scss`) | Resource allowlist + `draft_a2ui` / `published_a2ui` |
+| Shared A2UI styling (`_a2ui-platform.scss`) | Resource allowlist + draft artifacts (`app_components`) + published version snapshot |
 | Validation, Designer NDJSON, publish gates | Domain UX (e.g. column boards composed from filtered lists) |
 
 The platform must **not** ship domain UI (no Kanban widget, no app-named buttons, no board-shaped binding keys, no synthesizers that emit a named product layout). Kanban-style boards are **tenant content** composed in Source — see [Understanding the ontology](../tutorials/understanding-ontology.md).
@@ -56,6 +57,12 @@ The platform must **not** ship domain UI (no Kanban widget, no app-named buttons
 **Validation:** invalid Source or removed catalog components **fail** at save/publish and surface in Design — the server does **not** silently replace draft JSON on load. Use **Reset layout** (`POST …/synthesize`) to return to a generic stub, then re-compose with the Designer.
 
 **Removed catalog components** (reject at validation): `OntoKanbanBoard`, `OntoActionForm`. Use basic `Modal` + `TextField` + `executeAction` instead.
+
+## Artifacts & protocol direction
+
+An App renders a set of **artifacts**; each artifact is one A2UI **surface** (`surfaceId`), shown as a tab in Run (single active). The designer chat is the seed of this generative-UI flow: the agent produces or updates an artifact through a tool (`set_a2ui_messages` today, generalized later), and the host renders it in the artifact area rather than the message body.
+
+**Protocol.** Long-term, align the agent ↔ frontend **event** layer to **AG-UI** (Agent–User Interaction), which standardizes lifecycle, text/tool streaming, state, HITL interrupts, and **generative UI** events. A2UI is the generative-UI **spec** (payload); AG-UI is the **event** transport. We do **not** add AG-UI as a dependency yet — today's designer NDJSON (`delta` / `tool_*` / `done`) stays, and artifacts travel as A2UI surfaces over those events. No home-grown protocol fields are added.
 
 ## A2UI catalog (a2ui lane)
 
@@ -76,7 +83,7 @@ Layout uses A2UI basic (`Column`, `Row`, `Text`, `Button`, `Modal`, `TextField`,
 
 Multi-column “kanban-like” UIs are **composed** in Source from filtered lists + Modals — there is no `OntoKanbanBoard`. Invalid or removed-component Source fails validation; use **Reset layout** (`POST …/synthesize`) then the Designer to compose again.
 
-## Artifact kinds
+## App kinds
 
 | Kind | Status |
 |------|--------|
@@ -106,13 +113,19 @@ Frontend: `frontend/src/pages/app-builder/` (Design UI), `frontend/src/pages/app
 | PATCH | `/api/app-builder/apps/{id}` | Update metadata / resources / draft |
 | DELETE | `/api/app-builder/apps/{id}` | Delete app |
 | POST | `/api/app-builder/apps/{id}/synthesize` | Reset draft to stub layout |
-| POST | `/api/app-builder/apps/{id}/publish` | Publish (requires resolved resources + valid A2UI) |
+| POST | `/api/app-builder/apps/{id}/publish` | Publish draft (requires resolved resources + valid components; snapshot → new version) |
 | POST | `/api/app-builder/apps/{id}/unpublish` | Clear published |
+| GET | `/api/app-builder/apps/{id}/versions` | List published versions |
+| POST | `/api/app-builder/apps/{id}/versions/{version_id}/rollback` | Rollback published to a version |
 | POST | `/api/app-builder/apps/{id}/designer/chat` | NDJSON designer stream |
 
 ## Data model
 
-Table `ontology_apps`: `id`, `name`, `api_name` (unique), `description`, `template_id` (artifact kind: `a2ui` \| `module`), `bindings` JSONB (resources), `draft_a2ui` / `published_a2ui` JSONB (`format: a2ui_v0_9`, `messages`), `bindings_hash`, `status` (`draft` \| `published`), `created_by`, timestamps. API also returns `artifact_kind` (from `template_id`).
+Tables:
+
+- `ontology_apps`: `id`, `name`, `api_name` (unique), `description`, `template_id` (app kind: `a2ui` \| `module`), `bindings` JSONB (resources), `published_version_id`, `bindings_hash`, `status` (`draft` \| `published`), `created_by`, timestamps. API returns `app_kind` (from `template_id`) and `published_version`.
+- `app_components`: `id`, `app_id` (FK → `ontology_apps`), `name`, `position`, `is_default`, `a2ui_messages` JSONB — the **draft artifacts**, each one an A2UI surface.
+- `app_published_versions`: `id`, `app_id` (FK → `ontology_apps`), `version`, `components` JSONB snapshot, `bindings` JSONB snapshot, `created_by`, `created_at` — immutable publish snapshots for rollback.
 
 ## Out of scope (this release)
 
