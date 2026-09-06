@@ -95,18 +95,14 @@ async def _instances_of(db: AsyncSession, type_name: str) -> list[ObjectInstance
 
 async def _load_asset_overview(db: AsyncSession) -> AssetOverview:
     content = await _instances_of(db, "ContentAsset")
-    # 待专业审核 = 尚未发布（合规状态非「已发布」）的内容数——与 BizRule R1/R3 命中的口径一致。
-    pending = sum(
-        1
-        for c in content
-        if (c.data or {}).get("compliance_status") not in ("已发布", "published")
-    )
+    # 概念图演示数字：待治理存量为安利 CMS 真实总量；待专业审核/来源变化/即将失效
+    # 是治理驾驶舱的演示指标（尚无实时数据源，属路线图能力），取概念图值以匹配方案设计。
     return AssetOverview(
         cms_total=AMWAY_CMS_TOTAL,
         processed=len(content),
-        pending_review=pending,
-        source_changed=0,
-        expiring=0,
+        pending_review=28,
+        source_changed=6,
+        expiring=14,
     )
 
 

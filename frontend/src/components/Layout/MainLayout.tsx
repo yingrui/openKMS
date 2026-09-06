@@ -10,7 +10,6 @@ import { SidebarLayoutProvider } from '../../contexts/SidebarLayoutContext';
 import { OntologyNavRail, isOntologyAppPath } from '../ontology/OntologyNavRail';
 import '../../App.scss';
 
-const SIDEBAR_COLLAPSED_WIDTH = '56px';
 const SIDEBAR_CONSOLE_WIDTH = '220px';
 
 export function MainLayout() {
@@ -45,7 +44,8 @@ export function MainLayout() {
   const isSearchPage = location.pathname === '/search';
   const isObjectExplorerPage = location.pathname === '/object-explorer';
 
-  const sidebarCollapsed = true;
+  // 安利 demo：主导航展开显示文字（原逻辑折叠成 56px 图标窄栏）。
+  const sidebarCollapsed = false;
   const onArticles =
     location.pathname === '/articles' || location.pathname.startsWith('/articles/');
   const onDocuments =
@@ -57,12 +57,11 @@ export function MainLayout() {
 
   return (
     <div
-      className={`app-layout ${consoleShell ? 'app-layout--console' : 'app-layout--sidebar-collapsed'}`}
+      className={`app-layout ${consoleShell ? 'app-layout--console' : 'app-layout--sidebar-expanded'}`}
       style={
         {
-          ['--sidebar-width' as string]: consoleShell
-            ? SIDEBAR_CONSOLE_WIDTH
-            : SIDEBAR_COLLAPSED_WIDTH,
+          // 安利 demo：主导航与控制台一样用展开宽度显示文字标签。
+          ['--sidebar-width' as string]: SIDEBAR_CONSOLE_WIDTH,
         } as CSSProperties
       }
     >

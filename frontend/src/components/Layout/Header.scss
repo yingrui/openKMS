@@ -59,7 +59,7 @@
 
 .header-search {
   flex: 1;
-  max-width: 480px;
+  max-width: 640px;
   min-width: 120px;
   display: flex;
   align-items: center;
@@ -293,4 +293,28 @@
 
 .header-user-dropdown-item--danger:hover {
   color: var(--color-error);
+}
+
+/* 安利 demo 品牌字标 + 概念提示 */
+.header-brand-wordmark {
+  font-weight: 800;
+  font-size: 0.95rem;
+  color: var(--color-accent);
+  white-space: nowrap;
+  letter-spacing: 0.2px;
+}
+.header-brand-divider {
+  width: 1px;
+  height: 18px;
+  background: var(--color-border);
+  margin: 0 2px;
+}
+.header-concept-note {
+  font-size: 0.72rem;
+  color: var(--color-text-secondary);
+  white-space: nowrap;
+  margin-right: 6px;
+}
+@media (max-width: 900px) {
+  .header-concept-note, .header-brand-wordmark, .header-brand-divider { display: none; }
 }

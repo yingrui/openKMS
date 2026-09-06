@@ -63,12 +63,9 @@ export function Home() {
   }
 
   // 安利企业知识中枢驾驶舱：当聚合接口返回 asset_overview（即本实例配了安利本体）时渲染。
+  // 用独立容器，避免 .home--operations 的窄 max-width / 居中 / 竖向 flex 约束。
   if (hub?.asset_overview) {
-    return (
-      <div className="home home--operations app-page-shell">
-        <AmwayCockpit hub={hub} />
-      </div>
-    );
+    return <AmwayCockpit hub={hub} />;
   }
 
   const canDocuments = hasPermission('documents:read') || hasPermission('all');

@@ -10,20 +10,44 @@ import {
   ToggleLeft,
   Shield,
   KeyRound,
+  Download,
+  FileText,
+  BookOpen,
+  Network,
+  ShieldCheck,
+  ClipboardCheck,
+  Layers,
+  BarChart3,
+  SlidersHorizontal,
 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 
-import { moduleTooltip, isConsoleShellPath } from '../../config/appModules';
-import { useVisibleMainSidebarModules, useVisibleConsolePlatformModules } from '../../hooks/useAppModules';
+
+import { isConsoleShellPath } from '../../config/appModules';
+import { useVisibleConsolePlatformModules } from '../../hooks/useAppModules';
 import { useAuth } from '../../contexts/AuthContext';
 import './Sidebar.scss';
+
+// 安利企业知识中枢 · 固定九大导航（对齐方案概念图）。
+// 用户不区分文章/文档/媒体——「知识接入」是统一上传入口，「内容资产」是统一内容视图。
+const AMWAY_NAV = [
+  { to: '/', end: true, icon: HomeIcon, label: '首页' },
+  { to: '/documents', icon: Download, label: '知识接入' },
+  { to: '/articles', icon: FileText, label: '内容资产' },
+  { to: '/glossaries', icon: BookOpen, label: '本体与术语' },
+  { to: '/knowledge-map', icon: Network, label: '知识图谱' },
+  { to: '/objects', icon: ShieldCheck, label: '知识主张' },
+  { to: '/ontology', icon: ClipboardCheck, label: '审核发布' },
+  { to: '/knowledge-bases', icon: Layers, label: '知识服务' },
+  { to: '/evaluations', icon: BarChart3, label: '评测运营' },
+  { to: '/console', icon: SlidersHorizontal, label: '系统治理' },
+] as const;
 
 export function Sidebar() {
   const { t } = useTranslation('layout');
   const location = useLocation();
   const consoleShell = isConsoleShellPath(location.pathname);
   const { canAccessConsole, canAccessPath } = useAuth();
-  const appModules = useVisibleMainSidebarModules();
   const consolePlatformModules = useVisibleConsolePlatformModules();
 
   const showConsoleDataLabel =
@@ -36,7 +60,8 @@ export function Sidebar() {
   const showPlatformOpsLabel = consolePlatformModules.length > 0;
 
   const showConsoleNav = consoleShell && canAccessConsole;
-  const railCollapsed = !showConsoleNav;
+  // 安利 demo：主导航展开显示文字（不折叠成图标窄栏）。
+  const railCollapsed = false;
 
   return (
     <aside
@@ -182,29 +207,18 @@ export function Sidebar() {
           </div>
         ) : (
           <>
-            <NavLink
-              to="/"
-              end
-              title={moduleTooltip(t('home'), t('appTaglineHome'))}
-              className={({ isActive }) => `sidebar-link ${isActive ? 'sidebar-link-active' : ''}`}
-            >
-              <HomeIcon size={18} strokeWidth={1.75} />
-              <span>{t('home')}</span>
-            </NavLink>
-            {appModules.map((mod) => {
-              const Icon = mod.icon;
-              const label = t(mod.labelKey);
-              const tagline = t(mod.taglineKey);
-              const active = mod.isActive(location.pathname);
+            {AMWAY_NAV.map((item) => {
+              const Icon = item.icon;
               return (
                 <NavLink
-                  key={mod.id}
-                  to={mod.homePath}
-                  title={moduleTooltip(label, tagline)}
-                  className={`sidebar-link ${active ? 'sidebar-link-active' : ''}`}
+                  key={item.to}
+                  to={item.to}
+                  end={'end' in item ? item.end : undefined}
+                  title={item.label}
+                  className={({ isActive }) => `sidebar-link ${isActive ? 'sidebar-link-active' : ''}`}
                 >
                   <Icon size={18} strokeWidth={1.75} />
-                  <span>{label}</span>
+                  <span>{item.label}</span>
                 </NavLink>
               );
             })}
