@@ -43,8 +43,21 @@ def tool_traces_from_tool_messages(messages: list[Any]) -> list[dict[str, str]]:
     return out
 
 
-def tool_payload_from_traces(traces: list[dict[str, str]]) -> dict[str, Any] | None:
-    return {AGENT_TOOL_TRANSCRIPTS_KEY: traces} if traces else None
+def tool_payload_from_traces(
+    traces: list[dict[str, str]],
+    *,
+    stream_parts: list[dict[str, Any]] | None = None,
+) -> dict[str, Any] | None:
+    """Persist tool transcripts and optional interleaved UI stream parts on `tool_calls`."""
+    payload: dict[str, Any] = {}
+    if traces:
+        payload[AGENT_TOOL_TRANSCRIPTS_KEY] = traces
+    if stream_parts:
+        # Same key as wiki / KB so SPA `assistantHistoryStreamParts` prefers interleaved order.
+        from app.services.agent.assistant_stream_parts import WIKI_ASSISTANT_STREAM_PARTS_KEY
+
+        payload[WIKI_ASSISTANT_STREAM_PARTS_KEY] = stream_parts
+    return payload or None
 
 
 def assistant_lc_content_from_db_row(content: str, tool_calls: list | dict | None) -> str:

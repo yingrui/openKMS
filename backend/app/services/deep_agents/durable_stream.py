@@ -35,6 +35,16 @@ _SENTINEL = object()
 PartsFactory = Callable[[AsyncSession, AgentConversation], AsyncIterator[dict[str, Any]]]
 
 
+def _assistant_tool_calls(
+    merged_traces: list[dict[str, str]],
+    acc: ProjectStreamAccumulator,
+    *,
+    existing_stream_parts: list[dict[str, Any]] | None = None,
+) -> dict[str, Any] | None:
+    parts = list(existing_stream_parts or []) + acc.interleaved_parts_for_storage()
+    return tool_payload_from_traces(merged_traces, stream_parts=parts or None)
+
+
 def _error_ndjson_line(err: str, asst: AgentMessage) -> bytes:
     return ndjson_line(
         {
@@ -129,12 +139,15 @@ async def _flush_assistant_progress(
     acc: ProjectStreamAccumulator,
     *,
     existing_traces: list[dict[str, str]] | None = None,
+    existing_stream_parts: list[dict[str, Any]] | None = None,
     content_prefix: str = "",
 ) -> None:
     merged = list(existing_traces or []) + acc.tool_traces
     body = acc.assistant_text or ""
     asst.content = f"{content_prefix}{body}" if content_prefix else body
-    asst.tool_calls = tool_payload_from_traces(merged)
+    asst.tool_calls = _assistant_tool_calls(
+        merged, acc, existing_stream_parts=existing_stream_parts
+    )
     _bump_conversation_timestamp(conversation)
     await session.commit()
 
@@ -148,6 +161,7 @@ async def _persist_failed_assistant(
     acc: ProjectStreamAccumulator,
     *,
     existing_traces: list[dict[str, str]] | None = None,
+    existing_stream_parts: list[dict[str, Any]] | None = None,
     content_prefix: str = "",
     exc: BaseException | None = None,
 ) -> AgentMessage:
@@ -155,7 +169,9 @@ async def _persist_failed_assistant(
     body = acc.assistant_text or ""
     prefixed = f"{content_prefix}{body}" if content_prefix else body
     asst.content = f"{prefixed}\n\n{err}".strip() if prefixed else err
-    asst.tool_calls = tool_payload_from_traces(merged)
+    asst.tool_calls = _assistant_tool_calls(
+        merged, acc, existing_stream_parts=existing_stream_parts
+    )
     if not turn._finished:
         turn.log_failed(
             err,
@@ -235,6 +251,7 @@ async def run_project_turn_background(
     parts_factory: PartsFactory,
     user_message_payload: dict[str, Any] | None = None,
     existing_traces: list[dict[str, str]] | None = None,
+    existing_stream_parts: list[dict[str, Any]] | None = None,
     content_prefix: str = "",
 ) -> None:
     """Run agent loop detached from the HTTP request session."""
@@ -261,6 +278,7 @@ async def run_project_turn_background(
                     asst,
                     acc,
                     existing_traces=existing_traces,
+                    existing_stream_parts=existing_stream_parts,
                     content_prefix=content_prefix,
                 )
                 last_persist = now
@@ -278,6 +296,7 @@ async def run_project_turn_background(
                         err,
                         acc,
                         existing_traces=existing_traces,
+                        existing_stream_parts=existing_stream_parts,
                         content_prefix=content_prefix,
                     )
                     await bridge.emit(_error_ndjson_line(err, failed))
@@ -293,6 +312,7 @@ async def run_project_turn_background(
                     asst,
                     acc,
                     existing_traces=existing_traces,
+                    existing_stream_parts=existing_stream_parts,
                     content_prefix=content_prefix,
                 )
                 merged = list(existing_traces or []) + acc.tool_traces
@@ -317,7 +337,9 @@ async def run_project_turn_background(
             merged = list(existing_traces or []) + acc.tool_traces
             body = acc.assistant_text or ""
             asst.content = f"{content_prefix}{body}" if content_prefix else body
-            asst.tool_calls = tool_payload_from_traces(merged)
+            asst.tool_calls = _assistant_tool_calls(
+                merged, acc, existing_stream_parts=existing_stream_parts
+            )
             turn.log_done(
                 tool_count=len(merged),
                 assistant_chars=len(body),
@@ -349,6 +371,7 @@ async def run_project_turn_background(
                     "cancelled",
                     acc,
                     existing_traces=existing_traces,
+                    existing_stream_parts=existing_stream_parts,
                     content_prefix=content_prefix,
                 )
             except Exception:
@@ -374,6 +397,7 @@ async def run_project_turn_background(
                     str(e),
                     acc,
                     existing_traces=existing_traces,
+                    existing_stream_parts=existing_stream_parts,
                     content_prefix=content_prefix,
                     exc=e,
                 )

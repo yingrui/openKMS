@@ -29,6 +29,7 @@ from app.models.project import Project
 from app.schemas.agent import AgentConversationResponse, AgentMessageListResponse, AgentMessagePostResponse
 from app.schemas.project import ProjectConversationCreate, ProjectConversationPatch, ProjectMessageCreate, ProjectMessageResume
 from app.services.agent.llm import resolve_agent_llm_config
+from app.services.agent.assistant_stream_parts import WIKI_ASSISTANT_STREAM_PARTS_KEY
 from app.services.agent.tool_transcripts import AGENT_TOOL_TRANSCRIPTS_KEY
 from app.services.agent.conversation_title import suggest_conversation_title
 from app.services.agent.agent_session_api_key import ensure_session_api_key, revoke_session_api_key
@@ -675,6 +676,7 @@ async def resume_message(
     rows = sorted(c.messages, key=lambda m: (m.created_at, m.id))
     last_asst = next((m for m in reversed(rows) if m.role == "assistant"), None)
     existing_traces: list[dict[str, str]] = []
+    existing_stream_parts: list[dict] = []
     content_prefix = ""
     if last_asst is not None:
         content_prefix = last_asst.content or ""
@@ -682,6 +684,9 @@ async def resume_message(
             raw = last_asst.tool_calls.get(AGENT_TOOL_TRANSCRIPTS_KEY)
             if isinstance(raw, list):
                 existing_traces = [t for t in raw if isinstance(t, dict)]
+            parts_raw = last_asst.tool_calls.get(WIKI_ASSISTANT_STREAM_PARTS_KEY)
+            if isinstance(parts_raw, list):
+                existing_stream_parts = [p for p in parts_raw if isinstance(p, dict)]
 
     turn = AgentTurnContext.start(
         project_id=project_id,
@@ -730,6 +735,7 @@ async def resume_message(
             turn=turn,
             parts_factory=parts_factory,
             existing_traces=existing_traces,
+            existing_stream_parts=existing_stream_parts or None,
             content_prefix=content_prefix,
         )
 

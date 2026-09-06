@@ -163,7 +163,9 @@ function streamPartsFromPersistedToolCalls(toolCalls: unknown): AssistantStreamP
 
 /**
  * Rebuild assistant `streamParts` from stored `content` + `tool_calls`.
- * Prefers persisted interleaved parts when present; otherwise tools first, then text.
+ * Prefers persisted interleaved parts when present.
+ * Legacy rows (traces only, no interleaved parts): show **text then tools** so the
+ * answer is readable; true mid-turn interleaving cannot be recovered.
  */
 export function assistantHistoryStreamParts(
   content: string,
@@ -174,7 +176,7 @@ export function assistantHistoryStreamParts(
   const toolParts = streamPartsFromPersistedToolCalls(toolCalls);
   const text = content;
   const parts: AssistantStreamPart[] = [];
-  if (toolParts?.length) parts.push(...toolParts);
   if (text.length > 0) parts.push({ type: 'text', text });
+  if (toolParts?.length) parts.push(...toolParts);
   return parts.length > 0 ? parts : undefined;
 }

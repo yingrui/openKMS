@@ -4,8 +4,9 @@ from __future__ import annotations
 
 import re
 from dataclasses import dataclass, field
-from typing import Literal
+from typing import Any, Literal
 
+from app.services.agent.assistant_stream_parts import AssistantStreamPartsBuilder
 from app.services.deep_agents.stream_events import ProjectStreamPart
 
 _COMPACTION_BLOCK_RE = re.compile(
@@ -24,43 +25,53 @@ def strip_leaked_compaction_text(text: str) -> str:
 
 @dataclass
 class ProjectStreamAccumulator:
-    """Collect assistant text and tool traces while forwarding NDJSON to the client."""
+    """Collect assistant text, tool traces, and interleaved UI parts while streaming."""
 
     text_parts: list[str] = field(default_factory=list)
     tool_traces: list[dict[str, str]] = field(default_factory=list)
     tool_inputs: dict[str, str] = field(default_factory=dict)
+    stream_parts: AssistantStreamPartsBuilder = field(default_factory=AssistantStreamPartsBuilder)
     interrupted: bool = False
     interrupt_payload: dict | None = None
 
     def absorb(self, part: ProjectStreamPart) -> Literal["continue", "fatal", "interrupt"]:
         ptype = part.get("type")
         if ptype == "delta" and part.get("t"):
-            self.text_parts.append(part["t"])
+            chunk = str(part["t"])
+            self.text_parts.append(chunk)
+            self.stream_parts.append_delta(chunk)
         elif ptype == "tool_start":
             run_id = str(part.get("run_id") or "")
+            name = str(part.get("name") or "tool")
             inp = part.get("input")
-            if run_id and isinstance(inp, str):
-                self.tool_inputs[run_id] = inp
+            inp_s = inp if isinstance(inp, str) else ""
+            if run_id and inp_s:
+                self.tool_inputs[run_id] = inp_s
+            self.stream_parts.tool_start(run_id, name, inp_s)
         elif ptype == "tool_end":
             name = str(part.get("name") or "tool")
+            output = str(part.get("output") or "")
             trace: dict[str, str] = {
                 "name": name,
-                "output": str(part.get("output") or ""),
+                "output": output,
             }
             run_id = str(part.get("run_id") or "")
             if run_id and run_id in self.tool_inputs:
                 trace["input"] = self.tool_inputs[run_id]
             self.tool_traces.append(trace)
+            self.stream_parts.tool_end(run_id, name, output)
         elif ptype == "tool_error":
             name = str(part.get("name") or "tool")
+            error = str(part.get("error") or "")
             trace = {
                 "name": name,
-                "error": str(part.get("error") or ""),
+                "error": error,
             }
             run_id = str(part.get("run_id") or "")
             if run_id and run_id in self.tool_inputs:
                 trace["input"] = self.tool_inputs[run_id]
             self.tool_traces.append(trace)
+            self.stream_parts.tool_error(run_id, name, error)
         elif ptype == "interrupt":
             self.interrupted = True
             raw = part.get("interrupt")
@@ -73,6 +84,18 @@ class ProjectStreamAccumulator:
     @property
     def assistant_text(self) -> str:
         return strip_leaked_compaction_text("".join(self.text_parts))
+
+    def interleaved_parts_for_storage(self) -> list[dict[str, Any]]:
+        """UI replay parts (text + tools in stream order), with compaction leaks stripped."""
+        out: list[dict[str, Any]] = []
+        for part in self.stream_parts.parts:
+            if part.get("type") == "text":
+                cleaned = strip_leaked_compaction_text(str(part.get("text") or ""))
+                if cleaned:
+                    out.append({"type": "text", "text": cleaned})
+                continue
+            out.append(dict(part))
+        return out
 
 
 def _merge_interrupt_payload(
