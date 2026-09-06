@@ -115,7 +115,7 @@ export function AmwayCockpit({ hub }: { hub: HomeHubResponse }) {
         <div className="cockpit-panel">
           <h2><Target size={16} /> 快速开始</h2>
           <div className="cockpit-quick">
-            <button type="button" onClick={() => navigate('/documents')}><Upload size={22} /><span>接入新资料</span></button>
+            <button type="button" onClick={() => navigate('/ingest')}><Upload size={22} /><span>接入新资料</span></button>
             <button type="button" onClick={() => navigate('/ontology')}><ShieldCheck size={22} /><span>新建知识主张</span></button>
             <button type="button" onClick={() => navigate('/ontology')}><Network size={22} /><span>维护本体</span></button>
             <button type="button" onClick={() => navigate('/evaluations')}><Target size={22} /><span>发起评测</span></button>

@@ -81,6 +81,7 @@ function AppLoadingFallback() {
 
 const Home = lazy(() => import('./pages/Home').then((m) => ({ default: m.Home })));
 const GlobalSearch = lazy(() => import('./pages/GlobalSearch').then((m) => ({ default: m.GlobalSearch })));
+const IngestPage = lazy(() => import('./pages/ingest/IngestPage').then((m) => ({ default: m.IngestPage })));
 const DocumentsIndex = lazy(() => import('./pages/documents/DocumentsIndex').then((m) => ({ default: m.DocumentsIndex })));
 const DocumentChannel = lazy(() => import('./pages/documents/DocumentChannel').then((m) => ({ default: m.DocumentChannel })));
 const DocumentChannels = lazy(() => import('./pages/documents/DocumentChannels').then((m) => ({ default: m.DocumentChannels })));
@@ -176,6 +177,7 @@ function App() {
           <Route index element={<Home />} />
           <Route path="knowledge-map" element={<KnowledgeMap />} />
           <Route path="search" element={<GlobalSearch />} />
+          <Route path="ingest" element={<IngestPage />} />
           <Route path="documents" element={<DocumentsSectionLayout />}>
             <Route index element={<DocumentsIndex />} />
             <Route path="channels/:channelId/settings" element={<DocumentChannelSettings />} />

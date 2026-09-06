@@ -24,24 +24,25 @@ import { useTranslation } from 'react-i18next';
 
 
 import { isConsoleShellPath } from '../../config/appModules';
-import { useVisibleConsolePlatformModules } from '../../hooks/useAppModules';
+import { useVisibleConsolePlatformModules, useVisibleMainSidebarModules } from '../../hooks/useAppModules';
 import { useAuth } from '../../contexts/AuthContext';
 import './Sidebar.scss';
 
 // 安利企业知识中枢 · 固定九大导航（对齐方案概念图）。
 // 用户不区分文章/文档/媒体——「知识接入」是统一上传入口，「内容资产」是统一内容视图。
-const AMWAY_NAV = [
+// requires = 该项依赖的模块 homePath；undefined 表示始终显示（首页/接入/系统治理）。
+const AMWAY_NAV: { to: string; end?: boolean; icon: typeof HomeIcon; label: string; requires?: string }[] = [
   { to: '/', end: true, icon: HomeIcon, label: '首页' },
-  { to: '/documents', icon: Download, label: '知识接入' },
-  { to: '/articles', icon: FileText, label: '内容资产' },
-  { to: '/glossaries', icon: BookOpen, label: '本体与术语' },
-  { to: '/knowledge-map', icon: Network, label: '知识图谱' },
-  { to: '/objects', icon: ShieldCheck, label: '知识主张' },
-  { to: '/ontology', icon: ClipboardCheck, label: '审核发布' },
-  { to: '/knowledge-bases', icon: Layers, label: '知识服务' },
-  { to: '/evaluations', icon: BarChart3, label: '评测运营' },
+  { to: '/ingest', icon: Download, label: '知识接入' },
+  { to: '/articles', icon: FileText, label: '内容资产', requires: '/articles' },
+  { to: '/glossaries', icon: BookOpen, label: '本体与术语', requires: '/glossaries' },
+  { to: '/knowledge-map', icon: Network, label: '知识图谱', requires: '/knowledge-map' },
+  { to: '/objects', icon: ShieldCheck, label: '知识主张', requires: '/ontology' },
+  { to: '/ontology', icon: ClipboardCheck, label: '审核发布', requires: '/ontology' },
+  { to: '/knowledge-bases', icon: Layers, label: '知识服务', requires: '/knowledge-bases' },
+  { to: '/evaluations', icon: BarChart3, label: '评测运营', requires: '/evaluations' },
   { to: '/console', icon: SlidersHorizontal, label: '系统治理' },
-] as const;
+];
 
 export function Sidebar() {
   const { t } = useTranslation('layout');
@@ -49,6 +50,9 @@ export function Sidebar() {
   const consoleShell = isConsoleShellPath(location.pathname);
   const { canAccessConsole, canAccessPath } = useAuth();
   const consolePlatformModules = useVisibleConsolePlatformModules();
+  // 安利固定九项导航仍要过权限：拿可见模块的 homePath 集合，过滤掉无权访问的项。
+  // 首页与系统治理始终显示；其余按对应模块可见性过滤。
+  const visibleModulePaths = new Set(useVisibleMainSidebarModules().map((m) => m.homePath));
 
   const showConsoleDataLabel =
     canAccessPath('/console/data-sources') ||
@@ -207,7 +211,7 @@ export function Sidebar() {
           </div>
         ) : (
           <>
-            {AMWAY_NAV.map((item) => {
+            {AMWAY_NAV.filter((item) => !item.requires || visibleModulePaths.has(item.requires)).map((item) => {
               const Icon = item.icon;
               return (
                 <NavLink
