@@ -17,6 +17,7 @@ import { intentToRuleType } from './actionRuleTypes';
 import {
   ontologyTypeFromColumn,
   PropertiesEditor,
+  toHandCreatedPropertyDefs,
   toPropertyDefs,
   type FormProperty,
 } from './objectTypeFormParts';
@@ -144,6 +145,7 @@ export function ObjectTypeCreateWizard({
     if (!open) return;
     if (!datasetId) {
       setProperties([]);
+      setKeyProperty('');
       savedPropNamesRef.current = null;
       return;
     }
@@ -161,7 +163,9 @@ export function ObjectTypeCreateWizard({
           enabled: enabledNames ? enabledNames.has(c.column_name) : true,
         }));
         setProperties(props);
-        setKeyProperty((prev) => (prev ? prev : cols[0]?.column_name || ''));
+        setKeyProperty((prev) =>
+          prev && cols.some((c) => c.column_name === prev) ? prev : '',
+        );
       })
       .catch((e) => {
         if (!cancelled) {
@@ -201,7 +205,7 @@ export function ObjectTypeCreateWizard({
         name: otName,
         description: description.trim() || undefined,
         dataset_id: datasetId || undefined,
-        properties: toPropertyDefs(properties),
+        properties: datasetId ? toPropertyDefs(properties) : toHandCreatedPropertyDefs(properties),
         key_property: keyProperty || undefined,
         is_master_data: isMasterData,
         display_property: displayProperty || undefined,

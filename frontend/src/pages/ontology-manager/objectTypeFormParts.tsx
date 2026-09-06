@@ -7,6 +7,20 @@ export const PROPERTY_TYPES = ['string', 'number', 'boolean', 'date', 'datetime'
 
 export type FormProperty = PropertyDef & { enabled?: boolean };
 
+/** Platform identity on Neo4j / Explorer — not a configurable schema property. */
+export const SYSTEM_RID_PROPERTY_NAME = '__rid';
+
+/** Names that must not appear in Manager property configuration. */
+export function isReservedPropertyName(name: string): boolean {
+  const n = name.trim();
+  return n === SYSTEM_RID_PROPERTY_NAME || n === 'id';
+}
+
+/** Drop platform identity names from schema edits (legacy `id` + `__rid`). */
+export function withoutReservedProperties(properties: FormProperty[]): FormProperty[] {
+  return properties.filter((p) => p.name.trim() && !isReservedPropertyName(p.name));
+}
+
 /** Prefer ColumnMetadata.ontology_type from the API; fallback for older responses. */
 export function ontologyTypeFromColumn(col: {
   ontology_type?: string;
@@ -53,10 +67,10 @@ export function PropertyRow({
       {onPrimaryKeyChange ? (
         <label className="console-obj-property-primary" title={t('objectTypes.primaryKey')}>
           <input
-            type="radio"
-            name="primary-key"
-            checked={isPrimaryKey}
-            onChange={onPrimaryKeyChange}
+            type="checkbox"
+            className="ds-checkbox"
+            checked={!!isPrimaryKey}
+            onChange={() => onPrimaryKeyChange()}
           />
         </label>
       ) : null}
@@ -87,11 +101,11 @@ export function PropertyRow({
         />
         {t('objectTypes.required')}
       </label>
-      {!fromDataset && (
+      {!fromDataset ? (
         <button type="button" onClick={onRemove} aria-label={t('objectTypes.removeProperty')}>
           <X size={14} />
         </button>
-      )}
+      ) : null}
     </div>
   );
 }
@@ -120,6 +134,8 @@ export function PropertiesEditor({
   onKeyPropertyChange: (name: string) => void;
 }) {
   const { t } = useTranslation('ontology');
+  // Hand-created: never show platform __rid / legacy id in schema config.
+  const displayProps = fromDataset ? properties : withoutReservedProperties(properties);
 
   return (
     <div className="console-modal-section">
@@ -134,12 +150,17 @@ export function PropertiesEditor({
       </div>
       {loadingMetadata ? (
         <p className="console-modal-hint">{t('objectTypes.loadingColumns')}</p>
-      ) : properties.length === 0 ? (
+      ) : displayProps.length === 0 ? (
         <p className="console-modal-hint">
           {fromDataset ? t('objectTypes.noColumns') : t('objectTypes.propertiesHint')}
         </p>
       ) : (
         <div className="console-obj-properties-list">
+          <p className="console-modal-hint">
+            {fromDataset
+              ? t('objectTypes.primaryKeyOptionalHint')
+              : t('objectTypes.handCreatedIdentityHint')}
+          </p>
           <div className="console-obj-property-header">
             {fromDataset ? <span className="console-obj-prop-col-enable" /> : null}
             <span className="console-obj-prop-col-pk" title={t('objectTypes.primaryKey')}>
@@ -149,21 +170,36 @@ export function PropertiesEditor({
             <span className="console-obj-prop-col-type">{t('objectTypes.type')}</span>
             <span className="console-obj-prop-col-required">{t('objectTypes.required')}</span>
           </div>
-          {properties.map((p, i) => (
-            <PropertyRow
-              key={fromDataset ? p.name : i}
-              prop={p}
-              fromDataset={fromDataset}
-              nameTypeReadOnly={nameTypeReadOnly}
-              isPrimaryKey={keyProperty === p.name}
-              onPrimaryKeyChange={() => onKeyPropertyChange(p.name)}
-              onChange={(np) => onChange(i, np)}
-              onRemove={() => onRemove(i)}
-              onToggleEnabled={
-                fromDataset && onToggleEnabled ? (enabled) => onToggleEnabled(i, enabled) : undefined
-              }
-            />
-          ))}
+          {displayProps.map((p, i) => {
+            const sourceIdx = fromDataset
+              ? i
+              : properties.findIndex((x) => x.name === p.name);
+            return (
+              <PropertyRow
+                key={fromDataset ? p.name : `${p.name}-${i}`}
+                prop={p}
+                fromDataset={fromDataset}
+                nameTypeReadOnly={nameTypeReadOnly}
+                isPrimaryKey={keyProperty === p.name}
+                onPrimaryKeyChange={() =>
+                  onKeyPropertyChange(keyProperty === p.name ? '' : p.name)
+                }
+                onChange={(np) => {
+                  if (sourceIdx < 0) return;
+                  onChange(sourceIdx, np);
+                }}
+                onRemove={() => {
+                  if (sourceIdx < 0) return;
+                  onRemove(sourceIdx);
+                }}
+                onToggleEnabled={
+                  fromDataset && onToggleEnabled
+                    ? (enabled) => onToggleEnabled(i, enabled)
+                    : undefined
+                }
+              />
+            );
+          })}
         </div>
       )}
     </div>
@@ -178,4 +214,9 @@ export function toPropertyDefs(properties: FormProperty[]): PropertyDef[] {
       void enabled;
       return rest as PropertyDef;
     });
+}
+
+/** Persistable properties for hand-created types: never store platform __rid / legacy id. */
+export function toHandCreatedPropertyDefs(properties: FormProperty[]): PropertyDef[] {
+  return toPropertyDefs(withoutReservedProperties(properties));
 }

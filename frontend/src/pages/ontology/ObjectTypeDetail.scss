@@ -113,6 +113,38 @@
   max-width: 280px;
 }
 
+.object-type-id-col {
+  max-width: 12rem;
+  vertical-align: top;
+}
+
+.object-type-id-value {
+  display: inline-block;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: var(--text-xs);
+  font-family: var(--font-mono, ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace);
+  color: var(--color-text-muted);
+}
+
+.object-type-system-id-field {
+  .object-type-field-hint {
+    display: block;
+    margin-top: 0.25rem;
+    font-size: var(--text-xs);
+    color: var(--color-text-muted);
+    font-weight: 400;
+  }
+
+  input:disabled {
+    opacity: 0.85;
+    cursor: default;
+    background: var(--color-bg-muted);
+  }
+}
+
 .object-type-row-actions {
   display: flex;
   flex-wrap: wrap;

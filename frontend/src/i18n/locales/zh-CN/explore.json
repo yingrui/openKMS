@@ -264,6 +264,8 @@
       "save": "保存",
       "create": "创建",
       "actionsCol": "操作",
+      "systemIdCol": "__rid",
+      "systemIdHint": "实例平台身份（只读）。Action / App 调用时用此 __rid。",
       "runAction": "运行 {{name}}",
       "actionRunOk": "{{name}} 已完成",
       "actionRunFailed": "操作执行失败"

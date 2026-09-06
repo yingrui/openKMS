@@ -34,7 +34,9 @@ import { RESOURCE_TYPES } from '../../data/resourceAclApi';
 import {
   ontologyTypeFromColumn,
   PropertiesEditor,
+  toHandCreatedPropertyDefs,
   toPropertyDefs,
+  withoutReservedProperties,
   type FormProperty,
 } from './objectTypeFormParts';
 import {
@@ -125,12 +127,14 @@ export function ObjectTypeDetailPage() {
     } else {
       savedPropNamesRef.current = null;
       setProperties(
-        (ot.properties || []).map((p) => ({
-          name: p.name,
-          type: p.type || 'string',
-          required: !!p.required,
-          enabled: true,
-        })),
+        withoutReservedProperties(
+          (ot.properties || []).map((p) => ({
+            name: p.name,
+            type: p.type || 'string',
+            required: !!p.required,
+            enabled: true,
+          })),
+        ),
       );
     }
     setDatasetId(dsId);
@@ -192,7 +196,9 @@ export function ObjectTypeDetailPage() {
           enabled: enabledNames ? enabledNames.has(c.column_name) : true,
         }));
         setProperties(props);
-        setKeyProperty((prev) => (prev ? prev : cols[0]?.column_name || ''));
+        setKeyProperty((prev) =>
+          prev && cols.some((c) => c.column_name === prev) ? prev : '',
+        );
       })
       .catch((e) => {
         if (!cancelled) {
@@ -216,8 +222,9 @@ export function ObjectTypeDetailPage() {
         name: name.trim(),
         description: description.trim() || undefined,
         dataset_id: datasetId || undefined,
-        properties: toPropertyDefs(properties),
-        key_property: keyProperty || undefined,
+        properties: datasetId ? toPropertyDefs(properties) : toHandCreatedPropertyDefs(properties),
+        // Business primary key (optional). Empty string clears on update.
+        key_property: keyProperty,
         is_master_data: isMasterData,
         display_property: displayProperty || undefined,
       });

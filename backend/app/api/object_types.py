@@ -710,7 +710,7 @@ async def update_object_instance(
         instance = ObjectInstance(
             id=object_id,
             object_type_id=object_type_id,
-            data={k: v for k, v in props.items() if k != "id"},
+            data={k: v for k, v in props.items() if k not in ("id", "__rid")},
         )
         db.add(instance)
         await db.flush()

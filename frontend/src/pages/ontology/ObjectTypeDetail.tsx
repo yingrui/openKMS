@@ -20,6 +20,10 @@ import {
   type OntologyActionTypeResponse,
 } from '../../data/ontologyFunctionsApi';
 import { isRunnableAction } from '../ontology-manager/actionRuleTypes';
+import {
+  isReservedPropertyName,
+  SYSTEM_RID_PROPERTY_NAME,
+} from '../ontology-manager/objectTypeFormParts';
 import './ObjectTypeDetail.scss';
 
 export function ObjectTypeDetail() {
@@ -135,6 +139,7 @@ export function ObjectTypeDetail() {
   const handleSave = async () => {
     if (!typeId || !objectType) return;
     for (const p of objectType.properties ?? []) {
+      if (!objectType.dataset_id && isReservedPropertyName(p.name)) continue;
       if (p.required) {
         const v = formData[p.name];
         if (v === undefined || v === null || v === '') {
@@ -145,11 +150,16 @@ export function ObjectTypeDetail() {
     }
     setSaving(true);
     try {
+      const payload = { ...formData };
+      if (!objectType.dataset_id) {
+        delete payload.id;
+        delete payload[SYSTEM_RID_PROPERTY_NAME];
+      }
       if (editInstance) {
-        await updateObjectInstance(typeId, editInstance.id, formData);
+        await updateObjectInstance(typeId, editInstance.id, payload);
         toast.success(t('ontology.objectTypeDetail.toastObjectUpdated'));
       } else {
-        await createObjectInstance(typeId, formData);
+        await createObjectInstance(typeId, payload);
         toast.success(t('ontology.objectTypeDetail.toastObjectCreated'));
       }
       closeForm();
@@ -206,9 +216,21 @@ export function ObjectTypeDetail() {
     );
   }
 
-  const properties: PropertyDef[] = objectType.properties ?? [];
+  const properties: PropertyDef[] = (objectType.properties ?? []).filter(
+    (p) => objectType.dataset_id || !isReservedPropertyName(p.name),
+  );
+  const showSystemRidCol = !objectType.dataset_id;
   const showActionsCol = runnableActions.length > 0 || isAdmin;
-  const cols = [...properties.map((p) => p.name), ...(showActionsCol ? ['actions'] : [])];
+  const cols = [
+    ...(showSystemRidCol ? [SYSTEM_RID_PROPERTY_NAME] : []),
+    ...properties.map((p) => p.name),
+    ...(showActionsCol ? ['actions'] : []),
+  ];
+
+  const cellValue = (inst: ObjectInstanceResponse, propName: string) => {
+    if (!objectType.dataset_id && propName === SYSTEM_RID_PROPERTY_NAME) return displayValue(inst.id);
+    return displayValue(inst.data?.[propName]);
+  };
 
   return (
     <div className="object-type-detail">
@@ -246,6 +268,11 @@ export function ObjectTypeDetail() {
         <table className="object-type-table">
           <thead>
             <tr>
+              {showSystemRidCol ? (
+                <th className="object-type-id-col" title={t('ontology.objectTypeDetail.systemIdHint')}>
+                  {t('ontology.objectTypeDetail.systemIdCol')}
+                </th>
+              ) : null}
               {properties.map((p) => (
                 <th key={p.name}>{p.name}</th>
               ))}
@@ -277,8 +304,15 @@ export function ObjectTypeDetail() {
             ) : (
               instances.map((inst) => (
                 <tr key={inst.id}>
+                  {showSystemRidCol ? (
+                    <td className="object-type-id-col">
+                      <code className="object-type-id-value" title={inst.id}>
+                        {inst.id}
+                      </code>
+                    </td>
+                  ) : null}
                   {properties.map((p) => (
-                    <td key={p.name}>{displayValue(inst.data?.[p.name])}</td>
+                    <td key={p.name}>{cellValue(inst, p.name)}</td>
                   ))}
                   {showActionsCol && (
                     <td className="object-type-actions-col">
@@ -345,7 +379,14 @@ export function ObjectTypeDetail() {
               </button>
             </div>
             <div className="object-type-dialog-body">
-              {(objectType.properties ?? []).map((p) => (
+              {!objectType.dataset_id && editInstance ? (
+                <label className="object-type-system-id-field">
+                  <span>{t('ontology.objectTypeDetail.systemIdCol')}</span>
+                  <input type="text" value={editInstance.id} readOnly disabled />
+                  <span className="object-type-field-hint">{t('ontology.objectTypeDetail.systemIdHint')}</span>
+                </label>
+              ) : null}
+              {properties.map((p) => (
                 <label key={p.name}>
                   <span>{p.name}{p.required ? ' *' : ''}</span>
                   {p.type === 'boolean' ? (

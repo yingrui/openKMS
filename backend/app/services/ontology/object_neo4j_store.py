@@ -24,26 +24,39 @@ def neo4j_safe_label(name: str) -> str:
     return s or "Node"
 
 
+# Platform object identity on Neo4j (hand-created / Action-managed). Not a schema property.
+SYSTEM_RID_PROPERTY = "__rid"
+
+
 def resolve_id_property(obj_type: ObjectType) -> str:
     """Property name used as list/get API id.
 
-    Prefer ``key_property``. For hand-created / Action-managed types (no dataset),
-    always use the write MERGE column (``id``) so list ids match Action ``object_id``
-    and queue primary keys — never fall back to the first schema property (e.g. title).
+    Prefer ``key_property`` for **dataset-backed** types (business key column).
+
+    For hand-created / Action-managed types (no dataset), always use ``__rid`` so list
+    ids match Action ``object_id`` and queue primary keys — never use a schema
+    property such as ``title`` (that would overwrite the business field on MERGE).
     """
+    if not getattr(obj_type, "dataset_id", None):
+        return SYSTEM_RID_PROPERTY
     key = getattr(obj_type, "key_property", None)
     if key and str(key).strip():
         prop_names = [p.get("name") for p in (obj_type.properties or []) if isinstance(p, dict) and p.get("name")]
         if key in (prop_names or [key]):
             return str(key).strip()
-    if not getattr(obj_type, "dataset_id", None):
-        return resolve_write_id_column(obj_type)
     prop_names = [p.get("name") for p in (obj_type.properties or []) if isinstance(p, dict) and p.get("name")]
     return "id" if (prop_names and "id" in prop_names) else (prop_names[0] if prop_names else "id")
 
 
 def resolve_write_id_column(obj_type: ObjectType) -> str:
-    """Stable MERGE identity for Action/queue sync (no first-column fallback)."""
+    """Stable MERGE identity for Action/queue sync.
+
+    No-dataset types always MERGE on ``__rid`` (queue PK). Dataset-backed types may use
+    ``key_property`` as the natural key column. Never fall back to the first schema
+    property (e.g. title) — that made Explorer saves overwrite title with the UUID.
+    """
+    if not getattr(obj_type, "dataset_id", None):
+        return SYSTEM_RID_PROPERTY
     key = getattr(obj_type, "key_property", None)
     if key and str(key).strip():
         return str(key).strip()
@@ -65,12 +78,10 @@ def resolve_neo4j_id_column_for_row(obj_type: ObjectType, sample_row: dict) -> s
 
 
 def instance_row_for_neo4j(obj_type: ObjectType, instance: ObjectInstance) -> dict[str, Any]:
-    """Flat props for MERGE: instance data plus stable id column = instance.id."""
-    row = dict(instance.data or {})
+    """Flat props for MERGE: instance data plus platform ``__rid`` / business key."""
+    row = {k: v for k, v in dict(instance.data or {}).items() if k != SYSTEM_RID_PROPERTY}
     id_col = resolve_write_id_column(obj_type)
     row[id_col] = instance.id
-    if id_col != "id":
-        row.setdefault("id", instance.id)
     return row
 
 
