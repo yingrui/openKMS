@@ -17,10 +17,12 @@ import {
   fetchLinkTypes,
   fetchObjectType,
   indexObjectTypeToNeo4j,
+  purgeObjectTypeInstances,
   updateObjectType,
   type LinkTypeResponse,
   type ObjectTypeResponse,
 } from '../../data/ontologyApi';
+import { useConfirm } from '../../contexts/ConfirmContext';
 import {
   fetchDatasets,
   fetchDatasetMetadata,
@@ -360,6 +362,7 @@ export function ObjectTypeDetailPage() {
 
 export function ObjectTypeOverviewTab() {
   const { t } = useTranslation('ontology');
+  const confirm = useConfirm();
   const {
     objectType,
     relatedLinks,
@@ -378,12 +381,54 @@ export function ObjectTypeOverviewTab() {
     indexing,
     onSave,
     onIndex,
+    reload,
   } = useObjectTypeDetail();
   const [neo4jId, setNeo4jId] = useState(neo4jDataSources[0]?.id || '');
+  const [purgeConfirm, setPurgeConfirm] = useState('');
+  const [purging, setPurging] = useState(false);
+  const purgePhrase = `PURGE ${objectType.name}`;
 
   useEffect(() => {
     if (!neo4jId && neo4jDataSources[0]) setNeo4jId(neo4jDataSources[0].id);
   }, [neo4jId, neo4jDataSources]);
+
+  const handlePurgeType = async () => {
+    if (purgeConfirm.trim() !== purgePhrase) {
+      toast.error(t('objectTypes.purgeConfirmMismatch'));
+      return;
+    }
+    if (
+      !(await confirm({
+        title: t('objectTypes.purgeTypeTitle'),
+        message: t('objectTypes.purgeTypeHint'),
+        confirmLabel: t('objectTypes.purgeTypeAction'),
+        danger: true,
+      }))
+    ) {
+      return;
+    }
+    setPurging(true);
+    try {
+      const res = await purgeObjectTypeInstances(objectType.id, {
+        confirm: purgePhrase,
+        neo4j_data_source_id: neo4jId || undefined,
+      });
+      toast.success(
+        t('objectTypes.purgeSuccess', {
+          objects: res.object_instances_deleted,
+          links: res.link_instances_deleted,
+          nodes: res.neo4j_nodes_deleted,
+          rels: res.neo4j_relationships_deleted,
+        }),
+      );
+      setPurgeConfirm('');
+      await reload();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : t('objectTypes.purgeFailed'));
+    } finally {
+      setPurging(false);
+    }
+  };
 
   const relatedLinksValue =
     relatedLinks.length === 0
@@ -506,6 +551,45 @@ export function ObjectTypeOverviewTab() {
           </div>
         </EntityViewPanel>
       ) : null}
+      <EntityViewPanel title={t('objectTypes.purgeTypeTitle')} description={t('objectTypes.purgeTypeHint')}>
+        <div className="entity-view__form ontology-danger-zone ontology-danger-zone--embedded">
+          {neo4jDataSources.length > 0 ? (
+            <EntityViewField label={t('objectTypes.neo4jSource')}>
+              <select
+                className="console-form-control"
+                value={neo4jId}
+                onChange={(e) => setNeo4jId(e.target.value)}
+                disabled={purging}
+              >
+                {neo4jDataSources.map((ds) => (
+                  <option key={ds.id} value={ds.id}>
+                    {ds.name} ({ds.host}:{ds.port ?? 7687})
+                  </option>
+                ))}
+              </select>
+            </EntityViewField>
+          ) : null}
+          <EntityViewField label={t('objectTypes.purgeTypeConfirm', { phrase: purgePhrase })}>
+            <input
+              className="console-form-control"
+              type="text"
+              value={purgeConfirm}
+              onChange={(e) => setPurgeConfirm(e.target.value)}
+              disabled={purging}
+              autoComplete="off"
+              spellCheck={false}
+            />
+          </EntityViewField>
+          <button
+            type="button"
+            className="btn btn-danger"
+            disabled={purging || purgeConfirm.trim() !== purgePhrase}
+            onClick={() => void handlePurgeType()}
+          >
+            {purging ? t('objectTypes.purging') : t('objectTypes.purgeTypeAction')}
+          </button>
+        </div>
+      </EntityViewPanel>
     </>
   );
 }

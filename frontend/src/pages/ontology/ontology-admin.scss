@@ -1395,3 +1395,41 @@ select.console-form-control {
   border-radius: var(--radius-md);
   text-align: center;
 }
+
+.ontology-danger-zone {
+  margin-top: var(--space-8);
+  padding: var(--space-5);
+  border: 1px solid color-mix(in srgb, var(--color-danger, #b91c1c) 35%, var(--color-border));
+  border-radius: var(--radius-md);
+  background: color-mix(in srgb, var(--color-danger, #b91c1c) 6%, transparent);
+
+  h2 {
+    margin: 0 0 var(--space-2);
+    font-size: var(--text-lg);
+    color: var(--color-danger, #b91c1c);
+  }
+
+  .page-subtitle {
+    margin-bottom: var(--space-4);
+  }
+
+  &__field {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-1);
+    margin-bottom: var(--space-3);
+    max-width: 28rem;
+
+    span {
+      font-size: var(--text-sm);
+      font-weight: 600;
+    }
+  }
+
+  &--embedded {
+    margin-top: 0;
+    padding: 0;
+    border: none;
+    background: transparent;
+  }
+}

@@ -16,6 +16,7 @@ from app.services.ontology.ontology_type_scope import require_object_type_permis
 from app.services.acl.resource_acl_constants import PERM_READ, PERM_WRITE, RT_OBJECT_TYPE
 from app.models.data_source import DataSource
 from app.models.dataset import Dataset
+from app.models.link_instance import LinkInstance
 from app.services.ontology.neo4j_async import open_neo4j_driver, run_with_neo4j_driver
 from app.models.object_instance import ObjectInstance
 from app.models.object_type import ObjectType
@@ -65,6 +66,32 @@ class IndexToNeo4jRequest(BaseModel):
 class IndexToNeo4jResponse(BaseModel):
     object_types_indexed: int
     nodes_created: int
+
+
+class PurgeOntologyDataRequest(BaseModel):
+    """Dangerous wipe of apply-queue rows and Neo4j nodes for one object type."""
+
+    confirm: str
+    neo4j_data_source_id: str | None = None
+    """If omitted, uses the first Neo4j data source when any exist."""
+
+
+class PurgeOntologyDataResponse(BaseModel):
+    object_instances_deleted: int
+    link_instances_deleted: int
+    neo4j_nodes_deleted: int
+    neo4j_relationships_deleted: int
+    object_types_cleared: int
+    link_types_cleared: int
+
+
+def _purge_object_type_neo4j(session, obj_type: ObjectType) -> int:
+    label = neo4j_safe_label(obj_type.name)
+    count_row = session.run(f"MATCH (n:{label}) RETURN count(n) AS c").single()
+    n = int(count_row["c"] or 0) if count_row else 0
+    if n:
+        session.run(f"MATCH (n:{label}) DETACH DELETE n")
+    return n
 
 
 async def _object_instance_count(db: AsyncSession, object_type_id: str) -> int:
@@ -404,6 +431,107 @@ async def _open_neo4j_driver_for_index(body: IndexToNeo4jRequest, db: AsyncSessi
             detail="Neo4j driver not installed. pip install neo4j",
         ) from None
     return open_neo4j_driver(neo4j_ds)
+
+
+@router.post(
+    "/{object_type_id}/purge-instances",
+    response_model=PurgeOntologyDataResponse,
+    dependencies=[Depends(require_any_permission(PERM_CONSOLE_OBJECT_TYPES, PERM_ONTOLOGY_WRITE))],
+)
+async def purge_object_type_instances(
+    object_type_id: str,
+    body: PurgeOntologyDataRequest,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+):
+    """Dangerous: clear queue rows for one object type and DETACH DELETE its Neo4j label."""
+    await _require_object_type_write(request, db, object_type_id)
+    obj_type = await db.get(ObjectType, object_type_id)
+    if not obj_type:
+        raise HTTPException(status_code=404, detail="Object type not found")
+
+    expected = f"PURGE {obj_type.name}"
+    if (body.confirm or "").strip() != expected:
+        raise HTTPException(
+            status_code=400,
+            detail=f'Confirmation failed. Send confirm="{expected}"',
+        )
+
+    inst_ids = (
+        await db.execute(
+            select(ObjectInstance.id).where(ObjectInstance.object_type_id == object_type_id)
+        )
+    ).scalars().all()
+    link_count = 0
+    if inst_ids:
+        link_count = (
+            await db.execute(
+                select(func.count())
+                .select_from(LinkInstance)
+                .where(
+                    or_(
+                        LinkInstance.source_object_id.in_(inst_ids),
+                        LinkInstance.target_object_id.in_(inst_ids),
+                    )
+                )
+            )
+        ).scalar_one()
+        await db.execute(
+            LinkInstance.__table__.delete().where(
+                or_(
+                    LinkInstance.source_object_id.in_(inst_ids),
+                    LinkInstance.target_object_id.in_(inst_ids),
+                )
+            )
+        )
+    obj_count = (
+        await db.execute(
+            select(func.count()).select_from(ObjectInstance).where(
+                ObjectInstance.object_type_id == object_type_id
+            )
+        )
+    ).scalar_one()
+    await db.execute(
+        ObjectInstance.__table__.delete().where(ObjectInstance.object_type_id == object_type_id)
+    )
+    await db.flush()
+
+    nodes_deleted = 0
+    neo4j_ds: DataSource | None = None
+    if body.neo4j_data_source_id:
+        neo4j_ds = await db.get(DataSource, body.neo4j_data_source_id)
+        if not neo4j_ds or neo4j_ds.kind != "neo4j":
+            raise HTTPException(status_code=400, detail="Invalid Neo4j data source")
+    else:
+        neo4j_ds = await get_first_neo4j_datasource(db)
+
+    if neo4j_ds:
+        try:
+            from neo4j import GraphDatabase  # noqa: F401
+        except ImportError:
+            raise HTTPException(
+                status_code=501,
+                detail="Neo4j driver not installed. pip install neo4j",
+            ) from None
+
+        def _run(driver) -> int:
+            with driver.session() as session:
+                return _purge_object_type_neo4j(session, obj_type)
+
+        try:
+            nodes_deleted = await run_with_neo4j_driver(neo4j_ds, _run)
+        except Exception as e:
+            await db.rollback()
+            raise HTTPException(status_code=502, detail=f"Queue cleared but Neo4j purge failed: {e}") from e
+
+    return PurgeOntologyDataResponse(
+        object_instances_deleted=int(obj_count or 0),
+        link_instances_deleted=int(link_count or 0),
+        neo4j_nodes_deleted=nodes_deleted,
+        neo4j_relationships_deleted=0,
+        object_types_cleared=1,
+        link_types_cleared=0,
+    )
 
 
 @router.post(

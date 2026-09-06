@@ -99,6 +99,32 @@ export async function indexObjectTypeToNeo4j(
   );
 }
 
+export const PURGE_TYPE_CONFIRM_PREFIX = 'PURGE ';
+
+export interface PurgeOntologyDataResponse {
+  object_instances_deleted: number;
+  link_instances_deleted: number;
+  neo4j_nodes_deleted: number;
+  neo4j_relationships_deleted: number;
+  object_types_cleared: number;
+  link_types_cleared: number;
+}
+
+/** Wipe queue + Neo4j nodes for one object type. confirm must be `PURGE {typeName}`. */
+export async function purgeObjectTypeInstances(
+  objectTypeId: string,
+  data: { confirm: string; neo4j_data_source_id?: string },
+): Promise<PurgeOntologyDataResponse> {
+  return request<PurgeOntologyDataResponse>(
+    `/api/object-types/${encodeURIComponent(objectTypeId)}/purge-instances`,
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    },
+  );
+}
+
 export async function generateCypherFromQuestion(question: string): Promise<{ cypher: string; explanation: string }> {
   return request<{ cypher: string; explanation: string }>('/api/ontology/text-to-cypher', {
     method: 'POST',

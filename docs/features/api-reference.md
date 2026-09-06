@@ -260,6 +260,7 @@ The bundled **openkms-skill** CLI wraps **lifecycle** and **relationships** the 
 | GET | `/api/object-types/{id}/objects/{obj_id}` | Get object instance (read ACL; no-dataset from Neo4j) |
 | PUT | `/api/object-types/{id}/objects/{obj_id}` | Update object instance queue row + same-request Neo4j sync (admin-only + write ACL; no-dataset types only) |
 | DELETE | `/api/object-types/{id}/objects/{obj_id}` | Delete queue row + same-request Neo4j DETACH DELETE (admin-only + write ACL; no-dataset types only) |
+| POST | `/api/object-types/{id}/purge-instances` | **Dangerous.** Clear queue rows for one object type and DETACH DELETE its Neo4j label. Body: `{ confirm: "PURGE {ObjectTypeName}", neo4j_data_source_id? }`. |
 | POST | `/api/object-types/index-to-neo4j` | Index object types that have a linked dataset or stored instances to Neo4j as nodes (admin-only; body: neo4j_data_source_id) |
 | POST | `/api/object-types/{id}/index-to-neo4j` | Index one object type to Neo4j from its dataset, or drain the `object_instances` apply queue when there is no dataset (admin-only; body: neo4j_data_source_id; 400 if neither applies) |
 | GET | `/api/link-types` | List link types (authenticated); ?count_from_neo4j=true for link_count from Neo4j |
