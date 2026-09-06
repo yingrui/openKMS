@@ -139,7 +139,15 @@ def add_subparser(sub) -> None:
     cr.add_argument("--display-name", required=True)
     cr.add_argument("--object-type-id", required=True)
     cr.add_argument("--description", default=None)
-    cr.add_argument("--rule-type", default="function")
+    cr.add_argument(
+        "--rule-type",
+        required=True,
+        choices=["object_create", "object_modify", "object_delete", "function"],
+        help=(
+            "Prefer object_create / object_modify / object_delete (built-in; no Function). "
+            "Use function only when custom FoO logic is required."
+        ),
+    )
     cr.add_argument("--function-id", default=None)
     cr.add_argument("--function-version", type=int, default=None)
     cr.add_argument("--parameters-json", default=None)

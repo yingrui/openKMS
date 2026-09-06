@@ -186,7 +186,7 @@ All write subcommands accept `--yes` / `--dry-run`. Without `--yes` on non-TTY s
 | `ontology functions delete` *(write)* | DELETE | `/api/ontology/functions/{id}` | |
 | `ontology action-types list` | GET | `/api/ontology/action-types` | |
 | `ontology action-types get` | GET | `/api/ontology/action-types/{id}` | |
-| `ontology action-types create` *(write)* | POST | `/api/ontology/action-types` | |
+| `ontology action-types create` *(write)* | POST | `/api/ontology/action-types` | **`--rule-type` required.** Prefer `object_create` / `object_modify` / `object_delete` (no Function). Use `function` + `--function-id` only for custom FoO. |
 | `ontology action-types update` *(write)* | PATCH | `/api/ontology/action-types/{id}` | |
 | `ontology action-types execute` *(write)* | POST | `/api/ontology/action-types/{id}/execute` | Body `{object_id?, input}`. |
 | `ontology action-types logs` | GET | `/api/ontology/action-types/{id}/logs` | |

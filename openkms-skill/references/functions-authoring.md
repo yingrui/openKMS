@@ -84,14 +84,18 @@ Seed check: published **`helloGreeting`** with `{"name":"openKMS"}`.
 
 | Layer | Role |
 |-------|------|
-| **Function** | Read / compute / compose; return a dict (`Client` is read/compose only) |
-| **Action type** | Intentional op; execute runs the bound Function + audit, then **applies `create` / `modify` / `delete` edits** on resolvable object instances. Dataset/Neo4j synthetic ids and link edit ops remain deferred |
+| **Function** | Read / compute / compose; return a dict (`Client` is read/compose only). Optional FoO for suggest / derive — not the default write path |
+| **Action type (built-in)** | **First choice for CRUD.** `--rule-type object_create\|object_modify\|object_delete` — no Function; platform applies create / property merge / delete on Explorer instances |
+| **Action type (function)** | **Only when custom logic is required.** `--rule-type function` + bound FoO; execute runs the Function + audit, then applies `create_edit_batch()` edits |
 | **Connector sync** | Load external datasets (e.g. Tushare) — **never** implement sync inside a Function |
 
-Edits: return `{"edits": create_edit_batch().…get_edits()}` from an Action-bound Function to persist object creates, property merges, or deletes. Domain types (Stock, screens, Kanban WorkItem) are **tenant DIY**, not platform seeds — skill Workflow **G**.
+**Prefer built-in Actions** for create / edit / delete WorkItem-style flows (Kanban, Explorer forms). Author a Function-backed Action only for validation, multi-object edits, or non-trivial derived writes. Dataset/Neo4j synthetic ids and link edit ops remain deferred for apply.
+
+Edits from FoO: return `{"edits": create_edit_batch().…get_edits()}` from an Action-bound Function. Domain types (Stock, screens, Kanban WorkItem) are **tenant DIY**, not platform seeds — skill Workflow **G**.
 
 ## Do not
 
+- Default new Actions to `--rule-type function` when `object_create` / `object_modify` / `object_delete` would suffice.
 - Import `httpx` / `requests` / open arbitrary URLs from Function source.
 - Call Tushare or other vendors from Function code — use connector-backed datasets + object types.
 - Neo4j-index huge daily fact tables just to query them from Functions — search dataset-backed OTs or keep facts as datasets.

@@ -78,6 +78,29 @@ def test_action_types_create(mock_api):
 
     cmd_create(
         _ns(
+            api_name="createWorkItem",
+            display_name="Create Work Item",
+            object_type_id="ot1",
+            rule_type="object_create",
+            description=None,
+            function_id=None,
+            function_version=None,
+            parameters_json=None,
+        )
+    )
+    body = json.loads(recorded[-1].content)
+    assert body["api_name"] == "createWorkItem"
+    assert body["rule_type"] == "object_create"
+    assert "function_id" not in body
+
+
+def test_action_types_create_function_backed(mock_api):
+    recorded, responses = mock_api
+    responses[("POST", "/api/ontology/action-types")] = (201, {"id": "at2"})
+    from openkms.commands.action_types import cmd_create
+
+    cmd_create(
+        _ns(
             api_name="addToWatchlist",
             display_name="Add",
             object_type_id="ot1",
@@ -88,7 +111,9 @@ def test_action_types_create(mock_api):
             parameters_json=None,
         )
     )
-    assert json.loads(recorded[-1].content)["api_name"] == "addToWatchlist"
+    body = json.loads(recorded[-1].content)
+    assert body["rule_type"] == "function"
+    assert body["function_id"] == "fn1"
 
 
 def test_comments_list(mock_api):

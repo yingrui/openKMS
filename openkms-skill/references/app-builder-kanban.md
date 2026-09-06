@@ -51,8 +51,8 @@ python scripts/cli.py apps publish <app_id> --yes
 ## Prerequisites
 
 1. Object type with a column property (e.g. `WorkItem.status`) whose values match the sample filters (or edit the JSON filters).
-2. Action types `createWorkItem` / `updateWorkItem` whose Functions return `create_edit_batch()` edits.
-3. Optional FoO `suggestWorkItemPriority` accepting `work_item_id` / `object_id`, returning `priority` (and optional `hint`).
+2. Action types `createWorkItem` / `updateWorkItem` with **built-in** rules (`object_create` / `object_modify`) — **not** Function-backed unless you need custom logic.
+3. Optional FoO `suggestWorkItemPriority` (Resources + `executeFunction` only) accepting `work_item_id` / `object_id`, returning `priority` (and optional `hint`).
 4. A few Explorer instances so columns are non-empty.
 
 ## What not to do

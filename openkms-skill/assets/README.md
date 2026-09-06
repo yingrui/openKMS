@@ -13,8 +13,8 @@ Read [references/app-builder.md](../references/app-builder.md) before patching; 
 | Kind | Values in JSON |
 |------|----------------|
 | Object type | `WorkItem` |
-| Actions | `createWorkItem`, `updateWorkItem` |
-| Function | `suggestWorkItemPriority` |
+| Actions | `createWorkItem`, `updateWorkItem` (prefer built-in `object_create` / `object_modify`) |
+| Function | `suggestWorkItemPriority` (optional suggest only — not required for Save) |
 | Loader / List paths | `/lists/todo`, `/lists/inProgress`, `/lists/done` |
 | `status` filters | `To Do`, `In Progress`, `done` (exact strings) |
 | Form buckets | `/createWorkItem`, `/editWorkItem` |
