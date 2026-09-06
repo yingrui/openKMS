@@ -1,6 +1,7 @@
 """LLM-based intrinsic content review for articles."""
 
 import logging
+import re
 from typing import Any
 
 from openai import AsyncOpenAI
@@ -145,7 +146,9 @@ def _result_from_output(
 
 def _openai_model_from_config(model_config: dict[str, Any]) -> OpenAIChatModel:
     base_url = model_config.get("base_url", "").rstrip("/")
-    if base_url and not base_url.endswith("/v1"):
+    # 只有 base_url 不以版本段结尾时才补 /v1。GLM 的根是 .../paas/v4，
+    # 旧逻辑硬拼成 .../paas/v4/v1 → 智谱 404。与 metadata_extraction / qa-agent 等处统一。
+    if base_url and not re.search(r"/v\d+$", base_url):
         base_url = f"{base_url}/v1"
     client = AsyncOpenAI(
         base_url=base_url,
