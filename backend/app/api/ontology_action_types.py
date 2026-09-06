@@ -154,14 +154,22 @@ async def update_action_type(
     _: None = Depends(require_any_permission(PERM_ONTOLOGY_WRITE)),
 ):
     at = await _get_action_type(db, action_type_id)
-    next_rule_type = body.rule_type if body.rule_type is not None else at.rule_type
-    next_function_id = at.function_id if body.function_id is None else body.function_id
-    if body.rule_type is not None or body.function_id is not None:
+    data = body.model_dump(exclude_unset=True)
+    next_rule_type = data.get("rule_type", at.rule_type)
+    if "function_id" in data:
+        next_function_id = data["function_id"]
+    elif "rule_type" in data and is_builtin_object_rule(data["rule_type"]):
+        # Converting to built-in CRUD clears any prior Function binding.
+        next_function_id = None
+    else:
+        next_function_id = at.function_id
+    if "rule_type" in data or "function_id" in data:
         _validate_action_type_fields(rule_type=next_rule_type, function_id=next_function_id)
-    for field in ("display_name", "description", "rule_type", "function_id", "function_version", "parameters", "status"):
-        val = getattr(body, field)
-        if val is not None:
-            setattr(at, field, val)
+    for field, val in data.items():
+        setattr(at, field, val)
+    if "rule_type" in data and is_builtin_object_rule(data["rule_type"]) and "function_id" not in data:
+        at.function_id = None
+        at.function_version = None
     await db.commit()
     await db.refresh(at)
     return await _to_response(db, at)

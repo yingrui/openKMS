@@ -275,7 +275,9 @@ The bundled **openkms-skill** CLI wraps **lifecycle** and **relationships** the 
 | POST | `/api/link-types/{id}/index-to-neo4j` | Index one link type to Neo4j (same rules as bulk; 400 if nothing to index) (admin-only) |
 | POST | `/api/ontology/explore` | Execute read-only Cypher query against Neo4j (body: `{ cypher }`); used by Object Explorer |
 | GET | `/api/ontology/groups/{id}/related` | Link types / Functions / Actions derived from the group's saved object types (`ontology:read`) |
-| POST | `/api/ontology/action-types/{id}/execute` | Run Action: OFS Function + audit; applies `output.edits` **create** / **modify** / **delete** ops on resolvable object instances; response may include `applied` |
+| POST | `/api/ontology/action-types/{id}/execute` | Run Action: **built-in** `object_create` / `object_modify` / `object_delete` (no Function) or Function + audit + `output.edits`; response may include `applied` |
+| PATCH | `/api/ontology/action-types/{id}` | Update Action; switching `rule_type` to built-in clears `function_id` when omitted |
+| DELETE | `/api/ontology/action-types/{id}` | Delete Action (frees `api_name`; archive alone does not) |
 | GET | `/api/app-builder/apps` | List apps (`?status=published`); `ontology:read` |
 | POST | `/api/app-builder/apps` | Create app (name + api_name; optional resource allowlist in `bindings`; stub A2UI if unbound) (`ontology:write`) |
 | GET | `/api/app-builder/apps/{id}` | Published run document only (404 if draft) |

@@ -7,6 +7,7 @@ description: >-
   Cypher/NL ask, functions/action-types/groups, and App Builder apps (list/get/create/patch/publish).
   Write paths include sync, index, CRUD, function publish/execute, and A2UI draft patch.
   Before Function --source-code-file: MUST read references/functions-authoring.md.
+  Before ontology action-types create|update|delete|execute: MUST read references/actions-authoring.md.
   Before any apps CLI or App/A2UI/Kanban work: MUST read references/app-builder.md
   (then references/app-builder-kanban.md; sample assets/kanban-a2ui-messages.json).
   Use when agents must read or push openKMS content without the web UI. Only config.yml
@@ -28,6 +29,7 @@ Do **not** implement openKMS access with hand-written **`curl`**, ad-hoc **`http
 | If you are about to… | You **must** read first |
 |----------------------|-------------------------|
 | Write Ontology Function `--source-code-file` / validate / publish Function source | [references/functions-authoring.md](references/functions-authoring.md) |
+| Create / update / delete / execute Ontology Action types | [references/actions-authoring.md](references/actions-authoring.md) |
 | Run any `apps …` command, or build/patch/publish an App, A2UI surface, board, Kanban, Modal+Action wiring | [references/app-builder.md](references/app-builder.md) (mechanism: Resources → Loaders → Layout → Preview → Publish + host events) |
 | Compose a multi-column Kanban-style App (after `app-builder.md`) | [references/app-builder-kanban.md](references/app-builder-kanban.md) + sample [`assets/kanban-a2ui-messages.json`](assets/kanban-a2ui-messages.json) |
 
@@ -115,7 +117,7 @@ Some practical guidance:
 - **`kb ask` vs `kb search`.** `ask` proxies to the QA agent and returns a grounded *answer* (with citations). `search` is **hybrid** (BM25 + dense + RRF + cross-encoder rerank) and returns *raw chunks + FAQ matches*. Use `ask` when the user wants an answer; use `search` when you need source material to reason over yourself.
 - **KB wiki indexing.** Link with **`kb wiki-spaces link`**, then **`kb wiki-spaces reindex`** or **`kb index`**. Poll **`jobs get`**.
 - **`ontology ask` is a 3-call chain.** Use when the question is graph-shaped. Use individual subcommands when you need to inspect Cypher.
-- **Ontology Functions vs Actions vs Connectors.** Functions = read/compute Python logic (`ontology functions …`). Action types = intentional ops (`ontology action-types …`). **Default to built-in rules** — `--rule-type object_create|object_modify|object_delete` (no Function; platform applies the edit). Use `--rule-type function` + `--function-id` **only** when you need custom FoO logic (validation, derived fields, multi-step edits via `create_edit_batch()`). Connector **sync** loads external datasets (e.g. Tushare) — not an Action. Prefer not Neo4j-indexing huge daily fact tables; index master data (e.g. Stock) and analysis objects. Domain types/Functions (Stock, screens) are **tenant DIY**, not platform seeds — see Workflow **G**. Visual boards are tenant **Apps** — **must** open [references/app-builder.md](references/app-builder.md) first (Workflow **H** / Kanban example after that).
+- **Ontology Functions vs Actions vs Connectors.** Functions = read/compute Python logic (`ontology functions …`). Action types = intentional ops (`ontology action-types …`). **Default to built-in rules** — `--rule-type object_create|object_modify|object_delete` (no Function; platform applies the edit). Use `--rule-type function` + `--function-id` **only** when you need custom FoO logic (validation, derived fields, multi-step edits via `create_edit_batch()`). Before any Action write path, read **[references/actions-authoring.md](references/actions-authoring.md)** — do **not** probe unknown `rule_type` values. Connector **sync** loads external datasets (e.g. Tushare) — not an Action. Prefer not Neo4j-indexing huge daily fact tables; index master data (e.g. Stock) and analysis objects. Domain types/Functions (Stock, screens) are **tenant DIY**, not platform seeds — see Workflow **G**. Visual boards are tenant **Apps** — **must** open [references/app-builder.md](references/app-builder.md) first (Workflow **H** / Kanban example after that).
 - **Authoring Function source.** Before writing `--source-code-file`, read **[references/functions-authoring.md](references/functions-authoring.md)** (`@function`, `Client` search/fetch/execute_function, `uses=`, allowed imports, CLI validate→publish). Do not invent HTTP inside Function code. `Client` is read/compose only. Prefer built-in Action rules for CRUD; only Action-bound Functions returning `create_edit_batch()` edits when custom write logic is required.
 - **App Builder Apps (`apps` CLI).** **Stop and read [references/app-builder.md](references/app-builder.md) before** `apps create|patch|synthesize|publish` or any A2UI Source edit. That doc is the App Builder mechanism (same five steps as Design’s right rail). Then use CLI only; no designer chat; no ad-hoc `/api/app-builder`. Kanban worked example: [references/app-builder-kanban.md](references/app-builder-kanban.md); sample messages: [assets/kanban-a2ui-messages.json](assets/kanban-a2ui-messages.json).
 - **Object type properties** may use `string`, `integer`, `number`, `boolean`, `date`, `datetime`, `uuid` in `--properties-json`.
@@ -260,7 +262,7 @@ Same confirmation rules as other writes.
 | MERGE all indexable link types into Neo4j | `python scripts/cli.py ontology links sync-neo4j --neo4j-data-source-id DS --yes` |
 | MERGE one link type into Neo4j | `python scripts/cli.py ontology links sync-neo4j-type --type-id LT_ID --neo4j-data-source-id DS --yes` |
 | Create / validate / publish function | `ontology functions create … --source-code-file ./fn.py --yes` then `validate` / `publish` |
-| Create / execute action type | `ontology action-types create … --rule-type object_create\|object_modify\|object_delete --yes` (prefer built-in; add `--rule-type function --function-id …` only for custom FoO) / `execute --id AT --object-id OI --yes` |
+| Create / update / delete / execute action type | Prefer built-in: `ontology action-types create … --rule-type object_create\|object_modify\|object_delete --yes`. Convert in place: `update --id AT --rule-type object_modify --clear-function --yes`. Free `api_name`: `delete --id AT --yes` (archive alone does not). Execute: `execute --id AT --object-id OI --yes`. **Must** read [actions-authoring.md](references/actions-authoring.md). |
 | Create App (stub draft) | **Read [references/app-builder.md](references/app-builder.md) first**, then `python scripts/cli.py apps create --name "Kanban" --api-name kanban --bindings-json '{…}' --yes` |
 | Patch App Resources / A2UI draft | **Same reference first**, then `apps patch <id> --bindings-json '{…}' --a2ui-messages-file ./a2ui.json --yes` |
 | Reset draft to stub layout | `python scripts/cli.py apps synthesize <id> --yes` |
@@ -353,10 +355,10 @@ Workbench types (Watchlist / ScreenRun): create instances via Object Explorer / 
 **Before any command below:** open and follow **[references/app-builder.md](references/app-builder.md)** (authoring journey + host events). Then **[references/app-builder-kanban.md](references/app-builder-kanban.md)** and patch from **[`assets/kanban-a2ui-messages.json`](assets/kanban-a2ui-messages.json)**. Platform has **no** Kanban widget — compose filtered `OntoObjectList` + `List` + Modal/`executeAction` / `executeFunction`. *(Monorepo-only extra reading: `docs/tutorials/understanding-ontology.md` Step F — not present in skill installs.)*
 
 ```bash
-# After WorkItem OT + built-in Actions (object_create / object_modify) + optional suggest FoO:
+# After WorkItem OT + built-in Actions (object_create / object_modify / object_delete per actions-authoring.md) + optional suggest FoO:
 python scripts/cli.py apps create \
   --name "Kanban" --api-name kanban \
-  --bindings-json '{"objectTypes":["WorkItem"],"actions":["createWorkItem","updateWorkItem"],"functions":["suggestWorkItemPriority"]}' \
+  --bindings-json '{"objectTypes":["WorkItem"],"actions":["createWorkItem","updateWorkItem","deleteWorkItem"],"functions":["suggestWorkItemPriority"]}' \
   --yes
 # Sample messages (skill tree): assets/kanban-a2ui-messages.json
 python scripts/cli.py apps patch <app_id> --a2ui-messages-file ./assets/kanban-a2ui-messages.json --yes
@@ -372,6 +374,7 @@ Per [agentskills.io](https://agentskills.io/specification): keep detailed materi
 
 - CLI ↔ HTTP map: [references/REFERENCE.md](references/REFERENCE.md) (operators / code review — **not** a second HTTP path for agents)
 - Ontology Function **source** authoring: [references/functions-authoring.md](references/functions-authoring.md)
+- Ontology Action types (built-in CRUD first): [references/actions-authoring.md](references/actions-authoring.md)
 - App Builder **mechanism** (authoring journey + host): [references/app-builder.md](references/app-builder.md)
 - App Builder Kanban example: [references/app-builder-kanban.md](references/app-builder-kanban.md)
 - Kanban A2UI messages sample: [assets/kanban-a2ui-messages.json](assets/kanban-a2ui-messages.json)

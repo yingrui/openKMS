@@ -4,7 +4,7 @@ Part of [agentskills.io](https://agentskills.io/specification) **`references/`**
 
 **Required by `SKILL.md`:** open this file **before** any `apps …` command or App / A2UI / board work. Do not invent layout or host wiring from memory.
 
-**Source of truth in this skill:** [app-builder-kanban.md](app-builder-kanban.md) (worked example) · [`assets/kanban-a2ui-messages.json`](../assets/kanban-a2ui-messages.json) (messages sample) · [functions-authoring.md](functions-authoring.md).
+**Source of truth in this skill:** [app-builder-kanban.md](app-builder-kanban.md) (worked example) · [`assets/kanban-a2ui-messages.json`](../assets/kanban-a2ui-messages.json) (messages sample) · [actions-authoring.md](actions-authoring.md) (CRUD Actions) · [functions-authoring.md](functions-authoring.md) (optional suggest FoO).
 
 **Monorepo only (not shipped in skill installs):** openKMS checkout paths such as `docs/features/app-builder.md` and `docs/tutorials/…` are **unavailable** under `~/.claude/skills`, OpenCode, or Agents zip. Do not rely on them; use this file and the links above.
 

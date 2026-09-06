@@ -116,6 +116,40 @@ def test_action_types_create_function_backed(mock_api):
     assert body["function_id"] == "fn1"
 
 
+def test_action_types_update_clear_function(mock_api):
+    recorded, responses = mock_api
+    responses[("PATCH", "/api/ontology/action-types/at1")] = (200, {"id": "at1"})
+    from openkms.commands.action_types import cmd_update
+
+    cmd_update(
+        _ns(
+            id="at1",
+            display_name=None,
+            description=None,
+            rule_type="object_modify",
+            function_id=None,
+            clear_function=True,
+            function_version=None,
+            parameters_json=None,
+            status=None,
+        )
+    )
+    body = json.loads(recorded[-1].content)
+    assert body["rule_type"] == "object_modify"
+    assert body["function_id"] is None
+    assert body["function_version"] is None
+
+
+def test_action_types_delete(mock_api):
+    recorded, responses = mock_api
+    responses[("DELETE", "/api/ontology/action-types/at1")] = (204, b"")
+    from openkms.commands.action_types import cmd_delete
+
+    cmd_delete(_ns(id="at1"))
+    assert recorded[-1].method == "DELETE"
+    assert recorded[-1].url.path == "/api/ontology/action-types/at1"
+
+
 def test_comments_list(mock_api):
     recorded, _ = mock_api
     from openkms.commands.comments import cmd_list

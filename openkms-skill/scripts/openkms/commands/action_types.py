@@ -1,4 +1,4 @@
-"""ontology action-types — list/get/create/update/execute/logs."""
+"""ontology action-types — list/get/create/update/delete/execute/logs."""
 from __future__ import annotations
 
 import argparse
@@ -9,6 +9,8 @@ from typing import Any
 from .._confirm import add_write_flags, confirm_or_abort
 from ..client import client
 from .._io import print_json
+
+RULE_TYPE_CHOICES = ("object_create", "object_modify", "object_delete", "function")
 
 
 def _parse_json_arg(label: str, value: str) -> Any:
@@ -70,9 +72,12 @@ def cmd_update(ns: argparse.Namespace) -> None:
         body["description"] = ns.description
     if ns.rule_type is not None:
         body["rule_type"] = ns.rule_type
-    if ns.function_id is not None:
+    if ns.clear_function:
+        body["function_id"] = None
+        body["function_version"] = None
+    elif ns.function_id is not None:
         body["function_id"] = ns.function_id
-    if ns.function_version is not None:
+    if ns.function_version is not None and not ns.clear_function:
         body["function_version"] = ns.function_version
     if ns.parameters_json is not None:
         body["parameters"] = _parse_json_arg("parameters-json", ns.parameters_json)
@@ -94,6 +99,22 @@ def cmd_update(ns: argparse.Namespace) -> None:
         r = s.patch(path, json=body)
     r.raise_for_status()
     print_json(r.json())
+
+
+def cmd_delete(ns: argparse.Namespace) -> None:
+    path = f"/api/ontology/action-types/{ns.id}"
+    confirm_or_abort(
+        action=f"delete action type {ns.id}",
+        method="DELETE",
+        path=path,
+        body=None,
+        yes=ns.yes,
+        dry_run=ns.dry_run,
+    )
+    with client() as s:
+        r = s.delete(path)
+    r.raise_for_status()
+    print(f"deleted action type {ns.id}", file=sys.stderr)
 
 
 def cmd_execute(ns: argparse.Namespace) -> None:
@@ -128,7 +149,7 @@ def add_subparser(sub) -> None:
     p = sub.add_parser("action-types", help="Ontology Action types")
     sp = p.add_subparsers(dest="at_cmd", required=True)
 
-    sp.add_parser("list", help="List action types").set_defaults(fn=cmd_list)
+    sp.add_parser("list", help="List action types (all statuses)").set_defaults(fn=cmd_list)
 
     gt = sp.add_parser("get", help="Get action type")
     gt.add_argument("--id", required=True)
@@ -142,7 +163,7 @@ def add_subparser(sub) -> None:
     cr.add_argument(
         "--rule-type",
         required=True,
-        choices=["object_create", "object_modify", "object_delete", "function"],
+        choices=list(RULE_TYPE_CHOICES),
         help=(
             "Prefer object_create / object_modify / object_delete (built-in; no Function). "
             "Use function only when custom FoO logic is required."
@@ -158,17 +179,32 @@ def add_subparser(sub) -> None:
     up.add_argument("--id", required=True)
     up.add_argument("--display-name", default=None)
     up.add_argument("--description", default=None)
-    up.add_argument("--rule-type", default=None)
+    up.add_argument(
+        "--rule-type",
+        default=None,
+        choices=list(RULE_TYPE_CHOICES),
+        help="Set rule type. Switching to a built-in type clears the Function binding server-side.",
+    )
     up.add_argument("--function-id", default=None)
+    up.add_argument(
+        "--clear-function",
+        action="store_true",
+        help="Clear function_id / function_version (for converting to built-in CRUD).",
+    )
     up.add_argument("--function-version", type=int, default=None)
     up.add_argument("--parameters-json", default=None)
-    up.add_argument("--status", default=None)
+    up.add_argument("--status", default=None, help="active | archived")
     add_write_flags(up)
     up.set_defaults(fn=cmd_update)
 
+    dl = sp.add_parser("delete", help="Delete action type (frees api_name)")
+    dl.add_argument("--id", required=True)
+    add_write_flags(dl)
+    dl.set_defaults(fn=cmd_delete)
+
     ex = sp.add_parser("execute", help="Execute action type")
     ex.add_argument("--id", required=True)
-    ex.add_argument("--object-id", default=None)
+    ex.add_argument("--object-id", default=None, help="Target instance id (modify/delete)")
     ex.add_argument("--input-json", default="{}")
     add_write_flags(ex)
     ex.set_defaults(fn=cmd_execute)

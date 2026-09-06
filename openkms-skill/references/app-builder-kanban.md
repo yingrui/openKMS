@@ -6,7 +6,7 @@ Part of [agentskills.io](https://agentskills.io/specification) **`references/`**
 
 **Do not invent** `OntoKanbanBoard` or board-shaped bindings. Columns = filtered `OntoObjectList` + basic `List` + Modals.
 
-**In this skill:** sample messages [`assets/kanban-a2ui-messages.json`](../assets/kanban-a2ui-messages.json); Function source [functions-authoring.md](functions-authoring.md).
+**In this skill:** sample messages [`assets/kanban-a2ui-messages.json`](../assets/kanban-a2ui-messages.json); Actions [actions-authoring.md](actions-authoring.md) (Kanban CRUD = `object_create` / `object_modify` / `object_delete`, not Function); optional suggest Function [functions-authoring.md](functions-authoring.md).
 
 **Monorepo only (not in skill installs):** `docs/features/app-builder.md` and `docs/tutorials/understanding-ontology.md` (Step F) exist only inside an openKMS git checkout. Prefer this file + the asset when running from `~/.claude/skills` / OpenCode / Agents.
 

@@ -35,7 +35,7 @@ The skill covers **read + write** for every major resource. Top-level groups:
 | `ontology objects` | list/get/instances | type/instance CRUD, sync-neo4j* |
 | `ontology links` | list/get/instances | type/instance CRUD, sync-neo4j* |
 | `ontology functions` | list/get/executions | create, save-version, validate, publish, execute* |
-| `ontology action-types` | list/get/logs | create, update, execute |
+| `ontology action-types` | list/get/logs | create, update, delete, execute |
 | `ontology groups` | list/get | create, update |
 | `evaluations` / `evaluation-runs` | list/get/compare | create/update/run/items |
 
@@ -175,6 +175,7 @@ openkms-skill/
   references/
     REFERENCE.md           # CLI ↔ HTTP map (load on demand)
     functions-authoring.md # Ontology Function source authoring
+    actions-authoring.md   # Built-in CRUD Actions (rule_type, convert, delete)
     app-builder.md         # App Builder mechanism
     app-builder-kanban.md  # Kanban worked example
   scripts/

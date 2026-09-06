@@ -169,7 +169,7 @@ All write subcommands accept `--yes` / `--dry-run`. Without `--yes` on non-TTY s
 
 ### Ontology — functions / action-types / groups
 
-**Authoring Function Python source** (templates, Client API, `uses=`, allowed imports): see **[functions-authoring.md](functions-authoring.md)**. This table is CLI ↔ HTTP only.
+**Authoring Function Python source** (templates, Client API, `uses=`, allowed imports): see **[functions-authoring.md](functions-authoring.md)**. **Action types** (built-in CRUD `rule_type`, execute addressing, convert/delete): see **[actions-authoring.md](actions-authoring.md)**. This table is CLI ↔ HTTP only.
 
 | CLI | Method | Path | Notes |
 |---|---|---|---|
@@ -184,10 +184,11 @@ All write subcommands accept `--yes` / `--dry-run`. Without `--yes` on non-TTY s
 | `ontology functions execute-by-api-name` *(write)* | POST | `/api/ontology/functions/by-api-name/{api_name}/execute` | Published only. |
 | `ontology functions executions` | GET | `/api/ontology/functions/{id}/executions` | |
 | `ontology functions delete` *(write)* | DELETE | `/api/ontology/functions/{id}` | |
-| `ontology action-types list` | GET | `/api/ontology/action-types` | |
+| `ontology action-types list` | GET | `/api/ontology/action-types` | All statuses (including archived). |
 | `ontology action-types get` | GET | `/api/ontology/action-types/{id}` | |
 | `ontology action-types create` *(write)* | POST | `/api/ontology/action-types` | **`--rule-type` required.** Prefer `object_create` / `object_modify` / `object_delete` (no Function). Use `function` + `--function-id` only for custom FoO. |
-| `ontology action-types update` *(write)* | PATCH | `/api/ontology/action-types/{id}` | |
+| `ontology action-types update` *(write)* | PATCH | `/api/ontology/action-types/{id}` | `--rule-type` / `--clear-function` / `--status`. Switching to built-in clears Function binding. |
+| `ontology action-types delete` *(write)* | DELETE | `/api/ontology/action-types/{id}` | Frees `api_name` (archive alone does not). |
 | `ontology action-types execute` *(write)* | POST | `/api/ontology/action-types/{id}/execute` | Body `{object_id?, input}`. |
 | `ontology action-types logs` | GET | `/api/ontology/action-types/{id}/logs` | |
 | `ontology groups list` | GET | `/api/ontology/groups` | |
