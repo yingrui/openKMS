@@ -1,6 +1,9 @@
 // Global CSS custom properties (light + dark). Consumed by all CSS/SCSS via var(--*).
 
 :root {
+  /* Native form controls (input/select) follow theme, not OS alone */
+  color-scheme: light;
+
   /* --- Palette: warm stone base + teal accent --- */
   --color-bg: #faf9f7;
   --color-bg-elevated: #ffffff;
@@ -146,6 +149,8 @@
 }
 
 [data-theme='dark'] {
+  color-scheme: dark;
+
   --color-bg: #1a1816;
   --color-bg-elevated: #242220;
   --color-bg-muted: #2d2a27;

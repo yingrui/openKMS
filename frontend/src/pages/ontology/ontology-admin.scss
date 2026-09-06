@@ -610,6 +610,19 @@ select.console-form-control {
   padding: var(--gap-compact) calc(var(--space-2) + var(--space-1) / 2);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
+  background: var(--color-bg-muted);
+  color: var(--color-text);
+
+  &:focus {
+    outline: none;
+    border-color: var(--color-accent);
+  }
+
+  &:disabled,
+  &:read-only {
+    opacity: 0.7;
+    cursor: not-allowed;
+  }
 }
 
 .console-obj-property-row select {
@@ -617,6 +630,19 @@ select.console-form-control {
   padding: var(--gap-compact) calc(var(--space-2) + var(--space-1) / 2);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
+  background: var(--color-bg-muted);
+  color: var(--color-text);
+  cursor: pointer;
+
+  &:focus {
+    outline: none;
+    border-color: var(--color-accent);
+  }
+
+  &:disabled {
+    opacity: 0.7;
+    cursor: not-allowed;
+  }
 }
 
 .console-obj-property-required {

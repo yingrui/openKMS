@@ -264,8 +264,8 @@
       "save": "Save",
       "create": "Create",
       "actionsCol": "Actions",
-      "systemIdCol": "__rid",
-      "systemIdHint": "Platform identity for this instance (read-only). Use with Actions and Apps.",
+      "systemIdCol": "RID",
+      "systemIdHint": "Platform identity for this instance (read-only). Use this RID with Actions and Apps.",
       "runAction": "Run {{name}}",
       "actionRunOk": "{{name}} completed",
       "actionRunFailed": "Action failed"
