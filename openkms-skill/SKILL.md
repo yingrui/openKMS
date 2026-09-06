@@ -4,10 +4,13 @@ description: >-
   Operates an openKMS deployment via personal API key using bundled scripts/cli.py only
   (no ad-hoc curl/HTTP). Covers search, documents/articles/wiki/KB, glossaries, knowledge-map,
   evaluations, data-sources/datasets/connectors/jobs, comments, media, ontology objects/links,
-  Cypher/NL ask, functions/action-types/groups. Write paths include sync, index, CRUD, and
-  function publish/execute. For Ontology Function source authoring read
-  references/functions-authoring.md. Use when agents must read or push openKMS content without
-  the web UI. Only config.yml may be edited for credentials when the user asks.
+  Cypher/NL ask, functions/action-types/groups, and App Builder apps (list/get/create/patch/publish).
+  Write paths include sync, index, CRUD, function publish/execute, and A2UI draft patch.
+  Before Function --source-code-file: MUST read references/functions-authoring.md.
+  Before any apps CLI or App/A2UI/Kanban work: MUST read references/app-builder.md
+  (then references/app-builder-kanban.md; sample assets/kanban-a2ui-messages.json).
+  Use when agents must read or push openKMS content without the web UI. Only config.yml
+  may be edited for credentials when the user asks.
 ---
 
 # openKMS skill
@@ -17,6 +20,18 @@ description: >-
 Do **not** implement openKMS access with hand-written **`curl`**, ad-hoc **`httpx`/`requests`/`fetch`**, or throwaway scripts that call `/api/…` directly. Do **not** treat [references/REFERENCE.md](references/REFERENCE.md) as something to copy into new code—it documents how each **existing** CLI subcommand maps to HTTP for **operators and code review**, not as a second implementation path.
 
 **Every** read and write against this deployment must go through **`python scripts/cli.py …`**. That preserves Bearer auth, mutation gates (`--yes` / `--dry-run`), multipart uploads, path encoding, and error handling in one place. If a workflow is missing from the CLI, **extend `openkms-skill` in the repository** (or ask the user to)—do not bypass the bundled scripts.
+
+## Mandatory: read these references before acting
+
+`SKILL.md` is the entry. Detailed rules live under `references/` — **open the file and follow it** before the matching work. Do not invent App layout, host events, or Function source from memory.
+
+| If you are about to… | You **must** read first |
+|----------------------|-------------------------|
+| Write Ontology Function `--source-code-file` / validate / publish Function source | [references/functions-authoring.md](references/functions-authoring.md) |
+| Run any `apps …` command, or build/patch/publish an App, A2UI surface, board, Kanban, Modal+Action wiring | [references/app-builder.md](references/app-builder.md) (mechanism: Resources → Loaders → Layout → Preview → Publish + host events) |
+| Compose a multi-column Kanban-style App (after `app-builder.md`) | [references/app-builder-kanban.md](references/app-builder-kanban.md) + sample [`assets/kanban-a2ui-messages.json`](assets/kanban-a2ui-messages.json) |
+
+Skipping these produces wrong Source (e.g. inventing `OntoKanbanBoard`, absolute List paths, or treating `executeFunction` as persist).
 
 ### Dependencies (`requirements.txt`)
 
@@ -100,8 +115,9 @@ Some practical guidance:
 - **`kb ask` vs `kb search`.** `ask` proxies to the QA agent and returns a grounded *answer* (with citations). `search` is **hybrid** (BM25 + dense + RRF + cross-encoder rerank) and returns *raw chunks + FAQ matches*. Use `ask` when the user wants an answer; use `search` when you need source material to reason over yourself.
 - **KB wiki indexing.** Link with **`kb wiki-spaces link`**, then **`kb wiki-spaces reindex`** or **`kb index`**. Poll **`jobs get`**.
 - **`ontology ask` is a 3-call chain.** Use when the question is graph-shaped. Use individual subcommands when you need to inspect Cypher.
-- **Ontology Functions vs Actions vs Connectors.** Functions = read/compute Python logic (`ontology functions …`). Action types = register intentional ops bound to an object type (`ontology action-types …`); today execute runs the bound Function and audits — **durable object writes from Actions are deferred** (do not rely on Actions to persist Watchlist-style edits). Connector **sync** loads external datasets (e.g. Tushare) — not an Action. Prefer not Neo4j-indexing huge daily fact tables; index master data (e.g. Stock) and analysis objects. Domain types/Functions (Stock, screens) are **tenant DIY**, not platform seeds — see Workflow **G**.
+- **Ontology Functions vs Actions vs Connectors.** Functions = read/compute Python logic (`ontology functions …`). Action types = intentional ops (`ontology action-types …`); execute runs the bound Function, audits, then **applies** `create` / `modify` / `delete` edits on resolvable (Explorer-created) instances — dataset/Neo4j synthetic ids remain deferred. Connector **sync** loads external datasets (e.g. Tushare) — not an Action. Prefer not Neo4j-indexing huge daily fact tables; index master data (e.g. Stock) and analysis objects. Domain types/Functions (Stock, screens) are **tenant DIY**, not platform seeds — see Workflow **G**. Visual boards are tenant **Apps** — **must** open [references/app-builder.md](references/app-builder.md) first (Workflow **H** / Kanban example after that).
 - **Authoring Function source.** Before writing `--source-code-file`, read **[references/functions-authoring.md](references/functions-authoring.md)** (`@function`, `Client` search/fetch/execute_function, `uses=`, allowed imports, CLI validate→publish). Do not invent HTTP inside Function code. `Client` is read/compose only; durable writes go through Action-bound Functions that return `create_edit_batch()` edits (`create` / `modify` / `delete`).
+- **App Builder Apps (`apps` CLI).** **Stop and read [references/app-builder.md](references/app-builder.md) before** `apps create|patch|synthesize|publish` or any A2UI Source edit. That doc is the App Builder mechanism (same five steps as Design’s right rail). Then use CLI only; no designer chat; no ad-hoc `/api/app-builder`. Kanban worked example: [references/app-builder-kanban.md](references/app-builder-kanban.md); sample messages: [assets/kanban-a2ui-messages.json](assets/kanban-a2ui-messages.json).
 - **Object type properties** may use `string`, `integer`, `number`, `boolean`, `date`, `datetime`, `uuid` in `--properties-json`.
 - **Permission model is enforced server-side.** API key carries the user's scope. List endpoints filter to readable channels; per-id GET returns 404 (not 403) when out of scope.
 - **Write commands and confirm gating.** Every mutating CLI subcommand: `--dry-run` prints planned call; `-y`/`--yes` skips prompt; **on a non-TTY without `--yes` exit 2**.
@@ -156,6 +172,8 @@ Some practical guidance:
 | Execute published function by api name | `python scripts/cli.py ontology functions execute-by-api-name --api-name NAME --input-json '{}' --yes` |
 | List action types | `python scripts/cli.py ontology action-types list` |
 | List ontology groups | `python scripts/cli.py ontology groups list` |
+| List App Builder apps | `python scripts/cli.py apps list` |
+| Get app (run) or draft design | `python scripts/cli.py apps get <id>` / `apps get <id> --design` |
 | List data sources | `python scripts/cli.py data-sources list` |
 | List datasets | `python scripts/cli.py datasets list [--data-source-id ID]` |
 | Dataset rows / metadata | `python scripts/cli.py datasets rows --id DS_ID` / `datasets metadata --id DS_ID` |
@@ -243,6 +261,11 @@ Same confirmation rules as other writes.
 | MERGE one link type into Neo4j | `python scripts/cli.py ontology links sync-neo4j-type --type-id LT_ID --neo4j-data-source-id DS --yes` |
 | Create / validate / publish function | `ontology functions create … --source-code-file ./fn.py --yes` then `validate` / `publish` |
 | Create / execute action type | `ontology action-types create … --yes` / `execute --id AT --object-id OI --yes` |
+| Create App (stub draft) | **Read [references/app-builder.md](references/app-builder.md) first**, then `python scripts/cli.py apps create --name "Kanban" --api-name kanban --bindings-json '{…}' --yes` |
+| Patch App Resources / A2UI draft | **Same reference first**, then `apps patch <id> --bindings-json '{…}' --a2ui-messages-file ./a2ui.json --yes` |
+| Reset draft to stub layout | `python scripts/cli.py apps synthesize <id> --yes` |
+| Publish App | `python scripts/cli.py apps publish <id> --yes` |
+| Delete App | `python scripts/cli.py apps delete <id> --yes` |
 | Provision Tushare slot dataset | `connectors provision-dataset --kind tushare --slot stock_basic --data-source-id PG --yes` |
 | Queue connector sync | `connectors sync --id CONN --yes` then `jobs get --id JOB` |
 | Link wiki space to KB | `kb wiki-spaces link --kb-id KB --space-id SP --yes` |
@@ -299,7 +322,7 @@ python scripts/cli.py articles markdown --id <art_id>   # read body, apply sugge
 
 **G. Tenant DIY: Tushare datasets → Stock object type → read-only Function (not a platform seed).**
 
-Domain schema and Function source are **operator content**. Concepts: **`docs/tutorials/understanding-ontology.md`**. Lab: **`docs/tutorials/tushare-market-ontology.md`**. Platform already supports OT bind + Neo4j index + Function publish; do **not** invent product APIs or Action write-back for this path.
+Domain schema and Function source are **operator content**. When working **inside the openKMS monorepo**, concepts: `docs/tutorials/understanding-ontology.md`; lab: `docs/tutorials/tushare-market-ontology.md`. **Skill-only installs** (`~/.claude/skills`, OpenCode, Agents zip) do not include those docs — use [references/functions-authoring.md](references/functions-authoring.md) and CLI help. Platform already supports OT bind + Neo4j index + Function publish; do **not** invent product APIs for this path.
 
 ```bash
 python scripts/cli.py data-sources list          # note Neo4j id + ontology PG id
@@ -323,13 +346,34 @@ python scripts/cli.py ontology functions execute-by-api-name \
 ```
 Author `stock_profile.py` per [references/functions-authoring.md](references/functions-authoring.md) (not ad-hoc curl).
 
-Workbench types (Watchlist / ScreenRun) and Explorer “write Actions”: create instances via Object Explorer / `ontology objects` for **non-dataset** types if needed; do **not** expect Action execute to persist edits until platform Action apply ships.
+Workbench types (Watchlist / ScreenRun): create instances via Object Explorer / `ontology objects` for **non-dataset** types if needed. Action execute **applies** create/modify/delete on those instances; dataset-backed synthetic ids remain deferred.
+
+**H. Visual Kanban App (WorkItem columns + Actions + FoO) via App Builder.**
+
+**Before any command below:** open and follow **[references/app-builder.md](references/app-builder.md)** (authoring journey + host events). Then **[references/app-builder-kanban.md](references/app-builder-kanban.md)** and patch from **[`assets/kanban-a2ui-messages.json`](assets/kanban-a2ui-messages.json)**. Platform has **no** Kanban widget — compose filtered `OntoObjectList` + `List` + Modal/`executeAction` / `executeFunction`. *(Monorepo-only extra reading: `docs/tutorials/understanding-ontology.md` Step F — not present in skill installs.)*
+
+```bash
+# After WorkItem OT + Actions + optional suggestWorkItemPriority Function exist:
+python scripts/cli.py apps create \
+  --name "Kanban" --api-name kanban \
+  --bindings-json '{"objectTypes":["WorkItem"],"actions":["createWorkItem","updateWorkItem"],"functions":["suggestWorkItemPriority"]}' \
+  --yes
+# Sample messages (skill tree): assets/kanban-a2ui-messages.json
+python scripts/cli.py apps patch <app_id> --a2ui-messages-file ./assets/kanban-a2ui-messages.json --yes
+python scripts/cli.py apps get <app_id> --design   # verify draft
+python scripts/cli.py apps publish <app_id> --yes
+```
+
+Follow journey order: Resources → Loaders → Layout → Preview → Publish. `executeFunction` suggests; `executeAction` persists. List row paths are **relative**. Do not call `apps synthesize` unless you intend to wipe the draft layout.
 
 ## Reference (progressive disclosure)
 
-Per [agentskills.io](https://agentskills.io/specification): keep detailed material one level under `references/` / `scripts/` / `assets/`. Load on demand.
+Per [agentskills.io](https://agentskills.io/specification): keep detailed material one level under `references/` / `scripts/` / `assets/`. **Load on demand — but the “Mandatory: read these references” table above is not optional** when those tasks apply.
 
 - CLI ↔ HTTP map: [references/REFERENCE.md](references/REFERENCE.md) (operators / code review — **not** a second HTTP path for agents)
 - Ontology Function **source** authoring: [references/functions-authoring.md](references/functions-authoring.md)
+- App Builder **mechanism** (authoring journey + host): [references/app-builder.md](references/app-builder.md)
+- App Builder Kanban example: [references/app-builder-kanban.md](references/app-builder-kanban.md)
+- Kanban A2UI messages sample: [assets/kanban-a2ui-messages.json](assets/kanban-a2ui-messages.json)
 - Executable CLI: `scripts/cli.py`
 - Tests (dev only, not packaged for Agents zip): `tests/` — `pytest -v`

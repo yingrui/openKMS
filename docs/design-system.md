@@ -26,7 +26,7 @@ SCSS tokens, shared layouts, and UI conventions for the SPA (`frontend/src/style
 | **`_field.scss`** / **`FormField.tsx`** | Labeled text field stack (`.ds-field`) + shared control look (`.ds-control`). |
 | **`_index.scss`** | Optional Sass barrel (`@forward` tokens + mixins). |
 | **`knowledge-map/`** | Map-only compile-time sizes. |
-| **`_a2ui-platform.scss`** | Shared **A2UI platform** theme: maps suite `var(--color-*)` → `--a2ui-*` tokens, typography, Card/List/Row polish. Host surfaces add **`.a2ui-platform-surface`**; not app-specific recipes. |
+| **`_a2ui-platform.scss`** | Shared **A2UI platform** theme: maps suite `var(--color-*)` → `--a2ui-*` tokens; COMPOSER-like Card elevation, type hierarchy, Modal/TextField/Button polish. Host surfaces add **`.a2ui-platform-surface`**; not app-specific recipes. |
 
 Export surface for TSX: **`styles/design-system/index.ts`** (`Dialog`, `EmptyState`, `PanelToolbar`, `Metric` / `MetricGrid`, `CheckRow`, `CheckList` / `CheckListItem`, `FormField`, `Pagination`, …).
 
@@ -36,8 +36,8 @@ Export surface for TSX: **`styles/design-system/index.ts`** (`Dialog`, `EmptySta
 
 | Piece | Role |
 |-------|------|
-| **`design-system/_a2ui-platform.scss`** | Token bridge + primitive polish (Card, Text variants, Modal/TextField/Button, equal-width Row children). No board/list chrome — Source uses `Card` / `variant`. |
-| **Host wrapper** | e.g. `.onto-app-a2ui.a2ui-platform-surface` — min-height / host-only errors only |
+| **`design-system/_a2ui-platform.scss`** | Token bridge + COMPOSER-like primitive polish (elevated Cards, soft pill Buttons, Modal/TextField focus rings, type hierarchy, equal-width Row children). No board/list chrome — Source uses `Card` / `variant`. |
+| **Host wrapper** | e.g. `.onto-app-a2ui.a2ui-platform-surface` — surface owns content inset (`padding`); Design Preview uses `.app-builder-design__canvas-body--preview` (no chrome gutter) so muted canvas is edge-to-edge |
 | **Catalog components** | `OntoObjectList`, `KmOverviewNodeLink`, … — behavior + domain wiring, not visual theme |
 
 App **Source** composes A2UI primitives; **platform SCSS** makes those primitives match openKMS. Do not add Kanban- or app-named layout rules to host SCSS — extend `_a2ui-platform.scss` when a primitive pattern is reusable.

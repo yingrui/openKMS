@@ -411,7 +411,13 @@ export function AppBuilderDesignPage() {
             {t('dataModel')}
           </button>
         </div>
-        <div className="app-builder-design__canvas-body">
+        <div
+          className={
+            canvasMode === 'preview'
+              ? 'app-builder-design__canvas-body app-builder-design__canvas-body--preview'
+              : 'app-builder-design__canvas-body'
+          }
+        >
           {keepSurfaceAlive ? (
             <div
               className={

@@ -1,0 +1,540 @@
+[
+  {
+    "version": "v0.9",
+    "createSurface": {
+      "catalogId": "https://openkms.local/a2ui/catalogs/ontology-app/v1.json",
+      "surfaceId": "ontology-app"
+    }
+  },
+  {
+    "version": "v0.9",
+    "updateDataModel": {
+      "path": "/createWorkItem",
+      "value": {
+        "status": "To Do"
+      },
+      "surfaceId": "ontology-app"
+    }
+  },
+  {
+    "version": "v0.9",
+    "updateComponents": {
+      "surfaceId": "ontology-app",
+      "components": [
+        {
+          "id": "root",
+          "children": [
+            "toolbar",
+            "boardRow",
+            "editModal"
+          ],
+          "component": "Column"
+        },
+        {
+          "id": "toolbar",
+          "align": "center",
+          "justify": "spaceBetween",
+          "children": [
+            "title",
+            "createModal"
+          ],
+          "component": "Row"
+        },
+        {
+          "id": "title",
+          "text": "Kanban",
+          "variant": "h1",
+          "component": "Text"
+        },
+        {
+          "id": "createModal",
+          "content": "createCard",
+          "trigger": "createBtn",
+          "component": "Modal"
+        },
+        {
+          "id": "createBtn",
+          "child": "createBtnText",
+          "variant": "primary",
+          "component": "Button"
+        },
+        {
+          "id": "createBtnText",
+          "text": "+ New WorkItem",
+          "component": "Text"
+        },
+        {
+          "id": "createCard",
+          "child": "createForm",
+          "component": "Card"
+        },
+        {
+          "id": "createForm",
+          "children": [
+            "createHeading",
+            "createHint",
+            "fieldTitle",
+            "fieldStatus",
+            "fieldEstimate",
+            "fieldPriority",
+            "submitBtn"
+          ],
+          "component": "Column"
+        },
+        {
+          "id": "createHeading",
+          "text": "New WorkItem",
+          "variant": "h3",
+          "component": "Text"
+        },
+        {
+          "id": "createHint",
+          "text": "Create a card on the board",
+          "variant": "caption",
+          "component": "Text"
+        },
+        {
+          "id": "fieldTitle",
+          "label": "Title",
+          "value": {
+            "path": "/createWorkItem/title"
+          },
+          "component": "TextField"
+        },
+        {
+          "id": "fieldStatus",
+          "label": "Status",
+          "value": {
+            "path": "/createWorkItem/status"
+          },
+          "component": "TextField"
+        },
+        {
+          "id": "fieldEstimate",
+          "label": "Estimate",
+          "value": {
+            "path": "/createWorkItem/estimate"
+          },
+          "component": "TextField"
+        },
+        {
+          "id": "fieldPriority",
+          "label": "Priority",
+          "value": {
+            "path": "/createWorkItem/priority"
+          },
+          "component": "TextField"
+        },
+        {
+          "id": "submitBtn",
+          "child": "submitBtnText",
+          "action": {
+            "event": {
+              "name": "executeAction",
+              "context": {
+                "inputPath": "/createWorkItem",
+                "actionApiName": "createWorkItem"
+              }
+            }
+          },
+          "variant": "primary",
+          "component": "Button"
+        },
+        {
+          "id": "submitBtnText",
+          "text": "Create",
+          "component": "Text"
+        },
+        {
+          "id": "editModal",
+          "content": "editCard",
+          "trigger": "editModalOpenBtn",
+          "component": "Modal"
+        },
+        {
+          "id": "editModalOpenBtn",
+          "child": "editModalOpenBtnText",
+          "variant": "borderless",
+          "component": "Button"
+        },
+        {
+          "id": "editModalOpenBtnText",
+          "text": "__onto_edit_open__",
+          "component": "Text"
+        },
+        {
+          "id": "editCard",
+          "child": "editForm",
+          "component": "Card"
+        },
+        {
+          "id": "editForm",
+          "children": [
+            "editHeading",
+            "editHint",
+            "editFieldTitle",
+            "editFieldStatus",
+            "editFieldEstimate",
+            "editFieldPriority",
+            "editSuggestPriorityBtn",
+            "editSuggestHint",
+            "editSaveBtn"
+          ],
+          "component": "Column"
+        },
+        {
+          "id": "editHeading",
+          "text": "Edit WorkItem",
+          "variant": "h3",
+          "component": "Text"
+        },
+        {
+          "id": "editHint",
+          "text": "Update fields and save",
+          "variant": "caption",
+          "component": "Text"
+        },
+        {
+          "id": "editFieldTitle",
+          "label": "Title",
+          "value": {
+            "path": "/editWorkItem/title"
+          },
+          "component": "TextField"
+        },
+        {
+          "id": "editFieldStatus",
+          "label": "Status",
+          "value": {
+            "path": "/editWorkItem/status"
+          },
+          "component": "TextField"
+        },
+        {
+          "id": "editFieldEstimate",
+          "label": "Estimate",
+          "value": {
+            "path": "/editWorkItem/estimate"
+          },
+          "component": "TextField"
+        },
+        {
+          "id": "editFieldPriority",
+          "label": "Priority",
+          "value": {
+            "path": "/editWorkItem/priority"
+          },
+          "component": "TextField"
+        },
+        {
+          "id": "editSuggestPriorityBtn",
+          "component": "Button",
+          "child": "editSuggestPriorityBtnText",
+          "variant": "borderless",
+          "action": {
+            "event": {
+              "name": "executeFunction",
+              "context": {
+                "functionApiName": "suggestWorkItemPriority",
+                "inputPath": "/editWorkItem",
+                "objectId": {
+                  "path": "/editWorkItem/objectId"
+                },
+                "outputPath": "/suggestWorkItemPriority",
+                "applyPath": "/editWorkItem/priority",
+                "applyKey": "priority"
+              }
+            }
+          }
+        },
+        {
+          "id": "editSuggestPriorityBtnText",
+          "component": "Text",
+          "text": "Suggest priority"
+        },
+        {
+          "id": "editSuggestHint",
+          "component": "Text",
+          "text": {
+            "path": "/suggestWorkItemPriority/hint"
+          },
+          "variant": "caption"
+        },
+        {
+          "id": "editSaveBtn",
+          "child": "editSaveBtnText",
+          "action": {
+            "event": {
+              "name": "executeAction",
+              "context": {
+                "objectId": {
+                  "path": "/editWorkItem/objectId"
+                },
+                "inputPath": "/editWorkItem",
+                "actionApiName": "updateWorkItem"
+              }
+            }
+          },
+          "variant": "primary",
+          "component": "Button"
+        },
+        {
+          "id": "editSaveBtnText",
+          "text": "Save",
+          "component": "Text"
+        },
+        {
+          "id": "workItemCard",
+          "child": "workItemBody",
+          "component": "Card"
+        },
+        {
+          "id": "workItemBody",
+          "children": [
+            "workItemHeader",
+            "workItemDivider",
+            "workItemMeta"
+          ],
+          "component": "Column"
+        },
+        {
+          "id": "workItemHeader",
+          "align": "center",
+          "justify": "spaceBetween",
+          "children": [
+            "rowTitle",
+            "rowEditBtn"
+          ],
+          "component": "Row"
+        },
+        {
+          "id": "rowTitle",
+          "text": {
+            "path": "title"
+          },
+          "variant": "h4",
+          "component": "Text"
+        },
+        {
+          "id": "rowEditBtn",
+          "child": "rowEditIcon",
+          "action": {
+            "event": {
+              "name": "loadObjectForEdit",
+              "context": {
+                "title": {
+                  "path": "title"
+                },
+                "status": {
+                  "path": "status"
+                },
+                "estimate": {
+                  "path": "estimate"
+                },
+                "objectId": {
+                  "path": "id"
+                },
+                "priority": {
+                  "path": "priority"
+                },
+                "inputPath": "/editWorkItem"
+              }
+            }
+          },
+          "variant": "borderless",
+          "component": "Button"
+        },
+        {
+          "id": "rowEditIcon",
+          "name": "edit",
+          "component": "Icon"
+        },
+        {
+          "id": "workItemDivider",
+          "axis": "horizontal",
+          "component": "Divider"
+        },
+        {
+          "id": "workItemMeta",
+          "align": "start",
+          "justify": "spaceBetween",
+          "children": [
+            "metaEstimate",
+            "metaPriority"
+          ],
+          "component": "Row"
+        },
+        {
+          "id": "metaEstimate",
+          "align": "start",
+          "children": [
+            "metaEstimateLabel",
+            "metaEstimateValue"
+          ],
+          "component": "Column"
+        },
+        {
+          "id": "metaEstimateLabel",
+          "text": "Estimate",
+          "variant": "caption",
+          "component": "Text"
+        },
+        {
+          "id": "metaEstimateValue",
+          "text": {
+            "path": "estimate"
+          },
+          "variant": "body",
+          "component": "Text"
+        },
+        {
+          "id": "metaPriority",
+          "align": "start",
+          "children": [
+            "metaPriorityLabel",
+            "metaPriorityValue"
+          ],
+          "component": "Column"
+        },
+        {
+          "id": "metaPriorityLabel",
+          "text": "Priority",
+          "variant": "caption",
+          "component": "Text"
+        },
+        {
+          "id": "metaPriorityValue",
+          "text": {
+            "path": "priority"
+          },
+          "variant": "body",
+          "component": "Text"
+        },
+        {
+          "id": "boardRow",
+          "align": "stretch",
+          "children": [
+            "colToDoCard",
+            "colInProgressCard",
+            "colDoneCard"
+          ],
+          "component": "Row"
+        },
+        {
+          "id": "colToDoCard",
+          "child": "colToDo",
+          "component": "Card"
+        },
+        {
+          "id": "colToDo",
+          "children": [
+            "toDoTitle",
+            "toDoLoader",
+            "toDoList"
+          ],
+          "component": "Column"
+        },
+        {
+          "id": "toDoTitle",
+          "text": "To Do",
+          "variant": "h3",
+          "component": "Text"
+        },
+        {
+          "id": "toDoLoader",
+          "dataPath": "/lists/todo",
+          "component": "OntoObjectList",
+          "rowFields": "title,status,estimate,priority",
+          "objectType": "WorkItem",
+          "filterValue": "To Do",
+          "titleProperty": "title",
+          "filterProperty": "status"
+        },
+        {
+          "id": "toDoList",
+          "children": {
+            "path": "/lists/todo",
+            "componentId": "workItemCard"
+          },
+          "component": "List"
+        },
+        {
+          "id": "colInProgressCard",
+          "child": "colInProgress",
+          "component": "Card"
+        },
+        {
+          "id": "colInProgress",
+          "children": [
+            "inProgressTitle",
+            "inProgressLoader",
+            "inProgressList"
+          ],
+          "component": "Column"
+        },
+        {
+          "id": "inProgressTitle",
+          "text": "In Progress",
+          "variant": "h3",
+          "component": "Text"
+        },
+        {
+          "id": "inProgressLoader",
+          "dataPath": "/lists/inProgress",
+          "component": "OntoObjectList",
+          "rowFields": "title,status,estimate,priority",
+          "objectType": "WorkItem",
+          "filterValue": "In Progress",
+          "titleProperty": "title",
+          "filterProperty": "status"
+        },
+        {
+          "id": "inProgressList",
+          "children": {
+            "path": "/lists/inProgress",
+            "componentId": "workItemCard"
+          },
+          "component": "List"
+        },
+        {
+          "id": "colDoneCard",
+          "child": "colDone",
+          "component": "Card"
+        },
+        {
+          "id": "colDone",
+          "children": [
+            "doneTitle",
+            "doneLoader",
+            "doneList"
+          ],
+          "component": "Column"
+        },
+        {
+          "id": "doneTitle",
+          "text": "Done",
+          "variant": "h3",
+          "component": "Text"
+        },
+        {
+          "id": "doneLoader",
+          "dataPath": "/lists/done",
+          "component": "OntoObjectList",
+          "rowFields": "title,status,estimate,priority",
+          "objectType": "WorkItem",
+          "filterValue": "done",
+          "titleProperty": "title",
+          "filterProperty": "status"
+        },
+        {
+          "id": "doneList",
+          "children": {
+            "path": "/lists/done",
+            "componentId": "workItemCard"
+          },
+          "component": "List"
+        }
+      ]
+    }
+  }
+]

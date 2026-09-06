@@ -2,7 +2,11 @@
 
 .onto-app-a2ui.a2ui-platform-surface {
   @include a2ui.surface-host;
+  box-sizing: border-box;
+  width: 100%;
   min-height: 12rem;
+  /* Content inset lives on the surface — not on the Design canvas chrome */
+  padding: var(--space-5);
 }
 
 /* Host chrome (errors / loading) — not A2UI primitives */

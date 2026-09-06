@@ -5,7 +5,7 @@ Thin CLI + Python package that lets [OpenCode](https://opencode.ai/docs/skills),
 - **Install:** `./install.sh` (auto-detects OpenCode + Claude Code; copies runtime files only — same set as `package.sh`). Re-running upgrades the tree but **preserves your `config.yml`**.
 - **Package for openKMS Agents:** `./package.sh --version 1.0.0` → `dist/openkms-1.0.0.zip` (upload on **Agents → Skills**).
 - **Configure:** copy `config.yml.example` → `config.yml`, fill in `api_base_url` and `api_key`. Create keys in **openKMS → Settings → API keys** (`okms.{uuid}.{secret}`, shown once).
-- **Agent-facing instructions:** [`SKILL.md`](SKILL.md) — **all access must use `python scripts/cli.py …` only** (no ad-hoc `curl` or custom HTTP scripts). Layout follows [agentskills.io](https://agentskills.io/specification): [`references/REFERENCE.md`](references/REFERENCE.md) (CLI↔HTTP), [`references/functions-authoring.md`](references/functions-authoring.md) (Function source), `scripts/`, `assets/`.
+- **Agent-facing instructions:** [`SKILL.md`](SKILL.md) — **all access must use `python scripts/cli.py …` only** (no ad-hoc `curl` or custom HTTP scripts). Layout follows [agentskills.io](https://agentskills.io/specification): [`references/`](references/) (CLI↔HTTP, App Builder, Function source), [`assets/kanban-a2ui-messages.json`](assets/kanban-a2ui-messages.json), `scripts/`.
 
 ## Capabilities at a glance
 
@@ -175,10 +175,13 @@ openkms-skill/
   references/
     REFERENCE.md           # CLI ↔ HTTP map (load on demand)
     functions-authoring.md # Ontology Function source authoring
+    app-builder.md         # App Builder mechanism
+    app-builder-kanban.md  # Kanban worked example
   scripts/
     cli.py                 # dispatcher
     openkms/               # httpx client + command modules
-  assets/                  # reserved (templates / static resources)
+  assets/
+    kanban-a2ui-messages.json  # sample A2UI messages for apps patch
   tests/                   # pytest (not required in Agents zip)
   install.sh / package.sh
 ```

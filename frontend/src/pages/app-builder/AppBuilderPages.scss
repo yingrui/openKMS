@@ -222,6 +222,27 @@
   padding: var(--space-3);
   overflow: auto;
   position: relative;
+  background: var(--color-bg-elevated, var(--color-bg));
+}
+
+/* Preview: no chrome gutter — avoid white frame around muted A2UI canvas */
+.app-builder-design__canvas-body--preview {
+  padding: 0;
+  background: var(--color-bg-muted);
+}
+
+.app-builder-design__preview-host {
+  display: flex;
+  flex-direction: column;
+  min-height: 100%;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.app-builder-design__preview-host .onto-app-a2ui.a2ui-platform-surface {
+  flex: 1 1 auto;
+  width: 100%;
+  min-height: 100%;
 }
 
 .app-builder-design__preview-host--inert {

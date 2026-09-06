@@ -1,56 +1,69 @@
 // Shared A2UI surface theme + primitive polish for openKMS hosts (Apps, Knowledge Map, …).
-// Token bridge + catalog primitives only — no layout recipes that assume boards / list shapes.
+// Aim: COMPOSER-like refinement (soft elevation, airy cards, clear type) using openKMS tokens.
+// Catalog primitives only — no domain layout recipes (boards / list shapes).
 
 @mixin platform-theme {
   color-scheme: light;
-  --a2ui-color-background: var(--color-surface);
+  --a2ui-color-background: var(--color-bg-muted);
   --a2ui-color-on-background: var(--color-text);
-  --a2ui-color-surface: var(--color-bg-elevated, var(--color-surface));
+  --a2ui-color-surface: #fff;
   --a2ui-color-on-surface: var(--color-text);
   --a2ui-color-primary: var(--color-accent);
   --a2ui-color-primary-hover: color-mix(in srgb, var(--color-accent) 82%, black);
   --a2ui-color-on-primary: #fff;
   --a2ui-color-secondary: var(--color-bg-muted);
   --a2ui-color-on-secondary: var(--color-text);
-  --a2ui-color-border: var(--color-border);
-  --a2ui-border: 1px solid var(--color-border);
-  --a2ui-border-radius: var(--radius-md);
+  --a2ui-color-border: color-mix(in srgb, var(--color-border) 70%, transparent);
+  --a2ui-border: 1px solid var(--a2ui-color-border);
+  --a2ui-border-radius: 16px;
   --a2ui-font-family-title: inherit;
-  --a2ui-font-size: 0.95rem;
-  --a2ui-color-input: var(--color-bg-elevated, var(--color-surface));
+  --a2ui-font-size: 0.9375rem;
+  --a2ui-color-input: #fff;
   --a2ui-color-on-input: var(--color-text);
-  --a2ui-card-background: var(--color-bg-elevated, var(--color-surface));
-  --a2ui-card-border: 1px solid var(--color-border);
-  --a2ui-card-border-radius: var(--radius-lg);
-  --a2ui-card-box-shadow: var(--shadow-sm);
+  --a2ui-card-background: #fff;
+  --a2ui-card-border: 1px solid color-mix(in srgb, var(--color-border) 55%, transparent);
+  --a2ui-card-border-radius: 16px;
+  --a2ui-card-box-shadow:
+    0 1px 2px rgba(44, 41, 37, 0.04),
+    0 8px 24px rgba(44, 41, 37, 0.06);
   --a2ui-card-padding: var(--space-5);
-  --a2ui-card-margin: 0 0 var(--space-3);
-  --a2ui-row-gap: var(--space-3);
+  --a2ui-card-margin: 0 0 var(--space-4);
+  --a2ui-row-gap: var(--space-4);
   --a2ui-column-gap: var(--space-4);
   --a2ui-list-gap: var(--space-3);
   --a2ui-list-padding: 0;
   --a2ui-modal-padding: var(--space-5);
-  --a2ui-modal-border-radius: var(--radius-lg);
+  --a2ui-modal-border-radius: 16px;
   --a2ui-modal-overlay-color: var(--overlay-backdrop);
   --a2ui-text-a-color: var(--color-accent);
   --a2ui-text-caption-color: var(--color-text-muted);
-  background: var(--color-surface);
+  background: var(--color-bg-muted);
   color: var(--color-text);
   min-width: 0;
+  font-size: var(--a2ui-font-size);
+  line-height: 1.45;
+  letter-spacing: -0.01em;
 }
 
 @mixin platform-components {
-  /* Card — catalog primitive (Source wraps content; do not fake cards on Row/Column) */
+  /* Card — white elevated panel (COMPOSER-style soft shadow + large radius) */
   .a2ui-card {
-    border: 1px solid var(--color-border);
-    border-radius: var(--radius-lg);
-    background: var(--color-bg-elevated, var(--color-surface));
-    box-shadow: var(--shadow-sm);
+    border: var(--a2ui-card-border);
+    border-radius: var(--a2ui-card-border-radius);
+    background: var(--a2ui-card-background);
+    box-shadow: var(--a2ui-card-box-shadow);
     padding: var(--a2ui-card-padding);
     margin: var(--a2ui-card-margin);
+    transition: box-shadow 0.18s ease;
+
+    &:hover {
+      box-shadow:
+        0 2px 4px rgba(44, 41, 37, 0.05),
+        0 12px 28px rgba(44, 41, 37, 0.08);
+    }
   }
 
-  /* Text variants from @a2ui/react/v0_9 */
+  /* Text hierarchy */
   .a2uiText,
   .a2uiCaption,
   .body,
@@ -66,17 +79,26 @@
   .a2uiCaption,
   .caption {
     color: var(--color-text-muted);
-    font-size: 0.85rem;
+    font-size: 0.8125rem;
+    font-weight: 450;
+    line-height: 1.4;
   }
 
   .h1 {
-    font-size: 1.35rem;
+    font-size: 1.5rem;
     font-weight: 650;
-    line-height: 1.3;
+    letter-spacing: -0.02em;
+    line-height: 1.25;
     margin: 0 0 var(--space-3);
   }
 
-  .h2,
+  .h2 {
+    font-size: 1.2rem;
+    font-weight: 600;
+    letter-spacing: -0.015em;
+    margin: 0 0 var(--space-2);
+  }
+
   .h3 {
     font-size: 1.05rem;
     font-weight: 600;
@@ -84,9 +106,10 @@
   }
 
   .h4 {
-    font-size: 1rem;
+    font-size: 0.98rem;
     font-weight: 600;
     margin: 0;
+    line-height: 1.35;
   }
 
   a:not([class]) {
@@ -102,14 +125,21 @@
   /* Equal-width flex children in multi-column Rows — layout only, no panel chrome */
   div[style*='flex-direction: row']:has(> div[style*='flex-direction: column']:nth-child(2)) {
     width: 100%;
+    gap: var(--a2ui-column-gap);
 
     > div[style*='flex-direction: column'] {
       flex: 1 1 0;
       min-width: 0;
+      gap: var(--a2ui-list-gap);
     }
   }
 
-  /* Host-driven programmatic modal openers (see AppA2uiSurface). */
+  /* List rhythm — air between row cards */
+  ul,
+  ol {
+    gap: var(--a2ui-list-gap);
+  }
+
   .a2ui-platform-hidden-trigger {
     position: absolute;
     width: 1px;
@@ -128,15 +158,21 @@
    */
   .a2ui-modal-overlay {
     padding: var(--space-4);
-    background: var(--a2ui-modal-overlay-color) !important;
+    background: color-mix(in srgb, var(--a2ui-modal-overlay-color) 88%, transparent) !important;
+    backdrop-filter: blur(4px);
 
     > div {
       box-sizing: border-box;
       width: min(28rem, calc(100vw - 2rem));
       max-width: 100%;
-      box-shadow: var(--shadow-lg);
-      border: 1px solid var(--color-border);
+      padding: var(--a2ui-modal-padding) !important;
+      border-radius: var(--a2ui-modal-border-radius) !important;
+      box-shadow:
+        0 4px 16px rgba(44, 41, 37, 0.08),
+        0 24px 48px rgba(44, 41, 37, 0.12);
+      border: 1px solid color-mix(in srgb, var(--color-border) 50%, transparent);
       gap: var(--space-3);
+      background: #fff !important;
     }
   }
 
@@ -146,7 +182,7 @@
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    border-radius: var(--radius-md);
+    border-radius: 999px;
     color: var(--color-text-muted) !important;
     font-size: 1.25rem !important;
     line-height: 1;
@@ -160,8 +196,9 @@
   label {
     display: block;
     margin: 0 0 var(--space-1);
-    font-size: var(--text-sm, 0.875rem);
-    font-weight: 500;
+    font-size: 0.8125rem;
+    font-weight: 550;
+    letter-spacing: 0.01em;
     color: var(--color-text-secondary, var(--color-text-muted));
   }
 
@@ -172,12 +209,12 @@
     box-sizing: border-box;
     margin: 0 0 var(--space-3);
     font: inherit;
-    font-size: var(--text-base, 1rem);
+    font-size: 0.9375rem;
     line-height: 1.4;
-    padding: var(--padding-compact-y, 0.5rem) var(--space-3);
-    border-radius: var(--radius-md);
-    border: 1px solid var(--color-border);
-    background: var(--color-bg-muted, var(--color-surface));
+    padding: 0.625rem 0.875rem;
+    border-radius: 12px;
+    border: 1px solid color-mix(in srgb, var(--color-border) 85%, transparent);
+    background: #fff;
     color: var(--color-text);
     transition:
       border-color 0.15s ease,
@@ -186,31 +223,46 @@
     &:focus {
       outline: none;
       border-color: var(--color-accent);
-      box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-accent) 18%, transparent);
+      box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-accent) 16%, transparent);
+    }
+
+    &::placeholder {
+      color: color-mix(in srgb, var(--color-text-muted) 80%, transparent);
     }
   }
 
-  /* Default buttons — neutral; Modal CTAs / openers get accent (CSS modules often empty) */
+  /* Default buttons — soft pill; Modal CTAs get accent fill */
   button:not(.a2ui-modal-close):not(.a2ui-tabs-header):not(.a2ui-tab-button) {
     display: inline-flex;
     align-items: center;
     justify-content: center;
     gap: var(--space-2);
     margin: var(--space-2) 0 0;
-    padding: var(--space-2) var(--space-4);
-    border: 1px solid var(--color-border);
-    border-radius: var(--radius-md);
-    background: var(--color-bg-elevated, var(--color-surface));
+    padding: 0.55rem 1.1rem;
+    min-height: 2.35rem;
+    border: 1px solid color-mix(in srgb, var(--color-border) 80%, transparent);
+    border-radius: 999px;
+    background: #fff;
     color: var(--color-text);
     font: inherit;
+    font-size: 0.875rem;
     font-weight: 560;
+    letter-spacing: -0.01em;
     cursor: pointer;
+    box-shadow: 0 1px 2px rgba(44, 41, 37, 0.04);
     transition:
       background-color 0.15s ease,
-      border-color 0.15s ease;
+      border-color 0.15s ease,
+      box-shadow 0.15s ease,
+      transform 0.12s ease;
 
     &:hover {
       background: var(--color-bg-muted);
+      box-shadow: 0 2px 6px rgba(44, 41, 37, 0.06);
+    }
+
+    &:active {
+      transform: translateY(0.5px);
     }
 
     .a2uiText,
@@ -226,9 +278,11 @@
     border: none;
     background: var(--color-accent);
     color: #fff;
+    box-shadow: 0 2px 8px color-mix(in srgb, var(--color-accent) 28%, transparent);
 
     &:hover {
       background: color-mix(in srgb, var(--color-accent) 82%, black);
+      box-shadow: 0 4px 12px color-mix(in srgb, var(--color-accent) 32%, transparent);
     }
 
     .a2uiText,
@@ -245,4 +299,9 @@
 
 .a2ui-platform-surface {
   @include surface-host;
+}
+
+/* Light host: keep canvas muted even if page chrome is elevated */
+.a2ui-platform-surface.a2ui-light {
+  background: var(--color-bg-muted);
 }

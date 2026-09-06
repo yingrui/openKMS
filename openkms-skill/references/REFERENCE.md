@@ -256,6 +256,18 @@ Requires **`knowledge_map:read`** (tree, link list) and **`knowledge_map:write`*
 | `evaluation-runs get` | GET | `/api/evaluations/{evaluation_id}/runs/{run_id}` | Full run with per-item results. |
 | `evaluation-runs compare` | GET | `/api/evaluations/{evaluation_id}/runs/compare?run_a=&run_b=` | Returns per-metric diffs between two runs. |
 
+### App Builder — apps
+
+| CLI | Method | Path | Notes |
+|---|---|---|---|
+| `apps list` | GET | `/api/app-builder/apps` | |
+| `apps get` | GET | `/api/app-builder/apps/{id}` | Add `--design` → `…/design` (draft). |
+| `apps create` *(write)* | POST | `/api/app-builder/apps` | `name`, `api_name`, optional `bindings`, `template_id`. |
+| `apps patch` *(write)* | PATCH | `/api/app-builder/apps/{id}` | Metadata / `bindings` / draft `components` (from `--components-file` or `--a2ui-messages-file`). |
+| `apps synthesize` *(write)* | POST | `/api/app-builder/apps/{id}/synthesize` | Reset draft to stub layout. |
+| `apps publish` *(write)* | POST | `/api/app-builder/apps/{id}/publish` | Optional messages file on first artifact. |
+| `apps delete` *(write)* | DELETE | `/api/app-builder/apps/{id}` | |
+
 ## Errors
 
 The CLI surfaces non-2xx responses as:
@@ -273,4 +285,4 @@ HTTP <status>
 - **422** — pydantic validation error; check argument shapes.
 - **502** — upstream LLM or Neo4j failure (mostly seen on `ontology *` and `kb ask`).
 
-For authoritative tables and extra routes this skill does not wrap (Console admin, feature toggles, schedules hub, Project Agent chat), see the repository file `docs/features/api-reference.md`.
+For authoritative tables and extra routes this skill does not wrap (Console admin, feature toggles, schedules hub, Project Agent chat), see the **openKMS monorepo** file `docs/features/api-reference.md` (not present in `~/.claude/skills` / Agents zip installs — use this REFERENCE + `apps --help` / group `--help` instead).
