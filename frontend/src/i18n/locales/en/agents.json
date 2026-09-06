@@ -147,7 +147,9 @@
     "revertTitle": "Revert message",
     "revertAria": "Remove this and later messages; your text returns to the input to edit and resend",
     "revertOk": "Messages removed — edit and resend when ready",
-    "revertFailed": "Could not revert messages"
+    "revertFailed": "Could not revert messages",
+    "slashUseSkill": "Use the \"{{name}}\" skill: ",
+    "slashNoMatch": "No matching skill"
   },
   "stream": {
     "replyAria": "Agent reply",

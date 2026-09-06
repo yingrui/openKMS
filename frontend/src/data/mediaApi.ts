@@ -2,7 +2,36 @@
 import { config } from '../config';
 import { getAuthHeaders, authAwareFetch } from './apiClient';
 
-export type MediaKind = 'image' | 'video';
+export type MediaKind = 'image' | 'video' | 'audio';
+/** Zhipu only generates stills and clips; audio assets are upload-only. */
+export type GeneratableMediaKind = 'image' | 'video';
+
+export interface TranscriptSegment {
+  start_ms: number;
+  end_ms: number;
+  text: string;
+}
+
+export interface TranscriptCorrection {
+  from: string;
+  to: string;
+  count: number;
+}
+
+export interface MediaTranscript {
+  language?: string | null;
+  engine?: string | null;
+  hotwords?: string | null;
+  duration_ms?: number | null;
+  text?: string | null;
+  segments?: TranscriptSegment[] | null;
+  corrections_applied?: TranscriptCorrection[] | null;
+}
+
+export interface MediaKeyframe {
+  key: string;
+  t_ms: number;
+}
 
 export interface MediaAssetOut {
   id: string;
@@ -20,6 +49,9 @@ export interface MediaAssetOut {
   width?: number | null;
   height?: number | null;
   duration_ms?: number | null;
+  transcript?: MediaTranscript | null;
+  summary?: string | null;
+  keyframes?: MediaKeyframe[] | null;
   provenance: 'uploaded' | 'generated';
   generation?: Record<string, unknown> | null;
   series_id: string;
@@ -71,6 +103,7 @@ export async function updateMediaAsset(
   body: Partial<{
     title: string;
     description: string | null;
+    summary: string | null;
     captured_at: string | null;
     location: Record<string, unknown> | null;
     metadata: Record<string, unknown> | null;
@@ -130,7 +163,7 @@ export async function uploadMediaAsset(
 
 export async function generateMediaAsset(body: {
   channel_id: string;
-  media_kind: MediaKind;
+  media_kind: GeneratableMediaKind;
   model_id: string;
   prompt: string;
   title?: string;
@@ -159,6 +192,27 @@ export function mediaFileApiPath(assetId: string, relative: 'original' | 'thumb'
   if (relative === 'thumb') return `media/${assetId}/thumb.webp`;
   if (relative === 'poster') return `media/${assetId}/poster.webp`;
   return `media/${assetId}/original.${ext}`;
+}
+
+export async function analyzeMediaAsset(
+  id: string,
+  body?: {
+    model_id?: string | null;
+    language?: string | null;
+    keyframe_count?: number;
+    glossary_id?: string | null;
+    use_hotwords?: boolean;
+  },
+): Promise<{ job_id: number }> {
+  const headers = await getAuthHeaders();
+  const res = await authAwareFetch(`${config.apiUrl}/api/media/${id}/analyze`, {
+    method: 'POST',
+    headers: { ...headers, 'Content-Type': 'application/json' },
+    credentials: 'include',
+    body: JSON.stringify(body ?? {}),
+  });
+  if (!res.ok) throw new Error(`Failed to start media analysis (${res.status})`);
+  return res.json();
 }
 
 export async function resolveMediaFileUrl(assetId: string, filePath: string): Promise<string> {

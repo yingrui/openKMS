@@ -112,7 +112,8 @@
     "clearSelection": "Clear selection",
     "bulkDelete": "Delete selected",
     "deleteFailed": "Delete failed",
-    "selectAssetAria": "Select {{name}}"
+    "selectAssetAria": "Select {{name}}",
+    "filterAudio": "Audio"
   },
   "detail": {
     "back": "Back to collection",
@@ -148,7 +149,22 @@
     "duration": "Duration",
     "format": "Format",
     "added": "Added",
-    "moreInChannel": "More in this collection"
+    "moreInChannel": "More in this collection",
+    "tabSummary": "Summary",
+    "tabTranscript": "Transcript",
+    "tabFrames": "Screenshots",
+    "summaryEmpty": "No summary yet. Run analysis to generate one from the transcript.",
+    "transcriptEmpty": "No transcript yet. Run analysis to transcribe the audio.",
+    "framesEmpty": "No screenshots yet. Run analysis to extract keyframes.",
+    "analyze": "Run analysis",
+    "analyzing": "Analysis queued…",
+    "analyzeQueued": "Analysis queued. Transcript, screenshots and summary will appear when the worker finishes.",
+    "analyzeFailed": "Failed to start analysis",
+    "transcriptMeta": "{{engine}} · {{count}} segments",
+    "seekTo": "Jump to this moment",
+    "refresh": "Refresh",
+    "correctionsApplied": "{{count}} terms corrected from the glossary",
+    "captionsLabel": "Chinese"
   },
   "settings": {
     "title": "Collection settings",

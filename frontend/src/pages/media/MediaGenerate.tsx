@@ -11,7 +11,7 @@ import {
   resolveMediaFileUrl,
   uploadTempMedia,
   type MediaAssetOut,
-  type MediaKind,
+  type GeneratableMediaKind,
 } from '../../data/mediaApi';
 import { fetchAllModels, type ApiModelResponse } from '../../data/modelsApi';
 import '../documents/DocumentChannel.scss';
@@ -36,7 +36,7 @@ export function MediaGenerate() {
   const channelName = getDocumentChannelName(channels, channelId);
   const currentChannel = findChannel(channels, channelId);
 
-  const [mediaKind, setMediaKind] = useState<MediaKind>('image');
+  const [mediaKind, setMediaKind] = useState<GeneratableMediaKind>('image');
   const [prompt, setPrompt] = useState('');
   const [modelId, setModelId] = useState('');
   const [size, setSize] = useState('1920x1080');
@@ -104,7 +104,7 @@ export function MediaGenerate() {
     setSize(mediaKind === 'video' ? '1920x1080' : '1024x1024');
   }, [mediaKind]);
 
-  const pickDefaultModel = useCallback((kind: MediaKind) => {
+  const pickDefaultModel = useCallback((kind: GeneratableMediaKind) => {
     const models = kind === 'image' ? imageModels : videoModels;
     if (models.length === 0) return '';
     const preferred = kind === 'image'
@@ -115,7 +115,7 @@ export function MediaGenerate() {
     return catDefault?.id ?? models[0].id;
   }, [currentChannel, imageModels, videoModels]);
 
-  const switchKind = useCallback((kind: MediaKind) => {
+  const switchKind = useCallback((kind: GeneratableMediaKind) => {
     setMediaKind(kind);
     const defaultId = pickDefaultModel(kind);
     if (defaultId) setModelId(defaultId);

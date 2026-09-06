@@ -128,7 +128,7 @@ async def generate_cypher_from_question(
     base_url = (model_config.get("base_url") or "").rstrip("/")
     if not base_url:
         raise ValueError("LLM base_url is not configured")
-    if not base_url.endswith("/v1"):
+    if not re.search(r"/v\d+$", base_url):
         base_url = f"{base_url}/v1"
     client = AsyncOpenAI(
         base_url=base_url,
@@ -195,7 +195,7 @@ async def summarize_answer(
         raise ValueError("question is required")
 
     base_url = (model_config.get("base_url") or "").rstrip("/")
-    if not base_url.endswith("/v1"):
+    if not re.search(r"/v\d+$", base_url):
         base_url = f"{base_url}/v1"
     client = AsyncOpenAI(
         base_url=base_url,

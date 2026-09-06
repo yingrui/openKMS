@@ -54,6 +54,8 @@
   "objects": "Objects",
   "links": "Links",
   "objectExplorer": "Object Explorer",
+  "graphQa": "Graph Q&A",
+  "workflow": "Workflow",
   "knowledgeBases": "Knowledge Bases",
   "agents": "Agent Projects",
   "evaluation": "Evaluations",

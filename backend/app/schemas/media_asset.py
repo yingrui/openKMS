@@ -6,7 +6,9 @@ from typing import Any, Literal
 from pydantic import BaseModel, Field, model_validator
 
 
-MediaKind = Literal["image", "video"]
+MediaKind = Literal["image", "video", "audio"]
+# Zhipu only generates stills and clips; audio assets are upload-only.
+GeneratableMediaKind = Literal["image", "video"]
 ProvenanceKind = Literal["uploaded", "generated"]
 
 
@@ -26,6 +28,9 @@ class MediaAssetResponse(BaseModel):
     width: int | None = None
     height: int | None = None
     duration_ms: int | None = None
+    transcript: dict[str, Any] | None = None
+    summary: str | None = None
+    keyframes: list[dict[str, Any]] | None = None
     provenance: str
     generation: dict[str, Any] | None = None
     series_id: str
@@ -46,6 +51,7 @@ class MediaAssetListResponse(BaseModel):
 class MediaAssetUpdate(BaseModel):
     title: str | None = Field(default=None, min_length=1, max_length=512)
     description: str | None = None
+    summary: str | None = None
     captured_at: datetime | None = None
     location: dict[str, Any] | None = None
     metadata: dict[str, Any] | None = None
@@ -57,7 +63,7 @@ class MediaAssetUpdate(BaseModel):
 
 class MediaGenerateRequest(BaseModel):
     channel_id: str
-    media_kind: MediaKind
+    media_kind: GeneratableMediaKind
     model_id: str
     prompt: str = Field(default="", max_length=512)
     title: str | None = Field(default=None, max_length=512)
@@ -79,3 +85,29 @@ class MediaGenerateRequest(BaseModel):
 class MediaGenerateResponse(BaseModel):
     job_id: int
     provider_task_id: str
+
+
+class MediaAnalyzeRequest(BaseModel):
+    """Options for deriving transcript / keyframes / summary from one asset."""
+
+    model_id: str | None = Field(
+        default=None, description="Chat model for the executive summary; omit to skip summarizing"
+    )
+    language: str | None = Field(default=None, description="Force ASR language, e.g. 'zh'; omit to auto-detect")
+    keyframe_count: int = Field(default=6, ge=1, le=24)
+    glossary_id: str | None = Field(
+        default=None,
+        description="Glossary whose synonyms repair the transcript; omit to skip correction",
+    )
+    use_hotwords: bool = Field(
+        default=False,
+        description=(
+            "Also bias the decoder with glossary terms. Off by default: measured on this corpus, "
+            "hotwords made the decoder skip whole passages (94.8% -> 84.5% coverage) for a few "
+            "term fixes that post-correction already handles."
+        ),
+    )
+
+
+class MediaAnalyzeResponse(BaseModel):
+    job_id: int

@@ -112,7 +112,8 @@
     "clearSelection": "清除选择",
     "bulkDelete": "删除所选",
     "deleteFailed": "删除失败",
-    "selectAssetAria": "选择 {{name}}"
+    "selectAssetAria": "选择 {{name}}",
+    "filterAudio": "音频"
   },
   "detail": {
     "back": "返回合集",
@@ -148,7 +149,22 @@
     "duration": "时长",
     "format": "格式",
     "added": "添加时间",
-    "moreInChannel": "本合集更多内容"
+    "moreInChannel": "本合集更多内容",
+    "tabSummary": "摘要",
+    "tabTranscript": "字幕",
+    "tabFrames": "截图",
+    "summaryEmpty": "还没有摘要。运行分析可以从转写稿生成。",
+    "transcriptEmpty": "还没有字幕。运行分析可以将语音转写为文字。",
+    "framesEmpty": "还没有截图。运行分析可以抽取关键帧。",
+    "analyze": "运行分析",
+    "analyzing": "分析已入队…",
+    "analyzeQueued": "分析已入队。字幕、截图和摘要会在后台完成后出现。",
+    "analyzeFailed": "启动分析失败",
+    "transcriptMeta": "{{engine}} · {{count}} 段",
+    "seekTo": "跳到这一刻",
+    "refresh": "刷新",
+    "correctionsApplied": "按术语表纠正了 {{count}} 处",
+    "captionsLabel": "中文字幕"
   },
   "settings": {
     "title": "合集设置",

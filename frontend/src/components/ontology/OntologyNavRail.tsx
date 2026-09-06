@@ -4,8 +4,10 @@ import {
   Box,
   Compass,
   Link2,
+  MessagesSquare,
   Network,
   Table,
+  Workflow,
 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import './OntologyNavRail.scss';
@@ -67,6 +69,20 @@ const ONTOLOGY_NAV: NavItem[] = [
     icon: Compass,
     match: (p) => p.startsWith('/object-explorer'),
     canPath: '/object-explorer',
+  },
+  {
+    to: '/ontology/graph-qa',
+    labelKey: 'graphQa',
+    icon: MessagesSquare,
+    match: (p) => p.startsWith('/ontology/graph-qa'),
+    canPath: '/ontology/graph-qa',
+  },
+  {
+    to: '/ontology/workflow',
+    labelKey: 'workflow',
+    icon: Workflow,
+    match: (p) => p.startsWith('/ontology/workflow'),
+    canPath: '/ontology/workflow',
   },
 ];
 

@@ -110,6 +110,8 @@ const ObjectTypeDetail = lazy(() => import('./pages/ontology/ObjectTypeDetail').
 const LinksList = lazy(() => import('./pages/ontology/LinksList').then((m) => ({ default: m.LinksList })));
 const LinkTypeDetail = lazy(() => import('./pages/ontology/LinkTypeDetail').then((m) => ({ default: m.LinkTypeDetail })));
 const ObjectExplorer = lazy(() => import('./pages/ontology/ObjectExplorer').then((m) => ({ default: m.ObjectExplorer })));
+const GraphQA = lazy(() => import('./pages/ontology/GraphQA').then((m) => ({ default: m.GraphQA })));
+const WorkflowPage = lazy(() => import('./pages/ontology/WorkflowPage').then((m) => ({ default: m.WorkflowPage })));
 const DocumentDetail = lazy(() => import('./pages/documents/DocumentDetail').then((m) => ({ default: m.DocumentDetail })));
 const WikiSpaceSettings = lazy(() =>
   import('./pages/wiki/WikiSpaceSettings').then((m) => ({ default: m.WikiSpaceSettings })),
@@ -241,6 +243,8 @@ function App() {
             <Route path="object-types/:typeId/settings" element={<ObjectTypeSettings />} />
             <Route path="link-types" element={<LinkTypesPage />} />
             <Route path="link-types/:linkTypeId/settings" element={<LinkTypeSettings />} />
+            <Route path="workflow" element={<WorkflowPage />} />
+            <Route path="graph-qa" element={<GraphQA />} />
           </Route>
           <Route path="objects" element={<ObjectsList />} />
           <Route path="objects/:typeId" element={<ObjectTypeDetail />} />

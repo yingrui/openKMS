@@ -1,15 +1,17 @@
-import { useCallback, useEffect, useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { ArrowLeft, ChevronLeft, ChevronRight, Image as ImageIcon, Loader2, Trash2, Video } from 'lucide-react';
+import { ArrowLeft, ChevronLeft, ChevronRight, Image as ImageIcon, Loader2, Sparkles, Trash2, Video } from 'lucide-react';
 import { toast } from 'sonner';
 import {
+  analyzeMediaAsset,
   deleteMediaAsset,
   fetchMediaAsset,
   fetchMediaAssets,
   resolveMediaFileUrl,
   updateMediaAsset,
   type MediaAssetOut,
+  type TranscriptSegment,
 } from '../../data/mediaApi';
 import '../documents/DocumentDetail.scss';
 import '../documents/DocumentChannel.scss';
@@ -21,7 +23,7 @@ type MediaDetailFormProps = {
   capturedAt: string;
   locationLabel: string;
   provenanceLabel: string;
-  mediaKind: 'image' | 'video';
+  mediaKind: 'image' | 'video' | 'audio';
   saving: boolean;
   onTitleChange: (value: string) => void;
   onDescriptionChange: (value: string) => void;
@@ -31,10 +33,47 @@ type MediaDetailFormProps = {
   onDelete: () => void;
   nav: ReactNode;
   descriptionOnly?: boolean;
-  activeTab?: 'description' | 'details';
-  onTabChange?: (tab: 'description' | 'details') => void;
+  activeTab?: MediaDetailTab;
+  onTabChange?: (tab: MediaDetailTab) => void;
   techDetails?: ReactNode;
+  derivedPanel?: ReactNode;
 };
+
+type MediaDetailTab = 'description' | 'summary' | 'transcript' | 'frames' | 'details';
+
+const VIDEO_TABS: MediaDetailTab[] = ['description', 'summary', 'transcript', 'frames', 'details'];
+const AUDIO_TABS: MediaDetailTab[] = ['description', 'summary', 'transcript', 'details'];
+
+const TAB_LABEL_KEY: Record<MediaDetailTab, string> = {
+  description: 'detail.tabDescription',
+  summary: 'detail.tabSummary',
+  transcript: 'detail.tabTranscript',
+  frames: 'detail.tabFrames',
+  details: 'detail.tabDetails',
+};
+
+function vttTime(ms: number): string {
+  const h = Math.floor(ms / 3600000);
+  const m = Math.floor((ms % 3600000) / 60000);
+  const sec = Math.floor((ms % 60000) / 1000);
+  const milli = Math.floor(ms % 1000);
+  return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(sec).padStart(2, '0')}.${String(milli).padStart(3, '0')}`;
+}
+
+/** Build a WebVTT track from the stored transcript so the player can burn in captions. */
+function buildVtt(segments: TranscriptSegment[]): string {
+  const cues = segments
+    .filter((s) => s.end_ms > s.start_ms && s.text.trim())
+    .map((s, i) => `${i + 1}\n${vttTime(s.start_ms)} --> ${vttTime(s.end_ms)}\n${s.text.trim()}`);
+  return `WEBVTT\n\n${cues.join('\n\n')}\n`;
+}
+
+function formatTimestamp(ms: number): string {
+  const totalSec = Math.floor(ms / 1000);
+  const m = Math.floor(totalSec / 60);
+  const s = totalSec % 60;
+  return `${m}:${String(s).padStart(2, '0')}`;
+}
 
 function formatDuration(ms: number | null | undefined): string | null {
   if (ms == null || ms <= 0) return null;
@@ -63,36 +102,32 @@ function MediaDetailFormPanel({
   activeTab,
   onTabChange,
   techDetails,
+  derivedPanel,
 }: MediaDetailFormProps) {
   const { t } = useTranslation('media');
-  const showVideoTabs = mediaKind === 'video' && activeTab && onTabChange;
+  const tabsForKind = mediaKind === 'audio' ? AUDIO_TABS : VIDEO_TABS;
+  const showVideoTabs = mediaKind !== 'image' && activeTab && onTabChange;
 
   return (
     <section className="document-detail-info media-detail-info" aria-label={t('detail.metadataPanelAria')}>
       {showVideoTabs ? (
         <div className="media-detail-panel-tabs" role="tablist" aria-label={t('detail.videoTabsAria')}>
-          <button
-            type="button"
-            role="tab"
-            aria-selected={activeTab === 'description'}
-            className={`document-detail-panel-tab${activeTab === 'description' ? ' active' : ''}`}
-            onClick={() => onTabChange('description')}
-          >
-            {t('detail.tabDescription')}
-          </button>
-          <button
-            type="button"
-            role="tab"
-            aria-selected={activeTab === 'details'}
-            className={`document-detail-panel-tab${activeTab === 'details' ? ' active' : ''}`}
-            onClick={() => onTabChange('details')}
-          >
-            {t('detail.tabDetails')}
-          </button>
+          {tabsForKind.map((name) => (
+            <button
+              key={name}
+              type="button"
+              role="tab"
+              aria-selected={activeTab === name}
+              className={`document-detail-panel-tab${activeTab === name ? ' active' : ''}`}
+              onClick={() => onTabChange(name)}
+            >
+              {t(TAB_LABEL_KEY[name])}
+            </button>
+          ))}
         </div>
       ) : (
         <h2 className="document-detail-info-title">
-          {mediaKind === 'video' ? <Video size={18} strokeWidth={1.75} /> : <ImageIcon size={18} strokeWidth={1.75} />}
+          {mediaKind === 'image' ? <ImageIcon size={18} strokeWidth={1.75} /> : <Video size={18} strokeWidth={1.75} />}
           <span>{title.trim() || t('detail.untitled')}</span>
         </h2>
       )}
@@ -105,6 +140,9 @@ function MediaDetailFormPanel({
 
         {techDetails}
 
+        {derivedPanel}
+
+        {!derivedPanel && (
         <div className="media-detail-fields">
           {!descriptionOnly && (
             <>
@@ -160,10 +198,11 @@ function MediaDetailFormPanel({
             />
           </div>
         </div>
+        )}
 
         <div className="media-detail-footer">
           <div className="document-detail-metadata-edit-actions">
-            <button type="button" className="btn btn-primary btn-sm" disabled={saving} onClick={onSave}>
+            <button type="button" className="btn btn-primary btn-sm" disabled={saving || !!derivedPanel} onClick={onSave}>
               {saving ? <Loader2 size={14} className="documents-loading-spinner" /> : null}
               <span>{saving ? t('detail.saving') : t('detail.save')}</span>
             </button>
@@ -191,9 +230,15 @@ export function MediaDetail() {
   const [description, setDescription] = useState('');
   const [capturedAt, setCapturedAt] = useState('');
   const [locationLabel, setLocationLabel] = useState('');
-  const [tab, setTab] = useState<'description' | 'details'>('description');
+  const [tab, setTab] = useState<MediaDetailTab>('description');
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [analyzing, setAnalyzing] = useState(false);
+  const [frameUrls, setFrameUrls] = useState<Record<string, string>>({});
+  const playerRef = useRef<HTMLMediaElement | null>(null);
+  const [vttUrl, setVttUrl] = useState<string | null>(null);
+  const [activeCue, setActiveCue] = useState(-1);
+  const activeCueRef = useRef<HTMLLIElement | null>(null);
 
   const load = useCallback(async () => {
     if (!id) return;
@@ -212,6 +257,21 @@ export function MediaDetail() {
       if (posterKey) {
         void resolveMediaFileUrl(row.id, posterKey).then(setPosterUrl).catch(() => setPosterUrl(null));
       }
+      const frames = row.keyframes || [];
+      if (frames.length) {
+        const entries = await Promise.all(
+          frames.map(async (f) => {
+            try {
+              return [f.key, await resolveMediaFileUrl(row.id, f.key)] as const;
+            } catch {
+              return null;
+            }
+          }),
+        );
+        setFrameUrls(Object.fromEntries(entries.filter((e): e is readonly [string, string] => e !== null)));
+      } else {
+        setFrameUrls({});
+      }
       const list = await fetchMediaAssets({ channel_id: row.channel_id, limit: 500 });
       setSiblings(list.items);
     } catch (e) {
@@ -224,6 +284,37 @@ export function MediaDetail() {
   useEffect(() => {
     void load();
   }, [load]);
+
+  // Captions come from the stored transcript, so there is nothing extra to fetch.
+  const transcriptSegments = asset?.transcript?.segments;
+  useEffect(() => {
+    if (!transcriptSegments?.length) {
+      setVttUrl(null);
+      return;
+    }
+    const url = URL.createObjectURL(new Blob([buildVtt(transcriptSegments)], { type: 'text/vtt' }));
+    setVttUrl(url);
+    return () => URL.revokeObjectURL(url);
+  }, [transcriptSegments]);
+
+  // Follow playback so the transcript highlights the line being spoken. Audio elements
+  // never render a caption track, so this is the only cue indicator they get.
+  useEffect(() => {
+    const el = playerRef.current;
+    if (!el || !transcriptSegments?.length) return;
+    const onTime = () => {
+      const ms = el.currentTime * 1000;
+      const idx = transcriptSegments.findIndex((s) => ms >= s.start_ms && ms < s.end_ms);
+      setActiveCue((prev) => (prev === idx ? prev : idx));
+    };
+    el.addEventListener('timeupdate', onTime);
+    return () => el.removeEventListener('timeupdate', onTime);
+  }, [transcriptSegments, mediaUrl]);
+
+  // Keep the spoken line in view, but only nudge within the panel.
+  useEffect(() => {
+    activeCueRef.current?.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+  }, [activeCue]);
 
   const idx = siblings.findIndex((s) => s.id === id);
   const prev = idx > 0 ? siblings[idx - 1] : null;
@@ -255,6 +346,26 @@ export function MediaDetail() {
       navigate(`/media/channels/${asset.channel_id}`);
     } catch (e) {
       toast.error(e instanceof Error ? e.message : t('detail.deleteFailed'));
+    }
+  };
+
+  const seekTo = (ms: number) => {
+    const el = playerRef.current;
+    if (!el) return;
+    el.currentTime = ms / 1000;
+    void el.play().catch(() => undefined);
+  };
+
+  const onAnalyze = async () => {
+    if (!asset) return;
+    setAnalyzing(true);
+    try {
+      await analyzeMediaAsset(asset.id, { language: 'zh' });
+      toast.success(t('detail.analyzeQueued'));
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : t('detail.analyzeFailed'));
+    } finally {
+      setAnalyzing(false);
     }
   };
 
@@ -336,6 +447,105 @@ export function MediaDetail() {
       </dl>
     ) : null;
 
+  const analyzeButton = (
+    <button type="button" className="btn btn-secondary btn-sm" disabled={analyzing} onClick={() => void onAnalyze()}>
+      {analyzing ? <Loader2 size={14} className="documents-loading-spinner" /> : <Sparkles size={14} />}
+      <span>{analyzing ? t('detail.analyzing') : t('detail.analyze')}</span>
+    </button>
+  );
+
+  const segments = asset.transcript?.segments || [];
+  const corrections = asset.transcript?.corrections_applied || [];
+  const frames = asset.keyframes || [];
+
+  let derivedPanel: ReactNode = null;
+  if (tab === 'summary') {
+    derivedPanel = (
+      <div className="media-derived">
+        {asset.summary ? (
+          <div className="media-derived__summary">{asset.summary}</div>
+        ) : (
+          <p className="media-derived__empty">{t('detail.summaryEmpty')}</p>
+        )}
+        <div className="media-derived__actions">{analyzeButton}</div>
+      </div>
+    );
+  } else if (tab === 'transcript') {
+    derivedPanel = (
+      <div className="media-derived">
+        {segments.length ? (
+          <>
+            <p className="media-derived__meta">
+              {t('detail.transcriptMeta', {
+                engine: asset.transcript?.engine || '',
+                count: segments.length,
+              })}
+            </p>
+            {corrections.length ? (
+              <details className="media-derived__corrections">
+                <summary>{t('detail.correctionsApplied', { count: corrections.length })}</summary>
+                <ul>
+                  {corrections.map((c) => (
+                    <li key={`${c.from}-${c.to}`}>
+                      <s>{c.from}</s> → <strong>{c.to}</strong>
+                      {c.count > 1 ? ` ×${c.count}` : null}
+                    </li>
+                  ))}
+                </ul>
+              </details>
+            ) : null}
+            <ol className="media-derived__transcript">
+              {segments.map((seg, i) => (
+                <li
+                  key={`${seg.start_ms}-${i}`}
+                  ref={i === activeCue ? activeCueRef : undefined}
+                  className={i === activeCue ? 'is-active' : undefined}
+                >
+                  <button
+                    type="button"
+                    className="media-derived__cue"
+                    title={t('detail.seekTo')}
+                    onClick={() => seekTo(seg.start_ms)}
+                  >
+                    {formatTimestamp(seg.start_ms)}
+                  </button>
+                  <span className="media-derived__cue-text">{seg.text}</span>
+                </li>
+              ))}
+            </ol>
+          </>
+        ) : (
+          <p className="media-derived__empty">{t('detail.transcriptEmpty')}</p>
+        )}
+        <div className="media-derived__actions">{analyzeButton}</div>
+      </div>
+    );
+  } else if (tab === 'frames') {
+    derivedPanel = (
+      <div className="media-derived">
+        {frames.length ? (
+          <div className="media-derived__frames">
+            {frames.map((f) => (
+              <button
+                key={f.key}
+                type="button"
+                className="media-derived__frame"
+                title={t('detail.seekTo')}
+                onClick={() => seekTo(f.t_ms)}
+              >
+                {frameUrls[f.key] ? <img src={frameUrls[f.key]} alt={formatTimestamp(f.t_ms)} /> : null}
+                <span>{formatTimestamp(f.t_ms)}</span>
+              </button>
+            ))}
+          </div>
+        ) : (
+          <p className="media-derived__empty">{t('detail.framesEmpty')}</p>
+        )}
+        <div className="media-derived__actions">{analyzeButton}</div>
+      </div>
+    );
+  }
+
   const formPanelProps = {
     title,
     description,
@@ -352,6 +562,50 @@ export function MediaDetail() {
     nav: navRow,
   };
 
+  if (asset.media_kind === 'audio') {
+    return (
+      <div className="document-detail media-detail-page media-detail-page--video">
+        <Link to={`/media/channels/${asset.channel_id}`} className="document-detail-back">
+          <ArrowLeft size={18} />
+          <span>{t('detail.back')}</span>
+        </Link>
+        <div className="media-detail media-detail--video">
+          <div className="media-detail__main">
+            <div className="document-detail-panel media-detail__viewer-panel">
+              <div className="media-detail__viewer-body media-detail__viewer-body--audio">
+                {mediaUrl && (
+                  <audio
+                    ref={(el) => {
+                      playerRef.current = el;
+                    }}
+                    src={mediaUrl}
+                    controls
+                  />
+                )}
+              </div>
+            </div>
+            <div className="media-detail__video-caption">
+              <h1 className="media-detail__video-title">{title.trim() || t('detail.untitled')}</h1>
+              <div className="media-detail__video-meta">
+                <span className="document-detail-metadata-pill">{provenanceLabel}</span>
+                {durationLabel ? <span className="media-detail__video-meta-item">{durationLabel}</span> : null}
+              </div>
+            </div>
+          </div>
+          <MediaDetailFormPanel
+            {...formPanelProps}
+            mediaKind="audio"
+            descriptionOnly={tab === 'description'}
+            activeTab={tab}
+            onTabChange={setTab}
+            techDetails={techDetailsPanel}
+            derivedPanel={derivedPanel}
+          />
+        </div>
+      </div>
+    );
+  }
+
   if (asset.media_kind === 'video') {
     return (
       <div className="document-detail media-detail-page media-detail-page--video">
@@ -363,7 +617,26 @@ export function MediaDetail() {
           <div className="media-detail__main">
             <div className="document-detail-panel media-detail__viewer-panel media-detail__viewer-panel--video">
               <div className="media-detail__viewer-body media-detail__viewer-body--video">
-                {mediaUrl && <video src={mediaUrl} controls poster={posterUrl || undefined} />}
+                {mediaUrl && (
+                  <video
+                    ref={(el) => {
+                      playerRef.current = el;
+                    }}
+                    src={mediaUrl}
+                    controls
+                    poster={posterUrl || undefined}
+                  >
+                    {vttUrl ? (
+                      <track
+                        kind="captions"
+                        src={vttUrl}
+                        srcLang={asset.transcript?.language || 'zh'}
+                        label={t('detail.captionsLabel')}
+                        default
+                      />
+                    ) : null}
+                  </video>
+                )}
               </div>
             </div>
             <div className="media-detail__video-caption">
@@ -382,6 +655,7 @@ export function MediaDetail() {
             activeTab={tab}
             onTabChange={setTab}
             techDetails={techDetailsPanel}
+            derivedPanel={derivedPanel}
           />
         </div>
       </div>

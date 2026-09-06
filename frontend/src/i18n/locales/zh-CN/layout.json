@@ -54,6 +54,8 @@
   "objects": "对象",
   "links": "关联",
   "objectExplorer": "对象浏览器",
+  "graphQa": "图谱智能问答",
+  "workflow": "工作流",
   "knowledgeBases": "知识库",
   "agents": "智能体项目",
   "evaluation": "评测集",

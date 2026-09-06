@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { Image, Video, Upload, Trash2, Settings, Sparkles, Loader2, Search, X, Folder } from 'lucide-react';
+import { Image, Video, Music, Upload, Trash2, Settings, Sparkles, Loader2, Search, X, Folder } from 'lucide-react';
 import { toast } from 'sonner';
 import { useEnsureMediaChannels } from '../../contexts/MediaChannelsContext';
 import {
@@ -24,6 +24,7 @@ import './Media.scss';
 function MediaThumb({ asset }: { asset: MediaAssetOut }) {
   const [url, setUrl] = useState<string | null>(null);
   useEffect(() => {
+    if (asset.media_kind === 'audio') return;
     const path =
       asset.media_kind === 'video'
         ? asset.poster_key || asset.thumbnail_key
@@ -32,6 +33,7 @@ function MediaThumb({ asset }: { asset: MediaAssetOut }) {
     void resolveMediaFileUrl(asset.id, path).then(setUrl).catch(() => setUrl(null));
   }, [asset]);
   if (!url) {
+    if (asset.media_kind === 'audio') return <Music size={32} strokeWidth={1.5} />;
     return asset.media_kind === 'video' ? <Video size={32} strokeWidth={1.5} /> : <Image size={32} strokeWidth={1.5} />;
   }
   return <img src={url} alt="" loading="lazy" />;
@@ -213,6 +215,7 @@ export function MediaChannel() {
             <option value="all">{t('channel.filterAll')}</option>
             <option value="image">{t('channel.filterImages')}</option>
             <option value="video">{t('channel.filterVideos')}</option>
+            <option value="audio">{t('channel.filterAudio')}</option>
           </select>
         </div>
 

@@ -1,4 +1,4 @@
-"""Media asset: image or video with metadata and narrative description."""
+"""Media asset: image or video with metadata, narrative description and derived understanding."""
 
 from datetime import datetime
 
@@ -29,6 +29,9 @@ class MediaAsset(Base):
     width: Mapped[int | None] = mapped_column(Integer, nullable=True)
     height: Mapped[int | None] = mapped_column(Integer, nullable=True)
     duration_ms: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    transcript: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
+    summary: Mapped[str | None] = mapped_column(Text, nullable=True)
+    keyframes: Mapped[list | None] = mapped_column(JSONB, nullable=True)
     provenance: Mapped[str] = mapped_column(String(32), nullable=False, default="uploaded", server_default="uploaded")
     generation: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
     series_id: Mapped[str] = mapped_column(String(64), nullable=False, index=True)

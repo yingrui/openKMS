@@ -1084,3 +1084,152 @@ async def run_media_generation(
     finally:
         if job_id is not None:
             await persist_job_run_worker_log_best_effort(job_id, None, "\n".join(log_lines), "")
+
+
+@job_app.task(name="run_media_analysis", pass_context=True)
+async def run_media_analysis(
+    context: JobContext,
+    asset_id: str,
+    model_id: str | None = None,
+    language: str | None = None,
+    keyframe_count: int = 6,
+    glossary_id: str | None = None,
+    use_hotwords: bool = False,
+) -> None:
+    """Derive transcript, keyframes and executive summary for one media asset.
+
+    When ``glossary_id`` is given, its terms bias the decoder as hotwords and its
+    synonyms repair the finished transcript; what was repaired is recorded on the
+    transcript so the edit stays auditable.
+
+    Each stage is independent: a failed summary still keeps the transcript, and a
+    video whose frames cannot be grabbed still gets its transcript. Whatever was
+    produced is persisted at the end.
+    """
+    import tempfile
+    from pathlib import Path
+
+    from sqlalchemy import select
+    from sqlalchemy.orm import selectinload
+
+    from app.database import async_session_maker
+    from app.models.api_model import ApiModel
+    from app.models.media_asset import MediaAsset
+    from app.models.media_channel import MediaChannel  # noqa: F401 - register FK target for ORM flush
+    from app.services.feature_toggles import is_feature_enabled
+    from app.services.jobs.job_run_worker_log import persist_job_run_worker_log_best_effort
+    from app.services.media.media_derivatives import extract_keyframes
+    from app.services.media.media_lexicon import (
+        correct_transcript,
+        load_glossary_lexicon,
+        select_hotwords,
+    )
+    from app.services.media.media_storage import media_frame_key
+    from app.services.media.media_understanding import (
+        summarize_transcript,
+        transcribe_media,
+        transcript_plain_text,
+    )
+    from app.services.storage import get_object, upload_object
+
+    job_id = int(context.job.id) if context.job and context.job.id else None
+    log_lines: list[str] = [f"Media analysis started: {asset_id}"]
+
+    try:
+        async with async_session_maker() as session:
+            if not await is_feature_enabled(session, "media"):
+                log_lines.append("Media feature disabled; aborting")
+                return
+
+            asset = await session.get(MediaAsset, asset_id)
+            if not asset:
+                raise RuntimeError(f"Media asset {asset_id} not found")
+
+            body = get_object(asset.storage_key)
+            if not body:
+                raise RuntimeError(f"Original object missing for {asset_id}")
+
+            corrections: dict[str, str] = {}
+            hotwords = ""
+            if glossary_id:
+                corrections, terms = await load_glossary_lexicon(session, glossary_id)
+                if use_hotwords:
+                    hotwords = select_hotwords(terms, f"{asset.title} {asset.description or ''}")
+                log_lines.append(
+                    f"Glossary {glossary_id}: {len(corrections)} corrections, "
+                    f"{len(hotwords.split())} hotwords"
+                )
+
+            suffix = Path(asset.storage_key).suffix or ".mp4"
+            with tempfile.TemporaryDirectory() as tmp:
+                src = Path(tmp) / f"original{suffix}"
+                src.write_bytes(body)
+
+                transcript = transcribe_media(str(src), language=language, hotwords=hotwords)
+                if transcript:
+                    fixed = correct_transcript(transcript, corrections)
+                    if fixed:
+                        log_lines.append(
+                            "Corrections: "
+                            + ", ".join(f"{c['from']}→{c['to']}×{c['count']}" for c in fixed)
+                        )
+                    asset.transcript = transcript
+                    if not asset.duration_ms and transcript.get("duration_ms"):
+                        asset.duration_ms = transcript["duration_ms"]
+                    log_lines.append(
+                        f"Transcript: {len(transcript.get('segments') or [])} segments, "
+                        f"lang={transcript.get('language')}"
+                    )
+                else:
+                    log_lines.append("Transcript skipped (faster-whisper unavailable)")
+
+                if asset.media_kind == "video":
+                    duration_sec = (asset.duration_ms or 0) / 1000
+                    frames = extract_keyframes(src, duration_sec, count=keyframe_count)
+                    stored: list[dict] = []
+                    for i, (t_ms, data) in enumerate(frames):
+                        key = media_frame_key(asset_id, i)
+                        upload_object(key, data, content_type="image/webp")
+                        stored.append({"key": key, "t_ms": t_ms})
+                    if stored:
+                        asset.keyframes = stored
+                    log_lines.append(f"Keyframes: {len(stored)}")
+
+            if model_id:
+                # provider_rel must be eager-loaded: touching a lazy relationship
+                # inside the async session raises MissingGreenlet.
+                model = (
+                    await session.execute(
+                        select(ApiModel)
+                        .options(selectinload(ApiModel.provider_rel))
+                        .where(ApiModel.id == model_id)
+                    )
+                ).scalar_one_or_none()
+                if not model:
+                    log_lines.append(f"Summary skipped: model {model_id} not found")
+                else:
+                    # Summary is the last, least important stage — never let it
+                    # cost the caller the transcript and keyframes above.
+                    try:
+                        text = transcript_plain_text(asset.transcript)
+                        summary = await summarize_transcript(text, asset.title, model)
+                    except Exception as exc:  # noqa: BLE001
+                        summary = None
+                        log_lines.append(f"Summary failed: {exc}")
+                    if summary:
+                        asset.summary = summary
+                        log_lines.append(f"Summary: {len(summary)} chars")
+                    else:
+                        log_lines.append("Summary skipped (empty transcript or provider error)")
+
+            await session.commit()
+            log_lines.append("Media analysis committed")
+
+        logger.info("Media analysis completed for %s", asset_id)
+    except Exception as exc:
+        log_lines.append(f"Media analysis failed: {exc}")
+        logger.exception("Media analysis failed for %s", asset_id)
+        raise
+    finally:
+        if job_id is not None:
+            await persist_job_run_worker_log_best_effort(job_id, None, "\n".join(log_lines), "")

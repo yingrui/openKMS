@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import logging
+import re
 from collections.abc import AsyncIterator
 from typing import Any
 from uuid import uuid4
@@ -53,8 +54,10 @@ def new_id() -> str:
 
 
 def _normalize_openai_base_url(url: str) -> str:
+    # Only append /v1 to bare hosts. Providers already carrying a version segment
+    # (GLM's .../paas/v4, etc.) must be used as-is, else .../v4/v1 → 404.
     b = (url or "").rstrip("/")
-    return b if b.endswith("/v1") else f"{b}/v1"
+    return b if re.search(r"/v\d+$", b) else f"{b}/v1"
 
 
 def _settings_flag_on(value: Any) -> bool:

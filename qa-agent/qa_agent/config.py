@@ -1,4 +1,5 @@
 """Application configuration."""
+import re
 from pathlib import Path
 
 from dotenv import load_dotenv
@@ -11,11 +12,15 @@ if _ENV_FILE.is_file():
 
 
 def openai_v1_base(url: str) -> str:
-    """Normalize an OpenAI-compatible API root ending in ``/v1`` (chat + rerank paths)."""
+    """Normalize an OpenAI-compatible API root ending in ``/v1`` (chat + rerank paths).
+
+    Providers whose root already carries a version segment (GLM's ``.../paas/v4``, etc.)
+    are used as-is; only bare hosts get ``/v1`` appended.
+    """
     u = (url or "").strip().rstrip("/")
     if not u:
         return "http://localhost:11434/v1"
-    if u.endswith("/v1"):
+    if re.search(r"/v\d+$", u):
         return u
     return f"{u}/v1"
 

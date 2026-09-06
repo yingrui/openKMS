@@ -1,4 +1,4 @@
-import { memo, useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ArrowUp, Copy, RefreshCw } from 'lucide-react';
 import { AgentAssistantStreamBody } from './AgentAssistantStreamBody';
@@ -36,6 +36,13 @@ interface Props {
   reverting?: boolean;
   hasMoreOlder?: boolean;
   onLoadOlderMessages?: () => Promise<boolean>;
+  skills?: SlashSkill[];
+}
+
+export interface SlashSkill {
+  id: string;
+  name: string;
+  description?: string;
 }
 
 /** Deferred content wrapper: only renders children when scrolled within rootMargin px of viewport. */
@@ -166,6 +173,7 @@ export function AgentChatMain({
   reverting = false,
   hasMoreOlder = false,
   onLoadOlderMessages,
+  skills,
 }: Props) {
   const { t } = useTranslation('agents');
   const [input, setInput] = useState('');
@@ -173,6 +181,46 @@ export function AgentChatMain({
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const pendingScrollRestoreRef = useRef(0);
   const [loadingOlder, setLoadingOlder] = useState(false);
+
+  // --- Slash "/" skill menu ---
+  const [slashDismissed, setSlashDismissed] = useState(false);
+  const [slashIndex, setSlashIndex] = useState(0);
+  const hasSkills = (skills?.length ?? 0) > 0;
+  const slashActive = hasSkills && input.startsWith('/') && !slashDismissed;
+  const filteredSkills = useMemo(() => {
+    if (!skills || skills.length === 0) return [];
+    if (!input.startsWith('/')) return [];
+    const q = input.slice(1).trim().toLowerCase();
+    if (!q) return skills;
+    return skills.filter(
+      (s) =>
+        s.name.toLowerCase().includes(q) ||
+        s.id.toLowerCase().includes(q) ||
+        (s.description ?? '').toLowerCase().includes(q),
+    );
+  }, [skills, input]);
+
+  // Keep highlight in range as the filter narrows.
+  useEffect(() => {
+    setSlashIndex(0);
+  }, [input]);
+
+  const selectSkill = useCallback(
+    (skill: SlashSkill) => {
+      const filled = t('chat.slashUseSkill', { name: skill.name });
+      setInput(filled);
+      setSlashDismissed(true);
+      requestAnimationFrame(() => {
+        const el = textareaRef.current;
+        if (!el) return;
+        el.focus();
+        el.setSelectionRange(el.value.length, el.value.length);
+        el.style.height = 'auto';
+        el.style.height = `${Math.min(el.scrollHeight, 140)}px`;
+      });
+    },
+    [t],
+  );
 
   useEffect(() => {
     if (prefillInput == null) return;
@@ -267,16 +315,79 @@ export function AgentChatMain({
       <div className="agents-composer-wrap">
         <form className="agents-composer-inner" onSubmit={submit}>
           <div className="agents-composer-box">
+            {slashActive ? (
+              <div className="agents-slash-menu" role="listbox" aria-label={t('nav.skills')}>
+                {filteredSkills.length === 0 ? (
+                  <div className="agents-slash-empty">{t('chat.slashNoMatch')}</div>
+                ) : (
+                  filteredSkills.map((s, i) => (
+                    <button
+                      type="button"
+                      role="option"
+                      aria-selected={i === slashIndex}
+                      key={s.id}
+                      className={`agents-slash-item${i === slashIndex ? ' is-active' : ''}`}
+                      onMouseEnter={() => setSlashIndex(i)}
+                      onMouseDown={(e) => {
+                        e.preventDefault();
+                        selectSkill(s);
+                      }}
+                    >
+                      <span className="agents-slash-name">{s.name}</span>
+                      {s.description ? (
+                        <span className="agents-slash-desc">{s.description}</span>
+                      ) : null}
+                    </button>
+                  ))
+                )}
+              </div>
+            ) : null}
             <textarea
               ref={textareaRef}
               value={input}
               onChange={(e) => {
-                setInput(e.target.value);
+                const v = e.target.value;
+                setInput(v);
+                if (!v.startsWith('/')) setSlashDismissed(false);
                 resizeTextarea();
               }}
               placeholder={t('chat.placeholder')}
               rows={1}
               onKeyDown={(e) => {
+                if (slashActive) {
+                  if (e.key === 'ArrowDown') {
+                    e.preventDefault();
+                    setSlashIndex((i) =>
+                      filteredSkills.length ? (i + 1) % filteredSkills.length : 0,
+                    );
+                    return;
+                  }
+                  if (e.key === 'ArrowUp') {
+                    e.preventDefault();
+                    setSlashIndex((i) =>
+                      filteredSkills.length
+                        ? (i - 1 + filteredSkills.length) % filteredSkills.length
+                        : 0,
+                    );
+                    return;
+                  }
+                  if (e.key === 'Escape') {
+                    e.preventDefault();
+                    setSlashDismissed(true);
+                    return;
+                  }
+                  if (
+                    e.key === 'Enter' &&
+                    !e.shiftKey &&
+                    filteredSkills.length > 0 &&
+                    !e.nativeEvent.isComposing &&
+                    e.nativeEvent.keyCode !== 229
+                  ) {
+                    e.preventDefault();
+                    selectSkill(filteredSkills[Math.min(slashIndex, filteredSkills.length - 1)]);
+                    return;
+                  }
+                }
                 if (e.key === 'Enter' && !e.shiftKey) {
                   if (e.nativeEvent.isComposing || e.nativeEvent.keyCode === 229) {
                     return;

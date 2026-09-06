@@ -1,5 +1,6 @@
 """Service for extracting document metadata using LLM via pydantic-ai."""
 import logging
+import re
 from typing import Any
 
 from openai import AsyncOpenAI
@@ -26,13 +27,83 @@ DEFAULT_SCHEMA = [
     {"key": "categories", "label": "Categories", "type": "array", "description": "Subject categories"},
 ]
 
-TRUNCATE_CHARS = 8000
+# Large enough to cover a full multi-page audit report (financial tables sit deep in the doc).
+# GLM-4.5/5.2 carry 128K context, so a generous cap avoids dropping type-specific fields.
+TRUNCATE_CHARS = 60000
 
 # DeepSeek and some OpenAI-compatible APIs reject response_format json_schema; use json_object + schema in prompt.
 _LLM_EXTRACTION_PROFILE = OpenAIModelProfile(
     supports_json_schema_output=False,
     supports_json_object_output=True,
 )
+
+
+def _is_typed_schema(schema: Any) -> bool:
+    """A type-aware schema is a dict with a 'by_type' map (per-document-type fields)."""
+    return isinstance(schema, dict) and isinstance(schema.get("by_type"), dict)
+
+
+async def classify_document_type(markdown: str, model: ApiModel, type_names: list[str]) -> str | None:
+    """One cheap LLM call: pick which document type this markdown is, from a fixed list.
+
+    Returns the chosen type name (must be one of type_names) or None if undecided.
+    """
+    if not markdown or not markdown.strip() or not type_names:
+        return None
+    base_url = model.provider_rel.base_url.rstrip("/")
+    if not re.search(r"/v\d+$", base_url):
+        base_url = f"{base_url}/v1"
+    client = AsyncOpenAI(base_url=base_url, api_key=model.provider_rel.api_key or "dummy")
+    provider = OpenAIProvider(openai_client=client)
+    openai_model = OpenAIChatModel(model.model_name or "gpt-4", provider=provider, profile=_LLM_EXTRACTION_PROFILE)
+    schema = StructuredDict(
+        {
+            "type": "object",
+            "properties": {"document_type": {"type": "string", "enum": type_names}},
+            "required": ["document_type"],
+        },
+        name="DocumentType",
+        description="Classify the document type",
+    )
+    agent = Agent(
+        openai_model,
+        output_type=PromptedOutput(schema),
+        system_prompt=(
+            "You classify a Chinese financial/credit document into exactly one of the allowed types. "
+            "Answer with the single best-fitting type."
+        ),
+    )
+    prompt = f"文档内容（节选）：\n---\n{markdown[:4000]}\n---\n请判断这份文档属于哪一种类型。"
+    try:
+        result = await agent.run(prompt)
+        chosen = (result.output or {}).get("document_type")
+        return chosen if chosen in type_names else None
+    except Exception as e:  # noqa: BLE001 — classification is best-effort
+        logger.warning("Document type classification failed: %s", e)
+        return None
+
+
+async def select_type_aware_schema(
+    schema: Any, markdown: str, model: ApiModel
+) -> tuple[Any, str | None, list[str]]:
+    """For a type-aware schema, classify the doc then return common + type-specific fields
+    as a flat legacy-array schema. For any other schema, return it unchanged.
+
+    Returns (effective_schema, detected_type, warnings).
+    """
+    if not _is_typed_schema(schema):
+        return schema, None, []
+    common: list[dict[str, Any]] = list(schema.get("common") or [])
+    by_type: dict[str, Any] = schema.get("by_type") or {}
+    warnings: list[str] = []
+    doc_type = await classify_document_type(markdown, model, list(by_type.keys()))
+    type_fields = list(by_type.get(doc_type, [])) if doc_type else []
+    if doc_type is None:
+        warnings.append("Document type could not be classified; extracting common fields only.")
+    # Common fields first, then type-specific; de-dup by key (common wins).
+    seen = {f.get("key") for f in common if isinstance(f, dict)}
+    merged = common + [f for f in type_fields if isinstance(f, dict) and f.get("key") not in seen]
+    return merged, doc_type, warnings
 
 
 async def resolve_extraction_schema_for_llm(
@@ -233,7 +304,9 @@ async def extract_metadata(
     json_schema = _schema_to_json_schema(schema)
 
     base_url = model.provider_rel.base_url.rstrip("/")
-    if not base_url.endswith("/v1"):
+    # Only append /v1 for bare hosts (e.g. https://api.openai.com). Providers whose base_url
+    # already carries a version segment (GLM's .../paas/v4, etc.) must be used as-is.
+    if not re.search(r"/v\d+$", base_url):
         base_url = f"{base_url}/v1"
 
     client = AsyncOpenAI(

@@ -56,7 +56,11 @@ from app.services.documents.document_scope import (
 )
 from app.services.documents.document_lifecycle import document_current_sql
 from app.services.acl.resource_acl_constants import PERM_READ, PERM_WRITE, RT_DOCUMENT_CHANNEL
-from app.services.documents.metadata_extraction import extract_metadata, resolve_extraction_schema_for_llm
+from app.services.documents.metadata_extraction import (
+    extract_metadata,
+    resolve_extraction_schema_for_llm,
+    select_type_aware_schema,
+)
 from app.services.wiki.page_index import md_to_tree_from_markdown
 from app.services.documents.document_storage import (
     document_object_key,
@@ -891,7 +895,10 @@ async def extract_document_metadata(
         raise HTTPException(status_code=400, detail="Extraction model must use api_kind chat-completions")
 
     schema = channel.extraction_schema if channel.extraction_schema else None
+    # Type-aware schema (dict with by_type): classify the document, then use common + type fields.
+    schema, detected_type, type_warnings = await select_type_aware_schema(schema, doc.markdown, model)
     resolved_schema, warnings = await resolve_extraction_schema_for_llm(schema, channel, db)
+    warnings = type_warnings + warnings
 
     try:
         extracted = await extract_metadata(doc.markdown, model, resolved_schema)
@@ -915,6 +922,8 @@ async def extract_document_metadata(
     now = datetime.now(timezone.utc).isoformat()
     current = doc.doc_metadata or {}
     merged = {**current, **extracted, "extracted_at": now, "extraction_model_id": model_id}
+    if detected_type and not extracted.get("文档类型"):
+        merged["文档类型"] = detected_type
     doc.doc_metadata = merged
     await db.commit()
     await db.refresh(doc)

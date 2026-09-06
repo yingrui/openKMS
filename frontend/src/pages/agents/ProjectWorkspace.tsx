@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
@@ -8,6 +8,8 @@ import { AgentSessionSidebar } from '../../components/agents/AgentSessionSidebar
 import { AgentsWorkspaceSkeleton } from '../../components/agents/AgentsPageSkeleton';
 import { getProject } from '../../data/projectsApi';
 import type { ProjectResponse } from '../../data/projectsApi';
+import { listAgentSkills } from '../../data/agentSkillsApi';
+import type { AgentSkill } from '../../data/agentSkillsApi';
 import { useProjectAgentStream } from './useProjectAgentStream';
 import { useProjectSessionRouting } from './useProjectSessionRouting';
 import '../../components/agents/AgentsWorkspace.scss';
@@ -37,6 +39,7 @@ export function ProjectWorkspace() {
   const [project, setProject] = useState<ProjectResponse | null>(null);
   const [planMode, setPlanMode] = useState(false);
   const [filesRailWidthPx, setFilesRailWidthPx] = useState(readFilesRailWidth);
+  const [skillRegistry, setSkillRegistry] = useState<AgentSkill[]>([]);
   const bodyRef = useRef<HTMLDivElement>(null);
 
   const session = useProjectSessionRouting(projectId, sessionId);
@@ -64,6 +67,32 @@ export function ProjectWorkspace() {
       .then(setProject)
       .catch((e) => toast.error(String(e)));
   }, [projectId]);
+
+  useEffect(() => {
+    listAgentSkills()
+      .then(setSkillRegistry)
+      .catch(() => {
+        /* slash-menu names fall back to skill ids */
+      });
+  }, []);
+
+  const installedSkills = useMemo(() => {
+    const installed = project?.settings?.installed_skills as Record<string, unknown> | undefined;
+    if (!installed || typeof installed !== 'object') return [];
+    const byId = new Map(skillRegistry.map((s) => [s.id, s]));
+    return Object.keys(installed).map((id) => {
+      const meta = byId.get(id);
+      const description =
+        meta?.versions?.find((v) => v.version === meta.default_version)?.notes ??
+        meta?.versions?.[0]?.notes ??
+        undefined;
+      return {
+        id,
+        name: meta?.display_name?.trim() || id,
+        description: description ?? undefined,
+      };
+    });
+  }, [project, skillRegistry]);
 
   useEffect(() => {
     const onResize = () => setFilesRailWidthPx((w) => clampFilesRailWidth(w));
@@ -173,6 +202,7 @@ export function ProjectWorkspace() {
               ? () => session.loadOlderMessages(session.convId!)
               : undefined
           }
+          skills={installedSkills}
         />
         <div
           className="agents-pane-resize-handle"

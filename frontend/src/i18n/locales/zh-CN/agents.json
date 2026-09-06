@@ -147,7 +147,9 @@
     "revertTitle": "撤销消息",
     "revertAria": "移除此条及之后的消息；文字回到输入框以便编辑并重发",
     "revertOk": "已移除消息，可编辑后重新发送",
-    "revertFailed": "无法撤销消息"
+    "revertFailed": "无法撤销消息",
+    "slashUseSkill": "使用「{{name}}」技能：",
+    "slashNoMatch": "无匹配技能"
   },
   "stream": {
     "replyAria": "助手回复",

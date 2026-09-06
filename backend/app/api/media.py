@@ -20,6 +20,8 @@ from app.models.api_provider import ApiProvider
 from app.models.media_asset import MediaAsset
 from app.models.media_channel import MediaChannel
 from app.schemas.media_asset import (
+    MediaAnalyzeRequest,
+    MediaAnalyzeResponse,
     MediaAssetListResponse,
     MediaAssetResponse,
     MediaAssetUpdate,
@@ -36,8 +38,10 @@ from app.services.media.media_scope import (
 )
 from app.services.media.media_service import collect_media_channel_and_descendants
 from app.services.media.media_storage import (
+    ALLOWED_AUDIO_EXTENSIONS,
     ALLOWED_IMAGE_EXTENSIONS,
     ALLOWED_VIDEO_EXTENSIONS,
+    MEDIA_KIND_AUDIO,
     MEDIA_KIND_IMAGE,
     MEDIA_KIND_VIDEO,
     media_original_key,
@@ -60,6 +64,8 @@ def _guess_media_kind(filename: str, content_type: str | None) -> str | None:
         return MEDIA_KIND_IMAGE
     if ext in ALLOWED_VIDEO_EXTENSIONS or (content_type or "").startswith("video/"):
         return MEDIA_KIND_VIDEO
+    if ext in ALLOWED_AUDIO_EXTENSIONS or (content_type or "").startswith("audio/"):
+        return MEDIA_KIND_AUDIO
     return None
 
 
@@ -69,7 +75,11 @@ def _safe_ext(filename: str, media_kind: str) -> str:
         return ext or "jpg"
     if media_kind == MEDIA_KIND_VIDEO and f".{ext}" in ALLOWED_VIDEO_EXTENSIONS:
         return ext or "mp4"
-    return "jpg" if media_kind == MEDIA_KIND_IMAGE else "mp4"
+    if media_kind == MEDIA_KIND_AUDIO and f".{ext}" in ALLOWED_AUDIO_EXTENSIONS:
+        return ext or "mp3"
+    if media_kind == MEDIA_KIND_IMAGE:
+        return "jpg"
+    return "mp3" if media_kind == MEDIA_KIND_AUDIO else "mp4"
 
 
 def _asset_response(row: MediaAsset) -> MediaAssetResponse:
@@ -209,7 +219,7 @@ async def upload_media_asset(
     content_type = file.content_type or mimetypes.guess_type(filename)[0]
     media_kind = _guess_media_kind(filename, content_type)
     if not media_kind:
-        raise HTTPException(status_code=400, detail="Unsupported file type. Upload an image or video.")
+        raise HTTPException(status_code=400, detail="Unsupported file type. Upload an image, video or audio file.")
 
     body = await file.read()
     if not body:
@@ -324,6 +334,46 @@ async def generate_media_asset(
     return MediaGenerateResponse(job_id=job_id, provider_task_id="pending")
 
 
+@router.post("/{asset_id}/analyze", response_model=MediaAnalyzeResponse)
+async def analyze_media_asset(
+    body: MediaAnalyzeRequest,
+    db: AsyncSession = Depends(get_db),
+    row: MediaAsset = Depends(get_scoped_media_write),
+):
+    """Queue transcript + keyframe + summary extraction for one asset.
+
+    Runs on the job worker: whisper on a CPU box takes minutes for long clips, far
+    past a request timeout. Poll the asset until transcript/keyframes/summary fill in.
+    """
+    if body.model_id:
+        model = await db.get(ApiModel, body.model_id)
+        if not model:
+            raise HTTPException(status_code=404, detail="Model not found")
+        provider = await db.get(ApiProvider, model.provider_id)
+        if not provider or not provider.api_key:
+            raise HTTPException(status_code=400, detail="Provider credentials not configured")
+
+    if body.glossary_id:
+        from app.models.glossary import Glossary
+
+        if not await db.get(Glossary, body.glossary_id):
+            raise HTTPException(status_code=404, detail="Glossary not found")
+
+    from app.jobs.defer import defer_task
+    from app.jobs.tasks import run_media_analysis
+
+    job_id = await defer_task(
+        run_media_analysis,
+        asset_id=row.id,
+        model_id=body.model_id,
+        language=body.language,
+        keyframe_count=body.keyframe_count,
+        glossary_id=body.glossary_id,
+        use_hotwords=body.use_hotwords,
+    )
+    return MediaAnalyzeResponse(job_id=job_id)
+
+
 @router.post("/upload-chunk")
 async def upload_media_chunked(
     request: Request,
@@ -367,7 +417,7 @@ async def upload_media_chunked(
     ct = content_type or mimetypes.guess_type(fname)[0]
     media_kind = _guess_media_kind(fname, ct)
     if not media_kind:
-        raise HTTPException(status_code=400, detail="Unsupported file type. Upload an image or video.")
+        raise HTTPException(status_code=400, detail="Unsupported file type. Upload an image, video or audio file.")
 
     asset_id = f"ma_{uuid4().hex[:12]}"
     ext = _safe_ext(fname, media_kind)

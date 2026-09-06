@@ -44,6 +44,10 @@ import enComments from './locales/en/comments.json';
 import zhComments from './locales/zh-CN/comments.json';
 import enMedia from './locales/en/media.json';
 import zhMedia from './locales/zh-CN/media.json';
+import enWorkflow from './locales/en/workflow.json';
+import zhWorkflow from './locales/zh-CN/workflow.json';
+import enGraphQa from './locales/en/graphQa.json';
+import zhGraphQa from './locales/zh-CN/graphQa.json';
 
 export const OPENKMS_LOCALE_STORAGE_KEY = 'openkms_locale';
 
@@ -105,6 +109,8 @@ void i18n
       'agents',
       'comments',
       'media',
+      'workflow',
+      'graphQa',
     ],
     defaultNS: 'common',
     interpolation: { escapeValue: false },
@@ -136,6 +142,8 @@ void i18n
         agents: enAgents,
         comments: enComments,
         media: enMedia,
+        workflow: enWorkflow,
+        graphQa: enGraphQa,
       },
       'zh-CN': {
         common: zhCommon,
@@ -159,6 +167,8 @@ void i18n
         agents: zhAgents,
         comments: zhComments,
         media: zhMedia,
+        workflow: zhWorkflow,
+        graphQa: zhGraphQa,
       },
     },
   });
