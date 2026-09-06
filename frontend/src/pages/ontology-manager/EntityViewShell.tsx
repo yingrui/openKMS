@@ -1,6 +1,6 @@
-import type { ReactNode } from 'react';
+import { useState, type ReactNode } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Loader2 } from 'lucide-react';
+import { ArrowLeft, ChevronDown, Loader2 } from 'lucide-react';
 import { Metric, MetricGrid } from '../../styles/design-system';
 import '../../styles/account-page.scss';
 import './entity-view.scss';
@@ -67,24 +67,53 @@ export function EntityViewPanel({
   description,
   children,
   footer,
+  defaultCollapsed = false,
 }: {
   title?: string;
   description?: ReactNode;
   children: ReactNode;
   footer?: ReactNode;
+  /** When true, body starts collapsed (title row toggles). Requires a title. */
+  defaultCollapsed?: boolean;
 }) {
+  const collapsible = defaultCollapsed && !!title;
+  const [open, setOpen] = useState(!defaultCollapsed);
+
   return (
     <section className="account-card entity-view__panel">
       {title || description ? (
         <div className="account-card-head">
-          <div>
-            {title ? <h2 className="account-card-title">{title}</h2> : null}
-            {description ? <p className="account-card-desc">{description}</p> : null}
-          </div>
+          {collapsible ? (
+            <button
+              type="button"
+              className="entity-view__panel-toggle"
+              aria-expanded={open}
+              onClick={() => setOpen((v) => !v)}
+            >
+              <div>
+                {title ? <h2 className="account-card-title">{title}</h2> : null}
+                {description && open ? <p className="account-card-desc">{description}</p> : null}
+              </div>
+              <ChevronDown
+                size={18}
+                className={`entity-view__panel-chevron${open ? ' is-open' : ''}`}
+                aria-hidden
+              />
+            </button>
+          ) : (
+            <div>
+              {title ? <h2 className="account-card-title">{title}</h2> : null}
+              {description ? <p className="account-card-desc">{description}</p> : null}
+            </div>
+          )}
         </div>
       ) : null}
-      {children}
-      {footer ? <div className="entity-view__panel-footer">{footer}</div> : null}
+      {open ? (
+        <>
+          {children}
+          {footer ? <div className="entity-view__panel-footer">{footer}</div> : null}
+        </>
+      ) : null}
     </section>
   );
 }

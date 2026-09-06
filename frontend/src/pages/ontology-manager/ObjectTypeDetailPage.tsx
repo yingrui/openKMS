@@ -551,7 +551,11 @@ export function ObjectTypeOverviewTab() {
           </div>
         </EntityViewPanel>
       ) : null}
-      <EntityViewPanel title={t('objectTypes.purgeTypeTitle')} description={t('objectTypes.purgeTypeHint')}>
+      <EntityViewPanel
+        title={t('objectTypes.purgeTypeTitle')}
+        description={t('objectTypes.purgeTypeHint')}
+        defaultCollapsed
+      >
         <div className="entity-view__form ontology-danger-zone ontology-danger-zone--embedded">
           {neo4jDataSources.length > 0 ? (
             <EntityViewField label={t('objectTypes.neo4jSource')}>

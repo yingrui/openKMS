@@ -158,6 +158,36 @@
   align-items: flex-end;
 }
 
+.entity-view__panel-toggle {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-3);
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  border: none;
+  background: none;
+  text-align: left;
+  cursor: pointer;
+  color: inherit;
+
+  .account-card-title {
+    margin: 0;
+  }
+}
+
+.entity-view__panel-chevron {
+  flex-shrink: 0;
+  margin-top: 0.15rem;
+  color: var(--color-text-muted);
+  transition: transform 0.15s ease;
+
+  &.is-open {
+    transform: rotate(180deg);
+  }
+}
+
 .entity-view__form {
   display: flex;
   flex-direction: column;
