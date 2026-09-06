@@ -111,12 +111,12 @@ Agent 工作指南（原 `.cursor/rules/` 合并版）。
 
 | 平台代码 | DB 里 published Source |
 |----------|------------------------|
-| catalog + host（`executeAction`、`loadObjectForEdit`、`OntoObjectList` 加载器） | 布局、文案、过滤、Modal↔Action  wiring |
+| catalog + host（`executeAction`、`executeFunction`、`loadObjectForEdit`、`OntoObjectList` 加载器） | 布局、文案、过滤、Modal↔Action wiring |
 | `_a2ui-platform.scss` 通用 A2UI 样式 | resource allowlist + `draft_a2ui` / `published_a2ui` |
-| 校验、Designer NDJSON、发布门禁 | 领域 UX（如多列看板 = 多个过滤 List + Modal 组合） |
+| 校验、发布门禁 | 领域 UX（如多列看板 = 多个过滤 List + Modal 组合） |
 
 **禁止：** 平台写领域 UI（看板 widget、应用名按钮、board 形 binding、按域名 synthesize）；load 时 silent heal/normalize/auto-synthesize → **校验失败可见**，仅 **`POST …/synthesize`** 显式重置 stub。  
-**已废弃：** `OntoKanbanBoard`、`OntoActionForm`、`ontology_app_kanban_a2ui.py`、board binding、load-time auto-heal。
+**已废弃：** `OntoKanbanBoard`、`OntoActionForm`、`OntoActionButton`、`OntoFunctionButton`、`OntoObjectLink`、`ontology_app_kanban_a2ui.py`、board binding、load-time auto-heal。
 
 **放置：** 后端 `app_builder/` + `api/app_builder.py`（非 `ontology/`）；API 仅 **`/api/app-builder/apps`**，迁路由即删旧路；表名 `ontology_apps` 仅历史存储；前端 `appBuilderApi.ts`、`pages/app-builder/a2ui/`。
 

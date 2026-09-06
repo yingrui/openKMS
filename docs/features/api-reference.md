@@ -286,7 +286,6 @@ The bundled **openkms-skill** CLI wraps **lifecycle** and **relationships** the 
 | POST | `/api/app-builder/apps/{id}/unpublish` | Clear published; status → draft |
 | GET | `/api/app-builder/apps/{id}/versions` | List published versions |
 | POST | `/api/app-builder/apps/{id}/versions/{version_id}/rollback` | Rollback published to a version |
-| POST | `/api/app-builder/apps/{id}/designer/chat` | NDJSON App Builder designer stream |
 | GET | `/api/data-sources` | List data sources (`limit`, `offset`; `console:data_sources`) |
 | POST | `/api/data-sources` | Create data source (`console:data_sources`) |
 | GET | `/api/data-sources/{id}` | Get data source (`console:data_sources`) |

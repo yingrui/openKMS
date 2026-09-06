@@ -84,11 +84,3 @@ class AppBuilderDesignResponse(AppBuilderResponse):
 
 class AppBuilderRunResponse(AppBuilderResponse):
     components: list[AppBuilderComponent] = Field(default_factory=list)
-
-
-class AppBuilderDesignerChatIn(BaseModel):
-    messages: list[dict[str, str]]
-    working_a2ui_messages: list[dict[str, Any]] | None = None
-    conversation_id: str | None = None
-    component_id: str | None = None
-    stream: bool = True

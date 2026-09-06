@@ -9,11 +9,17 @@ APP_BUILDER_A2UI_SURFACE_ID = "ontology-app"
 A2UI_VERSION = "v0.9"
 A2UI_DOC_FORMAT = "a2ui_v0_9"
 
-REMOVED_COMPONENTS = frozenset({"OntoKanbanBoard", "OntoActionForm"})
+REMOVED_COMPONENTS = frozenset(
+    {
+        "OntoKanbanBoard",
+        "OntoActionForm",
+        "OntoActionButton",
+        "OntoFunctionButton",
+        "OntoObjectLink",
+    }
+)
 
 ONTOLOGY_COMPONENTS_WITH_OBJECT_TYPE = frozenset({"OntoObjectList"})
-ONTOLOGY_COMPONENTS_WITH_ACTION = frozenset({"OntoActionButton"})
-ONTOLOGY_COMPONENTS_WITH_FUNCTION = frozenset({"OntoFunctionButton"})
 
 
 def pack_a2ui_document(messages: list[dict[str, Any]]) -> dict[str, Any]:
@@ -74,7 +80,7 @@ def reject_legacy_board_bindings(raw: dict[str, Any] | None) -> None:
 
 
 def synthesize_stub_a2ui_messages(*, title: str) -> list[dict[str, Any]]:
-    """Empty draft canvas — author describes the app to the designer."""
+    """Empty draft canvas — author composes layout in Source / via skill."""
     components: list[dict[str, Any]] = [
         {"id": "root", "component": "Column", "children": ["title", "hint"]},
         {"id": "title", "component": "Text", "text": title, "variant": "h1"},
@@ -82,9 +88,8 @@ def synthesize_stub_a2ui_messages(*, title: str) -> list[dict[str, Any]]:
             "id": "hint",
             "component": "Text",
             "text": (
-                "Describe the app to the designer. Link existing Object Types, "
-                "Actions, and Functions — Builder does not create them. "
-                "Compose OntoObjectList (data loader) + List row templates, Modal, TextField, Button in Source."
+                "Set Resources and Loaders in Settings, then compose OntoObjectList "
+                "(data loader) + List row templates, Modal, TextField, and Button in Source."
             ),
             "variant": "body",
         },
@@ -122,23 +127,23 @@ def iter_a2ui_components(messages: list[dict[str, Any]]) -> list[dict[str, Any]]
     return out
 
 
-def _literal_action_api_name(value: Any) -> str | None:
+def _literal_api_name(value: Any) -> str | None:
     if isinstance(value, str) and value.strip():
         return value.strip()
     return None
 
 
-def _action_api_from_event_action(action: Any) -> str | None:
-    """Pull actionApiName from Button (or any) action.event.context when literal."""
+def _event_name_and_context(action: Any) -> tuple[str | None, dict[str, Any] | None]:
     if not isinstance(action, dict):
-        return None
+        return None, None
     event = action.get("event")
     if not isinstance(event, dict):
-        return None
+        return None, None
+    name = str(event.get("name") or "").strip() or None
     ctx = event.get("context")
     if not isinstance(ctx, dict):
-        return None
-    return _literal_action_api_name(ctx.get("actionApiName"))
+        return name, None
+    return name, ctx
 
 
 def collect_a2ui_resource_refs(messages: list[dict[str, Any]]) -> dict[str, set[str]]:
@@ -149,19 +154,19 @@ def collect_a2ui_resource_refs(messages: list[dict[str, Any]]) -> dict[str, set[
         name = str(c.get("component") or "")
         if name in REMOVED_COMPONENTS:
             continue
-        if name in ONTOLOGY_COMPONENTS_WITH_OBJECT_TYPE or name == "OntoObjectLink":
+        if name in ONTOLOGY_COMPONENTS_WITH_OBJECT_TYPE:
             ot = str(c.get("objectType") or "").strip()
             if ot:
                 ots.add(ot)
-        if name in ONTOLOGY_COMPONENTS_WITH_ACTION:
-            api = str(c.get("actionApiName") or "").strip()
+        event_name, ctx = _event_name_and_context(c.get("action"))
+        if not ctx:
+            continue
+        if event_name == "executeAction":
+            api = _literal_api_name(ctx.get("actionApiName"))
             if api:
                 actions.add(api)
-        nested = _action_api_from_event_action(c.get("action"))
-        if nested:
-            actions.add(nested)
-        if name in ONTOLOGY_COMPONENTS_WITH_FUNCTION:
-            api = str(c.get("functionApiName") or "").strip()
+        elif event_name == "executeFunction":
+            api = _literal_api_name(ctx.get("functionApiName"))
             if api:
                 functions.add(api)
     return {"objectTypes": ots, "actions": actions, "functions": functions}
@@ -300,7 +305,7 @@ def component_id() -> str:
 
 
 def synthesize_stub_components(*, title: str) -> list[dict[str, Any]]:
-    """Single default stub artifact — the author describes the app to the designer."""
+    """Single default stub artifact — author composes layout in Source."""
     return [
         {
             "id": component_id(),

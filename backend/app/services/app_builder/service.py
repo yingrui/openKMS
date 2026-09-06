@@ -13,10 +13,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.object_type import ObjectType
 from app.models.app_builder import AppBuilderApp, AppBuilderComponent, AppBuilderPublishedVersion
-from app.models.ontology_function import OntologyActionType, OntologyFunction, OntologyFunctionVersion
+from app.models.ontology_function import OntologyActionType, OntologyFunction
 from app.schemas.app_builder import AppBuilderBindings, AppBuilderCreate, AppBuilderUpdate
-from app.services.ontology.action_rule_types import is_builtin_object_rule
-from app.services.ontology.builtin_action_service import input_schema_for_action
 from app.services.app_builder.a2ui import (
     component_id,
     normalize_resources,
@@ -369,63 +367,6 @@ async def update_app(db: AsyncSession, app: AppBuilderApp, body: AppBuilderUpdat
     return app
 
 
-async def update_component_messages(
-    db: AsyncSession,
-    app: AppBuilderApp,
-    component_id: str | None,
-    messages: list[dict[str, Any]],
-) -> AppBuilderComponent | None:
-    comp = None
-    if component_id:
-        candidate = await db.get(AppBuilderComponent, component_id)
-        if candidate and candidate.app_id == app.id:
-            comp = candidate
-    if comp is None:
-        comp = await get_default_component(db, app.id)
-    if comp is None:
-        raise HTTPException(status_code=400, detail="App has no component to update")
-    validated = validate_app_a2ui_messages(messages, bindings=app.bindings or {})
-    comp.a2ui_messages = validated
-    await db.commit()
-    await db.refresh(comp)
-    return comp
-
-
-async def apply_bindings(
-    db: AsyncSession,
-    app: AppBuilderApp,
-    bindings: dict[str, Any],
-    *,
-    synthesize: bool = False,
-) -> AppBuilderApp:
-    """Validate and store resources. Never synthesizes product UI (stub only if synthesize)."""
-    try:
-        cleaned = bindings_as_dict(bindings)
-    except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e)) from e
-    if not cleaned:
-        raise HTTPException(
-            status_code=400,
-            detail={"message": "resources must include objectTypes, actions, and/or functions"},
-        )
-    resolved, missing = await resolve_bindings_snapshot(db, cleaned)
-    if missing:
-        raise HTTPException(
-            status_code=400,
-            detail={
-                "message": "Missing or unknown resources",
-                "missing_bindings": missing,
-            },
-        )
-    app.bindings = cleaned
-    app.bindings_hash = compute_bindings_hash(resolved)
-    if synthesize:
-        await _replace_draft_components(db, app, synthesize_stub_components(title=app.name))
-    await db.commit()
-    await db.refresh(app)
-    return app
-
-
 async def synthesize_draft(db: AsyncSession, app: AppBuilderApp) -> AppBuilderApp:
     """Reset draft to a single stub component. Clear legacy board bindings."""
     bindings = app.bindings or {}
@@ -516,9 +457,6 @@ async def unpublish_app(db: AsyncSession, app: AppBuilderApp) -> AppBuilderApp:
 
 
 async def delete_app(db: AsyncSession, app: AppBuilderApp) -> None:
-    from app.services.app_builder.session import delete_all_conversations_for_app
-
-    await delete_all_conversations_for_app(db, app.id)
     for c in await list_draft_components(db, app.id):
         await db.delete(c)
     q = select(AppBuilderPublishedVersion).where(AppBuilderPublishedVersion.app_id == app.id)
@@ -526,97 +464,3 @@ async def delete_app(db: AsyncSession, app: AppBuilderApp) -> None:
         await db.delete(v)
     await db.delete(app)
     await db.commit()
-
-
-def _property_names(ot: ObjectType) -> list[str]:
-    props = ot.properties or []
-    names: list[str] = []
-    if isinstance(props, list):
-        for p in props:
-            if isinstance(p, dict):
-                n = p.get("name") or p.get("api_name") or p.get("id")
-                if n:
-                    names.append(str(n))
-    return names[:40]
-
-
-def _summarize_input_schema(schema: dict[str, Any] | None) -> dict[str, Any] | None:
-    if not isinstance(schema, dict):
-        return None
-    props = schema.get("properties") or {}
-    required = schema.get("required") or []
-    if not isinstance(props, dict):
-        return None
-    return {
-        "required": required if isinstance(required, list) else [],
-        "properties": {
-            k: {"type": (v or {}).get("type") if isinstance(v, dict) else None}
-            for k, v in list(props.items())[:24]
-        },
-    }
-
-
-async def build_ontology_snapshot(db: AsyncSession, *, limit: int = 200) -> dict[str, Any]:
-    """Compact live ontology for designer prompts (link only — no create)."""
-    ots = list((await db.execute(select(ObjectType).order_by(ObjectType.name).limit(limit))).scalars().all())
-    acts = list(
-        (await db.execute(select(OntologyActionType).order_by(OntologyActionType.api_name).limit(limit))).scalars().all()
-    )
-    fns = list(
-        (
-            await db.execute(
-                select(OntologyFunction)
-                .where(OntologyFunction.published_version_id.is_not(None))
-                .order_by(OntologyFunction.api_name)
-                .limit(limit)
-            )
-        )
-        .scalars()
-        .all()
-    )
-    ot_by_id = {o.id: o for o in ots}
-    fn_by_id = {f.id: f for f in fns}
-
-    action_rows: list[dict[str, Any]] = []
-    for a in acts:
-        schema_summary: dict[str, Any] | None = None
-        if is_builtin_object_rule(a.rule_type):
-            ot = ot_by_id.get(a.object_type_id)
-            if ot:
-                schema_summary = _summarize_input_schema(input_schema_for_action(a, ot))
-        else:
-            fn = fn_by_id.get(a.function_id) if a.function_id else None
-            if fn and fn.published_version_id:
-                ver = await db.get(OntologyFunctionVersion, fn.published_version_id)
-                if ver and isinstance(ver.input_schema, dict):
-                    schema_summary = _summarize_input_schema(ver.input_schema)
-        ot_obj = ot_by_id.get(a.object_type_id)
-        action_rows.append(
-            {
-                "api_name": a.api_name,
-                "display_name": a.display_name,
-                "object_type": (ot_obj.name if ot_obj else None) or a.object_type_id,
-                "input_schema": schema_summary,
-            }
-        )
-
-    return {
-        "object_types": [
-            {"name": o.name, "id": o.id, "properties": _property_names(o)} for o in ots
-        ],
-        "actions": action_rows,
-        "functions": [{"api_name": f.api_name, "display_name": f.display_name} for f in fns],
-        "catalog_primitives": [
-            "OntoObjectList",
-            "OntoActionButton",
-            "OntoFunctionButton",
-            "OntoObjectLink",
-            "Column",
-            "Row",
-            "Text",
-            "Card",
-            "Button",
-            "Modal",
-            "TextField",
-        ],
-    }

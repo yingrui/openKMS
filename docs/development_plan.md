@@ -43,7 +43,7 @@ Shipped product scope follows the same index as [Functionalities](./functionalit
 | [Global search](features/global-search.md) | `/search` page: documents, articles, wiki spaces, knowledge bases (name, channel, updated filters) |
 | [Ontology — objects, links, datasets](features/ontology.md) | Object/link types, instances, data sources, datasets |
 | [Object Explorer](features/object-explorer.md) | Cypher exploration, list view, instance graph layout and rendering |
-| [App Builder & Apps](features/app-builder.md) | Ontology A2UI apps: App Builder (author resource allowlist + multi-artifact A2UI + versioned publish/rollback + settings) + Apps (published run) |
+| [App Builder & Apps](features/app-builder.md) | Ontology A2UI apps: App Builder (Settings Resources + loaders, Design Preview/Source/Data model, multi-artifact A2UI, versioned publish/rollback; compose via Source or openkms-skill) + Apps (published run) |
 | [Pipelines, jobs & models](features/pipelines-and-jobs.md) | Pipeline templates, procrastinate jobs, provider/model registry (multimodal image/video models planned) |
 | [Data security](features/data-security.md) | Two-layer model (operation RBAC + resource ACL), groups, sharing, inheritance, enforcement; **resource ACL** on evaluations, glossaries, and ontology types (object/link/dataset) |
 | [Console & authentication](features/console-and-auth.md) | Permission catalog, Console UX, OIDC/local auth, system settings, user Settings (API keys), feature toggles |

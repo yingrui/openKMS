@@ -106,6 +106,52 @@ def test_validate_action_must_be_in_resources():
     )
 
 
+def test_validate_function_must_be_in_resources():
+    msgs = [
+        {
+            "version": "v0.9",
+            "createSurface": {
+                "surfaceId": "ontology-app",
+                "catalogId": APP_BUILDER_A2UI_CATALOG_ID,
+            },
+        },
+        {
+            "version": "v0.9",
+            "updateComponents": {
+                "surfaceId": "ontology-app",
+                "components": [
+                    {"id": "root", "component": "Column", "children": ["run"]},
+                    {
+                        "id": "run",
+                        "component": "Button",
+                        "child": "runText",
+                        "action": {
+                            "event": {
+                                "name": "executeFunction",
+                                "context": {
+                                    "functionApiName": "suggestWorkItemPriority",
+                                    "inputPath": "/suggest",
+                                    "outputPath": "/suggestResult",
+                                },
+                            }
+                        },
+                    },
+                    {"id": "runText", "component": "Text", "text": "Suggest"},
+                ],
+            },
+        },
+    ]
+    with pytest.raises(ValueError, match="suggestWorkItemPriority"):
+        validate_app_a2ui_messages(
+            msgs,
+            bindings={"objectTypes": ["WorkItem"], "functions": ["otherFn"]},
+        )
+    assert validate_app_a2ui_messages(
+        msgs,
+        bindings={"objectTypes": ["WorkItem"], "functions": ["suggestWorkItemPriority"]},
+    )
+
+
 def test_validate_rejects_onto_action_form():
     msgs = synthesize_stub_a2ui_messages(title="T")
     bad = [

@@ -90,6 +90,8 @@ plugins:
             Knowledge map & home: 知识地图与首页
             Global search: 全局搜索
             Ontology — objects, links, datasets: 本体 — 对象、关系与数据集
+            Ontology Functions: Ontology Functions
+            App Builder & Apps: 应用构建器与应用
             Pipelines, jobs & models: 流水线、任务与模型
             Data security: 数据安全
             Console & authentication: 控制台与认证

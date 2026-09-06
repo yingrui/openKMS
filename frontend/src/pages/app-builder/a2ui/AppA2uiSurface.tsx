@@ -2,23 +2,28 @@ import { useEffect, useRef, useState } from 'react';
 import { MessageProcessor } from '@a2ui/web_core/v0_9';
 import { A2uiSurface } from '@a2ui/react/v0_9';
 import { executeOntologyAction } from '../../../data/ontologyActionsApi';
+import { executeOntologyFunctionByApiName } from '../../../data/ontologyFunctionsApi';
 import {
   closeNearestA2uiModal,
   decorateA2uiDom,
   EDIT_MODAL_OPEN_MARKER,
   emitAppBuilderMutated,
   EXECUTE_ACTION_EVENT,
+  EXECUTE_FUNCTION_EVENT,
   LOAD_OBJECT_FOR_EDIT_EVENT,
   appBuilderCatalog,
   APP_BUILDER_A2UI_SURFACE_ID,
   openProgrammaticA2uiModal,
   resolveActionByApiName,
 } from './catalog';
+import { snapshotDataModelRoot } from './dataModelInspect';
 import { validateAppA2uiMessages } from './validate';
 import './AppA2uiSurface.scss';
 
 type Props = {
   a2uiMessages: Record<string, unknown>[];
+  /** Fires with `dataModel.get('/')` whenever the surface DataModel changes. */
+  onDataModelChange?: (root: unknown) => void;
 };
 
 type A2uiClientAction = {
@@ -32,6 +37,7 @@ type SurfaceLike = {
   dataModel: {
     get: (path: string) => unknown;
     set: (path: string, value: unknown) => unknown;
+    subscribe: (path: string, onChange: (value: unknown) => void) => { unsubscribe: () => void };
   };
   componentsModel?: { get: (id: string) => unknown };
 };
@@ -91,7 +97,11 @@ function coerceInputBySchema(
 }
 
 function handleLoadObjectForEdit(surf: SurfaceLike, action: A2uiClientAction) {
-  const inputPath = String(action.context.inputPath ?? '/editWorkItem').trim() || '/editWorkItem';
+  const inputPath = String(action.context.inputPath ?? '').trim();
+  if (!inputPath) {
+    console.error('A2UI loadObjectForEdit: missing inputPath');
+    return;
+  }
   const payload: Record<string, unknown> = {};
   for (const [key, value] of Object.entries(action.context)) {
     if (key === 'inputPath' || value === undefined || value === null || value === '') continue;
@@ -151,15 +161,85 @@ async function handleExecuteAction(surf: SurfaceLike, action: A2uiClientAction) 
   }
 }
 
-export function AppA2uiSurface({ a2uiMessages }: Props) {
+/**
+ * Run a published Ontology Function.
+ * Context: functionApiName (required), inputPath (optional form bucket),
+ * outputPath (optional — write `output` for Text to bind), objectId (optional → input.object_id /
+ * work_item_id), applyPath + applyKey (optional — copy one output field into a DataModel path,
+ * e.g. form priority).
+ */
+async function handleExecuteFunction(surf: SurfaceLike, action: A2uiClientAction) {
+  const functionApiName = String(action.context.functionApiName ?? '').trim();
+  if (!functionApiName) {
+    console.error('A2UI executeFunction: missing functionApiName');
+    return;
+  }
+  const inputPath = String(action.context.inputPath ?? '').trim();
+  const outputPath = String(action.context.outputPath ?? '').trim();
+  const applyPath = String(action.context.applyPath ?? '').trim();
+  const applyKey = String(action.context.applyKey ?? '').trim();
+  const objectIdRaw =
+    action.context.objectId ??
+    action.context.object_id ??
+    (inputPath ? asRecord(surf.dataModel.get(inputPath)).objectId : undefined);
+  const objectId = objectIdRaw != null && String(objectIdRaw).trim() ? String(objectIdRaw).trim() : undefined;
+
+  let input: Record<string, unknown> = {};
+  if (inputPath) {
+    input = asRecord(surf.dataModel.get(inputPath));
+  }
+  if (objectId) {
+    // FoOs often take work_item_id; Action-style forms use object_id / objectId.
+    input = { ...input, object_id: objectId, work_item_id: objectId };
+  }
+  // Host meta keys are not Function inputs.
+  delete input.objectId;
+  delete input.id;
+
+  try {
+    const res = await executeOntologyFunctionByApiName(functionApiName, {
+      input,
+      use_published: true,
+    });
+    if (res.status !== 'ok') {
+      console.error('Function failed:', res.error || res.status);
+      if (outputPath) {
+        surf.dataModel.set(outputPath, { error: res.error || res.status });
+      }
+      return;
+    }
+    const out = asRecord(res.output);
+    if (outputPath) {
+      surf.dataModel.set(outputPath, out);
+    }
+    if (applyPath && applyKey && out[applyKey] != null && out[applyKey] !== '') {
+      surf.dataModel.set(applyPath, out[applyKey]);
+    }
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
+    console.error(msg);
+    if (outputPath) {
+      try {
+        surf.dataModel.set(outputPath, { error: msg });
+      } catch {
+        /* ignore */
+      }
+    }
+  }
+}
+
+export function AppA2uiSurface({ a2uiMessages, onDataModelChange }: Props) {
   const [error, setError] = useState<string | null>(null);
   const [surface, setSurface] = useState<SurfaceLike | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+  const onDataModelChangeRef = useRef(onDataModelChange);
+  onDataModelChangeRef.current = onDataModelChange;
 
   useEffect(() => {
     if (!a2uiMessages.length) {
       setSurface(null);
       setError(null);
+      onDataModelChangeRef.current?.({});
       return;
     }
     let sub: { unsubscribe: () => void } | null = null;
@@ -186,6 +266,10 @@ export function AppA2uiSurface({ a2uiMessages }: Props) {
           void handleExecuteAction(surf, action);
           return;
         }
+        if (action.name === EXECUTE_FUNCTION_EVENT) {
+          void handleExecuteFunction(surf, action);
+          return;
+        }
         if (action.name === LOAD_OBJECT_FOR_EDIT_EVENT) {
           handleLoadObjectForEdit(surf, action);
         }
@@ -195,11 +279,32 @@ export function AppA2uiSurface({ a2uiMessages }: Props) {
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
       setSurface(null);
+      onDataModelChangeRef.current?.({});
     }
     return () => {
       sub?.unsubscribe();
     };
   }, [a2uiMessages]);
+
+  useEffect(() => {
+    if (!surface) return;
+    const emit = () => {
+      onDataModelChangeRef.current?.(snapshotDataModelRoot((p) => surface.dataModel.get(p)));
+    };
+    emit();
+    const dmSub = surface.dataModel.subscribe('/', () => emit());
+    const onMut = () => {
+      window.setTimeout(emit, 0);
+    };
+    window.addEventListener('app-builder:mutated', onMut);
+    // OntoObjectList loads async after first paint; poll briefly until settled.
+    const timers = [50, 200, 500, 1200].map((ms) => window.setTimeout(emit, ms));
+    return () => {
+      dmSub.unsubscribe();
+      window.removeEventListener('app-builder:mutated', onMut);
+      for (const t of timers) window.clearTimeout(t);
+    };
+  }, [surface]);
 
   useEffect(() => {
     if (!surface || !containerRef.current) return;

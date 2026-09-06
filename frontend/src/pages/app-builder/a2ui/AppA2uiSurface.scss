@@ -15,23 +15,3 @@
   color: var(--color-danger, #b91c1c);
   font-size: 0.875rem;
 }
-
-.onto-a2ui-fo {
-  background: var(--color-bg-muted);
-  padding: 0.5rem;
-  border-radius: var(--radius-sm);
-  overflow: auto;
-  max-height: 12rem;
-  font-size: 0.8rem;
-}
-
-.onto-a2ui-link {
-  color: var(--color-accent);
-}
-
-.onto-a2ui-inline {
-  display: inline-flex;
-  flex-direction: column;
-  gap: 0.35rem;
-  align-items: flex-start;
-}
