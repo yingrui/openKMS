@@ -16,10 +16,11 @@
   --color-surface: var(--color-bg-elevated);
   --color-bg-subtle: var(--color-bg-muted);
 
-  --color-accent: #0d9488;
-  --color-accent-hover: #0f766e;
-  --color-accent-muted: #ccfbf1;
-  --color-accent-subtle: #f0fdfa;
+  /* Amway 品牌蓝（安利企业知识中枢）—— 替换原 teal 主题色 */
+  --color-accent: #1650c4;
+  --color-accent-hover: #103a94;
+  --color-accent-muted: #dbe6fb;
+  --color-accent-subtle: #f0f5ff;
   --color-on-accent: #ffffff;
 
   /* KB Q&A ontology / graph source accent (violet; distinct from teal accent) */

@@ -85,7 +85,8 @@ void i18n
   .use(LanguageDetector)
   .use(initReactI18next)
   .init({
-    fallbackLng: 'en',
+    // 安利 demo 默认中文（未显式选语言时回落 zh-CN，而非 en）
+    fallbackLng: 'zh-CN',
     supportedLngs: ['en', 'zh-CN'],
     ns: [
       'common',

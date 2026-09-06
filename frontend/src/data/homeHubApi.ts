@@ -8,8 +8,38 @@ export type HomeSiteSummary = {
   article_count: number;
 };
 
+export type HomeAssetOverview = {
+  cms_total: number;
+  processed: number;
+  pending_review: number;
+  source_changed: number;
+  expiring: number;
+};
+
+export type HomeGovernanceTask = {
+  source_type: string;
+  domain: string;
+  title: string;
+  status: string;
+  action: string;
+};
+
+export type HomeServiceHealth = {
+  name: string;
+  online: boolean;
+};
+
+export type HomeKnowledgeDomain = {
+  name: string;
+  content_count: number;
+};
+
 export type HomeHubResponse = {
   site_summary: HomeSiteSummary;
+  asset_overview?: HomeAssetOverview;
+  governance_tasks?: HomeGovernanceTask[];
+  service_health?: HomeServiceHealth[];
+  knowledge_domains?: HomeKnowledgeDomain[];
 };
 
 export async function fetchHomeHub(): Promise<HomeHubResponse> {

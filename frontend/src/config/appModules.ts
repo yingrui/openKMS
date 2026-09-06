@@ -64,7 +64,7 @@ export const APP_MODULES: AppModule[] = [
   {
     id: 'agents',
     kind: 'suite_app',
-    order: 10,
+    order: 100,
     homePath: '/agents',
     icon: Bot,
     labelKey: 'agents',
@@ -78,7 +78,7 @@ export const APP_MODULES: AppModule[] = [
   {
     id: 'documents',
     kind: 'suite_app',
-    order: 20,
+    order: 10,
     homePath: '/documents',
     icon: FileStack,
     labelKey: 'documents',
@@ -91,7 +91,7 @@ export const APP_MODULES: AppModule[] = [
   {
     id: 'articles',
     kind: 'suite_app',
-    order: 30,
+    order: 20,
     homePath: '/articles',
     icon: FileText,
     labelKey: 'articles',
@@ -117,7 +117,7 @@ export const APP_MODULES: AppModule[] = [
   {
     id: 'knowledge-bases',
     kind: 'suite_app',
-    order: 50,
+    order: 80,
     homePath: '/knowledge-bases',
     icon: Database,
     labelKey: 'knowledgeBases',
@@ -130,7 +130,7 @@ export const APP_MODULES: AppModule[] = [
   {
     id: 'media',
     kind: 'suite_app',
-    order: 60,
+    order: 30,
     homePath: '/media',
     icon: Image,
     labelKey: 'media',
@@ -144,7 +144,7 @@ export const APP_MODULES: AppModule[] = [
   {
     id: 'glossaries',
     kind: 'suite_app',
-    order: 70,
+    order: 50,
     homePath: '/glossaries',
     icon: BookOpen,
     labelKey: 'glossaries',
@@ -157,7 +157,7 @@ export const APP_MODULES: AppModule[] = [
   {
     id: 'ontology',
     kind: 'suite_app',
-    order: 80,
+    order: 60,
     homePath: '/ontology',
     icon: Network,
     labelKey: 'ontology',
@@ -184,7 +184,7 @@ export const APP_MODULES: AppModule[] = [
   {
     id: 'knowledge-map',
     kind: 'suite_app',
-    order: 100,
+    order: 70,
     homePath: '/knowledge-map',
     icon: FolderTree,
     labelKey: 'knowledgeMap',
