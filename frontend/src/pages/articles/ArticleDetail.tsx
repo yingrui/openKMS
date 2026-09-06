@@ -51,6 +51,7 @@ import {
   type ArticleRelationshipsResponse,
   type ArticleReviewOut,
 } from '../../data/articlesApi';
+import { fetchMediaAssets } from '../../data/mediaApi';
 import { findChannel } from '../../data/channelUtils';
 import { ContentCommentsShell } from '../../components/comments/ContentCommentsShell';
 import '../documents/DocumentDetail.scss';
@@ -65,6 +66,17 @@ function resolveMarkdownSrc(articleId: string, src: string | undefined): string 
     return articleFileUrl(articleId, path);
   }
   return s;
+}
+
+/** 归一化媒体 URL 以匹配（去查询串/锚点、去尾斜杠、小写协议与主机）。 */
+function normalizeMediaUrl(url: string): string {
+  const s = (url || '').trim().split(/[?#]/)[0].replace(/\/+$/, '');
+  return s.replace(/^https?:\/\//i, (m) => m.toLowerCase());
+}
+
+/** 该 href 是否指向音视频文件（扩展名判断，用于只对媒体链接尝试改跳）。 */
+function isMediaHref(href: string): boolean {
+  return /\.(mp4|webm|mov|m4v|mp3|m4a|wav|aac|flac|ogg)(\?|#|$)/i.test(href.trim());
 }
 
 function resolveMarkdownHref(articleId: string, href: string | undefined): string | undefined {
@@ -89,6 +101,9 @@ export function ArticleDetail() {
   const { channels } = useEnsureArticleChannels();
   const [infoVisible, setInfoVisible] = useState(true);
   const [article, setArticle] = useState<ArticleOut | null>(null);
+  // 媒体链接联动：正文里指向已入库音视频（同 source_url）的裸链接，改跳我们的媒体管理页
+  // （带字幕/摘要），而不是原始 CDN。key = 归一化后的 URL，value = 媒体资产 id。
+  const [mediaByUrl, setMediaByUrl] = useState<Map<string, string>>(new Map());
   const [attachments, setAttachments] = useState<ArticleAttachmentOut[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [editName, setEditName] = useState('');
@@ -141,6 +156,28 @@ export function ArticleDetail() {
   useEffect(() => {
     void load();
   }, [load]);
+
+  // 拉全量媒体资产，建 source_url→id 映射（媒体量小，一次即可）。失败静默——只影响链接改跳。
+  useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      try {
+        const list = await fetchMediaAssets({ limit: 200 });
+        if (cancelled) return;
+        const map = new Map<string, string>();
+        for (const asset of list.items) {
+          const src = (asset.metadata as { source_url?: string } | null)?.source_url;
+          if (src) map.set(normalizeMediaUrl(src), asset.id);
+        }
+        setMediaByUrl(map);
+      } catch {
+        /* 媒体功能未开或加载失败：不改跳，保持原链接 */
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   useEffect(() => {
     if (!article) return;
@@ -243,16 +280,29 @@ export function ArticleDetail() {
             img: ({ src, alt, ...props }: ImgHTMLAttributes<HTMLImageElement>) => (
               <img src={resolveMarkdownSrc(id, src)} alt={alt ?? ''} {...props} />
             ),
-            a: ({ href, children, ...props }: AnchorHTMLAttributes<HTMLAnchorElement>) => (
-              <a href={resolveMarkdownHref(id, href)} target="_blank" rel="noopener noreferrer" {...props}>
-                {children}
-              </a>
-            ),
+            a: ({ href, children, ...props }: AnchorHTMLAttributes<HTMLAnchorElement>) => {
+              // 音视频链接若对应已入库媒体资产，改跳我们的媒体管理页（字幕/摘要），不再开原始 CDN。
+              const assetId =
+                href && isMediaHref(href) ? mediaByUrl.get(normalizeMediaUrl(href)) : undefined;
+              if (assetId) {
+                return (
+                  <Link to={`/media/view/${assetId}`} className="article-media-link" {...props}>
+                    {children}
+                    <span className="article-media-link__badge">▶ 字幕·摘要</span>
+                  </Link>
+                );
+              }
+              return (
+                <a href={resolveMarkdownHref(id, href)} target="_blank" rel="noopener noreferrer" {...props}>
+                  {children}
+                </a>
+              );
+            },
           }
         : {}),
     };
     return base;
-  }, [id]);
+  }, [id, mediaByUrl]);
 
   const backTo =
     article?.channel_id != null && article.channel_id !== ''
