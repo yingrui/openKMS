@@ -1,5 +1,6 @@
 """Articles API: markdown, MinIO bundle, attachments, versions, import."""
 
+from datetime import datetime, timezone
 from uuid import uuid4
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, UploadFile
@@ -19,9 +20,16 @@ from app.models.article_channel import ArticleChannel
 from app.models.article_relationship import ArticleRelationship
 from app.models.article_review import ArticleReview
 from app.models.article_version import ArticleVersion
+from app.models.api_model import ApiModel
+from app.services.documents.metadata_extraction import (
+    extract_metadata,
+    resolve_extraction_schema_for_llm,
+    select_type_aware_schema,
+)
 from app.schemas.article import (
     ArticleAttachmentOut,
     ArticleCreate,
+    ExtractArticleMetadataResponse,
     ArticleImportImageResult,
     ArticleImportPayload,
     ArticleImportResponse,
@@ -337,6 +345,66 @@ async def patch_article(
     await db.refresh(row)
     persist_markdown_to_storage(row)
     return ArticleResponse.model_validate(row)
+
+
+@router.post("/{article_id}/extract-metadata", response_model=ExtractArticleMetadataResponse)
+async def extract_article_metadata(
+    article_id: str,
+    request: Request,
+    row: Article = Depends(get_scoped_article_write),
+    db: AsyncSession = Depends(get_db),
+):
+    """从文章正文用频道配置的 LLM 抽取结构化元数据(与文档 extract-metadata 对齐)。"""
+    if not row.markdown or not row.markdown.strip():
+        raise HTTPException(status_code=400, detail="Article has no markdown content to extract from")
+
+    channel = await db.get(ArticleChannel, row.channel_id)
+    if not channel:
+        raise HTTPException(status_code=404, detail="Article channel not found")
+
+    model_id = channel.extraction_model_id or settings.extraction_model_id
+    if not model_id:
+        raise HTTPException(
+            status_code=400,
+            detail="No extraction model configured. Set extraction_model_id on the channel or OPENKMS_EXTRACTION_MODEL_ID.",
+        )
+
+    from sqlalchemy.orm import selectinload
+
+    result = await db.execute(
+        select(ApiModel).options(selectinload(ApiModel.provider_rel)).where(ApiModel.id == model_id)
+    )
+    model = result.scalar_one_or_none()
+    if not model:
+        raise HTTPException(status_code=404, detail="Extraction model not found")
+    if model.api_kind != "chat-completions":
+        raise HTTPException(status_code=400, detail="Extraction model must use api_kind chat-completions")
+
+    schema = channel.extraction_schema if channel.extraction_schema else None
+    schema, detected_type, type_warnings = await select_type_aware_schema(schema, row.markdown, model)
+    resolved_schema, warnings = await resolve_extraction_schema_for_llm(schema, channel, db)
+    warnings = type_warnings + warnings
+
+    try:
+        extracted = await extract_metadata(row.markdown, model, resolved_schema)
+    except ValueError as e:
+        msg = str(e)
+        if "HTTP 401" in msg or "401" in msg:
+            raise HTTPException(status_code=401, detail="LLM API authorization failed. Check the extraction model's API key.")
+        if "HTTP 403" in msg or "403" in msg:
+            raise HTTPException(status_code=403, detail="LLM API access forbidden. Check the extraction model's API key and permissions.")
+        raise HTTPException(status_code=502, detail=f"Extraction failed: {msg}")
+
+    now = datetime.now(timezone.utc).isoformat()
+    current = row.article_metadata or {}
+    merged = {**current, **extracted, "extracted_at": now, "extraction_model_id": model_id}
+    if detected_type and not extracted.get("文档类型"):
+        merged["文档类型"] = detected_type
+    row.article_metadata = merged
+    await db.commit()
+    await db.refresh(row)
+    persist_markdown_to_storage(row)
+    return ExtractArticleMetadataResponse(article=ArticleResponse.model_validate(row), warnings=warnings)
 
 
 @router.put("/{article_id}/markdown", response_model=ArticleResponse)

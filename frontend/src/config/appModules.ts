@@ -255,6 +255,19 @@ export const CONSOLE_PLATFORM_MODULES: AppModule[] = [
       p === '/jobs' ||
       p.startsWith('/jobs/'),
   },
+  {
+    id: 'qa-assistant',
+    kind: 'console_platform',
+    order: 50,
+    homePath: '/qa-assistant',
+    icon: Bot,
+    labelKey: 'qaAssistant',
+    taglineKey: 'qaAssistant',
+    showInLauncher: false,
+    showInMainSidebar: false,
+    showInConsoleNav: true,
+    isActive: (p) => p === '/qa-assistant' || p.startsWith('/qa-assistant/'),
+  },
 ];
 
 export function sortSuiteApps(modules: AppModule[]): AppModule[] {

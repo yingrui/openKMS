@@ -2,7 +2,7 @@
 
 from datetime import datetime
 
-from sqlalchemy import DateTime, ForeignKey, Integer, String, func
+from sqlalchemy import JSON, DateTime, ForeignKey, Integer, String, func
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -20,6 +20,15 @@ class MediaChannel(Base):
     )
     sort_order: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     metadata_schema: Mapped[list | None] = mapped_column(JSONB, nullable=True)
+    # 结构化元数据提取配置(与文档频道对齐)。
+    extraction_model_id: Mapped[str | None] = mapped_column(
+        String(64), ForeignKey("api_models.id", ondelete="SET NULL"), nullable=True
+    )
+    extraction_schema: Mapped[list | None] = mapped_column(JSON, nullable=True)
+    label_config: Mapped[list | None] = mapped_column(JSON, nullable=True)
+    object_type_extraction_max_instances: Mapped[int | None] = mapped_column(
+        Integer, nullable=True, server_default="100"
+    )
     default_image_model_id: Mapped[str | None] = mapped_column(
         String(64), ForeignKey("api_models.id", ondelete="SET NULL"), nullable=True
     )

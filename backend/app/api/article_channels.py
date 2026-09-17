@@ -47,6 +47,10 @@ def _channel_node(channel: ArticleChannel, children: list[ArticleChannelNode] | 
         review_model_id=channel.review_model_id,
         review_prompt=channel.review_prompt,
         review_criteria=channel.review_criteria,
+        extraction_model_id=channel.extraction_model_id,
+        extraction_schema=channel.extraction_schema,
+        label_config=channel.label_config,
+        object_type_extraction_max_instances=channel.object_type_extraction_max_instances,
         children=children or [],
     )
 

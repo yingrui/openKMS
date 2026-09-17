@@ -8,3 +8,20 @@
 }
 
 /* Main column: .app-page-pane on the element (padding + flex scroll) */
+
+/* 移动端：频道树栏堆到上方（全宽限高），内容全宽在下 */
+@media (max-width: 768px) {
+  .channel-section-layout {
+    flex-direction: column;
+    overflow: visible;
+    height: auto;
+  }
+  .content-channel-rail {
+    width: 100%;
+    min-width: 0;
+    max-height: 40vh;
+    overflow-y: auto;
+    border-right: none;
+    border-bottom: 1px solid var(--color-border);
+  }
+}

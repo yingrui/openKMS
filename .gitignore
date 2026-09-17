@@ -48,3 +48,7 @@ third-party/Plaster004_1K-JPG
 third-party/Concrete048_1K-JPG
 third-party/Wood033_1K-JPG
 third-party/poly.pizza
+# env backups (never commit — contain secrets)
+*.env.bak*
+.env.bak*
+backend/.env.bak*

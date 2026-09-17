@@ -22,6 +22,7 @@ export function Signup() {
   const [email, setEmail] = useState('');
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
+  const [inviteCode, setInviteCode] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
   async function onSubmit(e: React.FormEvent) {
@@ -33,13 +34,16 @@ export function Signup() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
-        body: JSON.stringify({ email, username, password }),
+        body: JSON.stringify({ email, username, password, invite_code: inviteCode }),
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
         const d = data.detail;
+        const dcode = d && typeof d === 'object' && !Array.isArray(d) ? (d as { code?: string }).code : d;
         setError(
-          typeof d === 'string'
+          dcode === 'INVITE_CODE_INVALID'
+            ? t('inviteCodeInvalid')
+            : typeof d === 'string'
             ? d
             : Array.isArray(d)
               ? d.map((x: { msg?: string }) => x.msg).join(' ')
@@ -109,6 +113,17 @@ export function Signup() {
               onChange={(ev) => setPassword(ev.target.value)}
               required
               minLength={8}
+            />
+          </div>
+          <div className="auth-local-field">
+            <label htmlFor="signup-invite">{t('inviteCodeLabel')}</label>
+            <input
+              id="signup-invite"
+              type="text"
+              autoComplete="off"
+              value={inviteCode}
+              onChange={(ev) => setInviteCode(ev.target.value)}
+              required
             />
           </div>
           <button type="submit" className="auth-local-submit" disabled={pending}>

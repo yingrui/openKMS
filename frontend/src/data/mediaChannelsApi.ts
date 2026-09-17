@@ -1,7 +1,7 @@
 /** API for media channels. */
 import { config } from '../config';
 import { getAuthHeaders, authAwareFetch } from './apiClient';
-import type { ChannelNode, ExtractionSchemaField } from './channelUtils';
+import type { ChannelNode, ExtractionSchemaField, ExtractionSchemaValue, LabelConfigItem } from './channelUtils';
 
 export interface MediaChannelNodeRaw {
   id: string;
@@ -11,6 +11,10 @@ export interface MediaChannelNodeRaw {
   metadata_schema?: ExtractionSchemaField[] | null;
   default_image_model_id?: string | null;
   default_video_model_id?: string | null;
+  extraction_model_id?: string | null;
+  extraction_schema?: ExtractionSchemaValue | null;
+  label_config?: LabelConfigItem[] | null;
+  object_type_extraction_max_instances?: number | null;
   children: MediaChannelNodeRaw[];
 }
 
@@ -23,6 +27,10 @@ function toChannelNode(raw: MediaChannelNodeRaw): ChannelNode {
     metadata_schema: raw.metadata_schema ?? null,
     default_image_model_id: raw.default_image_model_id ?? null,
     default_video_model_id: raw.default_video_model_id ?? null,
+    extraction_model_id: raw.extraction_model_id ?? null,
+    extraction_schema: raw.extraction_schema ?? null,
+    label_config: raw.label_config ?? null,
+    object_type_extraction_max_instances: raw.object_type_extraction_max_instances ?? null,
     children: (raw.children ?? []).map(toChannelNode),
   };
 }
@@ -94,6 +102,10 @@ export async function updateMediaChannel(
     metadata_schema: ExtractionSchemaField[] | null;
     default_image_model_id: string | null;
     default_video_model_id: string | null;
+    extraction_model_id: string | null;
+    extraction_schema: ExtractionSchemaValue | null;
+    label_config: LabelConfigItem[] | null;
+    object_type_extraction_max_instances: number | null;
   }>,
 ): Promise<ChannelNode> {
   const headers = await getAuthHeaders();

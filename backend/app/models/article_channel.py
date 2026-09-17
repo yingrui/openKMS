@@ -2,7 +2,7 @@
 
 from datetime import datetime
 
-from sqlalchemy import DateTime, ForeignKey, Integer, String, Text, func
+from sqlalchemy import JSON, DateTime, ForeignKey, Integer, String, Text, func
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -24,6 +24,15 @@ class ArticleChannel(Base):
     )
     review_prompt: Mapped[str | None] = mapped_column(Text, nullable=True)
     review_criteria: Mapped[list | None] = mapped_column(JSONB, nullable=True)
+    # 结构化元数据提取配置(与文档频道对齐)。
+    extraction_model_id: Mapped[str | None] = mapped_column(
+        String(64), ForeignKey("api_models.id", ondelete="SET NULL"), nullable=True
+    )
+    extraction_schema: Mapped[list | None] = mapped_column(JSON, nullable=True)
+    label_config: Mapped[list | None] = mapped_column(JSON, nullable=True)
+    object_type_extraction_max_instances: Mapped[int | None] = mapped_column(
+        Integer, nullable=True, server_default="100"
+    )
     created_by: Mapped[str | None] = mapped_column(String(512), nullable=True, index=True)
     created_by_name: Mapped[str | None] = mapped_column(String(256), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())

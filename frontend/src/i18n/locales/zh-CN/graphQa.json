@@ -4,7 +4,7 @@
   "presetsHeading": "预设问题",
   "presetsHint": "一键运行已验证的查询，演示更可靠。",
   "askHeading": "自由提问",
-  "askPlaceholder": "例如：陆振邦通过持股或亲属关系，实际能影响哪些企业？",
+  "askPlaceholder": "例如：改善体重管理可以用哪些成分？分别在哪些安利产品里？",
   "askButton": "向图谱提问",
   "askRunning": "推理中…",
   "cypherHeading": "Cypher",

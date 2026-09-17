@@ -20,6 +20,7 @@ from app.models.api_provider import ApiProvider
 from app.models.media_asset import MediaAsset
 from app.models.media_channel import MediaChannel
 from app.schemas.media_asset import (
+    ExtractMediaMetadataResponse,
     MediaAnalyzeRequest,
     MediaAnalyzeResponse,
     MediaAssetListResponse,
@@ -28,6 +29,13 @@ from app.schemas.media_asset import (
     MediaGenerateRequest,
     MediaGenerateResponse,
 )
+from app.config import settings
+from app.services.documents.metadata_extraction import (
+    extract_metadata,
+    resolve_extraction_schema_for_llm,
+    select_type_aware_schema,
+)
+from app.services.media.media_understanding import transcript_plain_text
 from app.services.channels.channel_list_filter import channel_subtree_ids_for_list
 from app.services.channels.channel_scope import require_media_channel_write
 from app.services.acl.data_scope import scope_applies
@@ -189,6 +197,70 @@ async def update_media_asset(
     await db.commit()
     await db.refresh(row)
     return _asset_response(row)
+
+
+@router.post("/{asset_id}/extract-metadata", response_model=ExtractMediaMetadataResponse)
+async def extract_media_metadata(
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+    row: MediaAsset = Depends(get_scoped_media_write),
+):
+    """从媒体转写稿/摘要用频道配置的 LLM 抽取结构化元数据(与文档 extract-metadata 对齐)。"""
+    source_text = (transcript_plain_text(row.transcript) or "").strip()
+    if not source_text:
+        source_text = (row.summary or row.description or "").strip()
+    if not source_text:
+        raise HTTPException(
+            status_code=400,
+            detail="Media has no transcript/summary to extract from. Run analysis first.",
+        )
+
+    channel = await db.get(MediaChannel, row.channel_id)
+    if not channel:
+        raise HTTPException(status_code=404, detail="Media channel not found")
+
+    model_id = channel.extraction_model_id or settings.extraction_model_id
+    if not model_id:
+        raise HTTPException(
+            status_code=400,
+            detail="No extraction model configured. Set extraction_model_id on the channel or OPENKMS_EXTRACTION_MODEL_ID.",
+        )
+
+    from sqlalchemy.orm import selectinload
+
+    result = await db.execute(
+        select(ApiModel).options(selectinload(ApiModel.provider_rel)).where(ApiModel.id == model_id)
+    )
+    model = result.scalar_one_or_none()
+    if not model:
+        raise HTTPException(status_code=404, detail="Extraction model not found")
+    if model.api_kind != "chat-completions":
+        raise HTTPException(status_code=400, detail="Extraction model must use api_kind chat-completions")
+
+    schema = channel.extraction_schema if channel.extraction_schema else None
+    schema, detected_type, type_warnings = await select_type_aware_schema(schema, source_text, model)
+    resolved_schema, warnings = await resolve_extraction_schema_for_llm(schema, channel, db)
+    warnings = type_warnings + warnings
+
+    try:
+        extracted = await extract_metadata(source_text, model, resolved_schema)
+    except ValueError as e:
+        msg = str(e)
+        if "HTTP 401" in msg or "401" in msg:
+            raise HTTPException(status_code=401, detail="LLM API authorization failed. Check the extraction model's API key.")
+        if "HTTP 403" in msg or "403" in msg:
+            raise HTTPException(status_code=403, detail="LLM API access forbidden. Check the extraction model's API key and permissions.")
+        raise HTTPException(status_code=502, detail=f"Extraction failed: {msg}")
+
+    now = datetime.now(timezone.utc).isoformat()
+    current = row.asset_metadata or {}
+    merged = {**current, **extracted, "extracted_at": now, "extraction_model_id": model_id}
+    if detected_type and not extracted.get("文档类型"):
+        merged["文档类型"] = detected_type
+    row.asset_metadata = merged
+    await db.commit()
+    await db.refresh(row)
+    return ExtractMediaMetadataResponse(asset=_asset_response(row), warnings=warnings)
 
 
 @router.delete("/{asset_id}", status_code=204)

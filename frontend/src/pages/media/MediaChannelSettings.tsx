@@ -57,6 +57,10 @@ export function MediaChannelSettings() {
   const [defaultVideoModelId, setDefaultVideoModelId] = useState('');
   const [imageModels, setImageModels] = useState<ApiModelResponse[]>([]);
   const [videoModels, setVideoModels] = useState<ApiModelResponse[]>([]);
+  const [chatModels, setChatModels] = useState<ApiModelResponse[]>([]);
+  const [extractionModelId, setExtractionModelId] = useState('');
+  const [extractionSchemaText, setExtractionSchemaText] = useState('');
+  const [extractionMaxInstances, setExtractionMaxInstances] = useState('100');
   const [modelsLoading, setModelsLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [activeTab, setActiveTab] = useState<TabId>(tabParam === 'sharing' ? 'sharing' : 'general');
@@ -70,18 +74,21 @@ export function MediaChannelSettings() {
     (async () => {
       setModelsLoading(true);
       try {
-        const [images, videos] = await Promise.all([
+        const [images, videos, chats] = await Promise.all([
           fetchAllModels({ api_kind: 'image-generate' }),
           fetchAllModels({ api_kind: 'video-generate' }),
+          fetchAllModels({ api_kind: 'chat-completions' }),
         ]);
         if (!cancelled) {
           setImageModels(images);
           setVideoModels(videos);
+          setChatModels(chats);
         }
       } catch {
         if (!cancelled) {
           setImageModels([]);
           setVideoModels([]);
+          setChatModels([]);
         }
       } finally {
         if (!cancelled) setModelsLoading(false);
@@ -101,6 +108,9 @@ export function MediaChannelSettings() {
     setMetadataSchemaText(JSON.stringify(channel.metadata_schema || [], null, 2));
     setDefaultImageModelId(channel.default_image_model_id || '');
     setDefaultVideoModelId(channel.default_video_model_id || '');
+    setExtractionModelId(channel.extraction_model_id || '');
+    setExtractionSchemaText(channel.extraction_schema ? JSON.stringify(channel.extraction_schema, null, 2) : '');
+    setExtractionMaxInstances(String(channel.object_type_extraction_max_instances ?? 100));
   }, [channel, channels, channelId]);
 
   const parentOptions = useMemo(() => flattenForParent(channels), [channels]);
@@ -128,6 +138,18 @@ export function MediaChannelSettings() {
         setSaving(false);
         return;
       }
+      let extraction_schema: unknown = null;
+      const exTrim = extractionSchemaText.trim();
+      if (exTrim) {
+        try {
+          extraction_schema = JSON.parse(exTrim);
+        } catch {
+          toast.error('提取字段 JSON 格式有误');
+          setSaving(false);
+          return;
+        }
+      }
+      const maxN = Number.parseInt(extractionMaxInstances, 10);
       await updateMediaChannel(channelId, {
         name: trimmedName,
         description: description.trim() || null,
@@ -135,6 +157,9 @@ export function MediaChannelSettings() {
         metadata_schema,
         default_image_model_id: defaultImageModelId.trim() || null,
         default_video_model_id: defaultVideoModelId.trim() || null,
+        extraction_model_id: extractionModelId.trim() || null,
+        extraction_schema: extraction_schema as never,
+        object_type_extraction_max_instances: Number.isFinite(maxN) ? maxN : 100,
       });
       await refetch();
       toast.success(t('settings.saved'));
@@ -150,6 +175,9 @@ export function MediaChannelSettings() {
     defaultVideoModelId,
     description,
     metadataSchemaText,
+    extractionModelId,
+    extractionSchemaText,
+    extractionMaxInstances,
     name,
     parentId,
     refetch,
@@ -317,6 +345,52 @@ export function MediaChannelSettings() {
                     </option>
                   ))}
                 </select>
+              </div>
+            </section>
+
+            <section className="document-channel-settings-section">
+              <h2>结构化提取</h2>
+              <p className="document-channel-settings-hint">
+                配置提取模型与字段后,可在媒体详情页基于转写稿/摘要一键抽取结构化元数据(主讲人、涉及产品、关键结论等)。
+              </p>
+              <div className="document-channel-settings-field">
+                <label htmlFor="media-settings-extraction-model">提取模型</label>
+                <select
+                  id="media-settings-extraction-model"
+                  value={extractionModelId}
+                  onChange={(e) => setExtractionModelId(e.target.value)}
+                  disabled={modelsLoading}
+                >
+                  <option value="">（未设置）</option>
+                  {chatModels.map((m) => (
+                    <option key={m.id} value={m.id}>{m.name} ({m.id})</option>
+                  ))}
+                </select>
+                <p className="document-channel-settings-hint">用于抽取的对话模型(需 chat-completions)。</p>
+              </div>
+              <div className="document-channel-settings-field">
+                <label htmlFor="media-settings-extraction-schema">提取字段(JSON)</label>
+                <textarea
+                  id="media-settings-extraction-schema"
+                  value={extractionSchemaText}
+                  onChange={(e) => setExtractionSchemaText(e.target.value)}
+                  rows={10}
+                  spellCheck={false}
+                  placeholder='[{"key":"主讲人","label":"主讲人","type":"string"},{"key":"关键结论","label":"关键结论","type":"array"}]'
+                />
+                <p className="document-channel-settings-hint">
+                  数组形式,每项 {'{key,label,type}'};type 支持 string / array / date / integer / number / boolean / enum。
+                </p>
+              </div>
+              <div className="document-channel-settings-field">
+                <label htmlFor="media-settings-extraction-max">对象类型抽取上限</label>
+                <input
+                  id="media-settings-extraction-max"
+                  type="number"
+                  value={extractionMaxInstances}
+                  onChange={(e) => setExtractionMaxInstances(e.target.value)}
+                  style={{ maxWidth: 160 }}
+                />
               </div>
             </section>
 

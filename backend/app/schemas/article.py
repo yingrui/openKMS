@@ -115,6 +115,13 @@ class ArticleListResponse(BaseModel):
     total: int
 
 
+class ExtractArticleMetadataResponse(BaseModel):
+    """结构化元数据提取结果(与文档 ExtractMetadataResponse 对齐)。"""
+
+    article: ArticleResponse
+    warnings: list[str] = []
+
+
 class ArticleAttachmentOut(BaseModel):
     id: str
     article_id: str

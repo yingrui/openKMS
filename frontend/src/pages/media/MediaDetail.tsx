@@ -1,11 +1,13 @@
-import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { ArrowLeft, ChevronLeft, ChevronRight, Image as ImageIcon, Loader2, Sparkles, Trash2, Video } from 'lucide-react';
 import { toast } from 'sonner';
+import ReactMarkdown from 'react-markdown';
 import {
   analyzeMediaAsset,
   deleteMediaAsset,
+  extractMediaMetadata,
   fetchMediaAsset,
   fetchMediaAssets,
   resolveMediaFileUrl,
@@ -13,6 +15,10 @@ import {
   type MediaAssetOut,
   type TranscriptSegment,
 } from '../../data/mediaApi';
+import { useEnsureMediaChannels } from '../../contexts/MediaChannelsContext';
+import { findChannel, normalizeExtractionSchemaToFields } from '../../data/channelUtils';
+import { ContentMetadataSection } from '../../components/metadata/ContentMetadataSection';
+import { richMarkdownRemarkPlugins, richMarkdownRehypePlugins } from '../../components/markdown/richMarkdown';
 import '../documents/DocumentDetail.scss';
 import '../documents/DocumentChannel.scss';
 import './Media.scss';
@@ -41,8 +47,9 @@ type MediaDetailFormProps = {
 
 type MediaDetailTab = 'description' | 'summary' | 'transcript' | 'frames' | 'details';
 
-const VIDEO_TABS: MediaDetailTab[] = ['description', 'summary', 'transcript', 'frames', 'details'];
-const AUDIO_TABS: MediaDetailTab[] = ['description', 'summary', 'transcript', 'details'];
+// 「描述」tab 已去除——描述字段并入「详情」tab(信息+技术详情+结构化元数据合并)。
+const VIDEO_TABS: MediaDetailTab[] = ['summary', 'transcript', 'frames', 'details'];
+const AUDIO_TABS: MediaDetailTab[] = ['summary', 'transcript', 'details'];
 
 const TAB_LABEL_KEY: Record<MediaDetailTab, string> = {
   description: 'detail.tabDescription',
@@ -222,15 +229,24 @@ export function MediaDetail() {
   const { t } = useTranslation('media');
   const navigate = useNavigate();
   const { id = '' } = useParams<{ id: string }>();
+  const { channels: mediaChannels } = useEnsureMediaChannels();
   const [asset, setAsset] = useState<MediaAssetOut | null>(null);
   const [siblings, setSiblings] = useState<MediaAssetOut[]>([]);
+  const mediaChannel = useMemo(
+    () => (asset ? findChannel(mediaChannels, asset.channel_id) : null),
+    [mediaChannels, asset],
+  );
+  const mediaExtractionFields = useMemo(
+    () => normalizeExtractionSchemaToFields(mediaChannel?.extraction_schema),
+    [mediaChannel],
+  );
   const [mediaUrl, setMediaUrl] = useState<string | null>(null);
   const [posterUrl, setPosterUrl] = useState<string | null>(null);
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [capturedAt, setCapturedAt] = useState('');
   const [locationLabel, setLocationLabel] = useState('');
-  const [tab, setTab] = useState<MediaDetailTab>('description');
+  const [tab, setTab] = useState<MediaDetailTab>('summary');
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(true);
   const [analyzing, setAnalyzing] = useState(false);
@@ -415,8 +431,28 @@ export function MediaDetail() {
   const dimensionsLabel =
     asset.width && asset.height ? t('detail.dimensionsValue', { width: asset.width, height: asset.height }) : null;
 
+  const metadataSection = (
+    <ContentMetadataSection
+      meta={(asset.metadata ?? {}) as Record<string, unknown>}
+      schemaFields={mediaExtractionFields}
+      hasExtractionModel={Boolean(mediaChannel?.extraction_model_id)}
+      canExtract={Boolean(asset.transcript?.text || asset.summary || asset.description)}
+      extractHint="请先运行分析生成转写稿/摘要"
+      onExtract={async () => {
+        const res = await extractMediaMetadata(asset.id);
+        setAsset(res.asset);
+        return { warnings: res.warnings };
+      }}
+      onSave={async (values) => {
+        const updated = await updateMediaAsset(asset.id, { metadata: values });
+        setAsset(updated);
+      }}
+    />
+  );
+
   const techDetailsPanel =
     tab === 'details' ? (
+      <>
       <dl className="media-detail-tech">
         <div className="media-detail-tech-item">
           <dt>{t('detail.provenance')}</dt>
@@ -445,6 +481,8 @@ export function MediaDetail() {
           <dd>{new Date(asset.created_at).toLocaleString()}</dd>
         </div>
       </dl>
+      {metadataSection}
+      </>
     ) : null;
 
   const analyzeButton = (
@@ -463,7 +501,11 @@ export function MediaDetail() {
     derivedPanel = (
       <div className="media-derived">
         {asset.summary ? (
-          <div className="media-derived__summary">{asset.summary}</div>
+          <div className="media-derived__summary media-derived__summary--md">
+            <ReactMarkdown remarkPlugins={richMarkdownRemarkPlugins} rehypePlugins={richMarkdownRehypePlugins}>
+              {asset.summary}
+            </ReactMarkdown>
+          </div>
         ) : (
           <p className="media-derived__empty">{t('detail.summaryEmpty')}</p>
         )}

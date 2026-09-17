@@ -34,35 +34,47 @@ type Preset = { q: string; cypher: string };
 
 const PRESET_QUESTIONS: Preset[] = [
   {
-    q: '申澜系企业之间有没有担保圈？涉及哪些企业？',
-    cypher: `MATCH (a:Company)-[g:GUARANTEES]->(b:Company)
-WHERE (b)-[:GUARANTEES*1..4]->(a)
-RETURN a, b`,
+    q: '每位私域客户分别适合推送哪些文章？（客户→关注→主题←文章）',
+    cypher: `MATCH (u:Customer)-[r:interested_in]->(h:HealthConcern)<-[e:explains]-(c:ContentAsset)
+RETURN u, r, h, e, c LIMIT 80`,
   },
   {
-    q: '「独立第三方」晖嘉投资，和借款人申澜精密到底有没有关联？',
-    cypher: `MATCH (z:Person {name:'赵国庆'})-[:PERSON_HOLDS|OFFICER_OF]->(j:Company {name:'上海晖嘉股权投资合伙企业(有限合伙)'})
-MATCH (z)-[:RELATIVE_OF]-(x:Person)-[:RELATIVE_OF]-(l:Person {name:'陆振邦'})
-RETURN j, z, x, l`,
+    q: '关注「老花眼」的客户有哪些？该给他们推哪篇文章？',
+    cypher: `MATCH (u:Customer)-[r:interested_in]->(h:HealthConcern {concern_name: '老花眼'})<-[e:explains]-(c:ContentAsset)
+RETURN u, r, h, e, c`,
   },
   {
-    q: '本笔 8000 万授信，加上集团存量，会不会超过集团统一授信限额？',
-    cypher: `MATCH (c:Company {name:'上海申澜精密制造有限公司'})
-OPTIONAL MATCH (c)-[:HOLDS_EQUITY|PERSON_HOLDS|OFFICER_OF|RELATIVE_OF*1..5]-(m:Company)
-WITH c, collect(DISTINCT m) AS ms WITH ms+[c] AS members UNWIND members AS mem
-MATCH (mem)-[:BORROWS]->(f:CreditFacility)
-RETURN mem, f`,
+    q: '张阿姨（张淑芬）适合推哪些内容？',
+    cypher: `MATCH (u:Customer {customer_name: '张淑芬（张阿姨）'})-[r:interested_in]->(h:HealthConcern)<-[e:explains]-(c:ContentAsset)
+RETURN u, r, h, e, c`,
   },
   {
-    q: '申澜精密对上汽集团（600104.SH）的依赖有多高？',
-    cypher: `MATCH (c:Company {name:'上海申澜精密制造有限公司'})-[r:SELLS_TO]->(st:ListedStock)
-RETURN c, st`,
+    q: '各营养成分分别用在哪些安利产品里？',
+    cypher: `MATCH (n:Nutrient)-[r:contained_in]->(p:Product)
+RETURN n, r, p LIMIT 40`,
   },
   {
-    q: '实控人陆振邦，通过持股和亲属，实际能影响哪些企业？',
-    cypher: `MATCH (l:Person {name:'陆振邦'})-[:PERSON_HOLDS|RELATIVE_OF|OFFICER_OF*1..4]-(x)
-WHERE x:Company OR x:Person
-RETURN l, x`,
+    q: '某个健康诉求是由什么机制引起、又能用哪些成分干预？',
+    cypher: `MATCH (h:HealthConcern)-[c:caused_by]->(m:Mechanism)-[i:intervened_by]->(n:Nutrient)
+RETURN h, c, m, i, n LIMIT 40`,
+  },
+  {
+    q: '内容资产解读了哪些健康诉求？依据了哪些证据？',
+    cypher: `MATCH (a:ContentAsset)-[e:explains]->(h:HealthConcern)
+OPTIONAL MATCH (a)-[ct:cites]->(ev:EvidenceSource)
+RETURN a, e, h, ct, ev LIMIT 40`,
+  },
+  {
+    q: '针对特定人群的健康诉求，能牵出哪些成分与产品？',
+    cypher: `MATCH (h:HealthConcern)-[t:targets]->(seg:AudienceSegment)
+OPTIONAL MATCH (h)-[:caused_by]->(m:Mechanism)-[:intervened_by]->(n:Nutrient)-[:contained_in]->(p:Product)
+RETURN h, t, seg, m, n, p LIMIT 50`,
+  },
+  {
+    q: '合规规则标记（flags）了哪些内容资产？涉及哪些健康诉求？',
+    cypher: `MATCH (r:BizRule)-[f:flags]->(a:ContentAsset)
+OPTIONAL MATCH (a)-[e:explains]->(h:HealthConcern)
+RETURN r, f, a, e, h LIMIT 40`,
   },
 ];
 
@@ -84,10 +96,19 @@ function isNodeLike(obj: unknown): obj is Record<string, unknown> {
 }
 
 function nodeLabel(obj: Record<string, unknown>, fallback: string): string {
-  if (typeof obj.name === 'string' && obj.name) return obj.name;
+  const str = (k: string) => (typeof obj[k] === 'string' && obj[k] ? (obj[k] as string) : null);
+  // 优先人类可读名:name / title / 任意 *_name(product_name/concern_name…)/ label,再回退 id。
+  const direct = str('name') ?? str('title');
+  if (direct) return direct;
+  for (const [k, v] of Object.entries(obj)) {
+    if (k.startsWith('_')) continue; // 跳过 _source_id / _confidence 等内部字段
+    if (/_name$/i.test(k) && typeof v === 'string' && v) return v;
+  }
+  const labelField = str('label');
+  if (labelField) return labelField;
   if (obj.id != null) return String(obj.id);
-  const first = Object.values(obj).find((v) => v != null && v !== '');
-  return first != null ? String(first) : fallback;
+  const first = Object.entries(obj).find(([k, v]) => !k.startsWith('_') && v != null && v !== '');
+  return first != null ? String(first[1]) : fallback;
 }
 
 /**

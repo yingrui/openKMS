@@ -6,6 +6,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { useSystemPublic } from '../../contexts/SystemPublicContext';
 import { isConsoleShellPath } from '../../config/appModules';
 import logo from '../../assets/logo.svg';
+import amwayLogo from '../../assets/amway-logo.png';
 import { AppLauncher } from './AppLauncher';
 import './Header.scss';
 
@@ -64,9 +65,9 @@ export function Header() {
     <header className="header">
       <div className="header-start">
         <Link to="/" className="header-brand" title={brandName}>
-          <img src={logo} alt="" className="header-brand-icon" />
-          <span className="header-brand-wordmark">Amway 安利</span>
+          <img src={amwayLogo} alt="Amway" className="header-brand-amway" />
           <span className="header-brand-divider" aria-hidden />
+          <img src={logo} alt="" className="header-brand-icon" />
           <span className="header-brand-name">{brandName}</span>
         </Link>
         <div className="header-search">
@@ -90,7 +91,6 @@ export function Header() {
         </div>
       </div>
       <div className="header-actions">
-        <span className="header-concept-note">方案概念界面 · 非现有系统截图</span>
         {consoleShell
           ? canAccessConsole && (
               <Link to="/" className="header-console-link header-console-link--exit">

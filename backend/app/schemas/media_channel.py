@@ -13,6 +13,10 @@ class MediaChannelNode(BaseModel):
     metadata_schema: list[dict[str, Any]] | None = None
     default_image_model_id: str | None = None
     default_video_model_id: str | None = None
+    extraction_model_id: str | None = None
+    extraction_schema: Any | None = None
+    label_config: list[dict[str, Any]] | None = None
+    object_type_extraction_max_instances: int | None = None
     children: list["MediaChannelNode"] = []
 
     model_config = {"from_attributes": True}
@@ -43,6 +47,10 @@ class MediaChannelUpdate(BaseModel):
     metadata_schema: list[dict[str, Any]] | None = None
     default_image_model_id: str | None = None
     default_video_model_id: str | None = None
+    extraction_model_id: str | None = None
+    extraction_schema: Any | None = None
+    label_config: list[dict[str, Any]] | None = None
+    object_type_extraction_max_instances: int | None = None
 
 
 class MediaChannelMergeBody(BaseModel):

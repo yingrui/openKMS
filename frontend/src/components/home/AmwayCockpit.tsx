@@ -29,9 +29,10 @@ import {
   Store,
   Activity,
   ChevronRight,
-  Plus,
   Info,
-  HeartPulse,
+  Rocket,
+  ArrowRight,
+  Clock,
 } from 'lucide-react';
 import type { HomeHubResponse } from '../../data/homeHubApi';
 import './AmwayCockpit.scss';
@@ -52,14 +53,6 @@ const SERVICES = [
   { icon: Bot, name: '其他 AI / Agent' },
 ];
 
-const DOMAIN_META = [
-  { name: '产品与成分', icon: Box },
-  { name: '健康解决方案', icon: HeartPulse },
-  { name: '内容运营', icon: FileText },
-  { name: '云购与长客会', icon: ShoppingCart },
-  { name: '培训客服', icon: Headphones },
-  { name: '营销人员服务', icon: UserRound },
-];
 
 // 业务知识地图六节点（角度 + 图标 + 颜色 + 侧描述）
 const MAP_NODES = [
@@ -71,10 +64,24 @@ const MAP_NODES = [
   { key: '成分', icon: Leaf, tone: 'teal', angle: -150, side: 'left', lines: ['成分信息', '来源/工艺', '作用机理'] },
 ];
 
+// 快速开始:五段知识流水线(接入→组织→编排本体→创建知识库→发布服务)
+const PIPELINE = [
+  { n: '01', label: '接入资料', sub: '文档·图片·音视频', icon: Upload, to: '/ingest', tone: 'red' },
+  { n: '02', label: '组织内容', sub: '频道·版本·权限', icon: FileText, to: '/content', tone: 'blue' },
+  { n: '03', label: '编排本体', sub: '对象·关系·值索引', icon: Network, to: '/ontology', tone: 'blue' },
+  { n: '04', label: '创建知识库', sub: '内容·图谱·检索', icon: Database, to: '/knowledge-bases', tone: 'blue' },
+  { n: '05', label: '发布服务', sub: 'API·RAG·MCP', icon: Rocket, to: '/services', tone: 'green' },
+] as const;
+
+// 继续上次工作
+const CONTINUE_ROWS = [
+  { icon: Network, name: '体重管理本体 KG1.2', status: '草稿', tone: 'draft', action: '继续编排', to: '/ontology' },
+  { icon: Database, name: '营养合规问答知识库', status: '待测试', tone: 'review', action: '继续配置', to: '/knowledge-bases' },
+] as const;
+
 export function AmwayCockpit({ hub }: { hub: HomeHubResponse }) {
   const navigate = useNavigate();
   const ov = hub.asset_overview;
-  const domainCounts = new Map((hub.knowledge_domains ?? []).map((d) => [d.name, d.content_count]));
 
   const metrics = [
     { icon: Database, label: '待治理存量', value: (ov?.cms_total ?? 72898).toLocaleString(), tone: 'blue' },
@@ -110,52 +117,37 @@ export function AmwayCockpit({ hub }: { hub: HomeHubResponse }) {
         })}
       </section>
 
-      {/* 中间三栏：快速开始（与今日治理对调）| 业务知识地图 | 知识服务运行 */}
-      <section className="cockpit__mid">
-        <div className="cockpit-panel">
+      {/* 快速开始（五段流水线，宽）| 知识服务运行 */}
+      <section className="cockpit__mid cockpit__mid--v2">
+        <div className="cockpit-panel cockpit-panel--quick">
           <h2><Target size={16} /> 快速开始</h2>
-          <div className="cockpit-quick">
-            <button type="button" onClick={() => navigate('/ingest')}><Upload size={22} /><span>接入新资料</span></button>
-            <button type="button" onClick={() => navigate('/ontology')}><ShieldCheck size={22} /><span>新建知识主张</span></button>
-            <button type="button" onClick={() => navigate('/ontology')}><Network size={22} /><span>维护本体</span></button>
-            <button type="button" onClick={() => navigate('/evaluations')}><Target size={22} /><span>发起评测</span></button>
-          </div>
-        </div>
-
-        <div className="cockpit-panel cockpit-panel--map">
-          <h2><Network size={16} /> 业务知识地图</h2>
-          <div className="cockpit-map" style={{ width: W, maxWidth: '100%' }}>
-            <svg viewBox={`0 0 ${W} ${H}`} className="cockpit-map__svg" aria-label="以知识主张为中心的业务知识网络">
-              {/* 环 */}
-              <polygon
-                points={MAP_NODES.map((n) => { const p = pos(n.angle); return `${p.x},${p.y}`; }).join(' ')}
-                className="cockpit-map__ring"
-              />
-              {/* 辐条 */}
-              {MAP_NODES.map((n) => { const p = pos(n.angle); return <line key={n.key} x1={cx} y1={cy} x2={p.x} y2={p.y} className="cockpit-map__spoke" />; })}
-            </svg>
-            {/* 中心 */}
-            <div className="cockpit-map__center" style={{ left: cx, top: cy }}>
-              <ShieldCheck size={22} />
-              <span>知识主张</span>
-            </div>
-            {/* 节点 + 侧描述 */}
-            {MAP_NODES.map((n) => {
-              const p = pos(n.angle);
-              const Icon = n.icon;
+          <p className="cockpit-quick__lead">选择任务，系统将带你完成下一步</p>
+          <div className="cockpit-pipeline">
+            {PIPELINE.map((s, i) => {
+              const Icon = s.icon;
               return (
-                <div key={n.key}>
-                  <div className={`cockpit-map__node tone-${n.tone}`} style={{ left: p.x, top: p.y }}>
-                    <Icon size={18} />
-                    <b>{n.key}</b>
-                  </div>
-                  <div
-                    className={`cockpit-map__desc cockpit-map__desc--${n.side}`}
-                    style={{ left: p.x + (n.side === 'right' ? nodeR + 8 : -(nodeR + 8)), top: p.y }}
-                  >
-                    {n.lines.map((l) => <div key={l}>{l}</div>)}
-                  </div>
+                <div key={s.n} className="cockpit-pstep">
+                  <button type="button" className={`cockpit-pstep__circle tone-${s.tone}`} onClick={() => navigate(s.to)} title={s.label}>
+                    <Icon size={24} strokeWidth={1.7} />
+                  </button>
+                  <div className="cockpit-pstep__label"><b>{s.n}</b> {s.label}</div>
+                  <div className="cockpit-pstep__sub">{s.sub}</div>
+                  {i < PIPELINE.length - 1 && <ArrowRight size={18} className={`cockpit-pstep__arrow${i === 0 ? ' is-red' : ''}${i === 3 ? ' is-green' : ''}`} />}
                 </div>
+              );
+            })}
+          </div>
+          <div className="cockpit-continue">
+            <div className="cockpit-continue__title"><Clock size={14} /> 继续上次工作</div>
+            {CONTINUE_ROWS.map((c) => {
+              const Icon = c.icon;
+              return (
+                <button key={c.name} type="button" className="cockpit-continue__row" onClick={() => navigate(c.to)}>
+                  <Icon size={16} className="cockpit-continue__ic" />
+                  <span className="cockpit-continue__name">{c.name}</span>
+                  <span className={`cockpit-continue__badge tone-${c.tone}`}>{c.status}</span>
+                  <span className="cockpit-continue__action">{c.action} <ChevronRight size={13} /></span>
+                </button>
               );
             })}
           </div>
@@ -183,23 +175,38 @@ export function AmwayCockpit({ hub }: { hub: HomeHubResponse }) {
 
       {/* 底部：知识领域（宽） | 今日治理（与快速开始对调） */}
       <section className="cockpit__bottom">
-        <div className="cockpit-panel">
-          <h2><Database size={16} /> 知识领域</h2>
-          <div className="cockpit-domains">
-            {DOMAIN_META.map((d) => {
-              const Icon = d.icon;
+        <div className="cockpit-panel cockpit-panel--map">
+          <h2><Network size={16} /> 业务知识地图</h2>
+          <div className="cockpit-map" style={{ width: W, maxWidth: '100%' }}>
+            <svg viewBox={`0 0 ${W} ${H}`} className="cockpit-map__svg" aria-label="以知识主张为中心的业务知识网络">
+              <polygon
+                points={MAP_NODES.map((n) => { const p = pos(n.angle); return `${p.x},${p.y}`; }).join(' ')}
+                className="cockpit-map__ring"
+              />
+              {MAP_NODES.map((n) => { const p = pos(n.angle); return <line key={n.key} x1={cx} y1={cy} x2={p.x} y2={p.y} className="cockpit-map__spoke" />; })}
+            </svg>
+            <div className="cockpit-map__center" style={{ left: cx, top: cy }}>
+              <ShieldCheck size={22} />
+              <span>知识主张</span>
+            </div>
+            {MAP_NODES.map((n) => {
+              const p = pos(n.angle);
+              const Icon = n.icon;
               return (
-                <button key={d.name} type="button" className="cockpit-domain" onClick={() => navigate('/articles')}>
-                  <Icon size={22} strokeWidth={1.6} />
-                  <span className="cockpit-domain__name">{d.name}</span>
-                  <span className="cockpit-domain__count">{domainCounts.get(d.name) ?? 0} 条</span>
-                </button>
+                <div key={n.key}>
+                  <div className={`cockpit-map__node tone-${n.tone}`} style={{ left: p.x, top: p.y }}>
+                    <Icon size={18} />
+                    <b>{n.key}</b>
+                  </div>
+                  <div
+                    className={`cockpit-map__desc cockpit-map__desc--${n.side}`}
+                    style={{ left: p.x + (n.side === 'right' ? nodeR + 8 : -(nodeR + 8)), top: p.y }}
+                  >
+                    {n.lines.map((l) => <div key={l}>{l}</div>)}
+                  </div>
+                </div>
               );
             })}
-            <button type="button" className="cockpit-domain cockpit-domain--add" onClick={() => navigate('/ontology')}>
-              <Plus size={22} strokeWidth={1.6} />
-              <span className="cockpit-domain__name">新增知识领域</span>
-            </button>
           </div>
         </div>
 

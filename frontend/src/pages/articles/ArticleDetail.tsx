@@ -43,6 +43,7 @@ import {
   fetchLatestArticleReview,
   runArticleReview,
   patchArticle,
+  extractArticleMetadata,
   putArticleMarkdown,
   uploadArticleAttachment,
   uploadArticleImage,
@@ -52,7 +53,8 @@ import {
   type ArticleReviewOut,
 } from '../../data/articlesApi';
 import { fetchMediaAssets } from '../../data/mediaApi';
-import { findChannel } from '../../data/channelUtils';
+import { findChannel, normalizeExtractionSchemaToFields } from '../../data/channelUtils';
+import { ContentMetadataSection } from '../../components/metadata/ContentMetadataSection';
 import { ContentCommentsShell } from '../../components/comments/ContentCommentsShell';
 import '../documents/DocumentDetail.scss';
 import './ArticleDetail.scss';
@@ -101,6 +103,14 @@ export function ArticleDetail() {
   const { channels } = useEnsureArticleChannels();
   const [infoVisible, setInfoVisible] = useState(true);
   const [article, setArticle] = useState<ArticleOut | null>(null);
+  const articleChannel = useMemo(
+    () => (article ? findChannel(channels, article.channel_id) : null),
+    [channels, article],
+  );
+  const articleExtractionFields = useMemo(
+    () => normalizeExtractionSchemaToFields(articleChannel?.extraction_schema),
+    [articleChannel],
+  );
   // 媒体链接联动：正文里指向已入库音视频（同 source_url）的裸链接，改跳我们的媒体管理页
   // （带字幕/摘要），而不是原始 CDN。key = 归一化后的 URL，value = 媒体资产 id。
   const [mediaByUrl, setMediaByUrl] = useState<Map<string, string>>(new Map());
@@ -812,6 +822,23 @@ export function ArticleDetail() {
                     </dl>
                   </div>
                 </div>
+
+                <ContentMetadataSection
+                  meta={(article.metadata ?? {}) as Record<string, unknown>}
+                  schemaFields={articleExtractionFields}
+                  hasExtractionModel={Boolean(articleChannel?.extraction_model_id)}
+                  canExtract={Boolean(article.markdown && article.markdown.trim())}
+                  extractHint="文章暂无正文可提取"
+                  onExtract={async () => {
+                    const res = await extractArticleMetadata(article.id);
+                    setArticle(res.article);
+                    return { warnings: res.warnings };
+                  }}
+                  onSave={async (values) => {
+                    const updated = await patchArticle(article.id, { metadata: values });
+                    setArticle(updated);
+                  }}
+                />
 
                 <div className="document-detail-lineage document-detail-lineage--article">
                   <button

@@ -98,6 +98,26 @@ export async function fetchMediaAsset(id: string): Promise<MediaAssetOut> {
   return res.json();
 }
 
+export interface ExtractMediaMetadataResponse {
+  asset: MediaAssetOut;
+  warnings: string[];
+}
+
+/** 触发媒体结构化元数据抽取(基于转写稿/摘要 + 频道配置的 LLM)。 */
+export async function extractMediaMetadata(id: string): Promise<ExtractMediaMetadataResponse> {
+  const headers = await getAuthHeaders();
+  const res = await authAwareFetch(`${config.apiUrl}/api/media/${id}/extract-metadata`, {
+    method: 'POST',
+    headers: { ...headers },
+    credentials: 'include',
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error((err as { detail?: string }).detail || `Extraction failed (${res.status})`);
+  }
+  return res.json();
+}
+
 export async function updateMediaAsset(
   id: string,
   body: Partial<{

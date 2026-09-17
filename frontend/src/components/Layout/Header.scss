@@ -303,11 +303,21 @@
   white-space: nowrap;
   letter-spacing: 0.2px;
 }
+/* Amway 品牌字标(官方蓝字 + 红 swoosh,图片资源) */
+.header-brand-amway {
+  height: 26px;
+  width: auto;
+  display: block;
+  flex-shrink: 0;
+}
 .header-brand-divider {
   width: 1px;
-  height: 18px;
+  height: 22px;
   background: var(--color-border);
-  margin: 0 2px;
+  margin: 0 4px;
+}
+.header-brand-name {
+  font-size: 1.02rem;
 }
 .header-concept-note {
   font-size: 0.72rem;

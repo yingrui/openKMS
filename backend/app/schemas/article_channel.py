@@ -19,6 +19,10 @@ class ArticleChannelNode(BaseModel):
     review_model_id: str | None = None
     review_prompt: str | None = None
     review_criteria: list[dict[str, Any]] | None = None
+    extraction_model_id: str | None = None
+    extraction_schema: Any | None = None
+    label_config: list[dict[str, Any]] | None = None
+    object_type_extraction_max_instances: int | None = None
     children: list["ArticleChannelNode"] = []
 
     model_config = {"from_attributes": True}
@@ -49,6 +53,10 @@ class ArticleChannelUpdate(BaseModel):
     review_model_id: str | None = None
     review_prompt: str | None = None
     review_criteria: list[dict[str, Any]] | None = None
+    extraction_model_id: str | None = None
+    extraction_schema: Any | None = None
+    label_config: list[dict[str, Any]] | None = None
+    object_type_extraction_max_instances: int | None = None
 
 
 class ArticleChannelMergeBody(BaseModel):

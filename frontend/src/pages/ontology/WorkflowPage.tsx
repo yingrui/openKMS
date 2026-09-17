@@ -34,7 +34,6 @@ import {
   updateObjectInstance,
 } from '../../data/ontologyApi';
 import { fetchDocuments, type DocumentListItemResponse } from '../../data/documentsApi';
-import { AgentAssistantDock } from './AgentAssistantDock';
 import './WorkflowPage.scss';
 
 /** Fixed demo-environment identifiers for the ApprovalCase ontology + Neo4j sync. */
@@ -1023,8 +1022,7 @@ export function WorkflowPage() {
         </div>
       )}
 
-      {/* --- floating AI credit-assistant chat dock (credit lens only) --- */}
-      {workflowType === 'credit' && <AgentAssistantDock />}
+      {/* AI 助手浮窗已提升为全局(MainLayout),此处不再单独渲染,避免重复 FAB。 */}
 
       {/* --- template picker modal --- */}
       {showTemplateModal && (

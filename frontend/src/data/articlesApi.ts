@@ -121,12 +121,33 @@ export async function createArticle(body: {
   return res.json();
 }
 
+export interface ExtractArticleMetadataResponse {
+  article: ArticleOut;
+  warnings: string[];
+}
+
+/** 触发文章结构化元数据抽取(用频道配置的 LLM)。 */
+export async function extractArticleMetadata(articleId: string): Promise<ExtractArticleMetadataResponse> {
+  const headers = await getAuthHeaders();
+  const res = await authAwareFetch(`${config.apiUrl}/api/articles/${articleId}/extract-metadata`, {
+    method: 'POST',
+    headers: { ...headers },
+    credentials: 'include',
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error((err as { detail?: string }).detail || `Extraction failed (${res.status})`);
+  }
+  return res.json();
+}
+
 export async function patchArticle(
   articleId: string,
   body: {
     name?: string;
     channel_id?: string | null;
     origin_article_id?: string | null;
+    metadata?: Record<string, unknown> | null;
   },
 ): Promise<ArticleOut> {
   const headers = await getAuthHeaders();

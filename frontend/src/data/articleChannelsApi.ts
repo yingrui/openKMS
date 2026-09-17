@@ -1,7 +1,7 @@
 /** API for article channels (backend). */
 import { config } from '../config';
 import { getAuthHeaders, authAwareFetch } from './apiClient';
-import type { ChannelNode } from './channelUtils';
+import type { ChannelNode, ExtractionSchemaValue, LabelConfigItem } from './channelUtils';
 
 /** Raw API node (subset of ChannelNode). */
 export interface ArticleChannelNodeRaw {
@@ -12,6 +12,10 @@ export interface ArticleChannelNodeRaw {
   review_model_id?: string | null;
   review_prompt?: string | null;
   review_criteria?: { id: string; label: string; description?: string }[] | null;
+  extraction_model_id?: string | null;
+  extraction_schema?: ExtractionSchemaValue | null;
+  label_config?: LabelConfigItem[] | null;
+  object_type_extraction_max_instances?: number | null;
   children: ArticleChannelNodeRaw[];
 }
 
@@ -23,10 +27,10 @@ function toChannelNode(raw: ArticleChannelNodeRaw): ChannelNode {
     sort_order: raw.sort_order ?? 0,
     pipeline_id: null,
     auto_process: false,
-    extraction_model_id: null,
-    extraction_schema: null,
-    label_config: null,
-    object_type_extraction_max_instances: null,
+    extraction_model_id: raw.extraction_model_id ?? null,
+    extraction_schema: raw.extraction_schema ?? null,
+    label_config: raw.label_config ?? null,
+    object_type_extraction_max_instances: raw.object_type_extraction_max_instances ?? null,
     review_model_id: raw.review_model_id ?? null,
     review_prompt: raw.review_prompt ?? null,
     review_criteria: raw.review_criteria ?? null,
@@ -121,6 +125,10 @@ export async function updateArticleChannel(
     review_model_id?: string | null;
     review_prompt?: string | null;
     review_criteria?: { id: string; label: string; description?: string }[] | null;
+    extraction_model_id?: string | null;
+    extraction_schema?: ExtractionSchemaValue | null;
+    label_config?: LabelConfigItem[] | null;
+    object_type_extraction_max_instances?: number | null;
   },
 ): Promise<ChannelNode> {
   const authHeaders = await getAuthHeaders();

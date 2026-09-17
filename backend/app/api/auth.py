@@ -502,6 +502,7 @@ class RegisterBody(BaseModel):
     email: EmailStr
     username: str = Field(min_length=2, max_length=128)
     password: str = Field(min_length=8, max_length=256)
+    invite_code: str | None = None
 
 
 class LoginBody(BaseModel):
@@ -574,6 +575,8 @@ async def register(
         raise http_error(request, 404, "REGISTRATION_LOCAL_ONLY")
     if not settings.allow_signup:
         raise http_error(request, 403, "SIGNUP_DISABLED")
+    if settings.signup_invite_code and (body.invite_code or "").strip() != settings.signup_invite_code:
+        raise http_error(request, 403, "INVITE_CODE_INVALID")
 
     username = body.username.strip()
     if not username:

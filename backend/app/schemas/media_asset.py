@@ -111,3 +111,10 @@ class MediaAnalyzeRequest(BaseModel):
 
 class MediaAnalyzeResponse(BaseModel):
     job_id: int
+
+
+class ExtractMediaMetadataResponse(BaseModel):
+    """结构化元数据提取结果(与文档 ExtractMetadataResponse 对齐)。"""
+
+    asset: MediaAssetResponse
+    warnings: list[str] = []

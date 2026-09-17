@@ -376,3 +376,82 @@ body.openkms-agents-fullpage .agents-workspace {
     width: calc(100% + 2 * var(--app-page-padding-x));
   }
 }
+
+/* ============ 移动端适配：窄屏侧边栏抽屉 ============ */
+.mobile-nav-toggle {
+  display: none;
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 48px;
+  height: var(--header-height, 56px);
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  color: var(--color-text-primary);
+  z-index: 320;
+}
+.mobile-nav-overlay { display: none; }
+
+@media (max-width: 768px) {
+  .mobile-nav-toggle { display: inline-flex; }
+  /* 给汉堡让位，避免压住品牌 */
+  .header .header-start { padding-left: 42px; }
+
+  /* 侧边栏变成从左滑出的抽屉 */
+  .app-layout .sidebar {
+    position: fixed;
+    top: var(--header-height, 56px);
+    left: 0;
+    bottom: 0;
+    z-index: 300;
+    width: min(78vw, 260px);
+    min-width: min(78vw, 260px);
+    transform: translateX(-100%);
+    transition: transform 0.22s ease;
+    box-shadow: 2px 0 18px rgba(0, 0, 0, 0.2);
+    overflow-y: auto;
+  }
+  .app-layout--mobile-nav-open .sidebar { transform: translateX(0); }
+
+  /* 遮罩 */
+  .app-layout--mobile-nav-open .mobile-nav-overlay {
+    display: block;
+    position: fixed;
+    top: var(--header-height, 56px);
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.42);
+    z-index: 290;
+  }
+
+  /* 主内容全宽 + 收紧留白 */
+  .app-content,
+  .app-content--home,
+  .app-content--search {
+    padding-left: var(--space-3);
+    padding-right: var(--space-3);
+  }
+  /* rail 布局窄屏：rail 收窄不挤内容 */
+  .ontology-section-layout { flex-direction: column; }
+}
+
+@media (max-width: 768px) {
+  .header .header-search { display: none; }
+}
+
+@media (max-width: 768px) {
+  /* 本体/图谱二级导航栏窄屏堆到上方全宽 */
+  .ontology-section-layout .ontology-nav-rail,
+  .ontology-section-layout aside {
+    width: 100%;
+    min-width: 0;
+    max-height: 38vh;
+    overflow-y: auto;
+    border-right: none;
+    border-bottom: 1px solid var(--color-border);
+  }
+}

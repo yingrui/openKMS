@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { ArrowLeft, CheckCircle2, ClipboardCheck, Plus, Settings, Trash2, Users } from 'lucide-react';
+import { ArrowLeft, CheckCircle2, ClipboardCheck, Plus, Settings, Sparkles, Trash2, Users } from 'lucide-react';
 import { toast } from 'sonner';
 import { useEnsureArticleChannels } from '../../contexts/ArticleChannelsContext';
 import {
@@ -41,7 +41,7 @@ function findParentId(nodes: ChannelNode[], targetId: string, parent: string | n
   return undefined;
 }
 
-type TabId = 'general' | 'review' | 'sharing';
+type TabId = 'general' | 'review' | 'extraction' | 'sharing';
 
 export function ArticleChannelSettings() {
   const { t, i18n } = useTranslation('articles');
@@ -64,6 +64,10 @@ export function ArticleChannelSettings() {
   const [modelsLoading, setModelsLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [savingReview, setSavingReview] = useState(false);
+  const [extractionModelId, setExtractionModelId] = useState('');
+  const [extractionSchemaText, setExtractionSchemaText] = useState('');
+  const [extractionMaxInstances, setExtractionMaxInstances] = useState<string>('100');
+  const [savingExtraction, setSavingExtraction] = useState(false);
   const [activeTab, setActiveTab] = useState<TabId>(
     tabParam === 'sharing' ? 'sharing' : tabParam === 'review' ? 'review' : 'general',
   );
@@ -112,6 +116,11 @@ export function ArticleChannelSettings() {
       const p = findParentId(channels, channelId);
       setParentIdField(p === undefined ? '' : p ?? '');
       setReviewModelId(channel.review_model_id || '');
+      setExtractionModelId(channel.extraction_model_id || '');
+      setExtractionSchemaText(
+        channel.extraction_schema ? JSON.stringify(channel.extraction_schema, null, 2) : '',
+      );
+      setExtractionMaxInstances(String(channel.object_type_extraction_max_instances ?? 100));
       setReviewPrompt(channel.review_prompt ?? '');
       const rc = channel.review_criteria;
       setReviewCriteria(
@@ -174,6 +183,35 @@ export function ArticleChannelSettings() {
     }
   }, [channelId, channel, reviewModelId, reviewPrompt, reviewCriteria, refetch, t]);
 
+  const handleSaveExtraction = useCallback(async () => {
+    if (!channelId) return;
+    let schema: unknown = null;
+    const trimmed = extractionSchemaText.trim();
+    if (trimmed) {
+      try {
+        schema = JSON.parse(trimmed);
+      } catch {
+        toast.error('提取字段 JSON 格式有误');
+        return;
+      }
+    }
+    const maxN = Number.parseInt(extractionMaxInstances, 10);
+    setSavingExtraction(true);
+    try {
+      await updateArticleChannel(channelId, {
+        extraction_model_id: extractionModelId || null,
+        extraction_schema: schema as never,
+        object_type_extraction_max_instances: Number.isFinite(maxN) ? maxN : 100,
+      });
+      await refetch();
+      toast.success(t('channelSettings.saved'));
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : t('channelSettings.saveFailed'));
+    } finally {
+      setSavingExtraction(false);
+    }
+  }, [channelId, extractionModelId, extractionSchemaText, extractionMaxInstances, refetch, t]);
+
   const reviewPresets = useMemo(() => getReviewPresets(i18n.language), [i18n.language]);
   const builtinCriteria = useMemo(() => getBuiltinCriteria(i18n.language), [i18n.language]);
   const selectedReviewModelName = useMemo(
@@ -230,6 +268,7 @@ export function ArticleChannelSettings() {
   const tabs: { id: TabId; label: string; icon: typeof Settings }[] = [
     { id: 'general', label: t('channelSettings.general'), icon: Settings },
     { id: 'review', label: t('channelSettings.tabReview'), icon: ClipboardCheck },
+    { id: 'extraction', label: '结构化提取', icon: Sparkles },
     { id: 'sharing', label: t('channelSettings.tabSharing'), icon: Users },
   ];
 
@@ -532,6 +571,60 @@ export function ArticleChannelSettings() {
                 disabled={savingReview}
               >
                 {savingReview ? t('channelSettings.saving') : t('channelSettings.save')}
+              </button>
+            </div>
+          </section>
+        )}
+
+        {activeTab === 'extraction' && (
+          <section className="document-channel-settings-section">
+            <h2>结构化提取</h2>
+            <p className="document-channel-settings-hint">
+              配置提取模型与字段后,可在文章详情页一键把正文抽成结构化元数据(产品、成分、人群、健康主题等)。
+            </p>
+            <div className="document-channel-settings-field">
+              <label htmlFor="ac-extraction-model">提取模型</label>
+              <select
+                id="ac-extraction-model"
+                value={extractionModelId}
+                onChange={(e) => setExtractionModelId(e.target.value)}
+                disabled={modelsLoading}
+              >
+                <option value="">（未设置）</option>
+                {llmModels.map((m) => (
+                  <option key={m.id} value={m.id}>{m.name}</option>
+                ))}
+              </select>
+              <p className="document-channel-settings-hint">用于抽取的对话模型(需 chat-completions)。</p>
+            </div>
+            <div className="document-channel-settings-field">
+              <label htmlFor="ac-extraction-schema">提取字段(JSON)</label>
+              <textarea
+                id="ac-extraction-schema"
+                rows={12}
+                spellCheck={false}
+                value={extractionSchemaText}
+                onChange={(e) => setExtractionSchemaText(e.target.value)}
+                placeholder='[{"key":"内容类型","label":"内容类型","type":"string"},{"key":"涉及产品","label":"涉及产品","type":"array"}]'
+                style={{ fontFamily: 'monospace', width: '100%' }}
+              />
+              <p className="document-channel-settings-hint">
+                数组形式,每项 {'{key,label,type}'};type 支持 string / array / date / integer / number / boolean / enum。
+              </p>
+            </div>
+            <div className="document-channel-settings-field">
+              <label htmlFor="ac-extraction-max">对象类型抽取上限</label>
+              <input
+                id="ac-extraction-max"
+                type="number"
+                value={extractionMaxInstances}
+                onChange={(e) => setExtractionMaxInstances(e.target.value)}
+                style={{ maxWidth: 160 }}
+              />
+            </div>
+            <div className="document-channel-settings-actions">
+              <button type="button" className="btn btn-primary" onClick={() => void handleSaveExtraction()} disabled={savingExtraction}>
+                {savingExtraction ? '保存中…' : t('channelSettings.save')}
               </button>
             </div>
           </section>

@@ -58,8 +58,26 @@ const nextId = (prefix: string) => `${prefix}-${Date.now()}-${msgSeq++}`;
  * Q&A (askQuestionStream) — showing the agent's tool calls (graph queries / exposure maths)
  * and grounded sources, without interrupting the page body.
  */
-export function AgentAssistantDock() {
+export interface AgentAssistantDockProps {
+  /** 目标知识库 id(默认信贷 KB;anli 全局助手传 anli KB)。 */
+  kbId?: string;
+  /** 快捷提示词(默认取 workflow i18n 的四个 chip)。 */
+  quickPrompts?: string[];
+  /** 标题覆盖(默认 dockTitle)。 */
+  title?: string;
+  /** 欢迎语覆盖(默认 t('chatGreeting'))。 */
+  greeting?: string;
+  /** 输入框占位符覆盖(默认 t('chatPlaceholder'))。 */
+  placeholder?: string;
+}
+
+export function AgentAssistantDock({ kbId, quickPrompts, title, greeting, placeholder }: AgentAssistantDockProps = {}) {
   const { t } = useTranslation('workflow');
+  const targetKbId = kbId ?? CREDIT_KB_ID;
+  const dockTitle = title ?? t('dockTitle');
+  const dockGreeting = greeting ?? t('chatGreeting');
+  const dockPlaceholder = placeholder ?? t('chatPlaceholder');
+  const chips = quickPrompts ?? QUICK_KEYS.map((k) => t(k));
   const [open, setOpen] = useState(false);
   const [pos, setPos] = useState<{ x: number; y: number } | null>(null);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -154,7 +172,7 @@ export function AgentAssistantDock() {
       abortRef.current = ac;
 
       askQuestionStream(
-        CREDIT_KB_ID,
+        targetKbId,
         { question, conversation_history: history },
         (ev) => {
           switch (ev.type) {
@@ -225,9 +243,9 @@ export function AgentAssistantDock() {
 
   if (!open) {
     return (
-      <button type="button" className="agent-dock__fab" onClick={() => setOpen(true)} aria-label={t('dockTitle')}>
+      <button type="button" className="agent-dock__fab" onClick={() => setOpen(true)} aria-label={dockTitle}>
         <Sparkles size={18} aria-hidden />
-        <span className="agent-dock__fab-label">{t('dockTitle')}</span>
+        <span className="agent-dock__fab-label">{dockTitle}</span>
       </button>
     );
   }
@@ -240,12 +258,12 @@ export function AgentAssistantDock() {
       ref={panelRef}
       style={panelStyle}
       role="dialog"
-      aria-label={t('dockTitle')}
+      aria-label={dockTitle}
     >
       <div className="agent-dock__header" onPointerDown={onHeaderPointerDown}>
         <div className="agent-dock__header-title">
           <Bot size={16} aria-hidden />
-          <span>{t('dockTitle')}</span>
+          <span>{dockTitle}</span>
         </div>
         <div className="agent-dock__header-actions">
           <button
@@ -271,16 +289,16 @@ export function AgentAssistantDock() {
 
       {/* quick-prompt chips */}
       <div className="agent-dock__chips">
-        {QUICK_KEYS.map((k) => (
+        {chips.map((c) => (
           <button
-            key={k}
+            key={c}
             type="button"
             className="agent-dock__chip"
             disabled={busy}
-            onClick={() => send(t(k))}
-            title={t(k)}
+            onClick={() => send(c)}
+            title={c}
           >
-            {t(k)}
+            {c}
           </button>
         ))}
       </div>
@@ -290,7 +308,7 @@ export function AgentAssistantDock() {
         {messages.length === 0 ? (
           <div className="agent-dock__greeting">
             <Sparkles size={16} aria-hidden />
-            <p>{t('chatGreeting')}</p>
+            <p>{dockGreeting}</p>
           </div>
         ) : (
           messages.map((m) => (
@@ -380,7 +398,7 @@ export function AgentAssistantDock() {
           onCompositionEnd={() => {
             composingRef.current = false;
           }}
-          placeholder={t('chatPlaceholder')}
+          placeholder={dockPlaceholder}
           rows={1}
         />
         <button

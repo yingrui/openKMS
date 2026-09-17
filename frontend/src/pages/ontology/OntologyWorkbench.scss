@@ -1,0 +1,44 @@
+.owb {
+  display: flex; flex-direction: column; gap: var(--space-3);
+  padding: var(--space-5) var(--app-page-padding-x, 28px) var(--space-4);
+
+  &__head {
+    h1 { font-size: 1.6rem; font-weight: 800; margin: 0 0 4px; }
+    p { color: var(--color-text-secondary); font-size: 0.9rem; margin: 0; }
+  }
+}
+.owb-modes {
+  display: flex; gap: var(--space-2); border-bottom: 1px solid var(--color-border); flex-wrap: wrap;
+  .owb-mode {
+    position: relative; display: inline-flex; align-items: center; gap: 6px;
+    background: none; border: none; cursor: pointer; padding: 9px 4px; margin-bottom: -1px;
+    font-size: 0.95rem; font-weight: 600; color: var(--color-text-secondary);
+    &:hover { color: var(--color-text); }
+    &.is-active { color: var(--color-accent);
+      &::after { content: ''; position: absolute; left: 0; right: 0; bottom: -1px; height: 3px; background: var(--color-accent); border-radius: 3px 3px 0 0; } }
+  }
+}
+/* 内嵌的 ObjectTypesPage/LinkTypesPage 自带内边距,这里给 mock 面板统一留白 */
+.owb-body { margin-top: var(--space-2); }
+
+.owb-mock { display: flex; flex-direction: column; gap: var(--space-3); }
+.owb-mock__note {
+  display: flex; align-items: center; gap: 8px; font-size: 0.84rem; color: var(--color-text-secondary);
+  padding: 10px 14px; border: 1px dashed var(--color-border); border-radius: var(--radius-md); background: var(--color-accent-subtle);
+  svg { color: var(--color-accent); flex: none; }
+}
+.owb-table { border: 1px solid var(--color-border); border-radius: var(--radius-lg); background: var(--color-bg-elevated); overflow: hidden; }
+.owb-table__head, .owb-table__row { display: grid; grid-template-columns: 1.2fr 1.4fr 2fr 0.8fr 1fr; gap: 12px; align-items: center; padding: 11px 16px; }
+.owb-table__head { font-size: 0.76rem; color: var(--color-text-secondary); background: var(--color-bg, #faf9f7); border-bottom: 1px solid var(--color-border); }
+.owb-table__row { font-size: 0.86rem; color: var(--color-text); border-bottom: 1px solid var(--color-border-subtle, var(--color-border)); &:last-child { border-bottom: none; } b { font-weight: 600; } }
+.owb-code { font-family: monospace; font-size: 0.8rem; color: var(--color-accent); }
+
+.owb-rules { display: flex; flex-direction: column; gap: var(--space-3); }
+.owb-rule {
+  border: 1px solid var(--color-border); border-radius: var(--radius-lg); background: var(--color-bg-elevated); padding: var(--space-4);
+  display: flex; flex-direction: column; gap: 8px;
+  &__when, &__then { display: flex; align-items: center; gap: 8px; font-size: 0.9rem; color: var(--color-text); }
+  &__tag { font-size: 0.72rem; font-weight: 700; color: #fff; background: var(--color-accent); border-radius: 4px; padding: 1px 8px; flex: none;
+    &--then { background: #16a34a; } }
+  &__guard { font-size: 0.78rem; color: var(--color-text-secondary); }
+}

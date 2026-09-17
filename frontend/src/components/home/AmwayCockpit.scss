@@ -19,6 +19,8 @@
     grid-template-columns: 1fr 1.35fr 1fr;
     gap: var(--space-4);
     align-items: stretch;
+
+    &--v2 { grid-template-columns: 1.9fr 1fr; }
   }
 
   &__bottom {
@@ -203,4 +205,75 @@
   .cockpit-metricbar { grid-template-columns: repeat(2, 1fr); row-gap: var(--space-3); }
   .cockpit__mid, .cockpit__bottom { grid-template-columns: 1fr; }
   .cockpit-domains { grid-template-columns: repeat(4, 1fr); }
+}
+
+/* ---- 快速开始:五段流水线 ---- */
+.cockpit-quick__lead { font-size: 0.85rem; color: var(--color-text-secondary); margin: -4px 0 0; }
+.cockpit-pipeline {
+  display: flex; align-items: flex-start; justify-content: space-between; gap: 4px;
+  padding: var(--space-3) 0 var(--space-2);
+}
+.cockpit-pstep {
+  position: relative; flex: 1; min-width: 0;
+  display: flex; flex-direction: column; align-items: center; gap: 6px; text-align: center;
+
+  &__circle {
+    width: 60px; height: 60px; border-radius: 50%;
+    background: var(--color-bg-elevated); border: 2px solid var(--color-accent);
+    color: var(--color-accent); display: flex; align-items: center; justify-content: center;
+    cursor: pointer; transition: transform 0.12s, box-shadow 0.12s;
+    &:hover { transform: scale(1.06); box-shadow: 0 4px 14px rgba(0,0,0,0.08); }
+    &.tone-red { border-color: #e4002b; color: #e4002b; }
+    &.tone-blue { border-color: var(--color-accent); color: var(--color-accent); }
+    &.tone-green { border-color: #16a34a; color: #16a34a; }
+  }
+  &__label { font-size: 0.92rem; font-weight: 700; color: var(--color-text); b { color: var(--color-accent); margin-right: 2px; } }
+  &__sub { font-size: 0.76rem; color: var(--color-text-secondary); }
+  &__arrow {
+    position: absolute; right: -2px; top: 20px; color: var(--color-accent); opacity: 0.55;
+    &.is-red { color: #e4002b; opacity: 0.7; }
+    &.is-green { color: #16a34a; opacity: 0.7; }
+  }
+}
+
+/* 继续上次工作 */
+.cockpit-continue {
+  margin-top: auto; border-top: 1px solid var(--color-border); padding-top: var(--space-3);
+  display: flex; flex-direction: column; gap: 4px;
+  &__title { display: flex; align-items: center; gap: 6px; font-size: 0.82rem; font-weight: 600; color: var(--color-text-secondary); margin-bottom: 4px; svg { color: var(--color-accent); } }
+  &__row {
+    display: flex; align-items: center; gap: 10px; width: 100%; text-align: left; cursor: pointer;
+    padding: 9px 12px; border: 1px solid var(--color-border); border-radius: var(--radius-md); background: none;
+    &:hover { border-color: var(--color-accent); background: var(--color-accent-subtle); }
+  }
+  &__ic { color: var(--color-accent); flex: none; }
+  &__name { flex: 1; min-width: 0; font-size: 0.88rem; color: var(--color-text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  &__badge { font-size: 0.72rem; font-weight: 600; border-radius: 4px; padding: 1px 8px; flex: none;
+    &.tone-draft { color: var(--color-text-secondary); background: rgba(128,128,128,0.14); }
+    &.tone-review { color: #d97706; background: #d977061a; }
+  }
+  &__action { display: inline-flex; align-items: center; gap: 2px; font-size: 0.8rem; color: var(--color-accent); flex: none; }
+}
+
+/* 移动端：快速开始五段流水线改竖排（横箭头在窄屏会压在圆圈上，去掉） */
+@media (max-width: 768px) {
+  .cockpit-pipeline {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+  }
+  .cockpit-pstep {
+    flex-direction: row;
+    align-items: center;
+    gap: 12px;
+    text-align: left;
+  }
+  .cockpit-pstep__circle {
+    width: 46px;
+    height: 46px;
+    flex: 0 0 auto;
+  }
+  .cockpit-pstep__label { flex: 0 0 auto; font-size: 0.9rem; }
+  .cockpit-pstep__sub { font-size: 0.74rem; }
+  .cockpit-pstep__arrow { display: none; }
 }

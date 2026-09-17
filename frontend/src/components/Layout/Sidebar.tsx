@@ -12,9 +12,9 @@ import {
   KeyRound,
   Download,
   FileText,
-  BookOpen,
+  Bot,
+  Boxes,
   Network,
-  ShieldCheck,
   ClipboardCheck,
   Layers,
   BarChart3,
@@ -34,13 +34,14 @@ import './Sidebar.scss';
 const AMWAY_NAV: { to: string; end?: boolean; icon: typeof HomeIcon; label: string; requires?: string }[] = [
   { to: '/', end: true, icon: HomeIcon, label: '首页' },
   { to: '/ingest', icon: Download, label: '知识接入' },
-  { to: '/articles', icon: FileText, label: '内容资产', requires: '/articles' },
-  { to: '/glossaries', icon: BookOpen, label: '本体与术语', requires: '/glossaries' },
-  { to: '/knowledge-map', icon: Network, label: '知识图谱', requires: '/knowledge-map' },
-  { to: '/objects', icon: ShieldCheck, label: '知识主张', requires: '/ontology' },
-  { to: '/ontology', icon: ClipboardCheck, label: '审核发布', requires: '/ontology' },
-  { to: '/knowledge-bases', icon: Layers, label: '知识服务', requires: '/knowledge-bases' },
+  { to: '/content', icon: FileText, label: '内容资产', requires: '/articles' },
+  { to: '/ontology', icon: Boxes, label: '本体编排', requires: '/ontology' },
+  { to: '/kg', icon: Network, label: '知识图谱' },
+  { to: '/knowledge-bases', icon: Database, label: '知识库', requires: '/knowledge-bases' },
+  { to: '/services', icon: Layers, label: '知识服务' },
+  { to: '/agents', icon: Bot, label: '智能体项目', requires: '/agents' },
   { to: '/evaluations', icon: BarChart3, label: '评测运营', requires: '/evaluations' },
+  { to: '/review', icon: ClipboardCheck, label: '审核发布' },
   { to: '/console', icon: SlidersHorizontal, label: '系统治理' },
 ];
 
@@ -221,7 +222,7 @@ export function Sidebar() {
                   title={item.label}
                   className={({ isActive }) => `sidebar-link ${isActive ? 'sidebar-link-active' : ''}`}
                 >
-                  <Icon size={18} strokeWidth={1.75} />
+                  <Icon size={21} strokeWidth={1.9} />
                   <span>{item.label}</span>
                 </NavLink>
               );

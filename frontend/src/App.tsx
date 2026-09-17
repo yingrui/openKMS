@@ -82,6 +82,11 @@ function AppLoadingFallback() {
 const Home = lazy(() => import('./pages/Home').then((m) => ({ default: m.Home })));
 const GlobalSearch = lazy(() => import('./pages/GlobalSearch').then((m) => ({ default: m.GlobalSearch })));
 const IngestPage = lazy(() => import('./pages/ingest/IngestPage').then((m) => ({ default: m.IngestPage })));
+const ContentAssets = lazy(() => import('./pages/ContentAssets').then((m) => ({ default: m.ContentAssets })));
+const ReviewPublish = lazy(() => import('./pages/review/ReviewPublish').then((m) => ({ default: m.ReviewPublish })));
+const KnowledgeService = lazy(() => import('./pages/services/KnowledgeService').then((m) => ({ default: m.KnowledgeService })));
+const GraphOverview = lazy(() => import('./pages/graph/GraphOverview').then((m) => ({ default: m.GraphOverview })));
+const MaterializationPage = lazy(() => import('./pages/graph/MaterializationPage').then((m) => ({ default: m.MaterializationPage })));
 const DocumentsIndex = lazy(() => import('./pages/documents/DocumentsIndex').then((m) => ({ default: m.DocumentsIndex })));
 const DocumentChannel = lazy(() => import('./pages/documents/DocumentChannel').then((m) => ({ default: m.DocumentChannel })));
 const DocumentChannels = lazy(() => import('./pages/documents/DocumentChannels').then((m) => ({ default: m.DocumentChannels })));
@@ -104,8 +109,11 @@ const JobRuns = lazy(() => import('./pages/jobs/JobRuns').then((m) => ({ default
 const SchedulesPage = lazy(() => import('./pages/jobs/SchedulesPage').then((m) => ({ default: m.SchedulesPage })));
 const JobDetail = lazy(() => import('./pages/jobs/JobDetail').then((m) => ({ default: m.JobDetail })));
 const Models = lazy(() => import('./pages/models/Models').then((m) => ({ default: m.Models })));
+const QaAssistantPage = lazy(() => import('./pages/qa-assistant/QaAssistantPage').then((m) => ({ default: m.QaAssistantPage })));
 const ModelDetail = lazy(() => import('./pages/models/ModelDetail').then((m) => ({ default: m.ModelDetail })));
 const OntologyList = lazy(() => import('./pages/ontology/OntologyList').then((m) => ({ default: m.OntologyList })));
+const OntologyWorkbench = lazy(() => import('./pages/ontology/OntologyWorkbench').then((m) => ({ default: m.OntologyWorkbench })));
+const OntologyVersions = lazy(() => import('./pages/ontology/OntologyVersions').then((m) => ({ default: m.OntologyVersions })));
 const ObjectsList = lazy(() => import('./pages/ontology/ObjectsList').then((m) => ({ default: m.ObjectsList })));
 const ObjectTypeDetail = lazy(() => import('./pages/ontology/ObjectTypeDetail').then((m) => ({ default: m.ObjectTypeDetail })));
 const LinksList = lazy(() => import('./pages/ontology/LinksList').then((m) => ({ default: m.LinksList })));
@@ -178,6 +186,12 @@ function App() {
           <Route path="knowledge-map" element={<KnowledgeMap />} />
           <Route path="search" element={<GlobalSearch />} />
           <Route path="ingest" element={<IngestPage />} />
+          <Route path="content" element={<ContentAssets />} />
+          <Route path="review" element={<ReviewPublish />} />
+          <Route path="services" element={<KnowledgeService />} />
+          <Route path="kg" element={<GraphOverview />} />
+          <Route path="graph-qa" element={<GraphQA />} />
+          <Route path="materialization" element={<MaterializationPage />} />
           <Route path="documents" element={<DocumentsSectionLayout />}>
             <Route index element={<DocumentsIndex />} />
             <Route path="channels/:channelId/settings" element={<DocumentChannelSettings />} />
@@ -235,9 +249,12 @@ function App() {
           <Route path="jobs" element={<Navigate to="/job-runs" replace />} />
           <Route path="jobs/:jobId" element={<LegacyJobRunRedirect />} />
           <Route path="models" element={<Models />} />
+          <Route path="qa-assistant" element={<QaAssistantPage />} />
           <Route path="models/:modelId" element={<ModelDetail />} />
           <Route path="ontology" element={<Outlet />}>
             <Route index element={<OntologyList />} />
+            <Route path="workbench" element={<OntologyWorkbench />} />
+            <Route path="versions" element={<OntologyVersions />} />
             <Route path="datasets" element={<ConsoleDatasets />} />
             <Route path="datasets/:id" element={<ConsoleDatasetDetail />} />
             <Route path="datasets/:id/settings" element={<DatasetSettings />} />
@@ -247,6 +264,7 @@ function App() {
             <Route path="link-types/:linkTypeId/settings" element={<LinkTypeSettings />} />
             <Route path="workflow" element={<WorkflowPage />} />
             <Route path="graph-qa" element={<GraphQA />} />
+          <Route path="materialization" element={<MaterializationPage />} />
           </Route>
           <Route path="objects" element={<ObjectsList />} />
           <Route path="objects/:typeId" element={<ObjectTypeDetail />} />

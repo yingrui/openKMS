@@ -48,6 +48,10 @@ def _channel_node(channel: MediaChannel, children: list[MediaChannelNode] | None
         metadata_schema=channel.metadata_schema,
         default_image_model_id=channel.default_image_model_id,
         default_video_model_id=channel.default_video_model_id,
+        extraction_model_id=channel.extraction_model_id,
+        extraction_schema=channel.extraction_schema,
+        label_config=channel.label_config,
+        object_type_extraction_max_instances=channel.object_type_extraction_max_instances,
         children=children or [],
     )
 
