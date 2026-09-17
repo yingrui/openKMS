@@ -220,16 +220,23 @@ function triggerBlobDownload(blob: Blob, filename: string): void {
   URL.revokeObjectURL(objectUrl);
 }
 
-/** Download the original uploaded file for a document list row. */
-export async function downloadDocumentOriginal(
-  doc: Pick<DocumentListItemResponse, 'id' | 'file_hash' | 'file_type' | 'name'>,
-): Promise<void> {
+/** Fetch the original uploaded file for a document as a Blob (for in-app preview). */
+export async function fetchDocumentOriginalBlob(
+  doc: Pick<DocumentListItemResponse, 'id' | 'file_hash' | 'file_type'>,
+): Promise<Blob> {
   if (!doc.file_hash) {
     throw new Error('Document has no stored file');
   }
   const ext = doc.file_type.toLowerCase().replace(/^\./, '') || 'bin';
   const url = `${getDocumentFilesBaseUrl(doc.id)}/${encodeURIComponent(doc.file_hash)}/original.${ext}`;
-  const blob = await fetchDocumentFileBlob(url);
+  return fetchDocumentFileBlob(url);
+}
+
+/** Download the original uploaded file for a document list row. */
+export async function downloadDocumentOriginal(
+  doc: Pick<DocumentListItemResponse, 'id' | 'file_hash' | 'file_type' | 'name'>,
+): Promise<void> {
+  const blob = await fetchDocumentOriginalBlob(doc);
   triggerBlobDownload(blob, doc.name);
 }
 

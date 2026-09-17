@@ -23,6 +23,7 @@ import {
 } from '../../components/markdown/richMarkdown';
 import type { DocumentResponse, PageIndexNode } from '../../data/documentsApi';
 import { PageIndexTree } from './DocumentDetail.pageIndex';
+import { DocumentOriginalPreview } from './DocumentOriginalPreview';
 import type {
   ExampleDocumentConfig,
   LayoutDetItem,
@@ -135,6 +136,10 @@ export function DocumentDetailSplitPanel({
   onToggleMarkdownExtend,
 }: DocumentDetailSplitPanelProps) {
   const { t } = useTranslation('documents');
+  // DOCX / HTML get a faithful original-file preview instead of the parsed page images.
+  const isOriginalPreviewable = ['DOCX', 'DOC', 'HTML', 'HTM'].includes(
+    (document?.file_type ?? '').toUpperCase().replace(/^\./, ''),
+  );
 
   return (
     <div
@@ -144,13 +149,15 @@ export function DocumentDetailSplitPanel({
     >
       <section className="document-detail-panel document-detail-images">
         <h2 className="document-detail-panel-header">
-          {isSpreadsheetLayout ? <Table size={16} /> : isMindmapLayout ? <ListTree size={16} /> : <ImageIcon size={16} />}
+          {isOriginalPreviewable ? <FileText size={16} /> : isSpreadsheetLayout ? <Table size={16} /> : isMindmapLayout ? <ListTree size={16} /> : <ImageIcon size={16} />}
           <span>
-            {isSpreadsheetLayout
-              ? t('detail.panelWorkbook')
-              : isMindmapLayout
-                ? t('detail.panelMindmap')
-                : t('detail.panelPages')}
+            {isOriginalPreviewable
+              ? t('detail.panelOriginal', '原件')
+              : isSpreadsheetLayout
+                ? t('detail.panelWorkbook')
+                : isMindmapLayout
+                  ? t('detail.panelMindmap')
+                  : t('detail.panelPages')}
           </span>
           <button
             type="button"
@@ -163,7 +170,13 @@ export function DocumentDetailSplitPanel({
           </button>
         </h2>
         <div className="document-detail-images-body">
-          {isSpreadsheetLayout ? (
+          {isOriginalPreviewable && document && fileHash ? (
+            <DocumentOriginalPreview
+              documentId={document.id}
+              fileHash={fileHash}
+              fileType={document.file_type}
+            />
+          ) : isSpreadsheetLayout ? (
             <div className="document-detail-spreadsheet">
               {parsingResult?.error ? (
                 <p className="document-detail-spreadsheet-error">{parsingResult.error}</p>

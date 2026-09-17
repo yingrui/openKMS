@@ -19,6 +19,7 @@
     "@fontsource/dm-sans": "^5.2.8",
     "@fontsource/source-serif-4": "^5.2.9",
     "d3-force": "^3.0.0",
+    "docx-preview": "^0.4.0",
     "i18next": "^26.0.10",
     "i18next-browser-languagedetector": "^8.2.1",
     "katex": "^0.16.33",
