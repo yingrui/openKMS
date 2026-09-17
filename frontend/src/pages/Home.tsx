@@ -11,7 +11,6 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { HomeStaticLanding } from '../components/HomeStaticLanding';
-import { AmwayCockpit } from '../components/home/AmwayCockpit';
 import { AppCatalogGrid } from '../components/Layout/AppCatalogGrid';
 import { fetchHomeHub, siteHasContent, type HomeHubResponse } from '../data/homeHubApi';
 import { useVisibleLauncherModules } from '../hooks/useAppModules';
@@ -60,12 +59,6 @@ export function Home() {
 
   if (!isAuthenticated) {
     return <HomeStaticLanding onSignIn={login} />;
-  }
-
-  // 安利企业知识中枢驾驶舱：当聚合接口返回 asset_overview（即本实例配了安利本体）时渲染。
-  // 用独立容器，避免 .home--operations 的窄 max-width / 居中 / 竖向 flex 约束。
-  if (hub?.asset_overview) {
-    return <AmwayCockpit hub={hub} />;
   }
 
   const canDocuments = hasPermission('documents:read') || hasPermission('all');
