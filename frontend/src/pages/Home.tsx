@@ -74,7 +74,7 @@ export function Home() {
       titleKey: 'quickStartUploadTitle',
       descKey: 'quickStartUploadDesc',
       visible: canDocuments,
-      onClick: () => void navigate('/documents'),
+      onClick: () => void navigate('/ingest'),
     },
     {
       id: 'create-kb',
