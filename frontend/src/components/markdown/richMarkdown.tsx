@@ -1,7 +1,9 @@
 /**
  * Shared Markdown stack: GFM, math (KaTeX + mhchem), raw HTML, Mermaid fenced blocks.
- * All agent / wiki / document / article markdown surfaces should use this module
- * so AI-generated math and chemistry delimiters render consistently.
+ * Canonical for every SPA markdown surface (documents, articles, wiki, agent chat,
+ * agent file Preview, etc.). Do not invent a parallel react-markdown / KaTeX stack.
+ * Prefer `richMarkdownPreComponent()` for fenced code/Mermaid; long-form reading panes
+ * may reuse `.document-detail-markdown-body` typography (same as document detail).
  */
 import { Children, isValidElement, useEffect, useId, useMemo, useRef, type ComponentProps, type ReactNode } from 'react';
 import ReactMarkdown, { type Components } from 'react-markdown';

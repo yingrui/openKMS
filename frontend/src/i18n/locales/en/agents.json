@@ -193,6 +193,10 @@
     "selectFile": "Select a file to preview",
     "viewer": "Viewing {{name}}",
     "closeFile": "Close file",
+    "viewMode": "View mode",
+    "preview": "Preview",
+    "source": "Source",
+    "htmlPreview": "HTML preview of {{name}}",
     "loadError": "Could not load file",
     "binaryPreview": "Binary file ({{size}} bytes)",
     "gitStatus": {

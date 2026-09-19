@@ -193,6 +193,10 @@
     "selectFile": "选择文件以预览",
     "viewer": "查看 {{name}}",
     "closeFile": "关闭文件",
+    "viewMode": "查看模式",
+    "preview": "预览",
+    "source": "源码",
+    "htmlPreview": "{{name}} 的 HTML 预览",
     "loadError": "无法加载文件",
     "binaryPreview": "二进制文件（{{size}} 字节）",
     "gitStatus": {
