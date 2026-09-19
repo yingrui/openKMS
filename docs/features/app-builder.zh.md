@@ -170,7 +170,7 @@ Function 是 **决策助手**（打分、建议、闭包）。要持久化建议
 3. 新建：Modal → `/createWorkItem/*` 上的 TextField → `executeAction` / `createWorkItem`。
 4. 编辑：`loadObjectForEdit` → `/editWorkItem` → 可选 **Suggest priority**（`executeFunction` + `applyPath`）→ 保存（`executeAction` / `updateWorkItem`）。
 
-该「看板」是 **租户 Source 组合**，不是平台看板 widget。
+该「看板」是 **租户 Source 组合**，不是平台看板 widget。当作宿主接线的 **教学 Demo** — 见 [已知限制](#known-limitations-engineering-gaps)。
 
 ### 前端实现对照 {#frontend-implementation-map}
 
@@ -282,8 +282,72 @@ Catalog id：`https://openkms.local/a2ui/catalogs/ontology-app/v1.json`。
 
 ## 本版不做
 
+有意的非目标（不是当前通道的未完成工单）：
+
 - 在构建器内创建 OT / FoO / Action
 - 应用内设计器聊天（用 Source 或 openkms-skill）
 - Module host / 加载自定义包
 - 每应用 App Rail 图标；按 `api_name` 运行 URL
-- 拖拽看板作为平台 widget
+- 拖拽看板作为 **平台** widget
+
+## 已知限制与工程缺口 {#known-limitations-engineering-gaps}
+
+评判 Apps 质量或规划后续工作时请保留这些意识。**宿主契约**（Resources → 加载器 → Action / Function / 编辑种子事件）是真实的；多数仅靠 A2UI Source 拼出的 **看板 / 表单 App** 仍是 Demo 级组合。
+
+### 定位
+
+| 成立的事实 | 容易过度解读成 |
+|------------|----------------|
+| 平台 host 能列实例、跑 Action、跑 Function、填编辑表单 | 「我们已经交付了看板产品」 |
+| WorkItem 样本展示如何用过滤 loader + List + Modal **组合**列 | 列、WIP、拖拽或看板 UX 是平台一等概念 |
+| 内置 Action 规则（`object_create` / `object_modify` / `object_delete`）去掉了一次性 CRUD Function | 表单与列过滤仍要手写 Source |
+
+openkms-skill 的看板资产（`references/app-builder-kanban.md` + `assets/kanban-a2ui-messages.json`）是 **worked example**，不是可复用的看板引擎。
+
+### 产品 UX 缺口（组合式看板）
+
+- **无看板手势** — 改列/状态靠 Modal + `executeAction`（或等价路径），不是拖拽或一键移动。
+- **无看板语义** — 无 WIP 限流、泳道、卡片排序策略、批量选择、快捷键或列汇总。
+- **运行时反馈弱** — 许多 Action / Function / 加载失败只打到 console；表面 toast、字段内联错误、每加载器 loading 很薄或缺失。
+- **无乐观 UI** — 成功路径通常清空表单桶、关 Modal、刷新加载器；无 pending / 回滚卡片态。
+- **共享编辑 Modal 模式** — 编辑用单一编程打开标记；并发编辑 / 多对象选择不在样本范围内。
+
+### 运行时与数据面
+
+- **硬上限** — `OntoObjectList` 用固定客户端 `limit`（当前 **200**）拉取，再在浏览器过滤。
+- **客户端过滤** — `filterProperty` / `filterValue` 是拉取后对实例属性的精确字符串相等；不是服务端查询、不是枚举感知、不是 “in set”。
+- **过滤踩坑** — 值必须与实例数据 **完全一致**（大小写 / 空格）。样本 Done 列用小写 `done`，其它列是 `To Do` / `In Progress`；不一致会得到空列且无 schema 警告。
+- **粗粒度刷新** — Action 成功后 host 发全局 mutated 信号，**所有**加载器重载；无按 `dataPath` 失效或增量 patch。
+- **行形状扁平** — 加载器把选定字段（+ `id`）拷进 DataModel 行；嵌套 / 链接值属性与富单元格未建模。
+- **无加载器分页 / 无限滚动**（当前 catalog）。
+
+### 编创与 Source 组合税
+
+- **JSON 线性膨胀** — 每列 ≈ 又一个 `OntoObjectList` + 同 path 的 `List` + 过滤字面量；每个表单字段 ≈ 更多 `TextField` path。多列板消息数组很快变大。
+- **路径耦合** — loader `dataPath`、`List` path、Modal 表单桶、Button 的 `inputPath` / `objectId`、`updateDataModel` 种子必须手搓一致。只改一处会静默弄坏 Preview 或清空列表。
+- **相对 vs 绝对路径** — List **行**模板必须用相对字段路径（`title`）；绝对 `/title` 从 DataModel 根解析，标题空白。
+- **无类型化 DataModel 契约** — 路径是自由字符串；没有编译期检查表单字段是否匹配 Action `parameters` / Function `input_schema` / 对象类型属性。
+- **Resources 是 api name 白名单** — 重命名或归档 Action / OT 却未更新 bindings → 发布/运行 **Stale**（hash）或 host 拒绝；无自动改写。
+- **编创面** — Design Source JSON 或 openkms-skill `apps patch`；无应用内设计器聊天。`synthesize` **重置**草稿布局为 stub（容易误擦）。
+- **校验偏结构** — 保存/发布拒绝已移除组件和部分接线错误；**不能**证明看板是连贯产品（空过滤、缺配对 List、错误 Action rule type 仍可能到运行时才暴露）。
+
+### 有意的平台约束（不要用领域 widget「修」）
+
+这些是产品决策，不是漏写：
+
+- 无 `OntoKanbanBoard` / 看板形 binding / 应用名 SCSS / 加载时静默 heal 或按域名自动合成布局。
+- App Builder **不**创建本体资产；只接线已有 OT / Action / Function。
+- **持久化只走 Action execute**；Function 填 DataModel（`outputPath` / `applyPath`），本身不写实例。
+- 领域 UX 属于 **租户 Source**（或未来 **`module`** host），不属于以某个 Demo 命名的平台 catalog 扩展。
+
+### 若要做到「可严肃交付」的业务 App（意识清单，非承诺路线图）
+
+若 Apps 要从 Demo 往前走，至少这些主题：
+
+1. **数据** — 加载器服务端过滤 + 分页（或 cursor）；更安全的枚举/status 匹配；定向刷新。
+2. **Host UX** — 用户可见错误、loading、提交中禁用；可选乐观应用。
+3. **编创** — 多列+表单重复模式的模板 / 代码生成 / 结构化编辑器，而不只靠手改 message 数组；对照 OT 与 Action 形做更强交叉检查。
+4. **交互** — 要么把看板手势做成可组合的 host 能力（不要复活单体 `OntoKanbanBoard`），要么用预留 **`module`** 通道承载自定义 UI，仍经 Resources 调本体 API。
+5. **运维** — 更清晰的 stale binding 修复、Source 版本 diff、比随便 `synthesize` 更安全的重置。
+
+在此之前：用看板样本 **验证宿主接线并教学组合**；不要把它当成租户业务 App 的质量基准。

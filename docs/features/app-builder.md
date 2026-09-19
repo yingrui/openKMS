@@ -168,7 +168,7 @@ Row Button context: `inputPath` plus field paths from the list row (`objectId` /
 3. New: Modal → TextFields on `/createWorkItem/*` → `executeAction` / `createWorkItem`.
 4. Edit: `loadObjectForEdit` → `/editWorkItem` → optional **Suggest priority** (`executeFunction` + `applyPath`) → Save (`executeAction` / `updateWorkItem`).
 
-That board is **tenant Source composition**, not a platform Kanban widget.
+That board is **tenant Source composition**, not a platform Kanban widget. Treat it as a **teaching demo** of host wiring — see [Known limitations](#known-limitations-engineering-gaps).
 
 ### Frontend implementation map
 
@@ -281,8 +281,72 @@ Tables:
 
 ## Out of scope (this release)
 
+Intentional non-goals (not unfinished tickets for the current lane):
+
 - Creating OT / FoO / Actions inside Builder
 - In-app designer chat (compose via Source or openkms-skill)
 - Module host / loading custom app bundles
 - Per-app App Rail icons; Run-by-`api_name` URLs
-- Drag-and-drop status boards as a platform widget
+- Drag-and-drop status boards as a **platform** widget
+
+## Known limitations & engineering gaps {#known-limitations-engineering-gaps}
+
+Keep these visible when judging Apps quality or planning follow-on work. The **host contract** (Resources → loaders → Action / Function / edit-seed events) is real; most **board / form Apps built only from A2UI Source** are still demo-grade compositions.
+
+### Positioning
+
+| What is true | What is easy to over-read |
+|--------------|---------------------------|
+| Platform host can list instances, run Actions, run Functions, seed edit forms | “We shipped a Kanban product” |
+| Sample WorkItem board shows how to **compose** columns from filtered loaders + Lists + Modals | Columns, WIP, drag-drop, or board UX are first-class platform concepts |
+| Built-in Action rules (`object_create` / `object_modify` / `object_delete`) remove throwaway CRUD Functions | Forms and column filters still require hand-authored Source |
+
+openkms-skill’s Kanban asset (`references/app-builder-kanban.md` + `assets/kanban-a2ui-messages.json`) is a **worked example**, not a reusable board engine.
+
+### Product UX gaps (composition boards)
+
+- **No board gestures** — changing column/status is Modal + `executeAction` (or equivalent), not drag-and-drop or one-click move.
+- **No board semantics** — no WIP limits, swimlanes, card sort policies, bulk select, keyboard shortcuts, or column rollups.
+- **Weak run-time feedback** — many Action / Function / loader failures log to the console; surface-level toast, inline field errors, and per-loader loading chrome are thin or absent.
+- **No optimistic UI** — success path typically clears a form bucket, closes a Modal, and refreshes loaders; no pending/rollback card state.
+- **Shared edit Modal pattern** — one programmatic open marker for edit; concurrent edit flows / multi-object selection are out of scope of the sample.
+
+### Runtime & data plane
+
+- **Hard cap** — `OntoObjectList` fetches with a fixed client `limit` (currently **200**) then filters in the browser.
+- **Client-side filters** — `filterProperty` / `filterValue` are exact string equality on instance property values after fetch; not server query, not enum-aware, not “in set”.
+- **Filter footguns** — values must match instance data **exactly** (case / spacing). The sample Done column uses lowercase `done` while other columns use `To Do` / `In Progress`; a mismatch yields an empty column with no schema warning.
+- **Coarse refresh** — after a successful Action, host emits a global mutated signal and **all** loaders reload; no per-`dataPath` invalidation or incremental patch.
+- **Row shape is flattened** — loader copies selected fields (+ `id`) into DataModel rows; nested / link-valued properties and rich cell widgets are not modeled.
+- **No loader pagination / infinite scroll** in catalog today.
+
+### Authoring & Source composition tax
+
+- **Linear JSON cost** — each column ≈ another `OntoObjectList` + sibling `List` + filter literals; each form field ≈ more `TextField` path wiring. Multi-column boards grow large message arrays quickly.
+- **Path coupling** — loader `dataPath`, `List` path, Modal form bucket, Button `inputPath` / `objectId`, and `updateDataModel` seeds must stay consistent by hand. Renaming one path without the others breaks Preview silently or empties lists.
+- **Relative vs absolute paths** — List **row** templates must use relative field paths (`title`); absolute `/title` resolves from the DataModel root and shows blank titles.
+- **No typed DataModel contract** — paths are free strings; there is no compile-time check that form fields match Action `parameters` / Function `input_schema` / object type properties.
+- **Resources are api-name allowlists** — rename or archive an Action / OT without updating bindings → publish/run **Stale** (hash) or host refuse; no automatic rewrite.
+- **Authoring surfaces** — Design Source JSON or openkms-skill `apps patch`; no in-app designer chat. `synthesize` **resets** draft layout to stub (easy to wipe work).
+- **Validation is structural** — save/publish reject removed catalog components and some wiring mistakes; they do **not** prove the board is a coherent product (empty filters, missing pair List, wrong Action rule type still possible until runtime).
+
+### Intentional platform constraints (do not “fix” with domain widgets)
+
+These are product decisions, not accidental omissions:
+
+- No `OntoKanbanBoard` / board-shaped bindings / app-named SCSS / load-time silent heal or auto-synthesize of domain layouts.
+- App Builder does **not** create ontology assets; wire existing OT / Action / Function only.
+- **Persist only via Action execute**; Function fills DataModel (`outputPath` / `applyPath`) and does not write instances alone.
+- Domain UX belongs in **tenant Source** (or a future **`module`** host), not in platform catalog expansions named after one demo.
+
+### What would be needed for serious production Apps (awareness, not a committed roadmap)
+
+Minimum themes if Apps move beyond demos:
+
+1. **Data** — server-side filter + pagination (or cursor) for loaders; safer enum/status matching; targeted refresh.
+2. **Host UX** — user-visible errors, loading, disabled submit while in flight; optional optimistic apply.
+3. **Authoring** — templates / codegen / structured editors for repeated column+form patterns so authors are not only editing raw message arrays; stronger cross-checks against OT and Action shapes.
+4. **Interaction** — either first-class board gestures as **composable** host capabilities (without reviving a single `OntoKanbanBoard` mega-widget), or use the reserved **`module`** lane for custom UIs that still call ontology APIs behind Resources.
+5. **Ops** — clearer stale-binding repair, version diff of Source, and safer reset than casual `synthesize`.
+
+Until then: use the Kanban sample to **verify host wiring and teach composition**; do not treat it as the quality bar for tenant business Apps.

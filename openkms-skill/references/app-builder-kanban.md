@@ -63,3 +63,7 @@ python scripts/cli.py apps publish <app_id> --yes
 - Ad-hoc HTTP instead of `apps` CLI.
 - Casual `apps synthesize` (wipes draft layout).
 - Invent different DataModel paths than the sample without updating both loaders and Lists together.
+
+## Known gaps (demo, not a product)
+
+This sample proves **composition + host wiring**. It is **not** a production Kanban. For the full engineering gap list (UX, `limit: 200` client filters, Source path tax, intentional no-board-widget policy, etc.), see monorepo `docs/features/app-builder.md` → **Known limitations & engineering gaps** (English source; `.zh.md` mirror). In short: no drag-drop or board semantics, weak run-time errors, exact-string filters, and hand-maintained A2UI JSON that does not scale as a board engine.

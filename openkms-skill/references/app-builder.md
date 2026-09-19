@@ -109,6 +109,8 @@ python scripts/cli.py apps delete <id> --yes
 
 If validation fails: fix Source; do **not** silent-heal or invent platform components.
 
+**Demo awareness:** composed boards (including the Kanban sample) are teaching compositions — see monorepo `docs/features/app-builder.md` **Known limitations & engineering gaps**, and the short note in [app-builder-kanban.md](app-builder-kanban.md)#known-gaps-demo-not-a-product.
+
 ## Related
 
 - Kanban composition recipe: [app-builder-kanban.md](app-builder-kanban.md)

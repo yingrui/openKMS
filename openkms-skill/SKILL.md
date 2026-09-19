@@ -352,7 +352,7 @@ Workbench types (Watchlist / ScreenRun): create instances via Object Explorer / 
 
 **H. Visual Kanban App (WorkItem columns + Actions + FoO) via App Builder.**
 
-**Before any command below:** open and follow **[references/app-builder.md](references/app-builder.md)** (authoring journey + host events). Then **[references/app-builder-kanban.md](references/app-builder-kanban.md)** and patch from **[`assets/kanban-a2ui-messages.json`](assets/kanban-a2ui-messages.json)**. Platform has **no** Kanban widget — compose filtered `OntoObjectList` + `List` + Modal/`executeAction` / `executeFunction`. *(Monorepo-only extra reading: `docs/tutorials/understanding-ontology.md` Step F — not present in skill installs.)*
+**Before any command below:** open and follow **[references/app-builder.md](references/app-builder.md)** (authoring journey + host events). Then **[references/app-builder-kanban.md](references/app-builder-kanban.md)** and patch from **[`assets/kanban-a2ui-messages.json`](assets/kanban-a2ui-messages.json)**. Platform has **no** Kanban widget — compose filtered `OntoObjectList` + `List` + Modal/`executeAction` / `executeFunction`. This workflow is a **teaching demo** (not a production board): see [app-builder-kanban.md](references/app-builder-kanban.md) **Known gaps** and monorepo `docs/features/app-builder.md` **Known limitations**. *(Monorepo-only extra reading: `docs/tutorials/understanding-ontology.md` Step F — not present in skill installs.)*
 
 ```bash
 # After WorkItem OT + built-in Actions (object_create / object_modify / object_delete per actions-authoring.md) + optional suggest FoO:

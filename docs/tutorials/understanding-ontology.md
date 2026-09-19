@@ -237,6 +237,8 @@ Try create from an App or API; try update / move / delete on a card in Object Ex
 
 Object Explorer shows **instances**. A visual multi-column board is a separate **App**: same WorkItems / Actions / FoO, wired through A2UI. Full reference: [App Builder — How an App talks to the ontology](../features/app-builder.md#how-an-app-talks-to-the-ontology).
 
+> **Demo, not a product:** this board teaches host composition. It has no drag-and-drop, client-side filters with a hard fetch cap, and hand-maintained A2UI paths. Read [Known limitations & engineering gaps](../features/app-builder.md#known-limitations-engineering-gaps) before treating Apps quality as “done.”
+
 **Mental model for this lab**
 
 | Layer | On the Kanban App | Example |

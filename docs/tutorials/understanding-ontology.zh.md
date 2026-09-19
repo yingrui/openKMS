@@ -112,6 +112,8 @@ Backlog → 进行中 → 评审 → 完成
 
 **F. App Builder 可视化看板（App 如何与本体交互）** — Object Explorer 只展示**实例**；多列看板是另一个 **App**：同一套 WorkItem / Action / FoO，经 A2UI 接线。详解见 [应用构建器 · App 与本体如何交互](../features/app-builder.md#app-ontology-interaction)。
 
+> **Demo，不是产品：** 这块板用来教宿主组合。没有拖拽、客户端过滤带硬拉取上限、A2UI 路径靠手维护。把 Apps 质量当成「做完」之前，先读 [已知限制与工程缺口](../features/app-builder.md#known-limitations-engineering-gaps)。
+
 | 层 | 在看板 App 上 | 例子 |
 |----|---------------|------|
 | **本体** | 你已建好的类型、卡片、Action、FoO | `WorkItem`、`createWorkItem`、`suggestWorkItemPriority` |
