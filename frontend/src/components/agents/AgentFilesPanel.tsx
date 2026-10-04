@@ -383,6 +383,7 @@ export function AgentFilesPanel({
           isBinary={previewBinary}
           loading={previewLoading}
           onClose={closeFile}
+          onOpenWorkspaceFile={(p) => void openFile(p, false)}
         />
       ) : null}
       {fileOpen && !isSheet ? (

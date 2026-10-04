@@ -1,8 +1,13 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { X } from 'lucide-react';
 import { RichMarkdown, richMarkdownPreComponent } from '../markdown/richMarkdown';
 import { AgentsFileSkeleton } from './AgentsPageSkeleton';
+import {
+  preprocessProjectWikilinks,
+  projectWikilinkUrlTransform,
+  resolveProjectWikilink,
+} from './projectWikilink';
 import '../../styles/document-detail.scss';
 import './AgentsWorkspace.scss';
 
@@ -45,9 +50,18 @@ interface Props {
   isBinary: boolean;
   loading?: boolean;
   onClose: () => void;
+  /** Open another file in this project workspace (wikilink). */
+  onOpenWorkspaceFile?: (path: string) => void;
 }
 
-export function AgentFileViewer({ path, content, isBinary, loading, onClose }: Props) {
+export function AgentFileViewer({
+  path,
+  content,
+  isBinary,
+  loading,
+  onClose,
+  onOpenWorkspaceFile,
+}: Props) {
   const { t } = useTranslation('agents');
   const fileName = path.split('/').pop() ?? path;
   const ext = (fileName.split('.').pop() ?? '').toLowerCase();
@@ -61,11 +75,47 @@ export function AgentFileViewer({ path, content, isBinary, loading, onClose }: P
   }, [path, kind]);
 
   const lines = useMemo(() => content.split('\n'), [content]);
+  const previewMarkdown = useMemo(() => preprocessProjectWikilinks(content), [content]);
   const markdownComponents = useMemo(
     () => ({
       pre: richMarkdownPreComponent(),
+      a: ({ href, children }: { href?: string; children?: ReactNode }) => {
+        if (href?.startsWith('wiki:')) {
+          let target = '';
+          try {
+            target = decodeURIComponent(href.slice(5));
+          } catch {
+            target = href.slice(5);
+          }
+          const resolved = resolveProjectWikilink(path, target);
+          if (resolved && onOpenWorkspaceFile) {
+            return (
+              <button
+                type="button"
+                className="agents-file-viewer-wikilink"
+                title={resolved}
+                onClick={() => onOpenWorkspaceFile(resolved)}
+              >
+                {children}
+              </button>
+            );
+          }
+          return (
+            <span className="agents-file-viewer-wikilink agents-file-viewer-wikilink--missing" title={target}>
+              {children}
+            </span>
+          );
+        }
+        const h = href || '';
+        const external = h.startsWith('http://') || h.startsWith('https://');
+        return (
+          <a href={h} {...(external ? { target: '_blank', rel: 'noreferrer noopener' } : {})}>
+            {children}
+          </a>
+        );
+      },
     }),
-    [],
+    [path, onOpenWorkspaceFile],
   );
   const showPreview = canPreview && mode === 'preview' && kind != null;
 
@@ -115,7 +165,9 @@ export function AgentFileViewer({ path, content, isBinary, loading, onClose }: P
           <p className="agents-file-viewer-status">{content}</p>
         ) : showPreview && kind === 'markdown' ? (
           <div className="agents-file-viewer-preview agents-file-viewer-preview--markdown document-detail-markdown-body">
-            <RichMarkdown components={markdownComponents}>{content}</RichMarkdown>
+            <RichMarkdown components={markdownComponents} urlTransform={projectWikilinkUrlTransform}>
+              {previewMarkdown}
+            </RichMarkdown>
           </div>
         ) : showPreview && kind === 'html' ? (
           <div className="agents-file-viewer-preview agents-file-viewer-preview--html">

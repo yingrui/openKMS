@@ -812,6 +812,30 @@ $agents-pane-header-height: 49px;
   min-height: 0;
 }
 
+.agents-file-viewer-wikilink {
+  display: inline;
+  padding: 0.1em 0.35em;
+  font-family: var(--font-sans);
+  font-size: 0.88em;
+  font-weight: 500;
+  color: var(--color-accent);
+  background: var(--color-accent-subtle);
+  border: 1px solid color-mix(in srgb, var(--color-accent) 28%, transparent);
+  border-radius: 0;
+  cursor: pointer;
+  text-decoration: none;
+
+  &:hover {
+    text-decoration: underline;
+    color: var(--color-accent-hover);
+  }
+
+  &--missing {
+    cursor: help;
+    opacity: 0.9;
+  }
+}
+
 .agents-file-viewer-html-frame {
   flex: 1;
   width: 100%;
