@@ -9,7 +9,7 @@ Related: [Console & authentication](console-and-auth.md), [Agents](openkms-agent
 - **List:** `/console/kubernetes` — register, edit, delete, test connection; open a cluster for browse
 - **Detail:** `/console/kubernetes/{id}` — pick a namespace, refresh Deployments and Pods (read-only)
 - **Permission:** `console:kubernetes` (or `all` / admin)
-- Form fields: name, description, default namespace, kubeconfig YAML, optional **skip TLS verification** (lab / self-signed only)
+- Form fields: name, description, default namespace, optional **API server** (the URL the backend uses to reach the cluster), kubeconfig YAML, optional **skip TLS verification** (lab / self-signed only)
 
 API responses never include kubeconfig plaintext — only `kubeconfig_configured: true/false` plus non-secret fields (`api_server`, `default_namespace`, last test status).
 
@@ -17,7 +17,7 @@ API responses never include kubeconfig plaintext — only `kubeconfig_configured
 
 Table **`kubernetes_clusters`**. The full kubeconfig is stored in **`kubeconfig_encrypted`** using the same Fernet helper as data sources / connectors (`OPENKMS_DATASOURCE_ENCRYPTION_KEY`, or a key derived from `OPENKMS_SECRET_KEY` in development).
 
-On create/update, the server parses the kubeconfig and denormalizes **`api_server`** for the list UI. Updates that omit kubeconfig (or send an empty string) keep the existing ciphertext.
+On create/update, the server stores **`api_server`**: an explicit override if provided, otherwise the URL parsed from kubeconfig (for the list UI). Connection test and browse rewrite the current-context cluster `server` to that stored URL so kubeconfigs that point at `127.0.0.1` still work when the API process is not on the same loopback. Updates that omit kubeconfig (or send an empty string) keep the existing ciphertext. Sending `api_server: ""` on update falls back to the URL in kubeconfig.
 
 ## Connection test
 

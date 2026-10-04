@@ -10,6 +10,7 @@ class KubernetesClusterCreate(BaseModel):
     description: str | None = None
     default_namespace: str = "default"
     kubeconfig: str = Field(..., min_length=1)
+    api_server: str | None = None  # empty / omit = use kubeconfig
     options: dict[str, Any] | None = None
 
 
@@ -18,6 +19,7 @@ class KubernetesClusterUpdate(BaseModel):
     description: str | None = None
     default_namespace: str | None = None
     kubeconfig: str | None = None  # None / empty = keep current
+    api_server: str | None = None  # None = keep; empty = use kubeconfig
     options: dict[str, Any] | None = None
 
 

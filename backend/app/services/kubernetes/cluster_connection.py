@@ -2,7 +2,9 @@
 from __future__ import annotations
 
 import asyncio
+import copy
 from typing import Any
+from urllib.parse import urlparse
 
 import yaml
 
@@ -25,30 +27,16 @@ def parse_kubeconfig_yaml(kubeconfig_text: str) -> dict[str, Any]:
 
 def extract_api_server(kubeconfig: dict[str, Any]) -> str | None:
     """Return the API server URL for the current (or first) context's cluster."""
-    contexts = {
-        c["name"]: c
-        for c in (kubeconfig.get("contexts") or [])
-        if isinstance(c, dict) and isinstance(c.get("name"), str)
-    }
     clusters = {
         c["name"]: c
         for c in (kubeconfig.get("clusters") or [])
         if isinstance(c, dict) and isinstance(c.get("name"), str)
     }
-
-    cluster_name: str | None = None
-    current = kubeconfig.get("current-context")
-    if isinstance(current, str) and current in contexts:
-        cluster_name = (contexts[current].get("context") or {}).get("cluster")
-    if not cluster_name and contexts:
-        first = next(iter(contexts.values()))
-        cluster_name = (first.get("context") or {}).get("cluster")
-
-    if isinstance(cluster_name, str) and cluster_name in clusters:
+    cluster_name = _current_cluster_name(kubeconfig)
+    if cluster_name and cluster_name in clusters:
         server = (clusters[cluster_name].get("cluster") or {}).get("server")
         if isinstance(server, str) and server.strip():
             return server.strip()
-
     for c in clusters.values():
         server = (c.get("cluster") or {}).get("server")
         if isinstance(server, str) and server.strip():
@@ -56,14 +44,77 @@ def extract_api_server(kubeconfig: dict[str, Any]) -> str | None:
     return None
 
 
-def _apply_insecure_skip_tls(kubeconfig: dict[str, Any]) -> dict[str, Any]:
-    """Return a shallow-copied kubeconfig with insecure-skip-tls-verify on all clusters."""
-    import copy
+def normalize_api_server(value: str | None) -> str | None:
+    """Validate an optional API server override. Empty → None."""
+    text = (value or "").strip()
+    if not text:
+        return None
+    parsed = urlparse(text)
+    if parsed.scheme not in ("http", "https") or not parsed.netloc:
+        raise ValueError("API server must be an http(s) URL")
+    return text.rstrip("/")
 
+
+def _current_cluster_name(kubeconfig: dict[str, Any]) -> str | None:
+    contexts = {
+        c["name"]: c
+        for c in (kubeconfig.get("contexts") or [])
+        if isinstance(c, dict) and isinstance(c.get("name"), str)
+    }
+    cluster_name: str | None = None
+    current = kubeconfig.get("current-context")
+    if isinstance(current, str) and current in contexts:
+        cluster_name = (contexts[current].get("context") or {}).get("cluster")
+    if not cluster_name and contexts:
+        first = next(iter(contexts.values()))
+        cluster_name = (first.get("context") or {}).get("cluster")
+    return cluster_name if isinstance(cluster_name, str) else None
+
+
+def apply_api_server(kubeconfig: dict[str, Any], api_server: str | None) -> dict[str, Any]:
+    """Rewrite the current context cluster's server URL. No-op when api_server is empty."""
+    if not api_server:
+        return kubeconfig
+    data = copy.deepcopy(kubeconfig)
+    name = _current_cluster_name(data)
+    clusters = data.get("clusters") or []
+    updated = False
+    for entry in clusters:
+        if not isinstance(entry, dict) or not isinstance(entry.get("cluster"), dict):
+            continue
+        if name is None or entry.get("name") == name:
+            entry["cluster"]["server"] = api_server
+            updated = True
+            if name is not None:
+                break
+    if not updated:
+        for entry in clusters:
+            if isinstance(entry, dict) and isinstance(entry.get("cluster"), dict):
+                entry["cluster"]["server"] = api_server
+                break
+    return data
+
+
+def _apply_insecure_skip_tls(kubeconfig: dict[str, Any]) -> dict[str, Any]:
+    """Return a copied kubeconfig with insecure-skip-tls-verify on all clusters."""
     data = copy.deepcopy(kubeconfig)
     for entry in data.get("clusters") or []:
         if isinstance(entry, dict) and isinstance(entry.get("cluster"), dict):
             entry["cluster"]["insecure-skip-tls-verify"] = True
+    return data
+
+
+def prepare_kubeconfig(
+    kubeconfig_text: str,
+    *,
+    insecure_skip_tls_verify: bool = False,
+    api_server: str | None = None,
+) -> dict[str, Any]:
+    """Parse kubeconfig and apply connection overrides used by test/browse."""
+    data = parse_kubeconfig_yaml(kubeconfig_text)
+    data = apply_api_server(data, api_server)
+    if insecure_skip_tls_verify:
+        data = _apply_insecure_skip_tls(data)
     return data
 
 
@@ -90,14 +141,17 @@ async def probe_cluster_connection_async(
     kubeconfig_text: str,
     *,
     insecure_skip_tls_verify: bool = False,
+    api_server: str | None = None,
 ) -> tuple[bool, str]:
     """Load kubeconfig and probe the cluster Version API."""
     try:
-        data = parse_kubeconfig_yaml(kubeconfig_text)
+        data = prepare_kubeconfig(
+            kubeconfig_text,
+            insecure_skip_tls_verify=insecure_skip_tls_verify,
+            api_server=api_server,
+        )
     except ValueError as e:
         return False, str(e)
-    if insecure_skip_tls_verify:
-        data = _apply_insecure_skip_tls(data)
     return await asyncio.to_thread(_test_connection_sync, data)
 
 

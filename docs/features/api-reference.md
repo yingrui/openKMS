@@ -304,9 +304,9 @@ Register existing clusters for later agent deploy tooling. Responses never inclu
 | Method | Path | Description |
 |--------|------|-------------|
 | GET | `/api/kubernetes-clusters` | List clusters (`limit`, `offset`; `console:kubernetes`) |
-| POST | `/api/kubernetes-clusters` | Register cluster (body: `name`, `kubeconfig`, optional `description`, `default_namespace`, `options`) |
+| POST | `/api/kubernetes-clusters` | Register cluster (body: `name`, `kubeconfig`, optional `description`, `default_namespace`, `api_server`, `options`) |
 | GET | `/api/kubernetes-clusters/{id}` | Get one cluster (`console:kubernetes`) |
-| PUT | `/api/kubernetes-clusters/{id}` | Update cluster; omit/`""` kubeconfig to keep stored secret |
+| PUT | `/api/kubernetes-clusters/{id}` | Update cluster; omit/`""` kubeconfig to keep stored secret; optional `api_server` (`""` = use kubeconfig URL) |
 | DELETE | `/api/kubernetes-clusters/{id}` | Delete cluster registration |
 | POST | `/api/kubernetes-clusters/{id}/test` | Test connection via Version API; updates `last_tested_at` / `last_test_ok` |
 | GET | `/api/kubernetes-clusters/{id}/namespaces` | List namespaces (read-only) |

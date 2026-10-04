@@ -35,8 +35,9 @@ export async function createKubernetesCluster(data: {
   name: string;
   description?: string;
   default_namespace?: string;
-  kubeconfig: string;
-  options?: Record<string, unknown>;
+    kubeconfig: string;
+    api_server?: string | null;
+    options?: Record<string, unknown>;
 }): Promise<KubernetesClusterResponse> {
   return request<KubernetesClusterResponse>('/api/kubernetes-clusters', {
     method: 'POST',
@@ -52,6 +53,7 @@ export async function updateKubernetesCluster(
     description?: string;
     default_namespace?: string;
     kubeconfig?: string;
+    api_server?: string | null;
     options?: Record<string, unknown>;
   }
 ): Promise<KubernetesClusterResponse> {

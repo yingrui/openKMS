@@ -5,10 +5,7 @@ import asyncio
 from datetime import datetime
 from typing import Any
 
-from app.services.kubernetes.cluster_connection import (
-    _apply_insecure_skip_tls,
-    parse_kubeconfig_yaml,
-)
+from app.services.kubernetes.cluster_connection import prepare_kubeconfig
 
 
 def _build_api_client(kubeconfig: dict[str, Any]):
@@ -114,19 +111,17 @@ def _list_pods_sync(kubeconfig: dict[str, Any], namespace: str) -> list[dict[str
     return out
 
 
-def _prepare_kubeconfig(kubeconfig_text: str, *, insecure_skip_tls_verify: bool) -> dict[str, Any]:
-    data = parse_kubeconfig_yaml(kubeconfig_text)
-    if insecure_skip_tls_verify:
-        data = _apply_insecure_skip_tls(data)
-    return data
-
-
 async def list_namespaces_async(
     kubeconfig_text: str,
     *,
     insecure_skip_tls_verify: bool = False,
+    api_server: str | None = None,
 ) -> list[dict[str, Any]]:
-    data = _prepare_kubeconfig(kubeconfig_text, insecure_skip_tls_verify=insecure_skip_tls_verify)
+    data = prepare_kubeconfig(
+        kubeconfig_text,
+        insecure_skip_tls_verify=insecure_skip_tls_verify,
+        api_server=api_server,
+    )
     return await asyncio.to_thread(_list_namespaces_sync, data)
 
 
@@ -135,8 +130,13 @@ async def list_deployments_async(
     namespace: str,
     *,
     insecure_skip_tls_verify: bool = False,
+    api_server: str | None = None,
 ) -> list[dict[str, Any]]:
-    data = _prepare_kubeconfig(kubeconfig_text, insecure_skip_tls_verify=insecure_skip_tls_verify)
+    data = prepare_kubeconfig(
+        kubeconfig_text,
+        insecure_skip_tls_verify=insecure_skip_tls_verify,
+        api_server=api_server,
+    )
     return await asyncio.to_thread(_list_deployments_sync, data, namespace)
 
 
@@ -145,6 +145,11 @@ async def list_pods_async(
     namespace: str,
     *,
     insecure_skip_tls_verify: bool = False,
+    api_server: str | None = None,
 ) -> list[dict[str, Any]]:
-    data = _prepare_kubeconfig(kubeconfig_text, insecure_skip_tls_verify=insecure_skip_tls_verify)
+    data = prepare_kubeconfig(
+        kubeconfig_text,
+        insecure_skip_tls_verify=insecure_skip_tls_verify,
+        api_server=api_server,
+    )
     return await asyncio.to_thread(_list_pods_sync, data, namespace)

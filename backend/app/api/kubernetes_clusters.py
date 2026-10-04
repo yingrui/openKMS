@@ -22,6 +22,7 @@ from app.schemas.kubernetes_cluster import (
 )
 from app.services.credentials.credential_encryption import decrypt, encrypt
 from app.services.kubernetes.cluster_connection import (
+    normalize_api_server,
     probe_cluster_connection_async,
     resolve_api_server_from_text,
 )
@@ -69,6 +70,24 @@ def _parse_and_encrypt_kubeconfig(kubeconfig: str) -> tuple[str, str | None]:
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e)) from e
     return encrypt(text), api_server
+
+
+def _http_normalize_api_server(value: str | None) -> str | None:
+    try:
+        return normalize_api_server(value)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e)) from e
+
+
+def _resolve_stored_api_server(override: str | None, extracted: str | None) -> str | None:
+    return _http_normalize_api_server(override) or extracted
+
+
+def _client_overrides(row: KubernetesCluster) -> dict:
+    return {
+        "insecure_skip_tls_verify": _options_insecure(row.options),
+        "api_server": row.api_server,
+    }
 
 
 async def _load_cluster_or_404(cluster_id: str, db: AsyncSession) -> KubernetesCluster:
@@ -134,14 +153,14 @@ async def create_kubernetes_cluster(
     db: AsyncSession = Depends(get_db),
 ):
     """Create a cluster registration. Encrypts kubeconfig; never returns it."""
-    encrypted, api_server = _parse_and_encrypt_kubeconfig(body.kubeconfig)
+    encrypted, extracted = _parse_and_encrypt_kubeconfig(body.kubeconfig)
     ns = (body.default_namespace or "default").strip() or "default"
     row = KubernetesCluster(
         id=str(uuid.uuid4()),
         name=body.name.strip(),
         description=(body.description or "").strip() or None,
         default_namespace=ns,
-        api_server=api_server,
+        api_server=_resolve_stored_api_server(body.api_server, extracted),
         kubeconfig_encrypted=encrypted,
         options=body.options,
     )
@@ -186,10 +205,23 @@ async def update_kubernetes_cluster(
         row.default_namespace = body.default_namespace.strip() or "default"
     if body.options is not None:
         row.options = body.options
-    if body.kubeconfig is not None and body.kubeconfig.strip():
-        encrypted, api_server = _parse_and_encrypt_kubeconfig(body.kubeconfig)
+    kubeconfig_replaced = bool(body.kubeconfig and body.kubeconfig.strip())
+    extracted: str | None = None
+    if kubeconfig_replaced:
+        encrypted, extracted = _parse_and_encrypt_kubeconfig(body.kubeconfig or "")
         row.kubeconfig_encrypted = encrypted
-        row.api_server = api_server
+    if "api_server" in body.model_fields_set:
+        if not (body.api_server or "").strip():
+            if extracted is None:
+                try:
+                    extracted = resolve_api_server_from_text(_decrypt_kubeconfig(row))
+                except ValueError as e:
+                    raise HTTPException(status_code=400, detail=str(e)) from e
+            row.api_server = extracted
+        else:
+            row.api_server = _http_normalize_api_server(body.api_server)
+    elif kubeconfig_replaced:
+        row.api_server = extracted
     await db.flush()
     await db.refresh(row)
     return _to_response(row)
@@ -217,10 +249,7 @@ async def test_kubernetes_cluster(cluster_id: str, db: AsyncSession = Depends(ge
     row = await _load_cluster_or_404(cluster_id, db)
     plain = _decrypt_kubeconfig(row)
 
-    ok, message = await probe_cluster_connection_async(
-        plain,
-        insecure_skip_tls_verify=_options_insecure(row.options),
-    )
+    ok, message = await probe_cluster_connection_async(plain, **_client_overrides(row))
     row.last_tested_at = datetime.now(timezone.utc)
     row.last_test_ok = ok
     await db.flush()
@@ -237,10 +266,7 @@ async def list_cluster_namespaces(cluster_id: str, db: AsyncSession = Depends(ge
     row = await _load_cluster_or_404(cluster_id, db)
     plain = _decrypt_kubeconfig(row)
     try:
-        items = await list_namespaces_async(
-            plain,
-            insecure_skip_tls_verify=_options_insecure(row.options),
-        )
+        items = await list_namespaces_async(plain, **_client_overrides(row))
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e)) from e
     except Exception as e:
@@ -263,11 +289,7 @@ async def list_cluster_deployments(
     ns = (namespace or row.default_namespace or "default").strip() or "default"
     plain = _decrypt_kubeconfig(row)
     try:
-        items = await list_deployments_async(
-            plain,
-            ns,
-            insecure_skip_tls_verify=_options_insecure(row.options),
-        )
+        items = await list_deployments_async(plain, ns, **_client_overrides(row))
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e)) from e
     except Exception as e:
@@ -290,11 +312,7 @@ async def list_cluster_pods(
     ns = (namespace or row.default_namespace or "default").strip() or "default"
     plain = _decrypt_kubeconfig(row)
     try:
-        items = await list_pods_async(
-            plain,
-            ns,
-            insecure_skip_tls_verify=_options_insecure(row.options),
-        )
+        items = await list_pods_async(plain, ns, **_client_overrides(row))
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e)) from e
     except Exception as e:

@@ -10,8 +10,11 @@ import pytest
 from app.api.kubernetes_clusters import _to_response
 from app.models.kubernetes_cluster import KubernetesCluster
 from app.services.kubernetes.cluster_connection import (
+    apply_api_server,
     extract_api_server,
+    normalize_api_server,
     parse_kubeconfig_yaml,
+    prepare_kubeconfig,
     probe_cluster_connection_async,
     resolve_api_server_from_text,
 )
@@ -61,6 +64,25 @@ def test_parse_kubeconfig_rejects_missing_clusters():
         parse_kubeconfig_yaml("apiVersion: v1\nkind: Config\n")
 
 
+def test_normalize_api_server():
+    assert normalize_api_server("  ") is None
+    assert normalize_api_server("https://k8s.example.com:6443/") == "https://k8s.example.com:6443"
+    with pytest.raises(ValueError, match="http"):
+        normalize_api_server("k8s.example.com:6443")
+
+
+def test_apply_api_server_rewrites_current_cluster():
+    data = parse_kubeconfig_yaml(SAMPLE_KUBECONFIG)
+    rewritten = apply_api_server(data, "https://host.docker.internal:26443")
+    assert extract_api_server(rewritten) == "https://host.docker.internal:26443"
+    assert extract_api_server(data) == "https://k8s.example.com:6443"
+
+
+def test_prepare_kubeconfig_applies_override():
+    data = prepare_kubeconfig(SAMPLE_KUBECONFIG, api_server="https://127.0.0.1:6443")
+    assert extract_api_server(data) == "https://127.0.0.1:6443"
+
+
 def test_to_response_never_exposes_kubeconfig():
     row = KubernetesCluster(
         id="c1",
@@ -81,6 +103,17 @@ def test_to_response_never_exposes_kubeconfig():
     assert payload["kubeconfig_configured"] is True
     assert payload["api_server"] == "https://k8s.example.com:6443"
     assert payload["default_namespace"] == "apps"
+
+
+@pytest.mark.asyncio
+async def test_probe_connection_async_passes_overridden_server():
+    with patch("app.services.kubernetes.cluster_connection._test_connection_sync") as sync:
+        sync.return_value = (True, "ok")
+        await probe_cluster_connection_async(
+            SAMPLE_KUBECONFIG, api_server="https://host.docker.internal:26443"
+        )
+    used = sync.call_args[0][0]
+    assert extract_api_server(used) == "https://host.docker.internal:26443"
 
 
 @pytest.mark.asyncio

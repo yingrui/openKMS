@@ -36,6 +36,7 @@ export function ConsoleKubernetes() {
   const [formDescription, setFormDescription] = useState('');
   const [formNamespace, setFormNamespace] = useState('default');
   const [formKubeconfig, setFormKubeconfig] = useState('');
+  const [formApiServer, setFormApiServer] = useState('');
   const [formInsecureSkipTls, setFormInsecureSkipTls] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [testing, setTesting] = useState<string | null>(null);
@@ -64,6 +65,7 @@ export function ConsoleKubernetes() {
     setFormDescription('');
     setFormNamespace('default');
     setFormKubeconfig('');
+    setFormApiServer('');
     setFormInsecureSkipTls(false);
     setShowForm(true);
   };
@@ -74,6 +76,7 @@ export function ConsoleKubernetes() {
     setFormDescription(row.description ?? '');
     setFormNamespace(row.default_namespace || 'default');
     setFormKubeconfig('');
+    setFormApiServer(row.api_server ?? '');
     setFormInsecureSkipTls(Boolean(row.options?.insecure_skip_tls_verify));
     setShowForm(true);
   };
@@ -100,6 +103,7 @@ export function ConsoleKubernetes() {
           description: formDescription.trim() || undefined,
           default_namespace: formNamespace.trim() || 'default',
           kubeconfig: formKubeconfig.trim() || undefined,
+          api_server: formApiServer.trim() || '',
           options,
         });
         toast.success(t('kubernetes.toastUpdated'));
@@ -109,6 +113,7 @@ export function ConsoleKubernetes() {
           description: formDescription.trim() || undefined,
           default_namespace: formNamespace.trim() || 'default',
           kubeconfig: formKubeconfig.trim(),
+          api_server: formApiServer.trim() || undefined,
           options,
         });
         toast.success(t('kubernetes.toastCreated'));
@@ -324,6 +329,19 @@ export function ConsoleKubernetes() {
             onChange={(e) => setFormNamespace(e.target.value)}
             placeholder="default"
             disabled={submitting}
+          />
+        </FormField>
+        <FormField
+          label={t('kubernetes.fieldApiServer')}
+          hint={t('kubernetes.apiServerHint')}
+        >
+          <input
+            type="url"
+            value={formApiServer}
+            onChange={(e) => setFormApiServer(e.target.value)}
+            placeholder={t('kubernetes.placeholderApiServer')}
+            disabled={submitting}
+            spellCheck={false}
           />
         </FormField>
         <FormField

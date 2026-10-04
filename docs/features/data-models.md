@@ -202,7 +202,7 @@ Schema for every persisted table. Grouped by area; see the matching feature page
 ### KubernetesCluster
 
 - `id` (PK), `name`, `description` (optional), `default_namespace` (default `default`)
-- `api_server` (denormalized from kubeconfig for list UI)
+- `api_server` (URL the backend uses; explicit override or parsed from kubeconfig)
 - `kubeconfig_encrypted` (Fernet; same key as data sources / connectors — never returned by API)
 - `options` (JSONB; e.g. `insecure_skip_tls_verify`)
 - `last_tested_at`, `last_test_ok` (set by `POST …/test`)

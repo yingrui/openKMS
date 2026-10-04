@@ -9,13 +9,15 @@
 - **列表：** `/console/kubernetes` — 登记、编辑、删除、测试连接；点击进入浏览
 - **详情：** `/console/kubernetes/{id}` — 选择命名空间，刷新 Deployment 与 Pod（只读）
 - **权限：** `console:kubernetes`（或 `all` / admin）
-- 表单：名称、描述、默认命名空间、kubeconfig YAML、可选 **跳过 TLS 校验**（仅实验/自签名环境）
+- 表单：名称、描述、默认命名空间、可选 **API Server**（后端实际连接集群的地址）、kubeconfig YAML、可选 **跳过 TLS 校验**（仅实验/自签名环境）
 
 API 响应永不包含 kubeconfig 明文，仅返回 `kubeconfig_configured` 与非敏感字段。
 
 ## 存储与加密
 
 表 **`kubernetes_clusters`**。完整 kubeconfig 存于 **`kubeconfig_encrypted`**，与数据源 / 连接器共用 Fernet。
+
+**`api_server`** 为显式覆盖地址；未填写时从 kubeconfig 解析。连通性测试与浏览会把当前 context 的 `server` 改写成该地址，因此 kubeconfig 里是 `127.0.0.1` 时，只要填写后端能到达的地址即可连接。更新时省略 kubeconfig（或传空字符串）保留原密文；`api_server: ""` 则回退为 kubeconfig 中的地址。
 
 ## 连通性测试
 
