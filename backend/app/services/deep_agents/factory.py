@@ -15,7 +15,7 @@ from app.services.deep_agents.env import build_project_shell_env
 from app.services.deep_agents.hitl import interrupt_map
 from app.services.deep_agents.langfuse import build_deep_agent_langgraph_config
 from app.services.deep_agents.llm_chat import build_deep_agent_chat_openai, normalize_openai_base_url
-from app.services.deep_agents.plan_mode import plan_mode_permissions
+from app.services.deep_agents.plan_mode import read_only_filesystem_middleware
 from app.services.deep_agents.project_backend import ProjectWorkspaceBackend
 from app.services.deep_agents.prompts import build_project_system_prompt
 from app.services.deep_agents.sandbox import make_sandbox_tools
@@ -116,6 +116,13 @@ async def build_workspace_deep_agent(
     checkpointer = await get_checkpointer()
     try:
         from deepagents import create_deep_agent
+        from langchain.agents.middleware import TodoListMiddleware
+
+        middleware: list = [TodoListMiddleware()]
+        if plan_mode:
+            # Replace default FilesystemMiddleware (permissions + shell backend
+            # raise NotImplementedError in deepagents 0.7).
+            middleware.append(read_only_filesystem_middleware(backend))
 
         agent = create_deep_agent(
             model=llm,
@@ -129,10 +136,14 @@ async def build_workspace_deep_agent(
                 plan_mode=plan_mode,
                 scheduled_run=scheduled_run,
             ),
-            subagents=build_subagents(plan_mode=plan_mode, include_shell=not plan_mode),
+            middleware=middleware,
+            subagents=build_subagents(
+                backend=backend,
+                plan_mode=plan_mode,
+                include_shell=not plan_mode,
+            ),
             skills=skills or None,
             backend=backend,
-            permissions=plan_mode_permissions() if plan_mode else None,
             interrupt_on=interrupt_map(plan_mode=plan_mode, scheduled_run=scheduled_run),
             checkpointer=checkpointer,
         )

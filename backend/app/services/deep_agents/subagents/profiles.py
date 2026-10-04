@@ -4,9 +4,22 @@ from __future__ import annotations
 
 from typing import Any
 
+from app.services.deep_agents.plan_mode import read_only_filesystem_middleware
 
-def build_subagents(*, plan_mode: bool, include_shell: bool = True) -> list[dict[str, Any]]:
-    """Dictionary-based subagents for create_deep_agent."""
+
+def build_subagents(
+    *,
+    backend: Any,
+    plan_mode: bool,
+    include_shell: bool = True,
+) -> list[dict[str, Any]]:
+    """Dictionary-based subagents for create_deep_agent.
+
+    Explore always uses a read-only filesystem tools allowlist (replaces default
+    FilesystemMiddleware). Research is read-only in plan mode; in agent mode it
+    keeps execute so skill CLIs still work.
+    """
+    ro_fs = read_only_filesystem_middleware(backend)
     explore: dict[str, Any] = {
         "name": "explore",
         "description": "Read-only exploration of project workspace files.",
@@ -15,6 +28,9 @@ def build_subagents(*, plan_mode: bool, include_shell: bool = True) -> list[dict
             "File paths are relative to the project root. Read and search only; "
             "Do not write or execute destructive commands. Return concise findings."
         ),
+        # Do not inherit sandbox/shell tools from the parent.
+        "tools": [],
+        "middleware": [ro_fs],
     }
     research: dict[str, Any] = {
         "name": "research",
@@ -24,6 +40,8 @@ def build_subagents(*, plan_mode: bool, include_shell: bool = True) -> list[dict
             "Synthesize findings with citations. Do not mutate the project unless asked."
         ),
     }
+    if plan_mode:
+        research["middleware"] = [ro_fs]
     out = [explore, research]
     if include_shell and not plan_mode:
         out.append(
