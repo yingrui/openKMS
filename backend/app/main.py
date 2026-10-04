@@ -41,6 +41,7 @@ from app.api.providers import router as providers_router
 from app.api.connectors import router as connectors_router
 from app.api.schedules import router as schedules_router
 from app.api.data_sources import router as data_sources_router
+from app.api.kubernetes_clusters import router as kubernetes_clusters_router
 from app.api.datasets import router as datasets_router
 from app.api.evaluations import router as evaluations_router
 from app.api.users_admin import router as users_admin_router
@@ -167,6 +168,7 @@ app.include_router(app_builder_router, prefix="/api")
 app.include_router(connectors_router, prefix="/api")
 app.include_router(schedules_router, prefix="/api")
 app.include_router(data_sources_router, prefix="/api")
+app.include_router(kubernetes_clusters_router, prefix="/api")
 app.include_router(datasets_router, prefix="/api")
 app.include_router(evaluations_router, prefix="/api")
 app.include_router(users_admin_router, prefix="/api")

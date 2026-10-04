@@ -36,6 +36,7 @@
   "dataSecurityIssues": "Issues",
   "consoleSection": "Console",
   "dataSources": "Data Sources",
+  "kubernetesClusters": "Kubernetes",
   "objectStorage": "Object storage",
   "connectors": "Connectors",
   "systemSettings": "System Settings",

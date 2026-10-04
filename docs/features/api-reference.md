@@ -297,6 +297,22 @@ The bundled **openkms-skill** CLI wraps **lifecycle** and **relationships** the 
 | POST | `/api/data-sources/{id}/test` | Test connection (`console:data_sources`) |
 | POST | `/api/data-sources/{id}/neo4j-delete-all` | Delete all nodes and relationships in Neo4j (`console:data_sources`, Neo4j only) |
 
+### Kubernetes clusters (`console:kubernetes`)
+
+Register existing clusters for later agent deploy tooling. Responses never include kubeconfig plaintext (`kubeconfig_configured` flag only). See [Kubernetes clusters](kubernetes-clusters.md).
+
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `/api/kubernetes-clusters` | List clusters (`limit`, `offset`; `console:kubernetes`) |
+| POST | `/api/kubernetes-clusters` | Register cluster (body: `name`, `kubeconfig`, optional `description`, `default_namespace`, `options`) |
+| GET | `/api/kubernetes-clusters/{id}` | Get one cluster (`console:kubernetes`) |
+| PUT | `/api/kubernetes-clusters/{id}` | Update cluster; omit/`""` kubeconfig to keep stored secret |
+| DELETE | `/api/kubernetes-clusters/{id}` | Delete cluster registration |
+| POST | `/api/kubernetes-clusters/{id}/test` | Test connection via Version API; updates `last_tested_at` / `last_test_ok` |
+| GET | `/api/kubernetes-clusters/{id}/namespaces` | List namespaces (read-only) |
+| GET | `/api/kubernetes-clusters/{id}/deployments` | List Deployments (`?namespace=`; defaults to cluster `default_namespace`) |
+| GET | `/api/kubernetes-clusters/{id}/pods` | List Pods (`?namespace=`; defaults to cluster `default_namespace`) |
+
 ### Connectors (`connectors:read` / `connectors:write`)
 
 **Auth:** `GET` / `HEAD` on `/api/connectors` and `/api/connectors/*` require **`connectors:read`** or **`connectors:write`**. `POST`, `PUT`, and `DELETE` require **`connectors:write`**.

@@ -15,6 +15,7 @@ PERM_CONSOLE_ACCESS = "console:access"
 PERM_CONSOLE_USERS = "console:users"
 PERM_CONSOLE_FEATURE_TOGGLES = "console:feature_toggles"
 PERM_CONSOLE_DATA_SOURCES = "console:data_sources"
+PERM_CONSOLE_KUBERNETES = "console:kubernetes"
 PERM_CONSOLE_DATASETS = "console:datasets"
 PERM_CONSOLE_OBJECT_TYPES = "console:object_types"
 PERM_CONSOLE_LINK_TYPES = "console:link_types"
@@ -92,6 +93,12 @@ OPERATION_KEY_HINTS: tuple[OperationKeyHint, ...] = (
         PERM_CONSOLE_DATA_SOURCES,
         "Manage data sources",
         "CRUD /api/data-sources and related admin actions.",
+        "console",
+    ),
+    OperationKeyHint(
+        PERM_CONSOLE_KUBERNETES,
+        "Manage Kubernetes clusters",
+        "CRUD /api/kubernetes-clusters and connection tests for registered clusters.",
         "console",
     ),
     OperationKeyHint(

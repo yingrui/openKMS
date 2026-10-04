@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Trans, useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
-import { Shield, KeyRound, Database, Box, Settings, Users, HeartPulse, HardDrive } from 'lucide-react';
+import { Shield, KeyRound, Database, Box, Settings, Users, HeartPulse, HardDrive, Server } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { PERM_ALL, PERM_CONSOLE_GROUPS, PERM_CONSOLE_PERMISSIONS } from '../../config/permissions';
 import { fetchSecurityPermissionKeys } from '../../data/securityAdminApi';
@@ -9,7 +9,15 @@ import './ConsoleOverview.scss';
 
 const PERMS_ONBOARDING_KEY = 'openkms_permissions_onboarding_dismissed';
 
-type FeatureId = 'health' | 'permissions' | 'dataSecurity' | 'dataSources' | 'storage' | 'usersToggles' | 'systemSettings';
+type FeatureId =
+  | 'health'
+  | 'permissions'
+  | 'dataSecurity'
+  | 'dataSources'
+  | 'kubernetes'
+  | 'storage'
+  | 'usersToggles'
+  | 'systemSettings';
 
 type FeatureItem = {
   id: FeatureId;
@@ -21,6 +29,7 @@ const CONSOLE_TOOL_FEATURES: FeatureItem[] = [
   { id: 'permissions', path: '/console/permission-management' },
   { id: 'dataSecurity', path: '/console/data-security/issues' },
   { id: 'dataSources', path: '/console/data-sources' },
+  { id: 'kubernetes', path: '/console/kubernetes' },
   { id: 'storage', path: '/console/storage' },
   { id: 'usersToggles', path: '/console/users' },
   { id: 'systemSettings', path: '/console/settings' },
@@ -36,6 +45,8 @@ function iconFor(id: FeatureId) {
       return Shield;
     case 'dataSources':
       return Database;
+    case 'kubernetes':
+      return Server;
     case 'storage':
       return HardDrive;
     case 'usersToggles':

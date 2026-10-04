@@ -36,6 +36,7 @@
   "dataSecurityIssues": "问题",
   "consoleSection": "控制台",
   "dataSources": "数据源",
+  "kubernetesClusters": "Kubernetes",
   "objectStorage": "对象存储",
   "connectors": "连接器",
   "systemSettings": "系统设置",

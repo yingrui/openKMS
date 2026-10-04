@@ -36,6 +36,8 @@ import { ConsoleHealth } from './pages/console/ConsoleHealth';
 import { ObjectTypesPage } from './pages/ontology/ObjectTypesPage';
 import { LinkTypesPage } from './pages/ontology/LinkTypesPage';
 import { ConsoleDataSources } from './pages/console/ConsoleDataSources';
+import { ConsoleKubernetes } from './pages/console/ConsoleKubernetes';
+import { ConsoleKubernetesDetail } from './pages/console/ConsoleKubernetesDetail';
 import { ConnectorsPage } from './pages/connectors/ConnectorsPage';
 import { ConnectorDetailPage } from './pages/connectors/ConnectorDetailPage';
 import { DatasetsListPage } from './pages/ontology-manager/DatasetsListPage';
@@ -469,6 +471,8 @@ function App() {
               element={<GroupMembersLegacyRedirect />}
             />
             <Route path="data-sources" element={<ConsoleDataSources />} />
+            <Route path="kubernetes" element={<ConsoleKubernetes />} />
+            <Route path="kubernetes/:clusterId" element={<ConsoleKubernetesDetail />} />
             <Route path="settings" element={<ConsoleSettings />} />
             <Route path="users" element={<ConsoleUsers />} />
             <Route path="feature-toggles" element={<ConsoleFeatureToggles />} />

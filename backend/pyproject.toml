@@ -33,11 +33,12 @@ dependencies = [
     "langchain-core>=0.3.0",
     "langchain-openai>=0.2.0",
     "langfuse>=2.0.0",
-    "deepagents>=0.4.0",
+    "deepagents>=0.7.21",
     "langgraph-checkpoint-postgres>=2.0.0",
     "openpyxl>=3.1.5",
     "nh3>=0.2.18",
     "Pillow>=11.0.0",
+    "kubernetes>=31.0.0",
 ]
 
 [project.optional-dependencies]

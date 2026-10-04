@@ -9,6 +9,7 @@ import {
   ToggleLeft,
   Shield,
   KeyRound,
+  Server,
 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 
@@ -31,6 +32,7 @@ export function Sidebar() {
 
   const showConsoleDataLabel =
     canAccessPath('/console/data-sources') ||
+    canAccessPath('/console/kubernetes') ||
     canAccessPath('/console/storage') ||
     canAccessPath('/console/settings') ||
     canAccessPath('/console/users') ||
@@ -142,6 +144,16 @@ export function Sidebar() {
               >
                 <Database size={18} strokeWidth={1.75} />
                 <span>{t('dataSources')}</span>
+              </NavLink>
+            )}
+            {canAccessPath('/console/kubernetes') && (
+              <NavLink
+                to="/console/kubernetes"
+                title={t('kubernetesClusters')}
+                className={({ isActive }) => `sidebar-link ${isActive ? 'sidebar-link-active' : ''}`}
+              >
+                <Server size={18} strokeWidth={1.75} />
+                <span>{t('kubernetesClusters')}</span>
               </NavLink>
             )}
             {canAccessPath('/console/storage') && (

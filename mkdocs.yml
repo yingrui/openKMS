@@ -189,6 +189,7 @@ nav:
       - Pipelines, jobs & models: features/pipelines-and-jobs.md
       - Data security: features/data-security.md
       - Console & authentication: features/console-and-auth.md
+      - Kubernetes clusters: features/kubernetes-clusters.md
       - Agents (project workspaces): features/openkms-agents.md
       - openkms-skill: features/openkms-skill.md
       - API reference: features/api-reference.md

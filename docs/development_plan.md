@@ -122,6 +122,7 @@ Shipped surfaces: [Connectors](features/connectors.md), [API reference — Conne
 | Broader tool coverage | user · org — Read/write with ACL: documents, articles, glossary, search, ontology (within explore limits) |
 | Maintenance workflows | user · org — From eval failures → suggested wiki/KB fixes (quality loop, contribution feedback) |
 | Parity with external skill | user — [openkms-skill](features/openkms-skill.md) capabilities reachable in-app where permissions allow |
+| K8s deploy from Agents | ✅ Console registration + Namespace/Deployment/Pod browse ([Kubernetes clusters](features/kubernetes-clusters.md)); next: agent tools + project binding to apply/deploy |
 
 Existing surfaces: [Wiki spaces](features/wiki-spaces.md), [Knowledge bases](features/knowledge-bases.md), [Knowledge map](features/knowledge-map.md).
 

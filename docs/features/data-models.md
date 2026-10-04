@@ -199,6 +199,16 @@ Schema for every persisted table. Grouped by area; see the matching feature page
 - `id` (PK, integer; singleton row `id=1`), `system_name` (display name shown in the SPA header), `default_timezone` (default `UTC`), `api_base_url_note` (free-text operator note; SPA API URL is build-time), `updated_at`
 - Loaded by the Console settings page and the public `system_name` lookup
 
+### KubernetesCluster
+
+- `id` (PK), `name`, `description` (optional), `default_namespace` (default `default`)
+- `api_server` (denormalized from kubeconfig for list UI)
+- `kubeconfig_encrypted` (Fernet; same key as data sources / connectors — never returned by API)
+- `options` (JSONB; e.g. `insecure_skip_tls_verify`)
+- `last_tested_at`, `last_test_ok` (set by `POST …/test`)
+- `created_at`, `updated_at`
+- Console permission: `console:kubernetes`. See [Kubernetes clusters](kubernetes-clusters.md).
+
 ### Job runs (procrastinate_jobs)
 
 - Managed by procrastinate; stores task_name, args (document_id, pipeline_id, knowledge_base_id, etc.), status, attempts, timestamps

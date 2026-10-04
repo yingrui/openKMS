@@ -66,6 +66,13 @@ textarea.ds-control {
   resize: vertical;
 }
 
+.ds-control--mono,
+.ds-field textarea.ds-control--mono {
+  font-family: var(--font-mono, ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace);
+  font-size: var(--text-sm);
+  line-height: 1.45;
+}
+
 .ds-dialog__body > form,
 .ds-dialog__body > .ds-field-stack,
 .ds-dialog__body:has(> .ds-field) {

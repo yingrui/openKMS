@@ -12,6 +12,7 @@ from app.services.permissions.permission_catalog import (
     PERM_CONSOLE_ACCESS,
     PERM_CONSOLE_DATASETS,
     PERM_CONSOLE_DATA_SOURCES,
+    PERM_CONSOLE_KUBERNETES,
     PERM_CONNECTORS_READ,
     PERM_CONNECTORS_WRITE,
     PERM_CONSOLE_FEATURE_TOGGLES,
@@ -78,6 +79,10 @@ DEFAULT_PATTERNS_BY_KEY: dict[str, tuple[list[str], list[str]]] = {
     PERM_CONSOLE_DATA_SOURCES: (
         ["/console", "/console/data-sources"],
         ["/api/data-sources/*"],
+    ),
+    PERM_CONSOLE_KUBERNETES: (
+        ["/console", "/console/kubernetes", "/console/kubernetes/*"],
+        ["/api/kubernetes-clusters/*"],
     ),
     PERM_CONNECTORS_READ: (
         ["/connectors", "/connectors/*"],
