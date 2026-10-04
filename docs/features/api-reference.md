@@ -457,7 +457,7 @@ Deep Agents runtime in `backend/app/services/deep_agents/`. Disk root: `OPENKMS_
 | Method | Path | Description |
 |--------|------|-------------|
 | GET | `/api/projects` | List current user's projects (`limit`, `offset`) |
-| POST | `/api/projects` | Create project (scaffolds `AGENTS.md`, `.openkms/skills/`; auto-installs skills where `agent_skills.is_default=true`) |
+| POST | `/api/projects` | Create project (scaffolds `AGENTS.md`, `.openkms/skills/`; auto-installs skills where `agent_skills.is_default=true`). Optional body: `git_url` (HTTPS), `git_branch`, `git_credential_id` — clones into the workspace before scaffolding |
 | GET | `/api/projects/{id}` | Get project |
 | PATCH | `/api/projects/{id}` | Update name, description, slug, settings |
 | DELETE | `/api/projects/{id}` | Delete project and on-disk folder |
@@ -480,13 +480,13 @@ Deep Agents runtime in `backend/app/services/deep_agents/`. Disk root: `OPENKMS_
 | PATCH/DELETE | `/api/projects/{id}/schedules/{sid}` | Update prompt/cron/enabled or delete schedule |
 | POST | `/api/projects/{id}/schedules/{sid}/run-now` | Queue `run_scheduled_project_agent`; returns `{ job_id }` (202) |
 | POST | `/api/projects/{id}/git/init` | Local `git init` |
-| GET | `/api/projects/{id}/git/status` | Porcelain status |
+| GET | `/api/projects/{id}/git/status` | Porcelain status, current branch, `origin` URL |
 | GET | `/api/projects/{id}/git/log` | Recent commits |
 | POST | `/api/projects/{id}/git/commit` | Commit (`message`, optional `paths`) |
-| POST | `/api/projects/{id}/git/clone` | Clone HTTPS URL into empty project (requires `credential_id`) |
-| POST | `/api/projects/{id}/git/remote` | Set `origin` (HTTPS only) |
-| POST | `/api/projects/{id}/git/pull` | Pull (PAT via `credential_id`) |
-| POST | `/api/projects/{id}/git/push` | Push (PAT via `credential_id`) |
+| POST | `/api/projects/{id}/git/clone` | Clone HTTPS URL into empty project (optional `branch`, optional `credential_id` for private repos) |
+| POST | `/api/projects/{id}/git/remote` | Set `origin` (HTTPS only); initializes git if needed; stores `settings.git.remote_url` and optional `credential_id` |
+| POST | `/api/projects/{id}/git/pull` | Pull (body: `credential_id`) |
+| POST | `/api/projects/{id}/git/push` | Push (body: `credential_id`) |
 | GET/POST/DELETE | `/api/user/git-credentials` | Manage encrypted HTTPS PATs (Profile UI) |
 
 ## Agent skills (global registry)

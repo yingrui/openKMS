@@ -13,6 +13,7 @@ from app.api.deps import get_jwt_sub
 from app.api.auth import require_auth, require_permission
 from app.database import get_db
 from app.models.project import Project
+from app.models.user_git_credential import UserGitCredential
 from app.schemas.agent_skill import ProjectInstalledSkillOut, ProjectSkillInstallBody, ProjectSkillsOut
 from app.schemas.project import (
     GitCommitRequest,
@@ -78,6 +79,24 @@ async def _get_owned_project(db: AsyncSession, project_id: str, sub: str) -> Pro
     return p
 
 
+def _require_https_git_url(url: str) -> str:
+    trimmed = url.strip()
+    if not trimmed.startswith("https://"):
+        raise HTTPException(status_code=400, detail="Only HTTPS git URLs are supported")
+    return trimmed
+
+
+async def _optional_git_credential(
+    db: AsyncSession, sub: str, credential_id: str | None
+) -> tuple[str | None, str | None]:
+    if not credential_id:
+        return None, None
+    row = await db.get(UserGitCredential, credential_id)
+    if not row or row.user_sub != sub:
+        raise HTTPException(status_code=404, detail="Git credential not found")
+    return row.username, git_service.decrypt_pat(row.encrypted_pat)
+
+
 @router.get("", response_model=ProjectListResponse, dependencies=[Depends(require_permission(PERM_PROJECTS_READ))])
 async def list_projects(
     request: Request,
@@ -115,25 +134,51 @@ async def create_project(request: Request, body: ProjectCreate, db: AsyncSession
     p_jwt = request.state.openkms_jwt_payload
     uname = p_jwt.get("preferred_username") or p_jwt.get("name")
     created_by_name = str(uname)[:256] if isinstance(uname, str) and uname.strip() else None
+    git_url = body.git_url.strip() if body.git_url else ""
+    git_branch = body.git_branch.strip() if body.git_branch else ""
+    settings: dict = {}
+    if git_url:
+        git_url = _require_https_git_url(git_url)
+        settings["git"] = {
+            "remote_url": git_url,
+            **({"branch": git_branch} if git_branch else {}),
+        }
     p = Project(
         user_sub=sub,
         name=body.name.strip(),
         description=body.description,
         slug=slug,
-        settings={},
+        settings=settings,
         created_by=sub,
         created_by_name=created_by_name,
     )
     db.add(p)
     await db.flush()
     await bootstrap_owner_acl(db, RT_PROJECT, p.id, sub)
-    scaffold_project_dir(p.id)
-    await install_default_skills_for_project(
-        db,
-        p,
-        installed_by=sub,
-        installed_by_name=created_by_name,
-    )
+    try:
+        if git_url:
+            username, token = await _optional_git_credential(db, sub, body.git_credential_id)
+            git_service.git_clone_into_project(
+                p.id,
+                git_url,
+                username=username,
+                token=token,
+                branch=git_branch or None,
+            )
+            p.git_initialized = True
+        scaffold_project_dir(p.id)
+        await install_default_skills_for_project(
+            db,
+            p,
+            installed_by=sub,
+            installed_by_name=created_by_name,
+        )
+    except Exception:
+        root = project_root(p.id)
+        if root.exists():
+            shutil.rmtree(root, ignore_errors=True)
+        await db.delete(p)
+        raise
     await db.refresh(p)
     return _to_out(p)
 

@@ -5,7 +5,7 @@ In-product **Agents** area: personal **projects** with an on-disk workspace (`{O
 | Area | Status |
 |------|--------|
 | Sidebar + `/agents` (Projects) + `/agents/skills` (Skills) + `/projects/{id}/sessions/{sessionId}` | ✅ |
-| Project settings page `/projects/{id}/settings` (General + Agent + Skills + Schedules tabs) | ✅ |
+| Project settings page `/projects/{id}/settings` (General includes git origin; Agent + Skills + Schedules + Sharing) | ✅ |
 | Session API key (per conversation, creator identity) | ✅ |
 | Global skills registry + project install | ✅ |
 | Project CRUD + files API | ✅ |
@@ -175,6 +175,6 @@ Feature toggle: **`agents`** (Console → Feature toggles).
 ## Git
 
 - **Local:** init, status, log, add, commit via files rail; agent uses shell (`execute`) for git in the project folder.
-- **Remote:** HTTPS + PAT only; credentials in Profile → Git credentials. Clone / pull / push APIs on `/api/projects/{id}/git/*`.
+- **Remote:** HTTPS + PAT only; credentials in Profile → Git credentials. On **create project**, optional repository URL, branch, and credential clone into the workspace. **Project settings → General** shows the live `origin` URL and current branch, lets you change origin (GitHub → GitLab and similar), and pull/push with a saved credential. Clone / pull / push APIs on `/api/projects/{id}/git/*`. Saving origin initializes git if needed and stores `settings.git.remote_url` (and optional `credential_id`).
 
 See [API reference — Projects](api-reference.md#projects-agents-workspace) and [API reference — Agent skills](api-reference.md#agent-skills-global-registry).

@@ -65,10 +65,21 @@ def git_init(project_id: str, settings: dict) -> bool:
     return True
 
 
+def git_origin_url(project_id: str) -> str | None:
+    root = project_root(project_id)
+    if not (root / ".git").exists():
+        return None
+    result = _run_git(project_id, ["remote", "get-url", "origin"])
+    if result.returncode != 0:
+        return None
+    url = (result.stdout or "").strip()
+    return url or None
+
+
 def git_status(project_id: str) -> dict[str, Any]:
     root = project_root(project_id)
     if not (root / ".git").exists():
-        return {"entries": [], "branch": None}
+        return {"entries": [], "branch": None, "remote_url": None}
     branch_r = _run_git(project_id, ["rev-parse", "--abbrev-ref", "HEAD"])
     branch = branch_r.stdout.strip() if branch_r.returncode == 0 else None
     status_r = _run_git(project_id, ["status", "--porcelain"])
@@ -81,7 +92,7 @@ def git_status(project_id: str) -> dict[str, Any]:
         if " -> " in path:
             path = path.split(" -> ", 1)[1]
         entries.append({"path": path, "status": code.strip()})
-    return {"entries": entries, "branch": branch}
+    return {"entries": entries, "branch": branch, "remote_url": git_origin_url(project_id)}
 
 
 def git_log(project_id: str, limit: int = 10) -> list[dict[str, str]]:
@@ -160,21 +171,34 @@ def git_with_pat(
         _cleanup_askpass(env_extra)
 
 
+def clone_git_args(url: str, dest: str, branch: str | None = None) -> list[str]:
+    args = ["git", "clone"]
+    if branch:
+        args.extend(["--branch", branch, "--single-branch"])
+    args.extend([url, dest])
+    return args
+
+
 def git_clone_into_project(
     project_id: str,
     url: str,
     *,
-    username: str,
-    token: str,
+    username: str | None = None,
+    token: str | None = None,
+    branch: str | None = None,
 ) -> None:
     root = project_root(project_id)
-    if any(root.iterdir()):
+    root.parent.mkdir(parents=True, exist_ok=True)
+    if root.exists() and any(root.iterdir()):
         raise HTTPException(status_code=400, detail="Project folder is not empty")
-    env_extra = _askpass_env(token)
-    env_extra["GIT_TERMINAL_PROMPT"] = "0"
+    env_extra: dict[str, str] = {"GIT_TERMINAL_PROMPT": "0"}
+    if token:
+        env_extra.update(_askpass_env(token))
+        if username:
+            env_extra["GIT_USERNAME"] = username
     try:
         result = subprocess.run(
-            ["git", "clone", url, str(root)],
+            clone_git_args(url, str(root), branch),
             capture_output=True,
             text=True,
             timeout=300,
@@ -183,6 +207,8 @@ def git_clone_into_project(
         )
     except subprocess.TimeoutExpired as e:
         raise HTTPException(status_code=504, detail="git clone timed out") from e
+    except FileNotFoundError as e:
+        raise HTTPException(status_code=503, detail="git is not available on the server") from e
     finally:
         _cleanup_askpass(env_extra)
     if result.returncode != 0:

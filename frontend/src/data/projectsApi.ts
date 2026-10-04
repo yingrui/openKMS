@@ -115,6 +115,9 @@ export async function createProject(body: {
   name: string;
   description?: string;
   slug?: string;
+  git_url?: string;
+  git_branch?: string;
+  git_credential_id?: string;
 }): Promise<ProjectResponse> {
   return request<ProjectResponse>('/api/projects', {
     method: 'POST',
@@ -374,8 +377,12 @@ export async function gitInit(projectId: string): Promise<void> {
   return request<void>(`/api/projects/${projectId}/git/init`, { method: 'POST' });
 }
 
-export async function gitStatus(projectId: string): Promise<{ entries: GitStatusEntry[]; branch: string | null }> {
-  return request<{ entries: GitStatusEntry[]; branch: string | null }>(`/api/projects/${projectId}/git/status`);
+export async function gitStatus(
+  projectId: string,
+): Promise<{ entries: GitStatusEntry[]; branch: string | null; remote_url: string | null }> {
+  return request<{ entries: GitStatusEntry[]; branch: string | null; remote_url: string | null }>(
+    `/api/projects/${projectId}/git/status`,
+  );
 }
 
 export async function gitLog(projectId: string): Promise<{ entries: GitLogEntry[] }> {
@@ -427,11 +434,26 @@ export async function deleteGitCredential(id: string): Promise<void> {
   return request<void>(`/api/user/git-credentials/${id}`, { method: 'DELETE' });
 }
 
+export async function gitSetRemote(
+  projectId: string,
+  url: string,
+  credentialId?: string,
+): Promise<{ ok: boolean; git_initialized: boolean; remote_url: string }> {
+  return request<{ ok: boolean; git_initialized: boolean; remote_url: string }>(
+    `/api/projects/${projectId}/git/remote`,
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ url, credential_id: credentialId || undefined }),
+    },
+  );
+}
+
 export async function gitPull(projectId: string, credentialId: string): Promise<void> {
   return request<void>(`/api/projects/${projectId}/git/pull`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ url: '', credential_id: credentialId }),
+    body: JSON.stringify({ credential_id: credentialId }),
   });
 }
 
@@ -439,6 +461,6 @@ export async function gitPush(projectId: string, credentialId: string): Promise<
   return request<void>(`/api/projects/${projectId}/git/push`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ url: '', credential_id: credentialId }),
+    body: JSON.stringify({ credential_id: credentialId }),
   });
 }

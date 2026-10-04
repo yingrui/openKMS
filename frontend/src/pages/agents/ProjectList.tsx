@@ -1,11 +1,17 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { Bot, Plus, Settings, X } from 'lucide-react';
+import { Bot, Plus, Settings } from 'lucide-react';
 import { toast } from 'sonner';
 import { ErrorBanner } from '../../components/ErrorBanner';
-import { Pagination } from '../../styles/design-system';
-import { createProject, listProjects, type ProjectResponse } from '../../data/projectsApi';
+import { Dialog, FormField, Pagination } from '../../styles/design-system';
+import {
+  createProject,
+  listGitCredentials,
+  listProjects,
+  type ProjectResponse,
+  type UserGitCredential,
+} from '../../data/projectsApi';
 import { AgentsAreaNav } from '../../components/agents/AgentsAreaNav';
 import { AgentsListSkeleton } from '../../components/agents/AgentsPageSkeleton';
 import './ProjectList.scss';
@@ -25,7 +31,10 @@ export function ProjectList() {
   const [showCreate, setShowCreate] = useState(false);
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
-  const emptyNameRef = useRef<HTMLInputElement>(null);
+  const [gitUrl, setGitUrl] = useState('');
+  const [gitBranch, setGitBranch] = useState('');
+  const [gitCredentialId, setGitCredentialId] = useState('');
+  const [credentials, setCredentials] = useState<UserGitCredential[]>([]);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -55,29 +64,44 @@ export function ProjectList() {
     if (listPage > maxPage) setListPage(maxPage);
   }, [total, listPageSize, listPage]);
 
-  useEffect(() => {
-    if (!loading && projects.length === 0) {
-      emptyNameRef.current?.focus();
-    }
-  }, [loading, projects.length]);
-
   const resetForm = () => {
     setName('');
     setDescription('');
+    setGitUrl('');
+    setGitBranch('');
+    setGitCredentialId('');
     setShowCreate(false);
+  };
+
+  const openCreate = () => {
+    setName('');
+    setDescription('');
+    setGitUrl('');
+    setGitBranch('');
+    setGitCredentialId('');
+    setShowCreate(true);
+    void listGitCredentials()
+      .then(setCredentials)
+      .catch(() => setCredentials([]));
   };
 
   const onCreate = async (e?: React.FormEvent) => {
     e?.preventDefault();
     if (!name.trim()) return;
+    const url = gitUrl.trim();
+    if (url && !url.startsWith('https://')) {
+      toast.error(t('list.gitHttpsOnly'));
+      return;
+    }
     setCreating(true);
     try {
-      const p = await createProject({
+      await createProject({
         name: name.trim(),
         description: description.trim() || undefined,
+        git_url: url || undefined,
+        git_branch: gitBranch.trim() || undefined,
+        git_credential_id: gitCredentialId || undefined,
       });
-      setProjects((prev) => [p, ...prev]);
-      setTotal((n) => n + 1);
       resetForm();
       void load();
     } catch (err) {
@@ -113,15 +137,7 @@ export function ProjectList() {
               <Settings size={18} aria-hidden />
               <span className="ds-compact-label">{t('list.settings')}</span>
             </Link>
-            <button
-              type="button"
-              className="btn btn-primary"
-              onClick={() => {
-                setShowCreate(true);
-                setName('');
-                setDescription('');
-              }}
-            >
+            <button type="button" className="btn btn-primary" onClick={openCreate}>
               <Plus size={18} />
               <span className="ds-compact-label">{t('list.create')}</span>
             </button>
@@ -140,23 +156,12 @@ export function ProjectList() {
             <h2>{t('list.emptyTitle')}</h2>
             <p className="agents-empty-lead">{t('list.emptyLead')}</p>
           </div>
-          <form className="agents-empty-card" onSubmit={onCreate}>
-            <label>
-              <span>{ts('shared.name')}</span>
-              <input
-                ref={emptyNameRef}
-                type="text"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                placeholder={t('list.namePlaceholder')}
-                autoComplete="off"
-              />
-            </label>
-            <button type="submit" className="btn btn-primary" disabled={creating || !name.trim()}>
+          <div className="agents-empty-card">
+            <button type="button" className="btn btn-primary" onClick={openCreate}>
               <Plus size={18} />
-              {creating ? ts('shared.saving') : t('list.createFirst')}
+              {t('list.createFirst')}
             </button>
-          </form>
+          </div>
         </div>
       ) : null}
 
@@ -203,58 +208,86 @@ export function ProjectList() {
         </>
       ) : null}
 
-      {showCreate ? (
-        <div className="agents-dialog-overlay" onClick={resetForm} role="presentation">
-          <div
-            className="agents-dialog"
-            onClick={(e) => e.stopPropagation()}
-            role="dialog"
-            aria-modal
-            aria-labelledby="agents-create-title"
-          >
-            <div className="agents-dialog-header">
-              <h2 id="agents-create-title">{t('list.dialogNew')}</h2>
-              <button type="button" className="agents-dialog-close" aria-label={ts('shared.close')} onClick={resetForm}>
-                <X size={20} />
-              </button>
-            </div>
-            <form
-              className="agents-dialog-body"
-              onSubmit={(e) => {
-                void onCreate(e);
-              }}
+      <Dialog
+        open={showCreate}
+        onClose={resetForm}
+        closeDisabled={creating}
+        title={t('list.dialogNew')}
+        closeAriaLabel={ts('shared.close')}
+        size="md"
+        footer={
+          <>
+            <button type="button" className="btn btn-secondary" onClick={resetForm} disabled={creating}>
+              {ts('shared.cancel')}
+            </button>
+            <button
+              type="submit"
+              form="agents-project-create-form"
+              className="btn btn-primary"
+              disabled={!name.trim() || creating}
             >
-              <label>
-                <span>{ts('shared.name')}</span>
-                <input
-                  type="text"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  placeholder={t('list.namePlaceholder')}
-                  autoFocus
-                />
-              </label>
-              <label>
-                <span>{ts('shared.description')}</span>
-                <textarea
-                  value={description}
-                  onChange={(e) => setDescription(e.target.value)}
-                  placeholder={t('list.descPlaceholder')}
-                  rows={3}
-                />
-              </label>
-              <div className="agents-dialog-footer">
-                <button type="button" className="btn btn-secondary" onClick={resetForm}>
-                  {ts('shared.cancel')}
-                </button>
-                <button type="submit" className="btn btn-primary" disabled={!name.trim() || creating}>
-                  {creating ? ts('shared.saving') : ts('shared.create')}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      ) : null}
+              {creating ? ts('shared.saving') : ts('shared.create')}
+            </button>
+          </>
+        }
+      >
+        <form id="agents-project-create-form" onSubmit={(e) => void onCreate(e)}>
+          <FormField label={ts('shared.name')}>
+            <input
+              type="text"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder={t('list.namePlaceholder')}
+              autoFocus
+              disabled={creating}
+              autoComplete="off"
+            />
+          </FormField>
+          <FormField label={ts('shared.description')}>
+            <textarea
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              placeholder={t('list.descPlaceholder')}
+              rows={3}
+              disabled={creating}
+            />
+          </FormField>
+          <FormField label={t('list.gitUrl')} hint={t('list.gitUrlHint')}>
+            <input
+              type="url"
+              value={gitUrl}
+              onChange={(e) => setGitUrl(e.target.value)}
+              placeholder={t('list.gitUrlPlaceholder')}
+              disabled={creating}
+              autoComplete="off"
+            />
+          </FormField>
+          <FormField label={t('list.gitBranch')} hint={t('list.gitBranchHint')}>
+            <input
+              type="text"
+              value={gitBranch}
+              onChange={(e) => setGitBranch(e.target.value)}
+              placeholder={t('list.gitBranchPlaceholder')}
+              disabled={creating || !gitUrl.trim()}
+              autoComplete="off"
+            />
+          </FormField>
+          <FormField label={t('list.gitCredential')} hint={t('list.gitCredentialHint')}>
+            <select
+              value={gitCredentialId}
+              onChange={(e) => setGitCredentialId(e.target.value)}
+              disabled={creating || !gitUrl.trim()}
+            >
+              <option value="">{t('list.gitCredentialNone')}</option>
+              {credentials.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.label} ({c.username})
+                </option>
+              ))}
+            </select>
+          </FormField>
+        </form>
+      </Dialog>
     </div>
   );
 }

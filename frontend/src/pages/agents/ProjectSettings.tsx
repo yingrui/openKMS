@@ -27,10 +27,12 @@ import {
 } from '../../data/connectorsApi';
 import { AgentsSettingsSkeleton } from '../../components/agents/AgentsPageSkeleton';
 import { ProjectSchedulesTab } from '../../components/agents/ProjectSchedulesTab';
+import { ProjectGitRemoteSection } from '../../components/agents/ProjectGitRemoteSection';
 import { ContentCommentsShell } from '../../components/comments/ContentCommentsShell';
 import { ResourceSharePanel } from '../../components/ResourceSharePanel';
 import { RESOURCE_TYPES } from '../../data/resourceAclApi';
 import { useConfirm } from '../../contexts/ConfirmContext';
+import { CheckRow, FormField } from '../../styles/design-system';
 import './ProjectSettings.scss';
 
 type TabId = 'general' | 'agent' | 'skills' | 'schedules' | 'sharing';
@@ -234,56 +236,57 @@ export function ProjectSettings() {
 
       <div className="project-settings-form" role="tabpanel">
         {activeTab === 'general' ? (
-          <section className="project-settings-section">
-            <h2>{t('settings.generalHeading')}</h2>
-            <div className="project-settings-field">
-              <label htmlFor="project-name">{ts('shared.name')}</label>
-              <input
-                id="project-name"
-                type="text"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                placeholder={t('list.namePlaceholder')}
-              />
-            </div>
-            <div className="project-settings-field">
-              <label htmlFor="project-description">{ts('shared.description')}</label>
-              <textarea
-                id="project-description"
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-                placeholder={t('list.descPlaceholder')}
-                rows={4}
-              />
-            </div>
-            <div className="project-settings-field">
-              <label htmlFor="project-slug">{t('settings.slug')}</label>
-              <input id="project-slug" type="text" value={slug} onChange={(e) => setSlug(e.target.value)} />
-              <p className="project-settings-hint">{t('settings.slugHint')}</p>
-            </div>
-          </section>
+          <>
+            <section className="project-settings-section">
+              <h2>{t('settings.generalHeading')}</h2>
+              <FormField label={ts('shared.name')} htmlFor="project-name">
+                <input
+                  type="text"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  placeholder={t('list.namePlaceholder')}
+                  autoComplete="off"
+                />
+              </FormField>
+              <FormField label={ts('shared.description')} htmlFor="project-description">
+                <textarea
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
+                  placeholder={t('list.descPlaceholder')}
+                  rows={4}
+                />
+              </FormField>
+              <FormField label={t('settings.slug')} hint={t('settings.slugHint')} htmlFor="project-slug">
+                <input type="text" value={slug} onChange={(e) => setSlug(e.target.value)} autoComplete="off" />
+              </FormField>
+            </section>
+            <ProjectGitRemoteSection
+              project={project}
+              onProjectChange={(p) => {
+                setProject(p);
+                setAgentJson(JSON.stringify(p.settings, null, 2));
+              }}
+            />
+          </>
         ) : null}
 
         {activeTab === 'agent' ? (
           <section className="project-settings-section">
             <h2>{t('settings.agentHeading')}</h2>
             <p className="project-settings-hint project-settings-hint--intro">{t('settings.agentHint')}</p>
-            <div className="project-settings-field">
-              <label className="project-settings-checkbox">
-                <input
-                  type="checkbox"
-                  checked={webSearchEnabled}
-                  onChange={(e) => setWebSearchEnabled(e.target.checked)}
-                />
-                <span>{t('settings.webSearchEnabled')}</span>
-              </label>
-              <p className="project-settings-hint">{t('settings.webSearchHint')}</p>
-            </div>
+            <CheckRow
+              checked={webSearchEnabled}
+              onChange={setWebSearchEnabled}
+              title={t('settings.webSearchEnabled')}
+              hint={t('settings.webSearchHint')}
+            />
             {webSearchEnabled ? (
-              <div className="project-settings-field">
-                <label htmlFor="project-search-connector">{t('settings.searchConnector')}</label>
+              <FormField
+                label={t('settings.searchConnector')}
+                htmlFor="project-search-connector"
+                hint={searchConnectors.length === 0 ? t('settings.searchConnectorEmpty') : undefined}
+              >
                 <select
-                  id="project-search-connector"
                   value={searchConnectorId}
                   onChange={(e) => setSearchConnectorId(e.target.value)}
                 >
@@ -298,22 +301,17 @@ export function ProjectSettings() {
                     );
                   })}
                 </select>
-                {searchConnectors.length === 0 ? (
-                  <p className="project-settings-hint">{t('settings.searchConnectorEmpty')}</p>
-                ) : null}
-              </div>
+              </FormField>
             ) : null}
-            <div className="project-settings-field">
-              <label htmlFor="project-agent-json">{t('settings.agentJsonLabel')}</label>
+            <FormField label={t('settings.agentJsonLabel')} htmlFor="project-agent-json">
               <textarea
-                id="project-agent-json"
-                className="project-settings-json"
+                className="ds-control--mono"
                 value={agentJson}
                 onChange={(e) => setAgentJson(e.target.value)}
                 rows={18}
                 spellCheck={false}
               />
-            </div>
+            </FormField>
           </section>
         ) : null}
 

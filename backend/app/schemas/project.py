@@ -12,6 +12,9 @@ class ProjectCreate(BaseModel):
     name: str = Field(min_length=1, max_length=512)
     description: str | None = Field(default=None, max_length=8000)
     slug: str | None = Field(default=None, max_length=128)
+    git_url: str | None = Field(default=None, max_length=2048)
+    git_branch: str | None = Field(default=None, max_length=256)
+    git_credential_id: str | None = Field(default=None, max_length=64)
 
 
 class ProjectUpdate(BaseModel):
@@ -119,6 +122,7 @@ class GitStatusEntry(BaseModel):
 class GitStatusResponse(BaseModel):
     entries: list[GitStatusEntry]
     branch: str | None = None
+    remote_url: str | None = None
 
 
 class GitLogEntry(BaseModel):
@@ -160,6 +164,11 @@ class GitRemoteRequest(BaseModel):
     credential_id: str | None = None
 
 
+class GitPatRequest(BaseModel):
+    credential_id: str = Field(min_length=1, max_length=64)
+
+
 class GitCloneRequest(BaseModel):
     url: str = Field(min_length=1, max_length=2048)
     credential_id: str | None = None
+    branch: str | None = Field(default=None, max_length=256)
