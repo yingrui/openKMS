@@ -80,6 +80,9 @@ export function Login() {
             {t('noticeSignupDisabled')}
           </p>
         )}
+        {notice === 'session_expired' && (
+          <p className="auth-local-error">{t('sessionExpired')}</p>
+        )}
         {error && <p className="auth-local-error">{error}</p>}
         <form onSubmit={onSubmit}>
           <div className="auth-local-field">

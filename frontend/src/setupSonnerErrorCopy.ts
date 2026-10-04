@@ -1,14 +1,22 @@
 /**
  * Adds a default "copy message" action to every Sonner error toast (string messages only).
  * Import once from main.tsx before App renders.
+ * Session-expiry copy is suppressed: Auth redirects to login with an inline notice instead.
  */
 import { createElement } from 'react';
 import { Copy } from 'lucide-react';
 import { toast } from 'sonner';
+import { SESSION_EXPIRED_API_DETAIL } from './data/apiClient';
 
 function plainMessage(message: Parameters<typeof toast.error>[0]): string {
   if (typeof message === 'string' || typeof message === 'number') return String(message);
   return '';
+}
+
+function isSessionExpiredToast(message: Parameters<typeof toast.error>[0]): boolean {
+  const text = plainMessage(message);
+  if (!text) return false;
+  return text === SESSION_EXPIRED_API_DETAIL || text === `Error: ${SESSION_EXPIRED_API_DETAIL}`;
 }
 
 const g = toast as unknown as { __openkmsSonnerErrorWrapped?: boolean };
@@ -16,6 +24,9 @@ if (!g.__openkmsSonnerErrorWrapped) {
   g.__openkmsSonnerErrorWrapped = true;
   const originalError = toast.error.bind(toast);
   toast.error = (message, data) => {
+    if (isSessionExpiredToast(message)) {
+      return '';
+    }
     const text = plainMessage(message);
     const hasAction = data != null && data.action !== undefined && data.action !== null;
     return originalError(message, {

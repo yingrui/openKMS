@@ -1,6 +1,5 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, startTransition } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
 import type { User } from 'oidc-client-ts';
 import { config, type AuthMode } from '../config';
@@ -406,7 +405,6 @@ function LocalAuthProvider({
   const [user, setUser] = useState<AuthUser | null>(null);
   const [authError, setAuthError] = useState<string | null>(null);
   const navigate = useNavigate();
-  const { t } = useTranslation('auth');
 
   const sessionRetry = useCallback(async (): Promise<boolean> => {
     try {
@@ -505,7 +503,7 @@ function LocalAuthProvider({
 
   const onApiSessionInvalid = useCallback(() => {
     setAuthError(null);
-    toast.error(t('sessionExpired'));
+    toast.dismiss();
     void (async () => {
       try {
         await fetch(`${config.apiUrl}/clear-session`, { method: 'POST', credentials: 'include' });
@@ -514,9 +512,9 @@ function LocalAuthProvider({
       }
       setUser(null);
       setIsAuthenticated(false);
-      navigate('/login', { replace: true });
+      navigate('/login?notice=session_expired', { replace: true });
     })();
-  }, [navigate, t]);
+  }, [navigate]);
 
   useEffect(() => {
     setSessionRetryProvider(sessionRetry);
@@ -581,7 +579,6 @@ function OidcAuthProvider({
   const [user, setUser] = useState<AuthUser | null>(null);
   const [authError, setAuthError] = useState<string | null>(null);
   const navigate = useNavigate();
-  const { t } = useTranslation('auth');
 
   const noopComplete = useCallback(async (accessToken: string) => {
     void accessToken;
@@ -765,9 +762,9 @@ function OidcAuthProvider({
 
   const onApiSessionInvalid = useCallback(() => {
     setAuthError(null);
-    toast.error(t('sessionExpired'));
+    toast.dismiss();
     void login();
-  }, [login, t]);
+  }, [login]);
 
   useEffect(() => {
     setSessionRetryProvider(sessionRetry);
