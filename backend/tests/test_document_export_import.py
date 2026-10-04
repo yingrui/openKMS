@@ -54,7 +54,7 @@ class TestProcessImportZip:
         })
 
         with patch("app.api.documents.upload_object") as mock_upload:
-            with patch("app.api.documents._maybe_upload_page_index_from_markdown"):
+            with patch("app.api.documents.maybe_upload_page_index_from_markdown"):
                 result_doc = _make_doc()
                 result_doc.markdown = "# Hello\nWorld"
                 result_doc.parsing_result = {"page_count": 1}
@@ -112,7 +112,7 @@ class TestProcessImportZip:
         })
 
         with patch("app.api.documents.upload_object"):
-            with patch("app.api.documents._maybe_upload_page_index_from_markdown"):
+            with patch("app.api.documents.maybe_upload_page_index_from_markdown"):
                 import asyncio
                 updated = asyncio.run(_process_import_zip(db, doc, raw))
 
@@ -237,7 +237,7 @@ class TestImportChunkedEndpoint:
             mock_settings.storage_enabled = True
             with patch("app.api.documents.upload_object"):
                 with patch(
-                    "app.api.documents._maybe_upload_page_index_from_markdown"
+                    "app.api.documents.maybe_upload_page_index_from_markdown"
                 ):
                     # Upload all chunks; only the last one processes
                     for idx, chunk in enumerate(chunks):

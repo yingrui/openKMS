@@ -80,17 +80,16 @@ Documents land under `documents/{file_hash}/` (legacy `{file_hash}/` still read 
 
 | Variable | Default | Purpose |
 |---|---|---|
-| `OPENKMS_AGENT_MODEL_ID` | unset | `api_models.id` for the LLM used by `POST /api/agent/.../messages`; falls back to the first available LLM |
+| `OPENKMS_AGENT_MODEL_ID` | unset | `api_models.id` for in-app agent LLM calls (knowledge map designer, ontology explore, Deep Agents) when `OPENKMS_DEEP_AGENT_MODEL_ID` is unset; else the first available LLM |
 | `OPENKMS_AGENT_MAX_OUTPUT_TOKENS` | `65537` | Upper bound on completion length passed as `max_tokens`; raise if your model supports more |
 | `OPENKMS_AGENT_RECURSION_LIMIT` | `200` | Max LangGraph supersteps per turn (each tool+model cycle uses steps; bulk get/upsert needs a high value) |
 | `OPENKMS_AGENT_LOG_LEVEL` | `INFO` | Project Deep Agents turn logs (`agent_turn_start` / `agent_turn_done`; **`agent_turn_failed` at ERROR**). See [Agents — Observability](openkms-agents.md#observability-without-langfuse). |
 | `OPENKMS_BACKEND_LOG_LEVEL` | — | Optional root log level for all `app.*` loggers when set |
 | `OPENKMS_AGENT_SANDBOX_TIMEOUT_SECONDS` | `60` | Python sandbox in project workspace (Deep Agents `execute`) |
-| `OPENKMS_AGENT_LLM_EXTRA_BODY` | unset | Optional JSON merged into OpenAI-compat **`extra_body`**. Used independently by **Wiki Copilot / Knowledge Map Designer** (`agent.shared` wrappers) and **Deep Agents** (`deep_agents.llm_chat`). **enable_thinking** is always forced to **false** after merge — these paths do not support thinking / full **`reasoning_content`** round-trip beyond what the shim echoes. Shared primitives live in **`app.services.openai_compat`**. |
-| `OPENKMS_AGENT_LLM_REASONING_CONTENT_SHIM` | unset | **auto**: inject **`reasoning_content`** on assistant messages for every **base_url** except **`api.openai.com`** (covers generic OpenAI-compat proxies, including DeepSeek). Same env is read by Wiki/Designer and Deep Agents façades separately. **`true`** / **`1`**: always inject. **`false`** / **`0`**: never inject. Legacy alias: **`OPENKMS_AGENT_DASHSCOPE_REASONING_SHIM`**. |
-| `OPENKMS_AGENT_WIKI_MAX_CONTEXT_MESSAGES` | `120` | Max prior `agent_messages` rows loaded into one embedded wiki agent turn (tail). |
+| `OPENKMS_AGENT_LLM_EXTRA_BODY` | unset | Optional JSON merged into OpenAI-compat **`extra_body`**. Used independently by **Knowledge Map Designer** (`agent.shared` wrappers) and **Deep Agents** (`deep_agents.llm_chat`). **enable_thinking** is always forced to **false** after merge — these paths do not support thinking / full **`reasoning_content`** round-trip beyond what the shim echoes. Shared primitives live in **`app.services.openai_compat`**. |
+| `OPENKMS_AGENT_LLM_REASONING_CONTENT_SHIM` | unset | **auto**: inject **`reasoning_content`** on assistant messages for every **base_url** except **`api.openai.com`** (covers generic OpenAI-compat proxies, including DeepSeek). Same env is read by Designer and Deep Agents façades separately. **`true`** / **`1`**: always inject. **`false`** / **`0`**: never inject. Legacy alias: **`OPENKMS_AGENT_DASHSCOPE_REASONING_SHIM`**. |
 | `OPENKMS_AGENT_KB_QA_MAX_CONTEXT_MESSAGES` | `120` | Max prior messages included in **`conversation_history`** for one KB / evaluation / FAQ-assist qa-agent call. |
-| `LANGFUSE_SECRET_KEY` | unset | With **`LANGFUSE_PUBLIC_KEY`** and **`LANGFUSE_BASE_URL`**, enables Langfuse on **Deep Agents** and the embedded wiki agent (same keys as qa-agent). |
+| `LANGFUSE_SECRET_KEY` | unset | With **`LANGFUSE_PUBLIC_KEY`** and **`LANGFUSE_BASE_URL`**, enables Langfuse on **Deep Agents** (same keys as qa-agent). |
 | `LANGFUSE_PUBLIC_KEY` | unset | Langfuse public key (shared by backend agents + qa-agent when both run in the same environment). |
 | `LANGFUSE_BASE_URL` / `LANGFUSE_HOST` | unset | Langfuse server URL. **Required** for tracing (same rule as qa-agent); if unset, no traces are sent. |
 | `LANGFUSE_TRACE_STREAMING` | `true` | Attach Langfuse callback to **streaming** agent turns when tracing is enabled; set **false** to trace only non-streaming if OTel noise. |
@@ -101,7 +100,7 @@ Documents land under `documents/{file_hash}/` (legacy `{file_hash}/` still read 
 
 **LLM:** When **`OPENKMS_LLM_MODEL_*`** are unset, qa-agent calls **`GET /internal-api/models/llm-defaults`** (internal service client only — same as openkms-cli on **`document-parse-defaults`**). If qa-agent uses a distinct IdP client id, add it to backend **`OPENKMS_INTERNAL_SERVICE_CLIENT_IDS`**. Local mode: **`OPENKMS_QA_AGENT_BASIC_*`** on qa-agent (and backend). OIDC: **`OPENKMS_QA_AGENT_OIDC_CLIENT_*`**. Backend allowlist: **`OPENKMS_INTERNAL_SERVICE_CLIENT_IDS`**. Docker Compose sets app service env via **`environment`** only; override **`${…}`** substitution with **`docker/.env`** (see **`docker/.env.example`**, **`docker/README.md`**).
 
-Same OpenAI-compat **thinking** handling as Wiki Copilot: optional JSON **`extra_body`**, then **`enable_thinking: false`** is always applied; **`reasoning_content`** is injected on outgoing assistant rows when the shim is on (see wiki row above). You can set either the **`OPENKMS_LLM_*`** names below or reuse the **`OPENKMS_AGENT_*`** names so one block of env works for both.
+Same OpenAI-compat **thinking** handling as the backend in-app agents: optional JSON **`extra_body`**, then **`enable_thinking: false`** is always applied; **`reasoning_content`** is injected on outgoing assistant rows when the shim is on (see `OPENKMS_AGENT_LLM_*` rows above). You can set either the **`OPENKMS_LLM_*`** names below or reuse the **`OPENKMS_AGENT_*`** names so one block of env works for both.
 
 | Variable | Default | Purpose |
 |---|---|---|
@@ -162,6 +161,6 @@ Set on **`backend/.env`**. The worker injects **`OPENKMS_CLI_*`** into every **o
 | `OPENKMS_ENFORCE_GROUP_DATA_SCOPES` | (alias) | Same as `OPENKMS_ENFORCE_RESOURCE_ACL` |
 | `OPENKMS_DATASOURCE_ENCRYPTION_KEY` | unset | Fernet key (base64) used to encrypt `data_sources` credentials, **connector** secrets (`connectors.secrets_encrypted`), and **Kubernetes** kubeconfigs (`kubernetes_clusters.kubeconfig_encrypted`); required before storing those values |
 
-## Cursor / contributor rules
+## Contributor / AI agent rules
 
-`.cursor/rules/` — see [Doc conventions for AI agents](../agents.md) for the live list (writing style, alembic, docs-before-commit, project overview).
+`AGENTS.md` at the repo root (coding behavior, docs-before-commit, Alembic, frontend verification). Doc editing conventions: [Doc conventions for AI agents](../agents.md).

@@ -10,7 +10,10 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.auth import get_jwt_payload, require_internal_client
-from app.api.documents import _maybe_upload_page_index_from_markdown, _next_document_version_number
+from app.services.documents.document_page_index import (
+    maybe_upload_page_index_from_markdown,
+    next_document_version_number,
+)
 from app.database import get_db
 from app.models.document import Document
 from app.models.document_version import DocumentVersion
@@ -76,7 +79,7 @@ async def internal_update_document_markdown(
     doc.markdown = body.markdown
     await db.commit()
     await db.refresh(doc)
-    _maybe_upload_page_index_from_markdown(doc, body.markdown)
+    maybe_upload_page_index_from_markdown(doc, body.markdown)
     return DocumentResponse.model_validate(doc)
 
 
@@ -104,7 +107,7 @@ async def internal_create_document_version(
 ):
     """Snapshot current markdown and metadata after pipeline (no channel write ACL)."""
     doc = await _get_document_or_404(db, document_id)
-    vn = await _next_document_version_number(db, document_id)
+    vn = await next_document_version_number(db, document_id)
     sub = claims.get("sub")
     uname = claims.get("preferred_username") or claims.get("name")
     dv = DocumentVersion(

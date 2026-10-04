@@ -1,4 +1,7 @@
-"""KB Q&A chat threads: reuse ``agent_conversations`` / ``agent_messages`` with ``surface=knowledge_base``."""
+"""KB-scoped qa-agent chat threads on ``agent_conversations`` / ``agent_messages``.
+
+One router per surface: KB Q&A (``knowledge_base``) and FAQ assist (``kb_faq``).
+"""
 
 from __future__ import annotations
 
@@ -47,8 +50,6 @@ from app.services.permissions.permission_catalog import PERM_KB_READ
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter(tags=["knowledge-bases"])
-
 KB_READ_DEPS = [Depends(require_permission(PERM_KB_READ))]
 
 KB_QA_SOURCES_KEY = "kb_qa_sources_v1"
@@ -67,12 +68,12 @@ def _conv_to_out(c: AgentConversation) -> AgentConversationResponse:
 
 
 async def _get_kb_conversation(
-    db: AsyncSession, conversation_id: str, sub: str, kb_id: str
+    db: AsyncSession, conversation_id: str, sub: str, kb_id: str, surface: str
 ) -> AgentConversation:
     c = await db.get(AgentConversation, conversation_id)
     if not c or c.user_sub != sub:
         raise HTTPException(status_code=404, detail="Conversation not found")
-    if c.surface != "knowledge_base":
+    if c.surface != surface:
         raise HTTPException(status_code=404, detail="Conversation not found")
     ctx_kb = (c.context or {}).get("knowledge_base_id")
     if ctx_kb != kb_id:
@@ -125,171 +126,6 @@ def _parse_sources(raw: Any) -> list[SearchResult]:
             except Exception:  # noqa: BLE001
                 continue
     return out
-
-
-@router.get(
-    "/{kb_id}/agent-conversations",
-    response_model=list[AgentConversationResponse],
-    dependencies=KB_READ_DEPS,
-)
-async def list_kb_agent_conversations(
-    kb_id: str,
-    request: Request,
-    limit: int = Query(default=50, ge=1, le=100),
-    kb: KnowledgeBase = Depends(get_kb_scoped),
-    db: AsyncSession = Depends(get_db),
-):
-    _ = kb
-    sub = get_jwt_sub(request)
-    r = await db.execute(
-        select(AgentConversation)
-        .where(
-            AgentConversation.user_sub == sub,
-            AgentConversation.surface == "knowledge_base",
-            AgentConversation.context.contains({"knowledge_base_id": kb_id}),
-        )
-        .order_by(AgentConversation.updated_at.desc())
-        .limit(limit)
-    )
-    return [_conv_to_out(c) for c in r.scalars().all()]
-
-
-@router.post(
-    "/{kb_id}/agent-conversations",
-    response_model=AgentConversationResponse,
-    status_code=201,
-    dependencies=KB_READ_DEPS,
-)
-async def create_kb_agent_conversation(
-    kb_id: str,
-    request: Request,
-    body: KbAgentConversationCreate,
-    kb: KnowledgeBase = Depends(get_kb_scoped),
-    db: AsyncSession = Depends(get_db),
-):
-    _ = kb
-    sub = get_jwt_sub(request)
-    c = AgentConversation(
-        id=str(uuid.uuid4()),
-        user_sub=sub,
-        surface="knowledge_base",
-        context={"knowledge_base_id": kb_id},
-        title=body.title,
-    )
-    db.add(c)
-    await db.flush()
-    await db.refresh(c)
-    return _conv_to_out(c)
-
-
-@router.delete(
-    "/{kb_id}/agent-conversations/{conversation_id}",
-    status_code=204,
-    dependencies=KB_READ_DEPS,
-)
-async def delete_kb_agent_conversation(
-    kb_id: str,
-    conversation_id: str,
-    request: Request,
-    kb: KnowledgeBase = Depends(get_kb_scoped),
-    db: AsyncSession = Depends(get_db),
-):
-    _ = kb
-    c = await _get_kb_conversation(db, conversation_id, get_jwt_sub(request), kb_id)
-    await db.delete(c)
-    await db.flush()
-
-
-@router.patch(
-    "/{kb_id}/agent-conversations/{conversation_id}",
-    response_model=AgentConversationResponse,
-    dependencies=KB_READ_DEPS,
-)
-async def patch_kb_agent_conversation(
-    kb_id: str,
-    conversation_id: str,
-    request: Request,
-    body: KbAgentConversationPatch,
-    kb: KnowledgeBase = Depends(get_kb_scoped),
-    db: AsyncSession = Depends(get_db),
-):
-    _ = kb
-    c = await _get_kb_conversation(db, conversation_id, get_jwt_sub(request), kb_id)
-    if body.title is not None:
-        c.title = body.title
-    await db.flush()
-    await db.refresh(c)
-    return _conv_to_out(c)
-
-
-@router.get(
-    "/{kb_id}/agent-conversations/{conversation_id}/messages",
-    response_model=AgentMessageListResponse,
-    dependencies=KB_READ_DEPS,
-)
-async def list_kb_agent_messages(
-    kb_id: str,
-    conversation_id: str,
-    request: Request,
-    limit: int = Query(default=100, ge=1, le=500),
-    offset: int = Query(default=0, ge=0),
-    kb: KnowledgeBase = Depends(get_kb_scoped),
-    db: AsyncSession = Depends(get_db),
-):
-    _ = kb
-    await _get_kb_conversation(db, conversation_id, get_jwt_sub(request), kb_id)
-    total = (
-        await db.execute(
-            select(func.count()).select_from(AgentMessage).where(AgentMessage.conversation_id == conversation_id)
-        )
-    ).scalar_one()
-    total_i = int(total or 0)
-    r = await db.execute(
-        select(AgentMessage)
-        .where(AgentMessage.conversation_id == conversation_id)
-        .order_by(AgentMessage.created_at, AgentMessage.id)
-        .offset(offset)
-        .limit(limit)
-    )
-    rows = list(r.scalars().all())
-    return AgentMessageListResponse(
-        items=[_msg_to_out(m) for m in rows],
-        total=total_i,
-        limit=limit,
-        offset=offset,
-    )
-
-
-@router.delete(
-    "/{kb_id}/agent-conversations/{conversation_id}/messages/from/{message_id}",
-    dependencies=KB_READ_DEPS,
-)
-async def delete_kb_agent_messages_from(
-    kb_id: str,
-    conversation_id: str,
-    message_id: str,
-    request: Request,
-    kb: KnowledgeBase = Depends(get_kb_scoped),
-    db: AsyncSession = Depends(get_db),
-):
-    _ = kb
-    c = await _get_kb_conversation(db, conversation_id, get_jwt_sub(request), kb_id)
-    r = await db.execute(
-        select(AgentMessage.id)
-        .where(AgentMessage.conversation_id == conversation_id)
-        .order_by(AgentMessage.created_at, AgentMessage.id)
-    )
-    ordered_ids = [row[0] for row in r.all()]
-    if message_id not in ordered_ids:
-        raise HTTPException(status_code=404, detail="Message not found in this conversation")
-    from_idx = ordered_ids.index(message_id)
-    to_delete = ordered_ids[from_idx:]
-    res = await db.execute(delete(AgentMessage).where(AgentMessage.id.in_(to_delete)))
-    n = int(res.rowcount or 0)
-    if n:
-        _bump_conversation_timestamp(c)
-    await db.flush()
-    return {"deleted": n}
 
 
 async def _run_kb_ask_non_stream(
@@ -581,83 +417,251 @@ async def _ndjson_kb_qa_stream_persist(
     )
 
 
-@router.post(
-    "/{kb_id}/agent-conversations/{conversation_id}/messages",
-    dependencies=KB_READ_DEPS,
-)
-async def post_kb_agent_message(
-    kb_id: str,
-    conversation_id: str,
-    request: Request,
-    body: KbAgentMessageCreate,
-    token: str = Depends(require_auth),
-    kb: KnowledgeBase = Depends(get_kb_scoped),
-    db: AsyncSession = Depends(get_db),
-):
-    c = await _get_kb_conversation(db, conversation_id, get_jwt_sub(request), kb_id)
-    if not kb.agent_url:
-        raise HTTPException(status_code=400, detail="No agent URL configured for this knowledge base")
+def build_kb_conversation_router(surface: str, path_segment: str) -> APIRouter:
+    router = APIRouter(tags=["knowledge-bases"])
 
-    r = await db.execute(
-        select(AgentMessage)
-        .where(AgentMessage.conversation_id == c.id)
-        .order_by(AgentMessage.created_at)
+    @router.get(
+        f"/{{kb_id}}/{path_segment}",
+        response_model=list[AgentConversationResponse],
+        dependencies=KB_READ_DEPS,
     )
-    prior_rows = list(r.scalars().all())
-    prior_for_context = _tail_rows_for_kb_agent_context(prior_rows)
+    async def list_kb_agent_conversations(
+        kb_id: str,
+        request: Request,
+        limit: int = Query(default=50, ge=1, le=100),
+        kb: KnowledgeBase = Depends(get_kb_scoped),
+        db: AsyncSession = Depends(get_db),
+    ):
+        _ = kb
+        sub = get_jwt_sub(request)
+        r = await db.execute(
+            select(AgentConversation)
+            .where(
+                AgentConversation.user_sub == sub,
+                AgentConversation.surface == surface,
+                AgentConversation.context.contains({"knowledge_base_id": kb_id}),
+            )
+            .order_by(AgentConversation.updated_at.desc())
+            .limit(limit)
+        )
+        return [_conv_to_out(c) for c in r.scalars().all()]
 
-    user_m = AgentMessage(
-        id=new_id(),
-        conversation_id=c.id,
-        role="user",
-        content=body.content,
+    @router.post(
+        f"/{{kb_id}}/{path_segment}",
+        response_model=AgentConversationResponse,
+        status_code=201,
+        dependencies=KB_READ_DEPS,
     )
-    db.add(user_m)
-    await db.flush()
-    await db.refresh(user_m)
+    async def create_kb_agent_conversation(
+        kb_id: str,
+        request: Request,
+        body: KbAgentConversationCreate,
+        kb: KnowledgeBase = Depends(get_kb_scoped),
+        db: AsyncSession = Depends(get_db),
+    ):
+        _ = kb
+        sub = get_jwt_sub(request)
+        c = AgentConversation(
+            id=str(uuid.uuid4()),
+            user_sub=sub,
+            surface=surface,
+            context={"knowledge_base_id": kb_id},
+            title=body.title,
+        )
+        db.add(c)
+        await db.flush()
+        await db.refresh(c)
+        return _conv_to_out(c)
 
-    all_rows = prior_for_context + [user_m]
-    history = _history_before_new_user(all_rows)
-    question = body.content
+    @router.delete(
+        f"/{{kb_id}}/{path_segment}/{{conversation_id}}",
+        status_code=204,
+        dependencies=KB_READ_DEPS,
+    )
+    async def delete_kb_agent_conversation(
+        kb_id: str,
+        conversation_id: str,
+        request: Request,
+        kb: KnowledgeBase = Depends(get_kb_scoped),
+        db: AsyncSession = Depends(get_db),
+    ):
+        _ = kb
+        c = await _get_kb_conversation(db, conversation_id, get_jwt_sub(request), kb_id, surface)
+        await db.delete(c)
+        await db.flush()
 
-    await _maybe_set_conversation_title_from_first_user_message(db, c, body.content)
-    _bump_conversation_timestamp(c)
-    await db.flush()
+    @router.patch(
+        f"/{{kb_id}}/{path_segment}/{{conversation_id}}",
+        response_model=AgentConversationResponse,
+        dependencies=KB_READ_DEPS,
+    )
+    async def patch_kb_agent_conversation(
+        kb_id: str,
+        conversation_id: str,
+        request: Request,
+        body: KbAgentConversationPatch,
+        kb: KnowledgeBase = Depends(get_kb_scoped),
+        db: AsyncSession = Depends(get_db),
+    ):
+        _ = kb
+        c = await _get_kb_conversation(db, conversation_id, get_jwt_sub(request), kb_id, surface)
+        if body.title is not None:
+            c.title = body.title
+        await db.flush()
+        await db.refresh(c)
+        return _conv_to_out(c)
 
-    if body.stream:
-        return StreamingResponse(
-            _ndjson_kb_qa_stream_persist(
-                db,
-                kb,
-                kb_id,
-                c,
-                user_m,
-                token,
-                body.session_id,
-                question,
-                history,
-            ),
-            media_type="application/x-ndjson",
-            headers={
-                "Cache-Control": "no-cache",
-                "Connection": "keep-alive",
-                "X-Accel-Buffering": "no",
-            },
+    @router.get(
+        f"/{{kb_id}}/{path_segment}/{{conversation_id}}/messages",
+        response_model=AgentMessageListResponse,
+        dependencies=KB_READ_DEPS,
+    )
+    async def list_kb_agent_messages(
+        kb_id: str,
+        conversation_id: str,
+        request: Request,
+        limit: int = Query(default=100, ge=1, le=500),
+        offset: int = Query(default=0, ge=0),
+        kb: KnowledgeBase = Depends(get_kb_scoped),
+        db: AsyncSession = Depends(get_db),
+    ):
+        _ = kb
+        await _get_kb_conversation(db, conversation_id, get_jwt_sub(request), kb_id, surface)
+        total = (
+            await db.execute(
+                select(func.count()).select_from(AgentMessage).where(AgentMessage.conversation_id == conversation_id)
+            )
+        ).scalar_one()
+        total_i = int(total or 0)
+        r = await db.execute(
+            select(AgentMessage)
+            .where(AgentMessage.conversation_id == conversation_id)
+            .order_by(AgentMessage.created_at, AgentMessage.id)
+            .offset(offset)
+            .limit(limit)
+        )
+        rows = list(r.scalars().all())
+        return AgentMessageListResponse(
+            items=[_msg_to_out(m) for m in rows],
+            total=total_i,
+            limit=limit,
+            offset=offset,
         )
 
-    answer, sources = await _run_kb_ask_non_stream(kb, kb_id, question, history, token, body.session_id)
-    tool_payload: dict[str, Any] = {}
-    if sources:
-        tool_payload[KB_QA_SOURCES_KEY] = _sources_to_json(sources)
-    asst_m = AgentMessage(
-        id=new_id(),
-        conversation_id=c.id,
-        role="assistant",
-        content=answer,
-        tool_calls=tool_payload or None,
+    @router.delete(
+        f"/{{kb_id}}/{path_segment}/{{conversation_id}}/messages/from/{{message_id}}",
+        dependencies=KB_READ_DEPS,
     )
-    db.add(asst_m)
-    _bump_conversation_timestamp(c)
-    await db.flush()
-    await db.refresh(asst_m)
-    return AgentMessagePostResponse(message=_msg_to_out(user_m), assistant=_msg_to_out(asst_m))
+    async def delete_kb_agent_messages_from(
+        kb_id: str,
+        conversation_id: str,
+        message_id: str,
+        request: Request,
+        kb: KnowledgeBase = Depends(get_kb_scoped),
+        db: AsyncSession = Depends(get_db),
+    ):
+        _ = kb
+        c = await _get_kb_conversation(db, conversation_id, get_jwt_sub(request), kb_id, surface)
+        r = await db.execute(
+            select(AgentMessage.id)
+            .where(AgentMessage.conversation_id == conversation_id)
+            .order_by(AgentMessage.created_at, AgentMessage.id)
+        )
+        ordered_ids = [row[0] for row in r.all()]
+        if message_id not in ordered_ids:
+            raise HTTPException(status_code=404, detail="Message not found in this conversation")
+        from_idx = ordered_ids.index(message_id)
+        to_delete = ordered_ids[from_idx:]
+        res = await db.execute(delete(AgentMessage).where(AgentMessage.id.in_(to_delete)))
+        n = int(res.rowcount or 0)
+        if n:
+            _bump_conversation_timestamp(c)
+        await db.flush()
+        return {"deleted": n}
+
+    @router.post(
+        f"/{{kb_id}}/{path_segment}/{{conversation_id}}/messages",
+        dependencies=KB_READ_DEPS,
+    )
+    async def post_kb_agent_message(
+        kb_id: str,
+        conversation_id: str,
+        request: Request,
+        body: KbAgentMessageCreate,
+        token: str = Depends(require_auth),
+        kb: KnowledgeBase = Depends(get_kb_scoped),
+        db: AsyncSession = Depends(get_db),
+    ):
+        c = await _get_kb_conversation(db, conversation_id, get_jwt_sub(request), kb_id, surface)
+        if not kb.agent_url:
+            raise HTTPException(status_code=400, detail="No agent URL configured for this knowledge base")
+
+        r = await db.execute(
+            select(AgentMessage)
+            .where(AgentMessage.conversation_id == c.id)
+            .order_by(AgentMessage.created_at)
+        )
+        prior_rows = list(r.scalars().all())
+        prior_for_context = _tail_rows_for_kb_agent_context(prior_rows)
+
+        user_m = AgentMessage(
+            id=new_id(),
+            conversation_id=c.id,
+            role="user",
+            content=body.content,
+        )
+        db.add(user_m)
+        await db.flush()
+        await db.refresh(user_m)
+
+        all_rows = prior_for_context + [user_m]
+        history = _history_before_new_user(all_rows)
+        question = body.content
+
+        await _maybe_set_conversation_title_from_first_user_message(db, c, body.content)
+        _bump_conversation_timestamp(c)
+        await db.flush()
+
+        if body.stream:
+            return StreamingResponse(
+                _ndjson_kb_qa_stream_persist(
+                    db,
+                    kb,
+                    kb_id,
+                    c,
+                    user_m,
+                    token,
+                    body.session_id,
+                    question,
+                    history,
+                ),
+                media_type="application/x-ndjson",
+                headers={
+                    "Cache-Control": "no-cache",
+                    "Connection": "keep-alive",
+                    "X-Accel-Buffering": "no",
+                },
+            )
+
+        answer, sources = await _run_kb_ask_non_stream(kb, kb_id, question, history, token, body.session_id)
+        tool_payload: dict[str, Any] = {}
+        if sources:
+            tool_payload[KB_QA_SOURCES_KEY] = _sources_to_json(sources)
+        asst_m = AgentMessage(
+            id=new_id(),
+            conversation_id=c.id,
+            role="assistant",
+            content=answer,
+            tool_calls=tool_payload or None,
+        )
+        db.add(asst_m)
+        _bump_conversation_timestamp(c)
+        await db.flush()
+        await db.refresh(asst_m)
+        return AgentMessagePostResponse(message=_msg_to_out(user_m), assistant=_msg_to_out(asst_m))
+
+    return router
+
+
+router = build_kb_conversation_router("knowledge_base", "agent-conversations")
+faq_router = build_kb_conversation_router("kb_faq", "faq-assist-conversations")

@@ -56,7 +56,7 @@ flowchart TB
 | **Worker** | procrastinate worker 执行延迟任务（文档解析、知识库索引等），拉起 **openkms-cli**；在 PostgreSQL 中更新状态。 |
 | **LLM 提供商** | 外部 OpenAI 兼容 API，配置为 **api_providers** / **api_models** — 元数据抽取、FAQ 生成、embedding、模型 playground。 |
 | **QA Agent** | 按知识库配置的独立 FastAPI + LangGraph 服务；仅经后端 API 检索（不直连数据库）。 |
-| **Wiki Copilot** | **主** API 进程内 LangGraph 代理（`/api/agent/*`），供维基 UI 使用 — 页面搜索、关联文档、可选 upsert。与 QA Agent 不同。详见 [wiki_agent_prototype.md](./wiki_agent_prototype.md)。 |
+| **应用内 Agent** | 运行在**主** API 进程内：Deep Agents [项目工作区](features/openkms-agents.md)（`backend/app/services/deep_agents/`）与知识地图设计器。与 QA Agent 不同。 |
 
 ## 前端结构
 
@@ -180,8 +180,8 @@ backend/
 │   ├── models/                 # document、wiki、knowledge_base、evaluation 等
 │   ├── schemas/                # 与 api 领域配对
 │   ├── services/
-│   │   ├── agent/, evaluation/, connector_sync/, connector_search/, …
-│   │   └── *.py                # kb_search、wiki_vault_import、permission_*、守卫、storage
+│   │   ├── acl/, documents/, knowledge_bases/, wiki/, ontology/, deep_agents/, connectors/, …  # 每个领域一个包
+│   │   └── *.py                # 横切：storage、feature_toggles、chunked_upload、openkms_cli_subprocess
 │   ├── jobs/tasks.py
 │   ├── i18n/
 │   └── middleware/
@@ -194,6 +194,8 @@ backend/
 
 - **新 HTTP 功能** — 增加 `api/<领域>.py` 路由、`schemas/<领域>.py`、新表则改 `models/`（Alembic 迁移），逻辑放在 `services/`；在 `main.py` 注册路由。
 - **权限** — 路由上 `require_permission`；通道/文档/文章用 `context_guard` / `resource_acl_service` 做资源 ACL；目录在 `services/permission_*`。
+- **分层** — `services/`、`jobs/`、`schemas/`、`models/` 不得 import `app.api`；共享逻辑放在 `services/`，由 API 模块调用。
+- **Channel 树** — 文档、文章、媒体 channel 路由由 `api/channel_tree_router.py`（`ChannelTreeSpec`）统一构建；前端共用 `ChannelTreeManager`、`ChannelIndexPage`、`createChannelTreeContext` 与 `createChannelTreeApi`。
 - **长任务** — API 中 defer 到 `jobs/tasks.py`；worker 按需拉起 openkms-cli 子进程。
 - **仅内部** — CLI 默认值与凭据在 `api/internal/`（不对浏览器暴露）。
 - **去哪查** — 路由列表 → `app/api/`；表结构 → `app/models/`；副作用 → `app/services/`；异步任务 → `app/jobs/tasks.py`。
@@ -249,7 +251,7 @@ qa-agent/
 - **目的**：独立 RAG + 本体服务，供知识库问答；经 KB 的 `agent_url` 配置
 - **架构**：LangGraph：`retrieve` → `generate` ⇄ `tools`（本体）。RAG 经 `POST /api/knowledge-bases/{id}/search`；本体经 object-types、link-types、ontology/explore（Cypher）。不直连数据库。
 - **本体技能**：覆盖类问题先 `get_ontology_schema_tool` 再 `run_cypher_tool` 查 Neo4j。
-- **集成**：后端代理 `POST …/ask` 与 **`…/ask/stream`** 到 qa-agent，转发用户 token；持久化线程经 **`agent-conversations/.../messages`** 存 PostgreSQL 并转发 NDJSON。SPA 全页 Q&A 与 Wiki Copilot 共用 **`delta` / `tool_*` / `done`** 形状。
+- **集成**：后端代理 `POST …/ask` 与 **`…/ask/stream`** 到 qa-agent，转发用户 token；持久化线程经 **`agent-conversations/.../messages`** 存 PostgreSQL 并转发 NDJSON。SPA 全页 Q&A 与项目 Agent 共用 **`delta` / `tool_*` / `done`** 形状。
 - **端口**：默认 8103
 
 ## 数据流
@@ -390,4 +392,4 @@ flowchart LR
 | Frontend | `config/index.ts` — `apiUrl`、`authMode` 回退、`oidc`（`VITE_OIDC_*`）；运行时来自 public-config |
 | Vite dev | 代理 **`/api`**、**`/internal-api`**、session 路由 → **8102**；**`/buckets/openkms`** → MinIO **9000** |
 | Alembic | `alembic.ini` — `settings.database_url_sync` |
-| Cursor | `.cursor/rules/` — 项目规则 |
+| AI agents | 仓库根目录 `AGENTS.md` — 编码、提交前文档、Alembic、前端验证规则 |

@@ -68,7 +68,7 @@ Optimize retrieval alone and the system empties; push contribution alone without
 |--------|-------------------|-----------|----------------------------------------|
 | Find | Can’t find it | Does it exist, where, which channel | Global search, channels and lists, knowledge map entry, hybrid retrieval |
 | Understand | Don’t know context | Terms, domain structure, onboarding path | Wiki, articles, glossaries, knowledge map, ontology browse |
-| Ask | No evidence | Q&A with permissions and provenance | Knowledge base Q&A, Wiki Copilot |
+| Ask | No evidence | Q&A with permissions and provenance | Knowledge base Q&A |
 | Capture | No time / private answers | Experience and conclusions in maintainable text | Wiki, articles, editable Markdown after doc parse; **KB Q&A → Save as FAQ**; sharing and ACL |
 | Correct | No evidence | Human fallback when machine misreads; keep versions | Document/article versions, metadata edit |
 | Relate | Stale without notice | Supersedes, amends, see-also relationships | Document lineage and lifecycle, knowledge map, ontology |
@@ -154,7 +154,7 @@ Two **separate** product lanes (do not merge into one “global chat”):
 | Lane | Purpose | Examples in openKMS |
 |------|---------|---------------------|
 | **KB Q&A delivery** | Per–knowledge-base **retrieval + answer service** for people, apps, and external agents — **Agent-ready** (permission-aware, sourced) | [`qa-agent`](features/knowledge-bases.md) via `kb.agent_url`; `POST …/search`, `…/ask`, `…/retrieve`; API keys, [openkms-skill](features/openkms-skill.md). SPA full-page Q&A is an **operator/consumer UI** for that service, not an in-app maintenance copilot. |
-| **In-app agents** | **Build and maintain** corpus inside openKMS (draft, curate, research workflows) | [Wiki Copilot](features/wiki-spaces.md), knowledge map HTML designer, [Deep Agents project workspaces](features/openkms-agents.md) |
+| **In-app agents** | **Build and maintain** corpus inside openKMS (draft, curate, research workflows) | Knowledge map HTML designer, [Deep Agents project workspaces](features/openkms-agents.md) |
 
 **Direction (delivery):** Unified index, hybrid search, lifecycle-aware corpus, provenance on answers, stable HTTP API for embedders and integrators.
 
@@ -163,4 +163,4 @@ Two **separate** product lanes (do not merge into one “global chat”):
 **Product gaps:**
 
 - **Delivery** — Connector sync into governed datasets; broader embed/integration patterns ([Connectors](development_plan.md#connectors-high)).
-- **In-app** — [In-product agents](development_plan.md#in-product-agents-high): per-surface copilots exist; **eval assist** is API-only; **no unified maintenance assistant** across wiki / documents / map (excludes merging KB Q&A delivery into that shell).
+- **In-app** — [In-product agents](development_plan.md#in-product-agents-high): project agents and the knowledge map designer exist; **eval assist** is API-only; **no unified maintenance assistant** across wiki / documents / map (excludes merging KB Q&A delivery into that shell).

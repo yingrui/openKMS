@@ -8,14 +8,13 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.auth import require_any_permission, require_auth
 from app.services.permissions.permission_catalog import PERM_CONSOLE_OBJECT_TYPES, PERM_ONTOLOGY_WRITE
-from app.api.datasets import fetch_dataset_rows, get_dataset_row_count
+from app.services.ontology.dataset_tables import dataset_display_name, fetch_dataset_rows, get_dataset_row_count
 from app.database import get_db
 from app.services.acl.data_resource_policy import object_type_visible
 from app.services.acl.data_scope import bootstrap_owner_acl
 from app.services.ontology.ontology_type_scope import require_object_type_permission
 from app.services.acl.resource_acl_constants import PERM_READ, PERM_WRITE, RT_OBJECT_TYPE
 from app.models.data_source import DataSource
-from app.models.dataset import Dataset
 from app.models.link_instance import LinkInstance
 from app.services.ontology.neo4j_async import open_neo4j_driver, run_with_neo4j_driver
 from app.models.object_instance import ObjectInstance
@@ -135,31 +134,6 @@ def _prop_defs_to_dicts(properties: list) -> list[dict]:
 
 # --- Admin CRUD ---
 
-def _neo4j_safe_label(name: str) -> str:
-    return neo4j_safe_label(name)
-
-
-def _resolve_neo4j_id_column_for_row(obj_type: ObjectType, sample_row: dict) -> str:
-    return resolve_neo4j_id_column_for_row(obj_type, sample_row)
-
-
-def _merge_object_row_to_neo4j(session, label: str, id_col: str, row: dict) -> int:
-    return merge_object_row_to_neo4j(session, label, id_col, row)
-
-
-async def _dataset_name(db: AsyncSession, dataset_id: str | None) -> str | None:
-    if not dataset_id:
-        return None
-    ds = await db.get(Dataset, dataset_id)
-    if not ds:
-        return None
-    return ds.display_name or f"{ds.schema_name}.{ds.table_name}"
-
-
-async def _get_first_neo4j_datasource(db: AsyncSession) -> DataSource | None:
-    return await get_first_neo4j_datasource(db)
-
-
 def _neo4j_node_count(driver, label: str) -> int:
     """Return count of nodes with the given label in Neo4j."""
     with driver.session() as session:
@@ -185,7 +159,7 @@ async def _neo4j_node_counts_for_types(ds: DataSource, type_names: list[str]) ->
     def _run(driver) -> dict[str, int | None]:
         out: dict[str, int | None] = {}
         for name in type_names:
-            label = _neo4j_safe_label(name)
+            label = neo4j_safe_label(name)
             try:
                 out[label] = _neo4j_node_count(driver, label)
             except Exception:
@@ -214,7 +188,7 @@ async def list_object_types(
         types = [t for t in types if await object_type_visible(db, p, sub, t)]
     neo4j_counts: dict[str, int | None] = {}
     if count_from_neo4j:
-        neo4j_ds = await _get_first_neo4j_datasource(db)
+        neo4j_ds = await get_first_neo4j_datasource(db)
         if neo4j_ds:
             try:
                 neo4j_counts = await _neo4j_node_counts_for_types(neo4j_ds, [t.name for t in types])
@@ -222,13 +196,13 @@ async def list_object_types(
                 neo4j_counts = {}
     items = []
     for t in types:
-        label = _neo4j_safe_label(t.name)
+        label = neo4j_safe_label(t.name)
         neo4j_count = neo4j_counts.get(label)
         if neo4j_count is not None:
             count = neo4j_count
         else:
             count = await _resolve_instance_count(db, t)
-        ds_name = await _dataset_name(db, t.dataset_id)
+        ds_name = await dataset_display_name(db, t.dataset_id)
         items.append(_to_response(t, count, ds_name))
     return ObjectTypeListResponse(items=items, total=len(items))
 
@@ -267,7 +241,7 @@ async def create_object_type(
     await db.commit()
     await db.refresh(obj_type)
     count = await _resolve_instance_count(db, obj_type)
-    ds_name = await _dataset_name(db, obj_type.dataset_id)
+    ds_name = await dataset_display_name(db, obj_type.dataset_id)
     return _to_response(obj_type, count, ds_name)
 
 
@@ -286,21 +260,21 @@ async def get_object_type(
     if isinstance(sub, str) and not await object_type_visible(db, p, sub, obj_type):
         raise HTTPException(status_code=404, detail="Object type not found")
     if count_from_neo4j:
-        neo4j_ds = await _get_first_neo4j_datasource(db)
+        neo4j_ds = await get_first_neo4j_datasource(db)
         if neo4j_ds:
             try:
-                label = _neo4j_safe_label(obj_type.name)
+                label = neo4j_safe_label(obj_type.name)
                 counts = await _neo4j_node_counts_for_types(neo4j_ds, [obj_type.name])
                 neo4j_count = counts.get(label)
                 if neo4j_count is not None:
-                    ds_name = await _dataset_name(db, obj_type.dataset_id)
+                    ds_name = await dataset_display_name(db, obj_type.dataset_id)
                     return _to_response(obj_type, neo4j_count, ds_name)
             except ImportError:
                 pass
             except Exception:
                 pass
     count = await _resolve_instance_count(db, obj_type)
-    ds_name = await _dataset_name(db, obj_type.dataset_id)
+    ds_name = await dataset_display_name(db, obj_type.dataset_id)
     return _to_response(obj_type, count, ds_name)
 
 
@@ -337,7 +311,7 @@ async def update_object_type(
     await db.flush()
     await db.refresh(obj_type)
     count = await _resolve_instance_count(db, obj_type)
-    ds_name = await _dataset_name(db, obj_type.dataset_id)
+    ds_name = await dataset_display_name(db, obj_type.dataset_id)
     return _to_response(obj_type, count, ds_name)
 
 
@@ -363,7 +337,7 @@ async def _index_object_type_dataset_to_neo4j_session(
     if not obj_type.dataset_id:
         return 0
     nodes_created = 0
-    label = _neo4j_safe_label(obj_type.name)
+    label = neo4j_safe_label(obj_type.name)
     offset = 0
     batch_size = 1000
     while True:
@@ -376,9 +350,9 @@ async def _index_object_type_dataset_to_neo4j_session(
             ) from e
         if not rows:
             break
-        id_col = _resolve_neo4j_id_column_for_row(obj_type, rows[0])
+        id_col = resolve_neo4j_id_column_for_row(obj_type, rows[0])
         for row in rows:
-            nodes_created += _merge_object_row_to_neo4j(session, label, id_col, row)
+            nodes_created += merge_object_row_to_neo4j(session, label, id_col, row)
         offset += len(rows)
         if offset >= total:
             break
@@ -391,7 +365,7 @@ async def _index_object_type_instances_to_neo4j_session(
     obj_type: ObjectType,
 ) -> int:
     """MERGE rows from object_instances into Neo4j (same MERGE rules as dataset rows)."""
-    label = _neo4j_safe_label(obj_type.name)
+    label = neo4j_safe_label(obj_type.name)
     offset = 0
     batch_size = 1000
     nodes_created = 0
@@ -409,7 +383,7 @@ async def _index_object_type_instances_to_neo4j_session(
         id_col = resolve_write_id_column(obj_type)
         for inst in instances:
             row = instance_row_for_neo4j(obj_type, inst)
-            nodes_created += _merge_object_row_to_neo4j(session, label, id_col, row)
+            nodes_created += merge_object_row_to_neo4j(session, label, id_col, row)
         offset += len(instances)
         if len(instances) < batch_size:
             break
@@ -641,13 +615,13 @@ async def list_object_instances(
 
     # No-dataset types: query SoT is Neo4j only (never object_instances).
     if not obj_type.dataset_id:
-        neo4j_ds = await _get_first_neo4j_datasource(db)
+        neo4j_ds = await get_first_neo4j_datasource(db)
         if not neo4j_ds:
             return ObjectInstanceListResponse(items=[], total=0)
         try:
             from neo4j import GraphDatabase  # noqa: F401
 
-            label = _neo4j_safe_label(obj_type.name)
+            label = neo4j_safe_label(obj_type.name)
 
             def _query(driver):
                 return _query_neo4j_nodes(
@@ -673,12 +647,12 @@ async def list_object_instances(
         except Exception:
             return ObjectInstanceListResponse(items=[], total=0)
 
-    neo4j_ds = await _get_first_neo4j_datasource(db)
+    neo4j_ds = await get_first_neo4j_datasource(db)
     if neo4j_ds:
         try:
             from neo4j import GraphDatabase  # noqa: F401
 
-            label = _neo4j_safe_label(obj_type.name)
+            label = neo4j_safe_label(obj_type.name)
 
             def _query(driver):
                 return _query_neo4j_nodes(

@@ -5,7 +5,6 @@ from __future__ import annotations
 from fastapi import HTTPException, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.deps import get_jwt_sub
 from app.models.project import Project
 from app.services.articles.article_scope import load_article_scoped
 from app.services.comments.comment_resource_types import (
@@ -57,7 +56,7 @@ async def ensure_comment_resource_readable(
     if rt == COMMENT_RT_PROJECT:
         if not await is_feature_enabled(db, "agents"):
             raise HTTPException(status_code=404, detail="Project not found")
-        sub = get_jwt_sub(request)
+        sub = request.state.openkms_jwt_payload.get("sub")
         project = await db.get(Project, rid)
         if not project or project.user_sub != sub:
             raise HTTPException(status_code=404, detail="Project not found")

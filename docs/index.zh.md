@@ -30,7 +30,7 @@ openKMS 把这些视为**同一张网络**，而非割裂的「给人用的 KM�
 |------|------|
 | **文档（Documents）** | 上传 PDF 与 Office 文件；解析为可编辑 Markdown（PaddleOCR-VL，经独立 VLM 服务）；版本与策略**生命周期**。 |
 | **文章（Articles）** | Markdown CMS，含通道、附件与关系（`supersedes`、`amends`、`see_also` 等）。 |
-| **维基空间（Wiki spaces）** | 基于路径的笔记、vault 导入、页面图谱、**Wiki Copilot**。 |
+| **维基空间（Wiki spaces）** | 基于路径的笔记、vault 导入、页面图谱、语义页面搜索。 |
 | **知识库（Knowledge bases）** | 混合检索与**带来源的问答**（分块、来源、可选 QA Agent 服务）。 |
 | **知识地图与本体** | 术语关联通道/空间；可选结构化数据与图谱浏览。 |
 

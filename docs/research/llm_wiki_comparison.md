@@ -85,9 +85,9 @@ Upstream stays aligned with [Karpathy’s llm-wiki pattern](https://gist.github.
 
 | llm_wiki | openKMS |
 |----------|---------|
-| Tauri desktop; icon rail switches Wiki / Sources / Search / **Graph** / Lint / Review / Deep Research | Web SPA: `/wikis`, `/wikis/:id` → graph, **`/wikis/:id/settings`**, `/wikis/:id/pages/graph`, **Wiki Copilot** in workspace |
-| Three-pane: knowledge tree + center view + preview | **`/wikis/:id/settings`** (space admin) + graph/page **workspace** (editing + optional Copilot rail) |
-| Graph: Type / Community / Insights toolbar, sigma.js + ForceAtlas2 | Graph view: force-directed 2D + Default / Type / Clusters + insights drawer |
+| Tauri desktop; icon rail switches Wiki / Sources / Search / **Graph** / Lint / Review / Deep Research | Web SPA: `/wikis`, **`/wikis/:id/settings`**, `/wikis/:id/pages/graph`, `/wikis/:id/pages/:pageId` |
+| Three-pane: knowledge tree + center view + preview | **Space settings** (admin, import, linked documents) + **workspace** (page tree, tabbed edit/preview, comments rail) |
+| Graph: Type / Community / Insights toolbar, sigma.js + ForceAtlas2 | Graph view: react-force-graph-2d, directed page graph, focus page + fit main cluster; no community coloring or insights |
 
 ---
 
@@ -95,31 +95,33 @@ Upstream stays aligned with [Karpathy’s llm-wiki pattern](https://gist.github.
 
 | Topic | llm_wiki | openKMS |
 |-------|----------|---------|
-| Wiki storage | Markdown files on disk (Obsidian vault) | PostgreSQL `wiki_pages` |
-| purpose / schema | `purpose.md`, `schema.md` files | Optional **`copilot_purpose`** / **`copilot_schema_notes`** on `wiki_spaces` (Wiki Copilot prompt injection) |
+| Wiki storage | Markdown files on disk (Obsidian vault) | PostgreSQL `wiki_pages`; vault binaries (and mirrored markdown) in object storage |
+| purpose / schema | `purpose.md`, `schema.md` files | No dedicated fields; maintainers keep conventions as ordinary pages |
 | Channel docs | Local `raw/sources/` | Linked `documents` via `wiki_space_documents` |
-| Graph edges | Weighted undirected + Louvain + cohesion | Directed wikilinks from markdown; server adds Louvain + heuristic **insights** on each graph response |
-| Vector search | Optional LanceDB embeddings | Not wired for wiki pages (KB uses pgvector elsewhere; optional future) |
-| Ingest queue | Persistent disk queue, SHA cache | Outline only: [Development plan — wiki / pipelines](../development_plan.md) (no separate ingest-jobs doc yet) |
-| Deep Research / clipper | Tavily + Chrome extension | Out of scope unless product asks |
+| Graph edges | Weighted undirected + Louvain + cohesion | Directed edges from `[[wikilinks]]` and relative markdown links; JSON cached in object storage; no community detection |
+| Vector search | Optional LanceDB embeddings | Optional page embeddings (pgvector) after **Build semantic index** in space settings; used by workspace tree search and by KB indexing of linked spaces |
+| Ingest queue | Persistent disk queue, SHA cache | No; vault import (zip / folder) and `openkms-cli wiki put` / `wiki sync` |
+| Deep Research / clipper | Tavily + Chrome extension | No wiki-specific equivalent; [project agents](../features/openkms-agents.md) have a research subagent with connector-backed `web_search` |
 
 ---
 
 ## Algorithms (ideas only)
 
-- **Graph relevance weights** (direct link, source overlap, Adamic-Adar, type affinity): llm_wiki encodes in TypeScript; openKMS may add weights later on the server graph JSON.
-- **Louvain communities**: implemented server-side for visualization (NetworkX); not identical to graphology’s Louvain package.
-- **Insights** (cross-community edges, isolated nodes): heuristic cards aligned with the *ideas* in upstream graph-insights—not ported code.
+None of these are implemented in openKMS today; they are candidates for the server graph response (`GET …/graph`):
+
+- **Graph relevance weights** (direct link, source overlap, Adamic-Adar, type affinity).
+- **Louvain communities** for visualization (e.g. NetworkX server-side; not identical to graphology’s package).
+- **Insights** (cross-community edges, isolated nodes) as heuristic cards aligned with the *ideas* in upstream graph-insights—not ported code.
 
 ---
 
-## Retrieval & Copilot
+## Retrieval & agents
 
 | Capability | llm_wiki | openKMS |
 |------------|----------|---------|
-| Query pipeline | Token search → optional vectors → graph expansion → budgeted context | **`search_wiki_pages`** agent tool (title/path substring, then **pgvector** semantic when the space is indexed) + `list_wiki_pages` / `get_wiki_page` + optional maintainer context in system prompt |
-| Embeddings | Optional LanceDB | **Yes** for wiki Copilot semantic branch: page vectors in Postgres after **Build semantic index** (space or default embedding model) |
-| Chat persistence | Per-project chat files on disk | **`/api/agent`** conversations + messages (DB-backed) |
+| Query pipeline | Token search → optional vectors → graph expansion → budgeted context | Workspace tree search: title/path substring, then semantic matches when indexed (`GET …/pages/semantic-matches`); KB search / Q&A over linked, indexed wiki spaces |
+| Embeddings | Optional LanceDB | Page vectors in Postgres after **Build semantic index** (default embedding model; offline, not refreshed on every save) |
+| Chat about the wiki | Per-project chat files on disk | No wiki-specific chat. KB Q&A threads and project agent sessions are DB-backed (`agent_conversations`); agents read/write wiki pages through [openkms-skill](../features/openkms-skill.md) |
 
 ---
 
@@ -127,53 +129,24 @@ Upstream stays aligned with [Karpathy’s llm-wiki pattern](https://gist.github.
 
 | llm_wiki area | In openKMS today (approx.) |
 |---------------|----------------------------|
-| purpose / schema as Copilot context | **Yes** — DB fields + injection |
-| FTS / keyword discovery in wiki | **Yes** — `search_wiki_pages` tool (substring on title/path; semantic when indexed) |
-| Graph communities + insights UI | **Partial** — Louvain + simple insights; no weighted edges, no cohesion warnings, no dismiss-store |
+| purpose / schema as assistant context | **No** |
+| FTS / keyword discovery in wiki | **Partial** — tree search (substring, then semantic when indexed); KB search over indexed wiki pages |
+| Graph communities + insights UI | **No** |
 | Weighted relevance graph | **No** |
-| Context budget assembly | **No** (single system prompt + tools; no proportional packing) |
-| Two-step ingest + queue + SHA cache | **No** — see ingest jobs outline |
-| Review queue / Deep Research / clipper | **No** |
+| Context budget assembly | **No** (no wiki-specific assistant) |
+| Two-step ingest + queue + SHA cache | **No** — vault import and CLI sync only |
+| Review queue / Deep Research / clipper | **No** (web research lives in project agents, not the wiki) |
 | Desktop three-pane + sigma graph | **No** — web routes + react-force-graph-2d |
 
 ---
 
-## Roadmap (implemented / planned in openKMS code & docs)
+## Ideas worth borrowing (not scheduled)
 
-1. **Copilot context fields** on wiki spaces + prompt injection.
-2. **`search_wiki_pages`** agent tool.
-3. **Graph analysis** on `GET …/graph` + graph UI (stats, coloring modes, insights panel).
-4. **Pipeline outline** for LLM-assisted drafts from linked documents (not yet a committed doc in this branch).
+1. **Space-level maintainer context** (purpose / schema) that any agent editing the space can load.
+2. **Graph analysis** on `GET …/graph` (communities, insights, weighted edges) + graph UI coloring.
+3. **LLM-assisted drafts** from linked documents (ingest with review before publish).
 
-See [features/wiki-spaces.md](../features/wiki-spaces.md) and [wiki_agent_prototype.md](../wiki_agent_prototype.md) for shipped behavior.
-
----
-
-## Database schema: drift after a reverted experiment
-
-A short-lived change added optional columns on **`wiki_spaces`** for Wiki Copilot maintainer text (`copilot_purpose`, `copilot_schema_notes`) via an Alembic revision that is **no longer in this repository** after the wiki feature work was reverted.
-
-| Situation | What to know |
-|-----------|----------------|
-| You **never** ran that migration | Your DB matches the current ORM: `wiki_spaces` has `id`, `name`, `description`, `created_at`, `updated_at` (see [`w7x8y9z0a1b2_add_wiki_spaces_tables.py`](https://github.com/yingrui/openKMS/blob/main/backend/alembic/versions/w7x8y9z0a1b2_add_wiki_spaces_tables.py)). |
-| You **did** run `alembic upgrade` when that revision existed | PostgreSQL may still have `copilot_purpose` and/or `copilot_schema_notes` even though [WikiSpace](https://github.com/yingrui/openKMS/blob/main/backend/app/models/wiki_models.py) no longer maps them. SQLAlchemy usually **ignores** extra columns on load, but the DB is **ahead** of the migration history in git. The `alembic_version` table may still point at the **removed** revision id `h8i9j0k1l2m3`, which makes every `alembic` command fail with *Can't locate revision*. |
-
-**Fix the broken revision pointer first** (current repo head is `p9q0r1s2t3u4` — run `alembic heads` in `backend/` to confirm). Connect with the same database URL your app uses, then:
-
-```sql
-UPDATE alembic_version SET version_num = 'p9q0r1s2t3u4' WHERE version_num = 'h8i9j0k1l2m3';
-```
-
-If your table uses a different layout (multiple heads), inspect `SELECT * FROM alembic_version;` and set the row that references `h8i9j0k1l2m3` to `p9q0r1s2t3u4`. After that, `alembic current` should succeed.
-
-**Optional schema cleanup** (only if those columns exist and you want the physical table to match the current ORM):
-
-```sql
-ALTER TABLE wiki_spaces DROP COLUMN IF EXISTS copilot_schema_notes;
-ALTER TABLE wiki_spaces DROP COLUMN IF EXISTS copilot_purpose;
-```
-
-Then run `cd backend && alembic current` — it should report `p9q0r1s2t3u4 (head)`.
+See [features/wiki-spaces.md](../features/wiki-spaces.md) for shipped behavior.
 
 ---
 

@@ -1,5 +1,6 @@
 /** API for article channels (backend). */
 import { request } from './apiClient';
+import { createChannelTreeApi } from './channelTreeApi';
 import type { ChannelNode } from './channelUtils';
 
 /** Raw API node (subset of ChannelNode). */
@@ -33,56 +34,7 @@ function toChannelNode(raw: ArticleChannelNodeRaw): ChannelNode {
   };
 }
 
-export async function fetchArticleChannels(params?: {
-  limit?: number;
-  offset?: number;
-}): Promise<ChannelNode[]> {
-  const page = await fetchArticleChannelsPage(params);
-  return page.items.map(toChannelNode);
-}
-
-export interface ArticleChannelTreeListResponse {
-  items: ArticleChannelNodeRaw[];
-  total: number;
-  limit: number;
-  offset: number;
-}
-
-export async function fetchArticleChannelsPage(params?: {
-  limit?: number;
-  offset?: number;
-}): Promise<ArticleChannelTreeListResponse> {
-  return request<ArticleChannelTreeListResponse>('/api/article-channels', {
-    query: { limit: params?.limit, offset: params?.offset },
-  });
-}
-
-export async function fetchAllArticleChannels(): Promise<ChannelNode[]> {
-  const merged: ChannelNode[] = [];
-  let offset = 0;
-  const limit = 200;
-  let total = 0;
-  do {
-    const page = await fetchArticleChannelsPage({ limit, offset });
-    merged.push(...page.items.map(toChannelNode));
-    total = page.total;
-    offset += limit;
-  } while (offset < total);
-  return merged;
-}
-
-export async function createArticleChannel(params: {
-  name: string;
-  description?: string | null;
-  parent_id?: string | null;
-}): Promise<ChannelNode> {
-  const raw = await request<ArticleChannelNodeRaw>('/api/article-channels', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(params),
-  });
-  return toChannelNode(raw);
-}
+export const articleChannelTreeApi = createChannelTreeApi('/api/article-channels', toChannelNode);
 
 export async function updateArticleChannel(
   channelId: string,
@@ -102,32 +54,4 @@ export async function updateArticleChannel(
     body: JSON.stringify(params),
   });
   return toChannelNode(raw);
-}
-
-export async function deleteArticleChannel(channelId: string): Promise<void> {
-  return request<void>(`/api/article-channels/${channelId}`, { method: 'DELETE' });
-}
-
-export async function mergeArticleChannels(params: {
-  source_channel_id: string;
-  target_channel_id: string;
-  include_descendants?: boolean;
-}): Promise<void> {
-  return request<void>('/api/article-channels/merge', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      source_channel_id: params.source_channel_id,
-      target_channel_id: params.target_channel_id,
-      include_descendants: params.include_descendants ?? true,
-    }),
-  });
-}
-
-export async function reorderArticleChannel(channelId: string, direction: 'up' | 'down'): Promise<void> {
-  return request<void>(`/api/article-channels/${channelId}/reorder`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ direction }),
-  });
 }

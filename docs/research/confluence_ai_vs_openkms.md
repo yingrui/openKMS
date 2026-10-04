@@ -11,7 +11,7 @@ Comparative research on **Atlassian Confluence** with **Atlassian Intelligence**
 | | **Confluence + AI (Rovo)** | **openKMS** |
 |---|---------------------------|-------------|
 | **Primary identity** | Team wiki and collaboration hub inside the **Atlassian Cloud** stack | **Open**, self-hosted **knowledge management system** (documents, articles, wiki, KB, ontology) |
-| **AI strategy** | **Teamwork Graph** + Rovo (search, chat, agents, studio) embedded where teams already work | **Dedicated RAG** (KB + qa-agent), **Wiki Copilot**, optional external **[openkms-skill](../features/openkms-skill.md)** |
+| **AI strategy** | **Teamwork Graph** + Rovo (search, chat, agents, studio) embedded where teams already work | **Dedicated RAG** (KB + qa-agent), **project agents** (Deep Agents workspaces), optional external **[openkms-skill](../features/openkms-skill.md)** |
 | **Best when** | You are standardized on Atlassian Cloud and want AI on pages, Jira links, and ~50 SaaS connectors with minimal ops | You need **governed corpora**, **policy lifecycle**, **parse-heavy documents**, and **control of data residency** on your stack |
 | **Deployment** | SaaS (Cloud); Data Center can sync to Cloud for AI via connectors | Docker / host; PostgreSQL, MinIO, optional Neo4j, separate VLM and qa-agent |
 
@@ -142,7 +142,7 @@ flowchart TB
 | Capability | Confluence + AI | openKMS |
 |------------|-----------------|---------|
 | Wiki spaces | **Spaces** (mature templates, analytics) | **Wiki spaces** (vault import, wikilinks, graph view) |
-| AI drafting | Create with Rovo, inline edit, Remix visuals | **Wiki Copilot** (search, read, upsert with permission) |
+| AI drafting | Create with Rovo, inline edit, Remix visuals | No inline drafting in the editor; project agents can draft and upsert wiki pages via openkms-skill (with permission) |
 | Whiteboards / live docs | Native | Not equivalent (wiki + articles) |
 | Bulk import | Marketplace / migrations | Vault zip/folder import; document upload pipeline |
 
@@ -168,7 +168,7 @@ flowchart TB
 
 | Capability | Confluence + AI | openKMS |
 |------------|-----------------|---------|
-| In-app agents | Rovo Agents, Studio, MCP partner agents, Remix | Wiki Copilot, KB Q&A, map HTML designer, eval assist |
+| In-app agents | Rovo Agents, Studio, MCP partner agents, Remix | Project agents, KB Q&A, map HTML designer, eval assist |
 | Visual agent builder | **Rovo Studio** | None (code-first LangGraph) |
 | Jira / ITSM actions | **Strong** native | Via ontology/API; not Jira-native |
 | MCP | Inbound (third-party tools) + outbound (Atlassian MCP server) | External skill; no Atlassian-style MCP server product |

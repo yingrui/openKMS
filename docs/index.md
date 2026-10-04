@@ -30,7 +30,7 @@ Content lives in **channel trees** (like folder hierarchies). Typical surfaces:
 |---------|------|
 | **Documents** | Upload PDFs and office files; parse to editable Markdown (PaddleOCR-VL via a separate VLM server); versions and policy **lifecycle**. |
 | **Articles** | Markdown CMS with channels, attachments, and relationships (`supersedes`, `amends`, `see_also`, …). |
-| **Wiki spaces** | Path-based notes, vault import, page graph, **Wiki Copilot**. |
+| **Wiki spaces** | Path-based notes, vault import, page graph, semantic page search. |
 | **Knowledge bases** | Hybrid search and **Q&A with provenance** (chunks, sources, optional QA Agent service). |
 | **Knowledge map & ontology** | Terms linked to channels/spaces; optional structured data and graph explore. |
 

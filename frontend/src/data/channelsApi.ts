@@ -1,5 +1,6 @@
 /** API for document channels (backend). */
 import { request } from './apiClient';
+import { createChannelTreeApi } from './channelTreeApi';
 
 export interface ExtractionSchemaField {
   key: string;
@@ -33,48 +34,7 @@ export async function fetchChannelById(channelId: string): Promise<ChannelNode> 
   return request<ChannelNode>(`/api/document-channels/${channelId}`);
 }
 
-export interface ChannelTreeListResponse {
-  items: ChannelNode[];
-  total: number;
-  limit: number;
-  offset: number;
-}
-
-export async function fetchDocumentChannels(params?: {
-  limit?: number;
-  offset?: number;
-}): Promise<ChannelTreeListResponse> {
-  return request<ChannelTreeListResponse>('/api/document-channels', {
-    query: { limit: params?.limit, offset: params?.offset },
-  });
-}
-
-/** Load every root channel tree (paginates until all roots are fetched). */
-export async function fetchAllDocumentChannels(): Promise<ChannelNode[]> {
-  const merged: ChannelNode[] = [];
-  let offset = 0;
-  const limit = 200;
-  let total = 0;
-  do {
-    const page = await fetchDocumentChannels({ limit, offset });
-    merged.push(...page.items);
-    total = page.total;
-    offset += limit;
-  } while (offset < total);
-  return merged;
-}
-
-export async function createDocumentChannel(params: {
-  name: string;
-  description?: string | null;
-  parent_id?: string | null;
-}): Promise<ChannelNode> {
-  return request<ChannelNode>('/api/document-channels', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(params),
-  });
-}
+export const documentChannelTreeApi = createChannelTreeApi('/api/document-channels', (raw: ChannelNode) => raw);
 
 export async function updateChannel(
   channelId: string,
@@ -95,33 +55,5 @@ export async function updateChannel(
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(params),
-  });
-}
-
-export async function mergeChannels(params: {
-  source_channel_id: string;
-  target_channel_id: string;
-  include_descendants?: boolean;
-}): Promise<void> {
-  return request<void>('/api/document-channels/merge', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      source_channel_id: params.source_channel_id,
-      target_channel_id: params.target_channel_id,
-      include_descendants: params.include_descendants ?? true,
-    }),
-  });
-}
-
-export async function deleteChannel(channelId: string): Promise<void> {
-  return request<void>(`/api/document-channels/${channelId}`, { method: 'DELETE' });
-}
-
-export async function reorderChannel(channelId: string, direction: 'up' | 'down'): Promise<void> {
-  return request<void>(`/api/document-channels/${channelId}/reorder`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ direction }),
   });
 }

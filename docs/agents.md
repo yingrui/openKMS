@@ -1,6 +1,6 @@
 # Doc conventions for AI agents
 
-本文档告诉 AI coding agents 如何编辑 openKMS 的文档和文章。内容来自 `.cursor/rules/*.mdc`，供任一 IDE 里的 agent 使用。
+本文档告诉 AI coding agents 如何编辑 openKMS 的文档和文章。与仓库根目录 `AGENTS.md`（编码与提交规则）配套，供任一 IDE 里的 agent 使用。
 
 ## 文档结构
 
@@ -34,7 +34,7 @@
 
 ## 多语言文档
 
-英文页面（`page.md`）是源，中文翻译（`page.zh.md`）以 `_zh` 后缀。链接省略 locale——在 `index.md` 和 `index.zh.md` 里都写 `[Quickstart](quickstart.md)`。未翻译页面自动回退英文。中文导航标签在 `mkdocs.yml` → `plugins → i18n → languages → zh → nav_translations` 里加。
+英文页面（`page.md`）是源，中文翻译为同目录的 `page.zh.md`。链接省略 locale——在 `index.md` 和 `index.zh.md` 里都写 `[Quickstart](quickstart.md)`。未翻译页面自动回退英文。中文导航标签在 `mkdocs.yml` → `plugins → i18n → languages → zh → nav_translations` 里加。
 
 ## 构建与部署
 

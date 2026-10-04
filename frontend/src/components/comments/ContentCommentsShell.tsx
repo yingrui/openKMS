@@ -2,11 +2,7 @@ import type { ReactNode, CSSProperties } from 'react';
 import { useCallback } from 'react';
 import type { CommentResourceType } from '../../data/commentsApi';
 import { ContentCommentsRail } from './ContentCommentsRail';
-import {
-  ContentCommentsUtilityRail,
-  copilotUtilityButton,
-  type UtilityRailButton,
-} from './ContentCommentsUtilityRail';
+import { ContentCommentsUtilityRail, type UtilityRailButton } from './ContentCommentsUtilityRail';
 import { useCommentsRailState } from './useCommentsRailState';
 import { useContentComments } from './useContentComments';
 import './ContentCommentsRail.scss';
@@ -19,10 +15,6 @@ type Props = {
   className?: string;
   /** Hide utility rail (e.g. Q&A fullpage). */
   hideComments?: boolean;
-  /** Wiki: Copilot toggle — opening comments closes copilot. */
-  copilotOpen?: boolean;
-  onCopilotToggle?: () => void;
-  copilotLabel?: string;
   extraUtilityButtons?: UtilityRailButton[];
 };
 
@@ -33,9 +25,6 @@ export function ContentCommentsShell({
   children,
   className,
   hideComments = false,
-  copilotOpen = false,
-  onCopilotToggle,
-  copilotLabel = 'Copilot',
   extraUtilityButtons = [],
 }: Props) {
   const storagePrefix = `${resourceType}_${resourceId}`;
@@ -43,30 +32,12 @@ export function ContentCommentsShell({
   const comments = useContentComments(resourceType, resourceId, enabled && !hideComments);
 
   const toggleComments = useCallback(() => {
-    const next = !rail.open;
-    if (next && onCopilotToggle && copilotOpen) {
-      onCopilotToggle();
-    }
-    rail.setOpenPersist(next);
-  }, [copilotOpen, onCopilotToggle, rail]);
+    rail.setOpenPersist(!rail.open);
+  }, [rail]);
 
   const collapseComments = useCallback(() => {
     rail.setOpenPersist(false);
   }, [rail]);
-
-  const handleCopilotToggle = useCallback(() => {
-    if (onCopilotToggle) {
-      if (!copilotOpen && rail.open) {
-        rail.setOpenPersist(false);
-      }
-      onCopilotToggle();
-    }
-  }, [copilotOpen, onCopilotToggle, rail]);
-
-  const utilityExtras: UtilityRailButton[] = [...extraUtilityButtons];
-  if (onCopilotToggle) {
-    utilityExtras.unshift(copilotUtilityButton(copilotOpen, handleCopilotToggle, copilotLabel));
-  }
 
   const shellClass = [
     'content-comments-shell',
@@ -105,7 +76,7 @@ export function ContentCommentsShell({
           <ContentCommentsUtilityRail
             commentsActive={rail.open}
             onCommentsToggle={toggleComments}
-            extraButtons={utilityExtras}
+            extraButtons={extraUtilityButtons}
           />
         </>
       ) : null}

@@ -58,7 +58,7 @@ Columns: [Data models — Data security](data-models.md#data-security-access-gro
 
 ### Securable types
 
-`backend/app/services/resource_acl_constants.py` — `SECURABLE_RESOURCE_TYPES`:
+`backend/app/services/acl/resource_acl_constants.py` — `SECURABLE_RESOURCE_TYPES`:
 
 | `resource_type` | Container chain |
 |---|---|
@@ -241,7 +241,8 @@ Policy non-goals (admin read-all, Object Explorer Cypher): [Security design — 
 | `document_scope.py`, `article_scope.py`, `wiki_page_scope.py`, `channel_scope.py` | Container-only visibility aliases |
 | `job_scope.py`, `channel_list_filter.py` | Job args ACL; channel subtree list filter |
 | `resource_acl_service.py` | Resolve, filters, normalize/match owner, `acl_check_required` |
-| `api/resource_acl.py` | Sharing HTTP API |
+| `api/resource_acl.py` | Sharing HTTP API (parse + persist grants) |
+| `resource_acl_presentation.py`, `schemas/resource_acl.py` | Grant labels, owner/creator enrichment, ACL response models (shared by sharing API and Console audit) |
 | `api/admin/resource_acl_admin.py` | Issues + audit ACL |
 | `api/admin/groups.py` | Groups, members, shared list |
 | `models/resource_acl.py` | `ResourceAclEntry` |

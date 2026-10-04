@@ -1,5 +1,6 @@
 /** API for media channels. */
 import { request } from './apiClient';
+import { createChannelTreeApi } from './channelTreeApi';
 import type { ChannelNode, ExtractionSchemaField } from './channelUtils';
 
 export interface MediaChannelNodeRaw {
@@ -26,48 +27,7 @@ function toChannelNode(raw: MediaChannelNodeRaw): ChannelNode {
   };
 }
 
-export interface MediaChannelTreeListResponse {
-  items: MediaChannelNodeRaw[];
-  total: number;
-  limit: number;
-  offset: number;
-}
-
-export async function fetchMediaChannelsPage(params?: {
-  limit?: number;
-  offset?: number;
-}): Promise<MediaChannelTreeListResponse> {
-  return request<MediaChannelTreeListResponse>('/api/media-channels', {
-    query: { limit: params?.limit, offset: params?.offset },
-  });
-}
-
-export async function fetchAllMediaChannels(): Promise<ChannelNode[]> {
-  const merged: ChannelNode[] = [];
-  let offset = 0;
-  const limit = 200;
-  let total = 0;
-  do {
-    const page = await fetchMediaChannelsPage({ limit, offset });
-    merged.push(...page.items.map(toChannelNode));
-    total = page.total;
-    offset += limit;
-  } while (offset < total);
-  return merged;
-}
-
-export async function createMediaChannel(body: {
-  name: string;
-  description?: string | null;
-  parent_id?: string | null;
-}): Promise<ChannelNode> {
-  const raw = await request<MediaChannelNodeRaw>('/api/media-channels', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(body),
-  });
-  return toChannelNode(raw);
-}
+export const mediaChannelTreeApi = createChannelTreeApi('/api/media-channels', toChannelNode);
 
 export async function updateMediaChannel(
   channelId: string,
@@ -86,32 +46,4 @@ export async function updateMediaChannel(
     body: JSON.stringify(body),
   });
   return toChannelNode(raw);
-}
-
-export async function deleteMediaChannel(channelId: string): Promise<void> {
-  return request<void>(`/api/media-channels/${channelId}`, { method: 'DELETE' });
-}
-
-export async function mergeMediaChannels(params: {
-  source_channel_id: string;
-  target_channel_id: string;
-  include_descendants?: boolean;
-}): Promise<void> {
-  return request<void>('/api/media-channels/merge', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      source_channel_id: params.source_channel_id,
-      target_channel_id: params.target_channel_id,
-      include_descendants: params.include_descendants ?? true,
-    }),
-  });
-}
-
-export async function reorderMediaChannel(channelId: string, direction: 'up' | 'down'): Promise<void> {
-  return request<void>(`/api/media-channels/${channelId}/reorder`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ direction }),
-  });
 }

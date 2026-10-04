@@ -123,7 +123,7 @@ flowchart LR
 |---------|---------|---------|
 | File corpus → RAG | **Primary** (datasets) | **Document channels** + KB membership |
 | Markdown CMS | Limited / via imports | **Article channels**, relationships, bulk import API |
-| Team wiki | Not equivalent | **Wiki spaces**, vault import, wikilinks, graph view, Copilot |
+| Team wiki | Not equivalent | **Wiki spaces**, vault import, wikilinks, graph view, semantic page search |
 | Terminology / navigation | Via chunks + GraphRAG | **Glossaries**, **Knowledge map** → channels/wiki/articles |
 | Structured enterprise data | Agents/tools, DB connectors in agent layer | **Ontology**, datasets, Neo4j Object Explorer |
 | Policy / version lineage | Weaker as a product theme | **series_id**, effective dates, **document_relationships**, article lineage |
@@ -133,7 +133,7 @@ flowchart LR
 | Capability | RAGFlow | openKMS |
 |------------|---------|---------|
 | Built-in chat on KB | Yes | KB Q&A + FAQ assist (qa-agent); streamed threads |
-| Visual agent builder | **Agentic workflows**, templates, MCP, code sandbox (gVisor) | No visual builder; LangGraph in **qa-agent** + **Wiki Copilot** in API |
+| Visual agent builder | **Agentic workflows**, templates, MCP, code sandbox (gVisor) | No visual builder; LangGraph in **qa-agent** + **project agents** (Deep Agents workspaces with explore / research subagents, web search) |
 | Agent memory | **Memory** (2025-12+) | Conversation persistence per surface; no unified “memory” product |
 | External agent integration | REST + Python SDK; OpenClaw skill (2026) | **Personal API keys**, **openkms-skill**, Bearer CLI |
 | In-app unified assistant | Evolving inside RAGFlow agents | **Partial** — per-surface agents; global assistant on [roadmap](../development_plan.md#in-product-agents-high) |
@@ -208,7 +208,7 @@ Items RAGFlow emphasizes that openKMS does **not** yet match at product level (s
 
 Items openKMS provides that RAGFlow does **not** center:
 
-1. **Article CMS** and **wiki workspace** with Copilot.
+1. **Article CMS** and **wiki workspace** (vault import, graph view, semantic page search).
 2. **Resource ACL** + catalog RBAC with “admin cannot read all channels by default.”
 3. **Knowledge map** linking terms to channels/spaces.
 4. **Document/article lifecycle** and relationship types for policy domains.

@@ -93,7 +93,7 @@ flowchart LR
 | Surface | Role | Why it is not the portal |
 |---------|------|---------------------------|
 | **Articles** | Markdown CMS for **knowledge artifacts** | Channel tree and lifecycle serve RAG and governance, not site IA or landing experiences. |
-| **Wiki spaces** | Collaborative notes, Copilot, vault | Path-based workspace for authors; not a branded external site builder. |
+| **Wiki spaces** | Collaborative notes, vault import, graph view | Path-based workspace for authors; not a branded external site builder. |
 | **Knowledge map** | Term hierarchy + one **map HTML** artifact | Great for orientation graph; not multi-site, multi-audience publishing. |
 | **Console** | Platform **operations** (permissions, storage, toggles) | Correct **UX pattern** for separation; wrong domain (operators vs publishers). |
 | **Home hub** | Signed-in **work dashboard** | Mixes comments, work items, and optional map HTML—not a substitute for `docs.example.com`. |
@@ -186,7 +186,7 @@ The portal is not a second wiki. It is the **curated story** atop the corpus:
 | **Research portal** | Ontology-driven directory (taxa, specimens) + narrative pages |
 | **Executive summary** | Single landing with LLM-assisted **overview block** (like map HTML designer, but site-scoped) |
 
-**AI assist (in-app, not delivery):** A **Portal Copilot** in `/cms` could draft page copy and block layouts from knowledge-map + search—analogous to Knowledge Map HTML Designer and Wiki Copilot, but output is **page JSON / blocks**, not operator-only iframe HTML on Home.
+**AI assist (in-app, not delivery):** A **Portal Copilot** in `/cms` could draft page copy and block layouts from knowledge-map + search—analogous to the Knowledge Map HTML Designer, but output is **page JSON / blocks**, not operator-only iframe HTML on Home.
 
 ---
 

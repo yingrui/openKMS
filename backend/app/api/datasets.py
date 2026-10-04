@@ -1,11 +1,9 @@
 """Datasets API – CRUD and list tables from DataSource (admin-only)."""
 import json
-import re
 import uuid
-from urllib.parse import quote_plus
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
-from sqlalchemy import create_engine, text
+from sqlalchemy import text
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -36,19 +34,8 @@ from app.schemas.dataset import (
     DatasetUpdate,
     TableInfo,
 )
-from app.services.credentials.credential_encryption import decrypt
+from app.services.ontology.dataset_tables import is_valid_identifier, pg_engine_for_datasource
 
-
-def _pg_engine_for_datasource(ds: DataSource):
-    """Create a sync SQLAlchemy engine for a PostgreSQL data source."""
-    username = decrypt(ds.username_encrypted) if ds.username_encrypted else ""
-    password = decrypt(ds.password_encrypted) if ds.password_encrypted else ""
-    password_escaped = quote_plus(password) if password else ""
-    url = (
-        f"postgresql://{username}:{password_escaped}@{ds.host}:{ds.port or 5432}"
-        f"/{ds.database or 'postgres'}"
-    )
-    return create_engine(url, pool_pre_ping=True, pool_recycle=10)
 
 router = APIRouter(
     prefix="/datasets",
@@ -104,7 +91,7 @@ async def list_tables_from_source(
             detail="Listing tables is only supported for PostgreSQL data sources",
         )
     try:
-        engine = _pg_engine_for_datasource(ds)
+        engine = pg_engine_for_datasource(ds)
         with engine.connect() as conn:
             result = conn.execute(
                 text("""
@@ -202,93 +189,6 @@ async def create_dataset(
     )
 
 
-def _validate_identifier(name: str) -> bool:
-    """Validate schema/table name to prevent SQL injection."""
-    return bool(re.match(r"^[a-zA-Z0-9_]+$", name))
-
-
-async def get_dataset_row_count(db: AsyncSession, dataset_id: str) -> int:
-    """Get row count for a dataset table. Returns 0 if dataset not found or on error."""
-    dataset = await db.get(Dataset, dataset_id)
-    if not dataset:
-        return 0
-    ds = await db.get(DataSource, dataset.data_source_id)
-    if not ds or ds.kind != "postgresql":
-        return 0
-    schema, table = dataset.schema_name, dataset.table_name
-    if not _validate_identifier(schema) or not _validate_identifier(table):
-        return 0
-    try:
-        engine = _pg_engine_for_datasource(ds)
-        with engine.connect() as conn:
-            quoted = f'"{schema}"."{table}"'
-            result = conn.execute(text(f"SELECT COUNT(*) FROM {quoted}"))
-            total = result.scalar() or 0
-        engine.dispose()
-        return int(total)
-    except Exception:
-        return 0
-
-
-async def get_dataset_row_count_where_not_null(
-    db: AsyncSession, dataset_id: str, column_name: str
-) -> int:
-    """Count rows where column is not null. Returns 0 if dataset not found or on error."""
-    dataset = await db.get(Dataset, dataset_id)
-    if not dataset:
-        return 0
-    ds = await db.get(DataSource, dataset.data_source_id)
-    if not ds or ds.kind != "postgresql":
-        return 0
-    schema, table = dataset.schema_name, dataset.table_name
-    if not _validate_identifier(schema) or not _validate_identifier(table) or not _validate_identifier(column_name):
-        return 0
-    try:
-        engine = _pg_engine_for_datasource(ds)
-        with engine.connect() as conn:
-            quoted = f'"{schema}"."{table}"'
-            col_quoted = f'"{column_name}"'
-            result = conn.execute(text(f"SELECT COUNT(*) FROM {quoted} WHERE {col_quoted} IS NOT NULL"))
-            total = result.scalar() or 0
-        engine.dispose()
-        return int(total)
-    except Exception:
-        return 0
-
-
-async def fetch_dataset_rows(
-    db: AsyncSession, dataset_id: str, limit: int = 500, offset: int = 0
-) -> tuple[list[dict], int]:
-    """Fetch rows from dataset table. Returns (rows, total). Raises HTTPException on error."""
-    dataset = await db.get(Dataset, dataset_id)
-    if not dataset:
-        raise ValueError("Dataset not found")
-    ds = await db.get(DataSource, dataset.data_source_id)
-    if not ds or ds.kind != "postgresql":
-        raise ValueError("Dataset rows only supported for PostgreSQL sources")
-    schema, table = dataset.schema_name, dataset.table_name
-    if not _validate_identifier(schema) or not _validate_identifier(table):
-        raise ValueError("Invalid schema or table name")
-    quoted = f'"{schema}"."{table}"'
-    engine = _pg_engine_for_datasource(ds)
-    try:
-        with engine.connect() as conn:
-            count_result = conn.execute(text(f"SELECT COUNT(*) FROM {quoted}"))
-            total = count_result.scalar() or 0
-            rows_result = conn.execute(
-                text(f"SELECT * FROM {quoted} LIMIT :limit OFFSET :offset"),
-                {"limit": limit, "offset": offset},
-            )
-            columns = list(rows_result.keys())
-            rows = [dict(zip(columns, r)) for r in rows_result.fetchall()]
-            rows = [{k: serialize_cell_value(v) for k, v in r.items()} for r in rows]
-        engine.dispose()
-        return rows, int(total)
-    except Exception:
-        engine.dispose()
-        raise
-
-
 @router.get(
     "/{dataset_id}/rows",
     response_model=DatasetRowsResponse,
@@ -306,11 +206,11 @@ async def get_dataset_rows(
     if not ds or ds.kind != "postgresql":
         raise HTTPException(status_code=400, detail="Dataset rows only supported for PostgreSQL sources")
     schema, table = dataset.schema_name, dataset.table_name
-    if not _validate_identifier(schema) or not _validate_identifier(table):
+    if not is_valid_identifier(schema) or not is_valid_identifier(table):
         raise HTTPException(status_code=400, detail="Invalid schema or table name")
     quoted = f'"{schema}"."{table}"'
     try:
-        engine = _pg_engine_for_datasource(ds)
+        engine = pg_engine_for_datasource(ds)
         with engine.connect() as conn:
             count_result = conn.execute(text(f"SELECT COUNT(*) FROM {quoted}"))
             total = count_result.scalar() or 0
@@ -341,10 +241,10 @@ async def get_dataset_metadata(
     if not ds or ds.kind != "postgresql":
         raise HTTPException(status_code=400, detail="Metadata only supported for PostgreSQL sources")
     schema, table = dataset.schema_name, dataset.table_name
-    if not _validate_identifier(schema) or not _validate_identifier(table):
+    if not is_valid_identifier(schema) or not is_valid_identifier(table):
         raise HTTPException(status_code=400, detail="Invalid schema or table name")
     try:
-        engine = _pg_engine_for_datasource(ds)
+        engine = pg_engine_for_datasource(ds)
         with engine.connect() as conn:
             result = conn.execute(
                 text("""

@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Bot, MessageSquare } from 'lucide-react';
+import { MessageSquare } from 'lucide-react';
 import './ContentCommentsRail.scss';
 
 export type UtilityRailButton = {
@@ -47,14 +47,4 @@ export function ContentCommentsUtilityRail({ commentsActive, onCommentsToggle, e
       </button>
     </aside>
   );
-}
-
-export function copilotUtilityButton(active: boolean, onClick: () => void, label: string): UtilityRailButton {
-  return {
-    id: 'copilot',
-    icon: <Bot size={18} strokeWidth={1.75} aria-hidden />,
-    label,
-    active,
-    onClick,
-  };
 }

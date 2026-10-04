@@ -25,7 +25,7 @@ openKMS today emphasizes **plane 3** ([Evaluation](../features/evaluation.md): `
 | Artifact in openKMS | Unit of evaluation | Natural “ground truth” |
 |---------------------|-------------------|-------------------------|
 | **Article** | Whole page (+ versions, relationships) | Editorial rubric, policy template, SME sign-off |
-| **Wiki page** | Path-addressed markdown body | Checklist of required topics, onboarding syllabus, Copilot-authored draft review |
+| **Wiki page** | Path-addressed markdown body | Checklist of required topics, onboarding syllabus, agent-authored draft review |
 | **Document** (parsed) | Markdown + layout metadata | Parse QA, human correction rate, lifecycle |
 | **KB chunk / FAQ** | Retrieval unit | Query–passage relevance, entailment vs chunk text |
 
@@ -171,7 +171,7 @@ This is exactly openKMS **`wiki_content_coverage`** ([evaluation.md](../features
 |------|----------------|------|
 | Holistic quality | “Rate 1–5 on completeness/clarity/accuracy” | Position bias, leniency drift |
 | Claim support | Decompose page into claims; verify each vs sources | Cost; needs good decomposition |
-| Compare two drafts | Pairwise preference | Useful for A/B after Copilot edit |
+| Compare two drafts | Pairwise preference | Useful for A/B after an agent edit |
 | Faithfulness (RAG) | Answer vs retrieved passages only | Ignores world truth if corpus stale |
 
 **Mitigations:** Fixed judge model, rubric anchoring with examples, **human calibration** on a gold set, report **pass@k** not single scores.

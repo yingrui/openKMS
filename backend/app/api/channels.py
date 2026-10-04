@@ -1,35 +1,15 @@
 """Document channels API."""
-import uuid
 from typing import Any
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Request
-from sqlalchemy import func, select, update
+from fastapi import HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.auth import require_auth
-from app.database import get_db
+from app.api.channel_tree_router import ChannelTreeSpec, build_channel_tree_router
 from app.models.document import Document
 from app.models.document_channel import DocumentChannel
-from app.services.channels.channel_scope import (
-    require_document_channel_in_scope,
-    require_document_channel_write,
-    scoped_document_channel_ids,
-)
-from app.services.acl.data_scope import bootstrap_owner_acl
-from app.services.acl.resource_acl_constants import RT_DOCUMENT_CHANNEL
 from app.models.object_type import ObjectType
-from app.schemas.channel import ChannelCreate, ChannelMergeBody, ChannelNode, ChannelReorderBody, ChannelTreeListResponse, ChannelUpdate
-from app.services.channels.channel_tree_list import paginate_channels_for_tree
-
-router = APIRouter(prefix="/document-channels", tags=["document-channels"], dependencies=[Depends(require_auth)])
-
-
-async def _scoped_channel_ids(request: Request, db: AsyncSession) -> set[str] | None:
-    return await scoped_document_channel_ids(request, db)
-
-
-def _require_channel_in_scope(allowed: set[str] | None, channel_id: str) -> None:
-    require_document_channel_in_scope(allowed, channel_id)
+from app.schemas.channel import ChannelNode, ChannelTreeListResponse, ChannelUpdate
+from app.services.acl.resource_acl_constants import RT_DOCUMENT_CHANNEL
 
 
 def _strip_field_order(schema: dict[str, Any] | list | None) -> dict[str, Any] | list | None:
@@ -58,42 +38,7 @@ def _normalize_label_config(cfg: list[dict[str, Any]] | None) -> list[dict[str, 
     return out
 
 
-def _build_tree(channels: list[DocumentChannel], parent_id: str | None = None) -> list[ChannelNode]:
-    """Build tree from flat list. Siblings sorted by sort_order then name at each level."""
-    nodes = [c for c in channels if c.parent_id == parent_id]
-    nodes.sort(key=lambda c: (c.sort_order, c.name))
-    result = []
-    for c in nodes:
-        result.append(
-            ChannelNode(
-                id=c.id,
-                name=c.name,
-                description=c.description,
-                sort_order=c.sort_order,
-                pipeline_id=c.pipeline_id,
-                auto_process=c.auto_process,
-                extraction_model_id=c.extraction_model_id,
-                extraction_schema=_strip_field_order(c.extraction_schema),
-                label_config=_normalize_label_config(getattr(c, "label_config", None)),
-                object_type_extraction_max_instances=getattr(c, "object_type_extraction_max_instances", None),
-                children=_build_tree(channels, c.id),
-            )
-        )
-    return result
-
-
-@router.get("/{channel_id}", response_model=ChannelNode)
-async def get_document_channel(
-    channel_id: str,
-    request: Request,
-    db: AsyncSession = Depends(get_db),
-):
-    """Get a single document channel by ID."""
-    allowed = await _scoped_channel_ids(request, db)
-    _require_channel_in_scope(allowed, channel_id)
-    channel = await db.get(DocumentChannel, channel_id)
-    if not channel:
-        raise HTTPException(status_code=404, detail="Channel not found")
+def _channel_node(channel: DocumentChannel, children: list[ChannelNode]) -> ChannelNode:
     return ChannelNode(
         id=channel.id,
         name=channel.name,
@@ -105,326 +50,50 @@ async def get_document_channel(
         extraction_schema=_strip_field_order(channel.extraction_schema),
         label_config=_normalize_label_config(getattr(channel, "label_config", None)),
         object_type_extraction_max_instances=getattr(channel, "object_type_extraction_max_instances", None),
-        children=[],
+        children=children,
     )
 
 
-@router.get("", response_model=ChannelTreeListResponse)
-async def list_document_channels(
-    request: Request,
-    limit: int = Query(200, ge=1, le=500),
-    offset: int = Query(0, ge=0),
-    db: AsyncSession = Depends(get_db),
-):
-    """List document channels as tree (paginated by top-level roots; each page includes full subtrees)."""
-    result = await db.execute(
-        select(DocumentChannel).order_by(DocumentChannel.sort_order, DocumentChannel.name)
-    )
-    channels = list(result.scalars().all())
-    allowed = await _scoped_channel_ids(request, db)
-    if allowed is not None:
-        channels = [c for c in channels if c.id in allowed]
-    page_channels, total = paginate_channels_for_tree(channels, limit=limit, offset=offset)
-    return ChannelTreeListResponse(
-        items=_build_tree(page_channels, None),
-        total=total,
-        limit=limit,
-        offset=offset,
-    )
-
-
-@router.post("", response_model=ChannelNode)
-async def create_document_channel(
-    body: ChannelCreate,
-    request: Request,
-    db: AsyncSession = Depends(get_db),
-):
-    """Create a document channel."""
-    if body.parent_id:
-        await require_document_channel_write(request, db, body.parent_id)
-        parent = await db.get(DocumentChannel, body.parent_id)
-        if not parent:
-            raise HTTPException(status_code=404, detail="Parent channel not found")
-
-    # New channel gets sort_order = max(siblings) + 1 so it appears at end of its level
-    next_order = await db.execute(
-        select(func.coalesce(func.max(DocumentChannel.sort_order), -1) + 1).where(
-            DocumentChannel.parent_id == body.parent_id
-        )
-    )
-    sort_order = next_order.scalar() or 0
-
-    channel_id = f"dc_{uuid.uuid4().hex[:8]}"
-    p = request.state.openkms_jwt_payload
-    sub = p.get("sub")
-    uname = p.get("preferred_username") or p.get("name")
-    channel = DocumentChannel(
-        id=channel_id,
-        name=body.name,
-        description=body.description,
-        parent_id=body.parent_id,
-        sort_order=sort_order,
-        created_by=sub if isinstance(sub, str) else None,
-        created_by_name=str(uname)[:256] if isinstance(uname, str) and uname.strip() else None,
-    )
-    db.add(channel)
-    await db.flush()
-    if isinstance(sub, str):
-        await bootstrap_owner_acl(db, RT_DOCUMENT_CHANNEL, channel.id, sub)
-    await db.commit()
-    await db.refresh(channel)
-    return ChannelNode(
-        id=channel.id,
-        name=channel.name,
-        description=channel.description,
-        sort_order=channel.sort_order,
-        pipeline_id=channel.pipeline_id,
-        auto_process=channel.auto_process,
-        extraction_model_id=channel.extraction_model_id,
-        extraction_schema=_strip_field_order(channel.extraction_schema),
-        label_config=_normalize_label_config(getattr(channel, "label_config", None)),
-        object_type_extraction_max_instances=getattr(channel, "object_type_extraction_max_instances", None),
-        children=[],
-    )
-
-
-@router.post("/merge", status_code=204)
-async def merge_document_channels(
-    body: ChannelMergeBody,
-    request: Request,
-    db: AsyncSession = Depends(get_db),
-):
-    """Merge source channel(s) into target. Moves all documents to target, then deletes source channel(s)."""
-    await require_document_channel_write(request, db, body.source_channel_id)
-    await require_document_channel_write(request, db, body.target_channel_id)
-    if body.source_channel_id == body.target_channel_id:
-        raise HTTPException(status_code=400, detail="Source and target must be different")
-
-    source = await db.get(DocumentChannel, body.source_channel_id)
-    target = await db.get(DocumentChannel, body.target_channel_id)
-    if not source:
-        raise HTTPException(status_code=404, detail="Source channel not found")
-    if not target:
-        raise HTTPException(status_code=404, detail="Target channel not found")
-
-    result = await db.execute(select(DocumentChannel))
-    all_channels = list(result.scalars().all())
-    source_descendants = set()
-    _collect_descendant_ids(all_channels, body.source_channel_id, source_descendants)
-    if body.target_channel_id in source_descendants:
-        raise HTTPException(
-            status_code=400,
-            detail="Target cannot be a descendant of source",
-        )
-
-    channel_ids_to_merge = (
-        list(source_descendants) if body.include_descendants else [body.source_channel_id]
-    )
-
-    if not body.include_descendants:
-        child_count = await db.execute(
-            select(func.count()).select_from(DocumentChannel).where(
-                DocumentChannel.parent_id == body.source_channel_id
-            )
-        )
-        if (child_count.scalar() or 0) > 0:
-            raise HTTPException(
-                status_code=400,
-                detail="Source has sub-channels. Enable include_descendants to merge them too.",
-            )
-
-    await db.execute(
-        update(Document)
-        .where(Document.channel_id.in_(channel_ids_to_merge))
-        .values(channel_id=body.target_channel_id)
-    )
-
-    source_ch = await db.get(DocumentChannel, body.source_channel_id)
-    if source_ch:
-        await db.delete(source_ch)
-    await db.commit()
-
-
-@router.delete("/{channel_id}", status_code=204)
-async def delete_document_channel(
-    channel_id: str,
-    request: Request,
-    db: AsyncSession = Depends(get_db),
-):
-    """Delete a document channel. Fails if channel has documents or sub-channels."""
-    await require_document_channel_write(request, db, channel_id)
-    channel = await db.get(DocumentChannel, channel_id)
-    if not channel:
-        raise HTTPException(status_code=404, detail="Channel not found")
-
-    doc_count = await db.execute(
-        select(func.count()).select_from(Document).where(Document.channel_id == channel_id)
-    )
-    if (doc_count.scalar() or 0) > 0:
-        raise HTTPException(
-            status_code=400,
-            detail="Channel has documents. Move or delete them first.",
-        )
-
-    child_count = await db.execute(
-        select(func.count()).select_from(DocumentChannel).where(DocumentChannel.parent_id == channel_id)
-    )
-    if (child_count.scalar() or 0) > 0:
-        raise HTTPException(
-            status_code=400,
-            detail="Channel has sub-channels. Remove or move them first.",
-        )
-
-    await db.delete(channel)
-    await db.commit()
-
-def _collect_descendant_ids(channels: list[DocumentChannel], channel_id: str, out: set[str]) -> None:
-    """Collect channel_id and all descendant IDs into out."""
-    out.add(channel_id)
-    for c in channels:
-        if c.parent_id == channel_id:
-            _collect_descendant_ids(channels, c.id, out)
-
-
-@router.post("/{channel_id}/reorder", status_code=204)
-async def reorder_document_channel(
-    channel_id: str,
-    body: ChannelReorderBody,
-    request: Request,
-    db: AsyncSession = Depends(get_db),
-):
-    """Move channel up or down among siblings (same parent)."""
-    await require_document_channel_write(request, db, channel_id)
-    if body.direction not in ("up", "down"):
-        raise HTTPException(status_code=400, detail="direction must be 'up' or 'down'")
-    channel = await db.get(DocumentChannel, channel_id)
-    if not channel:
-        raise HTTPException(status_code=404, detail="Channel not found")
-    result = await db.execute(
-        select(DocumentChannel)
-        .where(DocumentChannel.parent_id == channel.parent_id)
-        .order_by(DocumentChannel.sort_order, DocumentChannel.name)
-    )
-    siblings = list(result.scalars().all())
-    idx = next((i for i, c in enumerate(siblings) if c.id == channel_id), None)
-    if idx is None:
-        raise HTTPException(status_code=404, detail="Channel not found")
-    if body.direction == "up" and idx == 0:
-        raise HTTPException(status_code=400, detail="Already first")
-    if body.direction == "down" and idx == len(siblings) - 1:
-        raise HTTPException(status_code=400, detail="Already last")
-    swap_idx = idx - 1 if body.direction == "up" else idx + 1
-
-    needs_normalize = len(set(s.sort_order for s in siblings)) < len(siblings)
-    if needs_normalize:
-        for i, s in enumerate(siblings):
-            await db.execute(
-                update(DocumentChannel).where(DocumentChannel.id == s.id).values(sort_order=i)
-            )
-        await db.flush()
-
-    siblings_refreshed = list(
-        (await db.execute(
-            select(DocumentChannel)
-            .where(DocumentChannel.parent_id == channel.parent_id)
-            .order_by(DocumentChannel.sort_order, DocumentChannel.name)
-        )).scalars().all()
-    )
-    idx = next((i for i, c in enumerate(siblings_refreshed) if c.id == channel_id), idx)
-    swap_idx = idx - 1 if body.direction == "up" else idx + 1
-    current = siblings_refreshed[idx]
-    other = siblings_refreshed[swap_idx]
-
-    cur_order, oth_order = current.sort_order, other.sort_order
-    await db.execute(
-        update(DocumentChannel).where(DocumentChannel.id == current.id).values(sort_order=oth_order)
-    )
-    await db.execute(
-        update(DocumentChannel).where(DocumentChannel.id == other.id).values(sort_order=cur_order)
-    )
-    await db.commit()
-
-
-@router.put("/{channel_id}", response_model=ChannelNode)
-async def update_document_channel(
-    channel_id: str,
-    body: ChannelUpdate,
-    request: Request,
-    db: AsyncSession = Depends(get_db),
-):
-    """Update a document channel."""
-    await require_document_channel_write(request, db, channel_id)
-    channel = await db.get(DocumentChannel, channel_id)
-    if not channel:
-        raise HTTPException(status_code=404, detail="Channel not found")
-
-    update_data = body.model_dump(exclude_unset=True)
-
-    if "parent_id" in update_data:
-        new_parent_id = update_data["parent_id"]
-        if new_parent_id == channel_id:
-            raise HTTPException(status_code=400, detail="Cannot move channel to be its own child")
-        if new_parent_id is not None:
-            await require_document_channel_write(request, db, new_parent_id)
-            parent = await db.get(DocumentChannel, new_parent_id)
-            if not parent:
-                raise HTTPException(status_code=404, detail="Parent channel not found")
-            result = await db.execute(select(DocumentChannel))
-            all_channels = list(result.scalars().all())
-            descendant_ids = set()
-            _collect_descendant_ids(all_channels, channel_id, descendant_ids)
-            if new_parent_id in descendant_ids:
-                raise HTTPException(
-                    status_code=400,
-                    detail="Cannot move channel to a descendant (would create a cycle)",
-                )
-
-    if "extraction_schema" in update_data and update_data["extraction_schema"] is not None:
+async def _prepare_update(db: AsyncSession, update_data: dict[str, Any]) -> None:
+    if update_data.get("extraction_schema") is not None:
         update_data["extraction_schema"] = _strip_field_order(update_data["extraction_schema"])
 
-    if "label_config" in update_data and update_data["label_config"] is not None:
-        cfg = update_data["label_config"]
-        if not isinstance(cfg, list):
-            raise HTTPException(status_code=400, detail="label_config must be a list")
-        normalized = []
-        for item in cfg:
-            if not isinstance(item, dict):
-                normalized.append(item)
-                continue
-            ot_id = item.get("object_type_id")
-            if not ot_id:
-                raise HTTPException(status_code=400, detail="label_config item must have object_type_id")
-            ot = await db.get(ObjectType, ot_id)
-            if not ot:
-                raise HTTPException(status_code=400, detail=f"Object type {ot_id} not found")
-            if not getattr(ot, "is_master_data", False):
-                raise HTTPException(
-                    status_code=400,
-                    detail=f"Object type '{ot.name}' is not master data. Only master data object types can be used for manual labels.",
-                )
-            copy = dict(item)
-            if "type" not in copy or copy.get("type") not in ("object_type", "list[object_type]"):
-                copy["type"] = "list[object_type]" if copy.get("allow_multiple") else "object_type"
-            if "allow_multiple" in copy:
-                del copy["allow_multiple"]
-            normalized.append(copy)
-        update_data["label_config"] = normalized
+    cfg = update_data.get("label_config")
+    if cfg is None:
+        return
+    if not isinstance(cfg, list):
+        raise HTTPException(status_code=400, detail="label_config must be a list")
+    for item in cfg:
+        if not isinstance(item, dict):
+            continue
+        ot_id = item.get("object_type_id")
+        if not ot_id:
+            raise HTTPException(status_code=400, detail="label_config item must have object_type_id")
+        ot = await db.get(ObjectType, ot_id)
+        if not ot:
+            raise HTTPException(status_code=400, detail=f"Object type {ot_id} not found")
+        if not getattr(ot, "is_master_data", False):
+            raise HTTPException(
+                status_code=400,
+                detail=f"Object type '{ot.name}' is not master data. Only master data object types can be used for manual labels.",
+            )
+    update_data["label_config"] = _normalize_label_config(cfg)
 
-    for key, value in update_data.items():
-        setattr(channel, key, value)
 
-    await db.commit()
-    await db.refresh(channel)
-    return ChannelNode(
-        id=channel.id,
-        name=channel.name,
-        description=channel.description,
-        sort_order=channel.sort_order,
-        pipeline_id=channel.pipeline_id,
-        auto_process=channel.auto_process,
-        extraction_model_id=channel.extraction_model_id,
-        extraction_schema=_strip_field_order(channel.extraction_schema),
-        label_config=_normalize_label_config(getattr(channel, "label_config", None)),
-        object_type_extraction_max_instances=getattr(channel, "object_type_extraction_max_instances", None),
-        children=[],
+router = build_channel_tree_router(
+    ChannelTreeSpec(
+        kind="document",
+        prefix="/document-channels",
+        channel_model=DocumentChannel,
+        item_model=Document,
+        items_label="documents",
+        id_prefix="dc",
+        resource_type=RT_DOCUMENT_CHANNEL,
+        scope_not_found_detail="Channel not found",
+        node_schema=ChannelNode,
+        tree_list_schema=ChannelTreeListResponse,
+        update_schema=ChannelUpdate,
+        to_node=_channel_node,
+        prepare_update=_prepare_update,
     )
+)

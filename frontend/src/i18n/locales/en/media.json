@@ -58,7 +58,8 @@
     "mergeIntoTitle": "Merge into…",
     "deleteTitle": "Delete",
     "moving": "Moving…",
-    "move": "Move"
+    "move": "Move",
+    "cancel": "Cancel"
   },
   "channel": {
     "backToChannels": "All collections",

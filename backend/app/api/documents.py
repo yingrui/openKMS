@@ -57,7 +57,11 @@ from app.services.documents.document_scope import (
 from app.services.documents.document_lifecycle import document_current_sql
 from app.services.acl.resource_acl_constants import PERM_READ, PERM_WRITE, RT_DOCUMENT_CHANNEL
 from app.services.documents.metadata_extraction import extract_metadata, resolve_extraction_schema_for_llm
-from app.services.wiki.page_index import md_to_tree_from_markdown
+from app.services.documents.document_page_index import (
+    maybe_upload_page_index_from_markdown,
+    next_document_version_number,
+    upload_page_index_from_markdown,
+)
 from app.services.documents.document_storage import (
     document_object_key,
     document_prefix,
@@ -98,30 +102,6 @@ async def get_scoped_document_write(
         return await load_document_scoped(db, request, document_id, PERM_WRITE)
     except HTTPException:
         raise http_error(request, 404, "DOCUMENT_NOT_FOUND") from None
-
-
-def _maybe_upload_page_index_from_markdown(doc: Document, markdown: str | None) -> None:
-    """Rebuild and store page_index.json when storage is enabled and markdown is non-empty."""
-    if not doc.file_hash or not settings.storage_enabled:
-        return
-    if not markdown or not markdown.strip():
-        return
-    try:
-        page_index = md_to_tree_from_markdown(markdown, doc_name=doc.name or "document")
-        key = document_object_key(doc.file_hash, "page_index.json")
-        upload_object(key, json.dumps(page_index).encode("utf-8"), content_type="application/json")
-    except Exception:
-        pass
-
-
-async def _next_document_version_number(db: AsyncSession, document_id: str) -> int:
-    result = await db.execute(
-        select(func.coalesce(func.max(DocumentVersion.version_number), 0)).where(
-            DocumentVersion.document_id == document_id
-        )
-    )
-    m = result.scalar_one()
-    return int(m) + 1
 
 
 def _collect_channel_and_descendants(channels: list[DocumentChannel], channel_id: str, out: set[str]) -> None:
@@ -292,7 +272,7 @@ async def upload_document(
             doc.parsing_result = preview
             doc.markdown = md
             doc.status = DocumentStatus.COMPLETED
-            _maybe_upload_page_index_from_markdown(doc, md)
+            maybe_upload_page_index_from_markdown(doc, md)
         except Exception:
             doc.parsing_result = {
                 "document_kind": "spreadsheet",
@@ -310,7 +290,7 @@ async def upload_document(
             doc.parsing_result = preview
             doc.markdown = md
             doc.status = DocumentStatus.COMPLETED
-            _maybe_upload_page_index_from_markdown(doc, md)
+            maybe_upload_page_index_from_markdown(doc, md)
         except Exception:
             doc.parsing_result = {
                 "document_kind": "mindmap",
@@ -586,7 +566,7 @@ async def update_document_markdown(
     await db.commit()
     await db.refresh(doc)
 
-    _maybe_upload_page_index_from_markdown(doc, body.markdown)
+    maybe_upload_page_index_from_markdown(doc, body.markdown)
 
     return DocumentResponse.model_validate(doc)
 
@@ -615,7 +595,7 @@ async def restore_document_markdown(
     await db.commit()
     await db.refresh(doc)
 
-    _maybe_upload_page_index_from_markdown(doc, markdown)
+    maybe_upload_page_index_from_markdown(doc, markdown)
 
     return DocumentResponse.model_validate(doc)
 
@@ -645,9 +625,7 @@ async def rebuild_page_index(
     markdown = _get_document_markdown(doc)
     if not markdown:
         raise HTTPException(status_code=404, detail="Document has no markdown content")
-    page_index = md_to_tree_from_markdown(markdown, doc_name=doc.name or "document")
-    key = document_object_key(doc.file_hash, "page_index.json")
-    upload_object(key, json.dumps(page_index).encode("utf-8"), content_type="application/json")
+    page_index = upload_page_index_from_markdown(doc, markdown)
     return {
         "structure": page_index.get("structure", []),
         "doc_name": page_index.get("doc_name"),
@@ -742,7 +720,7 @@ async def create_document_version(
     claims: dict = Depends(get_jwt_payload),
 ):
     """Snapshot current markdown and metadata as a new explicit version."""
-    vn = await _next_document_version_number(db, document_id)
+    vn = await next_document_version_number(db, document_id)
     sub = claims.get("sub")
     uname = claims.get("preferred_username") or claims.get("name")
     dv = DocumentVersion(
@@ -807,7 +785,7 @@ async def restore_document_version(
         raise HTTPException(status_code=404, detail="Version not found")
 
     if body.save_current_as_version:
-        vn = await _next_document_version_number(db, document_id)
+        vn = await next_document_version_number(db, document_id)
         sub = claims.get("sub")
         uname = claims.get("preferred_username") or claims.get("name")
         pre = DocumentVersion(
@@ -829,7 +807,7 @@ async def restore_document_version(
     await db.commit()
     await db.refresh(doc)
 
-    _maybe_upload_page_index_from_markdown(doc, doc.markdown)
+    maybe_upload_page_index_from_markdown(doc, doc.markdown)
 
     return DocumentResponse.model_validate(doc)
 
@@ -853,6 +831,7 @@ async def update_document_metadata(
 @router.post("/{document_id}/extract-metadata", response_model=ExtractMetadataResponse)
 async def extract_document_metadata(
     document_id: str,
+    request: Request,
     doc: Document = Depends(get_scoped_document_write),
     db: AsyncSession = Depends(get_db),
 ):
@@ -1069,7 +1048,7 @@ async def _process_import_zip(
     await db.commit()
     await db.refresh(doc)
 
-    _maybe_upload_page_index_from_markdown(doc, imported_markdown or doc.markdown)
+    maybe_upload_page_index_from_markdown(doc, imported_markdown or doc.markdown)
 
     return doc
 
@@ -1209,7 +1188,7 @@ async def upload_document_chunked(
             doc.parsing_result = preview
             doc.markdown = md
             doc.status = DocumentStatus.COMPLETED
-            _maybe_upload_page_index_from_markdown(doc, md)
+            maybe_upload_page_index_from_markdown(doc, md)
         except Exception:
             doc.parsing_result = {
                 "document_kind": "spreadsheet",
@@ -1225,7 +1204,7 @@ async def upload_document_chunked(
             doc.parsing_result = preview
             doc.markdown = md
             doc.status = DocumentStatus.COMPLETED
-            _maybe_upload_page_index_from_markdown(doc, md)
+            maybe_upload_page_index_from_markdown(doc, md)
         except Exception:
             doc.parsing_result = {
                 "document_kind": "mindmap",

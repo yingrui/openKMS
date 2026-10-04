@@ -28,13 +28,6 @@ class MediaChannelTreeListResponse(BaseModel):
     offset: int
 
 
-class MediaChannelCreate(BaseModel):
-    name: str
-    description: str | None = None
-    parent_id: str | None = None
-    sort_order: int = 0
-
-
 class MediaChannelUpdate(BaseModel):
     name: str | None = Field(default=None, min_length=1, max_length=256)
     description: str | None = Field(default=None, max_length=1024)
@@ -43,13 +36,3 @@ class MediaChannelUpdate(BaseModel):
     metadata_schema: list[dict[str, Any]] | None = None
     default_image_model_id: str | None = None
     default_video_model_id: str | None = None
-
-
-class MediaChannelMergeBody(BaseModel):
-    source_channel_id: str
-    target_channel_id: str
-    include_descendants: bool = True
-
-
-class MediaChannelReorderBody(BaseModel):
-    direction: str

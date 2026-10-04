@@ -14,7 +14,7 @@ If you are reading this on GitHub, jump to:
 - [Developer setup](developer/setup.md) — host environment, pgvector, OIDC.
 - [Doc conventions for AI agents](agents.md) — how to keep these docs healthy.
 
-**Research** (`research/`): [RAGFlow vs openKMS](research/ragflow_vs_openkms.md), [Confluence AI vs openKMS](research/confluence_ai_vs_openkms.md), [Operational Knowledge Fitness](research/km_dimension_operational_fitness.md), [Text content evaluation](research/text_content_evaluation.md), [LLM wiki vs openKMS](research/llm_wiki_comparison.md).
+**Research** (`research/`): see the [Research index](index.md#research).
 
 The site is built with [MkDocs Material](https://squidfunk.github.io/mkdocs-material/) (`mkdocs.yml` at the repo root). To rebuild locally:
 

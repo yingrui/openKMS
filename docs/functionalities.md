@@ -1,6 +1,6 @@
 # Functionalities
 
-Per-feature reference, split by topic. The full content used to live in this single file; it now lives under `docs/features/` so each area is short enough to skim and easy to edit independently. The table below is the authoritative routing index — start here.
+Per-feature reference, split by topic under `docs/features/`. The table below is the authoritative routing index — start here.
 
 ## Per feature
 
@@ -12,7 +12,7 @@ Per-feature reference, split by topic. The full content used to live in this sin
 | [Media library](features/media.md) | Media channels, image/video assets, metadata, upload, Zhipu AI generation ( **`media`** toggle, default off) |
 | [Comments](features/comments.md) | User comments and 0–5 ratings on articles, documents, KBs, wiki spaces, agent projects |
 | [Knowledge bases](features/knowledge-bases.md) | KB CRUD, FAQs, chunks, semantic search, QA proxy, kb-index |
-| [Wiki spaces](features/wiki-spaces.md) | Wiki content (path-addressed pages, files, vault), import, graph view, Wiki Copilot agent |
+| [Wiki spaces](features/wiki-spaces.md) | Wiki content (path-addressed pages, files, vault), import, graph view |
 | [Evaluation](features/evaluation.md) | Evaluations, items, runs, compare (experimental toggle; quality-improvement workflows still evolving) |
 | [Glossaries](features/glossaries.md) | Bilingual terms, AI suggestion, import/export |
 | [Knowledge map & home](features/knowledge-map.md) | Knowledge Map terms, resource links, home hub graph |
@@ -28,7 +28,6 @@ Per-feature reference, split by topic. The full content used to live in this sin
 | [Kubernetes clusters](features/kubernetes-clusters.md) | Console BYO cluster registration, encrypted kubeconfig, connection test (`console:kubernetes`) |
 | [Connectors](features/connectors.md) | `/connectors` sync & search_tool kinds, dataset outputs, Tushare sync jobs, schedules, Agents `web_search` |
 | [Agents (project workspaces)](features/openkms-agents.md) | Deep Agents chat, files, local/remote git, plan mode, openKMS research tools |
-| [Wiki Copilot](features/wiki-spaces.md) | In-app LangGraph assistant per wiki space (distinct from qa-agent) |
 | [openkms-skill](features/openkms-skill.md) | Agent Skill + CLI (`openkms-skill/`); openKMS Agents, Claude Code, OpenCode, etc. — not a substitute for domain in-app assistants |
 | [Tutorial: Understanding the ontology (Kanban lab)](tutorials/understanding-ontology.md) | Learn ontology by building a mini Kanban (Project / WorkItem / Person + decision FoO) |
 | [Tutorial: Tushare market ontology (DIY)](tutorials/tushare-market-ontology.md) | Domain case study: sync → Stock → FoO (requires ontology intro) |
@@ -40,7 +39,7 @@ Per-feature reference, split by topic. The full content used to live in this sin
 | [Knowledge types](features/knowledge-types.md) | Taxonomy (artifacts, indexes, dimensions); **insect-research** workflow table; **when to add a Recordings/Video functionality** ([anchor](features/knowledge-types.md#video-as-functionality)) |
 | [API reference](features/api-reference.md) | One table of every HTTP endpoint, grouped by area |
 | [Data models](features/data-models.md) | Schema for every persisted table |
-| [Configuration](features/configuration.md) | Backend deps, pgvector, S3/MinIO, cursor rules |
+| [Configuration](features/configuration.md) | Backend deps, pgvector, S3/MinIO, contributor rules |
 
 ## Where to add new content
 

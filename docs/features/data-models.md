@@ -271,7 +271,7 @@ Design and enforcement: [Data security](data-security.md).
 ### OidcIdentity
 
 - `sub` (PK; IdP subject from JWT), `preferred_username`, `email`, `name` (nullable), `first_seen_at`, `last_seen_at`, `created_at`, `updated_at`
-- Upserted on OIDC login (`oauth2_callback`), `POST /api/auth/sync-session`, and `GET /api/auth/me`. Used to resolve ACL owner display names and username → `sub` without personal API keys. Migration **`j9k0l1m2n3o4`** backfills from `user_api_keys` where `auth_mode=oidc`.
+- Upserted on OIDC login (`oauth2_callback`), `POST /sync-session`, and `GET /api/auth/me`. Used to resolve ACL owner display names and username → `sub` without personal API keys. Migration **`j9k0l1m2n3o4`** backfills from `user_api_keys` where `auth_mode=oidc`.
 
 ### AccessGroupMember
 
@@ -313,7 +313,7 @@ Design and enforcement: [Data security](data-security.md).
 
 ### AgentMessage
 
-- `id`, `conversation_id` (FK → agent_conversations, CASCADE), `role` (`user` / `assistant` / `tool`), `content` (user-visible text for assistant turns), `tool_calls` (JSONB; wiki Copilot may store `wiki_tool_traces_v1`: tool name + output for model replay without re-running tools, plus optional **`wiki_assistant_stream_parts_v1`** for interleaved tool/text UI replay on reload; **project** Deep Agents streams persist both keys the same way; **KB Q&A / evaluation / kb_faq** may add `kb_qa_sources_v1` and optional `wiki_tool_traces_v1` / `wiki_assistant_stream_parts_v1` when the qa-agent streams tools), `created_at` (DB default **`clock_timestamp()`** so rows inserted in the same transaction get distinct timestamps; list APIs use `ORDER BY created_at, id`)
+- `id`, `conversation_id` (FK → agent_conversations, CASCADE), `role` (`user` / `assistant` / `tool`), `content` (user-visible text for assistant turns), `tool_calls` (JSONB; **project** Deep Agents streams store `wiki_tool_traces_v1` (tool name + output for model replay without re-running tools) and optional **`wiki_assistant_stream_parts_v1`** (interleaved tool/text UI replay on reload) — key names are historical; **KB Q&A / evaluation / kb_faq** may add `kb_qa_sources_v1` and optional `wiki_tool_traces_v1` / `wiki_assistant_stream_parts_v1` when the qa-agent streams tools), `created_at` (DB default **`clock_timestamp()`** so rows inserted in the same transaction get distinct timestamps; list APIs use `ORDER BY created_at, id`)
 
 ## Projects (Agents workspace)
 

@@ -56,7 +56,7 @@ flowchart TB
 | **Worker** | procrastinate worker runs deferred jobs (document parse, KB index, …) by spawning **openkms-cli**; updates status in PostgreSQL. |
 | **LLM providers** | External OpenAI-compatible APIs configured as **api_providers** / **api_models** — metadata extraction, FAQ generation, embeddings, playground. |
 | **QA Agent** | Separate FastAPI + LangGraph service per knowledge base; searches via backend API only (no direct DB). |
-| **Wiki Copilot** | In-process LangGraph agent in the **main** API (`/api/agent/*`) for the wiki UI — page search, linked documents, optional upsert. Not the QA Agent. Details: [wiki_agent_prototype.md](./wiki_agent_prototype.md). |
+| **In-app agents** | Run in the **main** API process: Deep Agents [project workspaces](features/openkms-agents.md) (`backend/app/services/deep_agents/`) and the knowledge map designer. Not the QA Agent. |
 
 ## Frontend Structure
 
@@ -180,8 +180,8 @@ backend/
 │   ├── models/                 # document, wiki, knowledge_base, evaluation, …
 │   ├── schemas/                # paired with api domains
 │   ├── services/
-│   │   ├── agent/, evaluation/, connector_sync/, connector_search/, …
-│   │   └── *.py                # kb_search, wiki_vault_import, permission_*, guards, storage
+│   │   ├── acl/, documents/, knowledge_bases/, wiki/, ontology/, deep_agents/, connectors/, …  # one package per domain
+│   │   └── *.py                # cross-cutting: storage, feature_toggles, chunked_upload, openkms_cli_subprocess
 │   ├── jobs/tasks.py
 │   ├── i18n/
 │   └── middleware/
@@ -194,6 +194,8 @@ backend/
 
 - **New HTTP feature** — add `api/<domain>.py` router, `schemas/<domain>.py`, `models/` if new tables (Alembic migration), logic in `services/`; register router in `main.py`.
 - **Permissions** — `require_permission` on routes; resource ACL via `context_guard` / `resource_acl_service` for channels, documents, articles; catalog in `services/permission_*`.
+- **Layering** — `services/`, `jobs/`, `schemas/`, `models/` never import from `app.api`; shared helpers live in `services/` and API modules call them.
+- **Channel trees** — document, article and media channel routes are built by `api/channel_tree_router.py` (`ChannelTreeSpec`); the SPA side shares `ChannelTreeManager`, `ChannelIndexPage`, `createChannelTreeContext` and `createChannelTreeApi`.
 - **Long work** — defer from API into `jobs/tasks.py`; worker runs openkms-cli subprocesses where needed.
 - **Internal-only** — defaults and credentials for CLI under `api/internal/` (not exposed to browser).
 - **Where to look** — route list → `app/api/`; table shape → `app/models/`; side effects → `app/services/`; async work → `app/jobs/tasks.py`.
@@ -265,7 +267,7 @@ qa-agent/
 - **Purpose**: Separate RAG + ontology service for Q&A against knowledge bases; configurable per KB via `agent_url`
 - **Architecture**: LangGraph state graph: `retrieve` (KB search) → `generate` (LLM with tools) ⇄ `tools` (ontology). RAG via `POST /api/knowledge-bases/{id}/search`; ontology via `GET /api/object-types`, `GET /api/link-types`, `POST /api/ontology/explore` (Cypher). Does not access the database directly.
 - **Ontology skills**: For coverage questions (e.g. "Which insurance products cover heart attack?"), the agent calls `get_ontology_schema_tool` to learn node labels and relationship types, then `run_cypher_tool` to query Neo4j.
-- **Integration**: Backend proxies `POST /api/knowledge-bases/{kb_id}/ask` and **`POST …/ask/stream`** to `{kb.agent_url}/ask` and **`/ask/stream`**, passing the user's access token so the agent can call the backend APIs. For **persisted threads**, **`POST /api/knowledge-bases/{kb_id}/agent-conversations/{cid}/messages`** stores each turn in PostgreSQL and streams by forwarding qa-agent NDJSON (then writes the final assistant message, **`kb_qa_sources_v1`**, and optional tool traces). The SPA full-page Q&A uses the same **`delta` / `tool_*` / `done`** shapes as Wiki Copilot for the live rail.
+- **Integration**: Backend proxies `POST /api/knowledge-bases/{kb_id}/ask` and **`POST …/ask/stream`** to `{kb.agent_url}/ask` and **`/ask/stream`**, passing the user's access token so the agent can call the backend APIs. For **persisted threads**, **`POST /api/knowledge-bases/{kb_id}/agent-conversations/{cid}/messages`** stores each turn in PostgreSQL and streams by forwarding qa-agent NDJSON (then writes the final assistant message, **`kb_qa_sources_v1`**, and optional tool traces). The SPA full-page Q&A uses the same **`delta` / `tool_*` / `done`** shapes as project agents for the live rail.
 - **Port**: 8103 by default
 
 ## Data Flow
@@ -412,4 +414,4 @@ flowchart LR
 | Frontend | `config/index.ts` – `apiUrl`, `authMode` (fallback), `oidc` (`VITE_OIDC_*`). Runtime mode from `GET /api/auth/public-config`. Optional `VITE_AUTH_MODE` fallback if the API is unreachable |
 | Vite dev | Proxy **`/api`**, **`/internal-api`**, **`/sync-session`**, **`/clear-session`** → backend (**8102**); **`/buckets/openkms`** → MinIO (**9000** when MinIO is published on the host) |
 | Alembic | `alembic.ini` – uses `settings.database_url_sync` |
-| Cursor | `.cursor/rules/` – project rules (e.g. docs-before-commit, alembic-migrations) |
+| AI agents | `AGENTS.md` (repo root) – coding, docs-before-commit, Alembic, frontend verification rules |

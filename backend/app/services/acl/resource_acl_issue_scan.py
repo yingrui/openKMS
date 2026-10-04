@@ -8,7 +8,6 @@ from dataclasses import dataclass
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.resource_acl import _enrich_default_owner_grant, _grant_labels
 from app.models.resource_acl import ResourceAclEntry
 from app.services.acl.resource_acl_constants import GRANTEE_AUTHENTICATED
 from app.services.acl.resource_acl_issue_detection import (
@@ -21,6 +20,7 @@ from app.services.acl.resource_acl_admin_helpers import (
     resource_type_label,
     share_path_for,
 )
+from app.services.acl.resource_acl_presentation import labeled_grants
 
 
 @dataclass
@@ -59,36 +59,10 @@ def aggregate_issue_counts(scanned: list[ScannedResourceIssue]) -> tuple[int, di
     return len(scanned), ordered
 
 
-async def _audit_grants(db: AsyncSession, resource_type: str, resource_id: str, entries: list):
-    from app.api.resource_acl import _channel_creator_identity
-
-    creator_subject, creator_display_name = await _channel_creator_identity(
-        db, resource_type, resource_id
-    )
-    grant_rows, owner, owner_label = await _grant_labels(
-        db,
-        entries,
-        creator_subject=creator_subject,
-        creator_display_name=creator_display_name,
-    )
-    grant_rows, owner, owner_label = await _enrich_default_owner_grant(
-        db,
-        resource_type,
-        resource_id,
-        entries,
-        grant_rows,
-        owner,
-        owner_label,
-        creator_subject=creator_subject,
-        creator_display_name=creator_display_name,
-    )
-    return grant_rows
-
-
 async def build_issue_item(db: AsyncSession, row: ScannedResourceIssue) -> dict:
     rt, rid, entries, scan = row.resource_type, row.resource_id, row.entries, row.scan
     label = await resolve_resource_label(db, rt, rid)
-    grants = await _audit_grants(db, rt, rid, entries)
+    grants, _, _, _ = await labeled_grants(db, rt, rid, entries)
     owner = next((g for g in grants if g.is_owner), None)
     owner_persisted = next((g for g in grants if g.grantee_type == "user"), None)
     auth = next((g for g in grants if g.grantee_type == GRANTEE_AUTHENTICATED), None)

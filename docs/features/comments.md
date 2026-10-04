@@ -27,7 +27,7 @@ See [API reference — Comments](api-reference.md#comments).
 
 Detail pages expose a **right-side Comments rail** (Feishu-style):
 
-- **Utility rail** (far right): `MessageSquare` toggles comments. Wiki workspace also shows **Copilot**; opening one panel closes the other.
+- **Utility rail** (far right): `MessageSquare` toggles comments.
 - **Comments panel**: summary (average rank, count), composer with 0–5 stars, scrollable thread with inline replies.
 
 Integrated on: Article detail, Document detail, Knowledge base detail (hidden in Q&A full-page mode), Wiki workspace & wiki space settings, Agent project settings.

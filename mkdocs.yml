@@ -110,13 +110,14 @@ plugins:
             Roadmap: 路线图
             Development plan: 开发计划
             Tech debt: 技术债
-            Wiki agent prototype: 维基 Agent 原型
             Research: 研究
             LLM wiki vs openKMS: LLM wiki 与 openKMS
             RAGFlow vs openKMS: RAGFlow 与 openKMS
             Confluence AI vs openKMS: Confluence AI 与 openKMS
             KM dimension — Operational Knowledge Fitness: 知识管理维度 — 运营知识健康度
             Text content evaluation: 文本内容评测
+            Ontology Functions & Actions: 本体 Functions 与 Actions
+            Ontology Manager alignment (platform vs DIY): 本体 Manager 对齐（平台与 DIY）
   - search
 
 markdown_extensions:
@@ -205,7 +206,6 @@ nav:
   - Roadmap:
       - Development plan: development_plan.md
       - Tech debt: tech_debt.md
-      - Wiki agent prototype: wiki_agent_prototype.md
   - Research:
       - LLM wiki vs openKMS: research/llm_wiki_comparison.md
       - RAGFlow vs openKMS: research/ragflow_vs_openkms.md
@@ -214,3 +214,5 @@ nav:
       - Text content evaluation: research/text_content_evaluation.md
       - CMS / Portal module: research/cms_portal_module.md
       - Enterprise KM in the AI era (insight draft): research/enterprise_km_ai_era_insight.md
+      - Ontology Functions & Actions: research/ontology_functions_and_actions.md
+      - Ontology Manager alignment (platform vs DIY): research/ontology_manager_alignment.md

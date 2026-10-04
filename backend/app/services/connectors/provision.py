@@ -6,30 +6,18 @@ import re
 import uuid
 from typing import Any
 
-from sqlalchemy import create_engine, select, text
+from sqlalchemy import select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.data_source import DataSource
 from app.models.dataset import Dataset
 from app.services.connectors.connector_catalog import get_kind_spec
 from app.services.connectors.dataset_schemas import ConnectorDatasetColumn
-from app.services.credentials.credential_encryption import decrypt
 from app.services.acl.data_scope import bootstrap_owner_acl
 from app.services.acl.resource_acl_constants import RT_DATASET
-from urllib.parse import quote_plus
+from app.services.ontology.dataset_tables import pg_engine_for_datasource
 
 _IDENTIFIER = re.compile(r"^[a-zA-Z0-9_]+$")
-
-
-def _pg_engine_for_datasource(ds: DataSource):
-    username = decrypt(ds.username_encrypted) if ds.username_encrypted else ""
-    password = decrypt(ds.password_encrypted) if ds.password_encrypted else ""
-    password_escaped = quote_plus(password) if password else ""
-    url = (
-        f"postgresql://{username}:{password_escaped}@{ds.host}:{ds.port or 5432}"
-        f"/{ds.database or 'postgres'}"
-    )
-    return create_engine(url, pool_pre_ping=True, pool_recycle=10)
 
 
 def _validate_identifier(name: str, label: str) -> str:
@@ -162,7 +150,7 @@ async def validate_dataset_for_slot(
         raise ValueError(f"Data source not found for dataset {dataset_id}")
     if ds.kind != "postgresql":
         raise ValueError(f"Dataset {dataset_id} is not on a PostgreSQL data source.")
-    engine = _pg_engine_for_datasource(ds)
+    engine = pg_engine_for_datasource(ds)
     try:
         cols = _fetch_table_columns(engine, dataset.schema_name, dataset.table_name)
     finally:
@@ -226,7 +214,7 @@ async def provision_dataset_for_slot(
         )
 
     ddl = build_create_table_ddl(pg_schema, pg_table, slot_spec.dataset_columns)
-    engine = _pg_engine_for_datasource(ds)
+    engine = pg_engine_for_datasource(ds)
     try:
         with engine.begin() as conn:
             conn.execute(text(ddl))

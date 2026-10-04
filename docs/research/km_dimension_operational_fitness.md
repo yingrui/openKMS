@@ -193,7 +193,7 @@ How the product supports each facet **now** vs **on the roadmap** ([Development 
 | **Verifiability** | KB search/Q&A `sources`, `chunk_index`, `retrieval_debug`; document/article versions; printable article view | Eval→fix loop; unified agent citations |
 | **Navigability** | Wiki, glossaries, knowledge map, ontology browse | Onboarding paths; stronger map coverage metrics |
 | **Currency** | Document/article lifecycle, relationships, `is_current_for_rag`, historical toggle in search | Policy change impact workflow |
-| **Reuse** | Wiki Copilot upsert; articles; evaluations | Ask→FAQ/wiki; contribution nudges; usage dashboards |
+| **Reuse** | Wiki pages (UI, vault import, CLI / agent upsert); articles; evaluations | Ask→FAQ/wiki; contribution nudges; usage dashboards |
 
 **Evaluation module** ([evaluation.md](../features/evaluation.md)) is the closest **built-in OKF probe** today:
 
@@ -231,7 +231,7 @@ When prioritizing openKMS backlog items, ask which facet moves most for target c
 |---------------------------|-------------------|-------------------------|
 | “Nobody can find anything” | Discoverability | Connectors, search, map linking |
 | “Legal won’t let us use AI answers” | Verifiability + Currency | Citations, lifecycle, impact workflow |
-| “Wiki is empty after launch” | Reuse | Ask→contribute, Copilot drafts, eval feedback |
+| “Wiki is empty after launch” | Reuse | Ask→contribute, agent-drafted pages, eval feedback |
 | “Agents hallucinate on old SOPs” | Currency + Verifiability | `is_current_for_rag`, dependent review, eval gates |
 
 This aligns [Strategic priorities](../development_plan.md#strategic-priorities) (connectors, in-product agents, multimodal, evaluation, policy lifecycle) with a **single reporting dimension** executives can track.

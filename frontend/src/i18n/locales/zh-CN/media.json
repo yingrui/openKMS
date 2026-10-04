@@ -58,7 +58,8 @@
     "mergeIntoTitle": "合并至…",
     "deleteTitle": "删除",
     "moving": "移动中…",
-    "move": "移动"
+    "move": "移动",
+    "cancel": "取消"
   },
   "channel": {
     "backToChannels": "全部合集",

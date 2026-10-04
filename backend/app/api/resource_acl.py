@@ -3,13 +3,12 @@
 from __future__ import annotations
 
 from fastapi import APIRouter, Depends, HTTPException
-from pydantic import BaseModel, Field
-from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.auth import get_jwt_payload, require_auth
 from app.database import get_db
 from app.models.access_group import AccessGroup
+from app.schemas.resource_acl import OwnerCandidateOut, ResourceAclOut, ResourceAclPut
 from app.services.acl.resource_acl_constants import (
     GRANTEE_AUTHENTICATED,
     GRANTEE_GROUP,
@@ -18,68 +17,26 @@ from app.services.acl.resource_acl_constants import (
     PERM_ALL_DATA,
     PERM_MANAGE,
     PERM_READ,
-    PERM_WRITE,
-    RT_ARTICLE_CHANNEL,
-    RT_DOCUMENT_CHANNEL,
-    RT_KNOWLEDGE_BASE,
-    RT_WIKI_SPACE,
     SECURABLE_RESOURCE_TYPES,
-    perm_label,
+    parse_perm_string,
+)
+from app.services.acl.resource_acl_presentation import (
+    list_local_owner_candidates,
+    resource_creator_identity,
+    serialize_resource_acl,
 )
 from app.services.acl.resource_acl_service import (
     check_resource_access,
-    effective_permissions,
     list_acl_entries,
-    list_owner_candidates,
     normalize_owner_grantee_id,
     replace_resource_acl,
-    resolve_subject_display,
-    resource_context_chain,
     resource_has_acl_restrictions,
-    user_grant_matches,
 )
 
 router = APIRouter(prefix="/resource-acl", tags=["resource-acl"], dependencies=[Depends(require_auth)])
 
 
-class AclGrantIn(BaseModel):
-    grantee_type: str
-    grantee_id: str | None = None
-    permissions: str = Field(description="Permission string: r, w, m (e.g. rw, r, rwm)")
-    grantee_label: str | None = None
-
-
-class AclGrantOut(BaseModel):
-    grantee_type: str
-    grantee_id: str | None
-    permissions: str
-    grantee_label: str | None = None
-    is_owner: bool = False
-
-
-class ResourceAclOut(BaseModel):
-    resource_type: str
-    resource_id: str
-    grants: list[AclGrantOut]
-    effective_permissions: str
-    inherits_from: list[dict[str, str]]
-    owner_subject: str | None = None
-    owner_label: str | None = None
-    created_by: str | None = None
-
-
-class OwnerCandidateOut(BaseModel):
-    subject: str
-    label: str
-
-
-class ResourceAclPut(BaseModel):
-    grants: list[AclGrantIn]
-
-
 def _parse_grants(body: ResourceAclPut) -> list[dict]:
-    from app.services.acl.resource_acl_constants import parse_perm_string
-
     out: list[dict] = []
     for g in body.grants:
         if g.grantee_type not in GRANTEE_TYPES:
@@ -105,178 +62,6 @@ def _parse_grants(body: ResourceAclPut) -> list[dict]:
     return out
 
 
-async def _resource_creator_identity(
-    db: AsyncSession, resource_type: str, resource_id: str
-) -> tuple[str | None, str | None]:
-    from app.models.article_channel import ArticleChannel
-    from app.models.document_channel import DocumentChannel
-    from app.models.dataset import Dataset
-    from app.models.evaluation import Evaluation
-    from app.models.glossary import Glossary
-    from app.models.knowledge_base import KnowledgeBase
-    from app.models.link_type import LinkType
-    from app.models.object_type import ObjectType
-    from app.models.project import Project
-    from app.models.wiki_models import WikiSpace
-    from app.services.acl.resource_acl_constants import (
-        RT_DATASET,
-        RT_EVALUATION,
-        RT_GLOSSARY,
-        RT_LINK_TYPE,
-        RT_OBJECT_TYPE,
-        RT_PROJECT,
-    )
-
-    ch = None
-    if resource_type == RT_DOCUMENT_CHANNEL:
-        ch = await db.get(DocumentChannel, resource_id)
-    elif resource_type == RT_ARTICLE_CHANNEL:
-        ch = await db.get(ArticleChannel, resource_id)
-    elif resource_type == RT_WIKI_SPACE:
-        ch = await db.get(WikiSpace, resource_id)
-    elif resource_type == RT_KNOWLEDGE_BASE:
-        ch = await db.get(KnowledgeBase, resource_id)
-    elif resource_type == RT_EVALUATION:
-        ch = await db.get(Evaluation, resource_id)
-    elif resource_type == RT_GLOSSARY:
-        ch = await db.get(Glossary, resource_id)
-    elif resource_type == RT_DATASET:
-        ch = await db.get(Dataset, resource_id)
-    elif resource_type == RT_OBJECT_TYPE:
-        ch = await db.get(ObjectType, resource_id)
-    elif resource_type == RT_LINK_TYPE:
-        ch = await db.get(LinkType, resource_id)
-    elif resource_type == RT_PROJECT:
-        ch = await db.get(Project, resource_id)
-    if not ch:
-        return None, None
-    return ch.created_by, ch.created_by_name
-
-
-async def _channel_creator_identity(
-    db: AsyncSession, resource_type: str, resource_id: str
-) -> tuple[str | None, str | None]:
-    return await _resource_creator_identity(db, resource_type, resource_id)
-
-
-async def _grant_labels(
-    db: AsyncSession,
-    grants: list,
-    *,
-    creator_subject: str | None = None,
-    creator_display_name: str | None = None,
-) -> tuple[list[AclGrantOut], str | None, str | None]:
-    group_names: dict[str, str] = {}
-    gids = [g.grantee_id for g in grants if g.grantee_type == GRANTEE_GROUP and g.grantee_id]
-    if gids:
-        r = await db.execute(select(AccessGroup).where(AccessGroup.id.in_(gids)))
-        for row in r.scalars().all():
-            group_names[row.id] = row.name
-
-    out: list[AclGrantOut] = []
-    owner_subject: str | None = None
-    owner_label: str | None = None
-    for g in grants:
-        label: str | None = None
-        is_owner = False
-        if g.grantee_type == GRANTEE_GROUP and g.grantee_id:
-            label = group_names.get(g.grantee_id, g.grantee_id)
-        elif g.grantee_type == GRANTEE_AUTHENTICATED:
-            label = "Others"
-        elif g.grantee_type == GRANTEE_USER and g.grantee_id:
-            is_owner = True
-            hint: str | None = getattr(g, "grantee_label", None)
-            if hint and not str(hint).strip():
-                hint = None
-            if creator_subject and creator_display_name:
-                if g.grantee_id == creator_subject:
-                    hint = hint or creator_display_name
-                elif await user_grant_matches(db, g.grantee_id, creator_subject, None):
-                    hint = hint or creator_display_name
-            label = await resolve_subject_display(db, g.grantee_id, display_hint=hint)
-            if owner_subject is None:
-                owner_subject = g.grantee_id
-                owner_label = label
-        out.append(
-            AclGrantOut(
-                grantee_type=g.grantee_type,
-                grantee_id=g.grantee_id,
-                permissions=perm_label(g.permissions),
-                grantee_label=label,
-                is_owner=is_owner,
-            )
-        )
-    return out, owner_subject, owner_label
-
-
-async def _owner_from_created_by(
-    db: AsyncSession,
-    resource_type: str,
-    resource_id: str,
-    *,
-    creator_subject: str | None = None,
-    creator_display_name: str | None = None,
-) -> tuple[str | None, str | None]:
-    if creator_subject is None and creator_display_name is None:
-        creator_subject, creator_display_name = await _channel_creator_identity(
-            db, resource_type, resource_id
-        )
-    created_by = creator_subject
-    if not created_by:
-        return None, None
-    label = await resolve_subject_display(
-        db, created_by, display_hint=creator_display_name
-    )
-    return created_by, label
-
-
-async def _enrich_default_owner_grant(
-    db: AsyncSession,
-    resource_type: str,
-    resource_id: str,
-    entries: list,
-    grant_rows: list[AclGrantOut],
-    owner: str | None,
-    owner_label: str | None,
-    *,
-    creator_subject: str | None = None,
-    creator_display_name: str | None = None,
-) -> tuple[list[AclGrantOut], str | None, str | None]:
-    """When no persisted owner ACL exists, default to channel creator with full permissions."""
-    if any(e.grantee_type == GRANTEE_USER for e in entries):
-        return grant_rows, owner, owner_label
-    created_by, label = await _owner_from_created_by(
-        db,
-        resource_type,
-        resource_id,
-        creator_subject=creator_subject,
-        creator_display_name=creator_display_name,
-    )
-    if not created_by:
-        return grant_rows, owner, owner_label
-    default_perms = perm_label(PERM_ALL_DATA)
-    enriched = list(grant_rows) + [
-        AclGrantOut(
-            grantee_type=GRANTEE_USER,
-            grantee_id=created_by,
-            permissions=default_perms,
-            grantee_label=label,
-            is_owner=True,
-        )
-    ]
-    return enriched, created_by, label
-
-
-def _append_preserved_owner(parsed: list[dict], grantee_id: str, permissions: int) -> None:
-    parsed.append(
-        {
-            "grantee_type": GRANTEE_USER,
-            "grantee_id": grantee_id,
-            "permissions": permissions,
-        }
-    )
-
-
 async def _ensure_owner_in_parsed(
     db: AsyncSession,
     resource_type: str,
@@ -288,76 +73,25 @@ async def _ensure_owner_in_parsed(
     existing_entries = await list_acl_entries(db, resource_type, resource_id)
     existing_owner = next((e for e in existing_entries if e.grantee_type == GRANTEE_USER), None)
     if existing_owner and existing_owner.grantee_id:
-        _append_preserved_owner(
-            parsed,
-            existing_owner.grantee_id,
-            existing_owner.permissions,
-            grantee_label=existing_owner.grantee_label,
+        parsed.append(
+            {
+                "grantee_type": GRANTEE_USER,
+                "grantee_id": existing_owner.grantee_id,
+                "permissions": existing_owner.permissions,
+                "grantee_label": existing_owner.grantee_label,
+            }
         )
         return
-    creator_subject, creator_name = await _channel_creator_identity(db, resource_type, resource_id)
+    creator_subject, creator_name = await resource_creator_identity(db, resource_type, resource_id)
     if creator_subject:
-        _append_preserved_owner(
-            parsed,
-            creator_subject,
-            PERM_ALL_DATA,
-            grantee_label=creator_name,
+        parsed.append(
+            {
+                "grantee_type": GRANTEE_USER,
+                "grantee_id": creator_subject,
+                "permissions": PERM_ALL_DATA,
+                "grantee_label": creator_name,
+            }
         )
-
-
-async def list_local_owner_candidates(db: AsyncSession) -> list[OwnerCandidateOut]:
-    rows = await list_owner_candidates(db)
-    return [OwnerCandidateOut(subject=subject, label=label) for subject, label in rows]
-
-
-async def serialize_resource_acl(
-    db: AsyncSession,
-    resource_type: str,
-    resource_id: str,
-    viewer_sub: str,
-    payload: dict,
-    *,
-    entries: list | None = None,
-) -> ResourceAclOut:
-    if entries is None:
-        entries = await list_acl_entries(db, resource_type, resource_id)
-    chain = await resource_context_chain(db, resource_type, resource_id)
-    inherits = [
-        {"resource_type": rt, "resource_id": rid}
-        for rt, rid in chain[1:]
-        if await resource_has_acl_restrictions(db, rt, rid)
-    ]
-    eff = await effective_permissions(db, viewer_sub, resource_type, resource_id, payload)
-    creator_subject, creator_display_name = await _channel_creator_identity(
-        db, resource_type, resource_id
-    )
-    grant_rows, owner, owner_label = await _grant_labels(
-        db,
-        entries,
-        creator_subject=creator_subject,
-        creator_display_name=creator_display_name,
-    )
-    grant_rows, owner, owner_label = await _enrich_default_owner_grant(
-        db,
-        resource_type,
-        resource_id,
-        entries,
-        grant_rows,
-        owner,
-        owner_label,
-        creator_subject=creator_subject,
-        creator_display_name=creator_display_name,
-    )
-    return ResourceAclOut(
-        resource_type=resource_type,
-        resource_id=resource_id,
-        grants=grant_rows,
-        effective_permissions=perm_label(eff),
-        inherits_from=inherits,
-        owner_subject=owner,
-        owner_label=owner_label,
-        created_by=creator_subject,
-    )
 
 
 async def persist_resource_acl(
