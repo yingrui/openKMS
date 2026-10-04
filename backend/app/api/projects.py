@@ -6,13 +6,16 @@ import shutil
 from typing import Any
 
 from fastapi import APIRouter, Depends, File, HTTPException, Query, Request, UploadFile
-from sqlalchemy import func, select
+from sqlalchemy import delete, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_jwt_sub
 from app.api.auth import require_auth, require_permission
 from app.database import get_db
+from app.models.agent_models import AgentConversation, AgentMessage
+from app.models.content_comment import ContentComment
 from app.models.project import Project
+from app.models.resource_acl import ResourceAclEntry
 from app.models.user_git_credential import UserGitCredential
 from app.schemas.agent_skill import ProjectInstalledSkillOut, ProjectSkillInstallBody, ProjectSkillsOut
 from app.schemas.project import (
@@ -31,6 +34,10 @@ from app.schemas.project import (
 )
 from app.services.acl.acl_store import bootstrap_owner_acl
 from app.services.acl.resource_acl_constants import RT_PROJECT
+from app.services.agent.agent_session_api_key import revoke_session_api_key
+from app.services.comments.comment_resource_types import COMMENT_RT_PROJECT
+from app.services.deep_agents.checkpointer import delete_conversation_thread
+from app.services.schedules.project_agent_schedule import list_agent_schedules_for_project
 from app.services.agent.agent_skill_install import (
     install_default_skills_for_project,
     install_skill_to_project,
@@ -217,10 +224,43 @@ async def update_project(
     return _to_out(p)
 
 
+async def _purge_project_dependents(db: AsyncSession, project_id: str) -> None:
+    convs = (
+        await db.execute(
+            select(AgentConversation).where(
+                AgentConversation.surface == "project",
+                AgentConversation.context.contains({"project_id": project_id}),
+            )
+        )
+    ).scalars().all()
+    for conv in convs:
+        await revoke_session_api_key(db, conv)
+        await delete_conversation_thread(db, conv.id)
+        await db.execute(delete(AgentMessage).where(AgentMessage.conversation_id == conv.id))
+        await db.execute(delete(AgentConversation).where(AgentConversation.id == conv.id))
+    for row in await list_agent_schedules_for_project(db, project_id):
+        await db.delete(row)
+    await db.execute(
+        delete(ResourceAclEntry).where(
+            ResourceAclEntry.resource_type == RT_PROJECT,
+            ResourceAclEntry.resource_id == project_id,
+        )
+    )
+    comment_scope = (
+        ContentComment.resource_type == COMMENT_RT_PROJECT,
+        ContentComment.resource_id == project_id,
+    )
+    await db.execute(
+        delete(ContentComment).where(*comment_scope, ContentComment.parent_comment_id.is_not(None))
+    )
+    await db.execute(delete(ContentComment).where(*comment_scope))
+
+
 @router.delete("/{project_id}", status_code=204, dependencies=[Depends(require_permission(PERM_PROJECTS_WRITE))])
 async def delete_project(project_id: str, request: Request, db: AsyncSession = Depends(get_db)):
     sub = get_jwt_sub(request)
     p = await _get_owned_project(db, project_id, sub)
+    await _purge_project_dependents(db, project_id)
     root = project_root(project_id)
     if root.exists():
         shutil.rmtree(root, ignore_errors=True)

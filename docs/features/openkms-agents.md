@@ -5,7 +5,7 @@ In-product **Agents** area: personal **projects** with an on-disk workspace (`{O
 | Area | Status |
 |------|--------|
 | Sidebar + `/agents` (Projects) + `/agents/skills` (Skills) + `/projects/{id}/sessions/{sessionId}` | ✅ |
-| Project settings page `/projects/{id}/settings` (General includes git origin; Agent + Skills + Schedules + Sharing) | ✅ |
+| Project settings page `/projects/{id}/settings` (General includes git origin and delete project; Agent + Skills + Schedules + Sharing) | ✅ |
 | Session API key (per conversation, creator identity) | ✅ |
 | Global skills registry + project install | ✅ |
 | Project CRUD + files API | ✅ |
@@ -22,7 +22,7 @@ Console operators can register clusters under `/console/kubernetes` (`console:ku
 
 ## Layout
 
-- **Agents area:** **Projects | Skills** tabs at `/agents` and `/agents/skills`.
+- **Agents area:** **Projects | Skills** tabs at `/agents` and `/agents/skills`. **Project settings → General** has a danger-zone **Delete project** (workspace files, sessions, and schedules).
 - **Desktop (≥769px):** three columns — **left** conversation sessions (like KB Q&A; a small running indicator when `last_turn.status=running`); **center** chat thread + collapsible **Plan** checklist (from `write_todos`, dismissible) + plan toggle + composer; **right** file tree + preview split with git actions. Drag pane dividers to resize; widths persist in `localStorage`. Opening **Markdown** (`.md` / `.markdown`) or **HTML** (`.html` / `.htm`) defaults to a rendered **Preview** (Markdown uses the same `RichMarkdown` + code/Mermaid `pre` component and `.document-detail-markdown-body` typography as document detail; `[[target]]` / `[[target|label]]` uses the wiki preprocess and opens another file in this project workspace, relative to the current file — bare names without an extension resolve to `.md`; HTML in a sandboxed iframe); toggle **Source** for the line-numbered raw view. Other text files stay Source-only. Assistant replies interleave text with compact **tool** and **subagent** rows (click a row to expand input/output); **completed** turns fold consecutive tool/subagent rows (≥2) into a single summary; the **live** turn stays expanded. History reloads tool rows from persisted transcripts. Message history is **paged** (tail first; scroll up loads older). Composer ignores Enter while an IME composition is active. **Revert** (under a user bubble): removes that message and all later turns, clears LangGraph checkpoint state for the session, and puts the user text back in the composer to edit and resend — refused while a non-stale turn is `running`. **Upload** menu: pick multiple files or a folder. Refresh, parent-folder navigation, and per-row delete (`.openkms` and `.openkms/skills` folders protected; other paths including files under `.openkms/` may be deleted).
 - **Phone (≤768px):** chat is the primary full-height surface with a compact top bar (back, session title, Sessions / Files / Settings). Sessions and Files each open as a **full-width** panel (same idea as Documents channel list on phone). Opening a file in Files shows the viewer full-height (tree hidden until closed). Session Review uses **Lessons | Improve | Artifacts** tabs instead of three columns. App header stays hidden (`openkms-agents-fullpage`) — navigation is via the in-workspace chrome.
 
@@ -168,7 +168,7 @@ The project agent system prompt includes the project name, slug, description, wo
 ## Permissions
 
 - `projects:read` — list projects/skills, read files, chat read
-- `projects:write` — create/update projects, upload skills, agent messages, git, install skills
+- `projects:write` — create/update/delete projects, upload skills, agent messages, git, install skills
 
 Feature toggle: **`agents`** (Console → Feature toggles).
 

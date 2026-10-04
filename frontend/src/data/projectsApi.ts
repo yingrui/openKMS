@@ -130,6 +130,10 @@ export async function getProject(id: string): Promise<ProjectResponse> {
   return request<ProjectResponse>(`/api/projects/${id}`);
 }
 
+export async function deleteProject(id: string): Promise<void> {
+  return request<void>(`/api/projects/${id}`, { method: 'DELETE' });
+}
+
 export async function updateProject(
   id: string,
   body: {

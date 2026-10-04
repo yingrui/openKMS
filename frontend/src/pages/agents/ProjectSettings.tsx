@@ -7,7 +7,9 @@ import {
   getProject,
   getStoredProjectConversationId,
   projectWorkspacePath,
+  setStoredProjectConversationId,
   updateProject,
+  deleteProject,
   type ProjectResponse,
 } from '../../data/projectsApi';
 import {
@@ -60,6 +62,7 @@ export function ProjectSettings() {
   const [installedSkills, setInstalledSkills] = useState<ProjectInstalledSkill[]>([]);
   const [selectedVersions, setSelectedVersions] = useState<Record<string, string>>({});
   const [skillActionLoading, setSkillActionLoading] = useState<string | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
   const connectorKindLabels = useMemo(() => {
     const map = new Map<string, string>();
@@ -190,6 +193,29 @@ export function ProjectSettings() {
     }
   };
 
+  const onDeleteProject = async () => {
+    if (
+      !(await confirm({
+        title: t('settings.deleteProject'),
+        message: t('settings.deleteConfirm', { name: project?.name ?? name }),
+        confirmLabel: t('settings.deleteProject'),
+        danger: true,
+      }))
+    )
+      return;
+    setDeleting(true);
+    try {
+      await deleteProject(projectId);
+      setStoredProjectConversationId(projectId, null);
+      toast.success(t('settings.deleteSuccess'));
+      navigate('/agents');
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : t('settings.deleteError'));
+    } finally {
+      setDeleting(false);
+    }
+  };
+
   if (loading) {
     return <AgentsSettingsSkeleton />;
   }
@@ -201,6 +227,24 @@ export function ProjectSettings() {
       </div>
     );
   }
+
+  const saveBar = (
+    <>
+      {error ? <p className="project-settings-error">{error}</p> : null}
+      <div className="project-settings-actions">
+        <button type="button" className="btn btn-primary" disabled={saving || !name.trim()} onClick={() => void save()}>
+          {saving ? (
+            <>
+              <Loader2 size={16} className="project-settings-spinner" />
+              {t('settings.saving')}
+            </>
+          ) : (
+            t('settings.save')
+          )}
+        </button>
+      </div>
+    </>
+  );
 
   return (
     <ContentCommentsShell resourceType="project" resourceId={projectId}>
@@ -267,10 +311,12 @@ export function ProjectSettings() {
                 setAgentJson(JSON.stringify(p.settings, null, 2));
               }}
             />
+            {saveBar}
           </>
         ) : null}
 
         {activeTab === 'agent' ? (
+          <>
           <section className="project-settings-section">
             <h2>{t('settings.agentHeading')}</h2>
             <p className="project-settings-hint project-settings-hint--intro">{t('settings.agentHint')}</p>
@@ -313,6 +359,8 @@ export function ProjectSettings() {
               />
             </FormField>
           </section>
+          {saveBar}
+          </>
         ) : null}
 
         {activeTab === 'skills' ? (
@@ -430,24 +478,22 @@ export function ProjectSettings() {
             />
           </section>
         ) : null}
-
-        {error ? <p className="project-settings-error">{error}</p> : null}
-
-        {activeTab !== 'skills' && activeTab !== 'schedules' && activeTab !== 'sharing' ? (
-          <div className="project-settings-actions">
-            <button type="button" className="btn btn-primary" disabled={saving || !name.trim()} onClick={() => void save()}>
-              {saving ? (
-                <>
-                  <Loader2 size={16} className="project-settings-spinner" />
-                  {t('settings.saving')}
-                </>
-              ) : (
-                t('settings.save')
-              )}
-            </button>
-          </div>
-        ) : null}
       </div>
+
+      {activeTab === 'general' ? (
+        <section className="project-settings-danger">
+          <h2>{t('settings.dangerZone')}</h2>
+          <p className="project-settings-hint">{t('settings.dangerHint')}</p>
+          <button
+            type="button"
+            className="btn project-settings-delete"
+            disabled={deleting}
+            onClick={() => void onDeleteProject()}
+          >
+            {deleting ? t('settings.deleting') : t('settings.deleteProject')}
+          </button>
+        </section>
+      ) : null}
     </div>
     </ContentCommentsShell>
   );

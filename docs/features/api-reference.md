@@ -445,7 +445,7 @@ Deep Agents runtime in `backend/app/services/deep_agents/`. Disk root: `OPENKMS_
 | POST | `/api/projects` | Create project (scaffolds `AGENTS.md`, `.openkms/skills/`; auto-installs skills where `agent_skills.is_default=true`). Optional body: `git_url` (HTTPS), `git_branch`, `git_credential_id` — clones into the workspace before scaffolding |
 | GET | `/api/projects/{id}` | Get project |
 | PATCH | `/api/projects/{id}` | Update name, description, slug, settings |
-| DELETE | `/api/projects/{id}` | Delete project and on-disk folder |
+| DELETE | `/api/projects/{id}` | Delete project, on-disk folder, sessions (including session API keys and LangGraph checkpoints), schedules, ACL, and comments |
 | GET | `/api/projects/{id}/files?path=` | List directory |
 | GET | `/api/projects/{id}/files/content?path=` | Read file |
 | PUT | `/api/projects/{id}/files/content` | Write file |

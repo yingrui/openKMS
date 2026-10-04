@@ -255,6 +255,13 @@
     "backToWorkspace": "返回工作区",
     "save": "保存更改",
     "cancel": "取消",
+    "dangerZone": "危险操作",
+    "dangerHint": "将永久删除此项目、工作区文件、聊天会话和计划任务，无法恢复。",
+    "deleteProject": "删除项目",
+    "deleteConfirm": "确定删除「{{name}}」？工作区文件、会话和计划任务都会被删除。",
+    "deleteSuccess": "项目已删除",
+    "deleteError": "无法删除项目",
+    "deleting": "删除中…",
     "git": {
       "heading": "Git 仓库",
       "hint": "工作区里的文件和提交记录会保留。更换地址只改 origin，例如从 GitHub 迁到 GitLab。拉取和推送使用个人资料中保存的 HTTPS 令牌。",

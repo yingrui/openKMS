@@ -255,6 +255,13 @@
     "backToWorkspace": "Back to workspace",
     "save": "Save changes",
     "cancel": "Cancel",
+    "dangerZone": "Danger zone",
+    "dangerHint": "Permanently delete this project, its workspace files, chat sessions, and schedules. This cannot be undone.",
+    "deleteProject": "Delete project",
+    "deleteConfirm": "Delete “{{name}}”? Workspace files, sessions, and schedules will be removed.",
+    "deleteSuccess": "Project deleted",
+    "deleteError": "Could not delete project",
+    "deleting": "Deleting…",
     "git": {
       "heading": "Git repository",
       "hint": "This workspace keeps its files and history. Change the URL to point origin at another host (for example GitHub to GitLab). Pull and push use a saved HTTPS token from your profile.",
