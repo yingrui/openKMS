@@ -13,6 +13,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.object_type import ObjectType
 from app.models.app_builder import AppBuilderApp, AppBuilderComponent, AppBuilderPublishedVersion
+from app.models.kubernetes_cluster import KubernetesCluster
 from app.models.ontology_function import OntologyActionType, OntologyFunction
 from app.schemas.app_builder import AppBuilderBindings, AppBuilderCreate, AppBuilderUpdate
 from app.services.app_builder.a2ui import (
@@ -143,9 +144,28 @@ def to_response_base(
     }
 
 
+async def _require_k8s_cluster(db: AsyncSession, bindings: dict[str, Any]) -> dict[str, Any]:
+    k8s = bindings.get("k8s") if isinstance(bindings, dict) else None
+    if not isinstance(k8s, dict):
+        raise HTTPException(status_code=400, detail="module apps require bindings.k8s")
+    cluster_id = str(k8s.get("cluster_id") or "").strip()
+    row = await db.get(KubernetesCluster, cluster_id) if cluster_id else None
+    if not row:
+        raise HTTPException(status_code=400, detail="Unknown Kubernetes cluster")
+    return k8s
+
+
 async def enrich_stale(db: AsyncSession, app: AppBuilderApp) -> tuple[bool, list[str]]:
     bindings = app.bindings or {}
     if not bindings:
+        return False, []
+    if app_kind_of(app) == "module":
+        k8s = bindings.get("k8s") if isinstance(bindings, dict) else None
+        if not isinstance(k8s, dict) or not str(k8s.get("cluster_id") or "").strip():
+            return True, ["k8s"]
+        row = await db.get(KubernetesCluster, str(k8s.get("cluster_id")))
+        if not row:
+            return True, ["k8s.cluster_id"]
         return False, []
     try:
         reject_legacy_board_bindings(bindings)
@@ -279,19 +299,20 @@ async def create_app(
     template_id = (body.template_id or "a2ui").strip() or "a2ui"
     if template_id not in ("a2ui", "module"):
         raise HTTPException(status_code=400, detail="template_id must be a2ui or module")
-    if template_id == "module":
-        raise HTTPException(
-            status_code=400,
-            detail="app_kind module is reserved; only a2ui apps can be created in this release",
-        )
 
     try:
         bindings = bindings_as_dict(body.bindings)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e)) from e
 
+    if template_id == "module":
+        await _require_k8s_cluster(db, bindings)
+    elif "k8s" in bindings:
+        bindings = {k: v for k, v in bindings.items() if k != "k8s"}
+
     bindings_hash: str | None = None
-    if bindings:
+    ontology_bindings = {k: v for k, v in bindings.items() if k != "k8s"}
+    if ontology_bindings:
         resolved, missing = await resolve_bindings_snapshot(db, bindings)
         if missing:
             raise HTTPException(
@@ -316,17 +337,32 @@ async def create_app(
     db.add(app)
     await db.flush()
 
-    for c in synthesize_stub_components(title=body.name):
-        db.add(
-            AppBuilderComponent(
-                id=c["id"],
-                app_id=app.id,
-                name=c["name"],
-                position=c["position"],
-                is_default=c["is_default"],
-                a2ui_messages=c["messages"],
+    if template_id == "a2ui":
+        for c in synthesize_stub_components(title=body.name):
+            db.add(
+                AppBuilderComponent(
+                    id=c["id"],
+                    app_id=app.id,
+                    name=c["name"],
+                    position=c["position"],
+                    is_default=c["is_default"],
+                    a2ui_messages=c["messages"],
+                )
             )
+    else:
+        version = AppBuilderPublishedVersion(
+            id=component_id(),
+            app_id=app.id,
+            version=1,
+            components=[],
+            bindings=bindings,
+            created_by=created_by,
+            created_by_name=created_by_name,
         )
+        db.add(version)
+        await db.flush()
+        app.published_version_id = version.id
+        app.status = "published"
 
     await db.commit()
     await db.refresh(app)
@@ -344,18 +380,29 @@ async def update_app(db: AsyncSession, app: AppBuilderApp, body: AppBuilderUpdat
         except ValueError as e:
             raise HTTPException(status_code=400, detail=str(e)) from e
         if bindings:
-            resolved, missing = await resolve_bindings_snapshot(db, bindings)
-            if missing:
-                raise HTTPException(
-                    status_code=400,
-                    detail={"message": "Missing or unknown resources", "missing_bindings": missing},
-                )
+            if app_kind_of(app) == "module":
+                await _require_k8s_cluster(db, bindings)
+            else:
+                bindings = {k: v for k, v in bindings.items() if k != "k8s"}
+            ontology_bindings = {k: v for k, v in bindings.items() if k != "k8s"}
+            resolved: dict[str, str] = {}
+            if ontology_bindings:
+                resolved, missing = await resolve_bindings_snapshot(db, bindings)
+                if missing:
+                    raise HTTPException(
+                        status_code=400,
+                        detail={"message": "Missing or unknown resources", "missing_bindings": missing},
+                    )
             app.bindings = bindings
             app.bindings_hash = compute_bindings_hash(resolved) if resolved else None
         else:
+            if app_kind_of(app) == "module":
+                raise HTTPException(status_code=400, detail="module apps require bindings.k8s")
             app.bindings = {}
             app.bindings_hash = None
     if body.components is not None:
+        if app_kind_of(app) == "module":
+            raise HTTPException(status_code=400, detail="module apps have no A2UI draft")
         raw = [c.model_dump() for c in body.components]
         try:
             validated = validate_app_components(raw, bindings=app.bindings or {})
@@ -369,6 +416,8 @@ async def update_app(db: AsyncSession, app: AppBuilderApp, body: AppBuilderUpdat
 
 async def synthesize_draft(db: AsyncSession, app: AppBuilderApp) -> AppBuilderApp:
     """Reset draft to a single stub component. Clear legacy board bindings."""
+    if app_kind_of(app) == "module":
+        raise HTTPException(status_code=400, detail="module apps have no A2UI draft")
     bindings = app.bindings or {}
     try:
         reject_legacy_board_bindings(bindings)
@@ -400,8 +449,27 @@ async def publish_app(
     created_by: str | None = None,
     created_by_name: str | None = None,
 ) -> AppBuilderApp:
+    if app_kind_of(app) == "module":
+        bindings = normalize_resources(app.bindings or {})
+        await _require_k8s_cluster(db, bindings)
+        version = AppBuilderPublishedVersion(
+            id=component_id(),
+            app_id=app.id,
+            version=await _next_version_number(db, app.id),
+            components=[],
+            bindings=bindings,
+            created_by=created_by or app.created_by,
+            created_by_name=created_by_name or app.created_by_name,
+        )
+        db.add(version)
+        await db.flush()
+        app.published_version_id = version.id
+        app.status = "published"
+        await db.commit()
+        await db.refresh(app)
+        return app
     if app_kind_of(app) != "a2ui":
-        raise HTTPException(status_code=400, detail="Only a2ui apps can be published in this release")
+        raise HTTPException(status_code=400, detail="Only a2ui or module apps can be published")
     bindings = normalize_resources(app.bindings or {})
     if not resources_nonempty(bindings):
         raise HTTPException(

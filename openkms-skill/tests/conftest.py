@@ -31,6 +31,7 @@ _PATCHED_MODULES = (
     "openkms.commands.datasets",
     "openkms.commands.connectors",
     "openkms.commands.jobs",
+    "openkms.commands.kubernetes",
     "openkms.commands.comments",
     "openkms.commands.media",
     "openkms.commands.ontology",

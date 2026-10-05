@@ -269,6 +269,23 @@ Requires **`knowledge_map:read`** (tree, link list) and **`knowledge_map:write`*
 | `apps publish` *(write)* | POST | `/api/app-builder/apps/{id}/publish` | Optional messages file on first artifact. |
 | `apps delete` *(write)* | DELETE | `/api/app-builder/apps/{id}` | |
 
+### Kubernetes (`console:kubernetes`)
+
+Kubeconfig is never returned. Register clusters in Console, not via this CLI.
+
+| CLI | Method | Path | Notes |
+|---|---|---|---|
+| `kubernetes clusters list` | GET | `/api/kubernetes-clusters` | Metadata only. |
+| `kubernetes clusters get` | GET | `/api/kubernetes-clusters/{id}` | |
+| `kubernetes namespaces` | GET | `/api/kubernetes-clusters/{id}/namespaces` | `--cluster-id`. |
+| `kubernetes deployments` | GET | `/api/kubernetes-clusters/{id}/deployments` | Optional `--namespace`. |
+| `kubernetes pods` | GET | `/api/kubernetes-clusters/{id}/pods` | Optional `--namespace`. |
+| `kubernetes services` | GET | `/api/kubernetes-clusters/{id}/services` | Optional `--namespace`. |
+| `kubernetes logs` | GET | `/api/kubernetes-clusters/{id}/pods/{pod}/logs` | `--pod`, optional `--namespace`, `--tail`, `--container`, `--out`. |
+| `kubernetes apply` *(write)* | POST | `/api/kubernetes-clusters/{id}/apply` | Body `{yaml, namespace?}`. Kinds: Deployment, Service, Pod, ConfigMap. |
+| `kubernetes delete` *(write)* | POST | `/api/kubernetes-clusters/{id}/delete` | Body `{kind, name, namespace?}`. |
+| `kubernetes register-app` *(write)* | POST | `/api/app-builder/apps` | `template_id=module` + `bindings.k8s`. Also needs `ontology:write`. |
+
 ## Errors
 
 The CLI surfaces non-2xx responses as:

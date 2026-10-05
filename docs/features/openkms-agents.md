@@ -15,10 +15,10 @@ In-product **Agents** area: personal **projects** with an on-disk workspace (`{O
 | Subagents (explore = workspace files; research = web + skills) | ✅ |
 | Local git | ✅ |
 | Remote git (HTTPS + PAT) | ✅ |
-| Console Kubernetes cluster registration + read-only browse | ✅ (deploy tools not wired yet) |
-| Deploy workspace code to a registered Kubernetes cluster | ❌ |
+| Console Kubernetes cluster browse + apply/logs + register Service in Apps | ✅ |
+| Deploy via openkms skill (`kubernetes apply` / `register-app`) | ✅ (API key needs `console:kubernetes`; register-app also `ontology:write`) |
 
-Console operators can register clusters under `/console/kubernetes` (`console:kubernetes`); see [Kubernetes clusters](kubernetes-clusters.md). Agents still execute shell/`run_python` in the backend/worker process — they do **not** yet load registered kubeconfigs or apply manifests.
+Console operators can register clusters under `/console/kubernetes` (`console:kubernetes`); see [Kubernetes clusters](kubernetes-clusters.md). Workspace shell still runs in the backend/worker process. Operators can apply YAML in the cluster detail page; Agents use the **openkms skill** (`kubernetes apply`, `kubernetes register-app`) — kubeconfig is never injected into the workspace.
 
 ## Layout
 

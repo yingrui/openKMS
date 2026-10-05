@@ -19,13 +19,13 @@ Per-feature reference, split by topic under `docs/features/`. The table below is
 | [Global search](features/global-search.md) | `/search` page: documents, articles, wiki spaces, knowledge bases, media (name, channel, updated filters) |
 | [Ontology — objects, links, datasets](features/ontology.md) | Object/link types, instances, data sources, datasets |
 | [Ontology Functions](features/ontology-functions.md) | Three Suite Apps (Manager, Object Explorer, Function Editor), PG-backed functions, ofs runtime |
-| [App Builder & Apps](features/app-builder.md) | Platform app authoring: Resources + host events + multi-artifact a2ui; compose via Source or skill; versioned publish/rollback; run in Apps. Composed boards (e.g. Kanban sample) are demos — [known limitations](features/app-builder.md#known-limitations-engineering-gaps) |
+| [App Builder & Apps](features/app-builder.md) | Platform app authoring: Resources + host events + multi-artifact a2ui; hosted Kubernetes Service (`module`) via API-server proxy; compose via Source or skill; versioned publish/rollback; run in Apps. Composed boards (e.g. Kanban sample) are demos — [known limitations](features/app-builder.md#known-limitations-engineering-gaps) |
 | [Ontology Function Client](features/ontology-sdk.md) | `openkms_functions` Client / `@function` / edits; string api names |
 | [Object Explorer](features/object-explorer.md) | Cypher exploration, list view, instance graph layout and rendering |
 | [Pipelines, jobs & models](features/pipelines-and-jobs.md) | Pipeline templates, procrastinate jobs, provider/model registry (multimodal image/video models planned) |
 | [Data security](features/data-security.md) | Two-layer model (operation RBAC + resource ACL), groups, sharing, inheritance, enforcement |
 | [Console & authentication](features/console-and-auth.md) | Permission catalog, Console UX, OIDC/local auth, system settings, user Settings (API keys), feature toggles |
-| [Kubernetes clusters](features/kubernetes-clusters.md) | Console BYO cluster registration, encrypted kubeconfig, connection test (`console:kubernetes`) |
+| [Kubernetes clusters](features/kubernetes-clusters.md) | Console BYO cluster: browse Deployments/Services/Pods, logs, apply/delete; register a Service in Apps |
 | [Connectors](features/connectors.md) | `/connectors` sync & search_tool kinds, dataset outputs, Tushare sync jobs, schedules, Agents `web_search` |
 | [Agents (project workspaces)](features/openkms-agents.md) | Deep Agents chat, files, local/remote git, plan mode, openKMS research tools |
 | [openkms-skill](features/openkms-skill.md) | Agent Skill + CLI (`openkms-skill/`); openKMS Agents, Claude Code, OpenCode, etc. — not a substitute for domain in-app assistants |

@@ -1,8 +1,8 @@
 # App Builder & Apps
 
-**App Builder** is the openKMS **platform** authoring surface for ontology-backed apps. An **App** is a product identity + **resource allowlist** + a set of **artifacts** (each one an A2UI surface). **A2UI** is the first-class lane (`app_kind` from `template_id`: `a2ui`); a **`module`** lane is reserved for hosted custom frontends (not implemented yet).
+**App Builder** is the openKMS **platform** authoring surface for ontology-backed apps. An **App** is a product identity + **resource allowlist** + either **A2UI artifacts** or a **hosted Kubernetes Service**. **A2UI** (`template_id`: `a2ui`) is the Source lane; **`module`** is a proxied HTTP Service registered from a cluster.
 
-**Apps** is the published gallery and Run host.
+**Apps** is the published gallery and Run host (A2UI surface or iframe to the Service proxy).
 
 **New app** asks only for a display **name**. Authors set **Resources / Loaders** in Settings, compose layout in **Design → Source** (or via [openkms-skill](openkms-skill.md) `apps` commands), then Preview and Publish. Builder does **not** create ontology assets. There is no in-app designer chat — external agents use the same draft/publish APIs.
 
@@ -232,7 +232,21 @@ Multi-column boards are **composed** in Source from filtered lists + Modals. Inv
 | Kind | Status |
 |------|--------|
 | `a2ui` | Supported — platform primitives + tenant Source |
-| `module` | Reserved — hosted custom module (future) |
+| `module` | Hosted Kubernetes Service — API-server proxy, iframe Run |
+
+### Module (hosted Services) {#module-hosted-services}
+
+Register from **Console → Kubernetes → Service → Register in Apps**, or `kubernetes register-app` / `POST /api/app-builder/apps` with `template_id=module`. Bindings live in `bindings.k8s`: `cluster_id`, `namespace`, `service`, `port`, optional `path` prefix. Create publishes immediately (no A2UI Source).
+
+**Proxy:** `GET|POST|… /api/app-builder/apps/{id}/proxy/{path}` → Kubernetes ` /api/v1/namespaces/{ns}/services/{service}:{port}/proxy/{path}`. Session cookie authenticates the openKMS user (`ontology:read`). kubeconfig never leaves the server. Only the registered Service is reachable.
+
+**Constraints:**
+
+- The workload must work under a URL subpath or use **relative** asset URLs. Absolute `/assets` hits the SPA, not the Service.
+- No WebSocket / Ingress / public TLS in this release.
+- Registering requires `ontology:write` **and** `console:kubernetes`. Opening/proxying requires `ontology:read`.
+
+Apps gallery cards distinguish `a2ui` vs `module`. Run for `module` uses an iframe to the proxy root.
 
 ## Backend code
 
@@ -260,8 +274,9 @@ Frontend (interaction runtime — see [Frontend implementation map](#frontend-im
 | Method | Path | Description |
 |--------|------|-------------|
 | GET | `/api/app-builder/apps` | List (`?status=published`) |
-| POST | `/api/app-builder/apps` | Create (name + api_name; resources optional) |
-| GET | `/api/app-builder/apps/{id}` | Published run (404 if draft) |
+| POST | `/api/app-builder/apps` | Create (name + api_name; resources optional; `template_id=module` + `bindings.k8s` publishes immediately; module also needs `console:kubernetes`) |
+| GET | `/api/app-builder/apps/{id}` | Published run (404 if draft; module may have empty components) |
+| GET/POST/… | `/api/app-builder/apps/{id}/proxy/{path}` | Module only: proxy to the bound Kubernetes Service |
 | GET | `/api/app-builder/apps/{id}/design` | Draft for Builder |
 | PATCH | `/api/app-builder/apps/{id}` | Update metadata / resources / draft |
 | DELETE | `/api/app-builder/apps/{id}` | Delete app |
@@ -337,7 +352,7 @@ These are product decisions, not accidental omissions:
 - No `OntoKanbanBoard` / board-shaped bindings / app-named SCSS / load-time silent heal or auto-synthesize of domain layouts.
 - App Builder does **not** create ontology assets; wire existing OT / Action / Function only.
 - **Persist only via Action execute**; Function fills DataModel (`outputPath` / `applyPath`) and does not write instances alone.
-- Domain UX belongs in **tenant Source** (or a future **`module`** host), not in platform catalog expansions named after one demo.
+- Domain UX belongs in **tenant Source** or a **`module`** hosted Service, not in platform catalog expansions named after one demo.
 
 ### What would be needed for serious production Apps (awareness, not a committed roadmap)
 
@@ -346,7 +361,7 @@ Minimum themes if Apps move beyond demos:
 1. **Data** — server-side filter + pagination (or cursor) for loaders; safer enum/status matching; targeted refresh.
 2. **Host UX** — user-visible errors, loading, disabled submit while in flight; optional optimistic apply.
 3. **Authoring** — templates / codegen / structured editors for repeated column+form patterns so authors are not only editing raw message arrays; stronger cross-checks against OT and Action shapes.
-4. **Interaction** — either first-class board gestures as **composable** host capabilities (without reviving a single `OntoKanbanBoard` mega-widget), or use the reserved **`module`** lane for custom UIs that still call ontology APIs behind Resources.
+4. **Interaction** — either first-class board gestures as **composable** host capabilities (without reviving a single `OntoKanbanBoard` mega-widget), or a **`module`** hosted UI that still calls ontology APIs behind Resources.
 5. **Ops** — clearer stale-binding repair, version diff of Source, and safer reset than casual `synthesize`.
 
 Until then: use the Kanban sample to **verify host wiring and teach composition**; do not treat it as the quality bar for tenant business Apps.

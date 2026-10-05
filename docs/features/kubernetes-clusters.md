@@ -1,13 +1,13 @@
 # Kubernetes clusters
 
-Console management for **registered Kubernetes clusters** that agents (and future deploy tooling) can use. Operators can **bring your own cluster** (paste a kubeconfig, encrypt at rest, test connectivity) and **browse** namespaces, Deployments, and Pods. Cloud provisioning and Agent deploy tools are not included yet.
+Console management for **registered Kubernetes clusters** that agents and operators can use. Operators can **bring your own cluster** (paste a kubeconfig, encrypt at rest, test connectivity) and **browse** namespaces, Deployments, Services, and Pods. The console can **apply** allowlisted YAML, **delete** those kinds, **read Pod logs**, and **register a Service in Apps**. Cloud provisioning is not included.
 
-Related: [Console & authentication](console-and-auth.md), [Agents](openkms-agents.md), [API reference](api-reference.md#kubernetes-clusters-consolekubernetes), [Data models](data-models.md#kubernetescluster).
+Related: [Console & authentication](console-and-auth.md), [Agents](openkms-agents.md), [App Builder & Apps](app-builder.md), [API reference](api-reference.md#kubernetes-clusters-consolekubernetes), [Data models](data-models.md#kubernetescluster).
 
 ## Console UI
 
 - **List:** `/console/kubernetes` — register, edit, delete, test connection; open a cluster for browse
-- **Detail:** `/console/kubernetes/{id}` — pick a namespace, refresh Deployments and Pods (read-only)
+- **Detail:** `/console/kubernetes/{id}` — pick a namespace; Deployments, Services, Pods; Pod logs; apply YAML; delete allowlisted objects; register a Service in Apps
 - **Permission:** `console:kubernetes` (or `all` / admin)
 - Form fields: name, description, default namespace, optional **API server** (the URL the backend uses to reach the cluster), kubeconfig YAML, optional **skip TLS verification** (lab / self-signed only)
 
@@ -25,23 +25,29 @@ On create/update, the server stores **`api_server`**: an explicit override if pr
 
 Prefer kubeconfigs that use **token** or **client certificate** credentials. Client-side **exec** plugins often fail when the API process runs the test (no interactive auth / missing binaries).
 
-## Resource browse (read-only)
+## Resource browse
 
 | Endpoint | Purpose |
 |----------|---------|
 | `GET …/namespaces` | List namespaces |
 | `GET …/deployments?namespace=` | Deployments in a namespace (defaults to cluster `default_namespace`) |
 | `GET …/pods?namespace=` | Pods in a namespace |
+| `GET …/services?namespace=` | Services (name, type, ClusterIP, ports) |
+| `GET …/pods/{name}/logs` | Recent Pod logs (`tail`, optional `container`) |
+| `POST …/apply` | Create or patch YAML (`Deployment`, `Service`, `Pod`, `ConfigMap`) |
+| `POST …/delete` | Delete one allowlisted namespaced object |
 
-Browse is **read-only** — no create/scale/delete of workloads from the console.
+Console row actions match the skill: logs Dialog, confirm delete, apply Dialog. kubeconfig never returns in responses.
 
-## Agents (next phase)
+**Register in Apps** (Service row): creates a published `template_id=module` app bound to `cluster_id` / namespace / service / port. Requires `ontology:write` in addition to `console:kubernetes`. See [App Builder](app-builder.md#module-hosted-services).
 
-Cluster registration and browse are the foundation for agent code deploy to Kubernetes. **Agents do not yet** load these credentials or expose deploy tools — workspace shell still runs in the backend/worker process. See [Agents](openkms-agents.md).
+## Agents
+
+The **openkms** skill lists registered clusters, applies the same allowlisted kinds, tails logs, and can `kubernetes register-app`. The session API key needs **`console:kubernetes`** (and **`ontology:write`** to register Apps). Kubeconfig stays encrypted on the server.
 
 ## Out of scope (still open)
 
 - Cloud-provider cluster provisioning
 - Per-project default cluster binding
-- Agent shell/deploy tool injection
-- Mutating cluster resources from the console
+- Ingress / public TLS / WebSocket proxy
+- Running the A2UI canvas inside a Pod

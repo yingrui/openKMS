@@ -63,6 +63,15 @@
   color: var(--color-text);
 }
 
+.console-k8s-logs {
+  max-height: 24rem;
+  overflow: auto;
+  white-space: pre-wrap;
+  word-break: break-word;
+  margin: 0;
+  padding: var(--space-3);
+}
+
 .ontology-admin .page-header .btn-secondary.btn-sm {
   margin-bottom: var(--space-3);
 }

@@ -17,11 +17,11 @@
 | [知识地图与首页](features/knowledge-map.md) | 知识地图术语、资源链接、首页 hub 图谱 |
 | [全局搜索](features/global-search.md) | `/search` 页：文档、文章、维基空间、知识库（名称、通道、更新时间筛选） |
 | [本体 — 对象、关系与数据集](features/ontology.md) | 对象/关系类型、实例、Object Explorer、数据源、数据集 |
-| [应用构建器与应用](features/app-builder.md) | 平台应用编写：Resources + host 事件（OntoObjectList / executeAction / executeFunction）+ 多制品 a2ui；Source 或 skill 组装；版本化发布 / 回滚；在「应用」中运行 |
+| [应用构建器与应用](features/app-builder.md) | 平台应用编写：Resources + host 事件 + 多制品 a2ui；托管 Kubernetes Service（`module`）经 API server 反代；Source 或 skill 组装；版本化发布 / 回滚；在「应用」中运行 |
 | [流水线、任务与模型](features/pipelines-and-jobs.md) | 流水线模板、procrastinate 任务、Provider/模型注册（多模态图像/视频模型规划中） |
 | [数据安全](features/data-security.md) | 双层模型（操作 RBAC + 资源 ACL）、组、共享、继承、 enforcement |
 | [控制台与认证](features/console-and-auth.md) | 权限目录、Console UX、OIDC/本地认证、系统设置、用户设置（API 密钥）、功能开关 |
-| [Kubernetes 集群](features/kubernetes-clusters.md) | 控制台接入已有集群、加密 kubeconfig、连通性测试（`console:kubernetes`） |
+| [Kubernetes 集群](features/kubernetes-clusters.md) | 控制台接入集群：浏览 Deployment/Service/Pod、日志、apply/delete；把 Service 登记到应用 |
 | [连接器](features/connectors.md) | `/connectors` 同步与 search_tool 种类、数据集输出、Tushare 同步任务、计划任务、Agent `web_search` |
 | [Agent（项目工作区）](features/openkms-agents.md) | Deep Agents 对话、文件、本地/远程 git、计划模式、openKMS 研究工具 |
 | [openkms-skill](features/openkms-skill.md) | Agent Skill + CLI（`openkms-skill/`）；可用于应用内 Agents、Claude Code、OpenCode 等；不能替代领域内维护助手 |

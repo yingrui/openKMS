@@ -4,12 +4,14 @@ description: >-
   Operates an openKMS deployment via personal API key using bundled scripts/cli.py only
   (no ad-hoc curl/HTTP). Covers search, documents/articles/wiki/KB, glossaries, knowledge-map,
   evaluations, data-sources/datasets/connectors/jobs, comments, media, ontology objects/links,
-  Cypher/NL ask, functions/action-types/groups, and App Builder apps (list/get/create/patch/publish).
-  Write paths include sync, index, CRUD, function publish/execute, and A2UI draft patch.
+  Cypher/NL ask, functions/action-types/groups, App Builder apps (list/get/create/patch/publish),
+  and Kubernetes (list registered clusters; apply Deployment/Service/Pod/ConfigMap; logs).
+  Write paths include sync, index, CRUD, function publish/execute, A2UI draft patch, kubernetes apply, and kubernetes register-app.
   Before Function --source-code-file: MUST read references/functions-authoring.md.
   Before ontology action-types create|update|delete|execute: MUST read references/actions-authoring.md.
   Before any apps CLI or App/A2UI/Kanban work: MUST read references/app-builder.md
   (then references/app-builder-kanban.md; sample assets/kanban-a2ui-messages.json).
+  Before kubernetes apply/delete: MUST read references/kubernetes.md.
   Use when agents must read or push openKMS content without the web UI. Only config.yml
   may be edited for credentials when the user asks.
 ---
@@ -32,6 +34,7 @@ Do **not** implement openKMS access with hand-written **`curl`**, ad-hoc **`http
 | Create / update / delete / execute Ontology Action types | [references/actions-authoring.md](references/actions-authoring.md) |
 | Run any `apps …` command, or build/patch/publish an App, A2UI surface, board, Kanban, Modal+Action wiring | [references/app-builder.md](references/app-builder.md) (mechanism: Resources → Loaders → Layout → Preview → Publish + host events) |
 | Compose a multi-column Kanban-style App (after `app-builder.md`) | [references/app-builder-kanban.md](references/app-builder-kanban.md) + sample [`assets/kanban-a2ui-messages.json`](assets/kanban-a2ui-messages.json) |
+| List clusters or apply YAML to a registered Kubernetes cluster | [references/kubernetes.md](references/kubernetes.md) |
 
 Skipping these produces wrong Source (e.g. inventing `OntoKanbanBoard`, absolute List paths, or treating `executeFunction` as persist).
 
@@ -107,7 +110,7 @@ The skill is a thin Python CLI over openKMS's HTTP API. Every command JSON-print
 - When a command fails, read **stderr** carefully (argparse missing-arg text or `HTTP <status>` + body). Fix the cause; **do not** blind-retry the same command.
 - `ontology objects|links sync-neo4j` / `sync-neo4j-type` **require** `--neo4j-data-source-id`. Discover it with `data-sources list` (kind `neo4j`) — do not guess the id or omit the flag.
 - After `connectors sync`, `kb index`, `media generate`, etc., poll progress with **`jobs get --id JOB_ID`** (or `jobs list`). Do **not** call `/api/jobs` with raw HTTP.
-- This skill does **not** wrap control-plane APIs (feature toggles, schedules hub, Console admin).
+- This skill does **not** wrap feature toggles, the schedules hub, or Console **cluster registration** (creating/editing kubeconfig). It **does** wrap **`kubernetes …`** against already-registered clusters (`console:kubernetes`). Never print or store kubeconfig.
 
 Some practical guidance:
 
@@ -181,6 +184,7 @@ Some practical guidance:
 | Dataset rows / metadata | `python scripts/cli.py datasets rows --id DS_ID` / `datasets metadata --id DS_ID` |
 | List connector kinds / connectors | `python scripts/cli.py connectors kinds` / `connectors list` |
 | Get job | `python scripts/cli.py jobs get --id JOB_ID` |
+| List registered Kubernetes clusters | `python scripts/cli.py kubernetes clusters list` |
 | List comments | `python scripts/cli.py comments list --resource-type document --resource-id ID` |
 | List media | `python scripts/cli.py media list [--channel-id ID]` |
 | Get one evaluation's metadata | `python scripts/cli.py evaluations get --id DS_ID` |
@@ -274,6 +278,9 @@ Same confirmation rules as other writes.
 | Wiki semantic index | `wiki-spaces semantic-index --id SP --yes` |
 | Put document markdown | `documents put-markdown --id DOC --file ./x.md --yes` |
 | Export document zip | `documents export --id DOC --out ./doc.zip --yes` |
+| Apply Deployment/Service YAML to a registered cluster | **Read [references/kubernetes.md](references/kubernetes.md) first**, then `kubernetes apply --cluster-id ID --file ./deploy.yaml --namespace default --yes` |
+| Delete a Service or Deployment | `kubernetes delete --cluster-id ID --kind Service --name NAME --namespace default --yes` |
+| Register a Service as a hosted App | `kubernetes register-app --cluster-id ID --namespace default --service NAME --port 80 --name "Web" --api-name webApp --yes` |
 
 When a link type is `many-to-many` and dataset-backed, the server is the source of truth via the junction table — `ontology links instances create/delete` will return 4xx. Surface that error rather than trying to bypass.
 

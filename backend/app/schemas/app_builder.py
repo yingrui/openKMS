@@ -8,12 +8,23 @@ from typing import Any, Literal
 from pydantic import BaseModel, Field
 
 
+class AppBuilderK8sBinding(BaseModel):
+    """Hosted HTTP Service (module apps). Stored under bindings.k8s."""
+
+    cluster_id: str
+    namespace: str
+    service: str
+    port: int
+    path: str | None = None
+
+
 class AppBuilderBindings(BaseModel):
     """Resource allowlist for an app (all lanes). Not a UI layout."""
 
     objectTypes: list[str] | None = None
     actions: list[str] | None = None
     functions: list[str] | None = None
+    k8s: AppBuilderK8sBinding | None = None
 
 
 AppKind = Literal["a2ui", "module"]
@@ -34,7 +45,7 @@ class AppBuilderCreate(BaseModel):
     api_name: str = Field(min_length=1, max_length=128)
     description: str | None = None
     template_id: str = "a2ui"
-    """Stored app kind for now (a2ui | module). module runner is not implemented yet."""
+    """App kind: a2ui (Source) or module (proxied Kubernetes Service)."""
     bindings: AppBuilderBindings | None = None
 
 

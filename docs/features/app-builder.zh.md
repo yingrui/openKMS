@@ -1,8 +1,8 @@
 # 应用构建器与应用（App Builder & Apps）
 
-**应用构建器（App Builder）** 是 openKMS **平台**侧、面向本体应用的编创界面。一个 **App** = 产品身份 + **资源白名单（Resources）** + 一组 **制品（artifact）**（每个制品是一个 A2UI surface）。**A2UI** 是当前一等通道（`app_kind` 来自 `template_id`: `a2ui`）；**`module`** 通道预留给托管自定义前端（尚未实现）。
+**应用构建器（App Builder）** 是 openKMS **平台**侧、面向本体应用的编创界面。一个 **App** = 产品身份 + **资源白名单（Resources）** + **A2UI 制品** 或 **托管的 Kubernetes Service**。**A2UI**（`template_id`: `a2ui`）是 Source 通道；**`module`** 是经 API server 反代的 HTTP 服务。
 
-**应用（Apps）** 是已发布应用的画廊与运行宿主。
+**应用（Apps）** 是已发布应用的画廊与运行宿主（A2UI surface，或 iframe 指向 Service 代理）。
 
 **新建应用** 只要求显示 **名称**。作者在设置中配置 **Resources / Loaders**，在 **设计 → Source** 组装布局（或通过 [openkms-skill](openkms-skill.md) 的 `apps` 命令），再预览并发布。构建器 **不会** 创建本体资产。应用内 **没有** 设计器聊天——外部 Agent 走同一套草稿 / 发布 API。
 
@@ -233,7 +233,21 @@ Catalog id：`https://openkms.local/a2ui/catalogs/ontology-app/v1.json`。
 | 种类 | 状态 |
 |------|------|
 | `a2ui` | 已支持 — 平台积木 + 租户 Source |
-| `module` | 预留 — 托管自定义模块（未来） |
+| `module` | 托管 Kubernetes Service — API server 反代，iframe 运行 |
+
+### Module（托管服务） {#module-hosted-services}
+
+从 **控制台 → Kubernetes → Service → 登记到应用**，或 `kubernetes register-app` / `POST /api/app-builder/apps` 且 `template_id=module`。绑定写在 `bindings.k8s`：`cluster_id`、`namespace`、`service`、`port`、可选 `path` 前缀。创建即发布（无 A2UI Source）。
+
+**代理：** `GET|POST|… /api/app-builder/apps/{id}/proxy/{path}` → Kubernetes `/api/v1/namespaces/{ns}/services/{service}:{port}/proxy/{path}`。登录会话 cookie 认证（`ontology:read`）。kubeconfig 不离开服务端。只代理已登记的那一个 Service。
+
+**约束：**
+
+- 被代理应用须能在子路径下工作，或使用 **相对** 资源 URL。绝对路径 `/assets` 会打到 SPA。
+- 本版不做 WebSocket / Ingress / 公网 TLS。
+- 登记需要 `ontology:write` **和** `console:kubernetes`。打开/代理只需 `ontology:read`。
+
+画廊卡片区分 `a2ui` 与 `module`。`module` 的 Run 用 iframe 指向代理根路径。
 
 ## 后端代码
 
@@ -261,8 +275,9 @@ Catalog id：`https://openkms.local/a2ui/catalogs/ontology-app/v1.json`。
 | 方法 | 路径 | 说明 |
 |------|------|------|
 | GET | `/api/app-builder/apps` | 列表（`?status=published`） |
-| POST | `/api/app-builder/apps` | 创建（名称 + api_name；资源可选） |
-| GET | `/api/app-builder/apps/{id}` | 已发布运行文档（草稿 404） |
+| POST | `/api/app-builder/apps` | 创建（名称 + api_name；资源可选；`template_id=module` + `bindings.k8s` 立即发布；module 还需 `console:kubernetes`） |
+| GET | `/api/app-builder/apps/{id}` | 已发布运行文档（草稿 404；module 可无 components） |
+| GET/POST/… | `/api/app-builder/apps/{id}/proxy/{path}` | 仅 module：反代到已绑定的 Kubernetes Service |
 | GET | `/api/app-builder/apps/{id}/design` | 构建器草稿 |
 | PATCH | `/api/app-builder/apps/{id}` | 更新元数据 / 资源 / 草稿 |
 | DELETE | `/api/app-builder/apps/{id}` | 删除 |
@@ -338,7 +353,7 @@ openkms-skill 的看板资产（`references/app-builder-kanban.md` + `assets/kan
 - 无 `OntoKanbanBoard` / 看板形 binding / 应用名 SCSS / 加载时静默 heal 或按域名自动合成布局。
 - App Builder **不**创建本体资产；只接线已有 OT / Action / Function。
 - **持久化只走 Action execute**；Function 填 DataModel（`outputPath` / `applyPath`），本身不写实例。
-- 领域 UX 属于 **租户 Source**（或未来 **`module`** host），不属于以某个 Demo 命名的平台 catalog 扩展。
+- 领域 UX 属于 **租户 Source** 或 **`module`** 托管服务，不属于以某个 Demo 命名的平台 catalog 扩展。
 
 ### 若要做到「可严肃交付」的业务 App（意识清单，非承诺路线图）
 
@@ -347,7 +362,7 @@ openkms-skill 的看板资产（`references/app-builder-kanban.md` + `assets/kan
 1. **数据** — 加载器服务端过滤 + 分页（或 cursor）；更安全的枚举/status 匹配；定向刷新。
 2. **Host UX** — 用户可见错误、loading、提交中禁用；可选乐观应用。
 3. **编创** — 多列+表单重复模式的模板 / 代码生成 / 结构化编辑器，而不只靠手改 message 数组；对照 OT 与 Action 形做更强交叉检查。
-4. **交互** — 要么把看板手势做成可组合的 host 能力（不要复活单体 `OntoKanbanBoard`），要么用预留 **`module`** 通道承载自定义 UI，仍经 Resources 调本体 API。
+4. **交互** — 要么把看板手势做成可组合的 host 能力（不要复活单体 `OntoKanbanBoard`），要么用 **`module`** 托管 UI，仍经 Resources 调本体 API。
 5. **运维** — 更清晰的 stale binding 修复、Source 版本 diff、比随便 `synthesize` 更安全的重置。
 
 在此之前：用看板样本 **验证宿主接线并教学组合**；不要把它当成租户业务 App 的质量基准。

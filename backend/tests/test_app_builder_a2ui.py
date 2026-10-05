@@ -22,8 +22,22 @@ def test_stub_a2ui_has_root():
 
 def test_normalize_resources():
     assert normalize_resources(
-        {"objectTypes": ["WorkItem", "WorkItem"], "actions": ["createWorkItem"], "objectType": "x"}
-    ) == {"objectTypes": ["WorkItem"], "actions": ["createWorkItem"]}
+        {
+            "objectTypes": ["WorkItem", "WorkItem"],
+            "actions": ["createWorkItem"],
+            "objectType": "x",
+            "k8s": {
+                "cluster_id": "c1",
+                "namespace": "default",
+                "service": "web",
+                "port": 80,
+            },
+        }
+    ) == {
+        "objectTypes": ["WorkItem"],
+        "actions": ["createWorkItem"],
+        "k8s": {"cluster_id": "c1", "namespace": "default", "service": "web", "port": 80},
+    }
     assert resources_nonempty({"objectTypes": ["A"]})
     assert not resources_nonempty({})
 

@@ -43,6 +43,9 @@ export function AppsGalleryPage() {
           <li key={app.id}>
             <Link to={`/apps/${app.id}`} className="apps-page__card">
               <strong>{app.name}</strong>
+              <span className="apps-page__badge apps-page__badge--kind">
+                {app.app_kind === 'module' ? t('kindModule') : t('kindA2ui')}
+              </span>
               {app.published_version ? (
                 <span className="apps-page__badge">v{app.published_version}</span>
               ) : null}

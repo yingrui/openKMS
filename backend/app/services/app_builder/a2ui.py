@@ -38,7 +38,9 @@ def normalize_stored_a2ui_document(raw: Any) -> list[dict[str, Any]] | None:
 
 
 def normalize_resources(raw: dict[str, Any] | None) -> dict[str, Any]:
-    """Keep only objectTypes / actions / functions string lists."""
+    """Keep objectTypes / actions / functions lists and optional k8s Service binding."""
+    from app.services.app_builder.k8s_binding import normalize_k8s_binding
+
     b = raw or {}
     out: dict[str, Any] = {}
     for key in ("objectTypes", "actions", "functions"):
@@ -48,6 +50,10 @@ def normalize_resources(raw: dict[str, Any] | None) -> dict[str, Any]:
         items = [str(x).strip() for x in val if str(x).strip()]
         if items:
             out[key] = list(dict.fromkeys(items))
+    if "k8s" in b:
+        k8s = normalize_k8s_binding(b.get("k8s"))
+        if k8s:
+            out["k8s"] = k8s
     return out
 
 

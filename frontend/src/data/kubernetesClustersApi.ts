@@ -105,6 +105,16 @@ export interface KubernetesPodItem {
   created_at: string | null;
 }
 
+export interface KubernetesServiceItem {
+  name: string;
+  namespace: string;
+  type: string;
+  cluster_ip: string | null;
+  ports: string | null;
+  port_numbers?: number[];
+  created_at: string | null;
+}
+
 export async function fetchClusterNamespaces(
   id: string
 ): Promise<{ items: KubernetesNamespaceItem[] }> {
@@ -131,4 +141,47 @@ export async function fetchClusterPods(
     `/api/kubernetes-clusters/${id}/pods`,
     { query: { namespace } }
   );
+}
+
+export async function fetchClusterServices(
+  id: string,
+  namespace?: string
+): Promise<{ namespace: string; items: KubernetesServiceItem[] }> {
+  return request<{ namespace: string; items: KubernetesServiceItem[] }>(
+    `/api/kubernetes-clusters/${id}/services`,
+    { query: { namespace } }
+  );
+}
+
+export async function fetchClusterPodLogs(
+  id: string,
+  pod: string,
+  params?: { namespace?: string; tail?: number; container?: string }
+): Promise<{ namespace: string; pod: string; container: string | null; log: string }> {
+  return request<{ namespace: string; pod: string; container: string | null; log: string }>(
+    `/api/kubernetes-clusters/${id}/pods/${encodeURIComponent(pod)}/logs`,
+    { query: { namespace: params?.namespace, tail: params?.tail, container: params?.container } }
+  );
+}
+
+export async function applyClusterManifests(
+  id: string,
+  data: { yaml: string; namespace?: string }
+): Promise<{ items: { kind: string; name: string; namespace: string; action: string }[] }> {
+  return request(`/api/kubernetes-clusters/${id}/apply`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data),
+  });
+}
+
+export async function deleteClusterResource(
+  id: string,
+  data: { kind: string; name: string; namespace?: string }
+): Promise<{ ok: boolean; kind: string; name: string; namespace: string }> {
+  return request(`/api/kubernetes-clusters/${id}/delete`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data),
+  });
 }

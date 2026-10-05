@@ -81,3 +81,47 @@ class KubernetesPodItem(BaseModel):
 class KubernetesPodListResponse(BaseModel):
     namespace: str
     items: list[KubernetesPodItem]
+
+
+class KubernetesServiceItem(BaseModel):
+    name: str
+    namespace: str
+    type: str
+    cluster_ip: str | None = None
+    ports: str | None = None
+    port_numbers: list[int] = []
+    created_at: datetime | None = None
+
+
+class KubernetesServiceListResponse(BaseModel):
+    namespace: str
+    items: list[KubernetesServiceItem]
+
+
+class KubernetesApplyRequest(BaseModel):
+    yaml: str = Field(min_length=1, max_length=262144)
+    namespace: str | None = Field(default=None, max_length=253)
+
+
+class KubernetesApplyItem(BaseModel):
+    kind: str
+    name: str
+    namespace: str
+    action: str
+
+
+class KubernetesApplyResponse(BaseModel):
+    items: list[KubernetesApplyItem]
+
+
+class KubernetesDeleteRequest(BaseModel):
+    kind: str = Field(min_length=1, max_length=64)
+    name: str = Field(min_length=1, max_length=253)
+    namespace: str | None = Field(default=None, max_length=253)
+
+
+class KubernetesPodLogsResponse(BaseModel):
+    namespace: str
+    pod: str
+    container: str | None = None
+    log: str

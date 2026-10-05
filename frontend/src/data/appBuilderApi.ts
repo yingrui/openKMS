@@ -5,6 +5,13 @@ export type AppBuilderBindings = {
   objectTypes?: string[];
   actions?: string[];
   functions?: string[];
+  k8s?: {
+    cluster_id: string;
+    namespace: string;
+    service: string;
+    port: number;
+    path?: string | null;
+  };
 };
 
 export type AppBuilderAppResponse = {
@@ -69,6 +76,10 @@ export async function createApp(body: {
 
 export async function fetchAppRun(appId: string): Promise<AppBuilderRunResponse> {
   return ontologyFetch<AppBuilderRunResponse>(`${base}/${appId}`, undefined, 'Failed to load app');
+}
+
+export function moduleAppProxyUrl(appId: string): string {
+  return `${base}/${appId}/proxy/`;
 }
 
 export async function fetchAppDesign(appId: string): Promise<AppBuilderDesignResponse> {

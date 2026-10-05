@@ -12,15 +12,25 @@ from app.api.auth import require_auth, require_permission
 from app.database import get_db
 from app.models.kubernetes_cluster import KubernetesCluster
 from app.schemas.kubernetes_cluster import (
+    KubernetesApplyRequest,
+    KubernetesApplyResponse,
     KubernetesClusterCreate,
     KubernetesClusterListResponse,
     KubernetesClusterResponse,
     KubernetesClusterUpdate,
+    KubernetesDeleteRequest,
     KubernetesDeploymentListResponse,
     KubernetesNamespaceListResponse,
     KubernetesPodListResponse,
+    KubernetesPodLogsResponse,
+    KubernetesServiceListResponse,
 )
 from app.services.credentials.credential_encryption import decrypt, encrypt
+from app.services.kubernetes.cluster_apply import (
+    apply_manifests_async,
+    delete_resource_async,
+    pod_logs_async,
+)
 from app.services.kubernetes.cluster_connection import (
     normalize_api_server,
     probe_cluster_connection_async,
@@ -30,6 +40,7 @@ from app.services.kubernetes.cluster_resources import (
     list_deployments_async,
     list_namespaces_async,
     list_pods_async,
+    list_services_async,
 )
 from app.services.permissions.permission_catalog import PERM_CONSOLE_KUBERNETES
 
@@ -318,3 +329,115 @@ async def list_cluster_pods(
     except Exception as e:
         raise _resource_http_error(e) from e
     return KubernetesPodListResponse(namespace=ns, items=items)
+
+
+def _namespace_or_default(row: KubernetesCluster, namespace: str | None) -> str:
+    return (namespace or row.default_namespace or "default").strip() or "default"
+
+
+@router.get(
+    "/{cluster_id}/services",
+    response_model=KubernetesServiceListResponse,
+    dependencies=[Depends(require_permission(PERM_CONSOLE_KUBERNETES))],
+)
+async def list_cluster_services(
+    cluster_id: str,
+    namespace: str | None = Query(None, description="Namespace; defaults to cluster default_namespace"),
+    db: AsyncSession = Depends(get_db),
+):
+    """List Services in a namespace."""
+    row = await _load_cluster_or_404(cluster_id, db)
+    ns = _namespace_or_default(row, namespace)
+    plain = _decrypt_kubeconfig(row)
+    try:
+        items = await list_services_async(plain, ns, **_client_overrides(row))
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e)) from e
+    except Exception as e:
+        raise _resource_http_error(e) from e
+    return KubernetesServiceListResponse(namespace=ns, items=items)
+
+
+@router.get(
+    "/{cluster_id}/pods/{pod_name}/logs",
+    response_model=KubernetesPodLogsResponse,
+    dependencies=[Depends(require_permission(PERM_CONSOLE_KUBERNETES))],
+)
+async def get_cluster_pod_logs(
+    cluster_id: str,
+    pod_name: str,
+    namespace: str | None = Query(None),
+    tail: int = Query(200, ge=1, le=5000),
+    container: str | None = Query(None),
+    db: AsyncSession = Depends(get_db),
+):
+    """Read recent logs from a Pod (plaintext in JSON)."""
+    row = await _load_cluster_or_404(cluster_id, db)
+    ns = _namespace_or_default(row, namespace)
+    plain = _decrypt_kubeconfig(row)
+    try:
+        log = await pod_logs_async(
+            plain,
+            ns,
+            pod_name,
+            tail_lines=tail,
+            container=(container.strip() if container else None),
+            **_client_overrides(row),
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e)) from e
+    except Exception as e:
+        raise _resource_http_error(e) from e
+    return KubernetesPodLogsResponse(
+        namespace=ns,
+        pod=pod_name,
+        container=(container.strip() if container else None),
+        log=log,
+    )
+
+
+@router.post(
+    "/{cluster_id}/apply",
+    response_model=KubernetesApplyResponse,
+    dependencies=[Depends(require_permission(PERM_CONSOLE_KUBERNETES))],
+)
+async def apply_cluster_manifests(
+    cluster_id: str,
+    body: KubernetesApplyRequest,
+    db: AsyncSession = Depends(get_db),
+):
+    """Create or patch allowlisted objects (Deployment, Service, Pod, ConfigMap). Never returns kubeconfig."""
+    row = await _load_cluster_or_404(cluster_id, db)
+    ns = _namespace_or_default(row, body.namespace)
+    plain = _decrypt_kubeconfig(row)
+    try:
+        items = await apply_manifests_async(plain, body.yaml, ns, **_client_overrides(row))
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e)) from e
+    except Exception as e:
+        raise _resource_http_error(e) from e
+    return KubernetesApplyResponse(items=items)
+
+
+@router.post(
+    "/{cluster_id}/delete",
+    dependencies=[Depends(require_permission(PERM_CONSOLE_KUBERNETES))],
+)
+async def delete_cluster_resource(
+    cluster_id: str,
+    body: KubernetesDeleteRequest,
+    db: AsyncSession = Depends(get_db),
+):
+    """Delete an allowlisted namespaced object."""
+    row = await _load_cluster_or_404(cluster_id, db)
+    ns = _namespace_or_default(row, body.namespace)
+    kind = body.kind.strip()
+    name = body.name.strip()
+    plain = _decrypt_kubeconfig(row)
+    try:
+        await delete_resource_async(plain, kind, name, ns, **_client_overrides(row))
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e)) from e
+    except Exception as e:
+        raise _resource_http_error(e) from e
+    return {"ok": True, "kind": kind, "name": name, "namespace": ns}

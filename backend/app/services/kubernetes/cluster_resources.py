@@ -111,6 +111,44 @@ def _list_pods_sync(kubeconfig: dict[str, Any], namespace: str) -> list[dict[str
     return out
 
 
+def _list_services_sync(kubeconfig: dict[str, Any], namespace: str) -> list[dict[str, Any]]:
+    from kubernetes import client
+
+    with _build_api_client(kubeconfig) as api_client:
+        v1 = client.CoreV1Api(api_client)
+        items = v1.list_namespaced_service(namespace).items or []
+    out: list[dict[str, Any]] = []
+    for svc in items:
+        meta = svc.metadata
+        spec = svc.spec
+        ports = getattr(spec, "ports", None) or [] if spec else []
+        port_s = ",".join(
+            f"{getattr(p, 'port', '')}/{getattr(p, 'protocol', '') or 'TCP'}" for p in ports
+        )
+        port_numbers: list[int] = []
+        for p in ports:
+            n = getattr(p, "port", None)
+            try:
+                i = int(n)
+            except (TypeError, ValueError):
+                continue
+            if i not in port_numbers:
+                port_numbers.append(i)
+        out.append(
+            {
+                "name": meta.name if meta else "",
+                "namespace": meta.namespace if meta else namespace,
+                "type": (spec.type if spec else None) or "ClusterIP",
+                "cluster_ip": (spec.cluster_ip if spec else None) or None,
+                "ports": port_s or None,
+                "port_numbers": port_numbers,
+                "created_at": _as_dt(meta.creation_timestamp if meta else None),
+            }
+        )
+    out.sort(key=lambda x: x["name"] or "")
+    return out
+
+
 async def list_namespaces_async(
     kubeconfig_text: str,
     *,
@@ -153,3 +191,18 @@ async def list_pods_async(
         api_server=api_server,
     )
     return await asyncio.to_thread(_list_pods_sync, data, namespace)
+
+
+async def list_services_async(
+    kubeconfig_text: str,
+    namespace: str,
+    *,
+    insecure_skip_tls_verify: bool = False,
+    api_server: str | None = None,
+) -> list[dict[str, Any]]:
+    data = prepare_kubeconfig(
+        kubeconfig_text,
+        insecure_skip_tls_verify=insecure_skip_tls_verify,
+        api_server=api_server,
+    )
+    return await asyncio.to_thread(_list_services_sync, data, namespace)

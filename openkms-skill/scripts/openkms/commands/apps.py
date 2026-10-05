@@ -168,7 +168,7 @@ def add_subparser(sub: _SubParsersAction) -> None:
     cr.add_argument("--name", required=True)
     cr.add_argument("--api-name", required=True)
     cr.add_argument("--description", default=None)
-    cr.add_argument("--template-id", default="a2ui", help="App kind (default a2ui)")
+    cr.add_argument("--template-id", default="a2ui", help="a2ui (draft) or module (hosted Service; needs bindings.k8s)")
     cr.add_argument(
         "--bindings-json",
         default=None,

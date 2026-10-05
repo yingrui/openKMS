@@ -12,6 +12,19 @@
   padding: var(--app-page-padding-y) var(--app-page-padding-x);
 }
 
+.apps-page--run-module {
+  min-height: 0;
+}
+
+.apps-page__module-frame {
+  flex: 1;
+  width: 100%;
+  min-height: calc(100vh - var(--header-height, 56px) - 6rem);
+  border: 1px solid color-mix(in srgb, var(--color-border) 70%, transparent);
+  border-radius: var(--radius-lg, 14px);
+  background: var(--color-bg, #fff);
+}
+
 /* Run surface: same muted canvas + inset as Design Preview (padding from AppA2uiSurface). */
 .apps-page--run .onto-app-a2ui.a2ui-platform-surface {
   border: 1px solid color-mix(in srgb, var(--color-border) 70%, transparent);
@@ -51,6 +64,11 @@
   color: #92400e;
   padding: 0.15rem 0.4rem;
   border-radius: 0.25rem;
+}
+
+.apps-page__badge--kind {
+  background: color-mix(in srgb, var(--color-accent, #2563eb) 12%, transparent);
+  color: var(--color-text);
 }
 
 .apps-page__empty {

@@ -279,8 +279,9 @@ The bundled **openkms-skill** CLI wraps **lifecycle** and **relationships** the 
 | PATCH | `/api/ontology/action-types/{id}` | Update Action; switching `rule_type` to built-in clears `function_id` when omitted |
 | DELETE | `/api/ontology/action-types/{id}` | Delete Action (frees `api_name`; archive alone does not) |
 | GET | `/api/app-builder/apps` | List apps (`?status=published`); `ontology:read` |
-| POST | `/api/app-builder/apps` | Create app (name + api_name; optional resource allowlist in `bindings`; stub A2UI if unbound) (`ontology:write`) |
+| POST | `/api/app-builder/apps` | Create app (name + api_name; optional resource allowlist in `bindings`; `template_id=module` + `bindings.k8s` publishes immediately; module also needs `console:kubernetes`) (`ontology:write`) |
 | GET | `/api/app-builder/apps/{id}` | Published run document only (404 if draft) |
+| GET/POST/PUT/PATCH/DELETE | `/api/app-builder/apps/{id}/proxy/{path}` | Module apps: HTTP proxy to the bound Kubernetes Service (`ontology:read`) |
 | GET | `/api/app-builder/apps/{id}/design` | Draft artifacts for App Builder |
 | PATCH | `/api/app-builder/apps/{id}` | Update metadata / resource allowlist (`bindings`) / `components` |
 | DELETE | `/api/app-builder/apps/{id}` | Delete app |
@@ -312,6 +313,10 @@ Register existing clusters for later agent deploy tooling. Responses never inclu
 | GET | `/api/kubernetes-clusters/{id}/namespaces` | List namespaces (read-only) |
 | GET | `/api/kubernetes-clusters/{id}/deployments` | List Deployments (`?namespace=`; defaults to cluster `default_namespace`) |
 | GET | `/api/kubernetes-clusters/{id}/pods` | List Pods (`?namespace=`; defaults to cluster `default_namespace`) |
+| GET | `/api/kubernetes-clusters/{id}/services` | List Services (`?namespace=`) |
+| GET | `/api/kubernetes-clusters/{id}/pods/{pod}/logs` | Recent Pod logs (`?namespace=`, `?tail=`, `?container=`) |
+| POST | `/api/kubernetes-clusters/{id}/apply` | Create or patch YAML (`Deployment`, `Service`, `Pod`, `ConfigMap`); body `{yaml, namespace?}` |
+| POST | `/api/kubernetes-clusters/{id}/delete` | Delete one allowlisted object; body `{kind, name, namespace?}` |
 
 ### Connectors (`connectors:read` / `connectors:write`)
 

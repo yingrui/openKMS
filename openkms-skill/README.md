@@ -38,6 +38,7 @@ The skill covers **read + write** for every major resource. Top-level groups:
 | `ontology action-types` | list/get/logs | create, update, delete, execute |
 | `ontology groups` | list/get | create, update |
 | `evaluations` / `evaluation-runs` | list/get/compare | create/update/run/items |
+| `kubernetes` | clusters list/get, namespaces, deployments, pods, services, logs | `apply`, `delete` (allowlisted kinds; kubeconfig never downloaded) |
 
 > **Mutation safety.** Every **write** subcommand (channels, `documents upload`, **`documents lifecycle patch`**, **`documents relationships create|delete`**, `articles create`/`from-url`, **`articles relationships create|delete`**, `wiki put-page`, **`wiki files delete`**, `wiki-spaces documents link|unlink`, **`kb index`**, **`kb wiki-spaces reindex`**, KB FAQ, **`glossaries`** and **`glossaries terms`**, **`knowledge-map`** nodes and resource-links, evaluation `create`/`update`/`run` and **`evaluations items` add/update/delete**, and ontology objects/links) uses the same gate: `--yes`/`-y`, `--dry-run`, interactive `Proceed?`, or **exit 2 on non-TTY without `--yes`** so agents opt in deliberately.
 

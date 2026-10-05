@@ -1,6 +1,6 @@
 {
   "galleryTitle": "Apps",
-  "gallerySubtitle": "Published ontology apps. Open any board without entering App Builder.",
+  "gallerySubtitle": "Published A2UI apps and hosted Kubernetes Services. Open without entering App Builder.",
   "loading": "Loading…",
   "emptyGallery": "No published apps yet.",
   "goToBuilder": "Create in App Builder",
@@ -9,5 +9,8 @@
   "editInBuilder": "Edit in App Builder",
   "staleBanner": "Some bindings no longer resolve. The board may misbehave.",
   "repair": "Repair",
-  "componentsAria": "Components"
+  "componentsAria": "Components",
+  "kindA2ui": "A2UI",
+  "kindModule": "Hosted service",
+  "moduleFrameTitle": "Hosted app"
 }

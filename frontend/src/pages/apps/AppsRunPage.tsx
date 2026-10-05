@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { fetchAppRun, type AppBuilderRunResponse } from '../../data/appBuilderApi';
+import { fetchAppRun, moduleAppProxyUrl, type AppBuilderRunResponse } from '../../data/appBuilderApi';
 import { AppA2uiSurface } from '../app-builder/a2ui/AppA2uiSurface';
 import { useAuth } from '../../contexts/AuthContext';
 import './AppsPages.scss';
@@ -40,9 +40,10 @@ export function AppsRunPage() {
 
   const components = app.components || [];
   const active = components.find((c) => c.id === activeId) ?? components[0];
+  const isModule = app.app_kind === 'module';
 
   return (
-    <div className="apps-page apps-page--run">
+    <div className={`apps-page apps-page--run${isModule ? ' apps-page--run-module' : ''}`}>
       <header className="apps-page__run-header">
         <Link to="/apps" className="apps-page__back">
           {t('backToGallery')}
@@ -51,7 +52,7 @@ export function AppsRunPage() {
           {app.name}
           {app.published_version ? ` · v${app.published_version}` : ''}
         </span>
-        {canEdit ? (
+        {canEdit && !isModule ? (
           <Link to={`/app-builder/${app.id}/design`} className="btn btn-secondary">
             {t('editInBuilder')}
           </Link>
@@ -60,30 +61,40 @@ export function AppsRunPage() {
       {app.bindings_stale ? (
         <div className="apps-page__banner" role="status">
           {t('staleBanner')}
-          {canEdit ? (
+          {canEdit && !isModule ? (
             <Link to={`/app-builder/${app.id}/design`}>{t('repair')}</Link>
           ) : null}
         </div>
       ) : null}
 
-      {components.length > 1 ? (
-        <div className="apps-page__tabs" role="tablist" aria-label={t('componentsAria')}>
-          {components.map((c) => (
-            <button
-              key={c.id}
-              type="button"
-              role="tab"
-              aria-selected={active?.id === c.id}
-              className={`apps-page__tab${active?.id === c.id ? ' is-active' : ''}`}
-              onClick={() => setActiveId(c.id)}
-            >
-              {c.name}
-            </button>
-          ))}
-        </div>
-      ) : null}
+      {isModule ? (
+        <iframe
+          className="apps-page__module-frame"
+          title={t('moduleFrameTitle')}
+          src={moduleAppProxyUrl(app.id)}
+        />
+      ) : (
+        <>
+          {components.length > 1 ? (
+            <div className="apps-page__tabs" role="tablist" aria-label={t('componentsAria')}>
+              {components.map((c) => (
+                <button
+                  key={c.id}
+                  type="button"
+                  role="tab"
+                  aria-selected={active?.id === c.id}
+                  className={`apps-page__tab${active?.id === c.id ? ' is-active' : ''}`}
+                  onClick={() => setActiveId(c.id)}
+                >
+                  {c.name}
+                </button>
+              ))}
+            </div>
+          ) : null}
 
-      <AppA2uiSurface a2uiMessages={active?.messages ?? []} />
+          <AppA2uiSurface a2uiMessages={active?.messages ?? []} />
+        </>
+      )}
     </div>
   );
 }
