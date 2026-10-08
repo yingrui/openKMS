@@ -98,6 +98,62 @@ class KubernetesServiceListResponse(BaseModel):
     items: list[KubernetesServiceItem]
 
 
+class KubernetesContainerPort(BaseModel):
+    container_port: int
+    protocol: str = "TCP"
+    name: str | None = None
+
+
+class KubernetesServicePortDetail(BaseModel):
+    name: str | None = None
+    port: int
+    target_port: str | None = None
+    node_port: int | None = None
+    protocol: str = "TCP"
+
+
+class KubernetesServiceDetail(BaseModel):
+    name: str
+    namespace: str
+    type: str
+    cluster_ip: str | None = None
+    external_ips: list[str] = []
+    ports: list[KubernetesServicePortDetail] = []
+    selector: dict[str, str] = {}
+    created_at: datetime | None = None
+    labels: dict[str, str] = {}
+
+
+class KubernetesPodContainerDetail(BaseModel):
+    name: str
+    image: str | None = None
+    ports: list[KubernetesContainerPort] = []
+    ready: bool = False
+    restarts: int = 0
+    state: str = "unknown"
+
+
+class KubernetesPodDetail(BaseModel):
+    name: str
+    namespace: str
+    phase: str
+    ready: str
+    restarts: int
+    node: str | None = None
+    pod_ip: str | None = None
+    created_at: datetime | None = None
+    labels: dict[str, str] = {}
+    containers: list[KubernetesPodContainerDetail] = []
+
+
+class KubernetesManifestYamlResponse(BaseModel):
+    kind: str
+    name: str
+    namespace: str
+    yaml: str
+    redacted: bool = False
+
+
 class KubernetesApplyRequest(BaseModel):
     yaml: str = Field(min_length=1, max_length=262144)
     namespace: str | None = Field(default=None, max_length=253)
@@ -125,3 +181,105 @@ class KubernetesPodLogsResponse(BaseModel):
     pod: str
     container: str | None = None
     log: str
+
+
+class KubernetesSecretItem(BaseModel):
+    name: str
+    namespace: str
+    type: str = "Opaque"
+    keys: list[str] = []
+    managed_by_project_id: str | None = None
+
+
+class KubernetesSecretListResponse(BaseModel):
+    namespace: str
+    items: list[KubernetesSecretItem]
+
+
+class KubernetesSecretUpsertRequest(BaseModel):
+    set_values: dict[str, str] = Field(default_factory=dict)
+    remove_keys: list[str] = Field(default_factory=list)
+
+
+class KubernetesSecretUpsertResponse(KubernetesSecretItem):
+    action: str
+
+
+class KubernetesConfigMapItem(BaseModel):
+    name: str
+    namespace: str
+    keys: list[str] = []
+    data: dict[str, str] = Field(default_factory=dict)
+
+
+class KubernetesConfigMapListResponse(BaseModel):
+    namespace: str
+    items: list[KubernetesConfigMapItem]
+
+
+class KubernetesConfigMapUpsertRequest(BaseModel):
+    set_values: dict[str, str] = Field(default_factory=dict)
+    remove_keys: list[str] = Field(default_factory=list)
+
+
+class KubernetesConfigMapUpsertResponse(KubernetesConfigMapItem):
+    action: str
+
+
+class KubernetesEnvValueFromSecret(BaseModel):
+    name: str
+    key: str
+    optional: bool = False
+
+
+class KubernetesEnvValueFromConfigMap(BaseModel):
+    name: str
+    key: str
+    optional: bool = False
+
+
+class KubernetesEnvValueFrom(BaseModel):
+    secret_key_ref: KubernetesEnvValueFromSecret | None = None
+    config_map_key_ref: KubernetesEnvValueFromConfigMap | None = None
+
+
+class KubernetesEnvVar(BaseModel):
+    name: str
+    value: str | None = None
+    value_from: KubernetesEnvValueFrom | None = None
+
+
+class KubernetesEnvFromSecret(BaseModel):
+    name: str
+    optional: bool = False
+
+
+class KubernetesEnvFromConfigMap(BaseModel):
+    name: str
+    optional: bool = False
+
+
+class KubernetesEnvFrom(BaseModel):
+    prefix: str | None = None
+    secret_ref: KubernetesEnvFromSecret | None = None
+    config_map_ref: KubernetesEnvFromConfigMap | None = None
+
+
+class KubernetesContainerEnv(BaseModel):
+    name: str
+    image: str | None = None
+    ports: list[KubernetesContainerPort] = Field(default_factory=list)
+    env: list[KubernetesEnvVar] = Field(default_factory=list)
+    env_from: list[KubernetesEnvFrom] = Field(default_factory=list)
+
+
+class KubernetesDeploymentEnvResponse(BaseModel):
+    name: str
+    namespace: str
+    containers: list[KubernetesContainerEnv]
+
+
+class KubernetesDeploymentEnvPatchRequest(BaseModel):
+    container: str = Field(min_length=1, max_length=253)
+    env: list[KubernetesEnvVar] = Field(default_factory=list)
+    env_from: list[KubernetesEnvFrom] = Field(default_factory=list)

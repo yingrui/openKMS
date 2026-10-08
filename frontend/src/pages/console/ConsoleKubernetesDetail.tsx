@@ -1,7 +1,17 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { ArrowLeft, FilePlus2, FileText, Loader2, RefreshCw, Trash2, AppWindow } from 'lucide-react';
+import {
+  ArrowLeft,
+  Eye,
+  FilePlus2,
+  FileText,
+  Loader2,
+  RefreshCw,
+  Settings2,
+  Trash2,
+  AppWindow,
+} from 'lucide-react';
 import { toast } from 'sonner';
 import { ErrorBanner } from '../../components/ErrorBanner';
 import { createApp } from '../../data/appBuilderApi';
@@ -29,6 +39,11 @@ import {
   TableRowActionCell,
   TableRowActions,
 } from '../../styles/design-system';
+import { KubernetesSecretsSection } from './KubernetesSecretsSection';
+import { KubernetesDeploymentEnvDialog } from './KubernetesDeploymentEnvDialog';
+import { KubernetesDeploymentDetailDialog } from './KubernetesDeploymentDetailDialog';
+import { KubernetesServiceDetailDialog } from './KubernetesServiceDetailDialog';
+import { KubernetesPodDetailDialog } from './KubernetesPodDetailDialog';
 import '../ontology/ontology-admin.scss';
 
 function suggestApiName(service: string): string {
@@ -75,6 +90,12 @@ export function ConsoleKubernetesDetail() {
   const [registerApiName, setRegisterApiName] = useState('');
   const [registerPort, setRegisterPort] = useState(80);
   const [registerSubmitting, setRegisterSubmitting] = useState(false);
+
+  const [envOpen, setEnvOpen] = useState(false);
+  const [envDeployment, setEnvDeployment] = useState<string | null>(null);
+  const [detailDeployment, setDetailDeployment] = useState<KubernetesDeploymentItem | null>(null);
+  const [detailService, setDetailService] = useState<string | null>(null);
+  const [detailPod, setDetailPod] = useState<string | null>(null);
 
   const loadCluster = useCallback(async () => {
     if (!clusterId) return;
@@ -366,13 +387,34 @@ export function ConsoleKubernetesDetail() {
                   deployments.map((d) => (
                     <tr key={d.name}>
                       <td>
-                        <strong>{d.name}</strong>
+                        <button
+                          type="button"
+                          className="console-k8s-name-link"
+                          onClick={() => setDetailDeployment(d)}
+                        >
+                          <strong>{d.name}</strong>
+                        </button>
                       </td>
                       <td>{d.ready}</td>
                       <td>{d.replicas}</td>
                       <td>{d.available}</td>
                       <TableRowActionCell>
                         <TableRowActions>
+                          <TableRowActionButton
+                            title={t('kubernetes.viewTitle')}
+                            aria-label={t('kubernetes.viewTitle')}
+                            icon={<Eye size={16} aria-hidden />}
+                            onClick={() => setDetailDeployment(d)}
+                          />
+                          <TableRowActionButton
+                            title={t('kubernetes.envTitle')}
+                            aria-label={t('kubernetes.envTitle')}
+                            icon={<Settings2 size={16} aria-hidden />}
+                            onClick={() => {
+                              setEnvDeployment(d.name);
+                              setEnvOpen(true);
+                            }}
+                          />
                           <TableRowActionButton
                             title={t('kubernetes.deleteTitle')}
                             aria-label={t('kubernetes.deleteTitle')}
@@ -389,6 +431,12 @@ export function ConsoleKubernetesDetail() {
             </table>
           </div>
         </section>
+
+        <KubernetesSecretsSection
+          clusterId={clusterId}
+          namespace={namespace}
+          loadingResources={loadingResources}
+        />
 
         <section className="console-k8s-section" aria-labelledby="k8s-services-heading">
           <h2 id="k8s-services-heading" className="console-k8s-section__title">
@@ -422,13 +470,25 @@ export function ConsoleKubernetesDetail() {
                   services.map((s) => (
                     <tr key={s.name}>
                       <td>
-                        <strong>{s.name}</strong>
+                        <button
+                          type="button"
+                          className="console-k8s-name-link"
+                          onClick={() => setDetailService(s.name)}
+                        >
+                          <strong>{s.name}</strong>
+                        </button>
                       </td>
                       <td>{s.type}</td>
                       <td>{s.cluster_ip ?? t('kubernetes.dash')}</td>
                       <td>{s.ports ?? t('kubernetes.dash')}</td>
                       <TableRowActionCell>
                         <TableRowActions>
+                          <TableRowActionButton
+                            title={t('kubernetes.viewTitle')}
+                            aria-label={t('kubernetes.viewTitle')}
+                            icon={<Eye size={16} aria-hidden />}
+                            onClick={() => setDetailService(s.name)}
+                          />
                           <TableRowActionButton
                             title={t('kubernetes.registerAppTitle')}
                             aria-label={t('kubernetes.registerAppTitle')}
@@ -485,7 +545,13 @@ export function ConsoleKubernetesDetail() {
                   pods.map((p) => (
                     <tr key={p.name}>
                       <td>
-                        <strong>{p.name}</strong>
+                        <button
+                          type="button"
+                          className="console-k8s-name-link"
+                          onClick={() => setDetailPod(p.name)}
+                        >
+                          <strong>{p.name}</strong>
+                        </button>
                       </td>
                       <td>{p.phase}</td>
                       <td>{p.ready}</td>
@@ -493,6 +559,12 @@ export function ConsoleKubernetesDetail() {
                       <td>{p.node ?? t('kubernetes.dash')}</td>
                       <TableRowActionCell>
                         <TableRowActions>
+                          <TableRowActionButton
+                            title={t('kubernetes.viewTitle')}
+                            aria-label={t('kubernetes.viewTitle')}
+                            icon={<Eye size={16} aria-hidden />}
+                            onClick={() => setDetailPod(p.name)}
+                          />
                           <TableRowActionButton
                             title={t('kubernetes.logsTitle')}
                             aria-label={t('kubernetes.logsTitle')}
@@ -678,6 +750,41 @@ export function ConsoleKubernetesDetail() {
           )}
         </FormField>
       </Dialog>
+
+      <KubernetesDeploymentDetailDialog
+        open={!!detailDeployment}
+        onClose={() => setDetailDeployment(null)}
+        clusterId={clusterId}
+        namespace={namespace}
+        deployment={detailDeployment}
+      />
+
+      <KubernetesServiceDetailDialog
+        open={!!detailService}
+        onClose={() => setDetailService(null)}
+        clusterId={clusterId}
+        namespace={namespace}
+        serviceName={detailService}
+      />
+
+      <KubernetesPodDetailDialog
+        open={!!detailPod}
+        onClose={() => setDetailPod(null)}
+        clusterId={clusterId}
+        namespace={namespace}
+        podName={detailPod}
+      />
+
+      <KubernetesDeploymentEnvDialog
+        open={envOpen}
+        onClose={() => {
+          setEnvOpen(false);
+          setEnvDeployment(null);
+        }}
+        clusterId={clusterId}
+        namespace={namespace}
+        deployment={envDeployment}
+      />
     </div>
   );
 }

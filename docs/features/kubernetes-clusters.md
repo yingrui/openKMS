@@ -7,7 +7,7 @@ Related: [Console & authentication](console-and-auth.md), [Agents](openkms-agent
 ## Console UI
 
 - **List:** `/console/kubernetes` — register, edit, delete, test connection; open a cluster for browse
-- **Detail:** `/console/kubernetes/{id}` — pick a namespace; Deployments, Services, Pods; Pod logs; apply YAML; delete allowlisted objects; register a Service in Apps
+- **Detail:** `/console/kubernetes/{id}` — pick a namespace; Deployments, Services, Pods, Secrets, ConfigMaps; Deployment env; Pod logs; apply YAML; delete allowlisted objects; register a Service in Apps
 - **Permission:** `console:kubernetes` (or `all` / admin)
 - Form fields: name, description, default namespace, optional **API server** (the URL the backend uses to reach the cluster), kubeconfig YAML, optional **skip TLS verification** (lab / self-signed only)
 
@@ -34,16 +34,23 @@ Prefer kubeconfigs that use **token** or **client certificate** credentials. Cli
 | `GET …/pods?namespace=` | Pods in a namespace |
 | `GET …/services?namespace=` | Services (name, type, ClusterIP, ports) |
 | `GET …/pods/{name}/logs` | Recent Pod logs (`tail`, optional `container`) |
-| `POST …/apply` | Create or patch YAML (`Deployment`, `Service`, `Pod`, `ConfigMap`) |
+| `POST …/apply` | Create or patch YAML (`Deployment`, `Service`, `Pod`, `ConfigMap`) — **not** `Secret` |
 | `POST …/delete` | Delete one allowlisted namespaced object |
+| `GET|PUT|DELETE …/secrets[/{name}]` | Opaque Secrets (keys only on GET; values write-only) |
+| `GET|PUT|DELETE …/configmaps[/{name}]` | ConfigMaps (data visible) |
+| `GET|PUT …/deployments/{name}/env` | Container `env` / `envFrom` (secret refs unresolved) |
 
-Console row actions match the skill: logs Dialog, confirm delete, apply Dialog. kubeconfig never returns in responses.
+Console row actions match the skill: logs Dialog, confirm delete, apply Dialog, Secret/ConfigMap editors, Deployment **Environment**. kubeconfig never returns in responses. Secrets labeled `openkms.io/project-id` are **read-only** in the console (edit from Project settings → Deploy).
 
 **Register in Apps** (Service row): creates a published `template_id=module` app bound to `cluster_id` / namespace / service / port. Requires `ontology:write` in addition to `console:kubernetes`. See [App Builder](app-builder.md#module-hosted-services).
 
+## Deploy secrets (projects) {#deploy-secrets-projects}
+
+Operators store encrypted key/values under **Project settings → Deploy**, then **Sync to cluster** (writes an Opaque Secret with `app.kubernetes.io/managed-by=openkms` and `openkms.io/project-id`). Agents only see names/keys in the system prompt and must reference them via `secretRef` / `secretKeyRef`. Personal API keys cannot create or update deploy-secret values.
+
 ## Agents
 
-The **openkms** skill lists registered clusters, applies the same allowlisted kinds, tails logs, and can `kubernetes register-app`. The session API key needs **`console:kubernetes`** (and **`ontology:write`** to register Apps). Kubeconfig stays encrypted on the server.
+The **openkms** skill lists registered clusters, applies allowlisted kinds (not Secret), lists secrets/configmaps/env, tails logs, and can `kubernetes register-app`. The session API key needs **`console:kubernetes`** (and **`ontology:write`** to register Apps). Kubeconfig stays encrypted on the server.
 
 ## Out of scope (still open)
 
@@ -51,3 +58,4 @@ The **openkms** skill lists registered clusters, applies the same allowlisted ki
 - Per-project default cluster binding
 - Ingress / public TLS / WebSocket proxy
 - Running the A2UI canvas inside a Pod
+- External secret managers (Vault / ESO)

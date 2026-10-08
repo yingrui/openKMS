@@ -314,9 +314,32 @@ Register existing clusters for later agent deploy tooling. Responses never inclu
 | GET | `/api/kubernetes-clusters/{id}/deployments` | List Deployments (`?namespace=`; defaults to cluster `default_namespace`) |
 | GET | `/api/kubernetes-clusters/{id}/pods` | List Pods (`?namespace=`; defaults to cluster `default_namespace`) |
 | GET | `/api/kubernetes-clusters/{id}/services` | List Services (`?namespace=`) |
+| GET | `/api/kubernetes-clusters/{id}/pods/{pod}` | Pod detail (containers, image, status) |
 | GET | `/api/kubernetes-clusters/{id}/pods/{pod}/logs` | Recent Pod logs (`?namespace=`, `?tail=`, `?container=`) |
+| GET | `/api/kubernetes-clusters/{id}/services/{name}` | Service detail (ports, selector, labels) |
+| GET | `/api/kubernetes-clusters/{id}/manifest` | Live resource YAML (`?kind=` Deployment\|Service\|Pod\|ConfigMap\|Secret, `?name=`, `?namespace=`); Secret values redacted |
 | POST | `/api/kubernetes-clusters/{id}/apply` | Create or patch YAML (`Deployment`, `Service`, `Pod`, `ConfigMap`); body `{yaml, namespace?}` |
 | POST | `/api/kubernetes-clusters/{id}/delete` | Delete one allowlisted object; body `{kind, name, namespace?}` |
+| GET | `/api/kubernetes-clusters/{id}/secrets` | List Opaque Secrets (keys only; `?namespace=`) |
+| PUT | `/api/kubernetes-clusters/{id}/secrets/{name}` | Upsert Opaque Secret; body `{set_values, remove_keys?}` (empty value keeps existing key); project-managed Secrets → 403 |
+| DELETE | `/api/kubernetes-clusters/{id}/secrets/{name}` | Delete Opaque Secret (project-managed → 403) |
+| GET | `/api/kubernetes-clusters/{id}/configmaps` | List ConfigMaps with data |
+| PUT | `/api/kubernetes-clusters/{id}/configmaps/{name}` | Upsert ConfigMap |
+| DELETE | `/api/kubernetes-clusters/{id}/configmaps/{name}` | Delete ConfigMap |
+| GET | `/api/kubernetes-clusters/{id}/deployments/{name}/env` | Container env / envFrom |
+| PUT | `/api/kubernetes-clusters/{id}/deployments/{name}/env` | Replace one container's env / envFrom; body `{container, env, env_from}` |
+
+### Project deploy secrets (`projects:read` / `projects:write`)
+
+Encrypted values; **never returned**. Write/sync/delete reject personal API key auth. Sync also requires `console:kubernetes`.
+
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `/api/projects/{id}/deploy-secrets` | List (name, cluster, namespace, key_names, sync status) |
+| POST | `/api/projects/{id}/deploy-secrets` | Create; body `{name, cluster_id, namespace?, values}` |
+| PATCH | `/api/projects/{id}/deploy-secrets/{sid}` | Update; body `{cluster_id?, namespace?, set_values?, remove_keys?}` |
+| DELETE | `/api/projects/{id}/deploy-secrets/{sid}` | Delete; optional `?delete_in_cluster=true` |
+| POST | `/api/projects/{id}/deploy-secrets/{sid}/sync` | Upsert labeled Opaque Secret on the cluster |
 
 ### Connectors (`connectors:read` / `connectors:write`)
 

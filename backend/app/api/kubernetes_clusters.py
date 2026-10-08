@@ -18,11 +18,24 @@ from app.schemas.kubernetes_cluster import (
     KubernetesClusterListResponse,
     KubernetesClusterResponse,
     KubernetesClusterUpdate,
+    KubernetesConfigMapItem,
+    KubernetesConfigMapListResponse,
+    KubernetesConfigMapUpsertRequest,
+    KubernetesConfigMapUpsertResponse,
     KubernetesDeleteRequest,
+    KubernetesDeploymentEnvPatchRequest,
+    KubernetesDeploymentEnvResponse,
     KubernetesDeploymentListResponse,
     KubernetesNamespaceListResponse,
+    KubernetesManifestYamlResponse,
+    KubernetesPodDetail,
     KubernetesPodListResponse,
     KubernetesPodLogsResponse,
+    KubernetesSecretItem,
+    KubernetesSecretListResponse,
+    KubernetesSecretUpsertRequest,
+    KubernetesSecretUpsertResponse,
+    KubernetesServiceDetail,
     KubernetesServiceListResponse,
 )
 from app.services.credentials.credential_encryption import decrypt, encrypt
@@ -36,7 +49,21 @@ from app.services.kubernetes.cluster_connection import (
     probe_cluster_connection_async,
     resolve_api_server_from_text,
 )
+from app.services.kubernetes.cluster_config import (
+    delete_configmap_async,
+    delete_secret_async,
+    get_deployment_env_async,
+    list_configmaps_async,
+    list_secrets_async,
+    patch_deployment_env_async,
+    upsert_configmap_async,
+    upsert_secret_async,
+    validate_resource_name,
+)
 from app.services.kubernetes.cluster_resources import (
+    get_manifest_yaml_async,
+    get_pod_async,
+    get_service_async,
     list_deployments_async,
     list_namespaces_async,
     list_pods_async,
@@ -359,6 +386,84 @@ async def list_cluster_services(
 
 
 @router.get(
+    "/{cluster_id}/pods/{pod_name}",
+    response_model=KubernetesPodDetail,
+    dependencies=[Depends(require_permission(PERM_CONSOLE_KUBERNETES))],
+)
+async def get_cluster_pod(
+    cluster_id: str,
+    pod_name: str,
+    namespace: str | None = Query(None),
+    db: AsyncSession = Depends(get_db),
+):
+    """Read Pod detail (containers, images, status; no secrets resolved)."""
+    row = await _load_cluster_or_404(cluster_id, db)
+    ns = _namespace_or_default(row, namespace)
+    plain = _decrypt_kubeconfig(row)
+    try:
+        return KubernetesPodDetail(
+            **await get_pod_async(plain, ns, pod_name, **_client_overrides(row))
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e)) from e
+    except Exception as e:
+        raise _resource_http_error(e) from e
+
+
+@router.get(
+    "/{cluster_id}/services/{service_name}",
+    response_model=KubernetesServiceDetail,
+    dependencies=[Depends(require_permission(PERM_CONSOLE_KUBERNETES))],
+)
+async def get_cluster_service(
+    cluster_id: str,
+    service_name: str,
+    namespace: str | None = Query(None),
+    db: AsyncSession = Depends(get_db),
+):
+    """Read Service detail (ports, selector, labels)."""
+    row = await _load_cluster_or_404(cluster_id, db)
+    ns = _namespace_or_default(row, namespace)
+    plain = _decrypt_kubeconfig(row)
+    try:
+        return KubernetesServiceDetail(
+            **await get_service_async(plain, ns, service_name, **_client_overrides(row))
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e)) from e
+    except Exception as e:
+        raise _resource_http_error(e) from e
+
+
+@router.get(
+    "/{cluster_id}/manifest",
+    response_model=KubernetesManifestYamlResponse,
+    dependencies=[Depends(require_permission(PERM_CONSOLE_KUBERNETES))],
+)
+async def get_cluster_manifest_yaml(
+    cluster_id: str,
+    kind: str = Query(..., description="Deployment|Service|Pod|ConfigMap|Secret"),
+    name: str = Query(..., min_length=1, max_length=253),
+    namespace: str | None = Query(None),
+    db: AsyncSession = Depends(get_db),
+):
+    """Return live resource YAML (Secret data values always redacted)."""
+    row = await _load_cluster_or_404(cluster_id, db)
+    ns = _namespace_or_default(row, namespace)
+    plain = _decrypt_kubeconfig(row)
+    try:
+        return KubernetesManifestYamlResponse(
+            **await get_manifest_yaml_async(
+                plain, ns, kind, name, **_client_overrides(row)
+            )
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e)) from e
+    except Exception as e:
+        raise _resource_http_error(e) from e
+
+
+@router.get(
     "/{cluster_id}/pods/{pod_name}/logs",
     response_model=KubernetesPodLogsResponse,
     dependencies=[Depends(require_permission(PERM_CONSOLE_KUBERNETES))],
@@ -441,3 +546,221 @@ async def delete_cluster_resource(
     except Exception as e:
         raise _resource_http_error(e) from e
     return {"ok": True, "kind": kind, "name": name, "namespace": ns}
+
+
+def _config_http_error(exc: Exception) -> HTTPException:
+    if isinstance(exc, PermissionError):
+        return HTTPException(status_code=403, detail=str(exc))
+    if isinstance(exc, LookupError):
+        return HTTPException(status_code=409, detail=str(exc))
+    if isinstance(exc, ValueError):
+        return HTTPException(status_code=400, detail=str(exc))
+    return _resource_http_error(exc)
+
+
+@router.get(
+    "/{cluster_id}/secrets",
+    response_model=KubernetesSecretListResponse,
+    dependencies=[Depends(require_permission(PERM_CONSOLE_KUBERNETES))],
+)
+async def list_cluster_secrets(
+    cluster_id: str,
+    namespace: str | None = Query(None),
+    db: AsyncSession = Depends(get_db),
+):
+    """List Opaque Secrets (keys only; values never returned)."""
+    row = await _load_cluster_or_404(cluster_id, db)
+    ns = _namespace_or_default(row, namespace)
+    plain = _decrypt_kubeconfig(row)
+    try:
+        items = await list_secrets_async(plain, ns, **_client_overrides(row))
+    except Exception as e:
+        raise _config_http_error(e) from e
+    return KubernetesSecretListResponse(
+        namespace=ns, items=[KubernetesSecretItem(**i) for i in items]
+    )
+
+
+@router.put(
+    "/{cluster_id}/secrets/{secret_name}",
+    response_model=KubernetesSecretUpsertResponse,
+    dependencies=[Depends(require_permission(PERM_CONSOLE_KUBERNETES))],
+)
+async def upsert_cluster_secret(
+    cluster_id: str,
+    secret_name: str,
+    body: KubernetesSecretUpsertRequest,
+    namespace: str | None = Query(None),
+    db: AsyncSession = Depends(get_db),
+):
+    """Create or update an Opaque Secret. Empty set_values keep existing keys. Never returns values."""
+    row = await _load_cluster_or_404(cluster_id, db)
+    ns = _namespace_or_default(row, namespace)
+    plain = _decrypt_kubeconfig(row)
+    try:
+        name = validate_resource_name(secret_name)
+        result = await upsert_secret_async(
+            plain,
+            ns,
+            name,
+            set_values=body.set_values or {},
+            remove_keys=body.remove_keys or [],
+            **_client_overrides(row),
+        )
+    except Exception as e:
+        raise _config_http_error(e) from e
+    return KubernetesSecretUpsertResponse(**result)
+
+
+@router.delete(
+    "/{cluster_id}/secrets/{secret_name}",
+    status_code=204,
+    dependencies=[Depends(require_permission(PERM_CONSOLE_KUBERNETES))],
+)
+async def delete_cluster_secret(
+    cluster_id: str,
+    secret_name: str,
+    namespace: str | None = Query(None),
+    db: AsyncSession = Depends(get_db),
+):
+    """Delete an Opaque Secret not managed by a Project."""
+    row = await _load_cluster_or_404(cluster_id, db)
+    ns = _namespace_or_default(row, namespace)
+    plain = _decrypt_kubeconfig(row)
+    try:
+        await delete_secret_async(
+            plain, ns, validate_resource_name(secret_name), **_client_overrides(row)
+        )
+    except Exception as e:
+        raise _config_http_error(e) from e
+    return None
+
+
+@router.get(
+    "/{cluster_id}/configmaps",
+    response_model=KubernetesConfigMapListResponse,
+    dependencies=[Depends(require_permission(PERM_CONSOLE_KUBERNETES))],
+)
+async def list_cluster_configmaps(
+    cluster_id: str,
+    namespace: str | None = Query(None),
+    db: AsyncSession = Depends(get_db),
+):
+    """List ConfigMaps including data values (non-secret)."""
+    row = await _load_cluster_or_404(cluster_id, db)
+    ns = _namespace_or_default(row, namespace)
+    plain = _decrypt_kubeconfig(row)
+    try:
+        items = await list_configmaps_async(plain, ns, **_client_overrides(row))
+    except Exception as e:
+        raise _config_http_error(e) from e
+    return KubernetesConfigMapListResponse(
+        namespace=ns, items=[KubernetesConfigMapItem(**i) for i in items]
+    )
+
+
+@router.put(
+    "/{cluster_id}/configmaps/{cm_name}",
+    response_model=KubernetesConfigMapUpsertResponse,
+    dependencies=[Depends(require_permission(PERM_CONSOLE_KUBERNETES))],
+)
+async def upsert_cluster_configmap(
+    cluster_id: str,
+    cm_name: str,
+    body: KubernetesConfigMapUpsertRequest,
+    namespace: str | None = Query(None),
+    db: AsyncSession = Depends(get_db),
+):
+    row = await _load_cluster_or_404(cluster_id, db)
+    ns = _namespace_or_default(row, namespace)
+    plain = _decrypt_kubeconfig(row)
+    try:
+        result = await upsert_configmap_async(
+            plain,
+            ns,
+            validate_resource_name(cm_name),
+            set_values=body.set_values or {},
+            remove_keys=body.remove_keys or [],
+            **_client_overrides(row),
+        )
+    except Exception as e:
+        raise _config_http_error(e) from e
+    return KubernetesConfigMapUpsertResponse(**result)
+
+
+@router.delete(
+    "/{cluster_id}/configmaps/{cm_name}",
+    status_code=204,
+    dependencies=[Depends(require_permission(PERM_CONSOLE_KUBERNETES))],
+)
+async def delete_cluster_configmap(
+    cluster_id: str,
+    cm_name: str,
+    namespace: str | None = Query(None),
+    db: AsyncSession = Depends(get_db),
+):
+    row = await _load_cluster_or_404(cluster_id, db)
+    ns = _namespace_or_default(row, namespace)
+    plain = _decrypt_kubeconfig(row)
+    try:
+        await delete_configmap_async(
+            plain, ns, validate_resource_name(cm_name), **_client_overrides(row)
+        )
+    except Exception as e:
+        raise _config_http_error(e) from e
+    return None
+
+
+@router.get(
+    "/{cluster_id}/deployments/{deployment_name}/env",
+    response_model=KubernetesDeploymentEnvResponse,
+    dependencies=[Depends(require_permission(PERM_CONSOLE_KUBERNETES))],
+)
+async def get_cluster_deployment_env(
+    cluster_id: str,
+    deployment_name: str,
+    namespace: str | None = Query(None),
+    db: AsyncSession = Depends(get_db),
+):
+    """Read Deployment container env (literal values and secret/configMap refs; secrets not resolved)."""
+    row = await _load_cluster_or_404(cluster_id, db)
+    ns = _namespace_or_default(row, namespace)
+    plain = _decrypt_kubeconfig(row)
+    try:
+        result = await get_deployment_env_async(
+            plain, ns, validate_resource_name(deployment_name), **_client_overrides(row)
+        )
+    except Exception as e:
+        raise _config_http_error(e) from e
+    return KubernetesDeploymentEnvResponse(**result)
+
+
+@router.put(
+    "/{cluster_id}/deployments/{deployment_name}/env",
+    response_model=KubernetesDeploymentEnvResponse,
+    dependencies=[Depends(require_permission(PERM_CONSOLE_KUBERNETES))],
+)
+async def patch_cluster_deployment_env(
+    cluster_id: str,
+    deployment_name: str,
+    body: KubernetesDeploymentEnvPatchRequest,
+    namespace: str | None = Query(None),
+    db: AsyncSession = Depends(get_db),
+):
+    """Replace one container's env and envFrom on a Deployment."""
+    row = await _load_cluster_or_404(cluster_id, db)
+    ns = _namespace_or_default(row, namespace)
+    plain = _decrypt_kubeconfig(row)
+    try:
+        result = await patch_deployment_env_async(
+            plain,
+            ns,
+            validate_resource_name(deployment_name),
+            container=body.container,
+            env=[e.model_dump(exclude_none=True) for e in body.env],
+            env_from=[e.model_dump(exclude_none=True) for e in body.env_from],
+            **_client_overrides(row),
+        )
+    except Exception as e:
+        raise _config_http_error(e) from e
+    return KubernetesDeploymentEnvResponse(**result)

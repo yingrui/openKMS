@@ -16,9 +16,10 @@ In-product **Agents** area: personal **projects** with an on-disk workspace (`{O
 | Local git | ✅ |
 | Remote git (HTTPS + PAT) | ✅ |
 | Console Kubernetes cluster browse + apply/logs + register Service in Apps | ✅ |
+| Project deploy secrets (encrypted → sync Opaque Secret; Agent sees names/keys only) | ✅ |
 | Deploy via openkms skill (`kubernetes apply` / `register-app`) | ✅ (API key needs `console:kubernetes`; register-app also `ontology:write`) |
 
-Console operators can register clusters under `/console/kubernetes` (`console:kubernetes`); see [Kubernetes clusters](kubernetes-clusters.md). Workspace shell still runs in the backend/worker process. Operators can apply YAML in the cluster detail page; Agents use the **openkms skill** (`kubernetes apply`, `kubernetes register-app`) — kubeconfig is never injected into the workspace.
+Console operators can register clusters under `/console/kubernetes` (`console:kubernetes`); see [Kubernetes clusters](kubernetes-clusters.md). **Project settings → Deploy** stores encrypted secrets and syncs them to the cluster; agents only reference Secret names. Workspace shell still runs in the backend/worker process. Operators can apply YAML in the cluster detail page; Agents use the **openkms skill** (`kubernetes apply`, `kubernetes register-app`) — kubeconfig is never injected into the workspace.
 
 ## Layout
 

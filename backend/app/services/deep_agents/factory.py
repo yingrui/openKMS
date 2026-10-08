@@ -111,7 +111,20 @@ async def build_workspace_deep_agent(
         tools.extend(await make_web_search_tools(db, connector_id))
 
     skills = list_skill_paths(project_id)
+    from sqlalchemy import select
+
+    from app.models.project_deploy_secret import ProjectDeploySecret
     from app.services.deep_agents.checkpointer import get_checkpointer
+    from app.services.projects import deploy_secrets as deploy_svc
+
+    deploy_rows = (
+        await db.execute(
+            select(ProjectDeploySecret)
+            .where(ProjectDeploySecret.project_id == project_id)
+            .order_by(ProjectDeploySecret.name)
+        )
+    ).scalars().all()
+    deploy_secrets = [deploy_svc.to_response_dict(r) for r in deploy_rows]
 
     checkpointer = await get_checkpointer()
     try:
@@ -133,6 +146,7 @@ async def build_workspace_deep_agent(
                 project_slug=project_slug,
                 project_description=project_description,
                 installed_skills=project_settings.get("installed_skills"),
+                deploy_secrets=deploy_secrets,
                 plan_mode=plan_mode,
                 scheduled_run=scheduled_run,
             ),

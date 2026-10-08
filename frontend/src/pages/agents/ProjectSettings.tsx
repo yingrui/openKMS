@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { ArrowLeft, Bot, CalendarClock, Loader2, Puzzle, Settings, Users } from 'lucide-react';
+import { ArrowLeft, Bot, CalendarClock, KeyRound, Loader2, Puzzle, Settings, Users } from 'lucide-react';
 import { toast } from 'sonner';
 import {
   getProject,
@@ -29,6 +29,7 @@ import {
 } from '../../data/connectorsApi';
 import { AgentsSettingsSkeleton } from '../../components/agents/AgentsPageSkeleton';
 import { ProjectSchedulesTab } from '../../components/agents/ProjectSchedulesTab';
+import { ProjectDeploySecretsTab } from '../../components/agents/ProjectDeploySecretsTab';
 import { ProjectGitRemoteSection } from '../../components/agents/ProjectGitRemoteSection';
 import { ContentCommentsShell } from '../../components/comments/ContentCommentsShell';
 import { ResourceSharePanel } from '../../components/ResourceSharePanel';
@@ -37,7 +38,7 @@ import { useConfirm } from '../../contexts/ConfirmContext';
 import { CheckRow, FormField } from '../../styles/design-system';
 import './ProjectSettings.scss';
 
-type TabId = 'general' | 'agent' | 'skills' | 'schedules' | 'sharing';
+type TabId = 'general' | 'agent' | 'skills' | 'schedules' | 'sharing' | 'deploy';
 
 export function ProjectSettings() {
   const { projectId = '' } = useParams<{ projectId: string }>();
@@ -75,6 +76,7 @@ export function ProjectSettings() {
       { id: 'general' as const, label: t('settings.tabGeneral'), icon: Settings },
       { id: 'agent' as const, label: t('settings.tabAgent'), icon: Bot },
       { id: 'skills' as const, label: t('settings.tabSkills'), icon: Puzzle },
+      { id: 'deploy' as const, label: t('settings.tabDeploy'), icon: KeyRound },
       { id: 'sharing' as const, label: t('settings.tabSharing'), icon: Users },
       { id: 'schedules' as const, label: t('settings.tabSchedules'), icon: CalendarClock },
     ],
@@ -466,6 +468,8 @@ export function ProjectSettings() {
             )}
           </section>
         ) : null}
+
+        {activeTab === 'deploy' ? <ProjectDeploySecretsTab projectId={projectId} /> : null}
 
         {activeTab === 'schedules' ? <ProjectSchedulesTab projectId={projectId} /> : null}
 

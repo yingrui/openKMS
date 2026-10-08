@@ -70,6 +70,50 @@ def _project_section(
     return "\n".join(lines)
 
 
+def _deploy_secrets_section(deploy_secrets: list[dict] | None) -> str:
+    if not deploy_secrets:
+        return ""
+    lines = [
+        "## Deploy secrets (Kubernetes)",
+        "",
+        "These secrets are stored in openKMS and synced to the cluster by a human "
+        "(Project settings → Deploy → Sync). **You never receive secret values.**",
+        "In Deployment YAML, reference them only:",
+        "",
+        "```yaml",
+        "envFrom:",
+        "  - secretRef:",
+        "      name: <secret-name>",
+        "# or",
+        "env:",
+        "  - name: DATABASE_URL",
+        "    valueFrom:",
+        "      secretKeyRef:",
+        "        name: <secret-name>",
+        "        key: DATABASE_URL",
+        "```",
+        "",
+        "Do **not** put passwords in ConfigMaps, apply YAML, or chat. "
+        "`kubernetes apply` cannot create Secret kinds.",
+        "",
+    ]
+    for s in deploy_secrets:
+        name = str(s.get("name") or "").strip()
+        if not name:
+            continue
+        ns = str(s.get("namespace") or "default").strip()
+        cluster = str(s.get("cluster_id") or "").strip()
+        keys = s.get("key_names") or []
+        key_s = ", ".join(str(k) for k in keys) if keys else "(no keys)"
+        synced = "synced" if s.get("last_synced_at") else "not synced yet"
+        lines.append(
+            f"- **{name}** — namespace `{ns}`, cluster `{cluster or '?'}`, "
+            f"keys: {key_s} ({synced})"
+        )
+    lines.append("")
+    return "\n".join(lines)
+
+
 def _installed_skills_section(project_id: str, installed_skills: dict | None) -> str:
     ids = list_installed_skill_ids(project_id)
     if not ids:
@@ -100,6 +144,7 @@ def build_project_system_prompt(
     project_slug: str,
     project_description: str | None = None,
     installed_skills: dict | None = None,
+    deploy_secrets: list[dict] | None = None,
     plan_mode: bool = False,
     scheduled_run: bool = False,
 ) -> str:
@@ -113,6 +158,9 @@ def build_project_system_prompt(
             project_description=project_description,
         ),
     ]
+    deploy_section = _deploy_secrets_section(deploy_secrets)
+    if deploy_section:
+        parts.append(deploy_section)
     skills_section = _installed_skills_section(project_id, installed_skills)
     if skills_section:
         parts.append(skills_section)

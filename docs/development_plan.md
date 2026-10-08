@@ -93,7 +93,7 @@ Shipped surfaces: [Connectors](features/connectors.md), [API reference — Conne
 | Broader tool coverage | user · org — Read/write with ACL: documents, articles, glossary, search, ontology (within explore limits) |
 | Maintenance workflows | user · org — From eval failures → suggested wiki/KB fixes (quality loop, contribution feedback) |
 | Parity with external skill | user — [openkms-skill](features/openkms-skill.md) capabilities reachable in-app where permissions allow |
-| K8s deploy from Agents | ✅ Console browse/apply/logs + skill apply; hosted `module` Apps via Service proxy ([Kubernetes clusters](features/kubernetes-clusters.md), [App Builder](features/app-builder.md#module-hosted-services)) |
+| K8s deploy from Agents | ✅ Console browse/apply/logs/Secret+env + Project deploy secrets sync; skill apply; hosted `module` Apps ([Kubernetes clusters](features/kubernetes-clusters.md), [App Builder](features/app-builder.md#module-hosted-services)) |
 
 Existing surfaces: [Wiki spaces](features/wiki-spaces.md), [Knowledge bases](features/knowledge-bases.md), [Knowledge map](features/knowledge-map.md).
 

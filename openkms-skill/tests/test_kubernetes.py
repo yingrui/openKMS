@@ -65,3 +65,27 @@ def test_kubernetes_apply_missing_file():
     with pytest.raises(SystemExit) as exc:
         cmd_apply(_ns(cluster_id="c1", file="/no/such.yaml", namespace=None))
     assert exc.value.code == 1
+
+
+def test_kubernetes_secrets_list(mock_api):
+    recorded, responses = mock_api
+    responses[("GET", "/api/kubernetes-clusters/c1/secrets")] = (
+        200,
+        {"namespace": "default", "items": [{"name": "app-db", "keys": ["DATABASE_URL"]}]},
+    )
+    from openkms.commands.kubernetes import cmd_secrets
+
+    cmd_secrets(_ns(cluster_id="c1", namespace="default"))
+    assert recorded[-1].url.path == "/api/kubernetes-clusters/c1/secrets"
+
+
+def test_kubernetes_env(mock_api):
+    recorded, responses = mock_api
+    responses[("GET", "/api/kubernetes-clusters/c1/deployments/web/env")] = (
+        200,
+        {"name": "web", "namespace": "default", "containers": []},
+    )
+    from openkms.commands.kubernetes import cmd_env
+
+    cmd_env(_ns(cluster_id="c1", deployment="web", namespace=None))
+    assert recorded[-1].url.path == "/api/kubernetes-clusters/c1/deployments/web/env"

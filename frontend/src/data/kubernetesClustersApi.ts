@@ -164,6 +164,94 @@ export async function fetchClusterPodLogs(
   );
 }
 
+export interface KubernetesServicePortDetail {
+  name?: string | null;
+  port: number;
+  target_port?: string | null;
+  node_port?: number | null;
+  protocol: string;
+}
+
+export interface KubernetesServiceDetail {
+  name: string;
+  namespace: string;
+  type: string;
+  cluster_ip: string | null;
+  external_ips: string[];
+  ports: KubernetesServicePortDetail[];
+  selector: Record<string, string>;
+  created_at: string | null;
+  labels: Record<string, string>;
+}
+
+export interface KubernetesPodContainerDetail {
+  name: string;
+  image?: string | null;
+  ports?: KubernetesContainerPort[];
+  ready: boolean;
+  restarts: number;
+  state: string;
+}
+
+export interface KubernetesPodDetail {
+  name: string;
+  namespace: string;
+  phase: string;
+  ready: string;
+  restarts: number;
+  node: string | null;
+  pod_ip: string | null;
+  created_at: string | null;
+  labels: Record<string, string>;
+  containers: KubernetesPodContainerDetail[];
+}
+
+export async function fetchClusterPodDetail(
+  id: string,
+  pod: string,
+  namespace?: string
+): Promise<KubernetesPodDetail> {
+  return request(`/api/kubernetes-clusters/${id}/pods/${encodeURIComponent(pod)}`, {
+    query: { namespace },
+  });
+}
+
+export async function fetchClusterServiceDetail(
+  id: string,
+  service: string,
+  namespace?: string
+): Promise<KubernetesServiceDetail> {
+  return request(`/api/kubernetes-clusters/${id}/services/${encodeURIComponent(service)}`, {
+    query: { namespace },
+  });
+}
+
+export type KubernetesManifestKind =
+  | 'Deployment'
+  | 'Service'
+  | 'Pod'
+  | 'ConfigMap'
+  | 'Secret';
+
+export interface KubernetesManifestYaml {
+  kind: string;
+  name: string;
+  namespace: string;
+  yaml: string;
+  redacted: boolean;
+}
+
+export async function fetchClusterManifestYaml(
+  id: string,
+  kind: KubernetesManifestKind,
+  name: string,
+  namespace?: string
+): Promise<KubernetesManifestYaml> {
+  return request(`/api/kubernetes-clusters/${id}/manifest`, {
+    query: { kind, name, namespace },
+  });
+}
+
 export async function applyClusterManifests(
   id: string,
   data: { yaml: string; namespace?: string }
@@ -184,4 +272,140 @@ export async function deleteClusterResource(
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(data),
   });
+}
+
+export interface KubernetesSecretItem {
+  name: string;
+  namespace: string;
+  type: string;
+  keys: string[];
+  managed_by_project_id: string | null;
+}
+
+export async function fetchClusterSecrets(
+  id: string,
+  namespace?: string
+): Promise<{ namespace: string; items: KubernetesSecretItem[] }> {
+  return request(`/api/kubernetes-clusters/${id}/secrets`, { query: { namespace } });
+}
+
+export async function upsertClusterSecret(
+  id: string,
+  name: string,
+  body: { set_values: Record<string, string>; remove_keys?: string[] },
+  namespace?: string
+): Promise<KubernetesSecretItem & { action: string }> {
+  return request(`/api/kubernetes-clusters/${id}/secrets/${encodeURIComponent(name)}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+    query: { namespace },
+  });
+}
+
+export async function deleteClusterSecret(
+  id: string,
+  name: string,
+  namespace?: string
+): Promise<void> {
+  return request(`/api/kubernetes-clusters/${id}/secrets/${encodeURIComponent(name)}`, {
+    method: 'DELETE',
+    query: { namespace },
+  });
+}
+
+export interface KubernetesConfigMapItem {
+  name: string;
+  namespace: string;
+  keys: string[];
+  data: Record<string, string>;
+}
+
+export async function fetchClusterConfigMaps(
+  id: string,
+  namespace?: string
+): Promise<{ namespace: string; items: KubernetesConfigMapItem[] }> {
+  return request(`/api/kubernetes-clusters/${id}/configmaps`, { query: { namespace } });
+}
+
+export async function upsertClusterConfigMap(
+  id: string,
+  name: string,
+  body: { set_values: Record<string, string>; remove_keys?: string[] },
+  namespace?: string
+): Promise<KubernetesConfigMapItem & { action: string }> {
+  return request(`/api/kubernetes-clusters/${id}/configmaps/${encodeURIComponent(name)}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+    query: { namespace },
+  });
+}
+
+export async function deleteClusterConfigMap(
+  id: string,
+  name: string,
+  namespace?: string
+): Promise<void> {
+  return request(`/api/kubernetes-clusters/${id}/configmaps/${encodeURIComponent(name)}`, {
+    method: 'DELETE',
+    query: { namespace },
+  });
+}
+
+export type KubernetesEnvVar = {
+  name: string;
+  value?: string | null;
+  value_from?: {
+    secret_key_ref?: { name: string; key: string; optional?: boolean };
+    config_map_key_ref?: { name: string; key: string; optional?: boolean };
+  } | null;
+};
+
+export type KubernetesEnvFrom = {
+  prefix?: string | null;
+  secret_ref?: { name: string; optional?: boolean };
+  config_map_ref?: { name: string; optional?: boolean };
+};
+
+export type KubernetesContainerPort = {
+  container_port: number;
+  protocol: string;
+  name?: string | null;
+};
+
+export type KubernetesContainerEnv = {
+  name: string;
+  image?: string | null;
+  ports?: KubernetesContainerPort[];
+  env: KubernetesEnvVar[];
+  env_from: KubernetesEnvFrom[];
+};
+
+export async function fetchDeploymentEnv(
+  id: string,
+  deployment: string,
+  namespace?: string
+): Promise<{ name: string; namespace: string; containers: KubernetesContainerEnv[] }> {
+  return request(
+    `/api/kubernetes-clusters/${id}/deployments/${encodeURIComponent(deployment)}/env`,
+    { query: { namespace } }
+  );
+}
+
+export async function patchDeploymentEnv(
+  id: string,
+  deployment: string,
+  body: { container: string; env: KubernetesEnvVar[]; env_from: KubernetesEnvFrom[] },
+  namespace?: string
+): Promise<{ name: string; namespace: string; containers: KubernetesContainerEnv[] }> {
+  return request(
+    `/api/kubernetes-clusters/${id}/deployments/${encodeURIComponent(deployment)}/env`,
+    {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+      query: { namespace },
+    }
+  );
 }

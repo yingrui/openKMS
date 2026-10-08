@@ -7,7 +7,7 @@
 ## 控制台 UI
 
 - **列表：** `/console/kubernetes` — 登记、编辑、删除、测试连接；点击进入浏览
-- **详情：** `/console/kubernetes/{id}` — 选择命名空间；Deployment、Service、Pod；Pod 日志；apply YAML；删除白名单对象；把 Service 登记到应用
+- **详情：** `/console/kubernetes/{id}` — 选择命名空间；Deployment、Service、Pod、Secret、ConfigMap；Deployment 环境变量；Pod 日志；apply YAML；删除白名单对象；把 Service 登记到应用
 - **权限：** `console:kubernetes`（或 `all` / admin）
 - 表单：名称、描述、默认命名空间、可选 **API Server**（后端实际连接集群的地址）、kubeconfig YAML、可选 **跳过 TLS 校验**（仅实验/自签名环境）
 
@@ -32,16 +32,23 @@ API 响应永不包含 kubeconfig 明文，仅返回 `kubeconfig_configured` 与
 | `GET …/pods?namespace=` | 指定命名空间的 Pod |
 | `GET …/services?namespace=` | Service（名称、类型、ClusterIP、端口） |
 | `GET …/pods/{name}/logs` | 最近 Pod 日志（`tail`，可选 `container`） |
-| `POST …/apply` | 创建或 patch YAML（`Deployment`、`Service`、`Pod`、`ConfigMap`） |
+| `POST …/apply` | 创建或 patch YAML（`Deployment`、`Service`、`Pod`、`ConfigMap`）— **不含** `Secret` |
 | `POST …/delete` | 删除一个白名单 namespaced 对象 |
+| `GET|PUT|DELETE …/secrets[/{name}]` | Opaque Secret（GET 仅 keys；值只写） |
+| `GET|PUT|DELETE …/configmaps[/{name}]` | ConfigMap（数据可见） |
+| `GET|PUT …/deployments/{name}/env` | 容器 `env` / `envFrom`（不解引用 Secret） |
 
-控制台行操作与 skill 一致：日志 Dialog、确认删除、apply Dialog。响应永不返回 kubeconfig。
+控制台行操作与 skill 一致：日志 Dialog、确认删除、apply Dialog、Secret/ConfigMap 编辑、Deployment **环境变量**。响应永不返回 kubeconfig。带 `openkms.io/project-id` 标签的 Secret 在控制台**只读**（请到「项目设置 → 部署」修改）。
 
 **登记到应用**（Service 行）：创建已发布的 `template_id=module` 应用，绑定 `cluster_id` / 命名空间 / Service / 端口。除 `console:kubernetes` 外还需 `ontology:write`。见 [应用构建器](app-builder.md#module-hosted-services)。
 
+## 部署密钥（项目） {#deploy-secrets-projects}
+
+操作员在 **项目设置 → 部署** 中加密保存键值，再 **同步到集群**（写成 Opaque Secret，标签 `app.kubernetes.io/managed-by=openkms` 与 `openkms.io/project-id`）。Agent 系统提示里只看到名称/键名，须用 `secretRef` / `secretKeyRef` 引用。个人 API key 不能创建或更新部署密钥的值。
+
 ## Agents
 
-**openkms** skill 可列出已登记集群、apply 同一套白名单 kind、拉取日志，以及 `kubernetes register-app`。API 密钥需要 **`console:kubernetes`**（登记应用还需要 **`ontology:write`**）。kubeconfig 始终在服务端解密。
+**openkms** skill 可列出已登记集群、apply 白名单 kind（不含 Secret）、列出 secrets/configmaps/env、拉取日志，以及 `kubernetes register-app`。API 密钥需要 **`console:kubernetes`**（登记应用还需要 **`ontology:write`**）。kubeconfig 始终在服务端解密。
 
 ## 仍未覆盖
 
@@ -49,3 +56,4 @@ API 响应永不包含 kubeconfig 明文，仅返回 `kubeconfig_configured` 与
 - 项目级默认集群绑定
 - Ingress / 公网 TLS / WebSocket 代理
 - 把 A2UI 画布跑进 Pod
+- 外部 Secret 管理器（Vault / ESO）

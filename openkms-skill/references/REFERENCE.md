@@ -285,6 +285,9 @@ Kubeconfig is never returned. Register clusters in Console, not via this CLI.
 | `kubernetes apply` *(write)* | POST | `/api/kubernetes-clusters/{id}/apply` | Body `{yaml, namespace?}`. Kinds: Deployment, Service, Pod, ConfigMap. |
 | `kubernetes delete` *(write)* | POST | `/api/kubernetes-clusters/{id}/delete` | Body `{kind, name, namespace?}`. |
 | `kubernetes register-app` *(write)* | POST | `/api/app-builder/apps` | `template_id=module` + `bindings.k8s`. Also needs `ontology:write`. |
+| `kubernetes secrets` | GET | `/api/kubernetes-clusters/{id}/secrets` | Keys only; values never returned. |
+| `kubernetes configmaps` | GET | `/api/kubernetes-clusters/{id}/configmaps` | Includes data values. |
+| `kubernetes env` | GET | `/api/kubernetes-clusters/{id}/deployments/{name}/env` | `--deployment`; secret refs unresolved. |
 
 ## Errors
 

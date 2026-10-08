@@ -133,6 +133,32 @@ def cmd_delete(ns: argparse.Namespace) -> None:
     print_json(r.json())
 
 
+def cmd_secrets(ns: argparse.Namespace) -> None:
+    """List Opaque Secrets (keys only; values never returned)."""
+    with client() as s:
+        r = s.get(f"/api/kubernetes-clusters/{ns.cluster_id}/secrets", params=_ns_params(ns))
+    r.raise_for_status()
+    print_json(r.json())
+
+
+def cmd_configmaps(ns: argparse.Namespace) -> None:
+    with client() as s:
+        r = s.get(f"/api/kubernetes-clusters/{ns.cluster_id}/configmaps", params=_ns_params(ns))
+    r.raise_for_status()
+    print_json(r.json())
+
+
+def cmd_env(ns: argparse.Namespace) -> None:
+    params = _ns_params(ns)
+    with client() as s:
+        r = s.get(
+            f"/api/kubernetes-clusters/{ns.cluster_id}/deployments/{ns.deployment}/env",
+            params=params,
+        )
+    r.raise_for_status()
+    print_json(r.json())
+
+
 def cmd_register_app(ns: argparse.Namespace) -> None:
     k8s: dict[str, str | int] = {
         "cluster_id": ns.cluster_id,
@@ -237,3 +263,19 @@ def add_subparser(sub) -> None:
     ra.add_argument("--description", default=None)
     add_write_flags(ra)
     ra.set_defaults(fn=cmd_register_app)
+
+    secrets = sp.add_parser("secrets", help="List Opaque Secrets (keys only; no values)")
+    secrets.add_argument("--cluster-id", required=True)
+    secrets.add_argument("--namespace", default=None)
+    secrets.set_defaults(fn=cmd_secrets)
+
+    cms = sp.add_parser("configmaps", help="List ConfigMaps (includes data values)")
+    cms.add_argument("--cluster-id", required=True)
+    cms.add_argument("--namespace", default=None)
+    cms.set_defaults(fn=cmd_configmaps)
+
+    envp = sp.add_parser("env", help="Read Deployment container env (refs, not secret values)")
+    envp.add_argument("--cluster-id", required=True)
+    envp.add_argument("--deployment", required=True)
+    envp.add_argument("--namespace", default=None)
+    envp.set_defaults(fn=cmd_env)

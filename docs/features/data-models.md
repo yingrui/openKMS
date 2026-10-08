@@ -209,6 +209,13 @@ Schema for every persisted table. Grouped by area; see the matching feature page
 - `created_at`, `updated_at`
 - Console permission: `console:kubernetes`. See [Kubernetes clusters](kubernetes-clusters.md).
 
+### ProjectDeploySecret (`project_deploy_secrets`)
+
+- `id`, `project_id` (FK → projects, CASCADE), `name` (unique per project, DNS-1123), `cluster_id` (FK → kubernetes_clusters, SET NULL), `namespace`
+- `key_names` (JSONB string list), `data_encrypted` (Fernet JSON of key→value; **never returned by API**)
+- `last_synced_at`, `last_sync_error`, `created_at`, `updated_at`
+- Synced to cluster as Opaque Secret with labels `app.kubernetes.io/managed-by=openkms` and `openkms.io/project-id`. See [Kubernetes clusters](kubernetes-clusters.md#deploy-secrets-projects).
+
 ### Job runs (procrastinate_jobs)
 
 - Managed by procrastinate; stores task_name, args (document_id, pipeline_id, knowledge_base_id, etc.), status, attempts, timestamps

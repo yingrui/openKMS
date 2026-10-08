@@ -257,6 +257,9 @@ async def _purge_project_dependents(db: AsyncSession, project_id: str) -> None:
         delete(ContentComment).where(*comment_scope, ContentComment.parent_comment_id.is_not(None))
     )
     await db.execute(delete(ContentComment).where(*comment_scope))
+    from app.api.project_deploy_secrets import purge_project_deploy_secrets
+
+    await purge_project_deploy_secrets(db, project_id)
 
 
 @router.delete("/{project_id}", status_code=204, dependencies=[Depends(require_permission(PERM_PROJECTS_WRITE))])
@@ -615,3 +618,7 @@ router.include_router(build_project_schedules_router())
 from app.api.project_git_remote import router as project_git_remote_router  # noqa: E402
 
 router.include_router(project_git_remote_router)
+
+from app.api.project_deploy_secrets import router as project_deploy_secrets_router  # noqa: E402
+
+router.include_router(project_deploy_secrets_router)
