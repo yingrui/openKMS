@@ -76,49 +76,127 @@ def git_origin_url(project_id: str) -> str | None:
     return url or None
 
 
+def git_ahead_behind(project_id: str) -> dict[str, int] | None:
+    """Ahead/behind counts relative to the upstream branch, if one is configured."""
+    result = _run_git(project_id, ["rev-list", "--left-right", "--count", "@{u}...HEAD"])
+    if result.returncode != 0:
+        return None
+    parts = (result.stdout or "").split()
+    if len(parts) != 2:
+        return None
+    behind, ahead = parts
+    return {"ahead": int(ahead), "behind": int(behind)}
+
+
+def git_current_branch(project_id: str) -> str | None:
+    root = project_root(project_id)
+    if not (root / ".git").exists():
+        return None
+    result = _run_git(project_id, ["rev-parse", "--abbrev-ref", "HEAD"])
+    return result.stdout.strip() if result.returncode == 0 else None
+
+
 def git_status(project_id: str) -> dict[str, Any]:
     root = project_root(project_id)
     if not (root / ".git").exists():
-        return {"entries": [], "branch": None, "remote_url": None}
-    branch_r = _run_git(project_id, ["rev-parse", "--abbrev-ref", "HEAD"])
-    branch = branch_r.stdout.strip() if branch_r.returncode == 0 else None
+        return {"entries": [], "branch": None, "remote_url": None, "ahead": None, "behind": None}
+    branch = git_current_branch(project_id)
     status_r = _run_git(project_id, ["status", "--porcelain"])
     entries: list[dict[str, str]] = []
     for line in (status_r.stdout or "").splitlines():
         if len(line) < 4:
             continue
+        # Keep both porcelain columns: index char = staged, worktree char = unstaged.
         code = line[:2]
         path = line[3:].strip()
         if " -> " in path:
             path = path.split(" -> ", 1)[1]
-        entries.append({"path": path, "status": code.strip()})
-    return {"entries": entries, "branch": branch, "remote_url": git_origin_url(project_id)}
+        entries.append({"path": path, "status": code})
+    counts = git_ahead_behind(project_id) or {}
+    return {
+        "entries": entries,
+        "branch": branch,
+        "remote_url": git_origin_url(project_id),
+        "ahead": counts.get("ahead"),
+        "behind": counts.get("behind"),
+    }
 
 
-def git_log(project_id: str, limit: int = 10) -> list[dict[str, str]]:
+def git_log(project_id: str, limit: int = 30) -> list[dict[str, str]]:
     root = project_root(project_id)
     if not (root / ".git").exists():
         return []
     result = _run_git(
         project_id,
-        ["log", f"-{limit}", "--pretty=format:%H%x09%s%x09%an%x09%ai"],
+        ["log", f"-{limit}", "--pretty=format:%H%x09%s%x09%an%x09%ai%x09%D"],
     )
     entries: list[dict[str, str]] = []
     for line in (result.stdout or "").splitlines():
-        parts = line.split("\t", 3)
+        parts = line.split("\t", 4)
         if len(parts) >= 4:
             entries.append(
-                {"hash": parts[0][:8], "message": parts[1], "author": parts[2], "date": parts[3]}
+                {
+                    "hash": parts[0][:8],
+                    "message": parts[1],
+                    "author": parts[2],
+                    "date": parts[3],
+                    "refs": parts[4].strip() if len(parts) > 4 else "",
+                }
             )
     return entries
 
 
+def git_branches(project_id: str) -> list[str]:
+    root = project_root(project_id)
+    if not (root / ".git").exists():
+        return []
+    result = _run_git(project_id, ["branch", "--format=%(refname:short)"])
+    return [line.strip() for line in (result.stdout or "").splitlines() if line.strip()]
+
+
+def safe_paths(paths: list[str]) -> list[str]:
+    """Reject paths that could escape the workspace or be read as git options."""
+    clean: list[str] = []
+    for raw in paths:
+        p = (raw or "").strip()
+        if not p or p.startswith("/") or p.startswith("-"):
+            raise HTTPException(status_code=400, detail="Invalid path")
+        if any(part == ".." for part in p.split("/")):
+            raise HTTPException(status_code=400, detail="Invalid path")
+        clean.append(p)
+    return clean
+
+
 def git_add(project_id: str, paths: list[str] | None = None) -> str:
-    args = ["add", *paths] if paths else ["add", "-A"]
+    args = ["add", "--", *paths] if paths else ["add", "-A"]
     result = _run_git(project_id, args)
     if result.returncode != 0:
         raise HTTPException(status_code=500, detail=result.stderr or "git add failed")
     return result.stdout or "ok"
+
+
+def git_unstage(project_id: str, paths: list[str]) -> str:
+    """Move paths out of the index. Handles the no-commits-yet case."""
+    if not paths:
+        raise HTTPException(status_code=400, detail="No paths given")
+    args = ["reset", "-q", "HEAD", "--", *paths]
+    result = _run_git(project_id, args)
+    if result.returncode != 0:
+        # Unborn branch: nothing to reset against, drop them from the index instead.
+        result = _run_git(project_id, ["rm", "--cached", "-r", "--quiet", "--ignore-unmatch", "--", *paths])
+    if result.returncode != 0:
+        raise HTTPException(status_code=500, detail=result.stderr or "git unstage failed")
+    return "ok"
+
+
+def git_discard(project_id: str, paths: list[str]) -> str:
+    """Throw away working-tree changes for tracked paths."""
+    if not paths:
+        raise HTTPException(status_code=400, detail="No paths given")
+    result = _run_git(project_id, ["restore", "--worktree", "--", *paths])
+    if result.returncode != 0:
+        raise HTTPException(status_code=500, detail=result.stderr or "git discard failed")
+    return "ok"
 
 
 def git_commit(project_id: str, message: str, settings: dict) -> str:
@@ -129,11 +207,26 @@ def git_commit(project_id: str, message: str, settings: dict) -> str:
     return result.stdout or "committed"
 
 
-def git_diff(project_id: str, path: str | None = None) -> str:
+def _is_tracked(project_id: str, path: str) -> bool:
+    result = _run_git(project_id, ["ls-files", "--error-unmatch", "--", path])
+    return result.returncode == 0
+
+
+def git_diff(project_id: str, path: str | None = None, *, staged: bool = False) -> str:
     args = ["diff"]
+    if staged:
+        args.append("--cached")
     if path:
-        args.append(path)
+        if not staged and not _is_tracked(project_id, path):
+            # Untracked file: show it as a whole-file addition, like VS Code does.
+            result = _run_git(project_id, ["diff", "--no-index", "--", os.devnull, path])
+            if result.returncode not in (0, 1):
+                raise HTTPException(status_code=500, detail=result.stderr or "git diff failed")
+            return result.stdout or ""
+        args.extend(["--", path])
     result = _run_git(project_id, args)
+    if result.returncode != 0:
+        raise HTTPException(status_code=500, detail=result.stderr or "git diff failed")
     return result.stdout or ""
 
 

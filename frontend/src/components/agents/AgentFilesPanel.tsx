@@ -1,6 +1,7 @@
 import {
   useCallback,
   useEffect,
+  useMemo,
   useRef,
   useState,
   type CSSProperties,
@@ -8,15 +9,43 @@ import {
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
-import { Folder, File, FolderUp, Upload, GitBranch, Loader2, RefreshCw, ChevronLeft, Trash2, X } from 'lucide-react';
+import {
+  Folder,
+  File,
+  FolderUp,
+  Upload,
+  GitBranch,
+  Loader2,
+  RefreshCw,
+  ChevronLeft,
+  Trash2,
+  X,
+  FileDiff,
+  History,
+  Check,
+  Plus,
+  Minus,
+  Undo2,
+  ChevronDown,
+  ArrowDown,
+  ArrowUp,
+} from 'lucide-react';
 import { AgentFileViewer } from './AgentFileViewer';
+import { AgentDiffViewer } from './AgentDiffViewer';
 import { gitStatusLabel } from './gitStatusLabel';
 import {
   getProjectFileContent,
+  getProjectSettings,
   gitCommit,
+  gitDiff,
+  gitDiscard,
   gitInit,
   gitLog,
+  gitPull,
+  gitPush,
+  gitStage,
   gitStatus,
+  gitUnstage,
   deleteProjectFile,
   listProjectFiles,
   uploadProjectFiles,
@@ -35,6 +64,21 @@ const VIEWER_DEFAULT_PX = 480;
 const INNER_HANDLE_PX = 8;
 const TREE_WIDTH_KEY = 'openkms_agents_files_tree_width_px_v1';
 const VIEWER_WIDTH_KEY = 'openkms_agents_files_viewer_width_px_v1';
+
+const rtf = new Intl.RelativeTimeFormat(undefined, { numeric: 'auto' });
+
+function relativeTime(dateStr: string): string {
+  const d = new Date(dateStr);
+  if (Number.isNaN(d.getTime())) return dateStr;
+  const diff = d.getTime() - Date.now();
+  const abs = Math.abs(diff);
+  if (abs < 60_000) return rtf.format(Math.round(diff / 1000), 'second');
+  if (abs < 3_600_000) return rtf.format(Math.round(diff / 60_000), 'minute');
+  if (abs < 86_400_000) return rtf.format(Math.round(diff / 3_600_000), 'hour');
+  if (abs < 2_592_000_000) return rtf.format(Math.round(diff / 86_400_000), 'day');
+  if (abs < 31_536_000_000) return rtf.format(Math.round(diff / 2_592_000_000), 'month');
+  return rtf.format(Math.round(diff / 31_536_000_000), 'year');
+}
 
 function readTreeWidth(): number {
   try {
@@ -113,9 +157,23 @@ export function AgentFilesPanel({
   const [previewBinary, setPreviewBinary] = useState(false);
   const [previewLoading, setPreviewLoading] = useState(false);
   const [gitEntries, setGitEntries] = useState<GitStatusEntry[]>([]);
+  const [gitBranch, setGitBranch] = useState<string | null>(null);
+  const [gitAhead, setGitAhead] = useState<number | null>(null);
+  const [gitBehind, setGitBehind] = useState<number | null>(null);
+  const [gitRemoteUrl, setGitRemoteUrl] = useState<string | null>(null);
+  const [gitCredentialId, setGitCredentialId] = useState<string | null>(null);
   const [lastCommit, setLastCommit] = useState<GitLogEntry | null>(null);
-  const [commitOpen, setCommitOpen] = useState(false);
+  const [gitLogEntries, setGitLogEntries] = useState<GitLogEntry[]>([]);
+  const [panelMode, setPanelMode] = useState<'files' | 'scm'>('files');
+  const [commitMenuOpen, setCommitMenuOpen] = useState(false);
+  const commitMenuRef = useRef<HTMLDivElement>(null);
   const [commitMsg, setCommitMsg] = useState('');
+  const [committing, setCommitting] = useState(false);
+  const [syncing, setSyncing] = useState(false);
+  const [busyPath, setBusyPath] = useState<string | null>(null);
+  const [diffPath, setDiffPath] = useState<string | null>(null);
+  const [diffText, setDiffText] = useState('');
+  const [diffLoading, setDiffLoading] = useState(false);
   const uploadFilesRef = useRef<HTMLInputElement>(null);
   const uploadFolderRef = useRef<HTMLInputElement>(null);
   const uploadMenuRef = useRef<HTMLDivElement>(null);
@@ -135,6 +193,16 @@ export function AgentFilesPanel({
     document.addEventListener('mousedown', onDocClick);
     return () => document.removeEventListener('mousedown', onDocClick);
   }, [uploadMenuOpen]);
+
+  useEffect(() => {
+    if (!commitMenuOpen) return;
+    const onDocClick = (e: MouseEvent) => {
+      if (commitMenuRef.current?.contains(e.target as Node)) return;
+      setCommitMenuOpen(false);
+    };
+    document.addEventListener('mousedown', onDocClick);
+    return () => document.removeEventListener('mousedown', onDocClick);
+  }, [commitMenuOpen]);
 
   const fileOpen = selected !== null;
 
@@ -191,14 +259,58 @@ export function AgentFilesPanel({
     if (gitInitialized) {
       const st = await gitStatus(projectId);
       setGitEntries(st.entries);
+      setGitBranch(st.branch);
+      setGitAhead(st.ahead);
+      setGitBehind(st.behind);
+      setGitRemoteUrl(st.remote_url);
       const log = await gitLog(projectId);
+      setGitLogEntries(log.entries);
       setLastCommit(log.entries[0] ?? null);
+      try {
+        const settings = await getProjectSettings(projectId);
+        const gitCfg = settings.git;
+        const cid =
+          gitCfg && typeof gitCfg === 'object' && 'credential_id' in gitCfg
+            ? (gitCfg as { credential_id?: string }).credential_id ?? null
+            : null;
+        setGitCredentialId(cid);
+      } catch {
+        setGitCredentialId(null);
+      }
+    } else {
+      setGitEntries([]);
+      setGitBranch(null);
+      setGitAhead(null);
+      setGitBehind(null);
+      setGitRemoteUrl(null);
+      setGitCredentialId(null);
+      setLastCommit(null);
+      setGitLogEntries([]);
+      setPanelMode('files');
     }
   }, [projectId, cwd, gitInitialized]);
 
   useEffect(() => {
     refresh().catch(() => {});
   }, [refresh]);
+
+  /** Split porcelain codes: index column = staged, worktree column = unstaged. */
+  const { stagedFiles, unstagedFiles } = useMemo(() => {
+    const staged: GitStatusEntry[] = [];
+    const unstaged: GitStatusEntry[] = [];
+    for (const e of gitEntries) {
+      const code = e.status.length >= 2 ? e.status : ` ${e.status}`;
+      const index = code[0];
+      const worktree = code[1];
+      if (code === '??' || code === '!!') {
+        unstaged.push(e);
+        continue;
+      }
+      if (index !== ' ' && index !== '?') staged.push(e);
+      if (worktree !== ' ') unstaged.push(e);
+    }
+    return { stagedFiles: staged, unstagedFiles: unstaged };
+  }, [gitEntries]);
 
   const gitBadge = (path: string) => {
     const e = gitEntries.find((x) => x.path === path || x.path.endsWith('/' + path));
@@ -231,6 +343,18 @@ export function AgentFilesPanel({
     setPreview(null);
     setPreviewBinary(false);
     setPreviewLoading(false);
+    setDiffPath(null);
+    setDiffText('');
+  };
+
+  /** First open widens the rail so the viewer pane has room; reused by files and diffs. */
+  const beginOpenPane = () => {
+    if (selected !== null) return;
+    const treeW = railWidthPx;
+    const viewerW = readViewerWidth();
+    setTreeWidthPx(treeW);
+    setViewerWidthPx(viewerW);
+    onRailWidthChange?.(treeW + viewerW + INNER_HANDLE_PX);
   };
 
   const openFile = async (path: string, isDir: boolean) => {
@@ -239,14 +363,9 @@ export function AgentFilesPanel({
       closeFile();
       return;
     }
-    const openingFirst = selected === null;
-    if (openingFirst) {
-      const treeW = railWidthPx;
-      const viewerW = readViewerWidth();
-      setTreeWidthPx(treeW);
-      setViewerWidthPx(viewerW);
-      onRailWidthChange?.(treeW + viewerW + INNER_HANDLE_PX);
-    }
+    beginOpenPane();
+    setDiffPath(null);
+    setDiffText('');
     setSelected(path);
     setPreviewLoading(true);
     setPreview(null);
@@ -261,6 +380,25 @@ export function AgentFilesPanel({
       setPreviewBinary(false);
     } finally {
       setPreviewLoading(false);
+    }
+  };
+
+  const openDiff = async (path: string, staged: boolean) => {
+    beginOpenPane();
+    setSelected(path);
+    setDiffPath(path);
+    setDiffText('');
+    setDiffLoading(true);
+    setPreview(null);
+    setPreviewBinary(false);
+    setPreviewLoading(false);
+    try {
+      const data = await gitDiff(projectId, path, staged);
+      setDiffText(data.diff);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : t('files.diffError'));
+    } finally {
+      setDiffLoading(false);
     }
   };
 
@@ -342,24 +480,202 @@ export function AgentFilesPanel({
     await gitInit(projectId);
     onGitChange?.();
     await refresh();
+    setPanelMode('scm');
   };
 
-  const onCommit = async () => {
-    if (!commitMsg.trim()) return;
-    await gitCommit(projectId, commitMsg.trim());
-    setCommitOpen(false);
-    setCommitMsg('');
-    await refresh();
+  const onCommit = async (opts: { stageAll?: boolean; push?: boolean } = {}) => {
+    if (!commitMsg.trim() || committing) return;
+    setCommitting(true);
+    try {
+      await gitCommit(projectId, commitMsg.trim(), { stageAll: opts.stageAll });
+      setCommitMsg('');
+      if (opts.push) {
+        if (!gitCredentialId) {
+          toast.error(t('files.pushNeedsCredential'));
+        } else {
+          await gitPush(projectId, gitCredentialId);
+        }
+      }
+      toast.success(t('files.commitSuccess'));
+      await refresh();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : t('files.commitError'));
+    } finally {
+      setCommitting(false);
+      setCommitMenuOpen(false);
+    }
+  };
+
+  const onSync = async (dir: 'pull' | 'push') => {
+    if (!gitCredentialId || syncing) return;
+    setSyncing(true);
+    try {
+      if (dir === 'pull') {
+        await gitPull(projectId, gitCredentialId);
+        toast.success(t('files.pullSuccess'));
+      } else {
+        await gitPush(projectId, gitCredentialId);
+        toast.success(t('files.pushSuccess'));
+      }
+      await refresh();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : t('files.syncError'));
+    } finally {
+      setSyncing(false);
+    }
+  };
+
+  const onStageToggle = async (path: string, staged: boolean) => {
+    if (busyPath) return;
+    setBusyPath(path);
+    try {
+      if (staged) await gitUnstage(projectId, [path]);
+      else await gitStage(projectId, [path]);
+      await refresh();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : t('files.stageError'));
+    } finally {
+      setBusyPath(null);
+    }
+  };
+
+  const onDiscard = async (path: string) => {
+    if (busyPath) return;
+    if (!(await confirm({ title: t('files.discard'), message: t('files.discardConfirm', { path }), danger: true }))) {
+      return;
+    }
+    setBusyPath(path);
+    try {
+      await gitDiscard(projectId, [path]);
+      if (diffPath === path) closeFile();
+      await refresh();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : t('files.discardError'));
+    } finally {
+      setBusyPath(null);
+    }
+  };
+
+  const onStageAll = async () => {
+    if (busyPath) return;
+    setBusyPath('*');
+    try {
+      await gitStage(
+        projectId,
+        unstagedFiles.map((e) => e.path),
+      );
+      await refresh();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : t('files.stageError'));
+    } finally {
+      setBusyPath(null);
+    }
+  };
+
+  const onUnstageAll = async () => {
+    if (busyPath) return;
+    setBusyPath('*');
+    try {
+      await gitUnstage(
+        projectId,
+        stagedFiles.map((e) => e.path),
+      );
+      await refresh();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : t('files.stageError'));
+    } finally {
+      setBusyPath(null);
+    }
+  };
+
+  const openChangedPath = (path: string, staged: boolean) => {
+    void openDiff(path, staged);
+  };
+
+  const renderScmRow = (e: GitStatusEntry, staged: boolean) => {
+    const mapped = gitStatusLabel(e.status);
+    const title = mapped
+      ? t(`files.gitStatus.${mapped.title}`, { defaultValue: mapped.title })
+      : e.status;
+    const short = mapped?.short ?? e.status.slice(0, 2);
+    const name = e.path.split('/').pop() ?? e.path;
+    const deleted = mapped?.title === 'Deleted';
+    const untracked = e.status.trim() === '??';
+    const busy = busyPath === e.path;
+    return (
+      <div
+        key={`${staged ? 'i' : 'w'}:${e.status}:${e.path}`}
+        className={`agents-scm-row${diffPath === e.path ? ' agents-scm-row--selected' : ''}${deleted ? ' agents-scm-row--deleted' : ''}`}
+        onClick={() => openChangedPath(e.path, staged)}
+        onKeyDown={(ev) => ev.key === 'Enter' && openChangedPath(e.path, staged)}
+        role="button"
+        tabIndex={0}
+        title={e.path}
+      >
+        <File size={14} aria-hidden />
+        <div className="agents-scm-row-label">
+          <span className="agents-scm-row-name">{name}</span>
+          {e.path.includes('/') ? (
+            <span className="agents-scm-row-path">{e.path.slice(0, e.path.lastIndexOf('/'))}</span>
+          ) : null}
+        </div>
+        <span className="agents-file-badge" title={title}>
+          {short}
+        </span>
+        <span className="agents-scm-row-actions">
+          <button
+            type="button"
+            className="agents-scm-row-btn"
+            title={staged ? t('files.unstage') : t('files.stage')}
+            aria-label={staged ? t('files.unstage') : t('files.stage')}
+            disabled={busy}
+            onClick={(ev) => {
+              ev.stopPropagation();
+              void onStageToggle(e.path, staged);
+            }}
+          >
+            {busy ? (
+              <Loader2 size={13} className="agents-session-more-spinner" />
+            ) : staged ? (
+              <Minus size={13} />
+            ) : (
+              <Plus size={13} />
+            )}
+          </button>
+          {!staged && !untracked ? (
+            <button
+              type="button"
+              className="agents-scm-row-btn"
+              title={t('files.discard')}
+              aria-label={t('files.discard')}
+              disabled={busy}
+              onClick={(ev) => {
+                ev.stopPropagation();
+                void onDiscard(e.path);
+              }}
+            >
+              <Undo2 size={13} />
+            </button>
+          ) : null}
+        </span>
+      </div>
+    );
   };
 
   const changeCount = gitEntries.length;
+  const stagedCount = stagedFiles.length;
+  const unstagedCount = unstagedFiles.length;
+  const canPush = Boolean(gitRemoteUrl && gitCredentialId);
+  const scmOpen = panelMode === 'scm' && gitInitialized;
   const uploadTargetLabel = cwd || t('files.projectRoot');
   const cwdLabel = cwd ? (cwd.split('/').pop() ?? cwd) : null;
-  const headTitle = cwdLabel
-    ? cwdLabel
-    : gitInitialized
-      ? t('files.changes', { count: changeCount })
-      : t('files.title');
+  const headTitle = scmOpen
+    ? t('files.sourceControl')
+    : cwdLabel
+      ? cwdLabel
+      : gitInitialized
+        ? t('files.changes', { count: changeCount })
+        : t('files.title');
   const treeWidth = fileOpen
     ? clampTreeWidth(treeWidthPx, railWidthPx, viewerWidthPx)
     : railWidthPx;
@@ -376,7 +692,15 @@ export function AgentFilesPanel({
       className={`agents-files-rail${fileOpen ? ' agents-files-rail--open' : ''}${isSheet ? ' agents-files-rail--sheet' : ''}`}
       style={railStyle}
     >
-      {fileOpen ? (
+      {fileOpen && diffPath ? (
+        <AgentDiffViewer
+          path={diffPath}
+          diff={diffText}
+          loading={diffLoading}
+          onClose={closeFile}
+        />
+      ) : null}
+      {fileOpen && !diffPath ? (
         <AgentFileViewer
           path={selected}
           content={preview ?? ''}
@@ -406,7 +730,7 @@ export function AgentFilesPanel({
       >
         <div className="agents-files-head">
           <div className="agents-files-head-title-row">
-            {cwd ? (
+            {!scmOpen && cwd ? (
               <button
                 type="button"
                 className="agents-files-back-btn"
@@ -417,51 +741,53 @@ export function AgentFilesPanel({
                 <ChevronLeft size={16} />
               </button>
             ) : null}
-            <span className="agents-files-head-title" title={cwd || undefined}>
+            <span className="agents-files-head-title" title={!scmOpen ? cwd || undefined : undefined}>
               {headTitle}
             </span>
           </div>
           <div className="agents-files-head-actions">
-            <div className="agents-files-upload" ref={uploadMenuOpen ? uploadMenuRef : undefined}>
-              {uploadMenuOpen ? (
-                <div className="agents-files-upload-menu" role="menu">
-                  <button
-                    type="button"
-                    role="menuitem"
-                    className="agents-files-upload-menu-item"
-                    disabled={uploading}
-                    onClick={() => uploadFilesRef.current?.click()}
-                    title={t('files.uploadFilesHint', { path: uploadTargetLabel })}
-                  >
-                    <Upload size={14} />
-                    <span>{t('files.uploadFiles')}</span>
-                  </button>
-                  <button
-                    type="button"
-                    role="menuitem"
-                    className="agents-files-upload-menu-item"
-                    disabled={uploading}
-                    onClick={() => uploadFolderRef.current?.click()}
-                    title={t('files.uploadFolderHint', { path: uploadTargetLabel })}
-                  >
-                    <FolderUp size={14} />
-                    <span>{t('files.uploadFolder')}</span>
-                  </button>
-                </div>
-              ) : null}
-              <button
-                type="button"
-                className="agents-files-icon-btn"
-                onClick={() => setUploadMenuOpen((v) => !v)}
-                title={t('files.upload')}
-                aria-label={t('files.upload')}
-                aria-expanded={uploadMenuOpen}
-                aria-haspopup="menu"
-                disabled={uploading}
-              >
-                {uploading ? <Loader2 size={15} className="agents-session-more-spinner" /> : <Upload size={15} />}
-              </button>
-            </div>
+            {!scmOpen ? (
+              <div className="agents-files-upload" ref={uploadMenuOpen ? uploadMenuRef : undefined}>
+                {uploadMenuOpen ? (
+                  <div className="agents-files-upload-menu" role="menu">
+                    <button
+                      type="button"
+                      role="menuitem"
+                      className="agents-files-upload-menu-item"
+                      disabled={uploading}
+                      onClick={() => uploadFilesRef.current?.click()}
+                      title={t('files.uploadFilesHint', { path: uploadTargetLabel })}
+                    >
+                      <Upload size={14} />
+                      <span>{t('files.uploadFiles')}</span>
+                    </button>
+                    <button
+                      type="button"
+                      role="menuitem"
+                      className="agents-files-upload-menu-item"
+                      disabled={uploading}
+                      onClick={() => uploadFolderRef.current?.click()}
+                      title={t('files.uploadFolderHint', { path: uploadTargetLabel })}
+                    >
+                      <FolderUp size={14} />
+                      <span>{t('files.uploadFolder')}</span>
+                    </button>
+                  </div>
+                ) : null}
+                <button
+                  type="button"
+                  className="agents-files-icon-btn"
+                  onClick={() => setUploadMenuOpen((v) => !v)}
+                  title={t('files.upload')}
+                  aria-label={t('files.upload')}
+                  aria-expanded={uploadMenuOpen}
+                  aria-haspopup="menu"
+                  disabled={uploading}
+                >
+                  {uploading ? <Loader2 size={15} className="agents-session-more-spinner" /> : <Upload size={15} />}
+                </button>
+              </div>
+            ) : null}
             <button
               type="button"
               className="agents-files-icon-btn"
@@ -495,7 +821,7 @@ export function AgentFilesPanel({
               <button
                 type="button"
                 className="agents-files-icon-btn"
-                onClick={onGitInit}
+                onClick={() => void onGitInit()}
                 title={t('files.gitInit')}
                 aria-label={t('files.gitInit')}
               >
@@ -504,17 +830,23 @@ export function AgentFilesPanel({
             ) : (
               <button
                 type="button"
-                className="agents-files-icon-btn"
-                onClick={() => setCommitOpen((v) => !v)}
-                title={t('files.gitCommit')}
-                aria-label={t('files.gitCommit')}
+                className={`agents-files-icon-btn${scmOpen ? ' agents-files-icon-btn--active' : ''}`}
+                onClick={() => setPanelMode((m) => (m === 'scm' ? 'files' : 'scm'))}
+                title={scmOpen ? t('files.showFiles') : t('files.sourceControl')}
+                aria-label={scmOpen ? t('files.showFiles') : t('files.sourceControl')}
+                aria-pressed={scmOpen}
               >
                 <GitBranch size={15} />
+                {changeCount > 0 ? (
+                  <span className="agents-files-git-count" aria-hidden>
+                    {changeCount > 99 ? '99+' : changeCount}
+                  </span>
+                ) : null}
               </button>
             )}
-            {!cwd ? (
+            {!scmOpen && !cwd ? (
               <span className="agents-files-all-btn agents-files-all-btn--static">{t('files.allFiles')}</span>
-            ) : (
+            ) : !scmOpen ? (
               <button
                 type="button"
                 className="agents-files-all-btn"
@@ -523,6 +855,15 @@ export function AgentFilesPanel({
                   closeFile();
                 }}
                 title={t('files.allFilesHint')}
+              >
+                {t('files.allFiles')}
+              </button>
+            ) : (
+              <button
+                type="button"
+                className="agents-files-all-btn"
+                onClick={() => setPanelMode('files')}
+                title={t('files.showFiles')}
               >
                 {t('files.allFiles')}
               </button>
@@ -540,70 +881,257 @@ export function AgentFilesPanel({
             ) : null}
           </div>
         </div>
-        <div className="agents-files-tree">
-          {entries.map((e) => (
-            <div
-              key={e.path}
-              className={`agents-file-row${selected === e.path ? ' agents-file-row--selected' : ''}`}
-              onClick={() => openFile(e.path, e.is_dir)}
-              onKeyDown={(ev) => ev.key === 'Enter' && openFile(e.path, e.is_dir)}
-              role="button"
-              tabIndex={0}
-            >
-              {e.is_dir ? <Folder size={14} /> : <File size={14} />}
-              <div className="agents-file-row-label">
-                <span className="agents-file-row-name">{e.name}</span>
-                {(() => {
-                  const badge = gitBadge(e.path);
-                  return badge ? (
-                    <span className="agents-file-badge" title={badge.title}>
-                      {badge.short}
-                    </span>
-                  ) : null;
-                })()}
-              </div>
-              {!isProtectedProjectPath(e.path) ? (
+        {scmOpen ? (
+          <div className="agents-scm">
+            <div className="agents-scm-meta">
+              {gitBranch ? (
+                <span className="agents-scm-branch" title={gitBranch}>
+                  <GitBranch size={12} aria-hidden />
+                  {gitBranch}
+                </span>
+              ) : null}
+              {gitRemoteUrl ? (
+                <span className="agents-scm-sync" title={gitRemoteUrl}>
+                  <button
+                    type="button"
+                    className="agents-scm-sync-btn"
+                    disabled={!canPush || syncing}
+                    title={t('files.pull')}
+                    aria-label={t('files.pull')}
+                    onClick={() => void onSync('pull')}
+                  >
+                    {syncing ? (
+                      <Loader2 size={12} className="agents-session-more-spinner" />
+                    ) : (
+                      <ArrowDown size={12} aria-hidden />
+                    )}
+                    {gitBehind ?? 0}
+                  </button>
+                  <button
+                    type="button"
+                    className="agents-scm-sync-btn"
+                    disabled={!canPush || syncing}
+                    title={t('files.push')}
+                    aria-label={t('files.push')}
+                    onClick={() => void onSync('push')}
+                  >
+                    <ArrowUp size={12} aria-hidden />
+                    {gitAhead ?? 0}
+                  </button>
+                </span>
+              ) : null}
+              <span className="agents-scm-change-count">{t('files.changes', { count: changeCount })}</span>
+            </div>
+
+            <div className="agents-scm-commit">
+              <textarea
+                id="agents-scm-commit-msg"
+                className="agents-scm-commit-msg"
+                value={commitMsg}
+                onChange={(e) => setCommitMsg(e.target.value)}
+                onKeyDown={(e) => {
+                  if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
+                    e.preventDefault();
+                    void onCommit();
+                  }
+                }}
+                placeholder={t('files.commitMessagePlaceholder')}
+                rows={2}
+                disabled={committing}
+              />
+              <div className="agents-scm-commit-actions" ref={commitMenuRef}>
                 <button
                   type="button"
-                  className="agents-file-delete"
-                  title={e.is_dir ? t('files.deleteFolder') : t('files.deleteFile')}
-                  aria-label={e.is_dir ? t('files.deleteFolder') : t('files.deleteFile')}
-                  disabled={deletingPath === e.path}
-                  onClick={(ev) => void onDeleteEntry(e, ev)}
+                  className="btn btn-sm btn-primary agents-scm-commit-btn"
+                  disabled={committing || !commitMsg.trim() || stagedCount === 0}
+                  onClick={() => void onCommit()}
                 >
-                  {deletingPath === e.path ? (
-                    <Loader2 size={14} className="agents-session-more-spinner" />
+                  {committing ? (
+                    <>
+                      <Loader2 size={14} className="agents-session-more-spinner" />
+                      {t('files.committing')}
+                    </>
                   ) : (
-                    <Trash2 size={14} />
+                    <>
+                      <Check size={14} aria-hidden />
+                      {t('files.commit')}
+                    </>
                   )}
                 </button>
-              ) : null}
+                <button
+                  type="button"
+                  className="agents-scm-commit-more"
+                  title={t('files.commitOptions')}
+                  aria-label={t('files.commitOptions')}
+                  aria-expanded={commitMenuOpen}
+                  aria-haspopup="menu"
+                  disabled={committing}
+                  onClick={() => setCommitMenuOpen((v) => !v)}
+                >
+                  <ChevronDown size={14} aria-hidden />
+                </button>
+                {commitMenuOpen ? (
+                  <div className="agents-scm-commit-menu" role="menu">
+                    <button
+                      type="button"
+                      role="menuitem"
+                      disabled={!commitMsg.trim() || unstagedCount === 0}
+                      onClick={() => void onCommit({ stageAll: true })}
+                    >
+                      {t('files.commitAll')}
+                    </button>
+                    {canPush ? (
+                      <button
+                        type="button"
+                        role="menuitem"
+                        disabled={!commitMsg.trim()}
+                        onClick={() => void onCommit({ stageAll: stagedCount === 0, push: true })}
+                      >
+                        {t('files.commitAndPush')}
+                      </button>
+                    ) : null}
+                  </div>
+                ) : null}
+              </div>
             </div>
-          ))}
-        </div>
-        {lastCommit && !fileOpen ? (
-          <div className="agents-files-foot">
-            <span>
-              {lastCommit.hash.slice(0, 7)} {lastCommit.message}
-            </span>
+
+            <div
+              className={`agents-scm-changes${changeCount === 0 ? ' agents-scm-changes--empty' : ''}`}
+              aria-label={t('files.changesSection')}
+            >
+              {changeCount === 0 ? (
+                <div className="agents-scm-empty">
+                  <FileDiff size={18} strokeWidth={1.4} aria-hidden />
+                  <span>{t('files.noChanges')}</span>
+                </div>
+              ) : (
+                <>
+                  {stagedCount > 0 ? (
+                    <div className="agents-scm-group">
+                      <div className="agents-scm-group-head">
+                        <span className="agents-scm-group-title">
+                          {t('files.stagedChanges', { count: stagedCount })}
+                        </span>
+                        <button
+                          type="button"
+                          className="agents-scm-group-btn"
+                          title={t('files.unstageAll')}
+                          aria-label={t('files.unstageAll')}
+                          disabled={busyPath !== null}
+                          onClick={() => void onUnstageAll()}
+                        >
+                          <Minus size={13} aria-hidden />
+                        </button>
+                      </div>
+                      {stagedFiles.map((e) => renderScmRow(e, true))}
+                    </div>
+                  ) : null}
+                  {unstagedCount > 0 ? (
+                    <div className="agents-scm-group">
+                      <div className="agents-scm-group-head">
+                        <span className="agents-scm-group-title">
+                          {t('files.changesGroup', { count: unstagedCount })}
+                        </span>
+                        <button
+                          type="button"
+                          className="agents-scm-group-btn"
+                          title={t('files.stageAll')}
+                          aria-label={t('files.stageAll')}
+                          disabled={busyPath !== null}
+                          onClick={() => void onStageAll()}
+                        >
+                          <Plus size={13} aria-hidden />
+                        </button>
+                      </div>
+                      {unstagedFiles.map((e) => renderScmRow(e, false))}
+                    </div>
+                  ) : null}
+                </>
+              )}
+            </div>
+
+            {gitLogEntries.length > 0 ? (
+              <div className="agents-scm-commits">
+                <div className="agents-scm-commits-head">
+                  <History size={12} aria-hidden />
+                  <span>{t('files.commits', { count: gitLogEntries.length })}</span>
+                </div>
+                <div className="agents-scm-commits-list">
+                  {gitLogEntries.map((c) => (
+                    <div key={c.hash} className="agents-scm-commit-row" title={`${c.message}\n${c.author}`}>
+                      <span className="agents-scm-commit-hash">{c.hash}</span>
+                      <span className="agents-scm-log-msg">{c.message}</span>
+                      {c.refs
+                        ? c.refs.split(', ').map((ref) => (
+                            <span
+                              key={ref}
+                              className={`agents-scm-ref${ref.startsWith('HEAD') ? ' agents-scm-ref--head' : ''}`}
+                            >
+                              {ref.replace('HEAD -> ', '')}
+                            </span>
+                          ))
+                        : null}
+                      <span className="agents-scm-commit-meta">
+                        {c.author} · {relativeTime(c.date)}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ) : null}
           </div>
-        ) : null}
-        {commitOpen ? (
-          <div className="agents-files-commit">
-            <input
-              type="text"
-              value={commitMsg}
-              onChange={(e) => setCommitMsg(e.target.value)}
-              placeholder={t('files.commitMessage')}
-            />
-            <button type="button" className="btn btn-sm btn-primary" onClick={onCommit}>
-              {t('files.commit')}
-            </button>
-            <button type="button" className="btn btn-sm" onClick={() => setCommitOpen(false)}>
-              {t('files.cancel')}
-            </button>
-          </div>
-        ) : null}
+        ) : (
+          <>
+            <div className="agents-files-tree">
+              {entries.map((e) => (
+                <div
+                  key={e.path}
+                  className={`agents-file-row${selected === e.path ? ' agents-file-row--selected' : ''}`}
+                  onClick={() => openFile(e.path, e.is_dir)}
+                  onKeyDown={(ev) => ev.key === 'Enter' && openFile(e.path, e.is_dir)}
+                  role="button"
+                  tabIndex={0}
+                >
+                  {e.is_dir ? <Folder size={14} /> : <File size={14} />}
+                  <div className="agents-file-row-label">
+                    <span className="agents-file-row-name">{e.name}</span>
+                    {(() => {
+                      const badge = gitBadge(e.path);
+                      return badge ? (
+                        <span className="agents-file-badge" title={badge.title}>
+                          {badge.short}
+                        </span>
+                      ) : null;
+                    })()}
+                  </div>
+                  {!isProtectedProjectPath(e.path) ? (
+                    <button
+                      type="button"
+                      className="agents-file-delete"
+                      title={e.is_dir ? t('files.deleteFolder') : t('files.deleteFile')}
+                      aria-label={e.is_dir ? t('files.deleteFolder') : t('files.deleteFile')}
+                      disabled={deletingPath === e.path}
+                      onClick={(ev) => void onDeleteEntry(e, ev)}
+                    >
+                      {deletingPath === e.path ? (
+                        <Loader2 size={14} className="agents-session-more-spinner" />
+                      ) : (
+                        <Trash2 size={14} />
+                      )}
+                    </button>
+                  ) : null}
+                </div>
+              ))}
+            </div>
+            {lastCommit && !fileOpen ? (
+              <div className="agents-files-foot">
+                <span>
+                  {lastCommit.hash.slice(0, 7)} {lastCommit.message}
+                </span>
+              </div>
+            ) : null}
+          </>
+        )}
       </aside>
     </div>
   );

@@ -174,7 +174,7 @@ Feature toggle: **`agents`** (Console → Feature toggles).
 
 ## Git
 
-- **Local:** init, status, log, add, commit via files rail; agent uses shell (`execute`) for git in the project folder.
+- **Local:** init, status, log, add, commit via the files rail. The git branch button opens a **Source Control** view modelled on VS Code: branch pill with `ahead`/`behind` and pull/push, a commit message box at the top (primary **Commit** for what is staged, with a **Commit All** / **Commit & Push** dropdown), **Staged Changes** and **Changes** groups with per-file stage / unstage / discard, a unified **diff** in the viewer pane (untracked files show as whole-file additions), and a commit list with ref badges. Toggle back to the file tree with the same button or **All files**. Agent shell (`execute`) can still run git in the project folder.
 - **Remote:** HTTPS + PAT only; credentials in Profile → Git credentials. On **create project**, optional repository URL, branch, and credential clone into the workspace. **Project settings → General** shows the live `origin` URL and current branch, lets you change origin (GitHub → GitLab and similar), and pull/push with a saved credential. Clone / pull / push APIs on `/api/projects/{id}/git/*`. Saving origin initializes git if needed and stores `settings.git.remote_url` (and optional `credential_id`).
 
 See [API reference — Projects](api-reference.md#projects-agents-workspace) and [API reference — Agent skills](api-reference.md#agent-skills-global-registry).

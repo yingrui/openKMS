@@ -123,6 +123,8 @@ class GitStatusResponse(BaseModel):
     entries: list[GitStatusEntry]
     branch: str | None = None
     remote_url: str | None = None
+    ahead: int | None = None
+    behind: int | None = None
 
 
 class GitLogEntry(BaseModel):
@@ -130,6 +132,7 @@ class GitLogEntry(BaseModel):
     message: str
     author: str
     date: str
+    refs: str = ""
 
 
 class GitLogResponse(BaseModel):
@@ -139,6 +142,20 @@ class GitLogResponse(BaseModel):
 class GitCommitRequest(BaseModel):
     message: str = Field(min_length=1, max_length=2000)
     paths: list[str] | None = None
+    stage_all: bool = False
+
+
+class GitPathsRequest(BaseModel):
+    paths: list[str] = Field(min_length=1)
+
+
+class GitDiffResponse(BaseModel):
+    diff: str
+
+
+class GitBranchesResponse(BaseModel):
+    branches: list[str]
+    current: str | None = None
 
 
 class UserGitCredentialCreate(BaseModel):

@@ -470,9 +470,14 @@ Deep Agents runtime in `backend/app/services/deep_agents/`. Disk root: `OPENKMS_
 | PATCH/DELETE | `/api/projects/{id}/schedules/{sid}` | Update prompt/cron/enabled or delete schedule |
 | POST | `/api/projects/{id}/schedules/{sid}/run-now` | Queue `run_scheduled_project_agent`; returns `{ job_id }` (202) |
 | POST | `/api/projects/{id}/git/init` | Local `git init` |
-| GET | `/api/projects/{id}/git/status` | Porcelain status, current branch, `origin` URL |
-| GET | `/api/projects/{id}/git/log` | Recent commits |
-| POST | `/api/projects/{id}/git/commit` | Commit (`message`, optional `paths`) |
+| GET | `/api/projects/{id}/git/status` | Porcelain status (both columns, so staged vs unstaged is preserved), current branch, `origin` URL, `ahead`/`behind` vs upstream |
+| GET | `/api/projects/{id}/git/log` | Recent commits (`limit` ≤ 50, default 30) with ref decorations |
+| GET | `/api/projects/{id}/git/branches` | Local branches and the current one |
+| GET | `/api/projects/{id}/git/diff` | Unified diff for `path` (query `staged=true` for the index); untracked files diff as a whole-file addition |
+| POST | `/api/projects/{id}/git/commit` | Commit (`message`, optional `paths` to stage them first, or `stage_all=true`); with neither it commits what is already staged |
+| POST | `/api/projects/{id}/git/stage` | Add `paths` to the index |
+| POST | `/api/projects/{id}/git/unstage` | Remove `paths` from the index |
+| POST | `/api/projects/{id}/git/discard` | Throw away working-tree changes for `paths` |
 | POST | `/api/projects/{id}/git/clone` | Clone HTTPS URL into empty project (optional `branch`, optional `credential_id` for private repos) |
 | POST | `/api/projects/{id}/git/remote` | Set `origin` (HTTPS only); initializes git if needed; stores `settings.git.remote_url` and optional `credential_id` |
 | POST | `/api/projects/{id}/git/pull` | Pull (body: `credential_id`) |

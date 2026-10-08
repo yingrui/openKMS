@@ -36,11 +36,20 @@ export interface GitStatusEntry {
   status: string;
 }
 
+export interface GitStatus {
+  entries: GitStatusEntry[];
+  branch: string | null;
+  remote_url: string | null;
+  ahead: number | null;
+  behind: number | null;
+}
+
 export interface GitLogEntry {
   hash: string;
   message: string;
   author: string;
   date: string;
+  refs: string;
 }
 
 export interface UserGitCredential {
@@ -381,24 +390,72 @@ export async function gitInit(projectId: string): Promise<void> {
   return request<void>(`/api/projects/${projectId}/git/init`, { method: 'POST' });
 }
 
-export async function gitStatus(
+export async function gitStatus(projectId: string): Promise<GitStatus> {
+  return request<GitStatus>(`/api/projects/${projectId}/git/status`);
+}
+
+export async function gitLog(
   projectId: string,
-): Promise<{ entries: GitStatusEntry[]; branch: string | null; remote_url: string | null }> {
-  return request<{ entries: GitStatusEntry[]; branch: string | null; remote_url: string | null }>(
-    `/api/projects/${projectId}/git/status`,
-  );
+  limit = 30,
+): Promise<{ entries: GitLogEntry[] }> {
+  return request<{ entries: GitLogEntry[] }>(`/api/projects/${projectId}/git/log?limit=${limit}`);
 }
 
-export async function gitLog(projectId: string): Promise<{ entries: GitLogEntry[] }> {
-  return request<{ entries: GitLogEntry[] }>(`/api/projects/${projectId}/git/log`);
-}
-
-export async function gitCommit(projectId: string, message: string, paths?: string[]): Promise<void> {
+export async function gitCommit(
+  projectId: string,
+  message: string,
+  opts: { paths?: string[]; stageAll?: boolean } = {},
+): Promise<void> {
   return request<void>(`/api/projects/${projectId}/git/commit`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ message, paths: paths ?? null }),
+    body: JSON.stringify({
+      message,
+      paths: opts.paths ?? null,
+      stage_all: opts.stageAll ?? false,
+    }),
   });
+}
+
+export async function gitStage(projectId: string, paths: string[]): Promise<void> {
+  return request<void>(`/api/projects/${projectId}/git/stage`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ paths }),
+  });
+}
+
+export async function gitUnstage(projectId: string, paths: string[]): Promise<void> {
+  return request<void>(`/api/projects/${projectId}/git/unstage`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ paths }),
+  });
+}
+
+export async function gitDiscard(projectId: string, paths: string[]): Promise<void> {
+  return request<void>(`/api/projects/${projectId}/git/discard`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ paths }),
+  });
+}
+
+export async function gitDiff(
+  projectId: string,
+  path: string,
+  staged = false,
+): Promise<{ diff: string }> {
+  const q = new URLSearchParams({ path, staged: String(staged) });
+  return request<{ diff: string }>(`/api/projects/${projectId}/git/diff?${q}`);
+}
+
+export async function gitBranches(
+  projectId: string,
+): Promise<{ branches: string[]; current: string | null }> {
+  return request<{ branches: string[]; current: string | null }>(
+    `/api/projects/${projectId}/git/branches`,
+  );
 }
 
 export async function getProjectSettings(projectId: string): Promise<Record<string, unknown>> {

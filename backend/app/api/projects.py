@@ -19,9 +19,12 @@ from app.models.resource_acl import ResourceAclEntry
 from app.models.user_git_credential import UserGitCredential
 from app.schemas.agent_skill import ProjectInstalledSkillOut, ProjectSkillInstallBody, ProjectSkillsOut
 from app.schemas.project import (
+    GitBranchesResponse,
     GitCommitRequest,
+    GitDiffResponse,
     GitInitResponse,
     GitLogResponse,
+    GitPathsRequest,
     GitStatusResponse,
     ProjectCreate,
     ProjectFileContentResponse,
@@ -434,11 +437,91 @@ async def git_commit(
     sub = get_jwt_sub(request)
     p = await _get_owned_project(db, project_id, sub)
     if body.paths:
-        git_service.git_add(project_id, body.paths)
-    else:
+        git_service.git_add(project_id, git_service.safe_paths(body.paths))
+    elif body.stage_all:
         git_service.git_add(project_id, None)
     out = git_service.git_commit(project_id, body.message, p.settings or {})
     return {"ok": True, "output": out}
+
+
+@router.post(
+    "/{project_id}/git/stage",
+    dependencies=[Depends(require_permission(PERM_PROJECTS_WRITE))],
+)
+async def git_stage(
+    project_id: str,
+    body: GitPathsRequest,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+):
+    sub = get_jwt_sub(request)
+    await _get_owned_project(db, project_id, sub)
+    git_service.git_add(project_id, git_service.safe_paths(body.paths))
+    return {"ok": True}
+
+
+@router.post(
+    "/{project_id}/git/unstage",
+    dependencies=[Depends(require_permission(PERM_PROJECTS_WRITE))],
+)
+async def git_unstage(
+    project_id: str,
+    body: GitPathsRequest,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+):
+    sub = get_jwt_sub(request)
+    await _get_owned_project(db, project_id, sub)
+    git_service.git_unstage(project_id, git_service.safe_paths(body.paths))
+    return {"ok": True}
+
+
+@router.post(
+    "/{project_id}/git/discard",
+    dependencies=[Depends(require_permission(PERM_PROJECTS_WRITE))],
+)
+async def git_discard(
+    project_id: str,
+    body: GitPathsRequest,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+):
+    sub = get_jwt_sub(request)
+    await _get_owned_project(db, project_id, sub)
+    git_service.git_discard(project_id, git_service.safe_paths(body.paths))
+    return {"ok": True}
+
+
+@router.get(
+    "/{project_id}/git/diff",
+    response_model=GitDiffResponse,
+    dependencies=[Depends(require_permission(PERM_PROJECTS_READ))],
+)
+async def git_diff(
+    project_id: str,
+    request: Request,
+    path: str | None = Query(default=None),
+    staged: bool = Query(default=False),
+    db: AsyncSession = Depends(get_db),
+):
+    sub = get_jwt_sub(request)
+    await _get_owned_project(db, project_id, sub)
+    safe = git_service.safe_paths([path])[0] if path else None
+    return GitDiffResponse(diff=git_service.git_diff(project_id, safe, staged=staged))
+
+
+@router.get(
+    "/{project_id}/git/branches",
+    response_model=GitBranchesResponse,
+    dependencies=[Depends(require_permission(PERM_PROJECTS_READ))],
+)
+async def git_branches(project_id: str, request: Request, db: AsyncSession = Depends(get_db)):
+    sub = get_jwt_sub(request)
+    await _get_owned_project(db, project_id, sub)
+    return GitBranchesResponse(
+        branches=git_service.git_branches(project_id),
+        current=git_service.git_current_branch(project_id),
+    )
 
 
 def _creator_from_request(request: Request) -> tuple[str | None, str | None]:

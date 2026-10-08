@@ -1016,6 +1016,7 @@ $agents-pane-header-height: 49px;
 }
 
 .agents-files-icon-btn {
+  position: relative;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -1031,6 +1032,27 @@ $agents-pane-header-height: 49px;
     background: var(--color-bg-hover);
     color: var(--color-text);
   }
+
+  &--active {
+    background: var(--color-accent-subtle);
+    color: var(--color-accent);
+  }
+}
+
+.agents-files-git-count {
+  position: absolute;
+  top: -2px;
+  right: -4px;
+  min-width: 14px;
+  height: 14px;
+  padding: 0 3px;
+  border-radius: 7px;
+  font-size: 0.5625rem;
+  font-weight: 700;
+  line-height: 14px;
+  text-align: center;
+  color: var(--color-bg);
+  background: var(--color-accent);
 }
 
 .agents-files-all-btn {
@@ -1158,23 +1180,492 @@ $agents-pane-header-height: 49px;
   color: var(--color-text-muted);
 }
 
-.agents-files-commit {
-  flex-shrink: 0;
-  padding: 10px 12px;
-  border-top: 1px solid var(--color-border);
+.agents-scm {
   display: flex;
-  gap: 6px;
-  align-items: center;
+  flex: 1;
+  flex-direction: column;
+  min-height: 0;
+}
 
-  input {
-    flex: 1;
-    min-width: 0;
-    padding: 6px 10px;
-    border: 1px solid var(--color-border);
-    border-radius: var(--radius-sm);
-    font-size: 0.8125rem;
-    background: var(--color-bg);
+.agents-scm-meta {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-shrink: 0;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--color-border);
+  font-size: 0.75rem;
+  color: var(--color-text-secondary);
+}
+
+.agents-scm-branch {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  max-width: 55%;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--color-bg-muted);
+  color: var(--color-text);
+  font-weight: 500;
+}
+
+.agents-scm-change-count {
+  margin-left: auto;
+  color: var(--color-text-muted);
+}
+
+.agents-scm-sync {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  margin-left: 4px;
+}
+
+.agents-scm-sync-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding: 2px 6px;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--color-text-secondary);
+  font-size: 0.6875rem;
+  font-variant-numeric: tabular-nums;
+  cursor: pointer;
+
+  &:hover:not(:disabled) {
+    background: var(--color-bg-hover);
     color: var(--color-text);
+  }
+
+  &:disabled {
+    opacity: 0.45;
+    cursor: default;
+  }
+}
+
+.agents-scm-changes {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  padding: 4px 0;
+}
+
+.agents-scm-changes--empty {
+  flex: 0 0 auto;
+  overflow: visible;
+  padding: 0;
+}
+
+.agents-diff {
+  display: flex;
+  flex-direction: column;
+  min-width: min-content;
+  padding: 4px 0;
+  font-family: var(--font-mono, ui-monospace, SFMono-Regular, Menlo, monospace);
+  font-size: 0.75rem;
+  line-height: 1.5;
+}
+
+.agents-diff-row {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  padding: 0 10px;
+  white-space: pre;
+
+  &--add {
+    background: color-mix(in srgb, var(--color-success, #16a34a) 14%, transparent);
+  }
+
+  &--del {
+    background: color-mix(in srgb, var(--color-danger, #dc2626) 14%, transparent);
+  }
+
+  &--hunk {
+    color: var(--color-text-muted);
+    background: var(--color-bg-muted);
+  }
+
+  &--meta {
+    color: var(--color-text-muted);
+  }
+}
+
+.agents-diff-gutter {
+  flex-shrink: 0;
+  width: 2.2rem;
+  text-align: right;
+  color: var(--color-text-muted);
+  font-variant-numeric: tabular-nums;
+  user-select: none;
+}
+
+.agents-diff-sign {
+  flex-shrink: 0;
+  width: 0.75rem;
+  text-align: center;
+  user-select: none;
+}
+
+.agents-diff-text {
+  flex: 1;
+  min-width: 0;
+}
+
+.agents-diff-path {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  direction: rtl;
+  text-align: left;
+}
+
+.agents-scm-empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  padding: var(--space-4) var(--space-3);
+  color: var(--color-text-muted);
+  text-align: center;
+  font-size: 0.8125rem;
+  line-height: 1.4;
+}
+
+.agents-scm-group + .agents-scm-group {
+  margin-top: 4px;
+  border-top: 1px solid var(--color-border);
+  padding-top: 4px;
+}
+
+.agents-scm-group-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 6px 12px 4px;
+}
+
+.agents-scm-group-title {
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+}
+
+.agents-scm-group-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--color-text-secondary);
+  cursor: pointer;
+
+  &:hover:not(:disabled) {
+    background: var(--color-bg-hover);
+    color: var(--color-text);
+  }
+
+  &:disabled {
+    opacity: 0.45;
+    cursor: default;
+  }
+}
+
+.agents-scm-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  cursor: pointer;
+  color: var(--color-text);
+
+  &:hover {
+    background: var(--color-bg-hover);
+  }
+
+  &--selected {
+    background: var(--color-accent-subtle);
+  }
+
+  &--deleted {
+    .agents-scm-row-name {
+      text-decoration: line-through;
+      opacity: 0.75;
+    }
+  }
+
+  > svg:first-of-type {
+    flex-shrink: 0;
+    opacity: 0.7;
+  }
+}
+
+.agents-scm-row-label {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  flex: 1;
+  min-width: 0;
+}
+
+.agents-scm-row-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 0.8125rem;
+}
+
+.agents-scm-row-path {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 0.6875rem;
+  color: var(--color-text-muted);
+}
+
+.agents-scm-row-actions {
+  display: none;
+  align-items: center;
+  gap: 2px;
+  flex-shrink: 0;
+
+  .agents-scm-row:hover &,
+  .agents-scm-row:focus-within & {
+    display: inline-flex;
+  }
+}
+
+.agents-scm-row-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--color-text-secondary);
+  cursor: pointer;
+
+  &:hover:not(:disabled) {
+    background: var(--color-accent-subtle);
+    color: var(--color-text);
+  }
+
+  &:disabled {
+    opacity: 0.45;
+    cursor: default;
+  }
+}
+
+.agents-scm-ref {
+  flex-shrink: 0;
+  max-width: 40%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  padding: 1px 6px;
+  border-radius: 999px;
+  border: 1px solid var(--color-border);
+  font-size: 0.625rem;
+  color: var(--color-text-secondary);
+
+  &--head {
+    border-color: var(--color-accent);
+    color: var(--color-accent);
+  }
+}
+
+.agents-scm-commits {
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  max-height: 40%;
+  border-top: 1px solid var(--color-border);
+}
+
+.agents-scm-commits-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+  padding: 6px 12px;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+}
+
+.agents-scm-commits-list {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  padding: 0 0 6px;
+}
+
+.agents-scm-commit-row {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  padding: 5px 12px;
+  font-size: 0.8125rem;
+
+  &:hover {
+    background: var(--color-bg-hover);
+  }
+}
+
+.agents-scm-commit-hash {
+  flex-shrink: 0;
+  font-family: var(--font-mono, ui-monospace, SFMono-Regular, Menlo, monospace);
+  font-size: 0.75rem;
+  color: var(--color-accent);
+}
+
+.agents-scm-log-msg {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--color-text);
+}
+
+.agents-scm-commit-meta {
+  flex-shrink: 0;
+  max-width: 45%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 0.6875rem;
+  color: var(--color-text-muted);
+}
+
+.agents-scm-commit {
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px 12px 12px;
+  border-top: 1px solid var(--color-border);
+  background: var(--color-bg-elevated);
+}
+
+.agents-scm-commit-label {
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--color-text-secondary);
+}
+
+.agents-scm-commit-msg {
+  width: 100%;
+  min-height: 3.25rem;
+  resize: vertical;
+  padding: 8px 10px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  font-family: inherit;
+  font-size: 0.8125rem;
+  line-height: 1.4;
+  background: var(--color-bg);
+  color: var(--color-text);
+
+  &:focus {
+    outline: none;
+    border-color: var(--color-accent);
+  }
+
+  &:disabled {
+    opacity: 0.6;
+  }
+}
+
+.agents-scm-commit-actions {
+  position: relative;
+  display: flex;
+  align-items: stretch;
+  gap: 4px;
+}
+
+.agents-scm-commit-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  flex: 1;
+}
+
+.agents-scm-commit-more {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 6px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-bg);
+  color: var(--color-text-secondary);
+  cursor: pointer;
+
+  &:hover:not(:disabled) {
+    background: var(--color-bg-hover);
+    color: var(--color-text);
+  }
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: default;
+  }
+}
+
+.agents-scm-commit-menu {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 4px);
+  z-index: 20;
+  min-width: 160px;
+  padding: 4px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-bg-elevated);
+  box-shadow: var(--shadow-md, 0 6px 16px rgb(0 0 0 / 18%));
+
+  button {
+    display: block;
+    width: 100%;
+    padding: 6px 10px;
+    border: none;
+    border-radius: var(--radius-sm);
+    background: transparent;
+    color: var(--color-text);
+    font-size: 0.8125rem;
+    text-align: left;
+    cursor: pointer;
+
+    &:hover:not(:disabled) {
+      background: var(--color-bg-hover);
+    }
+
+    &:disabled {
+      opacity: 0.45;
+      cursor: default;
+    }
   }
 }
 
