@@ -21,10 +21,10 @@
 |------|------|
 | `/app-builder` | 草稿 + 已发布列表；**新建应用** |
 | `/app-builder/new` | 仅名称 → 创建 stub 草稿 → 设计 |
-| `/app-builder/:appId/design` | 制品 \| 预览 / Source / 数据模型 \| 作者清单 \| 发布 |
-| `/app-builder/:appId/settings` | 常规 \| 资源 \| 加载器 \| 版本 + 回滚 |
+| `/app-builder/:appId/design` | 仅 A2UI：制品 \| 预览 / Source / 数据模型 \| 作者清单 \| 发布（module 重定向到设置） |
+| `/app-builder/:appId/settings` | **a2ui：** 常规 \| 资源 \| 加载器 \| 版本 + 回滚。**module：** 常规 \| 服务（可编辑 `bindings.k8s`；打开 / 删除） |
 | `/apps` | 仅已发布画廊 |
-| `/apps/:appId` | 运行 **已发布** a2ui 应用（草稿 404） |
+| `/apps/:appId` | 运行 **已发布** 应用（A2UI 或 module iframe；草稿 404） |
 
 权限复用 `ontology:read` / `ontology:write`。
 
@@ -237,7 +237,7 @@ Catalog id：`https://openkms.local/a2ui/catalogs/ontology-app/v1.json`。
 
 ### Module（托管服务） {#module-hosted-services}
 
-从 **控制台 → Kubernetes → Service → 登记到应用**，或 `kubernetes register-app` / `POST /api/app-builder/apps` 且 `template_id=module`。绑定写在 `bindings.k8s`：`cluster_id`、`namespace`、`service`、`port`、可选 `path` 前缀。创建即发布（无 A2UI Source）。
+从 **控制台 → Kubernetes → Service → 登记到应用**，或 `kubernetes register-app` / `POST /api/app-builder/apps` 且 `template_id=module`。绑定写在 `bindings.k8s`：`cluster_id`、`namespace`、`service`、`port`、可选 `path` 前缀。创建即发布（无 A2UI Source）。应用构建器 **设置 → 服务** 可改实时代理目标（`PATCH` 更新 `bindings.k8s` 与当前发布快照）。设置 → 常规 含名称/说明、打开与删除（取消登记，不删集群 Service）。
 
 **代理：** `GET|POST|… /api/app-builder/apps/{id}/proxy/{path}` 按集群设置二选一访问已登记的 Service：
 

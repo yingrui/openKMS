@@ -54,9 +54,11 @@ export function AppBuilderListPage() {
               </div>
             </div>
             <div className="app-builder-page__actions">
-              <Link to={`/app-builder/${app.id}/design`} className="btn btn-secondary">
-                {t('design')}
-              </Link>
+              {(app.app_kind || app.template_id) !== 'module' ? (
+                <Link to={`/app-builder/${app.id}/design`} className="btn btn-secondary">
+                  {t('design')}
+                </Link>
+              ) : null}
               <Link to={`/app-builder/${app.id}/settings`} className="btn btn-secondary">
                 {t('settings')}
               </Link>

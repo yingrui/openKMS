@@ -19,10 +19,10 @@
 |-------|------|
 | `/app-builder` | Draft + published apps; **New app** |
 | `/app-builder/new` | Name only → create stub draft → Design |
-| `/app-builder/:appId/design` | Artifacts \| Preview / Source / Data model \| authoring checklist \| publish |
-| `/app-builder/:appId/settings` | General \| Resources \| Loaders \| versions + rollback |
+| `/app-builder/:appId/design` | A2UI only: Artifacts \| Preview / Source / Data model \| authoring checklist \| publish (module redirects to settings) |
+| `/app-builder/:appId/settings` | **a2ui:** General \| Resources \| Loaders \| Versions + rollback. **module:** General \| Service (editable `bindings.k8s`; Open / Delete) |
 | `/apps` | Published gallery only |
-| `/apps/:appId` | Run **published** a2ui app (404 if draft) |
+| `/apps/:appId` | Run **published** app (A2UI surface or module iframe; 404 if draft) |
 
 Permissions reuse `ontology:read` / `ontology:write`.
 
@@ -236,7 +236,7 @@ Multi-column boards are **composed** in Source from filtered lists + Modals. Inv
 
 ### Module (hosted Services) {#module-hosted-services}
 
-Register from **Console → Kubernetes → Service → Register in Apps**, or `kubernetes register-app` / `POST /api/app-builder/apps` with `template_id=module`. Bindings live in `bindings.k8s`: `cluster_id`, `namespace`, `service`, `port`, optional `path` prefix. Create publishes immediately (no A2UI Source).
+Register from **Console → Kubernetes → Service → Register in Apps**, or `kubernetes register-app` / `POST /api/app-builder/apps` with `template_id=module`. Bindings live in `bindings.k8s`: `cluster_id`, `namespace`, `service`, `port`, optional `path` prefix. Create publishes immediately (no A2UI Source). App Builder **Settings → Service** edits the live proxy target (`PATCH` updates `bindings.k8s` and the current published snapshot). Settings → General covers name/description, Open, and Delete (unregisters the app; does not delete the cluster Service).
 
 **Proxy:** `GET|POST|… /api/app-builder/apps/{id}/proxy/{path}` reaches the registered Service in one of two ways, chosen per cluster:
 

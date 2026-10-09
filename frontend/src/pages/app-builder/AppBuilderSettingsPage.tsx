@@ -1,9 +1,10 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Link, useParams, useSearchParams } from 'react-router-dom';
+import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { ArrowLeft, Boxes, History, ListTree, Settings } from 'lucide-react';
+import { ArrowLeft, Boxes, History, ListTree, Server, Settings } from 'lucide-react';
 import { useConfirm } from '../../contexts/ConfirmContext';
 import {
+  deleteApp,
   fetchAppDesign,
   listAppVersions,
   rollbackApp,
@@ -25,20 +26,31 @@ import {
   updateOntoObjectListBinding,
   type OntoObjectListBinding,
 } from './a2ui/dataModelInspect';
+import { ModuleServiceBindingEditor } from './ModuleServiceBindingEditor';
 import '../../styles/settings-page.scss';
 import './AppBuilderPages.scss';
 
-type SettingsTab = 'general' | 'resources' | 'loaders' | 'versions';
+type A2uiTab = 'general' | 'resources' | 'loaders' | 'versions';
+type ModuleTab = 'general' | 'service';
+type SettingsTab = A2uiTab | ModuleTab;
 
-const TABS: SettingsTab[] = ['general', 'resources', 'loaders', 'versions'];
+const A2UI_TABS: A2uiTab[] = ['general', 'resources', 'loaders', 'versions'];
+const MODULE_TABS: ModuleTab[] = ['general', 'service'];
 
-function parseTab(raw: string | null): SettingsTab {
-  if (raw && (TABS as string[]).includes(raw)) return raw as SettingsTab;
+function isModuleApp(app: AppBuilderAppResponse | null): boolean {
+  if (!app) return false;
+  return (app.app_kind || app.template_id) === 'module';
+}
+
+function parseTab(raw: string | null, module: boolean): SettingsTab {
+  const allowed = module ? MODULE_TABS : A2UI_TABS;
+  if (raw && (allowed as string[]).includes(raw)) return raw as SettingsTab;
   return 'general';
 }
 
 export function AppBuilderSettingsPage() {
   const { appId = '' } = useParams();
+  const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const { t } = useTranslation('appBuilder');
   const confirm = useConfirm();
@@ -47,15 +59,20 @@ export function AppBuilderSettingsPage() {
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [versions, setVersions] = useState<AppBuilderVersion[]>([]);
-  const tab = parseTab(searchParams.get('tab'));
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [serviceSaving, setServiceSaving] = useState(false);
+  const [serviceSavedFlash, setServiceSavedFlash] = useState(false);
   const [resourcesSaving, setResourcesSaving] = useState(false);
   const [resourcesSavedFlash, setResourcesSavedFlash] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [otOptions, setOtOptions] = useState<string[]>([]);
   const [actionOptions, setActionOptions] = useState<string[]>([]);
   const [functionOptions, setFunctionOptions] = useState<string[]>([]);
+
+  const module = isModuleApp(app);
+  const tab = parseTab(searchParams.get('tab'), module);
 
   const setTab = useCallback(
     (next: SettingsTab) => {
@@ -65,6 +82,17 @@ export function AppBuilderSettingsPage() {
     },
     [setSearchParams],
   );
+
+  // Drop invalid ?tab= for the other kind (e.g. resources on a module app).
+  useEffect(() => {
+    if (!app) return;
+    const raw = searchParams.get('tab');
+    if (!raw) return;
+    const allowed = module ? MODULE_TABS : A2UI_TABS;
+    if (!(allowed as string[]).includes(raw)) {
+      setSearchParams({}, { replace: true });
+    }
+  }, [app, module, searchParams, setSearchParams]);
 
   const defaultComponent =
     components.find((c) => c.is_default) ?? components[0] ?? null;
@@ -76,16 +104,20 @@ export function AppBuilderSettingsPage() {
   const objectTypeOptions =
     (app?.bindings?.objectTypes?.length ? app.bindings.objectTypes : otOptions) || [];
 
-  const tabs = useMemo(
-    () =>
-      [
+  const tabs = useMemo(() => {
+    if (module) {
+      return [
         { id: 'general' as const, label: t('tabGeneral'), icon: Settings },
-        { id: 'resources' as const, label: t('tabResources'), icon: Boxes },
-        { id: 'loaders' as const, label: t('tabLoaders'), icon: ListTree },
-        { id: 'versions' as const, label: t('tabVersions'), icon: History },
-      ] as const,
-    [t],
-  );
+        { id: 'service' as const, label: t('tabService'), icon: Server },
+      ];
+    }
+    return [
+      { id: 'general' as const, label: t('tabGeneral'), icon: Settings },
+      { id: 'resources' as const, label: t('tabResources'), icon: Boxes },
+      { id: 'loaders' as const, label: t('tabLoaders'), icon: ListTree },
+      { id: 'versions' as const, label: t('tabVersions'), icon: History },
+    ];
+  }, [module, t]);
 
   const reload = useCallback(async () => {
     const design = await fetchAppDesign(appId);
@@ -93,8 +125,12 @@ export function AppBuilderSettingsPage() {
     setComponents(design.components || []);
     setName(design.name);
     setDescription(design.description ?? '');
-    const vs = await listAppVersions(appId);
-    setVersions(vs);
+    if ((design.app_kind || design.template_id) !== 'module') {
+      const vs = await listAppVersions(appId);
+      setVersions(vs);
+    } else {
+      setVersions([]);
+    }
   }, [appId]);
 
   useEffect(() => {
@@ -102,6 +138,7 @@ export function AppBuilderSettingsPage() {
   }, [reload]);
 
   useEffect(() => {
+    if (!app || module) return;
     void (async () => {
       try {
         const [ots, acts, fns] = await Promise.all([
@@ -122,7 +159,7 @@ export function AppBuilderSettingsPage() {
         /* options stay empty */
       }
     })();
-  }, []);
+  }, [app, module]);
 
   const save = () => {
     setSaving(true);
@@ -132,6 +169,29 @@ export function AppBuilderSettingsPage() {
       .then(() => setSaved(true))
       .catch((e) => setError(e instanceof Error ? e.message : String(e)))
       .finally(() => setSaving(false));
+  };
+
+  const saveService = (k8s: NonNullable<AppBuilderBindings['k8s']>) => {
+    setServiceSaving(true);
+    setError(null);
+    void updateApp(appId, { bindings: { k8s } })
+      .then((updated) => {
+        setApp((prev) =>
+          prev
+            ? {
+                ...prev,
+                bindings: updated.bindings,
+                bindings_hash: updated.bindings_hash,
+                bindings_stale: updated.bindings_stale,
+                missing_bindings: updated.missing_bindings,
+              }
+            : prev,
+        );
+        setServiceSavedFlash(true);
+        window.setTimeout(() => setServiceSavedFlash(false), 2000);
+      })
+      .catch((e) => setError(e instanceof Error ? e.message : String(e)))
+      .finally(() => setServiceSaving(false));
   };
 
   const saveResources = (bindings: AppBuilderBindings) => {
@@ -212,18 +272,48 @@ export function AppBuilderSettingsPage() {
     }
   };
 
+  const doDelete = async () => {
+    const ok = await confirm({
+      title: t('delete'),
+      message: t('confirmDelete'),
+      confirmLabel: t('delete'),
+      cancelLabel: t('cancel'),
+      danger: true,
+    });
+    if (!ok) return;
+    setDeleting(true);
+    setError(null);
+    try {
+      await deleteApp(appId);
+      navigate('/app-builder', { replace: true });
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+      setDeleting(false);
+    }
+  };
+
   if (!app) return <div className="settings-page">{t('loading')}</div>;
 
   return (
     <div className="settings-page">
-      <Link to={`/app-builder/${appId}/design`} className="settings-page-back">
-        <ArrowLeft size={18} />
-        <span>{t('backToDesign')}</span>
-      </Link>
+      {module ? (
+        <Link to="/app-builder" className="settings-page-back">
+          <ArrowLeft size={18} />
+          <span>{t('backToList')}</span>
+        </Link>
+      ) : (
+        <Link to={`/app-builder/${appId}/design`} className="settings-page-back">
+          <ArrowLeft size={18} />
+          <span>{t('backToDesign')}</span>
+        </Link>
+      )}
 
       <div className="page-header">
         <h1>{t('settingsTitle')}</h1>
-        <p className="page-subtitle">{app.name}</p>
+        <p className="page-subtitle">
+          {app.name}
+          {module ? ` · ${t('kindModule')}` : ''}
+        </p>
       </div>
 
       <div className="settings-page-tabs" role="tablist" aria-label={t('settingsTitle')}>
@@ -249,7 +339,9 @@ export function AppBuilderSettingsPage() {
         {tab === 'general' ? (
           <section className="settings-page-section">
             <h2>{t('tabGeneral')}</h2>
-            <p className="settings-page-hint">{t('settingsGeneralHint')}</p>
+            <p className="settings-page-hint">
+              {module ? t('settingsGeneralHintModule') : t('settingsGeneralHint')}
+            </p>
             <div className="settings-page-field">
               <label htmlFor="app-builder-name">{t('name')}</label>
               <input
@@ -257,6 +349,17 @@ export function AppBuilderSettingsPage() {
                 type="text"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
+              />
+            </div>
+            <div className="settings-page-field">
+              <label htmlFor="app-builder-api-name">{t('apiName')}</label>
+              <input
+                id="app-builder-api-name"
+                type="text"
+                value={app.api_name}
+                readOnly
+                disabled
+                spellCheck={false}
               />
             </div>
             <div className="settings-page-field">
@@ -268,17 +371,62 @@ export function AppBuilderSettingsPage() {
                 onChange={(e) => setDescription(e.target.value)}
               />
             </div>
-            {error ? <p className="settings-page-error" role="alert">{error}</p> : null}
+            {error && tab === 'general' ? (
+              <p className="settings-page-error" role="alert">
+                {error}
+              </p>
+            ) : null}
             <div className="settings-page-actions">
               <button type="button" className="btn btn-primary" onClick={save} disabled={saving}>
                 {t('save')}
               </button>
+              {app.status === 'published' ? (
+                <Link to={`/apps/${app.id}`} className="btn btn-secondary">
+                  {t('open')}
+                </Link>
+              ) : null}
               {saved ? <span className="settings-page-saved">{t('saved')}</span> : null}
             </div>
+            {module ? (
+              <div className="settings-page-danger">
+                <h3>{t('settingsDangerTitle')}</h3>
+                <p className="settings-page-hint">{t('settingsDangerHint')}</p>
+                <button
+                  type="button"
+                  className="btn btn-danger"
+                  onClick={() => void doDelete()}
+                  disabled={deleting}
+                >
+                  {deleting ? t('saving') : t('delete')}
+                </button>
+              </div>
+            ) : null}
           </section>
         ) : null}
 
-        {tab === 'resources' ? (
+        {module && tab === 'service' ? (
+          <section className="settings-page-section">
+            <h2>{t('tabService')}</h2>
+            <p className="settings-page-hint">{t('settingsServiceHint')}</p>
+            {error ? <p className="settings-page-error" role="alert">{error}</p> : null}
+            <ModuleServiceBindingEditor
+              key={`${app.bindings?.k8s?.cluster_id}-${app.bindings?.k8s?.service}-${app.bindings?.k8s?.port}`}
+              initial={app.bindings?.k8s}
+              saving={serviceSaving}
+              onSave={saveService}
+            />
+            {serviceSavedFlash ? (
+              <p className="settings-page-saved">{t('settingsServiceSaved')}</p>
+            ) : null}
+            {app.bindings_stale || app.missing_bindings?.length ? (
+              <p className="settings-page-error" role="alert">
+                {t('missing')}: {(app.missing_bindings || ['k8s']).join(', ')}
+              </p>
+            ) : null}
+          </section>
+        ) : null}
+
+        {!module && tab === 'resources' ? (
           <section className="settings-page-section">
             <h2>{t('tabResources')}</h2>
             <p className="settings-page-hint">{t('settingsResourcesHint')}</p>
@@ -303,7 +451,7 @@ export function AppBuilderSettingsPage() {
           </section>
         ) : null}
 
-        {tab === 'loaders' ? (
+        {!module && tab === 'loaders' ? (
           <section className="settings-page-section">
             <h2>{t('tabLoaders')}</h2>
             <p className="settings-page-hint">{t('settingsLoadersHint')}</p>
@@ -321,7 +469,7 @@ export function AppBuilderSettingsPage() {
           </section>
         ) : null}
 
-        {tab === 'versions' ? (
+        {!module && tab === 'versions' ? (
           <section className="settings-page-section">
             <h2>{t('tabVersions')}</h2>
             <p className="settings-page-hint">{t('settingsVersionsHint')}</p>

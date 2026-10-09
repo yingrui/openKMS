@@ -110,12 +110,15 @@ export function AppBuilderDesignPage() {
   useEffect(() => {
     void (async () => {
       try {
-        await reloadApp();
+        const design = await reloadApp();
+        if ((design.app_kind || design.template_id) === 'module') {
+          navigate(`/app-builder/${appId}/settings`, { replace: true });
+        }
       } catch (e) {
         setError(e instanceof Error ? e.message : String(e));
       }
     })();
-  }, [appId, reloadApp]);
+  }, [appId, reloadApp, navigate]);
 
   const saveComponents = useCallback(
     (next: AppBuilderComponent[]) => {

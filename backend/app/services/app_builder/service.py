@@ -395,6 +395,10 @@ async def update_app(db: AsyncSession, app: AppBuilderApp, body: AppBuilderUpdat
                     )
             app.bindings = bindings
             app.bindings_hash = compute_bindings_hash(resolved) if resolved else None
+            if app_kind_of(app) == "module" and app.published_version_id:
+                published = await db.get(AppBuilderPublishedVersion, app.published_version_id)
+                if published is not None:
+                    published.bindings = bindings
         else:
             if app_kind_of(app) == "module":
                 raise HTTPException(status_code=400, detail="module apps require bindings.k8s")

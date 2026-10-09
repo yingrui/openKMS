@@ -642,3 +642,22 @@
   gap: var(--space-2);
   margin-bottom: 0.2rem;
 }
+
+.app-builder-module-service {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  max-width: 28rem;
+}
+
+.settings-page-danger {
+  margin-top: var(--space-8);
+  padding-top: var(--space-6);
+  border-top: 1px solid var(--color-border);
+}
+
+.settings-page-danger h3 {
+  margin: 0 0 var(--space-2);
+  font-size: var(--text-base, 1rem);
+  font-weight: 600;
+}
