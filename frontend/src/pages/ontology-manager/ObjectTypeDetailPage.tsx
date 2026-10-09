@@ -30,7 +30,12 @@ import {
   type ColumnMetadata,
 } from '../../data/datasetsApi';
 import { fetchAllDataSources, type DataSourceResponse } from '../../data/dataSourcesApi';
-import { fetchOntologyActionTypes, type OntologyActionTypeResponse } from '../../data/ontologyFunctionsApi';
+import {
+  fetchOntologyActionTypes,
+  fetchOntologyFunctions,
+  type OntologyActionTypeResponse,
+  type OntologyFunctionResponse,
+} from '../../data/ontologyFunctionsApi';
 import { ResourceSharePanel } from '../../components/ResourceSharePanel';
 import { RESOURCE_TYPES } from '../../data/resourceAclApi';
 import {
@@ -56,6 +61,7 @@ type ObjectTypeDetailContext = {
   objectType: ObjectTypeResponse;
   relatedLinks: LinkTypeResponse[];
   relatedActions: OntologyActionTypeResponse[];
+  relatedFunctions: OntologyFunctionResponse[];
   datasets: DatasetResponse[];
   neo4jDataSources: DataSourceResponse[];
   name: string;
@@ -94,6 +100,7 @@ export function ObjectTypeDetailPage() {
   const [objectType, setObjectType] = useState<ObjectTypeResponse | null>(null);
   const [relatedLinks, setRelatedLinks] = useState<LinkTypeResponse[]>([]);
   const [relatedActions, setRelatedActions] = useState<OntologyActionTypeResponse[]>([]);
+  const [relatedFunctions, setRelatedFunctions] = useState<OntologyFunctionResponse[]>([]);
   const [datasets, setDatasets] = useState<DatasetResponse[]>([]);
   const [dataSources, setDataSources] = useState<DataSourceResponse[]>([]);
   const [loading, setLoading] = useState(true);
@@ -146,10 +153,11 @@ export function ObjectTypeDetailPage() {
     if (!typeId) return;
     setLoading(true);
     try {
-      const [ot, linksRes, actions, dsRes, dsSourcesRes] = await Promise.all([
+      const [ot, linksRes, actions, fnRes, dsRes, dsSourcesRes] = await Promise.all([
         fetchObjectType(typeId),
         fetchLinkTypes(),
         fetchOntologyActionTypes({ object_type_id: typeId }),
+        fetchOntologyFunctions(),
         fetchDatasets(),
         fetchAllDataSources(),
       ]);
@@ -160,6 +168,14 @@ export function ObjectTypeDetailPage() {
         ),
       );
       setRelatedActions(actions);
+      const viaActionFnIds = new Set(
+        actions.map((a) => a.function_id).filter((id): id is string => Boolean(id)),
+      );
+      setRelatedFunctions(
+        fnRes.items.filter(
+          (fn) => fn.object_type_id === typeId || viaActionFnIds.has(fn.id),
+        ),
+      );
       setDatasets(dsRes.items);
       setDataSources(dsSourcesRes);
     } catch (e: unknown) {
@@ -278,6 +294,7 @@ export function ObjectTypeDetailPage() {
             objectType,
             relatedLinks,
             relatedActions,
+            relatedFunctions,
             datasets,
             neo4jDataSources,
             name,
@@ -306,6 +323,7 @@ export function ObjectTypeDetailPage() {
       objectType,
       relatedLinks,
       relatedActions,
+      relatedFunctions,
       datasets,
       neo4jDataSources,
       name,
@@ -367,6 +385,7 @@ export function ObjectTypeOverviewTab() {
     objectType,
     relatedLinks,
     relatedActions,
+    relatedFunctions,
     name,
     setName,
     description,
@@ -448,6 +467,15 @@ export function ObjectTypeOverviewTab() {
             <Link to={`/ontology-manager/action-types/${a.id}`}>{a.display_name}</Link>
           </span>
         ));
+  const relatedFunctionsValue =
+    relatedFunctions.length === 0
+      ? '—'
+      : relatedFunctions.map((fn, i) => (
+          <span key={fn.id}>
+            {i > 0 ? ', ' : ''}
+            <Link to={`/ontology-manager/functions/${fn.id}`}>{fn.display_name}</Link>
+          </span>
+        ));
 
   return (
     <>
@@ -473,6 +501,7 @@ export function ObjectTypeOverviewTab() {
         <EntityViewStat label={t('objectTypes.instances')} value={objectType.instance_count} />
         <EntityViewStat label={t('objectTypes.relatedLinkTypes')} value={relatedLinksValue} />
         <EntityViewStat label={t('objectTypes.relatedActions')} value={relatedActionsValue} />
+        <EntityViewStat label={t('objectTypes.relatedFunctions')} value={relatedFunctionsValue} />
       </EntityViewStats>
       <EntityViewPanel title={t('objectTypes.general')} description={t('objectTypes.generalHint')}>
         <div className="entity-view__form">

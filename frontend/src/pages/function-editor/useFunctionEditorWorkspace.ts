@@ -13,6 +13,7 @@ import {
   saveFunctionVersion,
   validateFunctionSource,
 } from '../../data/ontologyFunctionsApi';
+import { fetchObjectTypes, type ObjectTypeResponse } from '../../data/ontologyApi';
 import { useConfirm } from '../../contexts/ConfirmContext';
 
 export function useFunctionEditorWorkspace() {
@@ -25,6 +26,8 @@ export function useFunctionEditorWorkspace() {
 
   const [apiName, setApiName] = useState('');
   const [displayName, setDisplayName] = useState('');
+  const [objectTypeId, setObjectTypeId] = useState('');
+  const [objectTypes, setObjectTypes] = useState<ObjectTypeResponse[]>([]);
   const [sourceCode, setSourceCode] = useState(DEFAULT_FUNCTION_TEMPLATE);
   const [previewInput, setPreviewInput] = useState(DEFAULT_PREVIEW_INPUT);
   const [previewOutput, setPreviewOutput] = useState('');
@@ -51,6 +54,7 @@ export function useFunctionEditorWorkspace() {
       const fn = await fetchOntologyFunction(functionId);
       setApiName(fn.api_name);
       setDisplayName(fn.display_name);
+      setObjectTypeId(fn.object_type_id ?? '');
       const versions = await fetchFunctionVersions(functionId);
       if (versions[0]) setSourceCode(versions[0].source_code);
     } catch (e: unknown) {
@@ -59,6 +63,14 @@ export function useFunctionEditorWorkspace() {
       setLoading(false);
     }
   }, [functionId, isNew, t]);
+
+  useEffect(() => {
+    void fetchObjectTypes()
+      .then((res) => setObjectTypes(res.items))
+      .catch(() => {
+        /* optional for create form */
+      });
+  }, []);
 
   useEffect(() => {
     if (isNew) {
@@ -76,6 +88,7 @@ export function useFunctionEditorWorkspace() {
         const fn = await createOntologyFunction({
           api_name: apiName,
           display_name: displayName || apiName,
+          object_type_id: objectTypeId || null,
           source_code: sourceCode,
         });
         toast.success(t('editor.created'));
@@ -158,6 +171,9 @@ export function useFunctionEditorWorkspace() {
     setApiName,
     displayName,
     setDisplayName,
+    objectTypeId,
+    setObjectTypeId,
+    objectTypes,
     sourceCode,
     setSourceCode,
     previewInput,

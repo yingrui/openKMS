@@ -8,11 +8,11 @@ Author and run **Python Ontology Functions** — Palantir-style logic on top of 
 
 | App | Route | Role |
 |-----|-------|------|
-| **Ontology Manager** | `/ontology-manager/functions` | Registry, publish, Observability |
-| **Function Editor** | `/function-editor` | Create, edit, validate, Live Preview |
+| **Ontology Manager** | `/ontology-manager/functions` | Registry, optional primary object type, Usage (bound action types), publish, Observability |
+| **Function Editor** | `/function-editor` | Create (optional primary object type), edit, validate, Live Preview |
 | **Object Explorer** | — | Instance browse; Action triggers |
 
-Legacy `/ontology/*` redirects to `/ontology-manager/*`.
+Legacy `/ontology/*` redirects to `/ontology-manager/*`. Optional `object_type_id` on a Function is an affiliation for Groups related resources and Overview Graph — execution still may call any type via `Client`.
 
 ## Authoring with SDK
 
@@ -39,7 +39,8 @@ Backend logic: `function_service.py`, `execution_service.py`.
 | Method | Path | Description |
 |--------|------|-------------|
 | GET | `/api/ontology/functions` | List functions |
-| POST | `/api/ontology/functions` | Create function + v1 (validated) |
+| POST | `/api/ontology/functions` | Create function + v1 (validated); optional `object_type_id` |
+| PATCH | `/api/ontology/functions/{id}` | Update metadata (`display_name`, `description`, `object_type_id`, status) |
 | POST | `/api/ontology/functions/{id}/versions` | Save draft version |
 | POST | `/api/ontology/functions/{id}/validate` | Static validate |
 | POST | `/api/ontology/functions/{id}/publish` | Publish version |

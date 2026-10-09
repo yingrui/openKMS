@@ -406,7 +406,12 @@ export function OntologyList() {
       {loading && <p className="ontology-loading">{t('shared.loading')}</p>}
 
       {!loading && isGraphView ? (
-        <OntologySchemaGraph objectTypes={objectTypes} linkTypes={linkTypes} />
+        <OntologySchemaGraph
+          objectTypes={objectTypes}
+          linkTypes={linkTypes}
+          functions={functions}
+          actionTypes={actionTypes}
+        />
       ) : null}
 
       {!loading && isCardView ? (

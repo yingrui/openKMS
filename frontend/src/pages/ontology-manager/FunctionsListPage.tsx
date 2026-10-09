@@ -1,7 +1,10 @@
+import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { Code2, ExternalLink, Loader2, Plus } from 'lucide-react';
+import { toast } from 'sonner';
 import { EmptyState } from '../../styles/design-system';
+import { fetchObjectTypes, type ObjectTypeResponse } from '../../data/ontologyApi';
 import { useOntologyFunctionsList } from '../function-editor/useOntologyFunctionsList';
 import '../ontology/ontology-admin.scss';
 
@@ -16,6 +19,21 @@ function statusBadgeClass(status: string): string {
 export function FunctionsListPage() {
   const { t } = useTranslation('ontology');
   const { items, loading } = useOntologyFunctionsList();
+  const [objectTypes, setObjectTypes] = useState<ObjectTypeResponse[]>([]);
+
+  useEffect(() => {
+    void fetchObjectTypes()
+      .then((res) => setObjectTypes(res.items))
+      .catch((e: unknown) => {
+        toast.error(e instanceof Error ? e.message : t('functions.loadFailed'));
+      });
+  }, [t]);
+
+  const objectTypeNameById = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const ot of objectTypes) map.set(ot.id, ot.name);
+    return map;
+  }, [objectTypes]);
 
   return (
     <div className="ontology-admin">
@@ -54,6 +72,7 @@ export function FunctionsListPage() {
                 <tr>
                   <th>{t('functions.apiName')}</th>
                   <th>{t('functions.displayName')}</th>
+                  <th>{t('functions.objectType')}</th>
                   <th>{t('functions.publishedVersion')}</th>
                   <th>{t('functions.latestVersion')}</th>
                   <th>{t('functions.status')}</th>
@@ -69,6 +88,11 @@ export function FunctionsListPage() {
                       </Link>
                     </td>
                     <td>{fn.display_name}</td>
+                    <td className="console-table-muted">
+                      {fn.object_type_id
+                        ? objectTypeNameById.get(fn.object_type_id) ?? fn.object_type_id
+                        : '—'}
+                    </td>
                     <td className="console-table-muted">{fn.published_version ?? '—'}</td>
                     <td className="console-table-muted">{fn.latest_version ?? '—'}</td>
                     <td>

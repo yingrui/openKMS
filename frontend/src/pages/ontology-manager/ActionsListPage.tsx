@@ -33,6 +33,7 @@ export function ActionsListPage() {
   const [functions, setFunctions] = useState<OntologyFunctionResponse[]>([]);
   const [loading, setLoading] = useState(true);
   const [showCreate, setShowCreate] = useState(false);
+  const [filterObjectTypeId, setFilterObjectTypeId] = useState('');
 
   const publishedFunctions = useMemo(
     () => functions.filter((fn) => fn.published_version != null),
@@ -55,7 +56,9 @@ export function ActionsListPage() {
     setLoading(true);
     try {
       const [actions, typesRes, fnRes] = await Promise.all([
-        fetchOntologyActionTypes(),
+        fetchOntologyActionTypes(
+          filterObjectTypeId ? { object_type_id: filterObjectTypeId } : undefined,
+        ),
         fetchObjectTypes(),
         fetchOntologyFunctions(),
       ]);
@@ -67,7 +70,7 @@ export function ActionsListPage() {
     } finally {
       setLoading(false);
     }
-  }, [t]);
+  }, [filterObjectTypeId, t]);
 
   useEffect(() => {
     void load();
@@ -106,6 +109,25 @@ export function ActionsListPage() {
       </header>
 
       <div className="ontology-admin-content">
+        {objectTypes.length > 0 ? (
+          <div className="console-datasets-toolbar">
+            <label className="console-datasets-filter">
+              {t('actions.filterByObjectType')}
+              <select
+                value={filterObjectTypeId}
+                onChange={(e) => setFilterObjectTypeId(e.target.value)}
+                aria-label={t('actions.filterByObjectType')}
+              >
+                <option value="">{t('actions.filterAllObjectTypes')}</option>
+                {objectTypes.map((ot) => (
+                  <option key={ot.id} value={ot.id}>
+                    {ot.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+          </div>
+        ) : null}
         {loading ? (
           <div className="console-loading">
             <Loader2 size={32} className="console-loading-spinner" aria-hidden />

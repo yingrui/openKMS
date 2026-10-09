@@ -1,17 +1,22 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import { Link, Outlet, useParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { ExternalLink, Upload } from 'lucide-react';
+import { ExternalLink, Save, Upload } from 'lucide-react';
 import { toast } from 'sonner';
+import { fetchObjectTypes, type ObjectTypeResponse } from '../../data/ontologyApi';
 import {
   executeOntologyFunction,
   fetchFunctionExecutions,
+  fetchOntologyActionTypes,
   fetchOntologyFunction,
   publishOntologyFunction,
+  updateOntologyFunction,
+  type OntologyActionTypeResponse,
   type OntologyFunctionExecutionResponse,
   type OntologyFunctionResponse,
 } from '../../data/ontologyFunctionsApi';
 import {
+  EntityViewField,
   EntityViewHeader,
   EntityViewLoading,
   EntityViewPanel,
@@ -24,9 +29,15 @@ import '../ontology/ontology-admin.scss';
 type FunctionDetailContext = {
   fn: OntologyFunctionResponse;
   executions: OntologyFunctionExecutionResponse[];
+  objectTypes: ObjectTypeResponse[];
+  boundActions: OntologyActionTypeResponse[];
+  objectTypeId: string;
+  setObjectTypeId: (v: string) => void;
   publishing: boolean;
+  saving: boolean;
   onPublish: () => Promise<void>;
   onTestPublished: () => Promise<void>;
+  onSave: () => Promise<void>;
   reload: () => Promise<void>;
 };
 
@@ -43,19 +54,28 @@ export function FunctionDetailPage() {
   const { functionId = '' } = useParams();
   const [fn, setFn] = useState<OntologyFunctionResponse | null>(null);
   const [executions, setExecutions] = useState<OntologyFunctionExecutionResponse[]>([]);
+  const [objectTypes, setObjectTypes] = useState<ObjectTypeResponse[]>([]);
+  const [boundActions, setBoundActions] = useState<OntologyActionTypeResponse[]>([]);
+  const [objectTypeId, setObjectTypeId] = useState('');
   const [loading, setLoading] = useState(true);
   const [publishing, setPublishing] = useState(false);
+  const [saving, setSaving] = useState(false);
 
   const load = useCallback(async () => {
     if (!functionId) return;
     setLoading(true);
     try {
-      const [f, ex] = await Promise.all([
+      const [f, ex, typesRes, actions] = await Promise.all([
         fetchOntologyFunction(functionId),
         fetchFunctionExecutions(functionId),
+        fetchObjectTypes(),
+        fetchOntologyActionTypes(),
       ]);
       setFn(f);
       setExecutions(ex);
+      setObjectTypes(typesRes.items);
+      setObjectTypeId(f.object_type_id ?? '');
+      setBoundActions(actions.filter((a) => a.function_id === functionId));
     } catch (e: unknown) {
       toast.error(e instanceof Error ? e.message : t('functions.loadFailed'));
     } finally {
@@ -93,12 +113,54 @@ export function FunctionDetailPage() {
     }
   }, [functionId, load, t]);
 
+  const onSave = useCallback(async () => {
+    if (!functionId) return;
+    setSaving(true);
+    try {
+      const updated = await updateOntologyFunction(functionId, {
+        object_type_id: objectTypeId || null,
+      });
+      setFn(updated);
+      setObjectTypeId(updated.object_type_id ?? '');
+      toast.success(t('functions.saved'));
+    } catch (e: unknown) {
+      toast.error(e instanceof Error ? e.message : t('functions.saveFailed'));
+    } finally {
+      setSaving(false);
+    }
+  }, [functionId, objectTypeId, t]);
+
   const value = useMemo(
     () =>
       fn
-        ? { fn, executions, publishing, onPublish, onTestPublished, reload: load }
+        ? {
+            fn,
+            executions,
+            objectTypes,
+            boundActions,
+            objectTypeId,
+            setObjectTypeId,
+            publishing,
+            saving,
+            onPublish,
+            onTestPublished,
+            onSave,
+            reload: load,
+          }
         : null,
-    [fn, executions, publishing, onPublish, onTestPublished, load],
+    [
+      fn,
+      executions,
+      objectTypes,
+      boundActions,
+      objectTypeId,
+      publishing,
+      saving,
+      onPublish,
+      onTestPublished,
+      onSave,
+      load,
+    ],
   );
 
   if (loading || !fn || !value) {
@@ -128,7 +190,22 @@ export function FunctionDetailPage() {
 
 export function FunctionOverviewTab() {
   const { t } = useTranslation('ontology');
-  const { fn, publishing, onPublish, onTestPublished } = useFunctionDetail();
+  const {
+    fn,
+    objectTypes,
+    boundActions,
+    objectTypeId,
+    setObjectTypeId,
+    publishing,
+    saving,
+    onPublish,
+    onTestPublished,
+    onSave,
+  } = useFunctionDetail();
+
+  const objectTypeName =
+    objectTypes.find((ot) => ot.id === (fn.object_type_id ?? ''))?.name ??
+    (fn.object_type_id ? fn.object_type_id : '—');
 
   return (
     <>
@@ -141,6 +218,10 @@ export function FunctionOverviewTab() {
               <ExternalLink size={16} aria-hidden />
               {t('functions.openInEditor')}
             </Link>
+            <button type="button" className="btn btn-secondary" onClick={() => void onSave()} disabled={saving}>
+              <Save size={16} aria-hidden />
+              {saving ? t('shared.saving') : t('shared.save')}
+            </button>
             <button type="button" className="btn btn-primary" onClick={() => void onPublish()} disabled={publishing}>
               <Upload size={16} aria-hidden />
               {publishing ? t('shared.saving') : t('functions.publish')}
@@ -152,7 +233,40 @@ export function FunctionOverviewTab() {
         <EntityViewStat label={t('functions.publishedVersion')} value={fn.published_version ?? '—'} />
         <EntityViewStat label={t('functions.latestVersion')} value={fn.latest_version ?? '—'} />
         <EntityViewStat label={t('functions.developmentStatus')} value={fn.development_status} />
+        <EntityViewStat label={t('functions.objectType')} value={objectTypeName} />
       </EntityViewStats>
+      <EntityViewPanel title={t('functions.general')} description={t('functions.objectTypeHint')}>
+        <div className="entity-view__form">
+          <EntityViewField label={t('functions.objectType')}>
+            <select
+              className="console-form-control"
+              value={objectTypeId}
+              onChange={(e) => setObjectTypeId(e.target.value)}
+            >
+              <option value="">{t('functions.objectTypeNone')}</option>
+              {objectTypes.map((ot) => (
+                <option key={ot.id} value={ot.id}>
+                  {ot.name}
+                </option>
+              ))}
+            </select>
+          </EntityViewField>
+        </div>
+      </EntityViewPanel>
+      <EntityViewPanel title={t('functions.usage')} description={t('functions.usageHint')}>
+        {boundActions.length === 0 ? (
+          <p className="entity-view__field-hint">{t('functions.usageEmpty')}</p>
+        ) : (
+          <ul className="entity-view__related-list">
+            {boundActions.map((action) => (
+              <li key={action.id}>
+                <Link to={`/ontology-manager/action-types/${action.id}`}>{action.display_name}</Link>
+                <span className="entity-view__related-meta">{action.api_name}</span>
+              </li>
+            ))}
+          </ul>
+        )}
+      </EntityViewPanel>
       {fn.published_version_id ? (
         <EntityViewPanel title={t('functions.versions')}>
           <button type="button" className="btn btn-secondary" onClick={() => void onTestPublished()}>

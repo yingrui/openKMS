@@ -66,12 +66,30 @@ export async function createOntologyFunction(body: {
   api_name: string;
   display_name: string;
   description?: string;
+  object_type_id?: string | null;
   source_code?: string;
 }): Promise<OntologyFunctionResponse> {
   return ontologyFetch<OntologyFunctionResponse>(
     base,
     { method: 'POST', body: JSON.stringify(body) },
     'Failed to create function',
+  );
+}
+
+export async function updateOntologyFunction(
+  id: string,
+  body: {
+    display_name?: string;
+    description?: string;
+    object_type_id?: string | null;
+    development_status?: string;
+    status?: string;
+  },
+): Promise<OntologyFunctionResponse> {
+  return ontologyFetch<OntologyFunctionResponse>(
+    `${base}/${id}`,
+    { method: 'PATCH', body: JSON.stringify(body) },
+    'Failed to update function',
   );
 }
 

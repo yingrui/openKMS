@@ -14,6 +14,9 @@ export function FunctionEditorWorkspacePage() {
     setApiName,
     displayName,
     setDisplayName,
+    objectTypeId,
+    setObjectTypeId,
+    objectTypes,
     sourceCode,
     setSourceCode,
     previewInput,
@@ -85,6 +88,21 @@ export function FunctionEditorWorkspacePage() {
           <label>
             {t('editor.displayName')}
             <input value={displayName} onChange={(e) => setDisplayName(e.target.value)} className="console-form-control" />
+          </label>
+          <label>
+            {t('editor.objectType')}
+            <select
+              value={objectTypeId}
+              onChange={(e) => setObjectTypeId(e.target.value)}
+              className="console-form-control"
+            >
+              <option value="">{t('editor.objectTypeNone')}</option>
+              {objectTypes.map((ot) => (
+                <option key={ot.id} value={ot.id}>
+                  {ot.name}
+                </option>
+              ))}
+            </select>
           </label>
         </div>
       )}
