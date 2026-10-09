@@ -238,7 +238,14 @@ Multi-column boards are **composed** in Source from filtered lists + Modals. Inv
 
 Register from **Console → Kubernetes → Service → Register in Apps**, or `kubernetes register-app` / `POST /api/app-builder/apps` with `template_id=module`. Bindings live in `bindings.k8s`: `cluster_id`, `namespace`, `service`, `port`, optional `path` prefix. Create publishes immediately (no A2UI Source).
 
-**Proxy:** `GET|POST|… /api/app-builder/apps/{id}/proxy/{path}` → Kubernetes ` /api/v1/namespaces/{ns}/services/{service}:{port}/proxy/{path}`. Session cookie authenticates the openKMS user (`ontology:read`). kubeconfig never leaves the server. Only the registered Service is reachable.
+**Proxy:** `GET|POST|… /api/app-builder/apps/{id}/proxy/{path}` reaches the registered Service in one of two ways, chosen per cluster:
+
+| Cluster option | Upstream |
+|----------------|----------|
+| default | Kubernetes `/api/v1/namespaces/{ns}/services/{service}:{port}/proxy/{path}` |
+| `direct_service_access` (openKMS runs in this cluster) | `http://{service}.{ns}.svc.cluster.local:{port}/{path}` |
+
+kubeconfig never leaves the server. Only the registered Service is reachable. User identity is passed per [Identity headers](#module-identity-headers).
 
 **Constraints:**
 
@@ -246,7 +253,33 @@ Register from **Console → Kubernetes → Service → Register in Apps**, or `k
 - No WebSocket / Ingress / public TLS in this release.
 - Registering requires `ontology:write` **and** `console:kubernetes`. Opening/proxying requires `ontology:read`.
 
-Apps gallery cards distinguish `a2ui` vs `module`. Run for `module` uses an iframe to the proxy root.
+Apps gallery cards distinguish `a2ui` vs `module`. Run for `module` uses an iframe to the proxy root. Run has a **full screen** control that covers the openKMS shell; restore with the exit control (draggable so it can be moved off content) or Escape (Escape may not reach the host when focus is inside a module iframe).
+
+#### Identity headers (hosted app contract) {#module-identity-headers}
+
+Hosted apps do **not** sign users in. openKMS authenticates the user by **session cookie** (`ontology:read`) and adds these headers to **every** proxied request (pages, assets, API calls):
+
+| Header | Value |
+|--------|-------|
+| `X-Openkms-User-Id` | User id (`sub`); stable key for app-side data |
+| `X-Openkms-Username` | Login name |
+| `X-Openkms-User-Name` | Display name |
+| `X-Openkms-User-Email` | Email (omitted when unknown) |
+| `X-Openkms-User-Admin` | `true` / `false` (openKMS admin) |
+
+openKMS guarantees:
+
+- Values are percent-encoded UTF-8 (decode with `decodeURIComponent` / `urllib.parse.unquote`).
+- Any `X-Openkms-*` header sent by the browser is dropped before openKMS sets its own.
+- `Authorization` and `Cookie` are not forwarded; `Set-Cookie` and `WWW-Authenticate` are dropped from responses.
+
+The hosted app must:
+
+- Read identity only from these headers; no login page, session, or token of its own.
+- Key per-user data by `X-Openkms-User-Id` (names and email can change).
+- Treat a request without `X-Openkms-User-Id` as unauthenticated (e.g. `401`).
+- Map its own roles from the user id if needed; `X-Openkms-User-Admin` only reflects openKMS admin.
+- Be reachable **only** through openKMS: no Ingress / NodePort; restrict in-cluster callers with a NetworkPolicy. Otherwise anyone who can reach the Service can forge the headers.
 
 ## Backend code
 

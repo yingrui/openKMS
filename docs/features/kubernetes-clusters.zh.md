@@ -9,7 +9,7 @@
 - **列表：** `/console/kubernetes` — 登记、编辑、删除、测试连接；点击进入浏览
 - **详情：** `/console/kubernetes/{id}` — 选择命名空间；Deployment、Service、Pod、Secret、ConfigMap；Deployment 环境变量；Pod 日志；apply YAML；删除白名单对象；把 Service 登记到应用
 - **权限：** `console:kubernetes`（或 `all` / admin）
-- 表单：名称、描述、默认命名空间、可选 **API Server**（后端实际连接集群的地址）、kubeconfig YAML、可选 **跳过 TLS 校验**（仅实验/自签名环境）
+- 表单：名称、描述、默认命名空间、可选 **API Server**（后端实际连接集群的地址）、kubeconfig YAML、可选 **跳过 TLS 校验**（仅实验/自签名环境）、可选 **openKMS 运行在此集群内**（`options.direct_service_access`：托管应用直接访问 `*.svc.cluster.local`，不走 API Server 代理；见 [应用构建器](app-builder.md#module-hosted-services)）
 
 API 响应永不包含 kubeconfig 明文，仅返回 `kubeconfig_configured` 与非敏感字段。
 
@@ -40,7 +40,7 @@ API 响应永不包含 kubeconfig 明文，仅返回 `kubeconfig_configured` 与
 
 控制台行操作与 skill 一致：日志 Dialog、确认删除、apply Dialog、Secret/ConfigMap 编辑、Deployment **环境变量**。响应永不返回 kubeconfig。带 `openkms.io/project-id` 标签的 Secret 在控制台**只读**（请到「项目设置 → 部署」修改）。
 
-**登记到应用**（Service 行）：创建已发布的 `template_id=module` 应用，绑定 `cluster_id` / 命名空间 / Service / 端口。除 `console:kubernetes` 外还需 `ontology:write`。见 [应用构建器](app-builder.md#module-hosted-services)。
+**登记到应用**（Service 行）：创建已发布的 `template_id=module` 应用，绑定 `cluster_id` / 命名空间 / Service / 端口。除 `console:kubernetes` 外还需 `ontology:write`。见 [应用构建器](app-builder.md#module-hosted-services)。工作负载通过 openKMS 的[身份请求头](app-builder.md#module-identity-headers)获取当前用户，不应自建登录。
 
 ## 部署密钥（项目） {#deploy-secrets-projects}
 

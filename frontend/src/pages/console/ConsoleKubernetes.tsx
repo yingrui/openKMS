@@ -38,6 +38,7 @@ export function ConsoleKubernetes() {
   const [formKubeconfig, setFormKubeconfig] = useState('');
   const [formApiServer, setFormApiServer] = useState('');
   const [formInsecureSkipTls, setFormInsecureSkipTls] = useState(false);
+  const [formDirectServiceAccess, setFormDirectServiceAccess] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [testing, setTesting] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -67,6 +68,7 @@ export function ConsoleKubernetes() {
     setFormKubeconfig('');
     setFormApiServer('');
     setFormInsecureSkipTls(false);
+    setFormDirectServiceAccess(false);
     setShowForm(true);
   };
 
@@ -78,6 +80,7 @@ export function ConsoleKubernetes() {
     setFormKubeconfig('');
     setFormApiServer(row.api_server ?? '');
     setFormInsecureSkipTls(Boolean(row.options?.insecure_skip_tls_verify));
+    setFormDirectServiceAccess(Boolean(row.options?.direct_service_access));
     setShowForm(true);
   };
 
@@ -96,7 +99,10 @@ export function ConsoleKubernetes() {
     }
     setSubmitting(true);
     try {
-      const options = { insecure_skip_tls_verify: formInsecureSkipTls };
+      const options = {
+        insecure_skip_tls_verify: formInsecureSkipTls,
+        direct_service_access: formDirectServiceAccess,
+      };
       if (editItem) {
         await updateKubernetesCluster(editItem.id, {
           name: formName.trim(),
@@ -370,6 +376,12 @@ export function ConsoleKubernetes() {
           checked={formInsecureSkipTls}
           onChange={setFormInsecureSkipTls}
           title={t('kubernetes.fieldInsecureSkipTls')}
+        />
+        <CheckRow
+          checked={formDirectServiceAccess}
+          onChange={setFormDirectServiceAccess}
+          title={t('kubernetes.fieldDirectServiceAccess')}
+          hint={t('kubernetes.fieldDirectServiceAccessHint')}
         />
       </Dialog>
     </div>

@@ -228,9 +228,12 @@ def _verify_api_key_secret(secret: str, secret_hash: str) -> bool:
         return False
 
 
-async def authenticate_request(request: Request, db: AsyncSession) -> str:
-    """Bearer JWT or personal API key, session cookie JWT, or (local mode) HTTP Basic for CLI."""
-    auth_header = request.headers.get("Authorization")
+async def authenticate_request(request: Request, db: AsyncSession, *, session_only: bool = False) -> str:
+    """Bearer JWT or personal API key, session cookie JWT, or (local mode) HTTP Basic for CLI.
+
+    ``session_only`` ignores the Authorization header (it belongs to a proxied hosted app).
+    """
+    auth_header = None if session_only else request.headers.get("Authorization")
 
     if auth_header and auth_header.lower().startswith("bearer "):
         token = auth_header[7:].strip()
@@ -317,11 +320,13 @@ def require_permission(permission: str):
     return _check
 
 
-async def ensure_any_permission(request: Request, db: AsyncSession, *permissions: str) -> None:
+async def ensure_any_permission(
+    request: Request, db: AsyncSession, *permissions: str, session_only: bool = False
+) -> None:
     """Grant if admin, local-cli, all, or the user holds any of the given permission keys."""
     if not permissions:
         raise http_error(request, 500, "NO_PERMISSIONS_PROVIDED")
-    await authenticate_request(request, db)
+    await authenticate_request(request, db, session_only=session_only)
     payload = request.state.openkms_jwt_payload
     if jwt_payload_is_admin(payload):
         return
@@ -342,9 +347,9 @@ async def ensure_any_permission(request: Request, db: AsyncSession, *permissions
     raise http_error(request, 403, "MISSING_PERMISSION_ONE_OF", need=need)
 
 
-def require_any_permission(*permissions: str):
+def require_any_permission(*permissions: str, session_only: bool = False):
     async def _check(request: Request, db: AsyncSession = Depends(get_db)) -> None:
-        await ensure_any_permission(request, db, *permissions)
+        await ensure_any_permission(request, db, *permissions, session_only=session_only)
 
     return _check
 

@@ -295,6 +295,16 @@
   align-items: flex-start;
   gap: var(--space-4);
   margin-bottom: var(--space-4);
+
+  /* Long hint text must wrap; the action button keeps its natural width. */
+  > div:first-child {
+    min-width: 0;
+  }
+
+  > .btn {
+    flex-shrink: 0;
+    white-space: nowrap;
+  }
 }
 
 .project-deploy-kv {
@@ -308,7 +318,7 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  font-weight: var(--font-weight-medium);
+  gap: var(--space-2);
 }
 
 .project-deploy-kv__row {

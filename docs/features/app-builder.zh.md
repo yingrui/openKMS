@@ -239,7 +239,14 @@ Catalog id：`https://openkms.local/a2ui/catalogs/ontology-app/v1.json`。
 
 从 **控制台 → Kubernetes → Service → 登记到应用**，或 `kubernetes register-app` / `POST /api/app-builder/apps` 且 `template_id=module`。绑定写在 `bindings.k8s`：`cluster_id`、`namespace`、`service`、`port`、可选 `path` 前缀。创建即发布（无 A2UI Source）。
 
-**代理：** `GET|POST|… /api/app-builder/apps/{id}/proxy/{path}` → Kubernetes `/api/v1/namespaces/{ns}/services/{service}:{port}/proxy/{path}`。登录会话 cookie 认证（`ontology:read`）。kubeconfig 不离开服务端。只代理已登记的那一个 Service。
+**代理：** `GET|POST|… /api/app-builder/apps/{id}/proxy/{path}` 按集群设置二选一访问已登记的 Service：
+
+| 集群选项 | 上游 |
+|----------|------|
+| 默认 | Kubernetes `/api/v1/namespaces/{ns}/services/{service}:{port}/proxy/{path}` |
+| `direct_service_access`（openKMS 运行在该集群内） | `http://{service}.{ns}.svc.cluster.local:{port}/{path}` |
+
+kubeconfig 不离开服务端。只代理已登记的那一个 Service。用户身份按[身份请求头](#module-identity-headers)传递。
 
 **约束：**
 
@@ -247,7 +254,33 @@ Catalog id：`https://openkms.local/a2ui/catalogs/ontology-app/v1.json`。
 - 本版不做 WebSocket / Ingress / 公网 TLS。
 - 登记需要 `ontology:write` **和** `console:kubernetes`。打开/代理只需 `ontology:read`。
 
-画廊卡片区分 `a2ui` 与 `module`。`module` 的 Run 用 iframe 指向代理根路径。
+画廊卡片区分 `a2ui` 与 `module`。`module` 的 Run 用 iframe 指向代理根路径。Run 提供**全屏**，盖住 openKMS 壳层；用退出控件（可拖动，避免挡住内容）或 Escape 恢复（焦点在托管应用 iframe 内时 Escape 可能到不了宿主页）。
+
+#### 身份请求头（托管应用约定） {#module-identity-headers}
+
+托管应用**不**自己登录。openKMS 用**会话 cookie** 认证用户（`ontology:read`），并在**每个**代理请求（页面、静态资源、API 调用）上加以下请求头：
+
+| 请求头 | 值 |
+|--------|----|
+| `X-Openkms-User-Id` | 用户 ID（`sub`）；应用侧数据的稳定主键 |
+| `X-Openkms-Username` | 登录名 |
+| `X-Openkms-User-Name` | 显示名 |
+| `X-Openkms-User-Email` | 邮箱（未知时不发） |
+| `X-Openkms-User-Admin` | `true` / `false`（openKMS 管理员） |
+
+openKMS 保证：
+
+- 值为百分号编码的 UTF-8（用 `decodeURIComponent` / `urllib.parse.unquote` 解码）。
+- 浏览器自带的 `X-Openkms-*` 头会先被丢弃，再由 openKMS 设置。
+- 不转发 `Authorization` 和 `Cookie`；响应去掉 `Set-Cookie` 和 `WWW-Authenticate`。
+
+托管应用须：
+
+- 只从这些请求头读取身份；不自建登录页、会话或 token。
+- 按 `X-Openkms-User-Id` 关联用户数据（名字和邮箱可能变）。
+- 缺少 `X-Openkms-User-Id` 的请求视为未认证（如返回 `401`）。
+- 需要应用内角色时按用户 ID 自行映射；`X-Openkms-User-Admin` 只表示 openKMS 管理员。
+- **只能**经 openKMS 访问：不要配 Ingress / NodePort；集群内用 NetworkPolicy 限制调用方。否则能访问到 Service 的人都能伪造这些头。
 
 ## 后端代码
 

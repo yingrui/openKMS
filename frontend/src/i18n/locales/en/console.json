@@ -451,6 +451,8 @@
     "placeholderApiServer": "https://host:6443",
     "fieldKubeconfig": "kubeconfig",
     "fieldInsecureSkipTls": "Skip TLS verification (lab / self-signed only)",
+    "fieldDirectServiceAccess": "openKMS runs inside this cluster",
+    "fieldDirectServiceAccessHint": "Hosted apps call their Service directly instead of going through the cluster API. Leave off when openKMS runs outside the cluster.",
     "kubeconfigLeaveBlank": "(leave empty to keep current)",
     "kubeconfigHint": "Prefer token or certificate credentials in the kubeconfig. Client-side exec plugins may fail when the API tests the connection.",
     "placeholderName": "e.g. staging cluster",

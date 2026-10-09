@@ -23,7 +23,13 @@ from app.schemas.app_builder import (
 )
 from app.services.app_builder import service as apps_svc
 from app.services.credentials.credential_encryption import decrypt
-from app.services.kubernetes.cluster_service_proxy import join_proxy_path, proxy_service_async
+from app.services.kubernetes.cluster_service_proxy import (
+    identity_headers,
+    join_proxy_path,
+    proxy_service_async,
+    proxy_service_direct_async,
+    service_direct_base_url,
+)
 from app.services.permissions.permission_catalog import (
     PERM_CONSOLE_KUBERNETES,
     PERM_ONTOLOGY_READ,
@@ -31,6 +37,8 @@ from app.services.permissions.permission_catalog import (
 )
 
 _read_deps = [Depends(require_any_permission(PERM_ONTOLOGY_READ))]
+# The hosted app owns the Authorization header; openKMS authenticates the iframe by session cookie.
+_proxy_deps = [Depends(require_any_permission(PERM_ONTOLOGY_READ, session_only=True))]
 
 
 async def _to_list_item(db: AsyncSession, app) -> AppBuilderResponse:
@@ -229,21 +237,34 @@ def _register_routes(api: APIRouter) -> None:
         extra = join_proxy_path(k8s.get("path") if isinstance(k8s.get("path"), str) else None, path)
         query = [(k, v) for k, v in request.query_params.multi_items()]
         body = await request.body()
-        insecure = bool((cluster.options or {}).get("insecure_skip_tls_verify")) if cluster.options else False
+        options = cluster.options or {}
+        identity = identity_headers(getattr(request.state, "openkms_jwt_payload", None) or {})
         try:
-            status, headers, payload = await proxy_service_async(
-                kubeconfig,
-                method=request.method,
-                namespace=namespace,
-                service=service,
-                port=port,
-                extra_path=extra,
-                query=query,
-                body=body or None,
-                content_type=request.headers.get("content-type"),
-                insecure_skip_tls_verify=insecure,
-                api_server=cluster.api_server,
-            )
+            if options.get("direct_service_access"):
+                status, headers, payload = await proxy_service_direct_async(
+                    service_direct_base_url(namespace, service, port),
+                    method=request.method,
+                    extra_path=extra,
+                    query=query,
+                    body=body or None,
+                    headers=list(request.headers.items()),
+                    identity=identity,
+                )
+            else:
+                status, headers, payload = await proxy_service_async(
+                    kubeconfig,
+                    method=request.method,
+                    namespace=namespace,
+                    service=service,
+                    port=port,
+                    extra_path=extra,
+                    query=query,
+                    body=body or None,
+                    content_type=request.headers.get("content-type"),
+                    identity=identity,
+                    insecure_skip_tls_verify=bool(options.get("insecure_skip_tls_verify")),
+                    api_server=cluster.api_server,
+                )
         except ValueError as e:
             raise HTTPException(status_code=400, detail=str(e)) from e
         except Exception as e:
@@ -253,7 +274,7 @@ def _register_routes(api: APIRouter) -> None:
     @api.api_route(
         "/{app_id}/proxy",
         methods=_PROXY_METHODS,
-        dependencies=_read_deps,
+        dependencies=_proxy_deps,
         include_in_schema=True,
     )
     async def proxy_app_root(app_id: str, request: Request, db: AsyncSession = Depends(get_db)):
@@ -263,7 +284,7 @@ def _register_routes(api: APIRouter) -> None:
     @api.api_route(
         "/{app_id}/proxy/{path:path}",
         methods=_PROXY_METHODS,
-        dependencies=_read_deps,
+        dependencies=_proxy_deps,
         include_in_schema=True,
     )
     async def proxy_app_path(

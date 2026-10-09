@@ -11,6 +11,7 @@ import {
   type ProjectDeploySecretResponse,
 } from '../../data/projectDeploySecretsApi';
 import {
+  fetchClusterNamespaces,
   fetchKubernetesClusters,
   type KubernetesClusterResponse,
 } from '../../data/kubernetesClustersApi';
@@ -39,6 +40,9 @@ export function ProjectDeploySecretsTab({ projectId }: { projectId: string }) {
   const [kvRows, setKvRows] = useState<KvRow[]>([{ key: '', value: '' }]);
   const [submitting, setSubmitting] = useState(false);
   const [syncingId, setSyncingId] = useState<string | null>(null);
+  /** Namespaces on the selected cluster; null while loading or if the lookup failed. */
+  const [namespaces, setNamespaces] = useState<string[] | null>(null);
+  const [namespacesFailed, setNamespacesFailed] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -59,6 +63,28 @@ export function ProjectDeploySecretsTab({ projectId }: { projectId: string }) {
   useEffect(() => {
     void load();
   }, [load]);
+
+  /** Namespace is a cluster-scoped choice: reload options whenever the cluster changes. */
+  useEffect(() => {
+    if (!dialogOpen || !formClusterId) {
+      setNamespaces(null);
+      setNamespacesFailed(false);
+      return;
+    }
+    let cancelled = false;
+    setNamespaces(null);
+    setNamespacesFailed(false);
+    fetchClusterNamespaces(formClusterId)
+      .then((res) => {
+        if (!cancelled) setNamespaces(res.items.map((n) => n.name));
+      })
+      .catch(() => {
+        if (!cancelled) setNamespacesFailed(true);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [dialogOpen, formClusterId]);
 
   const openCreate = () => {
     setEditRow(null);
@@ -183,6 +209,15 @@ export function ProjectDeploySecretsTab({ projectId }: { projectId: string }) {
 
   const clusterName = (id: string | null) =>
     clusters.find((c) => c.id === id)?.name ?? id ?? '—';
+
+  /** Keep the secret's current namespace selectable even if the cluster no longer reports it. */
+  const namespaceOptions = (() => {
+    const base = namespaces ?? [];
+    const current = formNamespace.trim();
+    if (current && !base.includes(current)) return [current, ...base];
+    if (base.length === 0) return ['default'];
+    return base;
+  })();
 
   return (
     <section className="project-settings-section">
@@ -338,18 +373,33 @@ export function ProjectDeploySecretsTab({ projectId }: { projectId: string }) {
           </select>
         </FormField>
         <FormField label={t('settings.deployColNamespace')} htmlFor="deploy-secret-ns">
-          <input
-            id="deploy-secret-ns"
-            type="text"
-            value={formNamespace}
-            onChange={(e) => setFormNamespace(e.target.value)}
-            disabled={submitting}
-            spellCheck={false}
-          />
+          {namespacesFailed ? (
+            <input
+              id="deploy-secret-ns"
+              type="text"
+              value={formNamespace}
+              onChange={(e) => setFormNamespace(e.target.value)}
+              disabled={submitting}
+              spellCheck={false}
+            />
+          ) : (
+            <select
+              id="deploy-secret-ns"
+              value={formNamespace}
+              onChange={(e) => setFormNamespace(e.target.value)}
+              disabled={submitting || namespaces === null}
+            >
+              {namespaceOptions.map((ns) => (
+                <option key={ns} value={ns}>
+                  {ns}
+                </option>
+              ))}
+            </select>
+          )}
         </FormField>
         <div className="project-deploy-kv">
           <div className="project-deploy-kv__head">
-            <span>{t('settings.deployKeysHeading')}</span>
+            <span className="ds-field__label">{t('settings.deployKeysHeading')}</span>
             <button
               type="button"
               className="btn btn-secondary btn-sm"
@@ -363,6 +413,7 @@ export function ProjectDeploySecretsTab({ projectId }: { projectId: string }) {
             <div key={idx} className="project-deploy-kv__row">
               <input
                 type="text"
+                className="ds-control"
                 placeholder={t('settings.deployKeyPlaceholder')}
                 value={row.key}
                 onChange={(e) =>
@@ -375,6 +426,7 @@ export function ProjectDeploySecretsTab({ projectId }: { projectId: string }) {
               />
               <input
                 type="password"
+                className="ds-control"
                 placeholder={
                   editRow ? t('settings.deployValueKeepPlaceholder') : t('settings.deployValuePlaceholder')
                 }

@@ -12,5 +12,8 @@
   "componentsAria": "组件",
   "kindA2ui": "A2UI",
   "kindModule": "托管服务",
-  "moduleFrameTitle": "托管应用"
+  "moduleFrameTitle": "托管应用",
+  "fullscreen": "全屏",
+  "exitFullscreen": "退出全屏",
+  "exitFullscreenHint": "点击退出 · 拖动可挪开"
 }

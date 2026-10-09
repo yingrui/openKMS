@@ -16,6 +16,73 @@
   min-height: 0;
 }
 
+.apps-page--run-fullscreen {
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-modal);
+  min-height: 0;
+  height: 100dvh;
+  padding: 0;
+  gap: 0;
+  background: var(--color-bg, #fff);
+  overflow: hidden;
+}
+
+.apps-page__run-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-inline-start: auto;
+}
+
+.apps-page__fullscreen-btn {
+  appearance: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  padding: 0;
+  border: 1px solid color-mix(in srgb, var(--color-border) 70%, transparent);
+  border-radius: var(--radius-sm, 6px);
+  background: var(--color-bg-elevated, var(--color-bg, #fff));
+  color: var(--color-text-muted);
+  cursor: pointer;
+}
+
+.apps-page__fullscreen-btn:hover {
+  color: var(--color-text);
+  border-color: var(--color-border);
+}
+
+.apps-page__fullscreen-exit {
+  position: absolute;
+  z-index: 1;
+  appearance: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.35rem 0.65rem;
+  border: 1px solid color-mix(in srgb, var(--color-border) 70%, transparent);
+  border-radius: var(--radius-sm, 6px);
+  background: color-mix(in srgb, var(--color-bg-elevated, #fff) 92%, transparent);
+  color: var(--color-text);
+  font: inherit;
+  font-size: var(--text-sm, 0.875rem);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+}
+
+.apps-page__fullscreen-exit:hover {
+  background: var(--color-bg-elevated, #fff);
+}
+
+.apps-page__fullscreen-exit:active {
+  cursor: grabbing;
+}
+
 .apps-page__module-frame {
   flex: 1;
   width: 100%;
@@ -23,6 +90,20 @@
   border: 1px solid color-mix(in srgb, var(--color-border) 70%, transparent);
   border-radius: var(--radius-lg, 14px);
   background: var(--color-bg, #fff);
+}
+
+.apps-page--run-fullscreen .apps-page__module-frame,
+.apps-page--run-fullscreen .onto-app-a2ui.a2ui-platform-surface {
+  min-height: 0;
+  height: 100%;
+  border: none;
+  border-radius: 0;
+}
+
+.apps-page--run-fullscreen .apps-page__tabs {
+  flex-shrink: 0;
+  padding-inline: var(--space-3, 0.75rem);
+  padding-top: var(--space-2, 0.5rem);
 }
 
 /* Run surface: same muted canvas + inset as Design Preview (padding from AppA2uiSurface). */

@@ -18,9 +18,12 @@ Allowed kinds: **Deployment**, **Service**, **Pod**, **ConfigMap**. Cluster-scop
 
 ## Deploy secrets (database passwords, etc.)
 
-1. A human creates the secret in **Project settings → Deploy** (values encrypted in openKMS) and clicks **Sync to cluster**.
-2. You only see **names and key names** in the agent system context (never values).
-3. Reference them in Deployment YAML:
+1. **Check what already exists** in the target namespace before writing YAML:
+   `kubernetes secrets --cluster-id ID --namespace NS` — Secret names and **key names** only (values are never returned). `managed_by_project_id` is set when the Secret is synced from a Project's deploy secrets; other Secrets were created in the cluster directly. Both can be referenced.
+   Inside openKMS Agents the project's deploy secret names/keys are also in the system context; the cluster listing is still the source of truth for what is synced.
+2. Reuse an existing Secret/key when it fits. **Never invent** a Secret name or key that is not listed — the Pod will fail with `CreateContainerConfigError`.
+3. If a needed Secret/key is missing, stop and ask a human to add it in **Project settings → Deploy** (values encrypted in openKMS) and click **Sync to cluster**. Do not put the value in YAML or a ConfigMap.
+4. Reference it in Deployment YAML:
 
 ```yaml
 apiVersion: apps/v1
@@ -49,8 +52,8 @@ env:
         key: DATABASE_URL
 ```
 
-List cluster Opaque Secrets (keys only): `kubernetes secrets --cluster-id ID --namespace NS`.  
-Read Deployment env wiring: `kubernetes env --cluster-id ID --deployment NAME --namespace NS`.
+Non-secret config: `kubernetes configmaps --cluster-id ID --namespace NS` (includes values); reference with `configMapRef` / `configMapKeyRef` the same way.  
+Verify wiring after apply: `kubernetes env --cluster-id ID --deployment NAME --namespace NS` (shows refs, not secret values).
 
 ## Register in Apps
 
@@ -59,3 +62,5 @@ Register a Service as a **hosted App** (`template_id=module`, published immediat
 `kubernetes register-app --cluster-id ID --namespace NS --service NAME --port 80 --name "Web" --api-name webApp --yes`
 
 Needs **`console:kubernetes`** and **`ontology:write`**. The app is opened in Apps via the API-server Service proxy (no kubeconfig in the browser). The workload must work under a URL subpath or use relative assets. WebSocket is not proxied.
+
+Hosted apps should **not** implement their own sign-in. openKMS authenticates the user and sends `X-Openkms-User-Id`, `X-Openkms-Username`, `X-Openkms-User-Name`, `X-Openkms-User-Email`, `X-Openkms-User-Admin` (values percent-encoded UTF-8) on every proxied request; read identity from those headers, key user data by `X-Openkms-User-Id`, return `401` when it is missing. Do not expose the Service via Ingress / NodePort. Full contract: `docs/features/app-builder.md#module-identity-headers`.

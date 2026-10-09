@@ -451,6 +451,8 @@
     "placeholderApiServer": "https://host:6443",
     "fieldKubeconfig": "kubeconfig",
     "fieldInsecureSkipTls": "跳过 TLS 校验（仅用于实验/自签名环境）",
+    "fieldDirectServiceAccess": "openKMS 运行在此集群内",
+    "fieldDirectServiceAccessHint": "托管应用直接访问其 Service，不经过集群 API。openKMS 在集群外运行时请保持关闭。",
     "kubeconfigLeaveBlank": "（留空则保留当前配置）",
     "kubeconfigHint": "建议使用包含 token 或证书的 kubeconfig。若依赖客户端 exec 插件，服务端连通性测试可能失败。",
     "placeholderName": "例如：预发集群",

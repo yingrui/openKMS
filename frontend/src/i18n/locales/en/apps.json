@@ -12,5 +12,8 @@
   "componentsAria": "Components",
   "kindA2ui": "A2UI",
   "kindModule": "Hosted service",
-  "moduleFrameTitle": "Hosted app"
+  "moduleFrameTitle": "Hosted app",
+  "fullscreen": "Full screen",
+  "exitFullscreen": "Exit full screen",
+  "exitFullscreenHint": "Click to exit · drag to move"
 }

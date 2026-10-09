@@ -5,7 +5,8 @@ description: >-
   (no ad-hoc curl/HTTP). Covers search, documents/articles/wiki/KB, glossaries, knowledge-map,
   evaluations, data-sources/datasets/connectors/jobs, comments, media, ontology objects/links,
   Cypher/NL ask, functions/action-types/groups, App Builder apps (list/get/create/patch/publish),
-  and Kubernetes (list registered clusters; apply Deployment/Service/Pod/ConfigMap; logs).
+  and Kubernetes (list registered clusters; list Secret names/keys, ConfigMaps, Deployment env;
+  apply Deployment/Service/Pod/ConfigMap; logs).
   Write paths include sync, index, CRUD, function publish/execute, A2UI draft patch, kubernetes apply, and kubernetes register-app.
   Before Function --source-code-file: MUST read references/functions-authoring.md.
   Before ontology action-types create|update|delete|execute: MUST read references/actions-authoring.md.
@@ -185,6 +186,8 @@ Some practical guidance:
 | List connector kinds / connectors | `python scripts/cli.py connectors kinds` / `connectors list` |
 | Get job | `python scripts/cli.py jobs get --id JOB_ID` |
 | List registered Kubernetes clusters | `python scripts/cli.py kubernetes clusters list` |
+| List Secrets in a namespace (names + keys, no values) | `python scripts/cli.py kubernetes secrets --cluster-id ID --namespace NS` |
+| List ConfigMaps / Deployment env refs | `kubernetes configmaps --cluster-id ID --namespace NS` / `kubernetes env --cluster-id ID --deployment NAME --namespace NS` |
 | List comments | `python scripts/cli.py comments list --resource-type document --resource-id ID` |
 | List media | `python scripts/cli.py media list [--channel-id ID]` |
 | Get one evaluation's metadata | `python scripts/cli.py evaluations get --id DS_ID` |
