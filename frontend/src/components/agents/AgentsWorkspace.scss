@@ -1251,14 +1251,17 @@ $agents-pane-header-height: 49px;
 }
 
 .agents-scm-changes {
-  flex: 1;
+  /* Bounded: long change lists scroll instead of squeezing the commit history out. */
+  flex: 0 1 auto;
   min-height: 0;
+  max-height: 55%;
   overflow: auto;
   padding: 4px 0;
 }
 
 .agents-scm-changes--empty {
   flex: 0 0 auto;
+  max-height: none;
   overflow: visible;
   padding: 0;
 }
@@ -1332,7 +1335,7 @@ $agents-pane-header-height: 49px;
   align-items: center;
   justify-content: center;
   gap: var(--space-2);
-  padding: var(--space-4) var(--space-3);
+  padding: var(--space-3);
   color: var(--color-text-muted);
   text-align: center;
   font-size: 0.8125rem;
@@ -1492,11 +1495,11 @@ $agents-pane-header-height: 49px;
 }
 
 .agents-scm-commits {
-  flex-shrink: 0;
+  /* Fills whatever the change list left over, so the rail has no dead space. */
+  flex: 1 1 auto;
   display: flex;
   flex-direction: column;
   min-height: 0;
-  max-height: 40%;
   border-top: 1px solid var(--color-border);
 }
 
