@@ -58,6 +58,28 @@ def _create_or_patch(*, create, patch, conflict_is_409: bool = True) -> str:
         return "patched"
 
 
+def service_patch_body(body: dict[str, Any]) -> dict[str, Any]:
+    """Prepare a Service body for strategic-merge patch.
+
+    Service ``spec.ports`` merges by port number, so changing 80→3200 would leave
+    both entries. Inject ``$patch: replace`` so the ports list is replaced wholesale.
+    """
+    spec = body.get("spec")
+    if not isinstance(spec, dict) or "ports" not in spec:
+        return body
+    ports = spec.get("ports")
+    if not isinstance(ports, list):
+        return body
+    cleaned = [p for p in ports if isinstance(p, dict) and "$patch" not in p]
+    return {
+        **body,
+        "spec": {
+            **spec,
+            "ports": [{"$patch": "replace"}, *cleaned],
+        },
+    }
+
+
 def _apply_docs_sync(
     kubeconfig: dict[str, Any],
     docs: list[dict[str, Any]],
@@ -83,9 +105,10 @@ def _apply_docs_sync(
                     patch=lambda b=body, n=ns, nm=name: apps.patch_namespaced_deployment(nm, n, b),
                 )
             elif kind == "Service":
+                patch_body = service_patch_body(body)
                 action = _create_or_patch(
                     create=lambda b=body, n=ns: core.create_namespaced_service(n, b),
-                    patch=lambda b=body, n=ns, nm=name: core.patch_namespaced_service(nm, n, b),
+                    patch=lambda b=patch_body, n=ns, nm=name: core.patch_namespaced_service(nm, n, b),
                 )
             elif kind == "Pod":
                 action = _create_or_patch(

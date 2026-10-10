@@ -1,10 +1,12 @@
 """FastAPI application entry point."""
 
 import logging
+import traceback
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from starlette.middleware.sessions import SessionMiddleware
 
 from app.api.auth import api_auth_router, router as auth_router
@@ -109,6 +111,24 @@ app = FastAPI(
     version=settings.app_version,
     lifespan=lifespan,
 )
+
+
+@app.exception_handler(Exception)
+async def unhandled_exception_handler(request: Request, exc: Exception):
+    """Return JSON for unexpected errors so CLI/Agents can diagnose (not plain text).
+
+    HTTPException / RequestValidationError keep FastAPI's built-in handlers (more specific).
+    When ``OPENKMS_DEBUG`` is true, include a truncated traceback.
+    """
+    logger.exception("Unhandled error on %s %s", request.method, request.url.path)
+    detail: dict[str, str] = {
+        "type": type(exc).__name__,
+        "message": str(exc).strip() or type(exc).__name__,
+    }
+    if settings.debug:
+        detail["traceback"] = traceback.format_exc()[-4000:]
+    return JSONResponse(status_code=500, content={"detail": detail})
+
 
 # Order: each add_middleware wraps the stack; last added is outermost on the request.
 # Session must run before StrictPermissionPatternMiddleware (which calls require_auth).

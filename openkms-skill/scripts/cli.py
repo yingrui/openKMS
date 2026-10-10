@@ -30,7 +30,9 @@ def main() -> None:
     except httpx.HTTPStatusError as e:
         detail = e.response.text
         try:
-            detail = json.dumps(e.response.json(), indent=2, ensure_ascii=False)
+            payload = e.response.json()
+            # Prefer structured detail from openKMS ({"detail": {"type","message",...}}).
+            detail = json.dumps(payload, indent=2, ensure_ascii=False)
         except Exception:
             pass
         print(f"HTTP {e.response.status_code}\n{detail}", file=sys.stderr)
