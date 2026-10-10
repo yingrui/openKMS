@@ -189,7 +189,7 @@ Some practical guidance:
 | List registered Kubernetes clusters | `python scripts/cli.py kubernetes clusters list` |
 | List Secrets in a namespace (names + keys, no values) | `python scripts/cli.py kubernetes secrets --cluster-id ID --namespace NS` |
 | List ConfigMaps / Deployment env refs | `kubernetes configmaps --cluster-id ID --namespace NS` / `kubernetes env --cluster-id ID --deployment NAME --namespace NS` |
-| Sync project files into a dev Pod (hot reload) | `kubernetes dev-sync --project-id ID --cluster-id ID --deployment NAME --local-path REL --container-path /abs --yes` |
+| Sync Agent Project workspace into a dev Pod (hot reload; not an external clone) | `kubernetes dev-sync --project-id ID --cluster-id ID --deployment NAME --local-path REL --container-path /abs --yes` |
 | List comments | `python scripts/cli.py comments list --resource-type document --resource-id ID` |
 | List media | `python scripts/cli.py media list [--channel-id ID]` |
 | Get one evaluation's metadata | `python scripts/cli.py evaluations get --id DS_ID` |
@@ -284,7 +284,7 @@ Same confirmation rules as other writes.
 | Put document markdown | `documents put-markdown --id DOC --file ./x.md --yes` |
 | Export document zip | `documents export --id DOC --out ./doc.zip --yes` |
 | Apply Deployment/Service YAML to a registered cluster | **Read [references/kubernetes.md](references/kubernetes.md) first**, then `kubernetes apply --cluster-id ID --file ./deploy.yaml --namespace default --yes` |
-| Sync local project files into a running dev Pod | **Read [references/kubernetes.md](references/kubernetes.md) first**, then `kubernetes dev-sync --project-id ID --cluster-id ID --deployment NAME --local-path REL --container-path /abs [--reload] --yes` |
+| Sync **Agent Project** workspace files into a running dev Pod | **Read [references/kubernetes.md](references/kubernetes.md) first** (do **not** `PUT …/files/content` to mirror another clone), then `kubernetes dev-sync --project-id ID --cluster-id ID --deployment NAME --local-path REL --container-path /abs [--reload] --yes` |
 | Delete a Service or Deployment | `kubernetes delete --cluster-id ID --kind Service --name NAME --namespace default --yes` |
 | Register a Service as a hosted App | `kubernetes register-app --cluster-id ID --namespace default --service NAME --port 80 --name "Web" --api-name webApp --yes` |
 

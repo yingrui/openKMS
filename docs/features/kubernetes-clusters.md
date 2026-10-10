@@ -34,7 +34,7 @@ Prefer kubeconfigs that use **token** or **client certificate** credentials. Cli
 | `GET …/pods?namespace=` | Pods in a namespace |
 | `GET …/services?namespace=` | Services (name, type, ClusterIP, ports) |
 | `GET …/pods/{name}/logs` | Recent Pod logs (`tail`, optional `container`) |
-| `POST …/apply` | Create or patch YAML (`Deployment`, `Service`, `Pod`, `ConfigMap`) — **not** `Secret` |
+| `POST …/apply` | Create or patch YAML (`Deployment`, `Service`, `Pod`, `ConfigMap`) — **not** `Secret`. Service `spec.ports` is **replaced** on patch (so changing port 80→3200 does not leave both). |
 | `POST …/delete` | Delete one allowlisted namespaced object |
 | `GET|PUT|DELETE …/secrets[/{name}]` | Opaque Secrets (keys only on GET; values write-only) |
 | `GET|PUT|DELETE …/configmaps[/{name}]` | ConfigMaps (data visible) |
@@ -50,7 +50,7 @@ Operators store encrypted key/values under **Project settings → Deploy**, then
 
 ## Dev sync (projects) {#dev-sync}
 
-`POST /api/projects/{id}/kubernetes/dev-sync` packs a project subtree (relative `local_path`) and extracts it into the newest Ready Pod of a Deployment (`container_path`). Optional `reload` POSTs a webhook inside the container. Requires **`projects:write`** and **`console:kubernetes`**. Packed size capped at 32 MiB; common build dirs are excluded. Skill: `kubernetes dev-sync`. Prefer a separate **dev** Deployment (`replicas: 1`) from the Service registered in Apps. Kubeconfig never leaves the server.
+`POST /api/projects/{id}/kubernetes/dev-sync` packs a project subtree (relative `local_path`) and extracts it into the newest Ready Pod of a Deployment (`container_path`). Optional `reload` POSTs a webhook inside the container. Requires **`projects:write`** and **`console:kubernetes`**. Packed size capped at 32 MiB; common build dirs are excluded. Skill: `kubernetes dev-sync`. Prefer a separate **dev** Deployment (`replicas: 1`) from the Service registered in Apps. Kubeconfig never leaves the server. Agents must not use `PUT /api/projects/{id}/files/content` to mirror an external checkout into the project before sync — edit in the project or git pull, then `dev-sync` (see skill `references/kubernetes.md`).
 
 ## Agents
 

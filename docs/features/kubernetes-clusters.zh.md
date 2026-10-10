@@ -32,7 +32,7 @@ API 响应永不包含 kubeconfig 明文，仅返回 `kubeconfig_configured` 与
 | `GET …/pods?namespace=` | 指定命名空间的 Pod |
 | `GET …/services?namespace=` | Service（名称、类型、ClusterIP、端口） |
 | `GET …/pods/{name}/logs` | 最近 Pod 日志（`tail`，可选 `container`） |
-| `POST …/apply` | 创建或 patch YAML（`Deployment`、`Service`、`Pod`、`ConfigMap`）— **不含** `Secret` |
+| `POST …/apply` | 创建或 patch YAML（`Deployment`、`Service`、`Pod`、`ConfigMap`）— **不含** `Secret`。Service 的 `spec.ports` 在 patch 时**整表替换**（改端口 80→3200 不会留下两条）。 |
 | `POST …/delete` | 删除一个白名单 namespaced 对象 |
 | `GET|PUT|DELETE …/secrets[/{name}]` | Opaque Secret（GET 仅 keys；值只写） |
 | `GET|PUT|DELETE …/configmaps[/{name}]` | ConfigMap（数据可见） |
@@ -48,7 +48,7 @@ API 响应永不包含 kubeconfig 明文，仅返回 `kubeconfig_configured` 与
 
 ## 开发同步（项目） {#dev-sync}
 
-`POST /api/projects/{id}/kubernetes/dev-sync` 打包项目子树（相对路径 `local_path`），解压到 Deployment 下最新 Ready Pod 的 `container_path`。可选 `reload` 在容器内 POST 热重载接口。需要 **`projects:write`** 与 **`console:kubernetes`**。打包上限 32 MiB，并排除常见构建目录。Skill：`kubernetes dev-sync`。建议用独立的 **dev** Deployment（`replicas: 1`），与登记到应用的 Service 分开。kubeconfig 不离开服务端。
+`POST /api/projects/{id}/kubernetes/dev-sync` 打包项目子树（相对路径 `local_path`），解压到 Deployment 下最新 Ready Pod 的 `container_path`。可选 `reload` 在容器内 POST 热重载接口。需要 **`projects:write`** 与 **`console:kubernetes`**。打包上限 32 MiB，并排除常见构建目录。Skill：`kubernetes dev-sync`。建议用独立的 **dev** Deployment（`replicas: 1`），与登记到应用的 Service 分开。kubeconfig 不离开服务端。Agent 不得用 `PUT /api/projects/{id}/files/content` 把外部仓库镜像进项目再同步——应在项目内改，或 git pull 后再 `dev-sync`（见 skill `references/kubernetes.md`）。
 
 ## Agents
 

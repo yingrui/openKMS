@@ -14,11 +14,13 @@ Requires **`console:kubernetes`** (or `all`) on the API key. Register clusters i
 
 Allowed kinds: **Deployment**, **Service**, **Pod**, **ConfigMap**. Cluster-scoped objects (ClusterRole, PV, …) and **Secret** are rejected — do not put passwords in apply YAML or ConfigMaps.
 
-`apply` creates or patches. Delete with `kubernetes delete --kind Service --name NAME --yes`.
+`apply` creates or patches. Service **ports are replaced** on patch (changing `port: 80` → `3200` does not stack both). Delete with `kubernetes delete --kind Service --name NAME --yes`.
+
+Unhandled API failures return JSON `{"detail": {"type", "message"}}` (plus `traceback` when the server has `OPENKMS_DEBUG=true`); the CLI prints that body on stderr.
 
 ## Dev sync (on-demand hot reload)
 
-Use this when iterating on code **without** rebuilding an image. The backend packs a project subtree and extracts it into a Running Pod via the API (kubeconfig never reaches the agent). One-shot; no long-lived sync process.
+Use this when iterating on code **without** rebuilding an image. The backend packs a **project workspace** subtree (on the openKMS server) and extracts it into a Running Pod via the API (kubeconfig never reaches the agent). One-shot; no long-lived sync process.
 
 ```bash
 kubernetes dev-sync \
@@ -32,14 +34,35 @@ kubernetes dev-sync \
   --yes
 ```
 
+`--local-path` is relative to that **Agent Project** root, not to an arbitrary Cursor/IDE clone on the operator’s laptop.
+
 Needs **`projects:write`** and **`console:kubernetes`**. Caps: packed size ≤ 32 MiB; excludes `.git`, `node_modules`, `__pycache__`, `.venv`, `dist`, `build`, …
+
+### Do not mirror external checkouts into the project
+
+`dev-sync` only reads the project workspace → Pod. It does **not** pull from git and does **not** accept files from your local disk.
+
+**Forbidden** (unless the user explicitly asks to edit the project tree):
+
+- `PUT /api/projects/{id}/files/content` (or any ad-hoc HTTP) to copy a side checkout into the Agent Project so `dev-sync` “sees” your edits
+- Bulk-writing app source into the project as a hot-deploy bridge from Cursor / another clone
+- Leaving uncommitted copies of the same change in both a local repo and the project workspace
+
+**Do instead**
+
+| Where you are editing | What to do |
+|----------------------|------------|
+| openKMS Agents (cwd = project root) | Edit files in the project, then `kubernetes dev-sync` |
+| Separate git clone (Cursor, etc.) | Commit + push, then **Pull** in the Agent Project (UI / `…/git/pull`), then `dev-sync` — or ask the user to work inside Agents |
+
+Normal authoring **inside** the project (deploy YAML, app code the user asked you to change) is fine. The ban is on using the project files API as a silent sync from somewhere else.
 
 **When to use**
 
 | Goal | Command |
 |------|---------|
 | First deploy / change image, ports, env | `kubernetes apply` |
-| Push local edits into an existing **dev** Pod | `kubernetes dev-sync` |
+| Push **project workspace** edits into an existing **dev** Pod | `kubernetes dev-sync` |
 | Publish for end users in Apps | `kubernetes register-app` (stable Service; not the hot-sync target) |
 
 **Remote expectations:** prefer a **dev** Deployment with `replicas: 1`, separate from the published module App. The container should either watch files (e.g. nodemon / `uvicorn --reload`) or expose `POST /-/reload` (override with `--reload-path` / `--reload-port`). Without a watcher or `--reload`, files land on disk but the process may keep old code in memory.
