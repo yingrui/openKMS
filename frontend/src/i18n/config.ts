@@ -46,8 +46,6 @@ import enMedia from './locales/en/media.json';
 import zhMedia from './locales/zh-CN/media.json';
 import enOntology from './locales/en/ontology.json';
 import zhOntology from './locales/zh-CN/ontology.json';
-import enAppBuilder from './locales/en/appBuilder.json';
-import zhAppBuilder from './locales/zh-CN/appBuilder.json';
 import enApps from './locales/en/apps.json';
 import zhApps from './locales/zh-CN/apps.json';
 
@@ -112,7 +110,6 @@ void i18n
       'comments',
       'media',
       'ontology',
-      'appBuilder',
       'apps',
     ],
     defaultNS: 'common',
@@ -146,7 +143,6 @@ void i18n
         comments: enComments,
         media: enMedia,
         ontology: enOntology,
-        appBuilder: enAppBuilder,
         apps: enApps,
       },
       'zh-CN': {
@@ -172,7 +168,6 @@ void i18n
         comments: zhComments,
         media: zhMedia,
         ontology: zhOntology,
-        appBuilder: zhAppBuilder,
         apps: zhApps,
       },
     },

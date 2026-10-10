@@ -19,7 +19,7 @@ type Props = {
 };
 
 export function ModuleServiceBindingEditor({ initial, saving, onSave }: Props) {
-  const { t } = useTranslation('appBuilder');
+  const { t } = useTranslation('apps');
   const [clusters, setClusters] = useState<KubernetesClusterResponse[]>([]);
   const [clusterId, setClusterId] = useState(initial?.cluster_id ?? '');
   const [namespace, setNamespace] = useState(initial?.namespace ?? 'default');

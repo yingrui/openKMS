@@ -1,4 +1,4 @@
-"""Schemas for App Builder / Apps runtime."""
+"""Schemas for module Apps (hosted Kubernetes Service) registry + runtime."""
 
 from __future__ import annotations
 
@@ -9,7 +9,7 @@ from pydantic import BaseModel, Field
 
 
 class AppBuilderK8sBinding(BaseModel):
-    """Hosted HTTP Service (module apps). Stored under bindings.k8s."""
+    """Hosted HTTP Service. Stored under bindings.k8s."""
 
     cluster_id: str
     namespace: str
@@ -19,33 +19,20 @@ class AppBuilderK8sBinding(BaseModel):
 
 
 class AppBuilderBindings(BaseModel):
-    """Resource allowlist for an app (all lanes). Not a UI layout."""
+    """Module app bindings (Kubernetes Service only)."""
 
-    objectTypes: list[str] | None = None
-    actions: list[str] | None = None
-    functions: list[str] | None = None
     k8s: AppBuilderK8sBinding | None = None
 
 
-AppKind = Literal["a2ui", "module"]
-
-
-class AppBuilderComponent(BaseModel):
-    """One artifact: an A2UI surface (messages) with name / order / default flag."""
-
-    id: str
-    name: str = ""
-    position: int = 0
-    is_default: bool = False
-    messages: list[dict[str, Any]] = Field(default_factory=list)
+AppKind = Literal["module"]
 
 
 class AppBuilderCreate(BaseModel):
     name: str = Field(min_length=1, max_length=256)
     api_name: str = Field(min_length=1, max_length=128)
     description: str | None = None
-    template_id: str = "a2ui"
-    """App kind: a2ui (Source) or module (proxied Kubernetes Service)."""
+    template_id: str = "module"
+    """Must be ``module`` (hosted Service)."""
     bindings: AppBuilderBindings | None = None
 
 
@@ -53,11 +40,6 @@ class AppBuilderUpdate(BaseModel):
     name: str | None = None
     description: str | None = None
     bindings: AppBuilderBindings | None = None
-    components: list[AppBuilderComponent] | None = None
-
-
-class AppBuilderPublishIn(BaseModel):
-    components: list[AppBuilderComponent] | None = None
 
 
 class AppBuilderResponse(BaseModel):
@@ -66,7 +48,7 @@ class AppBuilderResponse(BaseModel):
     api_name: str
     description: str | None = None
     template_id: str
-    app_kind: str = "a2ui"
+    app_kind: str = "module"
     bindings: dict[str, Any]
     status: str
     bindings_hash: str | None = None
@@ -89,9 +71,7 @@ class AppBuilderVersionOut(BaseModel):
     is_current: bool = False
 
 
-class AppBuilderDesignResponse(AppBuilderResponse):
-    components: list[AppBuilderComponent] = Field(default_factory=list)
-
-
 class AppBuilderRunResponse(AppBuilderResponse):
-    components: list[AppBuilderComponent] = Field(default_factory=list)
+    """Runtime document for Apps Run (module iframe; no A2UI components)."""
+
+    pass

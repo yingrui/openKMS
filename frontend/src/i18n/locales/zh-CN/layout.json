@@ -106,7 +106,6 @@
   "appTaglineOntologyManager": "治理类型、函数与操作",
   "appTaglineObjectExplorer": "浏览对象、链接并查询图",
   "appTaglineFunctionEditor": "编写并预览 Python 逻辑",
-  "appTaglineAppBuilder": "基于本体设计 A2UI 应用",
-  "appTaglineApps": "运行已发布的本体应用",
+  "appTaglineApps": "打开、配置与管理托管应用",
   "appTaglineEvaluations": "评测与改进回答质量"
 }

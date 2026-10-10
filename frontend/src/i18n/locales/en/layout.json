@@ -106,7 +106,6 @@
   "appTaglineOntologyManager": "Govern types, functions, and actions",
   "appTaglineObjectExplorer": "Browse objects, links, and query the graph",
   "appTaglineFunctionEditor": "Author and preview Python logic",
-  "appTaglineAppBuilder": "Design A2UI apps on your ontology",
-  "appTaglineApps": "Run published ontology apps",
+  "appTaglineApps": "Open, configure, and manage hosted apps",
   "appTaglineEvaluations": "Measure and improve answer quality"
 }

@@ -278,18 +278,15 @@ The bundled **openkms-skill** CLI wraps **lifecycle** and **relationships** the 
 | POST | `/api/ontology/action-types/{id}/execute` | Run Action: **built-in** `object_create` / `object_modify` / `object_delete` (no Function) or Function + audit + `output.edits`; response may include `applied` |
 | PATCH | `/api/ontology/action-types/{id}` | Update Action; switching `rule_type` to built-in clears `function_id` when omitted |
 | DELETE | `/api/ontology/action-types/{id}` | Delete Action (frees `api_name`; archive alone does not) |
-| GET | `/api/app-builder/apps` | List apps (`?status=published`); `ontology:read` |
-| POST | `/api/app-builder/apps` | Create app (name + api_name; optional resource allowlist in `bindings`; `template_id=module` + `bindings.k8s` publishes immediately; module also needs `console:kubernetes`) (`ontology:write`) |
+| GET | `/api/app-builder/apps` | List **module** apps (`?status=`); `ontology:read` |
+| POST | `/api/app-builder/apps` | Create module app (`bindings.k8s` required; publishes immediately; needs `console:kubernetes` + `ontology:write`) |
 | GET | `/api/app-builder/apps/{id}` | Published run document only (404 if draft) |
-| GET/POST/PUT/PATCH/DELETE | `/api/app-builder/apps/{id}/proxy/{path}` | Module apps: HTTP proxy to the bound Kubernetes Service (`ontology:read`) |
-| GET | `/api/app-builder/apps/{id}/design` | Draft artifacts for App Builder |
-| PATCH | `/api/app-builder/apps/{id}` | Update metadata / resource allowlist (`bindings`) / `components` |
+| GET/POST/PUT/PATCH/DELETE | `/api/app-builder/apps/{id}/proxy/{path}` | HTTP proxy to the bound Kubernetes Service (`ontology:read`, session cookie) |
+| PATCH | `/api/app-builder/apps/{id}` | Update metadata / `bindings.k8s` |
 | DELETE | `/api/app-builder/apps/{id}` | Delete app |
-| POST | `/api/app-builder/apps/{id}/synthesize` | Reset draft to **stub** artifact (explicit; does not synthesize domain UI) |
-| POST | `/api/app-builder/apps/{id}/publish` | Publish draft (requires resolved resources + valid components; snapshot → new version) |
+| POST | `/api/app-builder/apps/{id}/publish` | New bindings snapshot |
 | POST | `/api/app-builder/apps/{id}/unpublish` | Clear published; status → draft |
 | GET | `/api/app-builder/apps/{id}/versions` | List published versions |
-| POST | `/api/app-builder/apps/{id}/versions/{version_id}/rollback` | Rollback published to a version |
 | GET | `/api/data-sources` | List data sources (`limit`, `offset`; `console:data_sources`) |
 | POST | `/api/data-sources` | Create data source (`console:data_sources`) |
 | GET | `/api/data-sources/{id}` | Get data source (`console:data_sources`) |

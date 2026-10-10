@@ -19,7 +19,7 @@ Per-feature reference, split by topic under `docs/features/`. The table below is
 | [Global search](features/global-search.md) | `/search` page: documents, articles, wiki spaces, knowledge bases, media (name, channel, updated filters) |
 | [Ontology — objects, links, datasets](features/ontology.md) | Object/link types, instances, data sources, datasets |
 | [Ontology Functions](features/ontology-functions.md) | Three Suite Apps (Manager, Object Explorer, Function Editor), PG-backed functions, ofs runtime |
-| [App Builder & Apps](features/app-builder.md) | Platform app authoring: Resources + host events + multi-artifact a2ui; hosted Kubernetes Service (`module`) via API-server proxy; compose via Source or skill; versioned publish/rollback; run in Apps. Composed boards (e.g. Kanban sample) are demos — [known limitations](features/app-builder.md#known-limitations-engineering-gaps) |
+| [Apps (hosted modules)](features/app-builder.md) | Register Kubernetes Services as Apps; API-server proxy + identity headers; gallery / run / registry settings |
 | [Ontology Function Client](features/ontology-sdk.md) | `openkms_functions` Client / `@function` / edits; string api names |
 | [Object Explorer](features/object-explorer.md) | Cypher exploration, list view, instance graph layout and rendering |
 | [Pipelines, jobs & models](features/pipelines-and-jobs.md) | Pipeline templates, procrastinate jobs, provider/model registry (multimodal image/video models planned) |

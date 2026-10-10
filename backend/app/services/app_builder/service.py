@@ -1,9 +1,7 @@
-"""CRUD, resource resolution, publish/unpublish for App Builder apps."""
+"""CRUD + publish snapshots for module (hosted Kubernetes Service) Apps."""
 
 from __future__ import annotations
 
-import hashlib
-import json
 import uuid
 from typing import Any
 
@@ -11,20 +9,10 @@ from fastapi import HTTPException
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models.object_type import ObjectType
-from app.models.app_builder import AppBuilderApp, AppBuilderComponent, AppBuilderPublishedVersion
+from app.models.app_builder import AppBuilderApp, AppBuilderPublishedVersion
 from app.models.kubernetes_cluster import KubernetesCluster
-from app.models.ontology_function import OntologyActionType, OntologyFunction
 from app.schemas.app_builder import AppBuilderBindings, AppBuilderCreate, AppBuilderUpdate
-from app.services.app_builder.a2ui import (
-    component_id,
-    normalize_resources,
-    reject_legacy_board_bindings,
-    resources_nonempty,
-    synthesize_stub_components,
-    validate_app_a2ui_messages,
-    validate_app_components,
-)
+from app.services.app_builder.k8s_binding import normalize_module_bindings
 
 APP_ID_PREFIX = "oa-"
 ID_HEX = 12
@@ -34,83 +22,22 @@ def new_app_id() -> str:
     return f"{APP_ID_PREFIX}{uuid.uuid4().hex[:ID_HEX]}"
 
 
+def new_version_id() -> str:
+    return str(uuid.uuid4())
+
+
 def bindings_as_dict(bindings: AppBuilderBindings | dict[str, Any] | None) -> dict[str, Any]:
     if bindings is None:
-        return {}
+        raise ValueError("module apps require bindings.k8s")
     if isinstance(bindings, AppBuilderBindings):
         raw = bindings.model_dump(exclude_none=True)
     else:
         raw = dict(bindings)
-    reject_legacy_board_bindings(raw)
-    return normalize_resources(raw)
+    return normalize_module_bindings(raw)
 
 
 def app_kind_of(app: AppBuilderApp) -> str:
-    tid = (app.template_id or "a2ui").strip() or "a2ui"
-    return tid if tid in ("a2ui", "module") else "a2ui"
-
-
-def component_to_dict(c: AppBuilderComponent) -> dict[str, Any]:
-    messages = c.a2ui_messages if isinstance(c.a2ui_messages, list) else []
-    return {
-        "id": c.id,
-        "name": c.name or "",
-        "position": c.position or 0,
-        "is_default": bool(c.is_default),
-        "messages": messages,
-    }
-
-
-async def resolve_bindings_snapshot(
-    db: AsyncSession, bindings: dict[str, Any]
-) -> tuple[dict[str, str], list[str]]:
-    """Return resolved id map and list of missing resource keys."""
-    resources = normalize_resources(bindings)
-    resolved: dict[str, str] = {}
-    missing: list[str] = []
-
-    for name in resources.get("objectTypes") or []:
-        ot = (await db.execute(select(ObjectType).where(ObjectType.name == name))).scalar_one_or_none()
-        if not ot:
-            ot = await db.get(ObjectType, name)
-        if ot:
-            resolved[f"objectTypes:{name}"] = ot.id
-        else:
-            missing.append(f"objectTypes:{name}")
-
-    for api in resources.get("actions") or []:
-        row = (
-            await db.execute(select(OntologyActionType).where(OntologyActionType.api_name == str(api)))
-        ).scalar_one_or_none()
-        if row:
-            resolved[f"actions:{api}"] = row.id
-        else:
-            missing.append(f"actions:{api}")
-
-    for api in resources.get("functions") or []:
-        row = (
-            await db.execute(select(OntologyFunction).where(OntologyFunction.api_name == str(api)))
-        ).scalar_one_or_none()
-        if row:
-            resolved[f"functions:{api}"] = row.id
-        else:
-            missing.append(f"functions:{api}")
-
-    return resolved, missing
-
-
-def compute_bindings_hash(resolved: dict[str, str]) -> str:
-    blob = json.dumps(resolved, sort_keys=True, separators=(",", ":"))
-    return hashlib.sha256(blob.encode("utf-8")).hexdigest()
-
-
-async def compute_live_bindings_hash(db: AsyncSession, bindings: dict[str, Any]) -> tuple[str | None, list[str]]:
-    resolved, missing = await resolve_bindings_snapshot(db, bindings)
-    if missing:
-        return None, missing
-    if not resolved:
-        return None, ["resources"] if not resources_nonempty(bindings) else missing
-    return compute_bindings_hash(resolved), missing
+    return "module"
 
 
 def to_response_base(
@@ -118,17 +45,15 @@ def to_response_base(
     *,
     stale: bool = False,
     missing: list[str] | None = None,
-    has_draft: bool = False,
     published_version: int | None = None,
 ) -> dict[str, Any]:
-    kind = app_kind_of(app)
     return {
         "id": app.id,
         "name": app.name,
         "api_name": app.api_name,
         "description": app.description,
-        "template_id": app.template_id,
-        "app_kind": kind,
+        "template_id": app.template_id or "module",
+        "app_kind": "module",
         "bindings": app.bindings or {},
         "status": app.status,
         "bindings_hash": app.bindings_hash,
@@ -139,7 +64,7 @@ def to_response_base(
         "created_at": app.created_at,
         "updated_at": app.updated_at,
         "published_version": published_version,
-        "has_draft": has_draft,
+        "has_draft": False,
         "has_published": app.published_version_id is not None,
     }
 
@@ -157,25 +82,12 @@ async def _require_k8s_cluster(db: AsyncSession, bindings: dict[str, Any]) -> di
 
 async def enrich_stale(db: AsyncSession, app: AppBuilderApp) -> tuple[bool, list[str]]:
     bindings = app.bindings or {}
-    if not bindings:
-        return False, []
-    if app_kind_of(app) == "module":
-        k8s = bindings.get("k8s") if isinstance(bindings, dict) else None
-        if not isinstance(k8s, dict) or not str(k8s.get("cluster_id") or "").strip():
-            return True, ["k8s"]
-        row = await db.get(KubernetesCluster, str(k8s.get("cluster_id")))
-        if not row:
-            return True, ["k8s.cluster_id"]
-        return False, []
-    try:
-        reject_legacy_board_bindings(bindings)
-    except ValueError:
-        return True, ["legacy_board_bindings"]
-    live_hash, missing = await compute_live_bindings_hash(db, bindings)
-    if missing:
-        return True, missing
-    if app.bindings_hash and live_hash and app.bindings_hash != live_hash:
-        return True, []
+    k8s = bindings.get("k8s") if isinstance(bindings, dict) else None
+    if not isinstance(k8s, dict) or not str(k8s.get("cluster_id") or "").strip():
+        return True, ["k8s"]
+    row = await db.get(KubernetesCluster, str(k8s.get("cluster_id")))
+    if not row:
+        return True, ["k8s.cluster_id"]
     return False, []
 
 
@@ -189,50 +101,14 @@ async def get_app(db: AsyncSession, app_id: str) -> AppBuilderApp:
 async def list_apps(
     db: AsyncSession, *, status: str | None = None
 ) -> list[AppBuilderApp]:
-    q = select(AppBuilderApp).order_by(AppBuilderApp.updated_at.desc())
+    q = (
+        select(AppBuilderApp)
+        .where(AppBuilderApp.template_id == "module")
+        .order_by(AppBuilderApp.updated_at.desc())
+    )
     if status:
         q = q.where(AppBuilderApp.status == status)
     return list((await db.execute(q)).scalars().all())
-
-
-async def list_draft_components(db: AsyncSession, app_id: str) -> list[AppBuilderComponent]:
-    q = (
-        select(AppBuilderComponent)
-        .where(AppBuilderComponent.app_id == app_id)
-        .order_by(AppBuilderComponent.position, AppBuilderComponent.created_at)
-    )
-    return list((await db.execute(q)).scalars().all())
-
-
-async def has_draft_components(db: AsyncSession, app_id: str) -> bool:
-    q = select(AppBuilderComponent.id).where(AppBuilderComponent.app_id == app_id).limit(1)
-    return (await db.execute(q)).scalar_one_or_none() is not None
-
-
-async def get_default_component(db: AsyncSession, app_id: str) -> AppBuilderComponent | None:
-    q = (
-        select(AppBuilderComponent)
-        .where(AppBuilderComponent.app_id == app_id, AppBuilderComponent.is_default.is_(True))
-        .limit(1)
-    )
-    comp = (await db.execute(q)).scalar_one_or_none()
-    if comp:
-        return comp
-    rows = await list_draft_components(db, app_id)
-    return rows[0] if rows else None
-
-
-async def draft_components_dicts(db: AsyncSession, app_id: str) -> list[dict[str, Any]]:
-    return [component_to_dict(c) for c in await list_draft_components(db, app_id)]
-
-
-async def published_components_dicts(db: AsyncSession, app: AppBuilderApp) -> list[dict[str, Any]]:
-    if not app.published_version_id:
-        return []
-    version = await db.get(AppBuilderPublishedVersion, app.published_version_id)
-    if not version or not isinstance(version.components, list):
-        return []
-    return [c for c in version.components if isinstance(c, dict)]
 
 
 async def current_published_version(db: AsyncSession, app: AppBuilderApp) -> int | None:
@@ -251,36 +127,15 @@ async def list_published_versions(db: AsyncSession, app_id: str) -> list[AppBuil
     return list((await db.execute(q)).scalars().all())
 
 
-async def rollback_to_version(
-    db: AsyncSession, app: AppBuilderApp, version_id: str
-) -> AppBuilderApp:
-    version = await db.get(AppBuilderPublishedVersion, version_id)
-    if not version or version.app_id != app.id:
-        raise HTTPException(status_code=404, detail="Version not found")
-    app.published_version_id = version.id
-    app.status = "published"
-    await db.commit()
-    await db.refresh(app)
-    return app
-
-
-async def _replace_draft_components(
-    db: AsyncSession, app: AppBuilderApp, components: list[dict[str, Any]]
-) -> None:
-    for old in await list_draft_components(db, app.id):
-        await db.delete(old)
-    await db.flush()
-    for c in components:
-        db.add(
-            AppBuilderComponent(
-                id=c["id"],
-                app_id=app.id,
-                name=c["name"],
-                position=c["position"],
-                is_default=c["is_default"],
-                a2ui_messages=c["messages"],
+async def _next_version_number(db: AsyncSession, app_id: str) -> int:
+    current = (
+        await db.execute(
+            select(func.max(AppBuilderPublishedVersion.version)).where(
+                AppBuilderPublishedVersion.app_id == app_id
             )
         )
+    ).scalar_one_or_none()
+    return (current or 0) + 1
 
 
 async def create_app(
@@ -296,40 +151,26 @@ async def create_app(
     if exists:
         raise HTTPException(status_code=409, detail="api_name already exists")
 
-    template_id = (body.template_id or "a2ui").strip() or "a2ui"
-    if template_id not in ("a2ui", "module"):
-        raise HTTPException(status_code=400, detail="template_id must be a2ui or module")
+    template_id = (body.template_id or "module").strip() or "module"
+    if template_id != "module":
+        raise HTTPException(status_code=400, detail="Only module apps are supported")
 
     try:
         bindings = bindings_as_dict(body.bindings)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e)) from e
 
-    if template_id == "module":
-        await _require_k8s_cluster(db, bindings)
-    elif "k8s" in bindings:
-        bindings = {k: v for k, v in bindings.items() if k != "k8s"}
-
-    bindings_hash: str | None = None
-    ontology_bindings = {k: v for k, v in bindings.items() if k != "k8s"}
-    if ontology_bindings:
-        resolved, missing = await resolve_bindings_snapshot(db, bindings)
-        if missing:
-            raise HTTPException(
-                status_code=400,
-                detail={"message": "Missing or unknown resources", "missing_bindings": missing},
-            )
-        bindings_hash = compute_bindings_hash(resolved) if resolved else None
+    await _require_k8s_cluster(db, bindings)
 
     app = AppBuilderApp(
         id=new_app_id(),
         name=body.name,
         api_name=body.api_name,
         description=body.description,
-        template_id=template_id,
+        template_id="module",
         bindings=bindings,
         published_version_id=None,
-        bindings_hash=bindings_hash,
+        bindings_hash=None,
         status="draft",
         created_by=created_by,
         created_by_name=created_by_name,
@@ -337,32 +178,19 @@ async def create_app(
     db.add(app)
     await db.flush()
 
-    if template_id == "a2ui":
-        for c in synthesize_stub_components(title=body.name):
-            db.add(
-                AppBuilderComponent(
-                    id=c["id"],
-                    app_id=app.id,
-                    name=c["name"],
-                    position=c["position"],
-                    is_default=c["is_default"],
-                    a2ui_messages=c["messages"],
-                )
-            )
-    else:
-        version = AppBuilderPublishedVersion(
-            id=component_id(),
-            app_id=app.id,
-            version=1,
-            components=[],
-            bindings=bindings,
-            created_by=created_by,
-            created_by_name=created_by_name,
-        )
-        db.add(version)
-        await db.flush()
-        app.published_version_id = version.id
-        app.status = "published"
+    version = AppBuilderPublishedVersion(
+        id=new_version_id(),
+        app_id=app.id,
+        version=1,
+        components=[],
+        bindings=bindings,
+        created_by=created_by,
+        created_by_name=created_by_name,
+    )
+    db.add(version)
+    await db.flush()
+    app.published_version_id = version.id
+    app.status = "published"
 
     await db.commit()
     await db.refresh(app)
@@ -379,142 +207,13 @@ async def update_app(db: AsyncSession, app: AppBuilderApp, body: AppBuilderUpdat
             bindings = bindings_as_dict(body.bindings)
         except ValueError as e:
             raise HTTPException(status_code=400, detail=str(e)) from e
-        if bindings:
-            if app_kind_of(app) == "module":
-                await _require_k8s_cluster(db, bindings)
-            else:
-                bindings = {k: v for k, v in bindings.items() if k != "k8s"}
-            ontology_bindings = {k: v for k, v in bindings.items() if k != "k8s"}
-            resolved: dict[str, str] = {}
-            if ontology_bindings:
-                resolved, missing = await resolve_bindings_snapshot(db, bindings)
-                if missing:
-                    raise HTTPException(
-                        status_code=400,
-                        detail={"message": "Missing or unknown resources", "missing_bindings": missing},
-                    )
-            app.bindings = bindings
-            app.bindings_hash = compute_bindings_hash(resolved) if resolved else None
-            if app_kind_of(app) == "module" and app.published_version_id:
-                published = await db.get(AppBuilderPublishedVersion, app.published_version_id)
-                if published is not None:
-                    published.bindings = bindings
-        else:
-            if app_kind_of(app) == "module":
-                raise HTTPException(status_code=400, detail="module apps require bindings.k8s")
-            app.bindings = {}
-            app.bindings_hash = None
-    if body.components is not None:
-        if app_kind_of(app) == "module":
-            raise HTTPException(status_code=400, detail="module apps have no A2UI draft")
-        raw = [c.model_dump() for c in body.components]
-        try:
-            validated = validate_app_components(raw, bindings=app.bindings or {})
-        except ValueError as e:
-            raise HTTPException(status_code=400, detail=str(e)) from e
-        await _replace_draft_components(db, app, validated)
-    await db.commit()
-    await db.refresh(app)
-    return app
-
-
-async def synthesize_draft(db: AsyncSession, app: AppBuilderApp) -> AppBuilderApp:
-    """Reset draft to a single stub component. Clear legacy board bindings."""
-    if app_kind_of(app) == "module":
-        raise HTTPException(status_code=400, detail="module apps have no A2UI draft")
-    bindings = app.bindings or {}
-    try:
-        reject_legacy_board_bindings(bindings)
-    except ValueError:
-        app.bindings = {}
-        app.bindings_hash = None
-    await _replace_draft_components(db, app, synthesize_stub_components(title=app.name))
-    await db.commit()
-    await db.refresh(app)
-    return app
-
-
-async def _next_version_number(db: AsyncSession, app_id: str) -> int:
-    current = (
-        await db.execute(
-            select(func.max(AppBuilderPublishedVersion.version)).where(
-                AppBuilderPublishedVersion.app_id == app_id
-            )
-        )
-    ).scalar_one_or_none()
-    return (current or 0) + 1
-
-
-async def publish_app(
-    db: AsyncSession,
-    app: AppBuilderApp,
-    *,
-    components: list[dict[str, Any]] | None = None,
-    created_by: str | None = None,
-    created_by_name: str | None = None,
-) -> AppBuilderApp:
-    if app_kind_of(app) == "module":
-        bindings = normalize_resources(app.bindings or {})
         await _require_k8s_cluster(db, bindings)
-        version = AppBuilderPublishedVersion(
-            id=component_id(),
-            app_id=app.id,
-            version=await _next_version_number(db, app.id),
-            components=[],
-            bindings=bindings,
-            created_by=created_by or app.created_by,
-            created_by_name=created_by_name or app.created_by_name,
-        )
-        db.add(version)
-        await db.flush()
-        app.published_version_id = version.id
-        app.status = "published"
-        await db.commit()
-        await db.refresh(app)
-        return app
-    if app_kind_of(app) != "a2ui":
-        raise HTTPException(status_code=400, detail="Only a2ui or module apps can be published")
-    bindings = normalize_resources(app.bindings or {})
-    if not resources_nonempty(bindings):
-        raise HTTPException(
-            status_code=400,
-            detail={
-                "message": "Cannot publish until resources are set",
-                "missing_bindings": ["objectTypes|actions|functions"],
-            },
-        )
-    resolved, missing = await resolve_bindings_snapshot(db, bindings)
-    if missing:
-        raise HTTPException(
-            status_code=400,
-            detail={
-                "message": "Cannot publish until resources resolve",
-                "missing_bindings": missing,
-            },
-        )
-
-    if components is not None:
-        validated = validate_app_components(components, bindings=bindings)
-    else:
-        draft = [component_to_dict(c) for c in await list_draft_components(db, app.id)]
-        if not draft:
-            raise ValueError("Draft is empty — ask the designer to set the layout")
-        validated = validate_app_components(draft, bindings=bindings)
-
-    version = AppBuilderPublishedVersion(
-        id=component_id(),
-        app_id=app.id,
-        version=await _next_version_number(db, app.id),
-        components=validated,
-        bindings=bindings,
-        created_by=created_by or app.created_by,
-        created_by_name=created_by_name or app.created_by_name,
-    )
-    db.add(version)
-    await db.flush()
-    app.published_version_id = version.id
-    app.status = "published"
-    app.bindings_hash = compute_bindings_hash(resolved)
+        app.bindings = bindings
+        app.bindings_hash = None
+        if app.published_version_id:
+            published = await db.get(AppBuilderPublishedVersion, app.published_version_id)
+            if published is not None:
+                published.bindings = bindings
     await db.commit()
     await db.refresh(app)
     return app
@@ -528,9 +227,37 @@ async def unpublish_app(db: AsyncSession, app: AppBuilderApp) -> AppBuilderApp:
     return app
 
 
+async def republish_app(
+    db: AsyncSession,
+    app: AppBuilderApp,
+    *,
+    created_by: str | None = None,
+    created_by_name: str | None = None,
+) -> AppBuilderApp:
+    try:
+        bindings = normalize_module_bindings(app.bindings or {})
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e)) from e
+    await _require_k8s_cluster(db, bindings)
+    version = AppBuilderPublishedVersion(
+        id=new_version_id(),
+        app_id=app.id,
+        version=await _next_version_number(db, app.id),
+        components=[],
+        bindings=bindings,
+        created_by=created_by or app.created_by,
+        created_by_name=created_by_name or app.created_by_name,
+    )
+    db.add(version)
+    await db.flush()
+    app.published_version_id = version.id
+    app.status = "published"
+    await db.commit()
+    await db.refresh(app)
+    return app
+
+
 async def delete_app(db: AsyncSession, app: AppBuilderApp) -> None:
-    for c in await list_draft_components(db, app.id):
-        await db.delete(c)
     q = select(AppBuilderPublishedVersion).where(AppBuilderPublishedVersion.app_id == app.id)
     for v in (await db.execute(q)).scalars().all():
         await db.delete(v)

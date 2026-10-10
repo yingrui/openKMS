@@ -7,9 +7,8 @@ import {
 } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { Maximize2, Minimize2 } from 'lucide-react';
+import { ArrowLeft, Maximize2, Minimize2, Settings } from 'lucide-react';
 import { fetchAppRun, moduleAppProxyUrl, type AppBuilderRunResponse } from '../../data/appBuilderApi';
-import { AppA2uiSurface } from '../app-builder/a2ui/AppA2uiSurface';
 import { useAuth } from '../../contexts/AuthContext';
 import './AppsPages.scss';
 
@@ -28,7 +27,6 @@ function bottomRightExitBtnPos(width: number, height: number): ExitBtnPos {
 }
 
 function defaultExitBtnPos(): ExitBtnPos {
-  // Approximate chip size until measured in layout.
   return bottomRightExitBtnPos(168, 36);
 }
 
@@ -45,9 +43,8 @@ export function AppsRunPage() {
   const { appId = '' } = useParams();
   const { t } = useTranslation('apps');
   const { canAccessPath } = useAuth();
-  const canEdit = canAccessPath('/app-builder');
+  const canEdit = canAccessPath('/apps');
   const [app, setApp] = useState<AppBuilderRunResponse | null>(null);
-  const [activeId, setActiveId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [fullscreen, setFullscreen] = useState(false);
   const [exitBtnPos, setExitBtnPos] = useState<ExitBtnPos | null>(null);
@@ -65,10 +62,7 @@ export function AppsRunPage() {
   useEffect(() => {
     void (async () => {
       try {
-        const run = await fetchAppRun(appId);
-        setApp(run);
-        const comps = run.components || [];
-        setActiveId(comps.find((c) => c.is_default)?.id ?? comps[0]?.id ?? null);
+        setApp(await fetchAppRun(appId));
       } catch (e) {
         setError(e instanceof Error ? e.message : String(e));
       }
@@ -80,12 +74,12 @@ export function AppsRunPage() {
       exitPlacedRef.current = false;
       return;
     }
-    if (exitPlacedRef.current) return;
-    const el = exitBtnRef.current;
-    if (!el) return;
-    const rect = el.getBoundingClientRect();
-    setExitBtnPos(bottomRightExitBtnPos(rect.width, rect.height));
-    exitPlacedRef.current = true;
+    const btn = exitBtnRef.current;
+    if (btn && !exitPlacedRef.current) {
+      const rect = btn.getBoundingClientRect();
+      setExitBtnPos(bottomRightExitBtnPos(rect.width, rect.height));
+      exitPlacedRef.current = true;
+    }
   }, [fullscreen, exitBtnPos]);
 
   useEffect(() => {
@@ -165,13 +159,9 @@ export function AppsRunPage() {
   }
   if (!app) return <div className="apps-page">{t('loading')}</div>;
 
-  const components = app.components || [];
-  const active = components.find((c) => c.id === activeId) ?? components[0];
-  const isModule = app.app_kind === 'module';
-
   return (
     <div
-      className={`apps-page apps-page--run${isModule ? ' apps-page--run-module' : ''}${fullscreen ? ' apps-page--run-fullscreen' : ''}`}
+      className={`apps-page apps-page--run apps-page--run-module${fullscreen ? ' apps-page--run-fullscreen' : ''}`}
     >
       {fullscreen && exitBtnPos ? (
         <button
@@ -192,16 +182,27 @@ export function AppsRunPage() {
       ) : (
         <header className="apps-page__run-header">
           <Link to="/apps" className="apps-page__back">
-            {t('backToGallery')}
+            <ArrowLeft size={18} aria-hidden />
+            <span>{t('backToGallery')}</span>
           </Link>
           <span className="apps-page__run-title">
             {app.name}
             {app.published_version ? ` · v${app.published_version}` : ''}
           </span>
           <div className="apps-page__run-actions">
+            {canEdit ? (
+              <Link
+                to={`/apps/${app.id}/settings`}
+                className="apps-page__icon-btn"
+                title={t('editSettings')}
+                aria-label={t('editSettings')}
+              >
+                <Settings size={16} aria-hidden />
+              </Link>
+            ) : null}
             <button
               type="button"
-              className="apps-page__fullscreen-btn"
+              className="apps-page__icon-btn"
               onClick={() => {
                 setExitBtnPos(defaultExitBtnPos());
                 setFullscreen(true);
@@ -211,51 +212,21 @@ export function AppsRunPage() {
             >
               <Maximize2 size={16} aria-hidden />
             </button>
-            {canEdit && !isModule ? (
-              <Link to={`/app-builder/${app.id}/design`} className="btn btn-secondary">
-                {t('editInBuilder')}
-              </Link>
-            ) : null}
           </div>
         </header>
       )}
       {!fullscreen && app.bindings_stale ? (
         <div className="apps-page__banner" role="status">
           {t('staleBanner')}
-          {canEdit && !isModule ? (
-            <Link to={`/app-builder/${app.id}/design`}>{t('repair')}</Link>
-          ) : null}
+          {canEdit ? <Link to={`/apps/${app.id}/settings`}>{t('repair')}</Link> : null}
         </div>
       ) : null}
 
-      {isModule ? (
-        <iframe
-          className="apps-page__module-frame"
-          title={t('moduleFrameTitle')}
-          src={moduleAppProxyUrl(app.id)}
-        />
-      ) : (
-        <>
-          {components.length > 1 ? (
-            <div className="apps-page__tabs" role="tablist" aria-label={t('componentsAria')}>
-              {components.map((c) => (
-                <button
-                  key={c.id}
-                  type="button"
-                  role="tab"
-                  aria-selected={active?.id === c.id}
-                  className={`apps-page__tab${active?.id === c.id ? ' is-active' : ''}`}
-                  onClick={() => setActiveId(c.id)}
-                >
-                  {c.name}
-                </button>
-              ))}
-            </div>
-          ) : null}
-
-          <AppA2uiSurface a2uiMessages={active?.messages ?? []} />
-        </>
-      )}
+      <iframe
+        className="apps-page__module-frame"
+        title={t('moduleFrameTitle')}
+        src={moduleAppProxyUrl(app.id)}
+      />
     </div>
   );
 }

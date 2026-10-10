@@ -2,10 +2,7 @@ export type OntologySubApp =
   | 'ontology-manager'
   | 'object-explorer'
   | 'function-editor'
-  | 'app-builder'
   | null;
-
-import { isAppBuilderPath } from '../app-builder/routing';
 
 export function getOntologySubApp(pathname: string): OntologySubApp {
   if (
@@ -27,9 +24,6 @@ export function getOntologySubApp(pathname: string): OntologySubApp {
   if (pathname === '/function-editor' || pathname.startsWith('/function-editor/')) {
     return 'function-editor';
   }
-  if (isAppBuilderPath(pathname)) {
-    return 'app-builder';
-  }
   return null;
 }
 
@@ -44,5 +38,3 @@ export function isObjectExplorerExplorePath(pathname: string): boolean {
 export function isFunctionEditorWorkspacePath(pathname: string): boolean {
   return /^\/function-editor\/[^/]+$/.test(pathname);
 }
-
-export { isAppBuilderDesignPath, isAppBuilderPath } from '../app-builder/routing';

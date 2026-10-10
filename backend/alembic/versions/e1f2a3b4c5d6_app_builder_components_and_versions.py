@@ -55,7 +55,15 @@ def upgrade() -> None:
     op.add_column("ontology_apps", sa.Column("published_version_id", sa.String(length=64), nullable=True))
 
     # Data migration: single-source → one default component (+ v1 snapshot when published).
-    from app.services.app_builder.a2ui import normalize_stored_a2ui_document
+    def normalize_stored_a2ui_document(raw):
+        if not isinstance(raw, dict):
+            return None
+        if raw.get("format") != "a2ui_v0_9":
+            return None
+        messages = raw.get("messages")
+        if not isinstance(messages, list):
+            return None
+        return [m for m in messages if isinstance(m, dict)]
 
     bind = op.get_bind()
     rows = bind.execute(

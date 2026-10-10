@@ -31,3 +31,11 @@ def normalize_k8s_binding(raw: Any) -> dict[str, Any] | None:
     if path_raw:
         out["path"] = path_raw if path_raw.startswith("/") else f"/{path_raw}"
     return out
+
+
+def normalize_module_bindings(raw: dict[str, Any] | None) -> dict[str, Any]:
+    """Module apps only store ``bindings.k8s``."""
+    k8s = normalize_k8s_binding((raw or {}).get("k8s"))
+    if not k8s:
+        raise ValueError("module apps require bindings.k8s")
+    return {"k8s": k8s}

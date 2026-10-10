@@ -1,8 +1,6 @@
-"""App Builder + Apps runtime API."""
+"""Module Apps registry + Service proxy API."""
 
 from __future__ import annotations
-
-from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -12,10 +10,7 @@ from app.api.ontology.deps import jwt_user_from_request, validate_api_name
 from app.database import get_db
 from app.models.kubernetes_cluster import KubernetesCluster
 from app.schemas.app_builder import (
-    AppBuilderComponent,
     AppBuilderCreate,
-    AppBuilderDesignResponse,
-    AppBuilderPublishIn,
     AppBuilderResponse,
     AppBuilderRunResponse,
     AppBuilderUpdate,
@@ -43,21 +38,15 @@ _proxy_deps = [Depends(require_any_permission(PERM_ONTOLOGY_READ, session_only=T
 
 async def _to_list_item(db: AsyncSession, app) -> AppBuilderResponse:
     stale, missing = await apps_svc.enrich_stale(db, app)
-    has_draft = await apps_svc.has_draft_components(db, app.id)
     published_version = await apps_svc.current_published_version(db, app)
     return AppBuilderResponse(
         **apps_svc.to_response_base(
             app,
             stale=stale,
             missing=missing,
-            has_draft=has_draft,
             published_version=published_version,
         )
     )
-
-
-def _components_out(components: list[dict[str, Any]]) -> list[AppBuilderComponent]:
-    return [AppBuilderComponent(**c) for c in components]
 
 
 def _register_routes(api: APIRouter) -> None:
@@ -77,38 +66,21 @@ def _register_routes(api: APIRouter) -> None:
         _: None = Depends(require_any_permission(PERM_ONTOLOGY_WRITE)),
     ):
         validate_api_name(body.api_name)
-        if (body.template_id or "a2ui").strip() == "module":
-            await ensure_permission(request, db, PERM_CONSOLE_KUBERNETES)
+        await ensure_permission(request, db, PERM_CONSOLE_KUBERNETES)
         uid, uname = jwt_user_from_request(request)
         app = await apps_svc.create_app(db, body, created_by=uid, created_by_name=uname)
         return await _to_list_item(db, app)
 
     @api.get("/{app_id}", response_model=AppBuilderRunResponse, dependencies=_read_deps)
     async def get_app_run(app_id: str, db: AsyncSession = Depends(get_db)):
-        """Published runtime document only (404 if draft / unpublished)."""
+        """Published module app only (404 if draft / unpublished)."""
         app = await apps_svc.get_app(db, app_id)
-        kind = apps_svc.app_kind_of(app)
-        components = await apps_svc.published_components_dicts(db, app)
-        if app.status != "published":
-            raise HTTPException(status_code=404, detail="Published app not found")
-        if kind == "a2ui" and not components:
+        if app.status != "published" or apps_svc.app_kind_of(app) != "module":
             raise HTTPException(status_code=404, detail="Published app not found")
         stale, missing = await apps_svc.enrich_stale(db, app)
         published_version = await apps_svc.current_published_version(db, app)
         base = apps_svc.to_response_base(app, stale=stale, missing=missing, published_version=published_version)
-        return AppBuilderRunResponse(**base, components=_components_out(components))
-
-    @api.get("/{app_id}/design", response_model=AppBuilderDesignResponse, dependencies=_read_deps)
-    async def get_app_design(
-        app_id: str,
-        db: AsyncSession = Depends(get_db),
-        _: None = Depends(require_any_permission(PERM_ONTOLOGY_WRITE)),
-    ):
-        app = await apps_svc.get_app(db, app_id)
-        components = await apps_svc.draft_components_dicts(db, app.id)
-        stale, missing = await apps_svc.enrich_stale(db, app)
-        base = apps_svc.to_response_base(app, stale=stale, missing=missing)
-        return AppBuilderDesignResponse(**base, components=_components_out(components))
+        return AppBuilderRunResponse(**base)
 
     @api.patch("/{app_id}", response_model=AppBuilderResponse, dependencies=_read_deps)
     async def update_app(
@@ -131,39 +103,20 @@ def _register_routes(api: APIRouter) -> None:
         await apps_svc.delete_app(db, app)
         return None
 
-    @api.post("/{app_id}/synthesize", response_model=AppBuilderDesignResponse, dependencies=_read_deps)
-    async def synthesize_app(
-        app_id: str,
-        db: AsyncSession = Depends(get_db),
-        _: None = Depends(require_any_permission(PERM_ONTOLOGY_WRITE)),
-    ):
-        app = await apps_svc.get_app(db, app_id)
-        app = await apps_svc.synthesize_draft(db, app)
-        components = await apps_svc.draft_components_dicts(db, app.id)
-        stale, missing = await apps_svc.enrich_stale(db, app)
-        base = apps_svc.to_response_base(app, stale=stale, missing=missing)
-        return AppBuilderDesignResponse(**base, components=_components_out(components))
-
     @api.post("/{app_id}/publish", response_model=AppBuilderRunResponse, dependencies=_read_deps)
     async def publish_app(
         app_id: str,
         request: Request,
-        body: AppBuilderPublishIn | None = None,
         db: AsyncSession = Depends(get_db),
         _: None = Depends(require_any_permission(PERM_ONTOLOGY_WRITE)),
     ):
         app = await apps_svc.get_app(db, app_id)
         uid, uname = jwt_user_from_request(request)
-        raw_components = None
-        if body and body.components is not None:
-            raw_components = [c.model_dump() for c in body.components]
-        app = await apps_svc.publish_app(
-            db, app, components=raw_components, created_by=uid, created_by_name=uname
-        )
-        components = await apps_svc.published_components_dicts(db, app)
+        app = await apps_svc.republish_app(db, app, created_by=uid, created_by_name=uname)
         stale, missing = await apps_svc.enrich_stale(db, app)
-        base = apps_svc.to_response_base(app, stale=stale, missing=missing)
-        return AppBuilderRunResponse(**base, components=_components_out(components))
+        published_version = await apps_svc.current_published_version(db, app)
+        base = apps_svc.to_response_base(app, stale=stale, missing=missing, published_version=published_version)
+        return AppBuilderRunResponse(**base)
 
     @api.post("/{app_id}/unpublish", response_model=AppBuilderResponse, dependencies=_read_deps)
     async def unpublish_app(
@@ -193,21 +146,6 @@ def _register_routes(api: APIRouter) -> None:
             )
             for v in rows
         ]
-
-    @api.post(
-        "/{app_id}/versions/{version_id}/rollback",
-        response_model=AppBuilderResponse,
-        dependencies=_read_deps,
-    )
-    async def rollback_version(
-        app_id: str,
-        version_id: str,
-        db: AsyncSession = Depends(get_db),
-        _: None = Depends(require_any_permission(PERM_ONTOLOGY_WRITE)),
-    ):
-        app = await apps_svc.get_app(db, app_id)
-        app = await apps_svc.rollback_to_version(db, app, version_id)
-        return await _to_list_item(db, app)
 
     _PROXY_METHODS = ["GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS"]
 

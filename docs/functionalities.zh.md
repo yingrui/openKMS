@@ -17,7 +17,7 @@
 | [知识地图与首页](features/knowledge-map.md) | 知识地图术语、资源链接、首页 hub 图谱 |
 | [全局搜索](features/global-search.md) | `/search` 页：文档、文章、维基空间、知识库（名称、通道、更新时间筛选） |
 | [本体 — 对象、关系与数据集](features/ontology.md) | 对象/关系类型、实例、Object Explorer、数据源、数据集 |
-| [应用构建器与应用](features/app-builder.md) | 平台应用编写：Resources + host 事件 + 多制品 a2ui；托管 Kubernetes Service（`module`）经 API server 反代；Source 或 skill 组装；版本化发布 / 回滚；在「应用」中运行 |
+| [应用（托管模块）](features/app-builder.md) | 将 Kubernetes Service 登记为应用；API 代理 + 身份头；图库 / 运行 / 登记设置 |
 | [流水线、任务与模型](features/pipelines-and-jobs.md) | 流水线模板、procrastinate 任务、Provider/模型注册（多模态图像/视频模型规划中） |
 | [数据安全](features/data-security.md) | 双层模型（操作 RBAC + 资源 ACL）、组、共享、继承、 enforcement |
 | [控制台与认证](features/console-and-auth.md) | 权限目录、Console UX、OIDC/本地认证、系统设置、用户设置（API 密钥）、功能开关 |

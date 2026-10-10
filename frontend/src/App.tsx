@@ -187,23 +187,14 @@ const FunctionEditorListPage = lazy(() =>
 const FunctionEditorWorkspacePage = lazy(() =>
   import('./pages/function-editor/FunctionEditorWorkspacePage').then((m) => ({ default: m.FunctionEditorWorkspacePage })),
 );
-const AppBuilderListPage = lazy(() =>
-  import('./pages/app-builder/AppBuilderListPage').then((m) => ({ default: m.AppBuilderListPage })),
-);
-const AppBuilderWizardPage = lazy(() =>
-  import('./pages/app-builder/AppBuilderWizardPage').then((m) => ({ default: m.AppBuilderWizardPage })),
-);
-const AppBuilderDesignPage = lazy(() =>
-  import('./pages/app-builder/AppBuilderDesignPage').then((m) => ({ default: m.AppBuilderDesignPage })),
-);
-const AppBuilderSettingsPage = lazy(() =>
-  import('./pages/app-builder/AppBuilderSettingsPage').then((m) => ({ default: m.AppBuilderSettingsPage })),
-);
 const AppsGalleryPage = lazy(() =>
   import('./pages/apps/AppsGalleryPage').then((m) => ({ default: m.AppsGalleryPage })),
 );
 const AppsRunPage = lazy(() =>
   import('./pages/apps/AppsRunPage').then((m) => ({ default: m.AppsRunPage })),
+);
+const AppsSettingsPage = lazy(() =>
+  import('./pages/apps/AppsSettingsPage').then((m) => ({ default: m.AppsSettingsPage })),
 );
 const ObjectExplorer = lazy(() => import('./pages/ontology/ObjectExplorer').then((m) => ({ default: m.ObjectExplorer })));
 const DocumentDetail = lazy(() => import('./pages/documents/DocumentDetail').then((m) => ({ default: m.DocumentDetail })));
@@ -283,6 +274,12 @@ function LegacyLinksRedirect() {
   const location = useLocation();
   const rest = location.pathname.replace(/^\/links/, '/links') + location.search + location.hash;
   return <Navigate to={`/object-explorer${rest}`} replace />;
+}
+
+function LegacyAppBuilderSettingsRedirect() {
+  const { appId = '' } = useParams();
+  const location = useLocation();
+  return <Navigate to={`/apps/${appId}/settings${location.search}${location.hash}`} replace />;
 }
 
 function WikiSpacePagesGate() {
@@ -433,14 +430,12 @@ function App() {
             <Route path="new" element={<FunctionEditorWorkspacePage />} />
             <Route path=":functionId" element={<FunctionEditorWorkspacePage />} />
           </Route>
-          <Route path="app-builder" element={<Outlet />}>
-            <Route index element={<AppBuilderListPage />} />
-            <Route path="new" element={<AppBuilderWizardPage />} />
-            <Route path=":appId/design" element={<AppBuilderDesignPage />} />
-            <Route path=":appId/settings" element={<AppBuilderSettingsPage />} />
-          </Route>
+          <Route path="app-builder" element={<Navigate to="/apps" replace />} />
+          <Route path="app-builder/:appId/settings" element={<LegacyAppBuilderSettingsRedirect />} />
+          <Route path="app-builder/*" element={<Navigate to="/apps" replace />} />
           <Route path="apps" element={<Outlet />}>
             <Route index element={<AppsGalleryPage />} />
+            <Route path=":appId/settings" element={<AppsSettingsPage />} />
             <Route path=":appId" element={<AppsRunPage />} />
           </Route>
           <Route path="ontology/*" element={<LegacyOntologyRedirect />} />

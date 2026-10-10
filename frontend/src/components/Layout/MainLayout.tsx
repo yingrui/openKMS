@@ -13,10 +13,8 @@ import { ConfirmProvider } from '../../contexts/ConfirmContext';
 import { ManagerNavRail } from '../ontology/ManagerNavRail';
 import { ExplorerNavRail } from '../ontology/ExplorerNavRail';
 import { FunctionEditorNavRail } from '../ontology/FunctionEditorNavRail';
-import { AppBuilderNavRail } from '../app-builder/AppBuilderNavRail';
 import {
   getOntologySubApp,
-  isAppBuilderDesignPath,
   isFunctionEditorWorkspacePath,
   isObjectExplorerExplorePath,
   isOntologySuitePath,
@@ -27,7 +25,6 @@ function OntologyRail({ subApp }: { subApp: ReturnType<typeof getOntologySubApp>
   if (subApp === 'ontology-manager') return <ManagerNavRail />;
   if (subApp === 'object-explorer') return <ExplorerNavRail />;
   if (subApp === 'function-editor') return <FunctionEditorNavRail />;
-  if (subApp === 'app-builder') return <AppBuilderNavRail />;
   return null;
 }
 
@@ -102,12 +99,9 @@ function MainLayoutInner() {
 
   const ontologySubApp = getOntologySubApp(location.pathname);
   const showOntologyRail =
-    isOntologySuitePath(location.pathname) &&
-    !isFunctionEditorWorkspacePath(location.pathname) &&
-    !isAppBuilderDesignPath(location.pathname);
+    isOntologySuitePath(location.pathname) && !isFunctionEditorWorkspacePath(location.pathname);
   const isExplorePage = isObjectExplorerExplorePath(location.pathname);
-  const isEditorWorkspace =
-    isFunctionEditorWorkspacePath(location.pathname) || isAppBuilderDesignPath(location.pathname);
+  const isEditorWorkspace = isFunctionEditorWorkspacePath(location.pathname);
   const isAppsRun = /^\/apps\/[^/]+$/.test(location.pathname);
 
   const sidebarCollapsed = true;
@@ -124,7 +118,6 @@ function MainLayoutInner() {
   if (ontologySubApp === 'ontology-manager') ontologyRailModifier = ' app-content--with-ontology-manager-rail';
   else if (ontologySubApp === 'object-explorer') ontologyRailModifier = ' app-content--with-object-explorer-rail';
   else if (ontologySubApp === 'function-editor') ontologyRailModifier = ' app-content--with-function-editor-rail';
-  else if (ontologySubApp === 'app-builder') ontologyRailModifier = ' app-content--with-function-editor-rail';
 
   let ontologyOutlet: ReactNode = <Outlet />;
   if (showOntologyRail) {

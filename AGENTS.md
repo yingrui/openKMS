@@ -103,32 +103,13 @@ Agent 工作指南（原 `.cursor/rules/` 合并版）。
 
 ---
 
-## App Builder & A2UI
+## Apps（module / 托管 Service）
 
 详 `docs/features/app-builder.md`。
 
-**平台 vs 租户 App**
+- **仅** `template_id=module`：登记 Kubernetes Service → Apps 图库 iframe 代理；身份头见文档。
+- **已移除** A2UI App 编创（Design / Source / synthesize / OntoObjectList / `app_components`）。Knowledge Map 等其它 A2UI 面不受影响。未来 A2UI 实验放在 **Agent Project** 会话，不回产品 App Builder。
+- API：`/api/app-builder/apps` + `…/proxy`；表名 `ontology_apps` 为历史命名。
+- FastAPI：`_register_routes(router)` 前 router **必须有 prefix**。
 
-| 平台代码 | DB 里 published Source |
-|----------|------------------------|
-| catalog + host（`executeAction`、`executeFunction`、`loadObjectForEdit`、`OntoObjectList` 加载器） | 布局、文案、过滤、Modal↔Action wiring |
-| `_a2ui-platform.scss` 通用 A2UI 样式 | resource allowlist + `draft_a2ui` / `published_a2ui` |
-| 校验、发布门禁 | 领域 UX（如多列看板 = 多个过滤 List + Modal 组合） |
-
-**禁止：** 平台写领域 UI（看板 widget、应用名按钮、board 形 binding、按域名 synthesize）；load 时 silent heal/normalize/auto-synthesize → **校验失败可见**，仅 **`POST …/synthesize`** 显式重置 stub。  
-**已废弃：** `OntoKanbanBoard`、`OntoActionForm`、`OntoActionButton`、`OntoFunctionButton`、`OntoObjectLink`、`ontology_app_kanban_a2ui.py`、board binding、load-time auto-heal。
-
-**放置：** 后端 `app_builder/` + `api/app_builder.py`（非 `ontology/`）；API 仅 **`/api/app-builder/apps`**，迁路由即删旧路；表名 `ontology_apps` 仅历史存储；前端 `appBuilderApi.ts`、`pages/app-builder/a2ui/`。
-
-**A2UI Source 坑（高频）**
-
-1. `List` 行模板用**相对** path（`title`），勿 `/title`（从 DataModel 根解析 → 标题空）  
-2. `OntoObjectList` 仅 loader；展示用 basic `List` + 行模板  
-3. 建/编弹窗 = `Modal` + `TextField` + `executeAction` / `loadObjectForEdit`；输入形来自 Action，无平台 form 组件  
-4. 多列板在 Source 组合，无平台 widget  
-5. 样式只 polish  primitive；勿写某 App 专用 SCSS  
-
-新失败模式加 `app_builder/a2ui.py` 校验，勿 per-app hack。  
-FastAPI：`_register_routes(router)` 前 router **必须有 prefix**，否则 `@get("")` 导入崩溃。
-
-**App Builder 任务验收：** `pytest backend/tests/test_app_builder_a2ui.py` · 动前端则 `npm run build` · 动权限/模型则 `alembic upgrade head` · grep 无 `OntoKanbanBoard`/`/api/ontology/apps`/`ontology_app_kanban`。
+**验收：** 动前端 `npm run build` · 动模型 `alembic upgrade head` · grep 无 App 路径下的 `OntoObjectList` / `apps synthesize` / `pages/app-builder/a2ui`。

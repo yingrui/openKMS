@@ -152,18 +152,15 @@ Schema for every persisted table. Grouped by area; see the matching feature page
 
 ### AppBuilderApp (`ontology_apps` table)
 
-- `id`, `name`, `api_name` (unique), `description`, `template_id` (e.g. `a2ui`), `bindings` (JSONB — **resource allowlist**: `objectTypes` / `actions` / `functions` api names; column name is historical), `published_version_id`, `bindings_hash`, `status` (`draft` \| `published`), `created_by`, `created_by_name`, `created_at`, `updated_at`
-- App Builder identity + resource allowlist; see [App Builder & Apps](app-builder.md)
-
-### AppBuilderComponent (`app_components` table)
-
-- `id`, `app_id` (FK → `ontology_apps`, cascade), `name`, `position`, `is_default`, `a2ui_messages` (JSONB — one A2UI surface message list), `created_at`, `updated_at`
-- Draft artifacts (one per A2UI surface) of an app
+- `id`, `name`, `api_name` (unique), `description`, `template_id` (`module`), `bindings` (JSONB — **`k8s`** Service binding), `published_version_id`, `bindings_hash`, `status` (`draft` \| `published`), `created_by`, `created_by_name`, `created_at`, `updated_at`
+- Hosted module Apps registry; see [Apps (hosted modules)](app-builder.md). Table name is historical.
 
 ### AppBuilderPublishedVersion (`app_published_versions` table)
 
-- `id`, `app_id` (FK → `ontology_apps`, cascade), `version` (monotonic per app), `components` (JSONB snapshot of `app_components`), `bindings` (JSONB snapshot), `created_by`, `created_by_name`, `created_at`
-- Immutable publish snapshots for rollback; `ontology_apps.published_version_id` points at the live one
+- `id`, `app_id` (FK → `ontology_apps`, cascade), `version` (monotonic per app), `components` (JSONB, unused for modules — empty list), `bindings` (JSONB snapshot), `created_by`, `created_by_name`, `created_at`
+- Immutable publish snapshots; `ontology_apps.published_version_id` points at the live one
+
+~~`app_components`~~ dropped (A2UI App authoring removed).
 
 ### DataSource
 

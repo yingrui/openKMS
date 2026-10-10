@@ -2,9 +2,6 @@ import { config } from '../config';
 import { ontologyFetch } from './ontologyFetch';
 
 export type AppBuilderBindings = {
-  objectTypes?: string[];
-  actions?: string[];
-  functions?: string[];
   k8s?: {
     cluster_id: string;
     namespace: string;
@@ -35,21 +32,7 @@ export type AppBuilderAppResponse = {
   has_published: boolean;
 };
 
-export type AppBuilderComponent = {
-  id: string;
-  name: string;
-  position: number;
-  is_default: boolean;
-  messages: Record<string, unknown>[];
-};
-
-export type AppBuilderDesignResponse = AppBuilderAppResponse & {
-  components: AppBuilderComponent[];
-};
-
-export type AppBuilderRunResponse = AppBuilderAppResponse & {
-  components: AppBuilderComponent[];
-};
+export type AppBuilderRunResponse = AppBuilderAppResponse;
 
 const base = `${config.apiUrl}/api/app-builder/apps`;
 
@@ -69,7 +52,7 @@ export async function createApp(body: {
 }): Promise<AppBuilderAppResponse> {
   return ontologyFetch<AppBuilderAppResponse>(
     base,
-    { method: 'POST', body: JSON.stringify(body) },
+    { method: 'POST', body: JSON.stringify({ ...body, template_id: body.template_id || 'module' }) },
     'Failed to create app',
   );
 }
@@ -82,17 +65,12 @@ export function moduleAppProxyUrl(appId: string): string {
   return `${base}/${appId}/proxy/`;
 }
 
-export async function fetchAppDesign(appId: string): Promise<AppBuilderDesignResponse> {
-  return ontologyFetch<AppBuilderDesignResponse>(`${base}/${appId}/design`, undefined, 'Failed to load design');
-}
-
 export async function updateApp(
   appId: string,
   body: {
     name?: string;
     description?: string | null;
     bindings?: AppBuilderBindings;
-    components?: AppBuilderComponent[];
   },
 ): Promise<AppBuilderAppResponse> {
   return ontologyFetch<AppBuilderAppResponse>(
@@ -106,24 +84,10 @@ export async function deleteApp(appId: string): Promise<void> {
   await ontologyFetch<unknown>(`${base}/${appId}`, { method: 'DELETE' }, 'Failed to delete app');
 }
 
-export async function synthesizeApp(appId: string): Promise<AppBuilderDesignResponse> {
-  return ontologyFetch<AppBuilderDesignResponse>(
-    `${base}/${appId}/synthesize`,
-    { method: 'POST', body: '{}' },
-    'Failed to synthesize',
-  );
-}
-
-export async function publishApp(
-  appId: string,
-  components?: AppBuilderComponent[],
-): Promise<AppBuilderRunResponse> {
+export async function publishApp(appId: string): Promise<AppBuilderRunResponse> {
   return ontologyFetch<AppBuilderRunResponse>(
     `${base}/${appId}/publish`,
-    {
-      method: 'POST',
-      body: JSON.stringify(components ? { components } : {}),
-    },
+    { method: 'POST', body: '{}' },
     'Failed to publish',
   );
 }
@@ -149,13 +113,5 @@ export async function listAppVersions(appId: string): Promise<AppBuilderVersion[
     `${base}/${appId}/versions`,
     undefined,
     'Failed to list versions',
-  );
-}
-
-export async function rollbackApp(appId: string, versionId: string): Promise<AppBuilderAppResponse> {
-  return ontologyFetch<AppBuilderAppResponse>(
-    `${base}/${appId}/versions/${encodeURIComponent(versionId)}/rollback`,
-    { method: 'POST', body: '{}' },
-    'Failed to rollback',
   );
 }

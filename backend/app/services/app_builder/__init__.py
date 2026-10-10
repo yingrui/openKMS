@@ -1,1 +1,1 @@
-"""App Builder + Apps runtime (A2UI draft/publish)."""
+"""Module Apps registry + Kubernetes Service proxy runtime."""
