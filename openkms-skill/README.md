@@ -5,7 +5,7 @@ Thin CLI + Python package that lets [OpenCode](https://opencode.ai/docs/skills),
 - **Install:** `./install.sh` (auto-detects OpenCode + Claude Code; copies runtime files only — same set as `package.sh`). Re-running upgrades the tree but **preserves your `config.yml`**.
 - **Package for openKMS Agents:** `./package.sh --version 1.0.0` → `dist/openkms-1.0.0.zip` (upload on **Agents → Skills**).
 - **Configure:** copy `config.yml.example` → `config.yml`, fill in `api_base_url` and `api_key`. Create keys in **openKMS → Settings → API keys** (`okms.{uuid}.{secret}`, shown once).
-- **Agent-facing instructions:** [`SKILL.md`](SKILL.md) — **all access must use `python scripts/cli.py …` only** (no ad-hoc `curl` or custom HTTP scripts). Layout follows [agentskills.io](https://agentskills.io/specification): [`references/`](references/) (CLI↔HTTP, module Apps, Function source), `scripts/`.
+- **Agent-facing instructions:** [`SKILL.md`](SKILL.md) — short entry + progressive disclosure into [`references/`](references/). **All access must use `python scripts/cli.py …` only** (no ad-hoc `curl` or custom HTTP).
 
 ## Capabilities at a glance
 
@@ -169,16 +169,22 @@ Edit the `Q_*` variables at the top of the script to change the search query, th
 
 ```
 openkms-skill/
-  SKILL.md                 # agent instructions (agentskills.io core)
+  SKILL.md                 # short entry: iron rules + routing (agentskills.io core)
   README.md                # developer install / packaging
   requirements.txt
   config.yml.example
   references/
-    REFERENCE.md           # CLI ↔ HTTP map (load on demand)
-    functions-authoring.md # Ontology Function source authoring
-    actions-authoring.md   # Built-in CRUD Actions (rule_type, convert, delete)
+    setup.md               # install / config / project vs standalone
+    pitfalls.md            # discovery, jobs, domain gotchas
+    commands-content.md    # search / docs / wiki / KB / eval …
+    commands-ontology.md   # objects / links / FoO / actions
+    commands-ops.md        # connectors / jobs / Apps / k8s
+    workflows.md           # recipes A–H
+    functions-authoring.md # Function source (mandatory before --source-code-file)
+    actions-authoring.md   # Action types (mandatory before action-types writes)
     app-builder.md         # Module Apps (bindings.k8s)
-    kubernetes.md          # Cluster apply / register-app / dev-sync
+    kubernetes.md          # apply / register-app / dev-sync
+    REFERENCE.md           # CLI ↔ HTTP (operators / review — not for agents to reimplement)
   scripts/
     cli.py                 # dispatcher
     openkms/               # httpx client + command modules
@@ -187,4 +193,4 @@ openkms-skill/
   install.sh / package.sh
 ```
 
-See [`SKILL.md`](SKILL.md) for the full command matrix and workflow recipes.
+See [`SKILL.md`](SKILL.md) for the routing table; open the matching `references/*.md` on demand.

@@ -3,383 +3,59 @@ name: openkms
 description: >-
   Operates an openKMS deployment via personal API key using bundled scripts/cli.py only
   (no ad-hoc curl/HTTP). Covers search, documents/articles/wiki/KB, glossaries, knowledge-map,
-  evaluations, data-sources/datasets/connectors/jobs, comments, media, ontology objects/links,
-  Cypher/NL ask, functions/action-types/groups, module Apps (list/get/create/patch/publish),
-  and Kubernetes (list registered clusters; list Secret names/keys, ConfigMaps, Deployment env;
-  apply Deployment/Service/Pod/ConfigMap; on-demand dev-sync into a Pod; logs).
-  Write paths include sync, index, CRUD, function publish/execute, kubernetes apply,
-  kubernetes register-app, and kubernetes dev-sync.
-  Before Function --source-code-file: MUST read references/functions-authoring.md.
-  Before ontology action-types create|update|delete|execute: MUST read references/actions-authoring.md.
-  Before any apps CLI or module App registration: MUST read references/app-builder.md.
-  Before kubernetes apply/delete/dev-sync: MUST read references/kubernetes.md.
+  evaluations, data-sources/datasets/connectors/jobs, ontology (objects/links/functions/actions),
+  module Apps, and Kubernetes (apply, register-app, dev-sync, logs) on registered clusters.
+  When writing Function --source-code-file: open references/functions-authoring.md.
+  When creating/updating/deleting/executing ontology action-types: open references/actions-authoring.md.
+  When registering or patching module Apps: open references/app-builder.md.
+  When kubernetes apply/delete/dev-sync: open references/kubernetes.md.
   Use when agents must read or push openKMS content without the web UI. Only config.yml
   may be edited for credentials when the user asks.
 ---
 
 # openKMS skill
 
-## Mandatory for agents: use `scripts/cli.py` only
+Thin CLI over the openKMS HTTP API. Every command JSON-prints the raw response; you parse it and chain the next call. Progressive disclosure: **open a `references/*.md` only when that scenario applies** — nothing here is “always read before any work.”
 
-Do **not** implement openKMS access with hand-written **`curl`**, ad-hoc **`httpx`/`requests`/`fetch`**, or throwaway scripts that call `/api/…` directly. Do **not** treat [references/REFERENCE.md](references/REFERENCE.md) as something to copy into new code—it documents how each **existing** CLI subcommand maps to HTTP for **operators and code review**, not as a second implementation path.
+## Iron rules
 
-**Every** read and write against this deployment must go through **`python scripts/cli.py …`**. That preserves Bearer auth, mutation gates (`--yes` / `--dry-run`), multipart uploads, path encoding, and error handling in one place. If a workflow is missing from the CLI, **extend `openkms-skill` in the repository** (or ask the user to)—do not bypass the bundled scripts.
+1. **Only `scripts/cli.py`.** Do not use hand-written `curl` / `httpx` / `requests` / `fetch`. Missing workflow → extend the skill **in the openKMS repo**, do not bypass. [references/REFERENCE.md](references/REFERENCE.md) is a large CLI↔HTTP index — **do not read it whole and do not reimplement its paths**. To confirm a mapping, **grep the full CLI phrase in backticks** (as after `cli.py`) and read only matching rows — e.g. ``grep '`kb ask`' references/REFERENCE.md`` or ``grep '`jobs get`' …``. Each command has its own table row. Do **not** grep bare verbs like `list` / `get` (too many hits). Prefer `--help` for flags.
+2. **Do not invent flags.** Prefer `python scripts/cli.py <group> --help` (then nested `--help`). On failure, read stderr; do not blind-retry.
+3. **Writes need confirmation.** `--dry-run` prints the plan; `-y`/`--yes` confirms; **non-TTY without `--yes` exits 2**.
+4. **Do not modify shipped skill files** except **`config.yml`** (and only when the user asks to store `api_base_url` / `api_key`). Changes belong in the repository, not the installed copy.
 
-## Mandatory: read these references before acting
+## Open by scenario
 
-`SKILL.md` is the entry. Detailed rules live under `references/` — **open the file and follow it** before the matching work. Do not invent App layout, host events, or Function source from memory.
+Match the task, then open **one** guide. Skip rows that do not apply.
 
-| If you are about to… | You **must** read first |
-|----------------------|-------------------------|
-| Write Ontology Function `--source-code-file` / validate / publish Function source | [references/functions-authoring.md](references/functions-authoring.md) |
-| Create / update / delete / execute Ontology Action types | [references/actions-authoring.md](references/actions-authoring.md) |
-| Run any `apps …` command or register a hosted module App | [references/app-builder.md](references/app-builder.md) (module / `bindings.k8s` only — no A2UI Source) |
-| List clusters or apply YAML to a registered Kubernetes cluster | [references/kubernetes.md](references/kubernetes.md) |
+| Scenario | Open |
+|----------|------|
+| Install, config, project vs standalone paths | [references/setup.md](references/setup.md) |
+| Docs / articles / wiki / KB / glossaries / map / eval commands | [references/commands-content.md](references/commands-content.md) |
+| Ontology objects / links / Cypher / list-execute Functions | [references/commands-ontology.md](references/commands-ontology.md) |
+| **Author** Function source (`--source-code-file` / validate / publish) | [references/functions-authoring.md](references/functions-authoring.md) |
+| **Author** Action types (create / update / delete / execute) | [references/actions-authoring.md](references/actions-authoring.md) |
+| Data sources / connectors / jobs / Apps list / Kubernetes browse | [references/commands-ops.md](references/commands-ops.md) |
+| Register or patch a **module App** (`apps …` / `kubernetes register-app`) | [references/app-builder.md](references/app-builder.md) (`bindings.k8s` only) |
+| Kubernetes **apply / delete / dev-sync** | [references/kubernetes.md](references/kubernetes.md) |
+| Domain gotchas (pipelines, KB ask vs search, eval update vs recreate, …) | [references/pitfalls.md](references/pitfalls.md) |
+| Multi-step recipes (A–H, Tushare DIY, register-app) | [references/workflows.md](references/workflows.md) |
+| Confirm CLI → HTTP (grep full CLI in backticks; never reimplement) | [references/REFERENCE.md](references/REFERENCE.md) |
 
-Skipping these produces wrong apps (e.g. inventing A2UI Source or omitting `bindings.k8s`).
+Authoring / Apps / k8s mutate guides matter only for those write paths — inventing Function shape, A2UI Source, or omitting `bindings.k8s` is what goes wrong if you skip **that** row.
 
-### Dependencies (`requirements.txt`)
+## Quick start
 
-- **Installed into an openKMS project** (Agents → Skills → install): the platform runs `pip install -r requirements.txt` **once** when the skill is copied into `.openkms/skills/openkms/`. **Do not run `pip install` again** on each CLI call. If `python …/scripts/cli.py` fails with `ModuleNotFoundError`, ask the user to **reinstall or update** the skill in project settings — do not patch deps by hand.
-- **Standalone copy** (OpenCode, Claude Code, manual `install.sh`, or dev checkout): run `pip install -r requirements.txt` **once** after copying the skill tree, then use the CLI as usual. Still **not** before every command.
-- **Smoke check** — `python …/scripts/cli.py ping` verifies auth and that imports work; that is enough. No separate install step per session.
-
-### openKMS **project agents** (workspace under `{project_id}/`)
-
-When this skill is installed at `.openkms/skills/openkms/` inside a project workspace:
-
-- Shell **cwd is the project root**. Run one command — **no `cd`**, **no `pip install`**:
-  `python .openkms/skills/openkms/scripts/cli.py wiki-spaces list`
-- `OPENKMS_API_KEY`, `OPENKMS_API_BASE_URL`, and `OPENKMS_SKILL_ROOT` are injected by the agent runtime; `config.yml` is optional.
-- Example: `python .openkms/skills/openkms/scripts/cli.py ping`
-
-Standalone / OpenCode / Claude installs: see **Dependencies** above and **Before you act** §3.
-
-**Evaluations.** To change an evaluation’s name, description, or wiki link, use **`evaluations update`**. To add, edit, or remove question rows, use **`evaluations items add`**, **`evaluations items update`**, and **`evaluations items delete`**. Do **not** delete an evaluation and **`evaluations create`** a replacement just to “refresh” data—that drops **saved runs** and changes the evaluation id (bad for bookmarks, scripts, and comparisons). Reserve **`evaluations create`** for when the user explicitly wants a **new** evaluation.
-
-**Do not modify this skill’s shipped files.** Never edit, delete, or add files under this skill directory except **`config.yml`** — and **only** to set `api_base_url` and `api_key` when the user explicitly asks you to store them (see **Before you act** §2). Do not touch `SKILL.md`, `README.md`, `references/`, `assets/`, `scripts/`, `install.sh`, `requirements.txt`, tests, or any other path here; do not patch or extend the CLI inside the install tree. Changes belong in the **openKMS repository** with a normal human review, not in the agent’s copy of the skill.
-
-## Before you act
-
-1. **Config** — The runtime reads `config.yml` in **this directory** (next to `SKILL.md`). It must include:
-   - `api_base_url` — backend origin only, e.g. `http://127.0.0.1:8102` (no trailing slash).
-   - `api_key` — personal key from **Settings → API keys** in openKMS (user menu **Settings**; `okms.{uuid}.{secret}`).
-   - Optional: `default_document_channel_id` / `default_article_channel_id` — UUID strings; when set, `documents list|upload` and `articles list|create|from-url` may omit `--channel-id` and use these defaults (see `config.yml.example`).
-   - Optional: `default_pipeline_id` — pipeline id string (e.g. `pipeline_baidu_doc_parse`); when set, `document-channels create` assigns it as the channel's default parse pipeline unless `--pipeline-id` is passed.
-
-2. **If either value is missing** — In a **project agent** session, `OPENKMS_API_KEY` and `OPENKMS_API_BASE_URL` are usually already set; you do not need `config.yml`. Otherwise ask the user for the backend URL and a new key from **Settings** (they see the full token once when creating it). Then **write or update** `config.yml` in this skill directory. Never echo the key back in full unless the user explicitly asks.
-
-3. **Run the bundled CLI**
-
-**Project agent** (skill at `.openkms/skills/openkms/`, cwd = project root; deps already installed — see **Dependencies**):
+**Project agent** (cwd = project root; env injected — details in [setup.md](references/setup.md)):
 
 ```bash
 python .openkms/skills/openkms/scripts/cli.py ping
 ```
 
-**Standalone install** (skill directory is cwd; run `pip install -r requirements.txt` **once** after copying — not before every command):
+**Standalone** (skill directory as cwd; `pip install -r requirements.txt` **once** after copy):
 
 ```bash
-pip install -q -r requirements.txt   # first time only
 python scripts/cli.py ping
 ```
 
-4. **Auth header** — The CLI sends `Authorization: Bearer <api_key>`. Same permissions as the user who created the key.
-
-## Install (OpenCode and Claude Code)
-
-From the repo:
-
-```bash
-./install.sh                      # auto: installs to whichever runtimes are present
-./install.sh --target opencode    # OpenCode only  → ~/.config/opencode/skills/openkms/
-./install.sh --target claude-code # Claude Code only → ~/.claude/skills/openkms/
-./install.sh --target both        # both runtimes
-./install.sh --dest /custom/path  # explicit destination
-```
-
-Auto mode picks targets based on which dirs exist (`~/.config/opencode/`, `~/.claude/`). Re-run after pulling repo changes. An existing **`config.yml`** in any destination is **preserved** (not overwritten by the fresh tree).
-
-## How to use this skill
-
-The skill is a thin Python CLI over openKMS's HTTP API. Every command JSON-prints the raw API response (`json.dumps`, indented). You parse it, then drive the next call. There is no client-side magic — pagination, retries, follow-ups are all yours.
-
-### CLI discovery & failure handling (mandatory)
-
-- **Never invent** subcommand names or flags. Before any unfamiliar group, run `python scripts/cli.py <group> --help`, then nested `--help` (e.g. `ontology functions --help`).
-- When a command fails, read **stderr** carefully (argparse missing-arg text or `HTTP <status>` + body). Fix the cause; **do not** blind-retry the same command.
-- `ontology objects|links sync-neo4j` / `sync-neo4j-type` **require** `--neo4j-data-source-id`. Discover it with `data-sources list` (kind `neo4j`) — do not guess the id or omit the flag.
-- After `connectors sync`, `kb index`, `media generate`, etc., poll progress with **`jobs get --id JOB_ID`** (or `jobs list`). Do **not** call `/api/jobs` with raw HTTP.
-- This skill does **not** wrap feature toggles, the schedules hub, or Console **cluster registration** (creating/editing kubeconfig). It **does** wrap **`kubernetes …`** against already-registered clusters (`console:kubernetes`). Never print or store kubeconfig.
-
-Some practical guidance:
-
-- **Document channels need a pipeline for PDF parse.** Uploading PDFs/images/Office to a channel without a default pipeline leaves documents stuck at `uploaded` — Process is disabled in the UI and `POST /api/jobs` fails. Before creating a channel for parseable files: run `pipelines list` (or `pipelines list --table`) to pick an **active** pipeline id, then `document-channels create --pipeline-id …` or set `default_pipeline_id` in `config.yml`. XLSX/XMind previews do not need a pipeline. To fix an existing channel: `document-channels update --id DC_ID --pipeline-id … --yes`.
-- **Discover before you fetch.** Most agent workflows start with `search` (or `documents list --search …` / `articles list --search …`) to find candidates by name, then a `get` / `markdown` to pull content. Don't fetch a whole channel just to grep — server-side `--search` is keyword-substring against names/titles.
-- **Article content review.** Channels can configure an LLM rubric (`review_model_id`, `review_prompt`, `review_criteria` via `article-channels update`). After a review exists, **`articles reviews latest --id ART_ID`** returns `result.pass`, `result.overall_score`, per-criterion scores/notes, and **`result.suggestions`** — use these to revise markdown. 404 means no review yet; run **`articles review run --id ART_ID --yes`**. Review does not edit the article; you apply suggestions yourself.
-- **`kb ask` vs `kb search`.** `ask` proxies to the QA agent and returns a grounded *answer* (with citations). `search` is **hybrid** (BM25 + dense + RRF + cross-encoder rerank) and returns *raw chunks + FAQ matches*. Use `ask` when the user wants an answer; use `search` when you need source material to reason over yourself.
-- **KB wiki indexing.** Link with **`kb wiki-spaces link`**, then **`kb wiki-spaces reindex`** or **`kb index`**. Poll **`jobs get`**.
-- **`ontology ask` is a 3-call chain.** Use when the question is graph-shaped. Use individual subcommands when you need to inspect Cypher.
-- **Ontology Functions vs Actions vs Connectors.** Functions = read/compute Python logic (`ontology functions …`). Action types = intentional ops (`ontology action-types …`). **Default to built-in rules** — `--rule-type object_create|object_modify|object_delete` (no Function; platform applies the edit). Use `--rule-type function` + `--function-id` **only** when you need custom FoO logic (validation, derived fields, multi-step edits via `create_edit_batch()`). Before any Action write path, read **[references/actions-authoring.md](references/actions-authoring.md)** — do **not** probe unknown `rule_type` values. Connector **sync** loads external datasets (e.g. Tushare) — not an Action. Prefer not Neo4j-indexing huge daily fact tables; index master data (e.g. Stock) and analysis objects. Domain types/Functions (Stock, screens) are **tenant DIY**, not platform seeds — see Workflow **G**. Hosted UIs are tenant **module Apps** — open [references/app-builder.md](references/app-builder.md) first (Workflow **H**).
-- **Authoring Function source.** Before writing `--source-code-file`, read **[references/functions-authoring.md](references/functions-authoring.md)** (`@function`, `Client` search/fetch/execute_function, `uses=`, allowed imports, CLI validate→publish). Do not invent HTTP inside Function code. `Client` is read/compose only. Prefer built-in Action rules for CRUD; only Action-bound Functions returning `create_edit_batch()` edits when custom write logic is required.
-- **Module Apps (`apps` CLI).** **Read [references/app-builder.md](references/app-builder.md) before** `apps create|patch|publish`. Apps are hosted Kubernetes Services only (`bindings.k8s`). Prefer `kubernetes register-app`. No A2UI Source / synthesize.
-- **Object type properties** may use `string`, `integer`, `number`, `boolean`, `date`, `datetime`, `uuid` in `--properties-json`.
-- **Permission model is enforced server-side.** API key carries the user's scope. List endpoints filter to readable channels; per-id GET returns 404 (not 403) when out of scope.
-- **Write commands and confirm gating.** Every mutating CLI subcommand: `--dry-run` prints planned call; `-y`/`--yes` skips prompt; **on a non-TTY without `--yes` exit 2**.
-- **Ontology read vs write.** `ontology cypher/text-to-cypher/answer/ask` are **read-only**. Enrich via `ontology objects|links` then **`sync-neo4j*`** with `--neo4j-data-source-id`.
-- **`wiki files` is the whole space file store**, not attachments-only.
-- **Output is verbose.** Pipe through `jq` when scanning many records.
-
-## Read / query tasks
-
-| Goal | Command |
-|------|---------|
-| Verify connectivity | `python scripts/cli.py ping` |
-| Global search across content | `python scripts/cli.py search --q "乳腺癌" --types documents,articles --limit 20` |
-| List document channels as indented tree (human-readable) | `python scripts/cli.py document-channels list --tree` |
-| List document processing pipelines | `python scripts/cli.py pipelines list` (or `--table` for id / name / active) |
-| List article channels as indented tree (human-readable) | `python scripts/cli.py article-channels list --tree` |
-| List documents (filter by channel/keyword) | `python scripts/cli.py documents list --channel-id ID --search "心梗" --limit 50` |
-| Get document metadata + body | `python scripts/cli.py documents get --id DOC_ID` |
-| List document lineage (outgoing + incoming edges) | `python scripts/cli.py documents relationships list --id DOC_ID` |
-| Save just the document markdown to a file | `python scripts/cli.py documents markdown --id DOC_ID --out ./case.md` |
-| List articles (filter by channel/keyword) | `python scripts/cli.py articles list --channel-id ID --search "豁免"` |
-| List article lineage (outgoing + incoming edges) | `python scripts/cli.py articles relationships list --id ART_ID` |
-| Get article markdown | `python scripts/cli.py articles markdown --id ART_ID` |
-| Latest LLM content review (scores + suggestions) | `python scripts/cli.py articles reviews latest --id ART_ID` |
-| List recent content reviews | `python scripts/cli.py articles reviews list --id ART_ID --limit 10` |
-| List wiki pages in a space | `python scripts/cli.py wiki list-pages --space-id SP_ID` |
-| Search wiki pages (substring or semantic when indexed) | `python scripts/cli.py wiki pages semantic-matches --space-id SP_ID --q "onboarding" --top-k 10` |
-| List wiki space stored files (vault .md, assets, uploads; not attachments-only) | `python scripts/cli.py wiki files list --space-id SP_ID` |
-| List channel documents linked to a wiki space (UI “linked documents”) | `python scripts/cli.py wiki-spaces documents list --space-id SP_ID` |
-| Get one wiki page by Obsidian path | `python scripts/cli.py wiki get-page --space-id SP_ID --path notes/onboarding` |
-| List knowledge bases | `python scripts/cli.py kb list` |
-| List wiki spaces linked to a KB | `python scripts/cli.py kb wiki-spaces list --kb-id KB_ID` |
-| Semantic search over KB chunks + FAQs | `python scripts/cli.py kb search --id KB_ID --q "既往症定义" --limit 10` |
-| Ask the KB a question (grounded answer) | `python scripts/cli.py kb ask --id KB_ID --question "..."` |
-| List FAQs on a KB | `python scripts/cli.py kb-faq list --kb-id KB_ID` |
-| List glossaries | `python scripts/cli.py glossaries list` |
-| Get one glossary | `python scripts/cli.py glossaries get --id GL_ID` |
-| List terms in a glossary (optional search) | `python scripts/cli.py glossaries terms list --glossary-id GL_ID --search "心梗"` |
-| Get one glossary term | `python scripts/cli.py glossaries terms get --glossary-id GL_ID --term-id TERM_ID` |
-| Export glossary terms (JSON) | `python scripts/cli.py glossaries export --glossary-id GL_ID` |
-| Run a Cypher query against the ontology graph | `python scripts/cli.py ontology cypher --query "MATCH (n:Customer) RETURN n LIMIT 10"` |
-| NL question → Cypher (just the translation) | `python scripts/cli.py ontology text-to-cypher --question "..."` |
-| NL question → Cypher → results → NL answer (3-call chain) | `python scripts/cli.py ontology ask --question "..."` |
-| List object types | `python scripts/cli.py ontology objects list [--master-data-only] [--count-from-neo4j]` |
-| Get one object type | `python scripts/cli.py ontology objects get --id OT_ID` |
-| List instances of a type | `python scripts/cli.py ontology objects instances list --type-id OT_ID --limit 50` |
-| Get one instance | `python scripts/cli.py ontology objects instances get --type-id OT_ID --id OI_ID` |
-| List link types | `python scripts/cli.py ontology links list` |
-| Get one link type | `python scripts/cli.py ontology links get --id LT_ID` |
-| List instances of a link type | `python scripts/cli.py ontology links instances list --type-id LT_ID --limit 50` |
-| List ontology functions | `python scripts/cli.py ontology functions list` |
-| Execute published function by api name | `python scripts/cli.py ontology functions execute-by-api-name --api-name NAME --input-json '{}' --yes` |
-| List action types | `python scripts/cli.py ontology action-types list` |
-| List ontology groups | `python scripts/cli.py ontology groups list` |
-| List module Apps | `python scripts/cli.py apps list` |
-| Get published app | `python scripts/cli.py apps get <id>` |
-| List data sources | `python scripts/cli.py data-sources list` |
-| List datasets | `python scripts/cli.py datasets list [--data-source-id ID]` |
-| Dataset rows / metadata | `python scripts/cli.py datasets rows --id DS_ID` / `datasets metadata --id DS_ID` |
-| List connector kinds / connectors | `python scripts/cli.py connectors kinds` / `connectors list` |
-| Get job | `python scripts/cli.py jobs get --id JOB_ID` |
-| List registered Kubernetes clusters | `python scripts/cli.py kubernetes clusters list` |
-| List Secrets in a namespace (names + keys, no values) | `python scripts/cli.py kubernetes secrets --cluster-id ID --namespace NS` |
-| List ConfigMaps / Deployment env refs | `kubernetes configmaps --cluster-id ID --namespace NS` / `kubernetes env --cluster-id ID --deployment NAME --namespace NS` |
-| Sync Agent Project workspace into a dev Pod (hot reload; not an external clone) | `kubernetes dev-sync --project-id ID --cluster-id ID --deployment NAME --local-path REL --container-path /abs --yes` |
-| List comments | `python scripts/cli.py comments list --resource-type document --resource-id ID` |
-| List media | `python scripts/cli.py media list [--channel-id ID]` |
-| Get one evaluation's metadata | `python scripts/cli.py evaluations get --id DS_ID` |
-| List items in an evaluation | `python scripts/cli.py evaluations items list --id DS_ID --limit 50` |
-| List runs for an evaluation | `python scripts/cli.py evaluation-runs list --evaluation-id DS_ID` |
-| Get one run with per-item results | `python scripts/cli.py evaluation-runs get --evaluation-id DS_ID --run-id RUN_ID` |
-| Compare two runs | `python scripts/cli.py evaluation-runs compare --evaluation-id DS_ID --run-a A --run-b B` |
-| Get Knowledge Map tree | `python scripts/cli.py knowledge-map nodes tree` |
-| List all knowledge map resource links | `python scripts/cli.py knowledge-map resource-links list` |
-
-## Write tasks
-
-Mutating commands below use `-y`/`--yes` and `--dry-run` like ontology writes (non-TTY without `--yes` exits 2).
-
-| Goal | Command |
-|------|---------|
-| List document channels (tree) | `python scripts/cli.py document-channels list` |
-| Create document channel | `python scripts/cli.py document-channels create --name "Inbox" --yes` |
-| Create document channel with parse pipeline | `python scripts/cli.py pipelines list --table` then `document-channels create --name "Insurance" --pipeline-id pipeline_baidu_doc_parse --yes` |
-| Update document channel | `python scripts/cli.py document-channels update --id DC_ID --name "Renamed" --yes` |
-| Set channel parse pipeline | `python scripts/cli.py document-channels update --id DC_ID --pipeline-id pipeline_baidu_doc_parse --yes` |
-| Upload a file to a channel | `python scripts/cli.py documents upload --channel-id ID --file /path/to/doc.pdf --yes` (or omit `--channel-id` if `default_document_channel_id` is set in `config.yml`) |
-| Patch document lifecycle (series, dates, status) | `python scripts/cli.py documents lifecycle patch --id DOC_ID --lifecycle-status in_force --series-id SER_UUID --yes` |
-| Add lineage edge (this doc → other) | `python scripts/cli.py documents relationships create --id DOC_ID --target-id OTHER_ID --relation-type supersedes --yes` |
-| Remove an outgoing lineage edge | `python scripts/cli.py documents relationships delete --id DOC_ID --relationship-id REL_ID --yes` |
-| List article channels (tree) | `python scripts/cli.py article-channels list` |
-| Create article channel | `python scripts/cli.py article-channels create --name "Internal Wiki" --yes` |
-| Update article channel | `python scripts/cli.py article-channels update --id AC_ID --parent-id PARENT_UUID --yes` |
-| Create article from a markdown file | `python scripts/cli.py articles create --channel-id ID --name "Title" --markdown-file ./x.md --yes` |
-| Import article from a URL (HTML → text heuristic) | `python scripts/cli.py articles from-url --channel-id ID --url https://example.com/a --yes` |
-| Run LLM content review (persist) | `python scripts/cli.py articles review run --id ART_ID --yes` |
-| Add article lineage edge (this article → other) | `python scripts/cli.py articles relationships create --id ART_ID --target-id OTHER_ID --relation-type supersedes --yes` |
-| Remove an outgoing article lineage edge | `python scripts/cli.py articles relationships delete --id ART_ID --relationship-id REL_ID --yes` |
-| List wiki spaces | `python scripts/cli.py wiki-spaces list` |
-| Create wiki space | `python scripts/cli.py wiki-spaces create --name "Field Notes" --yes` |
-| Link a channel document to a wiki space | `python scripts/cli.py wiki-spaces documents link --space-id SP_ID --document-id DOC_ID --yes` |
-| Unlink a document from a wiki space (does not delete the document) | `python scripts/cli.py wiki-spaces documents unlink --space-id SP_ID --document-id DOC_ID --yes` |
-| Upsert wiki page from file | `python scripts/cli.py wiki put-page --space-id ID --path my/page --title "T" --file ./note.md --yes` |
-| Re-index one linked wiki space into a KB | `python scripts/cli.py kb wiki-spaces reindex --kb-id KB_ID --space-id SP_ID --yes` |
-| Queue full KB reindex (documents + all linked wiki spaces) | `python scripts/cli.py kb index --id KB_ID --yes` |
-| Delete one wiki stored file by id (vault .md or any stored path; DB + storage) | `python scripts/cli.py wiki files delete --space-id SP_ID --file-id FILE_ID --yes` |
-| Create FAQ on a KB | `python scripts/cli.py kb-faq create --kb-id ID --question "Q" --answer "A" --yes` |
-| List evaluations | `python scripts/cli.py evaluations list` |
-| Create evaluation | `python scripts/cli.py evaluations create --name "…" --kb-id KB_ID --wiki-space-id SP_ID --yes` |
-| Update evaluation (name / description / KB or wiki link; same id, keeps runs) | `python scripts/cli.py evaluations update --id EV_ID --name "…" --yes` (optional `--description`, `--knowledge-base-id ID`, `--wiki-space-id ID`, or `--clear-wiki-space`) |
-| Add one evaluation item | `python scripts/cli.py evaluations items add --id EV_ID --query "…" --expected-answer "…" --yes` (optional `--topic`, `--sort-order`) |
-| Update one evaluation item | `python scripts/cli.py evaluations items update --id EV_ID --item-id ITEM_ID --query "…" --yes` (any of `--query`, `--expected-answer`, `--topic`, `--sort-order`) |
-| Delete one evaluation item | `python scripts/cli.py evaluations items delete --id EV_ID --item-id ITEM_ID --yes` |
-| Trigger an evaluation run | `python scripts/cli.py evaluations run --id EV_ID --type qa_answer --yes` (use `--type wiki_content_coverage` when the evaluation has a linked wiki space; `expected_answer` is the checklist text for the judge) |
-| Create glossary | `python scripts/cli.py glossaries create --name "Product terms" --yes` |
-| Update / delete glossary | `python scripts/cli.py glossaries update --id GL_ID --description "…" --yes` / `glossaries delete --id GL_ID --yes` |
-| Create / update / delete term | `python scripts/cli.py glossaries terms create --glossary-id GL_ID --primary-en "MI" --primary-cn "心梗" --yes` (and `terms update` / `terms delete`) |
-| Bulk-import terms from JSON file | `python scripts/cli.py glossaries import --glossary-id GL_ID --terms-file ./terms.json --mode replace --yes` |
-| AI suggest for a term (uses default LLM) | `python scripts/cli.py glossaries terms suggest --glossary-id GL_ID --primary-en "STEMI" --yes` |
-| Create knowledge map node | `python scripts/cli.py knowledge-map nodes create --name "Claims" --yes` |
-| Patch / delete knowledge map node | `python scripts/cli.py knowledge-map nodes patch --id NODE_ID --name "Renamed" --yes` / `knowledge-map nodes delete --id NODE_ID --yes` |
-| Map a channel or wiki space to a map node | `python scripts/cli.py knowledge-map resource-links put --knowledge-map-node-id NODE --resource-type document_channel --resource-id CHAN_ID --yes` |
-| Unmap a resource from the knowledge map | `python scripts/cli.py knowledge-map resource-links delete --resource-type wiki_space --resource-id WS_ID --yes` |
-
-### Ontology objects + links
-
-Same confirmation rules as other writes.
-
-| Goal | Command |
-|------|---------|
-| Create object type | `python scripts/cli.py ontology objects create-type --name "Disease" --properties-json '[{"name":"icd","type":"string","required":true}]' --yes` |
-| Update object type | `python scripts/cli.py ontology objects update-type --id OT --display-property name --yes` |
-| Delete object type | `python scripts/cli.py ontology objects delete-type --id OT --yes` |
-| Create object instance | `python scripts/cli.py ontology objects instances create --type-id OT --data-json '{"icd":"C50"}' --yes` |
-| Update object instance | `python scripts/cli.py ontology objects instances update --type-id OT --id OI --data-json '{"icd":"C50.1"}' --yes` |
-| Delete object instance | `python scripts/cli.py ontology objects instances delete --type-id OT --id OI --yes` |
-| MERGE all indexable object types into Neo4j | `python scripts/cli.py ontology objects sync-neo4j --neo4j-data-source-id DS --yes` |
-| MERGE one object type into Neo4j | `python scripts/cli.py ontology objects sync-neo4j-type --type-id OT_ID --neo4j-data-source-id DS --yes` |
-| Create link type | `python scripts/cli.py ontology links create-type --name covers --source-type-id OT_PROD --target-type-id OT_DIS --cardinality many-to-many --yes` |
-| Update link type | `python scripts/cli.py ontology links update-type --id LT --description "..." --yes` |
-| Delete link type | `python scripts/cli.py ontology links delete-type --id LT --yes` |
-| Create link instance | `python scripts/cli.py ontology links instances create --type-id LT --source-object-id OI_A --target-object-id OI_B --yes` |
-| Delete link instance | `python scripts/cli.py ontology links instances delete --type-id LT --id LI --yes` |
-| MERGE all indexable link types into Neo4j | `python scripts/cli.py ontology links sync-neo4j --neo4j-data-source-id DS --yes` |
-| MERGE one link type into Neo4j | `python scripts/cli.py ontology links sync-neo4j-type --type-id LT_ID --neo4j-data-source-id DS --yes` |
-| Create / validate / publish function | `ontology functions create … --source-code-file ./fn.py --yes` then `validate` / `publish` |
-| Create / update / delete / execute action type | Prefer built-in: `ontology action-types create … --rule-type object_create\|object_modify\|object_delete --yes`. Convert in place: `update --id AT --rule-type object_modify --clear-function --yes`. Free `api_name`: `delete --id AT --yes` (archive alone does not). Execute: `execute --id AT --object-id OI --yes`. **Must** read [actions-authoring.md](references/actions-authoring.md). |
-| Create module App | **Read [references/app-builder.md](references/app-builder.md) first**, then `apps create --name "Web" --api-name web --bindings-json '{"k8s":{…}}' --yes` (or `kubernetes register-app`)
-| Patch module App binding | `apps patch <id> --bindings-json '{"k8s":{…}}' --yes`
-| Publish App | `python scripts/cli.py apps publish <id> --yes` |
-| Delete App | `python scripts/cli.py apps delete <id> --yes` |
-| Provision Tushare slot dataset | `connectors provision-dataset --kind tushare --slot stock_basic --data-source-id PG --yes` |
-| Queue connector sync | `connectors sync --id CONN --yes` then `jobs get --id JOB` |
-| Link wiki space to KB | `kb wiki-spaces link --kb-id KB --space-id SP --yes` |
-| Wiki semantic index | `wiki-spaces semantic-index --id SP --yes` |
-| Put document markdown | `documents put-markdown --id DOC --file ./x.md --yes` |
-| Export document zip | `documents export --id DOC --out ./doc.zip --yes` |
-| Apply Deployment/Service YAML to a registered cluster | **Read [references/kubernetes.md](references/kubernetes.md) first**, then `kubernetes apply --cluster-id ID --file ./deploy.yaml --namespace default --yes` |
-| Sync **Agent Project** workspace files into a running dev Pod | **Read [references/kubernetes.md](references/kubernetes.md) first** (do **not** `PUT …/files/content` to mirror another clone), then `kubernetes dev-sync --project-id ID --cluster-id ID --deployment NAME --local-path REL --container-path /abs [--reload] --yes` |
-| Delete a Service or Deployment | `kubernetes delete --cluster-id ID --kind Service --name NAME --namespace default --yes` |
-| Register a Service as a hosted App | `kubernetes register-app --cluster-id ID --namespace default --service NAME --port 80 --name "Web" --api-name webApp --yes` |
-
-When a link type is `many-to-many` and dataset-backed, the server is the source of truth via the junction table — `ontology links instances create/delete` will return 4xx. Surface that error rather than trying to bypass.
-
-## Workflow recipes
-
-**A. Find a doc by phrase, fetch its markdown.**
-```bash
-python scripts/cli.py search --q "乳腺癌" --types documents --limit 5
-# pick the doc id you want from the response
-python scripts/cli.py documents markdown --id <doc_id> --out ./case.md
-```
-
-**B. Ask the KB a question (grounded with citations).**
-```bash
-python scripts/cli.py kb list                      # find the KB id
-python scripts/cli.py kb ask --id <kb_id> --question "既往症的判定标准是什么？"
-```
-
-**C. NL question against the ontology graph.**
-```bash
-python scripts/cli.py ontology ask --question "列出与'重疾豁免'触发条件相关的合规通函"
-# returns {question, cypher, explanation, columns, rows, answer}
-```
-
-**D. Tight-loop content discovery + read.**
-```bash
-# list all "claims" articles, then pull markdown of every one matching a regex
-python scripts/cli.py articles list --channel-id <ch_id> --limit 200 \
-  | jq -r '.items[] | select(.name | test("乳腺癌")) | .id' \
-  | while read id; do python scripts/cli.py articles markdown --id "$id" --out "./$id.md"; done
-```
-
-**E. After wiki page edits, refresh KB search for one linked space.**
-```bash
-python scripts/cli.py kb wiki-spaces list --kb-id <kb_id>
-python scripts/cli.py kb wiki-spaces reindex --kb-id <kb_id> --space-id <space_id> --yes
-# → JobResponse with "id"; worker runs kb-index --wiki-space-id …
-```
-
-**F. Improve an article using the latest content review.**
-```bash
-python scripts/cli.py articles reviews latest --id <art_id>
-# → .result.suggestions[], .result.criteria[] (scores + notes), .result.pass, .result.summary
-# If 404: channel needs review_model_id — run review first:
-python scripts/cli.py articles review run --id <art_id> --yes
-python scripts/cli.py articles markdown --id <art_id>   # read body, apply suggestions, edit locally
-```
-
-**G. Tenant DIY: Tushare datasets → Stock object type → read-only Function (not a platform seed).**
-
-Domain schema and Function source are **operator content**. When working **inside the openKMS monorepo**, concepts: `docs/tutorials/understanding-ontology.md`; lab: `docs/tutorials/tushare-market-ontology.md`. **Skill-only installs** (`~/.claude/skills`, OpenCode, Agents zip) do not include those docs — use [references/functions-authoring.md](references/functions-authoring.md) and CLI help. Platform already supports OT bind + Neo4j index + Function publish; do **not** invent product APIs for this path.
-
-```bash
-python scripts/cli.py data-sources list          # note Neo4j id + ontology PG id
-python scripts/cli.py connectors list            # find Tushare connector; inspect outputs → dataset ids
-python scripts/cli.py connectors sync --id <conn> --yes
-python scripts/cli.py jobs get --id <job_id>     # poll until completed
-python scripts/cli.py datasets metadata --id <stock_basic_dataset_id>
-python scripts/cli.py ontology objects create-type \
-  --name Stock --dataset-id <id> --key-property ts_code --is-master-data \
-  --display-property name --properties-json '[...]' --yes
-# Prefer NOT sync-neo4j on huge daily bar datasets; sync Stock (and analysis OTs) only:
-python scripts/cli.py ontology objects sync-neo4j-type \
-  --type-id <stock_ot> --neo4j-data-source-id <neo4j_ds> --yes
-python scripts/cli.py ontology functions create \
-  --api-name stockProfile --display-name "Stock profile" \
-  --source-code-file ./stock_profile.py --yes
-python scripts/cli.py ontology functions validate --id <fn> --source-code-file ./stock_profile.py --yes
-python scripts/cli.py ontology functions publish --id <fn> --yes
-python scripts/cli.py ontology functions execute-by-api-name \
-  --api-name stockProfile --input-json '{"ts_code":"000001.SZ"}' --yes
-```
-Author `stock_profile.py` per [references/functions-authoring.md](references/functions-authoring.md) (not ad-hoc curl).
-
-Workbench types (Watchlist / ScreenRun): create instances via Object Explorer / `ontology objects` for **non-dataset** types if needed. Action execute **applies** create/modify/delete on those instances; dataset-backed synthetic ids remain deferred.
-
-**H. Register a hosted module App.**
-
-Read **[references/app-builder.md](references/app-builder.md)** then either:
-
-```bash
-python scripts/cli.py kubernetes register-app \
-  --cluster-id ID --namespace default --service my-svc --port 80 \
-  --name "Web" --api-name webApp --yes
-```
-
-or `apps create` with `--bindings-json` containing `k8s`.
-
-
-## Reference (progressive disclosure)
-
-Per [agentskills.io](https://agentskills.io/specification): keep detailed material one level under `references/` / `scripts/` / `assets/`. **Load on demand — but the “Mandatory: read these references” table above is not optional** when those tasks apply.
-
-- CLI ↔ HTTP map: [references/REFERENCE.md](references/REFERENCE.md) (operators / code review — **not** a second HTTP path for agents)
-- Ontology Function **source** authoring: [references/functions-authoring.md](references/functions-authoring.md)
-- Ontology Action types (built-in CRUD first): [references/actions-authoring.md](references/actions-authoring.md)
-- Module Apps (`bindings.k8s`): [references/app-builder.md](references/app-builder.md)
-- Executable CLI: `scripts/cli.py`
-- Tests (dev only, not packaged for Agents zip): `tests/` — `pytest -v`
+Then discover with `--help`, open the matching scenario row above, and chain JSON responses. After long jobs (`connectors sync`, `kb index`, …), poll `jobs get --id JOB_ID`.

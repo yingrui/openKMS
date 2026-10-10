@@ -2,7 +2,9 @@
 
 Part of [agentskills.io](https://agentskills.io/specification) **`references/`** (load on demand from `SKILL.md`).
 
-Paths below are relative to `api_base_url` from `config.yml`. The **CLI** sends `Authorization: Bearer <api_key>` on every request. **Agents must not reimplement these calls with `curl` or custom HTTP code**—use `python scripts/cli.py …` only; this file is for humans maintaining the skill and for reviews.
+Paths below are relative to `api_base_url` from `config.yml`. The **CLI** sends `Authorization: Bearer <api_key>` on every request.
+
+**Agents:** do **not** read this file end-to-end and do **not** reimplement these calls with `curl` or custom HTTP — use `python scripts/cli.py …` only. When you need to confirm a CLI↔HTTP mapping, **grep the full CLI phrase in backticks** (one command per table row), e.g. ``grep '`kb ask`' references/REFERENCE.md`` or ``grep '`jobs get`' …``. Avoid bare `list` / `get`. Humans use the full table for skill maintenance and code review.
 
 ## config.yml
 
@@ -205,26 +207,42 @@ All write subcommands accept `--yes` / `--dry-run`. Without `--yes` on non-TTY s
 | `data-sources create` *(write)* | POST | `/api/data-sources` | |
 | `data-sources test` *(write)* | POST | `/api/data-sources/{id}/test` | |
 | `datasets list` | GET | `/api/datasets` | Optional `?data_source_id=`. |
-| `datasets get` / `rows` / `metadata` | GET | `/api/datasets/{id}`… | |
+| `datasets get` | GET | `/api/datasets/{id}` | |
+| `datasets rows` | GET | `/api/datasets/{id}/rows` | Optional `?limit=` / `?offset=`. |
+| `datasets metadata` | GET | `/api/datasets/{id}/metadata` | Column metadata. |
 | `datasets create` *(write)* | POST | `/api/datasets` | Register existing table. |
 | `connectors kinds` | GET | `/api/connectors/kinds` | |
-| `connectors list` / `get` | GET | `/api/connectors`… | |
-| `connectors create` / `update` *(write)* | POST/PUT | `/api/connectors`… | Secrets masked in dry-run. |
-| `connectors sync` *(write)* | POST | `/api/connectors/{id}/sync` | Returns `{job_id}` — poll `jobs get`. |
+| `connectors list` | GET | `/api/connectors` | |
+| `connectors get` | GET | `/api/connectors/{id}` | |
+| `connectors create` *(write)* | POST | `/api/connectors` | Secrets masked in dry-run. |
+| `connectors update` *(write)* | PUT | `/api/connectors/{id}` | Secrets masked in dry-run. |
+| `connectors sync` *(write)* | POST | `/api/connectors/{id}/sync` | Returns `{job_id}` — poll with `jobs get`. |
 | `connectors provision-dataset` *(write)* | POST | `/api/connectors/provision-dataset` | |
 | `connectors probe` *(write)* | POST | `/api/connectors/{id}/probe` | Tushare live probe; no dataset writes. |
 | `connectors search` *(write)* | POST | `/api/connectors/{id}/search` | search_tool kinds. |
-| `jobs list` / `get` | GET | `/api/jobs`… | |
+| `jobs list` | GET | `/api/jobs` | Optional filters: `document_id`, `knowledge_base_id`, `connector_id`, `status`, `search`, `limit`, `offset`. |
+| `jobs get` | GET | `/api/jobs/{id}` | Detail including events / worker_log. |
 | `jobs retry` *(write)* | POST | `/api/jobs/{id}/retry` | |
 
 ### Comments / media
 
 | CLI | Method | Path | Notes |
 |---|---|---|---|
-| `comments list` | GET | `/api/comments` | `resource_type`, `resource_id`. |
-| `comments create` / `reply` / `update` / `delete` *(write)* | POST/PATCH/DELETE | `/api/comments…` | |
-| `media-channels *` | GET/POST/PUT/DELETE | `/api/media-channels…` | |
-| `media list` / `get` / `upload` / `generate` / `patch` / `delete` | … | `/api/media…` | `generate` returns a job — poll `jobs get`. |
+| `comments list` | GET | `/api/comments` | Query `resource_type`, `resource_id`. |
+| `comments create` *(write)* | POST | `/api/comments` | Body `{resource_type, resource_id, body, rank}`. |
+| `comments reply` *(write)* | POST | `/api/comments/{id}/replies` | Body `{body}`. |
+| `comments update` *(write)* | PATCH | `/api/comments/{id}` | Partial `{body?, rank?}`. |
+| `comments delete` *(write)* | DELETE | `/api/comments/{id}` | |
+| `media-channels list` | GET | `/api/media-channels` | |
+| `media-channels create` *(write)* | POST | `/api/media-channels` | Body `{name, description?, parent_id?, sort_order?}`. |
+| `media-channels update` *(write)* | PUT | `/api/media-channels/{id}` | Partial fields. |
+| `media-channels delete` *(write)* | DELETE | `/api/media-channels/{id}` | Empty channel only. |
+| `media list` | GET | `/api/media` | Optional `channel_id`, `media_kind`, `search`. |
+| `media get` | GET | `/api/media/{id}` | |
+| `media upload` *(write)* | POST multipart | `/api/media/upload` | Fields: `file`, `channel_id`, optional `title` / `description`. |
+| `media generate` *(write)* | POST | `/api/media/generate` | Returns a job — poll with `jobs get`. |
+| `media patch` *(write)* | PATCH | `/api/media/{id}` | Partial metadata. |
+| `media delete` *(write)* | DELETE | `/api/media/{id}` | |
 
 ### Knowledge map (`knowledge-map`)
 

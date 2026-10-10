@@ -138,7 +138,7 @@ Today: [Documents](features/documents.md) lifecycle + relationships; `is_current
 | Action `create` / `modify` / `delete` apply (resolvable instance ids) | **Shipped** — apply `output.edits` after Action OFS ok (`applied.created_ids` / `modified_ids` / `deleted_ids`). |
 | Dataset/Neo4j synthetic Action `object_id` + link create/delete edit ops | **Deferred** — see [Manager alignment](research/ontology_manager_alignment.md#capability-audit-shipped-vs-diy-blockers). |
 | Discover / Explorer Home by group / global draft chrome | P1–P2 UX — **decoupled** from domain DIY and from Action-write work |
-| Domain ontologies (Stock, screens, watchlists, …) | **Not backlog** — tenant DIY: [understanding ontology](tutorials/understanding-ontology.md) · [Tushare case](tutorials/tushare-market-ontology.md) · [openkms-skill](features/openkms-skill.md) Workflow G; optional hosted board UI = Workflow H + [Apps](features/app-builder.md) |
+| Domain ontologies (Stock, screens, watchlists, …) | **Not backlog** — tenant DIY: [understanding ontology](tutorials/understanding-ontology.md) · [Tushare case](tutorials/tushare-market-ontology.md) · [openkms-skill](features/openkms-skill.md) `references/workflows.md` G; optional hosted board UI = workflow H + [Apps](features/app-builder.md) |
 
 Shipped: [Ontology](features/ontology.md) · [Ontology Functions](features/ontology-functions.md) · [Manager alignment](research/ontology_manager_alignment.md).
 

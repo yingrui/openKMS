@@ -17,13 +17,13 @@ Repo path: [`openkms-skill/`](https://github.com/yingrui/openKMS/blob/main/openk
 
 ```
 openkms-skill/
-  SKILL.md                 # agent instructions + YAML frontmatter
-  references/              # load on demand
-    REFERENCE.md           # CLI ↔ HTTP
-    functions-authoring.md # Ontology Function source
-    actions-authoring.md   # Built-in CRUD Actions
-    app-builder.md         # Module Apps (bindings.k8s)
-    kubernetes.md          # Cluster apply / register-app / dev-sync
+  SKILL.md                 # short entry: iron rules + routing
+  references/              # load on demand (progressive disclosure)
+    setup.md / pitfalls.md / workflows.md
+    commands-content.md / commands-ontology.md / commands-ops.md
+    functions-authoring.md / actions-authoring.md
+    app-builder.md / kubernetes.md
+    REFERENCE.md           # CLI ↔ HTTP (operators / review)
   assets/                  # optional samples (none required for Apps)
   scripts/cli.py           # only supported access path for agents
   README.md / requirements.txt / install.sh / package.sh
@@ -63,8 +63,8 @@ python scripts/cli.py ping
 
 **Agents must use only `python scripts/cli.py …`** (see `SKILL.md`). Do not hand-roll `curl` against `/api/…`; extend the skill in-repo if a workflow is missing. Always run `<command> --help` before inventing flags.
 
-Coverage includes data-sources, datasets, connectors (e.g. Tushare sync/probe), jobs, channels, documents/articles/wiki/KB, glossaries, knowledge-map, comments, media, evaluations, ontology (objects/links, functions, action-types, groups), and **module Apps** via `apps list|get|create|patch|publish|delete` (`/api/app-builder/apps` — see [Apps (hosted modules)](app-builder.md)). Agent guide: `references/app-builder.md` (`bindings.k8s` only). Prefer `kubernetes register-app`. Function **source** authoring: `references/functions-authoring.md`. CLI↔HTTP: `references/REFERENCE.md`. Control-plane APIs (feature toggles, schedules hub, Console admin) are **not** wrapped.
+Coverage spans content, ontology, connectors/jobs, **module Apps**, and Kubernetes on registered clusters. Agents follow `SKILL.md` routing into `references/commands-*.md` and mandatory authoring guides (`functions-authoring`, `actions-authoring`, `app-builder`, `kubernetes`). Prefer `kubernetes register-app` for Apps. CLI↔HTTP for operators: `references/REFERENCE.md`. Control-plane APIs (feature toggles, schedules hub, Console admin) are **not** wrapped.
 
-Domain ontologies (e.g. Tushare → Stock → read-only Functions) are **tenant DIY** via `SKILL.md` Workflow **G** — not platform seeds. Hosted UIs: Workflow **H** (register a Kubernetes Service as an App). Concepts: [Understanding the ontology](../tutorials/understanding-ontology.md). Lab: [Tushare DIY](../tutorials/tushare-market-ontology.md). Action execute **applies** `create` / `modify` / `delete` edits on Explorer-created instances; dataset/Neo4j synthetic ids remain deferred — [Manager alignment](../research/ontology_manager_alignment.md).
+Domain ontologies (e.g. Tushare → Stock → read-only Functions) are **tenant DIY** via `references/workflows.md` **G** — not platform seeds. Hosted UIs: workflow **H**. Concepts: [Understanding the ontology](../tutorials/understanding-ontology.md). Lab: [Tushare DIY](../tutorials/tushare-market-ontology.md). Action execute **applies** `create` / `modify` / `delete` edits on Explorer-created instances; dataset/Neo4j synthetic ids remain deferred — [Manager alignment](../research/ontology_manager_alignment.md).
 
 **Mutations** require `-y`/`--yes` or `--dry-run` (non-TTY without `--yes` exits 2). Optional `default_document_channel_id` / `default_article_channel_id` in `config.yml`.

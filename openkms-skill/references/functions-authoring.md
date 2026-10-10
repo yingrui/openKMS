@@ -125,7 +125,7 @@ Seed check: published **`helloGreeting`** with `{"name":"openKMS"}`.
 
 **Prefer built-in Actions** for create / edit / delete WorkItem-style flows (Kanban, Explorer forms). See **[actions-authoring.md](actions-authoring.md)** for `rule_type`, execute addressing, convert/delete. Author a Function-backed Action only for validation, multi-object edits, or non-trivial derived writes. Dataset/Neo4j synthetic ids and link edit ops remain deferred for apply.
 
-Edits from FoO: return `{"edits": create_edit_batch().…get_edits()}` from an Action-bound Function. Domain types (Stock, screens, Kanban WorkItem) are **tenant DIY**, not platform seeds — skill Workflow **G**.
+Edits from FoO: return `{"edits": create_edit_batch().…get_edits()}` from an Action-bound Function. Domain types (Stock, screens, Kanban WorkItem) are **tenant DIY**, not platform seeds — see [workflows.md](workflows.md) **G**.
 
 ## Do not
 
