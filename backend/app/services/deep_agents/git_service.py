@@ -55,9 +55,9 @@ def git_env_for_shell(settings: dict, fallback_name: str = "openKMS User") -> di
 
 def git_init(project_id: str, settings: dict) -> bool:
     root = project_root(project_id)
+    ensure_project_gitignore(project_id)
     if (root / ".git").exists():
         return True
-    ensure_project_gitignore(project_id)
     env = _git_identity(settings)
     result = _run_git(project_id, ["init"], env_extra=env)
     if result.returncode != 0:
@@ -100,6 +100,7 @@ def git_status(project_id: str) -> dict[str, Any]:
     root = project_root(project_id)
     if not (root / ".git").exists():
         return {"entries": [], "branch": None, "remote_url": None, "ahead": None, "behind": None}
+    ensure_project_gitignore(project_id)
     branch = git_current_branch(project_id)
     status_r = _run_git(project_id, ["status", "--porcelain"])
     entries: list[dict[str, str]] = []

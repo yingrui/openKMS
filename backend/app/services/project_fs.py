@@ -79,6 +79,8 @@ _STANDARD_GITIGNORE_PATHS = (
 
 def ensure_project_gitignore(project_id: str) -> None:
     root = project_root(project_id)
+    if not root.exists():
+        return
     gitignore = root / ".gitignore"
     if not gitignore.exists():
         gitignore.write_text(_DEFAULT_GITIGNORE, encoding="utf-8")
