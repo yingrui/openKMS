@@ -13,19 +13,27 @@ from app.models.ontology_function import (
     OntologyFunction,
     OntologyFunctionVersion,
 )
+from app.models.link_type import LinkType
+from app.models.object_type import ObjectType
 from app.schemas.ontology_functions import (
     OntologyFunctionCreate,
     OntologyFunctionResponse,
+    OntologyFunctionSchemaRelations,
     OntologyFunctionUpdate,
     OntologyFunctionValidateResponse,
     OntologyFunctionVersionCreate,
     OntologyFunctionVersionResponse,
+    OntologySchemaFieldRef,
 )
 from app.services.ontology.constants import FUNCTION_ID_PREFIX, ID_HEX_LENGTH, VERSION_ID_PREFIX
 from app.services.ontology.function_templates import (
     DEFAULT_FUNCTION_SOURCE,
     extract_function_uses,
     validate_function_source,
+)
+from app.services.ontology.ontology_io_schema import (
+    collect_schema_relations,
+    validate_schema_structure,
 )
 
 
@@ -119,11 +127,86 @@ async def _version_summaries(
     return latest, pub_by_fn
 
 
+def _relations_from_version(ver: OntologyFunctionVersion | None) -> OntologyFunctionSchemaRelations | None:
+    if ver is None:
+        return None
+    raw = collect_schema_relations(ver.input_schema, ver.output_schema)
+    return OntologyFunctionSchemaRelations(
+        object_type_names=raw["object_type_names"],
+        link_type_names=raw["link_type_names"],
+        fields=[OntologySchemaFieldRef(**f) for f in raw["fields"]],
+        input_schema=ver.input_schema,
+        output_schema=ver.output_schema,
+        version=ver.version,
+    )
+
+
+async def latest_versions_by_fn(
+    db: AsyncSession, function_ids: list[str]
+) -> dict[str, OntologyFunctionVersion]:
+    if not function_ids:
+        return {}
+    rows = (
+        await db.execute(
+            select(OntologyFunctionVersion).where(OntologyFunctionVersion.function_id.in_(function_ids))
+        )
+    ).scalars().all()
+    best: dict[str, OntologyFunctionVersion] = {}
+    for ver in rows:
+        cur = best.get(ver.function_id)
+        if cur is None or ver.version > cur.version:
+            best[ver.function_id] = ver
+    return best
+
+
+def schema_relations_from_version(ver: OntologyFunctionVersion | None) -> OntologyFunctionSchemaRelations | None:
+    return _relations_from_version(ver)
+
+
+async def assert_io_schemas_ok(
+    db: AsyncSession,
+    *,
+    input_schema: dict | None,
+    output_schema: dict | None,
+) -> None:
+    """Reject malformed x-ontology and unknown OT/LT type_name references."""
+    errors = [
+        *validate_schema_structure(input_schema, label="input_schema"),
+        *validate_schema_structure(output_schema, label="output_schema"),
+    ]
+    rel = collect_schema_relations(input_schema, output_schema)
+    if rel["object_type_names"]:
+        found = {
+            row
+            for row in (
+                await db.execute(
+                    select(ObjectType.name).where(ObjectType.name.in_(rel["object_type_names"]))
+                )
+            ).scalars().all()
+        }
+        for name in rel["object_type_names"]:
+            if name not in found:
+                errors.append(f"Unknown object type in schema: {name}")
+    if rel["link_type_names"]:
+        found = {
+            row
+            for row in (
+                await db.execute(select(LinkType.name).where(LinkType.name.in_(rel["link_type_names"])))
+            ).scalars().all()
+        }
+        for name in rel["link_type_names"]:
+            if name not in found:
+                errors.append(f"Unknown link type in schema: {name}")
+    if errors:
+        raise HTTPException(status_code=400, detail={"message": "Invalid I/O schema", "errors": errors})
+
+
 def function_to_response(
     fn: OntologyFunction,
     *,
     latest_version_num: int | None,
     published_version_num: int | None,
+    schema_relations: OntologyFunctionSchemaRelations | None = None,
 ) -> OntologyFunctionResponse:
     return OntologyFunctionResponse(
         id=fn.id,
@@ -137,6 +220,7 @@ def function_to_response(
         published_version_id=fn.published_version_id,
         published_version=published_version_num,
         latest_version=latest_version_num,
+        schema_relations=schema_relations,
         created_by=fn.created_by,
         created_by_name=fn.created_by_name,
         created_at=fn.created_at,
@@ -146,10 +230,12 @@ def function_to_response(
 
 async def function_to_response_for_one(db: AsyncSession, fn: OntologyFunction) -> OntologyFunctionResponse:
     latest, pub = await _version_summaries(db, [fn.id])
+    ver_map = await latest_versions_by_fn(db, [fn.id])
     return function_to_response(
         fn,
         latest_version_num=latest.get(fn.id),
         published_version_num=pub.get(fn.id),
+        schema_relations=_relations_from_version(ver_map.get(fn.id)),
     )
 
 
@@ -167,8 +253,14 @@ async def list_functions(
     ).scalars().all()
     ids = [fn.id for fn in rows]
     latest, pub = await _version_summaries(db, ids)
+    ver_map = await latest_versions_by_fn(db, ids)
     items = [
-        function_to_response(fn, latest_version_num=latest.get(fn.id), published_version_num=pub.get(fn.id))
+        function_to_response(
+            fn,
+            latest_version_num=latest.get(fn.id),
+            published_version_num=pub.get(fn.id),
+            schema_relations=_relations_from_version(ver_map.get(fn.id)),
+        )
         for fn in rows
     ]
     return items, total
@@ -186,6 +278,8 @@ async def create_function(
     ).scalar_one_or_none()
     if exists:
         raise HTTPException(status_code=409, detail="api_name already exists")
+
+    await assert_io_schemas_ok(db, input_schema=body.input_schema, output_schema=body.output_schema)
 
     source = body.source_code or DEFAULT_FUNCTION_SOURCE
     valid, errors, warnings = validate_function_source(source)
@@ -286,6 +380,18 @@ async def create_version(
 ) -> OntologyFunctionVersionResponse:
     await get_function(db, function_id)
     latest = await latest_version(db, function_id)
+    # Preserve prior schemas when the client omits the fields (Editor often saves code only).
+    # Explicit null clears; explicit {} / object replaces.
+    fields_set = body.model_fields_set
+    if "input_schema" in fields_set:
+        input_schema = body.input_schema
+    else:
+        input_schema = latest.input_schema if latest else None
+    if "output_schema" in fields_set:
+        output_schema = body.output_schema
+    else:
+        output_schema = latest.output_schema if latest else None
+    await assert_io_schemas_ok(db, input_schema=input_schema, output_schema=output_schema)
     next_ver = (latest.version + 1) if latest else 1
     valid, errors, warnings = validate_function_source(body.source_code)
     ver = OntologyFunctionVersion(
@@ -293,8 +399,8 @@ async def create_version(
         function_id=function_id,
         version=next_ver,
         source_code=body.source_code,
-        input_schema=body.input_schema,
-        output_schema=body.output_schema,
+        input_schema=input_schema,
+        output_schema=output_schema,
         validation_result={"valid": valid, "errors": errors, "warnings": warnings},
         created_by=created_by,
         created_by_name=created_by_name,

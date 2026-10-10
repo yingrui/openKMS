@@ -62,11 +62,45 @@ def execute(input: dict, client: Client) -> dict:
 - `uses=[…]` values are other Functions’ **`api_name` strings**.
 - **Publish fails** if a dependency is missing or unpublished.
 
-## input_schema
+## input_schema / output_schema
 
-Pass JSON Schema on create/save-version (`--input-schema-json`). Execute validates required fields before ofs runs.
+Pass JSON Schema on create/save-version (`--input-schema-json`). Execute validates required fields and types before ofs runs.
 
-Example: `{"type":"object","required":["ts_code"],"properties":{"ts_code":{"type":"string"}}}`
+Mark ontology references with **`x-ontology`** so Manager / Overview Graph know which Object Types and Link Types the Function contracts against (primitives need no annotation, or `"kind":"primitive"`):
+
+Kanban FoO pattern (A2UI host may inject either key; both are WorkItem ids):
+
+```json
+{
+  "type": "object",
+  "anyOf": [{"required": ["work_item_id"]}, {"required": ["object_id"]}],
+  "properties": {
+    "work_item_id": {
+      "type": "string",
+      "x-ontology": { "kind": "object_type", "type_name": "WorkItem" }
+    },
+    "object_id": {
+      "type": "string",
+      "x-ontology": { "kind": "object_type", "type_name": "WorkItem" }
+    }
+  }
+}
+```
+
+Array of object ids (e.g. dependency `blockers` on output):
+
+```json
+{
+  "type": "array",
+  "x-ontology": { "kind": "object_type", "type_name": "WorkItem" },
+  "items": { "type": "string" }
+}
+```
+
+- `kind: object_type` / `link_type` → value is an instance id (`string`) or `array` of ids; `type_name` must match an existing Object Type / Link Type **name**.
+- `kind: primitive` (or omit `x-ontology`) → normal JSON types.
+- Publish/create rejects unknown `type_name` values.
+- Without `x-ontology`, Manager / Overview Graph treat fields as primitives even if the Function has an optional Object Type affiliation.
 
 ## Lifecycle via skill CLI
 

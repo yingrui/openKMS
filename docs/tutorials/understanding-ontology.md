@@ -66,7 +66,7 @@ App Builder + Apps         → visual Kanban: tenant A2UI Source + platform host
 
 **Dataset vs object type:** a dataset is a *table registration*; an object type says those rows (or hand-created instances) *mean* WorkItems. For this lab you may **skip datasets** and create instances directly in Object Explorer—fastest path for teaching. Add datasets when you sync from Jira/Linear or seed Postgres.
 
-**FoO:** Function whose inputs include object ids (e.g. `work_item_id`). Not OOP `WorkItem.method()` ([Palantir FoO](https://www.palantir.com/docs/foundry/functions/functions-on-objects/)).
+**FoO:** Function whose inputs include object ids (e.g. `work_item_id`). Not OOP `WorkItem.method()` ([Palantir FoO](https://www.palantir.com/docs/foundry/functions/functions-on-objects/)). Mark those fields with **`x-ontology`** (`kind: object_type`, `type_name: WorkItem`) on `input_schema` / `output_schema` so Manager and the Overview Graph treat them as Object Type links—not bare strings.
 
 **Suite Apps:** Manager (schema) · Explorer (cards / Cypher) · Function Editor (FoO).
 
@@ -151,6 +151,27 @@ Links:
 
 ### Step D — Publish one FoO (Function Editor → Manager Publish)
 
+Declare object ids as **WorkItem** refs on the Function schema (A2UI host may inject either key):
+
+```json
+{
+  "type": "object",
+  "anyOf": [{"required": ["work_item_id"]}, {"required": ["object_id"]}],
+  "properties": {
+    "work_item_id": {
+      "type": "string",
+      "x-ontology": {"kind": "object_type", "type_name": "WorkItem"}
+    },
+    "object_id": {
+      "type": "string",
+      "x-ontology": {"kind": "object_type", "type_name": "WorkItem"}
+    }
+  }
+}
+```
+
+Pass that JSON as `--input-schema-json` on create/save-version (Manager Overview can set the same fields structurally). Without `x-ontology`, the Graph and `schema_relations` treat ids as primitives even if the Function affiliates to an Object Type.
+
 Example contract for priority (implement scoring however you like; keep input/output stable):
 
 ```python
@@ -186,7 +207,24 @@ def execute(input: dict, client: Client) -> dict:
 
 Publish as `suggestWorkItemPriority`. Execute with the id of `WI-3`. Use `client("WorkItem")` / `client("suggestWorkItemPriority")` string api names via `openkms_functions`.
 
-For dependency closure, BFS with server-filtered links:
+For dependency closure, BFS with server-filtered links. Input schema: required `work_item_id` with the same WorkItem `x-ontology`. Optional output schema marks `blockers` as an array of WorkItem ids:
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "work_item_id": {
+      "type": "string",
+      "x-ontology": {"kind": "object_type", "type_name": "WorkItem"}
+    },
+    "blockers": {
+      "type": "array",
+      "x-ontology": {"kind": "object_type", "type_name": "WorkItem"},
+      "items": {"type": "string"}
+    }
+  }
+}
+```
 
 ```python
 from openkms_functions import Client, function

@@ -6,6 +6,25 @@ export * from './ontologyGroupsApi';
 export * from './ontologyActionsApi';
 export { DEFAULT_FUNCTION_TEMPLATE, DEFAULT_PREVIEW_INPUT } from './ontologyFunctionDefaults';
 
+export type OntologySchemaFieldKind = 'primitive' | 'object_type' | 'link_type';
+
+export interface OntologySchemaFieldRef {
+  path: string;
+  side: 'input' | 'output';
+  kind: OntologySchemaFieldKind;
+  type_name?: string | null;
+  json_type?: string | null;
+}
+
+export interface OntologyFunctionSchemaRelations {
+  object_type_names: string[];
+  link_type_names: string[];
+  fields: OntologySchemaFieldRef[];
+  input_schema?: Record<string, unknown> | null;
+  output_schema?: Record<string, unknown> | null;
+  version?: number | null;
+}
+
 export interface OntologyFunctionResponse {
   id: string;
   api_name: string;
@@ -18,6 +37,7 @@ export interface OntologyFunctionResponse {
   published_version_id?: string | null;
   published_version?: number | null;
   latest_version?: number | null;
+  schema_relations?: OntologyFunctionSchemaRelations | null;
   created_at: string;
   updated_at: string;
 }
@@ -68,6 +88,8 @@ export async function createOntologyFunction(body: {
   description?: string;
   object_type_id?: string | null;
   source_code?: string;
+  input_schema?: Record<string, unknown> | null;
+  output_schema?: Record<string, unknown> | null;
 }): Promise<OntologyFunctionResponse> {
   return ontologyFetch<OntologyFunctionResponse>(
     base,
@@ -118,7 +140,11 @@ export async function fetchFunctionVersion(
 
 export async function saveFunctionVersion(
   functionId: string,
-  body: { source_code: string; input_schema?: Record<string, unknown>; output_schema?: Record<string, unknown> },
+  body: {
+    source_code: string;
+    input_schema?: Record<string, unknown> | null;
+    output_schema?: Record<string, unknown> | null;
+  },
 ): Promise<OntologyFunctionVersionResponse> {
   return ontologyFetch<OntologyFunctionVersionResponse>(
     `${base}/${functionId}/versions`,

@@ -52,7 +52,7 @@ python scripts/cli.py apps publish <app_id> --yes
 
 1. Object type with a column property (e.g. `WorkItem.status`) whose values match the sample filters (or edit the JSON filters).
 2. Action types `createWorkItem` / `updateWorkItem` with **built-in** rules (`object_create` / `object_modify`) — **not** Function-backed unless you need custom logic.
-3. Optional FoO `suggestWorkItemPriority` (Resources + `executeFunction` only) accepting `work_item_id` / `object_id`, returning `priority` (and optional `hint`).
+3. Optional FoO `suggestWorkItemPriority` (Resources + `executeFunction` only) accepting WorkItem-typed `work_item_id` / `object_id` (`x-ontology` `object_type` / `WorkItem` on `input_schema`), returning `priority` (and optional `hint`). See [functions-authoring.md](functions-authoring.md).
 4. A few Explorer instances so columns are non-empty.
 
 ## What not to do

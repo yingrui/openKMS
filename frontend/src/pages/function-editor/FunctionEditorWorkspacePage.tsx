@@ -19,6 +19,10 @@ export function FunctionEditorWorkspacePage() {
     objectTypes,
     sourceCode,
     setSourceCode,
+    inputSchemaText,
+    setInputSchemaText,
+    outputSchemaText,
+    setOutputSchemaText,
     previewInput,
     setPreviewInput,
     previewOutput,
@@ -79,33 +83,57 @@ export function FunctionEditorWorkspacePage() {
         </div>
       </header>
 
-      {isNew && (
-        <div className="function-editor-workspace__meta">
-          <label>
-            {t('editor.apiName')}
-            <input value={apiName} onChange={(e) => setApiName(e.target.value)} className="console-form-control" />
-          </label>
-          <label>
-            {t('editor.displayName')}
-            <input value={displayName} onChange={(e) => setDisplayName(e.target.value)} className="console-form-control" />
-          </label>
-          <label>
-            {t('editor.objectType')}
-            <select
-              value={objectTypeId}
-              onChange={(e) => setObjectTypeId(e.target.value)}
-              className="console-form-control"
-            >
-              <option value="">{t('editor.objectTypeNone')}</option>
-              {objectTypes.map((ot) => (
-                <option key={ot.id} value={ot.id}>
-                  {ot.name}
-                </option>
-              ))}
-            </select>
-          </label>
-        </div>
-      )}
+      <div className="function-editor-workspace__meta">
+        {isNew ? (
+          <>
+            <label>
+              {t('editor.apiName')}
+              <input value={apiName} onChange={(e) => setApiName(e.target.value)} className="console-form-control" />
+            </label>
+            <label>
+              {t('editor.displayName')}
+              <input value={displayName} onChange={(e) => setDisplayName(e.target.value)} className="console-form-control" />
+            </label>
+            <label>
+              {t('editor.objectType')}
+              <select
+                value={objectTypeId}
+                onChange={(e) => setObjectTypeId(e.target.value)}
+                className="console-form-control"
+              >
+                <option value="">{t('editor.objectTypeNone')}</option>
+                {objectTypes.map((ot) => (
+                  <option key={ot.id} value={ot.id}>
+                    {ot.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+          </>
+        ) : null}
+        <label className="function-editor-workspace__schema-field">
+          {t('editor.inputSchema')}
+          <textarea
+            value={inputSchemaText}
+            onChange={(e) => setInputSchemaText(e.target.value)}
+            className="console-form-control"
+            rows={4}
+            placeholder={t('editor.schemaPlaceholder')}
+            spellCheck={false}
+          />
+        </label>
+        <label className="function-editor-workspace__schema-field">
+          {t('editor.outputSchema')}
+          <textarea
+            value={outputSchemaText}
+            onChange={(e) => setOutputSchemaText(e.target.value)}
+            className="console-form-control"
+            rows={4}
+            placeholder={t('editor.schemaPlaceholder')}
+            spellCheck={false}
+          />
+        </label>
+      </div>
 
       <div className="function-editor-workspace__main">
         <div className="function-editor-workspace__center">

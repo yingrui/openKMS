@@ -32,6 +32,8 @@ export type OntologyLogicLayerOptions = {
   showFunctions?: boolean;
   actions?: OntologyActionTypeResponse[];
   functions?: OntologyFunctionResponse[];
+  /** Used to resolve Function schema link_type refs to endpoint object types. */
+  linkTypes?: LinkTypeResponse[];
 };
 
 /** Satellites sit in a grid below the host OT so they do not collide with LR neighbors. */
@@ -544,23 +546,55 @@ export function attachLogicOverlay(
   if (showFunctions) {
     const functions = options.functions ?? [];
     const fnById = new Map(functions.map((fn) => [fn.id, fn]));
+    const otByName = new Map(
+      [...otById.values()].map((n) => [n.name, n.id] as const),
+    );
+    // Prefer live objectTypes names from overlay hosts (id→name already on nodes).
+    const linkTypes = options.linkTypes ?? [];
+
+    const relatedOtIdsForFn = (fn: OntologyFunctionResponse): string[] => {
+      const ids = new Set<string>();
+      if (fn.object_type_id && otById.has(fn.object_type_id)) {
+        ids.add(fn.object_type_id);
+      }
+      for (const name of fn.schema_relations?.object_type_names ?? []) {
+        const otId = otByName.get(name);
+        if (otId) ids.add(otId);
+      }
+      for (const ltName of fn.schema_relations?.link_type_names ?? []) {
+        const lt = linkTypes.find((row) => row.name === ltName);
+        if (!lt) continue;
+        if (otById.has(lt.source_object_type_id)) ids.add(lt.source_object_type_id);
+        if (otById.has(lt.target_object_type_id)) ids.add(lt.target_object_type_id);
+      }
+      return [...ids];
+    };
 
     for (const fn of functions) {
-      if (!fn.object_type_id || !otById.has(fn.object_type_id)) continue;
-      addSatellite(fn.object_type_id, {
-        id: fn.id,
-        name: fn.display_name,
-        instanceCount: 0,
-        kind: 'function',
-      });
-      links.push({
-        id: `fn-affiliated-${fn.id}`,
-        source: fn.id,
-        target: fn.object_type_id,
-        name: fn.api_name,
-        cardinality: 'affiliated',
-        kind: 'affiliatedWith',
-      });
+      const related = relatedOtIdsForFn(fn);
+      if (related.length === 0) continue;
+      const hostId =
+        fn.object_type_id && related.includes(fn.object_type_id)
+          ? fn.object_type_id
+          : related[0]!;
+      if (!nodeIds.has(fn.id)) {
+        addSatellite(hostId, {
+          id: fn.id,
+          name: fn.display_name,
+          instanceCount: 0,
+          kind: 'function',
+        });
+      }
+      for (const otId of related) {
+        links.push({
+          id: `fn-ref-${fn.id}-${otId}`,
+          source: fn.id,
+          target: otId,
+          name: fn.api_name,
+          cardinality: 'schema-ref',
+          kind: 'affiliatedWith',
+        });
+      }
     }
 
     if (showActions) {

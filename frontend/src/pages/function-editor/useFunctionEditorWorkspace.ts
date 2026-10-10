@@ -29,12 +29,29 @@ export function useFunctionEditorWorkspace() {
   const [objectTypeId, setObjectTypeId] = useState('');
   const [objectTypes, setObjectTypes] = useState<ObjectTypeResponse[]>([]);
   const [sourceCode, setSourceCode] = useState(DEFAULT_FUNCTION_TEMPLATE);
+  const [inputSchemaText, setInputSchemaText] = useState('');
+  const [outputSchemaText, setOutputSchemaText] = useState('');
   const [previewInput, setPreviewInput] = useState(DEFAULT_PREVIEW_INPUT);
   const [previewOutput, setPreviewOutput] = useState('');
   const [loading, setLoading] = useState(!isNew);
   const [saving, setSaving] = useState(false);
   const [running, setRunning] = useState(false);
   const [resolvedId, setResolvedId] = useState<string | null>(isNew ? null : functionId ?? null);
+
+  const parseOptionalSchema = (text: string, label: string): Record<string, unknown> | null | undefined => {
+    const trimmed = text.trim();
+    if (!trimmed) return null;
+    try {
+      const parsed = JSON.parse(trimmed) as unknown;
+      if (parsed === null) return null;
+      if (typeof parsed !== 'object' || Array.isArray(parsed)) {
+        throw new Error(`${label} must be a JSON object`);
+      }
+      return parsed as Record<string, unknown>;
+    } catch (e: unknown) {
+      throw new Error(e instanceof Error ? e.message : `${label} must be valid JSON`);
+    }
+  };
 
   const insertSnippet = useCallback((snippet: string) => {
     setSourceCode((prev) => (prev.endsWith('\n') ? `${prev}${snippet}` : `${prev}\n${snippet}`));
@@ -56,7 +73,15 @@ export function useFunctionEditorWorkspace() {
       setDisplayName(fn.display_name);
       setObjectTypeId(fn.object_type_id ?? '');
       const versions = await fetchFunctionVersions(functionId);
-      if (versions[0]) setSourceCode(versions[0].source_code);
+      if (versions[0]) {
+        setSourceCode(versions[0].source_code);
+        setInputSchemaText(
+          versions[0].input_schema ? JSON.stringify(versions[0].input_schema, null, 2) : '',
+        );
+        setOutputSchemaText(
+          versions[0].output_schema ? JSON.stringify(versions[0].output_schema, null, 2) : '',
+        );
+      }
     } catch (e: unknown) {
       toast.error(e instanceof Error ? e.message : t('functions.loadFailed'));
     } finally {
@@ -84,18 +109,33 @@ export function useFunctionEditorWorkspace() {
   const onSave = async () => {
     setSaving(true);
     try {
+      let inputSchema: Record<string, unknown> | null;
+      let outputSchema: Record<string, unknown> | null;
+      try {
+        inputSchema = parseOptionalSchema(inputSchemaText, t('editor.inputSchema')) ?? null;
+        outputSchema = parseOptionalSchema(outputSchemaText, t('editor.outputSchema')) ?? null;
+      } catch (e: unknown) {
+        toast.error(e instanceof Error ? e.message : t('editor.invalidJson'));
+        return;
+      }
       if (isNew) {
         const fn = await createOntologyFunction({
           api_name: apiName,
           display_name: displayName || apiName,
           object_type_id: objectTypeId || null,
           source_code: sourceCode,
+          input_schema: inputSchema,
+          output_schema: outputSchema,
         });
         toast.success(t('editor.created'));
         navigate(`/function-editor/${fn.id}`, { replace: true });
         setResolvedId(fn.id);
       } else if (resolvedId) {
-        await saveFunctionVersion(resolvedId, { source_code: sourceCode });
+        await saveFunctionVersion(resolvedId, {
+          source_code: sourceCode,
+          input_schema: inputSchema,
+          output_schema: outputSchema,
+        });
         toast.success(t('editor.saved'));
       }
     } catch (e: unknown) {
@@ -176,6 +216,10 @@ export function useFunctionEditorWorkspace() {
     objectTypes,
     sourceCode,
     setSourceCode,
+    inputSchemaText,
+    setInputSchemaText,
+    outputSchemaText,
+    setOutputSchemaText,
     previewInput,
     setPreviewInput,
     previewOutput,

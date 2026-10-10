@@ -151,7 +151,7 @@ Host：读 `inputPath` → 按 Action 输入形 coerce → Action 执行（creat
 |---------|------|
 | `functionApiName` | 须在 Resources.functions（已发布 Function） |
 | `inputPath` | 可选，从 DataModel 取输入对象 |
-| `objectId` | 可选；host 还会写入 Function 输入的 `object_id` / `work_item_id` |
+| `objectId` | 可选；host 还会写入 Function 输入的 `object_id` / `work_item_id`（看板 FoO 用 `x-ontology` 把二者标为 WorkItem） |
 | `outputPath` | 可选；写入完整 Function `output` 供 Text 绑定（如 hint） |
 | `applyPath` + `applyKey` | 可选；把某一输出字段拷到表单路径（如建议的 `priority` → `/editWorkItem/priority`） |
 

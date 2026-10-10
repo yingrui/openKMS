@@ -134,6 +134,30 @@ async def get_group_related(
             .order_by(OntologyFunction.api_name)
         )
     ).scalars().all()
+    fn_by_id = {fn.id: fn for fn in fn_rows}
+
+    # Also include Functions whose latest I/O schema references a group object type by name.
+    from app.services.ontology.function_service import latest_versions_by_fn, schema_relations_from_version
+
+    all_fns = (await db.execute(select(OntologyFunction).order_by(OntologyFunction.api_name))).scalars().all()
+    ver_map = await latest_versions_by_fn(db, [fn.id for fn in all_fns])
+    group_ot_names = {name_by_id[i] for i in ot_ids if i in name_by_id}
+    for fn in all_fns:
+        if fn.id in fn_by_id:
+            continue
+        rel = schema_relations_from_version(ver_map.get(fn.id))
+        if not rel:
+            continue
+        if group_ot_names.intersection(rel.object_type_names):
+            fn_by_id[fn.id] = fn
+        elif rel.link_type_names:
+            # Link-type refs whose endpoints sit in the group.
+            for lt in link_rows:
+                if lt.name in rel.link_type_names and (
+                    lt.source_object_type_id in ot_id_set or lt.target_object_type_id in ot_id_set
+                ):
+                    fn_by_id[fn.id] = fn
+                    break
 
     action_rows = (
         await db.execute(
@@ -163,7 +187,7 @@ async def get_group_related(
                 display_name=fn.display_name,
                 object_type_id=fn.object_type_id,
             )
-            for fn in fn_rows
+            for fn in sorted(fn_by_id.values(), key=lambda f: f.api_name)
         ],
         action_types=[
             OntologyGroupRelatedAction(

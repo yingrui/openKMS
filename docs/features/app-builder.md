@@ -149,7 +149,7 @@ Basic `Button` → `action.event.name = executeFunction`.
 |---------|------|
 | `functionApiName` | Must be in Resources.functions (published Function) |
 | `inputPath` | Optional input object from DataModel |
-| `objectId` | Optional; host also sets `object_id` / `work_item_id` on the Function input |
+| `objectId` | Optional; host also sets `object_id` / `work_item_id` on the Function input (Kanban FoOs declare both as WorkItem via `x-ontology`) |
 | `outputPath` | Optional; write full Function `output` for Text bindings (e.g. hint) |
 | `applyPath` + `applyKey` | Optional; copy one output field into a form path (e.g. suggested `priority` → `/editWorkItem/priority`) |
 

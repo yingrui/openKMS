@@ -171,10 +171,20 @@ export function ObjectTypeDetailPage() {
       const viaActionFnIds = new Set(
         actions.map((a) => a.function_id).filter((id): id is string => Boolean(id)),
       );
+      const otName = ot.name;
+      const relatedLtNames = new Set(
+        linksRes.items
+          .filter((lt) => lt.source_object_type_id === typeId || lt.target_object_type_id === typeId)
+          .map((lt) => lt.name),
+      );
       setRelatedFunctions(
-        fnRes.items.filter(
-          (fn) => fn.object_type_id === typeId || viaActionFnIds.has(fn.id),
-        ),
+        fnRes.items.filter((fn) => {
+          if (fn.object_type_id === typeId || viaActionFnIds.has(fn.id)) return true;
+          const rel = fn.schema_relations;
+          if (!rel) return false;
+          if (rel.object_type_names.includes(otName)) return true;
+          return rel.link_type_names.some((name) => relatedLtNames.has(name));
+        }),
       );
       setDatasets(dsRes.items);
       setDataSources(dsSourcesRes);

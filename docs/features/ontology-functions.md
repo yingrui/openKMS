@@ -30,9 +30,10 @@ def execute(input: dict, client: Client) -> dict:
 - **Published queries** sidebar inserts composition snippets.
 - Prefer **`client("apiName")`** strings via **`openkms_functions.Client`** (see [Ontology SDK / Client](ontology-sdk.md)). There is no generated ontology marker package.
 - Legacy `execute(input, ctx)` still supported with a deprecation warning.
-- When `input_schema` is set (JSON Schema object), execute validates required fields and property types before ofs runs.
+- When `input_schema` is set (JSON Schema object), execute validates required fields, property types, and ontology-typed id shapes before ofs runs.
+- I/O fields may declare **`x-ontology`**: `{ "kind": "primitive" | "object_type" | "link_type", "type_name": "WorkItem" }` (`type_name` required for object/link kinds). Manager Overview edits fields structurally; Function Editor can edit the raw JSON. List/detail responses include **`schema_relations`** (referenced OT/LT names + field list) derived from the latest version.
 
-Backend logic: `function_service.py`, `execution_service.py`.
+Backend logic: `function_service.py`, `execution_service.py`, `ontology_io_schema.py`.
 
 ## API
 

@@ -55,8 +55,9 @@ export function OntologySchemaGraph({
         showFunctions,
         actions: actionTypes,
         functions,
+        linkTypes,
       }),
-    [baseGraphData, layoutMode, showActions, showFunctions, actionTypes, functions],
+    [baseGraphData, layoutMode, showActions, showFunctions, actionTypes, functions, linkTypes],
   );
 
   const colorForIndex = useCallback((index: number) => ontologySchemaNodeColor(index), []);

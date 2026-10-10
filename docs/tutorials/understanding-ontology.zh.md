@@ -59,7 +59,7 @@ Backlog → 进行中 → 评审 → 完成
 
 本实验可**不建数据集**，在 Object Explorer **直接建实例**（教学最快）。有 Jira/Linear 或 Postgres 种子表时再登记数据集并绑定。
 
-**FoO：** 入参带对象 id；不是 OOP 方法表。
+**FoO：** 入参带对象 id；不是 OOP 方法表。对象 id 字段在 `input_schema` / `output_schema` 上用 **`x-ontology`**（`kind: object_type`，`type_name: WorkItem`）标注，Manager / Overview Graph 才会把它们当成 Object Type 关系（详见[英文教程](understanding-ontology.md) Step D）。
 
 **三 App：** Manager（模式）· Explorer（看卡片/Cypher）· Function Editor（写 FoO）。
 
@@ -106,7 +106,7 @@ Backlog → 进行中 → 评审 → 完成
 **C. Explorer 种板** — 一个 Demo Project；Ada / Lin；WI-1（done）、WI-2（in_progress）、WI-3（backlog）；WI-3 **dependsOn** WI-2。  
 **看板：** WorkItem 列表按 `status` 筛/排 = 本教程的看板视图。可选 Index 后 Cypher 查依赖。  
 
-**D. 发布一个 FoO** — 如 `suggestWorkItemPriority(work_item_id)`；依赖闭包用 `get_links(..., source_id=)` BFS；产能用 `search(filters={"status": "in_progress"})`（完整示例见[英文教程](understanding-ontology.md)）。使用 `client("WorkItem")` 等字符串 api name（`openkms_functions`）。  
+**D. 发布一个 FoO** — 如 `suggestWorkItemPriority`（`work_item_id` / `object_id` 均标 WorkItem `x-ontology`）；依赖闭包用 `get_links(..., source_id=)` BFS，输出 `blockers` 亦可标为 WorkItem 数组；产能用 `search(filters={"status": "in_progress"})`（完整 schema + 代码见[英文教程](understanding-ontology.md)）。使用 `client("WorkItem")` 等字符串 api name（`openkms_functions`）。  
 
 **E. Actions：创建 / 更新 / 移到 Done / 删除** — 在 **Ontology Manager → 操作类型** 为 WorkItem 创建内置规则（`object_create` / `object_modify` / `object_delete`），无需为简单 CRUD 绑定 Function。Rules 页可限制可写字段；`moveWorkItemToDone` 类动作可在 parameters 里设 `defaults`（如 `status: done`）。自定义逻辑仍用 Function 规则。执行后平台 **apply create / modify / delete**（响应含 `applied.*_ids`）。可在 Explorer 或 API 试写回。
 

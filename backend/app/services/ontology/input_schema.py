@@ -4,12 +4,18 @@ from __future__ import annotations
 
 from typing import Any
 
+from app.services.ontology.ontology_io_schema import (
+    validate_payload_ontology_types,
+    validate_schema_structure,
+)
+
 
 def validate_input_against_schema(input_payload: dict, input_schema: dict | None) -> list[str]:
     """Validate input against a JSON Schema object when present.
 
     Supports a minimal subset: ``type: object`` with ``required`` and
-    ``properties`` type checks (string/number/integer/boolean/object/array).
+    ``properties`` type checks (string/number/integer/boolean/object/array),
+    plus ``x-ontology`` object_type / link_type id shape checks.
     Empty/null schema → no validation.
     """
     if not input_schema:
@@ -17,7 +23,10 @@ def validate_input_against_schema(input_payload: dict, input_schema: dict | None
     if not isinstance(input_schema, dict):
         return ["input_schema must be an object"]
 
-    errors: list[str] = []
+    errors = validate_schema_structure(input_schema, label="input_schema")
+    if errors:
+        return errors
+
     schema_type = input_schema.get("type", "object")
     if schema_type != "object":
         return errors
@@ -43,6 +52,8 @@ def validate_input_against_schema(input_payload: dict, input_schema: dict | None
         value = input_payload[key]
         if not _matches_type(value, expected):
             errors.append(f"Input {key!r} must be {expected}")
+
+    errors.extend(validate_payload_ontology_types(input_payload, input_schema))
     return errors
 
 

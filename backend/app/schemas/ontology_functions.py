@@ -25,6 +25,27 @@ class OntologyFunctionVersionResponse(BaseModel):
     created_at: datetime
 
 
+class OntologySchemaFieldRef(BaseModel):
+    """One I/O field from a Function version schema (with optional x-ontology)."""
+
+    path: str
+    side: Literal["input", "output"]
+    kind: Literal["primitive", "object_type", "link_type"]
+    type_name: str | None = None
+    json_type: str | None = None
+
+
+class OntologyFunctionSchemaRelations(BaseModel):
+    """Ontology types referenced by a Function's latest (or published) I/O schemas."""
+
+    object_type_names: list[str] = Field(default_factory=list)
+    link_type_names: list[str] = Field(default_factory=list)
+    fields: list[OntologySchemaFieldRef] = Field(default_factory=list)
+    input_schema: dict | None = None
+    output_schema: dict | None = None
+    version: int | None = None
+
+
 class OntologyFunctionResponse(BaseModel):
     id: str
     api_name: str
@@ -37,6 +58,7 @@ class OntologyFunctionResponse(BaseModel):
     published_version_id: str | None = None
     published_version: int | None = None
     latest_version: int | None = None
+    schema_relations: OntologyFunctionSchemaRelations | None = None
     created_by: str | None = None
     created_by_name: str | None = None
     created_at: datetime
