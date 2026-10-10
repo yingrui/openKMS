@@ -5,7 +5,8 @@ from __future__ import annotations
 from typing import Any
 
 from app.models.agent_models import AgentConversation, AgentMessage
-from app.schemas.agent import AgentConversationResponse, AgentMessageItem
+from app.schemas.agent import AgentConversationResponse, AgentAttachmentItem, AgentMessageItem
+from app.services.agent.attachments import attachment_display_url
 from app.services.agent.ndjson import ndjson_line
 from app.services.agent.tool_transcripts import (
     AGENT_TOOL_TRANSCRIPTS_KEY,
@@ -51,11 +52,23 @@ def _conv_to_out(c: AgentConversation) -> AgentConversationResponse:
 
 
 def _msg_to_out(m: AgentMessage) -> AgentMessageItem:
+    attachments = [
+        AgentAttachmentItem(
+            id=str(a.get("id") or ""),
+            name=str(a.get("name") or ""),
+            mime=str(a.get("mime") or ""),
+            size=int(a.get("size") or 0),
+            url=attachment_display_url(m.conversation_id, a),
+        )
+        for a in (m.attachments or [])
+        if isinstance(a, dict) and a.get("id")
+    ]
     return AgentMessageItem(
         id=m.id,
         role=m.role,
         content=m.content,
         tool_calls=m.tool_calls,
+        attachments=attachments or None,
         created_at=m.created_at,
     )
 

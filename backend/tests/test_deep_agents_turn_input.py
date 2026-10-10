@@ -16,8 +16,14 @@ from app.services.deep_agents.turn_input import (
 from app.services.deep_agents.turn_prepare import prepare_workspace_turn_messages
 
 
-def _row(role: str, content: str, tool_calls=None):
-    return SimpleNamespace(role=role, content=content, tool_calls=tool_calls)
+def _row(role: str, content: str, tool_calls=None, attachments=None):
+    return SimpleNamespace(
+        role=role,
+        content=content,
+        tool_calls=tool_calls,
+        attachments=attachments,
+        conversation_id="conv-test",
+    )
 
 
 def test_seed_messages_from_db_omits_tool_traces() -> None:
@@ -32,6 +38,14 @@ def test_seed_messages_from_db_omits_tool_traces() -> None:
     msgs = seed_messages_from_db(rows)
     assert len(msgs) == 2
     assert msgs[1].content == "answer"
+
+
+def test_seed_messages_from_db_inlines_attached_images() -> None:
+    rows = [_row("user", "look", attachments=[{"id": "att_0123456789ab", "mime": "image/png"}])]
+    with patch("app.services.agent.attachments.get_object", return_value=b"png-bytes"):
+        msgs = seed_messages_from_db(rows)
+    assert [block["type"] for block in msgs[0].content] == ["text", "image_url"]
+    assert msgs[0].content[0]["text"] == "look"
 
 
 @pytest.mark.asyncio

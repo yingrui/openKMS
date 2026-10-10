@@ -32,11 +32,22 @@ class AgentMessageCreate(BaseModel):
     session_id: str | None = Field(default=None, max_length=256)
 
 
+class AgentAttachmentItem(BaseModel):
+    """User-attached image on a multimodal turn. `url` is a short-lived presigned link for display."""
+
+    id: str
+    name: str
+    mime: str
+    size: int = 0
+    url: str | None = None
+
+
 class AgentMessageItem(BaseModel):
     id: str
     role: str
     content: str
     tool_calls: list | dict | None = None
+    attachments: list[AgentAttachmentItem] | None = None
     created_at: datetime
 
 

@@ -7,7 +7,7 @@ import uuid
 from collections.abc import AsyncIterator
 from datetime import datetime, timezone
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Request
+from fastapi import APIRouter, Depends, File, HTTPException, Query, Request, UploadFile
 from fastapi.responses import StreamingResponse
 from sqlalchemy import delete, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -26,9 +26,22 @@ from app.config import settings
 from app.database import get_db
 from app.models.agent_models import AgentConversation, AgentMessage
 from app.models.project import Project
-from app.schemas.agent import AgentConversationResponse, AgentMessageListResponse, AgentMessagePostResponse
+from app.schemas.agent import (
+    AgentAttachmentItem,
+    AgentConversationResponse,
+    AgentMessageListResponse,
+    AgentMessagePostResponse,
+)
 from app.schemas.project import ProjectConversationCreate, ProjectConversationPatch, ProjectMessageCreate, ProjectMessageResume
 from app.services.agent.llm import resolve_agent_llm_config
+from app.services.agent.attachments import (
+    attachment_display_url,
+    check_attachment_size,
+    delete_attachments,
+    delete_conversation_attachments,
+    normalize_attachment_refs,
+    save_attachment,
+)
 from app.services.agent.assistant_stream_parts import WIKI_ASSISTANT_STREAM_PARTS_KEY
 from app.services.agent.tool_transcripts import AGENT_TOOL_TRANSCRIPTS_KEY
 from app.services.agent.conversation_title import suggest_conversation_title
@@ -253,6 +266,7 @@ async def delete_conversation(
     await db.execute(delete(AgentMessage).where(AgentMessage.conversation_id == conversation_id))
     await db.execute(delete(AgentConversation).where(AgentConversation.id == conversation_id))
     await db.flush()
+    delete_conversation_attachments(conversation_id)
 
 
 @router.get(
@@ -514,24 +528,60 @@ async def delete_conversation_messages_from(
             detail="A turn is already running for this session. Wait for it to finish before reverting.",
         )
     r = await db.execute(
-        select(AgentMessage.id)
+        select(AgentMessage.id, AgentMessage.attachments)
         .where(AgentMessage.conversation_id == conversation_id)
         .order_by(AgentMessage.created_at, AgentMessage.id)
     )
-    ordered_ids = [row[0] for row in r.all()]
+    ordered = [(row[0], row[1]) for row in r.all()]
+    ordered_ids = [row_id for row_id, _ in ordered]
     if message_id not in ordered_ids:
         raise HTTPException(status_code=404, detail="Message not found in this conversation")
     from_idx = ordered_ids.index(message_id)
-    to_delete = ordered_ids[from_idx:]
+    to_delete = ordered[from_idx:]
     if not to_delete:
         return {"deleted": 0}
-    res = await db.execute(delete(AgentMessage).where(AgentMessage.id.in_(to_delete)))
+    doomed_ids = [row_id for row_id, _ in to_delete]
+    res = await db.execute(delete(AgentMessage).where(AgentMessage.id.in_(doomed_ids)))
     n = int(res.rowcount or 0)
     if n:
         _bump_conversation_timestamp(c)
         await delete_conversation_thread(db, conversation_id)
     await db.flush()
+    for _, attachments in to_delete:
+        delete_attachments(conversation_id, attachments)
     return {"deleted": n}
+
+
+@router.post(
+    "/{project_id}/conversations/{conversation_id}/attachments",
+    dependencies=[Depends(require_permission(PERM_PROJECTS_WRITE))],
+)
+async def upload_conversation_attachment(
+    project_id: str,
+    conversation_id: str,
+    request: Request,
+    file: UploadFile = File(...),
+    db: AsyncSession = Depends(get_db),
+):
+    """Stage an image for the next turn. Stored in object storage, not the project workspace."""
+    sub = get_jwt_sub(request)
+    await _get_project(db, project_id, sub)
+    c = await _get_conv(db, conversation_id, sub, project_id)
+    check_attachment_size(file.size)
+    body = await file.read()
+    saved = save_attachment(
+        c.id,
+        filename=file.filename or "image",
+        content_type=file.content_type,
+        body=body,
+    )
+    return AgentAttachmentItem(
+        id=saved["id"],
+        name=saved["name"],
+        mime=saved["mime"],
+        size=saved["size"],
+        url=attachment_display_url(c.id, saved),
+    )
 
 
 @router.post(
@@ -548,15 +598,24 @@ async def post_message(
     sub = get_jwt_sub(request)
     project = await _get_project(db, project_id, sub)
     c = await _get_conv(db, conversation_id, sub, project_id)
+    attachments = normalize_attachment_refs(
+        [a.model_dump() for a in body.attachments], conversation_id=c.id
+    )
+    content = body.content.strip()
+    if not content and not attachments:
+        raise HTTPException(status_code=400, detail="Message must have text or an attachment")
     user_msg = AgentMessage(
         id=new_id(),
         conversation_id=c.id,
         role="user",
-        content=body.content.strip(),
+        content=content,
+        attachments=attachments or None,
     )
     db.add(user_msg)
     await db.flush()
-    await _maybe_set_conversation_title_from_first_user_message(db, c, body.content)
+    await _maybe_set_conversation_title_from_first_user_message(
+        db, c, content or (attachments[0]["name"] if attachments else "")
+    )
     _bump_conversation_timestamp(c)
     await db.refresh(c, attribute_names=["messages"])
     plan_mode = (body.mode or "").strip().lower() == "plan"

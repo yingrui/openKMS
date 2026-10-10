@@ -7,7 +7,7 @@ import { AgentChatMain } from '../../components/agents/AgentChatMain';
 import { AgentFilesPanel } from '../../components/agents/AgentFilesPanel';
 import { AgentSessionSidebar } from '../../components/agents/AgentSessionSidebar';
 import { AgentsWorkspaceSkeleton } from '../../components/agents/AgentsPageSkeleton';
-import { getProject } from '../../data/projectsApi';
+import { getProject, uploadProjectAttachment } from '../../data/projectsApi';
 import type { ProjectResponse } from '../../data/projectsApi';
 import { useIsMobile } from '../../hooks/useIsMobile';
 import { PanelToolbar } from '../../styles/design-system';
@@ -193,6 +193,10 @@ export function ProjectWorkspace() {
       planMode={planMode}
       onPlanModeChange={setPlanMode}
       onSend={stream.onSend}
+      onUploadAttachment={async (file) => {
+        const cid = await session.ensureConv();
+        return uploadProjectAttachment(projectId, cid, file);
+      }}
       todos={stream.todos}
       todoRevision={stream.todoRevision}
       onDismissPlan={stream.dismissPlan}

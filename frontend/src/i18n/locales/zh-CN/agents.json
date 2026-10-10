@@ -161,7 +161,11 @@
     "revertTitle": "撤销消息",
     "revertAria": "移除此条及之后的消息；文字回到输入框以便编辑并重发",
     "revertOk": "已移除消息，可编辑后重新发送",
-    "revertFailed": "无法撤销消息"
+    "revertFailed": "无法撤销消息",
+    "attach": "添加图片",
+    "attachRemove": "移除图片",
+    "attaching": "图片上传中…",
+    "attachFailed": "图片上传失败"
   },
   "stream": {
     "replyAria": "助手回复",

@@ -7,7 +7,7 @@ import {
   sessionLabel,
 } from '../../components/agents/projectSessionUtils';
 import { assistantHistoryStreamParts } from '../../components/wiki/wikiCopilotStreamParts';
-import type { AgentConversationResponse } from '../../data/agentApi';
+import type { AgentAttachment, AgentConversationResponse } from '../../data/agentApi';
 import {
   createProjectConversation,
   deleteProjectConversation,
@@ -31,7 +31,7 @@ type MessageWindow = {
   hasPagedOlder: boolean;
 };
 
-function mapItems(items: { id: string; role: string; content: string; created_at: string; tool_calls?: unknown }[]): ChatMessage[] {
+function mapItems(items: { id: string; role: string; content: string; created_at: string; tool_calls?: unknown; attachments?: AgentAttachment[] | null }[]): ChatMessage[] {
   return items.map((m) => ({
     role: m.role as 'user' | 'assistant',
     content: m.content,
@@ -40,6 +40,7 @@ function mapItems(items: { id: string; role: string; content: string; created_at
     ...(m.role === 'assistant'
       ? { streamParts: assistantHistoryStreamParts(m.content, m.tool_calls) }
       : {}),
+    ...(m.attachments?.length ? { attachments: m.attachments } : {}),
   }));
 }
 

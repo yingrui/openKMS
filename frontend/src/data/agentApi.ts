@@ -10,11 +10,21 @@ export interface AgentConversationResponse {
   updated_at: string;
 }
 
+export interface AgentAttachment {
+  id: string;
+  name: string;
+  mime: string;
+  size: number;
+  /** Short-lived presigned link for display. */
+  url?: string | null;
+}
+
 export interface AgentMessageItem {
   id: string;
   role: string;
   content: string;
   tool_calls?: unknown;
+  attachments?: AgentAttachment[] | null;
   created_at: string;
 }
 

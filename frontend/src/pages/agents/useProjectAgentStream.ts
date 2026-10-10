@@ -3,7 +3,7 @@ import { toast } from 'sonner';
 import { applyProjectStreamEvent } from '../../components/agents/agentStreamState';
 import type { ChatMessage } from '../../components/agents/AgentChatMain';
 import { persistedInterruptSummary } from '../../components/agents/projectSessionUtils';
-import type { AgentConversationResponse } from '../../data/agentApi';
+import type { AgentConversationResponse, AgentAttachment } from '../../data/agentApi';
 import {
   postProjectMessageStream,
   resumeProjectInterrupt,
@@ -119,10 +119,15 @@ export function useProjectAgentStream({
     }
   }, [convId]);
 
-  const onSend = async (text: string) => {
+  const onSend = async (text: string, attachments: AgentAttachment[] = []) => {
     if (loading || turnInProgress) return;
     const cid = await ensureConv();
-    const userTemp: ChatMessage = { role: 'user', content: text, id: `tmp-u-${Date.now()}` };
+    const userTemp: ChatMessage = {
+      role: 'user',
+      content: text,
+      id: `tmp-u-${Date.now()}`,
+      ...(attachments.length ? { attachments } : {}),
+    };
     const asstTemp: ChatMessage = {
       role: 'assistant',
       content: '',
@@ -145,7 +150,7 @@ export function useProjectAgentStream({
         projectId,
         cid,
         text,
-        { mode: planMode ? 'plan' : 'agent', signal: ac.signal },
+        { mode: planMode ? 'plan' : 'agent', signal: ac.signal, attachments },
         (ev) => applyStreamEvent(ev, asstStreamId, cid, userTemp.id),
       );
       await reloadAfterTurn(cid);

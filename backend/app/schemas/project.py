@@ -80,8 +80,17 @@ class ProjectConversationPatch(BaseModel):
     title: str | None = Field(default=None, max_length=512)
 
 
+class ProjectMessageAttachmentRef(BaseModel):
+    """Reference to an image already uploaded for this conversation (see the attachments endpoint)."""
+
+    id: str = Field(min_length=1, max_length=64)
+    name: str = Field(default="", max_length=200)
+    mime: str = Field(min_length=1, max_length=64)
+    size: int = Field(default=0, ge=0)
+
+
 class ProjectMessageCreate(BaseModel):
-    content: str = Field(min_length=1, max_length=48000)
+    content: str = Field(default="", max_length=48000)
     stream: bool = False
     session_id: str | None = Field(
         default=None,
@@ -89,6 +98,7 @@ class ProjectMessageCreate(BaseModel):
         description="Opaque id for optional Langfuse Session grouping on Deep Agents; defaults to conversation id.",
     )
     mode: str | None = Field(default=None, max_length=32)  # "plan" | "agent"
+    attachments: list[ProjectMessageAttachmentRef] = Field(default_factory=list)
 
 
 class ProjectMessageResume(BaseModel):

@@ -44,6 +44,8 @@ class AgentMessage(Base):
     role: Mapped[str] = mapped_column(String(32), nullable=False)
     content: Mapped[str] = mapped_column(Text, nullable=False, default="")
     tool_calls: Mapped[list | dict | None] = mapped_column(JSONB, nullable=True)
+    #: User-attached images for multimodal turns: [{id, name, mime, size}]. Bytes live in object storage.
+    attachments: Mapped[list | None] = mapped_column(JSONB, nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         server_default=text("clock_timestamp()"),

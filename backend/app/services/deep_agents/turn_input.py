@@ -8,9 +8,17 @@ from typing import Any
 from langchain_core.messages import AIMessage, BaseMessage, HumanMessage
 
 from app.models.agent_models import AgentMessage
+from app.services.agent.attachments import human_content_with_attachments
 from app.services.agent.tool_transcripts import assistant_lc_content_from_db_row
 
 logger = logging.getLogger(__name__)
+
+
+def _user_lc_message(row: AgentMessage) -> HumanMessage:
+    """User turn as text, or multimodal content blocks when images are attached."""
+    return HumanMessage(
+        content=human_content_with_attachments(row.conversation_id, row.content, row.attachments)
+    )
 
 
 def _last_user_row(rows: list[AgentMessage]) -> AgentMessage | None:
@@ -29,7 +37,7 @@ def seed_messages_from_db(rows: list[AgentMessage]) -> list[BaseMessage]:
     out: list[BaseMessage] = []
     for row in rows:
         if row.role == "user":
-            out.append(HumanMessage(content=row.content))
+            out.append(_user_lc_message(row))
         elif row.role == "assistant":
             out.append(AIMessage(content=(row.content or "")))
     return out
@@ -58,7 +66,7 @@ async def resolve_turn_input_messages(
             "Checkpoint-first turn input: %s checkpoint messages, appending latest user row",
             len(checkpoint_messages),
         )
-        return [HumanMessage(content=last_user.content)]
+        return [_user_lc_message(last_user)]
 
     seeded = seed_messages_from_db(db_rows)
     logger.debug("Seeding checkpoint thread from %s DB rows (%s LC messages)", len(db_rows), len(seeded))
@@ -70,7 +78,7 @@ def legacy_messages_from_db(rows: list[AgentMessage]) -> list[BaseMessage]:
     out: list[BaseMessage] = []
     for row in rows:
         if row.role == "user":
-            out.append(HumanMessage(content=row.content))
+            out.append(_user_lc_message(row))
         elif row.role == "assistant":
             out.append(AIMessage(content=assistant_lc_content_from_db_row(row.content, row.tool_calls)))
     return out

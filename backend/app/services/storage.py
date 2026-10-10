@@ -2,6 +2,7 @@
 
 from dataclasses import dataclass
 from datetime import datetime, timezone
+from functools import lru_cache
 from typing import BinaryIO
 
 from app.config import settings
@@ -37,20 +38,31 @@ def validate_storage_prefix(prefix: str) -> str:
     return p
 
 
-def _client():
-    """Create S3 client. Uses MinIO-compatible endpoint if AWS_ENDPOINT_URL is set."""
+@lru_cache(maxsize=8)
+def _client_for(access_key: str, secret_key: str, region: str, endpoint_url: str | None):
+    """Build (and memoize) the S3 client. Constructing one per call costs ~90ms."""
     import boto3
     from botocore.config import Config
 
     kwargs: dict = {
-        "aws_access_key_id": settings.aws_access_key_id,
-        "aws_secret_access_key": settings.aws_secret_access_key,
-        "region_name": settings.aws_region,
+        "aws_access_key_id": access_key,
+        "aws_secret_access_key": secret_key,
+        "region_name": region,
         "config": Config(signature_version="s3v4"),
     }
-    if settings.aws_endpoint_url:
-        kwargs["endpoint_url"] = settings.aws_endpoint_url
+    if endpoint_url:
+        kwargs["endpoint_url"] = endpoint_url
     return boto3.client("s3", **kwargs)
+
+
+def _client():
+    """Create S3 client. Uses MinIO-compatible endpoint if AWS_ENDPOINT_URL is set."""
+    return _client_for(
+        settings.aws_access_key_id,
+        settings.aws_secret_access_key,
+        settings.aws_region,
+        settings.aws_endpoint_url,
+    )
 
 
 def _bucket() -> str:

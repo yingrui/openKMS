@@ -1,7 +1,7 @@
 /** Agent workspace projects API (`/api/projects`). */
 import { config } from '../config';
 import { request, requestRaw } from './apiClient';
-import type { AgentConversationResponse, AgentMessageItem } from './agentApi';
+import type { AgentAttachment, AgentConversationResponse, AgentMessageItem } from './agentApi';
 import { readNdjsonStream } from './ndjsonStream';
 
 function handleNetworkError(e: unknown): never {
@@ -305,6 +305,20 @@ export async function listProjectMessages(
   return { items: data.items, total: data.total };
 }
 
+/** Stage an image for the next turn. Stored outside the project workspace. */
+export async function uploadProjectAttachment(
+  projectId: string,
+  convId: string,
+  file: File,
+): Promise<AgentAttachment> {
+  const fd = new FormData();
+  fd.append('file', file, file.name);
+  return request<AgentAttachment>(
+    `/api/projects/${projectId}/conversations/${encodeURIComponent(convId)}/attachments`,
+    { method: 'POST', body: fd },
+  );
+}
+
 export type ProjectStreamEvent =
   | { type: 'user'; message: AgentMessageItem }
   | { type: 'delta'; t: string }
@@ -323,7 +337,12 @@ export async function postProjectMessageStream(
   projectId: string,
   convId: string,
   content: string,
-  opts?: { mode?: 'plan' | 'agent'; sessionId?: string; signal?: AbortSignal },
+  opts?: {
+    mode?: 'plan' | 'agent';
+    sessionId?: string;
+    signal?: AbortSignal;
+    attachments?: AgentAttachment[];
+  },
   onEvent?: (ev: ProjectStreamEvent) => void,
 ): Promise<AgentMessageItem | null> {
   try {
@@ -335,6 +354,12 @@ export async function postProjectMessageStream(
         stream: true,
         mode: opts?.mode ?? 'agent',
         session_id: opts?.sessionId ?? null,
+        attachments: (opts?.attachments ?? []).map((a) => ({
+          id: a.id,
+          name: a.name,
+          mime: a.mime,
+          size: a.size,
+        })),
       }),
       signal: opts?.signal,
     });

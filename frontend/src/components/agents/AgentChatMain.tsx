@@ -1,10 +1,12 @@
 import { memo, useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ArrowUp, Copy, RefreshCw } from 'lucide-react';
+import { ArrowUp, Copy, Paperclip, RefreshCw, X } from 'lucide-react';
+import { toast } from 'sonner';
 import { AgentAssistantStreamBody } from './AgentAssistantStreamBody';
 import { PERSISTED_AGENT_MESSAGE_ID } from './agentConstants';
 import { AgentInterruptBar } from './AgentInterruptBar';
 import { AgentPlanPanel } from './AgentPlanPanel';
+import type { AgentAttachment } from '../../data/agentApi';
 import type { AssistantStreamPart } from '../wiki/wikiCopilotStreamParts';
 import './AgentsWorkspace.scss';
 
@@ -14,6 +16,7 @@ export interface ChatMessage {
   streamParts?: AssistantStreamPart[];
   id?: string;
   created_at?: string;
+  attachments?: AgentAttachment[];
 }
 
 interface Props {
@@ -22,7 +25,9 @@ interface Props {
   loading: boolean;
   planMode: boolean;
   onPlanModeChange: (v: boolean) => void;
-  onSend: (text: string) => void;
+  onSend: (text: string, attachments: AgentAttachment[]) => void;
+  /** Uploads an image for the current session; returns the staged attachment. */
+  onUploadAttachment?: (file: File) => Promise<AgentAttachment>;
   todos?: unknown[];
   todoRevision?: number;
   onDismissPlan?: () => void;
@@ -102,7 +107,25 @@ const MessageRow = memo(function MessageRow({
     return (
       <div className="agents-chat-msg agents-chat-msg--user">
         <div className="agents-chat-msg-user-col">
-          <div className="agents-chat-msg-body">{message.content}</div>
+          {message.attachments?.length ? (
+            <div className="agents-chat-msg-attachments">
+              {message.attachments.map((a) =>
+                a.url ? (
+                  <a
+                    key={a.id}
+                    className="agents-chat-msg-attachment"
+                    href={a.url}
+                    target="_blank"
+                    rel="noreferrer"
+                    title={a.name}
+                  >
+                    <img src={a.url} alt={a.name} loading="lazy" />
+                  </a>
+                ) : null,
+              )}
+            </div>
+          ) : null}
+          {message.content ? <div className="agents-chat-msg-body">{message.content}</div> : null}
           {(showRevert || time) ? (
             <div className="agents-chat-msg-meta">
               {time ? <span className="agents-chat-msg-time">{time}</span> : null}
@@ -159,6 +182,7 @@ export function AgentChatMain({
   planMode,
   onPlanModeChange,
   onSend,
+  onUploadAttachment,
   todos,
   todoRevision,
   onDismissPlan,
@@ -177,9 +201,35 @@ export function AgentChatMain({
 }: Props) {
   const { t } = useTranslation('agents');
   const [input, setInput] = useState('');
+  const [pending, setPending] = useState<AgentAttachment[]>([]);
+  const [uploading, setUploading] = useState(false);
+  const [dragActive, setDragActive] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const pendingScrollRestoreRef = useRef(0);
+
+  const addFiles = useCallback(
+    async (files: FileList | File[] | null | undefined) => {
+      if (!onUploadAttachment || loading) return;
+      const images = Array.from(files ?? []).filter((f) => f.type.startsWith('image/'));
+      if (!images.length) return;
+      setUploading(true);
+      try {
+        for (const file of images) {
+          try {
+            const att = await onUploadAttachment(file);
+            setPending((prev) => [...prev, att]);
+          } catch (e) {
+            toast.error(e instanceof Error ? e.message : t('chat.attachFailed'));
+          }
+        }
+      } finally {
+        setUploading(false);
+      }
+    },
+    [loading, onUploadAttachment, t],
+  );
 
   useEffect(() => {
     if (prefillInput == null) return;
@@ -225,10 +275,12 @@ export function AgentChatMain({
   const submit = (e?: React.FormEvent) => {
     e?.preventDefault();
     const text = input.trim();
-    if (!text || loading) return;
+    if (uploading || loading || (!text && !pending.length)) return;
+    const attachments = pending;
     setInput('');
+    setPending([]);
     if (textareaRef.current) textareaRef.current.style.height = 'auto';
-    onSend(text);
+    onSend(text, attachments);
   };
 
   return (
@@ -278,9 +330,69 @@ export function AgentChatMain({
           onReject={onInterruptReject}
         />
       ) : null}
-      <div className="agents-composer-wrap">
+      <div
+        className={`agents-composer-wrap${dragActive ? ' is-drag-active' : ''}`}
+        onDragOver={(e) => {
+          if (!onUploadAttachment || loading) return;
+          if (!Array.from(e.dataTransfer.types).includes('Files')) return;
+          e.preventDefault();
+          setDragActive(true);
+        }}
+        onDragLeave={(e) => {
+          if (!e.currentTarget.contains(e.relatedTarget as Node)) setDragActive(false);
+        }}
+        onDrop={(e) => {
+          if (!onUploadAttachment || loading) return;
+          e.preventDefault();
+          setDragActive(false);
+          void addFiles(e.dataTransfer.files);
+        }}
+      >
         <form className="agents-composer-inner" onSubmit={submit}>
+          {pending.length ? (
+            <div className="agents-composer-attachments">
+              {pending.map((a) => (
+                <span className="agents-composer-attachment" key={a.id}>
+                  {a.url ? <img src={a.url} alt={a.name} /> : null}
+                  <button
+                    type="button"
+                    className="agents-composer-attachment-remove"
+                    onClick={() => setPending((prev) => prev.filter((p) => p.id !== a.id))}
+                    aria-label={t('chat.attachRemove')}
+                    title={t('chat.attachRemove')}
+                  >
+                    <X size={11} strokeWidth={2.5} aria-hidden />
+                  </button>
+                </span>
+              ))}
+            </div>
+          ) : null}
           <div className="agents-composer-box">
+            {onUploadAttachment ? (
+              <>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/png,image/jpeg,image/webp,image/gif"
+                  multiple
+                  hidden
+                  onChange={(e) => {
+                    void addFiles(e.target.files);
+                    e.target.value = '';
+                  }}
+                />
+                <button
+                  type="button"
+                  className="agents-composer-attach"
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={loading || uploading}
+                  title={t('chat.attach')}
+                  aria-label={t('chat.attach')}
+                >
+                  <Paperclip size={15} strokeWidth={2} aria-hidden />
+                </button>
+              </>
+            ) : null}
             <textarea
               ref={textareaRef}
               value={input}
@@ -288,7 +400,14 @@ export function AgentChatMain({
                 setInput(e.target.value);
                 resizeTextarea();
               }}
-              placeholder={t('chat.placeholder')}
+              onPaste={(e) => {
+                if (!onUploadAttachment) return;
+                const files = Array.from(e.clipboardData.files).filter((f) => f.type.startsWith('image/'));
+                if (!files.length) return;
+                e.preventDefault();
+                void addFiles(files);
+              }}
+              placeholder={pending.length ? '' : t('chat.placeholder')}
               rows={1}
               onKeyDown={(e) => {
                 if (e.key === 'Enter' && !e.shiftKey) {
@@ -303,7 +422,7 @@ export function AgentChatMain({
             <button
               type="submit"
               className="agents-composer-send"
-              disabled={loading || !input.trim()}
+              disabled={loading || uploading || (!input.trim() && !pending.length)}
               aria-label={t('chat.send')}
             >
               <ArrowUp size={16} strokeWidth={2.25} />
@@ -314,6 +433,7 @@ export function AgentChatMain({
               <input type="checkbox" checked={planMode} onChange={(e) => onPlanModeChange(e.target.checked)} />
               {t('chat.planMode')}
             </label>
+            {uploading ? <span className="agents-composer-hint">{t('chat.attaching')}</span> : null}
           </div>
         </form>
       </div>

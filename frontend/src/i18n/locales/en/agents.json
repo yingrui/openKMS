@@ -161,7 +161,11 @@
     "revertTitle": "Revert message",
     "revertAria": "Remove this and later messages; your text returns to the input to edit and resend",
     "revertOk": "Messages removed — edit and resend when ready",
-    "revertFailed": "Could not revert messages"
+    "revertFailed": "Could not revert messages",
+    "attach": "Attach image",
+    "attachRemove": "Remove image",
+    "attaching": "Uploading image…",
+    "attachFailed": "Could not upload image"
   },
   "stream": {
     "replyAria": "Agent reply",
