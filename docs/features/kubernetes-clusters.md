@@ -48,9 +48,13 @@ Console row actions match the skill: logs Dialog, confirm delete, apply Dialog, 
 
 Operators store encrypted key/values under **Project settings → Deploy**, then **Sync to cluster** (writes an Opaque Secret with `app.kubernetes.io/managed-by=openkms` and `openkms.io/project-id`). Agents only see names/keys in the system prompt and must reference them via `secretRef` / `secretKeyRef`. Personal API keys cannot create or update deploy-secret values.
 
+## Dev sync (projects) {#dev-sync}
+
+`POST /api/projects/{id}/kubernetes/dev-sync` packs a project subtree (relative `local_path`) and extracts it into the newest Ready Pod of a Deployment (`container_path`). Optional `reload` POSTs a webhook inside the container. Requires **`projects:write`** and **`console:kubernetes`**. Packed size capped at 32 MiB; common build dirs are excluded. Skill: `kubernetes dev-sync`. Prefer a separate **dev** Deployment (`replicas: 1`) from the Service registered in Apps. Kubeconfig never leaves the server.
+
 ## Agents
 
-The **openkms** skill lists registered clusters, applies allowlisted kinds (not Secret), lists secrets/configmaps/env, tails logs, and can `kubernetes register-app`. The session API key needs **`console:kubernetes`** (and **`ontology:write`** to register Apps). Kubeconfig stays encrypted on the server.
+The **openkms** skill lists registered clusters, applies allowlisted kinds (not Secret), lists secrets/configmaps/env, tails logs, can `kubernetes register-app`, and can `kubernetes dev-sync` into a Pod. The session API key needs **`console:kubernetes`** (plus **`projects:write`** for dev-sync; **`ontology:write`** to register Apps). Kubeconfig stays encrypted on the server.
 
 ## Out of scope (still open)
 
@@ -59,3 +63,4 @@ The **openkms** skill lists registered clusters, applies allowlisted kinds (not 
 - Ingress / public TLS / WebSocket proxy
 - Running the A2UI canvas inside a Pod
 - External secret managers (Vault / ESO)
+- DevSpace / long-lived file sync daemons

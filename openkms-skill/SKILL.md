@@ -6,13 +6,14 @@ description: >-
   evaluations, data-sources/datasets/connectors/jobs, comments, media, ontology objects/links,
   Cypher/NL ask, functions/action-types/groups, App Builder apps (list/get/create/patch/publish),
   and Kubernetes (list registered clusters; list Secret names/keys, ConfigMaps, Deployment env;
-  apply Deployment/Service/Pod/ConfigMap; logs).
-  Write paths include sync, index, CRUD, function publish/execute, A2UI draft patch, kubernetes apply, and kubernetes register-app.
+  apply Deployment/Service/Pod/ConfigMap; on-demand dev-sync into a Pod; logs).
+  Write paths include sync, index, CRUD, function publish/execute, A2UI draft patch, kubernetes apply,
+  kubernetes register-app, and kubernetes dev-sync.
   Before Function --source-code-file: MUST read references/functions-authoring.md.
   Before ontology action-types create|update|delete|execute: MUST read references/actions-authoring.md.
   Before any apps CLI or App/A2UI/Kanban work: MUST read references/app-builder.md
   (then references/app-builder-kanban.md; sample assets/kanban-a2ui-messages.json).
-  Before kubernetes apply/delete: MUST read references/kubernetes.md.
+  Before kubernetes apply/delete/dev-sync: MUST read references/kubernetes.md.
   Use when agents must read or push openKMS content without the web UI. Only config.yml
   may be edited for credentials when the user asks.
 ---
@@ -188,6 +189,7 @@ Some practical guidance:
 | List registered Kubernetes clusters | `python scripts/cli.py kubernetes clusters list` |
 | List Secrets in a namespace (names + keys, no values) | `python scripts/cli.py kubernetes secrets --cluster-id ID --namespace NS` |
 | List ConfigMaps / Deployment env refs | `kubernetes configmaps --cluster-id ID --namespace NS` / `kubernetes env --cluster-id ID --deployment NAME --namespace NS` |
+| Sync project files into a dev Pod (hot reload) | `kubernetes dev-sync --project-id ID --cluster-id ID --deployment NAME --local-path REL --container-path /abs --yes` |
 | List comments | `python scripts/cli.py comments list --resource-type document --resource-id ID` |
 | List media | `python scripts/cli.py media list [--channel-id ID]` |
 | Get one evaluation's metadata | `python scripts/cli.py evaluations get --id DS_ID` |
@@ -282,6 +284,7 @@ Same confirmation rules as other writes.
 | Put document markdown | `documents put-markdown --id DOC --file ./x.md --yes` |
 | Export document zip | `documents export --id DOC --out ./doc.zip --yes` |
 | Apply Deployment/Service YAML to a registered cluster | **Read [references/kubernetes.md](references/kubernetes.md) first**, then `kubernetes apply --cluster-id ID --file ./deploy.yaml --namespace default --yes` |
+| Sync local project files into a running dev Pod | **Read [references/kubernetes.md](references/kubernetes.md) first**, then `kubernetes dev-sync --project-id ID --cluster-id ID --deployment NAME --local-path REL --container-path /abs [--reload] --yes` |
 | Delete a Service or Deployment | `kubernetes delete --cluster-id ID --kind Service --name NAME --namespace default --yes` |
 | Register a Service as a hosted App | `kubernetes register-app --cluster-id ID --namespace default --service NAME --port 80 --name "Web" --api-name webApp --yes` |
 

@@ -46,9 +46,13 @@ API 响应永不包含 kubeconfig 明文，仅返回 `kubeconfig_configured` 与
 
 操作员在 **项目设置 → 部署** 中加密保存键值，再 **同步到集群**（写成 Opaque Secret，标签 `app.kubernetes.io/managed-by=openkms` 与 `openkms.io/project-id`）。Agent 系统提示里只看到名称/键名，须用 `secretRef` / `secretKeyRef` 引用。个人 API key 不能创建或更新部署密钥的值。
 
+## 开发同步（项目） {#dev-sync}
+
+`POST /api/projects/{id}/kubernetes/dev-sync` 打包项目子树（相对路径 `local_path`），解压到 Deployment 下最新 Ready Pod 的 `container_path`。可选 `reload` 在容器内 POST 热重载接口。需要 **`projects:write`** 与 **`console:kubernetes`**。打包上限 32 MiB，并排除常见构建目录。Skill：`kubernetes dev-sync`。建议用独立的 **dev** Deployment（`replicas: 1`），与登记到应用的 Service 分开。kubeconfig 不离开服务端。
+
 ## Agents
 
-**openkms** skill 可列出已登记集群、apply 白名单 kind（不含 Secret）、列出 secrets/configmaps/env、拉取日志，以及 `kubernetes register-app`。API 密钥需要 **`console:kubernetes`**（登记应用还需要 **`ontology:write`**）。kubeconfig 始终在服务端解密。
+**openkms** skill 可列出已登记集群、apply 白名单 kind（不含 Secret）、列出 secrets/configmaps/env、拉取日志、`kubernetes register-app`，以及 `kubernetes dev-sync`。API 密钥需要 **`console:kubernetes`**（dev-sync 还需要 **`projects:write`**；登记应用还需要 **`ontology:write`**）。kubeconfig 始终在服务端解密。
 
 ## 仍未覆盖
 
@@ -57,3 +61,4 @@ API 响应永不包含 kubeconfig 明文，仅返回 `kubeconfig_configured` 与
 - Ingress / 公网 TLS / WebSocket 代理
 - 把 A2UI 画布跑进 Pod
 - 外部 Secret 管理器（Vault / ESO）
+- DevSpace / 长连接文件同步守护进程

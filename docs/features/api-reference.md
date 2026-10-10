@@ -340,6 +340,7 @@ Encrypted values; **never returned**. Write/sync/delete reject personal API key 
 | PATCH | `/api/projects/{id}/deploy-secrets/{sid}` | Update; body `{cluster_id?, namespace?, set_values?, remove_keys?}` |
 | DELETE | `/api/projects/{id}/deploy-secrets/{sid}` | Delete; optional `?delete_in_cluster=true` |
 | POST | `/api/projects/{id}/deploy-secrets/{sid}/sync` | Upsert labeled Opaque Secret on the cluster |
+| POST | `/api/projects/{id}/kubernetes/dev-sync` | On-demand pack of project `local_path` into Deployment Pod `container_path` (needs `projects:write` + `console:kubernetes`); optional in-pod reload webhook |
 
 ### Connectors (`connectors:read` / `connectors:write`)
 

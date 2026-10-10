@@ -89,3 +89,42 @@ def test_kubernetes_env(mock_api):
 
     cmd_env(_ns(cluster_id="c1", deployment="web", namespace=None))
     assert recorded[-1].url.path == "/api/kubernetes-clusters/c1/deployments/web/env"
+
+
+def test_kubernetes_dev_sync(mock_api):
+    recorded, responses = mock_api
+    responses[("POST", "/api/projects/p1/kubernetes/dev-sync")] = (
+        200,
+        {
+            "pod": "web-abc",
+            "container": "app",
+            "namespace": "default",
+            "files_packed": 3,
+            "bytes": 1200,
+            "duration_ms": 80,
+            "reload": "skipped",
+            "reload_message": None,
+        },
+    )
+    from openkms.commands.kubernetes import cmd_dev_sync
+
+    cmd_dev_sync(
+        _ns(
+            project_id="p1",
+            cluster_id="c1",
+            deployment="web",
+            local_path="frontend/src",
+            container_path="/app/src",
+            namespace="default",
+            container="app",
+            reload=False,
+            reload_required=False,
+            reload_port=None,
+            reload_path=None,
+        )
+    )
+    req = recorded[-1]
+    assert req.url.path == "/api/projects/p1/kubernetes/dev-sync"
+    import json
+
+    assert json.loads(req.content.decode())["local_path"] == "frontend/src"

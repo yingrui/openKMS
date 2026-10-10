@@ -622,3 +622,7 @@ router.include_router(project_git_remote_router)
 from app.api.project_deploy_secrets import router as project_deploy_secrets_router  # noqa: E402
 
 router.include_router(project_deploy_secrets_router)
+
+from app.api.project_kubernetes import router as project_kubernetes_router  # noqa: E402
+
+router.include_router(project_kubernetes_router)

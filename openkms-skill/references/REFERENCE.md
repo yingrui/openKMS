@@ -288,6 +288,7 @@ Kubeconfig is never returned. Register clusters in Console, not via this CLI.
 | `kubernetes secrets` | GET | `/api/kubernetes-clusters/{id}/secrets` | Keys only; values never returned. |
 | `kubernetes configmaps` | GET | `/api/kubernetes-clusters/{id}/configmaps` | Includes data values. |
 | `kubernetes env` | GET | `/api/kubernetes-clusters/{id}/deployments/{name}/env` | `--deployment`; secret refs unresolved. |
+| `kubernetes dev-sync` *(write)* | POST | `/api/projects/{project_id}/kubernetes/dev-sync` | Needs `projects:write` + `console:kubernetes`. Packs project subtree into Deployment Pod. |
 
 ## Errors
 

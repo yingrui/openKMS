@@ -159,6 +159,45 @@ def cmd_env(ns: argparse.Namespace) -> None:
     print_json(r.json())
 
 
+def cmd_dev_sync(ns: argparse.Namespace) -> None:
+    """On-demand pack+extract of a project subtree into a Deployment Pod."""
+    body: dict[str, object] = {
+        "cluster_id": ns.cluster_id,
+        "deployment": ns.deployment,
+        "local_path": ns.local_path,
+        "container_path": ns.container_path,
+        "reload": bool(ns.reload),
+        "reload_required": bool(ns.reload_required),
+    }
+    n = (ns.namespace or "").strip()
+    if n:
+        body["namespace"] = n
+    c = (ns.container or "").strip()
+    if c:
+        body["container"] = c
+    if ns.reload_port is not None:
+        body["reload_port"] = ns.reload_port
+    rp = (ns.reload_path or "").strip()
+    if rp:
+        body["reload_path"] = rp
+    api = f"/api/projects/{ns.project_id}/kubernetes/dev-sync"
+    confirm_or_abort(
+        action=(
+            f"dev-sync project {ns.project_id} {ns.local_path} → "
+            f"{ns.deployment}:{ns.container_path}"
+        ),
+        method="POST",
+        path=api,
+        body=body,
+        yes=ns.yes,
+        dry_run=ns.dry_run,
+    )
+    with client() as s:
+        r = s.post(api, json=body)
+    r.raise_for_status()
+    print_json(r.json())
+
+
 def cmd_register_app(ns: argparse.Namespace) -> None:
     k8s: dict[str, str | int] = {
         "cluster_id": ns.cluster_id,
@@ -279,3 +318,25 @@ def add_subparser(sub) -> None:
     envp.add_argument("--deployment", required=True)
     envp.add_argument("--namespace", default=None)
     envp.set_defaults(fn=cmd_env)
+
+    ds = sp.add_parser(
+        "dev-sync",
+        help="On-demand sync project files into a Deployment Pod (POST …/kubernetes/dev-sync)",
+    )
+    ds.add_argument("--project-id", required=True)
+    ds.add_argument("--cluster-id", required=True)
+    ds.add_argument("--deployment", required=True)
+    ds.add_argument("--local-path", required=True, help="path relative to the project workspace root")
+    ds.add_argument("--container-path", required=True, help="absolute path inside the container")
+    ds.add_argument("--namespace", default=None)
+    ds.add_argument("--container", default=None)
+    ds.add_argument("--reload", action="store_true", help="POST reload webhook inside the pod after sync")
+    ds.add_argument("--reload-port", type=int, default=None)
+    ds.add_argument("--reload-path", default=None)
+    ds.add_argument(
+        "--reload-required",
+        action="store_true",
+        help="fail the command if --reload was requested and the webhook fails",
+    )
+    add_write_flags(ds)
+    ds.set_defaults(fn=cmd_dev_sync)

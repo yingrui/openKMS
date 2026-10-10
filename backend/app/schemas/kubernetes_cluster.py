@@ -283,3 +283,29 @@ class KubernetesDeploymentEnvPatchRequest(BaseModel):
     container: str = Field(min_length=1, max_length=253)
     env: list[KubernetesEnvVar] = Field(default_factory=list)
     env_from: list[KubernetesEnvFrom] = Field(default_factory=list)
+
+
+class ProjectKubernetesDevSyncRequest(BaseModel):
+    """On-demand sync of a project subtree into a Deployment's Pod."""
+
+    cluster_id: str = Field(min_length=1, max_length=64)
+    namespace: str | None = Field(default=None, max_length=253)
+    deployment: str = Field(min_length=1, max_length=253)
+    container: str | None = Field(default=None, max_length=253)
+    local_path: str = Field(min_length=1, max_length=1024)
+    container_path: str = Field(min_length=1, max_length=1024)
+    reload: bool = False
+    reload_port: int = Field(default=8080, ge=1, le=65535)
+    reload_path: str = "/-/reload"
+    reload_required: bool = False
+
+
+class ProjectKubernetesDevSyncResponse(BaseModel):
+    pod: str
+    container: str
+    namespace: str
+    files_packed: int
+    bytes: int
+    duration_ms: int
+    reload: str  # skipped | ok | failed
+    reload_message: str | None = None

@@ -16,6 +16,34 @@ Allowed kinds: **Deployment**, **Service**, **Pod**, **ConfigMap**. Cluster-scop
 
 `apply` creates or patches. Delete with `kubernetes delete --kind Service --name NAME --yes`.
 
+## Dev sync (on-demand hot reload)
+
+Use this when iterating on code **without** rebuilding an image. The backend packs a project subtree and extracts it into a Running Pod via the API (kubeconfig never reaches the agent). One-shot; no long-lived sync process.
+
+```bash
+kubernetes dev-sync \
+  --project-id PROJECT_ID \
+  --cluster-id ID \
+  --namespace NS \
+  --deployment frontend-dev \
+  --local-path frontend/src \
+  --container-path /app/src \
+  --reload \
+  --yes
+```
+
+Needs **`projects:write`** and **`console:kubernetes`**. Caps: packed size ≤ 32 MiB; excludes `.git`, `node_modules`, `__pycache__`, `.venv`, `dist`, `build`, …
+
+**When to use**
+
+| Goal | Command |
+|------|---------|
+| First deploy / change image, ports, env | `kubernetes apply` |
+| Push local edits into an existing **dev** Pod | `kubernetes dev-sync` |
+| Publish for end users in Apps | `kubernetes register-app` (stable Service; not the hot-sync target) |
+
+**Remote expectations:** prefer a **dev** Deployment with `replicas: 1`, separate from the published module App. The container should either watch files (e.g. nodemon / `uvicorn --reload`) or expose `POST /-/reload` (override with `--reload-path` / `--reload-port`). Without a watcher or `--reload`, files land on disk but the process may keep old code in memory.
+
 ## Deploy secrets (database passwords, etc.)
 
 1. **Check what already exists** in the target namespace before writing YAML:
