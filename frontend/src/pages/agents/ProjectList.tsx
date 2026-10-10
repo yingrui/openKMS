@@ -186,7 +186,12 @@ export function ProjectList() {
               </div>
               <Link to={`/projects/${p.id}`} className="agents-card-body">
                 <h3>{p.name}</h3>
-                <p className="agents-card-desc">{p.description || t('list.noDescription')}</p>
+                <p
+                  className="agents-card-desc"
+                  title={p.description?.trim() || undefined}
+                >
+                  {p.description || t('list.noDescription')}
+                </p>
                 <span className="agents-card-meta">{t('list.updated', { date: formatUpdated(p.updated_at) })}</span>
               </Link>
             </div>

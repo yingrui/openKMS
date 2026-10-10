@@ -198,7 +198,12 @@ export function KnowledgeBaseList() {
                 </div>
               </div>
               <h3>{kb.name}</h3>
-              <p className="resource-list-desc">{kb.description || ts('shared.noDescription')}</p>
+              <p
+                className="resource-list-desc"
+                title={kb.description?.trim() || undefined}
+              >
+                {kb.description || ts('shared.noDescription')}
+              </p>
               <div className="resource-list-meta">
                 <span>{t('metaDocs', { count: kb.document_count })}</span>
                 <span>{t('metaWikiSpaces', { count: kb.wiki_space_count ?? 0 })}</span>

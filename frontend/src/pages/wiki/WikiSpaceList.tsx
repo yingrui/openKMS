@@ -213,7 +213,12 @@ export function WikiSpaceList() {
                 </div>
               </div>
               <h3>{sp.name}</h3>
-              <p className="resource-list-desc">{sp.description || t('shared.noDescription')}</p>
+              <p
+                className="resource-list-desc"
+                title={sp.description?.trim() || undefined}
+              >
+                {sp.description || t('shared.noDescription')}
+              </p>
               <div className="resource-list-meta">
                 <span>{t('wiki.pageCount', { count: sp.page_count })}</span>
               </div>

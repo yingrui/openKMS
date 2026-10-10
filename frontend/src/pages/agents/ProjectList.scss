@@ -229,6 +229,11 @@
   line-height: 1.5;
   margin: 0 0 var(--space-3);
   flex: 1;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+  word-break: break-word;
 }
 
 .agents-card-meta {

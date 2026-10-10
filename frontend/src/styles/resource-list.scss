@@ -141,8 +141,13 @@
   font-size: var(--text-base);
   color: var(--color-text-secondary);
   line-height: 1.5;
-  margin-bottom: var(--space-4);
+  margin: 0 0 var(--space-3);
   flex: 1;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+  word-break: break-word;
 }
 
 .resource-list-meta {
