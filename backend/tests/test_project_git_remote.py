@@ -7,7 +7,13 @@ def test_git_status_includes_origin(tmp_path, monkeypatch):
     root = tmp_path / "proj"
     root.mkdir()
     monkeypatch.setattr("app.services.deep_agents.git_service.project_root", lambda _id: root)
-    assert git_status("p1") == {"entries": [], "branch": None, "remote_url": None}
+    assert git_status("p1") == {
+        "entries": [],
+        "branch": None,
+        "remote_url": None,
+        "ahead": None,
+        "behind": None,
+    }
 
     from subprocess import run
 
