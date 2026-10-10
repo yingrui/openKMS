@@ -93,3 +93,64 @@ def test_human_content_skips_unreadable_image(_get) -> None:
         )
         == "still works"
     )
+
+
+@patch("app.services.agent.attachments.delete_object")
+def test_delete_attachment_targets_derived_key(delete) -> None:
+    assert att.delete_attachment("conv-1", "att_0123456789ab", "image/png") is True
+    delete.assert_called_once_with("agent-attachments/conv-1/att_0123456789ab.png")
+
+
+@patch("app.services.agent.attachments.delete_object")
+def test_delete_attachment_ignores_invalid_ref(delete) -> None:
+    assert att.delete_attachment("conv-1", "not-an-id", "image/png") is False
+    delete.assert_not_called()
+
+
+def _page(keys_and_ages, token=None):
+    from app.services.storage import StorageListPage, StorageObjectInfo
+
+    objects = [StorageObjectInfo(key=k, size=1, last_modified=ts) for k, ts in keys_and_ages]
+    return StorageListPage(prefix="", folders=[], objects=objects, next_continuation_token=token, truncated=False)
+
+
+@patch("app.services.agent.attachments.delete_object")
+@patch("app.services.agent.attachments.list_storage_page")
+def test_prune_removes_only_unreferenced_old_objects(listing, delete) -> None:
+    from datetime import datetime, timedelta, timezone
+
+    now = datetime.now(timezone.utc)
+    old = now - timedelta(hours=2)
+    fresh = now - timedelta(seconds=5)
+    listing.return_value = _page(
+        [
+            ("agent-attachments/conv-1/att_0123456789ab.png", old),  # unreferenced, old -> delete
+            ("agent-attachments/conv-1/att_aaaaaaaaaaaa.png", old),  # referenced -> keep
+            ("agent-attachments/conv-1/att_bbbbbbbbbbbb.png", fresh),  # unreferenced, too fresh -> keep
+            ("agent-attachments/conv-1/garbage.txt", old),  # not an attachment key -> keep
+        ]
+    )
+    removed = att.prune_staged_attachments("conv-1", {"att_aaaaaaaaaaaa"})
+    assert removed == 1
+    delete.assert_called_once_with("agent-attachments/conv-1/att_0123456789ab.png")
+
+
+@patch("app.services.agent.attachments.delete_object")
+@patch("app.services.agent.attachments.list_storage_page")
+def test_prune_paginates(listing, delete) -> None:
+    from datetime import datetime, timedelta, timezone
+
+    old = datetime.now(timezone.utc) - timedelta(hours=2)
+    listing.side_effect = [
+        _page([("agent-attachments/conv-1/att_0123456789ab.png", old)], token="next"),
+        _page([("agent-attachments/conv-1/att_aaaaaaaaaaaa.png", old)]),
+    ]
+    assert att.prune_staged_attachments("conv-1", set()) == 2
+    assert listing.call_count == 2
+
+
+@patch("app.services.agent.attachments.delete_object")
+@patch("app.services.agent.attachments.list_storage_page", side_effect=RuntimeError("offline"))
+def test_prune_swallows_storage_errors(listing, delete) -> None:
+    assert att.prune_staged_attachments("conv-1", set()) == 0
+    delete.assert_not_called()

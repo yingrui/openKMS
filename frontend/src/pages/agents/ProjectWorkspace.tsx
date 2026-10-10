@@ -7,7 +7,7 @@ import { AgentChatMain } from '../../components/agents/AgentChatMain';
 import { AgentFilesPanel } from '../../components/agents/AgentFilesPanel';
 import { AgentSessionSidebar } from '../../components/agents/AgentSessionSidebar';
 import { AgentsWorkspaceSkeleton } from '../../components/agents/AgentsPageSkeleton';
-import { getProject, uploadProjectAttachment } from '../../data/projectsApi';
+import { getProject, deleteProjectAttachment, uploadProjectAttachment } from '../../data/projectsApi';
 import type { ProjectResponse } from '../../data/projectsApi';
 import { useIsMobile } from '../../hooks/useIsMobile';
 import { PanelToolbar } from '../../styles/design-system';
@@ -196,6 +196,12 @@ export function ProjectWorkspace() {
       onUploadAttachment={async (file) => {
         const cid = await session.ensureConv();
         return uploadProjectAttachment(projectId, cid, file);
+      }}
+      onDiscardAttachment={(a) => {
+        if (!session.convId) return;
+        void deleteProjectAttachment(projectId, session.convId, a.id, a.mime).catch(() => {
+          /* best-effort; the sweep on the next send reclaims it */
+        });
       }}
       todos={stream.todos}
       todoRevision={stream.todoRevision}

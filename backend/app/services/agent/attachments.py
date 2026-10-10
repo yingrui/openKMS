@@ -12,6 +12,7 @@ import logging
 import os
 import re
 import time
+from datetime import datetime, timedelta, timezone
 from typing import Any
 from uuid import uuid4
 
@@ -23,6 +24,7 @@ from app.services.storage import (
     delete_objects_by_prefix,
     get_object,
     get_redirect_url,
+    list_storage_page,
     object_exists,
     upload_object,
 )
@@ -31,6 +33,9 @@ logger = logging.getLogger(__name__)
 
 ATTACHMENT_PREFIX = "agent-attachments"
 MAX_ATTACHMENT_BYTES = 8 * 1024 * 1024
+
+#: Abandoned staging is only reclaimed after this long, so an in-flight compose is never pruned.
+STAGED_GRACE_SECONDS = 900
 
 # Images only: a vision turn is the only thing the model can read inline.
 _EXT_BY_MIME = {
@@ -189,6 +194,72 @@ def human_content_with_attachments(
     if not images:
         return text
     return [{"type": "text", "text": text}, *images]
+
+
+def _attachment_id_from_key(key: str) -> str | None:
+    """Recover the attachment id from ``…/{id}.{ext}``; None when the key is not ours."""
+    stem = key.rsplit("/", 1)[-1].rsplit(".", 1)[0]
+    return stem if _ID_RE.match(stem) else None
+
+
+def delete_attachment(conversation_id: str, attachment_id: str, mime: str) -> bool:
+    """Delete one staged attachment object (e.g. the user removed its chip)."""
+    if not settings.storage_enabled:
+        return False
+    try:
+        key = attachment_key(conversation_id, attachment_id, mime)
+    except ValueError:
+        return False
+    try:
+        delete_object(key)
+        return True
+    except Exception as e:
+        logger.warning("attachment %s delete failed: %s", attachment_id, e)
+        return False
+
+
+def prune_staged_attachments(
+    conversation_id: str,
+    referenced_ids: set[str],
+    *,
+    min_age_seconds: int = STAGED_GRACE_SECONDS,
+) -> int:
+    """Delete uploaded images no message references — staging that was abandoned.
+
+    Called when a message is posted: the posted message's own images are already
+    referenced, so anything unreferenced and older than the grace window was staged
+    and dropped (client closed, upload abandoned, send failed).
+    """
+    if not settings.storage_enabled:
+        return 0
+    cutoff = datetime.now(timezone.utc) - timedelta(seconds=min_age_seconds)
+    removed = 0
+    token: str | None = None
+    while True:
+        try:
+            page = list_storage_page(
+                f"{conversation_prefix(conversation_id)}/",
+                continuation_token=token,
+                max_keys=200,
+                delimiter="",
+            )
+        except Exception as e:
+            logger.warning("staged attachment sweep for %s failed: %s", conversation_id, e)
+            return removed
+        for obj in page.objects:
+            attachment_id = _attachment_id_from_key(obj.key)
+            if not attachment_id or attachment_id in referenced_ids:
+                continue
+            if obj.last_modified is not None and obj.last_modified > cutoff:
+                continue
+            try:
+                delete_object(obj.key)
+                removed += 1
+            except Exception as e:
+                logger.warning("staged attachment %s delete failed: %s", obj.key, e)
+        token = page.next_continuation_token
+        if not token:
+            return removed
 
 
 def delete_conversation_attachments(conversation_id: str) -> None:

@@ -37,9 +37,11 @@ from app.services.agent.llm import resolve_agent_llm_config
 from app.services.agent.attachments import (
     attachment_display_url,
     check_attachment_size,
+    delete_attachment,
     delete_attachments,
     delete_conversation_attachments,
     normalize_attachment_refs,
+    prune_staged_attachments,
     save_attachment,
 )
 from app.services.agent.assistant_stream_parts import WIKI_ASSISTANT_STREAM_PARTS_KEY
@@ -552,6 +554,19 @@ async def delete_conversation_messages_from(
     return {"deleted": n}
 
 
+async def _referenced_attachment_ids(db: AsyncSession, conversation_id: str) -> set[str]:
+    """Attachment ids already carried by a stored message in this conversation."""
+    rows = await db.execute(
+        select(AgentMessage.attachments).where(AgentMessage.conversation_id == conversation_id)
+    )
+    return {
+        str(a.get("id"))
+        for row in rows.scalars().all()
+        for a in (row or [])
+        if isinstance(a, dict) and a.get("id")
+    }
+
+
 @router.post(
     "/{project_id}/conversations/{conversation_id}/attachments",
     dependencies=[Depends(require_permission(PERM_PROJECTS_WRITE))],
@@ -584,6 +599,28 @@ async def upload_conversation_attachment(
     )
 
 
+@router.delete(
+    "/{project_id}/conversations/{conversation_id}/attachments/{attachment_id}",
+    dependencies=[Depends(require_permission(PERM_PROJECTS_WRITE))],
+)
+async def delete_conversation_attachment(
+    project_id: str,
+    conversation_id: str,
+    attachment_id: str,
+    request: Request,
+    mime: str = Query(min_length=1, max_length=64),
+    db: AsyncSession = Depends(get_db),
+):
+    """Discard a staged image the user removed before sending. Refuses ones already in a message."""
+    sub = get_jwt_sub(request)
+    await _get_project(db, project_id, sub)
+    c = await _get_conv(db, conversation_id, sub, project_id)
+    if attachment_id in await _referenced_attachment_ids(db, c.id):
+        raise HTTPException(status_code=409, detail="Attachment is already part of a message")
+    delete_attachment(c.id, attachment_id, mime)
+    return {"ok": True}
+
+
 @router.post(
     "/{project_id}/conversations/{conversation_id}/messages",
     dependencies=[Depends(require_permission(PERM_PROJECTS_WRITE))],
@@ -613,6 +650,7 @@ async def post_message(
     )
     db.add(user_msg)
     await db.flush()
+    prune_staged_attachments(c.id, await _referenced_attachment_ids(db, c.id))
     await _maybe_set_conversation_title_from_first_user_message(
         db, c, content or (attachments[0]["name"] if attachments else "")
     )

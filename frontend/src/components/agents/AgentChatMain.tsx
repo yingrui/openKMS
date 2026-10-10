@@ -28,6 +28,8 @@ interface Props {
   onSend: (text: string, attachments: AgentAttachment[]) => void;
   /** Uploads an image for the current session; returns the staged attachment. */
   onUploadAttachment?: (file: File) => Promise<AgentAttachment>;
+  /** Discards a staged attachment the user removed before sending. */
+  onDiscardAttachment?: (attachment: AgentAttachment) => void;
   todos?: unknown[];
   todoRevision?: number;
   onDismissPlan?: () => void;
@@ -183,6 +185,7 @@ export function AgentChatMain({
   onPlanModeChange,
   onSend,
   onUploadAttachment,
+  onDiscardAttachment,
   todos,
   todoRevision,
   onDismissPlan,
@@ -357,7 +360,10 @@ export function AgentChatMain({
                   <button
                     type="button"
                     className="agents-composer-attachment-remove"
-                    onClick={() => setPending((prev) => prev.filter((p) => p.id !== a.id))}
+                    onClick={() => {
+                      setPending((prev) => prev.filter((p) => p.id !== a.id));
+                      onDiscardAttachment?.(a);
+                    }}
                     aria-label={t('chat.attachRemove')}
                     title={t('chat.attachRemove')}
                   >

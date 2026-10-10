@@ -68,8 +68,9 @@ Attach images in the composer — **paste**, **drag & drop**, or the **paperclip
 - **Storage:** object storage under **`agent-attachments/{conversation_id}/`** — deliberately **not** the project workspace, so `git status`, remotes, and the agent's file tools never see chat images. Uploads go to `POST …/conversations/{id}/attachments`.
 - **Persistence:** `agent_messages.attachments` holds descriptors only (`id`, `name`, `mime`, `size`); the image bytes stay in object storage and are inlined as the turn is built.
 - **Turn input:** `deep_agents/turn_input.py` builds `HumanMessage` content blocks (`text` + `image_url` with a base64 data URI) for both the checkpoint-first append and the DB seed path, so replayed and reverted threads keep their images. Images then live in the checkpoint and are re-sent each turn until compaction offloads them (`_aoffload_inline_media`).
-- **Cleanup:** deleting a conversation or reverting/truncating messages removes the matching objects.
+- **Cleanup:** removing a staged chip deletes its object; posting a message sweeps older unreferenced uploads; deleting a conversation or reverting/truncating messages removes the matching objects. Deleting a conversation purges its whole prefix.
 - **Model support:** needs an image-capable model (deepseek-flash, `vision` capability in Models). Deep Agents replaces content blocks the active model profile rejects, so a text-only model degrades instead of failing.
+- **Discard:** `DELETE …/conversations/{id}/attachments/{attachment_id}?mime=…` removes a staged image (refused with `409` once a message references it).
 
 ## Skills
 

@@ -305,6 +305,19 @@ export async function listProjectMessages(
   return { items: data.items, total: data.total };
 }
 
+/** Discard a staged image the user removed before sending. */
+export async function deleteProjectAttachment(
+  projectId: string,
+  convId: string,
+  attachmentId: string,
+  mime: string,
+): Promise<void> {
+  await request(
+    `/api/projects/${projectId}/conversations/${encodeURIComponent(convId)}/attachments/${encodeURIComponent(attachmentId)}`,
+    { method: 'DELETE', query: { mime } },
+  );
+}
+
 /** Stage an image for the next turn. Stored outside the project workspace. */
 export async function uploadProjectAttachment(
   projectId: string,
