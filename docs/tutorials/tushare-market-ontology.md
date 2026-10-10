@@ -225,7 +225,7 @@ Publish as `getAdjCloseSeries`. Next FoO ideas: `getLatestBasics`, `getTradeWind
 | Action named “sync market” | Connector Run sync / schedule |
 | Skipping Datasets UI after sync | Confirm Data/Columns before Stock OT |
 
-General anti-patterns: [Understanding ontology §6](understanding-ontology.md#6-anti-patterns).
+General anti-patterns: [Understanding ontology §7](understanding-ontology.md#7-anti-patterns).
 
 ---
 

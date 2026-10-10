@@ -92,7 +92,7 @@ flowchart TB
   Providers --> Pages
 ```
 
-Ontology SPA sources live under `frontend/src/pages/ontology/`. **App Builder** and **Apps** live under `frontend/src/pages/app-builder/` and `frontend/src/pages/apps/`. Console admin screens live under `frontend/src/pages/console/`.
+Ontology SPA sources live under `frontend/src/pages/ontology/`. **Apps** (hosted modules) live under `frontend/src/pages/apps/`. Console admin screens live under `frontend/src/pages/console/`.
 
 ### Layout (`frontend/src/`)
 

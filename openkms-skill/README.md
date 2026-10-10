@@ -5,7 +5,7 @@ Thin CLI + Python package that lets [OpenCode](https://opencode.ai/docs/skills),
 - **Install:** `./install.sh` (auto-detects OpenCode + Claude Code; copies runtime files only — same set as `package.sh`). Re-running upgrades the tree but **preserves your `config.yml`**.
 - **Package for openKMS Agents:** `./package.sh --version 1.0.0` → `dist/openkms-1.0.0.zip` (upload on **Agents → Skills**).
 - **Configure:** copy `config.yml.example` → `config.yml`, fill in `api_base_url` and `api_key`. Create keys in **openKMS → Settings → API keys** (`okms.{uuid}.{secret}`, shown once).
-- **Agent-facing instructions:** [`SKILL.md`](SKILL.md) — **all access must use `python scripts/cli.py …` only** (no ad-hoc `curl` or custom HTTP scripts). Layout follows [agentskills.io](https://agentskills.io/specification): [`references/`](references/) (CLI↔HTTP, App Builder, Function source), [`assets/kanban-a2ui-messages.json`](assets/kanban-a2ui-messages.json), `scripts/`.
+- **Agent-facing instructions:** [`SKILL.md`](SKILL.md) — **all access must use `python scripts/cli.py …` only** (no ad-hoc `curl` or custom HTTP scripts). Layout follows [agentskills.io](https://agentskills.io/specification): [`references/`](references/) (CLI↔HTTP, module Apps, Function source), `scripts/`.
 
 ## Capabilities at a glance
 
@@ -177,13 +177,12 @@ openkms-skill/
     REFERENCE.md           # CLI ↔ HTTP map (load on demand)
     functions-authoring.md # Ontology Function source authoring
     actions-authoring.md   # Built-in CRUD Actions (rule_type, convert, delete)
-    app-builder.md         # App Builder mechanism
-    app-builder-kanban.md  # Kanban worked example
+    app-builder.md         # Module Apps (bindings.k8s)
+    kubernetes.md          # Cluster apply / register-app / dev-sync
   scripts/
     cli.py                 # dispatcher
     openkms/               # httpx client + command modules
-  assets/
-    kanban-a2ui-messages.json  # sample A2UI messages for apps patch
+  assets/                  # optional samples (none required for Apps)
   tests/                   # pytest (not required in Agents zip)
   install.sh / package.sh
 ```

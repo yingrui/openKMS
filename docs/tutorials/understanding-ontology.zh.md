@@ -12,7 +12,7 @@
 
 **功能参考：** [本体](../features/ontology.md) · [Ontology Functions](../features/ontology-functions.md) · [目标](../goals.md)
 
-> openKMS **不在 Object Explorer 交付看板 UI**。「看板」= 带 **status/列** 的工作项，在 Explorer 浏览，可选 Neo4j 看依赖，用 FoO 决策，用 Actions **创建 / 更新 / 移动 / 删除**卡片（`edits` 写回）。可视化应用用 **[App Builder](../features/app-builder.md)** 的平台积木（`OntoObjectList`、`Modal` + `TextField` + `Button` 等）组装，**没有**内置看板组件。已发布应用在 **Apps** 中运行。
+> openKMS **不在 Object Explorer 交付看板 UI**。「看板」= 带 **status/列** 的工作项，在 Explorer 浏览，可选 Neo4j 看依赖，用 FoO 决策，用 Actions **创建 / 更新 / 移动 / 删除**卡片（`edits` 写回）。可选托管 UI 见 **[应用](../features/app-builder.md)**（登记 Kubernetes Service）——产品内不再提供 A2UI 看板设计器。
 
 英文源：[Build a simple Kanban on the ontology](understanding-ontology.md)
 
@@ -46,7 +46,7 @@ Backlog → 进行中 → 评审 → 完成
 4. 用 **status** 当列，在 Explorer 里看到「板」。  
 5. 发布一个帮 AI **定优先级 / 析依赖 / 看产能** 的 FoO。  
 6. （可选）绑定 Actions，通过 `edits` **创建 / 更新 / 移动 / 删除**卡片（平台 apply `create` / `modify` / `delete`）。  
-7. （可选）用同一块看板说明 **App 如何与本体交互**：Resources → DataModel → `OntoObjectList` / `executeAction` / `executeFunction`。
+7. （可选）知道 **[应用](../features/app-builder.md)** 可托管外部 UI 调用同一套本体 API；看板 DIY UI 不是 openKMS 内置能力。
 
 ---
 
@@ -54,7 +54,7 @@ Backlog → 进行中 → 评审 → 完成
 
 ```text
 数据源 / 数据集（可选）→ 对象类型 → 实例（卡片）→ 链接 → Index（可选）→ FoO（决策）
-→ Action（写回）→ App Builder + Apps（可视化列：租户 Source + 平台 host，见步骤 F）
+→ Action（写回）→ 应用（可选：登记外部托管 UI，见步骤 F）
 ```
 
 本实验可**不建数据集**，在 Object Explorer **直接建实例**（教学最快）。有 Jira/Linear 或 Postgres 种子表时再登记数据集并绑定。
@@ -110,26 +110,9 @@ Backlog → 进行中 → 评审 → 完成
 
 **E. Actions：创建 / 更新 / 移到 Done / 删除** — 在 **Ontology Manager → 操作类型** 为 WorkItem 创建内置规则（`object_create` / `object_modify` / `object_delete`），无需为简单 CRUD 绑定 Function。Rules 页可限制可写字段；`moveWorkItemToDone` 类动作可在 parameters 里设 `defaults`（如 `status: done`）。自定义逻辑仍用 Function 规则。执行后平台 **apply create / modify / delete**（响应含 `applied.*_ids`）。可在 Explorer 或 API 试写回。
 
-**F. App Builder 可视化看板（App 如何与本体交互）** — Object Explorer 只展示**实例**；多列看板是另一个 **App**：同一套 WorkItem / Action / FoO，经 A2UI 接线。详解见 [应用构建器 · App 与本体如何交互](../features/app-builder.md#app-ontology-interaction)。
+**F. 可选托管应用（外部 UI）** — Object Explorer（以及 Action / FoO API）对本实验已足够。若以后要**自定义看板 UI**，按普通 Web 应用开发，再登记到 **[应用](../features/app-builder.md)**（托管 Service + 身份头）。openKMS 不再提供产品内 A2UI 应用设计器来拼看板。
 
-> **Demo，不是产品：** 这块板用来教宿主组合。没有拖拽、客户端过滤带硬拉取上限、A2UI 路径靠手维护。把 Apps 质量当成「做完」之前，先读 [已知限制与工程缺口](../features/app-builder.md#known-limitations-engineering-gaps)。
-
-| 层 | 在看板 App 上 | 例子 |
-|----|---------------|------|
-| **本体** | 你已建好的类型、卡片、Action、FoO | `WorkItem`、`createWorkItem`、`suggestWorkItemPriority` |
-| **Resources** | App 可用的 api name 白名单 | 设置 → 资源 |
-| **Source（A2UI）** | 布局、DataModel 路径、哪个 Button 触发哪个 host 事件 | 每个 `status` 一列过滤列表 |
-| **平台 host** | 自定义 `OntoObjectList` + `executeAction` / `executeFunction` / `loadObjectForEdit` | `catalog.tsx` + `AppA2uiSurface.tsx` |
-
-要点：
-
-1. **Resources** 例如 `objectTypes: [WorkItem]`、`actions: [createWorkItem, updateWorkItem]`、`functions: [suggestWorkItemPriority]`。Source 引用不在白名单内的 Action/Function → 发布失败。  
-2. **读：** 每列一个 `OntoObjectList`（按 `status` 过滤）把实例写入 `dataPath`；再用基础 `List` 行模板展示。行内字段用**相对**路径（`title`、`id`）。`OntoObjectList` 是 openKMS **自定义** catalog 组件（只负责加载）。  
-3. **写：** 新建 = Modal + `/createWorkItem/*` 上的 TextField → `executeAction` / `createWorkItem`。编辑 = 行上 `loadObjectForEdit` 填 `/editWorkItem` → 保存 `executeAction` / `updateWorkItem`。没有 `OntoActionForm`。  
-4. **算：** 编辑表单上 `executeFunction`（`suggestWorkItemPriority`），用 `applyPath` / `applyKey` 把建议的 `priority` 写回字段；**持久化仍靠 Save 的 `executeAction`**。完整 context JSON 见[英文教程步骤 F](understanding-ontology.md)。  
-5. **编创：** 设置（资源 / 加载器）→ 设计 → Source（或 openkms-skill `apps`）→ 预览 → 发布 → 在 **Apps** 打开。应用内无设计器聊天。
-
-**记住：** 板**状态** = 本体实例；FoO = 共享决策规则；板**UI** = 租户 Source + 平台 host 事件，打在同一套 API 上。
+**记住：** 板**状态**与**规则**在本体里；任何可视化看板都是你自己的 UI，调用同一套 Action / Function。
 
 ---
 
@@ -142,8 +125,7 @@ Backlog → 进行中 → 评审 → 完成
 | 关系 | 至少一条 dependsOn、一条 assignedTo |
 | 决策 | 已发布 FoO 对卡片 id 返回 JSON |
 | 写回 | Actions 创建 / 更新 / 移动 / 删除经 `edits` 持久化 |
-| App UI（可选） | 已发布看板 App：Resources + 分列 `OntoObjectList` + 创建/编辑 Modal；Suggest priority = `executeFunction` 后再 Save |
-| 叙事 | 板状态 = 本体知识；FoO = 共享规则；看板 UI = App Builder → Apps（host 桥接 DataModel ↔ 本体） |
+| 叙事 | 板状态 = 本体知识；FoO = 共享规则；不必先有自定义看板 UI |
 
 ---
 
@@ -152,8 +134,7 @@ Backlog → 进行中 → 评审 → 完成
 | 避免 | 更好 |
 |------|------|
 | 先做拖拽看板 SPA、模式未建 | 先本体建模 |
-| 平台「KanbanBoard」或看板形 bindings | Source 里用过滤的 `OntoObjectList` + `List` 组列 |
-| 以为 `executeFunction` 单独就能存 priority | FoO 填表单；`executeAction` 才持久化 |
+| 以为 FoO 单独就能持久化卡片改动 | FoO 负责计算；Action apply `edits` 才写回 |
 | 状态流水全进 Neo4j | Index 主数据 + dependsOn |
 | Function 每次打 Jira | 手建实例或先 sync |
 | 优先级只活在聊天里 | 已发布 FoO |
@@ -166,7 +147,7 @@ Backlog → 进行中 → 评审 → 完成
 1. 为什么「看板上的卡片」在 openKMS 里算**本体知识**？  
 2. 本实验里哪个属性扮演**看板列**？  
 3. 举一个做**依赖 / 优先级 / 资源**的 FoO 名字。  
-4. 看板 App 上，`executeFunction` 建议优先级之后靠什么持久化？哪类 host 事件把卡片装进某一列？
+4. FoO 建议了新优先级之后，还要靠什么才能**持久化**？
 
 答得出且 Demo 实例在，本教程目标达成。
 
@@ -174,4 +155,4 @@ Backlog → 进行中 → 评审 → 完成
 
 ## 9. 接下来
 
-加强同一块板上的 FoO · **[App Builder](../features/app-builder.md)**（步骤 F 的完整 host / 前端对照）· 接到真实跟踪工具的数据集 · [Tushare 案例](tushare-market-ontology.md) · [Ontology Functions](../features/ontology-functions.md)
+加强同一块板上的 FoO · **[应用（托管模块）](../features/app-builder.md)**（登记自建看板 UI）· 接到真实跟踪工具的数据集 · [Tushare 案例](tushare-market-ontology.md) · [Ontology Functions](../features/ontology-functions.md)

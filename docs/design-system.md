@@ -32,15 +32,15 @@ Export surface for TSX: **`styles/design-system/index.ts`** (`Dialog`, `EmptySta
 
 ## A2UI platform surfaces
 
-**Google A2UI** renders in Light DOM. openKMS hosts (**App Builder** Preview/Run, **Apps** Run, Knowledge Map overview, …) wrap content in **`.a2ui-platform-surface`** and call **`ensureA2uiPlatformStyles()`** once at startup (`src/a2uiPlatform.ts` → `@a2ui/react/styles` `injectStyles()`).
+**Google A2UI** renders in Light DOM. openKMS hosts (Knowledge Map overview, …) wrap content in **`.a2ui-platform-surface`** and call **`ensureA2uiPlatformStyles()`** once at startup (`src/a2uiPlatform.ts` → `@a2ui/react/styles` `injectStyles()`). Product **Apps** are hosted module iframes — they do not use A2UI.
 
 | Piece | Role |
 |-------|------|
-| **`design-system/_a2ui-platform.scss`** | Token bridge + COMPOSER-like primitive polish (elevated Cards, soft pill Buttons, Modal/TextField focus rings, type hierarchy, equal-width Row children). No board/list chrome — Source uses `Card` / `variant`. |
-| **Host wrapper** | e.g. `.onto-app-a2ui.a2ui-platform-surface` — surface owns content inset (`padding`); Design Preview uses `.app-builder-design__canvas-body--preview` (no chrome gutter) so muted canvas is edge-to-edge |
-| **Catalog components** | `OntoObjectList`, `KmOverviewNodeLink`, … — behavior + domain wiring, not visual theme |
+| **`design-system/_a2ui-platform.scss`** | Token bridge + primitive polish (Cards, Buttons, Modal/TextField, type hierarchy). |
+| **Host wrapper** | e.g. `.km-overview-a2ui.a2ui-platform-surface` — surface owns content inset (`padding`) |
+| **Catalog components** | `KmOverviewNodeLink`, … — behavior + domain wiring, not visual theme |
 
-App **Source** composes A2UI primitives; **platform SCSS** makes those primitives match openKMS. Do not add Kanban- or app-named layout rules to host SCSS — extend `_a2ui-platform.scss` when a primitive pattern is reusable.
+Extend `_a2ui-platform.scss` when a primitive pattern is reusable across A2UI hosts. Do not add feature-named layout rules for a single screen.
 
 
 ## Shared UI primitives

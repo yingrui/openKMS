@@ -120,7 +120,7 @@ Some practical guidance:
 - **`kb ask` vs `kb search`.** `ask` proxies to the QA agent and returns a grounded *answer* (with citations). `search` is **hybrid** (BM25 + dense + RRF + cross-encoder rerank) and returns *raw chunks + FAQ matches*. Use `ask` when the user wants an answer; use `search` when you need source material to reason over yourself.
 - **KB wiki indexing.** Link with **`kb wiki-spaces link`**, then **`kb wiki-spaces reindex`** or **`kb index`**. Poll **`jobs get`**.
 - **`ontology ask` is a 3-call chain.** Use when the question is graph-shaped. Use individual subcommands when you need to inspect Cypher.
-- **Ontology Functions vs Actions vs Connectors.** Functions = read/compute Python logic (`ontology functions …`). Action types = intentional ops (`ontology action-types …`). **Default to built-in rules** — `--rule-type object_create|object_modify|object_delete` (no Function; platform applies the edit). Use `--rule-type function` + `--function-id` **only** when you need custom FoO logic (validation, derived fields, multi-step edits via `create_edit_batch()`). Before any Action write path, read **[references/actions-authoring.md](references/actions-authoring.md)** — do **not** probe unknown `rule_type` values. Connector **sync** loads external datasets (e.g. Tushare) — not an Action. Prefer not Neo4j-indexing huge daily fact tables; index master data (e.g. Stock) and analysis objects. Domain types/Functions (Stock, screens) are **tenant DIY**, not platform seeds — see Workflow **G**. Hosted UIs are tenant **module Apps** — open [references/app-builder.md](references/app-builder.md) first (Workflow **H** / Kanban example after that).
+- **Ontology Functions vs Actions vs Connectors.** Functions = read/compute Python logic (`ontology functions …`). Action types = intentional ops (`ontology action-types …`). **Default to built-in rules** — `--rule-type object_create|object_modify|object_delete` (no Function; platform applies the edit). Use `--rule-type function` + `--function-id` **only** when you need custom FoO logic (validation, derived fields, multi-step edits via `create_edit_batch()`). Before any Action write path, read **[references/actions-authoring.md](references/actions-authoring.md)** — do **not** probe unknown `rule_type` values. Connector **sync** loads external datasets (e.g. Tushare) — not an Action. Prefer not Neo4j-indexing huge daily fact tables; index master data (e.g. Stock) and analysis objects. Domain types/Functions (Stock, screens) are **tenant DIY**, not platform seeds — see Workflow **G**. Hosted UIs are tenant **module Apps** — open [references/app-builder.md](references/app-builder.md) first (Workflow **H**).
 - **Authoring Function source.** Before writing `--source-code-file`, read **[references/functions-authoring.md](references/functions-authoring.md)** (`@function`, `Client` search/fetch/execute_function, `uses=`, allowed imports, CLI validate→publish). Do not invent HTTP inside Function code. `Client` is read/compose only. Prefer built-in Action rules for CRUD; only Action-bound Functions returning `create_edit_batch()` edits when custom write logic is required.
 - **Module Apps (`apps` CLI).** **Read [references/app-builder.md](references/app-builder.md) before** `apps create|patch|publish`. Apps are hosted Kubernetes Services only (`bindings.k8s`). Prefer `kubernetes register-app`. No A2UI Source / synthesize.
 - **Object type properties** may use `string`, `integer`, `number`, `boolean`, `date`, `datetime`, `uuid` in `--properties-json`.
@@ -177,8 +177,8 @@ Some practical guidance:
 | Execute published function by api name | `python scripts/cli.py ontology functions execute-by-api-name --api-name NAME --input-json '{}' --yes` |
 | List action types | `python scripts/cli.py ontology action-types list` |
 | List ontology groups | `python scripts/cli.py ontology groups list` |
-| List App Builder apps | `python scripts/cli.py apps list` |
-| Get app (run) or draft design | `python scripts/cli.py apps get <id>` / `apps get <id> --design` |
+| List module Apps | `python scripts/cli.py apps list` |
+| Get published app | `python scripts/cli.py apps get <id>` |
 | List data sources | `python scripts/cli.py data-sources list` |
 | List datasets | `python scripts/cli.py datasets list [--data-source-id ID]` |
 | Dataset rows / metadata | `python scripts/cli.py datasets rows --id DS_ID` / `datasets metadata --id DS_ID` |
@@ -380,6 +380,6 @@ Per [agentskills.io](https://agentskills.io/specification): keep detailed materi
 - CLI ↔ HTTP map: [references/REFERENCE.md](references/REFERENCE.md) (operators / code review — **not** a second HTTP path for agents)
 - Ontology Function **source** authoring: [references/functions-authoring.md](references/functions-authoring.md)
 - Ontology Action types (built-in CRUD first): [references/actions-authoring.md](references/actions-authoring.md)
-- App Builder **mechanism** (authoring journey + host): [references/app-builder.md](references/app-builder.md)
+- Module Apps (`bindings.k8s`): [references/app-builder.md](references/app-builder.md)
 - Executable CLI: `scripts/cli.py`
 - Tests (dev only, not packaged for Agents zip): `tests/` — `pytest -v`

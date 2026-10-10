@@ -69,7 +69,7 @@ Domain market-analysis schemas and Functions are **not** openKMS product deliver
 | Manager top bar ⌘K / Discard·Save draft | P2 | Needs draft infra |
 | Global ontology Draft | Skipped | Function-level publish is enough |
 | OT wizard Action stubs without auto-bind | Soft | Bind Functions manually on Action types |
-| Kanban / board UI in Suite Apps | Follow-on | Presentation belongs to **App Builder** (+ A2UI), not Object Explorer |
+| Kanban / board UI in Suite Apps | Out of product | Build your own UI; optionally register as a hosted **Apps** module — not Object Explorer |
 
 Do **not** schedule soft UX with market-analysis work.
 
@@ -95,7 +95,7 @@ Dataset-backed types: Dataset remains the source; Neo4j is an index projection. 
 | **Shipped** | After a successful Action OFS run, `output.edits` with `op` in `create` / `modify` / `delete` apply onto the queue (`primary_key` = instance id; `create` may omit `primary_key` and receive a generated UUID), then same-request Neo4j sync when a Neo4j DS exists. Response includes `applied` (`created_ids` / `modified_ids` / `deleted_ids`). Neo4j sync failure marks the Action as error (queue transaction rolled back). |
 | **Still deferred** | Action write-back that mutates Dataset rows; link create/delete as edit ops; ofs `Client` write methods. |
 
-Rationale: Kanban DIY and App Builder boards need full card CRUD on Explorer-created objects, with Neo4j as the graph/query surface and `object_instances` as a durable apply queue (including when Neo4j is not yet configured).
+Rationale: Kanban DIY and any external board UI need full card CRUD on Explorer-created objects, with Neo4j as the graph/query surface and `object_instances` as a durable apply queue (including when Neo4j is not yet configured).
 
 Earlier (2026-08-16) `modify`-only shipping is superseded for object-instance edits.
 
@@ -160,11 +160,11 @@ Earlier (2026-08-16) `modify`-only shipping is superseded for object-instance ed
 
 - [x] Three App Rail icons; `check:app-modules` passes
 - [x] Old routes redirect
-- [x] Permission patterns include App Builder routes (`/api/app-builder/apps`)
+- [x] Permission patterns include Apps routes (`/api/app-builder/apps`)
 - [x] Cypher page height (`check:app-layout`)
 - [x] No "Code Repository" user-facing copy
 - [x] Capability audit + DIY blockers documented (this page)
 - [x] Action `modify` apply on resolvable object instances (2026-08-16)
 - [x] Action `create` / `delete` apply on resolvable object instances (2026-08-17)
 - [ ] Link create/delete edit ops + dataset/Neo4j synthetic `object_id` — separate plan when needed
-- [x] App Builder + Apps (A2UI) — platform primitives + tenant Source; not Object Explorer
+- [x] Apps (hosted modules) — register Service + iframe proxy; A2UI App authoring removed

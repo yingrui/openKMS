@@ -12,7 +12,7 @@ Agent 工作指南（原 `.cursor/rules/` 合并版）。
 |------|------|
 | Backend | `backend/app/`（FastAPI + async SQLAlchemy） |
 | Frontend | `frontend/src/`（React 19 + Vite） |
-| App Builder | `backend/app/services/app_builder/`、`backend/app/api/app_builder.py`、`frontend/src/pages/app-builder/` |
+| Apps（托管模块） | `backend/app/services/app_builder/`、`backend/app/api/app_builder.py`、`frontend/src/pages/apps/` |
 | Docker | `docker/`（见 `docker/README.md`） |
 | Docs | `docs/` |
 | VLM | `vlm-server/` |
@@ -108,8 +108,8 @@ Agent 工作指南（原 `.cursor/rules/` 合并版）。
 详 `docs/features/app-builder.md`。
 
 - **仅** `template_id=module`：登记 Kubernetes Service → Apps 图库 iframe 代理；身份头见文档。
-- **已移除** A2UI App 编创（Design / Source / synthesize / OntoObjectList / `app_components`）。Knowledge Map 等其它 A2UI 面不受影响。未来 A2UI 实验放在 **Agent Project** 会话，不回产品 App Builder。
+- **已移除** 产品内 A2UI App 编创（Design / Source / synthesize / OntoObjectList / `app_components`）。Knowledge Map Overview 等其它 A2UI 面保留。未来 A2UI 实验放在 **Agent Project** 会话，不回 Apps 产品面。
 - API：`/api/app-builder/apps` + `…/proxy`；表名 `ontology_apps` 为历史命名。
 - FastAPI：`_register_routes(router)` 前 router **必须有 prefix**。
 
-**验收：** 动前端 `npm run build` · 动模型 `alembic upgrade head` · grep 无 App 路径下的 `OntoObjectList` / `apps synthesize` / `pages/app-builder/a2ui`。
+**验收：** 动前端 `npm run build` · 动模型 `alembic upgrade head` · grep 无 `OntoObjectList` / `apps synthesize` / `pages/app-builder/`。

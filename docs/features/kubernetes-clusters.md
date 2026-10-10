@@ -2,14 +2,14 @@
 
 Console management for **registered Kubernetes clusters** that agents and operators can use. Operators can **bring your own cluster** (paste a kubeconfig, encrypt at rest, test connectivity) and **browse** namespaces, Deployments, Services, and Pods. The console can **apply** allowlisted YAML, **delete** those kinds, **read Pod logs**, and **register a Service in Apps**. Cloud provisioning is not included.
 
-Related: [Console & authentication](console-and-auth.md), [Agents](openkms-agents.md), [App Builder & Apps](app-builder.md), [API reference](api-reference.md#kubernetes-clusters-consolekubernetes), [Data models](data-models.md#kubernetescluster).
+Related: [Console & authentication](console-and-auth.md), [Agents](openkms-agents.md), [Apps (hosted modules)](app-builder.md), [API reference](api-reference.md#kubernetes-clusters-consolekubernetes), [Data models](data-models.md#kubernetescluster).
 
 ## Console UI
 
 - **List:** `/console/kubernetes` — register, edit, delete, test connection; open a cluster for browse
 - **Detail:** `/console/kubernetes/{id}` — pick a namespace; Deployments, Services, Pods, Secrets, ConfigMaps; Deployment env; Pod logs; apply YAML; delete allowlisted objects; register a Service in Apps
 - **Permission:** `console:kubernetes` (or `all` / admin)
-- Form fields: name, description, default namespace, optional **API server** (the URL the backend uses to reach the cluster), kubeconfig YAML, optional **skip TLS verification** (lab / self-signed only), optional **openKMS runs inside this cluster** (`options.direct_service_access`: hosted Apps call `*.svc.cluster.local` directly instead of the API-server proxy; see [App Builder](app-builder.md#module-hosted-services))
+- Form fields: name, description, default namespace, optional **API server** (the URL the backend uses to reach the cluster), kubeconfig YAML, optional **skip TLS verification** (lab / self-signed only), optional **openKMS runs inside this cluster** (`options.direct_service_access`: hosted Apps call `*.svc.cluster.local` directly instead of the API-server proxy; see [Apps](app-builder.md#module-hosted-services))
 
 API responses never include kubeconfig plaintext — only `kubeconfig_configured: true/false` plus non-secret fields (`api_server`, `default_namespace`, last test status).
 
@@ -42,7 +42,7 @@ Prefer kubeconfigs that use **token** or **client certificate** credentials. Cli
 
 Console row actions match the skill: logs Dialog, confirm delete, apply Dialog, Secret/ConfigMap editors, Deployment **Environment**. kubeconfig never returns in responses. Secrets labeled `openkms.io/project-id` are **read-only** in the console (edit from Project settings → Deploy).
 
-**Register in Apps** (Service row): creates a published `template_id=module` app bound to `cluster_id` / namespace / service / port. Requires `ontology:write` in addition to `console:kubernetes`. See [App Builder](app-builder.md#module-hosted-services). The workload gets the signed-in user from openKMS [identity headers](app-builder.md#module-identity-headers) and should not implement its own login.
+**Register in Apps** (Service row): creates a published `template_id=module` app bound to `cluster_id` / namespace / service / port. Requires `ontology:write` in addition to `console:kubernetes`. See [Apps](app-builder.md#module-hosted-services). The workload gets the signed-in user from openKMS [identity headers](app-builder.md#module-identity-headers) and should not implement its own login.
 
 ## Deploy secrets (projects) {#deploy-secrets-projects}
 
@@ -61,6 +61,5 @@ The **openkms** skill lists registered clusters, applies allowlisted kinds (not 
 - Cloud-provider cluster provisioning
 - Per-project default cluster binding
 - Ingress / public TLS / WebSocket proxy
-- Running the A2UI canvas inside a Pod
 - External secret managers (Vault / ESO)
 - DevSpace / long-lived file sync daemons

@@ -12,7 +12,7 @@
 
 **Product reference:** [Ontology](../features/ontology.md) · [Ontology Functions](../features/ontology-functions.md) · [Goals](../goals.md)
 
-> openKMS does **not** ship a Kanban board UI in Object Explorer. “Board” means: typed work items with a **status/column** property, browseable in Object Explorer, optionally graphed in Neo4j, with FoO for AI-assisted decisions and Actions to **create / update / move / delete** cards (`edits` apply). A visual app is built with **[App Builder](../features/app-builder.md)** using platform primitives (`OntoObjectList`, `Modal` + `TextField` + `Button`, …)—not a built-in kanban widget. Published apps run under **Apps**.
+> openKMS does **not** ship a Kanban board UI in Object Explorer. “Board” means: typed work items with a **status/column** property, browseable in Object Explorer, optionally graphed in Neo4j, with FoO for AI-assisted decisions and Actions to **create / update / move / delete** cards (`edits` apply). Optional hosted UIs live under **[Apps](../features/app-builder.md)** (registered Kubernetes Services)—not an in-product A2UI board designer.
 
 ---
 
@@ -46,7 +46,7 @@ By the end you can:
 4. Put a few cards in columns via a **status** property and find them in Object Explorer.  
 5. Publish one **FoO** that helps an AI decide (priority, dependencies, or capacity).  
 6. (Optional) Bind Actions that **create / update / move / delete** cards via `edits` (`create` / `modify` / `delete` apply).  
-7. (Optional) Explain how an **App** talks to the ontology on the same Kanban: Resources → DataModel → `OntoObjectList` / `executeAction` / `executeFunction`.
+7. (Optional) Know that **[Apps](../features/app-builder.md)** can host an external UI for the same ontology APIs (module registration)—board DIY UI is not built into openKMS.
 
 ---
 
@@ -61,7 +61,7 @@ Link type                  → belongsTo / assignedTo / dependsOn
 Index (Neo4j)              → Cypher (“what blocks WI-2?”)
 Function (FoO)             → suggestWorkItemPriority / workItemDependencyClosure
 Action                     → create / update / move / delete (edits create|modify|delete; platform applies)
-App Builder + Apps         → visual Kanban: tenant A2UI Source + platform host (see Step F)
+Apps (optional)            → hosted external UI registered to a Service (see Step F)
 ```
 
 **Dataset vs object type:** a dataset is a *table registration*; an object type says those rows (or hand-created instances) *mean* WorkItems. For this lab you may **skip datasets** and create instances directly in Object Explorer—fastest path for teaching. Add datasets when you sync from Jira/Linear or seed Postgres.
@@ -151,7 +151,7 @@ Links:
 
 ### Step D — Publish one FoO (Function Editor → Manager Publish)
 
-Declare object ids as **WorkItem** refs on the Function schema (A2UI host may inject either key):
+Declare object ids as **WorkItem** refs on the Function schema (callers may pass either key):
 
 ```json
 {
@@ -271,76 +271,11 @@ When creating a **WorkItem** object type, the Manager wizard can tick Create / E
 
 Try create from an App or API; try update / move / delete on a card in Object Explorer.
 
-### Step F — Visual Kanban in App Builder (how the App talks to the ontology)
+### Step F — Optional hosted Apps (external UI)
 
-Object Explorer shows **instances**. A visual multi-column board is a separate **App**: same WorkItems / Actions / FoO, wired through A2UI. Full reference: [App Builder — How an App talks to the ontology](../features/app-builder.md#how-an-app-talks-to-the-ontology).
+Object Explorer (and Action / FoO APIs) are enough for this lab. If you later want a **custom board UI**, build it as a normal web app and **register** it under **[Apps](../features/app-builder.md)** (hosted Service + identity headers). openKMS no longer ships an in-product A2UI App designer for composing boards.
 
-> **Demo, not a product:** this board teaches host composition. It has no drag-and-drop, client-side filters with a hard fetch cap, and hand-maintained A2UI paths. Read [Known limitations & engineering gaps](../features/app-builder.md#known-limitations-engineering-gaps) before treating Apps quality as “done.”
-
-**Mental model for this lab**
-
-| Layer | On the Kanban App | Example |
-|-------|-------------------|---------|
-| **Ontology** | Types, cards, Actions, FoO you already built | `WorkItem`, `createWorkItem`, `suggestWorkItemPriority` |
-| **Resources** | Allowlist of api names the App may use | Settings → Resources |
-| **Source (A2UI)** | Layout + DataModel paths + which Button fires which host event | One filtered list per `status` column |
-| **Platform host** | Custom `OntoObjectList` + `executeAction` / `executeFunction` / `loadObjectForEdit` | `catalog.tsx` + `AppA2uiSurface.tsx` |
-
-The App **does not** embed a Kanban widget. Columns are **composed**: each column = `OntoObjectList` (filter by `status`) + basic `List` row template.
-
-**1. Resources (capability boundary)**
-
-```json
-{
-  "objectTypes": ["WorkItem"],
-  "actions": ["createWorkItem", "updateWorkItem"],
-  "functions": ["suggestWorkItemPriority"]
-}
-```
-
-Publish fails if Source references an Action/Function not on this list.
-
-**2. Read — load cards into DataModel**
-
-For each column (e.g. `to_do`, `in_progress`, `done`):
-
-1. `OntoObjectList` with `objectType: WorkItem`, `dataPath: /todoItems` (or similar), `filterProperty: status`, `filterValue: …`
-2. Basic `List` bound to the same `dataPath`; row fields use **relative** paths (`title`, `id`) — not `/title`.
-
-`OntoObjectList` is an openKMS **custom** catalog component (loader only). Display is ordinary A2UI `List` / `Card` / `Text`.
-
-**3. Write — create / save via Action**
-
-- **New card:** Modal + `TextField`s on `/createWorkItem/*` → Button `executeAction` with `actionApiName: createWorkItem`, `inputPath: /createWorkItem`.
-- **Edit card:** row Button `loadObjectForEdit` seeds `/editWorkItem` (incl. `objectId`) and opens the shared Modal → Save Button `executeAction` with `updateWorkItem` + `objectId`.
-
-Host reads the DataModel form bucket, runs Action execute (create/modify apply), refreshes loaders. There is no `OntoActionForm`.
-
-**4. Compute — suggest priority via FoO**
-
-On the edit form, a Button `executeFunction`:
-
-```json
-{
-  "name": "executeFunction",
-  "context": {
-    "functionApiName": "suggestWorkItemPriority",
-    "inputPath": "/editWorkItem",
-    "objectId": { "path": "/editWorkItem/objectId" },
-    "outputPath": "/suggestWorkItemPriority",
-    "applyPath": "/editWorkItem/priority",
-    "applyKey": "priority"
-  }
-}
-```
-
-Host calls the published FoO (Step D), writes `output` to `outputPath`, and copies `priority` into the Priority field. **Save** still needs `executeAction` — Functions do not persist card edits.
-
-**5. Author and run**
-
-In App Builder: Settings (Resources / Loaders) → Design → Source (or [openkms-skill](../features/openkms-skill.md) `apps patch`) → Preview → Publish → open under **Apps**. There is no in-app designer chat; agents use the same draft APIs outside the SPA.
-
-**Story to remember:** board **state** = ontology instances; FoO = shared decision rule; board **UI** = tenant Source + platform host events on the same APIs.
+**Story to remember:** board **state** and **rules** live in the ontology; any visual board is your own UI calling the same Actions / Functions.
 
 ---
 
@@ -353,8 +288,7 @@ In App Builder: Settings (Resources / Loaders) → Design → Source (or [openkm
 | Relations | At least one **dependsOn** and one **assignedTo** |
 | Decision | Published FoO returns JSON for a card id |
 | Write | Actions create / update / move / delete persist via `edits` (`applied.created_ids` / `modified_ids` / `deleted_ids`) |
-| App UI (optional) | Published Kanban App: Resources + column `OntoObjectList`s + create/edit Modals; Suggest priority uses `executeFunction` then Save |
-| Story | You can explain: board state = ontology knowledge; FoO = shared decision rule; board UI = App Builder → Apps (host bridges DataModel ↔ ontology) |
+| Story | You can explain: board state = ontology knowledge; FoO = shared decision rule; Explorer / Actions are enough without a custom board UI |
 
 ---
 
@@ -363,8 +297,7 @@ In App Builder: Settings (Resources / Loaders) → Design → Source (or [openkm
 | Avoid | Prefer |
 |-------|--------|
 | Building a custom Kanban SPA before OT/links exist | Model the board in ontology first |
-| Platform “KanbanBoard” widget or board-shaped bindings | Compose columns from filtered `OntoObjectList` + `List` in Source |
-| Expecting `executeFunction` alone to save priority | FoO fills the form; `executeAction` persists |
+| Expecting a published FoO alone to persist card edits | FoO computes; Actions apply `edits` |
 | Indexing every status-change event | Index WorkItem/Person/Project + dependsOn |
 | Calling Jira on every Function execute | Sync or hand-enter instances; FoO reads ontology |
 | Secret priority formulas in chat only | Published FoO with version + audit |
@@ -381,10 +314,8 @@ In App Builder: Settings (Resources / Loaders) → Design → Source (or [openkm
 | **status property** | Kanban column |
 | **dependsOn** | Blocker edge for analysis |
 | **FoO** | Decision helper on a card / project |
-| **Resources** | App allowlist of OT / Action / Function api names |
-| **OntoObjectList** | Custom A2UI loader: instances → DataModel path (not the row UI) |
-| **executeAction** | Host event: form DataModel → Action execute → persist |
-| **executeFunction** | Host event: form DataModel → published FoO → output / applyPath |
+| **Action** | Intentional write (create / modify / delete apply) |
+| **Apps** | Optional hosted external UI registered to a Service |
 | **Index** | Optional graph for dependency Cypher |
 
 Full stack glossary remains in older revisions’ spirit: data source, dataset, publish, Action, TSP—see [Ontology](../features/ontology.md).
@@ -396,7 +327,7 @@ Full stack glossary remains in older revisions’ spirit: data source, dataset, 
 | Path | When |
 |------|------|
 | Enrich FoO (`workItemDependencyClosure`, `teamCapacitySnapshot`) | You want stronger AI decisions on the same board |
-| [App Builder (A2UI apps)](../features/app-builder.md) | Step F depth: host events, custom `OntoObjectList`, frontend map |
+| [Apps (hosted modules)](../features/app-builder.md) | Register your own board UI as a hosted App |
 | Bind datasets / connector sync from a real tracker | You outgrow hand-entered cards |
 | [Tushare market ontology DIY](tushare-market-ontology.md) | Practice the same pattern on market data |
 | [Ontology Functions](../features/ontology-functions.md) | Deeper authoring / SDK |
@@ -408,6 +339,6 @@ Full stack glossary remains in older revisions’ spirit: data source, dataset, 
 1. Why is “cards on a board” **ontology knowledge** in openKMS, not only a UI widget?  
 2. Which property plays the role of **Kanban columns** in this lab?  
 3. Name one FoO that helps with **dependencies**, **priority**, or **resources**.  
-4. On a Kanban App, what persists a suggested priority after `executeFunction` — and which host event loads cards into a column?
+4. If FoO suggests a new priority, what still has to run for the card to **persist** that change?
 
 If you can answer and your Demo Board instances exist, you finished this tutorial’s goal.

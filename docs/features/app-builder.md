@@ -4,7 +4,7 @@ openKMS **Apps** are hosted HTTP UIs registered against a Kubernetes **Service**
 
 Experimental **A2UI App Builder** authoring (Source / Design / OntoObjectList) has been **removed**. Future A2UI experiments belong in **Agent Project** sessions, not this product surface.
 
-## Register
+## Register {#module-hosted-services}
 
 | Path | How |
 |------|-----|

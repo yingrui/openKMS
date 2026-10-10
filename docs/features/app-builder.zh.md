@@ -4,7 +4,7 @@ openKMS **应用**是登记到 Kubernetes **Service** 的托管 HTTP UI。用户
 
 实验性的 **A2UI 应用构建器**（Source / Design / OntoObjectList）已**移除**。未来若再做 A2UI，应放在 **Agent Project** 会话中，而不是本产品面。
 
-## 登记
+## 登记 {#module-hosted-services}
 
 | 路径 | 方式 |
 |------|------|

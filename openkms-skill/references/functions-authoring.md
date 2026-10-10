@@ -68,7 +68,7 @@ Pass JSON Schema on create/save-version (`--input-schema-json`). Execute validat
 
 Mark ontology references with **`x-ontology`** so Manager / Overview Graph know which Object Types and Link Types the Function contracts against (primitives need no annotation, or `"kind":"primitive"`):
 
-Kanban FoO pattern (A2UI host may inject either key; both are WorkItem ids):
+Kanban FoO pattern (callers may pass either key; both are WorkItem ids):
 
 ```json
 {

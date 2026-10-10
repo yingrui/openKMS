@@ -94,24 +94,11 @@
   background: var(--color-bg, #fff);
 }
 
-.apps-page--run-fullscreen .apps-page__module-frame,
-.apps-page--run-fullscreen .onto-app-a2ui.a2ui-platform-surface {
+.apps-page--run-fullscreen .apps-page__module-frame {
   min-height: 0;
   height: 100%;
   border: none;
   border-radius: 0;
-}
-
-.apps-page--run-fullscreen .apps-page__tabs {
-  flex-shrink: 0;
-  padding-inline: var(--space-3, 0.75rem);
-  padding-top: var(--space-2, 0.5rem);
-}
-
-/* Run surface: same muted canvas + inset as Design Preview (padding from AppA2uiSurface). */
-.apps-page--run .onto-app-a2ui.a2ui-platform-surface {
-  border: 1px solid color-mix(in srgb, var(--color-border) 70%, transparent);
-  border-radius: var(--radius-lg, 14px);
 }
 
 .apps-page__grid {
