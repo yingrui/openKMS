@@ -27,6 +27,13 @@ async def get_checkpointer() -> AsyncPostgresSaver:
     A single shared psycopg connection (from_conn_string) breaks under concurrent agent
     turns with ``another command is already in progress``. The pool checks out one
     connection per checkpoint operation.
+
+    ``check`` is the psycopg analogue of the asyncpg engine's ``pool_pre_ping``: without
+    it the pool hands out sockets the server already dropped (a restarted ``port-forward``
+    tears down every connection through it at once), and the turn dies with
+    ``consuming input failed: server closed the connection unexpectedly`` during context
+    preparation. With it, ``getconn`` pings before use, discards dead connections, and
+    reconnects inside the pool instead of surfacing the error.
     """
     global _pool, _saver
     if _saver is None:
@@ -40,6 +47,10 @@ async def get_checkpointer() -> AsyncPostgresSaver:
             min_size=2,
             max_size=20,
             open=False,
+            check=AsyncConnectionPool.check_connection,
+            # Retire idle/old connections sooner so fewer can go stale between turns.
+            max_idle=120.0,
+            max_lifetime=1800.0,
         )
         await _pool.open()
         _saver = AsyncPostgresSaver(_pool)
