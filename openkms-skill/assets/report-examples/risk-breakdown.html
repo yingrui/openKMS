@@ -1,0 +1,352 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Q3 Risk Breakdown — Underwriting ops review</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,700&family=Source+Sans+3:wght@400;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/reveal.css" />
+  <style>
+    :root {
+      --bg: #f7f4ef;
+      --fg: #1a2332;
+      --muted: #5c6b7a;
+      --line: #ddd6cb;
+      --ink: #0f3d4c;
+      --teal: #0d9488;
+      --coral: #e11d48;
+      --sand: #c4b5a0;
+    }
+    html, body { height: 100%; margin: 0; background: var(--bg); color: var(--fg);
+      font-family: "Source Sans 3", ui-sans-serif, system-ui, sans-serif; }
+    .reveal { height: 100%; background:
+      linear-gradient(165deg, #f7f4ef 0%, #efe8dc 48%, #e7f0ef 100%); }
+    .reveal .slides section {
+      box-sizing: border-box; width: 100vw !important; height: 100vh !important;
+      padding: 5vh 6vw; top: 0 !important; left: 0 !important;
+      transform: none !important; text-align: left;
+      display: flex !important; flex-direction: column; justify-content: center;
+    }
+    .reveal h1, .reveal h2, .reveal h3 {
+      font-family: Fraunces, Georgia, serif; text-transform: none;
+      letter-spacing: -0.02em; color: var(--ink); font-weight: 700; margin: 0 0 .35em;
+    }
+    .reveal h1 { font-size: clamp(2.7rem, 5.5vw, 4rem); }
+    .reveal h2 { font-size: clamp(2rem, 3.8vw, 2.75rem); }
+    .reveal h3 { font-size: clamp(1.3rem, 2vw, 1.6rem); color: var(--teal); }
+    .reveal p, .reveal li { color: var(--fg); line-height: 1.5; font-size: clamp(1.2rem, 2vw, 1.5rem); }
+    .reveal .muted { color: var(--muted); }
+    .reveal .slide-number { color: var(--muted); background: transparent; font-size: .95rem; }
+    .reveal .progress span { background: var(--teal); }
+    .eyebrow { font-size: .95rem; letter-spacing: .16em; text-transform: uppercase;
+      color: var(--teal); font-weight: 700; margin-bottom: 1rem; }
+    .grid-2 { display: grid; grid-template-columns: minmax(0,1fr) minmax(0,1.1fr);
+      gap: 2rem; align-items: center; width: 100%; }
+    .grid-2.equal { grid-template-columns: 1fr 1fr; }
+    .grid-3 { display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: 1rem; width: 100%; }
+    .chart-shell {
+      height: min(52vh, 440px); min-height: 250px; border: 1px solid var(--line);
+      border-radius: 4px; background: rgba(255,255,255,.78); padding: .75rem; box-sizing: border-box;
+      box-shadow: 0 12px 40px rgba(26, 35, 50, .06);
+    }
+    .chart-shell.sm { height: min(40vh, 320px); }
+    .chart { width: 100%; height: 100%; }
+    .sources { margin-top: 1.1rem; font-size: .95rem; color: var(--muted); }
+    .sources code { color: var(--teal); font-size: .9rem; }
+    .card { border: 1px solid var(--line); border-radius: 4px; padding: 1.15rem 1.3rem;
+      background: rgba(255,255,255,.7); }
+    .card p { font-size: clamp(1.05rem, 1.6vw, 1.25rem); }
+    .agenda { list-style: none; padding: 0; margin: 0; max-width: 40rem; }
+    .agenda li { display: flex; gap: 1.1rem; padding: .75rem 0; border-bottom: 1px solid var(--line);
+      font-size: clamp(1.25rem, 2vw, 1.55rem); }
+    .agenda .n { font-family: Fraunces, serif; color: var(--teal); font-weight: 700; min-width: 1.6rem; font-size: 1.35rem; }
+    .callout { border-left: 3px solid var(--coral); padding: .65rem 0 .65rem 1.1rem;
+      margin: 1.1rem 0 0; color: var(--muted); font-size: clamp(1.1rem, 1.7vw, 1.3rem); }
+    ul.clean { padding-left: 1.2rem; }
+    ul.clean li { margin: .55rem 0; }
+    .hint { position: fixed; right: 1rem; bottom: 2.5rem; z-index: 30; font-size: .8rem;
+      color: var(--muted); opacity: .75; pointer-events: none; }
+    .reveal code { font-size: 0.92em; }
+    @media (max-width: 960px) {
+      .grid-2, .grid-2.equal, .grid-3 { grid-template-columns: 1fr; }
+      .chart-shell { height: 36vh; }
+    }
+  </style>
+</head>
+<body>
+  <div class="hint">← → · ↓ detail · Esc</div>
+  <div class="reveal">
+    <div class="slides">
+
+      <section>
+        <div class="eyebrow">Underwriting ops · confidential</div>
+        <h1>Q3 risk breakdown</h1>
+        <p class="muted" style="max-width: 40rem; font-size: clamp(1.3rem, 2.2vw, 1.65rem);">
+          Where reserve pressure is building this quarter, and where review capacity should go first.
+        </p>
+        <p class="sources" style="margin-top: 2rem;">Source: Claims inventory as of 30 Sep · UW guidelines v4.2</p>
+        <aside class="notes">Decision ask: prioritize Line A aging high-severity queue this week.</aside>
+      </section>
+
+      <section>
+        <div class="eyebrow">Agenda</div>
+        <h2>Session flow</h2>
+        <ol class="agenda">
+          <li><span class="n">01</span> Exposure question &amp; scope</li>
+          <li><span class="n">02</span> Scope &amp; definitions</li>
+          <li><span class="n">03</span> Mix, severity, and reserve pressure</li>
+          <li><span class="n">04</span> Line A deep-dive</li>
+          <li><span class="n">05</span> Actions &amp; sources</li>
+        </ol>
+      </section>
+
+      <section>
+        <div class="eyebrow">Scope</div>
+        <h2>What we asked</h2>
+        <p style="max-width: 44rem; font-size: clamp(1.4rem, 2.4vw, 1.85rem);">
+          Which product lines and severity bands drive reserve pressure this quarter — and where should review capacity go first?
+        </p>
+        <div class="grid-3" style="margin-top: 1.5rem;">
+          <div class="card"><h3>Population</h3><p class="muted">Open + newly closed claims, last 90 days</p></div>
+          <div class="card"><h3>Exclude</h3><p class="muted">Fraud queue, reinsurance recoveries</p></div>
+          <div class="card"><h3>Output</h3><p class="muted">Prioritized review list for UW ops</p></div>
+        </div>
+      </section>
+
+      <section>
+        <div class="eyebrow">Definitions</div>
+        <h2>How we cut the book</h2>
+        <div class="grid-2 equal">
+          <ul class="clean">
+            <li>Open + newly closed claims, trailing 90 days</li>
+            <li>Severity per UW guidelines v4.2</li>
+            <li>Reserve index = actuarial draft, not booked IBNR</li>
+            <li>Fraud queue and reinsurance recoveries excluded</li>
+          </ul>
+          <div class="card">
+            <h3>Data notes</h3>
+            <p class="muted">7% of claims lack a severity tag and land in Other until adjusters complete coding.</p>
+          </div>
+        </div>
+      </section>
+
+      <section>
+        <div class="grid-2">
+          <div>
+            <div class="eyebrow">Insight 1</div>
+            <h2>Exposure mix</h2>
+            <p>High-severity cases concentrate in two product lines. The long tail is small enough for a manual quarterly pass.</p>
+            <div class="callout">Severity follows UW guidelines v4.2 — High means expected payout &gt; threshold band C.</div>
+            <p class="sources">Claims inventory · 30 Sep snapshot</p>
+          </div>
+          <div class="chart-shell"><div class="chart" data-chart="pie"></div></div>
+        </div>
+      </section>
+
+      <section>
+        <div class="grid-2">
+          <div>
+            <div class="eyebrow">Insight 2</div>
+            <h2>Severity vs volume</h2>
+            <ul class="clean">
+              <li>High severity: fewer cases, dominates reserve index.</li>
+              <li>Medium severity: volume driver — process quality lives here.</li>
+              <li>Low severity: watch for leakage, not capital.</li>
+            </ul>
+            <p class="sources">Claims inventory · severity × volume</p>
+          </div>
+          <div class="chart-shell fragment fade-in"><div class="chart" data-chart="grouped"></div></div>
+        </div>
+      </section>
+
+      <section>
+        <div class="eyebrow">Insight 3</div>
+        <h2>Reserve index by line</h2>
+        <div class="grid-2 equal">
+          <div class="chart-shell sm"><div class="chart" data-chart="bar-reserve"></div></div>
+          <div class="chart-shell sm"><div class="chart" data-chart="line-trend"></div></div>
+        </div>
+        <p class="sources">Left: index by product line · Right: 12-week reserve index · Claims warehouse</p>
+      </section>
+
+      <section>
+        <section>
+          <div class="eyebrow">Deep-dive</div>
+          <h2>Line A — why it matters</h2>
+          <p class="muted" style="max-width: 40rem; font-size: clamp(1.25rem, 2vw, 1.55rem);">
+            Line A owns most high-severity exposure. Next: aging of open cases and the cause codes behind them.
+          </p>
+        </section>
+        <section>
+          <div class="grid-2">
+            <div>
+              <h2>Age of open high-severity</h2>
+              <p>Cases older than 45 days drive half the Line A reserve drag. Staff the aging bucket first.</p>
+              <p class="sources">Claims inventory · Line A open High</p>
+            </div>
+            <div class="chart-shell"><div class="chart" data-chart="bar-age"></div></div>
+          </div>
+        </section>
+        <section>
+          <div class="grid-2">
+            <div>
+              <h2>Cause codes (top 5)</h2>
+              <p>Two codes explain most high-severity opens. Playbooks exist in the KB — link them in the ops handoff.</p>
+              <p class="sources">Claims inventory · cause codes on open High</p>
+            </div>
+            <div class="chart-shell"><div class="chart" data-chart="bar-cause"></div></div>
+          </div>
+        </section>
+      </section>
+
+      <section>
+        <div class="eyebrow">Decision</div>
+        <h2>Recommended actions</h2>
+        <ul class="clean" style="max-width: 46rem; font-size: clamp(1.3rem, 2.1vw, 1.65rem);">
+          <li><strong>This week:</strong> pull Line A cases &gt;45 days into a war-room queue.</li>
+          <li><strong>This month:</strong> medium-severity sampling audit (process, not capital).</li>
+          <li><strong>Cadence:</strong> refresh after the next Friday claims freeze.</li>
+        </ul>
+      </section>
+
+      <section>
+        <div class="eyebrow">Appendix</div>
+        <h2>Sources</h2>
+        <ul class="clean">
+          <li>Claims warehouse — open inventory, severity, aging, cause codes (30 Sep)</li>
+          <li>UW guidelines v4.2 — severity bands &amp; playbook references</li>
+          <li>Actuarial draft reserve index — not booked IBNR</li>
+        </ul>
+        <p class="muted" style="margin-top: 1.25rem; max-width: 36rem;">
+          For the extract used in this review, contact Claims Ops. Numbers are for planning, not statutory reporting.
+        </p>
+      </section>
+
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/reveal.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/plugin/notes/notes.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/plotly.js-basic-dist-min@2.35.2/plotly-basic.min.js"></script>
+  <script>
+    const paper = {
+      autosize: true,
+      paper_bgcolor: "rgba(0,0,0,0)",
+      plot_bgcolor: "rgba(0,0,0,0)",
+      font: { color: "#1a2332", family: "Source Sans 3, sans-serif", size: 15 },
+      margin: { l: 56, r: 24, t: 48, b: 56 },
+    };
+    const axis = {
+      color: "#5c6b7a",
+      gridcolor: "rgba(92,107,122,0.15)",
+      zerolinecolor: "rgba(92,107,122,0.15)",
+    };
+    const cfg = {
+      responsive: true, displaylogo: false,
+      modeBarButtonsToRemove: ["lasso2d", "select2d"],
+    };
+    const L = (title, extra = {}) => ({
+      ...paper,
+      title: title ? { text: title, font: { size: 17, color: "#5c6b7a" } } : undefined,
+      xaxis: { ...axis },
+      yaxis: { ...axis },
+      ...extra,
+    });
+
+    const FIGURES = {
+      pie: {
+        data: [{
+          type: "pie", hole: 0.55,
+          labels: ["Line A", "Line B", "Line C", "Other"],
+          values: [38, 27, 19, 16],
+          marker: { colors: ["#0d9488", "#0f3d4c", "#c4b5a0", "#e11d48"] },
+          textinfo: "label+percent",
+        }],
+        layout: L("Cases by product line", { showlegend: false, margin: { l: 20, r: 20, t: 40, b: 20 } }),
+      },
+      grouped: {
+        data: [
+          { type: "bar", name: "Cases", x: ["High", "Medium", "Low"], y: [24, 61, 40], marker: { color: "#0f3d4c" } },
+          { type: "bar", name: "Reserve index", x: ["High", "Medium", "Low"], y: [72, 45, 18], marker: { color: "#0d9488" } },
+        ],
+        layout: L("Severity bands", { barmode: "group", legend: { orientation: "h", y: 1.12 } }),
+      },
+      "bar-reserve": {
+        data: [{
+          type: "bar",
+          x: ["Line A", "Line B", "Line C", "Other"],
+          y: [64, 41, 28, 17],
+          marker: { color: ["#e11d48", "#0f3d4c", "#0d9488", "#c4b5a0"] },
+        }],
+        layout: L("Reserve index by line"),
+      },
+      "line-trend": {
+        data: [{
+          type: "scatter", mode: "lines+markers",
+          x: ["W1","W2","W3","W4","W5","W6","W7","W8","W9","W10","W11","W12"],
+          y: [48, 50, 49, 52, 55, 58, 60, 59, 61, 63, 62, 64],
+          line: { color: "#0d9488", width: 3 },
+          marker: { color: "#0f3d4c", size: 6 },
+        }],
+        layout: L("12-week reserve index"),
+      },
+      "bar-age": {
+        data: [{
+          type: "bar",
+          x: ["0–14d", "15–30d", "31–45d", "46–60d", "60d+"],
+          y: [8, 11, 9, 14, 18],
+          marker: { color: "#0f3d4c" },
+        }],
+        layout: L("Line A open high-severity by age"),
+      },
+      "bar-cause": {
+        data: [{
+          type: "bar", orientation: "h",
+          y: ["CODE-12", "CODE-07", "CODE-19", "CODE-03", "CODE-11"],
+          x: [22, 17, 11, 8, 6],
+          marker: { color: "#0d9488" },
+        }],
+        layout: L("Top cause codes (Line A high)", { margin: { l: 90, r: 20, t: 40, b: 40 } }),
+      },
+    };
+
+    function renderChart(el) {
+      if (!el || el.dataset.ready === "1") return;
+      const fig = FIGURES[el.getAttribute("data-chart")];
+      if (!fig) return;
+      Plotly.newPlot(el, fig.data, fig.layout, cfg).then(() => {
+        el.dataset.ready = "1";
+        try { Plotly.Plots.resize(el); } catch (e) {}
+      });
+    }
+
+    function ensureCharts(slide) {
+      if (!slide) return;
+      slide.querySelectorAll(".chart[data-chart]").forEach(renderChart);
+      requestAnimationFrame(() => {
+        slide.querySelectorAll(".chart[data-ready='1']").forEach((el) => {
+          try { Plotly.Plots.resize(el); } catch (e) {}
+        });
+      });
+    }
+
+    Reveal.initialize({
+      hash: true,
+      slideNumber: "c/t",
+      showSlideNumber: "all",
+      progress: true,
+      controls: true,
+      center: false,
+      disableLayout: true,
+      transition: "fade",
+      plugins: [RevealNotes],
+    }).then(() => ensureCharts(Reveal.getCurrentSlide()));
+
+    Reveal.on("slidechanged", (e) => ensureCharts(e.currentSlide));
+    Reveal.on("fragmentshown", () => ensureCharts(Reveal.getCurrentSlide()));
+    window.addEventListener("resize", () => ensureCharts(Reveal.getCurrentSlide()));
+  </script>
+</body>
+</html>

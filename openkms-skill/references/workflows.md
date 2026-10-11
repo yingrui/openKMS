@@ -88,3 +88,17 @@ python scripts/cli.py kubernetes register-app \
 ```
 
 or `apps create` with `--bindings-json` containing `k8s`.
+
+**I. Research / data-analysis report → local Reveal.js + Plotly HTML.**
+
+Read **[research-report.md](research-report.md)** first. Skim a **business** example (`market-overview.html` or `risk-breakdown.html`) for tone; use `openkms-product.html` only when explaining the platform. Pull data with the CLI, aggregate locally, then **write HTML** (no fixed deck schema):
+
+```bash
+# open assets/report-examples/market-overview.html in a browser once
+python scripts/cli.py datasets metadata --id <dataset_id>
+python scripts/cli.py datasets rows --id <dataset_id> --limit 500 --offset 0
+# …page + aggregate; optionally ontology ask / kb ask for narrative…
+# write ./report.html (Plotly {data,layout}; business-style source footers)
+```
+
+Open `report.html` in a browser. Do not upload unless the user asks.

@@ -99,7 +99,7 @@ Full list: [Configuration](configuration.md). Use `.env.example` as a template; 
 
 ## Static home (landing page)
 
-- Public landing page for non-authorized users
-- Pain points: knowledge scattered, unstructured content, manual work
-- Benefits: centralized document hub, RAG-ready knowledge bases, fine-grained roles and console for permissions / data security / platform settings
-- Functionalities sections: document management, articles, knowledge bases (including semantic search when pgvector is configured), ontology & graph (datasets, object/link types, optional Neo4j), pipelines & automation (jobs, per-channel pipelines, model linkage)
+- Public landing page for non-authorized users (`HomeStaticLanding`, i18n `landing`)
+- Pain points: knowledge scattered; evidence can’t travel with the story; manual parsing work
+- Benefits: centralized knowledge hub; grounded answers and domain data; research that becomes a multi-slide analysis briefing
+- Functionalities sections: document management, articles, knowledge bases (including semantic search when pgvector is configured), ontology & graph (datasets, object/link types, optional Neo4j), **agents & analysis** (installable skill, cross-surface research, interactive analysis presentations), pipelines & automation (jobs, per-channel pipelines, model linkage)

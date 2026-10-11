@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>openKMS — product introduction</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/reveal.css" />
+  <style>
+    :root {
+      --bg: #071018;
+      --fg: #eef3f8;
+      --muted: #9aafc2;
+      --line: #1a2c3d;
+      --cyan: #22d3ee;
+      --lime: #a3e635;
+      --soft: #64748b;
+    }
+    html, body { height: 100%; margin: 0; background: var(--bg); color: var(--fg);
+      font-family: "IBM Plex Sans", ui-sans-serif, system-ui, sans-serif; }
+    .reveal { height: 100%; background:
+      radial-gradient(1000px 520px at 0% 0%, rgba(34,211,238,.12), transparent 55%),
+      radial-gradient(800px 480px at 100% 20%, rgba(163,230,53,.08), transparent 50%),
+      var(--bg); }
+    .reveal .slides section {
+      box-sizing: border-box; width: 100vw !important; height: 100vh !important;
+      padding: 5vh 6vw; top: 0 !important; left: 0 !important;
+      transform: none !important; text-align: left;
+      display: flex !important; flex-direction: column; justify-content: center;
+    }
+    .reveal h1, .reveal h2, .reveal h3 {
+      font-family: Outfit, ui-sans-serif, sans-serif; text-transform: none;
+      letter-spacing: -0.03em; color: var(--fg); font-weight: 700; margin: 0 0 .4em;
+    }
+    .reveal h1 { font-size: clamp(2.8rem, 6vw, 4.25rem); }
+    .reveal h2 { font-size: clamp(2rem, 4vw, 2.85rem); color: var(--cyan); }
+    .reveal h3 { font-size: clamp(1.3rem, 2vw, 1.6rem); color: var(--lime); }
+    .reveal p, .reveal li { color: var(--fg); line-height: 1.5; font-size: clamp(1.2rem, 2vw, 1.5rem); }
+    .reveal .muted { color: var(--muted); }
+    .reveal .slide-number { color: var(--muted); background: transparent; font-size: .95rem; }
+    .reveal .progress span { background: var(--cyan); }
+    .eyebrow { font-size: .95rem; letter-spacing: .14em; text-transform: uppercase;
+      color: var(--lime); font-weight: 600; margin-bottom: 1rem; }
+    .grid-2 { display: grid; grid-template-columns: minmax(0,1fr) minmax(0,1.1fr);
+      gap: 2.25rem; align-items: center; width: 100%; }
+    .grid-2.equal { grid-template-columns: 1fr 1fr; }
+    .grid-3 { display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: 1.15rem; width: 100%; }
+    .chart-shell {
+      height: min(50vh, 420px); min-height: 240px; border: 1px solid var(--line);
+      border-radius: 18px; background: rgba(255,255,255,.03); padding: .75rem; box-sizing: border-box;
+    }
+    .chart { width: 100%; height: 100%; }
+    .card { border: 1px solid var(--line); border-radius: 14px; padding: 1.2rem 1.35rem;
+      background: rgba(255,255,255,.03); }
+    .card p { font-size: clamp(1.05rem, 1.6vw, 1.25rem); }
+    .agenda { list-style: none; padding: 0; margin: 0; max-width: 42rem; }
+    .agenda li { display: flex; gap: 1.1rem; padding: .75rem 0; border-bottom: 1px solid var(--line);
+      font-size: clamp(1.25rem, 2vw, 1.55rem); }
+    .agenda .n { font-family: Outfit, sans-serif; color: var(--cyan); font-weight: 700; min-width: 1.75rem; }
+    ul.clean { padding-left: 1.2rem; }
+    ul.clean li { margin: .55rem 0; }
+    .sources { margin-top: 1.1rem; font-size: .95rem; color: var(--muted); }
+    .sources code, .reveal code { color: var(--cyan); font-size: .92em; }
+    .hint { position: fixed; right: 1rem; bottom: 2.5rem; z-index: 30; font-size: .8rem;
+      color: var(--muted); opacity: .75; pointer-events: none; }
+    @media (max-width: 960px) {
+      .grid-2, .grid-2.equal, .grid-3 { grid-template-columns: 1fr; }
+      .chart-shell { height: 36vh; }
+    }
+  </style>
+</head>
+<body>
+  <div class="hint">← → · Esc overview · S notes</div>
+  <div class="reveal">
+    <div class="slides">
+
+      <section>
+        <div class="eyebrow">Product introduction</div>
+        <h1>openKMS</h1>
+        <p class="muted" style="max-width: 40rem; font-size: clamp(1.3rem, 2.2vw, 1.65rem);">
+          Knowledge, data, and ontology in one system — so people and agents can research with evidence,
+          then ship polished static presentations.
+        </p>
+        <aside class="notes">This deck is meta: it explains the product. Business-style examples live in market-overview and risk-breakdown.</aside>
+      </section>
+
+      <section>
+        <div class="eyebrow">Agenda</div>
+        <h2>What this deck covers</h2>
+        <ol class="agenda">
+          <li><span class="n">01</span> What openKMS is for</li>
+          <li><span class="n">02</span> Content, knowledge bases, and the ontology</li>
+          <li><span class="n">03</span> How agents pull structured data</li>
+          <li><span class="n">04</span> Recommended report stack: Reveal.js + Plotly</li>
+          <li><span class="n">05</span> Which example decks to copy for style</li>
+        </ol>
+      </section>
+
+      <section>
+        <div class="eyebrow">Product</div>
+        <h2>One place for research work</h2>
+        <div class="grid-3">
+          <div class="card">
+            <h3>Documents &amp; wiki</h3>
+            <p class="muted">Capture and revise institutional knowledge with searchable markdown.</p>
+          </div>
+          <div class="card">
+            <h3>Knowledge bases</h3>
+            <p class="muted">Grounded answers with citations — ask, don’t guess.</p>
+          </div>
+          <div class="card">
+            <h3>Ontology &amp; data</h3>
+            <p class="muted">Object types, links, datasets, and Functions for operational facts.</p>
+          </div>
+        </div>
+      </section>
+
+      <section>
+        <div class="eyebrow">Surfaces</div>
+        <h2>Where evidence lives</h2>
+        <ul class="clean" style="max-width: 44rem;">
+          <li><strong>Search</strong> across documents, articles, wiki, and KB content</li>
+          <li><strong>KB ask</strong> for grounded narrative with citations</li>
+          <li><strong>Ontology ask</strong> when you need graph-backed tables (<code>columns</code> / <code>rows</code>)</li>
+          <li><strong>Datasets</strong> for tabular facts — metadata first, then paged rows</li>
+          <li><strong>Functions</strong> for computed metrics exposed as callable APIs</li>
+        </ul>
+      </section>
+
+      <section>
+        <div class="eyebrow">Agents</div>
+        <h2>Pull data only via the skill CLI</h2>
+        <div class="grid-2 equal">
+          <ul class="clean">
+            <li><code>python scripts/cli.py …</code> — no ad-hoc HTTP</li>
+            <li>JSON responses chain into the next call</li>
+            <li>Aggregate locally before you chart</li>
+            <li>Cite source ids next to every claim</li>
+          </ul>
+          <div class="card">
+            <h3>Typical path</h3>
+            <p class="muted">
+              <code>datasets metadata</code> → <code>datasets rows</code> →
+              optional <code>ontology ask</code> / <code>kb ask</code> → write HTML
+            </p>
+          </div>
+        </div>
+        <p class="sources">Guide: <code>references/research-report.md</code> in the openkms skill</p>
+      </section>
+
+      <section>
+        <div class="grid-2">
+          <div>
+            <div class="eyebrow">Reporting</div>
+            <h2>Reveal.js + Plotly</h2>
+            <ul class="clean">
+              <li>Reveal owns slides, notes, overview</li>
+              <li>Plotly owns interactive charts</li>
+              <li>Figures stay standard <code>{data, layout}</code></li>
+              <li>No fixed deck JSON schema — write HTML freely</li>
+            </ul>
+          </div>
+          <div class="chart-shell">
+            <div class="chart" data-chart="stack"></div>
+          </div>
+        </div>
+      </section>
+
+      <section>
+        <div class="eyebrow">Engineering tips</div>
+        <h2>Make charts behave in slides</h2>
+        <div class="grid-3">
+          <div class="card">
+            <h3>disableLayout</h3>
+            <p class="muted">Avoid Reveal’s CSS scale fighting Plotly hover coordinates.</p>
+          </div>
+          <div class="card">
+            <h3>resize on change</h3>
+            <p class="muted">Call <code>Plotly.Plots.resize</code> on slidechanged / fragmentshown.</p>
+          </div>
+          <div class="card">
+            <h3>Bundle size</h3>
+            <p class="muted">Use plotly-basic unless you need 3D, maps, or finance traces.</p>
+          </div>
+        </div>
+      </section>
+
+      <section>
+        <div class="eyebrow">Examples in this skill</div>
+        <h2>What to open next</h2>
+        <div class="grid-2 equal">
+          <div class="card">
+            <h3>Business style</h3>
+            <ul class="clean">
+              <li><code>market-overview.html</code> — GTM review (dark)</li>
+              <li><code>risk-breakdown.html</code> — UW / claims (light)</li>
+            </ul>
+            <p class="muted" style="margin-top: .75rem;">Read as real presentations — no platform jargon in the copy.</p>
+          </div>
+          <div class="card">
+            <h3>This file</h3>
+            <p class="muted">Product + agent workflow. Use when explaining openKMS itself, not when delivering a customer or ops review.</p>
+          </div>
+        </div>
+      </section>
+
+      <section>
+        <div class="eyebrow">Close</div>
+        <h2>Research → evidence → slides</h2>
+        <p style="max-width: 42rem; font-size: clamp(1.35rem, 2.2vw, 1.75rem);">
+          Pull facts through the openKMS skill. Analyse locally. Ship a Reveal + Plotly deck that looks like the work, not like the platform.
+        </p>
+        <p class="sources" style="margin-top: 1.5rem;">← → navigate · Esc overview · S speaker notes</p>
+      </section>
+
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/reveal.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/plugin/notes/notes.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/plotly.js-basic-dist-min@2.35.2/plotly-basic.min.js"></script>
+  <script>
+    const cfg = { responsive: true, displaylogo: false, modeBarButtonsToRemove: ["lasso2d", "select2d"] };
+
+    function plotStack() {
+      const el = document.querySelector('[data-chart="stack"]');
+      if (!el || el.dataset.ready === "1") return;
+      Plotly.newPlot(el, [
+        { type: "bar", name: "Narrative", x: ["Docs", "KB", "Ontology", "Datasets"], y: [8, 9, 4, 2], marker: { color: "#22d3ee" } },
+        { type: "bar", name: "Tables / metrics", x: ["Docs", "KB", "Ontology", "Datasets"], y: [1, 2, 7, 9], marker: { color: "#a3e635" } },
+      ], {
+        autosize: true, barmode: "stack",
+        paper_bgcolor: "rgba(0,0,0,0)", plot_bgcolor: "rgba(0,0,0,0)",
+        font: { color: "#eef3f8", family: "IBM Plex Sans, sans-serif", size: 15 },
+        title: { text: "Where agents usually go for evidence", font: { size: 17, color: "#9aafc2" } },
+        xaxis: { color: "#9aafc2", gridcolor: "rgba(154,175,194,0.15)" },
+        yaxis: { color: "#9aafc2", gridcolor: "rgba(154,175,194,0.15)", title: "relative use" },
+        legend: { orientation: "h", y: 1.15 },
+        margin: { l: 48, r: 20, t: 56, b: 48 },
+      }, cfg).then(() => { el.dataset.ready = "1"; try { Plotly.Plots.resize(el); } catch (e) {} });
+    }
+
+    function ensureCharts(slide) {
+      if (!slide) return;
+      if (slide.querySelector('[data-chart="stack"]')) plotStack();
+      requestAnimationFrame(() => {
+        slide.querySelectorAll(".chart[data-ready='1']").forEach((el) => {
+          try { Plotly.Plots.resize(el); } catch (e) {}
+        });
+      });
+    }
+
+    Reveal.initialize({
+      hash: true,
+      slideNumber: "c/t",
+      showSlideNumber: "all",
+      progress: true,
+      controls: true,
+      center: false,
+      disableLayout: true,
+      transition: "fade",
+      plugins: [RevealNotes],
+    }).then(() => ensureCharts(Reveal.getCurrentSlide()));
+
+    Reveal.on("slidechanged", (e) => ensureCharts(e.currentSlide));
+    window.addEventListener("resize", () => ensureCharts(Reveal.getCurrentSlide()));
+  </script>
+</body>
+</html>

@@ -17,7 +17,7 @@
 
 ## 布局（[agentskills.io](https://agentskills.io/specification)）
 
-`SKILL.md`（短入口：铁律 + 路由）+ `references/`（按需加载：`setup` / `pitfalls` / `commands-*` / `workflows` / authoring / `kubernetes` / `REFERENCE`）+ `scripts/cli.py`。
+`SKILL.md`（短入口：铁律 + 路由）+ `references/`（按需加载：`setup` / `pitfalls` / `commands-*` / `workflows` / `research-report` / authoring / `kubernetes` / `REFERENCE`）+ `assets/report-examples/`（Reveal + Plotly 示例）+ `scripts/cli.py`。调研/分析汇报见 `research-report.md`。
 
 ## 使用
 

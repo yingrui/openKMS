@@ -6,6 +6,7 @@ Thin CLI + Python package that lets [OpenCode](https://opencode.ai/docs/skills),
 - **Package for openKMS Agents:** `./package.sh --version 1.0.0` → `dist/openkms-1.0.0.zip` (upload on **Agents → Skills**).
 - **Configure:** copy `config.yml.example` → `config.yml`, fill in `api_base_url` and `api_key`. Create keys in **openKMS → Settings → API keys** (`okms.{uuid}.{secret}`, shown once).
 - **Agent-facing instructions:** [`SKILL.md`](SKILL.md) — short entry + progressive disclosure into [`references/`](references/). **All access must use `python scripts/cli.py …` only** (no ad-hoc `curl` or custom HTTP).
+- **Research reports:** pull data via the CLI, then write Reveal.js + Plotly HTML (recommended). Adapt business-style decks in [`assets/report-examples/`](assets/report-examples/) (`market-overview`, `risk-breakdown`); use `openkms-product.html` only when explaining the platform. See [`references/research-report.md`](references/research-report.md).
 
 ## Capabilities at a glance
 
@@ -179,7 +180,8 @@ openkms-skill/
     commands-content.md    # search / docs / wiki / KB / eval …
     commands-ontology.md   # objects / links / FoO / actions
     commands-ops.md        # connectors / jobs / Apps / k8s
-    workflows.md           # recipes A–H
+    workflows.md           # recipes A–I
+    research-report.md     # research → Reveal + Plotly static HTML
     functions-authoring.md # Function source (mandatory before --source-code-file)
     actions-authoring.md   # Action types (mandatory before action-types writes)
     app-builder.md         # Module Apps (bindings.k8s)
@@ -188,7 +190,8 @@ openkms-skill/
   scripts/
     cli.py                 # dispatcher
     openkms/               # httpx client + command modules
-  assets/                  # optional samples (none required for Apps)
+  assets/
+    report-examples/       # Reveal + Plotly sample decks (adapt, not a schema)
   tests/                   # pytest (not required in Agents zip)
   install.sh / package.sh
 ```

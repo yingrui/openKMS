@@ -1,0 +1,426 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Q3 Market Overview — GTM leadership review</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/reveal.css" />
+  <style>
+    :root {
+      --bg: #0b1220;
+      --fg: #e8eef7;
+      --muted: #93a4bd;
+      --line: #1c2a44;
+      --sky: #38bdf8;
+      --mint: #34d399;
+      --amber: #fbbf24;
+      --rose: #fb7185;
+    }
+    html, body { height: 100%; margin: 0; background: var(--bg); color: var(--fg);
+      font-family: "IBM Plex Sans", ui-sans-serif, system-ui, sans-serif; }
+    .reveal { height: 100%; background:
+      radial-gradient(1200px 600px at 10% -10%, rgba(56,189,248,.14), transparent 55%),
+      radial-gradient(900px 500px at 100% 0%, rgba(52,211,153,.08), transparent 50%),
+      var(--bg); }
+    .reveal .slides section {
+      box-sizing: border-box; width: 100vw !important; height: 100vh !important;
+      padding: 5vh 6vw; top: 0 !important; left: 0 !important;
+      transform: none !important; text-align: left;
+      display: flex !important; flex-direction: column; justify-content: center;
+    }
+    .reveal .slides section.stack > section {
+      /* vertical stack children still full viewport */
+    }
+    .reveal h1, .reveal h2, .reveal h3 {
+      font-family: Outfit, ui-sans-serif, sans-serif; text-transform: none;
+      letter-spacing: -0.03em; color: var(--fg); font-weight: 700; margin: 0 0 .4em;
+    }
+    .reveal h1 { font-size: clamp(2.8rem, 6vw, 4.25rem); }
+    .reveal h2 { font-size: clamp(2rem, 4vw, 2.85rem); color: var(--sky); }
+    .reveal h3 { font-size: clamp(1.35rem, 2vw, 1.65rem); color: var(--mint); }
+    .reveal p, .reveal li { color: var(--fg); line-height: 1.5; font-size: clamp(1.2rem, 2vw, 1.5rem); }
+    .reveal .muted { color: var(--muted); }
+    .reveal .slide-number { color: var(--muted); background: transparent; font-size: .95rem; }
+    .reveal .progress span { background: var(--sky); }
+    .eyebrow { font-size: .95rem; letter-spacing: .14em; text-transform: uppercase;
+      color: var(--mint); font-weight: 600; margin-bottom: 1rem; }
+    .grid-2 { display: grid; grid-template-columns: minmax(0,1fr) minmax(0,1.15fr);
+      gap: 2.25rem; align-items: center; width: 100%; min-height: 0; }
+    .grid-2.equal { grid-template-columns: 1fr 1fr; }
+    .grid-3 { display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: 1.25rem; width: 100%; }
+    .chart-shell {
+      height: min(54vh, 460px); min-height: 260px; border: 1px solid var(--line);
+      border-radius: 18px; background: rgba(255,255,255,.03); padding: .75rem; box-sizing: border-box;
+    }
+    .chart-shell.sm { height: min(42vh, 340px); }
+    .chart { width: 100%; height: 100%; }
+    .sources { margin-top: 1.1rem; font-size: .95rem; color: var(--muted); }
+    .sources code { color: var(--sky); font-size: .9rem; }
+    .kpi-row { display: flex; gap: 1.5rem; flex-wrap: wrap; margin: 1.5rem 0 0; }
+    .kpi { min-width: 8.5rem; padding: 1rem 1.15rem; border: 1px solid var(--line); border-radius: 14px;
+      background: rgba(255,255,255,.03); }
+    .kpi b { display: block; font-family: Outfit, sans-serif; font-size: 2.15rem; color: var(--sky); }
+    .kpi span { color: var(--muted); font-size: 1rem; }
+    .card { border: 1px solid var(--line); border-radius: 14px; padding: 1.2rem 1.35rem;
+      background: rgba(255,255,255,.03); }
+    .card h3 { margin-bottom: .4rem; }
+    .card p { font-size: clamp(1.05rem, 1.6vw, 1.25rem); }
+    .agenda { list-style: none; padding: 0; margin: 0; max-width: 40rem; }
+    .agenda li { display: flex; gap: 1.1rem; align-items: baseline; padding: .75rem 0;
+      border-bottom: 1px solid var(--line); font-size: clamp(1.25rem, 2vw, 1.55rem); }
+    .agenda .n { font-family: Outfit, sans-serif; color: var(--sky); font-weight: 700; min-width: 1.75rem; font-size: 1.35rem; }
+    ul.clean { padding-left: 1.2rem; margin: .5rem 0; }
+    ul.clean li { margin: .55rem 0; }
+    .tag { display: inline-block; font-size: .85rem; letter-spacing: .08em; text-transform: uppercase;
+      border: 1px solid var(--line); color: var(--muted); padding: .25rem .65rem; border-radius: 999px; }
+    .hint { position: fixed; right: 1rem; bottom: 2.5rem; z-index: 30; font-size: .8rem;
+      color: var(--muted); opacity: .7; pointer-events: none; }
+    .reveal code { font-size: 0.92em; }
+    @media (max-width: 960px) {
+      .grid-2, .grid-2.equal, .grid-3 { grid-template-columns: 1fr; }
+      .chart-shell { height: 38vh; }
+    }
+  </style>
+</head>
+<body>
+  <div class="hint">← → · ↓ detail · Esc</div>
+  <div class="reveal">
+    <div class="slides">
+
+      <!-- 1 cover -->
+      <section>
+        <div class="eyebrow">GTM leadership · confidential</div>
+        <h1>Q3 market overview</h1>
+        <p class="muted" style="max-width: 42rem; font-size: clamp(1.3rem, 2.2vw, 1.65rem);">
+          Closed-won performance across GTM segments for the last eight weeks.
+          Prepared for Q4 coverage planning.
+        </p>
+        <div class="kpi-row">
+          <div class="kpi"><b>8 weeks</b><span>analysis window</span></div>
+          <div class="kpi"><b>+18%</b><span>QoQ closed volume</span></div>
+          <div class="kpi"><b>3</b><span>segments tracked</span></div>
+        </div>
+        <p class="sources" style="margin-top: 2rem;">Source: CRM closed-won extract · week ending 27 Sep</p>
+        <aside class="notes">Open with the decision this deck supports: whether to tilt coverage toward mid-market.</aside>
+      </section>
+
+      <!-- 2 agenda -->
+      <section>
+        <div class="eyebrow">Agenda</div>
+        <h2>What we will cover</h2>
+        <ol class="agenda">
+          <li><span class="n">01</span> Question &amp; scope</li>
+          <li><span class="n">02</span> Definitions &amp; data cut</li>
+          <li><span class="n">03</span> Volume mix and weekly trend</li>
+          <li><span class="n">04</span> Mid-market deep-dive</li>
+          <li><span class="n">05</span> Risks, recommendations, appendix</li>
+        </ol>
+      </section>
+
+      <!-- 3 question -->
+      <section>
+        <div class="eyebrow">Scope</div>
+        <h2>The question</h2>
+        <p style="max-width: 44rem; font-size: clamp(1.4rem, 2.4vw, 1.85rem);">
+          Where did closed volume grow in Q3, and is mid-market growth durable enough to reallocate coverage?
+        </p>
+        <div class="grid-3" style="margin-top: 1.75rem;">
+          <div class="card"><h3>In</h3><p class="muted">Closed orders, weeks 1–8, three GTM segments</p></div>
+          <div class="card"><h3>Out</h3><p class="muted">Pipeline invent, churn, regional pricing</p></div>
+          <div class="card"><h3>Decision</h3><p class="muted">Coverage tilt for next quarter planning</p></div>
+        </div>
+      </section>
+
+      <!-- 4 method -->
+      <section>
+        <div class="eyebrow">Definitions</div>
+        <h2>How we cut the numbers</h2>
+        <div class="grid-2 equal">
+          <div>
+            <ul class="clean">
+              <li>Population: opportunities with stage = Closed Won</li>
+              <li>Window: trailing 8 weeks (W1–W8)</li>
+              <li>Segment: AE ownership book (Enterprise / Mid-market / SMB)</li>
+              <li>Currency: units closed, not ARR (see appendix)</li>
+            </ul>
+            <p class="sources">Extract frozen Friday EOD; late-booked wins land next week.</p>
+          </div>
+          <div class="card">
+            <h3>Aggregation choices</h3>
+            <ul class="clean">
+              <li>Weekly buckets (not daily noise)</li>
+              <li>Top three segments + Other</li>
+              <li>Partner-sourced deals tagged but not excluded</li>
+            </ul>
+          </div>
+        </div>
+      </section>
+
+      <!-- 5 volume mix -->
+      <section>
+        <div class="grid-2">
+          <div>
+            <div class="eyebrow">Insight 1</div>
+            <h2>Volume by segment</h2>
+            <ul class="clean">
+              <li><strong>Enterprise</strong> still carries the bulk of closed units.</li>
+              <li>Mid-market is the growth engine — conversion quality matters more than pipeline size.</li>
+              <li>SMB is stable; treat swings as noise unless three weeks confirm.</li>
+            </ul>
+            <p class="sources">Source: CRM closed-won extract · FY25 Q3</p>
+          </div>
+          <div class="chart-shell fragment fade-in">
+            <div class="chart" data-chart="bar-seg"></div>
+          </div>
+        </div>
+        <aside class="notes">One chart, one insight. Fragment fades the chart after the talk track.</aside>
+      </section>
+
+      <!-- 6 weekly trend -->
+      <section>
+        <div class="grid-2">
+          <div>
+            <div class="eyebrow">Insight 2</div>
+            <h2>Weekly closed volume</h2>
+            <p>Rise through W3–W6, then a soft plateau. Last two weeks are a signal, not a verdict — wait for the next connector sync.</p>
+            <ul class="clean">
+              <li>Do not plot every raw row</li>
+              <li>Prefer clarity over density</li>
+            </ul>
+            <p class="sources">Source: CRM closed-won extract · FY25 Q3</p>
+          </div>
+          <div class="chart-shell">
+            <div class="chart" data-chart="line-week"></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- 7 two charts -->
+      <section>
+        <div class="eyebrow">Insight 3</div>
+        <h2>Mix shift vs run-rate</h2>
+        <div class="grid-2 equal" style="margin-top: .5rem;">
+          <div class="chart-shell sm"><div class="chart" data-chart="pie-mix"></div></div>
+          <div class="chart-shell sm"><div class="chart" data-chart="bar-qoq"></div></div>
+        </div>
+        <p class="sources">Left: share of closed units · Right: QoQ % change by segment · CRM closed-won</p>
+      </section>
+
+      <!-- 8 nested stack: deep-dive -->
+      <section>
+        <section>
+          <div class="eyebrow">Deep-dive</div>
+          <h2>Mid-market under the hood</h2>
+          <p class="muted" style="max-width: 40rem; font-size: clamp(1.25rem, 2vw, 1.55rem);">
+            A closer look at mid-market — win-rate quality and the industries driving closes.
+          </p>
+          <p style="margin-top: 1.5rem;"><span class="tag">Vertical stack</span></p>
+        </section>
+        <section>
+          <div class="grid-2">
+            <div>
+              <h2>Win-rate by week</h2>
+              <ul class="clean">
+                <li>Win-rate lifted with volume — not a pure volume illusion.</li>
+                <li>W7 dip coincides with a pricing pilot; flag for ops.</li>
+              </ul>
+              <p class="sources">CRM closed-won · segment book of record</p>
+            </div>
+            <div class="chart-shell"><div class="chart" data-chart="line-win"></div></div>
+          </div>
+        </section>
+        <section>
+          <div class="grid-2">
+            <div>
+              <h2>Top industries</h2>
+              <p>Healthcare and logistics dominate mid-market closes. Long tail is reviewable manually.</p>
+              <p class="sources">CRM closed-won · industry on account</p>
+            </div>
+            <div class="chart-shell"><div class="chart" data-chart="bar-ind"></div></div>
+          </div>
+        </section>
+      </section>
+
+      <!-- 9 risks -->
+      <section>
+        <div class="eyebrow">Caveats</div>
+        <h2>Risks &amp; data gaps</h2>
+        <div class="grid-3">
+          <div class="card">
+            <h3>Booking lag</h3>
+            <p class="muted">Ops closes the week on Friday; Monday–Tuesday wins may land next file.</p>
+          </div>
+          <div class="card">
+            <h3>Segment hygiene</h3>
+            <p class="muted">~4% of accounts sit in Other after ownership cleanup — review quarterly.</p>
+          </div>
+          <div class="card">
+            <h3>Pricing pilot</h3>
+            <p class="muted">W7 mid-market dip overlaps a temporary discount test in two regions.</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- 10 recommendations -->
+      <section>
+        <div class="eyebrow">Decision</div>
+        <h2>Recommendations</h2>
+        <ul class="clean" style="max-width: 46rem; font-size: clamp(1.3rem, 2.1vw, 1.65rem);">
+          <li><strong>Tilt +1 AE</strong> toward mid-market healthcare / logistics for one quarter.</li>
+          <li><strong>Hold enterprise</strong> coverage; volume is large but QoQ flat.</li>
+          <li><strong>Revisit in 3 weeks</strong> after two more Friday closes — do not act on W7–W8 alone.</li>
+        </ul>
+        <p class="sources">Decision owners: GTM lead · Sources cited on prior slides</p>
+      </section>
+
+      <!-- 11 appendix -->
+      <section>
+        <div class="eyebrow">Appendix</div>
+        <h2>Sources</h2>
+        <ul class="clean">
+          <li>CRM closed-won extract — volume, segment, industry (frozen 27 Sep)</li>
+          <li>Revenue ops weekly close file — QoQ baselines</li>
+          <li>AE ownership book of record — segment assignment</li>
+        </ul>
+        <p class="muted" style="margin-top: 1.5rem; max-width: 36rem;">
+          Units, not ARR. Partner-sourced deals included. Contact RevOps for the raw extract.
+        </p>
+      </section>
+
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/reveal.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/plugin/notes/notes.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/plotly.js-basic-dist-min@2.35.2/plotly-basic.min.js"></script>
+  <script>
+    const ink = {
+      paper: "rgba(0,0,0,0)",
+      font: { color: "#e8eef7", family: "IBM Plex Sans, sans-serif", size: 15 },
+      grid: "rgba(147,164,189,0.18)",
+      margin: { l: 56, r: 24, t: 48, b: 56 },
+    };
+    const cfg = {
+      responsive: true, displaylogo: false,
+      modeBarButtonsToRemove: ["lasso2d", "select2d"],
+    };
+    const baseLayout = (title) => ({
+      autosize: true,
+      paper_bgcolor: ink.paper,
+      plot_bgcolor: ink.paper,
+      font: ink.font,
+      margin: ink.margin,
+      title: title ? { text: title, font: { size: 17, color: "#93a4bd" } } : undefined,
+      xaxis: { color: "#93a4bd", gridcolor: ink.grid },
+      yaxis: { color: "#93a4bd", gridcolor: ink.grid, zerolinecolor: ink.grid },
+      legend: { font: { color: "#e8eef7" } },
+    });
+
+    const FIGURES = {
+      "bar-seg": {
+        data: [{
+          type: "bar",
+          x: ["Enterprise", "Mid-market", "SMB", "Other"],
+          y: [42, 28, 11, 7],
+          marker: { color: ["#38bdf8", "#34d399", "#93a4bd", "#1c2a44"] },
+          hovertemplate: "%{x}<br>%{y} units<extra></extra>",
+        }],
+        layout: baseLayout("Closed volume (units)"),
+      },
+      "line-week": {
+        data: [{
+          type: "scatter", mode: "lines+markers",
+          x: ["W1","W2","W3","W4","W5","W6","W7","W8"],
+          y: [12, 14, 18, 22, 27, 31, 30, 29],
+          line: { color: "#38bdf8", width: 3 },
+          marker: { color: "#34d399", size: 8 },
+        }],
+        layout: baseLayout("Weekly closed volume"),
+      },
+      "pie-mix": {
+        data: [{
+          type: "pie", hole: 0.55,
+          labels: ["Enterprise", "Mid-market", "SMB", "Other"],
+          values: [42, 28, 11, 7],
+          marker: { colors: ["#38bdf8", "#34d399", "#93a4bd", "#1c2a44"] },
+          textinfo: "label+percent",
+        }],
+        layout: { ...baseLayout("Share of units"), showlegend: false, margin: { l: 20, r: 20, t: 40, b: 20 } },
+      },
+      "bar-qoq": {
+        data: [{
+          type: "bar",
+          x: ["Enterprise", "Mid-market", "SMB"],
+          y: [2, 18, 4],
+          marker: { color: ["#93a4bd", "#34d399", "#38bdf8"] },
+          hovertemplate: "%{x}: %{y}%<extra></extra>",
+        }],
+        layout: { ...baseLayout("QoQ % change"), yaxis: { ...baseLayout().yaxis, ticksuffix: "%" } },
+      },
+      "line-win": {
+        data: [{
+          type: "scatter", mode: "lines+markers",
+          x: ["W1","W2","W3","W4","W5","W6","W7","W8"],
+          y: [0.22, 0.24, 0.26, 0.28, 0.31, 0.33, 0.29, 0.30],
+          line: { color: "#fbbf24", width: 3 },
+          marker: { size: 7, color: "#38bdf8" },
+        }],
+        layout: {
+          ...baseLayout("Mid-market win-rate"),
+          yaxis: { ...baseLayout().yaxis, tickformat: ".0%", range: [0.15, 0.4] },
+        },
+      },
+      "bar-ind": {
+        data: [{
+          type: "bar", orientation: "h",
+          y: ["Healthcare", "Logistics", "SaaS", "Retail", "Other"],
+          x: [18, 14, 9, 6, 8],
+          marker: { color: "#38bdf8" },
+        }],
+        layout: { ...baseLayout("Mid-market closes by industry"), margin: { l: 100, r: 20, t: 40, b: 40 } },
+      },
+    };
+
+    function renderChart(el) {
+      if (!el || el.dataset.ready === "1") return;
+      const key = el.getAttribute("data-chart");
+      const fig = FIGURES[key];
+      if (!fig) return;
+      Plotly.newPlot(el, fig.data, fig.layout, cfg).then(() => {
+        el.dataset.ready = "1";
+        try { Plotly.Plots.resize(el); } catch (e) {}
+      });
+    }
+
+    function ensureCharts(slide) {
+      if (!slide) return;
+      slide.querySelectorAll(".chart[data-chart]").forEach(renderChart);
+      requestAnimationFrame(() => {
+        slide.querySelectorAll(".chart[data-ready='1']").forEach((el) => {
+          try { Plotly.Plots.resize(el); } catch (e) {}
+        });
+      });
+    }
+
+    Reveal.initialize({
+      hash: true,
+      slideNumber: "c/t",
+      showSlideNumber: "all",
+      progress: true,
+      controls: true,
+      center: false,
+      disableLayout: true,
+      transition: "fade",
+      backgroundTransition: "fade",
+      plugins: [RevealNotes],
+    }).then(() => ensureCharts(Reveal.getCurrentSlide()));
+
+    Reveal.on("slidechanged", (e) => ensureCharts(e.currentSlide));
+    Reveal.on("fragmentshown", () => ensureCharts(Reveal.getCurrentSlide()));
+    window.addEventListener("resize", () => ensureCharts(Reveal.getCurrentSlide()));
+  </script>
+</body>
+</html>

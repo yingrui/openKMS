@@ -9,6 +9,8 @@ description: >-
   When creating/updating/deleting/executing ontology action-types: open references/actions-authoring.md.
   When registering or patching module Apps: open references/app-builder.md.
   When kubernetes apply/delete/dev-sync: open references/kubernetes.md.
+  When producing a research / data-analysis report (recommended: Reveal.js + Plotly
+  static HTML; see assets/report-examples/): open references/research-report.md.
   Use when agents must read or push openKMS content without the web UI. Only config.yml
   may be edited for credentials when the user asks.
 ---
@@ -39,7 +41,8 @@ Match the task, then open **one** guide. Skip rows that do not apply.
 | Register or patch a **module App** (`apps …` / `kubernetes register-app`) | [references/app-builder.md](references/app-builder.md) (`bindings.k8s` only) |
 | Kubernetes **apply / delete / dev-sync** | [references/kubernetes.md](references/kubernetes.md) |
 | Domain gotchas (pipelines, KB ask vs search, eval update vs recreate, …) | [references/pitfalls.md](references/pitfalls.md) |
-| Multi-step recipes (A–H, Tushare DIY, register-app) | [references/workflows.md](references/workflows.md) |
+| Multi-step recipes (A–I, Tushare DIY, register-app, research report) | [references/workflows.md](references/workflows.md) |
+| Research / data-analysis report → Reveal + Plotly HTML (examples in assets/) | [references/research-report.md](references/research-report.md) |
 | Confirm CLI → HTTP (grep full CLI in backticks; never reimplement) | [references/REFERENCE.md](references/REFERENCE.md) |
 
 Authoring / Apps / k8s mutate guides matter only for those write paths — inventing Function shape, A2UI Source, or omitting `bindings.k8s` is what goes wrong if you skip **that** row.

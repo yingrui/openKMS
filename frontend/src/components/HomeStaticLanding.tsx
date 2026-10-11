@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { FileStack, FileText, Database, Search, Layers, Zap, Shield, Network, LogIn } from 'lucide-react';
+import { FileStack, FileText, Database, Search, Layers, Zap, Presentation, Network, Bot, LogIn } from 'lucide-react';
 
 export function HomeStaticLanding({ onSignIn }: { onSignIn: () => void }) {
   const { t } = useTranslation('landing');
@@ -39,7 +39,7 @@ export function HomeStaticLanding({ onSignIn }: { onSignIn: () => void }) {
         text: t('ben2Text'),
       },
       {
-        icon: Shield,
+        icon: Presentation,
         title: t('ben3Title'),
         text: t('ben3Text'),
       },
@@ -68,6 +68,11 @@ export function HomeStaticLanding({ onSignIn }: { onSignIn: () => void }) {
         icon: Network,
         title: t('funcOntTitle'),
         items: [t('funcOnt1'), t('funcOnt2'), t('funcOnt3')],
+      },
+      {
+        icon: Bot,
+        title: t('funcAgentTitle'),
+        items: [t('funcAgent1'), t('funcAgent2'), t('funcAgent3')],
       },
       {
         icon: Layers,

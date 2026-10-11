@@ -19,12 +19,12 @@ Repo path: [`openkms-skill/`](https://github.com/yingrui/openKMS/blob/main/openk
 openkms-skill/
   SKILL.md                 # short entry: iron rules + routing
   references/              # load on demand (progressive disclosure)
-    setup.md / pitfalls.md / workflows.md
+    setup.md / pitfalls.md / workflows.md / research-report.md
     commands-content.md / commands-ontology.md / commands-ops.md
     functions-authoring.md / actions-authoring.md
     app-builder.md / kubernetes.md
     REFERENCE.md           # CLI ↔ HTTP (operators / review)
-  assets/                  # optional samples (none required for Apps)
+  assets/report-examples/  # Reveal + Plotly sample decks (business + product intro)
   scripts/cli.py           # only supported access path for agents
   README.md / requirements.txt / install.sh / package.sh
 ```
@@ -63,7 +63,7 @@ python scripts/cli.py ping
 
 **Agents must use only `python scripts/cli.py …`** (see `SKILL.md`). Do not hand-roll `curl` against `/api/…`; extend the skill in-repo if a workflow is missing. Always run `<command> --help` before inventing flags.
 
-Coverage spans content, ontology, connectors/jobs, **module Apps**, and Kubernetes on registered clusters. Agents follow `SKILL.md` routing into `references/commands-*.md` and mandatory authoring guides (`functions-authoring`, `actions-authoring`, `app-builder`, `kubernetes`). Prefer `kubernetes register-app` for Apps. CLI↔HTTP for operators: `references/REFERENCE.md`. Control-plane APIs (feature toggles, schedules hub, Console admin) are **not** wrapped.
+Coverage spans content, ontology, connectors/jobs, **module Apps**, and Kubernetes on registered clusters. For research / analysis deliverables, open `references/research-report.md` (recommended Reveal.js + Plotly static HTML; adapt `assets/report-examples/`). Agents follow `SKILL.md` routing into `references/commands-*.md` and mandatory authoring guides (`functions-authoring`, `actions-authoring`, `app-builder`, `kubernetes`). Prefer `kubernetes register-app` for Apps. CLI↔HTTP for operators: `references/REFERENCE.md`. Control-plane APIs (feature toggles, schedules hub, Console admin) are **not** wrapped.
 
 Domain ontologies (e.g. Tushare → Stock → read-only Functions) are **tenant DIY** via `references/workflows.md` **G** — not platform seeds. Hosted UIs: workflow **H**. Concepts: [Understanding the ontology](../tutorials/understanding-ontology.md). Lab: [Tushare DIY](../tutorials/tushare-market-ontology.md). Action execute **applies** `create` / `modify` / `delete` edits on Explorer-created instances; dataset/Neo4j synthetic ids remain deferred — [Manager alignment](../research/ontology_manager_alignment.md).
 
