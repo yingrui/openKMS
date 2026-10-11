@@ -48,6 +48,7 @@ import { fetchDocuments, fetchDocumentById, type DocumentListItemResponse } from
 import { fetchAllWikiSpaces, type WikiSpaceResponse } from '../../data/wikiSpacesApi';
 import { fetchChannelById } from '../../data/channelsApi';
 import { useEnsureDocumentChannels } from '../../contexts/DocumentChannelsContext';
+import { useImmersiveView } from '../../contexts/ImmersiveShellContext';
 import { normalizeExtractionSchemaToFields } from '../../data/channelUtils';
 import { fetchAllModels, type ApiModelResponse } from '../../data/modelsApi';
 import { applyCopilotStreamEvent } from '../../components/agents/agentStreamState';
@@ -329,16 +330,7 @@ export function useKnowledgeBaseDetail() {
     }
   }, [qaFullPage, kb]);
 
-  useEffect(() => {
-    if (qaFullPage && kb?.agent_url) {
-      document.body.classList.add('openkms-kb-qa-fullpage');
-      return () => {
-        document.body.classList.remove('openkms-kb-qa-fullpage');
-      };
-    }
-    document.body.classList.remove('openkms-kb-qa-fullpage');
-    return undefined;
-  }, [qaFullPage, kb?.agent_url]);
+  useImmersiveView('openkms-kb-qa-fullpage', Boolean(qaFullPage && kb?.agent_url));
 
   useLayoutEffect(() => {
     if (!qaFullPage || !kb?.agent_url) return;

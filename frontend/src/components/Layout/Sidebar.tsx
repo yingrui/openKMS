@@ -1,4 +1,4 @@
-import { NavLink, useLocation } from 'react-router-dom';
+import { Link, NavLink, useLocation } from 'react-router-dom';
 import {
   HardDrive,
   Database,
@@ -17,7 +17,11 @@ import { moduleTooltip, isConsoleShellPath } from '../../config/appModules';
 import { useVisibleMainSidebarModules, useVisibleConsolePlatformModules } from '../../hooks/useAppModules';
 import { useAuth } from '../../contexts/AuthContext';
 import { useConsoleMobileNav } from '../../contexts/ConsoleMobileNavContext';
+import { useImmersiveShell } from '../../contexts/ImmersiveShellContext';
+import { useSystemPublic } from '../../contexts/SystemPublicContext';
 import { useIsMobile } from '../../hooks/useIsMobile';
+import logo from '../../assets/logo.svg';
+import { UserMenu } from './UserMenu';
 import './Sidebar.scss';
 
 export function Sidebar() {
@@ -26,9 +30,12 @@ export function Sidebar() {
   const consoleShell = isConsoleShellPath(location.pathname);
   const { canAccessConsole, canAccessPath } = useAuth();
   const { consoleNavOpen } = useConsoleMobileNav();
+  const { systemName } = useSystemPublic();
   const isMobile = useIsMobile();
   const appModules = useVisibleMainSidebarModules();
   const consolePlatformModules = useVisibleConsolePlatformModules();
+  const immersive = useImmersiveShell();
+  const brandName = systemName || 'openKMS';
 
   const showConsoleDataLabel =
     canAccessPath('/console/data-sources') ||
@@ -50,6 +57,18 @@ export function Sidebar() {
       aria-label={showConsoleNav ? t('consoleNavigation') : t('mainNavigation')}
       aria-hidden={showConsoleNav && isMobile ? !consoleNavOpen : undefined}
     >
+      {immersive ? (
+        <div className="sidebar-header sidebar-header--collapsed">
+          <Link
+            to="/"
+            className="sidebar-logo sidebar-logo--collapsed"
+            title={brandName}
+            aria-label={brandName}
+          >
+            <img src={logo} alt="" className="sidebar-logo-icon" />
+          </Link>
+        </div>
+      ) : null}
       <nav
         id="sidebar-primary-nav"
         className={`sidebar-nav ${showConsoleNav ? 'sidebar-nav--console' : ''} ${railCollapsed ? 'sidebar-nav--collapsed' : ''}`}
@@ -217,6 +236,11 @@ export function Sidebar() {
           })
         )}
       </nav>
+      {immersive ? (
+        <div className="sidebar-footer">
+          <UserMenu placement="up" />
+        </div>
+      ) : null}
     </aside>
   );
 }

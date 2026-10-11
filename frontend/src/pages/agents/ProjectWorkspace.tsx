@@ -11,6 +11,7 @@ import { getProject, deleteProjectAttachment, uploadProjectAttachment } from '..
 import type { ProjectResponse } from '../../data/projectsApi';
 import { useIsMobile } from '../../hooks/useIsMobile';
 import { PanelToolbar } from '../../styles/design-system';
+import { useImmersiveView } from '../../contexts/ImmersiveShellContext';
 import { useProjectAgentStream } from './useProjectAgentStream';
 import { useProjectSessionRouting } from './useProjectSessionRouting';
 import '../../components/agents/AgentsWorkspace.scss';
@@ -83,10 +84,7 @@ export function ProjectWorkspace() {
     return () => window.removeEventListener('resize', onResize);
   }, [clampFilesRailWidth, isMobile]);
 
-  useEffect(() => {
-    document.body.classList.add('openkms-agents-fullpage');
-    return () => document.body.classList.remove('openkms-agents-fullpage');
-  }, []);
+  useImmersiveView('openkms-agents-fullpage');
 
   useEffect(() => {
     if (!isMobile) {

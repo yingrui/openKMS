@@ -105,6 +105,12 @@ Six compile-time tokens in **`_tokens.scss`** — use **`@include max-width(ds.$
 | Comments | Push panel → overlay at ≤900 → bottom sheet at ≤768 (`ContentCommentsRail.scss`) |
 | Channel row actions | Single **`<TableRowActions>`** in **`.channel-item-actions`** — CSS places desktop vs mobile |
 
+### Immersive views (header hidden)
+
+Views that take over the viewport add a `body` class that hides the header — `openkms-agents-fullpage` (Agents session + Session Review) and `openkms-kb-qa-fullpage` (KB Q&A full page). Claim it through **`useImmersiveView(bodyClass, active?)`** (`contexts/ImmersiveShellContext.tsx`), which applies the class and flags **`useImmersiveShell()`**. Never add the class by hand: the rail reads the flag, so a manual class would hide the header without restoring its navigation.
+
+With the header gone, the left rail is the only chrome: brand → Home at the top (`sidebar-header--collapsed`, 56 px rail) and the account menu at the bottom (**`.sidebar-footer`** + `UserMenu placement="up"`). The header and the rail share **`components/Layout/UserMenu`**, so the menu is defined once.
+
 ### Gutter decision tree
 
 | Route shape | Gutter provider | Page rules |
@@ -126,7 +132,7 @@ Six compile-time tokens in **`_tokens.scss`** — use **`@include max-width(ds.$
 | `.app-content--apps-run` → `padding: 0` | Apps Run gutters on `.apps-page--run` (not editor workspace) |
 | `.app-content--compact:has(.kb-detail--qa-fullpage)` | KB Q&A full page |
 | `.app-content--compact .wiki-page-editor-outer` | Wiki editor edge-to-edge |
-| `body.openkms-kb-qa-fullpage` / `openkms-agents-fullpage` | Hide header; phone IA (≤ `$bp-md-min`) is chat-primary + full-width Sessions / Chats panel (Agents also has Files) — not a stacked rail that eats chat height |
+| `body.openkms-kb-qa-fullpage` / `openkms-agents-fullpage` | Hide header (rail keeps Home + account — see **Immersive views**); phone IA (≤ `$bp-md-min`) is chat-primary + full-width Sessions / Chats panel (Agents also has Files) — not a stacked rail that eats chat height |
 | `.app-content--object-explorer` | Flex fill, token padding |
 | `.app-page-pane:has(> .entity-view)` | Ontology Manager entity detail fills the pane; scroll inside `.entity-view__main` only |
 

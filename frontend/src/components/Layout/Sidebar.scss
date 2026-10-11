@@ -58,6 +58,14 @@
 
 .sidebar-header--collapsed .sidebar-logo {
   flex: 0 0 auto;
+  width: 36px;
+  height: 36px;
+  border-radius: var(--radius-sm);
+  transition: background 0.15s;
+}
+
+.sidebar-header--collapsed .sidebar-logo:hover {
+  background: var(--color-bg-muted);
 }
 
 .sidebar-header {
@@ -66,10 +74,6 @@
   display: flex;
   align-items: center;
   gap: 8px;
-}
-
-.sidebar-header:not(.sidebar-header--collapsed) {
-  justify-content: space-between;
 }
 
 .sidebar-header--collapsed {
@@ -81,25 +85,14 @@
   gap: 10px;
 }
 
-.sidebar-collapse-toggle {
+/* Account entry pinned to the bottom of the rail (immersive views: header hidden). */
+.sidebar-footer {
   flex-shrink: 0;
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 36px;
-  height: 36px;
-  margin: 0;
-  padding: 0;
-  border: none;
-  border-radius: var(--radius-sm);
-  background: transparent;
-  color: var(--color-text-muted);
-  cursor: pointer;
-}
-
-.sidebar-collapse-toggle:hover {
-  background: var(--color-bg-muted);
-  color: var(--color-text);
+  padding: 8px 0 10px;
+  border-top: 1px solid var(--color-border);
 }
 
 .sidebar-logo--collapsed {
@@ -121,18 +114,6 @@
   height: 24px;
 }
 
-.sidebar-title {
-  min-width: 0;
-  font-size: 1rem;
-  font-weight: 600;
-  line-height: 24px;
-  color: var(--color-text);
-  letter-spacing: -0.02em;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
 .sidebar--collapsed .sidebar-link {
   justify-content: center;
   gap: 0;
@@ -145,14 +126,6 @@
 
 .sidebar--collapsed .sidebar-menu-label {
   display: none;
-}
-
-.sidebar--collapsed .sidebar-subnav {
-  display: none;
-}
-
-.sidebar--collapsed .sidebar-menu-group {
-  margin-bottom: 0;
 }
 
 .sidebar--collapsed .sidebar-link svg {
@@ -211,11 +184,6 @@
   background: var(--color-accent-muted);
 }
 
-/* Menu group: parent + nested channels */
-.sidebar-menu-group {
-  margin-bottom: 2px;
-}
-
 .sidebar-menu-label {
   font-size: 0.65rem;
   font-weight: 600;
@@ -224,70 +192,4 @@
   color: var(--color-text-muted);
   padding: 10px 10px 4px;
   margin-top: 4px;
-}
-
-.sidebar-subnav {
-  padding-left: 10px;
-  margin-top: 2px;
-  margin-bottom: 4px;
-  border-left: 2px solid var(--color-border);
-  margin-left: 10px;
-}
-
-/* Ontology expandable parent */
-.sidebar-link-parent {
-  display: flex;
-  align-items: center;
-  gap: 0;
-  padding: 0;
-  margin-bottom: 2px;
-  background: transparent;
-  cursor: default;
-  color: inherit;
-}
-
-.sidebar-link-parent:hover {
-  background: transparent;
-}
-
-.sidebar-link-parent-static {
-  cursor: default;
-  color: var(--color-text-secondary);
-}
-
-.sidebar-parent-toggle {
-  padding: 8px 6px;
-  color: var(--color-text-muted);
-  flex-shrink: 0;
-}
-
-.sidebar-parent-toggle .expanded {
-  transform: rotate(90deg);
-  display: inline-block;
-}
-
-.sidebar-parent-label {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  flex: 1;
-  padding: 8px 10px 8px 4px;
-  text-align: left;
-  font-size: 0.875rem;
-  font-weight: 500;
-  color: var(--color-text-secondary);
-  background: transparent;
-  border: none;
-  border-radius: var(--radius-sm);
-  cursor: pointer;
-  transition: background 0.15s, color 0.15s;
-}
-
-.sidebar-parent-label:hover {
-  background: var(--color-bg-muted);
-  color: var(--color-text);
-}
-
-.sidebar-subnav .sidebar-sublink {
-  margin-left: 0;
 }

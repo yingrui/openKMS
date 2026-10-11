@@ -22,6 +22,7 @@ import {
 import { getProject, projectWorkspacePath } from '../../data/projectsApi';
 import type { ProjectResponse } from '../../data/projectsApi';
 import { useIsMobile } from '../../hooks/useIsMobile';
+import { useImmersiveView } from '../../contexts/ImmersiveShellContext';
 import { PanelToolbar } from '../../styles/design-system';
 import '../../components/agents/SessionReview.scss';
 
@@ -54,10 +55,7 @@ export function SessionReviewPage() {
     getArtifacts(projectId).then(setArtifacts).catch(() => {});
   }, [projectId]);
 
-  useEffect(() => {
-    document.body.classList.add('openkms-agents-fullpage');
-    return () => document.body.classList.remove('openkms-agents-fullpage');
-  }, []);
+  useImmersiveView('openkms-agents-fullpage');
 
   useEffect(() => {
     const el = chatScrollRef.current;

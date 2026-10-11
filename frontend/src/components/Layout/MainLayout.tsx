@@ -7,6 +7,7 @@ import { Sidebar } from './Sidebar';
 import { Header } from './Header';
 import { useAuth } from '../../contexts/AuthContext';
 import { SidebarLayoutProvider } from '../../contexts/SidebarLayoutContext';
+import { ImmersiveShellProvider } from '../../contexts/ImmersiveShellContext';
 import { OntologyMobileRailProvider, useOntologyMobileRail } from '../../contexts/OntologyMobileRailContext';
 import { ConsoleMobileNavProvider, useConsoleMobileNav } from '../../contexts/ConsoleMobileNavContext';
 import { ConfirmProvider } from '../../contexts/ConfirmContext';
@@ -199,12 +200,14 @@ function MainLayoutInner() {
 
 export function MainLayout() {
   return (
-    <OntologyMobileRailProvider>
-      <ConsoleMobileNavProvider>
-        <ConfirmProvider>
-          <MainLayoutInner />
-        </ConfirmProvider>
-      </ConsoleMobileNavProvider>
-    </OntologyMobileRailProvider>
+    <ImmersiveShellProvider>
+      <OntologyMobileRailProvider>
+        <ConsoleMobileNavProvider>
+          <ConfirmProvider>
+            <MainLayoutInner />
+          </ConfirmProvider>
+        </ConsoleMobileNavProvider>
+      </OntologyMobileRailProvider>
+    </ImmersiveShellProvider>
   );
 }
