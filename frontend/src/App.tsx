@@ -216,7 +216,7 @@ const DatasetOverviewTab = lazy(() =>
   import('./pages/ontology-manager/DatasetDetailPage').then((m) => ({ default: m.DatasetOverviewTab })),
 );
 const DatasetDataTab = lazy(() =>
-  import('./pages/ontology-manager/DatasetDetailPage').then((m) => ({ default: m.DatasetDataTab })),
+  import('./pages/ontology-manager/DatasetDetailDataTab').then((m) => ({ default: m.DatasetDataTab })),
 );
 const DatasetColumnsTab = lazy(() =>
   import('./pages/ontology-manager/DatasetDetailPage').then((m) => ({ default: m.DatasetColumnsTab })),

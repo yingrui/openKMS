@@ -18,7 +18,6 @@ import {
   updateDataset,
   type ColumnMetadata,
   type DatasetResponse,
-  type DatasetRowsResponse,
 } from '../../data/datasetsApi';
 import {
   fetchLinkTypes,
@@ -46,6 +45,16 @@ type DatasetDetailContext = {
   dataset: DatasetResponse;
   displayName: string;
   setDisplayName: (v: string) => void;
+  description: string;
+  setDescription: (v: string) => void;
+  domain: string;
+  setDomain: (v: string) => void;
+  tags: string;
+  setTags: (v: string) => void;
+  businessDefinition: string;
+  setBusinessDefinition: (v: string) => void;
+  sensitivity: string;
+  setSensitivity: (v: string) => void;
   saving: boolean;
   onSave: () => Promise<void>;
   columnCount: number | null;
@@ -75,6 +84,11 @@ export function DatasetDetailPage() {
   const [dataset, setDataset] = useState<DatasetResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [displayName, setDisplayName] = useState('');
+  const [description, setDescription] = useState('');
+  const [domain, setDomain] = useState('');
+  const [tags, setTags] = useState('');
+  const [businessDefinition, setBusinessDefinition] = useState('');
+  const [sensitivity, setSensitivity] = useState('');
   const [saving, setSaving] = useState(false);
   const [columnCount, setColumnCount] = useState<number | null>(null);
   const [rowTotal, setRowTotal] = useState<number | null>(null);
@@ -89,6 +103,11 @@ export function DatasetDetailPage() {
       const d = await fetchDataset(datasetId);
       setDataset(d);
       setDisplayName(d.display_name ?? '');
+      setDescription(d.description ?? '');
+      setDomain(d.domain ?? '');
+      setTags((d.tags ?? []).join(', '));
+      setBusinessDefinition(d.business_definition ?? '');
+      setSensitivity(d.sensitivity ?? '');
     } catch (e) {
       toast.error(e instanceof Error ? e.message : t('datasets.loadFailed'));
       setDataset(null);
@@ -155,16 +174,29 @@ export function DatasetDetailPage() {
     try {
       const updated = await updateDataset(datasetId, {
         display_name: displayName.trim() || null,
+        description: description.trim() || null,
+        domain: domain.trim() || null,
+        tags: tags
+          .split(',')
+          .map((x) => x.trim())
+          .filter(Boolean),
+        business_definition: businessDefinition.trim() || null,
+        sensitivity: sensitivity.trim() || null,
       });
       setDataset(updated);
       setDisplayName(updated.display_name ?? '');
+      setDescription(updated.description ?? '');
+      setDomain(updated.domain ?? '');
+      setTags((updated.tags ?? []).join(', '));
+      setBusinessDefinition(updated.business_definition ?? '');
+      setSensitivity(updated.sensitivity ?? '');
       toast.success(t('datasets.saved'));
     } catch (e) {
       toast.error(e instanceof Error ? e.message : t('datasets.saveFailed'));
     } finally {
       setSaving(false);
     }
-  }, [dataset, datasetId, displayName, t]);
+  }, [dataset, datasetId, displayName, description, domain, tags, businessDefinition, sensitivity, t]);
 
   const onDelete = useCallback(async () => {
     if (!datasetId || !dataset) return;
@@ -193,6 +225,16 @@ export function DatasetDetailPage() {
       dataset,
       displayName,
       setDisplayName,
+      description,
+      setDescription,
+      domain,
+      setDomain,
+      tags,
+      setTags,
+      businessDefinition,
+      setBusinessDefinition,
+      sensitivity,
+      setSensitivity,
       saving,
       onSave,
       columnCount,
@@ -204,6 +246,11 @@ export function DatasetDetailPage() {
   }, [
     dataset,
     displayName,
+    description,
+    domain,
+    tags,
+    businessDefinition,
+    sensitivity,
     saving,
     onSave,
     columnCount,
@@ -265,6 +312,16 @@ export function DatasetOverviewTab() {
     dataset,
     displayName,
     setDisplayName,
+    description,
+    setDescription,
+    domain,
+    setDomain,
+    tags,
+    setTags,
+    businessDefinition,
+    setBusinessDefinition,
+    sensitivity,
+    setSensitivity,
     columnCount,
     rowTotal,
     usageObjectTypes,
@@ -299,6 +356,48 @@ export function DatasetOverviewTab() {
               placeholder={label}
             />
           </EntityViewField>
+          <EntityViewField label={t('datasets.descriptionLabel')}>
+            <input
+              className="console-form-control"
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+            />
+          </EntityViewField>
+          <EntityViewField label={t('datasets.domainLabel')}>
+            <input
+              className="console-form-control"
+              value={domain}
+              onChange={(e) => setDomain(e.target.value)}
+            />
+          </EntityViewField>
+          <EntityViewField label={t('datasets.tagsLabel')}>
+            <input
+              className="console-form-control"
+              value={tags}
+              onChange={(e) => setTags(e.target.value)}
+              placeholder={t('datasets.tagsPlaceholder')}
+            />
+          </EntityViewField>
+          <EntityViewField label={t('datasets.businessDefinitionLabel')}>
+            <textarea
+              className="console-form-control"
+              value={businessDefinition}
+              onChange={(e) => setBusinessDefinition(e.target.value)}
+            />
+          </EntityViewField>
+          <EntityViewField label={t('datasets.sensitivityLabel')}>
+            <select
+              className="console-form-control"
+              value={sensitivity}
+              onChange={(e) => setSensitivity(e.target.value)}
+            >
+              <option value="">{t('datasets.sensitivityNone')}</option>
+              <option value="public">{t('datasets.sensitivityPublic')}</option>
+              <option value="internal">{t('datasets.sensitivityInternal')}</option>
+              <option value="confidential">{t('datasets.sensitivityConfidential')}</option>
+              <option value="restricted">{t('datasets.sensitivityRestricted')}</option>
+            </select>
+          </EntityViewField>
           <EntityViewField label={t('datasets.schemaTable')}>
             <p className="entity-view__readonly">{label}</p>
           </EntityViewField>
@@ -306,164 +405,6 @@ export function DatasetOverviewTab() {
             <p className="entity-view__readonly">{dataset.data_source_name ?? t('datasets.dash')}</p>
           </EntityViewField>
         </div>
-      </EntityViewPanel>
-    </>
-  );
-}
-
-export function DatasetDataTab() {
-  const { t } = useTranslation('ontology');
-  const { id: datasetId = '' } = useParams();
-  const [rowsData, setRowsData] = useState<DatasetRowsResponse | null>(null);
-  const [rowsLoading, setRowsLoading] = useState(true);
-  const [page, setPage] = useState(0);
-  const [pageSize, setPageSize] = useState(100);
-
-  const displayCellValue = useCallback(
-    (v: unknown): string => {
-      if (v === null || v === undefined) return t('datasets.dash');
-      if (typeof v === 'boolean') return v ? t('datasets.yes') : t('datasets.no');
-      if (typeof v === 'object') return JSON.stringify(v);
-      return String(v);
-    },
-    [t],
-  );
-
-  const loadRows = useCallback(async () => {
-    if (!datasetId) return;
-    setRowsLoading(true);
-    try {
-      setRowsData(
-        await fetchDatasetRows(datasetId, {
-          limit: pageSize,
-          offset: page * pageSize,
-        }),
-      );
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : t('datasets.loadRowsFailed'));
-    } finally {
-      setRowsLoading(false);
-    }
-  }, [datasetId, page, pageSize, t]);
-
-  useEffect(() => {
-    void loadRows();
-  }, [loadRows]);
-
-  const columns = rowsData?.rows?.[0] ? Object.keys(rowsData.rows[0]) : [];
-  const total = rowsData?.total ?? 0;
-  const totalPages = total > 0 ? Math.ceil(total / pageSize) : 0;
-  const startRow = total > 0 ? page * pageSize + 1 : 0;
-  const endRow = total > 0 ? Math.min((page + 1) * pageSize, total) : 0;
-
-  return (
-    <>
-      <EntityViewHeader title={t('datasets.data')} subtitle={t('datasets.dataHint')} />
-      <EntityViewPanel>
-        {rowsLoading ? (
-          <div className="console-loading">
-            <Loader2 size={32} className="console-loading-spinner" aria-hidden />
-            <p>{t('shared.loading')}</p>
-          </div>
-        ) : (
-          <div className="dataset-detail-data">
-            <div className="ds-table-wrap ds-table-wrap--flush">
-              <table className="console-table">
-                <thead>
-                  <tr>
-                    {columns.map((col) => (
-                      <th key={col}>{col}</th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {!rowsData?.rows?.length ? (
-                    <tr>
-                      <td colSpan={columns.length || 1} className="console-table-empty">
-                        {t('datasets.emptyRows')}
-                      </td>
-                    </tr>
-                  ) : (
-                    rowsData.rows.map((row, idx) => (
-                      <tr key={idx}>
-                        {columns.map((col) => (
-                          <td key={col}>{displayCellValue(row[col])}</td>
-                        ))}
-                      </tr>
-                    ))
-                  )}
-                </tbody>
-              </table>
-            </div>
-            {rowsData && (
-              <div className="dataset-detail-pagination">
-                <div className="dataset-detail-pagination__info">
-                  <span>
-                    {t('datasets.paginationRange', { start: startRow, end: endRow, total })}
-                  </span>
-                  <label>
-                    <span>{t('datasets.pageSize')}</span>
-                    <select
-                      value={pageSize}
-                      onChange={(e) => {
-                        setPageSize(Number(e.target.value));
-                        setPage(0);
-                      }}
-                      disabled={rowsLoading}
-                    >
-                      {[25, 50, 100, 200, 500].map((n) => (
-                        <option key={n} value={n}>
-                          {n}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-                </div>
-                {totalPages > 1 && (
-                  <div className="dataset-detail-pagination__btns">
-                    <button
-                      type="button"
-                      className="btn btn-secondary btn-sm"
-                      onClick={() => setPage(0)}
-                      disabled={page === 0 || rowsLoading}
-                      title={t('datasets.firstPage')}
-                    >
-                      «
-                    </button>
-                    <button
-                      type="button"
-                      className="btn btn-secondary btn-sm"
-                      onClick={() => setPage((p) => Math.max(0, p - 1))}
-                      disabled={page === 0 || rowsLoading}
-                    >
-                      {t('datasets.previous')}
-                    </button>
-                    <span className="dataset-detail-pagination__page">
-                      {t('datasets.pageOf', { current: page + 1, total: totalPages })}
-                    </span>
-                    <button
-                      type="button"
-                      className="btn btn-secondary btn-sm"
-                      onClick={() => setPage((p) => Math.min(totalPages - 1, p + 1))}
-                      disabled={page >= totalPages - 1 || rowsLoading}
-                    >
-                      {t('datasets.next')}
-                    </button>
-                    <button
-                      type="button"
-                      className="btn btn-secondary btn-sm"
-                      onClick={() => setPage(totalPages - 1)}
-                      disabled={page >= totalPages - 1 || rowsLoading}
-                      title={t('datasets.lastPage')}
-                    >
-                      »
-                    </button>
-                  </div>
-                )}
-              </div>
-            )}
-          </div>
-        )}
       </EntityViewPanel>
     </>
   );

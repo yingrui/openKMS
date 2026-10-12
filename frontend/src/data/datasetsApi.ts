@@ -8,6 +8,12 @@ export interface DatasetResponse {
   schema_name: string;
   table_name: string;
   display_name: string | null;
+  description: string | null;
+  owner_sub: string | null;
+  domain: string | null;
+  tags: string[];
+  business_definition: string | null;
+  sensitivity: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -37,6 +43,11 @@ export async function createDataset(data: {
   schema_name: string;
   table_name: string;
   display_name?: string;
+  description?: string;
+  domain?: string;
+  tags?: string[];
+  business_definition?: string;
+  sensitivity?: string;
 }): Promise<DatasetResponse> {
   return request<DatasetResponse>('/api/datasets', {
     method: 'POST',
@@ -47,7 +58,17 @@ export async function createDataset(data: {
 
 export async function updateDataset(
   id: string,
-  data: { schema_name?: string; table_name?: string; display_name?: string | null }
+  data: {
+    schema_name?: string;
+    table_name?: string;
+    display_name?: string | null;
+    description?: string | null;
+    owner_sub?: string | null;
+    domain?: string | null;
+    tags?: string[];
+    business_definition?: string | null;
+    sensitivity?: string | null;
+  }
 ): Promise<DatasetResponse> {
   return request<DatasetResponse>(`/api/datasets/${id}`, {
     method: 'PUT',

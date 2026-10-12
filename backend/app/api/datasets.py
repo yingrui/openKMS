@@ -46,6 +46,25 @@ router = APIRouter(
 _DATASET_VIEW = (PERM_CONSOLE_DATASETS, PERM_ONTOLOGY_READ)
 
 
+def _dataset_response(d: Dataset, data_source_name: str | None) -> DatasetResponse:
+    return DatasetResponse(
+        id=d.id,
+        data_source_id=d.data_source_id,
+        data_source_name=data_source_name,
+        schema_name=d.schema_name,
+        table_name=d.table_name,
+        display_name=d.display_name,
+        description=d.description,
+        owner_sub=d.owner_sub,
+        domain=d.domain,
+        tags=d.tags or [],
+        business_definition=d.business_definition,
+        sensitivity=d.sensitivity,
+        created_at=d.created_at,
+        updated_at=d.updated_at,
+    )
+
+
 async def get_dataset_scoped(
     dataset_id: str,
     request: Request,
@@ -132,19 +151,7 @@ async def list_datasets(
         for ds in ds_result.scalars().all():
             ds_map[ds.id] = ds.name
     return DatasetListResponse(
-        items=[
-            DatasetResponse(
-                id=d.id,
-                data_source_id=d.data_source_id,
-                data_source_name=ds_map.get(d.data_source_id),
-                schema_name=d.schema_name,
-                table_name=d.table_name,
-                display_name=d.display_name,
-                created_at=d.created_at,
-                updated_at=d.updated_at,
-            )
-            for d in items
-        ],
+        items=[_dataset_response(d, ds_map.get(d.data_source_id)) for d in items],
         total=len(items),
     )
 
@@ -168,6 +175,12 @@ async def create_dataset(
         schema_name=body.schema_name,
         table_name=body.table_name,
         display_name=body.display_name,
+        description=body.description,
+        owner_sub=sub if isinstance(sub, str) else None,
+        domain=body.domain,
+        tags=body.tags,
+        business_definition=body.business_definition,
+        sensitivity=body.sensitivity,
         created_by=sub if isinstance(sub, str) else None,
         created_by_name=str(uname)[:256] if isinstance(uname, str) and uname.strip() else None,
     )
@@ -177,16 +190,7 @@ async def create_dataset(
         await bootstrap_owner_acl(db, RT_DATASET, dataset.id, sub)
     await db.commit()
     await db.refresh(dataset)
-    return DatasetResponse(
-        id=dataset.id,
-        data_source_id=dataset.data_source_id,
-        data_source_name=ds.name,
-        schema_name=dataset.schema_name,
-        table_name=dataset.table_name,
-        display_name=dataset.display_name,
-        created_at=dataset.created_at,
-        updated_at=dataset.updated_at,
-    )
+    return _dataset_response(dataset, ds.name)
 
 
 @router.get(
@@ -281,16 +285,7 @@ async def get_dataset(
 ):
     """Get a dataset by ID."""
     ds = await db.get(DataSource, dataset.data_source_id)
-    return DatasetResponse(
-        id=dataset.id,
-        data_source_id=dataset.data_source_id,
-        data_source_name=ds.name if ds else None,
-        schema_name=dataset.schema_name,
-        table_name=dataset.table_name,
-        display_name=dataset.display_name,
-        created_at=dataset.created_at,
-        updated_at=dataset.updated_at,
-    )
+    return _dataset_response(dataset, ds.name if ds else None)
 
 
 @router.put("/{dataset_id}", response_model=DatasetResponse, dependencies=[Depends(require_permission(PERM_CONSOLE_DATASETS))])
@@ -306,16 +301,7 @@ async def update_dataset(
     await db.flush()
     await db.refresh(dataset)
     ds = await db.get(DataSource, dataset.data_source_id)
-    return DatasetResponse(
-        id=dataset.id,
-        data_source_id=dataset.data_source_id,
-        data_source_name=ds.name if ds else None,
-        schema_name=dataset.schema_name,
-        table_name=dataset.table_name,
-        display_name=dataset.display_name,
-        created_at=dataset.created_at,
-        updated_at=dataset.updated_at,
-    )
+    return _dataset_response(dataset, ds.name if ds else None)
 
 
 @router.delete("/{dataset_id}", status_code=204, dependencies=[Depends(require_permission(PERM_CONSOLE_DATASETS))])

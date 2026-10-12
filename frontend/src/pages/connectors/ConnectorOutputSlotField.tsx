@@ -61,6 +61,12 @@ export function ConnectorOutputSlotField({
       const now = new Date().toISOString();
       const dataset: DatasetResponse = {
         ...created,
+        description: null,
+        owner_sub: null,
+        domain: null,
+        tags: [],
+        business_definition: null,
+        sensitivity: null,
         created_at: now,
         updated_at: now,
       };

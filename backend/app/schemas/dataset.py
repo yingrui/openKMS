@@ -9,12 +9,23 @@ class DatasetCreate(BaseModel):
     schema_name: str
     table_name: str
     display_name: str | None = None
+    description: str | None = None
+    domain: str | None = None
+    tags: list[str] | None = None
+    business_definition: str | None = None
+    sensitivity: str | None = None
 
 
 class DatasetUpdate(BaseModel):
     schema_name: str | None = None
     table_name: str | None = None
     display_name: str | None = None
+    description: str | None = None
+    owner_sub: str | None = None
+    domain: str | None = None
+    tags: list[str] | None = None
+    business_definition: str | None = None
+    sensitivity: str | None = None
 
 
 class DatasetResponse(BaseModel):
@@ -24,6 +35,12 @@ class DatasetResponse(BaseModel):
     schema_name: str
     table_name: str
     display_name: str | None = None
+    description: str | None = None
+    owner_sub: str | None = None
+    domain: str | None = None
+    tags: list[str] = []
+    business_definition: str | None = None
+    sensitivity: str | None = None
     created_at: datetime
     updated_at: datetime
 

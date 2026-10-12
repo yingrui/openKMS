@@ -3,7 +3,8 @@ from __future__ import annotations
 
 from datetime import datetime
 
-from sqlalchemy import DateTime, ForeignKey, String, func
+from sqlalchemy import DateTime, ForeignKey, String, Text, func
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.database import Base
@@ -21,6 +22,12 @@ class Dataset(Base):
     schema_name: Mapped[str] = mapped_column(String(128), nullable=False)
     table_name: Mapped[str] = mapped_column(String(256), nullable=False)
     display_name: Mapped[str | None] = mapped_column(String(256), nullable=True)
+    description: Mapped[str | None] = mapped_column(Text, nullable=True)
+    owner_sub: Mapped[str | None] = mapped_column(String(512), nullable=True)
+    domain: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    tags: Mapped[list | None] = mapped_column(JSONB, nullable=True)
+    business_definition: Mapped[str | None] = mapped_column(Text, nullable=True)
+    sensitivity: Mapped[str | None] = mapped_column(String(32), nullable=True)
     created_by: Mapped[str | None] = mapped_column(String(512), nullable=True, index=True)
     created_by_name: Mapped[str | None] = mapped_column(String(256), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
