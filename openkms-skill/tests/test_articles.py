@@ -159,3 +159,63 @@ def test_articles_markdown(mock_api, capsys):
     cmd_markdown(argparse.Namespace(id="a9", out=""))
 
     assert "## hi" in capsys.readouterr().out
+
+
+def test_articles_attachments_list(mock_api):
+    recorded, responses = mock_api
+    responses[("GET", "/api/articles/a1/attachments")] = (200, [])
+
+    from openkms.commands.articles import cmd_attachments_list
+
+    cmd_attachments_list(argparse.Namespace(id="a1"))
+    assert recorded[-1].url.path == "/api/articles/a1/attachments"
+
+
+def test_articles_attachments_upload_multipart(mock_api, tmp_path):
+    recorded, responses = mock_api
+    responses[("POST", "/api/articles/a1/attachments")] = (
+        200,
+        {
+            "id": "att1",
+            "article_id": "a1",
+            "storage_path": "attachments/deck.html",
+            "original_filename": "deck.html",
+            "size_bytes": 2,
+            "content_type": None,
+            "created_at": "2026-01-01T00:00:00Z",
+        },
+    )
+
+    f = tmp_path / "deck.html"
+    f.write_text("hi", encoding="utf-8")
+
+    from openkms.commands.articles import cmd_attachments_upload
+
+    cmd_attachments_upload(argparse.Namespace(id="a1", file=str(f), yes=True, dry_run=False))
+
+    req = recorded[-1]
+    assert req.method == "POST"
+    assert req.url.path == "/api/articles/a1/attachments"
+    assert b"deck.html" in req.content
+
+
+def test_articles_attachments_upload_missing_file(mock_api, tmp_path):
+    from openkms.commands.articles import cmd_attachments_upload
+
+    with pytest.raises(SystemExit):
+        cmd_attachments_upload(
+            argparse.Namespace(id="a1", file=str(tmp_path / "nope.html"), yes=True, dry_run=False)
+        )
+
+
+def test_articles_attachments_delete(mock_api, capsys):
+    recorded, responses = mock_api
+    responses[("DELETE", "/api/articles/a1/attachments/att1")] = (204, b"")
+
+    from openkms.commands.articles import cmd_attachments_delete
+
+    cmd_attachments_delete(
+        argparse.Namespace(id="a1", attachment_id="att1", yes=True, dry_run=False)
+    )
+    assert recorded[-1].method == "DELETE"
+    assert "att1" in capsys.readouterr().out

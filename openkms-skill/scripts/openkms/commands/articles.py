@@ -208,6 +208,45 @@ def cmd_relationships_delete(ns: argparse.Namespace) -> None:
     print(f"deleted relationship {ns.relationship_id} from article {ns.id}")
 
 
+def cmd_attachments_list(ns: argparse.Namespace) -> None:
+    with client() as s:
+        r = s.get(f"/api/articles/{ns.id}/attachments")
+    r.raise_for_status()
+    print_json(r.json())
+
+
+def cmd_attachments_upload(ns: argparse.Namespace) -> None:
+    path = Path(ns.file)
+    if not path.is_file():
+        print(f"Not a file: {path}", file=sys.stderr)
+        sys.exit(1)
+    preview = {"article_id": ns.id, "file": str(path.resolve()), "size_bytes": path.stat().st_size}
+    confirm_or_abort(
+        "upload article attachment",
+        "POST",
+        f"/api/articles/{ns.id}/attachments",
+        preview,
+        ns.yes,
+        ns.dry_run,
+    )
+    with client() as s, path.open("rb") as f:
+        r = s.post(
+            f"/api/articles/{ns.id}/attachments",
+            files={"file": (path.name, f, "application/octet-stream")},
+        )
+    r.raise_for_status()
+    print_json(r.json())
+
+
+def cmd_attachments_delete(ns: argparse.Namespace) -> None:
+    path = f"/api/articles/{ns.id}/attachments/{ns.attachment_id}"
+    confirm_or_abort("delete article attachment", "DELETE", path, None, ns.yes, ns.dry_run)
+    with client() as s:
+        r = s.delete(path)
+    r.raise_for_status()
+    print(f"deleted attachment {ns.attachment_id} from article {ns.id}")
+
+
 def add_subparser(sub) -> None:
     p = sub.add_parser("articles", help="Articles")
     sp = p.add_subparsers(dest="ar_cmd", required=True)
@@ -280,6 +319,25 @@ def add_subparser(sub) -> None:
     rvlist.add_argument("--id", required=True, dest="id", help="article id")
     rvlist.add_argument("--limit", type=int, default=0, help="max rows (server default 20, cap 50)")
     rvlist.set_defaults(fn=cmd_reviews_list)
+
+    att = sp.add_parser(
+        "attachments",
+        help="Files attached to an article (stored under articles/{id}/attachments/)",
+    )
+    asp = att.add_subparsers(dest="ar_attachment_cmd", required=True)
+    als = asp.add_parser("list", help="List attachments")
+    als.add_argument("--id", required=True, dest="id", help="article id")
+    als.set_defaults(fn=cmd_attachments_list)
+    aup = asp.add_parser("upload", help="Upload a local file as an attachment")
+    aup.add_argument("--id", required=True, dest="id", help="article id")
+    aup.add_argument("--file", required=True, help="local file path")
+    add_write_flags(aup)
+    aup.set_defaults(fn=cmd_attachments_upload)
+    adl = asp.add_parser("delete", help="Delete an attachment by id")
+    adl.add_argument("--id", required=True, dest="id", help="article id")
+    adl.add_argument("--attachment-id", required=True)
+    add_write_flags(adl)
+    adl.set_defaults(fn=cmd_attachments_delete)
 
     rel = sp.add_parser(
         "relationships",

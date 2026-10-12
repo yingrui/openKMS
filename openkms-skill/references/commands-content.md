@@ -19,6 +19,7 @@ Prefix every invocation with `python scripts/cli.py` (or the project-agent path 
 | Document markdown → file | `documents markdown --id DOC_ID --out ./case.md` |
 | List articles | `articles list --channel-id ID --search "…"` |
 | Article lineage | `articles relationships list --id ART_ID` |
+| Article attachments | `articles attachments list --id ART_ID` |
 | Article markdown | `articles markdown --id ART_ID` |
 | Latest content review | `articles reviews latest --id ART_ID` |
 | List content reviews | `articles reviews list --id ART_ID --limit 10` |
@@ -49,6 +50,7 @@ Prefix every invocation with `python scripts/cli.py` (or the project-agent path 
 | Put markdown / export zip | `documents put-markdown --id DOC --file ./x.md --yes` · `documents export --id DOC --out ./doc.zip --yes` |
 | Create / update article channel | `article-channels create --name "…" --yes` · `article-channels update --id AC_ID … --yes` |
 | Create article / from URL | `articles create --channel-id ID --name "…" --markdown-file ./x.md --yes` · `articles from-url --channel-id ID --url … --yes` |
+| Attach a file to an article | `articles attachments upload --id ART_ID --file ./deck.html --yes` (any content type; `attachments delete --id ART_ID --attachment-id ATT_ID --yes`) |
 | Run content review | `articles review run --id ART_ID --yes` |
 | Article lineage | `articles relationships create\|delete … --yes` |
 | Wiki space / link docs | `wiki-spaces create --name "…" --yes` · `wiki-spaces documents link\|unlink … --yes` |

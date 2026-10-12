@@ -71,6 +71,9 @@ Create keys in the openKMS web app: **Settings** (header user menu → **Setting
 | `articles relationships list` | GET | `/api/articles/{id}/relationships` | `{outgoing:[{id, relation_type, peer_article_id, peer_article_name, note, created_at}], incoming:[…]}`. |
 | `articles relationships create` *(write)* | POST | `/api/articles/{id}/relationships` | Body `{target_article_id, relation_type, note?}`. Same `relation_type` set as documents (`supersedes`, `amends`, `implements`, `see_also`). |
 | `articles relationships delete` *(write)* | DELETE | `/api/articles/{id}/relationships/{relationship_id}` | **Outgoing only** (same rule as `documents relationships delete`). 204. |
+| `articles attachments list` | GET | `/api/articles/{id}/attachments` | `[{id, article_id, storage_path, original_filename, size_bytes, content_type, created_at}]`. |
+| `articles attachments upload` *(write)* | POST multipart | `/api/articles/{id}/attachments` | Field `file`; bytes are stored under `articles/{id}/attachments/<safe>` and an `ArticleAttachment` row is created. Any content type. |
+| `articles attachments delete` *(write)* | DELETE | `/api/articles/{id}/attachments/{attachment_id}` | Removes the row and the stored object. 204. |
 
 ### Wiki
 
