@@ -16,6 +16,11 @@ import { useConfirm } from '../../contexts/ConfirmContext';
 import '../ontology/ontology-admin.scss';
 
 const KINDS = ['postgresql', 'neo4j'] as const;
+const LAYERS = ['', 'data', 'ontology'] as const;
+const LAYER_LABEL_KEY: Record<string, string> = {
+  data: 'layerData',
+  ontology: 'layerOntology',
+};
 
 export function ConsoleDataSources() {
   const { t } = useTranslation('console');
@@ -26,6 +31,7 @@ export function ConsoleDataSources() {
   const [editItem, setEditItem] = useState<DataSourceResponse | null>(null);
   const [formName, setFormName] = useState('');
   const [formKind, setFormKind] = useState<string>('postgresql');
+  const [formLayer, setFormLayer] = useState<string>('');
   const [formHost, setFormHost] = useState('');
   const [formPort, setFormPort] = useState<string>('5432');
   const [formDatabase, setFormDatabase] = useState('');
@@ -58,6 +64,7 @@ export function ConsoleDataSources() {
     setEditItem(null);
     setFormName('');
     setFormKind('postgresql');
+    setFormLayer('');
     setFormHost('');
     setFormPort('5432');
     setFormDatabase('');
@@ -70,6 +77,7 @@ export function ConsoleDataSources() {
     setEditItem(d);
     setFormName(d.name);
     setFormKind(d.kind);
+    setFormLayer(d.layer ?? '');
     setFormHost(d.host);
     setFormPort(String(d.port ?? 5432));
     setFormDatabase(d.database ?? '');
@@ -95,6 +103,7 @@ export function ConsoleDataSources() {
           database: formDatabase.trim() || undefined,
           username: formUsername.trim(),
           password: formPassword || undefined,
+          layer: formLayer || null,
         });
         toast.success(t('dataSources.toastUpdated'));
       } else {
@@ -106,6 +115,7 @@ export function ConsoleDataSources() {
           database: formDatabase.trim() || undefined,
           username: formUsername.trim(),
           password: formPassword || undefined,
+          layer: formLayer || null,
         });
         toast.success(t('dataSources.toastCreated'));
       }
@@ -200,6 +210,7 @@ export function ConsoleDataSources() {
               <tr>
                 <th>{t('dataSources.colName')}</th>
                 <th>{t('dataSources.colKind')}</th>
+                <th>{t('dataSources.colLayer')}</th>
                 <th>{t('dataSources.colHost')}</th>
                 <th>{t('dataSources.colPort')}</th>
                 <th>{t('dataSources.colDatabase')}</th>
@@ -209,7 +220,7 @@ export function ConsoleDataSources() {
             <tbody>
               {items.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="console-table-empty">
+                  <td colSpan={7} className="console-table-empty">
                     {t('dataSources.empty')}
                   </td>
                 </tr>
@@ -218,6 +229,11 @@ export function ConsoleDataSources() {
                   <tr key={d.id}>
                     <td><strong>{d.name}</strong></td>
                     <td>{d.kind}</td>
+                    <td>
+                      {d.layer
+                        ? t(`dataSources.${LAYER_LABEL_KEY[d.layer] ?? 'layerNone'}`)
+                        : t('dataSources.dash')}
+                    </td>
                     <td>{d.host}</td>
                     <td>{d.port ?? t('dataSources.dash')}</td>
                     <td>{d.database ?? t('dataSources.dash')}</td>
@@ -291,6 +307,16 @@ export function ConsoleDataSources() {
                 <select value={formKind} onChange={(e) => setFormKind(e.target.value)}>
                   {KINDS.map((k) => (
                     <option key={k} value={k}>{k}</option>
+                  ))}
+                </select>
+              </label>
+              <label>
+                <span>{t('dataSources.fieldLayer')}</span>
+                <select value={formLayer} onChange={(e) => setFormLayer(e.target.value)}>
+                  {LAYERS.map((l) => (
+                    <option key={l || 'none'} value={l}>
+                      {l ? t(`dataSources.${LAYER_LABEL_KEY[l]}`) : t('dataSources.layerNone')}
+                    </option>
                   ))}
                 </select>
               </label>

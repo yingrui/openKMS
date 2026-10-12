@@ -44,6 +44,7 @@ def _to_response(ds: DataSource) -> DataSourceResponse:
         username=username_plain,
         password_masked=bool(ds.password_encrypted),
         options=ds.options,
+        layer=ds.layer,
         created_at=ds.created_at,
         updated_at=ds.updated_at,
     )
@@ -82,6 +83,7 @@ async def create_data_source(body: DataSourceCreate, db: AsyncSession = Depends(
         username_encrypted=encrypt(body.username),
         password_encrypted=encrypt(body.password) if body.password else None,
         options=body.options,
+        layer=body.layer,
     )
     db.add(ds)
     await db.flush()
@@ -124,6 +126,8 @@ async def update_data_source(
         ds.password_encrypted = encrypt(body.password) if body.password else None
     if body.options is not None:
         ds.options = body.options
+    if "layer" in body.model_fields_set:
+        ds.layer = body.layer
     await db.flush()
     await db.refresh(ds)
     return _to_response(ds)

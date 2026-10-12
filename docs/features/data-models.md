@@ -164,7 +164,7 @@ Schema for every persisted table. Grouped by area; see the matching feature page
 
 ### DataSource
 
-- `id`, `name`, `kind` (postgresql | neo4j), `host`, `port`, `database`, `username_encrypted`, `password_encrypted`, `options` (JSONB), `created_at`, `updated_at`
+- `id`, `name`, `kind` (postgresql | neo4j), `host`, `port`, `database`, `username_encrypted`, `password_encrypted`, `options` (JSONB), `layer` (`data` | `ontology` | null; routes datasets / file ingest vs the graph), `created_at`, `updated_at`
 - Connection config; credentials encrypted with Fernet
 
 ### Connector

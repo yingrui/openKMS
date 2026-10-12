@@ -14,6 +14,7 @@ class DataSourceCreate(BaseModel):
     username: str
     password: str | None = None
     options: dict[str, Any] | None = None
+    layer: str | None = None  # data | ontology
 
 
 class DataSourceUpdate(BaseModel):
@@ -25,6 +26,7 @@ class DataSourceUpdate(BaseModel):
     username: str | None = None
     password: str | None = None  # None = keep current
     options: dict[str, Any] | None = None
+    layer: str | None = None  # data | ontology
 
 
 class DataSourceResponse(BaseModel):
@@ -37,6 +39,7 @@ class DataSourceResponse(BaseModel):
     username: str
     password_masked: bool = False
     options: dict[str, Any] | None = None
+    layer: str | None = None
     created_at: datetime
     updated_at: datetime
 

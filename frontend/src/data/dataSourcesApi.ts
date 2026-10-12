@@ -11,6 +11,7 @@ export interface DataSourceResponse {
   username: string;
   password_masked: boolean;
   options: Record<string, unknown> | null;
+  layer: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -58,6 +59,7 @@ export async function createDataSource(data: {
   username: string;
   password?: string;
   options?: Record<string, unknown>;
+  layer?: string | null;
 }): Promise<DataSourceResponse> {
   return request<DataSourceResponse>('/api/data-sources', {
     method: 'POST',
@@ -77,6 +79,7 @@ export async function updateDataSource(
     username?: string;
     password?: string;
     options?: Record<string, unknown>;
+    layer?: string | null;
   }
 ): Promise<DataSourceResponse> {
   return request<DataSourceResponse>(`/api/data-sources/${id}`, {
