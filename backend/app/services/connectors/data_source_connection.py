@@ -15,6 +15,7 @@ def test_data_source_connection(ds: DataSource) -> tuple[bool, str]:
             from urllib.parse import quote_plus
 
             from sqlalchemy import create_engine, text
+            from sqlalchemy.pool import NullPool
 
             username = decrypt(ds.username_encrypted) if ds.username_encrypted else ""
             password = decrypt(ds.password_encrypted) if ds.password_encrypted else ""
@@ -23,7 +24,7 @@ def test_data_source_connection(ds: DataSource) -> tuple[bool, str]:
             database = ds.database or "postgres"
             password_escaped = quote_plus(password) if password else ""
             url = f"postgresql://{username}:{password_escaped}@{host}:{port}/{database}"
-            engine = create_engine(url, pool_pre_ping=True, pool_recycle=10)
+            engine = create_engine(url, poolclass=NullPool)
             with engine.connect() as conn:
                 conn.execute(text("SELECT 1"))
             engine.dispose()

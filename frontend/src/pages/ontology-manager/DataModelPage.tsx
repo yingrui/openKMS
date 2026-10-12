@@ -26,9 +26,10 @@ export function DataModelPage() {
       const [ds, j] = await Promise.all([fetchDatasets(), fetchDatasetJoins()]);
       setDatasets(ds.items);
       setJoins(j.items);
-      const lists = await Promise.all(
-        ds.items.map((d) => fetchQualityRules(d.id).catch(() => [])),
-      );
+      const lists: QualityRuleResponse[][] = [];
+      for (const d of ds.items) {
+        lists.push(await fetchQualityRules(d.id).catch(() => []));
+      }
       setRules(lists.flat());
     } catch (e) {
       toast.error(e instanceof Error ? e.message : t('datasets.loadFailed'));

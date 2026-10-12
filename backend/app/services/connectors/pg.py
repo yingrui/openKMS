@@ -8,6 +8,7 @@ from urllib.parse import quote_plus
 
 from sqlalchemy import create_engine, text
 from sqlalchemy.engine import Engine
+from sqlalchemy.pool import NullPool
 
 from app.models.data_source import DataSource
 from app.services.connectors.dataset_schemas import ConnectorDatasetColumn
@@ -24,7 +25,7 @@ def pg_engine_for_datasource(ds: DataSource) -> Engine:
         f"postgresql://{username}:{password_escaped}@{ds.host}:{ds.port or 5432}"
         f"/{ds.database or 'postgres'}"
     )
-    return create_engine(url, pool_pre_ping=True, pool_recycle=10)
+    return create_engine(url, poolclass=NullPool)
 
 
 def ymd_to_date(value: str | date | datetime | None) -> date | None:

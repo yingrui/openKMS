@@ -7,6 +7,7 @@ from urllib.parse import quote_plus
 
 from sqlalchemy import create_engine, text
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.pool import NullPool
 
 from app.models.data_source import DataSource
 from app.models.dataset import Dataset
@@ -17,7 +18,13 @@ _IDENTIFIER = re.compile(r"^[a-zA-Z0-9_]+$")
 
 
 def pg_engine_for_datasource(ds: DataSource):
-    """Create a sync SQLAlchemy engine for a PostgreSQL data source."""
+    """Create a sync SQLAlchemy engine for a PostgreSQL data source.
+
+    Uses ``NullPool`` so each engine holds **zero** pooled connections — a connection
+    is opened on ``connect()`` and closed on exit. Creating a default QueuePool
+    (pool_size=5 + overflow=10) per request let concurrent data-layer calls exhaust
+    the server's ``max_connections``.
+    """
     username = decrypt(ds.username_encrypted) if ds.username_encrypted else ""
     password = decrypt(ds.password_encrypted) if ds.password_encrypted else ""
     password_escaped = quote_plus(password) if password else ""
@@ -25,7 +32,7 @@ def pg_engine_for_datasource(ds: DataSource):
         f"postgresql://{username}:{password_escaped}@{ds.host}:{ds.port or 5432}"
         f"/{ds.database or 'postgres'}"
     )
-    return create_engine(url, pool_pre_ping=True, pool_recycle=10)
+    return create_engine(url, poolclass=NullPool)
 
 
 def is_valid_identifier(name: str) -> bool:
