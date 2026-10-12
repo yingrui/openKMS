@@ -82,3 +82,97 @@
   color: var(--color-text);
   padding: var(--padding-compact-y) 0;
 }
+
+.dataset-er {
+  width: 100%;
+  height: auto;
+  max-height: 420px;
+
+  &__empty {
+    color: var(--color-text-muted);
+    padding: var(--space-6);
+    text-align: center;
+  }
+
+  &__edge {
+    stroke: var(--color-border);
+    stroke-width: 1.5;
+  }
+
+  &__edge-label {
+    fill: var(--color-text-muted);
+    font-size: 11px;
+  }
+
+  &__node {
+    fill: var(--color-bg-surface);
+    stroke: var(--color-border);
+    stroke-width: 1.5;
+
+    &--center {
+      fill: var(--color-accent-subtle);
+      stroke: var(--color-accent);
+    }
+  }
+
+  &__node-label {
+    fill: var(--color-text);
+    font-size: 13px;
+    font-weight: 600;
+  }
+
+  &__node-sub {
+    fill: var(--color-text-muted);
+    font-size: 10px;
+  }
+}
+
+.dataset-joins {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+
+  &__toolbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-3);
+  }
+
+  &__pairs {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+  }
+
+  &__pair {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+  }
+
+  &__eq {
+    color: var(--color-text-muted);
+  }
+}
+
+.dataset-join-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: var(--space-3);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+
+  &__main {
+    min-width: 0;
+  }
+
+  &__meta {
+    color: var(--color-text-muted);
+    font-size: 0.8125rem;
+    margin: 0;
+    word-break: break-word;
+  }
+}

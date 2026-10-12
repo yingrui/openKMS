@@ -1,0 +1,342 @@
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
+import { Loader2, Plus, Trash2, X } from 'lucide-react';
+import { toast } from 'sonner';
+import { useDatasetDetail } from './DatasetDetailPage';
+import {
+  fetchDatasetMetadata,
+  fetchDatasets,
+  type ColumnMetadata,
+  type DatasetResponse,
+} from '../../data/datasetsApi';
+import {
+  createDatasetJoin,
+  deleteDatasetJoin,
+  fetchDatasetJoins,
+  type DatasetJoinResponse,
+} from '../../data/joinsApi';
+import { useConfirm } from '../../contexts/ConfirmContext';
+import { EmptyState } from '../../styles/design-system';
+import { EntityViewHeader, EntityViewPanel, EntityViewLoading } from './EntityViewShell';
+import { DatasetErDiagram, type ErNode } from './DatasetErDiagram';
+
+type ColumnPair = { source: string; target: string };
+
+export function DatasetRelationshipsTab() {
+  const { t } = useTranslation('ontology');
+  const { dataset } = useDatasetDetail();
+  const datasetId = dataset.id;
+  const confirm = useConfirm();
+
+  const [joins, setJoins] = useState<DatasetJoinResponse[]>([]);
+  const [datasets, setDatasets] = useState<DatasetResponse[]>([]);
+  const [sourceColumns, setSourceColumns] = useState<ColumnMetadata[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  const [showForm, setShowForm] = useState(false);
+  const [targetId, setTargetId] = useState('');
+  const [cardinality, setCardinality] = useState('one-to-many');
+  const [pairs, setPairs] = useState<ColumnPair[]>([{ source: '', target: '' }]);
+  const [joinName, setJoinName] = useState('');
+  const [description, setDescription] = useState('');
+  const [targetColumns, setTargetColumns] = useState<ColumnMetadata[]>([]);
+  const [submitting, setSubmitting] = useState(false);
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    try {
+      const [j, ds, meta] = await Promise.all([
+        fetchDatasetJoins(datasetId),
+        fetchDatasets(),
+        fetchDatasetMetadata(datasetId),
+      ]);
+      setJoins(j.items);
+      setDatasets(ds.items);
+      setSourceColumns(meta);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : t('datasets.loadFailed'));
+    } finally {
+      setLoading(false);
+    }
+  }, [datasetId, t]);
+
+  useEffect(() => {
+    void load();
+  }, [load]);
+
+  useEffect(() => {
+    if (!targetId) {
+      setTargetColumns([]);
+      return;
+    }
+    let cancelled = false;
+    void fetchDatasetMetadata(targetId)
+      .then((m) => !cancelled && setTargetColumns(m))
+      .catch(() => !cancelled && setTargetColumns([]));
+    return () => {
+      cancelled = true;
+    };
+  }, [targetId]);
+
+  const otherDatasets = useMemo(
+    () => datasets.filter((d) => d.id !== datasetId),
+    [datasets, datasetId],
+  );
+
+  const erNodes: ErNode[] = useMemo(
+    () =>
+      joins.map((j) => {
+        const other =
+          j.source_dataset_id === datasetId ? j.target_dataset_name : j.source_dataset_name;
+        return {
+          id: j.id,
+          label: other ?? t('datasets.dash'),
+          cardinality: j.cardinality,
+          columns: j.join_columns.map((c) => `${c.source} = ${c.target}`).join(', '),
+        };
+      }),
+    [joins, datasetId, t],
+  );
+
+  const openCreate = () => {
+    setTargetId('');
+    setCardinality('one-to-many');
+    setPairs([{ source: '', target: '' }]);
+    setJoinName('');
+    setDescription('');
+    setShowForm(true);
+  };
+
+  const handleCreate = async () => {
+    if (!targetId) {
+      toast.error(t('datasets.joinTargetRequired'));
+      return;
+    }
+    const columns = pairs
+      .filter((p) => p.source && p.target)
+      .map((p) => ({ source: p.source, target: p.target }));
+    if (columns.length === 0) {
+      toast.error(t('datasets.joinColumnsRequired'));
+      return;
+    }
+    setSubmitting(true);
+    try {
+      await createDatasetJoin({
+        name: joinName.trim() || null,
+        source_dataset_id: datasetId,
+        target_dataset_id: targetId,
+        cardinality,
+        join_columns: columns,
+        description: description.trim() || null,
+      });
+      toast.success(t('datasets.joinCreated'));
+      setShowForm(false);
+      await load();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : t('datasets.joinCreateFailed'));
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleDelete = async (id: string) => {
+    if (
+      !(await confirm({
+        title: t('shared.delete'),
+        message: t('datasets.joinDeleteConfirm'),
+        confirmLabel: t('shared.delete'),
+        danger: true,
+      }))
+    )
+      return;
+    try {
+      await deleteDatasetJoin(id);
+      toast.success(t('datasets.joinDeleted'));
+      await load();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : t('datasets.joinDeleteFailed'));
+    }
+  };
+
+  if (loading) return <EntityViewLoading label={t('shared.loading')} />;
+
+  const centerLabel = dataset.display_name?.trim() || `${dataset.schema_name}.${dataset.table_name}`;
+
+  return (
+    <>
+      <EntityViewHeader title={t('datasets.relationships')} subtitle={t('datasets.relationshipsHint')} />
+      <EntityViewPanel>
+        <DatasetErDiagram
+          centerLabel={centerLabel}
+          nodes={erNodes}
+          emptyLabel={t('datasets.relationshipsEmpty')}
+        />
+      </EntityViewPanel>
+      <EntityViewPanel>
+        <div className="dataset-joins">
+          <div className="dataset-joins__toolbar">
+            <h3>{t('datasets.relationshipList')}</h3>
+            <button type="button" className="btn btn-secondary" onClick={openCreate}>
+              <Plus size={16} aria-hidden />
+              {t('datasets.addRelationship')}
+            </button>
+          </div>
+          {joins.length === 0 ? (
+            <EmptyState title={t('datasets.relationshipsEmpty')} description={t('datasets.relationshipsHint')} />
+          ) : (
+            joins.map((j) => (
+              <div key={j.id} className="dataset-join-row">
+                <div className="dataset-join-row__main">
+                  <strong>
+                    {j.name ||
+                      `${j.source_dataset_name ?? j.source_dataset_id} → ${
+                        j.target_dataset_name ?? j.target_dataset_id
+                      }`}
+                  </strong>
+                  <p className="dataset-join-row__meta">
+                    {j.cardinality} · {j.join_columns.map((c) => `${c.source} = ${c.target}`).join(', ')}
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  className="btn btn-secondary"
+                  onClick={() => void handleDelete(j.id)}
+                  title={t('shared.delete')}
+                >
+                  <Trash2 size={16} aria-hidden />
+                </button>
+              </div>
+            ))
+          )}
+        </div>
+      </EntityViewPanel>
+
+      {showForm && (
+        <div
+          className="console-modal-overlay"
+          onClick={(e) => e.target === e.currentTarget && !submitting && setShowForm(false)}
+        >
+          <div className="console-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="console-modal-header">
+              <h2>{t('datasets.addRelationship')}</h2>
+              <button
+                type="button"
+                onClick={() => !submitting && setShowForm(false)}
+                disabled={submitting}
+                aria-label={t('datasets.closeAria')}
+              >
+                <X size={20} />
+              </button>
+            </div>
+            <div className="console-modal-body">
+              <label>
+                <span>{t('datasets.joinTargetDataset')}</span>
+                <select value={targetId} onChange={(e) => setTargetId(e.target.value)}>
+                  <option value="">{t('datasets.selectTable')}</option>
+                  {otherDatasets.map((d) => (
+                    <option key={d.id} value={d.id}>
+                      {d.display_name || `${d.schema_name}.${d.table_name}`}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label>
+                <span>{t('datasets.joinCardinality')}</span>
+                <select value={cardinality} onChange={(e) => setCardinality(e.target.value)}>
+                  <option value="one-to-many">{t('datasets.cardinalityOneToMany')}</option>
+                  <option value="one-to-one">{t('datasets.cardinalityOneToOne')}</option>
+                </select>
+              </label>
+              <div className="dataset-joins__pairs">
+                <span>{t('datasets.joinColumns')}</span>
+                {pairs.map((pair, idx) => (
+                  <div key={idx} className="dataset-joins__pair">
+                    <select
+                      value={pair.source}
+                      onChange={(e) =>
+                        setPairs((prev) =>
+                          prev.map((p, i) => (i === idx ? { ...p, source: e.target.value } : p)),
+                        )
+                      }
+                    >
+                      <option value="">{t('datasets.joinColumnPlaceholder')}</option>
+                      {sourceColumns.map((c) => (
+                        <option key={c.column_name} value={c.column_name}>
+                          {c.column_name}
+                        </option>
+                      ))}
+                    </select>
+                    <span className="dataset-joins__eq">=</span>
+                    <select
+                      value={pair.target}
+                      onChange={(e) =>
+                        setPairs((prev) =>
+                          prev.map((p, i) => (i === idx ? { ...p, target: e.target.value } : p)),
+                        )
+                      }
+                      disabled={!targetId}
+                    >
+                      <option value="">{t('datasets.joinColumnPlaceholder')}</option>
+                      {targetColumns.map((c) => (
+                        <option key={c.column_name} value={c.column_name}>
+                          {c.column_name}
+                        </option>
+                      ))}
+                    </select>
+                    {pairs.length > 1 && (
+                      <button
+                        type="button"
+                        className="btn btn-secondary"
+                        onClick={() => setPairs((prev) => prev.filter((_, i) => i !== idx))}
+                      >
+                        <Trash2 size={16} aria-hidden />
+                      </button>
+                    )}
+                  </div>
+                ))}
+                <button
+                  type="button"
+                  className="btn btn-secondary"
+                  onClick={() => setPairs((prev) => [...prev, { source: '', target: '' }])}
+                >
+                  <Plus size={16} aria-hidden />
+                  {t('datasets.joinAddPair')}
+                </button>
+              </div>
+              <label>
+                <span>{t('datasets.joinName')}</span>
+                <input type="text" value={joinName} onChange={(e) => setJoinName(e.target.value)} />
+              </label>
+              <label>
+                <span>{t('datasets.joinDescription')}</span>
+                <input
+                  type="text"
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
+                />
+              </label>
+            </div>
+            <div className="console-modal-actions">
+              <button
+                type="button"
+                className="btn btn-secondary"
+                onClick={() => !submitting && setShowForm(false)}
+                disabled={submitting}
+              >
+                {t('shared.cancel')}
+              </button>
+              <button
+                type="button"
+                className="btn btn-primary"
+                onClick={() => void handleCreate()}
+                disabled={submitting || !targetId}
+              >
+                {submitting ? <Loader2 size={16} className="console-loading-spinner" /> : t('datasets.joinCreate')}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
+  );
+}

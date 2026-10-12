@@ -66,7 +66,7 @@ type DatasetDetailContext = {
 
 const DatasetDetailCtx = createContext<DatasetDetailContext | null>(null);
 
-function useDatasetDetail(): DatasetDetailContext {
+export function useDatasetDetail(): DatasetDetailContext {
   const ctx = useContext(DatasetDetailCtx);
   if (!ctx) throw new Error('useDatasetDetail requires DatasetDetailPage');
   return ctx;
@@ -297,6 +297,7 @@ export function DatasetDetailPage() {
           { to: `${base}/data`, label: t('datasets.data') },
           { to: `${base}/columns`, label: t('datasets.columns') },
           { to: `${base}/usage`, label: t('datasets.usage') },
+          { to: `${base}/relationships`, label: t('datasets.relationships') },
           { to: `${base}/sharing`, label: t('datasets.sharing') },
         ]}
       >
