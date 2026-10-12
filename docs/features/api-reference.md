@@ -376,6 +376,10 @@ Encrypted values; **never returned**. Write/sync/delete reject personal API key 
 | POST | `/api/datasets/ingests/{id}/preview` | Parse head + infer schema (`console:datasets`) |
 | POST | `/api/datasets/ingests/{id}/load` | Create/replace the target table + register dataset (`console:datasets`) |
 | GET | `/api/datasets/ingests/{id}` | Ingest status (`console:datasets`) |
+| GET | `/api/datasets/{id}/profile` | Last computed profile (`console:datasets` or `ontology:read`) |
+| POST | `/api/datasets/{id}/profile` | Recompute profile (`console:datasets`; write on dataset) |
+| GET | `/api/datasets/{id}/schema-history` | Schema snapshots (`console:datasets` or `ontology:read`) |
+| GET | `/api/datasets/{id}/lineage` | Read-time lineage (`console:datasets` or `ontology:read`) |
 
 ## Feature toggles
 

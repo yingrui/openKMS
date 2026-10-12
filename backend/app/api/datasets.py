@@ -25,13 +25,25 @@ from app.services.ontology.property_types import (
 )
 from app.models.data_source import DataSource
 from app.models.dataset import Dataset
+from app.models.dataset_profile import DatasetProfile
+from app.services.data_layer.lineage import build_lineage
+from app.services.data_layer.profile import (
+    ProfileError,
+    compute_profile,
+    list_schema_history,
+    snapshot_schema_if_changed,
+    store_profile,
+)
 from app.schemas.dataset import (
     ColumnMetadata,
     DatasetCreate,
+    DatasetLineageResponse,
     DatasetListResponse,
+    DatasetProfileResponse,
     DatasetResponse,
     DatasetRowsResponse,
     DatasetUpdate,
+    SchemaSnapshotResponse,
     TableInfo,
 )
 from app.services.ontology.dataset_tables import is_valid_identifier, pg_engine_for_datasource
@@ -273,6 +285,11 @@ async def get_dataset_metadata(
                     ordinal_position=r[4],
                 )
             )
+        try:
+            if await snapshot_schema_if_changed(db, dataset, [c.model_dump() for c in out]):
+                await db.commit()
+        except Exception:  # noqa: BLE001 - snapshotting must not break metadata reads
+            pass
         return out
     except Exception as e:
         raise HTTPException(status_code=502, detail=f"Failed to fetch metadata: {e}") from e
@@ -311,3 +328,84 @@ async def delete_dataset(
 ):
     """Delete a dataset."""
     await db.delete(dataset)
+
+
+@router.get(
+    "/{dataset_id}/profile",
+    response_model=DatasetProfileResponse,
+    dependencies=[Depends(require_any_permission(*_DATASET_VIEW))],
+)
+async def get_dataset_profile(
+    dataset: Dataset = Depends(get_dataset_scoped),
+    db: AsyncSession = Depends(get_db),
+):
+    """Return the last computed profile (empty if never profiled)."""
+    row = (
+        await db.execute(select(DatasetProfile).where(DatasetProfile.dataset_id == dataset.id))
+    ).scalar_one_or_none()
+    return DatasetProfileResponse(
+        dataset_id=dataset.id,
+        row_count=row.row_count if row else None,
+        column_stats=(row.column_stats if row and row.column_stats else []),
+        computed_at=row.computed_at if row else None,
+    )
+
+
+@router.post(
+    "/{dataset_id}/profile",
+    response_model=DatasetProfileResponse,
+    dependencies=[Depends(require_permission(PERM_CONSOLE_DATASETS))],
+)
+async def refresh_dataset_profile(
+    dataset: Dataset = Depends(get_dataset_scoped_write),
+    db: AsyncSession = Depends(get_db),
+):
+    """Scan the backing table and refresh the stored profile."""
+    try:
+        total, stats = await compute_profile(db, dataset)
+    except ProfileError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    row = await store_profile(db, dataset, total, stats)
+    await db.commit()
+    await db.refresh(row)
+    return DatasetProfileResponse(
+        dataset_id=dataset.id,
+        row_count=row.row_count,
+        column_stats=row.column_stats or [],
+        computed_at=row.computed_at,
+    )
+
+
+@router.get(
+    "/{dataset_id}/schema-history",
+    response_model=list[SchemaSnapshotResponse],
+    dependencies=[Depends(require_any_permission(*_DATASET_VIEW))],
+)
+async def get_schema_history(
+    dataset: Dataset = Depends(get_dataset_scoped),
+    db: AsyncSession = Depends(get_db),
+):
+    """List captured schema snapshots (newest first)."""
+    rows = await list_schema_history(db, dataset.id)
+    return [
+        SchemaSnapshotResponse(
+            id=r.id, dataset_id=r.dataset_id, columns=r.columns or [], captured_at=r.captured_at
+        )
+        for r in rows
+    ]
+
+
+@router.get(
+    "/{dataset_id}/lineage",
+    response_model=DatasetLineageResponse,
+    dependencies=[Depends(require_any_permission(*_DATASET_VIEW))],
+)
+async def get_dataset_lineage(
+    dataset: Dataset = Depends(get_dataset_scoped),
+    db: AsyncSession = Depends(get_db),
+):
+    """Read-time lineage: source, object/link types, and joined datasets."""
+    data = await build_lineage(db, dataset.id)
+    if data is None:
+        raise HTTPException(status_code=404, detail="Dataset not found")
+    return DatasetLineageResponse(**data)

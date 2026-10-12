@@ -1,5 +1,6 @@
 """Dataset schemas."""
 from datetime import datetime
+from typing import Any
 
 from pydantic import BaseModel
 
@@ -78,3 +79,45 @@ class DatasetRowsResponse(BaseModel):
     total: int
     limit: int
     offset: int
+
+
+class DatasetProfileColumn(BaseModel):
+    column: str
+    null_count: int | None = None
+    distinct_count: int | None = None
+    min: Any | None = None
+    max: Any | None = None
+
+
+class DatasetProfileResponse(BaseModel):
+    dataset_id: str
+    row_count: int | None = None
+    column_stats: list[DatasetProfileColumn] = []
+    computed_at: datetime | None = None
+
+
+class SchemaSnapshotResponse(BaseModel):
+    id: str
+    dataset_id: str
+    columns: list[ColumnMetadata]
+    captured_at: datetime
+
+
+class LineageNode(BaseModel):
+    type: str
+    id: str
+    label: str | None = None
+
+
+class LineageJoin(BaseModel):
+    join_id: str
+    dataset_id: str
+    dataset_name: str | None = None
+    cardinality: str
+
+
+class DatasetLineageResponse(BaseModel):
+    dataset: LineageNode
+    upstream: list[LineageNode] = []
+    downstream: list[LineageNode] = []
+    joined_datasets: list[LineageJoin] = []

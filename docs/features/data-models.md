@@ -193,6 +193,16 @@ Schema for every persisted table. Grouped by area; see the matching feature page
 - `id`, `data_source_id` (FK → data_sources, CASCADE), `dataset_id` (FK → datasets, SET NULL), `storage_key`, `filename`, `status` (`uploaded` | `preview_ready` | `completed` | `failed`), `schema_name`, `table_name`, `parse_config` (JSONB), `row_count`, `error_message`, `created_by` / `created_by_name`, `created_at`, `updated_at`
 - File ingest record: raw file in object storage (`datasets/uploads/{id}/…`), parsed (CSV/TSV/JSON/Excel via pandas) and loaded into a data-layer PostgreSQL table
 
+### DatasetProfile
+
+- `id`, `dataset_id` (FK → datasets, CASCADE, unique), `row_count`, `column_stats` (JSONB: per-column null/distinct/min/max), `computed_at`
+- Last computed profile; refreshed via `POST /api/datasets/{id}/profile`
+
+### SchemaSnapshot
+
+- `id`, `dataset_id` (FK → datasets, CASCADE), `columns` (JSONB: column metadata), `captured_at`
+- Appended when a dataset's schema changes (captured on metadata read); backs `GET /api/datasets/{id}/schema-history`
+
 ## Console / system
 
 ### FeatureToggle

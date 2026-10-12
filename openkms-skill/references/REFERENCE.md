@@ -214,6 +214,13 @@ All write subcommands accept `--yes` / `--dry-run`. Without `--yes` on non-TTY s
 | `datasets rows` | GET | `/api/datasets/{id}/rows` | Optional `?limit=` / `?offset=`. |
 | `datasets metadata` | GET | `/api/datasets/{id}/metadata` | Column metadata. |
 | `datasets create` *(write)* | POST | `/api/datasets` | Register existing table. |
+| `datasets profile` | GET | `/api/datasets/{id}/profile` | Computed column profile (row count, null/distinct/min/max). |
+| `datasets schema-history` | GET | `/api/datasets/{id}/schema-history` | Captured schema snapshots (newest first). |
+| `datasets lineage` | GET | `/api/datasets/{id}/lineage` | Read-time lineage: source, object/link types, joined datasets. |
+| `datasets joins list` | GET | `/api/dataset-joins` | Optional `?dataset_id=`. |
+| `datasets joins add` *(write)* | POST | `/api/dataset-joins` | Body `{source_dataset_id, target_dataset_id, cardinality, join_columns:[{source,target}]}`. |
+| `datasets joins delete` *(write)* | DELETE | `/api/dataset-joins/{join_id}` | |
+| `datasets ingest` *(write)* | POST | `/api/datasets/ingests` → `…/preview` → `…/load` | Upload a file, parse it, load into a data-layer PostgreSQL table. |
 | `connectors kinds` | GET | `/api/connectors/kinds` | |
 | `connectors list` | GET | `/api/connectors` | |
 | `connectors get` | GET | `/api/connectors/{id}` | |
