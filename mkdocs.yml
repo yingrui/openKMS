@@ -216,3 +216,6 @@ nav:
       - Enterprise KM in the AI era (insight draft): research/enterprise_km_ai_era_insight.md
       - Ontology Functions & Actions: research/ontology_functions_and_actions.md
       - Ontology Manager alignment (platform vs DIY): research/ontology_manager_alignment.md
+      - Data layer plan (Datasets · Data Model · Data Explorer): research/data_layer_plan.md
+      - Data layer implementation design (Phase 0–1): research/data_layer_implementation.md
+      - Data layer interaction design: research/data_layer_interaction.md
