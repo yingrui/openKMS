@@ -372,6 +372,10 @@ Encrypted values; **never returned**. Write/sync/delete reject personal API key 
 | GET | `/api/dataset-joins/{id}` | Get dataset join (`console:datasets` or `ontology:read`) |
 | PUT | `/api/dataset-joins/{id}` | Update dataset join (`console:datasets`) |
 | DELETE | `/api/dataset-joins/{id}` | Delete dataset join (`console:datasets`) |
+| POST | `/api/datasets/ingests` | Start a file ingest (multipart `file` + `data_source_id`; `console:datasets`) |
+| POST | `/api/datasets/ingests/{id}/preview` | Parse head + infer schema (`console:datasets`) |
+| POST | `/api/datasets/ingests/{id}/load` | Create/replace the target table + register dataset (`console:datasets`) |
+| GET | `/api/datasets/ingests/{id}` | Ingest status (`console:datasets`) |
 
 ## Feature toggles
 

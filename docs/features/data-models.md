@@ -188,6 +188,11 @@ Schema for every persisted table. Grouped by area; see the matching feature page
 - `id`, `name` (nullable), `source_dataset_id` (FK → datasets, CASCADE), `target_dataset_id` (FK → datasets, CASCADE), `cardinality` (`one-to-one` | `one-to-many`), `join_columns` (JSONB: `[{source, target}]`), `description`, `created_by` / `created_by_name`, `created_at`, `updated_at`
 - Registered equi-joins between datasets; authored manually and validated against live columns; backs the Data Model ER view (check: source ≠ target)
 
+### DatasetIngest
+
+- `id`, `data_source_id` (FK → data_sources, CASCADE), `dataset_id` (FK → datasets, SET NULL), `storage_key`, `filename`, `status` (`uploaded` | `preview_ready` | `completed` | `failed`), `schema_name`, `table_name`, `parse_config` (JSONB), `row_count`, `error_message`, `created_by` / `created_by_name`, `created_at`, `updated_at`
+- File ingest record: raw file in object storage (`datasets/uploads/{id}/…`), parsed (CSV/TSV/JSON/Excel via pandas) and loaded into a data-layer PostgreSQL table
+
 ## Console / system
 
 ### FeatureToggle
