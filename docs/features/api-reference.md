@@ -367,6 +367,11 @@ Encrypted values; **never returned**. Write/sync/delete reject personal API key 
 | GET | `/api/datasets/{id}/metadata` | Column metadata (`console:datasets` or `ontology:read`; dataset ACL) |
 | PUT | `/api/datasets/{id}` | Update dataset (`console:datasets`; write on dataset) |
 | DELETE | `/api/datasets/{id}` | Delete dataset (`console:datasets`; manage on dataset) |
+| GET | `/api/dataset-joins` | List dataset joins (`dataset_id` filter; `console:datasets` or `ontology:read`) |
+| POST | `/api/dataset-joins` | Create dataset join (validated; `console:datasets`) |
+| GET | `/api/dataset-joins/{id}` | Get dataset join (`console:datasets` or `ontology:read`) |
+| PUT | `/api/dataset-joins/{id}` | Update dataset join (`console:datasets`) |
+| DELETE | `/api/dataset-joins/{id}` | Delete dataset join (`console:datasets`) |
 
 ## Feature toggles
 

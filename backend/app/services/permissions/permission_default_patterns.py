@@ -104,7 +104,7 @@ DEFAULT_PATTERNS_BY_KEY: dict[str, tuple[list[str], list[str]]] = {
     ),
     PERM_CONSOLE_DATASETS: (
         ["/console", "/datasets", "/datasets/*", "/ontology/datasets", "/ontology/datasets/*"],
-        ["/api/datasets/*"],
+        ["/api/datasets/*", "/api/dataset-joins", "/api/dataset-joins/*"],
     ),
     PERM_CONSOLE_OBJECT_TYPES: (
         ["/console", "/ontology/object-types"],
@@ -305,6 +305,10 @@ DEFAULT_PATTERNS_BY_KEY: dict[str, tuple[list[str], list[str]]] = {
             "GET /api/datasets",
             "GET /api/datasets/*",
             "HEAD /api/datasets/*",
+            "GET /api/dataset-joins",
+            "GET /api/dataset-joins/*",
+            "HEAD /api/dataset-joins",
+            "HEAD /api/dataset-joins/*",
             "GET /api/ontology/*",
             "HEAD /api/ontology/*",
             "POST /api/ontology/explore",

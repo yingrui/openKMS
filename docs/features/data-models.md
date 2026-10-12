@@ -183,6 +183,11 @@ Schema for every persisted table. Grouped by area; see the matching feature page
 - `id`, `data_source_id` (FK), `schema_name`, `table_name`, `display_name`, `description`, `owner_sub`, `domain`, `tags` (JSONB array), `business_definition`, `sensitivity` (`public` | `internal` | `confidential` | `restricted`), `created_by` (nullable; creator subject for sharing owner bootstrap), `created_by_name` (nullable), `created_at`, `updated_at`
 - PostgreSQL table reference; can be mapped to ObjectType/LinkType in future
 
+### DatasetJoin
+
+- `id`, `name` (nullable), `source_dataset_id` (FK → datasets, CASCADE), `target_dataset_id` (FK → datasets, CASCADE), `cardinality` (`one-to-one` | `one-to-many`), `join_columns` (JSONB: `[{source, target}]`), `description`, `created_by` / `created_by_name`, `created_at`, `updated_at`
+- Registered equi-joins between datasets; authored manually and validated against live columns; backs the Data Model ER view (check: source ≠ target)
+
 ## Console / system
 
 ### FeatureToggle
