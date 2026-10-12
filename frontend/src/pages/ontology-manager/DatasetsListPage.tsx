@@ -262,7 +262,7 @@ export function DatasetsListPage() {
                     <tr key={d.id}>
                       <td>
                         <Link
-                          to={`/ontology-manager/datasets/${d.id}`}
+                          to={`/datasets/${d.id}`}
                           className="ontology-manager-list__api-link"
                         >
                           <strong>{d.display_name || `${d.schema_name}.${d.table_name}`}</strong>
@@ -275,7 +275,7 @@ export function DatasetsListPage() {
                       <td className="console-table-actions">
                         <div className="console-table-btns">
                           <Link
-                            to={`/ontology-manager/datasets/${d.id}/sharing`}
+                            to={`/datasets/${d.id}/sharing`}
                             title={t('datasets.sharing')}
                             className="console-table-icon-link"
                             aria-label={t('datasets.sharing')}

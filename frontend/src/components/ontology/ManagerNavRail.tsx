@@ -1,6 +1,6 @@
 import { NavLink, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { Box, Code2, FolderTree, Link2, Network, Table, Zap } from 'lucide-react';
+import { Box, Code2, FolderTree, Link2, Network, Zap } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import './OntologyNavRail.scss';
 
@@ -55,13 +55,6 @@ const MANAGER_NAV: NavItem[] = [
     match: (p) =>
       p.startsWith('/ontology-manager/action-types') || p.startsWith('/ontology-manager/actions'),
     canPath: '/ontology-manager/action-types',
-  },
-  {
-    to: '/ontology-manager/datasets',
-    labelKey: 'datasets',
-    icon: Table,
-    match: (p) => p.startsWith('/ontology-manager/datasets'),
-    canPath: '/ontology-manager/datasets',
   },
 ];
 

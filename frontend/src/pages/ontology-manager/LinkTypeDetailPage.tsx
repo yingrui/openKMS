@@ -489,7 +489,7 @@ export function LinkTypeDatasourcesTab() {
                 </select>
               </EntityViewField>
               <p className="entity-view__field-hint">
-                <Link to={`/ontology-manager/datasets/${datasetId}`}>{t('objectTypes.openDataset')}</Link>
+                <Link to={`/datasets/${datasetId}`}>{t('objectTypes.openDataset')}</Link>
               </p>
             </>
           ) : null}

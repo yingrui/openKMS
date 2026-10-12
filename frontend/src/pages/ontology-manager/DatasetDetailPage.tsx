@@ -181,7 +181,7 @@ export function DatasetDetailPage() {
     try {
       await deleteDataset(datasetId);
       toast.success(t('datasets.deleted'));
-      navigate('/ontology-manager/datasets');
+      navigate('/datasets');
     } catch (e) {
       toast.error(e instanceof Error ? e.message : t('datasets.deleteFailed'));
     }
@@ -218,12 +218,12 @@ export function DatasetDetailPage() {
   }
 
   const title = dataset.display_name?.trim() || tableLabel(dataset);
-  const base = `/ontology-manager/datasets/${datasetId}`;
+  const base = `/datasets/${datasetId}`;
 
   return (
     <DatasetDetailCtx.Provider value={ctx}>
       <EntityViewShell
-        backTo="/ontology-manager/datasets"
+        backTo="/datasets"
         backLabel={t('datasets.backToList')}
         kind={t('datasets.kind')}
         title={title}
@@ -628,7 +628,7 @@ export function DatasetSettingsRedirect() {
   const tab = searchParams.get('tab');
   const target =
     tab === 'sharing'
-      ? `/ontology-manager/datasets/${datasetId}/sharing`
-      : `/ontology-manager/datasets/${datasetId}`;
+      ? `/datasets/${datasetId}/sharing`
+      : `/datasets/${datasetId}`;
   return <Navigate to={target} replace />;
 }

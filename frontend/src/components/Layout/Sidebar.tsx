@@ -1,3 +1,4 @@
+import { Fragment } from 'react';
 import { Link, NavLink, useLocation } from 'react-router-dom';
 import {
   HardDrive,
@@ -13,7 +14,7 @@ import {
 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 
-import { moduleTooltip, isConsoleShellPath } from '../../config/appModules';
+import { moduleTooltip, isConsoleShellPath, groupModulesByLayer } from '../../config/appModules';
 import { useVisibleMainSidebarModules, useVisibleConsolePlatformModules } from '../../hooks/useAppModules';
 import { useAuth } from '../../contexts/AuthContext';
 import { useConsoleMobileNav } from '../../contexts/ConsoleMobileNavContext';
@@ -217,23 +218,28 @@ export function Sidebar() {
             )}
           </div>
         ) : (
-          appModules.map((mod) => {
-            const Icon = mod.icon;
-            const label = t(mod.labelKey);
-            const tagline = t(mod.taglineKey);
-            const active = mod.isActive(location.pathname);
-            return (
-              <NavLink
-                key={mod.id}
-                to={mod.homePath}
-                title={moduleTooltip(label, tagline)}
-                className={`sidebar-link ${active ? 'sidebar-link-active' : ''}`}
-              >
-                <Icon size={18} strokeWidth={1.75} />
-                <span>{label}</span>
-              </NavLink>
-            );
-          })
+          groupModulesByLayer(appModules).map((group, gi) => (
+            <Fragment key={group.layer}>
+              {gi > 0 && <div className="sidebar-layer-divider" aria-hidden />}
+              {group.modules.map((mod) => {
+                const Icon = mod.icon;
+                const label = t(mod.labelKey);
+                const tagline = t(mod.taglineKey);
+                const active = mod.isActive(location.pathname);
+                return (
+                  <NavLink
+                    key={mod.id}
+                    to={mod.homePath}
+                    title={moduleTooltip(label, tagline)}
+                    className={`sidebar-link ${active ? 'sidebar-link-active' : ''}`}
+                  >
+                    <Icon size={18} strokeWidth={1.75} />
+                    <span>{label}</span>
+                  </NavLink>
+                );
+              })}
+            </Fragment>
+          ))
         )}
       </nav>
       {immersive ? (

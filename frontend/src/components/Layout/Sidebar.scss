@@ -193,3 +193,10 @@
   padding: 10px 10px 4px;
   margin-top: 4px;
 }
+
+/* Layer grouping (data → ontology → application) in the App Rail. */
+.sidebar-layer-divider {
+  height: 1px;
+  margin: 6px 10px;
+  background: var(--color-border);
+}

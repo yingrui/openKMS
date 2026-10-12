@@ -16,14 +16,20 @@ import {
   Plug,
   Compass,
   LayoutGrid,
+  Table2,
 } from 'lucide-react';
 import type { FeatureToggleKey } from '../data/featureTogglesApi';
 
 export type ModuleKind = 'platform' | 'suite_app' | 'console_platform';
 
+/** Suite apps are grouped into three layers in the App Rail and Launcher. */
+export type AppLayer = 'data' | 'ontology' | 'application';
+
 export type AppModule = {
   id: string;
   kind: ModuleKind;
+  /** Layer grouping in the App Rail and Launcher (data → ontology → application). Suite apps only. */
+  layer?: AppLayer;
   /** Display order in App Rail, Launcher, and Home Apps (lower = earlier). Keep in sync across surfaces. */
   order: number;
   homePath: string;
@@ -66,16 +72,36 @@ const functionEditorActive = (pathname: string) =>
  * Canonical suite app order — App Rail, App Launcher, and Home Apps must all use
  * `sortSuiteApps()` after visibility filtering. Reorder here only; do not sort in UI code.
  *
- * 1. Agent workspaces, then document capture
- * 2. Core content (articles → wiki → knowledge bases)
- * 3. Media
- * 4. Knowledge structure (terms → ontology → evaluations)
- * 5. Knowledge Map (overview — last)
+ * Grouped by `layer` (data → ontology → application); `order` is the within-layer tie-break.
+ *
+ * Data layer: Datasets (+ Data Model, Data Explorer later)
+ * Ontology layer: Ontology Manager / Object Explorer / Function Editor
+ * Application layer: agent workspaces, document capture, content, knowledge structure
  */
 export const APP_MODULES: AppModule[] = [
   {
+    id: 'datasets',
+    kind: 'suite_app',
+    layer: 'data',
+    order: 5,
+    homePath: '/datasets',
+    icon: Table2,
+    labelKey: 'datasets',
+    taglineKey: 'appTaglineDatasets',
+    showInLauncher: true,
+    showInMainSidebar: true,
+    showInConsoleNav: false,
+    accessPaths: ['/ontology-manager/datasets', '/ontology-manager/datasets/*'],
+    isActive: (p) =>
+      p === '/datasets' ||
+      p.startsWith('/datasets/') ||
+      p === '/ontology-manager/datasets' ||
+      p.startsWith('/ontology-manager/datasets/'),
+  },
+  {
     id: 'agents',
     kind: 'suite_app',
+    layer: 'application',
     order: 10,
     homePath: '/agents',
     icon: Bot,
@@ -90,6 +116,7 @@ export const APP_MODULES: AppModule[] = [
   {
     id: 'documents',
     kind: 'suite_app',
+    layer: 'application',
     order: 20,
     homePath: '/documents',
     icon: FileStack,
@@ -103,6 +130,7 @@ export const APP_MODULES: AppModule[] = [
   {
     id: 'articles',
     kind: 'suite_app',
+    layer: 'application',
     order: 30,
     homePath: '/articles',
     icon: FileText,
@@ -116,6 +144,7 @@ export const APP_MODULES: AppModule[] = [
   {
     id: 'wikis',
     kind: 'suite_app',
+    layer: 'application',
     order: 40,
     homePath: '/wikis',
     icon: BookOpen,
@@ -129,6 +158,7 @@ export const APP_MODULES: AppModule[] = [
   {
     id: 'knowledge-bases',
     kind: 'suite_app',
+    layer: 'application',
     order: 50,
     homePath: '/knowledge-bases',
     icon: Database,
@@ -142,6 +172,7 @@ export const APP_MODULES: AppModule[] = [
   {
     id: 'media',
     kind: 'suite_app',
+    layer: 'application',
     order: 60,
     homePath: '/media',
     icon: Image,
@@ -156,6 +187,7 @@ export const APP_MODULES: AppModule[] = [
   {
     id: 'glossaries',
     kind: 'suite_app',
+    layer: 'application',
     order: 70,
     homePath: '/glossaries',
     icon: BookOpen,
@@ -169,6 +201,7 @@ export const APP_MODULES: AppModule[] = [
   {
     id: 'ontology-manager',
     kind: 'suite_app',
+    layer: 'ontology',
     order: 80,
     homePath: '/ontology-manager',
     icon: Network,
@@ -183,6 +216,7 @@ export const APP_MODULES: AppModule[] = [
   {
     id: 'object-explorer',
     kind: 'suite_app',
+    layer: 'ontology',
     order: 81,
     homePath: '/object-explorer/objects',
     icon: Compass,
@@ -197,6 +231,7 @@ export const APP_MODULES: AppModule[] = [
   {
     id: 'function-editor',
     kind: 'suite_app',
+    layer: 'ontology',
     order: 82,
     homePath: '/function-editor',
     icon: Code2,
@@ -210,6 +245,7 @@ export const APP_MODULES: AppModule[] = [
   {
     id: 'apps',
     kind: 'suite_app',
+    layer: 'application',
     order: 83,
     homePath: '/apps',
     icon: LayoutGrid,
@@ -223,6 +259,7 @@ export const APP_MODULES: AppModule[] = [
   {
     id: 'evaluations',
     kind: 'suite_app',
+    layer: 'application',
     order: 90,
     homePath: '/evaluations',
     icon: ClipboardList,
@@ -237,6 +274,7 @@ export const APP_MODULES: AppModule[] = [
   {
     id: 'knowledge-map',
     kind: 'suite_app',
+    layer: 'application',
     order: 100,
     homePath: '/knowledge-map',
     icon: FolderTree,
@@ -312,6 +350,20 @@ export const CONSOLE_PLATFORM_MODULES: AppModule[] = [
 
 export function sortSuiteApps(modules: AppModule[]): AppModule[] {
   return [...modules].sort((a, b) => a.order - b.order || a.id.localeCompare(b.id));
+}
+
+/** Canonical layer order for the App Rail and Launcher. */
+export const APP_LAYER_ORDER: AppLayer[] = ['data', 'ontology', 'application'];
+
+/** Group (already sorted) suite modules by layer, preserving order within each layer. */
+export function groupModulesByLayer(
+  modules: AppModule[],
+): { layer: AppLayer; modules: AppModule[] }[] {
+  const sorted = sortSuiteApps(modules);
+  return APP_LAYER_ORDER.map((layer) => ({
+    layer,
+    modules: sorted.filter((m) => m.layer === layer),
+  })).filter((g) => g.modules.length > 0);
 }
 
 export function getLauncherModules(): AppModule[] {

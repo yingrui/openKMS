@@ -246,7 +246,14 @@ function EvaluationDatasetDetailPage() {
 
 function LegacyConsoleDatasetRedirect() {
   const { id } = useParams();
-  return <Navigate to={`/ontology-manager/datasets/${id ?? ''}`} replace />;
+  return <Navigate to={`/datasets/${id ?? ''}`} replace />;
+}
+
+function LegacyOntologyDatasetRedirect() {
+  const { '*': rest } = useParams();
+  const location = useLocation();
+  const suffix = rest ? `/${rest}` : '';
+  return <Navigate to={`/datasets${suffix}${location.search}${location.hash}`} replace />;
 }
 
 function LegacyOntologyActionsRedirect() {
@@ -371,17 +378,18 @@ function App() {
           <Route path="jobs/:jobId" element={<LegacyJobRunRedirect />} />
           <Route path="models" element={<Models />} />
           <Route path="models/:modelId" element={<ModelDetail />} />
+          <Route path="datasets" element={<DatasetsListPage />} />
+          <Route path="datasets/:id/settings" element={<DatasetSettingsRedirect />} />
+          <Route path="datasets/:id" element={<DatasetManagerDetailPage />}>
+            <Route index element={<DatasetOverviewTab />} />
+            <Route path="data" element={<DatasetDataTab />} />
+            <Route path="columns" element={<DatasetColumnsTab />} />
+            <Route path="usage" element={<DatasetUsageTab />} />
+            <Route path="sharing" element={<DatasetSharingTab />} />
+          </Route>
           <Route path="ontology-manager" element={<Outlet />}>
             <Route index element={<OntologyList />} />
-            <Route path="datasets" element={<DatasetsListPage />} />
-            <Route path="datasets/:id/settings" element={<DatasetSettingsRedirect />} />
-            <Route path="datasets/:id" element={<DatasetManagerDetailPage />}>
-              <Route index element={<DatasetOverviewTab />} />
-              <Route path="data" element={<DatasetDataTab />} />
-              <Route path="columns" element={<DatasetColumnsTab />} />
-              <Route path="usage" element={<DatasetUsageTab />} />
-              <Route path="sharing" element={<DatasetSharingTab />} />
-            </Route>
+            <Route path="datasets/*" element={<LegacyOntologyDatasetRedirect />} />
             <Route path="object-types" element={<ObjectTypesPage />} />
             <Route path="object-types/:typeId/settings" element={<ObjectTypeSettingsRedirect />} />
             <Route path="object-types/:typeId" element={<ObjectTypeManagerDetailPage />}>
@@ -441,7 +449,7 @@ function App() {
           <Route path="ontology/*" element={<LegacyOntologyRedirect />} />
           <Route path="objects/*" element={<LegacyObjectsRedirect />} />
           <Route path="links/*" element={<LegacyLinksRedirect />} />
-          <Route path="console/datasets" element={<Navigate to="/ontology-manager/datasets" replace />} />
+          <Route path="console/datasets" element={<Navigate to="/datasets" replace />} />
           <Route path="console/datasets/:id" element={<LegacyConsoleDatasetRedirect />} />
           <Route path="console/object-types" element={<Navigate to="/ontology-manager/object-types" replace />} />
           <Route path="console/link-types" element={<Navigate to="/ontology-manager/link-types" replace />} />

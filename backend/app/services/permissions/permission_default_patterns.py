@@ -103,7 +103,7 @@ DEFAULT_PATTERNS_BY_KEY: dict[str, tuple[list[str], list[str]]] = {
         ],
     ),
     PERM_CONSOLE_DATASETS: (
-        ["/console", "/ontology/datasets", "/ontology/datasets/*"],
+        ["/console", "/datasets", "/datasets/*", "/ontology/datasets", "/ontology/datasets/*"],
         ["/api/datasets/*"],
     ),
     PERM_CONSOLE_OBJECT_TYPES: (
@@ -278,6 +278,8 @@ DEFAULT_PATTERNS_BY_KEY: dict[str, tuple[list[str], list[str]]] = {
             "/ontology",
             "/ontology/datasets",
             "/ontology/datasets/*",
+            "/datasets",
+            "/datasets/*",
             "/ontology/object-types",
             "/ontology/link-types",
             "/ontology-manager",
@@ -318,6 +320,8 @@ DEFAULT_PATTERNS_BY_KEY: dict[str, tuple[list[str], list[str]]] = {
     PERM_ONTOLOGY_WRITE: (
         [
             "/ontology",
+            "/datasets",
+            "/datasets/*",
             "/ontology/object-types",
             "/ontology/link-types",
             "/ontology-manager",
