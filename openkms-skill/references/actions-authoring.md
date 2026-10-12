@@ -84,4 +84,4 @@ python scripts/cli.py ontology action-types create … --api-name createWorkItem
 - Probe unknown rule types (`object_update`, `object_edit`, …) — they fail; use the table above.
 - Leave archived Actions that still hold `api_name`s you need — **delete** them.
 - Expect Action execute alone to update **dataset-backed** synthetic ids (deferred).
-- Bypass CLI with ad-hoc HTTP — if a subcommand is missing, extend this skill.
+- Bypass CLI with ad-hoc HTTP — if a subcommand is missing, report the gap to the user; only a maintainer working in a skill-source checkout adds it there.
