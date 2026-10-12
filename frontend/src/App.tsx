@@ -212,6 +212,9 @@ const ArticleChannelSettings = lazy(() =>
 const DatasetManagerDetailPage = lazy(() =>
   import('./pages/ontology-manager/DatasetDetailPage').then((m) => ({ default: m.DatasetDetailPage })),
 );
+const DataModelPage = lazy(() =>
+  import('./pages/ontology-manager/DataModelPage').then((m) => ({ default: m.DataModelPage })),
+);
 const DatasetOverviewTab = lazy(() =>
   import('./pages/ontology-manager/DatasetDetailPage').then((m) => ({ default: m.DatasetOverviewTab })),
 );
@@ -398,6 +401,7 @@ function App() {
           <Route path="jobs/:jobId" element={<LegacyJobRunRedirect />} />
           <Route path="models" element={<Models />} />
           <Route path="models/:modelId" element={<ModelDetail />} />
+          <Route path="data-model" element={<DataModelPage />} />
           <Route path="datasets" element={<DatasetsListPage />} />
           <Route path="datasets/:id/settings" element={<DatasetSettingsRedirect />} />
           <Route path="datasets/:id" element={<DatasetManagerDetailPage />}>

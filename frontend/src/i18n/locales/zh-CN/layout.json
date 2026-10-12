@@ -90,6 +90,8 @@
   "ontologyOverview": "概览",
   "appTaglineHome": "平台首页与快速开始",
   "appTaglineDatasets": "编目、建模与探索数据",
+  "dataModel": "数据模型",
+  "appTaglineDataModel": "Join、ER 模型与数据质量告警",
   "layer_data": "数据层",
   "layer_ontology": "本体层",
   "layer_application": "应用层",

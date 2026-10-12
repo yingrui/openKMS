@@ -72,6 +72,16 @@
     "schemaRelatedObjectTypes": "Object types in schema",
     "schemaRelatedLinkTypes": "Link types in schema"
   },
+  "dataModel": {
+    "title": "Data Model",
+    "subtitle": "Registered joins and data-quality alerts across datasets.",
+    "datasets": "Datasets",
+    "joins": "Registered joins",
+    "qualityAlerts": "Quality alerts",
+    "noAlerts": "No quality alerts.",
+    "colSource": "Source",
+    "colTarget": "Target"
+  },
   "datasets": {
     "title": "Datasets",
     "subtitle": "Register PostgreSQL tables from data sources for object and link types.",

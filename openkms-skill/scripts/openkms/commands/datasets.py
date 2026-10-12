@@ -177,6 +177,91 @@ def cmd_ingest(ns: argparse.Namespace) -> None:
     print_json(lr.json())
 
 
+def cmd_quality_list(ns: argparse.Namespace) -> None:
+    with client() as s:
+        r = s.get(f"/api/datasets/{ns.id}/quality-rules")
+    r.raise_for_status()
+    print_json(r.json())
+
+
+def cmd_quality_add(ns: argparse.Namespace) -> None:
+    config: dict[str, Any] = {}
+    if ns.min is not None:
+        config["min"] = ns.min
+    if ns.max is not None:
+        config["max"] = ns.max
+    if ns.ref_dataset_id:
+        config["ref_dataset_id"] = ns.ref_dataset_id
+    if ns.ref_column:
+        config["ref_column"] = ns.ref_column
+    if ns.max_age_days is not None:
+        config["max_age_days"] = ns.max_age_days
+    body: dict[str, Any] = {
+        "name": ns.name,
+        "rule_type": ns.rule_type,
+        "column_name": ns.column or None,
+        "config": config,
+    }
+    path = f"/api/datasets/{ns.id}/quality-rules"
+    confirm_or_abort("add quality rule", "POST", path, body, ns.yes, ns.dry_run)
+    with client() as s:
+        r = s.post(path, json=body)
+    r.raise_for_status()
+    print_json(r.json())
+
+
+def cmd_quality_run(ns: argparse.Namespace) -> None:
+    path = f"/api/datasets/{ns.id}/quality-rules/{ns.rule_id}/run"
+    confirm_or_abort("run quality rule", "POST", path, None, ns.yes, ns.dry_run)
+    with client() as s:
+        r = s.post(path)
+    r.raise_for_status()
+    print_json(r.json())
+
+
+def cmd_quality_delete(ns: argparse.Namespace) -> None:
+    path = f"/api/datasets/{ns.id}/quality-rules/{ns.rule_id}"
+    confirm_or_abort("delete quality rule", "DELETE", path, None, ns.yes, ns.dry_run)
+    with client() as s:
+        r = s.delete(path)
+    r.raise_for_status()
+    print(f"deleted quality rule {ns.rule_id}")
+
+
+def cmd_metrics_list(ns: argparse.Namespace) -> None:
+    with client() as s:
+        r = s.get(f"/api/datasets/{ns.id}/metrics")
+    r.raise_for_status()
+    print_json(r.json())
+
+
+def cmd_metrics_add(ns: argparse.Namespace) -> None:
+    body: dict[str, Any] = {
+        "name": ns.name,
+        "aggregation": ns.aggregation,
+        "column_name": ns.column or None,
+    }
+    if ns.definition:
+        body["business_definition"] = ns.definition
+    if ns.dimensions:
+        body["dimensions"] = [d.strip() for d in ns.dimensions.split(",") if d.strip()]
+    if ns.joins:
+        body["joins"] = [j.strip() for j in ns.joins.split(",") if j.strip()]
+    path = f"/api/datasets/{ns.id}/metrics"
+    confirm_or_abort("add metric", "POST", path, body, ns.yes, ns.dry_run)
+    with client() as s:
+        r = s.post(path, json=body)
+    r.raise_for_status()
+    print_json(r.json())
+
+
+def cmd_metrics_compute(ns: argparse.Namespace) -> None:
+    with client() as s:
+        r = s.post(f"/api/datasets/{ns.id}/metrics/{ns.metric_id}/compute")
+    r.raise_for_status()
+    print_json(r.json())
+
+
 def add_subparser(sub) -> None:
     p = sub.add_parser("datasets", help="Ontology / connector datasets")
     sp = p.add_subparsers(dest="dset_cmd", required=True)
@@ -245,3 +330,51 @@ def add_subparser(sub) -> None:
     ing.add_argument("--append", action="store_true", help="append to an existing table (default: overwrite)")
     add_write_flags(ing)
     ing.set_defaults(fn=cmd_ingest)
+
+    q = sp.add_parser("quality", help="Data-quality rules (declarative)")
+    qsp = q.add_subparsers(dest="dset_quality_cmd", required=True)
+    ql = qsp.add_parser("list", help="List quality rules")
+    ql.add_argument("--id", required=True)
+    ql.set_defaults(fn=cmd_quality_list)
+    qa = qsp.add_parser("add", help="Add a quality rule")
+    qa.add_argument("--id", required=True)
+    qa.add_argument("--name", required=True)
+    qa.add_argument("--type", dest="rule_type", required=True)
+    qa.add_argument("--column", default=None)
+    qa.add_argument("--min", default=None)
+    qa.add_argument("--max", default=None)
+    qa.add_argument("--ref-dataset-id", default=None)
+    qa.add_argument("--ref-column", default=None)
+    qa.add_argument("--max-age-days", type=int, default=None)
+    add_write_flags(qa)
+    qa.set_defaults(fn=cmd_quality_add)
+    qr = qsp.add_parser("run", help="Run a quality rule")
+    qr.add_argument("--id", required=True)
+    qr.add_argument("--rule-id", required=True)
+    add_write_flags(qr)
+    qr.set_defaults(fn=cmd_quality_run)
+    qd = qsp.add_parser("delete", help="Delete a quality rule")
+    qd.add_argument("--id", required=True)
+    qd.add_argument("--rule-id", required=True)
+    add_write_flags(qd)
+    qd.set_defaults(fn=cmd_quality_delete)
+
+    me = sp.add_parser("metrics", help="Declarative metrics")
+    msp = me.add_subparsers(dest="dset_metrics_cmd", required=True)
+    ml = msp.add_parser("list", help="List metrics")
+    ml.add_argument("--id", required=True)
+    ml.set_defaults(fn=cmd_metrics_list)
+    ma = msp.add_parser("add", help="Add a metric")
+    ma.add_argument("--id", required=True)
+    ma.add_argument("--name", required=True)
+    ma.add_argument("--aggregation", required=True)
+    ma.add_argument("--column", default=None)
+    ma.add_argument("--dimensions", default=None, help="comma-separated columns")
+    ma.add_argument("--joins", default=None, help="comma-separated dataset-join ids")
+    ma.add_argument("--definition", default=None)
+    add_write_flags(ma)
+    ma.set_defaults(fn=cmd_metrics_add)
+    mc = msp.add_parser("compute", help="Compute a metric")
+    mc.add_argument("--id", required=True)
+    mc.add_argument("--metric-id", required=True)
+    mc.set_defaults(fn=cmd_metrics_compute)

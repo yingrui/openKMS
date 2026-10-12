@@ -17,6 +17,7 @@ import {
   Compass,
   LayoutGrid,
   Table2,
+  Share2,
 } from 'lucide-react';
 import type { FeatureToggleKey } from '../data/featureTogglesApi';
 
@@ -97,6 +98,20 @@ export const APP_MODULES: AppModule[] = [
       p.startsWith('/datasets/') ||
       p === '/ontology-manager/datasets' ||
       p.startsWith('/ontology-manager/datasets/'),
+  },
+  {
+    id: 'data-model',
+    kind: 'suite_app',
+    layer: 'data',
+    order: 6,
+    homePath: '/data-model',
+    icon: Share2,
+    labelKey: 'dataModel',
+    taglineKey: 'appTaglineDataModel',
+    showInLauncher: true,
+    showInMainSidebar: true,
+    showInConsoleNav: false,
+    isActive: (p) => p === '/data-model' || p.startsWith('/data-model/'),
   },
   {
     id: 'agents',

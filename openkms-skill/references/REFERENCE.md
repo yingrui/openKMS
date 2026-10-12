@@ -221,6 +221,13 @@ All write subcommands accept `--yes` / `--dry-run`. Without `--yes` on non-TTY s
 | `datasets joins add` *(write)* | POST | `/api/dataset-joins` | Body `{source_dataset_id, target_dataset_id, cardinality, join_columns:[{source,target}]}`. |
 | `datasets joins delete` *(write)* | DELETE | `/api/dataset-joins/{join_id}` | |
 | `datasets ingest` *(write)* | POST | `/api/datasets/ingests` → `…/preview` → `…/load` | Upload a file, parse it, load into a data-layer PostgreSQL table. |
+| `datasets quality list` | GET | `/api/datasets/{id}/quality-rules` | Declarative quality rules + last status. |
+| `datasets quality add` *(write)* | POST | `/api/datasets/{id}/quality-rules` | Body `{name, rule_type, column_name, config}`. |
+| `datasets quality run` *(write)* | POST | `/api/datasets/{id}/quality-rules/{rule_id}/run` | |
+| `datasets quality delete` *(write)* | DELETE | `/api/datasets/{id}/quality-rules/{rule_id}` | |
+| `datasets metrics list` | GET | `/api/datasets/{id}/metrics` | Declarative metric definitions. |
+| `datasets metrics add` *(write)* | POST | `/api/datasets/{id}/metrics` | Body `{name, aggregation, column_name, dimensions, joins}`. |
+| `datasets metrics compute` | POST | `/api/datasets/{id}/metrics/{metric_id}/compute` | Generates SQL from the DSL and queries on demand. |
 | `connectors kinds` | GET | `/api/connectors/kinds` | |
 | `connectors list` | GET | `/api/connectors` | |
 | `connectors get` | GET | `/api/connectors/{id}` | |

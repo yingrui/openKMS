@@ -9,7 +9,7 @@ Prefix with `python scripts/cli.py`. Writes need `--yes` / `--dry-run`. Before A
 | Goal | Command |
 |------|---------|
 | Data sources | `data-sources list` · `data-sources get --id ID` (as available via `--help`) |
-| Datasets | `datasets list [--data-source-id ID]` · `datasets rows --id DS_ID` · `datasets metadata --id DS_ID` · `datasets profile --id DS_ID` · `datasets lineage --id DS_ID` · `datasets joins list --id DS_ID` · `datasets ingest --file x.csv --data-source-id ID --schema imports --table x --yes` |
+| Datasets | `datasets list [--data-source-id ID]` · `datasets rows --id DS_ID` · `datasets metadata --id DS_ID` · `datasets profile --id DS_ID` · `datasets lineage --id DS_ID` · `datasets joins list --id DS_ID` · `datasets quality list --id DS_ID` · `datasets quality run --id DS_ID --rule-id RULE_ID --yes` · `datasets metrics list --id DS_ID` · `datasets metrics compute --id DS_ID --metric-id M_ID` · `datasets ingest --file x.csv --data-source-id ID --schema imports --table x --yes` |
 | Connectors | `connectors kinds` · `connectors list` · `connectors get --id ID` |
 | Jobs | `jobs get --id JOB_ID` · `jobs list` |
 | Module Apps | `apps list` · `apps get <id>` |

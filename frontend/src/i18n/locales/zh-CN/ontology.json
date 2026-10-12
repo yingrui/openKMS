@@ -72,6 +72,16 @@
     "schemaRelatedObjectTypes": "schema 中的对象类型",
     "schemaRelatedLinkTypes": "schema 中的链接类型"
   },
+  "dataModel": {
+    "title": "数据模型",
+    "subtitle": "跨数据集的已登记 Join 与数据质量告警。",
+    "datasets": "数据集",
+    "joins": "已登记的 Join",
+    "qualityAlerts": "质量告警",
+    "noAlerts": "暂无质量告警。",
+    "colSource": "源",
+    "colTarget": "目标"
+  },
   "datasets": {
     "title": "数据集",
     "subtitle": "从数据源注册 PostgreSQL 表，供对象类型与关联类型绑定。",

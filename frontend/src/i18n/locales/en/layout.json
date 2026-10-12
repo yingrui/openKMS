@@ -90,6 +90,8 @@
   "ontologyOverview": "Overview",
   "appTaglineHome": "Platform home and quick start",
   "appTaglineDatasets": "Catalog, model, and explore data",
+  "dataModel": "Data Model",
+  "appTaglineDataModel": "Joins, the ER model, and data-quality alerts",
   "layer_data": "Data",
   "layer_ontology": "Ontology",
   "layer_application": "Application",
