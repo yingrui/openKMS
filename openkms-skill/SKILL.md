@@ -49,16 +49,10 @@ Authoring / Apps / k8s mutate guides matter only for those write paths — inven
 
 ## Quick start
 
-**Project agent** (cwd = project root; env injected — details in [setup.md](references/setup.md)):
+The CLI resolves `config.yml` and its imports from its own location, so **cwd does not matter** — only the path to `cli.py` must be correct. Run it from the skill's installed path:
 
 ```bash
-python .openkms/skills/openkms/scripts/cli.py ping
+python <skill_dir>/scripts/cli.py ping
 ```
 
-**Standalone** (skill directory as cwd; `pip install -r requirements.txt` **once** after copy):
-
-```bash
-python scripts/cli.py ping
-```
-
-Then discover with `--help`, open the matching scenario row above, and chain JSON responses. After long jobs (`connectors sync`, `kb index`, …), poll `jobs get --id JOB_ID`.
+`<skill_dir>` is the skill's install location (see [setup.md](references/setup.md)). Elsewhere in this skill, examples are written as `python scripts/cli.py …`; run them as `<skill_dir>/scripts/cli.py …` unless your cwd is already the skill dir. Then discover with `--help`, open the matching scenario row above, and chain JSON responses. After long jobs (`connectors sync`, `kb index`, …), poll `jobs get --id JOB_ID`.

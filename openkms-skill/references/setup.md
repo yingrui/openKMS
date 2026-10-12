@@ -32,18 +32,13 @@ The CLI sends `Authorization: Bearer <api_key>` (same permissions as the key own
 
 ## Invoke
 
-**Project agent** (skill at `.openkms/skills/openkms/`, cwd = project root):
+The CLI locates `config.yml` and its imports via `__file__`, so **cwd does not matter** — only the path to `cli.py` must be correct:
 
 ```bash
-python .openkms/skills/openkms/scripts/cli.py ping
+python <skill_dir>/scripts/cli.py ping
 ```
 
-**Standalone** (skill directory is cwd; `pip install -r requirements.txt` once after copy):
-
-```bash
-pip install -q -r requirements.txt   # first time only
-python scripts/cli.py ping
-```
+`<skill_dir>` is the install location: `.openkms/skills/openkms` for an openKMS project agent (cwd = project root), `~/.pi/agent/skills/openkms` (Pi), `~/.claude/skills/openkms` (Claude Code), `~/.config/opencode/skills/openkms` (OpenCode), or a dev checkout. First-time dev/manual checkout needs `pip install -r requirements.txt` once.
 
 ## Install (OpenCode / Claude Code / Pi)
 
