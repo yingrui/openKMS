@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link } from 'react-router-dom';
-import { Database, Loader2, Pencil, Plus, RefreshCw, Search, Trash2, Users } from 'lucide-react';
+import { Link, useNavigate } from 'react-router-dom';
+import { Database, Loader2, Pencil, Plus, RefreshCw, Search, Trash2, Upload, Users } from 'lucide-react';
 import { toast } from 'sonner';
 import {
   createDataset,
@@ -13,12 +13,14 @@ import {
   type TableInfo,
 } from '../../data/datasetsApi';
 import { fetchAllDataSources, type DataSourceResponse } from '../../data/dataSourcesApi';
+import { DatasetUploadWizard } from './DatasetUploadWizard';
 import { useConfirm } from '../../contexts/ConfirmContext';
 import { Dialog, EmptyState, FormField } from '../../styles/design-system';
 import '../ontology/ontology-admin.scss';
 
 export function DatasetsListPage() {
   const { t } = useTranslation('ontology');
+  const navigate = useNavigate();
   const confirm = useConfirm();
   const [items, setItems] = useState<DatasetResponse[]>([]);
   const [dataSources, setDataSources] = useState<DataSourceResponse[]>([]);
@@ -34,8 +36,10 @@ export function DatasetsListPage() {
   const [filterDataSourceId, setFilterDataSourceId] = useState('');
   const [search, setSearch] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [showUpload, setShowUpload] = useState(false);
 
   const pgDataSources = dataSources.filter((ds) => ds.kind === 'postgresql');
+  const dataLayerSources = pgDataSources.filter((ds) => ds.layer === 'data');
 
   const filteredItems = items.filter((d) => {
     const s = search.trim().toLowerCase();
@@ -178,15 +182,26 @@ export function DatasetsListPage() {
           <h1>{t('datasets.title')}</h1>
           <p className="page-subtitle">{t('datasets.subtitle')}</p>
         </div>
-        <button
-          type="button"
-          className="btn btn-primary"
-          onClick={openCreate}
-          disabled={pgDataSources.length === 0}
-        >
-          <Plus size={18} aria-hidden />
-          <span>{t('datasets.create')}</span>
-        </button>
+        <div className="page-header-actions">
+          <button
+            type="button"
+            className="btn btn-secondary"
+            onClick={() => setShowUpload(true)}
+            disabled={dataLayerSources.length === 0}
+          >
+            <Upload size={18} aria-hidden />
+            <span>{t('datasets.uploadButton')}</span>
+          </button>
+          <button
+            type="button"
+            className="btn btn-primary"
+            onClick={openCreate}
+            disabled={pgDataSources.length === 0}
+          >
+            <Plus size={18} aria-hidden />
+            <span>{t('datasets.create')}</span>
+          </button>
+        </div>
       </header>
 
       <div className="ontology-admin-content">
@@ -308,6 +323,17 @@ export function DatasetsListPage() {
           </div>
         )}
       </div>
+
+      <DatasetUploadWizard
+        open={showUpload}
+        onClose={() => setShowUpload(false)}
+        dataSources={dataLayerSources}
+        onLoaded={(dataset) => {
+          setShowUpload(false);
+          void load();
+          navigate(`/datasets/${dataset.id}`);
+        }}
+      />
 
       <Dialog
         open={showForm}
