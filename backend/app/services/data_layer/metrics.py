@@ -1,0 +1,125 @@
+"""Compute a metric by querying the dataset table on demand.
+
+The metric is a **declarative DSL**: aggregation + column + filters + registered
+joins + dimensions. The SQL is generated here; callers never supply raw SQL.
+"""
+from __future__ import annotations
+
+from typing import Any
+
+from sqlalchemy import text
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.models.data_source import DataSource
+from app.models.dataset import Dataset
+from app.models.dataset_join import DatasetJoin
+from app.models.metric_definition import MetricDefinition
+from app.services.ontology.dataset_tables import is_valid_identifier, pg_engine_for_datasource
+from app.services.ontology.property_types import serialize_cell_value
+
+AGGREGATIONS = ("count", "sum", "avg", "min", "max")
+_OP_MAP = {"=": "=", "!=": "<>", ">": ">", ">=": ">=", "<": "<", "<=": "<=", "like": "LIKE"}
+VALID_OPS = tuple(_OP_MAP) + ("in", "not_in", "is_null", "is_not_null")
+
+
+class MetricError(ValueError):
+    """Raised when a metric cannot be computed; surfaced as HTTP 400."""
+
+
+async def compute_metric(db: AsyncSession, metric: MetricDefinition) -> list[dict[str, Any]]:
+    dataset = await db.get(Dataset, metric.dataset_id)
+    if not dataset:
+        raise MetricError("Dataset not found.")
+    ds = await db.get(DataSource, dataset.data_source_id)
+    if not ds or ds.kind != "postgresql":
+        raise MetricError("Metrics only run on PostgreSQL datasets.")
+    if not (is_valid_identifier(dataset.schema_name) and is_valid_identifier(dataset.table_name)):
+        raise MetricError("Invalid dataset table.")
+
+    agg = (metric.aggregation or "").lower()
+    if agg not in AGGREGATIONS:
+        raise MetricError(f"Unsupported aggregation '{metric.aggregation}'.")
+    col = metric.column_name
+    if agg != "count" and not (col and is_valid_identifier(col)):
+        raise MetricError("A valid column is required for this aggregation.")
+    if agg == "count" and not col:
+        agg_expr = "COUNT(*)"
+    else:
+        agg_expr = f'{agg.upper()}("{col}")' if agg != "count" else f'COUNT("{col}")'
+
+    joins_sql: list[str] = []
+    for i, join_id in enumerate(metric.joins or []):
+        join = await db.get(DatasetJoin, join_id)
+        if not join:
+            raise MetricError(f"Join '{join_id}' not found.")
+        if join.source_dataset_id == dataset.id:
+            other_id, source_is_metric = join.target_dataset_id, True
+        elif join.target_dataset_id == dataset.id:
+            other_id, source_is_metric = join.source_dataset_id, False
+        else:
+            raise MetricError(f"Join '{join_id}' does not touch this dataset.")
+        other = await db.get(Dataset, other_id)
+        if not other:
+            raise MetricError("Joined dataset not found.")
+        if not (is_valid_identifier(other.schema_name) and is_valid_identifier(other.table_name)):
+            raise MetricError("Invalid joined table.")
+        alias = f"j{i}"
+        ons: list[str] = []
+        for p in join.join_columns or []:
+            s, t = p.get("source"), p.get("target")
+            if not (isinstance(s, str) and isinstance(t, str) and is_valid_identifier(s) and is_valid_identifier(t)):
+                raise MetricError("Invalid join column.")
+            ons.append(f'base."{s}" = {alias}."{t}"' if source_is_metric else f'base."{t}" = {alias}."{s}"')
+        joins_sql.append(
+            f'LEFT JOIN "{other.schema_name}"."{other.table_name}" {alias} ON ' + " AND ".join(ons)
+        )
+
+    params: dict[str, Any] = {}
+    where: list[str] = []
+    for i, f in enumerate(metric.filters or []):
+        c, op, val = f.get("column"), f.get("op"), f.get("value")
+        if not (isinstance(c, str) and is_valid_identifier(c)):
+            raise MetricError("Invalid filter column.")
+        if op not in VALID_OPS:
+            raise MetricError(f"Unsupported operator '{op}'.")
+        qcol = f'base."{c}"'
+        if op == "is_null":
+            where.append(f"{qcol} IS NULL")
+        elif op == "is_not_null":
+            where.append(f"{qcol} IS NOT NULL")
+        elif op in ("in", "not_in"):
+            if not isinstance(val, list):
+                raise MetricError("IN filter value must be a list.")
+            keys: list[str] = []
+            for j, v in enumerate(val):
+                k = f"f{i}_{j}"
+                params[k] = v
+                keys.append(f":{k}")
+            where.append(f"{qcol} {'IN' if op == 'in' else 'NOT IN'} ({', '.join(keys)})")
+        else:
+            k = f"f{i}"
+            params[k] = val
+            where.append(f"{qcol} {_OP_MAP[op]} :{k}")
+
+    dims: list[str] = []
+    for d in metric.dimensions or []:
+        if not (isinstance(d, str) and is_valid_identifier(d)):
+            raise MetricError("Invalid dimension.")
+        dims.append(f'base."{d}"')
+
+    select = [*dims, f"{agg_expr} AS value"]
+    sql = f'SELECT {", ".join(select)} FROM "{dataset.schema_name}"."{dataset.table_name}" base'
+    if joins_sql:
+        sql += " " + " ".join(joins_sql)
+    if where:
+        sql += " WHERE " + " AND ".join(where)
+    if dims:
+        sql += " GROUP BY " + ", ".join(dims)
+
+    engine = pg_engine_for_datasource(ds)
+    try:
+        with engine.connect() as conn:
+            rows = conn.execute(text(sql), params).mappings().all()
+        return [{k: serialize_cell_value(r[k]) for k in r.keys()} for r in rows]
+    finally:
+        engine.dispose()

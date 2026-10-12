@@ -203,6 +203,21 @@ Schema for every persisted table. Grouped by area; see the matching feature page
 - `id`, `dataset_id` (FK → datasets, CASCADE), `columns` (JSONB: column metadata), `captured_at`
 - Appended when a dataset's schema changes (captured on metadata read); backs `GET /api/datasets/{id}/schema-history`
 
+### QualityRule
+
+- `id`, `dataset_id` (FK → datasets, CASCADE), `name`, `rule_type` (`not_null` | `unique` | `range` | `referential` | `freshness`), `column_name`, `config` (JSONB), `severity`, `enabled`, `created_by` / `created_by_name`, `created_at`, `updated_at`
+- Declarative data-quality rule (rule type + parameters); never arbitrary SQL
+
+### QualityRun
+
+- `id`, `rule_id` (FK → quality_rules, CASCADE), `status` (`passed` | `failed` | `error`), `checked_count`, `failed_count`, `detail` (JSONB), `error_message`, `created_at`
+- One execution of a quality rule
+
+### MetricDefinition
+
+- `id`, `dataset_id` (FK → datasets, CASCADE), `name`, `business_definition`, `aggregation` (`count` | `sum` | `avg` | `min` | `max`), `column_name`, `filters` (JSONB), `joins` (JSONB: dataset_join ids), `dimensions` (JSONB), `created_by` / `created_by_name`, `created_at`, `updated_at`
+- Declarative metric (restricted DSL); computed on demand by generating SQL
+
 ## Console / system
 
 ### FeatureToggle

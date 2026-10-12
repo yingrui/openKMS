@@ -380,6 +380,17 @@ Encrypted values; **never returned**. Write/sync/delete reject personal API key 
 | POST | `/api/datasets/{id}/profile` | Recompute profile (`console:datasets`; write on dataset) |
 | GET | `/api/datasets/{id}/schema-history` | Schema snapshots (`console:datasets` or `ontology:read`) |
 | GET | `/api/datasets/{id}/lineage` | Read-time lineage (`console:datasets` or `ontology:read`) |
+| GET | `/api/datasets/{id}/quality-rules` | List quality rules (`console:datasets` or `ontology:read`) |
+| POST | `/api/datasets/{id}/quality-rules` | Create quality rule (`console:datasets`) |
+| PUT | `/api/datasets/{id}/quality-rules/{rule_id}` | Update quality rule (`console:datasets`) |
+| DELETE | `/api/datasets/{id}/quality-rules/{rule_id}` | Delete quality rule (`console:datasets`) |
+| POST | `/api/datasets/{id}/quality-rules/{rule_id}/run` | Run a quality rule (`console:datasets`) |
+| GET | `/api/datasets/{id}/quality-rules/{rule_id}/runs` | Rule run history (`console:datasets` or `ontology:read`) |
+| GET | `/api/datasets/{id}/metrics` | List metrics (`console:datasets` or `ontology:read`) |
+| POST | `/api/datasets/{id}/metrics` | Create metric (`console:datasets`) |
+| PUT | `/api/datasets/{id}/metrics/{metric_id}` | Update metric (`console:datasets`) |
+| DELETE | `/api/datasets/{id}/metrics/{metric_id}` | Delete metric (`console:datasets`) |
+| POST | `/api/datasets/{id}/metrics/{metric_id}/compute` | Compute metric (`console:datasets` or `ontology:read`) |
 
 ## Feature toggles
 
