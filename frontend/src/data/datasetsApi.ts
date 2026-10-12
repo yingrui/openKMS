@@ -114,3 +114,61 @@ export async function fetchDatasetMetadata(id: string): Promise<ColumnMetadata[]
 export async function deleteDataset(id: string): Promise<void> {
   return request<void>(`/api/datasets/${id}`, { method: 'DELETE' });
 }
+
+export interface DatasetProfileColumn {
+  column: string;
+  null_count: number | null;
+  distinct_count: number | null;
+  min: unknown;
+  max: unknown;
+}
+
+export interface DatasetProfileResponse {
+  dataset_id: string;
+  row_count: number | null;
+  column_stats: DatasetProfileColumn[];
+  computed_at: string | null;
+}
+
+export interface SchemaSnapshotResponse {
+  id: string;
+  dataset_id: string;
+  columns: ColumnMetadata[];
+  captured_at: string;
+}
+
+export interface LineageNode {
+  type: string;
+  id: string;
+  label: string | null;
+}
+
+export interface LineageJoin {
+  join_id: string;
+  dataset_id: string;
+  dataset_name: string | null;
+  cardinality: string;
+}
+
+export interface DatasetLineageResponse {
+  dataset: LineageNode;
+  upstream: LineageNode[];
+  downstream: LineageNode[];
+  joined_datasets: LineageJoin[];
+}
+
+export async function fetchDatasetProfile(id: string): Promise<DatasetProfileResponse> {
+  return request<DatasetProfileResponse>(`/api/datasets/${id}/profile`);
+}
+
+export async function refreshDatasetProfile(id: string): Promise<DatasetProfileResponse> {
+  return request<DatasetProfileResponse>(`/api/datasets/${id}/profile`, { method: 'POST' });
+}
+
+export async function fetchSchemaHistory(id: string): Promise<SchemaSnapshotResponse[]> {
+  return request<SchemaSnapshotResponse[]>(`/api/datasets/${id}/schema-history`);
+}
+
+export async function fetchDatasetLineage(id: string): Promise<DatasetLineageResponse> {
+  return request<DatasetLineageResponse>(`/api/datasets/${id}/lineage`);
+}
