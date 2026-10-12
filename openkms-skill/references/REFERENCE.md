@@ -228,6 +228,11 @@ All write subcommands accept `--yes` / `--dry-run`. Without `--yes` on non-TTY s
 | `datasets metrics list` | GET | `/api/datasets/{id}/metrics` | Declarative metric definitions. |
 | `datasets metrics add` *(write)* | POST | `/api/datasets/{id}/metrics` | Body `{name, aggregation, column_name, dimensions, joins}`. |
 | `datasets metrics compute` | POST | `/api/datasets/{id}/metrics/{metric_id}/compute` | Generates SQL from the DSL and queries on demand. |
+| `explorer reports-list` | GET | `/api/explorer-reports` | Data Explorer saved analyses. |
+| `explorer reports-get` | GET | `/api/explorer-reports/{id}` | |
+| `explorer reports-create` *(write)* | POST | `/api/explorer-reports` | Body `{name, question, dataset_id, narrative, charts}`. |
+| `explorer reports-update` *(write)* | PUT | `/api/explorer-reports/{id}` | |
+| `explorer reports-delete` *(write)* | DELETE | `/api/explorer-reports/{id}` | |
 | `connectors kinds` | GET | `/api/connectors/kinds` | |
 | `connectors list` | GET | `/api/connectors` | |
 | `connectors get` | GET | `/api/connectors/{id}` | |

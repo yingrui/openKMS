@@ -391,6 +391,11 @@ Encrypted values; **never returned**. Write/sync/delete reject personal API key 
 | PUT | `/api/datasets/{id}/metrics/{metric_id}` | Update metric (`console:datasets`) |
 | DELETE | `/api/datasets/{id}/metrics/{metric_id}` | Delete metric (`console:datasets`) |
 | POST | `/api/datasets/{id}/metrics/{metric_id}/compute` | Compute metric (`console:datasets` or `ontology:read`) |
+| GET | `/api/explorer-reports` | List explorer reports (`console:datasets` or `ontology:read`) |
+| POST | `/api/explorer-reports` | Create explorer report (`console:datasets`) |
+| GET | `/api/explorer-reports/{id}` | Get explorer report (`console:datasets` or `ontology:read`) |
+| PUT | `/api/explorer-reports/{id}` | Update explorer report (`console:datasets`) |
+| DELETE | `/api/explorer-reports/{id}` | Delete explorer report (`console:datasets`) |
 
 ## Feature toggles
 

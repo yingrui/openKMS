@@ -18,6 +18,7 @@ import {
   LayoutGrid,
   Table2,
   Share2,
+  Sparkles,
 } from 'lucide-react';
 import type { FeatureToggleKey } from '../data/featureTogglesApi';
 
@@ -112,6 +113,20 @@ export const APP_MODULES: AppModule[] = [
     showInMainSidebar: true,
     showInConsoleNav: false,
     isActive: (p) => p === '/data-model' || p.startsWith('/data-model/'),
+  },
+  {
+    id: 'data-explorer',
+    kind: 'suite_app',
+    layer: 'data',
+    order: 7,
+    homePath: '/data-explorer',
+    icon: Sparkles,
+    labelKey: 'dataExplorer',
+    taglineKey: 'appTaglineDataExplorer',
+    showInLauncher: true,
+    showInMainSidebar: true,
+    showInConsoleNav: false,
+    isActive: (p) => p === '/data-explorer' || p.startsWith('/data-explorer/'),
   },
   {
     id: 'agents',

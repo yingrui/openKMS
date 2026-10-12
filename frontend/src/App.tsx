@@ -215,6 +215,14 @@ const DatasetManagerDetailPage = lazy(() =>
 const DataModelPage = lazy(() =>
   import('./pages/ontology-manager/DataModelPage').then((m) => ({ default: m.DataModelPage })),
 );
+const DataExplorerPage = lazy(() =>
+  import('./pages/ontology-manager/DataExplorerPage').then((m) => ({ default: m.DataExplorerPage })),
+);
+const ExplorerReportDetail = lazy(() =>
+  import('./pages/ontology-manager/ExplorerReportDetail').then((m) => ({
+    default: m.ExplorerReportDetail,
+  })),
+);
 const DatasetOverviewTab = lazy(() =>
   import('./pages/ontology-manager/DatasetDetailPage').then((m) => ({ default: m.DatasetOverviewTab })),
 );
@@ -402,6 +410,8 @@ function App() {
           <Route path="models" element={<Models />} />
           <Route path="models/:modelId" element={<ModelDetail />} />
           <Route path="data-model" element={<DataModelPage />} />
+          <Route path="data-explorer" element={<DataExplorerPage />} />
+          <Route path="data-explorer/:id" element={<ExplorerReportDetail />} />
           <Route path="datasets" element={<DatasetsListPage />} />
           <Route path="datasets/:id/settings" element={<DatasetSettingsRedirect />} />
           <Route path="datasets/:id" element={<DatasetManagerDetailPage />}>

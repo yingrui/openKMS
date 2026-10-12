@@ -72,6 +72,25 @@
     "schemaRelatedObjectTypes": "Object types in schema",
     "schemaRelatedLinkTypes": "Link types in schema"
   },
+  "dataExplorer": {
+    "title": "Data Explorer",
+    "subtitle": "Explore data with agents; saved analyses live here.",
+    "newReport": "New analysis",
+    "empty": "No saved analyses yet.",
+    "nameRequired": "Name is required",
+    "created": "Analysis created",
+    "createFailed": "Failed to create analysis",
+    "deleteConfirm": "Delete this analysis?",
+    "deleted": "Analysis deleted",
+    "deleteFailed": "Failed to delete analysis",
+    "reportName": "Name",
+    "question": "Question",
+    "questionPlaceholder": "e.g. why did turnover spike last month?",
+    "noDataset": "No dataset",
+    "narrative": "Analysis",
+    "noNarrative": "No analysis text yet \u2014 an agent can fill this in.",
+    "chart": "Chart"
+  },
   "dataModel": {
     "title": "Data Model",
     "subtitle": "Registered joins and data-quality alerts across datasets.",

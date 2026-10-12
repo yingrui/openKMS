@@ -14,6 +14,7 @@ from . import (
     document_channels,
     documents,
     evaluation,
+    explorer,
     glossaries,
     jobs,
     kb,
@@ -56,3 +57,4 @@ def register(sub: _SubParsersAction) -> None:
     media.add_media_subparser(sub)
     ontology.add_subparser(sub)  # exposes `ontology cypher/...`, `ontology objects ...`, `ontology links ...`
     evaluation.add_subparser(sub)
+    explorer.add_subparser(sub)

@@ -72,6 +72,25 @@
     "schemaRelatedObjectTypes": "schema 中的对象类型",
     "schemaRelatedLinkTypes": "schema 中的链接类型"
   },
+  "dataExplorer": {
+    "title": "数据探索",
+    "subtitle": "用 Agent 探索数据；已保存的分析都在这里。",
+    "newReport": "新建分析",
+    "empty": "暂无已保存的分析。",
+    "nameRequired": "请填写名称",
+    "created": "分析已创建",
+    "createFailed": "创建分析失败",
+    "deleteConfirm": "删除此分析？",
+    "deleted": "分析已删除",
+    "deleteFailed": "删除分析失败",
+    "reportName": "名称",
+    "question": "问题",
+    "questionPlaceholder": "例如：上月换手率为何飙升？",
+    "noDataset": "无数据集",
+    "narrative": "分析",
+    "noNarrative": "暂无分析文本——可由 Agent 填充。",
+    "chart": "图表"
+  },
   "dataModel": {
     "title": "数据模型",
     "subtitle": "跨数据集的已登记 Join 与数据质量告警。",

@@ -92,6 +92,8 @@
   "appTaglineDatasets": "Catalog, model, and explore data",
   "dataModel": "Data Model",
   "appTaglineDataModel": "Joins, the ER model, and data-quality alerts",
+  "dataExplorer": "Data Explorer",
+  "appTaglineDataExplorer": "Ask questions and save analyses",
   "layer_data": "Data",
   "layer_ontology": "Ontology",
   "layer_application": "Application",
