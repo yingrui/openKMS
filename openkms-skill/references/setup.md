@@ -5,7 +5,7 @@ Part of [agentskills.io](https://agentskills.io/specification) **`references/`**
 ## Dependencies (`requirements.txt`)
 
 - **Installed into an openKMS project** (Agents → Skills → install): the platform runs `pip install -r requirements.txt` **once** when the skill is copied into `.openkms/skills/openkms/`. **Do not run `pip install` again** on each CLI call. If `python …/scripts/cli.py` fails with `ModuleNotFoundError`, ask the user to **reinstall or update** the skill in project settings — do not patch deps by hand.
-- **Standalone copy** (OpenCode, Claude Code, manual `install.sh`, or dev checkout): run `pip install -r requirements.txt` **once** after copying the skill tree, then use the CLI as usual. Still **not** before every command.
+- **Standalone copy** (OpenCode, Claude Code, Pi, manual `install.sh`, or dev checkout): run `pip install -r requirements.txt` **once** after copying the skill tree, then use the CLI as usual. Still **not** before every command.
 - **Smoke check** — `python …/scripts/cli.py ping` verifies auth and that imports work; that is enough. No separate install step per session.
 
 ## openKMS project agents (workspace under `{project_id}/`)
@@ -45,7 +45,7 @@ pip install -q -r requirements.txt   # first time only
 python scripts/cli.py ping
 ```
 
-## Install (OpenCode / Claude Code)
+## Install (OpenCode / Claude Code / Pi)
 
 From the monorepo `openkms-skill/` tree:
 
@@ -53,8 +53,9 @@ From the monorepo `openkms-skill/` tree:
 ./install.sh                      # auto: whichever runtimes are present
 ./install.sh --target opencode    # → ~/.config/opencode/skills/openkms/
 ./install.sh --target claude-code # → ~/.claude/skills/openkms/
-./install.sh --target both
+./install.sh --target pi          # → ~/.pi/agent/skills/openkms/
+./install.sh --target all         # OpenCode + Claude Code + Pi
 ./install.sh --dest /custom/path
 ```
 
-Existing **`config.yml`** at the destination is **preserved**. Re-run after pulling repo changes.
+`auto` installs into each of `~/.config/opencode`, `~/.claude`, and `~/.pi` when that directory exists; if none exist, it does nothing (use an explicit `--target` or `--dest`). Existing **`config.yml`** at the destination is **preserved**. Re-run after pulling repo changes.

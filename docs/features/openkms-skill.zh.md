@@ -9,6 +9,7 @@
 | **openKMS Agents**（应用内） | **Agents → Skills** 上传 zip，在项目 Agent 设置中安装 |
 | **Claude Code** | `./install.sh --target claude-code` → `~/.claude/skills/openkms/` |
 | **OpenCode** | `./install.sh --target opencode` → `~/.config/opencode/skills/openkms/` |
+| **Pi** | `./install.sh --target pi` → `~/.pi/agent/skills/openkms/` |
 | **其他 / 手动** | 复制 skill 目录；配置 `config.yml` 或环境变量 |
 
 仓库路径：[`openkms-skill/`](https://github.com/yingrui/openKMS/blob/main/openkms-skill/)。与 **`openkms-cli`**（worker / 流水线工具）不同。

@@ -9,6 +9,7 @@ Works with **any** Agent Skills–compatible host, including:
 | **openKMS Agents** (in-product) | Upload zip on **Agents → Skills**, install under a project’s Agent settings |
 | **Claude Code** | `./install.sh --target claude-code` → `~/.claude/skills/openkms/` |
 | **OpenCode** | `./install.sh --target opencode` → `~/.config/opencode/skills/openkms/` |
+| **Pi** | `./install.sh --target pi` → `~/.pi/agent/skills/openkms/` |
 | **Other / manual** | Copy the skill tree; set `config.yml` or env vars |
 
 Repo path: [`openkms-skill/`](https://github.com/yingrui/openKMS/blob/main/openkms-skill/). Distinct from **`openkms-cli`** (worker/pipeline tooling).
@@ -33,8 +34,9 @@ openkms-skill/
 
 ```bash
 cd openkms-skill
-./install.sh                      # auto: OpenCode and/or Claude Code if present
-./install.sh --target both
+./install.sh                      # auto: OpenCode / Claude Code / Pi if present
+./install.sh --target pi
+./install.sh --target all
 ./package.sh --version 1.0.0      # zip for Agents → Skills upload
 ```
 

@@ -1,8 +1,8 @@
 # openkms-skill
 
-Thin CLI + Python package that lets [OpenCode](https://opencode.ai/docs/skills), [Claude Code](https://claude.com/claude-code), or any LLM agent talk to an **openKMS** deployment over its public HTTP API. One personal API key in `config.yml`, every command JSON-prints the raw response so the agent can chain calls.
+Thin CLI + Python package that lets [OpenCode](https://opencode.ai/docs/skills), [Claude Code](https://claude.com/claude-code), [Pi](https://pi.dev/docs/latest/skills), or any LLM agent talk to an **openKMS** deployment over its public HTTP API. One personal API key in `config.yml`, every command JSON-prints the raw response so the agent can chain calls.
 
-- **Install:** `./install.sh` (auto-detects OpenCode + Claude Code; copies runtime files only — same set as `package.sh`). Re-running upgrades the tree but **preserves your `config.yml`**.
+- **Install:** `./install.sh` (auto-detects OpenCode, Claude Code, and/or Pi; copies runtime files only — same set as `package.sh`). Re-running upgrades the tree but **preserves your `config.yml`**.
 - **Package for openKMS Agents:** `./package.sh --version 1.0.0` → `dist/openkms-1.0.0.zip` (upload on **Agents → Skills**).
 - **Configure:** copy `config.yml.example` → `config.yml`, fill in `api_base_url` and `api_key`. Create keys in **openKMS → Settings → API keys** (`okms.{uuid}.{secret}`, shown once).
 - **Agent-facing instructions:** [`SKILL.md`](SKILL.md) — short entry + progressive disclosure into [`references/`](references/). **All access must use `python scripts/cli.py …` only** (no ad-hoc `curl` or custom HTTP).
@@ -140,7 +140,7 @@ Previously the skill was mostly write-only (`upload`, `create`, `put-page`). Thi
 
 Structural changes:
 - Old 600-line `cli.py` → 42-line dispatcher + `scripts/openkms/` package (`client.py`, `config.py`, `_io.py`, `commands/*.py`). Adding a new command now means adding one file under `commands/`.
-- `install.sh` gained `--target opencode|claude-code|both|auto` and `--dest <path>`; auto-mode picks runtimes that exist on the machine. Existing `config.yml` at any destination is preserved on re-install.
+- `install.sh` supports `--target opencode|claude-code|pi|all|auto` and `--dest <path>`; auto-mode picks runtimes that exist on the machine (`~/.pi` → Pi). Existing `config.yml` at any destination is preserved on re-install.
 - New `tests/` suite under `pytest` against an `httpx` mock transport (`pip install -r dev-requirements.txt`, then `pytest -v`), plus an end-to-end smoke runner (`tests/run_cli.sh`) that hits a real openKMS.
 
 ## Development
