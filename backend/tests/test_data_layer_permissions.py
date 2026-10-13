@@ -65,3 +65,18 @@ def test_engine_resolves_data_write_for_writes():
     assert required is not None and PERM_DATA_WRITE in required
     required2 = resolve_required_permission_keys("DELETE", "/api/datasets/abc", rules)
     assert required2 is not None and PERM_DATA_WRITE in required2
+
+
+def test_ontology_keys_do_not_cover_data_routes():
+    """Data-layer routes/APIs belong to data:*, not ontology:* (no conflation)."""
+    fe, be = default_patterns_for_key("ontology:read")
+    assert "/datasets" not in fe
+    assert not any(p.endswith(" /api/datasets") or p.endswith(" /api/datasets/*") for p in be)
+    fe_w, _ = default_patterns_for_key("ontology:write")
+    assert "/datasets" not in fe_w
+
+
+def test_console_datasets_does_not_cover_data_app():
+    fe, be = default_patterns_for_key("console:datasets")
+    assert "/datasets" not in fe
+    assert "/api/datasets/*" not in be

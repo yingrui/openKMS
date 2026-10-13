@@ -93,7 +93,6 @@ export const APP_MODULES: AppModule[] = [
     showInLauncher: true,
     showInMainSidebar: true,
     showInConsoleNav: false,
-    accessPaths: ['/ontology-manager/datasets', '/ontology-manager/datasets/*'],
     isActive: (p) =>
       p === '/datasets' ||
       p.startsWith('/datasets/') ||

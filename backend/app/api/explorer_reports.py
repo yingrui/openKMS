@@ -18,14 +18,14 @@ from app.schemas.explorer_report import (
     ExplorerReportResponse,
     ExplorerReportUpdate,
 )
-from app.services.permissions.permission_catalog import PERM_CONSOLE_DATASETS, PERM_DATA_READ, PERM_DATA_WRITE, PERM_ONTOLOGY_READ
+from app.services.permissions.permission_catalog import PERM_DATA_READ, PERM_DATA_WRITE
 
 router = APIRouter(
     prefix="/explorer-reports",
     tags=["explorer"],
     dependencies=[Depends(require_auth)],
 )
-_VIEW = (PERM_CONSOLE_DATASETS, PERM_DATA_READ, PERM_ONTOLOGY_READ)
+_VIEW = (PERM_DATA_READ,)
 
 
 def _response(r: ExplorerReport) -> ExplorerReportResponse:
@@ -66,7 +66,7 @@ async def list_reports(db: AsyncSession = Depends(get_db)):
     "",
     response_model=ExplorerReportResponse,
     status_code=201,
-    dependencies=[Depends(require_any_permission(PERM_CONSOLE_DATASETS, PERM_DATA_WRITE))],
+    dependencies=[Depends(require_permission(PERM_DATA_WRITE))],
 )
 async def create_report(
     request: Request,
@@ -104,7 +104,7 @@ async def get_report(report_id: str, db: AsyncSession = Depends(get_db)):
 @router.put(
     "/{report_id}",
     response_model=ExplorerReportResponse,
-    dependencies=[Depends(require_any_permission(PERM_CONSOLE_DATASETS, PERM_DATA_WRITE))],
+    dependencies=[Depends(require_permission(PERM_DATA_WRITE))],
 )
 async def update_report(
     report_id: str,
@@ -124,7 +124,7 @@ async def update_report(
 @router.delete(
     "/{report_id}",
     status_code=204,
-    dependencies=[Depends(require_any_permission(PERM_CONSOLE_DATASETS, PERM_DATA_WRITE))],
+    dependencies=[Depends(require_permission(PERM_DATA_WRITE))],
 )
 async def delete_report(report_id: str, db: AsyncSession = Depends(get_db)):
     report = await _get(db, report_id)

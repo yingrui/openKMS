@@ -24,7 +24,7 @@ from app.schemas.dataset_ingest import (
 from app.services.acl.data_scope import bootstrap_owner_acl
 from app.services.acl.resource_acl_constants import RT_DATASET
 from app.services.data_layer.ingest import IngestError, load_dataframe, preview_columns, read_head
-from app.services.permissions.permission_catalog import PERM_CONSOLE_DATASETS, PERM_DATA_WRITE
+from app.services.permissions.permission_catalog import PERM_DATA_WRITE
 from app.services.storage import get_object, upload_object
 
 router = APIRouter(
@@ -54,7 +54,7 @@ def _response(row: DatasetIngest) -> DatasetIngestResponse:
     "",
     response_model=DatasetIngestResponse,
     status_code=201,
-    dependencies=[Depends(require_any_permission(PERM_CONSOLE_DATASETS, PERM_DATA_WRITE))],
+    dependencies=[Depends(require_permission(PERM_DATA_WRITE))],
 )
 async def start_ingest(
     request: Request,
@@ -100,7 +100,7 @@ async def start_ingest(
 @router.post(
     "/{ingest_id}/preview",
     response_model=DatasetIngestPreviewResponse,
-    dependencies=[Depends(require_any_permission(PERM_CONSOLE_DATASETS, PERM_DATA_WRITE))],
+    dependencies=[Depends(require_permission(PERM_DATA_WRITE))],
 )
 async def preview_ingest(ingest_id: str, db: AsyncSession = Depends(get_db)):
     """Parse the head of the file and infer a schema."""
@@ -128,7 +128,7 @@ async def preview_ingest(ingest_id: str, db: AsyncSession = Depends(get_db)):
 @router.post(
     "/{ingest_id}/load",
     response_model=DatasetResponse,
-    dependencies=[Depends(require_any_permission(PERM_CONSOLE_DATASETS, PERM_DATA_WRITE))],
+    dependencies=[Depends(require_permission(PERM_DATA_WRITE))],
 )
 async def load_ingest(
     ingest_id: str,
@@ -201,7 +201,7 @@ async def load_ingest(
 @router.get(
     "/{ingest_id}",
     response_model=DatasetIngestResponse,
-    dependencies=[Depends(require_any_permission(PERM_CONSOLE_DATASETS, PERM_DATA_WRITE))],
+    dependencies=[Depends(require_permission(PERM_DATA_WRITE))],
 )
 async def get_ingest(ingest_id: str, db: AsyncSession = Depends(get_db)):
     row = await db.get(DatasetIngest, ingest_id)
