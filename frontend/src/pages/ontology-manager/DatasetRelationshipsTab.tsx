@@ -35,6 +35,7 @@ export function DatasetRelationshipsTab() {
 
   const [showForm, setShowForm] = useState(false);
   const [targetId, setTargetId] = useState('');
+  const [direction, setDirection] = useState<'source' | 'target'>('source');
   const [cardinality, setCardinality] = useState('one-to-many');
   const [pairs, setPairs] = useState<ColumnPair[]>([{ source: '', target: '' }]);
   const [joinName, setJoinName] = useState('');
@@ -83,6 +84,11 @@ export function DatasetRelationshipsTab() {
     [datasets, datasetId],
   );
 
+  // The pair selects swap when this dataset is the target side of the join.
+  // `sourceColumns` = this dataset's columns; `targetColumns` = the other dataset's.
+  const pairSourceCols = direction === 'source' ? sourceColumns : targetColumns;
+  const pairTargetCols = direction === 'source' ? targetColumns : sourceColumns;
+
   const erNodes: ErNode[] = useMemo(
     () =>
       joins.map((j) => {
@@ -100,6 +106,7 @@ export function DatasetRelationshipsTab() {
 
   const openCreate = () => {
     setTargetId('');
+    setDirection('source');
     setCardinality('one-to-many');
     setPairs([{ source: '', target: '' }]);
     setJoinName('');
@@ -123,8 +130,8 @@ export function DatasetRelationshipsTab() {
     try {
       await createDatasetJoin({
         name: joinName.trim() || null,
-        source_dataset_id: datasetId,
-        target_dataset_id: targetId,
+        source_dataset_id: direction === 'source' ? datasetId : targetId,
+        target_dataset_id: direction === 'source' ? targetId : datasetId,
         cardinality,
         join_columns: columns,
         description: description.trim() || null,
@@ -241,6 +248,16 @@ export function DatasetRelationshipsTab() {
                 </select>
               </label>
               <label>
+                <span>{t('datasets.joinDirection')}</span>
+                <select
+                  value={direction}
+                  onChange={(e) => setDirection(e.target.value as 'source' | 'target')}
+                >
+                  <option value="source">{t('datasets.directionThisSource')}</option>
+                  <option value="target">{t('datasets.directionThisTarget')}</option>
+                </select>
+              </label>
+              <label>
                 <span>{t('datasets.joinCardinality')}</span>
                 <select value={cardinality} onChange={(e) => setCardinality(e.target.value)}>
                   <option value="one-to-many">{t('datasets.cardinalityOneToMany')}</option>
@@ -260,7 +277,7 @@ export function DatasetRelationshipsTab() {
                       }
                     >
                       <option value="">{t('datasets.joinColumnPlaceholder')}</option>
-                      {sourceColumns.map((c) => (
+                      {pairSourceCols.map((c) => (
                         <option key={c.column_name} value={c.column_name}>
                           {c.column_name}
                         </option>
@@ -277,7 +294,7 @@ export function DatasetRelationshipsTab() {
                       disabled={!targetId}
                     >
                       <option value="">{t('datasets.joinColumnPlaceholder')}</option>
-                      {targetColumns.map((c) => (
+                      {pairTargetCols.map((c) => (
                         <option key={c.column_name} value={c.column_name}>
                           {c.column_name}
                         </option>
