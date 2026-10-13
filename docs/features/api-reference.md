@@ -369,7 +369,7 @@ Encrypted values; **never returned**. Write/sync/delete reject personal API key 
 | PUT | `/api/datasets/{id}` | Update dataset — catalog fields, `primary_key_columns`, `unique_keys`, `ai_context`, `is_editable` (`data:write`; write on dataset) |
 | DELETE | `/api/datasets/{id}` | Delete dataset (`data:write`; manage on dataset) |
 | GET | `/api/dataset-joins` | List relationships (`dataset_id` filter; `data:read`) |
-| POST | `/api/dataset-joins` | Create a relationship `{from_dataset_id, to_dataset_id, from_columns, to_columns, join_type}` (validated; `data:write`) |
+| POST | `/api/dataset-joins` | Create a relationship `{from_dataset_id, to_dataset_id, from_columns, to_columns, required}` (validated; `data:write`) |
 | GET | `/api/dataset-joins/{id}` | Get a relationship (`data:read`) |
 | PUT | `/api/dataset-joins/{id}` | Update a relationship (`data:write`) |
 | DELETE | `/api/dataset-joins/{id}` | Delete a relationship (`data:write`) |

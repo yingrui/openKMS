@@ -2,7 +2,7 @@
 
 A relationship is authored manually and validated against live column metadata. The
 `to` columns must be the target dataset's primary key or a declared unique key (when
-one is declared).
+one is declared). Optionality (`required`) is the only query-ish flag an edge keeps.
 """
 from __future__ import annotations
 
@@ -12,8 +12,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.models.data_source import DataSource
 from app.models.dataset import Dataset
 from app.services.ontology.dataset_tables import is_valid_identifier, pg_engine_for_datasource
-
-JOIN_TYPES = ("left", "inner", "right", "full")
 
 
 class JoinValidationError(ValueError):
@@ -59,13 +57,10 @@ async def validate_join(
     to_dataset_id: str,
     from_columns: list[str],
     to_columns: list[str],
-    join_type: str,
 ) -> tuple[Dataset, Dataset]:
     """Validate a relationship and return the (from, to) datasets."""
     if from_dataset_id == to_dataset_id:
         raise JoinValidationError("A relationship needs two different datasets.")
-    if join_type not in JOIN_TYPES:
-        raise JoinValidationError(f"join_type must be one of: {', '.join(JOIN_TYPES)}.")
     if not from_columns or not to_columns:
         raise JoinValidationError("At least one column pair is required.")
     if len(from_columns) != len(to_columns):

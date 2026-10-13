@@ -128,7 +128,7 @@ export function DataModelPage() {
   const graphLinks: ErGraphLink[] = joins.map((j) => ({
     source: j.from_dataset_id,
     target: j.to_dataset_id,
-    label: `${j.join_type} · ${j.from_columns
+    label: `${j.required ? t('datasets.requiredLabel') : t('datasets.optionalLabel')} · ${j.from_columns
       .map((c, i) => `${c} = ${j.to_columns[i] ?? ''}`)
       .join(', ')}`,
   }));
@@ -266,7 +266,7 @@ export function DataModelPage() {
                   <tr>
                     <th>{t('dataModel.colFrom')}</th>
                     <th>{t('dataModel.colTo')}</th>
-                    <th>{t('datasets.joinType')}</th>
+                    <th>{t('dataModel.required')}</th>
                     <th>{t('datasets.joinColumns')}</th>
                   </tr>
                 </thead>
@@ -275,7 +275,7 @@ export function DataModelPage() {
                     <tr key={j.id}>
                       <td>{j.from_dataset_name ?? j.from_dataset_id}</td>
                       <td>{j.to_dataset_name ?? j.to_dataset_id}</td>
-                      <td>{j.join_type}</td>
+                      <td>{j.required ? t('datasets.requiredLabel') : t('datasets.optionalLabel')}</td>
                       <td>
                         {j.from_columns
                           .map((c, i) => `${c} = ${j.to_columns[i] ?? ''}`)

@@ -7,7 +7,7 @@ from __future__ import annotations
 
 from datetime import datetime
 
-from sqlalchemy import DateTime, ForeignKey, String, Text, func
+from sqlalchemy import Boolean, DateTime, ForeignKey, String, Text, func
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -31,8 +31,11 @@ class DatasetJoin(Base):
     from_columns: Mapped[list] = mapped_column(JSONB, nullable=False, default=list)
     # Referenced key columns on the `to` side.
     to_columns: Mapped[list] = mapped_column(JSONB, nullable=False, default=list)
-    # SQL join type used by the metric engine: left | inner | right | full.
-    join_type: Mapped[str] = mapped_column(String(8), nullable=False, default="left")
+    # Whether traversing this relationship requires a match: true → INNER JOIN (only
+    # matched rows); false → LEFT JOIN (keep unmatched anchor rows, the default).
+    # A relationship is a bare FK edge plus this optionality — no query/SQL base, and
+    # no left/right/full (right ≡ swapped left; the query anchor fixes the join side).
+    required: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     ai_context: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_by: Mapped[str | None] = mapped_column(String(512), nullable=True)

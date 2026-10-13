@@ -60,9 +60,7 @@ def build_joins_sql(
             ons.append(
                 f'base."{s}" = {alias}."{t}"' if base_is_from else f'base."{t}" = {alias}."{s}"'
             )
-        join_kind = (join.join_type or "left").upper()
-        if join_kind not in ("LEFT", "INNER", "RIGHT", "FULL"):
-            join_kind = "LEFT"
+        join_kind = "INNER" if join.required else "LEFT"
         joins_sql.append(
             f'{join_kind} JOIN "{other.schema_name}"."{other.table_name}" {alias} ON '
             + " AND ".join(ons)

@@ -113,7 +113,8 @@
     "exportFailed": "导出失败",
     "importFailed": "导入失败",
     "importDone": "已导入 {{r}} 个关系、{{m}} 个指标、{{q}} 个查询",
-    "importWarnings": "跳过 {{n}} 条"
+    "importWarnings": "跳过 {{n}} 条",
+    "required": "匹配"
   },
   "datasets": {
     "title": "数据集",
@@ -320,11 +321,6 @@
     "pageOf": "第 {{current}} / {{total}} 页",
     "directionThisFrom": "本数据集持有外键（多端）",
     "directionThisTo": "所选数据集持有外键（多端）",
-    "joinType": "连接类型",
-    "joinType_left": "左连接",
-    "joinType_inner": "内连接",
-    "joinType_right": "右连接",
-    "joinType_full": "全连接",
     "keysSection": "键",
     "uniqueKeys": "唯一键",
     "uniqueKeysHint": "关系可作为目标引用的备用键（如一对一）。每行是一个键。",
@@ -401,7 +397,11 @@
     "noQueries": "暂无保存的查询。",
     "addFilter": "添加筛选",
     "filterValue": "值",
-    "runQuery": "运行"
+    "runQuery": "运行",
+    "requiredLabel": "必需",
+    "optionalLabel": "可选",
+    "joinRequired": "要求匹配到行",
+    "joinRequiredHint": "开：只保留匹配上的行（INNER）；关：保留无匹配的行（LEFT，默认）。"
   },
   "groups": {
     "title": "分组",

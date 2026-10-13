@@ -14,7 +14,6 @@ import {
   deleteDatasetJoin,
   fetchDatasetJoins,
   type DatasetJoinResponse,
-  type DatasetJoinType,
 } from '../../data/joinsApi';
 import { useConfirm } from '../../contexts/ConfirmContext';
 import { EmptyState } from '../../styles/design-system';
@@ -23,8 +22,6 @@ import { DatasetErDiagram, type ErNode } from './DatasetErDiagram';
 
 /** A column pair: `from` = FK column, `to` = referenced key column. */
 type ColumnPair = { from: string; to: string };
-
-const JOIN_TYPES: DatasetJoinType[] = ['left', 'inner', 'right', 'full'];
 
 export function DatasetRelationshipsTab() {
   const { t } = useTranslation('ontology');
@@ -40,7 +37,7 @@ export function DatasetRelationshipsTab() {
   const [showForm, setShowForm] = useState(false);
   const [targetId, setTargetId] = useState('');
   const [direction, setDirection] = useState<'from' | 'to'>('from');
-  const [joinType, setJoinType] = useState<DatasetJoinType>('left');
+  const [required, setRequired] = useState(false);
   const [pairs, setPairs] = useState<ColumnPair[]>([{ from: '', to: '' }]);
   const [joinName, setJoinName] = useState('');
   const [description, setDescription] = useState('');
@@ -100,7 +97,7 @@ export function DatasetRelationshipsTab() {
         return {
           id: j.id,
           label: other ?? t('datasets.dash'),
-          meta: j.join_type,
+          meta: j.required ? t('datasets.requiredLabel') : t('datasets.optionalLabel'),
           columns: `${j.from_columns.join(', ')} → ${j.to_columns.join(', ')}`,
         };
       }),
@@ -110,7 +107,7 @@ export function DatasetRelationshipsTab() {
   const openCreate = () => {
     setTargetId('');
     setDirection('from');
-    setJoinType('left');
+    setRequired(false);
     setPairs([{ from: '', to: '' }]);
     setJoinName('');
     setDescription('');
@@ -135,7 +132,7 @@ export function DatasetRelationshipsTab() {
         to_dataset_id: direction === 'from' ? targetId : datasetId,
         from_columns: usable.map((p) => p.from),
         to_columns: usable.map((p) => p.to),
-        join_type: joinType,
+        required,
         description: description.trim() || null,
       });
       toast.success(t('datasets.joinCreated'));
@@ -203,7 +200,7 @@ export function DatasetRelationshipsTab() {
                       }`}
                   </strong>
                   <p className="dataset-join-row__meta">
-                    {j.join_type} ·{' '}
+                    {j.required ? t('datasets.requiredLabel') : t('datasets.optionalLabel')} ·{' '}
                     {j.from_columns.map((c, i) => `${c} = ${j.to_columns[i] ?? ''}`).join(', ')}
                   </p>
                 </div>
@@ -260,19 +257,11 @@ export function DatasetRelationshipsTab() {
                   <option value="to">{t('datasets.directionThisTo')}</option>
                 </select>
               </label>
-              <label>
-                <span>{t('datasets.joinType')}</span>
-                <select
-                  value={joinType}
-                  onChange={(e) => setJoinType(e.target.value as DatasetJoinType)}
-                >
-                  {JOIN_TYPES.map((jt) => (
-                    <option key={jt} value={jt}>
-                      {t(`datasets.joinType_${jt}`)}
-                    </option>
-                  ))}
-                </select>
+              <label className="ds-check-row">
+                <input type="checkbox" checked={required} onChange={(e) => setRequired(e.target.checked)} />
+                <span>{t('datasets.joinRequired')}</span>
               </label>
+              <p className="page-subtitle">{t('datasets.joinRequiredHint')}</p>
               <div className="dataset-joins__pairs">
                 <span>{t('datasets.joinColumns')}</span>
                 {pairs.map((pair, idx) => (

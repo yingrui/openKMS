@@ -58,7 +58,7 @@ async def build_lineage(db: AsyncSession, dataset_id: str) -> dict[str, Any] | N
         other_id = j.to_dataset_id if j.from_dataset_id == dataset_id else j.from_dataset_id
         join_ids.add(other_id)
         joined.append(
-            {"join_id": j.id, "dataset_id": other_id, "join_type": j.join_type}
+            {"join_id": j.id, "dataset_id": other_id, "required": j.required}
         )
     names: dict[str, str] = {}
     if join_ids:

@@ -147,7 +147,7 @@ class LineageJoin(BaseModel):
     join_id: str
     dataset_id: str
     dataset_name: str | None = None
-    join_type: str
+    required: bool
 
 
 class DatasetLineageResponse(BaseModel):

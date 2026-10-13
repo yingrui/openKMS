@@ -219,7 +219,7 @@ All write subcommands accept `--yes` / `--dry-run`. Without `--yes` on non-TTY s
 | `datasets schema-history` | GET | `/api/datasets/{id}/schema-history` | Captured schema snapshots (newest first). |
 | `datasets lineage` | GET | `/api/datasets/{id}/lineage` | Read-time lineage: source, object/link types, joined datasets. |
 | `datasets joins list` | GET | `/api/dataset-joins` | Optional `?dataset_id=`. |
-| `datasets joins add` *(write)* | POST | `/api/dataset-joins` | Body `{from_dataset_id, to_dataset_id, from_columns:[…], to_columns:[…], join_type}`. `from` = many side (FK holder), `to` = one side (referenced key); `join_type ∈ {left, inner, right, full}` (default `left`). Composite keys: aligned `from_columns`/`to_columns` arrays. |
+| `datasets joins add` *(write)* | POST | `/api/dataset-joins` | Body `{from_dataset_id, to_dataset_id, from_columns:[…], to_columns:[…], required}`. `from` = many side (FK holder), `to` = one side (referenced key); `required=true` → INNER (only matched rows), default `false` → LEFT. Composite keys: aligned `from_columns`/`to_columns` arrays. |
 | `datasets joins delete` *(write)* | DELETE | `/api/dataset-joins/{join_id}` | |
 | `datasets fields list` | GET | `/api/datasets/{id}/fields` | Semantic fields (seeds from physical columns on first read). |
 | `datasets fields add` *(write)* | POST | `/api/datasets/{id}/fields` | Body `{name, column_name?, expression?, datatype?, dimension?, ai_context?}`. `--column` = plain field; `--expression` = computed (`{dialects:{ANSI_SQL}}`); `--is-time` marks a time dimension. |

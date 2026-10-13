@@ -50,7 +50,7 @@ def _join_response(j: DatasetJoin, names: dict[str, str]) -> DatasetJoinResponse
         to_dataset_name=names.get(j.to_dataset_id),
         from_columns=j.from_columns or [],
         to_columns=j.to_columns or [],
-        join_type=j.join_type,
+        required=j.required,
         ai_context=j.ai_context,
         description=j.description,
         created_by_name=j.created_by_name,
@@ -107,7 +107,6 @@ async def create_dataset_join(
             to_dataset_id=body.to_dataset_id,
             from_columns=body.from_columns,
             to_columns=body.to_columns,
-            join_type=body.join_type,
         )
     except JoinValidationError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
@@ -121,7 +120,7 @@ async def create_dataset_join(
         to_dataset_id=body.to_dataset_id,
         from_columns=body.from_columns,
         to_columns=body.to_columns,
-        join_type=body.join_type,
+        required=body.required,
         ai_context=body.ai_context,
         description=body.description,
         created_by=payload.get("sub") if isinstance(payload.get("sub"), str) else None,
@@ -164,7 +163,6 @@ async def update_dataset_join(
     data = body.model_dump(exclude_unset=True)
     new_from_cols = data.get("from_columns", j.from_columns or [])
     new_to_cols = data.get("to_columns", j.to_columns or [])
-    new_join_type = data.get("join_type", j.join_type)
     try:
         await validate_join(
             db,
@@ -172,12 +170,11 @@ async def update_dataset_join(
             to_dataset_id=j.to_dataset_id,
             from_columns=new_from_cols,
             to_columns=new_to_cols,
-            join_type=new_join_type,
         )
     except JoinValidationError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
-    for field in ("name", "from_columns", "to_columns", "join_type", "ai_context", "description"):
+    for field in ("name", "from_columns", "to_columns", "required", "ai_context", "description"):
         if field in data:
             setattr(j, field, data[field])
     await db.commit()

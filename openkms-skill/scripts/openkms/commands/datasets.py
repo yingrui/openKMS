@@ -156,7 +156,7 @@ def cmd_joins_add(ns: argparse.Namespace) -> None:
         "to_dataset_id": ns.to_id,
         "from_columns": from_cols,
         "to_columns": to_cols,
-        "join_type": ns.join_type,
+        "required": bool(ns.required),
     }
     if ns.name:
         body["name"] = ns.name
@@ -371,10 +371,9 @@ def add_subparser(sub) -> None:
     jla.add_argument("--from-id", required=True, help="dataset on the many side (holds the FK)")
     jla.add_argument("--to-id", required=True, help="dataset on the one side (referenced key)")
     jla.add_argument(
-        "--join-type",
-        default="left",
-        choices=("left", "inner", "right", "full"),
-        dest="join_type",
+        "--required",
+        action="store_true",
+        help="require a matching row (INNER); default keeps rows without a match (LEFT)",
     )
     jla.add_argument("--columns", required=True, help='FK=key pairs, e.g. "ts_code=ts_code"')
     jla.add_argument("--name", default=None)

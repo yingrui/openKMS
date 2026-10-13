@@ -4,8 +4,6 @@ from typing import Any
 
 from pydantic import BaseModel, Field
 
-JOIN_TYPES = ("left", "inner", "right", "full")
-
 
 class DatasetJoinCreate(BaseModel):
     name: str | None = None
@@ -13,7 +11,7 @@ class DatasetJoinCreate(BaseModel):
     to_dataset_id: str
     from_columns: list[str] = Field(min_length=1)
     to_columns: list[str] = Field(min_length=1)
-    join_type: str = "left"
+    required: bool = False
     ai_context: dict[str, Any] | None = None
     description: str | None = None
 
@@ -22,7 +20,7 @@ class DatasetJoinUpdate(BaseModel):
     name: str | None = None
     from_columns: list[str] | None = None
     to_columns: list[str] | None = None
-    join_type: str | None = None
+    required: bool | None = None
     ai_context: dict[str, Any] | None = None
     description: str | None = None
 
@@ -36,7 +34,7 @@ class DatasetJoinResponse(BaseModel):
     to_dataset_name: str | None = None
     from_columns: list[str]
     to_columns: list[str]
-    join_type: str
+    required: bool
     ai_context: dict[str, Any] | None = None
     description: str | None = None
     created_by_name: str | None = None

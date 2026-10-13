@@ -75,7 +75,7 @@ Defined at the **semantic-model level** (not per-dataset) and **may span multipl
 |-------|---------------|-----|
 | Semantic Model | `GET /api/semantic-model` (Ossie document) | **resolved** — container + JSON/YAML export + import |
 | Datasets (`source`, `primary_key`, `unique_keys`, `fields`, `ai_context`) | `datasets` (`schema_name.table_name`, `primary_key_columns`, metadata) | missing **`unique_keys`**, **`ai_context`** |
-| Relationships (`from` many / `to` one / columns, composite) | `dataset_joins` (`from`/`to`/`from_columns`/`to_columns`/`join_type`) | **resolved (Stage 1)** — FK direction + composite columns |
+| Relationships (`from` many / `to` one / columns, composite) | `dataset_joins` (`from`/`to`/`from_columns`/`to_columns`/`required`) | **resolved (Stage 1)** — FK direction + composite columns |
 | Metrics (`expression.dialects`, model-level, cross-dataset) | `metric_definitions` (aggregation + column + filters + joins + dimensions, **per dataset**) | **decided** — adopt Ossie `expression.dialects` (decision #13); per-dataset DSL replaced in Stage 4 |
 | Dimensions | `dimensions` field on metrics | no first-class dimension objects |
 | `ai_context` | — | **missing** |
@@ -85,7 +85,7 @@ Defined at the **semantic-model level** (not per-dataset) and **may span multipl
 ## Tensions and decisions to make
 
 1. **Metrics: restricted DSL vs Ossie SQL expressions.** **Resolved — decision #13 now adopts Ossie SQL expressions** (`expression.dialects`), dropping the custom DSL: expressions are pre-configured aggregate **fragments** (not full statements), executed **read-only with timeout + row cap**; the data-source credential is the privilege boundary. (Earlier options — DSL+export / Ossie expressions / hybrid — **B** chosen.)
-2. **Relationships semantics.** **Resolved — Stage 1 shipped:** `from` = many (FK holder), `to` = one, `from_columns`/`to_columns` (composite), `join_type`; `cardinality` dropped. Fixed the direction-UX problem and confirms **M:N = two FKs via a junction dataset**.
+2. **Relationships semantics.** **Resolved — Stage 1 shipped:** `from` = many (FK holder), `to` = one, `from_columns`/`to_columns` (composite), `required`; `cardinality` dropped. Fixed the direction-UX problem and confirms **M:N = two FKs via a junction dataset**.
 3. **Cross-dataset metrics imply join traversal.** Ossie metrics span datasets via relationships → our metric engine inherently needs to traverse join chains (the earlier "multi-hop" question), not just single-hop.
 4. **AI context is a first-class field.** `instructions` / `synonyms` / `examples` on model/datasets/metrics is precisely "data as knowledge for agents" — high value, low cost.
 

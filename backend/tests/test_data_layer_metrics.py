@@ -95,7 +95,7 @@ def test_join_on_clause_uses_correct_side():
         to_dataset_id="b",
         from_columns=["ts_code"],
         to_columns=["ts_code"],
-        join_type="left",
+        required=False,
     )
     sql, _ = _build(
         _dataset("a", schema="tushare", table="stock_trade_daily"),
@@ -115,14 +115,14 @@ def test_join_on_clause_uses_correct_side():
     assert 'base."ts_code" = j0."ts_code"' in sql2
 
 
-def test_join_type_controls_the_join_kind():
+def test_required_controls_the_join_kind():
     join = DatasetJoin(
         id="j",
         from_dataset_id="a",
         to_dataset_id="b",
         from_columns=["x", "y"],
         to_columns=["u", "v"],
-        join_type="inner",
+        required=True,
     )
     sql, _ = _build(
         _dataset("a"),
@@ -140,7 +140,7 @@ def test_join_must_touch_the_base_dataset():
         to_dataset_id="y",
         from_columns=["a"],
         to_columns=["b"],
-        join_type="left",
+        required=False,
     )
     with pytest.raises(MetricError):
         _build(
@@ -158,7 +158,7 @@ def test_relationship_columns_must_be_aligned():
         to_dataset_id="b",
         from_columns=["x", "y"],
         to_columns=["u"],
-        join_type="left",
+        required=False,
     )
     with pytest.raises(MetricError):
         _build(_dataset("a"), _metric(joins=["j"]), joins={"j": join}, datasets={"b": _dataset("b")})

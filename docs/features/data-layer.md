@@ -35,7 +35,7 @@ Definitions first; each concept is **authored in exactly one place**.
 | **Datasets** | a logical entity: a physical table (`source`) + keys + fields + `ai_context` | **Dataset detail** — Overview / Settings | per-dataset |
 | **Fields** | row-level attributes: a column ref **or a computed expression**, + `datatype`, `dimension.is_time`, `ai_context` | **Dataset detail → Fields** | per-dataset |
 | **Dimensions** | a **field role** (`dimension.is_time`) — a field you can group/filter by | **Dataset detail → Fields** (a field flag) | per-dataset (field) |
-| **Relationships** | FK edges: `from` (many) → `to` (one), `from_columns`/`to_columns`, `join_type` | **Model → Relationships** (global) + dataset detail → Relationships (scoped view of the same rows) | cross-dataset |
+| **Relationships** | FK edges: `from` (many) → `to` (one), `from_columns`/`to_columns`, `required` | **Model → Relationships** (global) + dataset detail → Relationships (scoped view of the same rows) | cross-dataset |
 | **Metrics** | model-level aggregate **expressions** over fields | **Model → Metrics** | cross-dataset |
 | **Queries** | metrics + `group_by` dimensions + `where`, saved | **Model → Queries** (v1: Data Explorer reports) | cross-dataset |
 | **Rows** (physical) | preview, edit, ingest, profile | **Dataset detail → Data** | per-dataset |
@@ -62,7 +62,7 @@ Definitions first; each concept is **authored in exactly one place**.
 
 ## Current state
 
-**Shipped:** Datasets app at `/datasets` (Catalog list + register/upload + detail tabs: Overview · Data · Fields · Usage · Relationships · Lineage · Quality · Metrics · Settings · Sharing) and the Model view at `/data-model` (ER graph + health + quality alerts + relationships table); Data Explorer at `/data-explorer` (saved analyses). Backend: `datasets` (catalog fields, `primary_key_columns`, `unique_keys`, `ai_context`, `is_editable`), `dataset_joins` (Ossie FK — `from`/`to`/`from_columns`/`to_columns`/`join_type`), file ingest, profile/schema snapshots, quality rules/runs, `metric_definitions` (model-level Ossie SQL expressions), `metric_runs` (execution audit), `saved_queries` (model-level queries), `explorer_reports`, `dataset_edits` (audit), `dataset_fields` (semantic fields); **Ossie export/import**; `data:read` / `data:write` / `data:edit`; keyset paging + row editing (TanStack Table). First scenario: **Tushare stock datasets**.
+**Shipped:** Datasets app at `/datasets` (Catalog list + register/upload + detail tabs: Overview · Data · Fields · Usage · Relationships · Lineage · Quality · Metrics · Settings · Sharing) and the Model view at `/data-model` (ER graph + health + quality alerts + relationships table); Data Explorer at `/data-explorer` (saved analyses). Backend: `datasets` (catalog fields, `primary_key_columns`, `unique_keys`, `ai_context`, `is_editable`), `dataset_joins` (Ossie FK — `from`/`to`/`from_columns`/`to_columns`/`required`), file ingest, profile/schema snapshots, quality rules/runs, `metric_definitions` (model-level Ossie SQL expressions), `metric_runs` (execution audit), `saved_queries` (model-level queries), `explorer_reports`, `dataset_edits` (audit), `dataset_fields` (semantic fields); **Ossie export/import**; `data:read` / `data:write` / `data:edit`; keyset paging + row editing (TanStack Table). First scenario: **Tushare stock datasets**.
 
 **Gaps vs the target:** none — the [refactoring plan](#refactoring-plan) Stages 1–6 are shipped.
 
@@ -73,8 +73,8 @@ Definitions first; each concept is **authored in exactly one place**.
 Goal: the Datasets app **manages the Ossie semantic model**, with each definition mapped to one surface. Stages are dependency-ordered; each lists steps → verification.
 
 ### Stage 1 — Relationships = foreign keys ✅
-- **Schema:** `dataset_joins` re-modelled as an Ossie FK (table name kept): `from_dataset_id` (many) / `to_dataset_id` (one), `from_columns`/`to_columns` (order-aligned, composite), `join_type` (`left` default), `ai_context`; **`cardinality` dropped**. Existing rows migrated (`source`→`from`, `target`→`to`).
-- **Service/API:** validate columns exist + equal lengths + `join_type`; payload uses `from`/`to`/`from_columns`/`to_columns`.
+- **Schema:** `dataset_joins` re-modelled as an Ossie FK (table name kept): `from_dataset_id` (many) / `to_dataset_id` (one), `from_columns`/`to_columns` (order-aligned, composite), `required` (default `false` = LEFT), `ai_context`; **`cardinality` dropped**. Existing rows migrated (`source`→`from`, `target`→`to`).
+- **Service/API:** validate columns exist + equal lengths; payload uses `from`/`to`/`from_columns`/`to_columns`.
 - **Frontend:** Relationships editor asks *who holds the FK* (`from`/`to`) with column pairs + join type; ER edges many→one.
 - **Verify:** ✅ composite FK round-trips; the metric engine joins via `from`/`to` with the chosen join type; ER shows the direction. (PK/unique-key enforcement lands with Stage 2.)
 
@@ -146,8 +146,9 @@ So a table is described (catalog), modeled (fields/relationships), trusted (qual
 | 15 | **Separate read vs manage vs edit permissions** — `data:read` / `data:write` / `data:edit`; `console:datasets` stays console-scoped. |
 | 16 | **Dataset → knowledge has two paths** — promote to an object type and cite as agent evidence; dataset rows are not ingested into KB/RAG in v1. |
 | 17 | **Adopt Apache Ossie as the semantic-model interchange** (Apache 2.0, vendor-neutral) — export (later import) the Ossie document. |
-| 18 | **Relationships are foreign keys, not cardinality** — `from` (many) → `to` (one), `from_columns`/`to_columns`, composite, `join_type`; 1:1 via unique keys; M:N via a junction dataset. |
+| 18 | **Relationships are foreign keys, not cardinality** — `from` (many) → `to` (one), `from_columns`/`to_columns`, composite, `required`; 1:1 via unique keys; M:N via a junction dataset. |
 | 19 | **Datasets carry `unique_keys` + `ai_context`** for agent grounding. |
+| 20 | **A relationship carries only edge facts** — FK direction (`from`/`to`) + column mapping + `required` (optional vs required match). No `base` (that is a metric/query anchor) and no `left`/`right`/`full` (`right` ≡ a swapped `left`; the query anchor fixes the join side, so an edge-level `right` was a footgun). |
 
 ## Still open
 

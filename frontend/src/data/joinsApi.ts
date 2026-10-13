@@ -1,7 +1,5 @@
-/** API for dataset relationships (Ossie foreign keys: `from` many → `to` one). */
+/** API for dataset relationships (Ossie FKs: `from` many → `to` one + optionality). */
 import { request } from './apiClient';
-
-export type DatasetJoinType = 'left' | 'inner' | 'right' | 'full';
 
 export interface DatasetJoinResponse {
   id: string;
@@ -12,7 +10,7 @@ export interface DatasetJoinResponse {
   to_dataset_name: string | null;
   from_columns: string[];
   to_columns: string[];
-  join_type: string;
+  required: boolean;
   ai_context: Record<string, unknown> | null;
   description: string | null;
   created_by_name: string | null;
@@ -37,7 +35,7 @@ export async function createDatasetJoin(data: {
   to_dataset_id: string;
   from_columns: string[];
   to_columns: string[];
-  join_type: DatasetJoinType;
+  required: boolean;
   description?: string | null;
 }): Promise<DatasetJoinResponse> {
   return request<DatasetJoinResponse>('/api/dataset-joins', {
@@ -53,7 +51,7 @@ export async function updateDatasetJoin(
     name?: string | null;
     from_columns?: string[];
     to_columns?: string[];
-    join_type?: DatasetJoinType;
+    required?: boolean;
     description?: string | null;
   }
 ): Promise<DatasetJoinResponse> {

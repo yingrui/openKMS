@@ -113,7 +113,8 @@
     "exportFailed": "Export failed",
     "importFailed": "Import failed",
     "importDone": "Imported {{r}} relationships, {{m}} metrics, {{q}} queries",
-    "importWarnings": "{{n}} entries skipped"
+    "importWarnings": "{{n}} entries skipped",
+    "required": "Match"
   },
   "datasets": {
     "title": "Datasets",
@@ -320,11 +321,6 @@
     "pageOf": "Page {{current}} of {{total}}",
     "directionThisFrom": "This dataset holds the FK (many side)",
     "directionThisTo": "The selected dataset holds the FK (many side)",
-    "joinType": "Join type",
-    "joinType_left": "Left join",
-    "joinType_inner": "Inner join",
-    "joinType_right": "Right join",
-    "joinType_full": "Full join",
     "keysSection": "Keys",
     "uniqueKeys": "Unique keys",
     "uniqueKeysHint": "Alternate keys relationships can target (e.g. a one-to-one). Each row is one key.",
@@ -401,7 +397,11 @@
     "noQueries": "No saved queries yet.",
     "addFilter": "Add filter",
     "filterValue": "Value",
-    "runQuery": "Run"
+    "runQuery": "Run",
+    "requiredLabel": "required",
+    "optionalLabel": "optional",
+    "joinRequired": "Require a matching row",
+    "joinRequiredHint": "On: only keep rows that match (INNER). Off: keep rows without a match (LEFT, default)."
   },
   "groups": {
     "title": "Groups",

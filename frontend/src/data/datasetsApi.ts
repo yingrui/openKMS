@@ -188,7 +188,7 @@ export interface LineageJoin {
   join_id: string;
   dataset_id: string;
   dataset_name: string | null;
-  join_type: string;
+  required: boolean;
 }
 
 export interface DatasetLineageResponse {

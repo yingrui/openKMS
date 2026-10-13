@@ -86,7 +86,7 @@ async def export_semantic_model(db: AsyncSession) -> dict[str, Any]:
                     "to": r.to_dataset_id,
                     "from_columns": r.from_columns or [],
                     "to_columns": r.to_columns or [],
-                    "join_type": r.join_type,
+                    "required": r.required,
                     "ai_context": r.ai_context,
                 }
                 for r in relationships
@@ -173,7 +173,7 @@ async def import_semantic_model(db: AsyncSession, doc: dict[str, Any]) -> dict[s
         row.to_dataset_id = to_id
         row.from_columns = rel.get("from_columns") or []
         row.to_columns = rel.get("to_columns") or []
-        row.join_type = rel.get("join_type") or "left"
+        row.required = bool(rel.get("required"))
         row.ai_context = rel.get("ai_context")
         rel_count += 1
 

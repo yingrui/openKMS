@@ -85,7 +85,7 @@ The Datasets app adds the **「Add tables」** flow (see interaction design); th
 
 ## 3. Relationships → ER model
 
-Spec + migration: [semantic model](data-layer-semantic-model.md) · [refactoring plan](data-layer.md#refactoring-plan) (Stage 1, ✅ shipped). `dataset_joins` re-modelled (name kept): FK **`from`** (many) / **`to`** (one) + `from_columns`/`to_columns` + `join_type`; `cardinality` dropped.
+Spec + migration: [semantic model](data-layer-semantic-model.md) · [refactoring plan](data-layer.md#refactoring-plan) (Stage 1, ✅ shipped). `dataset_joins` re-modelled (name kept): FK **`from`** (many) / **`to`** (one) + `from_columns`/`to_columns` + `required`; `cardinality` dropped.
 
 **ER rendering (frontend):** `react-force-graph-2d` (already a dependency) — nodes = datasets, **directed edges = relationships (many → one)**, click a node → open the dataset.
 

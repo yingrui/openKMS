@@ -32,7 +32,7 @@ An Ossie **semantic model** is a YAML document: **`datasets`** (physical source 
 | `to` | dataset on the **one** side — referenced key | `target_dataset_id` |
 | `from_columns` | FK columns (ordered) | `join_columns[].source` |
 | `to_columns` | referenced key columns (same order) | `join_columns[].target` |
-| **`join_type`** | SQL join type the metric engine uses: `left` (default) / `inner` / `right` / `full` | **our extension** |
+| **`required`** | optionality: `false` = LEFT (keep unmatched anchor rows, default) / `true` = INNER (only matched rows) | **our extension** |
 | `ai_context` | optional | — |
 | ~~`cardinality`~~ | **removed** — a FK is many→one | `cardinality` |
 
@@ -44,7 +44,7 @@ Rules (from the spec):
   - **1:1** — the `from_columns` also form a unique key on the `from` dataset.
   - **M:N** — **two relationships through a junction dataset** (the junction is itself a dataset): `A → J` and `B → J`. No `many-to-many` type.
 - **Direction is deterministic**: the **FK holder is `from`**. The UI asks "does *this* dataset hold the FK (from) or is it referenced (to)?" — replacing the current cardinality/position juggling.
-- **Join type is our extension.** Ossie's relationship is a bare FK (there the SQL join type is a *query-time* choice); we store a **default `join_type`** per relationship (the metric engine uses it; a metric may override) and export it under Ossie `custom_extensions`. This is exactly what distinguishes a **data relationship** from an ontology **LinkType** — a LinkType is a *semantic* link with **no** join type.
+- **Optionality is our extension — not left/right/full.** Ossie's relationship is a bare FK (there the SQL join type is a *query-time* choice). We store one boolean, **`required`**: `false` → LEFT (keep unmatched anchor rows, default), `true` → INNER (only matched rows). We deliberately dropped `right`/`full` — `right` ≡ a swapped `left`, and the query anchor fixes which side is the anchor, so an edge-level `right` was a footgun. This still distinguishes a **data relationship** from an ontology **LinkType** (a purely semantic link).
 
 ### How relationships drive the semantic model
 
@@ -73,8 +73,8 @@ The Model tab is the **authoring + governance surface of the semantic model**. S
 - **Model health**: counts of datasets, relationships, metrics; quality failing; **datasets without a primary key** (a relationship/`to` problem); **orphans** (no relationships).
 
 ### 2. Relationships
-- List + create/edit a relationship: **from (many)** dataset, **to (one)** dataset, **column pairs** (ordered, add/remove for composite), **join type** (`left` default / `inner` / `right` / `full`), name, `ai_context`.
-- **Validation inline**: column existence; composite lengths; `join_type`; `to_columns` must be the target's primary key or a declared unique key (when declared).
+- List + create/edit a relationship: **from (many)** dataset, **to (one)** dataset, **column pairs** (ordered, add/remove for composite), **required** (optional vs required match), name, `ai_context`.
+- **Validation inline**: column existence; composite lengths; `to_columns` must be the target's primary key or a declared unique key (when declared).
 - Direction is a simple choice: *"this dataset holds the FK (from)"* vs *"this dataset is referenced (to)"*.
 - Not a **LinkType**: a data relationship carries a **join type** and targets physical tables; a LinkType is a semantic object-type link with none.
 

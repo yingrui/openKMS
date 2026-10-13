@@ -185,7 +185,7 @@ Schema for every persisted table. Grouped by area; see the matching feature page
 
 ### DatasetJoin (relationship)
 
-- `id`, `name` (nullable), `from_dataset_id` (FK → datasets, CASCADE; many side, holds the FK), `to_dataset_id` (FK → datasets, CASCADE; one side, referenced key), `from_columns` / `to_columns` (JSONB string arrays, order-aligned, composite keys), `join_type` (`left` | `inner` | `right` | `full`; default `left`), `ai_context` (JSONB, nullable), `description`, `created_by` / `created_by_name`, `created_at`, `updated_at`
+- `id`, `name` (nullable), `from_dataset_id` (FK → datasets, CASCADE; many side, holds the FK), `to_dataset_id` (FK → datasets, CASCADE; one side, referenced key), `from_columns` / `to_columns` (JSONB string arrays, order-aligned, composite keys), `required` (boolean; `false` = keep unmatched anchor rows, LEFT — default; `true` = only matched rows, INNER), `ai_context` (JSONB, nullable), `description`, `created_by` / `created_by_name`, `created_at`, `updated_at`
 - Ossie relationship / foreign key (`from` many → `to` one); authored manually and validated against live columns; backs the Data Model ER view and the metric join engine (check: `from` ≠ `to`)
 
 ### DatasetField
