@@ -399,6 +399,12 @@ Encrypted values; **never returned**. Write/sync/delete reject personal API key 
 | DELETE | `/api/metrics/{metric_id}` | Delete a metric (`data:write`) |
 | GET | `/api/metrics/{metric_id}/compute` | Compute a metric — read-only, statement timeout + row cap; records a run (`data:read`) |
 | GET | `/api/metrics/{metric_id}/runs` | Recent executions of a metric (`data:read`) |
+| GET | `/api/queries` | List model-level saved queries (`base_dataset_id` filter; `data:read`) |
+| POST | `/api/queries` | Create a saved query `{name, base_dataset_id, metrics:[{name,metric_id}], group_by, joins, filters?}` (`data:write`) |
+| GET | `/api/queries/{query_id}` | Get a saved query (`data:read`) |
+| PUT | `/api/queries/{query_id}` | Update a saved query (`data:write`) |
+| DELETE | `/api/queries/{query_id}` | Delete a saved query (`data:write`) |
+| GET | `/api/queries/{query_id}/run` | Run a saved query — read-only, timeout + row cap (`data:read`) |
 | GET | `/api/explorer-reports` | List explorer reports (`data:read`) |
 | POST | `/api/explorer-reports` | Create explorer report (`data:write`) |
 | GET | `/api/explorer-reports/{id}` | Get explorer report (`data:read`) |

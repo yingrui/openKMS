@@ -62,9 +62,9 @@ Definitions first; each concept is **authored in exactly one place**.
 
 ## Current state
 
-**Shipped:** Datasets app at `/datasets` (Catalog list + register/upload + detail tabs: Overview · Data · Fields · Usage · Relationships · Lineage · Quality · Metrics · Settings · Sharing) and the Model view at `/data-model` (ER graph + health + quality alerts + relationships table); Data Explorer at `/data-explorer` (saved analyses). Backend: `datasets` (catalog fields, `primary_key_columns`, `unique_keys`, `ai_context`, `is_editable`), `dataset_joins` (Ossie FK — `from`/`to`/`from_columns`/`to_columns`/`join_type`), file ingest, profile/schema snapshots, quality rules/runs, `metric_definitions` (model-level Ossie SQL expressions), `metric_runs` (execution audit), `explorer_reports`, `dataset_edits` (audit), `dataset_fields` (semantic fields); `data:read` / `data:write` / `data:edit`; keyset paging + row editing (TanStack Table). First scenario: **Tushare stock datasets**.
+**Shipped:** Datasets app at `/datasets` (Catalog list + register/upload + detail tabs: Overview · Data · Fields · Usage · Relationships · Lineage · Quality · Metrics · Settings · Sharing) and the Model view at `/data-model` (ER graph + health + quality alerts + relationships table); Data Explorer at `/data-explorer` (saved analyses). Backend: `datasets` (catalog fields, `primary_key_columns`, `unique_keys`, `ai_context`, `is_editable`), `dataset_joins` (Ossie FK — `from`/`to`/`from_columns`/`to_columns`/`join_type`), file ingest, profile/schema snapshots, quality rules/runs, `metric_definitions` (model-level Ossie SQL expressions), `metric_runs` (execution audit), `saved_queries` (model-level queries), `explorer_reports`, `dataset_edits` (audit), `dataset_fields` (semantic fields); `data:read` / `data:write` / `data:edit`; keyset paging + row editing (TanStack Table). First scenario: **Tushare stock datasets**.
 
-**Gaps vs the target** are the [refactoring plan](#refactoring-plan) below (queries, Ossie export).
+**Gaps vs the target** are the [refactoring plan](#refactoring-plan) below (Ossie export).
 
 ---
 
@@ -96,10 +96,11 @@ Goal: the Datasets app **manages the Ossie semantic model**, with each definitio
 - **Frontend:** Metrics moved from the dataset detail to **Model → Metrics**; the form takes an SQL expression (+ optional joins/AI context), no dimensions.
 - **Verify:** ✅ a metric computes read-only with a timeout + row cap (verified live); no dimensions on the metric; runs are audited.
 
-### Stage 5 — Queries (saved queries)
-- **Schema:** `saved_queries` — `name`, `metrics[]`, `group_by[]` (dimensions), `where`, `exports`.
-- **Frontend:** **Model → Queries** (v1: Data Explorer reports double as saved queries).
-- **Verify:** a saved query pins metrics + dimensions + filter and re-runs.
+### Stage 5 — Queries (saved queries) ✅
+- **Schema:** `saved_queries` — `base_dataset_id`, `name`, `metrics[]` (`[{name, metric_id}]`), `group_by[]` (**field** names), `joins[]`, `filters[]` (the WHERE), `exports[]`, `ai_context`.
+- **Engine:** emits `SELECT <field exprs>, (<metric exprs>) FROM <base> <joins> WHERE … GROUP BY <field exprs> LIMIT <cap>`, executed **read-only** (shared runner).
+- **Frontend:** **Model → Queries** — pick base dataset, group-by fields, metrics, joins, filter; run → results table.
+- **Verify:** ✅ a saved query pins metrics + dimensions + filter and re-runs (verified live).
 
 ### Stage 6 — Semantic Model export / import
 - **API:** `GET /api/datasets/semantic-model` → Ossie document (YAML/JSON); later `POST` to import.
@@ -151,7 +152,6 @@ So a table is described (catalog), modeled (fields/relationships), trusted (qual
 ## Still open
 
 - **Ingest semantics** — append / overwrite / rebuild; new table vs append.
-- **Queries home** — Model tab vs Data Explorer.
 
 ## Later / open items {#later-open-items}
 

@@ -234,6 +234,10 @@ All write subcommands accept `--yes` / `--dry-run`. Without `--yes` on non-TTY s
 | `metrics compute` | GET | `/api/metrics/{metric_id}/compute` | Runs the metric **read-only** (statement timeout + row cap); records a run. |
 | `metrics runs` | GET | `/api/metrics/{metric_id}/runs` | Recent executions (audit). |
 | `metrics delete` *(write)* | DELETE | `/api/metrics/{metric_id}` | |
+| `queries list` | GET | `/api/queries` | Model-level saved queries; optional `?base_dataset_id=`. |
+| `queries add` *(write)* | POST | `/api/queries` | Body `{name, base_dataset_id, metrics:[{name, metric_id}], group_by:[field], joins:[rel_id], filters?}`. |
+| `queries run` | GET | `/api/queries/{query_id}/run` | Runs the query read-only (timeout + row cap). |
+| `queries delete` *(write)* | DELETE | `/api/queries/{query_id}` | |
 | `explorer reports-list` | GET | `/api/explorer-reports` | Data Explorer saved analyses. |
 | `explorer reports-get` | GET | `/api/explorer-reports/{id}` | |
 | `explorer reports-create` *(write)* | POST | `/api/explorer-reports` | Body `{name, question, dataset_id, narrative, charts}`. |

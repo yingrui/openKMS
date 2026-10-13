@@ -51,6 +51,7 @@ from app.api.dataset_rows import router as dataset_rows_router
 from app.api.dataset_joins import router as dataset_joins_router
 from app.api.quality_rules import router as quality_rules_router
 from app.api.metrics import router as metrics_router
+from app.api.saved_queries import router as saved_queries_router
 from app.api.explorer_reports import router as explorer_reports_router
 from app.api.evaluations import router as evaluations_router
 from app.api.users_admin import router as users_admin_router
@@ -203,6 +204,7 @@ app.include_router(dataset_fields_router, prefix="/api")
 app.include_router(dataset_joins_router, prefix="/api")
 app.include_router(quality_rules_router, prefix="/api")
 app.include_router(metrics_router, prefix="/api")
+app.include_router(saved_queries_router, prefix="/api")
 app.include_router(explorer_reports_router, prefix="/api")
 app.include_router(evaluations_router, prefix="/api")
 app.include_router(users_admin_router, prefix="/api")

@@ -26,6 +26,7 @@ from . import (
     ontology,  # also nests `objects` and `links` under itself
     pipelines,
     ping,
+    queries,
     search,
     wiki,
     wiki_spaces,
@@ -57,6 +58,7 @@ def register(sub: _SubParsersAction) -> None:
     media.add_media_channels_subparser(sub)
     media.add_media_subparser(sub)
     metrics.add_subparser(sub)
+    queries.add_subparser(sub)
     ontology.add_subparser(sub)  # exposes `ontology cypher/...`, `ontology objects ...`, `ontology links ...`
     evaluation.add_subparser(sub)
     explorer.add_subparser(sub)

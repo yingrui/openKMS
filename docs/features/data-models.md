@@ -233,6 +233,11 @@ Schema for every persisted table. Grouped by area; see the matching feature page
 - `id`, `metric_id` (FK → metric_definitions, CASCADE), `status` (`ok` | `error`), `row_count`, `duration_ms`, `error`, `ran_by` / `ran_by_name`, `created_at`
 - Execution audit — one row per metric computation.
 
+### SavedQuery
+
+- `id`, `base_dataset_id` (FK → datasets, CASCADE; the query's anchor), `name`, `description`, `metrics` (JSONB: `[{name, metric_id}]`), `group_by` (JSONB: base-dataset **field** names), `joins` (JSONB: dataset_join ids), `filters` (JSONB: `[{column, op, value}]` — the query's WHERE), `exports` (JSONB), `ai_context` (JSONB), `created_by` / `created_by_name`, `created_at`, `updated_at`
+- Model-level **saved query**: pins metrics + group-by fields + filter and re-runs. The engine emits `SELECT <field exprs>, (<metric exprs>) FROM <base> <joins> WHERE … GROUP BY <field exprs> LIMIT <cap>`, executed read-only. This is where **dimensions (group-by)** are chosen — not on the metric.
+
 ### ExplorerReport
 
 - `id`, `name`, `question`, `dataset_id` (FK → datasets, SET NULL), `status` (`draft` | `ready`), `narrative` (markdown), `charts` (JSONB: `[{title, insight, columns, rows}]`), `created_by` / `created_by_name`, `created_at`, `updated_at`

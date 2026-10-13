@@ -105,7 +105,8 @@
     "noAlerts": "No quality alerts.",
     "colFrom": "From",
     "colTo": "To",
-    "metrics": "Metrics"
+    "metrics": "Metrics",
+    "queries": "Queries"
   },
   "datasets": {
     "title": "Datasets",
@@ -372,7 +373,28 @@
     "metricBaseRequired": "Pick a base dataset",
     "metricExpressionRequired": "Add the metric expression",
     "selectDataset": "Select a dataset",
-    "rows": "rows"
+    "rows": "rows",
+    "addQuery": "Add query",
+    "editQuery": "Edit query",
+    "queryName": "Name",
+    "queryNameRequired": "A query needs a name",
+    "queryBaseDataset": "Base dataset",
+    "queryGroupBy": "Group by (fields)",
+    "queryMetrics": "Metrics",
+    "queryFilters": "Filters",
+    "queryNeedsMetricOrField": "Pick at least one metric or field",
+    "querySaved": "Query saved",
+    "queryCreated": "Query created",
+    "querySaveFailed": "Failed to save query",
+    "queryDeleted": "Query deleted",
+    "queryDeleteFailed": "Failed to delete query",
+    "queryDeleteConfirm": "Delete query \"{{name}}\"?",
+    "queryRunFailed": "Failed to run query",
+    "queryResults": "Results",
+    "noQueries": "No saved queries yet.",
+    "addFilter": "Add filter",
+    "filterValue": "Value",
+    "runQuery": "Run"
   },
   "groups": {
     "title": "Groups",

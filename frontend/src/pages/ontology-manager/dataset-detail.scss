@@ -415,3 +415,13 @@
   flex-direction: column;
   gap: var(--space-1);
 }
+
+.dataset-joins__pair {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.dataset-joins__eq {
+  color: var(--color-text-muted);
+}

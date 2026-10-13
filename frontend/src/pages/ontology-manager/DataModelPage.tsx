@@ -6,12 +6,14 @@ import { toast } from 'sonner';
 import { fetchDatasets, type DatasetResponse } from '../../data/datasetsApi';
 import { fetchDatasetJoins, type DatasetJoinResponse } from '../../data/joinsApi';
 import { fetchMetrics } from '../../data/metricsApi';
+import { fetchSavedQueries } from '../../data/queriesApi';
 import { fetchQualityRules, type QualityRuleResponse } from '../../data/qualityApi';
 import { EmptyState } from '../../styles/design-system';
 import { EntityViewPanel, EntityViewStat, EntityViewStats } from './EntityViewShell';
 import { DatasetAppTabs } from './DatasetAppTabs';
 import { DatasetErGraph, type ErGraphLink, type ErGraphNode } from './DatasetErGraph';
 import { ModelMetricsSection } from './ModelMetricsSection';
+import { ModelQueriesSection } from './ModelQueriesSection';
 import '../ontology/ontology-admin.scss';
 
 function datasetLabel(d: DatasetResponse): string {
@@ -26,19 +28,22 @@ export function DataModelPage() {
   const [joins, setJoins] = useState<DatasetJoinResponse[]>([]);
   const [rules, setRules] = useState<QualityRuleResponse[]>([]);
   const [metricCount, setMetricCount] = useState(0);
+  const [queryCount, setQueryCount] = useState(0);
   const [loading, setLoading] = useState(true);
 
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const [ds, j, m] = await Promise.all([
+      const [ds, j, m, q] = await Promise.all([
         fetchDatasets(),
         fetchDatasetJoins(),
         fetchMetrics(),
+        fetchSavedQueries(),
       ]);
       setDatasets(ds.items);
       setJoins(j.items);
       setMetricCount(m.total);
+      setQueryCount(q.total);
       const lists: QualityRuleResponse[][] = [];
       for (const d of ds.items) {
         lists.push(await fetchQualityRules(d.id).catch(() => []));
@@ -98,6 +103,7 @@ export function DataModelPage() {
           <EntityViewStat label={t('dataModel.datasets')} value={datasets.length} />
           <EntityViewStat label={t('dataModel.joins')} value={joins.length} />
           <EntityViewStat label={t('dataModel.metrics')} value={metricCount} />
+          <EntityViewStat label={t('dataModel.queries')} value={queryCount} />
           <EntityViewStat label={t('dataModel.rules')} value={rules.length} />
           <EntityViewStat label={t('dataModel.failingRules')} value={alerts.length} />
         </EntityViewStats>
@@ -190,6 +196,8 @@ export function DataModelPage() {
         </section>
 
         <ModelMetricsSection />
+
+        <ModelQueriesSection />
       </div>
     </div>
   );

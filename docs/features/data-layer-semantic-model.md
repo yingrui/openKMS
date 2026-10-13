@@ -89,8 +89,8 @@ The Model tab is the **authoring + governance surface of the semantic model**. S
 - These are the *same* datasets the **Catalog** holds; the Model tab edits the **semantic** layer, the Catalog edits the **physical** layer (register/ingest/profile/preview/row editing/quality).
 
 ### 5. Queries (saved queries)
-- A **query** picks metrics + **`group_by` dimensions** + `where` (Ossie `saved_queries`) — **this** is where dimensions are chosen, *not* on the metric.
-- Saved as a named artifact; may export as a view/table (manifest `exports`). v1: Data Explorer reports play this role.
+- A **query** picks metrics + **`group_by` dimensions** (fields) + `filters` (Ossie `saved_queries`) — **this** is where dimensions are chosen, *not* on the metric. ✅ Stage 5.
+- Saved as a named artifact; may export as a view/table (manifest `exports`).
 
 ### 6. Export / Import (Ossie)
 - **Export** the semantic model as **Ossie YAML** (`semantic_model: {datasets, relationships, metrics}`) — interoperability + governance artifact; no runtime dependency.
@@ -100,7 +100,7 @@ The Model tab is the **authoring + governance surface of the semantic model**. S
 
 ## Data model changes
 
-Authoritative, staged list: [refactoring plan](data-layer.md#refactoring-plan) (Stages 1–6). At spec level: `datasets` gains `unique_keys` + `ai_context` (✅ Stage 2); new **`dataset_fields`** (✅ Stage 3); **`dataset_joins`** re-modelled as an FK (✅ Stage 1); `metric_definitions` is model-level with no `dimensions` (✅ Stage 4) + **`metric_runs`** audit; new **`saved_queries`**.
+Authoritative, staged list: [refactoring plan](data-layer.md#refactoring-plan) (Stages 1–6). At spec level: `datasets` gains `unique_keys` + `ai_context` (✅ Stage 2); new **`dataset_fields`** (✅ Stage 3); **`dataset_joins`** re-modelled as an FK (✅ Stage 1); `metric_definitions` is model-level with no `dimensions` (✅ Stage 4) + **`metric_runs`** audit; new **`saved_queries`** (✅ Stage 5).
 
 ---
 

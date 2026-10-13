@@ -105,7 +105,8 @@
     "noAlerts": "暂无质量告警。",
     "colFrom": "来源（from）",
     "colTo": "目标（to）",
-    "metrics": "指标"
+    "metrics": "指标",
+    "queries": "查询"
   },
   "datasets": {
     "title": "数据集",
@@ -372,7 +373,28 @@
     "metricBaseRequired": "请选择基础数据集",
     "metricExpressionRequired": "请填写指标表达式",
     "selectDataset": "选择数据集",
-    "rows": "行"
+    "rows": "行",
+    "addQuery": "添加查询",
+    "editQuery": "编辑查询",
+    "queryName": "名称",
+    "queryNameRequired": "查询需要名称",
+    "queryBaseDataset": "基础数据集",
+    "queryGroupBy": "分组（字段）",
+    "queryMetrics": "指标",
+    "queryFilters": "筛选",
+    "queryNeedsMetricOrField": "至少选择一个指标或字段",
+    "querySaved": "查询已保存",
+    "queryCreated": "查询已创建",
+    "querySaveFailed": "保存查询失败",
+    "queryDeleted": "查询已删除",
+    "queryDeleteFailed": "删除查询失败",
+    "queryDeleteConfirm": "删除查询「{{name}}」？",
+    "queryRunFailed": "运行查询失败",
+    "queryResults": "结果",
+    "noQueries": "暂无保存的查询。",
+    "addFilter": "添加筛选",
+    "filterValue": "值",
+    "runQuery": "运行"
   },
   "groups": {
     "title": "分组",

@@ -158,5 +158,5 @@ Before shipping any Data-layer screen, it must pass:
 2. **Phase 1a:** Datasets — catalog fields + Data tab + upload wizard (steps 1–2–3).
 3. **Phase 1b:** Model tab — ER canvas (read) + join dialog (list-select) + Relationships tab.
 4. **Phase 1c:** Datasets — Lineage tab (read-only graph).
-5. **Phase 2:** Model tab — Quality + metrics editor (sidebar forms, not canvases).
+5. **Phase 2:** Model tab — Quality + metrics + queries editors (sidebar forms, not canvases).
 6. **Phase 3:** Data Explorer — prompt → dashboard grid → Insight badges → saved reports.

@@ -12,23 +12,20 @@ from __future__ import annotations
 
 from typing import Any
 
-from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.data_source import DataSource
 from app.models.dataset import Dataset
 from app.models.dataset_join import DatasetJoin
 from app.models.metric_definition import MetricDefinition
-from app.services.ontology.dataset_tables import is_valid_identifier, pg_engine_for_datasource
-from app.services.ontology.property_types import serialize_cell_value
+from app.services.data_layer.sql_build import SqlBuildError, build_joins_sql, build_where
+from app.services.data_layer.sql_runner import run_readonly
+from app.services.ontology.dataset_tables import is_valid_identifier
 
 ANSI = "ANSI_SQL"
 METRIC_TYPES = ("simple", "ratio", "derived", "cumulative", "conversion")
 DEFAULT_ROW_CAP = 1000
 DEFAULT_TIMEOUT_MS = 10_000
-
-_OP_MAP = {"=": "=", "!=": "<>", ">": ">", ">=": ">=", "<": "<", "<=": "<=", "like": "LIKE"}
-VALID_OPS = tuple(_OP_MAP) + ("in", "not_in", "is_null", "is_not_null")
 
 
 class MetricError(ValueError):
@@ -77,73 +74,16 @@ def build_metric_sql(
     ):
         raise MetricError("Invalid dataset table.")
 
-    joins_sql: list[str] = []
-    for i, join_id in enumerate(metric.joins or []):
-        join = joins_by_id.get(join_id)
-        if not join:
-            raise MetricError(f"Relationship '{join_id}' not found.")
-        if join.from_dataset_id == base_dataset.id:
-            other_id, metric_is_from = join.to_dataset_id, True
-        elif join.to_dataset_id == base_dataset.id:
-            other_id, metric_is_from = join.from_dataset_id, False
-        else:
-            raise MetricError(f"Relationship '{join_id}' does not touch the base dataset.")
-        other = datasets_by_id.get(other_id)
-        if not other:
-            raise MetricError("Joined dataset not found.")
-        if not (is_valid_identifier(other.schema_name) and is_valid_identifier(other.table_name)):
-            raise MetricError("Invalid joined table.")
-        alias = f"j{i}"
-        from_cols = list(join.from_columns or [])
-        to_cols = list(join.to_columns or [])
-        if len(from_cols) != len(to_cols) or not from_cols:
-            raise MetricError("Relationship columns are not aligned.")
-        ons: list[str] = []
-        for s, t in zip(from_cols, to_cols):
-            if not (
-                isinstance(s, str)
-                and isinstance(t, str)
-                and is_valid_identifier(s)
-                and is_valid_identifier(t)
-            ):
-                raise MetricError("Invalid relationship column.")
-            ons.append(
-                f'base."{s}" = {alias}."{t}"' if metric_is_from else f'base."{t}" = {alias}."{s}"'
-            )
-        join_kind = (join.join_type or "left").upper()
-        if join_kind not in ("LEFT", "INNER", "RIGHT", "FULL"):
-            join_kind = "LEFT"
-        joins_sql.append(
-            f'{join_kind} JOIN "{other.schema_name}"."{other.table_name}" {alias} ON '
-            + " AND ".join(ons)
+    try:
+        joins_sql = build_joins_sql(
+            base_dataset,
+            list(metric.joins or []),
+            joins_by_id=joins_by_id,
+            datasets_by_id=datasets_by_id,
         )
-
-    params: dict[str, Any] = {}
-    where: list[str] = []
-    for i, f in enumerate(metric.filters or []):
-        c, op, val = f.get("column"), f.get("op"), f.get("value")
-        if not (isinstance(c, str) and is_valid_identifier(c)):
-            raise MetricError("Invalid filter column.")
-        if op not in VALID_OPS:
-            raise MetricError(f"Unsupported operator '{op}'.")
-        qcol = f'base."{c}"'
-        if op == "is_null":
-            where.append(f"{qcol} IS NULL")
-        elif op == "is_not_null":
-            where.append(f"{qcol} IS NOT NULL")
-        elif op in ("in", "not_in"):
-            if not isinstance(val, list):
-                raise MetricError("IN filter value must be a list.")
-            keys: list[str] = []
-            for j, v in enumerate(val):
-                k = f"f{i}_{j}"
-                params[k] = v
-                keys.append(f":{k}")
-            where.append(f"{qcol} {'IN' if op == 'in' else 'NOT IN'} ({', '.join(keys)})")
-        else:
-            k = f"f{i}"
-            params[k] = val
-            where.append(f"{qcol} {_OP_MAP[op]} :{k}")
+        where, params = build_where(metric.filters)
+    except SqlBuildError as exc:
+        raise MetricError(str(exc)) from exc
 
     sql = (
         f'SELECT {expr} AS value FROM "{base_dataset.schema_name}"."{base_dataset.table_name}" base'
@@ -156,12 +96,12 @@ def build_metric_sql(
     return sql, params
 
 
-async def _resolve_joins(
-    db: AsyncSession, base_dataset: Dataset, metric: MetricDefinition
+async def resolve_joins(
+    db: AsyncSession, base_dataset: Dataset, join_ids: list[str] | None
 ) -> tuple[dict[str, DatasetJoin], dict[str, Dataset]]:
     joins_by_id: dict[str, DatasetJoin] = {}
     datasets_by_id: dict[str, Dataset] = {}
-    for join_id in metric.joins or []:
+    for join_id in join_ids or []:
         join = await db.get(DatasetJoin, join_id)
         if not join:
             raise MetricError(f"Relationship '{join_id}' not found.")
@@ -196,31 +136,12 @@ async def compute_metric(
     if not ds or ds.kind != "postgresql":
         raise MetricError("Metrics only run on PostgreSQL datasets.")
 
-    joins_by_id, datasets_by_id = await _resolve_joins(db, base, metric)
+    joins_by_id, datasets_by_id = await resolve_joins(db, base, metric.joins)
     sql, params = build_metric_sql(
         base, metric, joins_by_id=joins_by_id, datasets_by_id=datasets_by_id, row_cap=row_cap
     )
 
-    engine = pg_engine_for_datasource(ds)
     try:
-        conn = engine.connect()
-        try:
-            tx = conn.begin()
-            conn.exec_driver_sql("SET TRANSACTION READ ONLY")
-            conn.exec_driver_sql(f"SET LOCAL statement_timeout = {int(timeout_ms)}")
-            result = conn.execute(text(sql), params)
-            keys = list(result.keys())
-            rows = [
-                dict(zip(keys, [serialize_cell_value(v) for v in row]))
-                for row in result.fetchall()
-            ]
-            tx.rollback()
-        finally:
-            conn.close()
-    except MetricError:
-        raise
+        return run_readonly(ds, sql, params, timeout_ms=timeout_ms)
     except Exception as exc:  # noqa: BLE001 - surface any DB error as a metric error
         raise MetricError(f"Metric query failed: {exc}") from exc
-    finally:
-        engine.dispose()
-    return rows

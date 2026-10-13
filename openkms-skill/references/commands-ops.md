@@ -11,6 +11,7 @@ Prefix with `python scripts/cli.py`. Writes need `--yes` / `--dry-run`. Before A
 | Data sources | `data-sources list` · `data-sources get --id ID` (as available via `--help`) |
 | Datasets | `datasets list [--data-source-id ID]` · `datasets rows --id DS_ID` · `datasets metadata --id DS_ID` · `datasets profile --id DS_ID` · `datasets lineage --id DS_ID` · `datasets joins list --id DS_ID` · `datasets fields list --id DS_ID` · `datasets quality list --id DS_ID` · `datasets quality run --id DS_ID --rule-id RULE_ID --yes` · `datasets ingest --file x.csv --data-source-id ID --schema imports --table x --yes` |
 | Model metrics | `metrics list [--base-dataset-id ID]` · `metrics add --name N --base-dataset-id ID --expression "SUM(amount)" [--type ratio --joins J1,J2 --yes]` · `metrics compute --metric-id M_ID` · `metrics runs --metric-id M_ID` · `metrics delete --metric-id M_ID --yes` |
+| Saved queries | `queries list [--base-dataset-id ID]` · `queries add --name N --base-dataset-id ID --metrics "total=M_ID" --group-by f1,f2 [--filter 'col:op:value' --yes]` · `queries run --query-id Q_ID` · `queries delete --query-id Q_ID --yes` |
 | Data Explorer | `explorer reports-list` · `explorer reports-create --name "…" --question "…" --dataset-id DS_ID --narrative-file ./analysis.md --yes` · `explorer reports-update --id R --status ready --yes` |
 | Connectors | `connectors kinds` · `connectors list` · `connectors get --id ID` |
 | Jobs | `jobs get --id JOB_ID` · `jobs list` |
