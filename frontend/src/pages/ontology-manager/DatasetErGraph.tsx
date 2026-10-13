@@ -14,21 +14,24 @@ export function DatasetErGraph({
   links,
   onOpen,
   emptyLabel,
+  className,
 }: {
   nodes: ErGraphNode[];
   links: ErGraphLink[];
   onOpen: (id: string) => void;
   emptyLabel: string;
+  className?: string;
 }) {
   const wrapRef = useRef<HTMLDivElement>(null);
-  const [width, setWidth] = useState(0);
+  const [size, setSize] = useState({ width: 0, height: 0 });
 
   useEffect(() => {
     const el = wrapRef.current;
     if (!el) return;
-    const ro = new ResizeObserver(() => setWidth(el.clientWidth));
+    const measure = () => setSize({ width: el.clientWidth, height: el.clientHeight });
+    const ro = new ResizeObserver(measure);
     ro.observe(el);
-    setWidth(el.clientWidth);
+    measure();
     return () => ro.disconnect();
   }, []);
 
@@ -37,12 +40,12 @@ export function DatasetErGraph({
   }
 
   return (
-    <div ref={wrapRef} className="dataset-er-graph">
-      {width > 0 && (
+    <div ref={wrapRef} className={['dataset-er-graph', className].filter(Boolean).join(' ')}>
+      {size.width > 0 && size.height > 0 && (
         <ForceGraph2D
           graphData={{ nodes, links }}
-          width={width}
-          height={460}
+          width={size.width}
+          height={size.height}
           nodeLabel="name"
           linkLabel="label"
           linkDirectionalArrowLength={6}
