@@ -7,7 +7,8 @@
     "run": "Run",
     "validate": "Validate",
     "actions": "Actions",
-    "cancel": "Cancel"
+    "cancel": "Cancel",
+    "close": "Close"
   },
   "functions": {
     "title": "Functions",
@@ -103,7 +104,8 @@
     "qualityAlerts": "Quality alerts",
     "noAlerts": "No quality alerts.",
     "colFrom": "From",
-    "colTo": "To"
+    "colTo": "To",
+    "metrics": "Metrics"
   },
   "datasets": {
     "title": "Datasets",
@@ -352,7 +354,25 @@
     "fieldDeleted": "Field deleted",
     "fieldDeleteFailed": "Failed to delete field",
     "physicalColumns": "Physical columns",
-    "emptyFields": "No fields yet."
+    "emptyFields": "No fields yet.",
+    "metricName": "Metric",
+    "editMetric": "Edit metric",
+    "metricBaseDataset": "Base dataset",
+    "metricType": "Type",
+    "metricExpression": "Expression",
+    "metricExpressionHint": "An aggregate SQL fragment over the base dataset + joins, e.g. SUM(amount) / COUNT(DISTINCT id).",
+    "metricDatatype": "Result type",
+    "metricValue": "Value",
+    "runMetric": "Run",
+    "metricHistory": "Runs",
+    "metricRunsFailed": "Failed to load runs",
+    "noRuns": "No runs yet.",
+    "metricSaved": "Metric saved",
+    "metricSaveFailed": "Failed to save metric",
+    "metricBaseRequired": "Pick a base dataset",
+    "metricExpressionRequired": "Add the metric expression",
+    "selectDataset": "Select a dataset",
+    "rows": "rows"
   },
   "groups": {
     "title": "Groups",

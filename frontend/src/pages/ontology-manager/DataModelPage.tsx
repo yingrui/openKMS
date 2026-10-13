@@ -5,11 +5,13 @@ import { Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { fetchDatasets, type DatasetResponse } from '../../data/datasetsApi';
 import { fetchDatasetJoins, type DatasetJoinResponse } from '../../data/joinsApi';
+import { fetchMetrics } from '../../data/metricsApi';
 import { fetchQualityRules, type QualityRuleResponse } from '../../data/qualityApi';
 import { EmptyState } from '../../styles/design-system';
 import { EntityViewPanel, EntityViewStat, EntityViewStats } from './EntityViewShell';
 import { DatasetAppTabs } from './DatasetAppTabs';
 import { DatasetErGraph, type ErGraphLink, type ErGraphNode } from './DatasetErGraph';
+import { ModelMetricsSection } from './ModelMetricsSection';
 import '../ontology/ontology-admin.scss';
 
 function datasetLabel(d: DatasetResponse): string {
@@ -23,14 +25,20 @@ export function DataModelPage() {
   const [datasets, setDatasets] = useState<DatasetResponse[]>([]);
   const [joins, setJoins] = useState<DatasetJoinResponse[]>([]);
   const [rules, setRules] = useState<QualityRuleResponse[]>([]);
+  const [metricCount, setMetricCount] = useState(0);
   const [loading, setLoading] = useState(true);
 
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const [ds, j] = await Promise.all([fetchDatasets(), fetchDatasetJoins()]);
+      const [ds, j, m] = await Promise.all([
+        fetchDatasets(),
+        fetchDatasetJoins(),
+        fetchMetrics(),
+      ]);
       setDatasets(ds.items);
       setJoins(j.items);
+      setMetricCount(m.total);
       const lists: QualityRuleResponse[][] = [];
       for (const d of ds.items) {
         lists.push(await fetchQualityRules(d.id).catch(() => []));
@@ -89,6 +97,7 @@ export function DataModelPage() {
         <EntityViewStats>
           <EntityViewStat label={t('dataModel.datasets')} value={datasets.length} />
           <EntityViewStat label={t('dataModel.joins')} value={joins.length} />
+          <EntityViewStat label={t('dataModel.metrics')} value={metricCount} />
           <EntityViewStat label={t('dataModel.rules')} value={rules.length} />
           <EntityViewStat label={t('dataModel.failingRules')} value={alerts.length} />
         </EntityViewStats>
@@ -179,6 +188,8 @@ export function DataModelPage() {
             </div>
           )}
         </section>
+
+        <ModelMetricsSection />
       </div>
     </div>
   );

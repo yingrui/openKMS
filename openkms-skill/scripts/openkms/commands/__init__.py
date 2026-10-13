@@ -22,6 +22,7 @@ from . import (
     knowledge_map,
     kubernetes,
     media,
+    metrics,
     ontology,  # also nests `objects` and `links` under itself
     pipelines,
     ping,
@@ -55,6 +56,7 @@ def register(sub: _SubParsersAction) -> None:
     comments.add_subparser(sub)
     media.add_media_channels_subparser(sub)
     media.add_media_subparser(sub)
+    metrics.add_subparser(sub)
     ontology.add_subparser(sub)  # exposes `ontology cypher/...`, `ontology objects ...`, `ontology links ...`
     evaluation.add_subparser(sub)
     explorer.add_subparser(sub)

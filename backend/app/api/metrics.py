@@ -1,7 +1,10 @@
-"""Metrics API — declarative metric definitions + on-demand computation (nested under /datasets).
+"""Metrics API — model-level metric definitions, computation, and run audit.
 
-Reads: `console:datasets` or `ontology:read`. Writes: `console:datasets`.
+Reads: `data:read`. Writes: `data:write`.
 """
+from __future__ import annotations
+
+import time
 import uuid
 
 from fastapi import APIRouter, Depends, HTTPException, Request
@@ -9,63 +12,102 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.auth import require_any_permission, require_auth, require_permission
-from app.api.datasets import get_dataset_scoped, get_dataset_scoped_write
 from app.database import get_db
 from app.models.dataset import Dataset
 from app.models.metric_definition import MetricDefinition
-from app.schemas.metric import MetricComputeResponse, MetricCreate, MetricResponse, MetricUpdate
-from app.services.data_layer.metrics import AGGREGATIONS, MetricError, compute_metric
+from app.models.metric_run import MetricRun
+from app.schemas.metric import (
+    MetricComputeResponse,
+    MetricCreate,
+    MetricListResponse,
+    MetricResponse,
+    MetricRunResponse,
+    MetricUpdate,
+)
+from app.services.data_layer.metrics import MetricError, compute_metric, validate_metric_definition
 from app.services.permissions.permission_catalog import PERM_DATA_READ, PERM_DATA_WRITE
 
-router = APIRouter(prefix="/datasets", tags=["metrics"], dependencies=[Depends(require_auth)])
+router = APIRouter(prefix="/metrics", tags=["metrics"], dependencies=[Depends(require_auth)])
 _VIEW = (PERM_DATA_READ,)
 
 
-def _metric_response(m: MetricDefinition) -> MetricResponse:
+async def _name_map(db: AsyncSession, ids: set[str]) -> dict[str, str]:
+    if not ids:
+        return {}
+    rows = (await db.execute(select(Dataset).where(Dataset.id.in_(ids)))).scalars().all()
+    return {d.id: (d.display_name or f"{d.schema_name}.{d.table_name}") for d in rows}
+
+
+def _metric_response(m: MetricDefinition, base_name: str | None) -> MetricResponse:
     return MetricResponse(
         id=m.id,
-        dataset_id=m.dataset_id,
+        base_dataset_id=m.base_dataset_id,
+        base_dataset_name=base_name,
         name=m.name,
         business_definition=m.business_definition,
-        aggregation=m.aggregation,
-        column_name=m.column_name,
+        type=m.type,
+        expression=m.expression,
+        datatype=m.datatype,
         filters=m.filters,
         joins=m.joins,
-        dimensions=m.dimensions,
+        ai_context=m.ai_context,
         created_by_name=m.created_by_name,
         created_at=m.created_at,
         updated_at=m.updated_at,
     )
 
 
-async def _get_metric(db: AsyncSession, dataset_id: str, metric_id: str) -> MetricDefinition:
+async def _load_metric(db: AsyncSession, metric_id: str) -> MetricDefinition:
     m = await db.get(MetricDefinition, metric_id)
-    if not m or m.dataset_id != dataset_id:
+    if not m:
         raise HTTPException(status_code=404, detail="Metric not found")
     return m
 
 
+async def _record_run(
+    db: AsyncSession,
+    metric_id: str,
+    status: str,
+    row_count: int,
+    duration_ms: int,
+    error: str | None,
+    payload: dict,
+) -> None:
+    uname = payload.get("preferred_username") or payload.get("name")
+    db.add(
+        MetricRun(
+            id=str(uuid.uuid4()),
+            metric_id=metric_id,
+            status=status,
+            row_count=row_count,
+            duration_ms=duration_ms,
+            error=error,
+            ran_by=payload.get("sub") if isinstance(payload.get("sub"), str) else None,
+            ran_by_name=str(uname)[:256] if isinstance(uname, str) and uname.strip() else None,
+        )
+    )
+    await db.commit()
+
+
 @router.get(
-    "/{dataset_id}/metrics",
-    response_model=list[MetricResponse],
+    "",
+    response_model=MetricListResponse,
     dependencies=[Depends(require_any_permission(*_VIEW))],
 )
-async def list_metrics(
-    dataset: Dataset = Depends(get_dataset_scoped),
-    db: AsyncSession = Depends(get_db),
-):
-    rows = (
-        await db.execute(
-            select(MetricDefinition)
-            .where(MetricDefinition.dataset_id == dataset.id)
-            .order_by(MetricDefinition.created_at.desc())
-        )
-    ).scalars().all()
-    return [_metric_response(m) for m in rows]
+async def list_metrics(base_dataset_id: str | None = None, db: AsyncSession = Depends(get_db)):
+    """List model-level metrics, optionally anchored on one base dataset."""
+    query = select(MetricDefinition).order_by(MetricDefinition.created_at.desc())
+    if base_dataset_id:
+        query = query.where(MetricDefinition.base_dataset_id == base_dataset_id)
+    rows = (await db.execute(query)).scalars().all()
+    names = await _name_map(db, {m.base_dataset_id for m in rows})
+    return MetricListResponse(
+        items=[_metric_response(m, names.get(m.base_dataset_id)) for m in rows], total=len(rows)
+    )
 
 
 @router.post(
-    "/{dataset_id}/metrics",
+    "",
     response_model=MetricResponse,
     status_code=201,
     dependencies=[Depends(require_permission(PERM_DATA_WRITE))],
@@ -73,88 +115,158 @@ async def list_metrics(
 async def create_metric(
     request: Request,
     body: MetricCreate,
-    dataset: Dataset = Depends(get_dataset_scoped_write),
     db: AsyncSession = Depends(get_db),
 ):
-    if body.aggregation not in AGGREGATIONS:
-        raise HTTPException(
-            status_code=400, detail=f"aggregation must be one of: {', '.join(AGGREGATIONS)}"
-        )
-    payload = request.state.openkms_jwt_payload
-    uname = payload.get("preferred_username") or payload.get("name")
+    base = await db.get(Dataset, body.base_dataset_id)
+    if not base:
+        raise HTTPException(status_code=400, detail="Base dataset not found")
+    try:
+        validate_metric_definition(name=body.name, type=body.type, expression=body.expression)
+    except MetricError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+    p = request.state.openkms_jwt_payload
+    uname = p.get("preferred_username") or p.get("name")
     metric = MetricDefinition(
         id=str(uuid.uuid4()),
-        dataset_id=dataset.id,
-        name=body.name,
+        base_dataset_id=body.base_dataset_id,
+        name=body.name.strip(),
         business_definition=body.business_definition,
-        aggregation=body.aggregation,
-        column_name=body.column_name,
+        type=body.type,
+        expression=body.expression,
+        datatype=body.datatype,
         filters=[f.model_dump() for f in body.filters] if body.filters else None,
         joins=body.joins,
-        dimensions=body.dimensions,
-        created_by=payload.get("sub") if isinstance(payload.get("sub"), str) else None,
+        ai_context=body.ai_context,
+        created_by=p.get("sub") if isinstance(p.get("sub"), str) else None,
         created_by_name=str(uname)[:256] if isinstance(uname, str) and uname.strip() else None,
     )
     db.add(metric)
     await db.commit()
     await db.refresh(metric)
-    return _metric_response(metric)
+    names = await _name_map(db, {metric.base_dataset_id})
+    return _metric_response(metric, names.get(metric.base_dataset_id))
+
+
+@router.get(
+    "/{metric_id}",
+    response_model=MetricResponse,
+    dependencies=[Depends(require_any_permission(*_VIEW))],
+)
+async def get_metric(metric_id: str, db: AsyncSession = Depends(get_db)):
+    m = await _load_metric(db, metric_id)
+    names = await _name_map(db, {m.base_dataset_id})
+    return _metric_response(m, names.get(m.base_dataset_id))
 
 
 @router.put(
-    "/{dataset_id}/metrics/{metric_id}",
+    "/{metric_id}",
     response_model=MetricResponse,
     dependencies=[Depends(require_permission(PERM_DATA_WRITE))],
 )
 async def update_metric(
     metric_id: str,
     body: MetricUpdate,
-    dataset: Dataset = Depends(get_dataset_scoped_write),
     db: AsyncSession = Depends(get_db),
 ):
-    metric = await _get_metric(db, dataset.id, metric_id)
+    m = await _load_metric(db, metric_id)
     data = body.model_dump(exclude_unset=True)
-    if "aggregation" in data and data["aggregation"] not in AGGREGATIONS:
-        raise HTTPException(
-            status_code=400, detail=f"aggregation must be one of: {', '.join(AGGREGATIONS)}"
+
+    if "base_dataset_id" in data and not await db.get(Dataset, data["base_dataset_id"]):
+        raise HTTPException(status_code=400, detail="Base dataset not found")
+    try:
+        validate_metric_definition(
+            name=data.get("name", m.name),
+            type=data.get("type", m.type),
+            expression=data.get("expression", m.expression),
         )
+    except MetricError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
     if "filters" in data:
         data["filters"] = data["filters"] or None
-    for field in ("name", "business_definition", "aggregation", "column_name", "filters", "joins", "dimensions"):
+    if "name" in data:
+        data["name"] = data["name"].strip()
+    for field in (
+        "name",
+        "base_dataset_id",
+        "business_definition",
+        "type",
+        "expression",
+        "datatype",
+        "filters",
+        "joins",
+        "ai_context",
+    ):
         if field in data:
-            setattr(metric, field, data[field])
+            setattr(m, field, data[field])
     await db.commit()
-    await db.refresh(metric)
-    return _metric_response(metric)
+    await db.refresh(m)
+    names = await _name_map(db, {m.base_dataset_id})
+    return _metric_response(m, names.get(m.base_dataset_id))
 
 
 @router.delete(
-    "/{dataset_id}/metrics/{metric_id}",
+    "/{metric_id}",
     status_code=204,
     dependencies=[Depends(require_permission(PERM_DATA_WRITE))],
 )
-async def delete_metric(
-    metric_id: str,
-    dataset: Dataset = Depends(get_dataset_scoped_write),
-    db: AsyncSession = Depends(get_db),
-):
-    metric = await _get_metric(db, dataset.id, metric_id)
-    await db.delete(metric)
+async def delete_metric(metric_id: str, db: AsyncSession = Depends(get_db)):
+    m = await _load_metric(db, metric_id)
+    await db.delete(m)
 
 
-@router.post(
-    "/{dataset_id}/metrics/{metric_id}/compute",
+@router.get(
+    "/{metric_id}/compute",
     response_model=MetricComputeResponse,
     dependencies=[Depends(require_any_permission(*_VIEW))],
 )
 async def compute_metric_endpoint(
+    request: Request,
     metric_id: str,
-    dataset: Dataset = Depends(get_dataset_scoped),
     db: AsyncSession = Depends(get_db),
 ):
-    metric = await _get_metric(db, dataset.id, metric_id)
+    """Compute a metric read-only (statement timeout + row cap); records a run."""
+    m = await _load_metric(db, metric_id)
+    p = request.state.openkms_jwt_payload
+    start = time.perf_counter()
     try:
-        rows = await compute_metric(db, metric)
+        rows = await compute_metric(db, m)
+        duration = int((time.perf_counter() - start) * 1000)
+        await _record_run(db, m.id, "ok", len(rows), duration, None, p)
+        return MetricComputeResponse(metric_id=m.id, rows=rows, duration_ms=duration)
     except MetricError as exc:
+        duration = int((time.perf_counter() - start) * 1000)
+        await _record_run(db, m.id, "error", 0, duration, str(exc), p)
         raise HTTPException(status_code=400, detail=str(exc)) from exc
-    return MetricComputeResponse(metric_id=metric.id, rows=rows)
+
+
+@router.get(
+    "/{metric_id}/runs",
+    response_model=list[MetricRunResponse],
+    dependencies=[Depends(require_any_permission(*_VIEW))],
+)
+async def list_metric_runs(metric_id: str, db: AsyncSession = Depends(get_db)):
+    """Recent executions of a metric (audit)."""
+    await _load_metric(db, metric_id)
+    rows = (
+        await db.execute(
+            select(MetricRun)
+            .where(MetricRun.metric_id == metric_id)
+            .order_by(MetricRun.created_at.desc())
+            .limit(50)
+        )
+    ).scalars().all()
+    return [
+        MetricRunResponse(
+            id=r.id,
+            metric_id=r.metric_id,
+            status=r.status,
+            row_count=r.row_count,
+            duration_ms=r.duration_ms,
+            error=r.error,
+            ran_by_name=r.ran_by_name,
+            created_at=r.created_at,
+        )
+        for r in rows
+    ]

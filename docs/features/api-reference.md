@@ -392,11 +392,13 @@ Encrypted values; **never returned**. Write/sync/delete reject personal API key 
 | DELETE | `/api/datasets/{id}/quality-rules/{rule_id}` | Delete quality rule (`data:write`) |
 | POST | `/api/datasets/{id}/quality-rules/{rule_id}/run` | Run a quality rule (`data:write`) |
 | GET | `/api/datasets/{id}/quality-rules/{rule_id}/runs` | Rule run history (`data:read`) |
-| GET | `/api/datasets/{id}/metrics` | List metrics (`data:read`) |
-| POST | `/api/datasets/{id}/metrics` | Create metric (`data:write`) |
-| PUT | `/api/datasets/{id}/metrics/{metric_id}` | Update metric (`data:write`) |
-| DELETE | `/api/datasets/{id}/metrics/{metric_id}` | Delete metric (`data:write`) |
-| POST | `/api/datasets/{id}/metrics/{metric_id}/compute` | Compute metric (`data:read`) |
+| GET | `/api/metrics` | List model-level metrics (`base_dataset_id` filter; `data:read`) |
+| POST | `/api/metrics` | Create a metric `{name, base_dataset_id, type, expression:{dialects:{ANSI_SQL}}, datatype?, filters?, joins?, ai_context?}` (`data:write`) |
+| GET | `/api/metrics/{metric_id}` | Get a metric (`data:read`) |
+| PUT | `/api/metrics/{metric_id}` | Update a metric (`data:write`) |
+| DELETE | `/api/metrics/{metric_id}` | Delete a metric (`data:write`) |
+| GET | `/api/metrics/{metric_id}/compute` | Compute a metric — read-only, statement timeout + row cap; records a run (`data:read`) |
+| GET | `/api/metrics/{metric_id}/runs` | Recent executions of a metric (`data:read`) |
 | GET | `/api/explorer-reports` | List explorer reports (`data:read`) |
 | POST | `/api/explorer-reports` | Create explorer report (`data:write`) |
 | GET | `/api/explorer-reports/{id}` | Get explorer report (`data:read`) |

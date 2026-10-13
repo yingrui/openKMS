@@ -62,9 +62,9 @@ Definitions first; each concept is **authored in exactly one place**.
 
 ## Current state
 
-**Shipped:** Datasets app at `/datasets` (Catalog list + register/upload + detail tabs: Overview · Data · Fields · Usage · Relationships · Lineage · Quality · Metrics · Settings · Sharing) and the Model view at `/data-model` (ER graph + health + quality alerts + relationships table); Data Explorer at `/data-explorer` (saved analyses). Backend: `datasets` (catalog fields, `primary_key_columns`, `unique_keys`, `ai_context`, `is_editable`), `dataset_joins` (Ossie FK — `from`/`to`/`from_columns`/`to_columns`/`join_type`), file ingest, profile/schema snapshots, quality rules/runs, `metric_definitions` (per-dataset DSL; **target:** Ossie SQL expressions), `explorer_reports`, `dataset_edits` (audit), `dataset_fields` (semantic fields); `data:read` / `data:write` / `data:edit`; keyset paging + row editing (TanStack Table). First scenario: **Tushare stock datasets**.
+**Shipped:** Datasets app at `/datasets` (Catalog list + register/upload + detail tabs: Overview · Data · Fields · Usage · Relationships · Lineage · Quality · Metrics · Settings · Sharing) and the Model view at `/data-model` (ER graph + health + quality alerts + relationships table); Data Explorer at `/data-explorer` (saved analyses). Backend: `datasets` (catalog fields, `primary_key_columns`, `unique_keys`, `ai_context`, `is_editable`), `dataset_joins` (Ossie FK — `from`/`to`/`from_columns`/`to_columns`/`join_type`), file ingest, profile/schema snapshots, quality rules/runs, `metric_definitions` (model-level Ossie SQL expressions), `metric_runs` (execution audit), `explorer_reports`, `dataset_edits` (audit), `dataset_fields` (semantic fields); `data:read` / `data:write` / `data:edit`; keyset paging + row editing (TanStack Table). First scenario: **Tushare stock datasets**.
 
-**Gaps vs the target** are the [refactoring plan](#refactoring-plan) below (model-level metrics, queries, Ossie export).
+**Gaps vs the target** are the [refactoring plan](#refactoring-plan) below (queries, Ossie export).
 
 ---
 
@@ -89,12 +89,12 @@ Goal: the Datasets app **manages the Ossie semantic model**, with each definitio
 - **Frontend:** the **Columns** tab → **Fields**; add computed fields, the `is_time` dimension role, and `ai_context` per field; physical columns + profile kept below.
 - **Verify:** ✅ a computed field (`LOWER(email)`) is stored; an `is_time` field carries the time dimension for metrics/queries. (Export is Stage 6.)
 
-### Stage 4 — Metrics: model-level, Ossie SQL expressions
-- **Expression:** metrics use **Ossie `expression.dialects`** — an aggregate **SQL fragment** (not a full statement), wrapped by the engine into a generated `SELECT … FROM base JOIN … WHERE … GROUP BY …`. **No custom DSL** (decision #13). Authored by data engineers; **AI-assist** drafts the expression.
-- **Guardrails:** execute in a **read-only transaction** with a **statement timeout** + **row cap**; audit the expression run.
-- **Schema:** `metric_definitions` becomes **model-level** (may reference several datasets) with `expression` (dialects), `datatype`, `ai_context`, `type`; **remove `dimensions`**.
-- **Frontend:** move Metrics from the dataset detail to **Model → Metrics**; the form takes an SQL expression (+ optional AI draft), no dimensions.
-- **Verify:** a cross-dataset ratio metric (`SUM(orders.amount) / COUNT(DISTINCT customers.id)`) computes; the run is read-only + timed out; no dimensions on the metric.
+### Stage 4 — Metrics: model-level, Ossie SQL expressions ✅
+- **Expression:** metrics use **Ossie `expression.dialects`** — an aggregate **SQL fragment** (not a full statement), wrapped by the engine into a generated `SELECT <expr> AS value FROM base JOIN … WHERE … LIMIT …`. **No custom DSL** (decision #13). Authored by data engineers; **AI-assist** drafts the expression.
+- **Guardrails:** execute in a **read-only transaction** with a **statement timeout** + **row cap**; audit each run (`metric_runs`).
+- **Schema:** `metric_definitions` is **model-level** (`base_dataset_id` anchor) with `expression` (dialects), `datatype`, `type`, `ai_context`; `dimensions` **removed**.
+- **Frontend:** Metrics moved from the dataset detail to **Model → Metrics**; the form takes an SQL expression (+ optional joins/AI context), no dimensions.
+- **Verify:** ✅ a metric computes read-only with a timeout + row cap (verified live); no dimensions on the metric; runs are audited.
 
 ### Stage 5 — Queries (saved queries)
 - **Schema:** `saved_queries` — `name`, `metrics[]`, `group_by[]` (dimensions), `where`, `exports`.

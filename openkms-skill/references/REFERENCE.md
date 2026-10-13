@@ -229,9 +229,11 @@ All write subcommands accept `--yes` / `--dry-run`. Without `--yes` on non-TTY s
 | `datasets quality add` *(write)* | POST | `/api/datasets/{id}/quality-rules` | Body `{name, rule_type, column_name, config}`. |
 | `datasets quality run` *(write)* | POST | `/api/datasets/{id}/quality-rules/{rule_id}/run` | |
 | `datasets quality delete` *(write)* | DELETE | `/api/datasets/{id}/quality-rules/{rule_id}` | |
-| `datasets metrics list` | GET | `/api/datasets/{id}/metrics` | Declarative metric definitions. |
-| `datasets metrics add` *(write)* | POST | `/api/datasets/{id}/metrics` | Body `{name, aggregation, column_name, dimensions, joins}`. |
-| `datasets metrics compute` | POST | `/api/datasets/{id}/metrics/{metric_id}/compute` | Generates SQL from the DSL and queries on demand. |
+| `metrics list` | GET | `/api/metrics` | Model-level metrics; optional `?base_dataset_id=`. |
+| `metrics add` *(write)* | POST | `/api/metrics` | Body `{name, base_dataset_id, type, expression:{dialects:{ANSI_SQL}}, datatype?, joins?, ai_context?}`. `expression` is an aggregate SQL fragment (Ossie). |
+| `metrics compute` | GET | `/api/metrics/{metric_id}/compute` | Runs the metric **read-only** (statement timeout + row cap); records a run. |
+| `metrics runs` | GET | `/api/metrics/{metric_id}/runs` | Recent executions (audit). |
+| `metrics delete` *(write)* | DELETE | `/api/metrics/{metric_id}` | |
 | `explorer reports-list` | GET | `/api/explorer-reports` | Data Explorer saved analyses. |
 | `explorer reports-get` | GET | `/api/explorer-reports/{id}` | |
 | `explorer reports-create` *(write)* | POST | `/api/explorer-reports` | Body `{name, question, dataset_id, narrative, charts}`. |

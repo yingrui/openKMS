@@ -7,7 +7,8 @@
     "run": "运行",
     "validate": "校验",
     "actions": "操作",
-    "cancel": "取消"
+    "cancel": "取消",
+    "close": "关闭"
   },
   "functions": {
     "title": "函数",
@@ -103,7 +104,8 @@
     "qualityAlerts": "质量告警",
     "noAlerts": "暂无质量告警。",
     "colFrom": "来源（from）",
-    "colTo": "目标（to）"
+    "colTo": "目标（to）",
+    "metrics": "指标"
   },
   "datasets": {
     "title": "数据集",
@@ -352,7 +354,25 @@
     "fieldDeleted": "字段已删除",
     "fieldDeleteFailed": "删除字段失败",
     "physicalColumns": "物理列",
-    "emptyFields": "暂无字段。"
+    "emptyFields": "暂无字段。",
+    "metricName": "指标",
+    "editMetric": "编辑指标",
+    "metricBaseDataset": "基础数据集",
+    "metricType": "类型",
+    "metricExpression": "表达式",
+    "metricExpressionHint": "基于基础数据集与连接的聚合 SQL 片段，例如 SUM(amount) / COUNT(DISTINCT id)。",
+    "metricDatatype": "结果类型",
+    "metricValue": "值",
+    "runMetric": "运行",
+    "metricHistory": "运行记录",
+    "metricRunsFailed": "加载运行记录失败",
+    "noRuns": "暂无运行记录。",
+    "metricSaved": "指标已保存",
+    "metricSaveFailed": "保存指标失败",
+    "metricBaseRequired": "请选择基础数据集",
+    "metricExpressionRequired": "请填写指标表达式",
+    "selectDataset": "选择数据集",
+    "rows": "行"
   },
   "groups": {
     "title": "分组",

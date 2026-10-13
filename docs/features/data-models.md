@@ -225,8 +225,13 @@ Schema for every persisted table. Grouped by area; see the matching feature page
 
 ### MetricDefinition
 
-- `id`, `dataset_id` (FK → datasets, CASCADE), `name`, `business_definition`, `aggregation` (`count` | `sum` | `avg` | `min` | `max`), `column_name`, `filters` (JSONB), `joins` (JSONB: dataset_join ids), `dimensions` (JSONB), `created_by` / `created_by_name`, `created_at`, `updated_at`
-- Declarative metric (restricted DSL); computed on demand by generating SQL
+- `id`, `base_dataset_id` (FK → datasets, CASCADE; the metric's anchor dataset), `name`, `business_definition`, `type` (`simple` | `ratio` | `derived` | `cumulative` | `conversion`), `expression` (JSONB `{dialects: {ANSI_SQL: <fragment>}}`; an aggregate SQL fragment), `datatype`, `filters` (JSONB: `[{column, op, value}]`), `joins` (JSONB: dataset_join ids), `ai_context` (JSONB), `created_by` / `created_by_name`, `created_at`, `updated_at`
+- **Model-level** metric: the engine wraps the `expression` fragment into a generated query (`SELECT <expr> AS value FROM <base> <joins> WHERE <filters> LIMIT <cap>`), executed **read-only** with a statement timeout. Authored by data engineers (AI-assist may draft); no custom DSL. Grouping/dimensions are a *query* concern, not stored here.
+
+### MetricRun
+
+- `id`, `metric_id` (FK → metric_definitions, CASCADE), `status` (`ok` | `error`), `row_count`, `duration_ms`, `error`, `ran_by` / `ran_by_name`, `created_at`
+- Execution audit — one row per metric computation.
 
 ### ExplorerReport
 

@@ -79,8 +79,8 @@ The Model tab is the **authoring + governance surface of the semantic model**. S
 - Not a **LinkType**: a data relationship carries a **join type** and targets physical tables; a LinkType is a semantic object-type link with none.
 
 ### 3. Metrics
-- **Model-level** aggregate **expressions** (metrics span datasets via relationships; not per-dataset).
-- Author: name, **definition/description**, `expression` (an aggregate over fields/measures — e.g. `SUM(orders.amount)`), `datatype`, `ai_context`.
+- **Model-level** aggregate **expressions** (metrics span datasets via relationships; not per-dataset). ✅ Stage 4.
+- Author: name, **definition/description**, `expression` (an aggregate over fields/measures — e.g. `SUM(orders.amount)`), `datatype`, `ai_context`. Run read-only (timeout + row cap), audited.
 - **No dimensions here**: in Ossie a *dimension* is a **field role on a dataset**; “group by” is a **query** concern (see §5). The metric itself is a **SQL expression** (§Metrics below).
 
 ### 4. Datasets (Ossie `datasets`)
@@ -100,18 +100,18 @@ The Model tab is the **authoring + governance surface of the semantic model**. S
 
 ## Data model changes
 
-Authoritative, staged list: [refactoring plan](data-layer.md#refactoring-plan) (Stages 1–6). At spec level: `datasets` gains `unique_keys` + `ai_context` (✅ Stage 2); new **`dataset_fields`** (✅ Stage 3); **`dataset_joins`** re-modelled as an FK (`from`/`to`/`from_columns`/`to_columns`/`join_type`; ✅ Stage 1); `metric_definitions` becomes model-level with no `dimensions`; new **`saved_queries`**.
+Authoritative, staged list: [refactoring plan](data-layer.md#refactoring-plan) (Stages 1–6). At spec level: `datasets` gains `unique_keys` + `ai_context` (✅ Stage 2); new **`dataset_fields`** (✅ Stage 3); **`dataset_joins`** re-modelled as an FK (✅ Stage 1); `metric_definitions` is model-level with no `dimensions` (✅ Stage 4) + **`metric_runs`** audit; new **`saved_queries`**.
 
 ---
 
-## Metrics — Ossie SQL expressions (decided)
+## Metrics — Ossie SQL expressions (✅ decided + shipped)
 
 Metrics use **Ossie `expression.dialects`**: an **aggregate SQL fragment** per dialect, authored by data engineers (AI-assist may draft it). Ossie expressions are **not full statements** — the engine wraps them into a generated query:
 
 ```sql
-SELECT <dims>, <metric expression> AS value
+SELECT <metric expression> AS value
 FROM <base dataset> <relationships…>
-WHERE <filters> GROUP BY <dims>
+WHERE <filters> LIMIT <row cap>
 ```
 
 - **No custom DSL** (decision #13) — a smaller system, and the same expressions an agent can later generate.
