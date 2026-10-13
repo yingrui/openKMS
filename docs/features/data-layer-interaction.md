@@ -94,7 +94,7 @@ The Model tab authors the **semantic model**; its sections are the Ossie classes
 
 - **Overview** — ER graph (datasets as nodes, **directed FK edges many → one**) + model health; click a node → open the dataset.
 - **Relationships** — the only choice is *who holds the FK*; column pairs pre-fill on name match.
-- **Metrics / Queries** — model-level lists.
+- **Metrics / Queries** — model-level lists. A metric is a **SQL expression** (Ossie `expression.dialects`) that a data engineer authors, with **AI-assist** to draft it; a query pins metrics + dimensions + filter.
 - **Export** — the Ossie document.
 
 ### Why it's intuitive

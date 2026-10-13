@@ -62,7 +62,7 @@ Definitions first; each concept is **authored in exactly one place**.
 
 ## Current state
 
-**Shipped:** Datasets app at `/datasets` (Catalog list + register/upload + detail tabs: Overview · Data · Columns · Usage · Relationships · Lineage · Quality · Metrics · Settings · Sharing) and the Model view at `/data-model` (ER graph + health + quality alerts + joins table); Data Explorer at `/data-explorer` (saved analyses). Backend: `datasets` (catalog fields, `primary_key_columns`, `is_editable`), `dataset_joins` (cardinality), file ingest, profile/schema snapshots, quality rules/runs, `metric_definitions` (per-dataset, restricted DSL), `explorer_reports`, `dataset_edits` (audit); `data:read` / `data:write` / `data:edit`; keyset paging + row editing (TanStack Table). First scenario: **Tushare stock datasets**.
+**Shipped:** Datasets app at `/datasets` (Catalog list + register/upload + detail tabs: Overview · Data · Columns · Usage · Relationships · Lineage · Quality · Metrics · Settings · Sharing) and the Model view at `/data-model` (ER graph + health + quality alerts + joins table); Data Explorer at `/data-explorer` (saved analyses). Backend: `datasets` (catalog fields, `primary_key_columns`, `is_editable`), `dataset_joins` (cardinality), file ingest, profile/schema snapshots, quality rules/runs, `metric_definitions` (per-dataset DSL; **target:** Ossie SQL expressions), `explorer_reports`, `dataset_edits` (audit); `data:read` / `data:write` / `data:edit`; keyset paging + row editing (TanStack Table). First scenario: **Tushare stock datasets**.
 
 **Gaps vs the target** are the [refactoring plan](#refactoring-plan) below (fields/dimensions, FK relationships, model-level metrics, queries, Ossie export).
 
@@ -88,11 +88,12 @@ Goal: the Datasets app **manages the Ossie semantic model**, with each definitio
 - **Frontend:** rename the **Columns** tab → **Fields**; add computed fields, the `is_time` dimension role, and `ai_context` per field.
 - **Verify:** a computed field (`LOWER(email)`) is stored and exported; an `is_time` field is a time dimension for metrics/queries.
 
-### Stage 4 — Metrics: model-level + expressions
-- **Decision required:** expression strategy A/B/C (restricted DSL / Ossie SQL / hybrid) — see [Metrics strategy](data-layer-semantic-model.md#metrics-strategy--still-open).
-- **Schema:** `metric_definitions` becomes **model-level** (may reference several datasets) with `expression`, `datatype`, `ai_context`, `type`; **remove `dimensions`**.
-- **Frontend:** move Metrics from the dataset detail to **Model → Metrics**; the metric form has no dimensions.
-- **Verify:** a cross-dataset metric (via a relationship) computes; a metric stores no dimensions list.
+### Stage 4 — Metrics: model-level, Ossie SQL expressions
+- **Expression:** metrics use **Ossie `expression.dialects`** — an aggregate **SQL fragment** (not a full statement), wrapped by the engine into a generated `SELECT … FROM base JOIN … WHERE … GROUP BY …`. **No custom DSL** (decision #13). Authored by data engineers; **AI-assist** drafts the expression.
+- **Guardrails:** execute in a **read-only transaction** with a **statement timeout** + **row cap**; audit the expression run.
+- **Schema:** `metric_definitions` becomes **model-level** (may reference several datasets) with `expression` (dialects), `datatype`, `ai_context`, `type`; **remove `dimensions`**.
+- **Frontend:** move Metrics from the dataset detail to **Model → Metrics**; the form takes an SQL expression (+ optional AI draft), no dimensions.
+- **Verify:** a cross-dataset ratio metric (`SUM(orders.amount) / COUNT(DISTINCT customers.id)`) computes; the run is read-only + timed out; no dimensions on the metric.
 
 ### Stage 5 — Queries (saved queries)
 - **Schema:** `saved_queries` — `name`, `metrics[]`, `group_by[]` (dimensions), `where`, `exports`.
@@ -138,7 +139,7 @@ So a table is described (catalog), modeled (fields/relationships), trusted (qual
 | 10 | **Data files can be uploaded** — parsed into PostgreSQL tables; the raw file is kept in object storage. |
 | 11 | **Data sources are tagged by layer** (Console → Data Sources); PostgreSQL is data-capable by default, `ontology` is an explicit exclusion. |
 | 12 | **Predictive analysis = LLM reasoning + Python + trend extrapolation** (sandboxed; no ML training/hosting; Functions optional later). |
-| 13 | **Quality is declarative** (rule type + parameters). **Metrics expression strategy is under review** — see [Metrics strategy](data-layer-semantic-model.md#metrics-strategy--still-open). |
+| 13 | **Quality is declarative** (rule type + parameters). **Metrics use Ossie `expression.dialects`** — aggregate SQL **fragments** pre-configured by data engineers (no custom DSL; AI-assist may draft them), wrapped into a generated query and executed **read-only with timeout + row cap**. |
 | 14 | **New data resources inherit dataset ACL** (no new `resource_type`). |
 | 15 | **Separate read vs manage vs edit permissions** — `data:read` / `data:write` / `data:edit`; `console:datasets` stays console-scoped. |
 | 16 | **Dataset → knowledge has two paths** — promote to an object type and cite as agent evidence; dataset rows are not ingested into KB/RAG in v1. |
@@ -148,7 +149,6 @@ So a table is described (catalog), modeled (fields/relationships), trusted (qual
 
 ## Still open
 
-- **Metrics expression strategy** A/B/C (blocks Stage 4).
 - **Ingest semantics** — append / overwrite / rebuild; new table vs append.
 - **Queries home** — Model tab vs Data Explorer.
 
