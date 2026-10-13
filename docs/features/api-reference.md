@@ -368,11 +368,11 @@ Encrypted values; **never returned**. Write/sync/delete reject personal API key 
 | GET | `/api/datasets/{id}/metadata` | Column metadata (`data:read`; dataset ACL) |
 | PUT | `/api/datasets/{id}` | Update dataset (`data:write`; write on dataset) |
 | DELETE | `/api/datasets/{id}` | Delete dataset (`data:write`; manage on dataset) |
-| GET | `/api/dataset-joins` | List dataset joins (`dataset_id` filter; `data:read`) |
-| POST | `/api/dataset-joins` | Create dataset join (validated; `data:write`) |
-| GET | `/api/dataset-joins/{id}` | Get dataset join (`data:read`) |
-| PUT | `/api/dataset-joins/{id}` | Update dataset join (`data:write`) |
-| DELETE | `/api/dataset-joins/{id}` | Delete dataset join (`data:write`) |
+| GET | `/api/dataset-joins` | List relationships (`dataset_id` filter; `data:read`) |
+| POST | `/api/dataset-joins` | Create a relationship `{from_dataset_id, to_dataset_id, from_columns, to_columns, join_type}` (validated; `data:write`) |
+| GET | `/api/dataset-joins/{id}` | Get a relationship (`data:read`) |
+| PUT | `/api/dataset-joins/{id}` | Update a relationship (`data:write`) |
+| DELETE | `/api/dataset-joins/{id}` | Delete a relationship (`data:write`) |
 | POST | `/api/datasets/ingests` | Start a file ingest (multipart `file` + `data_source_id`; `data:write`) |
 | POST | `/api/datasets/ingests/{id}/preview` | Parse head + infer schema (`data:write`) |
 | POST | `/api/datasets/ingests/{id}/load` | Create/replace the target table + register dataset (`data:write`) |

@@ -89,12 +89,13 @@ def test_in_filter_is_parameterized():
 def test_join_on_clause_uses_correct_side():
     join = DatasetJoin(
         id="j",
-        source_dataset_id="a",
-        target_dataset_id="b",
-        cardinality="one-to-many",
-        join_columns=[{"source": "ts_code", "target": "ts_code"}],
+        from_dataset_id="a",
+        to_dataset_id="b",
+        from_columns=["ts_code"],
+        to_columns=["ts_code"],
+        join_type="left",
     )
-    # metric dataset is the join source
+    # metric dataset is the join `from` (many) side
     sql, _ = build_metric_sql(
         _dataset("a", schema="tushare", table="stock_trade_daily"),
         _metric(aggregation="count", joins=["j"]),
@@ -103,7 +104,7 @@ def test_join_on_clause_uses_correct_side():
     )
     assert 'LEFT JOIN "tushare"."stock_basic" j0 ON base."ts_code" = j0."ts_code"' in sql
 
-    # metric dataset is the join target
+    # metric dataset is the join `to` (one) side
     sql2, _ = build_metric_sql(
         _dataset("b", schema="tushare", table="stock_basic"),
         _metric(dataset_id="b", aggregation="count", joins=["j"]),
@@ -113,13 +114,32 @@ def test_join_on_clause_uses_correct_side():
     assert 'base."ts_code" = j0."ts_code"' in sql2
 
 
+def test_join_type_controls_the_join_kind():
+    join = DatasetJoin(
+        id="j",
+        from_dataset_id="a",
+        to_dataset_id="b",
+        from_columns=["x", "y"],
+        to_columns=["u", "v"],
+        join_type="inner",
+    )
+    sql, _ = build_metric_sql(
+        _dataset("a"),
+        _metric(aggregation="count", joins=["j"]),
+        joins_by_id={"j": join},
+        datasets_by_id={"b": _dataset("b")},
+    )
+    assert 'INNER JOIN "public"."t" j0 ON base."x" = j0."u" AND base."y" = j0."v"' in sql
+
+
 def test_join_must_touch_the_metric_dataset():
     join = DatasetJoin(
         id="j",
-        source_dataset_id="x",
-        target_dataset_id="y",
-        cardinality="one-to-one",
-        join_columns=[{"source": "a", "target": "b"}],
+        from_dataset_id="x",
+        to_dataset_id="y",
+        from_columns=["a"],
+        to_columns=["b"],
+        join_type="left",
     )
     with pytest.raises(MetricError):
         build_metric_sql(
@@ -127,6 +147,24 @@ def test_join_must_touch_the_metric_dataset():
             _metric(aggregation="count", joins=["j"]),
             joins_by_id={"j": join},
             datasets_by_id={"x": _dataset("x"), "y": _dataset("y")},
+        )
+
+
+def test_relationship_columns_must_be_aligned():
+    join = DatasetJoin(
+        id="j",
+        from_dataset_id="a",
+        to_dataset_id="b",
+        from_columns=["x", "y"],
+        to_columns=["u"],
+        join_type="left",
+    )
+    with pytest.raises(MetricError):
+        build_metric_sql(
+            _dataset("a"),
+            _metric(aggregation="count", joins=["j"]),
+            joins_by_id={"j": join},
+            datasets_by_id={"b": _dataset("b")},
         )
 
 

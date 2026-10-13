@@ -287,7 +287,7 @@ export function DatasetMetricsTab() {
             <div className="dataset-metric-joins">
               {joins.map((j) => {
                 const other =
-                  j.source_dataset_id === datasetId ? j.target_dataset_name : j.source_dataset_name;
+                  j.from_dataset_id === datasetId ? j.to_dataset_name : j.from_dataset_name;
                 return (
                   <label key={j.id} className="ds-check-row">
                     <input

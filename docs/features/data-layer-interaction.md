@@ -90,7 +90,7 @@ Why it's intuitive: the user only ever answers one question at a time (which fil
 
 ## Model tab — the semantic model
 
-The Model tab authors the **semantic model**; its sections are the Ossie classes. **Function spec:** [semantic model spec](data-layer-semantic-model.md) · **definitions/surfaces:** [data layer](data-layer.md#the-ossie-class-model--definitions-and-where-each-is-managed).
+The Model tab authors the **semantic model**; its sections are the Ossie classes. **Function spec:** [semantic model spec](data-layer-semantic-model.md) · **definitions/surfaces:** [data layer](data-layer.md#the-ossie-class-model-definitions-and-where-each-is-managed).
 
 - **Overview** — ER graph (datasets as nodes, **directed FK edges many → one**) + model health; click a node → open the dataset.
 - **Relationships** — the only choice is *who holds the FK*; column pairs pre-fill on name match.

@@ -88,7 +88,7 @@
     "questionPlaceholder": "e.g. why did turnover spike last month?",
     "noDataset": "No dataset",
     "narrative": "Analysis",
-    "noNarrative": "No analysis text yet \u2014 an agent can fill this in.",
+    "noNarrative": "No analysis text yet — an agent can fill this in.",
     "chart": "Chart"
   },
   "dataModel": {
@@ -102,8 +102,8 @@
     "emptyGraph": "No datasets to graph yet.",
     "qualityAlerts": "Quality alerts",
     "noAlerts": "No quality alerts.",
-    "colSource": "Source",
-    "colTarget": "Target"
+    "colFrom": "From",
+    "colTo": "To"
   },
   "datasets": {
     "title": "Datasets",
@@ -175,9 +175,7 @@
     "relationshipsEmpty": "No relationships yet. Connect this dataset to another.",
     "relationshipList": "Registered joins",
     "addRelationship": "Add relationship",
-    "joinDirection": "Direction",
-    "directionThisSource": "This dataset → selected (this is the one side)",
-    "directionThisTarget": "Selected → this dataset (selected is the one side)",
+    "joinDirection": "Direction (who holds the FK?)",
     "joinCreated": "Relationship added",
     "joinCreateFailed": "Failed to add relationship",
     "joinDeleteConfirm": "Delete this relationship?",
@@ -186,14 +184,11 @@
     "joinTargetRequired": "Pick a target dataset",
     "joinColumnsRequired": "Add at least one column pair",
     "joinTargetDataset": "Target dataset",
-    "joinCardinality": "Cardinality",
     "joinColumns": "Column pairs",
     "joinColumnPlaceholder": "Column",
     "joinAddPair": "Add pair",
     "joinName": "Name (optional)",
     "joinDescription": "Description (optional)",
-    "cardinalityOneToMany": "One to many",
-    "cardinalityOneToOne": "One to one",
     "joinCreate": "Create",
     "closeAria": "Close",
     "uploadButton": "Upload data",
@@ -312,7 +307,14 @@
     "previous": "Previous",
     "next": "Next",
     "lastPage": "Last page",
-    "pageOf": "Page {{current}} of {{total}}"
+    "pageOf": "Page {{current}} of {{total}}",
+    "directionThisFrom": "This dataset holds the FK (many side)",
+    "directionThisTo": "The selected dataset holds the FK (many side)",
+    "joinType": "Join type",
+    "joinType_left": "Left join",
+    "joinType_inner": "Inner join",
+    "joinType_right": "Right join",
+    "joinType_full": "Full join"
   },
   "groups": {
     "title": "Groups",

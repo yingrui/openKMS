@@ -184,7 +184,7 @@ export interface LineageJoin {
   join_id: string;
   dataset_id: string;
   dataset_name: string | null;
-  cardinality: string;
+  join_type: string;
 }
 
 export interface DatasetLineageResponse {

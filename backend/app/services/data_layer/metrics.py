@@ -52,34 +52,42 @@ def build_metric_sql(
     for i, join_id in enumerate(metric.joins or []):
         join = joins_by_id.get(join_id)
         if not join:
-            raise MetricError(f"Join '{join_id}' not found.")
-        if join.source_dataset_id == dataset.id:
-            other_id, source_is_metric = join.target_dataset_id, True
-        elif join.target_dataset_id == dataset.id:
-            other_id, source_is_metric = join.source_dataset_id, False
+            raise MetricError(f"Relationship '{join_id}' not found.")
+        if join.from_dataset_id == dataset.id:
+            other_id, metric_is_from = join.to_dataset_id, True
+        elif join.to_dataset_id == dataset.id:
+            other_id, metric_is_from = join.from_dataset_id, False
         else:
-            raise MetricError(f"Join '{join_id}' does not touch this dataset.")
+            raise MetricError(f"Relationship '{join_id}' does not touch this dataset.")
         other = datasets_by_id.get(other_id)
         if not other:
             raise MetricError("Joined dataset not found.")
         if not (is_valid_identifier(other.schema_name) and is_valid_identifier(other.table_name)):
             raise MetricError("Invalid joined table.")
         alias = f"j{i}"
+        from_cols = list(join.from_columns or [])
+        to_cols = list(join.to_columns or [])
+        if len(from_cols) != len(to_cols) or not from_cols:
+            raise MetricError("Relationship columns are not aligned.")
         ons: list[str] = []
-        for p in join.join_columns or []:
-            s, t = p.get("source"), p.get("target")
+        for s, t in zip(from_cols, to_cols):
             if not (
                 isinstance(s, str)
                 and isinstance(t, str)
                 and is_valid_identifier(s)
                 and is_valid_identifier(t)
             ):
-                raise MetricError("Invalid join column.")
+                raise MetricError("Invalid relationship column.")
+            # metric dataset is `from` → base.from_col = other.to_col; else base.to_col = other.from_col
             ons.append(
-                f'base."{s}" = {alias}."{t}"' if source_is_metric else f'base."{t}" = {alias}."{s}"'
+                f'base."{s}" = {alias}."{t}"' if metric_is_from else f'base."{t}" = {alias}."{s}"'
             )
+        join_kind = (join.join_type or "left").upper()
+        if join_kind not in ("LEFT", "INNER", "RIGHT", "FULL"):
+            join_kind = "LEFT"
         joins_sql.append(
-            f'LEFT JOIN "{other.schema_name}"."{other.table_name}" {alias} ON ' + " AND ".join(ons)
+            f'{join_kind} JOIN "{other.schema_name}"."{other.table_name}" {alias} ON '
+            + " AND ".join(ons)
         )
 
     params: dict[str, Any] = {}
@@ -141,12 +149,12 @@ async def compute_metric(db: AsyncSession, metric: MetricDefinition) -> list[dic
     for join_id in metric.joins or []:
         join = await db.get(DatasetJoin, join_id)
         if not join:
-            raise MetricError(f"Join '{join_id}' not found.")
+            raise MetricError(f"Relationship '{join_id}' not found.")
         joins_by_id[join_id] = join
-        if dataset.id not in (join.source_dataset_id, join.target_dataset_id):
-            raise MetricError(f"Join '{join_id}' does not touch this dataset.")
+        if dataset.id not in (join.from_dataset_id, join.to_dataset_id):
+            raise MetricError(f"Relationship '{join_id}' does not touch this dataset.")
         other_id = (
-            join.target_dataset_id if join.source_dataset_id == dataset.id else join.source_dataset_id
+            join.to_dataset_id if join.from_dataset_id == dataset.id else join.from_dataset_id
         )
         if other_id not in datasets_by_id:
             other = await db.get(Dataset, other_id)

@@ -88,19 +88,21 @@ def cmd_lineage(ns: argparse.Namespace) -> None:
     print_json(r.json())
 
 
-def _parse_join_columns(raw: str) -> list[dict[str, str]]:
-    pairs: list[dict[str, str]] = []
+def _parse_join_columns(raw: str) -> tuple[list[str], list[str]]:
+    from_cols: list[str] = []
+    to_cols: list[str] = []
     for part in raw.split(","):
         part = part.strip()
         if not part:
             continue
         if "=" not in part:
-            raise SystemExit(f"Invalid column pair '{part}' (expected source=target).")
-        src, tgt = part.split("=", 1)
-        pairs.append({"source": src.strip(), "target": tgt.strip()})
-    if not pairs:
+            raise SystemExit(f"Invalid column pair '{part}' (expected from=to).")
+        frm, to = part.split("=", 1)
+        from_cols.append(frm.strip())
+        to_cols.append(to.strip())
+    if not from_cols:
         raise SystemExit("At least one column pair is required.")
-    return pairs
+    return from_cols, to_cols
 
 
 def cmd_joins_list(ns: argparse.Namespace) -> None:
@@ -112,15 +114,17 @@ def cmd_joins_list(ns: argparse.Namespace) -> None:
 
 
 def cmd_joins_add(ns: argparse.Namespace) -> None:
+    from_cols, to_cols = _parse_join_columns(ns.columns)
     body: dict[str, Any] = {
-        "source_dataset_id": ns.source_id,
-        "target_dataset_id": ns.target_id,
-        "cardinality": ns.cardinality,
-        "join_columns": _parse_join_columns(ns.columns),
+        "from_dataset_id": ns.from_id,
+        "to_dataset_id": ns.to_id,
+        "from_columns": from_cols,
+        "to_columns": to_cols,
+        "join_type": ns.join_type,
     }
     if ns.name:
         body["name"] = ns.name
-    confirm_or_abort("add dataset join", "POST", "/api/dataset-joins", body, ns.yes, ns.dry_run)
+    confirm_or_abort("add relationship", "POST", "/api/dataset-joins", body, ns.yes, ns.dry_run)
     with client() as s:
         r = s.post("/api/dataset-joins", json=body)
     r.raise_for_status()
@@ -129,11 +133,11 @@ def cmd_joins_add(ns: argparse.Namespace) -> None:
 
 def cmd_joins_delete(ns: argparse.Namespace) -> None:
     path = f"/api/dataset-joins/{ns.join_id}"
-    confirm_or_abort("delete dataset join", "DELETE", path, None, ns.yes, ns.dry_run)
+    confirm_or_abort("delete relationship", "DELETE", path, None, ns.yes, ns.dry_run)
     with client() as s:
         r = s.delete(path)
     r.raise_for_status()
-    print(f"deleted dataset join {ns.join_id}")
+    print(f"deleted relationship {ns.join_id}")
 
 
 def cmd_ingest(ns: argparse.Namespace) -> None:
@@ -304,20 +308,25 @@ def add_subparser(sub) -> None:
     ln.add_argument("--id", required=True)
     ln.set_defaults(fn=cmd_lineage)
 
-    jl = sp.add_parser("joins", help="Registered dataset joins (data-engineering ER model)")
+    jl = sp.add_parser("joins", help="Dataset relationships (Ossie foreign keys)")
     jsp = jl.add_subparsers(dest="dset_join_cmd", required=True)
-    jll = jsp.add_parser("list", help="List joins for a dataset")
+    jll = jsp.add_parser("list", help="List relationships for a dataset")
     jll.add_argument("--id", default=None, dest="id")
     jll.set_defaults(fn=cmd_joins_list)
-    jla = jsp.add_parser("add", help="Add a join")
-    jla.add_argument("--source-id", required=True)
-    jla.add_argument("--target-id", required=True)
-    jla.add_argument("--cardinality", default="one-to-many", choices=("one-to-one", "one-to-many"))
-    jla.add_argument("--columns", required=True, help='column pairs, e.g. "ts_code=ts_code"')
+    jla = jsp.add_parser("add", help="Add a relationship (from many -> to one)")
+    jla.add_argument("--from-id", required=True, help="dataset on the many side (holds the FK)")
+    jla.add_argument("--to-id", required=True, help="dataset on the one side (referenced key)")
+    jla.add_argument(
+        "--join-type",
+        default="left",
+        choices=("left", "inner", "right", "full"),
+        dest="join_type",
+    )
+    jla.add_argument("--columns", required=True, help='FK=key pairs, e.g. "ts_code=ts_code"')
     jla.add_argument("--name", default=None)
     add_write_flags(jla)
     jla.set_defaults(fn=cmd_joins_add)
-    jld = jsp.add_parser("delete", help="Delete a join")
+    jld = jsp.add_parser("delete", help="Delete a relationship")
     jld.add_argument("--join-id", required=True)
     add_write_flags(jld)
     jld.set_defaults(fn=cmd_joins_delete)

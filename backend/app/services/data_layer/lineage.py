@@ -41,8 +41,8 @@ async def build_lineage(db: AsyncSession, dataset_id: str) -> dict[str, Any] | N
         await db.execute(
             select(DatasetJoin).where(
                 or_(
-                    DatasetJoin.source_dataset_id == dataset_id,
-                    DatasetJoin.target_dataset_id == dataset_id,
+                    DatasetJoin.from_dataset_id == dataset_id,
+                    DatasetJoin.to_dataset_id == dataset_id,
                 )
             )
         )
@@ -55,10 +55,10 @@ async def build_lineage(db: AsyncSession, dataset_id: str) -> dict[str, Any] | N
     join_ids: set[str] = set()
     joined: list[dict[str, Any]] = []
     for j in joins:
-        other_id = j.target_dataset_id if j.source_dataset_id == dataset_id else j.source_dataset_id
+        other_id = j.to_dataset_id if j.from_dataset_id == dataset_id else j.from_dataset_id
         join_ids.add(other_id)
         joined.append(
-            {"join_id": j.id, "dataset_id": other_id, "cardinality": j.cardinality}
+            {"join_id": j.id, "dataset_id": other_id, "join_type": j.join_type}
         )
     names: dict[str, str] = {}
     if join_ids:

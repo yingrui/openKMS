@@ -102,8 +102,8 @@
     "emptyGraph": "暂无可绘制的数据集。",
     "qualityAlerts": "质量告警",
     "noAlerts": "暂无质量告警。",
-    "colSource": "源",
-    "colTarget": "目标"
+    "colFrom": "来源（from）",
+    "colTo": "目标（to）"
   },
   "datasets": {
     "title": "数据集",
@@ -175,9 +175,7 @@
     "relationshipsEmpty": "暂无关联。将此数据集与另一个数据集连接。",
     "relationshipList": "已登记的 Join",
     "addRelationship": "添加关联",
-    "joinDirection": "方向",
-    "directionThisSource": "本数据集 → 所选（本表是“一”方）",
-    "directionThisTarget": "所选 → 本数据集（所选是“一”方）",
+    "joinDirection": "方向（谁持有外键？）",
     "joinCreated": "关联已添加",
     "joinCreateFailed": "添加关联失败",
     "joinDeleteConfirm": "删除此关联？",
@@ -186,14 +184,11 @@
     "joinTargetRequired": "请选择目标数据集",
     "joinColumnsRequired": "至少添加一列配对",
     "joinTargetDataset": "目标数据集",
-    "joinCardinality": "基数",
     "joinColumns": "列配对",
     "joinColumnPlaceholder": "列",
     "joinAddPair": "添加配对",
     "joinName": "名称（可选）",
     "joinDescription": "描述（可选）",
-    "cardinalityOneToMany": "一对多",
-    "cardinalityOneToOne": "一对一",
     "joinCreate": "创建",
     "closeAria": "关闭",
     "uploadButton": "上传数据",
@@ -312,7 +307,14 @@
     "previous": "上一页",
     "next": "下一页",
     "lastPage": "末页",
-    "pageOf": "第 {{current}} / {{total}} 页"
+    "pageOf": "第 {{current}} / {{total}} 页",
+    "directionThisFrom": "本数据集持有外键（多端）",
+    "directionThisTo": "所选数据集持有外键（多端）",
+    "joinType": "连接类型",
+    "joinType_left": "左连接",
+    "joinType_inner": "内连接",
+    "joinType_right": "右连接",
+    "joinType_full": "全连接"
   },
   "groups": {
     "title": "分组",

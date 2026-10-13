@@ -23,7 +23,7 @@ An Ossie **semantic model** is a YAML document: **`datasets`** (physical source 
 
 ## Relationship model (the core change)
 
-Today `dataset_joins` stores `source` / `target` / **`cardinality`** / `join_columns`. **Ossie relationships are foreign keys**, so we re-model to match:
+`dataset_joins` is re-modelled as Ossie foreign keys (**✅ Stage 1 shipped**; the table keeps its historical name). Old `source` / `target` / **`cardinality`** / `join_columns` are replaced:
 
 | Field | Meaning | Replaces |
 |-------|---------|----------|
@@ -74,7 +74,7 @@ The Model tab is the **authoring + governance surface of the semantic model**. S
 
 ### 2. Relationships
 - List + create/edit a relationship: **from (many)** dataset, **to (one)** dataset, **column pairs** (ordered, add/remove for composite), **join type** (`left` default / `inner` / `right` / `full`), name, `ai_context`.
-- **Validation inline**: `to_columns` must be a PK/unique key; column existence; composite lengths.
+- **Validation inline**: column existence; composite lengths; `join_type`; (`to_columns` PK/unique-key check arrives with Stage 2).
 - Direction is a simple choice: *"this dataset holds the FK (from)"* vs *"this dataset is referenced (to)"*.
 - Not a **LinkType**: a data relationship carries a **join type** and targets physical tables; a LinkType is a semantic object-type link with none.
 
@@ -100,7 +100,7 @@ The Model tab is the **authoring + governance surface of the semantic model**. S
 
 ## Data model changes
 
-Authoritative, staged list: [refactoring plan](data-layer.md#refactoring-plan) (Stages 1–6). At spec level: `datasets` gains `unique_keys` + `ai_context`; new **`dataset_fields`**; `dataset_joins` → **`relationships`** (FK + `join_type`); `metric_definitions` becomes model-level with no `dimensions`; new **`saved_queries`**.
+Authoritative, staged list: [refactoring plan](data-layer.md#refactoring-plan) (Stages 1–6). At spec level: `datasets` gains `unique_keys` + `ai_context`; new **`dataset_fields`**; **`dataset_joins`** re-modelled as an FK (`from`/`to`/`from_columns`/`to_columns`/`join_type`; ✅ Stage 1); `metric_definitions` becomes model-level with no `dimensions`; new **`saved_queries`**.
 
 ---
 

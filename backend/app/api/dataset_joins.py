@@ -1,11 +1,11 @@
-"""Dataset joins API — registered equi-joins between datasets (the ER model).
+"""Dataset relationships API — Ossie foreign keys between datasets (many → one).
 
-Reads: `console:datasets` or `ontology:read`. Writes: `console:datasets`.
+Reads: `data:read`. Writes: `data:write`. (Table keeps the historical name `dataset_joins`.)
 """
 import uuid
 
 from fastapi import APIRouter, Depends, HTTPException, Request
-from sqlalchemy import select
+from sqlalchemy import or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.auth import require_any_permission, require_auth, require_permission
@@ -44,12 +44,14 @@ def _join_response(j: DatasetJoin, names: dict[str, str]) -> DatasetJoinResponse
     return DatasetJoinResponse(
         id=j.id,
         name=j.name,
-        source_dataset_id=j.source_dataset_id,
-        source_dataset_name=names.get(j.source_dataset_id),
-        target_dataset_id=j.target_dataset_id,
-        target_dataset_name=names.get(j.target_dataset_id),
-        cardinality=j.cardinality,
-        join_columns=j.join_columns or [],
+        from_dataset_id=j.from_dataset_id,
+        from_dataset_name=names.get(j.from_dataset_id),
+        to_dataset_id=j.to_dataset_id,
+        to_dataset_name=names.get(j.to_dataset_id),
+        from_columns=j.from_columns or [],
+        to_columns=j.to_columns or [],
+        join_type=j.join_type,
+        ai_context=j.ai_context,
         description=j.description,
         created_by_name=j.created_by_name,
         created_at=j.created_at,
@@ -66,17 +68,19 @@ async def list_dataset_joins(
     dataset_id: str | None = None,
     db: AsyncSession = Depends(get_db),
 ):
-    """List joins, optionally only those touching a dataset (either side)."""
+    """List relationships, optionally only those touching a dataset (either side)."""
     query = select(DatasetJoin).order_by(DatasetJoin.created_at.desc())
     if dataset_id:
         query = query.where(
-            (DatasetJoin.source_dataset_id == dataset_id)
-            | (DatasetJoin.target_dataset_id == dataset_id)
+            or_(
+                DatasetJoin.from_dataset_id == dataset_id,
+                DatasetJoin.to_dataset_id == dataset_id,
+            )
         )
     result = await db.execute(query)
     joins = list(result.scalars().all())
     names = await _name_map(
-        db, {j.source_dataset_id for j in joins} | {j.target_dataset_id for j in joins}
+        db, {j.from_dataset_id for j in joins} | {j.to_dataset_id for j in joins}
     )
     return DatasetJoinListResponse(
         items=[_join_response(j, names) for j in joins],
@@ -95,15 +99,15 @@ async def create_dataset_join(
     body: DatasetJoinCreate,
     db: AsyncSession = Depends(get_db),
 ):
-    """Create a join (validated against both datasets' live columns)."""
-    pairs = [{"source": c.source, "target": c.target} for c in body.join_columns]
+    """Create a relationship (validated against both datasets' live columns)."""
     try:
         await validate_join(
             db,
-            source_dataset_id=body.source_dataset_id,
-            target_dataset_id=body.target_dataset_id,
-            cardinality=body.cardinality,
-            join_columns=pairs,
+            from_dataset_id=body.from_dataset_id,
+            to_dataset_id=body.to_dataset_id,
+            from_columns=body.from_columns,
+            to_columns=body.to_columns,
+            join_type=body.join_type,
         )
     except JoinValidationError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
@@ -113,10 +117,12 @@ async def create_dataset_join(
     join = DatasetJoin(
         id=str(uuid.uuid4()),
         name=body.name,
-        source_dataset_id=body.source_dataset_id,
-        target_dataset_id=body.target_dataset_id,
-        cardinality=body.cardinality,
-        join_columns=pairs,
+        from_dataset_id=body.from_dataset_id,
+        to_dataset_id=body.to_dataset_id,
+        from_columns=body.from_columns,
+        to_columns=body.to_columns,
+        join_type=body.join_type,
+        ai_context=body.ai_context,
         description=body.description,
         created_by=payload.get("sub") if isinstance(payload.get("sub"), str) else None,
         created_by_name=str(uname)[:256] if isinstance(uname, str) and uname.strip() else None,
@@ -124,7 +130,7 @@ async def create_dataset_join(
     db.add(join)
     await db.commit()
     await db.refresh(join)
-    names = await _name_map(db, {join.source_dataset_id, join.target_dataset_id})
+    names = await _name_map(db, {join.from_dataset_id, join.to_dataset_id})
     return _join_response(join, names)
 
 
@@ -136,8 +142,8 @@ async def create_dataset_join(
 async def get_dataset_join(join_id: str, db: AsyncSession = Depends(get_db)):
     j = await db.get(DatasetJoin, join_id)
     if not j:
-        raise HTTPException(status_code=404, detail="Join not found")
-    names = await _name_map(db, {j.source_dataset_id, j.target_dataset_id})
+        raise HTTPException(status_code=404, detail="Relationship not found")
+    names = await _name_map(db, {j.from_dataset_id, j.to_dataset_id})
     return _join_response(j, names)
 
 
@@ -153,36 +159,30 @@ async def update_dataset_join(
 ):
     j = await db.get(DatasetJoin, join_id)
     if not j:
-        raise HTTPException(status_code=404, detail="Join not found")
+        raise HTTPException(status_code=404, detail="Relationship not found")
 
     data = body.model_dump(exclude_unset=True)
-    new_cardinality = data.get("cardinality", j.cardinality)
-    if "join_columns" in data:
-        pairs = [{"source": p["source"], "target": p["target"]} for p in data["join_columns"]]
-    else:
-        pairs = j.join_columns or []
+    new_from_cols = data.get("from_columns", j.from_columns or [])
+    new_to_cols = data.get("to_columns", j.to_columns or [])
+    new_join_type = data.get("join_type", j.join_type)
     try:
         await validate_join(
             db,
-            source_dataset_id=j.source_dataset_id,
-            target_dataset_id=j.target_dataset_id,
-            cardinality=new_cardinality,
-            join_columns=pairs,
+            from_dataset_id=j.from_dataset_id,
+            to_dataset_id=j.to_dataset_id,
+            from_columns=new_from_cols,
+            to_columns=new_to_cols,
+            join_type=new_join_type,
         )
     except JoinValidationError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
-    if "name" in data:
-        j.name = data["name"]
-    if "cardinality" in data:
-        j.cardinality = data["cardinality"]
-    if "join_columns" in data:
-        j.join_columns = pairs
-    if "description" in data:
-        j.description = data["description"]
+    for field in ("name", "from_columns", "to_columns", "join_type", "ai_context", "description"):
+        if field in data:
+            setattr(j, field, data[field])
     await db.commit()
     await db.refresh(j)
-    names = await _name_map(db, {j.source_dataset_id, j.target_dataset_id})
+    names = await _name_map(db, {j.from_dataset_id, j.to_dataset_id})
     return _join_response(j, names)
 
 
@@ -194,5 +194,5 @@ async def update_dataset_join(
 async def delete_dataset_join(join_id: str, db: AsyncSession = Depends(get_db)):
     j = await db.get(DatasetJoin, join_id)
     if not j:
-        raise HTTPException(status_code=404, detail="Join not found")
+        raise HTTPException(status_code=404, detail="Relationship not found")
     await db.delete(j)

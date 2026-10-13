@@ -63,7 +63,7 @@ export function DatasetLineageTab() {
               <ul className="dataset-lineage__list">
                 {(lineage?.joined_datasets ?? []).map((j) => (
                   <li key={j.join_id}>
-                    <span className="dataset-lineage__badge">{j.cardinality}</span>
+                    <span className="dataset-lineage__badge">{j.join_type}</span>
                     {j.dataset_name ?? j.dataset_id}
                   </li>
                 ))}

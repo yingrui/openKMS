@@ -1,7 +1,7 @@
 export type ErNode = {
   id: string;
   label: string;
-  cardinality: string;
+  meta: string;
   columns: string;
 };
 
@@ -37,7 +37,7 @@ export function DatasetErDiagram({ centerLabel, nodes, emptyLabel }: Props) {
           <g key={n.id}>
             <line x1={cx} y1={cy} x2={x} y2={y} className="dataset-er__edge" />
             <text x={(cx + x) / 2} y={(cy + y) / 2 - 6} className="dataset-er__edge-label" textAnchor="middle">
-              {n.cardinality}
+              {n.meta}
             </text>
             <rect x={x - 92} y={y - 24} width={184} height={48} rx={10} className="dataset-er__node" />
             <text x={x} y={y - 3} className="dataset-er__node-label" textAnchor="middle">

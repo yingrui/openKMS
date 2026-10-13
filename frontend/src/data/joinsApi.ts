@@ -1,20 +1,19 @@
-/** API for dataset joins (the data-engineering ER model). */
+/** API for dataset relationships (Ossie foreign keys: `from` many → `to` one). */
 import { request } from './apiClient';
 
-export interface DatasetJoinColumn {
-  source: string;
-  target: string;
-}
+export type DatasetJoinType = 'left' | 'inner' | 'right' | 'full';
 
 export interface DatasetJoinResponse {
   id: string;
   name: string | null;
-  source_dataset_id: string;
-  source_dataset_name: string | null;
-  target_dataset_id: string;
-  target_dataset_name: string | null;
-  cardinality: string;
-  join_columns: DatasetJoinColumn[];
+  from_dataset_id: string;
+  from_dataset_name: string | null;
+  to_dataset_id: string;
+  to_dataset_name: string | null;
+  from_columns: string[];
+  to_columns: string[];
+  join_type: string;
+  ai_context: Record<string, unknown> | null;
   description: string | null;
   created_by_name: string | null;
   created_at: string;
@@ -34,10 +33,11 @@ export async function fetchDatasetJoins(datasetId?: string): Promise<DatasetJoin
 
 export async function createDatasetJoin(data: {
   name?: string | null;
-  source_dataset_id: string;
-  target_dataset_id: string;
-  cardinality: string;
-  join_columns: DatasetJoinColumn[];
+  from_dataset_id: string;
+  to_dataset_id: string;
+  from_columns: string[];
+  to_columns: string[];
+  join_type: DatasetJoinType;
   description?: string | null;
 }): Promise<DatasetJoinResponse> {
   return request<DatasetJoinResponse>('/api/dataset-joins', {
@@ -51,8 +51,9 @@ export async function updateDatasetJoin(
   id: string,
   data: {
     name?: string | null;
-    cardinality?: string;
-    join_columns?: DatasetJoinColumn[];
+    from_columns?: string[];
+    to_columns?: string[];
+    join_type?: DatasetJoinType;
     description?: string | null;
   }
 ): Promise<DatasetJoinResponse> {

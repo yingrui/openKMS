@@ -75,8 +75,8 @@ Defined at the **semantic-model level** (not per-dataset) and **may span multipl
 |-------|---------------|-----|
 | Semantic Model | (implicit — the Data layer) | no explicit container / export |
 | Datasets (`source`, `primary_key`, `unique_keys`, `fields`, `ai_context`) | `datasets` (`schema_name.table_name`, `primary_key_columns`, metadata) | missing **`unique_keys`**, **`ai_context`** |
-| Relationships (`from` many / `to` one / columns, composite) | `dataset_joins` (`source`/`target`/**`cardinality`**/`join_columns`) | **semantics differ**: we store cardinality; Ossie stores FK direction + composite columns |
-| Metrics (`expression.dialects`, model-level, cross-dataset) | `metric_definitions` (aggregation + column + filters + joins + dimensions, **per dataset**) | **fundamental**: Ossie = SQL expressions w/ dialects; ours = restricted DSL |
+| Relationships (`from` many / `to` one / columns, composite) | `dataset_joins` (`from`/`to`/`from_columns`/`to_columns`/`join_type`) | **resolved (Stage 1)** — FK direction + composite columns |
+| Metrics (`expression.dialects`, model-level, cross-dataset) | `metric_definitions` (aggregation + column + filters + joins + dimensions, **per dataset**) | **decided** — adopt Ossie `expression.dialects` (decision #13); per-dataset DSL replaced in Stage 4 |
 | Dimensions | `dimensions` field on metrics | no first-class dimension objects |
 | `ai_context` | — | **missing** |
 
@@ -84,9 +84,8 @@ Defined at the **semantic-model level** (not per-dataset) and **may span multipl
 
 ## Tensions and decisions to make
 
-1. **Metrics: restricted DSL vs Ossie SQL expressions.** openKMS decision #13 chose a **restricted DSL (no arbitrary SQL)** for security. Ossie uses **SQL expression strings** (per dialect). This is the biggest fork:
-   - (a) keep our DSL internally, **export** to Ossie SQL; **(b)** adopt Ossie expressions with strict guards/sandbox; **(c)** hybrid — DSL for the common path, plus an "advanced" Ossie-expression mode gated by permission.
-2. **Relationships semantics.** Adopt Ossie's **FK direction** (`from` = many, `to` = one, `from_columns`/`to_columns`, composite) in place of `cardinality`. This **also fixes the direction-UX problem** (the "many" side is the FK holder — deterministic) and confirms **M:N = two FKs via a junction dataset**.
+1. **Metrics: restricted DSL vs Ossie SQL expressions.** **Resolved — decision #13 now adopts Ossie SQL expressions** (`expression.dialects`), dropping the custom DSL: expressions are pre-configured aggregate **fragments** (not full statements), executed **read-only with timeout + row cap**; the data-source credential is the privilege boundary. (Earlier options — DSL+export / Ossie expressions / hybrid — **B** chosen.)
+2. **Relationships semantics.** **Resolved — Stage 1 shipped:** `from` = many (FK holder), `to` = one, `from_columns`/`to_columns` (composite), `join_type`; `cardinality` dropped. Fixed the direction-UX problem and confirms **M:N = two FKs via a junction dataset**.
 3. **Cross-dataset metrics imply join traversal.** Ossie metrics span datasets via relationships → our metric engine inherently needs to traverse join chains (the earlier "multi-hop" question), not just single-hop.
 4. **AI context is a first-class field.** `instructions` / `synonyms` / `examples` on model/datasets/metrics is precisely "data as knowledge for agents" — high value, low cost.
 
@@ -98,9 +97,9 @@ Defined at the **semantic-model level** (not per-dataset) and **may span multipl
 
 1. **Add `ai_context`** (instructions/synonyms/examples) to datasets and metrics — directly serves agent grounding.
 2. **Add `unique_keys`** to datasets; keep `primary_key_columns`.
-3. **Re-model relationships as FK edges** (`from` many → `to` one, `from_columns`/`to_columns`, composite) — drop `cardinality`; 1:1 via unique keys; M:N via junction datasets.
-4. **Emit Ossie YAML** for the data layer (read/export) — immediate interoperability, **no runtime dependency**, and a governance artifact.
-5. **Decide the metrics strategy** against #1 above (this blocks `build_metric_sql` work — good that it's paused).
+3. **Re-model relationships as FK edges** — ✅ shipped (Stage 1).
+4. **Emit Ossie YAML** for the data layer (read/export) — Stage 6.
+5. **Decide the metrics strategy** — ✅ decided: Ossie SQL expressions (Stage 4).
 
 **Supply chain:** Apache Ossie is **Apache 2.0, ASF-incubating, vendor-neutral** → fits the project's "mainstream + supply-chain-safe / China-friendly" criteria (see [Data grid selection](data_grid_selection.md)).
 
@@ -108,13 +107,13 @@ Defined at the **semantic-model level** (not per-dataset) and **may span multipl
 
 | Plan item | Change |
 |-----------|--------|
-| Decision #2 (joins → ER) | re-model as **FK edges** (from/to + columns), not cardinality |
-| Decision #13 (declarative DSL, no arbitrary SQL) | **revisit** — Ossie metrics are SQL expressions |
+| Decision #2 (joins → ER) | re-model as **FK edges** (from/to + columns), not cardinality — ✅ Stage 1 |
+| Decision #13 (declarative DSL, no arbitrary SQL) | **changed** — metrics are Ossie SQL expressions |
 | Data model | add `unique_keys`, `ai_context`; consider a semantic-model container for export |
 
 ## Open questions
 
-- Metrics: DSL-only, Ossie-expression, or hybrid?
+- ~~Metrics: DSL-only, Ossie-expression, or hybrid?~~ (decided: Ossie SQL expressions)
 - Do we **export-only** Ossie YAML, or also **import** someone else's Ossie model into our datasets/relationships?
 - Adopt `OSSIE_SQL_2026` (the fully-specified dialect) for portability, or ANSI_SQL?
 - Is `ai_context` authored by users, generated by agents, or both?

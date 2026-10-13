@@ -183,10 +183,10 @@ Schema for every persisted table. Grouped by area; see the matching feature page
 - `id`, `data_source_id` (FK), `schema_name`, `table_name`, `display_name`, `description`, `owner_sub`, `domain`, `tags` (JSONB array), `business_definition`, `sensitivity` (`public` | `internal` | `confidential` | `restricted`), `primary_key_columns` (JSONB array; row identity for editing), `is_editable` (boolean, default false), `created_by` (nullable; creator subject for sharing owner bootstrap), `created_by_name` (nullable), `created_at`, `updated_at`
 - PostgreSQL table reference; can be mapped to ObjectType/LinkType in future
 
-### DatasetJoin
+### DatasetJoin (relationship)
 
-- `id`, `name` (nullable), `source_dataset_id` (FK → datasets, CASCADE), `target_dataset_id` (FK → datasets, CASCADE), `cardinality` (`one-to-one` | `one-to-many`), `join_columns` (JSONB: `[{source, target}]`), `description`, `created_by` / `created_by_name`, `created_at`, `updated_at`
-- Registered equi-joins between datasets; authored manually and validated against live columns; backs the Data Model ER view (check: source ≠ target)
+- `id`, `name` (nullable), `from_dataset_id` (FK → datasets, CASCADE; many side, holds the FK), `to_dataset_id` (FK → datasets, CASCADE; one side, referenced key), `from_columns` / `to_columns` (JSONB string arrays, order-aligned, composite keys), `join_type` (`left` | `inner` | `right` | `full`; default `left`), `ai_context` (JSONB, nullable), `description`, `created_by` / `created_by_name`, `created_at`, `updated_at`
+- Ossie relationship / foreign key (`from` many → `to` one); authored manually and validated against live columns; backs the Data Model ER view and the metric join engine (check: `from` ≠ `to`)
 
 ### DatasetIngest
 

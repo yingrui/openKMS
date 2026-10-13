@@ -57,12 +57,14 @@ export function DataModelPage() {
   const graphNodes: ErGraphNode[] = datasets.map((d) => ({
     id: d.id,
     name: datasetLabel(d),
-    joins: joins.filter((j) => j.source_dataset_id === d.id || j.target_dataset_id === d.id).length,
+    joins: joins.filter((j) => j.from_dataset_id === d.id || j.to_dataset_id === d.id).length,
   }));
   const graphLinks: ErGraphLink[] = joins.map((j) => ({
-    source: j.source_dataset_id,
-    target: j.target_dataset_id,
-    label: `${j.cardinality} · ${j.join_columns.map((c) => `${c.source} = ${c.target}`).join(', ')}`,
+    source: j.from_dataset_id,
+    target: j.to_dataset_id,
+    label: `${j.join_type} · ${j.from_columns
+      .map((c, i) => `${c} = ${j.to_columns[i] ?? ''}`)
+      .join(', ')}`,
   }));
 
   if (loading) {
@@ -153,19 +155,23 @@ export function DataModelPage() {
               <table className="console-table">
                 <thead>
                   <tr>
-                    <th>{t('dataModel.colSource')}</th>
-                    <th>{t('dataModel.colTarget')}</th>
-                    <th>{t('datasets.joinCardinality')}</th>
+                    <th>{t('dataModel.colFrom')}</th>
+                    <th>{t('dataModel.colTo')}</th>
+                    <th>{t('datasets.joinType')}</th>
                     <th>{t('datasets.joinColumns')}</th>
                   </tr>
                 </thead>
                 <tbody>
                   {joins.map((j) => (
                     <tr key={j.id}>
-                      <td>{j.source_dataset_name ?? j.source_dataset_id}</td>
-                      <td>{j.target_dataset_name ?? j.target_dataset_id}</td>
-                      <td>{j.cardinality}</td>
-                      <td>{j.join_columns.map((c) => `${c.source} = ${c.target}`).join(', ')}</td>
+                      <td>{j.from_dataset_name ?? j.from_dataset_id}</td>
+                      <td>{j.to_dataset_name ?? j.to_dataset_id}</td>
+                      <td>{j.join_type}</td>
+                      <td>
+                        {j.from_columns
+                          .map((c, i) => `${c} = ${j.to_columns[i] ?? ''}`)
+                          .join(', ')}
+                      </td>
                     </tr>
                   ))}
                 </tbody>

@@ -85,7 +85,7 @@ The Datasets app adds the **「Add tables」** flow (see interaction design); th
 
 ## 3. Relationships → ER model
 
-Spec + migration: [semantic model](data-layer-semantic-model.md) · [refactoring plan](data-layer.md#refactoring-plan) (Stage 1). `dataset_joins` (source/target/cardinality) → **`relationships`**: FK **`from`** (many) / **`to`** (one) + `from_columns`/`to_columns` + `join_type`.
+Spec + migration: [semantic model](data-layer-semantic-model.md) · [refactoring plan](data-layer.md#refactoring-plan) (Stage 1, ✅ shipped). `dataset_joins` re-modelled (name kept): FK **`from`** (many) / **`to`** (one) + `from_columns`/`to_columns` + `join_type`; `cardinality` dropped.
 
 **ER rendering (frontend):** `react-force-graph-2d` (already a dependency) — nodes = datasets, **directed edges = relationships (many → one)**, click a node → open the dataset.
 
@@ -199,9 +199,9 @@ New `datasets` subcommands (all JSON-print, matching existing style):
 | `datasets profile --id ID` | `POST /api/datasets/{id}/profile` |
 | `datasets schema-history --id ID` | `GET /api/datasets/{id}/schema-history` |
 | `datasets lineage --id ID` | `GET /api/datasets/{id}/lineage` |
-| `datasets joins list --id ID` | `GET /api/datasets/joins?dataset_id=ID` |
-| `datasets joins add --source-id A --target-id B --cardinality one-to-many --columns "ts_code=ts_code" --yes` | `POST /api/datasets/joins` |
-| `datasets joins delete --id JOIN_ID --yes` | `DELETE /api/datasets/joins/{id}` |
+| `datasets joins list --id ID` | `GET /api/dataset-joins?dataset_id=ID` |
+| `datasets joins add --from-id A --to-id B --join-type left --columns "ts_code=ts_code" --yes` | `POST /api/dataset-joins` |
+| `datasets joins delete --join-id JOIN_ID --yes` | `DELETE /api/dataset-joins/{id}` |
 | `datasets discover --data-source-id ID` | `GET /api/datasets/from-source/{id}` (list tables to register) |
 | `datasets ingest --file x.csv --data-source-id ID --schema imports --table x [--append] --yes` | `POST …/ingests` + `preview` + `load` |
 

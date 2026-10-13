@@ -14,13 +14,17 @@ import {
   deleteDatasetJoin,
   fetchDatasetJoins,
   type DatasetJoinResponse,
+  type DatasetJoinType,
 } from '../../data/joinsApi';
 import { useConfirm } from '../../contexts/ConfirmContext';
 import { EmptyState } from '../../styles/design-system';
 import { EntityViewHeader, EntityViewPanel, EntityViewLoading } from './EntityViewShell';
 import { DatasetErDiagram, type ErNode } from './DatasetErDiagram';
 
-type ColumnPair = { source: string; target: string };
+/** A column pair: `from` = FK column, `to` = referenced key column. */
+type ColumnPair = { from: string; to: string };
+
+const JOIN_TYPES: DatasetJoinType[] = ['left', 'inner', 'right', 'full'];
 
 export function DatasetRelationshipsTab() {
   const { t } = useTranslation('ontology');
@@ -30,14 +34,14 @@ export function DatasetRelationshipsTab() {
 
   const [joins, setJoins] = useState<DatasetJoinResponse[]>([]);
   const [datasets, setDatasets] = useState<DatasetResponse[]>([]);
-  const [sourceColumns, setSourceColumns] = useState<ColumnMetadata[]>([]);
+  const [thisColumns, setThisColumns] = useState<ColumnMetadata[]>([]);
   const [loading, setLoading] = useState(true);
 
   const [showForm, setShowForm] = useState(false);
   const [targetId, setTargetId] = useState('');
-  const [direction, setDirection] = useState<'source' | 'target'>('source');
-  const [cardinality, setCardinality] = useState('one-to-many');
-  const [pairs, setPairs] = useState<ColumnPair[]>([{ source: '', target: '' }]);
+  const [direction, setDirection] = useState<'from' | 'to'>('from');
+  const [joinType, setJoinType] = useState<DatasetJoinType>('left');
+  const [pairs, setPairs] = useState<ColumnPair[]>([{ from: '', to: '' }]);
   const [joinName, setJoinName] = useState('');
   const [description, setDescription] = useState('');
   const [targetColumns, setTargetColumns] = useState<ColumnMetadata[]>([]);
@@ -53,7 +57,7 @@ export function DatasetRelationshipsTab() {
       ]);
       setJoins(j.items);
       setDatasets(ds.items);
-      setSourceColumns(meta);
+      setThisColumns(meta);
     } catch (e) {
       toast.error(e instanceof Error ? e.message : t('datasets.loadFailed'));
     } finally {
@@ -84,21 +88,20 @@ export function DatasetRelationshipsTab() {
     [datasets, datasetId],
   );
 
-  // The pair selects swap when this dataset is the target side of the join.
-  // `sourceColumns` = this dataset's columns; `targetColumns` = the other dataset's.
-  const pairSourceCols = direction === 'source' ? sourceColumns : targetColumns;
-  const pairTargetCols = direction === 'source' ? targetColumns : sourceColumns;
+  // The `from` side holds the FK. When this dataset holds it, `from` columns come
+  // from here; otherwise the selected dataset does.
+  const pairFromCols = direction === 'from' ? thisColumns : targetColumns;
+  const pairToCols = direction === 'from' ? targetColumns : thisColumns;
 
   const erNodes: ErNode[] = useMemo(
     () =>
       joins.map((j) => {
-        const other =
-          j.source_dataset_id === datasetId ? j.target_dataset_name : j.source_dataset_name;
+        const other = j.from_dataset_id === datasetId ? j.to_dataset_name : j.from_dataset_name;
         return {
           id: j.id,
           label: other ?? t('datasets.dash'),
-          cardinality: j.cardinality,
-          columns: j.join_columns.map((c) => `${c.source} = ${c.target}`).join(', '),
+          meta: j.join_type,
+          columns: `${j.from_columns.join(', ')} → ${j.to_columns.join(', ')}`,
         };
       }),
     [joins, datasetId, t],
@@ -106,9 +109,9 @@ export function DatasetRelationshipsTab() {
 
   const openCreate = () => {
     setTargetId('');
-    setDirection('source');
-    setCardinality('one-to-many');
-    setPairs([{ source: '', target: '' }]);
+    setDirection('from');
+    setJoinType('left');
+    setPairs([{ from: '', to: '' }]);
     setJoinName('');
     setDescription('');
     setShowForm(true);
@@ -119,10 +122,8 @@ export function DatasetRelationshipsTab() {
       toast.error(t('datasets.joinTargetRequired'));
       return;
     }
-    const columns = pairs
-      .filter((p) => p.source && p.target)
-      .map((p) => ({ source: p.source, target: p.target }));
-    if (columns.length === 0) {
+    const usable = pairs.filter((p) => p.from && p.to);
+    if (usable.length === 0) {
       toast.error(t('datasets.joinColumnsRequired'));
       return;
     }
@@ -130,10 +131,11 @@ export function DatasetRelationshipsTab() {
     try {
       await createDatasetJoin({
         name: joinName.trim() || null,
-        source_dataset_id: direction === 'source' ? datasetId : targetId,
-        target_dataset_id: direction === 'source' ? targetId : datasetId,
-        cardinality,
-        join_columns: columns,
+        from_dataset_id: direction === 'from' ? datasetId : targetId,
+        to_dataset_id: direction === 'from' ? targetId : datasetId,
+        from_columns: usable.map((p) => p.from),
+        to_columns: usable.map((p) => p.to),
+        join_type: joinType,
         description: description.trim() || null,
       });
       toast.success(t('datasets.joinCreated'));
@@ -196,12 +198,13 @@ export function DatasetRelationshipsTab() {
                 <div className="dataset-join-row__main">
                   <strong>
                     {j.name ||
-                      `${j.source_dataset_name ?? j.source_dataset_id} → ${
-                        j.target_dataset_name ?? j.target_dataset_id
+                      `${j.from_dataset_name ?? j.from_dataset_id} → ${
+                        j.to_dataset_name ?? j.to_dataset_id
                       }`}
                   </strong>
                   <p className="dataset-join-row__meta">
-                    {j.cardinality} · {j.join_columns.map((c) => `${c.source} = ${c.target}`).join(', ')}
+                    {j.join_type} ·{' '}
+                    {j.from_columns.map((c, i) => `${c} = ${j.to_columns[i] ?? ''}`).join(', ')}
                   </p>
                 </div>
                 <button
@@ -251,17 +254,23 @@ export function DatasetRelationshipsTab() {
                 <span>{t('datasets.joinDirection')}</span>
                 <select
                   value={direction}
-                  onChange={(e) => setDirection(e.target.value as 'source' | 'target')}
+                  onChange={(e) => setDirection(e.target.value as 'from' | 'to')}
                 >
-                  <option value="source">{t('datasets.directionThisSource')}</option>
-                  <option value="target">{t('datasets.directionThisTarget')}</option>
+                  <option value="from">{t('datasets.directionThisFrom')}</option>
+                  <option value="to">{t('datasets.directionThisTo')}</option>
                 </select>
               </label>
               <label>
-                <span>{t('datasets.joinCardinality')}</span>
-                <select value={cardinality} onChange={(e) => setCardinality(e.target.value)}>
-                  <option value="one-to-many">{t('datasets.cardinalityOneToMany')}</option>
-                  <option value="one-to-one">{t('datasets.cardinalityOneToOne')}</option>
+                <span>{t('datasets.joinType')}</span>
+                <select
+                  value={joinType}
+                  onChange={(e) => setJoinType(e.target.value as DatasetJoinType)}
+                >
+                  {JOIN_TYPES.map((jt) => (
+                    <option key={jt} value={jt}>
+                      {t(`datasets.joinType_${jt}`)}
+                    </option>
+                  ))}
                 </select>
               </label>
               <div className="dataset-joins__pairs">
@@ -269,15 +278,15 @@ export function DatasetRelationshipsTab() {
                 {pairs.map((pair, idx) => (
                   <div key={idx} className="dataset-joins__pair">
                     <select
-                      value={pair.source}
+                      value={pair.from}
                       onChange={(e) =>
                         setPairs((prev) =>
-                          prev.map((p, i) => (i === idx ? { ...p, source: e.target.value } : p)),
+                          prev.map((p, i) => (i === idx ? { ...p, from: e.target.value } : p)),
                         )
                       }
                     >
                       <option value="">{t('datasets.joinColumnPlaceholder')}</option>
-                      {pairSourceCols.map((c) => (
+                      {pairFromCols.map((c) => (
                         <option key={c.column_name} value={c.column_name}>
                           {c.column_name}
                         </option>
@@ -285,16 +294,16 @@ export function DatasetRelationshipsTab() {
                     </select>
                     <span className="dataset-joins__eq">=</span>
                     <select
-                      value={pair.target}
+                      value={pair.to}
                       onChange={(e) =>
                         setPairs((prev) =>
-                          prev.map((p, i) => (i === idx ? { ...p, target: e.target.value } : p)),
+                          prev.map((p, i) => (i === idx ? { ...p, to: e.target.value } : p)),
                         )
                       }
                       disabled={!targetId}
                     >
                       <option value="">{t('datasets.joinColumnPlaceholder')}</option>
-                      {pairTargetCols.map((c) => (
+                      {pairToCols.map((c) => (
                         <option key={c.column_name} value={c.column_name}>
                           {c.column_name}
                         </option>
@@ -314,7 +323,7 @@ export function DatasetRelationshipsTab() {
                 <button
                   type="button"
                   className="btn btn-secondary"
-                  onClick={() => setPairs((prev) => [...prev, { source: '', target: '' }])}
+                  onClick={() => setPairs((prev) => [...prev, { from: '', to: '' }])}
                 >
                   <Plus size={16} aria-hidden />
                   {t('datasets.joinAddPair')}
