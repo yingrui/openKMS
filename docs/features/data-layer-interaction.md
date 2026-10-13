@@ -88,32 +88,19 @@ Why it's intuitive: the user only ever answers one question at a time (which fil
 
 ---
 
-## Model tab (inside Datasets) — the semantic model
+## Model tab — the semantic model
 
-The Model tab authors the **semantic model** (Apache Ossie shape): **datasets + relationships + metrics**, each with `ai_context`. Sub-tabs:
+The Model tab authors the **semantic model**; its sections are the Ossie classes. **Function spec:** [semantic model spec](data-layer-semantic-model.md) · **definitions/surfaces:** [data layer](data-layer.md#the-ossie-class-model--definitions-and-where-each-is-managed).
 
-| Sub-tab | What it does |
-|---------|--------------|
-| **Overview** | ER graph (datasets = nodes, relationships = **directed FK edges many → one**); model health (datasets / relationships / metrics / quality failing / datasets missing a primary key); click a node → open the dataset. |
-| **Relationships** | author FK edges: **from (many)** dataset, **to (one)** dataset, ordered column pairs (composite supported), **join type** (`left` default / `inner` / `right` / `full`), `ai_context`; inline validation (`to` must be a PK/unique key; columns exist; equal lengths). |
-| **Metrics** | model-level metrics (span datasets via relationships): measure source, aggregation, dimensions, filter, `datatype`, `ai_context`. |
-| **Datasets** | the Ossie `datasets` section: each dataset's **semantic entry** — source, primary key, unique keys, fields/dimensions, `ai_context` — the semantic layer over the same physical datasets the Catalog holds. |
-| **Export** | the semantic model as **Apache Ossie YAML** (interoperability + governance artifact; import later). |
-
-### Relationships — direction is the FK, not a cardinality
-
-```
- orders ──from (many, holds FK)──▶ customers
-   order_id …                      customer_id (PK)
-```
-
-- The only choice is **which dataset holds the FK** (*“this dataset → selected”* / *“selected → this dataset”*); **cardinality is derived** — 1:N by default; 1:1 when the FK columns are also unique; **M:N = two relationships via a junction dataset**.
-- Column pairs are **order-aligned** and can be **composite**; the mapping pre-fills on name match, so the common case is “confirm, done”.
+- **Overview** — ER graph (datasets as nodes, **directed FK edges many → one**) + model health; click a node → open the dataset.
+- **Relationships** — the only choice is *who holds the FK*; column pairs pre-fill on name match.
+- **Metrics / Queries** — model-level lists.
+- **Export** — the Ossie document.
 
 ### Why it's intuitive
 
 - The picture **is** the model — the graph and the relationship editor are the same object.
-- Direction is a plain question (*who holds the FK?*), not a cardinality/position puzzle.
+- Direction is a plain question (*who holds the FK?*), not a cardinality/position puzzle: `orders ──from (many)──▶ customers`.
 - Relationships are the **join graph**, so “can I write a cross-dataset metric?” is answered by the graph itself.
 
 ---

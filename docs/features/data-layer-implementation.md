@@ -1,6 +1,6 @@
-# Data layer implementation design — Phase 0–1
+# Data layer — Catalog implementation design
 
-Concrete backend / frontend / skill design to start [Data layer plan](data-layer.md) Phase 0–1. Phase 2–3 (metric DSL, Python sandbox, AI dashboards) are intentionally deferred here.
+Concrete backend / frontend / skill design for the **physical (Catalog)** half of the data layer: data-source layer tags, catalog fields, file ingest, profile / schema / lineage, row editing. The **semantic** half (fields, relationships, metrics, queries) lives in the [semantic model spec](data-layer-semantic-model.md); the staged work is the [refactoring plan](data-layer.md#refactoring-plan).
 
 **Reused primitives:** `app/services/ontology/dataset_tables.py` (`pg_engine_for_datasource`, `is_valid_identifier`, `fetch_dataset_rows`), `app/services/storage.py` (`upload_object`/`get_object`), `app/services/credentials/credential_encryption.decrypt`, procrastinate jobs, `chunked_upload.py` (documents already do chunked upload).
 
@@ -83,44 +83,11 @@ The Datasets app adds the **「Add tables」** flow (see interaction design); th
 
 ---
 
-## 3. Relationships → ER model (Apache Ossie)
+## 3. Relationships → ER model
 
-> **Superseded:** the v1 `dataset_joins` (source/target / **cardinality** / join_columns) predates Ossie alignment. The target design is **Ossie relationships** (FK edges) — see [Model tab / semantic model design](data-layer-semantic-model.md) for the migration.
+Spec + migration: [semantic model](data-layer-semantic-model.md) · [refactoring plan](data-layer.md#refactoring-plan) (Stage 1). `dataset_joins` (source/target/cardinality) → **`relationships`**: FK **`from`** (many) / **`to`** (one) + `from_columns`/`to_columns` + `join_type`.
 
-### Model — `dataset_joins` → `relationships`
-
-| Column | Type | Notes |
-|--------|------|-------|
-| `id` | `String(64)` PK | uuid4 |
-| `name` | `String(256)` nullable | unique relationship id |
-| `from_dataset_id` | FK → `datasets.id` CASCADE | **many** side (holds the FK) |
-| `to_dataset_id` | FK → `datasets.id` CASCADE | **one** side (PK/unique) |
-| `from_columns` | `JSONB` | FK columns, order-aligned with `to_columns` |
-| `to_columns` | `JSONB` | referenced key columns |
-| `join_type` | `String(8)` | `left` (default) / `inner` / `right` / `full` — **our extension** (Ossie FKs have no join type) |
-| `ai_context` | `JSONB` nullable | instructions / synonyms / examples |
-| `description` | `Text` nullable | |
-| `created_by` / `created_by_name` | as elsewhere | |
-| `created_at` / `updated_at` | timestamps | |
-
-- **`cardinality` is dropped** — a FK is many→one. 1:1 = `from_columns` unique on the `from` dataset; M:N = two relationships via a junction dataset.
-- Constraints: `from_dataset_id != to_dataset_id`; `len(from_columns) == len(to_columns) >= 1`.
-
-### Validation (`app/services/data_layer/joins.py`)
-
-1. Both datasets exist and are PostgreSQL-backed.
-2. Every column passes `is_valid_identifier` and exists in its dataset (`information_schema.columns`).
-3. `from_columns` / `to_columns` are order-aligned and equal length (composite supported).
-4. Warn/require: `to_columns` is the `to` dataset's `primary_key` or one of its `unique_keys`.
-
-### API
-
-- `POST /api/dataset-joins` (create) · `GET /api/dataset-joins?dataset_id=` · `PUT/DELETE /api/dataset-joins/{id}` — payload uses `from_dataset_id` / `to_dataset_id` / `from_columns` / `to_columns`.
-- Read requires `data:read` + `dataset_visible` on **both** datasets; write requires `data:write` + `require_dataset_write` on both.
-
-### ER rendering (frontend)
-
-Reuse **`react-force-graph-2d`** (already a dependency): nodes = datasets, **directed edges = relationships (many → one)**, click a node → open the dataset. (This replaced the v1 star diagram from `DatasetErDiagram`.)
+**ER rendering (frontend):** `react-force-graph-2d` (already a dependency) — nodes = datasets, **directed edges = relationships (many → one)**, click a node → open the dataset.
 
 ---
 

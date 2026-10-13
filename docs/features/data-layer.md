@@ -1,294 +1,124 @@
 # Data layer — Datasets · Data Model · Data Explorer
 
-Feature reference for the openKMS **data layer**: the **Datasets** app (Catalog + Model) and the **Data Explorer** app, plus the datasets, relationships, quality rules, metrics, ingest, and reports beneath them. **Positioning:** *Route B — the data layer is a knowledge substrate for agents, not a data-engineering platform.*
+Feature reference for the openKMS **data layer**: the **Datasets** app (Catalog + Model) and the **Data Explorer**, plus the datasets, fields, relationships, quality, metrics, and reports beneath them. **Positioning:** *Route B — a knowledge substrate for agents, not a data-engineering platform.*
 
-**Status:** **shipped (partial):** Datasets app (Catalog + Model), Data Explorer, file ingest, joins/ER, quality, metrics, profile/schema/lineage, and row editing (TanStack Table). **Designed, not built:** the Apache Ossie semantic model (relationships as FK edges, model-level metrics, `ai_context`) — see [semantic model](data-layer-semantic-model.md). Rollout is tracked by the [Phases](#phases) below and [Development plan](../development_plan.md).
+**Status:** shipped in part, with a pending refactor to the **Apache Ossie** semantic model. See [Refactoring plan](#refactoring-plan) · [Semantic model spec](data-layer-semantic-model.md) · [Interaction design](data-layer-interaction.md).
 
-**Related:** [Goals — unified layer for Data for AI](../goals.md#goals-unified-source) · [Development plan](../development_plan.md) · [Ontology Manager alignment](../research/ontology_manager_alignment.md) · [Data models](data-models.md) · [Connectors](connectors.md) · [Object Explorer](object-explorer.md) · [Implementation design (Phase 0–1)](data-layer-implementation.md) · [Interaction design](data-layer-interaction.md) · [Model tab / semantic model design](data-layer-semantic-model.md) · [Apache Ossie research](../research/ossie_semantic_layer.md)
-
----
-
-## What the Data layer manages — the Ossie class model
-
-Apache Ossie defines six classes; the Datasets app manages **exactly these**, split into a **physical** half (Catalog) and a **semantic** half (Model). This is the organizing frame for the whole feature.
-
-| Ossie class | What it is | Stored today | Surface | Gap |
-|-------------|-----------|--------------|---------|-----|
-| **Semantic Model** | container: datasets + relationships + metrics | *(implicit — no object)* | `/data-model` is the closest | **no container / export** |
-| **Datasets** | `source`, `primary_key`, `unique_keys`, `fields`, `ai_context` | `datasets` (`schema.table`, `primary_key_columns`) | Catalog list + Overview / Settings | missing **`unique_keys`**, **`ai_context`** |
-| **Fields** | row-level attributes: a **column ref *or* a computed expression**, with `dimension.is_time`, `datatype`, `ai_context` | physical **columns** from `information_schema` (Columns tab) — no computed fields, no roles | Columns tab | **columns only; no field layer** |
-| **Dimensions** | a **field role** (`dimension.is_time`) on a dataset field | a `dimensions: [column,…]` **group-by list on each metric** | Metric form | **misplaced** — belongs on fields, not metrics |
-| **Metrics** | model-level aggregate **expression** (`expression.dialects`), `datatype`, `ai_context` — **no dimensions list** | `metric_definitions` (**per-dataset**; aggregation + column + filters + joins + **dimensions**) | Metrics **tab (per dataset)** | per-dataset; DSL; **carries a query-time group-by** |
-| **Relationships** | FK `from` (many) → `to` (one), `from_columns`/`to_columns`, composite | `dataset_joins` (`source`/`target`/**`cardinality`**/`join_columns`) | Relationships tab + Model ER | **cardinality vs FK semantics** |
-
-### Where it lives today
-
-- **Catalog (physical)** — `/datasets`: register tables, file ingest, data preview, **row editing**, profile, schema history, lineage, quality runs, sharing, usage.
-- **Model (semantic)** — `/data-model`: ER graph + health + quality alerts + a joins table. **Thin** — it does not yet present Datasets / Fields / Dimensions / Metrics as Ossie classes.
-- **Data Explorer** — `/data-explorer`: saved analyses.
-
-### Target information architecture
-
-The **Datasets app manages the Semantic Model**; each Ossie class is a first-class section, split by *physical* vs *semantic*:
-
-| Half | Sections |
-|------|----------|
-| **Catalog** (physical) | register · ingest · preview · **row editing** · profile · schema history · lineage · quality · sharing |
-| **Model** (semantic = Ossie) | **Datasets** (keys, `ai_context`) · **Fields / Dimensions** (column roles) · **Relationships** (FK) · **Metrics** (model-level) · **Export** (Ossie YAML) |
-
-So “Datasets” is both the app and one Ossie class: the app manages the semantic model; the *Datasets* section is its entity list.
-
-### Concrete changes implied
-
-1. **Relationships**: `dataset_joins` → Ossie FK shape (`from`/`to`, `from_columns`/`to_columns`, `+ join_type`); **drop `cardinality`**.
-2. **Datasets**: add **`unique_keys`** and **`ai_context`**.
-3. **Fields**: add a persisted **field layer** on datasets — column refs **+ computed expressions** (`expression.dialects`), with `datatype`, `dimension.is_time`, `ai_context` (a bare column list is not a field layer).
-4. **Dimensions**: move them **off metrics** — a **field role** on the dataset; a metric's group-by becomes a **query / saved-query** concern.
-5. **Metrics**: make them **model-level aggregate expressions** (no dimensions list); decide the expression strategy (DSL vs Ossie `expression.dialects`).
-6. **Semantic Model container**: export (later import) the Ossie YAML.
-
-### Concept → management map (definitions first)
-
-Each concept is **authored in exactly one place**. Definitions first, then the surface.
-
-| Concept | Definition | Managed where | Level | Current functionality |
-|---------|------------|---------------|-------|-----------------------|
-| **Semantic Model** | container of datasets + relationships + metrics (+ queries) | **Model** tab (`/data-model`) — Overview + **Export / Import** | model (cross-dataset) | `/data-model` (thin) |
-| **Datasets** | a logical entity: a physical table (`source`) + keys + fields + `ai_context` | **Dataset detail** (Catalog) — Overview / Settings | per-dataset | Catalog list + detail |
-| **Fields** | row-level attributes: a column ref **or** a computed expression, + `datatype`, `dimension.is_time`, `ai_context` | **Dataset detail → Fields** (today's *Columns* tab, extended) | per-dataset | Columns tab (**columns only**) |
-| **Dimensions** | a **field role** (`dimension.is_time`) — a field you can group/filter by | **Dataset detail → Fields** (a flag on a field) | per-dataset (field) | metric-local list — **move here** |
-| **Relationships** | FK edges: `from` (many) → `to` (one), `from_columns`/`to_columns`, `join_type` | **Model → Relationships** (global, primary) **+ Dataset detail → Relationships** (scoped view of the same rows) | cross-dataset | Relationships tab + Model joins table (as *cardinality*) |
-| **Metrics** | model-level aggregate **expressions** over fields | **Model → Metrics** (global) | model | per-dataset Metrics tab — **move here** |
-| **Queries** (saved queries) | metrics + `group_by` dimensions + `where`, saved as an artifact | **Model → Queries** (v1: Data Explorer reports) | model / explorer | Data Explorer reports |
-| **Rows** (physical) | the actual data: preview, edit, ingest, profile | **Dataset detail → Data** (Catalog) | per-dataset | Data tab + upload wizard |
-
-### Rule of thumb
-
-- **Per-dataset** concepts (**Datasets, Fields, Dimensions, Rows, Quality, Lineage**) live in the **dataset detail** (Catalog).
-- **Cross-dataset** concepts (**Relationships overview + ER, Metrics, Queries, Semantic Model export**) live in the **Model** tab.
-- **A dimension is not an object** — it is a flag on a **field**.
-- **A metric has no dimensions** — grouping is a **query**.
-- **Fields ≠ columns** — a field can be a computed expression, and carries roles/`ai_context`.
-
-### What moves (from today)
-
-| From | To |
-|------|-----|
-| Dataset detail **Metrics** tab (per-dataset) | **Model → Metrics** (model-level) |
-| `metric.dimensions` group-by list | **Dataset → Fields** roles (`dimension.is_time`) + **Model → Queries** group-by |
-| **Columns** tab (physical metadata) | **Fields** tab (columns + computed fields + roles) |
-| Model **joins table** | **Model → Relationships** (FK `from`/`to` + `join_type`) |
+**Related:** [Development plan](../development_plan.md) · [Data models](data-models.md) · [API reference](api-reference.md) · [Semantic model spec](data-layer-semantic-model.md) · [Interaction design](data-layer-interaction.md) · [Implementation design](data-layer-implementation.md) · [Ossie research](../research/ossie_semantic_layer.md) · [Data grid selection](../research/data_grid_selection.md)
 
 ---
 
 ## Positioning
 
-The data layer exists so that **people and agents can consume real data as knowledge**. It **references** external tables and **ingests** uploaded data files; it does not run a transform engine or version data content.
+The data layer exists so that **people and agents can consume real data as knowledge**. It **references** external tables and **ingests** uploaded files; it does not run a transform engine or version data content.
 
 | Principle | Means |
 |-----------|-------|
-| Access tables; never transform | **Access** = reference an external table **or** ingest an uploaded file into a table. **Transform** = any table-to-table derivation or cleaning — out of scope. The raw uploaded file is kept in object storage. |
-| Model = management of existing tables | "Data model" is **annotation and governance of tables/columns** (semantics, joins, quality, metrics) — not physical modeling of new stores. |
-| Three audiences, one pipeline | **Data engineer** configures sources/datasets and join models; **data BA** inspects data and assesses quality; **business** consumes results through agents. |
-| AI-native Explorer | Exploration is conversational and exploratory; **diagnostic and predictive** analysis, not only descriptive charts. Reports are dashboard-like, with AI-authored suggestions and analysis attached to the charts. |
+| Access tables; never transform | **Access** = reference an external table **or** ingest an uploaded file into a table. **Transform** = table-to-table derivation/cleaning — out of scope. The raw uploaded file is kept in object storage. |
+| Model = management of existing tables | "Data model" is **annotation and governance of tables/columns** (semantics, relationships, quality, metrics) — not physical modeling of new stores. |
+| Three audiences, one pipeline | **Data engineer** configures sources/datasets and the model; **data BA** inspects data and assesses quality; **business** consumes results through agents. |
+| AI-native Explorer | Exploration is conversational; **diagnostic and predictive** analysis, not only descriptive charts. Reports are dashboard-like, with AI-authored suggestions attached to each chart. |
 
-### Non-goals
-
-- Table-to-table ETL / transform engine, data-content versioning.
-- CDC / streaming ingestion.
-- A general-purpose BI / SQL IDE for every user.
-- Replacing every business database — cataloging and governing data safe for AI consumption is enough.
+**Non-goals:** table-to-table ETL/transform engine, data-content versioning; CDC/streaming; a general-purpose BI/SQL IDE; replacing every business database.
 
 ---
 
-## Layer model: Application / Ontology / Data
+## The Ossie class model — definitions and where each is managed
 
-The Suite App rail gains an explicit **layer** grouping. This is an information-architecture change, not just new pages. Rail/Launcher order is **application → ontology → data** (top to bottom).
+Apache Ossie defines a semantic model as **datasets + relationships + metrics**, with **fields/dimensions** on datasets and **queries** over metrics. The Datasets app manages **exactly these**, split **per-dataset** (dataset detail, “Catalog”) vs **cross-dataset** (the **Model** tab).
+
+Definitions first; each concept is **authored in exactly one place**.
+
+| Concept | Definition | Managed where | Level |
+|---------|------------|---------------|-------|
+| **Semantic Model** | the container of datasets + relationships + metrics (+ queries) | **Model** tab (`/data-model`) — Overview + **Export/Import** | cross-dataset |
+| **Datasets** | a logical entity: a physical table (`source`) + keys + fields + `ai_context` | **Dataset detail** — Overview / Settings | per-dataset |
+| **Fields** | row-level attributes: a column ref **or a computed expression**, + `datatype`, `dimension.is_time`, `ai_context` | **Dataset detail → Fields** | per-dataset |
+| **Dimensions** | a **field role** (`dimension.is_time`) — a field you can group/filter by | **Dataset detail → Fields** (a field flag) | per-dataset (field) |
+| **Relationships** | FK edges: `from` (many) → `to` (one), `from_columns`/`to_columns`, `join_type` | **Model → Relationships** (global) + dataset detail → Relationships (scoped view of the same rows) | cross-dataset |
+| **Metrics** | model-level aggregate **expressions** over fields | **Model → Metrics** | cross-dataset |
+| **Queries** | metrics + `group_by` dimensions + `where`, saved | **Model → Queries** (v1: Data Explorer reports) | cross-dataset |
+| **Rows** (physical) | preview, edit, ingest, profile | **Dataset detail → Data** | per-dataset |
+
+**Rule of thumb**
+
+- **Per-dataset** concepts (Datasets, Fields, Dimensions, Rows, Quality, Lineage) → the **dataset detail**.
+- **Cross-dataset** concepts (Relationships overview + ER, Metrics, Queries, Model export) → the **Model** tab.
+- **A dimension is not an object** — it is a flag on a **field**. **A metric has no dimensions** — grouping is a **query**. **Fields ≠ columns** — a field can be computed and carries roles/`ai_context`.
+
+---
+
+## Layer model (application → ontology → data)
 
 | Layer | Apps | Answers |
 |-------|------|---------|
-| **Application** | Agents · Documents · Articles · Wikis · Knowledge bases · Media · Glossaries · Evaluations · Knowledge Map · Apps | *Knowledge work and delivery* |
-| **Ontology** | Ontology Manager · Object Explorer · Function Editor | *What the business means and does* (objects, links, functions, actions) |
-| **Data** | **Datasets** (Catalog + **Model** views), **Data Explorer** | *What is the data, how trustworthy, how to analyze it* |
+| **Application** | Agents · Documents · Articles · Wikis · KB · Media · Glossaries · Evaluations · Knowledge Map · Apps | *Knowledge work and delivery* |
+| **Ontology** | Ontology Manager · Object Explorer · Function Editor | *What the business means and does* |
+| **Data** | **Datasets** (Catalog + **Model**), **Data Explorer** | *What is the data, how trustworthy, how to analyze it* |
 
-**Console stays a shared platform layer.** `Connectors`, `Pipelines`, `data-sources`, and `job-runs` are **not** part of the Data layer — they are platform capabilities shared across all of openKMS. Data-layer apps consume their output (e.g. connector-synced tables) but do not own them.
-
-**Data sources are tagged by layer.** Even though Console stays a shared surface, Console → Data Sources marks each source as **data-layer** or **ontology-layer**. Data-layer sources back datasets and file ingest (PostgreSQL); ontology-layer sources back the graph (Neo4j). This routes multiple PostgreSQL sources to the right purpose instead of inferring from `kind` alone.
-
-**Decision:** `Datasets` moves **out of Ontology Manager** into the Data layer as a first-class app.
+**Console stays shared** — `Connectors` / `Pipelines` / `data-sources` / `job-runs` are platform capabilities, not part of the Data layer. **Data sources are tagged by layer** in Console → Data Sources (data-layer vs ontology-layer); PostgreSQL sources are data-capable by default, `ontology` is an explicit exclusion.
 
 ---
 
-## Current state — assets and gaps {#current-state}
+## Current state
 
-What exists today is a **thin data layer buried under the Ontology layer**. Most of it is reusable.
+**Shipped:** Datasets app at `/datasets` (Catalog list + register/upload + detail tabs: Overview · Data · Columns · Usage · Relationships · Lineage · Quality · Metrics · Settings · Sharing) and the Model view at `/data-model` (ER graph + health + quality alerts + joins table); Data Explorer at `/data-explorer` (saved analyses). Backend: `datasets` (catalog fields, `primary_key_columns`, `is_editable`), `dataset_joins` (cardinality), file ingest, profile/schema snapshots, quality rules/runs, `metric_definitions` (per-dataset, restricted DSL), `explorer_reports`, `dataset_edits` (audit); `data:read` / `data:write` / `data:edit`; keyset paging + row editing (TanStack Table). First scenario: **Tushare stock datasets**.
 
-| Capability | Shipped today | Where |
-|------------|---------------|-------|
-| Connection configs | `DataSource` (PostgreSQL / Neo4j, encrypted creds) | Console `/console/data-sources` (shared platform) |
-| Sync | `Connector` (Tushare / Zhipu) → dataset outputs; `scheduled_triggers` | Console `/connectors` (shared platform) |
-| Datasets | `Dataset` = remote PG table ref; **rows** (paged) + **metadata** (columns → ontology types) | Ontology Manager `/ontology-manager/datasets` |
-| Semantics | `ObjectType` / `LinkType` bind a dataset, key property, FK/junction; Neo4j index | Ontology Manager |
-| Logic | Functions (OFS) + Action types + audit | Function Editor / Ontology Manager |
-| Explore | Object Explorer Cypher / text-to-Cypher, list + graph | `/object-explorer` |
-| Storage | Object storage (MinIO, `storage_enabled`) — reused for uploaded dataset files | platform |
-| Access | dataset ACL + resource ACL | — |
-
-### Gaps vs a Palantir-style data layer
-
-| Area | Missing |
-|------|---------|
-| **Datasets** | Catalog metadata (owner/domain/tags/business definition), schema snapshot + change detection, **lineage**, refresh status, profile (null rate / uniqueness / distribution), first-class list/detail surfaces |
-| **Data Model** | **Join/ER model across tables**, quality rules + runs, **metrics/KPI definitions** + computation, change impact |
-| **Data Explorer** | Dataset query/aggregation, charts, dashboards, report export — today only Neo4j Cypher + skill-generated static reports |
-
-**Fundamental gap:** today's `Dataset` is a *table pointer* with no catalog, lineage, join model, or profile. The Data layer's core job is to turn that pointer into a **governed, described, traceable asset**.
+**Gaps vs the target** are the [refactoring plan](#refactoring-plan) below (fields/dimensions, FK relationships, model-level metrics, queries, Ossie export).
 
 ---
 
-## Target apps
+## Refactoring plan {#refactoring-plan}
 
-### Datasets — data asset catalog {#datasets-app}
+Goal: the Datasets app **manages the Ossie semantic model**, with each definition mapped to one surface. Stages are dependency-ordered; each lists steps → verification.
 
-The data engineer configures; the BA inspects.
+### Stage 1 — Relationships = foreign keys
+- **Schema:** `dataset_joins` → `relationships`: `from_dataset_id` (many) / `to_dataset_id` (one), `from_columns`/`to_columns` (order-aligned, composite), `join_type` (`left` default), `ai_context`; **drop `cardinality`**. Migrate existing rows (`source`→`from`, `target`→`to`).
+- **Service/API:** validate columns exist + equal lengths; `to_columns` is a PK/unique key; payload uses `from`/`to`.
+- **Frontend:** Relationships editor with a from/to direction (“this dataset holds the FK”), column pairs, join type; ER edges many→one.
+- **Verify:** create a composite FK; a metric joins via it with the chosen join type; the ER shows the direction.
 
-- **Catalog:** description, owner, domain, tags, business definition, source, sensitivity.
-- **Schema:** column metadata (exists) + type mapping (exists) + **snapshot and change detection**.
-- **Profile:** row count (exists) + null rate, distinct count, min/max/quantiles, sample values.
-- **Lineage:** `source → dataset → object/link type → function → action` dependency graph (cross-layer, read-only view).
-- **Refresh status:** last sync/run, freshness, row count trend (connectors own the run; Datasets shows status).
-- **File upload / ingest:** upload CSV / Excel / JSON (later Parquet). The raw file is stored in **object storage**, then parsed (schema inference + preview) and loaded into a **PostgreSQL table** on a **data-layer data source**, registered as a Dataset. The original file and parse config are kept so the table can be rebuilt or audited. Parsing via pandas/openpyxl (CSV/Excel/JSON); Parquet deferred.
-- **Usage:** which KBs, object types, functions, and agents consume this dataset.
+### Stage 2 — Datasets: `unique_keys` + `ai_context`
+- **Schema:** `datasets` + `unique_keys` (JSONB array of arrays), `ai_context` (JSONB).
+- **Frontend:** dataset Settings/Overview — unique keys (multi-column) + `ai_context` (instructions / synonyms / examples).
+- **Verify:** a 1:1 relationship can target a unique key; `ai_context` round-trips via the API.
 
-### Datasets — Model view: joins, quality, metrics {#data-model-app}
+### Stage 3 — Fields (the field layer)
+- **Schema:** new `dataset_fields` — `dataset_id`, `name`, `expression` (dialects), `datatype`, `dimension` (`{is_time}`), `ai_context`, ordinal. Seed from `information_schema` (a plain column = a field with a column-ref expression).
+- **Frontend:** rename the **Columns** tab → **Fields**; add computed fields, the `is_time` dimension role, and `ai_context` per field.
+- **Verify:** a computed field (`LOWER(email)`) is stored and exported; an `is_time` field is a time dimension for metrics/queries.
 
-**Scope:** the **Model** view (a tab inside the Datasets app, at `/data-model`) authors the **semantic model** — the same document shape as **Apache Ossie** (`datasets` + `relationships` + `metrics`, each with `ai_context`). It manages **only datasets** and their relationships/metrics; it does **not** define business object/link types — those stay in the Ontology layer. The boundary is:
+### Stage 4 — Metrics: model-level + expressions
+- **Decision required:** expression strategy A/B/C (restricted DSL / Ossie SQL / hybrid) — see [Metrics strategy](data-layer-semantic-model.md#metrics-strategy--still-open).
+- **Schema:** `metric_definitions` becomes **model-level** (may reference several datasets) with `expression`, `datatype`, `ai_context`, `type`; **remove `dimensions`**.
+- **Frontend:** move Metrics from the dataset detail to **Model → Metrics**; the metric form has no dimensions.
+- **Verify:** a cross-dataset metric (via a relationship) computes; a metric stores no dimensions list.
 
-| Layer | Owns |
-|-------|------|
-| **Data Model** | Datasets (keys, fields/dimensions, `ai_context`), **relationships between tables**, ER model, data-quality rules, metrics |
-| **Ontology** | Business object/link **types**, properties, functions, actions (may reference a dataset) |
+### Stage 5 — Queries (saved queries)
+- **Schema:** `saved_queries` — `name`, `metrics[]`, `group_by[]` (dimensions), `where`, `exports`.
+- **Frontend:** **Model → Queries** (v1: Data Explorer reports double as saved queries).
+- **Verify:** a saved query pins metrics + dimensions + filter and re-runs.
 
-- **Relationships = foreign keys (Ossie):** a relationship is `from` (the **many** side, holds the FK) → `to` (the **one** side, its PK/unique key), with order-aligned `from_columns` / `to_columns` (composite supported), plus a **`join_type`** (`left` default / `inner` / `right` / `full` — our extension; the metric engine uses it). **Cardinality is derived, not stored** — 1:N by default; 1:1 when `from_columns` are also unique; **M:N = two relationships via a junction dataset**. Authored manually (no auto-discovery); they are the **join graph** for cross-dataset metrics. (Distinct from an ontology **LinkType**: that is a semantic link with no join type.) See [Model tab / semantic model design](data-layer-semantic-model.md).
-- **Dataset semantics:** `primary_key` + `unique_keys`, **fields** (column refs + computed expressions, with `dimension.is_time`), and **`ai_context`** (instructions / synonyms / examples) for agent grounding.
-- **Data quality:** declarative rule types (not-null, unique, range, referential, freshness), runs, results, and **alerts surfaced in the Model view** — rule type + parameters, not arbitrary expressions.
-- **Metrics:** **model-level** (span datasets via relationships), with `datatype`, `ai_context`, and an expression. Computed by querying the tables on demand (no materialization, no cache in v1), with lineage. The **expression strategy is under review** — restricted DSL vs Ossie `expression.dialects` (SQL) — see [the design doc](data-layer-semantic-model.md#metrics-strategy--still-open).
-- **Export / import:** the semantic model can be **exported as Apache Ossie YAML** (and later imported) — interoperability + governance artifact.
-- **Change impact:** a schema or relationship/definition change surfaces affected metrics, ER edges, object types, and agents.
+### Stage 6 — Semantic Model export / import
+- **API:** `GET /api/datasets/semantic-model` → Ossie document (YAML/JSON); later `POST` to import.
+- **Frontend:** **Model → Export**.
+- **Verify:** the exported document matches the Ossie core-spec shape; a round-trip re-imports.
 
-### Data Explorer — AI-native analysis and dashboards {#data-explorer-app}
-
-Exploration is **conversational, exploratory, and decision-oriented**.
-
-- **Carrier: project agents + `openkms-skill`.** The Explorer is driven by project agents that operate datasets, joins, metrics, and quality through the CLI, and **run Python for analysis in a sandbox** — no dedicated bespoke query UI is required for the analysis itself.
-- **Ask in natural language** → the agent resolves to dataset/join/metric queries, computes with Python, and returns analysis with provenance.
-- **Data + knowledge fusion:** the agent combines tabular results with openKMS knowledge (documents, wiki, KB, ontology) to produce deeper, contextualized insight. This fusion — not write-back into the knowledge store — is how "data becomes knowledge service."
-- **Analysis ladder:** descriptive → **diagnostic** (why did it change) → **predictive** (what next). Predictive = **LLM reasoning + Python + trend extrapolation** — no ML model training or hosting; ontology Functions may be layered in later but are not required.
-- **Reports = dashboard-like output:** a familiar dashboard layout (tiles/charts), but each chart carries **AI-authored suggestions and analysis** attached to it (what it shows, what to look at next, anomalies, possible causes). Not a passive chart wall.
-- **Pre-defined templates are the minority**; most reports are **AI-designed/configured** and **persisted in the Data Explorer app**. Reuse the existing research-report path (Reveal + Plotly static HTML) as the rendering/export base.
-- **Delivery to business:** results reach business users **through agents**.
+### Cross-cutting (all stages)
+- **Access:** `data:*` keys; joins/fields/metrics/quality/reports inherit the referenced datasets' ACL (no new `resource_type`).
+- **Agent/skill:** `openkms-skill` commands for the new surfaces; audit who read/exported which dataset (see [Later](#later-open-items)).
+- **Design/i18n:** existing tokens and locale namespaces.
 
 ---
 
 ## Data → knowledge main path
 
-The Data layer is not an island — a dataset's purpose is to become governed knowledge. Two explicit paths, surfaced in the UI (not just via API):
+A dataset's purpose is to become governed knowledge. Two explicitly surfaced paths:
 
-1. **Dataset → Object type (ontology).** From a dataset detail page, "Create object type" pre-fills key property + property types from column metadata; the object type references the dataset. This is the bridge from a table to business meaning (then Functions/Actions can operate on it).
-2. **Dataset → knowledge service (agent grounding).** Project agents and Explorer analysis cite datasets/metrics as evidence alongside documents/wiki/KB — the "data + knowledge fusion" in Data Explorer is this path's visible surface. Ingesting dataset rows into KB/RAG is **not** v1 (see Later).
+1. **Dataset → object type (ontology)** — from a dataset, “Create object type” pre-fills key property + property types from fields; the object type references the dataset.
+2. **Dataset → knowledge service (agent grounding)** — agents and Explorer analysis cite datasets/metrics as evidence alongside documents/wiki/KB. Ingesting dataset rows into KB/RAG is **not** v1.
 
-This keeps "data becomes knowledge service" concrete: a table is described (catalog), modeled (joins/ER), trusted (quality), then **promoted into the ontology** and **cited by agents**.
-
----
-
-## Data model changes
-
-Backend work required before the phases (grouped for Alembic migration planning). All new resources are **dataset-scoped** — no new `resource_type` ACL entries.
-
-### Altered
-
-| Table | Change |
-|-------|--------|
-| `data_sources` | `layer` (`data` \| `ontology`) — routes datasets/file ingest vs the graph (decision #11) |
-| `datasets` | catalog fields: `description`, `owner`, `domain`, `tags`, `business_definition`, `sensitivity` |
-
-### New
-
-| Table | Holds |
-|-------|-------|
-| `relationships` (was `dataset_joins`) | FK edges: `from` (many) → `to` (one) + `from_columns`/`to_columns` + `join_type` — backs the ER model (Ossie; decisions #2/#7/#18) |
-| `dataset_fields` | persisted field layer: `expression` (dialects), `datatype`, `dimension.is_time`, `ai_context` |
-| `dataset_profiles` | computed profile: null rate, distinct count, min/max/quantiles, sample values |
-| `schema_snapshots` | column-metadata snapshot for change detection |
-| `quality_rules` / `quality_runs` / `quality_results` | declarative quality rules + runs + per-rule results (decision #8) |
-| `metric_definitions` | model-level metric **expression** + `datatype`/`ai_context` — **no dimensions list** (group-by lives in a query; decisions #3/#13) |
-| `explorer_reports` | persisted dashboard reports + object-storage HTML (decision #9) |
-
-### Derived, not stored
-
-- **Lineage** is computed on read from joins + existing relations (`dataset → object/link type → function → action`) — no lineage table in v1.
-- **Access:** joins/metrics/quality/reports inherit the ACL of the datasets they reference.
-
----
-
-## Phases
-
-Each phase lists a verifiable deliverable. Phases are bundled by dependency, not a strict sequence.
-
-### Phase 0 — IA and skeleton (small)
-
-- Introduce the **Application / Ontology / Data** layer grouping in `appModules.ts` (app rail/launcher).
-- Move `Datasets` out of Ontology Manager into a first-class Data app (routes redirect; list + detail reuse existing API/UI).
-- **Verify:** routes resolve and redirect; permissions intact; `npm run check:app-modules` and `npm run check:app-layout` pass.
-
-### Phase 1 — Datasets + ingest + Data Model join/ER (medium; mostly reuses existing assets)
-
-**First scenario: Tushare-synced stock datasets.** Connectors already produce six tables in schema `tushare`:
-
-| Dataset | Key |
-|---------|-----|
-| `stock_basic` | `ts_code` |
-| `stock_trade_daily` | `ts_code`, `trade_date` |
-| `daily_basic` | `ts_code`, `trade_date` |
-| `stock_adj_daily` | `ts_code`, `trade_date` |
-| `dividends` | `ts_code`, `ex_date` |
-| `trade_calendar` | `exchange`, `cal_date` |
-
-Natural joins for the ER model:
-
-- `stock_basic.ts_code` → the daily tables' `ts_code` (1:N)
-- `stock_trade_daily` ↔ `daily_basic` ↔ `stock_adj_daily` on (`ts_code`, `trade_date`) (1:1)
-- `trade_calendar.cal_date` → `stock_trade_daily.trade_date` (1:N)
-
-Deliverables:
-- **Data sources:** tag Console data sources as data-layer or ontology-layer; datasets and file ingest route to data-layer sources.
-- Datasets: catalog fields, schema snapshot + change detection, profile, refresh/freshness status; **lineage computed on read** (no lineage table).
-- **File ingest:** upload → parse (schema inference + preview) → load into a PostgreSQL table on a data-layer source → register as a Dataset; raw file in object storage.
-- Data Model: **register the joins above and render the ER model**.
-- Extend `openkms-skill` `datasets` commands (profile, joins) so agents can read the catalog and ER graph.
-- **Verify:** an engineer catalogs the Tushare datasets and sees the ER model, and can upload a file into a PostgreSQL-backed dataset; a BA sees profile and quality-ready schema without leaving the app; a project agent can query the catalog.
-
-### Phase 2 — Data Model: quality and metrics (start small, expand as it proves out)
-
-- Quality rule types + runs + results + alerts, exercised on the Tushare sets (not-null keys, PK uniqueness, referential integrity `stock_trade_daily.ts_code ∈ stock_basic.ts_code`, `trade_date` freshness).
-- Metric definitions + **on-demand table queries** + lineage; **v1 = single-table aggregation + registered joins** (e.g. turnover, PE/PB percentile, pct change, volume, adjusted return), then widen.
-- Change-impact surface from schema/join/definition changes.
-- **Verify:** a BA defines a quality rule and a metric, runs them, and sees pass/fail and computed values; a schema change lists affected metrics/ER edges.
-
-### Phase 3 — Data Explorer, AI-native (large)
-
-- NL → analysis pipeline over datasets/joins/metrics, driven by **project agents via `openkms-skill`**, with provenance.
-- **Dashboard-like reports** whose charts carry AI suggestions/analysis; AI-authored from the Reveal + Plotly path and **persisted in the Data Explorer app**.
-- Agent delivery: business users get analysis through project agents.
-- **Verify:** a business user asks a diagnostic question (e.g. "why did this stock underperform its industry recently") through an agent and receives a sourced analysis + exportable dashboard report.
-
-### Cross-cutting
-
-- **Access:** new `data:read` / `data:write` permission keys gate the Data-layer apps (decision #15); joins/metrics/quality/reports still inherit the ACL of their referenced datasets (no new `resource_type`).
-- **Audit:** log data access (who read/exported which dataset, especially `confidential`/`restricted`) — scheduled after Phase 2; see [Later](#later-open-items).
-- **Agent/skill:** `openkms-skill` gains catalog/join/quality/metrics/explore commands.
-- **Python sandbox:** Explorer analysis Python runs in an isolated environment; align with the existing Function OFS executor pattern rather than a new arbitrary-code surface.
-- **i18n and design system:** new apps follow existing tokens and locale namespaces.
+So a table is described (catalog), modeled (fields/relationships), trusted (quality), then **promoted into the ontology** and **cited by agents**.
 
 ---
 
@@ -298,52 +128,51 @@ Deliverables:
 |---|----------|
 | 1 | **Console stays shared** — `Connectors` / `Pipelines` / `data-sources` / `job-runs` are platform-wide, not part of the Data layer. |
 | 2 | **The Model view authors the semantic model** — datasets + **relationships as foreign keys** (Ossie: `from` many → `to` one) + metrics; business object/link types stay in Ontology. |
-| 3 | **Metrics query the tables on demand** from their definitions (metric results are not materialized; no cache in v1). |
+| 3 | **Metrics query the tables on demand** (results not materialized; no cache in v1). |
 | 4 | **Explorer carrier is project agents**, operating through **`openkms-skill`**. |
-| 5 | **Reports are dashboard-like**; each chart carries AI-authored suggestions and analysis, not just a passive visual. |
+| 5 | **Reports are dashboard-like**; each chart carries AI-authored suggestions and analysis. |
 | 6 | **First scenario = Tushare-synced stock datasets.** |
-| 7 | **Joins are registered manually** — join authoring is the core data-modeling process; no automatic join discovery. |
-| 8 | **Quality alerts live in the Datasets app's Model view.** |
+| 7 | **Relationships are authored manually** — no automatic join discovery. |
+| 8 | **Quality alerts live in the Model view.** |
 | 9 | **Dashboard reports are persisted in the Data Explorer app.** |
-| 10 | **Data files can be uploaded** — parsed and loaded into PostgreSQL tables; the raw file is stored in object storage. |
-| 11 | **Data sources are tagged by layer** — Console → Data Sources marks each source as data-layer or ontology-layer; data-layer sources back datasets and file ingest, ontology-layer sources back the graph. PostgreSQL sources are data-capable by default (untagged allowed); `ontology` is an explicit exclusion. |
-| 12 | **Predictive analysis = LLM reasoning + Python + trend extrapolation** — the agent writes Python for analysis (sandboxed); ontology Functions are not required (layered in later). No ML model training or hosting. |
-| 13 | **Quality is declarative** (rule type + parameters). **Metrics expression strategy is under review** — restricted DSL vs Ossie `expression.dialects` (SQL); see [Model tab design](data-layer-semantic-model.md#metrics-strategy--still-open). |
-| 14 | **New data resources inherit dataset ACL** — joins/metrics/quality/reports are dataset-scoped; no new `resource_type`. |
-| 15 | **Separate read vs manage permissions** — `data:read` (catalog/profile/quality/rows for all roles) vs `data:write` (register/ingest/joins/metrics/quality for data engineers); `console:datasets` stays console-scoped. |
-| 16 | **Dataset → knowledge has two paths** — promote to an object type (ontology) and cite as agent evidence; dataset rows are not ingested into KB/RAG in v1. |
-| 17 | **Adopt Apache Ossie as the semantic-model interchange** (Apache 2.0, vendor-neutral) — author `datasets`/`relationships`/`metrics`; export (and later import) Ossie YAML. |
-| 18 | **Relationships are foreign keys, not cardinality** — `from` (many) → `to` (one), `from_columns`/`to_columns`, composite, plus a **`join_type`** (`left` default); 1:1 via unique keys; M:N via a junction dataset. |
-| 19 | **Dataset semantics gain `unique_keys` + `ai_context`** (instructions / synonyms / examples) for agent grounding. |
+| 10 | **Data files can be uploaded** — parsed into PostgreSQL tables; the raw file is kept in object storage. |
+| 11 | **Data sources are tagged by layer** (Console → Data Sources); PostgreSQL is data-capable by default, `ontology` is an explicit exclusion. |
+| 12 | **Predictive analysis = LLM reasoning + Python + trend extrapolation** (sandboxed; no ML training/hosting; Functions optional later). |
+| 13 | **Quality is declarative** (rule type + parameters). **Metrics expression strategy is under review** — see [Metrics strategy](data-layer-semantic-model.md#metrics-strategy--still-open). |
+| 14 | **New data resources inherit dataset ACL** (no new `resource_type`). |
+| 15 | **Separate read vs manage vs edit permissions** — `data:read` / `data:write` / `data:edit`; `console:datasets` stays console-scoped. |
+| 16 | **Dataset → knowledge has two paths** — promote to an object type and cite as agent evidence; dataset rows are not ingested into KB/RAG in v1. |
+| 17 | **Adopt Apache Ossie as the semantic-model interchange** (Apache 2.0, vendor-neutral) — export (later import) the Ossie document. |
+| 18 | **Relationships are foreign keys, not cardinality** — `from` (many) → `to` (one), `from_columns`/`to_columns`, composite, `join_type`; 1:1 via unique keys; M:N via a junction dataset. |
+| 19 | **Datasets carry `unique_keys` + `ai_context`** for agent grounding. |
 
 ## Still open
 
-- **Ingest semantics:** append / overwrite / rebuild rules for uploaded files, and whether ingest creates a new table or appends to an existing dataset.
-- **API-sourced datasets** beyond connector kinds and file upload — later.
-
-## Delivery obligations
-
-Before any phase ships:
-
-- Update `docs/features/data-models.md` (new tables), `docs/features/api-reference.md` (new endpoints), `docs/functionalities.md` (new apps), `docs/development_plan.md` (plan status).
-- **Feature toggle:** add a `data` toggle (off during Phase 0–1, on at GA), mirroring `connectors` / `agents`.
-- **Acceptance:** backend `pytest` green; frontend `npm run build` + `check:app-modules` + `check:app-layout` + `check:styles` green.
+- **Metrics expression strategy** A/B/C (blocks Stage 4).
+- **Ingest semantics** — append / overwrite / rebuild; new table vs append.
+- **Queries home** — Model tab vs Data Explorer.
 
 ## Later / open items {#later-open-items}
 
 | Item | Notes |
 |------|-------|
 | Sensitivity behavior | whether `confidential`/`restricted` triggers masking, export limits, or alerts — define before GA |
-| Freshness ↔ knowledge lifecycle | how stale data affects dependent knowledge conclusions — undecided |
-| Ingest edge cases | empty/oversized files, type-inference errors, duplicate table names, append column mismatch, retry/cleanup |
+| Freshness ↔ knowledge lifecycle | how stale data affects dependent knowledge conclusions |
+| Ingest edge cases | empty/oversized files, type-inference errors, duplicate table names, append mismatch, retry/cleanup |
 | Scale | profile full-scan and ER/lineage rendering on very large schemas; sampling / degradation |
-| Delete semantics | dataset / join / report delete: cascade vs soft-delete |
+| Delete semantics | dataset / relationship / report delete: cascade vs soft-delete |
 | Discoverability | datasets in Global Search; cross-layer search |
-| Data access audit | who read/exported which dataset (cross-cutting, scheduled after Phase 2) |
+| Data access audit | who read/exported which dataset |
+
+## Delivery obligations
+
+- Update `features/data-models.md`, `features/api-reference.md`, `functionalities.md`, `development_plan.md` with each shipped stage.
+- **Feature toggle:** a `data` toggle (off during rollout, on at GA), mirroring `connectors` / `agents`.
+- **Acceptance:** backend `pytest` green; frontend `npm run build` + `check:app-modules` + `check:app-layout` + `check:styles` green.
 
 ## Explicitly deferred
 
 - Table-to-table transforms, dataset content versioning.
-- ML model training / hosting (predictive = LLM reasoning + Python + trend extrapolation only).
+- ML model training / hosting.
 - Streaming / CDC ingestion.
 - A standalone BI/SQL IDE product.
