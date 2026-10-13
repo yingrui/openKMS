@@ -97,6 +97,16 @@ These are backend/product decisions that must land **before** the grid matters:
 5. **Cursor paging + server sort/filter** — required by R1; also what makes the grid's sorting/filtering meaningful.
 6. **Audit** — who changed which rows when.
 
+## Decision (recorded)
+
+**Chosen: `@tanstack/react-table` v8.21.3 (headless, MIT).**
+
+v9 (9.3.1, released 2026-08) rewrote the API (`useTable` / store / `Subscribe`) and is only ~2 months old with thin documentation. By this page's own **stability + supply-chain** criteria, the mature, widely-documented **v8** line is the safer pin for now; revisit v9 later. Inline editors are our own components (kept on the design system) — `Build →` passes with v8 on React 19.2.
+
+**Shipped alongside:** dataset `primary_key_columns` + `is_editable`, `data:edit` permission, keyset paging, `POST /api/datasets/{id}/rows/apply` (+ `dataset_edits` audit), and the Data tab migrated to TanStack Table.
+
+**Still open:** add/delete rows in the UI; keyset/infinite paging in the UI; richer editors (date/bool/select); optimistic-concurrency UX (refresh-and-retry); enterprise-grade column resize/pin.
+
 ## Next steps
 
 1. **Spike**: TanStack Table + our design tokens + one editable cell type against React 19.2 (1–2 days).
