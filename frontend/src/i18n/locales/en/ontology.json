@@ -153,6 +153,8 @@
     "allowEditing": "Allow editing row data on this page",
     "allowEditingHint": "When on, users with data:edit can insert, update, and delete rows in the backing table.",
     "primaryKeyHint": "Primary key — identifies a row for update/delete (required to edit):",
+    "dangerZone": "Danger zone",
+    "deleteHint": "Deleting this dataset removes the registration; the backing table is not dropped.",
     "descriptionLabel": "Description",
     "domainLabel": "Domain",
     "tagsLabel": "Tags",

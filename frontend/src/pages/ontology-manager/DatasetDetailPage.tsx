@@ -8,7 +8,7 @@ import {
 } from 'react';
 import { Link, Outlet, useNavigate, useParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { Loader2, Save, Trash2 } from 'lucide-react';
+import { Loader2, Save } from 'lucide-react';
 import { toast } from 'sonner';
 import {
   deleteDataset,
@@ -61,6 +61,7 @@ type DatasetDetailContext = {
   setSensitivity: (v: string) => void;
   saving: boolean;
   onSave: () => Promise<void>;
+  onDelete: () => Promise<void>;
   columnCount: number | null;
   rowTotal: number | null;
   usageObjectTypes: ObjectTypeResponse[];
@@ -242,6 +243,7 @@ export function DatasetDetailPage() {
       setSensitivity,
       saving,
       onSave,
+      onDelete,
       columnCount,
       rowTotal,
       usageObjectTypes,
@@ -258,6 +260,7 @@ export function DatasetDetailPage() {
     sensitivity,
     saving,
     onSave,
+    onDelete,
     columnCount,
     rowTotal,
     usageObjectTypes,
@@ -280,23 +283,6 @@ export function DatasetDetailPage() {
         kind={t('datasets.kind')}
         title={title}
         meta={`${tableLabel(dataset)}${dataset.data_source_name ? ` · ${dataset.data_source_name}` : ''}`}
-        toolbar={
-          <>
-            <button type="button" className="btn btn-secondary" onClick={() => void onDelete()}>
-              <Trash2 size={16} aria-hidden />
-              {t('shared.delete')}
-            </button>
-            <button
-              type="button"
-              className="btn btn-primary"
-              onClick={() => void onSave()}
-              disabled={saving}
-            >
-              <Save size={16} aria-hidden />
-              {saving ? t('shared.saving') : t('shared.save')}
-            </button>
-          </>
-        }
         navItems={[
           { to: base, label: t('datasets.overview'), end: true },
           { to: `${base}/data`, label: t('datasets.data') },
@@ -332,6 +318,8 @@ export function DatasetOverviewTab() {
     setBusinessDefinition,
     sensitivity,
     setSensitivity,
+    saving,
+    onSave,
     columnCount,
     rowTotal,
     usageObjectTypes,
@@ -341,7 +329,21 @@ export function DatasetOverviewTab() {
 
   return (
     <>
-      <EntityViewHeader title={t('datasets.overview')} subtitle={t('datasets.overviewHint')} />
+      <EntityViewHeader
+        title={t('datasets.overview')}
+        subtitle={t('datasets.overviewHint')}
+        actions={
+          <button
+            type="button"
+            className="btn btn-primary"
+            onClick={() => void onSave()}
+            disabled={saving}
+          >
+            <Save size={16} aria-hidden />
+            {saving ? t('shared.saving') : t('shared.save')}
+          </button>
+        }
+      />
       <EntityViewStats>
         <EntityViewStat
           label={t('datasets.metricColumns')}

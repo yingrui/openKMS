@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useDatasetDetail } from './DatasetDetailPage';
 import {
@@ -12,7 +13,7 @@ import { EntityViewHeader, EntityViewPanel, EntityViewLoading } from './EntityVi
 /** Dataset settings: opt-in row editing + the primary key used to target rows. */
 export function DatasetSettingsTab() {
   const { t } = useTranslation('ontology');
-  const { dataset, setDataset } = useDatasetDetail();
+  const { dataset, setDataset, onDelete } = useDatasetDetail();
   const datasetId = dataset.id;
   const [columns, setColumns] = useState<ColumnMetadata[]>([]);
   const [loading, setLoading] = useState(true);
@@ -98,6 +99,17 @@ export function DatasetSettingsTab() {
             disabled={saving}
           >
             {saving ? t('shared.saving') : t('shared.save')}
+          </button>
+        </div>
+      </EntityViewPanel>
+
+      <EntityViewPanel>
+        <div className="entity-view__form">
+          <h3>{t('datasets.dangerZone')}</h3>
+          <p className="page-subtitle">{t('datasets.deleteHint')}</p>
+          <button type="button" className="btn btn-secondary" onClick={() => void onDelete()}>
+            <Trash2 size={16} aria-hidden />
+            {t('shared.delete')}
           </button>
         </div>
       </EntityViewPanel>
