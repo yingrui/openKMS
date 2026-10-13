@@ -298,7 +298,7 @@ export function DatasetsListPage() {
             links={graphLinks}
             onOpen={(id) => navigate(`/datasets/${id}`)}
             emptyLabel={t('datasets.emptyList')}
-            className="dataset-er-graph--fill"
+            fill
           />
         ) : (
           <div className="ds-table-wrap">

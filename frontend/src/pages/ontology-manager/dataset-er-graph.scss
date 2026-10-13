@@ -3,9 +3,9 @@
   height: 460px;
 }
 
-/* Catalog Map view: fill the pane (like the ontology graph) instead of a fixed height. */
+/* Catalog Map view: height is computed from the viewport (see DatasetErGraph `fill`),
+   so let the wrapper grow with the canvas instead of a fixed height. */
 .dataset-er-graph--fill {
-  height: calc(100vh - 16rem);
-  min-height: 360px;
-  max-height: 760px;
+  height: auto;
+  min-height: 320px;
 }
