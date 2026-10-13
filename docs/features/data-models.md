@@ -188,6 +188,11 @@ Schema for every persisted table. Grouped by area; see the matching feature page
 - `id`, `name` (nullable), `from_dataset_id` (FK → datasets, CASCADE; many side, holds the FK), `to_dataset_id` (FK → datasets, CASCADE; one side, referenced key), `from_columns` / `to_columns` (JSONB string arrays, order-aligned, composite keys), `join_type` (`left` | `inner` | `right` | `full`; default `left`), `ai_context` (JSONB, nullable), `description`, `created_by` / `created_by_name`, `created_at`, `updated_at`
 - Ossie relationship / foreign key (`from` many → `to` one); authored manually and validated against live columns; backs the Data Model ER view and the metric join engine (check: `from` ≠ `to`)
 
+### DatasetField
+
+- `id`, `dataset_id` (FK → datasets, CASCADE), `name` (unique per dataset), `column_name` (nullable; the physical column for a plain field), `expression` (JSONB `{dialects: {ANSI_SQL}}`; the SQL fragment), `datatype` (string | number | datetime | boolean | …), `dimension` (JSONB `{is_time}`; null = not a dimension), `ai_context` (JSONB), `ordinal`, `created_by` / `created_by_name`, `created_at`, `updated_at`
+- The Ossie semantic field layer over a dataset: a **column reference** (`column_name` set) or a **computed expression** (`column_name` null). Seeded from `information_schema` on first read; backs the **Fields** tab and feeds metrics/queries.
+
 ### DatasetIngest
 
 - `id`, `data_source_id` (FK → data_sources, CASCADE), `dataset_id` (FK → datasets, SET NULL), `storage_key`, `filename`, `status` (`uploaded` | `preview_ready` | `completed` | `failed`), `schema_name`, `table_name`, `parse_config` (JSONB), `row_count`, `error_message`, `created_by` / `created_by_name`, `created_at`, `updated_at`

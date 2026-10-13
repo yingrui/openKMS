@@ -84,8 +84,8 @@ The Model tab is the **authoring + governance surface of the semantic model**. S
 - **No dimensions here**: in Ossie a *dimension* is a **field role on a dataset**; “group by” is a **query** concern (see §5). The metric itself is a **SQL expression** (§Metrics below).
 
 ### 4. Datasets (Ossie `datasets`)
-- The Ossie **`datasets`** section: each physical dataset's **semantic entry** — `source` (the table), `primary_key`, `unique_keys`, **`fields`** (column refs **+ computed expressions**, each with `datatype`, `dimension.is_time`, `ai_context`), `ai_context`.
-- **Fields ≠ columns:** the Catalog's Columns tab is the *physical* column list; a **field** adds an expression (e.g. `first_name || ' ' || last_name`) and roles — a **dimension** is a field with `dimension.is_time` (categorical / time). Fields are edited here.
+- The Ossie **`datasets`** section: each physical dataset's **semantic entry** — `source` (the table), `primary_key`, `unique_keys`, **`fields`** (column refs **+ computed expressions**, each with `datatype`, `dimension.is_time`, `ai_context`; ✅ Stage 3), `ai_context` (✅ Stage 2).
+- **Fields ≠ columns:** the Catalog's **Fields** tab lists the *physical* columns (with profile); a **field** adds an expression (e.g. `first_name || ' ' || last_name`) and roles — a **dimension** is a field with `dimension.is_time` (categorical / time). Fields are edited here.
 - These are the *same* datasets the **Catalog** holds; the Model tab edits the **semantic** layer, the Catalog edits the **physical** layer (register/ingest/profile/preview/row editing/quality).
 
 ### 5. Queries (saved queries)
@@ -100,7 +100,7 @@ The Model tab is the **authoring + governance surface of the semantic model**. S
 
 ## Data model changes
 
-Authoritative, staged list: [refactoring plan](data-layer.md#refactoring-plan) (Stages 1–6). At spec level: `datasets` gains `unique_keys` + `ai_context` (✅ Stage 2); new **`dataset_fields`**; **`dataset_joins`** re-modelled as an FK (`from`/`to`/`from_columns`/`to_columns`/`join_type`; ✅ Stage 1); `metric_definitions` becomes model-level with no `dimensions`; new **`saved_queries`**.
+Authoritative, staged list: [refactoring plan](data-layer.md#refactoring-plan) (Stages 1–6). At spec level: `datasets` gains `unique_keys` + `ai_context` (✅ Stage 2); new **`dataset_fields`** (✅ Stage 3); **`dataset_joins`** re-modelled as an FK (`from`/`to`/`from_columns`/`to_columns`/`join_type`; ✅ Stage 1); `metric_definitions` becomes model-level with no `dimensions`; new **`saved_queries`**.
 
 ---
 

@@ -373,6 +373,11 @@ Encrypted values; **never returned**. Write/sync/delete reject personal API key 
 | GET | `/api/dataset-joins/{id}` | Get a relationship (`data:read`) |
 | PUT | `/api/dataset-joins/{id}` | Update a relationship (`data:write`) |
 | DELETE | `/api/dataset-joins/{id}` | Delete a relationship (`data:write`) |
+| GET | `/api/datasets/{id}/fields` | List semantic fields (seeds from physical columns on first read; `data:read`) |
+| POST | `/api/datasets/{id}/fields` | Create a field `{name, column_name?, expression?, datatype?, dimension?, ai_context?}` (`data:write`) |
+| POST | `/api/datasets/{id}/fields/sync` | Mirror physical columns into fields (`data:write`) |
+| PUT | `/api/datasets/{id}/fields/{field_id}` | Update a field (`data:write`) |
+| DELETE | `/api/datasets/{id}/fields/{field_id}` | Delete a field (`data:write`) |
 | POST | `/api/datasets/ingests` | Start a file ingest (multipart `file` + `data_source_id`; `data:write`) |
 | POST | `/api/datasets/ingests/{id}/preview` | Parse head + infer schema (`data:write`) |
 | POST | `/api/datasets/ingests/{id}/load` | Create/replace the target table + register dataset (`data:write`) |

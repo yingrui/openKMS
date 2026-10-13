@@ -221,6 +221,9 @@ All write subcommands accept `--yes` / `--dry-run`. Without `--yes` on non-TTY s
 | `datasets joins list` | GET | `/api/dataset-joins` | Optional `?dataset_id=`. |
 | `datasets joins add` *(write)* | POST | `/api/dataset-joins` | Body `{from_dataset_id, to_dataset_id, from_columns:[…], to_columns:[…], join_type}`. `from` = many side (FK holder), `to` = one side (referenced key); `join_type ∈ {left, inner, right, full}` (default `left`). Composite keys: aligned `from_columns`/`to_columns` arrays. |
 | `datasets joins delete` *(write)* | DELETE | `/api/dataset-joins/{join_id}` | |
+| `datasets fields list` | GET | `/api/datasets/{id}/fields` | Semantic fields (seeds from physical columns on first read). |
+| `datasets fields add` *(write)* | POST | `/api/datasets/{id}/fields` | Body `{name, column_name?, expression?, datatype?, dimension?, ai_context?}`. `--column` = plain field; `--expression` = computed (`{dialects:{ANSI_SQL}}`); `--is-time` marks a time dimension. |
+| `datasets fields delete` *(write)* | DELETE | `/api/datasets/{id}/fields/{field_id}` | |
 | `datasets ingest` *(write)* | POST | `/api/datasets/ingests` → `…/preview` → `…/load` | Upload a file, parse it, load into a data-layer PostgreSQL table. |
 | `datasets quality list` | GET | `/api/datasets/{id}/quality-rules` | Declarative quality rules + last status. |
 | `datasets quality add` *(write)* | POST | `/api/datasets/{id}/quality-rules` | Body `{name, rule_type, column_name, config}`. |

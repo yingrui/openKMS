@@ -176,6 +176,41 @@ def cmd_joins_delete(ns: argparse.Namespace) -> None:
     print(f"deleted relationship {ns.join_id}")
 
 
+def cmd_fields_list(ns: argparse.Namespace) -> None:
+    with client() as s:
+        r = s.get(f"/api/datasets/{ns.id}/fields")
+    r.raise_for_status()
+    print_json(r.json())
+
+
+def cmd_fields_add(ns: argparse.Namespace) -> None:
+    body: dict[str, Any] = {"name": ns.name}
+    if ns.column:
+        body["column_name"] = ns.column
+    if ns.expression:
+        body["expression"] = {"dialects": {"ANSI_SQL": ns.expression}}
+    if ns.datatype:
+        body["datatype"] = ns.datatype
+    if ns.is_time:
+        body["dimension"] = {"is_time": True}
+    if ns.ai_instructions:
+        body["ai_context"] = {"instructions": ns.ai_instructions}
+    confirm_or_abort("add field", "POST", f"/api/datasets/{ns.id}/fields", body, ns.yes, ns.dry_run)
+    with client() as s:
+        r = s.post(f"/api/datasets/{ns.id}/fields", json=body)
+    r.raise_for_status()
+    print_json(r.json())
+
+
+def cmd_fields_delete(ns: argparse.Namespace) -> None:
+    path = f"/api/datasets/{ns.id}/fields/{ns.field_id}"
+    confirm_or_abort("delete field", "DELETE", path, None, ns.yes, ns.dry_run)
+    with client() as s:
+        r = s.delete(path)
+    r.raise_for_status()
+    print(f"deleted field {ns.field_id}")
+
+
 def cmd_ingest(ns: argparse.Namespace) -> None:
     from pathlib import Path
 
@@ -383,6 +418,27 @@ def add_subparser(sub) -> None:
     jld.add_argument("--join-id", required=True)
     add_write_flags(jld)
     jld.set_defaults(fn=cmd_joins_delete)
+
+    fld = sp.add_parser("fields", help="Semantic fields (column refs + computed expressions)")
+    fsp = fld.add_subparsers(dest="dset_field_cmd", required=True)
+    fll = fsp.add_parser("list", help="List fields")
+    fll.add_argument("--id", required=True)
+    fll.set_defaults(fn=cmd_fields_list)
+    fla = fsp.add_parser("add", help="Add a field")
+    fla.add_argument("--id", required=True)
+    fla.add_argument("--name", required=True)
+    fla.add_argument("--column", default=None, help="source column (plain field)")
+    fla.add_argument("--expression", default=None, help="ANSI_SQL fragment (computed field)")
+    fla.add_argument("--datatype", default=None)
+    fla.add_argument("--is-time", action="store_true", dest="is_time", help="mark a time dimension")
+    fla.add_argument("--ai-instructions", default=None, dest="ai_instructions")
+    add_write_flags(fla)
+    fla.set_defaults(fn=cmd_fields_add)
+    fldel = fsp.add_parser("delete", help="Delete a field")
+    fldel.add_argument("--id", required=True)
+    fldel.add_argument("--field-id", required=True)
+    add_write_flags(fldel)
+    fldel.set_defaults(fn=cmd_fields_delete)
 
     ing = sp.add_parser("ingest", help="Upload a file and load it into a data-layer table")
     ing.add_argument("--file", required=True)

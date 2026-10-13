@@ -14,12 +14,8 @@ import {
   deleteDataset,
   fetchDataset,
   fetchDatasetMetadata,
-  fetchDatasetProfile,
   fetchDatasetRows,
-  refreshDatasetProfile,
   updateDataset,
-  type ColumnMetadata,
-  type DatasetProfileResponse,
   type DatasetResponse,
 } from '../../data/datasetsApi';
 import {
@@ -286,7 +282,7 @@ export function DatasetDetailPage() {
         navItems={[
           { to: base, label: t('datasets.overview'), end: true },
           { to: `${base}/data`, label: t('datasets.data') },
-          { to: `${base}/columns`, label: t('datasets.columns') },
+          { to: `${base}/fields`, label: t('datasets.fields') },
           { to: `${base}/usage`, label: t('datasets.usage') },
           { to: `${base}/relationships`, label: t('datasets.relationships') },
           { to: `${base}/lineage`, label: t('datasets.lineage') },
@@ -417,133 +413,6 @@ export function DatasetOverviewTab() {
             <p className="entity-view__readonly">{dataset.data_source_name ?? t('datasets.dash')}</p>
           </EntityViewField>
         </div>
-      </EntityViewPanel>
-    </>
-  );
-}
-
-export function DatasetColumnsTab() {
-  const { t } = useTranslation('ontology');
-  const { id: datasetId = '' } = useParams();
-  const [metadata, setMetadata] = useState<ColumnMetadata[]>([]);
-  const [profile, setProfile] = useState<DatasetProfileResponse | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [profiling, setProfiling] = useState(false);
-
-  useEffect(() => {
-    if (!datasetId) return;
-    let cancelled = false;
-    setLoading(true);
-    void (async () => {
-      try {
-        const [cols, prof] = await Promise.all([
-          fetchDatasetMetadata(datasetId),
-          fetchDatasetProfile(datasetId).catch(() => null),
-        ]);
-        if (!cancelled) {
-          setMetadata(cols);
-          setProfile(prof);
-        }
-      } catch (e) {
-        if (!cancelled) {
-          toast.error(e instanceof Error ? e.message : t('datasets.loadColumnsFailed'));
-        }
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [datasetId, t]);
-
-  const refreshProfile = async () => {
-    if (!datasetId) return;
-    setProfiling(true);
-    try {
-      setProfile(await refreshDatasetProfile(datasetId));
-      toast.success(t('datasets.profileRefreshed'));
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : t('datasets.profileFailed'));
-    } finally {
-      setProfiling(false);
-    }
-  };
-
-  const statsByColumn = new Map((profile?.column_stats ?? []).map((s) => [s.column, s]));
-  const fmt = (v: unknown) =>
-    v === null || v === undefined ? t('datasets.dash') : String(v);
-
-  return (
-    <>
-      <EntityViewHeader title={t('datasets.columns')} subtitle={t('datasets.columnsHint')} />
-      <EntityViewPanel>
-        <div className="dataset-columns__toolbar">
-          <span>
-            {profile?.computed_at
-              ? t('datasets.profileComputedAt', { time: profile.computed_at })
-              : t('datasets.profileEmpty')}
-          </span>
-          <button
-            type="button"
-            className="btn btn-secondary btn-sm"
-            onClick={() => void refreshProfile()}
-            disabled={profiling}
-          >
-            {profiling ? <Loader2 size={14} className="console-loading-spinner" aria-hidden /> : null}
-            {t('datasets.refreshProfile')}
-          </button>
-        </div>
-        {loading ? (
-          <div className="console-loading">
-            <Loader2 size={32} className="console-loading-spinner" aria-hidden />
-            <p>{t('shared.loading')}</p>
-          </div>
-        ) : (
-          <div className="ds-table-wrap ds-table-wrap--flush">
-            <table className="console-table">
-              <thead>
-                <tr>
-                  <th>{t('datasets.colColumn')}</th>
-                  <th>{t('datasets.colDataType')}</th>
-                  <th>{t('datasets.colNullable')}</th>
-                  <th>{t('datasets.colPosition')}</th>
-                  <th>{t('datasets.colNulls')}</th>
-                  <th>{t('datasets.colDistinct')}</th>
-                  <th>{t('datasets.colMin')}</th>
-                  <th>{t('datasets.colMax')}</th>
-                </tr>
-              </thead>
-              <tbody>
-                {metadata.length === 0 ? (
-                  <tr>
-                    <td colSpan={8} className="console-table-empty">
-                      {t('datasets.emptyColumns')}
-                    </td>
-                  </tr>
-                ) : (
-                  metadata.map((col) => {
-                    const s = statsByColumn.get(col.column_name);
-                    return (
-                      <tr key={col.column_name}>
-                        <td>
-                          <strong>{col.column_name}</strong>
-                        </td>
-                        <td>{col.data_type}</td>
-                        <td>{col.is_nullable ? t('datasets.yes') : t('datasets.no')}</td>
-                        <td>{col.ordinal_position}</td>
-                        <td>{s ? fmt(s.null_count) : t('datasets.dash')}</td>
-                        <td>{s ? fmt(s.distinct_count) : t('datasets.dash')}</td>
-                        <td>{s ? fmt(s.min) : t('datasets.dash')}</td>
-                        <td>{s ? fmt(s.max) : t('datasets.dash')}</td>
-                      </tr>
-                    );
-                  })
-                )}
-              </tbody>
-            </table>
-          </div>
-        )}
       </EntityViewPanel>
     </>
   );

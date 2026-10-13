@@ -246,6 +246,18 @@
   font-size: 0.8125rem;
 }
 
+.dataset-columns__actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.dataset-field-row__actions {
+  display: flex;
+  gap: var(--space-1);
+  justify-content: flex-end;
+}
+
 .dataset-pk-list {
   display: flex;
   flex-direction: column;
