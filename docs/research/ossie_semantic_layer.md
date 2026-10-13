@@ -73,7 +73,7 @@ Defined at the **semantic-model level** (not per-dataset) and **may span multipl
 
 | Ossie | openKMS today | Gap |
 |-------|---------------|-----|
-| Semantic Model | `GET /api/semantic-model` (Ossie document) | **resolved** — container + JSON/YAML export + import |
+| Semantic Model | `GET /api/semantic-models/{id}/export` (Ossie document) | **resolved** — named container (list + scope) + JSON/YAML export + import |
 | Datasets (`source`, `primary_key`, `unique_keys`, `fields`, `ai_context`) | `datasets` (`schema_name.table_name`, `primary_key_columns`, metadata) | missing **`unique_keys`**, **`ai_context`** |
 | Relationships (`from` many / `to` one / columns, composite) | `dataset_joins` (`from`/`to`/`from_columns`/`to_columns`/`required`) | **resolved (Stage 1)** — FK direction + composite columns |
 | Metrics (`expression.dialects`, model-level, cross-dataset) | `metric_definitions` (aggregation + column + filters + joins + dimensions, **per dataset**) | **decided** — adopt Ossie `expression.dialects` (decision #13); per-dataset DSL replaced in Stage 4 |
@@ -98,7 +98,7 @@ Defined at the **semantic-model level** (not per-dataset) and **may span multipl
 1. **Add `ai_context`** (instructions/synonyms/examples) to datasets and metrics — directly serves agent grounding.
 2. **Add `unique_keys`** to datasets; keep `primary_key_columns`.
 3. **Re-model relationships as FK edges** — ✅ shipped (Stage 1).
-4. **Emit Ossie YAML** for the data layer (read/export) — ✅ shipped (`GET /api/semantic-model`, JSON/YAML); import via `POST /api/semantic-model/import`.
+4. **Emit Ossie YAML** for the data layer (read/export) — ✅ shipped (`GET /api/semantic-models/{id}/export`, JSON/YAML); import via `POST /api/semantic-models/import`.
 5. **Decide the metrics strategy** — ✅ decided: Ossie SQL expressions (Stage 4).
 
 **Supply chain:** Apache Ossie is **Apache 2.0, ASF-incubating, vendor-neutral** → fits the project's "mainstream + supply-chain-safe / China-friendly" criteria (see [Data grid selection](data_grid_selection.md)).

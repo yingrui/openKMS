@@ -88,19 +88,20 @@ Why it's intuitive: the user only ever answers one question at a time (which fil
 
 ---
 
-## Model tab — the cross-dataset layer
+## Model tab — semantic models
 
-The Model tab is the **cross-dataset** layer: **Metrics** and **Queries** over the datasets. Datasets, their **fields**, and their **relationships** (and the ER map) live under **Catalog**, where they are configured. **Function spec:** [semantic model spec](data-layer-semantic-model.md) · **definitions/surfaces:** [data layer](data-layer.md#the-ossie-class-model-definitions-and-where-each-is-managed).
+The Model tab lists **semantic models** — **named scopes** over the **shared** datasets, fields, and relationships (which live under **Catalog**). Opening a model shows its dataset scope, a guided setup, and its **metrics** and **queries**. **Function spec:** [semantic model spec](data-layer-semantic-model.md) · **definitions/surfaces:** [data layer](data-layer.md#the-ossie-class-model-definitions-and-where-each-is-managed).
 
-- **Setup guide** — a step checklist at the top (register datasets → connect them → define a metric → save a query) with a **direct action per step** and a progress count; hidden when done, re-openable from the header menu.
+- **List → detail** — create a model (name + pick datasets), then open it. A **New model** action and an **Import** (per-model document) live in the header.
+- **Setup guide** — a step checklist in a model (add datasets → connect them → define a metric → save a query) with a **direct action per step** and a progress count.
 - **Metrics** — model-level aggregate **expressions** (Ossie `expression.dialects`) authored by a data engineer, with **AI-assist** to draft them; run read-only (timeout + row cap).
 - **Queries** — a query pins metrics + **dimensions (fields)** + filter and re-runs.
-- **Export / Import** — the Ossie document, tucked into the header overflow menu (an interchange *output*, not the primary action).
+- **Export / Import** — the Ossie document, per model, in the model header overflow menu (an interchange *output*).
 
 ### Why it's intuitive
 
-- **Structure lives with the datasets (Catalog); model-level questions (metrics, queries) live in Model.** No concept is authored in two places.
-- A metric is an **expression**, a dimension is a **field role**, and grouping is a **query** — matching how people actually ask (“revenue by month”, not “a metric with dimensions”).
+- **Structure is shared** (Catalog); a model is just a **named scope** — so the same table can serve several models without re-declaring its columns or FKs.
+- A metric is an **expression**, a dimension is a **field role**, and grouping is a **query** — matching how people ask (“revenue by month”).
 - Relationships are the **join graph**, so “can I write a cross-dataset metric?” is answered by the Catalog map.
 
 ---

@@ -1,13 +1,13 @@
-"""Export / import the openKMS semantic model as an Ossie document.
+"""Export / import a **semantic model** as an Ossie document.
 
-A semantic model is: **datasets** (source + keys + fields + `ai_context`) +
-**relationships** (FKs) + **metrics** (SQL expressions) + **queries**. Export is a
-pure read (a governance artifact / interoperability); import upserts the semantic
-layer over datasets that are already registered.
+Datasets, their fields, and relationships are shared (Catalog-owned); the document
+scopes them to one model and carries the model's metrics and queries. Export is a
+pure read; import upserts the model (+ its metrics/queries) over datasets that are
+already registered.
 
 References use openKMS stable **ids** (`from`/`to`/`base_dataset`/`metric`), with a
 human `name` alongside. Import also accepts Ossie-style **names** (matching by
-dataset source or name), so an external document can be imported.
+dataset source or name).
 """
 from __future__ import annotations
 
@@ -24,6 +24,8 @@ from app.models.dataset_field import DatasetField
 from app.models.dataset_join import DatasetJoin
 from app.models.metric_definition import MetricDefinition
 from app.models.saved_query import SavedQuery
+from app.models.semantic_model import SemanticModel
+from app.services.data_layer.semantic_models import member_ids, set_members
 
 OSSIE_VERSION = "openkms-1"
 
@@ -32,17 +34,37 @@ def _dataset_name(d: Dataset) -> str:
     return d.display_name or f"{d.schema_name}.{d.table_name}"
 
 
-async def export_semantic_model(db: AsyncSession) -> dict[str, Any]:
-    """Build the Ossie document for the whole data layer."""
-    datasets = (await db.execute(select(Dataset).order_by(Dataset.created_at))).scalars().all()
-    fields = (await db.execute(select(DatasetField))).scalars().all()
-    relationships = (await db.execute(select(DatasetJoin))).scalars().all()
-    metrics = (await db.execute(select(MetricDefinition))).scalars().all()
-    queries = (await db.execute(select(SavedQuery))).scalars().all()
-    ds_names = {
-        ds.id: ds.name
-        for ds in (await db.execute(select(DataSource))).scalars().all()
-    }
+async def export_semantic_model(db: AsyncSession, model: SemanticModel) -> dict[str, Any]:
+    """Build the Ossie document for one semantic model."""
+    members = await member_ids(db, model.id)
+    member_set = set(members)
+
+    datasets = (
+        (await db.execute(select(Dataset).where(Dataset.id.in_(member_set)))).scalars().all()
+        if member_set
+        else []
+    )
+    fields = (
+        (await db.execute(select(DatasetField).where(DatasetField.dataset_id.in_(member_set))))
+        .scalars()
+        .all()
+        if member_set
+        else []
+    )
+    relationships = [
+        r
+        for r in (await db.execute(select(DatasetJoin))).scalars().all()
+        if r.from_dataset_id in member_set and r.to_dataset_id in member_set
+    ]
+    metrics = (
+        await db.execute(
+            select(MetricDefinition).where(MetricDefinition.semantic_model_id == model.id)
+        )
+    ).scalars().all()
+    queries = (
+        await db.execute(select(SavedQuery).where(SavedQuery.semantic_model_id == model.id))
+    ).scalars().all()
+    ds_names = {ds.id: ds.name for ds in (await db.execute(select(DataSource))).scalars().all()}
 
     fields_by_dataset: dict[str, list[DatasetField]] = {}
     for f in fields:
@@ -52,6 +74,10 @@ async def export_semantic_model(db: AsyncSession) -> dict[str, Any]:
         "ossie_version": OSSIE_VERSION,
         "generated_at": datetime.now(timezone.utc).isoformat(),
         "semantic_model": {
+            "id": model.id,
+            "name": model.name,
+            "description": model.description,
+            "ai_context": model.ai_context,
             "datasets": [
                 {
                     "id": d.id,
@@ -124,12 +150,12 @@ async def export_semantic_model(db: AsyncSession) -> dict[str, Any]:
     }
 
 
-async def _dataset_index(db: AsyncSession) -> tuple[dict[str, str], dict[str, str], dict[str, str]]:
+async def _dataset_index(
+    db: AsyncSession,
+) -> tuple[dict[str, str], dict[str, str], dict[str, str]]:
     """Return (by_id, by_source, by_name) → dataset id."""
     datasets = (await db.execute(select(Dataset))).scalars().all()
-    ds_names = {
-        ds.id: ds.name for ds in (await db.execute(select(DataSource))).scalars().all()
-    }
+    ds_names = {ds.id: ds.name for ds in (await db.execute(select(DataSource))).scalars().all()}
     by_id: dict[str, str] = {}
     by_source: dict[str, str] = {}
     by_name: dict[str, str] = {}
@@ -140,29 +166,62 @@ async def _dataset_index(db: AsyncSession) -> tuple[dict[str, str], dict[str, st
     return by_id, by_source, by_name
 
 
-def _resolve_dataset(ref: Any, by_id: dict[str, str], by_source: dict[str, str], by_name: dict[str, str]) -> str | None:
+def _resolve_dataset(
+    ref: Any, by_id: dict[str, str], by_source: dict[str, str], by_name: dict[str, str]
+) -> str | None:
     if not isinstance(ref, str):
         return None
     return by_id.get(ref) or by_source.get(ref) or by_name.get(ref)
 
 
 async def import_semantic_model(db: AsyncSession, doc: dict[str, Any]) -> dict[str, Any]:
-    """Upsert relationships / metrics / queries from an Ossie document.
-
-    Datasets must already exist (matched by id, source, or name); they are not
-    created. Returns a summary of what was written.
-    """
-    model = doc.get("semantic_model") if isinstance(doc.get("semantic_model"), dict) else doc
+    """Upsert a semantic model (+ metrics/queries) from an Ossie document."""
+    model_doc = doc.get("semantic_model") if isinstance(doc.get("semantic_model"), dict) else doc
     by_id, by_source, by_name = await _dataset_index(db)
     warnings: list[str] = []
 
+    # Resolve the target model: by id → by name → new.
+    ref_id = model_doc.get("id")
+    model = await db.get(SemanticModel, ref_id) if isinstance(ref_id, str) else None
+    if model is None:
+        name = model_doc.get("name")
+        if isinstance(name, str) and name.strip():
+            model = (
+                await db.execute(select(SemanticModel).where(SemanticModel.name == name.strip()))
+            ).scalars().first()
+    if model is None:
+        model = SemanticModel(
+            id=str(uuid.uuid4()), name=(model_doc.get("name") or "Imported model").strip()
+        )
+        db.add(model)
+        await db.flush()
+    if isinstance(model_doc.get("description"), str):
+        model.description = model_doc["description"]
+    if "ai_context" in model_doc:
+        model.ai_context = model_doc["ai_context"]
+
+    # Membership from the document's datasets.
+    members: set[str] = set()
+    for entry in model_doc.get("datasets", []) or []:
+        if not isinstance(entry, dict):
+            continue
+        resolved = (
+            _resolve_dataset(entry.get("id"), by_id, by_source, by_name)
+            or _resolve_dataset(entry.get("name"), by_id, by_source, by_name)
+        )
+        if resolved:
+            members.add(resolved)
+        else:
+            warnings.append(f"dataset '{entry.get('name')}': unresolved")
+
     rel_count = 0
-    for rel in model.get("relationships", []) or []:
+    for rel in model_doc.get("relationships", []) or []:
         from_id = _resolve_dataset(rel.get("from"), by_id, by_source, by_name)
         to_id = _resolve_dataset(rel.get("to"), by_id, by_source, by_name)
         if not from_id or not to_id:
             warnings.append(f"relationship '{rel.get('name')}': unresolved dataset")
             continue
+        members.update({from_id, to_id})
         rel_id = rel.get("id") if isinstance(rel.get("id"), str) else str(uuid.uuid4())
         row = await db.get(DatasetJoin, rel_id)
         if not row:
@@ -178,16 +237,18 @@ async def import_semantic_model(db: AsyncSession, doc: dict[str, Any]) -> dict[s
         rel_count += 1
 
     metric_count = 0
-    for m in model.get("metrics", []) or []:
+    for m in model_doc.get("metrics", []) or []:
         base_id = _resolve_dataset(m.get("base_dataset"), by_id, by_source, by_name)
         if not base_id:
             warnings.append(f"metric '{m.get('name')}': unresolved base dataset")
             continue
+        members.add(base_id)
         metric_id = m.get("id") if isinstance(m.get("id"), str) else str(uuid.uuid4())
         row = await db.get(MetricDefinition, metric_id)
         if not row:
             row = MetricDefinition(id=metric_id)
             db.add(row)
+        row.semantic_model_id = model.id
         row.base_dataset_id = base_id
         row.name = m.get("name") or "metric"
         row.type = m.get("type") or "simple"
@@ -200,16 +261,18 @@ async def import_semantic_model(db: AsyncSession, doc: dict[str, Any]) -> dict[s
         metric_count += 1
 
     query_count = 0
-    for q in model.get("queries", []) or []:
+    for q in model_doc.get("queries", []) or []:
         base_id = _resolve_dataset(q.get("base_dataset"), by_id, by_source, by_name)
         if not base_id:
             warnings.append(f"query '{q.get('name')}': unresolved base dataset")
             continue
+        members.add(base_id)
         query_id = q.get("id") if isinstance(q.get("id"), str) else str(uuid.uuid4())
         row = await db.get(SavedQuery, query_id)
         if not row:
             row = SavedQuery(id=query_id)
             db.add(row)
+        row.semantic_model_id = model.id
         row.base_dataset_id = base_id
         row.name = q.get("name") or "query"
         row.metrics = q.get("metrics") or []
@@ -220,8 +283,11 @@ async def import_semantic_model(db: AsyncSession, doc: dict[str, Any]) -> dict[s
         row.ai_context = q.get("ai_context")
         query_count += 1
 
+    await db.flush()
+    await set_members(db, model.id, sorted(members))
     await db.commit()
     return {
+        "semantic_model_id": model.id,
         "relationships": rel_count,
         "metrics": metric_count,
         "queries": query_count,

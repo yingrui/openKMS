@@ -21,7 +21,15 @@ import { FormField } from '../../styles/design-system';
 const METRIC_TYPES = ['simple', 'ratio', 'derived', 'cumulative', 'conversion'] as const;
 
 /** Model → Metrics: author model-level metrics (Ossie SQL expressions) and run them. */
-export function ModelMetricsSection({ openCreateSignal = 0 }: { openCreateSignal?: number }) {
+export function ModelMetricsSection({
+  semanticModelId,
+  datasetIds = [],
+  openCreateSignal = 0,
+}: {
+  semanticModelId: string;
+  datasetIds?: string[];
+  openCreateSignal?: number;
+}) {
   const { t } = useTranslation('ontology');
   const confirm = useConfirm();
 
@@ -49,19 +57,19 @@ export function ModelMetricsSection({ openCreateSignal = 0 }: { openCreateSignal
     setLoading(true);
     try {
       const [m, ds, j] = await Promise.all([
-        fetchMetrics(),
+        fetchMetrics(semanticModelId),
         fetchDatasets(),
         fetchDatasetJoins(),
       ]);
       setMetrics(m.items);
-      setDatasets(ds.items);
+      setDatasets(ds.items.filter((d) => datasetIds.includes(d.id)));
       setJoins(j.items);
     } catch (e) {
       toast.error(e instanceof Error ? e.message : t('datasets.loadFailed'));
     } finally {
       setLoading(false);
     }
-  }, [t]);
+  }, [semanticModelId, datasetIds, t]);
 
   useEffect(() => {
     void load();
@@ -71,9 +79,12 @@ export function ModelMetricsSection({ openCreateSignal = 0 }: { openCreateSignal
   const baseJoins = useMemo(
     () =>
       joins.filter(
-        (j) => j.from_dataset_id === baseDatasetId || j.to_dataset_id === baseDatasetId,
+        (j) =>
+          (j.from_dataset_id === baseDatasetId || j.to_dataset_id === baseDatasetId) &&
+          datasetIds.includes(j.from_dataset_id) &&
+          datasetIds.includes(j.to_dataset_id),
       ),
-    [joins, baseDatasetId],
+    [joins, baseDatasetId, datasetIds],
   );
 
   const openCreate = () => {
@@ -124,6 +135,7 @@ export function ModelMetricsSection({ openCreateSignal = 0 }: { openCreateSignal
     }
     const payload = {
       name: name.trim(),
+      semantic_model_id: semanticModelId,
       base_dataset_id: baseDatasetId,
       business_definition: definition.trim() || null,
       type,

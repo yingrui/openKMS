@@ -16,6 +16,10 @@ class SavedQuery(Base):
     __tablename__ = "saved_queries"
 
     id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    # The semantic model this query belongs to (its scope).
+    semantic_model_id: Mapped[str] = mapped_column(
+        String(64), ForeignKey("semantic_models.id", ondelete="CASCADE"), nullable=False, index=True
+    )
     base_dataset_id: Mapped[str] = mapped_column(
         String(64), ForeignKey("datasets.id", ondelete="CASCADE"), nullable=False, index=True
     )

@@ -43,6 +43,7 @@ export interface SavedQueryRunResponse {
 
 export interface SavedQueryPayload {
   name: string;
+  semantic_model_id: string;
   base_dataset_id: string;
   description?: string | null;
   metrics: QueryMetric[];
@@ -51,9 +52,9 @@ export interface SavedQueryPayload {
   filters?: QueryFilter[] | null;
 }
 
-export async function fetchSavedQueries(baseDatasetId?: string): Promise<SavedQueryListResponse> {
+export async function fetchSavedQueries(semanticModelId?: string): Promise<SavedQueryListResponse> {
   return request<SavedQueryListResponse>('/api/queries', {
-    query: baseDatasetId ? { base_dataset_id: baseDatasetId } : undefined,
+    query: semanticModelId ? { semantic_model_id: semanticModelId } : undefined,
   });
 }
 

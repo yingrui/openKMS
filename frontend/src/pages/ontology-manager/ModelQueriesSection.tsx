@@ -22,7 +22,15 @@ import { FormField } from '../../styles/design-system';
 const FILTER_OPS = ['=', '!=', '>', '>=', '<', '<=', 'like', 'in', 'not_in', 'is_null', 'is_not_null'];
 
 /** Model → Queries: author saved queries (metrics + dimensions + filter) and run them. */
-export function ModelQueriesSection({ openCreateSignal = 0 }: { openCreateSignal?: number }) {
+export function ModelQueriesSection({
+  semanticModelId,
+  datasetIds = [],
+  openCreateSignal = 0,
+}: {
+  semanticModelId: string;
+  datasetIds?: string[];
+  openCreateSignal?: number;
+}) {
   const { t } = useTranslation('ontology');
   const confirm = useConfirm();
 
@@ -50,13 +58,13 @@ export function ModelQueriesSection({ openCreateSignal = 0 }: { openCreateSignal
     setLoading(true);
     try {
       const [q, ds, m, j] = await Promise.all([
-        fetchSavedQueries(),
+        fetchSavedQueries(semanticModelId),
         fetchDatasets(),
-        fetchMetrics(),
+        fetchMetrics(semanticModelId),
         fetchDatasetJoins(),
       ]);
       setQueries(q.items);
-      setDatasets(ds.items);
+      setDatasets(ds.items.filter((d) => datasetIds.includes(d.id)));
       setMetrics(m.items);
       setJoins(j.items);
     } catch (e) {
@@ -64,7 +72,7 @@ export function ModelQueriesSection({ openCreateSignal = 0 }: { openCreateSignal
     } finally {
       setLoading(false);
     }
-  }, [t]);
+  }, [semanticModelId, datasetIds, t]);
 
   useEffect(() => {
     void load();
@@ -86,8 +94,13 @@ export function ModelQueriesSection({ openCreateSignal = 0 }: { openCreateSignal
 
   const baseJoins = useMemo(
     () =>
-      joins.filter((j) => j.from_dataset_id === baseDatasetId || j.to_dataset_id === baseDatasetId),
-    [joins, baseDatasetId],
+      joins.filter(
+        (j) =>
+          (j.from_dataset_id === baseDatasetId || j.to_dataset_id === baseDatasetId) &&
+          datasetIds.includes(j.from_dataset_id) &&
+          datasetIds.includes(j.to_dataset_id),
+      ),
+    [joins, baseDatasetId, datasetIds],
   );
   const baseMetrics = useMemo(
     () => metrics.filter((m) => m.base_dataset_id === baseDatasetId),
@@ -145,6 +158,7 @@ export function ModelQueriesSection({ openCreateSignal = 0 }: { openCreateSignal
       }));
     const payload = {
       name: name.trim(),
+      semantic_model_id: semanticModelId,
       base_dataset_id: baseDatasetId,
       description: description.trim() || null,
       metrics: selectedMetrics.map((id) => ({

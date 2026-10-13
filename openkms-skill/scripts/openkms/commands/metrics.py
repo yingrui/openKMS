@@ -10,9 +10,13 @@ from .._io import print_json
 
 
 def cmd_list(ns: argparse.Namespace) -> None:
-    params = {"base_dataset_id": ns.base_dataset_id} if ns.base_dataset_id else None
+    params: dict[str, str] = {}
+    if ns.semantic_model_id:
+        params["semantic_model_id"] = ns.semantic_model_id
+    if ns.base_dataset_id:
+        params["base_dataset_id"] = ns.base_dataset_id
     with client() as s:
-        r = s.get("/api/metrics", params=params)
+        r = s.get("/api/metrics", params=params or None)
     r.raise_for_status()
     print_json(r.json())
 
@@ -20,6 +24,7 @@ def cmd_list(ns: argparse.Namespace) -> None:
 def cmd_add(ns: argparse.Namespace) -> None:
     body: dict[str, Any] = {
         "name": ns.name,
+        "semantic_model_id": ns.semantic_model_id,
         "base_dataset_id": ns.base_dataset_id,
         "type": ns.type,
         "expression": {"dialects": {"ANSI_SQL": ns.expression}},
@@ -67,11 +72,13 @@ def add_subparser(sub) -> None:
     sp = p.add_subparsers(dest="metrics_cmd", required=True)
 
     ml = sp.add_parser("list", help="List metrics")
+    ml.add_argument("--semantic-model-id", default=None)
     ml.add_argument("--base-dataset-id", default=None)
     ml.set_defaults(fn=cmd_list)
 
     ma = sp.add_parser("add", help="Add a metric")
     ma.add_argument("--name", required=True)
+    ma.add_argument("--semantic-model-id", required=True)
     ma.add_argument("--base-dataset-id", required=True)
     ma.add_argument("--expression", required=True, help='aggregate SQL fragment, e.g. "SUM(amount)"')
     ma.add_argument(

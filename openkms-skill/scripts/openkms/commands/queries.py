@@ -32,9 +32,13 @@ def _parse_filter(raw: str) -> dict[str, Any]:
 
 
 def cmd_list(ns: argparse.Namespace) -> None:
-    params = {"base_dataset_id": ns.base_dataset_id} if ns.base_dataset_id else None
+    params: dict[str, str] = {}
+    if ns.semantic_model_id:
+        params["semantic_model_id"] = ns.semantic_model_id
+    if ns.base_dataset_id:
+        params["base_dataset_id"] = ns.base_dataset_id
     with client() as s:
-        r = s.get("/api/queries", params=params)
+        r = s.get("/api/queries", params=params or None)
     r.raise_for_status()
     print_json(r.json())
 
@@ -42,6 +46,7 @@ def cmd_list(ns: argparse.Namespace) -> None:
 def cmd_add(ns: argparse.Namespace) -> None:
     body: dict[str, Any] = {
         "name": ns.name,
+        "semantic_model_id": ns.semantic_model_id,
         "base_dataset_id": ns.base_dataset_id,
         "metrics": _parse_metrics(ns.metrics),
         "group_by": _split(ns.group_by),
@@ -79,11 +84,13 @@ def add_subparser(sub) -> None:
     sp = p.add_subparsers(dest="queries_cmd", required=True)
 
     ql = sp.add_parser("list", help="List saved queries")
+    ql.add_argument("--semantic-model-id", default=None)
     ql.add_argument("--base-dataset-id", default=None)
     ql.set_defaults(fn=cmd_list)
 
     qa = sp.add_parser("add", help="Add a saved query")
     qa.add_argument("--name", required=True)
+    qa.add_argument("--semantic-model-id", required=True)
     qa.add_argument("--base-dataset-id", required=True)
     qa.add_argument("--metrics", default=None, help='comma-separated "alias=metric_id" (alias optional)')
     qa.add_argument("--group-by", default=None, help="comma-separated field names")

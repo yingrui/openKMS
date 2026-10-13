@@ -229,17 +229,20 @@ All write subcommands accept `--yes` / `--dry-run`. Without `--yes` on non-TTY s
 | `datasets quality add` *(write)* | POST | `/api/datasets/{id}/quality-rules` | Body `{name, rule_type, column_name, config}`. |
 | `datasets quality run` *(write)* | POST | `/api/datasets/{id}/quality-rules/{rule_id}/run` | |
 | `datasets quality delete` *(write)* | DELETE | `/api/datasets/{id}/quality-rules/{rule_id}` | |
-| `metrics list` | GET | `/api/metrics` | Model-level metrics; optional `?base_dataset_id=`. |
-| `metrics add` *(write)* | POST | `/api/metrics` | Body `{name, base_dataset_id, type, expression:{dialects:{ANSI_SQL}}, datatype?, joins?, ai_context?}`. `expression` is an aggregate SQL fragment (Ossie). |
+| `metrics list` | GET | `/api/metrics` | Metrics; optional `?semantic_model_id=` / `?base_dataset_id=`. |
+| `metrics add` *(write)* | POST | `/api/metrics` | Body `{name, semantic_model_id, base_dataset_id, type, expression:{dialects:{ANSI_SQL}}, datatype?, joins?, ai_context?}`. `expression` is an aggregate SQL fragment (Ossie); the base dataset must be in the model's scope. |
 | `metrics compute` | GET | `/api/metrics/{metric_id}/compute` | Runs the metric **read-only** (statement timeout + row cap); records a run. |
 | `metrics runs` | GET | `/api/metrics/{metric_id}/runs` | Recent executions (audit). |
 | `metrics delete` *(write)* | DELETE | `/api/metrics/{metric_id}` | |
-| `queries list` | GET | `/api/queries` | Model-level saved queries; optional `?base_dataset_id=`. |
-| `queries add` *(write)* | POST | `/api/queries` | Body `{name, base_dataset_id, metrics:[{name, metric_id}], group_by:[field], joins:[rel_id], filters?}`. |
+| `queries list` | GET | `/api/queries` | Saved queries; optional `?semantic_model_id=` / `?base_dataset_id=`. |
+| `queries add` *(write)* | POST | `/api/queries` | Body `{name, semantic_model_id, base_dataset_id, metrics:[{name, metric_id}], group_by:[field], joins:[rel_id], filters?}`. |
 | `queries run` | GET | `/api/queries/{query_id}/run` | Runs the query read-only (timeout + row cap). |
 | `queries delete` *(write)* | DELETE | `/api/queries/{query_id}` | |
-| `semantic-model export` | GET | `/api/semantic-model` | Ossie document (`?format=json|yaml`): datasets (+keys/fields), relationships, metrics, queries. |
-| `semantic-model import` *(write)* | POST | `/api/semantic-model/import` | Upsert the semantic layer from an Ossie document (datasets matched by id/source/name). |
+| `semantic-models list` | GET | `/api/semantic-models` | Named semantic models (scope = dataset ids). |
+| `semantic-models add` *(write)* | POST | `/api/semantic-models` | Body `{name, dataset_ids, description?}`. |
+| `semantic-models export` | GET | `/api/semantic-models/{id}/export` | Ossie document for one model (`?format=json|yaml`). |
+| `semantic-models import` *(write)* | POST | `/api/semantic-models/import` | Upsert a model (+ metrics/queries) from an Ossie document. |
+| `semantic-models delete` *(write)* | DELETE | `/api/semantic-models/{id}` | Cascades the model's metrics/queries. |
 | `explorer reports-list` | GET | `/api/explorer-reports` | Data Explorer saved analyses. |
 | `explorer reports-get` | GET | `/api/explorer-reports/{id}` | |
 | `explorer reports-create` *(write)* | POST | `/api/explorer-reports` | Body `{name, question, dataset_id, narrative, charts}`. |

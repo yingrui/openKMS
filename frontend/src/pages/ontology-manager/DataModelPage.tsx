@@ -1,83 +1,44 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link, useNavigate } from 'react-router-dom';
-import { Loader2, MoreHorizontal } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { Boxes, Loader2, MoreHorizontal, Plus } from 'lucide-react';
 import { toast } from 'sonner';
 import { fetchDatasets, type DatasetResponse } from '../../data/datasetsApi';
-import { fetchDatasetJoins, type DatasetJoinResponse } from '../../data/joinsApi';
-import { fetchMetrics } from '../../data/metricsApi';
-import { fetchSavedQueries } from '../../data/queriesApi';
 import {
-  exportSemanticModel,
-  exportSemanticModelYaml,
+  createSemanticModel,
+  fetchSemanticModels,
   importSemanticModel,
-} from '../../data/semanticModelApi';
-import { fetchQualityRules, type QualityRuleResponse } from '../../data/qualityApi';
-import { EmptyState } from '../../styles/design-system';
-import { EntityViewStat, EntityViewStats } from './EntityViewShell';
+  type SemanticModelResponse,
+} from '../../data/semanticModelsApi';
+import { Dialog, EmptyState, FormField } from '../../styles/design-system';
 import { DatasetAppTabs } from './DatasetAppTabs';
-import { ModelMetricsSection } from './ModelMetricsSection';
-import { ModelQueriesSection } from './ModelQueriesSection';
-import { ModelSetupGuide } from './ModelSetupGuide';
 import '../ontology/ontology-admin.scss';
 
 function datasetLabel(d: DatasetResponse): string {
   return d.display_name || `${d.schema_name}.${d.table_name}`;
 }
 
-function download(filename: string, text: string, type: string): void {
-  const url = URL.createObjectURL(new Blob([text], { type }));
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = filename;
-  a.click();
-  URL.revokeObjectURL(url);
-}
-
-/**
- * Model view: the **cross-dataset** layer — model-level **metrics** and **queries**.
- * Datasets, their fields, and their relationships (plus the ER map) live under
- * **Catalog**, since that is where they are configured.
- */
+/** Model tab: the list of semantic models. Open one to edit its scope, metrics, and queries. */
 export function DataModelPage() {
   const { t } = useTranslation('ontology');
-  const navigate = useNavigate();
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const [importing, setImporting] = useState(false);
-  const [metricsSignal, setMetricsSignal] = useState(0);
-  const [queriesSignal, setQueriesSignal] = useState(0);
-  const [setupDismissed, setSetupDismissed] = useState(() => {
-    try {
-      return localStorage.getItem('openkms:dataModel:setupDismissed') === '1';
-    } catch {
-      return false;
-    }
-  });
+  const [models, setModels] = useState<SemanticModelResponse[]>([]);
   const [datasets, setDatasets] = useState<DatasetResponse[]>([]);
-  const [joins, setJoins] = useState<DatasetJoinResponse[]>([]);
-  const [rules, setRules] = useState<QualityRuleResponse[]>([]);
-  const [metricCount, setMetricCount] = useState(0);
-  const [queryCount, setQueryCount] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [importing, setImporting] = useState(false);
+
+  const [showForm, setShowForm] = useState(false);
+  const [name, setName] = useState('');
+  const [description, setDescription] = useState('');
+  const [selectedDatasets, setSelectedDatasets] = useState<string[]>([]);
+  const [submitting, setSubmitting] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const [ds, j, m, q] = await Promise.all([
-        fetchDatasets(),
-        fetchDatasetJoins(),
-        fetchMetrics(),
-        fetchSavedQueries(),
-      ]);
+      const [m, ds] = await Promise.all([fetchSemanticModels(), fetchDatasets()]);
+      setModels(m.items);
       setDatasets(ds.items);
-      setJoins(j.items);
-      setMetricCount(m.total);
-      setQueryCount(q.total);
-      const lists: QualityRuleResponse[][] = [];
-      for (const d of ds.items) {
-        lists.push(await fetchQualityRules(d.id).catch(() => []));
-      }
-      setRules(lists.flat());
     } catch (e) {
       toast.error(e instanceof Error ? e.message : t('datasets.loadFailed'));
     } finally {
@@ -89,16 +50,32 @@ export function DataModelPage() {
     void load();
   }, [load]);
 
-  const handleExport = async (format: 'json' | 'yaml') => {
+  const openCreate = () => {
+    setName('');
+    setDescription('');
+    setSelectedDatasets([]);
+    setShowForm(true);
+  };
+
+  const handleCreate = async () => {
+    if (!name.trim()) {
+      toast.error(t('dataModel.modelNameRequired'));
+      return;
+    }
+    setSubmitting(true);
     try {
-      if (format === 'yaml') {
-        download('semantic-model.yaml', await exportSemanticModelYaml(), 'application/yaml');
-      } else {
-        const doc = await exportSemanticModel();
-        download('semantic-model.json', JSON.stringify(doc, null, 2), 'application/json');
-      }
+      await createSemanticModel({
+        name: name.trim(),
+        description: description.trim() || null,
+        dataset_ids: selectedDatasets,
+      });
+      toast.success(t('dataModel.modelCreated'));
+      setShowForm(false);
+      await load();
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : t('dataModel.exportFailed'));
+      toast.error(e instanceof Error ? e.message : t('dataModel.modelCreateFailed'));
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -126,39 +103,10 @@ export function DataModelPage() {
     }
   };
 
-  const dismissSetup = () => {
-    setSetupDismissed(true);
-    try {
-      localStorage.setItem('openkms:dataModel:setupDismissed', '1');
-    } catch {
-      /* ignore */
-    }
-  };
-
-  const showSetup = () => {
-    setSetupDismissed(false);
-    try {
-      localStorage.removeItem('openkms:dataModel:setupDismissed');
-    } catch {
-      /* ignore */
-    }
-  };
-
-  const datasetOfRule = useMemo(() => new Map(rules.map((r) => [r.id, r.dataset_id])), [rules]);
-  const alerts = rules.filter((r) => r.last_status === 'failed' || r.last_status === 'error');
-  const nameOf = (id: string) => {
-    const d = datasets.find((x) => x.id === id);
-    return d ? datasetLabel(d) : id;
-  };
-
-  if (loading) {
-    return (
-      <div className="console-loading">
-        <Loader2 size={32} className="console-loading-spinner" aria-hidden />
-        <p>{t('shared.loading')}</p>
-      </div>
+  const toggleDataset = (id: string) =>
+    setSelectedDatasets((prev) =>
+      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id],
     );
-  }
 
   return (
     <div className="ontology-admin">
@@ -167,29 +115,26 @@ export function DataModelPage() {
           <h1>{t('dataModel.title')}</h1>
           <p className="page-subtitle">{t('dataModel.subtitle')}</p>
         </div>
-        <details className="model-menu">
-          <summary className="btn btn-secondary btn-sm" aria-label={t('dataModel.more')}>
-            <MoreHorizontal size={16} aria-hidden />
-          </summary>
-          <div className="model-menu__panel">
-            <button type="button" onClick={showSetup}>
-              {t('dataModel.setupShow')}
-            </button>
-            <button type="button" onClick={() => void handleExport('json')}>
-              {t('dataModel.exportJson')}
-            </button>
-            <button type="button" onClick={() => void handleExport('yaml')}>
-              {t('dataModel.exportYaml')}
-            </button>
-            <button
-              type="button"
-              onClick={() => fileInputRef.current?.click()}
-              disabled={importing}
-            >
-              {t('dataModel.import')}
-            </button>
-          </div>
-        </details>
+        <div className="dataset-columns__actions">
+          <button type="button" className="btn btn-primary btn-sm" onClick={openCreate}>
+            <Plus size={14} aria-hidden />
+            {t('dataModel.newModel')}
+          </button>
+          <details className="model-menu">
+            <summary className="btn btn-secondary btn-sm" aria-label={t('dataModel.more')}>
+              <MoreHorizontal size={16} aria-hidden />
+            </summary>
+            <div className="model-menu__panel">
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                disabled={importing}
+              >
+                {t('dataModel.importModel')}
+              </button>
+            </div>
+          </details>
+        </div>
         <input
           ref={fileInputRef}
           type="file"
@@ -203,72 +148,100 @@ export function DataModelPage() {
       </div>
       <DatasetAppTabs />
       <div className="ontology-admin-content">
-        {!setupDismissed && (
-          <ModelSetupGuide
-            datasets={datasets.length}
-            relationships={joins.length}
-            metrics={metricCount}
-            queries={queryCount}
-            onOpenDatasets={() => navigate('/datasets')}
-            onConnectDatasets={() =>
-              navigate(datasets[0] ? `/datasets/${datasets[0].id}/relationships` : '/datasets')
+        {loading ? (
+          <div className="console-loading">
+            <Loader2 size={32} className="console-loading-spinner" aria-hidden />
+            <p>{t('shared.loading')}</p>
+          </div>
+        ) : models.length === 0 ? (
+          <EmptyState
+            icon={<Boxes size={32} aria-hidden />}
+            title={t('dataModel.modelsEmpty')}
+            description={t('dataModel.modelsEmptyHint')}
+            action={
+              <button type="button" className="btn btn-primary" onClick={openCreate}>
+                <Plus size={16} aria-hidden />
+                {t('dataModel.newModel')}
+              </button>
             }
-            onAddMetric={() => setMetricsSignal((n) => n + 1)}
-            onAddQuery={() => setQueriesSignal((n) => n + 1)}
-            onExport={() => void handleExport('json')}
-            onDismiss={dismissSetup}
           />
-        )}
-        <EntityViewStats>
-          <EntityViewStat label={t('dataModel.datasets')} value={datasets.length} />
-          <EntityViewStat label={t('dataModel.joins')} value={joins.length} />
-          <EntityViewStat label={t('dataModel.metrics')} value={metricCount} />
-          <EntityViewStat label={t('dataModel.queries')} value={queryCount} />
-          <EntityViewStat label={t('dataModel.failingRules')} value={alerts.length} />
-        </EntityViewStats>
-
-        <ModelMetricsSection openCreateSignal={metricsSignal} />
-
-        <ModelQueriesSection openCreateSignal={queriesSignal} />
-
-        <section>
-          <h2>{t('dataModel.qualityAlerts')}</h2>
-          {alerts.length === 0 ? (
-            <EmptyState title={t('dataModel.noAlerts')} description={t('dataModel.subtitle')} />
-          ) : (
-            <div className="ds-table-wrap">
-              <table className="console-table">
-                <thead>
-                  <tr>
-                    <th>{t('datasets.colName')}</th>
-                    <th>{t('datasets.qualityType')}</th>
-                    <th>{t('datasets.colColumn')}</th>
-                    <th>{t('datasets.qualityStatus')}</th>
+        ) : (
+          <div className="ds-table-wrap">
+            <table className="console-table">
+              <thead>
+                <tr>
+                  <th>{t('dataModel.colModel')}</th>
+                  <th>{t('dataModel.colDatasets')}</th>
+                  <th>{t('dataModel.modelDescription')}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {models.map((m) => (
+                  <tr key={m.id}>
+                    <td>
+                      <Link to={`/data-model/${m.id}`} className="ontology-manager-list__api-link">
+                        <strong>{m.name}</strong>
+                      </Link>
+                    </td>
+                    <td>{m.datasets.length}</td>
+                    <td className="console-table-muted">{m.description ?? t('datasets.dash')}</td>
                   </tr>
-                </thead>
-                <tbody>
-                  {alerts.map((r) => (
-                    <tr key={r.id}>
-                      <td>
-                        <Link to={`/datasets/${datasetOfRule.get(r.id)}`}>
-                          {nameOf(datasetOfRule.get(r.id) ?? '')}
-                        </Link>
-                      </td>
-                      <td>{r.rule_type}</td>
-                      <td>{r.column_name ?? t('datasets.dash')}</td>
-                      <td>
-                        <span className={`quality-pill quality-pill--${r.last_status}`}>
-                          {r.last_status}
-                        </span>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </section>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
+
+      <Dialog
+        open={showForm}
+        onClose={() => !submitting && setShowForm(false)}
+        closeDisabled={submitting}
+        title={t('dataModel.newModel')}
+        closeAriaLabel={t('shared.cancel')}
+        size="sm"
+        footer={
+          <>
+            <button
+              type="button"
+              className="btn btn-secondary"
+              onClick={() => !submitting && setShowForm(false)}
+              disabled={submitting}
+            >
+              {t('shared.cancel')}
+            </button>
+            <button
+              type="button"
+              className="btn btn-primary"
+              onClick={() => void handleCreate()}
+              disabled={submitting || !name.trim()}
+            >
+              {submitting ? t('shared.saving') : t('datasets.create')}
+            </button>
+          </>
+        }
+      >
+        <FormField label={t('dataModel.modelName')}>
+          <input type="text" value={name} onChange={(e) => setName(e.target.value)} />
+        </FormField>
+        <FormField label={t('dataModel.modelDescription')}>
+          <textarea rows={2} value={description} onChange={(e) => setDescription(e.target.value)} />
+        </FormField>
+        <FormField label={t('dataModel.modelDatasets')} hint={t('dataModel.modelDatasetsHint')}>
+          <div className="dataset-pk-list">
+            {datasets.map((d) => (
+              <label key={d.id} className="ds-check-row">
+                <input
+                  type="checkbox"
+                  checked={selectedDatasets.includes(d.id)}
+                  onChange={() => toggleDataset(d.id)}
+                />
+                <span>{datasetLabel(d)}</span>
+              </label>
+            ))}
+          </div>
+        </FormField>
+      </Dialog>
     </div>
   );
 }

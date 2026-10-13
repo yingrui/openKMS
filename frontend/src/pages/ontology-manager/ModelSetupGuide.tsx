@@ -21,7 +21,7 @@ export function ModelSetupGuide({
   relationships,
   metrics,
   queries,
-  onOpenDatasets,
+  onAddDatasets,
   onConnectDatasets,
   onAddMetric,
   onAddQuery,
@@ -32,7 +32,7 @@ export function ModelSetupGuide({
   relationships: number;
   metrics: number;
   queries: number;
-  onOpenDatasets: () => void;
+  onAddDatasets: () => void;
   onConnectDatasets: () => void;
   onAddMetric: () => void;
   onAddQuery: () => void;
@@ -47,8 +47,8 @@ export function ModelSetupGuide({
       label: t('dataModel.setupStepDatasets'),
       hint: t('dataModel.setupStepDatasetsHint'),
       done: datasets > 0,
-      actionLabel: t('dataModel.setupOpenDatasets'),
-      action: onOpenDatasets,
+      actionLabel: t('dataModel.setupEditModel'),
+      action: onAddDatasets,
     },
     {
       key: 'relationships',

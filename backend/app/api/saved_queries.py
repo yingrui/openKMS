@@ -15,6 +15,8 @@ from app.api.auth import require_any_permission, require_auth, require_permissio
 from app.database import get_db
 from app.models.dataset import Dataset
 from app.models.saved_query import SavedQuery
+from app.models.semantic_model import SemanticModel
+from app.services.data_layer.semantic_models import member_ids
 from app.schemas.saved_query import (
     SavedQueryCreate,
     SavedQueryListResponse,
@@ -39,6 +41,7 @@ async def _name_map(db: AsyncSession, ids: set[str]) -> dict[str, str]:
 def _response(q: SavedQuery, base_name: str | None) -> SavedQueryResponse:
     return SavedQueryResponse(
         id=q.id,
+        semantic_model_id=q.semantic_model_id,
         base_dataset_id=q.base_dataset_id,
         base_dataset_name=base_name,
         name=q.name,
@@ -67,8 +70,14 @@ async def _load(db: AsyncSession, query_id: str) -> SavedQuery:
     response_model=SavedQueryListResponse,
     dependencies=[Depends(require_any_permission(*_VIEW))],
 )
-async def list_saved_queries(base_dataset_id: str | None = None, db: AsyncSession = Depends(get_db)):
+async def list_saved_queries(
+    semantic_model_id: str | None = None,
+    base_dataset_id: str | None = None,
+    db: AsyncSession = Depends(get_db),
+):
     query = select(SavedQuery).order_by(SavedQuery.created_at.desc())
+    if semantic_model_id:
+        query = query.where(SavedQuery.semantic_model_id == semantic_model_id)
     if base_dataset_id:
         query = query.where(SavedQuery.base_dataset_id == base_dataset_id)
     rows = (await db.execute(query)).scalars().all()
@@ -92,6 +101,12 @@ async def create_saved_query(
     base = await db.get(Dataset, body.base_dataset_id)
     if not base:
         raise HTTPException(status_code=400, detail="Base dataset not found")
+    if not await db.get(SemanticModel, body.semantic_model_id):
+        raise HTTPException(status_code=400, detail="Semantic model not found")
+    if body.base_dataset_id not in set(await member_ids(db, body.semantic_model_id)):
+        raise HTTPException(
+            status_code=400, detail="The base dataset is not in this semantic model."
+        )
     if not body.metrics and not body.group_by:
         raise HTTPException(status_code=400, detail="A saved query needs a metric or a field.")
 
@@ -99,6 +114,7 @@ async def create_saved_query(
     uname = p.get("preferred_username") or p.get("name")
     query = SavedQuery(
         id=str(uuid.uuid4()),
+        semantic_model_id=body.semantic_model_id,
         base_dataset_id=body.base_dataset_id,
         name=body.name.strip(),
         description=body.description,
@@ -143,12 +159,21 @@ async def update_saved_query(
     data = body.model_dump(exclude_unset=True)
     if "base_dataset_id" in data and not await db.get(Dataset, data["base_dataset_id"]):
         raise HTTPException(status_code=400, detail="Base dataset not found")
+    new_model_id = data.get("semantic_model_id", q.semantic_model_id)
+    new_base_id = data.get("base_dataset_id", q.base_dataset_id)
+    if not await db.get(SemanticModel, new_model_id):
+        raise HTTPException(status_code=400, detail="Semantic model not found")
+    if new_base_id not in set(await member_ids(db, new_model_id)):
+        raise HTTPException(
+            status_code=400, detail="The base dataset is not in this semantic model."
+        )
     if "name" in data:
         data["name"] = data["name"].strip()
     if "filters" in data:
         data["filters"] = data["filters"] or None
     for field in (
         "name",
+        "semantic_model_id",
         "base_dataset_id",
         "description",
         "metrics",

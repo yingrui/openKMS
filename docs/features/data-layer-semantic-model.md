@@ -66,7 +66,7 @@ datasets  ──(primary_key / unique_keys)──►  relationship.to
 
 ## Model tab functionality
 
-The **semantic model** is authored across two places, with exactly one home per concept: **Catalog** (datasets, fields, relationships — where the *structure* is configured) and **Model** (cross-dataset metrics and queries). The Model tab is the **cross-dataset** layer and opens with a **guided setup** (datasets → relationships → metrics → queries; a direct action per step). Sections:
+The **shared base** (datasets, fields, relationships) lives in **Catalog**. The **Model** tab holds **semantic models** — **named scopes** over that base, each owning its **metrics** and **queries** (plus dataset membership and `ai_context`). The tab is a **list → model detail**, and a model opens with a **guided setup** (add datasets → connect them → define a metric → save a query). Sections:
 
 ### 1. Overview
 - **Model health**: counts of datasets, relationships, metrics; quality failing; **datasets without a primary key** (a relationship/`to` problem); **orphans** (no relationships).
@@ -93,9 +93,9 @@ The **semantic model** is authored across two places, with exactly one home per 
 - Saved as a named artifact; may export as a view/table (manifest `exports`).
 
 ### 6. Export / Import (Ossie) ✅
-- **Export / Import live in the Model header overflow menu** — an interchange *output*, not the primary action; the model is built by configuration above.
-- **Export** the semantic model as an **Ossie document** (`semantic_model: {datasets, relationships, metrics, queries}`, JSON or YAML via `GET /api/semantic-model`).
-- **Import** (`POST /api/semantic-model/import`) **upserts** relationships/metrics/queries over datasets matched by id/source/name; datasets are not created.
+- **Export / Import are per model**, in the model's header overflow menu — an interchange *output*, not the primary action; the model is built by configuration above.
+- **Export** one semantic model as an **Ossie document** (`semantic_model: {id, name, description, ai_context, datasets, relationships, metrics, queries}`, JSON or YAML via `GET /api/semantic-models/{id}/export`).
+- **Import** (`POST /api/semantic-models/import`) **upserts** a model + its metrics/queries over datasets matched by id/source/name; datasets are not created.
 
 ---
 

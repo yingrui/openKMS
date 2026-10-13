@@ -16,6 +16,8 @@ from app.database import get_db
 from app.models.dataset import Dataset
 from app.models.metric_definition import MetricDefinition
 from app.models.metric_run import MetricRun
+from app.models.semantic_model import SemanticModel
+from app.services.data_layer.semantic_models import member_ids
 from app.schemas.metric import (
     MetricComputeResponse,
     MetricCreate,
@@ -41,6 +43,7 @@ async def _name_map(db: AsyncSession, ids: set[str]) -> dict[str, str]:
 def _metric_response(m: MetricDefinition, base_name: str | None) -> MetricResponse:
     return MetricResponse(
         id=m.id,
+        semantic_model_id=m.semantic_model_id,
         base_dataset_id=m.base_dataset_id,
         base_dataset_name=base_name,
         name=m.name,
@@ -94,9 +97,15 @@ async def _record_run(
     response_model=MetricListResponse,
     dependencies=[Depends(require_any_permission(*_VIEW))],
 )
-async def list_metrics(base_dataset_id: str | None = None, db: AsyncSession = Depends(get_db)):
-    """List model-level metrics, optionally anchored on one base dataset."""
+async def list_metrics(
+    semantic_model_id: str | None = None,
+    base_dataset_id: str | None = None,
+    db: AsyncSession = Depends(get_db),
+):
+    """List metrics, scoped to a semantic model and/or anchored on a base dataset."""
     query = select(MetricDefinition).order_by(MetricDefinition.created_at.desc())
+    if semantic_model_id:
+        query = query.where(MetricDefinition.semantic_model_id == semantic_model_id)
     if base_dataset_id:
         query = query.where(MetricDefinition.base_dataset_id == base_dataset_id)
     rows = (await db.execute(query)).scalars().all()
@@ -120,6 +129,12 @@ async def create_metric(
     base = await db.get(Dataset, body.base_dataset_id)
     if not base:
         raise HTTPException(status_code=400, detail="Base dataset not found")
+    if not await db.get(SemanticModel, body.semantic_model_id):
+        raise HTTPException(status_code=400, detail="Semantic model not found")
+    if body.base_dataset_id not in set(await member_ids(db, body.semantic_model_id)):
+        raise HTTPException(
+            status_code=400, detail="The base dataset is not in this semantic model."
+        )
     try:
         validate_metric_definition(name=body.name, type=body.type, expression=body.expression)
     except MetricError as exc:
@@ -129,6 +144,7 @@ async def create_metric(
     uname = p.get("preferred_username") or p.get("name")
     metric = MetricDefinition(
         id=str(uuid.uuid4()),
+        semantic_model_id=body.semantic_model_id,
         base_dataset_id=body.base_dataset_id,
         name=body.name.strip(),
         business_definition=body.business_definition,
@@ -174,6 +190,14 @@ async def update_metric(
 
     if "base_dataset_id" in data and not await db.get(Dataset, data["base_dataset_id"]):
         raise HTTPException(status_code=400, detail="Base dataset not found")
+    new_model_id = data.get("semantic_model_id", m.semantic_model_id)
+    new_base_id = data.get("base_dataset_id", m.base_dataset_id)
+    if not await db.get(SemanticModel, new_model_id):
+        raise HTTPException(status_code=400, detail="Semantic model not found")
+    if new_base_id not in set(await member_ids(db, new_model_id)):
+        raise HTTPException(
+            status_code=400, detail="The base dataset is not in this semantic model."
+        )
     try:
         validate_metric_definition(
             name=data.get("name", m.name),
@@ -189,6 +213,7 @@ async def update_metric(
         data["name"] = data["name"].strip()
     for field in (
         "name",
+        "semantic_model_id",
         "base_dataset_id",
         "business_definition",
         "type",

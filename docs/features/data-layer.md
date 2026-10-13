@@ -31,20 +31,19 @@ Definitions first; each concept is **authored in exactly one place**.
 
 | Concept | Definition | Managed where | Level |
 |---------|------------|---------------|-------|
-| **Semantic Model** | the container of datasets + relationships + metrics (+ queries) | authored across **Catalog** (datasets, fields, relationships) and **Model** (metrics, queries); **Export/Import** in the **Model** header | cross-dataset |
-| **Datasets** | a logical entity: a physical table (`source`) + keys + fields + `ai_context` | **Catalog** — dataset detail → Overview / Settings | per-dataset |
-| **Fields** | row-level attributes: a column ref **or a computed expression**, + `datatype`, `dimension.is_time`, `ai_context` | **Catalog** — dataset detail → Fields | per-dataset |
-| **Dimensions** | a **field role** (`dimension.is_time`) — a field you can group/filter by | **Catalog** — dataset detail → Fields (a field flag) | per-dataset (field) |
-| **Relationships** | FK edges: `from` (many) → `to` (one), `from_columns`/`to_columns`, `required` | **Catalog** — dataset detail → Relationships (editor) + the Catalog list **Map** view (ER) | cross-dataset |
-| **Metrics** | model-level aggregate **expressions** over fields | **Model → Metrics** | cross-dataset |
-| **Queries** | metrics + `group_by` dimensions + `where`, saved | **Model → Queries** | cross-dataset |
+| **Semantic Model** | a **named scope**: a subset of the shared datasets + its metrics and queries (+ `ai_context`) | **Model** tab — list → model detail (with **Export/Import** per model) | cross-dataset |
+| **Datasets** | a logical entity: a physical table (`source`) + keys + fields + `ai_context` | **Catalog** — dataset detail → Overview / Settings | shared (base) |
+| **Fields** | row-level attributes: a column ref **or a computed expression**, + `datatype`, `dimension.is_time`, `ai_context` | **Catalog** — dataset detail → Fields | shared (base) |
+| **Dimensions** | a **field role** (`dimension.is_time`) — a field you can group/filter by | **Catalog** — dataset detail → Fields (a field flag) | shared (base) |
+| **Relationships** | FK edges: `from` (many) → `to` (one), `from_columns`/`to_columns`, `required` | **Catalog** — dataset detail → Relationships (editor) + the Catalog list **Map** view (ER) | shared (base) |
+| **Metrics** | model-level aggregate **expressions** over fields | **Model → a model → Metrics** | per-model |
+| **Queries** | metrics + `group_by` dimensions + `where`, saved | **Model → a model → Queries** | per-model |
 | **Rows** (physical) | preview, edit, ingest, profile | **Catalog** — dataset detail → Data | per-dataset |
 
 **Rule of thumb**
 
-- **Per-dataset** concepts (Datasets, Fields, Dimensions, Rows, Quality, Lineage) → the **dataset detail** (Catalog).
-- **Relationships + ER** → **Catalog**: they are edges between datasets and are authored from a dataset (detail → Relationships), with the whole map shown in the Catalog list **Map** view.
-- **Cross-dataset** concepts (Metrics, Queries, Model export) → the **Model** tab.
+- **The shared base** (Datasets, Fields, Dimensions, Relationships, Rows, Quality, Lineage) → **Catalog** — one physical + semantic substrate used by **many** models.
+- **A semantic model** (Model tab) is a **named scope** over that base; it owns **Metrics** and **Queries** (plus its dataset membership + `ai_context`). Export/Import is **per model**.
 - **A dimension is not an object** — it is a flag on a **field**. **A metric has no dimensions** — grouping is a **query**. **Fields ≠ columns** — a field can be computed and carries roles/`ai_context`.
 
 ---
@@ -63,7 +62,7 @@ Definitions first; each concept is **authored in exactly one place**.
 
 ## Current state
 
-**Shipped:** Datasets app at `/datasets` (Catalog list + register/upload + detail tabs: Overview · Data · Fields · Usage · Relationships · Lineage · Quality · Metrics · Settings · Sharing) and the Model view at `/data-model` (ER graph + health + quality alerts + relationships table); Data Explorer at `/data-explorer` (saved analyses). Backend: `datasets` (catalog fields, `primary_key_columns`, `unique_keys`, `ai_context`, `is_editable`), `dataset_joins` (Ossie FK — `from`/`to`/`from_columns`/`to_columns`/`required`), file ingest, profile/schema snapshots, quality rules/runs, `metric_definitions` (model-level Ossie SQL expressions), `metric_runs` (execution audit), `saved_queries` (model-level queries), `explorer_reports`, `dataset_edits` (audit), `dataset_fields` (semantic fields); **Ossie export/import**; `data:read` / `data:write` / `data:edit`; keyset paging + row editing (TanStack Table). First scenario: **Tushare stock datasets**.
+**Shipped:** Datasets app at `/datasets` (Catalog list + register/upload + detail tabs: Overview · Data · Fields · Usage · Relationships · Lineage · Quality · Metrics · Settings · Sharing) and the Model view at `/data-model` (ER graph + health + quality alerts + relationships table); Data Explorer at `/data-explorer` (saved analyses). Backend: `datasets` (catalog fields, `primary_key_columns`, `unique_keys`, `ai_context`, `is_editable`), `dataset_joins` (Ossie FK — `from`/`to`/`from_columns`/`to_columns`/`required`), file ingest, profile/schema snapshots, quality rules/runs, `metric_definitions` (model-level Ossie SQL expressions), `metric_runs` (execution audit), `saved_queries` (model-level queries), `explorer_reports`, `dataset_edits` (audit), `dataset_fields` (semantic fields), `semantic_models` + `semantic_model_datasets` (named scopes); **Ossie export/import** (per model); `data:read` / `data:write` / `data:edit`; keyset paging + row editing (TanStack Table). First scenario: **Tushare stock datasets**.
 
 **Gaps vs the target:** none — the [refactoring plan](#refactoring-plan) Stages 1–6 are shipped.
 
@@ -104,7 +103,7 @@ Goal: the Datasets app **manages the Ossie semantic model**, with each definitio
 - **Verify:** ✅ a saved query pins metrics + dimensions + filter and re-runs (verified live).
 
 ### Stage 6 — Semantic Model export / import ✅
-- **API:** `GET /api/semantic-model` → Ossie document (`?format=json|yaml`: datasets (+keys/fields), relationships, metrics, queries); `POST /api/semantic-model/import` upserts the semantic layer (datasets matched by id/source/name).
+- **API:** `GET /api/semantic-models/{id}/export` → Ossie document for one model (`?format=json|yaml`: datasets (+keys/fields), relationships, metrics, queries); `POST /api/semantic-models/import` upserts a model + its metrics/queries (datasets matched by id/source/name).
 - **Frontend:** Model header — **Export JSON / Export YAML / Import**.
 - **Verify:** ✅ a round-trip re-imports with a stable document (verified live).
 
@@ -150,6 +149,7 @@ So a table is described (catalog), modeled (fields/relationships), trusted (qual
 | 18 | **Relationships are foreign keys, not cardinality** — `from` (many) → `to` (one), `from_columns`/`to_columns`, composite, `required`; 1:1 via unique keys; M:N via a junction dataset. |
 | 19 | **Datasets carry `unique_keys` + `ai_context`** for agent grounding. |
 | 20 | **A relationship carries only edge facts** — FK direction (`from`/`to`) + column mapping + `required` (optional vs required match). No `base` (that is a metric/query anchor) and no `left`/`right`/`full` (`right` ≡ a swapped `left`; the query anchor fixes the join side, so an edge-level `right` was a footgun). |
+| 21 | **A semantic model is a named scope** over the **shared** base (datasets, fields, relationships — Catalog-owned). It owns **metrics** and **queries** (+ dataset membership, `ai_context`); export/import is per model. Existing metrics/queries migrate into an auto-created **Default model**. |
 
 ## Still open
 

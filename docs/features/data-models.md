@@ -223,10 +223,20 @@ Schema for every persisted table. Grouped by area; see the matching feature page
 - `id`, `rule_id` (FK → quality_rules, CASCADE), `status` (`passed` | `failed` | `error`), `checked_count`, `failed_count`, `detail` (JSONB), `error_message`, `created_at`
 - One execution of a quality rule
 
+### SemanticModel
+
+- `id`, `name`, `description`, `ai_context` (JSONB), `created_by` / `created_by_name`, `created_at`, `updated_at`
+- A **named scope** over the shared data layer (Ossie document container). Owns its **metrics** and **queries**; its dataset scope is `semantic_model_datasets`. Datasets/fields/relationships stay Catalog-owned (shared). An auto-created **Default model** holds pre-existing metrics/queries.
+
+### SemanticModelDataset
+
+- `semantic_model_id` (FK → semantic_models, CASCADE), `dataset_id` (FK → datasets, CASCADE) — composite PK
+- Membership: which **shared** datasets a semantic model covers (many-to-many).
+
 ### MetricDefinition
 
-- `id`, `base_dataset_id` (FK → datasets, CASCADE; the metric's anchor dataset), `name`, `business_definition`, `type` (`simple` | `ratio` | `derived` | `cumulative` | `conversion`), `expression` (JSONB `{dialects: {ANSI_SQL: <fragment>}}`; an aggregate SQL fragment), `datatype`, `filters` (JSONB: `[{column, op, value}]`), `joins` (JSONB: dataset_join ids), `ai_context` (JSONB), `created_by` / `created_by_name`, `created_at`, `updated_at`
-- **Model-level** metric: the engine wraps the `expression` fragment into a generated query (`SELECT <expr> AS value FROM <base> <joins> WHERE <filters> LIMIT <cap>`), executed **read-only** with a statement timeout. Authored by data engineers (AI-assist may draft); no custom DSL. Grouping/dimensions are a *query* concern, not stored here.
+- `id`, `semantic_model_id` (FK → semantic_models, CASCADE), `base_dataset_id` (FK → datasets, CASCADE; the metric's anchor dataset), `name`, `business_definition`, `type` (`simple` | `ratio` | `derived` | `cumulative` | `conversion`), `expression` (JSONB `{dialects: {ANSI_SQL: <fragment>}}`; an aggregate SQL fragment), `datatype`, `filters` (JSONB: `[{column, op, value}]`), `joins` (JSONB: dataset_join ids), `ai_context` (JSONB), `created_by` / `created_by_name`, `created_at`, `updated_at`
+- **Model-level** metric (belongs to one semantic model; `base_dataset_id` must be in its scope): the engine wraps the `expression` fragment into a generated query (`SELECT <expr> AS value FROM <base> <joins> WHERE <filters> LIMIT <cap>`), executed **read-only** with a statement timeout. Authored by data engineers (AI-assist may draft); no custom DSL. Grouping/dimensions are a *query* concern, not stored here.
 
 ### MetricRun
 
@@ -235,8 +245,8 @@ Schema for every persisted table. Grouped by area; see the matching feature page
 
 ### SavedQuery
 
-- `id`, `base_dataset_id` (FK → datasets, CASCADE; the query's anchor), `name`, `description`, `metrics` (JSONB: `[{name, metric_id}]`), `group_by` (JSONB: base-dataset **field** names), `joins` (JSONB: dataset_join ids), `filters` (JSONB: `[{column, op, value}]` — the query's WHERE), `exports` (JSONB), `ai_context` (JSONB), `created_by` / `created_by_name`, `created_at`, `updated_at`
-- Model-level **saved query**: pins metrics + group-by fields + filter and re-runs. The engine emits `SELECT <field exprs>, (<metric exprs>) FROM <base> <joins> WHERE … GROUP BY <field exprs> LIMIT <cap>`, executed read-only. This is where **dimensions (group-by)** are chosen — not on the metric.
+- `id`, `semantic_model_id` (FK → semantic_models, CASCADE), `base_dataset_id` (FK → datasets, CASCADE; the query's anchor), `name`, `description`, `metrics` (JSONB: `[{name, metric_id}]`), `group_by` (JSONB: base-dataset **field** names), `joins` (JSONB: dataset_join ids), `filters` (JSONB: `[{column, op, value}]` — the query's WHERE), `exports` (JSONB), `ai_context` (JSONB), `created_by` / `created_by_name`, `created_at`, `updated_at`
+- Model-level **saved query** (belongs to one semantic model): pins metrics + group-by fields + filter and re-runs. The engine emits `SELECT <field exprs>, (<metric exprs>) FROM <base> <joins> WHERE … GROUP BY <field exprs> LIMIT <cap>`, executed read-only. This is where **dimensions (group-by)** are chosen — not on the metric.
 
 ### ExplorerReport
 

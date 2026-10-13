@@ -392,21 +392,26 @@ Encrypted values; **never returned**. Write/sync/delete reject personal API key 
 | DELETE | `/api/datasets/{id}/quality-rules/{rule_id}` | Delete quality rule (`data:write`) |
 | POST | `/api/datasets/{id}/quality-rules/{rule_id}/run` | Run a quality rule (`data:write`) |
 | GET | `/api/datasets/{id}/quality-rules/{rule_id}/runs` | Rule run history (`data:read`) |
-| GET | `/api/metrics` | List model-level metrics (`base_dataset_id` filter; `data:read`) |
-| POST | `/api/metrics` | Create a metric `{name, base_dataset_id, type, expression:{dialects:{ANSI_SQL}}, datatype?, filters?, joins?, ai_context?}` (`data:write`) |
+| GET | `/api/metrics` | List metrics (`semantic_model_id` / `base_dataset_id` filter; `data:read`) |
+| POST | `/api/metrics` | Create a metric `{name, semantic_model_id, base_dataset_id, type, expression:{dialects:{ANSI_SQL}}, datatype?, filters?, joins?, ai_context?}` (`data:write`; base dataset must be in the model's scope) |
 | GET | `/api/metrics/{metric_id}` | Get a metric (`data:read`) |
 | PUT | `/api/metrics/{metric_id}` | Update a metric (`data:write`) |
 | DELETE | `/api/metrics/{metric_id}` | Delete a metric (`data:write`) |
 | GET | `/api/metrics/{metric_id}/compute` | Compute a metric — read-only, statement timeout + row cap; records a run (`data:read`) |
 | GET | `/api/metrics/{metric_id}/runs` | Recent executions of a metric (`data:read`) |
-| GET | `/api/queries` | List model-level saved queries (`base_dataset_id` filter; `data:read`) |
-| POST | `/api/queries` | Create a saved query `{name, base_dataset_id, metrics:[{name,metric_id}], group_by, joins, filters?}` (`data:write`) |
+| GET | `/api/queries` | List saved queries (`semantic_model_id` / `base_dataset_id` filter; `data:read`) |
+| POST | `/api/queries` | Create a saved query `{name, semantic_model_id, base_dataset_id, metrics:[{name,metric_id}], group_by, joins, filters?}` (`data:write`) |
 | GET | `/api/queries/{query_id}` | Get a saved query (`data:read`) |
 | PUT | `/api/queries/{query_id}` | Update a saved query (`data:write`) |
 | DELETE | `/api/queries/{query_id}` | Delete a saved query (`data:write`) |
 | GET | `/api/queries/{query_id}/run` | Run a saved query — read-only, timeout + row cap (`data:read`) |
-| GET | `/api/semantic-model` | Export the Ossie semantic-model document — `?format=json\|yaml` (`data:read`) |
-| POST | `/api/semantic-model/import` | Upsert relationships/metrics/queries from an Ossie document (`data:write`) |
+| GET | `/api/semantic-models` | List semantic models (named scopes; `data:read`) |
+| POST | `/api/semantic-models` | Create a semantic model `{name, description?, dataset_ids, ai_context?}` (`data:write`) |
+| GET | `/api/semantic-models/{model_id}` | Get a semantic model (with its datasets; `data:read`) |
+| PUT | `/api/semantic-models/{model_id}` | Update a semantic model (name / description / `dataset_ids` / `ai_context`) (`data:write`) |
+| DELETE | `/api/semantic-models/{model_id}` | Delete a semantic model (cascades its metrics/queries) (`data:write`) |
+| GET | `/api/semantic-models/{model_id}/export` | Export one model as an Ossie document — `?format=json\|yaml` (`data:read`) |
+| POST | `/api/semantic-models/import` | Upsert a model (+ metrics/queries) from an Ossie document (`data:write`) |
 | GET | `/api/explorer-reports` | List explorer reports (`data:read`) |
 | POST | `/api/explorer-reports` | Create explorer report (`data:write`) |
 | GET | `/api/explorer-reports/{id}` | Get explorer report (`data:read`) |

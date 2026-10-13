@@ -52,6 +52,7 @@ export interface MetricRunResponse {
 
 export interface MetricPayload {
   name: string;
+  semantic_model_id: string;
   base_dataset_id: string;
   business_definition?: string | null;
   type: string;
@@ -62,9 +63,9 @@ export interface MetricPayload {
   ai_context?: Record<string, unknown> | null;
 }
 
-export async function fetchMetrics(baseDatasetId?: string): Promise<MetricListResponse> {
+export async function fetchMetrics(semanticModelId?: string): Promise<MetricListResponse> {
   return request<MetricListResponse>('/api/metrics', {
-    query: baseDatasetId ? { base_dataset_id: baseDatasetId } : undefined,
+    query: semanticModelId ? { semantic_model_id: semanticModelId } : undefined,
   });
 }
 

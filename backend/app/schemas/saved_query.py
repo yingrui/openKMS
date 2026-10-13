@@ -18,6 +18,7 @@ class QueryFilter(BaseModel):
 
 class SavedQueryCreate(BaseModel):
     name: str
+    semantic_model_id: str
     base_dataset_id: str
     description: str | None = None
     metrics: list[QueryMetric] = []
@@ -30,6 +31,7 @@ class SavedQueryCreate(BaseModel):
 
 class SavedQueryUpdate(BaseModel):
     name: str | None = None
+    semantic_model_id: str | None = None
     base_dataset_id: str | None = None
     description: str | None = None
     metrics: list[QueryMetric] | None = None
@@ -42,6 +44,7 @@ class SavedQueryUpdate(BaseModel):
 
 class SavedQueryResponse(BaseModel):
     id: str
+    semantic_model_id: str
     base_dataset_id: str
     base_dataset_name: str | None = None
     name: str

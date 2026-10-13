@@ -21,6 +21,10 @@ class MetricDefinition(Base):
     __tablename__ = "metric_definitions"
 
     id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    # The semantic model this metric belongs to (its scope).
+    semantic_model_id: Mapped[str] = mapped_column(
+        String(64), ForeignKey("semantic_models.id", ondelete="CASCADE"), nullable=False, index=True
+    )
     # The dataset the metric is anchored on (the query's FROM).
     base_dataset_id: Mapped[str] = mapped_column(
         String(64), ForeignKey("datasets.id", ondelete="CASCADE"), nullable=False, index=True

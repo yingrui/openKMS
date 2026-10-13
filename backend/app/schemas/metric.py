@@ -13,6 +13,7 @@ class MetricFilter(BaseModel):
 
 class MetricCreate(BaseModel):
     name: str
+    semantic_model_id: str
     base_dataset_id: str
     business_definition: str | None = None
     type: str = "simple"
@@ -25,6 +26,7 @@ class MetricCreate(BaseModel):
 
 class MetricUpdate(BaseModel):
     name: str | None = None
+    semantic_model_id: str | None = None
     base_dataset_id: str | None = None
     business_definition: str | None = None
     type: str | None = None
@@ -37,6 +39,7 @@ class MetricUpdate(BaseModel):
 
 class MetricResponse(BaseModel):
     id: str
+    semantic_model_id: str
     base_dataset_id: str
     base_dataset_name: str | None = None
     name: str
