@@ -79,15 +79,20 @@ The Model tab is the **authoring + governance surface of the semantic model**. S
 - Not a **LinkType**: a data relationship carries a **join type** and targets physical tables; a LinkType is a semantic object-type link with none.
 
 ### 3. Metrics
-- **Model-level** list (metrics span datasets; not per-dataset).
-- Author: name, **definition/description**, measure source (dataset + column/expression), aggregation, **dimensions** (group-by fields), **filter**, `datatype`, `ai_context`.
-- See the metrics-strategy decision below (DSL vs Ossie SQL expression).
+- **Model-level** aggregate **expressions** (metrics span datasets via relationships; not per-dataset).
+- Author: name, **definition/description**, `expression` (an aggregate over fields/measures — e.g. `SUM(orders.amount)`), `datatype`, `ai_context`.
+- **No dimensions here**: in Ossie a *dimension* is a **field role on a dataset**; “group by” is a **query** concern (see §5). See the metrics-strategy decision below (DSL vs Ossie SQL expression).
 
 ### 4. Datasets (Ossie `datasets`)
-- The Ossie **`datasets`** section: each physical dataset's **semantic entry** — `source` (the table), `primary_key`, `unique_keys`, **fields / dimensions** (categorical/time column annotations), `ai_context`.
-- These are the *same* datasets the **Catalog** holds (one dataset = one Ossie dataset); the Model tab edits the **semantic** layer, the Catalog edits the **physical** layer (register/ingest/profile/preview/row editing/quality).
+- The Ossie **`datasets`** section: each physical dataset's **semantic entry** — `source` (the table), `primary_key`, `unique_keys`, **`fields`** (column refs **+ computed expressions**, each with `datatype`, `dimension.is_time`, `ai_context`), `ai_context`.
+- **Fields ≠ columns:** the Catalog's Columns tab is the *physical* column list; a **field** adds an expression (e.g. `first_name || ' ' || last_name`) and roles — a **dimension** is a field with `dimension.is_time` (categorical / time). Fields are edited here.
+- These are the *same* datasets the **Catalog** holds; the Model tab edits the **semantic** layer, the Catalog edits the **physical** layer (register/ingest/profile/preview/row editing/quality).
 
-### 5. Export / Import (Ossie)
+### 5. Queries (saved queries)
+- A **query** picks metrics + **`group_by` dimensions** + `where` (Ossie `saved_queries`) — **this** is where dimensions are chosen, *not* on the metric.
+- Saved as a named artifact; may export as a view/table (manifest `exports`). v1: Data Explorer reports play this role.
+
+### 6. Export / Import (Ossie)
 - **Export** the semantic model as **Ossie YAML** (`semantic_model: {datasets, relationships, metrics}`) — interoperability + governance artifact; no runtime dependency.
 - **Import** an Ossie document to seed datasets/relationships/metrics.
 
@@ -97,9 +102,10 @@ The Model tab is the **authoring + governance surface of the semantic model**. S
 
 | Table | Change |
 |-------|--------|
-| `datasets` | add `unique_keys` (JSONB array of arrays), `ai_context` (JSONB), dimension annotations on columns (JSONB on dataset or per-column) |
+| `datasets` | add `unique_keys` (JSONB array of arrays), `ai_context` (JSONB) |
+| `dataset_fields` (**new**) | persisted field layer: `name`, `expression` (dialects), `datatype`, `dimension.is_time`, `ai_context` — a bare column list is **not** a field layer |
 | `dataset_joins` → **`relationships`** | rename `source_dataset_id`→`from_dataset_id`, `target_dataset_id`→`to_dataset_id`; replace `join_columns` with `from_columns`/`to_columns`; **drop `cardinality`**; add **`join_type`** + `ai_context` |
-| `metric_definitions` | make **model-level** (`dataset_id` → base dataset of the measure, but metrics may reference multiple datasets); add `datatype`, `ai_context`, `type` |
+| `metric_definitions` | make **model-level aggregate expressions**; **remove `dimensions`** (group-by moves to a query); add `datatype`, `ai_context`, `type` |
 
 ---
 

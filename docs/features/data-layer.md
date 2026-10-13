@@ -16,9 +16,9 @@ Apache Ossie defines six classes; the Datasets app manages **exactly these**, sp
 |-------------|-----------|--------------|---------|-----|
 | **Semantic Model** | container: datasets + relationships + metrics | *(implicit — no object)* | `/data-model` is the closest | **no container / export** |
 | **Datasets** | `source`, `primary_key`, `unique_keys`, `fields`, `ai_context` | `datasets` (`schema.table`, `primary_key_columns`) | Catalog list + Overview / Settings | missing **`unique_keys`**, **`ai_context`** |
-| **Fields** | row-level attributes (name, type, dimension role) | transient column metadata (`information_schema`) | Columns tab | **not persisted / managed** |
-| **Dimensions** | categorical / time attributes | a `dimensions: [column,…]` list on each metric | Metric form | **not first-class** |
-| **Metrics** | model-level, `expression.dialects`, `datatype`, `ai_context` | `metric_definitions` (**per-dataset**; aggregation + column + filters + joins + dimensions) | Metrics **tab (per dataset)** | per-dataset + restricted DSL |
+| **Fields** | row-level attributes: a **column ref *or* a computed expression**, with `dimension.is_time`, `datatype`, `ai_context` | physical **columns** from `information_schema` (Columns tab) — no computed fields, no roles | Columns tab | **columns only; no field layer** |
+| **Dimensions** | a **field role** (`dimension.is_time`) on a dataset field | a `dimensions: [column,…]` **group-by list on each metric** | Metric form | **misplaced** — belongs on fields, not metrics |
+| **Metrics** | model-level aggregate **expression** (`expression.dialects`), `datatype`, `ai_context` — **no dimensions list** | `metric_definitions` (**per-dataset**; aggregation + column + filters + joins + **dimensions**) | Metrics **tab (per dataset)** | per-dataset; DSL; **carries a query-time group-by** |
 | **Relationships** | FK `from` (many) → `to` (one), `from_columns`/`to_columns`, composite | `dataset_joins` (`source`/`target`/**`cardinality`**/`join_columns`) | Relationships tab + Model ER | **cardinality vs FK semantics** |
 
 ### Where it lives today
@@ -42,9 +42,10 @@ So “Datasets” is both the app and one Ossie class: the app manages the seman
 
 1. **Relationships**: `dataset_joins` → Ossie FK shape (`from`/`to`, `from_columns`/`to_columns`, `+ join_type`); **drop `cardinality`**.
 2. **Datasets**: add **`unique_keys`** and **`ai_context`**.
-3. **Fields / Dimensions**: persist field metadata + a **dimension role** (categorical/time) instead of transient metadata + a metric-local list.
-4. **Metrics**: make **model-level**; decide the **expression strategy** (DSL vs Ossie `expression.dialects`).
-5. **Semantic Model container**: export (later import) the Ossie YAML.
+3. **Fields**: add a persisted **field layer** on datasets — column refs **+ computed expressions** (`expression.dialects`), with `datatype`, `dimension.is_time`, `ai_context` (a bare column list is not a field layer).
+4. **Dimensions**: move them **off metrics** — a **field role** on the dataset; a metric's group-by becomes a **query / saved-query** concern.
+5. **Metrics**: make them **model-level aggregate expressions** (no dimensions list); decide the expression strategy (DSL vs Ossie `expression.dialects`).
+6. **Semantic Model container**: export (later import) the Ossie YAML.
 
 ---
 
@@ -133,11 +134,11 @@ The data engineer configures; the BA inspects.
 
 | Layer | Owns |
 |-------|------|
-| **Data Model** | Datasets (keys, dimensions, `ai_context`), **relationships between tables**, ER model, data-quality rules, metrics |
+| **Data Model** | Datasets (keys, fields/dimensions, `ai_context`), **relationships between tables**, ER model, data-quality rules, metrics |
 | **Ontology** | Business object/link **types**, properties, functions, actions (may reference a dataset) |
 
 - **Relationships = foreign keys (Ossie):** a relationship is `from` (the **many** side, holds the FK) → `to` (the **one** side, its PK/unique key), with order-aligned `from_columns` / `to_columns` (composite supported), plus a **`join_type`** (`left` default / `inner` / `right` / `full` — our extension; the metric engine uses it). **Cardinality is derived, not stored** — 1:N by default; 1:1 when `from_columns` are also unique; **M:N = two relationships via a junction dataset**. Authored manually (no auto-discovery); they are the **join graph** for cross-dataset metrics. (Distinct from an ontology **LinkType**: that is a semantic link with no join type.) See [Model tab / semantic model design](data-layer-semantic-model.md).
-- **Dataset semantics:** `primary_key` + `unique_keys`, column **dimensions** (categorical/time), and **`ai_context`** (instructions / synonyms / examples) for agent grounding.
+- **Dataset semantics:** `primary_key` + `unique_keys`, **fields** (column refs + computed expressions, with `dimension.is_time`), and **`ai_context`** (instructions / synonyms / examples) for agent grounding.
 - **Data quality:** declarative rule types (not-null, unique, range, referential, freshness), runs, results, and **alerts surfaced in the Model view** — rule type + parameters, not arbitrary expressions.
 - **Metrics:** **model-level** (span datasets via relationships), with `datatype`, `ai_context`, and an expression. Computed by querying the tables on demand (no materialization, no cache in v1), with lineage. The **expression strategy is under review** — restricted DSL vs Ossie `expression.dialects` (SQL) — see [the design doc](data-layer-semantic-model.md#metrics-strategy--still-open).
 - **Export / import:** the semantic model can be **exported as Apache Ossie YAML** (and later imported) — interoperability + governance artifact.
@@ -183,11 +184,12 @@ Backend work required before the phases (grouped for Alembic migration planning)
 
 | Table | Holds |
 |-------|-------|
-| `dataset_joins` | join edges: source/target dataset + column pairs + cardinality (`one-to-one` / `one-to-many`) — backs the ER model (decisions #2/#7) |
+| `relationships` (was `dataset_joins`) | FK edges: `from` (many) → `to` (one) + `from_columns`/`to_columns` + `join_type` — backs the ER model (Ossie; decisions #2/#7/#18) |
+| `dataset_fields` | persisted field layer: `expression` (dialects), `datatype`, `dimension.is_time`, `ai_context` |
 | `dataset_profiles` | computed profile: null rate, distinct count, min/max/quantiles, sample values |
 | `schema_snapshots` | column-metadata snapshot for change detection |
 | `quality_rules` / `quality_runs` / `quality_results` | declarative quality rules + runs + per-rule results (decision #8) |
-| `metric_definitions` | metric definition: name, business definition, DSL (columns/aggregation/filters/joins), dimensions, source columns (decision #3) |
+| `metric_definitions` | model-level metric **expression** + `datatype`/`ai_context` — **no dimensions list** (group-by lives in a query; decisions #3/#13) |
 | `explorer_reports` | persisted dashboard reports + object-storage HTML (decision #9) |
 
 ### Derived, not stored
