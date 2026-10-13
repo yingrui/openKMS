@@ -214,6 +214,7 @@ All write subcommands accept `--yes` / `--dry-run`. Without `--yes` on non-TTY s
 | `datasets rows` | GET | `/api/datasets/{id}/rows` | Optional `?limit=` / `?offset=`. |
 | `datasets metadata` | GET | `/api/datasets/{id}/metadata` | Column metadata. |
 | `datasets create` *(write)* | POST | `/api/datasets` | Register existing table. |
+| `datasets update` *(write)* | PUT | `/api/datasets/{id}` | Body from any of `--display-name`, `--description`, `--primary-key` (csv), `--unique-keys` (`"a,b;c"`), `--ai-instructions`, `--ai-synonyms`, `--ai-examples`, `--editable true|false`. |
 | `datasets profile` | GET | `/api/datasets/{id}/profile` | Computed column profile (row count, null/distinct/min/max). |
 | `datasets schema-history` | GET | `/api/datasets/{id}/schema-history` | Captured schema snapshots (newest first). |
 | `datasets lineage` | GET | `/api/datasets/{id}/lineage` | Read-time lineage: source, object/link types, joined datasets. |

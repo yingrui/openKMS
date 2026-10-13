@@ -15,6 +15,8 @@ export interface DatasetResponse {
   business_definition: string | null;
   sensitivity: string | null;
   primary_key_columns: string[] | null;
+  unique_keys: string[][];
+  ai_context: Record<string, unknown> | null;
   is_editable: boolean;
   created_at: string;
   updated_at: string;
@@ -71,6 +73,8 @@ export async function updateDataset(
     business_definition?: string | null;
     sensitivity?: string | null;
     primary_key_columns?: string[] | null;
+    unique_keys?: string[][];
+    ai_context?: Record<string, unknown> | null;
     is_editable?: boolean;
   }
 ): Promise<DatasetResponse> {

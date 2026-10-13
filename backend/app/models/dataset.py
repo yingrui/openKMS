@@ -30,6 +30,12 @@ class Dataset(Base):
     sensitivity: Mapped[str | None] = mapped_column(String(32), nullable=True)
     # Row identity for editing (e.g. ["ts_code"] or ["ts_code","trade_date"]).
     primary_key_columns: Mapped[list | None] = mapped_column(JSONB, nullable=True)
+    # Declared unique keys (list of column-name lists); relationship targets (1:1).
+    unique_keys: Mapped[list] = mapped_column(
+        JSONB, nullable=False, default=list, server_default="[]"
+    )
+    # Agent grounding: {"instructions": str, "synonyms": [str], "examples": [str]}.
+    ai_context: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
     # Row editing is opt-in per dataset (default off).
     is_editable: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     created_by: Mapped[str | None] = mapped_column(String(512), nullable=True, index=True)

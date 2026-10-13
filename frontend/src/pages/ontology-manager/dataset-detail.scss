@@ -263,6 +263,14 @@
   font-size: 0.8125rem;
 }
 
+.dataset-pk-list__row-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  margin-bottom: var(--space-1);
+}
+
 .dataset-th-sort {
   display: inline-flex;
   align-items: center;

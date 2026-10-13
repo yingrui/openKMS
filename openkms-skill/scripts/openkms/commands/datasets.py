@@ -67,6 +67,42 @@ def cmd_create(ns: argparse.Namespace) -> None:
     print_json(r.json())
 
 
+def _split_csv(raw: str) -> list[str]:
+    return [x.strip() for x in raw.split(",") if x.strip()]
+
+
+def _parse_unique_keys(raw: str) -> list[list[str]]:
+    return [_split_csv(group) for group in raw.split(";") if group.strip()]
+
+
+def cmd_update(ns: argparse.Namespace) -> None:
+    body: dict[str, Any] = {}
+    if ns.display_name is not None:
+        body["display_name"] = ns.display_name
+    if ns.description is not None:
+        body["description"] = ns.description
+    if ns.primary_key is not None:
+        body["primary_key_columns"] = _split_csv(ns.primary_key)
+    if ns.unique_keys is not None:
+        body["unique_keys"] = _parse_unique_keys(ns.unique_keys)
+    if ns.ai_instructions is not None or ns.ai_synonyms is not None or ns.ai_examples is not None:
+        body["ai_context"] = {
+            "instructions": ns.ai_instructions or "",
+            "synonyms": _split_csv(ns.ai_synonyms or ""),
+            "examples": _split_csv(ns.ai_examples or ""),
+        }
+    if ns.editable is not None:
+        body["is_editable"] = ns.editable == "true"
+    if not body:
+        raise SystemExit("Nothing to update — pass at least one field.")
+    path = f"/api/datasets/{ns.id}"
+    confirm_or_abort("update dataset", "PUT", path, body, ns.yes, ns.dry_run)
+    with client() as s:
+        r = s.put(path, json=body)
+    r.raise_for_status()
+    print_json(r.json())
+
+
 def cmd_profile(ns: argparse.Namespace) -> None:
     with client() as s:
         r = s.get(f"/api/datasets/{ns.id}/profile")
@@ -295,6 +331,23 @@ def add_subparser(sub) -> None:
     cr.add_argument("--display-name", default=None)
     add_write_flags(cr)
     cr.set_defaults(fn=cmd_create)
+
+    up = sp.add_parser("update", help="Update dataset fields (PUT /api/datasets/{id})")
+    up.add_argument("--id", required=True)
+    up.add_argument("--display-name", default=None)
+    up.add_argument("--description", default=None)
+    up.add_argument("--primary-key", default=None, help="comma-separated columns")
+    up.add_argument(
+        "--unique-keys",
+        default=None,
+        help='keys separated by ";", columns by "," (e.g. "a,b;c")',
+    )
+    up.add_argument("--ai-instructions", default=None)
+    up.add_argument("--ai-synonyms", default=None, help="comma-separated")
+    up.add_argument("--ai-examples", default=None, help="comma-separated")
+    up.add_argument("--editable", choices=("true", "false"), default=None)
+    add_write_flags(up)
+    up.set_defaults(fn=cmd_update)
 
     pf = sp.add_parser("profile", help="Computed column profile (GET …/profile)")
     pf.add_argument("--id", required=True)

@@ -1,7 +1,8 @@
 """Validation for dataset relationships (Ossie foreign keys: `from` many → `to` one).
 
-A relationship is authored manually and validated against live column metadata. Primary-
-key / unique-key enforcement arrives with the dataset `unique_keys` work (Stage 2).
+A relationship is authored manually and validated against live column metadata. The
+`to` columns must be the target dataset's primary key or a declared unique key (when
+one is declared).
 """
 from __future__ import annotations
 
@@ -17,6 +18,17 @@ JOIN_TYPES = ("left", "inner", "right", "full")
 
 class JoinValidationError(ValueError):
     """Raised when a relationship is invalid; surfaced as HTTP 400."""
+
+
+def _declared_keys(dataset: Dataset) -> list[set[str]]:
+    """The primary key and unique keys declared on a dataset, as column-name sets."""
+    keys: list[set[str]] = []
+    if dataset.primary_key_columns:
+        keys.append({str(c) for c in dataset.primary_key_columns})
+    for uk in dataset.unique_keys or []:
+        if uk:
+            keys.append({str(c) for c in uk})
+    return keys
 
 
 async def _pg_columns(db: AsyncSession, dataset: Dataset) -> set[str]:
@@ -72,4 +84,9 @@ async def validate_join(
     for c in to_columns:
         if not is_valid_identifier(str(c)) or str(c) not in to_avail:
             raise JoinValidationError(f"Column '{c}' not found in the 'to' dataset.")
+    declared = _declared_keys(to)
+    if declared and {str(c) for c in to_columns} not in declared:
+        raise JoinValidationError(
+            "The 'to' columns must be the target dataset's primary key or a declared unique key."
+        )
     return frm, to

@@ -366,7 +366,7 @@ Encrypted values; **never returned**. Write/sync/delete reject personal API key 
 | GET | `/api/datasets/{id}/rows` | Get rows (`data:read`; dataset ACL) — optional `sort`, `order`, `after` (keyset paging) |
 | POST | `/api/datasets/{id}/rows/apply` | Apply batch row ops `{ops:[{op,pk,values,expect}],dry_run}` (`data:edit`; opt-in + PK + audit) |
 | GET | `/api/datasets/{id}/metadata` | Column metadata (`data:read`; dataset ACL) |
-| PUT | `/api/datasets/{id}` | Update dataset (`data:write`; write on dataset) |
+| PUT | `/api/datasets/{id}` | Update dataset — catalog fields, `primary_key_columns`, `unique_keys`, `ai_context`, `is_editable` (`data:write`; write on dataset) |
 | DELETE | `/api/datasets/{id}` | Delete dataset (`data:write`; manage on dataset) |
 | GET | `/api/dataset-joins` | List relationships (`dataset_id` filter; `data:read`) |
 | POST | `/api/dataset-joins` | Create a relationship `{from_dataset_id, to_dataset_id, from_columns, to_columns, join_type}` (validated; `data:write`) |

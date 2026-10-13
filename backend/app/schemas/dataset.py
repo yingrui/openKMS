@@ -16,6 +16,8 @@ class DatasetCreate(BaseModel):
     business_definition: str | None = None
     sensitivity: str | None = None
     primary_key_columns: list[str] | None = None
+    unique_keys: list[list[str]] | None = None
+    ai_context: dict[str, Any] | None = None
     is_editable: bool = False
 
 
@@ -30,6 +32,8 @@ class DatasetUpdate(BaseModel):
     business_definition: str | None = None
     sensitivity: str | None = None
     primary_key_columns: list[str] | None = None
+    unique_keys: list[list[str]] | None = None
+    ai_context: dict[str, Any] | None = None
     is_editable: bool | None = None
 
 
@@ -47,6 +51,8 @@ class DatasetResponse(BaseModel):
     business_definition: str | None = None
     sensitivity: str | None = None
     primary_key_columns: list[str] | None = None
+    unique_keys: list[list[str]] = []
+    ai_context: dict[str, Any] | None = None
     is_editable: bool = False
     created_at: datetime
     updated_at: datetime
@@ -141,7 +147,7 @@ class LineageJoin(BaseModel):
     join_id: str
     dataset_id: str
     dataset_name: str | None = None
-    cardinality: str
+    join_type: str
 
 
 class DatasetLineageResponse(BaseModel):

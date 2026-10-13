@@ -68,6 +68,8 @@ export function ConnectorOutputSlotField({
         business_definition: null,
         sensitivity: null,
         primary_key_columns: null,
+        unique_keys: [],
+        ai_context: null,
         is_editable: false,
         created_at: now,
         updated_at: now,

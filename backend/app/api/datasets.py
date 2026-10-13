@@ -76,6 +76,10 @@ def _dataset_response(d: Dataset, data_source_name: str | None) -> DatasetRespon
         tags=d.tags or [],
         business_definition=d.business_definition,
         sensitivity=d.sensitivity,
+        primary_key_columns=d.primary_key_columns,
+        unique_keys=d.unique_keys or [],
+        ai_context=d.ai_context,
+        is_editable=d.is_editable,
         created_at=d.created_at,
         updated_at=d.updated_at,
     )
@@ -203,6 +207,10 @@ async def create_dataset(
         tags=body.tags,
         business_definition=body.business_definition,
         sensitivity=body.sensitivity,
+        primary_key_columns=body.primary_key_columns,
+        unique_keys=body.unique_keys or [],
+        ai_context=body.ai_context,
+        is_editable=body.is_editable,
         created_by=sub if isinstance(sub, str) else None,
         created_by_name=str(uname)[:256] if isinstance(uname, str) and uname.strip() else None,
     )

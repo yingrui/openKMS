@@ -62,7 +62,7 @@ Definitions first; each concept is **authored in exactly one place**.
 
 ## Current state
 
-**Shipped:** Datasets app at `/datasets` (Catalog list + register/upload + detail tabs: Overview · Data · Columns · Usage · Relationships · Lineage · Quality · Metrics · Settings · Sharing) and the Model view at `/data-model` (ER graph + health + quality alerts + relationships table); Data Explorer at `/data-explorer` (saved analyses). Backend: `datasets` (catalog fields, `primary_key_columns`, `is_editable`), `dataset_joins` (Ossie FK — `from`/`to`/`from_columns`/`to_columns`/`join_type`), file ingest, profile/schema snapshots, quality rules/runs, `metric_definitions` (per-dataset DSL; **target:** Ossie SQL expressions), `explorer_reports`, `dataset_edits` (audit); `data:read` / `data:write` / `data:edit`; keyset paging + row editing (TanStack Table). First scenario: **Tushare stock datasets**.
+**Shipped:** Datasets app at `/datasets` (Catalog list + register/upload + detail tabs: Overview · Data · Columns · Usage · Relationships · Lineage · Quality · Metrics · Settings · Sharing) and the Model view at `/data-model` (ER graph + health + quality alerts + relationships table); Data Explorer at `/data-explorer` (saved analyses). Backend: `datasets` (catalog fields, `primary_key_columns`, `unique_keys`, `ai_context`, `is_editable`), `dataset_joins` (Ossie FK — `from`/`to`/`from_columns`/`to_columns`/`join_type`), file ingest, profile/schema snapshots, quality rules/runs, `metric_definitions` (per-dataset DSL; **target:** Ossie SQL expressions), `explorer_reports`, `dataset_edits` (audit); `data:read` / `data:write` / `data:edit`; keyset paging + row editing (TanStack Table). First scenario: **Tushare stock datasets**.
 
 **Gaps vs the target** are the [refactoring plan](#refactoring-plan) below (fields/dimensions, model-level metrics, queries, Ossie export).
 
@@ -78,10 +78,11 @@ Goal: the Datasets app **manages the Ossie semantic model**, with each definitio
 - **Frontend:** Relationships editor asks *who holds the FK* (`from`/`to`) with column pairs + join type; ER edges many→one.
 - **Verify:** ✅ composite FK round-trips; the metric engine joins via `from`/`to` with the chosen join type; ER shows the direction. (PK/unique-key enforcement lands with Stage 2.)
 
-### Stage 2 — Datasets: `unique_keys` + `ai_context`
+### Stage 2 — Datasets: `unique_keys` + `ai_context` ✅
 - **Schema:** `datasets` + `unique_keys` (JSONB array of arrays), `ai_context` (JSONB).
-- **Frontend:** dataset Settings/Overview — unique keys (multi-column) + `ai_context` (instructions / synonyms / examples).
-- **Verify:** a 1:1 relationship can target a unique key; `ai_context` round-trips via the API.
+- **Service:** a relationship's `to_columns` must be the target's primary key or a declared unique key (when declared); fixes 1:1 targeting.
+- **Frontend:** dataset Settings — keys (primary + unique) + `ai_context` (instructions / synonyms / examples).
+- **Verify:** ✅ a 1:1 relationship can target a unique key; `ai_context` round-trips via `PUT /api/datasets/{id}`.
 
 ### Stage 3 — Fields (the field layer)
 - **Schema:** new `dataset_fields` — `dataset_id`, `name`, `expression` (dialects), `datatype`, `dimension` (`{is_time}`), `ai_context`, ordinal. Seed from `information_schema` (a plain column = a field with a column-ref expression).
