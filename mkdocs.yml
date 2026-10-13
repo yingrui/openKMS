@@ -219,3 +219,4 @@ nav:
       - Data layer plan (Datasets · Data Model · Data Explorer): research/data_layer_plan.md
       - Data layer implementation design (Phase 0–1): research/data_layer_implementation.md
       - Data layer interaction design: research/data_layer_interaction.md
+      - Data grid selection: research/data_grid_selection.md
