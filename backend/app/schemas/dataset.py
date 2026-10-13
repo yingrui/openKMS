@@ -15,6 +15,8 @@ class DatasetCreate(BaseModel):
     tags: list[str] | None = None
     business_definition: str | None = None
     sensitivity: str | None = None
+    primary_key_columns: list[str] | None = None
+    is_editable: bool = False
 
 
 class DatasetUpdate(BaseModel):
@@ -27,6 +29,8 @@ class DatasetUpdate(BaseModel):
     tags: list[str] | None = None
     business_definition: str | None = None
     sensitivity: str | None = None
+    primary_key_columns: list[str] | None = None
+    is_editable: bool | None = None
 
 
 class DatasetResponse(BaseModel):
@@ -42,6 +46,8 @@ class DatasetResponse(BaseModel):
     tags: list[str] = []
     business_definition: str | None = None
     sensitivity: str | None = None
+    primary_key_columns: list[str] | None = None
+    is_editable: bool = False
     created_at: datetime
     updated_at: datetime
 
@@ -79,6 +85,28 @@ class DatasetRowsResponse(BaseModel):
     total: int
     limit: int
     offset: int
+    next_after: str | None = None
+
+
+class DatasetRowOp(BaseModel):
+    """One row operation for `POST /api/datasets/{id}/rows/apply`."""
+
+    op: str  # insert | update | delete
+    pk: dict[str, Any] | None = None  # primary-key values (update/delete)
+    values: dict[str, Any] | None = None  # new values (insert/update)
+    expect: dict[str, Any] | None = None  # old values for optimistic concurrency (update/delete)
+
+
+class DatasetRowsApplyRequest(BaseModel):
+    ops: list[DatasetRowOp]
+    dry_run: bool = False
+
+
+class DatasetRowsApplyResponse(BaseModel):
+    inserted: int = 0
+    updated: int = 0
+    deleted: int = 0
+    dry_run: bool = False
 
 
 class DatasetProfileColumn(BaseModel):

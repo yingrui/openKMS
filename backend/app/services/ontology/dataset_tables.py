@@ -103,6 +103,27 @@ async def fetch_dataset_rows(
     db: AsyncSession, dataset_id: str, limit: int = 500, offset: int = 0
 ) -> tuple[list[dict], int]:
     """Fetch rows from dataset table. Returns (rows, total). Raises ValueError on bad dataset."""
+    rows, total, _ = await fetch_dataset_rows_page(db, dataset_id, limit=limit, offset=offset)
+    return rows, total
+
+
+async def fetch_dataset_rows_page(
+    db: AsyncSession,
+    dataset_id: str,
+    limit: int = 500,
+    offset: int = 0,
+    *,
+    sort: str | None = None,
+    order: str = "asc",
+    after: str | None = None,
+) -> tuple[list[dict], int, str | None]:
+    """Fetch rows with optional server-side sort and **keyset** paging.
+
+    Returns ``(rows, total, next_after)``. When ``sort`` is a valid column, rows are
+    ordered by it; passing ``after`` switches to keyset pagination
+    (``WHERE sort > after`` for asc) — stable and fast on large tables. Otherwise
+    ``OFFSET`` is used. Raises ValueError on a bad dataset.
+    """
     dataset = await db.get(Dataset, dataset_id)
     if not dataset:
         raise ValueError("Dataset not found")
@@ -113,19 +134,37 @@ async def fetch_dataset_rows(
     if not is_valid_identifier(schema) or not is_valid_identifier(table):
         raise ValueError("Invalid schema or table name")
     quoted = f'"{schema}"."{table}"'
+
+    valid_sort = bool(sort and is_valid_identifier(str(sort)))
+    direction = "DESC" if str(order).lower() == "desc" else "ASC"
+    use_keyset = bool(valid_sort and after not in (None, ""))
+    order_sql = f' ORDER BY "{sort}" {direction}' if valid_sort else ""
+    where_sql = ""
+    params: dict[str, object] = {"limit": limit}
+    if use_keyset:
+        op = "<" if direction == "DESC" else ">"
+        where_sql = f' WHERE "{sort}" {op} :after'
+        params["after"] = after
+    else:
+        params["offset"] = offset
+    sql = f"SELECT * FROM {quoted}{where_sql}{order_sql} LIMIT :limit"
+    if not use_keyset:
+        sql += " OFFSET :offset"
+
     engine = pg_engine_for_datasource(ds)
     try:
         with engine.connect() as conn:
             total = conn.execute(text(f"SELECT COUNT(*) FROM {quoted}")).scalar() or 0
-            rows_result = conn.execute(
-                text(f"SELECT * FROM {quoted} LIMIT :limit OFFSET :offset"),
-                {"limit": limit, "offset": offset},
-            )
+            rows_result = conn.execute(text(sql), params)
             columns = list(rows_result.keys())
             rows = [
                 {k: serialize_cell_value(v) for k, v in zip(columns, r)}
                 for r in rows_result.fetchall()
             ]
-        return rows, int(total)
+        next_after = None
+        if valid_sort and rows:
+            candidate = rows[-1].get(str(sort))
+            next_after = None if candidate is None else str(candidate)
+        return rows, int(total), next_after
     finally:
         engine.dispose()

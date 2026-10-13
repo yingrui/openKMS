@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from datetime import datetime
 
-from sqlalchemy import DateTime, ForeignKey, String, Text, func
+from sqlalchemy import Boolean, DateTime, ForeignKey, String, Text, func
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -28,6 +28,10 @@ class Dataset(Base):
     tags: Mapped[list | None] = mapped_column(JSONB, nullable=True)
     business_definition: Mapped[str | None] = mapped_column(Text, nullable=True)
     sensitivity: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    # Row identity for editing (e.g. ["ts_code"] or ["ts_code","trade_date"]).
+    primary_key_columns: Mapped[list | None] = mapped_column(JSONB, nullable=True)
+    # Row editing is opt-in per dataset (default off).
+    is_editable: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     created_by: Mapped[str | None] = mapped_column(String(512), nullable=True, index=True)
     created_by_name: Mapped[str | None] = mapped_column(String(256), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())

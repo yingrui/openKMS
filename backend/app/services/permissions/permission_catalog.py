@@ -48,6 +48,7 @@ PERM_PROJECTS_READ = "projects:read"
 PERM_PROJECTS_WRITE = "projects:write"
 PERM_DATA_READ = "data:read"
 PERM_DATA_WRITE = "data:write"
+PERM_DATA_EDIT = "data:edit"
 
 DEFAULT_MEMBER_PERMISSIONS: frozenset[str] = frozenset({PERM_ALL})
 
@@ -287,6 +288,12 @@ OPERATION_KEY_HINTS: tuple[OperationKeyHint, ...] = (
         PERM_DATA_WRITE,
         "Manage data layer",
         "Register/ingest datasets, manage joins, quality rules, metrics, and explorer reports.",
+        "data",
+    ),
+    OperationKeyHint(
+        PERM_DATA_EDIT,
+        "Edit dataset rows",
+        "Insert, update, and delete rows in editable datasets' backing tables.",
         "data",
     ),
 )

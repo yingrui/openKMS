@@ -46,7 +46,11 @@ from app.schemas.dataset import (
     SchemaSnapshotResponse,
     TableInfo,
 )
-from app.services.ontology.dataset_tables import is_valid_identifier, pg_engine_for_datasource
+from app.services.ontology.dataset_tables import (
+    fetch_dataset_rows_page,
+    is_valid_identifier,
+    pg_engine_for_datasource,
+)
 
 
 router = APIRouter(
@@ -221,32 +225,22 @@ async def get_dataset_rows(
     db: AsyncSession = Depends(get_db),
     limit: int = Query(100, ge=1, le=500),
     offset: int = Query(0, ge=0),
+    sort: str | None = Query(None, description="column to sort by (validated)"),
+    order: str = Query("asc"),
+    after: str | None = Query(None, description="keyset cursor: last value of `sort`"),
 ):
-    """Fetch rows from the dataset table (PostgreSQL only)."""
-    dataset_id = dataset.id
-    ds = await db.get(DataSource, dataset.data_source_id)
-    if not ds or ds.kind != "postgresql":
-        raise HTTPException(status_code=400, detail="Dataset rows only supported for PostgreSQL sources")
-    schema, table = dataset.schema_name, dataset.table_name
-    if not is_valid_identifier(schema) or not is_valid_identifier(table):
-        raise HTTPException(status_code=400, detail="Invalid schema or table name")
-    quoted = f'"{schema}"."{table}"'
+    """Fetch rows (PostgreSQL only) with optional server-side sort and keyset paging."""
     try:
-        engine = pg_engine_for_datasource(ds)
-        with engine.connect() as conn:
-            count_result = conn.execute(text(f"SELECT COUNT(*) FROM {quoted}"))
-            total = count_result.scalar() or 0
-            rows_result = conn.execute(
-                text(f"SELECT * FROM {quoted} LIMIT :limit OFFSET :offset"),
-                {"limit": limit, "offset": offset},
-            )
-            columns = list(rows_result.keys())
-            rows = [dict(zip(columns, r)) for r in rows_result.fetchall()]
-            rows = [{k: serialize_cell_value(v) for k, v in r.items()} for r in rows]
-        engine.dispose()
-        return DatasetRowsResponse(rows=rows, total=total, limit=limit, offset=offset)
-    except Exception as e:
-        raise HTTPException(status_code=502, detail=f"Failed to fetch rows: {e}") from e
+        rows, total, next_after = await fetch_dataset_rows_page(
+            db, dataset.id, limit=limit, offset=offset, sort=sort, order=order, after=after
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except Exception as exc:  # noqa: BLE001
+        raise HTTPException(status_code=502, detail=f"Failed to fetch rows: {exc}") from exc
+    return DatasetRowsResponse(
+        rows=rows, total=total, limit=limit, offset=offset, next_after=next_after
+    )
 
 
 @router.get(

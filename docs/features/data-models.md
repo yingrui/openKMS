@@ -180,7 +180,7 @@ Schema for every persisted table. Grouped by area; see the matching feature page
 
 ### Dataset
 
-- `id`, `data_source_id` (FK), `schema_name`, `table_name`, `display_name`, `description`, `owner_sub`, `domain`, `tags` (JSONB array), `business_definition`, `sensitivity` (`public` | `internal` | `confidential` | `restricted`), `created_by` (nullable; creator subject for sharing owner bootstrap), `created_by_name` (nullable), `created_at`, `updated_at`
+- `id`, `data_source_id` (FK), `schema_name`, `table_name`, `display_name`, `description`, `owner_sub`, `domain`, `tags` (JSONB array), `business_definition`, `sensitivity` (`public` | `internal` | `confidential` | `restricted`), `primary_key_columns` (JSONB array; row identity for editing), `is_editable` (boolean, default false), `created_by` (nullable; creator subject for sharing owner bootstrap), `created_by_name` (nullable), `created_at`, `updated_at`
 - PostgreSQL table reference; can be mapped to ObjectType/LinkType in future
 
 ### DatasetJoin
@@ -202,6 +202,11 @@ Schema for every persisted table. Grouped by area; see the matching feature page
 
 - `id`, `dataset_id` (FK → datasets, CASCADE), `columns` (JSONB: column metadata), `captured_at`
 - Appended when a dataset's schema changes (captured on metadata read); backs `GET /api/datasets/{id}/schema-history`
+
+### DatasetEdit
+
+- `id`, `dataset_id` (FK → datasets, CASCADE), `op` (`insert` | `update` | `delete`), `pk` (JSONB), `before` (JSONB), `after` (JSONB), `actor` / `actor_name`, `created_at`
+- Audit of applied row edits (row-data maintenance); written by `POST /api/datasets/{id}/rows/apply`
 
 ### QualityRule
 

@@ -359,43 +359,44 @@ Encrypted values; **never returned**. Write/sync/delete reject personal API key 
 | PATCH | `/api/schedules/{id}` | Update schedule (`enabled`, `cron`, `timezone`; agent kinds also `prompt`); sync kinds mirror `settings.sync_schedule` on the connector (`connectors:write` or `projects:write`) |
 | POST | `/api/schedules/{id}/run-now` | Queue the scheduled target now (`run_connector_sync` or `run_scheduled_project_agent`); returns `{ job_id }` (202) |
 | POST | `/internal-api/process-heartbeat` | **Internal service client only**; worker/scheduler liveness (`role`, `instance_id`); in-memory registry for Console health (no history table) |
-| GET | `/api/datasets` | List datasets (`console:datasets` or `ontology:read`; filtered by dataset ACL) |
-| GET | `/api/datasets/from-source/{id}` | List tables from PostgreSQL data source (`console:datasets`) |
-| POST | `/api/datasets` | Create dataset (`console:datasets`) |
-| GET | `/api/datasets/{id}` | Get dataset (`console:datasets` or `ontology:read`; dataset ACL) |
-| GET | `/api/datasets/{id}/rows` | Get paginated rows (`console:datasets` or `ontology:read`; dataset ACL) |
-| GET | `/api/datasets/{id}/metadata` | Column metadata (`console:datasets` or `ontology:read`; dataset ACL) |
-| PUT | `/api/datasets/{id}` | Update dataset (`console:datasets`; write on dataset) |
-| DELETE | `/api/datasets/{id}` | Delete dataset (`console:datasets`; manage on dataset) |
-| GET | `/api/dataset-joins` | List dataset joins (`dataset_id` filter; `console:datasets` or `ontology:read`) |
-| POST | `/api/dataset-joins` | Create dataset join (validated; `console:datasets`) |
-| GET | `/api/dataset-joins/{id}` | Get dataset join (`console:datasets` or `ontology:read`) |
-| PUT | `/api/dataset-joins/{id}` | Update dataset join (`console:datasets`) |
-| DELETE | `/api/dataset-joins/{id}` | Delete dataset join (`console:datasets`) |
-| POST | `/api/datasets/ingests` | Start a file ingest (multipart `file` + `data_source_id`; `console:datasets`) |
-| POST | `/api/datasets/ingests/{id}/preview` | Parse head + infer schema (`console:datasets`) |
-| POST | `/api/datasets/ingests/{id}/load` | Create/replace the target table + register dataset (`console:datasets`) |
-| GET | `/api/datasets/ingests/{id}` | Ingest status (`console:datasets`) |
-| GET | `/api/datasets/{id}/profile` | Last computed profile (`console:datasets` or `ontology:read`) |
-| POST | `/api/datasets/{id}/profile` | Recompute profile (`console:datasets`; write on dataset) |
-| GET | `/api/datasets/{id}/schema-history` | Schema snapshots (`console:datasets` or `ontology:read`) |
-| GET | `/api/datasets/{id}/lineage` | Read-time lineage (`console:datasets` or `ontology:read`) |
-| GET | `/api/datasets/{id}/quality-rules` | List quality rules (`console:datasets` or `ontology:read`) |
-| POST | `/api/datasets/{id}/quality-rules` | Create quality rule (`console:datasets`) |
-| PUT | `/api/datasets/{id}/quality-rules/{rule_id}` | Update quality rule (`console:datasets`) |
-| DELETE | `/api/datasets/{id}/quality-rules/{rule_id}` | Delete quality rule (`console:datasets`) |
-| POST | `/api/datasets/{id}/quality-rules/{rule_id}/run` | Run a quality rule (`console:datasets`) |
-| GET | `/api/datasets/{id}/quality-rules/{rule_id}/runs` | Rule run history (`console:datasets` or `ontology:read`) |
-| GET | `/api/datasets/{id}/metrics` | List metrics (`console:datasets` or `ontology:read`) |
-| POST | `/api/datasets/{id}/metrics` | Create metric (`console:datasets`) |
-| PUT | `/api/datasets/{id}/metrics/{metric_id}` | Update metric (`console:datasets`) |
-| DELETE | `/api/datasets/{id}/metrics/{metric_id}` | Delete metric (`console:datasets`) |
-| POST | `/api/datasets/{id}/metrics/{metric_id}/compute` | Compute metric (`console:datasets` or `ontology:read`) |
-| GET | `/api/explorer-reports` | List explorer reports (`console:datasets` or `ontology:read`) |
-| POST | `/api/explorer-reports` | Create explorer report (`console:datasets`) |
-| GET | `/api/explorer-reports/{id}` | Get explorer report (`console:datasets` or `ontology:read`) |
-| PUT | `/api/explorer-reports/{id}` | Update explorer report (`console:datasets`) |
-| DELETE | `/api/explorer-reports/{id}` | Delete explorer report (`console:datasets`) |
+| GET | `/api/datasets` | List datasets (`data:read`; filtered by dataset ACL) |
+| GET | `/api/datasets/from-source/{id}` | List tables from PostgreSQL data source (`data:write`) |
+| POST | `/api/datasets` | Create dataset (`data:write`) |
+| GET | `/api/datasets/{id}` | Get dataset (`data:read`; dataset ACL) |
+| GET | `/api/datasets/{id}/rows` | Get rows (`data:read`; dataset ACL) — optional `sort`, `order`, `after` (keyset paging) |
+| POST | `/api/datasets/{id}/rows/apply` | Apply batch row ops `{ops:[{op,pk,values,expect}],dry_run}` (`data:edit`; opt-in + PK + audit) |
+| GET | `/api/datasets/{id}/metadata` | Column metadata (`data:read`; dataset ACL) |
+| PUT | `/api/datasets/{id}` | Update dataset (`data:write`; write on dataset) |
+| DELETE | `/api/datasets/{id}` | Delete dataset (`data:write`; manage on dataset) |
+| GET | `/api/dataset-joins` | List dataset joins (`dataset_id` filter; `data:read`) |
+| POST | `/api/dataset-joins` | Create dataset join (validated; `data:write`) |
+| GET | `/api/dataset-joins/{id}` | Get dataset join (`data:read`) |
+| PUT | `/api/dataset-joins/{id}` | Update dataset join (`data:write`) |
+| DELETE | `/api/dataset-joins/{id}` | Delete dataset join (`data:write`) |
+| POST | `/api/datasets/ingests` | Start a file ingest (multipart `file` + `data_source_id`; `data:write`) |
+| POST | `/api/datasets/ingests/{id}/preview` | Parse head + infer schema (`data:write`) |
+| POST | `/api/datasets/ingests/{id}/load` | Create/replace the target table + register dataset (`data:write`) |
+| GET | `/api/datasets/ingests/{id}` | Ingest status (`data:write`) |
+| GET | `/api/datasets/{id}/profile` | Last computed profile (`data:read`) |
+| POST | `/api/datasets/{id}/profile` | Recompute profile (`data:write`; write on dataset) |
+| GET | `/api/datasets/{id}/schema-history` | Schema snapshots (`data:read`) |
+| GET | `/api/datasets/{id}/lineage` | Read-time lineage (`data:read`) |
+| GET | `/api/datasets/{id}/quality-rules` | List quality rules (`data:read`) |
+| POST | `/api/datasets/{id}/quality-rules` | Create quality rule (`data:write`) |
+| PUT | `/api/datasets/{id}/quality-rules/{rule_id}` | Update quality rule (`data:write`) |
+| DELETE | `/api/datasets/{id}/quality-rules/{rule_id}` | Delete quality rule (`data:write`) |
+| POST | `/api/datasets/{id}/quality-rules/{rule_id}/run` | Run a quality rule (`data:write`) |
+| GET | `/api/datasets/{id}/quality-rules/{rule_id}/runs` | Rule run history (`data:read`) |
+| GET | `/api/datasets/{id}/metrics` | List metrics (`data:read`) |
+| POST | `/api/datasets/{id}/metrics` | Create metric (`data:write`) |
+| PUT | `/api/datasets/{id}/metrics/{metric_id}` | Update metric (`data:write`) |
+| DELETE | `/api/datasets/{id}/metrics/{metric_id}` | Delete metric (`data:write`) |
+| POST | `/api/datasets/{id}/metrics/{metric_id}/compute` | Compute metric (`data:read`) |
+| GET | `/api/explorer-reports` | List explorer reports (`data:read`) |
+| POST | `/api/explorer-reports` | Create explorer report (`data:write`) |
+| GET | `/api/explorer-reports/{id}` | Get explorer report (`data:read`) |
+| PUT | `/api/explorer-reports/{id}` | Update explorer report (`data:write`) |
+| DELETE | `/api/explorer-reports/{id}` | Delete explorer report (`data:write`) |
 
 ## Feature toggles
 

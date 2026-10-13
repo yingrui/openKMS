@@ -41,6 +41,7 @@ from app.services.permissions.permission_catalog import (
     PERM_PROJECTS_WRITE,
     PERM_DATA_READ,
     PERM_DATA_WRITE,
+    PERM_DATA_EDIT,
 )
 
 # (frontend_route_patterns, backend_api_patterns)
@@ -461,6 +462,15 @@ DEFAULT_PATTERNS_BY_KEY: dict[str, tuple[list[str], list[str]]] = {
             "PUT /api/explorer-reports/*",
             "PATCH /api/explorer-reports/*",
             "DELETE /api/explorer-reports/*",
+        ],
+    ),
+    PERM_DATA_EDIT: (
+        [
+            "/datasets",
+            "/datasets/*",
+        ],
+        [
+            "POST /api/datasets/*",
         ],
     ),
 }

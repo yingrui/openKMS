@@ -41,6 +41,7 @@ import app.models.dataset  # noqa: F401 - register models with Base.metadata
 import app.models.dataset_join  # noqa: F401 - register models with Base.metadata
 import app.models.dataset_ingest  # noqa: F401 - register models with Base.metadata
 import app.models.dataset_profile  # noqa: F401 - register models with Base.metadata
+import app.models.dataset_edit  # noqa: F401 - register models with Base.metadata
 import app.models.quality_rule  # noqa: F401 - register models with Base.metadata
 import app.models.metric_definition  # noqa: F401 - register models with Base.metadata
 import app.models.explorer_report  # noqa: F401 - register models with Base.metadata
