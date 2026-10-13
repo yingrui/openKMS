@@ -20,13 +20,44 @@
   }
 
   &--id {
-    font-family: var(--font-mono, ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace);
-    font-size: 0.8125rem;
-    cursor: copy;
-    border-radius: var(--radius-sm);
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-1);
+    vertical-align: middle;
 
-    &:hover {
+    .dataset-cell__text {
+      flex: 1 1 auto;
+      min-width: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      font-family: var(--font-mono, ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace);
+      font-size: 0.8125rem;
+    }
+
+    .dataset-cell__copy {
+      flex-shrink: 0;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 2px;
+      border: none;
+      border-radius: var(--radius-sm);
+      background: transparent;
+      color: var(--color-text-muted);
+      cursor: pointer;
+      opacity: 0;
+      transition: opacity 0.1s;
+    }
+
+    .dataset-cell__copy:hover {
+      color: var(--color-text);
       background: var(--color-bg-muted);
+    }
+
+    &:hover .dataset-cell__copy,
+    .dataset-cell__copy:focus-visible {
+      opacity: 1;
     }
   }
 }

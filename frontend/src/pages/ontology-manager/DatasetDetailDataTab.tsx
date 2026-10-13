@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { Loader2 } from 'lucide-react';
+import { Loader2, Copy } from 'lucide-react';
 import { toast } from 'sonner';
 import { fetchDatasetRows, type DatasetRowsResponse } from '../../data/datasetsApi';
 import { EntityViewHeader, EntityViewPanel } from './EntityViewShell';
@@ -35,7 +35,6 @@ function CellValue({ value }: { value: unknown }) {
     return <span className="dataset-cell">{value ? t('datasets.yes') : t('datasets.no')}</span>;
   }
   const text = typeof value === 'object' ? JSON.stringify(value) : String(value);
-  const idLike = isIdLike(text);
   const copy = () => {
     if (!navigator.clipboard) return;
     void navigator.clipboard
@@ -43,25 +42,25 @@ function CellValue({ value }: { value: unknown }) {
       .then(() => toast.success(t('datasets.copied')))
       .catch(() => undefined);
   };
+  if (!isIdLike(text)) {
+    return (
+      <span className="dataset-cell" title={text}>
+        {text}
+      </span>
+    );
+  }
   return (
-    <span
-      className={`dataset-cell${idLike ? ' dataset-cell--id' : ''}`}
-      title={text}
-      {...(idLike
-        ? {
-            role: 'button',
-            tabIndex: 0,
-            onClick: copy,
-            onKeyDown: (e: React.KeyboardEvent) => {
-              if (e.key === 'Enter' || e.key === ' ') {
-                e.preventDefault();
-                copy();
-              }
-            },
-          }
-        : {})}
-    >
-      {idLike ? middleTruncate(text) : text}
+    <span className="dataset-cell dataset-cell--id" title={text}>
+      <span className="dataset-cell__text">{middleTruncate(text)}</span>
+      <button
+        type="button"
+        className="dataset-cell__copy"
+        onClick={copy}
+        title={t('datasets.copy')}
+        aria-label={t('datasets.copy')}
+      >
+        <Copy size={12} aria-hidden />
+      </button>
     </span>
   );
 }
