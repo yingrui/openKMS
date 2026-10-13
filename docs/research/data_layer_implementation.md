@@ -97,6 +97,7 @@ The Datasets app adds the **「Add tables」** flow (see interaction design); th
 | `to_dataset_id` | FK → `datasets.id` CASCADE | **one** side (PK/unique) |
 | `from_columns` | `JSONB` | FK columns, order-aligned with `to_columns` |
 | `to_columns` | `JSONB` | referenced key columns |
+| `join_type` | `String(8)` | `left` (default) / `inner` / `right` / `full` — **our extension** (Ossie FKs have no join type) |
 | `ai_context` | `JSONB` nullable | instructions / synonyms / examples |
 | `description` | `Text` nullable | |
 | `created_by` / `created_by_name` | as elsewhere | |

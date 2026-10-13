@@ -94,7 +94,7 @@ The data engineer configures; the BA inspects.
 | **Data Model** | Datasets (keys, dimensions, `ai_context`), **relationships between tables**, ER model, data-quality rules, metrics |
 | **Ontology** | Business object/link **types**, properties, functions, actions (may reference a dataset) |
 
-- **Relationships = foreign keys (Ossie):** a relationship is `from` (the **many** side, holds the FK) → `to` (the **one** side, its PK/unique key), with order-aligned `from_columns` / `to_columns` (composite supported). **Cardinality is derived, not stored** — 1:N by default; 1:1 when `from_columns` are also unique; **M:N = two relationships via a junction dataset**. Authored manually (no auto-discovery); they are the **join graph** for cross-dataset metrics. See [Model tab / semantic model design](semantic_model_design.md).
+- **Relationships = foreign keys (Ossie):** a relationship is `from` (the **many** side, holds the FK) → `to` (the **one** side, its PK/unique key), with order-aligned `from_columns` / `to_columns` (composite supported), plus a **`join_type`** (`left` default / `inner` / `right` / `full` — our extension; the metric engine uses it). **Cardinality is derived, not stored** — 1:N by default; 1:1 when `from_columns` are also unique; **M:N = two relationships via a junction dataset**. Authored manually (no auto-discovery); they are the **join graph** for cross-dataset metrics. (Distinct from an ontology **LinkType**: that is a semantic link with no join type.) See [Model tab / semantic model design](semantic_model_design.md).
 - **Dataset semantics:** `primary_key` + `unique_keys`, column **dimensions** (categorical/time), and **`ai_context`** (instructions / synonyms / examples) for agent grounding.
 - **Data quality:** declarative rule types (not-null, unique, range, referential, freshness), runs, results, and **alerts surfaced in the Model view** — rule type + parameters, not arbitrary expressions.
 - **Metrics:** **model-level** (span datasets via relationships), with `datatype`, `ai_context`, and an expression. Computed by querying the tables on demand (no materialization, no cache in v1), with lineage. The **expression strategy is under review** — restricted DSL vs Ossie `expression.dialects` (SQL) — see [the design doc](semantic_model_design.md#metrics-strategy--still-open).
@@ -237,7 +237,7 @@ Deliverables:
 | 15 | **Separate read vs manage permissions** — `data:read` (catalog/profile/quality/rows for all roles) vs `data:write` (register/ingest/joins/metrics/quality for data engineers); `console:datasets` stays console-scoped. |
 | 16 | **Dataset → knowledge has two paths** — promote to an object type (ontology) and cite as agent evidence; dataset rows are not ingested into KB/RAG in v1. |
 | 17 | **Adopt Apache Ossie as the semantic-model interchange** (Apache 2.0, vendor-neutral) — author `datasets`/`relationships`/`metrics`; export (and later import) Ossie YAML. |
-| 18 | **Relationships are foreign keys, not cardinality** — `from` (many) → `to` (one), `from_columns`/`to_columns`, composite; 1:1 via unique keys; M:N via a junction dataset. |
+| 18 | **Relationships are foreign keys, not cardinality** — `from` (many) → `to` (one), `from_columns`/`to_columns`, composite, plus a **`join_type`** (`left` default); 1:1 via unique keys; M:N via a junction dataset. |
 | 19 | **Dataset semantics gain `unique_keys` + `ai_context`** (instructions / synonyms / examples) for agent grounding. |
 
 ## Still open

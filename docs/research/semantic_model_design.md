@@ -32,6 +32,7 @@ Today `dataset_joins` stores `source` / `target` / **`cardinality`** / `join_col
 | `to` | dataset on the **one** side — referenced key | `target_dataset_id` |
 | `from_columns` | FK columns (ordered) | `join_columns[].source` |
 | `to_columns` | referenced key columns (same order) | `join_columns[].target` |
+| **`join_type`** | SQL join type the metric engine uses: `left` (default) / `inner` / `right` / `full` | **our extension** |
 | `ai_context` | optional | — |
 | ~~`cardinality`~~ | **removed** — a FK is many→one | `cardinality` |
 
@@ -43,6 +44,7 @@ Rules (from the spec):
   - **1:1** — the `from_columns` also form a unique key on the `from` dataset.
   - **M:N** — **two relationships through a junction dataset** (the junction is itself a dataset): `A → J` and `B → J`. No `many-to-many` type.
 - **Direction is deterministic**: the **FK holder is `from`**. The UI asks "does *this* dataset hold the FK (from) or is it referenced (to)?" — replacing the current cardinality/position juggling.
+- **Join type is our extension.** Ossie's relationship is a bare FK (there the SQL join type is a *query-time* choice); we store a **default `join_type`** per relationship (the metric engine uses it; a metric may override) and export it under Ossie `custom_extensions`. This is exactly what distinguishes a **data relationship** from an ontology **LinkType** — a LinkType is a *semantic* link with **no** join type.
 
 ### How relationships drive the semantic model
 
@@ -71,18 +73,19 @@ The Model tab is the **authoring + governance surface of the semantic model**. S
 - **Model health**: counts of datasets, relationships, metrics; quality failing; **datasets without a primary key** (a relationship/`to` problem); **orphans** (no relationships).
 
 ### 2. Relationships
-- List + create/edit a relationship: **from (many)** dataset, **to (one)** dataset, **column pairs** (ordered, add/remove for composite), name, `ai_context`.
+- List + create/edit a relationship: **from (many)** dataset, **to (one)** dataset, **column pairs** (ordered, add/remove for composite), **join type** (`left` default / `inner` / `right` / `full`), name, `ai_context`.
 - **Validation inline**: `to_columns` must be a PK/unique key; column existence; composite lengths.
 - Direction is a simple choice: *"this dataset holds the FK (from)"* vs *"this dataset is referenced (to)"*.
+- Not a **LinkType**: a data relationship carries a **join type** and targets physical tables; a LinkType is a semantic object-type link with none.
 
 ### 3. Metrics
 - **Model-level** list (metrics span datasets; not per-dataset).
 - Author: name, **definition/description**, measure source (dataset + column/expression), aggregation, **dimensions** (group-by fields), **filter**, `datatype`, `ai_context`.
 - See the metrics-strategy decision below (DSL vs Ossie SQL expression).
 
-### 4. Semantic datasets
-- Lightweight per-dataset semantic config: **primary key**, **unique keys**, **dimensions** (categorical/time flags on columns), `ai_context`.
-- Deep physical work (register/ingest/profile/preview/row editing/quality) stays in the **Catalog** tab; the Model tab only edits the *semantic* layer.
+### 4. Datasets (Ossie `datasets`)
+- The Ossie **`datasets`** section: each physical dataset's **semantic entry** — `source` (the table), `primary_key`, `unique_keys`, **fields / dimensions** (categorical/time column annotations), `ai_context`.
+- These are the *same* datasets the **Catalog** holds (one dataset = one Ossie dataset); the Model tab edits the **semantic** layer, the Catalog edits the **physical** layer (register/ingest/profile/preview/row editing/quality).
 
 ### 5. Export / Import (Ossie)
 - **Export** the semantic model as **Ossie YAML** (`semantic_model: {datasets, relationships, metrics}`) — interoperability + governance artifact; no runtime dependency.
@@ -95,7 +98,7 @@ The Model tab is the **authoring + governance surface of the semantic model**. S
 | Table | Change |
 |-------|--------|
 | `datasets` | add `unique_keys` (JSONB array of arrays), `ai_context` (JSONB), dimension annotations on columns (JSONB on dataset or per-column) |
-| `dataset_joins` → **`relationships`** | rename `source_dataset_id`→`from_dataset_id`, `target_dataset_id`→`to_dataset_id`; replace `join_columns` with `from_columns`/`to_columns` (or keep ordered pairs); **drop `cardinality`**; add `ai_context` |
+| `dataset_joins` → **`relationships`** | rename `source_dataset_id`→`from_dataset_id`, `target_dataset_id`→`to_dataset_id`; replace `join_columns` with `from_columns`/`to_columns`; **drop `cardinality`**; add **`join_type`** + `ai_context` |
 | `metric_definitions` | make **model-level** (`dataset_id` → base dataset of the measure, but metrics may reference multiple datasets); add `datatype`, `ai_context`, `type` |
 
 ---

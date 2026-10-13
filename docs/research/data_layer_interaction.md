@@ -95,9 +95,9 @@ The Model tab authors the **semantic model** (Apache Ossie shape): **datasets + 
 | Sub-tab | What it does |
 |---------|--------------|
 | **Overview** | ER graph (datasets = nodes, relationships = **directed FK edges many → one**); model health (datasets / relationships / metrics / quality failing / datasets missing a primary key); click a node → open the dataset. |
-| **Relationships** | author FK edges: **from (many)** dataset, **to (one)** dataset, ordered column pairs (composite supported), `ai_context`; inline validation (`to` must be a PK/unique key; columns exist; equal lengths). |
+| **Relationships** | author FK edges: **from (many)** dataset, **to (one)** dataset, ordered column pairs (composite supported), **join type** (`left` default / `inner` / `right` / `full`), `ai_context`; inline validation (`to` must be a PK/unique key; columns exist; equal lengths). |
 | **Metrics** | model-level metrics (span datasets via relationships): measure source, aggregation, dimensions, filter, `datatype`, `ai_context`. |
-| **Semantic datasets** | per-dataset semantic config: primary key, unique keys, column dimensions (categorical/time), `ai_context` — deep physical work stays in the Catalog tab. |
+| **Datasets** | the Ossie `datasets` section: each dataset's **semantic entry** — source, primary key, unique keys, fields/dimensions, `ai_context` — the semantic layer over the same physical datasets the Catalog holds. |
 | **Export** | the semantic model as **Apache Ossie YAML** (interoperability + governance artifact; import later). |
 
 ### Relationships — direction is the FK, not a cardinality
