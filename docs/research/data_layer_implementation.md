@@ -119,9 +119,9 @@ Reuse the existing ontology schema-graph engine rather than a new graph library:
 
 - `frontend/src/pages/ontology/OntologySchemaGraph.tsx` + `ontologySchemaGraphModel.ts` already render a layered node/edge diagram with per-type colors.
 - Add a `datasetErGraphModel.ts`: nodes = datasets (label = display name, stat = row count), edges = joins (label = cardinality + column pairs).
-- Render it in a **Data Model** app page (`/data-model/er`), or inside `DatasetDetailPage` as a "Relationships" tab in v1 (cheaper — reuse the detail shell and only one new page).
+- Render it in the **Model** view inside the Datasets app, or inside `DatasetDetailPage` as a "Relationships" tab in v1 (cheaper — reuse the detail shell and only one new page).
 
-**v1 decision:** put the ER view in the **Data Model app** as its own page; `DatasetDetailPage` gets a "Joins" list tab (cheap, reuses EntityViewShell).
+**v1 decision:** the ER view lives in the **Datasets app's Model view** (global roll-up); `DatasetDetailPage` keeps a "Relationships" list tab (cheap, reuses EntityViewShell).
 
 ---
 

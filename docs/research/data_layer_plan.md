@@ -34,7 +34,7 @@ The Suite App rail gains an explicit **layer** grouping. This is an information-
 |-------|------|---------|
 | **Application** | Agents · Documents · Articles · Wikis · Knowledge bases · Media · Glossaries · Evaluations · Knowledge Map · Apps | *Knowledge work and delivery* |
 | **Ontology** | Ontology Manager · Object Explorer · Function Editor | *What the business means and does* (objects, links, functions, actions) |
-| **Data** | **Datasets**, **Data Model**, **Data Explorer** | *What is the data, how trustworthy, how to analyze it* |
+| **Data** | **Datasets** (Catalog + **Model** views), **Data Explorer** | *What is the data, how trustworthy, how to analyze it* |
 
 **Console stays a shared platform layer.** `Connectors`, `Pipelines`, `data-sources`, and `job-runs` are **not** part of the Data layer — they are platform capabilities shared across all of openKMS. Data-layer apps consume their output (e.g. connector-synced tables) but do not own them.
 
@@ -85,9 +85,9 @@ The data engineer configures; the BA inspects.
 - **File upload / ingest:** upload CSV / Excel / JSON (later Parquet). The raw file is stored in **object storage**, then parsed (schema inference + preview) and loaded into a **PostgreSQL table** on a **data-layer data source**, registered as a Dataset. The original file and parse config are kept so the table can be rebuilt or audited. Parsing via pandas/openpyxl (CSV/Excel/JSON); Parquet deferred.
 - **Usage:** which KBs, object types, functions, and agents consume this dataset.
 
-### Data Model — joins, quality, metrics {#data-model-app}
+### Datasets — Model view: joins, quality, metrics {#data-model-app}
 
-**Scope:** Data Model manages **only datasets** (the tables the Data layer catalogs). It does **not** define business object/link types — those stay in the Ontology layer. The boundary is:
+**Scope:** the **Model** view (a tab inside the Datasets app, at `/data-model`) manages **only datasets** (the tables the Data layer catalogs). It does **not** define business object/link types — those stay in the Ontology layer. The boundary is:
 
 | Layer | Owns |
 |-------|------|
@@ -95,7 +95,7 @@ The data engineer configures; the BA inspects.
 | **Ontology** | Business object/link **types**, properties, functions, actions (may reference a dataset) |
 
 - **Join model → ER:** joins are **registered manually** — authoring them is the core data-modeling process (no automatic join discovery). Register data-engineering equi-joins on key columns (one-to-one / one-to-many), then render an **ER relationship model** from datasets + joins. This is the basis for cross-table metrics and for the Explorer's "which tables relate" reasoning.
-- **Data quality:** declarative rule types (not-null, unique, range, referential, freshness), runs, results, and **alerts surfaced in the Data Model app** — rule type + parameters, not arbitrary expressions.
+- **Data quality:** declarative rule types (not-null, unique, range, referential, freshness), runs, results, and **alerts surfaced in the Datasets app's Model view** — rule type + parameters, not arbitrary expressions.
 - **Metrics:** definition (name, business definition, formula, dimensions, source dataset/columns, joins), **computed by querying the tables on demand** (no materialization, no cache in v1), reuse, and lineage. Metrics use a **declarative DSL** (columns + aggregation + filters + registered joins) — not arbitrary SQL.
 - **Change impact:** a schema or join/definition change surfaces affected metrics, ER edges, object types, and agents.
 
@@ -219,13 +219,13 @@ Deliverables:
 | # | Decision |
 |---|----------|
 | 1 | **Console stays shared** — `Connectors` / `Pipelines` / `data-sources` / `job-runs` are platform-wide, not part of the Data layer. |
-| 2 | **Data Model manages only datasets**, but models **joins between tables** in a data-engineering style and produces an **ER relationship model**; business object/link types stay in Ontology. |
+| 2 | **The Model view manages only datasets**, but models **joins between tables** in a data-engineering style and produces an **ER relationship model**; business object/link types stay in Ontology. |
 | 3 | **Metrics query the tables on demand** from their definitions (metric results are not materialized; no cache in v1). |
 | 4 | **Explorer carrier is project agents**, operating through **`openkms-skill`**. |
 | 5 | **Reports are dashboard-like**; each chart carries AI-authored suggestions and analysis, not just a passive visual. |
 | 6 | **First scenario = Tushare-synced stock datasets.** |
 | 7 | **Joins are registered manually** — join authoring is the core data-modeling process; no automatic join discovery. |
-| 8 | **Quality alerts live in the Data Model app.** |
+| 8 | **Quality alerts live in the Datasets app's Model view.** |
 | 9 | **Dashboard reports are persisted in the Data Explorer app.** |
 | 10 | **Data files can be uploaded** — parsed and loaded into PostgreSQL tables; the raw file is stored in object storage. |
 | 11 | **Data sources are tagged by layer** — Console → Data Sources marks each source as data-layer or ontology-layer; data-layer sources back datasets and file ingest, ontology-layer sources back the graph. PostgreSQL sources are data-capable by default (untagged allowed); `ontology` is an explicit exclusion. |

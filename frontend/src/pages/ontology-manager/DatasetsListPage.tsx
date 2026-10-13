@@ -14,6 +14,7 @@ import {
 } from '../../data/datasetsApi';
 import { fetchAllDataSources, type DataSourceResponse } from '../../data/dataSourcesApi';
 import { DatasetUploadWizard } from './DatasetUploadWizard';
+import { DatasetAppTabs } from './DatasetAppTabs';
 import { useConfirm } from '../../contexts/ConfirmContext';
 import { Dialog, EmptyState, FormField } from '../../styles/design-system';
 import '../ontology/ontology-admin.scss';
@@ -204,6 +205,8 @@ export function DatasetsListPage() {
           </button>
         </div>
       </header>
+
+      <DatasetAppTabs />
 
       <div className="ontology-admin-content">
         {!showEmptyState && (

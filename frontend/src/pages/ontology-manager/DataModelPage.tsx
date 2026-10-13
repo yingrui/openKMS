@@ -7,6 +7,7 @@ import { fetchDatasets, type DatasetResponse } from '../../data/datasetsApi';
 import { fetchDatasetJoins, type DatasetJoinResponse } from '../../data/joinsApi';
 import { fetchQualityRules, type QualityRuleResponse } from '../../data/qualityApi';
 import { EmptyState } from '../../styles/design-system';
+import { DatasetAppTabs } from './DatasetAppTabs';
 import '../ontology/ontology-admin.scss';
 
 function datasetLabel(d: DatasetResponse): string {
@@ -67,6 +68,7 @@ export function DataModelPage() {
           <p className="page-subtitle">{t('dataModel.subtitle')}</p>
         </div>
       </div>
+      <DatasetAppTabs />
       <div className="ontology-admin-content">
         <section>
           <h2>{t('dataModel.qualityAlerts')}</h2>

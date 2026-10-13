@@ -1,6 +1,6 @@
 # Data layer interaction design
 
-UX for the three Data-layer apps — **Datasets · Data Model · Data Explorer**. Goal: a data engineer, a data BA, and a business user each reach their task with **zero training**. Phase 2–3 surfaces (quality, metrics, AI dashboards) are sketched, not specced.
+UX for the two Data-layer apps — **Datasets** (Catalog + Model tabs) **· Data Explorer**. Goal: a data engineer, a data BA, and a business user each reach their task with **zero training**. Phase 2–3 surfaces (quality, metrics, AI dashboards) are sketched, not specced.
 
 **Companion docs:** [Data layer plan](data_layer_plan.md) · [Implementation design](data_layer_implementation.md) · [Design system](../design-system.md)
 
@@ -27,8 +27,7 @@ Three visual groups, separated by a subtle divider, collapsible per group:
  │  🧭 Object Explorer
  │  ⌘ Function Editor
  ├── DATA ──────────
- │  🗂 Datasets
- │  🕸 Data Model
+ │  🗂 Datasets (Catalog · Model)
  │  🔎 Data Explorer
 ```
 
@@ -89,7 +88,7 @@ Why it's intuitive: the user only ever answers one question at a time (which fil
 
 ---
 
-## Data Model — ER canvas
+## Model tab (inside Datasets) — ER canvas
 
 The model **is** the picture. Three regions:
 
@@ -140,7 +139,7 @@ A left column (or a "Reports" tab) lists saved dashboards — named, dated, re-o
 |------|------|
 | Business | type question → read narrative + charts → optionally open a saved report |
 | BA | ask exploratory questions, then save the useful ones as reports |
-| Data engineer | rarely here; they live in Datasets / Data Model |
+| Data engineer | rarely here; they live in Datasets |
 
 Why it's intuitive: business users never see a query editor or a schema — they ask in words and read a sourced answer, exactly like the KB Q&A they already use.
 
@@ -150,7 +149,7 @@ Why it's intuitive: business users never see a query editor or a schema — they
 
 - Layer grouping: App Rail hidden; **App Launcher** shows the three sections full-width (already the phone pattern).
 - Datasets detail: tabs collapse to a top scroll + drawer (same as ontology second-rail drawer).
-- Data Model ER: canvas goes full-screen with a bottom-sheet dataset picker; join dialog is a bottom sheet.
+- Model ER: canvas goes full-screen with a bottom-sheet dataset picker; join dialog is a bottom sheet.
 - Data Explorer: chat-primary (same phone IA as Agents).
 
 ---
@@ -171,7 +170,7 @@ Before shipping any Data-layer screen, it must pass:
 
 1. **Phase 0:** layer grouping in App Rail + Launcher; `Datasets` moved out (existing list/detail reused, re-labeled).
 2. **Phase 1a:** Datasets — catalog fields + Data tab + upload wizard (steps 1–2–3).
-3. **Phase 1b:** Data Model — ER canvas (read) + join dialog (list-select) + Relationships tab.
+3. **Phase 1b:** Model tab — ER canvas (read) + join dialog (list-select) + Relationships tab.
 4. **Phase 1c:** Datasets — Lineage tab (read-only graph).
-5. **Phase 2:** Data Model — Quality tab + metric editor (sidebar forms, not canvases).
+5. **Phase 2:** Model tab — Quality + metrics editor (sidebar forms, not canvases).
 6. **Phase 3:** Data Explorer — prompt → dashboard grid → Insight badges → saved reports.

@@ -103,6 +103,8 @@
   },
   "datasets": {
     "title": "Datasets",
+    "tabCatalog": "Catalog",
+    "tabModel": "Model",
     "subtitle": "Register PostgreSQL tables from data sources for object and link types.",
     "create": "New dataset",
     "created": "Dataset created",

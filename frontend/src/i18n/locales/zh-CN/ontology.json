@@ -103,6 +103,8 @@
   },
   "datasets": {
     "title": "数据集",
+    "tabCatalog": "目录",
+    "tabModel": "模型",
     "subtitle": "从数据源注册 PostgreSQL 表，供对象类型与关联类型绑定。",
     "create": "新建数据集",
     "created": "数据集已创建",
