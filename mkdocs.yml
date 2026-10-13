@@ -195,6 +195,10 @@ nav:
       - openkms-skill: features/openkms-skill.md
       - API reference: features/api-reference.md
       - Data models: features/data-models.md
+      - Data layer (Datasets · Data Model · Data Explorer): features/data-layer.md
+      - Data layer — implementation design: features/data-layer-implementation.md
+      - Data layer — interaction design: features/data-layer-interaction.md
+      - Data layer — semantic model (Ossie): features/data-layer-semantic-model.md
       - Configuration: features/configuration.md
   - Security: security.md
   - Operations:
@@ -216,9 +220,5 @@ nav:
       - Enterprise KM in the AI era (insight draft): research/enterprise_km_ai_era_insight.md
       - Ontology Functions & Actions: research/ontology_functions_and_actions.md
       - Ontology Manager alignment (platform vs DIY): research/ontology_manager_alignment.md
-      - Data layer plan (Datasets · Data Model · Data Explorer): research/data_layer_plan.md
-      - Data layer implementation design (Phase 0–1): research/data_layer_implementation.md
-      - Data layer interaction design: research/data_layer_interaction.md
       - Data grid selection: research/data_grid_selection.md
       - Apache Ossie semantic layer: research/ossie_semantic_layer.md
-      - Model tab / semantic model design (Ossie): research/semantic_model_design.md

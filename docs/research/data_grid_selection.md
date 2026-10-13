@@ -2,7 +2,7 @@
 
 Technical evaluation for the Datasets **Data** tab, which must grow from a read-only preview into a **large-dataset, editable data grid** (inline row editing for data maintenance). Selection weighs **mainstream adoption** and **software-supply-chain safety (China)** alongside compatibility with React 19.2 / Vite 7 / TS 5.9 and the in-house design system.
 
-**Status:** draft — no library chosen. Companion to [Data layer plan](data_layer_plan.md) / [Interaction design](data_layer_interaction.md).
+**Status:** draft — no library chosen. Companion to [Data layer plan](../features/data-layer.md) / [Interaction design](../features/data-layer-interaction.md).
 
 ---
 

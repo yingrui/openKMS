@@ -4,7 +4,7 @@ Research note on **Apache Ossie (incubating)** — the vendor-neutral semantic-d
 
 **Why it matters:** Ossie standardizes exactly what our Data layer is building (datasets, relationships, metrics, dimensions) plus an explicit **AI context** for agent grounding — and it is the interchange format BI/AI tools are converging on.
 
-**Status:** research only — no code chosen. Informs [Data layer plan](data_layer_plan.md) and the eventual metrics/semantic design.
+**Status:** research only — no code chosen. Informs [Data layer plan](../features/data-layer.md) and the eventual metrics/semantic design.
 
 ---
 

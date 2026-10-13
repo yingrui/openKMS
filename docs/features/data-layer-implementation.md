@@ -1,6 +1,6 @@
 # Data layer implementation design — Phase 0–1
 
-Concrete backend / frontend / skill design to start [Data layer plan](data_layer_plan.md) Phase 0–1. Phase 2–3 (metric DSL, Python sandbox, AI dashboards) are intentionally deferred here.
+Concrete backend / frontend / skill design to start [Data layer plan](data-layer.md) Phase 0–1. Phase 2–3 (metric DSL, Python sandbox, AI dashboards) are intentionally deferred here.
 
 **Reused primitives:** `app/services/ontology/dataset_tables.py` (`pg_engine_for_datasource`, `is_valid_identifier`, `fetch_dataset_rows`), `app/services/storage.py` (`upload_object`/`get_object`), `app/services/credentials/credential_encryption.decrypt`, procrastinate jobs, `chunked_upload.py` (documents already do chunked upload).
 
@@ -85,7 +85,7 @@ The Datasets app adds the **「Add tables」** flow (see interaction design); th
 
 ## 3. Relationships → ER model (Apache Ossie)
 
-> **Superseded:** the v1 `dataset_joins` (source/target / **cardinality** / join_columns) predates Ossie alignment. The target design is **Ossie relationships** (FK edges) — see [Model tab / semantic model design](semantic_model_design.md) for the migration.
+> **Superseded:** the v1 `dataset_joins` (source/target / **cardinality** / join_columns) predates Ossie alignment. The target design is **Ossie relationships** (FK edges) — see [Model tab / semantic model design](data-layer-semantic-model.md) for the migration.
 
 ### Model — `dataset_joins` → `relationships`
 

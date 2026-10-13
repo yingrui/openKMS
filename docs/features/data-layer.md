@@ -1,8 +1,10 @@
-# Data layer plan — Datasets · Data Model · Data Explorer
+# Data layer — Datasets · Data Model · Data Explorer
 
-**Status:** draft plan (nothing shipped). **Positioning:** *Route B — the data layer is a knowledge substrate for agents, not a data-engineering platform.*
+Feature reference for the openKMS **data layer**: the **Datasets** app (Catalog + Model) and the **Data Explorer** app, plus the datasets, relationships, quality rules, metrics, ingest, and reports beneath them. **Positioning:** *Route B — the data layer is a knowledge substrate for agents, not a data-engineering platform.*
 
-**Related:** [Goals — unified layer for Data for AI](../goals.md#goals-unified-source) · [Development plan](../development_plan.md) · [Ontology Manager alignment](ontology_manager_alignment.md) · [Data models](../features/data-models.md) · [Connectors](../features/connectors.md) · [Object Explorer](../features/object-explorer.md) · [Implementation design (Phase 0–1)](data_layer_implementation.md) · [Interaction design](data_layer_interaction.md) · [Model tab / semantic model design](semantic_model_design.md) · [Apache Ossie research](ossie_semantic_layer.md)
+**Status:** **shipped (partial):** Datasets app (Catalog + Model), Data Explorer, file ingest, joins/ER, quality, metrics, profile/schema/lineage, and row editing (TanStack Table). **Designed, not built:** the Apache Ossie semantic model (relationships as FK edges, model-level metrics, `ai_context`) — see [semantic model](data-layer-semantic-model.md). Rollout is tracked by the [Phases](#phases) below and [Development plan](../development_plan.md).
+
+**Related:** [Goals — unified layer for Data for AI](../goals.md#goals-unified-source) · [Development plan](../development_plan.md) · [Ontology Manager alignment](../research/ontology_manager_alignment.md) · [Data models](data-models.md) · [Connectors](connectors.md) · [Object Explorer](object-explorer.md) · [Implementation design (Phase 0–1)](data-layer-implementation.md) · [Interaction design](data-layer-interaction.md) · [Model tab / semantic model design](data-layer-semantic-model.md) · [Apache Ossie research](../research/ossie_semantic_layer.md)
 
 ---
 
@@ -94,10 +96,10 @@ The data engineer configures; the BA inspects.
 | **Data Model** | Datasets (keys, dimensions, `ai_context`), **relationships between tables**, ER model, data-quality rules, metrics |
 | **Ontology** | Business object/link **types**, properties, functions, actions (may reference a dataset) |
 
-- **Relationships = foreign keys (Ossie):** a relationship is `from` (the **many** side, holds the FK) → `to` (the **one** side, its PK/unique key), with order-aligned `from_columns` / `to_columns` (composite supported), plus a **`join_type`** (`left` default / `inner` / `right` / `full` — our extension; the metric engine uses it). **Cardinality is derived, not stored** — 1:N by default; 1:1 when `from_columns` are also unique; **M:N = two relationships via a junction dataset**. Authored manually (no auto-discovery); they are the **join graph** for cross-dataset metrics. (Distinct from an ontology **LinkType**: that is a semantic link with no join type.) See [Model tab / semantic model design](semantic_model_design.md).
+- **Relationships = foreign keys (Ossie):** a relationship is `from` (the **many** side, holds the FK) → `to` (the **one** side, its PK/unique key), with order-aligned `from_columns` / `to_columns` (composite supported), plus a **`join_type`** (`left` default / `inner` / `right` / `full` — our extension; the metric engine uses it). **Cardinality is derived, not stored** — 1:N by default; 1:1 when `from_columns` are also unique; **M:N = two relationships via a junction dataset**. Authored manually (no auto-discovery); they are the **join graph** for cross-dataset metrics. (Distinct from an ontology **LinkType**: that is a semantic link with no join type.) See [Model tab / semantic model design](data-layer-semantic-model.md).
 - **Dataset semantics:** `primary_key` + `unique_keys`, column **dimensions** (categorical/time), and **`ai_context`** (instructions / synonyms / examples) for agent grounding.
 - **Data quality:** declarative rule types (not-null, unique, range, referential, freshness), runs, results, and **alerts surfaced in the Model view** — rule type + parameters, not arbitrary expressions.
-- **Metrics:** **model-level** (span datasets via relationships), with `datatype`, `ai_context`, and an expression. Computed by querying the tables on demand (no materialization, no cache in v1), with lineage. The **expression strategy is under review** — restricted DSL vs Ossie `expression.dialects` (SQL) — see [the design doc](semantic_model_design.md#metrics-strategy--still-open).
+- **Metrics:** **model-level** (span datasets via relationships), with `datatype`, `ai_context`, and an expression. Computed by querying the tables on demand (no materialization, no cache in v1), with lineage. The **expression strategy is under review** — restricted DSL vs Ossie `expression.dialects` (SQL) — see [the design doc](data-layer-semantic-model.md#metrics-strategy--still-open).
 - **Export / import:** the semantic model can be **exported as Apache Ossie YAML** (and later imported) — interoperability + governance artifact.
 - **Change impact:** a schema or relationship/definition change surfaces affected metrics, ER edges, object types, and agents.
 
@@ -232,7 +234,7 @@ Deliverables:
 | 10 | **Data files can be uploaded** — parsed and loaded into PostgreSQL tables; the raw file is stored in object storage. |
 | 11 | **Data sources are tagged by layer** — Console → Data Sources marks each source as data-layer or ontology-layer; data-layer sources back datasets and file ingest, ontology-layer sources back the graph. PostgreSQL sources are data-capable by default (untagged allowed); `ontology` is an explicit exclusion. |
 | 12 | **Predictive analysis = LLM reasoning + Python + trend extrapolation** — the agent writes Python for analysis (sandboxed); ontology Functions are not required (layered in later). No ML model training or hosting. |
-| 13 | **Quality is declarative** (rule type + parameters). **Metrics expression strategy is under review** — restricted DSL vs Ossie `expression.dialects` (SQL); see [Model tab design](semantic_model_design.md#metrics-strategy--still-open). |
+| 13 | **Quality is declarative** (rule type + parameters). **Metrics expression strategy is under review** — restricted DSL vs Ossie `expression.dialects` (SQL); see [Model tab design](data-layer-semantic-model.md#metrics-strategy--still-open). |
 | 14 | **New data resources inherit dataset ACL** — joins/metrics/quality/reports are dataset-scoped; no new `resource_type`. |
 | 15 | **Separate read vs manage permissions** — `data:read` (catalog/profile/quality/rows for all roles) vs `data:write` (register/ingest/joins/metrics/quality for data engineers); `console:datasets` stays console-scoped. |
 | 16 | **Dataset → knowledge has two paths** — promote to an object type (ontology) and cite as agent evidence; dataset rows are not ingested into KB/RAG in v1. |

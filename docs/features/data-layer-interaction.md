@@ -2,7 +2,7 @@
 
 UX for the two Data-layer apps — **Datasets** (Catalog + Model tabs) **· Data Explorer**. Goal: a data engineer, a data BA, and a business user each reach their task with **zero training**. Phase 2–3 surfaces (quality, metrics, AI dashboards) are sketched, not specced.
 
-**Companion docs:** [Data layer plan](data_layer_plan.md) · [Implementation design](data_layer_implementation.md) · [Design system](../design-system.md)
+**Companion docs:** [Data layer plan](data-layer.md) · [Implementation design](data-layer-implementation.md) · [Design system](../design-system.md)
 
 ---
 

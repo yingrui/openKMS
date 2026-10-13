@@ -2,7 +2,7 @@
 
 Design for the Datasets app's **Model** tab and for how **dataset relationships** feed the semantic model, based on the **Apache Ossie** semantic-model spec (`semantic_model` → `datasets` + `relationships` + `metrics`) and the dbt Semantic Layer OSI document (`semantic_models[]` / `metrics[]` / `saved_queries[]`).
 
-Companions: [Ossie research](ossie_semantic_layer.md) · [Data layer plan](data_layer_plan.md) · [Interaction design](data_layer_interaction.md) · [Implementation design](data_layer_implementation.md)
+Companions: [Ossie research](../research/ossie_semantic_layer.md) · [Data layer plan](data-layer.md) · [Interaction design](data-layer-interaction.md) · [Implementation design](data-layer-implementation.md)
 
 ---
 
