@@ -66,7 +66,7 @@ datasets  ──(primary_key / unique_keys)──►  relationship.to
 
 ## Model tab functionality
 
-The **semantic model** is authored across two places, with exactly one home per concept: **Catalog** (datasets, fields, relationships — where the *structure* is configured) and **Model** (cross-dataset metrics and queries). The Model tab is the **cross-dataset** layer. Sections:
+The **semantic model** is authored across two places, with exactly one home per concept: **Catalog** (datasets, fields, relationships — where the *structure* is configured) and **Model** (cross-dataset metrics and queries). The Model tab is the **cross-dataset** layer and opens with a **guided setup** (datasets → relationships → metrics → queries; a direct action per step). Sections:
 
 ### 1. Overview
 - **Model health**: counts of datasets, relationships, metrics; quality failing; **datasets without a primary key** (a relationship/`to` problem); **orphans** (no relationships).

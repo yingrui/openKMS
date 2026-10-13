@@ -22,7 +22,7 @@ import { FormField } from '../../styles/design-system';
 const FILTER_OPS = ['=', '!=', '>', '>=', '<', '<=', 'like', 'in', 'not_in', 'is_null', 'is_not_null'];
 
 /** Model → Queries: author saved queries (metrics + dimensions + filter) and run them. */
-export function ModelQueriesSection() {
+export function ModelQueriesSection({ openCreateSignal = 0 }: { openCreateSignal?: number }) {
   const { t } = useTranslation('ontology');
   const confirm = useConfirm();
 
@@ -105,6 +105,11 @@ export function ModelQueriesSection() {
     setDescription('');
     setShowForm(true);
   };
+
+  useEffect(() => {
+    if (openCreateSignal > 0) openCreate();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [openCreateSignal]);
 
   const openEdit = (q: SavedQueryResponse) => {
     setEditing(q);

@@ -92,6 +92,7 @@ Why it's intuitive: the user only ever answers one question at a time (which fil
 
 The Model tab is the **cross-dataset** layer: **Metrics** and **Queries** over the datasets. Datasets, their **fields**, and their **relationships** (and the ER map) live under **Catalog**, where they are configured. **Function spec:** [semantic model spec](data-layer-semantic-model.md) · **definitions/surfaces:** [data layer](data-layer.md#the-ossie-class-model-definitions-and-where-each-is-managed).
 
+- **Setup guide** — a step checklist at the top (register datasets → connect them → define a metric → save a query) with a **direct action per step** and a progress count; hidden when done, re-openable from the header menu.
 - **Metrics** — model-level aggregate **expressions** (Ossie `expression.dialects`) authored by a data engineer, with **AI-assist** to draft them; run read-only (timeout + row cap).
 - **Queries** — a query pins metrics + **dimensions (fields)** + filter and re-runs.
 - **Export / Import** — the Ossie document, tucked into the header overflow menu (an interchange *output*, not the primary action).

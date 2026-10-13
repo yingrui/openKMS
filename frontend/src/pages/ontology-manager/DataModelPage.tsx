@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { Loader2, MoreHorizontal } from 'lucide-react';
 import { toast } from 'sonner';
 import { fetchDatasets, type DatasetResponse } from '../../data/datasetsApi';
@@ -18,6 +18,7 @@ import { EntityViewStat, EntityViewStats } from './EntityViewShell';
 import { DatasetAppTabs } from './DatasetAppTabs';
 import { ModelMetricsSection } from './ModelMetricsSection';
 import { ModelQueriesSection } from './ModelQueriesSection';
+import { ModelSetupGuide } from './ModelSetupGuide';
 import '../ontology/ontology-admin.scss';
 
 function datasetLabel(d: DatasetResponse): string {
@@ -40,8 +41,18 @@ function download(filename: string, text: string, type: string): void {
  */
 export function DataModelPage() {
   const { t } = useTranslation('ontology');
+  const navigate = useNavigate();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [importing, setImporting] = useState(false);
+  const [metricsSignal, setMetricsSignal] = useState(0);
+  const [queriesSignal, setQueriesSignal] = useState(0);
+  const [setupDismissed, setSetupDismissed] = useState(() => {
+    try {
+      return localStorage.getItem('openkms:dataModel:setupDismissed') === '1';
+    } catch {
+      return false;
+    }
+  });
   const [datasets, setDatasets] = useState<DatasetResponse[]>([]);
   const [joins, setJoins] = useState<DatasetJoinResponse[]>([]);
   const [rules, setRules] = useState<QualityRuleResponse[]>([]);
@@ -115,6 +126,24 @@ export function DataModelPage() {
     }
   };
 
+  const dismissSetup = () => {
+    setSetupDismissed(true);
+    try {
+      localStorage.setItem('openkms:dataModel:setupDismissed', '1');
+    } catch {
+      /* ignore */
+    }
+  };
+
+  const showSetup = () => {
+    setSetupDismissed(false);
+    try {
+      localStorage.removeItem('openkms:dataModel:setupDismissed');
+    } catch {
+      /* ignore */
+    }
+  };
+
   const datasetOfRule = useMemo(() => new Map(rules.map((r) => [r.id, r.dataset_id])), [rules]);
   const alerts = rules.filter((r) => r.last_status === 'failed' || r.last_status === 'error');
   const nameOf = (id: string) => {
@@ -143,6 +172,9 @@ export function DataModelPage() {
             <MoreHorizontal size={16} aria-hidden />
           </summary>
           <div className="model-menu__panel">
+            <button type="button" onClick={showSetup}>
+              {t('dataModel.setupShow')}
+            </button>
             <button type="button" onClick={() => void handleExport('json')}>
               {t('dataModel.exportJson')}
             </button>
@@ -171,6 +203,22 @@ export function DataModelPage() {
       </div>
       <DatasetAppTabs />
       <div className="ontology-admin-content">
+        {!setupDismissed && (
+          <ModelSetupGuide
+            datasets={datasets.length}
+            relationships={joins.length}
+            metrics={metricCount}
+            queries={queryCount}
+            onOpenDatasets={() => navigate('/datasets')}
+            onConnectDatasets={() =>
+              navigate(datasets[0] ? `/datasets/${datasets[0].id}/relationships` : '/datasets')
+            }
+            onAddMetric={() => setMetricsSignal((n) => n + 1)}
+            onAddQuery={() => setQueriesSignal((n) => n + 1)}
+            onExport={() => void handleExport('json')}
+            onDismiss={dismissSetup}
+          />
+        )}
         <EntityViewStats>
           <EntityViewStat label={t('dataModel.datasets')} value={datasets.length} />
           <EntityViewStat label={t('dataModel.joins')} value={joins.length} />
@@ -179,9 +227,9 @@ export function DataModelPage() {
           <EntityViewStat label={t('dataModel.failingRules')} value={alerts.length} />
         </EntityViewStats>
 
-        <ModelMetricsSection />
+        <ModelMetricsSection openCreateSignal={metricsSignal} />
 
-        <ModelQueriesSection />
+        <ModelQueriesSection openCreateSignal={queriesSignal} />
 
         <section>
           <h2>{t('dataModel.qualityAlerts')}</h2>

@@ -21,7 +21,7 @@ import { FormField } from '../../styles/design-system';
 const METRIC_TYPES = ['simple', 'ratio', 'derived', 'cumulative', 'conversion'] as const;
 
 /** Model → Metrics: author model-level metrics (Ossie SQL expressions) and run them. */
-export function ModelMetricsSection() {
+export function ModelMetricsSection({ openCreateSignal = 0 }: { openCreateSignal?: number }) {
   const { t } = useTranslation('ontology');
   const confirm = useConfirm();
 
@@ -88,6 +88,11 @@ export function ModelMetricsSection() {
     setAiInstructions('');
     setShowForm(true);
   };
+
+  useEffect(() => {
+    if (openCreateSignal > 0) openCreate();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [openCreateSignal]);
 
   const openEdit = (m: MetricResponse) => {
     setEditing(m);
