@@ -147,7 +147,7 @@ So a table is described (catalog), modeled (fields/relationships), trusted (qual
 | 18 | **Relationships are foreign keys, not cardinality** — `from` (many) → `to` (one), `from_columns`/`to_columns`, composite, `required`; 1:1 via unique keys; M:N via a junction dataset. |
 | 19 | **Datasets carry `unique_keys` + `ai_context`** for agent grounding. |
 | 20 | **A relationship carries only edge facts** — FK direction (`from`/`to`) + column mapping + `required` (optional vs required match). No `base` (that is a metric/query anchor) and no `left`/`right`/`full` (`right` ≡ a swapped `left`; the query anchor fixes the join side, so an edge-level `right` was a footgun). |
-| 21 | **A semantic model is a named scope** over the **shared** base (datasets, columns, relationships — Catalog-owned). It owns **fields** and **metrics** (+ dataset membership, `ai_context`); export/import is per model. Existing metrics/fields migrate into an auto-created **Default model**. |
+| 21 | **A semantic model is a named scope** over the **shared** base (datasets, columns, relationships — Catalog-owned). It owns **fields** and **metrics** (+ dataset membership, `ai_context`); export/import is per model. There is no default model — if none exists, the list is empty. |
 | 22 | **Columns are physical (Catalog); fields are model-scoped.** A column carries a maintained `description`; a field is that column (or a computed expression) **as used in one model** — with its `role` and `ai_context`. So a field's `ai_context` can differ per model. |
 | 23 | **No queries in the semantic model.** A saved query is a **consumption** artifact (Data Explorer), not part of the Ossie `semantic_model` (`datasets` / `fields` / `metrics` / `relationships`). `saved_queries` was removed. |
 

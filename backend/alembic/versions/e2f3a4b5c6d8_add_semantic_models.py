@@ -5,8 +5,8 @@ Revises: d1e2f3a4b5c7
 Create Date: 2026-06-08
 
 A semantic model is a named scope over the shared data layer (datasets, fields,
-relationships stay Catalog-owned). Metrics and queries belong to exactly one
-model. Existing metrics/queries are attached to an auto-created "Default model".
+relationships stay Catalog-owned). Metrics and queries belong to exactly one model;
+pre-existing global metrics/queries are dropped (they have no model to belong to).
 """
 
 from __future__ import annotations
@@ -42,7 +42,6 @@ def upgrade() -> None:
         ),
         sa.PrimaryKeyConstraint("id"),
     )
-    op.execute("INSERT INTO semantic_models (id, name) VALUES ('default', 'Default model')")
 
     op.create_table(
         "semantic_model_datasets",
@@ -61,9 +60,12 @@ def upgrade() -> None:
         "ix_semantic_model_datasets_dataset_id", "semantic_model_datasets", ["dataset_id"]
     )
 
+    # Pre-existing metrics/queries were global (no semantic model); they have no home
+    # now that a metric belongs to a model, so they are dropped rather than parked in a
+    # fabricated "Default" model.
     for table in ("metric_definitions", "saved_queries"):
         op.add_column(table, sa.Column("semantic_model_id", sa.String(length=64), nullable=True))
-        op.execute(f"UPDATE {table} SET semantic_model_id = 'default'")
+        op.execute(f"DELETE FROM {table}")
         op.alter_column(table, "semantic_model_id", nullable=False)
         op.create_foreign_key(
             f"{table}_semantic_model_id_fkey",
@@ -74,12 +76,6 @@ def upgrade() -> None:
             ondelete="CASCADE",
         )
         op.create_index(f"ix_{table}_semantic_model_id", table, ["semantic_model_id"])
-
-    # The default model covers every existing dataset.
-    op.execute(
-        "INSERT INTO semantic_model_datasets (semantic_model_id, dataset_id) "
-        "SELECT 'default', id FROM datasets"
-    )
 
 
 def downgrade() -> None:

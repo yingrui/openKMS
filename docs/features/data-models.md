@@ -226,7 +226,7 @@ Schema for every persisted table. Grouped by area; see the matching feature page
 ### SemanticModel
 
 - `id`, `name`, `description`, `ai_context` (JSONB), `created_by` / `created_by_name`, `created_at`, `updated_at`
-- A **named scope** over the shared data layer (Ossie document container). Owns its **fields** and **metrics**; its dataset scope is `semantic_model_datasets`. Datasets/columns/relationships stay Catalog-owned (shared). An auto-created **Default model** holds pre-existing fields/metrics.
+- A **named scope** over the shared data layer (Ossie document container). Owns its **fields** and **metrics**; its dataset scope is `semantic_model_datasets`. Datasets/columns/relationships stay Catalog-owned (shared). Users create models explicitly — there is no auto-created default.
 
 ### SemanticModelDataset
 
