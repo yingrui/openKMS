@@ -148,7 +148,15 @@
     "datasetsInScope": "范围内的数据集",
     "noDatasetsInScope": "暂无数据集 —— 编辑模型来添加。",
     "setupEditModel": "编辑模型",
-    "fields": "字段"
+    "fields": "字段",
+    "wizardStepDetails": "基本信息",
+    "wizardStepDatasets": "数据集",
+    "wizardNext": "下一步",
+    "wizardBack": "上一步",
+    "wizardSelectAll": "全选",
+    "wizardClear": "清除",
+    "wizardSelected": "已选 {{n}} 个",
+    "datasetSearch": "搜索数据集"
   },
   "datasets": {
     "title": "数据集",

@@ -1,44 +1,32 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { Boxes, Loader2, MoreHorizontal, Plus } from 'lucide-react';
 import { toast } from 'sonner';
-import { fetchDatasets, type DatasetResponse } from '../../data/datasetsApi';
 import {
-  createSemanticModel,
   fetchSemanticModels,
   importSemanticModel,
   type SemanticModelResponse,
 } from '../../data/semanticModelsApi';
-import { Dialog, EmptyState, FormField } from '../../styles/design-system';
+import { EmptyState } from '../../styles/design-system';
 import { DatasetAppTabs } from './DatasetAppTabs';
+import { SemanticModelWizard } from './SemanticModelWizard';
 import '../ontology/ontology-admin.scss';
 
-function datasetLabel(d: DatasetResponse): string {
-  return d.display_name || `${d.schema_name}.${d.table_name}`;
-}
-
-/** Model tab: the list of semantic models. Open one to edit its scope, metrics, and queries. */
+/** Model tab: the list of semantic models. Open one to edit its scope, fields, and metrics. */
 export function DataModelPage() {
   const { t } = useTranslation('ontology');
+  const navigate = useNavigate();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [models, setModels] = useState<SemanticModelResponse[]>([]);
-  const [datasets, setDatasets] = useState<DatasetResponse[]>([]);
   const [loading, setLoading] = useState(true);
   const [importing, setImporting] = useState(false);
-
-  const [showForm, setShowForm] = useState(false);
-  const [name, setName] = useState('');
-  const [description, setDescription] = useState('');
-  const [selectedDatasets, setSelectedDatasets] = useState<string[]>([]);
-  const [submitting, setSubmitting] = useState(false);
+  const [showWizard, setShowWizard] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const [m, ds] = await Promise.all([fetchSemanticModels(), fetchDatasets()]);
-      setModels(m.items);
-      setDatasets(ds.items);
+      setModels((await fetchSemanticModels()).items);
     } catch (e) {
       toast.error(e instanceof Error ? e.message : t('datasets.loadFailed'));
     } finally {
@@ -49,35 +37,6 @@ export function DataModelPage() {
   useEffect(() => {
     void load();
   }, [load]);
-
-  const openCreate = () => {
-    setName('');
-    setDescription('');
-    setSelectedDatasets([]);
-    setShowForm(true);
-  };
-
-  const handleCreate = async () => {
-    if (!name.trim()) {
-      toast.error(t('dataModel.modelNameRequired'));
-      return;
-    }
-    setSubmitting(true);
-    try {
-      await createSemanticModel({
-        name: name.trim(),
-        description: description.trim() || null,
-        dataset_ids: selectedDatasets,
-      });
-      toast.success(t('dataModel.modelCreated'));
-      setShowForm(false);
-      await load();
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : t('dataModel.modelCreateFailed'));
-    } finally {
-      setSubmitting(false);
-    }
-  };
 
   const handleImportFile = async (file: File) => {
     setImporting(true);
@@ -103,11 +62,6 @@ export function DataModelPage() {
     }
   };
 
-  const toggleDataset = (id: string) =>
-    setSelectedDatasets((prev) =>
-      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id],
-    );
-
   return (
     <div className="ontology-admin">
       <div className="page-header model-page-header">
@@ -116,7 +70,11 @@ export function DataModelPage() {
           <p className="page-subtitle">{t('dataModel.subtitle')}</p>
         </div>
         <div className="dataset-columns__actions">
-          <button type="button" className="btn btn-primary btn-sm" onClick={openCreate}>
+          <button
+            type="button"
+            className="btn btn-primary btn-sm"
+            onClick={() => setShowWizard(true)}
+          >
             <Plus size={14} aria-hidden />
             {t('dataModel.newModel')}
           </button>
@@ -159,7 +117,11 @@ export function DataModelPage() {
             title={t('dataModel.modelsEmpty')}
             description={t('dataModel.modelsEmptyHint')}
             action={
-              <button type="button" className="btn btn-primary" onClick={openCreate}>
+              <button
+                type="button"
+                className="btn btn-primary"
+                onClick={() => setShowWizard(true)}
+              >
                 <Plus size={16} aria-hidden />
                 {t('dataModel.newModel')}
               </button>
@@ -193,55 +155,15 @@ export function DataModelPage() {
         )}
       </div>
 
-      <Dialog
-        open={showForm}
-        onClose={() => !submitting && setShowForm(false)}
-        closeDisabled={submitting}
-        title={t('dataModel.newModel')}
-        closeAriaLabel={t('shared.cancel')}
-        size="sm"
-        footer={
-          <>
-            <button
-              type="button"
-              className="btn btn-secondary"
-              onClick={() => !submitting && setShowForm(false)}
-              disabled={submitting}
-            >
-              {t('shared.cancel')}
-            </button>
-            <button
-              type="button"
-              className="btn btn-primary"
-              onClick={() => void handleCreate()}
-              disabled={submitting || !name.trim()}
-            >
-              {submitting ? t('shared.saving') : t('datasets.create')}
-            </button>
-          </>
-        }
-      >
-        <FormField label={t('dataModel.modelName')}>
-          <input type="text" value={name} onChange={(e) => setName(e.target.value)} />
-        </FormField>
-        <FormField label={t('dataModel.modelDescription')}>
-          <textarea rows={2} value={description} onChange={(e) => setDescription(e.target.value)} />
-        </FormField>
-        <FormField label={t('dataModel.modelDatasets')} hint={t('dataModel.modelDatasetsHint')}>
-          <div className="dataset-pk-list">
-            {datasets.map((d) => (
-              <label key={d.id} className="ds-check-row">
-                <input
-                  type="checkbox"
-                  checked={selectedDatasets.includes(d.id)}
-                  onChange={() => toggleDataset(d.id)}
-                />
-                <span>{datasetLabel(d)}</span>
-              </label>
-            ))}
-          </div>
-        </FormField>
-      </Dialog>
+      <SemanticModelWizard
+        open={showWizard}
+        onClose={() => setShowWizard(false)}
+        onCreated={(model) => {
+          setShowWizard(false);
+          void load();
+          navigate(`/data-model/${model.id}`);
+        }}
+      />
     </div>
   );
 }

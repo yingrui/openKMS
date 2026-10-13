@@ -1900,3 +1900,100 @@ select.console-form-control {
     color: var(--color-accent);
   }
 }
+
+/* New semantic model: stepwise dialog. */
+.model-wizard__steps {
+  list-style: none;
+  display: flex;
+  gap: var(--space-4);
+  margin: 0 0 var(--space-4);
+  padding: 0;
+}
+
+.model-wizard__step {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+
+  &.is-current {
+    color: var(--color-text);
+    font-weight: var(--font-weight-medium, 500);
+  }
+
+  &.is-done {
+    color: var(--color-text-secondary);
+  }
+}
+
+.model-wizard__index {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.25rem;
+  height: 1.25rem;
+  border-radius: 50%;
+  border: 1px solid var(--color-border);
+  font-size: var(--text-xs, 0.75rem);
+}
+
+.model-wizard__pane {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.model-wizard__dataset-toolbar {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.model-wizard__search {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex: 1 1 auto;
+  padding: var(--space-1) var(--space-3);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-bg-muted);
+  color: var(--color-text-muted);
+
+  input {
+    flex: 1 1 auto;
+    border: none;
+    background: transparent;
+    color: var(--color-text);
+    font: inherit;
+
+    &:focus {
+      outline: none;
+    }
+  }
+}
+
+.model-wizard__datasets {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  max-height: 320px;
+  overflow-y: auto;
+  padding: var(--space-3);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+}
+
+.model-wizard__ds {
+  color: var(--color-text-muted);
+  font-style: normal;
+  font-size: var(--text-xs, 0.75rem);
+}
+
+.model-wizard__count {
+  margin: 0;
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+}

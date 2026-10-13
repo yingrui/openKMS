@@ -148,7 +148,15 @@
     "datasetsInScope": "Datasets in scope",
     "noDatasetsInScope": "No datasets yet — edit the model to add some.",
     "setupEditModel": "Edit model",
-    "fields": "Fields"
+    "fields": "Fields",
+    "wizardStepDetails": "Details",
+    "wizardStepDatasets": "Datasets",
+    "wizardNext": "Next",
+    "wizardBack": "Back",
+    "wizardSelectAll": "Select all",
+    "wizardClear": "Clear",
+    "wizardSelected": "{{n}} selected",
+    "datasetSearch": "Search datasets"
   },
   "datasets": {
     "title": "Datasets",
