@@ -220,3 +220,4 @@ nav:
       - Data layer implementation design (Phase 0–1): research/data_layer_implementation.md
       - Data layer interaction design: research/data_layer_interaction.md
       - Data grid selection: research/data_grid_selection.md
+      - Apache Ossie semantic layer: research/ossie_semantic_layer.md
