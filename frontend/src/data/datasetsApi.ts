@@ -100,14 +100,47 @@ export interface DatasetRowsResponse {
   total: number;
   limit: number;
   offset: number;
+  next_after: string | null;
 }
 
 export async function fetchDatasetRows(
   id: string,
-  params?: { limit?: number; offset?: number }
+  params?: { limit?: number; offset?: number; sort?: string; order?: 'asc' | 'desc'; after?: string },
 ): Promise<DatasetRowsResponse> {
   return request<DatasetRowsResponse>(`/api/datasets/${id}/rows`, {
-    query: { limit: params?.limit, offset: params?.offset },
+    query: {
+      limit: params?.limit,
+      offset: params?.offset,
+      sort: params?.sort,
+      order: params?.order,
+      after: params?.after,
+    },
+  });
+}
+
+export interface DatasetRowOp {
+  op: 'insert' | 'update' | 'delete';
+  pk?: Record<string, unknown>;
+  values?: Record<string, unknown>;
+  expect?: Record<string, unknown>;
+}
+
+export interface DatasetRowsApplyResponse {
+  inserted: number;
+  updated: number;
+  deleted: number;
+  dry_run: boolean;
+}
+
+export async function applyDatasetRows(
+  id: string,
+  ops: DatasetRowOp[],
+  dryRun = false,
+): Promise<DatasetRowsApplyResponse> {
+  return request<DatasetRowsApplyResponse>(`/api/datasets/${id}/rows/apply`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ ops, dry_run: dryRun }),
   });
 }
 
