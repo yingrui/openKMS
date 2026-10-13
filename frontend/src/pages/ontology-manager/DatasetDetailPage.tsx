@@ -46,6 +46,7 @@ import './dataset-detail.scss';
 
 type DatasetDetailContext = {
   dataset: DatasetResponse;
+  setDataset: (d: DatasetResponse) => void;
   displayName: string;
   setDisplayName: (v: string) => void;
   description: string;
@@ -226,6 +227,7 @@ export function DatasetDetailPage() {
     if (!dataset) return null;
     return {
       dataset,
+      setDataset,
       displayName,
       setDisplayName,
       description,
@@ -304,6 +306,7 @@ export function DatasetDetailPage() {
           { to: `${base}/lineage`, label: t('datasets.lineage') },
           { to: `${base}/quality`, label: t('datasets.quality') },
           { to: `${base}/metrics`, label: t('datasets.metrics') },
+          { to: `${base}/settings`, label: t('datasets.settings') },
           { to: `${base}/sharing`, label: t('datasets.sharing') },
         ]}
       >

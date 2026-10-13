@@ -258,8 +258,8 @@ const DatasetUsageTab = lazy(() =>
 const DatasetSharingTab = lazy(() =>
   import('./pages/ontology-manager/DatasetDetailPage').then((m) => ({ default: m.DatasetSharingTab })),
 );
-const DatasetSettingsRedirect = lazy(() =>
-  import('./pages/ontology-manager/DatasetDetailPage').then((m) => ({ default: m.DatasetSettingsRedirect })),
+const DatasetSettingsTab = lazy(() =>
+  import('./pages/ontology-manager/DatasetSettingsTab').then((m) => ({ default: m.DatasetSettingsTab })),
 );
 const KnowledgeMap = lazy(() => import('./pages/knowledge-map/KnowledgeMap').then((m) => ({ default: m.KnowledgeMap })));
 const ProjectList = lazy(() => import('./pages/agents/ProjectList').then((m) => ({ default: m.ProjectList })));
@@ -413,7 +413,7 @@ function App() {
           <Route path="data-explorer" element={<DataExplorerPage />} />
           <Route path="data-explorer/:id" element={<ExplorerReportDetail />} />
           <Route path="datasets" element={<DatasetsListPage />} />
-          <Route path="datasets/:id/settings" element={<DatasetSettingsRedirect />} />
+          <Route path="datasets/:id/settings" element={<DatasetSettingsTab />} />
           <Route path="datasets/:id" element={<DatasetManagerDetailPage />}>
             <Route index element={<DatasetOverviewTab />} />
             <Route path="data" element={<DatasetDataTab />} />

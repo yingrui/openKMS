@@ -67,6 +67,8 @@ export function ConnectorOutputSlotField({
         tags: [],
         business_definition: null,
         sensitivity: null,
+        primary_key_columns: null,
+        is_editable: false,
         created_at: now,
         updated_at: now,
       };

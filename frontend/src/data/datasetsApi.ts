@@ -14,6 +14,8 @@ export interface DatasetResponse {
   tags: string[];
   business_definition: string | null;
   sensitivity: string | null;
+  primary_key_columns: string[] | null;
+  is_editable: boolean;
   created_at: string;
   updated_at: string;
 }
@@ -68,6 +70,8 @@ export async function updateDataset(
     tags?: string[];
     business_definition?: string | null;
     sensitivity?: string | null;
+    primary_key_columns?: string[] | null;
+    is_editable?: boolean;
   }
 ): Promise<DatasetResponse> {
   return request<DatasetResponse>(`/api/datasets/${id}`, {
