@@ -83,45 +83,43 @@ The Datasets app adds the **「Add tables」** flow (see interaction design); th
 
 ---
 
-## 3. Dataset joins → ER model
+## 3. Relationships → ER model (Apache Ossie)
 
-### Model — new table `dataset_joins`
+> **Superseded:** the v1 `dataset_joins` (source/target / **cardinality** / join_columns) predates Ossie alignment. The target design is **Ossie relationships** (FK edges) — see [Model tab / semantic model design](semantic_model_design.md) for the migration.
+
+### Model — `dataset_joins` → `relationships`
 
 | Column | Type | Notes |
 |--------|------|-------|
 | `id` | `String(64)` PK | uuid4 |
-| `name` | `String(256)` nullable | optional label |
-| `source_dataset_id` | FK → `datasets.id` CASCADE | from side |
-| `target_dataset_id` | FK → `datasets.id` CASCADE | to side |
-| `cardinality` | `String(16)` | `one-to-one` / `one-to-many` |
-| `join_columns` | `JSONB` | `[{ "source": "ts_code", "target": "ts_code" }, …]` |
+| `name` | `String(256)` nullable | unique relationship id |
+| `from_dataset_id` | FK → `datasets.id` CASCADE | **many** side (holds the FK) |
+| `to_dataset_id` | FK → `datasets.id` CASCADE | **one** side (PK/unique) |
+| `from_columns` | `JSONB` | FK columns, order-aligned with `to_columns` |
+| `to_columns` | `JSONB` | referenced key columns |
+| `ai_context` | `JSONB` nullable | instructions / synonyms / examples |
 | `description` | `Text` nullable | |
 | `created_by` / `created_by_name` | as elsewhere | |
 | `created_at` / `updated_at` | timestamps | |
 
-Constraints: `source_dataset_id != target_dataset_id` (check), unique `(source_dataset_id, target_dataset_id, join_columns)`.
+- **`cardinality` is dropped** — a FK is many→one. 1:1 = `from_columns` unique on the `from` dataset; M:N = two relationships via a junction dataset.
+- Constraints: `from_dataset_id != to_dataset_id`; `len(from_columns) == len(to_columns) >= 1`.
 
-### Validation (service `app/services/data_layer/joins.py`)
+### Validation (`app/services/data_layer/joins.py`)
 
 1. Both datasets exist and are PostgreSQL-backed.
-2. Every `source`/`target` column passes `is_valid_identifier`.
-3. Columns exist in each dataset's `information_schema.columns` (reuse the metadata query).
-4. `cardinality` ∈ {`one-to-one`, `one-to-many`}.
+2. Every column passes `is_valid_identifier` and exists in its dataset (`information_schema.columns`).
+3. `from_columns` / `to_columns` are order-aligned and equal length (composite supported).
+4. Warn/require: `to_columns` is the `to` dataset's `primary_key` or one of its `unique_keys`.
 
 ### API
 
-- `POST /api/datasets/joins` (create) · `GET /api/datasets/joins?dataset_id=` (list both directions) · `PUT /api/datasets/joins/{id}` · `DELETE /api/datasets/joins/{id}`.
+- `POST /api/dataset-joins` (create) · `GET /api/dataset-joins?dataset_id=` · `PUT/DELETE /api/dataset-joins/{id}` — payload uses `from_dataset_id` / `to_dataset_id` / `from_columns` / `to_columns`.
 - Read requires `data:read` + `dataset_visible` on **both** datasets; write requires `data:write` + `require_dataset_write` on both.
 
 ### ER rendering (frontend)
 
-Reuse the existing ontology schema-graph engine rather than a new graph library:
-
-- `frontend/src/pages/ontology/OntologySchemaGraph.tsx` + `ontologySchemaGraphModel.ts` already render a layered node/edge diagram with per-type colors.
-- Add a `datasetErGraphModel.ts`: nodes = datasets (label = display name, stat = row count), edges = joins (label = cardinality + column pairs).
-- Render it in the **Model** view inside the Datasets app, or inside `DatasetDetailPage` as a "Relationships" tab in v1 (cheaper — reuse the detail shell and only one new page).
-
-**v1 decision:** the ER view lives in the **Datasets app's Model view** (global roll-up); `DatasetDetailPage` keeps a "Relationships" list tab (cheap, reuses EntityViewShell).
+Reuse **`react-force-graph-2d`** (already a dependency): nodes = datasets, **directed edges = relationships (many → one)**, click a node → open the dataset. (This replaced the v1 star diagram from `DatasetErDiagram`.)
 
 ---
 

@@ -88,34 +88,33 @@ Why it's intuitive: the user only ever answers one question at a time (which fil
 
 ---
 
-## Model tab (inside Datasets) — ER canvas
+## Model tab (inside Datasets) — the semantic model
 
-The model **is** the picture. Three regions:
+The Model tab authors the **semantic model** (Apache Ossie shape): **datasets + relationships + metrics**, each with `ai_context`. Sub-tabs:
+
+| Sub-tab | What it does |
+|---------|--------------|
+| **Overview** | ER graph (datasets = nodes, relationships = **directed FK edges many → one**); model health (datasets / relationships / metrics / quality failing / datasets missing a primary key); click a node → open the dataset. |
+| **Relationships** | author FK edges: **from (many)** dataset, **to (one)** dataset, ordered column pairs (composite supported), `ai_context`; inline validation (`to` must be a PK/unique key; columns exist; equal lengths). |
+| **Metrics** | model-level metrics (span datasets via relationships): measure source, aggregation, dimensions, filter, `datatype`, `ai_context`. |
+| **Semantic datasets** | per-dataset semantic config: primary key, unique keys, column dimensions (categorical/time), `ai_context` — deep physical work stays in the Catalog tab. |
+| **Export** | the semantic model as **Apache Ossie YAML** (interoperability + governance artifact; import later). |
+
+### Relationships — direction is the FK, not a cardinality
 
 ```
- ┌ datasets list ────┬──── ER canvas ──────────┬─ inspector ─┐
- │ search            │  (nodes = tables,       │  (selected   │
- │ ▸ stock_basic     │   edges = joins)        │   node/edge  │
- │ ▸ stock_trade_daily│                          │   details)  │
- │ ▸ daily_basic     │                          │              │
- │ ▸ …               │                          │              │
- └───────────────────┴──────────────────────────┴──────────────┘
+ orders ──from (many, holds FK)──▶ customers
+   order_id …                      customer_id (PK)
 ```
 
-- **Left rail** = datasets (searchable), grouped by data source. Clicking one selects/focuses it on the canvas.
-- **Canvas** reuses the ontology schema-graph layout engine (`OntologySchemaGraph`), adapted to tables: node = dataset (row count as a stat), edge = join (label = cardinality + column pair).
-- **Inspector** (right) shows the selected node's catalog + schema, or the selected edge's join columns + cardinality, with **Edit / Delete**.
+- The only choice is **which dataset holds the FK** (*“this dataset → selected”* / *“selected → this dataset”*); **cardinality is derived** — 1:N by default; 1:1 when the FK columns are also unique; **M:N = two relationships via a junction dataset**.
+- Column pairs are **order-aligned** and can be **composite**; the mapping pre-fills on name match, so the common case is “confirm, done”.
 
-### Creating a join — the one gesture to get right
+### Why it's intuitive
 
-Two gestures, both work:
-
-1. **Canvas drag (the obvious one):** drag from a table's edge → drop on another table → a join dialog opens with the column mapping **pre-filled** when column names match (`ts_code = ts_code`); user picks cardinality and confirms.
-2. **List select (the reliable one, v1):** select two datasets in the left rail → **「Connect」** → same dialog.
-
-**v1 shipping order:** ship the **dialog + list-select** first (cheap, deterministic); add **drag-to-connect** as a fast-follow. The canvas is *read+select* in v1, *draw* in v1.5.
-
-Why it's intuitive: the join dialog pre-fills the column mapping by name match, so the most common case is "confirm, done" — the machine proposes, the human approves (same philosophy as the upload preview).
+- The picture **is** the model — the graph and the relationship editor are the same object.
+- Direction is a plain question (*who holds the FK?*), not a cardinality/position puzzle.
+- Relationships are the **join graph**, so “can I write a cross-dataset metric?” is answered by the graph itself.
 
 ---
 

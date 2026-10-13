@@ -1,0 +1,131 @@
+# Model tab — semantic model design (Apache Ossie)
+
+Design for the Datasets app's **Model** tab and for how **dataset relationships** feed the semantic model, based on the **Apache Ossie** semantic-model spec (`semantic_model` → `datasets` + `relationships` + `metrics`) and the dbt Semantic Layer OSI document (`semantic_models[]` / `metrics[]` / `saved_queries[]`).
+
+Companions: [Ossie research](ossie_semantic_layer.md) · [Data layer plan](data_layer_plan.md) · [Interaction design](data_layer_interaction.md) · [Implementation design](data_layer_implementation.md)
+
+---
+
+## Ossie in one line
+
+An Ossie **semantic model** is a YAML document: **`datasets`** (physical source + keys + fields) + **`relationships`** (foreign keys) + **`metrics`** (aggregations) — with an **`ai_context`** on every entity. The **Model tab authors exactly this document**.
+
+| Ossie class | Model tab concept |
+|-------------|-------------------|
+| Semantic Model | the whole data layer (one model) |
+| Datasets (`source`, `primary_key`, `unique_keys`, `fields`, `ai_context`) | our `datasets` (physical) + semantic annotations |
+| Relationships (`from` many → `to` one, `from_columns`/`to_columns`, composite) | our dataset relationships (replaces `dataset_joins`) |
+| Metrics (model-level; `expression.dialects`; `datatype`; `ai_context`) | our metrics (model-level, cross-dataset) |
+| Dimensions / Fields | column annotations (categorical / time) |
+| `ai_context` | LLM grounding (instructions / synonyms / examples) |
+
+---
+
+## Relationship model (the core change)
+
+Today `dataset_joins` stores `source` / `target` / **`cardinality`** / `join_columns`. **Ossie relationships are foreign keys**, so we re-model to match:
+
+| Field | Meaning | Replaces |
+|-------|---------|----------|
+| `name` | unique relationship id | `name` |
+| `from` | dataset on the **many** side — **holds the FK** | `source_dataset_id` |
+| `to` | dataset on the **one** side — referenced key | `target_dataset_id` |
+| `from_columns` | FK columns (ordered) | `join_columns[].source` |
+| `to_columns` | referenced key columns (same order) | `join_columns[].target` |
+| `ai_context` | optional | — |
+| ~~`cardinality`~~ | **removed** — a FK is many→one | `cardinality` |
+
+Rules (from the spec):
+- `from_columns` / `to_columns` are **order-aligned** and the **same length**; multiple pairs = **composite** FK.
+- `to_columns` should be the `to` dataset's `primary_key` (or a `unique_key`).
+- **Cardinality is derived, not stored:**
+  - **1:N** — the default (FK on the many side).
+  - **1:1** — the `from_columns` also form a unique key on the `from` dataset.
+  - **M:N** — **two relationships through a junction dataset** (the junction is itself a dataset): `A → J` and `B → J`. No `many-to-many` type.
+- **Direction is deterministic**: the **FK holder is `from`**. The UI asks "does *this* dataset hold the FK (from) or is it referenced (to)?" — replacing the current cardinality/position juggling.
+
+### How relationships drive the semantic model
+
+```
+datasets  ──(primary_key / unique_keys)──►  relationship.to
+   │  (fk columns)                            ▲
+   └─────────────► relationship.from ─────────┘
+                        │
+              the join graph the semantic layer walks
+              to resolve **cross-dataset metrics**
+```
+
+- A relationship is the **only** way the semantic layer can combine two datasets → **no cross-dataset metric without it**.
+- The `to` side being a **key** makes the join unambiguous (cardinality is implied).
+- Composite relationships let a metric join on composite keys (e.g. `ts_code, trade_date`).
+- M:N analysis = two relationships through the junction; the metric engine walks the chain (`base → J → B`) — the "multi-hop" question is now *inherent* to the Ossie model, not optional.
+
+---
+
+## Model tab functionality
+
+The Model tab is the **authoring + governance surface of the semantic model**. Sections (top-level tabs within it):
+
+### 1. Overview
+- **ER graph**: datasets as nodes, **relationships as directed FK edges (many → one)**; click a node → open the dataset.
+- **Model health**: counts of datasets, relationships, metrics; quality failing; **datasets without a primary key** (a relationship/`to` problem); **orphans** (no relationships).
+
+### 2. Relationships
+- List + create/edit a relationship: **from (many)** dataset, **to (one)** dataset, **column pairs** (ordered, add/remove for composite), name, `ai_context`.
+- **Validation inline**: `to_columns` must be a PK/unique key; column existence; composite lengths.
+- Direction is a simple choice: *"this dataset holds the FK (from)"* vs *"this dataset is referenced (to)"*.
+
+### 3. Metrics
+- **Model-level** list (metrics span datasets; not per-dataset).
+- Author: name, **definition/description**, measure source (dataset + column/expression), aggregation, **dimensions** (group-by fields), **filter**, `datatype`, `ai_context`.
+- See the metrics-strategy decision below (DSL vs Ossie SQL expression).
+
+### 4. Semantic datasets
+- Lightweight per-dataset semantic config: **primary key**, **unique keys**, **dimensions** (categorical/time flags on columns), `ai_context`.
+- Deep physical work (register/ingest/profile/preview/row editing/quality) stays in the **Catalog** tab; the Model tab only edits the *semantic* layer.
+
+### 5. Export / Import (Ossie)
+- **Export** the semantic model as **Ossie YAML** (`semantic_model: {datasets, relationships, metrics}`) — interoperability + governance artifact; no runtime dependency.
+- **Import** an Ossie document to seed datasets/relationships/metrics.
+
+---
+
+## Data model changes
+
+| Table | Change |
+|-------|--------|
+| `datasets` | add `unique_keys` (JSONB array of arrays), `ai_context` (JSONB), dimension annotations on columns (JSONB on dataset or per-column) |
+| `dataset_joins` → **`relationships`** | rename `source_dataset_id`→`from_dataset_id`, `target_dataset_id`→`to_dataset_id`; replace `join_columns` with `from_columns`/`to_columns` (or keep ordered pairs); **drop `cardinality`**; add `ai_context` |
+| `metric_definitions` | make **model-level** (`dataset_id` → base dataset of the measure, but metrics may reference multiple datasets); add `datatype`, `ai_context`, `type` |
+
+---
+
+## Metrics strategy — still open
+
+Ossie metrics are **SQL expression strings per dialect** (`expression.dialects`), while openKMS decision #13 chose a **restricted DSL (no arbitrary SQL)** for safety. Options:
+
+| Option | Meaning |
+|--------|---------|
+| **A. DSL + export** | Author via our restricted DSL; **render** to Ossie SQL on export |
+| **B. Ossie expressions** | Adopt Ossie `expression.dialects` as the source of truth (guarded/sandboxed execution) |
+| **C. Hybrid** | DSL for the common path; an "advanced" Ossie-expression mode gated by permission |
+
+This decision **blocks** `build_metric_sql` work (currently paused) and shapes section 3 above.
+
+---
+
+## Migration from the current implementation
+
+1. **Relationships**: `dataset_joins` → Ossie FK shape (rename, drop cardinality, split columns); migrate existing rows (`source` = from/many, `target` = to/one — matches today's stored direction).
+2. **Datasets**: add `unique_keys`, `ai_context`.
+3. **Metrics**: decide A/B/C; if A, keep `metric_definitions` and add an Ossie render path.
+4. **Model tab UI**: replace the joins table with the Relationship editor + ER graph + model-level Metrics + Export.
+5. **Skill**: `datasets joins …` → relationship commands (`from`/`to`/columns); `explorer`/metric commands follow the metrics decision.
+
+## Open questions
+
+- Metrics A/B/C (above).
+- Dimensions/measures: annotate **on the dataset** or as **schema-level fields** (per the manifest's `fields`)? 
+- `ai_context`: authored by users, generated by agents, or both?
+- Do we **import** external Ossie models, or export-only for v1?
+- Where do **saved queries** (manifest) live — Model tab, or Data Explorer?

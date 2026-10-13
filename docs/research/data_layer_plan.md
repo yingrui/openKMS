@@ -2,7 +2,7 @@
 
 **Status:** draft plan (nothing shipped). **Positioning:** *Route B — the data layer is a knowledge substrate for agents, not a data-engineering platform.*
 
-**Related:** [Goals — unified layer for Data for AI](../goals.md#goals-unified-source) · [Development plan](../development_plan.md) · [Ontology Manager alignment](ontology_manager_alignment.md) · [Data models](../features/data-models.md) · [Connectors](../features/connectors.md) · [Object Explorer](../features/object-explorer.md) · [Implementation design (Phase 0–1)](data_layer_implementation.md) · [Interaction design](data_layer_interaction.md)
+**Related:** [Goals — unified layer for Data for AI](../goals.md#goals-unified-source) · [Development plan](../development_plan.md) · [Ontology Manager alignment](ontology_manager_alignment.md) · [Data models](../features/data-models.md) · [Connectors](../features/connectors.md) · [Object Explorer](../features/object-explorer.md) · [Implementation design (Phase 0–1)](data_layer_implementation.md) · [Interaction design](data_layer_interaction.md) · [Model tab / semantic model design](semantic_model_design.md) · [Apache Ossie research](ossie_semantic_layer.md)
 
 ---
 
@@ -87,17 +87,19 @@ The data engineer configures; the BA inspects.
 
 ### Datasets — Model view: joins, quality, metrics {#data-model-app}
 
-**Scope:** the **Model** view (a tab inside the Datasets app, at `/data-model`) manages **only datasets** (the tables the Data layer catalogs). It does **not** define business object/link types — those stay in the Ontology layer. The boundary is:
+**Scope:** the **Model** view (a tab inside the Datasets app, at `/data-model`) authors the **semantic model** — the same document shape as **Apache Ossie** (`datasets` + `relationships` + `metrics`, each with `ai_context`). It manages **only datasets** and their relationships/metrics; it does **not** define business object/link types — those stay in the Ontology layer. The boundary is:
 
 | Layer | Owns |
 |-------|------|
-| **Data Model** | Tables, columns, **joins between tables**, ER model, data-quality rules, metrics |
+| **Data Model** | Datasets (keys, dimensions, `ai_context`), **relationships between tables**, ER model, data-quality rules, metrics |
 | **Ontology** | Business object/link **types**, properties, functions, actions (may reference a dataset) |
 
-- **Join model → ER:** joins are **registered manually** — authoring them is the core data-modeling process (no automatic join discovery). Register data-engineering equi-joins on key columns (one-to-one / one-to-many), then render an **ER relationship model** from datasets + joins. This is the basis for cross-table metrics and for the Explorer's "which tables relate" reasoning.
-- **Data quality:** declarative rule types (not-null, unique, range, referential, freshness), runs, results, and **alerts surfaced in the Datasets app's Model view** — rule type + parameters, not arbitrary expressions.
-- **Metrics:** definition (name, business definition, formula, dimensions, source dataset/columns, joins), **computed by querying the tables on demand** (no materialization, no cache in v1), reuse, and lineage. Metrics use a **declarative DSL** (columns + aggregation + filters + registered joins) — not arbitrary SQL.
-- **Change impact:** a schema or join/definition change surfaces affected metrics, ER edges, object types, and agents.
+- **Relationships = foreign keys (Ossie):** a relationship is `from` (the **many** side, holds the FK) → `to` (the **one** side, its PK/unique key), with order-aligned `from_columns` / `to_columns` (composite supported). **Cardinality is derived, not stored** — 1:N by default; 1:1 when `from_columns` are also unique; **M:N = two relationships via a junction dataset**. Authored manually (no auto-discovery); they are the **join graph** for cross-dataset metrics. See [Model tab / semantic model design](semantic_model_design.md).
+- **Dataset semantics:** `primary_key` + `unique_keys`, column **dimensions** (categorical/time), and **`ai_context`** (instructions / synonyms / examples) for agent grounding.
+- **Data quality:** declarative rule types (not-null, unique, range, referential, freshness), runs, results, and **alerts surfaced in the Model view** — rule type + parameters, not arbitrary expressions.
+- **Metrics:** **model-level** (span datasets via relationships), with `datatype`, `ai_context`, and an expression. Computed by querying the tables on demand (no materialization, no cache in v1), with lineage. The **expression strategy is under review** — restricted DSL vs Ossie `expression.dialects` (SQL) — see [the design doc](semantic_model_design.md#metrics-strategy--still-open).
+- **Export / import:** the semantic model can be **exported as Apache Ossie YAML** (and later imported) — interoperability + governance artifact.
+- **Change impact:** a schema or relationship/definition change surfaces affected metrics, ER edges, object types, and agents.
 
 ### Data Explorer — AI-native analysis and dashboards {#data-explorer-app}
 
@@ -219,7 +221,7 @@ Deliverables:
 | # | Decision |
 |---|----------|
 | 1 | **Console stays shared** — `Connectors` / `Pipelines` / `data-sources` / `job-runs` are platform-wide, not part of the Data layer. |
-| 2 | **The Model view manages only datasets**, but models **joins between tables** in a data-engineering style and produces an **ER relationship model**; business object/link types stay in Ontology. |
+| 2 | **The Model view authors the semantic model** — datasets + **relationships as foreign keys** (Ossie: `from` many → `to` one) + metrics; business object/link types stay in Ontology. |
 | 3 | **Metrics query the tables on demand** from their definitions (metric results are not materialized; no cache in v1). |
 | 4 | **Explorer carrier is project agents**, operating through **`openkms-skill`**. |
 | 5 | **Reports are dashboard-like**; each chart carries AI-authored suggestions and analysis, not just a passive visual. |
@@ -230,10 +232,13 @@ Deliverables:
 | 10 | **Data files can be uploaded** — parsed and loaded into PostgreSQL tables; the raw file is stored in object storage. |
 | 11 | **Data sources are tagged by layer** — Console → Data Sources marks each source as data-layer or ontology-layer; data-layer sources back datasets and file ingest, ontology-layer sources back the graph. PostgreSQL sources are data-capable by default (untagged allowed); `ontology` is an explicit exclusion. |
 | 12 | **Predictive analysis = LLM reasoning + Python + trend extrapolation** — the agent writes Python for analysis (sandboxed); ontology Functions are not required (layered in later). No ML model training or hosting. |
-| 13 | **Metrics and quality are declarative** — metrics use a restricted DSL (columns + aggregation + filters + joins); quality is rule type + parameters; neither is arbitrary SQL. |
+| 13 | **Quality is declarative** (rule type + parameters). **Metrics expression strategy is under review** — restricted DSL vs Ossie `expression.dialects` (SQL); see [Model tab design](semantic_model_design.md#metrics-strategy--still-open). |
 | 14 | **New data resources inherit dataset ACL** — joins/metrics/quality/reports are dataset-scoped; no new `resource_type`. |
 | 15 | **Separate read vs manage permissions** — `data:read` (catalog/profile/quality/rows for all roles) vs `data:write` (register/ingest/joins/metrics/quality for data engineers); `console:datasets` stays console-scoped. |
 | 16 | **Dataset → knowledge has two paths** — promote to an object type (ontology) and cite as agent evidence; dataset rows are not ingested into KB/RAG in v1. |
+| 17 | **Adopt Apache Ossie as the semantic-model interchange** (Apache 2.0, vendor-neutral) — author `datasets`/`relationships`/`metrics`; export (and later import) Ossie YAML. |
+| 18 | **Relationships are foreign keys, not cardinality** — `from` (many) → `to` (one), `from_columns`/`to_columns`, composite; 1:1 via unique keys; M:N via a junction dataset. |
+| 19 | **Dataset semantics gain `unique_keys` + `ai_context`** (instructions / synonyms / examples) for agent grounding. |
 
 ## Still open
 
