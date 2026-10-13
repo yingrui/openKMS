@@ -6,7 +6,7 @@ import {
   useMemo,
   useState,
 } from 'react';
-import { Link, Navigate, Outlet, useNavigate, useParams, useSearchParams } from 'react-router-dom';
+import { Link, Outlet, useNavigate, useParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { Loader2, Save, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
@@ -622,16 +622,4 @@ export function DatasetSharingTab() {
       </EntityViewPanel>
     </>
   );
-}
-
-/** Legacy settings URL → overview or sharing. */
-export function DatasetSettingsRedirect() {
-  const { id: datasetId = '' } = useParams();
-  const [searchParams] = useSearchParams();
-  const tab = searchParams.get('tab');
-  const target =
-    tab === 'sharing'
-      ? `/datasets/${datasetId}/sharing`
-      : `/datasets/${datasetId}`;
-  return <Navigate to={target} replace />;
 }

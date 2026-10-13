@@ -413,7 +413,6 @@ function App() {
           <Route path="data-explorer" element={<DataExplorerPage />} />
           <Route path="data-explorer/:id" element={<ExplorerReportDetail />} />
           <Route path="datasets" element={<DatasetsListPage />} />
-          <Route path="datasets/:id/settings" element={<DatasetSettingsTab />} />
           <Route path="datasets/:id" element={<DatasetManagerDetailPage />}>
             <Route index element={<DatasetOverviewTab />} />
             <Route path="data" element={<DatasetDataTab />} />
@@ -423,6 +422,7 @@ function App() {
             <Route path="lineage" element={<DatasetLineageTab />} />
             <Route path="quality" element={<DatasetQualityTab />} />
             <Route path="metrics" element={<DatasetMetricsTab />} />
+            <Route path="settings" element={<DatasetSettingsTab />} />
             <Route path="sharing" element={<DatasetSharingTab />} />
           </Route>
           <Route path="ontology-manager" element={<Outlet />}>
