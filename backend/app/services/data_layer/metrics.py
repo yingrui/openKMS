@@ -40,7 +40,9 @@ async def compute_metric(db: AsyncSession, metric: MetricDefinition) -> list[dic
     if agg not in AGGREGATIONS:
         raise MetricError(f"Unsupported aggregation '{metric.aggregation}'.")
     col = metric.column_name
-    if agg != "count" and not (col and is_valid_identifier(col)):
+    if col and not is_valid_identifier(col):
+        raise MetricError("Invalid column name.")
+    if agg != "count" and not col:
         raise MetricError("A valid column is required for this aggregation.")
     if agg == "count" and not col:
         agg_expr = "COUNT(*)"
