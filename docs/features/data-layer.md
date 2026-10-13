@@ -8,6 +8,46 @@ Feature reference for the openKMS **data layer**: the **Datasets** app (Catalog 
 
 ---
 
+## What the Data layer manages — the Ossie class model
+
+Apache Ossie defines six classes; the Datasets app manages **exactly these**, split into a **physical** half (Catalog) and a **semantic** half (Model). This is the organizing frame for the whole feature.
+
+| Ossie class | What it is | Stored today | Surface | Gap |
+|-------------|-----------|--------------|---------|-----|
+| **Semantic Model** | container: datasets + relationships + metrics | *(implicit — no object)* | `/data-model` is the closest | **no container / export** |
+| **Datasets** | `source`, `primary_key`, `unique_keys`, `fields`, `ai_context` | `datasets` (`schema.table`, `primary_key_columns`) | Catalog list + Overview / Settings | missing **`unique_keys`**, **`ai_context`** |
+| **Fields** | row-level attributes (name, type, dimension role) | transient column metadata (`information_schema`) | Columns tab | **not persisted / managed** |
+| **Dimensions** | categorical / time attributes | a `dimensions: [column,…]` list on each metric | Metric form | **not first-class** |
+| **Metrics** | model-level, `expression.dialects`, `datatype`, `ai_context` | `metric_definitions` (**per-dataset**; aggregation + column + filters + joins + dimensions) | Metrics **tab (per dataset)** | per-dataset + restricted DSL |
+| **Relationships** | FK `from` (many) → `to` (one), `from_columns`/`to_columns`, composite | `dataset_joins` (`source`/`target`/**`cardinality`**/`join_columns`) | Relationships tab + Model ER | **cardinality vs FK semantics** |
+
+### Where it lives today
+
+- **Catalog (physical)** — `/datasets`: register tables, file ingest, data preview, **row editing**, profile, schema history, lineage, quality runs, sharing, usage.
+- **Model (semantic)** — `/data-model`: ER graph + health + quality alerts + a joins table. **Thin** — it does not yet present Datasets / Fields / Dimensions / Metrics as Ossie classes.
+- **Data Explorer** — `/data-explorer`: saved analyses.
+
+### Target information architecture
+
+The **Datasets app manages the Semantic Model**; each Ossie class is a first-class section, split by *physical* vs *semantic*:
+
+| Half | Sections |
+|------|----------|
+| **Catalog** (physical) | register · ingest · preview · **row editing** · profile · schema history · lineage · quality · sharing |
+| **Model** (semantic = Ossie) | **Datasets** (keys, `ai_context`) · **Fields / Dimensions** (column roles) · **Relationships** (FK) · **Metrics** (model-level) · **Export** (Ossie YAML) |
+
+So “Datasets” is both the app and one Ossie class: the app manages the semantic model; the *Datasets* section is its entity list.
+
+### Concrete changes implied
+
+1. **Relationships**: `dataset_joins` → Ossie FK shape (`from`/`to`, `from_columns`/`to_columns`, `+ join_type`); **drop `cardinality`**.
+2. **Datasets**: add **`unique_keys`** and **`ai_context`**.
+3. **Fields / Dimensions**: persist field metadata + a **dimension role** (categorical/time) instead of transient metadata + a metric-local list.
+4. **Metrics**: make **model-level**; decide the **expression strategy** (DSL vs Ossie `expression.dialects`).
+5. **Semantic Model container**: export (later import) the Ossie YAML.
+
+---
+
 ## Positioning
 
 The data layer exists so that **people and agents can consume real data as knowledge**. It **references** external tables and **ingests** uploaded data files; it does not run a transform engine or version data content.
