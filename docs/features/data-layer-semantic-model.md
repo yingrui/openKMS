@@ -66,14 +66,14 @@ datasets  ──(primary_key / unique_keys)──►  relationship.to
 
 ## Model tab functionality
 
-The Model tab is the **authoring + governance surface of the semantic model** — where it is **configured** (not just imported) — with **Metrics** (and Queries) as the focus. Sections:
+The **semantic model** is authored across two places, with exactly one home per concept: **Catalog** (datasets, fields, relationships — where the *structure* is configured) and **Model** (cross-dataset metrics and queries). The Model tab is the **cross-dataset** layer. Sections:
 
 ### 1. Overview
 - **Model health**: counts of datasets, relationships, metrics; quality failing; **datasets without a primary key** (a relationship/`to` problem); **orphans** (no relationships).
-- **ER graph** (secondary): datasets as nodes, **relationships as directed FK edges (many → one)**; click a node → open the dataset. **Hidden by default** behind a toggle — it is a *view* of the relationships, not the primary surface.
+- **ER graph** lives under **Catalog** (the datasets' home): the Catalog list has a **List / Map** toggle; Map shows datasets as nodes and **relationships as directed FK edges (many → one)**; click a node → open the dataset.
 
 ### 2. Relationships
-- List + create/edit a relationship **globally in the Model tab** (both datasets picked here), and per-dataset from a dataset's **Relationships** tab: **from (many)** dataset, **to (one)** dataset, **column pairs** (ordered, add/remove for composite), **required** (optional vs required match), name, `ai_context`.
+- Create/edit a relationship in the **Catalog** — dataset detail → **Relationships** (one side fixed to the current dataset), or the whole graph in the Catalog **Map** view: **from (many)** dataset, **to (one)** dataset, **column pairs** (ordered, add/remove for composite), **required** (optional vs required match), name, `ai_context`.
 - **Validation inline**: column existence; composite lengths; `to_columns` must be the target's primary key or a declared unique key (when declared).
 - Direction is a simple choice: *"this dataset holds the FK (from)"* vs *"this dataset is referenced (to)"*.
 - Not a **LinkType**: a data relationship carries **optionality** (`required`) and targets physical tables; a LinkType is a semantic object-type link with none.
@@ -86,7 +86,7 @@ The Model tab is the **authoring + governance surface of the semantic model** �
 ### 4. Datasets (Ossie `datasets`)
 - The Ossie **`datasets`** section: each physical dataset's **semantic entry** — `source` (the table), `primary_key`, `unique_keys`, **`fields`** (column refs **+ computed expressions**, each with `datatype`, `dimension.is_time`, `ai_context`; ✅ Stage 3), `ai_context` (✅ Stage 2).
 - **Fields ≠ columns:** the Catalog's **Fields** tab lists the *physical* columns (with profile); a **field** adds an expression (e.g. `first_name || ' ' || last_name`) and roles — a **dimension** is a field with `dimension.is_time` (categorical / time). Fields are edited here.
-- These are the *same* datasets the **Catalog** holds; the Model tab edits the **semantic** layer, the Catalog edits the **physical** layer (register/ingest/profile/preview/row editing/quality).
+- The **Catalog** is where datasets, fields, and relationships are edited (register/ingest/profile/preview/row editing/quality live there too); the **Model** tab is the cross-dataset layer on top.
 
 ### 5. Queries (saved queries)
 - A **query** picks metrics + **`group_by` dimensions** (fields) + `filters` (Ossie `saved_queries`) — **this** is where dimensions are chosen, *not* on the metric. ✅ Stage 5.

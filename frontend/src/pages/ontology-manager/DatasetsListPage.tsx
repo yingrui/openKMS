@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useNavigate } from 'react-router-dom';
 import { Database, Loader2, Pencil, Plus, RefreshCw, Search, Trash2, Upload, Users } from 'lucide-react';
@@ -13,10 +13,12 @@ import {
   type TableInfo,
 } from '../../data/datasetsApi';
 import { fetchAllDataSources, type DataSourceResponse } from '../../data/dataSourcesApi';
+import { fetchDatasetJoins, type DatasetJoinResponse } from '../../data/joinsApi';
 import { DatasetUploadWizard } from './DatasetUploadWizard';
 import { DatasetAppTabs } from './DatasetAppTabs';
+import { DatasetErGraph, type ErGraphLink, type ErGraphNode } from './DatasetErGraph';
 import { useConfirm } from '../../contexts/ConfirmContext';
-import { Dialog, EmptyState, FormField } from '../../styles/design-system';
+import { Dialog, EmptyState, FormField, ResourceViewToggle } from '../../styles/design-system';
 import '../ontology/ontology-admin.scss';
 
 export function DatasetsListPage() {
@@ -38,6 +40,8 @@ export function DatasetsListPage() {
   const [search, setSearch] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [showUpload, setShowUpload] = useState(false);
+  const [view, setView] = useState<'list' | 'graph'>('list');
+  const [joins, setJoins] = useState<DatasetJoinResponse[]>([]);
 
   const pgDataSources = dataSources.filter((ds) => ds.kind === 'postgresql');
   // PostgreSQL sources back datasets; only sources explicitly tagged `ontology` are excluded.
@@ -52,15 +56,38 @@ export function DatasetsListPage() {
     return displayName.includes(s) || schemaTable.includes(s) || dataSource.includes(s);
   });
 
+  const graphNodes: ErGraphNode[] = useMemo(
+    () =>
+      items.map((d) => ({
+        id: d.id,
+        name: d.display_name || `${d.schema_name}.${d.table_name}`,
+        joins: joins.filter((j) => j.from_dataset_id === d.id || j.to_dataset_id === d.id).length,
+      })),
+    [items, joins],
+  );
+  const graphLinks: ErGraphLink[] = useMemo(
+    () =>
+      joins.map((j) => ({
+        source: j.from_dataset_id,
+        target: j.to_dataset_id,
+        label: `${j.required ? t('datasets.requiredLabel') : t('datasets.optionalLabel')} · ${j.from_columns
+          .map((c, i) => `${c} = ${j.to_columns[i] ?? ''}`)
+          .join(', ')}`,
+      })),
+    [joins, t],
+  );
+
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const [dsRes, dRes] = await Promise.all([
+      const [dsRes, dRes, jRes] = await Promise.all([
         fetchDatasets(filterDataSourceId ? { data_source_id: filterDataSourceId } : undefined),
         fetchAllDataSources(),
+        fetchDatasetJoins(),
       ]);
       setItems(dsRes.items);
       setDataSources(dRes);
+      setJoins(jRes.items);
     } catch (e) {
       toast.error(e instanceof Error ? e.message : t('datasets.loadFailed'));
     } finally {
@@ -237,6 +264,7 @@ export function DatasetsListPage() {
                 </select>
               </label>
             )}
+            <ResourceViewToggle modes={['list', 'graph']} value={view} onChange={setView} />
           </div>
         )}
 
@@ -263,6 +291,13 @@ export function DatasetsListPage() {
                 </button>
               ) : undefined
             }
+          />
+        ) : view === 'graph' ? (
+          <DatasetErGraph
+            nodes={graphNodes}
+            links={graphLinks}
+            onOpen={(id) => navigate(`/datasets/${id}`)}
+            emptyLabel={t('datasets.emptyList')}
           />
         ) : (
           <div className="ds-table-wrap">

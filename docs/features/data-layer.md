@@ -31,19 +31,20 @@ Definitions first; each concept is **authored in exactly one place**.
 
 | Concept | Definition | Managed where | Level |
 |---------|------------|---------------|-------|
-| **Semantic Model** | the container of datasets + relationships + metrics (+ queries) | **Model** tab (`/data-model`) — Overview + **Export/Import** | cross-dataset |
-| **Datasets** | a logical entity: a physical table (`source`) + keys + fields + `ai_context` | **Dataset detail** — Overview / Settings | per-dataset |
-| **Fields** | row-level attributes: a column ref **or a computed expression**, + `datatype`, `dimension.is_time`, `ai_context` | **Dataset detail → Fields** | per-dataset |
-| **Dimensions** | a **field role** (`dimension.is_time`) — a field you can group/filter by | **Dataset detail → Fields** (a field flag) | per-dataset (field) |
-| **Relationships** | FK edges: `from` (many) → `to` (one), `from_columns`/`to_columns`, `required` | **Model → Relationships** (global) + dataset detail → Relationships (scoped view of the same rows) | cross-dataset |
+| **Semantic Model** | the container of datasets + relationships + metrics (+ queries) | authored across **Catalog** (datasets, fields, relationships) and **Model** (metrics, queries); **Export/Import** in the **Model** header | cross-dataset |
+| **Datasets** | a logical entity: a physical table (`source`) + keys + fields + `ai_context` | **Catalog** — dataset detail → Overview / Settings | per-dataset |
+| **Fields** | row-level attributes: a column ref **or a computed expression**, + `datatype`, `dimension.is_time`, `ai_context` | **Catalog** — dataset detail → Fields | per-dataset |
+| **Dimensions** | a **field role** (`dimension.is_time`) — a field you can group/filter by | **Catalog** — dataset detail → Fields (a field flag) | per-dataset (field) |
+| **Relationships** | FK edges: `from` (many) → `to` (one), `from_columns`/`to_columns`, `required` | **Catalog** — dataset detail → Relationships (editor) + the Catalog list **Map** view (ER) | cross-dataset |
 | **Metrics** | model-level aggregate **expressions** over fields | **Model → Metrics** | cross-dataset |
-| **Queries** | metrics + `group_by` dimensions + `where`, saved | **Model → Queries** (v1: Data Explorer reports) | cross-dataset |
-| **Rows** (physical) | preview, edit, ingest, profile | **Dataset detail → Data** | per-dataset |
+| **Queries** | metrics + `group_by` dimensions + `where`, saved | **Model → Queries** | cross-dataset |
+| **Rows** (physical) | preview, edit, ingest, profile | **Catalog** — dataset detail → Data | per-dataset |
 
 **Rule of thumb**
 
-- **Per-dataset** concepts (Datasets, Fields, Dimensions, Rows, Quality, Lineage) → the **dataset detail**.
-- **Cross-dataset** concepts (Relationships overview + ER, Metrics, Queries, Model export) → the **Model** tab.
+- **Per-dataset** concepts (Datasets, Fields, Dimensions, Rows, Quality, Lineage) → the **dataset detail** (Catalog).
+- **Relationships + ER** → **Catalog**: they are edges between datasets and are authored from a dataset (detail → Relationships), with the whole map shown in the Catalog list **Map** view.
+- **Cross-dataset** concepts (Metrics, Queries, Model export) → the **Model** tab.
 - **A dimension is not an object** — it is a flag on a **field**. **A metric has no dimensions** — grouping is a **query**. **Fields ≠ columns** — a field can be computed and carries roles/`ai_context`.
 
 ---

@@ -41,12 +41,12 @@ Why it's intuitive: users already think "I need data → data section; I need bu
 
 ## Datasets — catalog, detail, upload
 
-### Landing (list)
+### Landing (list / map)
 
-A catalog grid/list, not a database admin table:
+A catalog, not a database admin table. A **view toggle** switches the same datasets between:
 
-- **Search + filters:** domain, tag, sensitivity, data source. Filters are chips, not a form.
-- **Card shows:** display name, domain tag, sensitivity badge, row count, freshness ("synced 2h ago"), a mini quality dot (Phase 2).
+- **List** — search + filters (domain, tag, sensitivity, data source — chips, not a form); each dataset shows its display name, domain tag, sensitivity badge, row count, freshness, and a mini quality dot.
+- **Map (ER)** — datasets as nodes and **relationships as directed FK edges (many → one)**; click a node → open the dataset. The shape of the model lives here, next to the datasets it connects.
 - **Primary action (always visible):** **「Upload data」** — the one thing a first-time user should try.
 
 ### Detail (reuses `EntityViewShell`)
@@ -88,22 +88,19 @@ Why it's intuitive: the user only ever answers one question at a time (which fil
 
 ---
 
-## Model tab — the semantic model
+## Model tab — the cross-dataset layer
 
-The Model tab is where the **semantic model** is *built* (not just imported), and where **metrics** and **queries** live. **Function spec:** [semantic model spec](data-layer-semantic-model.md) · **definitions/surfaces:** [data layer](data-layer.md#the-ossie-class-model-definitions-and-where-each-is-managed).
+The Model tab is the **cross-dataset** layer: **Metrics** and **Queries** over the datasets. Datasets, their **fields**, and their **relationships** (and the ER map) live under **Catalog**, where they are configured. **Function spec:** [semantic model spec](data-layer-semantic-model.md) · **definitions/surfaces:** [data layer](data-layer.md#the-ossie-class-model-definitions-and-where-each-is-managed).
 
-Focus: **Semantic model** + **Metrics** (Queries alongside); the ER picture is secondary.
-
-- **Semantic model** — datasets + their **fields** (edited per dataset, linked from here) + **Relationships**, edited **globally** in this tab (from/to, column pairs, required). No JSON needed.
-- **Metrics / Queries** — model-level lists. A metric is a **SQL expression** (Ossie `expression.dialects`) that a data engineer authors, with **AI-assist** to draft it; a query pins metrics + dimensions + filter.
-- **ER graph** — hidden by default behind a toggle (it is a *view* of the relationships, not the first thing to do).
-- **Export / Import** — the Ossie document, tucked into the header overflow menu (interchange, not the primary action).
+- **Metrics** — model-level aggregate **expressions** (Ossie `expression.dialects`) authored by a data engineer, with **AI-assist** to draft them; run read-only (timeout + row cap).
+- **Queries** — a query pins metrics + **dimensions (fields)** + filter and re-runs.
+- **Export / Import** — the Ossie document, tucked into the header overflow menu (an interchange *output*, not the primary action).
 
 ### Why it's intuitive
 
-- The model is **configured here** — relationships (and, per dataset, fields) — so the interchange document is an *output*, not the input.
-- Direction is a plain question (*who holds the FK?*), not a cardinality/position puzzle: `orders ──from (many)──▶ customers`.
-- Relationships are the **join graph**, so “can I write a cross-dataset metric?” is answered by the graph.
+- **Structure lives with the datasets (Catalog); model-level questions (metrics, queries) live in Model.** No concept is authored in two places.
+- A metric is an **expression**, a dimension is a **field role**, and grouping is a **query** — matching how people actually ask (“revenue by month”, not “a metric with dimensions”).
+- Relationships are the **join graph**, so “can I write a cross-dataset metric?” is answered by the Catalog map.
 
 ---
 

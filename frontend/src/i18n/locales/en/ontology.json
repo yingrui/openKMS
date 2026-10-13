@@ -94,17 +94,15 @@
   },
   "dataModel": {
     "title": "Data Model",
-    "subtitle": "Registered joins and data-quality alerts across datasets.",
+    "subtitle": "Model-level metrics and queries over the datasets.",
     "datasets": "Datasets",
-    "joins": "Registered joins",
+    "joins": "Relationships",
     "rules": "Quality rules",
     "failingRules": "Failing",
     "erDiagram": "ER model",
     "emptyGraph": "No datasets to graph yet.",
     "qualityAlerts": "Quality alerts",
     "noAlerts": "No quality alerts.",
-    "colFrom": "From",
-    "colTo": "To",
     "metrics": "Metrics",
     "queries": "Queries",
     "exportJson": "Export JSON",
@@ -114,16 +112,7 @@
     "importFailed": "Import failed",
     "importDone": "Imported {{r}} relationships, {{m}} metrics, {{q}} queries",
     "importWarnings": "{{n}} entries skipped",
-    "required": "Match",
-    "more": "More",
-    "semanticModel": "Semantic model",
-    "semanticModelHint": "The model agents reason over: datasets and their fields, plus the relationships between them.",
-    "relationships": "Relationships",
-    "manageFields": "Manage datasets & fields",
-    "editRelationship": "Edit relationship",
-    "fromDataset": "From (many — holds the FK)",
-    "toDataset": "To (one — referenced key)",
-    "pickDatasets": "Pick both datasets"
+    "more": "More"
   },
   "datasets": {
     "title": "Datasets",
@@ -410,8 +399,7 @@
     "requiredLabel": "required",
     "optionalLabel": "optional",
     "joinRequired": "Require a matching row",
-    "joinRequiredHint": "On: only keep rows that match (INNER). Off: keep rows without a match (LEFT, default).",
-    "joinSaved": "Relationship saved"
+    "joinRequiredHint": "On: only keep rows that match (INNER). Off: keep rows without a match (LEFT, default)."
   },
   "groups": {
     "title": "Groups",

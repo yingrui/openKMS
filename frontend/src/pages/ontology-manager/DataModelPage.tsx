@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link, useNavigate } from 'react-router-dom';
-import { ChevronDown, ChevronRight, Loader2, MoreHorizontal } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { Loader2, MoreHorizontal } from 'lucide-react';
 import { toast } from 'sonner';
 import { fetchDatasets, type DatasetResponse } from '../../data/datasetsApi';
 import { fetchDatasetJoins, type DatasetJoinResponse } from '../../data/joinsApi';
@@ -14,10 +14,8 @@ import {
 } from '../../data/semanticModelApi';
 import { fetchQualityRules, type QualityRuleResponse } from '../../data/qualityApi';
 import { EmptyState } from '../../styles/design-system';
-import { EntityViewPanel, EntityViewStat, EntityViewStats } from './EntityViewShell';
+import { EntityViewStat, EntityViewStats } from './EntityViewShell';
 import { DatasetAppTabs } from './DatasetAppTabs';
-import { DatasetErGraph, type ErGraphLink, type ErGraphNode } from './DatasetErGraph';
-import { ModelRelationshipsSection } from './ModelRelationshipsSection';
 import { ModelMetricsSection } from './ModelMetricsSection';
 import { ModelQueriesSection } from './ModelQueriesSection';
 import '../ontology/ontology-admin.scss';
@@ -36,16 +34,14 @@ function download(filename: string, text: string, type: string): void {
 }
 
 /**
- * Model view: the configurable **semantic model** (datasets + fields + relationships)
- * and the model-level **metrics** / **queries**. The ER picture is secondary (hidden
- * by default); Export/Import live in the header overflow menu.
+ * Model view: the **cross-dataset** layer — model-level **metrics** and **queries**.
+ * Datasets, their fields, and their relationships (plus the ER map) live under
+ * **Catalog**, since that is where they are configured.
  */
 export function DataModelPage() {
   const { t } = useTranslation('ontology');
-  const navigate = useNavigate();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [importing, setImporting] = useState(false);
-  const [showEr, setShowEr] = useState(false);
   const [datasets, setDatasets] = useState<DatasetResponse[]>([]);
   const [joins, setJoins] = useState<DatasetJoinResponse[]>([]);
   const [rules, setRules] = useState<QualityRuleResponse[]>([]);
@@ -126,19 +122,6 @@ export function DataModelPage() {
     return d ? datasetLabel(d) : id;
   };
 
-  const graphNodes: ErGraphNode[] = datasets.map((d) => ({
-    id: d.id,
-    name: datasetLabel(d),
-    joins: joins.filter((j) => j.from_dataset_id === d.id || j.to_dataset_id === d.id).length,
-  }));
-  const graphLinks: ErGraphLink[] = joins.map((j) => ({
-    source: j.from_dataset_id,
-    target: j.to_dataset_id,
-    label: `${j.required ? t('datasets.requiredLabel') : t('datasets.optionalLabel')} · ${j.from_columns
-      .map((c, i) => `${c} = ${j.to_columns[i] ?? ''}`)
-      .join(', ')}`,
-  }));
-
   if (loading) {
     return (
       <div className="console-loading">
@@ -195,37 +178,6 @@ export function DataModelPage() {
           <EntityViewStat label={t('dataModel.queries')} value={queryCount} />
           <EntityViewStat label={t('dataModel.failingRules')} value={alerts.length} />
         </EntityViewStats>
-
-        <section>
-          <h2>{t('dataModel.semanticModel')}</h2>
-          <p className="page-subtitle">
-            {t('dataModel.semanticModelHint')}{' '}
-            <Link to="/datasets">{t('dataModel.manageFields')}</Link>
-          </p>
-          <EntityViewPanel>
-            <ModelRelationshipsSection onChanged={() => void load()} />
-          </EntityViewPanel>
-          <div className="model-er-toggle">
-            <button
-              type="button"
-              className="btn btn-secondary btn-sm"
-              onClick={() => setShowEr((v) => !v)}
-            >
-              {showEr ? <ChevronDown size={14} aria-hidden /> : <ChevronRight size={14} aria-hidden />}
-              {t('dataModel.erDiagram')}
-            </button>
-          </div>
-          {showEr && (
-            <EntityViewPanel>
-              <DatasetErGraph
-                nodes={graphNodes}
-                links={graphLinks}
-                onOpen={(id) => navigate(`/datasets/${id}`)}
-                emptyLabel={t('dataModel.emptyGraph')}
-              />
-            </EntityViewPanel>
-          )}
-        </section>
 
         <ModelMetricsSection />
 
