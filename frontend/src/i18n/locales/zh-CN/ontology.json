@@ -121,7 +121,7 @@
     "deleteConfirmNamed": "删除数据集「{{name}}」？",
     "emptyList": "暂无数据集。",
     "emptyNeedPg": "请先在控制台添加 PostgreSQL 数据源。",
-    "emptyNeedDataLayer": "请先在控制台把某个 PostgreSQL 数据源标记为数据层。",
+    "emptyNeedDataLayer": "没有可用的 PostgreSQL 数据源（都被标记为本体层）。",
     "emptyNoMatch": "无匹配的数据集。",
     "emptyRows": "该表暂无数据。",
     "emptyColumns": "暂无列元数据。",

@@ -39,7 +39,8 @@ export function DatasetsListPage() {
   const [showUpload, setShowUpload] = useState(false);
 
   const pgDataSources = dataSources.filter((ds) => ds.kind === 'postgresql');
-  const dataLayerSources = pgDataSources.filter((ds) => ds.layer === 'data');
+  // PostgreSQL sources back datasets; only sources explicitly tagged `ontology` are excluded.
+  const dataLayerSources = pgDataSources.filter((ds) => ds.layer !== 'ontology');
 
   const filteredItems = items.filter((d) => {
     const s = search.trim().toLowerCase();

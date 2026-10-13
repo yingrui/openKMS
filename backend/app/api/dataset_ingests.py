@@ -64,8 +64,10 @@ async def start_ingest(
 ):
     """Store an uploaded file in object storage and open an ingest record."""
     ds = await db.get(DataSource, data_source_id)
-    if not ds or ds.kind != "postgresql" or ds.layer != "data":
-        raise HTTPException(status_code=400, detail="Pick a data-layer PostgreSQL data source.")
+    if not ds or ds.kind != "postgresql" or ds.layer == "ontology":
+        raise HTTPException(
+            status_code=400, detail="Pick a PostgreSQL data source (not tagged ontology)."
+        )
 
     content = await file.read()
     if not content:

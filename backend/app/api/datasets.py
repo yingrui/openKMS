@@ -178,9 +178,11 @@ async def create_dataset(
     ds = await db.get(DataSource, body.data_source_id)
     if not ds:
         raise HTTPException(status_code=400, detail="Data source not found")
-    if ds.kind != "postgresql" or ds.layer != "data":
+    # PostgreSQL sources back datasets. Only sources explicitly tagged `ontology`
+    # (the graph layer) are excluded; untagged sources are data-capable.
+    if ds.kind != "postgresql" or ds.layer == "ontology":
         raise HTTPException(
-            status_code=400, detail="Pick a data-layer PostgreSQL data source."
+            status_code=400, detail="Pick a PostgreSQL data source (not tagged ontology)."
         )
     p = request.state.openkms_jwt_payload
     sub = p.get("sub")

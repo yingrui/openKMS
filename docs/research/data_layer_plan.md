@@ -228,7 +228,7 @@ Deliverables:
 | 8 | **Quality alerts live in the Data Model app.** |
 | 9 | **Dashboard reports are persisted in the Data Explorer app.** |
 | 10 | **Data files can be uploaded** — parsed and loaded into PostgreSQL tables; the raw file is stored in object storage. |
-| 11 | **Data sources are tagged by layer** — Console → Data Sources marks each source as data-layer or ontology-layer; data-layer sources back datasets and file ingest, ontology-layer sources back the graph. |
+| 11 | **Data sources are tagged by layer** — Console → Data Sources marks each source as data-layer or ontology-layer; data-layer sources back datasets and file ingest, ontology-layer sources back the graph. PostgreSQL sources are data-capable by default (untagged allowed); `ontology` is an explicit exclusion. |
 | 12 | **Predictive analysis = LLM reasoning + Python + trend extrapolation** — the agent writes Python for analysis (sandboxed); ontology Functions are not required (layered in later). No ML model training or hosting. |
 | 13 | **Metrics and quality are declarative** — metrics use a restricted DSL (columns + aggregation + filters + joins); quality is rule type + parameters; neither is arbitrary SQL. |
 | 14 | **New data resources inherit dataset ACL** — joins/metrics/quality/reports are dataset-scoped; no new `resource_type`. |
