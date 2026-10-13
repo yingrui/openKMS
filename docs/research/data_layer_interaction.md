@@ -20,20 +20,20 @@ UX for the three Data-layer apps — **Datasets · Data Model · Data Explorer**
 Three visual groups, separated by a subtle divider, collapsible per group:
 
 ```
- ┌── DATA ──────────
- │  🗂 Datasets
- │  🕸 Data Model
- │  🔎 Data Explorer
+ ┌── APPLICATION ───
+ │  … (Agents, Documents, …)
  ├── ONTOLOGY ──────
  │  🕸 Ontology Manager
  │  🧭 Object Explorer
  │  ⌘ Function Editor
- ├── APPLICATION ───
- │  … (Agents, Documents, …)
+ ├── DATA ──────────
+ │  🗂 Datasets
+ │  🕸 Data Model
+ │  🔎 Data Explorer
 ```
 
 - **Collapsed (56 px rail):** icons only; a thin divider between groups; the active icon carries the group's accent.
-- **App Launcher (full-width):** three titled sections (Data / Ontology / Application) — this is the primary discovery surface, so the section titles are the first thing a new user reads.
+- **App Launcher (full-width):** three titled sections (Application / Ontology / Data) — this is the primary discovery surface, so the section titles are the first thing a new user reads.
 - **Console stays separate** (shared platform) — it is *not* a fourth layer, so it stays where it is today.
 
 Why it's intuitive: users already think "I need data → data section; I need business meaning → ontology section." The grouping names the thing, instead of a flat 15-icon list.

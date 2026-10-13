@@ -92,9 +92,9 @@ Six compile-time tokens in **`_tokens.scss`** — use **`@include max-width(ds.$
 
 **Goal:** one gutter source per scroll column — no stacked padding on shell + page root.
 
-### App layers (Data / Ontology / Application)
+### App layers (Application / Ontology / Data)
 
-The App Rail and App Launcher group suite apps into three layers — `data` → `ontology` → `application` — declared by `layer` in `frontend/src/config/appModules.ts`. The rail inserts a thin **`.sidebar-layer-divider`** between groups; the Launcher renders a titled section per layer (**`.app-catalog-section--launcher`** + **`.app-catalog-section-label`**). Console stays outside the layers (shared platform). Group with **`groupModulesByLayer()`**; do not re-sort in UI code.
+The App Rail, App Launcher, and Home apps group suite apps into three layers — `application` → `ontology` → `data` (top to bottom) — declared by `layer` in `frontend/src/config/appModules.ts`. The rail inserts a thin **`.sidebar-layer-divider`** between groups; the Launcher renders a titled section per layer (**`.app-catalog-section--launcher`** + **`.app-catalog-section-label`**). Console stays outside the layers (shared platform). Group with **`groupModulesByLayer()`**; do not re-sort in UI code.
 
 ### Mobile shell (≤ `$bp-md-min`)
 

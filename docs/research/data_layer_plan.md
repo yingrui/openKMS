@@ -26,15 +26,15 @@ The data layer exists so that **people and agents can consume real data as knowl
 
 ---
 
-## Layer model: Data / Ontology / Application
+## Layer model: Application / Ontology / Data
 
-The Suite App rail gains an explicit **layer** grouping. This is an information-architecture change, not just new pages.
+The Suite App rail gains an explicit **layer** grouping. This is an information-architecture change, not just new pages. Rail/Launcher order is **application → ontology → data** (top to bottom).
 
 | Layer | Apps | Answers |
 |-------|------|---------|
-| **Data** | **Datasets**, **Data Model**, **Data Explorer** | *What is the data, how trustworthy, how to analyze it* |
-| **Ontology** | Ontology Manager · Object Explorer · Function Editor | *What the business means and does* (objects, links, functions, actions) |
 | **Application** | Agents · Documents · Articles · Wikis · Knowledge bases · Media · Glossaries · Evaluations · Knowledge Map · Apps | *Knowledge work and delivery* |
+| **Ontology** | Ontology Manager · Object Explorer · Function Editor | *What the business means and does* (objects, links, functions, actions) |
+| **Data** | **Datasets**, **Data Model**, **Data Explorer** | *What is the data, how trustworthy, how to analyze it* |
 
 **Console stays a shared platform layer.** `Connectors`, `Pipelines`, `data-sources`, and `job-runs` are **not** part of the Data layer — they are platform capabilities shared across all of openKMS. Data-layer apps consume their output (e.g. connector-synced tables) but do not own them.
 
@@ -159,7 +159,7 @@ Each phase lists a verifiable deliverable. Phases are bundled by dependency, not
 
 ### Phase 0 — IA and skeleton (small)
 
-- Introduce the **Data / Ontology / Application** layer grouping in `appModules.ts` (app rail/launcher).
+- Introduce the **Application / Ontology / Data** layer grouping in `appModules.ts` (app rail/launcher).
 - Move `Datasets` out of Ontology Manager into a first-class Data app (routes redirect; list + detail reuse existing API/UI).
 - **Verify:** routes resolve and redirect; permissions intact; `npm run check:app-modules` and `npm run check:app-layout` pass.
 

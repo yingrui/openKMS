@@ -32,7 +32,7 @@ export type AppModule = {
   kind: ModuleKind;
   /** Layer grouping in the App Rail and Launcher (data → ontology → application). Suite apps only. */
   layer?: AppLayer;
-  /** Display order in App Rail, Launcher, and Home Apps (lower = earlier). Keep in sync across surfaces. */
+  /** Display order within a layer in App Rail, Launcher, and Home Apps (lower = earlier). */
   order: number;
   homePath: string;
   icon: LucideIcon;
@@ -74,11 +74,11 @@ const functionEditorActive = (pathname: string) =>
  * Canonical suite app order — App Rail, App Launcher, and Home Apps must all use
  * `sortSuiteApps()` after visibility filtering. Reorder here only; do not sort in UI code.
  *
- * Grouped by `layer` (data → ontology → application); `order` is the within-layer tie-break.
+ * Grouped by `layer` (application → ontology → data); `order` is the within-layer tie-break.
  *
- * Data layer: Datasets (+ Data Model, Data Explorer later)
- * Ontology layer: Ontology Manager / Object Explorer / Function Editor
  * Application layer: agent workspaces, document capture, content, knowledge structure
+ * Ontology layer: Ontology Manager / Object Explorer / Function Editor
+ * Data layer: Datasets / Data Model / Data Explorer
  */
 export const APP_MODULES: AppModule[] = [
   {
@@ -378,11 +378,19 @@ export const CONSOLE_PLATFORM_MODULES: AppModule[] = [
 ];
 
 export function sortSuiteApps(modules: AppModule[]): AppModule[] {
-  return [...modules].sort((a, b) => a.order - b.order || a.id.localeCompare(b.id));
+  return [...modules].sort(
+    (a, b) => layerRank(a) - layerRank(b) || a.order - b.order || a.id.localeCompare(b.id),
+  );
 }
 
-/** Canonical layer order for the App Rail and Launcher. */
-export const APP_LAYER_ORDER: AppLayer[] = ['data', 'ontology', 'application'];
+/** Canonical layer order for the App Rail, Launcher, and Home apps: application → ontology → data. */
+export const APP_LAYER_ORDER: AppLayer[] = ['application', 'ontology', 'data'];
+
+/** Rank by layer (console/unknown modules sort last); used as the primary sort key. */
+function layerRank(module: AppModule): number {
+  const idx = module.layer ? APP_LAYER_ORDER.indexOf(module.layer) : -1;
+  return idx < 0 ? APP_LAYER_ORDER.length : idx;
+}
 
 /** Group (already sorted) suite modules by layer, preserving order within each layer. */
 export function groupModulesByLayer(
