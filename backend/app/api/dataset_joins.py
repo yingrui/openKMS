@@ -19,7 +19,7 @@ from app.schemas.dataset_join import (
     DatasetJoinUpdate,
 )
 from app.services.data_layer.joins import JoinValidationError, validate_join
-from app.services.permissions.permission_catalog import PERM_CONSOLE_DATASETS, PERM_ONTOLOGY_READ
+from app.services.permissions.permission_catalog import PERM_CONSOLE_DATASETS, PERM_DATA_READ, PERM_DATA_WRITE, PERM_ONTOLOGY_READ
 
 router = APIRouter(
     prefix="/dataset-joins",
@@ -27,7 +27,7 @@ router = APIRouter(
     dependencies=[Depends(require_auth)],
 )
 
-_VIEW = (PERM_CONSOLE_DATASETS, PERM_ONTOLOGY_READ)
+_VIEW = (PERM_CONSOLE_DATASETS, PERM_DATA_READ, PERM_ONTOLOGY_READ)
 
 
 async def _name_map(db: AsyncSession, ids: set[str]) -> dict[str, str]:
@@ -88,7 +88,7 @@ async def list_dataset_joins(
     "",
     response_model=DatasetJoinResponse,
     status_code=201,
-    dependencies=[Depends(require_permission(PERM_CONSOLE_DATASETS))],
+    dependencies=[Depends(require_any_permission(PERM_CONSOLE_DATASETS, PERM_DATA_WRITE))],
 )
 async def create_dataset_join(
     request: Request,
@@ -144,7 +144,7 @@ async def get_dataset_join(join_id: str, db: AsyncSession = Depends(get_db)):
 @router.put(
     "/{join_id}",
     response_model=DatasetJoinResponse,
-    dependencies=[Depends(require_permission(PERM_CONSOLE_DATASETS))],
+    dependencies=[Depends(require_any_permission(PERM_CONSOLE_DATASETS, PERM_DATA_WRITE))],
 )
 async def update_dataset_join(
     join_id: str,
@@ -189,7 +189,7 @@ async def update_dataset_join(
 @router.delete(
     "/{join_id}",
     status_code=204,
-    dependencies=[Depends(require_permission(PERM_CONSOLE_DATASETS))],
+    dependencies=[Depends(require_any_permission(PERM_CONSOLE_DATASETS, PERM_DATA_WRITE))],
 )
 async def delete_dataset_join(join_id: str, db: AsyncSession = Depends(get_db)):
     j = await db.get(DatasetJoin, join_id)

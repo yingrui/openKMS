@@ -39,6 +39,8 @@ from app.services.permissions.permission_catalog import (
     PERM_KNOWLEDGE_MAP_WRITE,
     PERM_PROJECTS_READ,
     PERM_PROJECTS_WRITE,
+    PERM_DATA_READ,
+    PERM_DATA_WRITE,
 )
 
 # (frontend_route_patterns, backend_api_patterns)
@@ -427,6 +429,53 @@ DEFAULT_PATTERNS_BY_KEY: dict[str, tuple[list[str], list[str]]] = {
             "DELETE /api/agent-skills/*",
             "POST /api/user/git-credentials",
             "DELETE /api/user/git-credentials/*",
+        ],
+    ),
+    PERM_DATA_READ: (
+        [
+            "/datasets",
+            "/datasets/*",
+            "/data-model",
+            "/data-model/*",
+            "/data-explorer",
+            "/data-explorer/*",
+        ],
+        [
+            "GET /api/datasets",
+            "GET /api/datasets/*",
+            "HEAD /api/datasets/*",
+            "GET /api/dataset-joins",
+            "GET /api/dataset-joins/*",
+            "HEAD /api/dataset-joins",
+            "HEAD /api/dataset-joins/*",
+            "GET /api/explorer-reports",
+            "GET /api/explorer-reports/*",
+            "HEAD /api/explorer-reports",
+            "HEAD /api/explorer-reports/*",
+        ],
+    ),
+    PERM_DATA_WRITE: (
+        [
+            "/datasets",
+            "/datasets/*",
+            "/data-model",
+            "/data-model/*",
+            "/data-explorer",
+            "/data-explorer/*",
+        ],
+        [
+            "POST /api/datasets/*",
+            "PUT /api/datasets/*",
+            "PATCH /api/datasets/*",
+            "DELETE /api/datasets/*",
+            "POST /api/dataset-joins/*",
+            "PUT /api/dataset-joins/*",
+            "PATCH /api/dataset-joins/*",
+            "DELETE /api/dataset-joins/*",
+            "POST /api/explorer-reports/*",
+            "PUT /api/explorer-reports/*",
+            "PATCH /api/explorer-reports/*",
+            "DELETE /api/explorer-reports/*",
         ],
     ),
 }

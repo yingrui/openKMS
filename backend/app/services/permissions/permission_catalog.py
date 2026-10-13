@@ -46,6 +46,8 @@ PERM_CONNECTORS_READ = "connectors:read"
 PERM_CONNECTORS_WRITE = "connectors:write"
 PERM_PROJECTS_READ = "projects:read"
 PERM_PROJECTS_WRITE = "projects:write"
+PERM_DATA_READ = "data:read"
+PERM_DATA_WRITE = "data:write"
 
 DEFAULT_MEMBER_PERMISSIONS: frozenset[str] = frozenset({PERM_ALL})
 
@@ -274,6 +276,18 @@ OPERATION_KEY_HINTS: tuple[OperationKeyHint, ...] = (
         "Manage agents",
         "Create/update projects and skills, upload files, run agent tools, and git operations.",
         "agents",
+    ),
+    OperationKeyHint(
+        PERM_DATA_READ,
+        "View data layer",
+        "Datasets, joins, profile, quality, metrics, and Data Explorer reports (read).",
+        "data",
+    ),
+    OperationKeyHint(
+        PERM_DATA_WRITE,
+        "Manage data layer",
+        "Register/ingest datasets, manage joins, quality rules, metrics, and explorer reports.",
+        "data",
     ),
 )
 

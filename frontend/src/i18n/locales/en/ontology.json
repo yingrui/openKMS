@@ -121,6 +121,7 @@
     "deleteConfirmNamed": "Delete dataset \"{{name}}\"?",
     "emptyList": "No datasets yet.",
     "emptyNeedPg": "Add a PostgreSQL data source in Console first.",
+    "emptyNeedDataLayer": "Tag a PostgreSQL data source as data-layer in Console first.",
     "emptyNoMatch": "No matching datasets.",
     "emptyRows": "No rows in this table.",
     "emptyColumns": "No column metadata available.",

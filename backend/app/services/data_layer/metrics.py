@@ -2,6 +2,7 @@
 
 The metric is a **declarative DSL**: aggregation + column + filters + registered
 joins + dimensions. The SQL is generated here; callers never supply raw SQL.
+``build_metric_sql`` is pure (no DB) and unit-tested.
 """
 from __future__ import annotations
 
@@ -26,16 +27,14 @@ class MetricError(ValueError):
     """Raised when a metric cannot be computed; surfaced as HTTP 400."""
 
 
-async def compute_metric(db: AsyncSession, metric: MetricDefinition) -> list[dict[str, Any]]:
-    dataset = await db.get(Dataset, metric.dataset_id)
-    if not dataset:
-        raise MetricError("Dataset not found.")
-    ds = await db.get(DataSource, dataset.data_source_id)
-    if not ds or ds.kind != "postgresql":
-        raise MetricError("Metrics only run on PostgreSQL datasets.")
-    if not (is_valid_identifier(dataset.schema_name) and is_valid_identifier(dataset.table_name)):
-        raise MetricError("Invalid dataset table.")
-
+def build_metric_sql(
+    dataset: Dataset,
+    metric: MetricDefinition,
+    *,
+    joins_by_id: dict[str, DatasetJoin],
+    datasets_by_id: dict[str, Dataset],
+) -> tuple[str, dict[str, Any]]:
+    """Build ``(sql, params)`` for a metric. Raises :class:`MetricError` on invalid input."""
     agg = (metric.aggregation or "").lower()
     if agg not in AGGREGATIONS:
         raise MetricError(f"Unsupported aggregation '{metric.aggregation}'.")
@@ -51,7 +50,7 @@ async def compute_metric(db: AsyncSession, metric: MetricDefinition) -> list[dic
 
     joins_sql: list[str] = []
     for i, join_id in enumerate(metric.joins or []):
-        join = await db.get(DatasetJoin, join_id)
+        join = joins_by_id.get(join_id)
         if not join:
             raise MetricError(f"Join '{join_id}' not found.")
         if join.source_dataset_id == dataset.id:
@@ -60,7 +59,7 @@ async def compute_metric(db: AsyncSession, metric: MetricDefinition) -> list[dic
             other_id, source_is_metric = join.source_dataset_id, False
         else:
             raise MetricError(f"Join '{join_id}' does not touch this dataset.")
-        other = await db.get(Dataset, other_id)
+        other = datasets_by_id.get(other_id)
         if not other:
             raise MetricError("Joined dataset not found.")
         if not (is_valid_identifier(other.schema_name) and is_valid_identifier(other.table_name)):
@@ -69,9 +68,16 @@ async def compute_metric(db: AsyncSession, metric: MetricDefinition) -> list[dic
         ons: list[str] = []
         for p in join.join_columns or []:
             s, t = p.get("source"), p.get("target")
-            if not (isinstance(s, str) and isinstance(t, str) and is_valid_identifier(s) and is_valid_identifier(t)):
+            if not (
+                isinstance(s, str)
+                and isinstance(t, str)
+                and is_valid_identifier(s)
+                and is_valid_identifier(t)
+            ):
                 raise MetricError("Invalid join column.")
-            ons.append(f'base."{s}" = {alias}."{t}"' if source_is_metric else f'base."{t}" = {alias}."{s}"')
+            ons.append(
+                f'base."{s}" = {alias}."{t}"' if source_is_metric else f'base."{t}" = {alias}."{s}"'
+            )
         joins_sql.append(
             f'LEFT JOIN "{other.schema_name}"."{other.table_name}" {alias} ON ' + " AND ".join(ons)
         )
@@ -117,11 +123,48 @@ async def compute_metric(db: AsyncSession, metric: MetricDefinition) -> list[dic
         sql += " WHERE " + " AND ".join(where)
     if dims:
         sql += " GROUP BY " + ", ".join(dims)
+    return sql, params
 
+
+async def compute_metric(db: AsyncSession, metric: MetricDefinition) -> list[dict[str, Any]]:
+    dataset = await db.get(Dataset, metric.dataset_id)
+    if not dataset:
+        raise MetricError("Dataset not found.")
+    ds = await db.get(DataSource, dataset.data_source_id)
+    if not ds or ds.kind != "postgresql":
+        raise MetricError("Metrics only run on PostgreSQL datasets.")
+    if not (is_valid_identifier(dataset.schema_name) and is_valid_identifier(dataset.table_name)):
+        raise MetricError("Invalid dataset table.")
+
+    joins_by_id: dict[str, DatasetJoin] = {}
+    datasets_by_id: dict[str, Dataset] = {}
+    for join_id in metric.joins or []:
+        join = await db.get(DatasetJoin, join_id)
+        if not join:
+            raise MetricError(f"Join '{join_id}' not found.")
+        joins_by_id[join_id] = join
+        if dataset.id not in (join.source_dataset_id, join.target_dataset_id):
+            raise MetricError(f"Join '{join_id}' does not touch this dataset.")
+        other_id = (
+            join.target_dataset_id if join.source_dataset_id == dataset.id else join.source_dataset_id
+        )
+        if other_id not in datasets_by_id:
+            other = await db.get(Dataset, other_id)
+            if not other:
+                raise MetricError("Joined dataset not found.")
+            datasets_by_id[other_id] = other
+
+    sql, params = build_metric_sql(
+        dataset, metric, joins_by_id=joins_by_id, datasets_by_id=datasets_by_id
+    )
     engine = pg_engine_for_datasource(ds)
     try:
         with engine.connect() as conn:
             rows = conn.execute(text(sql), params).mappings().all()
         return [{k: serialize_cell_value(r[k]) for k in r.keys()} for r in rows]
+    except MetricError:
+        raise
+    except Exception as exc:  # noqa: BLE001 - surface DB errors as 400, not 500
+        raise MetricError(f"Metric execution failed: {exc}") from exc
     finally:
         engine.dispose()

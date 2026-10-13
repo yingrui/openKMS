@@ -8,7 +8,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.auth import require_any_permission, require_auth, require_permission
-from app.services.permissions.permission_catalog import PERM_CONSOLE_DATASETS, PERM_ONTOLOGY_READ
+from app.services.permissions.permission_catalog import PERM_CONSOLE_DATASETS, PERM_DATA_READ, PERM_DATA_WRITE, PERM_ONTOLOGY_READ
 from app.database import get_db
 from app.services.acl.data_scope import bootstrap_owner_acl
 from app.services.acl.data_resource_policy import dataset_visible
@@ -55,7 +55,7 @@ router = APIRouter(
     dependencies=[Depends(require_auth)],
 )
 
-_DATASET_VIEW = (PERM_CONSOLE_DATASETS, PERM_ONTOLOGY_READ)
+_DATASET_VIEW = (PERM_CONSOLE_DATASETS, PERM_DATA_READ, PERM_ONTOLOGY_READ)
 
 
 def _dataset_response(d: Dataset, data_source_name: str | None) -> DatasetResponse:
@@ -106,7 +106,7 @@ async def get_dataset_scoped_manage(
 @router.get(
     "/from-source/{data_source_id}",
     response_model=list[TableInfo],
-    dependencies=[Depends(require_permission(PERM_CONSOLE_DATASETS))],
+    dependencies=[Depends(require_any_permission(PERM_CONSOLE_DATASETS, PERM_DATA_WRITE))],
 )
 async def list_tables_from_source(
     data_source_id: str,
@@ -168,7 +168,7 @@ async def list_datasets(
     )
 
 
-@router.post("", response_model=DatasetResponse, status_code=201, dependencies=[Depends(require_permission(PERM_CONSOLE_DATASETS))])
+@router.post("", response_model=DatasetResponse, status_code=201, dependencies=[Depends(require_any_permission(PERM_CONSOLE_DATASETS, PERM_DATA_WRITE))])
 async def create_dataset(
     request: Request,
     body: DatasetCreate,
@@ -178,6 +178,10 @@ async def create_dataset(
     ds = await db.get(DataSource, body.data_source_id)
     if not ds:
         raise HTTPException(status_code=400, detail="Data source not found")
+    if ds.kind != "postgresql" or ds.layer != "data":
+        raise HTTPException(
+            status_code=400, detail="Pick a data-layer PostgreSQL data source."
+        )
     p = request.state.openkms_jwt_payload
     sub = p.get("sub")
     uname = p.get("preferred_username") or p.get("name")
@@ -305,7 +309,7 @@ async def get_dataset(
     return _dataset_response(dataset, ds.name if ds else None)
 
 
-@router.put("/{dataset_id}", response_model=DatasetResponse, dependencies=[Depends(require_permission(PERM_CONSOLE_DATASETS))])
+@router.put("/{dataset_id}", response_model=DatasetResponse, dependencies=[Depends(require_any_permission(PERM_CONSOLE_DATASETS, PERM_DATA_WRITE))])
 async def update_dataset(
     body: DatasetUpdate,
     dataset: Dataset = Depends(get_dataset_scoped_write),
@@ -321,7 +325,7 @@ async def update_dataset(
     return _dataset_response(dataset, ds.name if ds else None)
 
 
-@router.delete("/{dataset_id}", status_code=204, dependencies=[Depends(require_permission(PERM_CONSOLE_DATASETS))])
+@router.delete("/{dataset_id}", status_code=204, dependencies=[Depends(require_any_permission(PERM_CONSOLE_DATASETS, PERM_DATA_WRITE))])
 async def delete_dataset(
     dataset: Dataset = Depends(get_dataset_scoped_manage),
     db: AsyncSession = Depends(get_db),
@@ -354,7 +358,7 @@ async def get_dataset_profile(
 @router.post(
     "/{dataset_id}/profile",
     response_model=DatasetProfileResponse,
-    dependencies=[Depends(require_permission(PERM_CONSOLE_DATASETS))],
+    dependencies=[Depends(require_any_permission(PERM_CONSOLE_DATASETS, PERM_DATA_WRITE))],
 )
 async def refresh_dataset_profile(
     dataset: Dataset = Depends(get_dataset_scoped_write),

@@ -15,10 +15,10 @@ from app.models.dataset import Dataset
 from app.models.metric_definition import MetricDefinition
 from app.schemas.metric import MetricComputeResponse, MetricCreate, MetricResponse, MetricUpdate
 from app.services.data_layer.metrics import AGGREGATIONS, MetricError, compute_metric
-from app.services.permissions.permission_catalog import PERM_CONSOLE_DATASETS, PERM_ONTOLOGY_READ
+from app.services.permissions.permission_catalog import PERM_CONSOLE_DATASETS, PERM_DATA_READ, PERM_DATA_WRITE, PERM_ONTOLOGY_READ
 
 router = APIRouter(prefix="/datasets", tags=["metrics"], dependencies=[Depends(require_auth)])
-_VIEW = (PERM_CONSOLE_DATASETS, PERM_ONTOLOGY_READ)
+_VIEW = (PERM_CONSOLE_DATASETS, PERM_DATA_READ, PERM_ONTOLOGY_READ)
 
 
 def _metric_response(m: MetricDefinition) -> MetricResponse:
@@ -68,7 +68,7 @@ async def list_metrics(
     "/{dataset_id}/metrics",
     response_model=MetricResponse,
     status_code=201,
-    dependencies=[Depends(require_permission(PERM_CONSOLE_DATASETS))],
+    dependencies=[Depends(require_any_permission(PERM_CONSOLE_DATASETS, PERM_DATA_WRITE))],
 )
 async def create_metric(
     request: Request,
@@ -104,7 +104,7 @@ async def create_metric(
 @router.put(
     "/{dataset_id}/metrics/{metric_id}",
     response_model=MetricResponse,
-    dependencies=[Depends(require_permission(PERM_CONSOLE_DATASETS))],
+    dependencies=[Depends(require_any_permission(PERM_CONSOLE_DATASETS, PERM_DATA_WRITE))],
 )
 async def update_metric(
     metric_id: str,
@@ -131,7 +131,7 @@ async def update_metric(
 @router.delete(
     "/{dataset_id}/metrics/{metric_id}",
     status_code=204,
-    dependencies=[Depends(require_permission(PERM_CONSOLE_DATASETS))],
+    dependencies=[Depends(require_any_permission(PERM_CONSOLE_DATASETS, PERM_DATA_WRITE))],
 )
 async def delete_metric(
     metric_id: str,

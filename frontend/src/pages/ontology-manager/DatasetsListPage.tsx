@@ -88,7 +88,7 @@ export function DatasetsListPage() {
 
   const openCreate = () => {
     setEditItem(null);
-    const defaultPg = pgDataSources[0]?.id ?? '';
+    const defaultPg = dataLayerSources[0]?.id ?? '';
     setFormDataSourceId(defaultPg);
     setFormSchema('');
     setFormTable('');
@@ -196,7 +196,7 @@ export function DatasetsListPage() {
             type="button"
             className="btn btn-primary"
             onClick={openCreate}
-            disabled={pgDataSources.length === 0}
+            disabled={dataLayerSources.length === 0}
           >
             <Plus size={18} aria-hidden />
             <span>{t('datasets.create')}</span>
@@ -244,9 +244,15 @@ export function DatasetsListPage() {
         ) : showEmptyState ? (
           <EmptyState
             icon={<Database size={32} aria-hidden />}
-            title={pgDataSources.length === 0 ? t('datasets.emptyNeedPg') : t('datasets.emptyList')}
+            title={
+              dataLayerSources.length === 0
+                ? pgDataSources.length > 0
+                  ? t('datasets.emptyNeedDataLayer')
+                  : t('datasets.emptyNeedPg')
+                : t('datasets.emptyList')
+            }
             action={
-              pgDataSources.length > 0 ? (
+              dataLayerSources.length > 0 ? (
                 <button type="button" className="btn btn-primary" onClick={openCreate}>
                   <Plus size={16} aria-hidden />
                   {t('datasets.create')}
@@ -365,7 +371,7 @@ export function DatasetsListPage() {
             disabled={!!editItem || submitting}
           >
             <option value="">{t('datasets.selectDataSource')}</option>
-            {pgDataSources.map((ds) => (
+            {dataLayerSources.map((ds) => (
               <option key={ds.id} value={ds.id}>
                 {ds.name} ({ds.kind})
               </option>

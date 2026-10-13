@@ -20,10 +20,10 @@ from app.schemas.quality import (
     QualityRunResponse,
 )
 from app.services.data_layer.quality import RULE_TYPES, QualityError, run_rule
-from app.services.permissions.permission_catalog import PERM_CONSOLE_DATASETS, PERM_ONTOLOGY_READ
+from app.services.permissions.permission_catalog import PERM_CONSOLE_DATASETS, PERM_DATA_READ, PERM_DATA_WRITE, PERM_ONTOLOGY_READ
 
 router = APIRouter(prefix="/datasets", tags=["quality"], dependencies=[Depends(require_auth)])
-_VIEW = (PERM_CONSOLE_DATASETS, PERM_ONTOLOGY_READ)
+_VIEW = (PERM_CONSOLE_DATASETS, PERM_DATA_READ, PERM_ONTOLOGY_READ)
 
 
 def _rule_response(rule: QualityRule, latest: QualityRun | None) -> QualityRuleResponse:
@@ -85,7 +85,7 @@ async def list_quality_rules(
     "/{dataset_id}/quality-rules",
     response_model=QualityRuleResponse,
     status_code=201,
-    dependencies=[Depends(require_permission(PERM_CONSOLE_DATASETS))],
+    dependencies=[Depends(require_any_permission(PERM_CONSOLE_DATASETS, PERM_DATA_WRITE))],
 )
 async def create_quality_rule(
     request: Request,
@@ -120,7 +120,7 @@ async def create_quality_rule(
 @router.put(
     "/{dataset_id}/quality-rules/{rule_id}",
     response_model=QualityRuleResponse,
-    dependencies=[Depends(require_permission(PERM_CONSOLE_DATASETS))],
+    dependencies=[Depends(require_any_permission(PERM_CONSOLE_DATASETS, PERM_DATA_WRITE))],
 )
 async def update_quality_rule(
     rule_id: str,
@@ -141,7 +141,7 @@ async def update_quality_rule(
 @router.delete(
     "/{dataset_id}/quality-rules/{rule_id}",
     status_code=204,
-    dependencies=[Depends(require_permission(PERM_CONSOLE_DATASETS))],
+    dependencies=[Depends(require_any_permission(PERM_CONSOLE_DATASETS, PERM_DATA_WRITE))],
 )
 async def delete_quality_rule(
     rule_id: str,
@@ -155,7 +155,7 @@ async def delete_quality_rule(
 @router.post(
     "/{dataset_id}/quality-rules/{rule_id}/run",
     response_model=QualityRuleResponse,
-    dependencies=[Depends(require_permission(PERM_CONSOLE_DATASETS))],
+    dependencies=[Depends(require_any_permission(PERM_CONSOLE_DATASETS, PERM_DATA_WRITE))],
 )
 async def run_quality_rule(
     rule_id: str,

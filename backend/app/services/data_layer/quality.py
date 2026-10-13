@@ -117,5 +117,9 @@ async def run_rule(db: AsyncSession, dataset: Dataset, rule: QualityRule) -> dic
             "failed_count": failed,
             "detail": {},
         }
+    except QualityError:
+        raise
+    except Exception as exc:  # noqa: BLE001 - surface DB errors as 400, not 500
+        raise QualityError(f"Rule execution failed: {exc}") from exc
     finally:
         engine.dispose()
