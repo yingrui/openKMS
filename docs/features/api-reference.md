@@ -405,6 +405,8 @@ Encrypted values; **never returned**. Write/sync/delete reject personal API key 
 | PUT | `/api/queries/{query_id}` | Update a saved query (`data:write`) |
 | DELETE | `/api/queries/{query_id}` | Delete a saved query (`data:write`) |
 | GET | `/api/queries/{query_id}/run` | Run a saved query — read-only, timeout + row cap (`data:read`) |
+| GET | `/api/semantic-model` | Export the Ossie semantic-model document — `?format=json\|yaml` (`data:read`) |
+| POST | `/api/semantic-model/import` | Upsert relationships/metrics/queries from an Ossie document (`data:write`) |
 | GET | `/api/explorer-reports` | List explorer reports (`data:read`) |
 | POST | `/api/explorer-reports` | Create explorer report (`data:write`) |
 | GET | `/api/explorer-reports/{id}` | Get explorer report (`data:read`) |

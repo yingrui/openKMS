@@ -28,6 +28,7 @@ from . import (
     ping,
     queries,
     search,
+    semantic_model,
     wiki,
     wiki_spaces,
 )
@@ -59,6 +60,7 @@ def register(sub: _SubParsersAction) -> None:
     media.add_media_subparser(sub)
     metrics.add_subparser(sub)
     queries.add_subparser(sub)
+    semantic_model.add_subparser(sub)
     ontology.add_subparser(sub)  # exposes `ontology cypher/...`, `ontology objects ...`, `ontology links ...`
     evaluation.add_subparser(sub)
     explorer.add_subparser(sub)

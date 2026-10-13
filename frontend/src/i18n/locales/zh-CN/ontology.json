@@ -106,7 +106,14 @@
     "colFrom": "来源（from）",
     "colTo": "目标（to）",
     "metrics": "指标",
-    "queries": "查询"
+    "queries": "查询",
+    "exportJson": "导出 JSON",
+    "exportYaml": "导出 YAML",
+    "import": "导入",
+    "exportFailed": "导出失败",
+    "importFailed": "导入失败",
+    "importDone": "已导入 {{r}} 个关系、{{m}} 个指标、{{q}} 个查询",
+    "importWarnings": "跳过 {{n}} 条"
   },
   "datasets": {
     "title": "数据集",

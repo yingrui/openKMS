@@ -238,6 +238,8 @@ All write subcommands accept `--yes` / `--dry-run`. Without `--yes` on non-TTY s
 | `queries add` *(write)* | POST | `/api/queries` | Body `{name, base_dataset_id, metrics:[{name, metric_id}], group_by:[field], joins:[rel_id], filters?}`. |
 | `queries run` | GET | `/api/queries/{query_id}/run` | Runs the query read-only (timeout + row cap). |
 | `queries delete` *(write)* | DELETE | `/api/queries/{query_id}` | |
+| `semantic-model export` | GET | `/api/semantic-model` | Ossie document (`?format=json|yaml`): datasets (+keys/fields), relationships, metrics, queries. |
+| `semantic-model import` *(write)* | POST | `/api/semantic-model/import` | Upsert the semantic layer from an Ossie document (datasets matched by id/source/name). |
 | `explorer reports-list` | GET | `/api/explorer-reports` | Data Explorer saved analyses. |
 | `explorer reports-get` | GET | `/api/explorer-reports/{id}` | |
 | `explorer reports-create` *(write)* | POST | `/api/explorer-reports` | Body `{name, question, dataset_id, narrative, charts}`. |

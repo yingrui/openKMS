@@ -106,7 +106,14 @@
     "colFrom": "From",
     "colTo": "To",
     "metrics": "Metrics",
-    "queries": "Queries"
+    "queries": "Queries",
+    "exportJson": "Export JSON",
+    "exportYaml": "Export YAML",
+    "import": "Import",
+    "exportFailed": "Export failed",
+    "importFailed": "Import failed",
+    "importDone": "Imported {{r}} relationships, {{m}} metrics, {{q}} queries",
+    "importWarnings": "{{n}} entries skipped"
   },
   "datasets": {
     "title": "Datasets",

@@ -1,12 +1,17 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useNavigate } from 'react-router-dom';
-import { Loader2 } from 'lucide-react';
+import { Download, Loader2, Upload } from 'lucide-react';
 import { toast } from 'sonner';
 import { fetchDatasets, type DatasetResponse } from '../../data/datasetsApi';
 import { fetchDatasetJoins, type DatasetJoinResponse } from '../../data/joinsApi';
 import { fetchMetrics } from '../../data/metricsApi';
 import { fetchSavedQueries } from '../../data/queriesApi';
+import {
+  exportSemanticModel,
+  exportSemanticModelYaml,
+  importSemanticModel,
+} from '../../data/semanticModelApi';
 import { fetchQualityRules, type QualityRuleResponse } from '../../data/qualityApi';
 import { EmptyState } from '../../styles/design-system';
 import { EntityViewPanel, EntityViewStat, EntityViewStats } from './EntityViewShell';
@@ -20,10 +25,21 @@ function datasetLabel(d: DatasetResponse): string {
   return d.display_name || `${d.schema_name}.${d.table_name}`;
 }
 
+function download(filename: string, text: string, type: string): void {
+  const url = URL.createObjectURL(new Blob([text], { type }));
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
 /** Model view: the ER picture (datasets + joins) and model health. */
 export function DataModelPage() {
   const { t } = useTranslation('ontology');
   const navigate = useNavigate();
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [importing, setImporting] = useState(false);
   const [datasets, setDatasets] = useState<DatasetResponse[]>([]);
   const [joins, setJoins] = useState<DatasetJoinResponse[]>([]);
   const [rules, setRules] = useState<QualityRuleResponse[]>([]);
@@ -60,6 +76,43 @@ export function DataModelPage() {
     void load();
   }, [load]);
 
+  const handleExport = async (format: 'json' | 'yaml') => {
+    try {
+      if (format === 'yaml') {
+        download('semantic-model.yaml', await exportSemanticModelYaml(), 'application/yaml');
+      } else {
+        const doc = await exportSemanticModel();
+        download('semantic-model.json', JSON.stringify(doc, null, 2), 'application/json');
+      }
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : t('dataModel.exportFailed'));
+    }
+  };
+
+  const handleImportFile = async (file: File) => {
+    setImporting(true);
+    try {
+      const doc = JSON.parse(await file.text()) as unknown;
+      const summary = await importSemanticModel(doc);
+      toast.success(
+        t('dataModel.importDone', {
+          r: summary.relationships,
+          m: summary.metrics,
+          q: summary.queries,
+        }),
+      );
+      if (summary.warnings.length) {
+        toast.message(t('dataModel.importWarnings', { n: summary.warnings.length }));
+      }
+      await load();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : t('dataModel.importFailed'));
+    } finally {
+      setImporting(false);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
+  };
+
   const nameOf = (id: string) => {
     const d = datasets.find((x) => x.id === id);
     return d ? datasetLabel(d) : id;
@@ -95,6 +148,47 @@ export function DataModelPage() {
         <div>
           <h1>{t('dataModel.title')}</h1>
           <p className="page-subtitle">{t('dataModel.subtitle')}</p>
+        </div>
+        <div className="dataset-columns__actions">
+          <button
+            type="button"
+            className="btn btn-secondary btn-sm"
+            onClick={() => void handleExport('json')}
+          >
+            <Download size={14} aria-hidden />
+            {t('dataModel.exportJson')}
+          </button>
+          <button
+            type="button"
+            className="btn btn-secondary btn-sm"
+            onClick={() => void handleExport('yaml')}
+          >
+            <Download size={14} aria-hidden />
+            {t('dataModel.exportYaml')}
+          </button>
+          <button
+            type="button"
+            className="btn btn-secondary btn-sm"
+            onClick={() => fileInputRef.current?.click()}
+            disabled={importing}
+          >
+            {importing ? (
+              <Loader2 size={14} className="console-loading-spinner" aria-hidden />
+            ) : (
+              <Upload size={14} aria-hidden />
+            )}
+            {t('dataModel.import')}
+          </button>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="application/json,.json"
+            hidden
+            onChange={(e) => {
+              const file = e.target.files?.[0];
+              if (file) void handleImportFile(file);
+            }}
+          />
         </div>
       </div>
       <DatasetAppTabs />

@@ -92,15 +92,15 @@ The Model tab is the **authoring + governance surface of the semantic model**. S
 - A **query** picks metrics + **`group_by` dimensions** (fields) + `filters` (Ossie `saved_queries`) — **this** is where dimensions are chosen, *not* on the metric. ✅ Stage 5.
 - Saved as a named artifact; may export as a view/table (manifest `exports`).
 
-### 6. Export / Import (Ossie)
-- **Export** the semantic model as **Ossie YAML** (`semantic_model: {datasets, relationships, metrics}`) — interoperability + governance artifact; no runtime dependency.
-- **Import** an Ossie document to seed datasets/relationships/metrics.
+### 6. Export / Import (Ossie) ✅
+- **Export** the semantic model as an **Ossie document** (`semantic_model: {datasets, relationships, metrics, queries}`, JSON or YAML via `GET /api/semantic-model`) — interoperability + governance artifact; no runtime dependency.
+- **Import** (`POST /api/semantic-model/import`) **upserts** relationships/metrics/queries over datasets matched by id/source/name; datasets are not created.
 
 ---
 
 ## Data model changes
 
-Authoritative, staged list: [refactoring plan](data-layer.md#refactoring-plan) (Stages 1–6). At spec level: `datasets` gains `unique_keys` + `ai_context` (✅ Stage 2); new **`dataset_fields`** (✅ Stage 3); **`dataset_joins`** re-modelled as an FK (✅ Stage 1); `metric_definitions` is model-level with no `dimensions` (✅ Stage 4) + **`metric_runs`** audit; new **`saved_queries`** (✅ Stage 5).
+Authoritative, staged list: [refactoring plan](data-layer.md#refactoring-plan) (Stages 1–6). At spec level: `datasets` gains `unique_keys` + `ai_context` (✅ Stage 2); new **`dataset_fields`** (✅ Stage 3); **`dataset_joins`** re-modelled as an FK (✅ Stage 1); `metric_definitions` is model-level with no `dimensions` (✅ Stage 4) + **`metric_runs`** audit; new **`saved_queries`** (✅ Stage 5); **Ossie export/import** (✅ Stage 6).
 
 ---
 
