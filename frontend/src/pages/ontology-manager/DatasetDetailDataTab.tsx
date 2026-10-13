@@ -6,6 +6,66 @@ import { toast } from 'sonner';
 import { fetchDatasetRows, type DatasetRowsResponse } from '../../data/datasetsApi';
 import { EntityViewHeader, EntityViewPanel } from './EntityViewShell';
 
+const UUID_RE = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/;
+const HEX_RE = /^[0-9a-fA-F]{16,}$/;
+
+/** UUIDs / long hex tokens — the values that benefit from middle truncation + monospace. */
+function isIdLike(value: string): boolean {
+  return UUID_RE.test(value) || HEX_RE.test(value);
+}
+
+/** Keep both ends visible (`abcdef12…9f3a`) — better than tail-ellipsis for ids. */
+function middleTruncate(value: string, max = 22): string {
+  if (value.length <= max) return value;
+  const head = Math.ceil((max - 1) / 2);
+  const tail = Math.floor((max - 1) / 2);
+  return `${value.slice(0, head)}…${value.slice(-tail)}`;
+}
+
+/**
+ * Data-grid cell: id-like values are middle-truncated, monospaced, and click-to-copy;
+ * other long text relies on CSS ellipsis. `title` always carries the full value.
+ */
+function CellValue({ value }: { value: unknown }) {
+  const { t } = useTranslation('ontology');
+  if (value === null || value === undefined) {
+    return <span className="dataset-cell dataset-cell--null">{t('datasets.dash')}</span>;
+  }
+  if (typeof value === 'boolean') {
+    return <span className="dataset-cell">{value ? t('datasets.yes') : t('datasets.no')}</span>;
+  }
+  const text = typeof value === 'object' ? JSON.stringify(value) : String(value);
+  const idLike = isIdLike(text);
+  const copy = () => {
+    if (!navigator.clipboard) return;
+    void navigator.clipboard
+      .writeText(text)
+      .then(() => toast.success(t('datasets.copied')))
+      .catch(() => undefined);
+  };
+  return (
+    <span
+      className={`dataset-cell${idLike ? ' dataset-cell--id' : ''}`}
+      title={text}
+      {...(idLike
+        ? {
+            role: 'button',
+            tabIndex: 0,
+            onClick: copy,
+            onKeyDown: (e: React.KeyboardEvent) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                copy();
+              }
+            },
+          }
+        : {})}
+    >
+      {idLike ? middleTruncate(text) : text}
+    </span>
+  );
+}
+
 export function DatasetDataTab() {
   const { t } = useTranslation('ontology');
   const { id: datasetId = '' } = useParams();
@@ -13,16 +73,6 @@ export function DatasetDataTab() {
   const [rowsLoading, setRowsLoading] = useState(true);
   const [page, setPage] = useState(0);
   const [pageSize, setPageSize] = useState(100);
-
-  const displayCellValue = useCallback(
-    (v: unknown): string => {
-      if (v === null || v === undefined) return t('datasets.dash');
-      if (typeof v === 'boolean') return v ? t('datasets.yes') : t('datasets.no');
-      if (typeof v === 'object') return JSON.stringify(v);
-      return String(v);
-    },
-    [t],
-  );
 
   const loadRows = useCallback(async () => {
     if (!datasetId) return;
@@ -63,7 +113,7 @@ export function DatasetDataTab() {
         ) : (
           <div className="dataset-detail-data">
             <div className="ds-table-wrap ds-table-wrap--flush">
-              <table className="console-table">
+              <table className="console-table dataset-data-table">
                 <thead>
                   <tr>
                     {columns.map((col) => (
@@ -82,7 +132,9 @@ export function DatasetDataTab() {
                     rowsData.rows.map((row, idx) => (
                       <tr key={idx}>
                         {columns.map((col) => (
-                          <td key={col}>{displayCellValue(row[col])}</td>
+                          <td key={col}>
+                            <CellValue value={row[col]} />
+                          </td>
                         ))}
                       </tr>
                     ))

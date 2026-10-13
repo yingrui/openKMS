@@ -3,6 +3,34 @@
     calc(-1 * var(--space-6));
 }
 
+.dataset-data-table td {
+  max-width: 28ch;
+}
+
+.dataset-cell {
+  display: inline-block;
+  max-width: 28ch;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  vertical-align: bottom;
+
+  &--null {
+    color: var(--color-text-muted);
+  }
+
+  &--id {
+    font-family: var(--font-mono, ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace);
+    font-size: 0.8125rem;
+    cursor: copy;
+    border-radius: var(--radius-sm);
+
+    &:hover {
+      background: var(--color-bg-muted);
+    }
+  }
+}
+
 .dataset-detail-pagination {
   display: flex;
   align-items: center;
