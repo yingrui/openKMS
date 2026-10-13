@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useNavigate } from 'react-router-dom';
-import { Download, Loader2, Upload } from 'lucide-react';
+import { ChevronDown, ChevronRight, Loader2, MoreHorizontal } from 'lucide-react';
 import { toast } from 'sonner';
 import { fetchDatasets, type DatasetResponse } from '../../data/datasetsApi';
 import { fetchDatasetJoins, type DatasetJoinResponse } from '../../data/joinsApi';
@@ -17,6 +17,7 @@ import { EmptyState } from '../../styles/design-system';
 import { EntityViewPanel, EntityViewStat, EntityViewStats } from './EntityViewShell';
 import { DatasetAppTabs } from './DatasetAppTabs';
 import { DatasetErGraph, type ErGraphLink, type ErGraphNode } from './DatasetErGraph';
+import { ModelRelationshipsSection } from './ModelRelationshipsSection';
 import { ModelMetricsSection } from './ModelMetricsSection';
 import { ModelQueriesSection } from './ModelQueriesSection';
 import '../ontology/ontology-admin.scss';
@@ -34,12 +35,17 @@ function download(filename: string, text: string, type: string): void {
   URL.revokeObjectURL(url);
 }
 
-/** Model view: the ER picture (datasets + joins) and model health. */
+/**
+ * Model view: the configurable **semantic model** (datasets + fields + relationships)
+ * and the model-level **metrics** / **queries**. The ER picture is secondary (hidden
+ * by default); Export/Import live in the header overflow menu.
+ */
 export function DataModelPage() {
   const { t } = useTranslation('ontology');
   const navigate = useNavigate();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [importing, setImporting] = useState(false);
+  const [showEr, setShowEr] = useState(false);
   const [datasets, setDatasets] = useState<DatasetResponse[]>([]);
   const [joins, setJoins] = useState<DatasetJoinResponse[]>([]);
   const [rules, setRules] = useState<QualityRuleResponse[]>([]);
@@ -113,12 +119,12 @@ export function DataModelPage() {
     }
   };
 
+  const datasetOfRule = useMemo(() => new Map(rules.map((r) => [r.id, r.dataset_id])), [rules]);
+  const alerts = rules.filter((r) => r.last_status === 'failed' || r.last_status === 'error');
   const nameOf = (id: string) => {
     const d = datasets.find((x) => x.id === id);
     return d ? datasetLabel(d) : id;
   };
-  const datasetOfRule = useMemo(() => new Map(rules.map((r) => [r.id, r.dataset_id])), [rules]);
-  const alerts = rules.filter((r) => r.last_status === 'failed' || r.last_status === 'error');
 
   const graphNodes: ErGraphNode[] = datasets.map((d) => ({
     id: d.id,
@@ -144,52 +150,41 @@ export function DataModelPage() {
 
   return (
     <div className="ontology-admin">
-      <div className="page-header">
+      <div className="page-header model-page-header">
         <div>
           <h1>{t('dataModel.title')}</h1>
           <p className="page-subtitle">{t('dataModel.subtitle')}</p>
         </div>
-        <div className="dataset-columns__actions">
-          <button
-            type="button"
-            className="btn btn-secondary btn-sm"
-            onClick={() => void handleExport('json')}
-          >
-            <Download size={14} aria-hidden />
-            {t('dataModel.exportJson')}
-          </button>
-          <button
-            type="button"
-            className="btn btn-secondary btn-sm"
-            onClick={() => void handleExport('yaml')}
-          >
-            <Download size={14} aria-hidden />
-            {t('dataModel.exportYaml')}
-          </button>
-          <button
-            type="button"
-            className="btn btn-secondary btn-sm"
-            onClick={() => fileInputRef.current?.click()}
-            disabled={importing}
-          >
-            {importing ? (
-              <Loader2 size={14} className="console-loading-spinner" aria-hidden />
-            ) : (
-              <Upload size={14} aria-hidden />
-            )}
-            {t('dataModel.import')}
-          </button>
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept="application/json,.json"
-            hidden
-            onChange={(e) => {
-              const file = e.target.files?.[0];
-              if (file) void handleImportFile(file);
-            }}
-          />
-        </div>
+        <details className="model-menu">
+          <summary className="btn btn-secondary btn-sm" aria-label={t('dataModel.more')}>
+            <MoreHorizontal size={16} aria-hidden />
+          </summary>
+          <div className="model-menu__panel">
+            <button type="button" onClick={() => void handleExport('json')}>
+              {t('dataModel.exportJson')}
+            </button>
+            <button type="button" onClick={() => void handleExport('yaml')}>
+              {t('dataModel.exportYaml')}
+            </button>
+            <button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              disabled={importing}
+            >
+              {t('dataModel.import')}
+            </button>
+          </div>
+        </details>
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="application/json,.json"
+          hidden
+          onChange={(e) => {
+            const file = e.target.files?.[0];
+            if (file) void handleImportFile(file);
+          }}
+        />
       </div>
       <DatasetAppTabs />
       <div className="ontology-admin-content">
@@ -198,21 +193,43 @@ export function DataModelPage() {
           <EntityViewStat label={t('dataModel.joins')} value={joins.length} />
           <EntityViewStat label={t('dataModel.metrics')} value={metricCount} />
           <EntityViewStat label={t('dataModel.queries')} value={queryCount} />
-          <EntityViewStat label={t('dataModel.rules')} value={rules.length} />
           <EntityViewStat label={t('dataModel.failingRules')} value={alerts.length} />
         </EntityViewStats>
 
         <section>
-          <h2>{t('dataModel.erDiagram')}</h2>
+          <h2>{t('dataModel.semanticModel')}</h2>
+          <p className="page-subtitle">
+            {t('dataModel.semanticModelHint')}{' '}
+            <Link to="/datasets">{t('dataModel.manageFields')}</Link>
+          </p>
           <EntityViewPanel>
-            <DatasetErGraph
-              nodes={graphNodes}
-              links={graphLinks}
-              onOpen={(id) => navigate(`/datasets/${id}`)}
-              emptyLabel={t('dataModel.emptyGraph')}
-            />
+            <ModelRelationshipsSection onChanged={() => void load()} />
           </EntityViewPanel>
+          <div className="model-er-toggle">
+            <button
+              type="button"
+              className="btn btn-secondary btn-sm"
+              onClick={() => setShowEr((v) => !v)}
+            >
+              {showEr ? <ChevronDown size={14} aria-hidden /> : <ChevronRight size={14} aria-hidden />}
+              {t('dataModel.erDiagram')}
+            </button>
+          </div>
+          {showEr && (
+            <EntityViewPanel>
+              <DatasetErGraph
+                nodes={graphNodes}
+                links={graphLinks}
+                onOpen={(id) => navigate(`/datasets/${id}`)}
+                emptyLabel={t('dataModel.emptyGraph')}
+              />
+            </EntityViewPanel>
+          )}
         </section>
+
+        <ModelMetricsSection />
+
+        <ModelQueriesSection />
 
         <section>
           <h2>{t('dataModel.qualityAlerts')}</h2>
@@ -251,47 +268,6 @@ export function DataModelPage() {
             </div>
           )}
         </section>
-
-        <section>
-          <h2>{t('dataModel.joins')}</h2>
-          {joins.length === 0 ? (
-            <EmptyState
-              title={t('datasets.relationshipsEmpty')}
-              description={t('datasets.relationshipsHint')}
-            />
-          ) : (
-            <div className="ds-table-wrap">
-              <table className="console-table">
-                <thead>
-                  <tr>
-                    <th>{t('dataModel.colFrom')}</th>
-                    <th>{t('dataModel.colTo')}</th>
-                    <th>{t('dataModel.required')}</th>
-                    <th>{t('datasets.joinColumns')}</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {joins.map((j) => (
-                    <tr key={j.id}>
-                      <td>{j.from_dataset_name ?? j.from_dataset_id}</td>
-                      <td>{j.to_dataset_name ?? j.to_dataset_id}</td>
-                      <td>{j.required ? t('datasets.requiredLabel') : t('datasets.optionalLabel')}</td>
-                      <td>
-                        {j.from_columns
-                          .map((c, i) => `${c} = ${j.to_columns[i] ?? ''}`)
-                          .join(', ')}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </section>
-
-        <ModelMetricsSection />
-
-        <ModelQueriesSection />
       </div>
     </div>
   );

@@ -90,18 +90,20 @@ Why it's intuitive: the user only ever answers one question at a time (which fil
 
 ## Model tab — the semantic model
 
-The Model tab authors the **semantic model**; its sections are the Ossie classes. **Function spec:** [semantic model spec](data-layer-semantic-model.md) · **definitions/surfaces:** [data layer](data-layer.md#the-ossie-class-model-definitions-and-where-each-is-managed).
+The Model tab is where the **semantic model** is *built* (not just imported), and where **metrics** and **queries** live. **Function spec:** [semantic model spec](data-layer-semantic-model.md) · **definitions/surfaces:** [data layer](data-layer.md#the-ossie-class-model-definitions-and-where-each-is-managed).
 
-- **Overview** — ER graph (datasets as nodes, **directed FK edges many → one**) + model health; click a node → open the dataset.
-- **Relationships** — the only choice is *who holds the FK*; column pairs pre-fill on name match.
+Focus: **Semantic model** + **Metrics** (Queries alongside); the ER picture is secondary.
+
+- **Semantic model** — datasets + their **fields** (edited per dataset, linked from here) + **Relationships**, edited **globally** in this tab (from/to, column pairs, required). No JSON needed.
 - **Metrics / Queries** — model-level lists. A metric is a **SQL expression** (Ossie `expression.dialects`) that a data engineer authors, with **AI-assist** to draft it; a query pins metrics + dimensions + filter.
-- **Export** — the Ossie document.
+- **ER graph** — hidden by default behind a toggle (it is a *view* of the relationships, not the first thing to do).
+- **Export / Import** — the Ossie document, tucked into the header overflow menu (interchange, not the primary action).
 
 ### Why it's intuitive
 
-- The picture **is** the model — the graph and the relationship editor are the same object.
+- The model is **configured here** — relationships (and, per dataset, fields) — so the interchange document is an *output*, not the input.
 - Direction is a plain question (*who holds the FK?*), not a cardinality/position puzzle: `orders ──from (many)──▶ customers`.
-- Relationships are the **join graph**, so “can I write a cross-dataset metric?” is answered by the graph itself.
+- Relationships are the **join graph**, so “can I write a cross-dataset metric?” is answered by the graph.
 
 ---
 

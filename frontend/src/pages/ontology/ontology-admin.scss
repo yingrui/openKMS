@@ -1699,3 +1699,64 @@ select.console-form-control {
     color: var(--color-danger, var(--color-text));
   }
 }
+
+/* Model view: header overflow menu + collapsible ER toggle. */
+.model-page-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.model-menu {
+  position: relative;
+
+  summary {
+    list-style: none;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+
+    &::-webkit-details-marker {
+      display: none;
+    }
+  }
+
+  &__panel {
+    position: absolute;
+    right: 0;
+    z-index: 20;
+    margin-top: var(--space-1);
+    min-width: 180px;
+    display: flex;
+    flex-direction: column;
+    padding: var(--space-1);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    background: var(--color-bg);
+    box-shadow: 0 6px 16px rgb(0 0 0 / 12%);
+
+    button {
+      text-align: left;
+      padding: var(--space-2) var(--space-3);
+      border: none;
+      background: transparent;
+      color: var(--color-text);
+      border-radius: var(--radius-md);
+      cursor: pointer;
+
+      &:hover {
+        background: var(--color-bg-muted);
+      }
+
+      &:disabled {
+        opacity: 0.5;
+        cursor: default;
+      }
+    }
+  }
+}
+
+.model-er-toggle {
+  margin-top: var(--space-3);
+}

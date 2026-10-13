@@ -114,7 +114,16 @@
     "importFailed": "Import failed",
     "importDone": "Imported {{r}} relationships, {{m}} metrics, {{q}} queries",
     "importWarnings": "{{n}} entries skipped",
-    "required": "Match"
+    "required": "Match",
+    "more": "More",
+    "semanticModel": "Semantic model",
+    "semanticModelHint": "The model agents reason over: datasets and their fields, plus the relationships between them.",
+    "relationships": "Relationships",
+    "manageFields": "Manage datasets & fields",
+    "editRelationship": "Edit relationship",
+    "fromDataset": "From (many — holds the FK)",
+    "toDataset": "To (one — referenced key)",
+    "pickDatasets": "Pick both datasets"
   },
   "datasets": {
     "title": "Datasets",
@@ -401,7 +410,8 @@
     "requiredLabel": "required",
     "optionalLabel": "optional",
     "joinRequired": "Require a matching row",
-    "joinRequiredHint": "On: only keep rows that match (INNER). Off: keep rows without a match (LEFT, default)."
+    "joinRequiredHint": "On: only keep rows that match (INNER). Off: keep rows without a match (LEFT, default).",
+    "joinSaved": "Relationship saved"
   },
   "groups": {
     "title": "Groups",

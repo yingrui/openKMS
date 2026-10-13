@@ -66,17 +66,17 @@ datasets  ──(primary_key / unique_keys)──►  relationship.to
 
 ## Model tab functionality
 
-The Model tab is the **authoring + governance surface of the semantic model**. Sections (top-level tabs within it):
+The Model tab is the **authoring + governance surface of the semantic model** — where it is **configured** (not just imported) — with **Metrics** (and Queries) as the focus. Sections:
 
 ### 1. Overview
-- **ER graph**: datasets as nodes, **relationships as directed FK edges (many → one)**; click a node → open the dataset.
 - **Model health**: counts of datasets, relationships, metrics; quality failing; **datasets without a primary key** (a relationship/`to` problem); **orphans** (no relationships).
+- **ER graph** (secondary): datasets as nodes, **relationships as directed FK edges (many → one)**; click a node → open the dataset. **Hidden by default** behind a toggle — it is a *view* of the relationships, not the primary surface.
 
 ### 2. Relationships
-- List + create/edit a relationship: **from (many)** dataset, **to (one)** dataset, **column pairs** (ordered, add/remove for composite), **required** (optional vs required match), name, `ai_context`.
+- List + create/edit a relationship **globally in the Model tab** (both datasets picked here), and per-dataset from a dataset's **Relationships** tab: **from (many)** dataset, **to (one)** dataset, **column pairs** (ordered, add/remove for composite), **required** (optional vs required match), name, `ai_context`.
 - **Validation inline**: column existence; composite lengths; `to_columns` must be the target's primary key or a declared unique key (when declared).
 - Direction is a simple choice: *"this dataset holds the FK (from)"* vs *"this dataset is referenced (to)"*.
-- Not a **LinkType**: a data relationship carries a **join type** and targets physical tables; a LinkType is a semantic object-type link with none.
+- Not a **LinkType**: a data relationship carries **optionality** (`required`) and targets physical tables; a LinkType is a semantic object-type link with none.
 
 ### 3. Metrics
 - **Model-level** aggregate **expressions** (metrics span datasets via relationships; not per-dataset). ✅ Stage 4.
@@ -93,7 +93,8 @@ The Model tab is the **authoring + governance surface of the semantic model**. S
 - Saved as a named artifact; may export as a view/table (manifest `exports`).
 
 ### 6. Export / Import (Ossie) ✅
-- **Export** the semantic model as an **Ossie document** (`semantic_model: {datasets, relationships, metrics, queries}`, JSON or YAML via `GET /api/semantic-model`) — interoperability + governance artifact; no runtime dependency.
+- **Export / Import live in the Model header overflow menu** — an interchange *output*, not the primary action; the model is built by configuration above.
+- **Export** the semantic model as an **Ossie document** (`semantic_model: {datasets, relationships, metrics, queries}`, JSON or YAML via `GET /api/semantic-model`).
 - **Import** (`POST /api/semantic-model/import`) **upserts** relationships/metrics/queries over datasets matched by id/source/name; datasets are not created.
 
 ---

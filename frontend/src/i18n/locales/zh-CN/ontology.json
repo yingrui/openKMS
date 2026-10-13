@@ -114,7 +114,16 @@
     "importFailed": "导入失败",
     "importDone": "已导入 {{r}} 个关系、{{m}} 个指标、{{q}} 个查询",
     "importWarnings": "跳过 {{n}} 条",
-    "required": "匹配"
+    "required": "匹配",
+    "more": "更多",
+    "semanticModel": "语义模型",
+    "semanticModelHint": "供 Agent 推理的模型：数据集及其字段，以及它们之间的关系。",
+    "relationships": "关系",
+    "manageFields": "管理数据集与字段",
+    "editRelationship": "编辑关系",
+    "fromDataset": "起点（多端 — 持有外键）",
+    "toDataset": "终点（一端 — 被引用键）",
+    "pickDatasets": "请选择两个数据集"
   },
   "datasets": {
     "title": "数据集",
@@ -401,7 +410,8 @@
     "requiredLabel": "必需",
     "optionalLabel": "可选",
     "joinRequired": "要求匹配到行",
-    "joinRequiredHint": "开：只保留匹配上的行（INNER）；关：保留无匹配的行（LEFT，默认）。"
+    "joinRequiredHint": "开：只保留匹配上的行（INNER）；关：保留无匹配的行（LEFT，默认）。",
+    "joinSaved": "关系已保存"
   },
   "groups": {
     "title": "分组",
