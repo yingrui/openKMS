@@ -18,7 +18,7 @@ import { DatasetUploadWizard } from './DatasetUploadWizard';
 import { DatasetAppTabs } from './DatasetAppTabs';
 import { DatasetErGraph, type ErGraphLink, type ErGraphNode } from './DatasetErGraph';
 import { useConfirm } from '../../contexts/ConfirmContext';
-import { Dialog, EmptyState, FormField, ResourceViewToggle } from '../../styles/design-system';
+import { Dialog, EmptyState, FormField, Pagination, ResourceViewToggle } from '../../styles/design-system';
 import '../ontology/ontology-admin.scss';
 
 export function DatasetsListPage() {
@@ -42,19 +42,14 @@ export function DatasetsListPage() {
   const [showUpload, setShowUpload] = useState(false);
   const [view, setView] = useState<'list' | 'graph'>('list');
   const [joins, setJoins] = useState<DatasetJoinResponse[]>([]);
+  const [debouncedSearch, setDebouncedSearch] = useState('');
+  const [page, setPage] = useState(0);
+  const [pageSize, setPageSize] = useState(25);
+  const [total, setTotal] = useState(0);
 
   const pgDataSources = dataSources.filter((ds) => ds.kind === 'postgresql');
   // PostgreSQL sources back datasets; only sources explicitly tagged `ontology` are excluded.
   const dataLayerSources = pgDataSources.filter((ds) => ds.layer !== 'ontology');
-
-  const filteredItems = items.filter((d) => {
-    const s = search.trim().toLowerCase();
-    if (!s) return true;
-    const displayName = (d.display_name || `${d.schema_name}.${d.table_name}`).toLowerCase();
-    const schemaTable = `${d.schema_name}.${d.table_name}`.toLowerCase();
-    const dataSource = (d.data_source_name ?? '').toLowerCase();
-    return displayName.includes(s) || schemaTable.includes(s) || dataSource.includes(s);
-  });
 
   const graphNodes: ErGraphNode[] = useMemo(
     () =>
@@ -80,24 +75,45 @@ export function DatasetsListPage() {
   const load = useCallback(async () => {
     setLoading(true);
     try {
+      const isGraph = view === 'graph';
       const [dsRes, dRes, jRes] = await Promise.all([
-        fetchDatasets(filterDataSourceId ? { data_source_id: filterDataSourceId } : undefined),
+        fetchDatasets({
+          data_source_id: filterDataSourceId || undefined,
+          search: debouncedSearch.trim() || undefined,
+          limit: isGraph ? undefined : pageSize,
+          offset: isGraph ? 0 : page * pageSize,
+        }),
         fetchAllDataSources(),
-        fetchDatasetJoins(),
+        isGraph ? fetchDatasetJoins() : Promise.resolve(null),
       ]);
       setItems(dsRes.items);
+      setTotal(dsRes.total);
       setDataSources(dRes);
-      setJoins(jRes.items);
+      if (jRes) setJoins(jRes.items);
     } catch (e) {
       toast.error(e instanceof Error ? e.message : t('datasets.loadFailed'));
     } finally {
       setLoading(false);
     }
-  }, [filterDataSourceId, t]);
+  }, [filterDataSourceId, debouncedSearch, page, pageSize, view, t]);
 
   useEffect(() => {
     void load();
   }, [load]);
+
+  useEffect(() => {
+    const handle = setTimeout(() => setDebouncedSearch(search), 300);
+    return () => clearTimeout(handle);
+  }, [search]);
+
+  useEffect(() => {
+    setPage(0);
+  }, [debouncedSearch, filterDataSourceId, view]);
+
+  useEffect(() => {
+    const maxPage = Math.max(0, Math.ceil(total / pageSize) - 1);
+    if (page > maxPage) setPage(maxPage);
+  }, [total, pageSize, page]);
 
   const loadTables = async (dataSourceId: string) => {
     if (!dataSourceId) {
@@ -202,7 +218,7 @@ export function DatasetsListPage() {
   };
 
   const showEmptyState =
-    !loading && items.length === 0 && !search.trim() && !filterDataSourceId;
+    !loading && total === 0 && !search.trim() && !filterDataSourceId;
 
   return (
     <div className="ontology-admin">
@@ -312,14 +328,14 @@ export function DatasetsListPage() {
                 </tr>
               </thead>
               <tbody>
-                {filteredItems.length === 0 ? (
+                {items.length === 0 ? (
                   <tr>
                     <td colSpan={4} className="console-table-empty">
                       {search.trim() ? t('datasets.emptyNoMatch') : t('datasets.emptyList')}
                     </td>
                   </tr>
                 ) : (
-                  filteredItems.map((d) => (
+                  items.map((d) => (
                     <tr key={d.id}>
                       <td>
                         <Link
@@ -367,6 +383,20 @@ export function DatasetsListPage() {
               </tbody>
             </table>
           </div>
+        )}
+
+        {view === 'list' && !loading && total > 0 && (
+          <Pagination
+            total={total}
+            page={page}
+            pageSize={pageSize}
+            loading={loading}
+            onPageChange={setPage}
+            onPageSizeChange={(size) => {
+              setPageSize(size);
+              setPage(0);
+            }}
+          />
         )}
       </div>
 

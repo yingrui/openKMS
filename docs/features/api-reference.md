@@ -359,7 +359,7 @@ Encrypted values; **never returned**. Write/sync/delete reject personal API key 
 | PATCH | `/api/schedules/{id}` | Update schedule (`enabled`, `cron`, `timezone`; agent kinds also `prompt`); sync kinds mirror `settings.sync_schedule` on the connector (`connectors:write` or `projects:write`) |
 | POST | `/api/schedules/{id}/run-now` | Queue the scheduled target now (`run_connector_sync` or `run_scheduled_project_agent`); returns `{ job_id }` (202) |
 | POST | `/internal-api/process-heartbeat` | **Internal service client only**; worker/scheduler liveness (`role`, `instance_id`); in-memory registry for Console health (no history table) |
-| GET | `/api/datasets` | List datasets (`data:read`; filtered by dataset ACL) |
+| GET | `/api/datasets` | List datasets (`data:read`; filtered by dataset ACL) — optional `data_source_id`, `search`, `limit` (≤500), `offset`; returns `total` for pagination |
 | GET | `/api/datasets/from-source/{id}` | List tables from PostgreSQL data source (`data:write`) |
 | POST | `/api/datasets` | Create dataset (`data:write`) |
 | GET | `/api/datasets/{id}` | Get dataset (`data:read`; dataset ACL) |

@@ -45,7 +45,7 @@ Why it's intuitive: users already think "I need data → data section; I need bu
 
 A catalog, not a database admin table. A **view toggle** switches the same datasets between:
 
-- **List** — search + filters (domain, tag, sensitivity, data source — chips, not a form); each dataset shows its display name, domain tag, sensitivity badge, row count, freshness, and a mini quality dot.
+- **List** — search + filters (domain, tag, sensitivity, data source — chips, not a form), **server-side pagination** (`Pagination`, default 25/page); each dataset shows its display name, domain tag, sensitivity badge, row count, freshness, and a mini quality dot.
 - **Map (ER)** — datasets as nodes and **relationships as directed FK edges (many → one)**; click a node → open the dataset. The shape of the model lives here, next to the datasets it connects.
 - **Primary action (always visible):** **「Upload data」** — the one thing a first-time user should try.
 

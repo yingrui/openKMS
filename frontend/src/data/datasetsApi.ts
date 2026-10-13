@@ -32,9 +32,19 @@ export interface TableInfo {
   table_name: string;
 }
 
-export async function fetchDatasets(params?: { data_source_id?: string }): Promise<DatasetListResponse> {
+export async function fetchDatasets(params?: {
+  data_source_id?: string;
+  search?: string;
+  limit?: number;
+  offset?: number;
+}): Promise<DatasetListResponse> {
   return request<DatasetListResponse>('/api/datasets', {
-    query: { data_source_id: params?.data_source_id },
+    query: {
+      data_source_id: params?.data_source_id,
+      search: params?.search,
+      limit: params?.limit,
+      offset: params?.offset,
+    },
   });
 }
 

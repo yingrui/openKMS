@@ -3,15 +3,14 @@ import json
 import uuid
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
-from sqlalchemy import text
-from sqlalchemy import select
+from sqlalchemy import func, or_, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.auth import require_any_permission, require_auth, require_permission
 from app.services.permissions.permission_catalog import PERM_DATA_READ, PERM_DATA_WRITE
 from app.database import get_db
 from app.services.acl.data_scope import bootstrap_owner_acl
-from app.services.acl.data_resource_policy import dataset_visible
+from app.services.acl.resource_list_acl import readable_id_filter
 from app.services.evaluations.dataset_scope import (
     load_dataset_scoped,
     require_dataset_manage,
@@ -152,18 +151,46 @@ async def list_tables_from_source(
 async def list_datasets(
     request: Request,
     data_source_id: str | None = None,
+    search: str | None = None,
+    limit: int | None = Query(None, ge=1, le=500),
+    offset: int = Query(0, ge=0),
     db: AsyncSession = Depends(get_db),
 ):
-    """List datasets. Optional filter by data_source_id."""
-    query = select(Dataset).order_by(Dataset.created_at.desc())
-    if data_source_id:
-        query = query.where(Dataset.data_source_id == data_source_id)
-    result = await db.execute(query)
-    items = list(result.scalars().all())
+    """List datasets (optional `data_source_id` / `search`); paginate with `limit`/`offset`."""
     p = request.state.openkms_jwt_payload
     sub = p.get("sub")
-    if isinstance(sub, str):
-        items = [d for d in items if await dataset_visible(db, p, sub, d)]
+    acl_filters, empty = await readable_id_filter(
+        db, p, sub if isinstance(sub, str) else None, RT_DATASET, Dataset.id
+    )
+    if empty:
+        return DatasetListResponse(items=[], total=0)
+
+    conditions = list(acl_filters)
+    if data_source_id:
+        conditions.append(Dataset.data_source_id == data_source_id)
+    if search and search.strip():
+        like = f"%{search.strip()}%"
+        conditions.append(
+            or_(
+                Dataset.display_name.ilike(like),
+                Dataset.schema_name.ilike(like),
+                Dataset.table_name.ilike(like),
+            )
+        )
+
+    count_query = select(func.count()).select_from(Dataset)
+    if conditions:
+        count_query = count_query.where(*conditions)
+    total = int((await db.execute(count_query)).scalar_one())
+
+    query = select(Dataset).order_by(Dataset.created_at.desc())
+    if conditions:
+        query = query.where(*conditions)
+    query = query.offset(offset)
+    if limit is not None:
+        query = query.limit(limit)
+    items = list((await db.execute(query)).scalars().all())
+
     ds_ids = {d.data_source_id for d in items}
     ds_map = {}
     if ds_ids:
@@ -172,7 +199,7 @@ async def list_datasets(
             ds_map[ds.id] = ds.name
     return DatasetListResponse(
         items=[_dataset_response(d, ds_map.get(d.data_source_id)) for d in items],
-        total=len(items),
+        total=total,
     )
 
 
