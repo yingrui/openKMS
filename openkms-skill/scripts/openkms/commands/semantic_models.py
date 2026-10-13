@@ -68,6 +68,43 @@ def cmd_delete(ns: argparse.Namespace) -> None:
     print(f"deleted semantic model {ns.id}")
 
 
+def cmd_fields_list(ns: argparse.Namespace) -> None:
+    with client() as s:
+        r = s.get(f"/api/semantic-models/{ns.id}/fields")
+    r.raise_for_status()
+    print_json(r.json())
+
+
+def cmd_fields_add(ns: argparse.Namespace) -> None:
+    body: dict[str, object] = {"dataset_id": ns.dataset_id, "name": ns.name}
+    if ns.column:
+        body["column_name"] = ns.column
+    if ns.expression:
+        body["expression"] = {"dialects": {"ANSI_SQL": ns.expression}}
+    if ns.datatype:
+        body["datatype"] = ns.datatype
+    if ns.is_time:
+        body["dimension"] = {"is_time": True}
+    if ns.ai_instructions:
+        body["ai_context"] = {"instructions": ns.ai_instructions}
+    confirm_or_abort(
+        "add field", "POST", f"/api/semantic-models/{ns.id}/fields", body, ns.yes, ns.dry_run
+    )
+    with client() as s:
+        r = s.post(f"/api/semantic-models/{ns.id}/fields", json=body)
+    r.raise_for_status()
+    print_json(r.json())
+
+
+def cmd_fields_delete(ns: argparse.Namespace) -> None:
+    path = f"/api/semantic-models/{ns.id}/fields/{ns.field_id}"
+    confirm_or_abort("delete field", "DELETE", path, None, ns.yes, ns.dry_run)
+    with client() as s:
+        r = s.delete(path)
+    r.raise_for_status()
+    print(f"deleted field {ns.field_id}")
+
+
 def add_subparser(sub) -> None:
     p = sub.add_parser("semantic-models", help="Named semantic models (Ossie scopes)")
     sp = p.add_subparsers(dest="semantic_models_cmd", required=True)
@@ -96,3 +133,25 @@ def add_subparser(sub) -> None:
     sd.add_argument("--id", required=True)
     add_write_flags(sd)
     sd.set_defaults(fn=cmd_delete)
+
+    fields = sp.add_parser("fields", help="Model-scoped fields (column ref / expression + role)")
+    fsp = fields.add_subparsers(dest="semantic_model_fields_cmd", required=True)
+    fl = fsp.add_parser("list", help="List a model's fields")
+    fl.add_argument("--id", required=True)
+    fl.set_defaults(fn=cmd_fields_list)
+    fa = fsp.add_parser("add", help="Add a field")
+    fa.add_argument("--id", required=True)
+    fa.add_argument("--dataset-id", required=True)
+    fa.add_argument("--name", required=True)
+    fa.add_argument("--column", default=None, help="source column (plain field)")
+    fa.add_argument("--expression", default=None, help="ANSI_SQL fragment (computed field)")
+    fa.add_argument("--datatype", default=None)
+    fa.add_argument("--is-time", action="store_true", dest="is_time", help="time dimension")
+    fa.add_argument("--ai-instructions", default=None, dest="ai_instructions")
+    add_write_flags(fa)
+    fa.set_defaults(fn=cmd_fields_add)
+    fd = fsp.add_parser("delete", help="Delete a field")
+    fd.add_argument("--id", required=True)
+    fd.add_argument("--field-id", required=True)
+    add_write_flags(fd)
+    fd.set_defaults(fn=cmd_fields_delete)

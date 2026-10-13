@@ -34,7 +34,8 @@ export interface SemanticModelImportSummary {
   semantic_model_id: string;
   relationships: number;
   metrics: number;
-  queries: number;
+  fields: number;
+  columns: number;
   warnings: string[];
 }
 

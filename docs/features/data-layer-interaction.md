@@ -57,7 +57,7 @@ Tabs, in reading order:
 |-----|--------------------|------------------|
 | **Overview** | `MetricGrid`: row count, columns, freshness, last sync; catalog fields (owner/domain/tags/definition/sensitivity) | "what is this and is it fresh" |
 | **Data** | paged table preview, column type chips in the header | "what's actually in it" |
-| **Schema** | column list + type + ontology-type mapping; change history timeline | "what changed" |
+| **Columns** | column list + type + ontology-type mapping + **description** (editable); change history timeline | "what's in it and what it means" |
 | **Relationships** | list of joins (Phase 1); "Add relationship" button | "what does it connect to" |
 | **Lineage** | read-only graph (source ← this → object types / linked datasets) | "where did it come from, where does it go" |
 | **Quality** | rule list + pass/fail (Phase 2) | "can I trust it" |
@@ -93,10 +93,10 @@ Why it's intuitive: the user only ever answers one question at a time (which fil
 The Model tab lists **semantic models** — **named scopes** over the **shared** datasets, fields, and relationships (which live under **Catalog**). Opening a model shows its dataset scope, a guided setup, and its **metrics** and **queries**. **Function spec:** [semantic model spec](data-layer-semantic-model.md) · **definitions/surfaces:** [data layer](data-layer.md#the-ossie-class-model-definitions-and-where-each-is-managed).
 
 - **List → detail** — create a model (name + pick datasets), then open it. A **New model** action and an **Import** (per-model document) live in the header.
-- **Setup guide** — a step checklist in a model (add datasets → connect them → define a metric → save a query) with a **direct action per step** and a progress count.
+- **Setup guide** — a step checklist in a model (add datasets → connect them → define a metric) with a **direct action per step** and a progress count.
+- **Fields** — the model's semantic fields (column ref / expression + role + `ai_context`), seeded from its datasets' columns; the same column can carry a different role/`ai_context` per model.
 - **Metrics** — model-level aggregate **expressions** (Ossie `expression.dialects`) authored by a data engineer, with **AI-assist** to draft them; run read-only (timeout + row cap).
-- **Queries** — a query pins metrics + **dimensions (fields)** + filter and re-runs.
-- **Export / Import** — the Ossie document, per model, in the model header overflow menu (an interchange *output*).
+- **Export / Import** — the Ossie document, per model, in the model header overflow menu.
 
 ### Why it's intuitive
 

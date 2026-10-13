@@ -107,6 +107,22 @@ export interface ColumnMetadata {
   ontology_type: string;
   is_nullable: boolean;
   ordinal_position: number;
+  description: string | null;
+}
+
+export async function updateColumnDescription(
+  id: string,
+  columnName: string,
+  description: string | null,
+): Promise<{ column_name: string; description: string | null }> {
+  return request<{ column_name: string; description: string | null }>(
+    `/api/datasets/${id}/columns/${encodeURIComponent(columnName)}`,
+    {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ description }),
+    },
+  );
 }
 
 export interface DatasetRowsResponse {

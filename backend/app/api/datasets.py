@@ -25,6 +25,11 @@ from app.services.ontology.property_types import (
 from app.models.data_source import DataSource
 from app.models.dataset import Dataset
 from app.models.dataset_profile import DatasetProfile
+from app.services.data_layer.columns import (
+    ColumnError,
+    description_map,
+    set_description,
+)
 from app.services.data_layer.lineage import build_lineage
 from app.services.data_layer.profile import (
     ProfileError,
@@ -35,6 +40,7 @@ from app.services.data_layer.profile import (
 )
 from app.schemas.dataset import (
     ColumnMetadata,
+    ColumnDescriptionUpdate,
     DatasetCreate,
     DatasetLineageResponse,
     DatasetListResponse,
@@ -308,6 +314,7 @@ async def get_dataset_metadata(
             )
             rows = result.fetchall()
         engine.dispose()
+        descriptions = await description_map(db, dataset.id)
         out: list[ColumnMetadata] = []
         for r in rows:
             source_type = normalize_postgresql_column_type(str(r[1]), str(r[2] or ""))
@@ -318,6 +325,7 @@ async def get_dataset_metadata(
                     ontology_type=map_source_type_to_ontology(ds.kind, source_type),
                     is_nullable=r[3] == "YES",
                     ordinal_position=r[4],
+                    description=descriptions.get(str(r[0])),
                 )
             )
         try:
@@ -328,6 +336,34 @@ async def get_dataset_metadata(
         return out
     except Exception as e:
         raise HTTPException(status_code=502, detail=f"Failed to fetch metadata: {e}") from e
+
+
+@router.put(
+    "/{dataset_id}/columns/{column_name}",
+    dependencies=[Depends(require_permission(PERM_DATA_WRITE))],
+)
+async def update_column_description(
+    column_name: str,
+    request: Request,
+    body: ColumnDescriptionUpdate,
+    dataset: Dataset = Depends(get_dataset_scoped_write),
+    db: AsyncSession = Depends(get_db),
+):
+    """Set a physical column's description (maintained by engineers / agents)."""
+    p = request.state.openkms_jwt_payload
+    uname = p.get("preferred_username") or p.get("name")
+    try:
+        await set_description(
+            db,
+            dataset,
+            column_name,
+            body.description,
+            sub=p.get("sub") if isinstance(p.get("sub"), str) else None,
+            uname=str(uname)[:256] if isinstance(uname, str) and uname.strip() else None,
+        )
+    except ColumnError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    return {"column_name": column_name, "description": body.description}
 
 
 @router.get("/{dataset_id}", response_model=DatasetResponse, dependencies=[Depends(require_any_permission(*_DATASET_VIEW))])

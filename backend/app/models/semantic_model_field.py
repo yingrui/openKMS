@@ -1,8 +1,9 @@
-"""Dataset field model — the Ossie semantic field layer over a dataset's columns.
+"""Semantic-model field — a model-scoped semantic attribute over a dataset column.
 
-A field is either a plain **column reference** or a **computed expression**; it
-carries a `datatype` and an optional `dimension` role (`is_time`). Fields are the
-unit metrics/queries select, and each can carry `ai_context`.
+A field is the model-level projection of a column: a **column reference** or a
+**computed expression**, plus a `role` (`dimension`) and `ai_context`. The physical
+column (and its `description`) lives with the dataset (Catalog); the field — its
+role and interpretation — belongs to the semantic model.
 """
 from __future__ import annotations
 
@@ -15,15 +16,20 @@ from sqlalchemy.orm import Mapped, mapped_column
 from app.database import Base
 
 
-class DatasetField(Base):
-    """One semantic field on a dataset (column ref or computed expression)."""
+class SemanticModelField(Base):
+    """One field of a semantic model (column ref or computed expression + role)."""
 
-    __tablename__ = "dataset_fields"
+    __tablename__ = "semantic_model_fields"
     __table_args__ = (
-        UniqueConstraint("dataset_id", "name", name="uq_dataset_fields_dataset_name"),
+        UniqueConstraint(
+            "semantic_model_id", "dataset_id", "name", name="uq_semantic_model_fields_model_dataset_name"
+        ),
     )
 
     id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    semantic_model_id: Mapped[str] = mapped_column(
+        String(64), ForeignKey("semantic_models.id", ondelete="CASCADE"), nullable=False, index=True
+    )
     dataset_id: Mapped[str] = mapped_column(
         String(64), ForeignKey("datasets.id", ondelete="CASCADE"), nullable=False, index=True
     )

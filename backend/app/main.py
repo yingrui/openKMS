@@ -45,14 +45,13 @@ from app.api.schedules import router as schedules_router
 from app.api.data_sources import router as data_sources_router
 from app.api.kubernetes_clusters import router as kubernetes_clusters_router
 from app.api.datasets import router as datasets_router
-from app.api.dataset_fields import router as dataset_fields_router
+from app.api.semantic_models import router as semantic_models_router
+from app.api.semantic_model_fields import router as semantic_model_fields_router
 from app.api.dataset_ingests import router as dataset_ingests_router
 from app.api.dataset_rows import router as dataset_rows_router
 from app.api.dataset_joins import router as dataset_joins_router
 from app.api.quality_rules import router as quality_rules_router
 from app.api.metrics import router as metrics_router
-from app.api.saved_queries import router as saved_queries_router
-from app.api.semantic_models import router as semantic_models_router
 from app.api.explorer_reports import router as explorer_reports_router
 from app.api.evaluations import router as evaluations_router
 from app.api.users_admin import router as users_admin_router
@@ -201,12 +200,11 @@ app.include_router(kubernetes_clusters_router, prefix="/api")
 app.include_router(dataset_ingests_router, prefix="/api")
 app.include_router(dataset_rows_router, prefix="/api")
 app.include_router(datasets_router, prefix="/api")
-app.include_router(dataset_fields_router, prefix="/api")
+app.include_router(semantic_models_router, prefix="/api")
+app.include_router(semantic_model_fields_router, prefix="/api")
 app.include_router(dataset_joins_router, prefix="/api")
 app.include_router(quality_rules_router, prefix="/api")
 app.include_router(metrics_router, prefix="/api")
-app.include_router(saved_queries_router, prefix="/api")
-app.include_router(semantic_models_router, prefix="/api")
 app.include_router(explorer_reports_router, prefix="/api")
 app.include_router(evaluations_router, prefix="/api")
 app.include_router(users_admin_router, prefix="/api")

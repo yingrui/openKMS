@@ -66,7 +66,7 @@ datasets  ──(primary_key / unique_keys)──►  relationship.to
 
 ## Model tab functionality
 
-The **shared base** (datasets, fields, relationships) lives in **Catalog**. The **Model** tab holds **semantic models** — **named scopes** over that base, each owning its **metrics** and **queries** (plus dataset membership and `ai_context`). The tab is a **list → model detail**, and a model opens with a **guided setup** (add datasets → connect them → define a metric → save a query). Sections:
+The **shared base** (datasets, their physical columns, relationships) lives in **Catalog**. The **Model** tab holds **semantic models** — **named scopes** over that base, each owning its **fields** and **metrics** (plus dataset membership and `ai_context`). The tab is a **list → model detail**, and a model opens with a **guided setup** (add datasets → connect them → define a metric). Sections:
 
 ### 1. Overview
 - **Model health**: counts of datasets, relationships, metrics; quality failing; **datasets without a primary key** (a relationship/`to` problem); **orphans** (no relationships).
@@ -81,27 +81,26 @@ The **shared base** (datasets, fields, relationships) lives in **Catalog**. The 
 ### 3. Metrics
 - **Model-level** aggregate **expressions** (metrics span datasets via relationships; not per-dataset). ✅ Stage 4.
 - Author: name, **definition/description**, `expression` (an aggregate over fields/measures — e.g. `SUM(orders.amount)`), `datatype`, `ai_context`. Run read-only (timeout + row cap), audited.
-- **No dimensions here**: in Ossie a *dimension* is a **field role on a dataset**; “group by” is a **query** concern (see §5). The metric itself is a **SQL expression** (§Metrics below).
+- **No dimensions here**: in Ossie a *dimension* is a **field role**; grouping is a **consumption** concern. The metric itself is a **SQL expression** (§Metrics below).
 
-### 4. Datasets (Ossie `datasets`)
-- The Ossie **`datasets`** section: each physical dataset's **semantic entry** — `source` (the table), `primary_key`, `unique_keys`, **`fields`** (column refs **+ computed expressions**, each with `datatype`, `dimension.is_time`, `ai_context`; ✅ Stage 3), `ai_context` (✅ Stage 2).
-- **Fields ≠ columns:** the Catalog's **Fields** tab lists the *physical* columns (with profile); a **field** adds an expression (e.g. `first_name || ' ' || last_name`) and roles — a **dimension** is a field with `dimension.is_time` (categorical / time). Fields are edited here.
-- The **Catalog** is where datasets, fields, and relationships are edited (register/ingest/profile/preview/row editing/quality live there too); the **Model** tab is the cross-dataset layer on top.
+### 4. Fields (model-scoped) & Datasets (shared)
+- **Fields** (✅ Stage 3): a field belongs to **one model** and references a dataset in its scope — a **column reference** or a **computed expression**, plus `datatype`, `role` (`dimension.is_time`) and `ai_context`. Seeded from the dataset's columns on first read; a column's `role`/`ai_context` can **differ per model**.
+- **Columns** live with the dataset (**Catalog → dataset → Columns**): the physical columns (from `information_schema`) + a maintained **`description`** per column (`dataset_columns`). A **field** is the model-scoped semantic projection of a column (or a computed expression).
+- The **Ossie `datasets`** section of a model's document: `source` (table), `primary_key`, `unique_keys`, **`columns`** (with descriptions), **`fields`** (the model's), `ai_context`.
 
-### 5. Queries (saved queries)
-- A **query** picks metrics + **`group_by` dimensions** (fields) + `filters` (Ossie `saved_queries`) — **this** is where dimensions are chosen, *not* on the metric. ✅ Stage 5.
-- Saved as a named artifact; may export as a view/table (manifest `exports`).
+### 5. ~~Queries~~ withdrawn
+- A saved query is a **consumption** artifact, not part of the Ossie semantic model. `saved_queries` was **removed**; saved analyses live in **Data Explorer** (`explorer_reports`).
 
 ### 6. Export / Import (Ossie) ✅
 - **Export / Import are per model**, in the model's header overflow menu — an interchange *output*, not the primary action; the model is built by configuration above.
-- **Export** one semantic model as an **Ossie document** (`semantic_model: {id, name, description, ai_context, datasets, relationships, metrics, queries}`, JSON or YAML via `GET /api/semantic-models/{id}/export`).
-- **Import** (`POST /api/semantic-models/import`) **upserts** a model + its metrics/queries over datasets matched by id/source/name; datasets are not created.
+- **Export** one semantic model as an **Ossie document** (`semantic_model: {id, name, description, ai_context, datasets, relationships, fields, metrics}`, JSON or YAML via `GET /api/semantic-models/{id}/export`).
+- **Import** (`POST /api/semantic-models/import`) **upserts** a model + its fields/metrics over datasets matched by id/source/name; datasets are not created.
 
 ---
 
 ## Data model changes
 
-Authoritative, staged list: [refactoring plan](data-layer.md#refactoring-plan) (Stages 1–6). At spec level: `datasets` gains `unique_keys` + `ai_context` (✅ Stage 2); new **`dataset_fields`** (✅ Stage 3); **`dataset_joins`** re-modelled as an FK (✅ Stage 1); `metric_definitions` is model-level with no `dimensions` (✅ Stage 4) + **`metric_runs`** audit; new **`saved_queries`** (✅ Stage 5); **Ossie export/import** (✅ Stage 6).
+Authoritative, staged list: [refactoring plan](data-layer.md#refactoring-plan). At spec level: `datasets` gains `unique_keys` + `ai_context` (✅ Stage 2); **`dataset_joins`** re-modelled as an FK (✅ Stage 1); **`semantic_model_fields`** are model-scoped (✅ Stage 3, revised) + **`dataset_columns`** (column descriptions); `metric_definitions` is model-level with no `dimensions` (✅ Stage 4) + **`metric_runs`** audit; **`semantic_models`** + membership are first-class; **Ossie export/import** per model (✅ Stage 6); **`saved_queries`** removed (decision #23).
 
 ---
 

@@ -215,6 +215,7 @@ All write subcommands accept `--yes` / `--dry-run`. Without `--yes` on non-TTY s
 | `datasets metadata` | GET | `/api/datasets/{id}/metadata` | Column metadata. |
 | `datasets create` *(write)* | POST | `/api/datasets` | Register existing table. |
 | `datasets update` *(write)* | PUT | `/api/datasets/{id}` | Body from any of `--display-name`, `--description`, `--primary-key` (csv), `--unique-keys` (`"a,b;c"`), `--ai-instructions`, `--ai-synonyms`, `--ai-examples`, `--editable true|false`. |
+| `datasets column-description` *(write)* | PUT | `/api/datasets/{id}/columns/{column}` | Body `{description}` — set a physical column's description. |
 | `datasets profile` | GET | `/api/datasets/{id}/profile` | Computed column profile (row count, null/distinct/min/max). |
 | `datasets schema-history` | GET | `/api/datasets/{id}/schema-history` | Captured schema snapshots (newest first). |
 | `datasets lineage` | GET | `/api/datasets/{id}/lineage` | Read-time lineage: source, object/link types, joined datasets. |
@@ -234,15 +235,13 @@ All write subcommands accept `--yes` / `--dry-run`. Without `--yes` on non-TTY s
 | `metrics compute` | GET | `/api/metrics/{metric_id}/compute` | Runs the metric **read-only** (statement timeout + row cap); records a run. |
 | `metrics runs` | GET | `/api/metrics/{metric_id}/runs` | Recent executions (audit). |
 | `metrics delete` *(write)* | DELETE | `/api/metrics/{metric_id}` | |
-| `queries list` | GET | `/api/queries` | Saved queries; optional `?semantic_model_id=` / `?base_dataset_id=`. |
-| `queries add` *(write)* | POST | `/api/queries` | Body `{name, semantic_model_id, base_dataset_id, metrics:[{name, metric_id}], group_by:[field], joins:[rel_id], filters?}`. |
-| `queries run` | GET | `/api/queries/{query_id}/run` | Runs the query read-only (timeout + row cap). |
-| `queries delete` *(write)* | DELETE | `/api/queries/{query_id}` | |
 | `semantic-models list` | GET | `/api/semantic-models` | Named semantic models (scope = dataset ids). |
 | `semantic-models add` *(write)* | POST | `/api/semantic-models` | Body `{name, dataset_ids, description?}`. |
 | `semantic-models export` | GET | `/api/semantic-models/{id}/export` | Ossie document for one model (`?format=json|yaml`). |
 | `semantic-models import` *(write)* | POST | `/api/semantic-models/import` | Upsert a model (+ metrics/queries) from an Ossie document. |
-| `semantic-models delete` *(write)* | DELETE | `/api/semantic-models/{id}` | Cascades the model's metrics/queries. |
+| `semantic-models fields list` | GET | `/api/semantic-models/{id}/fields` | Model-scoped fields (column ref / expression + role). |
+| `semantic-models fields add` *(write)* | POST | `/api/semantic-models/{id}/fields` | Body `{dataset_id, name, column_name?, expression?, datatype?, dimension?, ai_context?}`. |
+| `semantic-models fields delete` *(write)* | DELETE | `/api/semantic-models/{id}/fields/{field_id}` | |
 | `explorer reports-list` | GET | `/api/explorer-reports` | Data Explorer saved analyses. |
 | `explorer reports-get` | GET | `/api/explorer-reports/{id}` | |
 | `explorer reports-create` *(write)* | POST | `/api/explorer-reports` | Body `{name, question, dataset_id, narrative, charts}`. |

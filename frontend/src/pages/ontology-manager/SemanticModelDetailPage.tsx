@@ -6,7 +6,6 @@ import { toast } from 'sonner';
 import { fetchDatasets, type DatasetResponse } from '../../data/datasetsApi';
 import { fetchDatasetJoins } from '../../data/joinsApi';
 import { fetchMetrics } from '../../data/metricsApi';
-import { fetchSavedQueries } from '../../data/queriesApi';
 import {
   deleteSemanticModel,
   exportSemanticModel,
@@ -18,8 +17,8 @@ import {
 import { useConfirm } from '../../contexts/ConfirmContext';
 import { Dialog, FormField } from '../../styles/design-system';
 import { ModelSetupGuide } from './ModelSetupGuide';
+import { ModelFieldsSection } from './ModelFieldsSection';
 import { ModelMetricsSection } from './ModelMetricsSection';
-import { ModelQueriesSection } from './ModelQueriesSection';
 import '../ontology/ontology-admin.scss';
 
 function download(filename: string, text: string, type: string): void {
@@ -35,7 +34,7 @@ function datasetLabel(d: DatasetResponse): string {
   return d.display_name || `${d.schema_name}.${d.table_name}`;
 }
 
-/** A single semantic model: its dataset scope, setup guide, metrics, and queries. */
+/** A single semantic model: its dataset scope, setup guide, fields, and metrics. */
 export function SemanticModelDetailPage() {
   const { t } = useTranslation('ontology');
   const { modelId = '' } = useParams();
@@ -46,11 +45,9 @@ export function SemanticModelDetailPage() {
   const [allDatasets, setAllDatasets] = useState<DatasetResponse[]>([]);
   const [relationshipCount, setRelationshipCount] = useState(0);
   const [metricCount, setMetricCount] = useState(0);
-  const [queryCount, setQueryCount] = useState(0);
   const [loading, setLoading] = useState(true);
 
   const [metricsSignal, setMetricsSignal] = useState(0);
-  const [queriesSignal, setQueriesSignal] = useState(0);
   const [showEdit, setShowEdit] = useState(false);
   const [editName, setEditName] = useState('');
   const [editDescription, setEditDescription] = useState('');
@@ -68,12 +65,11 @@ export function SemanticModelDetailPage() {
     if (!modelId) return;
     setLoading(true);
     try {
-      const [m, ds, joins, metrics, queries] = await Promise.all([
+      const [m, ds, joins, metrics] = await Promise.all([
         fetchSemanticModel(modelId),
         fetchDatasets(),
         fetchDatasetJoins(),
         fetchMetrics(modelId),
-        fetchSavedQueries(modelId),
       ]);
       setModel(m);
       setAllDatasets(ds.items);
@@ -84,7 +80,6 @@ export function SemanticModelDetailPage() {
         ).length,
       );
       setMetricCount(metrics.total);
-      setQueryCount(queries.total);
     } catch (e) {
       toast.error(e instanceof Error ? e.message : t('datasets.loadFailed'));
     } finally {
@@ -234,7 +229,6 @@ export function SemanticModelDetailPage() {
             datasets={model.datasets.length}
             relationships={relationshipCount}
             metrics={metricCount}
-            queries={queryCount}
             onAddDatasets={openEdit}
             onConnectDatasets={() =>
               navigate(
@@ -242,7 +236,6 @@ export function SemanticModelDetailPage() {
               )
             }
             onAddMetric={() => setMetricsSignal((n) => n + 1)}
-            onAddQuery={() => setQueriesSignal((n) => n + 1)}
             onExport={() => void handleExport('json')}
             onDismiss={dismissSetup}
           />
@@ -263,16 +256,16 @@ export function SemanticModelDetailPage() {
           )}
         </section>
 
+        <ModelFieldsSection
+          semanticModelId={model.id}
+          datasets={model.datasets}
+          onChanged={() => void load()}
+        />
+
         <ModelMetricsSection
           semanticModelId={model.id}
           datasetIds={model.dataset_ids}
           openCreateSignal={metricsSignal}
-        />
-
-        <ModelQueriesSection
-          semanticModelId={model.id}
-          datasetIds={model.dataset_ids}
-          openCreateSignal={queriesSignal}
         />
       </div>
 

@@ -1,11 +1,12 @@
-"""Dataset field schemas (Ossie semantic fields)."""
+"""Semantic-model field schemas (model-scoped fields)."""
 from datetime import datetime
 from typing import Any
 
 from pydantic import BaseModel
 
 
-class DatasetFieldCreate(BaseModel):
+class SemanticModelFieldCreate(BaseModel):
+    dataset_id: str
     name: str
     column_name: str | None = None
     expression: dict[str, Any] | None = None
@@ -15,7 +16,7 @@ class DatasetFieldCreate(BaseModel):
     ordinal: int | None = None
 
 
-class DatasetFieldUpdate(BaseModel):
+class SemanticModelFieldUpdate(BaseModel):
     name: str | None = None
     column_name: str | None = None
     expression: dict[str, Any] | None = None
@@ -25,8 +26,9 @@ class DatasetFieldUpdate(BaseModel):
     ordinal: int | None = None
 
 
-class DatasetFieldResponse(BaseModel):
+class SemanticModelFieldResponse(BaseModel):
     id: str
+    semantic_model_id: str
     dataset_id: str
     name: str
     column_name: str | None = None
@@ -41,6 +43,6 @@ class DatasetFieldResponse(BaseModel):
     model_config = {"from_attributes": True}
 
 
-class DatasetFieldListResponse(BaseModel):
-    items: list[DatasetFieldResponse]
+class SemanticModelFieldListResponse(BaseModel):
+    items: list[SemanticModelFieldResponse]
     total: int

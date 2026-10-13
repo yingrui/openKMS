@@ -234,8 +234,10 @@ const DatasetOverviewTab = lazy(() =>
 const DatasetDataTab = lazy(() =>
   import('./pages/ontology-manager/DatasetDetailDataTab').then((m) => ({ default: m.DatasetDataTab })),
 );
-const DatasetFieldsTab = lazy(() =>
-  import('./pages/ontology-manager/DatasetFieldsTab').then((m) => ({ default: m.DatasetFieldsTab })),
+const DatasetColumnsTab = lazy(() =>
+  import('./pages/ontology-manager/DatasetColumnsTab').then((m) => ({
+    default: m.DatasetColumnsTab,
+  })),
 );
 const DatasetRelationshipsTab = lazy(() =>
   import('./pages/ontology-manager/DatasetRelationshipsTab').then((m) => ({
@@ -417,7 +419,7 @@ function App() {
           <Route path="datasets/:id" element={<DatasetManagerDetailPage />}>
             <Route index element={<DatasetOverviewTab />} />
             <Route path="data" element={<DatasetDataTab />} />
-            <Route path="fields" element={<DatasetFieldsTab />} />
+            <Route path="columns" element={<DatasetColumnsTab />} />
             <Route path="usage" element={<DatasetUsageTab />} />
             <Route path="relationships" element={<DatasetRelationshipsTab />} />
             <Route path="lineage" element={<DatasetLineageTab />} />

@@ -282,7 +282,7 @@ export function DatasetDetailPage() {
         navItems={[
           { to: base, label: t('datasets.overview'), end: true },
           { to: `${base}/data`, label: t('datasets.data') },
-          { to: `${base}/fields`, label: t('datasets.fields') },
+          { to: `${base}/columns`, label: t('datasets.columns') },
           { to: `${base}/usage`, label: t('datasets.usage') },
           { to: `${base}/relationships`, label: t('datasets.relationships') },
           { to: `${base}/lineage`, label: t('datasets.lineage') },

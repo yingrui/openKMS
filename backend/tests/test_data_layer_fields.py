@@ -1,8 +1,8 @@
-"""Dataset field validation tests (pure, no DB)."""
+"""Semantic-model field validation tests (pure, no DB)."""
 import pytest
 
-from app.services.data_layer.fields import (
-    FieldValidationError,
+from app.services.data_layer.semantic_model_fields import (
+    FieldError,
     column_expression,
     expression_sql,
     validate_field,
@@ -20,26 +20,26 @@ def test_expression_sql_handles_non_dict():
 
 
 def test_validate_requires_name():
-    with pytest.raises(FieldValidationError):
+    with pytest.raises(FieldError):
         validate_field(
             name="  ", column_name="a", expression=column_expression("a"), column_names={"a"}
         )
 
 
 def test_validate_rejects_unknown_column():
-    with pytest.raises(FieldValidationError):
+    with pytest.raises(FieldError):
         validate_field(
             name="f", column_name="missing", expression=column_expression("missing"), column_names={"a"}
         )
 
 
 def test_validate_computed_requires_expression():
-    with pytest.raises(FieldValidationError):
+    with pytest.raises(FieldError):
         validate_field(name="f", column_name=None, expression=None, column_names={"a"})
 
 
 def test_validate_rejects_multiple_statements():
-    with pytest.raises(FieldValidationError):
+    with pytest.raises(FieldError):
         validate_field(
             name="f",
             column_name=None,

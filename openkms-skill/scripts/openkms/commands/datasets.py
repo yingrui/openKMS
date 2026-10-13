@@ -103,6 +103,16 @@ def cmd_update(ns: argparse.Namespace) -> None:
     print_json(r.json())
 
 
+def cmd_column_description(ns: argparse.Namespace) -> None:
+    path = f"/api/datasets/{ns.id}/columns/{ns.column}"
+    body = {"description": ns.description or None}
+    confirm_or_abort("set column description", "PUT", path, body, ns.yes, ns.dry_run)
+    with client() as s:
+        r = s.put(path, json=body)
+    r.raise_for_status()
+    print_json(r.json())
+
+
 def cmd_profile(ns: argparse.Namespace) -> None:
     with client() as s:
         r = s.get(f"/api/datasets/{ns.id}/profile")
@@ -349,6 +359,13 @@ def add_subparser(sub) -> None:
     up.add_argument("--editable", choices=("true", "false"), default=None)
     add_write_flags(up)
     up.set_defaults(fn=cmd_update)
+
+    cd = sp.add_parser("column-description", help="Set a column's description (PUT …/columns/{col})")
+    cd.add_argument("--id", required=True)
+    cd.add_argument("--column", required=True)
+    cd.add_argument("--description", default=None)
+    add_write_flags(cd)
+    cd.set_defaults(fn=cmd_column_description)
 
     pf = sp.add_parser("profile", help="Computed column profile (GET …/profile)")
     pf.add_argument("--id", required=True)

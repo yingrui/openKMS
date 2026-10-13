@@ -83,6 +83,11 @@ class ColumnMetadata(BaseModel):
     ontology_type: str = "string"
     is_nullable: bool = False
     ordinal_position: int = 0
+    description: str | None = None
+
+
+class ColumnDescriptionUpdate(BaseModel):
+    description: str | None = None
 
 
 class DatasetRowsResponse(BaseModel):

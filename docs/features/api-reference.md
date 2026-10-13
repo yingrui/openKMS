@@ -365,7 +365,7 @@ Encrypted values; **never returned**. Write/sync/delete reject personal API key 
 | GET | `/api/datasets/{id}` | Get dataset (`data:read`; dataset ACL) |
 | GET | `/api/datasets/{id}/rows` | Get rows (`data:read`; dataset ACL) — optional `sort`, `order`, `after` (keyset paging) |
 | POST | `/api/datasets/{id}/rows/apply` | Apply batch row ops `{ops:[{op,pk,values,expect}],dry_run}` (`data:edit`; opt-in + PK + audit) |
-| GET | `/api/datasets/{id}/metadata` | Column metadata (`data:read`; dataset ACL) |
+| GET | `/api/datasets/{id}/metadata` | Column metadata (`data:read`; dataset ACL) — includes each column's maintained `description` |
 | PUT | `/api/datasets/{id}` | Update dataset — catalog fields, `primary_key_columns`, `unique_keys`, `ai_context`, `is_editable` (`data:write`; write on dataset) |
 | DELETE | `/api/datasets/{id}` | Delete dataset (`data:write`; manage on dataset) |
 | GET | `/api/dataset-joins` | List relationships (`dataset_id` filter; `data:read`) |
@@ -373,11 +373,7 @@ Encrypted values; **never returned**. Write/sync/delete reject personal API key 
 | GET | `/api/dataset-joins/{id}` | Get a relationship (`data:read`) |
 | PUT | `/api/dataset-joins/{id}` | Update a relationship (`data:write`) |
 | DELETE | `/api/dataset-joins/{id}` | Delete a relationship (`data:write`) |
-| GET | `/api/datasets/{id}/fields` | List semantic fields (seeds from physical columns on first read; `data:read`) |
-| POST | `/api/datasets/{id}/fields` | Create a field `{name, column_name?, expression?, datatype?, dimension?, ai_context?}` (`data:write`) |
-| POST | `/api/datasets/{id}/fields/sync` | Mirror physical columns into fields (`data:write`) |
-| PUT | `/api/datasets/{id}/fields/{field_id}` | Update a field (`data:write`) |
-| DELETE | `/api/datasets/{id}/fields/{field_id}` | Delete a field (`data:write`) |
+| PUT | `/api/datasets/{id}/columns/{column}` | Set a physical column's `description` (`data:write`) |
 | POST | `/api/datasets/ingests` | Start a file ingest (multipart `file` + `data_source_id`; `data:write`) |
 | POST | `/api/datasets/ingests/{id}/preview` | Parse head + infer schema (`data:write`) |
 | POST | `/api/datasets/ingests/{id}/load` | Create/replace the target table + register dataset (`data:write`) |
@@ -399,19 +395,18 @@ Encrypted values; **never returned**. Write/sync/delete reject personal API key 
 | DELETE | `/api/metrics/{metric_id}` | Delete a metric (`data:write`) |
 | GET | `/api/metrics/{metric_id}/compute` | Compute a metric — read-only, statement timeout + row cap; records a run (`data:read`) |
 | GET | `/api/metrics/{metric_id}/runs` | Recent executions of a metric (`data:read`) |
-| GET | `/api/queries` | List saved queries (`semantic_model_id` / `base_dataset_id` filter; `data:read`) |
-| POST | `/api/queries` | Create a saved query `{name, semantic_model_id, base_dataset_id, metrics:[{name,metric_id}], group_by, joins, filters?}` (`data:write`) |
-| GET | `/api/queries/{query_id}` | Get a saved query (`data:read`) |
-| PUT | `/api/queries/{query_id}` | Update a saved query (`data:write`) |
-| DELETE | `/api/queries/{query_id}` | Delete a saved query (`data:write`) |
-| GET | `/api/queries/{query_id}/run` | Run a saved query — read-only, timeout + row cap (`data:read`) |
 | GET | `/api/semantic-models` | List semantic models (named scopes; `data:read`) |
 | POST | `/api/semantic-models` | Create a semantic model `{name, description?, dataset_ids, ai_context?}` (`data:write`) |
 | GET | `/api/semantic-models/{model_id}` | Get a semantic model (with its datasets; `data:read`) |
 | PUT | `/api/semantic-models/{model_id}` | Update a semantic model (name / description / `dataset_ids` / `ai_context`) (`data:write`) |
-| DELETE | `/api/semantic-models/{model_id}` | Delete a semantic model (cascades its metrics/queries) (`data:write`) |
+| DELETE | `/api/semantic-models/{model_id}` | Delete a semantic model (cascades its fields/metrics) (`data:write`) |
+| GET | `/api/semantic-models/{model_id}/fields` | List a model's fields (seeds from its datasets' columns on first read; `data:read`) |
+| POST | `/api/semantic-models/{model_id}/fields` | Create a field `{dataset_id, name, column_name?, expression?, datatype?, dimension?, ai_context?}` (`data:write`) |
+| POST | `/api/semantic-models/{model_id}/fields/sync` | Mirror the model's datasets' columns into fields (`data:write`) |
+| PUT | `/api/semantic-models/{model_id}/fields/{field_id}` | Update a field (`data:write`) |
+| DELETE | `/api/semantic-models/{model_id}/fields/{field_id}` | Delete a field (`data:write`) |
 | GET | `/api/semantic-models/{model_id}/export` | Export one model as an Ossie document — `?format=json\|yaml` (`data:read`) |
-| POST | `/api/semantic-models/import` | Upsert a model (+ metrics/queries) from an Ossie document (`data:write`) |
+| POST | `/api/semantic-models/import` | Upsert a model (+ fields/metrics) from an Ossie document (`data:write`) |
 | GET | `/api/explorer-reports` | List explorer reports (`data:read`) |
 | POST | `/api/explorer-reports` | Create explorer report (`data:write`) |
 | GET | `/api/explorer-reports/{id}` | Get explorer report (`data:read`) |

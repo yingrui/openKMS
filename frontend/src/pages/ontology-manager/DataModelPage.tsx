@@ -88,7 +88,7 @@ export function DataModelPage() {
         t('dataModel.importDone', {
           r: summary.relationships,
           m: summary.metrics,
-          q: summary.queries,
+          f: summary.fields,
         }),
       );
       if (summary.warnings.length) {

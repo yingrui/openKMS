@@ -188,10 +188,10 @@ Schema for every persisted table. Grouped by area; see the matching feature page
 - `id`, `name` (nullable), `from_dataset_id` (FK → datasets, CASCADE; many side, holds the FK), `to_dataset_id` (FK → datasets, CASCADE; one side, referenced key), `from_columns` / `to_columns` (JSONB string arrays, order-aligned, composite keys), `required` (boolean; `false` = keep unmatched anchor rows, LEFT — default; `true` = only matched rows, INNER), `ai_context` (JSONB, nullable), `description`, `created_by` / `created_by_name`, `created_at`, `updated_at`
 - Ossie relationship / foreign key (`from` many → `to` one); authored manually and validated against live columns; backs the Data Model ER view and the metric join engine (check: `from` ≠ `to`)
 
-### DatasetField
+### DatasetColumn
 
-- `id`, `dataset_id` (FK → datasets, CASCADE), `name` (unique per dataset), `column_name` (nullable; the physical column for a plain field), `expression` (JSONB `{dialects: {ANSI_SQL}}`; the SQL fragment), `datatype` (string | number | datetime | boolean | …), `dimension` (JSONB `{is_time}`; null = not a dimension), `ai_context` (JSONB), `ordinal`, `created_by` / `created_by_name`, `created_at`, `updated_at`
-- The Ossie semantic field layer over a dataset: a **column reference** (`column_name` set) or a **computed expression** (`column_name` null). Seeded from `information_schema` on first read; backs the **Fields** tab and feeds metrics/queries.
+- `id`, `dataset_id` (FK → datasets, CASCADE), `column_name` (unique per dataset), `description` (nullable), `created_by` / `created_by_name`, `created_at`, `updated_at`
+- Maintained annotation for a **physical** column (today: the business `description`, authored by a data engineer or an Agent). Physical columns themselves are read live from `information_schema`; this table stores only what we add, so nothing goes stale. Backs the dataset **Columns** tab.
 
 ### DatasetIngest
 
@@ -226,27 +226,27 @@ Schema for every persisted table. Grouped by area; see the matching feature page
 ### SemanticModel
 
 - `id`, `name`, `description`, `ai_context` (JSONB), `created_by` / `created_by_name`, `created_at`, `updated_at`
-- A **named scope** over the shared data layer (Ossie document container). Owns its **metrics** and **queries**; its dataset scope is `semantic_model_datasets`. Datasets/fields/relationships stay Catalog-owned (shared). An auto-created **Default model** holds pre-existing metrics/queries.
+- A **named scope** over the shared data layer (Ossie document container). Owns its **fields** and **metrics**; its dataset scope is `semantic_model_datasets`. Datasets/columns/relationships stay Catalog-owned (shared). An auto-created **Default model** holds pre-existing fields/metrics.
 
 ### SemanticModelDataset
 
 - `semantic_model_id` (FK → semantic_models, CASCADE), `dataset_id` (FK → datasets, CASCADE) — composite PK
 - Membership: which **shared** datasets a semantic model covers (many-to-many).
 
+### SemanticModelField
+
+- `id`, `semantic_model_id` (FK → semantic_models, CASCADE), `dataset_id` (FK → datasets, CASCADE), `name` (unique per model + dataset), `column_name` (nullable; the physical column for a plain field), `expression` (JSONB `{dialects: {ANSI_SQL}}`), `datatype`, `dimension` (JSONB `{is_time}`), `ai_context` (JSONB), `ordinal`, `created_by` / `created_by_name`, `created_at`, `updated_at`
+- The **model-scoped** field: a column reference or a computed expression, plus its **role** (`dimension`) and `ai_context`. Seeded from the model's datasets' columns on first read. This is where the semantic interpretation lives — a field's role/`ai_context` differ per model.
+
 ### MetricDefinition
 
 - `id`, `semantic_model_id` (FK → semantic_models, CASCADE), `base_dataset_id` (FK → datasets, CASCADE; the metric's anchor dataset), `name`, `business_definition`, `type` (`simple` | `ratio` | `derived` | `cumulative` | `conversion`), `expression` (JSONB `{dialects: {ANSI_SQL: <fragment>}}`; an aggregate SQL fragment), `datatype`, `filters` (JSONB: `[{column, op, value}]`), `joins` (JSONB: dataset_join ids), `ai_context` (JSONB), `created_by` / `created_by_name`, `created_at`, `updated_at`
-- **Model-level** metric (belongs to one semantic model; `base_dataset_id` must be in its scope): the engine wraps the `expression` fragment into a generated query (`SELECT <expr> AS value FROM <base> <joins> WHERE <filters> LIMIT <cap>`), executed **read-only** with a statement timeout. Authored by data engineers (AI-assist may draft); no custom DSL. Grouping/dimensions are a *query* concern, not stored here.
+- **Model-level** metric (belongs to one semantic model; `base_dataset_id` must be in its scope): the engine wraps the `expression` fragment into a generated query (`SELECT <expr> AS value FROM <base> <joins> WHERE <filters> LIMIT <cap>`), executed **read-only** with a statement timeout. Authored by data engineers (AI-assist may draft); no custom DSL. Grouping/dimensions are a **consumption** concern, not stored here.
 
 ### MetricRun
 
 - `id`, `metric_id` (FK → metric_definitions, CASCADE), `status` (`ok` | `error`), `row_count`, `duration_ms`, `error`, `ran_by` / `ran_by_name`, `created_at`
 - Execution audit — one row per metric computation.
-
-### SavedQuery
-
-- `id`, `semantic_model_id` (FK → semantic_models, CASCADE), `base_dataset_id` (FK → datasets, CASCADE; the query's anchor), `name`, `description`, `metrics` (JSONB: `[{name, metric_id}]`), `group_by` (JSONB: base-dataset **field** names), `joins` (JSONB: dataset_join ids), `filters` (JSONB: `[{column, op, value}]` — the query's WHERE), `exports` (JSONB), `ai_context` (JSONB), `created_by` / `created_by_name`, `created_at`, `updated_at`
-- Model-level **saved query** (belongs to one semantic model): pins metrics + group-by fields + filter and re-runs. The engine emits `SELECT <field exprs>, (<metric exprs>) FROM <base> <joins> WHERE … GROUP BY <field exprs> LIMIT <cap>`, executed read-only. This is where **dimensions (group-by)** are chosen — not on the metric.
 
 ### ExplorerReport
 
