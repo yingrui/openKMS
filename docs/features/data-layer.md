@@ -47,6 +47,38 @@ So “Datasets” is both the app and one Ossie class: the app manages the seman
 5. **Metrics**: make them **model-level aggregate expressions** (no dimensions list); decide the expression strategy (DSL vs Ossie `expression.dialects`).
 6. **Semantic Model container**: export (later import) the Ossie YAML.
 
+### Concept → management map (definitions first)
+
+Each concept is **authored in exactly one place**. Definitions first, then the surface.
+
+| Concept | Definition | Managed where | Level | Current functionality |
+|---------|------------|---------------|-------|-----------------------|
+| **Semantic Model** | container of datasets + relationships + metrics (+ queries) | **Model** tab (`/data-model`) — Overview + **Export / Import** | model (cross-dataset) | `/data-model` (thin) |
+| **Datasets** | a logical entity: a physical table (`source`) + keys + fields + `ai_context` | **Dataset detail** (Catalog) — Overview / Settings | per-dataset | Catalog list + detail |
+| **Fields** | row-level attributes: a column ref **or** a computed expression, + `datatype`, `dimension.is_time`, `ai_context` | **Dataset detail → Fields** (today's *Columns* tab, extended) | per-dataset | Columns tab (**columns only**) |
+| **Dimensions** | a **field role** (`dimension.is_time`) — a field you can group/filter by | **Dataset detail → Fields** (a flag on a field) | per-dataset (field) | metric-local list — **move here** |
+| **Relationships** | FK edges: `from` (many) → `to` (one), `from_columns`/`to_columns`, `join_type` | **Model → Relationships** (global, primary) **+ Dataset detail → Relationships** (scoped view of the same rows) | cross-dataset | Relationships tab + Model joins table (as *cardinality*) |
+| **Metrics** | model-level aggregate **expressions** over fields | **Model → Metrics** (global) | model | per-dataset Metrics tab — **move here** |
+| **Queries** (saved queries) | metrics + `group_by` dimensions + `where`, saved as an artifact | **Model → Queries** (v1: Data Explorer reports) | model / explorer | Data Explorer reports |
+| **Rows** (physical) | the actual data: preview, edit, ingest, profile | **Dataset detail → Data** (Catalog) | per-dataset | Data tab + upload wizard |
+
+### Rule of thumb
+
+- **Per-dataset** concepts (**Datasets, Fields, Dimensions, Rows, Quality, Lineage**) live in the **dataset detail** (Catalog).
+- **Cross-dataset** concepts (**Relationships overview + ER, Metrics, Queries, Semantic Model export**) live in the **Model** tab.
+- **A dimension is not an object** — it is a flag on a **field**.
+- **A metric has no dimensions** — grouping is a **query**.
+- **Fields ≠ columns** — a field can be a computed expression, and carries roles/`ai_context`.
+
+### What moves (from today)
+
+| From | To |
+|------|-----|
+| Dataset detail **Metrics** tab (per-dataset) | **Model → Metrics** (model-level) |
+| `metric.dimensions` group-by list | **Dataset → Fields** roles (`dimension.is_time`) + **Model → Queries** group-by |
+| **Columns** tab (physical metadata) | **Fields** tab (columns + computed fields + roles) |
+| Model **joins table** | **Model → Relationships** (FK `from`/`to` + `join_type`) |
+
 ---
 
 ## Positioning
