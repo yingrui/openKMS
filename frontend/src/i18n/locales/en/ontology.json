@@ -118,7 +118,7 @@
     "modelNameRequired": "A model needs a name",
     "modelDescription": "Description",
     "modelDatasets": "Datasets",
-    "modelDatasetsHint": "Pick the datasets this model covers.",
+    "modelDatasetsHint": "Pick the datasets this model covers. Removing one also removes its fields (blocked while a metric uses it).",
     "modelCreated": "Semantic model created",
     "modelCreateFailed": "Failed to create model",
     "modelSaved": "Model saved",
@@ -170,7 +170,8 @@
     "tryNoMetrics": "Add a metric first.",
     "tryNoRows": "No rows.",
     "trySql": "SQL",
-    "tryRunFailed": "Preview failed"
+    "tryRunFailed": "Preview failed",
+    "outOfScope": "out of scope"
   },
   "datasets": {
     "title": "Datasets",

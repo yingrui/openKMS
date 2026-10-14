@@ -11,8 +11,10 @@ from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.dataset import Dataset
+from app.models.metric_definition import MetricDefinition
 from app.models.semantic_model import SemanticModel
 from app.models.semantic_model_dataset import SemanticModelDataset
+from app.models.semantic_model_field import SemanticModelField
 
 
 class SemanticModelError(ValueError):
@@ -54,7 +56,11 @@ async def members_map(db: AsyncSession, model_ids: list[str]) -> dict[str, list[
     return out
 
 
-async def set_members(db: AsyncSession, model_id: str, dataset_ids: list[str]) -> None:
+async def set_members(
+    db: AsyncSession, model_id: str, dataset_ids: list[str], *, enforce_metrics: bool = True
+) -> None:
+    """Replace the dataset scope. Removing a dataset drops its **fields**; if a
+    metric still uses it, that is an error (unless `enforce_metrics=False`)."""
     ids = list(dict.fromkeys(dataset_ids))
     if ids:
         found = set(
@@ -63,6 +69,31 @@ async def set_members(db: AsyncSession, model_id: str, dataset_ids: list[str]) -
         missing = [i for i in ids if i not in found]
         if missing:
             raise SemanticModelError(f"Unknown dataset(s): {', '.join(missing)}")
+
+    removed = set(await member_ids(db, model_id)) - set(ids)
+    if removed:
+        if enforce_metrics:
+            used = (
+                await db.execute(
+                    select(MetricDefinition.base_dataset_id).where(
+                        MetricDefinition.semantic_model_id == model_id,
+                        MetricDefinition.base_dataset_id.in_(removed),
+                    )
+                )
+            ).scalars().all()
+            if used:
+                names = await dataset_refs(db, list(set(used)))
+                raise SemanticModelError(
+                    "These datasets are used by metrics — delete or move those metrics first: "
+                    + ", ".join(names.values())
+                )
+        await db.execute(
+            delete(SemanticModelField).where(
+                SemanticModelField.semantic_model_id == model_id,
+                SemanticModelField.dataset_id.in_(removed),
+            )
+        )
+
     await db.execute(
         delete(SemanticModelDataset).where(SemanticModelDataset.semantic_model_id == model_id)
     )

@@ -118,7 +118,7 @@
     "modelNameRequired": "模型需要名称",
     "modelDescription": "描述",
     "modelDatasets": "数据集",
-    "modelDatasetsHint": "选择该模型覆盖的数据集。",
+    "modelDatasetsHint": "选择该模型覆盖的数据集。移除某个数据集会一并移除其字段（若仍被指标使用则会被拦截）。",
     "modelCreated": "语义模型已创建",
     "modelCreateFailed": "创建模型失败",
     "modelSaved": "模型已保存",
@@ -170,7 +170,8 @@
     "tryNoMetrics": "请先添加指标。",
     "tryNoRows": "无数据。",
     "trySql": "SQL",
-    "tryRunFailed": "预览失败"
+    "tryRunFailed": "预览失败",
+    "outOfScope": "已超出范围"
   },
   "datasets": {
     "title": "数据集",

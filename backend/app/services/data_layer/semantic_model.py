@@ -317,7 +317,7 @@ async def _import_one_model(
         metric_count += 1
 
     await db.flush()
-    await set_members(db, model.id, sorted(members))
+    await set_members(db, model.id, sorted(members), enforce_metrics=False)
     return {
         "semantic_model_id": model.id,
         "relationships": rel_count,

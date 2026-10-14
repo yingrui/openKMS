@@ -72,7 +72,8 @@ export function ModelFieldsSection({
   const [ai, setAi] = useState<AiContext>({ instructions: '', synonyms: '', examples: '' });
   const [submitting, setSubmitting] = useState(false);
 
-  const datasetLabel = (id: string) => datasets.find((d) => d.id === id)?.name ?? id;
+  const datasetLabel = (id: string) =>
+    datasets.find((d) => d.id === id)?.name ?? t('dataModel.outOfScope');
 
   const load = useCallback(async () => {
     setLoading(true);
