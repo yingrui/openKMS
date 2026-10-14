@@ -46,6 +46,7 @@ class SemanticModelListResponse(BaseModel):
 class PreviewRequest(BaseModel):
     metric_id: str
     group_by: list[str] = []
+    granularity: str | None = None
     filters: list[MetricFilter] | None = None
 
 

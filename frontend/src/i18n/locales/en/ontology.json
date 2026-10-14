@@ -150,14 +150,7 @@
     "metricRowIncomplete": "Complete or remove each metric row.",
     "fieldsEmptyHint": "No fields yet — add a field to mark a dimension or add AI context.",
     "fieldGranularity": "Granularity",
-    "fieldTimezone": "Timezone",
     "fieldDescription": "Description",
-    "fieldEntity": "Entity",
-    "fieldEntityHint": "Ossie entity — the key a relationship joins on.",
-    "fieldEntityNone": "Not an entity",
-    "fieldEntityForeign": "Foreign key",
-    "fieldEntityPrimary": "Primary key",
-    "fieldEntityName": "Entity name",
     "tryTitle": "Try it",
     "tryHint": "Run a metric grouped by its dimensions — ad-hoc and read-only; nothing is saved.",
     "tryDimensions": "Dimensions",
@@ -168,10 +161,8 @@
     "trySql": "SQL",
     "tryRunFailed": "Preview failed",
     "outOfScope": "out of scope",
-    "dimensionNone": "None",
     "dimensionTime": "Time",
-    "dimensionCategorical": "Categorical",
-    "fieldDimensionHint": "Ossie dimension — a field can be a time or categorical dimension."
+    "fieldDimensionHint": "Ossie dimension: a field can be marked as a time dimension (is_time)."
   },
   "datasets": {
     "title": "Datasets",

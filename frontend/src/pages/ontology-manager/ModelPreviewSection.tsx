@@ -10,6 +10,8 @@ import {
 } from '../../data/semanticModelsApi';
 import { EmptyState, FormField } from '../../styles/design-system';
 
+const GRANULARITIES = ['second', 'minute', 'hour', 'day', 'week', 'month', 'quarter', 'year'];
+
 /** Model → Try: run a metric grouped by dimensions (ad-hoc, read-only, not saved). */
 export function ModelPreviewSection({ semanticModelId }: { semanticModelId: string }) {
   const { t } = useTranslation('ontology');
@@ -21,6 +23,7 @@ export function ModelPreviewSection({ semanticModelId }: { semanticModelId: stri
   const [selected, setSelected] = useState<string[]>([]);
   const [result, setResult] = useState<SemanticModelPreviewResponse | null>(null);
   const [showSql, setShowSql] = useState(false);
+  const [granularity, setGranularity] = useState('day');
   const [running, setRunning] = useState(false);
 
   useEffect(() => {
@@ -41,13 +44,12 @@ export function ModelPreviewSection({ semanticModelId }: { semanticModelId: stri
   }, [semanticModelId, t]);
 
   const metric = useMemo(() => metrics.find((m) => m.id === metricId), [metrics, metricId]);
+  // Every field is a dimension; `is_time` marks time dimensions.
   const dimensions = useMemo(
-    () =>
-      fields.filter(
-        (f) => f.dimension?.type && (!metric || f.dataset_id === metric.base_dataset_id),
-      ),
+    () => fields.filter((f) => !metric || f.dataset_id === metric.base_dataset_id),
     [fields, metric],
   );
+  const hasTimeDim = selected.some((id) => fields.find((f) => f.id === id)?.dimension?.is_time);
 
   useEffect(() => {
     setSelected([]);
@@ -61,7 +63,13 @@ export function ModelPreviewSection({ semanticModelId }: { semanticModelId: stri
     if (!metricId) return;
     setRunning(true);
     try {
-      setResult(await previewSemanticModel(semanticModelId, { metric_id: metricId, group_by: selected }));
+      setResult(
+        await previewSemanticModel(semanticModelId, {
+          metric_id: metricId,
+          group_by: selected,
+          granularity,
+        }),
+      );
     } catch (e) {
       toast.error(e instanceof Error ? e.message : t('dataModel.tryRunFailed'));
     } finally {
@@ -109,17 +117,25 @@ export function ModelPreviewSection({ semanticModelId }: { semanticModelId: stri
                     />
                     <span>
                       {f.name}
-                      {f.dimension?.type === 'time' ? (
-                        <em className="model-wizard__ds">
-                          {' '}
-                          {f.dimension.granularity ?? 'day'}
-                        </em>
+                      {f.dimension?.is_time ? (
+                        <em className="model-wizard__ds"> · {t('dataModel.dimensionTime')}</em>
                       ) : null}
                     </span>
                   </label>
                 ))
               )}
             </div>
+            {hasTimeDim && (
+              <FormField label={t('dataModel.fieldGranularity')}>
+                <select value={granularity} onChange={(e) => setGranularity(e.target.value)}>
+                  {GRANULARITIES.map((g) => (
+                    <option key={g} value={g}>
+                      {g}
+                    </option>
+                  ))}
+                </select>
+              </FormField>
+            )}
             <button
               type="button"
               className="btn btn-primary"

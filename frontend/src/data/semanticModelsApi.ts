@@ -31,7 +31,6 @@ export interface SemanticModelPayload {
 }
 
 export interface SemanticModelImportSummary {
-  semantic_model_ids: string[];
   semantic_model_id: string | null;
   relationships: number;
   metrics: number;
@@ -54,7 +53,7 @@ export interface SemanticModelPreviewResponse {
 
 export async function previewSemanticModel(
   modelId: string,
-  data: { metric_id: string; group_by: string[]; filters?: PreviewFilter[] | null },
+  data: { metric_id: string; group_by: string[]; granularity?: string | null; filters?: PreviewFilter[] | null },
 ): Promise<SemanticModelPreviewResponse> {
   return request<SemanticModelPreviewResponse>(`/api/semantic-models/${modelId}/preview`, {
     method: 'POST',

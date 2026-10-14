@@ -34,6 +34,38 @@ Positioning: *"Stop redefining Revenue in every dashboard… write once, query a
 | **Relationships** | Foreign-key constraints connecting datasets (simple + composite keys) |
 | **`ai_context`** | Per-entity LLM context: `instructions`, `synonyms`, `examples` |
 
+---
+
+## Authoritative shapes (spec `0.2.0.dev0`)
+
+Read from `github.com/apache/ossie` → `core-spec/{spec.md,spec.yaml,ossie-schema.json}` (Apache-2.0).
+
+- **The document is flat** (exactly one model per document); required `version` + `name` + `datasets`:
+  `version, name, description?, ai_context?, datasets[], relationships[], metrics[], custom_extensions?`.
+  The `semantic_model:` array wrapper is the **old** shape — `0.2.0.dev0` **rejects** it.
+- **Dataset** — required `name`, `source`; optional `primary_key[]`, `unique_keys[[]]`, `description`, `ai_context`, `fields[]`, `custom_extensions`.
+- **Field** — required `name`, `expression` (`{dialects:[{dialect, expression}]}`, **scalar**); optional `dimension`, `label`, `description`, `datatype`, `ai_context`, `custom_extensions`. **No `column`, no `entity`.**
+- **Dimension** — **`{is_time: boolean}`** only. It is a *role* flag (independent of `datatype`); it defaults to `true` when `datatype ∈ {Date, Time, DateTime, DateTimeTz}`. **No `type` / `granularity` / `timezone`.**
+- **Relationship** — required `name`, `from` (many), `to` (one), `from_columns[]`, `to_columns[]`; optional `ai_context`, `custom_extensions`. **No `required`.** Order-aligned, composite OK.
+- **Metric** — required `name`, `expression` (**aggregate** fragment); optional `description`, `datatype`, `ai_context`, `custom_extensions`. **No `type` / `base_dataset` / `filters` / `joins`.**
+- **Expression** — `{dialects: [{dialect, expression}]}`; `dialect ∈ {ANSI_SQL, SNOWFLAKE, MDX, TABLEAU, DATABRICKS, MAQL, BIGQUERY, SIGMA, THOUGHTSPOT, DAX, HOLISTICS_AQL, OSSIE_SQL_2026}` (`OSSIE_SQL_2026` is the only dialect whose semantics the spec defines).
+- **DataType** (logical enum) — `String, Integer, Decimal, Float, Boolean, Date, Time, DateTime, DateTimeTz, Opaque`.
+- **AIContext** — `string` **or** `{instructions, synonyms[], examples[]}`.
+- **CustomExtension** — `{vendor_name, data}` (`data` is a **JSON string**); the spec's only extension mechanism.
+
+## Where openKMS deviates (✅ fixed — core shapes now spec-exact)
+
+| openKMS (was) | Spec | Resolution |
+|---------|------|-----|
+| document wrapped in `semantic_model: […]` | **flat** document (`version`/`name`/`datasets`/**) | ✅ export is flat |
+| `dimension: {type: time\|categorical, granularity, timezone}` | `dimension: {is_time}` | ✅ `{is_time}` (granularity is a **query-time** choice) |
+| field `entity: {type, name}` | *(not in the spec)* | ✅ dropped |
+| metric `base_dataset` / `type` / `filters` / `joins` | *(not in the spec)* | ✅ in `custom_extensions` |
+| relationship `required` | *(not in the spec)* | ✅ in `custom_extensions` |
+| field `column` (physical column ref) | *(not in the spec)* | ✅ in `custom_extensions` |
+| `datatype` = ontology types (`string`/`number`/…) | `DataType` enum | ✅ mapped to the enum |
+| field `expression` nullable | **required** | ✅ always emitted |
+
 ### Datasets
 
 `name`, `source` (physical `db.schema.table` or query), **`primary_key`** (simple/composite), **`unique_keys`** (array of arrays), `description`, `ai_context`, `fields`, `custom_extensions`.

@@ -16,7 +16,7 @@ An Ossie **semantic model** is a YAML document: **`datasets`** (physical source 
 | Datasets (`source`, `primary_key`, `unique_keys`, `fields`, `ai_context`) | our `datasets` (physical) + semantic annotations |
 | Relationships (`from` many → `to` one, `from_columns`/`to_columns`, composite) | our dataset relationships (replaces `dataset_joins`) |
 | Metrics (model-level; `expression.dialects`; `datatype`; `ai_context`) | our metrics (model-level, cross-dataset) |
-| Dimensions / Fields | column annotations (categorical / time) |
+| Dimensions / Fields | field dimension role (`dimension.is_time`) |
 | `ai_context` | LLM grounding (instructions / synonyms / examples) |
 
 ---
@@ -84,21 +84,21 @@ The **shared base** (datasets, their physical columns, relationships) lives in *
 - **No dimensions here**: in Ossie a *dimension* is a **field role**; grouping is a **consumption** concern. The metric itself is a **SQL expression** (§Metrics below).
 
 ### 4. Fields (model-scoped) & Datasets (shared)
-- **Fields** (✅ Stage 3): a field belongs to **one model** and references a dataset in its scope — a **column reference** or a **computed expression**, plus `datatype`, `description` and `ai_context`. Narrowing the model's dataset scope **drops the removed datasets' fields** (and is **blocked** while a metric still uses one). A field can carry an Ossie **`dimension`** role (`{type: time|categorical, granularity?, timezone?}`) and/or an **`entity`** (`{type: foreign|primary, name}` — the key a relationship joins on). Added **explicitly** (a field marks a dimension / adds AI context — it is not a mirror of every column); a column's role/`ai_context` can **differ per model**.
-- **Dimensions are fields** (not a top-level object): a field with `dimension.type`. Time dimensions carry a `granularity` (second…year) and `timezone`.
+- **Fields** (✅ Stage 3): a field belongs to **one model** and references a dataset in its scope — a **column reference** or a **computed expression**, plus `datatype`, `description` and `ai_context`. A field may carry the Ossie **`dimension`** (`{"is_time": boolean}`) — a time-dimension *role* (independent of `datatype`). Added **explicitly** (a field marks a time dimension / adds AI context — it is not a mirror of every column); a field's dimension/`ai_context` can **differ per model**. Narrowing the model's dataset scope **drops the removed datasets' fields** (and is **blocked** while a metric still uses one).
+- **Dimensions are fields** (not a top-level object): a field is a dimension; `dimension.is_time` marks the temporal ones. The core spec has **no `categorical` flag, no `granularity`/`timezone`, no `entity`** on a field.
 - **Columns** live with the dataset (**Catalog → dataset → Columns**): the physical columns (from `information_schema`) + a maintained **`description`** per column (`dataset_columns`). A **field** is the model-scoped semantic projection of a column (or a computed expression).
 - The **Ossie `datasets`** section of a model's document: `source` (a dotted string), `primary_key`, `unique_keys`, **`columns`** (with descriptions), **`fields`** (the model's), `ai_context`.
 
 ### 5. Try (preview)
-- **Try it** runs a metric **grouped by its dimensions** — ad-hoc and read-only, nothing saved. Time dimensions aggregate with `date_trunc('<granularity>', …)`, so “P/E per day per stock” = the metric + `group_by` `trade_date` (time) and `ts_code` (categorical).
+- **Try it** runs a metric **grouped by fields** (dimensions) — ad-hoc and read-only, nothing saved. Time dimensions aggregate with `date_trunc('<granularity>', …)`, the **granularity chosen at query time**; so “P/E per day per stock” = the metric + `group_by` `trade_date` (time) and `ts_code`.
 - It returns the rows **and the generated SQL**. Saving a query is a **consumption** concern → **Data Explorer** (`saved_queries` was removed).
 
 ### 6. Export / Import (Ossie) ✅
 - **Export / Import are per model**, in the model's header overflow menu — an interchange *output*, not the primary action; the model is built by configuration above.
-- **Export** one semantic model as an **Ossie document**: `semantic_model: [ … ]` (a list), each with `name` / `description` / `ai_context` / `datasets` / `relationships` / `metrics`; a dataset's `source` is a dotted string (`data_source.schema.table`) and `fields` live under its dataset; every `expression` is `{dialects: [{dialect, expression}]}` (JSON or YAML via `GET /api/semantic-models/{id}/export`).
-- **Import** (`POST /api/semantic-models/import`) **upserts** the model(s) + their fields/metrics over datasets matched by id/source/name; datasets are not created.
+- **Export** one semantic model as a **flat Ossie document** (core spec `0.2.0.dev0`): `version`, `name`, `description?`, `ai_context?`, `datasets[]`, `relationships[]`, `metrics[]`, and an `OPENKMS` `custom_extensions` entry for our internals. A dataset's `source` is a dotted string; a field's `expression` is `{dialects:[{dialect, expression}]}` (scalar) with `dimension: {is_time}`; a metric's is an aggregate fragment. A relationship is `from`(many) → `to`(one) with ordered `from_columns`/`to_columns`. JSON or YAML via `GET /api/semantic-models/{id}/export`.
+- **Import** (`POST /api/semantic-models/import`) **upserts** the flat document + its fields/metrics over datasets matched by id/source/name; datasets are not created.
 
-**openKMS extensions** (documented deviations from the minimal Ossie shape): a stable `id` on every entity (so a round-trip is exact — Ossie references by name), `unique_keys` and per-column `description`s, `relationships` (Ossie has them), and `base_dataset` on a metric (the engine's `FROM` anchor — Ossie derives it from the expression).
+**openKMS extension** (`custom_extensions`, vendor `OPENKMS`) — so the **core shape stays exactly as the spec defines it**, our internals round-trip here instead: stable entity `id`s (Ossie references by name), a metric's `base_dataset` anchor + `filters`/`joins`/`type`, a relationship's `required`, a field's source `column`, and per-column descriptions. The exported document is validated against the vendored [`ossie-schema.json`](../research/ossie/spec.md).
 
 ---
 

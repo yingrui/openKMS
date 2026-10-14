@@ -58,6 +58,14 @@ def all_dialects(expression: dict | None) -> list[dict[str, str]]:
     return out
 
 
+def normalize_expression(expression: dict | None) -> dict | None:
+    """Return the canonical Ossie list form (`{"dialects": [...]}`), or None if empty."""
+    if not isinstance(expression, dict):
+        return None
+    entries = all_dialects(expression)
+    return {"dialects": entries} if entries else None
+
+
 def validate_fragment(sql: str | None, *, what: str = "expression") -> str:
     """A single SQL fragment (no statement terminator, no comments)."""
     if not sql or not sql.strip():

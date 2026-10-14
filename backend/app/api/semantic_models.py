@@ -190,10 +190,7 @@ async def export_semantic_model_endpoint(
 async def import_semantic_model_endpoint(body: dict[str, Any], db: AsyncSession = Depends(get_db)):
     """Upsert a semantic model (and its metrics/queries) from an Ossie document."""
     if not isinstance(body, dict) or not (
-        isinstance(body.get("semantic_model"), dict)
-        or isinstance(body.get("semantic_model"), list)
-        or "relationships" in body
-        or "metrics" in body
+        "datasets" in body or "metrics" in body or "name" in body
     ):
         raise HTTPException(status_code=400, detail="Invalid semantic model document.")
     return await import_semantic_model(db, body)
@@ -219,6 +216,7 @@ async def preview_semantic_model(
             db,
             metric=metric,
             group_by=body.group_by,
+            granularity=body.granularity,
             filters=[f.model_dump() for f in body.filters] if body.filters else None,
         )
     except PreviewError as exc:

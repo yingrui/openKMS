@@ -13,7 +13,6 @@ class SemanticModelFieldCreate(BaseModel):
     datatype: str | None = None
     description: str | None = None
     dimension: dict[str, Any] | None = None
-    entity: dict[str, Any] | None = None
     ai_context: dict[str, Any] | None = None
     ordinal: int | None = None
 
@@ -25,7 +24,6 @@ class SemanticModelFieldUpdate(BaseModel):
     datatype: str | None = None
     description: str | None = None
     dimension: dict[str, Any] | None = None
-    entity: dict[str, Any] | None = None
     ai_context: dict[str, Any] | None = None
     ordinal: int | None = None
 
@@ -40,7 +38,6 @@ class SemanticModelFieldResponse(BaseModel):
     datatype: str | None = None
     description: str | None = None
     dimension: dict[str, Any] | None = None
-    entity: dict[str, Any] | None = None
     ai_context: dict[str, Any] | None = None
     ordinal: int = 0
     created_at: datetime

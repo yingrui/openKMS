@@ -30,25 +30,15 @@ class PreviewError(ValueError):
     """Raised when a preview cannot run; surfaced as HTTP 400."""
 
 
-def _dimension_expr(field: SemanticModelField) -> str:
+def _dimension_expr(field: SemanticModelField, granularity: str | None) -> str:
     expr = dialect_sql(field.expression, ANSI)
     if not expr:
         raise PreviewError(f"Field '{field.name}' has no expression.")
-    dimension = field.dimension or {}
-    if dimension.get("type") == "time":
-        granularity = dimension.get("granularity") or "day"
-        if granularity not in (
-            "second",
-            "minute",
-            "hour",
-            "day",
-            "week",
-            "month",
-            "quarter",
-            "year",
-        ):
-            granularity = "day"
-        return f"date_trunc('{granularity}', {expr})"
+    if (field.dimension or {}).get("is_time"):
+        g = granularity or "day"
+        if g not in ("second", "minute", "hour", "day", "week", "month", "quarter", "year"):
+            g = "day"
+        return f"date_trunc('{g}', {expr})"
     return expr
 
 
@@ -57,6 +47,7 @@ async def run_preview(
     *,
     metric: MetricDefinition,
     group_by: list[str],
+    granularity: str | None = None,
     filters: list[dict[str, Any]] | None = None,
     row_cap: int = DEFAULT_ROW_CAP,
     timeout_ms: int = DEFAULT_TIMEOUT_MS,
@@ -91,7 +82,7 @@ async def run_preview(
                 raise PreviewError(
                     f"Dimension '{field.name}' is not on the metric's base dataset."
                 )
-            expr = _dimension_expr(field)
+            expr = _dimension_expr(field, granularity)
             dim_exprs.append(expr)
             dim_selects.append(f'{expr} AS "{field.name}"')
             columns.append(field.name)

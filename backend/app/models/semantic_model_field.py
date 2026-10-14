@@ -1,11 +1,10 @@
 """Semantic-model field — a model-scoped semantic attribute over a dataset column.
 
 A field is the model-level projection of a column: a **column reference** or a
-**computed expression**, plus a `datatype`, a `dimension` role (Ossie:
-`time` / `categorical`, with `granularity` / `timezone` for time), an `entity`
-(`foreign` / `primary` key), `description` and `ai_context`. The physical column
-(and its `description`) lives with the dataset (Catalog); the field — its role and
-interpretation — belongs to the semantic model.
+**computed expression** (`expression`, Ossie scalar), plus a `datatype`, a
+`dimension` (`{"is_time": bool}`), `description` and `ai_context`. The physical
+column (and its annotation) lives with the dataset (Catalog); the field — its role
+and interpretation — belongs to the semantic model.
 """
 from __future__ import annotations
 
@@ -42,10 +41,8 @@ class SemanticModelField(Base):
     expression: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
     datatype: Mapped[str | None] = mapped_column(String(32), nullable=True)
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
-    # Ossie dimension role: {"type": "time"|"categorical", "granularity"?, "timezone"?}.
+    # Ossie dimension: {"is_time": bool}. null ⇒ a plain (non-dimension) field.
     dimension: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
-    # Ossie entity (key): {"type": "foreign"|"primary", "name": ...}.
-    entity: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
     ai_context: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
     ordinal: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     created_by: Mapped[str | None] = mapped_column(String(512), nullable=True)

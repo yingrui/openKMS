@@ -26,6 +26,7 @@ from app.schemas.metric import (
     MetricRunResponse,
     MetricUpdate,
 )
+from app.services.data_layer.expressions import normalize_expression
 from app.services.data_layer.metrics import MetricError, compute_metric, validate_metric_definition
 from app.services.permissions.permission_catalog import PERM_DATA_READ, PERM_DATA_WRITE
 
@@ -149,7 +150,7 @@ async def create_metric(
         name=body.name.strip(),
         business_definition=body.business_definition,
         type=body.type,
-        expression=body.expression,
+        expression=normalize_expression(body.expression),
         datatype=body.datatype,
         filters=[f.model_dump() for f in body.filters] if body.filters else None,
         joins=body.joins,
@@ -209,6 +210,8 @@ async def update_metric(
 
     if "filters" in data:
         data["filters"] = data["filters"] or None
+    if "expression" in data:
+        data["expression"] = normalize_expression(data["expression"])
     if "name" in data:
         data["name"] = data["name"].strip()
     for field in (

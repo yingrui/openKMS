@@ -34,8 +34,8 @@ Definitions first; each concept is **authored in exactly one place**.
 | **Semantic Model** | a **named scope**: a subset of the shared datasets + its fields and metrics (+ `ai_context`) | **Model** tab — list → model detail (with **Export/Import** per model) | cross-dataset |
 | **Datasets** | a logical entity: a physical table (`source`) + keys + **columns** (physical) | **Catalog** — dataset detail → Overview / Settings | shared (base) |
 | **Columns** (physical) | the table's columns + a maintained **description** (engineer / Agent) | **Catalog** — dataset detail → **Columns** | shared (base) |
-| **Fields** | model-scoped: a column ref **or a computed expression**, + `datatype`, `dimension` role (`time`/`categorical`), `entity`, `ai_context` | **Model → a model → Fields** | per-model |
-| **Dimensions** | a **field role** (`dimension.type` = `time`/`categorical`; time carries `granularity`/`timezone`) — a field you can group/filter by | **Model → a model → Fields** (a field property) | per-model |
+| **Fields** | model-scoped: a column ref **or a computed expression**, + `datatype`, `dimension` (`{is_time}`), `ai_context` | **Model → a model → Fields** | per-model |
+| **Dimensions** | a **field role** (`dimension.is_time`) — a field you can group/filter by | **Model → a model → Fields** (a field property) | per-model |
 | **Relationships** | FK edges: `from` (many) → `to` (one), `from_columns`/`to_columns`, `required` | **Catalog** — dataset detail → Relationships (editor) + the Catalog list **Map** view (ER) | shared (base) |
 | **Metrics** | model-level aggregate **expressions** over fields | **Model → a model → Metrics** | per-model |
 | **Rows** (physical) | preview, edit, ingest, profile | **Catalog** — dataset detail → Data | per-dataset |
@@ -85,10 +85,10 @@ Goal: the Datasets app **manages the Ossie semantic model**, with each definitio
 - **Verify:** ✅ a 1:1 relationship can target a unique key; `ai_context` round-trips via `PUT /api/datasets/{id}`.
 
 ### Stage 3 — Fields (the field layer) ✅ *(revised: fields are model-scoped)*
-- **Schema:** `semantic_model_fields` — `semantic_model_id`, `dataset_id`, `name`, `column_name` (null = computed), `expression` (dialects), `datatype`, `description`, `dimension` (`{type: time|categorical, granularity?, timezone?}`), `entity` (`{type: foreign|primary, name}`), `ai_context`, ordinal; unique `(model, dataset, name)`. Created **explicitly** (not auto-seeded).
+- **Schema:** `semantic_model_fields` — `semantic_model_id`, `dataset_id`, `name`, `column_name` (null = computed), `expression` (Ossie `{dialects:[{dialect, expression}]}`, scalar), `datatype` (Ossie `DataType` enum), `description`, `dimension` (`{is_time: bool}`), `ai_context`, ordinal; unique `(model, dataset, name)`. Created **explicitly** (not auto-seeded).
 - **Catalog:** a dataset exposes its **Columns** (physical) + a maintained **`description`** per column (`dataset_columns`). No semantic field editor here.
-- **Frontend:** **Model → a model → Fields** — computed fields, the `dimension` role (time with granularity/timezone, or categorical), `entity`, and `ai_context` per field; **Try** groups a metric by dimensions.
-- **Verify:** ✅ a computed field is stored; a `time`/`categorical` dimension carries the role; the **same column can differ per model**.
+- **Frontend:** **Model → a model → Fields** — computed fields, the `dimension` role (`is_time`), and `ai_context` per field; **Try** groups a metric by fields (time ones via `date_trunc`, granularity chosen at query time).
+- **Verify:** ✅ a computed field is stored; a `is_time` field carries the role; the **same column can differ per model**.
 
 ### Stage 4 — Metrics: model-level, Ossie SQL expressions ✅
 - **Expression:** metrics use **Ossie `expression.dialects`** — an aggregate **SQL fragment** (not a full statement), wrapped by the engine into a generated `SELECT <expr> AS value FROM base JOIN … WHERE … LIMIT …`. **No custom DSL** (decision #13). Authored by data engineers; **AI-assist** drafts the expression.
@@ -101,7 +101,7 @@ Goal: the Datasets app **manages the Ossie semantic model**, with each definitio
 - A saved query is a **consumption** artifact, not part of the Ossie semantic model (`datasets` / `fields` / `metrics` / `relationships`). `saved_queries` was **removed**; saved analyses live in **Data Explorer** (`explorer_reports`).
 
 ### Stage 6 — Semantic Model export / import ✅
-- **API:** `GET /api/semantic-models/{id}/export` → Ossie document for one model (`?format=json|yaml`: datasets (+columns/fields), relationships, metrics); `POST /api/semantic-models/import` upserts a model + its fields/metrics (datasets matched by id/source/name).
+- **API:** `GET /api/semantic-models/{id}/export` → **flat** Ossie document for one model (core spec `0.2.0.dev0`; `datasets`/`relationships`/`metrics` + an `OPENKMS` `custom_extensions`); `POST /api/semantic-models/import` upserts it (datasets matched by id/source/name). Validated against the vendored [`ossie-schema.json`](../../research/ossie/spec.md).
 - **Frontend:** Model header — **Export JSON / Export YAML / Import**.
 - **Verify:** ✅ a round-trip re-imports with a stable document (verified live).
 

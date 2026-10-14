@@ -22,12 +22,12 @@ from app.schemas.semantic_model_field import (
     SemanticModelFieldUpdate,
 )
 from app.services.data_layer.columns import ColumnError, pg_columns
+from app.services.data_layer.expressions import normalize_expression
 from app.services.data_layer.semantic_model_fields import (
     FieldError,
     column_expression,
     list_fields,
     validate_dimension,
-    validate_entity,
     validate_field,
 )
 from app.services.data_layer.semantic_models import member_ids
@@ -104,7 +104,6 @@ async def create_model_field(
             column_names=columns,
         )
         validate_dimension(body.dimension)
-        validate_entity(body.entity)
     except FieldError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
@@ -129,11 +128,10 @@ async def create_model_field(
         dataset_id=body.dataset_id,
         name=name,
         column_name=body.column_name,
-        expression=expression,
+        expression=normalize_expression(expression),
         datatype=body.datatype,
         description=body.description,
         dimension=body.dimension,
-        entity=body.entity,
         ai_context=body.ai_context,
         ordinal=body.ordinal or 0,
         created_by=p.get("sub") if isinstance(p.get("sub"), str) else None,
@@ -172,7 +170,6 @@ async def update_model_field(
             column_names=columns,
         )
         validate_dimension(data.get("dimension", field.dimension))
-        validate_entity(data.get("entity", field.entity))
     except FieldError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
@@ -180,6 +177,8 @@ async def update_model_field(
         data["name"] = data["name"].strip()
     if new_column and "expression" not in data:
         data["expression"] = expression
+    if "expression" in data:
+        data["expression"] = normalize_expression(data["expression"])
     for key, value in data.items():
         setattr(field, key, value)
     await db.commit()

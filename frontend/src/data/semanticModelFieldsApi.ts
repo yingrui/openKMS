@@ -7,14 +7,7 @@ export interface SemanticModelFieldDialect {
 }
 
 export interface SemanticModelFieldDimension {
-  type?: string; // time | categorical
-  granularity?: string | null;
-  timezone?: string | null;
-}
-
-export interface SemanticModelFieldEntity {
-  type?: string; // foreign | primary
-  name?: string;
+  is_time?: boolean;
 }
 
 export interface SemanticModelFieldResponse {
@@ -27,7 +20,6 @@ export interface SemanticModelFieldResponse {
   datatype: string | null;
   description: string | null;
   dimension: SemanticModelFieldDimension | null;
-  entity: SemanticModelFieldEntity | null;
   ai_context: Record<string, unknown> | null;
   ordinal: number;
   created_at: string;
@@ -47,7 +39,6 @@ export interface SemanticModelFieldPayload {
   datatype: string | null;
   description: string | null;
   dimension: SemanticModelFieldDimension | null;
-  entity: SemanticModelFieldEntity | null;
   ai_context: Record<string, unknown> | null;
 }
 
