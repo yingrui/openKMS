@@ -24,6 +24,13 @@ from app.services.data_layer.metrics import (
 )
 from app.services.data_layer.sql_build import SqlBuildError, build_joins_sql, build_where
 from app.services.data_layer.sql_runner import run_readonly
+from app.services.ontology.dataset_tables import is_valid_identifier
+
+_BASE_ALIAS = "base"
+
+
+def _quote(identifier: str) -> str:
+    return '"' + identifier.replace('"', '""') + '"'
 
 
 class PreviewError(ValueError):
@@ -31,9 +38,16 @@ class PreviewError(ValueError):
 
 
 def _dimension_expr(field: SemanticModelField, granularity: str | None) -> str:
-    expr = dialect_sql(field.expression, ANSI)
-    if not expr:
-        raise PreviewError(f"Field '{field.name}' has no expression.")
+    """A dimension's SQL, **qualified with the base alias** so a join onto another
+    dataset that shares the column name (e.g. ``ts_code``) stays unambiguous."""
+    if field.column_name:
+        if not is_valid_identifier(field.column_name):
+            raise PreviewError(f"Field '{field.name}' has an invalid column.")
+        expr = f"{_BASE_ALIAS}.{_quote(field.column_name)}"
+    else:
+        expr = dialect_sql(field.expression, ANSI)
+        if not expr:
+            raise PreviewError(f"Field '{field.name}' has no expression.")
     if (field.dimension or {}).get("is_time"):
         g = granularity or "day"
         if g not in ("second", "minute", "hour", "day", "week", "month", "quarter", "year"):
@@ -84,7 +98,7 @@ async def run_preview(
                 )
             expr = _dimension_expr(field, granularity)
             dim_exprs.append(expr)
-            dim_selects.append(f'{expr} AS "{field.name}"')
+            dim_selects.append(f"{expr} AS {_quote(field.name)}")
             columns.append(field.name)
 
     joins_by_id, datasets_by_id = await resolve_joins(db, base, metric.joins)
