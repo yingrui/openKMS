@@ -150,6 +150,7 @@ So a table is described (catalog), modeled (fields/relationships), trusted (qual
 | 21 | **A semantic model is a named scope** over the **shared** base (datasets, columns, relationships — Catalog-owned). It owns **fields** and **metrics** (+ dataset membership, `ai_context`); export/import is per model. There is no default model — if none exists, the list is empty. |
 | 22 | **Columns are physical (Catalog); fields are model-scoped.** A column carries a maintained `description`; a field is that column (or a computed expression) **as used in one model** — with its `role` and `ai_context`. So a field's `ai_context` can differ per model. |
 | 23 | **No queries in the semantic model.** A saved query is a **consumption** artifact (Data Explorer), not part of the Ossie `semantic_model` (`datasets` / `fields` / `metrics` / `relationships`). `saved_queries` was removed. |
+| 24 | **A metric keeps an explicit `base_dataset` anchor** (Ossie has none — its engine derives the `FROM`/joins from the expression). Ours lives in the `OPENKMS` `custom_extensions`; deriving it from the expression + relationships is **deferred to the agent auto-query phase**. |
 
 ## Still open
 
@@ -166,6 +167,7 @@ So a table is described (catalog), modeled (fields/relationships), trusted (qual
 | Delete semantics | dataset / relationship / report delete: cascade vs soft-delete |
 | Discoverability | datasets in Global Search; cross-layer search |
 | Data access audit | who read/exported which dataset |
+| Metric base-dataset derivation | for **agent auto-questioning**: infer the `FROM` + join path from the metric `expression` + relationships, instead of an explicit `base_dataset` anchor (decision #24, deferred) |
 
 ## Delivery obligations
 

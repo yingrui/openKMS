@@ -82,6 +82,7 @@ The **shared base** (datasets, their physical columns, relationships) lives in *
 - **Model-level** aggregate **expressions** (metrics span datasets via relationships; not per-dataset). ✅ Stage 4.
 - Author: name, **definition/description**, `expression` (an aggregate over fields/measures — e.g. `SUM(orders.amount)`), `datatype`, `ai_context`. Run read-only (timeout + row cap), audited.
 - **No dimensions here**: in Ossie a *dimension* is a **field role**; grouping is a **consumption** concern. The metric itself is a **SQL expression** (§Metrics below).
+- **Anchor:** the core spec has no `base_dataset` (its engine derives the `FROM`/joins from the expression). Ours keeps an explicit anchor in the `OPENKMS` `custom_extensions`; deriving it is deferred to the agent auto-query phase (decision #24).
 
 ### 4. Fields (model-scoped) & Datasets (shared)
 - **Fields** (✅ Stage 3): a field belongs to **one model** and references a dataset in its scope — a **column reference** or a **computed expression**, plus `datatype`, `description` and `ai_context`. A field may carry the Ossie **`dimension`** (`{"is_time": boolean}`) — a time-dimension *role* (independent of `datatype`). Added **explicitly** (a field marks a time dimension / adds AI context — it is not a mirror of every column); a field's dimension/`ai_context` can **differ per model**. Narrowing the model's dataset scope **drops the removed datasets' fields** (and is **blocked** while a metric still uses one).
