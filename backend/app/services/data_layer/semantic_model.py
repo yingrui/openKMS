@@ -29,6 +29,10 @@ from app.models.metric_definition import MetricDefinition
 from app.models.semantic_model import SemanticModel
 from app.models.semantic_model_field import SemanticModelField
 from app.services.data_layer.expressions import normalize_expression
+from app.services.data_layer.semantic_model_fields import (
+    dimension_granularity,
+    ossie_dimension,
+)
 from app.services.data_layer.semantic_models import member_ids, set_members
 
 OSSIE_VERSION = "0.2.0.dev0"
@@ -68,6 +72,12 @@ def _dataset_source(d: Dataset, ds_names: dict[str, str]) -> str:
 
 def _ossie_datatype(t: str | None) -> str | None:
     return _OSSIE_DATATYPE.get((t or "").lower())
+
+
+def _extension_grain(dimension: dict | None) -> dict[str, Any]:
+    """Our time-dimension grain travels in the OPENKMS extension, not in `dimension`."""
+    grain = dimension_granularity(dimension)
+    return {"granularity": grain} if grain else {}
 
 
 async def export_semantic_model(db: AsyncSession, model: SemanticModel) -> dict[str, Any]:
@@ -129,7 +139,11 @@ async def export_semantic_model(db: AsyncSession, model: SemanticModel) -> dict[
         },
         "fields": {
             _dataset_name(d): {
-                f.name: {"id": f.id, "column": f.column_name}
+                f.name: {
+                    "id": f.id,
+                    "column": f.column_name,
+                    **_extension_grain(f.dimension),
+                }
                 for f in fields_by_dataset.get(d.id, [])
             }
             for d in datasets
@@ -178,8 +192,9 @@ async def export_semantic_model(db: AsyncSession, model: SemanticModel) -> dict[
                 "dialects": [{"dialect": "ANSI_SQL", "expression": f.column_name or f.name}]
             }
             fentry: dict[str, Any] = {"name": f.name, "expression": fexpr}
-            if f.dimension:
-                fentry["dimension"] = f.dimension
+            dim = ossie_dimension(f.dimension)
+            if dim:
+                fentry["dimension"] = dim
             if f.description:
                 fentry["description"] = f.description
             if _ossie_datatype(f.datatype):
@@ -347,7 +362,11 @@ async def import_semantic_model(db: AsyncSession, doc: dict[str, Any]) -> dict[s
             row.expression = normalize_expression(f.get("expression"))
             row.datatype = _ONTOLOGY_DATATYPE.get(f.get("datatype") or "") or f.get("datatype")
             row.description = f.get("description")
-            row.dimension = f.get("dimension")
+            dim = f.get("dimension")
+            grain = fext.get("granularity")
+            if isinstance(dim, dict) and isinstance(grain, str):
+                dim = {**dim, "granularity": grain}
+            row.dimension = dim
             row.ai_context = f.get("ai_context")
             field_count += 1
 

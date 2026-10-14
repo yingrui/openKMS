@@ -8,6 +8,8 @@ import {
   deleteModelField,
   fetchModelFields,
   fieldExpressionSql,
+  isTemporalDatatype,
+  isTimeDimension,
   updateModelField,
   type SemanticModelFieldResponse,
 } from '../../data/semanticModelFieldsApi';
@@ -16,25 +18,9 @@ import { useConfirm } from '../../contexts/ConfirmContext';
 import { FormField } from '../../styles/design-system';
 
 type AiContext = { instructions: string; synonyms: string; examples: string };
-type DimensionMode = 'default' | 'time' | 'regular';
+type DimensionType = 'categorical' | 'time';
 
-/** Ossie resolves an omitted `is_time` from `datatype` (temporal → time dimension). */
-const TEMPORAL_DATATYPES = new Set([
-  'date',
-  'time',
-  'datetime',
-  'datetimetz',
-  'timestamp',
-  'timestamptz',
-]);
-const isTemporalDatatype = (datatype?: string | null) =>
-  TEMPORAL_DATATYPES.has((datatype ?? '').trim().toLowerCase());
-
-const dimensionModeOf = (f: SemanticModelFieldResponse): DimensionMode => {
-  const isTime = f.dimension?.is_time;
-  if (typeof isTime === 'boolean') return isTime ? 'time' : 'regular';
-  return 'default';
-};
+const GRANULARITIES = ['day', 'week', 'month', 'quarter', 'year'];
 
 const splitList = (s: string) =>
   s
@@ -79,7 +65,8 @@ export function ModelFieldsSection({
   const [exprSql, setExprSql] = useState('');
   const [datatype, setDatatype] = useState('');
   const [description, setDescription] = useState('');
-  const [dimensionMode, setDimensionMode] = useState<DimensionMode>('default');
+  const [dimensionType, setDimensionType] = useState<DimensionType>('categorical');
+  const [granularity, setGranularity] = useState('day');
   const [ai, setAi] = useState<AiContext>({ instructions: '', synonyms: '', examples: '' });
   const [submitting, setSubmitting] = useState(false);
 
@@ -88,12 +75,11 @@ export function ModelFieldsSection({
 
   /** The dimension column shows the *effective* role: explicit, or the datatype default. */
   const dimensionLabel = (f: SemanticModelFieldResponse) => {
-    const mode = dimensionModeOf(f);
-    if (mode === 'time') return t('dataModel.dimensionTime');
-    if (mode === 'regular') return t('datasets.dash');
-    return isTemporalDatatype(f.datatype)
-      ? t('dataModel.dimensionTimeDefault')
-      : t('datasets.dash');
+    if (!isTimeDimension(f)) return t('dataModel.dimensionCategorical');
+    const grain = f.dimension?.granularity;
+    return grain
+      ? `${t('dataModel.dimensionTimeLabel')} · ${grain}`
+      : t('dataModel.dimensionTimeLabel');
   };
 
   const load = useCallback(async () => {
@@ -133,7 +119,8 @@ export function ModelFieldsSection({
     setExprSql('');
     setDatatype('');
     setDescription('');
-    setDimensionMode('default');
+    setDimensionType('categorical');
+    setGranularity('day');
     setAi({ instructions: '', synonyms: '', examples: '' });
   }, [datasets]);
 
@@ -156,7 +143,8 @@ export function ModelFieldsSection({
     setExprSql(fieldExpressionSql(f));
     setDatatype(f.datatype ?? '');
     setDescription(f.description ?? '');
-    setDimensionMode(dimensionModeOf(f));
+    setDimensionType(isTimeDimension(f) ? 'time' : 'categorical');
+    setGranularity(f.dimension?.granularity ?? 'day');
     setAi(readAiContext(f.ai_context));
     setShowForm(true);
   };
@@ -188,7 +176,13 @@ export function ModelFieldsSection({
       expression,
       datatype: datatype.trim() || null,
       description: description.trim() || null,
-      dimension: dimensionMode === 'default' ? null : { is_time: dimensionMode === 'time' },
+      dimension:
+        dimensionType === 'time'
+          ? { is_time: true, granularity }
+          : // A temporal column needs an explicit opt-out; otherwise omit (same effect).
+            isTemporalDatatype(datatype)
+            ? { is_time: false }
+            : null,
       ai_context: hasAi ? { instructions: ai.instructions.trim(), synonyms, examples } : null,
     };
     setSubmitting(true);
@@ -393,14 +387,27 @@ export function ModelFieldsSection({
                 hint={t('dataModel.fieldDimensionHint')}
               >
                 <select
-                  value={dimensionMode}
-                  onChange={(e) => setDimensionMode(e.target.value as DimensionMode)}
+                  value={dimensionType}
+                  onChange={(e) => setDimensionType(e.target.value as DimensionType)}
                 >
-                  <option value="default">{t('dataModel.dimensionModeDefault')}</option>
+                  <option value="categorical">{t('dataModel.dimensionCategorical')}</option>
                   <option value="time">{t('dataModel.dimensionTimeLabel')}</option>
-                  <option value="regular">{t('dataModel.dimensionModeRegular')}</option>
                 </select>
               </FormField>
+              {dimensionType === 'time' && (
+                <FormField
+                  label={t('dataModel.fieldGranularity')}
+                  hint={t('dataModel.fieldGranularityHint')}
+                >
+                  <select value={granularity} onChange={(e) => setGranularity(e.target.value)}>
+                    {GRANULARITIES.map((g) => (
+                      <option key={g} value={g}>
+                        {g}
+                      </option>
+                    ))}
+                  </select>
+                </FormField>
+              )}
 
               <FormField label={t('datasets.aiInstructions')}>
                 <textarea

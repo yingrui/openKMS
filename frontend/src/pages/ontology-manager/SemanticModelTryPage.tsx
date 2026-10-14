@@ -6,6 +6,7 @@ import { toast } from 'sonner';
 import { fetchMetrics, type MetricResponse } from '../../data/metricsApi';
 import {
   fetchModelFields,
+  isTimeDimension,
   type SemanticModelFieldResponse,
 } from '../../data/semanticModelFieldsApi';
 import {
@@ -65,15 +66,25 @@ export function SemanticModelTryPage() {
     () => fields.filter((f) => !metric || f.dataset_id === metric.base_dataset_id),
     [fields, metric],
   );
-  const hasTimeDim = selected.some((id) => fields.find((f) => f.id === id)?.dimension?.is_time);
+  const hasTimeDim = selected.some((id) => {
+    const f = fields.find((x) => x.id === id);
+    return f ? isTimeDimension(f) : false;
+  });
 
   useEffect(() => {
     setSelected([]);
     setResult(null);
   }, [metricId]);
 
-  const toggle = (id: string) =>
-    setSelected((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
+  const toggle = (id: string) => {
+    const adding = !selected.includes(id);
+    if (adding) {
+      // Prefer the field's own default grain (our extension) when it has one.
+      const grain = fields.find((f) => f.id === id)?.dimension?.granularity;
+      if (grain) setGranularity(grain);
+    }
+    setSelected((prev) => (adding ? [...prev, id] : prev.filter((x) => x !== id)));
+  };
 
   const handleRun = async () => {
     if (!metricId) return;
@@ -143,7 +154,7 @@ export function SemanticModelTryPage() {
                       />
                       <span>
                         {f.name}
-                        {f.dimension?.is_time ? (
+                        {isTimeDimension(f) ? (
                           <em className="model-wizard__ds"> · {t('dataModel.dimensionTime')}</em>
                         ) : null}
                       </span>

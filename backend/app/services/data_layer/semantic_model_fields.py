@@ -1,8 +1,13 @@
 """Semantic-model fields — the model-level semantic projection of dataset columns.
 
-A field is a **column reference** or a **computed expression**, plus a `role`
-(`dimension`) and `ai_context`. Fields are model-scoped and created explicitly (a
-field marks a dimension / adds AI context — it is not a mirror of every column).
+A field is a **column reference** or a **computed expression**, plus its dimension
+role and `ai_context`. Fields are model-scoped and created explicitly (a field marks a
+time dimension / adds AI context — it is not a mirror of every column).
+
+**Dimension.** The core spec only defines `{"is_time": boolean}`. We additionally keep
+`granularity` (a time dimension's default drill-down grain, also chosen per query in
+Try) *inside* our stored dimension; it is stripped on export and round-trips through the
+`OPENKMS` custom extension, so the emitted document stays spec-exact.
 """
 from __future__ import annotations
 
@@ -79,6 +84,8 @@ async def list_fields(db: AsyncSession, model: SemanticModel) -> list[SemanticMo
 
 
 _TEMPORAL_DATATYPES = {"date", "time", "datetime", "datetimetz", "timestamp", "timestamptz"}
+GRANULARITIES = ("second", "minute", "hour", "day", "week", "month", "quarter", "year")
+DIMENSION_KEYS = ("is_time", "granularity")
 
 
 def is_temporal_datatype(datatype: str | None) -> bool:
@@ -95,9 +102,33 @@ def resolve_is_time(dimension: dict | None, datatype: str | None) -> bool:
     return is_temporal_datatype(datatype)
 
 
+def dimension_granularity(dimension: dict | None) -> str | None:
+    """Our time-dimension grain extension, if set."""
+    grain = dimension.get("granularity") if isinstance(dimension, dict) else None
+    return grain if grain in GRANULARITIES else None
+
+
+def ossie_dimension(dimension: dict | None) -> dict | None:
+    """The core-spec `Dimension` — only `is_time`; our `granularity` is dropped."""
+    if isinstance(dimension, dict) and isinstance(dimension.get("is_time"), bool):
+        return {"is_time": dimension["is_time"]}
+    return None
+
+
 def validate_dimension(dimension: dict | None) -> None:
-    """Ossie `Dimension` is **only** `{"is_time": boolean}`."""
+    """Ossie `Dimension` is `{"is_time": boolean}`; we additionally allow our
+    `granularity` (only meaningful on a time dimension)."""
     if dimension is None:
         return
     if not isinstance(dimension, dict) or not isinstance(dimension.get("is_time"), bool):
-        raise FieldError("dimension must be {'is_time': boolean}.")
+        raise FieldError("dimension must be {'is_time': boolean, 'granularity'?: ...}.")
+    unknown = set(dimension) - set(DIMENSION_KEYS)
+    if unknown:
+        raise FieldError(f"dimension has unknown keys: {', '.join(sorted(unknown))}.")
+    grain = dimension.get("granularity")
+    if grain is None:
+        return
+    if grain not in GRANULARITIES:
+        raise FieldError(f"granularity must be one of: {', '.join(GRANULARITIES)}.")
+    if not dimension.get("is_time"):
+        raise FieldError("granularity is only valid on a time dimension (is_time: true).")

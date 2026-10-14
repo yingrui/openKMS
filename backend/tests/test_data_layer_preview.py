@@ -100,3 +100,54 @@ def test_explicit_true_makes_a_non_temporal_column_a_time_dimension():
         dimension={"is_time": True},
     )
     assert _dimension_expr(f, "year") == 'date_trunc(\'year\', base."d_year")'
+
+
+# --- our granularity extension ---------------------------------------------------
+
+
+def test_granularity_defaults_the_preview_grain():
+    f = _field(
+        name="trade_date",
+        column_name="trade_date",
+        expression=None,
+        datatype="datetime",
+        dimension={"is_time": True, "granularity": "week"},
+    )
+    assert _dimension_expr(f, None) == 'date_trunc(\'week\', base."trade_date")'
+    # an explicit per-query grain still wins
+    assert _dimension_expr(f, "month") == 'date_trunc(\'month\', base."trade_date")'
+
+
+def _validate(dimension):
+    from app.services.data_layer.semantic_model_fields import validate_dimension
+
+    validate_dimension(dimension)
+
+
+def test_validate_dimension_accepts_our_granularity():
+    from app.services.data_layer.semantic_model_fields import FieldError
+
+    _validate({"is_time": True, "granularity": "month"})
+    _validate({"is_time": False})
+    _validate(None)
+    for bad in (
+        {"is_time": True, "granularity": "fortnight"},
+        {"is_time": False, "granularity": "day"},
+        {"is_time": True, "timezone": "Asia/Shanghai"},
+        {"type": "time"},
+        {},
+    ):
+        try:
+            _validate(bad)
+        except FieldError:
+            continue
+        raise AssertionError(f"expected FieldError for {bad!r}")
+
+
+def test_ossie_dimension_drops_our_extension():
+    from app.services.data_layer.semantic_model_fields import ossie_dimension
+
+    assert ossie_dimension({"is_time": True, "granularity": "month"}) == {"is_time": True}
+    assert ossie_dimension({"is_time": False}) == {"is_time": False}
+    assert ossie_dimension(None) is None
+    assert ossie_dimension({}) is None

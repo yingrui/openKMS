@@ -162,13 +162,12 @@
     "tryRunFailed": "预览失败",
     "outOfScope": "已超出范围",
     "dimensionTime": "时间",
-    "fieldDimensionHint": "Ossie：字段本身就是维度。`is_time` 是角色，与数据类型无关；保持默认时跟随数据类型（时间类型 → 时间维度）。",
+    "fieldDimensionHint": "字段作为维度的用法。时间维度用 Ossie 的 `is_time` 角色标注；粒度是我们的自有设置，导出时放在 OPENKMS 扩展里、不进入规范核心。",
     "tryBack": "返回模型",
     "fieldDimension": "维度",
     "dimensionTimeLabel": "时间维度",
-    "dimensionModeDefault": "默认（按数据类型）",
-    "dimensionModeRegular": "普通维度",
-    "dimensionTimeDefault": "时间（默认）"
+    "dimensionCategorical": "分类维度",
+    "fieldGranularityHint": "该时间维度的默认下钻粒度（在 Try 中仍可按次查询临时覆盖）。"
   },
   "datasets": {
     "title": "数据集",

@@ -8,7 +8,31 @@ export interface SemanticModelFieldDialect {
 
 export interface SemanticModelFieldDimension {
   is_time?: boolean;
+  /** Our extension (not in the core spec): the default drill-down grain for a time dimension. */
+  granularity?: string;
 }
+
+/** Ossie datatypes that make a field a time dimension unless `is_time` says otherwise. */
+export const TEMPORAL_DATATYPES = new Set([
+  'date',
+  'time',
+  'datetime',
+  'datetimetz',
+  'timestamp',
+  'timestamptz',
+]);
+
+export const isTemporalDatatype = (datatype?: string | null): boolean =>
+  TEMPORAL_DATATYPES.has((datatype ?? '').trim().toLowerCase());
+
+/** The effective Ossie time-dimension role: explicit `is_time`, else the `datatype` default. */
+export const isTimeDimension = (field: {
+  dimension: SemanticModelFieldDimension | null;
+  datatype?: string | null;
+}): boolean => {
+  const isTime = field.dimension?.is_time;
+  return typeof isTime === 'boolean' ? isTime : isTemporalDatatype(field.datatype);
+};
 
 export interface SemanticModelFieldResponse {
   id: string;

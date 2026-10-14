@@ -170,6 +170,7 @@ The official `ossie-schema.json` rejects them outright (`Dimension` is
 |-----------|---------|
 | `dimension: {type: categorical}` | ❌ `Additional properties are not allowed ('type' …)` |
 | `dimension: {type: time, granularity: day}` | ❌ same |
+| `dimension: {granularity: day}` (inside an otherwise valid `is_time` dimension) | ❌ `Additional properties are not allowed ('granularity' …)` — we keep it internally and ship it in the `OPENKMS` custom extension instead |
 | `entity: {type: foreign, name: store}` | ❌ `Additional properties are not allowed ('entity' …)` |
 | `dimension: {is_time: true}` | ✅ |
 

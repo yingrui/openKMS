@@ -22,7 +22,7 @@ from app.services.data_layer.metrics import (
     metric_expression_sql,
     resolve_joins,
 )
-from app.services.data_layer.semantic_model_fields import resolve_is_time
+from app.services.data_layer.semantic_model_fields import dimension_granularity, resolve_is_time
 from app.services.data_layer.sql_build import SqlBuildError, build_joins_sql, build_where
 from app.services.data_layer.sql_runner import run_readonly
 from app.services.ontology.dataset_tables import is_valid_identifier
@@ -50,7 +50,7 @@ def _dimension_expr(field: SemanticModelField, granularity: str | None) -> str:
         if not expr:
             raise PreviewError(f"Field '{field.name}' has no expression.")
     if resolve_is_time(field.dimension, field.datatype):
-        g = granularity or "day"
+        g = granularity or dimension_granularity(field.dimension) or "day"
         if g not in ("second", "minute", "hour", "day", "week", "month", "quarter", "year"):
             g = "day"
         return f"date_trunc('{g}', {expr})"
