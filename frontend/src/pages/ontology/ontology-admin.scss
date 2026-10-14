@@ -490,13 +490,14 @@ select.console-form-control {
   cursor: pointer;
 }
 
-// Legacy modal markup (label > span + control). Exclude design-system CheckRow.
-.console-modal-body label:not(.console-modal-checkbox-row):not(.ds-check-row) {
+// Legacy modal markup (label > span + control). Exclude design-system fields
+// (`.ds-field` — label + control are stacked by the primitive's own gap).
+.console-modal-body label:not(.console-modal-checkbox-row):not(.ds-check-row):not(.ds-field__label) {
   display: block;
   margin-bottom: var(--space-4);
 }
 
-.console-modal-body label:not(.console-modal-checkbox-row):not(.ds-check-row) span:first-child {
+.console-modal-body label:not(.console-modal-checkbox-row):not(.ds-check-row):not(.ds-field__label) span:first-child {
   display: block;
   font-size: var(--text-md);
   font-weight: 500;
@@ -504,12 +505,12 @@ select.console-form-control {
   margin-bottom: var(--gap-compact);
 }
 
-.console-modal-body input[type='text'],
-.console-modal-body input[type='password'],
-.console-modal-body input[type='url'],
-.console-modal-body input[type='date'],
-.console-modal-body input[type='time'],
-.console-modal-body select {
+.console-modal-body :not(.ds-field) > input[type='text'],
+.console-modal-body :not(.ds-field) > input[type='password'],
+.console-modal-body :not(.ds-field) > input[type='url'],
+.console-modal-body :not(.ds-field) > input[type='date'],
+.console-modal-body :not(.ds-field) > input[type='time'],
+.console-modal-body :not(.ds-field) > select {
   @extend .console-form-control;
 }
 
