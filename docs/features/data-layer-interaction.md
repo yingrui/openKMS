@@ -90,12 +90,11 @@ Why it's intuitive: the user only ever answers one question at a time (which fil
 
 ## Model tab — semantic models
 
-The Model tab lists **semantic models** — **named scopes** over the **shared** datasets, fields, and relationships (which live under **Catalog**). Opening a model shows its dataset scope, a guided setup, and its **metrics** and **queries**. **Function spec:** [semantic model spec](data-layer-semantic-model.md) · **definitions/surfaces:** [data layer](data-layer.md#the-ossie-class-model-definitions-and-where-each-is-managed).
+The Model tab lists **semantic models** — **named scopes** over the **shared** datasets, fields, and relationships (which live under **Catalog**). Opening a model shows its dataset scope, its **metrics** (primary) and its **fields**. **Function spec:** [semantic model spec](data-layer-semantic-model.md) · **definitions/surfaces:** [data layer](data-layer.md#the-ossie-class-model-definitions-and-where-each-is-managed).
 
-- **List → detail** — **New model** opens a short **wizard** (details → dataset scope, with search / select-all); then open it. An **Import** (per-model document) lives in the header.
-- **Setup guide** — a step checklist in a model (add datasets → connect them → define a metric) with a **direct action per step** and a progress count.
-- **Fields** — the model's semantic fields (column ref / expression + role + `ai_context`), seeded from its datasets' columns; the same column can carry a different role/`ai_context` per model.
-- **Metrics** — model-level aggregate **expressions** (Ossie `expression.dialects`) authored by a data engineer, with **AI-assist** to draft them; run read-only (timeout + row cap).
+- **List → detail** — **New model** opens a short **wizard** (details → dataset scope → **metrics**); then open it. An **Import** (per-model document) lives in the header.
+- **Metrics** — the model's aggregate **expressions** (Ossie `expression.dialects`), authored by a data engineer with **AI-assist**; run read-only (timeout + row cap).
+- **Fields** — the model's semantic fields (column ref / expression + role + `ai_context`), **added explicitly** (a field marks a dimension or adds AI context); the same column can carry a different role/`ai_context` per model.
 - **Export / Import** — the Ossie document, per model, in the model header overflow menu.
 
 ### Why it's intuitive

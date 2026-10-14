@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Loader2, Pencil, Plus, RefreshCw, Trash2, X } from 'lucide-react';
+import { Loader2, Pencil, Plus, Trash2, X } from 'lucide-react';
 import { toast } from 'sonner';
 import { fetchDatasetMetadata, type ColumnMetadata } from '../../data/datasetsApi';
 import {
@@ -8,7 +8,6 @@ import {
   deleteModelField,
   fetchModelFields,
   fieldExpressionSql,
-  syncModelFields,
   updateModelField,
   type SemanticModelFieldResponse,
 } from '../../data/semanticModelFieldsApi';
@@ -50,7 +49,6 @@ export function ModelFieldsSection({
 
   const [fields, setFields] = useState<SemanticModelFieldResponse[]>([]);
   const [loading, setLoading] = useState(true);
-  const [syncing, setSyncing] = useState(false);
 
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState<SemanticModelFieldResponse | null>(null);
@@ -194,37 +192,11 @@ export function ModelFieldsSection({
     }
   };
 
-  const handleSync = async () => {
-    setSyncing(true);
-    try {
-      const { added } = await syncModelFields(semanticModelId);
-      toast.success(t('datasets.fieldsSynced', { n: added }));
-      await load();
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : t('datasets.fieldsSyncFailed'));
-    } finally {
-      setSyncing(false);
-    }
-  };
-
   return (
     <section>
       <div className="dataset-columns__toolbar">
         <h2>{t('dataModel.fields')}</h2>
         <div className="dataset-columns__actions">
-          <button
-            type="button"
-            className="btn btn-secondary btn-sm"
-            onClick={() => void handleSync()}
-            disabled={syncing}
-          >
-            {syncing ? (
-              <Loader2 size={14} className="console-loading-spinner" aria-hidden />
-            ) : (
-              <RefreshCw size={14} aria-hidden />
-            )}
-            {t('datasets.syncFields')}
-          </button>
           <button type="button" className="btn btn-primary btn-sm" onClick={openCreate}>
             <Plus size={14} aria-hidden />
             {t('datasets.addField')}
@@ -238,7 +210,7 @@ export function ModelFieldsSection({
           <p>{t('shared.loading')}</p>
         </div>
       ) : fields.length === 0 ? (
-        <p className="entity-view__readonly">{t('datasets.emptyFields')}</p>
+        <p className="entity-view__readonly">{t('dataModel.fieldsEmptyHint')}</p>
       ) : (
         <div className="ds-table-wrap ds-table-wrap--flush">
           <table className="console-table">

@@ -4,8 +4,6 @@ import { Link, useNavigate, useParams } from 'react-router-dom';
 import { ChevronLeft, Loader2, MoreHorizontal, Pencil, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { fetchDatasets, type DatasetResponse } from '../../data/datasetsApi';
-import { fetchDatasetJoins } from '../../data/joinsApi';
-import { fetchMetrics } from '../../data/metricsApi';
 import {
   deleteSemanticModel,
   exportSemanticModel,
@@ -16,7 +14,6 @@ import {
 } from '../../data/semanticModelsApi';
 import { useConfirm } from '../../contexts/ConfirmContext';
 import { Dialog, FormField } from '../../styles/design-system';
-import { ModelSetupGuide } from './ModelSetupGuide';
 import { ModelFieldsSection } from './ModelFieldsSection';
 import { ModelMetricsSection } from './ModelMetricsSection';
 import '../ontology/ontology-admin.scss';
@@ -34,7 +31,7 @@ function datasetLabel(d: DatasetResponse): string {
   return d.display_name || `${d.schema_name}.${d.table_name}`;
 }
 
-/** A single semantic model: its dataset scope, setup guide, fields, and metrics. */
+/** A semantic model: its metrics (primary) and fields, over a shared dataset scope. */
 export function SemanticModelDetailPage() {
   const { t } = useTranslation('ontology');
   const { modelId = '' } = useParams();
@@ -43,43 +40,24 @@ export function SemanticModelDetailPage() {
 
   const [model, setModel] = useState<SemanticModelResponse | null>(null);
   const [allDatasets, setAllDatasets] = useState<DatasetResponse[]>([]);
-  const [relationshipCount, setRelationshipCount] = useState(0);
-  const [metricCount, setMetricCount] = useState(0);
   const [loading, setLoading] = useState(true);
 
-  const [metricsSignal, setMetricsSignal] = useState(0);
   const [showEdit, setShowEdit] = useState(false);
   const [editName, setEditName] = useState('');
   const [editDescription, setEditDescription] = useState('');
   const [editDatasets, setEditDatasets] = useState<string[]>([]);
   const [submitting, setSubmitting] = useState(false);
-  const [setupDismissed, setSetupDismissed] = useState(() => {
-    try {
-      return localStorage.getItem(`openkms:model:${modelId}:setupDismissed`) === '1';
-    } catch {
-      return false;
-    }
-  });
 
   const load = useCallback(async () => {
     if (!modelId) return;
     setLoading(true);
     try {
-      const [m, ds, joins, metrics] = await Promise.all([
+      const [m, ds] = await Promise.all([
         fetchSemanticModel(modelId),
         fetchDatasets(),
-        fetchDatasetJoins(),
-        fetchMetrics(modelId),
       ]);
       setModel(m);
       setAllDatasets(ds.items);
-      const scope = new Set(m.dataset_ids);
-      setRelationshipCount(
-        joins.items.filter(
-          (j) => scope.has(j.from_dataset_id) && scope.has(j.to_dataset_id),
-        ).length,
-      );
-      setMetricCount(metrics.total);
     } catch (e) {
       toast.error(e instanceof Error ? e.message : t('datasets.loadFailed'));
     } finally {
@@ -156,15 +134,6 @@ export function SemanticModelDetailPage() {
     }
   };
 
-  const dismissSetup = () => {
-    setSetupDismissed(true);
-    try {
-      localStorage.setItem(`openkms:model:${modelId}:setupDismissed`, '1');
-    } catch {
-      /* ignore */
-    }
-  };
-
   const toggleEditDataset = (id: string) =>
     setEditDatasets((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
 
@@ -197,6 +166,15 @@ export function SemanticModelDetailPage() {
           <p className="page-subtitle">
             {model.description || t('dataModel.modelDatasetsHint')}
           </p>
+          {model.datasets.length > 0 && (
+            <div className="model-scope">
+              {model.datasets.map((d) => (
+                <Link key={d.id} to={`/datasets/${d.id}`} className="model-scope__chip">
+                  {d.name}
+                </Link>
+              ))}
+            </div>
+          )}
         </div>
         <div className="dataset-columns__actions">
           <button type="button" className="btn btn-secondary btn-sm" onClick={openEdit}>
@@ -224,49 +202,9 @@ export function SemanticModelDetailPage() {
       </div>
 
       <div className="ontology-admin-content">
-        {!setupDismissed && (
-          <ModelSetupGuide
-            datasets={model.datasets.length}
-            relationships={relationshipCount}
-            metrics={metricCount}
-            onAddDatasets={openEdit}
-            onConnectDatasets={() =>
-              navigate(
-                model.datasets[0] ? `/datasets/${model.datasets[0].id}/relationships` : '/datasets',
-              )
-            }
-            onAddMetric={() => setMetricsSignal((n) => n + 1)}
-            onExport={() => void handleExport('json')}
-            onDismiss={dismissSetup}
-          />
-        )}
+        <ModelMetricsSection semanticModelId={model.id} datasetIds={model.dataset_ids} />
 
-        <section>
-          <h2>{t('dataModel.datasetsInScope')}</h2>
-          {model.datasets.length === 0 ? (
-            <p className="entity-view__readonly">{t('dataModel.noDatasetsInScope')}</p>
-          ) : (
-            <div className="model-scope">
-              {model.datasets.map((d) => (
-                <Link key={d.id} to={`/datasets/${d.id}`} className="model-scope__chip">
-                  {d.name}
-                </Link>
-              ))}
-            </div>
-          )}
-        </section>
-
-        <ModelFieldsSection
-          semanticModelId={model.id}
-          datasets={model.datasets}
-          onChanged={() => void load()}
-        />
-
-        <ModelMetricsSection
-          semanticModelId={model.id}
-          datasetIds={model.dataset_ids}
-          openCreateSignal={metricsSignal}
-        />
+        <ModelFieldsSection semanticModelId={model.id} datasets={model.datasets} onChanged={() => void load()} />
       </div>
 
       <Dialog

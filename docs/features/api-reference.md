@@ -400,9 +400,8 @@ Encrypted values; **never returned**. Write/sync/delete reject personal API key 
 | GET | `/api/semantic-models/{model_id}` | Get a semantic model (with its datasets; `data:read`) |
 | PUT | `/api/semantic-models/{model_id}` | Update a semantic model (name / description / `dataset_ids` / `ai_context`) (`data:write`) |
 | DELETE | `/api/semantic-models/{model_id}` | Delete a semantic model (cascades its fields/metrics) (`data:write`) |
-| GET | `/api/semantic-models/{model_id}/fields` | List a model's fields (seeds from its datasets' columns on first read; `data:read`) |
+| GET | `/api/semantic-models/{model_id}/fields` | List a model's fields (`data:read`) |
 | POST | `/api/semantic-models/{model_id}/fields` | Create a field `{dataset_id, name, column_name?, expression?, datatype?, dimension?, ai_context?}` (`data:write`) |
-| POST | `/api/semantic-models/{model_id}/fields/sync` | Mirror the model's datasets' columns into fields (`data:write`) |
 | PUT | `/api/semantic-models/{model_id}/fields/{field_id}` | Update a field (`data:write`) |
 | DELETE | `/api/semantic-models/{model_id}/fields/{field_id}` | Delete a field (`data:write`) |
 | GET | `/api/semantic-models/{model_id}/export` | Export one model as an Ossie document — `?format=json\|yaml` (`data:read`) |

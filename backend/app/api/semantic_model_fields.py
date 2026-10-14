@@ -26,7 +26,6 @@ from app.services.data_layer.semantic_model_fields import (
     FieldError,
     column_expression,
     list_fields,
-    seed_model_fields,
     validate_field,
 )
 from app.services.data_layer.semantic_models import member_ids
@@ -76,16 +75,6 @@ async def list_model_fields(model_id: str, db: AsyncSession = Depends(get_db)):
     return SemanticModelFieldListResponse(
         items=[SemanticModelFieldResponse.model_validate(f) for f in fields], total=len(fields)
     )
-
-
-@router.post(
-    "/{model_id}/fields/sync",
-    dependencies=[Depends(require_permission(PERM_DATA_WRITE))],
-)
-async def sync_model_fields(model_id: str, db: AsyncSession = Depends(get_db)):
-    """Mirror the model's datasets' columns into fields (adds missing ones)."""
-    model = await _load_model(db, model_id)
-    return {"added": await seed_model_fields(db, model)}
 
 
 @router.post(

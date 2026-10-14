@@ -236,7 +236,7 @@ Schema for every persisted table. Grouped by area; see the matching feature page
 ### SemanticModelField
 
 - `id`, `semantic_model_id` (FK → semantic_models, CASCADE), `dataset_id` (FK → datasets, CASCADE), `name` (unique per model + dataset), `column_name` (nullable; the physical column for a plain field), `expression` (JSONB `{dialects: {ANSI_SQL}}`), `datatype`, `dimension` (JSONB `{is_time}`), `ai_context` (JSONB), `ordinal`, `created_by` / `created_by_name`, `created_at`, `updated_at`
-- The **model-scoped** field: a column reference or a computed expression, plus its **role** (`dimension`) and `ai_context`. Seeded from the model's datasets' columns on first read. This is where the semantic interpretation lives — a field's role/`ai_context` differ per model.
+- The **model-scoped** field: a column reference or a computed expression, plus its **role** (`dimension`) and `ai_context`. Created **explicitly** (a field marks a dimension or adds AI context — it is not a mirror of every column). This is where the semantic interpretation lives — a field's role/`ai_context` differ per model.
 
 ### MetricDefinition
 

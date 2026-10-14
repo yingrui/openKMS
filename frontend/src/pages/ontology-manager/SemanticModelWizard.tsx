@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
-import { Check, Loader2, Plus, Search } from 'lucide-react';
+import { Check, Loader2, Plus, Search, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { fetchDatasets, type DatasetResponse } from '../../data/datasetsApi';
+import { createMetric } from '../../data/metricsApi';
 import {
   createSemanticModel,
   type SemanticModelResponse,
@@ -14,7 +15,9 @@ function datasetLabel(d: DatasetResponse): string {
   return d.display_name || `${d.schema_name}.${d.table_name}`;
 }
 
-/** Stepwise "new semantic model": details → dataset scope. */
+type DraftMetric = { key: string; baseDatasetId: string; name: string; expression: string };
+
+/** Stepwise "new semantic model": details → dataset scope → metrics. */
 export function SemanticModelWizard({
   open,
   onClose,
@@ -35,6 +38,7 @@ export function SemanticModelWizard({
   const [description, setDescription] = useState('');
   const [selected, setSelected] = useState<string[]>([]);
   const [search, setSearch] = useState('');
+  const [metrics, setMetrics] = useState<DraftMetric[]>([]);
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
@@ -44,6 +48,7 @@ export function SemanticModelWizard({
     setDescription('');
     setSelected([]);
     setSearch('');
+    setMetrics([]);
     setLoading(true);
     void fetchDatasets()
       .then((r) => setDatasets(r.items))
@@ -52,6 +57,11 @@ export function SemanticModelWizard({
     const id = window.setTimeout(() => nameRef.current?.focus(), 50);
     return () => window.clearTimeout(id);
   }, [open, t]);
+
+  const selectedDatasets = useMemo(
+    () => datasets.filter((d) => selected.includes(d.id)),
+    [datasets, selected],
+  );
 
   const filtered = useMemo(() => {
     const s = search.trim().toLowerCase();
@@ -75,7 +85,21 @@ export function SemanticModelWizard({
     );
   };
 
+  const addMetric = () =>
+    setMetrics((prev) => [
+      ...prev,
+      { key: crypto.randomUUID(), baseDatasetId: selected[0] ?? '', name: '', expression: '' },
+    ]);
+
+  const updateMetric = (key: string, patch: Partial<DraftMetric>) =>
+    setMetrics((prev) => prev.map((m) => (m.key === key ? { ...m, ...patch } : m)));
+
   const handleCreate = async () => {
+    const complete = metrics.filter((m) => m.name.trim() && m.expression.trim() && m.baseDatasetId);
+    if (complete.length !== metrics.length) {
+      toast.error(t('dataModel.metricRowIncomplete'));
+      return;
+    }
     setSubmitting(true);
     try {
       const model = await createSemanticModel({
@@ -83,6 +107,19 @@ export function SemanticModelWizard({
         description: description.trim() || null,
         dataset_ids: selected,
       });
+      for (const m of complete) {
+        try {
+          await createMetric({
+            name: m.name.trim(),
+            semantic_model_id: model.id,
+            base_dataset_id: m.baseDatasetId,
+            type: 'simple',
+            expression: { dialects: { ANSI_SQL: m.expression.trim() } },
+          });
+        } catch (e) {
+          toast.error(e instanceof Error ? e.message : t('datasets.metricCreateFailed'));
+        }
+      }
       toast.success(t('dataModel.modelCreated'));
       onCreated(model);
     } catch (e) {
@@ -92,7 +129,11 @@ export function SemanticModelWizard({
     }
   };
 
-  const steps = [t('dataModel.wizardStepDetails'), t('dataModel.wizardStepDatasets')];
+  const steps = [
+    t('dataModel.wizardStepDetails'),
+    t('dataModel.wizardStepDatasets'),
+    t('dataModel.wizardStepMetrics'),
+  ];
 
   return (
     <Dialog
@@ -111,18 +152,18 @@ export function SemanticModelWizard({
             <button
               type="button"
               className="btn btn-secondary"
-              onClick={() => setStep(0)}
+              onClick={() => setStep((s) => s - 1)}
               disabled={submitting}
             >
               {t('dataModel.wizardBack')}
             </button>
           )}
-          {step === 0 ? (
+          {step < 2 ? (
             <button
               type="button"
               className="btn btn-primary"
-              onClick={() => setStep(1)}
-              disabled={!name.trim()}
+              onClick={() => setStep((s) => s + 1)}
+              disabled={step === 0 && !name.trim()}
             >
               {t('dataModel.wizardNext')}
             </button>
@@ -153,7 +194,7 @@ export function SemanticModelWizard({
         ))}
       </ol>
 
-      {step === 0 ? (
+      {step === 0 && (
         <div className="model-wizard__pane">
           <FormField label={t('dataModel.modelName')}>
             <input
@@ -174,7 +215,9 @@ export function SemanticModelWizard({
             />
           </FormField>
         </div>
-      ) : (
+      )}
+
+      {step === 1 && (
         <div className="model-wizard__pane">
           <p className="page-subtitle">{t('dataModel.modelDatasetsHint')}</p>
           <div className="model-wizard__dataset-toolbar">
@@ -222,7 +265,9 @@ export function SemanticModelWizard({
                   />
                   <span>
                     {datasetLabel(d)}{' '}
-                    {d.data_source_name ? <em className="model-wizard__ds">{d.data_source_name}</em> : null}
+                    {d.data_source_name ? (
+                      <em className="model-wizard__ds">{d.data_source_name}</em>
+                    ) : null}
                   </span>
                 </label>
               ))
@@ -231,6 +276,65 @@ export function SemanticModelWizard({
           <p className="model-wizard__count">
             {t('dataModel.wizardSelected', { n: selected.length })}
           </p>
+        </div>
+      )}
+
+      {step === 2 && (
+        <div className="model-wizard__pane">
+          <p className="page-subtitle">{t('dataModel.metricsStepHint')}</p>
+          {selectedDatasets.length === 0 ? (
+            <p className="entity-view__readonly">{t('dataModel.pickDatasetsFirst')}</p>
+          ) : (
+            <>
+              {metrics.map((m) => (
+                <div key={m.key} className="model-wizard__metric">
+                  <FormField label={t('datasets.metricName')}>
+                    <input
+                      type="text"
+                      value={m.name}
+                      onChange={(e) => updateMetric(m.key, { name: e.target.value })}
+                    />
+                  </FormField>
+                  <FormField label={t('datasets.metricBaseDataset')}>
+                    <select
+                      value={m.baseDatasetId}
+                      onChange={(e) => updateMetric(m.key, { baseDatasetId: e.target.value })}
+                    >
+                      <option value="">{t('datasets.selectDataset')}</option>
+                      {selectedDatasets.map((d) => (
+                        <option key={d.id} value={d.id}>
+                          {datasetLabel(d)}
+                        </option>
+                      ))}
+                    </select>
+                  </FormField>
+                  <FormField
+                    label={t('datasets.metricExpression')}
+                    hint={t('datasets.metricExpressionHint')}
+                  >
+                    <textarea
+                      rows={2}
+                      value={m.expression}
+                      onChange={(e) => updateMetric(m.key, { expression: e.target.value })}
+                      placeholder='SUM("amount")'
+                    />
+                  </FormField>
+                  <button
+                    type="button"
+                    className="btn btn-secondary btn-sm"
+                    onClick={() => setMetrics((prev) => prev.filter((x) => x.key !== m.key))}
+                  >
+                    <Trash2 size={14} aria-hidden />
+                    {t('shared.delete')}
+                  </button>
+                </div>
+              ))}
+              <button type="button" className="btn btn-secondary btn-sm" onClick={addMetric}>
+                <Plus size={14} aria-hidden />
+                {t('datasets.addMetric')}
+              </button>
+            </>
+          )}
         </div>
       )}
     </Dialog>

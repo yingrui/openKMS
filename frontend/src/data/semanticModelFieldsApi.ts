@@ -35,12 +35,6 @@ export async function fetchModelFields(modelId: string): Promise<SemanticModelFi
   return request<SemanticModelFieldListResponse>(`/api/semantic-models/${modelId}/fields`);
 }
 
-export async function syncModelFields(modelId: string): Promise<{ added: number }> {
-  return request<{ added: number }>(`/api/semantic-models/${modelId}/fields/sync`, {
-    method: 'POST',
-  });
-}
-
 export async function createModelField(
   modelId: string,
   data: SemanticModelFieldPayload,

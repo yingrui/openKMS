@@ -1997,3 +1997,16 @@ select.console-form-control {
   font-size: var(--text-sm);
   color: var(--color-text-muted);
 }
+
+.model-wizard__metric {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-3);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+
+  > button {
+    align-self: flex-start;
+  }
+}

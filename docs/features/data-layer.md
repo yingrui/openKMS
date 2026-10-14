@@ -85,7 +85,7 @@ Goal: the Datasets app **manages the Ossie semantic model**, with each definitio
 - **Verify:** ✅ a 1:1 relationship can target a unique key; `ai_context` round-trips via `PUT /api/datasets/{id}`.
 
 ### Stage 3 — Fields (the field layer) ✅ *(revised: fields are model-scoped)*
-- **Schema:** `semantic_model_fields` — `semantic_model_id`, `dataset_id`, `name`, `column_name` (null = computed), `expression` (dialects), `datatype`, `dimension` (`{is_time}`), `ai_context`, ordinal; unique `(model, dataset, name)`. Seeded from the dataset's columns.
+- **Schema:** `semantic_model_fields` — `semantic_model_id`, `dataset_id`, `name`, `column_name` (null = computed), `expression` (dialects), `datatype`, `dimension` (`{is_time}`), `ai_context`, ordinal; unique `(model, dataset, name)`. Created **explicitly** (not auto-seeded).
 - **Catalog:** a dataset exposes its **Columns** (physical) + a maintained **`description`** per column (`dataset_columns`). No semantic field editor here.
 - **Frontend:** **Model → a model → Fields** — computed fields, the `is_time` role, and `ai_context` per field.
 - **Verify:** ✅ a computed field is stored; an `is_time` field carries the role; the **same column can differ per model** (its role/`ai_context`).

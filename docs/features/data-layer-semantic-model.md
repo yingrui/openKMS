@@ -66,7 +66,7 @@ datasets  ──(primary_key / unique_keys)──►  relationship.to
 
 ## Model tab functionality
 
-The **shared base** (datasets, their physical columns, relationships) lives in **Catalog**. The **Model** tab holds **semantic models** — **named scopes** over that base, each owning its **fields** and **metrics** (plus dataset membership and `ai_context`). The tab is a **list → model detail**, and a model opens with a **guided setup** (add datasets → connect them → define a metric). Sections:
+The **shared base** (datasets, their physical columns, relationships) lives in **Catalog**. The **Model** tab holds **semantic models** — **named scopes** over that base, each owning its **fields** and **metrics** (plus dataset membership and `ai_context`). The tab is a **list → model detail**; a model shows its **metrics** (primary) and its **fields**. Sections:
 
 ### 1. Overview
 - **Model health**: counts of datasets, relationships, metrics; quality failing; **datasets without a primary key** (a relationship/`to` problem); **orphans** (no relationships).
@@ -84,7 +84,7 @@ The **shared base** (datasets, their physical columns, relationships) lives in *
 - **No dimensions here**: in Ossie a *dimension* is a **field role**; grouping is a **consumption** concern. The metric itself is a **SQL expression** (§Metrics below).
 
 ### 4. Fields (model-scoped) & Datasets (shared)
-- **Fields** (✅ Stage 3): a field belongs to **one model** and references a dataset in its scope — a **column reference** or a **computed expression**, plus `datatype`, `role` (`dimension.is_time`) and `ai_context`. Seeded from the dataset's columns on first read; a column's `role`/`ai_context` can **differ per model**.
+- **Fields** (✅ Stage 3): a field belongs to **one model** and references a dataset in its scope — a **column reference** or a **computed expression**, plus `datatype`, `role` (`dimension.is_time`) and `ai_context`. Added **explicitly** (a field marks a dimension / adds AI context — it is not a mirror of every column); a column's `role`/`ai_context` can **differ per model**.
 - **Columns** live with the dataset (**Catalog → dataset → Columns**): the physical columns (from `information_schema`) + a maintained **`description`** per column (`dataset_columns`). A **field** is the model-scoped semantic projection of a column (or a computed expression).
 - The **Ossie `datasets`** section of a model's document: `source` (table), `primary_key`, `unique_keys`, **`columns`** (with descriptions), **`fields`** (the model's), `ai_context`.
 
