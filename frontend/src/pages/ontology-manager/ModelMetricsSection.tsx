@@ -1,27 +1,24 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Clock, Loader2, Pencil, Play, Plus, Trash2, X } from 'lucide-react';
+import { Loader2, Pencil, Plus, Trash2, X } from 'lucide-react';
 import { toast } from 'sonner';
 import { fetchDatasets, type DatasetResponse } from '../../data/datasetsApi';
 import { fetchDatasetJoins, type DatasetJoinResponse } from '../../data/joinsApi';
 import {
-  computeMetric,
   createMetric,
   deleteMetric,
-  fetchMetricRuns,
   fetchMetrics,
   makeMetricExpression,
   metricExpressionSql,
   updateMetric,
   type MetricResponse,
-  type MetricRunResponse,
 } from '../../data/metricsApi';
 import { useConfirm } from '../../contexts/ConfirmContext';
 import { FormField } from '../../styles/design-system';
 
 const METRIC_TYPES = ['simple', 'ratio', 'derived', 'cumulative', 'conversion'] as const;
 
-/** Model → Metrics: author model-level metrics (Ossie SQL expressions) and run them. */
+/** Model → Metrics: author model-level metrics (Ossie SQL expressions). Running is **Try**. */
 export function ModelMetricsSection({
   semanticModelId,
   datasetIds = [],
@@ -38,10 +35,6 @@ export function ModelMetricsSection({
   const [datasets, setDatasets] = useState<DatasetResponse[]>([]);
   const [joins, setJoins] = useState<DatasetJoinResponse[]>([]);
   const [loading, setLoading] = useState(true);
-  const [busyId, setBusyId] = useState<string | null>(null);
-  const [values, setValues] = useState<Record<string, unknown>>({});
-  const [history, setHistory] = useState<{ metricId: string; runs: MetricRunResponse[] } | null>(null);
-
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState<MetricResponse | null>(null);
   const [name, setName] = useState('');
@@ -163,28 +156,6 @@ export function ModelMetricsSection({
     }
   };
 
-  const handleCompute = async (m: MetricResponse) => {
-    setBusyId(m.id);
-    try {
-      const res = await computeMetric(m.id);
-      setValues((prev) => ({ ...prev, [m.id]: res.rows[0]?.value ?? null }));
-      toast.success(t('datasets.metricComputed'));
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : t('datasets.metricComputeFailed'));
-    } finally {
-      setBusyId(null);
-    }
-  };
-
-  const handleHistory = async (m: MetricResponse) => {
-    try {
-      const runs = await fetchMetricRuns(m.id);
-      setHistory({ metricId: m.id, runs });
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : t('datasets.metricRunsFailed'));
-    }
-  };
-
   const handleDelete = async (m: MetricResponse) => {
     if (
       !(await confirm({
@@ -235,7 +206,6 @@ export function ModelMetricsSection({
                 <th>{t('datasets.metricBaseDataset')}</th>
                 <th>{t('datasets.metricType')}</th>
                 <th>{t('datasets.metricExpression')}</th>
-                <th>{t('datasets.metricValue')}</th>
                 <th />
               </tr>
             </thead>
@@ -250,31 +220,7 @@ export function ModelMetricsSection({
                   <td>
                     <code>{metricExpressionSql(m)}</code>
                   </td>
-                  <td>
-                    {m.id in values ? String(values[m.id] ?? t('datasets.dash')) : t('datasets.dash')}
-                  </td>
                   <td className="dataset-field-row__actions">
-                    <button
-                      type="button"
-                      className="btn btn-secondary btn-sm"
-                      onClick={() => void handleCompute(m)}
-                      disabled={busyId === m.id}
-                      title={t('datasets.runMetric')}
-                    >
-                      {busyId === m.id ? (
-                        <Loader2 size={14} className="console-loading-spinner" aria-hidden />
-                      ) : (
-                        <Play size={14} aria-hidden />
-                      )}
-                    </button>
-                    <button
-                      type="button"
-                      className="btn btn-secondary btn-sm"
-                      onClick={() => void handleHistory(m)}
-                      title={t('datasets.metricHistory')}
-                    >
-                      <Clock size={14} aria-hidden />
-                    </button>
                     <button
                       type="button"
                       className="btn btn-secondary btn-sm"
@@ -296,33 +242,6 @@ export function ModelMetricsSection({
               ))}
             </tbody>
           </table>
-        </div>
-      )}
-
-      {history && (
-        <div className="data-model__runs">
-          <div className="dataset-columns__toolbar">
-            <h3>{t('datasets.metricHistory')}</h3>
-            <button type="button" className="btn btn-secondary btn-sm" onClick={() => setHistory(null)}>
-              <X size={14} aria-hidden />
-              {t('shared.close')}
-            </button>
-          </div>
-          {history.runs.length === 0 ? (
-            <p className="entity-view__readonly">{t('datasets.noRuns')}</p>
-          ) : (
-            <ul className="data-model__run-list">
-              {history.runs.map((r) => (
-                <li key={r.id}>
-                  <span className={`data-model__run-status data-model__run-status--${r.status}`}>
-                    {r.status}
-                  </span>
-                  {r.duration_ms}ms
-                  {r.error ? ` · ${r.error}` : ` · ${r.row_count} ${t('datasets.rows')}`}
-                </li>
-              ))}
-            </ul>
-          )}
         </div>
       )}
 

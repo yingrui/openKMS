@@ -172,7 +172,8 @@
     "fieldDatatypeHint": "The field’s logical type. One of the Ossie DataType values.",
     "dimensionYes": "Yes",
     "dimensionNo": "No",
-    "tryOtherFields": "Other fields ({{count}})"
+    "tryOtherFields": "Other fields ({{count}})",
+    "tryRuns": "Recent runs"
   },
   "datasets": {
     "title": "Datasets",
@@ -330,8 +331,6 @@
     "metricDeleted": "Metric deleted",
     "metricDeleteFailed": "Failed to delete metric",
     "metricCompute": "Compute",
-    "metricComputed": "Metric computed",
-    "metricComputeFailed": "Failed to compute metric",
     "metricAggregation": "Aggregation",
     "metricDimensions": "Dimensions (comma-separated)",
     "metricJoins": "Joins",
@@ -419,11 +418,7 @@
     "metricExpression": "Expression",
     "metricExpressionHint": "An aggregate SQL fragment over the base dataset + joins, e.g. SUM(amount) / COUNT(DISTINCT id).",
     "metricDatatype": "Result type",
-    "metricValue": "Value",
-    "runMetric": "Run",
     "metricHistory": "Runs",
-    "metricRunsFailed": "Failed to load runs",
-    "noRuns": "No runs yet.",
     "metricSaved": "Metric saved",
     "metricSaveFailed": "Failed to save metric",
     "metricBaseRequired": "Pick a base dataset",

@@ -80,7 +80,7 @@ The **shared base** (datasets, their physical columns, relationships) lives in *
 
 ### 3. Metrics
 - **Model-level** aggregate **expressions** (metrics span datasets via relationships; not per-dataset). ✅ Stage 4.
-- Author: name, **definition/description**, `expression` (an aggregate over fields/measures — e.g. `SUM(orders.amount)`), `datatype`, `ai_context`. Run read-only (timeout + row cap), audited.
+- Author: name, **definition/description**, `expression` (an aggregate over fields/measures — e.g. `SUM(orders.amount)`), `datatype`, `ai_context`. The list is **definition-only** (edit/delete) — running happens in **Try**; each run is read-only (timeout + row cap) and audited (`metric_runs`, shown as *Recent runs* on the Try page).
 - **No dimensions here**: in Ossie a *dimension* is a **field role**; grouping is a **consumption** concern. The metric itself is a **SQL expression** (§Metrics below).
 - **Dialect:** every expression is labelled `ANSI_SQL` (decision #25) — our datasets are PostgreSQL-only, so fragments may use PostgreSQL syntax and are then not portable.
 - **Anchor:** the core spec has no `base_dataset` (its engine derives the `FROM`/joins from the expression). Ours keeps an explicit anchor in the `OPENKMS` `custom_extensions`; deriving it is deferred to the agent auto-query phase (decision #24).

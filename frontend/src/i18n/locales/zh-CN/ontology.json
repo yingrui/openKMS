@@ -172,7 +172,8 @@
     "fieldDatatypeHint": "字段的逻辑类型，取 Ossie DataType 枚举之一。",
     "dimensionYes": "是",
     "dimensionNo": "否",
-    "tryOtherFields": "其他字段（{{count}}）"
+    "tryOtherFields": "其他字段（{{count}}）",
+    "tryRuns": "最近运行"
   },
   "datasets": {
     "title": "数据集",
@@ -330,8 +331,6 @@
     "metricDeleted": "指标已删除",
     "metricDeleteFailed": "删除指标失败",
     "metricCompute": "计算",
-    "metricComputed": "指标已计算",
-    "metricComputeFailed": "计算指标失败",
     "metricAggregation": "聚合",
     "metricDimensions": "维度（逗号分隔）",
     "metricJoins": "Join",
@@ -419,11 +418,7 @@
     "metricExpression": "表达式",
     "metricExpressionHint": "基于基础数据集与连接的聚合 SQL 片段，例如 SUM(amount) / COUNT(DISTINCT id)。",
     "metricDatatype": "结果类型",
-    "metricValue": "值",
-    "runMetric": "运行",
     "metricHistory": "运行记录",
-    "metricRunsFailed": "加载运行记录失败",
-    "noRuns": "暂无运行记录。",
     "metricSaved": "指标已保存",
     "metricSaveFailed": "保存指标失败",
     "metricBaseRequired": "请选择基础数据集",

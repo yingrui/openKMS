@@ -3,7 +3,12 @@ import { useTranslation } from 'react-i18next';
 import { Link, useParams } from 'react-router-dom';
 import { ChevronLeft, Loader2, Play } from 'lucide-react';
 import { toast } from 'sonner';
-import { fetchMetrics, type MetricResponse } from '../../data/metricsApi';
+import {
+  fetchMetricRuns,
+  fetchMetrics,
+  type MetricResponse,
+  type MetricRunResponse,
+} from '../../data/metricsApi';
 import {
   fetchModelFields,
   isTimeDimension,
@@ -34,6 +39,7 @@ export function SemanticModelTryPage() {
   const [showSql, setShowSql] = useState(false);
   const [granularity, setGranularity] = useState('day');
   const [running, setRunning] = useState(false);
+  const [runs, setRuns] = useState<MetricRunResponse[]>([]);
 
   useEffect(() => {
     if (!modelId) return;
@@ -77,6 +83,17 @@ export function SemanticModelTryPage() {
   useEffect(() => {
     setSelected([]);
     setResult(null);
+    if (!metricId) {
+      setRuns([]);
+      return;
+    }
+    let cancelled = false;
+    void fetchMetricRuns(metricId)
+      .then((r) => !cancelled && setRuns(r))
+      .catch(() => !cancelled && setRuns([]));
+    return () => {
+      cancelled = true;
+    };
   }, [metricId]);
 
   const toggle = (id: string) =>
@@ -97,6 +114,10 @@ export function SemanticModelTryPage() {
       toast.error(e instanceof Error ? e.message : t('dataModel.tryRunFailed'));
     } finally {
       setRunning(false);
+      // The run is audited server-side; refresh the history shown below.
+      void fetchMetricRuns(metricId)
+        .then(setRuns)
+        .catch(() => undefined);
     }
   };
 
@@ -240,6 +261,23 @@ export function SemanticModelTryPage() {
                 </button>
                 {showSql && <pre className="model-try__sql">{result.sql}</pre>}
               </>
+            )}
+
+            {runs.length > 0 && (
+              <div className="data-model__runs">
+                <h3>{t('dataModel.tryRuns')}</h3>
+                <ul className="data-model__run-list">
+                  {runs.map((r) => (
+                    <li key={r.id}>
+                      <span className={`data-model__run-status data-model__run-status--${r.status}`}>
+                        {r.status}
+                      </span>
+                      {r.duration_ms}ms
+                      {r.error ? ` · ${r.error}` : ` · ${r.row_count} ${t('datasets.rows')}`}
+                    </li>
+                  ))}
+                </ul>
+              </div>
             )}
           </>
         )}
