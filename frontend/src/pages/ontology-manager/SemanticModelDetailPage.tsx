@@ -176,18 +176,14 @@ export function SemanticModelDetailPage() {
             </div>
           )}
         </div>
-        <div className="dataset-columns__actions">
-          <Link to={`/data-model/${model.id}/try`} className="btn btn-primary btn-sm">
-            <Play size={14} aria-hidden />
-            {t('dataModel.tryTitle')}
-          </Link>
-          <button type="button" className="btn btn-secondary btn-sm" onClick={openEdit}>
-            <Pencil size={14} aria-hidden />
-            {t('dataModel.editModel')}
+        <div className="page-header-actions">
+          <button type="button" className="btn btn-secondary" onClick={openEdit}>
+            <Pencil size={18} aria-hidden />
+            <span>{t('dataModel.editModel')}</span>
           </button>
           <details className="model-menu">
-            <summary className="btn btn-secondary btn-sm" aria-label={t('dataModel.more')}>
-              <MoreHorizontal size={16} aria-hidden />
+            <summary className="btn btn-secondary" aria-label={t('dataModel.more')}>
+              <MoreHorizontal size={18} aria-hidden />
             </summary>
             <div className="model-menu__panel">
               <button type="button" onClick={() => void handleExport('json')}>
@@ -202,6 +198,10 @@ export function SemanticModelDetailPage() {
               </button>
             </div>
           </details>
+          <Link to={`/data-model/${model.id}/try`} className="btn btn-primary">
+            <Play size={18} aria-hidden />
+            <span>{t('dataModel.tryTitle')}</span>
+          </Link>
         </div>
       </div>
 

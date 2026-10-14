@@ -69,18 +69,10 @@ export function DataModelPage() {
           <h1>{t('dataModel.title')}</h1>
           <p className="page-subtitle">{t('dataModel.subtitle')}</p>
         </div>
-        <div className="dataset-columns__actions">
-          <button
-            type="button"
-            className="btn btn-primary btn-sm"
-            onClick={() => setShowWizard(true)}
-          >
-            <Plus size={14} aria-hidden />
-            {t('dataModel.newModel')}
-          </button>
+        <div className="page-header-actions">
           <details className="model-menu">
-            <summary className="btn btn-secondary btn-sm" aria-label={t('dataModel.more')}>
-              <MoreHorizontal size={16} aria-hidden />
+            <summary className="btn btn-secondary" aria-label={t('dataModel.more')}>
+              <MoreHorizontal size={18} aria-hidden />
             </summary>
             <div className="model-menu__panel">
               <button
@@ -92,6 +84,14 @@ export function DataModelPage() {
               </button>
             </div>
           </details>
+          <button
+            type="button"
+            className="btn btn-primary"
+            onClick={() => setShowWizard(true)}
+          >
+            <Plus size={18} aria-hidden />
+            <span>{t('dataModel.newModel')}</span>
+          </button>
         </div>
         <input
           ref={fileInputRef}
