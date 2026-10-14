@@ -231,9 +231,9 @@ export function ModelFieldsSection({
     const type = f.dimension?.type;
     if (type === 'time') {
       const g = f.dimension?.granularity;
-      return g ? `${t('dataModel.roleTime')} · ${g}` : t('dataModel.roleTime');
+      return g ? `${t('dataModel.dimensionTime')} · ${g}` : t('dataModel.dimensionTime');
     }
-    if (type === 'categorical') return t('dataModel.roleCategorical');
+    if (type === 'categorical') return t('dataModel.dimensionCategorical');
     return t('datasets.dash');
   };
 
@@ -265,7 +265,7 @@ export function ModelFieldsSection({
                 <th>{t('datasets.modelDatasets')}</th>
                 <th>{t('datasets.fieldSource')}</th>
                 <th>{t('datasets.colDataType')}</th>
-                <th>{t('datasets.fieldRole')}</th>
+                <th>{t('datasets.fieldDimension')}</th>
                 <th>{t('dataModel.fieldEntity')}</th>
                 <th>{t('datasets.fieldAiContext')}</th>
                 <th />
@@ -397,11 +397,11 @@ export function ModelFieldsSection({
                 />
               </FormField>
 
-              <FormField label={t('datasets.fieldRole')} hint={t('dataModel.fieldRoleHint')}>
+              <FormField label={t('datasets.fieldDimension')} hint={t('dataModel.fieldDimensionHint')}>
                 <select value={role} onChange={(e) => setRole(e.target.value as Role)}>
-                  <option value="">{t('dataModel.roleNone')}</option>
-                  <option value="time">{t('dataModel.roleTime')}</option>
-                  <option value="categorical">{t('dataModel.roleCategorical')}</option>
+                  <option value="">{t('dataModel.dimensionNone')}</option>
+                  <option value="time">{t('dataModel.dimensionTime')}</option>
+                  <option value="categorical">{t('dataModel.dimensionCategorical')}</option>
                 </select>
               </FormField>
               {role === 'time' && (

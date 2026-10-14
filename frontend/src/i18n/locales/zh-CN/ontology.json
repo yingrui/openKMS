@@ -149,10 +149,6 @@
     "pickDatasetsFirst": "请先在上一步选择数据集。",
     "metricRowIncomplete": "请补全或删除每条指标。",
     "fieldsEmptyHint": "暂无字段 —— 添加字段来标注维度或补充 AI 上下文。",
-    "roleNone": "无",
-    "roleTime": "时间维度",
-    "roleCategorical": "分类维度",
-    "fieldRoleHint": "Ossie 维度角色 —— 时间（带粒度）或分类。",
     "fieldGranularity": "粒度",
     "fieldTimezone": "时区",
     "fieldDescription": "描述",
@@ -171,7 +167,11 @@
     "tryNoRows": "无数据。",
     "trySql": "SQL",
     "tryRunFailed": "预览失败",
-    "outOfScope": "已超出范围"
+    "outOfScope": "已超出范围",
+    "dimensionNone": "无",
+    "dimensionTime": "时间",
+    "dimensionCategorical": "分类",
+    "fieldDimensionHint": "Ossie 维度 —— 字段可以是时间维度或分类维度。"
   },
   "datasets": {
     "title": "数据集",
@@ -402,7 +402,6 @@
     "fieldExpression": "表达式",
     "fieldExpressionHint": "基于本数据集列的 SQL 片段，例如 lower(email)。",
     "selectColumn": "选择列",
-    "fieldRole": "角色",
     "fieldIsTime": "时间维度",
     "fieldAiContext": "AI 上下文",
     "fieldCreated": "字段已创建",
@@ -438,7 +437,8 @@
     "colDescriptionPlaceholder": "添加描述…",
     "columnSaved": "列描述已保存",
     "columnSaveFailed": "保存列描述失败",
-    "pickDataset": "请选择数据集"
+    "pickDataset": "请选择数据集",
+    "fieldDimension": "维度"
   },
   "groups": {
     "title": "分组",

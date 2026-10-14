@@ -149,10 +149,6 @@
     "pickDatasetsFirst": "Pick datasets first (go back a step).",
     "metricRowIncomplete": "Complete or remove each metric row.",
     "fieldsEmptyHint": "No fields yet — add a field to mark a dimension or add AI context.",
-    "roleNone": "None",
-    "roleTime": "Time dimension",
-    "roleCategorical": "Categorical dimension",
-    "fieldRoleHint": "Ossie dimension role — time (with granularity) or categorical.",
     "fieldGranularity": "Granularity",
     "fieldTimezone": "Timezone",
     "fieldDescription": "Description",
@@ -171,7 +167,11 @@
     "tryNoRows": "No rows.",
     "trySql": "SQL",
     "tryRunFailed": "Preview failed",
-    "outOfScope": "out of scope"
+    "outOfScope": "out of scope",
+    "dimensionNone": "None",
+    "dimensionTime": "Time",
+    "dimensionCategorical": "Categorical",
+    "fieldDimensionHint": "Ossie dimension — a field can be a time or categorical dimension."
   },
   "datasets": {
     "title": "Datasets",
@@ -402,7 +402,6 @@
     "fieldExpression": "Expression",
     "fieldExpressionHint": "An SQL fragment over this dataset’s columns, e.g. lower(email).",
     "selectColumn": "Select a column",
-    "fieldRole": "Role",
     "fieldIsTime": "Time dimension",
     "fieldAiContext": "AI context",
     "fieldCreated": "Field created",
@@ -438,7 +437,8 @@
     "colDescriptionPlaceholder": "Add a description…",
     "columnSaved": "Column description saved",
     "columnSaveFailed": "Failed to save column description",
-    "pickDataset": "Pick a dataset"
+    "pickDataset": "Pick a dataset",
+    "fieldDimension": "Dimension"
   },
   "groups": {
     "title": "Groups",
