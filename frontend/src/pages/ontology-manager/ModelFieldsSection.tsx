@@ -16,6 +16,10 @@ import { useConfirm } from '../../contexts/ConfirmContext';
 import { FormField } from '../../styles/design-system';
 
 type AiContext = { instructions: string; synonyms: string; examples: string };
+type Role = '' | 'time' | 'categorical';
+type EntityType = '' | 'foreign' | 'primary';
+
+const GRANULARITIES = ['second', 'minute', 'hour', 'day', 'week', 'month', 'quarter', 'year'];
 
 const splitList = (s: string) =>
   s
@@ -32,7 +36,7 @@ function readAiContext(raw: unknown): AiContext {
   };
 }
 
-/** Model → Fields: the model's semantic fields (column ref / computed + role + ai_context). */
+/** Model → Fields: the model's semantic fields (column ref / expression + dimension/entity). */
 export function ModelFieldsSection({
   semanticModelId,
   datasets,
@@ -59,7 +63,12 @@ export function ModelFieldsSection({
   const [columnName, setColumnName] = useState('');
   const [exprSql, setExprSql] = useState('');
   const [datatype, setDatatype] = useState('');
-  const [isTime, setIsTime] = useState(false);
+  const [description, setDescription] = useState('');
+  const [role, setRole] = useState<Role>('');
+  const [granularity, setGranularity] = useState('day');
+  const [timezone, setTimezone] = useState('');
+  const [entityType, setEntityType] = useState<EntityType>('');
+  const [entityName, setEntityName] = useState('');
   const [ai, setAi] = useState<AiContext>({ instructions: '', synonyms: '', examples: '' });
   const [submitting, setSubmitting] = useState(false);
 
@@ -94,18 +103,27 @@ export function ModelFieldsSection({
     };
   }, [datasetId]);
 
-  const openCreate = useCallback(() => {
-    setEditing(null);
+  const resetForm = useCallback(() => {
     setDatasetId(datasets[0]?.id ?? '');
     setName('');
     setMode('column');
     setColumnName('');
     setExprSql('');
     setDatatype('');
-    setIsTime(false);
+    setDescription('');
+    setRole('');
+    setGranularity('day');
+    setTimezone('');
+    setEntityType('');
+    setEntityName('');
     setAi({ instructions: '', synonyms: '', examples: '' });
-    setShowForm(true);
   }, [datasets]);
+
+  const openCreate = useCallback(() => {
+    setEditing(null);
+    resetForm();
+    setShowForm(true);
+  }, [resetForm]);
 
   useEffect(() => {
     if (openCreateSignal > 0) openCreate();
@@ -119,7 +137,12 @@ export function ModelFieldsSection({
     setColumnName(f.column_name ?? '');
     setExprSql(fieldExpressionSql(f));
     setDatatype(f.datatype ?? '');
-    setIsTime(Boolean(f.dimension?.is_time));
+    setDescription(f.description ?? '');
+    setRole((f.dimension?.type as Role) ?? '');
+    setGranularity(f.dimension?.granularity ?? 'day');
+    setTimezone(f.dimension?.timezone ?? '');
+    setEntityType((f.entity?.type as EntityType) ?? '');
+    setEntityName(f.entity?.name ?? '');
     setAi(readAiContext(f.ai_context));
     setShowForm(true);
   };
@@ -144,13 +167,24 @@ export function ModelFieldsSection({
         : columnName
           ? { dialects: [{ dialect: 'ANSI_SQL', expression: `"${columnName}"` }] }
           : null;
+    const dimension = role
+      ? {
+          type: role,
+          ...(role === 'time'
+            ? { granularity, timezone: timezone.trim() || null }
+            : {}),
+        }
+      : null;
+    const entity = entityType ? { type: entityType, name: entityName.trim() } : null;
     const payload = {
       dataset_id: datasetId,
       name: name.trim(),
       column_name: mode === 'column' ? columnName : null,
       expression,
       datatype: datatype.trim() || null,
-      dimension: isTime ? { is_time: true } : null,
+      description: description.trim() || null,
+      dimension,
+      entity,
       ai_context: hasAi ? { instructions: ai.instructions.trim(), synonyms, examples } : null,
     };
     setSubmitting(true);
@@ -192,6 +226,16 @@ export function ModelFieldsSection({
     }
   };
 
+  const dimensionLabel = (f: SemanticModelFieldResponse): string => {
+    const type = f.dimension?.type;
+    if (type === 'time') {
+      const g = f.dimension?.granularity;
+      return g ? `${t('dataModel.roleTime')} · ${g}` : t('dataModel.roleTime');
+    }
+    if (type === 'categorical') return t('dataModel.roleCategorical');
+    return t('datasets.dash');
+  };
+
   return (
     <section>
       <div className="dataset-columns__toolbar">
@@ -221,6 +265,7 @@ export function ModelFieldsSection({
                 <th>{t('datasets.fieldSource')}</th>
                 <th>{t('datasets.colDataType')}</th>
                 <th>{t('datasets.fieldRole')}</th>
+                <th>{t('dataModel.fieldEntity')}</th>
                 <th>{t('datasets.fieldAiContext')}</th>
                 <th />
               </tr>
@@ -234,7 +279,8 @@ export function ModelFieldsSection({
                   <td>{datasetLabel(f.dataset_id)}</td>
                   <td>{f.column_name ? f.column_name : <code>{fieldExpressionSql(f)}</code>}</td>
                   <td>{f.datatype ?? t('datasets.dash')}</td>
-                  <td>{f.dimension?.is_time ? t('datasets.fieldIsTime') : t('datasets.dash')}</td>
+                  <td>{dimensionLabel(f)}</td>
+                  <td>{f.entity?.name ? `${f.entity.type} ${f.entity.name}` : t('datasets.dash')}</td>
                   <td>
                     {typeof f.ai_context?.instructions === 'string' && f.ai_context.instructions
                       ? String(f.ai_context.instructions)
@@ -339,13 +385,67 @@ export function ModelFieldsSection({
                   type="text"
                   value={datatype}
                   onChange={(e) => setDatatype(e.target.value)}
-                  placeholder="string / number / datetime / boolean"
+                  placeholder="String / Timestamp / Boolean / Number"
                 />
               </FormField>
-              <label className="ds-check-row">
-                <input type="checkbox" checked={isTime} onChange={(e) => setIsTime(e.target.checked)} />
-                <span>{t('datasets.fieldIsTime')}</span>
-              </label>
+              <FormField label={t('dataModel.fieldDescription')}>
+                <input
+                  type="text"
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
+                />
+              </FormField>
+
+              <FormField label={t('datasets.fieldRole')} hint={t('dataModel.fieldRoleHint')}>
+                <select value={role} onChange={(e) => setRole(e.target.value as Role)}>
+                  <option value="">{t('dataModel.roleNone')}</option>
+                  <option value="time">{t('dataModel.roleTime')}</option>
+                  <option value="categorical">{t('dataModel.roleCategorical')}</option>
+                </select>
+              </FormField>
+              {role === 'time' && (
+                <div className="model-field-grid">
+                  <FormField label={t('dataModel.fieldGranularity')}>
+                    <select value={granularity} onChange={(e) => setGranularity(e.target.value)}>
+                      {GRANULARITIES.map((g) => (
+                        <option key={g} value={g}>
+                          {g}
+                        </option>
+                      ))}
+                    </select>
+                  </FormField>
+                  <FormField label={t('dataModel.fieldTimezone')}>
+                    <input
+                      type="text"
+                      value={timezone}
+                      onChange={(e) => setTimezone(e.target.value)}
+                      placeholder="Asia/Shanghai"
+                    />
+                  </FormField>
+                </div>
+              )}
+
+              <FormField label={t('dataModel.fieldEntity')} hint={t('dataModel.fieldEntityHint')}>
+                <select
+                  value={entityType}
+                  onChange={(e) => setEntityType(e.target.value as EntityType)}
+                >
+                  <option value="">{t('dataModel.fieldEntityNone')}</option>
+                  <option value="foreign">{t('dataModel.fieldEntityForeign')}</option>
+                  <option value="primary">{t('dataModel.fieldEntityPrimary')}</option>
+                </select>
+              </FormField>
+              {entityType && (
+                <FormField label={t('dataModel.fieldEntityName')}>
+                  <input
+                    type="text"
+                    value={entityName}
+                    onChange={(e) => setEntityName(e.target.value)}
+                    placeholder="user / product"
+                  />
+                </FormField>
+              )}
+
               <FormField label={t('datasets.aiInstructions')}>
                 <textarea
                   rows={2}

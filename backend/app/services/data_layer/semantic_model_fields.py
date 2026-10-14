@@ -76,3 +76,29 @@ async def list_fields(db: AsyncSession, model: SemanticModel) -> list[SemanticMo
         )
     ).scalars().all()
     return list(rows)
+
+
+DIMENSION_TYPES = ("time", "categorical")
+GRANULARITIES = ("second", "minute", "hour", "day", "week", "month", "quarter", "year")
+ENTITY_TYPES = ("foreign", "primary")
+
+
+def validate_dimension(dimension: dict | None) -> None:
+    """Ossie dimension role: `{"type": "time"|"categorical", "granularity"?, "timezone"?}`."""
+    if dimension is None:
+        return
+    if not isinstance(dimension, dict) or dimension.get("type") not in DIMENSION_TYPES:
+        raise FieldError(f"dimension.type must be one of: {', '.join(DIMENSION_TYPES)}.")
+    granularity = dimension.get("granularity")
+    if granularity is not None and granularity not in GRANULARITIES:
+        raise FieldError(f"dimension.granularity must be one of: {', '.join(GRANULARITIES)}.")
+
+
+def validate_entity(entity: dict | None) -> None:
+    """Ossie entity: `{"type": "foreign"|"primary", "name": …}`."""
+    if entity is None:
+        return
+    if not isinstance(entity, dict) or entity.get("type") not in ENTITY_TYPES:
+        raise FieldError(f"entity.type must be one of: {', '.join(ENTITY_TYPES)}.")
+    if not str(entity.get("name") or "").strip():
+        raise FieldError("entity.name is required.")

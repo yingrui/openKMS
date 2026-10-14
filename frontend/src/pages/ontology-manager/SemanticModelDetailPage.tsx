@@ -16,6 +16,7 @@ import { useConfirm } from '../../contexts/ConfirmContext';
 import { Dialog, FormField } from '../../styles/design-system';
 import { ModelFieldsSection } from './ModelFieldsSection';
 import { ModelMetricsSection } from './ModelMetricsSection';
+import { ModelPreviewSection } from './ModelPreviewSection';
 import '../ontology/ontology-admin.scss';
 
 function download(filename: string, text: string, type: string): void {
@@ -203,6 +204,8 @@ export function SemanticModelDetailPage() {
 
       <div className="ontology-admin-content">
         <ModelMetricsSection semanticModelId={model.id} datasetIds={model.dataset_ids} />
+
+        <ModelPreviewSection semanticModelId={model.id} />
 
         <ModelFieldsSection semanticModelId={model.id} datasets={model.datasets} onChanged={() => void load()} />
       </div>

@@ -240,8 +240,9 @@ All write subcommands accept `--yes` / `--dry-run`. Without `--yes` on non-TTY s
 | `semantic-models export` | GET | `/api/semantic-models/{id}/export` | Ossie document for one model (`?format=json|yaml`). |
 | `semantic-models import` *(write)* | POST | `/api/semantic-models/import` | Upsert a model (+ metrics/queries) from an Ossie document. |
 | `semantic-models fields list` | GET | `/api/semantic-models/{id}/fields` | Model-scoped fields (column ref / expression + role). |
-| `semantic-models fields add` *(write)* | POST | `/api/semantic-models/{id}/fields` | Body `{dataset_id, name, column_name?, expression?, datatype?, dimension?, ai_context?}`. |
+| `semantic-models fields add` *(write)* | POST | `/api/semantic-models/{id}/fields` | Body `{dataset_id, name, column_name?, expression?, datatype?, description?, dimension?, entity?, ai_context?}`. `dimension` = `{type: time\|categorical, granularity?, timezone?}`; `entity` = `{type: foreign\|primary, name}`. |
 | `semantic-models fields delete` *(write)* | DELETE | `/api/semantic-models/{id}/fields/{field_id}` | |
+| `semantic-models preview` | POST | `/api/semantic-models/{id}/preview` | Body `{metric_id, group_by:[field_id], filters?}` — runs a metric grouped by dimensions (ad-hoc, read-only); returns `{sql, columns, rows}`. |
 | `explorer reports-list` | GET | `/api/explorer-reports` | Data Explorer saved analyses. |
 | `explorer reports-get` | GET | `/api/explorer-reports/{id}` | |
 | `explorer reports-create` *(write)* | POST | `/api/explorer-reports` | Body `{name, question, dataset_id, narrative, charts}`. |

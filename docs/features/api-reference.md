@@ -401,11 +401,12 @@ Encrypted values; **never returned**. Write/sync/delete reject personal API key 
 | PUT | `/api/semantic-models/{model_id}` | Update a semantic model (name / description / `dataset_ids` / `ai_context`) (`data:write`) |
 | DELETE | `/api/semantic-models/{model_id}` | Delete a semantic model (cascades its fields/metrics) (`data:write`) |
 | GET | `/api/semantic-models/{model_id}/fields` | List a model's fields (`data:read`) |
-| POST | `/api/semantic-models/{model_id}/fields` | Create a field `{dataset_id, name, column_name?, expression?, datatype?, dimension?, ai_context?}` (`data:write`) |
+| POST | `/api/semantic-models/{model_id}/fields` | Create a field `{dataset_id, name, column_name?, expression?, datatype?, description?, dimension?, entity?, ai_context?}`; `dimension` = `{type: time\|categorical, granularity?, timezone?}`, `entity` = `{type: foreign\|primary, name}` (`data:write`) |
 | PUT | `/api/semantic-models/{model_id}/fields/{field_id}` | Update a field (`data:write`) |
 | DELETE | `/api/semantic-models/{model_id}/fields/{field_id}` | Delete a field (`data:write`) |
 | GET | `/api/semantic-models/{model_id}/export` | Export one model as an Ossie document — `?format=json\|yaml` (`data:read`) |
 | POST | `/api/semantic-models/import` | Upsert a model (+ fields/metrics) from an Ossie document (`data:write`) |
+| POST | `/api/semantic-models/{model_id}/preview` | Run one metric grouped by dimensions (ad-hoc, read-only) → `{sql, columns, rows}` (`data:read`) |
 | GET | `/api/explorer-reports` | List explorer reports (`data:read`) |
 | POST | `/api/explorer-reports` | Create explorer report (`data:write`) |
 | GET | `/api/explorer-reports/{id}` | Get explorer report (`data:read`) |

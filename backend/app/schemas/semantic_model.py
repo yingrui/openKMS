@@ -4,6 +4,8 @@ from typing import Any
 
 from pydantic import BaseModel
 
+from app.schemas.metric import MetricFilter
+
 
 class SemanticModelDatasetRef(BaseModel):
     id: str
@@ -39,3 +41,15 @@ class SemanticModelResponse(BaseModel):
 class SemanticModelListResponse(BaseModel):
     items: list[SemanticModelResponse]
     total: int
+
+
+class PreviewRequest(BaseModel):
+    metric_id: str
+    group_by: list[str] = []
+    filters: list[MetricFilter] | None = None
+
+
+class PreviewResponse(BaseModel):
+    sql: str
+    columns: list[str] = []
+    rows: list[dict[str, Any]] = []

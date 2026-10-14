@@ -104,7 +104,9 @@ async def export_semantic_model(db: AsyncSession, model: SemanticModel) -> dict[
                         "column": f.column_name,
                         "expression": f.expression,
                         "datatype": f.datatype,
+                        "description": f.description,
                         "dimension": f.dimension,
+                        "entity": f.entity,
                         "ai_context": f.ai_context,
                     }
                     for f in fields_by_dataset.get(d.id, [])
@@ -264,7 +266,9 @@ async def _import_one_model(
             row.column_name = f.get("column")
             row.expression = f.get("expression")
             row.datatype = f.get("datatype")
+            row.description = f.get("description")
             row.dimension = f.get("dimension")
+            row.entity = f.get("entity")
             row.ai_context = f.get("ai_context")
             field_count += 1
 

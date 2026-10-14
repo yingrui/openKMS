@@ -11,7 +11,9 @@ class SemanticModelFieldCreate(BaseModel):
     column_name: str | None = None
     expression: dict[str, Any] | None = None
     datatype: str | None = None
+    description: str | None = None
     dimension: dict[str, Any] | None = None
+    entity: dict[str, Any] | None = None
     ai_context: dict[str, Any] | None = None
     ordinal: int | None = None
 
@@ -21,7 +23,9 @@ class SemanticModelFieldUpdate(BaseModel):
     column_name: str | None = None
     expression: dict[str, Any] | None = None
     datatype: str | None = None
+    description: str | None = None
     dimension: dict[str, Any] | None = None
+    entity: dict[str, Any] | None = None
     ai_context: dict[str, Any] | None = None
     ordinal: int | None = None
 
@@ -34,7 +38,9 @@ class SemanticModelFieldResponse(BaseModel):
     column_name: str | None = None
     expression: dict[str, Any] | None = None
     datatype: str | None = None
+    description: str | None = None
     dimension: dict[str, Any] | None = None
+    entity: dict[str, Any] | None = None
     ai_context: dict[str, Any] | None = None
     ordinal: int = 0
     created_at: datetime

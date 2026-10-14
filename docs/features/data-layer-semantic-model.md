@@ -84,12 +84,14 @@ The **shared base** (datasets, their physical columns, relationships) lives in *
 - **No dimensions here**: in Ossie a *dimension* is a **field role**; grouping is a **consumption** concern. The metric itself is a **SQL expression** (§Metrics below).
 
 ### 4. Fields (model-scoped) & Datasets (shared)
-- **Fields** (✅ Stage 3): a field belongs to **one model** and references a dataset in its scope — a **column reference** or a **computed expression**, plus `datatype`, `role` (`dimension.is_time`) and `ai_context`. Added **explicitly** (a field marks a dimension / adds AI context — it is not a mirror of every column); a column's `role`/`ai_context` can **differ per model**.
+- **Fields** (✅ Stage 3): a field belongs to **one model** and references a dataset in its scope — a **column reference** or a **computed expression**, plus `datatype`, `description` and `ai_context`. A field can carry an Ossie **`dimension`** role (`{type: time|categorical, granularity?, timezone?}`) and/or an **`entity`** (`{type: foreign|primary, name}` — the key a relationship joins on). Added **explicitly** (a field marks a dimension / adds AI context — it is not a mirror of every column); a column's role/`ai_context` can **differ per model**.
+- **Dimensions are fields** (not a top-level object): a field with `dimension.type`. Time dimensions carry a `granularity` (second…year) and `timezone`.
 - **Columns** live with the dataset (**Catalog → dataset → Columns**): the physical columns (from `information_schema`) + a maintained **`description`** per column (`dataset_columns`). A **field** is the model-scoped semantic projection of a column (or a computed expression).
-- The **Ossie `datasets`** section of a model's document: `source` (table), `primary_key`, `unique_keys`, **`columns`** (with descriptions), **`fields`** (the model's), `ai_context`.
+- The **Ossie `datasets`** section of a model's document: `source` (a dotted string), `primary_key`, `unique_keys`, **`columns`** (with descriptions), **`fields`** (the model's), `ai_context`.
 
-### 5. ~~Queries~~ withdrawn
-- A saved query is a **consumption** artifact, not part of the Ossie semantic model. `saved_queries` was **removed**; saved analyses live in **Data Explorer** (`explorer_reports`).
+### 5. Try (preview)
+- **Try it** runs a metric **grouped by its dimensions** — ad-hoc and read-only, nothing saved. Time dimensions aggregate with `date_trunc('<granularity>', …)`, so “P/E per day per stock” = the metric + `group_by` `trade_date` (time) and `ts_code` (categorical).
+- It returns the rows **and the generated SQL**. Saving a query is a **consumption** concern → **Data Explorer** (`saved_queries` was removed).
 
 ### 6. Export / Import (Ossie) ✅
 - **Export / Import are per model**, in the model's header overflow menu — an interchange *output*, not the primary action; the model is built by configuration above.

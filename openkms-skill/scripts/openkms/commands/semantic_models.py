@@ -80,11 +80,20 @@ def cmd_fields_add(ns: argparse.Namespace) -> None:
     if ns.column:
         body["column_name"] = ns.column
     if ns.expression:
-        body["expression"] = {"dialects": {"ANSI_SQL": ns.expression}}
+        body["expression"] = {"dialects": [{"dialect": "ANSI_SQL", "expression": ns.expression}]}
     if ns.datatype:
         body["datatype"] = ns.datatype
-    if ns.is_time:
-        body["dimension"] = {"is_time": True}
+    if ns.description:
+        body["description"] = ns.description
+    if ns.role:
+        dimension: dict[str, object] = {"type": ns.role}
+        if ns.role == "time":
+            dimension["granularity"] = ns.granularity
+            if ns.timezone:
+                dimension["timezone"] = ns.timezone
+        body["dimension"] = dimension
+    if ns.entity_type:
+        body["entity"] = {"type": ns.entity_type, "name": ns.entity_name or ""}
     if ns.ai_instructions:
         body["ai_context"] = {"instructions": ns.ai_instructions}
     confirm_or_abort(
@@ -92,6 +101,14 @@ def cmd_fields_add(ns: argparse.Namespace) -> None:
     )
     with client() as s:
         r = s.post(f"/api/semantic-models/{ns.id}/fields", json=body)
+    r.raise_for_status()
+    print_json(r.json())
+
+
+def cmd_preview(ns: argparse.Namespace) -> None:
+    body = {"metric_id": ns.metric_id, "group_by": _split(ns.group_by)}
+    with client() as s:
+        r = s.post(f"/api/semantic-models/{ns.id}/preview", json=body)
     r.raise_for_status()
     print_json(r.json())
 
@@ -146,7 +163,12 @@ def add_subparser(sub) -> None:
     fa.add_argument("--column", default=None, help="source column (plain field)")
     fa.add_argument("--expression", default=None, help="ANSI_SQL fragment (computed field)")
     fa.add_argument("--datatype", default=None)
-    fa.add_argument("--is-time", action="store_true", dest="is_time", help="time dimension")
+    fa.add_argument("--description", default=None)
+    fa.add_argument("--role", choices=("time", "categorical"), default=None, help="dimension role")
+    fa.add_argument("--granularity", default="day", help="time dimension granularity")
+    fa.add_argument("--timezone", default=None)
+    fa.add_argument("--entity-type", choices=("foreign", "primary"), default=None, dest="entity_type")
+    fa.add_argument("--entity-name", default=None, dest="entity_name")
     fa.add_argument("--ai-instructions", default=None, dest="ai_instructions")
     add_write_flags(fa)
     fa.set_defaults(fn=cmd_fields_add)
@@ -155,3 +177,9 @@ def add_subparser(sub) -> None:
     fd.add_argument("--field-id", required=True)
     add_write_flags(fd)
     fd.set_defaults(fn=cmd_fields_delete)
+
+    sp_prev = sp.add_parser("preview", help="Run a metric grouped by dimensions (ad-hoc)")
+    sp_prev.add_argument("--id", required=True)
+    sp_prev.add_argument("--metric-id", required=True)
+    sp_prev.add_argument("--group-by", default=None, help="comma-separated field ids")
+    sp_prev.set_defaults(fn=cmd_preview)

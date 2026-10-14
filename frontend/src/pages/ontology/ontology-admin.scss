@@ -2010,3 +2010,46 @@ select.console-form-control {
     align-self: flex-start;
   }
 }
+
+/* Model fields: role/entity grid + Try (preview) controls. */
+.model-field-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-3);
+}
+
+.model-try__controls {
+  display: flex;
+  align-items: flex-end;
+  gap: var(--space-4);
+  flex-wrap: wrap;
+  margin-bottom: var(--space-3);
+}
+
+.model-try__dims {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+}
+
+.model-try__dims-label {
+  font-size: var(--text-sm);
+  color: var(--color-text-secondary);
+}
+
+.model-try__sql-toggle {
+  margin-top: var(--space-2);
+}
+
+.model-try__sql {
+  margin: var(--space-2) 0 0;
+  padding: var(--space-3);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-bg-muted);
+  color: var(--color-text);
+  font-size: var(--text-sm);
+  white-space: pre-wrap;
+  overflow-x: auto;
+}

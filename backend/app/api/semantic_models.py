@@ -14,13 +14,17 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.api.auth import require_any_permission, require_auth, require_permission
 from app.database import get_db
 from app.models.semantic_model import SemanticModel
+from app.models.metric_definition import MetricDefinition
 from app.schemas.semantic_model import (
+    PreviewRequest,
+    PreviewResponse,
     SemanticModelCreate,
     SemanticModelDatasetRef,
     SemanticModelListResponse,
     SemanticModelResponse,
     SemanticModelUpdate,
 )
+from app.services.data_layer.preview import PreviewError, run_preview
 from app.services.data_layer.semantic_model import (
     export_semantic_model,
     import_semantic_model,
@@ -187,8 +191,36 @@ async def import_semantic_model_endpoint(body: dict[str, Any], db: AsyncSession 
     """Upsert a semantic model (and its metrics/queries) from an Ossie document."""
     if not isinstance(body, dict) or not (
         isinstance(body.get("semantic_model"), dict)
+        or isinstance(body.get("semantic_model"), list)
         or "relationships" in body
         or "metrics" in body
     ):
         raise HTTPException(status_code=400, detail="Invalid semantic model document.")
     return await import_semantic_model(db, body)
+
+
+@router.post(
+    "/{model_id}/preview",
+    response_model=PreviewResponse,
+    dependencies=[Depends(require_any_permission(*_VIEW))],
+)
+async def preview_semantic_model(
+    model_id: str,
+    body: PreviewRequest,
+    db: AsyncSession = Depends(get_db),
+):
+    """Run one metric of this model grouped by dimensions (ad-hoc, read-only)."""
+    await _load(db, model_id)
+    metric = await db.get(MetricDefinition, body.metric_id)
+    if not metric or metric.semantic_model_id != model_id:
+        raise HTTPException(status_code=404, detail="Metric not found")
+    try:
+        sql, columns, rows = await run_preview(
+            db,
+            metric=metric,
+            group_by=body.group_by,
+            filters=[f.model_dump() for f in body.filters] if body.filters else None,
+        )
+    except PreviewError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    return PreviewResponse(sql=sql, columns=columns, rows=rows)

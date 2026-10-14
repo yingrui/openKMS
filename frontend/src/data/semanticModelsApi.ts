@@ -31,12 +31,36 @@ export interface SemanticModelPayload {
 }
 
 export interface SemanticModelImportSummary {
-  semantic_model_id: string;
+  semantic_model_ids: string[];
+  semantic_model_id: string | null;
   relationships: number;
   metrics: number;
   fields: number;
   columns: number;
   warnings: string[];
+}
+
+export interface PreviewFilter {
+  column: string;
+  op: string;
+  value?: unknown;
+}
+
+export interface SemanticModelPreviewResponse {
+  sql: string;
+  columns: string[];
+  rows: Record<string, unknown>[];
+}
+
+export async function previewSemanticModel(
+  modelId: string,
+  data: { metric_id: string; group_by: string[]; filters?: PreviewFilter[] | null },
+): Promise<SemanticModelPreviewResponse> {
+  return request<SemanticModelPreviewResponse>(`/api/semantic-models/${modelId}/preview`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data),
+  });
 }
 
 export async function fetchSemanticModels(): Promise<SemanticModelListResponse> {

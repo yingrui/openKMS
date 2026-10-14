@@ -1,15 +1,33 @@
 /** API for semantic-model fields (model-scoped: column ref / expression + role). */
 import { request } from './apiClient';
 
+export interface SemanticModelFieldDialect {
+  dialect: string;
+  expression: string;
+}
+
+export interface SemanticModelFieldDimension {
+  type?: string; // time | categorical
+  granularity?: string | null;
+  timezone?: string | null;
+}
+
+export interface SemanticModelFieldEntity {
+  type?: string; // foreign | primary
+  name?: string;
+}
+
 export interface SemanticModelFieldResponse {
   id: string;
   semantic_model_id: string;
   dataset_id: string;
   name: string;
   column_name: string | null;
-  expression: { dialects?: { dialect: string; expression: string }[] } | null;
+  expression: { dialects?: SemanticModelFieldDialect[] } | null;
   datatype: string | null;
-  dimension: { is_time?: boolean } | null;
+  description: string | null;
+  dimension: SemanticModelFieldDimension | null;
+  entity: SemanticModelFieldEntity | null;
   ai_context: Record<string, unknown> | null;
   ordinal: number;
   created_at: string;
@@ -25,9 +43,11 @@ export interface SemanticModelFieldPayload {
   dataset_id: string;
   name: string;
   column_name: string | null;
-  expression: { dialects?: { dialect: string; expression: string }[] } | null;
+  expression: { dialects?: SemanticModelFieldDialect[] } | null;
   datatype: string | null;
-  dimension: { is_time: boolean } | null;
+  description: string | null;
+  dimension: SemanticModelFieldDimension | null;
+  entity: SemanticModelFieldEntity | null;
   ai_context: Record<string, unknown> | null;
 }
 
