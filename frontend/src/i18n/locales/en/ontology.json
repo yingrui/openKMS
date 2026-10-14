@@ -162,8 +162,10 @@
     "tryRunFailed": "Preview failed",
     "outOfScope": "out of scope",
     "dimensionTime": "Time",
-    "fieldDimensionHint": "Ossie dimension: a field can be marked as a time dimension (is_time).",
-    "tryBack": "Back to model"
+    "fieldDimensionHint": "Ossie: a field is itself a dimension — mark it as a time dimension (is_time) to group or filter it by date.",
+    "tryBack": "Back to model",
+    "fieldDimension": "Dimension",
+    "dimensionTimeLabel": "Time dimension"
   },
   "datasets": {
     "title": "Datasets",

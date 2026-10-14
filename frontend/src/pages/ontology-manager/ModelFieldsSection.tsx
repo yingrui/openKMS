@@ -359,15 +359,19 @@ export function ModelFieldsSection({
                 />
               </FormField>
 
-              <label className="ds-check-row">
-                <input
-                  type="checkbox"
-                  checked={isTime}
-                  onChange={(e) => setIsTime(e.target.checked)}
-                />
-                <span>{t('dataModel.dimensionTime')}</span>
-              </label>
-              <p className="page-subtitle">{t('dataModel.fieldDimensionHint')}</p>
+              <FormField
+                label={t('dataModel.fieldDimension')}
+                hint={t('dataModel.fieldDimensionHint')}
+              >
+                <label className="ds-check-row">
+                  <input
+                    type="checkbox"
+                    checked={isTime}
+                    onChange={(e) => setIsTime(e.target.checked)}
+                  />
+                  <span>{t('dataModel.dimensionTimeLabel')}</span>
+                </label>
+              </FormField>
 
               <FormField label={t('datasets.aiInstructions')}>
                 <textarea
