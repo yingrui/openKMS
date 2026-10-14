@@ -3,12 +3,12 @@
 A semantic model is a named scope over the shared data layer: `datasets` (physical
 sources + their column descriptions), `relationships` (foreign keys), `fields`
 (model-scoped semantic attributes) and `metrics`. Datasets/columns/relationships are
-shared; the model owns its fields and metrics. Export is a pure read; import upserts
-the model (+ fields/metrics) over datasets that are already registered.
+shared; the model owns its fields and metrics.
 
-References use openKMS stable **ids** (`from`/`to`/`base_dataset`/`metric`), with a
-human `name` alongside. Import also accepts Ossie-style **names** (matching by
-dataset source or name).
+The document follows the Ossie shape (`semantic_model: [ … ]`, `source` as a dotted
+string, `expression.dialects` as a list). openKMS adds a few extensions (documented in
+`docs/features/data-layer-semantic-model.md`): a stable `id` on every entity (so a
+round-trip is exact) and `base_dataset` on a metric (the engine's `FROM` anchor).
 """
 from __future__ import annotations
 
@@ -33,6 +33,10 @@ OSSIE_VERSION = "openkms-1"
 
 def _dataset_name(d: Dataset) -> str:
     return d.display_name or f"{d.schema_name}.{d.table_name}"
+
+
+def _dataset_source(d: Dataset, ds_names: dict[str, str]) -> str:
+    return f"{ds_names.get(d.data_source_id)}.{d.schema_name}.{d.table_name}"
 
 
 async def export_semantic_model(db: AsyncSession, model: SemanticModel) -> dict[str, Any]:
@@ -76,75 +80,72 @@ async def export_semantic_model(db: AsyncSession, model: SemanticModel) -> dict[
     for c in columns:
         columns_by_dataset.setdefault(c.dataset_id, []).append(c)
 
+    model_doc: dict[str, Any] = {
+        "id": model.id,
+        "name": model.name,
+        "description": model.description,
+        "ai_context": model.ai_context,
+        "datasets": [
+            {
+                "id": d.id,
+                "name": _dataset_name(d),
+                "source": _dataset_source(d, ds_names),
+                "primary_key": d.primary_key_columns or [],
+                "unique_keys": d.unique_keys or [],
+                "ai_context": d.ai_context,
+                "columns": [
+                    {"name": c.column_name, "description": c.description}
+                    for c in columns_by_dataset.get(d.id, [])
+                    if c.description
+                ],
+                "fields": [
+                    {
+                        "name": f.name,
+                        "column": f.column_name,
+                        "expression": f.expression,
+                        "datatype": f.datatype,
+                        "dimension": f.dimension,
+                        "ai_context": f.ai_context,
+                    }
+                    for f in fields_by_dataset.get(d.id, [])
+                ],
+            }
+            for d in datasets
+        ],
+        "relationships": [
+            {
+                "id": r.id,
+                "name": r.name,
+                "from": r.from_dataset_id,
+                "to": r.to_dataset_id,
+                "from_columns": r.from_columns or [],
+                "to_columns": r.to_columns or [],
+                "required": r.required,
+                "ai_context": r.ai_context,
+            }
+            for r in relationships
+        ],
+        "metrics": [
+            {
+                "id": m.id,
+                "name": m.name,
+                "type": m.type,
+                "base_dataset": m.base_dataset_id,
+                "expression": m.expression,
+                "datatype": m.datatype,
+                "business_definition": m.business_definition,
+                "filters": m.filters,
+                "joins": m.joins or [],
+                "ai_context": m.ai_context,
+            }
+            for m in metrics
+        ],
+    }
+
     return {
         "ossie_version": OSSIE_VERSION,
         "generated_at": datetime.now(timezone.utc).isoformat(),
-        "semantic_model": {
-            "id": model.id,
-            "name": model.name,
-            "description": model.description,
-            "ai_context": model.ai_context,
-            "datasets": [
-                {
-                    "id": d.id,
-                    "name": _dataset_name(d),
-                    "source": {
-                        "data_source": ds_names.get(d.data_source_id),
-                        "schema": d.schema_name,
-                        "table": d.table_name,
-                    },
-                    "primary_key": d.primary_key_columns or [],
-                    "unique_keys": d.unique_keys or [],
-                    "ai_context": d.ai_context,
-                    # Physical columns carry only the maintained descriptions here.
-                    "columns": [
-                        {"name": c.column_name, "description": c.description}
-                        for c in columns_by_dataset.get(d.id, [])
-                        if c.description
-                    ],
-                    "fields": [
-                        {
-                            "name": f.name,
-                            "column": f.column_name,
-                            "expression": f.expression,
-                            "datatype": f.datatype,
-                            "dimension": f.dimension,
-                            "ai_context": f.ai_context,
-                        }
-                        for f in fields_by_dataset.get(d.id, [])
-                    ],
-                }
-                for d in datasets
-            ],
-            "relationships": [
-                {
-                    "id": r.id,
-                    "name": r.name,
-                    "from": r.from_dataset_id,
-                    "to": r.to_dataset_id,
-                    "from_columns": r.from_columns or [],
-                    "to_columns": r.to_columns or [],
-                    "required": r.required,
-                    "ai_context": r.ai_context,
-                }
-                for r in relationships
-            ],
-            "metrics": [
-                {
-                    "id": m.id,
-                    "name": m.name,
-                    "type": m.type,
-                    "base_dataset": m.base_dataset_id,
-                    "expression": m.expression,
-                    "datatype": m.datatype,
-                    "business_definition": m.business_definition,
-                    "filters": m.filters,
-                    "joins": m.joins or [],
-                    "ai_context": m.ai_context,
-                }
-                for m in metrics
-            ],
-        },
+        "semantic_model": [model_doc],
     }
 
 
@@ -159,7 +160,7 @@ async def _dataset_index(
     by_name: dict[str, str] = {}
     for d in datasets:
         by_id[d.id] = d.id
-        by_source[f"{ds_names.get(d.data_source_id)}.{d.schema_name}.{d.table_name}"] = d.id
+        by_source[_dataset_source(d, ds_names)] = d.id
         by_name.setdefault(_dataset_name(d), d.id)
     return by_id, by_source, by_name
 
@@ -172,13 +173,15 @@ def _resolve_dataset(
     return by_id.get(ref) or by_source.get(ref) or by_name.get(ref)
 
 
-async def import_semantic_model(db: AsyncSession, doc: dict[str, Any]) -> dict[str, Any]:
-    """Upsert a semantic model (+ fields/metrics) from an Ossie document."""
-    model_doc = doc.get("semantic_model") if isinstance(doc.get("semantic_model"), dict) else doc
-    by_id, by_source, by_name = await _dataset_index(db)
+async def _import_one_model(
+    db: AsyncSession,
+    model_doc: dict[str, Any],
+    by_id: dict[str, str],
+    by_source: dict[str, str],
+    by_name: dict[str, str],
+) -> dict[str, Any]:
     warnings: list[str] = []
 
-    # Resolve the target model: by id → by name → new.
     ref_id = model_doc.get("id")
     model = await db.get(SemanticModel, ref_id) if isinstance(ref_id, str) else None
     if model is None:
@@ -201,12 +204,15 @@ async def import_semantic_model(db: AsyncSession, doc: dict[str, Any]) -> dict[s
     members: set[str] = set()
     column_count = 0
     field_count = 0
+    rel_count = 0
+    metric_count = 0
 
     for entry in model_doc.get("datasets", []) or []:
         if not isinstance(entry, dict):
             continue
         resolved = (
             _resolve_dataset(entry.get("id"), by_id, by_source, by_name)
+            or _resolve_dataset(entry.get("source"), by_id, by_source, by_name)
             or _resolve_dataset(entry.get("name"), by_id, by_source, by_name)
         )
         if not resolved:
@@ -215,10 +221,7 @@ async def import_semantic_model(db: AsyncSession, doc: dict[str, Any]) -> dict[s
         members.add(resolved)
 
         for col in entry.get("columns", []) or []:
-            if not isinstance(col, dict) or not col.get("name"):
-                continue
-            description = col.get("description")
-            if not description:
+            if not isinstance(col, dict) or not col.get("name") or not col.get("description"):
                 continue
             row = (
                 await db.execute(
@@ -229,14 +232,14 @@ async def import_semantic_model(db: AsyncSession, doc: dict[str, Any]) -> dict[s
                 )
             ).scalars().first()
             if row:
-                row.description = description
+                row.description = col["description"]
             else:
                 db.add(
                     DatasetColumn(
                         id=str(uuid.uuid4()),
                         dataset_id=resolved,
                         column_name=str(col["name"]),
-                        description=str(description),
+                        description=str(col["description"]),
                     )
                 )
             column_count += 1
@@ -265,7 +268,6 @@ async def import_semantic_model(db: AsyncSession, doc: dict[str, Any]) -> dict[s
             row.ai_context = f.get("ai_context")
             field_count += 1
 
-    rel_count = 0
     for rel in model_doc.get("relationships", []) or []:
         from_id = _resolve_dataset(rel.get("from"), by_id, by_source, by_name)
         to_id = _resolve_dataset(rel.get("to"), by_id, by_source, by_name)
@@ -287,7 +289,6 @@ async def import_semantic_model(db: AsyncSession, doc: dict[str, Any]) -> dict[s
         row.ai_context = rel.get("ai_context")
         rel_count += 1
 
-    metric_count = 0
     for m in model_doc.get("metrics", []) or []:
         base_id = _resolve_dataset(m.get("base_dataset"), by_id, by_source, by_name)
         if not base_id:
@@ -313,12 +314,41 @@ async def import_semantic_model(db: AsyncSession, doc: dict[str, Any]) -> dict[s
 
     await db.flush()
     await set_members(db, model.id, sorted(members))
-    await db.commit()
     return {
         "semantic_model_id": model.id,
         "relationships": rel_count,
         "metrics": metric_count,
         "fields": field_count,
         "columns": column_count,
+        "warnings": warnings,
+    }
+
+
+async def import_semantic_model(db: AsyncSession, doc: dict[str, Any]) -> dict[str, Any]:
+    """Upsert one or more semantic models (+ fields/metrics) from an Ossie document."""
+    raw = doc.get("semantic_model")
+    if isinstance(raw, list):
+        entries = [e for e in raw if isinstance(e, dict)]
+    elif isinstance(raw, dict):
+        entries = [raw]
+    else:
+        entries = [doc]
+
+    by_id, by_source, by_name = await _dataset_index(db)
+    model_ids: list[str] = []
+    totals = {"relationships": 0, "metrics": 0, "fields": 0, "columns": 0}
+    warnings: list[str] = []
+    for entry in entries:
+        summary = await _import_one_model(db, entry, by_id, by_source, by_name)
+        model_ids.append(summary["semantic_model_id"])
+        for key in totals:
+            totals[key] += summary[key]
+        warnings.extend(summary["warnings"])
+
+    await db.commit()
+    return {
+        "semantic_model_ids": model_ids,
+        "semantic_model_id": model_ids[0] if model_ids else None,
+        **totals,
         "warnings": warnings,
     }

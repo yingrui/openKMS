@@ -18,11 +18,11 @@ from app.models.data_source import DataSource
 from app.models.dataset import Dataset
 from app.models.dataset_join import DatasetJoin
 from app.models.metric_definition import MetricDefinition
+from app.services.data_layer.expressions import ANSI, dialect_sql
 from app.services.data_layer.sql_build import SqlBuildError, build_joins_sql, build_where
 from app.services.data_layer.sql_runner import run_readonly
 from app.services.ontology.dataset_tables import is_valid_identifier
 
-ANSI = "ANSI_SQL"
 METRIC_TYPES = ("simple", "ratio", "derived", "cumulative", "conversion")
 DEFAULT_ROW_CAP = 1000
 DEFAULT_TIMEOUT_MS = 10_000
@@ -34,13 +34,7 @@ class MetricError(ValueError):
 
 def metric_expression_sql(expression: dict | None) -> str | None:
     """The ANSI_SQL fragment of an Ossie expression, if any."""
-    if not isinstance(expression, dict):
-        return None
-    dialects = expression.get("dialects")
-    if not isinstance(dialects, dict):
-        return None
-    value = dialects.get(ANSI)
-    return value if isinstance(value, str) else None
+    return dialect_sql(expression, ANSI)
 
 
 def validate_metric_definition(*, name: str | None, type: str, expression: dict | None) -> str:
@@ -127,8 +121,8 @@ async def compute_metric(
     *,
     row_cap: int = DEFAULT_ROW_CAP,
     timeout_ms: int = DEFAULT_TIMEOUT_MS,
-) -> list[dict[str, Any]]:
-    """Run a metric read-only (timeout + row cap) and return its rows."""
+) -> tuple[str, list[dict[str, Any]]]:
+    """Run a metric read-only (timeout + row cap); returns ``(sql, rows)``."""
     base = await db.get(Dataset, metric.base_dataset_id)
     if not base:
         raise MetricError("Base dataset not found.")
@@ -142,6 +136,7 @@ async def compute_metric(
     )
 
     try:
-        return run_readonly(ds, sql, params, timeout_ms=timeout_ms)
+        rows = run_readonly(ds, sql, params, timeout_ms=timeout_ms)
     except Exception as exc:  # noqa: BLE001 - surface any DB error as a metric error
         raise MetricError(f"Metric query failed: {exc}") from exc
+    return sql, rows

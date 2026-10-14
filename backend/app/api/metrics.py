@@ -256,10 +256,10 @@ async def compute_metric_endpoint(
     p = request.state.openkms_jwt_payload
     start = time.perf_counter()
     try:
-        rows = await compute_metric(db, m)
+        sql, rows = await compute_metric(db, m)
         duration = int((time.perf_counter() - start) * 1000)
         await _record_run(db, m.id, "ok", len(rows), duration, None, p)
-        return MetricComputeResponse(metric_id=m.id, rows=rows, duration_ms=duration)
+        return MetricComputeResponse(metric_id=m.id, rows=rows, duration_ms=duration, sql=sql)
     except MetricError as exc:
         duration = int((time.perf_counter() - start) * 1000)
         await _record_run(db, m.id, "error", 0, duration, str(exc), p)

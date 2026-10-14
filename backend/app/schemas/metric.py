@@ -64,6 +64,7 @@ class MetricComputeResponse(BaseModel):
     metric_id: str
     rows: list[dict[str, Any]]
     duration_ms: int = 0
+    sql: str | None = None
 
 
 class MetricRunResponse(BaseModel):

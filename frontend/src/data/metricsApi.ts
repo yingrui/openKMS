@@ -7,8 +7,13 @@ export interface MetricFilter {
   value?: unknown;
 }
 
+export interface MetricDialect {
+  dialect: string;
+  expression: string;
+}
+
 export interface MetricExpression {
-  dialects?: Record<string, string>;
+  dialects?: MetricDialect[];
 }
 
 export interface MetricResponse {
@@ -102,5 +107,12 @@ export async function fetchMetricRuns(id: string): Promise<MetricRunResponse[]> 
 
 /** The ANSI_SQL fragment of a metric expression, for display. */
 export function metricExpressionSql(m: MetricResponse): string {
-  return m.expression?.dialects?.ANSI_SQL ?? '';
+  const d = m.expression?.dialects;
+  if (Array.isArray(d)) return d.find((x) => x.dialect === 'ANSI_SQL')?.expression ?? '';
+  return '';
+}
+
+/** Build an Ossie expression (list form) from a SQL fragment. */
+export function makeMetricExpression(sql: string): MetricExpression {
+  return { dialects: [{ dialect: 'ANSI_SQL', expression: sql }] };
 }

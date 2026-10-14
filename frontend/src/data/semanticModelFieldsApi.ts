@@ -7,7 +7,7 @@ export interface SemanticModelFieldResponse {
   dataset_id: string;
   name: string;
   column_name: string | null;
-  expression: { dialects?: Record<string, string> } | null;
+  expression: { dialects?: { dialect: string; expression: string }[] } | null;
   datatype: string | null;
   dimension: { is_time?: boolean } | null;
   ai_context: Record<string, unknown> | null;
@@ -25,7 +25,7 @@ export interface SemanticModelFieldPayload {
   dataset_id: string;
   name: string;
   column_name: string | null;
-  expression: { dialects?: Record<string, string> } | null;
+  expression: { dialects?: { dialect: string; expression: string }[] } | null;
   datatype: string | null;
   dimension: { is_time: boolean } | null;
   ai_context: Record<string, unknown> | null;
@@ -64,5 +64,7 @@ export async function deleteModelField(modelId: string, fieldId: string): Promis
 
 /** The ANSI_SQL fragment of a field expression, for display. */
 export function fieldExpressionSql(field: SemanticModelFieldResponse): string {
-  return field.expression?.dialects?.ANSI_SQL ?? field.column_name ?? '';
+  const d = field.expression?.dialects;
+  if (Array.isArray(d)) return d.find((x) => x.dialect === 'ANSI_SQL')?.expression ?? field.column_name ?? '';
+  return field.column_name ?? '';
 }

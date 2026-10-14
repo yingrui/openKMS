@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { Check, Loader2, Plus, Search, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { fetchDatasets, type DatasetResponse } from '../../data/datasetsApi';
-import { createMetric } from '../../data/metricsApi';
+import { createMetric, makeMetricExpression } from '../../data/metricsApi';
 import {
   createSemanticModel,
   type SemanticModelResponse,
@@ -114,7 +114,7 @@ export function SemanticModelWizard({
             semantic_model_id: model.id,
             base_dataset_id: m.baseDatasetId,
             type: 'simple',
-            expression: { dialects: { ANSI_SQL: m.expression.trim() } },
+            expression: makeMetricExpression(m.expression.trim()),
           });
         } catch (e) {
           toast.error(e instanceof Error ? e.message : t('datasets.metricCreateFailed'));

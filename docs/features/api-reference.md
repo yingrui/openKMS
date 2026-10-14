@@ -389,7 +389,7 @@ Encrypted values; **never returned**. Write/sync/delete reject personal API key 
 | POST | `/api/datasets/{id}/quality-rules/{rule_id}/run` | Run a quality rule (`data:write`) |
 | GET | `/api/datasets/{id}/quality-rules/{rule_id}/runs` | Rule run history (`data:read`) |
 | GET | `/api/metrics` | List metrics (`semantic_model_id` / `base_dataset_id` filter; `data:read`) |
-| POST | `/api/metrics` | Create a metric `{name, semantic_model_id, base_dataset_id, type, expression:{dialects:{ANSI_SQL}}, datatype?, filters?, joins?, ai_context?}` (`data:write`; base dataset must be in the model's scope) |
+| POST | `/api/metrics` | Create a metric `{name, semantic_model_id, base_dataset_id, type, expression:{dialects:[{dialect, expression}]}, datatype?, filters?, joins?, ai_context?}` (`data:write`; base dataset must be in the model's scope) |
 | GET | `/api/metrics/{metric_id}` | Get a metric (`data:read`) |
 | PUT | `/api/metrics/{metric_id}` | Update a metric (`data:write`) |
 | DELETE | `/api/metrics/{metric_id}` | Delete a metric (`data:write`) |

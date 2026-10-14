@@ -235,12 +235,12 @@ Schema for every persisted table. Grouped by area; see the matching feature page
 
 ### SemanticModelField
 
-- `id`, `semantic_model_id` (FK → semantic_models, CASCADE), `dataset_id` (FK → datasets, CASCADE), `name` (unique per model + dataset), `column_name` (nullable; the physical column for a plain field), `expression` (JSONB `{dialects: {ANSI_SQL}}`), `datatype`, `dimension` (JSONB `{is_time}`), `ai_context` (JSONB), `ordinal`, `created_by` / `created_by_name`, `created_at`, `updated_at`
+- `id`, `semantic_model_id` (FK → semantic_models, CASCADE), `dataset_id` (FK → datasets, CASCADE), `name` (unique per model + dataset), `column_name` (nullable; the physical column for a plain field), `expression` (JSONB `{dialects: [{dialect, expression}]}` — Ossie), `datatype`, `dimension` (JSONB `{is_time}`), `ai_context` (JSONB), `ordinal`, `created_by` / `created_by_name`, `created_at`, `updated_at`
 - The **model-scoped** field: a column reference or a computed expression, plus its **role** (`dimension`) and `ai_context`. Created **explicitly** (a field marks a dimension or adds AI context — it is not a mirror of every column). This is where the semantic interpretation lives — a field's role/`ai_context` differ per model.
 
 ### MetricDefinition
 
-- `id`, `semantic_model_id` (FK → semantic_models, CASCADE), `base_dataset_id` (FK → datasets, CASCADE; the metric's anchor dataset), `name`, `business_definition`, `type` (`simple` | `ratio` | `derived` | `cumulative` | `conversion`), `expression` (JSONB `{dialects: {ANSI_SQL: <fragment>}}`; an aggregate SQL fragment), `datatype`, `filters` (JSONB: `[{column, op, value}]`), `joins` (JSONB: dataset_join ids), `ai_context` (JSONB), `created_by` / `created_by_name`, `created_at`, `updated_at`
+- `id`, `semantic_model_id` (FK → semantic_models, CASCADE), `base_dataset_id` (FK → datasets, CASCADE; the metric's anchor dataset), `name`, `business_definition`, `type` (`simple` | `ratio` | `derived` | `cumulative` | `conversion`), `expression` (JSONB `{dialects: [{dialect, expression}]}` — an aggregate SQL fragment), `datatype`, `filters` (JSONB: `[{column, op, value}]`), `joins` (JSONB: dataset_join ids), `ai_context` (JSONB), `created_by` / `created_by_name`, `created_at`, `updated_at`
 - **Model-level** metric (belongs to one semantic model; `base_dataset_id` must be in its scope): the engine wraps the `expression` fragment into a generated query (`SELECT <expr> AS value FROM <base> <joins> WHERE <filters> LIMIT <cap>`), executed **read-only** with a statement timeout. Authored by data engineers (AI-assist may draft); no custom DSL. Grouping/dimensions are a **consumption** concern, not stored here.
 
 ### MetricRun

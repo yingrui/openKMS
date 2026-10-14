@@ -93,8 +93,10 @@ The **shared base** (datasets, their physical columns, relationships) lives in *
 
 ### 6. Export / Import (Ossie) ✅
 - **Export / Import are per model**, in the model's header overflow menu — an interchange *output*, not the primary action; the model is built by configuration above.
-- **Export** one semantic model as an **Ossie document** (`semantic_model: {id, name, description, ai_context, datasets, relationships, fields, metrics}`, JSON or YAML via `GET /api/semantic-models/{id}/export`).
-- **Import** (`POST /api/semantic-models/import`) **upserts** a model + its fields/metrics over datasets matched by id/source/name; datasets are not created.
+- **Export** one semantic model as an **Ossie document**: `semantic_model: [ … ]` (a list), each with `name` / `description` / `ai_context` / `datasets` / `relationships` / `metrics`; a dataset's `source` is a dotted string (`data_source.schema.table`) and `fields` live under its dataset; every `expression` is `{dialects: [{dialect, expression}]}` (JSON or YAML via `GET /api/semantic-models/{id}/export`).
+- **Import** (`POST /api/semantic-models/import`) **upserts** the model(s) + their fields/metrics over datasets matched by id/source/name; datasets are not created.
+
+**openKMS extensions** (documented deviations from the minimal Ossie shape): a stable `id` on every entity (so a round-trip is exact — Ossie references by name), `unique_keys` and per-column `description`s, `relationships` (Ossie has them), and `base_dataset` on a metric (the engine's `FROM` anchor — Ossie derives it from the expression).
 
 ---
 

@@ -139,10 +139,10 @@ export function ModelFieldsSection({
     const expression =
       mode === 'computed'
         ? exprSql.trim()
-          ? { dialects: { ANSI_SQL: exprSql.trim() } }
+          ? { dialects: [{ dialect: 'ANSI_SQL', expression: exprSql.trim() }] }
           : null
         : columnName
-          ? { dialects: { ANSI_SQL: `"${columnName}"` } }
+          ? { dialects: [{ dialect: 'ANSI_SQL', expression: `"${columnName}"` }] }
           : null;
     const payload = {
       dataset_id: datasetId,

@@ -14,8 +14,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.semantic_model import SemanticModel
 from app.models.semantic_model_field import SemanticModelField
-
-ANSI = "ANSI_SQL"
+from app.services.data_layer.expressions import (
+    ANSI,
+    dialect_sql,
+    make_expression,
+    validate_fragment,
+)
 _NAME = re.compile(r"^[\w][\w .\-]*$")
 
 
@@ -25,26 +29,19 @@ class FieldError(ValueError):
 
 def column_expression(column: str) -> dict[str, Any]:
     """The dialect expression for a plain column reference."""
-    return {"dialects": {ANSI: f'"{column}"'}}
+    return make_expression(f'"{column}"')
 
 
 def expression_sql(expression: dict | None) -> str | None:
     """The ANSI_SQL fragment of an Ossie expression, if any."""
-    if not isinstance(expression, dict):
-        return None
-    dialects = expression.get("dialects")
-    if not isinstance(dialects, dict):
-        return None
-    value = dialects.get(ANSI)
-    return value if isinstance(value, str) else None
+    return dialect_sql(expression, ANSI)
 
 
 def _validate_expression(expression: dict | None) -> None:
-    sql = expression_sql(expression)
-    if not sql or not sql.strip():
-        raise FieldError("A field needs an expression (its SQL fragment).")
-    if any(tok in sql for tok in (";", "--", "/*", "*/")):
-        raise FieldError("The expression must be a single SQL fragment (no ';' or comments).")
+    try:
+        validate_fragment(expression_sql(expression))
+    except ValueError as exc:
+        raise FieldError(str(exc)) from exc
 
 
 def validate_field(
