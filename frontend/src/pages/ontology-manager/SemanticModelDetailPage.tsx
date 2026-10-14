@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useNavigate, useParams } from 'react-router-dom';
-import { ChevronLeft, Loader2, MoreHorizontal, Pencil, Play, Trash2 } from 'lucide-react';
+import { ChevronLeft, Loader2, MoreHorizontal, Pencil, Play, Sigma, Table2, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { fetchDatasets, type DatasetResponse } from '../../data/datasetsApi';
 import {
@@ -223,7 +223,12 @@ export function SemanticModelDetailPage() {
 
       <div className="ontology-admin-content">
         <nav className="ds-tabs" aria-label={model.name}>
-          {(['metrics', 'fields'] as const).map((key) => (
+          {(
+            [
+              { key: 'metrics' as const, icon: Sigma },
+              { key: 'fields' as const, icon: Table2 },
+            ]
+          ).map(({ key, icon: Icon }) => (
             <button
               key={key}
               type="button"
@@ -231,20 +236,25 @@ export function SemanticModelDetailPage() {
               aria-current={tab === key ? 'page' : undefined}
               onClick={() => setTab(key)}
             >
-              {t(key === 'metrics' ? 'dataModel.metrics' : 'dataModel.fields')}
+              <Icon size={18} aria-hidden />
+              <span className="ds-compact-label">
+                {t(key === 'metrics' ? 'dataModel.metrics' : 'dataModel.fields')}
+              </span>
             </button>
           ))}
         </nav>
 
-        {tab === 'metrics' ? (
-          <ModelMetricsSection semanticModelId={model.id} datasetIds={model.dataset_ids} />
-        ) : (
-          <ModelFieldsSection
-            semanticModelId={model.id}
-            datasets={model.datasets}
-            onChanged={() => void load()}
-          />
-        )}
+        <div className="ds-tab-panel">
+          {tab === 'metrics' ? (
+            <ModelMetricsSection semanticModelId={model.id} datasetIds={model.dataset_ids} />
+          ) : (
+            <ModelFieldsSection
+              semanticModelId={model.id}
+              datasets={model.datasets}
+              onChanged={() => void load()}
+            />
+          )}
+        </div>
       </div>
 
       <Dialog

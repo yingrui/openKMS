@@ -19,7 +19,7 @@ SCSS tokens, shared layouts, and UI conventions for the SPA (`frontend/src/style
 | **`_dialog.scss`** / **`Dialog.tsx`** | Modal shell: Escape / overlay dismiss, focus trap, scroll lock, `min(--dialog-w, 100vw - 2rem)`, `max-height: 90dvh`. |
 | **`_empty-state.scss`** / **`EmptyState.tsx`** | Zero-results panel (`icon` / `title` / `description` / `action`). |
 | **`_panel-toolbar.scss`** / **`PanelToolbar.tsx`** | Detail panel header: leading / tabs / actions. |
-| **`_tabs.scss`** | Page/section tab row (`.ds-tabs` + `.ds-tab`, `--active`). Globally loaded, so a page can use the classes without shipping its own chunk-local stylesheet. |
+| **`_tabs.scss`** | Page/section tabs — the knowledge-base treatment: `.ds-tabs` (rounded card top, tab buttons with an icon + `.ds-compact-label`) and `.ds-tab-panel` (the content card tucked under it). Globally loaded, so a page can use the classes without shipping its own chunk-local stylesheet. |
 | **`_metric.scss`** / **`Metric.tsx`** | Compact metric grid for entity detail headers. |
 | **`_checkbox.scss`** | Shared checkbox skin (`.ds-checkbox`) + dense multi-select list (`.ds-check-list`). |
 | **`_check-row.scss`** / **`CheckRow.tsx`** | Checkbox + title + hint card row (uses `.ds-checkbox`). |
