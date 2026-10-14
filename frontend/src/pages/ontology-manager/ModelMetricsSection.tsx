@@ -14,22 +14,19 @@ import {
   type MetricResponse,
 } from '../../data/metricsApi';
 import { useConfirm } from '../../contexts/ConfirmContext';
-import { FormField, PanelToolbar } from '../../styles/design-system';
+import { FormField } from '../../styles/design-system';
+import { EntityViewHeader, EntityViewPanel } from './EntityViewShell';
+import { useSemanticModelDetail } from './SemanticModelDetailPage';
 
 const METRIC_TYPES = ['simple', 'ratio', 'derived', 'cumulative', 'conversion'] as const;
 
 /** Model → Metrics: author model-level metrics (Ossie SQL expressions). Running is **Try**. */
-export function ModelMetricsSection({
-  semanticModelId,
-  datasetIds = [],
-  openCreateSignal = 0,
-}: {
-  semanticModelId: string;
-  datasetIds?: string[];
-  openCreateSignal?: number;
-}) {
+export function ModelMetricsSection() {
   const { t } = useTranslation('ontology');
   const confirm = useConfirm();
+  const { model } = useSemanticModelDetail();
+  const semanticModelId = model.id;
+  const datasetIds = model.dataset_ids;
 
   const [metrics, setMetrics] = useState<MetricResponse[]>([]);
   const [datasets, setDatasets] = useState<DatasetResponse[]>([]);
@@ -93,11 +90,6 @@ export function ModelMetricsSection({
     setAiInstructions('');
     setShowForm(true);
   };
-
-  useEffect(() => {
-    if (openCreateSignal > 0) openCreate();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [openCreateSignal]);
 
   const openEdit = (m: MetricResponse) => {
     setEditing(m);
@@ -181,29 +173,24 @@ export function ModelMetricsSection({
   };
 
   return (
-    <section>
-      <PanelToolbar
-        leading={
-          <span className="page-subtitle">
-            {t('dataModel.metricCount', { count: metrics.length })}
-          </span>
-        }
+    <>
+      <EntityViewHeader
+        title={t('dataModel.metrics')}
+        subtitle={t('dataModel.metricCount', { count: metrics.length })}
         actions={
           <button type="button" className="btn btn-primary" onClick={openCreate}>
-            <Plus size={18} aria-hidden />
-            <span>{t('datasets.addMetric')}</span>
+            <Plus size={16} aria-hidden />
+            {t('datasets.addMetric')}
           </button>
         }
       />
 
-      {loading ? (
-        <div className="console-loading">
-          <Loader2 size={28} className="console-loading-spinner" aria-hidden />
-          <p>{t('shared.loading')}</p>
-        </div>
-      ) : metrics.length === 0 ? (
-        <p className="entity-view__readonly">{t('datasets.metricEmpty')}</p>
-      ) : (
+      <EntityViewPanel>
+        {loading ? (
+          <p className="entity-view__readonly">{t('shared.loading')}</p>
+        ) : metrics.length === 0 ? (
+          <p className="entity-view__readonly">{t('datasets.metricEmpty')}</p>
+        ) : (
         <div className="ds-table-wrap ds-table-wrap--flush">
           <table className="console-table">
             <thead>
@@ -249,7 +236,8 @@ export function ModelMetricsSection({
             </tbody>
           </table>
         </div>
-      )}
+        )}
+      </EntityViewPanel>
 
       {showForm && (
         <div
@@ -375,6 +363,6 @@ export function ModelMetricsSection({
           </div>
         </div>
       )}
-    </section>
+    </>
   );
 }

@@ -19,7 +19,6 @@ SCSS tokens, shared layouts, and UI conventions for the SPA (`frontend/src/style
 | **`_dialog.scss`** / **`Dialog.tsx`** | Modal shell: Escape / overlay dismiss, focus trap, scroll lock, `min(--dialog-w, 100vw - 2rem)`, `max-height: 90dvh`. |
 | **`_empty-state.scss`** / **`EmptyState.tsx`** | Zero-results panel (`icon` / `title` / `description` / `action`). |
 | **`_panel-toolbar.scss`** / **`PanelToolbar.tsx`** | Detail panel header: leading / tabs / actions. |
-| **`_tabs.scss`** | Page/section tabs — the knowledge-base treatment: `.ds-tabs` (rounded card top, tab buttons with an icon + `.ds-compact-label`) and `.ds-tab-panel` (the content card tucked under it). Globally loaded, so a page can use the classes without shipping its own chunk-local stylesheet. |
 | **`_metric.scss`** / **`Metric.tsx`** | Compact metric grid for entity detail headers. |
 | **`_checkbox.scss`** | Shared checkbox skin (`.ds-checkbox`) + dense multi-select list (`.ds-check-list`). |
 | **`_check-row.scss`** / **`CheckRow.tsx`** | Checkbox + title + hint card row (uses `.ds-checkbox`). |
@@ -54,7 +53,7 @@ Use these instead of per-page copies. **`npm run check:styles`** blocks regressi
 | **`<Dialog>`** | New modals. Legacy overlay class names may remain as CSS aliases during migration. |
 | **`useConfirm()`** | Destructive or blocking confirms — not `window.confirm`. Provider: **`ConfirmProvider`** in **`MainLayout`**. |
 | **`<EmptyState>`** | Standalone zero-results blocks. **`.channel-page-empty*`** remains the channel-list alias. |
-| **`PanelToolbar` + `.ds-tabs`** | Detail split panels and section headers with leading + actions; a page that needs several sibling sections shows them as `.ds-tabs` (e.g. the semantic-model **Metrics / Fields** tabs). Detail split panels and section headers with leading + actions (Document/Article detail, KB sections, eval subsections, knowledge-map tree, semantic-model Metrics/Fields sections). Always use it instead of a hand-rolled flex toolbar — a page-local `*__toolbar` class only ships in its own lazy route chunk, so it silently loses its layout on any other page. |
+| **`PanelToolbar`** | Detail split panels and section headers with leading + actions (Document/Article detail, KB sections, eval subsections, knowledge-map tree). A whole **entity detail page** with several such sections uses `EntityViewShell` (sidebar identity + `navItems`) instead — see the dataset and semantic-model pages. Always use it instead of a hand-rolled flex toolbar — a page-local `*__toolbar` class only ships in its own lazy route chunk, so it silently loses its layout on any other page. |
 | **`<Metric>` / `<MetricGrid>`** (`.ds-metric*`) | Compact label/value metrics on entity detail headers. Prefer over **`list-index-stat`** when there is no icon and several metrics share a row. |
 | **`.ds-checkbox`** | Opt-in checkbox skin (accent fill + focus ring). Prefer over bare native checkboxes. |
 | **`<CheckRow>`** (`.ds-check-row`) | Card-style checkbox with title + optional hint (settings / entity toggles). |

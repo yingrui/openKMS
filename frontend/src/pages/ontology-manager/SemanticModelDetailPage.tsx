@@ -1,64 +1,67 @@
-import { useCallback, useEffect, useState } from 'react';
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useState,
+  type ReactNode,
+} from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link, useNavigate, useParams } from 'react-router-dom';
-import { ChevronLeft, Loader2, MoreHorizontal, Pencil, Play, Sigma, Table2, Trash2 } from 'lucide-react';
+import { Outlet, useParams } from 'react-router-dom';
 import { toast } from 'sonner';
 import { fetchDatasets, type DatasetResponse } from '../../data/datasetsApi';
 import {
-  deleteSemanticModel,
-  exportSemanticModel,
-  exportSemanticModelYaml,
   fetchSemanticModel,
-  updateSemanticModel,
   type SemanticModelResponse,
 } from '../../data/semanticModelsApi';
-import { useConfirm } from '../../contexts/ConfirmContext';
-import { Dialog, FormField } from '../../styles/design-system';
-import { ModelFieldsSection } from './ModelFieldsSection';
-import { ModelMetricsSection } from './ModelMetricsSection';
+import { EntityViewLoading, EntityViewShell } from './EntityViewShell';
 import '../ontology/ontology-admin.scss';
 
-function download(filename: string, text: string, type: string): void {
-  const url = URL.createObjectURL(new Blob([text], { type }));
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = filename;
-  a.click();
-  URL.revokeObjectURL(url);
+type SemanticModelDetailContext = {
+  model: SemanticModelResponse;
+  /** Every dataset in the instance — the model's scope is picked from these. */
+  allDatasets: DatasetResponse[];
+  reload: () => Promise<void>;
+};
+
+const SemanticModelDetailCtx = createContext<SemanticModelDetailContext | null>(null);
+
+export function useSemanticModelDetail(): SemanticModelDetailContext {
+  const ctx = useContext(SemanticModelDetailCtx);
+  if (!ctx) throw new Error('useSemanticModelDetail requires SemanticModelDetailPage');
+  return ctx;
 }
 
-function datasetLabel(d: DatasetResponse): string {
-  return d.display_name || `${d.schema_name}.${d.table_name}`;
+function scopeMeta(model: SemanticModelResponse): ReactNode {
+  if (model.datasets.length === 0) return model.description ?? undefined;
+  return (
+    <>
+      {model.description ? `${model.description} · ` : ''}
+      {model.datasets.map((d) => (
+        <span key={d.id} className="model-scope__chip">
+          {d.name}
+        </span>
+      ))}
+    </>
+  );
 }
 
-/** A semantic model: its metrics (primary) and fields, over a shared dataset scope. */
+/**
+ * A semantic model — the same shell the dataset detail page uses: identity + nav in the
+ * sidebar, each section (Metrics / Fields / Try / Settings) rendering inside the outlet.
+ */
 export function SemanticModelDetailPage() {
   const { t } = useTranslation('ontology');
   const { modelId = '' } = useParams();
-  const navigate = useNavigate();
-  const confirm = useConfirm();
 
   const [model, setModel] = useState<SemanticModelResponse | null>(null);
   const [allDatasets, setAllDatasets] = useState<DatasetResponse[]>([]);
   const [loading, setLoading] = useState(true);
 
-  const [tab, setTab] = useState<'metrics' | 'fields'>('metrics');
-  const [showEdit, setShowEdit] = useState(false);
-  const [showYaml, setShowYaml] = useState(false);
-  const [yaml, setYaml] = useState('');
-  const [editName, setEditName] = useState('');
-  const [editDescription, setEditDescription] = useState('');
-  const [editDatasets, setEditDatasets] = useState<string[]>([]);
-  const [submitting, setSubmitting] = useState(false);
-
-  const load = useCallback(async () => {
+  const reload = useCallback(async () => {
     if (!modelId) return;
-    setLoading(true);
     try {
-      const [m, ds] = await Promise.all([
-        fetchSemanticModel(modelId),
-        fetchDatasets(),
-      ]);
+      const [m, ds] = await Promise.all([fetchSemanticModel(modelId), fetchDatasets()]);
       setModel(m);
       setAllDatasets(ds.items);
     } catch (e) {
@@ -69,96 +72,12 @@ export function SemanticModelDetailPage() {
   }, [modelId, t]);
 
   useEffect(() => {
-    void load();
-  }, [load]);
-
-  const openEdit = () => {
-    if (!model) return;
-    setEditName(model.name);
-    setEditDescription(model.description ?? '');
-    setEditDatasets(model.dataset_ids);
-    setShowEdit(true);
-  };
-
-  const handleEdit = async () => {
-    if (!model) return;
-    if (!editName.trim()) {
-      toast.error(t('dataModel.modelNameRequired'));
-      return;
-    }
-    setSubmitting(true);
-    try {
-      await updateSemanticModel(model.id, {
-        name: editName.trim(),
-        description: editDescription.trim() || null,
-        dataset_ids: editDatasets,
-      });
-      toast.success(t('dataModel.modelSaved'));
-      setShowEdit(false);
-      await load();
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : t('dataModel.modelSaveFailed'));
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
-  const handleExport = async (format: 'json' | 'yaml') => {
-    if (!model) return;
-    try {
-      if (format === 'yaml') {
-        download(`${model.name}.yaml`, await exportSemanticModelYaml(model.id), 'application/yaml');
-      } else {
-        const doc = await exportSemanticModel(model.id);
-        download(`${model.name}.json`, JSON.stringify(doc, null, 2), 'application/json');
-      }
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : t('dataModel.exportFailed'));
-    }
-  };
-
-  const handleViewYaml = async () => {
-    if (!model) return;
-    try {
-      setYaml(await exportSemanticModelYaml(model.id));
-      setShowYaml(true);
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : t('dataModel.exportFailed'));
-    }
-  };
-
-  const handleDelete = async () => {
-    if (!model) return;
-    if (
-      !(await confirm({
-        title: t('shared.delete'),
-        message: t('dataModel.modelDeleteConfirm', { name: model.name }),
-        confirmLabel: t('shared.delete'),
-        danger: true,
-      }))
-    )
-      return;
-    try {
-      await deleteSemanticModel(model.id);
-      toast.success(t('dataModel.modelDeleted'));
-      navigate('/data-model');
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : t('dataModel.modelDeleteFailed'));
-    }
-  };
-
-  const toggleEditDataset = (id: string) =>
-    setEditDatasets((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
+    void reload();
+  }, [reload]);
 
   if (loading) {
-    return (
-      <div className="console-loading">
-        <Loader2 size={32} className="console-loading-spinner" aria-hidden />
-        <p>{t('shared.loading')}</p>
-      </div>
-    );
+    return <EntityViewLoading label={t('shared.loading')} />;
   }
-
   if (!model) {
     return (
       <div className="ontology-admin">
@@ -167,176 +86,24 @@ export function SemanticModelDetailPage() {
     );
   }
 
+  const base = `/data-model/${model.id}`;
   return (
-    <div className="ontology-admin">
-      <div className="page-header model-page-header">
-        <div>
-          <Link to="/data-model" className="model-back">
-            <ChevronLeft size={14} aria-hidden />
-            {t('dataModel.backToModels')}
-          </Link>
-          <h1>{model.name}</h1>
-          <p className="page-subtitle">
-            {model.description || t('dataModel.modelDatasetsHint')}
-          </p>
-          {model.datasets.length > 0 && (
-            <div className="model-scope">
-              {model.datasets.map((d) => (
-                <Link key={d.id} to={`/datasets/${d.id}`} className="model-scope__chip">
-                  {d.name}
-                </Link>
-              ))}
-            </div>
-          )}
-        </div>
-        <div className="page-header-actions">
-          <button type="button" className="btn btn-secondary" onClick={openEdit}>
-            <Pencil size={18} aria-hidden />
-            <span>{t('dataModel.editModel')}</span>
-          </button>
-          <details className="model-menu">
-            <summary className="btn btn-secondary" aria-label={t('dataModel.more')}>
-              <MoreHorizontal size={18} aria-hidden />
-            </summary>
-            <div className="model-menu__panel">
-              <button type="button" onClick={() => void handleViewYaml()}>
-                {t('dataModel.viewYaml')}
-              </button>
-              <button type="button" onClick={() => void handleExport('json')}>
-                {t('dataModel.exportJson')}
-              </button>
-              <button type="button" onClick={() => void handleExport('yaml')}>
-                {t('dataModel.exportYaml')}
-              </button>
-              <button type="button" onClick={() => void handleDelete()}>
-                <Trash2 size={14} aria-hidden />
-                {t('shared.delete')}
-              </button>
-            </div>
-          </details>
-          <Link to={`/data-model/${model.id}/try`} className="btn btn-primary">
-            <Play size={18} aria-hidden />
-            <span>{t('dataModel.tryTitle')}</span>
-          </Link>
-        </div>
-      </div>
-
-      <div className="ontology-admin-content">
-        <nav className="ds-tabs" aria-label={model.name}>
-          {(
-            [
-              { key: 'metrics' as const, icon: Sigma },
-              { key: 'fields' as const, icon: Table2 },
-            ]
-          ).map(({ key, icon: Icon }) => (
-            <button
-              key={key}
-              type="button"
-              className={`ds-tab${tab === key ? ' ds-tab--active' : ''}`}
-              aria-current={tab === key ? 'page' : undefined}
-              onClick={() => setTab(key)}
-            >
-              <Icon size={18} aria-hidden />
-              <span className="ds-compact-label">
-                {t(key === 'metrics' ? 'dataModel.metrics' : 'dataModel.fields')}
-              </span>
-            </button>
-          ))}
-        </nav>
-
-        <div className="ds-tab-panel">
-          {tab === 'metrics' ? (
-            <ModelMetricsSection semanticModelId={model.id} datasetIds={model.dataset_ids} />
-          ) : (
-            <ModelFieldsSection
-              semanticModelId={model.id}
-              datasets={model.datasets}
-              onChanged={() => void load()}
-            />
-          )}
-        </div>
-      </div>
-
-      <Dialog
-        open={showYaml}
-        onClose={() => setShowYaml(false)}
-        title={t('dataModel.viewYaml')}
-        closeAriaLabel={t('shared.close')}
-        size="lg"
-        footer={
-          <>
-            <button type="button" className="btn btn-secondary" onClick={() => setShowYaml(false)}>
-              {t('shared.close')}
-            </button>
-            <button
-              type="button"
-              className="btn btn-primary"
-              onClick={() => {
-                void navigator.clipboard?.writeText(yaml);
-                toast.success(t('dataModel.copied'));
-              }}
-            >
-              {t('dataModel.copy')}
-            </button>
-          </>
-        }
+    <SemanticModelDetailCtx.Provider value={{ model, allDatasets, reload }}>
+      <EntityViewShell
+        backTo="/data-model"
+        backLabel={t('dataModel.backToModels')}
+        kind={t('dataModel.kind')}
+        title={model.name}
+        meta={scopeMeta(model)}
+        navItems={[
+          { to: base, label: t('dataModel.metrics'), end: true },
+          { to: `${base}/fields`, label: t('dataModel.fields') },
+          { to: `${base}/try`, label: t('dataModel.tryTitle') },
+          { to: `${base}/settings`, label: t('dataModel.settings') },
+        ]}
       >
-        <pre className="model-yaml">{yaml}</pre>
-      </Dialog>
-
-      <Dialog
-        open={showEdit}
-        onClose={() => !submitting && setShowEdit(false)}
-        closeDisabled={submitting}
-        title={t('dataModel.editModel')}
-        closeAriaLabel={t('shared.cancel')}
-        size="sm"
-        footer={
-          <>
-            <button
-              type="button"
-              className="btn btn-secondary"
-              onClick={() => !submitting && setShowEdit(false)}
-              disabled={submitting}
-            >
-              {t('shared.cancel')}
-            </button>
-            <button
-              type="button"
-              className="btn btn-primary"
-              onClick={() => void handleEdit()}
-              disabled={submitting || !editName.trim()}
-            >
-              {submitting ? t('shared.saving') : t('shared.save')}
-            </button>
-          </>
-        }
-      >
-        <FormField label={t('dataModel.modelName')}>
-          <input type="text" value={editName} onChange={(e) => setEditName(e.target.value)} />
-        </FormField>
-        <FormField label={t('dataModel.modelDescription')}>
-          <textarea
-            rows={2}
-            value={editDescription}
-            onChange={(e) => setEditDescription(e.target.value)}
-          />
-        </FormField>
-        <FormField label={t('dataModel.modelDatasets')} hint={t('dataModel.modelDatasetsHint')}>
-          <div className="dataset-pk-list">
-            {allDatasets.map((d) => (
-              <label key={d.id} className="ds-check-row">
-                <input
-                  type="checkbox"
-                  checked={editDatasets.includes(d.id)}
-                  onChange={() => toggleEditDataset(d.id)}
-                />
-                <span>{datasetLabel(d)}</span>
-              </label>
-            ))}
-          </div>
-        </FormField>
-      </Dialog>
-    </div>
+        <Outlet />
+      </EntityViewShell>
+    </SemanticModelDetailCtx.Provider>
   );
 }

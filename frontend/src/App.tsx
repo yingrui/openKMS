@@ -220,9 +220,24 @@ const SemanticModelDetailPage = lazy(() =>
     default: m.SemanticModelDetailPage,
   })),
 );
-const SemanticModelTryPage = lazy(() =>
-  import('./pages/ontology-manager/SemanticModelTryPage').then((m) => ({
-    default: m.SemanticModelTryPage,
+const ModelMetricsSection = lazy(() =>
+  import('./pages/ontology-manager/ModelMetricsSection').then((m) => ({
+    default: m.ModelMetricsSection,
+  })),
+);
+const ModelFieldsSection = lazy(() =>
+  import('./pages/ontology-manager/ModelFieldsSection').then((m) => ({
+    default: m.ModelFieldsSection,
+  })),
+);
+const ModelTrySection = lazy(() =>
+  import('./pages/ontology-manager/ModelTrySection').then((m) => ({
+    default: m.ModelTrySection,
+  })),
+);
+const ModelSettingsTab = lazy(() =>
+  import('./pages/ontology-manager/ModelSettingsTab').then((m) => ({
+    default: m.ModelSettingsTab,
   })),
 );
 const DataExplorerPage = lazy(() =>
@@ -417,8 +432,12 @@ function App() {
           <Route path="models" element={<Models />} />
           <Route path="models/:modelId" element={<ModelDetail />} />
           <Route path="data-model" element={<DataModelPage />} />
-          <Route path="data-model/:modelId" element={<SemanticModelDetailPage />} />
-          <Route path="data-model/:modelId/try" element={<SemanticModelTryPage />} />
+          <Route path="data-model/:modelId" element={<SemanticModelDetailPage />}>
+            <Route index element={<ModelMetricsSection />} />
+            <Route path="fields" element={<ModelFieldsSection />} />
+            <Route path="try" element={<ModelTrySection />} />
+            <Route path="settings" element={<ModelSettingsTab />} />
+          </Route>
           <Route path="data-explorer" element={<DataExplorerPage />} />
           <Route path="data-explorer/:id" element={<ExplorerReportDetail />} />
           <Route path="datasets" element={<DatasetsListPage />} />

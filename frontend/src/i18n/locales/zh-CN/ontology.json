@@ -8,7 +8,8 @@
     "validate": "校验",
     "actions": "操作",
     "cancel": "取消",
-    "close": "关闭"
+    "close": "关闭",
+    "edit": "编辑"
   },
   "functions": {
     "title": "函数",
@@ -163,7 +164,6 @@
     "outOfScope": "已超出范围",
     "dimensionTime": "时间",
     "fieldDimensionHint": "规范里维度只有一个属性：时间角色（`dimension.is_time`）。\"自动\"跟随数据类型 —— Date/Time/DateTime/DateTimeTz 的字段是时间维度，其余不是；选\"否\"可让时间类型的列（如审计用 created_at）不进入时间轴。其它字段就是普通字段，可用于分组/筛选。",
-    "tryBack": "返回模型",
     "fieldDimension": "时间维度",
     "dimensionTimeLabel": "时间维度",
     "dimensionAuto": "自动（按数据类型）",
@@ -178,7 +178,14 @@
     "copy": "复制",
     "copied": "已复制到剪贴板",
     "metricCount_other": "{{count}} 个指标",
-    "fieldCount_other": "{{count}} 个字段"
+    "fieldCount_other": "{{count}} 个字段",
+    "settings": "设置",
+    "settingsHint": "该模型的标识、数据集范围、交换格式与删除。",
+    "kind": "语义模型",
+    "interchange": "Ossie 交换格式",
+    "interchangeHint": "把模型作为 Apache Ossie 文档查看，或下载 JSON / YAML。",
+    "dangerZone": "危险操作",
+    "deleteHint": "删除模型会一并删除它的字段与指标；数据集本身不受影响。"
   },
   "datasets": {
     "title": "数据集",

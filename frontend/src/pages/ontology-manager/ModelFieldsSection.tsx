@@ -1,55 +1,33 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Loader2, Pencil, Plus, Search, Trash2, X } from 'lucide-react';
+import { Plus, Trash2, X } from 'lucide-react';
 import { toast } from 'sonner';
 import { fetchDatasetMetadata, type ColumnMetadata } from '../../data/datasetsApi';
 import {
-  OSSIE_DATATYPES,
   createModelField,
   deleteModelField,
   fetchModelFields,
   fieldExpressionSql,
   isTemporalDatatype,
+  OSSIE_DATATYPES,
   updateModelField,
   type SemanticModelFieldResponse,
 } from '../../data/semanticModelFieldsApi';
-import type { SemanticModelDatasetRef } from '../../data/semanticModelsApi';
 import { useConfirm } from '../../contexts/ConfirmContext';
-import { FormField, Pagination, PanelToolbar } from '../../styles/design-system';
+import { FormField, Pagination } from '../../styles/design-system';
+import { EntityViewHeader, EntityViewPanel } from './EntityViewShell';
+import { useSemanticModelDetail } from './SemanticModelDetailPage';
 
-type AiContext = { instructions: string; synonyms: string; examples: string };
-/** The spec's three dimension states: `is_time` omitted / true / false. */
-type DimensionMode = 'auto' | 'time' | 'regular';
-
-const splitList = (s: string) =>
-  s
-    .split(',')
-    .map((x) => x.trim())
-    .filter(Boolean);
-
-function readAiContext(raw: unknown): AiContext {
-  const o = (raw ?? {}) as { instructions?: string; synonyms?: string[]; examples?: string[] };
-  return {
-    instructions: o.instructions ?? '',
-    synonyms: (o.synonyms ?? []).join(', '),
-    examples: (o.examples ?? []).join(', '),
-  };
-}
-
-/** Model → Fields: the model's fields (column ref / expression + Ossie `is_time` dimension). */
-export function ModelFieldsSection({
-  semanticModelId,
-  datasets,
-  openCreateSignal = 0,
-  onChanged,
-}: {
-  semanticModelId: string;
-  datasets: SemanticModelDatasetRef[];
-  openCreateSignal?: number;
-  onChanged?: () => void;
-}) {
+/**
+ * Model → Fields: the model's fields (column ref / expression + Ossie `is_time` dimension).
+ * A field is a row-level attribute; only the *time* role is modelled by the spec.
+ */
+export function ModelFieldsSection() {
   const { t } = useTranslation('ontology');
   const confirm = useConfirm();
+  const { model } = useSemanticModelDetail();
+  const semanticModelId = model.id;
+  const datasets = model.datasets;
 
   const [fields, setFields] = useState<SemanticModelFieldResponse[]>([]);
   const [loading, setLoading] = useState(true);
@@ -68,34 +46,9 @@ export function ModelFieldsSection({
   const [datatype, setDatatype] = useState('');
   const [label, setLabel] = useState('');
   const [description, setDescription] = useState('');
-  const [dimensionMode, setDimensionMode] = useState<DimensionMode>('auto');
-  const [ai, setAi] = useState<AiContext>({ instructions: '', synonyms: '', examples: '' });
+  const [dimensionMode, setDimensionMode] = useState<'auto' | 'time' | 'regular'>('auto');
+  const [ai, setAi] = useState({ instructions: '', synonyms: '', examples: '' });
   const [submitting, setSubmitting] = useState(false);
-
-  const datasetLabel = (id: string) =>
-    datasets.find((d) => d.id === id)?.name ?? t('dataModel.outOfScope');
-
-  const filtered = fields.filter((f) => {
-    const q = search.trim().toLowerCase();
-    if (!q) return true;
-    return [f.name, f.label ?? '', f.column_name ?? '', datasetLabel(f.dataset_id)]
-      .join(' ')
-      .toLowerCase()
-      .includes(q);
-  });
-  const paged = filtered.slice(page * pageSize, (page + 1) * pageSize);
-
-  const resetPaging = () => setPage(0);
-
-  /**
-   * Only the *time* role is modelled by the spec (`dimension.is_time`). A field that is not
-   * a time dimension is simply a field — it is not labelled a "dimension".
-   */
-  const dimensionLabel = (f: SemanticModelFieldResponse) => {
-    if (f.dimension?.is_time === true) return t('dataModel.dimensionYes');
-    if (f.dimension?.is_time === false) return t('datasets.dash');
-    return isTemporalDatatype(f.datatype) ? t('dataModel.dimensionTimeByType') : t('datasets.dash');
-  };
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -126,6 +79,32 @@ export function ModelFieldsSection({
     };
   }, [datasetId]);
 
+  const datasetLabel = (id: string) =>
+    datasets.find((d) => d.id === id)?.name ?? t('dataModel.outOfScope');
+
+  const dimensionLabel = (f: SemanticModelFieldResponse) => {
+    if (f.dimension?.is_time === true) return t('dataModel.dimensionYes');
+    if (f.dimension?.is_time === false) return t('datasets.dash');
+    return isTemporalDatatype(f.datatype) ? t('dataModel.dimensionTimeByType') : t('datasets.dash');
+  };
+
+  const filtered = useMemo(
+    () =>
+      fields.filter((f) => {
+        const q = search.trim().toLowerCase();
+        if (!q) return true;
+        return [f.name, f.label ?? '', f.column_name ?? '', datasetLabel(f.dataset_id)]
+          .join(' ')
+          .toLowerCase()
+          .includes(q);
+      }),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [fields, search, datasets],
+  );
+  const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
+  const safePage = Math.min(page, totalPages - 1);
+  const paged = filtered.slice(safePage * pageSize, (safePage + 1) * pageSize);
+
   const resetForm = useCallback(() => {
     setDatasetId(datasets[0]?.id ?? '');
     setName('');
@@ -139,15 +118,11 @@ export function ModelFieldsSection({
     setAi({ instructions: '', synonyms: '', examples: '' });
   }, [datasets]);
 
-  const openCreate = useCallback(() => {
+  const openCreate = () => {
     setEditing(null);
     resetForm();
     setShowForm(true);
-  }, [resetForm]);
-
-  useEffect(() => {
-    if (openCreateSignal > 0) openCreate();
-  }, [openCreateSignal, openCreate]);
+  };
 
   const openEdit = (f: SemanticModelFieldResponse) => {
     setEditing(f);
@@ -166,9 +141,19 @@ export function ModelFieldsSection({
           : 'regular'
         : 'auto',
     );
-    setAi(readAiContext(f.ai_context));
+    setAi({
+      instructions: String((f.ai_context?.instructions as string) ?? ''),
+      synonyms: ((f.ai_context?.synonyms as string[]) ?? []).join(', '),
+      examples: ((f.ai_context?.examples as string[]) ?? []).join(', '),
+    });
     setShowForm(true);
   };
+
+  const splitList = (s: string) =>
+    s
+      .split(',')
+      .map((x) => x.trim())
+      .filter(Boolean);
 
   const handleSubmit = async () => {
     if (!name.trim()) {
@@ -198,7 +183,6 @@ export function ModelFieldsSection({
       datatype: datatype || null,
       label: label.trim() || null,
       description: description.trim() || null,
-      // The spec's tri-state: omitted follows `datatype`; explicit true/false wins.
       dimension: dimensionMode === 'auto' ? null : { is_time: dimensionMode === 'time' },
       ai_context: hasAi ? { instructions: ai.instructions.trim(), synonyms, examples } : null,
     };
@@ -213,7 +197,6 @@ export function ModelFieldsSection({
       }
       setShowForm(false);
       await load();
-      onChanged?.();
     } catch (e) {
       toast.error(e instanceof Error ? e.message : t('datasets.fieldSaveFailed'));
     } finally {
@@ -222,127 +205,121 @@ export function ModelFieldsSection({
   };
 
   const handleDelete = async (f: SemanticModelFieldResponse) => {
-    if (
-      !(await confirm({
-        title: t('shared.delete'),
-        message: t('datasets.fieldDeleteConfirm', { name: f.name }),
-        confirmLabel: t('shared.delete'),
-        danger: true,
-      }))
-    )
-      return;
+    const ok = await confirm({
+      title: t('shared.delete'),
+      message: t('datasets.fieldDeleteConfirm', { name: f.name }),
+      confirmLabel: t('shared.delete'),
+      danger: true,
+    });
+    if (!ok) return;
     try {
       await deleteModelField(semanticModelId, f.id);
       toast.success(t('datasets.fieldDeleted'));
       await load();
-      onChanged?.();
     } catch (e) {
       toast.error(e instanceof Error ? e.message : t('datasets.fieldDeleteFailed'));
     }
   };
 
   return (
-    <section>
-      <PanelToolbar
-        leading={
-          <span className="page-subtitle">
-            {t('dataModel.fieldCount', { count: filtered.length })}
-          </span>
-        }
+    <>
+      <EntityViewHeader
+        title={t('dataModel.fields')}
+        subtitle={t('dataModel.fieldCount', { count: filtered.length })}
         actions={
           <>
-            <div className="console-datasets-search">
-              <Search size={18} aria-hidden />
-              <input
-                type="search"
-                aria-label={t('datasets.searchAria')}
-                placeholder={t('datasets.fieldSearchPlaceholder')}
-                value={search}
-                onChange={(e) => {
-                  setSearch(e.target.value);
-                  resetPaging();
-                }}
-              />
-            </div>
+            <input
+              type="search"
+              className="ds-control entity-view__search"
+              aria-label={t('datasets.searchAria')}
+              placeholder={t('datasets.fieldSearchPlaceholder')}
+              value={search}
+              onChange={(e) => {
+                setSearch(e.target.value);
+                setPage(0);
+              }}
+            />
             <button type="button" className="btn btn-primary" onClick={openCreate}>
-              <Plus size={18} aria-hidden />
-              <span>{t('datasets.addField')}</span>
+              <Plus size={16} aria-hidden />
+              {t('datasets.addField')}
             </button>
           </>
         }
       />
 
-      {loading ? (
-        <div className="console-loading">
-          <Loader2 size={28} className="console-loading-spinner" aria-hidden />
-          <p>{t('shared.loading')}</p>
-        </div>
-      ) : filtered.length === 0 ? (
-        <p className="entity-view__readonly">{t('dataModel.fieldsEmptyHint')}</p>
-      ) : (
-        <div className="ds-table-wrap ds-table-wrap--flush">
-          <table className="console-table">
-            <thead>
-              <tr>
-                <th>{t('datasets.fieldName')}</th>
-                <th>{t('datasets.modelDatasets')}</th>
-                <th>{t('datasets.fieldSource')}</th>
-                <th>{t('datasets.colDataType')}</th>
-                <th>{t('dataModel.fieldDimension')}</th>
-                <th>{t('datasets.fieldAiContext')}</th>
-                <th />
-              </tr>
-            </thead>
-            <tbody>
-              {paged.map((f) => (
-                <tr key={f.id}>
-                  <td>
-                    <strong>{f.name}</strong>
-                    {f.label ? <span className="model-field__label">{f.label}</span> : null}
-                  </td>
-                  <td>{datasetLabel(f.dataset_id)}</td>
-                  <td>{f.column_name ? f.column_name : <code>{fieldExpressionSql(f)}</code>}</td>
-                  <td>{f.datatype ?? t('datasets.dash')}</td>
-                  <td>{dimensionLabel(f)}</td>
-                  <td>
-                    {typeof f.ai_context?.instructions === 'string' && f.ai_context.instructions
-                      ? String(f.ai_context.instructions)
-                      : t('datasets.dash')}
-                  </td>
-                  <td className="dataset-field-row__actions">
-                    <button
-                      type="button"
-                      className="btn btn-secondary btn-sm"
-                      onClick={() => openEdit(f)}
-                      title={t('datasets.editField')}
-                    >
-                      <Pencil size={14} aria-hidden />
-                    </button>
-                    <button
-                      type="button"
-                      className="btn btn-secondary btn-sm"
-                      onClick={() => void handleDelete(f)}
-                      title={t('shared.delete')}
-                    >
-                      <Trash2 size={14} aria-hidden />
-                    </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-          <Pagination
-            total={filtered.length}
-            page={page}
-            pageSize={pageSize}
-            onPageChange={setPage}
-            onPageSizeChange={(size) => {
-              setPageSize(size);
-              resetPaging();
-            }}
-          />
-        </div>
-      )}
+      <EntityViewPanel>
+        {loading ? (
+          <p className="entity-view__readonly">{t('shared.loading')}</p>
+        ) : filtered.length === 0 ? (
+          <p className="entity-view__readonly">{t('dataModel.fieldsEmptyHint')}</p>
+        ) : (
+          <>
+            <div className="ds-table-wrap ds-table-wrap--flush">
+              <table className="console-table">
+                <thead>
+                  <tr>
+                    <th>{t('datasets.fieldName')}</th>
+                    <th>{t('datasets.modelDatasets')}</th>
+                    <th>{t('datasets.fieldSource')}</th>
+                    <th>{t('datasets.colDataType')}</th>
+                    <th>{t('dataModel.fieldDimension')}</th>
+                    <th>{t('datasets.fieldAiContext')}</th>
+                    <th />
+                  </tr>
+                </thead>
+                <tbody>
+                  {paged.map((f) => (
+                    <tr key={f.id}>
+                      <td>
+                        <strong>{f.name}</strong>
+                        {f.label ? <span className="model-field__label">{f.label}</span> : null}
+                      </td>
+                      <td>{datasetLabel(f.dataset_id)}</td>
+                      <td>{f.column_name ? f.column_name : <code>{fieldExpressionSql(f)}</code>}</td>
+                      <td>{f.datatype ?? t('datasets.dash')}</td>
+                      <td>{dimensionLabel(f)}</td>
+                      <td>
+                        {typeof f.ai_context?.instructions === 'string' && f.ai_context.instructions
+                          ? String(f.ai_context.instructions)
+                          : t('datasets.dash')}
+                      </td>
+                      <td className="dataset-field-row__actions">
+                        <button
+                          type="button"
+                          className="btn btn-secondary btn-sm"
+                          onClick={() => openEdit(f)}
+                          title={t('datasets.editField')}
+                        >
+                          {t('shared.edit')}
+                        </button>
+                        <button
+                          type="button"
+                          className="btn btn-secondary btn-sm"
+                          onClick={() => void handleDelete(f)}
+                          title={t('shared.delete')}
+                        >
+                          <Trash2 size={14} aria-hidden />
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            <Pagination
+              total={filtered.length}
+              page={safePage}
+              pageSize={pageSize}
+              pageSizeOptions={[25, 50, 100]}
+              onPageChange={setPage}
+              onPageSizeChange={(size) => {
+                setPageSize(size);
+                setPage(0);
+              }}
+            />
+          </>
+        )}
+      </EntityViewPanel>
 
       {showForm && (
         <div
@@ -378,6 +355,9 @@ export function ModelFieldsSection({
               </FormField>
               <FormField label={t('datasets.fieldName')}>
                 <input type="text" value={name} onChange={(e) => setName(e.target.value)} />
+              </FormField>
+              <FormField label={t('dataModel.fieldLabel')}>
+                <input type="text" value={label} onChange={(e) => setLabel(e.target.value)} />
               </FormField>
               <FormField label={t('datasets.fieldSource')}>
                 <select
@@ -423,9 +403,6 @@ export function ModelFieldsSection({
                   ))}
                 </select>
               </FormField>
-              <FormField label={t('dataModel.fieldLabel')}>
-                <input type="text" value={label} onChange={(e) => setLabel(e.target.value)} />
-              </FormField>
               <FormField label={t('dataModel.fieldDescription')}>
                 <input
                   type="text"
@@ -440,7 +417,9 @@ export function ModelFieldsSection({
               >
                 <select
                   value={dimensionMode}
-                  onChange={(e) => setDimensionMode(e.target.value as DimensionMode)}
+                  onChange={(e) =>
+                    setDimensionMode(e.target.value as 'auto' | 'time' | 'regular')
+                  }
                 >
                   <option value="auto">{t('dataModel.dimensionAuto')}</option>
                   <option value="time">{t('dataModel.dimensionYes')}</option>
@@ -485,16 +464,12 @@ export function ModelFieldsSection({
                 onClick={() => void handleSubmit()}
                 disabled={submitting}
               >
-                {submitting ? (
-                  <Loader2 size={16} className="console-loading-spinner" />
-                ) : (
-                  t('shared.save')
-                )}
+                {submitting ? t('shared.saving') : t('shared.save')}
               </button>
             </div>
           </div>
         </div>
       )}
-    </section>
+    </>
   );
 }

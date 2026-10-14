@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link, useParams } from 'react-router-dom';
-import { ChevronLeft, Loader2, Play } from 'lucide-react';
+import { Loader2, Play } from 'lucide-react';
 import { toast } from 'sonner';
 import {
   fetchMetricRuns,
@@ -15,21 +14,21 @@ import {
   type SemanticModelFieldResponse,
 } from '../../data/semanticModelFieldsApi';
 import {
-  fetchSemanticModel,
   previewSemanticModel,
   type SemanticModelPreviewResponse,
 } from '../../data/semanticModelsApi';
 import { EmptyState, FormField } from '../../styles/design-system';
-import '../ontology/ontology-admin.scss';
+import { EntityViewHeader, EntityViewPanel } from './EntityViewShell';
+import { useSemanticModelDetail } from './SemanticModelDetailPage';
 
 const GRANULARITIES = ['second', 'minute', 'hour', 'day', 'week', 'month', 'quarter', 'year'];
 
 /** Model → Try: run a metric grouped by fields (ad-hoc, read-only, not saved). */
-export function SemanticModelTryPage() {
+export function ModelTrySection() {
   const { t } = useTranslation('ontology');
-  const { modelId = '' } = useParams();
+  const { model } = useSemanticModelDetail();
+  const modelId = model.id;
 
-  const [modelName, setModelName] = useState('');
   const [metrics, setMetrics] = useState<MetricResponse[]>([]);
   const [fields, setFields] = useState<SemanticModelFieldResponse[]>([]);
   const [loading, setLoading] = useState(true);
@@ -45,14 +44,9 @@ export function SemanticModelTryPage() {
     if (!modelId) return;
     let cancelled = false;
     setLoading(true);
-    void Promise.all([
-      fetchSemanticModel(modelId),
-      fetchMetrics(modelId),
-      fetchModelFields(modelId),
-    ])
-      .then(([m, metricPage, fieldPage]) => {
+    void Promise.all([fetchMetrics(modelId), fetchModelFields(modelId)])
+      .then(([metricPage, fieldPage]) => {
         if (cancelled) return;
-        setModelName(m.name);
         setMetrics(metricPage.items);
         setFields(fieldPage.items);
         setMetricId(metricPage.items[0]?.id ?? '');
@@ -122,27 +116,12 @@ export function SemanticModelTryPage() {
   };
 
   return (
-    <div className="ontology-admin">
-      <div className="page-header model-page-header">
-        <div>
-          <Link to={`/data-model/${modelId}`} className="model-back">
-            <ChevronLeft size={14} aria-hidden />
-            {t('dataModel.tryBack')}
-          </Link>
-          <h1>{t('dataModel.tryTitle')}</h1>
-          <p className="page-subtitle">
-            {modelName ? `${modelName} · ` : ''}
-            {t('dataModel.tryHint')}
-          </p>
-        </div>
-      </div>
+    <>
+      <EntityViewHeader title={t('dataModel.tryTitle')} subtitle={t('dataModel.tryHint')} />
 
-      <div className="ontology-admin-content">
+      <EntityViewPanel>
         {loading ? (
-          <div className="console-loading">
-            <Loader2 size={28} className="console-loading-spinner" aria-hidden />
-            <p>{t('shared.loading')}</p>
-          </div>
+          <p className="entity-view__readonly">{t('shared.loading')}</p>
         ) : metrics.length === 0 ? (
           <p className="entity-view__readonly">{t('dataModel.tryNoMetrics')}</p>
         ) : (
@@ -281,7 +260,7 @@ export function SemanticModelTryPage() {
             )}
           </>
         )}
-      </div>
-    </div>
+      </EntityViewPanel>
+    </>
   );
 }

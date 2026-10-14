@@ -387,3 +387,16 @@
   margin: calc(-1 * (var(--space-5) + var(--space-1) / 2)) calc(-1 * var(--space-6))
     calc(-1 * var(--space-6));
 }
+
+/* Compact search input in a tab header's actions. */
+.entity-view__search {
+  width: 240px;
+  max-width: 40vw;
+}
+
+/* A row of secondary actions inside an entity panel. */
+.model-settings__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}

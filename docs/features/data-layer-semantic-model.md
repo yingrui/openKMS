@@ -92,11 +92,11 @@ The **shared base** (datasets, their physical columns, relationships) lives in *
 - The **Ossie `datasets`** section of a model's document: `source` (a dotted string), `primary_key`, `unique_keys`, **`columns`** (with descriptions), **`fields`** (the model's), `ai_context`.
 
 ### 5. Try (preview)
-- **Try it** is its **own page** (`/data-model/{id}/try`), opened from the model header's **Try it** button — it runs a metric **grouped by fields** (dimensions), ad-hoc and read-only, nothing saved. Time dimensions aggregate with `date_trunc('<granularity>', …)`, the **granularity chosen at query time**; so “P/E per day per stock” = the metric + `group_by` `trade_date` (time) and `ts_code`.
+- **Try** is its own route (`/data-model/{id}/try`) and a **nav item** of the model's entity shell — it runs a metric **grouped by fields** (dimensions), ad-hoc and read-only, nothing saved. Time dimensions aggregate with `date_trunc('<granularity>', …)`, the **granularity chosen at query time**; so “P/E per day per stock” = the metric + `group_by` `trade_date` (time) and `ts_code`.
 - It returns the rows **and the generated SQL**. Saving a query is a **consumption** concern → **Data Explorer** (`saved_queries` was removed).
 
 ### 6. Export / Import (Ossie) ✅
-- **Export / Import are per model**, in the model's header overflow menu — an interchange *output*, not the primary action; the model is built by configuration above.
+- **Export / Import are per model**, on the model's **Settings** tab — an interchange *output*, not the primary action; the model is built by configuration above.
 - **Export** one semantic model as a **flat Ossie document** (core spec `0.2.0.dev0`): `version`, `name`, `description?`, `ai_context?`, `datasets[]`, `relationships[]`, `metrics[]` — plus a tiny `OPENKMS` `custom_extensions` **on the few entities that need one** (never a document-level blob). A dataset's `source` is a dotted string; a field's `expression` is `{dialects:[{dialect, expression}]}` (scalar) with `dimension: {is_time}`; a metric's is an aggregate fragment. A relationship is `from`(many) → `to`(one) with ordered `from_columns`/`to_columns`. JSON or YAML via `GET /api/semantic-models/{id}/export`.
 - **Import** (`POST /api/semantic-models/import`) **upserts** the flat document + its fields/metrics over datasets matched by id/source/name; datasets are not created.
 

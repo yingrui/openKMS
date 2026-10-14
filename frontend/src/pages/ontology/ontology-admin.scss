@@ -1864,21 +1864,6 @@ select.console-form-control {
   }
 }
 
-/* Semantic model detail: back link + dataset-scope chips. */
-.model-back {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-1);
-  margin-bottom: var(--space-2);
-  font-size: var(--text-sm);
-  color: var(--color-text-muted);
-  text-decoration: none;
-
-  &:hover {
-    color: var(--color-accent);
-  }
-}
-
 .model-scope {
   display: flex;
   flex-wrap: wrap;
