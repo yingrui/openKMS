@@ -14,7 +14,7 @@ import {
   type MetricResponse,
 } from '../../data/metricsApi';
 import { useConfirm } from '../../contexts/ConfirmContext';
-import { FormField } from '../../styles/design-system';
+import { FormField, PanelToolbar } from '../../styles/design-system';
 
 const METRIC_TYPES = ['simple', 'ratio', 'derived', 'cumulative', 'conversion'] as const;
 
@@ -182,13 +182,15 @@ export function ModelMetricsSection({
 
   return (
     <section>
-      <div className="dataset-columns__toolbar">
-        <h2>{t('dataModel.metrics')}</h2>
-        <button type="button" className="btn btn-primary btn-sm" onClick={openCreate}>
-          <Plus size={14} aria-hidden />
-          {t('datasets.addMetric')}
-        </button>
-      </div>
+      <PanelToolbar
+        leading={<span>{t('dataModel.metrics')}</span>}
+        actions={
+          <button type="button" className="btn btn-primary" onClick={openCreate}>
+            <Plus size={18} aria-hidden />
+            <span>{t('datasets.addMetric')}</span>
+          </button>
+        }
+      />
 
       {loading ? (
         <div className="console-loading">

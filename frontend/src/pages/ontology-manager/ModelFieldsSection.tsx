@@ -15,7 +15,7 @@ import {
 } from '../../data/semanticModelFieldsApi';
 import type { SemanticModelDatasetRef } from '../../data/semanticModelsApi';
 import { useConfirm } from '../../contexts/ConfirmContext';
-import { FormField } from '../../styles/design-system';
+import { FormField, PanelToolbar } from '../../styles/design-system';
 
 type AiContext = { instructions: string; synonyms: string; examples: string };
 /** The spec's three dimension states: `is_time` omitted / true / false. */
@@ -228,15 +228,15 @@ export function ModelFieldsSection({
 
   return (
     <section>
-      <div className="dataset-columns__toolbar">
-        <h2>{t('dataModel.fields')}</h2>
-        <div className="dataset-columns__actions">
-          <button type="button" className="btn btn-primary btn-sm" onClick={openCreate}>
-            <Plus size={14} aria-hidden />
-            {t('datasets.addField')}
+      <PanelToolbar
+        leading={<span>{t('dataModel.fields')}</span>}
+        actions={
+          <button type="button" className="btn btn-primary" onClick={openCreate}>
+            <Plus size={18} aria-hidden />
+            <span>{t('datasets.addField')}</span>
           </button>
-        </div>
-      </div>
+        }
+      />
 
       {loading ? (
         <div className="console-loading">

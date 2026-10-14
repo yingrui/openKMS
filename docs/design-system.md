@@ -53,7 +53,7 @@ Use these instead of per-page copies. **`npm run check:styles`** blocks regressi
 | **`<Dialog>`** | New modals. Legacy overlay class names may remain as CSS aliases during migration. |
 | **`useConfirm()`** | Destructive or blocking confirms — not `window.confirm`. Provider: **`ConfirmProvider`** in **`MainLayout`**. |
 | **`<EmptyState>`** | Standalone zero-results blocks. **`.channel-page-empty*`** remains the channel-list alias. |
-| **`PanelToolbar`** | Detail split panels and section headers with leading + actions (Document/Article detail, KB sections, eval subsections, knowledge-map tree). |
+| **`PanelToolbar`** | Detail split panels and section headers with leading + actions (Document/Article detail, KB sections, eval subsections, knowledge-map tree, semantic-model Metrics/Fields sections). Always use it instead of a hand-rolled flex toolbar — a page-local `*__toolbar` class only ships in its own lazy route chunk, so it silently loses its layout on any other page. |
 | **`<Metric>` / `<MetricGrid>`** (`.ds-metric*`) | Compact label/value metrics on entity detail headers. Prefer over **`list-index-stat`** when there is no icon and several metrics share a row. |
 | **`.ds-checkbox`** | Opt-in checkbox skin (accent fill + focus ring). Prefer over bare native checkboxes. |
 | **`<CheckRow>`** (`.ds-check-row`) | Card-style checkbox with title + optional hint (settings / entity toggles). |
