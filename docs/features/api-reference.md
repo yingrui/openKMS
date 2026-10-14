@@ -401,12 +401,12 @@ Encrypted values; **never returned**. Write/sync/delete reject personal API key 
 | PUT | `/api/semantic-models/{model_id}` | Update a semantic model (name / description / `dataset_ids` / `ai_context`) (`data:write`) |
 | DELETE | `/api/semantic-models/{model_id}` | Delete a semantic model (cascades its fields/metrics) (`data:write`) |
 | GET | `/api/semantic-models/{model_id}/fields` | List a model's fields (`data:read`) |
-| POST | `/api/semantic-models/{model_id}/fields` | Create a field `{dataset_id, name, column_name?, expression?, datatype?, description?, dimension?, ai_context?}`; `dimension` = `{is_time: boolean}` (Ossie) + optional `granularity` (our time-dimension drill-down grain) (`data:write`) |
+| POST | `/api/semantic-models/{model_id}/fields` | Create a field `{dataset_id, name, column_name?, expression?, datatype?, description?, dimension?, ai_context?}`; `datatype` = a `DataType` value, `label`, `dimension` = `{is_time: boolean}` only (Ossie) (`data:write`) |
 | PUT | `/api/semantic-models/{model_id}/fields/{field_id}` | Update a field (`data:write`) |
 | DELETE | `/api/semantic-models/{model_id}/fields/{field_id}` | Delete a field (`data:write`) |
 | GET | `/api/semantic-models/{model_id}/export` | Export one model as a **flat** Ossie document (`version`/`name`/`datasets`/`relationships`/`metrics` + an `OPENKMS` `custom_extensions`) — `?format=json\|yaml` (`data:read`) |
 | POST | `/api/semantic-models/import` | Upsert a model (+ fields/metrics) from an Ossie document (`data:write`) |
-| POST | `/api/semantic-models/{model_id}/preview` | Run one metric grouped by fields (ad-hoc, read-only): body `{metric_id, group_by:[field_id], granularity?, filters?}` → `{sql, columns, rows}`; `granularity` overrides a time dimension's default grain (`data:read`) |
+| POST | `/api/semantic-models/{model_id}/preview` | Run one metric grouped by fields (ad-hoc, read-only): body `{metric_id, group_by:[field_id], granularity?, filters?}` → `{sql, columns, rows}`; `granularity` is the **query-time** grain for time dimensions (the spec's grain belongs to the query side, not the model) (`data:read`) |
 | GET | `/api/explorer-reports` | List explorer reports (`data:read`) |
 | POST | `/api/explorer-reports` | Create explorer report (`data:write`) |
 | GET | `/api/explorer-reports/{id}` | Get explorer report (`data:read`) |

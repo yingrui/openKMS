@@ -83,6 +83,8 @@ def cmd_fields_add(ns: argparse.Namespace) -> None:
         body["expression"] = {"dialects": [{"dialect": "ANSI_SQL", "expression": ns.expression}]}
     if ns.datatype:
         body["datatype"] = ns.datatype
+    if ns.label:
+        body["label"] = ns.label
     if ns.description:
         body["description"] = ns.description
     if ns.is_time is not None:
@@ -157,7 +159,8 @@ def add_subparser(sub) -> None:
     fa.add_argument("--name", required=True)
     fa.add_argument("--column", default=None, help="source column (plain field)")
     fa.add_argument("--expression", default=None, help="ANSI_SQL fragment (computed field)")
-    fa.add_argument("--datatype", default=None)
+    fa.add_argument("--datatype", default=None, help="Ossie DataType (String|Integer|Decimal|...")
+    fa.add_argument("--label", default=None, help="display label")
     fa.add_argument("--description", default=None)
     fa.add_argument(
         "--is-time",

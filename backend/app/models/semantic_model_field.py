@@ -1,10 +1,10 @@
 """Semantic-model field — a model-scoped semantic attribute over a dataset column.
 
-A field is the model-level projection of a column: a **column reference** or a
-**computed expression** (`expression`, Ossie scalar), plus a `datatype`, a
-`dimension` (`{"is_time": bool}`), `description` and `ai_context`. The physical
-column (and its annotation) lives with the dataset (Catalog); the field — its role
-and interpretation — belongs to the semantic model.
+Mirrors the spec's `Field`: a **column reference** or **computed expression**
+(`expression`, Ossie scalar — required), plus `datatype` (the `DataType` enum),
+`label`, `description`, `ai_context` and `dimension` (`{"is_time": bool}` — the only
+key the spec allows). The physical column (and its annotation) lives with the dataset
+(Catalog); the field — its role and interpretation — belongs to the semantic model.
 """
 from __future__ import annotations
 
@@ -37,11 +37,16 @@ class SemanticModelField(Base):
     name: Mapped[str] = mapped_column(String(256), nullable=False)
     # Physical column this field references (null ⇒ computed from `expression`).
     column_name: Mapped[str | None] = mapped_column(String(256), nullable=True)
-    # Ossie expression: {"dialects": {"ANSI_SQL": "<fragment>"}}.
+    # Ossie expression: {"dialects": [{"dialect": "ANSI_SQL", "expression": "<fragment>"}]}.
     expression: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
+    # Ossie `DataType` enum (String | Integer | Decimal | Float | Boolean | Date |
+    # Time | DateTime | DateTimeTz | Opaque).
     datatype: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    # Ossie `label` — a display label for the field.
+    label: Mapped[str | None] = mapped_column(String(256), nullable=True)
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
-    # Ossie dimension: {"is_time": bool}. null ⇒ a plain (non-dimension) field.
+    # Ossie dimension: {"is_time": bool} **only**. null ⇒ follow `datatype`
+    # (temporal ⇒ time dimension); explicit false opts a temporal column out.
     dimension: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
     ai_context: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
     ordinal: Mapped[int] = mapped_column(Integer, nullable=False, default=0)

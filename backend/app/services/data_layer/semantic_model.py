@@ -29,15 +29,13 @@ from app.models.metric_definition import MetricDefinition
 from app.models.semantic_model import SemanticModel
 from app.models.semantic_model_field import SemanticModelField
 from app.services.data_layer.expressions import normalize_expression
-from app.services.data_layer.semantic_model_fields import (
-    dimension_granularity,
-    ossie_dimension,
-)
+from app.services.data_layer.semantic_model_fields import OSSIE_DATATYPES
 from app.services.data_layer.semantic_models import member_ids, set_members
 
 OSSIE_VERSION = "0.2.0.dev0"
 VENDOR = "OPENKMS"
 
+# Legacy internal names -> the spec's DataType enum (stored values are already the enum).
 _OSSIE_DATATYPE = {
     "string": "String",
     "number": "Decimal",
@@ -45,20 +43,10 @@ _OSSIE_DATATYPE = {
     "float": "Float",
     "boolean": "Boolean",
     "datetime": "DateTimeTz",
+    "datetimetz": "DateTimeTz",
     "date": "Date",
     "time": "Time",
     "uuid": "String",
-}
-_ONTOLOGY_DATATYPE = {
-    "String": "string",
-    "Integer": "number",
-    "Decimal": "number",
-    "Float": "number",
-    "Boolean": "boolean",
-    "Date": "datetime",
-    "Time": "datetime",
-    "DateTime": "datetime",
-    "DateTimeTz": "datetime",
 }
 
 
@@ -71,13 +59,14 @@ def _dataset_source(d: Dataset, ds_names: dict[str, str]) -> str:
 
 
 def _ossie_datatype(t: str | None) -> str | None:
-    return _OSSIE_DATATYPE.get((t or "").lower())
+    """The spec's `DataType`: stored as the enum already; tolerate legacy names."""
+    if not t:
+        return None
+    if t in OSSIE_DATATYPES:
+        return t
+    return _OSSIE_DATATYPE.get(t.lower())
 
 
-def _extension_grain(dimension: dict | None) -> dict[str, Any]:
-    """Our time-dimension grain travels in the OPENKMS extension, not in `dimension`."""
-    grain = dimension_granularity(dimension)
-    return {"granularity": grain} if grain else {}
 
 
 async def export_semantic_model(db: AsyncSession, model: SemanticModel) -> dict[str, Any]:
@@ -139,11 +128,7 @@ async def export_semantic_model(db: AsyncSession, model: SemanticModel) -> dict[
         },
         "fields": {
             _dataset_name(d): {
-                f.name: {
-                    "id": f.id,
-                    "column": f.column_name,
-                    **_extension_grain(f.dimension),
-                }
+                f.name: {"id": f.id, "column": f.column_name}
                 for f in fields_by_dataset.get(d.id, [])
             }
             for d in datasets
@@ -192,9 +177,10 @@ async def export_semantic_model(db: AsyncSession, model: SemanticModel) -> dict[
                 "dialects": [{"dialect": "ANSI_SQL", "expression": f.column_name or f.name}]
             }
             fentry: dict[str, Any] = {"name": f.name, "expression": fexpr}
-            dim = ossie_dimension(f.dimension)
-            if dim:
-                fentry["dimension"] = dim
+            if f.dimension:
+                fentry["dimension"] = f.dimension
+            if f.label:
+                fentry["label"] = f.label
             if f.description:
                 fentry["description"] = f.description
             if _ossie_datatype(f.datatype):
@@ -360,13 +346,10 @@ async def import_semantic_model(db: AsyncSession, doc: dict[str, Any]) -> dict[s
             row.name = f["name"]
             row.column_name = fext.get("column")
             row.expression = normalize_expression(f.get("expression"))
-            row.datatype = _ONTOLOGY_DATATYPE.get(f.get("datatype") or "") or f.get("datatype")
+            row.datatype = f.get("datatype")
+            row.label = f.get("label")
             row.description = f.get("description")
-            dim = f.get("dimension")
-            grain = fext.get("granularity")
-            if isinstance(dim, dict) and isinstance(grain, str):
-                dim = {**dim, "granularity": grain}
-            row.dimension = dim
+            row.dimension = f.get("dimension")
             row.ai_context = f.get("ai_context")
             field_count += 1
 
@@ -413,7 +396,7 @@ async def import_semantic_model(db: AsyncSession, doc: dict[str, Any]) -> dict[s
         row.type = mext.get("type") or "simple"
         row.business_definition = m.get("description")
         row.expression = normalize_expression(m.get("expression"))
-        row.datatype = _ONTOLOGY_DATATYPE.get(m.get("datatype") or "") or m.get("datatype")
+        row.datatype = m.get("datatype")
         row.filters = mext.get("filters")
         joins = mext.get("joins") or []
         row.joins = [

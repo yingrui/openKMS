@@ -102,52 +102,54 @@ def test_explicit_true_makes_a_non_temporal_column_a_time_dimension():
     assert _dimension_expr(f, "year") == 'date_trunc(\'year\', base."d_year")'
 
 
-# --- our granularity extension ---------------------------------------------------
+# --- spec conformance: DataType enum + the dimension having only `is_time` --------
 
 
-def test_granularity_defaults_the_preview_grain():
-    f = _field(
-        name="trade_date",
-        column_name="trade_date",
-        expression=None,
-        datatype="datetime",
-        dimension={"is_time": True, "granularity": "week"},
-    )
-    assert _dimension_expr(f, None) == 'date_trunc(\'week\', base."trade_date")'
-    # an explicit per-query grain still wins
+def _validate_datatype(datatype):
+    from app.services.data_layer.semantic_model_fields import validate_datatype
+
+    validate_datatype(datatype)
+
+
+def test_datatype_must_be_the_spec_enum():
+    from app.services.data_layer.semantic_model_fields import FieldError
+
+    for ok in ("String", "Integer", "Decimal", "Float", "Boolean", "Date", "Time",
+               "DateTime", "DateTimeTz", "Opaque", None, ""):
+        _validate_datatype(ok)
+    for bad in ("string", "number", "datetime", "text", "varchar"):
+        try:
+            _validate_datatype(bad)
+        except FieldError:
+            continue
+        raise AssertionError(f"expected FieldError for datatype {bad!r}")
+
+
+def test_dimension_rejects_anything_but_is_time():
+    from app.services.data_layer.semantic_model_fields import FieldError, validate_dimension
+
+    validate_dimension(None)
+    validate_dimension({"is_time": True})
+    validate_dimension({"is_time": False})
+    for bad in ({"is_time": True, "granularity": "month"}, {"is_time": True, "timezone": "UTC"},
+                {"type": "time"}, {"is_time": "yes"}, {}, {"is_time": True, "entity": {}}):
+        try:
+            validate_dimension(bad)
+        except FieldError:
+            continue
+        raise AssertionError(f"expected FieldError for dimension {bad!r}")
+
+
+def test_a_time_dimension_grain_is_query_time_only():
+    """No stored grain: the request supplies it, else `day`."""
+    f = _field(name="trade_date", column_name="trade_date", expression=None, datatype="DateTimeTz",
+               dimension={"is_time": True})
+    assert _dimension_expr(f, None) == 'date_trunc(\'day\', base."trade_date")'
     assert _dimension_expr(f, "month") == 'date_trunc(\'month\', base."trade_date")'
 
 
-def _validate(dimension):
-    from app.services.data_layer.semantic_model_fields import validate_dimension
-
-    validate_dimension(dimension)
-
-
-def test_validate_dimension_accepts_our_granularity():
-    from app.services.data_layer.semantic_model_fields import FieldError
-
-    _validate({"is_time": True, "granularity": "month"})
-    _validate({"is_time": False})
-    _validate(None)
-    for bad in (
-        {"is_time": True, "granularity": "fortnight"},
-        {"is_time": False, "granularity": "day"},
-        {"is_time": True, "timezone": "Asia/Shanghai"},
-        {"type": "time"},
-        {},
-    ):
-        try:
-            _validate(bad)
-        except FieldError:
-            continue
-        raise AssertionError(f"expected FieldError for {bad!r}")
-
-
-def test_ossie_dimension_drops_our_extension():
-    from app.services.data_layer.semantic_model_fields import ossie_dimension
-
-    assert ossie_dimension({"is_time": True, "granularity": "month"}) == {"is_time": True}
-    assert ossie_dimension({"is_time": False}) == {"is_time": False}
-    assert ossie_dimension(None) is None
-    assert ossie_dimension({}) is None
+def test_ossie_enum_datatypes_resolve_the_time_dimension_role():
+    date_field = _field(name="d", column_name="d", expression=None, datatype="Date")
+    opaque = _field(name="o", column_name="o", expression=None, datatype="Opaque")
+    assert _dimension_expr(date_field, None).startswith("date_trunc(")
+    assert _dimension_expr(opaque, None) == 'base."o"'

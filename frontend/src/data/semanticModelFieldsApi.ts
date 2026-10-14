@@ -6,11 +6,24 @@ export interface SemanticModelFieldDialect {
   expression: string;
 }
 
+/** The spec's `Dimension`: `{is_time}` and nothing else. */
 export interface SemanticModelFieldDimension {
   is_time?: boolean;
-  /** Our extension (not in the core spec): the default drill-down grain for a time dimension. */
-  granularity?: string;
 }
+
+/** The spec's `DataType` enum — the only values a field's `datatype` may take. */
+export const OSSIE_DATATYPES = [
+  'String',
+  'Integer',
+  'Decimal',
+  'Float',
+  'Boolean',
+  'Date',
+  'Time',
+  'DateTime',
+  'DateTimeTz',
+  'Opaque',
+] as const;
 
 /** Ossie datatypes that make a field a time dimension unless `is_time` says otherwise. */
 export const TEMPORAL_DATATYPES = new Set([
@@ -42,6 +55,7 @@ export interface SemanticModelFieldResponse {
   column_name: string | null;
   expression: { dialects?: SemanticModelFieldDialect[] } | null;
   datatype: string | null;
+  label: string | null;
   description: string | null;
   dimension: SemanticModelFieldDimension | null;
   ai_context: Record<string, unknown> | null;
@@ -61,6 +75,7 @@ export interface SemanticModelFieldPayload {
   column_name: string | null;
   expression: { dialects?: SemanticModelFieldDialect[] } | null;
   datatype: string | null;
+  label: string | null;
   description: string | null;
   dimension: SemanticModelFieldDimension | null;
   ai_context: Record<string, unknown> | null;

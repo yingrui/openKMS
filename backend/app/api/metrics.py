@@ -28,6 +28,7 @@ from app.schemas.metric import (
 )
 from app.services.data_layer.expressions import normalize_expression
 from app.services.data_layer.metrics import MetricError, compute_metric, validate_metric_definition
+from app.services.data_layer.semantic_model_fields import FieldError, validate_datatype
 from app.services.permissions.permission_catalog import PERM_DATA_READ, PERM_DATA_WRITE
 
 router = APIRouter(prefix="/metrics", tags=["metrics"], dependencies=[Depends(require_auth)])
@@ -138,7 +139,8 @@ async def create_metric(
         )
     try:
         validate_metric_definition(name=body.name, type=body.type, expression=body.expression)
-    except MetricError as exc:
+        validate_datatype(body.datatype)
+    except (MetricError, FieldError) as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
     p = request.state.openkms_jwt_payload
@@ -205,7 +207,8 @@ async def update_metric(
             type=data.get("type", m.type),
             expression=data.get("expression", m.expression),
         )
-    except MetricError as exc:
+        validate_datatype(data.get("datatype", m.datatype))
+    except (MetricError, FieldError) as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
     if "filters" in data:

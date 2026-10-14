@@ -27,6 +27,7 @@ from app.services.data_layer.semantic_model_fields import (
     FieldError,
     column_expression,
     list_fields,
+    validate_datatype,
     validate_dimension,
     validate_field,
 )
@@ -103,6 +104,7 @@ async def create_model_field(
             expression=expression,
             column_names=columns,
         )
+        validate_datatype(body.datatype)
         validate_dimension(body.dimension)
     except FieldError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
@@ -130,6 +132,7 @@ async def create_model_field(
         column_name=body.column_name,
         expression=normalize_expression(expression),
         datatype=body.datatype,
+        label=body.label,
         description=body.description,
         dimension=body.dimension,
         ai_context=body.ai_context,
@@ -169,6 +172,7 @@ async def update_model_field(
             expression=expression,
             column_names=columns,
         )
+        validate_datatype(data.get("datatype", field.datatype))
         validate_dimension(data.get("dimension", field.dimension))
     except FieldError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc

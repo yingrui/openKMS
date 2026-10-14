@@ -2019,6 +2019,13 @@ select.console-form-control {
   gap: var(--space-3);
 }
 
+.field-label {
+  display: block;
+  margin-top: var(--space-1);
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+}
+
 .model-try__controls {
   display: flex;
   align-items: flex-end;

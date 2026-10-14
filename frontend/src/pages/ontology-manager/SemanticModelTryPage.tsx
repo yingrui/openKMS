@@ -76,15 +76,8 @@ export function SemanticModelTryPage() {
     setResult(null);
   }, [metricId]);
 
-  const toggle = (id: string) => {
-    const adding = !selected.includes(id);
-    if (adding) {
-      // Prefer the field's own default grain (our extension) when it has one.
-      const grain = fields.find((f) => f.id === id)?.dimension?.granularity;
-      if (grain) setGranularity(grain);
-    }
-    setSelected((prev) => (adding ? [...prev, id] : prev.filter((x) => x !== id)));
-  };
+  const toggle = (id: string) =>
+    setSelected((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
 
   const handleRun = async () => {
     if (!metricId) return;
