@@ -101,7 +101,7 @@ Goal: the Datasets app **manages the Ossie semantic model**, with each definitio
 - A saved query is a **consumption** artifact, not part of the Ossie semantic model (`datasets` / `fields` / `metrics` / `relationships`). `saved_queries` was **removed**; saved analyses live in **Data Explorer** (`explorer_reports`).
 
 ### Stage 6 — Semantic Model export / import ✅
-- **API:** `GET /api/semantic-models/{id}/export` → **flat** Ossie document for one model (core spec `0.2.0.dev0`; `datasets`/`relationships`/`metrics` + an `OPENKMS` `custom_extensions`); `POST /api/semantic-models/import` upserts it (datasets matched by id/source/name). Validated against the vendored [`ossie-schema.json`](../../research/ossie/spec.md).
+- **API:** `GET /api/semantic-models/{id}/export` → **flat** Ossie document for one model (core spec `0.2.0.dev0`; `datasets`/`relationships`/`metrics` + an `OPENKMS` `custom_extensions`); `POST /api/semantic-models/import` upserts it (datasets matched by id/source/name). Validated against the vendored [`ossie-schema.json`](../research/ossie/spec.md).
 - **Frontend:** Model header — **Export JSON / Export YAML / Import**.
 - **Verify:** ✅ a round-trip re-imports with a stable document (verified live).
 

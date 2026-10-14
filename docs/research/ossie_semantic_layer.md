@@ -178,6 +178,17 @@ Instead:
 
 - **A regular/categorical dimension** is just a field — **omit** `dimension` (or set
   `is_time: false`). There is no `categorical` value.
+- **Granularity is not a declaration-layer concept.** `core-spec/expression_language.md`
+  says grain calculations are a *future proposal*, and `GROUP BY` is "controlled by grain
+  specification" — grain belongs to the **query** interface, whose document is separate.
+  To put a grain in a *model*, make it a **field**: `expression: DATE_TRUNC('month', d)`
+  with `dimension: {is_time: true}` — `DATE_TRUNC` is REQUIRED by the portable expression
+  language, so that form is conformant *and* visible to a consumer. Do **not** park a
+  grain in a vendor `custom_extensions` blob: a consumer reading the document will not see
+  it.
+- **Timezones are not modelled at all** — no `AT TIME ZONE` / `CONVERT_TIMEZONE` in the
+  function set, only `TIMESTAMP_NTZ` literals ("no time zone") and the `DateTimeTz`
+  datatype. A timezone belongs to the data / datatype, not to a dimension.
 - **A time dimension** is `dimension: {is_time: true}`. **Granularity is not a field
   property** — it is a *consumption-time* choice (`date_trunc` grain), and `is_time` is
   a role independent of `datatype` (an `Integer` year or a `String` "Q1" may be a time

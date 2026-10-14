@@ -158,7 +158,7 @@ model array cannot produce a valid model document. Preserve model contents and
 custom extensions; never silently select only the first model or overwrite a file
 when splitting a document.
 
-For [ontology maps](../ontology/ontology.md#ontology-mappings), each embedded
+For [ontology maps](https://github.com/apache/ossie/blob/main/ontology/ontology.md#ontology-mappings), each embedded
 model must be a complete core document.
 
 ---
