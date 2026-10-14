@@ -162,15 +162,17 @@
     "tryRunFailed": "预览失败",
     "outOfScope": "已超出范围",
     "dimensionTime": "时间",
-    "fieldDimensionHint": "字段的维度角色。`is_time` 是角色、与数据类型无关：保持“自动”时跟随数据类型（Date/Time/DateTime/DateTimeTz ⇒ 时间维度）；选“普通维度”可让时间类型的列退出时间轴（如审计用 created_at）。",
+    "fieldDimensionHint": "规范里维度只有一个属性：时间角色（`dimension.is_time`）。\"自动\"跟随数据类型 —— Date/Time/DateTime/DateTimeTz 的字段是时间维度，其余不是；选\"否\"可让时间类型的列（如审计用 created_at）不进入时间轴。其它字段就是普通字段，可用于分组/筛选。",
     "tryBack": "返回模型",
-    "fieldDimension": "维度",
+    "fieldDimension": "时间维度",
     "dimensionTimeLabel": "时间维度",
     "dimensionAuto": "自动（按数据类型）",
-    "dimensionRegular": "普通维度",
-    "dimensionTimeByType": "时间维度（按数据类型）",
+    "dimensionTimeByType": "是（按类型）",
     "fieldLabel": "显示名",
-    "fieldDatatypeHint": "字段的逻辑类型，取 Ossie DataType 枚举之一。"
+    "fieldDatatypeHint": "字段的逻辑类型，取 Ossie DataType 枚举之一。",
+    "dimensionYes": "是",
+    "dimensionNo": "否",
+    "tryOtherFields": "其他字段（{{count}}）"
   },
   "datasets": {
     "title": "数据集",

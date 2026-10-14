@@ -2046,6 +2046,16 @@ select.console-form-control {
   color: var(--color-text-secondary);
 }
 
+.model-try__more {
+  margin-top: var(--space-2);
+
+  summary {
+    cursor: pointer;
+    font-size: var(--text-sm);
+    color: var(--color-text-muted);
+  }
+}
+
 .model-try__sql-toggle {
   margin-top: var(--space-2);
 }

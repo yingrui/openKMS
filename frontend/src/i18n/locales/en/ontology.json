@@ -162,15 +162,17 @@
     "tryRunFailed": "Preview failed",
     "outOfScope": "out of scope",
     "dimensionTime": "Time",
-    "fieldDimensionHint": "The field’s dimension role. `is_time` is a role, independent of the data type: left automatic it follows the data type (Date/Time/DateTime/DateTimeTz ⇒ time dimension); pick \"Regular dimension\" to opt a temporal column out (e.g. an audit timestamp).",
+    "fieldDimensionHint": "Ossie models one dimension property: the time role (`dimension.is_time`). \"Automatic\" follows the data type — a Date/Time/DateTime/DateTimeTz field is a time dimension, anything else is not. Pick \"No\" to keep a temporal column (e.g. an audit timestamp) off the time axis. Every other field is simply a field, usable for grouping/filtering.",
     "tryBack": "Back to model",
-    "fieldDimension": "Dimension",
+    "fieldDimension": "Time dimension",
     "dimensionTimeLabel": "Time dimension",
     "dimensionAuto": "Automatic (from data type)",
-    "dimensionRegular": "Regular dimension",
-    "dimensionTimeByType": "Time dimension (from data type)",
+    "dimensionTimeByType": "Yes (from data type)",
     "fieldLabel": "Label",
-    "fieldDatatypeHint": "The field’s logical type. One of the Ossie DataType values."
+    "fieldDatatypeHint": "The field’s logical type. One of the Ossie DataType values.",
+    "dimensionYes": "Yes",
+    "dimensionNo": "No",
+    "tryOtherFields": "Other fields ({{count}})"
   },
   "datasets": {
     "title": "Datasets",

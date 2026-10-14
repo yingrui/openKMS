@@ -72,13 +72,14 @@ export function ModelFieldsSection({
   const datasetLabel = (id: string) =>
     datasets.find((d) => d.id === id)?.name ?? t('dataModel.outOfScope');
 
-  /** The dimension column shows the *effective* role: explicit, or the spec's datatype default. */
+  /**
+   * Only the *time* role is modelled by the spec (`dimension.is_time`). A field that is not
+   * a time dimension is simply a field — it is not labelled a "dimension".
+   */
   const dimensionLabel = (f: SemanticModelFieldResponse) => {
-    if (f.dimension?.is_time === true) return t('dataModel.dimensionTimeLabel');
-    if (f.dimension?.is_time === false) return t('dataModel.dimensionRegular');
-    return isTemporalDatatype(f.datatype)
-      ? t('dataModel.dimensionTimeByType')
-      : t('dataModel.dimensionRegular');
+    if (f.dimension?.is_time === true) return t('dataModel.dimensionYes');
+    if (f.dimension?.is_time === false) return t('datasets.dash');
+    return isTemporalDatatype(f.datatype) ? t('dataModel.dimensionTimeByType') : t('datasets.dash');
   };
 
   const load = useCallback(async () => {
@@ -253,7 +254,7 @@ export function ModelFieldsSection({
                 <th>{t('datasets.modelDatasets')}</th>
                 <th>{t('datasets.fieldSource')}</th>
                 <th>{t('datasets.colDataType')}</th>
-                <th>{t('datasets.fieldDimension')}</th>
+                <th>{t('dataModel.fieldDimension')}</th>
                 <th>{t('datasets.fieldAiContext')}</th>
                 <th />
               </tr>
@@ -398,8 +399,8 @@ export function ModelFieldsSection({
                   onChange={(e) => setDimensionMode(e.target.value as DimensionMode)}
                 >
                   <option value="auto">{t('dataModel.dimensionAuto')}</option>
-                  <option value="time">{t('dataModel.dimensionTimeLabel')}</option>
-                  <option value="regular">{t('dataModel.dimensionRegular')}</option>
+                  <option value="time">{t('dataModel.dimensionYes')}</option>
+                  <option value="regular">{t('dataModel.dimensionNo')}</option>
                 </select>
               </FormField>
 

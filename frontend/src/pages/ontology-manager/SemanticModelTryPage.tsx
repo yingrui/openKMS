@@ -62,10 +62,13 @@ export function SemanticModelTryPage() {
 
   const metric = useMemo(() => metrics.find((m) => m.id === metricId), [metrics, metricId]);
   // Every field is a dimension; `is_time` marks time dimensions.
-  const dimensions = useMemo(
+  const groupable = useMemo(
     () => fields.filter((f) => !metric || f.dataset_id === metric.base_dataset_id),
     [fields, metric],
   );
+  // Time dimensions first — they are the fields the model actually calls dimensions.
+  const timeDims = groupable.filter(isTimeDimension);
+  const otherFields = groupable.filter((f) => !isTimeDimension(f));
   const hasTimeDim = selected.some((id) => {
     const f = fields.find((x) => x.id === id);
     return f ? isTimeDimension(f) : false;
@@ -135,24 +138,41 @@ export function SemanticModelTryPage() {
               </FormField>
               <div className="model-try__dims">
                 <span className="model-try__dims-label">{t('dataModel.tryDimensions')}</span>
-                {dimensions.length === 0 ? (
+                {groupable.length === 0 ? (
                   <span className="page-subtitle">{t('dataModel.tryNoDimensions')}</span>
                 ) : (
-                  dimensions.map((f) => (
-                    <label key={f.id} className="ds-check-row">
-                      <input
-                        type="checkbox"
-                        checked={selected.includes(f.id)}
-                        onChange={() => toggle(f.id)}
-                      />
-                      <span>
-                        {f.name}
-                        {isTimeDimension(f) ? (
+                  <>
+                    {timeDims.map((f) => (
+                      <label key={f.id} className="ds-check-row">
+                        <input
+                          type="checkbox"
+                          checked={selected.includes(f.id)}
+                          onChange={() => toggle(f.id)}
+                        />
+                        <span>
+                          {f.name}
                           <em className="model-wizard__ds"> · {t('dataModel.dimensionTime')}</em>
-                        ) : null}
-                      </span>
-                    </label>
-                  ))
+                        </span>
+                      </label>
+                    ))}
+                    {otherFields.length > 0 && (
+                      <details className="model-try__more">
+                        <summary>
+                          {t('dataModel.tryOtherFields', { count: otherFields.length })}
+                        </summary>
+                        {otherFields.map((f) => (
+                          <label key={f.id} className="ds-check-row">
+                            <input
+                              type="checkbox"
+                              checked={selected.includes(f.id)}
+                              onChange={() => toggle(f.id)}
+                            />
+                            <span>{f.name}</span>
+                          </label>
+                        ))}
+                      </details>
+                    )}
+                  </>
                 )}
               </div>
               {hasTimeDim && (
