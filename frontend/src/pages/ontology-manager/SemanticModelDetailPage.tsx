@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useNavigate, useParams } from 'react-router-dom';
-import { ChevronLeft, Loader2, MoreHorizontal, Pencil, Trash2 } from 'lucide-react';
+import { ChevronLeft, Loader2, MoreHorizontal, Pencil, Play, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { fetchDatasets, type DatasetResponse } from '../../data/datasetsApi';
 import {
@@ -16,7 +16,6 @@ import { useConfirm } from '../../contexts/ConfirmContext';
 import { Dialog, FormField } from '../../styles/design-system';
 import { ModelFieldsSection } from './ModelFieldsSection';
 import { ModelMetricsSection } from './ModelMetricsSection';
-import { ModelPreviewSection } from './ModelPreviewSection';
 import '../ontology/ontology-admin.scss';
 
 function download(filename: string, text: string, type: string): void {
@@ -178,6 +177,10 @@ export function SemanticModelDetailPage() {
           )}
         </div>
         <div className="dataset-columns__actions">
+          <Link to={`/data-model/${model.id}/try`} className="btn btn-primary btn-sm">
+            <Play size={14} aria-hidden />
+            {t('dataModel.tryTitle')}
+          </Link>
           <button type="button" className="btn btn-secondary btn-sm" onClick={openEdit}>
             <Pencil size={14} aria-hidden />
             {t('dataModel.editModel')}
@@ -204,8 +207,6 @@ export function SemanticModelDetailPage() {
 
       <div className="ontology-admin-content">
         <ModelMetricsSection semanticModelId={model.id} datasetIds={model.dataset_ids} />
-
-        <ModelPreviewSection semanticModelId={model.id} />
 
         <ModelFieldsSection semanticModelId={model.id} datasets={model.datasets} onChanged={() => void load()} />
       </div>

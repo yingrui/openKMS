@@ -220,6 +220,11 @@ const SemanticModelDetailPage = lazy(() =>
     default: m.SemanticModelDetailPage,
   })),
 );
+const SemanticModelTryPage = lazy(() =>
+  import('./pages/ontology-manager/SemanticModelTryPage').then((m) => ({
+    default: m.SemanticModelTryPage,
+  })),
+);
 const DataExplorerPage = lazy(() =>
   import('./pages/ontology-manager/DataExplorerPage').then((m) => ({ default: m.DataExplorerPage })),
 );
@@ -413,6 +418,7 @@ function App() {
           <Route path="models/:modelId" element={<ModelDetail />} />
           <Route path="data-model" element={<DataModelPage />} />
           <Route path="data-model/:modelId" element={<SemanticModelDetailPage />} />
+          <Route path="data-model/:modelId/try" element={<SemanticModelTryPage />} />
           <Route path="data-explorer" element={<DataExplorerPage />} />
           <Route path="data-explorer/:id" element={<ExplorerReportDetail />} />
           <Route path="datasets" element={<DatasetsListPage />} />

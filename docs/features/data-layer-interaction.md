@@ -94,7 +94,7 @@ The Model tab lists **semantic models** — **named scopes** over the **shared**
 
 - **List → detail** — **New model** opens a short **wizard** (details → dataset scope → **metrics**); then open it. An **Import** (per-model document) lives in the header.
 - **Metrics** — the model's aggregate **expressions** (Ossie `expression.dialects`), authored by a data engineer with **AI-assist**; run read-only (timeout + row cap).
-- **Try it** — run a metric grouped by **fields** (a field is a dimension; time dimensions carry `dimension.is_time` and use `date_trunc` with a query-time granularity) → a results table + the generated SQL (ad-hoc, not saved).
+- **Try it** — a **separate page** opened from the model header: pick a metric, check the fields to group by (a field is a dimension; time dimensions carry `dimension.is_time` and use `date_trunc` with a query-time granularity) → a results table + the generated SQL (ad-hoc, not saved).
 - **Fields** — the model's semantic fields (column ref / expression + Ossie `dimension` `{is_time}` + `ai_context`), **added explicitly** (a field marks a time dimension or adds AI context); the same column can carry a different dimension/`ai_context` per model.
 - **Export / Import** — the Ossie document, per model, in the model header overflow menu.
 

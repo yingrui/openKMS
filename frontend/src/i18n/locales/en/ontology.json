@@ -152,17 +152,18 @@
     "fieldGranularity": "Granularity",
     "fieldDescription": "Description",
     "tryTitle": "Try it",
-    "tryHint": "Run a metric grouped by its dimensions — ad-hoc and read-only; nothing is saved.",
+    "tryHint": "Run a metric grouped by the model's fields — ad-hoc and read-only; nothing is saved.",
     "tryDimensions": "Dimensions",
     "tryRun": "Run",
-    "tryNoDimensions": "This metric has no dimensions yet — add dimension fields below.",
+    "tryNoDimensions": "No fields on this metric's dataset yet — add fields first.",
     "tryNoMetrics": "Add a metric first.",
     "tryNoRows": "No rows.",
     "trySql": "SQL",
     "tryRunFailed": "Preview failed",
     "outOfScope": "out of scope",
     "dimensionTime": "Time",
-    "fieldDimensionHint": "Ossie dimension: a field can be marked as a time dimension (is_time)."
+    "fieldDimensionHint": "Ossie dimension: a field can be marked as a time dimension (is_time).",
+    "tryBack": "Back to model"
   },
   "datasets": {
     "title": "Datasets",

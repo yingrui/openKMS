@@ -91,7 +91,7 @@ The **shared base** (datasets, their physical columns, relationships) lives in *
 - The **Ossie `datasets`** section of a model's document: `source` (a dotted string), `primary_key`, `unique_keys`, **`columns`** (with descriptions), **`fields`** (the model's), `ai_context`.
 
 ### 5. Try (preview)
-- **Try it** runs a metric **grouped by fields** (dimensions) — ad-hoc and read-only, nothing saved. Time dimensions aggregate with `date_trunc('<granularity>', …)`, the **granularity chosen at query time**; so “P/E per day per stock” = the metric + `group_by` `trade_date` (time) and `ts_code`.
+- **Try it** is its **own page** (`/data-model/{id}/try`), opened from the model header's **Try it** button — it runs a metric **grouped by fields** (dimensions), ad-hoc and read-only, nothing saved. Time dimensions aggregate with `date_trunc('<granularity>', …)`, the **granularity chosen at query time**; so “P/E per day per stock” = the metric + `group_by` `trade_date` (time) and `ts_code`.
 - It returns the rows **and the generated SQL**. Saving a query is a **consumption** concern → **Data Explorer** (`saved_queries` was removed).
 
 ### 6. Export / Import (Ossie) ✅

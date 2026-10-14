@@ -152,17 +152,18 @@
     "fieldGranularity": "粒度",
     "fieldDescription": "描述",
     "tryTitle": "试用",
-    "tryHint": "按维度对指标分组运行 —— 即席、只读，不保存。",
+    "tryHint": "按模型的字段对指标分组运行 —— 即席、只读，不保存。",
     "tryDimensions": "维度",
     "tryRun": "运行",
-    "tryNoDimensions": "该指标暂无维度 —— 在下方添加维度字段。",
+    "tryNoDimensions": "该指标所在数据集暂无字段 —— 请先添加字段。",
     "tryNoMetrics": "请先添加指标。",
     "tryNoRows": "无数据。",
     "trySql": "SQL",
     "tryRunFailed": "预览失败",
     "outOfScope": "已超出范围",
     "dimensionTime": "时间",
-    "fieldDimensionHint": "Ossie 维度：字段可标记为时间维度（is_time）。"
+    "fieldDimensionHint": "Ossie 维度：字段可标记为时间维度（is_time）。",
+    "tryBack": "返回模型"
   },
   "datasets": {
     "title": "数据集",
