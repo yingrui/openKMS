@@ -176,7 +176,9 @@
     "tryRuns": "最近运行",
     "viewYaml": "查看 YAML",
     "copy": "复制",
-    "copied": "已复制到剪贴板"
+    "copied": "已复制到剪贴板",
+    "metricCount_other": "{{count}} 个指标",
+    "fieldCount_other": "{{count}} 个字段"
   },
   "datasets": {
     "title": "数据集",

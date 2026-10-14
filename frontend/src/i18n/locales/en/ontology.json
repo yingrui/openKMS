@@ -176,7 +176,11 @@
     "tryRuns": "Recent runs",
     "viewYaml": "View YAML",
     "copy": "Copy",
-    "copied": "Copied to clipboard"
+    "copied": "Copied to clipboard",
+    "metricCount_one": "{{count}} metric",
+    "metricCount_other": "{{count}} metrics",
+    "fieldCount_one": "{{count}} field",
+    "fieldCount_other": "{{count}} fields"
   },
   "datasets": {
     "title": "Datasets",

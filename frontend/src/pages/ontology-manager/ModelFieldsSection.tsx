@@ -244,7 +244,11 @@ export function ModelFieldsSection({
   return (
     <section>
       <PanelToolbar
-        leading={<span>{t('dataModel.fields')}</span>}
+        leading={
+          <span className="page-subtitle">
+            {t('dataModel.fieldCount', { count: filtered.length })}
+          </span>
+        }
         actions={
           <>
             <div className="console-datasets-search">

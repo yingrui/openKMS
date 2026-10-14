@@ -183,7 +183,11 @@ export function ModelMetricsSection({
   return (
     <section>
       <PanelToolbar
-        leading={<span>{t('dataModel.metrics')}</span>}
+        leading={
+          <span className="page-subtitle">
+            {t('dataModel.metricCount', { count: metrics.length })}
+          </span>
+        }
         actions={
           <button type="button" className="btn btn-primary" onClick={openCreate}>
             <Plus size={18} aria-hidden />
