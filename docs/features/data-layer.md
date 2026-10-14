@@ -101,7 +101,7 @@ Goal: the Datasets app **manages the Ossie semantic model**, with each definitio
 - A saved query is a **consumption** artifact, not part of the Ossie semantic model (`datasets` / `fields` / `metrics` / `relationships`). `saved_queries` was **removed**; saved analyses live in **Data Explorer** (`explorer_reports`).
 
 ### Stage 6 — Semantic Model export / import ✅
-- **API:** `GET /api/semantic-models/{id}/export` → **flat** Ossie document for one model (core spec `0.2.0.dev0`; `datasets`/`relationships`/`metrics` + an `OPENKMS` `custom_extensions`); `POST /api/semantic-models/import` upserts it (datasets matched by id/source/name). Validated against the vendored [`ossie-schema.json`](../research/ossie/spec.md).
+- **API:** `GET /api/semantic-models/{id}/export` → **flat** Ossie document for one model (core spec `0.2.0.dev0`; `datasets`/`relationships`/`metrics` + entity-level `OPENKMS` `custom_extensions` for the few non-spec facts); `POST /api/semantic-models/import` upserts it — everything matched **by name** (datasets by `source` first), no ids in the document. Validated against the vendored [`ossie-schema.json`](../research/ossie/spec.md).
 - **Frontend:** Model header — **Export JSON / Export YAML / Import**.
 - **Verify:** ✅ a round-trip re-imports with a stable document (verified live).
 
@@ -150,8 +150,9 @@ So a table is described (catalog), modeled (fields/relationships), trusted (qual
 | 21 | **A semantic model is a named scope** over the **shared** base (datasets, columns, relationships — Catalog-owned). It owns **fields** and **metrics** (+ dataset membership, `ai_context`); export/import is per model. There is no default model — if none exists, the list is empty. |
 | 22 | **Columns are physical (Catalog); fields are model-scoped.** A column carries a maintained `description`; a field is that column (or a computed expression) **as used in one model** — with its `role` and `ai_context`. So a field's `ai_context` can differ per model. |
 | 23 | **No queries in the semantic model.** A saved query is a **consumption** artifact (Data Explorer), not part of the Ossie `semantic_model` (`datasets` / `fields` / `metrics` / `relationships`). `saved_queries` was removed. |
+| 26 | **Vendor extensions are entity-level, and carry no ids.** `custom_extensions` sits on the Dataset/Relationship/Metric that needs it (the spec allows this) — never one document-level blob — and we emit no stable ids, because every reference in the document is by name. |
 | 25 | **Every expression is labelled `ANSI_SQL`** — including PostgreSQL-specific syntax (the spec's `Dialect` enum has no `POSTGRES`, and our datasets are PostgreSQL-only), so a couple of our expressions are not portable. |
-| 24 | **A metric keeps an explicit `base_dataset` anchor** (Ossie has none — its engine derives the `FROM`/joins from the expression). Ours lives in the `OPENKMS` `custom_extensions`; deriving it from the expression + relationships is **deferred to the agent auto-query phase**. |
+| 24 | **A metric keeps an explicit `base_dataset` anchor** (Ossie has none — its engine derives the `FROM`/joins from the expression). It travels in the metric's own `OPENKMS` `custom_extensions`; deriving it from the expression + relationships is **deferred to the agent auto-query phase**. |
 
 ## Still open
 

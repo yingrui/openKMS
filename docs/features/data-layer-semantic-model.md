@@ -97,10 +97,18 @@ The **shared base** (datasets, their physical columns, relationships) lives in *
 
 ### 6. Export / Import (Ossie) ✅
 - **Export / Import are per model**, in the model's header overflow menu — an interchange *output*, not the primary action; the model is built by configuration above.
-- **Export** one semantic model as a **flat Ossie document** (core spec `0.2.0.dev0`): `version`, `name`, `description?`, `ai_context?`, `datasets[]`, `relationships[]`, `metrics[]`, and an `OPENKMS` `custom_extensions` entry for our internals. A dataset's `source` is a dotted string; a field's `expression` is `{dialects:[{dialect, expression}]}` (scalar) with `dimension: {is_time}`; a metric's is an aggregate fragment. A relationship is `from`(many) → `to`(one) with ordered `from_columns`/`to_columns`. JSON or YAML via `GET /api/semantic-models/{id}/export`.
+- **Export** one semantic model as a **flat Ossie document** (core spec `0.2.0.dev0`): `version`, `name`, `description?`, `ai_context?`, `datasets[]`, `relationships[]`, `metrics[]` — plus a tiny `OPENKMS` `custom_extensions` **on the few entities that need one** (never a document-level blob). A dataset's `source` is a dotted string; a field's `expression` is `{dialects:[{dialect, expression}]}` (scalar) with `dimension: {is_time}`; a metric's is an aggregate fragment. A relationship is `from`(many) → `to`(one) with ordered `from_columns`/`to_columns`. JSON or YAML via `GET /api/semantic-models/{id}/export`.
 - **Import** (`POST /api/semantic-models/import`) **upserts** the flat document + its fields/metrics over datasets matched by id/source/name; datasets are not created.
 
-**openKMS extension** (`custom_extensions`, vendor `OPENKMS`) — so the **core shape stays exactly as the spec defines it**, our internals round-trip here instead: stable entity `id`s (Ossie references by name), a metric's `base_dataset` anchor + `filters`/`joins`/`type`, a relationship's `required`, a field's source `column`, and per-column descriptions. The exported document is validated against the vendored [`ossie-schema.json`](../research/ossie/spec.md).
+**openKMS extension** — the spec allows `custom_extensions` on each Dataset/Relationship/Metric/Field, so whatever the core shape cannot carry sits **next to the thing it describes** rather than in one opaque blob. We emit only:
+
+| On | `data` | Why |
+|----|--------|-----|
+| Dataset | `{"columns": {"<col>": "<description>"}}` | physical-column notes are Catalog-owned; the spec's `fields` are model-scoped |
+| Relationship | `{"required": true}` | INNER vs LEFT — the spec has no such field (false is our default, so it is omitted) |
+| Metric | `{"base_dataset": "…", "joins": ["…"]}` (+ `type`/`filters` when set) | the FROM/join anchor — the spec derives it from the expression (decision #24) |
+
+No stable ids: everything is referenced **by name** (`source` for datasets), so a round-trip matches by name and an import into another instance creates the entities. The exported document is validated against the vendored [`ossie-schema.json`](../research/ossie/spec.md).
 
 ---
 

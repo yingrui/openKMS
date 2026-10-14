@@ -28,9 +28,10 @@ from app.models.dataset_join import DatasetJoin
 from app.models.metric_definition import MetricDefinition
 from app.models.semantic_model import SemanticModel
 from app.models.semantic_model_field import SemanticModelField
-from app.services.data_layer.expressions import normalize_expression
+from app.services.data_layer.expressions import ANSI, dialect_sql, normalize_expression
 from app.services.data_layer.semantic_model_fields import OSSIE_DATATYPES
 from app.services.data_layer.semantic_models import member_ids, set_members
+from app.services.ontology.dataset_tables import is_valid_identifier
 
 OSSIE_VERSION = "0.2.0.dev0"
 VENDOR = "OPENKMS"
@@ -113,48 +114,12 @@ async def export_semantic_model(db: AsyncSession, model: SemanticModel) -> dict[
     def rel_name(r: DatasetJoin) -> str:
         return r.name or f"{name_by_id.get(r.from_dataset_id, r.from_dataset_id)}_to_{name_by_id.get(r.to_dataset_id, r.to_dataset_id)}"
 
-    ext: dict[str, Any] = {
-        "model_id": model.id,
-        "datasets": {
-            _dataset_name(d): {
-                "id": d.id,
-                "columns": [
-                    {"name": c.column_name, "description": c.description}
-                    for c in columns_by_dataset.get(d.id, [])
-                    if c.description
-                ],
-            }
-            for d in datasets
-        },
-        "fields": {
-            _dataset_name(d): {
-                f.name: {"id": f.id, "column": f.column_name}
-                for f in fields_by_dataset.get(d.id, [])
-            }
-            for d in datasets
-        },
-        "relationships": {
-            rel_name(r): {"id": r.id, "required": r.required} for r in relationships
-        },
-        "metrics": {
-            m.name: {
-                "id": m.id,
-                "base_dataset": name_by_id.get(m.base_dataset_id),
-                "type": m.type,
-                "filters": m.filters,
-                "joins": [rel_name(r) for r in relationships if r.id in (m.joins or [])],
-            }
-            for m in metrics
-        },
-    }
-
     doc: dict[str, Any] = {
         "version": OSSIE_VERSION,
         "name": model.name,
         "datasets": [],
         "relationships": [],
         "metrics": [],
-        "custom_extensions": [{"vendor_name": VENDOR, "data": json.dumps(ext)}],
     }
     if model.description:
         doc["description"] = model.description
@@ -171,6 +136,15 @@ async def export_semantic_model(db: AsyncSession, model: SemanticModel) -> dict[
             entry["description"] = d.description
         if d.ai_context:
             entry["ai_context"] = d.ai_context
+        # Column descriptions have no home in the spec (its fields are model-scoped).
+        column_notes = {
+            c.column_name: c.description
+            for c in columns_by_dataset.get(d.id, [])
+            if c.description
+        }
+        if column_notes:
+            entry["custom_extensions"] = _extension({"columns": column_notes})
+
         entry["fields"] = []
         for f in fields_by_dataset.get(d.id, []):
             fexpr = normalize_expression(f.expression) or {
@@ -200,6 +174,9 @@ async def export_semantic_model(db: AsyncSession, model: SemanticModel) -> dict[
         }
         if r.ai_context:
             rentry["ai_context"] = r.ai_context
+        # `required` (INNER vs LEFT) is ours; the spec has no such field.
+        if r.required:
+            rentry["custom_extensions"] = _extension({"required": True})
         doc["relationships"].append(rentry)
 
     for m in metrics:
@@ -210,6 +187,15 @@ async def export_semantic_model(db: AsyncSession, model: SemanticModel) -> dict[
             mentry["datatype"] = _ossie_datatype(m.datatype)
         if m.ai_context:
             mentry["ai_context"] = m.ai_context
+        # The spec derives the FROM/join path from the expression; we keep the anchor (§24).
+        mentry["custom_extensions"] = _extension(
+            {
+                "base_dataset": name_by_id.get(m.base_dataset_id),
+                "type": m.type if m.type and m.type != "simple" else None,
+                "filters": m.filters,
+                "joins": [rel_name(r) for r in relationships if r.id in (m.joins or [])],
+            }
+        )
         doc["metrics"].append(mentry)
 
     return doc
@@ -239,35 +225,61 @@ def _resolve_dataset(
     return by_id.get(ref) or by_source.get(ref) or by_name.get(ref)
 
 
-def _read_extension(doc: dict[str, Any]) -> dict[str, Any]:
-    for entry in doc.get("custom_extensions") or []:
+def _extension(data: dict[str, Any]) -> list[dict[str, str]]:
+    """An entity-level `OPENKMS` extension — only what the core spec cannot express.
+
+    Redundant values are dropped (`required: false` is our default; empty filters/joins
+    say nothing), so the extension is absent when it would carry nothing.
+    """
+    clean = {k: v for k, v in data.items() if v}
+    return [{"vendor_name": VENDOR, "data": json.dumps(clean, ensure_ascii=False)}] if clean else []
+
+
+def _entity_extension(entity: dict[str, Any]) -> dict[str, Any]:
+    """Read back the `OPENKMS` `data` object attached to a dataset/relationship/metric."""
+    for entry in entity.get("custom_extensions") or []:
         if isinstance(entry, dict) and str(entry.get("vendor_name", "")).lower() == VENDOR.lower():
             try:
                 data = json.loads(entry.get("data") or "{}")
-                return data if isinstance(data, dict) else {}
             except (ValueError, TypeError):
                 return {}
+            return data if isinstance(data, dict) else {}
     return {}
 
 
+def _source_column(expression: Any) -> str | None:
+    """Our storage keeps the source column beside the expression; a bare `"col"` back tells us."""
+    sql = dialect_sql(normalize_expression(expression), ANSI)
+    if not sql:
+        return None
+    bare = sql.strip().strip(";").strip()
+    if len(bare) >= 2 and bare[0] == bare[-1] == '"':
+        bare = bare[1:-1]
+    return bare if is_valid_identifier(bare) else None
+
+
 async def import_semantic_model(db: AsyncSession, doc: dict[str, Any]) -> dict[str, Any]:
-    """Upsert one semantic model (+ fields/metrics/relationships) from a flat Ossie doc."""
-    ext = _read_extension(doc)
+    """Upsert one semantic model (+ fields/metrics/relationships) from a flat Ossie doc.
+
+    Everything is matched **by name** (datasets by `source` first) — the document has no ids,
+    so a round-trip into the same instance updates in place and one into another instance
+    creates the entities afresh.
+    """
     by_id, by_source, by_name = await _dataset_index(db)
     warnings: list[str] = []
     name_by_id: dict[str, str] = {}
-    id_by_name = {v: k for k, v in by_name.items()}
+    rel_ids_by_name: dict[str, str] = {}
 
-    # Resolve the target model: extension id → name → new.
-    model = await db.get(SemanticModel, ext["model_id"]) if isinstance(ext.get("model_id"), str) else None
+    name = doc.get("name")
+    model = None
+    if isinstance(name, str) and name.strip():
+        model = (
+            await db.execute(select(SemanticModel).where(SemanticModel.name == name.strip()))
+        ).scalars().first()
     if model is None:
-        name = doc.get("name")
-        if isinstance(name, str) and name.strip():
-            model = (
-                await db.execute(select(SemanticModel).where(SemanticModel.name == name.strip()))
-            ).scalars().first()
-    if model is None:
-        model = SemanticModel(id=str(uuid.uuid4()), name=(doc.get("name") or "Imported model").strip())
+        model = SemanticModel(
+            id=str(uuid.uuid4()), name=(doc.get("name") or "Imported model").strip()
+        )
         db.add(model)
         await db.flush()
     if isinstance(doc.get("description"), str):
@@ -280,9 +292,6 @@ async def import_semantic_model(db: AsyncSession, doc: dict[str, Any]) -> dict[s
     field_count = 0
     rel_count = 0
     metric_count = 0
-
-    ds_ext: dict[str, Any] = ext.get("datasets") or {}
-    field_ext: dict[str, Any] = ext.get("fields") or {}
 
     for entry in doc.get("datasets", []) or []:
         if not isinstance(entry, dict):
@@ -299,52 +308,48 @@ async def import_semantic_model(db: AsyncSession, doc: dict[str, Any]) -> dict[s
         if isinstance(ds_name, str):
             name_by_id[resolved] = ds_name
 
-        for col in (ds_ext.get(ds_name) or {}).get("columns", []) or []:
-            if not isinstance(col, dict) or not col.get("name") or not col.get("description"):
+        for col_name, col_desc in (_entity_extension(entry).get("columns") or {}).items():
+            if not isinstance(col_name, str) or not col_desc:
                 continue
             row = (
                 await db.execute(
                     select(DatasetColumn).where(
                         DatasetColumn.dataset_id == resolved,
-                        DatasetColumn.column_name == col["name"],
+                        DatasetColumn.column_name == col_name,
                     )
                 )
             ).scalars().first()
             if row:
-                row.description = col["description"]
+                row.description = str(col_desc)
             else:
                 db.add(
                     DatasetColumn(
                         id=str(uuid.uuid4()),
                         dataset_id=resolved,
-                        column_name=str(col["name"]),
-                        description=str(col["description"]),
+                        column_name=col_name,
+                        description=str(col_desc),
                     )
                 )
             column_count += 1
 
-        fields_ext = field_ext.get(ds_name) or {}
         for f in entry.get("fields", []) or []:
             if not isinstance(f, dict) or not f.get("name"):
                 continue
-            fext = fields_ext.get(f["name"]) or {}
-            row = await db.get(SemanticModelField, fext["id"]) if isinstance(fext.get("id"), str) else None
-            if row is None:
-                row = (
-                    await db.execute(
-                        select(SemanticModelField).where(
-                            SemanticModelField.semantic_model_id == model.id,
-                            SemanticModelField.dataset_id == resolved,
-                            SemanticModelField.name == f["name"],
-                        )
+            row = (
+                await db.execute(
+                    select(SemanticModelField).where(
+                        SemanticModelField.semantic_model_id == model.id,
+                        SemanticModelField.dataset_id == resolved,
+                        SemanticModelField.name == f["name"],
                     )
-                ).scalars().first()
+                )
+            ).scalars().first()
             if row is None:
                 row = SemanticModelField(id=str(uuid.uuid4()), semantic_model_id=model.id)
                 db.add(row)
             row.dataset_id = resolved
             row.name = f["name"]
-            row.column_name = fext.get("column")
+            row.column_name = _source_column(f.get("expression"))
             row.expression = normalize_expression(f.get("expression"))
             row.datatype = f.get("datatype")
             row.label = f.get("label")
@@ -353,7 +358,6 @@ async def import_semantic_model(db: AsyncSession, doc: dict[str, Any]) -> dict[s
             row.ai_context = f.get("ai_context")
             field_count += 1
 
-    rel_ext: dict[str, Any] = ext.get("relationships") or {}
     for rel in doc.get("relationships", []) or []:
         from_id = _resolve_dataset(rel.get("from"), by_id, by_source, by_name)
         to_id = _resolve_dataset(rel.get("to"), by_id, by_source, by_name)
@@ -361,34 +365,41 @@ async def import_semantic_model(db: AsyncSession, doc: dict[str, Any]) -> dict[s
             warnings.append(f"relationship '{rel.get('name')}': unresolved dataset")
             continue
         members.update({from_id, to_id})
-        rext = rel_ext.get(rel.get("name")) or {}
-        rel_id = rext.get("id") if isinstance(rext.get("id"), str) else str(uuid.uuid4())
-        row = await db.get(DatasetJoin, rel_id)
+        row = (
+            await db.execute(select(DatasetJoin).where(DatasetJoin.name == rel.get("name")))
+        ).scalars().first()
         if not row:
-            row = DatasetJoin(id=rel_id)
+            row = DatasetJoin(id=str(uuid.uuid4()))
             db.add(row)
         row.name = rel.get("name")
         row.from_dataset_id = from_id
         row.to_dataset_id = to_id
         row.from_columns = rel.get("from_columns") or []
         row.to_columns = rel.get("to_columns") or []
-        row.required = bool(rext.get("required"))
+        row.required = bool(_entity_extension(rel).get("required"))
         row.ai_context = rel.get("ai_context")
+        rel_ids_by_name[str(row.name)] = row.id
         rel_count += 1
 
-    metric_ext: dict[str, Any] = ext.get("metrics") or {}
     for m in doc.get("metrics", []) or []:
-        mext = metric_ext.get(m.get("name")) or {}
-        base_ref = mext.get("base_dataset")
-        base_id = _resolve_dataset(base_ref, by_id, by_source, by_name)
+        if not isinstance(m, dict):
+            continue
+        mext = _entity_extension(m)
+        base_id = _resolve_dataset(mext.get("base_dataset"), by_id, by_source, by_name)
         if not base_id:
             warnings.append(f"metric '{m.get('name')}': unresolved base dataset")
             continue
         members.add(base_id)
-        metric_id = mext.get("id") if isinstance(mext.get("id"), str) else str(uuid.uuid4())
-        row = await db.get(MetricDefinition, metric_id)
+        row = (
+            await db.execute(
+                select(MetricDefinition).where(
+                    MetricDefinition.semantic_model_id == model.id,
+                    MetricDefinition.name == m.get("name"),
+                )
+            )
+        ).scalars().first()
         if not row:
-            row = MetricDefinition(id=metric_id)
+            row = MetricDefinition(id=str(uuid.uuid4()))
             db.add(row)
         row.semantic_model_id = model.id
         row.base_dataset_id = base_id
@@ -398,11 +409,11 @@ async def import_semantic_model(db: AsyncSession, doc: dict[str, Any]) -> dict[s
         row.expression = normalize_expression(m.get("expression"))
         row.datatype = m.get("datatype")
         row.filters = mext.get("filters")
-        joins = mext.get("joins") or []
         row.joins = [
-            (rel_ext.get(r, {}) or {}).get("id") for r in joins if isinstance(r, str)
+            rel_ids_by_name[r]
+            for r in (mext.get("joins") or [])
+            if isinstance(r, str) and r in rel_ids_by_name
         ]
-        row.joins = [j for j in row.joins if isinstance(j, str)]
         row.ai_context = m.get("ai_context")
         metric_count += 1
 
