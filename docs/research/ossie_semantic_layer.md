@@ -176,8 +176,12 @@ The official `ossie-schema.json` rejects them outright (`Dimension` is
 
 Instead:
 
-- **A regular/categorical dimension** is just a field — **omit** `dimension` (or set
-  `is_time: false`). There is no `categorical` value.
+- **A regular/categorical dimension** is just a field — omit `dimension` (or set
+  `is_time: false`). There is no `categorical` value. Note `dimension` itself is optional and
+  has **no required key** (the schema allows `{}`): absence means "`is_time` not declared",
+  **not** "this field is not a dimension" — the spec's default rule still resolves the role
+  from `datatype`, and its own example table calls an omitted non-temporal field a *regular
+  dimension*.
 - **Granularity is not a declaration-layer concept.** `core-spec/expression_language.md`
   says grain calculations are a *future proposal*, and `GROUP BY` is "controlled by grain
   specification" — grain belongs to the **query** interface, whose document is separate.

@@ -125,19 +125,27 @@ def test_datatype_must_be_the_spec_enum():
         raise AssertionError(f"expected FieldError for datatype {bad!r}")
 
 
-def test_dimension_rejects_anything_but_is_time():
+def test_dimension_is_optional_and_may_be_empty():
+    """`dimension` may be absent, and `dimension: {}` is valid (no required keys)."""
     from app.services.data_layer.semantic_model_fields import FieldError, validate_dimension
 
     validate_dimension(None)
+    validate_dimension({})
     validate_dimension({"is_time": True})
     validate_dimension({"is_time": False})
     for bad in ({"is_time": True, "granularity": "month"}, {"is_time": True, "timezone": "UTC"},
-                {"type": "time"}, {"is_time": "yes"}, {}, {"is_time": True, "entity": {}}):
+                {"type": "time"}, {"is_time": "yes"}, {"is_time": None},
+                {"is_time": True, "entity": {}}):
         try:
             validate_dimension(bad)
         except FieldError:
             continue
         raise AssertionError(f"expected FieldError for dimension {bad!r}")
+
+
+def test_empty_dimension_declaration_resolves_by_datatype():
+    f = _field(name="d", column_name="d", expression=None, datatype="Date", dimension={})
+    assert _dimension_expr(f, None).startswith("date_trunc(")
 
 
 def test_a_time_dimension_grain_is_query_time_only():

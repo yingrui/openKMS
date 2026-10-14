@@ -122,11 +122,15 @@ def resolve_is_time(dimension: dict | None, datatype: str | None) -> bool:
 
 
 def validate_dimension(dimension: dict | None) -> None:
-    """Ossie `Dimension` is **only** `{"is_time": boolean}` (`additionalProperties: false`)."""
+    """Ossie `Dimension`: `additionalProperties: false` and **no required keys** — so an
+    absent `dimension` *or* `dimension: {}` is valid; both mean "`is_time` not declared"
+    and the role then follows `datatype`. When `is_time` is present it must be a boolean."""
     if dimension is None:
         return
-    if not isinstance(dimension, dict) or not isinstance(dimension.get("is_time"), bool):
-        raise FieldError("dimension must be {'is_time': boolean}.")
+    if not isinstance(dimension, dict):
+        raise FieldError("dimension must be an object.")
     unknown = set(dimension) - {"is_time"}
     if unknown:
         raise FieldError(f"dimension has unknown keys: {', '.join(sorted(unknown))}.")
+    if "is_time" in dimension and not isinstance(dimension["is_time"], bool):
+        raise FieldError("dimension.is_time must be a boolean.")
