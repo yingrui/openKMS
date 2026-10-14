@@ -156,7 +156,11 @@
     "wizardSelectAll": "Select all",
     "wizardClear": "Clear",
     "wizardSelected": "{{n}} selected",
-    "datasetSearch": "Search datasets"
+    "datasetSearch": "Search datasets",
+    "create": "Create model",
+    "newDataset": "New dataset",
+    "noDatasets": "No datasets yet",
+    "noDatasetsHint": "Register a table or upload a file, then pick it here."
   },
   "datasets": {
     "title": "Datasets",

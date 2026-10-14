@@ -156,7 +156,11 @@
     "wizardSelectAll": "全选",
     "wizardClear": "清除",
     "wizardSelected": "已选 {{n}} 个",
-    "datasetSearch": "搜索数据集"
+    "datasetSearch": "搜索数据集",
+    "create": "创建模型",
+    "newDataset": "新建数据集",
+    "noDatasets": "暂无数据集",
+    "noDatasetsHint": "先注册表或上传文件，再回到这里选择。"
   },
   "datasets": {
     "title": "数据集",

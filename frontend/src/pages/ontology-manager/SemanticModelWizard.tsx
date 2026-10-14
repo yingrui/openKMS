@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Check, Loader2, Search } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { Check, Loader2, Plus, Search } from 'lucide-react';
 import { toast } from 'sonner';
 import { fetchDatasets, type DatasetResponse } from '../../data/datasetsApi';
 import {
@@ -24,6 +25,7 @@ export function SemanticModelWizard({
   onCreated: (model: SemanticModelResponse) => void;
 }) {
   const { t } = useTranslation('ontology');
+  const navigate = useNavigate();
   const nameRef = useRef<HTMLInputElement>(null);
 
   const [step, setStep] = useState(0);
@@ -131,7 +133,7 @@ export function SemanticModelWizard({
               onClick={() => void handleCreate()}
               disabled={submitting}
             >
-              {submitting ? <Loader2 size={16} className="console-loading-spinner" /> : t('datasets.create')}
+              {submitting ? <Loader2 size={16} className="console-loading-spinner" /> : t('dataModel.create')}
             </button>
           )}
         </>
@@ -194,8 +196,21 @@ export function SemanticModelWizard({
               <Loader2 size={20} className="console-loading-spinner" aria-hidden />
             ) : filtered.length === 0 ? (
               <EmptyState
-                title={t('dataModel.modelsEmpty')}
-                description={t('dataModel.modelDatasetsHint')}
+                title={t('dataModel.noDatasets')}
+                description={t('dataModel.noDatasetsHint')}
+                action={
+                  <button
+                    type="button"
+                    className="btn btn-primary"
+                    onClick={() => {
+                      onClose();
+                      navigate('/datasets');
+                    }}
+                  >
+                    <Plus size={16} aria-hidden />
+                    {t('dataModel.newDataset')}
+                  </button>
+                }
               />
             ) : (
               filtered.map((d) => (
