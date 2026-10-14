@@ -16,6 +16,25 @@ import { useConfirm } from '../../contexts/ConfirmContext';
 import { FormField } from '../../styles/design-system';
 
 type AiContext = { instructions: string; synonyms: string; examples: string };
+type DimensionMode = 'default' | 'time' | 'regular';
+
+/** Ossie resolves an omitted `is_time` from `datatype` (temporal → time dimension). */
+const TEMPORAL_DATATYPES = new Set([
+  'date',
+  'time',
+  'datetime',
+  'datetimetz',
+  'timestamp',
+  'timestamptz',
+]);
+const isTemporalDatatype = (datatype?: string | null) =>
+  TEMPORAL_DATATYPES.has((datatype ?? '').trim().toLowerCase());
+
+const dimensionModeOf = (f: SemanticModelFieldResponse): DimensionMode => {
+  const isTime = f.dimension?.is_time;
+  if (typeof isTime === 'boolean') return isTime ? 'time' : 'regular';
+  return 'default';
+};
 
 const splitList = (s: string) =>
   s
@@ -60,12 +79,22 @@ export function ModelFieldsSection({
   const [exprSql, setExprSql] = useState('');
   const [datatype, setDatatype] = useState('');
   const [description, setDescription] = useState('');
-  const [isTime, setIsTime] = useState(false);
+  const [dimensionMode, setDimensionMode] = useState<DimensionMode>('default');
   const [ai, setAi] = useState<AiContext>({ instructions: '', synonyms: '', examples: '' });
   const [submitting, setSubmitting] = useState(false);
 
   const datasetLabel = (id: string) =>
     datasets.find((d) => d.id === id)?.name ?? t('dataModel.outOfScope');
+
+  /** The dimension column shows the *effective* role: explicit, or the datatype default. */
+  const dimensionLabel = (f: SemanticModelFieldResponse) => {
+    const mode = dimensionModeOf(f);
+    if (mode === 'time') return t('dataModel.dimensionTime');
+    if (mode === 'regular') return t('datasets.dash');
+    return isTemporalDatatype(f.datatype)
+      ? t('dataModel.dimensionTimeDefault')
+      : t('datasets.dash');
+  };
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -104,7 +133,7 @@ export function ModelFieldsSection({
     setExprSql('');
     setDatatype('');
     setDescription('');
-    setIsTime(false);
+    setDimensionMode('default');
     setAi({ instructions: '', synonyms: '', examples: '' });
   }, [datasets]);
 
@@ -127,7 +156,7 @@ export function ModelFieldsSection({
     setExprSql(fieldExpressionSql(f));
     setDatatype(f.datatype ?? '');
     setDescription(f.description ?? '');
-    setIsTime(Boolean(f.dimension?.is_time));
+    setDimensionMode(dimensionModeOf(f));
     setAi(readAiContext(f.ai_context));
     setShowForm(true);
   };
@@ -159,7 +188,7 @@ export function ModelFieldsSection({
       expression,
       datatype: datatype.trim() || null,
       description: description.trim() || null,
-      dimension: isTime ? { is_time: true } : null,
+      dimension: dimensionMode === 'default' ? null : { is_time: dimensionMode === 'time' },
       ai_context: hasAi ? { instructions: ai.instructions.trim(), synonyms, examples } : null,
     };
     setSubmitting(true);
@@ -243,7 +272,7 @@ export function ModelFieldsSection({
                   <td>{datasetLabel(f.dataset_id)}</td>
                   <td>{f.column_name ? f.column_name : <code>{fieldExpressionSql(f)}</code>}</td>
                   <td>{f.datatype ?? t('datasets.dash')}</td>
-                  <td>{f.dimension?.is_time ? t('dataModel.dimensionTime') : t('datasets.dash')}</td>
+                  <td>{dimensionLabel(f)}</td>
                   <td>
                     {typeof f.ai_context?.instructions === 'string' && f.ai_context.instructions
                       ? String(f.ai_context.instructions)
@@ -363,14 +392,14 @@ export function ModelFieldsSection({
                 label={t('dataModel.fieldDimension')}
                 hint={t('dataModel.fieldDimensionHint')}
               >
-                <label className="ds-check-row">
-                  <input
-                    type="checkbox"
-                    checked={isTime}
-                    onChange={(e) => setIsTime(e.target.checked)}
-                  />
-                  <span>{t('dataModel.dimensionTimeLabel')}</span>
-                </label>
+                <select
+                  value={dimensionMode}
+                  onChange={(e) => setDimensionMode(e.target.value as DimensionMode)}
+                >
+                  <option value="default">{t('dataModel.dimensionModeDefault')}</option>
+                  <option value="time">{t('dataModel.dimensionTimeLabel')}</option>
+                  <option value="regular">{t('dataModel.dimensionModeRegular')}</option>
+                </select>
               </FormField>
 
               <FormField label={t('datasets.aiInstructions')}>

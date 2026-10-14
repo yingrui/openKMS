@@ -65,3 +65,38 @@ def test_control_characters_in_column_name_are_rejected():
     except PreviewError:
         return
     raise AssertionError("expected PreviewError")
+
+
+# --- Ossie default rule: an omitted `is_time` follows `datatype` -----------------
+
+
+def test_temporal_datatype_is_a_time_dimension_by_default():
+    f = _field(name="trade_date", column_name="trade_date", expression=None, datatype="datetime")
+    assert _dimension_expr(f, "month") == 'date_trunc(\'month\', base."trade_date")'
+
+
+def test_ossie_enum_datatype_is_temporal_too():
+    f = _field(name="d", column_name="d", expression=None, datatype="DateTimeTz")
+    assert _dimension_expr(f, None) == 'date_trunc(\'day\', base."d")'
+
+
+def test_explicit_false_opts_a_temporal_column_out():
+    f = _field(
+        name="created_at",
+        column_name="created_at",
+        expression=None,
+        datatype="datetime",
+        dimension={"is_time": False},
+    )
+    assert _dimension_expr(f, "day") == 'base."created_at"'
+
+
+def test_explicit_true_makes_a_non_temporal_column_a_time_dimension():
+    f = _field(
+        name="d_year",
+        column_name="d_year",
+        expression=None,
+        datatype="number",
+        dimension={"is_time": True},
+    )
+    assert _dimension_expr(f, "year") == 'date_trunc(\'year\', base."d_year")'

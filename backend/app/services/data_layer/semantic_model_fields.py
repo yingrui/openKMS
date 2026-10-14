@@ -78,9 +78,21 @@ async def list_fields(db: AsyncSession, model: SemanticModel) -> list[SemanticMo
     return list(rows)
 
 
-DIMENSION_TYPES = ("time", "categorical")
-GRANULARITIES = ("second", "minute", "hour", "day", "week", "month", "quarter", "year")
-ENTITY_TYPES = ("foreign", "primary")
+_TEMPORAL_DATATYPES = {"date", "time", "datetime", "datetimetz", "timestamp", "timestamptz"}
+
+
+def is_temporal_datatype(datatype: str | None) -> bool:
+    return (datatype or "").strip().lower() in _TEMPORAL_DATATYPES
+
+
+def resolve_is_time(dimension: dict | None, datatype: str | None) -> bool:
+    """The effective Ossie time-dimension role: an explicit `dimension.is_time`
+    always wins; otherwise it defaults to `true` for a temporal `datatype`
+    (`Date`/`Time`/`DateTime`/`DateTimeTz`, or our internal `datetime`) and
+    `false` otherwise — so a temporal column is opted *out* with `{"is_time": false}`."""
+    if isinstance(dimension, dict) and isinstance(dimension.get("is_time"), bool):
+        return bool(dimension["is_time"])
+    return is_temporal_datatype(datatype)
 
 
 def validate_dimension(dimension: dict | None) -> None:

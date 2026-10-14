@@ -85,8 +85,8 @@ def cmd_fields_add(ns: argparse.Namespace) -> None:
         body["datatype"] = ns.datatype
     if ns.description:
         body["description"] = ns.description
-    if ns.is_time:
-        body["dimension"] = {"is_time": True}
+    if ns.is_time is not None:
+        body["dimension"] = {"is_time": ns.is_time}
     if ns.ai_instructions:
         body["ai_context"] = {"instructions": ns.ai_instructions}
     confirm_or_abort(
@@ -159,7 +159,19 @@ def add_subparser(sub) -> None:
     fa.add_argument("--expression", default=None, help="ANSI_SQL fragment (computed field)")
     fa.add_argument("--datatype", default=None)
     fa.add_argument("--description", default=None)
-    fa.add_argument("--is-time", action="store_true", dest="is_time", help="time dimension (is_time)")
+    fa.add_argument(
+        "--is-time",
+        action="store_true",
+        dest="is_time",
+        default=None,
+        help="time dimension (is_time: true)",
+    )
+    fa.add_argument(
+        "--no-is-time",
+        action="store_false",
+        dest="is_time",
+        help="regular dimension — opts a temporal column out (is_time: false)",
+    )
     fa.add_argument("--ai-instructions", default=None, dest="ai_instructions")
     add_write_flags(fa)
     fa.set_defaults(fn=cmd_fields_add)

@@ -162,10 +162,13 @@
     "tryRunFailed": "预览失败",
     "outOfScope": "已超出范围",
     "dimensionTime": "时间",
-    "fieldDimensionHint": "Ossie：字段本身就是维度 —— 勾选“时间维度”（is_time）即可按日期分组或筛选。",
+    "fieldDimensionHint": "Ossie：字段本身就是维度。`is_time` 是角色，与数据类型无关；保持默认时跟随数据类型（时间类型 → 时间维度）。",
     "tryBack": "返回模型",
     "fieldDimension": "维度",
-    "dimensionTimeLabel": "时间维度"
+    "dimensionTimeLabel": "时间维度",
+    "dimensionModeDefault": "默认（按数据类型）",
+    "dimensionModeRegular": "普通维度",
+    "dimensionTimeDefault": "时间（默认）"
   },
   "datasets": {
     "title": "数据集",
