@@ -173,7 +173,10 @@
     "dimensionYes": "Yes",
     "dimensionNo": "No",
     "tryOtherFields": "Other fields ({{count}})",
-    "tryRuns": "Recent runs"
+    "tryRuns": "Recent runs",
+    "viewYaml": "View YAML",
+    "copy": "Copy",
+    "copied": "Copied to clipboard"
   },
   "datasets": {
     "title": "Datasets",
@@ -434,7 +437,8 @@
     "columnSaved": "Column description saved",
     "columnSaveFailed": "Failed to save column description",
     "pickDataset": "Pick a dataset",
-    "fieldDimension": "Dimension"
+    "fieldDimension": "Dimension",
+    "fieldSearchPlaceholder": "Search fields…"
   },
   "groups": {
     "title": "Groups",

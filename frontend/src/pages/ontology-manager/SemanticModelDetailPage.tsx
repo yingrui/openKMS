@@ -42,7 +42,10 @@ export function SemanticModelDetailPage() {
   const [allDatasets, setAllDatasets] = useState<DatasetResponse[]>([]);
   const [loading, setLoading] = useState(true);
 
+  const [tab, setTab] = useState<'metrics' | 'fields'>('metrics');
   const [showEdit, setShowEdit] = useState(false);
+  const [showYaml, setShowYaml] = useState(false);
+  const [yaml, setYaml] = useState('');
   const [editName, setEditName] = useState('');
   const [editDescription, setEditDescription] = useState('');
   const [editDatasets, setEditDatasets] = useState<string[]>([]);
@@ -109,6 +112,16 @@ export function SemanticModelDetailPage() {
         const doc = await exportSemanticModel(model.id);
         download(`${model.name}.json`, JSON.stringify(doc, null, 2), 'application/json');
       }
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : t('dataModel.exportFailed'));
+    }
+  };
+
+  const handleViewYaml = async () => {
+    if (!model) return;
+    try {
+      setYaml(await exportSemanticModelYaml(model.id));
+      setShowYaml(true);
     } catch (e) {
       toast.error(e instanceof Error ? e.message : t('dataModel.exportFailed'));
     }
@@ -186,6 +199,9 @@ export function SemanticModelDetailPage() {
               <MoreHorizontal size={18} aria-hidden />
             </summary>
             <div className="model-menu__panel">
+              <button type="button" onClick={() => void handleViewYaml()}>
+                {t('dataModel.viewYaml')}
+              </button>
               <button type="button" onClick={() => void handleExport('json')}>
                 {t('dataModel.exportJson')}
               </button>
@@ -206,10 +222,57 @@ export function SemanticModelDetailPage() {
       </div>
 
       <div className="ontology-admin-content">
-        <ModelMetricsSection semanticModelId={model.id} datasetIds={model.dataset_ids} />
+        <nav className="ds-tabs" aria-label={model.name}>
+          {(['metrics', 'fields'] as const).map((key) => (
+            <button
+              key={key}
+              type="button"
+              className={`ds-tab${tab === key ? ' ds-tab--active' : ''}`}
+              aria-current={tab === key ? 'page' : undefined}
+              onClick={() => setTab(key)}
+            >
+              {t(key === 'metrics' ? 'dataModel.metrics' : 'dataModel.fields')}
+            </button>
+          ))}
+        </nav>
 
-        <ModelFieldsSection semanticModelId={model.id} datasets={model.datasets} onChanged={() => void load()} />
+        {tab === 'metrics' ? (
+          <ModelMetricsSection semanticModelId={model.id} datasetIds={model.dataset_ids} />
+        ) : (
+          <ModelFieldsSection
+            semanticModelId={model.id}
+            datasets={model.datasets}
+            onChanged={() => void load()}
+          />
+        )}
       </div>
+
+      <Dialog
+        open={showYaml}
+        onClose={() => setShowYaml(false)}
+        title={t('dataModel.viewYaml')}
+        closeAriaLabel={t('shared.close')}
+        size="lg"
+        footer={
+          <>
+            <button type="button" className="btn btn-secondary" onClick={() => setShowYaml(false)}>
+              {t('shared.close')}
+            </button>
+            <button
+              type="button"
+              className="btn btn-primary"
+              onClick={() => {
+                void navigator.clipboard?.writeText(yaml);
+                toast.success(t('dataModel.copied'));
+              }}
+            >
+              {t('dataModel.copy')}
+            </button>
+          </>
+        }
+      >
+        <pre className="model-yaml">{yaml}</pre>
+      </Dialog>
 
       <Dialog
         open={showEdit}

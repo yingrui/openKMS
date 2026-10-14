@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Loader2, Pencil, Plus, Trash2, X } from 'lucide-react';
+import { Loader2, Pencil, Plus, Search, Trash2, X } from 'lucide-react';
 import { toast } from 'sonner';
 import { fetchDatasetMetadata, type ColumnMetadata } from '../../data/datasetsApi';
 import {
@@ -15,7 +15,7 @@ import {
 } from '../../data/semanticModelFieldsApi';
 import type { SemanticModelDatasetRef } from '../../data/semanticModelsApi';
 import { useConfirm } from '../../contexts/ConfirmContext';
-import { FormField, PanelToolbar } from '../../styles/design-system';
+import { FormField, Pagination, PanelToolbar } from '../../styles/design-system';
 
 type AiContext = { instructions: string; synonyms: string; examples: string };
 /** The spec's three dimension states: `is_time` omitted / true / false. */
@@ -53,6 +53,9 @@ export function ModelFieldsSection({
 
   const [fields, setFields] = useState<SemanticModelFieldResponse[]>([]);
   const [loading, setLoading] = useState(true);
+  const [search, setSearch] = useState('');
+  const [page, setPage] = useState(0);
+  const [pageSize, setPageSize] = useState(25);
 
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState<SemanticModelFieldResponse | null>(null);
@@ -71,6 +74,18 @@ export function ModelFieldsSection({
 
   const datasetLabel = (id: string) =>
     datasets.find((d) => d.id === id)?.name ?? t('dataModel.outOfScope');
+
+  const filtered = fields.filter((f) => {
+    const q = search.trim().toLowerCase();
+    if (!q) return true;
+    return [f.name, f.label ?? '', f.column_name ?? '', datasetLabel(f.dataset_id)]
+      .join(' ')
+      .toLowerCase()
+      .includes(q);
+  });
+  const paged = filtered.slice(page * pageSize, (page + 1) * pageSize);
+
+  const resetPaging = () => setPage(0);
 
   /**
    * Only the *time* role is modelled by the spec (`dimension.is_time`). A field that is not
@@ -231,10 +246,25 @@ export function ModelFieldsSection({
       <PanelToolbar
         leading={<span>{t('dataModel.fields')}</span>}
         actions={
-          <button type="button" className="btn btn-primary" onClick={openCreate}>
-            <Plus size={18} aria-hidden />
-            <span>{t('datasets.addField')}</span>
-          </button>
+          <>
+            <div className="console-datasets-search">
+              <Search size={18} aria-hidden />
+              <input
+                type="search"
+                aria-label={t('datasets.searchAria')}
+                placeholder={t('datasets.fieldSearchPlaceholder')}
+                value={search}
+                onChange={(e) => {
+                  setSearch(e.target.value);
+                  resetPaging();
+                }}
+              />
+            </div>
+            <button type="button" className="btn btn-primary" onClick={openCreate}>
+              <Plus size={18} aria-hidden />
+              <span>{t('datasets.addField')}</span>
+            </button>
+          </>
         }
       />
 
@@ -243,7 +273,7 @@ export function ModelFieldsSection({
           <Loader2 size={28} className="console-loading-spinner" aria-hidden />
           <p>{t('shared.loading')}</p>
         </div>
-      ) : fields.length === 0 ? (
+      ) : filtered.length === 0 ? (
         <p className="entity-view__readonly">{t('dataModel.fieldsEmptyHint')}</p>
       ) : (
         <div className="ds-table-wrap ds-table-wrap--flush">
@@ -260,11 +290,11 @@ export function ModelFieldsSection({
               </tr>
             </thead>
             <tbody>
-              {fields.map((f) => (
+              {paged.map((f) => (
                 <tr key={f.id}>
                   <td>
                     <strong>{f.name}</strong>
-                    {f.label ? <span className="field-label">{f.label}</span> : null}
+                    {f.label ? <span className="model-field__label">{f.label}</span> : null}
                   </td>
                   <td>{datasetLabel(f.dataset_id)}</td>
                   <td>{f.column_name ? f.column_name : <code>{fieldExpressionSql(f)}</code>}</td>
@@ -297,6 +327,16 @@ export function ModelFieldsSection({
               ))}
             </tbody>
           </table>
+          <Pagination
+            total={filtered.length}
+            page={page}
+            pageSize={pageSize}
+            onPageChange={setPage}
+            onPageSizeChange={(size) => {
+              setPageSize(size);
+              resetPaging();
+            }}
+          />
         </div>
       )}
 
