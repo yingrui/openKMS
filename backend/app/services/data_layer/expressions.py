@@ -6,6 +6,13 @@ Canonical shape::
 
 Readers tolerate the legacy map form (`{"dialects": {"ANSI_SQL": "…"}}`) so a
 half-migrated row still works; writers always emit the list form.
+
+**Dialect convention (decision #25).** Our datasets are PostgreSQL-only, and the
+spec's `Dialect` enum has no `POSTGRES`, so every fragment we author is labelled
+`ANSI_SQL` — including PostgreSQL-specific syntax (e.g.
+`(array_agg("pe" ORDER BY "trade_date" DESC))[1]`). Such an expression is therefore
+not portable; keep anything beyond standard SQL out of shared/exported models when
+portability matters.
 """
 from __future__ import annotations
 
