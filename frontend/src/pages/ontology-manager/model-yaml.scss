@@ -1,0 +1,166 @@
+// The Ossie-document inspector: a right-docked full-height panel (a dialog wastes height
+// for a long document) with a collapsible tree and the raw YAML.
+
+@use '../../styles/design-system/mixins' as *;
+@use '../../styles/design-system/tokens' as ds;
+
+.model-yaml__scrim {
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-modal);
+  background: var(--overlay-backdrop);
+}
+
+.model-yaml {
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  z-index: var(--z-modal);
+  display: flex;
+  flex-direction: column;
+  width: min(880px, 62vw);
+  background: var(--color-bg-elevated);
+  border-left: 1px solid var(--color-border);
+  box-shadow: var(--shadow-lg);
+}
+
+// A dialog would be the house rule (see design-system.md) — this is the deliberate
+// exception: a long document needs the full viewport height.
+@include max-width(ds.$bp-md-min) {
+  .model-yaml {
+    width: 100vw;
+  }
+}
+
+.model-yaml__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.model-yaml__title {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+  min-width: 0;
+
+  h2 {
+    margin: 0;
+    font-size: var(--text-md);
+    font-weight: 600;
+  }
+}
+
+.model-yaml__actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+
+.model-yaml__segmented {
+  display: inline-flex;
+  gap: var(--space-1);
+
+  .btn.is-active {
+    border-color: var(--color-accent);
+    color: var(--color-accent);
+  }
+}
+
+.model-yaml__body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+  padding: var(--space-4);
+}
+
+.model-yaml__text {
+  margin: 0;
+  font-size: var(--text-sm);
+  line-height: 1.55;
+  white-space: pre;
+}
+
+.model-yaml__foot {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-shrink: 0;
+  padding: var(--space-2) var(--space-4);
+  border-top: 1px solid var(--color-border);
+  color: var(--color-text-muted);
+  font-size: var(--text-sm);
+}
+
+/* --- collapsible document tree ------------------------------------------- */
+
+.model-tree {
+  font-size: var(--text-sm);
+  line-height: 1.6;
+}
+
+.model-tree__node {
+  margin: 0 0 var(--space-1) 0;
+
+  > summary {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    cursor: pointer;
+    list-style: none;
+    border-radius: var(--radius-sm);
+    padding: 2px 4px;
+
+    &::-webkit-details-marker {
+      display: none;
+    }
+
+    &::before {
+      content: '▸';
+      color: var(--color-text-muted);
+      flex-shrink: 0;
+    }
+
+    &:hover {
+      background: var(--color-bg-muted);
+    }
+  }
+
+  &[open] > summary::before {
+    content: '▾';
+  }
+}
+
+.model-tree__children {
+  margin-left: var(--space-3);
+  padding-left: var(--space-3);
+  border-left: 1px solid var(--color-border);
+}
+
+.model-tree__leaf {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+  padding: 2px 4px;
+}
+
+.model-tree__key {
+  color: var(--color-text-secondary);
+  font-weight: 500;
+}
+
+.model-tree__meta {
+  color: var(--color-text-muted);
+  font-size: var(--text-sm);
+}
+
+.model-tree__value {
+  color: var(--color-text);
+  word-break: break-word;
+}

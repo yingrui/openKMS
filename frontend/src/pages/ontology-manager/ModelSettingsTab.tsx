@@ -10,8 +10,8 @@ import {
   updateSemanticModel,
 } from '../../data/semanticModelsApi';
 import { useConfirm } from '../../contexts/ConfirmContext';
-import { Dialog } from '../../styles/design-system';
 import { EntityViewField, EntityViewHeader, EntityViewPanel } from './EntityViewShell';
+import { ModelYamlPanel } from './ModelYamlPanel';
 import { useSemanticModelDetail } from './SemanticModelDetailPage';
 
 function download(filename: string, text: string, type: string): void {
@@ -35,7 +35,6 @@ export function ModelSettingsTab() {
   const [datasetIds, setDatasetIds] = useState<string[]>(model.dataset_ids);
   const [saving, setSaving] = useState(false);
   const [showYaml, setShowYaml] = useState(false);
-  const [yaml, setYaml] = useState('');
 
   const datasetLabel = (d: (typeof allDatasets)[number]) =>
     d.display_name || `${d.schema_name}.${d.table_name}`;
@@ -64,14 +63,7 @@ export function ModelSettingsTab() {
     }
   };
 
-  const handleViewYaml = async () => {
-    try {
-      setYaml(await exportSemanticModelYaml(model.id));
-      setShowYaml(true);
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : t('dataModel.exportFailed'));
-    }
-  };
+  const handleViewYaml = () => setShowYaml(true);
 
   const handleExport = async (format: 'json' | 'yaml') => {
     try {
@@ -181,32 +173,12 @@ export function ModelSettingsTab() {
         </div>
       </EntityViewPanel>
 
-      <Dialog
+      <ModelYamlPanel
+        modelId={model.id}
+        modelName={model.name}
         open={showYaml}
         onClose={() => setShowYaml(false)}
-        title={t('dataModel.viewYaml')}
-        closeAriaLabel={t('shared.close')}
-        size="lg"
-        footer={
-          <>
-            <button type="button" className="btn btn-secondary" onClick={() => setShowYaml(false)}>
-              {t('shared.close')}
-            </button>
-            <button
-              type="button"
-              className="btn btn-primary"
-              onClick={() => {
-                void navigator.clipboard?.writeText(yaml);
-                toast.success(t('dataModel.copied'));
-              }}
-            >
-              {t('dataModel.copy')}
-            </button>
-          </>
-        }
-      >
-        <pre className="model-yaml">{yaml}</pre>
-      </Dialog>
+      />
     </>
   );
 }

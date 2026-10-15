@@ -187,7 +187,16 @@
     "interchange": "Ossie interchange",
     "interchangeHint": "The model as an Apache Ossie document — view it, or download JSON / YAML.",
     "dangerZone": "Danger zone",
-    "deleteHint": "Deleting the model removes its fields and metrics; the datasets themselves are untouched."
+    "deleteHint": "Deleting the model removes its fields and metrics; the datasets themselves are untouched.",
+    "yamlTree": "Tree",
+    "yamlRaw": "YAML",
+    "yamlExpandLabel_default": "Default",
+    "yamlExpandLabel_all": "All",
+    "yamlExpandLabel_collapsed": "None",
+    "yamlExpand_default": "Expand the first two levels",
+    "yamlExpand_all": "Expand every node",
+    "yamlExpand_collapsed": "Collapse everything",
+    "yamlHint": "Fold any node by clicking it · Copy takes the whole YAML document."
   },
   "datasets": {
     "title": "Datasets",

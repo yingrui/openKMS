@@ -185,7 +185,16 @@
     "interchange": "Ossie 交换格式",
     "interchangeHint": "把模型作为 Apache Ossie 文档查看，或下载 JSON / YAML。",
     "dangerZone": "危险操作",
-    "deleteHint": "删除模型会一并删除它的字段与指标；数据集本身不受影响。"
+    "deleteHint": "删除模型会一并删除它的字段与指标；数据集本身不受影响。",
+    "yamlTree": "树形",
+    "yamlRaw": "YAML",
+    "yamlExpandLabel_default": "默认",
+    "yamlExpandLabel_all": "全部",
+    "yamlExpandLabel_collapsed": "折叠",
+    "yamlExpand_default": "展开前两层",
+    "yamlExpand_all": "展开全部节点",
+    "yamlExpand_collapsed": "全部折叠",
+    "yamlHint": "点击节点即可折叠 · 复制得到完整的 YAML 文档。"
   },
   "datasets": {
     "title": "数据集",
