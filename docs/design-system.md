@@ -192,13 +192,20 @@ Import from page TSX: **`import '../../styles/<name>.scss'`**. Never import anot
 
 ## Style guardrails
 
-From **`frontend/`**:
+From **`frontend/`** — one command, the same one CI runs:
 
 ```bash
-npm run check:app-layout   # single gutter source (.app-content / .app-page-pane)
-npm run check:styles       # table below
-npm run build
+npm run check   # typecheck → check:app-layout → check:app-modules → check:styles
+                # → check:lint (eslint ratchet) → vitest → build
 ```
+
+| Gate | Covers |
+|------|--------|
+| `check:app-layout` | single gutter source (`.app-content` / `.app-page-pane`) |
+| `check:app-modules` | the Suite app list/order lives in `APP_MODULES` |
+| `check:styles` | the rules in the table below |
+| `check:lint` | eslint, ratcheted: `scripts/eslint-baseline.txt` freezes the 152 errors we have (mostly the React Compiler rules in `eslint-plugin-react-hooks` v6, systemic in two large pages) — a file that *gains* one fails |
+| `test` | vitest |
 
 **`check-shared-styles.sh`** (`npm run check:styles`) — allowlists are **known debt, not permission**:
 

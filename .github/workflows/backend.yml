@@ -55,11 +55,9 @@ jobs:
       - name: Install dependencies
         run: uv sync --frozen --extra test
 
-      - name: Lint (ruff)
-        run: uv run ruff check app tests
-
       - name: Migrate
         run: uv run alembic upgrade head
 
-      - name: Test
-        run: uv run pytest -q
+      # ruff + the noqa watch + pytest, exactly as `./check.sh` does locally.
+      - name: Check
+        run: ./check.sh

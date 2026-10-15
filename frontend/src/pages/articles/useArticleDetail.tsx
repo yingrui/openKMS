@@ -346,7 +346,7 @@ export function useArticleDetail() {
 
   const insertImageRef = useCallback(
     (relPath: string, alt?: string) => {
-      const safeAlt = (alt || relPath.split('/').pop() || 'image').replace(/[\[\]]/g, '');
+      const safeAlt = (alt || relPath.split('/').pop() || 'image').replace(/[[\]]/g, '');
       insertAtCursor(`![${safeAlt}](${relPath})`);
     },
     [insertAtCursor],
@@ -354,7 +354,7 @@ export function useArticleDetail() {
 
   const insertAttachmentRef = useCallback(
     (relPath: string, label?: string) => {
-      const text = (label || relPath.split('/').pop() || 'file').replace(/[\[\]]/g, '');
+      const text = (label || relPath.split('/').pop() || 'file').replace(/[[\]]/g, '');
       insertAtCursor(`[${text}](${relPath})`);
     },
     [insertAtCursor],

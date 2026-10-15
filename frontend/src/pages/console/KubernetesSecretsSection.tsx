@@ -151,11 +151,10 @@ export function KubernetesSecretsSection({ clusterId, namespace, loadingResource
     const remove_keys = editSecret
       ? editSecret.keys.filter((k) => !(k in set_values))
       : [];
-    // Keep blanks as keep-existing for edit
+    // A blank value for a key that already exists means "keep the stored value" → omit it.
     const payload: Record<string, string> = {};
     for (const [k, v] of Object.entries(set_values)) {
       if (!editSecret || v !== '' || !editSecret.keys.includes(k)) payload[k] = v;
-      else if (v !== '') payload[k] = v;
     }
     setSecretSubmitting(true);
     try {

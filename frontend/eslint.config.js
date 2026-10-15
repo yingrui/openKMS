@@ -19,6 +19,14 @@ export default defineConfig([
       ecmaVersion: 2020,
       globals: globals.browser,
     },
+    rules: {
+      // `_`-prefixed names are the project's marker for an intentionally unused binding
+      // (destructuring a key away, a callback parameter we accept but ignore).
+      '@typescript-eslint/no-unused-vars': [
+        'error',
+        { argsIgnorePattern: '^_', varsIgnorePattern: '^_', ignoreRestSiblings: true },
+      ],
+    },
   },
   // Context modules export Provider + hook (+ types); fast refresh rule is not a good fit here.
   {

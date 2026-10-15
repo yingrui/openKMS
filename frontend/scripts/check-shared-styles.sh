@@ -33,7 +33,7 @@ done < <(rg -n --no-heading "import '\.\./[a-z-]+/[A-Za-z]+\.scss'" src/pages --
 while IFS= read -r hit; do
   [ -z "$hit" ] && continue
   report "$hit calls matchMedia directly; use useIsMobile() from src/hooks/useIsMobile.ts"
-done < <(rg -n --no-heading 'matchMedia' src --glob '*.ts' --glob '*.tsx' -g '!src/hooks/useIsMobile.ts' -g '!**/*.test.ts' -g '!**/*.test.tsx' -g '!**/*.spec.ts' -g '!**/*.spec.tsx' || true)
+done < <(rg -n --no-heading 'matchMedia' src --glob '*.ts' --glob '*.tsx' -g '!src/hooks/useIsMobile.ts' -g '!src/test/setup.ts' -g '!**/*.test.ts' -g '!**/*.test.tsx' -g '!**/*.spec.ts' -g '!**/*.spec.tsx' || true)
 
 # --- 3. Magic-pixel breakpoints in SCSS ---------------------------------------
 # Prefer tokens via @include max-width(ds.$bp-*). Keep this allowlist empty.
@@ -201,7 +201,7 @@ fi
 # `console-modal-overlay` markup is the hand-rolled dialog we are migrating to <Dialog>.
 # Baseline: scripts/legacy-modals-baseline.txt (a count). Lower it as you migrate.
 LEGACY_MODAL_BASELINE=$(cat scripts/legacy-modals-baseline.txt 2>/dev/null || echo 0)
-LEGACY_MODAL_NOW=$(rg -c --no-heading 'console-modal-overlay' src --glob '*.tsx' 2>/dev/null | awk -F: '{s+=$2} END {print s+0}' || echo 0)
+LEGACY_MODAL_NOW=$( (rg -c --no-heading 'console-modal-overlay' src --glob '*.tsx' 2>/dev/null || true) | awk -F: '{s+=$2} END {print s+0}')
 if [ "${LEGACY_MODAL_NOW:-0}" -gt "${LEGACY_MODAL_BASELINE:-0}" ]; then
   report "hand-rolled modal markup grew ($LEGACY_MODAL_NOW > $LEGACY_MODAL_BASELINE); use <Dialog> and lower scripts/legacy-modals-baseline.txt"
 fi

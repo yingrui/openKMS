@@ -93,22 +93,15 @@ Agent 工作指南（原 `.cursor/rules/` 合并版）。
 
 ## 前端验证
 
-- 动 `frontend/src/**` → `frontend/` 下 `npm run build`（`tsc -b && vite build`）；**`tsc --noEmit` 不够**  
-- 动 app shell（`App.scss`、`app-page.scss`、`ChannelSectionLayout*`、`MainLayout.tsx`）→ `npm run check:app-layout`  
-- 动 Suite App 列表/顺序（`appModules.ts` 等）→ 只在 `APP_MODULES` 设 `order` → `npm run check:app-modules`  
-
-**页边距：** `--app-page-padding-x/y` 只放在 `.app-content` 或 `.app-page-pane`；不与页面根叠 padding；用全局 `.page-header` / `.page-subtitle`；全出血路由 SCSS 注释 `app-layout-exception:` 并登记 `docs/design-system.md`。
-
-> **维护：** 细则（gutter 例外表、check 脚本说明等）日后可迁至 `docs/design-system.md` / `docs/developer/`，本节改外链 + 要点即可。
-
----
+- 动 `frontend/src/**` → **`cd frontend && npm run check`**（typecheck → app-layout → app-modules → check:styles → check:lint → vitest → build）
+- CI 跑同一条命令：`.github/workflows/frontend.yml`
+- 具体规则、棘轮基线、允许清单见 `docs/design-system.md` 与 `frontend/scripts/`
 
 ## 后端验证
 
-- 动 `backend/**` → **`cd backend && uv run ruff check app tests`**（配置在 `pyproject.toml`；`uv tool run ruff` 亦可）+ **`uv run pytest`**
-- **务必用项目的 `.venv`（`uv run` / `.venv/bin/pytest`）**：系统 python 往往缺可选依赖（`pytest-asyncio`、`langgraph-checkpoint-postgres`、`deepagents`…），会误报大量收集/运行失败
-- ruff 只开高信号规则（`E9` 语法、`F` pyflakes、`B` bugbear；`B008` 因 FastAPI `Depends(...)` 必需而关闭）。**不要**为了过检查而加 `noqa`——真问题就修
-- CI：`.github/workflows/backend.yml`（ruff + Alembic + pytest，自带 pgvector 服务）
+- 动 `backend/**` → **`cd backend && ./check.sh`**（ruff → noqa 检查 → pytest；内部 `uv run`，所以一定用项目 `.venv`）
+- CI 跑同一条命令：`.github/workflows/backend.yml`
+- 具体规则见 `pyproject.toml` 的 `[tool.ruff]` 与 `check.sh`
 
 ## Apps（module / 托管 Service）
 

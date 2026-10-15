@@ -1,0 +1,36 @@
+name: Frontend checks
+
+on:
+  push:
+    paths:
+      - "frontend/**"
+      - ".github/workflows/frontend.yml"
+  pull_request:
+    paths:
+      - "frontend/**"
+      - ".github/workflows/frontend.yml"
+  workflow_dispatch:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      # One command: typecheck → app-layout → app-modules → shared styles (i18n keys,
+      # icon-only buttons, unskinned controls, legacy modals, cross-route classes) →
+      # eslint ratchet → vitest → build.
+      - name: Check
+        run: npm run check

@@ -174,6 +174,17 @@ export function DocumentChannelSettings() {
 
   if (!channelId) return null;
 
+  const tabs: { id: TabId; label: string; icon: typeof Settings }[] = useMemo(
+    () => [
+      { id: 'general', label: t('settings.tabGeneral'), icon: Settings },
+      { id: 'processing', label: t('settings.tabProcessing'), icon: Zap },
+      { id: 'extraction', label: t('settings.tabExtraction'), icon: FileSearch },
+      { id: 'labels', label: t('settings.tabLabels'), icon: Tag },
+      { id: 'sharing', label: t('settings.tabSharing'), icon: Users },
+    ],
+    [t],
+  );
+
   const handleSave = async () => {
     setSaving(true);
     try {
@@ -265,16 +276,6 @@ export function DocumentChannelSettings() {
     setLabelConfig((prev) => prev.filter((_, i) => i !== index));
   };
 
-  const tabs: { id: TabId; label: string; icon: typeof Settings }[] = useMemo(
-    () => [
-      { id: 'general', label: t('settings.tabGeneral'), icon: Settings },
-      { id: 'processing', label: t('settings.tabProcessing'), icon: Zap },
-      { id: 'extraction', label: t('settings.tabExtraction'), icon: FileSearch },
-      { id: 'labels', label: t('settings.tabLabels'), icon: Tag },
-      { id: 'sharing', label: t('settings.tabSharing'), icon: Users },
-    ],
-    [t],
-  );
 
   return (
     <div className="settings-page">
