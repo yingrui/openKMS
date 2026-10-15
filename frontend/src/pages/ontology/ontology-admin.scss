@@ -1884,6 +1884,66 @@
   white-space: pre-wrap;
 }
 
+// Field picker: a type-ahead menu, because an always-open checkbox wall eats the pane.
+.playground__picker {
+  position: relative;
+}
+
+.playground__field-menu {
+  position: absolute;
+  z-index: 30;
+  top: calc(100% + var(--space-1));
+  left: 0;
+  right: 0;
+  max-height: 18rem;
+  overflow-y: auto;
+  padding: var(--space-2);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-bg);
+  box-shadow: var(--shadow-md);
+}
+
+.playground__field-menu ul {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.playground__field-menu-head {
+  padding: var(--space-2) var(--space-2) var(--space-1);
+  font-size: var(--text-xs);
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+}
+
+.playground__field-option {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+  padding: var(--space-2);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+}
+
+.playground__field-option--active,
+.playground__field-option:hover {
+  background: var(--color-bg-muted);
+}
+
+.playground__field-option[aria-selected='true'] .playground__field-name {
+  font-weight: 600;
+}
+
+.playground__field-check {
+  flex-shrink: 0;
+  color: var(--color-primary, var(--color-text));
+}
+
 .playground__null-share {
   display: block;
   font-size: var(--text-xs);

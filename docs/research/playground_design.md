@@ -67,8 +67,8 @@ Four user jobs, and the information each needs:
 │ │ Time dimension           │ │   or  Table ／ Line                            │  │
 │ │   trade_date  [month ▾]  │ │   rows 1000 · capped · 42 ms · [Copy CSV]      │  │
 │ │   range: [2026-01-01 … ] │ │  ┌───────────────────────────────────────────┐  │  │
-│ │ Dimensions  [🔍 search]  │ │  │ ts_code │ trade_date │ value              │  │  │
-│ │   ✓ ts_code   + area …   │ │  └───────────────────────────────────────────┘  │  │
+│ │ Dimensions [ts_code… ▾]  │ │  │ ts_code │ trade_date │ value              │  │  │
+│ │   ✓ ts_code · area       │ │  └───────────────────────────────────────────┘  │  │
 │ │ Filters                  │ │  ▸ SQL (generated)                             │  │
 │ │   + add · metric filters │ │  ▸ Recent runs (click to restore)              │  │
 │ │ [ Run ]                  │ │                                                │  │
@@ -92,10 +92,12 @@ is collapsed by default so an author can verify without leaving for the Metrics 
    dimension), with the metric's own `filters` listed read-only so the user knows what is already
    applied. *(API: exists; UI: none.)*
 3. **Order + limit + row-cap indicator**: "showing 1000 of ≥1000 rows" instead of a silent truncation.
-4. **Field picker** (✅): the design-system `<CheckList>` (bordered, hoverable, scrollable),
-   **grouped** into *Time dimensions* / *Fields* with a count, each row showing the field name,
-   its label in muted text and the **data type** pushed right — plus a search box; selections
-   also appear as chips (with the grain selector) above.
+4. **Field picker** (✅): a **type-ahead multi-select** (a `combobox` input whose menu appears only
+   while it is in use) — the always-open checkbox wall wasted the pane. Typing filters; **↑/↓** move,
+   **Enter** adds, **Backspace** on an empty input drops the last, **Esc** closes; the menu keeps the
+   *Time dimensions* / *Fields* grouping with counts and shows name + muted label + data type pushed
+   right, a check on what is already grouped and *nothing matches* when the search misses. Selections
+   live as **chips** above (with the query-time grain selector); the section label carries the count.
 5. **Definition strip**: expression, base dataset, joins, `type`, description, `ai_context`.
 6. **Single-value mode**: no group-by → the metric's value (the fastest sanity check).
 7. **Errors with a cause** (✅): the query API classifies by SQLSTATE into `definition` /
@@ -188,7 +190,10 @@ change (no alias). `/metrics/{id}/compute` folds into "query with no grouping".
 5. `POST /semantic-models/{id}/query` replaces `/preview`; `POST /metrics/{id}/compute` stays as the
    metric-addressed single value and is defined as `run_query` with no grouping (one engine, two
    addresses).
-6. **A failed query is classified, not just reported** — SQLSTATE → `kind` (`definition` / `data` /
+6. **The field list is a menu, not a pane** — a field picker that is always on screen costs the same
+   space as the answer it exists to produce; it opens on focus, filters as you type and closes when
+   you leave. Chips (not the menu) are the record of what is selected.
+7. **A failed query is classified, not just reported** — SQLSTATE → `kind` (`definition` / `data` /
    `request`) + a stable code, localized server-side so the pane shows the cause in the caller's
    language (a wrong definition is the common case and is *not* the user's fault). Raw source text is
    a details line, never the message.

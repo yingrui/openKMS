@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useSearchParams } from 'react-router-dom';
-import { AlertTriangle, Copy, Loader2, Play, Plus, Search, X } from 'lucide-react';
+import { Check, Copy, Loader2, Play, Plus, Search, X } from 'lucide-react';
 import { toast } from 'sonner';
 import { fetchMetrics, type MetricResponse } from '../../data/metricsApi';
 import { fetchDatasetJoins, type DatasetJoinResponse } from '../../data/joinsApi';
@@ -16,9 +16,10 @@ import {
   type SemanticModelQueryResponse,
   type SemanticModelQuerySpec,
 } from '../../data/semanticModelsApi';
-import { CheckList, CheckListItem, FormField } from '../../styles/design-system';
+import { FormField } from '../../styles/design-system';
 import { useAsyncData } from '../../hooks/useAsyncData';
 import { EntityViewHeader, EntityViewPanel } from './EntityViewShell';
+import { ModelPlaygroundAnswer, type RunError } from './ModelPlaygroundAnswer';
 import { useSemanticModelDetail } from './useSemanticModelDetail';
 
 const GRANULARITIES = ['day', 'week', 'month', 'quarter', 'year'];
@@ -27,9 +28,6 @@ const OPS = ['=', '!=', '>', '>=', '<', '<=', 'like', 'in', 'between', 'is_null'
 const NO_VALUE = new Set(['is_null', 'is_not_null']);
 
 type FilterRow = { id: number; field: string; op: string; value: string; value2: string };
-
-/** A failed run, as the API classified it: who can fix it, what it said, and the source's words. */
-type RunError = { kind: string; message: string; detail?: string };
 
 /** `kind` is set by the query API (`definition` / `data` / `request`); anything else is generic. */
 function runErrorFrom(error: unknown, fallback: string): RunError {
@@ -85,9 +83,10 @@ export function ModelPlaygroundSection() {
   const [spec, setSpec] = useState<SemanticModelQuerySpec | null>(null);
   const [filterRows, setFilterRows] = useState<FilterRow[]>([]);
   const [search, setSearch] = useState('');
+  const [pickerOpen, setPickerOpen] = useState(false);
+  const [highlighted, setHighlighted] = useState(0);
   const [result, setResult] = useState<SemanticModelQueryResponse | null>(null);
   const [runError, setRunError] = useState<RunError | null>(null);
-  const [showSql, setShowSql] = useState(false);
   const [running, setRunning] = useState(false);
 
   // Adopt the loaded metric catalog into the query spec once per model (a URL spec wins).
@@ -126,18 +125,6 @@ export function ModelPlaygroundSection() {
     [metricJoinIds],
   );
 
-  /** Share of the returned rows that are null per column, so a thin result is readable. */
-  const nullShare = useMemo(() => {
-    const rows = result?.rows ?? [];
-    const share: Record<string, number> = {};
-    for (const column of result?.columns ?? []) {
-      share[column] = rows.length
-        ? rows.filter((row) => row[column] === null || row[column] === undefined).length / rows.length
-        : 0;
-    }
-    return share;
-  }, [result]);
-
   /** Whether anything narrows the answer — it decides what "no rows" means. */
   const filtersApplied = useMemo(
     () => (metric?.filters?.length ?? 0) > 0 || filterRows.some((row) => row.field && row.op),
@@ -162,6 +149,10 @@ export function ModelPlaygroundSection() {
     (f.label ?? '').toLowerCase().includes(search.trim().toLowerCase());
   const visibleOthers = otherFields.filter(matched);
   const visibleTimeDims = timeDims.filter(matched);
+  /** Keyboard order matches what the menu draws: time dimensions first. */
+  const pickerOptions = [...visibleTimeDims, ...visibleOthers];
+  const activeOption =
+    pickerOptions.length > 0 ? Math.min(highlighted, pickerOptions.length - 1) : -1;
 
   const patch = (next: Partial<SemanticModelQuerySpec>) =>
     setSpec((prev) => (prev ? { ...prev, ...next } : prev));
@@ -212,6 +203,14 @@ export function ModelPlaygroundSection() {
   };
 
   /** The same spec object the skill/agent send — copied verbatim. */
+  // Arrow keys can walk past the menu's edge: keep the highlighted option in view.
+  useEffect(() => {
+    if (!pickerOpen || activeOption < 0) return;
+    document
+      .getElementById(`playground-field-${activeOption}`)
+      ?.scrollIntoView({ block: 'nearest' });
+  }, [activeOption, pickerOpen]);
+
   const copyQuery = async () => {
     if (!spec) return;
     try {
@@ -296,18 +295,14 @@ export function ModelPlaygroundSection() {
               </FormField>
 
               <div className="playground__section">
-                <span className="playground__label">{t('dataModel.playgroundDimensions')}</span>
-                {/* ds-control-exempt: `.console-datasets-search` styles this input */}
-                <div className="console-datasets-search">
-                  <Search size={18} aria-hidden />
-                  <input
-                    type="search"
-                    aria-label={t('datasets.searchAria')}
-                    placeholder={t('dataModel.datasetFieldSearch')}
-                    value={search}
-                    onChange={(e) => setSearch(e.target.value)}
-                  />
-                </div>
+                <span className="playground__label">
+                  {t('dataModel.playgroundDimensions')}
+                  {spec.group_by.length > 0 ? (
+                    <span className="playground__group-count">
+                      {t('dataModel.playgroundSelectedCount', { count: spec.group_by.length })}
+                    </span>
+                  ) : null}
+                </span>
 
                 {spec.group_by.length > 0 && (
                   <div className="playground__chips">
@@ -343,46 +338,119 @@ export function ModelPlaygroundSection() {
                   </div>
                 )}
 
-                {visibleTimeDims.length > 0 && (
-                  <>
-                    <span className="playground__group">
-                      {t('dataModel.playgroundTimeDimensions')}
-                    </span>
-                    <CheckList>
-                      {visibleTimeDims.map((f) => (
-                        <FieldRow
-                          key={f.id}
-                          field={f}
-                          checked={grouped.has(f.id)}
-                          onToggle={() => toggleGroup(f)}
-                        />
-                      ))}
-                    </CheckList>
-                  </>
-                )}
-                {visibleOthers.length > 0 && (
-                  <>
-                    <span className="playground__group">
-                      {t('datasets.fields')}
-                      <span className="playground__group-count">
-                        {t('dataModel.fieldCount', { count: visibleOthers.length })}
-                      </span>
-                    </span>
-                    <CheckList>
-                      {visibleOthers.map((f) => (
-                        <FieldRow
-                          key={f.id}
-                          field={f}
-                          checked={grouped.has(f.id)}
-                          onToggle={() => toggleGroup(f)}
-                        />
-                      ))}
-                    </CheckList>
-                  </>
-                )}
-                {visibleTimeDims.length === 0 && visibleOthers.length === 0 && (
-                  <p className="entity-view__readonly">{t('dataModel.noSearchMatch')}</p>
-                )}
+                {/* Type to filter, Enter to add — the list only appears while it is being used. */}
+                <div
+                  className="playground__picker"
+                  onBlur={(e) => {
+                    if (!e.currentTarget.contains(e.relatedTarget as Node | null)) {
+                      setPickerOpen(false);
+                    }
+                  }}
+                >
+                  {/* ds-control-exempt: `.console-datasets-search` styles this input */}
+                  <div className="console-datasets-search">
+                    <Search size={18} aria-hidden />
+                    <input
+                      type="search"
+                      role="combobox"
+                      aria-expanded={pickerOpen}
+                      aria-controls="playground-field-menu"
+                      aria-autocomplete="list"
+                      aria-activedescendant={
+                        pickerOpen && activeOption >= 0 ? `playground-field-${activeOption}` : undefined
+                      }
+                      aria-label={t('dataModel.playgroundDimensions')}
+                      placeholder={t('dataModel.playgroundFieldPickerPlaceholder')}
+                      title={t('dataModel.playgroundFieldPickerTitle')}
+                      value={search}
+                      onFocus={() => setPickerOpen(true)}
+                      onChange={(e) => {
+                        setSearch(e.target.value);
+                        setHighlighted(0);
+                        setPickerOpen(true);
+                      }}
+                      onKeyDown={(e) => {
+                        if (e.key === 'ArrowDown') {
+                          e.preventDefault();
+                          setPickerOpen(true);
+                          setHighlighted((h) => Math.min(h + 1, pickerOptions.length - 1));
+                        } else if (e.key === 'ArrowUp') {
+                          e.preventDefault();
+                          setHighlighted((h) => Math.max(h - 1, 0));
+                        } else if (e.key === 'Enter') {
+                          const field = pickerOptions[activeOption];
+                          if (pickerOpen && field) {
+                            e.preventDefault();
+                            toggleGroup(field);
+                            setSearch('');
+                            setHighlighted(0);
+                          }
+                        } else if (e.key === 'Escape') {
+                          setPickerOpen(false);
+                          setSearch('');
+                        } else if (e.key === 'Backspace' && !search && spec.group_by.length > 0) {
+                          // Autocomplete habit: backspace on an empty input drops the last chip.
+                          const last = spec.group_by[spec.group_by.length - 1];
+                          const field = fields.find((f) => f.id === last.field || f.name === last.field);
+                          if (field) toggleGroup(field);
+                        }
+                      }}
+                    />
+                  </div>
+
+                  {pickerOpen && (
+                    <div
+                      className="playground__field-menu"
+                      id="playground-field-menu"
+                      role="listbox"
+                      aria-multiselectable
+                      // Keep focus in the input so a row click lands before blur closes the menu.
+                      onMouseDown={(e) => e.preventDefault()}
+                    >
+                      {groupable.length === 0 ? (
+                        <p className="entity-view__readonly">{t('dataModel.playgroundNoDimensions')}</p>
+                      ) : pickerOptions.length === 0 ? (
+                        <p className="entity-view__readonly">{t('dataModel.noSearchMatch')}</p>
+                      ) : (
+                        <ul>
+                          {visibleTimeDims.length > 0 && (
+                            <li className="playground__field-menu-head" role="presentation">
+                              {t('dataModel.playgroundTimeDimensions')}
+                            </li>
+                          )}
+                          {visibleTimeDims.map((f, i) => (
+                            <FieldOption
+                              key={f.id}
+                              id={`playground-field-${i}`}
+                              field={f}
+                              selected={grouped.has(f.id)}
+                              highlighted={i === activeOption}
+                              onSelect={() => toggleGroup(f)}
+                            />
+                          ))}
+                          {visibleOthers.length > 0 && (
+                            <li className="playground__field-menu-head" role="presentation">
+                              {t('datasets.fields')}
+                              <span className="playground__group-count">
+                                {t('dataModel.fieldCount', { count: visibleOthers.length })}
+                              </span>
+                            </li>
+                          )}
+                          {visibleOthers.map((f, i) => (
+                            <FieldOption
+                              key={f.id}
+                              id={`playground-field-${visibleTimeDims.length + i}`}
+                              field={f}
+                              selected={grouped.has(f.id)}
+                              highlighted={visibleTimeDims.length + i === activeOption}
+                              onSelect={() => toggleGroup(f)}
+                            />
+                          ))}
+                        </ul>
+                      )}
+                    </div>
+                  )}
+                </div>
               </div>
 
               <div className="playground__section">
@@ -575,115 +643,41 @@ export function ModelPlaygroundSection() {
           )}
         </div>
 
-        {/* ---------- the answer ---------- */}
-        <div className="playground__answer">
-          <EntityViewPanel title={t('dataModel.playgroundResult')}>
-            {runError ? (
-              <div className={`playground__error playground__error--${runError.kind}`} role="alert">
-                <p className="playground__error-title">
-                  <AlertTriangle size={16} aria-hidden />
-                  {runError.kind === 'definition'
-                    ? t('dataModel.playgroundErrorDefinition')
-                    : runError.kind === 'request'
-                      ? t('dataModel.playgroundErrorRequest')
-                      : runError.kind === 'data'
-                        ? t('dataModel.playgroundErrorData')
-                        : t('dataModel.playgroundRunFailed')}
-                </p>
-                <p className="playground__error-message">{runError.message}</p>
-                {runError.detail ? (
-                  <details className="playground__error-details">
-                    <summary>{t('dataModel.playgroundErrorDetails')}</summary>
-                    <pre>{runError.detail}</pre>
-                  </details>
-                ) : null}
-              </div>
-            ) : !result ? (
-              <p className="entity-view__readonly">{t('dataModel.playgroundEmpty')}</p>
-            ) : (
-              <>
-                <p className="page-subtitle">
-                  {t('dataModel.playgroundRowCount', { count: result.row_count })}
-                  {result.capped ? ` · ${t('dataModel.playgroundCapped')}` : ''}
-                  {` · ${result.duration_ms} ms`}
-                </p>
-                {result.rows.length === 0 ? (
-                  <p className="entity-view__readonly">
-                    {filtersApplied
-                      ? t('dataModel.playgroundNoRowsFiltered')
-                      : t('dataModel.playgroundNoRowsEmpty')}
-                  </p>
-                ) : (
-                  <div className="ds-table-wrap ds-table-wrap--flush">
-                    <table className="console-table">
-                      <thead>
-                        <tr>
-                          {result.columns.map((c) => (
-                            <th key={c}>
-                              {c}
-                              {nullShare[c] > 0 ? (
-                                <span className="playground__null-share">
-                                  {t('dataModel.playgroundNullShare', {
-                                    percent: Math.round(nullShare[c] * 100),
-                                  })}
-                                </span>
-                              ) : null}
-                            </th>
-                          ))}
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {result.rows.map((row, i) => (
-                          <tr key={i}>
-                            {result.columns.map((c) => (
-                              <td key={c}>
-                                {row[c] === null || row[c] === undefined
-                                  ? t('datasets.dash')
-                                  : String(row[c])}
-                              </td>
-                            ))}
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                )}
-                <button
-                  type="button"
-                  className="btn btn-secondary btn-sm playground__sql-toggle"
-                  onClick={() => setShowSql((v) => !v)}
-                >
-                  {t('dataModel.playgroundSql')}
-                </button>
-                {showSql && <pre className="playground__sql">{result.sql}</pre>}
-              </>
-            )}
-          </EntityViewPanel>
-
-        </div>
+        <ModelPlaygroundAnswer result={result} runError={runError} filtersApplied={filtersApplied} />
       </div>
     </>
   );
 }
 
 /** One field in the group-by picker: name, its label, and the data type it produces. */
-function FieldRow({
+function FieldOption({
+  id,
   field,
-  checked,
-  onToggle,
+  selected,
+  highlighted,
+  onSelect,
 }: {
+  id: string;
   field: SemanticModelFieldResponse;
-  checked: boolean;
-  onToggle: () => void;
+  selected: boolean;
+  highlighted: boolean;
+  onSelect: () => void;
 }) {
   return (
-    <CheckListItem checked={checked} onChange={onToggle}>
+    <li
+      id={id}
+      role="option"
+      aria-selected={selected}
+      className={`playground__field-option${highlighted ? ' playground__field-option--active' : ''}`}
+      onClick={onSelect}
+    >
       <span className="playground__field">
         <span className="playground__field-name">{field.name}</span>
         {field.label ? <span className="playground__field-label">{field.label}</span> : null}
         <span className="playground__field-type">{field.datatype ?? ''}</span>
       </span>
-    </CheckListItem>
+      {selected ? <Check size={14} className="playground__field-check" aria-hidden /> : null}
+    </li>
   );
 }
 
