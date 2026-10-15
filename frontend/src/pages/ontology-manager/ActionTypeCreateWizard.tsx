@@ -7,11 +7,8 @@ import {
   createOntologyActionType,
   type OntologyFunctionResponse,
 } from '../../data/ontologyFunctionsApi';
-import {
-  ACTION_TEMPLATES,
-  actionApiName,
-  toCamelCaseApiName,
-} from './ObjectTypeCreateWizard';
+import { ACTION_TEMPLATES } from './ObjectTypeCreateWizard';
+import { actionApiName, toCamelCaseApiName } from './objectTypeNaming';
 import {
   FUNCTION_RULE_TYPE,
   intentToRuleType,

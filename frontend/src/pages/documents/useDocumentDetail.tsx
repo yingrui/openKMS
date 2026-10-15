@@ -1,9 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { MouseEvent } from 'react';
 import { useTranslation } from 'react-i18next';
-import {
-  richMarkdownPreComponent,
-} from '../../components/markdown/richMarkdown';
+import { richMarkdownPreComponent } from '../../components/markdown/richMarkdownPre';
 import { toast } from 'sonner';
 import {
   createDocumentRelationship,

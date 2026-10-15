@@ -5,7 +5,7 @@
  * Prefer `richMarkdownPreComponent()` for fenced code/Mermaid; long-form reading panes
  * may reuse `.document-detail-markdown-body` typography (same as document detail).
  */
-import { Children, isValidElement, useEffect, useId, useMemo, useRef, type ComponentProps, type ReactNode } from 'react';
+import { useEffect, useId, useMemo, useRef, type ComponentProps } from 'react';
 import ReactMarkdown, { type Components } from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import remarkMath from 'remark-math';
@@ -18,12 +18,10 @@ import 'katex/dist/contrib/mhchem.mjs';
 import { preprocessRichMarkdown } from './normalizeMarkdownMath';
 import './richMarkdown.scss';
 
-export { preprocessRichMarkdown, normalizeMarkdownMath } from './normalizeMarkdownMath';
-
-export const richMarkdownRemarkPlugins: PluggableList = [remarkGfm, remarkMath];
+const richMarkdownRemarkPlugins: PluggableList = [remarkGfm, remarkMath];
 
 /** KaTeX: soft failure so one bad formula does not blank the whole message. */
-export const richMarkdownRehypePlugins: PluggableList = [
+const richMarkdownRehypePlugins: PluggableList = [
   rehypeRaw,
   [
     rehypeKatex,
@@ -41,17 +39,6 @@ function mermaidTheme(): 'default' | 'dark' {
 
 function escapeHtml(s: string): string {
   return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
-}
-
-function mermaidSourceFromPreChildren(children: ReactNode): string | null {
-  const parts = Children.toArray(children);
-  if (parts.length !== 1) return null;
-  const el = parts[0];
-  if (!isValidElement(el)) return null;
-  const props = el.props as { className?: string; children?: ReactNode };
-  const cls = props.className || '';
-  if (!/\blanguage-mermaid\b/.test(cls)) return null;
-  return String(props.children ?? '').replace(/\n$/, '');
 }
 
 export function MermaidBlock({ code }: { code: string }) {
@@ -92,17 +79,6 @@ export function MermaidBlock({ code }: { code: string }) {
   }, [code, baseId]);
 
   return <div className="openkms-mermaid" ref={hostRef} />;
-}
-
-/** Use as `components.pre` so ```mermaid blocks render as diagrams instead of raw code. */
-export function richMarkdownPreComponent(preClassName?: string): NonNullable<Components['pre']> {
-  return function RichMarkdownPre({ children }) {
-    const src = mermaidSourceFromPreChildren(children);
-    if (src !== null) {
-      return <MermaidBlock code={src} />;
-    }
-    return <pre className={preClassName}>{children}</pre>;
-  };
 }
 
 type RichMarkdownProps = {

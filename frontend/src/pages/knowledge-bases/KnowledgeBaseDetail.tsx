@@ -31,7 +31,7 @@ import { RESOURCE_TYPES } from '../../data/resourceAclApi';
 import { AgentAssistantStreamBody } from '../../components/agents/AgentAssistantStreamBody';
 import { KbQaSessionSidebar } from '../../components/knowledge-bases/KbQaSessionSidebar';
 import { AgentMessageBody } from '../../components/agents/AgentMessageBody';
-import { KbRetrievalProvenancePanel } from './KnowledgeBaseDetail.searchUtils';
+import { KbRetrievalProvenancePanel } from './KbRetrievalProvenancePanel';
 import {
   KbChunkDialog,
   KbDocPickerDialog,

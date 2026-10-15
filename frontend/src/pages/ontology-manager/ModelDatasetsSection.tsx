@@ -17,7 +17,7 @@ import {
 import { useConfirm } from '../../contexts/ConfirmContext';
 import { Dialog, FormField, Pagination } from '../../styles/design-system';
 import { EntityViewHeader, EntityViewPanel } from './EntityViewShell';
-import { useSemanticModelDetail } from './SemanticModelDetailPage';
+import { useSemanticModelDetail } from './useSemanticModelDetail';
 import type { DatasetResponse } from '../../data/datasetsApi';
 
 const PAGE_SIZE = 25;

@@ -1,7 +1,10 @@
 import { useMemo, useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { X } from 'lucide-react';
-import { RichMarkdown, richMarkdownPreComponent } from '../markdown/richMarkdown';
+import {
+  RichMarkdown,
+} from '../markdown/richMarkdown';
+import { richMarkdownPreComponent } from '../markdown/richMarkdownPre';
 import { AgentsFileSkeleton } from './AgentsPageSkeleton';
 import {
   preprocessProjectWikilinks,

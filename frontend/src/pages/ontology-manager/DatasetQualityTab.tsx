@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Play, Plus, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
-import { useDatasetDetail } from './DatasetDetailPage';
+import { useDatasetDetail } from './useDatasetDetail';
 import { fetchDatasetMetadata, fetchDatasets, type ColumnMetadata, type DatasetResponse } from '../../data/datasetsApi';
 import {
   createQualityRule,

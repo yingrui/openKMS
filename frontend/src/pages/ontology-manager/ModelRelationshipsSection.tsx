@@ -6,7 +6,7 @@ import { toast } from 'sonner';
 import { useAsyncData } from '../../hooks/useAsyncData';
 import { fetchDatasetJoins, type DatasetJoinResponse } from '../../data/joinsApi';
 import { EntityViewHeader, EntityViewPanel } from './EntityViewShell';
-import { useSemanticModelDetail } from './SemanticModelDetailPage';
+import { useSemanticModelDetail } from './useSemanticModelDetail';
 
 /**
  * Model → Relationships: the FK edges **among the datasets in scope**. Relationships are

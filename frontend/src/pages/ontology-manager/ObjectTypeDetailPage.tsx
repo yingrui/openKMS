@@ -1,13 +1,9 @@
 import {
-  createContext,
   useCallback,
-  useContext,
   useEffect,
   useMemo,
   useRef,
   useState,
-  type Dispatch,
-  type SetStateAction,
 } from 'react';
 import { Link, Navigate, Outlet, useParams, useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
@@ -36,14 +32,14 @@ import {
 } from '../../data/ontologyFunctionsApi';
 import { ResourceSharePanel } from '../../components/ResourceSharePanel';
 import { RESOURCE_TYPES } from '../../data/resourceAclApi';
+import { PropertiesEditor } from './objectTypeFormParts';
 import {
   ontologyTypeFromColumn,
-  PropertiesEditor,
   toHandCreatedPropertyDefs,
   toPropertyDefs,
   withoutReservedProperties,
   type FormProperty,
-} from './objectTypeFormParts';
+} from './objectTypeFormModel';
 import {
   EntityViewField,
   EntityViewHeader,
@@ -51,44 +47,8 @@ import {
   EntityViewPanel,
   EntityViewShell,
 } from './EntityViewShell';
+import { ObjectTypeDetailCtx, useObjectTypeDetail } from './useObjectTypeDetail';
 import '../ontology/ontology-admin.scss';
-
-type ObjectTypeDetailContext = {
-  objectType: ObjectTypeResponse;
-  relatedLinks: LinkTypeResponse[];
-  relatedActions: OntologyActionTypeResponse[];
-  relatedFunctions: OntologyFunctionResponse[];
-  datasets: DatasetResponse[];
-  neo4jDataSources: DataSourceResponse[];
-  name: string;
-  setName: (v: string) => void;
-  description: string;
-  setDescription: (v: string) => void;
-  isMasterData: boolean;
-  setIsMasterData: (v: boolean) => void;
-  displayProperty: string;
-  setDisplayProperty: (v: string) => void;
-  datasetId: string;
-  setDatasetId: (v: string) => void;
-  properties: FormProperty[];
-  setProperties: Dispatch<SetStateAction<FormProperty[]>>;
-  keyProperty: string;
-  setKeyProperty: (v: string) => void;
-  loadingMetadata: boolean;
-  saving: boolean;
-  indexing: boolean;
-  onSave: () => Promise<void>;
-  onIndex: (neo4jId: string) => Promise<void>;
-  reload: () => Promise<void>;
-};
-
-const ObjectTypeDetailCtx = createContext<ObjectTypeDetailContext | null>(null);
-
-export function useObjectTypeDetail(): ObjectTypeDetailContext {
-  const ctx = useContext(ObjectTypeDetailCtx);
-  if (!ctx) throw new Error('useObjectTypeDetail requires ObjectTypeDetailPage');
-  return ctx;
-}
 
 export function ObjectTypeDetailPage() {
   const { t } = useTranslation('ontology');

@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Loader2, Plus, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
-import { useDatasetDetail } from './DatasetDetailPage';
+import { useDatasetDetail } from './useDatasetDetail';
 import {
   fetchDatasetMetadata,
   fetchDatasets,

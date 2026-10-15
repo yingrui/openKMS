@@ -16,7 +16,7 @@ import {
 import { useConfirm } from '../../contexts/ConfirmContext';
 import { Dialog, FormField } from '../../styles/design-system';
 import { EntityViewHeader, EntityViewPanel } from './EntityViewShell';
-import { useSemanticModelDetail } from './SemanticModelDetailPage';
+import { useSemanticModelDetail } from './useSemanticModelDetail';
 
 const METRIC_TYPES = ['simple', 'ratio', 'derived', 'cumulative', 'conversion'] as const;
 

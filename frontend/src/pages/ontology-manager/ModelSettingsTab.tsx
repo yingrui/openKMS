@@ -13,7 +13,7 @@ import { useConfirm } from '../../contexts/ConfirmContext';
 import { FormField } from '../../styles/design-system';
 import { EntityViewHeader, EntityViewPanel } from './EntityViewShell';
 import { ModelYamlPanel } from './ModelYamlPanel';
-import { useSemanticModelDetail } from './SemanticModelDetailPage';
+import { useSemanticModelDetail } from './useSemanticModelDetail';
 
 type AiContext = { instructions: string; synonyms: string; examples: string };
 

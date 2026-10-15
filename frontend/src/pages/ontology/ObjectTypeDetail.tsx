@@ -23,7 +23,7 @@ import { isRunnableAction } from '../ontology-manager/actionRuleTypes';
 import {
   isReservedPropertyName,
   SYSTEM_RID_PROPERTY_NAME,
-} from '../ontology-manager/objectTypeFormParts';
+} from '../ontology-manager/objectTypeFormModel';
 import './ObjectTypeDetail.scss';
 
 export function ObjectTypeDetail() {

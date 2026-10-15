@@ -1,7 +1,5 @@
 import {
-  createContext,
   useCallback,
-  useContext,
   useEffect,
   useMemo,
   useState,
@@ -37,41 +35,13 @@ import {
   EntityViewStat,
   EntityViewStats,
 } from './EntityViewShell';
+import {
+  DatasetDetailCtx,
+  useDatasetDetail,
+  type DatasetDetailContext,
+} from './useDatasetDetail';
 import '../ontology/ontology-admin.scss';
 import './dataset-detail.scss';
-
-type DatasetDetailContext = {
-  dataset: DatasetResponse;
-  setDataset: (d: DatasetResponse) => void;
-  displayName: string;
-  setDisplayName: (v: string) => void;
-  description: string;
-  setDescription: (v: string) => void;
-  domain: string;
-  setDomain: (v: string) => void;
-  tags: string;
-  setTags: (v: string) => void;
-  businessDefinition: string;
-  setBusinessDefinition: (v: string) => void;
-  sensitivity: string;
-  setSensitivity: (v: string) => void;
-  saving: boolean;
-  onSave: () => Promise<void>;
-  onDelete: () => Promise<void>;
-  columnCount: number | null;
-  rowTotal: number | null;
-  usageObjectTypes: ObjectTypeResponse[];
-  usageLinkTypes: LinkTypeResponse[];
-  usageLoading: boolean;
-};
-
-const DatasetDetailCtx = createContext<DatasetDetailContext | null>(null);
-
-export function useDatasetDetail(): DatasetDetailContext {
-  const ctx = useContext(DatasetDetailCtx);
-  if (!ctx) throw new Error('useDatasetDetail requires DatasetDetailPage');
-  return ctx;
-}
 
 function tableLabel(d: DatasetResponse): string {
   return `${d.schema_name}.${d.table_name}`;

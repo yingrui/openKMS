@@ -17,7 +17,7 @@ import {
   type DatasetRowOp,
   type DatasetRowsResponse,
 } from '../../data/datasetsApi';
-import { useDatasetDetail } from './DatasetDetailPage';
+import { useDatasetDetail } from './useDatasetDetail';
 import { EntityViewHeader, EntityViewPanel } from './EntityViewShell';
 
 const UUID_RE = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/;

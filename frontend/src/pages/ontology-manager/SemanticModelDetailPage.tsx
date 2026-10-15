@@ -1,7 +1,5 @@
 import {
-  createContext,
   useCallback,
-  useContext,
   useEffect,
   useState,
   type ReactNode,
@@ -15,22 +13,8 @@ import {
   type SemanticModelResponse,
 } from '../../data/semanticModelsApi';
 import { EntityViewLoading, EntityViewShell } from './EntityViewShell';
+import { SemanticModelDetailCtx } from './useSemanticModelDetail';
 import '../ontology/ontology-admin.scss';
-
-type SemanticModelDetailContext = {
-  model: SemanticModelResponse;
-  /** Every dataset in the instance — the model's scope is picked from these. */
-  allDatasets: DatasetResponse[];
-  reload: () => Promise<void>;
-};
-
-const SemanticModelDetailCtx = createContext<SemanticModelDetailContext | null>(null);
-
-export function useSemanticModelDetail(): SemanticModelDetailContext {
-  const ctx = useContext(SemanticModelDetailCtx);
-  if (!ctx) throw new Error('useSemanticModelDetail requires SemanticModelDetailPage');
-  return ctx;
-}
 
 function scopeMeta(model: SemanticModelResponse): ReactNode {
   if (model.datasets.length === 0) return model.description ?? undefined;

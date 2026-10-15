@@ -12,8 +12,8 @@ import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import {
   RichMarkdown,
-  richMarkdownPreComponent,
 } from '../../components/markdown/richMarkdown';
+import { richMarkdownPreComponent } from '../../components/markdown/richMarkdownPre';
 import { toast } from 'sonner';
 import { config } from '../../config';
 import { fetchWikiPage, updateWikiPage } from '../../data/wikiSpacesApi';

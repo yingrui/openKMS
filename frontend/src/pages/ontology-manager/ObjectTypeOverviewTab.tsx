@@ -12,7 +12,7 @@ import {
   EntityViewStat,
   EntityViewStats,
 } from './EntityViewShell';
-import { useObjectTypeDetail } from './ObjectTypeDetailPage';
+import { useObjectTypeDetail } from './useObjectTypeDetail';
 
 export function ObjectTypeOverviewTab() {
   const { t } = useTranslation('ontology');

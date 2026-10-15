@@ -1,10 +1,2 @@
 # eslint errors per file, frozen so the count only ratchets down.
 # Regenerate: npm run check:lint -- --update-baseline
-components/markdown/richMarkdown.tsx 5
-pages/documents/useDocumentChannel.tsx 1
-pages/knowledge-bases/KnowledgeBaseDetail.searchUtils.tsx 3
-pages/ontology-manager/DatasetDetailPage.tsx 1
-pages/ontology-manager/ObjectTypeCreateWizard.tsx 2
-pages/ontology-manager/ObjectTypeDetailPage.tsx 1
-pages/ontology-manager/SemanticModelDetailPage.tsx 1
-pages/ontology-manager/objectTypeFormParts.tsx 5

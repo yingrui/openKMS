@@ -1,9 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type AnchorHTMLAttributes, type ClipboardEvent, type DragEvent, type ImgHTMLAttributes } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import {
-  richMarkdownPreComponent,
-} from '../../components/markdown/richMarkdown';
+import { richMarkdownPreComponent } from '../../components/markdown/richMarkdownPre';
 import { toast } from 'sonner';
 import { useEnsureArticleChannels } from '../../contexts/ArticleChannelsContext';
 import { getDocumentChannelName } from '../../data/channelUtils';

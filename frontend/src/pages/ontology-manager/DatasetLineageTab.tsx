@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
-import { useDatasetDetail } from './DatasetDetailPage';
+import { useDatasetDetail } from './useDatasetDetail';
 import { fetchDatasetLineage, type DatasetLineageResponse } from '../../data/datasetsApi';
 import { EntityViewHeader, EntityViewPanel, EntityViewLoading } from './EntityViewShell';
 

@@ -16,7 +16,7 @@ import {
 } from '../../data/semanticModelsApi';
 import { CheckList, CheckListItem, FormField } from '../../styles/design-system';
 import { EntityViewHeader, EntityViewPanel } from './EntityViewShell';
-import { useSemanticModelDetail } from './SemanticModelDetailPage';
+import { useSemanticModelDetail } from './useSemanticModelDetail';
 
 const GRANULARITIES = ['day', 'week', 'month', 'quarter', 'year'];
 const OPS = ['=', '!=', '>', '>=', '<', '<=', 'like', 'in', 'between', 'is_null', 'is_not_null'];

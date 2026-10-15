@@ -1,7 +1,10 @@
 import { memo, useMemo, type ReactNode } from 'react';
 import type { Components } from 'react-markdown';
 import { Link } from 'react-router-dom';
-import { RichMarkdown, richMarkdownPreComponent } from '../markdown/richMarkdown';
+import {
+  RichMarkdown,
+} from '../markdown/richMarkdown';
+import { richMarkdownPreComponent } from '../markdown/richMarkdownPre';
 import './AgentMessage.scss';
 
 export type AgentMessageBodyProps = {
