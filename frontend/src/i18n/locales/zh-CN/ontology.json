@@ -226,7 +226,8 @@
     "playgroundEmpty": "运行后在这里看结果。",
     "playgroundRowCount_other": "{{count}} 行",
     "playgroundCapped": "已触发行数上限 —— 收窄条件才能看到完整答案",
-    "playgroundRemoveDimension": "移除 {{name}}"
+    "playgroundRemoveDimension": "移除 {{name}}",
+    "playgroundTimeDimensions": "时间维度"
   },
   "datasets": {
     "title": "数据集",

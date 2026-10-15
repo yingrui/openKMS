@@ -2061,11 +2061,47 @@ select.console-form-control {
   }
 }
 
-.playground__fields {
+/* Group caption above a CheckList (Time dimensions / Fields). */
+.playground__group {
   display: flex;
-  flex-direction: column;
-  max-height: 15rem;
-  overflow-y: auto;
+  align-items: baseline;
+  gap: var(--space-2);
+  margin-top: var(--space-2);
+  font-size: var(--text-sm);
+  font-weight: 600;
+  color: var(--color-text-secondary);
+}
+
+.playground__group-count {
+  font-weight: 400;
+  color: var(--color-text-muted);
+}
+
+/* A row in the picker: name, label (muted), and the column's data type pushed right. */
+.playground__field {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+  min-width: 0;
+  width: 100%;
+}
+
+.playground__field-name {
+  color: var(--color-text);
+}
+
+.playground__field-label {
+  overflow: hidden;
+  color: var(--color-text-muted);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.playground__field-type {
+  margin-left: auto;
+  flex-shrink: 0;
+  color: var(--color-text-muted);
+  font-size: var(--text-xs);
 }
 
 .playground__chips {

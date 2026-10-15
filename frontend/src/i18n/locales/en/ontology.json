@@ -231,7 +231,8 @@
     "playgroundRowCount_one": "{{count}} row",
     "playgroundRowCount_other": "{{count}} rows",
     "playgroundCapped": "the limit was reached — narrow the query for the whole answer",
-    "playgroundRemoveDimension": "Remove {{name}}"
+    "playgroundRemoveDimension": "Remove {{name}}",
+    "playgroundTimeDimensions": "Time dimensions"
   },
   "datasets": {
     "title": "Datasets",

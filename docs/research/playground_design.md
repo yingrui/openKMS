@@ -1,6 +1,6 @@
 # Playground design (semantic model)
 
-Status: **P0 shipped** (query engine + builder) · Surface: `/data-model/{id}/playground` · Owner: data layer
+Status: **P0 shipped** (query engine + builder + picker) · Surface: `/data-model/{id}/playground` · Owner: data layer
 
 The Playground is where a person *asks a question of a semantic model* and sees the answer, the
 generated SQL and the definition it came from. It is the human twin of the query API an agent
@@ -92,8 +92,10 @@ is collapsed by default so an author can verify without leaving for the Metrics 
    dimension), with the metric's own `filters` listed read-only so the user knows what is already
    applied. *(API: exists; UI: none.)*
 3. **Order + limit + row-cap indicator**: "showing 1000 of ≥1000 rows" instead of a silent truncation.
-4. **Field browser**: search, label/description/datatype, time dimensions first, other fields
-   behind a disclosure; add/remove as chips rather than a checkbox wall.
+4. **Field picker** (✅): the design-system `<CheckList>` (bordered, hoverable, scrollable),
+   **grouped** into *Time dimensions* / *Fields* with a count, each row showing the field name,
+   its label in muted text and the **data type** pushed right — plus a search box; selections
+   also appear as chips (with the grain selector) above.
 5. **Definition strip**: expression, base dataset, joins, `type`, description, `ai_context`.
 6. **Single-value mode**: no group-by → the metric's value (the fastest sanity check).
 7. **Errors with a cause**: distinguish *definition* errors (expression is not an aggregate, unknown

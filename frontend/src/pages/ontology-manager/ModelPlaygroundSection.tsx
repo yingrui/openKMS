@@ -14,7 +14,7 @@ import {
   type SemanticModelQueryResponse,
   type SemanticModelQuerySpec,
 } from '../../data/semanticModelsApi';
-import { FormField } from '../../styles/design-system';
+import { CheckList, CheckListItem, FormField } from '../../styles/design-system';
 import { EntityViewHeader, EntityViewPanel } from './EntityViewShell';
 import { useSemanticModelDetail } from './SemanticModelDetailPage';
 
@@ -112,6 +112,12 @@ export function ModelPlaygroundSection() {
     [spec?.group_by],
   );
   const fieldLabel = (ref: string) => fields.find((f) => f.id === ref || f.name === ref)?.name ?? ref;
+  const matched = (f: SemanticModelFieldResponse) =>
+    !search.trim() ||
+    f.name.toLowerCase().includes(search.trim().toLowerCase()) ||
+    (f.label ?? '').toLowerCase().includes(search.trim().toLowerCase());
+  const visibleOthers = otherFields.filter(matched);
+  const visibleTimeDims = timeDims.filter(matched);
 
   const patch = (next: Partial<SemanticModelQuerySpec>) =>
     setSpec((prev) => (prev ? { ...prev, ...next } : prev));
@@ -271,31 +277,46 @@ export function ModelPlaygroundSection() {
                   </div>
                 )}
 
-                <div className="playground__fields">
-                  {[...timeDims, ...otherFields]
-                    .filter((f) =>
-                      !search.trim()
-                        ? true
-                        : f.name.toLowerCase().includes(search.trim().toLowerCase()) ||
-                          (f.label ?? '').toLowerCase().includes(search.trim().toLowerCase()),
-                    )
-                    .map((f) => (
-                      <label key={f.id} className="ds-check-row">
-                        <input
-                          type="checkbox"
+                {visibleTimeDims.length > 0 && (
+                  <>
+                    <span className="playground__group">
+                      {t('dataModel.playgroundTimeDimensions')}
+                    </span>
+                    <CheckList>
+                      {visibleTimeDims.map((f) => (
+                        <FieldRow
+                          key={f.id}
+                          field={f}
                           checked={grouped.has(f.id)}
-                          onChange={() => toggleGroup(f)}
+                          onToggle={() => toggleGroup(f)}
                         />
-                        <span>
-                          {f.name}
-                          {f.label ? <em className="model-wizard__ds"> · {f.label}</em> : null}
-                          {isTimeDimension(f) ? (
-                            <em className="model-wizard__ds"> · {t('dataModel.dimensionTime')}</em>
-                          ) : null}
-                        </span>
-                      </label>
-                    ))}
-                </div>
+                      ))}
+                    </CheckList>
+                  </>
+                )}
+                {visibleOthers.length > 0 && (
+                  <>
+                    <span className="playground__group">
+                      {t('datasets.fields')}
+                      <span className="playground__group-count">
+                        {t('dataModel.fieldCount', { count: visibleOthers.length })}
+                      </span>
+                    </span>
+                    <CheckList>
+                      {visibleOthers.map((f) => (
+                        <FieldRow
+                          key={f.id}
+                          field={f}
+                          checked={grouped.has(f.id)}
+                          onToggle={() => toggleGroup(f)}
+                        />
+                      ))}
+                    </CheckList>
+                  </>
+                )}
+                {visibleTimeDims.length === 0 && visibleOthers.length === 0 && (
+                  <p className="entity-view__readonly">{t('dataModel.noSearchMatch')}</p>
+                )}
               </div>
 
               <div className="playground__section">
@@ -534,6 +555,27 @@ export function ModelPlaygroundSection() {
         </div>
       </div>
     </>
+  );
+}
+
+/** One field in the group-by picker: name, its label, and the data type it produces. */
+function FieldRow({
+  field,
+  checked,
+  onToggle,
+}: {
+  field: SemanticModelFieldResponse;
+  checked: boolean;
+  onToggle: () => void;
+}) {
+  return (
+    <CheckListItem checked={checked} onChange={onToggle}>
+      <span className="playground__field">
+        <span className="playground__field-name">{field.name}</span>
+        {field.label ? <span className="playground__field-label">{field.label}</span> : null}
+        <span className="playground__field-type">{field.datatype ?? ''}</span>
+      </span>
+    </CheckListItem>
   );
 }
 
