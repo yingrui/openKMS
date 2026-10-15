@@ -46,7 +46,6 @@ document-detail-panel
 document-detail-split
 ds-checkbox
 ds-control
-ds-field__label
 ds-table-wrap
 km-map-graph-body
 km-map-graph-canvas-wrap

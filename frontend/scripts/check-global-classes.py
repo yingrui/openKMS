@@ -26,6 +26,25 @@ BASELINE = Path(__file__).resolve().parent / "global-classes-baseline.txt"
 GLOBAL_FILES = {"App.scss", "index.scss"}
 
 CLASS_DEF = re.compile(r"\.((?:[a-z][a-z0-9]*(?:-[a-z0-9]+)*__)?[a-z][a-z0-9-]*)")
+
+
+def _is_definition(text: str, at: int) -> bool:
+    """A selector *definition*, not a mention inside `:not(...)` / `:has(...)`.
+
+    `.console-modal-body label:not(.ds-check-row) { … }` mentions `.ds-check-row` in a
+    page stylesheet without defining it — counting that would blame the wrong file.
+    """
+    line_start = text.rfind("\n", 0, at) + 1
+    before = text[line_start:at]
+    paren = before.rfind("(")
+    if paren == -1:
+        return True
+    # inside a functional pseudo-class only if that "(" is not already closed
+    return before.rfind(")") > paren
+
+
+def defined_here(text: str) -> set[str]:
+    return {m.group(1) for m in CLASS_DEF.finditer(text) if _is_definition(text, m.start())}
 CLASSNAME = re.compile(r'className="([^"{}]+)"')
 
 
@@ -43,7 +62,7 @@ def defined_locally() -> dict[str, set[str]]:
     for scss in SRC.rglob("*.scss"):
         if is_global(scss):
             continue
-        for name in set(CLASS_DEF.findall(scss.read_text(errors="ignore"))):
+        for name in defined_here(scss.read_text(errors="ignore")):
             out[name].add(str(scss.relative_to(SRC)))
     return out
 

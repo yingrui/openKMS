@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Folder, File, FolderPlus, Loader2, MoveRight, RefreshCw, X } from 'lucide-react';
+import { Folder, File, FolderPlus, Loader2, MoveRight, RefreshCw } from 'lucide-react';
 import { toast } from 'sonner';
 import { ErrorBanner } from '../../components/ErrorBanner';
+import { Dialog, FormField } from '../../styles/design-system';
 import {
   fetchStorageInfo,
   fetchStorageObjects,
@@ -370,134 +371,96 @@ export function ConsoleStorage() {
         </div>
       )}
 
-      {showMoveDialog && (
-        <div
-          className="console-modal-overlay"
-          role="presentation"
-          onClick={(e) => e.target === e.currentTarget && !moving && setShowMoveDialog(false)}
-        >
-          <div
-            className="console-modal"
-            role="dialog"
-            aria-labelledby="storage-move-title"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="console-modal-header">
-              <h2 id="storage-move-title">{t('storage.moveDialogTitle')}</h2>
-              <button
-                type="button"
-                onClick={() => !moving && setShowMoveDialog(false)}
-                disabled={moving}
-                aria-label={t('storage.closeAria')}
-              >
-                <X size={20} />
-              </button>
-            </div>
-            <div className="console-modal-body">
-              <p className="console-modal-hint">{t('storage.moveDialogHint', { count: selected.size })}</p>
-              <label htmlFor="storage-dest">
-                <span>{t('storage.destLabel')}</span>
-                <input
-                  id="storage-dest"
-                  type="text"
-                  value={destPrefix}
-                  onChange={(e) => setDestPrefix(e.target.value)}
-                  placeholder={t('storage.destPlaceholder')}
-                />
-              </label>
-              <label className="console-modal-checkbox-row">
-                <input
-                  type="checkbox"
-                  checked={deleteSource}
-                  onChange={(e) => setDeleteSource(e.target.checked)}
-                />
-                <span>{t('storage.deleteSource')}</span>
-              </label>
-            </div>
-            <div className="console-modal-actions">
-              <button
-                type="button"
-                className="btn btn-secondary"
-                onClick={() => !moving && setShowMoveDialog(false)}
-                disabled={moving}
-              >
-                {t('storage.cancel')}
-              </button>
-              <button
-                type="button"
-                className="btn btn-primary"
-                disabled={moving}
-                onClick={() => void confirmMove()}
-              >
-                {moving ? t('storage.moving') : t('storage.confirmMove')}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <Dialog
+        open={showMoveDialog}
+        onClose={() => !moving && setShowMoveDialog(false)}
+        closeDisabled={moving}
+        title={t('storage.moveDialogTitle')}
+        closeAriaLabel={t('storage.closeAria')}
+        size="md"
+        footer={
+          <>
+            <button
+              type="button"
+              className="btn btn-secondary"
+              onClick={() => !moving && setShowMoveDialog(false)}
+              disabled={moving}
+            >
+              {t('storage.cancel')}
+            </button>
+            <button
+              type="button"
+              className="btn btn-primary"
+              disabled={moving}
+              onClick={() => void confirmMove()}
+            >
+              {moving ? t('storage.moving') : t('storage.confirmMove')}
+            </button>
+          </>
+        }
+      >
+        <p className="page-subtitle">{t('storage.moveDialogHint', { count: selected.size })}</p>
+        <FormField label={t('storage.destLabel')} htmlFor="storage-dest">
+          <input
+            id="storage-dest"
+            type="text"
+            value={destPrefix}
+            onChange={(e) => setDestPrefix(e.target.value)}
+            placeholder={t('storage.destPlaceholder')}
+          />
+        </FormField>
+        <label className="ds-check-row">
+          <input
+            type="checkbox"
+            checked={deleteSource}
+            onChange={(e) => setDeleteSource(e.target.checked)}
+          />
+          <span>{t('storage.deleteSource')}</span>
+        </label>
+      </Dialog>
 
-      {showCreateFolderDialog && (
-        <div
-          className="console-modal-overlay"
-          role="presentation"
-          onClick={(e) =>
-            e.target === e.currentTarget && !creatingFolder && setShowCreateFolderDialog(false)
-          }
-        >
-          <div
-            className="console-modal"
-            role="dialog"
-            aria-labelledby="storage-create-folder-title"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="console-modal-header">
-              <h2 id="storage-create-folder-title">{t('storage.createFolderDialogTitle')}</h2>
-              <button
-                type="button"
-                onClick={() => !creatingFolder && setShowCreateFolderDialog(false)}
-                disabled={creatingFolder}
-                aria-label={t('storage.closeAria')}
-              >
-                <X size={20} />
-              </button>
-            </div>
-            <div className="console-modal-body">
-              <p className="console-modal-hint">{t('storage.createFolderDialogHint')}</p>
-              <label htmlFor="storage-folder-name">
-                <span>{t('storage.folderNameLabel')}</span>
-                <input
-                  id="storage-folder-name"
-                  type="text"
-                  value={newFolderName}
-                  onChange={(e) => setNewFolderName(e.target.value)}
-                  placeholder={t('storage.folderNamePlaceholder')}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter') void confirmCreateFolder();
-                  }}
-                />
-              </label>
-            </div>
-            <div className="console-modal-actions">
-              <button
-                type="button"
-                className="btn btn-secondary"
-                disabled={creatingFolder}
-                onClick={() => setShowCreateFolderDialog(false)}
-              >
-                {t('storage.cancel')}
-              </button>
-              <button
-                type="button"
-                className="btn btn-primary"
-                disabled={creatingFolder}
-                onClick={() => void confirmCreateFolder()}
-              >
-                {creatingFolder ? t('storage.creatingFolder') : t('storage.confirmCreateFolder')}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <Dialog
+        open={showCreateFolderDialog}
+        onClose={() => !creatingFolder && setShowCreateFolderDialog(false)}
+        closeDisabled={creatingFolder}
+        title={t('storage.createFolderDialogTitle')}
+        closeAriaLabel={t('storage.closeAria')}
+        size="md"
+        footer={
+          <>
+            <button
+              type="button"
+              className="btn btn-secondary"
+              disabled={creatingFolder}
+              onClick={() => setShowCreateFolderDialog(false)}
+            >
+              {t('storage.cancel')}
+            </button>
+            <button
+              type="button"
+              className="btn btn-primary"
+              disabled={creatingFolder}
+              onClick={() => void confirmCreateFolder()}
+            >
+              {creatingFolder ? t('storage.creatingFolder') : t('storage.confirmCreateFolder')}
+            </button>
+          </>
+        }
+      >
+        <p className="page-subtitle">{t('storage.createFolderDialogHint')}</p>
+        <FormField label={t('storage.folderNameLabel')} htmlFor="storage-folder-name">
+          <input
+            id="storage-folder-name"
+            type="text"
+            value={newFolderName}
+            onChange={(e) => setNewFolderName(e.target.value)}
+            placeholder={t('storage.folderNamePlaceholder')}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') void confirmCreateFolder();
+            }}
+          />
+        </FormField>
+      </Dialog>
     </div>
   );
 }
