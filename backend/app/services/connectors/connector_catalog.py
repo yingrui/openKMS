@@ -18,7 +18,7 @@ from app.services.connectors.tushare.schemas import (
     TUSHARE_STOCK_TRADE_DAILY_COLUMNS,
     TUSHARE_TRADE_CALENDAR_COLUMNS,
 )
-from app.services.credentials.credential_encryption import decrypt, encrypt
+from app.services.credentials.credential_encryption import DECRYPT_ERRORS, decrypt, encrypt
 
 CATEGORY_SYNC = "sync"
 CATEGORY_SEARCH_TOOL = "search_tool"
@@ -417,7 +417,7 @@ def merge_secrets_encrypted(
             raw = decrypt(existing_cipher)
             if raw:
                 current = dict(json.loads(raw))
-        except Exception:
+        except (*DECRYPT_ERRORS, TypeError):
             current = {}
     for k, v in patch.items():
         if v == "":
@@ -437,7 +437,7 @@ def decrypt_secrets_blob(cipher: str | None) -> dict[str, str]:
         data = json.loads(decrypt(cipher))
         if isinstance(data, dict):
             return {str(k): str(v) for k, v in data.items() if isinstance(v, str)}
-    except Exception:
+    except (*DECRYPT_ERRORS, TypeError):
         pass
     return {}
 

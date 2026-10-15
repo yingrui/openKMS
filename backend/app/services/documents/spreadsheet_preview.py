@@ -8,6 +8,8 @@ from typing import Any
 
 from openpyxl import load_workbook
 
+from app.services.boundaries import boundary
+
 DEFAULT_MAX_ROWS = 500
 DEFAULT_MAX_COLS = 64
 
@@ -44,9 +46,10 @@ def build_xlsx_preview(content: bytes, *, file_hash: str, max_rows: int = DEFAUL
         for ws in wb.worksheets:
             rows_out: list[list[str]] = []
             truncated_rows = False
-            try:
+            # `max_column` is a hint openpyxl cannot always answer for a read-only sheet.
+            with boundary("read a worksheet's column count") as failed:
                 truncated_cols = bool(ws.max_column and ws.max_column > max_cols)
-            except Exception:
+            if failed:
                 truncated_cols = False
             for i, row in enumerate(ws.iter_rows(min_row=1, max_col=max_cols, values_only=True)):
                 if i >= max_rows:

@@ -15,8 +15,10 @@ uv run ruff check app tests || status=1
 
 echo "→ no suppressions"
 # A `# noqa` is a claim that the rule is wrong; that should be a review decision, not a
-# drive-by. Both an empty allowlist and an explicit one live here.
-NOQA_ALLOW=''
+# drive-by. The allowlist is exactly one module: `app/services/boundaries.py` owns the single
+# blanket `except Exception`-by-design (see its docstring) that SSE streams, health probes and
+# worker tasks route through, so every other module names the failures it expects.
+NOQA_ALLOW='app/services/boundaries.py'
 while IFS= read -r hit; do
   [ -z "$hit" ] && continue
   file="${hit%%:*}"

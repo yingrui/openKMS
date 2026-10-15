@@ -20,6 +20,7 @@ from fastapi import HTTPException
 
 from app.config import settings
 from app.services.storage import (
+    STORAGE_ERRORS,
     delete_object,
     delete_objects_by_prefix,
     get_object,
@@ -147,7 +148,7 @@ def attachment_data_uri(conversation_id: str, attachment: dict[str, Any]) -> str
     try:
         key = attachment_key(conversation_id, str(attachment.get("id") or ""), str(attachment.get("mime") or ""))
         body = get_object(key)
-    except Exception as e:
+    except STORAGE_ERRORS as e:
         logger.warning("attachment %s unreadable: %s", attachment.get("id"), e)
         return None
     return f"data:{attachment['mime']};base64,{base64.b64encode(body).decode('ascii')}"
@@ -161,7 +162,7 @@ def attachment_display_url(conversation_id: str, attachment: dict[str, Any]) -> 
     """
     try:
         key = attachment_key(conversation_id, str(attachment.get("id") or ""), str(attachment.get("mime") or ""))
-    except Exception:
+    except ValueError:
         return None
     now = time.monotonic()
     cached = _URL_CACHE.get(key)
@@ -169,7 +170,7 @@ def attachment_display_url(conversation_id: str, attachment: dict[str, Any]) -> 
         return cached[1]
     try:
         url = get_redirect_url(key)
-    except Exception as e:
+    except STORAGE_ERRORS as e:
         logger.warning("attachment %s url failed: %s", attachment.get("id"), e)
         return None
     if len(_URL_CACHE) >= _URL_CACHE_MAX:
@@ -213,7 +214,7 @@ def delete_attachment(conversation_id: str, attachment_id: str, mime: str) -> bo
     try:
         delete_object(key)
         return True
-    except Exception as e:
+    except STORAGE_ERRORS as e:
         logger.warning("attachment %s delete failed: %s", attachment_id, e)
         return False
 
@@ -243,7 +244,7 @@ def prune_staged_attachments(
                 max_keys=200,
                 delimiter="",
             )
-        except Exception as e:
+        except STORAGE_ERRORS as e:
             logger.warning("staged attachment sweep for %s failed: %s", conversation_id, e)
             return removed
         for obj in page.objects:
@@ -255,7 +256,7 @@ def prune_staged_attachments(
             try:
                 delete_object(obj.key)
                 removed += 1
-            except Exception as e:
+            except STORAGE_ERRORS as e:
                 logger.warning("staged attachment %s delete failed: %s", obj.key, e)
         token = page.next_continuation_token
         if not token:
@@ -277,5 +278,5 @@ def delete_attachments(conversation_id: str, attachments: Any) -> None:
             continue
         try:
             delete_object(attachment_key(conversation_id, str(attachment.get("id") or ""), str(attachment.get("mime") or "")))
-        except Exception as e:
+        except STORAGE_ERRORS as e:
             logger.warning("attachment %s delete failed: %s", attachment.get("id"), e)

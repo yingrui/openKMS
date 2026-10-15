@@ -38,7 +38,8 @@ from app.schemas.kubernetes_cluster import (
     KubernetesServiceDetail,
     KubernetesServiceListResponse,
 )
-from app.services.credentials.credential_encryption import decrypt, encrypt
+from app.services.credentials.credential_encryption import decrypt
+from app.services.credentials.credential_encryption import DECRYPT_ERRORS, encrypt
 from app.services.kubernetes.cluster_apply import (
     apply_manifests_async,
     delete_resource_async,
@@ -138,7 +139,7 @@ async def _load_cluster_or_404(cluster_id: str, db: AsyncSession) -> KubernetesC
 def _decrypt_kubeconfig(row: KubernetesCluster) -> str:
     try:
         return decrypt(row.kubeconfig_encrypted)
-    except Exception:
+    except DECRYPT_ERRORS:
         raise HTTPException(status_code=500, detail="Failed to decrypt kubeconfig") from None
 
 

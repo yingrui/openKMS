@@ -145,7 +145,7 @@ def _provider_error_message(resp: httpx.Response) -> str:
             err_obj = err_body.get("error")
             if isinstance(err_obj, dict) and err_obj.get("message"):
                 return str(err_obj["message"])
-    except Exception:
+    except (KeyError, TypeError, ValueError):
         pass
     return detail
 

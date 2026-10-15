@@ -3,6 +3,7 @@ import uuid
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from sqlalchemy import func, or_, select, text
+from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.auth import require_any_permission, require_auth, require_permission
@@ -275,7 +276,7 @@ async def get_dataset_rows(
         )
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
-    except Exception as exc:
+    except SQLAlchemyError as exc:
         raise HTTPException(status_code=502, detail=f"Failed to fetch rows: {exc}") from exc
     return DatasetRowsResponse(
         rows=rows, total=total, limit=limit, offset=offset, next_after=next_after
@@ -329,7 +330,7 @@ async def get_dataset_metadata(
         try:
             if await snapshot_schema_if_changed(db, dataset, [c.model_dump() for c in out]):
                 await db.commit()
-        except Exception:  # snapshotting must not break metadata reads
+        except SQLAlchemyError:  # snapshotting must not break metadata reads
             pass
         return out
     except Exception as e:

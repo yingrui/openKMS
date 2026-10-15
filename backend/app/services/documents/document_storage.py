@@ -4,7 +4,15 @@ from __future__ import annotations
 
 import re
 
-from app.services.storage import object_exists
+from app.services.storage import STORAGE_ERRORS, object_exists
+
+#: Reading a document artifact: it can be missing (OSError), unreadable (storage) or malformed.
+DOCUMENT_ARTIFACT_ERRORS: tuple[type[BaseException], ...] = (
+    *STORAGE_ERRORS,
+    KeyError,
+    TypeError,
+    ValueError,
+)
 
 _DOCUMENT_PREFIX = "documents"
 _FILE_HASH_RE = re.compile(r"^[a-f0-9]{64}$")

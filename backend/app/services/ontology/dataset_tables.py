@@ -6,6 +6,7 @@ import re
 from urllib.parse import quote_plus
 
 from sqlalchemy import create_engine, text
+from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.pool import NullPool
 
@@ -74,7 +75,7 @@ async def get_dataset_row_count(db: AsyncSession, dataset_id: str) -> int:
             total = conn.execute(text(f"SELECT COUNT(*) FROM {quoted}")).scalar() or 0
         engine.dispose()
         return int(total)
-    except Exception:
+    except (SQLAlchemyError, OSError, ValueError, TypeError):
         return 0
 
 
@@ -95,7 +96,7 @@ async def get_dataset_row_count_where_not_null(
             ).scalar() or 0
         engine.dispose()
         return int(total)
-    except Exception:
+    except (SQLAlchemyError, OSError, ValueError, TypeError):
         return 0
 
 

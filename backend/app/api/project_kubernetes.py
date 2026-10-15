@@ -14,6 +14,7 @@ from app.schemas.kubernetes_cluster import (
     ProjectKubernetesDevSyncResponse,
 )
 from app.services.credentials.credential_encryption import decrypt
+from app.services.credentials.credential_encryption import DECRYPT_ERRORS
 from app.services.kubernetes.cluster_dev_sync import sync_project_tree_async
 from app.services.permissions.permission_catalog import (
     PERM_CONSOLE_KUBERNETES,
@@ -71,7 +72,7 @@ async def project_kubernetes_dev_sync(
 
     try:
         kubeconfig = decrypt(cluster.kubeconfig_encrypted)
-    except Exception:
+    except DECRYPT_ERRORS:
         raise HTTPException(status_code=500, detail="Failed to decrypt kubeconfig") from None
 
     try:

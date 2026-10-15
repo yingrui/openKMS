@@ -1,11 +1,14 @@
 """Fernet-based encryption for DataSource credentials (username, password)."""
 import base64
 
-from cryptography.fernet import Fernet
+from cryptography.fernet import Fernet, InvalidToken
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
 
 from app.config import settings
+
+#: Everything `decrypt` can fail with: a malformed/foreign token, a bad key, or non-ciphertext.
+DECRYPT_ERRORS: tuple[type[BaseException], ...] = (InvalidToken, ValueError, TypeError)
 
 _fernet: Fernet | None = None
 
@@ -21,7 +24,7 @@ def _get_fernet() -> Fernet:
         try:
             _fernet = Fernet(key_b64.strip().encode())
             return _fernet
-        except Exception:
+        except (ValueError, TypeError):
             raise ValueError(
                 "OPENKMS_DATASOURCE_ENCRYPTION_KEY is set but invalid. "
                 "Generate with: python -c \"from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())\""

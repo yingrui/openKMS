@@ -6,6 +6,9 @@ import uuid
 from dataclasses import dataclass
 
 from sqlalchemy import select
+from sqlalchemy.exc import SQLAlchemyError
+
+from app.services.ontology.neo4j_async import NEO4J_ERRORS
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.ontology_function import (
@@ -246,7 +249,7 @@ async def _apply_edits_and_audit(
             if ot and not ot.dataset_id:
                 try:
                     await sync_edit_apply_result_to_neo4j(db, ot, applied)
-                except Exception as e:
+                except (SQLAlchemyError, *NEO4J_ERRORS) as e:
                     await db.rollback()
                     status = "error"
                     error = f"Neo4j sync failed (queue not committed): {e}"

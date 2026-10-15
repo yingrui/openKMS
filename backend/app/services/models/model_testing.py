@@ -140,7 +140,7 @@ async def _poll_generation_result(
         media_url = extract_result_url(result, media_kind)
     except TimeoutError as e:
         return ApiModelTestResponse(success=False, error=str(e))
-    except Exception as e:
+    except (RuntimeError, httpx.HTTPError, KeyError, TypeError, ValueError) as e:
         logger.warning("Generation poll failed for task %s: %s", task_id, e)
         return ApiModelTestResponse(success=False, error=str(e))
 
@@ -210,7 +210,7 @@ async def execute_test(
     except httpx.ConnectError as e:
         elapsed = int((time.monotonic() - t0) * 1000)
         return ApiModelTestResponse(success=False, error=f"Connection refused: {e}", elapsed_ms=elapsed)
-    except Exception as e:
+    except (RuntimeError, httpx.HTTPError, KeyError, TypeError, ValueError) as e:
         elapsed = int((time.monotonic() - t0) * 1000)
         logger.warning("Model test request failed: %s", e)
         return ApiModelTestResponse(success=False, error=str(e), elapsed_ms=elapsed)

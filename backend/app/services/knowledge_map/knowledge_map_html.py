@@ -17,6 +17,7 @@ from sqlalchemy import func as sa_func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.knowledge_map import KnowledgeMapNode, KnowledgeMapResourceLink
+from app.services.boundaries import boundary
 from app.services.agent.shared import (
     _wiki_agent_chat_extra_body,
     _wiki_use_llm_reasoning_content_shim,
@@ -676,7 +677,8 @@ async def designer_chat_via_llm(
             if tc.function.name != "apply_html_patches":
                 tool_payload = json.dumps({"ok": False, "error": f"unknown tool: {tc.function.name}"})
             else:
-                try:
+                # A tool call the model asked for: answer with {"ok": false} rather than break the turn.
+                with boundary("run the apply_html_patches tool") as failed:
                     args = json.loads(tc.function.arguments or "{}")
                     patches = args.get("patches") or []
                     if not isinstance(patches, list):
@@ -686,8 +688,8 @@ async def designer_chat_via_llm(
                         tool_payload = json.dumps({"ok": False, "error": err})
                     else:
                         tool_payload = _tool_result_payload_for_html(mutable_html)
-                except Exception as e:
-                    tool_payload = json.dumps({"ok": False, "error": str(e)})
+                if failed:
+                    tool_payload = json.dumps({"ok": False, "error": str(failed[0])})
             openai_messages.append({"role": "tool", "tool_call_id": tc.id, "content": tool_payload})
 
     return last_text
@@ -866,7 +868,8 @@ async def iter_designer_chat_llm_stream_events(
             if name != "apply_html_patches":
                 tool_payload = json.dumps({"ok": False, "error": f"unknown tool: {name}"})
             else:
-                try:
+                # A tool call the model asked for: answer with {"ok": false} rather than break the turn.
+                with boundary("run the apply_html_patches tool") as failed:
                     args = json.loads(fn.get("arguments") or "{}")
                     patches = args.get("patches") or []
                     if not isinstance(patches, list):
@@ -876,8 +879,8 @@ async def iter_designer_chat_llm_stream_events(
                         tool_payload = json.dumps({"ok": False, "error": err})
                     else:
                         tool_payload = _tool_result_payload_for_html(mutable_html)
-                except Exception as e:
-                    tool_payload = json.dumps({"ok": False, "error": str(e)})
+                if failed:
+                    tool_payload = json.dumps({"ok": False, "error": str(failed[0])})
             openai_messages.append({"role": "tool", "tool_call_id": tid, "content": tool_payload})
             yield {
                 "type": "tool_end",

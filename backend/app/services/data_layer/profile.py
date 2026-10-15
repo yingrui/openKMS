@@ -5,6 +5,7 @@ import uuid
 from typing import Any
 
 from sqlalchemy import select, text
+from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.data_source import DataSource
@@ -60,7 +61,7 @@ async def compute_profile(db: AsyncSession, dataset: Dataset) -> tuple[int, list
                             "max": serialize_cell_value((row or {}).get("mx")),
                         }
                     )
-                except Exception:  # MIN/MAX unsupported for some types
+                except (SQLAlchemyError, ValueError, TypeError):  # MIN/MAX unsupported for some types
                     entry.update({"null_count": None, "distinct_count": None, "min": None, "max": None})
                 stats.append(entry)
         return total, stats

@@ -8,6 +8,15 @@ from urllib.parse import urlparse
 
 import yaml
 
+# The client is imported lazily (it is heavy), but its error types are needed to narrow catches.
+try:  # pragma: no cover - exercised by whichever deployment has the client
+    from kubernetes.client.exceptions import ApiException
+    from kubernetes.config.config_exception import ConfigException
+
+    KUBERNETES_ERRORS: tuple[type[BaseException], ...] = (ApiException, ConfigException, OSError)
+except ImportError:  # pragma: no cover - kubernetes client not installed
+    KUBERNETES_ERRORS = (OSError,)
+
 
 def parse_kubeconfig_yaml(kubeconfig_text: str) -> dict[str, Any]:
     """Parse kubeconfig YAML into a dict. Raises ValueError on invalid input."""
@@ -133,7 +142,7 @@ def _test_connection_sync(kubeconfig: dict[str, Any]) -> tuple[bool, str]:
             version = client.VersionApi(api_client).get_code()
         git_version = getattr(version, "git_version", None) or "unknown"
         return True, f"Connected (gitVersion={git_version})"
-    except Exception as e:
+    except (*KUBERNETES_ERRORS, ValueError) as e:
         return False, f"Connection failed: {e}"
 
 

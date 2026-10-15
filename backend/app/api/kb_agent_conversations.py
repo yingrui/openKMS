@@ -14,10 +14,11 @@ from typing import Any
 import httpx
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from fastapi.responses import StreamingResponse
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ValidationError
 from sqlalchemy import delete, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.services.boundaries import boundary
 from app.services.agent.shared import (
     _bump_conversation_timestamp,
     _maybe_set_conversation_title_from_first_user_message,
@@ -122,7 +123,7 @@ def _parse_sources(raw: Any) -> list[SearchResult]:
         if isinstance(item, dict):
             try:
                 out.append(SearchResult.model_validate(item))
-            except Exception:
+            except ValidationError:
                 continue
     return out
 
@@ -277,7 +278,8 @@ async def _ndjson_kb_qa_stream_persist(
             stream_builder.apply_stream_event(ev, acc, tool_traces)
         yield raw_line + b"\n"
 
-    try:
+    # The KB agent streams an error message to the client rather than breaking the response.
+    with boundary("stream the knowledge base answer") as failed:
         async with httpx.AsyncClient(timeout=120.0) as client:
             async with client.stream(
                 "POST",
@@ -346,8 +348,8 @@ async def _ndjson_kb_qa_stream_persist(
                             if terminal:
                                 return
 
-    except Exception as e:
-        err = str(e) or type(e).__name__
+    if failed:
+        err = str(failed[0]) or type(failed[0]).__name__
         asst_m = AgentMessage(
             id=new_id(),
             conversation_id=c.id,

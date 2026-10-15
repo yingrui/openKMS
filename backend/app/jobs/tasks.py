@@ -654,19 +654,25 @@ async def _apply_cached_parse_to_document(
 
 def _load_result_from_s3(file_hash: str) -> dict:
     """Load result.json from S3 after pipeline completes."""
-    from app.services.documents.document_storage import get_document_object
+    from app.services.documents.document_storage import (
+        DOCUMENT_ARTIFACT_ERRORS,
+        get_document_object,
+    )
 
     try:
         data = get_document_object(file_hash, "result.json")
         return json.loads(data)
-    except Exception:
+    except DOCUMENT_ARTIFACT_ERRORS:
         logger.warning("Could not load result.json for %s", file_hash)
         return {}
 
 
 def _load_extracted_metadata_from_s3(file_hash: str) -> dict:
     """Load channel-extraction output written by openkms-cli during pipeline run."""
-    from app.services.documents.document_storage import get_document_object
+    from app.services.documents.document_storage import (
+        DOCUMENT_ARTIFACT_ERRORS,
+        get_document_object,
+    )
 
     try:
         data = get_document_object(file_hash, "extracted_metadata.json")
@@ -674,7 +680,7 @@ def _load_extracted_metadata_from_s3(file_hash: str) -> dict:
         return parsed if isinstance(parsed, dict) else {}
     except FileNotFoundError:
         return {}
-    except Exception:
+    except DOCUMENT_ARTIFACT_ERRORS:
         logger.warning("Could not load extracted_metadata.json for %s", file_hash)
         return {}
 
@@ -694,15 +700,16 @@ def _s3_parse_cache_usable(parsing_result: dict) -> bool:
 
 def _load_parse_cache_from_s3(file_hash: str) -> tuple[dict, str] | None:
     """Return (parsing_result, markdown) if storage has a usable prior parse; else None."""
-    from app.services.documents.document_storage import get_document_object
+    from app.services.documents.document_storage import (
+        DOCUMENT_ARTIFACT_ERRORS,
+        get_document_object,
+    )
 
     if not settings.storage_enabled or not file_hash:
         return None
     try:
         parsing_result = json.loads(get_document_object(file_hash, "result.json").decode("utf-8"))
-    except FileNotFoundError:
-        return None
-    except Exception:
+    except DOCUMENT_ARTIFACT_ERRORS:
         return None
     if not _s3_parse_cache_usable(parsing_result):
         return None
@@ -710,7 +717,7 @@ def _load_parse_cache_from_s3(file_hash: str) -> tuple[dict, str] | None:
     if not markdown:
         try:
             markdown = get_document_object(file_hash, "markdown.md").decode("utf-8")
-        except Exception:
+        except DOCUMENT_ARTIFACT_ERRORS:
             markdown = ""
     return (parsing_result, markdown)
 
@@ -722,7 +729,7 @@ def _upload_page_index_from_hash(file_hash: str, doc_name: str | None, markdown:
     try:
         from app.services.documents.document_storage import document_object_key
         from app.services.wiki.page_index import md_to_tree_from_markdown
-        from app.services.storage import upload_object
+        from app.services.storage import STORAGE_ERRORS, upload_object
 
         page_index = md_to_tree_from_markdown(markdown, doc_name=doc_name or "document")
         upload_object(
@@ -730,7 +737,7 @@ def _upload_page_index_from_hash(file_hash: str, doc_name: str | None, markdown:
             json.dumps(page_index).encode("utf-8"),
             content_type="application/json",
         )
-    except Exception:
+    except STORAGE_ERRORS:
         pass
 
 

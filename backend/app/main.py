@@ -5,6 +5,8 @@ import traceback
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, Request
+from procrastinate.exceptions import ProcrastinateException
+from sqlalchemy.exc import SQLAlchemyError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from starlette.middleware.sessions import SessionMiddleware
@@ -102,10 +104,11 @@ async def lifespan(app: FastAPI):
             try:
                 await job_app.schema_manager.apply_schema_async()
                 logger.info("Procrastinate schema applied")
-            except Exception:
+            except (ProcrastinateException, SQLAlchemyError, OSError):
+                # Applying the schema twice is the normal case (the tables are already there).
                 logger.info("Procrastinate schema already exists")
             yield
-    except Exception as e:
+    except (ImportError, ProcrastinateException, SQLAlchemyError, OSError) as e:
         logger.warning("Procrastinate setup skipped: %s", e)
         yield
     finally:

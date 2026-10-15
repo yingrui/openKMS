@@ -28,6 +28,7 @@ from app.services.acl.resource_acl_constants import PERM_READ, PERM_WRITE, RT_LI
 from app.models.data_source import DataSource
 from app.models.link_instance import LinkInstance
 from app.services.ontology.neo4j_async import (
+    NEO4J_ERRORS,
     neo4j_driver_available,
     open_neo4j_driver,
     run_with_neo4j_driver,
@@ -181,7 +182,7 @@ async def _neo4j_rel_counts_batch(
                 out[(src_label, tgt_label, rel_type)] = _neo4j_rel_count(
                     driver, src_label, tgt_label, rel_type
                 )
-            except Exception:
+            except NEO4J_ERRORS:
                 out[(src_label, tgt_label, rel_type)] = None
         return out
 
@@ -345,9 +346,7 @@ async def get_link_type(
                 try:
                     counts = await _neo4j_rel_counts_batch(neo4j_ds, [key])
                     count_override = counts.get(key)
-                except ImportError:
-                    pass
-                except Exception:
+                except NEO4J_ERRORS:
                     pass
     return await _to_response(db, link_type, count_override)
 
@@ -736,9 +735,7 @@ async def list_link_instances(
                     ],
                     total=total,
                 )
-            except ImportError:
-                pass
-            except Exception:
+            except NEO4J_ERRORS:
                 pass
 
     # Many-to-many with dataset: connections come from junction table

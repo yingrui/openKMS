@@ -9,7 +9,7 @@ from pathlib import Path
 from typing import Any
 
 from app.services.kubernetes.cluster_config import validate_resource_name
-from app.services.kubernetes.cluster_connection import prepare_kubeconfig
+from app.services.kubernetes.cluster_connection import KUBERNETES_ERRORS, prepare_kubeconfig
 from app.services.kubernetes.cluster_resources import _build_api_client
 
 MAX_PACKED_BYTES = 32 * 1024 * 1024  # 32 MiB
@@ -206,7 +206,7 @@ def _exec_command_sync(
             finally:
                 try:
                     resp.close()
-                except Exception:
+                except KUBERNETES_ERRORS:
                     pass
         else:
             out = stream(v1.connect_get_namespaced_pod_exec, **kwargs)

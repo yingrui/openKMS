@@ -9,6 +9,7 @@ from typing import Any
 
 from openai import AsyncOpenAI
 
+from app.services.boundaries import boundary
 from app.services.agent.shared import (
     _wiki_agent_chat_extra_body,
     _wiki_use_llm_reasoning_content_shim,
@@ -220,15 +221,16 @@ async def iter_overview_designer_chat_ndjson(
             if name != "set_a2ui_messages":
                 tool_payload_obj: dict[str, Any] = {"ok": False, "error": f"unknown tool: {name}"}
             else:
-                try:
+                # A tool call the model asked for: answer with {"ok": false} rather than break the turn.
+                with boundary("run the set_a2ui_messages tool") as failed:
                     args = json.loads(fn.get("arguments") or "{}")
                     raw_msgs = args.get("messages")
                     if not isinstance(raw_msgs, list):
                         raise ValueError("messages must be a list")
                     working = validate_a2ui_messages_against_snapshot(raw_msgs, snapshot)
                     tool_payload_obj = {"ok": True, "messages": working}
-                except Exception as e:
-                    tool_payload_obj = {"ok": False, "error": str(e)}
+                if failed:
+                    tool_payload_obj = {"ok": False, "error": str(failed[0])}
             tool_payload = json.dumps(tool_payload_obj, ensure_ascii=False)
             openai_messages.append({"role": "tool", "tool_call_id": tid, "content": tool_payload})
             # Client applies canvas from tool_end when ok+messages (A2UI has no HTML fence path).

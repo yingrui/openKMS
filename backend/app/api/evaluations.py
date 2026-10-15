@@ -14,6 +14,7 @@ from app.models.evaluation import Evaluation, EvaluationItem
 from app.models.evaluation_run import EvaluationRun, EvaluationRunItem
 from app.models.knowledge_base import KnowledgeBase
 from app.models.wiki_models import WikiSpace
+from app.services.boundaries import boundary
 from app.schemas.evaluation import (
     EvaluationCompareResponse,
     EvaluationCompareRow,
@@ -655,7 +656,8 @@ async def run_evaluation(
             "search_type": "all",
         }
 
-    try:
+    # A run that blows up is persisted as failed and returned; an HTTP error still propagates.
+    with boundary("run the evaluation", reraise=(HTTPException,)) as failed:
         if eval_type == EVALUATION_TYPE_SEARCH_RETRIEVAL:
             item_rows = await run_search_retrieval_evaluation(
                 db, ev.knowledge_base_id, evaluation_id, judge_config
@@ -673,9 +675,7 @@ async def run_evaluation(
                 status_code=500,
                 detail=f"Unhandled evaluation type: {eval_type}",
             )
-    except HTTPException:
-        raise
-    except Exception as e:
+    if failed:
         run = await _persist_run(
             db,
             evaluation_id=evaluation_id,
@@ -684,7 +684,7 @@ async def run_evaluation(
             config_snapshot=config_snapshot,
             item_rows=[],
             status="failed",
-            error_message=str(e),
+            error_message=str(failed[0]),
         )
         return _run_to_response(run, [])
 

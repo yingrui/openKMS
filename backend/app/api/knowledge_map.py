@@ -29,6 +29,7 @@ from app.models.knowledge_map import (
     KnowledgeMapResourceLink,
 )
 from app.models.wiki_models import WikiSpace
+from app.services.boundaries import boundary
 from app.services.agent.llm import resolve_agent_llm_config
 from app.services.knowledge_map.knowledge_map_html import (
     designer_chat_via_llm,
@@ -559,7 +560,8 @@ async def map_html_designer_chat(
     if body.stream:
 
         async def ndjson() -> AsyncIterator[bytes]:
-            try:
+            # The designer LLM streams an NDJSON error event instead of breaking the response.
+            with boundary("the knowledge map designer turn") as failed:
                 async for ev in iter_designer_chat_llm_stream_events(
                     conv,
                     snapshot,
@@ -574,12 +576,10 @@ async def map_html_designer_chat(
                                 persist_designer_turn_safe(sub, last_user_content, asst, persist_cid),
                             )
                     yield (json.dumps(ev, ensure_ascii=False) + "\n").encode("utf-8")
-            except ValueError as e:
-                yield (json.dumps({"type": "error", "detail": str(e)}, ensure_ascii=False) + "\n").encode("utf-8")
-            except Exception as e:
-                yield (
-                    json.dumps({"type": "error", "detail": f"Designer LLM failed: {e}"}, ensure_ascii=False) + "\n"
-                ).encode("utf-8")
+            if failed:
+                exc = failed[0]
+                detail = str(exc) if isinstance(exc, ValueError) else f"Designer LLM failed: {exc}"
+                yield (json.dumps({"type": "error", "detail": detail}, ensure_ascii=False) + "\n").encode("utf-8")
 
         return StreamingResponse(
             ndjson(),
@@ -897,7 +897,8 @@ async def overview_designer_chat(
         raise HTTPException(status_code=400, detail="Non-stream overview designer chat is not supported")
 
     async def ndjson() -> AsyncIterator[bytes]:
-        try:
+        # The overview designer streams an NDJSON error event instead of breaking the response.
+        with boundary("the knowledge map overview turn") as failed:
             async for ev in iter_overview_designer_chat_ndjson(
                 conv,
                 snapshot,
@@ -912,12 +913,10 @@ async def overview_designer_chat(
                             persist_overview_turn_safe(sub, last_user, asst, persist_cid),
                         )
                 yield (json.dumps(ev, ensure_ascii=False) + "\n").encode("utf-8")
-        except ValueError as e:
-            yield (json.dumps({"type": "error", "detail": str(e)}, ensure_ascii=False) + "\n").encode("utf-8")
-        except Exception as e:
-            yield (
-                json.dumps({"type": "error", "detail": f"Designer LLM failed: {e}"}, ensure_ascii=False) + "\n"
-            ).encode("utf-8")
+        if failed:
+            exc = failed[0]
+            detail = str(exc) if isinstance(exc, ValueError) else f"Designer LLM failed: {exc}"
+            yield (json.dumps({"type": "error", "detail": detail}, ensure_ascii=False) + "\n").encode("utf-8")
 
     return StreamingResponse(
         ndjson(),

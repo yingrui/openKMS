@@ -18,6 +18,7 @@ from app.schemas.app_builder import (
 )
 from app.services.app_builder import service as apps_svc
 from app.services.credentials.credential_encryption import decrypt
+from app.services.credentials.credential_encryption import DECRYPT_ERRORS
 from app.services.kubernetes.cluster_service_proxy import (
     identity_headers,
     join_proxy_path,
@@ -170,7 +171,7 @@ def _register_routes(api: APIRouter) -> None:
             raise HTTPException(status_code=400, detail="Unknown Kubernetes cluster")
         try:
             kubeconfig = decrypt(cluster.kubeconfig_encrypted)
-        except Exception:
+        except DECRYPT_ERRORS:
             raise HTTPException(status_code=500, detail="Failed to decrypt kubeconfig") from None
         extra = join_proxy_path(k8s.get("path") if isinstance(k8s.get("path"), str) else None, path)
         query = [(k, v) for k, v in request.query_params.multi_items()]

@@ -3,7 +3,8 @@ import json
 import logging
 from typing import Any
 
-from openai import AsyncOpenAI
+from openai import AsyncOpenAI, OpenAIError
+from pydantic import ValidationError
 
 logger = logging.getLogger(__name__)
 
@@ -91,7 +92,8 @@ async def judge_search_results(
     except json.JSONDecodeError as e:
         logger.warning("Failed to parse judge response as JSON: %s", e)
         return {"pass": False, "score": 0.0, "reasoning": f"Parse error: {e}"}
-    except Exception as e:
+    # The judge call and its payload: an SDK failure, or a response we cannot read.
+    except (OpenAIError, KeyError, TypeError, ValidationError, ValueError) as e:
         logger.error("Judge failed: %s", e)
         return {"pass": False, "score": 0.0, "reasoning": str(e)}
 
@@ -204,7 +206,8 @@ async def judge_wiki_content_coverage(
     except json.JSONDecodeError as e:
         logger.warning("Failed to parse wiki coverage judge response as JSON: %s", e)
         return {"pass": False, "score": 0.0, "reasoning": f"Parse error: {e}"}
-    except Exception as e:
+    # The judge call and its payload: an SDK failure, or a response we cannot read.
+    except (OpenAIError, KeyError, TypeError, ValidationError, ValueError) as e:
         logger.error("Wiki coverage judge failed: %s", e)
         return {"pass": False, "score": 0.0, "reasoning": str(e)}
 
@@ -286,6 +289,7 @@ async def judge_qa_answer(
     except json.JSONDecodeError as e:
         logger.warning("Failed to parse QA judge response as JSON: %s", e)
         return {"pass": False, "score": 0.0, "reasoning": f"Parse error: {e}"}
-    except Exception as e:
+    # The judge call and its payload: an SDK failure, or a response we cannot read.
+    except (OpenAIError, KeyError, TypeError, ValidationError, ValueError) as e:
         logger.error("QA judge failed: %s", e)
         return {"pass": False, "score": 0.0, "reasoning": str(e)}

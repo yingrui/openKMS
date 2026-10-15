@@ -14,6 +14,8 @@ from app.api.auth import require_auth
 from app.api.kb_router_deps import get_kb_scoped
 from app.database import get_db
 from app.models.knowledge_base import KnowledgeBase
+from pydantic import ValidationError
+
 from app.schemas.knowledge_base import (
     AskRequest,
     AskResponse,
@@ -64,9 +66,10 @@ async def semantic_search(
                 )
                 resp.raise_for_status()
                 data = resp.json()
-            results = [SearchResult(**s) for s in data.get("results", [])]
+            raw_results = data.get("results", []) if isinstance(data, dict) else []
+            results = [SearchResult(**s) for s in raw_results]
             return SearchResponse(results=results, query=body.query)
-        except Exception as e:
+        except (httpx.HTTPError, ValidationError, KeyError, TypeError, ValueError) as e:
             logger.warning("Hybrid /retrieve failed, falling back to dense-only: %s", e)
 
     return await search_knowledge_base(

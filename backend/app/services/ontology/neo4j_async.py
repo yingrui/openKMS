@@ -12,6 +12,16 @@ from app.services.credentials.credential_encryption import decrypt
 
 T = TypeVar("T")
 
+# Errors a Neo4j call can raise. The driver is optional at runtime, so the tuple is built
+# defensively: without it, only "the import itself" is possible. `GqlError` is the driver's
+# base for both server-side (`Neo4jError`) and connectivity (`ServiceUnavailable`) failures.
+try:  # pragma: no cover - exercised by whichever deployment has the driver
+    from neo4j.exceptions import GqlError
+
+    NEO4J_ERRORS: tuple[type[BaseException], ...] = (ImportError, OSError, GqlError)
+except ImportError:  # pragma: no cover - driver not installed
+    NEO4J_ERRORS = (ImportError, OSError)
+
 
 def neo4j_connection_params(ds: DataSource) -> tuple[str, str, str]:
     username = decrypt(ds.username_encrypted) if ds.username_encrypted else ""
@@ -52,7 +62,7 @@ async def neo4j_delete_all(ds: DataSource) -> tuple[bool, str]:
             with driver.session() as session:
                 session.run("MATCH (n) DETACH DELETE n")
             return True, "All nodes and relationships deleted"
-        except Exception as e:
+        except NEO4J_ERRORS as e:
             return False, str(e)
         finally:
             driver.close()

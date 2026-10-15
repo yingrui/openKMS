@@ -11,6 +11,7 @@ from sqlalchemy.orm import selectinload
 from app.models.api_model import ApiModel
 from app.models.evaluation import EvaluationItem
 from app.models.knowledge_base import KnowledgeBase
+from app.services.boundaries import boundary
 from app.services.knowledge_bases.kb_search import search_knowledge_base
 from app.services.evaluations.search_judge import judge_qa_answer, judge_search_results
 
@@ -99,7 +100,8 @@ async def run_search_retrieval_evaluation(
     items = await _load_evaluation_items(db, evaluation_id)
     out: list[dict[str, Any]] = []
     for item in items:
-        try:
+        # A failing item is recorded and skipped; an HTTP error (bad KB) still reaches the client.
+        with boundary("search for an evaluation item", reraise=(HTTPException,)) as failed:
             search_resp = await search_knowledge_base(
                 knowledge_base_id,
                 item.query,
@@ -107,9 +109,7 @@ async def run_search_retrieval_evaluation(
                 search_type="all",
                 db=db,
             )
-        except HTTPException:
-            raise
-        except Exception as e:
+        if failed:
             out.append(
                 {
                     "evaluation_item_id": item.id,
@@ -117,7 +117,7 @@ async def run_search_retrieval_evaluation(
                     "expected_answer": item.expected_answer,
                     "passed": False,
                     "score": 0.0,
-                    "reasoning": str(e),
+                    "reasoning": str(failed[0]),
                     "detail": {"search_results": []},
                 }
             )
@@ -205,7 +205,7 @@ async def run_qa_answer_evaluation(
                     }
                 )
                 continue
-            except Exception as e:
+            except (httpx.HTTPError, KeyError, TypeError, ValueError) as e:
                 out.append(
                     {
                         "evaluation_item_id": item.id,

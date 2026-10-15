@@ -57,7 +57,7 @@ def _langfuse_health_ok() -> bool:
     try:
         resp = httpx.get(url, timeout=2.5)
         return resp.status_code < 500
-    except Exception:
+    except (httpx.HTTPError, httpx.InvalidURL):
         return False
 
 

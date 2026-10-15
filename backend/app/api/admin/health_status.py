@@ -10,11 +10,13 @@ from urllib.parse import urlparse
 import httpx
 from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy import select, text
+from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.auth import ensure_permission, require_auth, require_permission
 from app.config import settings
 from app.database import get_db
+from app.services.storage import STORAGE_ERRORS
 from app.models.data_source import DataSource
 from app.schemas.health_status import (
     DataSourceHealthItem,
@@ -48,7 +50,7 @@ async def _check_database(db: AsyncSession) -> tuple[HealthStatusKind, str | Non
         await db.execute(text("SELECT 1"))
         ms = int((time.perf_counter() - start) * 1000)
         return "ok", None, ms
-    except Exception as e:
+    except SQLAlchemyError as e:
         ms = int((time.perf_counter() - start) * 1000)
         return "error", str(e), ms
 
@@ -76,7 +78,7 @@ async def _check_storage() -> tuple[HealthStatusKind, str | None, int | None]:
         await asyncio.to_thread(_head_bucket)
         ms = int((time.perf_counter() - start) * 1000)
         return "ok", None, ms
-    except Exception as e:
+    except STORAGE_ERRORS as e:
         ms = int((time.perf_counter() - start) * 1000)
         return "error", str(e), ms
 
@@ -94,7 +96,7 @@ async def _check_job_queue(db: AsyncSession) -> tuple[HealthStatusKind, str | No
             return "error", "Job queue tables are not initialized", int((time.perf_counter() - start) * 1000)
         ms = int((time.perf_counter() - start) * 1000)
         return "ok", None, ms
-    except Exception as e:
+    except SQLAlchemyError as e:
         ms = int((time.perf_counter() - start) * 1000)
         return "error", str(e), ms
 
@@ -142,7 +144,7 @@ async def _check_langfuse() -> tuple[HealthStatusKind, str | None, int | None]:
             f"Host {host}: public health returned HTTP {r.status_code}. {creds}",
             ms,
         )
-    except Exception as e:
+    except (httpx.HTTPError, httpx.InvalidURL) as e:
         ms = int((time.perf_counter() - start) * 1000)
         return "error", f"Host {host}: {e}. {creds}", ms
 
@@ -167,7 +169,7 @@ async def _check_ontology_function_service() -> tuple[HealthStatusKind, str | No
         if r.status_code == 200:
             return "ok", f"Host {host}: health returned HTTP {r.status_code}.", ms
         return "error", f"Host {host}: health returned HTTP {r.status_code}.", ms
-    except Exception as e:
+    except (httpx.HTTPError, httpx.InvalidURL) as e:
         ms = int((time.perf_counter() - start) * 1000)
         return "error", f"Host {host}: {e}", ms
 

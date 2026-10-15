@@ -13,7 +13,7 @@ from typing import Any
 
 import tiktoken
 from openai import AsyncOpenAI
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ValidationError
 from pydantic_ai import Agent, PromptedOutput, StructuredDict
 from pydantic_ai.exceptions import ModelAPIError
 from pydantic_ai.models.openai import OpenAIChatModel
@@ -21,6 +21,7 @@ from pydantic_ai.profiles.openai import OpenAIModelProfile
 from pydantic_ai.providers.openai import OpenAIProvider
 
 from app.models.agent_models import AgentMessage
+from app.services.boundaries import boundary
 
 logger = logging.getLogger(__name__)
 
@@ -286,7 +287,7 @@ async def _review_part(
         try:
             ev = LessonEvent.model_validate(item)
             events.append(ev)
-        except Exception:
+        except ValidationError:
             ev = _coerce_event(item)
             if ev is not None:
                 events.append(ev)
@@ -300,7 +301,7 @@ def _parse_events_from_text(text: str, part_num: int, total_parts: int) -> list[
     try:
         parsed = ReviewResponse.model_validate_json(text)
         return parsed.events
-    except Exception:
+    except (ValidationError, ValueError):
         pass
 
     # Try markdown code fence
@@ -309,7 +310,7 @@ def _parse_events_from_text(text: str, part_num: int, total_parts: int) -> list[
         try:
             parsed = ReviewResponse.model_validate_json(m.group(1))
             return parsed.events
-        except Exception:
+        except (ValidationError, ValueError):
             pass
 
     # Try top-level array [...]
@@ -488,7 +489,7 @@ async def merge_lessons(
     model = OpenAIChatModel(model_name, provider=provider, profile=_REVIEW_PROFILE)
 
     merged_multi: list[dict[str, Any]] = []
-    for group_idx, group in enumerate(multi):
+    for group in multi:
         if len(group) == 1:
             merged_multi.append(group[0])
             continue
@@ -507,24 +508,19 @@ async def merge_lessons(
 
         structured = StructuredDict(_MERGE_JSON_SCHEMA, name="MergedLessons", description="Merged lesson event")
         agent = Agent(model, output_type=PromptedOutput(structured), system_prompt=_MERGE_SYSTEM_PROMPT)
-        try:
+        merged: dict | None = None
+        with boundary("merge a lesson group with the LLM", logger=logger):
             result = await agent.run(prompt)
             output = result.output or {}
             events = output.get("events", [])
             if isinstance(events, list) and events:
-                merged_multi.append(events[0])
-            else:
-                # LLM failed, just keep the first one and accumulate counts
-                merged = dict(group[0])
-                merged["occurrence_count"] = sum(g.get("occurrence_count", 1) for g in group)
-                merged["session_ids"] = list({s for g in group for s in g.get("session_ids", []) if s})
-                merged_multi.append(merged)
-        except Exception as e:
-            logger.warning("merge group %d LLM call failed, falling back: %s", group_idx, e)
+                merged = dict(events[0])
+        # The call failed or returned nothing usable — keep the first item and accumulate counts.
+        if merged is None:
             merged = dict(group[0])
             merged["occurrence_count"] = sum(g.get("occurrence_count", 1) for g in group)
             merged["session_ids"] = list({s for g in group for s in g.get("session_ids", []) if s})
-            merged_multi.append(merged)
+        merged_multi.append(merged)
 
     result = singles + merged_multi
     # Sort by severity (high first), then occurrence_count
@@ -660,10 +656,8 @@ async def review_session(
 
     # If there are existing lessons, merge the new events into them.
     if existing_lessons and all_events:
-        try:
+        # A failed merge must not lose the events — they are returned unmerged.
+        with boundary("merge new lessons into the existing ones", logger=logger):
             all_events = await merge_lessons(existing_lessons, all_events, session_id, model_config)
-        except Exception as e:
-            logger.warning("merge_lessons failed, returning unmerged events: %s", e)
-            # Fall through — return unmerged events
 
     return all_events

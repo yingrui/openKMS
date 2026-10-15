@@ -55,6 +55,7 @@ from app.services.wiki.wiki_scope import load_wiki_space_scoped, require_wiki_sp
 from app.services.wiki.page_index import md_to_tree_from_markdown
 from app.services.permissions.permission_catalog import PERM_WIKIS_READ, PERM_WIKIS_WRITE
 from app.services.storage import (
+    STORAGE_ERRORS,
     delete_object,
     delete_objects_by_prefix,
     get_object,
@@ -733,7 +734,7 @@ async def get_wiki_link_graph(
                 raw = get_object(cache_key)
                 payload = graph_payload_from_json_bytes(raw)
                 return _wiki_link_graph_from_payload(payload)
-            except Exception:
+            except (*STORAGE_ERRORS, KeyError, TypeError):
                 pass
 
     payload = build_link_graph_payload(pages)

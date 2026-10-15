@@ -17,6 +17,7 @@ from app.services.acl.resource_acl_constants import PERM_READ, PERM_WRITE, RT_OB
 from app.models.data_source import DataSource
 from app.models.link_instance import LinkInstance
 from app.services.ontology.neo4j_async import (
+    NEO4J_ERRORS,
     neo4j_driver_available,
     open_neo4j_driver,
     run_with_neo4j_driver,
@@ -166,7 +167,7 @@ async def _neo4j_node_counts_for_types(ds: DataSource, type_names: list[str]) ->
             label = neo4j_safe_label(name)
             try:
                 out[label] = _neo4j_node_count(driver, label)
-            except Exception:
+            except NEO4J_ERRORS:
                 out[label] = None
         return out
 
@@ -273,9 +274,7 @@ async def get_object_type(
                 if neo4j_count is not None:
                     ds_name = await dataset_display_name(db, obj_type.dataset_id)
                     return _to_response(obj_type, neo4j_count, ds_name)
-            except ImportError:
-                pass
-            except Exception:
+            except NEO4J_ERRORS:
                 pass
     count = await _resolve_instance_count(db, obj_type)
     ds_name = await dataset_display_name(db, obj_type.dataset_id)
@@ -640,9 +639,7 @@ async def list_object_instances(
                 ],
                 total=total,
             )
-        except ImportError:
-            return ObjectInstanceListResponse(items=[], total=0)
-        except Exception:
+        except NEO4J_ERRORS:
             return ObjectInstanceListResponse(items=[], total=0)
 
     neo4j_ds = await get_first_neo4j_datasource(db)
@@ -669,9 +666,7 @@ async def list_object_instances(
                 ],
                 total=total,
             )
-        except ImportError:
-            pass
-        except Exception:
+        except NEO4J_ERRORS:
             pass
 
     try:

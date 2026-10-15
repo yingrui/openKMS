@@ -4,8 +4,11 @@ from __future__ import annotations
 
 import asyncio
 
+from sqlalchemy.exc import SQLAlchemyError
+
 from app.models.data_source import DataSource
 from app.services.credentials.credential_encryption import decrypt
+from app.services.ontology.neo4j_async import NEO4J_ERRORS
 
 
 def test_data_source_connection(ds: DataSource) -> tuple[bool, str]:
@@ -29,7 +32,7 @@ def test_data_source_connection(ds: DataSource) -> tuple[bool, str]:
                 conn.execute(text("SELECT 1"))
             engine.dispose()
             return True, "Connection successful"
-        except Exception as e:
+        except (SQLAlchemyError, ImportError, OSError, ValueError) as e:
             return False, str(e)
     if ds.kind == "neo4j":
         try:
@@ -44,7 +47,7 @@ def test_data_source_connection(ds: DataSource) -> tuple[bool, str]:
             return True, "Connection successful"
         except ImportError:
             return False, "Neo4j driver not installed"
-        except Exception as e:
+        except NEO4J_ERRORS as e:
             return False, str(e)
     return False, f"Unsupported data source kind: {ds.kind}"
 

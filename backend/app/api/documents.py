@@ -69,8 +69,17 @@ from app.services.documents.document_storage import (
     legacy_document_prefix,
     resolve_document_object_key,
 )
+from app.services.documents.preview_errors import PREVIEW_ERRORS
 from app.services.chunked_upload import chunk_count, cleanup, reassemble, store_chunk
-from app.services.storage import delete_objects_by_prefix, get_object, get_redirect_url, iter_object_keys, object_exists, upload_object
+from app.services.storage import (
+    STORAGE_ERRORS,
+    delete_objects_by_prefix,
+    get_object,
+    get_redirect_url,
+    iter_object_keys,
+    object_exists,
+    upload_object,
+)
 
 router = APIRouter(prefix="/documents", tags=["documents"], dependencies=[Depends(require_auth)])
 
@@ -271,7 +280,7 @@ async def upload_document(
             doc.markdown = md
             doc.status = DocumentStatus.COMPLETED
             maybe_upload_page_index_from_markdown(doc, md)
-        except Exception:
+        except PREVIEW_ERRORS:
             doc.parsing_result = {
                 "document_kind": "spreadsheet",
                 "file_hash": file_hash,
@@ -289,7 +298,7 @@ async def upload_document(
             doc.markdown = md
             doc.status = DocumentStatus.COMPLETED
             maybe_upload_page_index_from_markdown(doc, md)
-        except Exception:
+        except PREVIEW_ERRORS:
             doc.parsing_result = {
                 "document_kind": "mindmap",
                 "file_hash": file_hash,
@@ -985,7 +994,7 @@ async def export_document_parsing(
         for key in all_keys:
             try:
                 content = get_object(key)
-            except Exception:
+            except STORAGE_ERRORS:
                 continue
             if key.startswith(new_prefix):
                 arcname = key[len(new_prefix):]
@@ -1188,7 +1197,7 @@ async def upload_document_chunked(
             doc.markdown = md
             doc.status = DocumentStatus.COMPLETED
             maybe_upload_page_index_from_markdown(doc, md)
-        except Exception:
+        except PREVIEW_ERRORS:
             doc.parsing_result = {
                 "document_kind": "spreadsheet",
                 "file_hash": file_hash,
@@ -1204,7 +1213,7 @@ async def upload_document_chunked(
             doc.markdown = md
             doc.status = DocumentStatus.COMPLETED
             maybe_upload_page_index_from_markdown(doc, md)
-        except Exception:
+        except PREVIEW_ERRORS:
             doc.parsing_result = {
                 "document_kind": "mindmap",
                 "file_hash": file_hash,

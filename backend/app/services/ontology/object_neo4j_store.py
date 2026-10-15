@@ -15,6 +15,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.models.data_source import DataSource
 from app.models.object_instance import ObjectInstance
 from app.models.object_type import ObjectType
+from app.services.boundaries import boundary
 from app.services.ontology.neo4j_async import run_with_neo4j_driver
 
 
@@ -218,10 +219,11 @@ async def fetch_object_from_neo4j(
     def _query(driver):
         return get_neo4j_node_by_id(driver, label, id_col, object_id)
 
-    try:
-        return await run_with_neo4j_driver(neo4j_ds, _query)
-    except Exception:
-        return None
+    # Best-effort read: an unreachable or mis-configured mirror means "not found" here; the
+    # mutation paths below are the ones that report Neo4j failures.
+    with boundary("read an object from Neo4j") as failed:
+        props = await run_with_neo4j_driver(neo4j_ds, _query)
+    return None if failed else props
 
 
 async def resolve_object_props_for_action(

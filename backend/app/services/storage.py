@@ -5,7 +5,19 @@ from datetime import datetime, timezone
 from functools import lru_cache
 from typing import BinaryIO
 
+from botocore.exceptions import BotoCoreError, ClientError
+
 from app.config import settings
+
+# Everything an S3/MinIO call can fail with: the SDK (missing bucket/object, credentials),
+# a not-configured deployment, and an invalid key/prefix we reject ourselves.
+STORAGE_ERRORS: tuple[type[BaseException], ...] = (
+    BotoCoreError,
+    ClientError,
+    OSError,
+    RuntimeError,
+    ValueError,
+)
 
 
 @dataclass(frozen=True, slots=True)
@@ -184,7 +196,7 @@ def object_exists(key: str) -> bool:
     try:
         _client().head_object(Bucket=_bucket(), Key=key)
         return True
-    except Exception:
+    except STORAGE_ERRORS:
         return False
 
 
@@ -198,7 +210,7 @@ def object_last_modified(key: str) -> datetime | None:
         if lm is None:
             return None
         return lm if lm.tzinfo else lm.replace(tzinfo=timezone.utc)
-    except Exception:
+    except STORAGE_ERRORS:
         return None
 
 
@@ -325,7 +337,7 @@ def move_prefix(
         try:
             if move_object_key(src_prefix, dest_prefix, delete_source=delete_source):
                 moved += 1
-        except Exception as e:
+        except STORAGE_ERRORS as e:
             errors.append(f"{src_prefix}: {e}")
     for key in iter_object_keys(src_prefix):
         if not key.startswith(src_prefix):
@@ -341,7 +353,7 @@ def move_prefix(
                 moved += 1
             else:
                 skipped += 1
-        except Exception as e:
+        except STORAGE_ERRORS as e:
             errors.append(f"{key}: {e}")
     return moved, skipped, errors
 

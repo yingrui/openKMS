@@ -67,7 +67,7 @@ from app.services.articles.article_service import (
 from app.services.articles.article_storage import article_object_key, is_allowed_article_file_path
 from app.services.acl.data_scope import scope_applies
 from app.services.acl.resource_acl_constants import PERM_READ, PERM_WRITE, RT_ARTICLE_CHANNEL
-from app.services.storage import delete_object, get_redirect_url, object_exists
+from app.services.storage import STORAGE_ERRORS, delete_object, get_redirect_url, object_exists
 from app.config import settings
 
 router = APIRouter(prefix="/articles", tags=["articles"], dependencies=[Depends(require_auth)])
@@ -299,7 +299,7 @@ async def _fetch_remote_images(urls: list[str]) -> list[ImportImage]:
                 return None
             name = url.rsplit("/", 1)[-1].split("?", 1)[0] or None
             return ImportImage(content=resp.content, filename=name, content_type=ct)
-        except Exception:
+        except (httpx.HTTPError, httpx.InvalidURL):
             return None
 
     async with httpx.AsyncClient() as client:
@@ -587,7 +587,7 @@ async def delete_article_attachment(
     if settings.storage_enabled:
         try:
             delete_object(article_object_key(row.id, att.storage_path))
-        except Exception:
+        except STORAGE_ERRORS:
             pass
     await db.delete(att)
     await db.commit()
