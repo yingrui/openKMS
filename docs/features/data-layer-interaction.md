@@ -55,12 +55,16 @@ Tabs, in reading order:
 
 | Tab | What the user sees | First impression |
 |-----|--------------------|------------------|
-| **Overview** | `MetricGrid`: row count, columns, freshness, last sync; catalog fields (owner/domain/tags/definition/sensitivity) | "what is this and is it fresh" |
-| **Data** | paged table preview, column type chips in the header | "what's actually in it" |
-| **Columns** | column list + type + ontology-type mapping + **description** (editable); change history timeline | "what's in it and what it means" |
-| **Relationships** | list of joins (Phase 1); "Add relationship" button | "what does it connect to" |
-| **Quality** | rule list + pass/fail (Phase 2) | "can I trust it" |
+| **Overview** | **Read-only summary** — `MetricGrid` (columns, rows, references) + the dataset's catalog facts (source, name, description, domain, tags, business definition, sensitivity). One action: **Edit in Settings**. It never saves. | "what is this dataset" |
+| **Data** | paged table preview (TanStack: server sort + inline cell editing when row editing is on) | "what's actually in it" |
+| **Columns** | column list + type + ontology-type mapping + **description** (editable); schema history | "what's in it and what it means" |
+| **Usage** | object types / link types that reference this dataset | "who depends on it" |
+| **Relationships** | the FK edges this dataset takes part in (`from → to`, column pairs, INNER/LEFT) | "what does it connect to" |
+| **Quality** | declarative rules + run history | "can I trust it" |
+| **Settings** | **the single edit surface**: identity + catalog fields, row-editing toggle, keys (primary + unique), **AI context**, and the delete zone — one **Save** in the header | "what can I change about it" |
 | **Sharing** | existing `ResourceSharePanel` | "who else can see it" |
+
+**Read vs write is the split:** Overview reads, Settings writes (both used to be forms with their own Save, over the same `PUT /api/datasets/{id}`). The Settings page follows the Model Settings shape: `FormField` everywhere, one concern per panel, one Save in the header, the delete zone last.
 
 ### Add tables from a data source
 

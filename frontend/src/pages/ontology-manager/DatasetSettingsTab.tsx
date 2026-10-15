@@ -8,7 +8,7 @@ import {
   updateDataset,
   type ColumnMetadata,
 } from '../../data/datasetsApi';
-import { FormField } from '../../styles/design-system';
+import { CheckRow, FormField } from '../../styles/design-system';
 import { EntityViewHeader, EntityViewPanel, EntityViewLoading } from './EntityViewShell';
 
 type AiContext = { instructions: string; synonyms: string; examples: string };
@@ -28,11 +28,18 @@ const splitList = (s: string) =>
     .map((x) => x.trim())
     .filter(Boolean);
 
-/** Dataset settings: row editing, keys (PK + unique) and agent AI context. */
+/** Dataset settings — the **single** edit surface for a dataset (the Overview is read-only). */
 export function DatasetSettingsTab() {
   const { t } = useTranslation('ontology');
   const { dataset, setDataset, onDelete } = useDatasetDetail();
   const datasetId = dataset.id;
+  // Identity/catalog fields are edited here too, so there is one Save and one entry point.
+  const [displayName, setDisplayName] = useState(dataset.display_name ?? '');
+  const [description, setDescription] = useState(dataset.description ?? '');
+  const [domain, setDomain] = useState(dataset.domain ?? '');
+  const [tags, setTags] = useState((dataset.tags ?? []).join(', '));
+  const [businessDefinition, setBusinessDefinition] = useState(dataset.business_definition ?? '');
+  const [sensitivity, setSensitivity] = useState(dataset.sensitivity ?? '');
   const [columns, setColumns] = useState<ColumnMetadata[]>([]);
   const [loading, setLoading] = useState(true);
   const [editable, setEditable] = useState(dataset.is_editable);
@@ -73,6 +80,12 @@ export function DatasetSettingsTab() {
       const examples = splitList(ai.examples);
       const hasAi = ai.instructions.trim() || synonyms.length || examples.length;
       const updated = await updateDataset(datasetId, {
+        display_name: displayName.trim() || null,
+        description: description.trim() || null,
+        domain: domain.trim() || null,
+        tags: splitList(tags),
+        business_definition: businessDefinition.trim() || null,
+        sensitivity: sensitivity.trim() || null,
         is_editable: editable,
         primary_key_columns: pk,
         unique_keys: uniqueKeys.filter((k) => k.length > 0),
@@ -81,6 +94,12 @@ export function DatasetSettingsTab() {
           : null,
       });
       setDataset(updated);
+      setDisplayName(updated.display_name ?? '');
+      setDescription(updated.description ?? '');
+      setDomain(updated.domain ?? '');
+      setTags((updated.tags ?? []).join(', '));
+      setBusinessDefinition(updated.business_definition ?? '');
+      setSensitivity(updated.sensitivity ?? '');
       toast.success(t('datasets.saved'));
     } catch (e) {
       toast.error(e instanceof Error ? e.message : t('datasets.saveFailed'));
@@ -93,18 +112,77 @@ export function DatasetSettingsTab() {
 
   return (
     <>
-      <EntityViewHeader title={t('datasets.settings')} subtitle={t('datasets.settingsHint')} />
+      <EntityViewHeader
+        title={t('datasets.settings')}
+        subtitle={t('datasets.settingsHint')}
+        actions={
+          <button
+            type="button"
+            className="btn btn-primary"
+            onClick={() => void onSave()}
+            disabled={saving}
+          >
+            {saving ? t('shared.saving') : t('shared.save')}
+          </button>
+        }
+      />
+
       <EntityViewPanel>
         <div className="entity-view__form">
-          <label className="ds-check-row">
+          <FormField label={t('datasets.displayName')}>
             <input
-              type="checkbox"
-              checked={editable}
-              onChange={(e) => setEditable(e.target.checked)}
+              type="text"
+              value={displayName}
+              onChange={(e) => setDisplayName(e.target.value)}
+              placeholder={`${dataset.schema_name}.${dataset.table_name}`}
             />
-            <span>{t('datasets.allowEditing')}</span>
-          </label>
-          <p className="page-subtitle">{t('datasets.allowEditingHint')}</p>
+          </FormField>
+          <FormField label={t('datasets.descriptionLabel')}>
+            <input
+              type="text"
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+            />
+          </FormField>
+          <FormField label={t('datasets.domainLabel')}>
+            <input type="text" value={domain} onChange={(e) => setDomain(e.target.value)} />
+          </FormField>
+          <FormField label={t('datasets.tagsLabel')}>
+            <input
+              type="text"
+              value={tags}
+              onChange={(e) => setTags(e.target.value)}
+              placeholder={t('datasets.tagsPlaceholder')}
+            />
+          </FormField>
+          <FormField label={t('datasets.businessDefinitionLabel')}>
+            <textarea
+              rows={3}
+              value={businessDefinition}
+              onChange={(e) => setBusinessDefinition(e.target.value)}
+            />
+          </FormField>
+          <FormField label={t('datasets.sensitivityLabel')}>
+            <select value={sensitivity} onChange={(e) => setSensitivity(e.target.value)}>
+              <option value="">{t('datasets.sensitivityNone')}</option>
+              <option value="public">{t('datasets.sensitivityPublic')}</option>
+              <option value="internal">{t('datasets.sensitivityInternal')}</option>
+              <option value="confidential">{t('datasets.sensitivityConfidential')}</option>
+              <option value="restricted">{t('datasets.sensitivityRestricted')}</option>
+            </select>
+          </FormField>
+        </div>
+      </EntityViewPanel>
+
+      <EntityViewPanel>
+        <div className="entity-view__form">
+          <h3>{t('datasets.rowEditingSection')}</h3>
+          <CheckRow
+            checked={editable}
+            onChange={setEditable}
+            title={t('datasets.allowEditing')}
+            hint={t('datasets.allowEditingHint')}
+          />
         </div>
       </EntityViewPanel>
 
@@ -193,19 +271,6 @@ export function DatasetSettingsTab() {
               onChange={(e) => setAi((prev) => ({ ...prev, examples: e.target.value }))}
             />
           </FormField>
-        </div>
-      </EntityViewPanel>
-
-      <EntityViewPanel>
-        <div className="entity-view__form">
-          <button
-            type="button"
-            className="btn btn-primary"
-            onClick={() => void onSave()}
-            disabled={saving}
-          >
-            {saving ? t('shared.saving') : t('shared.save')}
-          </button>
         </div>
       </EntityViewPanel>
 

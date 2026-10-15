@@ -2,23 +2,10 @@ import { createContext, useContext } from 'react';
 import type { DatasetResponse } from '../../data/datasetsApi';
 import type { ObjectTypeResponse, LinkTypeResponse } from '../../data/ontologyApi';
 
+/** Read + shell actions only: the editable fields live in the tab that owns the form. */
 export type DatasetDetailContext = {
   dataset: DatasetResponse;
   setDataset: (d: DatasetResponse) => void;
-  displayName: string;
-  setDisplayName: (v: string) => void;
-  description: string;
-  setDescription: (v: string) => void;
-  domain: string;
-  setDomain: (v: string) => void;
-  tags: string;
-  setTags: (v: string) => void;
-  businessDefinition: string;
-  setBusinessDefinition: (v: string) => void;
-  sensitivity: string;
-  setSensitivity: (v: string) => void;
-  saving: boolean;
-  onSave: () => Promise<void>;
   onDelete: () => Promise<void>;
   columnCount: number | null;
   rowTotal: number | null;

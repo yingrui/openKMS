@@ -279,6 +279,8 @@
     "sharing": "共享",
     "sharingHint": "控制谁可以查看或编辑此数据集。",
     "displayName": "显示名称",
+    "editInSettings": "在设置中编辑",
+    "rowEditingSection": "行数据编辑",
     "displayNamePlaceholder": "例如：疾病表",
     "dataSource": "数据源",
     "schemaTable": "Schema.表",

@@ -6,14 +6,13 @@ import {
 } from 'react';
 import { Link, Outlet, useNavigate, useParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { Loader2, Save } from 'lucide-react';
+import { Loader2, Pencil } from 'lucide-react';
 import { toast } from 'sonner';
 import {
   deleteDataset,
   fetchDataset,
   fetchDatasetMetadata,
   fetchDatasetRows,
-  updateDataset,
   type DatasetResponse,
 } from '../../data/datasetsApi';
 import {
@@ -27,7 +26,6 @@ import { RESOURCE_TYPES } from '../../data/resourceAclApi';
 import { useConfirm } from '../../contexts/ConfirmContext';
 import { EmptyState } from '../../styles/design-system';
 import {
-  EntityViewField,
   EntityViewHeader,
   EntityViewLoading,
   EntityViewPanel,
@@ -47,6 +45,14 @@ function tableLabel(d: DatasetResponse): string {
   return `${d.schema_name}.${d.table_name}`;
 }
 
+/** Sensitivity is stored as a stable value; the summary shows its label. */
+const SENSITIVITY_KEYS: Record<string, string> = {
+  public: 'datasets.sensitivityPublic',
+  internal: 'datasets.sensitivityInternal',
+  confidential: 'datasets.sensitivityConfidential',
+  restricted: 'datasets.sensitivityRestricted',
+};
+
 export function DatasetDetailPage() {
   const { t } = useTranslation('ontology');
   const { id: datasetId = '' } = useParams();
@@ -54,13 +60,6 @@ export function DatasetDetailPage() {
   const confirm = useConfirm();
   const [dataset, setDataset] = useState<DatasetResponse | null>(null);
   const [loading, setLoading] = useState(true);
-  const [displayName, setDisplayName] = useState('');
-  const [description, setDescription] = useState('');
-  const [domain, setDomain] = useState('');
-  const [tags, setTags] = useState('');
-  const [businessDefinition, setBusinessDefinition] = useState('');
-  const [sensitivity, setSensitivity] = useState('');
-  const [saving, setSaving] = useState(false);
   const [columnCount, setColumnCount] = useState<number | null>(null);
   const [rowTotal, setRowTotal] = useState<number | null>(null);
   const [usageObjectTypes, setUsageObjectTypes] = useState<ObjectTypeResponse[]>([]);
@@ -71,14 +70,7 @@ export function DatasetDetailPage() {
     if (!datasetId) return;
     setLoading(true);
     try {
-      const d = await fetchDataset(datasetId);
-      setDataset(d);
-      setDisplayName(d.display_name ?? '');
-      setDescription(d.description ?? '');
-      setDomain(d.domain ?? '');
-      setTags((d.tags ?? []).join(', '));
-      setBusinessDefinition(d.business_definition ?? '');
-      setSensitivity(d.sensitivity ?? '');
+      setDataset(await fetchDataset(datasetId));
     } catch (e) {
       toast.error(e instanceof Error ? e.message : t('datasets.loadFailed'));
       setDataset(null);
@@ -139,36 +131,6 @@ export function DatasetDetailPage() {
     };
   }, [datasetId]);
 
-  const onSave = useCallback(async () => {
-    if (!datasetId || !dataset) return;
-    setSaving(true);
-    try {
-      const updated = await updateDataset(datasetId, {
-        display_name: displayName.trim() || null,
-        description: description.trim() || null,
-        domain: domain.trim() || null,
-        tags: tags
-          .split(',')
-          .map((x) => x.trim())
-          .filter(Boolean),
-        business_definition: businessDefinition.trim() || null,
-        sensitivity: sensitivity.trim() || null,
-      });
-      setDataset(updated);
-      setDisplayName(updated.display_name ?? '');
-      setDescription(updated.description ?? '');
-      setDomain(updated.domain ?? '');
-      setTags((updated.tags ?? []).join(', '));
-      setBusinessDefinition(updated.business_definition ?? '');
-      setSensitivity(updated.sensitivity ?? '');
-      toast.success(t('datasets.saved'));
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : t('datasets.saveFailed'));
-    } finally {
-      setSaving(false);
-    }
-  }, [dataset, datasetId, displayName, description, domain, tags, businessDefinition, sensitivity, t]);
-
   const onDelete = useCallback(async () => {
     if (!datasetId || !dataset) return;
     const name = dataset.display_name?.trim() || tableLabel(dataset);
@@ -195,20 +157,6 @@ export function DatasetDetailPage() {
     return {
       dataset,
       setDataset,
-      displayName,
-      setDisplayName,
-      description,
-      setDescription,
-      domain,
-      setDomain,
-      tags,
-      setTags,
-      businessDefinition,
-      setBusinessDefinition,
-      sensitivity,
-      setSensitivity,
-      saving,
-      onSave,
       onDelete,
       columnCount,
       rowTotal,
@@ -218,14 +166,6 @@ export function DatasetDetailPage() {
     };
   }, [
     dataset,
-    displayName,
-    description,
-    domain,
-    tags,
-    businessDefinition,
-    sensitivity,
-    saving,
-    onSave,
     onDelete,
     columnCount,
     rowTotal,
@@ -267,28 +207,10 @@ export function DatasetDetailPage() {
 
 export function DatasetOverviewTab() {
   const { t } = useTranslation('ontology');
-  const {
-    dataset,
-    displayName,
-    setDisplayName,
-    description,
-    setDescription,
-    domain,
-    setDomain,
-    tags,
-    setTags,
-    businessDefinition,
-    setBusinessDefinition,
-    sensitivity,
-    setSensitivity,
-    saving,
-    onSave,
-    columnCount,
-    rowTotal,
-    usageObjectTypes,
-    usageLinkTypes,
-  } = useDatasetDetail();
-  const label = tableLabel(dataset);
+  const { dataset, columnCount, rowTotal, usageObjectTypes, usageLinkTypes } = useDatasetDetail();
+  const sensitivity = SENSITIVITY_KEYS[dataset.sensitivity ?? ''] ?? t('datasets.sensitivityNone');
+  const fact = (value: string | number | null | undefined) =>
+    value === null || value === undefined || value === '' ? t('datasets.dash') : value;
 
   return (
     <>
@@ -296,15 +218,10 @@ export function DatasetOverviewTab() {
         title={t('datasets.overview')}
         subtitle={t('datasets.overviewHint')}
         actions={
-          <button
-            type="button"
-            className="btn btn-primary"
-            onClick={() => void onSave()}
-            disabled={saving}
-          >
-            <Save size={16} aria-hidden />
-            {saving ? t('shared.saving') : t('shared.save')}
-          </button>
+          <Link className="btn btn-secondary" to={`/datasets/${dataset.id}/settings`}>
+            <Pencil size={16} aria-hidden />
+            {t('datasets.editInSettings')}
+          </Link>
         }
       />
       <EntityViewStats>
@@ -321,65 +238,24 @@ export function DatasetOverviewTab() {
           value={usageObjectTypes.length + usageLinkTypes.length}
         />
       </EntityViewStats>
+      {/* Read-only summary: everything editable lives in Settings, so this page never saves. */}
       <EntityViewPanel>
-        <div className="entity-view__form">
-          <EntityViewField label={t('datasets.displayName')}>
-            <input
-              className="console-form-control"
-              value={displayName}
-              onChange={(e) => setDisplayName(e.target.value)}
-              placeholder={label}
-            />
-          </EntityViewField>
-          <EntityViewField label={t('datasets.descriptionLabel')}>
-            <input
-              className="console-form-control"
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-            />
-          </EntityViewField>
-          <EntityViewField label={t('datasets.domainLabel')}>
-            <input
-              className="console-form-control"
-              value={domain}
-              onChange={(e) => setDomain(e.target.value)}
-            />
-          </EntityViewField>
-          <EntityViewField label={t('datasets.tagsLabel')}>
-            <input
-              className="console-form-control"
-              value={tags}
-              onChange={(e) => setTags(e.target.value)}
-              placeholder={t('datasets.tagsPlaceholder')}
-            />
-          </EntityViewField>
-          <EntityViewField label={t('datasets.businessDefinitionLabel')}>
-            <textarea
-              className="console-form-control"
-              value={businessDefinition}
-              onChange={(e) => setBusinessDefinition(e.target.value)}
-            />
-          </EntityViewField>
-          <EntityViewField label={t('datasets.sensitivityLabel')}>
-            <select
-              className="console-form-control"
-              value={sensitivity}
-              onChange={(e) => setSensitivity(e.target.value)}
-            >
-              <option value="">{t('datasets.sensitivityNone')}</option>
-              <option value="public">{t('datasets.sensitivityPublic')}</option>
-              <option value="internal">{t('datasets.sensitivityInternal')}</option>
-              <option value="confidential">{t('datasets.sensitivityConfidential')}</option>
-              <option value="restricted">{t('datasets.sensitivityRestricted')}</option>
-            </select>
-          </EntityViewField>
-          <EntityViewField label={t('datasets.schemaTable')}>
-            <p className="entity-view__readonly">{label}</p>
-          </EntityViewField>
-          <EntityViewField label={t('datasets.dataSource')}>
-            <p className="entity-view__readonly">{dataset.data_source_name ?? t('datasets.dash')}</p>
-          </EntityViewField>
-        </div>
+        <dl className="entity-view__dl">
+          <dt>{t('datasets.dataSource')}</dt>
+          <dd>{fact(`${dataset.schema_name}.${dataset.table_name}`)}{dataset.data_source_name ? ` · ${dataset.data_source_name}` : ''}</dd>
+          <dt>{t('datasets.displayName')}</dt>
+          <dd>{fact(dataset.display_name)}</dd>
+          <dt>{t('datasets.descriptionLabel')}</dt>
+          <dd>{fact(dataset.description)}</dd>
+          <dt>{t('datasets.domainLabel')}</dt>
+          <dd>{fact(dataset.domain)}</dd>
+          <dt>{t('datasets.tagsLabel')}</dt>
+          <dd>{dataset.tags?.length ? dataset.tags.join(', ') : t('datasets.dash')}</dd>
+          <dt>{t('datasets.businessDefinitionLabel')}</dt>
+          <dd>{fact(dataset.business_definition)}</dd>
+          <dt>{t('datasets.sensitivityLabel')}</dt>
+          <dd>{sensitivity}</dd>
+        </dl>
       </EntityViewPanel>
     </>
   );

@@ -284,6 +284,8 @@
     "sharing": "Sharing",
     "sharingHint": "Control who can view or edit this dataset.",
     "displayName": "Display name",
+    "editInSettings": "Edit in Settings",
+    "rowEditingSection": "Row editing",
     "displayNamePlaceholder": "e.g. Diseases table",
     "dataSource": "Data source",
     "schemaTable": "Schema.table",
