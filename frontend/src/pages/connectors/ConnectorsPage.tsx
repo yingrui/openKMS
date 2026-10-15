@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { Plus, X, Loader2 } from 'lucide-react';
+import { Plus, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import {
   fetchConnectorKinds,
@@ -23,6 +23,7 @@ import {
   settingsRowsForKind,
   type KvRow,
 } from './connectorFormUtils';
+import { Dialog } from '../../styles/design-system';
 import '../ontology/ontology-admin.scss';
 
 export function ConnectorsPage() {
@@ -221,25 +222,30 @@ export function ConnectorsPage() {
         </div>
       </div>
 
-      {showCreate && (
-        <div
-          className="console-modal-overlay"
-          onClick={(e) => e.target === e.currentTarget && !submitting && setShowCreate(false)}
-        >
-          <div className="console-modal console-modal--wide" onClick={(e) => e.stopPropagation()}>
-            <div className="console-modal-header">
-              <h2>{t('connectors.modalNewTitle')}</h2>
+      <Dialog
+        open={showCreate}
+        onClose={() => !submitting && setShowCreate(false)}
+        closeDisabled={submitting}
+        title={t('connectors.modalNewTitle')}
+        closeAriaLabel={t('connectors.closeAria')}
+        size="lg"
+        footer={
+          <>
               <button
                 type="button"
+                className="btn btn-secondary"
                 onClick={() => !submitting && setShowCreate(false)}
                 disabled={submitting}
-                aria-label={t('connectors.closeAria')}
               >
-                <X size={20} />
+                {t('connectors.cancel')}
               </button>
-            </div>
-            <div className="console-modal-body">
-              <ConnectorFormFields
+              <button type="button" className="btn btn-primary" onClick={() => void handleCreate()} disabled={submitting}>
+                {submitting ? t('connectors.saving') : t('connectors.create')}
+              </button>
+          </>
+        }
+      >
+        <ConnectorFormFields
                 kinds={kinds}
                 formName={formName}
                 onFormNameChange={setFormName}
@@ -271,23 +277,7 @@ export function ConnectorsPage() {
                 isExisting={false}
                 readOnly={false}
               />
-            </div>
-            <div className="console-modal-actions">
-              <button
-                type="button"
-                className="btn btn-secondary"
-                onClick={() => !submitting && setShowCreate(false)}
-                disabled={submitting}
-              >
-                {t('connectors.cancel')}
-              </button>
-              <button type="button" className="btn btn-primary" onClick={() => void handleCreate()} disabled={submitting}>
-                {submitting ? t('connectors.saving') : t('connectors.create')}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      </Dialog>
     </div>
   );
 }
