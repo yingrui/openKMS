@@ -97,7 +97,8 @@ export function SemanticModelDetailPage() {
         meta={scopeMeta(model)}
         navItems={[
           { to: base, label: t('dataModel.metrics'), end: true },
-          { to: `${base}/fields`, label: t('dataModel.fields') },
+          { to: `${base}/datasets`, label: t('datasets.title') },
+          { to: `${base}/relationships`, label: t('datasets.relationships') },
           { to: `${base}/try`, label: t('dataModel.tryTitle') },
           { to: `${base}/settings`, label: t('dataModel.settings') },
         ]}

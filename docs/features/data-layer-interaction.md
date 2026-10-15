@@ -95,7 +95,14 @@ The Model tab lists **semantic models** — **named scopes** over the **shared**
 - **List → detail** — **New model** opens a short **wizard** (details → dataset scope → **metrics**); then open it. An **Import** (per-model document) lives in the header.
 - **Metrics** — the model's aggregate **expressions** (Ossie `expression.dialects`), authored by a data engineer with **AI-assist**; run read-only (timeout + row cap).
 - **Try it** — a **separate page** opened from the model header: pick a metric, check the fields to group by (a field is a dimension; time dimensions carry `dimension.is_time` and use `date_trunc` with a query-time granularity) → a results table + the generated SQL (ad-hoc, not saved).
-- The model page uses the same **entity shell** as the dataset page — identity + `navItems` in the sidebar, one section in the outlet: **Metrics** (authoring), **Fields** (searchable + paginated), **Try** (run one metric) and **Settings** (identity/scope, **AI context**, the Ossie interchange — a docked View YAML panel plus JSON/YAML downloads — and delete).
+- The model page uses the same **entity shell** as the dataset page — identity + `navItems` in the sidebar, one section in the outlet:
+  - **Metrics** — model-owned; authored here.
+  - **Datasets** — the model's scope. Each dataset shows the catalog facts it *references* (source, description, keys, AI context — read-only, with **Open in Catalog**) above **its fields**, which the spec nests under a dataset; the fields themselves are model-owned (add/edit/delete per dataset, searchable across the scope).
+  - **Relationships** — a read-only view of the FK edges among the scope (`from → to`, column pairs, INNER/LEFT, AI context). Relationships are catalog-owned and shared by every model, so they are edited in the Catalog (link on each row).
+  - **Try** — run one metric (ad-hoc, read-only).
+  - **Settings** — model identity/scope, **AI context**, the Ossie interchange (docked View YAML panel + JSON/YAML downloads) and delete.
+
+- The split is **owned vs referenced**: the model owns its **fields and metrics** (edited in the model), while **datasets and relationships** live in the Catalog and are only referenced here — their `ai_context` is edited once, in the Catalog, so two models can never disagree about the same dataset.
 - **Fields** — the model's semantic fields (column ref / expression + Ossie `dimension` `{is_time}` + `ai_context`), **added explicitly** (a field marks a time dimension or adds AI context); the same column can carry a different dimension/`ai_context` per model.
 - **Export / Import** — the Ossie document, per model, in the model header overflow menu.
 

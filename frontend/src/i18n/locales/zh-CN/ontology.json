@@ -132,7 +132,6 @@
     "editModel": "编辑模型",
     "datasetsInScope": "范围内的数据集",
     "noDatasetsInScope": "暂无数据集 —— 编辑模型来添加。",
-    "fields": "字段",
     "wizardStepDetails": "基本信息",
     "wizardStepDatasets": "数据集",
     "wizardNext": "下一步",
@@ -197,7 +196,17 @@
     "yamlHint": "点击节点即可折叠 · 复制得到完整的 YAML 文档。",
     "noDatasetsSelected": "尚未选择任何数据集。",
     "addDataset": "添加数据集",
-    "removeDataset": "移除 {{name}}"
+    "removeDataset": "移除 {{name}}",
+    "datasetCount_other": "{{count}} 个数据集",
+    "datasetFieldSearch": "搜索字段…",
+    "noSearchMatch": "没有匹配的结果。",
+    "openInCatalog": "在 Catalog 打开",
+    "manageInCatalog": "在 Catalog 中管理",
+    "relationshipCount_other": "{{count}} 条关系",
+    "relationshipEnds": "从 → 到",
+    "relationshipKind": "连接方式",
+    "joinOptional": "左连接",
+    "noRelationships": "当前范围内还没有连接这些数据集的关系 —— 请到 Catalog 添加。"
   },
   "datasets": {
     "title": "数据集",
@@ -459,7 +468,8 @@
     "columnSaveFailed": "保存列描述失败",
     "pickDataset": "请选择数据集",
     "fieldDimension": "维度",
-    "fieldSearchPlaceholder": "搜索字段…"
+    "fieldSearchPlaceholder": "搜索字段…",
+    "relationshipAiHint": "可选：告诉 Agent 什么时候该走这条关系。"
   },
   "groups": {
     "title": "分组",

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Plus, Trash2, X } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { ExternalLink, Plus, Trash2, X } from 'lucide-react';
 import { toast } from 'sonner';
 import { fetchDatasetMetadata, type ColumnMetadata } from '../../data/datasetsApi';
 import {
@@ -17,27 +18,39 @@ import { useConfirm } from '../../contexts/ConfirmContext';
 import { FormField, Pagination } from '../../styles/design-system';
 import { EntityViewHeader, EntityViewPanel } from './EntityViewShell';
 import { useSemanticModelDetail } from './SemanticModelDetailPage';
+import type { DatasetResponse } from '../../data/datasetsApi';
+
+const PAGE_SIZE = 25;
+
+type AiContext = { instructions: string; synonyms: string; examples: string };
+
+const splitList = (s: string) =>
+  s
+    .split(',')
+    .map((x) => x.trim())
+    .filter(Boolean);
+
+function datasetLabel(d: DatasetResponse): string {
+  return d.display_name || `${d.schema_name}.${d.table_name}`;
+}
 
 /**
- * Model → Fields: the model's fields (column ref / expression + Ossie `is_time` dimension).
- * A field is a row-level attribute; only the *time* role is modelled by the spec.
+ * Model → Datasets: the datasets in the model's scope, each showing its **fields** (which the
+ * spec nests under a dataset) plus the catalog facts the model merely references.
  */
-export function ModelFieldsSection() {
+export function ModelDatasetsSection() {
   const { t } = useTranslation('ontology');
   const confirm = useConfirm();
-  const { model } = useSemanticModelDetail();
-  const semanticModelId = model.id;
-  const datasets = model.datasets;
+  const { model, allDatasets } = useSemanticModelDetail();
+  const modelId = model.id;
 
   const [fields, setFields] = useState<SemanticModelFieldResponse[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
-  const [page, setPage] = useState(0);
-  const [pageSize, setPageSize] = useState(25);
+  const [pages, setPages] = useState<Record<string, number>>({});
 
-  const [showForm, setShowForm] = useState(false);
+  const [formDatasetId, setFormDatasetId] = useState<string | null>(null);
   const [editing, setEditing] = useState<SemanticModelFieldResponse | null>(null);
-  const [datasetId, setDatasetId] = useState('');
   const [columns, setColumns] = useState<ColumnMetadata[]>([]);
   const [name, setName] = useState('');
   const [mode, setMode] = useState<'column' | 'computed'>('column');
@@ -47,66 +60,70 @@ export function ModelFieldsSection() {
   const [label, setLabel] = useState('');
   const [description, setDescription] = useState('');
   const [dimensionMode, setDimensionMode] = useState<'auto' | 'time' | 'regular'>('auto');
-  const [ai, setAi] = useState({ instructions: '', synonyms: '', examples: '' });
+  const [ai, setAi] = useState<AiContext>({ instructions: '', synonyms: '', examples: '' });
   const [submitting, setSubmitting] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      setFields((await fetchModelFields(semanticModelId)).items);
+      setFields((await fetchModelFields(modelId)).items);
     } catch (e) {
       toast.error(e instanceof Error ? e.message : t('datasets.loadFieldsFailed'));
     } finally {
       setLoading(false);
     }
-  }, [semanticModelId, t]);
+  }, [modelId, t]);
 
   useEffect(() => {
     void load();
   }, [load]);
 
   useEffect(() => {
-    if (!datasetId) {
+    if (!formDatasetId) {
       setColumns([]);
       return;
     }
     let cancelled = false;
-    void fetchDatasetMetadata(datasetId)
+    void fetchDatasetMetadata(formDatasetId)
       .then((m) => !cancelled && setColumns(m))
       .catch(() => !cancelled && setColumns([]));
     return () => {
       cancelled = true;
     };
-  }, [datasetId]);
+  }, [formDatasetId]);
 
-  const datasetLabel = (id: string) =>
-    datasets.find((d) => d.id === id)?.name ?? t('dataModel.outOfScope');
+  const byDataset = useMemo(() => {
+    const map: Record<string, SemanticModelFieldResponse[]> = {};
+    for (const f of fields) (map[f.dataset_id] ??= []).push(f);
+    return map;
+  }, [fields]);
 
+  const query = search.trim().toLowerCase();
+  const matches = useCallback(
+    (f: SemanticModelFieldResponse) =>
+      !query ||
+      [f.name, f.label ?? '', f.column_name ?? '', f.datatype ?? '']
+        .join(' ')
+        .toLowerCase()
+        .includes(query),
+    [query],
+  );
+
+  const scope = model.datasets;
+  const visible = scope.filter(
+    (d) => !query || d.name.toLowerCase().includes(query) || (byDataset[d.id] ?? []).some(matches),
+  );
+
+  /** Only the *time* role is modelled by the spec (`dimension.is_time`). */
   const dimensionLabel = (f: SemanticModelFieldResponse) => {
     if (f.dimension?.is_time === true) return t('dataModel.dimensionYes');
     if (f.dimension?.is_time === false) return t('datasets.dash');
     return isTemporalDatatype(f.datatype) ? t('dataModel.dimensionTimeByType') : t('datasets.dash');
   };
 
-  const filtered = useMemo(
-    () =>
-      fields.filter((f) => {
-        const q = search.trim().toLowerCase();
-        if (!q) return true;
-        return [f.name, f.label ?? '', f.column_name ?? '', datasetLabel(f.dataset_id)]
-          .join(' ')
-          .toLowerCase()
-          .includes(q);
-      }),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [fields, search, datasets],
-  );
-  const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
-  const safePage = Math.min(page, totalPages - 1);
-  const paged = filtered.slice(safePage * pageSize, (safePage + 1) * pageSize);
-
-  const resetForm = useCallback(() => {
-    setDatasetId(datasets[0]?.id ?? '');
+  const openCreate = (datasetId: string) => {
+    setEditing(null);
+    setFormDatasetId(datasetId);
     setName('');
     setMode('column');
     setColumnName('');
@@ -116,17 +133,11 @@ export function ModelFieldsSection() {
     setDescription('');
     setDimensionMode('auto');
     setAi({ instructions: '', synonyms: '', examples: '' });
-  }, [datasets]);
-
-  const openCreate = () => {
-    setEditing(null);
-    resetForm();
-    setShowForm(true);
   };
 
   const openEdit = (f: SemanticModelFieldResponse) => {
     setEditing(f);
-    setDatasetId(f.dataset_id);
+    setFormDatasetId(f.dataset_id);
     setName(f.name);
     setMode(f.column_name ? 'column' : 'computed');
     setColumnName(f.column_name ?? '');
@@ -146,22 +157,18 @@ export function ModelFieldsSection() {
       synonyms: ((f.ai_context?.synonyms as string[]) ?? []).join(', '),
       examples: ((f.ai_context?.examples as string[]) ?? []).join(', '),
     });
-    setShowForm(true);
   };
 
-  const splitList = (s: string) =>
-    s
-      .split(',')
-      .map((x) => x.trim())
-      .filter(Boolean);
+  const closeForm = () => {
+    if (submitting) return;
+    setFormDatasetId(null);
+    setEditing(null);
+  };
 
   const handleSubmit = async () => {
+    if (!formDatasetId) return;
     if (!name.trim()) {
       toast.error(t('datasets.fieldNameRequired'));
-      return;
-    }
-    if (!datasetId) {
-      toast.error(t('datasets.pickDataset'));
       return;
     }
     const synonyms = splitList(ai.synonyms);
@@ -176,7 +183,7 @@ export function ModelFieldsSection() {
           ? { dialects: [{ dialect: 'ANSI_SQL', expression: `"${columnName}"` }] }
           : null;
     const payload = {
-      dataset_id: datasetId,
+      dataset_id: formDatasetId,
       name: name.trim(),
       column_name: mode === 'column' ? columnName : null,
       expression,
@@ -189,13 +196,13 @@ export function ModelFieldsSection() {
     setSubmitting(true);
     try {
       if (editing) {
-        await updateModelField(semanticModelId, editing.id, payload);
+        await updateModelField(modelId, editing.id, payload);
         toast.success(t('datasets.fieldSaved'));
       } else {
-        await createModelField(semanticModelId, payload);
+        await createModelField(modelId, payload);
         toast.success(t('datasets.fieldCreated'));
       }
-      setShowForm(false);
+      closeForm();
       await load();
     } catch (e) {
       toast.error(e instanceof Error ? e.message : t('datasets.fieldSaveFailed'));
@@ -213,7 +220,7 @@ export function ModelFieldsSection() {
     });
     if (!ok) return;
     try {
-      await deleteModelField(semanticModelId, f.id);
+      await deleteModelField(modelId, f.id);
       toast.success(t('datasets.fieldDeleted'));
       await load();
     } catch (e) {
@@ -221,117 +228,178 @@ export function ModelFieldsSection() {
     }
   };
 
+  const formDataset = allDatasets.find((d) => d.id === formDatasetId);
+
   return (
     <>
       <EntityViewHeader
-        title={t('dataModel.fields')}
-        subtitle={t('dataModel.fieldCount', { count: filtered.length })}
+        title={t('datasets.title')}
+        subtitle={t('dataModel.datasetCount', { count: scope.length })}
         actions={
-          <>
-            <input
-              type="search"
-              className="ds-control entity-view__search"
-              aria-label={t('datasets.searchAria')}
-              placeholder={t('datasets.fieldSearchPlaceholder')}
-              value={search}
-              onChange={(e) => {
-                setSearch(e.target.value);
-                setPage(0);
-              }}
-            />
-            <button type="button" className="btn btn-primary" onClick={openCreate}>
-              <Plus size={16} aria-hidden />
-              {t('datasets.addField')}
-            </button>
-          </>
+          <input
+            type="search"
+            className="ds-control entity-view__search"
+            aria-label={t('datasets.searchAria')}
+            placeholder={t('dataModel.datasetFieldSearch')}
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+          />
         }
       />
 
-      <EntityViewPanel>
-        {loading ? (
+      {loading ? (
+        <EntityViewPanel>
           <p className="entity-view__readonly">{t('shared.loading')}</p>
-        ) : filtered.length === 0 ? (
-          <p className="entity-view__readonly">{t('dataModel.fieldsEmptyHint')}</p>
-        ) : (
-          <>
-            <div className="ds-table-wrap ds-table-wrap--flush">
-              <table className="console-table">
-                <thead>
-                  <tr>
-                    <th>{t('datasets.fieldName')}</th>
-                    <th>{t('datasets.modelDatasets')}</th>
-                    <th>{t('datasets.fieldSource')}</th>
-                    <th>{t('datasets.colDataType')}</th>
-                    <th>{t('dataModel.fieldDimension')}</th>
-                    <th>{t('datasets.fieldAiContext')}</th>
-                    <th />
-                  </tr>
-                </thead>
-                <tbody>
-                  {paged.map((f) => (
-                    <tr key={f.id}>
-                      <td>
-                        <strong>{f.name}</strong>
-                        {f.label ? <span className="model-field__label">{f.label}</span> : null}
-                      </td>
-                      <td>{datasetLabel(f.dataset_id)}</td>
-                      <td>{f.column_name ? f.column_name : <code>{fieldExpressionSql(f)}</code>}</td>
-                      <td>{f.datatype ?? t('datasets.dash')}</td>
-                      <td>{dimensionLabel(f)}</td>
-                      <td>
-                        {typeof f.ai_context?.instructions === 'string' && f.ai_context.instructions
-                          ? String(f.ai_context.instructions)
-                          : t('datasets.dash')}
-                      </td>
-                      <td className="dataset-field-row__actions">
-                        <button
-                          type="button"
-                          className="btn btn-secondary btn-sm"
-                          onClick={() => openEdit(f)}
-                          title={t('datasets.editField')}
-                        >
-                          {t('shared.edit')}
-                        </button>
-                        <button
-                          type="button"
-                          className="btn btn-secondary btn-sm"
-                          onClick={() => void handleDelete(f)}
-                          title={t('shared.delete')}
-                        >
-                          <Trash2 size={14} aria-hidden />
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-            <Pagination
-              total={filtered.length}
-              page={safePage}
-              pageSize={pageSize}
-              pageSizeOptions={[25, 50, 100]}
-              onPageChange={setPage}
-              onPageSizeChange={(size) => {
-                setPageSize(size);
-                setPage(0);
-              }}
-            />
-          </>
-        )}
-      </EntityViewPanel>
+        </EntityViewPanel>
+      ) : scope.length === 0 ? (
+        <EntityViewPanel>
+          <p className="entity-view__readonly">{t('dataModel.noDatasetsSelected')}</p>
+        </EntityViewPanel>
+      ) : visible.length === 0 ? (
+        <EntityViewPanel>
+          <p className="entity-view__readonly">{t('dataModel.noSearchMatch')}</p>
+        </EntityViewPanel>
+      ) : (
+        visible.map((ref) => {
+          const catalog = allDatasets.find((d) => d.id === ref.id);
+          const own = byDataset[ref.id] ?? [];
+          const shown = own.filter(matches);
+          const page = pages[ref.id] ?? 0;
+          const totalPages = Math.max(1, Math.ceil(shown.length / PAGE_SIZE));
+          const safePage = Math.min(page, totalPages - 1);
+          const paged = shown.slice(safePage * PAGE_SIZE, (safePage + 1) * PAGE_SIZE);
+          const p = (catalog?.ai_context ?? {}) as { instructions?: string };
 
-      {showForm && (
+          return (
+            <EntityViewPanel key={ref.id} title={ref.name}>
+              <dl className="entity-view__dl model-dataset__facts">
+                <dt>{t('datasets.dataSource')}</dt>
+                <dd>
+                  {catalog ? `${catalog.schema_name}.${catalog.table_name}` : t('datasets.dash')}
+                  {catalog?.data_source_name ? ` · ${catalog.data_source_name}` : ''}
+                </dd>
+                <dt>{t('datasets.descriptionLabel')}</dt>
+                <dd>{catalog?.description || t('datasets.dash')}</dd>
+                <dt>{t('datasets.keysSection')}</dt>
+                <dd>
+                  {(catalog?.primary_key_columns ?? []).join(', ') || t('datasets.dash')}
+                  {(catalog?.unique_keys ?? []).length > 0
+                    ? ` · ${(catalog?.unique_keys ?? []).map((k) => k.join('+')).join(', ')}`
+                    : ''}
+                </dd>
+                <dt>{t('datasets.aiContext')}</dt>
+                <dd>{p.instructions || t('datasets.dash')}</dd>
+              </dl>
+
+              <div className="model-dataset__head">
+                <span className="page-subtitle">
+                  {t('dataModel.fieldCount', { count: own.length })}
+                </span>
+                <div className="model-dataset__head-actions">
+                  <Link to={`/datasets/${ref.id}`} className="btn btn-secondary btn-sm">
+                    <ExternalLink size={14} aria-hidden />
+                    {t('dataModel.openInCatalog')}
+                  </Link>
+                  <button
+                    type="button"
+                    className="btn btn-primary btn-sm"
+                    onClick={() => openCreate(ref.id)}
+                  >
+                    <Plus size={14} aria-hidden />
+                    {t('datasets.addField')}
+                  </button>
+                </div>
+              </div>
+
+              {own.length === 0 ? (
+                <p className="entity-view__readonly">{t('dataModel.fieldsEmptyHint')}</p>
+              ) : shown.length === 0 ? (
+                <p className="entity-view__readonly">{t('dataModel.noSearchMatch')}</p>
+              ) : (
+                <>
+                  <div className="ds-table-wrap ds-table-wrap--flush">
+                    <table className="console-table">
+                      <thead>
+                        <tr>
+                          <th>{t('datasets.fieldName')}</th>
+                          <th>{t('datasets.fieldSource')}</th>
+                          <th>{t('datasets.colDataType')}</th>
+                          <th>{t('dataModel.fieldDimension')}</th>
+                          <th>{t('dataModel.fieldLabel')}</th>
+                          <th>{t('datasets.fieldAiContext')}</th>
+                          <th />
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {paged.map((f) => (
+                          <tr key={f.id}>
+                            <td>
+                              <strong>{f.name}</strong>
+                            </td>
+                            <td>
+                              {f.column_name ? f.column_name : <code>{fieldExpressionSql(f)}</code>}
+                            </td>
+                            <td>{f.datatype ?? t('datasets.dash')}</td>
+                            <td>{dimensionLabel(f)}</td>
+                            <td>{f.label ?? t('datasets.dash')}</td>
+                            <td>
+                              {typeof f.ai_context?.instructions === 'string' &&
+                              f.ai_context.instructions
+                                ? String(f.ai_context.instructions)
+                                : t('datasets.dash')}
+                            </td>
+                            <td className="dataset-field-row__actions">
+                              <button
+                                type="button"
+                                className="btn btn-secondary btn-sm"
+                                onClick={() => openEdit(f)}
+                                title={t('datasets.editField')}
+                              >
+                                {t('shared.edit')}
+                              </button>
+                              <button
+                                type="button"
+                                className="btn btn-secondary btn-sm"
+                                onClick={() => void handleDelete(f)}
+                                title={t('shared.delete')}
+                              >
+                                <Trash2 size={14} aria-hidden />
+                              </button>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                  <Pagination
+                    total={shown.length}
+                    page={safePage}
+                    pageSize={PAGE_SIZE}
+                    pageSizeOptions={[PAGE_SIZE]}
+                    onPageChange={(next) => setPages((prev) => ({ ...prev, [ref.id]: next }))}
+                    onPageSizeChange={() => undefined}
+                  />
+                </>
+              )}
+            </EntityViewPanel>
+          );
+        })
+      )}
+
+      {formDatasetId && (
         <div
           className="console-modal-overlay"
-          onClick={(e) => e.target === e.currentTarget && !submitting && setShowForm(false)}
+          onClick={(e) => e.target === e.currentTarget && closeForm()}
         >
           <div className="console-modal" onClick={(e) => e.stopPropagation()}>
             <div className="console-modal-header">
-              <h2>{editing ? t('datasets.editField') : t('datasets.addField')}</h2>
+              <h2>
+                {editing ? t('datasets.editField') : t('datasets.addField')}
+                {formDataset ? ` · ${datasetLabel(formDataset)}` : ''}
+              </h2>
               <button
                 type="button"
-                onClick={() => !submitting && setShowForm(false)}
+                onClick={closeForm}
                 disabled={submitting}
                 aria-label={t('datasets.closeAria')}
               >
@@ -339,20 +407,6 @@ export function ModelFieldsSection() {
               </button>
             </div>
             <div className="console-modal-body">
-              <FormField label={t('datasets.modelDatasets')}>
-                <select
-                  value={datasetId}
-                  onChange={(e) => setDatasetId(e.target.value)}
-                  disabled={Boolean(editing)}
-                >
-                  <option value="">{t('datasets.selectDataset')}</option>
-                  {datasets.map((d) => (
-                    <option key={d.id} value={d.id}>
-                      {d.name}
-                    </option>
-                  ))}
-                </select>
-              </FormField>
               <FormField label={t('datasets.fieldName')}>
                 <input type="text" value={name} onChange={(e) => setName(e.target.value)} />
               </FormField>
@@ -410,7 +464,6 @@ export function ModelFieldsSection() {
                   onChange={(e) => setDescription(e.target.value)}
                 />
               </FormField>
-
               <FormField
                 label={t('dataModel.fieldDimension')}
                 hint={t('dataModel.fieldDimensionHint')}
@@ -426,7 +479,6 @@ export function ModelFieldsSection() {
                   <option value="regular">{t('dataModel.dimensionNo')}</option>
                 </select>
               </FormField>
-
               <FormField label={t('datasets.aiInstructions')}>
                 <textarea
                   rows={2}
@@ -453,7 +505,7 @@ export function ModelFieldsSection() {
               <button
                 type="button"
                 className="btn btn-secondary"
-                onClick={() => !submitting && setShowForm(false)}
+                onClick={closeForm}
                 disabled={submitting}
               >
                 {t('shared.cancel')}

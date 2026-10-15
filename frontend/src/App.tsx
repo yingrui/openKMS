@@ -225,9 +225,14 @@ const ModelMetricsSection = lazy(() =>
     default: m.ModelMetricsSection,
   })),
 );
-const ModelFieldsSection = lazy(() =>
-  import('./pages/ontology-manager/ModelFieldsSection').then((m) => ({
-    default: m.ModelFieldsSection,
+const ModelDatasetsSection = lazy(() =>
+  import('./pages/ontology-manager/ModelDatasetsSection').then((m) => ({
+    default: m.ModelDatasetsSection,
+  })),
+);
+const ModelRelationshipsSection = lazy(() =>
+  import('./pages/ontology-manager/ModelRelationshipsSection').then((m) => ({
+    default: m.ModelRelationshipsSection,
   })),
 );
 const ModelTrySection = lazy(() =>
@@ -434,7 +439,8 @@ function App() {
           <Route path="data-model" element={<DataModelPage />} />
           <Route path="data-model/:modelId" element={<SemanticModelDetailPage />}>
             <Route index element={<ModelMetricsSection />} />
-            <Route path="fields" element={<ModelFieldsSection />} />
+            <Route path="datasets" element={<ModelDatasetsSection />} />
+            <Route path="relationships" element={<ModelRelationshipsSection />} />
             <Route path="try" element={<ModelTrySection />} />
             <Route path="settings" element={<ModelSettingsTab />} />
           </Route>

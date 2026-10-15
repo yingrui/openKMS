@@ -37,6 +37,7 @@ export async function createDatasetJoin(data: {
   to_columns: string[];
   required: boolean;
   description?: string | null;
+  ai_context?: Record<string, unknown> | null;
 }): Promise<DatasetJoinResponse> {
   return request<DatasetJoinResponse>('/api/dataset-joins', {
     method: 'POST',
@@ -53,6 +54,7 @@ export async function updateDatasetJoin(
     to_columns?: string[];
     required?: boolean;
     description?: string | null;
+    ai_context?: Record<string, unknown> | null;
   }
 ): Promise<DatasetJoinResponse> {
   return request<DatasetJoinResponse>(`/api/dataset-joins/${id}`, {

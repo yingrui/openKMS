@@ -16,7 +16,7 @@ import {
   type DatasetJoinResponse,
 } from '../../data/joinsApi';
 import { useConfirm } from '../../contexts/ConfirmContext';
-import { EmptyState } from '../../styles/design-system';
+import { EmptyState, FormField } from '../../styles/design-system';
 import { EntityViewHeader, EntityViewPanel, EntityViewLoading } from './EntityViewShell';
 import { DatasetErDiagram, type ErNode } from './DatasetErDiagram';
 
@@ -41,6 +41,9 @@ export function DatasetRelationshipsTab() {
   const [pairs, setPairs] = useState<ColumnPair[]>([{ from: '', to: '' }]);
   const [joinName, setJoinName] = useState('');
   const [description, setDescription] = useState('');
+  const [aiInstructions, setAiInstructions] = useState('');
+  const [aiSynonyms, setAiSynonyms] = useState('');
+  const [aiExamples, setAiExamples] = useState('');
   const [targetColumns, setTargetColumns] = useState<ColumnMetadata[]>([]);
   const [submitting, setSubmitting] = useState(false);
 
@@ -111,6 +114,9 @@ export function DatasetRelationshipsTab() {
     setPairs([{ from: '', to: '' }]);
     setJoinName('');
     setDescription('');
+    setAiInstructions('');
+    setAiSynonyms('');
+    setAiExamples('');
     setShowForm(true);
   };
 
@@ -126,6 +132,8 @@ export function DatasetRelationshipsTab() {
     }
     setSubmitting(true);
     try {
+      const synonyms = aiSynonyms.split(',').map((x) => x.trim()).filter(Boolean);
+      const examples = aiExamples.split(',').map((x) => x.trim()).filter(Boolean);
       await createDatasetJoin({
         name: joinName.trim() || null,
         from_dataset_id: direction === 'from' ? datasetId : targetId,
@@ -134,6 +142,10 @@ export function DatasetRelationshipsTab() {
         to_columns: usable.map((p) => p.to),
         required,
         description: description.trim() || null,
+        ai_context:
+          aiInstructions.trim() || synonyms.length || examples.length
+            ? { instructions: aiInstructions.trim(), synonyms, examples }
+            : null,
       });
       toast.success(t('datasets.joinCreated'));
       setShowForm(false);
@@ -236,8 +248,7 @@ export function DatasetRelationshipsTab() {
               </button>
             </div>
             <div className="console-modal-body">
-              <label>
-                <span>{t('datasets.joinTargetDataset')}</span>
+              <FormField label={t('datasets.joinTargetDataset')}>
                 <select value={targetId} onChange={(e) => setTargetId(e.target.value)}>
                   <option value="">{t('datasets.selectTable')}</option>
                   {otherDatasets.map((d) => (
@@ -246,9 +257,8 @@ export function DatasetRelationshipsTab() {
                     </option>
                   ))}
                 </select>
-              </label>
-              <label>
-                <span>{t('datasets.joinDirection')}</span>
+              </FormField>
+              <FormField label={t('datasets.joinDirection')}>
                 <select
                   value={direction}
                   onChange={(e) => setDirection(e.target.value as 'from' | 'to')}
@@ -256,7 +266,7 @@ export function DatasetRelationshipsTab() {
                   <option value="from">{t('datasets.directionThisFrom')}</option>
                   <option value="to">{t('datasets.directionThisTo')}</option>
                 </select>
-              </label>
+              </FormField>
               <label className="ds-check-row">
                 <input type="checkbox" checked={required} onChange={(e) => setRequired(e.target.checked)} />
                 <span>{t('datasets.joinRequired')}</span>
@@ -318,18 +328,37 @@ export function DatasetRelationshipsTab() {
                   {t('datasets.joinAddPair')}
                 </button>
               </div>
-              <label>
-                <span>{t('datasets.joinName')}</span>
+              <FormField label={t('datasets.joinName')}>
                 <input type="text" value={joinName} onChange={(e) => setJoinName(e.target.value)} />
-              </label>
-              <label>
-                <span>{t('datasets.joinDescription')}</span>
+              </FormField>
+              <FormField label={t('datasets.joinDescription')}>
                 <input
                   type="text"
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
                 />
-              </label>
+              </FormField>
+              <FormField label={t('datasets.aiInstructions')} hint={t('datasets.relationshipAiHint')}>
+                <textarea
+                  rows={2}
+                  value={aiInstructions}
+                  onChange={(e) => setAiInstructions(e.target.value)}
+                />
+              </FormField>
+              <FormField label={t('datasets.aiSynonyms')}>
+                <input
+                  type="text"
+                  value={aiSynonyms}
+                  onChange={(e) => setAiSynonyms(e.target.value)}
+                />
+              </FormField>
+              <FormField label={t('datasets.aiExamples')}>
+                <input
+                  type="text"
+                  value={aiExamples}
+                  onChange={(e) => setAiExamples(e.target.value)}
+                />
+              </FormField>
             </div>
             <div className="console-modal-actions">
               <button

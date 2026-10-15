@@ -132,7 +132,6 @@
     "editModel": "Edit model",
     "datasetsInScope": "Datasets in scope",
     "noDatasetsInScope": "No datasets yet — edit the model to add some.",
-    "fields": "Fields",
     "wizardStepDetails": "Details",
     "wizardStepDatasets": "Datasets",
     "wizardNext": "Next",
@@ -199,7 +198,19 @@
     "yamlHint": "Fold any node by clicking it · Copy takes the whole YAML document.",
     "noDatasetsSelected": "No datasets in scope yet.",
     "addDataset": "Add dataset",
-    "removeDataset": "Remove {{name}}"
+    "removeDataset": "Remove {{name}}",
+    "datasetCount_one": "{{count}} dataset",
+    "datasetCount_other": "{{count}} datasets",
+    "datasetFieldSearch": "Search fields…",
+    "noSearchMatch": "Nothing matches that search.",
+    "openInCatalog": "Open in Catalog",
+    "manageInCatalog": "Manage in Catalog",
+    "relationshipCount_one": "{{count}} relationship",
+    "relationshipCount_other": "{{count}} relationships",
+    "relationshipEnds": "From → to",
+    "relationshipKind": "Join",
+    "joinOptional": "Left join",
+    "noRelationships": "No relationship joins the datasets in this scope yet — add them in the Catalog."
   },
   "datasets": {
     "title": "Datasets",
@@ -461,7 +472,8 @@
     "columnSaveFailed": "Failed to save column description",
     "pickDataset": "Pick a dataset",
     "fieldDimension": "Dimension",
-    "fieldSearchPlaceholder": "Search fields…"
+    "fieldSearchPlaceholder": "Search fields…",
+    "relationshipAiHint": "Optional guidance for agents on when to traverse this relationship."
   },
   "groups": {
     "title": "Groups",
