@@ -5,6 +5,23 @@
   overflow: hidden;
 }
 
+// The pane can only fill if the shell chain has a height. The Ontology Suite sets that through its
+// rail marker; the data-layer entity routes (datasets, semantic models) have no rail, so the shell
+// asks for it itself — keyed on the DOM, so no route list has to be kept in sync.
+body:has(.app-page-pane > .entity-view) #root,
+body:has(.app-page-pane > .entity-view) .app-layout,
+body:has(.app-page-pane > .entity-view) .app-shell-body,
+body:has(.app-page-pane > .entity-view) .app-main {
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
+}
+
+// Gutter moves to the pane, exactly like the rail layouts (see App.scss).
+.app-content:has(> .app-page-pane > .entity-view) {
+  padding: 0;
+}
+
 .entity-view {
   display: flex;
   flex: 1;

@@ -39,4 +39,12 @@ if grep '\.app-content' src/App.scss | grep 'space-8' | grep -q 'padding'; then
   fail "App.scss .app-content must use --app-page-padding-* tokens, not --space-8"
 fi
 
+# Data-layer entity detail: the pane must own the gutter and the shell must fill the window.
+grep -q 'app-page-pane' src/components/Layout/PagePaneLayout.tsx \
+  || fail "PagePaneLayout.tsx must render .app-page-pane (data-layer entity detail)"
+grep -q '\.app-content:has(> \.app-page-pane > \.entity-view)' src/pages/ontology-manager/entity-view.scss \
+  || fail "entity-view.scss must zero .app-content padding when the pane hosts the shell"
+grep -q 'body:has(\.app-page-pane > \.entity-view) \.app-main' src/pages/ontology-manager/entity-view.scss \
+  || fail "entity-view.scss must give the shell chain a window height (no rail marker on these routes)"
+
 echo "check-app-page-gutters: OK"

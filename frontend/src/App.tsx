@@ -9,6 +9,7 @@ import { DocumentChannelsProvider } from './contexts/DocumentChannelsContext';
 import { ArticleChannelsProvider } from './contexts/ArticleChannelsContext';
 import { MediaChannelsProvider } from './contexts/MediaChannelsContext';
 import { MainLayout } from './components/Layout/MainLayout';
+import { PagePaneLayout } from './components/Layout/PagePaneLayout';
 import {
   ArticlesSectionLayout,
   DocumentsSectionLayout,
@@ -434,26 +435,29 @@ function App() {
           <Route path="models" element={<Models />} />
           <Route path="models/:modelId" element={<ModelDetail />} />
           <Route path="data-model" element={<DataModelPage />} />
-          <Route path="data-model/:modelId" element={<SemanticModelDetailPage />}>
-            <Route index element={<ModelMetricsSection />} />
-            <Route path="datasets" element={<ModelDatasetsSection />} />
-            <Route path="relationships" element={<ModelRelationshipsSection />} />
-            <Route path="playground" element={<ModelPlaygroundSection />} />
-            <Route path="settings" element={<ModelSettingsTab />} />
+          {/* app-layout-exception: entity detail needs the pane (gutter + scroll + full height) */}
+          <Route element={<PagePaneLayout />}>
+            <Route path="data-model/:modelId" element={<SemanticModelDetailPage />}>
+              <Route index element={<ModelMetricsSection />} />
+              <Route path="datasets" element={<ModelDatasetsSection />} />
+              <Route path="relationships" element={<ModelRelationshipsSection />} />
+              <Route path="playground" element={<ModelPlaygroundSection />} />
+              <Route path="settings" element={<ModelSettingsTab />} />
+            </Route>
+            <Route path="datasets/:id" element={<DatasetManagerDetailPage />}>
+              <Route index element={<DatasetOverviewTab />} />
+              <Route path="data" element={<DatasetDataTab />} />
+              <Route path="columns" element={<DatasetColumnsTab />} />
+              <Route path="usage" element={<DatasetUsageTab />} />
+              <Route path="relationships" element={<DatasetRelationshipsTab />} />
+              <Route path="quality" element={<DatasetQualityTab />} />
+              <Route path="settings" element={<DatasetSettingsTab />} />
+              <Route path="sharing" element={<DatasetSharingTab />} />
+            </Route>
           </Route>
           <Route path="data-explorer" element={<DataExplorerPage />} />
           <Route path="data-explorer/:id" element={<ExplorerReportDetail />} />
           <Route path="datasets" element={<DatasetsListPage />} />
-          <Route path="datasets/:id" element={<DatasetManagerDetailPage />}>
-            <Route index element={<DatasetOverviewTab />} />
-            <Route path="data" element={<DatasetDataTab />} />
-            <Route path="columns" element={<DatasetColumnsTab />} />
-            <Route path="usage" element={<DatasetUsageTab />} />
-            <Route path="relationships" element={<DatasetRelationshipsTab />} />
-            <Route path="quality" element={<DatasetQualityTab />} />
-            <Route path="settings" element={<DatasetSettingsTab />} />
-            <Route path="sharing" element={<DatasetSharingTab />} />
-          </Route>
           <Route path="ontology-manager" element={<Outlet />}>
             <Route index element={<OntologyList />} />
             <Route path="datasets/*" element={<LegacyOntologyDatasetRedirect />} />

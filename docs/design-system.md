@@ -140,6 +140,7 @@ With the header gone, the left rail is the only chrome: brand → Home at the to
 | `body.openkms-kb-qa-fullpage` / `openkms-agents-fullpage` | Hide header (rail keeps Home + account — see **Immersive views**); phone IA (≤ `$bp-md-min`) is chat-primary + full-width Sessions / Chats panel (Agents also has Files) — not a stacked rail that eats chat height |
 | `.app-content--object-explorer` | Flex fill, token padding |
 | `.app-page-pane:has(> .entity-view)` | Ontology Manager entity detail fills the pane; scroll inside `.entity-view__main` only |
+| `body:has(.app-page-pane > .entity-view)` (entity-view.scss) | Data-layer entity detail (`/datasets/:id`, `/data-model/:modelId`) has no rail marker to opt into the full-height chain, so the shell asks for it; `.app-content` gives up its padding to the pane |
 
 New exceptions: one-line SCSS comment + row here.
 
