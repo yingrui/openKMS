@@ -214,7 +214,9 @@ npm run build
 | 8 | `window.confirm(` | **`useConfirm()`** |
 | 9 | Raw `rgba(0,0,0,…)` modal backdrop | **`var(--overlay-backdrop)`** |
 | 10 | New page `.tsx` > 700 lines | Split like **`DocumentDetail`** |
-| 11 | `select` / text `input` with no skin (outside `<FormField>`, no `.ds-control`) | **`<FormField>`**, or **`className="ds-control"`**; `// ds-control-exempt` when a bespoke wrapper styles it (`scripts/ds-controls-baseline.txt` is a ratchet) |
+| 11 | `select` / text `input` with no skin (outside `<FormField>`, no `.ds-control`) | **`<FormField>`**, or **`className="ds-control"`**; `// ds-control-exempt` when a bespoke wrapper styles it. `scripts/ds-controls-baseline.txt` freezes the legacy hits (273) — the check only fails when a file *adds* one |
+
+**`check:styles` is currently clean** (all pre-existing findings cleared: the two over-long files were split, the raw `px` media query / `rgba` backdrop / `window.confirm` / A2UI overlay allowlist entry are gone or justified). Keep it that way — a new finding should be fixed, not allowlisted.
 
 Run **`check:app-layout`** when editing **`App.scss`**, **`app-page.scss`**, **`ChannelSectionLayout*`**, **`MainLayout.tsx`**.
 

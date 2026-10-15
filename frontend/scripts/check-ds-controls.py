@@ -97,7 +97,9 @@ def hits_in(path: Path) -> list[tuple[int, str]]:
             continue
 
         in_form_field = "FormField" in stack
-        skinned = "ds-control" in tag
+        # `.console-form-control` is the pre-design-system skin (still styled, migrate on
+        # touch); `.ds-control` is the current name.
+        skinned = "ds-control" in tag or "console-form-control" in tag
         wants_skin = name == "select" or (name == "input" and input_type(tag) in TEXT_INPUT_TYPES)
         if wants_skin and not skinned and not in_form_field and not _exempt(src, m.start()):
             out.append((src.count("\n", 0, m.start()) + 1, re.sub(r"\s+", " ", tag)[:72]))

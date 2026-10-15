@@ -152,7 +152,9 @@ const ObjectTypeManagerDetailPage = lazy(() =>
   import('./pages/ontology-manager/ObjectTypeDetailPage').then((m) => ({ default: m.ObjectTypeDetailPage })),
 );
 const ObjectTypeOverviewTab = lazy(() =>
-  import('./pages/ontology-manager/ObjectTypeDetailPage').then((m) => ({ default: m.ObjectTypeOverviewTab })),
+  import('./pages/ontology-manager/ObjectTypeOverviewTab').then((m) => ({
+    default: m.ObjectTypeOverviewTab,
+  })),
 );
 const ObjectTypePropertiesTab = lazy(() =>
   import('./pages/ontology-manager/ObjectTypeDetailPage').then((m) => ({ default: m.ObjectTypePropertiesTab })),

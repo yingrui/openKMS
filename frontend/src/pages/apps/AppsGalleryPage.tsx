@@ -4,16 +4,30 @@ import { useTranslation } from 'react-i18next';
 import { LayoutGrid, Settings, Trash2 } from 'lucide-react';
 import { deleteApp, listApps, type AppBuilderAppResponse } from '../../data/appBuilderApi';
 import { useAuth } from '../../contexts/AuthContext';
+import { useConfirm } from '../../contexts/ConfirmContext';
 import { EmptyState } from '../../styles/design-system';
 import './AppsPages.scss';
 
 export function AppsGalleryPage() {
   const { t } = useTranslation('apps');
+  const confirm = useConfirm();
   const { canAccessPath } = useAuth();
   const canManage = canAccessPath('/apps');
   const [apps, setApps] = useState<AppBuilderAppResponse[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+
+  const handleDeleteApp = async (app: AppBuilderAppResponse) => {
+    const ok = await confirm({
+      title: t('delete'),
+      message: t('confirmDelete'),
+      confirmLabel: t('delete'),
+      danger: true,
+    });
+    if (!ok) return;
+    await deleteApp(app.id);
+    reload();
+  };
 
   const reload = async () => {
     setApps(await listApps(canManage ? undefined : { status: 'published' }));
@@ -68,10 +82,7 @@ export function AppsGalleryPage() {
                         type="button"
                         title={t('delete')}
                         aria-label={t('delete')}
-                        onClick={() => {
-                          if (!window.confirm(t('confirmDelete'))) return;
-                          void deleteApp(app.id).then(reload);
-                        }}
+                        onClick={() => void handleDeleteApp(app)}
                       >
                         <Trash2 size={15} />
                       </button>

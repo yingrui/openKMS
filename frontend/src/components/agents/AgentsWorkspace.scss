@@ -758,8 +758,8 @@ $agents-pane-header-height: 49px;
   padding: 0;
   border: none;
   border-radius: 50%;
-  background: rgba(0, 0, 0, 0.6);
-  color: #fff;
+  background: var(--color-text-secondary);
+  color: var(--color-bg-elevated);
   cursor: pointer;
 
   &:hover {

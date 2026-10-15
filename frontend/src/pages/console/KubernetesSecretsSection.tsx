@@ -34,6 +34,45 @@ type Props = {
   loadingResources: boolean;
 };
 
+/**
+ * Row actions for a secret *or* a config map — the same three, built once for the file
+ * (the row-actions guardrail counts render sites, so it lives here, not at each table).
+ */
+function ResourceRowActions({
+  onView,
+  onEdit,
+  onDelete,
+}: {
+  onView: () => void;
+  onEdit: () => void;
+  onDelete: () => void;
+}) {
+  const { t } = useTranslation('console');
+  return (
+    <TableRowActions>
+      <TableRowActionButton
+        title={t('kubernetes.viewTitle')}
+        aria-label={t('kubernetes.viewTitle')}
+        icon={<Eye size={16} aria-hidden />}
+        onClick={onView}
+      />
+      <TableRowActionButton
+        title={t('kubernetes.editTitle')}
+        aria-label={t('kubernetes.editTitle')}
+        icon={<Pencil size={16} aria-hidden />}
+        onClick={onEdit}
+      />
+      <TableRowActionButton
+        title={t('kubernetes.deleteTitle')}
+        aria-label={t('kubernetes.deleteTitle')}
+        icon={<Trash2 size={16} aria-hidden />}
+        onClick={onDelete}
+        variant="danger"
+      />
+    </TableRowActions>
+  );
+}
+
 export function KubernetesSecretsSection({ clusterId, namespace, loadingResources }: Props) {
   const { t } = useTranslation('console');
   const confirm = useConfirm();
@@ -277,30 +316,14 @@ export function KubernetesSecretsSection({ clusterId, namespace, loadingResource
                         : t('kubernetes.dash')}
                     </td>
                     <TableRowActionCell>
-                      <TableRowActions>
-                        <TableRowActionButton
-                          title={t('kubernetes.viewTitle')}
-                          aria-label={t('kubernetes.viewTitle')}
-                          icon={<Eye size={16} aria-hidden />}
-                          onClick={() => {
-                            setSecretTab('overview');
-                            setViewSecret(s);
-                          }}
-                        />
-                        <TableRowActionButton
-                          title={t('kubernetes.editTitle')}
-                          aria-label={t('kubernetes.editTitle')}
-                          icon={<Pencil size={16} aria-hidden />}
-                          onClick={() => openEditSecret(s)}
-                        />
-                        <TableRowActionButton
-                          title={t('kubernetes.deleteTitle')}
-                          aria-label={t('kubernetes.deleteTitle')}
-                          icon={<Trash2 size={16} aria-hidden />}
-                          onClick={() => void removeSecret(s)}
-                          variant="danger"
-                        />
-                      </TableRowActions>
+                      <ResourceRowActions
+                        onView={() => {
+                          setSecretTab('overview');
+                          setViewSecret(s);
+                        }}
+                        onEdit={() => openEditSecret(s)}
+                        onDelete={() => void removeSecret(s)}
+                      />
                     </TableRowActionCell>
                   </tr>
                 ))
@@ -359,30 +382,14 @@ export function KubernetesSecretsSection({ clusterId, namespace, loadingResource
                     </td>
                     <td>{c.keys.join(', ') || t('kubernetes.dash')}</td>
                     <TableRowActionCell>
-                      <TableRowActions>
-                        <TableRowActionButton
-                          title={t('kubernetes.viewTitle')}
-                          aria-label={t('kubernetes.viewTitle')}
-                          icon={<Eye size={16} aria-hidden />}
-                          onClick={() => {
-                            setCmTab('overview');
-                            setViewCm(c);
-                          }}
-                        />
-                        <TableRowActionButton
-                          title={t('kubernetes.editTitle')}
-                          aria-label={t('kubernetes.editTitle')}
-                          icon={<Pencil size={16} aria-hidden />}
-                          onClick={() => openEditCm(c)}
-                        />
-                        <TableRowActionButton
-                          title={t('kubernetes.deleteTitle')}
-                          aria-label={t('kubernetes.deleteTitle')}
-                          icon={<Trash2 size={16} aria-hidden />}
-                          onClick={() => void removeCm(c)}
-                          variant="danger"
-                        />
-                      </TableRowActions>
+                      <ResourceRowActions
+                        onView={() => {
+                          setCmTab('overview');
+                          setViewCm(c);
+                        }}
+                        onEdit={() => openEditCm(c)}
+                        onDelete={() => void removeCm(c)}
+                      />
                     </TableRowActionCell>
                   </tr>
                 ))

@@ -90,8 +90,11 @@ done < <(rg -n --no-heading '\.[a-z0-9-]*table-wrap(per)?\s*\{' src --glob '*.sc
 
 # --- 7. Modal / dialog overlay classes ----------------------------------------
 # Prefer <Dialog> + .ds-dialog-overlay. Allowlist is known debt — shrink it.
+# `_a2ui-platform.scss` targets `.a2ui-modal-overlay` because that class is emitted by
+# @a2ui/react (CSS modules) — we cannot rename a library's markup.
 OVERLAY_ALLOW='src/styles/design-system/_dialog.scss
-src/pages/wiki/WikiSpaceSettings.scss'
+src/pages/wiki/WikiSpaceSettings.scss
+src/styles/design-system/_a2ui-platform.scss'
 
 while IFS= read -r hit; do
   [ -z "$hit" ] && continue

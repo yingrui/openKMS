@@ -1048,7 +1048,7 @@ select.console-form-control {
   margin-bottom: 0;
 }
 
-@media (max-width: 640px) {
+@include max-width(ds.$bp-xs-max) {
   .object-type-create-form__row {
     grid-template-columns: 1fr;
   }

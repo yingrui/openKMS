@@ -1,20 +1,9 @@
 import { useCallback, useEffect, useState } from 'react';
-import { Link, useNavigate, useParams } from 'react-router-dom';
+import { Link, useParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import {
-  ArrowLeft,
-  Eye,
-  FilePlus2,
-  FileText,
-  Loader2,
-  RefreshCw,
-  Settings2,
-  Trash2,
-  AppWindow,
-} from 'lucide-react';
+import { ArrowLeft, FilePlus2, Loader2, RefreshCw } from 'lucide-react';
 import { toast } from 'sonner';
 import { ErrorBanner } from '../../components/ErrorBanner';
-import { createApp } from '../../data/appBuilderApi';
 import {
   applyClusterManifests,
   deleteClusterResource,
@@ -31,36 +20,20 @@ import {
   type KubernetesServiceItem,
 } from '../../data/kubernetesClustersApi';
 import { useConfirm } from '../../contexts/ConfirmContext';
-import {
-  Dialog,
-  EmptyState,
-  FormField,
-  TableRowActionButton,
-  TableRowActionCell,
-  TableRowActions,
-} from '../../styles/design-system';
+import { Dialog, EmptyState, FormField, TableRowActionCell } from '../../styles/design-system';
 import { KubernetesSecretsSection } from './KubernetesSecretsSection';
+import { KubernetesRegisterAppDialog } from './KubernetesRegisterAppDialog';
+import { DeploymentRowActions } from './KubernetesDeploymentRowActions';
+import { ServiceRowActions } from './KubernetesServiceRowActions';
+import { PodRowActions } from './KubernetesPodRowActions';
 import { KubernetesDeploymentEnvDialog } from './KubernetesDeploymentEnvDialog';
 import { KubernetesDeploymentDetailDialog } from './KubernetesDeploymentDetailDialog';
 import { KubernetesServiceDetailDialog } from './KubernetesServiceDetailDialog';
 import { KubernetesPodDetailDialog } from './KubernetesPodDetailDialog';
 import '../ontology/ontology-admin.scss';
 
-function suggestApiName(service: string): string {
-  const cleaned = service.replace(/[^a-zA-Z0-9_]/g, '_');
-  const withLetter = /^[a-zA-Z]/.test(cleaned) ? cleaned : `svc_${cleaned}`;
-  return withLetter.slice(0, 128);
-}
-
-function firstPort(svc: KubernetesServiceItem): number {
-  if (svc.port_numbers && svc.port_numbers.length > 0) return svc.port_numbers[0];
-  const m = (svc.ports || '').match(/(\d+)/);
-  return m ? Number(m[1]) : 80;
-}
-
 export function ConsoleKubernetesDetail() {
   const { t } = useTranslation('console');
-  const navigate = useNavigate();
   const confirm = useConfirm();
   const { clusterId = '' } = useParams<{ clusterId: string }>();
   const [cluster, setCluster] = useState<KubernetesClusterResponse | null>(null);
@@ -84,12 +57,7 @@ export function ConsoleKubernetesDetail() {
   const [applyNs, setApplyNs] = useState('');
   const [applySubmitting, setApplySubmitting] = useState(false);
 
-  const [registerOpen, setRegisterOpen] = useState(false);
   const [registerSvc, setRegisterSvc] = useState<KubernetesServiceItem | null>(null);
-  const [registerName, setRegisterName] = useState('');
-  const [registerApiName, setRegisterApiName] = useState('');
-  const [registerPort, setRegisterPort] = useState(80);
-  const [registerSubmitting, setRegisterSubmitting] = useState(false);
 
   const [envOpen, setEnvOpen] = useState(false);
   const [envDeployment, setEnvDeployment] = useState<string | null>(null);
@@ -219,44 +187,6 @@ export function ConsoleKubernetesDetail() {
       toast.error(e instanceof Error ? e.message : t('kubernetes.toastOperationFailed'));
     } finally {
       setApplySubmitting(false);
-    }
-  };
-
-  const openRegister = (svc: KubernetesServiceItem) => {
-    setRegisterSvc(svc);
-    setRegisterName(svc.name);
-    setRegisterApiName(suggestApiName(svc.name));
-    setRegisterPort(firstPort(svc));
-    setRegisterOpen(true);
-  };
-
-  const handleRegister = async () => {
-    if (!registerSvc || !registerName.trim() || !registerApiName.trim()) {
-      toast.error(t('kubernetes.toastRegisterFields'));
-      return;
-    }
-    setRegisterSubmitting(true);
-    try {
-      const app = await createApp({
-        name: registerName.trim(),
-        api_name: registerApiName.trim(),
-        template_id: 'module',
-        bindings: {
-          k8s: {
-            cluster_id: clusterId,
-            namespace,
-            service: registerSvc.name,
-            port: registerPort,
-          },
-        },
-      });
-      toast.success(t('kubernetes.toastRegisteredApp'));
-      setRegisterOpen(false);
-      navigate(`/apps/${app.id}`);
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : t('kubernetes.toastRegisterFailed'));
-    } finally {
-      setRegisterSubmitting(false);
     }
   };
 
@@ -399,30 +329,14 @@ export function ConsoleKubernetesDetail() {
                       <td>{d.replicas}</td>
                       <td>{d.available}</td>
                       <TableRowActionCell>
-                        <TableRowActions>
-                          <TableRowActionButton
-                            title={t('kubernetes.viewTitle')}
-                            aria-label={t('kubernetes.viewTitle')}
-                            icon={<Eye size={16} aria-hidden />}
-                            onClick={() => setDetailDeployment(d)}
-                          />
-                          <TableRowActionButton
-                            title={t('kubernetes.envTitle')}
-                            aria-label={t('kubernetes.envTitle')}
-                            icon={<Settings2 size={16} aria-hidden />}
-                            onClick={() => {
-                              setEnvDeployment(d.name);
-                              setEnvOpen(true);
-                            }}
-                          />
-                          <TableRowActionButton
-                            title={t('kubernetes.deleteTitle')}
-                            aria-label={t('kubernetes.deleteTitle')}
-                            icon={<Trash2 size={16} aria-hidden />}
-                            onClick={() => void handleDelete('Deployment', d.name)}
-                            variant="danger"
-                          />
-                        </TableRowActions>
+                        <DeploymentRowActions
+                          onView={() => setDetailDeployment(d)}
+                          onEnv={() => {
+                            setEnvDeployment(d.name);
+                            setEnvOpen(true);
+                          }}
+                          onDelete={() => void handleDelete('Deployment', d.name)}
+                        />
                       </TableRowActionCell>
                     </tr>
                   ))
@@ -482,27 +396,11 @@ export function ConsoleKubernetesDetail() {
                       <td>{s.cluster_ip ?? t('kubernetes.dash')}</td>
                       <td>{s.ports ?? t('kubernetes.dash')}</td>
                       <TableRowActionCell>
-                        <TableRowActions>
-                          <TableRowActionButton
-                            title={t('kubernetes.viewTitle')}
-                            aria-label={t('kubernetes.viewTitle')}
-                            icon={<Eye size={16} aria-hidden />}
-                            onClick={() => setDetailService(s.name)}
-                          />
-                          <TableRowActionButton
-                            title={t('kubernetes.registerAppTitle')}
-                            aria-label={t('kubernetes.registerAppTitle')}
-                            icon={<AppWindow size={16} aria-hidden />}
-                            onClick={() => openRegister(s)}
-                          />
-                          <TableRowActionButton
-                            title={t('kubernetes.deleteTitle')}
-                            aria-label={t('kubernetes.deleteTitle')}
-                            icon={<Trash2 size={16} aria-hidden />}
-                            onClick={() => void handleDelete('Service', s.name)}
-                            variant="danger"
-                          />
-                        </TableRowActions>
+                        <ServiceRowActions
+                          onView={() => setDetailService(s.name)}
+                          onRegisterApp={() => setRegisterSvc(s)}
+                          onDelete={() => void handleDelete('Service', s.name)}
+                        />
                       </TableRowActionCell>
                     </tr>
                   ))
@@ -558,27 +456,11 @@ export function ConsoleKubernetesDetail() {
                       <td>{p.restarts}</td>
                       <td>{p.node ?? t('kubernetes.dash')}</td>
                       <TableRowActionCell>
-                        <TableRowActions>
-                          <TableRowActionButton
-                            title={t('kubernetes.viewTitle')}
-                            aria-label={t('kubernetes.viewTitle')}
-                            icon={<Eye size={16} aria-hidden />}
-                            onClick={() => setDetailPod(p.name)}
-                          />
-                          <TableRowActionButton
-                            title={t('kubernetes.logsTitle')}
-                            aria-label={t('kubernetes.logsTitle')}
-                            icon={<FileText size={16} aria-hidden />}
-                            onClick={() => openLogs(p.name)}
-                          />
-                          <TableRowActionButton
-                            title={t('kubernetes.deleteTitle')}
-                            aria-label={t('kubernetes.deleteTitle')}
-                            icon={<Trash2 size={16} aria-hidden />}
-                            onClick={() => void handleDelete('Pod', p.name)}
-                            variant="danger"
-                          />
-                        </TableRowActions>
+                        <PodRowActions
+                          onView={() => setDetailPod(p.name)}
+                          onLogs={() => openLogs(p.name)}
+                          onDelete={() => void handleDelete('Pod', p.name)}
+                        />
                       </TableRowActionCell>
                     </tr>
                   ))
@@ -675,81 +557,15 @@ export function ConsoleKubernetesDetail() {
         </FormField>
       </Dialog>
 
-      <Dialog
-        open={registerOpen}
-        onClose={() => !registerSubmitting && setRegisterOpen(false)}
-        closeDisabled={registerSubmitting}
-        title={t('kubernetes.registerAppTitle')}
-        closeAriaLabel={t('kubernetes.closeAria')}
-        size="md"
-        footer={
-          <>
-            <button
-              type="button"
-              className="btn btn-secondary"
-              onClick={() => setRegisterOpen(false)}
-              disabled={registerSubmitting}
-            >
-              {t('kubernetes.cancel')}
-            </button>
-            <button
-              type="button"
-              className="btn btn-primary"
-              onClick={() => void handleRegister()}
-              disabled={registerSubmitting}
-            >
-              {registerSubmitting ? t('kubernetes.saving') : t('kubernetes.registerAppSubmit')}
-            </button>
-          </>
-        }
-      >
-        <p className="page-subtitle">{t('kubernetes.registerAppHint')}</p>
-        <FormField label={t('kubernetes.fieldName')} htmlFor="k8s-reg-name">
-          <input
-            id="k8s-reg-name"
-            type="text"
-            value={registerName}
-            onChange={(e) => setRegisterName(e.target.value)}
-            disabled={registerSubmitting}
-          />
-        </FormField>
-        <FormField label={t('kubernetes.fieldApiName')} htmlFor="k8s-reg-api">
-          <input
-            id="k8s-reg-api"
-            type="text"
-            value={registerApiName}
-            onChange={(e) => setRegisterApiName(e.target.value)}
-            disabled={registerSubmitting}
-            spellCheck={false}
-          />
-        </FormField>
-        <FormField label={t('kubernetes.fieldPort')} htmlFor="k8s-reg-port">
-          {registerSvc && (registerSvc.port_numbers?.length ?? 0) > 0 ? (
-            <select
-              id="k8s-reg-port"
-              value={registerPort}
-              onChange={(e) => setRegisterPort(Number(e.target.value))}
-              disabled={registerSubmitting}
-            >
-              {registerSvc.port_numbers!.map((p) => (
-                <option key={p} value={p}>
-                  {p}
-                </option>
-              ))}
-            </select>
-          ) : (
-            <input
-              id="k8s-reg-port"
-              type="number"
-              min={1}
-              max={65535}
-              value={registerPort}
-              onChange={(e) => setRegisterPort(Number(e.target.value) || 80)}
-              disabled={registerSubmitting}
-            />
-          )}
-        </FormField>
-      </Dialog>
+      {registerSvc && (
+        <KubernetesRegisterAppDialog
+          key={registerSvc.name}
+          clusterId={clusterId}
+          namespace={namespace}
+          service={registerSvc}
+          onClose={() => setRegisterSvc(null)}
+        />
+      )}
 
       <KubernetesDeploymentDetailDialog
         open={!!detailDeployment}
