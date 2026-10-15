@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Check, ChevronDown, Circle, Loader2, X } from 'lucide-react';
 
@@ -53,11 +53,14 @@ export function AgentPlanPanel({ todos, loading = false, revision = 1, onDismiss
     loading && revision <= 1 && hasActive && doneCount === 0 && items.length > 1;
   const [open, setOpen] = useState(() => hasActive || !allDone);
 
-  useEffect(() => {
-    if (allDone && !loading) {
-      setOpen(false);
-    }
-  }, [allDone, loading]);
+  // Collapse once the plan settles. A render-time adjustment (rather than an effect) so the
+  // panel never flashes open for a frame after the last item completes.
+  const settled = allDone && !loading;
+  const [wasSettled, setWasSettled] = useState(settled);
+  if (settled !== wasSettled) {
+    setWasSettled(settled);
+    if (settled) setOpen(false);
+  }
 
   if (!items.length) return null;
 

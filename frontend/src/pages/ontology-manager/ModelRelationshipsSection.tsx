@@ -1,8 +1,9 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useNavigate } from 'react-router-dom';
 import { ExternalLink } from 'lucide-react';
 import { toast } from 'sonner';
+import { useAsyncData } from '../../hooks/useAsyncData';
 import { fetchDatasetJoins, type DatasetJoinResponse } from '../../data/joinsApi';
 import { EntityViewHeader, EntityViewPanel } from './EntityViewShell';
 import { useSemanticModelDetail } from './SemanticModelDetailPage';
@@ -18,27 +19,19 @@ export function ModelRelationshipsSection() {
   const { model } = useSemanticModelDetail();
   const memberIds = useMemo(() => new Set(model.dataset_ids), [model.dataset_ids]);
 
-  const [joins, setJoins] = useState<DatasetJoinResponse[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { data: joins, loading, error } = useAsyncData(
+    () =>
+      fetchDatasetJoins().then((page) =>
+        page.items.filter(
+          (j) => memberIds.has(j.from_dataset_id) && memberIds.has(j.to_dataset_id),
+        ),
+      ),
+    [memberIds],
+  );
 
   useEffect(() => {
-    let cancelled = false;
-    setLoading(true);
-    void fetchDatasetJoins()
-      .then((page) => {
-        if (cancelled) return;
-        setJoins(
-          page.items.filter(
-            (j) => memberIds.has(j.from_dataset_id) && memberIds.has(j.to_dataset_id),
-          ),
-        );
-      })
-      .catch((e) => !cancelled && toast.error(e instanceof Error ? e.message : t('datasets.loadFailed')))
-      .finally(() => !cancelled && setLoading(false));
-    return () => {
-      cancelled = true;
-    };
-  }, [memberIds, t]);
+    if (error) toast.error(error instanceof Error ? error.message : t('datasets.loadFailed'));
+  }, [error, t]);
 
   const nameOf = (j: DatasetJoinResponse) =>
     j.from_dataset_name ?? model.datasets.find((d) => d.id === j.from_dataset_id)?.name ?? '';
@@ -50,14 +43,14 @@ export function ModelRelationshipsSection() {
     <>
       <EntityViewHeader
         title={t('datasets.relationships')}
-        subtitle={t('dataModel.relationshipCount', { count: joins.length })}
+        subtitle={t('dataModel.relationshipCount', { count: joins?.length ?? 0 })}
         actions={
           <button
             type="button"
             className="btn btn-secondary"
             onClick={() =>
               navigate(
-                joins.length > 0
+                (joins?.length ?? 0) > 0 && joins
                   ? `/datasets/${joins[0].from_dataset_id}/relationships`
                   : '/datasets',
               )
@@ -72,7 +65,7 @@ export function ModelRelationshipsSection() {
       <EntityViewPanel>
         {loading ? (
           <p className="entity-view__readonly">{t('shared.loading')}</p>
-        ) : joins.length === 0 ? (
+        ) : (joins?.length ?? 0) === 0 ? (
           <p className="entity-view__readonly">{t('dataModel.noRelationships')}</p>
         ) : (
           <div className="ds-table-wrap ds-table-wrap--flush">
@@ -88,7 +81,7 @@ export function ModelRelationshipsSection() {
                 </tr>
               </thead>
               <tbody>
-                {joins.map((j) => (
+                {(joins ?? []).map((j) => (
                   <tr key={j.id}>
                     <td>
                       <strong>{j.name ?? `${nameOf(j)} → ${j.to_dataset_name}`}</strong>

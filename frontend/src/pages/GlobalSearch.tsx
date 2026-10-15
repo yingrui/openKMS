@@ -142,25 +142,20 @@ export function GlobalSearch() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    const raw = searchParams.get('tab');
-    if (!raw || raw.trim().toLowerCase() === 'all') return;
-    const coerced = normalizeTab(raw);
-    if (coerced === 'all') {
-      const next = new URLSearchParams(searchParams);
-      next.delete('tab');
-      setSearchParams(next, { replace: true });
-    }
-  }, [searchParams, setSearchParams]);
-
-  useEffect(() => {
+  // The URL is the source of truth for the filters; the inputs hold a draft, so the draft is
+  // reset (during render) whenever the URL changes — rather than in an effect, which would
+  // render the previous draft once.
+  const urlKey = searchParams.toString();
+  const [lastUrlKey, setLastUrlKey] = useState(urlKey);
+  if (urlKey !== lastUrlKey) {
+    setLastUrlKey(urlKey);
     setDocChannel(searchParams.get('document_channel_id') ?? '');
     setArtChannel(searchParams.get('article_channel_id') ?? '');
     const ua = searchParams.get('updated_after');
     const ub = searchParams.get('updated_before');
     setUpdatedAfter(ua ? isoToDatetimeLocalValue(ua) : '');
     setUpdatedBefore(ub ? isoToDatetimeLocalValue(ub) : '');
-  }, [searchParams]);
+  }
 
   /** Request all entity kinds so tab badges match section totals. */
   const typesParam = 'all';

@@ -57,16 +57,20 @@ export function AppsSettingsPage() {
   }, [searchParams, setSearchParams]);
 
   const reload = useCallback(async () => {
-    const rows = await listApps();
-    const row = rows.find((a) => a.id === appId);
-    if (!row) throw new Error('App not found');
-    setApp(row);
-    setName(row.name);
-    setDescription(row.description || '');
+    try {
+      const rows = await listApps();
+      const row = rows.find((a) => a.id === appId);
+      if (!row) throw new Error('App not found');
+      setApp(row);
+      setName(row.name);
+      setDescription(row.description || '');
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+    }
   }, [appId]);
 
   useEffect(() => {
-    void reload().catch((e) => setError(e instanceof Error ? e.message : String(e)));
+    void reload();
   }, [reload]);
 
   const save = () => {

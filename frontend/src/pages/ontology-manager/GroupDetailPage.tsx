@@ -1,4 +1,5 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
+import { useAsyncData } from '../../hooks/useAsyncData';
 import { Link, Outlet, useNavigate, useParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { Loader2, Save, Search, Trash2, X } from 'lucide-react';
@@ -9,7 +10,6 @@ import {
   fetchOntologyGroup,
   fetchOntologyGroupRelated,
   updateOntologyGroup,
-  type OntologyGroupRelatedResponse,
   type OntologyGroupResponse,
 } from '../../data/ontologyFunctionsApi';
 import { useConfirm } from '../../contexts/ConfirmContext';
@@ -337,29 +337,19 @@ export function GroupOverviewTab() {
 export function GroupRelatedTab() {
   const { t } = useTranslation('ontology');
   const { groupId } = useGroupDetail();
-  const [related, setRelated] = useState<OntologyGroupRelatedResponse | null>(null);
-  const [loading, setLoading] = useState(true);
+  const {
+    data: related,
+    loading,
+    error: relatedError,
+  } = useAsyncData(() => fetchOntologyGroupRelated(groupId), [groupId]);
 
   useEffect(() => {
-    let cancelled = false;
-    setLoading(true);
-    void fetchOntologyGroupRelated(groupId)
-      .then((res) => {
-        if (!cancelled) setRelated(res);
-      })
-      .catch((e: unknown) => {
-        if (!cancelled) {
-          toast.error(e instanceof Error ? e.message : t('groups.relatedLoadFailed'));
-          setRelated(null);
-        }
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [groupId, t]);
+    if (relatedError) {
+      toast.error(
+        relatedError instanceof Error ? relatedError.message : t('groups.relatedLoadFailed'),
+      );
+    }
+  }, [relatedError, t]);
 
   return (
     <>

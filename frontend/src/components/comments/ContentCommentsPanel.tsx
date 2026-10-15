@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { ChevronDown, ChevronUp, X } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../../contexts/AuthContext';
@@ -25,11 +25,12 @@ export function ContentCommentsPanel({ onRequestCollapse, comments }: Props) {
   const [composerOpen, setComposerOpen] = useState(false);
   const [composerInit, setComposerInit] = useState(false);
 
-  useEffect(() => {
-    if (comments.loading || composerInit) return;
-    setComposerOpen((data?.total ?? 0) === 0);
+  // Open the composer the first time we learn there is nothing to comment on (render-time
+  // adjustment: an effect would render the collapsed state once first).
+  if (!comments.loading && !composerInit) {
     setComposerInit(true);
-  }, [comments.loading, composerInit, data?.total]);
+    setComposerOpen((data?.total ?? 0) === 0);
+  }
 
   const summaryParts: string[] = [];
   if (data?.avg_rank != null && data.rank_count > 0) {

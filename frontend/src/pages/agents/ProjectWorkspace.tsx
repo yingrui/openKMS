@@ -65,11 +65,19 @@ export function ProjectWorkspace() {
     t,
   });
 
-  const clampFilesRailWidth = useCallback((w: number) => {
-    const bodyW = bodyRef.current?.clientWidth ?? window.innerWidth;
-    const max = Math.max(FILES_RAIL_MIN_PX, bodyW - SESSIONS_WIDTH_PX - CHAT_MIN_PX - 8);
+  /** Pure: the available width comes in as an argument, so this is safe to call while
+   *  rendering (reading `bodyRef.current` here would be a ref read during render). */
+  /** The live body width — only for handlers/effects, never during render. */
+  const measuredBodyWidth = useCallback(
+    () => bodyRef.current?.clientWidth ?? window.innerWidth,
+    [],
+  );
+
+  const clampFilesRailWidth = useCallback((w: number, bodyWidth: number) => {
+    const max = Math.max(FILES_RAIL_MIN_PX, bodyWidth - SESSIONS_WIDTH_PX - CHAT_MIN_PX - 8);
     return Math.round(Math.min(max, Math.max(FILES_RAIL_MIN_PX, w)));
   }, []);
+  const [bodyWidthPx, setBodyWidthPx] = useState(() => window.innerWidth);
 
   useEffect(() => {
     getProject(projectId)
@@ -79,19 +87,20 @@ export function ProjectWorkspace() {
 
   useEffect(() => {
     if (isMobile) return;
-    const onResize = () => setFilesRailWidthPx((w) => clampFilesRailWidth(w));
-    window.addEventListener('resize', onResize);
-    return () => window.removeEventListener('resize', onResize);
+    const measure = () => {
+      const bodyWidth = bodyRef.current?.clientWidth ?? window.innerWidth;
+      setBodyWidthPx(bodyWidth);
+      setFilesRailWidthPx((w) => clampFilesRailWidth(w, bodyWidth));
+    };
+    const raf = requestAnimationFrame(measure);   // after layout, not during render
+    window.addEventListener('resize', measure);
+    return () => {
+      cancelAnimationFrame(raf);
+      window.removeEventListener('resize', measure);
+    };
   }, [clampFilesRailWidth, isMobile]);
 
   useImmersiveView('openkms-agents-fullpage');
-
-  useEffect(() => {
-    if (!isMobile) {
-      setSessionsOpen(false);
-      setFilesOpen(false);
-    }
-  }, [isMobile]);
 
   useEffect(() => {
     if (!isMobile || (!sessionsOpen && !filesOpen)) return;
@@ -105,9 +114,18 @@ export function ProjectWorkspace() {
     return () => window.removeEventListener('keydown', onKey);
   }, [isMobile, sessionsOpen, filesOpen]);
 
-  useEffect(() => {
+  // Leaving the mobile layout closes the drawers, and switching session resets them.
+  // Adjusting state during render (not in an effect) keeps behaviour identical without a
+  // first render that still shows the stale drawer.
+  if (!isMobile && (sessionsOpen || filesOpen)) {
     setSessionsOpen(false);
-  }, [sessionId]);
+    setFilesOpen(false);
+  }
+  const [sessionsForSession, setSessionsForSession] = useState(sessionId);
+  if (sessionId !== sessionsForSession) {
+    setSessionsForSession(sessionId);
+    setSessionsOpen(false);
+  }
 
   const openSessions = () => {
     setFilesOpen(false);
@@ -134,14 +152,14 @@ export function ProjectWorkspace() {
       const prevUserSelect = document.body.style.userSelect;
       document.body.style.userSelect = 'none';
       const onMove = (ev: MouseEvent) => {
-        latest = clampFilesRailWidth(startW - (ev.clientX - startX));
+        latest = clampFilesRailWidth(startW - (ev.clientX - startX), measuredBodyWidth());
         setFilesRailWidthPx(latest);
       };
       const onUp = () => {
         document.body.style.userSelect = prevUserSelect;
         window.removeEventListener('mousemove', onMove);
         window.removeEventListener('mouseup', onUp);
-        const final = clampFilesRailWidth(latest);
+        const final = clampFilesRailWidth(latest, measuredBodyWidth());
         setFilesRailWidthPx(final);
         try {
           localStorage.setItem(FILES_RAIL_WIDTH_KEY, String(final));
@@ -157,7 +175,7 @@ export function ProjectWorkspace() {
 
   const onFilesRailWidthFromPanel = useCallback(
     (width: number) => {
-      const next = clampFilesRailWidth(width);
+      const next = clampFilesRailWidth(width, measuredBodyWidth());
       setFilesRailWidthPx(next);
       try {
         localStorage.setItem(FILES_RAIL_WIDTH_KEY, String(next));
@@ -180,7 +198,7 @@ export function ProjectWorkspace() {
 
   if (!project) return <AgentsWorkspaceSkeleton />;
 
-  const filesRailWidth = clampFilesRailWidth(filesRailWidthPx);
+  const filesRailWidth = clampFilesRailWidth(filesRailWidthPx, bodyWidthPx);
   const toolbarTitle = session.sessionTitle?.trim() || project.name;
 
   const chat = (
@@ -330,7 +348,7 @@ export function ProjectWorkspace() {
               aria-orientation="vertical"
               aria-valuenow={filesRailWidth}
               aria-valuemin={FILES_RAIL_MIN_PX}
-              aria-valuemax={clampFilesRailWidth(9999)}
+              aria-valuemax={clampFilesRailWidth(9999, bodyWidthPx)}
               aria-label={t('workspace.resizeFilesRail')}
               title={t('workspace.resizeFilesRailHint')}
               onMouseDown={onFilesRailResizePointerDown}

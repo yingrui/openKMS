@@ -65,7 +65,11 @@ export function Dialog({
     if (!closeDisabled) onClose();
   }, [closeDisabled, onClose]);
   const requestCloseRef = useRef(requestClose);
-  requestCloseRef.current = requestClose;
+  // Assigned in an effect (not during render): the focus effect below must run only when
+  // `open` flips, while the ref always holds the latest close handler.
+  useEffect(() => {
+    requestCloseRef.current = requestClose;
+  }, [requestClose]);
 
   // Only run when `open` flips — not when onClose/closeDisabled identity changes
   // (parent re-renders on every keystroke would otherwise steal focus back to the

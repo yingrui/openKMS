@@ -2,15 +2,10 @@
 # Regenerate: npm run check:lint -- --update-baseline
 components/Layout/Header.tsx 1
 components/agents/AgentFileViewer.tsx 1
-components/agents/AgentPlanPanel.tsx 1
-components/comments/ContentCommentsPanel.tsx 1
 components/markdown/richMarkdown.tsx 5
 contexts/ConsoleMobileNavContext.tsx 2
 contexts/OntologyMobileRailContext.tsx 1
-pages/GlobalSearch.tsx 1
-pages/agents/ProjectWorkspace.tsx 2
 pages/apps/AppsRunPage.tsx 1
-pages/apps/AppsSettingsPage.tsx 1
 pages/apps/ModuleServiceBindingEditor.tsx 2
 pages/connectors/ConnectorSyncDialog.tsx 1
 pages/console/ConsoleDataSecurityIssues.tsx 1
@@ -22,11 +17,8 @@ pages/documents/useDocumentChannel.tsx 1
 pages/knowledge-bases/KnowledgeBaseDetail.searchUtils.tsx 3
 pages/media/MediaChannel.tsx 1
 pages/ontology-manager/DatasetDetailPage.tsx 1
-pages/ontology-manager/GroupDetailPage.tsx 1
-pages/ontology-manager/ModelRelationshipsSection.tsx 1
 pages/ontology-manager/ModelYamlPanel.tsx 1
 pages/ontology-manager/ObjectTypeCreateWizard.tsx 2
 pages/ontology-manager/ObjectTypeDetailPage.tsx 1
 pages/ontology-manager/SemanticModelDetailPage.tsx 1
 pages/ontology-manager/objectTypeFormParts.tsx 5
-styles/design-system/Dialog.tsx 1
