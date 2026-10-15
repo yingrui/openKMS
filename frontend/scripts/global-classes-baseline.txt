@@ -1,13 +1,2 @@
 # Classes used from 2+ routes but defined in one route's SCSS. Frozen so the
 # list only shrinks; move a class to src/styles/ and delete its line here.
-auth-local-field
-ontology-manager-list__api-link
-project-settings
-project-settings-actions
-project-settings-hint
-project-settings-hint--intro
-project-settings-section
-project-settings-skills-empty
-project-settings-skills-table
-project-settings-skills-table-actions
-project-settings-spinner

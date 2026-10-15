@@ -256,18 +256,6 @@
   border-color: color-mix(in srgb, var(--color-success, #15803d) 28%, var(--color-border));
 }
 
-.ontology-manager-list__api-link {
-  color: var(--color-text);
-  font-weight: 500;
-  font-family: var(--font-mono, ui-monospace, monospace);
-  font-size: var(--text-sm);
-  text-decoration: none;
-
-  &:hover {
-    color: var(--color-accent);
-    text-decoration: underline;
-  }
-}
 // Shared form controls (console modals + connector detail)
 .console-form-field {
   margin-bottom: var(--space-4);

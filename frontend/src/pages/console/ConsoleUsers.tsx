@@ -12,6 +12,7 @@ import {
 } from '../../data/adminUsersApi';
 import { useConfirm } from '../../contexts/ConfirmContext';
 import './ConsoleUsers.scss';
+import { FormField } from '../../styles/design-system';
 
 export function ConsoleUsers() {
   const { t } = useTranslation('console');
@@ -256,8 +257,7 @@ export function ConsoleUsers() {
             <h2 id="add-user-title">{t('users.modalTitle')}</h2>
             <p className="console-users-modal-sub">{t('users.modalSubtitle')}</p>
             <form onSubmit={onAddSubmit}>
-              <div className="auth-local-field">
-                <label htmlFor="add-email">{t('users.email')}</label>
+              <FormField label={t('users.email')} htmlFor="add-email">
                 <input
                   id="add-email"
                   type="email"
@@ -266,9 +266,8 @@ export function ConsoleUsers() {
                   onChange={(e) => setAddEmail(e.target.value)}
                   required
                 />
-              </div>
-              <div className="auth-local-field">
-                <label htmlFor="add-username">{t('users.username')}</label>
+</FormField>
+              <FormField label={t('users.username')} htmlFor="add-username">
                 <input
                   id="add-username"
                   type="text"
@@ -278,9 +277,8 @@ export function ConsoleUsers() {
                   required
                   minLength={2}
                 />
-              </div>
-              <div className="auth-local-field">
-                <label htmlFor="add-password">{t('users.password')}</label>
+</FormField>
+              <FormField label={t('users.password')} htmlFor="add-password">
                 <input
                   id="add-password"
                   type="password"
@@ -290,7 +288,7 @@ export function ConsoleUsers() {
                   required
                   minLength={8}
                 />
-              </div>
+</FormField>
               <label className="console-users-modal-check">
                 <input type="checkbox" checked={addAdmin} onChange={(e) => setAddAdmin(e.target.checked)} />
                 {t('users.grantAdmin')}

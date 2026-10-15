@@ -184,3 +184,17 @@
 .spin {
   animation: console-spin 0.8s linear infinite;
 }
+
+/* The ontology list pages (ontology + ontology-manager areas) link to an item's API name. */
+.ontology-manager-list__api-link {
+  color: var(--color-text);
+  font-weight: 500;
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-size: var(--text-sm);
+  text-decoration: none;
+
+  &:hover {
+    color: var(--color-accent);
+    text-decoration: underline;
+  }
+}

@@ -19,6 +19,7 @@ import { projectWorkspacePath } from '../../data/projectsApi';
 import { fetchSystemSettings } from '../../data/systemApi';
 import { timezoneSelectOptions } from '../../utils/commonTimezones';
 import { useConfirm } from '../../contexts/ConfirmContext';
+import './ProjectSettings.scss';
 
 interface Props {
   projectId: string;

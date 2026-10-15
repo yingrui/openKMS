@@ -157,27 +157,6 @@
   color: var(--color-text-muted);
 }
 
-.console-users-modal .auth-local-field {
-  margin-bottom: calc(var(--space-3) + var(--space-1) / 2);
-}
-
-.console-users-modal .auth-local-field label {
-  display: block;
-  font-size: var(--text-sm);
-  font-weight: 500;
-  margin-bottom: var(--gap-compact);
-}
-
-.console-users-modal .auth-local-field input {
-  width: 100%;
-  box-sizing: border-box;
-  padding: var(--padding-compact-y) var(--space-3);
-  font-size: var(--text-base);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
-  background: var(--color-bg);
-}
-
 .console-users-modal-check {
   display: flex;
   align-items: center;

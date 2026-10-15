@@ -36,7 +36,7 @@ import { ResourceSharePanel } from '../../components/ResourceSharePanel';
 import { RESOURCE_TYPES } from '../../data/resourceAclApi';
 import { useConfirm } from '../../contexts/ConfirmContext';
 import { CheckRow, FormField } from '../../styles/design-system';
-import './ProjectSettings.scss';
+import '../../components/agents/ProjectSettings.scss';
 
 type TabId = 'general' | 'agent' | 'skills' | 'schedules' | 'sharing' | 'deploy';
 

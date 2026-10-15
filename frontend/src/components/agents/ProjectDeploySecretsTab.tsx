@@ -23,6 +23,7 @@ import {
   TableRowActionCell,
   TableRowActions,
 } from '../../styles/design-system';
+import './ProjectSettings.scss';
 
 type KvRow = { key: string; value: string };
 

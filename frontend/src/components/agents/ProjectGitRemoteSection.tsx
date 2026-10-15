@@ -13,6 +13,7 @@ import {
   type UserGitCredential,
 } from '../../data/projectsApi';
 import { FormField } from '../../styles/design-system';
+import './ProjectSettings.scss';
 
 function gitSettings(project: ProjectResponse): { remote_url?: string; credential_id?: string } {
   const raw = project.settings?.git;

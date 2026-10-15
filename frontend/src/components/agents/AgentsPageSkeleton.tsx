@@ -1,5 +1,6 @@
 import { useTranslation } from 'react-i18next';
 import './AgentsPageSkeleton.scss';
+import './ProjectSettings.scss';
 
 function Sk({ className }: { className?: string }) {
   return <div className={['agents-sk', className].filter(Boolean).join(' ')} aria-hidden />;
