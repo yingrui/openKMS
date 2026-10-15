@@ -280,7 +280,6 @@
     "usageEmptyHint": "Bind it from an object type or link type Datasources tab.",
     "usageObjectTypes": "Object types",
     "usageLinkTypes": "Link types",
-    "browseObjectTypes": "Browse object types",
     "sharing": "Sharing",
     "sharingHint": "Control who can view or edit this dataset.",
     "displayName": "Display name",

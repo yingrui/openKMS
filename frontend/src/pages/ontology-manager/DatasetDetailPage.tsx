@@ -24,7 +24,6 @@ import {
 import { ResourceSharePanel } from '../../components/ResourceSharePanel';
 import { RESOURCE_TYPES } from '../../data/resourceAclApi';
 import { useConfirm } from '../../contexts/ConfirmContext';
-import { EmptyState } from '../../styles/design-system';
 import {
   EntityViewHeader,
   EntityViewLoading,
@@ -192,7 +191,6 @@ export function DatasetDetailPage() {
           { to: base, label: t('datasets.overview'), end: true },
           { to: `${base}/data`, label: t('datasets.data') },
           { to: `${base}/columns`, label: t('datasets.columns') },
-          { to: `${base}/usage`, label: t('datasets.usage') },
           { to: `${base}/relationships`, label: t('datasets.relationships') },
           { to: `${base}/quality`, label: t('datasets.quality') },
           { to: `${base}/settings`, label: t('datasets.settings') },
@@ -207,7 +205,9 @@ export function DatasetDetailPage() {
 
 export function DatasetOverviewTab() {
   const { t } = useTranslation('ontology');
-  const { dataset, columnCount, rowTotal } = useDatasetDetail();
+  const { dataset, columnCount, rowTotal, usageObjectTypes, usageLinkTypes, usageLoading } =
+    useDatasetDetail();
+  const empty = usageObjectTypes.length === 0 && usageLinkTypes.length === 0;
   const sensitivity = SENSITIVITY_KEYS[dataset.sensitivity ?? ''] ?? t('datasets.sensitivityNone');
   const fact = (value: string | number | null | undefined) =>
     value === null || value === undefined || value === '' ? t('datasets.dash') : value;
@@ -253,34 +253,17 @@ export function DatasetOverviewTab() {
           <dd>{sensitivity}</dd>
         </dl>
       </EntityViewPanel>
-    </>
-  );
-}
-
-export function DatasetUsageTab() {
-  const { t } = useTranslation('ontology');
-  const { usageObjectTypes, usageLinkTypes, usageLoading } = useDatasetDetail();
-  const empty = usageObjectTypes.length === 0 && usageLinkTypes.length === 0;
-
-  return (
-    <>
-      <EntityViewHeader title={t('datasets.usage')} subtitle={t('datasets.usageHint')} />
-      <EntityViewPanel>
+      {/* Who depends on this dataset — a couple of lists, not a tab of their own. */}
+      <EntityViewPanel title={t('datasets.usage')} description={t('datasets.usageHint')}>
         {usageLoading ? (
           <div className="console-loading">
             <Loader2 size={32} className="console-loading-spinner" aria-hidden />
             <p>{t('shared.loading')}</p>
           </div>
         ) : empty ? (
-          <EmptyState
-            title={t('datasets.usageEmpty')}
-            description={t('datasets.usageEmptyHint')}
-            action={
-              <Link to="/ontology-manager/object-types" className="btn btn-secondary">
-                {t('datasets.browseObjectTypes')}
-              </Link>
-            }
-          />
+          <p className="entity-view__readonly">
+            {t('datasets.usageEmpty')} {t('datasets.usageEmptyHint')}
+          </p>
         ) : (
           <div className="dataset-detail-usage">
             {usageObjectTypes.length > 0 && (
@@ -310,6 +293,7 @@ export function DatasetUsageTab() {
           </div>
         )}
       </EntityViewPanel>
+
     </>
   );
 }
