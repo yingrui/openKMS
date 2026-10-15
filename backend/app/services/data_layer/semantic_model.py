@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import json
 import uuid
+import re
 from datetime import datetime, timezone
 from typing import Any
 
@@ -57,6 +58,35 @@ def _dataset_name(d: Dataset) -> str:
 
 def _dataset_source(d: Dataset, ds_names: dict[str, str]) -> str:
     return f"{ds_names.get(d.data_source_id)}.{d.schema_name}.{d.table_name}"
+
+
+# A plain column reference we may write unquoted (the spec's own examples do):
+# lowercase, identifier-shaped, and not a reserved word a consumer might misread.
+_SIMPLE_IDENTIFIER = re.compile(r"^[a-z_][a-z0-9_]*$")
+_SQL_RESERVED = frozenset(
+    """
+    all and any array as asc asymmetric both case cast check collate column constraint
+    create current_date current_time current_timestamp current_user default deferrable
+    desc distinct do else end except false fetch for foreign from grant group having in
+    initially intersect into lateral leading limit localtime not null offset on only or
+    order placing primary references returning select session_user some symmetric table
+    then to trailing true union unique user using variadic when where window with
+    """.split()
+)
+
+
+def _plain_column_expression(expression: dict | None, column: str | None) -> str | None:
+    """The bare column name when the stored expression is *just* that column.
+
+    Returns None when the expression is computed, or when the column needs quoting (mixed
+    case, punctuation, a reserved word) — then the expression is emitted verbatim.
+    """
+    if not column or column in _SQL_RESERVED or not _SIMPLE_IDENTIFIER.fullmatch(column):
+        return None
+    sql = dialect_sql(expression, ANSI)
+    if sql and sql.strip() in (column, f'"{column}"'):
+        return column
+    return None
 
 
 def _ossie_datatype(t: str | None) -> str | None:
@@ -147,9 +177,13 @@ async def export_semantic_model(db: AsyncSession, model: SemanticModel) -> dict[
 
         entry["fields"] = []
         for f in fields_by_dataset.get(d.id, []):
-            fexpr = normalize_expression(f.expression) or {
-                "dialects": [{"dialect": "ANSI_SQL", "expression": f.column_name or f.name}]
-            }
+            simple = _plain_column_expression(f.expression, f.column_name)
+            fexpr = (
+                {"dialects": [{"dialect": "ANSI_SQL", "expression": simple}]}
+                if simple
+                else normalize_expression(f.expression)
+                or {"dialects": [{"dialect": "ANSI_SQL", "expression": f.column_name or f.name}]}
+            )
             fentry: dict[str, Any] = {"name": f.name, "expression": fexpr}
             if f.dimension:
                 fentry["dimension"] = f.dimension

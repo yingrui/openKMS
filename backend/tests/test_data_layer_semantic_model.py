@@ -58,3 +58,20 @@ def test_source_column_is_derived_from_a_bare_expression():
     assert _source_column(expr("trade_date")) == "trade_date"
     assert _source_column(expr('DATE_TRUNC(\'month\', trade_date)')) is None
     assert _source_column(None) is None
+
+
+def test_plain_column_expression_is_emitted_unquoted():
+    from app.services.data_layer.semantic_model import _plain_column_expression
+
+    def expr(sql):
+        return {"dialects": [{"dialect": "ANSI_SQL", "expression": sql}]}
+
+    # a bare column reference reads like the spec's own examples
+    assert _plain_column_expression(expr('"trade_date"'), "trade_date") == "trade_date"
+    assert _plain_column_expression(expr("trade_date"), "trade_date") == "trade_date"
+    # anything we should not unquote keeps its expression verbatim
+    assert _plain_column_expression(expr("AVG(pe)"), "pe") is None
+    assert _plain_column_expression(expr('"trade_date"'), "TradeDate") is None
+    assert _plain_column_expression(expr("order"), "order") is None
+    assert _plain_column_expression(expr('"a-b"'), "a-b") is None
+    assert _plain_column_expression(expr('"trade_date"'), None) is None
