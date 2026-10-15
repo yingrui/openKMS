@@ -381,7 +381,6 @@ Encrypted values; **never returned**. Write/sync/delete reject personal API key 
 | GET | `/api/datasets/{id}/profile` | Last computed profile (`data:read`) |
 | POST | `/api/datasets/{id}/profile` | Recompute profile (`data:write`; write on dataset) |
 | GET | `/api/datasets/{id}/schema-history` | Schema snapshots (`data:read`) |
-| GET | `/api/datasets/{id}/lineage` | Read-time lineage (`data:read`) |
 | GET | `/api/datasets/{id}/quality-rules` | List quality rules (`data:read`) |
 | POST | `/api/datasets/{id}/quality-rules` | Create quality rule (`data:write`) |
 | PUT | `/api/datasets/{id}/quality-rules/{rule_id}` | Update quality rule (`data:write`) |

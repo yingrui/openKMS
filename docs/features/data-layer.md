@@ -42,7 +42,7 @@ Definitions first; each concept is **authored in exactly one place**.
 
 **Rule of thumb**
 
-- **The shared base** (Datasets, Columns, Relationships, Rows, Quality, Lineage) → **Catalog** — one physical substrate used by **many** models.
+- **The shared base** (Datasets, Columns, Relationships, Rows, Quality) → **Catalog** — one physical substrate used by **many** models.
 - **A semantic model** (Model tab) is a **named scope** over that base; it owns **Fields**, **Dimensions** (a field role) and **Metrics** (plus its dataset membership + `ai_context`). The document is **viewed/copied** per model (Import from the model list).
 - **A relationship carries only edge facts** — Direction + columns + `required`. **A dimension is not an object** — it is a **field role**. **A metric has no dimensions** — a metric is an **expression**. **Fields ≠ columns** — a column is physical (Catalog), a field is a model-scoped semantic projection.
 
@@ -62,7 +62,7 @@ Definitions first; each concept is **authored in exactly one place**.
 
 ## Current state
 
-**Shipped:** Datasets app at `/datasets` (Catalog list + register/upload + detail tabs: Overview · Data · Fields · Usage · Relationships · Lineage · Quality · Metrics · Settings · Sharing) and the Model view at `/data-model` (ER graph + health + quality alerts + relationships table); Data Explorer at `/data-explorer` (saved analyses). Backend: `datasets` (catalog fields, `primary_key_columns`, `unique_keys`, `ai_context`, `is_editable`), `dataset_joins` (Ossie FK — `from`/`to`/`from_columns`/`to_columns`/`required`), file ingest, profile/schema snapshots, quality rules/runs, `metric_definitions` (model-level Ossie SQL expressions), `metric_runs` (execution audit), `explorer_reports`, `dataset_edits` (audit), `dataset_columns` (column descriptions), `semantic_models` + `semantic_model_datasets` + `semantic_model_fields` (named scopes); **Ossie export/import** (per model); `data:read` / `data:write` / `data:edit`; keyset paging + row editing (TanStack Table). First scenario: **Tushare stock datasets**.
+**Shipped:** Datasets app at `/datasets` (Catalog list + register/upload + detail tabs: Overview · Data · Fields · Usage · Relationships · Quality · Metrics · Settings · Sharing) and the Model view at `/data-model` (ER graph + health + quality alerts + relationships table); Data Explorer at `/data-explorer` (saved analyses). Backend: `datasets` (catalog fields, `primary_key_columns`, `unique_keys`, `ai_context`, `is_editable`), `dataset_joins` (Ossie FK — `from`/`to`/`from_columns`/`to_columns`/`required`), file ingest, profile/schema snapshots, quality rules/runs, `metric_definitions` (model-level Ossie SQL expressions), `metric_runs` (execution audit), `explorer_reports`, `dataset_edits` (audit), `dataset_columns` (column descriptions), `semantic_models` + `semantic_model_datasets` + `semantic_model_fields` (named scopes); **Ossie export/import** (per model); `data:read` / `data:write` / `data:edit`; keyset paging + row editing (TanStack Table). First scenario: **Tushare stock datasets**.
 
 **Gaps vs the target:** none — the [refactoring plan](#refactoring-plan) Stages 1–6 are shipped.
 
@@ -172,7 +172,7 @@ So a table is described (catalog), modeled (fields/relationships), trusted (qual
 | Sensitivity behavior | whether `confidential`/`restricted` triggers masking, export limits, or alerts — define before GA |
 | Freshness ↔ knowledge lifecycle | how stale data affects dependent knowledge conclusions |
 | Ingest edge cases | empty/oversized files, type-inference errors, duplicate table names, append mismatch, retry/cleanup |
-| Scale | profile full-scan and ER/lineage rendering on very large schemas; sampling / degradation |
+| Scale | profile full-scan and ER rendering on very large schemas; sampling / degradation |
 | Delete semantics | dataset / relationship / report delete: cascade vs soft-delete |
 | Discoverability | datasets in Global Search; cross-layer search |
 | Data access audit | who read/exported which dataset |

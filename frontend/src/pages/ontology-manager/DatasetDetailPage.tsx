@@ -254,7 +254,6 @@ export function DatasetDetailPage() {
           { to: `${base}/columns`, label: t('datasets.columns') },
           { to: `${base}/usage`, label: t('datasets.usage') },
           { to: `${base}/relationships`, label: t('datasets.relationships') },
-          { to: `${base}/lineage`, label: t('datasets.lineage') },
           { to: `${base}/quality`, label: t('datasets.quality') },
           { to: `${base}/settings`, label: t('datasets.settings') },
           { to: `${base}/sharing`, label: t('datasets.sharing') },

@@ -140,23 +140,3 @@ class SchemaSnapshotResponse(BaseModel):
     dataset_id: str
     columns: list[ColumnMetadata]
     captured_at: datetime
-
-
-class LineageNode(BaseModel):
-    type: str
-    id: str
-    label: str | None = None
-
-
-class LineageJoin(BaseModel):
-    join_id: str
-    dataset_id: str
-    dataset_name: str | None = None
-    required: bool
-
-
-class DatasetLineageResponse(BaseModel):
-    dataset: LineageNode
-    upstream: list[LineageNode] = []
-    downstream: list[LineageNode] = []
-    joined_datasets: list[LineageJoin] = []

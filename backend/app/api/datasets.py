@@ -29,7 +29,6 @@ from app.services.data_layer.columns import (
     description_map,
     set_description,
 )
-from app.services.data_layer.lineage import build_lineage
 from app.services.data_layer.profile import (
     ProfileError,
     compute_profile,
@@ -41,7 +40,6 @@ from app.schemas.dataset import (
     ColumnMetadata,
     ColumnDescriptionUpdate,
     DatasetCreate,
-    DatasetLineageResponse,
     DatasetListResponse,
     DatasetProfileResponse,
     DatasetResponse,
@@ -464,18 +462,3 @@ async def get_schema_history(
         for r in rows
     ]
 
-
-@router.get(
-    "/{dataset_id}/lineage",
-    response_model=DatasetLineageResponse,
-    dependencies=[Depends(require_any_permission(*_DATASET_VIEW))],
-)
-async def get_dataset_lineage(
-    dataset: Dataset = Depends(get_dataset_scoped),
-    db: AsyncSession = Depends(get_db),
-):
-    """Read-time lineage: source, object/link types, and joined datasets."""
-    data = await build_lineage(db, dataset.id)
-    if data is None:
-        raise HTTPException(status_code=404, detail="Dataset not found")
-    return DatasetLineageResponse(**data)

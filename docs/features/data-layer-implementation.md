@@ -1,6 +1,6 @@
 # Data layer — Catalog implementation design
 
-Concrete backend / frontend / skill design for the **physical (Catalog)** half of the data layer: data-source layer tags, catalog fields, file ingest, profile / schema / lineage, row editing. The **semantic** half (fields, relationships, metrics, queries) lives in the [semantic model spec](data-layer-semantic-model.md); the staged work is the [refactoring plan](data-layer.md#refactoring-plan).
+Concrete backend / frontend / skill design for the **physical (Catalog)** half of the data layer: data-source layer tags, catalog fields, file ingest, profile / schema, row editing. The **semantic** half (fields, relationships, metrics, queries) lives in the [semantic model spec](data-layer-semantic-model.md); the staged work is the [refactoring plan](data-layer.md#refactoring-plan).
 
 **Reused primitives:** `app/services/ontology/dataset_tables.py` (`pg_engine_for_datasource`, `is_valid_identifier`, `fetch_dataset_rows`), `app/services/storage.py` (`upload_object`/`get_object`), `app/services/credentials/credential_encryption.decrypt`, procrastinate jobs, `chunked_upload.py` (documents already do chunked upload).
 
@@ -156,7 +156,7 @@ User can override any column type at the preview step (stored in `parse_config`)
 
 ---
 
-## 5. Profile, schema snapshot, lineage (read-time)
+## 5. Profile, schema snapshot (read-time)
 
 ### Profile — table `dataset_profiles`
 
@@ -179,15 +179,14 @@ Computed on demand (`POST /api/datasets/{id}/profile`) against the source table 
 
 On each `GET /api/datasets/{id}/metadata`, diff against the latest snapshot; if changed, append a snapshot. Change detection = compare `column_name` + `data_type` sets. Expose `GET /api/datasets/{id}/schema-history` for the UI.
 
-### Lineage — computed, no table
+### Lineage — removed (nothing to track yet)
 
-`GET /api/datasets/{id}/lineage` returns a read-time graph:
-
-- **Upstream:** `data_source` (and connector sync if the dataset is a connector output slot).
-- **Downstream:** `object_type` / `link_type` rows with `dataset_id = {id}` (ontology) and `dataset_joins` edges to other datasets.
-
-Edges are assembled by querying existing relations — no persisted lineage table in v1.
-
+There was a read-time `GET /api/datasets/{id}/lineage`: the backing data source as "upstream",
+object/link types that reference the dataset plus joined datasets as "downstream"/lateral. It
+**could not answer a lineage question** — no ingest, pipeline or connector run records how rows
+arrived (`dataset_ingests` is upload history, not provenance) — and what it did show repeated the
+**Usage** and **Relationships** tabs. Removed in favour of those; real lineage needs provenance
+first (it would then be a graph, not three lists).
 ---
 
 ## 6. openkms-skill extensions
@@ -198,7 +197,6 @@ New `datasets` subcommands (all JSON-print, matching existing style):
 |---------|---------|
 | `datasets profile --id ID` | `POST /api/datasets/{id}/profile` |
 | `datasets schema-history --id ID` | `GET /api/datasets/{id}/schema-history` |
-| `datasets lineage --id ID` | `GET /api/datasets/{id}/lineage` |
 | `datasets joins list --id ID` | `GET /api/dataset-joins?dataset_id=ID` |
 | `datasets joins add --from-id A --to-id B --join-type left --columns "ts_code=ts_code" --yes` | `POST /api/dataset-joins` |
 | `datasets joins delete --join-id JOIN_ID --yes` | `DELETE /api/dataset-joins/{id}` |
@@ -219,7 +217,6 @@ New `datasets` subcommands (all JSON-print, matching existing style):
 | `GET /api/datasets/ingests/{id}` | ingest status |
 | `GET /api/datasets/{id}/profile` (POST refresh) | compute/read profile |
 | `GET /api/datasets/{id}/schema-history` | schema snapshots |
-| `GET /api/datasets/{id}/lineage` | read-time lineage |
 | `POST/GET/PUT/DELETE /api/datasets/joins…` | join/ER CRUD |
 
 ## 8. Migration checklist (Phase 0–1)

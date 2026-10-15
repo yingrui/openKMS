@@ -10,7 +10,7 @@ UX for the two Data-layer apps — **Datasets** (Catalog + Model tabs) **· Data
 
 1. **Reuse the mental models users already have.** Every new surface reuses openKMS patterns — `EntityViewShell`, rail layouts (`ManagerNavRail` / `ExplorerNavRail`), `<Dialog>`, `<MetricGrid>`, `<EmptyState>`, `useConfirm`. No new interaction language.
 2. **Progressive disclosure.** Catalog → detail → action. A list never shows columns/config that only a detail page needs; a detail page never shows a form until the user asks to edit.
-3. **The picture is the primary artifact.** ER and lineage are *drawn*, not tabulated. Tables are the fallback, not the default.
+3. **The picture is the primary artifact.** The ER map is *drawn*, not tabulated. Tables are the fallback, not the default.
 4. **The empty state is the next action.** Every new surface's empty state is a single button that does the obvious thing: *Upload data* / *Create relationship* / *Ask a question*.
 
 ---
@@ -59,7 +59,6 @@ Tabs, in reading order:
 | **Data** | paged table preview, column type chips in the header | "what's actually in it" |
 | **Columns** | column list + type + ontology-type mapping + **description** (editable); change history timeline | "what's in it and what it means" |
 | **Relationships** | list of joins (Phase 1); "Add relationship" button | "what does it connect to" |
-| **Lineage** | read-only graph (source ← this → object types / linked datasets) | "where did it come from, where does it go" |
 | **Quality** | rule list + pass/fail (Phase 2) | "can I trust it" |
 | **Sharing** | existing `ResourceSharePanel` | "who else can see it" |
 
@@ -166,6 +165,6 @@ Before shipping any Data-layer screen, it must pass:
 1. **Phase 0:** layer grouping in App Rail + Launcher; `Datasets` moved out (existing list/detail reused, re-labeled).
 2. **Phase 1a:** Datasets — catalog fields + Data tab + upload wizard (steps 1–2–3).
 3. **Phase 1b:** Model tab — ER canvas (read) + join dialog (list-select) + Relationships tab.
-4. **Phase 1c:** Datasets — Lineage tab (read-only graph).
+4. **Phase 1c:** ~~Datasets — Lineage tab~~ **removed:** read-time "lineage" could only name the backing data source (nothing records how rows arrived) and repeated the Usage + Relationships tabs. Real lineage needs ingest/pipeline provenance first.
 5. **Phase 2:** Model tab — Quality + metrics + queries editors (sidebar forms, not canvases).
 6. **Phase 3:** Data Explorer — prompt → dashboard grid → Insight badges → saved reports.

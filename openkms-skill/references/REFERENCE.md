@@ -218,7 +218,6 @@ All write subcommands accept `--yes` / `--dry-run`. Without `--yes` on non-TTY s
 | `datasets column-description` *(write)* | PUT | `/api/datasets/{id}/columns/{column}` | Body `{description}` — set a physical column's description. |
 | `datasets profile` | GET | `/api/datasets/{id}/profile` | Computed column profile (row count, null/distinct/min/max). |
 | `datasets schema-history` | GET | `/api/datasets/{id}/schema-history` | Captured schema snapshots (newest first). |
-| `datasets lineage` | GET | `/api/datasets/{id}/lineage` | Read-time lineage: source, object/link types, joined datasets. |
 | `datasets joins list` | GET | `/api/dataset-joins` | Optional `?dataset_id=`. |
 | `datasets joins add` *(write)* | POST | `/api/dataset-joins` | Body `{from_dataset_id, to_dataset_id, from_columns:[…], to_columns:[…], required}`. `from` = many side (FK holder), `to` = one side (referenced key); `required=true` → INNER (only matched rows), default `false` → LEFT. Composite keys: aligned `from_columns`/`to_columns` arrays. |
 | `datasets joins delete` *(write)* | DELETE | `/api/dataset-joins/{join_id}` | |

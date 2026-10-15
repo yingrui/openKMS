@@ -204,26 +204,6 @@ export interface SchemaSnapshotResponse {
   captured_at: string;
 }
 
-export interface LineageNode {
-  type: string;
-  id: string;
-  label: string | null;
-}
-
-export interface LineageJoin {
-  join_id: string;
-  dataset_id: string;
-  dataset_name: string | null;
-  required: boolean;
-}
-
-export interface DatasetLineageResponse {
-  dataset: LineageNode;
-  upstream: LineageNode[];
-  downstream: LineageNode[];
-  joined_datasets: LineageJoin[];
-}
-
 export async function fetchDatasetProfile(id: string): Promise<DatasetProfileResponse> {
   return request<DatasetProfileResponse>(`/api/datasets/${id}/profile`);
 }
@@ -234,8 +214,4 @@ export async function refreshDatasetProfile(id: string): Promise<DatasetProfileR
 
 export async function fetchSchemaHistory(id: string): Promise<SchemaSnapshotResponse[]> {
   return request<SchemaSnapshotResponse[]>(`/api/datasets/${id}/schema-history`);
-}
-
-export async function fetchDatasetLineage(id: string): Promise<DatasetLineageResponse> {
-  return request<DatasetLineageResponse>(`/api/datasets/${id}/lineage`);
 }

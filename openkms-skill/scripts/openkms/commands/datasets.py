@@ -127,13 +127,6 @@ def cmd_schema_history(ns: argparse.Namespace) -> None:
     print_json(r.json())
 
 
-def cmd_lineage(ns: argparse.Namespace) -> None:
-    with client() as s:
-        r = s.get(f"/api/datasets/{ns.id}/lineage")
-    r.raise_for_status()
-    print_json(r.json())
-
-
 def _parse_join_columns(raw: str) -> tuple[list[str], list[str]]:
     from_cols: list[str] = []
     to_cols: list[str] = []
@@ -375,9 +368,6 @@ def add_subparser(sub) -> None:
     sh.add_argument("--id", required=True)
     sh.set_defaults(fn=cmd_schema_history)
 
-    ln = sp.add_parser("lineage", help="Read-time lineage (GET …/lineage)")
-    ln.add_argument("--id", required=True)
-    ln.set_defaults(fn=cmd_lineage)
 
     jl = sp.add_parser("joins", help="Dataset relationships (Ossie foreign keys)")
     jsp = jl.add_subparsers(dest="dset_join_cmd", required=True)
