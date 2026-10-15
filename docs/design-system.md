@@ -220,7 +220,7 @@ npm run build
 | 14 | `console.log` / `console.debug` / `debugger` | remove before shipping |
 | 15 | `font-size: <n>px` in SCSS | **`var(--text-*)`**; the root `html { font-size }` is exempt |
 | 16 | A class used from 2+ routes but defined in one route's SCSS (Vite ships it with that route's chunk only) | move it to **`src/styles/`**; `scripts/global-classes-baseline.txt` (74) is a ratchet |
-| 17 | New hand-rolled `console-modal-overlay` markup (dialog migration debt) | **`<Dialog>`**; `scripts/legacy-modals-baseline.txt` (20) is a ratchet |
+| 17 | New hand-rolled `console-modal-overlay` markup (dialog migration debt) | **`<Dialog>`**; `scripts/legacy-modals-baseline.txt` is a ratchet — **15 left** in `ConsolePermissionManagement.modals` (5), `LinkTypesPage` (3), `ObjectTypesPage` (2), `ConsoleStorage` (2), `ConsoleDataSources` (2), `ConnectorsPage` (1) |
 
 **`check:styles` is currently clean** (all pre-existing findings cleared: the two over-long files were split, the raw `px` media query / `rgba` backdrop / `window.confirm` / A2UI overlay allowlist entry are gone or justified). Keep it that way — a new finding should be fixed, not allowlisted.
 
