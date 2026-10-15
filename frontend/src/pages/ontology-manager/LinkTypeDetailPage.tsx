@@ -241,7 +241,6 @@ export function LinkTypeDetailPage() {
       <EntityViewShell
         backTo="/ontology-manager/link-types"
         backLabel={t('linkTypes.backToList')}
-        kind={t('linkTypes.kind')}
         title={linkType.name}
         meta={linkType.cardinality}
         navItems={[

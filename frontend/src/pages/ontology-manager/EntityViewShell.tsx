@@ -16,12 +16,10 @@ type EntityViewShellProps = {
   backLabel: string;
   title: string;
   meta?: ReactNode;
-  kind?: string;
+  /** Model-wide read actions (e.g. "View YAML"): they sit with the identity, not above the section. */
+  identityAction?: ReactNode;
   navItems?: EntityViewNavItem[];
   children: ReactNode;
-  toolbar?: ReactNode;
-  sectionTitle?: string;
-  sectionSubtitle?: ReactNode;
 };
 
 export function EntityViewLoading({ label }: { label: string }) {
@@ -146,12 +144,9 @@ export function EntityViewShell({
   backLabel,
   title,
   meta,
-  kind,
+  identityAction,
   navItems = [],
   children,
-  toolbar,
-  sectionTitle,
-  sectionSubtitle,
 }: EntityViewShellProps) {
   const navigate = useNavigate();
 
@@ -163,9 +158,11 @@ export function EntityViewShell({
           {backLabel}
         </button>
         <div className="entity-view__identity">
-          {kind ? <span className="account-pill account-pill--accent">{kind}</span> : null}
           <h2 className="entity-view__title">{title}</h2>
           {meta != null && meta !== '' ? <p className="entity-view__meta">{meta}</p> : null}
+          {identityAction ? (
+            <div className="entity-view__identity-action">{identityAction}</div>
+          ) : null}
         </div>
         {navItems.length > 0 ? (
           <nav className="entity-view__nav">
@@ -185,12 +182,7 @@ export function EntityViewShell({
         ) : null}
       </aside>
       <div className="entity-view__main">
-        <div className="entity-view__main-inner account-stack">
-          {(sectionTitle || toolbar) && (
-            <EntityViewHeader title={sectionTitle || ''} subtitle={sectionSubtitle} actions={toolbar} />
-          )}
-          {children}
-        </div>
+        <div className="entity-view__main-inner account-stack">{children}</div>
       </div>
     </div>
   );

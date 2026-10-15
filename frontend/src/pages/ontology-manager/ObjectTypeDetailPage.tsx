@@ -328,7 +328,6 @@ export function ObjectTypeDetailPage() {
       <EntityViewShell
         backTo="/ontology-manager/object-types"
         backLabel={t('objectTypes.backToList')}
-        kind={t('objectTypes.kind')}
         title={objectType.name}
         meta={t('objectTypes.instanceCount', { count: objectType.instance_count })}
         navItems={[

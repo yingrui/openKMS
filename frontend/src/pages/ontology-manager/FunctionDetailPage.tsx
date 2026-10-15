@@ -262,7 +262,6 @@ export function FunctionDetailPage() {
       <EntityViewShell
         backTo="/ontology-manager/functions"
         backLabel={t('functions.backToList')}
-        kind={t('functions.kind')}
         title={fn.display_name}
         meta={fn.api_name}
         navItems={[

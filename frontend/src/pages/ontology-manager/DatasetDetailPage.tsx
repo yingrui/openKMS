@@ -246,7 +246,6 @@ export function DatasetDetailPage() {
       <EntityViewShell
         backTo="/datasets"
         backLabel={t('datasets.backToList')}
-        kind={t('datasets.kind')}
         title={title}
         meta={`${tableLabel(dataset)}${dataset.data_source_name ? ` · ${dataset.data_source_name}` : ''}`}
         navItems={[

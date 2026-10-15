@@ -215,7 +215,6 @@ export function ActionDetailPage() {
       <EntityViewShell
         backTo="/ontology-manager/action-types"
         backLabel={t('actions.backToList')}
-        kind={t('actions.kind')}
         title={action.display_name}
         meta={action.api_name}
         navItems={[

@@ -174,7 +174,6 @@ export function GroupDetailPage() {
       <EntityViewShell
         backTo="/ontology-manager/groups"
         backLabel={t('groups.backToList')}
-        kind={t('groups.kind')}
         title={group.display_name}
         meta={`${t('groups.objectTypes')}: ${selectedTypeIds.size}`}
         navItems={[

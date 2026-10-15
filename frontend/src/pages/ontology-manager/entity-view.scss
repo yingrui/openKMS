@@ -46,10 +46,6 @@
   border-bottom: 1px solid var(--color-border);
 }
 
-.entity-view__identity .account-pill {
-  margin-bottom: var(--space-2);
-}
-
 .entity-view__title {
   font-size: var(--text-xl);
   font-weight: var(--font-weight-semibold);
@@ -62,7 +58,33 @@
   font-size: var(--text-sm);
   color: var(--color-text-muted);
   margin: 0;
+  /* One short fact (an api name, `schema.table`, a count) — a long one wraps at most twice. */
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
   word-break: break-word;
+}
+
+/* A model-wide read action (e.g. View YAML): same weight as the back link, not a header button. */
+.entity-view__identity-action {
+  margin-top: var(--space-3);
+}
+
+.entity-view__identity-action button {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  font-size: var(--text-sm);
+}
+
+.entity-view__identity-action button:hover {
+  color: var(--color-accent);
 }
 
 .entity-view__nav {

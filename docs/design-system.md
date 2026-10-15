@@ -264,7 +264,7 @@ Reach for a **shared primitive** before writing markup. The list below is the an
 
 | Thing | Where the CSS lives |
 |-------|--------------------|
-| Chip / tag (e.g. the Playground's group-by chips) | page-local (`.playground__chip`), styled to match `.model-scope__chip` |
+| Chip / tag (e.g. the Playground's group-by chips) | page-local (`.playground__chip`) |
 | Code / YAML / SQL block | page-local (`<pre>` + a small class) |
 | Right-docked drawer (the Ossie document inspector) | page-local `.model-yaml`, using `--z-modal` + `--overlay-backdrop`; a deliberate `<Dialog>` exception (see § Style guardrails) |
 
