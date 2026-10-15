@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useState } from 'react';
 import { Loader2, Play } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { Dialog, FormField } from '../../styles/design-system';
@@ -23,16 +23,17 @@ export function ConnectorSyncDialog({
   const { t } = useTranslation('console');
   const [range, setRange] = useState<ConnectorSyncDateRange>(() => defaultManualSyncDateRange());
 
-  const presetYears = useMemo(() => {
+  const presetYears = (() => {
     const y = new Date().getFullYear();
     return [y, y - 1, y - 2];
-  }, [open]);
+  })();
 
-  useEffect(() => {
-    if (open) {
-      setRange(defaultManualSyncDateRange());
-    }
-  }, [open]);
+  // A fresh range each time the dialog opens (render-time adjustment, not an effect).
+  const [lastOpen, setLastOpen] = useState(open);
+  if (open !== lastOpen) {
+    setLastOpen(open);
+    if (open) setRange(defaultManualSyncDateRange());
+  }
 
   const validation = validateSyncDateRange(range);
 

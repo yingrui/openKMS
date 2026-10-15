@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type ReactNode } from 'react';
+import { useMemo, useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { X } from 'lucide-react';
 import { RichMarkdown, richMarkdownPreComponent } from '../markdown/richMarkdown';
@@ -70,9 +70,14 @@ export function AgentFileViewer({
 
   const [mode, setMode] = useState<ViewMode>('preview');
 
-  useEffect(() => {
+  // A different file starts in its natural mode (render-time adjustment, so the switch is not
+  // rendered one frame late).
+  const modeKey = `${path}|${String(kind)}`;
+  const [lastModeKey, setLastModeKey] = useState(modeKey);
+  if (modeKey !== lastModeKey) {
+    setLastModeKey(modeKey);
     setMode(kind ? 'preview' : 'source');
-  }, [path, kind]);
+  }
 
   const lines = useMemo(() => content.split('\n'), [content]);
   const previewMarkdown = useMemo(() => preprocessProjectWikilinks(content), [content]);

@@ -36,9 +36,12 @@ export function OntologyMobileRailProvider({ children }: { children: ReactNode }
     setOntologyRailOpen(false);
   }, []);
 
-  useEffect(() => {
-    closeRails();
-  }, [location.pathname, closeRails]);
+  // Navigating closes the rail (render-time adjustment: no stale-open frame).
+  const [lastPathname, setLastPathname] = useState(location.pathname);
+  if (lastPathname !== location.pathname) {
+    setLastPathname(location.pathname);
+    setOntologyRailOpen(false);
+  }
 
   useEffect(() => {
     if (!ontologyRailOpen) return;

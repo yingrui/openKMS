@@ -85,9 +85,13 @@ export function MediaChannel() {
     if (listFetchError) toast.error(listFetchError.message || t('channel.loadFailed'));
   }, [listFetchError, t]);
 
-  useEffect(() => {
+  // Changing channel/search/kind drops the selection (render-time adjustment).
+  const filterKey = `${channelId}|${debouncedSearch}|${kindFilter}`;
+  const [lastFilterKey, setLastFilterKey] = useState(filterKey);
+  if (filterKey !== lastFilterKey) {
+    setLastFilterKey(filterKey);
     setSelected(new Set());
-  }, [channelId, debouncedSearch, kindFilter]);
+  }
 
   const onUpload = async (files: FileList | null) => {
     if (!files?.length || !channelId) return;

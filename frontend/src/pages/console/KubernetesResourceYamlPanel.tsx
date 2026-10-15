@@ -1,4 +1,5 @@
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
+import { useAsyncData } from '../../hooks/useAsyncData';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
 import {
@@ -22,26 +23,28 @@ export function KubernetesResourceYamlPanel({
   name,
 }: Props) {
   const { t } = useTranslation('console');
-  const [yaml, setYaml] = useState('');
-  const [redacted, setRedacted] = useState(false);
-  const [loading, setLoading] = useState(false);
+  const {
+    data,
+    loading,
+    error: loadError,
+  } = useAsyncData(
+    () =>
+      active && name
+        ? fetchClusterManifestYaml(clusterId, kind, name, namespace)
+        : Promise.resolve(null),
+    [active, clusterId, kind, name, namespace],
+  );
+  /** Empty/false while loading or when nothing is fetched, as the previous state was. */
+  const yaml = data?.yaml ?? '';
+  const redacted = data?.redacted ?? false;
 
   useEffect(() => {
-    if (!active || !name) return;
-    setLoading(true);
-    setYaml('');
-    void fetchClusterManifestYaml(clusterId, kind, name, namespace)
-      .then((res) => {
-        setYaml(res.yaml);
-        setRedacted(res.redacted);
-      })
-      .catch((e) => {
-        toast.error(e instanceof Error ? e.message : t('kubernetes.toastOperationFailed'));
-        setYaml('');
-        setRedacted(false);
-      })
-      .finally(() => setLoading(false));
-  }, [active, clusterId, kind, name, namespace, t]);
+    if (loadError) {
+      toast.error(
+        loadError instanceof Error ? loadError.message : t('kubernetes.toastOperationFailed'),
+      );
+    }
+  }, [loadError, t]);
 
   if (!active) return null;
 

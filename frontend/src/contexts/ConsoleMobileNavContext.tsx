@@ -32,13 +32,18 @@ export function ConsoleMobileNavProvider({ children }: { children: ReactNode }) 
     setConsoleNavOpen(false);
   }, []);
 
-  useEffect(() => {
-    closeConsoleNav();
-  }, [location.pathname, closeConsoleNav]);
-
-  useEffect(() => {
-    if (!inConsole) closeConsoleNav();
-  }, [inConsole, closeConsoleNav]);
+  // Navigating (or leaving the console section) closes the drawer. Render-time adjustments,
+  // so no frame is rendered with the drawer still open on the new route.
+  const [lastPathname, setLastPathname] = useState(location.pathname);
+  if (lastPathname !== location.pathname) {
+    setLastPathname(location.pathname);
+    setConsoleNavOpen(false);
+  }
+  const [lastInConsole, setLastInConsole] = useState(inConsole);
+  if (lastInConsole !== inConsole) {
+    setLastInConsole(inConsole);
+    if (!inConsole) setConsoleNavOpen(false);
+  }
 
   useEffect(() => {
     if (!consoleNavOpen) return;

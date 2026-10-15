@@ -1,12 +1,11 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
+import { useAsyncData } from '../../hooks/useAsyncData';
 import { useTranslation } from 'react-i18next';
 import { FormField } from '../../styles/design-system';
 import {
   fetchClusterNamespaces,
   fetchClusterServices,
   fetchKubernetesClusters,
-  type KubernetesClusterResponse,
-  type KubernetesServiceItem,
 } from '../../data/kubernetesClustersApi';
 import type { AppBuilderBindings } from '../../data/appBuilderApi';
 
@@ -20,64 +19,36 @@ type Props = {
 
 export function ModuleServiceBindingEditor({ initial, saving, onSave }: Props) {
   const { t } = useTranslation('apps');
-  const [clusters, setClusters] = useState<KubernetesClusterResponse[]>([]);
   const [clusterId, setClusterId] = useState(initial?.cluster_id ?? '');
   const [namespace, setNamespace] = useState(initial?.namespace ?? 'default');
   const [service, setService] = useState(initial?.service ?? '');
   const [port, setPort] = useState(initial?.port ?? 80);
   const [path, setPath] = useState(initial?.path ?? '');
-  const [namespaces, setNamespaces] = useState<string[] | null>(null);
-  const [namespacesFailed, setNamespacesFailed] = useState(false);
-  const [services, setServices] = useState<KubernetesServiceItem[] | null>(null);
-  const [servicesFailed, setServicesFailed] = useState(false);
 
-  useEffect(() => {
-    void fetchKubernetesClusters({ limit: 200 })
-      .then((res) => setClusters(res.items || []))
-      .catch(() => setClusters([]));
-  }, []);
+  // Three loaders, all of the "fetch when the inputs change" shape: `loading` is derived and a
+  // failure is just the hook's `error`, so none of them set state synchronously.
+  const { data: clustersData } = useAsyncData(
+    async () => (await fetchKubernetesClusters({ limit: 200 })).items || [],
+    [],
+  );
+  const clusters = clustersData ?? [];
+  const { data: namespacesData, error: namespacesError } = useAsyncData(
+    async () =>
+      clusterId ? (await fetchClusterNamespaces(clusterId)).items.map((n) => n.name) : null,
+    [clusterId],
+  );
+  const namespaces = namespacesData ?? null;
+  const namespacesFailed = Boolean(namespacesError);
+  const { data: servicesData, error: servicesError } = useAsyncData(
+    async () =>
+      clusterId && namespace.trim()
+        ? (await fetchClusterServices(clusterId, namespace.trim())).items || []
+        : null,
+    [clusterId, namespace],
+  );
+  const services = servicesData ?? null;
+  const servicesFailed = Boolean(servicesError);
 
-  useEffect(() => {
-    if (!clusterId) {
-      setNamespaces(null);
-      setNamespacesFailed(false);
-      return;
-    }
-    let cancelled = false;
-    setNamespaces(null);
-    setNamespacesFailed(false);
-    fetchClusterNamespaces(clusterId)
-      .then((res) => {
-        if (!cancelled) setNamespaces(res.items.map((n) => n.name));
-      })
-      .catch(() => {
-        if (!cancelled) setNamespacesFailed(true);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [clusterId]);
-
-  useEffect(() => {
-    if (!clusterId || !namespace.trim()) {
-      setServices(null);
-      setServicesFailed(false);
-      return;
-    }
-    let cancelled = false;
-    setServices(null);
-    setServicesFailed(false);
-    fetchClusterServices(clusterId, namespace.trim())
-      .then((res) => {
-        if (!cancelled) setServices(res.items || []);
-      })
-      .catch(() => {
-        if (!cancelled) setServicesFailed(true);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [clusterId, namespace]);
 
   const namespaceOptions = useMemo(() => {
     const base = namespaces ?? [];

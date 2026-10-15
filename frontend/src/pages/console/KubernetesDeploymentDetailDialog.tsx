@@ -1,9 +1,9 @@
 import { useEffect, useState } from 'react';
+import { useAsyncData } from '../../hooks/useAsyncData';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
 import {
   fetchDeploymentEnv,
-  type KubernetesContainerEnv,
   type KubernetesDeploymentItem,
   type KubernetesEnvFrom,
   type KubernetesEnvVar,
@@ -55,25 +55,36 @@ export function KubernetesDeploymentDetailDialog({
   deployment,
 }: Props) {
   const { t } = useTranslation('console');
-  const [containers, setContainers] = useState<KubernetesContainerEnv[]>([]);
-  const [loading, setLoading] = useState(false);
+  const {
+    data: containersData,
+    loading,
+    error: loadError,
+  } = useAsyncData(
+    async () =>
+      open && deployment
+        ? (await fetchDeploymentEnv(clusterId, deployment.name, namespace)).containers
+        : [],
+    [open, deployment, clusterId, namespace],
+  );
   const [tab, setTab] = useState<KubernetesDetailTab>('overview');
+  /** Never null: the dialog renders the tab list even while loading (as the state was `[]`). */
+  const containers = containersData ?? [];
 
   useEffect(() => {
-    if (!open) {
-      setTab('overview');
-      return;
+    if (loadError) {
+      toast.error(
+        loadError instanceof Error ? loadError.message : t('kubernetes.toastOperationFailed'),
+      );
     }
-    if (!deployment) return;
-    setLoading(true);
-    void fetchDeploymentEnv(clusterId, deployment.name, namespace)
-      .then((res) => setContainers(res.containers))
-      .catch((e) => {
-        toast.error(e instanceof Error ? e.message : t('kubernetes.toastOperationFailed'));
-        setContainers([]);
-      })
-      .finally(() => setLoading(false));
-  }, [open, deployment, clusterId, namespace, t]);
+  }, [loadError, t]);
+
+  // The tab resets when the dialog closes or the deployment changes (render-time adjustment).
+  const tabKey = `${open}:${deployment?.name ?? ''}`;
+  const [lastTabKey, setLastTabKey] = useState(tabKey);
+  if (tabKey !== lastTabKey) {
+    setLastTabKey(tabKey);
+    setTab('overview');
+  }
 
   return (
     <Dialog

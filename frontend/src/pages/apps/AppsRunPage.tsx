@@ -106,10 +106,13 @@ export function AppsRunPage() {
     };
   }, [fullscreen]);
 
-  useEffect(() => {
+  // A different app starts windowed (render-time adjustment).
+  const [lastAppId, setLastAppId] = useState(appId);
+  if (lastAppId !== appId) {
+    setLastAppId(appId);
     setFullscreen(false);
     setExitBtnPos(null);
-  }, [appId]);
+  }
 
   const onExitPointerDown = (e: ReactPointerEvent<HTMLButtonElement>) => {
     if (e.button !== 0) return;

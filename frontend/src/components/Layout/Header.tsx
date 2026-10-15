@@ -28,14 +28,18 @@ export function Header() {
   const isMobile = useIsMobile();
   const compactSearch = isMobile;
 
-  useEffect(() => {
-    if (location.pathname === '/search') {
-      const q = new URLSearchParams(location.search).get('q') ?? '';
-      setHeaderQuery(q);
-    } else {
-      setHeaderQuery('');
-    }
-  }, [location.pathname, location.search]);
+  // The search box mirrors the URL. Adjusted during render (not in an effect) so the box never
+  // shows the previous query for a frame after a navigation.
+  const searchKey = `${location.pathname}|${location.search}`;
+  const [lastSearchKey, setLastSearchKey] = useState(searchKey);
+  if (searchKey !== lastSearchKey) {
+    setLastSearchKey(searchKey);
+    setHeaderQuery(
+      location.pathname === '/search'
+        ? new URLSearchParams(location.search).get('q') ?? ''
+        : '',
+    );
+  }
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {

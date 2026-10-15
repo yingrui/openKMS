@@ -1,4 +1,5 @@
 import { Fragment, useCallback, useEffect, useState } from 'react';
+import { useAsyncData } from '../../hooks/useAsyncData';
 import { Link, Navigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
@@ -323,23 +324,27 @@ export function ConsoleDataSecurityIssues() {
   const { t } = useTranslation('console');
   const { hasPermission } = useAuth();
   const [summary, setSummary] = useState<ResourceAclIssuesSummaryOut | null>(null);
-  const [loading, setLoading] = useState(true);
   const [expandedKey, setExpandedKey] = useState<string | null>(null);
   const [refreshToken, setRefreshToken] = useState(0);
 
-  const loadSummary = useCallback(async () => {
-    try {
-      const sum = await fetchResourceAclIssuesSummary();
-      setSummary(sum);
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : t('dataSecurityIssues.toastLoadFailed'));
-    }
-  }, [t]);
+  const { data: fetchedSummary, loading, error } = useAsyncData(
+    () => fetchResourceAclIssuesSummary(),
+    [refreshToken],
+  );
 
   useEffect(() => {
-    setLoading(true);
-    void loadSummary().finally(() => setLoading(false));
-  }, [loadSummary, refreshToken]);
+    if (error) {
+      toast.error(error instanceof Error ? error.message : t('dataSecurityIssues.toastLoadFailed'));
+    }
+  }, [error, t]);
+
+  // Reviews update individual counters locally, so the freshly fetched summary is adopted
+  // into local state rather than used directly.
+  const [lastFetched, setLastFetched] = useState<ResourceAclIssuesSummaryOut | null>(null);
+  if (fetchedSummary !== lastFetched) {
+    setLastFetched(fetchedSummary);
+    setSummary(fetchedSummary);
+  }
 
   const handleSummaryUpdate = useCallback((next: ResourceAclIssuesSummaryOut) => {
     setSummary(next);

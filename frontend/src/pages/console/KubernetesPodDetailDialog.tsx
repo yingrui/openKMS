@@ -1,9 +1,9 @@
 import { useEffect, useState } from 'react';
+import { useAsyncData } from '../../hooks/useAsyncData';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
 import {
   fetchClusterPodDetail,
-  type KubernetesPodDetail,
 } from '../../data/kubernetesClustersApi';
 import { Dialog } from '../../styles/design-system';
 import {
@@ -34,26 +34,31 @@ export function KubernetesPodDetailDialog({
   podName,
 }: Props) {
   const { t } = useTranslation('console');
-  const [detail, setDetail] = useState<KubernetesPodDetail | null>(null);
-  const [loading, setLoading] = useState(false);
+  const {
+    data: detail,
+    loading,
+    error: loadError,
+  } = useAsyncData(
+    () => (open && podName ? fetchClusterPodDetail(clusterId, podName, namespace) : Promise.resolve(null)),
+    [open, podName, clusterId, namespace],
+  );
   const [tab, setTab] = useState<KubernetesDetailTab>('overview');
 
   useEffect(() => {
-    if (!open) {
-      setTab('overview');
-      return;
+    if (loadError) {
+      toast.error(
+        loadError instanceof Error ? loadError.message : t('kubernetes.toastOperationFailed'),
+      );
     }
-    if (!podName) return;
-    setLoading(true);
-    setDetail(null);
-    void fetchClusterPodDetail(clusterId, podName, namespace)
-      .then(setDetail)
-      .catch((e) => {
-        toast.error(e instanceof Error ? e.message : t('kubernetes.toastOperationFailed'));
-        setDetail(null);
-      })
-      .finally(() => setLoading(false));
-  }, [open, podName, clusterId, namespace, t]);
+  }, [loadError, t]);
+
+  // The tab resets when the dialog closes or its subject changes (render-time adjustment).
+  const tabKey = `${open}:${podName ?? ''}`;
+  const [lastTabKey, setLastTabKey] = useState(tabKey);
+  if (tabKey !== lastTabKey) {
+    setLastTabKey(tabKey);
+    setTab('overview');
+  }
 
   return (
     <Dialog

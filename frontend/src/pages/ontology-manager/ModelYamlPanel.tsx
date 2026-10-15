@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { useAsyncData } from '../../hooks/useAsyncData';
 import { useTranslation } from 'react-i18next';
 import { ChevronDown, Copy, X } from 'lucide-react';
 import { toast } from 'sonner';
@@ -98,28 +99,29 @@ export function ModelYamlPanel({
   onClose: () => void;
 }) {
   const { t } = useTranslation('ontology');
-  const [doc, setDoc] = useState<Record<string, unknown> | null>(null);
-  const [yaml, setYaml] = useState('');
-  const [loading, setLoading] = useState(false);
+  const {
+    data,
+    loading,
+    error: loadError,
+  } = useAsyncData(async () => {
+    if (!open) return null;
+    const [d, y] = await Promise.all([
+      exportSemanticModel(modelId),
+      exportSemanticModelYaml(modelId),
+    ]);
+    return { doc: d as Record<string, unknown>, yaml: y };
+  }, [open, modelId]);
+  /** Null/empty while the dialog is closed or loading, exactly as the previous state was. */
+  const doc = data?.doc ?? null;
+  const yaml = data?.yaml ?? '';
   const [view, setView] = useState<ViewMode>('tree');
   const [expand, setExpand] = useState<ExpandMode>('default');
 
   useEffect(() => {
-    if (!open) return;
-    let cancelled = false;
-    setLoading(true);
-    void Promise.all([exportSemanticModel(modelId), exportSemanticModelYaml(modelId)])
-      .then(([d, y]) => {
-        if (cancelled) return;
-        setDoc(d as Record<string, unknown>);
-        setYaml(y);
-      })
-      .catch((e) => !cancelled && toast.error(e instanceof Error ? e.message : t('dataModel.exportFailed')))
-      .finally(() => !cancelled && setLoading(false));
-    return () => {
-      cancelled = true;
-    };
-  }, [open, modelId, t]);
+    if (loadError) {
+      toast.error(loadError instanceof Error ? loadError.message : t('dataModel.exportFailed'));
+    }
+  }, [loadError, t]);
 
   useEffect(() => {
     if (!open) return;
