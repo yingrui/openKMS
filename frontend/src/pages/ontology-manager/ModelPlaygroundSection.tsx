@@ -260,7 +260,7 @@ export function ModelPlaygroundSection() {
                           ) : null}
                           <button
                             type="button"
-                            aria-label={t('dataModel.removeDimension', { name: fieldLabel(g.field) })}
+                            aria-label={t('dataModel.playgroundRemoveDimension', { name: fieldLabel(g.field) })}
                             onClick={() => toggleGroup(f!)}
                           >
                             <X size={12} aria-hidden />

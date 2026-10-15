@@ -289,7 +289,7 @@
 
   .cm-editor {
     height: 100%;
-    font-size: 13px;
+    font-size: var(--text-sm);
     line-height: 1.55;
     font-family: var(--font-mono, ui-monospace, 'Menlo', 'Monaco', monospace);
   }
@@ -463,7 +463,7 @@
   resize: none;
   padding: var(--space-3);
   font-family: var(--font-mono, ui-monospace, monospace);
-  font-size: 12px;
+  font-size: var(--text-xs);
   line-height: 1.5;
   background: var(--color-bg);
   color: var(--color-text);

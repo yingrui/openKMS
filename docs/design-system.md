@@ -214,7 +214,13 @@ npm run build
 | 8 | `window.confirm(` | **`useConfirm()`** |
 | 9 | Raw `rgba(0,0,0,…)` modal backdrop | **`var(--overlay-backdrop)`** |
 | 10 | New page `.tsx` > 700 lines | Split like **`DocumentDetail`** |
-| 11 | `select` / text `input` with no skin (outside `<FormField>`, no `.ds-control`) | **`<FormField>`**, or **`className="ds-control"`**; `// ds-control-exempt` when a bespoke wrapper styles it. `scripts/ds-controls-baseline.txt` freezes the legacy hits (273) — the check only fails when a file *adds* one |
+| 11 | `select` / text `input` with no skin (outside `<FormField>`, no `.ds-control`) | **`<FormField>`**, or **`className="ds-control"`**; `// ds-control-exempt` when a bespoke wrapper styles it. `scripts/ds-controls-baseline.txt` freezes the legacy hits (273) — a file only fails when it *adds* one |
+| 12 | `t('key')` missing from the locale files (i18next prints the key, so the UI shows `dataModel.removeDimension`) | add the key, or fix the reference. Only files whose namespace is knowable are checked; a dynamic `useTranslation(ns)` falls back to "exists in some namespace" |
+| 13 | Icon-only `<button>` with no accessible name | **`aria-label`** (or `title`) |
+| 14 | `console.log` / `console.debug` / `debugger` | remove before shipping |
+| 15 | `font-size: <n>px` in SCSS | **`var(--text-*)`**; the root `html { font-size }` is exempt |
+| 16 | A class used from 2+ routes but defined in one route's SCSS (Vite ships it with that route's chunk only) | move it to **`src/styles/`**; `scripts/global-classes-baseline.txt` (74) is a ratchet |
+| 17 | New hand-rolled `console-modal-overlay` markup (dialog migration debt) | **`<Dialog>`**; `scripts/legacy-modals-baseline.txt` (20) is a ratchet |
 
 **`check:styles` is currently clean** (all pre-existing findings cleared: the two over-long files were split, the raw `px` media query / `rgba` backdrop / `window.confirm` / A2UI overlay allowlist entry are gone or justified). Keep it that way — a new finding should be fixed, not allowlisted.
 

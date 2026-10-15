@@ -237,7 +237,7 @@ export function DatasetQualityTab() {
               onClick={() => void handleCreate()}
               disabled={!name.trim() || submitting}
             >
-              {submitting ? t('shared.saving') : t('joinCreate')}
+              {submitting ? t('shared.saving') : t('datasets.joinCreate')}
             </button>
           </>
         }

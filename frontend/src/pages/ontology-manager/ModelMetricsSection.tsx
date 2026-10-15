@@ -323,7 +323,7 @@ export function ModelMetricsSection() {
                   </div>
                 </FormField>
               )}
-              <FormField label={t('datasets.metricDefinition')}>
+              <FormField label={t('datasets.metricBusinessDefinition')}>
                 <textarea
                   rows={2}
                   value={definition}

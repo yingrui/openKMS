@@ -63,7 +63,8 @@
     "deleteError": "Could not delete version",
     "deleteSkillConfirm": "Delete skill \"{{name}}\" ({{skillId}}) and all versions? This cannot be undone.",
     "deleteSkillSuccess": "Skill deleted",
-    "deleteSkillError": "Could not delete skill"
+    "deleteSkillError": "Could not delete skill",
+    "deleteSkill": "Delete skill"
   },
   "list": {
     "title": "Agent Projects",

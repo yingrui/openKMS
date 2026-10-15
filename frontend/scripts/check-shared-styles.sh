@@ -152,12 +152,58 @@ while IFS= read -r file; do
   fi
 done < <(find src/pages src/contexts src/components -name '*.tsx' -o -name '*.ts' 2>/dev/null | grep -v '\.test\.' | grep -v '\.spec\.' || true)
 
-# --- 10. Unskinned form controls ----------------------------------------------
+# --- 11. Unskinned form controls (ratchet) ------------------------------------
 # `.ds-field` styles only the controls *inside* a <FormField>; anything else must carry
 # .ds-control or it renders as the raw browser widget. Pre-existing hits are frozen in
 # scripts/ds-controls-baseline.txt (a ratchet: fix them, never add more).
 if ! python3 scripts/check-ds-controls.py; then
   status=1
+fi
+
+# --- 12. Missing i18n keys ----------------------------------------------------
+# A missing key does not crash: i18next prints the key, so the UI silently shows
+# `dataModel.removeDimension`. Files whose `t` comes from a hook/props are skipped.
+if ! python3 scripts/check-i18n-keys.py; then
+  status=1
+fi
+
+# --- 13. Icon-only buttons without an accessible name -------------------------
+if ! python3 scripts/check-a11y-buttons.py; then
+  status=1
+fi
+
+# --- 14. Debug leftovers ------------------------------------------------------
+while IFS= read -r hit; do
+  [ -z "$hit" ] && continue
+  report "$hit is a debug leftover; remove it before shipping"
+done < <(rg -n --no-heading 'console\.(log|debug)\s*\(|^[[:space:]]*debugger\b' src --glob '*.ts' --glob '*.tsx' || true)
+
+# --- 15. Ad-hoc font sizes ----------------------------------------------------
+# Type comes from the --text-* scale. `html { font-size }` is the root size, not a token.
+while IFS= read -r hit; do
+  [ -z "$hit" ] && continue
+  file="${hit%%:*}"
+  case "$file" in
+    src/styles/design-system/_global.scss) continue ;;
+  esac
+  report "$hit sets a px font size; use var(--text-*) from the type scale"
+done < <(rg -n --no-heading 'font-size:[[:space:]]*[0-9]+px' src --glob '*.scss' || true)
+
+# --- 16. Shared-but-local classes (ratchet) -----------------------------------
+# A class used from 2+ routes must not live in one route's SCSS: Vite ships that sheet with
+# the route's lazy chunk, so the class silently loses its styles elsewhere.
+# Frozen list: scripts/global-classes-baseline.txt.
+if ! python3 scripts/check-global-classes.py; then
+  status=1
+fi
+
+# --- 17. Legacy modal markup (ratchet) ----------------------------------------
+# `console-modal-overlay` markup is the hand-rolled dialog we are migrating to <Dialog>.
+# Baseline: scripts/legacy-modals-baseline.txt (a count). Lower it as you migrate.
+LEGACY_MODAL_BASELINE=$(cat scripts/legacy-modals-baseline.txt 2>/dev/null || echo 0)
+LEGACY_MODAL_NOW=$(rg -c --no-heading 'console-modal-overlay' src --glob '*.tsx' 2>/dev/null | awk -F: '{s+=$2} END {print s+0}' || echo 0)
+if [ "${LEGACY_MODAL_NOW:-0}" -gt "${LEGACY_MODAL_BASELINE:-0}" ]; then
+  report "hand-rolled modal markup grew ($LEGACY_MODAL_NOW > $LEGACY_MODAL_BASELINE); use <Dialog> and lower scripts/legacy-modals-baseline.txt"
 fi
 
 if [ "$status" -eq 0 ]; then

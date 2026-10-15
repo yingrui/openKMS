@@ -2260,7 +2260,7 @@
 }
 
 .document-detail-info-name-row-progress {
-  font-size: 10px;
+  font-size: var(--text-xs);
   font-weight: 600;
   font-variant-numeric: tabular-nums;
   color: var(--color-accent);

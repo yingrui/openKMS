@@ -63,7 +63,8 @@
     "deleteError": "无法删除版本",
     "deleteSkillConfirm": "删除技能「{{name}}」（{{skillId}}）及所有版本？此操作不可撤销。",
     "deleteSkillSuccess": "技能已删除",
-    "deleteSkillError": "无法删除技能"
+    "deleteSkillError": "无法删除技能",
+    "deleteSkill": "删除技能"
   },
   "list": {
     "title": "智能体项目",

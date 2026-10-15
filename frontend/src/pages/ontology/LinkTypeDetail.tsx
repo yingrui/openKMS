@@ -225,7 +225,10 @@ export function LinkTypeDetail() {
           <div className="link-type-dialog" onClick={(e) => e.stopPropagation()}>
             <div className="link-type-dialog-header">
               <h2>{t('ontology.linkTypeDetail.dialogAddLink')}</h2>
-              <button type="button" className="link-type-dialog-close" onClick={closeForm}>
+              <button
+          type="button"
+          className="link-type-dialog-close"
+          aria-label={t('shared.close')} onClick={closeForm}>
                 <X size={20} />
               </button>
             </div>

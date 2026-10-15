@@ -796,7 +796,10 @@ export function EvaluationDatasetDetail() {
           <div className="eval-dialog" onClick={(e) => e.stopPropagation()}>
             <div className="eval-dialog-header">
               <h2>{editItem ? t('evaluationDetail.dialogEditItem') : t('evaluationDetail.dialogAddItem')}</h2>
-              <button type="button" className="eval-dialog-close" onClick={closeItemForm}>
+              <button
+          type="button"
+          className="eval-dialog-close"
+          aria-label={t('shared.close')} onClick={closeItemForm}>
                 <X size={20} />
               </button>
             </div>

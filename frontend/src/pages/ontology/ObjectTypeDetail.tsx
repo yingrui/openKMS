@@ -374,7 +374,10 @@ export function ObjectTypeDetail() {
           <div className="object-type-dialog" onClick={(e) => e.stopPropagation()}>
             <div className="object-type-dialog-header">
               <h2>{editInstance ? t('ontology.objectTypeDetail.dialogEditObject') : t('ontology.objectTypeDetail.dialogAddObject')}</h2>
-              <button type="button" className="object-type-dialog-close" onClick={closeForm}>
+              <button
+          type="button"
+          className="object-type-dialog-close"
+          aria-label={t('shared.close')} onClick={closeForm}>
                 <X size={20} />
               </button>
             </div>

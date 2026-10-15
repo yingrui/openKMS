@@ -422,7 +422,10 @@ export function GlossaryDetail() {
           <div className="glossary-dialog" onClick={(e) => e.stopPropagation()}>
             <div className="glossary-dialog-header">
               <h2>{editTerm ? t('glossary.detail.dialogEditTerm') : t('glossary.detail.dialogAddTerm')}</h2>
-              <button type="button" className="glossary-dialog-close" onClick={closeTermForm}>
+              <button
+          type="button"
+          className="glossary-dialog-close"
+          aria-label={t('shared.close')} onClick={closeTermForm}>
                 <X size={20} />
               </button>
             </div>
