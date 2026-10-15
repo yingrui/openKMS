@@ -55,7 +55,7 @@ Tabs, in reading order:
 
 | Tab | What the user sees | First impression |
 |-----|--------------------|------------------|
-| **Overview** | **Read-only summary** — `MetricGrid` (columns, rows, references) + the dataset's catalog facts (source, name, description, domain, tags, business definition, sensitivity). One action: **Edit in Settings**. It never saves. | "what is this dataset" |
+| **Overview** | **Read-only summary** — `MetricGrid` (columns, rows) + the dataset's catalog facts (source, name, description, domain, tags, business definition, sensitivity). One action: **Edit in Settings**. It never saves. | "what is this dataset" |
 | **Data** | paged table preview (TanStack: server sort + inline cell editing when row editing is on) | "what's actually in it" |
 | **Columns** | column list + type + ontology-type mapping + **description** (editable); schema history | "what's in it and what it means" |
 | **Usage** | object types / link types that reference this dataset | "who depends on it" |

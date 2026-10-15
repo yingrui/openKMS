@@ -207,7 +207,7 @@ export function DatasetDetailPage() {
 
 export function DatasetOverviewTab() {
   const { t } = useTranslation('ontology');
-  const { dataset, columnCount, rowTotal, usageObjectTypes, usageLinkTypes } = useDatasetDetail();
+  const { dataset, columnCount, rowTotal } = useDatasetDetail();
   const sensitivity = SENSITIVITY_KEYS[dataset.sensitivity ?? ''] ?? t('datasets.sensitivityNone');
   const fact = (value: string | number | null | undefined) =>
     value === null || value === undefined || value === '' ? t('datasets.dash') : value;
@@ -232,10 +232,6 @@ export function DatasetOverviewTab() {
         <EntityViewStat
           label={t('datasets.metricRows')}
           value={rowTotal == null ? t('datasets.dash') : rowTotal}
-        />
-        <EntityViewStat
-          label={t('datasets.metricUsage')}
-          value={usageObjectTypes.length + usageLinkTypes.length}
         />
       </EntityViewStats>
       {/* Read-only summary: everything editable lives in Settings, so this page never saves. */}

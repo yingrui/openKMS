@@ -425,7 +425,6 @@
     "no": "No",
     "metricColumns": "Columns",
     "metricRows": "Rows",
-    "metricUsage": "Bindings",
     "colColumn": "Column",
     "colDataType": "Data type",
     "colNullable": "Nullable",

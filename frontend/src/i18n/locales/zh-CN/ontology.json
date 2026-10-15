@@ -420,7 +420,6 @@
     "no": "否",
     "metricColumns": "列数",
     "metricRows": "行数",
-    "metricUsage": "绑定数",
     "colColumn": "列",
     "colDataType": "数据类型",
     "colNullable": "可空",
