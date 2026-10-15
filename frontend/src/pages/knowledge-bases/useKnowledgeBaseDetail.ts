@@ -167,8 +167,16 @@ export function useKnowledgeBaseDetail() {
   const [qaFeedback, setQaFeedback] = useState<Record<string, KbQaFeedbackVote>>({});
   const [qaLoading, setQaLoading] = useState(false);
   const qaStreamAbortRef = useRef<AbortController | null>(null);
-  /** Langfuse session id for KB Q&A turns while this full-page chat is open (opaque UUID). */
+  /** Langfuse session id for KB Q&A turns while this full-page chat is open (opaque UUID).
+   *  Private: the page drives it through `beginQaTraceSession` / `clearQaTraceSession`, so
+   *  no ref crosses into render (React's compiler rejects refs read off a view-model). */
   const qaTraceSessionRef = useRef<string | null>(null);
+  const beginQaTraceSession = useCallback(() => {
+    qaTraceSessionRef.current = crypto.randomUUID();
+  }, []);
+  const clearQaTraceSession = useCallback(() => {
+    qaTraceSessionRef.current = null;
+  }, []);
   /** Which source indexes are expanded (full detail), keyed by assistant ``replyKey``. */
   const [qaSourcesExpanded, setQaSourcesExpanded] = useState<Record<string, Set<number>>>({});
   const kbIdRef = useRef(kbId);
@@ -1186,7 +1194,6 @@ export function useKnowledgeBaseDetail() {
     setPickerTotal,
     pickerAdding,
     setPickerAdding,
-    pickerDebounceRef,
     kbWikiSpaces,
     setKbWikiSpaces,
     showWikiSpacePicker,
@@ -1280,7 +1287,6 @@ export function useKnowledgeBaseDetail() {
     setSearchTopK,
     searchForceDense,
     setSearchForceDense,
-    searchPrevSnapshotRef,
     searchRetrievalDiff,
     setSearchRetrievalDiff,
     qaInput,
@@ -1291,8 +1297,8 @@ export function useKnowledgeBaseDetail() {
     setQaFeedback,
     qaLoading,
     setQaLoading,
-    qaStreamAbortRef,
-    qaTraceSessionRef,
+    beginQaTraceSession,
+    clearQaTraceSession,
     qaSourcesExpanded,
     setQaSourcesExpanded,
     kbQaConvId,
@@ -1303,7 +1309,6 @@ export function useKnowledgeBaseDetail() {
     setKbQaConvsLoading,
     kbQaConvReady,
     setKbQaConvReady,
-    kbIdRef,
     kbQaMainScrollRef,
     settingsAgentUrl,
     setSettingsAgentUrl,

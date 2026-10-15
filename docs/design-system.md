@@ -204,7 +204,7 @@ npm run check   # typecheck → check:app-layout → check:app-modules → check
 | `check:app-layout` | single gutter source (`.app-content` / `.app-page-pane`) |
 | `check:app-modules` | the Suite app list/order lives in `APP_MODULES` |
 | `check:styles` | the rules in the table below |
-| `check:lint` | eslint, ratcheted: `scripts/eslint-baseline.txt` freezes the 152 errors we have (mostly the React Compiler rules in `eslint-plugin-react-hooks` v6, systemic in two large pages) — a file that *gains* one fails |
+| `check:lint` | eslint, ratcheted: `scripts/eslint-baseline.txt` freezes the 44 errors we have (mostly `react-hooks/set-state-in-effect` and `react-refresh/only-export-components`) — a file that *gains* one fails. The bulk (108) was `react-hooks/refs`, caused by view-models that return refs: React's compiler flags **every** property read on an object that contains a ref, so a hook's refs must be private (expose behaviour) and the view-model destructured at the call site |
 | `test` | vitest |
 
 **`check-shared-styles.sh`** (`npm run check:styles`) — allowlists are **known debt, not permission**:

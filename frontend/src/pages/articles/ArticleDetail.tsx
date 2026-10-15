@@ -30,29 +30,43 @@ import './ArticleDetail.scss';
 const MARKDOWN_SPLIT_GUTTER_PX = 6;
 
 export function ArticleDetail() {
-  const v = useArticleDetail();
+  const {
+    id, article, attachments, error, backTo, channelLabel, infoVisible, setInfoVisible, editName,
+    setEditName, editSourceRef, setEditSourceRef, editMarkdown, setEditMarkdown, titleEditMode,
+    setTitleEditMode, sourceEditMode, setSourceEditMode, markdownEditMode, setMarkdownEditMode,
+    markdownPreviewOpen, setMarkdownPreviewOpen, markdownSplitEditorFr, savingTitle, savingSource,
+    savingMarkdown, deleting, relSectionOpen, setRelSectionOpen, lineageRels, lineageLoading,
+    newRelTarget, setNewRelTarget, newRelType, setNewRelType, newRelNote, setNewRelNote, relSaving,
+    attachmentsSectionOpen, setAttachmentsSectionOpen, reviewSectionOpen, setReviewSectionOpen,
+    latestReview, reviewLoading, reviewRunning, channelReviewConfigured, uploadingMedia, dragActive,
+    setDragActive, textareaRef, imageInputRef, attachmentInputRef, markdownSplitLayoutRef, markdownSectionRef,
+    mdComponents, handleRunReview, handleSaveTitle, handleCancelTitleEdit, handleSaveSource,
+    handleCancelSourceEdit, handleAddRelationship, handleDeleteRelationship, insertAttachmentRef,
+    handleEditorPaste, handleEditorDrop, handleImagePick, handleAttachmentPick, handleDeleteAttachment,
+    handleSaveMarkdown, handleCancelMarkdownEdit, handleMarkdownSplitPointerDown, handleDelete,
+  } = useArticleDetail();
 
   return (
-    <ContentCommentsShell resourceType="article" resourceId={v.id ?? ''} enabled={Boolean(v.id)}>
+    <ContentCommentsShell resourceType="article" resourceId={id ?? ''} enabled={Boolean(id)}>
     <div className="document-detail article-detail-page">
-      <Link to={v.backTo} className="document-detail-back">
+      <Link to={backTo} className="document-detail-back">
         <ArrowLeft size={18} />
         <span>Back to Articles</span>
       </Link>
-      {v.error ? (
-        <div className="document-detail-error">{v.error}</div>
-      ) : !v.article ? (
+      {error ? (
+        <div className="document-detail-error">{error}</div>
+      ) : !article ? (
         <div className="document-detail-loading">Loading…</div>
       ) : (
         <>
-          <section className={`document-detail-info document-detail-info-combined ${v.infoVisible ? '' : 'document-detail-info--collapsed'}`}>
+          <section className={`document-detail-info document-detail-info-combined ${infoVisible ? '' : 'document-detail-info--collapsed'}`}>
             <h2
               className="document-detail-info-title document-detail-info-toggle"
-              onClick={() => v.setInfoVisible((x) => !x)}
+              onClick={() => setInfoVisible((x) => !x)}
               role="button"
               tabIndex={0}
-              onKeyDown={(e) => e.key === 'Enter' && v.setInfoVisible((x) => !x)}
-              aria-expanded={v.infoVisible}
+              onKeyDown={(e) => e.key === 'Enter' && setInfoVisible((x) => !x)}
+              aria-expanded={infoVisible}
             >
               <Info size={20} />
               <span>Article information</span>
@@ -61,49 +75,49 @@ export function ArticleDetail() {
                 className="document-detail-info-toggle-btn"
                 onClick={(e) => {
                   e.stopPropagation();
-                  v.setInfoVisible((x) => !x);
+                  setInfoVisible((x) => !x);
                 }}
-                aria-label={v.infoVisible ? 'Hide' : 'Show'}
+                aria-label={infoVisible ? 'Hide' : 'Show'}
               >
-                {v.infoVisible ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
+                {infoVisible ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
               </button>
             </h2>
-            {v.infoVisible && (
+            {infoVisible && (
               <div className="document-detail-info-body">
                 <dl className="document-detail-info-list document-detail-info-list--name-row">
                   <div className="document-detail-info-item document-detail-info-item--name">
                     <dt>Title</dt>
                     <dd>
-                      {v.titleEditMode ? (
+                      {titleEditMode ? (
                         <div className="article-detail-inline-edit">
                           <input
                             type="text"
                             className="document-detail-info-input article-detail-inline-edit-input"
-                            value={v.editName}
-                            onChange={(e) => v.setEditName(e.target.value)}
+                            value={editName}
+                            onChange={(e) => setEditName(e.target.value)}
                             aria-label="Article title"
                             placeholder="Title"
                             autoFocus
                             onKeyDown={(e) => {
-                              if (e.key === 'Enter' && v.editName.trim()) void v.handleSaveTitle();
-                              if (e.key === 'Escape') v.handleCancelTitleEdit();
+                              if (e.key === 'Enter' && editName.trim()) void handleSaveTitle();
+                              if (e.key === 'Escape') handleCancelTitleEdit();
                             }}
                           />
                           <div className="article-detail-inline-edit-actions">
                             <button
                               type="button"
                               className="btn btn-primary btn-sm"
-                              onClick={() => void v.handleSaveTitle()}
-                              disabled={v.savingTitle || !v.editName.trim()}
+                              onClick={() => void handleSaveTitle()}
+                              disabled={savingTitle || !editName.trim()}
                             >
-                              {v.savingTitle ? <Loader2 size={12} className="doc-detail-spinner" /> : null}
-                              <span>{v.savingTitle ? 'Saving…' : 'Save'}</span>
+                              {savingTitle ? <Loader2 size={12} className="doc-detail-spinner" /> : null}
+                              <span>{savingTitle ? 'Saving…' : 'Save'}</span>
                             </button>
                             <button
                               type="button"
                               className="document-detail-info-cancel-btn"
-                              onClick={v.handleCancelTitleEdit}
-                              disabled={v.savingTitle}
+                              onClick={handleCancelTitleEdit}
+                              disabled={savingTitle}
                             >
                               Cancel
                             </button>
@@ -111,11 +125,11 @@ export function ArticleDetail() {
                         </div>
                       ) : (
                         <span className="document-detail-info-value">
-                          {v.editName}
+                          {editName}
                           <button
                             type="button"
                             className="document-detail-info-edit-btn"
-                            onClick={() => v.setTitleEditMode(true)}
+                            onClick={() => setTitleEditMode(true)}
                             title="Edit title"
                             aria-label="Edit title"
                           >
@@ -132,41 +146,41 @@ export function ArticleDetail() {
                     <dl className="document-detail-info-list document-detail-info-list--col">
                       <div className="document-detail-info-item document-detail-info-item--compact">
                         <dt>Channel</dt>
-                        <dd>{v.channelLabel}</dd>
+                        <dd>{channelLabel}</dd>
                       </div>
                       <div className="document-detail-info-item document-detail-info-item--compact">
                         <dt>Source</dt>
                         <dd className="article-detail-source-dd">
-                          {v.sourceEditMode ? (
+                          {sourceEditMode ? (
                             <div className="article-detail-inline-edit">
                               <input
                                 type="text"
                                 className="document-detail-info-input article-detail-inline-edit-input"
-                                value={v.editSourceRef}
-                                onChange={(e) => v.setEditSourceRef(e.target.value)}
+                                value={editSourceRef}
+                                onChange={(e) => setEditSourceRef(e.target.value)}
                                 aria-label="Source ID or URL"
                                 placeholder="External ID or URL"
                                 autoFocus
                                 onKeyDown={(e) => {
-                                  if (e.key === 'Enter') void v.handleSaveSource();
-                                  if (e.key === 'Escape') v.handleCancelSourceEdit();
+                                  if (e.key === 'Enter') void handleSaveSource();
+                                  if (e.key === 'Escape') handleCancelSourceEdit();
                                 }}
                               />
                               <div className="article-detail-inline-edit-actions">
                                 <button
                                   type="button"
                                   className="btn btn-primary btn-sm"
-                                  onClick={() => void v.handleSaveSource()}
-                                  disabled={v.savingSource}
+                                  onClick={() => void handleSaveSource()}
+                                  disabled={savingSource}
                                 >
-                                  {v.savingSource ? <Loader2 size={12} className="doc-detail-spinner" /> : null}
-                                  <span>{v.savingSource ? 'Saving…' : 'Save'}</span>
+                                  {savingSource ? <Loader2 size={12} className="doc-detail-spinner" /> : null}
+                                  <span>{savingSource ? 'Saving…' : 'Save'}</span>
                                 </button>
                                 <button
                                   type="button"
                                   className="document-detail-info-cancel-btn"
-                                  onClick={v.handleCancelSourceEdit}
-                                  disabled={v.savingSource}
+                                  onClick={handleCancelSourceEdit}
+                                  disabled={savingSource}
                                 >
                                   Cancel
                                 </button>
@@ -174,13 +188,13 @@ export function ArticleDetail() {
                             </div>
                           ) : (
                             <span className="document-detail-info-value">
-                              {v.article.origin_article_id?.trim() ? (
-                                /^https?:\/\//i.test(v.article.origin_article_id.trim()) ? (
-                                  <a href={v.article.origin_article_id.trim()} target="_blank" rel="noopener noreferrer">
-                                    {v.article.origin_article_id.trim()}
+                              {article.origin_article_id?.trim() ? (
+                                /^https?:\/\//i.test(article.origin_article_id.trim()) ? (
+                                  <a href={article.origin_article_id.trim()} target="_blank" rel="noopener noreferrer">
+                                    {article.origin_article_id.trim()}
                                   </a>
                                 ) : (
-                                  <span title={v.article.origin_article_id}>{v.article.origin_article_id}</span>
+                                  <span title={article.origin_article_id}>{article.origin_article_id}</span>
                                 )
                               ) : (
                                 <span className="document-detail-muted">—</span>
@@ -188,7 +202,7 @@ export function ArticleDetail() {
                               <button
                                 type="button"
                                 className="document-detail-info-edit-btn"
-                                onClick={() => v.setSourceEditMode(true)}
+                                onClick={() => setSourceEditMode(true)}
                                 title="Edit source"
                                 aria-label="Edit source"
                               >
@@ -200,7 +214,7 @@ export function ArticleDetail() {
                       </div>
                       <div className="document-detail-info-item document-detail-info-item--compact">
                         <dt>Lifecycle</dt>
-                        <dd>{v.article.lifecycle_status ?? '—'}</dd>
+                        <dd>{article.lifecycle_status ?? '—'}</dd>
                       </div>
                     </dl>
                   </div>
@@ -208,62 +222,62 @@ export function ArticleDetail() {
                     <dl className="document-detail-info-list document-detail-info-list--col">
                       <div className="document-detail-info-item document-detail-info-item--compact">
                         <dt>Applicable</dt>
-                        <dd>{v.article.is_current_for_rag ? 'Yes' : 'No'}</dd>
+                        <dd>{article.is_current_for_rag ? 'Yes' : 'No'}</dd>
                       </div>
                       <div className="document-detail-info-item document-detail-info-item--compact">
                         <dt>Updated</dt>
-                        <dd>{new Date(v.article.updated_at).toLocaleString()}</dd>
+                        <dd>{new Date(article.updated_at).toLocaleString()}</dd>
                       </div>
                     </dl>
                   </div>
                 </div>
 
                 <ArticleRelationshipsPanel
-                  relSectionOpen={v.relSectionOpen}
-                  onToggle={() => v.setRelSectionOpen((o) => !o)}
-                  lineageLoading={v.lineageLoading}
-                  lineageRels={v.lineageRels}
-                  onDeleteRelationship={(relationshipId) => void v.handleDeleteRelationship(relationshipId)}
-                  newRelTarget={v.newRelTarget}
-                  onNewRelTargetChange={v.setNewRelTarget}
-                  newRelType={v.newRelType}
-                  onNewRelTypeChange={v.setNewRelType}
-                  newRelNote={v.newRelNote}
-                  onNewRelNoteChange={v.setNewRelNote}
-                  relSaving={v.relSaving}
-                  onAddRelationship={() => void v.handleAddRelationship()}
+                  relSectionOpen={relSectionOpen}
+                  onToggle={() => setRelSectionOpen((o) => !o)}
+                  lineageLoading={lineageLoading}
+                  lineageRels={lineageRels}
+                  onDeleteRelationship={(relationshipId) => void handleDeleteRelationship(relationshipId)}
+                  newRelTarget={newRelTarget}
+                  onNewRelTargetChange={setNewRelTarget}
+                  newRelType={newRelType}
+                  onNewRelTypeChange={setNewRelType}
+                  newRelNote={newRelNote}
+                  onNewRelNoteChange={setNewRelNote}
+                  relSaving={relSaving}
+                  onAddRelationship={() => void handleAddRelationship()}
                 />
 
                 <ArticleReviewPanel
-                  reviewSectionOpen={v.reviewSectionOpen}
-                  onToggle={() => v.setReviewSectionOpen((o) => !o)}
-                  latestReview={v.latestReview}
-                  reviewLoading={v.reviewLoading}
-                  reviewRunning={v.reviewRunning}
-                  channelReviewConfigured={v.channelReviewConfigured}
-                  channelId={v.article.channel_id}
-                  onRunReview={() => void v.handleRunReview()}
+                  reviewSectionOpen={reviewSectionOpen}
+                  onToggle={() => setReviewSectionOpen((o) => !o)}
+                  latestReview={latestReview}
+                  reviewLoading={reviewLoading}
+                  reviewRunning={reviewRunning}
+                  channelReviewConfigured={channelReviewConfigured}
+                  channelId={article.channel_id}
+                  onRunReview={() => void handleRunReview()}
                 />
 
                 <ArticleAttachmentsPanel
-                  attachmentsSectionOpen={v.attachmentsSectionOpen}
-                  onToggle={() => v.setAttachmentsSectionOpen((o) => !o)}
-                  attachments={v.attachments}
-                  articleId={v.article.id}
-                  markdownEditMode={v.markdownEditMode}
-                  onInsertAttachmentRef={v.insertAttachmentRef}
-                  onDeleteAttachment={(att) => void v.handleDeleteAttachment(att)}
+                  attachmentsSectionOpen={attachmentsSectionOpen}
+                  onToggle={() => setAttachmentsSectionOpen((o) => !o)}
+                  attachments={attachments}
+                  articleId={article.id}
+                  markdownEditMode={markdownEditMode}
+                  onInsertAttachmentRef={insertAttachmentRef}
+                  onDeleteAttachment={(att) => void handleDeleteAttachment(att)}
                 />
 
                 <div className="document-detail-metadata-actions article-detail-danger-zone">
                   <button
                     type="button"
                     className="btn btn-secondary btn-sm article-detail-delete-btn"
-                    onClick={() => void v.handleDelete()}
-                    disabled={v.deleting}
+                    onClick={() => void handleDelete()}
+                    disabled={deleting}
                   >
-                    {v.deleting ? <Loader2 size={12} className="doc-detail-spinner" /> : <Trash2 size={14} />}
-                    <span>{v.deleting ? 'Deleting…' : 'Delete article'}</span>
+                    {deleting ? <Loader2 size={12} className="doc-detail-spinner" /> : <Trash2 size={14} />}
+                    <span>{deleting ? 'Deleting…' : 'Delete article'}</span>
                   </button>
                 </div>
               </div>
@@ -272,8 +286,8 @@ export function ArticleDetail() {
 
           <div className="document-detail-split article-detail-markdown-split">
             <section
-              ref={v.markdownSectionRef}
-              className={`document-detail-panel document-detail-markdown${v.markdownEditMode ? ' article-detail-markdown-panel--editing' : ''}`}
+              ref={markdownSectionRef}
+              className={`document-detail-panel document-detail-markdown${markdownEditMode ? ' article-detail-markdown-panel--editing' : ''}`}
             >
               <PanelToolbar
                 leading={
@@ -283,34 +297,34 @@ export function ArticleDetail() {
                   </>
                 }
                 actions={
-                  v.markdownEditMode ? (
+                  markdownEditMode ? (
                     <>
                       <button
                         type="button"
                         className="document-detail-edit-toggle"
-                        onClick={() => v.setMarkdownPreviewOpen((val) => !val)}
-                        title={v.markdownPreviewOpen ? 'Hide preview' : 'Show preview on the right'}
-                        aria-label={v.markdownPreviewOpen ? 'Hide preview' : 'Show preview on the right'}
+                        onClick={() => setMarkdownPreviewOpen((val) => !val)}
+                        title={markdownPreviewOpen ? 'Hide preview' : 'Show preview on the right'}
+                        aria-label={markdownPreviewOpen ? 'Hide preview' : 'Show preview on the right'}
                       >
-                        {v.markdownPreviewOpen ? <EyeOff size={14} /> : <Eye size={14} />}
-                        <span className="ds-compact-label">{v.markdownPreviewOpen ? 'Hide preview' : 'Preview'}</span>
+                        {markdownPreviewOpen ? <EyeOff size={14} /> : <Eye size={14} />}
+                        <span className="ds-compact-label">{markdownPreviewOpen ? 'Hide preview' : 'Preview'}</span>
                       </button>
                       <button
                         type="button"
                         className="document-detail-edit-toggle"
-                        onClick={() => v.imageInputRef.current?.click()}
-                        disabled={v.uploadingMedia}
+                        onClick={() => imageInputRef.current?.click()}
+                        disabled={uploadingMedia}
                         title="Insert image"
                         aria-label="Insert image"
                       >
-                        {v.uploadingMedia ? <Loader2 size={14} className="doc-detail-spinner" /> : <ImageIcon size={14} />}
+                        {uploadingMedia ? <Loader2 size={14} className="doc-detail-spinner" /> : <ImageIcon size={14} />}
                         <span className="ds-compact-label">Image</span>
                       </button>
                       <button
                         type="button"
                         className="document-detail-edit-toggle"
-                        onClick={() => v.attachmentInputRef.current?.click()}
-                        disabled={v.uploadingMedia}
+                        onClick={() => attachmentInputRef.current?.click()}
+                        disabled={uploadingMedia}
                         title="Add attachment"
                         aria-label="Add attachment"
                       >
@@ -320,23 +334,23 @@ export function ArticleDetail() {
                       <button
                         type="button"
                         className="document-detail-edit-toggle document-detail-save-btn"
-                        onClick={() => void v.handleSaveMarkdown()}
-                        disabled={v.savingMarkdown}
+                        onClick={() => void handleSaveMarkdown()}
+                        disabled={savingMarkdown}
                         title="Save content"
                         aria-label="Save content"
                       >
-                        {v.savingMarkdown ? (
+                        {savingMarkdown ? (
                           <Loader2 size={14} className="doc-detail-spinner" aria-hidden />
                         ) : (
                           <Save size={14} aria-hidden />
                         )}
-                        <span className="ds-compact-label">{v.savingMarkdown ? 'Saving…' : 'Save'}</span>
+                        <span className="ds-compact-label">{savingMarkdown ? 'Saving…' : 'Save'}</span>
                       </button>
                       <button
                         type="button"
                         className="document-detail-edit-toggle"
-                        onClick={v.handleCancelMarkdownEdit}
-                        disabled={v.savingMarkdown}
+                        onClick={handleCancelMarkdownEdit}
+                        disabled={savingMarkdown}
                         title="Discard changes"
                         aria-label="Discard changes"
                       >
@@ -359,7 +373,7 @@ export function ArticleDetail() {
                       <button
                         type="button"
                         className="document-detail-edit-toggle"
-                        onClick={() => v.setMarkdownEditMode(true)}
+                        onClick={() => setMarkdownEditMode(true)}
                         title="Edit markdown"
                         aria-label="Edit markdown"
                         aria-pressed={false}
@@ -372,94 +386,94 @@ export function ArticleDetail() {
                 }
               />
               <div
-                className={`document-detail-markdown-body${v.markdownEditMode ? ' article-detail-markdown-body--edit' : ''}`}
+                className={`document-detail-markdown-body${markdownEditMode ? ' article-detail-markdown-body--edit' : ''}`}
               >
-                {v.markdownEditMode ? (
+                {markdownEditMode ? (
                   <div
-                    ref={v.markdownSplitLayoutRef}
-                    className={`article-detail-markdown-edit-layout${v.markdownPreviewOpen && v.id ? ' article-detail-markdown-edit-layout--split' : ''}`}
+                    ref={markdownSplitLayoutRef}
+                    className={`article-detail-markdown-edit-layout${markdownPreviewOpen && id ? ' article-detail-markdown-edit-layout--split' : ''}`}
                     style={
-                      v.markdownPreviewOpen && v.id
+                      markdownPreviewOpen && id
                         ? {
-                            gridTemplateColumns: `${v.markdownSplitEditorFr}fr ${MARKDOWN_SPLIT_GUTTER_PX}px ${100 - v.markdownSplitEditorFr}fr`,
+                            gridTemplateColumns: `${markdownSplitEditorFr}fr ${MARKDOWN_SPLIT_GUTTER_PX}px ${100 - markdownSplitEditorFr}fr`,
                           }
                         : undefined
                     }
                   >
                     <div
-                      className={`article-detail-editor-dropzone article-detail-markdown-edit-editor${v.dragActive ? ' article-detail-editor-dropzone--active' : ''}`}
+                      className={`article-detail-editor-dropzone article-detail-markdown-edit-editor${dragActive ? ' article-detail-editor-dropzone--active' : ''}`}
                       onDragOver={(e) => {
                         if (e.dataTransfer?.types?.includes('Files')) {
                           e.preventDefault();
-                          v.setDragActive(true);
+                          setDragActive(true);
                         }
                       }}
-                      onDragLeave={() => v.setDragActive(false)}
+                      onDragLeave={() => setDragActive(false)}
                       onDrop={(e) => {
                         e.preventDefault();
-                        void v.handleEditorDrop(e as unknown as React.DragEvent<HTMLTextAreaElement>);
+                        void handleEditorDrop(e as unknown as React.DragEvent<HTMLTextAreaElement>);
                       }}
                     >
                       <textarea
-                        ref={v.textareaRef}
+                        ref={textareaRef}
                         className="article-detail-markdown-textarea"
                         aria-label="Article body in Markdown"
                         placeholder="Write Markdown here. Paste or drop an image to upload, or use the toolbar."
-                        value={v.editMarkdown}
-                        onChange={(e) => v.setEditMarkdown(e.target.value)}
-                        onPaste={(e) => void v.handleEditorPaste(e)}
+                        value={editMarkdown}
+                        onChange={(e) => setEditMarkdown(e.target.value)}
+                        onPaste={(e) => void handleEditorPaste(e)}
                       />
-                      {v.dragActive && (
+                      {dragActive && (
                         <div className="article-detail-editor-dropzone-overlay" aria-hidden>
                           <Upload size={28} />
                           <span>Drop to upload — images embed inline, others become attachments</span>
                         </div>
                       )}
                       <input
-                        ref={v.imageInputRef}
+                        ref={imageInputRef}
                         type="file"
                         accept="image/*"
                         multiple
                         className="openkms-hidden"
-                        onChange={(e) => void v.handleImagePick(e)}
+                        onChange={(e) => void handleImagePick(e)}
                       />
                       <input
-                        ref={v.attachmentInputRef}
+                        ref={attachmentInputRef}
                         type="file"
                         multiple
                         className="openkms-hidden"
-                        onChange={(e) => void v.handleAttachmentPick(e)}
+                        onChange={(e) => void handleAttachmentPick(e)}
                       />
                     </div>
-                    {v.markdownPreviewOpen && v.id ? (
+                    {markdownPreviewOpen && id ? (
                       <>
                         <div
                           className="article-detail-markdown-splitter"
                           role="separator"
                           aria-orientation="vertical"
                           aria-label="Resize editor and preview"
-                          onPointerDown={v.handleMarkdownSplitPointerDown}
+                          onPointerDown={handleMarkdownSplitPointerDown}
                         />
                         <aside className="article-detail-markdown-preview-pane" aria-label="Markdown preview">
                           <div className="article-detail-markdown-preview-scroll article-detail-markdown-read">
-                            <RichMarkdown components={v.mdComponents}>
-                              {v.editMarkdown.trim() ? v.editMarkdown : ' '}
+                            <RichMarkdown components={mdComponents}>
+                              {editMarkdown.trim() ? editMarkdown : ' '}
                             </RichMarkdown>
                           </div>
                         </aside>
                       </>
                     ) : null}
                   </div>
-                ) : v.editMarkdown.trim() ? (
+                ) : editMarkdown.trim() ? (
                   <div className="article-detail-markdown-read">
                     <div className="document-detail-print-header" aria-hidden>
-                      <h1 className="document-detail-print-title">{v.article.name}</h1>
-                      {v.article.origin_article_id ? (
-                        <p className="document-detail-print-subtitle">{v.article.origin_article_id}</p>
+                      <h1 className="document-detail-print-title">{article.name}</h1>
+                      {article.origin_article_id ? (
+                        <p className="document-detail-print-subtitle">{article.origin_article_id}</p>
                       ) : null}
                     </div>
-                    <RichMarkdown components={v.mdComponents}>
-                      {v.editMarkdown}
+                    <RichMarkdown components={mdComponents}>
+                      {editMarkdown}
                     </RichMarkdown>
                   </div>
                 ) : (

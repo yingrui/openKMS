@@ -172,8 +172,6 @@ export function DocumentChannelSettings() {
     if (!channelId) navigate('/documents/channels');
   }, [channelId, navigate]);
 
-  if (!channelId) return null;
-
   const tabs: { id: TabId; label: string; icon: typeof Settings }[] = useMemo(
     () => [
       { id: 'general', label: t('settings.tabGeneral'), icon: Settings },
@@ -184,6 +182,9 @@ export function DocumentChannelSettings() {
     ],
     [t],
   );
+
+  if (!channelId) return null;
+
 
   const handleSave = async () => {
     setSaving(true);
