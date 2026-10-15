@@ -144,17 +144,15 @@ async def export_semantic_model(db: AsyncSession, model: SemanticModel) -> dict[
     def rel_name(r: DatasetJoin) -> str:
         return r.name or f"{name_by_id.get(r.from_dataset_id, r.from_dataset_id)}_to_{name_by_id.get(r.to_dataset_id, r.to_dataset_id)}"
 
-    doc: dict[str, Any] = {
-        "version": OSSIE_VERSION,
-        "name": model.name,
-        "datasets": [],
-        "relationships": [],
-        "metrics": [],
-    }
+    # Key order follows the spec's schema table (version, name, description, ai_context, …).
+    doc: dict[str, Any] = {"version": OSSIE_VERSION, "name": model.name}
     if model.description:
         doc["description"] = model.description
     if model.ai_context:
         doc["ai_context"] = model.ai_context
+    doc["datasets"] = []
+    doc["relationships"] = []
+    doc["metrics"] = []
 
     for d in datasets:
         entry: dict[str, Any] = {"name": _dataset_name(d), "source": _dataset_source(d, ds_names)}

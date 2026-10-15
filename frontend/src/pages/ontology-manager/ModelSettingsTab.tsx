@@ -15,6 +15,23 @@ import { EntityViewHeader, EntityViewPanel } from './EntityViewShell';
 import { ModelYamlPanel } from './ModelYamlPanel';
 import { useSemanticModelDetail } from './SemanticModelDetailPage';
 
+type AiContext = { instructions: string; synonyms: string; examples: string };
+
+function readAiContext(raw: unknown): AiContext {
+  const o = (raw ?? {}) as { instructions?: string; synonyms?: string[]; examples?: string[] };
+  return {
+    instructions: o.instructions ?? '',
+    synonyms: (o.synonyms ?? []).join(', '),
+    examples: (o.examples ?? []).join(', '),
+  };
+}
+
+const splitList = (s: string) =>
+  s
+    .split(',')
+    .map((x) => x.trim())
+    .filter(Boolean);
+
 function download(filename: string, text: string, type: string): void {
   const url = URL.createObjectURL(new Blob([text], { type }));
   const a = document.createElement('a');
@@ -34,6 +51,7 @@ export function ModelSettingsTab() {
   const [name, setName] = useState(model.name);
   const [description, setDescription] = useState(model.description ?? '');
   const [datasetIds, setDatasetIds] = useState<string[]>(model.dataset_ids);
+  const [ai, setAi] = useState<AiContext>(() => readAiContext(model.ai_context));
   const [saving, setSaving] = useState(false);
   const [showYaml, setShowYaml] = useState(false);
 
@@ -51,10 +69,16 @@ export function ModelSettingsTab() {
     }
     setSaving(true);
     try {
+      const synonyms = splitList(ai.synonyms);
+      const examples = splitList(ai.examples);
+      const hasAi = ai.instructions.trim() || synonyms.length || examples.length;
       await updateSemanticModel(model.id, {
         name: name.trim(),
         description: description.trim() || null,
         dataset_ids: datasetIds,
+        ai_context: hasAi
+          ? { instructions: ai.instructions.trim(), synonyms, examples }
+          : null,
       });
       toast.success(t('dataModel.modelSaved'));
       await reload();
@@ -173,6 +197,34 @@ export function ModelSettingsTab() {
                 </button>
               </div>
             )}
+          </FormField>
+        </div>
+      </EntityViewPanel>
+
+      <EntityViewPanel>
+        <div className="entity-view__form">
+          <h3>{t('datasets.aiContext')}</h3>
+          <p className="page-subtitle">{t('datasets.aiContextHint')}</p>
+          <FormField label={t('datasets.aiInstructions')}>
+            <textarea
+              rows={3}
+              value={ai.instructions}
+              onChange={(e) => setAi((prev) => ({ ...prev, instructions: e.target.value }))}
+            />
+          </FormField>
+          <FormField label={t('datasets.aiSynonyms')}>
+            <input
+              type="text"
+              value={ai.synonyms}
+              onChange={(e) => setAi((prev) => ({ ...prev, synonyms: e.target.value }))}
+            />
+          </FormField>
+          <FormField label={t('datasets.aiExamples')}>
+            <input
+              type="text"
+              value={ai.examples}
+              onChange={(e) => setAi((prev) => ({ ...prev, examples: e.target.value }))}
+            />
           </FormField>
         </div>
       </EntityViewPanel>
