@@ -1739,15 +1739,49 @@
   gap: var(--space-2);
 }
 
+// Order by + rows: two labelled groups side by side, aligned at the control line —
+// tiling every label and control into one wrapping row read as an accident, not a control.
 .playground__section--row {
   flex-direction: row;
   flex-wrap: wrap;
-  align-items: center;
+  align-items: flex-end;
+  gap: var(--space-4);
+}
 
-  .ds-control {
-    width: auto;
-    min-width: 6rem;
-  }
+.playground__field-group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  flex: 1 1 14rem;
+  min-width: 0;
+}
+
+.playground__field-group--limit {
+  flex: 0 0 6.5rem;
+}
+
+.playground__controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.playground__section--row .ds-control {
+  width: auto;
+  min-width: 0;
+}
+
+.playground__controls .ds-control {
+  flex: 1 1 7rem;
+}
+
+// The direction is two words; the field it sorts by gets the room.
+.playground__direction {
+  flex: 0 0 auto;
+}
+
+.playground__field-group--limit .ds-control {
+  width: 100%;
 }
 
 /* Group caption above a CheckList (Time dimensions / Fields). */

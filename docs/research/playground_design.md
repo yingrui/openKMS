@@ -71,6 +71,8 @@ Four user jobs, and the information each needs:
 │ │   ✓ ts_code · area       │ │  └───────────────────────────────────────────┘  │  │
 │ │ Filters                  │ │  ▸ SQL (generated)                             │  │
 │ │   + add · metric filters │ │  ▸ Recent runs (click to restore)              │  │
+│ │ Order by        Rows     │ │                                                │  │
+│ │ [value ▾][↓ desc ▾][100] │ │                                                │  │
 │ │ [ Run ]                  │ │                                                │  │
 │ └──────────────────────────┘ └────────────────────────────────────────────────┘  │
 │ ▸ Definition · expression · base dataset · joins · type · ai_context             │

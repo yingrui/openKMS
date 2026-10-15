@@ -550,58 +550,69 @@ export function ModelPlaygroundSection() {
               </div>
 
               <div className="playground__section playground__section--row">
-                <span className="playground__label">{t('dataModel.playgroundOrder')}</span>
-                <select
-                  className="ds-control"
-                  value={spec.order_by[0]?.field ?? ''}
-                  aria-label={t('dataModel.playgroundOrder')}
-                  onChange={(e) =>
-                    patch({
-                      order_by: e.target.value
-                        ? [{ field: e.target.value, direction: spec.order_by[0]?.direction ?? 'desc' }]
-                        : [],
-                    })
-                  }
-                >
-                  <option value="">{t('dataModel.playgroundOrderNone')}</option>
-                  <option value="value">{t('dataModel.playgroundOrderValue')}</option>
-                  {spec.group_by.map((g) => (
-                    <option key={g.field} value={fieldLabel(g.field)}>
-                      {fieldLabel(g.field)}
-                    </option>
-                  ))}
-                </select>
-                <select
-                  className="ds-control"
-                  value={spec.order_by[0]?.direction ?? 'desc'}
-                  aria-label={t('dataModel.playgroundDirection')}
-                  disabled={spec.order_by.length === 0}
-                  onChange={(e) =>
-                    patch({
-                      order_by: [
-                        {
-                          field: spec.order_by[0]?.field ?? 'value',
-                          direction: e.target.value as 'asc' | 'desc',
-                        },
-                      ],
-                    })
-                  }
-                >
-                  <option value="desc">↓ desc</option>
-                  <option value="asc">↑ asc</option>
-                </select>
-                <label className="playground__label" htmlFor="pg-limit">
-                  {t('dataModel.playgroundLimit')}
-                </label>
-                <input
-                  id="pg-limit"
-                  className="ds-control"
-                  type="number"
-                  min={1}
-                  max={1000}
-                  value={spec.limit}
-                  onChange={(e) => patch({ limit: Number(e.target.value) || 1 })}
-                />
+                <div className="playground__field-group">
+                  <span className="playground__label">{t('dataModel.playgroundOrder')}</span>
+                  <div className="playground__controls">
+                    <select
+                      className="ds-control"
+                      value={spec.order_by[0]?.field ?? ''}
+                      aria-label={t('dataModel.playgroundOrder')}
+                      onChange={(e) =>
+                        patch({
+                          order_by: e.target.value
+                            ? [
+                                {
+                                  field: e.target.value,
+                                  direction: spec.order_by[0]?.direction ?? 'desc',
+                                },
+                              ]
+                            : [],
+                        })
+                      }
+                    >
+                      <option value="">{t('dataModel.playgroundOrderNone')}</option>
+                      <option value="value">{t('dataModel.playgroundOrderValue')}</option>
+                      {spec.group_by.map((g) => (
+                        <option key={g.field} value={fieldLabel(g.field)}>
+                          {fieldLabel(g.field)}
+                        </option>
+                      ))}
+                    </select>
+                    <select
+                      className="ds-control playground__direction"
+                      value={spec.order_by[0]?.direction ?? 'desc'}
+                      aria-label={t('dataModel.playgroundDirection')}
+                      disabled={spec.order_by.length === 0}
+                      onChange={(e) =>
+                        patch({
+                          order_by: [
+                            {
+                              field: spec.order_by[0]?.field ?? 'value',
+                              direction: e.target.value as 'asc' | 'desc',
+                            },
+                          ],
+                        })
+                      }
+                    >
+                      <option value="desc">↓ desc</option>
+                      <option value="asc">↑ asc</option>
+                    </select>
+                  </div>
+                </div>
+                <div className="playground__field-group playground__field-group--limit">
+                  <label className="playground__label" htmlFor="pg-limit">
+                    {t('dataModel.playgroundLimit')}
+                  </label>
+                  <input
+                    id="pg-limit"
+                    className="ds-control"
+                    type="number"
+                    min={1}
+                    max={1000}
+                    value={spec.limit}
+                    onChange={(e) => patch({ limit: Number(e.target.value) || 1 })}
+                  />
+                </div>
               </div>
             </div>
           </EntityViewPanel>
