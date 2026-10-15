@@ -1659,7 +1659,7 @@ select.console-form-control {
   }
 }
 
-/* Model → Metrics: run history panel. */
+/* Model → Playground: run history panel. */
 .data-model__runs {
   margin-top: var(--space-3);
   padding: var(--space-3);
@@ -2011,7 +2011,7 @@ select.console-form-control {
   color: var(--color-text-muted);
 }
 
-.model-try__controls {
+.model-playground__controls {
   display: flex;
   align-items: flex-end;
   gap: var(--space-4);
@@ -2019,19 +2019,19 @@ select.console-form-control {
   margin-bottom: var(--space-3);
 }
 
-.model-try__dims {
+.model-playground__dims {
   display: flex;
   align-items: center;
   gap: var(--space-3);
   flex-wrap: wrap;
 }
 
-.model-try__dims-label {
+.model-playground__dims-label {
   font-size: var(--text-sm);
   color: var(--color-text-secondary);
 }
 
-.model-try__more {
+.model-playground__more {
   margin-top: var(--space-2);
 
   summary {
@@ -2041,11 +2041,11 @@ select.console-form-control {
   }
 }
 
-.model-try__sql-toggle {
+.model-playground__sql-toggle {
   margin-top: var(--space-2);
 }
 
-.model-try__sql {
+.model-playground__sql {
   margin: var(--space-2) 0 0;
   padding: var(--space-3);
   border: 1px solid var(--color-border);

@@ -87,7 +87,7 @@ Goal: the Datasets app **manages the Ossie semantic model**, with each definitio
 ### Stage 3 — Fields (the field layer) ✅ *(revised: fields are model-scoped)*
 - **Schema:** `semantic_model_fields` — `semantic_model_id`, `dataset_id`, `name`, `column_name` (null = computed), `expression` (Ossie `{dialects:[{dialect, expression}]}`, scalar), `datatype` (Ossie `DataType` enum), `description`, `dimension` (`{is_time: bool}`), `ai_context`, ordinal; unique `(model, dataset, name)`. Created **explicitly** (not auto-seeded).
 - **Catalog:** a dataset exposes its **Columns** (physical) + a maintained **`description`** per column (`dataset_columns`). No semantic field editor here.
-- **Frontend:** **Model → a model → Fields** — computed fields, the `dimension` role (`is_time`), and `ai_context` per field; **Try** groups a metric by fields (time ones via `date_trunc`, granularity chosen at query time).
+- **Frontend:** **Model → a model → Fields** — computed fields, the `dimension` role (`is_time`), and `ai_context` per field; **Playground** groups a metric by fields (time ones via `date_trunc`, granularity chosen at query time).
 - **Verify:** ✅ a computed field is stored; a `is_time` field carries the role; the **same column can differ per model**.
 
 ### Stage 4 — Metrics: model-level, Ossie SQL expressions ✅

@@ -99,7 +99,7 @@ export function SemanticModelDetailPage() {
           { to: base, label: t('dataModel.metrics'), end: true },
           { to: `${base}/datasets`, label: t('datasets.title') },
           { to: `${base}/relationships`, label: t('datasets.relationships') },
-          { to: `${base}/try`, label: t('dataModel.tryTitle') },
+          { to: `${base}/playground`, label: t('dataModel.playgroundTitle') },
           { to: `${base}/settings`, label: t('dataModel.settings') },
         ]}
       >

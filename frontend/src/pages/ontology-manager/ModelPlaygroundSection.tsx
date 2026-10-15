@@ -24,7 +24,7 @@ import { useSemanticModelDetail } from './SemanticModelDetailPage';
 const GRANULARITIES = ['second', 'minute', 'hour', 'day', 'week', 'month', 'quarter', 'year'];
 
 /** Model → Try: run a metric grouped by fields (ad-hoc, read-only, not saved). */
-export function ModelTrySection() {
+export function ModelPlaygroundSection() {
   const { t } = useTranslation('ontology');
   const { model } = useSemanticModelDetail();
   const modelId = model.id;
@@ -105,7 +105,7 @@ export function ModelTrySection() {
         }),
       );
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : t('dataModel.tryRunFailed'));
+      toast.error(e instanceof Error ? e.message : t('dataModel.playgroundRunFailed'));
     } finally {
       setRunning(false);
       // The run is audited server-side; refresh the history shown below.
@@ -117,16 +117,16 @@ export function ModelTrySection() {
 
   return (
     <>
-      <EntityViewHeader title={t('dataModel.tryTitle')} subtitle={t('dataModel.tryHint')} />
+      <EntityViewHeader title={t('dataModel.playgroundTitle')} subtitle={t('dataModel.playgroundHint')} />
 
       <EntityViewPanel>
         {loading ? (
           <p className="entity-view__readonly">{t('shared.loading')}</p>
         ) : metrics.length === 0 ? (
-          <p className="entity-view__readonly">{t('dataModel.tryNoMetrics')}</p>
+          <p className="entity-view__readonly">{t('dataModel.playgroundNoMetrics')}</p>
         ) : (
           <>
-            <div className="model-try__controls">
+            <div className="model-playground__controls">
               <FormField label={t('datasets.metricName')}>
                 <select value={metricId} onChange={(e) => setMetricId(e.target.value)}>
                   {metrics.map((m) => (
@@ -136,10 +136,10 @@ export function ModelTrySection() {
                   ))}
                 </select>
               </FormField>
-              <div className="model-try__dims">
-                <span className="model-try__dims-label">{t('dataModel.tryDimensions')}</span>
+              <div className="model-playground__dims">
+                <span className="model-playground__dims-label">{t('dataModel.playgroundDimensions')}</span>
                 {groupable.length === 0 ? (
-                  <span className="page-subtitle">{t('dataModel.tryNoDimensions')}</span>
+                  <span className="page-subtitle">{t('dataModel.playgroundNoDimensions')}</span>
                 ) : (
                   <>
                     {timeDims.map((f) => (
@@ -156,9 +156,9 @@ export function ModelTrySection() {
                       </label>
                     ))}
                     {otherFields.length > 0 && (
-                      <details className="model-try__more">
+                      <details className="model-playground__more">
                         <summary>
-                          {t('dataModel.tryOtherFields', { count: otherFields.length })}
+                          {t('dataModel.playgroundOtherFields', { count: otherFields.length })}
                         </summary>
                         {otherFields.map((f) => (
                           <label key={f.id} className="ds-check-row">
@@ -197,14 +197,14 @@ export function ModelTrySection() {
                 ) : (
                   <Play size={16} aria-hidden />
                 )}
-                {t('dataModel.tryRun')}
+                {t('dataModel.playgroundRun')}
               </button>
             </div>
 
             {result && (
               <>
                 {result.rows.length === 0 ? (
-                  <EmptyState title={t('dataModel.tryNoRows')} description={t('dataModel.tryHint')} />
+                  <EmptyState title={t('dataModel.playgroundNoRows')} description={t('dataModel.playgroundHint')} />
                 ) : (
                   <div className="ds-table-wrap ds-table-wrap--flush">
                     <table className="console-table">
@@ -233,18 +233,18 @@ export function ModelTrySection() {
                 )}
                 <button
                   type="button"
-                  className="btn btn-secondary btn-sm model-try__sql-toggle"
+                  className="btn btn-secondary btn-sm model-playground__sql-toggle"
                   onClick={() => setShowSql((v) => !v)}
                 >
-                  {t('dataModel.trySql')}
+                  {t('dataModel.playgroundSql')}
                 </button>
-                {showSql && <pre className="model-try__sql">{result.sql}</pre>}
+                {showSql && <pre className="model-playground__sql">{result.sql}</pre>}
               </>
             )}
 
             {runs.length > 0 && (
               <div className="data-model__runs">
-                <h3>{t('dataModel.tryRuns')}</h3>
+                <h3>{t('dataModel.playgroundRuns')}</h3>
                 <ul className="data-model__run-list">
                   {runs.map((r) => (
                     <li key={r.id}>

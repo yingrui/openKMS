@@ -80,7 +80,7 @@ The **shared base** (datasets, their physical columns, relationships) lives in *
 
 ### 3. Metrics
 - **Model-level** aggregate **expressions** (metrics span datasets via relationships; not per-dataset). ✅ Stage 4.
-- Author: name, **definition/description**, `expression` (an aggregate over fields/measures — e.g. `SUM(orders.amount)`), `datatype`, `ai_context`. The list is **definition-only** (edit/delete) — running happens in **Try**; each run is read-only (timeout + row cap) and audited (`metric_runs`, shown as *Recent runs* on the Try page).
+- Author: name, **definition/description**, `expression` (an aggregate over fields/measures — e.g. `SUM(orders.amount)`), `datatype`, `ai_context`. The list is **definition-only** (edit/delete) — running happens in the **Playground**; each run is read-only (timeout + row cap) and audited (`metric_runs`, shown as *Recent runs* on the Playground).
 - **No dimensions here**: in Ossie a *dimension* is a **field role**; grouping is a **consumption** concern. The metric itself is a **SQL expression** (§Metrics below).
 - **Dialect:** every expression is labelled `ANSI_SQL` (decision #25) — our datasets are PostgreSQL-only, so fragments may use PostgreSQL syntax and are then not portable.
 - **Anchor:** the core spec has no `base_dataset` (its engine derives the `FROM`/joins from the expression). Ours keeps an explicit anchor in the `OPENKMS` `custom_extensions`; deriving it is deferred to the agent auto-query phase (decision #24).
@@ -92,8 +92,8 @@ The **shared base** (datasets, their physical columns, relationships) lives in *
 - **Columns** live with the dataset (**Catalog → dataset → Columns**): the physical columns (from `information_schema`) + a maintained **`description`** per column (`dataset_columns`). A **field** is the model-scoped semantic projection of a column (or a computed expression).
 - The **Ossie `datasets`** section of a model's document: `source` (a dotted string), `primary_key`, `unique_keys`, **`columns`** (with descriptions), **`fields`** (the model's), `ai_context`.
 
-### 5. Try (preview)
-- **Try** is its own route (`/data-model/{id}/try`) and a **nav item** of the model's entity shell — it runs a metric **grouped by fields** (dimensions), ad-hoc and read-only, nothing saved. Time dimensions aggregate with `date_trunc('<granularity>', …)`, the **granularity chosen at query time**; so “P/E per day per stock” = the metric + `group_by` `trade_date` (time) and `ts_code`.
+### 5. Playground (preview)
+- **Playground** is its own route (`/data-model/{id}/playground`) and a **nav item** of the model's entity shell — it runs a metric **grouped by fields** (dimensions), ad-hoc and read-only, nothing saved. Time dimensions aggregate with `date_trunc('<granularity>', …)`, the **granularity chosen at query time**; so “P/E per day per stock” = the metric + `group_by` `trade_date` (time) and `ts_code`.
 - It returns the rows **and the generated SQL**. Saving a query is a **consumption** concern → **Data Explorer** (`saved_queries` was removed).
 
 ### 6. Export / Import (Ossie) ✅

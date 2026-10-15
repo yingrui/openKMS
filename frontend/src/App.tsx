@@ -235,9 +235,9 @@ const ModelRelationshipsSection = lazy(() =>
     default: m.ModelRelationshipsSection,
   })),
 );
-const ModelTrySection = lazy(() =>
-  import('./pages/ontology-manager/ModelTrySection').then((m) => ({
-    default: m.ModelTrySection,
+const ModelPlaygroundSection = lazy(() =>
+  import('./pages/ontology-manager/ModelPlaygroundSection').then((m) => ({
+    default: m.ModelPlaygroundSection,
   })),
 );
 const ModelSettingsTab = lazy(() =>
@@ -441,7 +441,7 @@ function App() {
             <Route index element={<ModelMetricsSection />} />
             <Route path="datasets" element={<ModelDatasetsSection />} />
             <Route path="relationships" element={<ModelRelationshipsSection />} />
-            <Route path="try" element={<ModelTrySection />} />
+            <Route path="playground" element={<ModelPlaygroundSection />} />
             <Route path="settings" element={<ModelSettingsTab />} />
           </Route>
           <Route path="data-explorer" element={<DataExplorerPage />} />
