@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
-import { Trash2 } from 'lucide-react';
+import { Plus, Trash2, X } from 'lucide-react';
 import { toast } from 'sonner';
 import {
   deleteSemanticModel,
@@ -10,7 +10,8 @@ import {
   updateSemanticModel,
 } from '../../data/semanticModelsApi';
 import { useConfirm } from '../../contexts/ConfirmContext';
-import { EntityViewField, EntityViewHeader, EntityViewPanel } from './EntityViewShell';
+import { FormField } from '../../styles/design-system';
+import { EntityViewHeader, EntityViewPanel } from './EntityViewShell';
 import { ModelYamlPanel } from './ModelYamlPanel';
 import { useSemanticModelDetail } from './SemanticModelDetailPage';
 
@@ -39,8 +40,9 @@ export function ModelSettingsTab() {
   const datasetLabel = (d: (typeof allDatasets)[number]) =>
     d.display_name || `${d.schema_name}.${d.table_name}`;
 
-  const toggleDataset = (id: string) =>
-    setDatasetIds((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
+  const [pick, setPick] = useState('');
+  const selectedDatasets = allDatasets.filter((d) => datasetIds.includes(d.id));
+  const availableDatasets = allDatasets.filter((d) => !datasetIds.includes(d.id));
 
   const handleSave = async () => {
     if (!name.trim()) {
@@ -114,33 +116,64 @@ export function ModelSettingsTab() {
 
       <EntityViewPanel>
         <div className="entity-view__form">
-          <EntityViewField label={t('dataModel.modelName')}>
+          <FormField label={t('dataModel.modelName')}>
             <input type="text" value={name} onChange={(e) => setName(e.target.value)} />
-          </EntityViewField>
-          <EntityViewField label={t('dataModel.modelDescription')}>
+          </FormField>
+          <FormField label={t('dataModel.modelDescription')}>
             <textarea
               rows={2}
               value={description}
               onChange={(e) => setDescription(e.target.value)}
             />
-          </EntityViewField>
-          <EntityViewField
+          </FormField>
+          <FormField
             label={t('dataModel.modelDatasets')}
             hint={t('dataModel.modelDatasetsHint')}
           >
-            <div className="dataset-pk-list">
-              {allDatasets.map((d) => (
-                <label key={d.id} className="ds-check-row">
-                  <input
-                    type="checkbox"
-                    checked={datasetIds.includes(d.id)}
-                    onChange={() => toggleDataset(d.id)}
-                  />
-                  <span>{datasetLabel(d)}</span>
-                </label>
-              ))}
-            </div>
-          </EntityViewField>
+            {selectedDatasets.length === 0 ? (
+              <p className="page-subtitle">{t('dataModel.noDatasetsSelected')}</p>
+            ) : (
+              <ul className="model-scope-edit">
+                {selectedDatasets.map((d) => (
+                  <li key={d.id}>
+                    <span>{datasetLabel(d)}</span>
+                    <button
+                      type="button"
+                      className="btn btn-secondary btn-sm"
+                      aria-label={t('dataModel.removeDataset', { name: datasetLabel(d) })}
+                      onClick={() => setDatasetIds((prev) => prev.filter((x) => x !== d.id))}
+                    >
+                      <X size={14} aria-hidden />
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
+            {availableDatasets.length > 0 && (
+              <div className="model-scope-add">
+                <select value={pick} onChange={(e) => setPick(e.target.value)}>
+                  <option value="">{t('dataModel.addDataset')}</option>
+                  {availableDatasets.map((d) => (
+                    <option key={d.id} value={d.id}>
+                      {datasetLabel(d)}
+                    </option>
+                  ))}
+                </select>
+                <button
+                  type="button"
+                  className="btn btn-secondary"
+                  disabled={!pick}
+                  onClick={() => {
+                    setDatasetIds((prev) => [...prev, pick]);
+                    setPick('');
+                  }}
+                >
+                  <Plus size={16} aria-hidden />
+                  {t('dataModel.addDataset')}
+                </button>
+              </div>
+            )}
+          </FormField>
         </div>
       </EntityViewPanel>
 

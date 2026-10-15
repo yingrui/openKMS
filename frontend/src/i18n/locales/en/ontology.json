@@ -196,7 +196,10 @@
     "yamlExpand_default": "Expand the first two levels",
     "yamlExpand_all": "Expand every node",
     "yamlExpand_collapsed": "Collapse everything",
-    "yamlHint": "Fold any node by clicking it · Copy takes the whole YAML document."
+    "yamlHint": "Fold any node by clicking it · Copy takes the whole YAML document.",
+    "noDatasetsSelected": "No datasets in scope yet.",
+    "addDataset": "Add dataset",
+    "removeDataset": "Remove {{name}}"
   },
   "datasets": {
     "title": "Datasets",

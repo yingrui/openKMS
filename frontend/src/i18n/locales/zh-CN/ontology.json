@@ -194,7 +194,10 @@
     "yamlExpand_default": "展开前两层",
     "yamlExpand_all": "展开全部节点",
     "yamlExpand_collapsed": "全部折叠",
-    "yamlHint": "点击节点即可折叠 · 复制得到完整的 YAML 文档。"
+    "yamlHint": "点击节点即可折叠 · 复制得到完整的 YAML 文档。",
+    "noDatasetsSelected": "尚未选择任何数据集。",
+    "addDataset": "添加数据集",
+    "removeDataset": "移除 {{name}}"
   },
   "datasets": {
     "title": "数据集",
