@@ -109,7 +109,6 @@
 
 // Legacy class aliases — same chrome as .ds-dialog-* so unmigrated pages
 // pick up backdrop token + viewport-safe sizing. Prefer migrating to <Dialog>.
-.console-modal-overlay,
 .channel-page-modal-overlay,
 .jobs-modal-overlay,
 .pipelines-modal-overlay,
@@ -163,9 +162,4 @@
   background: var(--color-bg-elevated);
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-lg);
-}
-
-.console-modal.console-modal--wide,
-.console-modal--wide {
-  --dialog-w: 680px;
 }

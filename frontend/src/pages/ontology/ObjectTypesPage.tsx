@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Plus, Pencil, Trash2, X, Loader2, Database, Users, Box } from 'lucide-react';
+import { Plus, Pencil, Trash2, Loader2, Database, Users, Box } from 'lucide-react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
-import { EmptyState } from '../../styles/design-system';
+import { Dialog, FormField, EmptyState } from '../../styles/design-system';
 import {
   fetchObjectTypes,
   deleteObjectType,
@@ -305,45 +305,15 @@ export function ObjectTypesPage() {
         onCreated={() => void load()}
       />
 
-      {showIndexDialog && (
-        <div
-          className="console-modal-overlay"
-          onClick={(e) => e.target === e.currentTarget && !indexing && !indexingTypeId && setShowIndexDialog(false)}
-        >
-          <div className="console-modal" onClick={(e) => e.stopPropagation()}>
-            <div className="console-modal-header">
-              <h2>Index Objects to Knowledge Graph</h2>
-              <button
-                type="button"
-                onClick={() => !indexing && !indexingTypeId && setShowIndexDialog(false)}
-                disabled={indexing || indexingTypeId !== null}
-                aria-label="Close"
-              >
-                <X size={20} />
-              </button>
-            </div>
-            <div className="console-modal-body">
-              <p className="console-modal-hint">
-                Index all object types that have a linked dataset or stored instances to the selected Neo4j database as
-                nodes.
-              </p>
-              <label>
-                <span>Neo4j Data Source</span>
-                <select
-                  value={indexNeo4jId}
-                  onChange={(e) => setIndexNeo4jId(e.target.value)}
-                  disabled={indexing || indexingTypeId !== null}
-                >
-                  <option value="">Select…</option>
-                  {neo4jDataSources.map((ds) => (
-                    <option key={ds.id} value={ds.id}>
-                      {ds.name} ({ds.host}:{ds.port ?? 7687})
-                    </option>
-                  ))}
-                </select>
-              </label>
-            </div>
-            <div className="console-modal-actions">
+      <Dialog
+        open={showIndexDialog}
+        onClose={() => !indexing && !indexingTypeId && setShowIndexDialog(false)}
+        closeDisabled={indexing || indexingTypeId !== null}
+        title="Index Objects to Knowledge Graph"
+        closeAriaLabel="Close"
+        size="md"
+        footer={
+          <>
               <button
                 type="button"
                 className="btn btn-secondary"
@@ -367,78 +337,19 @@ export function ObjectTypesPage() {
                   'Confirm & Index'
                 )}
               </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {showIndexOneDialog && indexOneType && (
-        <div
-          className="console-modal-overlay"
-          onClick={(e) => {
-            if (e.target !== e.currentTarget || indexingTypeId) return;
-            setShowIndexOneDialog(false);
-            setIndexOneType(null);
-          }}
-        >
-          <div
-            className={`console-modal${
-              indexOneType.dataset_id
-                ? ' console-modal--index-one-dataset'
-                : ' console-modal--index-one-instances'
-            }`}
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="console-modal-header">
-              <h2>
-                {indexOneType.dataset_id
-                  ? 'Index from linked dataset'
-                  : 'Index from saved instances'}
-              </h2>
-              <button
-                type="button"
-                onClick={() => {
-                  if (indexingTypeId) return;
-                  setShowIndexOneDialog(false);
-                  setIndexOneType(null);
-                }}
-                disabled={!!indexingTypeId}
-                aria-label="Close"
-              >
-                <X size={20} />
-              </button>
-            </div>
-            <div className="console-modal-body">
-              {indexOneType.dataset_id ? (
-                <>
-                  <p className="console-modal-index-lead">
-                    <strong>{indexOneType.name}</strong> is tied to a data table. Choose where to write graph nodes,
-                    then confirm.
-                  </p>
-                  <div className="console-modal-index-callout console-modal-index-callout--dataset" role="note">
-                    Rows are read from the linked table and merged into the knowledge graph using the same property
-                    names as columns.
-                  </div>
-                </>
-              ) : (
-                <>
-                  <p className="console-modal-index-lead">
-                    <strong>{indexOneType.name}</strong> is not tied to a data table. Indexing uses{' '}
-                    <strong>{indexOneType.instance_count}</strong>{' '}
-                    {indexOneType.instance_count === 1 ? 'instance' : 'instances'} you saved in the app.
-                  </p>
-                  <div className="console-modal-index-callout console-modal-index-callout--instances" role="note">
-                    Each saved instance becomes one node in the graph. Property keys match what you stored on each
-                    instance.
-                  </div>
-                </>
-              )}
-              <label>
-                <span>Neo4j Data Source</span>
+            
+          </>
+        }
+      >
+              <p className="page-subtitle">
+                Index all object types that have a linked dataset or stored instances to the selected Neo4j database as
+                nodes.
+              </p>
+              <FormField label="Neo4j Data Source">
                 <select
                   value={indexNeo4jId}
                   onChange={(e) => setIndexNeo4jId(e.target.value)}
-                  disabled={!!indexingTypeId}
+                  disabled={indexing || indexingTypeId !== null}
                 >
                   <option value="">Select…</option>
                   {neo4jDataSources.map((ds) => (
@@ -447,9 +358,23 @@ export function ObjectTypesPage() {
                     </option>
                   ))}
                 </select>
-              </label>
-            </div>
-            <div className="console-modal-actions">
+</FormField>
+            
+      </Dialog>
+            {showIndexOneDialog && indexOneType ? (
+<Dialog
+        open={showIndexOneDialog && Boolean(indexOneType)}
+        onClose={() => {
+          if (indexingTypeId) return;
+          setShowIndexOneDialog(false);
+          setIndexOneType(null);
+        }}
+        closeDisabled={Boolean(indexingTypeId)}
+        title={indexOneType.dataset_id ? 'Index from linked dataset' : 'Index from saved instances'}
+        closeAriaLabel="Close"
+        size="md"
+        footer={
+          <>
               <button
                 type="button"
                 className="btn btn-secondary"
@@ -479,10 +404,50 @@ export function ObjectTypesPage() {
                   'Index instances'
                 )}
               </button>
-            </div>
-          </div>
-        </div>
-      )}
+            
+          </>
+        }
+      >
+              {indexOneType.dataset_id ? (
+                <>
+                  <p className="console-modal-index-lead">
+                    <strong>{indexOneType.name}</strong> is tied to a data table. Choose where to write graph nodes,
+                    then confirm.
+                  </p>
+                  <div className="console-modal-index-callout console-modal-index-callout--dataset" role="note">
+                    Rows are read from the linked table and merged into the knowledge graph using the same property
+                    names as columns.
+                  </div>
+                </>
+              ) : (
+                <>
+                  <p className="console-modal-index-lead">
+                    <strong>{indexOneType.name}</strong> is not tied to a data table. Indexing uses{' '}
+                    <strong>{indexOneType.instance_count}</strong>{' '}
+                    {indexOneType.instance_count === 1 ? 'instance' : 'instances'} you saved in the app.
+                  </p>
+                  <div className="console-modal-index-callout console-modal-index-callout--instances" role="note">
+                    Each saved instance becomes one node in the graph. Property keys match what you stored on each
+                    instance.
+                  </div>
+                </>
+              )}
+              <FormField label="Neo4j Data Source">
+                <select
+                  value={indexNeo4jId}
+                  onChange={(e) => setIndexNeo4jId(e.target.value)}
+                  disabled={!!indexingTypeId}
+                >
+                  <option value="">Select…</option>
+                  {neo4jDataSources.map((ds) => (
+                    <option key={ds.id} value={ds.id}>
+                      {ds.name} ({ds.host}:{ds.port ?? 7687})
+                    </option>
+                  ))}
+                </select>
+</FormField>
+            
+      </Dialog>      ) : null}
     </div>
   );
 }

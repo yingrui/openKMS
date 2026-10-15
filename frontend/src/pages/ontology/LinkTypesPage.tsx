@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useState } from 'react';
-import { Plus, Pencil, Trash2, X, Loader2, Database, Users, Link2 } from 'lucide-react';
+import { Plus, Pencil, Trash2, Loader2, Database, Users, Link2 } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
-import { EmptyState } from '../../styles/design-system';
+import { Dialog, FormField, EmptyState } from '../../styles/design-system';
 import {
   fetchLinkTypes,
   fetchObjectTypes,
@@ -370,168 +370,15 @@ export function LinkTypesPage() {
         )}
       </div>
 
-      {showForm && (
-        <div className="console-modal-overlay" onClick={(e) => e.target === e.currentTarget && !submitting && setShowForm(false)}>
-          <div className="console-modal console-modal--wide" onClick={(e) => e.stopPropagation()}>
-            <div className="console-modal-header">
-              <h2>{editType ? 'Edit Link Type' : 'New Link Type'}</h2>
-              <button
-                type="button"
-                onClick={() => !submitting && setShowForm(false)}
-                disabled={submitting}
-                aria-label="Close"
-              >
-                <X size={20} />
-              </button>
-            </div>
-            <div className="console-modal-body">
-              <label>
-                Name
-                <input
-                  type="text"
-                  value={formName}
-                  onChange={(e) => setFormName(e.target.value)}
-                  placeholder="e.g. covers"
-                />
-              </label>
-              <label>
-                Description
-                <input
-                  type="text"
-                  value={formDescription}
-                  onChange={(e) => setFormDescription(e.target.value)}
-                  placeholder="Optional"
-                />
-              </label>
-              <label>
-                Source object type
-                <select
-                  value={formSourceId}
-                  onChange={(e) => setFormSourceId(e.target.value)}
-                >
-                  <option value="">Select…</option>
-                  {objectTypes.map((o) => (
-                    <option key={o.id} value={o.id}>{o.name}</option>
-                  ))}
-                </select>
-              </label>
-              <label>
-                Target object type
-                <select
-                  value={formTargetId}
-                  onChange={(e) => setFormTargetId(e.target.value)}
-                >
-                  <option value="">Select…</option>
-                  {objectTypes.map((o) => (
-                    <option key={o.id} value={o.id}>{o.name}</option>
-                  ))}
-                </select>
-              </label>
-              <label>
-                <span>Cardinality</span>
-                <select
-                  value={formCardinality}
-                  onChange={(e) => setFormCardinality(e.target.value)}
-                >
-                  {CARDINALITY_OPTIONS.map((c) => (
-                    <option key={c} value={c}>{c}</option>
-                  ))}
-                </select>
-                <span className="console-modal-hint console-modal-hint--block">
-                  One-to-one: indicator only (not enforced). Many-to-many: link to junction table dataset.
-                </span>
-              </label>
-              {formCardinality === 'many-to-many' && (
-                <label>
-                  <span>Dataset (junction table)</span>
-                  <select
-                    value={formDatasetId}
-                    onChange={(e) => {
-                      setFormDatasetId(e.target.value);
-                      setFormSourceDatasetColumn('');
-                      setFormTargetDatasetColumn('');
-                    }}
-                  >
-                    <option value="">Select dataset…</option>
-                    {datasets.map((d) => (
-                      <option key={d.id} value={d.id}>
-                        {d.display_name || `${d.schema_name}.${d.table_name}`}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-              )}
-              <div className="console-modal-fk-section">
-                <span className="console-modal-fk-label">
-                  {formCardinality === 'many-to-many' && formDatasetId
-                    ? 'Source Key Property — Link Dataset Source Key Property — Link Dataset Target Key Property — Target Key Property'
-                    : 'Foreign key (connect properties)'}
-                </span>
-                <div className="console-modal-fk-chain">
-                  <label>
-                    <span>Source Key Property</span>
-                    <select
-                      value={formSourceKeyProperty}
-                      onChange={(e) => setFormSourceKeyProperty(e.target.value)}
-                    >
-                      <option value="">— Select —</option>
-                      {sourceProperties.map((p) => (
-                        <option key={p.name} value={p.name}>{p.name}</option>
-                      ))}
-                    </select>
-                  </label>
-                  {formCardinality === 'many-to-many' && formDatasetId && datasetColumns.length > 0 && (
-                    <>
-                      <span className="console-modal-fk-arrow">—</span>
-                      <label>
-                        <span>Link Dataset Source Key Property</span>
-                        <select
-                          value={formSourceDatasetColumn}
-                          onChange={(e) => setFormSourceDatasetColumn(e.target.value)}
-                        >
-                          <option value="">— Select —</option>
-                          {datasetColumns.map((c) => (
-                            <option key={c.column_name} value={c.column_name}>{c.column_name}</option>
-                          ))}
-                        </select>
-                      </label>
-                      <span className="console-modal-fk-arrow">—</span>
-                      <label>
-                        <span>Link Dataset Target Key Property</span>
-                        <select
-                          value={formTargetDatasetColumn}
-                          onChange={(e) => setFormTargetDatasetColumn(e.target.value)}
-                        >
-                          <option value="">— Select —</option>
-                          {datasetColumns.map((c) => (
-                            <option key={c.column_name} value={c.column_name}>{c.column_name}</option>
-                          ))}
-                        </select>
-                      </label>
-                    </>
-                  )}
-                  <span className="console-modal-fk-arrow">—</span>
-                  <label>
-                    <span>Target Key Property</span>
-                    <select
-                      value={formTargetKeyProperty}
-                      onChange={(e) => setFormTargetKeyProperty(e.target.value)}
-                    >
-                      <option value="">— Select —</option>
-                      {targetProperties.map((p) => (
-                        <option key={p.name} value={p.name}>{p.name}</option>
-                      ))}
-                    </select>
-                  </label>
-                </div>
-                <span className="console-modal-hint console-modal-hint--block">
-                  {formCardinality === 'many-to-many' && formDatasetId
-                    ? 'Which property/column maps source → target through the junction table.'
-                    : 'Which property in source/target object types forms the link (e.g. id, icd_code).'}
-                </span>
-              </div>
-            </div>
-            <div className="console-modal-actions">
+      <Dialog
+        open={showForm}
+        onClose={() => !submitting && setShowForm(false)}
+        closeDisabled={submitting}
+        title={editType ? 'Edit Link Type' : 'New Link Type'}
+        closeAriaLabel="Close"
+        size="lg"
+        footer={
+          <>
               <button
                 type="button"
                 className="btn btn-secondary"
@@ -554,50 +401,156 @@ export function LinkTypesPage() {
               >
                 {submitting ? 'Saving…' : editType ? 'Update' : 'Create'}
               </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {showIndexDialog && (
-        <div
-          className="console-modal-overlay"
-          onClick={(e) => e.target === e.currentTarget && !indexing && !indexingLinkId && setShowIndexDialog(false)}
-        >
-          <div className="console-modal" onClick={(e) => e.stopPropagation()}>
-            <div className="console-modal-header">
-              <h2>Index Links to Knowledge Graph</h2>
-              <button
-                type="button"
-                onClick={() => !indexing && !indexingLinkId && setShowIndexDialog(false)}
-                disabled={indexing || indexingLinkId !== null}
-                aria-label="Close"
-              >
-                <X size={20} />
-              </button>
-            </div>
-            <div className="console-modal-body">
-              <p className="console-modal-hint">
-                Index every link type that has a junction or source-side dataset, or saved links, to the selected Neo4j
-                database as relationships.
-              </p>
-              <label>
-                <span>Neo4j Data Source</span>
-                <select
-                  value={indexNeo4jId}
-                  onChange={(e) => setIndexNeo4jId(e.target.value)}
-                  disabled={indexing || indexingLinkId !== null}
+            
+          </>
+        }
+      >
+              <FormField label="Name">
+<input
+                  type="text"
+                  value={formName}
+                  onChange={(e) => setFormName(e.target.value)}
+                  placeholder="e.g. covers"
+                />
+</FormField>
+              <FormField label="Description">
+<input
+                  type="text"
+                  value={formDescription}
+                  onChange={(e) => setFormDescription(e.target.value)}
+                  placeholder="Optional"
+                />
+</FormField>
+              <FormField label="Source object type">
+<select
+                  value={formSourceId}
+                  onChange={(e) => setFormSourceId(e.target.value)}
                 >
                   <option value="">Select…</option>
-                  {neo4jDataSources.map((ds) => (
-                    <option key={ds.id} value={ds.id}>
-                      {ds.name} ({ds.host}:{ds.port ?? 7687})
-                    </option>
+                  {objectTypes.map((o) => (
+                    <option key={o.id} value={o.id}>{o.name}</option>
                   ))}
                 </select>
-              </label>
-            </div>
-            <div className="console-modal-actions">
+</FormField>
+              <FormField label="Target object type">
+<select
+                  value={formTargetId}
+                  onChange={(e) => setFormTargetId(e.target.value)}
+                >
+                  <option value="">Select…</option>
+                  {objectTypes.map((o) => (
+                    <option key={o.id} value={o.id}>{o.name}</option>
+                  ))}
+                </select>
+</FormField>
+              <FormField label="Cardinality">
+                <select
+                  value={formCardinality}
+                  onChange={(e) => setFormCardinality(e.target.value)}
+                >
+                  {CARDINALITY_OPTIONS.map((c) => (
+                    <option key={c} value={c}>{c}</option>
+                  ))}
+                </select>
+                <span className="page-subtitle page-subtitle--block">
+                  One-to-one: indicator only (not enforced). Many-to-many: link to junction table dataset.
+                </span>
+</FormField>
+              {formCardinality === 'many-to-many' && (
+                <FormField label="Dataset (junction table)">
+                  <select
+                    value={formDatasetId}
+                    onChange={(e) => {
+                      setFormDatasetId(e.target.value);
+                      setFormSourceDatasetColumn('');
+                      setFormTargetDatasetColumn('');
+                    }}
+                  >
+                    <option value="">Select dataset…</option>
+                    {datasets.map((d) => (
+                      <option key={d.id} value={d.id}>
+                        {d.display_name || `${d.schema_name}.${d.table_name}`}
+                      </option>
+                    ))}
+                  </select>
+</FormField>
+              )}
+              <div className="console-modal-fk-section">
+                <span className="console-modal-fk-label">
+                  {formCardinality === 'many-to-many' && formDatasetId
+                    ? 'Source Key Property — Link Dataset Source Key Property — Link Dataset Target Key Property — Target Key Property'
+                    : 'Foreign key (connect properties)'}
+                </span>
+                <div className="console-modal-fk-chain">
+                  <FormField label="Source Key Property">
+                    <select
+                      value={formSourceKeyProperty}
+                      onChange={(e) => setFormSourceKeyProperty(e.target.value)}
+                    >
+                      <option value="">— Select —</option>
+                      {sourceProperties.map((p) => (
+                        <option key={p.name} value={p.name}>{p.name}</option>
+                      ))}
+                    </select>
+</FormField>
+                  {formCardinality === 'many-to-many' && formDatasetId && datasetColumns.length > 0 && (
+                    <>
+                      <span className="console-modal-fk-arrow">—</span>
+                      <FormField label="Link Dataset Source Key Property">
+                        <select
+                          value={formSourceDatasetColumn}
+                          onChange={(e) => setFormSourceDatasetColumn(e.target.value)}
+                        >
+                          <option value="">— Select —</option>
+                          {datasetColumns.map((c) => (
+                            <option key={c.column_name} value={c.column_name}>{c.column_name}</option>
+                          ))}
+                        </select>
+</FormField>
+                      <span className="console-modal-fk-arrow">—</span>
+                      <FormField label="Link Dataset Target Key Property">
+                        <select
+                          value={formTargetDatasetColumn}
+                          onChange={(e) => setFormTargetDatasetColumn(e.target.value)}
+                        >
+                          <option value="">— Select —</option>
+                          {datasetColumns.map((c) => (
+                            <option key={c.column_name} value={c.column_name}>{c.column_name}</option>
+                          ))}
+                        </select>
+</FormField>
+                    </>
+                  )}
+                  <span className="console-modal-fk-arrow">—</span>
+                  <FormField label="Target Key Property">
+                    <select
+                      value={formTargetKeyProperty}
+                      onChange={(e) => setFormTargetKeyProperty(e.target.value)}
+                    >
+                      <option value="">— Select —</option>
+                      {targetProperties.map((p) => (
+                        <option key={p.name} value={p.name}>{p.name}</option>
+                      ))}
+                    </select>
+</FormField>
+                </div>
+                <span className="page-subtitle page-subtitle--block">
+                  {formCardinality === 'many-to-many' && formDatasetId
+                    ? 'Which property/column maps source → target through the junction table.'
+                    : 'Which property in source/target object types forms the link (e.g. id, icd_code).'}
+                </span>
+              </div>
+            
+      </Dialog>
+      <Dialog
+        open={showIndexDialog}
+        onClose={() => !indexing && !indexingLinkId && setShowIndexDialog(false)}
+        closeDisabled={indexing || indexingLinkId !== null}
+        title="Index Links to Knowledge Graph"
+        closeAriaLabel="Close"
+        size="md"
+        footer={
+          <>
               <button
                 type="button"
                 className="btn btn-secondary"
@@ -621,79 +574,19 @@ export function LinkTypesPage() {
                   'Confirm & Index'
                 )}
               </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {showIndexOneDialog && indexOneLink && (
-        <div
-          className="console-modal-overlay"
-          onClick={(e) => {
-            if (e.target !== e.currentTarget || indexingLinkId) return;
-            setShowIndexOneDialog(false);
-            setIndexOneLink(null);
-          }}
-        >
-          <div
-            className={`console-modal${
-              linkTypeUsesDatasetIndexing(indexOneLink, objectTypes)
-                ? ' console-modal--index-one-dataset'
-                : ' console-modal--index-one-instances'
-            }`}
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="console-modal-header">
-              <h2>
-                {linkTypeUsesDatasetIndexing(indexOneLink, objectTypes)
-                  ? 'Index from linked data'
-                  : 'Index from saved links'}
-              </h2>
-              <button
-                type="button"
-                onClick={() => {
-                  if (indexingLinkId) return;
-                  setShowIndexOneDialog(false);
-                  setIndexOneLink(null);
-                }}
-                disabled={!!indexingLinkId}
-                aria-label="Close"
-              >
-                <X size={20} />
-              </button>
-            </div>
-            <div className="console-modal-body">
-              {linkTypeUsesDatasetIndexing(indexOneLink, objectTypes) ? (
-                <>
-                  <p className="console-modal-index-lead">
-                    <strong>{indexOneLink.name}</strong> is configured to read from database tables (junction or
-                    source-side foreign key). Choose where to write relationships, then confirm.
-                  </p>
-                  <div className="console-modal-index-callout console-modal-index-callout--dataset" role="note">
-                    {indexOneLink.cardinality === 'many-to-many'
-                      ? 'Rows come from the junction table you linked. Each row creates one relationship between the two object types.'
-                      : 'Rows come from the source object type’s linked table. The foreign-key column points at the target object id on each relationship.'}
-                  </div>
-                </>
-              ) : (
-                <>
-                  <p className="console-modal-index-lead">
-                    <strong>{indexOneLink.name}</strong> is not driven by a linked table for indexing. This run uses{' '}
-                    <strong>{indexOneLink.link_count}</strong>{' '}
-                    {indexOneLink.link_count === 1 ? 'saved link' : 'saved links'} you created in the app.
-                  </p>
-                  <div className="console-modal-index-callout console-modal-index-callout--instances" role="note">
-                    Each saved link connects two object instances. Endpoints are matched to graph nodes using the same
-                    keys as object indexing (primary key or key property on each side).
-                  </div>
-                </>
-              )}
-              <label>
-                <span>Neo4j Data Source</span>
+            
+          </>
+        }
+      >
+              <p className="page-subtitle">
+                Index every link type that has a junction or source-side dataset, or saved links, to the selected Neo4j
+                database as relationships.
+              </p>
+              <FormField label="Neo4j Data Source">
                 <select
                   value={indexNeo4jId}
                   onChange={(e) => setIndexNeo4jId(e.target.value)}
-                  disabled={!!indexingLinkId}
+                  disabled={indexing || indexingLinkId !== null}
                 >
                   <option value="">Select…</option>
                   {neo4jDataSources.map((ds) => (
@@ -702,9 +595,27 @@ export function LinkTypesPage() {
                     </option>
                   ))}
                 </select>
-              </label>
-            </div>
-            <div className="console-modal-actions">
+</FormField>
+            
+      </Dialog>
+            {showIndexOneDialog && indexOneLink ? (
+<Dialog
+        open={showIndexOneDialog && Boolean(indexOneLink)}
+        onClose={() => {
+          if (indexingLinkId) return;
+          setShowIndexOneDialog(false);
+          setIndexOneLink(null);
+        }}
+        closeDisabled={Boolean(indexingLinkId)}
+        title={
+          linkTypeUsesDatasetIndexing(indexOneLink, objectTypes)
+            ? 'Index from linked data'
+            : 'Index from saved links'
+        }
+        closeAriaLabel="Close"
+        size="md"
+        footer={
+          <>
               <button
                 type="button"
                 className="btn btn-secondary"
@@ -734,10 +645,51 @@ export function LinkTypesPage() {
                   'Index saved links'
                 )}
               </button>
-            </div>
-          </div>
-        </div>
-      )}
+            
+          </>
+        }
+      >
+              {linkTypeUsesDatasetIndexing(indexOneLink, objectTypes) ? (
+                <>
+                  <p className="console-modal-index-lead">
+                    <strong>{indexOneLink.name}</strong> is configured to read from database tables (junction or
+                    source-side foreign key). Choose where to write relationships, then confirm.
+                  </p>
+                  <div className="console-modal-index-callout console-modal-index-callout--dataset" role="note">
+                    {indexOneLink.cardinality === 'many-to-many'
+                      ? 'Rows come from the junction table you linked. Each row creates one relationship between the two object types.'
+                      : 'Rows come from the source object type’s linked table. The foreign-key column points at the target object id on each relationship.'}
+                  </div>
+                </>
+              ) : (
+                <>
+                  <p className="console-modal-index-lead">
+                    <strong>{indexOneLink.name}</strong> is not driven by a linked table for indexing. This run uses{' '}
+                    <strong>{indexOneLink.link_count}</strong>{' '}
+                    {indexOneLink.link_count === 1 ? 'saved link' : 'saved links'} you created in the app.
+                  </p>
+                  <div className="console-modal-index-callout console-modal-index-callout--instances" role="note">
+                    Each saved link connects two object instances. Endpoints are matched to graph nodes using the same
+                    keys as object indexing (primary key or key property on each side).
+                  </div>
+                </>
+              )}
+              <FormField label="Neo4j Data Source">
+                <select
+                  value={indexNeo4jId}
+                  onChange={(e) => setIndexNeo4jId(e.target.value)}
+                  disabled={!!indexingLinkId}
+                >
+                  <option value="">Select…</option>
+                  {neo4jDataSources.map((ds) => (
+                    <option key={ds.id} value={ds.id}>
+                      {ds.name} ({ds.host}:{ds.port ?? 7687})
+                    </option>
+                  ))}
+                </select>
+</FormField>
+            
+      </Dialog>      ) : null}
     </div>
   );
 }
