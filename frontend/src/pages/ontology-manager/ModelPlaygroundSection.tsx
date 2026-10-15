@@ -19,16 +19,18 @@ import {
 import { FormField } from '../../styles/design-system';
 import { useAsyncData } from '../../hooks/useAsyncData';
 import { EntityViewHeader, EntityViewPanel } from './EntityViewShell';
+import {
+  NO_VALUE,
+  emptySpec,
+  specFromUrl,
+  toFilters,
+  type FilterRow,
+} from './modelPlaygroundSpec';
 import { ModelPlaygroundAnswer, type RunError } from './ModelPlaygroundAnswer';
 import { useSemanticModelDetail } from './useSemanticModelDetail';
 
 const GRANULARITIES = ['day', 'week', 'month', 'quarter', 'year'];
 const OPS = ['=', '!=', '>', '>=', '<', '<=', 'like', 'in', 'between', 'is_null', 'is_not_null'];
-/** Ops that need no value / two values. */
-const NO_VALUE = new Set(['is_null', 'is_not_null']);
-
-type FilterRow = { id: number; field: string; op: string; value: string; value2: string };
-
 /** `kind` is set by the query API (`definition` / `data` / `request`); anything else is generic. */
 function runErrorFrom(error: unknown, fallback: string): RunError {
   const err = error as RequestError;
@@ -39,25 +41,6 @@ function runErrorFrom(error: unknown, fallback: string): RunError {
     message: error instanceof Error && error.message ? error.message : fallback,
     detail: typeof detail?.detail === 'string' ? detail.detail : undefined,
   };
-}
-
-const emptySpec = (metricId: string): SemanticModelQuerySpec => ({
-  metric: metricId,
-  group_by: [],
-  filters: [],
-  order_by: [],
-  limit: 100,
-});
-
-/** The query spec travels in the URL, so a question can be shared and re-run. */
-function specFromUrl(raw: string | null): SemanticModelQuerySpec | null {
-  if (!raw) return null;
-  try {
-    const spec = JSON.parse(raw) as SemanticModelQuerySpec;
-    return spec && typeof spec.metric === 'string' ? spec : null;
-  } catch {
-    return null;
-  }
 }
 
 /**
@@ -171,19 +154,6 @@ export function ModelPlaygroundSection() {
     patch({
       group_by: spec!.group_by.map((g) => (g.field === fieldId ? { ...g, granularity } : g)),
     });
-
-  const toFilters = (rows: FilterRow[]) =>
-    rows
-      .filter((r) => r.field && r.op)
-      .map((r) =>
-        NO_VALUE.has(r.op)
-          ? { field: r.field, op: r.op }
-          : r.op === 'in'
-            ? { field: r.field, op: r.op, value: r.value.split(',').map((v) => v.trim()).filter(Boolean) }
-            : r.op === 'between'
-              ? { field: r.field, op: r.op, value: [r.value, r.value2] }
-              : { field: r.field, op: r.op, value: r.value },
-      );
 
   const handleRun = async () => {
     if (!spec?.metric) return;
