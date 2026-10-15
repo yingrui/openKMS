@@ -6,6 +6,7 @@ import {
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Outlet, useParams } from 'react-router-dom';
+import { FileCode2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { fetchDatasets, type DatasetResponse } from '../../data/datasetsApi';
 import {
@@ -13,6 +14,7 @@ import {
   type SemanticModelResponse,
 } from '../../data/semanticModelsApi';
 import { EntityViewLoading, EntityViewShell } from './EntityViewShell';
+import { ModelYamlPanel } from './ModelYamlPanel';
 import { SemanticModelDetailCtx } from './useSemanticModelDetail';
 import '../ontology/ontology-admin.scss';
 
@@ -41,6 +43,7 @@ export function SemanticModelDetailPage() {
   const [model, setModel] = useState<SemanticModelResponse | null>(null);
   const [allDatasets, setAllDatasets] = useState<DatasetResponse[]>([]);
   const [loading, setLoading] = useState(true);
+  const [showDocument, setShowDocument] = useState(false);
 
   const reload = useCallback(async () => {
     if (!modelId) return;
@@ -86,9 +89,22 @@ export function SemanticModelDetailPage() {
           { to: `${base}/playground`, label: t('dataModel.playgroundTitle') },
           { to: `${base}/settings`, label: t('dataModel.settings') },
         ]}
+        toolbar={
+          // The model's Ossie document is a read action, so it is one click from every section.
+          <button type="button" className="btn btn-secondary" onClick={() => setShowDocument(true)}>
+            <FileCode2 size={16} aria-hidden />
+            {t('dataModel.viewYaml')}
+          </button>
+        }
       >
         <Outlet />
       </EntityViewShell>
+      <ModelYamlPanel
+        modelId={model.id}
+        modelName={model.name}
+        open={showDocument}
+        onClose={() => setShowDocument(false)}
+      />
     </SemanticModelDetailCtx.Provider>
   );
 }

@@ -45,7 +45,8 @@ export function EntityViewHeader({
   return (
     <header className="page-header">
       <div>
-        <h1>{title}</h1>
+        {/* A shell-level toolbar has actions but no section title — do not render an empty h1. */}
+        {title ? <h1>{title}</h1> : null}
         {subtitle != null && subtitle !== '' ? <p className="page-subtitle">{subtitle}</p> : null}
       </div>
       {actions ? <div className="entity-view__actions">{actions}</div> : null}

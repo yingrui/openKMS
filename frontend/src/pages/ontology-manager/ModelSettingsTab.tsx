@@ -3,16 +3,10 @@ import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { Plus, Trash2, X } from 'lucide-react';
 import { toast } from 'sonner';
-import {
-  deleteSemanticModel,
-  exportSemanticModel,
-  exportSemanticModelYaml,
-  updateSemanticModel,
-} from '../../data/semanticModelsApi';
+import { deleteSemanticModel, updateSemanticModel } from '../../data/semanticModelsApi';
 import { useConfirm } from '../../contexts/ConfirmContext';
 import { FormField } from '../../styles/design-system';
 import { EntityViewHeader, EntityViewPanel } from './EntityViewShell';
-import { ModelYamlPanel } from './ModelYamlPanel';
 import { useSemanticModelDetail } from './useSemanticModelDetail';
 
 type AiContext = { instructions: string; synonyms: string; examples: string };
@@ -32,16 +26,7 @@ const splitList = (s: string) =>
     .map((x) => x.trim())
     .filter(Boolean);
 
-function download(filename: string, text: string, type: string): void {
-  const url = URL.createObjectURL(new Blob([text], { type }));
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = filename;
-  a.click();
-  URL.revokeObjectURL(url);
-}
-
-/** Model → Settings: identity + dataset scope, the Ossie interchange, and delete. */
+/** Model → Settings: identity, `ai_context`, dataset scope, and delete. */
 export function ModelSettingsTab() {
   const { t } = useTranslation('ontology');
   const navigate = useNavigate();
@@ -53,7 +38,6 @@ export function ModelSettingsTab() {
   const [datasetIds, setDatasetIds] = useState<string[]>(model.dataset_ids);
   const [ai, setAi] = useState<AiContext>(() => readAiContext(model.ai_context));
   const [saving, setSaving] = useState(false);
-  const [showYaml, setShowYaml] = useState(false);
 
   const datasetLabel = (d: (typeof allDatasets)[number]) =>
     d.display_name || `${d.schema_name}.${d.table_name}`;
@@ -86,21 +70,6 @@ export function ModelSettingsTab() {
       toast.error(e instanceof Error ? e.message : t('dataModel.modelSaveFailed'));
     } finally {
       setSaving(false);
-    }
-  };
-
-  const handleViewYaml = () => setShowYaml(true);
-
-  const handleExport = async (format: 'json' | 'yaml') => {
-    try {
-      if (format === 'yaml') {
-        download(`${model.name}.yaml`, await exportSemanticModelYaml(model.id), 'application/yaml');
-      } else {
-        const doc = await exportSemanticModel(model.id);
-        download(`${model.name}.json`, JSON.stringify(doc, null, 2), 'application/json');
-      }
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : t('dataModel.exportFailed'));
     }
   };
 
@@ -229,24 +198,6 @@ export function ModelSettingsTab() {
         </div>
       </EntityViewPanel>
 
-      <EntityViewPanel>
-        <div className="entity-view__form">
-          <h3>{t('dataModel.interchange')}</h3>
-          <p className="page-subtitle">{t('dataModel.interchangeHint')}</p>
-          <div className="model-settings__actions">
-            <button type="button" className="btn btn-secondary" onClick={() => void handleViewYaml()}>
-              {t('dataModel.viewYaml')}
-            </button>
-            <button type="button" className="btn btn-secondary" onClick={() => void handleExport('json')}>
-              {t('dataModel.exportJson')}
-            </button>
-            <button type="button" className="btn btn-secondary" onClick={() => void handleExport('yaml')}>
-              {t('dataModel.exportYaml')}
-            </button>
-          </div>
-        </div>
-      </EntityViewPanel>
-
       <div className="ontology-danger-zone">
         <h2>{t('dataModel.dangerZone')}</h2>
         <p className="page-subtitle">{t('dataModel.deleteHint')}</p>
@@ -255,13 +206,6 @@ export function ModelSettingsTab() {
           {t('shared.delete')}
         </button>
       </div>
-
-      <ModelYamlPanel
-        modelId={model.id}
-        modelName={model.name}
-        open={showYaml}
-        onClose={() => setShowYaml(false)}
-      />
     </>
   );
 }

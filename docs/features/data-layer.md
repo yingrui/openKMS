@@ -31,7 +31,7 @@ Definitions first; each concept is **authored in exactly one place**.
 
 | Concept | Definition | Managed where | Level |
 |---------|------------|---------------|-------|
-| **Semantic Model** | a **named scope**: a subset of the shared datasets + its fields and metrics (+ `ai_context`) | **Model** tab — list → model detail (with **Export/Import** per model) | cross-dataset |
+| **Semantic Model** | a **named scope**: a subset of the shared datasets + its fields and metrics (+ `ai_context`) | **Model** tab — list → model detail (document **view** + Import per model) | cross-dataset |
 | **Datasets** | a logical entity: a physical table (`source`) + keys + **columns** (physical) | **Catalog** — dataset detail → Overview / Settings | shared (base) |
 | **Columns** (physical) | the table's columns + a maintained **description** (engineer / Agent) | **Catalog** — dataset detail → **Columns** | shared (base) |
 | **Fields** | model-scoped: a column ref **or a computed expression**, + `datatype`, `dimension` (`{is_time}`), `ai_context` | **Model → a model → Fields** | per-model |
@@ -43,7 +43,7 @@ Definitions first; each concept is **authored in exactly one place**.
 **Rule of thumb**
 
 - **The shared base** (Datasets, Columns, Relationships, Rows, Quality, Lineage) → **Catalog** — one physical substrate used by **many** models.
-- **A semantic model** (Model tab) is a **named scope** over that base; it owns **Fields**, **Dimensions** (a field role) and **Metrics** (plus its dataset membership + `ai_context`). Export/Import is **per model**.
+- **A semantic model** (Model tab) is a **named scope** over that base; it owns **Fields**, **Dimensions** (a field role) and **Metrics** (plus its dataset membership + `ai_context`). The document is **viewed/copied** per model (Import from the model list).
 - **A relationship carries only edge facts** — Direction + columns + `required`. **A dimension is not an object** — it is a **field role**. **A metric has no dimensions** — a metric is an **expression**. **Fields ≠ columns** — a column is physical (Catalog), a field is a model-scoped semantic projection.
 
 ---
@@ -102,7 +102,7 @@ Goal: the Datasets app **manages the Ossie semantic model**, with each definitio
 
 ### Stage 6 — Semantic Model export / import ✅
 - **API:** `GET /api/semantic-models/{id}/export` → **flat** Ossie document for one model (core spec `0.2.0.dev0`; `datasets`/`relationships`/`metrics` + entity-level `OPENKMS` `custom_extensions` for the few non-spec facts); `POST /api/semantic-models/import` upserts it — everything matched **by name** (datasets by `source` first), no ids in the document. Validated against the vendored [`ossie-schema.json`](../research/ossie/spec.md).
-- **Frontend:** Model header — **Export JSON / Export YAML / Import**.
+- **Frontend:** the model's document is **viewed, not downloaded** — the shell header opens **View YAML** (right-docked panel: collapsible tree ⇄ raw YAML + *Copy*; one click from every section). **Import** stays on the model list. The export API remains the agent/skill path (`semantic-models export/import`).
 - **Verify:** ✅ a round-trip re-imports with a stable document (verified live).
 
 ### Stage 7 — Playground (the human twin of the query API) ✅

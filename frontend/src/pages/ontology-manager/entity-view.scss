@@ -395,12 +395,6 @@
 }
 
 /* A row of secondary actions inside an entity panel. */
-.model-settings__actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-2);
-}
-
 /* Dataset scope editor: only the selected datasets are listed, the rest via a picker. */
 .model-scope-edit {
   list-style: none;

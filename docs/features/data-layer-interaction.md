@@ -99,12 +99,12 @@ The Model tab lists **semantic models** — **named scopes** over the **shared**
   - **Metrics** — model-owned; authored here.
   - **Datasets** — the model's scope. Each dataset shows the catalog facts it *references* (source, description, keys, AI context — read-only, with **Open in Catalog**) above **its fields**, which the spec nests under a dataset; the fields themselves are model-owned (add/edit/delete per dataset, searchable across the scope).
   - **Relationships** — a read-only view of the FK edges among the scope (`from → to`, column pairs, INNER/LEFT, AI context). Relationships are catalog-owned and shared by every model, so they are edited in the Catalog (link on each row).
-  - **Playground** — the model's query builder: metric + group-by fields + filters + order + limit, answering with a table, the generated SQL and the run's context (rows, limit reached, duration). The field picker is a searchable, grouped list (time dimensions / fields) that shows each field's data type, with selections mirrored as chips. Read-only and stateless (saved answers belong to Data Explorer).
-  - **Settings** — model identity/scope, **AI context**, the Ossie interchange (docked View YAML panel + JSON/YAML downloads) and delete.
+  - **Playground** — the model's query builder: metric + group-by fields + filters + order + limit, answering with a table, the generated SQL and the run's context (rows, limit reached, duration, null share per column, and *why* it is empty). The field picker is a **type-ahead menu** (grouped, each field with its label and data type; ↑/↓/Enter/Backspace/Esc) with selections mirrored as chips. Read-only and stateless (saved answers belong to Data Explorer); a failed run is classified (definition / data / request) and explained in the answer pane.
+  - **Settings** — model identity/scope, **AI context**, and delete. The model's Ossie document is a **read action** on the shell header (**View YAML**: a right-docked panel with a collapsible tree, the raw YAML and *Copy*), so it is one click from every section; the download buttons are gone — the export API stays for the skill/agent.
 
 - The split is **owned vs referenced**: the model owns its **fields and metrics** (edited in the model), while **datasets and relationships** live in the Catalog and are only referenced here — their `ai_context` is edited once, in the Catalog, so two models can never disagree about the same dataset.
 - **Fields** — the model's semantic fields (column ref / expression + Ossie `dimension` `{is_time}` + `ai_context`), **added explicitly** (a field marks a time dimension or adds AI context); the same column can carry a different dimension/`ai_context` per model.
-- **Export / Import** — the Ossie document, per model, in the model header overflow menu.
+- **Document** — the model's Ossie document is **viewed** from the shell header (**View YAML**: tree ⇄ raw YAML + *Copy*), not downloaded; **Import** stays on the model list. The export API is the agent/skill path.
 
 ### Why it's intuitive
 
