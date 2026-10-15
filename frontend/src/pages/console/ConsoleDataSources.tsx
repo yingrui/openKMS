@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Plus, Pencil, Trash2, X, Wifi, Loader2, Eraser } from 'lucide-react';
+import { Plus, Pencil, Trash2, Wifi, Loader2, Eraser } from 'lucide-react';
 import { toast } from 'sonner';
 import { ErrorBanner } from '../../components/ErrorBanner';
+import { Dialog, FormField } from '../../styles/design-system';
 import {
   fetchDataSources,
   createDataSource,
@@ -278,100 +279,15 @@ export function ConsoleDataSources() {
         </div>
       </div>
 
-      {showForm && (
-        <div className="console-modal-overlay" onClick={(e) => e.target === e.currentTarget && !submitting && setShowForm(false)}>
-          <div className="console-modal" onClick={(e) => e.stopPropagation()}>
-            <div className="console-modal-header">
-              <h2>{editItem ? t('dataSources.modalEditTitle') : t('dataSources.modalNewTitle')}</h2>
-              <button
-                type="button"
-                onClick={() => !submitting && setShowForm(false)}
-                disabled={submitting}
-                aria-label={t('dataSources.closeAria')}
-              >
-                <X size={20} />
-              </button>
-            </div>
-            <div className="console-modal-body">
-              <label>
-                <span>{t('dataSources.fieldName')}</span>
-                <input
-                  type="text"
-                  value={formName}
-                  onChange={(e) => setFormName(e.target.value)}
-                  placeholder={t('dataSources.placeholderName')}
-                />
-              </label>
-              <label>
-                <span>{t('dataSources.fieldKind')}</span>
-                <select value={formKind} onChange={(e) => setFormKind(e.target.value)}>
-                  {KINDS.map((k) => (
-                    <option key={k} value={k}>{k}</option>
-                  ))}
-                </select>
-              </label>
-              <label>
-                <span>{t('dataSources.fieldLayer')}</span>
-                <select value={formLayer} onChange={(e) => setFormLayer(e.target.value)}>
-                  {LAYERS.map((l) => (
-                    <option key={l || 'none'} value={l}>
-                      {l ? t(`dataSources.${LAYER_LABEL_KEY[l]}`) : t('dataSources.layerNone')}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <label>
-                <span>{t('dataSources.fieldHost')}</span>
-                <input
-                  type="text"
-                  value={formHost}
-                  onChange={(e) => setFormHost(e.target.value)}
-                  placeholder={t('dataSources.placeholderHost')}
-                />
-              </label>
-              <label>
-                <span>{t('dataSources.fieldPort')}</span>
-                <input
-                  type="text"
-                  value={formPort}
-                  onChange={(e) => setFormPort(e.target.value)}
-                  placeholder={formKind === 'postgresql' ? '5432' : '7687'}
-                />
-              </label>
-              {formKind === 'postgresql' && (
-                <label>
-                  <span>{t('dataSources.fieldDatabase')}</span>
-                  <input
-                    type="text"
-                    value={formDatabase}
-                    onChange={(e) => setFormDatabase(e.target.value)}
-                    placeholder={t('dataSources.placeholderDb')}
-                  />
-                </label>
-              )}
-              <label>
-                <span>{t('dataSources.fieldUsername')}</span>
-                <input
-                  type="text"
-                  value={formUsername}
-                  onChange={(e) => setFormUsername(e.target.value)}
-                  placeholder={t('dataSources.placeholderUser')}
-                />
-              </label>
-              <label>
-                <span>
-                  {t('dataSources.fieldPassword')}
-                  {editItem ? ` ${t('dataSources.passwordLeaveBlank')}` : ''}
-                </span>
-                <input
-                  type="password"
-                  value={formPassword}
-                  onChange={(e) => setFormPassword(e.target.value)}
-                  placeholder={editItem ? t('dataSources.placeholderPasswordEdit') : t('dataSources.placeholderPasswordNew')}
-                />
-              </label>
-            </div>
-            <div className="console-modal-actions">
+      <Dialog
+        open={showForm}
+        onClose={() => !submitting && setShowForm(false)}
+        closeDisabled={submitting}
+        title={editItem ? t('dataSources.modalEditTitle') : t('dataSources.modalNewTitle')}
+        closeAriaLabel={t('dataSources.closeAria')}
+        size="md"
+        footer={
+          <>
               <button
                 type="button"
                 className="btn btn-secondary"
@@ -388,32 +304,94 @@ export function ConsoleDataSources() {
               >
                 {submitting ? t('dataSources.saving') : editItem ? t('dataSources.update') : t('dataSources.create')}
               </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {deleteAllConfirmId && (
-        <div
-          className="console-modal-overlay"
-          onClick={(e) => e.target === e.currentTarget && !deletingAll && setDeleteAllConfirmId(null)}
-        >
-          <div className="console-modal" onClick={(e) => e.stopPropagation()}>
-            <div className="console-modal-header">
-              <h2>{t('dataSources.neo4jDeleteAllHeading')}</h2>
-              <button
-                type="button"
-                onClick={() => !deletingAll && setDeleteAllConfirmId(null)}
-                disabled={!!deletingAll}
-                aria-label={t('dataSources.closeAria')}
+            
+          </>
+        }
+      >
+              <FormField label={t('dataSources.fieldName')}>
+                <input
+                  type="text"
+                  value={formName}
+                  onChange={(e) => setFormName(e.target.value)}
+                  placeholder={t('dataSources.placeholderName')}
+                />
+              </FormField>
+              <FormField label={t('dataSources.fieldKind')}>
+                <select value={formKind} onChange={(e) => setFormKind(e.target.value)}>
+                  {KINDS.map((k) => (
+                    <option key={k} value={k}>{k}</option>
+                  ))}
+                </select>
+              </FormField>
+              <FormField label={t('dataSources.fieldLayer')}>
+                <select value={formLayer} onChange={(e) => setFormLayer(e.target.value)}>
+                  {LAYERS.map((l) => (
+                    <option key={l || 'none'} value={l}>
+                      {l ? t(`dataSources.${LAYER_LABEL_KEY[l]}`) : t('dataSources.layerNone')}
+                    </option>
+                  ))}
+                </select>
+              </FormField>
+              <FormField label={t('dataSources.fieldHost')}>
+                <input
+                  type="text"
+                  value={formHost}
+                  onChange={(e) => setFormHost(e.target.value)}
+                  placeholder={t('dataSources.placeholderHost')}
+                />
+              </FormField>
+              <FormField label={t('dataSources.fieldPort')}>
+                <input
+                  type="text"
+                  value={formPort}
+                  onChange={(e) => setFormPort(e.target.value)}
+                  placeholder={formKind === 'postgresql' ? '5432' : '7687'}
+                />
+              </FormField>
+              {formKind === 'postgresql' && (
+                <FormField label={t('dataSources.fieldDatabase')}>
+                  <input
+                    type="text"
+                    value={formDatabase}
+                    onChange={(e) => setFormDatabase(e.target.value)}
+                    placeholder={t('dataSources.placeholderDb')}
+                  />
+                </FormField>
+              )}
+              <FormField label={t('dataSources.fieldUsername')}>
+                <input
+                  type="text"
+                  value={formUsername}
+                  onChange={(e) => setFormUsername(e.target.value)}
+                  placeholder={t('dataSources.placeholderUser')}
+                />
+              </FormField>
+              <FormField
+                label={
+                  <>
+                    {t('dataSources.fieldPassword')}
+                    {editItem ? ` ${t('dataSources.passwordLeaveBlank')}` : ''}
+                  </>
+                }
               >
-                <X size={20} />
-              </button>
-            </div>
-            <div className="console-modal-body">
-              <p className="console-modal-hint">{t('dataSources.neo4jDeleteAllBody')}</p>
-            </div>
-            <div className="console-modal-actions">
+                <input
+                  type="password"
+                  value={formPassword}
+                  onChange={(e) => setFormPassword(e.target.value)}
+                  placeholder={editItem ? t('dataSources.placeholderPasswordEdit') : t('dataSources.placeholderPasswordNew')}
+                />
+              </FormField>
+            
+      </Dialog>
+      <Dialog
+        open={Boolean(deleteAllConfirmId)}
+        onClose={() => !deletingAll && setDeleteAllConfirmId(null)}
+        closeDisabled={Boolean(deletingAll)}
+        title={t('dataSources.neo4jDeleteAllHeading')}
+        closeAriaLabel={t('dataSources.closeAria')}
+        size="md"
+        footer={
+          <>
               <button
                 type="button"
                 className="btn btn-secondary"
@@ -437,10 +415,12 @@ export function ConsoleDataSources() {
                   t('dataSources.confirmDeleteAll')
                 )}
               </button>
-            </div>
-          </div>
-        </div>
-      )}
+            
+          </>
+        }
+      >
+        <p className="page-subtitle">{t('dataSources.neo4jDeleteAllBody')}</p>
+      </Dialog>
     </div>
   );
 }
