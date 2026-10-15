@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Loader2, Pencil, Plus, Trash2, X } from 'lucide-react';
+import { Loader2, Pencil, Plus, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { fetchDatasets, type DatasetResponse } from '../../data/datasetsApi';
 import { fetchDatasetJoins, type DatasetJoinResponse } from '../../data/joinsApi';
@@ -14,7 +14,7 @@ import {
   type MetricResponse,
 } from '../../data/metricsApi';
 import { useConfirm } from '../../contexts/ConfirmContext';
-import { FormField } from '../../styles/design-system';
+import { Dialog, FormField } from '../../styles/design-system';
 import { EntityViewHeader, EntityViewPanel } from './EntityViewShell';
 import { useSemanticModelDetail } from './SemanticModelDetailPage';
 
@@ -239,24 +239,35 @@ export function ModelMetricsSection() {
         )}
       </EntityViewPanel>
 
-      {showForm && (
-        <div
-          className="console-modal-overlay"
-          onClick={(e) => e.target === e.currentTarget && !submitting && setShowForm(false)}
-        >
-          <div className="console-modal" onClick={(e) => e.stopPropagation()}>
-            <div className="console-modal-header">
-              <h2>{editing ? t('datasets.editMetric') : t('datasets.addMetric')}</h2>
-              <button
+      <Dialog
+        open={showForm}
+        onClose={() => !submitting && setShowForm(false)}
+        closeDisabled={submitting}
+        title={editing ? t('datasets.editMetric') : t('datasets.addMetric')}
+        closeAriaLabel={t('datasets.closeAria')}
+        size="md"
+        footer={<>              <button
                 type="button"
+                className="btn btn-secondary"
                 onClick={() => !submitting && setShowForm(false)}
                 disabled={submitting}
-                aria-label={t('datasets.closeAria')}
               >
-                <X size={20} />
+                {t('shared.cancel')}
               </button>
-            </div>
-            <div className="console-modal-body">
+              <button
+                type="button"
+                className="btn btn-primary"
+                onClick={() => void handleSubmit()}
+                disabled={submitting}
+              >
+                {submitting ? (
+                  <Loader2 size={16} className="console-loading-spinner" />
+                ) : (
+                  t('shared.save')
+                )}
+              </button>
+        </>}
+      >
               <FormField label={t('datasets.metricName')}>
                 <input type="text" value={name} onChange={(e) => setName(e.target.value)} />
               </FormField>
@@ -337,32 +348,7 @@ export function ModelMetricsSection() {
                   onChange={(e) => setAiInstructions(e.target.value)}
                 />
               </FormField>
-            </div>
-            <div className="console-modal-actions">
-              <button
-                type="button"
-                className="btn btn-secondary"
-                onClick={() => !submitting && setShowForm(false)}
-                disabled={submitting}
-              >
-                {t('shared.cancel')}
-              </button>
-              <button
-                type="button"
-                className="btn btn-primary"
-                onClick={() => void handleSubmit()}
-                disabled={submitting}
-              >
-                {submitting ? (
-                  <Loader2 size={16} className="console-loading-spinner" />
-                ) : (
-                  t('shared.save')
-                )}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      </Dialog>
     </>
   );
 }

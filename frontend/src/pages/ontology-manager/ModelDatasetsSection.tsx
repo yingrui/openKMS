@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
-import { ExternalLink, Plus, Trash2, X } from 'lucide-react';
+import { ExternalLink, Plus, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { fetchDatasetMetadata, type ColumnMetadata } from '../../data/datasetsApi';
 import {
@@ -15,7 +15,7 @@ import {
   type SemanticModelFieldResponse,
 } from '../../data/semanticModelFieldsApi';
 import { useConfirm } from '../../contexts/ConfirmContext';
-import { FormField, Pagination } from '../../styles/design-system';
+import { Dialog, FormField, Pagination } from '../../styles/design-system';
 import { EntityViewHeader, EntityViewPanel } from './EntityViewShell';
 import { useSemanticModelDetail } from './SemanticModelDetailPage';
 import type { DatasetResponse } from '../../data/datasetsApi';
@@ -386,142 +386,136 @@ export function ModelDatasetsSection() {
         })
       )}
 
-      {formDatasetId && (
-        <div
-          className="console-modal-overlay"
-          onClick={(e) => e.target === e.currentTarget && closeForm()}
-        >
-          <div className="console-modal" onClick={(e) => e.stopPropagation()}>
-            <div className="console-modal-header">
-              <h2>
-                {editing ? t('datasets.editField') : t('datasets.addField')}
-                {formDataset ? ` · ${datasetLabel(formDataset)}` : ''}
-              </h2>
-              <button
-                type="button"
-                onClick={closeForm}
-                disabled={submitting}
-                aria-label={t('datasets.closeAria')}
-              >
-                <X size={20} />
-              </button>
-            </div>
-            <div className="console-modal-body">
-              <FormField label={t('datasets.fieldName')}>
-                <input type="text" value={name} onChange={(e) => setName(e.target.value)} />
-              </FormField>
-              <FormField label={t('dataModel.fieldLabel')}>
-                <input type="text" value={label} onChange={(e) => setLabel(e.target.value)} />
-              </FormField>
-              <FormField label={t('datasets.fieldSource')}>
-                <select
-                  value={mode}
-                  onChange={(e) => {
-                    const next = e.target.value as 'column' | 'computed';
-                    setMode(next);
-                    if (next === 'column' && !columnName && columns[0]) {
-                      setColumnName(columns[0].column_name);
-                    }
-                  }}
-                >
-                  <option value="column">{t('datasets.fieldSourceColumn')}</option>
-                  <option value="computed">{t('datasets.fieldSourceComputed')}</option>
-                </select>
-              </FormField>
-              {mode === 'column' ? (
-                <FormField label={t('datasets.colColumn')}>
-                  <select value={columnName} onChange={(e) => setColumnName(e.target.value)}>
-                    <option value="">{t('datasets.selectColumn')}</option>
-                    {columns.map((c) => (
-                      <option key={c.column_name} value={c.column_name}>
-                        {c.column_name}
-                      </option>
-                    ))}
-                  </select>
-                </FormField>
-              ) : (
-                <FormField
-                  label={t('datasets.fieldExpression')}
-                  hint={t('datasets.fieldExpressionHint')}
-                >
-                  <textarea rows={2} value={exprSql} onChange={(e) => setExprSql(e.target.value)} />
-                </FormField>
-              )}
-              <FormField label={t('datasets.colDataType')} hint={t('dataModel.fieldDatatypeHint')}>
-                <select value={datatype} onChange={(e) => setDatatype(e.target.value)}>
-                  <option value="">{t('datasets.dash')}</option>
-                  {OSSIE_DATATYPES.map((d) => (
-                    <option key={d} value={d}>
-                      {d}
-                    </option>
-                  ))}
-                </select>
-              </FormField>
-              <FormField label={t('dataModel.fieldDescription')}>
-                <input
-                  type="text"
-                  value={description}
-                  onChange={(e) => setDescription(e.target.value)}
-                />
-              </FormField>
-              <FormField
-                label={t('dataModel.fieldDimension')}
-                hint={t('dataModel.fieldDimensionHint')}
-              >
-                <select
-                  value={dimensionMode}
-                  onChange={(e) =>
-                    setDimensionMode(e.target.value as 'auto' | 'time' | 'regular')
-                  }
-                >
-                  <option value="auto">{t('dataModel.dimensionAuto')}</option>
-                  <option value="time">{t('dataModel.dimensionYes')}</option>
-                  <option value="regular">{t('dataModel.dimensionNo')}</option>
-                </select>
-              </FormField>
-              <FormField label={t('datasets.aiInstructions')}>
-                <textarea
-                  rows={2}
-                  value={ai.instructions}
-                  onChange={(e) => setAi((prev) => ({ ...prev, instructions: e.target.value }))}
-                />
-              </FormField>
-              <FormField label={t('datasets.aiSynonyms')}>
-                <input
-                  type="text"
-                  value={ai.synonyms}
-                  onChange={(e) => setAi((prev) => ({ ...prev, synonyms: e.target.value }))}
-                />
-              </FormField>
-              <FormField label={t('datasets.aiExamples')}>
-                <input
-                  type="text"
-                  value={ai.examples}
-                  onChange={(e) => setAi((prev) => ({ ...prev, examples: e.target.value }))}
-                />
-              </FormField>
-            </div>
-            <div className="console-modal-actions">
-              <button
-                type="button"
-                className="btn btn-secondary"
-                onClick={closeForm}
-                disabled={submitting}
-              >
-                {t('shared.cancel')}
-              </button>
-              <button
-                type="button"
-                className="btn btn-primary"
-                onClick={() => void handleSubmit()}
-                disabled={submitting}
-              >
-                {submitting ? t('shared.saving') : t('shared.save')}
-              </button>
-            </div>
-          </div>
+      <Dialog
+        open={Boolean(formDatasetId)}
+        onClose={closeForm}
+        closeDisabled={submitting}
+        title={
+          <>
+            {editing ? t('datasets.editField') : t('datasets.addField')}
+            {formDataset ? ` · ${datasetLabel(formDataset)}` : ''}
+          </>
+        }
+        closeAriaLabel={t('datasets.closeAria')}
+        size="md"
+        footer={
+          <>
+            <button
+              type="button"
+              className="btn btn-secondary"
+              onClick={closeForm}
+              disabled={submitting}
+            >
+              {t('shared.cancel')}
+            </button>
+            <button
+              type="button"
+              className="btn btn-primary"
+              onClick={() => void handleSubmit()}
+              disabled={submitting}
+            >
+              {submitting ? t('shared.saving') : t('shared.save')}
+            </button>
+          </>
+        }
+      >
+        <div className="entity-view__form">
+          <FormField label={t('datasets.fieldName')}>
+            <input type="text" value={name} onChange={(e) => setName(e.target.value)} />
+          </FormField>
+          <FormField label={t('dataModel.fieldLabel')}>
+            <input type="text" value={label} onChange={(e) => setLabel(e.target.value)} />
+          </FormField>
+          <FormField label={t('datasets.fieldSource')}>
+            <select
+              value={mode}
+              onChange={(e) => {
+                const next = e.target.value as 'column' | 'computed';
+                setMode(next);
+                if (next === 'column' && !columnName && columns[0]) {
+                  setColumnName(columns[0].column_name);
+                }
+              }}
+            >
+              <option value="column">{t('datasets.fieldSourceColumn')}</option>
+              <option value="computed">{t('datasets.fieldSourceComputed')}</option>
+            </select>
+          </FormField>
+          {mode === 'column' ? (
+            <FormField label={t('datasets.colColumn')}>
+              <select value={columnName} onChange={(e) => setColumnName(e.target.value)}>
+                <option value="">{t('datasets.selectColumn')}</option>
+                {columns.map((c) => (
+                  <option key={c.column_name} value={c.column_name}>
+                    {c.column_name}
+                  </option>
+                ))}
+              </select>
+            </FormField>
+          ) : (
+            <FormField
+              label={t('datasets.fieldExpression')}
+              hint={t('datasets.fieldExpressionHint')}
+            >
+              <textarea rows={2} value={exprSql} onChange={(e) => setExprSql(e.target.value)} />
+            </FormField>
+          )}
+          <FormField label={t('datasets.colDataType')} hint={t('dataModel.fieldDatatypeHint')}>
+            <select value={datatype} onChange={(e) => setDatatype(e.target.value)}>
+              <option value="">{t('datasets.dash')}</option>
+              {OSSIE_DATATYPES.map((d) => (
+                <option key={d} value={d}>
+                  {d}
+                </option>
+              ))}
+            </select>
+          </FormField>
+          <FormField label={t('dataModel.fieldDescription')}>
+            <input
+              type="text"
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+            />
+          </FormField>
+          <FormField
+            label={t('dataModel.fieldDimension')}
+            hint={t('dataModel.fieldDimensionHint')}
+          >
+            <select
+              value={dimensionMode}
+              onChange={(e) =>
+                setDimensionMode(e.target.value as 'auto' | 'time' | 'regular')
+              }
+            >
+              <option value="auto">{t('dataModel.dimensionAuto')}</option>
+              <option value="time">{t('dataModel.dimensionYes')}</option>
+              <option value="regular">{t('dataModel.dimensionNo')}</option>
+            </select>
+          </FormField>
+          <FormField label={t('datasets.aiInstructions')}>
+            <textarea
+              rows={2}
+              value={ai.instructions}
+              onChange={(e) => setAi((prev) => ({ ...prev, instructions: e.target.value }))}
+            />
+          </FormField>
+          <FormField label={t('datasets.aiSynonyms')}>
+            <input
+              type="text"
+              value={ai.synonyms}
+              onChange={(e) => setAi((prev) => ({ ...prev, synonyms: e.target.value }))}
+            />
+          </FormField>
+          <FormField label={t('datasets.aiExamples')}>
+            <input
+              type="text"
+              value={ai.examples}
+              onChange={(e) => setAi((prev) => ({ ...prev, examples: e.target.value }))}
+            />
+          </FormField>
         </div>
-      )}
+      </Dialog>
+
     </>
   );
 }

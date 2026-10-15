@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Loader2, Plus, Trash2, X } from 'lucide-react';
+import { Loader2, Plus, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useDatasetDetail } from './DatasetDetailPage';
 import {
@@ -16,7 +16,7 @@ import {
   type DatasetJoinResponse,
 } from '../../data/joinsApi';
 import { useConfirm } from '../../contexts/ConfirmContext';
-import { EmptyState, FormField } from '../../styles/design-system';
+import { Dialog, EmptyState, FormField } from '../../styles/design-system';
 import { EntityViewHeader, EntityViewPanel, EntityViewLoading } from './EntityViewShell';
 import { DatasetErDiagram, type ErNode } from './DatasetErDiagram';
 
@@ -230,159 +230,152 @@ export function DatasetRelationshipsTab() {
         </div>
       </EntityViewPanel>
 
-      {showForm && (
-        <div
-          className="console-modal-overlay"
-          onClick={(e) => e.target === e.currentTarget && !submitting && setShowForm(false)}
-        >
-          <div className="console-modal" onClick={(e) => e.stopPropagation()}>
-            <div className="console-modal-header">
-              <h2>{t('datasets.addRelationship')}</h2>
-              <button
-                type="button"
-                onClick={() => !submitting && setShowForm(false)}
-                disabled={submitting}
-                aria-label={t('datasets.closeAria')}
-              >
-                <X size={20} />
-              </button>
-            </div>
-            <div className="console-modal-body">
-              <FormField label={t('datasets.joinTargetDataset')}>
-                <select value={targetId} onChange={(e) => setTargetId(e.target.value)}>
-                  <option value="">{t('datasets.selectTable')}</option>
-                  {otherDatasets.map((d) => (
-                    <option key={d.id} value={d.id}>
-                      {d.display_name || `${d.schema_name}.${d.table_name}`}
+      <Dialog
+        open={showForm}
+        onClose={() => !submitting && setShowForm(false)}
+        closeDisabled={submitting}
+        title={t('datasets.addRelationship')}
+        closeAriaLabel={t('datasets.closeAria')}
+        size="md"
+        footer={
+          <>
+          <button
+            type="button"
+            className="btn btn-secondary"
+            onClick={() => !submitting && setShowForm(false)}
+            disabled={submitting}
+          >
+            {t('shared.cancel')}
+          </button>
+          <button
+            type="button"
+            className="btn btn-primary"
+            onClick={() => void handleCreate()}
+            disabled={submitting || !targetId}
+          >
+            {submitting ? <Loader2 size={16} className="console-loading-spinner" /> : t('datasets.joinCreate')}
+          </button>
+          </>
+        }
+      >
+        <div className="entity-view__form">
+          <FormField label={t('datasets.joinTargetDataset')}>
+            <select value={targetId} onChange={(e) => setTargetId(e.target.value)}>
+              <option value="">{t('datasets.selectTable')}</option>
+              {otherDatasets.map((d) => (
+                <option key={d.id} value={d.id}>
+                  {d.display_name || `${d.schema_name}.${d.table_name}`}
+                </option>
+              ))}
+            </select>
+          </FormField>
+          <FormField label={t('datasets.joinDirection')}>
+            <select
+              value={direction}
+              onChange={(e) => setDirection(e.target.value as 'from' | 'to')}
+            >
+              <option value="from">{t('datasets.directionThisFrom')}</option>
+              <option value="to">{t('datasets.directionThisTo')}</option>
+            </select>
+          </FormField>
+          <label className="ds-check-row">
+            <input type="checkbox" checked={required} onChange={(e) => setRequired(e.target.checked)} />
+            <span>{t('datasets.joinRequired')}</span>
+          </label>
+          <p className="page-subtitle">{t('datasets.joinRequiredHint')}</p>
+          <div className="dataset-joins__pairs">
+            <span>{t('datasets.joinColumns')}</span>
+            {pairs.map((pair, idx) => (
+              <div key={idx} className="dataset-joins__pair">
+                <select
+                  className="ds-control"
+                  value={pair.from}
+                  onChange={(e) =>
+                    setPairs((prev) =>
+                      prev.map((p, i) => (i === idx ? { ...p, from: e.target.value } : p)),
+                    )
+                  }
+                >
+                  <option value="">{t('datasets.joinColumnPlaceholder')}</option>
+                  {pairFromCols.map((c) => (
+                    <option key={c.column_name} value={c.column_name}>
+                      {c.column_name}
                     </option>
                   ))}
                 </select>
-              </FormField>
-              <FormField label={t('datasets.joinDirection')}>
+                <span className="dataset-joins__eq">=</span>
                 <select
-                  value={direction}
-                  onChange={(e) => setDirection(e.target.value as 'from' | 'to')}
+                  className="ds-control"
+                  value={pair.to}
+                  onChange={(e) =>
+                    setPairs((prev) =>
+                      prev.map((p, i) => (i === idx ? { ...p, to: e.target.value } : p)),
+                    )
+                  }
+                  disabled={!targetId}
                 >
-                  <option value="from">{t('datasets.directionThisFrom')}</option>
-                  <option value="to">{t('datasets.directionThisTo')}</option>
+                  <option value="">{t('datasets.joinColumnPlaceholder')}</option>
+                  {pairToCols.map((c) => (
+                    <option key={c.column_name} value={c.column_name}>
+                      {c.column_name}
+                    </option>
+                  ))}
                 </select>
-              </FormField>
-              <label className="ds-check-row">
-                <input type="checkbox" checked={required} onChange={(e) => setRequired(e.target.checked)} />
-                <span>{t('datasets.joinRequired')}</span>
-              </label>
-              <p className="page-subtitle">{t('datasets.joinRequiredHint')}</p>
-              <div className="dataset-joins__pairs">
-                <span>{t('datasets.joinColumns')}</span>
-                {pairs.map((pair, idx) => (
-                  <div key={idx} className="dataset-joins__pair">
-                    <select
-                      className="ds-control"
-                      value={pair.from}
-                      onChange={(e) =>
-                        setPairs((prev) =>
-                          prev.map((p, i) => (i === idx ? { ...p, from: e.target.value } : p)),
-                        )
-                      }
-                    >
-                      <option value="">{t('datasets.joinColumnPlaceholder')}</option>
-                      {pairFromCols.map((c) => (
-                        <option key={c.column_name} value={c.column_name}>
-                          {c.column_name}
-                        </option>
-                      ))}
-                    </select>
-                    <span className="dataset-joins__eq">=</span>
-                    <select
-                      className="ds-control"
-                      value={pair.to}
-                      onChange={(e) =>
-                        setPairs((prev) =>
-                          prev.map((p, i) => (i === idx ? { ...p, to: e.target.value } : p)),
-                        )
-                      }
-                      disabled={!targetId}
-                    >
-                      <option value="">{t('datasets.joinColumnPlaceholder')}</option>
-                      {pairToCols.map((c) => (
-                        <option key={c.column_name} value={c.column_name}>
-                          {c.column_name}
-                        </option>
-                      ))}
-                    </select>
-                    {pairs.length > 1 && (
-                      <button
-                        type="button"
-                        className="btn btn-secondary"
-                        onClick={() => setPairs((prev) => prev.filter((_, i) => i !== idx))}
-                      >
-                        <Trash2 size={16} aria-hidden />
-                      </button>
-                    )}
-                  </div>
-                ))}
-                <button
-                  type="button"
-                  className="btn btn-secondary"
-                  onClick={() => setPairs((prev) => [...prev, { from: '', to: '' }])}
-                >
-                  <Plus size={16} aria-hidden />
-                  {t('datasets.joinAddPair')}
-                </button>
+                {pairs.length > 1 && (
+                  <button
+                    type="button"
+                    className="btn btn-secondary"
+                    onClick={() => setPairs((prev) => prev.filter((_, i) => i !== idx))}
+                  >
+                    <Trash2 size={16} aria-hidden />
+                  </button>
+                )}
               </div>
-              <FormField label={t('datasets.joinName')}>
-                <input type="text" value={joinName} onChange={(e) => setJoinName(e.target.value)} />
-              </FormField>
-              <FormField label={t('datasets.joinDescription')}>
-                <input
-                  type="text"
-                  value={description}
-                  onChange={(e) => setDescription(e.target.value)}
-                />
-              </FormField>
-              <FormField label={t('datasets.aiInstructions')} hint={t('datasets.relationshipAiHint')}>
-                <textarea
-                  rows={2}
-                  value={aiInstructions}
-                  onChange={(e) => setAiInstructions(e.target.value)}
-                />
-              </FormField>
-              <FormField label={t('datasets.aiSynonyms')}>
-                <input
-                  type="text"
-                  value={aiSynonyms}
-                  onChange={(e) => setAiSynonyms(e.target.value)}
-                />
-              </FormField>
-              <FormField label={t('datasets.aiExamples')}>
-                <input
-                  type="text"
-                  value={aiExamples}
-                  onChange={(e) => setAiExamples(e.target.value)}
-                />
-              </FormField>
-            </div>
-            <div className="console-modal-actions">
-              <button
-                type="button"
-                className="btn btn-secondary"
-                onClick={() => !submitting && setShowForm(false)}
-                disabled={submitting}
-              >
-                {t('shared.cancel')}
-              </button>
-              <button
-                type="button"
-                className="btn btn-primary"
-                onClick={() => void handleCreate()}
-                disabled={submitting || !targetId}
-              >
-                {submitting ? <Loader2 size={16} className="console-loading-spinner" /> : t('datasets.joinCreate')}
-              </button>
-            </div>
+            ))}
+            <button
+              type="button"
+              className="btn btn-secondary"
+              onClick={() => setPairs((prev) => [...prev, { from: '', to: '' }])}
+            >
+              <Plus size={16} aria-hidden />
+              {t('datasets.joinAddPair')}
+            </button>
           </div>
+          <FormField label={t('datasets.joinName')}>
+            <input type="text" value={joinName} onChange={(e) => setJoinName(e.target.value)} />
+          </FormField>
+          <FormField label={t('datasets.joinDescription')}>
+            <input
+              type="text"
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+            />
+          </FormField>
+          <FormField label={t('datasets.aiInstructions')} hint={t('datasets.relationshipAiHint')}>
+            <textarea
+              rows={2}
+              value={aiInstructions}
+              onChange={(e) => setAiInstructions(e.target.value)}
+            />
+          </FormField>
+          <FormField label={t('datasets.aiSynonyms')}>
+            <input
+              type="text"
+              value={aiSynonyms}
+              onChange={(e) => setAiSynonyms(e.target.value)}
+            />
+          </FormField>
+          <FormField label={t('datasets.aiExamples')}>
+            <input
+              type="text"
+              value={aiExamples}
+              onChange={(e) => setAiExamples(e.target.value)}
+            />
+          </FormField>
+        
         </div>
-      )}
+      </Dialog>
+
     </>
   );
 }
