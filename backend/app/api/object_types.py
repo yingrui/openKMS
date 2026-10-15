@@ -16,7 +16,11 @@ from app.services.ontology.ontology_type_scope import require_object_type_permis
 from app.services.acl.resource_acl_constants import PERM_READ, PERM_WRITE, RT_OBJECT_TYPE
 from app.models.data_source import DataSource
 from app.models.link_instance import LinkInstance
-from app.services.ontology.neo4j_async import open_neo4j_driver, run_with_neo4j_driver
+from app.services.ontology.neo4j_async import (
+    neo4j_driver_available,
+    open_neo4j_driver,
+    run_with_neo4j_driver,
+)
 from app.models.object_instance import ObjectInstance
 from app.models.object_type import ObjectType
 from app.services.ontology.query_filters import parse_prop_filters, row_matches_prop_filters
@@ -397,13 +401,11 @@ async def _open_neo4j_driver_for_index(body: IndexToNeo4jRequest, db: AsyncSessi
         raise HTTPException(status_code=404, detail="Data source not found")
     if neo4j_ds.kind != "neo4j":
         raise HTTPException(status_code=400, detail="Target must be a Neo4j data source")
-    try:
-        from neo4j import GraphDatabase  # noqa: F401
-    except ImportError:
+    if not neo4j_driver_available():
         raise HTTPException(
             status_code=501,
             detail="Neo4j driver not installed. pip install neo4j",
-        ) from None
+        )
     return open_neo4j_driver(neo4j_ds)
 
 
@@ -480,13 +482,11 @@ async def purge_object_type_instances(
         neo4j_ds = await get_first_neo4j_datasource(db)
 
     if neo4j_ds:
-        try:
-            from neo4j import GraphDatabase  # noqa: F401
-        except ImportError:
+        if not neo4j_driver_available():
             raise HTTPException(
                 status_code=501,
                 detail="Neo4j driver not installed. pip install neo4j",
-            ) from None
+            )
 
         def _run(driver) -> int:
             with driver.session() as session:
@@ -619,8 +619,6 @@ async def list_object_instances(
         if not neo4j_ds:
             return ObjectInstanceListResponse(items=[], total=0)
         try:
-            from neo4j import GraphDatabase  # noqa: F401
-
             label = neo4j_safe_label(obj_type.name)
 
             def _query(driver):
@@ -650,8 +648,6 @@ async def list_object_instances(
     neo4j_ds = await get_first_neo4j_datasource(db)
     if neo4j_ds:
         try:
-            from neo4j import GraphDatabase  # noqa: F401
-
             label = neo4j_safe_label(obj_type.name)
 
             def _query(driver):

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import importlib.util
 import io
 import logging
 import shutil
@@ -18,12 +19,8 @@ THUMB_MAX = 480
 
 
 def _has_pillow() -> bool:
-    try:
-        import PIL  # noqa: F401
-
-        return True
-    except ImportError:
-        return False
+    """Whether Pillow is importable, without importing it just to find out."""
+    return importlib.util.find_spec("PIL") is not None
 
 
 def _has_ffmpeg() -> bool:

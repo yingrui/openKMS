@@ -78,7 +78,7 @@ async def start_ingest(
     key = f"datasets/uploads/{ingest_id}/{filename}"
     try:
         upload_object(key, content, file.content_type)
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:
         raise HTTPException(status_code=502, detail=f"Storage upload failed: {exc}") from exc
 
     payload = request.state.openkms_jwt_payload

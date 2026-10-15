@@ -109,7 +109,7 @@ async def admin_users_page(
 
 
 async def _admin_count(db: AsyncSession) -> int:
-    n = await db.scalar(select(func.count()).select_from(User).where(User.is_admin == True))  # noqa: E712
+    n = await db.scalar(select(func.count()).select_from(User).where(User.is_admin.is_(True)))
     return int(n or 0)
 
 

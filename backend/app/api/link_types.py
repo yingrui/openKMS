@@ -27,7 +27,11 @@ from app.services.ontology.ontology_type_scope import require_link_type_permissi
 from app.services.acl.resource_acl_constants import PERM_READ, PERM_WRITE, RT_LINK_TYPE
 from app.models.data_source import DataSource
 from app.models.link_instance import LinkInstance
-from app.services.ontology.neo4j_async import open_neo4j_driver, run_with_neo4j_driver
+from app.services.ontology.neo4j_async import (
+    neo4j_driver_available,
+    open_neo4j_driver,
+    run_with_neo4j_driver,
+)
 from app.models.link_type import CARDINALITY_CHOICES, LinkType
 from app.models.object_instance import ObjectInstance
 from app.models.object_type import ObjectType
@@ -423,13 +427,11 @@ async def _open_neo4j_driver_for_link_index(body: IndexToNeo4jRequest, db: Async
         raise HTTPException(status_code=404, detail="Data source not found")
     if neo4j_ds.kind != "neo4j":
         raise HTTPException(status_code=400, detail="Target must be a Neo4j data source")
-    try:
-        from neo4j import GraphDatabase  # noqa: F401
-    except ImportError:
+    if not neo4j_driver_available():
         raise HTTPException(
             status_code=501,
             detail="Neo4j driver not installed. pip install neo4j",
-        ) from None
+        )
     return open_neo4j_driver(neo4j_ds)
 
 
@@ -692,8 +694,6 @@ async def list_link_instances(
         target_type = await db.get(ObjectType, link_type.target_object_type_id)
         if source_type and target_type:
             try:
-                from neo4j import GraphDatabase  # noqa: F401
-
                 src_label = neo4j_safe_label(source_type.name)
                 tgt_label = neo4j_safe_label(target_type.name)
                 rel_type = _neo4j_safe_rel_type(link_type.name)

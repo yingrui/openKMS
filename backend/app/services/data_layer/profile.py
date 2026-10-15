@@ -60,7 +60,7 @@ async def compute_profile(db: AsyncSession, dataset: Dataset) -> tuple[int, list
                             "max": serialize_cell_value((row or {}).get("mx")),
                         }
                     )
-                except Exception:  # noqa: BLE001 - MIN/MAX unsupported for some types
+                except Exception:  # MIN/MAX unsupported for some types
                     entry.update({"null_count": None, "distinct_count": None, "min": None, "max": None})
                 stats.append(entry)
         return total, stats

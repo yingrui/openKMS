@@ -9,6 +9,11 @@ from fastapi import APIRouter, Depends, File, HTTPException, Query, Request, Upl
 from sqlalchemy import delete, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.api.project_conversations import router as project_conversations_router
+from app.api.project_deploy_secrets import router as project_deploy_secrets_router
+from app.api.project_git_remote import router as project_git_remote_router
+from app.api.project_kubernetes import router as project_kubernetes_router
+from app.api.project_schedules import build_project_schedules_router
 from app.api.deps import get_jwt_sub
 from app.api.auth import require_permission
 from app.database import get_db
@@ -606,23 +611,10 @@ async def uninstall_project_skill(
 
 
 # Nested conversation routes
-from app.api.project_conversations import router as project_conversations_router  # noqa: E402
-
 router.include_router(project_conversations_router)
-
-from app.api.project_schedules import build_project_schedules_router  # noqa: E402
-
 router.include_router(build_project_schedules_router())
 
 # Remote git (Phase 6)
-from app.api.project_git_remote import router as project_git_remote_router  # noqa: E402
-
 router.include_router(project_git_remote_router)
-
-from app.api.project_deploy_secrets import router as project_deploy_secrets_router  # noqa: E402
-
 router.include_router(project_deploy_secrets_router)
-
-from app.api.project_kubernetes import router as project_kubernetes_router  # noqa: E402
-
 router.include_router(project_kubernetes_router)

@@ -119,7 +119,7 @@ async def run_rule(db: AsyncSession, dataset: Dataset, rule: QualityRule) -> dic
         }
     except QualityError:
         raise
-    except Exception as exc:  # noqa: BLE001 - surface DB errors as 400, not 500
+    except Exception as exc:  # surface DB errors as 400, not 500
         raise QualityError(f"Rule execution failed: {exc}") from exc
     finally:
         engine.dispose()

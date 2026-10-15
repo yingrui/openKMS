@@ -9,6 +9,34 @@ from app.models.access_group import AccessGroupMember
 from app.models.article_channel import ArticleChannel
 from app.models.document_channel import DocumentChannel
 
+# Re-export ACL API (replaces legacy group-scope functions)
+from app.services.acl.resource_acl_service import (
+    acl_applies,
+    article_passes_scoped_predicate,
+    bootstrap_owner_acl,
+    channel_allowed_for_document_upload,
+    check_resource_access,
+    document_passes_scoped_predicate,
+    effective_article_channel_ids,
+    effective_channel_ids,
+    effective_channel_ids_with_data_resources,
+    effective_dataset_ids,
+    effective_evaluation_ids,
+    effective_knowledge_base_ids,
+    effective_link_type_ids,
+    effective_object_type_ids,
+    effective_permissions,
+    effective_wiki_space_ids,
+    instance_visible,
+    jwt_is_admin,
+    list_acl_entries,
+    replace_resource_acl,
+    scoped_article_predicate,
+    scoped_document_predicate,
+    scope_applies,
+    user_group_ids,
+)
+
 
 async def user_group_ids_legacy(db: AsyncSession, user_id: str) -> list[str]:
     """Deprecated alias."""
@@ -100,33 +128,6 @@ async def expanded_article_channel_ids_for_roots(db: AsyncSession, roots: set[st
     return full
 
 
-# Re-export ACL API (replaces legacy group-scope functions)
-from app.services.acl.resource_acl_service import (  # noqa: E402
-    acl_applies,
-    article_passes_scoped_predicate,
-    bootstrap_owner_acl,
-    channel_allowed_for_document_upload,
-    check_resource_access,
-    document_passes_scoped_predicate,
-    effective_article_channel_ids,
-    effective_channel_ids,
-    effective_channel_ids_with_data_resources,
-    effective_dataset_ids,
-    effective_evaluation_ids,
-    effective_knowledge_base_ids,
-    effective_link_type_ids,
-    effective_object_type_ids,
-    effective_permissions,
-    effective_wiki_space_ids,
-    instance_visible,
-    jwt_is_admin,
-    list_acl_entries,
-    replace_resource_acl,
-    scoped_article_predicate,
-    scoped_document_predicate,
-    scope_applies,
-    user_group_ids,
-)
 
 __all__ = [
     "acl_applies",

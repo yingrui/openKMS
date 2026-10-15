@@ -952,7 +952,7 @@ async def run_media_generation(
     from app.models.api_model import ApiModel
     from app.models.api_provider import ApiProvider
     from app.models.media_asset import MediaAsset
-    from app.models.media_channel import MediaChannel  # noqa: F401 - register FK target for ORM flush
+    from app.models.media_channel import MediaChannel
     from app.services.feature_toggles import is_feature_enabled
     from app.services.jobs.job_run_worker_log import persist_job_run_worker_log_best_effort
     from app.services.media.zhipu import (

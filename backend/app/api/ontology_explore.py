@@ -14,6 +14,7 @@ from app.models.link_type import LinkType
 from app.models.object_type import ObjectType
 from app.services.agent.llm import resolve_agent_llm_config
 from app.services.credentials.credential_encryption import decrypt
+from app.services.ontology.neo4j_async import neo4j_driver_available
 from app.services.ontology.text_to_cypher import (
     generate_cypher_from_question,
     summarize_answer,
@@ -128,10 +129,8 @@ async def execute_cypher(
     neo4j_ds = result.scalar_one_or_none()
     if not neo4j_ds:
         raise HTTPException(status_code=400, detail="No Neo4j data source configured")
-    try:
-        from neo4j import GraphDatabase  # noqa: F401
-    except ImportError:
-        raise HTTPException(status_code=501, detail="Neo4j driver not installed") from None
+    if not neo4j_driver_available():
+        raise HTTPException(status_code=501, detail="Neo4j driver not installed")
     username = decrypt(neo4j_ds.username_encrypted) if neo4j_ds.username_encrypted else ""
     password = decrypt(neo4j_ds.password_encrypted) if neo4j_ds.password_encrypted else ""
     uri = f"bolt://{neo4j_ds.host}:{neo4j_ds.port or 7687}"

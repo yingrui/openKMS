@@ -162,7 +162,7 @@ async def apply_row_ops(
                     )
     except RowEditError:
         raise
-    except Exception as exc:  # noqa: BLE001 - surface DB errors as 400, not 500
+    except Exception as exc:  # surface DB errors as 400, not 500
         raise RowEditError(f"Edit failed: {exc}") from exc
     finally:
         engine.dispose()

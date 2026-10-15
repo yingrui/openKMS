@@ -66,7 +66,7 @@ async def semantic_search(
                 data = resp.json()
             results = [SearchResult(**s) for s in data.get("results", [])]
             return SearchResponse(results=results, query=body.query)
-        except Exception as e:  # noqa: BLE001
+        except Exception as e:
             logger.warning("Hybrid /retrieve failed, falling back to dense-only: %s", e)
 
     return await search_knowledge_base(

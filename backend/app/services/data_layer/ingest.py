@@ -34,7 +34,7 @@ def read_dataframe(content: bytes, filename: str, *, nrows: int | None = None) -
             return df.head(nrows) if nrows else df
         if ext in (".xlsx", ".xls"):
             return pd.read_excel(buf, nrows=nrows)
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:
         raise IngestError(f"Failed to parse {filename}: {exc}") from exc
     raise IngestError(f"Unsupported file type '{ext or filename}'. Use CSV, TSV, JSON, or Excel.")
 
@@ -107,7 +107,7 @@ def load_dataframe(
         return int(count)
     except IngestError:
         raise
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:
         raise IngestError(f"Failed to load table: {exc}") from exc
     finally:
         engine.dispose()

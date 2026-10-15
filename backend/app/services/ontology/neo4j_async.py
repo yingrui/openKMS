@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import importlib.util
 from collections.abc import Callable
 from typing import TypeVar
 
@@ -17,6 +18,11 @@ def neo4j_connection_params(ds: DataSource) -> tuple[str, str, str]:
     password = decrypt(ds.password_encrypted) if ds.password_encrypted else ""
     uri = f"bolt://{ds.host}:{ds.port or 7687}"
     return uri, username, password
+
+
+def neo4j_driver_available() -> bool:
+    """Whether the optional Neo4j driver can be imported — asked without importing it."""
+    return importlib.util.find_spec("neo4j") is not None
 
 
 def open_neo4j_driver(ds: DataSource):

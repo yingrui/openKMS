@@ -227,7 +227,7 @@ async def run_query(
     started = time.perf_counter()
     try:
         rows = run_readonly(ds, sql, params, timeout_ms=timeout_ms)
-    except Exception as exc:  # noqa: BLE001 - surface any DB error as a query error
+    except Exception as exc:  # surface any DB error as a query error
         raise QueryError(f"Query failed: {exc}") from exc
     duration_ms = int((time.perf_counter() - started) * 1000)
 

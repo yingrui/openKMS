@@ -17,7 +17,10 @@ from app.schemas.data_source import (
 )
 from app.services.credentials.credential_encryption import decrypt, encrypt
 from app.services.connectors.data_source_connection import test_data_source_connection_async
-from app.services.ontology.neo4j_async import neo4j_delete_all as delete_all_neo4j_data
+from app.services.ontology.neo4j_async import (
+    neo4j_delete_all as delete_all_neo4j_data,
+    neo4j_driver_available,
+)
 
 router = APIRouter(
     prefix="/data-sources",
@@ -168,13 +171,11 @@ async def neo4j_delete_all(data_source_id: str, db: AsyncSession = Depends(get_d
     if ds.kind != "neo4j":
         raise HTTPException(status_code=400, detail="Only Neo4j data sources support delete all")
 
-    try:
-        from neo4j import GraphDatabase  # noqa: F401
-    except ImportError:
+    if not neo4j_driver_available():
         raise HTTPException(
             status_code=501,
             detail="Neo4j driver not installed. pip install neo4j",
-        ) from None
+        )
 
     ok, message = await delete_all_neo4j_data(ds)
     return {"ok": ok, "message": message}

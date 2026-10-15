@@ -122,7 +122,7 @@ def _parse_sources(raw: Any) -> list[SearchResult]:
         if isinstance(item, dict):
             try:
                 out.append(SearchResult.model_validate(item))
-            except Exception:  # noqa: BLE001
+            except Exception:
                 continue
     return out
 
