@@ -9,7 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.config import settings
-from app.models.api_model import ApiModel, model_has_capability
+from app.models.api_model import ApiModel
 
 
 @dataclass(frozen=True)

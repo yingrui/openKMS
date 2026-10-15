@@ -48,7 +48,7 @@ def build_joins_sql(
         if len(from_cols) != len(to_cols) or not from_cols:
             raise SqlBuildError("Relationship columns are not aligned.")
         ons: list[str] = []
-        for s, t in zip(from_cols, to_cols):
+        for s, t in zip(from_cols, to_cols, strict=True):
             if not (
                 isinstance(s, str)
                 and isinstance(t, str)

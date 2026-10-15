@@ -5,7 +5,6 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
-import re
 import uuid
 from collections.abc import AsyncIterator
 from datetime import datetime, timezone
@@ -39,7 +38,6 @@ from app.services.knowledge_map.knowledge_map_html import (
     iter_designer_chat_llm_stream_events,
     load_semantic_snapshot,
     semantic_content_hash,
-    knowledge_map_nodes_last_modified_at,
     static_html_for_empty_knowledge_map,
 )
 from app.services.knowledge_map.knowledge_map_html_designer_session import (

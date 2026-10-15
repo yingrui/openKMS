@@ -13,7 +13,6 @@ from app.services.data_layer.query import (
     _order_sql,
     build_sql,
     dimension_sql,
-    field_sql,
 )
 from app.services.data_layer.sql_build import SqlBuildError, build_conditions, build_joins_sql
 

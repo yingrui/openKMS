@@ -49,6 +49,23 @@ test = ["pytest>=8.0.0", "pytest-asyncio>=0.24.0", "httpx>=0.28.0"]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 
+[tool.ruff]
+# The codebase targets the declared floor (3.11); `alembic/versions` is generated.
+target-version = "py311"
+line-length = 100
+extend-exclude = ["alembic/versions"]
+
+[tool.ruff.lint]
+# High-signal only:
+#   E9  syntax errors (a file that cannot even be parsed)
+#   F   pyflakes — undefined names, shadowed definitions, dead imports, unused locals
+#   B   flake8-bugbear — real mistakes (mutable defaults, `zip` without `strict`, ...)
+# Not yet: import sorting (`I`) is a mechanical but wide-reaching diff, and the SQLAlchemy
+# model import order is load-bearing, so it needs its own pass.
+select = ["E9", "F", "B"]
+# FastAPI *requires* calls in defaults (`Depends(...)`, `Query(...)`, `File(...)`).
+ignore = ["B008"]
+
 # Default PyPI indexes for lock/install (China mirrors). Replaces pypi.org so uv.lock
 # records mirror registry URLs instead of files.pythonhosted.org. Regenerate lock after edits:
 #   cd backend && uv lock
@@ -60,6 +77,11 @@ default = true
 [build-system]
 requires = ["setuptools>=61.0", "wheel"]
 build-backend = "setuptools.build_meta"
+
+[dependency-groups]
+dev = [
+    "ruff>=0.17.0",
+]
 
 [tool.setuptools.packages.find]
 where = ["."]

@@ -29,4 +29,4 @@ def is_allowed_media_file_path(path: str) -> bool:
     if not path or ".." in path or path.startswith("/"):
         return False
     allowed = ("original.", "thumb.webp", "poster.webp")
-    return any(path.startswith(f"media/") and part in path for part in allowed) or path.endswith(allowed)
+    return any(path.startswith("media/") and part in path for part in allowed) or path.endswith(allowed)

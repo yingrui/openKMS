@@ -12,7 +12,6 @@ from app.services.connectors.tushare.client import (
     DEFER_RETRY_AFTER_SECONDS,
     TushareClient,
     TushareRateLimitError,
-    is_tushare_rate_limit_error,
     parse_tushare_rate_limit_wait_seconds,
 )
 from app.services.connectors.tushare.sync import (

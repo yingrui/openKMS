@@ -36,7 +36,7 @@ def run_readonly(
             result = conn.execute(text(sql), params)
             keys = list(result.keys())
             rows = [
-                dict(zip(keys, [serialize_cell_value(v) for v in row]))
+                dict(zip(keys, [serialize_cell_value(v) for v in row], strict=True))
                 for row in result.fetchall()
             ]
             tx.rollback()

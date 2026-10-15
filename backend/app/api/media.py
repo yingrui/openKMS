@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import mimetypes
 import os
-from datetime import datetime, timezone
 from uuid import uuid4
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, Request, UploadFile
@@ -28,7 +27,6 @@ from app.schemas.media_asset import (
 )
 from app.services.channels.channel_list_filter import channel_subtree_ids_for_list
 from app.services.channels.channel_scope import require_media_channel_write
-from app.services.acl.data_scope import scope_applies
 from app.services.feature_toggles import require_media_feature
 from app.services.media.media_scope import (
     load_media_scoped,

@@ -10,7 +10,7 @@ from sqlalchemy import delete, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_jwt_sub
-from app.api.auth import require_auth, require_permission
+from app.api.auth import require_permission
 from app.database import get_db
 from app.models.agent_models import AgentConversation, AgentMessage
 from app.models.content_comment import ContentComment

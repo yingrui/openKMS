@@ -14,7 +14,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.api.auth import require_any_permission, require_auth, require_permission
 from app.database import get_db
 from app.models.semantic_model import SemanticModel
-from app.models.metric_definition import MetricDefinition
 from app.schemas.semantic_model import (
     QueryRequest,
     QueryResponse,

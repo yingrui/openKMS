@@ -10,7 +10,7 @@ from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, Uplo
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.auth import require_any_permission, require_auth, require_permission
+from app.api.auth import require_auth, require_permission
 from app.database import get_db
 from app.models.data_source import DataSource
 from app.models.dataset import Dataset

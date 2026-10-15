@@ -48,7 +48,7 @@ from app.schemas.wiki import (
     WikiVaultMarkdownFileBody,
     WikiVaultMarkdownImportResponse,
 )
-from app.services.acl.data_scope import bootstrap_owner_acl, effective_wiki_space_ids, scope_applies
+from app.services.acl.data_scope import bootstrap_owner_acl
 from app.services.acl.resource_acl_constants import PERM_READ, PERM_WRITE, RT_WIKI_SPACE
 from app.services.wiki.wiki_page_scope import get_wiki_page_in_space
 from app.services.wiki.wiki_scope import load_wiki_space_scoped, require_wiki_space_manage

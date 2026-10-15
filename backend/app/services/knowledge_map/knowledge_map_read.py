@@ -7,7 +7,7 @@ from datetime import datetime
 from typing import TypeVar
 
 from pydantic import BaseModel, Field
-from sqlalchemy import func as sa_func, select
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.article_channel import ArticleChannel

@@ -158,7 +158,7 @@ async def fetch_dataset_rows_page(
             rows_result = conn.execute(text(sql), params)
             columns = list(rows_result.keys())
             rows = [
-                {k: serialize_cell_value(v) for k, v in zip(columns, r)}
+                {k: serialize_cell_value(v) for k, v in zip(columns, r, strict=True)}
                 for r in rows_result.fetchall()
             ]
         next_after = None

@@ -12,6 +12,7 @@ from procrastinate.job_context import JobContext
 from app.config import settings
 from app.constants import DocumentStatus
 from app.jobs import job_app
+from app.services.documents.document_storage import document_prefix
 from app.services.openkms_cli_subprocess import (
     build_openkms_cli_subprocess_env,
     prepare_openkms_cli_argv,
@@ -56,7 +57,7 @@ def render_command(
     from settings. extraction_args is the full extraction flags block when
     channel has extraction config; empty otherwise.
     """
-    from app.services.documents.document_storage import document_object_key, document_prefix, get_document_object
+    from app.services.documents.document_storage import document_object_key, document_prefix
 
     base_api_url = (api_url or settings.openkms_backend_url).rstrip("/")
     doc_prefix = document_prefix(file_hash)

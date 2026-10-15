@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from app.models.wiki_models import WikiSpace
-from app.services.acl.resource_acl_constants import PERM_MANAGE, PERM_READ, PERM_WRITE, RT_WIKI_SPACE
+from app.services.acl.resource_acl_constants import PERM_READ, RT_WIKI_SPACE
 from app.services.acl.resource_guard import (
     load_scoped_resource,
     require_manage,

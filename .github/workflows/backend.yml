@@ -1,0 +1,65 @@
+name: Backend checks
+
+on:
+  push:
+    paths:
+      - "backend/**"
+      - ".github/workflows/backend.yml"
+  pull_request:
+    paths:
+      - "backend/**"
+      - ".github/workflows/backend.yml"
+  workflow_dispatch:
+
+jobs:
+  lint-and-test:
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        # Same image as docker/docker-compose.yml — the app needs pgvector.
+        image: pgvector/pgvector:pg16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: openkms
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+
+    env:
+      OPENKMS_DEBUG: "true"
+      OPENKMS_SECRET_KEY: ci-secret-key
+      OPENKMS_DATABASE_HOST: localhost
+      OPENKMS_DATABASE_PORT: "5432"
+      OPENKMS_DATABASE_NAME: openkms
+      OPENKMS_DATABASE_USER: postgres
+      OPENKMS_DATABASE_PASSWORD: postgres
+      # No AWS_ACCESS_KEY_ID/SECRET ⇒ storage is a no-op (see storage_enabled), so no MinIO here.
+
+    defaults:
+      run:
+        working-directory: backend
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+
+      - name: Install dependencies
+        run: uv sync --frozen --extra test
+
+      - name: Lint (ruff)
+        run: uv run ruff check app tests
+
+      - name: Migrate
+        run: uv run alembic upgrade head
+
+      - name: Test
+        run: uv run pytest -q

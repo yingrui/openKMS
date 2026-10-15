@@ -127,7 +127,6 @@ class TestExportEndpoint:
 
     def test_returns_zip_with_stored_objects(self):
         from app.api.documents import export_document_parsing
-        from app.services.storage import StorageObjectInfo
 
         doc = _make_doc()
         doc.markdown = "# test"
@@ -156,7 +155,6 @@ class TestExportEndpoint:
         assert "test-doc.pdf-parsing.zip" in cd
 
         # Verify zip contents
-        import anyio
         body = b""
         async def _read():
             nonlocal body

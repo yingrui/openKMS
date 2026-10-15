@@ -84,7 +84,7 @@ async def require_resource_access(
     required: int,
 ) -> Any:
     """Enforce ACL on a loaded model; raise 404 when denied."""
-    resource_id = str(getattr(resource, "id"))
+    resource_id = str(resource.id)
     if not await resource_allowed(db, request, resource_type, resource_id, required):
         raise HTTPException(status_code=404, detail=not_found_detail(resource_type))
     return resource

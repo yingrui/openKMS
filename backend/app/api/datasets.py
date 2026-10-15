@@ -1,5 +1,4 @@
 """Datasets API – CRUD and list tables from DataSource (admin-only)."""
-import json
 import uuid
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
@@ -20,7 +19,6 @@ from app.services.acl.resource_acl_constants import PERM_READ, RT_DATASET
 from app.services.ontology.property_types import (
     map_source_type_to_ontology,
     normalize_postgresql_column_type,
-    serialize_cell_value,
 )
 from app.models.data_source import DataSource
 from app.models.dataset import Dataset

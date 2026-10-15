@@ -5,7 +5,6 @@ from __future__ import annotations
 import json
 import uuid
 from collections.abc import AsyncIterator
-from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, File, HTTPException, Query, Request, UploadFile
 from fastapi.responses import StreamingResponse
@@ -405,7 +404,6 @@ async def generate_skill_route(
     if not isinstance(event, dict):
         raise HTTPException(status_code=400, detail="event object is required")
 
-    etype = str(event.get("type") or "")
     www = str(event.get("what_went_wrong") or "")
     wfi = str(event.get("what_fixed_it") or "")
     ctx = str(event.get("context") or "")

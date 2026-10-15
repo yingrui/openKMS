@@ -12,13 +12,10 @@ from app.services.acl.acl_channel_filters import (
     accessible_article_channel_ids,
     accessible_document_channel_ids,
     accessible_media_channel_ids,
-    readable_article_channel_ids,
     readable_document_channel_ids,
-    readable_media_channel_ids,
 )
 from app.services.acl.acl_context import acl_check_required
 from app.services.acl.acl_resolve import (
-    _authenticated_bits_from_chain,
     _effective_permissions_from_entries,
     check_resource_access,
 )

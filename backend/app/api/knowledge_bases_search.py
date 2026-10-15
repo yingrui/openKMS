@@ -115,10 +115,10 @@ async def ask_question(
             )
     except httpx.HTTPStatusError as e:
         logger.error("Agent returned error: %s %s", e.response.status_code, e.response.text[:200])
-        raise HTTPException(status_code=502, detail="Agent service returned an error")
+        raise HTTPException(status_code=502, detail="Agent service returned an error") from e
     except Exception as e:
         logger.error("Failed to reach agent at %s: %s", agent_url, e)
-        raise HTTPException(status_code=502, detail="Could not reach agent service")
+        raise HTTPException(status_code=502, detail="Could not reach agent service") from e
 
 
 @router.post("/{kb_id}/ask/stream")

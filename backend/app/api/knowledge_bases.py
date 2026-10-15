@@ -3,15 +3,11 @@ import base64
 import logging
 import struct
 import uuid
-from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
-from sqlalchemy import delete, func, or_, select, update
-from sqlalchemy import cast
-from sqlalchemy.exc import DBAPIError
+from sqlalchemy import delete, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import load_only
-from sqlalchemy.dialects.postgresql import JSONB
 
 from app.api.auth import require_auth
 from app.api.kb_router_deps import (
@@ -29,7 +25,7 @@ from app.services.knowledge_bases.knowledge_base_read import kb_stats, kb_to_res
 from app.services.knowledge_bases.kb_scope import require_knowledge_base_manage
 from app.services.wiki.wiki_page_scope import require_wiki_page_by_id_read
 from app.services.wiki.wiki_scope import load_wiki_space_scoped
-from app.services.acl.resource_acl_constants import PERM_WRITE, RT_KNOWLEDGE_BASE, RT_WIKI_SPACE
+from app.services.acl.resource_acl_constants import PERM_WRITE, RT_KNOWLEDGE_BASE
 from app.models.chunk import Chunk
 from app.models.document import Document
 from app.models.faq import FAQ

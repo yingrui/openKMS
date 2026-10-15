@@ -6,7 +6,6 @@ import pytest
 
 from app.services.documents.document_storage import (
     document_object_key,
-    document_prefix,
     is_legacy_document_hash_prefix,
     legacy_document_prefix,
     normalize_logical_document_path,

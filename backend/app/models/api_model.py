@@ -1,5 +1,6 @@
 """ApiModel for external API provider/model registry."""
 from datetime import datetime
+from typing import TYPE_CHECKING
 
 from sqlalchemy import Boolean, DateTime, ForeignKey, String, func
 from sqlalchemy.dialects.postgresql import ARRAY, JSONB
@@ -30,6 +31,9 @@ VALID_CAPABILITIES = frozenset(c for c, _ in MODEL_CAPABILITIES)
 
 def model_has_capability(capabilities: list[str] | None, capability: str) -> bool:
     return capability in (capabilities or [])
+
+if TYPE_CHECKING:
+    from app.models.api_provider import ApiProvider
 
 
 class ApiModel(Base):

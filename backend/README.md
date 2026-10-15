@@ -139,6 +139,21 @@ Optional **`OPENKMS_WORKER_NAME`** names a worker instance on Console **System h
 API: http://localhost:8102  
 Docs: http://localhost:8102/docs
 
+## Checks
+
+```bash
+cd backend
+uv run ruff check app tests   # lint (config lives in pyproject.toml)
+uv run pytest -q              # tests
+```
+
+Both must pass. `ruff` covers syntax errors and the pyflakes/bugbear rules (undefined names,
+shadowed definitions, dead imports, unused locals, `zip` without `strict`, …). Run everything
+through `uv run` (the project venv): a system Python usually lacks the optional dependencies
+(`pytest-asyncio`, `langgraph-checkpoint-postgres`, `deepagents`), which shows up as a wall of
+collection errors that have nothing to do with your change. CI runs the same commands against a
+pgvector service — see `.github/workflows/backend.yml`.
+
 ## Endpoints
 
 - `GET /health` – Health check

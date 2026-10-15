@@ -118,7 +118,7 @@ def get_redirect_url(key: str, expires_in: int = 3600) -> str:
     # Rewrite to frontend proxy (/buckets/openkms) so img loads avoid S3 CORS
     frontend = settings.frontend_url.rstrip("/")
     bucket = _bucket()
-    from urllib.parse import urlparse, urlunparse
+    from urllib.parse import urlparse
 
     parsed = urlparse(raw_url)
     path = parsed.path

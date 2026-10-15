@@ -154,6 +154,6 @@ class TushareClient:
         items = data.get("items") or []
         rows: list[dict] = []
         for item in items:
-            rows.append(dict(zip(field_names, item)))
+            rows.append(dict(zip(field_names, item, strict=True)))
         logger.info("Tushare %s returned %s rows", api_name, len(rows))
         return rows

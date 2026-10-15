@@ -8,13 +8,11 @@ a row cap; the data-source credential is the privilege boundary.
 """
 from __future__ import annotations
 
-from typing import Any
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.dataset import Dataset
 from app.models.dataset_join import DatasetJoin
-from app.models.metric_definition import MetricDefinition
 from app.services.data_layer.expressions import ANSI, dialect_sql
 
 METRIC_TYPES = ("simple", "ratio", "derived", "cumulative", "conversion")

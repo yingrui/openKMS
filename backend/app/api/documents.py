@@ -153,8 +153,6 @@ async def list_documents(
             Document.updated_at,
         )
     )
-    p = request.state.openkms_jwt_payload
-    sub = p.get("sub")
     scope_pred = await document_list_predicate(db, request)
 
     if channel_id:
@@ -477,7 +475,9 @@ async def create_document_relationship(
         DocumentRelationType(body.relation_type)
     except ValueError:
         allowed = ", ".join(sorted(x.value for x in DocumentRelationType))
-        raise HTTPException(status_code=400, detail=f"relation_type must be one of: {allowed}")
+        raise HTTPException(
+            status_code=400, detail=f"relation_type must be one of: {allowed}"
+        ) from None
 
     peer = await db.get(Document, body.target_document_id)
     if not peer:
@@ -880,16 +880,16 @@ async def extract_document_metadata(
             raise HTTPException(
                 status_code=401,
                 detail="LLM API authorization failed. Check the extraction model's API key in model settings.",
-            )
+            ) from e
         if "HTTP 403" in msg or "403" in msg:
             raise HTTPException(
                 status_code=403,
                 detail="LLM API access forbidden. Check the extraction model's API key and permissions.",
-            )
+            ) from e
         raise HTTPException(
             status_code=502,
             detail=f"Extraction failed: {msg}",
-        )
+        ) from e
 
     now = datetime.now(timezone.utc).isoformat()
     current = doc.doc_metadata or {}
@@ -945,7 +945,7 @@ async def get_document_file(
     try:
         key = _storage_key(file_hash, path)
     except ValueError:
-        raise HTTPException(status_code=400, detail="Invalid path")
+        raise HTTPException(status_code=400, detail="Invalid path") from None
 
     if not object_exists(key):
         raise HTTPException(status_code=404, detail="File not found")
@@ -1145,7 +1145,6 @@ async def upload_document_chunked(
     if not data:
         raise HTTPException(status_code=400, detail="Empty chunk")
 
-    chunk_session_id = f"doc-upload-{chunk_index}-{total_chunks}-{channel_id}"
     # Use channel_id as session root so parallel uploads to different channels don't conflict
     session_dir = f"doc-upload-{channel_id}"
     store_chunk(session_dir, chunk_index, data)

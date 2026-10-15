@@ -4,7 +4,6 @@ from typing import Any
 
 from pydantic import BaseModel
 
-from app.schemas.metric import MetricFilter
 
 
 class SemanticModelDatasetRef(BaseModel):

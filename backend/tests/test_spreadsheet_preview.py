@@ -3,6 +3,8 @@
 import io
 
 import openpyxl
+import zipfile
+
 import pytest
 
 from app.services.documents.spreadsheet_preview import build_xlsx_preview
@@ -34,5 +36,5 @@ def test_build_xlsx_preview_basic():
 
 
 def test_build_xlsx_preview_rejects_non_xlsx():
-    with pytest.raises(Exception):
+    with pytest.raises(zipfile.BadZipFile):
         build_xlsx_preview(b"not a zip", file_hash="x" * 64)

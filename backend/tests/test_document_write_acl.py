@@ -8,7 +8,7 @@ from fastapi import HTTPException
 
 from app.models.document import Document
 from app.services.documents.document_scope import load_document_scoped, require_document_write
-from app.services.acl.resource_acl_constants import PERM_READ, PERM_WRITE, RT_DOCUMENT_CHANNEL
+from app.services.acl.resource_acl_constants import PERM_READ, PERM_WRITE
 
 
 def test_null_channel_id_denied_on_read():

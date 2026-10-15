@@ -10,12 +10,6 @@ from app.models.article_channel import ArticleChannel
 from app.models.document_channel import DocumentChannel
 
 
-def jwt_is_admin(payload: dict) -> bool:
-    from app.services.acl.resource_acl_service import jwt_is_admin as _impl
-
-    return _impl(payload)
-
-
 async def user_group_ids_legacy(db: AsyncSession, user_id: str) -> list[str]:
     """Deprecated alias."""
     result = await db.execute(

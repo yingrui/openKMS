@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Protocol
+from typing import Protocol, TypeVar
 
 
 class _ChannelRow(Protocol):
@@ -10,12 +10,15 @@ class _ChannelRow(Protocol):
     parent_id: str | None
 
 
-def paginate_channels_for_tree[T: _ChannelRow](
-    channels: list[T],
+_T = TypeVar("_T", bound=_ChannelRow)
+
+
+def paginate_channels_for_tree(
+    channels: list[_T],
     *,
     limit: int,
     offset: int,
-) -> tuple[list[T], int]:
+) -> tuple[list[_T], int]:
     """Return a channel slice and total root count.
 
     Pagination applies to **top-level** channels (``parent_id is None``). Each page
@@ -27,7 +30,7 @@ def paginate_channels_for_tree[T: _ChannelRow](
     if not page_roots:
         return [], total
 
-    children_by_parent: dict[str | None, list[T]] = {}
+    children_by_parent: dict[str | None, list[_T]] = {}
     for c in channels:
         children_by_parent.setdefault(c.parent_id, []).append(c)
 

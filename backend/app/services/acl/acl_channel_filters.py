@@ -49,11 +49,11 @@ def _channel_ids_requiring_acl_check(
     if not channels:
         return set()
     if settings.enforce_resource_acl:
-        return {str(getattr(c, "id")) for c in channels}
+        return {str(c.id) for c in channels}
     if not ids_with_direct_acl:
         return set()
 
-    by_id = {str(getattr(c, "id")): c for c in channels}
+    by_id = {str(c.id): c for c in channels}
     memo: dict[str, bool] = {}
 
     def restricted(cid: str) -> bool:
@@ -71,7 +71,7 @@ def _channel_ids_requiring_acl_check(
         memo[cid] = result
         return result
 
-    return {str(getattr(c, "id")) for c in channels if restricted(str(getattr(c, "id")))}
+    return {str(c.id) for c in channels if restricted(str(c.id))}
 
 
 async def _readable_channel_ids_batched(
@@ -85,7 +85,7 @@ async def _readable_channel_ids_batched(
         return set()
     result = await db.execute(select(channel_model))
     channels = list(result.scalars().all())
-    all_ids = {str(getattr(c, "id")) for c in channels}
+    all_ids = {str(c.id) for c in channels}
     if not all_ids:
         return set()
 

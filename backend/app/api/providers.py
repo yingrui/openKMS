@@ -87,7 +87,6 @@ async def delete_provider(provider_id: str, db: AsyncSession = Depends(get_db)):
 @router.get("/{provider_id}/models")
 async def list_provider_models(provider_id: str, db: AsyncSession = Depends(get_db)):
     """List models for a provider. Returns model IDs and names."""
-    from sqlalchemy.orm import selectinload
 
     provider = await db.get(ApiProvider, provider_id)
     if not provider:

@@ -215,12 +215,14 @@ async def update_comment(
     return comment_to_out(row)
 
 
+# No `-> None` return annotation: FastAPI 0.115 asserts "a 204 must not have a response
+# body", and the annotation is what makes it infer one (the other 204 routes omit it too).
 @router.delete("/{comment_id}", status_code=204)
 async def delete_comment(
     comment_id: str,
     request: Request,
     db: AsyncSession = Depends(get_db),
-) -> None:
+):
     row = await _get_comment_or_404(db, comment_id)
     sub = get_jwt_sub(request)
     if row.created_by != sub:

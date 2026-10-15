@@ -1,6 +1,5 @@
 """Pydantic schemas for evaluation management."""
 from datetime import datetime
-from typing import Any
 
 from pydantic import BaseModel, Field
 

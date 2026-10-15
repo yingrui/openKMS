@@ -116,8 +116,6 @@ async def list_articles(
     limit: int = 200,
 ):
     base_query = select(Article)
-    p = request.state.openkms_jwt_payload
-    sub = p.get("sub")
     scope_pred = await article_list_predicate(db, request)
 
     if channel_id:
@@ -431,7 +429,9 @@ async def create_article_relationship(
         DocumentRelationType(body.relation_type)
     except ValueError:
         allowed = ", ".join(sorted(x.value for x in DocumentRelationType))
-        raise HTTPException(status_code=400, detail=f"relation_type must be one of: {allowed}")
+        raise HTTPException(
+            status_code=400, detail=f"relation_type must be one of: {allowed}"
+        ) from None
 
     peer = await db.get(Article, body.target_article_id)
     if not peer:

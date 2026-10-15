@@ -39,7 +39,6 @@ async def resolve_subject_display(
         return subject
     subject = subject.strip()
 
-    from sqlalchemy import func, or_
 
     from app.models.user import User
     from app.models.user_api_key import UserApiKey
@@ -136,7 +135,6 @@ async def _display_hints_for_subject(db: AsyncSession, canonical: str) -> str | 
 
 async def _oidc_sub_for_user_row(db: AsyncSession, user: Any) -> str | None:
     """Map a local users row to OIDC sub via identity directory or personal API keys."""
-    from sqlalchemy import func, or_
 
     from app.models.oidc_identity import OidcIdentity
     from app.models.user_api_key import UserApiKey
@@ -224,7 +222,6 @@ def _label_from_api_key_fields(
 
 
 async def _owner_label_for_subject(db: AsyncSession, canonical: str) -> str:
-    from sqlalchemy import func, or_
 
     from app.models.user import User
     from app.models.user_api_key import UserApiKey
@@ -284,7 +281,6 @@ async def list_owner_candidates(db: AsyncSession) -> list[tuple[str, str]]:
         result = await db.execute(select(User).order_by(User.username))
         return [(str(u.id), u.username) for u in result.scalars().all()]
 
-    from sqlalchemy import func
 
     from app.models.access_group import AccessGroupMember
     from app.models.user import User
@@ -379,7 +375,6 @@ async def normalize_user_grantee_id(
         if raw in aliases or raw.lower() in {a.lower() for a in aliases}:
             return sub
 
-    from sqlalchemy import func, or_
 
     from app.models.user import User
     from app.models.user_api_key import UserApiKey

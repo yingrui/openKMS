@@ -103,6 +103,13 @@ Agent 工作指南（原 `.cursor/rules/` 合并版）。
 
 ---
 
+## 后端验证
+
+- 动 `backend/**` → **`cd backend && uv run ruff check app tests`**（配置在 `pyproject.toml`；`uv tool run ruff` 亦可）+ **`uv run pytest`**
+- **务必用项目的 `.venv`（`uv run` / `.venv/bin/pytest`）**：系统 python 往往缺可选依赖（`pytest-asyncio`、`langgraph-checkpoint-postgres`、`deepagents`…），会误报大量收集/运行失败
+- ruff 只开高信号规则（`E9` 语法、`F` pyflakes、`B` bugbear；`B008` 因 FastAPI `Depends(...)` 必需而关闭）。**不要**为了过检查而加 `noqa`——真问题就修
+- CI：`.github/workflows/backend.yml`（ruff + Alembic + pytest，自带 pgvector 服务）
+
 ## Apps（module / 托管 Service）
 
 详 `docs/features/app-builder.md`。

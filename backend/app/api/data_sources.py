@@ -9,7 +9,6 @@ from app.api.auth import require_auth, require_permission
 from app.services.permissions.permission_catalog import PERM_CONSOLE_DATA_SOURCES
 from app.database import get_db
 from app.models.data_source import DataSource
-from app.models.dataset import Dataset
 from app.schemas.data_source import (
     DataSourceCreate,
     DataSourceListResponse,
@@ -18,7 +17,7 @@ from app.schemas.data_source import (
 )
 from app.services.credentials.credential_encryption import decrypt, encrypt
 from app.services.connectors.data_source_connection import test_data_source_connection_async
-from app.services.ontology.neo4j_async import neo4j_delete_all
+from app.services.ontology.neo4j_async import neo4j_delete_all as delete_all_neo4j_data
 
 router = APIRouter(
     prefix="/data-sources",
@@ -177,5 +176,5 @@ async def neo4j_delete_all(data_source_id: str, db: AsyncSession = Depends(get_d
             detail="Neo4j driver not installed. pip install neo4j",
         ) from None
 
-    ok, message = await neo4j_delete_all(ds)
+    ok, message = await delete_all_neo4j_data(ds)
     return {"ok": ok, "message": message}

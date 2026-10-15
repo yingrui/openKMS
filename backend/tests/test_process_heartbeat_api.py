@@ -1,6 +1,5 @@
 """Process heartbeat internal API and health aggregation."""
 
-import asyncio
 
 from app.api.admin import health_status
 import app.services.heartbeat.process_heartbeat_registry as registry

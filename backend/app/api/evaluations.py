@@ -410,7 +410,7 @@ async def import_evaluation_items(
     try:
         text = content.decode("utf-8-sig")
     except UnicodeDecodeError:
-        raise HTTPException(status_code=400, detail="CSV must be UTF-8 encoded")
+        raise HTTPException(status_code=400, detail="CSV must be UTF-8 encoded") from None
 
     reader = csv.DictReader(io.StringIO(text))
     if not reader.fieldnames:

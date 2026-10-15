@@ -8,7 +8,6 @@ import time
 from datetime import datetime, timezone
 from typing import Literal
 from urllib.parse import urlencode
-from uuid import uuid4
 
 import bcrypt
 import jwt
@@ -28,7 +27,6 @@ from app.models.user_preference import UserPreference
 from app.services.permissions.permission_catalog import PERM_ALL
 from app.services.permissions.security_permission_service import list_permissions_sorted, sorted_permission_keys
 from app.services.permissions.permission_resolution import (
-    jwt_realm_role_names,
     resolve_oidc_permission_keys,
     resolve_user_permission_keys,
 )

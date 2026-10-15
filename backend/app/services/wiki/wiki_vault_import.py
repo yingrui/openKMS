@@ -359,7 +359,7 @@ async def import_vault_entries(
         wf = await upsert_vault_mirror_wiki_file(db, space_id, norm, raw, content_type=None, wiki_page_id=None)
         path_to_file_id[norm] = wf.id
         base = norm.rsplit("/", 1)[-1]
-        basename_to_ids.setdefault(base, []).append(fid)
+        basename_to_ids.setdefault(base, []).append(wf.id)
         result.files_uploaded += 1
 
     await db.flush()

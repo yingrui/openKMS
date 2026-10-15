@@ -12,7 +12,6 @@ from app.api.deps import get_jwt_sub
 from app.database import get_db
 from app.models.scheduled_trigger import (
     SCHEDULE_KIND_PROJECT_AGENT_STATEFUL,
-    SCHEDULE_KIND_PROJECT_AGENT_STATELESS,
 )
 from app.schemas.project_agent_schedule import (
     ProjectAgentScheduleCreate,

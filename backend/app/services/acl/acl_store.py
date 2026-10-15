@@ -70,7 +70,6 @@ async def replace_resource_acl(
     resource_id: str,
     grants: list[dict[str, Any]],
 ) -> list[ResourceAclEntry]:
-    from sqlalchemy import delete
 
     await db.execute(
         delete(ResourceAclEntry).where(
