@@ -1,7 +1,8 @@
-"""datasets — list / get / rows / metadata / create."""
+"""datasets — the Catalog: list/register/describe/keys/AI context/relationships/quality/ingest."""
 from __future__ import annotations
 
 import argparse
+import json
 from typing import Any
 
 from .._confirm import add_write_flags, confirm_or_abort
@@ -10,11 +11,24 @@ from .._io import print_json
 
 
 def cmd_list(ns: argparse.Namespace) -> None:
-    params: dict[str, str] = {}
+    params: dict[str, Any] = {}
     if ns.data_source_id:
         params["data_source_id"] = ns.data_source_id
+    if ns.search:
+        params["search"] = ns.search
+    if ns.limit is not None:
+        params["limit"] = ns.limit
+    if ns.offset is not None:
+        params["offset"] = ns.offset
     with client() as s:
         r = s.get("/api/datasets", params=params or None)
+    r.raise_for_status()
+    print_json(r.json())
+
+
+def cmd_discover(ns: argparse.Namespace) -> None:
+    with client() as s:
+        r = s.get(f"/api/datasets/from-source/{ns.data_source_id}")
     r.raise_for_status()
     print_json(r.json())
 
@@ -27,11 +41,17 @@ def cmd_get(ns: argparse.Namespace) -> None:
 
 
 def cmd_rows(ns: argparse.Namespace) -> None:
-    params: dict[str, int] = {}
+    params: dict[str, Any] = {}
     if ns.limit is not None:
         params["limit"] = ns.limit
     if ns.offset is not None:
         params["offset"] = ns.offset
+    if ns.sort:
+        params["sort"] = ns.sort
+    if ns.order:
+        params["order"] = ns.order
+    if ns.after:
+        params["after"] = ns.after
     with client() as s:
         r = s.get(f"/api/datasets/{ns.id}/rows", params=params or None)
     r.raise_for_status()
@@ -81,6 +101,14 @@ def cmd_update(ns: argparse.Namespace) -> None:
         body["display_name"] = ns.display_name
     if ns.description is not None:
         body["description"] = ns.description
+    if ns.domain is not None:
+        body["domain"] = ns.domain
+    if ns.tags is not None:
+        body["tags"] = _split_csv(ns.tags)
+    if ns.business_definition is not None:
+        body["business_definition"] = ns.business_definition
+    if ns.sensitivity is not None:
+        body["sensitivity"] = ns.sensitivity
     if ns.primary_key is not None:
         body["primary_key_columns"] = _split_csv(ns.primary_key)
     if ns.unique_keys is not None:
@@ -101,6 +129,15 @@ def cmd_update(ns: argparse.Namespace) -> None:
         r = s.put(path, json=body)
     r.raise_for_status()
     print_json(r.json())
+
+
+def cmd_delete(ns: argparse.Namespace) -> None:
+    path = f"/api/datasets/{ns.id}"
+    confirm_or_abort("delete dataset", "DELETE", path, None, ns.yes, ns.dry_run)
+    with client() as s:
+        r = s.delete(path)
+    r.raise_for_status()
+    print(f"deleted dataset {ns.id}")
 
 
 def cmd_column_description(ns: argparse.Namespace) -> None:
@@ -179,41 +216,6 @@ def cmd_joins_delete(ns: argparse.Namespace) -> None:
     print(f"deleted relationship {ns.join_id}")
 
 
-def cmd_fields_list(ns: argparse.Namespace) -> None:
-    with client() as s:
-        r = s.get(f"/api/datasets/{ns.id}/fields")
-    r.raise_for_status()
-    print_json(r.json())
-
-
-def cmd_fields_add(ns: argparse.Namespace) -> None:
-    body: dict[str, Any] = {"name": ns.name}
-    if ns.column:
-        body["column_name"] = ns.column
-    if ns.expression:
-        body["expression"] = {"dialects": {"ANSI_SQL": ns.expression}}
-    if ns.datatype:
-        body["datatype"] = ns.datatype
-    if ns.is_time:
-        body["dimension"] = {"is_time": True}
-    if ns.ai_instructions:
-        body["ai_context"] = {"instructions": ns.ai_instructions}
-    confirm_or_abort("add field", "POST", f"/api/datasets/{ns.id}/fields", body, ns.yes, ns.dry_run)
-    with client() as s:
-        r = s.post(f"/api/datasets/{ns.id}/fields", json=body)
-    r.raise_for_status()
-    print_json(r.json())
-
-
-def cmd_fields_delete(ns: argparse.Namespace) -> None:
-    path = f"/api/datasets/{ns.id}/fields/{ns.field_id}"
-    confirm_or_abort("delete field", "DELETE", path, None, ns.yes, ns.dry_run)
-    with client() as s:
-        r = s.delete(path)
-    r.raise_for_status()
-    print(f"deleted field {ns.field_id}")
-
-
 def cmd_ingest(ns: argparse.Namespace) -> None:
     from pathlib import Path
 
@@ -288,6 +290,31 @@ def cmd_quality_add(ns: argparse.Namespace) -> None:
     print_json(r.json())
 
 
+def cmd_quality_update(ns: argparse.Namespace) -> None:
+    body: dict[str, Any] = {}
+    if ns.name is not None:
+        body["name"] = ns.name
+    if ns.column is not None:
+        body["column_name"] = ns.column
+    if ns.severity is not None:
+        body["severity"] = ns.severity
+    if ns.enabled is not None:
+        body["enabled"] = ns.enabled == "true"
+    if ns.config is not None:
+        try:
+            body["config"] = json.loads(ns.config)
+        except json.JSONDecodeError as exc:
+            raise SystemExit(f"--config must be a JSON object: {exc}") from exc
+    if not body:
+        raise SystemExit("Nothing to update — pass at least one field.")
+    path = f"/api/datasets/{ns.id}/quality-rules/{ns.rule_id}"
+    confirm_or_abort("update quality rule", "PUT", path, body, ns.yes, ns.dry_run)
+    with client() as s:
+        r = s.put(path, json=body)
+    r.raise_for_status()
+    print_json(r.json())
+
+
 def cmd_quality_run(ns: argparse.Namespace) -> None:
     path = f"/api/datasets/{ns.id}/quality-rules/{ns.rule_id}/run"
     confirm_or_abort("run quality rule", "POST", path, None, ns.yes, ns.dry_run)
@@ -312,7 +339,14 @@ def add_subparser(sub) -> None:
 
     ls = sp.add_parser("list", help="List datasets")
     ls.add_argument("--data-source-id", default=None)
+    ls.add_argument("--search", default=None, help="match name / schema / table")
+    ls.add_argument("--limit", type=int, default=None)
+    ls.add_argument("--offset", type=int, default=None)
     ls.set_defaults(fn=cmd_list)
+
+    disc = sp.add_parser("discover", help="Tables a data source can register (GET …/from-source)")
+    disc.add_argument("--data-source-id", required=True)
+    disc.set_defaults(fn=cmd_discover)
 
     gt = sp.add_parser("get", help="Get dataset")
     gt.add_argument("--id", required=True)
@@ -322,6 +356,9 @@ def add_subparser(sub) -> None:
     rows.add_argument("--id", required=True)
     rows.add_argument("--limit", type=int, default=None)
     rows.add_argument("--offset", type=int, default=None)
+    rows.add_argument("--sort", default=None, help="column to sort by")
+    rows.add_argument("--order", choices=("asc", "desc"), default=None)
+    rows.add_argument("--after", default=None, help="keyset cursor: last value of --sort")
     rows.set_defaults(fn=cmd_rows)
 
     md = sp.add_parser("metadata", help="Column metadata (GET …/metadata)")
@@ -340,6 +377,15 @@ def add_subparser(sub) -> None:
     up.add_argument("--id", required=True)
     up.add_argument("--display-name", default=None)
     up.add_argument("--description", default=None)
+    up.add_argument("--domain", default=None)
+    up.add_argument("--tags", default=None, help="comma-separated")
+    up.add_argument("--business-definition", default=None, dest="business_definition")
+    up.add_argument(
+        "--sensitivity",
+        default=None,
+        choices=("public", "internal", "confidential", "restricted", ""),
+        help='"" clears it',
+    )
     up.add_argument("--primary-key", default=None, help="comma-separated columns")
     up.add_argument(
         "--unique-keys",
@@ -352,6 +398,11 @@ def add_subparser(sub) -> None:
     up.add_argument("--editable", choices=("true", "false"), default=None)
     add_write_flags(up)
     up.set_defaults(fn=cmd_update)
+
+    dl = sp.add_parser("delete", help="Delete a dataset (DELETE /api/datasets/{id})")
+    dl.add_argument("--id", required=True)
+    add_write_flags(dl)
+    dl.set_defaults(fn=cmd_delete)
 
     cd = sp.add_parser("column-description", help="Set a column's description (PUT …/columns/{col})")
     cd.add_argument("--id", required=True)
@@ -391,27 +442,6 @@ def add_subparser(sub) -> None:
     add_write_flags(jld)
     jld.set_defaults(fn=cmd_joins_delete)
 
-    fld = sp.add_parser("fields", help="Semantic fields (column refs + computed expressions)")
-    fsp = fld.add_subparsers(dest="dset_field_cmd", required=True)
-    fll = fsp.add_parser("list", help="List fields")
-    fll.add_argument("--id", required=True)
-    fll.set_defaults(fn=cmd_fields_list)
-    fla = fsp.add_parser("add", help="Add a field")
-    fla.add_argument("--id", required=True)
-    fla.add_argument("--name", required=True)
-    fla.add_argument("--column", default=None, help="source column (plain field)")
-    fla.add_argument("--expression", default=None, help="ANSI_SQL fragment (computed field)")
-    fla.add_argument("--datatype", default=None)
-    fla.add_argument("--is-time", action="store_true", dest="is_time", help="mark a time dimension")
-    fla.add_argument("--ai-instructions", default=None, dest="ai_instructions")
-    add_write_flags(fla)
-    fla.set_defaults(fn=cmd_fields_add)
-    fldel = fsp.add_parser("delete", help="Delete a field")
-    fldel.add_argument("--id", required=True)
-    fldel.add_argument("--field-id", required=True)
-    add_write_flags(fldel)
-    fldel.set_defaults(fn=cmd_fields_delete)
-
     ing = sp.add_parser("ingest", help="Upload a file and load it into a data-layer table")
     ing.add_argument("--file", required=True)
     ing.add_argument("--data-source-id", required=True)
@@ -438,6 +468,20 @@ def add_subparser(sub) -> None:
     qa.add_argument("--max-age-days", type=int, default=None)
     add_write_flags(qa)
     qa.set_defaults(fn=cmd_quality_add)
+    qu = qsp.add_parser("update", help="Update a quality rule (PUT …/quality-rules/{rule_id})")
+    qu.add_argument("--id", required=True)
+    qu.add_argument("--rule-id", required=True)
+    qu.add_argument("--name", default=None)
+    qu.add_argument("--column", default=None)
+    qu.add_argument("--severity", default=None)
+    qu.add_argument("--enabled", choices=("true", "false"), default=None)
+    qu.add_argument(
+        "--config",
+        default=None,
+        help='JSON object replacing the rule config, e.g. \'{"min": 0}\'',
+    )
+    add_write_flags(qu)
+    qu.set_defaults(fn=cmd_quality_update)
     qr = qsp.add_parser("run", help="Run a quality rule")
     qr.add_argument("--id", required=True)
     qr.add_argument("--rule-id", required=True)

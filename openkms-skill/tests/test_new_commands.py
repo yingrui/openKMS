@@ -26,8 +26,101 @@ def test_datasets_rows(mock_api):
     recorded, _ = mock_api
     from openkms.commands.datasets import cmd_rows
 
-    cmd_rows(_ns(id="d1", limit=10, offset=0))
+    cmd_rows(_ns(id="d1", limit=10, offset=0, sort=None, order=None, after=None))
     assert recorded[-1].url.path == "/api/datasets/d1/rows"
+
+
+def test_datasets_rows_keyset_paging(mock_api):
+    recorded, _ = mock_api
+    from openkms.commands.datasets import cmd_rows
+
+    cmd_rows(_ns(id="d1", limit=10, offset=None, sort="trade_date", order="desc", after="2026-01-31"))
+    q = dict(recorded[-1].url.params)
+    assert q == {"limit": "10", "sort": "trade_date", "order": "desc", "after": "2026-01-31"}
+
+
+def test_datasets_list_search_and_paging(mock_api):
+    recorded, _ = mock_api
+    from openkms.commands.datasets import cmd_list
+
+    cmd_list(_ns(data_source_id="ds1", search="stock", limit=50, offset=100))
+    assert dict(recorded[-1].url.params) == {
+        "data_source_id": "ds1",
+        "search": "stock",
+        "limit": "50",
+        "offset": "100",
+    }
+
+
+def test_datasets_discover(mock_api):
+    recorded, _ = mock_api
+    from openkms.commands.datasets import cmd_discover
+
+    cmd_discover(_ns(data_source_id="ds1"))
+    assert recorded[-1].url.path == "/api/datasets/from-source/ds1"
+
+
+def test_datasets_delete(mock_api):
+    recorded, _ = mock_api
+    from openkms.commands.datasets import cmd_delete
+
+    cmd_delete(_ns(id="d1"))
+    assert recorded[-1].method == "DELETE"
+    assert recorded[-1].url.path == "/api/datasets/d1"
+
+
+def test_datasets_update_sends_the_catalog_fields(mock_api):
+    recorded, _ = mock_api
+    from openkms.commands.datasets import cmd_update
+
+    cmd_update(
+        _ns(
+            id="d1",
+            display_name=None,
+            description=None,
+            domain="market",
+            tags="stock, daily",
+            business_definition="Daily quotes",
+            sensitivity="internal",
+            primary_key=None,
+            unique_keys=None,
+            ai_instructions=None,
+            ai_synonyms=None,
+            ai_examples=None,
+            editable=None,
+        )
+    )
+    assert json.loads(recorded[-1].content) == {
+        "domain": "market",
+        "tags": ["stock", "daily"],
+        "business_definition": "Daily quotes",
+        "sensitivity": "internal",
+    }
+
+
+def test_quality_update(mock_api):
+    recorded, _ = mock_api
+    from openkms.commands.datasets import cmd_quality_update
+
+    cmd_quality_update(
+        _ns(id="d1", rule_id="r1", name=None, column=None, severity=None, enabled="false", config='{"min": 0}')
+    )
+    assert recorded[-1].method == "PUT"
+    assert recorded[-1].url.path == "/api/datasets/d1/quality-rules/r1"
+    assert json.loads(recorded[-1].content) == {"enabled": False, "config": {"min": 0}}
+
+
+def test_dataset_group_has_no_stale_field_commands():
+    """Fields are model-scoped: a dataset-scoped copy would 404."""
+    import argparse
+
+    from openkms.commands import datasets as datasets_module
+
+    parser = argparse.ArgumentParser(prog="cli")
+    sub = parser.add_subparsers(dest="cmd", required=True)
+    datasets_module.add_subparser(sub)
+    assert "fields" not in parser.format_help()
+    assert not hasattr(datasets_module, "cmd_fields_add")
 
 
 def test_connectors_sync_yes(mock_api):

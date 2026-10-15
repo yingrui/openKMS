@@ -209,24 +209,24 @@ All write subcommands accept `--yes` / `--dry-run`. Without `--yes` on non-TTY s
 | `data-sources get` | GET | `/api/data-sources/{id}` | |
 | `data-sources create` *(write)* | POST | `/api/data-sources` | |
 | `data-sources test` *(write)* | POST | `/api/data-sources/{id}/test` | |
-| `datasets list` | GET | `/api/datasets` | Optional `?data_source_id=`. |
+| `datasets list` | GET | `/api/datasets` | Optional `?data_source_id=` / `?search=` / `?limit=` / `?offset=`. |
 | `datasets get` | GET | `/api/datasets/{id}` | |
-| `datasets rows` | GET | `/api/datasets/{id}/rows` | Optional `?limit=` / `?offset=`. |
+| `datasets discover` | GET | `/api/datasets/from-source/{data_source_id}` | Tables in a data source that can be registered. |
+| `datasets rows` | GET | `/api/datasets/{id}/rows` | `?limit=` / `?offset=` / `?sort=` / `?order=` / `?after=` (keyset cursor = last `sort` value). |
 | `datasets metadata` | GET | `/api/datasets/{id}/metadata` | Column metadata. |
 | `datasets create` *(write)* | POST | `/api/datasets` | Register existing table. |
-| `datasets update` *(write)* | PUT | `/api/datasets/{id}` | Body from any of `--display-name`, `--description`, `--primary-key` (csv), `--unique-keys` (`"a,b;c"`), `--ai-instructions`, `--ai-synonyms`, `--ai-examples`, `--editable true|false`. |
+| `datasets update` *(write)* | PUT | `/api/datasets/{id}` | **Partial** update. Body from any of `--display-name`, `--description`, `--domain`, `--tags` (csv), `--business-definition`, `--sensitivity public\|internal\|confidential\|restricted\|""`, `--primary-key` (csv), `--unique-keys` (`"a,b;c"`), `--editable true|false`, `--ai-instructions`, `--ai-synonyms`, `--ai-examples`. |
+| `datasets delete` *(write)* | DELETE | `/api/datasets/{id}` | Removes the catalog entry, not the table. |
 | `datasets column-description` *(write)* | PUT | `/api/datasets/{id}/columns/{column}` | Body `{description}` — set a physical column's description. |
 | `datasets profile` | GET | `/api/datasets/{id}/profile` | Computed column profile (row count, null/distinct/min/max). |
 | `datasets schema-history` | GET | `/api/datasets/{id}/schema-history` | Captured schema snapshots (newest first). |
 | `datasets joins list` | GET | `/api/dataset-joins` | Optional `?dataset_id=`. |
 | `datasets joins add` *(write)* | POST | `/api/dataset-joins` | Body `{from_dataset_id, to_dataset_id, from_columns:[…], to_columns:[…], required}`. `from` = many side (FK holder), `to` = one side (referenced key); `required=true` → INNER (only matched rows), default `false` → LEFT. Composite keys: aligned `from_columns`/`to_columns` arrays. |
 | `datasets joins delete` *(write)* | DELETE | `/api/dataset-joins/{join_id}` | |
-| `datasets fields list` | GET | `/api/datasets/{id}/fields` | Semantic fields (seeds from physical columns on first read). |
-| `datasets fields add` *(write)* | POST | `/api/datasets/{id}/fields` | Body `{name, column_name?, expression?, datatype?, dimension?, ai_context?}`. `--column` = plain field; `--expression` = computed (`{dialects:{ANSI_SQL}}`); `--is-time` marks a time dimension. |
-| `datasets fields delete` *(write)* | DELETE | `/api/datasets/{id}/fields/{field_id}` | |
 | `datasets ingest` *(write)* | POST | `/api/datasets/ingests` → `…/preview` → `…/load` | Upload a file, parse it, load into a data-layer PostgreSQL table. |
 | `datasets quality list` | GET | `/api/datasets/{id}/quality-rules` | Declarative quality rules + last status. |
 | `datasets quality add` *(write)* | POST | `/api/datasets/{id}/quality-rules` | Body `{name, rule_type, column_name, config}`. |
+| `datasets quality update` *(write)* | PUT | `/api/datasets/{id}/quality-rules/{rule_id}` | Body from `--name`, `--column`, `--severity`, `--enabled true|false`, `--config` (JSON, replaces the config object). |
 | `datasets quality run` *(write)* | POST | `/api/datasets/{id}/quality-rules/{rule_id}/run` | |
 | `datasets quality delete` *(write)* | DELETE | `/api/datasets/{id}/quality-rules/{rule_id}` | |
 | `metrics list` | GET | `/api/metrics` | Metrics; optional `?semantic_model_id=` / `?base_dataset_id=`. |
