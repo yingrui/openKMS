@@ -2054,30 +2054,10 @@ select.console-form-control {
   flex-direction: row;
   flex-wrap: wrap;
   align-items: center;
-}
 
-.playground__search {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-  padding: 0 var(--space-3);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
-  background: var(--color-bg-muted);
-  color: var(--color-text-muted);
-
-  input {
-    flex: 1 1 auto;
-    min-width: 0;
-    padding: var(--space-2) 0;
-    border: 0;
-    background: none;
-    color: var(--color-text);
-    font: inherit;
-
-    &:focus {
-      outline: none;
-    }
+  .ds-control {
+    width: auto;
+    min-width: 6rem;
   }
 }
 
@@ -2098,11 +2078,12 @@ select.console-form-control {
   display: inline-flex;
   align-items: center;
   gap: var(--space-1);
-  padding: 2px var(--space-2);
+  padding: var(--space-1) var(--space-2);
   border: 1px solid var(--color-border);
   border-radius: 999px;
   background: var(--color-bg-muted);
   font-size: var(--text-sm);
+  color: var(--color-text);
 
   select {
     padding: 0;
@@ -2132,17 +2113,10 @@ select.console-form-control {
   flex-wrap: wrap;
   gap: var(--space-2);
 
-  select,
-  input {
+  .ds-control {
     flex: 1 1 7rem;
+    width: auto;
     min-width: 0;
-  }
-}
-
-.playground__definition {
-  summary {
-    cursor: pointer;
-    font-weight: 600;
   }
 }
 

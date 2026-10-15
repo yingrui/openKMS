@@ -3,12 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { useSearchParams } from 'react-router-dom';
 import { Loader2, Play, Plus, Search, X } from 'lucide-react';
 import { toast } from 'sonner';
-import {
-  fetchMetricRuns,
-  fetchMetrics,
-  type MetricResponse,
-  type MetricRunResponse,
-} from '../../data/metricsApi';
+import { fetchMetrics, type MetricResponse } from '../../data/metricsApi';
 import {
   fetchModelFields,
   isTimeDimension,
@@ -19,6 +14,7 @@ import {
   type SemanticModelQueryResponse,
   type SemanticModelQuerySpec,
 } from '../../data/semanticModelsApi';
+import { FormField } from '../../styles/design-system';
 import { EntityViewHeader, EntityViewPanel } from './EntityViewShell';
 import { useSemanticModelDetail } from './SemanticModelDetailPage';
 
@@ -67,7 +63,6 @@ export function ModelPlaygroundSection() {
   const [result, setResult] = useState<SemanticModelQueryResponse | null>(null);
   const [showSql, setShowSql] = useState(false);
   const [running, setRunning] = useState(false);
-  const [runs, setRuns] = useState<MetricRunResponse[]>([]);
 
   useEffect(() => {
     let cancelled = false;
@@ -118,21 +113,6 @@ export function ModelPlaygroundSection() {
   );
   const fieldLabel = (ref: string) => fields.find((f) => f.id === ref || f.name === ref)?.name ?? ref;
 
-  useEffect(() => {
-    if (!spec?.metric) {
-      setRuns([]);
-      return;
-    }
-    setResult(null);
-    let cancelled = false;
-    void fetchMetricRuns(spec.metric)
-      .then((r) => !cancelled && setRuns(r))
-      .catch(() => !cancelled && setRuns([]));
-    return () => {
-      cancelled = true;
-    };
-  }, [spec?.metric]);
-
   const patch = (next: Partial<SemanticModelQuerySpec>) =>
     setSpec((prev) => (prev ? { ...prev, ...next } : prev));
 
@@ -175,9 +155,6 @@ export function ModelPlaygroundSection() {
       toast.error(e instanceof Error ? e.message : t('dataModel.playgroundRunFailed'));
     } finally {
       setRunning(false);
-      void fetchMetricRuns(spec.metric)
-        .then(setRuns)
-        .catch(() => undefined);
     }
   };
 
@@ -230,30 +207,29 @@ export function ModelPlaygroundSection() {
         <div className="playground__query">
           <EntityViewPanel>
             <div className="entity-view__form playground__form">
-              <label className="playground__label" htmlFor="pg-metric">
-                {t('datasets.metricName')}
-              </label>
-              <select
-                id="pg-metric"
-                value={spec.metric}
-                onChange={(e) => {
-                  setSpec({ ...emptySpec(e.target.value) });
-                  setFilterRows([]);
-                }}
-              >
-                {metrics.map((m) => (
-                  <option key={m.id} value={m.id}>
-                    {m.name}
-                  </option>
-                ))}
-              </select>
+              <FormField label={t('datasets.metricName')}>
+                <select
+                  value={spec.metric}
+                  onChange={(e) => {
+                    setSpec({ ...emptySpec(e.target.value) });
+                    setFilterRows([]);
+                  }}
+                >
+                  {metrics.map((m) => (
+                    <option key={m.id} value={m.id}>
+                      {m.name}
+                    </option>
+                  ))}
+                </select>
+              </FormField>
 
               <div className="playground__section">
                 <span className="playground__label">{t('dataModel.playgroundDimensions')}</span>
-                <div className="playground__search">
-                  <Search size={16} aria-hidden />
+                <div className="console-datasets-search">
+                  <Search size={18} aria-hidden />
                   <input
                     type="search"
+                    aria-label={t('datasets.searchAria')}
                     placeholder={t('dataModel.datasetFieldSearch')}
                     value={search}
                     onChange={(e) => setSearch(e.target.value)}
@@ -333,6 +309,7 @@ export function ModelPlaygroundSection() {
                 {filterRows.map((row) => (
                   <div key={row.id} className="playground__filter">
                     <select
+                      className="ds-control"
                       value={row.field}
                       aria-label={t('datasets.fieldName')}
                       onChange={(e) =>
@@ -349,6 +326,7 @@ export function ModelPlaygroundSection() {
                       ))}
                     </select>
                     <select
+                      className="ds-control"
                       value={row.op}
                       aria-label={t('dataModel.playgroundOp')}
                       onChange={(e) =>
@@ -365,6 +343,7 @@ export function ModelPlaygroundSection() {
                     </select>
                     {!NO_VALUE.has(row.op) && (
                       <input
+                        className="ds-control"
                         type="text"
                         value={row.value}
                         placeholder={row.op === 'between' ? t('dataModel.playgroundFrom') : ''}
@@ -377,6 +356,7 @@ export function ModelPlaygroundSection() {
                     )}
                     {row.op === 'between' && (
                       <input
+                        className="ds-control"
                         type="text"
                         value={row.value2}
                         placeholder={t('dataModel.playgroundTo')}
@@ -415,6 +395,7 @@ export function ModelPlaygroundSection() {
               <div className="playground__section playground__section--row">
                 <span className="playground__label">{t('dataModel.playgroundOrder')}</span>
                 <select
+                  className="ds-control"
                   value={spec.order_by[0]?.field ?? ''}
                   aria-label={t('dataModel.playgroundOrder')}
                   onChange={(e) =>
@@ -434,6 +415,7 @@ export function ModelPlaygroundSection() {
                   ))}
                 </select>
                 <select
+                  className="ds-control"
                   value={spec.order_by[0]?.direction ?? 'desc'}
                   aria-label={t('dataModel.playgroundDirection')}
                   disabled={spec.order_by.length === 0}
@@ -456,6 +438,7 @@ export function ModelPlaygroundSection() {
                 </label>
                 <input
                   id="pg-limit"
+                  className="ds-control"
                   type="number"
                   min={1}
                   max={1000}
@@ -467,10 +450,8 @@ export function ModelPlaygroundSection() {
           </EntityViewPanel>
 
           {metric && (
-            <EntityViewPanel>
-              <details className="playground__definition">
-                <summary>{t('dataModel.playgroundDefinition')}</summary>
-                <dl className="entity-view__dl">
+            <EntityViewPanel title={t('dataModel.playgroundDefinition')} defaultCollapsed>
+              <dl className="entity-view__dl">
                   <dt>{t('dataModel.playgroundExpression')}</dt>
                   <dd>
                     <code>{metricExpressionText(metric)}</code>
@@ -491,8 +472,7 @@ export function ModelPlaygroundSection() {
                         '',
                     ) || t('datasets.dash')}
                   </dd>
-                </dl>
-              </details>
+              </dl>
             </EntityViewPanel>
           )}
         </div>
@@ -549,21 +529,6 @@ export function ModelPlaygroundSection() {
             )}
           </EntityViewPanel>
 
-          {runs.length > 0 && (
-            <EntityViewPanel title={t('dataModel.playgroundRuns')}>
-              <ul className="data-model__run-list">
-                {runs.map((r) => (
-                  <li key={r.id}>
-                    <span className={`data-model__run-status data-model__run-status--${r.status}`}>
-                      {r.status}
-                    </span>
-                    {r.duration_ms}ms
-                    {r.error ? ` · ${r.error}` : ` · ${r.row_count} ${t('datasets.rows')}`}
-                  </li>
-                ))}
-              </ul>
-            </EntityViewPanel>
-          )}
         </div>
       </div>
     </>

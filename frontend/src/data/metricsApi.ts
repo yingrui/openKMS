@@ -38,17 +38,6 @@ export interface MetricListResponse {
   total: number;
 }
 
-export interface MetricRunResponse {
-  id: string;
-  metric_id: string;
-  status: string;
-  row_count: number;
-  duration_ms: number;
-  error: string | null;
-  ran_by_name: string | null;
-  created_at: string;
-}
-
 export interface MetricPayload {
   name: string;
   semantic_model_id: string;
@@ -91,11 +80,6 @@ export async function deleteMetric(id: string): Promise<void> {
   return request<void>(`/api/metrics/${id}`, { method: 'DELETE' });
 }
 
-export async function fetchMetricRuns(id: string): Promise<MetricRunResponse[]> {
-  return request<MetricRunResponse[]>(`/api/metrics/${id}/runs`);
-}
-
-/** The ANSI_SQL fragment of a metric expression, for display. */
 export function metricExpressionSql(m: MetricResponse): string {
   const d = m.expression?.dialects;
   if (Array.isArray(d)) return d.find((x) => x.dialect === 'ANSI_SQL')?.expression ?? '';

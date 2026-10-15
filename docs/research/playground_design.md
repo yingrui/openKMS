@@ -55,7 +55,7 @@ Four user jobs, and the information each needs:
 |-----|-----------------|
 | **Sanity-check a definition** (author) | The metric's **expression**, base dataset, joins it uses, its own `filters`, `type`, description, `ai_context`/synonyms — and the **no-group-by single value** |
 | **Explore** (analyst) | A **searchable field browser** (time dimensions first, other fields folded, label/description/type shown), **filters incl. a time range**, **order + limit**, **row cap indicator**, units/formatting, table ⇄ chart |
-| **Trust the number** | Generated SQL, run time, row count and whether the cap was hit, null share per column, last data date for the time dimension, empty-result explanation |
+| **Trust the number** | Generated SQL, run time, row count and whether the cap was hit, empty-result explanation (the run *audit* stays in the API/skill — no history panel here) |
 | **Keep / hand off** | **Copy CSV**, **Copy query JSON**, permalink of the spec, **Save to Data Explorer**, and an actionable *Recent runs* list |
 
 ### Proposed layout (two panes, definition strip)
@@ -107,6 +107,7 @@ definition. Everything that **keeps, dresses or spans** an answer lives on anoth
 
 | Item | Where it goes | Why not here |
 |------|---------------|--------------|
+| A run-history panel | **nowhere** (keep the audit in the API/skill) |
 | Save the query/report, "Open in Explorer" | **Data Explorer** (`explorer_reports`) | a saved artifact is consumption (decision #23) |
 | Bar / line charts | **Data Explorer** | the Playground is a table; dressing an answer is the Explorer's job |
 | Pivot / cross-tab (industry × month) | **Data Explorer** | a separate feature, not a query-builder control |
