@@ -233,7 +233,7 @@ def cmd_ingest(ns: argparse.Namespace) -> None:
     confirm_or_abort(
         "ingest file into a dataset table",
         "POST",
-        "/api/datasets/ingests",
+        "/api/dataset-ingests",
         plan,
         ns.yes,
         ns.dry_run,
@@ -241,16 +241,16 @@ def cmd_ingest(ns: argparse.Namespace) -> None:
     with client() as s:
         with path.open("rb") as f:
             r = s.post(
-                "/api/datasets/ingests",
+                "/api/dataset-ingests",
                 files={"file": (path.name, f)},
                 data={"data_source_id": ns.data_source_id},
             )
         r.raise_for_status()
         ingest_id = r.json()["id"]
-        pr = s.post(f"/api/datasets/ingests/{ingest_id}/preview")
+        pr = s.post(f"/api/dataset-ingests/{ingest_id}/preview")
         pr.raise_for_status()
         lr = s.post(
-            f"/api/datasets/ingests/{ingest_id}/load",
+            f"/api/dataset-ingests/{ingest_id}/load",
             json={"schema_name": ns.schema_name, "table_name": ns.table_name, "mode": mode},
         )
         lr.raise_for_status()

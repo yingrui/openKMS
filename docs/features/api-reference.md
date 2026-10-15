@@ -360,13 +360,13 @@ Encrypted values; **never returned**. Write/sync/delete reject personal API key 
 | POST | `/api/schedules/{id}/run-now` | Queue the scheduled target now (`run_connector_sync` or `run_scheduled_project_agent`); returns `{ job_id }` (202) |
 | POST | `/internal-api/process-heartbeat` | **Internal service client only**; worker/scheduler liveness (`role`, `instance_id`); in-memory registry for Console health (no history table) |
 | GET | `/api/datasets` | List datasets (`data:read`; filtered by dataset ACL) — optional `data_source_id`, `search`, `limit` (≤500), `offset`; returns `total` for pagination |
-| GET | `/api/datasets/from-source/{id}` | List tables from PostgreSQL data source (`data:write`) |
+| GET | `/api/datasets/from-source/{id}` | List tables from PostgreSQL data source (`data:write` — deliberately not `data:read`: a **data engineer** may enumerate what a source exposes, a data *reader* may not browse an external schema) |
 | POST | `/api/datasets` | Create dataset (`data:write`) |
 | GET | `/api/datasets/{id}` | Get dataset (`data:read`; dataset ACL) |
-| GET | `/api/datasets/{id}/rows` | Get rows (`data:read`; dataset ACL) — optional `sort`, `order`, `after` (keyset paging) |
+| GET | `/api/datasets/{id}/rows` | Get rows (`data:read`; dataset ACL) — optional `sort`, `order`, `after` (keyset paging; **`after` requires `sort`**, otherwise 400) |
 | POST | `/api/datasets/{id}/rows/apply` | Apply batch row ops `{ops:[{op,pk,values,expect}],dry_run}` (`data:edit`; opt-in + PK + audit) |
 | GET | `/api/datasets/{id}/metadata` | Column metadata (`data:read`; dataset ACL) — includes each column's maintained `description` |
-| PUT | `/api/datasets/{id}` | Update dataset — catalog fields, `primary_key_columns`, `unique_keys`, `ai_context`, `is_editable` (`data:write`; write on dataset) |
+| PUT | `/api/datasets/{id}` | Update dataset (**partial** — only the fields you send change) — catalog fields, `primary_key_columns`, `unique_keys`, `ai_context`, `is_editable` (`data:write`; write on dataset) |
 | DELETE | `/api/datasets/{id}` | Delete dataset (`data:write`; manage on dataset) |
 | GET | `/api/dataset-joins` | List relationships (`dataset_id` filter; `data:read`) |
 | POST | `/api/dataset-joins` | Create a relationship `{from_dataset_id, to_dataset_id, from_columns, to_columns, required}` (validated; `data:write`) |
@@ -374,10 +374,10 @@ Encrypted values; **never returned**. Write/sync/delete reject personal API key 
 | PUT | `/api/dataset-joins/{id}` | Update a relationship (`data:write`) |
 | DELETE | `/api/dataset-joins/{id}` | Delete a relationship (`data:write`) |
 | PUT | `/api/datasets/{id}/columns/{column}` | Set a physical column's `description` (`data:write`) |
-| POST | `/api/datasets/ingests` | Start a file ingest (multipart `file` + `data_source_id`; `data:write`) |
-| POST | `/api/datasets/ingests/{id}/preview` | Parse head + infer schema (`data:write`) |
-| POST | `/api/datasets/ingests/{id}/load` | Create/replace the target table + register dataset (`data:write`) |
-| GET | `/api/datasets/ingests/{id}` | Ingest status (`data:write`) |
+| POST | `/api/dataset-ingests` | Start a file ingest (multipart `file` + `data_source_id`; `data:write`) |
+| POST | `/api/dataset-ingests/{id}/preview` | Parse head + infer schema (`data:write`) |
+| POST | `/api/dataset-ingests/{id}/load` | Create/replace the target table + register dataset (`data:write`) |
+| GET | `/api/dataset-ingests/{id}` | Ingest status (`data:write`) |
 | GET | `/api/datasets/{id}/profile` | Last computed profile (`data:read`) |
 | POST | `/api/datasets/{id}/profile` | Recompute profile (`data:write`; write on dataset) |
 | GET | `/api/datasets/{id}/schema-history` | Schema snapshots (`data:read`) |

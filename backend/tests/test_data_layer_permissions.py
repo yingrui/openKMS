@@ -51,6 +51,22 @@ def _rules(key: str):
     return compile_rules_from_rows([_Row(key, be)])
 
 
+def test_ingest_routes_are_covered_after_leaving_the_datasets_prefix():
+    """`/api/dataset-ingests` is its own resource: the old `/api/datasets/*` wildcard misses it."""
+    _, read = default_patterns_for_key(PERM_DATA_READ)
+    assert "GET /api/dataset-ingests/*" in read
+    _, write = default_patterns_for_key(PERM_DATA_WRITE)
+    assert "POST /api/dataset-ingests" in write
+    assert "POST /api/dataset-ingests/*" in write
+
+    read_rules = _rules(PERM_DATA_READ)
+    resolved = resolve_required_permission_keys("GET", "/api/dataset-ingests/i1", read_rules)
+    assert resolved is not None and PERM_DATA_READ in resolved
+    write_rules = _rules(PERM_DATA_WRITE)
+    resolved_write = resolve_required_permission_keys("POST", "/api/dataset-ingests", write_rules)
+    assert resolved_write is not None and PERM_DATA_WRITE in resolved_write
+
+
 def test_engine_resolves_data_read_for_reads():
     rules = _rules(PERM_DATA_READ)
     required = resolve_required_permission_keys("GET", "/api/datasets/abc/rows", rules)

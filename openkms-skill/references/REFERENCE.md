@@ -223,7 +223,7 @@ All write subcommands accept `--yes` / `--dry-run`. Without `--yes` on non-TTY s
 | `datasets joins list` | GET | `/api/dataset-joins` | Optional `?dataset_id=`. |
 | `datasets joins add` *(write)* | POST | `/api/dataset-joins` | Body `{from_dataset_id, to_dataset_id, from_columns:[…], to_columns:[…], required}`. `from` = many side (FK holder), `to` = one side (referenced key); `required=true` → INNER (only matched rows), default `false` → LEFT. Composite keys: aligned `from_columns`/`to_columns` arrays. |
 | `datasets joins delete` *(write)* | DELETE | `/api/dataset-joins/{join_id}` | |
-| `datasets ingest` *(write)* | POST | `/api/datasets/ingests` → `…/preview` → `…/load` | Upload a file, parse it, load into a data-layer PostgreSQL table. |
+| `datasets ingest` *(write)* | POST | `/api/dataset-ingests` → `…/preview` → `…/load` | Upload a file, parse it, load into a data-layer PostgreSQL table. |
 | `datasets quality list` | GET | `/api/datasets/{id}/quality-rules` | Declarative quality rules + last status. |
 | `datasets quality add` *(write)* | POST | `/api/datasets/{id}/quality-rules` | Body `{name, rule_type, column_name, config}`. |
 | `datasets quality update` *(write)* | PUT | `/api/datasets/{id}/quality-rules/{rule_id}` | Body from `--name`, `--column`, `--severity`, `--enabled true|false`, `--config` (JSON, replaces the config object). |

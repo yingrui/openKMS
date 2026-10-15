@@ -131,7 +131,7 @@ Spec + migration: [semantic model](data-layer-semantic-model.md) · [refactoring
 - Append if existing: verify column intersection; reject on mismatch.
 - Bulk-write with `COPY` (SQLAlchemy `copy_expert`) for speed — not row-by-row `INSERT`.
 - Register a `Dataset` row (`data_source_id`, `schema_name`, `table_name`, `display_name` = filename stem) and link `dataset_ingests.dataset_id`.
-- Run as a procrastinate **job** (`task_name="dataset_ingest_load"`) so large files don't block the request; status polled via `GET /api/datasets/ingests/{id}`.
+- Run as a procrastinate **job** (`task_name="dataset_ingest_load"`) so large files don't block the request; status polled via `GET /api/dataset-ingests/{id}`.
 
 ### pandas → PostgreSQL type map
 
@@ -147,7 +147,7 @@ User can override any column type at the preview step (stored in `parse_config`)
 
 ### API
 
-- `POST /api/datasets/ingests` (start upload) · `POST /api/datasets/ingests/{id}/preview` · `POST /api/datasets/ingests/{id}/load` · `GET /api/datasets/ingests/{id}`.
+- `POST /api/dataset-ingests` (start upload) · `POST /api/dataset-ingests/{id}/preview` · `POST /api/dataset-ingests/{id}/load` · `GET /api/dataset-ingests/{id}`.
 - Permission: `PERM_CONSOLE_DATASETS` (data engineer) for ingest; read of the resulting dataset follows normal dataset ACL.
 
 ### Object-storage keys
@@ -211,10 +211,10 @@ New `datasets` subcommands (all JSON-print, matching existing style):
 
 | Method & path | Purpose |
 |---------------|---------|
-| `POST /api/datasets/ingests` | start file ingest |
-| `POST /api/datasets/ingests/{id}/preview` | parse + schema inference |
-| `POST /api/datasets/ingests/{id}/load` | create/append table + register Dataset |
-| `GET /api/datasets/ingests/{id}` | ingest status |
+| `POST /api/dataset-ingests` | start file ingest |
+| `POST /api/dataset-ingests/{id}/preview` | parse + schema inference |
+| `POST /api/dataset-ingests/{id}/load` | create/append table + register Dataset |
+| `GET /api/dataset-ingests/{id}` | ingest status |
 | `GET /api/datasets/{id}/profile` (POST refresh) | compute/read profile |
 | `GET /api/datasets/{id}/schema-history` | schema snapshots |
 | `POST/GET/PUT/DELETE /api/datasets/joins…` | join/ER CRUD |

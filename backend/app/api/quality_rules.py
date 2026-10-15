@@ -8,6 +8,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.api.pagination import DEFAULT_PAGE_SIZE, MAX_PAGE_SIZE
 from app.api.auth import require_any_permission, require_auth, require_permission
 from app.api.datasets import get_dataset_scoped, get_dataset_scoped_write
 from app.database import get_db
@@ -195,7 +196,7 @@ async def list_quality_runs(
     rule_id: str,
     dataset: Dataset = Depends(get_dataset_scoped),
     db: AsyncSession = Depends(get_db),
-    limit: int = Query(50, ge=1, le=200),
+    limit: int = Query(DEFAULT_PAGE_SIZE, ge=1, le=MAX_PAGE_SIZE),
 ):
     rule = await _get_rule(db, dataset.id, rule_id)
     runs = (

@@ -108,6 +108,19 @@ async def fetch_dataset_rows(
     return rows, total
 
 
+def keyset_cursor_error(sort: str | None, after: str | None) -> str | None:
+    """`after` is the last value of `sort`; without a usable sort column it means nothing.
+
+    Returning the message (instead of silently falling back to OFFSET) keeps a paging caller from
+    asking for "the page after X" and being handed the first page again.
+    """
+    if after in (None, ""):
+        return None
+    if not (sort and is_valid_identifier(str(sort))):
+        return "`after` requires `sort` (the cursor is the last value of that column)."
+    return None
+
+
 async def fetch_dataset_rows_page(
     db: AsyncSession,
     dataset_id: str,
@@ -125,6 +138,8 @@ async def fetch_dataset_rows_page(
     (``WHERE sort > after`` for asc) — stable and fast on large tables. Otherwise
     ``OFFSET`` is used. Raises ValueError on a bad dataset.
     """
+    if (cursor_error := keyset_cursor_error(sort, after)) is not None:
+        raise ValueError(cursor_error)
     dataset = await db.get(Dataset, dataset_id)
     if not dataset:
         raise ValueError("Dataset not found")

@@ -176,6 +176,8 @@ So a table is described (catalog), modeled (fields/relationships), trusted (qual
 | Delete semantics | dataset / relationship / report delete: cascade vs soft-delete |
 | Discoverability | datasets in Global Search; cross-layer search |
 | Data access audit | who read/exported which dataset |
+| Data-page filtering | the rows API (and the Data tab's toolbar) only sorts and pages — finding rows *by value* over a large table is still manual. Add declared-field filters (the same shape the Playground/metrics use), and decide whether the skill exposes them |
+| Row edits from the CLI | `POST /api/datasets/{id}/rows/apply` exists (`data:edit` + opt-in + audit) but the bundled CLI does not wrap it, so agents can read rows and never write them; wrap it (`datasets rows-apply --file edits.json`) or keep the boundary deliberately |
 | Metric base-dataset derivation | for **agent auto-questioning**: infer the `FROM` + join path from the metric `expression` + relationships, instead of an explicit `base_dataset` anchor (decision #24, deferred) |
 
 ## Delivery obligations

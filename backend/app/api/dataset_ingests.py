@@ -28,7 +28,7 @@ from app.services.permissions.permission_catalog import PERM_DATA_WRITE
 from app.services.storage import get_object, upload_object
 
 router = APIRouter(
-    prefix="/datasets/ingests",
+    prefix="/dataset-ingests",
     tags=["dataset-ingests"],
     dependencies=[Depends(require_auth)],
 )

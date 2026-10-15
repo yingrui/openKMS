@@ -36,11 +36,11 @@ export async function startDatasetIngest(
   const fd = new FormData();
   fd.append('file', file, file.name);
   fd.append('data_source_id', dataSourceId);
-  return request<DatasetIngestResponse>('/api/datasets/ingests', { method: 'POST', body: fd });
+  return request<DatasetIngestResponse>('/api/dataset-ingests', { method: 'POST', body: fd });
 }
 
 export async function previewDatasetIngest(ingestId: string): Promise<DatasetIngestPreview> {
-  return request<DatasetIngestPreview>(`/api/datasets/ingests/${ingestId}/preview`, {
+  return request<DatasetIngestPreview>(`/api/dataset-ingests/${ingestId}/preview`, {
     method: 'POST',
   });
 }
@@ -49,7 +49,7 @@ export async function loadDatasetIngest(
   ingestId: string,
   data: { schema_name: string; table_name: string; mode: string },
 ): Promise<DatasetResponse> {
-  return request<DatasetResponse>(`/api/datasets/ingests/${ingestId}/load`, {
+  return request<DatasetResponse>(`/api/dataset-ingests/${ingestId}/load`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(data),

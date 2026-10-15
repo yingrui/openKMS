@@ -7,6 +7,7 @@ from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.auth import require_any_permission, require_auth, require_permission
+from app.api.pagination import DEFAULT_PAGE_SIZE, MAX_PAGE_SIZE
 from app.services.permissions.permission_catalog import PERM_DATA_READ, PERM_DATA_WRITE
 from app.database import get_db
 from app.services.acl.data_scope import bootstrap_owner_acl
@@ -155,7 +156,7 @@ async def list_datasets(
     request: Request,
     data_source_id: str | None = None,
     search: str | None = None,
-    limit: int | None = Query(None, ge=1, le=500),
+    limit: int | None = Query(None, ge=1, le=MAX_PAGE_SIZE),
     offset: int = Query(0, ge=0),
     db: AsyncSession = Depends(get_db),
 ):
@@ -261,7 +262,7 @@ async def create_dataset(
 async def get_dataset_rows(
     dataset: Dataset = Depends(get_dataset_scoped),
     db: AsyncSession = Depends(get_db),
-    limit: int = Query(100, ge=1, le=500),
+    limit: int = Query(DEFAULT_PAGE_SIZE, ge=1, le=MAX_PAGE_SIZE),
     offset: int = Query(0, ge=0),
     sort: str | None = Query(None, description="column to sort by (validated)"),
     order: str = Query("asc"),
