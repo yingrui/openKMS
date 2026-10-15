@@ -28,12 +28,24 @@ GLOBAL_FILES = {"App.scss", "index.scss"}
 CLASS_DEF = re.compile(r"\.((?:[a-z][a-z0-9]*(?:-[a-z0-9]+)*__)?[a-z][a-z0-9-]*)")
 
 
+def _leads_selector(text: str, at: int) -> bool:
+    """True when the match starts its selector, e.g. `.foo` in `.foo, .bar {}`.
+
+    A class that follows another selector (`.page--fill .km-map-canvas-wrap`, or a
+    compound like `.a.b`) is an *override of someone else's class*, not ownership.
+    """
+    boundary = max(text.rfind(ch, 0, at) for ch in "{[,\n}")
+    return not text[boundary + 1 : at].strip()
+
+
 def _is_definition(text: str, at: int) -> bool:
     """A selector *definition*, not a mention inside `:not(...)` / `:has(...)`.
 
     `.console-modal-body label:not(.ds-check-row) { … }` mentions `.ds-check-row` in a
     page stylesheet without defining it — counting that would blame the wrong file.
     """
+    if not _leads_selector(text, at):
+        return False
     line_start = text.rfind("\n", 0, at) + 1
     before = text[line_start:at]
     paren = before.rfind("(")
@@ -45,6 +57,34 @@ def _is_definition(text: str, at: int) -> bool:
 
 def defined_here(text: str) -> set[str]:
     return {m.group(1) for m in CLASS_DEF.finditer(text) if _is_definition(text, m.start())}
+
+
+
+def with_amp_nesting(text: str) -> set[str]:
+    """Expand `&-suffix` / `&__element` against the nearest preceding class.
+
+    `.page-header { &-actions { … } }` defines `.page-header-actions` — invisible to a
+    plain class scan, and the reason `.page-header-actions` looked page-owned.
+    """
+    names = set(defined_here(text))
+    last = None
+    for m in re.finditer(r"\.[a-z][a-z0-9-]*|&(__|-)([a-z0-9-]+)", text):
+        token = m.group(0)
+        if token.startswith("."):
+            last = token[1:]
+        elif last:
+            sep = "-" if m.group(1) == "-" else "__"
+            names.add(f"{last}{sep}{m.group(2)}")
+    return names
+
+
+def global_classes() -> set[str]:
+    """Everything the design-system / app-level sheets define (those are shared already)."""
+    out: set[str] = set()
+    for scss in SRC.rglob("*.scss"):
+        if is_global(scss):
+            out |= with_amp_nesting(scss.read_text(errors="ignore"))
+    return out
 CLASSNAME = re.compile(r'className="([^"{}]+)"')
 
 
@@ -58,9 +98,10 @@ def area_of(path: Path) -> str:
 
 
 def defined_locally() -> dict[str, set[str]]:
+    """Page sheets only: a component's own sheet is loaded wherever the component is."""
     out: dict[str, set[str]] = collections.defaultdict(set)
     for scss in SRC.rglob("*.scss"):
-        if is_global(scss):
+        if is_global(scss) or "components/" in str(scss.relative_to(SRC)):
             continue
         for name in defined_here(scss.read_text(errors="ignore")):
             out[name].add(str(scss.relative_to(SRC)))
@@ -69,6 +110,8 @@ def defined_locally() -> dict[str, set[str]]:
 
 def offenders() -> dict[str, set[str]]:
     owner = defined_locally()
+    for name in global_classes():
+        owner.pop(name, None)      # already global → a page override is not ownership
     users: dict[str, set[str]] = collections.defaultdict(set)
     for tsx in SRC.rglob("*.tsx"):
         area = area_of(tsx)

@@ -172,3 +172,15 @@
   min-height: 3.5rem;
 }
 
+/* Shared spinner: `.spin` turns any element (usually a lucide icon) into a spinner.
+   It used to be defined only inside the function editor's page sheet, so the other
+   areas that wrote `className="spin"` never animated. */
+@keyframes console-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.spin {
+  animation: console-spin 0.8s linear infinite;
+}

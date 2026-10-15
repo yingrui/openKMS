@@ -37,15 +37,6 @@
   color: var(--color-text-muted);
   font-size: var(--text-sm);
 
-  .spin {
-    animation: function-editor-spin 0.8s linear infinite;
-  }
-}
-
-@keyframes function-editor-spin {
-  to {
-    transform: rotate(360deg);
-  }
 }
 
 .function-editor-workspace__topbar {
@@ -483,6 +474,3 @@
   }
 }
 
-.function-editor-preview .spin {
-  animation: function-editor-spin 0.8s linear infinite;
-}

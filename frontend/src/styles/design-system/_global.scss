@@ -165,3 +165,18 @@ textarea {
   white-space: nowrap;
   border: 0;
 }
+
+/* Ghost button: a bare icon-ish action (comments rail, knowledge map). */
+.btn-ghost {
+  padding: var(--space-1);
+  border: none;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--color-text-muted);
+  cursor: pointer;
+
+  &:hover {
+    color: var(--color-error);
+    background: var(--color-bg-muted);
+  }
+}

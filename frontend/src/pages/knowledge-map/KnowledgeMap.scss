@@ -740,16 +740,3 @@
   margin-top: 2px;
 }
 
-.btn-ghost {
-  background: transparent;
-  border: none;
-  color: var(--color-text-muted);
-  cursor: pointer;
-  padding: 4px;
-  border-radius: var(--radius-sm);
-}
-
-.btn-ghost:hover {
-  color: var(--color-error);
-  background: var(--color-bg-muted);
-}

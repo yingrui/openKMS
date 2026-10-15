@@ -1,0 +1,201 @@
+// Shared console primitives: tables, loading states and the ontology-admin page shell.
+//
+// These used to live in `pages/ontology/ontology-admin.scss`, which other route areas
+// (console, connectors, function editor, agents) imported just to get them — a page
+// stylesheet acting as an app-level sheet, whose styles only load with whichever route
+// happened to import it first. They are global now; the page keeps only its own scoped
+// overrides (see the bottom of `ontology-admin.scss`).
+
+@use './mixins' as *;
+@use './tokens' as ds;
+
+@keyframes console-spin {
+  to { transform: rotate(360deg); }
+}
+
+.ontology-admin .page-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  flex-wrap: wrap;
+  gap: var(--space-5);
+  margin-bottom: var(--space-6);
+}
+
+.ontology-admin .page-header .btn-primary {
+  flex-shrink: 0;
+}
+
+.ontology-admin .page-header-actions {
+  display: flex;
+  align-items: center;
+  gap: calc(var(--space-2) + var(--space-1) / 2);
+  flex-shrink: 0;
+}
+
+.ontology-admin-content {
+  width: 100%;
+}
+
+.console-datasets-toolbar {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  flex-wrap: wrap;
+  margin-bottom: var(--space-5);
+}
+
+.ontology-admin .page-header .btn-secondary.btn-sm {
+  margin-bottom: var(--space-3);
+}
+
+.console-datasets-filter {
+  font-size: var(--text-md);
+}
+
+.console-datasets-filter select {
+  margin-left: 8px;
+  padding: var(--gap-compact) calc(var(--space-2) + var(--space-1) / 2);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-bg-elevated);
+}
+
+.console-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--text-base);
+}
+
+.console-table th,
+.console-table td {
+  padding: var(--space-3) var(--space-4);
+  text-align: left;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.console-table th {
+  font-weight: 600;
+  color: var(--color-text-secondary);
+  background: var(--color-bg-muted);
+  font-size: var(--text-sm);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.console-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.console-table tbody tr:hover {
+  background: var(--color-bg-muted);
+}
+
+.console-table-actions {
+  width: 100px;
+  text-align: right;
+}
+
+.console-table-btns {
+  display: flex;
+  gap: var(--space-1);
+  justify-content: flex-end;
+}
+
+.console-table-btns button {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: var(--space-1);
+  border-radius: var(--space-1);
+  color: var(--color-text-muted);
+}
+
+.console-table-btns button:hover {
+  color: var(--color-text);
+  background: var(--color-bg-muted);
+}
+
+.console-table-btns .console-table-icon-link {
+  display: inline-flex;
+  align-items: center;
+  padding: var(--space-1);
+  border-radius: var(--space-1);
+  color: var(--color-text-muted);
+  text-decoration: none;
+}
+
+.console-table-btns .console-table-icon-link:hover {
+  color: var(--color-text);
+  background: var(--color-bg-muted);
+}
+
+.console-table-empty {
+  text-align: center;
+  color: var(--color-text-muted);
+  padding: 48px 20px !important;
+}
+
+.console-table-muted {
+  color: var(--color-text-muted);
+  font-size: var(--text-md);
+}
+
+.console-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: var(--space-12) var(--space-6);
+  gap: var(--space-3);
+  color: var(--color-text-muted);
+}
+
+.console-loading-spinner {
+  animation: console-spin 1s linear infinite;
+}
+
+.console-form-control {
+  display: block;
+  width: 100%;
+  padding: var(--padding-compact-y) calc(var(--space-3) + var(--space-1) / 2);
+  font-size: var(--text-base);
+  background: var(--color-bg-muted);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  color: var(--color-text);
+
+  &:focus {
+    outline: none;
+    border-color: var(--color-accent);
+  }
+
+  &:disabled {
+    opacity: 0.7;
+    cursor: not-allowed;
+  }
+}
+
+select.console-form-control {
+  cursor: pointer;
+}
+
+.console-modal-section {
+  margin-top: var(--space-4);
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--color-border);
+}
+
+.console-modal-section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--space-3);
+  font-weight: 500;
+  font-size: var(--text-md);
+}
+
+.console-modal-hint {
+  color: var(--color-text-muted);
+  font-size: var(--text-md);
+  margin: 0;
+}
