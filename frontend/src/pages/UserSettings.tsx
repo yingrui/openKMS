@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { AlertTriangle, Copy, KeyRound, Languages, Loader2, Lock, Settings, X } from 'lucide-react';
+import { AlertTriangle, Copy, KeyRound, Languages, Loader2, Lock, Settings } from 'lucide-react';
 import { toast } from 'sonner';
 import {
   createApiKey,
@@ -13,6 +13,7 @@ import { patchAuthUiLocale, changePassword } from '../data/authApi';
 import { useAuth } from '../contexts/AuthContext';
 import { GitCredentialsSection } from '../components/agents/GitCredentialsSection';
 import { useConfirm } from '../contexts/ConfirmContext';
+import { Dialog, FormField } from '../styles/design-system';
 import i18n from '../i18n/config';
 import './UserSettings.scss';
 
@@ -224,91 +225,66 @@ export function UserSettings() {
           </section>
         )}
 
-        {showPasswordDialog && (
-          <div
-            className="console-modal-overlay"
-            role="presentation"
-            onClick={(e) => e.target === e.currentTarget && !passwordSaving && setShowPasswordDialog(false)}
-          >
-            <div
-              className="console-modal"
-              role="dialog"
-              aria-labelledby="settings-password-dialog-title"
-              onClick={(e) => e.stopPropagation()}
-            >
-              <div className="console-modal-header">
-                <h2 id="settings-password-dialog-title">{t('passwordTitle')}</h2>
-                <button
-                  type="button"
-                  onClick={() => !passwordSaving && setShowPasswordDialog(false)}
-                  disabled={passwordSaving}
-                  aria-label={t('close')}
-                >
-                  <X size={20} />
-                </button>
-              </div>
-              <div className="console-modal-body">
-                <div className="account-form-grid account-form-grid--2col">
-                  <div className="account-field">
-                    <label className="account-field-label" htmlFor="settings-current-password">
-                      {t('currentPassword')}
-                    </label>
-                    <input
-                      id="settings-current-password"
-                      className="account-input"
-                      type="password"
-                      value={currentPassword}
-                      onChange={(e) => setCurrentPassword(e.target.value)}
-                      autoComplete="current-password"
-                    />
-                  </div>
-                  <div className="account-field">
-                    <label className="account-field-label" htmlFor="settings-new-password">
-                      {t('newPassword')}
-                    </label>
-                    <input
-                      id="settings-new-password"
-                      className="account-input"
-                      type="password"
-                      value={newPassword}
-                      onChange={(e) => setNewPassword(e.target.value)}
-                      autoComplete="new-password"
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter' && !passwordSaving) void handlePasswordChange();
-                      }}
-                    />
-                  </div>
-                </div>
-                {passwordError && <p className="account-error">{passwordError}</p>}
-              </div>
-              <div className="console-modal-actions">
-                <button
-                  type="button"
-                  className="account-btn account-btn--secondary"
-                  onClick={() => setShowPasswordDialog(false)}
-                  disabled={passwordSaving}
-                >
-                  {t('cancel')}
-                </button>
-                <button
-                  type="button"
-                  className="account-btn account-btn--primary"
-                  disabled={passwordSaving || !currentPassword || !newPassword}
-                  onClick={() => void handlePasswordChange()}
-                >
-                  {passwordSaving ? (
-                    <>
-                      <Loader2 size={16} className="account-spin" aria-hidden />
-                      {t('changingPassword')}
-                    </>
-                  ) : (
-                    t('changePassword')
-                  )}
-                </button>
-              </div>
-            </div>
+        <Dialog
+          open={showPasswordDialog}
+          onClose={() => !passwordSaving && setShowPasswordDialog(false)}
+          closeDisabled={passwordSaving}
+          title={t('passwordTitle')}
+          closeAriaLabel={t('close')}
+          size="md"
+          footer={
+            <>
+              <button
+                type="button"
+                className="account-btn account-btn--secondary"
+                onClick={() => setShowPasswordDialog(false)}
+                disabled={passwordSaving}
+              >
+                {t('cancel')}
+              </button>
+              <button
+                type="button"
+                className="account-btn account-btn--primary"
+                disabled={passwordSaving || !currentPassword || !newPassword}
+                onClick={() => void handlePasswordChange()}
+              >
+                {passwordSaving ? (
+                  <>
+                    <Loader2 size={16} className="account-spin" aria-hidden />
+                    {t('changingPassword')}
+                  </>
+                ) : (
+                  t('changePassword')
+                )}
+              </button>
+            </>
+          }
+        >
+          <div className="account-form-grid account-form-grid--2col">
+            <FormField label={t('currentPassword')} htmlFor="settings-current-password">
+              <input
+                id="settings-current-password"
+                type="password"
+                value={currentPassword}
+                onChange={(e) => setCurrentPassword(e.target.value)}
+                autoComplete="current-password"
+              />
+            </FormField>
+            <FormField label={t('newPassword')} htmlFor="settings-new-password">
+              <input
+                id="settings-new-password"
+                type="password"
+                value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)}
+                autoComplete="new-password"
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && !passwordSaving) void handlePasswordChange();
+                }}
+              />
+            </FormField>
           </div>
-        )}
+          {passwordError && <p className="account-error">{passwordError}</p>}
+        </Dialog>
 
         <section className="account-card" aria-labelledby="settings-api-keys-heading">
           <div className="account-card-head">
