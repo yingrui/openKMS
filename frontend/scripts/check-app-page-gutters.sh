@@ -46,5 +46,11 @@ grep -q '\.app-content:has(> \.app-page-pane > \.entity-view)' src/pages/ontolog
   || fail "entity-view.scss must zero .app-content padding when the pane hosts the shell"
 grep -q 'body:has(\.app-page-pane > \.entity-view) \.app-main' src/pages/ontology-manager/entity-view.scss \
   || fail "entity-view.scss must give the shell chain a window height (no rail marker on these routes)"
+if ! grep -A 8 '\.app-content:has(> \.app-page-pane > \.entity-view)' src/pages/ontology-manager/entity-view.scss | grep -q 'display: flex'; then
+  fail "entity-view.scss must make .app-content a flex column, or the pane never fills"
+fi
+if ! grep -A 5 'body:has(\.app-page-pane > \.entity-view) {' src/pages/ontology-manager/entity-view.scss | grep -q 'height: 100vh'; then
+  fail "entity-view.scss must pin the document height for entity detail pages"
+fi
 
 echo "check-app-page-gutters: OK"

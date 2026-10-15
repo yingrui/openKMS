@@ -5,9 +5,17 @@
   overflow: hidden;
 }
 
-// The pane can only fill if the shell chain has a height. The Ontology Suite sets that through its
-// rail marker; the data-layer entity routes (datasets, semantic models) have no rail, so the shell
-// asks for it itself — keyed on the DOM, so no route list has to be kept in sync.
+// The pane can only fill if the shell chain has a height *and* `.app-content` is a flex column.
+// The Ontology Suite gets that from its rail marker; the data-layer entity routes (datasets,
+// semantic models) have no rail, so the shell asks for the same contract itself — keyed on the
+// DOM, so no route list has to be kept in sync with the CSS.
+// app-layout-exception: entity detail — gutter on the pane, window-height chain (no rail marker).
+body:has(.app-page-pane > .entity-view) {
+  height: 100vh;
+  max-height: 100dvh;
+  overflow: hidden;
+}
+
 body:has(.app-page-pane > .entity-view) #root,
 body:has(.app-page-pane > .entity-view) .app-layout,
 body:has(.app-page-pane > .entity-view) .app-shell-body,
@@ -17,9 +25,14 @@ body:has(.app-page-pane > .entity-view) .app-main {
   overflow: hidden;
 }
 
-// Gutter moves to the pane, exactly like the rail layouts (see App.scss).
 .app-content:has(> .app-page-pane > .entity-view) {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  height: 100%;
   padding: 0;
+  overflow: hidden;
 }
 
 .entity-view {
