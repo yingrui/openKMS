@@ -406,7 +406,7 @@ Encrypted values; **never returned**. Write/sync/delete reject personal API key 
 | DELETE | `/api/semantic-models/{model_id}/fields/{field_id}` | Delete a field (`data:write`) |
 | GET | `/api/semantic-models/{model_id}/export` | Export one model as a **flat** Ossie document (`version`/`name`/`datasets`/`relationships`/`metrics` + entity-level `OPENKMS` `custom_extensions` where needed; no ids) — `?format=json\|yaml` (`data:read`) |
 | POST | `/api/semantic-models/import` | Upsert a model (+ fields/metrics) from an Ossie document (`data:write`) |
-| POST | `/api/semantic-models/{model_id}/preview` | Run one metric grouped by fields (ad-hoc, read-only): body `{metric_id, group_by:[field_id], granularity?, filters?}` → `{sql, columns, rows}`; `granularity` is the **query-time** grain for time dimensions (the spec's grain belongs to the query side, not the model) (`data:read`) |
+| POST | `/api/semantic-models/{model_id}/query` | Answer one ad-hoc question (read-only, capped, audited): body `{metric, group_by:[{field, granularity?}], filters:[{field, op, value}], order_by:[{field, direction}], limit}` → `{sql, columns, rows, row_count, capped, duration_ms}`. Fields are addressed by id **or name**; ops: `= != > >= < <= like in between is_null is_not_null`; `order_by.field` is `value` or a grouped field (`data:read`) |
 | GET | `/api/explorer-reports` | List explorer reports (`data:read`) |
 | POST | `/api/explorer-reports` | Create explorer report (`data:write`) |
 | GET | `/api/explorer-reports/{id}` | Get explorer report (`data:read`) |

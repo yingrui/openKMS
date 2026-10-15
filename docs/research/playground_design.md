@@ -1,6 +1,6 @@
 # Playground design (semantic model)
 
-Status: **plan** · Surface: `/data-model/{id}/playground` · Owner: data layer
+Status: **P0 shipped** (query engine + builder) · Surface: `/data-model/{id}/playground` · Owner: data layer
 
 The Playground is where a person *asks a question of a semantic model* and sees the answer, the
 generated SQL and the definition it came from. It is the human twin of the query API an agent
@@ -100,23 +100,23 @@ is collapsed by default so an author can verify without leaving for the Metrics 
    column, unresolved join) from *data* errors (permission, timeout), and say which.
 8. **Result context**: row count, cap flag, duration, null share per column, empty-state explanation.
 
-**P1 — closes the loop**
+**Belongs elsewhere (decided 2026-06)**
 
-9. **Save to Data Explorer** (a saved artifact is a consumption thing — decision #23) and a
-   permalink that reproduces the run.
-10. **Chart**: line for one time dimension + one metric, bar for one dimension; reuse the Explorer's
-    chart rendering instead of inventing one.
-11. **"Test in Playground"** on a metric row (Metrics tab) and on a field — prefills the spec.
-12. **Actionable recent runs**: click to restore the spec; show status/duration/rows/error.
-13. **Copy CSV / Copy query JSON** for hand-off to a notebook or an agent.
+The Playground is a *builder + inspector*: express a query, read the answer and the SQL, verify the
+definition. Everything that **keeps, dresses or spans** an answer lives on another surface:
 
-**P2 — agent era**
+| Item | Where it goes | Why not here |
+|------|---------------|--------------|
+| Save the query/report, "Open in Explorer" | **Data Explorer** (`explorer_reports`) | a saved artifact is consumption (decision #23) |
+| Bar / line charts | **Data Explorer** | the Playground is a table; dressing an answer is the Explorer's job |
+| Pivot / cross-tab (industry × month) | **Data Explorer** | a separate feature, not a query-builder control |
+| CSV / file export | **Data Explorer** | consumption |
+| NL → query spec | **Agent** (skill/CLI), later | the Playground stays explicit |
+| Period-over-period, freshness warnings | **Agent / Explorer** | analysis over time, not query building |
+| "Test in Playground" on a metric row | **Metrics tab** (a link *into* here) | the affordance lives with the metric list |
 
-14. **NL → spec**: an agent drafts the structured spec; the person confirms/modifies it (never a
-    black-box answer).
-15. **Freshness & coverage**: last data date per time dimension, null share warnings ("this metric
-    is empty for 26% of groups"), so trust is earned rather than assumed.
-16. **Period-over-period** and saved comparisons (needs #2 and #3 first).
+That leaves exactly two P0 groups: the **query builder** (fields, filters, order, limit) and the
+**answer + definition** (result table with context, generated SQL, the metric's definition).
 
 ---
 
@@ -166,13 +166,14 @@ change (no alias). `/metrics/{id}/compute` folds into "query with no grouping".
 - A run can be **reproduced from its URL** and **copied as JSON** into an agent/skill call.
 - An author can verify a metric's definition **inline**, and jump to the Playground from a metric row.
 
-## 8. Open questions
+## 8. Decisions
 
-1. Does *Save* write an `explorer_report` (reuse `POST /explorer-reports`) or a dedicated saved
-   query? (Current decision: the Explorer — confirm.)
-2. Should the filter UI expose **every** column of the base dataset, or only the model's fields
-   (schema-of-record)? Fields only is stricter and matches the model; every column is friendlier.
-3. Chart: reuse the Explorer's chart component as-is, or keep the Playground table-only in P0 and
-   add charts with the Explorer work?
-4. Do we want **pivot** at all for "by industry × by month" cross-tabs, or is one row dimension the
-   limit? (Lean: one row dimension, no pivot.)
+1. **No save.** The Playground never persists anything; saved answers/charts/pivots/exports are Data
+   Explorer features (see the table in §4).
+2. **Filters address declared `fields` only** (the schema-of-record) — not raw dataset columns. A
+   column that is not a field is not addressable from a question.
+3. **Table only.** No chart types here.
+4. **No pivot.** Cross-tabs, if wanted, are a Data Explorer feature.
+5. `POST /semantic-models/{id}/query` replaces `/preview`; `POST /metrics/{id}/compute` stays as the
+   metric-addressed single value and is defined as `run_query` with no grouping (one engine, two
+   addresses).

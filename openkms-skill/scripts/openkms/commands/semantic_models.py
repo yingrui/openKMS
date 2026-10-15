@@ -100,12 +100,35 @@ def cmd_fields_add(ns: argparse.Namespace) -> None:
     print_json(r.json())
 
 
-def cmd_preview(ns: argparse.Namespace) -> None:
-    body: dict[str, object] = {"metric_id": ns.metric_id, "group_by": _split(ns.group_by)}
-    if ns.granularity:
-        body["granularity"] = ns.granularity
+def _filter_value(op: str, raw: str | None):
+    """`in` takes a comma-separated list, `between` takes two, everything else a scalar."""
+    if op in ("is_null", "is_not_null"):
+        return None
+    if op == "in":
+        return [v.strip() for v in (raw or "").split(",") if v.strip()]
+    if op == "between":
+        lo, _, hi = (raw or "").partition(",")
+        return [lo.strip(), hi.strip()]
+    return raw
+
+
+def cmd_query(ns: argparse.Namespace) -> None:
+    """One ad-hoc question: a metric over fields, with filters, an order and a limit."""
+    body: dict[str, object] = {
+        "metric": ns.metric,
+        "group_by": [
+            {"field": f, "granularity": ns.granularity} if ns.granularity else {"field": f}
+            for f in _split(ns.group_by)
+        ],
+        "filters": [
+            {"field": f, "op": ns.filter_op, "value": _filter_value(ns.filter_op, ns.filter_value)}
+            for f in _split(ns.filter_field)
+        ],
+        "order_by": [{"field": ns.order_by, "direction": ns.order_direction}] if ns.order_by else [],
+        "limit": ns.limit,
+    }
     with client() as s:
-        r = s.post(f"/api/semantic-models/{ns.id}/preview", json=body)
+        r = s.post(f"/api/semantic-models/{ns.id}/query", json=body)
     r.raise_for_status()
     print_json(r.json())
 
@@ -184,9 +207,15 @@ def add_subparser(sub) -> None:
     add_write_flags(fd)
     fd.set_defaults(fn=cmd_fields_delete)
 
-    sp_prev = sp.add_parser("preview", help="Run a metric grouped by dimensions (ad-hoc)")
+    sp_prev = sp.add_parser("query", help="One ad-hoc question (metric × fields × filters × order × limit)")
     sp_prev.add_argument("--id", required=True)
-    sp_prev.add_argument("--metric-id", required=True)
-    sp_prev.add_argument("--group-by", default=None, help="comma-separated field ids")
-    sp_prev.add_argument("--granularity", default=None, help="date_trunc granularity for time dimensions")
-    sp_prev.set_defaults(fn=cmd_preview)
+    sp_prev.add_argument("--metric", required=True, help="metric id or name")
+    sp_prev.add_argument("--group-by", default=None, help="comma-separated field ids or names")
+    sp_prev.add_argument("--granularity", default=None, help="date_trunc grain for the time dimensions")
+    sp_prev.add_argument("--filter-field", default=None, help="comma-separated fields to filter the same way")
+    sp_prev.add_argument("--filter-op", default="=", help="=, !=, >, >=, <, <=, like, in, between, is_null, is_not_null")
+    sp_prev.add_argument("--filter-value", default=None, help="value (comma-separated for in; 'a,b' for between)")
+    sp_prev.add_argument("--order-by", default=None, help="'value' or a grouped field name")
+    sp_prev.add_argument("--order-direction", default="desc", choices=("asc", "desc"))
+    sp_prev.add_argument("--limit", type=int, default=100)
+    sp_prev.set_defaults(fn=cmd_query)

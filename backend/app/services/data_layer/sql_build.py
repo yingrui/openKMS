@@ -1,7 +1,6 @@
-"""Shared SQL builders for the data layer (relationship joins + filters).
+"""Shared SQL builders for the data layer (relationship joins + filter conditions).
 
-Used by both the metric engine and the saved-query engine so the join traversal
-and filter semantics stay identical.
+Used by the query engine so join traversal and filter semantics have one home.
 """
 from __future__ import annotations
 
@@ -12,7 +11,7 @@ from app.models.dataset_join import DatasetJoin
 from app.services.ontology.dataset_tables import is_valid_identifier
 
 _OP_MAP = {"=": "=", "!=": "<>", ">": ">", ">=": ">=", "<": "<", "<=": "<=", "like": "LIKE"}
-VALID_OPS = tuple(_OP_MAP) + ("in", "not_in", "is_null", "is_not_null")
+VALID_OPS = tuple(_OP_MAP) + ("in", "not_in", "between", "is_null", "is_not_null")
 
 
 class SqlBuildError(ValueError):
@@ -68,21 +67,25 @@ def build_joins_sql(
     return joins_sql
 
 
-def build_where(filters: list[dict[str, Any]] | None) -> tuple[list[str], dict[str, Any]]:
-    """Build parameterized ``base."col" <op> :param`` conditions."""
+def build_conditions(
+    conditions: list[tuple[str, str, Any]] | None,
+) -> tuple[list[str], dict[str, Any]]:
+    """Build parameterized ``<expr> <op> :param`` conditions.
+
+    ``expr`` is a **trusted, already-qualified SQL expression** (a field's resolved SQL);
+    operators and values are validated/parameterized here.
+    """
     params: dict[str, Any] = {}
     where: list[str] = []
-    for i, f in enumerate(filters or []):
-        c, op, val = f.get("column"), f.get("op"), f.get("value")
-        if not (isinstance(c, str) and is_valid_identifier(c)):
-            raise SqlBuildError("Invalid filter column.")
+    for i, (expr, op, val) in enumerate(conditions or []):
+        if not (isinstance(expr, str) and expr.strip()):
+            raise SqlBuildError("Invalid filter expression.")
         if op not in VALID_OPS:
             raise SqlBuildError(f"Unsupported operator '{op}'.")
-        qcol = f'base."{c}"'
         if op == "is_null":
-            where.append(f"{qcol} IS NULL")
+            where.append(f"{expr} IS NULL")
         elif op == "is_not_null":
-            where.append(f"{qcol} IS NOT NULL")
+            where.append(f"{expr} IS NOT NULL")
         elif op in ("in", "not_in"):
             if not isinstance(val, list):
                 raise SqlBuildError("IN filter value must be a list.")
@@ -91,9 +94,14 @@ def build_where(filters: list[dict[str, Any]] | None) -> tuple[list[str], dict[s
                 k = f"f{i}_{j}"
                 params[k] = v
                 keys.append(f":{k}")
-            where.append(f"{qcol} {'IN' if op == 'in' else 'NOT IN'} ({', '.join(keys)})")
+            where.append(f"{expr} {'IN' if op == 'in' else 'NOT IN'} ({', '.join(keys)})")
+        elif op == "between":
+            if not isinstance(val, (list, tuple)) or len(val) != 2:
+                raise SqlBuildError("BETWEEN needs a two-value list.")
+            params[f"f{i}_lo"], params[f"f{i}_hi"] = val[0], val[1]
+            where.append(f"{expr} BETWEEN :f{i}_lo AND :f{i}_hi")
         else:
             k = f"f{i}"
             params[k] = val
-            where.append(f"{qcol} {_OP_MAP[op]} :{k}")
+            where.append(f"{expr} {_OP_MAP[op]} :{k}")
     return where, params

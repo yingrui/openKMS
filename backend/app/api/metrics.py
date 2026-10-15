@@ -27,7 +27,8 @@ from app.schemas.metric import (
     MetricUpdate,
 )
 from app.services.data_layer.expressions import normalize_expression
-from app.services.data_layer.metrics import MetricError, compute_metric, validate_metric_definition
+from app.services.data_layer.metrics import MetricError, validate_metric_definition
+from app.services.data_layer.query import QueryError, run_query
 from app.services.data_layer.semantic_model_fields import FieldError, validate_datatype
 from app.services.permissions.permission_catalog import PERM_DATA_READ, PERM_DATA_WRITE
 
@@ -262,11 +263,14 @@ async def compute_metric_endpoint(
     p = request.state.openkms_jwt_payload
     start = time.perf_counter()
     try:
-        sql, rows = await compute_metric(db, m)
+        # One engine: a metric's value is a query with no grouping.
+        sql, _columns, rows, _capped, _duration = await run_query(
+            db, model_id=m.semantic_model_id, metric=m.id, limit=1
+        )
         duration = int((time.perf_counter() - start) * 1000)
         await _record_run(db, m.id, "ok", len(rows), duration, None, p)
         return MetricComputeResponse(metric_id=m.id, rows=rows, duration_ms=duration, sql=sql)
-    except MetricError as exc:
+    except (MetricError, QueryError) as exc:
         duration = int((time.perf_counter() - start) * 1000)
         await _record_run(db, m.id, "error", 0, duration, str(exc), p)
         raise HTTPException(status_code=400, detail=str(exc)) from exc

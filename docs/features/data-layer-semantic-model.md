@@ -92,8 +92,8 @@ The **shared base** (datasets, their physical columns, relationships) lives in *
 - **Columns** live with the dataset (**Catalog → dataset → Columns**): the physical columns (from `information_schema`) + a maintained **`description`** per column (`dataset_columns`). A **field** is the model-scoped semantic projection of a column (or a computed expression).
 - The **Ossie `datasets`** section of a model's document: `source` (a dotted string), `primary_key`, `unique_keys`, **`columns`** (with descriptions), **`fields`** (the model's), `ai_context`.
 
-### 5. Playground (preview)
-- **Playground** is its own route (`/data-model/{id}/playground`) and a **nav item** of the model's entity shell — it runs a metric **grouped by fields** (dimensions), ad-hoc and read-only, nothing saved. Time dimensions aggregate with `date_trunc('<granularity>', …)`, the **granularity chosen at query time**; so “P/E per day per stock” = the metric + `group_by` `trade_date` (time) and `ts_code`.
+### 5. Playground
+- **Playground** is its own route (`/data-model/{id}/playground`) and a **nav item** of the model's entity shell — the model's query builder: a **metric**, **group-by fields** (time dimensions with a per-query grain), **filters** on the model's fields, an **order** and a **limit**. Ad-hoc and read-only: it saves nothing (a kept answer belongs in Data Explorer), it draws no charts (the Explorer does) and it has no pivot. The spec travels in the URL, so a question can be shared and re-run; the metric's **definition** (expression, base dataset, relationships, type, description, AI context) is one disclosure away so an author can verify without leaving the page. Time dimensions aggregate with `date_trunc('<granularity>', …)`, the **granularity chosen at query time**; so “P/E per day per stock” = the metric + `group_by` `trade_date` (time) and `ts_code`.
 - It returns the rows **and the generated SQL**. Saving a query is a **consumption** concern → **Data Explorer** (`saved_queries` was removed).
 
 ### 6. Export / Import (Ossie) ✅

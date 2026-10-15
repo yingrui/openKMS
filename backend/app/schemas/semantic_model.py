@@ -43,14 +43,42 @@ class SemanticModelListResponse(BaseModel):
     total: int
 
 
-class PreviewRequest(BaseModel):
-    metric_id: str
-    group_by: list[str] = []
+class QueryGroupBy(BaseModel):
+    """A field to group by, with an optional query-time grain (time dimensions)."""
+
+    field: str
     granularity: str | None = None
-    filters: list[MetricFilter] | None = None
 
 
-class PreviewResponse(BaseModel):
+class QueryFilter(BaseModel):
+    """A condition on one of the model's fields."""
+
+    field: str
+    op: str
+    value: Any | None = None
+
+
+class QueryOrder(BaseModel):
+    """Order by `value` (the metric) or by a grouped dimension."""
+
+    field: str
+    direction: str = "asc"
+
+
+class QueryRequest(BaseModel):
+    """One ad-hoc question of a semantic model: metric × fields × filters × order × limit."""
+
+    metric: str
+    group_by: list[QueryGroupBy] = []
+    filters: list[QueryFilter] = []
+    order_by: list[QueryOrder] = []
+    limit: int | None = None
+
+
+class QueryResponse(BaseModel):
     sql: str
     columns: list[str] = []
     rows: list[dict[str, Any]] = []
+    row_count: int = 0
+    capped: bool = False
+    duration_ms: int = 0

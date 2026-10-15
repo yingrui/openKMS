@@ -38,12 +38,6 @@ export interface MetricListResponse {
   total: number;
 }
 
-export interface MetricComputeResponse {
-  metric_id: string;
-  rows: Record<string, unknown>[];
-  duration_ms: number;
-}
-
 export interface MetricRunResponse {
   id: string;
   metric_id: string;
@@ -95,10 +89,6 @@ export async function updateMetric(
 
 export async function deleteMetric(id: string): Promise<void> {
   return request<void>(`/api/metrics/${id}`, { method: 'DELETE' });
-}
-
-export async function computeMetric(id: string): Promise<MetricComputeResponse> {
-  return request<MetricComputeResponse>(`/api/metrics/${id}/compute`);
 }
 
 export async function fetchMetricRuns(id: string): Promise<MetricRunResponse[]> {

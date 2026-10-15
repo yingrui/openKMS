@@ -39,29 +39,50 @@ export interface SemanticModelImportSummary {
   warnings: string[];
 }
 
-export interface PreviewFilter {
-  column: string;
+export interface SemanticModelQueryGroupBy {
+  field: string;
+  granularity?: string | null;
+}
+
+export interface SemanticModelQueryFilter {
+  field: string;
   op: string;
   value?: unknown;
 }
 
-export interface SemanticModelPreviewResponse {
+export interface SemanticModelQueryOrder {
+  field: string;
+  direction: 'asc' | 'desc';
+}
+
+/** One ad-hoc question of a model: metric × fields × filters × order × limit. */
+export interface SemanticModelQuerySpec {
+  metric: string;
+  group_by: SemanticModelQueryGroupBy[];
+  filters: SemanticModelQueryFilter[];
+  order_by: SemanticModelQueryOrder[];
+  limit: number;
+}
+
+export interface SemanticModelQueryResponse {
   sql: string;
   columns: string[];
   rows: Record<string, unknown>[];
+  row_count: number;
+  capped: boolean;
+  duration_ms: number;
 }
 
-export async function previewSemanticModel(
+export async function querySemanticModel(
   modelId: string,
-  data: { metric_id: string; group_by: string[]; granularity?: string | null; filters?: PreviewFilter[] | null },
-): Promise<SemanticModelPreviewResponse> {
-  return request<SemanticModelPreviewResponse>(`/api/semantic-models/${modelId}/preview`, {
+  spec: SemanticModelQuerySpec,
+): Promise<SemanticModelQueryResponse> {
+  return request<SemanticModelQueryResponse>(`/api/semantic-models/${modelId}/query`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(data),
+    body: JSON.stringify(spec),
   });
 }
-
 export async function fetchSemanticModels(): Promise<SemanticModelListResponse> {
   return request<SemanticModelListResponse>('/api/semantic-models');
 }

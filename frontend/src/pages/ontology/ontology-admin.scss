@@ -2011,41 +2011,146 @@ select.console-form-control {
   color: var(--color-text-muted);
 }
 
-.model-playground__controls {
-  display: flex;
-  align-items: flex-end;
+/* Model → Playground: the question on the left, the answer on the right. */
+
+.playground {
+  display: grid;
+  grid-template-columns: minmax(20rem, 24rem) minmax(0, 1fr);
   gap: var(--space-4);
-  flex-wrap: wrap;
-  margin-bottom: var(--space-3);
+  align-items: start;
 }
 
-.model-playground__dims {
-  display: flex;
-  align-items: center;
-  gap: var(--space-3);
-  flex-wrap: wrap;
-}
-
-.model-playground__dims-label {
-  font-size: var(--text-sm);
-  color: var(--color-text-secondary);
-}
-
-.model-playground__more {
-  margin-top: var(--space-2);
-
-  summary {
-    cursor: pointer;
-    font-size: var(--text-sm);
-    color: var(--color-text-muted);
+@include max-width(ds.$bp-wide-max) {
+  .playground {
+    grid-template-columns: minmax(0, 1fr);
   }
 }
 
-.model-playground__sql-toggle {
-  margin-top: var(--space-2);
+.playground__query,
+.playground__answer {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  min-width: 0;
 }
 
-.model-playground__sql {
+.playground__form {
+  max-width: none;
+}
+
+.playground__label {
+  font-size: var(--text-sm);
+  font-weight: 600;
+  color: var(--color-text-secondary);
+}
+
+.playground__section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.playground__section--row {
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.playground__search {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: 0 var(--space-3);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-bg-muted);
+  color: var(--color-text-muted);
+
+  input {
+    flex: 1 1 auto;
+    min-width: 0;
+    padding: var(--space-2) 0;
+    border: 0;
+    background: none;
+    color: var(--color-text);
+    font: inherit;
+
+    &:focus {
+      outline: none;
+    }
+  }
+}
+
+.playground__fields {
+  display: flex;
+  flex-direction: column;
+  max-height: 15rem;
+  overflow-y: auto;
+}
+
+.playground__chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.playground__chip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: 2px var(--space-2);
+  border: 1px solid var(--color-border);
+  border-radius: 999px;
+  background: var(--color-bg-muted);
+  font-size: var(--text-sm);
+
+  select {
+    padding: 0;
+    border: 0;
+    background: none;
+    color: var(--color-text-secondary);
+    font: inherit;
+    cursor: pointer;
+  }
+
+  button {
+    display: inline-flex;
+    padding: 0;
+    border: 0;
+    background: none;
+    color: var(--color-text-muted);
+    cursor: pointer;
+
+    &:hover {
+      color: var(--color-danger);
+    }
+  }
+}
+
+.playground__filter {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+
+  select,
+  input {
+    flex: 1 1 7rem;
+    min-width: 0;
+  }
+}
+
+.playground__definition {
+  summary {
+    cursor: pointer;
+    font-weight: 600;
+  }
+}
+
+.playground__sql-toggle {
+  margin-top: var(--space-3);
+}
+
+.playground__sql {
   margin: var(--space-2) 0 0;
   padding: var(--space-3);
   border: 1px solid var(--color-border);

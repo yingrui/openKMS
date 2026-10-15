@@ -16,15 +16,15 @@ from app.database import get_db
 from app.models.semantic_model import SemanticModel
 from app.models.metric_definition import MetricDefinition
 from app.schemas.semantic_model import (
-    PreviewRequest,
-    PreviewResponse,
+    QueryRequest,
+    QueryResponse,
     SemanticModelCreate,
     SemanticModelDatasetRef,
     SemanticModelListResponse,
     SemanticModelResponse,
     SemanticModelUpdate,
 )
-from app.services.data_layer.preview import PreviewError, run_preview
+from app.services.data_layer.query import QueryError, run_query
 from app.services.data_layer.semantic_model import (
     export_semantic_model,
     import_semantic_model,
@@ -197,28 +197,34 @@ async def import_semantic_model_endpoint(body: dict[str, Any], db: AsyncSession 
 
 
 @router.post(
-    "/{model_id}/preview",
-    response_model=PreviewResponse,
+    "/{model_id}/query",
+    response_model=QueryResponse,
     dependencies=[Depends(require_any_permission(*_VIEW))],
 )
-async def preview_semantic_model(
+async def query_semantic_model(
     model_id: str,
-    body: PreviewRequest,
+    body: QueryRequest,
     db: AsyncSession = Depends(get_db),
 ):
-    """Run one metric of this model grouped by dimensions (ad-hoc, read-only)."""
+    """Answer one ad-hoc question of this model — read-only, capped and audited."""
     await _load(db, model_id)
-    metric = await db.get(MetricDefinition, body.metric_id)
-    if not metric or metric.semantic_model_id != model_id:
-        raise HTTPException(status_code=404, detail="Metric not found")
     try:
-        sql, columns, rows = await run_preview(
+        sql, columns, rows, capped, duration = await run_query(
             db,
-            metric=metric,
-            group_by=body.group_by,
-            granularity=body.granularity,
-            filters=[f.model_dump() for f in body.filters] if body.filters else None,
+            model_id=model_id,
+            metric=body.metric,
+            group_by=[g.model_dump() for g in body.group_by],
+            filters=[f.model_dump() for f in body.filters],
+            order_by=[o.model_dump() for o in body.order_by],
+            limit=body.limit,
         )
-    except PreviewError as exc:
+    except QueryError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
-    return PreviewResponse(sql=sql, columns=columns, rows=rows)
+    return QueryResponse(
+        sql=sql,
+        columns=columns,
+        rows=rows,
+        row_count=len(rows),
+        capped=capped,
+        duration_ms=duration,
+    )
