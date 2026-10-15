@@ -171,21 +171,28 @@ export function ConsoleAccessGroups() {
     void loadGroups();
   }, [loadGroups]);
 
+  /** Route id already opened by this effect, so a route change caused by `selectGroup` loads once. */
+  const openedRouteIdRef = useRef<string | null>(null);
+
   useEffect(() => {
+    if (!routeGroupId) {
+      openedRouteIdRef.current = null;
+      return;
+    }
+    if (openedRouteIdRef.current === routeGroupId) return;
+    openedRouteIdRef.current = routeGroupId;
     void (async () => {
-      if (!routeGroupId) return;
-      if (routeGroupId === selectedId) return;
       try {
         await fetchAccessGroup(routeGroupId);
         setSelectedId(routeGroupId);
         await loadDetail(routeGroupId);
       } catch {
+        openedRouteIdRef.current = null;
         toast.error(t('accessGroups.groupNotFound'));
         navigate('/console/data-security/groups', { replace: true });
       }
     })();
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- route deep link
-  }, [routeGroupId]);
+  }, [routeGroupId, loadDetail, navigate, t]);
 
   useEffect(() => {
     if (!selectedId || detailLoading) return;

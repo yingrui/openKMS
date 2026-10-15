@@ -192,7 +192,6 @@ export function ObjectExplorer() {
   const [linkTypes, setLinkTypes] = useState<LinkTypeResponse[]>([]);
   const [selectedObjectTypeIds, setSelectedObjectTypeIds] = useState<Set<string>>(new Set());
   const [selectedLinkTypeIds, setSelectedLinkTypeIds] = useState<Set<string>>(new Set());
-  const [cypherInput, setCypherInput] = useState('');
   const [userQuestion, setUserQuestion] = useState('');
   const [mockedAnswer, setMockedAnswer] = useState<string | null>(null);
   const [generating, setGenerating] = useState(false);
@@ -245,15 +244,27 @@ export function ObjectExplorer() {
     setListPage(0);
   }, [result, listPageSize]);
 
-  const selectedObjects = objectTypes.filter((t) => selectedObjectTypeIds.has(t.id));
-  const selectedLinks = linkTypes.filter((t) => selectedLinkTypeIds.has(t.id));
-
-  useEffect(() => {
-    const generated = buildCypher(selectedObjects, selectedLinks);
-    setCypherInput(generated);
-    // selectedObjects/selectedLinks are new arrays each render; IDs + catalogs are the stable inputs.
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- adding derived arrays would retrigger every render
-  }, [selectedObjectTypeIds, selectedLinkTypeIds, objectTypes, linkTypes]);
+  const selectedObjects = useMemo(
+    () => objectTypes.filter((t) => selectedObjectTypeIds.has(t.id)),
+    [objectTypes, selectedObjectTypeIds]
+  );
+  const selectedLinks = useMemo(
+    () => linkTypes.filter((t) => selectedLinkTypeIds.has(t.id)),
+    [linkTypes, selectedLinkTypeIds]
+  );
+  /** The Cypher the current selection describes; the editor shows an edit of it when there is one. */
+  const generatedCypher = useMemo(
+    () => buildCypher(selectedObjects, selectedLinks),
+    [selectedObjects, selectedLinks]
+  );
+  const [cypherDraft, setCypherDraft] = useState<string | null>(null);
+  // A new selection replaces whatever was typed, during render (no effect + state round trip).
+  const [prevGeneratedCypher, setPrevGeneratedCypher] = useState(generatedCypher);
+  if (prevGeneratedCypher !== generatedCypher) {
+    setPrevGeneratedCypher(generatedCypher);
+    setCypherDraft(null);
+  }
+  const cypherInput = cypherDraft ?? generatedCypher;
 
   const toggleObjectType = (id: string) => {
     setSelectedObjectTypeIds((prev) => {
@@ -372,7 +383,7 @@ export function ObjectExplorer() {
     setGenerating(true);
     setMockedAnswer(null);
     setResult(null);
-    setCypherInput('');
+    setCypherDraft('');
 
     let cypher = '';
     try {
@@ -382,7 +393,7 @@ export function ObjectExplorer() {
         toast.error(gen.explanation || 'Could not generate Cypher for this question');
         return;
       }
-      setCypherInput(cypher);
+      setCypherDraft(cypher);
     } catch (e) {
       toast.error(e instanceof Error ? `Cypher gen failed: ${e.message}` : 'Cypher gen failed');
       return;
@@ -512,7 +523,7 @@ export function ObjectExplorer() {
                       id="object-explorer-cypher"
                       className="object-explorer-cypher-input"
                       value={cypherInput}
-                      onChange={(e) => setCypherInput(e.target.value)}
+                      onChange={(e) => setCypherDraft(e.target.value)}
                       placeholder={t('cypherPlaceholder')}
                       aria-label={t('cypherLabel')}
                       rows={2}

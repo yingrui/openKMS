@@ -204,7 +204,7 @@ npm run check   # typecheck → check:app-layout → check:app-modules → check
 | `check:app-layout` | single gutter source (`.app-content` / `.app-page-pane`) |
 | `check:app-modules` | the Suite app list/order lives in `APP_MODULES` |
 | `check:styles` | the rules in the table below |
-| `check:lint` | eslint, ratcheted: `scripts/eslint-baseline.txt` freezes the 44 errors we have (mostly `react-hooks/set-state-in-effect` and `react-refresh/only-export-components`) — a file that *gains* one fails. The bulk (108) was `react-hooks/refs`, caused by view-models that return refs: React's compiler flags **every** property read on an object that contains a ref, so a hook's refs must be private (expose behaviour) and the view-model destructured at the call site |
+| `check:lint` | eslint, ratcheted: `scripts/eslint-baseline.txt` freezes the errors we have — a file that *gains* one fails. The baseline is **0**, and `eslint-disable` is **banned** (like `# noqa` in `backend/check.sh`): fix the finding instead. History — `react-hooks/refs` (108) came from view-models that return refs, because React's compiler flags **every** property read on an object containing a ref, so a hook's refs stay private (expose behaviour) and the view-model is destructured at the call site; `react-hooks/set-state-in-effect` (16) and `react-refresh/only-export-components` (19) are gone too (render-time state adjustment, and non-component exports moved to their own modules) |
 | `test` | vitest |
 
 **`check-shared-styles.sh`** (`npm run check:styles`) — allowlists are **known debt, not permission**:

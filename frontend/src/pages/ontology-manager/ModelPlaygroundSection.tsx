@@ -15,6 +15,7 @@ import {
   type SemanticModelQuerySpec,
 } from '../../data/semanticModelsApi';
 import { CheckList, CheckListItem, FormField } from '../../styles/design-system';
+import { useAsyncData } from '../../hooks/useAsyncData';
 import { EntityViewHeader, EntityViewPanel } from './EntityViewShell';
 import { useSemanticModelDetail } from './useSemanticModelDetail';
 
@@ -54,9 +55,16 @@ export function ModelPlaygroundSection() {
   const modelId = model.id;
   const [params, setParams] = useSearchParams();
 
-  const [metrics, setMetrics] = useState<MetricResponse[]>([]);
-  const [fields, setFields] = useState<SemanticModelFieldResponse[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { data, loading, error } = useAsyncData(
+    () =>
+      Promise.all([fetchMetrics(modelId), fetchModelFields(modelId)]).then(
+        ([metricPage, fieldPage]) => ({ metrics: metricPage.items, fields: fieldPage.items }),
+      ),
+    [modelId],
+  );
+  const metrics = useMemo(() => data?.metrics ?? [], [data]);
+  const fields = useMemo(() => data?.fields ?? [], [data]);
+
   const [spec, setSpec] = useState<SemanticModelQuerySpec | null>(null);
   const [filterRows, setFilterRows] = useState<FilterRow[]>([]);
   const [search, setSearch] = useState('');
@@ -64,36 +72,26 @@ export function ModelPlaygroundSection() {
   const [showSql, setShowSql] = useState(false);
   const [running, setRunning] = useState(false);
 
+  // Adopt the loaded metric catalog into the query spec once per model (a URL spec wins).
+  const [adoptedFor, setAdoptedFor] = useState<string | null>(null);
+  if (data && adoptedFor !== modelId) {
+    setAdoptedFor(modelId);
+    const initial = specFromUrl(params.get('q')) ?? emptySpec(data.metrics[0]?.id ?? '');
+    setSpec(initial);
+    setFilterRows(
+      initial.filters.map((f, i) => ({
+        id: i,
+        field: f.field,
+        op: f.op,
+        value: Array.isArray(f.value) ? String(f.value[0] ?? '') : String(f.value ?? ''),
+        value2: Array.isArray(f.value) ? String(f.value[1] ?? '') : '',
+      })),
+    );
+  }
+
   useEffect(() => {
-    let cancelled = false;
-    setLoading(true);
-    void Promise.all([fetchMetrics(modelId), fetchModelFields(modelId)])
-      .then(([metricPage, fieldPage]) => {
-        if (cancelled) return;
-        setMetrics(metricPage.items);
-        setFields(fieldPage.items);
-        const fromUrl = specFromUrl(params.get('q'));
-        const initial = fromUrl ?? emptySpec(metricPage.items[0]?.id ?? '');
-        setSpec(initial);
-        setFilterRows(
-          initial.filters.map((f, i) => ({
-            id: i,
-            field: f.field,
-            op: f.op,
-            value: Array.isArray(f.value) ? String(f.value[0] ?? '') : String(f.value ?? ''),
-            value2: Array.isArray(f.value) ? String(f.value[1] ?? '') : '',
-          })),
-        );
-      })
-      .catch(
-        (e) => !cancelled && toast.error(e instanceof Error ? e.message : t('datasets.loadFailed')),
-      )
-      .finally(() => !cancelled && setLoading(false));
-    return () => {
-      cancelled = true;
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [modelId, t]);
+    if (error) toast.error(error instanceof Error ? error.message : t('datasets.loadFailed'));
+  }, [error, t]);
 
   const metric = useMemo(
     () => metrics.find((m) => m.id === spec?.metric) ?? null,

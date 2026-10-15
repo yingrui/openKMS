@@ -158,7 +158,9 @@ function useFrontendPermissionGate(
   }, [isAuthenticated, user]);
 
   useEffect(() => {
-    if (!isAuthenticated || !user) {
+    // `catalogFetchKey` is empty exactly when there is no authenticated user, so it carries the
+    // signed-out transition too — `user` itself is never read by this effect.
+    if (!catalogFetchKey) {
       startTransition(() => {
         setCatalog(null);
         setReady(true);
@@ -202,8 +204,8 @@ function useFrontendPermissionGate(
     return () => {
       cancelled = true;
     };
-    // `user` omitted from deps: encoded in `catalogFetchKey` (avoids ref-churn); `getToken` must stay side-effect-free (see OIDC provider).
-  }, [isAuthenticated, catalogFetchKey, getToken]); // eslint-disable-line react-hooks/exhaustive-deps
+    // `getToken` must stay side-effect-free (see the OIDC provider); it is a stable callback.
+  }, [catalogFetchKey, getToken]);
 
   const canAccessPath = useCallback(
     (pathname: string) => {

@@ -1,11 +1,9 @@
 #!/usr/bin/env python3
 """Guardrail: eslint may only get *better*.
 
-`npm run lint` has 150+ pre-existing errors, most of them from the React Compiler rules in
-`eslint-plugin-react-hooks` v6 (`react-hooks/refs`, `-set-state-in-effect`, `-immutability`)
-plus `react-refresh/only-export-components` — systemic patterns that need their own pass,
-not an allowlist. Freezing them per file keeps the check enforceable today: a file that
-gains an error fails, fixing them is always fine.
+The baseline is empty today, so this doubles as a hard gate: any new error fails. It also
+bans `eslint-disable` outright — the backend `check.sh` does the same for `# noqa`, because
+silencing a finding is a review decision, not a drive-by. Fix the root cause instead.
 
 Usage: check-eslint.py [--list|--update-baseline]
 """
@@ -18,6 +16,18 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 BASELINE = Path(__file__).resolve().parent / "eslint-baseline.txt"
+# A suppression is a claim that the rule is wrong; keep the list explicit and empty.
+SUPPRESSION_ALLOW: set[str] = set()
+
+
+def suppressions() -> list[str]:
+    """`path:line: text` for every eslint-disable comment under src/."""
+    hits: list[str] = []
+    for path in sorted((ROOT / "src").rglob("*.ts*")):
+        for lineno, line in enumerate(path.read_text().splitlines(), start=1):
+            if "eslint-disable" in line:
+                hits.append(f"{path.relative_to(ROOT / 'src')}:{lineno}: {line.strip()}")
+    return hits
 
 
 def eslint_counts() -> dict[str, int]:
@@ -73,6 +83,12 @@ def main() -> int:
             print(f"{count:4d}  {path}")
         return 0
 
+    failed = False
+    for hit in suppressions():
+        if hit.split(":", 1)[0] not in SUPPRESSION_ALLOW:
+            print(f"check:lint: {hit} silences a rule; fix the finding instead", file=sys.stderr)
+            failed = True
+
     grown = {p: (baseline.get(p, 0), c) for p, c in counts.items() if c > baseline.get(p, 0)}
     if grown:
         for path, (was, now) in sorted(grown.items()):
@@ -82,6 +98,8 @@ def main() -> int:
             "(scripts/eslint-baseline.txt is a ratchet, it only shrinks)",
             file=sys.stderr,
         )
+        failed = True
+    if failed:
         return 1
     print(f"check:lint: OK ({sum(counts.values())} frozen errors in {len(counts)} files)")
     return 0

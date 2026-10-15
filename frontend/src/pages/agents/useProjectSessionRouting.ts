@@ -62,6 +62,11 @@ export function useProjectSessionRouting(projectId: string, sessionId?: string) 
   const windowCacheRef = useRef<Map<string, MessageWindow>>(new Map());
   /** True after the user has loaded older pages for the current session. */
   const hasPagedOlderRef = useRef(false);
+  /** Latest conversation list, read by the message-window effect's error fallback only. */
+  const conversationsRef = useRef(conversations);
+  useEffect(() => {
+    conversationsRef.current = conversations;
+  });
   convIdRef.current = convId;
 
   const conversationIdsKey = useMemo(
@@ -256,15 +261,13 @@ export function useProjectSessionRouting(projectId: string, sessionId?: string) 
       if (epoch !== messagesEpochRef.current || convIdRef.current !== convId) return;
       const msg = e instanceof Error ? e.message : String(e);
       toast.error(msg);
-      const fallback = conversations[0]?.id;
+      const fallback = conversationsRef.current[0]?.id;
       if (fallback && fallback !== convId) {
         navigate(projectWorkspacePath(projectId, fallback), { replace: true });
       } else {
         setMessages([]);
       }
     });
-    // `conversations` intentionally omitted: list refresh must not reload the thread.
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- only session identity
   }, [convId, loadMessages, applyWindow, navigate, projectId]);
 
   const activeConv = conversations.find((c) => c.id === convId);
