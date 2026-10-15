@@ -209,16 +209,14 @@ export function DatasetSettingsTab() {
         </div>
       </EntityViewPanel>
 
-      <EntityViewPanel>
-        <div className="entity-view__form">
-          <h3>{t('datasets.dangerZone')}</h3>
-          <p className="page-subtitle">{t('datasets.deleteHint')}</p>
-          <button type="button" className="btn btn-secondary" onClick={() => void onDelete()}>
-            <Trash2 size={16} aria-hidden />
-            {t('shared.delete')}
-          </button>
-        </div>
-      </EntityViewPanel>
+      <div className="ontology-danger-zone">
+        <h2>{t('datasets.dangerZone')}</h2>
+        <p className="page-subtitle">{t('datasets.deleteHint')}</p>
+        <button type="button" className="btn btn-danger" onClick={() => void onDelete()}>
+          <Trash2 size={16} aria-hidden />
+          {t('shared.delete')}
+        </button>
+      </div>
     </>
   );
 }

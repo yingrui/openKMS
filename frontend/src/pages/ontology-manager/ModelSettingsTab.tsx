@@ -195,16 +195,14 @@ export function ModelSettingsTab() {
         </div>
       </EntityViewPanel>
 
-      <EntityViewPanel>
-        <div className="entity-view__form">
-          <h3>{t('dataModel.dangerZone')}</h3>
-          <p className="page-subtitle">{t('dataModel.deleteHint')}</p>
-          <button type="button" className="btn btn-secondary" onClick={() => void handleDelete()}>
-            <Trash2 size={16} aria-hidden />
-            {t('shared.delete')}
-          </button>
-        </div>
-      </EntityViewPanel>
+      <div className="ontology-danger-zone">
+        <h2>{t('dataModel.dangerZone')}</h2>
+        <p className="page-subtitle">{t('dataModel.deleteHint')}</p>
+        <button type="button" className="btn btn-danger" onClick={() => void handleDelete()}>
+          <Trash2 size={16} aria-hidden />
+          {t('shared.delete')}
+        </button>
+      </div>
 
       <ModelYamlPanel
         modelId={model.id}
