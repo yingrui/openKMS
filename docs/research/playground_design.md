@@ -1,6 +1,6 @@
 # Playground design (semantic model)
 
-Status: **P0 shipped** (query engine + builder + picker) · Surface: `/data-model/{id}/playground` · Owner: data layer
+Status: **P0 complete** (query engine · builder · picker · classified errors · answer context) · Surface: `/data-model/{id}/playground` · Owner: data layer
 
 The Playground is where a person *asks a question of a semantic model* and sees the answer, the
 generated SQL and the definition it came from. It is the human twin of the query API an agent
@@ -98,9 +98,13 @@ is collapsed by default so an author can verify without leaving for the Metrics 
    also appear as chips (with the grain selector) above.
 5. **Definition strip**: expression, base dataset, joins, `type`, description, `ai_context`.
 6. **Single-value mode**: no group-by → the metric's value (the fastest sanity check).
-7. **Errors with a cause**: distinguish *definition* errors (expression is not an aggregate, unknown
-   column, unresolved join) from *data* errors (permission, timeout), and say which.
-8. **Result context**: row count, cap flag, duration, null share per column, empty-state explanation.
+7. **Errors with a cause** (✅): the query API classifies by SQLSTATE into `definition` /
+   `data` / `request` (`app/services/data_layer/query_errors.py`), localizes the explanation
+   (`app/i18n/catalog.py`) and sends `{code, message, kind, detail}`; the answer pane names which
+   side failed, states the cause and folds the source's own text into a details line. No toast.
+8. **Result context** (✅): row count, cap flag and duration under the answer; **null share per
+   column** in the header (over the rows shown); an empty result says whether **filters** removed
+   every row or the dataset answered nothing.
 
 **Belongs elsewhere (decided 2026-06)**
 
@@ -165,9 +169,13 @@ change (no alias). `/metrics/{id}/compute` folds into "query with no grouping".
 - A person can go from "which metric?" to "P/E by industry for January, top 10" **without leaving
   the page** and **without typing SQL**.
 - Every result states its **row count, cap status and duration**, and shows the SQL that produced it.
-- A misplaced metric expression produces a **definition error explaining why** (not raw SQL).
-- A run can be **reproduced from its URL** and **copied as JSON** into an agent/skill call.
-- An author can verify a metric's definition **inline**, and jump to the Playground from a metric row.
+- A misplaced metric expression produces a **definition error explaining why** (not raw SQL) — the
+  pane says "definition problem", the message says which aggregate/column to fix, the details line
+  holds Postgres' words.
+- A run can be **reproduced from its URL** and **copied as JSON** (`Copy query`) into an agent/skill
+  call — the same spec object, verbatim.
+- An author can verify a metric's definition **inline** (including the **relationships the metric
+  uses**, named `from → to`), and jump into the Playground from a metric row (`Test in Playground`).
 
 ## 8. Decisions
 
@@ -180,3 +188,7 @@ change (no alias). `/metrics/{id}/compute` folds into "query with no grouping".
 5. `POST /semantic-models/{id}/query` replaces `/preview`; `POST /metrics/{id}/compute` stays as the
    metric-addressed single value and is defined as `run_query` with no grouping (one engine, two
    addresses).
+6. **A failed query is classified, not just reported** — SQLSTATE → `kind` (`definition` / `data` /
+   `request`) + a stable code, localized server-side so the pane shows the cause in the caller's
+   language (a wrong definition is the common case and is *not* the user's fault). Raw source text is
+   a details line, never the message.

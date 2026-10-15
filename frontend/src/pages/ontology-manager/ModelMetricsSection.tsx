@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Loader2, Pencil, Plus, Trash2 } from 'lucide-react';
+import { Loader2, Pencil, Play, Plus, Trash2 } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import { toast } from 'sonner';
 import { fetchDatasets, type DatasetResponse } from '../../data/datasetsApi';
 import { fetchDatasetJoins, type DatasetJoinResponse } from '../../data/joinsApi';
@@ -214,6 +215,15 @@ export function ModelMetricsSection() {
                     <code>{metricExpressionSql(m)}</code>
                   </td>
                   <td className="dataset-field-row__actions">
+                    <Link
+                      className="btn btn-secondary btn-sm"
+                      to={`/data-model/${model.id}/playground?q=${encodeURIComponent(
+                        JSON.stringify({ metric: m.id }),
+                      )}`}
+                      title={t('dataModel.playgroundOpen')}
+                    >
+                      <Play size={14} aria-hidden />
+                    </Link>
                     <button
                       type="button"
                       className="btn btn-secondary btn-sm"

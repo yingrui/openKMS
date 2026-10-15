@@ -1,9 +1,11 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useSearchParams } from 'react-router-dom';
-import { Loader2, Play, Plus, Search, X } from 'lucide-react';
+import { AlertTriangle, Copy, Loader2, Play, Plus, Search, X } from 'lucide-react';
 import { toast } from 'sonner';
 import { fetchMetrics, type MetricResponse } from '../../data/metricsApi';
+import { fetchDatasetJoins, type DatasetJoinResponse } from '../../data/joinsApi';
+import type { RequestError } from '../../data/apiClient';
 import {
   fetchModelFields,
   isTimeDimension,
@@ -25,6 +27,21 @@ const OPS = ['=', '!=', '>', '>=', '<', '<=', 'like', 'in', 'between', 'is_null'
 const NO_VALUE = new Set(['is_null', 'is_not_null']);
 
 type FilterRow = { id: number; field: string; op: string; value: string; value2: string };
+
+/** A failed run, as the API classified it: who can fix it, what it said, and the source's words. */
+type RunError = { kind: string; message: string; detail?: string };
+
+/** `kind` is set by the query API (`definition` / `data` / `request`); anything else is generic. */
+function runErrorFrom(error: unknown, fallback: string): RunError {
+  const err = error as RequestError;
+  const detail = err?.detail;
+  const kind = typeof detail?.kind === 'string' ? detail.kind : '';
+  return {
+    kind,
+    message: error instanceof Error && error.message ? error.message : fallback,
+    detail: typeof detail?.detail === 'string' ? detail.detail : undefined,
+  };
+}
 
 const emptySpec = (metricId: string): SemanticModelQuerySpec => ({
   metric: metricId,
@@ -69,6 +86,7 @@ export function ModelPlaygroundSection() {
   const [filterRows, setFilterRows] = useState<FilterRow[]>([]);
   const [search, setSearch] = useState('');
   const [result, setResult] = useState<SemanticModelQueryResponse | null>(null);
+  const [runError, setRunError] = useState<RunError | null>(null);
   const [showSql, setShowSql] = useState(false);
   const [running, setRunning] = useState(false);
 
@@ -96,6 +114,34 @@ export function ModelPlaygroundSection() {
   const metric = useMemo(
     () => metrics.find((m) => m.id === spec?.metric) ?? null,
     [metrics, spec?.metric],
+  );
+
+  /** The relationships this metric's expression needs — named, so the author can check them. */
+  const metricJoinIds = useMemo(() => new Set(metric?.joins ?? []), [metric?.joins]);
+  const { data: usedJoins } = useAsyncData(
+    () =>
+      metricJoinIds.size
+        ? fetchDatasetJoins().then((page) => page.items.filter((j) => metricJoinIds.has(j.id)))
+        : Promise.resolve([] as DatasetJoinResponse[]),
+    [metricJoinIds],
+  );
+
+  /** Share of the returned rows that are null per column, so a thin result is readable. */
+  const nullShare = useMemo(() => {
+    const rows = result?.rows ?? [];
+    const share: Record<string, number> = {};
+    for (const column of result?.columns ?? []) {
+      share[column] = rows.length
+        ? rows.filter((row) => row[column] === null || row[column] === undefined).length / rows.length
+        : 0;
+    }
+    return share;
+  }, [result]);
+
+  /** Whether anything narrows the answer — it decides what "no rows" means. */
+  const filtersApplied = useMemo(
+    () => (metric?.filters?.length ?? 0) > 0 || filterRows.some((row) => row.field && row.op),
+    [metric?.filters, filterRows],
   );
 
   /** Fields are the model's declared attributes of the metric's own dataset. */
@@ -154,11 +200,27 @@ export function ModelPlaygroundSection() {
     const runSpec: SemanticModelQuerySpec = { ...spec, filters: toFilters(filterRows) };
     try {
       setResult(await querySemanticModel(modelId, runSpec));
+      setRunError(null);
       setParams({ q: JSON.stringify(runSpec) }, { replace: true });
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : t('dataModel.playgroundRunFailed'));
+      // The answer pane explains the failure; a toast would say the same thing twice.
+      setResult(null);
+      setRunError(runErrorFrom(e, t('dataModel.playgroundRunFailed')));
     } finally {
       setRunning(false);
+    }
+  };
+
+  /** The same spec object the skill/agent send — copied verbatim. */
+  const copyQuery = async () => {
+    if (!spec) return;
+    try {
+      await navigator.clipboard.writeText(
+        JSON.stringify({ ...spec, filters: toFilters(filterRows) }, null, 2),
+      );
+      toast.success(t('dataModel.playgroundCopied'));
+    } catch {
+      toast.error(t('dataModel.playgroundCopyFailed'));
     }
   };
 
@@ -190,19 +252,25 @@ export function ModelPlaygroundSection() {
         title={t('dataModel.playgroundTitle')}
         subtitle={t('dataModel.playgroundHint')}
         actions={
-          <button
-            type="button"
-            className="btn btn-primary"
-            onClick={() => void handleRun()}
-            disabled={running}
-          >
-            {running ? (
-              <Loader2 size={16} className="console-loading-spinner" aria-hidden />
-            ) : (
-              <Play size={16} aria-hidden />
-            )}
-            {t('dataModel.playgroundRun')}
-          </button>
+          <>
+            <button type="button" className="btn btn-secondary" onClick={() => void copyQuery()}>
+              <Copy size={16} aria-hidden />
+              {t('dataModel.playgroundCopyQuery')}
+            </button>
+            <button
+              type="button"
+              className="btn btn-primary"
+              onClick={() => void handleRun()}
+              disabled={running}
+            >
+              {running ? (
+                <Loader2 size={16} className="console-loading-spinner" aria-hidden />
+              ) : (
+                <Play size={16} aria-hidden />
+              )}
+              {t('dataModel.playgroundRun')}
+            </button>
+          </>
         }
       />
 
@@ -482,7 +550,16 @@ export function ModelPlaygroundSection() {
                   <dt>{t('datasets.metricType')}</dt>
                   <dd>{metric.type}</dd>
                   <dt>{t('dataModel.playgroundJoins')}</dt>
-                  <dd>{metric.joins?.length ? String(metric.joins.length) : t('datasets.dash')}</dd>
+                  <dd>
+                    {usedJoins?.length
+                      ? usedJoins.map((j) => (
+                          <span key={j.id} className="playground__join">
+                            {j.from_dataset_name ?? j.from_dataset_id} →{' '}
+                            {j.to_dataset_name ?? j.to_dataset_id}
+                          </span>
+                        ))
+                      : t('datasets.dash')}
+                  </dd>
                   <dt>{t('dataModel.fieldDescription')}</dt>
                   <dd>{metric.business_definition || t('datasets.dash')}</dd>
                   <dt>{t('datasets.aiContext')}</dt>
@@ -501,7 +578,27 @@ export function ModelPlaygroundSection() {
         {/* ---------- the answer ---------- */}
         <div className="playground__answer">
           <EntityViewPanel title={t('dataModel.playgroundResult')}>
-            {!result ? (
+            {runError ? (
+              <div className={`playground__error playground__error--${runError.kind}`} role="alert">
+                <p className="playground__error-title">
+                  <AlertTriangle size={16} aria-hidden />
+                  {runError.kind === 'definition'
+                    ? t('dataModel.playgroundErrorDefinition')
+                    : runError.kind === 'request'
+                      ? t('dataModel.playgroundErrorRequest')
+                      : runError.kind === 'data'
+                        ? t('dataModel.playgroundErrorData')
+                        : t('dataModel.playgroundRunFailed')}
+                </p>
+                <p className="playground__error-message">{runError.message}</p>
+                {runError.detail ? (
+                  <details className="playground__error-details">
+                    <summary>{t('dataModel.playgroundErrorDetails')}</summary>
+                    <pre>{runError.detail}</pre>
+                  </details>
+                ) : null}
+              </div>
+            ) : !result ? (
               <p className="entity-view__readonly">{t('dataModel.playgroundEmpty')}</p>
             ) : (
               <>
@@ -511,14 +608,27 @@ export function ModelPlaygroundSection() {
                   {` · ${result.duration_ms} ms`}
                 </p>
                 {result.rows.length === 0 ? (
-                  <p className="entity-view__readonly">{t('dataModel.playgroundNoRows')}</p>
+                  <p className="entity-view__readonly">
+                    {filtersApplied
+                      ? t('dataModel.playgroundNoRowsFiltered')
+                      : t('dataModel.playgroundNoRowsEmpty')}
+                  </p>
                 ) : (
                   <div className="ds-table-wrap ds-table-wrap--flush">
                     <table className="console-table">
                       <thead>
                         <tr>
                           {result.columns.map((c) => (
-                            <th key={c}>{c}</th>
+                            <th key={c}>
+                              {c}
+                              {nullShare[c] > 0 ? (
+                                <span className="playground__null-share">
+                                  {t('dataModel.playgroundNullShare', {
+                                    percent: Math.round(nullShare[c] * 100),
+                                  })}
+                                </span>
+                              ) : null}
+                            </th>
                           ))}
                         </tr>
                       </thead>

@@ -23,6 +23,7 @@ from app.schemas.semantic_model import (
     SemanticModelResponse,
     SemanticModelUpdate,
 )
+from app.api.query_errors import query_failure_detail
 from app.services.data_layer.query import QueryError, run_query
 from app.services.data_layer.semantic_model import (
     export_semantic_model,
@@ -203,6 +204,7 @@ async def import_semantic_model_endpoint(body: dict[str, Any], db: AsyncSession 
 async def query_semantic_model(
     model_id: str,
     body: QueryRequest,
+    request: Request,
     db: AsyncSession = Depends(get_db),
 ):
     """Answer one ad-hoc question of this model — read-only, capped and audited."""
@@ -218,7 +220,7 @@ async def query_semantic_model(
             limit=body.limit,
         )
     except QueryError as exc:
-        raise HTTPException(status_code=400, detail=str(exc)) from exc
+        raise HTTPException(status_code=400, detail=query_failure_detail(request, exc.failure)) from exc
     return QueryResponse(
         sql=sql,
         columns=columns,

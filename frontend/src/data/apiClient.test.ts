@@ -1,6 +1,8 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import {
   authAwareFetch,
+  request,
+  type RequestError,
   isRejectedJwtResponse,
   SESSION_EXPIRED_API_DETAIL,
   setSessionExpiredHandler,
@@ -172,5 +174,55 @@ describe('authAwareFetch', () => {
     expect(handler).toHaveBeenCalledOnce();
     const body = await res.json();
     expect(body.detail).toBe(SESSION_EXPIRED_API_DETAIL);
+  });
+});
+
+
+describe('request error detail', () => {
+  afterEach(() => vi.unstubAllGlobals());
+
+  it('keeps the stable code, the kind and the source text of a failed query', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue(
+        new Response(
+          JSON.stringify({
+            detail: {
+              code: 'QUERY_METRIC_NOT_AGGREGATE',
+              message: '指标表达式必须做聚合（SUM/AVG/COUNT…）',
+              kind: 'definition',
+              detail: 'column "pe" must appear in the GROUP BY clause',
+            },
+          }),
+          { status: 400, headers: { 'Content-Type': 'application/json' } },
+        ),
+      ),
+    );
+
+    const err = (await request('/api/semantic-models/m/query').catch((e) => e)) as RequestError;
+
+    // The message is the server's localized explanation; the Playground renders `kind` and `detail`.
+    expect(err.status).toBe(400);
+    expect(err.message).toBe('指标表达式必须做聚合（SUM/AVG/COUNT…）');
+    expect(err.code).toBe('QUERY_METRIC_NOT_AGGREGATE');
+    expect(err.detail).toMatchObject({ kind: 'definition' });
+    expect(err.detail?.detail).toBe('column "pe" must appear in the GROUP BY clause');
+  });
+
+  it('leaves a plain string detail as a message only', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue(
+        new Response(JSON.stringify({ detail: 'Nope' }), {
+          status: 400,
+          headers: { 'Content-Type': 'application/json' },
+        }),
+      ),
+    );
+
+    const err = (await request('/api/x').catch((e) => e)) as RequestError;
+    expect(err.message).toBe('Nope');
+    expect(err.code).toBeUndefined();
+    expect(err.detail).toBeUndefined();
   });
 });

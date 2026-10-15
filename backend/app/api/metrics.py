@@ -28,6 +28,8 @@ from app.schemas.metric import (
 )
 from app.services.data_layer.expressions import normalize_expression
 from app.services.data_layer.metrics import MetricError, validate_metric_definition
+from app.api.query_errors import query_failure_detail
+from app.services.data_layer.query_errors import DEFINITION, QueryFailure
 from app.services.data_layer.query import QueryError, run_query
 from app.services.data_layer.semantic_model_fields import FieldError, validate_datatype
 from app.services.permissions.permission_catalog import PERM_DATA_READ, PERM_DATA_WRITE
@@ -273,7 +275,12 @@ async def compute_metric_endpoint(
     except (MetricError, QueryError) as exc:
         duration = int((time.perf_counter() - start) * 1000)
         await _record_run(db, m.id, "error", 0, duration, str(exc), p)
-        raise HTTPException(status_code=400, detail=str(exc)) from exc
+        failure = (
+            exc.failure
+            if isinstance(exc, QueryError)
+            else QueryFailure("QUERY_DEFINITION_INVALID", DEFINITION, str(exc))
+        )
+        raise HTTPException(status_code=400, detail=query_failure_detail(request, failure)) from exc
 
 
 @router.get(

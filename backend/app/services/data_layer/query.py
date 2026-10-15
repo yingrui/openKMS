@@ -12,6 +12,7 @@ from typing import Any
 import time
 
 from sqlalchemy import select
+from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.data_source import DataSource
@@ -27,6 +28,14 @@ from app.services.data_layer.metrics import (
     validate_metric_definition,
 )
 from app.services.data_layer.semantic_model_fields import resolve_is_time
+from app.services.data_layer.query_errors import (
+    DATA,
+    DEFINITION,
+    REQUEST,
+    QueryFailure,
+    QueryFailureKind,
+    classify_sql_error,
+)
 from app.services.data_layer.sql_build import (
     SqlBuildError,
     build_conditions,
@@ -45,7 +54,28 @@ def _quote(identifier: str) -> str:
 
 
 class QueryError(ValueError):
-    """Raised when a query cannot run; surfaced as HTTP 400."""
+    """Raised when a query cannot run.
+
+    The API layer turns it into a localized 400: `failure.code` is a stable code from
+    `app/i18n/catalog.py`, `failure.kind` says who has to fix it (definition / data / request)
+    and `failure.detail` carries the raw source text for the details line.
+    """
+
+    def __init__(self, message: str, failure: QueryFailure | None = None) -> None:
+        super().__init__(message)
+        self.failure = failure or QueryFailure("QUERY_FAILED", DATA)
+
+    @property
+    def code(self) -> str:
+        return self.failure.code
+
+    @property
+    def kind(self) -> QueryFailureKind:
+        return self.failure.kind
+
+    @property
+    def detail(self) -> str | None:
+        return self.failure.detail
 
 
 def field_sql(field: SemanticModelField) -> str:
@@ -53,11 +83,17 @@ def field_sql(field: SemanticModelField) -> str:
     that shares the column name (e.g. ``ts_code``) stays unambiguous."""
     if field.column_name:
         if not is_valid_identifier(field.column_name):
-            raise QueryError(f"Field '{field.name}' has an invalid column.")
+            raise QueryError(
+                f"Field '{field.name}' has an invalid column.",
+                QueryFailure("QUERY_UNKNOWN_COLUMN", DEFINITION),
+            )
         return f"{_BASE_ALIAS}.{_quote(field.column_name)}"
     expr = dialect_sql(field.expression, ANSI)
     if not expr:
-        raise QueryError(f"Field '{field.name}' has no expression.")
+        raise QueryError(
+            f"Field '{field.name}' has no expression.",
+            QueryFailure("QUERY_DEFINITION_INVALID", DEFINITION),
+        )
     return expr
 
 
@@ -98,12 +134,18 @@ def build_sql(
 def _order_sql(ref: str, direction: str, value_expr: str, dims: dict[str, str]) -> str:
     """Order by the metric (`value`) or by a grouped dimension, never by raw SQL."""
     if direction not in ("asc", "desc"):
-        raise QueryError("Order direction must be 'asc' or 'desc'.")
+        raise QueryError(
+            "Order direction must be 'asc' or 'desc'.",
+            QueryFailure("QUERY_INVALID_REQUEST", REQUEST),
+        )
     # NULLS LAST either way: an empty group should never top the list.
     if ref == "value":
         return f"({value_expr}) {direction.upper()} NULLS LAST"
     if ref not in dims:
-        raise QueryError(f"Cannot order by '{ref}': group by it first.")
+        raise QueryError(
+            f"Cannot order by '{ref}': group by it first.",
+            QueryFailure("QUERY_ORDER_NOT_GROUPED", REQUEST),
+        )
     return f"{dims[ref]} {direction.upper()} NULLS LAST"
 
 
@@ -119,7 +161,10 @@ async def _load_metric(
     for m in rows:
         if m.id == ref or m.name == ref:
             return m
-    raise QueryError(f"Metric '{ref}' not found in this model.")
+    raise QueryError(
+        f"Metric '{ref}' not found in this model.",
+        QueryFailure("QUERY_UNKNOWN_METRIC", REQUEST),
+    )
 
 
 async def run_query(
@@ -146,17 +191,24 @@ async def run_query(
     definition = await _load_metric(db, model_id, metric)
     base = await db.get(Dataset, definition.base_dataset_id)
     if not base:
-        raise QueryError("Base dataset not found.")
+        raise QueryError(
+            "Base dataset not found.", QueryFailure("QUERY_UNKNOWN_DATASET", DEFINITION)
+        )
     ds = await db.get(DataSource, base.data_source_id)
     if not ds or ds.kind != "postgresql":
-        raise QueryError("Queries only run on PostgreSQL datasets.")
+        raise QueryError(
+            "Queries only run on PostgreSQL datasets.",
+            QueryFailure("QUERY_UNSUPPORTED_SOURCE", DATA),
+        )
 
     try:
         metric_expr = validate_metric_definition(
             name=definition.name, type=definition.type, expression=definition.expression
         )
     except MetricError as exc:
-        raise QueryError(str(exc)) from exc
+        raise QueryError(
+            str(exc), QueryFailure("QUERY_DEFINITION_INVALID", DEFINITION)
+        ) from exc
 
     # Fields are addressed by id or name and must belong to the metric's dataset.
     field_rows = (
@@ -172,10 +224,16 @@ async def run_query(
 
     def resolve(ref: Any) -> SemanticModelField:
         if not isinstance(ref, str):
-            raise QueryError("A field reference must be a string.")
+            raise QueryError(
+                "A field reference must be a string.",
+                QueryFailure("QUERY_INVALID_REQUEST", REQUEST),
+            )
         field = by_id.get(ref) or by_name.get(ref)
         if not field:
-            raise QueryError(f"Field '{ref}' is not a field of this metric's dataset.")
+            raise QueryError(
+                f"Field '{ref}' is not a field of this metric's dataset.",
+                QueryFailure("QUERY_UNKNOWN_FIELD", REQUEST),
+            )
         return field
 
     dimensions: list[tuple[str, str]] = []
@@ -206,7 +264,9 @@ async def run_query(
         )
         where, params = build_conditions(conditions)
     except SqlBuildError as exc:
-        raise QueryError(str(exc)) from exc
+        raise QueryError(
+            str(exc), QueryFailure("QUERY_DEFINITION_INVALID", DEFINITION)
+        ) from exc
 
     order = [
         _order_sql(str(o.get("field")), str(o.get("direction") or "asc"), metric_expr, dims_by_name)
@@ -227,8 +287,10 @@ async def run_query(
     started = time.perf_counter()
     try:
         rows = run_readonly(ds, sql, params, timeout_ms=timeout_ms)
-    except Exception as exc:  # surface any DB error as a query error
-        raise QueryError(f"Query failed: {exc}") from exc
+    except (SQLAlchemyError, OSError, TypeError, ValueError) as exc:
+        # The source answered with an error: classify it so the answer pane can explain it.
+        failure = classify_sql_error(exc)
+        raise QueryError(f"Query failed: {exc}", failure) from exc
     duration_ms = int((time.perf_counter() - started) * 1000)
 
     capped = len(rows) > capped_limit

@@ -87,7 +87,7 @@ Goal: the Datasets app **manages the Ossie semantic model**, with each definitio
 ### Stage 3 — Fields (the field layer) ✅ *(revised: fields are model-scoped)*
 - **Schema:** `semantic_model_fields` — `semantic_model_id`, `dataset_id`, `name`, `column_name` (null = computed), `expression` (Ossie `{dialects:[{dialect, expression}]}`, scalar), `datatype` (Ossie `DataType` enum), `description`, `dimension` (`{is_time: bool}`), `ai_context`, ordinal; unique `(model, dataset, name)`. Created **explicitly** (not auto-seeded).
 - **Catalog:** a dataset exposes its **Columns** (physical) + a maintained **`description`** per column (`dataset_columns`). No semantic field editor here.
-- **Frontend:** **Model → a model → Fields** — computed fields, the `dimension` role (`is_time`), and `ai_context` per field; **Playground** groups a metric by fields (time ones via `date_trunc`, granularity chosen at query time).
+- **Frontend:** **Model → a model → Fields** — computed fields, the `dimension` role (`is_time`), and `ai_context` per field; **Playground** groups a metric by fields (time ones via `date_trunc`, granularity chosen at query time) — see Stage 7.
 - **Verify:** ✅ a computed field is stored; a `is_time` field carries the role; the **same column can differ per model**.
 
 ### Stage 4 — Metrics: model-level, Ossie SQL expressions ✅
@@ -104,6 +104,13 @@ Goal: the Datasets app **manages the Ossie semantic model**, with each definitio
 - **API:** `GET /api/semantic-models/{id}/export` → **flat** Ossie document for one model (core spec `0.2.0.dev0`; `datasets`/`relationships`/`metrics` + entity-level `OPENKMS` `custom_extensions` for the few non-spec facts); `POST /api/semantic-models/import` upserts it — everything matched **by name** (datasets by `source` first), no ids in the document. Validated against the vendored [`ossie-schema.json`](../research/ossie/spec.md).
 - **Frontend:** Model header — **Export JSON / Export YAML / Import**.
 - **Verify:** ✅ a round-trip re-imports with a stable document (verified live).
+
+### Stage 7 — Playground (the human twin of the query API) ✅
+- **API:** `POST /api/semantic-models/{id}/query` — one spec object `{metric, group_by[{field, granularity?}], filters[{field, op, value}], order_by[{field, direction}], limit}` shared by the UI (encoded in the URL as `?q=`), `openkms-skill` and any agent; read-only, statement timeout, row cap, audited (`metric_runs`).
+- **Frontend:** **Model → a model → Playground** — metric → group-by fields (time ones with a query-time grain) + filters (the metric's own filters listed read-only) + order + limit; the answer states **row count / cap / duration**, the **null share per column** and *why* it is empty, the generated **SQL**, and the metric **definition** (expression, base dataset, type, the **relationships it uses** by name, description, `ai_context`). A metric row links *into* here (`Test in Playground`), and `Copy query` hands the spec to an agent verbatim.
+- **Failures are classified:** the API maps SQLSTATE to a stable code + `kind` — `definition` (the model author fixes it), `data` (the source refused) or `request` — and localizes the explanation, so the pane says who can fix a failed question instead of echoing SQL. See [Playground design](../research/playground_design.md#8-decisions).
+- **Not here (decided):** saving, charts, pivots, CSV export (Data Explorer); NL → spec (agent).
+- **Verify:** ✅ `pytest tests/test_data_layer_query_errors.py`; a misplaced expression reports `kind=definition`.
 
 ### Cross-cutting (all stages)
 - **Access:** `data:*` keys; joins/fields/metrics/quality/reports inherit the referenced datasets' ACL (no new `resource_type`).

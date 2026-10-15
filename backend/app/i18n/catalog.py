@@ -6,6 +6,76 @@ from typing import Any
 
 # Keys match stable ``code`` strings returned in JSON error bodies.
 MESSAGES: dict[str, dict[str, str]] = {
+    # Semantic-model queries (data layer). The `kind` in the response body says who can fix it:
+    # definition (the model author), data (the source/credentials), request (the caller).
+    "QUERY_METRIC_NOT_AGGREGATE": {
+        "en": "The metric expression has to aggregate (SUM/AVG/COUNT/…) — either add an aggregate, or remove the group-by.",
+        "zh_CN": "指标表达式必须做聚合（SUM/AVG/COUNT…）——请补上聚合，或去掉分组。",
+    },
+    "QUERY_UNKNOWN_COLUMN": {
+        "en": "A field or metric references a column that no longer exists in the dataset. Re-seed the model's fields.",
+        "zh_CN": "某个字段或指标引用了数据集中已不存在的列。请重新从数据集生成字段。",
+    },
+    "QUERY_UNKNOWN_TABLE": {
+        "en": "The base dataset's table is missing from the data source. Re-check the dataset or re-sync it.",
+        "zh_CN": "基表在数据源中已不存在。请检查该数据集或重新同步。",
+    },
+    "QUERY_UNKNOWN_FUNCTION": {
+        "en": "The expression uses a function this data source does not have.",
+        "zh_CN": "表达式使用了该数据源没有的函数。",
+    },
+    "QUERY_TYPE_MISMATCH": {
+        "en": "The expression's type does not match the aggregation (for example summing text).",
+        "zh_CN": "表达式的类型与聚合不匹配（例如对文本求和）。",
+    },
+    "QUERY_SYNTAX": {
+        "en": "The metric expression is not valid SQL for this data source.",
+        "zh_CN": "指标表达式对该数据源不是合法的 SQL。",
+    },
+    "QUERY_DEFINITION_INVALID": {
+        "en": "The semantic model definition cannot be compiled into a query. Check the metric expression and its fields.",
+        "zh_CN": "语义模型定义无法编译成查询。请检查指标表达式与其字段。",
+    },
+    "QUERY_PERMISSION_DENIED": {
+        "en": "The data source's account is not allowed to read this table. Check the data-source credentials and grants.",
+        "zh_CN": "数据源账号无权读取该表。请检查数据源凭据与授权。",
+    },
+    "QUERY_TIMEOUT": {
+        "en": "The query went past the statement timeout. Narrow the time range or add filters.",
+        "zh_CN": "查询超过了语句超时。请缩小时间范围或增加筛选。",
+    },
+    "QUERY_SOURCE_UNREACHABLE": {
+        "en": "The data source could not be reached.",
+        "zh_CN": "无法连接到数据源。",
+    },
+    "QUERY_FAILED": {
+        "en": "The data source rejected the query. See the details for what it said.",
+        "zh_CN": "数据源拒绝了该查询。详情见错误原文。",
+    },
+    "QUERY_UNKNOWN_METRIC": {
+        "en": "That metric is not part of this semantic model.",
+        "zh_CN": "该指标不属于此语义模型。",
+    },
+    "QUERY_UNKNOWN_DATASET": {
+        "en": "The metric's base dataset no longer exists.",
+        "zh_CN": "指标的基表已不存在。",
+    },
+    "QUERY_UNKNOWN_FIELD": {
+        "en": "A referenced field is not a field of the metric's dataset.",
+        "zh_CN": "引用的字段不属于该指标所在的数据集。",
+    },
+    "QUERY_ORDER_NOT_GROUPED": {
+        "en": "Cannot order by a field that is not grouped — add it to the group-by first.",
+        "zh_CN": "不能按未分组的字段排序——请先把它加入分组。",
+    },
+    "QUERY_INVALID_REQUEST": {
+        "en": "The query request is not valid.",
+        "zh_CN": "查询请求无效。",
+    },
+    "QUERY_UNSUPPORTED_SOURCE": {
+        "en": "Queries only run on PostgreSQL datasets.",
+        "zh_CN": "仅支持对 PostgreSQL 数据集执行查询。",
+    },
     "INVALID_OR_EXPIRED_TOKEN": {
         "en": "Invalid or expired token",
         "zh_CN": "令牌无效或已过期",

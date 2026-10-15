@@ -36,6 +36,17 @@ def http_error(request: Request | None, status_code: int, code: str, **params: A
     return HTTPException(status_code=status_code, detail=error_detail(request, code, **params))
 
 
+def error_detail_extra(
+    request: Request | None,
+    code: str,
+    *,
+    extra: dict[str, Any] | None = None,
+    **params: Any,
+) -> dict[str, Any]:
+    """`error_detail` plus machine-readable fields the client branches on (e.g. `kind`)."""
+    return {**error_detail(request, code, **params), **(extra or {})}
+
+
 def error_detail_no_request(code: str, **params: Any) -> dict[str, str]:
     """Use when no Request is available (defaults to English)."""
     return error_detail(None, code, **params)

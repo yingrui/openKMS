@@ -222,12 +222,32 @@ function extractErrorMessage(bodyText: string, fallback: string): string {
 }
 
 /** Error thrown by `request()`/`requestText()`/`requestBlob()`/`requestRaw()` for non-OK responses. */
-export type RequestError = Error & { status: number };
+export type RequestError = Error & {
+  status: number;
+  /** Stable API error code (`{ detail: { code } }`), when the endpoint sends one. */
+  code?: string;
+  /** The parsed `detail` object, for endpoints that send more than a message (`kind`, …). */
+  detail?: Record<string, unknown>;
+};
+
+/** Parses a FastAPI `detail` object when the body carries one. */
+function parseDetailObject(bodyText: string): Record<string, unknown> | null {
+  const parsed = parseJsonDetail(bodyText);
+  if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return null;
+  const detail = (parsed as { detail?: unknown }).detail;
+  if (!detail || typeof detail !== 'object' || Array.isArray(detail)) return null;
+  return detail as Record<string, unknown>;
+}
 
 async function throwForResponse(res: Response): Promise<never> {
   const bodyText = await res.text().catch(() => '');
   const err = new Error(extractErrorMessage(bodyText, `Request failed: ${res.status}`)) as RequestError;
   err.status = res.status;
+  const detail = parseDetailObject(bodyText);
+  if (detail) {
+    err.detail = detail;
+    if (typeof detail.code === 'string') err.code = detail.code;
+  }
   throw err;
 }
 
