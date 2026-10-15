@@ -225,6 +225,7 @@ export function ModelPlaygroundSection() {
 
               <div className="playground__section">
                 <span className="playground__label">{t('dataModel.playgroundDimensions')}</span>
+                {/* ds-control-exempt: `.console-datasets-search` styles this input */}
                 <div className="console-datasets-search">
                   <Search size={18} aria-hidden />
                   <input
@@ -244,6 +245,7 @@ export function ModelPlaygroundSection() {
                         <span key={g.field} className="playground__chip">
                           {fieldLabel(g.field)}
                           {f && isTimeDimension(f) ? (
+                            // ds-control-exempt: `.playground__chip select` styles this
                             <select
                               value={g.granularity ?? 'day'}
                               aria-label={t('dataModel.fieldGranularity')}

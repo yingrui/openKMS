@@ -149,6 +149,14 @@ while IFS= read -r file; do
   fi
 done < <(find src/pages src/contexts src/components -name '*.tsx' -o -name '*.ts' 2>/dev/null | grep -v '\.test\.' | grep -v '\.spec\.' || true)
 
+# --- 10. Unskinned form controls ----------------------------------------------
+# `.ds-field` styles only the controls *inside* a <FormField>; anything else must carry
+# .ds-control or it renders as the raw browser widget. Pre-existing hits are frozen in
+# scripts/ds-controls-baseline.txt (a ratchet: fix them, never add more).
+if ! python3 scripts/check-ds-controls.py; then
+  status=1
+fi
+
 if [ "$status" -eq 0 ]; then
   echo "check-shared-styles: OK"
 fi

@@ -214,8 +214,49 @@ npm run build
 | 8 | `window.confirm(` | **`useConfirm()`** |
 | 9 | Raw `rgba(0,0,0,…)` modal backdrop | **`var(--overlay-backdrop)`** |
 | 10 | New page `.tsx` > 700 lines | Split like **`DocumentDetail`** |
+| 11 | `select` / text `input` with no skin (outside `<FormField>`, no `.ds-control`) | **`<FormField>`**, or **`className="ds-control"`**; `// ds-control-exempt` when a bespoke wrapper styles it (`scripts/ds-controls-baseline.txt` is a ratchet) |
 
 Run **`check:app-layout`** when editing **`App.scss`**, **`app-page.scss`**, **`ChannelSectionLayout*`**, **`MainLayout.tsx`**.
+
+## Which control do I use?
+
+Reach for a **shared primitive** before writing markup. The list below is the answer to
+"how do I build X here?" — each row is what the rest of the app already does.
+
+| Need | Use | Notes |
+|------|-----|-------|
+| Labelled field (text / number / select / textarea) | **`<FormField label hint>`** from `styles/design-system` | supplies ids, label, hint, and the control skin |
+| A control with no visible label | **`className="ds-control"`** | same skin, standalone |
+| Checkbox / switch row | **`.ds-check-row`** (or `<CheckRow>`) | never a bare `<input type=checkbox>` |
+| Multi-select list (pick several) | **`<CheckList>` + `<CheckListItem>`** | scrollable, uses the shared checkbox skin |
+| Buttons | **`btn btn-primary` / `btn-secondary` / `btn-danger`** | `btn-danger` for destructive actions only |
+| Destructive action (delete, purge) | **`.ontology-danger-zone`** + **`btn-danger`** + **`useConfirm()`** | never `window.confirm` |
+| Confirm / blocking prompt | **`useConfirm()`** (`ConfirmProvider` in `MainLayout`) | |
+| Modal dialog | **`<Dialog>`** (`_dialog.scss`) | `size="sm|md|lg"`, `footer` slot |
+| Panel / section header with actions | **`<PanelToolbar leading tabs actions>`** | actions are pushed right |
+| Whole detail page with several sections | **`<EntityViewShell>` + `navItems`** (see the dataset and semantic-model pages) | sidebar identity + routed sections |
+| Collapsible section | **`<EntityViewPanel title defaultCollapsed>`** | not a hand-rolled `<details>` |
+| Card surface | **`.account-card`** / **`<EntityViewPanel>`** | |
+| Tabs | page-local tab row (KB) **or** `EntityViewShell` nav | no `ds-tabs` primitive exists |
+| Pagination | **`<Pagination>`** | server-side when the API supports it, otherwise slice |
+| Empty / loading state | **`<EmptyState>`** / `console-loading` | |
+| Search box | **`.console-datasets-search`** (list) or `ds-control` (in a header) | no primitive; do not invent a third |
+| Row actions | **`<TableRowActions>`** / **`.table-row-actions`** | |
+| Table | **`.ds-table-wrap`** (+ `.ds-table-wrap--flush`) + `.console-table` | |
+| Overlay backdrop / stacking | **`var(--overlay-backdrop)`**, **`var(--z-*)`** | |
+
+**No primitive exists yet** — build it, but keep it honest:
+
+| Thing | Where the CSS lives |
+|-------|--------------------|
+| Chip / tag (e.g. the Playground's group-by chips) | page-local (`.playground__chip`), styled to match `.model-scope__chip` |
+| Code / YAML / SQL block | page-local (`<pre>` + a small class) |
+| Right-docked drawer (the Ossie document inspector) | page-local `.model-yaml`, using `--z-modal` + `--overlay-backdrop`; a deliberate `<Dialog>` exception (see § Style guardrails) |
+
+**The trap that keeps biting:** a page-local `*__toolbar` / tab stylesheet ships **only in its own
+lazy route chunk**, so reusing it from another page silently loses the layout (this is how the model
+page's Add buttons ended up unstyled). Shared looks belong in `src/styles/design-system/` (loaded by
+`src/index.scss`) — see the `_tabs.scss` note in the git history for that lesson.
 
 ## New feature stylesheet
 

@@ -277,6 +277,7 @@ export function DatasetRelationshipsTab() {
                 {pairs.map((pair, idx) => (
                   <div key={idx} className="dataset-joins__pair">
                     <select
+                      className="ds-control"
                       value={pair.from}
                       onChange={(e) =>
                         setPairs((prev) =>
@@ -293,6 +294,7 @@ export function DatasetRelationshipsTab() {
                     </select>
                     <span className="dataset-joins__eq">=</span>
                     <select
+                      className="ds-control"
                       value={pair.to}
                       onChange={(e) =>
                         setPairs((prev) =>

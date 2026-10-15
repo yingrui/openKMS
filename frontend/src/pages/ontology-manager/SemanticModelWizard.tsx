@@ -221,6 +221,7 @@ export function SemanticModelWizard({
         <div className="model-wizard__pane">
           <p className="page-subtitle">{t('dataModel.modelDatasetsHint')}</p>
           <div className="model-wizard__dataset-toolbar">
+            {/* ds-control-exempt: `.model-wizard__search` styles this input */}
             <div className="model-wizard__search">
               <Search size={16} aria-hidden />
               <input
