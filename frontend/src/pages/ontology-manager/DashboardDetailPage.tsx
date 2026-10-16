@@ -29,6 +29,7 @@ import { StatusChip } from '../../styles/design-system';
 import { DashboardReportView } from './DashboardReportView';
 import { EntityViewHeader, EntityViewLoading, EntityViewPanel, EntityViewShell } from './EntityViewShell';
 import { AddReportDialog } from './AddReportDialog';
+import { runHealth } from './dashboardRuns';
 import { absoluteTime, ageOf } from './reportAge';
 import { reportSource } from './reportSource';
 import './data-explorer.scss';
@@ -84,6 +85,17 @@ export function DashboardDetailPage() {
   }, []);
 
   const reports = dashboard?.reports ?? [];
+  const health = runHealth(runs);
+
+  /** The shared "3 days ago" phrasing, for anything with a timestamp. */
+  const ageLabel = (at: string) => {
+    const value = ageOf(at);
+    return value
+      ? value.bucket === 'just_now'
+        ? t('dataExplorer.ageJustNow')
+        : t(`dataExplorer.age_${value.bucket}`, { count: value.count })
+      : t('datasets.dash');
+  };
 
   /** The document **is** the dashboard, so every edit writes the array (or the narrative) back. */
   const saveDocument = async (
@@ -341,18 +353,24 @@ export function DashboardDetailPage() {
         ))}
       {runs.length > 0 && (
         <EntityViewPanel id="runs" title={t('dataExplorer.runs')}>
+          {/* The two things only a history can answer, said rather than left to be counted. */}
+          <p className="dashboard-runs__health">
+            <span>
+              {health.lastSuccessAt
+                ? t('dataExplorer.lastSuccess', { age: ageLabel(health.lastSuccessAt) })
+                : t('dataExplorer.noSuccessYet')}
+            </span>
+            {health.consecutiveFailures > 0 && (
+              <span className="page-subtitle--error">
+                {t('dataExplorer.consecutiveFailures', { count: health.consecutiveFailures })}
+              </span>
+            )}
+          </p>
           <ul className="dashboard-runs">
             {runs.map((run) => {
-              const age = ageOf(run.ran_at);
               return (
                 <li key={run.id} className="dashboard-runs__row">
-                  <span title={absoluteTime(run.ran_at)}>
-                    {age
-                      ? age.bucket === 'just_now'
-                        ? t('dataExplorer.ageJustNow')
-                        : t(`dataExplorer.age_${age.bucket}`, { count: age.count })
-                      : t('datasets.dash')}
-                  </span>
+                  <span title={absoluteTime(run.ran_at)}>{ageLabel(run.ran_at)}</span>
                   <span>{run.duration_ms} ms</span>
                   <span>{t('dataExplorer.runReports', { count: run.reports })}</span>
                   {run.failed > 0 ? (

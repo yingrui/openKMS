@@ -57,6 +57,16 @@
   }
 }
 
+// The health line above the history: the answer first, the log under it.
+.dashboard-runs__health {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  margin: 0 0 var(--space-2);
+  font-size: var(--text-sm);
+  color: var(--color-text-secondary);
+}
+
 // ---- One report in it ---------------------------------------------------------------------
 // The tile is an app section card (`EntityViewPanel` → `.account-card`); these are the bits inside
 // it: where the numbers come from, the insight, the provenance line, and the result's toolbar.

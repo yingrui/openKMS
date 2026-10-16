@@ -171,6 +171,11 @@ Every run leaves a row (`explorer_dashboard_runs`): when, how long, how many rep
 and who asked. The dashboard shows its last 20 as a section at the end — also reachable from the rail,
 because it is in the contents list — and an agent gets them from `explorer dashboards-runs --id`.
 
+Two questions are why it exists, and neither is answerable elsewhere: a tile's "as of" is its last
+**attempt** (it moves even when the run failed), so "when did this last *work*" and "has it been failing
+since?" are facts about the history. The panel therefore says them (`runHealth`: the newest clean run,
+and how many runs in a row have failed) instead of leaving them to be counted off the list.
+
 It counts; it does not archive. The results are the document's (each report keeps its own last answer),
 so a history row can say "3 of 7 reports failed at 09:04" but never what they returned — the point is
 "was this refreshed, and does it keep failing?", not a log to replay.

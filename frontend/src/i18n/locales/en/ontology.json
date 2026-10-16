@@ -199,7 +199,10 @@
     "chartYMeasure": "Vertical measure (Y)",
     "runs": "Run history",
     "runReports": "{{count}} reports",
-    "runFailedCount": "{{count}} failed"
+    "runFailedCount": "{{count}} failed",
+    "lastSuccess": "Last run with nothing failed: {{age}}",
+    "noSuccessYet": "No run has succeeded yet.",
+    "consecutiveFailures": "{{count}} runs in a row failed"
   },
   "dataModel": {
     "title": "Data Model",

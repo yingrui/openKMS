@@ -199,7 +199,10 @@
     "chartYMeasure": "纵向度量（Y）",
     "runs": "运行记录",
     "runReports": "{{count}} 份报告",
-    "runFailedCount": "{{count}} 份失败"
+    "runFailedCount": "{{count}} 份失败",
+    "lastSuccess": "上次全部成功：{{age}}",
+    "noSuccessYet": "还没有一次完全成功的运行。",
+    "consecutiveFailures": "已连续 {{count}} 次失败"
   },
   "dataModel": {
     "title": "数据模型",
