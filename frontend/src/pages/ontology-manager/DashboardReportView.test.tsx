@@ -92,8 +92,12 @@ describe('DashboardReportView', () => {
 
   it('says when the numbers are from, with the exact instant on hover', () => {
     renderReport({ ...BASE, ran_at: '2026-10-16T00:00:00Z' });
-    // the bucket is relative, so assert the frame rather than a count that would age
+    // The bucket is relative, so assert its *shape* rather than a count that would age — and assert
+    // that it is words: the label looked up `age_minutes` while the locale had `ageMinutes`, so the
+    // reader saw the raw key, and a looser assertion ("starts with `as of`") passed anyway.
     const asOf = screen.getByText(/^as of /i);
+    expect(asOf).toHaveTextContent(/^as of (just now|\d+ (minute|hour|day)s? ago)$/i);
+    expect(asOf.textContent).not.toMatch(/[a-z]+\.[a-z_]+/i);
     expect(asOf).toHaveAttribute('title', expect.stringMatching(/\d{4}/));
   });
 

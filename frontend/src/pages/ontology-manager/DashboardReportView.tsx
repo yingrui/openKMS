@@ -61,8 +61,8 @@ export function DashboardReportView({
   const age = ageOf(report.ran_at);
   const ageLabel = age
     ? age.bucket === 'just_now'
-      ? t('dataInsights.ageJustNow')
-      : t(`dataInsights.age_${age.bucket}`, { count: age.count })
+      ? t('shared.age_just_now')
+      : t(`shared.age_${age.bucket}`, { count: age.count })
     : null;
   const source = reportSource(report, datasets, models, t('dataInsights.sourceMissing'));
   const isModel = source.kind === 'semantic_model';

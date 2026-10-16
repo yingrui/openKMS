@@ -220,6 +220,24 @@ Active UX / quality gaps: [Tech debt](./tech_debt.md).
   must not push layout — the two other reveals in this app (report tiles, section cards) animate
   `opacity` only, which is why neither flickers.
 
+### Fix: the relative-time labels were showing raw keys (2026-10)
+
+A reader asked what "Last run" meant and why Data Insights came into it — and the answer was that the
+column was not showing words at all. The code looked up `age_minutes` / `age_days`; the locale had
+`ageMinutes` / `ageDays`. i18next renders a missing key as itself, so the tiles said "as of
+dataInsights.age_days" and the quality inbox said the same.
+
+Two things were wrong, and both are fixed:
+
+- the **names did not match** (underscores vs camelCase), so those labels never resolved;
+- the labels were owned by the **Data Insights** namespace while a quality page used them — a shared
+  concept living inside one app. They are now `shared.age_*` (the block these pages already use for
+  Cancel/Save/…), matching the bucket `ageOf` returns.
+
+The assertion that "covered" the tile said only that the text starts with "as of", so a raw key passed
+it. It now asserts the *shape of the sentence* and that no `namespace.key` appears in it — the check
+that would have caught this.
+
 ### Quality rules, used for the first time (2026-10)
 
 They shipped in Phase 2 and had never been created — 13 datasets, zero rules — so this was the first

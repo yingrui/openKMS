@@ -55,8 +55,8 @@ export function QualityIssuesPage() {
     const age = ageOf(at);
     if (!age) return t('datasets.dash');
     return age.bucket === 'just_now'
-      ? t('dataInsights.ageJustNow')
-      : t(`dataInsights.age_${age.bucket}`, { count: age.count });
+      ? t('shared.age_just_now')
+      : t(`shared.age_${age.bucket}`, { count: age.count });
   };
 
   return (
