@@ -254,30 +254,29 @@
   justify-content: flex-end;
 }
 
-.dataset-pk-list {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-1);
-  max-height: 320px;
-  overflow-y: auto;
-  padding: var(--space-3);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
+// A key's columns: what is picked (chips), then the type-ahead that adds to them.
+.dataset-key {
+  margin-bottom: var(--space-4);
+
+  &__head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-2);
+    margin-bottom: var(--space-2);
+  }
+
+  &__body {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+  }
 }
 
-.dataset-pk-list em {
-  color: var(--color-text-muted);
-  font-style: normal;
-  font-size: 0.8125rem;
-}
 
-.dataset-pk-list__row-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-2);
-  margin-bottom: var(--space-1);
-}
+
+
+
 
 .dataset-th-sort {
   display: inline-flex;

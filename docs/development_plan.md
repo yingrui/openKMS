@@ -196,6 +196,18 @@ Active UX / quality gaps: [Tech debt](./tech_debt.md).
   rule, so it passed.) The previous highlight is kept when nothing is in the zone, and a click marks
   the target at once instead of waiting for the scroll to settle.
 
+### Picking columns by typing, not scrolling (2026-10) — done
+
+- **A dataset's Keys** rendered every column as a checkbox row — for the primary key, and again for
+  each unique key: nineteen columns and two keys made ~57 rows to pick a handful of names. It is now
+  a chip row plus a **type-ahead** (the pattern the Playground already used for group-by fields),
+  extracted as `ChipPicker` (`src/components/ontology/`, its own sheet) and used by both.
+- The chips stay the callers': a Playground chip carries a granularity selector, a key's chip does not.
+  What is shared is the search input, the menu that only appears while it is used, and the keyboard
+  habits (↑↓ move, Enter adds, Backspace drops the last).
+- The extraction dropped two things the guardrails then caught: the `ds-control-exempt` note on the
+  picker's input (so it was reported as an unstyled control) and an i18n key that never existed.
+
 ### The dashboard's identity row (2026-10) — done
 
 - The rail's identity block reads in three parts: the name, the question, then **one quiet row** —

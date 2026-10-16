@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Plus, Trash2 } from 'lucide-react';
+import { Plus, Trash2, X } from 'lucide-react';
 import { toast } from 'sonner';
 import { useDatasetDetail } from './useDatasetDetail';
 import {
@@ -8,6 +8,7 @@ import {
   updateDataset,
   type ColumnMetadata,
 } from '../../data/datasetsApi';
+import { ChipPicker } from '../../components/ontology/ChipPicker';
 import { CheckRow, FormField } from '../../styles/design-system';
 import { EntityViewHeader, EntityViewPanel, EntityViewLoading } from './EntityViewShell';
 
@@ -190,26 +191,24 @@ export function DatasetSettingsTab() {
         <div className="entity-view__form">
           <h3>{t('datasets.keysSection')}</h3>
           <p className="page-subtitle">{t('datasets.primaryKeyHint')}</p>
-          <div className="dataset-pk-list">
-            {columns.map((c) => (
-              <label key={c.column_name} className="ds-check-row">
-                <input
-                  type="checkbox"
-                  checked={pk.includes(c.column_name)}
-                  onChange={() => togglePk(c.column_name)}
-                />
-                <span>
-                  {c.column_name} <em>{c.data_type}</em>
-                </span>
-              </label>
-            ))}
-          </div>
+          {/* Type-ahead, not a checkbox per column: nineteen columns and two keys made ~57 rows. */}
+          <PickedColumns
+            columns={columns}
+            picked={pk}
+            onToggle={togglePk}
+            idPrefix="dataset-pk"
+            ariaLabel={t('datasets.primaryKey')}
+            placeholder={t('datasets.keysPickPlaceholder')}
+            title={t('datasets.keysPickerTitle')}
+            emptyLabel={t('datasets.keysPickerEmpty')}
+            noneLabel={t('datasets.primaryKeyNone')}
+          />
 
           <h4>{t('datasets.uniqueKeys')}</h4>
           <p className="page-subtitle">{t('datasets.uniqueKeysHint')}</p>
           {uniqueKeys.map((key, ki) => (
-            <div key={ki} className="dataset-pk-list">
-              <div className="dataset-pk-list__row-head">
+            <div key={ki} className="dataset-key">
+              <div className="dataset-key__head">
                 <strong>
                   {t('datasets.uniqueKeyIndex', { n: ki + 1 })}
                   {key.length > 0 ? `: ${key.join(', ')}` : ''}
@@ -223,16 +222,17 @@ export function DatasetSettingsTab() {
                   <Trash2 size={16} aria-hidden />
                 </button>
               </div>
-              {columns.map((c) => (
-                <label key={c.column_name} className="ds-check-row">
-                  <input
-                    type="checkbox"
-                    checked={key.includes(c.column_name)}
-                    onChange={() => toggleKeyCol(ki, c.column_name)}
-                  />
-                  <span>{c.column_name}</span>
-                </label>
-              ))}
+              <PickedColumns
+                columns={columns}
+                picked={key}
+                onToggle={(column) => toggleKeyCol(ki, column)}
+                idPrefix={`dataset-uk-${ki}`}
+                ariaLabel={t('datasets.uniqueKeyIndex', { n: ki + 1 })}
+                placeholder={t('datasets.keysPickPlaceholder')}
+                title={t('datasets.keysPickerTitle')}
+                emptyLabel={t('datasets.keysPickerEmpty')}
+                noneLabel={t('datasets.uniqueKeyEmpty')}
+              />
             </div>
           ))}
           <button
@@ -283,5 +283,66 @@ export function DatasetSettingsTab() {
         </button>
       </div>
     </>
+  );
+}
+
+/**
+ * A picked set of columns: the chips, then the type-ahead that adds to them.
+ *
+ * Both the primary key and every unique key are the same thing — a set of columns — so they read the
+ * same way, and the space cost is proportional to what is picked, not to the table's width.
+ */
+function PickedColumns({
+  columns,
+  picked,
+  onToggle,
+  idPrefix,
+  ariaLabel,
+  placeholder,
+  title,
+  emptyLabel,
+  noneLabel,
+}: {
+  columns: ColumnMetadata[];
+  picked: string[];
+  onToggle: (column: string) => void;
+  idPrefix: string;
+  ariaLabel: string;
+  placeholder: string;
+  title: string;
+  emptyLabel: string;
+  noneLabel: string;
+}) {
+  const { t } = useTranslation('ontology');
+  return (
+    <div className="dataset-key__body">
+      <div className="chip-row">
+        {picked.length === 0 && <span className="page-subtitle">{noneLabel}</span>}
+        {picked.map((column) => (
+          <span key={column} className="chip">
+            {column}
+            <button
+              type="button"
+              className="chip__remove"
+              aria-label={t('datasets.keysRemoveColumn', { column })}
+              onClick={() => onToggle(column)}
+            >
+              <X size={12} aria-hidden />
+            </button>
+          </span>
+        ))}
+      </div>
+      <ChipPicker
+        idPrefix={idPrefix}
+        options={columns.map((c) => ({ id: c.column_name, label: c.column_name, hint: c.data_type }))}
+        isPicked={(id) => picked.includes(id)}
+        onPick={onToggle}
+        onBackspaceEmpty={() => picked.length > 0 && onToggle(picked[picked.length - 1])}
+        ariaLabel={ariaLabel}
+        placeholder={placeholder}
+        title={title}
+        emptyLabel={emptyLabel}
+      />
+    </div>
   );
 }

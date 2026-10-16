@@ -1559,7 +1559,6 @@
   gap: var(--space-2);
 }
 
-
 /* New semantic model: stepwise dialog. */
 .model-wizard__steps {
   list-style: none;
@@ -1785,13 +1784,6 @@
 }
 
 /* A row in the picker: name, label (muted), and the column's data type pushed right. */
-.playground__field {
-  display: flex;
-  align-items: baseline;
-  gap: var(--space-2);
-  min-width: 0;
-  width: 100%;
-}
 
 .playground__field-name {
   color: var(--color-text);
@@ -1811,73 +1803,7 @@
   font-size: var(--text-xs);
 }
 
-.playground__chips {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-2);
-}
-
-.playground__chip {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-1);
-  padding: var(--space-1) var(--space-2);
-  border: 1px solid var(--color-border);
-  border-radius: 999px;
-  background: var(--color-bg-muted);
-  font-size: var(--text-sm);
-  color: var(--color-text);
-
-  select {
-    padding: 0;
-    border: 0;
-    background: none;
-    color: var(--color-text-secondary);
-    font: inherit;
-    cursor: pointer;
-  }
-
-  button {
-    display: inline-flex;
-    padding: 0;
-    border: 0;
-    background: none;
-    color: var(--color-text-muted);
-    cursor: pointer;
-
-    &:hover {
-      color: var(--color-danger);
-    }
-  }
-}
-
 // Field picker: a type-ahead menu, because an always-open checkbox wall eats the pane.
-.playground__picker {
-  position: relative;
-}
-
-.playground__field-menu {
-  position: absolute;
-  z-index: 30;
-  top: calc(100% + var(--space-1));
-  left: 0;
-  right: 0;
-  max-height: 18rem;
-  overflow-y: auto;
-  padding: var(--space-2);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
-  background: var(--color-bg);
-  box-shadow: var(--shadow-md);
-}
-
-.playground__field-menu ul {
-  display: flex;
-  flex-direction: column;
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
 
 .playground__field-menu-head {
   padding: var(--space-2) var(--space-2) var(--space-1);
@@ -1888,23 +1814,7 @@
   color: var(--color-text-muted);
 }
 
-.playground__field-option {
-  display: flex;
-  align-items: baseline;
-  gap: var(--space-2);
-  padding: var(--space-2);
-  border-radius: var(--radius-sm);
-  cursor: pointer;
-}
-
 .playground__field-option--active,
-.playground__field-option:hover {
-  background: var(--color-bg-muted);
-}
-
-.playground__field-option[aria-selected='true'] .playground__field-name {
-  font-weight: 600;
-}
 
 .playground__field-check {
   flex-shrink: 0;

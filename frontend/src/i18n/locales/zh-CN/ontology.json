@@ -622,7 +622,14 @@
     "quickRange_thisYear": "今年",
     "quickRange_lastYear": "去年",
     "orderAsc": "升序",
-    "orderDesc": "降序"
+    "orderDesc": "降序",
+    "primaryKey": "主键",
+    "primaryKeyNone": "未设主键——行无法被编辑，也不能作为关系的目标。",
+    "uniqueKeyEmpty": "还没有列。",
+    "keysPickPlaceholder": "输入列名…",
+    "keysPickerTitle": "输入以筛选 · 回车添加 · 退格删除最后一个",
+    "keysPickerEmpty": "没有匹配的列。",
+    "keysRemoveColumn": "移除 {{column}}"
   },
   "groups": {
     "title": "分组",

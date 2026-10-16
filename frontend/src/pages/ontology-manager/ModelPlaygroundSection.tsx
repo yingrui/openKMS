@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useSearchParams } from 'react-router-dom';
-import { Check, Copy, Loader2, Play, Search, X } from 'lucide-react';
+import { Copy, Loader2, Play, X } from 'lucide-react';
 import { toast } from 'sonner';
 import { fetchMetrics, type MetricResponse } from '../../data/metricsApi';
 import { fetchDatasetJoins, type DatasetJoinResponse } from '../../data/joinsApi';
@@ -27,6 +27,7 @@ import {
 } from './modelPlaygroundSpec';
 import { ModelPlaygroundAnswer, type RunError } from './ModelPlaygroundAnswer';
 import { modelReportDraft } from './reportDraft';
+import { ChipPicker } from '../../components/ontology/ChipPicker';
 import { FilterRows } from '../../components/ontology/FilterRows';
 import { useSemanticModelDetail } from './useSemanticModelDetail';
 
@@ -72,9 +73,6 @@ export function ModelPlaygroundSection() {
 
   const [spec, setSpec] = useState<SemanticModelQuerySpec | null>(null);
   const [filterRows, setFilterRows] = useState<FilterRow[]>([]);
-  const [search, setSearch] = useState('');
-  const [pickerOpen, setPickerOpen] = useState(false);
-  const [highlighted, setHighlighted] = useState(0);
   const [result, setResult] = useState<SemanticModelQueryResponse | null>(null);
   const [runError, setRunError] = useState<RunError | null>(null);
   const [running, setRunning] = useState(false);
@@ -148,17 +146,6 @@ export function ModelPlaygroundSection() {
   );
   const fieldLabel = (ref: string) => fields.find((f) => f.id === ref || f.name === ref)?.name ?? ref;
   const datasetLabel = (id: string) => model.datasets.find((d) => d.id === id)?.name ?? id;
-  const matched = (f: SemanticModelFieldResponse) =>
-    !search.trim() ||
-    f.name.toLowerCase().includes(search.trim().toLowerCase()) ||
-    (f.label ?? '').toLowerCase().includes(search.trim().toLowerCase());
-  const visibleOthers = otherFields.filter(matched);
-  const visibleTimeDims = timeDims.filter(matched);
-  /** Keyboard order matches what the menu draws: time dimensions first. */
-  const pickerOptions = [...visibleTimeDims, ...visibleOthers];
-  const activeOption =
-    pickerOptions.length > 0 ? Math.min(highlighted, pickerOptions.length - 1) : -1;
-
   const patch = (next: Partial<SemanticModelQuerySpec>) =>
     setSpec((prev) => (prev ? { ...prev, ...next } : prev));
 
@@ -195,13 +182,6 @@ export function ModelPlaygroundSection() {
   };
 
   /** The same spec object the skill/agent send — copied verbatim. */
-  // Arrow keys can walk past the menu's edge: keep the highlighted option in view.
-  useEffect(() => {
-    if (!pickerOpen || activeOption < 0) return;
-    document
-      .getElementById(`playground-field-${activeOption}`)
-      ?.scrollIntoView({ block: 'nearest' });
-  }, [activeOption, pickerOpen]);
 
   const copyQuery = async () => {
     if (!spec) return;
@@ -297,14 +277,14 @@ export function ModelPlaygroundSection() {
                 </span>
 
                 {spec.group_by.length > 0 && (
-                  <div className="playground__chips">
+                  <div className="chip-row">
                     {spec.group_by.map((g) => {
                       const f = fields.find((x) => x.id === g.field || x.name === g.field);
                       return (
-                        <span key={g.field} className="playground__chip">
+                        <span key={g.field} className="chip">
                           {fieldLabel(g.field)}
                           {f && isTimeDimension(f) ? (
-                            // ds-control-exempt: `.playground__chip select` styles this
+                            // ds-control-exempt: `.chip select` styles this
                             <select
                               value={g.granularity ?? 'day'}
                               aria-label={t('dataModel.fieldGranularity')}
@@ -319,6 +299,7 @@ export function ModelPlaygroundSection() {
                           ) : null}
                           <button
                             type="button"
+                            className="chip__remove"
                             aria-label={t('dataModel.playgroundRemoveDimension', { name: fieldLabel(g.field) })}
                             onClick={() => toggleGroup(f!)}
                           >
@@ -330,119 +311,41 @@ export function ModelPlaygroundSection() {
                   </div>
                 )}
 
-                {/* Type to filter, Enter to add — the list only appears while it is being used. */}
-                <div
-                  className="playground__picker"
-                  onBlur={(e) => {
-                    if (!e.currentTarget.contains(e.relatedTarget as Node | null)) {
-                      setPickerOpen(false);
-                    }
+                <ChipPicker
+                  idPrefix="playground-field"
+                  options={[
+                    ...timeDims.map((f) => ({
+                      id: f.id,
+                      label: f.name,
+                      hint: f.datatype ?? '',
+                      group: t('dataModel.playgroundTimeDimensions'),
+                    })),
+                    ...otherFields.map((f) => ({
+                      id: f.id,
+                      label: f.name,
+                      hint: f.datatype ?? '',
+                      group: t('dataModel.playgroundOtherFields', { count: otherFields.length }),
+                    })),
+                  ]}
+                  groups={[
+                    t('dataModel.playgroundTimeDimensions'),
+                    t('dataModel.playgroundOtherFields', { count: otherFields.length }),
+                  ]}
+                  isPicked={(id) => spec.group_by.some((g) => g.field === id)}
+                  onPick={(id) => {
+                    const field = fields.find((f) => f.id === id);
+                    if (field) toggleGroup(field);
                   }}
-                >
-                  {/* ds-control-exempt: `.console-datasets-search` styles this input */}
-                  <div className="console-datasets-search">
-                    <Search size={18} aria-hidden />
-                    <input
-                      type="search"
-                      role="combobox"
-                      aria-expanded={pickerOpen}
-                      aria-controls="playground-field-menu"
-                      aria-autocomplete="list"
-                      aria-activedescendant={
-                        pickerOpen && activeOption >= 0 ? `playground-field-${activeOption}` : undefined
-                      }
-                      aria-label={t('dataModel.playgroundDimensions')}
-                      placeholder={t('dataModel.playgroundFieldPickerPlaceholder')}
-                      title={t('dataModel.playgroundFieldPickerTitle')}
-                      value={search}
-                      onFocus={() => setPickerOpen(true)}
-                      onChange={(e) => {
-                        setSearch(e.target.value);
-                        setHighlighted(0);
-                        setPickerOpen(true);
-                      }}
-                      onKeyDown={(e) => {
-                        if (e.key === 'ArrowDown') {
-                          e.preventDefault();
-                          setPickerOpen(true);
-                          setHighlighted((h) => Math.min(h + 1, pickerOptions.length - 1));
-                        } else if (e.key === 'ArrowUp') {
-                          e.preventDefault();
-                          setHighlighted((h) => Math.max(h - 1, 0));
-                        } else if (e.key === 'Enter') {
-                          const field = pickerOptions[activeOption];
-                          if (pickerOpen && field) {
-                            e.preventDefault();
-                            toggleGroup(field);
-                            setSearch('');
-                            setHighlighted(0);
-                          }
-                        } else if (e.key === 'Escape') {
-                          setPickerOpen(false);
-                          setSearch('');
-                        } else if (e.key === 'Backspace' && !search && spec.group_by.length > 0) {
-                          // Autocomplete habit: backspace on an empty input drops the last chip.
-                          const last = spec.group_by[spec.group_by.length - 1];
-                          const field = fields.find((f) => f.id === last.field || f.name === last.field);
-                          if (field) toggleGroup(field);
-                        }
-                      }}
-                    />
-                  </div>
-
-                  {pickerOpen && (
-                    <div
-                      className="playground__field-menu"
-                      id="playground-field-menu"
-                      role="listbox"
-                      aria-multiselectable
-                      // Keep focus in the input so a row click lands before blur closes the menu.
-                      onMouseDown={(e) => e.preventDefault()}
-                    >
-                      {groupable.length === 0 ? (
-                        <p className="entity-view__readonly">{t('dataModel.playgroundNoDimensions')}</p>
-                      ) : pickerOptions.length === 0 ? (
-                        <p className="entity-view__readonly">{t('dataModel.noSearchMatch')}</p>
-                      ) : (
-                        <ul>
-                          {visibleTimeDims.length > 0 && (
-                            <li className="playground__field-menu-head" role="presentation">
-                              {t('dataModel.playgroundTimeDimensions')}
-                            </li>
-                          )}
-                          {visibleTimeDims.map((f, i) => (
-                            <FieldOption
-                              key={f.id}
-                              id={`playground-field-${i}`}
-                              field={f}
-                              selected={grouped.has(f.id)}
-                              highlighted={i === activeOption}
-                              onSelect={() => toggleGroup(f)}
-                            />
-                          ))}
-                          {visibleOthers.length > 0 && (
-                            <li className="playground__field-menu-head" role="presentation">
-                              {t('datasets.fields')}
-                              <span className="playground__group-count">
-                                {t('dataModel.fieldCount', { count: visibleOthers.length })}
-                              </span>
-                            </li>
-                          )}
-                          {visibleOthers.map((f, i) => (
-                            <FieldOption
-                              key={f.id}
-                              id={`playground-field-${visibleTimeDims.length + i}`}
-                              field={f}
-                              selected={grouped.has(f.id)}
-                              highlighted={visibleTimeDims.length + i === activeOption}
-                              onSelect={() => toggleGroup(f)}
-                            />
-                          ))}
-                        </ul>
-                      )}
-                    </div>
-                  )}
-                </div>
+                  onBackspaceEmpty={() => {
+                    const last = spec.group_by[spec.group_by.length - 1];
+                    const field = fields.find((f) => f.id === last?.field || f.name === last?.field);
+                    if (field) toggleGroup(field);
+                  }}
+                  ariaLabel={t('dataModel.playgroundDimensions')}
+                  placeholder={t('dataModel.playgroundFieldPickerPlaceholder')}
+                  title={t('dataModel.playgroundFieldPickerTitle')}
+                  emptyLabel={t('dataModel.noSearchMatch')}
+                />
               </div>
 
               <div className="playground__section">
@@ -609,39 +512,6 @@ export function ModelPlaygroundSection() {
     </>
   );
 }
-
-/** One field in the group-by picker: name, its label, and the data type it produces. */
-function FieldOption({
-  id,
-  field,
-  selected,
-  highlighted,
-  onSelect,
-}: {
-  id: string;
-  field: SemanticModelFieldResponse;
-  selected: boolean;
-  highlighted: boolean;
-  onSelect: () => void;
-}) {
-  return (
-    <li
-      id={id}
-      role="option"
-      aria-selected={selected}
-      className={`playground__field-option${highlighted ? ' playground__field-option--active' : ''}`}
-      onClick={onSelect}
-    >
-      <span className="playground__field">
-        <span className="playground__field-name">{field.name}</span>
-        {field.label ? <span className="playground__field-label">{field.label}</span> : null}
-        <span className="playground__field-type">{field.datatype ?? ''}</span>
-      </span>
-      {selected ? <Check size={14} className="playground__field-check" aria-hidden /> : null}
-    </li>
-  );
-}
-
 function metricExpressionText(metric: MetricResponse): string {
   const dialect = metric.expression?.dialects?.find((d) => d.dialect === 'ANSI_SQL');
   return dialect?.expression ?? '';

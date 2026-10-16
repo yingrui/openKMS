@@ -629,7 +629,14 @@
     "quickRange_thisYear": "This year",
     "quickRange_lastYear": "Last year",
     "orderAsc": "Ascending",
-    "orderDesc": "Descending"
+    "orderDesc": "Descending",
+    "primaryKey": "Primary key",
+    "primaryKeyNone": "No primary key — rows cannot be edited or targeted by a relationship.",
+    "uniqueKeyEmpty": "No columns yet.",
+    "keysPickPlaceholder": "Type a column name…",
+    "keysPickerTitle": "Type to filter · Enter adds · Backspace removes the last one",
+    "keysPickerEmpty": "No column matches.",
+    "keysRemoveColumn": "Remove {{column}}"
   },
   "groups": {
     "title": "Groups",
