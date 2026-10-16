@@ -10,6 +10,8 @@ export interface ExplorerReportBlock {
   insight?: string;
   /** The source's own query spec (a dataset rows query, or a model metric query). */
   query?: Record<string, unknown>;
+  /** How to draw the result: `{type: 'line'|'bar', x, y, series?}` (presentation only). */
+  chart?: unknown;
   columns?: string[];
   rows?: Record<string, unknown>[];
   /** Rows the query matches (a dataset block's page may be a slice of this). */

@@ -22,6 +22,7 @@ SCSS tokens, shared layouts, and UI conventions for the SPA (`frontend/src/style
 | **`_metric.scss`** / **`Metric.tsx`** | Compact metric grid for entity detail headers. |
 | **`_checkbox.scss`** | Shared checkbox skin (`.ds-checkbox`) + dense multi-select list (`.ds-check-list`). |
 | **`_check-row.scss`** / **`CheckRow.tsx`** | Checkbox + title + hint card row (uses `.ds-checkbox`). |
+| **`_query-failure.scss`** / **`QueryFailureNotice.tsx`** | A failed query, told apart by cause (`definition` / `request` / `data`) with the driver detail folded away. Shared by the Playground and the Data Explorer — **not** a page sheet, because both routes need it. |
 | **`CheckList.tsx`** | Dense membership / filter lists (`CheckList` / `CheckListItem`). |
 | **`_field.scss`** / **`FormField.tsx`** | Labeled text field stack (`.ds-field`) + shared control look (`.ds-control`). |
 | **`_index.scss`** | Optional Sass barrel (`@forward` tokens + mixins). |
@@ -58,6 +59,7 @@ Use these instead of per-page copies. **`npm run check:styles`** blocks regressi
 | **`<Metric>` / `<MetricGrid>`** (`.ds-metric*`) | Compact label/value metrics on entity detail headers. Prefer over **`list-index-stat`** when there is no icon and several metrics share a row. |
 | **`.ds-checkbox`** | Opt-in checkbox skin (accent fill + focus ring). Prefer over bare native checkboxes. |
 | **`<CheckRow>`** (`.ds-check-row`) | Card-style checkbox with title + optional hint (settings / entity toggles). |
+| **`<QueryFailureNotice>`** (`.query-failure*`) | A query failure — anywhere a query can fail. Pass the classified cause (`kind`) so a definition problem never reads like a data one; the label is localized by the caller. |
 | **`<CheckList>` / `<CheckListItem>`** (`.ds-check-list*`) | Dense multi-select lists (e.g. group ↔ object-type membership). |
 | **`<FormField>`** (`.ds-field` / `.ds-control`) | Label + text input / select / textarea in dialogs and forms. Prefer over bare `<input>` or page-local **`console-form-control`** / **`account-input`** for new UI. |
 | **`.ds-compact-label`** | Hide button/link text ≤768px; keep **`aria-label`**. |

@@ -41,6 +41,7 @@
     "react-i18next": "^17.0.7",
     "react-markdown": "^10.1.0",
     "react-router-dom": "^7.13.1",
+    "recharts": "^3.10.1",
     "rehype-katex": "^7.0.1",
     "rehype-raw": "^7.0.0",
     "remark-gfm": "^4.0.1",

@@ -13,6 +13,7 @@ import {
 import { fetchDatasets, type DatasetResponse } from '../../data/datasetsApi';
 import { fetchSemanticModels, type SemanticModelResponse } from '../../data/semanticModelsApi';
 import { useConfirm } from '../../contexts/ConfirmContext';
+import { ExplorerReportBlockView } from './ExplorerReportBlockView';
 import '../ontology/ontology-admin.scss';
 import './data-explorer.scss';
 
@@ -156,59 +157,7 @@ export function ExplorerReportDetail() {
           <p className="entity-view__readonly">{t('dataExplorer.noNarrative')}</p>
         )}
         {(report.blocks ?? []).map((block: ExplorerReportBlock, i: number) => (
-          <section key={i} className="explorer-report-chart">
-            <h3>{block.title ?? t('dataExplorer.block')}</h3>
-            {block.insight && <p className="explorer-report-chart__insight">{block.insight}</p>}
-            {block.error ? (
-              <div className="playground__error playground__error--request" role="alert">
-                <p className="playground__error-title">
-                  {block.error.message ?? t('dataExplorer.blockFailed')}
-                </p>
-                {block.error.detail && (
-                  <details className="playground__error-details">
-                    <summary>{t('dataModel.playgroundErrorDetails')}</summary>
-                    <pre>{block.error.detail}</pre>
-                  </details>
-                )}
-              </div>
-            ) : !block.ran_at ? (
-              <p className="entity-view__readonly">{t('dataExplorer.blockNotRun')}</p>
-            ) : (block.rows?.length ?? 0) === 0 ? (
-              <p className="entity-view__readonly">{t('dataExplorer.blockNoRows')}</p>
-            ) : (
-              <>
-                <p className="page-subtitle">
-                  {t('datasets.filterRows', { count: block.total ?? block.rows?.length ?? 0 })}
-                  {block.capped ? ` · ${t('datasets.filterCapped')}` : ''}
-                  {block.duration_ms != null ? ` · ${block.duration_ms} ms` : ''}
-                </p>
-                <div className="ds-table-wrap">
-                  <table className="console-table">
-                    <thead>
-                      <tr>
-                        {(block.columns ?? Object.keys(block.rows![0])).map((c) => (
-                          <th key={c}>{c}</th>
-                        ))}
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {(block.rows ?? []).map((row, ri) => (
-                        <tr key={ri}>
-                          {(block.columns ?? Object.keys(block.rows![0])).map((c) => (
-                            <td key={c}>
-                              {row[c] === null || row[c] === undefined
-                                ? t('datasets.dash')
-                                : String(row[c])}
-                            </td>
-                          ))}
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </>
-            )}
-          </section>
+          <ExplorerReportBlockView key={i} block={block} />
         ))}
       </div>
     </div>

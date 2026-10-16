@@ -23,3 +23,5 @@ export {
   type CheckListItemProps,
 } from './CheckList';
 export { FormField, type FormFieldProps } from './FormField';
+export { QueryFailureNotice, type QueryFailureNoticeProps } from './QueryFailureNotice';
+export { asQueryFailureKind, type QueryFailureKind } from './queryFailureKind';

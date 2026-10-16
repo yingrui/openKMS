@@ -101,6 +101,26 @@ will not run on the other.
 - `sort` is one column; `after` is a keyset cursor and **requires `sort`**.
 - `limit` is capped at **500**.
 
+## Drawing a block (`chart`)
+
+A block may say how to draw its result. The spec names **columns of the result**, never expressions:
+
+```json
+{ "title": "月度平均市盈率", "insight": "…",
+  "query": { "metric": "平均市盈率", "group_by": [{"field": "trade_date", "granularity": "month"}] },
+  "chart": { "type": "line", "x": "trade_date", "y": "value" } }
+```
+
+- `type`: `line` for a series over time, `bar` to compare categories.
+- `x` / `y`: result columns to draw (`y` may be a list, e.g. `["count", "avg_pe"]`).
+- `series`: optional — one line/bar per distinct value of that column (`y` must then be one column);
+  the app keeps the first 8 and says when it truncated.
+- The chart is **presentation only**: it never changes what is queried, and a spec the result cannot
+  satisfy falls back to the table. So author the block, **run it**, read `columns` from the response,
+  and add `chart` only then — a guessed column name gets the reader a table.
+- Numbers arrive as numbers *or* numeric strings (`AVG(numeric)`); both plot, and a null is a gap, not
+  a zero.
+
 ## The loop
 
 ```bash

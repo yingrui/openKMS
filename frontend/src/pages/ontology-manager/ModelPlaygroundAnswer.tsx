@@ -1,8 +1,8 @@
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { AlertTriangle } from 'lucide-react';
 import type { SemanticModelQueryResponse } from '../../data/semanticModelsApi';
 import { EntityViewPanel } from './EntityViewShell';
+import { QueryFailureNotice, asQueryFailureKind } from '../../styles/design-system';
 
 /** A failed run, as the query API classified it: who can fix it, what it said, and the source's words. */
 export type RunError = { kind: string; message: string; detail?: string };
@@ -39,25 +39,21 @@ export function ModelPlaygroundAnswer({
     <div className="playground__answer">
       <EntityViewPanel title={t('dataModel.playgroundResult')}>
         {runError ? (
-          <div className={`playground__error playground__error--${runError.kind}`} role="alert">
-            <p className="playground__error-title">
-              <AlertTriangle size={16} aria-hidden />
-              {runError.kind === 'definition'
+          <QueryFailureNotice
+            kind={asQueryFailureKind(runError.kind)}
+            title={
+              runError.kind === 'definition'
                 ? t('dataModel.playgroundErrorDefinition')
                 : runError.kind === 'request'
                   ? t('dataModel.playgroundErrorRequest')
                   : runError.kind === 'data'
                     ? t('dataModel.playgroundErrorData')
-                    : t('dataModel.playgroundRunFailed')}
-            </p>
-            <p className="playground__error-message">{runError.message}</p>
-            {runError.detail ? (
-              <details className="playground__error-details">
-                <summary>{t('dataModel.playgroundErrorDetails')}</summary>
-                <pre>{runError.detail}</pre>
-              </details>
-            ) : null}
-          </div>
+                    : t('dataModel.playgroundRunFailed')
+            }
+            message={runError.message}
+            detail={runError.detail}
+            detailsLabel={t('dataModel.playgroundErrorDetails')}
+          />
         ) : !result ? (
           <p className="entity-view__readonly">{t('dataModel.playgroundEmpty')}</p>
         ) : (

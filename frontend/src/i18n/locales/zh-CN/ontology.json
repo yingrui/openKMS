@@ -102,7 +102,10 @@
     "noDataset": "无数据集",
     "narrative": "分析",
     "noNarrative": "暂无分析文本——可由 Agent 填充。",
-    "chart": "图表"
+    "chart": "图表",
+    "viewTable": "表格",
+    "viewModeAria": "结果视图",
+    "chartTruncated": "仅显示前 {max} 个分组。"
   },
   "dataModel": {
     "title": "数据模型",

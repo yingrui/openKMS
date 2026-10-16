@@ -411,6 +411,7 @@ Encrypted values; **never returned**. Write/sync/delete reject personal API key 
 | POST | `/api/explorer-reports` | Create explorer report (`data:write`) — body `{name, question?, source_kind: dataset\|semantic_model, dataset_id?\|semantic_model_id?, narrative?, blocks?}` |
 | GET | `/api/explorer-reports/{id}` | Get explorer report (`data:read`) — `blocks` carry the query they came from plus the last run's `columns`/`rows`/`capped`/`duration_ms`/`sql`/`ran_at`/`error` |
 | PUT | `/api/explorer-reports/{id}` | Update explorer report (`data:write`) |
+| PUT | `/api/explorer-reports/{id}` | **`blocks[]` entries are the report document**: `{title?, insight?, query, chart?, …}`. `chart` is presentation only — `{type: "line"|"bar", x, y, series?}` naming columns of the block's result (a spec the result cannot satisfy falls back to the table). A run merges into the block (`{**block, **result}`), so `title`/`insight`/`query`/`chart` survive a re-run. |
 | POST | `/api/explorer-reports/{id}/run` | **Run every block** against the report's source and persist the results (`data:write`). Blocks go to `POST /api/datasets/{id}/rows/query` (dataset source) or `POST /api/semantic-models/{id}/query` (model source); one block failing stores its classified `{code, message, kind}` and the others still run (`EXPLORER_SOURCE_MISSING` / `EXPLORER_BLOCK_METRIC_MISSING` are `request`) |
 | DELETE | `/api/explorer-reports/{id}` | Delete explorer report (`data:write`) |
 

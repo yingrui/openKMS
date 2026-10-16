@@ -165,6 +165,15 @@ Active UX / quality gaps: [Tech debt](./tech_debt.md).
 - Domain depth (specimen/event, Darwin Core, interactive keys) — see [knowledge-types](features/knowledge-types.md) entomology workflow **future** column
 - Agent ↔ frontend protocol: align to **AG-UI** (today custom NDJSON `delta`/`tool_*`/`done`; artifacts via A2UI surfaces)
 
+### Data Explorer charts (2026-10) — done
+
+- A block's `chart` spec draws its result (line/bar, optional grouping series); the table stays one
+  click away, and a spec the result cannot satisfy falls back to it.
+- recharts (MIT) — [selection note](research/chart-library-selection.md); the shared
+  `<QueryFailureNotice>` moved from a page sheet into the design system.
+- Dataset summaries (`POST /api/datasets/{id}/aggregate`) give the Catalog half "by month" without a
+  semantic model.
+
 ## Conventions
 
 - **Before commit**: Update the matching `docs/features/*.md` page, [API reference](features/api-reference.md) / [Data models](features/data-models.md) when needed; add or remove rows in [Functionalities](./functionalities.md) only when a feature page is added or removed. See `AGENTS.md` (docs before commit).

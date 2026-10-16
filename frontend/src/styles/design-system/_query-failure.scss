@@ -1,0 +1,41 @@
+// A query that failed, told apart by cause: definition (the model/metric), request (what was asked
+// for), data (what the source refused). Used by the Playground and the Data Explorer, so it lives
+// here rather than in a page sheet — a page sheet only ships with its own route.
+.query-failure {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-3);
+  border: 1px solid color-mix(in srgb, var(--color-danger, #b91c1c) 35%, var(--color-border));
+  border-radius: var(--radius-md);
+  background: color-mix(in srgb, var(--color-danger, #b91c1c) 6%, transparent);
+}
+
+.query-failure__title {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin: 0;
+  font-size: var(--text-sm);
+  font-weight: 600;
+  color: var(--color-danger, #b91c1c);
+}
+
+.query-failure__message {
+  margin: 0;
+  color: var(--color-text);
+}
+
+.query-failure__details {
+  font-size: var(--text-sm);
+  color: var(--color-text-secondary);
+
+  pre {
+    margin: var(--space-2) 0 0;
+    padding: var(--space-2);
+    overflow-x: auto;
+    border-radius: var(--radius-sm);
+    background: var(--color-bg-muted);
+    white-space: pre-wrap;
+  }
+}

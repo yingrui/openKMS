@@ -53,3 +53,20 @@
     font-size: 0.875rem;
   }
 }
+
+// One block's result: a chart or the table, with its own counts and the view toggle on one line.
+.explorer-block__toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+
+  .page-subtitle {
+    margin: 0;
+  }
+}
+
+.explorer-chart {
+  // `ResponsiveContainer` needs a parent with a height; 320px reads well next to the table.
+  height: 320px;
+}

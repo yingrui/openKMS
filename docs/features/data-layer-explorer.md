@@ -96,12 +96,24 @@ block's result filled in:
 
 The app does **not** do NL→spec (the agent's job, like the Playground) and does not pretend to.
 
-**Presentation (P0/P1).** P0 renders every block as a table (grouped by its title/insight) — correct,
-provenance-carrying, and enough to trust. Visual **charts** are the next slice, and they are a
-presentation concern only: the block already carries `columns`/`rows`, so nothing about the contract
-changes. Two candidate routes, decided when that slice starts: a small MIT/Apache chart library in the
-SPA (one more dependency), or the **static-HTML path the research-report skill already uses**
-(Reveal + Plotly) for exported/shared reports, with tables staying the in-app default.
+**Presentation.** A block may carry a **`chart` spec** — `{type: "line"|"bar", x, y, series?}`,
+naming columns of the block's *result*. It is presentation only: the block still owns its query, a
+run still writes the rows, and the spec survives a re-run. Without a spec (or when the result cannot
+satisfy one) the table is the answer, and the table is always one click away.
+
+- `line` for a series over time, `bar` to compare categories; `x` is the category axis, `y` the
+  measure(s).
+- `series` pivots one column into one line/bar per distinct value (capped at 8, and the block says
+  when it truncated), so "pe by industry over months" is a single block.
+- A measure arrives from the database as a number *or* a numeric string (`AVG(numeric)`) — both are
+  plotted; a non-numeric cell is a gap, never a zero.
+- A spec the result cannot satisfy (unknown column; a grouping column with several measures) falls
+  back to the table rather than drawing something misleading.
+
+The library is **recharts** (MIT, React 19) — [selection note](../research/chart-library-selection.md).
+Failures render through the shared `<QueryFailureNotice>` (`.query-failure*`), promoted from a page
+sheet into the design system when this slice landed, because the Playground and the Explorer both
+need it.
 
 ## 5. Scope guards (what this is not)
 
@@ -146,5 +158,7 @@ SPA (one more dependency), or the **static-HTML path the research-report skill a
 3. **The run lives server-side** and reuses the two engines, per-block error isolation, results
    persisted (`data:write`, since a run writes the report).
 4. **No NL→spec in the app**; the agent produces the analysis, the app renders and re-runs it.
-5. **Charts are a later slice**, and a presentation-only one: the block's columns/rows are already the
-   contract.
+5. **Charts are presentation only** and belong to the block: the spec names columns of the result,
+   the query stays the source's, and a spec the result cannot satisfy degrades to the table.
+6. **recharts** draws them (MIT, React 19; [selection note](../research/chart-library-selection.md)) —
+   swapping it changes one component, not the document or the API.
