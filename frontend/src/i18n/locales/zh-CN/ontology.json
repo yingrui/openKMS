@@ -646,7 +646,8 @@
     "keysPickerEmpty": "没有匹配的列。",
     "keysRemoveColumn": "移除 {{column}}",
     "tabMetrics": "指标",
-    "tabSources": "数据源"
+    "fromSource": "从数据源添加",
+    "fromSourceHint": "一次把某个数据源的多张表登记为数据集。"
   },
   "groups": {
     "title": "分组",

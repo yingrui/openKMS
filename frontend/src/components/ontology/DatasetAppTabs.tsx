@@ -6,13 +6,14 @@ import './DatasetAppTabs.scss';
  * Top-level tabs for the merged Datasets app, under one App Rail entry (`datasets`):
  * the **Catalog** (the tables), the **Semantic Model** (relationships, fields, quality) and
  * **Metrics** — the last read-only, because a metric is defined next to its model.
+ *
+ * Registering from a data source is deliberately **not** a tab: it is something you do to the Catalog
+ * (add datasets), and it is reachable from there as an action.
  */
 export function DatasetAppTabs() {
   const { t } = useTranslation('ontology');
   const { pathname } = useLocation();
-  const onSources = pathname.startsWith('/datasets/sources');
-  const onCatalog =
-    pathname.startsWith('/datasets') && !onSources && !pathname.startsWith('/datasets/model');
+  const onCatalog = pathname.startsWith('/datasets') && !pathname.startsWith('/datasets/model');
   const onModel = pathname.startsWith('/data-model');
   const onMetrics = pathname.startsWith('/data-metrics');
 
@@ -24,13 +25,6 @@ export function DatasetAppTabs() {
         aria-current={onCatalog ? 'page' : undefined}
       >
         {t('datasets.tabCatalog')}
-      </Link>
-      <Link
-        to="/datasets/sources"
-        className={`dataset-app-tab${onSources ? ' dataset-app-tab--active' : ''}`}
-        aria-current={onSources ? 'page' : undefined}
-      >
-        {t('datasets.tabSources')}
       </Link>
       <Link
         to="/data-model"

@@ -228,6 +228,15 @@ export function DatasetsListPage() {
           <p className="page-subtitle">{t('datasets.subtitle')}</p>
         </div>
         <div className="page-header-actions">
+          {/* One table at a time is "Create"; a whole source is this — and the hint says so. */}
+          <Link
+            to="/datasets/sources"
+            className="btn btn-secondary"
+            title={t('datasets.fromSourceHint')}
+          >
+            <Database size={18} aria-hidden />
+            <span>{t('datasets.fromSource')}</span>
+          </Link>
           <button
             type="button"
             className="btn btn-secondary"

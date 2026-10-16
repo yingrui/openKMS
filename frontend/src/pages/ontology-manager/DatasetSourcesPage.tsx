@@ -14,7 +14,6 @@ import { fetchAllDataSources, type DataSourceResponse } from '../../data/dataSou
 import { useAuth } from '../../contexts/AuthContext';
 import { useConfirm } from '../../contexts/ConfirmContext';
 import { EmptyState } from '../../styles/design-system';
-import { DatasetAppTabs } from '../../components/ontology/DatasetAppTabs';
 import '../ontology/ontology-admin.scss';
 
 const tableKey = (source: string, table: TableInfo) => `${source}/${table.schema_name}.${table.table_name}`;
@@ -158,13 +157,15 @@ export function DatasetSourcesPage() {
           <p className="page-subtitle">{t('dataSources.subtitle')}</p>
         </div>
         <div className="page-header-actions">
+          <Link to="/datasets" className="btn btn-secondary">
+            {t('datasets.title')}
+          </Link>
           <Link to="/console/data-sources" className="btn btn-secondary">
             <ExternalLink size={16} aria-hidden />
             {t('dataSources.manage')}
           </Link>
         </div>
       </header>
-      <DatasetAppTabs />
       <div className="ontology-admin-content">
         {loading ? (
           <div className="console-loading">

@@ -198,7 +198,7 @@ Active UX / quality gaps: [Tech debt](./tech_debt.md).
 
 ### Register datasets in bulk, from the source (2026-10) — done
 
-- **Data sources** is a tab in the Datasets app now (`/datasets/sources`): pick a source, see its tables
+- **Registering from a source** lives at `/datasets/sources`, reachable as an action on the Catalog ("From a data source") rather than a tab — it adds datasets to the Catalog, it is not a peer of it. There: pick a source, see its tables
   with what is already registered, tick the rest and add them in one go. It reads with `data:read` and
   writes with `data:write` — the checkboxes are disabled without it — and only lists sources this layer
   can register from (a graph store is not one, and used to answer 400).

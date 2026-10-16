@@ -653,7 +653,8 @@
     "keysPickerEmpty": "No column matches.",
     "keysRemoveColumn": "Remove {{column}}",
     "tabMetrics": "Metrics",
-    "tabSources": "Data sources"
+    "fromSource": "From a data source",
+    "fromSourceHint": "Register many of a source's tables as datasets at once."
   },
   "groups": {
     "title": "Groups",
