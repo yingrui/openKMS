@@ -174,12 +174,13 @@ export function DashboardDetailPage() {
           </span>
           <button
             type="button"
-            className="is-danger"
+            className="is-danger is-icon-action"
             onClick={() => void handleDelete()}
-            title={t('dataExplorer.deleteConfirm')}
+            aria-label={t('dataExplorer.deleteDashboard')}
+            title={t('dataExplorer.deleteDashboard')}
           >
             <Trash2 size={14} aria-hidden />
-            {t('dataExplorer.deleteDashboard')}
+            <span className="is-icon-action__label">{t('dataExplorer.deleteDashboard')}</span>
           </button>
         </>
       }

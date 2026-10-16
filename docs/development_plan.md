@@ -165,6 +165,14 @@ Active UX / quality gaps: [Tech debt](./tech_debt.md).
 - Domain depth (specimen/event, Darwin Core, interactive keys) — see [knowledge-types](features/knowledge-types.md) entomology workflow **future** column
 - Agent ↔ frontend protocol: align to **AG-UI** (today custom NDJSON `delta`/`tool_*`/`done`; artifacts via A2UI surfaces)
 
+### The dashboard's identity row (2026-10) — done
+
+- The rail's identity block reads in three parts: the name, the question, then **one quiet row** —
+  `draft` · `3 reports` · `Delete dashboard`.
+- The delete is an **icon that names itself on hover** (`is-icon-action`, shared with any identity
+  action): quiet, but never nameless — the label stays in the DOM and the button carries an
+  `aria-label`, so a keyboard user hears it without hovering.
+
 ### The dashboard's rail became its table of contents (2026-10) — done
 
 - **Follow-up: it did not scroll.** The report sections never got the id the rail linked to (the panel
