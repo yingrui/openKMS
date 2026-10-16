@@ -176,6 +176,7 @@ Soft limit **700 lines** per page `.tsx` / hook (enforced by **`check:styles`** 
 | **`settings-page.scss`** | Settings shell (tabs, fields, actions) |
 | **`resource-list.scss`** | KB and Wiki card-grid lists |
 | **`document-detail.scss`** | Shared Document / Article / Media detail chrome |
+| **`entity-view.scss`** | The detail-page shell (`EntityViewShell`) — identity rail, nav, panels, and the pane layout exceptions. Shared, because every detail page renders the shell |
 | **`report-view.scss`** | The Data Explorer's report views — `metric` (a number, or a KPI with a trend), `bar_list` (a ranking), `tracker` (a coverage strip), and the chart host. Global **because the same components render in "save this query"**, which the Playground and the Data tab open |
 
 Import from page TSX: **`import '../../styles/<name>.scss'`**. Never import another page's colocated SCSS.

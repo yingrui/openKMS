@@ -3,7 +3,7 @@ import { NavLink, useNavigate } from 'react-router-dom';
 import { ArrowLeft, ChevronDown, Loader2 } from 'lucide-react';
 import { Metric, MetricGrid } from '../../styles/design-system';
 import '../../styles/account-page.scss';
-import './entity-view.scss';
+import '../../styles/entity-view.scss';
 
 export type EntityViewNavItem = {
   /** A route — the usual case (a tab). */
