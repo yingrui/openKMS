@@ -172,6 +172,10 @@ Active UX / quality gaps: [Tech debt](./tech_debt.md).
   evaluating it (Tailwind + React 18 peer + a second recharts major → not adopted).
 - CSV export, client-side, with RFC-4180 quoting and a UTF-8 BOM; every report shows **as of** when
   it was run (and nothing pretends the data has not changed — that needs a declared watermark).
+- The Tremor vocabulary is complete for what our data supports: a **KPI** (`metric` + `trend`: last
+  value, change vs the previous one, CSS-bar sparkline) and a **coverage strip** (`tracker`). Targets
+  and limits (category/progress bars) stay unimplemented — we declare none, so drawing them would be a
+  lie; combo/scatter charts and a date-range picker are the real remaining gaps.
 - First component tests in the repo, which caught an i18next placeholder bug (`{max}` vs `{{max}}`)
   now enforced by `check-i18n-keys.py`.
 
