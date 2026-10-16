@@ -170,7 +170,8 @@ system). Three deviations were real; the rest are deliberate:
 `EntityViewShell`'s left rail is this app's **navigation column**: on dataset/model pages it holds tab
 links. A dashboard has no tabs — its sections *are* its reports — so the rail lists them: the answer
 first, then every report by title, each with **where its numbers come from** underneath. Clicking one
-scrolls to that section (the rail is fixed, the main pane scrolls).
+scrolls to that section — **explicitly**, not through the URL hash: the scrolling box is the main
+pane (the shell pins the document), so the link finds the section by id and moves the pane.
 
 That also gives the shell a general capability instead of a dashboard-only one: a nav item is either a
 **route** (`to`, a tab) or a **section of the page** (`sectionId`, an anchor), and `EntityViewPanel`

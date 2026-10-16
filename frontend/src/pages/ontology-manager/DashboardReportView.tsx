@@ -32,11 +32,14 @@ import {
  * anything else is the table.
  */
 export function DashboardReportView({
+  id,
   report,
   datasets,
   models,
   actions,
 }: {
+  /** The rail's table of contents links to this section by id. */
+  id?: string;
   report: DashboardReport;
   datasets: DatasetResponse[];
   models: SemanticModelResponse[];
@@ -66,6 +69,7 @@ export function DashboardReportView({
 
   return (
     <EntityViewPanel
+      id={id}
       title={report.title ?? t('dataExplorer.report')}
       actions={actions}
       description={

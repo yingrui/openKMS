@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { describe, expect, it } from 'vitest';
 import { EntityViewHeader, EntityViewLoading, EntityViewPanel, EntityViewShell } from './EntityViewShell';
@@ -35,6 +35,31 @@ describe('EntityViewShell', () => {
     const section = screen.getByRole('link', { name: /按月/ });
     expect(section).toHaveAttribute('href', '#report-0');
     expect(screen.getByText('Daily basic')).toBeInTheDocument();
+  });
+
+  it('scrolls the pane when a section item is clicked', () => {
+    /* jsdom has no layout and no `scrollIntoView`; stub it and assert the pane was asked to move —
+       because the first version of this link looked right and scrolled nothing (the scrolling box is
+       the pane, and the report sections had no id to find). */
+    const scrolled: string[] = [];
+    const original = Element.prototype.scrollIntoView;
+    Element.prototype.scrollIntoView = function scrollIntoViewStub() {
+      scrolled.push(this.id);
+    };
+    try {
+      renderShell([{ sectionId: 'report-0', label: '按月' }]);
+      fireEvent.click(screen.getByRole('link', { name: /按月/ }));
+      expect(scrolled).toEqual(['report-0']);
+    } finally {
+      Element.prototype.scrollIntoView = original;
+    }
+  });
+
+  it('does nothing when the section is not on the page', () => {
+    renderShell([{ sectionId: 'gone', label: 'Missing' }]);
+    fireEvent.click(screen.getByRole('link', { name: 'Missing' }));
+    // no anchor, no throw: the href is still a usable fallback
+    expect(screen.getByRole('link', { name: 'Missing' })).toHaveAttribute('href', '#gone');
   });
 
   it('makes a panel an anchor target, and renders the identity', () => {

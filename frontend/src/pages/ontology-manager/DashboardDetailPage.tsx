@@ -272,6 +272,7 @@ export function DashboardDetailPage() {
         {reports.map((report, i) => (
           <DashboardReportView
             key={i}
+            id={`report-${i}`}
             report={report}
             datasets={datasets}
             models={models}

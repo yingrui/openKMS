@@ -167,6 +167,12 @@ Active UX / quality gaps: [Tech debt](./tech_debt.md).
 
 ### The dashboard's rail became its table of contents (2026-10) — done
 
+- **Follow-up: it did not scroll.** The report sections never got the id the rail linked to (the panel
+  lives inside `DashboardReportView`, and only the answer's panel was given one), and the link relied
+  on a hash jump while the scrolling box is the main pane. Both fixed: the tile takes an `id`, and a
+  section link moves the pane with `scrollIntoView`. `EntityViewShell.test.tsx` now asserts the click
+  asks to scroll to the right id — the assertion that would have caught it.
+
 - The left rail was blank for a dashboard (it is the app's navigation column, and a dashboard has no
   tabs). It now lists the document's sections — the answer, then each report with where it reads from —
   and clicking one scrolls there.

@@ -196,7 +196,21 @@ export function EntityViewShell({
                   {item.label}
                 </NavLink>
               ) : (
-                <a key={item.sectionId} className="entity-view__nav-item" href={`#${item.sectionId}`}>
+                <a
+                  key={item.sectionId}
+                  className="entity-view__nav-item"
+                  href={`#${item.sectionId}`}
+                  onClick={(event) => {
+                    /* The scrolling box is the main pane, not the document (the shell pins it), so a
+                       hash jump is not reliable — move the pane itself and keep the URL clean. */
+                    const target = event.currentTarget.ownerDocument.getElementById(
+                      item.sectionId ?? '',
+                    );
+                    if (!target) return;
+                    event.preventDefault();
+                    target.scrollIntoView({ block: 'start', behavior: 'smooth' });
+                  }}
+                >
                   {item.label}
                   {item.hint ? <span className="entity-view__nav-item-hint">{item.hint}</span> : null}
                 </a>
