@@ -38,11 +38,11 @@ export function AppCatalogGrid({ variant, modules, onSelect }: AppCatalogGridPro
   if (variant === 'launcher') {
     const groups = groupModulesByLayer(modules);
     return (
-      <div className="app-catalog app-catalog--launcher">
+      <div className="app-catalog--launcher">
         {groups.map((group) => (
-          <div key={group.layer} className="app-catalog-section app-catalog-section--launcher">
+          <div key={group.layer} className="app-catalog-section--launcher">
             <div className="app-catalog-section-label">{t(`layer_${group.layer}`)}</div>
-            <div className="app-catalog-grid app-catalog-grid--launcher">
+            <div className="app-catalog-grid--launcher">
               {group.modules.map(renderItem)}
             </div>
           </div>
@@ -52,8 +52,8 @@ export function AppCatalogGrid({ variant, modules, onSelect }: AppCatalogGridPro
   }
 
   return (
-    <div className="app-catalog app-catalog--home">
-      <div className="app-catalog-grid app-catalog-grid--home">
+    <div className="app-catalog--home">
+      <div className="app-catalog-grid--home">
         {modules.map(renderItem)}
       </div>
     </div>
