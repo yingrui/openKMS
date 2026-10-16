@@ -196,13 +196,7 @@
     "grain_year": "Year",
     "chartScatter": "Scatter (two measures)",
     "chartXMeasure": "Horizontal measure (X)",
-    "chartYMeasure": "Vertical measure (Y)",
-    "runs": "Run history",
-    "runReports": "{{count}} reports",
-    "runFailedCount": "{{count}} failed",
-    "lastSuccess": "Last run with nothing failed: {{age}}",
-    "noSuccessYet": "No run has succeeded yet.",
-    "consecutiveFailures": "{{count}} runs in a row failed"
+    "chartYMeasure": "Vertical measure (Y)"
   },
   "dataModel": {
     "title": "Data Model",

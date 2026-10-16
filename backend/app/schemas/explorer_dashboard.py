@@ -63,22 +63,6 @@ class ExplorerDashboardSummary(BaseModel):
     updated_at: datetime
 
 
-class ExplorerDashboardRunResponse(BaseModel):
-    """One run of a dashboard: when, how long, and how it went."""
-
-    id: str
-    ran_at: datetime
-    duration_ms: int
-    reports: int
-    failed: int
-    ran_by_name: str | None = None
-
-
-class ExplorerDashboardRunListResponse(BaseModel):
-    items: list[ExplorerDashboardRunResponse]
-    total: int
-
-
 class ExplorerDashboardListResponse(BaseModel):
     items: list[ExplorerDashboardSummary]
     total: int

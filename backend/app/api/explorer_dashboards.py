@@ -26,13 +26,10 @@ from app.api.auth import require_any_permission, require_auth, require_permissio
 from app.database import get_db
 from app.api.query_errors import query_failure_detail
 from app.models.explorer_dashboard import ExplorerDashboard
-from app.models.explorer_dashboard_run import ExplorerDashboardRun
 from app.models.dataset import Dataset
 from app.models.semantic_model import SemanticModel
 from app.schemas.explorer_dashboard import (
     ExplorerDashboardCreate,
-    ExplorerDashboardRunListResponse,
-    ExplorerDashboardRunResponse,
     ExplorerDashboardListResponse,
     ExplorerDashboardResponse,
     ExplorerDashboardSource,
@@ -65,8 +62,6 @@ router = APIRouter(
     dependencies=[Depends(require_auth)],
 )
 _VIEW = (PERM_EXPLORER_READ,)
-#: How much of a dashboard's history to return: enough to see a pattern, not a log to scroll.
-RUN_HISTORY_LIMIT = 20
 _WRITE = (PERM_EXPLORER_WRITE,)
 
 #: Stored per-report result keys — dropped when the caller may not read that report's source.
@@ -369,64 +364,6 @@ async def _run_report(
     return {**entry, **result, "error": None, "ran_at": ran_at}
 
 
-def _run_record(dashboard: ExplorerDashboard, reports: list[dict], duration_ms: int, request: Request) -> ExplorerDashboardRun:
-    """What a run leaves behind in the document's history (counts only — never a result)."""
-    payload = request.state.openkms_jwt_payload
-    name = payload.get("preferred_username") or payload.get("name")
-    return ExplorerDashboardRun(
-        id=str(uuid.uuid4()),
-        dashboard_id=dashboard.id,
-        duration_ms=duration_ms,
-        reports=len(reports),
-        failed=sum(1 for report in reports if report.get("error")),
-        ran_by_name=str(name)[:256] if isinstance(name, str) and name.strip() else None,
-    )
-
-
-@router.get(
-    "/{dashboard_id}/runs",
-    response_model=ExplorerDashboardRunListResponse,
-    dependencies=[Depends(require_any_permission(*_VIEW))],
-)
-async def list_dashboard_runs(
-    dashboard_id: str, request: Request, db: AsyncSession = Depends(get_db)
-):
-    """This dashboard's run history, newest first.
-
-    A dashboard the caller cannot see answers 404 here too — the history is a fact *about* it.
-    """
-    dashboard = await _get(db, dashboard_id)
-    readable = await _readable_datasets(db, request)
-    if dashboard.reports and not any(_may_read(report_source(e), readable) for e in dashboard.reports):
-        raise HTTPException(status_code=404, detail="Dashboard not found")
-    rows = (
-        (
-            await db.execute(
-                select(ExplorerDashboardRun)
-                .where(ExplorerDashboardRun.dashboard_id == dashboard.id)
-                .order_by(ExplorerDashboardRun.ran_at.desc())
-                .limit(RUN_HISTORY_LIMIT)
-            )
-        )
-        .scalars()
-        .all()
-    )
-    return ExplorerDashboardRunListResponse(
-        items=[
-            ExplorerDashboardRunResponse(
-                id=row.id,
-                ran_at=row.ran_at,
-                duration_ms=row.duration_ms,
-                reports=row.reports,
-                failed=row.failed,
-                ran_by_name=row.ran_by_name,
-            )
-            for row in rows
-        ],
-        total=len(rows),
-    )
-
-
 @router.post(
     "/{dashboard_id}/run",
     response_model=ExplorerDashboardResponse,
@@ -441,7 +378,6 @@ async def run_dashboard(dashboard_id: str, request: Request, db: AsyncSession = 
     """
     dashboard = await _get(db, dashboard_id)
     readable = await _readable_datasets(db, request)
-    started = time.perf_counter()
     reports: list[dict] = []
     for entry in dashboard.reports or []:
         source = report_source(entry)
@@ -450,9 +386,6 @@ async def run_dashboard(dashboard_id: str, request: Request, db: AsyncSession = 
             continue
         reports.append(await _run_report(db, entry, source_failure(source)))
     dashboard.reports = reports
-    db.add(
-        _run_record(dashboard, reports, int((time.perf_counter() - started) * 1000), request)
-    )
     await db.commit()
     await db.refresh(dashboard)
     return _response(dashboard, request, readable)

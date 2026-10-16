@@ -165,21 +165,6 @@ system). Three deviations were real; the rest are deliberate:
 | **The left rail** | `EntityViewShell`'s navigation column: tabs on entity pages | the identity, then blank space (a dashboard has no tabs) | **fixed** — it lists the document's sections (the answer, then each report with its source); a nav item may now be an in-page section, which the shell supports for any long detail page |
 | **Document actions** | the primary action is a button in the page action row; a **destructive** one lives with the identity (Datasets/Models go further and keep theirs in a Settings danger zone) | Run and Delete both sat in the action row, then Delete alone in the header corner | **fixed twice** — first into one row (which made a delete as loud as the primary action), then to where it belongs: Run is the page's primary button, Delete is a **text link with the identity** (`is-danger`, red on hover) — visible and discoverable, never the loudest thing on the page |
 
-## Run history
-
-Every run leaves a row (`explorer_dashboard_runs`): when, how long, how many reports, how many failed,
-and who asked. The dashboard shows its last 20 as a section at the end — also reachable from the rail,
-because it is in the contents list — and an agent gets them from `explorer dashboards-runs --id`.
-
-Two questions are why it exists, and neither is answerable elsewhere: a tile's "as of" is its last
-**attempt** (it moves even when the run failed), so "when did this last *work*" and "has it been failing
-since?" are facts about the history. The panel therefore says them (`runHealth`: the newest clean run,
-and how many runs in a row have failed) instead of leaving them to be counted off the list.
-
-It counts; it does not archive. The results are the document's (each report keeps its own last answer),
-so a history row can say "3 of 7 reports failed at 09:04" but never what they returned — the point is
-"was this refreshed, and does it keep failing?", not a log to replay.
-
 ## The rail is the dashboard's table of contents
 
 `EntityViewShell`'s left rail is this app's **navigation column**: on dataset/model pages it holds tab

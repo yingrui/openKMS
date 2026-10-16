@@ -165,18 +165,19 @@ Active UX / quality gaps: [Tech debt](./tech_debt.md).
 - Domain depth (specimen/event, Darwin Core, interactive keys) — see [knowledge-types](features/knowledge-types.md) entomology workflow **future** column
 - Agent ↔ frontend protocol: align to **AG-UI** (today custom NDJSON `delta`/`tool_*`/`done`; artifacts via A2UI surfaces)
 
-### Run history (2026-10) — done
+### Run history (2026-10) — added, then **removed**
 
-- A run now records a row (`explorer_dashboard_runs`: when, how long, how many reports, how many
-  failed, who) and `GET /api/explorer-dashboards/{id}/runs` serves the last 20; the dashboard shows
-  them as a section at the end, and the skill as `dashboards-runs --id`. Counts only — results stay
-  the document's.
-- The route needed no new permission pattern (`GET /api/explorer-dashboards/*` already resolves to
-  `explorer:read`), and a dashboard the caller cannot see answers 404 for its history too.
-- **`--autogenerate` earned its warning label**: alongside the new table it proposed dropping the
-  LangGraph `checkpoint*` tables, several indexes, and NOT NULL changes — the metadata has drifted from
-  this database, and the migration was written by hand instead. Worth a separate look (it is not
-  this feature's business), and a reminder that reviewing generated migrations is not a formality.
+- It recorded every run (when, how long, how many reports failed, who) and served the last 20 as a
+  section on the dashboard, with the health said above the list: the newest clean run, and how many
+  runs in a row had failed. Those two are the only questions a tile's `as of` cannot answer — it moves
+  on a failed attempt too.
+- **It was removed anyway.** A table, an endpoint, a panel, a skill command and two migrations, for a
+  failure pattern nobody had asked about, while every tile already says how fresh it is. Judged not
+  worth the surface — the lineage precedent: delete, do not decorate.
+- If that pattern ever does matter, the cheap answer is two fields on the report itself
+  (`last_success_at`, `consecutive_failures`), not a log. Dropped by `a1b2c3d4e5f9`, hand-written:
+  `--autogenerate` on this database also proposes dropping the LangGraph `checkpoint*` tables, several
+  indexes and NOT NULL changes (the metadata has drifted) — still worth its own look.
 
 ### Scatter: two measures against each other (2026-10) — done
 

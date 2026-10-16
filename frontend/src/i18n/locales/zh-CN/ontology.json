@@ -196,13 +196,7 @@
     "grain_year": "年",
     "chartScatter": "散点（两个度量）",
     "chartXMeasure": "横向度量（X）",
-    "chartYMeasure": "纵向度量（Y）",
-    "runs": "运行记录",
-    "runReports": "{{count}} 份报告",
-    "runFailedCount": "{{count}} 份失败",
-    "lastSuccess": "上次全部成功：{{age}}",
-    "noSuccessYet": "还没有一次完全成功的运行。",
-    "consecutiveFailures": "已连续 {{count}} 次失败"
+    "chartYMeasure": "纵向度量（Y）"
   },
   "dataModel": {
     "title": "数据模型",

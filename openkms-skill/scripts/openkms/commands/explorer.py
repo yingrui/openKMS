@@ -106,14 +106,6 @@ def cmd_run(ns: argparse.Namespace) -> None:
     print_json(r.json())
 
 
-def cmd_runs(ns: argparse.Namespace) -> None:
-    """A dashboard's run history, newest first — when it was refreshed and what failed."""
-    with client() as s:
-        r = s.get(f"/api/explorer-dashboards/{ns.id}/runs")
-    r.raise_for_status()
-    print_json(r.json())
-
-
 def cmd_delete(ns: argparse.Namespace) -> None:
     path = f"/api/explorer-dashboards/{ns.id}"
     confirm_or_abort("delete dashboard", "DELETE", path, None, ns.yes, ns.dry_run)
@@ -161,10 +153,6 @@ def add_subparser(sub) -> None:
     rn.add_argument("--id", required=True)
     add_write_flags(rn)
     rn.set_defaults(fn=cmd_run)
-
-    rs = sp.add_parser("dashboards-runs", help="A dashboard's run history (newest first)")
-    rs.add_argument("--id", required=True)
-    rs.set_defaults(fn=cmd_runs)
 
     dl = sp.add_parser("dashboards-delete", help="Delete a dashboard")
     dl.add_argument("--id", required=True)

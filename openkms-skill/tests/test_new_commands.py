@@ -420,13 +420,3 @@ def test_datasets_aggregate(mock_api):
         "limit": 12,
         "offset": 0,
     }
-
-
-def test_dashboard_runs(mock_api):
-    recorded, responses = mock_api
-    responses[("GET", "/api/explorer-dashboards/d1/runs")] = (200, {"items": [], "total": 0})
-    from openkms.commands.explorer import cmd_runs
-
-    cmd_runs(_ns(id="d1"))
-    assert recorded[-1].method == "GET"
-    assert recorded[-1].url.path == "/api/explorer-dashboards/d1/runs"

@@ -248,8 +248,7 @@ All write subcommands accept `--yes` / `--dry-run`. Without `--yes` on non-TTY s
 | `explorer dashboards-get` | GET | `/api/explorer-dashboards/{id}` | |
 | `explorer dashboards-create` *(write)* | POST | `/api/explorer-dashboards` | Body `{name, question?, narrative?, reports?}`. `--reports-file` is `[{title?, insight?, dataset_id\|semantic_model_id, query, chart?}]` — **every report names its own source**, so one dashboard can mix a model and a dataset. |
 | `explorer dashboards-update` *(write)* | PUT | `/api/explorer-dashboards/{id}` | Same fields as create (omit what you keep). |
-| `explorer dashboards-run` *(write)* | POST | `/api/explorer-dashboards/{id}/run` | Runs every report against **its own** source and keeps the results; a failing report stores its classified reason and the rest still run. Each run also records its duration, report count and failures. |
-| `explorer dashboards-runs` | GET | `/api/explorer-dashboards/{id}/runs` | The dashboard's **run history**, newest first (last 20): when, how long, how many reports, how many failed, by whom. |
+| `explorer dashboards-run` *(write)* | POST | `/api/explorer-dashboards/{id}/run` | Runs every report against **its own** source and keeps the results; a failing report stores its classified reason and the rest still run. |
 | `explorer dashboards-delete` *(write)* | DELETE | `/api/explorer-dashboards/{id}` | |
 | `connectors kinds` | GET | `/api/connectors/kinds` | |
 | `connectors list` | GET | `/api/connectors` | |
