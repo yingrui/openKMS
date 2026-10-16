@@ -485,21 +485,21 @@ DEFAULT_PATTERNS_BY_KEY: dict[str, tuple[list[str], list[str]]] = {
             "/data-explorer/*",
         ],
         [
-            "GET /api/explorer-reports",
-            "GET /api/explorer-reports/*",
-            "HEAD /api/explorer-reports",
-            "HEAD /api/explorer-reports/*",
+            "GET /api/explorer-dashboards",
+            "GET /api/explorer-dashboards/*",
+            "HEAD /api/explorer-dashboards",
+            "HEAD /api/explorer-dashboards/*",
             # Re-running a report recomputes it from the source: a read, not an edit.
-            "POST /api/explorer-reports/*/run",
+            "POST /api/explorer-dashboards/*/run",
         ],
     ),
     PERM_EXPLORER_WRITE: (
         [],
         [
-            "POST /api/explorer-reports",
-            "PUT /api/explorer-reports/*",
-            "PATCH /api/explorer-reports/*",
-            "DELETE /api/explorer-reports/*",
+            "POST /api/explorer-dashboards",
+            "PUT /api/explorer-dashboards/*",
+            "PATCH /api/explorer-dashboards/*",
+            "DELETE /api/explorer-dashboards/*",
         ],
     ),
     PERM_DATA_EDIT: (

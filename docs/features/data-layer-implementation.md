@@ -228,4 +228,4 @@ New `datasets` subcommands (all JSON-print, matching existing style):
 5. `dataset_profiles` (new)
 6. `schema_snapshots` (new)
 
-(Phase 2 tables — `quality_*`, `metric_definitions`; Phase 3 — `explorer_reports` — are listed in the plan but not migrated yet.)
+(Phase 2 tables — `quality_*`, `metric_definitions`; Phase 3 — `explorer_dashboards` — are listed in the plan but not migrated yet.)

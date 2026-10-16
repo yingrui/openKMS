@@ -36,7 +36,7 @@ def test_data_read_patterns_cover_the_spa_and_read_apis():
     assert "GET /api/datasets/*" in be
     # Reports are their own grant: reading data does not read saved analyses.
     assert "/data-explorer" not in fe
-    assert not [p for p in be if "explorer-reports" in p]
+    assert not [p for p in be if "explorer-dashboards" in p]
 
 
 def test_data_write_patterns_cover_writes():
@@ -107,7 +107,7 @@ def test_engine_resolves_data_read_for_reads():
     required = resolve_required_permission_keys("GET", "/api/datasets/abc/rows", rules)
     assert required is not None and PERM_DATA_READ in required
     # Reports are not data: this rule may not resolve an explorer route at all.
-    assert resolve_required_permission_keys("GET", "/api/explorer-reports", rules) is None
+    assert resolve_required_permission_keys("GET", "/api/explorer-dashboards", rules) is None
 
 
 def test_engine_resolves_data_write_for_writes():
@@ -143,11 +143,11 @@ def test_explorer_read_patterns_own_the_app_the_reads_and_the_refresh():
     fe, be = default_patterns_for_key(PERM_EXPLORER_READ)
     assert "/data-explorer" in fe and "/data-explorer/*" in fe
     for pattern in (
-        "GET /api/explorer-reports",
-        "GET /api/explorer-reports/*",
-        "HEAD /api/explorer-reports/*",
+        "GET /api/explorer-dashboards",
+        "GET /api/explorer-dashboards/*",
+        "HEAD /api/explorer-dashboards/*",
         # A refresh recomputes the report from its source — a read, not an edit.
-        "POST /api/explorer-reports/*/run",
+        "POST /api/explorer-dashboards/*/run",
     ):
         assert pattern in be
 
@@ -155,24 +155,24 @@ def test_explorer_read_patterns_own_the_app_the_reads_and_the_refresh():
 def test_explorer_write_patterns_own_the_edits_but_not_the_run():
     _, be = default_patterns_for_key(PERM_EXPLORER_WRITE)
     for pattern in (
-        "POST /api/explorer-reports",
-        "PUT /api/explorer-reports/*",
-        "PATCH /api/explorer-reports/*",
-        "DELETE /api/explorer-reports/*",
+        "POST /api/explorer-dashboards",
+        "PUT /api/explorer-dashboards/*",
+        "PATCH /api/explorer-dashboards/*",
+        "DELETE /api/explorer-dashboards/*",
     ):
         assert pattern in be
-    assert "POST /api/explorer-reports/*/run" not in be
+    assert "POST /api/explorer-dashboards/*/run" not in be
 
 
 def test_engine_separates_data_access_from_analysis_access():
     rules = _rules(PERM_DATA_READ, PERM_DATA_WRITE, PERM_EXPLORER_READ, PERM_EXPLORER_WRITE)
     for method, path, key in (
-        ("GET", "/api/explorer-reports", PERM_EXPLORER_READ),
-        ("GET", "/api/explorer-reports/r1", PERM_EXPLORER_READ),
-        ("POST", "/api/explorer-reports/r1/run", PERM_EXPLORER_READ),
-        ("POST", "/api/explorer-reports", PERM_EXPLORER_WRITE),
-        ("PUT", "/api/explorer-reports/r1", PERM_EXPLORER_WRITE),
-        ("DELETE", "/api/explorer-reports/r1", PERM_EXPLORER_WRITE),
+        ("GET", "/api/explorer-dashboards", PERM_EXPLORER_READ),
+        ("GET", "/api/explorer-dashboards/r1", PERM_EXPLORER_READ),
+        ("POST", "/api/explorer-dashboards/r1/run", PERM_EXPLORER_READ),
+        ("POST", "/api/explorer-dashboards", PERM_EXPLORER_WRITE),
+        ("PUT", "/api/explorer-dashboards/r1", PERM_EXPLORER_WRITE),
+        ("DELETE", "/api/explorer-dashboards/r1", PERM_EXPLORER_WRITE),
     ):
         assert resolve_required_permission_keys(method, path, rules) == frozenset({key})
     # ... while the data layer keeps its own routes.

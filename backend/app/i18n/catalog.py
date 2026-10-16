@@ -54,6 +54,14 @@ MESSAGES: dict[str, dict[str, str]] = {
     },
     # Grid row filters (Data tab): the caller picked a column/operator that does not apply.
     # Data Explorer: a run needs a source, and a semantic-model block needs a metric.
+    "EXPLORER_SOURCE_KIND_UNKNOWN": {
+        "en": "A report's source is a dataset or a semantic model — '{kind}' is neither.",
+        "zh_CN": "报告的来源是数据集或语义模型——「{kind}」都不是。",
+    },
+    "EXPLORER_SOURCE_FORBIDDEN": {
+        "en": "You do not have access to this report's source data.",
+        "zh_CN": "你没有这份报告的数据源访问权限。",
+    },
     "EXPLORER_SOURCE_MISSING": {
         "en": "This report has no {source} to analyze — pick one first.",
         "zh_CN": "该报告还没有可分析的{source}——请先选择。",

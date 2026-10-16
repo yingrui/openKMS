@@ -1,4 +1,9 @@
-"""explorer — Data Explorer reports: a question over a dataset **or** a semantic model."""
+"""explorer — Data Explorer dashboards: a document of reports, each with its own source.
+
+A **dashboard** is the document (a question + a narrative); each **report** in it owns its source
+(a dataset *or* a semantic model), the query it came from, and the result of its last run. So one
+dashboard can put a model metric beside a raw-dataset health check.
+"""
 from __future__ import annotations
 
 import argparse
@@ -17,67 +22,54 @@ def _read_text(ns: argparse.Namespace) -> str | None:
     return getattr(ns, "narrative", None)
 
 
-def _read_blocks(ns: argparse.Namespace) -> list[dict[str, Any]] | None:
-    """`--blocks-file`: JSON `[{title, insight?, query}]` — the query is the source's own spec."""
-    path = getattr(ns, "blocks_file", None)
+def _read_reports(ns: argparse.Namespace) -> list[dict[str, Any]] | None:
+    """`--reports-file`: JSON array; each entry names **its own** source and query.
+
+    `[{title?, insight?, source_kind\|dataset_id\|semantic_model_id, query, chart?}]`
+    """
+    path = getattr(ns, "reports_file", None)
     if not path:
         return None
-    blocks = json.loads(Path(path).read_text(encoding="utf-8"))
-    if not isinstance(blocks, list):
-        raise SystemExit("--blocks-file must be a JSON array of blocks")
-    return blocks
-
-
-def _source_body(ns: argparse.Namespace) -> dict[str, Any]:
-    """The report's source: a dataset or a semantic model (never both)."""
-    kind = getattr(ns, "source_kind", None)
-    dataset_id = getattr(ns, "dataset_id", None)
-    model_id = getattr(ns, "semantic_model_id", None)
-    if kind == "semantic_model" and not model_id:
-        raise SystemExit("--source-kind semantic_model needs --semantic-model-id")
-    if kind == "dataset" and not dataset_id:
-        raise SystemExit("--source-kind dataset needs --dataset-id")
-    if kind is None and not dataset_id and not model_id:
-        raise SystemExit("Pick a source: --dataset-id or --semantic-model-id")
-    body: dict[str, Any] = {}
-    if kind:
-        body["source_kind"] = kind
-    if dataset_id:
-        body["dataset_id"] = dataset_id
-        body.setdefault("source_kind", "dataset")
-    if model_id:
-        body["semantic_model_id"] = model_id
-        body.setdefault("source_kind", "semantic_model")
-    return body
+    reports = json.loads(Path(path).read_text(encoding="utf-8"))
+    if not isinstance(reports, list):
+        raise SystemExit("--reports-file must be a JSON array of reports")
+    for i, report in enumerate(reports):
+        if not isinstance(report, dict):
+            raise SystemExit(f"report {i} must be an object")
+        if not (report.get("dataset_id") or report.get("semantic_model_id")):
+            raise SystemExit(
+                f"report {i} names no source: give it dataset_id or semantic_model_id"
+            )
+    return reports
 
 
 def cmd_list(ns: argparse.Namespace) -> None:
     with client() as s:
-        r = s.get("/api/explorer-reports")
+        r = s.get("/api/explorer-dashboards")
     r.raise_for_status()
     print_json(r.json())
 
 
 def cmd_get(ns: argparse.Namespace) -> None:
     with client() as s:
-        r = s.get(f"/api/explorer-reports/{ns.id}")
+        r = s.get(f"/api/explorer-dashboards/{ns.id}")
     r.raise_for_status()
     print_json(r.json())
 
 
 def cmd_create(ns: argparse.Namespace) -> None:
-    body: dict[str, Any] = {"name": ns.name, **_source_body(ns)}
+    body: dict[str, Any] = {"name": ns.name}
     if ns.question:
         body["question"] = ns.question
     narrative = _read_text(ns)
     if narrative:
         body["narrative"] = narrative
-    blocks = _read_blocks(ns)
-    if blocks is not None:
-        body["blocks"] = blocks
-    confirm_or_abort("create explorer report", "POST", "/api/explorer-reports", body, ns.yes, ns.dry_run)
+    reports = _read_reports(ns)
+    if reports is not None:
+        body["reports"] = reports
+    confirm_or_abort("create dashboard", "POST", "/api/explorer-dashboards", body, ns.yes, ns.dry_run)
     with client() as s:
-        r = s.post("/api/explorer-reports", json=body)
+        r = s.post("/api/explorer-dashboards", json=body)
     r.raise_for_status()
     print_json(r.json())
 
@@ -91,15 +83,13 @@ def cmd_update(ns: argparse.Namespace) -> None:
     narrative = _read_text(ns)
     if narrative is not None:
         body["narrative"] = narrative
-    if ns.dataset_id or ns.semantic_model_id or ns.source_kind:
-        body.update(_source_body(ns))
-    blocks = _read_blocks(ns)
-    if blocks is not None:
-        body["blocks"] = blocks
+    reports = _read_reports(ns)
+    if reports is not None:
+        body["reports"] = reports
     if not body:
         raise SystemExit("Nothing to update.")
-    path = f"/api/explorer-reports/{ns.id}"
-    confirm_or_abort("update explorer report", "PUT", path, body, ns.yes, ns.dry_run)
+    path = f"/api/explorer-dashboards/{ns.id}"
+    confirm_or_abort("update dashboard", "PUT", path, body, ns.yes, ns.dry_run)
     with client() as s:
         r = s.put(path, json=body)
     r.raise_for_status()
@@ -107,9 +97,9 @@ def cmd_update(ns: argparse.Namespace) -> None:
 
 
 def cmd_run(ns: argparse.Namespace) -> None:
-    """Run every block against the report's source and keep the results."""
-    path = f"/api/explorer-reports/{ns.id}/run"
-    confirm_or_abort("run explorer report", "POST", path, None, ns.yes, ns.dry_run)
+    """Run every report against **its own** source and keep the results."""
+    path = f"/api/explorer-dashboards/{ns.id}/run"
+    confirm_or_abort("run dashboard", "POST", path, None, ns.yes, ns.dry_run)
     with client() as s:
         r = s.post(path)
     r.raise_for_status()
@@ -117,65 +107,54 @@ def cmd_run(ns: argparse.Namespace) -> None:
 
 
 def cmd_delete(ns: argparse.Namespace) -> None:
-    path = f"/api/explorer-reports/{ns.id}"
-    confirm_or_abort("delete explorer report", "DELETE", path, None, ns.yes, ns.dry_run)
+    path = f"/api/explorer-dashboards/{ns.id}"
+    confirm_or_abort("delete dashboard", "DELETE", path, None, ns.yes, ns.dry_run)
     with client() as s:
         r = s.delete(path)
     r.raise_for_status()
-    print(f"deleted explorer report {ns.id}")
+    print(f"deleted dashboard {ns.id}")
 
 
 def add_subparser(sub) -> None:
-    p = sub.add_parser("explorer", help="Data Explorer reports")
+    p = sub.add_parser("explorer", help="Data Explorer dashboards")
     sp = p.add_subparsers(dest="explorer_cmd", required=True)
 
-    ls = sp.add_parser("reports-list", help="List explorer reports")
+    ls = sp.add_parser("dashboards-list", help="List dashboards")
     ls.set_defaults(fn=cmd_list)
 
-    gt = sp.add_parser("reports-get", help="Get an explorer report")
+    gt = sp.add_parser("dashboards-get", help="Get a dashboard (its reports carry the results)")
     gt.add_argument("--id", required=True)
     gt.set_defaults(fn=cmd_get)
 
-    cr = sp.add_parser("reports-create", help="Create an explorer report")
+    cr = sp.add_parser("dashboards-create", help="Create a dashboard")
     cr.add_argument("--name", required=True)
     cr.add_argument("--question", default=None)
-    cr.add_argument("--dataset-id", default=None, help="source: a Catalog dataset")
-    cr.add_argument("--semantic-model-id", default=None, help="source: a semantic model")
-    cr.add_argument(
-        "--source-kind",
-        default=None,
-        choices=("dataset", "semantic_model"),
-        help="usually inferred from --dataset-id / --semantic-model-id",
-    )
     cr.add_argument("--narrative", default=None)
     cr.add_argument("--narrative-file", default=None)
     cr.add_argument(
-        "--blocks-file",
+        "--reports-file",
         default=None,
-        help="JSON file: [{title, insight?, query}] — query is the source's spec (dataset rows query, or a model metric query)",
+        help='JSON file: [{title?, insight?, dataset_id|semantic_model_id, query, chart?}] — every report names its own source',
     )
     add_write_flags(cr)
     cr.set_defaults(fn=cmd_create)
 
-    up = sp.add_parser("reports-update", help="Update an explorer report")
+    up = sp.add_parser("dashboards-update", help="Update a dashboard")
     up.add_argument("--id", required=True)
     up.add_argument("--name", default=None)
     up.add_argument("--status", default=None, choices=("draft", "ready"))
     up.add_argument("--narrative", default=None)
     up.add_argument("--narrative-file", default=None)
-    up.add_argument("--dataset-id", default=None)
-    up.add_argument("--semantic-model-id", default=None)
-    up.add_argument("--source-kind", default=None, choices=("dataset", "semantic_model"))
-    up.add_argument("--blocks-file", default=None)
+    up.add_argument("--reports-file", default=None)
     add_write_flags(up)
     up.set_defaults(fn=cmd_update)
 
-    rn = sp.add_parser("reports-run", help="Run a report's blocks against its source")
+    rn = sp.add_parser("dashboards-run", help="Run every report against its own source")
     rn.add_argument("--id", required=True)
     add_write_flags(rn)
     rn.set_defaults(fn=cmd_run)
 
-    dl = sp.add_parser("reports-delete", help="Delete an explorer report")
+    dl = sp.add_parser("dashboards-delete", help="Delete a dashboard")
     dl.add_argument("--id", required=True)
     add_write_flags(dl)
     dl.set_defaults(fn=cmd_delete)

@@ -40,7 +40,7 @@ function compact(value: number): string {
   return new Intl.NumberFormat(undefined, { maximumFractionDigits: 2 }).format(value);
 }
 
-/** One report block's result, drawn — the data comes from the server, this only draws it. */
+/** One dashboard report's result, drawn — the data comes from the server, this only draws it. */
 export function ExplorerChart({ spec, series }: { spec: ExplorerChartSpec; series: ChartSeries }) {
   const { keys, data } = series;
   const Chart = spec.type === 'bar' ? BarChart : LineChart;

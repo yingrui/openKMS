@@ -4,25 +4,24 @@ import { Link, useNavigate, useParams } from 'react-router-dom';
 import { Loader2, Play, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import {
-  deleteExplorerReport,
-  fetchExplorerReport,
-  runExplorerReport,
-  type ExplorerReport,
-  type ExplorerReportBlock,
-} from '../../data/explorerApi';
+  deleteDashboard,
+  fetchDashboard,
+  runDashboard,
+  type ExplorerDashboard,
+} from '../../data/dashboardsApi';
 import { fetchDatasets, type DatasetResponse } from '../../data/datasetsApi';
 import { fetchSemanticModels, type SemanticModelResponse } from '../../data/semanticModelsApi';
 import { useConfirm } from '../../contexts/ConfirmContext';
-import { ExplorerReportBlockView } from './ExplorerReportBlockView';
+import { DashboardReportView } from './DashboardReportView';
 import '../ontology/ontology-admin.scss';
 import './data-explorer.scss';
 
-export function ExplorerReportDetail() {
+export function DashboardDetailPage() {
   const { t } = useTranslation('ontology');
   const { id = '' } = useParams();
   const navigate = useNavigate();
   const confirm = useConfirm();
-  const [report, setReport] = useState<ExplorerReport | null>(null);
+  const [dashboard, setDashboard] = useState<ExplorerDashboard | null>(null);
   const [loading, setLoading] = useState(true);
   const [running, setRunning] = useState(false);
   const [datasets, setDatasets] = useState<DatasetResponse[]>([]);
@@ -32,10 +31,10 @@ export function ExplorerReportDetail() {
     if (!id) return;
     setLoading(true);
     try {
-      setReport(await fetchExplorerReport(id));
+      setDashboard(await fetchDashboard(id));
     } catch (e) {
       toast.error(e instanceof Error ? e.message : t('datasets.loadFailed'));
-      setReport(null);
+      setDashboard(null);
     } finally {
       setLoading(false);
     }
@@ -45,7 +44,7 @@ export function ExplorerReportDetail() {
     void load();
   }, [load]);
 
-  // The source's name is part of the report's provenance: every number says where it came from.
+  // A source's name is part of a report's provenance: every number says where it came from.
   useEffect(() => {
     void Promise.all([fetchDatasets(), fetchSemanticModels()])
       .then(([d, m]) => {
@@ -58,31 +57,13 @@ export function ExplorerReportDetail() {
   const handleRun = async () => {
     setRunning(true);
     try {
-      setReport(await runExplorerReport(id));
+      setDashboard(await runDashboard(id));
       toast.success(t('dataExplorer.ran'));
     } catch (e) {
       toast.error(e instanceof Error ? e.message : t('dataExplorer.runFailed'));
     } finally {
       setRunning(false);
     }
-  };
-
-  const sourceLabel = () => {
-    if (!report) return '';
-    if (report.source_kind === 'semantic_model') {
-      const m = models.find((x) => x.id === report.semantic_model_id);
-      return m ? m.name : t('dataExplorer.sourceMissing');
-    }
-    const d = datasets.find((x) => x.id === report.dataset_id);
-    return d ? d.display_name || `${d.schema_name}.${d.table_name}` : t('dataExplorer.sourceMissing');
-  };
-
-  const sourceHref = () => {
-    if (!report) return null;
-    if (report.source_kind === 'semantic_model') {
-      return report.semantic_model_id ? `/data-model/${report.semantic_model_id}` : null;
-    }
-    return report.dataset_id ? `/datasets/${report.dataset_id}` : null;
   };
 
   const handleDelete = async () => {
@@ -96,7 +77,7 @@ export function ExplorerReportDetail() {
     )
       return;
     try {
-      await deleteExplorerReport(id);
+      await deleteDashboard(id);
       toast.success(t('dataExplorer.deleted'));
       navigate('/data-explorer');
     } catch (e) {
@@ -112,21 +93,27 @@ export function ExplorerReportDetail() {
       </div>
     );
   }
-  if (!report) return null;
+  if (!dashboard) return null;
+
+  const reports = dashboard.reports ?? [];
 
   return (
     <div className="ontology-admin">
       <div className="page-header">
         <div>
-          <h1>{report.name}</h1>
-          {report.question && <p className="page-subtitle">{report.question}</p>}
+          <h1>{dashboard.name}</h1>
+          <p className="page-subtitle">
+            {dashboard.question ?? t('dataExplorer.noQuestion')}
+            {' · '}
+            <Link to="/data-explorer">{t('dataExplorer.backToDashboards')}</Link>
+          </p>
         </div>
         <div className="page-header-actions">
           <button
             type="button"
             className="btn btn-primary"
             onClick={() => void handleRun()}
-            disabled={running}
+            disabled={running || reports.length === 0}
           >
             {running ? (
               <Loader2 size={16} className="console-loading-spinner" aria-hidden />
@@ -135,29 +122,30 @@ export function ExplorerReportDetail() {
             )}
             <span>{t('dataExplorer.run')}</span>
           </button>
-          <button type="button" className="btn btn-secondary" onClick={() => void handleDelete()}>
+          <button
+            type="button"
+            className="btn btn-secondary"
+            onClick={() => void handleDelete()}
+            aria-label={t('shared.delete')}
+          >
             <Trash2 size={16} aria-hidden />
-            <span>{t('shared.delete')}</span>
           </button>
         </div>
       </div>
-      <p className="page-subtitle explorer-report-source">
-        {report.source_kind === 'semantic_model'
-          ? t('dataExplorer.sourceModel')
-          : t('dataExplorer.sourceDataset')}{' '}
-        {sourceHref() ? <Link to={sourceHref()!}>{sourceLabel()}</Link> : sourceLabel()}
-      </p>
       <div className="ontology-admin-content">
-        {report.narrative ? (
+        {dashboard.narrative ? (
           <section>
             <h2>{t('dataExplorer.narrative')}</h2>
-            <div className="explorer-report-narrative">{report.narrative}</div>
+            <div className="explorer-report-narrative">{dashboard.narrative}</div>
           </section>
         ) : (
           <p className="entity-view__readonly">{t('dataExplorer.noNarrative')}</p>
         )}
-        {(report.blocks ?? []).map((block: ExplorerReportBlock, i: number) => (
-          <ExplorerReportBlockView key={i} block={block} />
+        {reports.length === 0 && (
+          <p className="entity-view__readonly">{t('dataExplorer.reportsEmpty')}</p>
+        )}
+        {reports.map((report, i) => (
+          <DashboardReportView key={i} report={report} datasets={datasets} models={models} />
         ))}
       </div>
     </div>

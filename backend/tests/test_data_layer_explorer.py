@@ -1,4 +1,4 @@
-"""Explorer report runs: which engine a block goes to, and what a report needs to be runnable."""
+"""Dashboard report runs: which engine a report goes to, and what one needs to be runnable."""
 
 from __future__ import annotations
 
@@ -9,14 +9,15 @@ from app.services.data_layer.explorer import (
     SOURCE_SEMANTIC_MODEL,
     dataset_query_kwargs,
     model_query_kwargs,
+    report_source,
     source_failure,
 )
 from app.services.data_layer.query import QueryError
 
 
 def test_a_dataset_report_needs_a_dataset():
-    assert source_failure(SOURCE_DATASET, "d1", None) is None
-    failure = source_failure(SOURCE_DATASET, None, None)
+    assert source_failure(report_source({"dataset_id": "d1"})) is None
+    failure = source_failure(report_source({"dataset_id": None}))
     assert failure is not None
     assert failure.code == "EXPLORER_SOURCE_MISSING"
     assert failure.kind == "request"
@@ -24,14 +25,14 @@ def test_a_dataset_report_needs_a_dataset():
 
 
 def test_a_model_report_needs_a_model_and_names_it_in_the_message():
-    assert source_failure(SOURCE_SEMANTIC_MODEL, "d1", "m1") is None
-    failure = source_failure(SOURCE_SEMANTIC_MODEL, "d1", None)
+    assert source_failure(report_source({"source_kind": SOURCE_SEMANTIC_MODEL, "semantic_model_id": "m1"})) is None
+    failure = source_failure(report_source({"source_kind": SOURCE_SEMANTIC_MODEL}))
     assert failure is not None
     assert failure.params == {"source": "model"}
     assert "model" in failure.detail  # the missing column, for the details line
 
 
-def test_dataset_blocks_carry_the_rows_query():
+def test_dataset_reports_carry_the_rows_query():
     assert dataset_query_kwargs(None) == {
         "filters": [],
         "sort": None,
@@ -45,7 +46,7 @@ def test_dataset_blocks_carry_the_rows_query():
     assert kwargs["limit"] == 5
 
 
-def test_model_blocks_carry_the_model_query():
+def test_model_reports_carry_the_model_query():
     assert model_query_kwargs({"metric": "市盈率"}) == {
         "metric": "市盈率",
         "group_by": [],
@@ -80,3 +81,18 @@ def test_a_model_block_without_a_metric_is_a_request_failure():
         model_query_kwargs({"group_by": [{"field": "industry"}]})
     assert excinfo.value.code == "EXPLORER_BLOCK_METRIC_MISSING"
     assert excinfo.value.kind == "request"
+
+
+def test_a_report_reads_exactly_one_source():
+    """A report is model-backed or dataset-backed; a `source_kind` we do not know is refused."""
+    model = report_source({"source_kind": SOURCE_SEMANTIC_MODEL, "semantic_model_id": "m1", "dataset_id": "d1"})
+    assert (model.kind, model.resource_id, model.dataset_id) == (SOURCE_SEMANTIC_MODEL, "m1", None)
+    default = report_source({"dataset_id": "d1", "semantic_model_id": "m1"})
+    assert (default.kind, default.resource_id) == (SOURCE_DATASET, "d1")
+    with pytest.raises(QueryError) as excinfo:
+        report_source({"source_kind": "spreadsheet"})
+    assert excinfo.value.failure.code == "EXPLORER_SOURCE_KIND_UNKNOWN"
+    # A forbidden source is a `request` failure that names what was out of reach, never a row.
+    from app.services.data_layer.explorer import source_forbidden
+
+    assert source_forbidden(default).code == "EXPLORER_SOURCE_FORBIDDEN"

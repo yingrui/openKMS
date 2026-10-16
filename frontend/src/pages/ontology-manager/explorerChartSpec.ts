@@ -1,5 +1,5 @@
 /**
- * A report block's chart spec — presentation only.
+ * A dashboard report's chart spec — presentation only.
  *
  * The block owns its query and its result rows; the chart says *how to read them*, so the same
  * block can be drawn or tabulated. Kept pure and tested: a spec the result cannot satisfy falls

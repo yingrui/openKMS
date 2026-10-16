@@ -49,7 +49,7 @@ import app.models.dataset_profile  # noqa: F401 - register models with Base.meta
 import app.models.dataset_edit  # noqa: F401 - register models with Base.metadata
 import app.models.quality_rule  # noqa: F401 - register models with Base.metadata
 import app.models.metric_definition  # noqa: F401 - register models with Base.metadata
-import app.models.explorer_report  # noqa: F401 - register models with Base.metadata
+import app.models.explorer_dashboard  # noqa: F401 - register models with Base.metadata
 import app.models.connector  # noqa: F401 - register models with Base.metadata
 import app.models.kubernetes_cluster  # noqa: F401 - register models with Base.metadata
 import app.models.evaluation  # noqa: F401 - register models with Base.metadata

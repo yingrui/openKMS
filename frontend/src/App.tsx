@@ -251,9 +251,9 @@ const ModelSettingsTab = lazy(() =>
 const DataExplorerPage = lazy(() =>
   import('./pages/ontology-manager/DataExplorerPage').then((m) => ({ default: m.DataExplorerPage })),
 );
-const ExplorerReportDetail = lazy(() =>
-  import('./pages/ontology-manager/ExplorerReportDetail').then((m) => ({
-    default: m.ExplorerReportDetail,
+const DashboardDetailPage = lazy(() =>
+  import('./pages/ontology-manager/DashboardDetailPage').then((m) => ({
+    default: m.DashboardDetailPage,
   })),
 );
 const DatasetOverviewTab = lazy(() =>
@@ -452,7 +452,7 @@ function App() {
             </Route>
           </Route>
           <Route path="data-explorer" element={<DataExplorerPage />} />
-          <Route path="data-explorer/:id" element={<ExplorerReportDetail />} />
+          <Route path="data-explorer/:id" element={<DashboardDetailPage />} />
           <Route path="datasets" element={<DatasetsListPage />} />
           <Route path="ontology-manager" element={<Outlet />}>
             <Route index element={<OntologyList />} />

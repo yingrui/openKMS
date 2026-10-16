@@ -1,14 +1,15 @@
-"""Run an Explorer report's blocks against its source — where the two query engines meet.
+"""Run a dashboard's reports against their sources — where the two query engines meet.
 
-A report binds to a **dataset** (the physical table, queried through `query_dataset_rows`) or a
-**semantic model** (fields + metrics, queried through `run_query`). Both engines already exist, are
-read-only, capped and classified; this module only decides which one a block goes to and turns a
-stored block query into that engine's arguments.
+A **dashboard** is the document (a question, a narrative, the reports in it); each **report** in it
+owns its source — a **dataset** (the physical table, queried through `query_dataset_rows`) or a
+**semantic model** (fields + metrics, queried through `run_query`) — and the query it came from. So
+one dashboard can mix sources, and this module decides which engine each report goes to and turns a
+stored report query into that engine's arguments.
 """
 
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, NamedTuple
 
 from app.services.data_layer.query import QueryError
 from app.services.data_layer.query_errors import REQUEST, QueryFailure
@@ -18,21 +19,54 @@ SOURCE_SEMANTIC_MODEL = "semantic_model"
 SOURCE_KINDS = (SOURCE_DATASET, SOURCE_SEMANTIC_MODEL)
 
 
-def source_failure(
-    source_kind: str | None,
-    dataset_id: str | None,
-    semantic_model_id: str | None,
-) -> QueryFailure | None:
-    """What is wrong with the report's source, or None when it can be run (kind=`request`)."""
-    wants_model = source_kind == SOURCE_SEMANTIC_MODEL
-    chosen = semantic_model_id if wants_model else dataset_id
-    if chosen:
+class ReportSource(NamedTuple):
+    """The source one report reads: its kind plus the id that applies to that kind."""
+
+    kind: str
+    dataset_id: str | None
+    semantic_model_id: str | None
+
+    @property
+    def resource_id(self) -> str | None:
+        return self.semantic_model_id if self.kind == SOURCE_SEMANTIC_MODEL else self.dataset_id
+
+
+def report_source(report: dict[str, Any] | None) -> ReportSource:
+    """A stored report's source. A report is either model-backed or dataset-backed, never both."""
+    entry = report or {}
+    kind = entry.get("source_kind")
+    if kind == SOURCE_SEMANTIC_MODEL:
+        return ReportSource(SOURCE_SEMANTIC_MODEL, None, entry.get("semantic_model_id"))
+    if kind not in (None, SOURCE_DATASET):
+        raise QueryError(
+            "A report's source is a dataset or a semantic model.",
+            QueryFailure(
+                "EXPLORER_SOURCE_KIND_UNKNOWN", REQUEST, str(kind), params={"kind": str(kind)}
+            ),
+        )
+    return ReportSource(SOURCE_DATASET, entry.get("dataset_id"), None)
+
+
+def source_failure(source: ReportSource) -> QueryFailure | None:
+    """What is wrong with a report's source, or None when it can be run (kind=`request`)."""
+    if source.resource_id:
         return None
+    wants_model = source.kind == SOURCE_SEMANTIC_MODEL
     return QueryFailure(
         "EXPLORER_SOURCE_MISSING",
         REQUEST,
         "semantic_model_id" if wants_model else "dataset_id",
         params={"source": "model" if wants_model else "dataset"},
+    )
+
+
+def source_forbidden(source: ReportSource) -> QueryFailure:
+    """The report reads a source this caller may not: say so without leaking a row."""
+    return QueryFailure(
+        "EXPLORER_SOURCE_FORBIDDEN",
+        REQUEST,
+        "semantic_model_id" if source.kind == SOURCE_SEMANTIC_MODEL else "dataset_id",
+        params={"source": "model" if source.kind == SOURCE_SEMANTIC_MODEL else "dataset"},
     )
 
 

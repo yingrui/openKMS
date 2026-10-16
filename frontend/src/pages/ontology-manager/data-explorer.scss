@@ -54,7 +54,20 @@
   }
 }
 
-// One block's result: a chart or the table, with its own counts and the view toggle on one line.
+// A report's source, under its title — a dashboard's tiles may read different sources.
+.dashboard-report__source {
+  margin: 0 0 var(--space-2);
+  font-size: var(--text-sm);
+  color: var(--color-text-secondary);
+
+  a {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+  }
+}
+
+// One report's result: a chart or the table, with its own counts and the view toggle on one line.
 .explorer-block__toolbar {
   display: flex;
   align-items: center;

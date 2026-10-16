@@ -294,83 +294,58 @@ def test_kb_wiki_spaces_link(mock_api):
     assert json.loads(recorded[-1].content) == {"wiki_space_id": "sp1"}
 
 
-# --- Data Explorer: a report binds to a dataset **or** a semantic model, and can be run ---
+# --- Data Explorer: a dashboard of reports, each with its own source ---
 
 
-def test_explorer_report_from_a_semantic_model(mock_api, tmp_path):
+def test_dashboard_create_from_a_reports_file(mock_api, tmp_path):
     recorded, responses = mock_api
-    responses[("POST", "/api/explorer-reports")] = (201, {"id": "r1"})
+    responses[("POST", "/api/explorer-dashboards")] = (201, {"id": "d1"})
     from openkms.commands.explorer import cmd_create
 
-    blocks = tmp_path / "blocks.json"
-    blocks.write_text('[{"title": "P/E by industry", "query": {"metric": "pe"}}]', encoding="utf-8")
-
-    cmd_create(
-        _ns(
-            name="Valuation",
-            question=None,
-            narrative=None,
-            narrative_file=None,
-            blocks_file=str(blocks),
-            dataset_id=None,
-            semantic_model_id="m1",
-            source_kind=None,
-        )
+    reports = tmp_path / "reports.json"
+    reports.write_text(
+        json.dumps(
+            [
+                {"title": "P/E by industry", "semantic_model_id": "m1", "query": {"metric": "pe"}},
+                {
+                    "title": "Null share",
+                    "dataset_id": "d1",
+                    "query": {"aggregates": [{"fn": "count"}]},
+                },
+            ]
+        ),
+        encoding="utf-8",
     )
+
+    cmd_create(_ns(name="Valuation", question=None, narrative=None, narrative_file=None, reports_file=str(reports)))
     body = json.loads(recorded[-1].content)
-    assert body["source_kind"] == "semantic_model"
-    assert body["semantic_model_id"] == "m1"
-    assert body["blocks"] == [{"title": "P/E by industry", "query": {"metric": "pe"}}]
+    assert body["name"] == "Valuation"
+    # The dashboard carries no source of its own: every report names the one it reads.
+    assert "dataset_id" not in body and "source_kind" not in body
+    assert [r["title"] for r in body["reports"]] == ["P/E by industry", "Null share"]
+    assert body["reports"][0]["semantic_model_id"] == "m1"
+    assert body["reports"][1]["dataset_id"] == "d1"
 
 
-def test_explorer_report_from_a_dataset_infers_the_kind(mock_api):
-    recorded, _ = mock_api
-    from openkms.commands.explorer import cmd_create
-
-    cmd_create(
-        _ns(
-            name="Raw slice",
-            question=None,
-            narrative=None,
-            narrative_file=None,
-            blocks_file=None,
-            dataset_id="d1",
-            semantic_model_id=None,
-            source_kind=None,
-        )
-    )
-    body = json.loads(recorded[-1].content)
-    assert body["source_kind"] == "dataset" and body["dataset_id"] == "d1"
-
-
-def test_explorer_report_needs_a_source():
+def test_dashboard_report_without_a_source_is_refused(tmp_path):
     import pytest
 
     from openkms.commands.explorer import cmd_create
 
-    with pytest.raises(SystemExit, match="Pick a source"):
-        cmd_create(
-            _ns(
-                name="Nowhere",
-                question=None,
-                narrative=None,
-                narrative_file=None,
-                blocks_file=None,
-                dataset_id=None,
-                semantic_model_id=None,
-                source_kind=None,
-            )
-        )
+    reports = tmp_path / "reports.json"
+    reports.write_text('[{"title": "Nowhere", "query": {}}]', encoding="utf-8")
+    with pytest.raises(SystemExit, match="names no source"):
+        cmd_create(_ns(name="X", question=None, narrative=None, narrative_file=None, reports_file=str(reports)))
 
 
-def test_explorer_report_run(mock_api):
+def test_dashboard_run(mock_api):
     recorded, responses = mock_api
-    responses[("POST", "/api/explorer-reports/r1/run")] = (200, {"id": "r1", "blocks": []})
+    responses[("POST", "/api/explorer-dashboards/d1/run")] = (200, {"id": "d1", "reports": []})
     from openkms.commands.explorer import cmd_run
 
-    cmd_run(_ns(id="r1"))
+    cmd_run(_ns(id="d1"))
     assert recorded[-1].method == "POST"
-    assert recorded[-1].url.path == "/api/explorer-reports/r1/run"
+    assert recorded[-1].url.path == "/api/explorer-dashboards/d1/run"
 
 
 def test_semantic_model_get(mock_api):
