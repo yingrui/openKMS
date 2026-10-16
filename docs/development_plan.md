@@ -167,6 +167,10 @@ Active UX / quality gaps: [Tech debt](./tech_debt.md).
 
 ### All dashboards joins the app's card list (2026-10) — done
 
+- The "nothing here yet" line (`entity-view__readonly`) moved to the shared utilities — it was
+  defined in one page's sheet while ~10 pages across several routes used it (rule 16's baseline
+  29 → 28), and `DashboardDetailPage` stopped importing the manager sheet for two global button
+  classes.
 - The list page was the one screen that matched nothing: its own header, its own grid, its own card.
   It now uses the shared `resource-list.scss` (the same chrome as Knowledge Bases and Wiki spaces) —
   page header + primary action, card grid, icon/title/description/meta card — with the question as
