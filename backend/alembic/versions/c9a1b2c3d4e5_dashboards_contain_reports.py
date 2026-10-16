@@ -25,7 +25,9 @@ from typing import Sequence, Union
 import sqlalchemy as sa
 from alembic import op
 
-from app.services.permissions.permission_catalog import PERM_EXPLORER_READ, PERM_EXPLORER_WRITE
+# The keys as they were then: a historical migration must not break when a constant is renamed.
+PERM_EXPLORER_READ = "explorer:read"
+PERM_EXPLORER_WRITE = "explorer:write"
 
 revision: str = "c9a1b2c3d4e5"
 down_revision: Union[str, Sequence[str], None] = "b3c4d5e6f7a8"

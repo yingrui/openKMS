@@ -59,21 +59,21 @@ export function ReportQueryBuilder({
 
   return (
     <>
-      <FormField label={t('dataExplorer.reportSource')}>
+      <FormField label={t('dataInsights.reportSource')}>
         <select
           value={form.kind}
           onChange={(e) => patch({ kind: e.target.value as AddReportForm['kind'] })}
         >
-          <option value="dataset">{t('dataExplorer.sourceDataset')}</option>
-          <option value="semantic_model">{t('dataExplorer.sourceModel')}</option>
+          <option value="dataset">{t('dataInsights.sourceDataset')}</option>
+          <option value="semantic_model">{t('dataInsights.sourceModel')}</option>
         </select>
       </FormField>
 
       {form.kind === 'dataset' ? (
         <>
-          <FormField label={t('dataExplorer.sourceDataset')}>
+          <FormField label={t('dataInsights.sourceDataset')}>
             <select value={form.datasetId} onChange={(e) => patch({ datasetId: e.target.value })}>
-              <option value="">{t('dataExplorer.sourceMissing')}</option>
+              <option value="">{t('dataInsights.sourceMissing')}</option>
               {datasetOptions.map((d) => (
                 <option key={d.id} value={d.id}>
                   {d.label}
@@ -83,13 +83,13 @@ export function ReportQueryBuilder({
           </FormField>
           {form.datasetId && (
             <>
-              <FormField label={t('dataExplorer.queryShape')}>
+              <FormField label={t('dataInsights.queryShape')}>
                 <select
                   value={form.datasetMode}
                   onChange={(e) => patch({ datasetMode: e.target.value as AddReportForm['datasetMode'] })}
                 >
-                  <option value="rows">{t('dataExplorer.queryRows')}</option>
-                  <option value="summary">{t('dataExplorer.querySummary')}</option>
+                  <option value="rows">{t('dataInsights.queryRows')}</option>
+                  <option value="summary">{t('dataInsights.querySummary')}</option>
                 </select>
               </FormField>
 
@@ -129,7 +129,7 @@ export function ReportQueryBuilder({
               ) : (
                 <>
                   <div className="openkms-flex-row-gap">
-                    <FormField label={t('dataExplorer.queryGroupBy')}>
+                    <FormField label={t('dataInsights.queryGroupBy')}>
                       <select value={form.groupBy} onChange={(e) => patch({ groupBy: e.target.value })}>
                         <option value="">{t('datasets.selectColumn')}</option>
                         {datasetColumnOptions.map((c) => (
@@ -140,15 +140,15 @@ export function ReportQueryBuilder({
                       </select>
                     </FormField>
                     {dateColumns.has(form.groupBy) && (
-                      <FormField label={t('dataExplorer.queryGrain')}>
+                      <FormField label={t('dataInsights.queryGrain')}>
                         <select
                           value={form.granularity}
                           onChange={(e) => patch({ granularity: e.target.value })}
                         >
-                          <option value="">{t('dataExplorer.queryNoGrain')}</option>
+                          <option value="">{t('dataInsights.queryNoGrain')}</option>
                           {GRANULARITIES.map((g) => (
                             <option key={g} value={g}>
-                              {t(`dataExplorer.grain_${g}`)}
+                              {t(`dataInsights.grain_${g}`)}
                             </option>
                           ))}
                         </select>
@@ -157,7 +157,7 @@ export function ReportQueryBuilder({
                   </div>
                   {form.aggregates.map((aggregate, i) => (
                     <div key={i} className="openkms-flex-row-gap">
-                      <FormField label={t('dataExplorer.queryAggregate')}>
+                      <FormField label={t('dataInsights.queryAggregate')}>
                         <select
                           value={aggregate.fn}
                           onChange={(e) =>
@@ -176,7 +176,7 @@ export function ReportQueryBuilder({
                         </select>
                       </FormField>
                       {aggregate.fn !== 'count' && (
-                        <FormField label={t('dataExplorer.viewValueColumn')}>
+                        <FormField label={t('dataInsights.viewValueColumn')}>
                           <select
                             value={aggregate.column}
                             onChange={(e) =>
@@ -218,7 +218,7 @@ export function ReportQueryBuilder({
                       onClick={() => patch({ aggregates: [...form.aggregates, { fn: 'avg', column: '' }] })}
                     >
                       <Plus size={14} aria-hidden />
-                      {t('dataExplorer.queryAddAggregate')}
+                      {t('dataInsights.queryAddAggregate')}
                     </button>
                   )}
                 </>
@@ -228,9 +228,9 @@ export function ReportQueryBuilder({
         </>
       ) : (
         <>
-          <FormField label={t('dataExplorer.sourceModel')}>
+          <FormField label={t('dataInsights.sourceModel')}>
             <select value={form.modelId} onChange={(e) => patch({ modelId: e.target.value })}>
-              <option value="">{t('dataExplorer.sourceMissing')}</option>
+              <option value="">{t('dataInsights.sourceMissing')}</option>
               {models.map((m) => (
                 <option key={m.id} value={m.id}>
                   {m.name}
@@ -240,9 +240,9 @@ export function ReportQueryBuilder({
           </FormField>
           {form.modelId && (
             <>
-              <FormField label={t('dataExplorer.queryMetric')}>
+              <FormField label={t('dataInsights.queryMetric')}>
                 <select value={form.metric} onChange={(e) => patch({ metric: e.target.value })}>
-                  <option value="">{t('dataExplorer.queryNoMetric')}</option>
+                  <option value="">{t('dataInsights.queryNoMetric')}</option>
                   {metrics.map((m) => (
                     <option key={m.id} value={m.id}>
                       {m.name}
@@ -252,7 +252,7 @@ export function ReportQueryBuilder({
               </FormField>
               {form.modelGroupBy.map((group, i) => (
                 <div key={i} className="openkms-flex-row-gap">
-                  <FormField label={t('dataExplorer.queryGroupBy')}>
+                  <FormField label={t('dataInsights.queryGroupBy')}>
                     <select
                       value={group.field}
                       onChange={(e) =>
@@ -272,7 +272,7 @@ export function ReportQueryBuilder({
                     </select>
                   </FormField>
                   {timeFields.has(group.field) && (
-                    <FormField label={t('dataExplorer.queryGrain')}>
+                    <FormField label={t('dataInsights.queryGrain')}>
                       <select
                         value={group.granularity}
                         onChange={(e) =>
@@ -283,10 +283,10 @@ export function ReportQueryBuilder({
                           })
                         }
                       >
-                        <option value="">{t('dataExplorer.queryNoGrain')}</option>
+                        <option value="">{t('dataInsights.queryNoGrain')}</option>
                         {GRANULARITIES.map((g) => (
                           <option key={g} value={g}>
-                            {t(`dataExplorer.grain_${g}`)}
+                            {t(`dataInsights.grain_${g}`)}
                           </option>
                         ))}
                       </select>
@@ -309,7 +309,7 @@ export function ReportQueryBuilder({
                   onClick={() => patch({ modelGroupBy: [...form.modelGroupBy, { field: '', granularity: '' }] })}
                 >
                   <Plus size={14} aria-hidden />
-                  {t('dataExplorer.queryAddGroup')}
+                  {t('dataInsights.queryAddGroup')}
                 </button>
               )}
             </>

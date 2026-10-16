@@ -49,8 +49,8 @@ PERM_PROJECTS_WRITE = "projects:write"
 PERM_DATA_READ = "data:read"
 PERM_DATA_WRITE = "data:write"
 PERM_DATA_EDIT = "data:edit"
-PERM_EXPLORER_READ = "explorer:read"
-PERM_EXPLORER_WRITE = "explorer:write"
+PERM_INSIGHTS_READ = "insights:read"
+PERM_INSIGHTS_WRITE = "insights:write"
 
 DEFAULT_MEMBER_PERMISSIONS: frozenset[str] = frozenset({PERM_ALL})
 
@@ -299,15 +299,15 @@ OPERATION_KEY_HINTS: tuple[OperationKeyHint, ...] = (
         "data",
     ),
     OperationKeyHint(
-        PERM_EXPLORER_READ,
-        "View data analyses",
-        "Open the Data Explorer and its reports, and re-run a report (a refresh is a read).",
+        PERM_INSIGHTS_READ,
+        "View data insights",
+        "Open Data Insights, read its dashboards, and re-run one (a refresh is a read).",
         "data",
     ),
     OperationKeyHint(
-        PERM_EXPLORER_WRITE,
-        "Manage data analyses",
-        "Create, update, and delete Data Explorer reports.",
+        PERM_INSIGHTS_WRITE,
+        "Manage data insights",
+        "Create, update, and delete Data Insights dashboards.",
         "data",
     ),
 )

@@ -251,8 +251,8 @@ const ModelSettingsTab = lazy(() =>
     default: m.ModelSettingsTab,
   })),
 );
-const DataExplorerPage = lazy(() =>
-  import('./pages/ontology-manager/DataExplorerPage').then((m) => ({ default: m.DataExplorerPage })),
+const DataInsightsPage = lazy(() =>
+  import('./pages/ontology-manager/DataInsightsPage').then((m) => ({ default: m.DataInsightsPage })),
 );
 const DashboardDetailPage = lazy(() =>
   import('./pages/ontology-manager/DashboardDetailPage').then((m) => ({
@@ -455,8 +455,8 @@ function App() {
               <Route path="sharing" element={<DatasetSharingTab />} />
             </Route>
           </Route>
-          <Route path="data-explorer" element={<DataExplorerPage />} />
-          <Route path="data-explorer/:id" element={<DashboardDetailPage />} />
+          <Route path="data-insights" element={<DataInsightsPage />} />
+          <Route path="data-insights/:id" element={<DashboardDetailPage />} />
           <Route path="datasets" element={<DatasetsListPage />} />
           <Route path="ontology-manager" element={<Outlet />}>
             <Route index element={<OntologyList />} />

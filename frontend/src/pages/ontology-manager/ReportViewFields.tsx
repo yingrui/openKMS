@@ -1,7 +1,7 @@
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { CheckList, CheckListItem, FormField } from '../../styles/design-system';
-import { ExplorerChart } from './ExplorerChart';
+import { ReportChart } from './ReportChart';
 import { ReportBarList } from './ReportBarList';
 import { ReportMetric } from './ReportMetric';
 import { ReportTracker } from './ReportTracker';
@@ -83,16 +83,16 @@ export function ReportViewFields({
 
   return (
     <>
-      <FormField label={t('dataExplorer.viewKind')}>
+      <FormField label={t('dataInsights.viewKind')}>
         <select value={view.choice} onChange={(e) => choose(e.target.value as ViewChoice)}>
-          <option value="none">{t('dataExplorer.viewTable')}</option>
-          <option value="line">{t('dataExplorer.chartLine')}</option>
-          <option value="bar">{t('dataExplorer.chartBar')}</option>
-          <option value="combo">{t('dataExplorer.chartCombo')}</option>
-          <option value="scatter">{t('dataExplorer.chartScatter')}</option>
-          <option value="metric">{t('dataExplorer.viewMetric')}</option>
-          <option value="bar_list">{t('dataExplorer.viewBarList')}</option>
-          <option value="tracker">{t('dataExplorer.viewTracker')}</option>
+          <option value="none">{t('dataInsights.viewTable')}</option>
+          <option value="line">{t('dataInsights.chartLine')}</option>
+          <option value="bar">{t('dataInsights.chartBar')}</option>
+          <option value="combo">{t('dataInsights.chartCombo')}</option>
+          <option value="scatter">{t('dataInsights.chartScatter')}</option>
+          <option value="metric">{t('dataInsights.viewMetric')}</option>
+          <option value="bar_list">{t('dataInsights.viewBarList')}</option>
+          <option value="tracker">{t('dataInsights.viewTracker')}</option>
         </select>
       </FormField>
       {view.choice !== 'none' && (
@@ -100,10 +100,10 @@ export function ReportViewFields({
           <FormField
             label={
               view.choice === 'scatter'
-                ? t('dataExplorer.chartXMeasure')
+                ? t('dataInsights.chartXMeasure')
                 : singleValue || view.choice === 'metric'
-                  ? t('dataExplorer.viewValueColumn')
-                  : t('dataExplorer.chartX')
+                  ? t('dataInsights.viewValueColumn')
+                  : t('dataInsights.chartX')
             }
           >
             <select
@@ -127,10 +127,10 @@ export function ReportViewFields({
             <FormField
               label={
                 view.choice === 'scatter'
-                  ? t('dataExplorer.chartYMeasure')
+                  ? t('dataInsights.chartYMeasure')
                   : view.choice === 'combo'
-                    ? t('dataExplorer.chartBars')
-                    : t('dataExplorer.chartY')
+                    ? t('dataInsights.chartBars')
+                    : t('dataInsights.chartY')
               }
             >
               {view.choice === 'scatter' ? (
@@ -138,7 +138,7 @@ export function ReportViewFields({
                   value={view.y[0] ?? ''}
                   onChange={(e) => onChange({ ...view, y: e.target.value ? [e.target.value] : [] })}
                 >
-                  <option value="">{t('dataExplorer.queryNoMetric')}</option>
+                  <option value="">{t('dataInsights.queryNoMetric')}</option>
                   {columns
                     .filter((c) => c !== view.axisColumn)
                     .map((c) => (
@@ -161,7 +161,7 @@ export function ReportViewFields({
             </FormField>
           )}
           {view.choice === 'combo' && (
-            <FormField label={t('dataExplorer.chartLines')}>
+            <FormField label={t('dataInsights.chartLines')}>
               <CheckList>
                 {columns
                   .filter((c) => c !== view.axisColumn && !view.y.includes(c))
@@ -178,12 +178,12 @@ export function ReportViewFields({
             </FormField>
           )}
           {view.choice === 'metric' && (
-            <FormField label={t('dataExplorer.viewTrendColumn')}>
+            <FormField label={t('dataInsights.viewTrendColumn')}>
               <select
                 value={view.axisColumn === view.valueColumn ? NO_TREND : view.axisColumn}
                 onChange={(e) => onChange({ ...view, axisColumn: e.target.value })}
               >
-                <option value={NO_TREND}>{t('dataExplorer.viewNoTrend')}</option>
+                <option value={NO_TREND}>{t('dataInsights.viewNoTrend')}</option>
                 {columns
                   .filter((c) => c !== view.valueColumn)
                   .map((c) => (
@@ -195,21 +195,21 @@ export function ReportViewFields({
             </FormField>
           )}
           {view.choice === 'metric' && view.axisColumn !== view.valueColumn && (
-            <FormField label={t('dataExplorer.viewCompare')} hint={t('dataExplorer.viewCompareHint')}>
+            <FormField label={t('dataInsights.viewCompare')} hint={t('dataInsights.viewCompareHint')}>
               <select
                 value={String(view.compare ?? 1)}
                 onChange={(e) => onChange({ ...view, compare: Number(e.target.value) })}
               >
                 {COMPARE_CHOICES.map((choice) => (
                   <option key={choice} value={String(choice)}>
-                    {t(`dataExplorer.viewCompare_${choice}`)}
+                    {t(`dataInsights.viewCompare_${choice}`)}
                   </option>
                 ))}
               </select>
             </FormField>
           )}
           {view.choice === 'tracker' && (
-            <FormField label={t('dataExplorer.viewOrderColumn')}>
+            <FormField label={t('dataInsights.viewOrderColumn')}>
               <select
                 value={view.axisColumn}
                 onChange={(e) => onChange({ ...view, axisColumn: e.target.value })}
@@ -232,10 +232,10 @@ export function ReportViewFields({
             ) : spec.kind === 'tracker' ? (
               <ReportTracker view={spec} rows={rows} />
             ) : series ? (
-              <ExplorerChart spec={spec} series={series} />
+              <ReportChart spec={spec} series={series} />
             ) : null
           ) : (
-            <p className="entity-view__readonly">{t('dataExplorer.saveReportNoChart')}</p>
+            <p className="entity-view__readonly">{t('dataInsights.saveReportNoChart')}</p>
           )}
         </>
       )}

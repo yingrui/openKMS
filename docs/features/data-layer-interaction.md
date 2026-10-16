@@ -1,6 +1,6 @@
 # Data layer interaction design
 
-UX for the two Data-layer apps — **Datasets** (Catalog + Model tabs) **· Data Explorer**. Goal: a data engineer, a data BA, and a business user each reach their task with **zero training**. Phase 2–3 surfaces (quality, metrics, AI dashboards) are sketched, not specced.
+UX for the two Data-layer apps — **Datasets** (Catalog + Model tabs) **· Data Insights**. Goal: a data engineer, a data BA, and a business user each reach their task with **zero training**. Phase 2–3 surfaces (quality, metrics, AI dashboards) are sketched, not specced.
 
 **Companion docs:** [Data layer plan](data-layer.md) · [Implementation design](data-layer-implementation.md) · [Design system](../design-system.md)
 
@@ -28,7 +28,7 @@ Three visual groups, separated by a subtle divider, collapsible per group:
  │  ⌘ Function Editor
  ├── DATA ──────────
  │  🗂 Datasets (Catalog · Model)
- │  🔎 Data Explorer
+ │  🔎 Data Insights
 ```
 
 - **Collapsed (56 px rail):** icons only; a thin divider between groups; the active icon carries the group's accent.
@@ -101,7 +101,7 @@ The Model tab lists **semantic models** — **named scopes** over the **shared**
   - **Metrics** — model-owned; authored here.
   - **Datasets** — the model's scope. Each dataset shows the catalog facts it *references* (source, description, keys, AI context — read-only, with **Open in Catalog**) above **its fields**, which the spec nests under a dataset; the fields themselves are model-owned (add/edit/delete per dataset, searchable across the scope).
   - **Relationships** — a read-only view of the FK edges among the scope (`from → to`, column pairs, INNER/LEFT, AI context). Relationships are catalog-owned and shared by every model, so they are edited in the Catalog (link on each row).
-  - **Playground** — the model's query builder: metric + group-by fields + filters + order + limit, answering with a table, the generated SQL and the run's context (rows, limit reached, duration, null share per column, and *why* it is empty). The field picker is a **type-ahead menu** (grouped, each field with its label and data type; ↑/↓/Enter/Backspace/Esc) with selections mirrored as chips. Read-only and stateless (saved answers belong to Data Explorer); a failed run is classified (definition / data / request) and explained in the answer pane.
+  - **Playground** — the model's query builder: metric + group-by fields + filters + order + limit, answering with a table, the generated SQL and the run's context (rows, limit reached, duration, null share per column, and *why* it is empty). The field picker is a **type-ahead menu** (grouped, each field with its label and data type; ↑/↓/Enter/Backspace/Esc) with selections mirrored as chips. Read-only and stateless (saved answers belong to Data Insights); a failed run is classified (definition / data / request) and explained in the answer pane.
   - **Settings** — model identity/scope, **AI context**, and delete. The model's Ossie document is a **read action in the sidebar identity block** (**View YAML**: a right-docked panel with a collapsible tree, the raw YAML and *Copy*) — one click from every section, and no header row spent on it. Downloads are gone; the export API stays for the skill/agent.
 
 - The split is **owned vs referenced**: the model owns its **fields and metrics** (edited in the model), while **datasets and relationships** live in the Catalog and are only referenced here — their `ai_context` is edited once, in the Catalog, so two models can never disagree about the same dataset.
@@ -116,11 +116,11 @@ The Model tab lists **semantic models** — **named scopes** over the **shared**
 
 ---
 
-## Data Explorer — ask, then see
+## Data Insights — ask, then see
 
 The entry point is a **question**, not a chart builder. Mirrors the Agents surface users already know.
 
-**Shipped (P0):** a report binds to a **dataset or a semantic model**, carries **blocks** (each with the query it came from), and `Run` re-executes every block through that source's engine — the narrative, insights and the block queries themselves are authored by the agent or a person, and the app renders and re-runs them ([design](data-layer-explorer.md)). **Next:** visual charts (the block already carries columns/rows) and the question-first streamed dashboard below.
+**Shipped (P0):** a report binds to a **dataset or a semantic model**, carries **blocks** (each with the query it came from), and `Run` re-executes every block through that source's engine — the narrative, insights and the block queries themselves are authored by the agent or a person, and the app renders and re-runs them ([design](data-layer-insights.md)). **Next:** visual charts (the block already carries columns/rows) and the question-first streamed dashboard below.
 
 ### Main screen
 
@@ -130,7 +130,7 @@ The entry point is a **question**, not a chart builder. Mirrors the Agents surfa
 
 ### Saved reports
 
-A left column (or a "Reports" tab) lists saved dashboards — named, dated, re-openable. A report is a first-class artifact **persisted in the Data Explorer app** (decision #9). Export reuses the Reveal + Plotly static-HTML path.
+A left column (or a "Reports" tab) lists saved dashboards — named, dated, re-openable. A report is a first-class artifact **persisted in the Data Insights app** (decision #9). Export reuses the Reveal + Plotly static-HTML path.
 
 ### Who uses which part
 
@@ -149,7 +149,7 @@ Why it's intuitive: business users never see a query editor or a schema — they
 - Layer grouping: App Rail hidden; **App Launcher** shows the three sections full-width (already the phone pattern).
 - Datasets detail: tabs collapse to a top scroll + drawer (same as ontology second-rail drawer).
 - Model ER: canvas goes full-screen with a bottom-sheet dataset picker; join dialog is a bottom sheet.
-- Data Explorer: chat-primary (same phone IA as Agents).
+- Data Insights: chat-primary (same phone IA as Agents).
 
 ---
 
@@ -172,4 +172,4 @@ Before shipping any Data-layer screen, it must pass:
 3. **Phase 1b:** Model tab — ER canvas (read) + join dialog (list-select) + Relationships tab.
 4. **Phase 1c:** ~~Datasets — Lineage tab~~ **removed:** read-time "lineage" could only name the backing data source (nothing records how rows arrived) and repeated the Usage + Relationships tabs. Real lineage needs ingest/pipeline provenance first.
 5. **Phase 2:** Model tab — Quality + metrics + queries editors (sidebar forms, not canvases).
-6. **Phase 3:** Data Explorer — prompt → dashboard grid → Insight badges → saved reports.
+6. **Phase 3:** Data Insights — prompt → dashboard grid → Insight badges → saved reports.

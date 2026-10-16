@@ -251,7 +251,7 @@ Schema for every persisted table. Grouped by area; see the matching feature page
 ### ExplorerReport
 
 - `id`, `name`, `question`, `dataset_id` (FK → datasets, SET NULL), `status` (`draft` | `ready`), `narrative` (markdown), `charts` (JSONB: `[{title, insight, columns, rows}]`), `created_by` / `created_by_name`, `created_at`, `updated_at`
-- Persisted Data Explorer analysis; agents author the narrative + charts via `openkms-skill`
+- Persisted Data Insights analysis; agents author the narrative + charts via `openkms-skill`
 
 ## Console / system
 

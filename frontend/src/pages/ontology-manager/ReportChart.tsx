@@ -17,7 +17,7 @@ import {
   numericValue,
   xLabel,
   type ChartSeries,
-  type ExplorerChartSpec,
+  type ReportChartSpec,
 } from './reportView';
 
 /**
@@ -31,7 +31,7 @@ import {
 const SERIES_COLORS = Array.from({ length: 8 }, (_, i) => `var(--report-series-${i + 1})`);
 
 /** One dashboard report's result, drawn — the data comes from the server, this only draws it. */
-export function ExplorerChart({ spec, series }: { spec: ExplorerChartSpec; series: ChartSeries }) {
+export function ReportChart({ spec, series }: { spec: ReportChartSpec; series: ChartSeries }) {
   const { keys, data } = series;
   const bars = spec.y;
   const lines = spec.lines ?? [];

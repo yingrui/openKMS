@@ -11,8 +11,8 @@ description: >-
   When kubernetes apply/delete/dev-sync: open references/kubernetes.md.
   When setting up or changing datasets (register/upload, describe columns, keys, AI context,
   relationships, quality): open references/datasets-authoring.md.
-  When authoring or re-running a Data Explorer report (save an analysis, a dashboard): open
-  references/explorer-dashboards.md.
+  When authoring or re-running a Data Insights report (save an analysis, a dashboard): open
+  references/dashboards.md.
   When producing a research / data-analysis report (recommended: Reveal.js + Plotly
   static HTML; see assets/report-examples/): open references/research-report.md.
   Use when agents must read or push openKMS content without the web UI. Only config.yml
@@ -42,7 +42,7 @@ Match the task, then open **one** guide. Skip rows that do not apply.
 | **Author** Function source (`--source-code-file` / validate / publish) | [references/functions-authoring.md](references/functions-authoring.md) |
 | **Author** Action types (create / update / delete / execute) | [references/actions-authoring.md](references/actions-authoring.md) |
 | **Author/set up** datasets (register, upload, keys, `ai_context`, relationships, quality) | [references/datasets-authoring.md](references/datasets-authoring.md) |
-| **Author / re-run** a Data Explorer dashboard (reports, each over its own dataset or model) | [references/explorer-dashboards.md](references/explorer-dashboards.md) |
+| **Author / re-run** a Data Insights dashboard (reports, each over its own dataset or model) | [references/dashboards.md](references/dashboards.md) |
 | Data sources / connectors / jobs / Apps list / Kubernetes browse | [references/commands-ops.md](references/commands-ops.md) |
 | Register or patch a **module App** (`apps …` / `kubernetes register-app`) | [references/app-builder.md](references/app-builder.md) (`bindings.k8s` only) |
 | Kubernetes **apply / delete / dev-sync** | [references/kubernetes.md](references/kubernetes.md) |

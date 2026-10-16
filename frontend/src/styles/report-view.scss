@@ -9,7 +9,7 @@
 // there (the mistake this layer already made once with a failure block).
 //
 // The view components: ReportMetric (a number or a KPI), ReportBarList (a ranking),
-// ReportTracker (a strip), and ExplorerChart's host.
+// ReportTracker (a strip), and ReportChart's host.
 
 // ---- The chart host: recharts fills it, so it needs a height ------------------------------
 .report-chart {

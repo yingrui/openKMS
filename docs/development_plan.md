@@ -55,7 +55,7 @@ Product direction (not a commitment order). Shipped basics live under **Current 
 4. **Evaluation for quality** — Turn evaluations from pass/fail runs into **actionable improvement** for KBs, wiki, and corpora (gaps, suggested edits, regression tracking).
 5. **Policy & lifecycle impact** — When rules change, surface dependents and review queues for **knowledge administrators** and **legal/compliance / standards** roles (see [Policy & lifecycle](#policy--lifecycle-medium)).
 6. **Ontology logic** — **Shipped:** Suite Apps (Manager / Object Explorer / Function Editor / **Apps** hosted modules); function versions; ofs executor; `@function` + `openkms_functions.Client` (string api names; no generated ontology SDK package); Action **types** (bind Function, execute, audit); Action **`create` / `modify` / `delete` apply** on resolvable object instances from `output.edits`; object list `prop.<name>=` filters; link list `source_object_id`; **module Apps** (register Kubernetes Service → iframe proxy + identity headers). **Removed:** in-product A2UI App authoring. **Deferred:** dataset/Neo4j synthetic Action `object_id`; link create/delete as edit ops ([Manager alignment](research/ontology_manager_alignment.md#product-decision-action-write-back-b1)); Palantir-style generated ontology marker SDK; per-app Rail icons. Domain ontologies (e.g. market analysis, Kanban DIY types) are tenant content, not product seeds. See [Ontology Functions](features/ontology-functions.md) · [Apps (hosted modules)](features/app-builder.md) · [Ontology Function Client](features/ontology-sdk.md) · [Understanding ontology](tutorials/understanding-ontology.md) · [Tushare DIY](tutorials/tushare-market-ontology.md).
-7. **Data layer** — **Planned:** [Data layer plan](features/data-layer.md) — Datasets (catalog + file ingest + **Model** view: joins/ER, quality, metrics), Data Explorer (project-agent analysis). **Phase 0 shipped:** three-layer App Rail (Application / Ontology / Data) and `Datasets` as a first-class app at `/datasets`. **Phase 1 shipped:** data-source layer tag; dataset catalog fields; dataset joins + ER view; file upload wizard (CSV/Excel/JSON → PostgreSQL); profile / schema history; `openkms-skill` dataset commands (**lineage removed** — it could only name the data source and repeated Usage/Relationships). **Phase 2 shipped:** Datasets **Model** view (global joins + quality alerts); declarative quality rules (create / run / history); declarative metrics (on-demand compute); `openkms-skill` quality / metrics commands. **Phase 3 shipped:** Data Explorer app (saved analyses); `explorer_dashboards` persistence API; `openkms-skill` explorer dashboard commands. **Row editing shipped:** dataset `primary_key_columns` + `is_editable`; `data:edit` permission + audit (`dataset_edits`); keyset paging + `POST /datasets/{id}/rows/apply`; Data tab migrated to **TanStack Table** (server sort + inline cell editing). **Semantic model design (Apache Ossie):** relationships re-modelled as **FK edges** (`from` many → `to` one); metrics become model-level; datasets gain `unique_keys` + `ai_context`; the Model tab authors datasets + relationships + metrics with an Ossie YAML export — see [semantic model design](features/data-layer-semantic-model.md) and [Ossie research](research/ossie_semantic_layer.md). **Relationship re-model shipped (Stage 1):** `dataset_joins` now stores Ossie FKs (`from`/`to`/`from_columns`/`to_columns`/`required`); `cardinality` removed. **Dataset semantic fields shipped (Stage 2):** `datasets.unique_keys` + `ai_context` (Settings UI + `datasets update`); relationship `to` columns validate against the target's PK/unique keys. **Fields layer shipped (Stage 3, revised):** fields are **model-scoped** (`semantic_model_fields`; column ref or computed expression + `is_time` role + `ai_context`), seeded from the datasets' columns; the **Model → a model → Fields** section manages them. Physical **Columns** (with a maintained `description`, `dataset_columns`) live with the dataset. **Model metrics shipped (Stage 4):** `metric_definitions` is now **model-level** with an Ossie `expression` (aggregate SQL fragment), `type`, `datatype`, `ai_context` (no `dimensions`); the engine wraps it into a generated query executed **read-only with a statement timeout + row cap**; new `metric_runs` audit + `GET /api/metrics/{id}/runs`; the Model view authors + runs metrics (`/api/metrics`). **Saved queries withdrawn (Stage 5):** `saved_queries` removed — a query is a consumption concern (Data Explorer), not part of the Ossie semantic model. **Semantic-model export/import shipped (Stage 6):** `GET /api/semantic-models/{id}/export` emits one model's Ossie document (JSON/YAML) — datasets (+columns/fields), relationships, metrics; `POST /api/semantic-models/import` upserts a model. **The refactoring plan (Stages 1–6) is complete.** **Datasets IA adjusted:** the Catalog landing has a **List / Map** toggle (Map = the ER graph, relationships as many→one FK edges); Relationships are configured per dataset (Catalog → detail → Relationships). **Semantic models shipped:** `semantic_models` (+ `semantic_model_datasets`) are **named scopes** over the shared datasets/columns/relationships (Catalog-owned); a model owns its **fields** and **metrics**. **Columns** (with a maintained `description`, `dataset_columns`) live with the dataset; **fields are model-scoped** (`semantic_model_fields`), so a field's `role`/`ai_context` can differ per model. **`saved_queries` was removed** (a consumption concern → Data Explorer). The Model tab is a **list → model detail** (setup guide + Fields + Metrics) with per-model Ossie export/import; models are created explicitly (no default).
+7. **Data layer** — **Planned:** [Data layer plan](features/data-layer.md) — Datasets (catalog + file ingest + **Model** view: joins/ER, quality, metrics), Data Insights (project-agent analysis). **Phase 0 shipped:** three-layer App Rail (Application / Ontology / Data) and `Datasets` as a first-class app at `/datasets`. **Phase 1 shipped:** data-source layer tag; dataset catalog fields; dataset joins + ER view; file upload wizard (CSV/Excel/JSON → PostgreSQL); profile / schema history; `openkms-skill` dataset commands (**lineage removed** — it could only name the data source and repeated Usage/Relationships). **Phase 2 shipped:** Datasets **Model** view (global joins + quality alerts); declarative quality rules (create / run / history); declarative metrics (on-demand compute); `openkms-skill` quality / metrics commands. **Phase 3 shipped:** Data Insights app (saved analyses); `dashboards` persistence API; `openkms-skill` explorer dashboard commands. **Row editing shipped:** dataset `primary_key_columns` + `is_editable`; `data:edit` permission + audit (`dataset_edits`); keyset paging + `POST /datasets/{id}/rows/apply`; Data tab migrated to **TanStack Table** (server sort + inline cell editing). **Semantic model design (Apache Ossie):** relationships re-modelled as **FK edges** (`from` many → `to` one); metrics become model-level; datasets gain `unique_keys` + `ai_context`; the Model tab authors datasets + relationships + metrics with an Ossie YAML export — see [semantic model design](features/data-layer-semantic-model.md) and [Ossie research](research/ossie_semantic_layer.md). **Relationship re-model shipped (Stage 1):** `dataset_joins` now stores Ossie FKs (`from`/`to`/`from_columns`/`to_columns`/`required`); `cardinality` removed. **Dataset semantic fields shipped (Stage 2):** `datasets.unique_keys` + `ai_context` (Settings UI + `datasets update`); relationship `to` columns validate against the target's PK/unique keys. **Fields layer shipped (Stage 3, revised):** fields are **model-scoped** (`semantic_model_fields`; column ref or computed expression + `is_time` role + `ai_context`), seeded from the datasets' columns; the **Model → a model → Fields** section manages them. Physical **Columns** (with a maintained `description`, `dataset_columns`) live with the dataset. **Model metrics shipped (Stage 4):** `metric_definitions` is now **model-level** with an Ossie `expression` (aggregate SQL fragment), `type`, `datatype`, `ai_context` (no `dimensions`); the engine wraps it into a generated query executed **read-only with a statement timeout + row cap**; new `metric_runs` audit + `GET /api/metrics/{id}/runs`; the Model view authors + runs metrics (`/api/metrics`). **Saved queries withdrawn (Stage 5):** `saved_queries` removed — a query is a consumption concern (Data Insights), not part of the Ossie semantic model. **Semantic-model export/import shipped (Stage 6):** `GET /api/semantic-models/{id}/export` emits one model's Ossie document (JSON/YAML) — datasets (+columns/fields), relationships, metrics; `POST /api/semantic-models/import` upserts a model. **The refactoring plan (Stages 1–6) is complete.** **Datasets IA adjusted:** the Catalog landing has a **List / Map** toggle (Map = the ER graph, relationships as many→one FK edges); Relationships are configured per dataset (Catalog → detail → Relationships). **Semantic models shipped:** `semantic_models` (+ `semantic_model_datasets`) are **named scopes** over the shared datasets/columns/relationships (Catalog-owned); a model owns its **fields** and **metrics**. **Columns** (with a maintained `description`, `dataset_columns`) live with the dataset; **fields are model-scoped** (`semantic_model_fields`), so a field's `role`/`ai_context` can differ per model. **`saved_queries` was removed** (a consumption concern → Data Insights). The Model tab is a **list → model detail** (setup guide + Fields + Metrics) with per-model Ossie export/import; models are created explicitly (no default).
 
 ## Backlog {#backlog}
 
@@ -195,6 +195,22 @@ Active UX / quality gaps: [Tech debt](./tech_debt.md).
   opening section for most of the page and read as "it never moves"; the test had encoded that wrong
   rule, so it passed.) The previous highlight is kept when nothing is in the zone, and a click marks
   the target at once instead of waiting for the scroll to settle.
+
+### Data Explorer → **Data Insights** (2026-10) — renamed end to end
+
+- The old name described nothing it did: exploring data happens in the Catalog, the app holds **saved
+  analyses**, and **Object Explorer** already meant something else. It now reads **Data Insights** —
+  the app, its route (`/data-insights`), its permission keys (`insights:read` / `insights:write`, with
+  the grants carried over so nobody lost access), its API path (`/api/dashboards`), the skill's command
+  group (`openkms dashboards list|get|create|update|run|delete`, named after the resource like
+  `datasets` / `metrics`), the i18n namespace and the docs.
+- Two stale names went with it: the error codes (`EXPLORER_SOURCE_*` → `REPORT_SOURCE_*`, and
+  `EXPLORER_BLOCK_METRIC_MISSING` → `REPORT_METRIC_MISSING`, a leftover from the block→report rename),
+  and the table (`explorer_dashboards` → `dashboards`).
+- **A migration trap worth remembering**: two *historical* migrations imported `PERM_EXPLORER_READ`
+  from the catalog, so renaming the constant broke the whole chain (Alembic imports every version file
+  to build the graph). They now declare the literals as they were — a migration records the past, and
+  must not depend on a name that can change.
 
 ### The app launcher in the header is gone (2026-10)
 
@@ -354,10 +370,10 @@ Active UX / quality gaps: [Tech debt](./tech_debt.md).
 - The Playground's filter had a plain text value even for time fields; it now has the picker too
   (extracted to `PlaygroundFilters` when the section hit the 700-line guardrail).
 
-### Data Explorer aligned with the app's pages (2026-10) — done
+### Data Insights aligned with the app's pages (2026-10) — done
 
 - Audited against a sibling detail page, a sibling list page and the design system
-  ([table](features/data-layer-explorer.md#how-it-looks-next-to-the-rest-of-the-app)). The dashboard
+  ([table](features/data-layer-insights.md#how-it-looks-next-to-the-rest-of-the-app)). The dashboard
   page was the only detail page **not** using `EntityViewShell`; it does now (identity rail with
   **Run** as its action, the answer and every report as `.account-card` sections), so the tiles read
   like every other section in the app.
@@ -366,7 +382,7 @@ Active UX / quality gaps: [Tech debt](./tech_debt.md).
 - From Tremor's *styling* (not its dependencies): the chart palette became theme tokens
   (`--report-series-1…8`, lifted in dark mode) and number formatting moved into one module.
 
-### Data Explorer UI pass (2026-10) — done
+### Data Insights UI pass (2026-10) — done
 
 - The document reads top-down: answer → a section per report (title, source, insight, result, a
   quieter provenance line with **as of**); tile actions reveal on hover/focus.
@@ -398,13 +414,13 @@ Active UX / quality gaps: [Tech debt](./tech_debt.md).
 
 - The model was inverted: the saved document is a **dashboard**, each tile in it is a **report**, and
   a report owns **its own source** — so one dashboard mixes a model metric with a raw-dataset check.
-  `explorer_reports`/`blocks` renamed to `explorer_dashboards`/`reports`, API included.
-- Per-report source ACLs: a report out of reach answers `EXPLORER_SOURCE_FORBIDDEN`, never its rows.
+  `explorer_reports`/`blocks` renamed to `dashboards`/`reports`, API included.
+- Per-report source ACLs: a report out of reach answers `REPORT_SOURCE_FORBIDDEN`, never its rows.
 - **Save to a dashboard** closes the round trip the design promised: a Playground query (model) or a
   Data-tab slice (dataset) becomes a report, with the chart offered as a default the person can change
   and previewed with the same component the dashboard draws.
 
-### Data Explorer charts (2026-10) — done
+### Data Insights charts (2026-10) — done
 
 - A block's `chart` spec draws its result (line/bar, optional grouping series); the table stays one
   click away, and a spec the result cannot satisfy falls back to it.
@@ -413,9 +429,9 @@ Active UX / quality gaps: [Tech debt](./tech_debt.md).
 - Dataset summaries (`POST /api/datasets/{id}/aggregate`) give the Catalog half "by month" without a
   semantic model.
 
-### Data Explorer permissions (2026-10) — done
+### Data Insights permissions (2026-10) — done
 
-- Reports moved off `data:read` / `data:write` onto their own `explorer:read` / `explorer:write`; a
+- Reports moved off `data:read` / `data:write` onto their own `insights:read` / `insights:write`; a
   refresh is a **read**. The migration re-applies the two old keys' patterns and backfills grants, so
   nobody loses access.
 - Viewing/running a dataset-backed report is now checked against **that dataset's ACL** (it used to

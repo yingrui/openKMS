@@ -64,10 +64,10 @@ export function SaveReportDialog({ draft }: { draft: ReportDraftInput }) {
         const dashboard = await fetchDashboard(target);
         await updateDashboard(target, { reports: [...(dashboard.reports ?? []), entry] });
       }
-      toast.success(t('dataExplorer.saveReportSaved'));
+      toast.success(t('dataInsights.saveReportSaved'));
       setOpen(false);
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : t('dataExplorer.saveReportFailed'));
+      toast.error(e instanceof Error ? e.message : t('dataInsights.saveReportFailed'));
     } finally {
       setSaving(false);
     }
@@ -77,13 +77,13 @@ export function SaveReportDialog({ draft }: { draft: ReportDraftInput }) {
     <>
       <button type="button" className="btn btn-secondary btn-sm" onClick={openDialog}>
         <Save size={14} aria-hidden />
-        <span>{t('dataExplorer.saveToDashboard')}</span>
+        <span>{t('dataInsights.saveToDashboard')}</span>
       </button>
       <Dialog
         open={open}
         onClose={() => !saving && setOpen(false)}
         closeDisabled={saving}
-        title={t('dataExplorer.saveToDashboard')}
+        title={t('dataInsights.saveToDashboard')}
         closeAriaLabel={t('shared.cancel')}
         size="md"
         footer={
@@ -102,14 +102,14 @@ export function SaveReportDialog({ draft }: { draft: ReportDraftInput }) {
               onClick={() => void save()}
               disabled={saving || (target === NEW_DASHBOARD && !newName.trim())}
             >
-              {saving ? t('shared.saving') : t('dataExplorer.saveReport')}
+              {saving ? t('shared.saving') : t('dataInsights.saveReport')}
             </button>
           </>
         }
       >
-        <FormField label={t('dataExplorer.saveReportDashboard')}>
+        <FormField label={t('dataInsights.saveReportDashboard')}>
           <select value={target} onChange={(e) => setTarget(e.target.value)}>
-            <option value={NEW_DASHBOARD}>{t('dataExplorer.newDashboard')}</option>
+            <option value={NEW_DASHBOARD}>{t('dataInsights.newDashboard')}</option>
             {dashboards.map((d) => (
               <option key={d.id} value={d.id}>
                 {d.name}
@@ -118,18 +118,18 @@ export function SaveReportDialog({ draft }: { draft: ReportDraftInput }) {
           </select>
         </FormField>
         {target === NEW_DASHBOARD && (
-          <FormField label={t('dataExplorer.dashboardName')}>
+          <FormField label={t('dataInsights.dashboardName')}>
             <input value={newName} onChange={(e) => setNewName(e.target.value)} />
           </FormField>
         )}
-        <FormField label={t('dataExplorer.report')}>
+        <FormField label={t('dataInsights.report')}>
           <input value={title} onChange={(e) => setTitle(e.target.value)} />
         </FormField>
-        <FormField label={t('dataExplorer.saveReportInsight')}>
+        <FormField label={t('dataInsights.saveReportInsight')}>
           <input
             value={insight}
             onChange={(e) => setInsight(e.target.value)}
-            placeholder={t('dataExplorer.saveReportInsightPlaceholder')}
+            placeholder={t('dataInsights.saveReportInsightPlaceholder')}
           />
         </FormField>
         <ReportViewFields columns={draft.columns} rows={draft.rows} view={view} onChange={setView} />

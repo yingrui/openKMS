@@ -53,24 +53,24 @@ MESSAGES: dict[str, dict[str, str]] = {
         "zh_CN": "数据源拒绝了该查询。详情见错误原文。",
     },
     # Grid row filters (Data tab): the caller picked a column/operator that does not apply.
-    # Data Explorer: a run needs a source, and a semantic-model block needs a metric.
-    "EXPLORER_SOURCE_KIND_UNKNOWN": {
+    # Data Insights: a run needs a source, and a semantic-model block needs a metric.
+    "REPORT_SOURCE_KIND_UNKNOWN": {
         "en": "A report's source is a dataset or a semantic model — '{kind}' is neither.",
         "zh_CN": "报告的来源是数据集或语义模型——「{kind}」都不是。",
     },
-    "EXPLORER_SOURCE_FORBIDDEN": {
+    "REPORT_SOURCE_FORBIDDEN": {
         "en": "You do not have access to this report's source data.",
         "zh_CN": "你没有这份报告的数据源访问权限。",
     },
-    "EXPLORER_SOURCE_MISSING": {
+    "REPORT_SOURCE_MISSING": {
         "en": "This report has no {source} to analyze — pick one first.",
         "zh_CN": "该报告还没有可分析的{source}——请先选择。",
     },
-    "EXPLORER_BLOCK_METRIC_MISSING": {
+    "REPORT_METRIC_MISSING": {
         "en": "A block of a semantic-model report needs a metric.",
         "zh_CN": "语义模型报告的区块需要一个指标。",
     },
-    # Dataset summaries (Data tab / Explorer dataset blocks): group by + aggregates.
+    # Dataset summaries (Data tab / a dashboard report): group by + aggregates.
     "DATASET_AGGREGATE_MISSING": {
         "en": "A summary needs at least one aggregate (count / sum / avg / min / max).",
         "zh_CN": "汇总至少需要一个聚合（count / sum / avg / min / max）。",

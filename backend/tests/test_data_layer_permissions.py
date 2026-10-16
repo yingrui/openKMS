@@ -3,8 +3,8 @@ from app.services.permissions.permission_catalog import (
     PERM_DATA_EDIT,
     PERM_DATA_READ,
     PERM_DATA_WRITE,
-    PERM_EXPLORER_READ,
-    PERM_EXPLORER_WRITE,
+    PERM_INSIGHTS_READ,
+    PERM_INSIGHTS_WRITE,
     OPERATION_KEY_HINTS,
 )
 from app.services.permissions.permission_default_patterns import default_patterns_for_key
@@ -35,7 +35,7 @@ def test_data_read_patterns_cover_the_spa_and_read_apis():
     assert "GET /api/datasets" in be
     assert "GET /api/datasets/*" in be
     # Reports are their own grant: reading data does not read saved analyses.
-    assert "/data-explorer" not in fe
+    assert "/data-insights" not in fe
     assert not [p for p in be if "explorer-dashboards" in p]
 
 
@@ -107,7 +107,7 @@ def test_engine_resolves_data_read_for_reads():
     required = resolve_required_permission_keys("GET", "/api/datasets/abc/rows", rules)
     assert required is not None and PERM_DATA_READ in required
     # Reports are not data: this rule may not resolve an explorer route at all.
-    assert resolve_required_permission_keys("GET", "/api/explorer-dashboards", rules) is None
+    assert resolve_required_permission_keys("GET", "/api/dashboards", rules) is None
 
 
 def test_engine_resolves_data_write_for_writes():
@@ -133,46 +133,46 @@ def test_console_datasets_does_not_cover_data_app():
     assert "/api/datasets/*" not in be
 
 
-def test_explorer_keys_are_in_the_catalog():
+def test_insights_keys_are_in_the_catalog():
     keys = {h.key for h in OPERATION_KEY_HINTS}
-    assert PERM_EXPLORER_READ in keys
-    assert PERM_EXPLORER_WRITE in keys
+    assert PERM_INSIGHTS_READ in keys
+    assert PERM_INSIGHTS_WRITE in keys
 
 
-def test_explorer_read_patterns_own_the_app_the_reads_and_the_refresh():
-    fe, be = default_patterns_for_key(PERM_EXPLORER_READ)
-    assert "/data-explorer" in fe and "/data-explorer/*" in fe
+def test_insights_read_patterns_own_the_app_the_reads_and_the_refresh():
+    fe, be = default_patterns_for_key(PERM_INSIGHTS_READ)
+    assert "/data-insights" in fe and "/data-insights/*" in fe
     for pattern in (
-        "GET /api/explorer-dashboards",
-        "GET /api/explorer-dashboards/*",
-        "HEAD /api/explorer-dashboards/*",
+        "GET /api/dashboards",
+        "GET /api/dashboards/*",
+        "HEAD /api/dashboards/*",
         # A refresh recomputes the report from its source — a read, not an edit.
-        "POST /api/explorer-dashboards/*/run",
+        "POST /api/dashboards/*/run",
     ):
         assert pattern in be
 
 
-def test_explorer_write_patterns_own_the_edits_but_not_the_run():
-    _, be = default_patterns_for_key(PERM_EXPLORER_WRITE)
+def test_insights_write_patterns_own_the_edits_but_not_the_run():
+    _, be = default_patterns_for_key(PERM_INSIGHTS_WRITE)
     for pattern in (
-        "POST /api/explorer-dashboards",
-        "PUT /api/explorer-dashboards/*",
-        "PATCH /api/explorer-dashboards/*",
-        "DELETE /api/explorer-dashboards/*",
+        "POST /api/dashboards",
+        "PUT /api/dashboards/*",
+        "PATCH /api/dashboards/*",
+        "DELETE /api/dashboards/*",
     ):
         assert pattern in be
-    assert "POST /api/explorer-dashboards/*/run" not in be
+    assert "POST /api/dashboards/*/run" not in be
 
 
 def test_engine_separates_data_access_from_analysis_access():
-    rules = _rules(PERM_DATA_READ, PERM_DATA_WRITE, PERM_EXPLORER_READ, PERM_EXPLORER_WRITE)
+    rules = _rules(PERM_DATA_READ, PERM_DATA_WRITE, PERM_INSIGHTS_READ, PERM_INSIGHTS_WRITE)
     for method, path, key in (
-        ("GET", "/api/explorer-dashboards", PERM_EXPLORER_READ),
-        ("GET", "/api/explorer-dashboards/r1", PERM_EXPLORER_READ),
-        ("POST", "/api/explorer-dashboards/r1/run", PERM_EXPLORER_READ),
-        ("POST", "/api/explorer-dashboards", PERM_EXPLORER_WRITE),
-        ("PUT", "/api/explorer-dashboards/r1", PERM_EXPLORER_WRITE),
-        ("DELETE", "/api/explorer-dashboards/r1", PERM_EXPLORER_WRITE),
+        ("GET", "/api/dashboards", PERM_INSIGHTS_READ),
+        ("GET", "/api/dashboards/r1", PERM_INSIGHTS_READ),
+        ("POST", "/api/dashboards/r1/run", PERM_INSIGHTS_READ),
+        ("POST", "/api/dashboards", PERM_INSIGHTS_WRITE),
+        ("PUT", "/api/dashboards/r1", PERM_INSIGHTS_WRITE),
+        ("DELETE", "/api/dashboards/r1", PERM_INSIGHTS_WRITE),
     ):
         assert resolve_required_permission_keys(method, path, rules) == frozenset({key})
     # ... while the data layer keeps its own routes.

@@ -1,6 +1,6 @@
-# Data layer — Data Explorer (design)
+# Data layer — Data Insights (design)
 
-Status: **shipped** (dashboards of reports · per-report source · server-side run · charts · provenance · skill) · Surface: `/data-explorer` · Owner: data layer
+Status: **shipped** (dashboards of reports · per-report source · server-side run · charts · provenance · skill) · Surface: `/data-insights` · Owner: data layer
 
 Part of the data-layer family: [feature reference](data-layer.md) · [interaction design](data-layer-interaction.md) · [implementation design](data-layer-implementation.md) · [semantic model](data-layer-semantic-model.md) · [Playground (design)](data-layer-playground.md) · [grid filter (design)](data-layer-grid-filter.md).
 
@@ -75,10 +75,10 @@ it can cover both layers in one place.
   person can ask it in place and paste the result here, and an agent can produce either.
 - **`source_kind` + the id live on the report**, not on the dashboard: two tiles may read two
   different sources, and each is checked against its own ACL.
-- **A list is a summary, a `get` is the document.** `GET /api/explorer-dashboards` returns what a
+- **A list is a summary, a `get` is the document.** `GET /api/dashboards` returns what a
   reader needs to choose one (name, status, `report_count`, the sources it reads — named) and never
   every report's rows; the rows live in the document you get by id.
-- **`columns`/`rows`/`error`/`ran_at` are results**, not inputs: `POST /api/explorer-dashboards/{id}/run`
+- **`columns`/`rows`/`error`/`ran_at` are results**, not inputs: `POST /api/dashboards/{id}/run`
   runs every report against **its** source and persists them. A dashboard is therefore **live**:
   re-running is one call, and the app never shows a number it cannot reproduce.
 - **Provenance is part of every tile** (its source, plus the metric/fields inside its query, and it is
@@ -87,7 +87,7 @@ it can cover both layers in one place.
 
 ## 4. Contract
 
-**`POST /api/explorer-dashboards/{id}/run`** (`explorer:read`, plus each report's source ACL) → the
+**`POST /api/dashboards/{id}/run`** (`insights:read`, plus each report's source ACL) → the
 dashboard with every report's result filled in:
 
 - each report is executed against **its own source** (dataset → the rows query, or the summary query
@@ -95,10 +95,10 @@ dashboard with every report's result filled in:
   timeout and row cap;
 - one report failing **does not fail the dashboard**: it carries `error` = `{code, message, kind}`
   (the classified shape) and the rest still run — a broken metric definition should not hide the other
-  three tiles. A report whose source the caller may not read stores `EXPLORER_SOURCE_FORBIDDEN` and
+  three tiles. A report whose source the caller may not read stores `REPORT_SOURCE_FORBIDDEN` and
   **never** carries rows (viewing one hides them too) — a report is not a way around a dataset's ACL;
 - the run is a **write to our own document** (results are persisted); the permission it needs is
-  `explorer:read`, because a refresh recomputes and cannot edit anything but that cache.
+  `insights:read`, because a refresh recomputes and cannot edit anything but that cache.
 
 **Where the analysis comes from.** Two paths, one document:
 
@@ -194,18 +194,18 @@ components render in the editor, which other routes open (see
 
 ## Permissions
 
-The Data Explorer is a **suite app with its own keys** — `explorer:read` (open it, read reports, and
-re-run one) and `explorer:write` (create/update/delete). Reading data does not hand out saved
+The Data Insights is a **suite app with its own keys** — `insights:read` (open it, read reports, and
+re-run one) and `insights:write` (create/update/delete). Reading data does not hand out saved
 analyses, and sharing analyses does not hand out dataset management:
 
 - **A refresh is a read.** Re-running recomputes the report from its source and writes only our own
-  cached results, so it needs `explorer:read`; create/update/delete need `explorer:write`.
+  cached results, so it needs `insights:read`; create/update/delete need `insights:write`.
 - **The bound source's ACL still applies.** A report's results are stored, so viewing or running one
   is viewing the data behind it: a dataset-backed report (and its rows in a list) is visible only
   while that dataset is — the same check browsing it makes. A semantic model carries no
   per-resource ACL, so model-backed reports are gated by the data-layer keys alone.
 - The app's rail/launcher tile follows the same permission (it is derived from the route patterns),
-  so a member without `explorer:read` simply does not see the Explorer.
+  so a member without `insights:read` simply does not see the Explorer.
 
 ## 5. Scope guards (what this is not)
 
@@ -232,7 +232,7 @@ analyses, and sharing analyses does not hand out dataset management:
 
 1. **The document**: a dashboard holds `reports[]`; each report carries its own `source_kind` + id.
 2. **Reports own their queries** so the dashboard can be re-run, not merely displayed.
-3. **Run**: `POST /api/explorer-dashboards/{id}/run` executes every report against its own source and
+3. **Run**: `POST /api/dashboards/{id}/run` executes every report against its own source and
    persists `columns`/`rows`/`error`/`ran_at`, with per-report classified errors.
 4. **Provenance**: each tile states its source (and a model tile its metric), with links into the
    Datasets / Model pages.
@@ -246,7 +246,7 @@ analyses, and sharing analyses does not hand out dataset management:
   same shape and both render, **in one dashboard**, each with its own source named on screen.
 - Editing rows in the underlying table, then `dashboards-run`, changes the numbers — no stale artifacts.
 - A report with a broken query shows the classified reason while the others still show data; one whose
-  source the reader may not see shows `EXPLORER_SOURCE_FORBIDDEN` and no rows.
+  source the reader may not see shows `REPORT_SOURCE_FORBIDDEN` and no rows.
 - An agent can build a whole dashboard through the skill without the UI: create (reports with sources),
   run, read back.
 

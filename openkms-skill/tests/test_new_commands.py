@@ -294,13 +294,13 @@ def test_kb_wiki_spaces_link(mock_api):
     assert json.loads(recorded[-1].content) == {"wiki_space_id": "sp1"}
 
 
-# --- Data Explorer: a dashboard of reports, each with its own source ---
+# --- Data Insights: a dashboard of reports, each with its own source ---
 
 
 def test_dashboard_create_from_a_reports_file(mock_api, tmp_path):
     recorded, responses = mock_api
-    responses[("POST", "/api/explorer-dashboards")] = (201, {"id": "d1"})
-    from openkms.commands.explorer import cmd_create
+    responses[("POST", "/api/dashboards")] = (201, {"id": "d1"})
+    from openkms.commands.dashboards import cmd_create
 
     reports = tmp_path / "reports.json"
     reports.write_text(
@@ -330,7 +330,7 @@ def test_dashboard_create_from_a_reports_file(mock_api, tmp_path):
 def test_dashboard_report_without_a_source_is_refused(tmp_path):
     import pytest
 
-    from openkms.commands.explorer import cmd_create
+    from openkms.commands.dashboards import cmd_create
 
     reports = tmp_path / "reports.json"
     reports.write_text('[{"title": "Nowhere", "query": {}}]', encoding="utf-8")
@@ -340,12 +340,12 @@ def test_dashboard_report_without_a_source_is_refused(tmp_path):
 
 def test_dashboard_run(mock_api):
     recorded, responses = mock_api
-    responses[("POST", "/api/explorer-dashboards/d1/run")] = (200, {"id": "d1", "reports": []})
-    from openkms.commands.explorer import cmd_run
+    responses[("POST", "/api/dashboards/d1/run")] = (200, {"id": "d1", "reports": []})
+    from openkms.commands.dashboards import cmd_run
 
     cmd_run(_ns(id="d1"))
     assert recorded[-1].method == "POST"
-    assert recorded[-1].url.path == "/api/explorer-dashboards/d1/run"
+    assert recorded[-1].url.path == "/api/dashboards/d1/run"
 
 
 def test_semantic_model_get(mock_api):

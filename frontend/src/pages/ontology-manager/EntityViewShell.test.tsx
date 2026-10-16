@@ -12,7 +12,7 @@ const renderShell = (navItems: Parameters<typeof EntityViewShell>[0]['navItems']
   render(
     <MemoryRouter>
       <EntityViewShell
-        backTo="/data-explorer"
+        backTo="/data-insights"
         backLabel="All dashboards"
         title="估值体检"
         meta="一个问题"

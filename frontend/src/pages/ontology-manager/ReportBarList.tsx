@@ -40,7 +40,7 @@ export function ReportBarList({
         ))}
       </ul>
       {truncated && (
-        <p className="page-subtitle">{t('dataExplorer.barListTruncated', { max: MAX_BAR_LIST_ROWS })}</p>
+        <p className="page-subtitle">{t('dataInsights.barListTruncated', { max: MAX_BAR_LIST_ROWS })}</p>
       )}
     </div>
   );

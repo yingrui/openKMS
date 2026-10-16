@@ -90,8 +90,6 @@
   "appTaglineDatasets": "Catalog, model, and explore data",
   "dataModel": "Data Model",
   "appTaglineDataModel": "Joins, the ER model, and data-quality alerts",
-  "dataExplorer": "Data Explorer",
-  "appTaglineDataExplorer": "Ask questions and save analyses",
   "layer_data": "Data",
   "layer_ontology": "Ontology",
   "layer_application": "Application",
@@ -108,5 +106,7 @@
   "appTaglineObjectExplorer": "Browse objects, links, and query the graph",
   "appTaglineFunctionEditor": "Author and preview Python logic",
   "appTaglineApps": "Open, configure, and manage hosted apps",
-  "appTaglineEvaluations": "Measure and improve answer quality"
+  "appTaglineEvaluations": "Measure and improve answer quality",
+  "dataInsights": "Data Explorer",
+  "appTaglineDataInsights": "Saved analyses of your data: a question, a written answer, and the reports behind it."
 }

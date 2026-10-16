@@ -1,16 +1,16 @@
-"""Explorer dashboards API — saved analyses for the Data Explorer app.
+"""Dashboards API — saved analyses for the Data Insights app.
 
 A **dashboard** is the document: a question, a narrative, and the **reports** in it. Each report owns
 its **source** (a dataset or a semantic model) and the query it came from, so one dashboard can mix
 sources and `POST /{id}/run` re-runs each report through its own engine.
 
-**Permissions.** Dashboards have their own keys (`explorer:read` / `explorer:write`): an analysis is
+**Permissions.** Dashboards have their own keys (`insights:read` / `insights:write`): an analysis is
 not the same grant as the data it came from. Re-running is a **read** (it recomputes each report from
-its source and writes only our own cached results), so the run needs `explorer:read`.
+its source and writes only our own cached results), so the run needs `insights:read`.
 
 **Each report's source ACL still applies.** Results are stored, so reading a report is reading the
 data behind it: a report whose source this caller may not read answers with a classified
-`EXPLORER_SOURCE_FORBIDDEN` **instead of its rows**, and a dashboard is listed only while at least
+`REPORT_SOURCE_FORBIDDEN` **instead of its rows**, and a dashboard is listed only while at least
 one of its reports (or none — a draft) is readable. Semantic models carry no per-resource ACL, so
 they are gated by the data-layer keys alone.
 """
@@ -25,19 +25,19 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.api.auth import require_any_permission, require_auth, require_permission
 from app.database import get_db
 from app.api.query_errors import query_failure_detail
-from app.models.explorer_dashboard import ExplorerDashboard
+from app.models.dashboard import Dashboard
 from app.models.dataset import Dataset
 from app.models.semantic_model import SemanticModel
-from app.schemas.explorer_dashboard import (
-    ExplorerDashboardCreate,
-    ExplorerDashboardListResponse,
-    ExplorerDashboardResponse,
-    ExplorerDashboardSource,
-    ExplorerDashboardSummary,
-    ExplorerDashboardUpdate,
+from app.schemas.dashboard import (
+    DashboardCreate,
+    DashboardListResponse,
+    DashboardResponse,
+    DashboardSource,
+    DashboardSummary,
+    DashboardUpdate,
 )
 from app.services.data_layer.dataset_rows import query_dataset_rows, query_dataset_summary
-from app.services.data_layer.explorer import (
+from app.services.data_layer.dashboards import (
     SOURCE_SEMANTIC_MODEL,
     ReportSource,
     dataset_query_kwargs,
@@ -54,15 +54,15 @@ from app.services.data_layer.row_filters import RowFilterError
 from app.services.acl.resource_acl_constants import PERM_READ, RT_DATASET
 from app.services.acl.resource_acl_service import readable_resource_ids
 from app.services.evaluations.dataset_scope import load_dataset_scoped
-from app.services.permissions.permission_catalog import PERM_EXPLORER_READ, PERM_EXPLORER_WRITE
+from app.services.permissions.permission_catalog import PERM_INSIGHTS_READ, PERM_INSIGHTS_WRITE
 
 router = APIRouter(
-    prefix="/explorer-dashboards",
-    tags=["explorer"],
+    prefix="/dashboards",
+    tags=["dashboards"],
     dependencies=[Depends(require_auth)],
 )
-_VIEW = (PERM_EXPLORER_READ,)
-_WRITE = (PERM_EXPLORER_WRITE,)
+_VIEW = (PERM_INSIGHTS_READ,)
+_WRITE = (PERM_INSIGHTS_WRITE,)
 
 #: Stored per-report result keys — dropped when the caller may not read that report's source.
 _RESULT_KEYS = ("columns", "rows", "total", "capped", "duration_ms", "sql")
@@ -93,7 +93,7 @@ def _localize(report: dict, request: Request) -> dict:
 
 
 def _reports_response(
-    dashboard: ExplorerDashboard, request: Request, readable: set[str] | None
+    dashboard: Dashboard, request: Request, readable: set[str] | None
 ) -> list[dict] | None:
     """The dashboard's reports, each localized — and reduced when its source is out of reach.
 
@@ -118,9 +118,9 @@ def _reports_response(
 
 
 def _response(
-    dashboard: ExplorerDashboard, request: Request | None = None, readable: set[str] | None = None
-) -> ExplorerDashboardResponse:
-    return ExplorerDashboardResponse(
+    dashboard: Dashboard, request: Request | None = None, readable: set[str] | None = None
+) -> DashboardResponse:
+    return DashboardResponse(
         id=dashboard.id,
         name=dashboard.name,
         question=dashboard.question,
@@ -151,7 +151,7 @@ async def _readable_datasets(db: AsyncSession, request: Request) -> set[str] | N
     )
 
 
-async def _source_labels(db: AsyncSession, sources: list[ExplorerDashboardSource]) -> None:
+async def _source_labels(db: AsyncSession, sources: list[DashboardSource]) -> None:
     """Name the sources in place — two queries for the whole page, not one per report."""
     dataset_ids = {s.id for s in sources if s.kind != SOURCE_SEMANTIC_MODEL}
     model_ids = {s.id for s in sources if s.kind == SOURCE_SEMANTIC_MODEL}
@@ -176,9 +176,9 @@ async def _source_labels(db: AsyncSession, sources: list[ExplorerDashboardSource
         source.label = labels.get(source.id, source.id)
 
 
-def _summary(dashboard: ExplorerDashboard, readable: set[str] | None) -> ExplorerDashboardSummary:
+def _summary(dashboard: Dashboard, readable: set[str] | None) -> DashboardSummary:
     """A list entry: only the reports this caller may read are counted (and their sources named)."""
-    sources: list[ExplorerDashboardSource] = []
+    sources: list[DashboardSource] = []
     seen: set[tuple[str, str | None]] = set()
     report_count = 0
     for entry in dashboard.reports or []:
@@ -189,8 +189,8 @@ def _summary(dashboard: ExplorerDashboard, readable: set[str] | None) -> Explore
         key = (source.kind, source.resource_id)
         if source.resource_id and key not in seen:
             seen.add(key)
-            sources.append(ExplorerDashboardSource(kind=source.kind, id=source.resource_id, label=source.resource_id))
-    return ExplorerDashboardSummary(
+            sources.append(DashboardSource(kind=source.kind, id=source.resource_id, label=source.resource_id))
+    return DashboardSummary(
         id=dashboard.id,
         name=dashboard.name,
         question=dashboard.question,
@@ -203,14 +203,14 @@ def _summary(dashboard: ExplorerDashboard, readable: set[str] | None) -> Explore
     )
 
 
-async def _get(db: AsyncSession, dashboard_id: str) -> ExplorerDashboard:
-    row = await db.get(ExplorerDashboard, dashboard_id)
+async def _get(db: AsyncSession, dashboard_id: str) -> Dashboard:
+    row = await db.get(Dashboard, dashboard_id)
     if not row:
         raise HTTPException(status_code=404, detail="Dashboard not found")
     return row
 
 
-async def _require_sources(db: AsyncSession, request: Request, dashboard: ExplorerDashboard) -> None:
+async def _require_sources(db: AsyncSession, request: Request, dashboard: Dashboard) -> None:
     """Every report must name a source the caller may read — fail early, not at run time."""
     for entry in dashboard.reports or []:
         source = report_source(entry)
@@ -223,14 +223,14 @@ async def _require_sources(db: AsyncSession, request: Request, dashboard: Explor
 
 @router.get(
     "",
-    response_model=ExplorerDashboardListResponse,
+    response_model=DashboardListResponse,
     dependencies=[Depends(require_any_permission(*_VIEW))],
 )
 async def list_dashboards(request: Request, db: AsyncSession = Depends(get_db)):
     """Dashboards with at least one readable report (or none yet, when a draft just started)."""
     readable = await _readable_datasets(db, request)
     rows = (
-        await db.execute(select(ExplorerDashboard).order_by(ExplorerDashboard.updated_at.desc()))
+        await db.execute(select(Dashboard).order_by(Dashboard.updated_at.desc()))
     ).scalars().all()
     visible = [
         d
@@ -239,23 +239,23 @@ async def list_dashboards(request: Request, db: AsyncSession = Depends(get_db)):
     ]
     summaries = [_summary(d, readable) for d in visible]
     await _source_labels(db, [s for summary in summaries for s in summary.sources])
-    return ExplorerDashboardListResponse(items=summaries, total=len(summaries))
+    return DashboardListResponse(items=summaries, total=len(summaries))
 
 
 @router.post(
     "",
-    response_model=ExplorerDashboardResponse,
+    response_model=DashboardResponse,
     status_code=201,
-    dependencies=[Depends(require_permission(PERM_EXPLORER_WRITE))],
+    dependencies=[Depends(require_permission(PERM_INSIGHTS_WRITE))],
 )
 async def create_dashboard(
     request: Request,
-    body: ExplorerDashboardCreate,
+    body: DashboardCreate,
     db: AsyncSession = Depends(get_db),
 ):
     payload = request.state.openkms_jwt_payload
     uname = payload.get("preferred_username") or payload.get("name")
-    dashboard = ExplorerDashboard(
+    dashboard = Dashboard(
         id=str(uuid.uuid4()),
         name=body.name,
         question=body.question,
@@ -274,7 +274,7 @@ async def create_dashboard(
 
 @router.get(
     "/{dashboard_id}",
-    response_model=ExplorerDashboardResponse,
+    response_model=DashboardResponse,
     dependencies=[Depends(require_any_permission(*_VIEW))],
 )
 async def get_dashboard(dashboard_id: str, request: Request, db: AsyncSession = Depends(get_db)):
@@ -284,13 +284,13 @@ async def get_dashboard(dashboard_id: str, request: Request, db: AsyncSession = 
 
 @router.put(
     "/{dashboard_id}",
-    response_model=ExplorerDashboardResponse,
-    dependencies=[Depends(require_permission(PERM_EXPLORER_WRITE))],
+    response_model=DashboardResponse,
+    dependencies=[Depends(require_permission(PERM_INSIGHTS_WRITE))],
 )
 async def update_dashboard(
     dashboard_id: str,
     request: Request,
-    body: ExplorerDashboardUpdate,
+    body: DashboardUpdate,
     db: AsyncSession = Depends(get_db),
 ):
     dashboard = await _get(db, dashboard_id)
@@ -366,14 +366,14 @@ async def _run_report(
 
 @router.post(
     "/{dashboard_id}/run",
-    response_model=ExplorerDashboardResponse,
+    response_model=DashboardResponse,
     dependencies=[Depends(require_any_permission(*_VIEW))],
 )
 async def run_dashboard(dashboard_id: str, request: Request, db: AsyncSession = Depends(get_db)):
     """Run every report against **its own** source and keep the results.
 
     Both engines are read-only and capped. A report whose source the caller may not read stores the
-    classified `EXPLORER_SOURCE_FORBIDDEN` (and the response never carries its old rows); any other
+    classified `REPORT_SOURCE_FORBIDDEN` (and the response never carries its old rows); any other
     failing report stores its own classified reason while the rest still run.
     """
     dashboard = await _get(db, dashboard_id)
@@ -394,7 +394,7 @@ async def run_dashboard(dashboard_id: str, request: Request, db: AsyncSession = 
 @router.delete(
     "/{dashboard_id}",
     status_code=204,
-    dependencies=[Depends(require_permission(PERM_EXPLORER_WRITE))],
+    dependencies=[Depends(require_permission(PERM_INSIGHTS_WRITE))],
 )
 async def delete_dashboard(dashboard_id: str, db: AsyncSession = Depends(get_db)):
     dashboard = await _get(db, dashboard_id)

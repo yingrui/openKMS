@@ -63,7 +63,7 @@ describe('DashboardReportView', () => {
     renderReport({
       ...BASE,
       rows: [],
-      error: { code: 'EXPLORER_SOURCE_FORBIDDEN', message: 'You do not have access to this report\u2019s source data.', kind: 'request' },
+      error: { code: 'REPORT_SOURCE_FORBIDDEN', message: 'You do not have access to this report\u2019s source data.', kind: 'request' },
     });
     expect(screen.getByRole('alert')).toHaveTextContent('You do not have access');
     expect(screen.queryByRole('table')).not.toBeInTheDocument();

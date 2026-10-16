@@ -42,8 +42,8 @@ from app.services.permissions.permission_catalog import (
     PERM_DATA_READ,
     PERM_DATA_WRITE,
     PERM_DATA_EDIT,
-    PERM_EXPLORER_READ,
-    PERM_EXPLORER_WRITE,
+    PERM_INSIGHTS_READ,
+    PERM_INSIGHTS_WRITE,
 )
 
 # (frontend_route_patterns, backend_api_patterns)
@@ -479,27 +479,27 @@ DEFAULT_PATTERNS_BY_KEY: dict[str, tuple[list[str], list[str]]] = {
             "DELETE /api/semantic-models/*",
         ],
     ),
-    PERM_EXPLORER_READ: (
+    PERM_INSIGHTS_READ: (
         [
-            "/data-explorer",
-            "/data-explorer/*",
+            "/data-insights",
+            "/data-insights/*",
         ],
         [
-            "GET /api/explorer-dashboards",
-            "GET /api/explorer-dashboards/*",
-            "HEAD /api/explorer-dashboards",
-            "HEAD /api/explorer-dashboards/*",
+            "GET /api/dashboards",
+            "GET /api/dashboards/*",
+            "HEAD /api/dashboards",
+            "HEAD /api/dashboards/*",
             # Re-running a report recomputes it from the source: a read, not an edit.
-            "POST /api/explorer-dashboards/*/run",
+            "POST /api/dashboards/*/run",
         ],
     ),
-    PERM_EXPLORER_WRITE: (
+    PERM_INSIGHTS_WRITE: (
         [],
         [
-            "POST /api/explorer-dashboards",
-            "PUT /api/explorer-dashboards/*",
-            "PATCH /api/explorer-dashboards/*",
-            "DELETE /api/explorer-dashboards/*",
+            "POST /api/dashboards",
+            "PUT /api/dashboards/*",
+            "PATCH /api/dashboards/*",
+            "DELETE /api/dashboards/*",
         ],
     ),
     PERM_DATA_EDIT: (

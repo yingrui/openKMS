@@ -16,7 +16,7 @@ import {
   runDashboard,
   updateDashboard,
   type DashboardReport,
-  type ExplorerDashboard,
+  type Dashboard,
 } from '../../data/dashboardsApi';
 import { fetchDatasets, type DatasetResponse } from '../../data/datasetsApi';
 import { fetchSemanticModels, type SemanticModelResponse } from '../../data/semanticModelsApi';
@@ -28,10 +28,10 @@ import { DashboardReportView } from './DashboardReportView';
 import { EntityViewHeader, EntityViewLoading, EntityViewPanel, EntityViewShell } from './EntityViewShell';
 import { AddReportDialog } from './AddReportDialog';
 import { reportSource } from './reportSource';
-import './data-explorer.scss';
+import './data-insights.scss';
 import { EditReportDialog } from './EditReportDialog';
 import { applyReportFields, moveReport, removeReport, replaceReport } from './dashboardEdits';
-import './data-explorer.scss';
+import './data-insights.scss';
 
 export function DashboardDetailPage() {
   const { t } = useTranslation('ontology');
@@ -39,8 +39,8 @@ export function DashboardDetailPage() {
   const navigate = useNavigate();
   const confirm = useConfirm();
   const { hasPermission } = useAuth();
-  const canWrite = hasPermission('explorer:write');
-  const [dashboard, setDashboard] = useState<ExplorerDashboard | null>(null);
+  const canWrite = hasPermission('insights:write');
+  const [dashboard, setDashboard] = useState<Dashboard | null>(null);
   const [loading, setLoading] = useState(true);
   const [running, setRunning] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -89,7 +89,7 @@ export function DashboardDetailPage() {
       toast.success(message);
       return true;
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : t('dataExplorer.saveReportFailed'));
+      toast.error(e instanceof Error ? e.message : t('dataInsights.saveReportFailed'));
       return false;
     } finally {
       setSaving(false);
@@ -100,9 +100,9 @@ export function DashboardDetailPage() {
     setRunning(true);
     try {
       setDashboard(await runDashboard(id));
-      toast.success(t('dataExplorer.ran'));
+      toast.success(t('dataInsights.ran'));
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : t('dataExplorer.runFailed'));
+      toast.error(e instanceof Error ? e.message : t('dataInsights.runFailed'));
     } finally {
       setRunning(false);
     }
@@ -112,20 +112,20 @@ export function DashboardDetailPage() {
     if (
       !(await confirm({
         title: t('shared.delete'),
-        message: t('dataExplorer.removeReportConfirm'),
+        message: t('dataInsights.removeReportConfirm'),
         confirmLabel: t('shared.delete'),
         danger: true,
       }))
     )
       return;
-    await saveDocument({ reports: removeReport(reports, index) }, t('dataExplorer.reportRemoved'));
+    await saveDocument({ reports: removeReport(reports, index) }, t('dataInsights.reportRemoved'));
   };
 
   const handleDelete = async () => {
     if (
       !(await confirm({
         title: t('shared.delete'),
-        message: t('dataExplorer.deleteConfirm'),
+        message: t('dataInsights.deleteConfirm'),
         confirmLabel: t('shared.delete'),
         danger: true,
       }))
@@ -133,10 +133,10 @@ export function DashboardDetailPage() {
       return;
     try {
       await deleteDashboard(id);
-      toast.success(t('dataExplorer.deleted'));
-      navigate('/data-explorer');
+      toast.success(t('dataInsights.deleted'));
+      navigate('/data-insights');
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : t('dataExplorer.deleteFailed'));
+      toast.error(e instanceof Error ? e.message : t('dataInsights.deleteFailed'));
     }
   };
 
@@ -148,39 +148,39 @@ export function DashboardDetailPage() {
   return (
     <>
     <EntityViewShell
-      backTo="/data-explorer"
-      backLabel={t('dataExplorer.backToDashboards')}
+      backTo="/data-insights"
+      backLabel={t('dataInsights.backToDashboards')}
       title={dashboard.name}
       /* The rail is this app's table of contents; a dashboard's sections are its reports, so it
          lists them (the answer first), with where each one's numbers come from underneath. */
       navItems={[
-        { sectionId: 'narrative', label: t('dataExplorer.narrative') },
+        { sectionId: 'narrative', label: t('dataInsights.narrative') },
         ...reports.map((report, i) => ({
           sectionId: `report-${i}`,
-          label: report.title ?? t('dataExplorer.report'),
-          hint: reportSource(report, datasets, models, t('dataExplorer.sourceMissing')).label,
+          label: report.title ?? t('dataInsights.report'),
+          hint: reportSource(report, datasets, models, t('dataInsights.sourceMissing')).label,
         })),
       ]}
-      meta={dashboard.question ?? t('dataExplorer.noQuestion')}
+      meta={dashboard.question ?? t('dataInsights.noQuestion')}
       identityAction={
         /* One line for what this document *is* and the action that ends it: the state, how much is
            in it, and the delete — a quiet text link (the slot's styling), never beside Run. */
         <>
           <StatusChip tone={dashboard.status === 'ready' ? 'ok' : 'neutral'}>
-            {t(`dataExplorer.status_${dashboard.status}`, { defaultValue: dashboard.status })}
+            {t(`dataInsights.status_${dashboard.status}`, { defaultValue: dashboard.status })}
           </StatusChip>
           <span className="entity-view__identity-note">
-            {t('dataExplorer.reportCount', { count: reports.length })}
+            {t('dataInsights.reportCount', { count: reports.length })}
           </span>
           <button
             type="button"
             className="is-danger is-icon-action"
             onClick={() => void handleDelete()}
-            aria-label={t('dataExplorer.deleteDashboard')}
-            title={t('dataExplorer.deleteDashboard')}
+            aria-label={t('dataInsights.deleteDashboard')}
+            title={t('dataInsights.deleteDashboard')}
           >
             <Trash2 size={14} aria-hidden />
-            <span className="is-icon-action__label">{t('dataExplorer.deleteDashboard')}</span>
+            <span className="is-icon-action__label">{t('dataInsights.deleteDashboard')}</span>
           </button>
         </>
       }
@@ -203,14 +203,14 @@ export function DashboardDetailPage() {
               ) : (
                 <Play size={16} aria-hidden />
               )}
-              <span>{t('dataExplorer.run')}</span>
+              <span>{t('dataInsights.run')}</span>
             </button>
           </>
         }
       />
       <EntityViewPanel
         id="narrative"
-        title={t('dataExplorer.narrative')}
+        title={t('dataInsights.narrative')}
         actions={
           narrativeDraft === null && canWrite && dashboard.narrative ? (
             <button
@@ -228,7 +228,7 @@ export function DashboardDetailPage() {
           dashboard.narrative ? (
             <RichMarkdown className="dashboard-narrative">{dashboard.narrative}</RichMarkdown>
           ) : (
-            <p className="entity-view__readonly">{t('dataExplorer.noNarrative')}</p>
+            <p className="entity-view__readonly">{t('dataInsights.noNarrative')}</p>
           )
         ) : (
           <>
@@ -237,7 +237,7 @@ export function DashboardDetailPage() {
               value={narrativeDraft}
               onChange={(e) => setNarrativeDraft(e.target.value)}
               rows={8}
-              aria-label={t('dataExplorer.narrative')}
+              aria-label={t('dataInsights.narrative')}
             />
             <div className="openkms-flex-row-gap openkms-mt-2">
               <button
@@ -246,7 +246,7 @@ export function DashboardDetailPage() {
                 onClick={() =>
                   void saveDocument(
                     { narrative: narrativeDraft },
-                    t('dataExplorer.narrativeSaved'),
+                    t('dataInsights.narrativeSaved'),
                   ).then((ok) => ok && setNarrativeDraft(null))
                 }
                 disabled={saving}
@@ -266,7 +266,7 @@ export function DashboardDetailPage() {
         )}
       </EntityViewPanel>
       {reports.length === 0 && (
-        <p className="entity-view__readonly">{t('dataExplorer.reportsEmpty')}</p>
+        <p className="entity-view__readonly">{t('dataInsights.reportsEmpty')}</p>
       )}
         {reports.map((report, i) => (
           <DashboardReportView
@@ -282,7 +282,7 @@ export function DashboardDetailPage() {
                     type="button"
                     className="btn btn-secondary btn-sm"
                     onClick={() => setEditing(i)}
-                    title={t('dataExplorer.editReport')}
+                    title={t('dataInsights.editReport')}
                   >
                     <Pencil size={14} aria-hidden />
                   </button>
@@ -292,11 +292,11 @@ export function DashboardDetailPage() {
                     onClick={() =>
                       void saveDocument(
                         { reports: moveReport(reports, i, -1) },
-                        t('dataExplorer.reportsReordered'),
+                        t('dataInsights.reportsReordered'),
                       )
                     }
                     disabled={i === 0 || saving}
-                    title={t('dataExplorer.moveUp')}
+                    title={t('dataInsights.moveUp')}
                   >
                     <ArrowUp size={14} aria-hidden />
                   </button>
@@ -306,11 +306,11 @@ export function DashboardDetailPage() {
                     onClick={() =>
                       void saveDocument(
                         { reports: moveReport(reports, i, 1) },
-                        t('dataExplorer.reportsReordered'),
+                        t('dataInsights.reportsReordered'),
                       )
                     }
                     disabled={i === reports.length - 1 || saving}
-                    title={t('dataExplorer.moveDown')}
+                    title={t('dataInsights.moveDown')}
                   >
                     <ArrowDown size={14} aria-hidden />
                   </button>
@@ -319,7 +319,7 @@ export function DashboardDetailPage() {
                     className="btn btn-secondary btn-sm"
                     onClick={() => void handleRemoveReport(i)}
                     disabled={saving}
-                    title={t('dataExplorer.removeReport')}
+                    title={t('dataInsights.removeReport')}
                   >
                     <Trash2 size={14} aria-hidden />
                   </button>
@@ -338,7 +338,7 @@ export function DashboardDetailPage() {
           onSave={(fields) => {
             void saveDocument(
               { reports: replaceReport(reports, editing ?? 0, applyReportFields(editingReport, fields)) },
-              t('dataExplorer.reportUpdated'),
+              t('dataInsights.reportUpdated'),
             ).then((ok) => ok && setEditing(null));
           }}
         />

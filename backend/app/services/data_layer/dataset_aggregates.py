@@ -1,6 +1,6 @@
 """Summarising a dataset's table: group-by columns + whitelisted aggregates.
 
-The dataset source of the Data Explorer could only *browse* rows; summarising ("turnover by month",
+A dataset in Data Insights could only *browse* rows; summarising ("turnover by month",
 "count per industry") needed the model path. This is the same read-only, capped contract as the rows
 query, over the same columns and filters — the only new vocabulary is a small aggregate whitelist.
 

@@ -1,4 +1,4 @@
-"""Explorer dashboard model — a saved analysis: a question, a narrative, and the reports in it."""
+"""Dashboard model — a saved analysis: a question, a narrative, and the reports in it."""
 from __future__ import annotations
 
 from datetime import datetime
@@ -10,7 +10,7 @@ from sqlalchemy.orm import Mapped, mapped_column
 from app.database import Base
 
 
-class ExplorerDashboard(Base):
+class Dashboard(Base):
     """A dashboard — the document, not the tiles.
 
     Each **report** in it owns its source (a dataset *or* a semantic model), the query it came from,
@@ -18,7 +18,7 @@ class ExplorerDashboard(Base):
     health check, and re-running it re-runs each report through its own engine.
     """
 
-    __tablename__ = "explorer_dashboards"
+    __tablename__ = "dashboards"
 
     id: Mapped[str] = mapped_column(String(64), primary_key=True)
     name: Mapped[str] = mapped_column(String(256), nullable=False)

@@ -1,4 +1,4 @@
-"""Explorer dashboard schemas.
+"""Dashboard schemas.
 
 A dashboard is the document; `reports` are the tiles in it, each carrying **its own source**, its
 query and the result of its last run. Reports stay free-form dicts here (the document is authored by
@@ -10,7 +10,7 @@ from typing import Any
 from pydantic import BaseModel
 
 
-class ExplorerDashboardCreate(BaseModel):
+class DashboardCreate(BaseModel):
     name: str
     question: str | None = None
     status: str = "draft"
@@ -18,7 +18,7 @@ class ExplorerDashboardCreate(BaseModel):
     reports: list[dict[str, Any]] | None = None
 
 
-class ExplorerDashboardUpdate(BaseModel):
+class DashboardUpdate(BaseModel):
     name: str | None = None
     question: str | None = None
     status: str | None = None
@@ -26,7 +26,7 @@ class ExplorerDashboardUpdate(BaseModel):
     reports: list[dict[str, Any]] | None = None
 
 
-class ExplorerDashboardResponse(BaseModel):
+class DashboardResponse(BaseModel):
     id: str
     name: str
     question: str | None = None
@@ -38,7 +38,7 @@ class ExplorerDashboardResponse(BaseModel):
     updated_at: datetime
 
 
-class ExplorerDashboardSource(BaseModel):
+class DashboardSource(BaseModel):
     """One source a dashboard's reports read — enough to label them without the rows."""
 
     kind: str
@@ -46,7 +46,7 @@ class ExplorerDashboardSource(BaseModel):
     label: str
 
 
-class ExplorerDashboardSummary(BaseModel):
+class DashboardSummary(BaseModel):
     """A dashboard in a list: what it is, how many reports it has, and which sources they read.
 
     Deliberately **not** the document: listing dashboards must not carry every report's rows.
@@ -57,12 +57,12 @@ class ExplorerDashboardSummary(BaseModel):
     question: str | None = None
     status: str
     report_count: int = 0
-    sources: list[ExplorerDashboardSource] = []
+    sources: list[DashboardSource] = []
     created_by_name: str | None = None
     created_at: datetime
     updated_at: datetime
 
 
-class ExplorerDashboardListResponse(BaseModel):
-    items: list[ExplorerDashboardSummary]
+class DashboardListResponse(BaseModel):
+    items: list[DashboardSummary]
     total: int

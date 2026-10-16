@@ -5,8 +5,8 @@ from __future__ import annotations
 from datetime import datetime, timezone
 from types import SimpleNamespace
 
-from app.api.explorer_dashboards import _summary
-from app.services.data_layer.explorer import SOURCE_DATASET, SOURCE_SEMANTIC_MODEL
+from app.api.dashboards import _summary
+from app.services.data_layer.dashboards import SOURCE_DATASET, SOURCE_SEMANTIC_MODEL
 
 NOW = datetime(2026, 10, 16, tzinfo=timezone.utc)
 

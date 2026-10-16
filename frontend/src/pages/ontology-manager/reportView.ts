@@ -9,12 +9,12 @@
  * rendering something misleading.
  */
 
-export type ExplorerChartType = 'line' | 'bar' | 'combo' | 'scatter';
+export type ReportChartType = 'line' | 'bar' | 'combo' | 'scatter';
 export type ReportViewKind = 'chart' | 'metric' | 'bar_list' | 'tracker';
 
-export interface ExplorerChartSpec {
+export interface ReportChartSpec {
   /** `line` for a series over time, `bar` to compare categories. */
-  type: ExplorerChartType;
+  type: ReportChartType;
     /**
    * `line` for a series over time, `bar` to compare categories, `combo` for both at once — where
    * `y` is drawn as **bars on the left axis** and `lines` as **lines on the right axis**, because a
@@ -79,7 +79,7 @@ export interface ReportBarListView {
   labelColumn: string | null;
 }
 
-export interface ReportChartView extends ExplorerChartSpec {
+export interface ReportChartView extends ReportChartSpec {
   kind: 'chart';
 }
 
@@ -290,7 +290,7 @@ function asName(value: unknown): string | null {
 }
 
 /** Parse a stored spec; `null` when it is absent or malformed. */
-export function parseChartSpec(raw: unknown): ExplorerChartSpec | null {
+export function parseChartSpec(raw: unknown): ReportChartSpec | null {
   if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return null;
   const record = raw as Record<string, unknown>;
   const type =
@@ -323,7 +323,7 @@ export function parseChartSpec(raw: unknown): ExplorerChartSpec | null {
 }
 
 /** Whether the chart's columns exist in the result the report returned. */
-export function chartFits(spec: ExplorerChartSpec | null, columns: string[] | undefined): boolean {
+export function chartFits(spec: ReportChartSpec | null, columns: string[] | undefined): boolean {
   if (!spec || !columns || columns.length === 0) return false;
   const known = new Set(columns);
   const measures = [...spec.y, ...(spec.lines ?? [])];
@@ -403,7 +403,7 @@ const X_KEY = '__x';
 /** Rows → the points to draw. Grouping pivots the series column into one key per value. */
 export function chartSeries(
   rows: Array<Record<string, unknown>>,
-  spec: ExplorerChartSpec,
+  spec: ReportChartSpec,
 ): ChartSeries {
   if (!spec.series) {
     // A combo plots both slots: the bars and the lines are data keys alike; the component decides

@@ -33,7 +33,7 @@ export interface DashboardReport {
 }
 
 /** The document: a question, a narrative, and the reports in it. */
-export interface ExplorerDashboard {
+export interface Dashboard {
   id: string;
   name: string;
   question: string | null;
@@ -68,17 +68,17 @@ export interface DashboardSummary {
   updated_at: string;
 }
 
-export interface ExplorerDashboardListResponse {
+export interface DashboardListResponse {
   items: DashboardSummary[];
   total: number;
 }
 
-export async function fetchDashboards(): Promise<ExplorerDashboardListResponse> {
-  return request<ExplorerDashboardListResponse>('/api/explorer-dashboards');
+export async function fetchDashboards(): Promise<DashboardListResponse> {
+  return request<DashboardListResponse>('/api/dashboards');
 }
 
-export async function fetchDashboard(id: string): Promise<ExplorerDashboard> {
-  return request<ExplorerDashboard>(`/api/explorer-dashboards/${id}`);
+export async function fetchDashboard(id: string): Promise<Dashboard> {
+  return request<Dashboard>(`/api/dashboards/${id}`);
 }
 
 export async function createDashboard(data: {
@@ -86,8 +86,8 @@ export async function createDashboard(data: {
   question?: string | null;
   narrative?: string | null;
   reports?: DashboardReport[] | null;
-}): Promise<ExplorerDashboard> {
-  return request<ExplorerDashboard>('/api/explorer-dashboards', {
+}): Promise<Dashboard> {
+  return request<Dashboard>('/api/dashboards', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(data),
@@ -103,18 +103,18 @@ export async function updateDashboard(
     narrative?: string | null;
     reports?: DashboardReport[] | null;
   },
-): Promise<ExplorerDashboard> {
-  return request<ExplorerDashboard>(`/api/explorer-dashboards/${id}`, {
+): Promise<Dashboard> {
+  return request<Dashboard>(`/api/dashboards/${id}`, {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(data),
   });
 }
 
-export async function runDashboard(id: string): Promise<ExplorerDashboard> {
-  return request<ExplorerDashboard>(`/api/explorer-dashboards/${id}/run`, { method: 'POST' });
+export async function runDashboard(id: string): Promise<Dashboard> {
+  return request<Dashboard>(`/api/dashboards/${id}/run`, { method: 'POST' });
 }
 
 export async function deleteDashboard(id: string): Promise<void> {
-  await request<void>(`/api/explorer-dashboards/${id}`, { method: 'DELETE' });
+  await request<void>(`/api/dashboards/${id}`, { method: 'DELETE' });
 }

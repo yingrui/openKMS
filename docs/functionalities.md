@@ -18,7 +18,7 @@ Per-feature reference, split by topic under `docs/features/`. The table below is
 | [Knowledge map & home](features/knowledge-map.md) | Knowledge Map terms, resource links, home hub graph |
 | [Global search](features/global-search.md) | `/search` page: documents, articles, wiki spaces, knowledge bases, media (name, channel, updated filters) |
 | [Ontology — objects, links, datasets](features/ontology.md) | Object/link types, instances, data sources, datasets |
-| [Data layer (Datasets · Data Model · Data Explorer)](features/data-layer.md) | Catalog + semantic model: datasets, relationships (FK edges), quality rules, metrics, file ingest, profile/schema, row editing (`data:*`); Data Explorer dashboards of reports, each with its own source (`explorer:*`) |
+| [Data layer (Datasets · Semantic Model · Data Insights)](features/data-layer.md) | Catalog + semantic model: datasets, relationships (FK edges), quality rules, metrics, file ingest, profile/schema, row editing (`data:*`); Data Insights dashboards of reports, each with its own source (`explorer:*`) |
 | [Ontology Functions](features/ontology-functions.md) | Three Suite Apps (Manager, Object Explorer, Function Editor), PG-backed functions, ofs runtime |
 | [Apps (hosted modules)](features/app-builder.md) | Register Kubernetes Services as Apps; API-server proxy + identity headers; gallery / run / registry settings |
 | [Ontology Function Client](features/ontology-sdk.md) | `openkms_functions` Client / `@function` / edits; string api names |

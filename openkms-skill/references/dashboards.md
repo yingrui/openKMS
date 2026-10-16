@@ -1,8 +1,8 @@
-# Data Explorer dashboard authoring (one document, reports with their own sources)
+# Data Insights dashboard authoring (one document, reports with their own sources)
 
 Part of [agentskills.io](https://agentskills.io/specification) **`references/`**.
 
-**Read this before** `explorer dashboards-create|update|run`, or when a user asks to "save this
+**Read this before** `dashboards create|update|run`, or when a user asks to "save this
 analysis", "make a dashboard", "re-run last month's numbers".
 
 **A dashboard is the document; each report in it is a tile.** Every *report* owns **its own source**
@@ -19,10 +19,10 @@ Dashboards have **no source of their own** — never put one there.
 
 ## Permissions
 
-- `explorer:read` — list/read a dashboard, and **re-run** it (a refresh recomputes; it is a read).
-- `explorer:write` — create, update, delete.
+- `insights:read` — list/read a dashboard, and **re-run** it (a refresh recomputes; it is a read).
+- `insights:write` — create, update, delete.
 - **Plus each report's dataset ACL**: a report whose dataset the caller cannot read comes back as
-  `EXPLORER_SOURCE_FORBIDDEN` **instead of its rows**, and a dashboard is listed only while at least
+  `REPORT_SOURCE_FORBIDDEN` **instead of its rows**, and a dashboard is listed only while at least
   one of its reports is readable. Model-backed reports have no per-resource ACL.
 
 ## The dashboard document
@@ -74,7 +74,7 @@ Dashboards have **no source of their own** — never put one there.
 }
 ```
 
-- `metric` is **required** (a report without one fails with `EXPLORER_BLOCK_METRIC_MISSING`), addressed
+- `metric` is **required** (a report without one fails with `REPORT_METRIC_MISSING`), addressed
   by id **or** name.
 - `group_by[].field` is a field id or name — of the metric's **base dataset or one it joins** (`industry`
   lives on `stock_basic` while the metric lives on `daily_basic`; the relationship the metric declares is
@@ -198,22 +198,22 @@ python scripts/cli.py semantic-models fields list --id MODEL_ID
 python scripts/cli.py metrics list --model-id MODEL_ID          # or: datasets list --search stock
 
 # 2. create the dashboard from a reports file (see the shapes above)
-python scripts/cli.py explorer dashboards-create \
+python scripts/cli.py dashboards create \
   --name "Stock valuation" --question "Which stocks look cheap vs their industry?" \
   --reports-file reports.json --yes
 
 # 3. run it, then read what came back (rows + per-report errors) — `dashboards-get` is the document;
 #    `dashboards-list` is only a summary (name, report count, sources)
-python scripts/cli.py explorer dashboards-run --id DASHBOARD_ID --yes
-python scripts/cli.py explorer dashboards-get --id DASHBOARD_ID
+python scripts/cli.py dashboards run --id DASHBOARD_ID --yes
+python scripts/cli.py dashboards get --id DASHBOARD_ID
 
 # 4. fix a failing report / write the narrative + insights, then run again
-python scripts/cli.py explorer dashboards-update --id DASHBOARD_ID \
+python scripts/cli.py dashboards update --id DASHBOARD_ID \
   --narrative-file narrative.md --reports-file reports.json --yes
-python scripts/cli.py explorer dashboards-run --id DASHBOARD_ID --yes
+python scripts/cli.py dashboards run --id DASHBOARD_ID --yes
 
 # 5. mark the answer as holding
-python scripts/cli.py explorer dashboards-update --id DASHBOARD_ID --status ready --yes
+python scripts/cli.py dashboards update --id DASHBOARD_ID --status ready --yes
 ```
 
 ## How a run behaves
@@ -223,7 +223,7 @@ python scripts/cli.py explorer dashboards-update --id DASHBOARD_ID --status read
 - **One report failing does not fail the dashboard.** The report stores
   `error: {code, message, kind}` (its classified reason) and the others still run — read the reason,
   fix that report's query, re-run. Do not paper over it by deleting the report. A report whose source
-  you may not read stores `EXPLORER_SOURCE_FORBIDDEN` and **never** carries rows.
+  you may not read stores `REPORT_SOURCE_FORBIDDEN` and **never** carries rows.
 - Results are **persisted**, so a dashboard is live: after the data changed, `dashboards-run` again
   instead of trusting numbers you fetched before.
 

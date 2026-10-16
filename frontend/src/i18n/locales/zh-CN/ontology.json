@@ -74,7 +74,7 @@
     "schemaRelatedObjectTypes": "schema 中的对象类型",
     "schemaRelatedLinkTypes": "schema 中的链接类型"
   },
-  "dataExplorer": {
+  "dataInsights": {
     "title": "数据探索",
     "subtitle": "用 Agent 探索数据；已保存的分析都在这里。",
     "sourceDataset": "数据集",

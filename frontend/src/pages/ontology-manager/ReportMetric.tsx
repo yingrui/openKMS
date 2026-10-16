@@ -39,9 +39,9 @@ export function ReportMetric({
       {delta && (
         <span className={`report-metric__delta report-metric__delta--${delta.direction}`}>
           <DeltaIcon size={14} aria-hidden />
-          {delta.ratio === null ? t('dataExplorer.deltaNoBaseline') : formatPercent(delta.ratio)}
+          {delta.ratio === null ? t('dataInsights.deltaNoBaseline') : formatPercent(delta.ratio)}
           <span className="report-metric__delta-note">
-            {t('dataExplorer.deltaVsPrevious', { previous: formatNumber(delta.previous) })}
+            {t('dataInsights.deltaVsPrevious', { previous: formatNumber(delta.previous) })}
           </span>
         </span>
       )}
@@ -57,7 +57,7 @@ export function ReportMetric({
         </span>
       )}
       {view.trend && series.length === 0 && rows.length > 0 && (
-        <span className="report-metric__label">{t('dataExplorer.noNumericSeries')}</span>
+        <span className="report-metric__label">{t('dataInsights.noNumericSeries')}</span>
       )}
     </div>
   );

@@ -1,6 +1,6 @@
-# Data layer — Datasets · Data Model · Data Explorer
+# Data layer — Datasets · Data Model · Data Insights
 
-Feature reference for the openKMS **data layer**: the **Datasets** app (Catalog + Model) and the **Data Explorer**, plus the datasets, fields, relationships, quality, metrics, and reports beneath them. **Positioning:** *Route B — a knowledge substrate for agents, not a data-engineering platform.*
+Feature reference for the openKMS **data layer**: the **Datasets** app (Catalog + Model) and the **Data Insights**, plus the datasets, fields, relationships, quality, metrics, and reports beneath them. **Positioning:** *Route B — a knowledge substrate for agents, not a data-engineering platform.*
 
 **Status:** shipped in part, with a pending refactor to the **Apache Ossie** semantic model. See [Refactoring plan](#refactoring-plan) · [Semantic model spec](data-layer-semantic-model.md) · [Interaction design](data-layer-interaction.md).
 
@@ -54,7 +54,7 @@ Definitions first; each concept is **authored in exactly one place**.
 |-------|------|---------|
 | **Application** | Agents · Documents · Articles · Wikis · KB · Media · Glossaries · Evaluations · Knowledge Map · Apps | *Knowledge work and delivery* |
 | **Ontology** | Ontology Manager · Object Explorer · Function Editor | *What the business means and does* |
-| **Data** | **Datasets** (Catalog + **Model**), **Data Explorer** | *What is the data, how trustworthy, how to analyze it* |
+| **Data** | **Datasets** (Catalog + **Model**), **Data Insights** | *What is the data, how trustworthy, how to analyze it* |
 
 **Console stays shared** — `Connectors` / `Pipelines` / `data-sources` / `job-runs` are platform capabilities, not part of the Data layer. **Data sources are tagged by layer** in Console → Data Sources (data-layer vs ontology-layer); PostgreSQL sources are data-capable by default, `ontology` is an explicit exclusion.
 
@@ -62,7 +62,7 @@ Definitions first; each concept is **authored in exactly one place**.
 
 ## Current state
 
-**Shipped:** Datasets app at `/datasets` — its own tab bar is **Catalog · Semantic Model · Metrics** (`/datasets` · `/data-model` · `/data-metrics`), the last read-only because a metric is defined next to its model (Catalog list + register/upload + detail tabs: Overview (read-only summary incl. usage) · Data · Columns · Relationships · Quality · Settings (the single edit surface) · Sharing) and the Model view at `/data-model` (ER graph + health + quality alerts + relationships table); Data Explorer at `/data-explorer` — a **dashboard** holds **reports**, and **each report carries its own source** (a dataset or a semantic model) plus the query it came from, so one dashboard can mix them; `POST /api/explorer-dashboards/{id}/run` re-runs every report through its own engine ([design](data-layer-explorer.md)). Backend: `datasets` (catalog fields, `primary_key_columns`, `unique_keys`, `ai_context`, `is_editable`), `dataset_joins` (Ossie FK — `from`/`to`/`from_columns`/`to_columns`/`required`), file ingest, profile/schema snapshots, quality rules/runs, `metric_definitions` (model-level Ossie SQL expressions), `metric_runs` (execution audit), `explorer_dashboards`, `dataset_edits` (audit), `dataset_columns` (column descriptions), **filtered row browsing** (`POST /api/datasets/{id}/rows/query` with AND-ed column filters, a truthful count and a statement timeout; [design](data-layer-grid-filter.md)) and **dataset summaries** (`POST /api/datasets/{id}/aggregate`: group by columns — optionally by a date grain — with `count/sum/avg/min/max`, so a dataset can answer "by month" without a model), `semantic_models` + `semantic_model_datasets` + `semantic_model_fields` (named scopes); **Ossie export/import** (per model); `data:read` / `data:write` / `data:edit` (the Data Explorer has its own `explorer:read` / `explorer:write`); keyset paging + row editing (TanStack Table). First scenario: **Tushare stock datasets**.
+**Shipped:** Datasets app at `/datasets` — its own tab bar is **Catalog · Semantic Model · Metrics** (`/datasets` · `/data-model` · `/data-metrics`), the last read-only because a metric is defined next to its model (Catalog list + register/upload + detail tabs: Overview (read-only summary incl. usage) · Data · Columns · Relationships · Quality · Settings (the single edit surface) · Sharing) and the Model view at `/data-model` (ER graph + health + quality alerts + relationships table); Data Insights at `/data-insights` — a **dashboard** holds **reports**, and **each report carries its own source** (a dataset or a semantic model) plus the query it came from, so one dashboard can mix them; `POST /api/dashboards/{id}/run` re-runs every report through its own engine ([design](data-layer-insights.md)). Backend: `datasets` (catalog fields, `primary_key_columns`, `unique_keys`, `ai_context`, `is_editable`), `dataset_joins` (Ossie FK — `from`/`to`/`from_columns`/`to_columns`/`required`), file ingest, profile/schema snapshots, quality rules/runs, `metric_definitions` (model-level Ossie SQL expressions), `metric_runs` (execution audit), `dashboards`, `dataset_edits` (audit), `dataset_columns` (column descriptions), **filtered row browsing** (`POST /api/datasets/{id}/rows/query` with AND-ed column filters, a truthful count and a statement timeout; [design](data-layer-grid-filter.md)) and **dataset summaries** (`POST /api/datasets/{id}/aggregate`: group by columns — optionally by a date grain — with `count/sum/avg/min/max`, so a dataset can answer "by month" without a model), `semantic_models` + `semantic_model_datasets` + `semantic_model_fields` (named scopes); **Ossie export/import** (per model); `data:read` / `data:write` / `data:edit` (the Data Insights has its own `insights:read` / `insights:write`); keyset paging + row editing (TanStack Table). First scenario: **Tushare stock datasets**.
 
 **Gaps vs the target:** none — the [refactoring plan](#refactoring-plan) Stages 1–6 are shipped.
 
@@ -98,7 +98,7 @@ Goal: the Datasets app **manages the Ossie semantic model**, with each definitio
 - **Verify:** ✅ a metric computes read-only with a timeout + row cap (verified live); no dimensions on the metric; runs are audited.
 
 ### Stage 5 — ~~Queries (saved queries)~~ **withdrawn**
-- A saved query is a **consumption** artifact, not part of the Ossie semantic model (`datasets` / `fields` / `metrics` / `relationships`). `saved_queries` was **removed**; saved analyses live in **Data Explorer** (`explorer_dashboards`: a dashboard of reports).
+- A saved query is a **consumption** artifact, not part of the Ossie semantic model (`datasets` / `fields` / `metrics` / `relationships`). `saved_queries` was **removed**; saved analyses live in **Data Insights** (`dashboards`: a dashboard of reports).
 
 ### Stage 6 — Semantic Model export / import ✅
 - **API:** `GET /api/semantic-models/{id}/export` → **flat** Ossie document for one model (core spec `0.2.0.dev0`; `datasets`/`relationships`/`metrics` + entity-level `OPENKMS` `custom_extensions` for the few non-spec facts); `POST /api/semantic-models/import` upserts it — everything matched **by name** (datasets by `source` first), no ids in the document. Validated against the vendored [`ossie-schema.json`](../research/ossie/spec.md).
@@ -109,7 +109,7 @@ Goal: the Datasets app **manages the Ossie semantic model**, with each definitio
 - **API:** `POST /api/semantic-models/{id}/query` — one spec object `{metric, group_by[{field, granularity?}], filters[{field, op, value}], order_by[{field, direction}], limit}` shared by the UI (encoded in the URL as `?q=`), `openkms-skill` and any agent; read-only, statement timeout, row cap, audited (`metric_runs`).
 - **Frontend:** **Model → a model → Playground** — metric → group-by fields (**type-ahead menu**, time ones with a query-time grain; selections as chips) + filters (the metric's own filters listed read-only) + order + limit; the answer states **row count / cap / duration**, the **null share per column** and *why* it is empty, the generated **SQL**, and the metric **definition** (expression, base dataset, type, the **relationships it uses** by name, description, `ai_context`). A metric row links *into* here (`Test in Playground`), and `Copy query` hands the spec to an agent verbatim.
 - **Failures are classified:** the API maps SQLSTATE to a stable code + `kind` — `definition` (the model author fixes it), `data` (the source refused) or `request` — and localizes the explanation, so the pane says who can fix a failed question instead of echoing SQL. See [Playground design](data-layer-playground.md#8-decisions).
-- **Not here (decided):** saving, charts, pivots, CSV export (Data Explorer); NL → spec (agent).
+- **Not here (decided):** saving, charts, pivots, CSV export (Data Insights); NL → spec (agent).
 - **Verify:** ✅ `pytest tests/test_data_layer_query_errors.py`; a misplaced expression reports `kind=definition`.
 
 ### Cross-cutting (all stages)
@@ -142,14 +142,14 @@ So a table is described (catalog), modeled (fields/relationships), trusted (qual
 | 6 | **First scenario = Tushare-synced stock datasets.** |
 | 7 | **Relationships are authored manually** — no automatic join discovery. |
 | 8 | **Quality alerts live in the Model view.** |
-| 9 | **Dashboard reports are persisted in the Data Explorer app.** |
+| 9 | **Dashboard reports are persisted in the Data Insights app.** |
 | 10 | **Data files can be uploaded** — parsed into PostgreSQL tables; the raw file is kept in object storage. |
 | 11 | **Data sources are tagged by layer** (Console → Data Sources); PostgreSQL is data-capable by default, `ontology` is an explicit exclusion. |
 | 12 | **Predictive analysis = LLM reasoning + Python + trend extrapolation** (sandboxed; no ML training/hosting; Functions optional later). |
 | 13 | **Quality is declarative** (rule type + parameters). **Metrics use Ossie `expression.dialects`** — aggregate SQL **fragments** pre-configured by data engineers (no custom DSL; AI-assist may draft them), wrapped into a generated query and executed **read-only with timeout + row cap**. |
 | 14 | **New data resources inherit dataset ACL** (no new `resource_type`). |
 | 15 | **Separate read vs manage vs edit permissions** — `data:read` / `data:write` / `data:edit`; `console:datasets` stays console-scoped. |
-| 27 | **Reports are their own grant** — `explorer:read` / `explorer:write`, and a **refresh is a read** (`explorer:read`); the bound source's ACL still applies, because a report's results are stored data. |
+| 27 | **Reports are their own grant** — `insights:read` / `insights:write`, and a **refresh is a read** (`insights:read`); the bound source's ACL still applies, because a report's results are stored data. |
 | 16 | **Dataset → knowledge has two paths** — promote to an object type and cite as agent evidence; dataset rows are not ingested into KB/RAG in v1. |
 | 17 | **Adopt Apache Ossie as the semantic-model interchange** (Apache 2.0, vendor-neutral) — export (later import) the Ossie document. |
 | 18 | **Relationships are foreign keys, not cardinality** — `from` (many) → `to` (one), `from_columns`/`to_columns`, composite, `required`; 1:1 via unique keys; M:N via a junction dataset. |
@@ -157,7 +157,7 @@ So a table is described (catalog), modeled (fields/relationships), trusted (qual
 | 20 | **A relationship carries only edge facts** — FK direction (`from`/`to`) + column mapping + `required` (optional vs required match). No `base` (that is a metric/query anchor) and no `left`/`right`/`full` (`right` ≡ a swapped `left`; the query anchor fixes the join side, so an edge-level `right` was a footgun). |
 | 21 | **A semantic model is a named scope** over the **shared** base (datasets, columns, relationships — Catalog-owned). It owns **fields** and **metrics** (+ dataset membership, `ai_context`); export/import is per model. There is no default model — if none exists, the list is empty. |
 | 22 | **Columns are physical (Catalog); fields are model-scoped.** A column carries a maintained `description`; a field is that column (or a computed expression) **as used in one model** — with its `role` and `ai_context`. So a field's `ai_context` can differ per model. |
-| 23 | **No queries in the semantic model.** A saved query is a **consumption** artifact (Data Explorer), not part of the Ossie `semantic_model` (`datasets` / `fields` / `metrics` / `relationships`). `saved_queries` was removed. |
+| 23 | **No queries in the semantic model.** A saved query is a **consumption** artifact (Data Insights), not part of the Ossie `semantic_model` (`datasets` / `fields` / `metrics` / `relationships`). `saved_queries` was removed. |
 | 26 | **Vendor extensions are entity-level, and carry no ids.** `custom_extensions` sits on the Dataset/Relationship/Metric that needs it (the spec allows this) — never one document-level blob — and we emit no stable ids, because every reference in the document is by name. |
 | 25 | **Every expression is labelled `ANSI_SQL`** — including PostgreSQL-specific syntax (the spec's `Dialect` enum has no `POSTGRES`, and our datasets are PostgreSQL-only), so a couple of our expressions are not portable. |
 | 24 | **A metric keeps an explicit `base_dataset` anchor** (Ossie has none — its engine derives the `FROM`/joins from the expression). It travels in the metric's own `OPENKMS` `custom_extensions`; deriving it from the expression + relationships is **deferred to the agent auto-query phase**. |

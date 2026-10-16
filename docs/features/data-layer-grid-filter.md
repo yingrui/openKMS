@@ -142,7 +142,7 @@ The same control serves the **Playground** for the fields the model declares as 
   to the Playground/metrics (the model's job), not to row browsing.
 - **No distinct-value pickers / autocomplete on values** (v2 — needs its own `SELECT DISTINCT`-style
   endpoint with its own caps; listing values of a text column is a scan).
-- **No saved views, charts, exports.** Consumption artifacts are the Data Explorer's job (decision #23).
+- **No saved views, charts, exports.** Consumption artifacts are the Data Insights's job (decision #23).
 - **No cross-dataset filters or joins** — that is the Playground (a model's relationships).
 - **Not a second engine:** reuse `build_conditions` and the operator whitelist; the only new SQL is the
   qualified column expression.

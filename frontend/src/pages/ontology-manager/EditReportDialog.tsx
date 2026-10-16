@@ -38,7 +38,7 @@ export function EditReportDialog({
       open
       onClose={onClose}
       closeAriaLabel={t('shared.cancel')}
-      title={t('dataExplorer.editReport')}
+      title={t('dataInsights.editReport')}
       size="md"
       footer={
         <>
@@ -56,14 +56,14 @@ export function EditReportDialog({
         </>
       }
     >
-      <FormField label={t('dataExplorer.report')}>
+      <FormField label={t('dataInsights.report')}>
         <input value={title} onChange={(e) => setTitle(e.target.value)} />
       </FormField>
-      <FormField label={t('dataExplorer.saveReportInsight')}>
+      <FormField label={t('dataInsights.saveReportInsight')}>
         <input
           value={insight}
           onChange={(e) => setInsight(e.target.value)}
-          placeholder={t('dataExplorer.saveReportInsightPlaceholder')}
+          placeholder={t('dataInsights.saveReportInsightPlaceholder')}
         />
       </FormField>
       <ReportViewFields columns={columns} rows={rows} view={view} onChange={setView} />

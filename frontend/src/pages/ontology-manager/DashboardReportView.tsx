@@ -9,7 +9,7 @@ import { RichMarkdown } from '../../components/markdown/richMarkdown';
 import { EntityViewPanel } from './EntityViewShell';
 import { reportSource } from './reportSource';
 import { QueryFailureNotice, asQueryFailureKind } from '../../styles/design-system';
-import { ExplorerChart } from './ExplorerChart';
+import { ReportChart } from './ReportChart';
 import { ReportBarList } from './ReportBarList';
 import { ReportMetric } from './ReportMetric';
 import { ReportTracker } from './ReportTracker';
@@ -61,16 +61,16 @@ export function DashboardReportView({
   const age = ageOf(report.ran_at);
   const ageLabel = age
     ? age.bucket === 'just_now'
-      ? t('dataExplorer.ageJustNow')
-      : t(`dataExplorer.age_${age.bucket}`, { count: age.count })
+      ? t('dataInsights.ageJustNow')
+      : t(`dataInsights.age_${age.bucket}`, { count: age.count })
     : null;
-  const source = reportSource(report, datasets, models, t('dataExplorer.sourceMissing'));
+  const source = reportSource(report, datasets, models, t('dataInsights.sourceMissing'));
   const isModel = source.kind === 'semantic_model';
 
   return (
     <EntityViewPanel
       id={id}
-      title={report.title ?? t('dataExplorer.report')}
+      title={report.title ?? t('dataInsights.report')}
       actions={actions}
       description={
         <>
@@ -79,7 +79,7 @@ export function DashboardReportView({
           )}
           {/* Where the numbers come from — named, and linked when the reader may open the source. */}
           <span className="dashboard-report__source">
-            {isModel ? t('dataExplorer.sourceModel') : t('dataExplorer.sourceDataset')}
+            {isModel ? t('dataInsights.sourceModel') : t('dataInsights.sourceDataset')}
             {': '}
             {source.href ? (
               <Link to={source.href}>
@@ -95,15 +95,15 @@ export function DashboardReportView({
       {report.error ? (
         <QueryFailureNotice
           kind={asQueryFailureKind(report.error.kind)}
-          title={t('dataExplorer.reportFailed')}
+          title={t('dataInsights.reportFailed')}
           message={report.error.message}
           detail={report.error.detail}
           detailsLabel={t('dataModel.playgroundErrorDetails')}
         />
       ) : !report.ran_at ? (
-        <p className="entity-view__readonly">{t('dataExplorer.reportNotRun')}</p>
+        <p className="entity-view__readonly">{t('dataInsights.reportNotRun')}</p>
       ) : rows.length === 0 ? (
-        <p className="entity-view__readonly">{t('dataExplorer.reportNoRows')}</p>
+        <p className="entity-view__readonly">{t('dataInsights.reportNoRows')}</p>
       ) : (
         <>
           {/* Provenance: how much, how fresh, how slow — quieter than the insight above it. */}
@@ -112,7 +112,7 @@ export function DashboardReportView({
             {report.capped && <span>{t('datasets.filterCapped')}</span>}
             {report.duration_ms != null && <span>{report.duration_ms} ms</span>}
             {/* As of *when* — never "the data has not changed", which nothing here can know. */}
-            {ageLabel && <span title={absoluteTime(report.ran_at)}>{t('dataExplorer.asOf', { age: ageLabel })}</span>}
+            {ageLabel && <span title={absoluteTime(report.ran_at)}>{t('dataInsights.asOf', { age: ageLabel })}</span>}
           </p>
           <div className="dashboard-report__toolbar">
             <div className="openkms-flex-row-gap">
@@ -121,18 +121,18 @@ export function DashboardReportView({
                 type="button"
                 className="btn btn-secondary btn-sm"
                 onClick={() => downloadCsv(toCsv(columns, rows), csvFileName(report.title))}
-                title={t('dataExplorer.exportCsv')}
+                title={t('dataInsights.exportCsv')}
               >
                 <Download size={14} aria-hidden />
                 <span>CSV</span>
               </button>
               {view && canDraw ? (
-              <div className="ds-view-toggle" role="group" aria-label={t('dataExplorer.viewModeAria')}>
+              <div className="ds-view-toggle" role="group" aria-label={t('dataInsights.viewModeAria')}>
                 <button
                   type="button"
                   className={`ds-view-toggle__btn${showTable ? '' : ' active'}`}
                   onClick={() => setShowTable(false)}
-                  title={t('dataExplorer.chart')}
+                  title={t('dataInsights.chart')}
                 >
                   <ChartLine size={16} aria-hidden />
                 </button>
@@ -140,7 +140,7 @@ export function DashboardReportView({
                   type="button"
                   className={`ds-view-toggle__btn${showTable ? ' active' : ''}`}
                   onClick={() => setShowTable(true)}
-                  title={t('dataExplorer.viewTable')}
+                  title={t('dataInsights.viewTable')}
                 >
                   <TableIcon size={16} aria-hidden />
                 </button>
@@ -157,16 +157,16 @@ export function DashboardReportView({
               ) : view.kind === 'tracker' ? (
                 <ReportTracker view={view} rows={rows} />
               ) : series ? (
-                <ExplorerChart spec={view} series={series} />
+                <ReportChart spec={view} series={series} />
               ) : null}
               {series?.truncated && (
                 <p className="page-subtitle">
-                  {t('dataExplorer.chartTruncated', { max: MAX_CHART_SERIES })}
+                  {t('dataInsights.chartTruncated', { max: MAX_CHART_SERIES })}
                 </p>
               )}
               {view.kind === 'bar_list' && rows.length > MAX_BAR_LIST_ROWS && (
                 <p className="page-subtitle">
-                  {t('dataExplorer.barListTruncated', { max: MAX_BAR_LIST_ROWS })}
+                  {t('dataInsights.barListTruncated', { max: MAX_BAR_LIST_ROWS })}
                 </p>
               )}
             </>

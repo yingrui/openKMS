@@ -95,7 +95,7 @@ export function AddReportDialog({
   const run = async () => {
     const spec = toQuery(form);
     if (!spec.ok) {
-      toast.error(t(`dataExplorer.queryProblem_${spec.reason}`));
+      toast.error(t(`dataInsights.queryProblem_${spec.reason}`));
       return;
     }
     setRunning(true);
@@ -110,9 +110,9 @@ export function AddReportDialog({
       setView((current) =>
         current.choice === 'none' ? guessView(answer.columns, answer.rows) : current,
       );
-      if (answer.rows.length === 0) toast.info(t('dataExplorer.queryNoRows'));
+      if (answer.rows.length === 0) toast.info(t('dataInsights.queryNoRows'));
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : t('dataExplorer.runFailed'));
+      toast.error(e instanceof Error ? e.message : t('dataInsights.runFailed'));
       setResult(null);
     } finally {
       setRunning(false);
@@ -122,7 +122,7 @@ export function AddReportDialog({
   const save = async () => {
     const spec = toQuery(form);
     if (!spec.ok || !result) {
-      toast.error(t('dataExplorer.queryTryFirst'));
+      toast.error(t('dataInsights.queryTryFirst'));
       return;
     }
     setSaving(true);
@@ -136,16 +136,16 @@ export function AddReportDialog({
         rows: result.rows,
         defaultTitle:
           spec.kind === 'dataset'
-            ? (datasets.find((d) => d.id === spec.id)?.display_name ?? t('dataExplorer.report'))
+            ? (datasets.find((d) => d.id === spec.id)?.display_name ?? t('dataInsights.report'))
             : `${models.find((m) => m.id === spec.id)?.name ?? ''} · ${metrics.find((m) => m.id === form.metric)?.name ?? ''}`,
       };
       const entry = buildReportEntry(draft, { title, insight, view });
       await updateDashboard(dashboardId, { reports: [...reports, entry] });
-      toast.success(t('dataExplorer.reportAdded'));
+      toast.success(t('dataInsights.reportAdded'));
       setOpen(false);
       onSaved();
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : t('dataExplorer.saveReportFailed'));
+      toast.error(e instanceof Error ? e.message : t('dataInsights.saveReportFailed'));
     } finally {
       setSaving(false);
     }
@@ -155,13 +155,13 @@ export function AddReportDialog({
     <>
       <button type="button" className="btn btn-secondary" onClick={openDialog}>
         <Plus size={16} aria-hidden />
-        <span>{t('dataExplorer.addReport')}</span>
+        <span>{t('dataInsights.addReport')}</span>
       </button>
       <Dialog
         open={open}
         onClose={() => !saving && !running && setOpen(false)}
         closeDisabled={saving || running}
-        title={t('dataExplorer.addReport')}
+        title={t('dataInsights.addReport')}
         closeAriaLabel={t('shared.cancel')}
         size="md"
         footer={
@@ -185,7 +185,7 @@ export function AddReportDialog({
               ) : (
                 <Play size={16} aria-hidden />
               )}
-              <span>{t('dataExplorer.queryTry')}</span>
+              <span>{t('dataInsights.queryTry')}</span>
             </button>
             <button
               type="button"
@@ -193,7 +193,7 @@ export function AddReportDialog({
               onClick={() => void save()}
               disabled={!result || saving || running}
             >
-              {saving ? t('shared.saving') : t('dataExplorer.saveReport')}
+              {saving ? t('shared.saving') : t('dataInsights.saveReport')}
             </button>
           </>
         }
@@ -212,18 +212,18 @@ export function AddReportDialog({
             <p className="page-subtitle">
               {t('datasets.filterRows', { count: result.rows.length })}
             </p>
-            <FormField label={t('dataExplorer.report')}>
+            <FormField label={t('dataInsights.report')}>
               <input
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
-                placeholder={t('dataExplorer.reportTitlePlaceholder')}
+                placeholder={t('dataInsights.reportTitlePlaceholder')}
               />
             </FormField>
-            <FormField label={t('dataExplorer.saveReportInsight')}>
+            <FormField label={t('dataInsights.saveReportInsight')}>
               <input
                 value={insight}
                 onChange={(e) => setInsight(e.target.value)}
-                placeholder={t('dataExplorer.saveReportInsightPlaceholder')}
+                placeholder={t('dataInsights.saveReportInsightPlaceholder')}
               />
             </FormField>
             <ReportViewFields

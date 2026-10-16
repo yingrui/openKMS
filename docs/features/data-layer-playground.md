@@ -22,7 +22,7 @@ Run → a table + the SQL + *Recent runs*.
 | 3 | **Nothing about the definition** — no expression, base dataset, joins, filters, `type`, AI context | An author cannot answer "is this the metric I think it is?" without leaving the page |
 | 4 | **Raw SQL errors** (e.g. a `GroupingError` from a non-aggregate expression) | The failure mode we actually hit; the user cannot tell a definition bug from a data bug |
 | 5 | **Result has no context**: no row count, no "capped at 1000", no timing, no units/formatting, no chart | Two of the three numbers on screen are uninterpretable |
-| 6 | **No way to keep or share** an answer | A good answer dies with the tab (the spec's own story: it belongs in Data Explorer) |
+| 6 | **No way to keep or share** an answer | A good answer dies with the tab (the spec's own story: it belongs in Data Insights) |
 | 7 | **Disconnected from authoring** | Testing a metric means leaving the Metrics tab; the old per-row Run we deleted left a hole |
 
 The server already does more than the UI asks for: `POST /semantic-models/{id}/preview` accepts
@@ -58,7 +58,7 @@ Four user jobs, and the information each needs:
 | **Sanity-check a definition** (author) | The metric's **expression**, base dataset, joins it uses, its own `filters`, `type`, description, `ai_context`/synonyms — and the **no-group-by single value** |
 | **Explore** (analyst) | A **searchable field browser** (time dimensions first, other fields folded, label/description/type shown), **filters incl. a time range**, **order + limit**, **row cap indicator**, units/formatting, table ⇄ chart |
 | **Trust the number** | Generated SQL, run time, row count and whether the cap was hit, empty-result explanation (the run *audit* stays in the API/skill — no history panel here) |
-| **Keep / hand off** | **Copy CSV**, **Copy query JSON**, permalink of the spec, **Save to Data Explorer**, and an actionable *Recent runs* list |
+| **Keep / hand off** | **Copy CSV**, **Copy query JSON**, permalink of the spec, **Save to Data Insights**, and an actionable *Recent runs* list |
 
 ### Proposed layout (two panes, definition strip)
 
@@ -120,10 +120,10 @@ definition. Everything that **keeps, dresses or spans** an answer lives on anoth
 | Item | Where it goes | Why not here |
 |------|---------------|--------------|
 | A run-history panel | **nowhere** (keep the audit in the API/skill) |
-| Save the query/report, "Open in Explorer" | **Data Explorer** (`explorer_dashboards`) | a saved artifact is consumption (decision #23) — **shipped** as *Save to a dashboard* on the Playground's answer, which is why the Playground has no save of its own |
-| Bar / line charts | **Data Explorer** | the Playground is a table; dressing an answer is the Explorer's job |
-| Pivot / cross-tab (industry × month) | **Data Explorer** | a separate feature, not a query-builder control |
-| CSV / file export | **Data Explorer** | consumption |
+| Save the query/report, "Open in Explorer" | **Data Insights** (`dashboards`) | a saved artifact is consumption (decision #23) — **shipped** as *Save to a dashboard* on the Playground's answer, which is why the Playground has no save of its own |
+| Bar / line charts | **Data Insights** | the Playground is a table; dressing an answer is the Explorer's job |
+| Pivot / cross-tab (industry × month) | **Data Insights** | a separate feature, not a query-builder control |
+| CSV / file export | **Data Insights** | consumption |
 | NL → query spec | **Agent** (skill/CLI), later | the Playground stays explicit |
 | Period-over-period, freshness warnings | **Agent / Explorer** | analysis over time, not query building |
 | "Test in Playground" on a metric row | **Metrics tab** (a link *into* here) | the affordance lives with the metric list |
@@ -165,7 +165,7 @@ change (no alias). `/metrics/{id}/compute` folds into "query with no grouping".
 ## 6. Scope guards (what this is *not*)
 
 - **Not a BI tool**: no pivots, no dashboards, no drag-and-drop chart authoring. The Playground
-  answers and hands off; the Data Explorer owns saved, dressed-up artifacts.
+  answers and hands off; the Data Insights owns saved, dressed-up artifacts.
 - **No model-scoped saved-query library** (decision #23) — "save" means *to the Explorer*.
 - **No invented spec concepts**: grain/timezone stay query-time; nothing new is stored on a field.
 - **No write path**: read-only, timeout + row cap, audited (unchanged).
@@ -190,7 +190,7 @@ change (no alias). `/metrics/{id}/compute` folds into "query with no grouping".
 2. **Filters address declared `fields` only** (the schema-of-record) — not raw dataset columns. A
    column that is not a field is not addressable from a question.
 3. **Table only.** No chart types here.
-4. **No pivot.** Cross-tabs, if wanted, are a Data Explorer feature.
+4. **No pivot.** Cross-tabs, if wanted, are a Data Insights feature.
 5. `POST /semantic-models/{id}/query` replaces `/preview`; `POST /metrics/{id}/compute` stays as the
    metric-addressed single value and is defined as `run_query` with no grouping (one engine, two
    addresses).

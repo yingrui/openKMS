@@ -90,8 +90,6 @@
   "appTaglineDatasets": "编目、建模与探索数据",
   "dataModel": "数据模型",
   "appTaglineDataModel": "Join、ER 模型与数据质量告警",
-  "dataExplorer": "数据探索",
-  "appTaglineDataExplorer": "提问并沉淀分析",
   "layer_data": "数据层",
   "layer_ontology": "本体层",
   "layer_application": "应用层",
@@ -108,5 +106,7 @@
   "appTaglineObjectExplorer": "浏览对象、链接并查询图",
   "appTaglineFunctionEditor": "编写并预览 Python 逻辑",
   "appTaglineApps": "打开、配置与管理托管应用",
-  "appTaglineEvaluations": "评测与改进回答质量"
+  "appTaglineEvaluations": "评测与改进回答质量",
+  "dataInsights": "数据探索",
+  "appTaglineDataInsights": "数据上保存下来的分析：一个问题、写下来的结论，以及支撑它的那些报告。"
 }

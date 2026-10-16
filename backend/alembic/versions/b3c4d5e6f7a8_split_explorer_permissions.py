@@ -26,12 +26,12 @@ from typing import Sequence, Union
 import sqlalchemy as sa
 from alembic import op
 
-from app.services.permissions.permission_catalog import (
-    PERM_DATA_READ,
-    PERM_DATA_WRITE,
-    PERM_EXPLORER_READ,
-    PERM_EXPLORER_WRITE,
-)
+from app.services.permissions.permission_catalog import PERM_DATA_READ, PERM_DATA_WRITE
+
+# Written as literals on purpose: this records the keys as they were then, and a later rename must not
+# be able to break the migration chain by renaming the constant it imported.
+PERM_EXPLORER_READ = "explorer:read"
+PERM_EXPLORER_WRITE = "explorer:write"
 
 revision: str = "b3c4d5e6f7a8"
 down_revision: Union[str, Sequence[str], None] = "a8f7e6d5c4b3"

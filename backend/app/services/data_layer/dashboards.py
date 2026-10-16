@@ -41,7 +41,7 @@ def report_source(report: dict[str, Any] | None) -> ReportSource:
         raise QueryError(
             "A report's source is a dataset or a semantic model.",
             QueryFailure(
-                "EXPLORER_SOURCE_KIND_UNKNOWN", REQUEST, str(kind), params={"kind": str(kind)}
+                "REPORT_SOURCE_KIND_UNKNOWN", REQUEST, str(kind), params={"kind": str(kind)}
             ),
         )
     return ReportSource(SOURCE_DATASET, entry.get("dataset_id"), None)
@@ -53,7 +53,7 @@ def source_failure(source: ReportSource) -> QueryFailure | None:
         return None
     wants_model = source.kind == SOURCE_SEMANTIC_MODEL
     return QueryFailure(
-        "EXPLORER_SOURCE_MISSING",
+        "REPORT_SOURCE_MISSING",
         REQUEST,
         "semantic_model_id" if wants_model else "dataset_id",
         params={"source": "model" if wants_model else "dataset"},
@@ -63,7 +63,7 @@ def source_failure(source: ReportSource) -> QueryFailure | None:
 def source_forbidden(source: ReportSource) -> QueryFailure:
     """The report reads a source this caller may not: say so without leaking a row."""
     return QueryFailure(
-        "EXPLORER_SOURCE_FORBIDDEN",
+        "REPORT_SOURCE_FORBIDDEN",
         REQUEST,
         "semantic_model_id" if source.kind == SOURCE_SEMANTIC_MODEL else "dataset_id",
         params={"source": "model" if source.kind == SOURCE_SEMANTIC_MODEL else "dataset"},
@@ -112,7 +112,7 @@ def model_query_kwargs(query: dict[str, Any] | None) -> dict[str, Any]:
     if not isinstance(metric, str) or not metric:
         raise QueryError(
             "A semantic-model block needs a metric.",
-            QueryFailure("EXPLORER_BLOCK_METRIC_MISSING", REQUEST, "no metric"),
+            QueryFailure("REPORT_METRIC_MISSING", REQUEST, "no metric"),
         )
     return {
         "metric": metric,

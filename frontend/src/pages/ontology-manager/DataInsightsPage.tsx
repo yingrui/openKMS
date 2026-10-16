@@ -15,7 +15,7 @@ import '../../styles/resource-list.scss';
  * What is specific to a dashboard lives *inside* that grammar: the question is the description, and
  * the meta line carries the state, the report count and the sources the reports read.
  */
-export function DataExplorerPage() {
+export function DataInsightsPage() {
   const { t } = useTranslation('ontology');
   const navigate = useNavigate();
   const [dashboards, setDashboards] = useState<DashboardSummary[]>([]);
@@ -48,7 +48,7 @@ export function DataExplorerPage() {
 
   const handleCreate = async () => {
     if (!name.trim()) {
-      toast.error(t('dataExplorer.nameRequired'));
+      toast.error(t('dataInsights.nameRequired'));
       return;
     }
     setSubmitting(true);
@@ -57,11 +57,11 @@ export function DataExplorerPage() {
         name: name.trim(),
         question: question.trim() || null,
       });
-      toast.success(t('dataExplorer.created'));
+      toast.success(t('dataInsights.created'));
       setShowForm(false);
-      navigate(`/data-explorer/${created.id}`);
+      navigate(`/data-insights/${created.id}`);
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : t('dataExplorer.createFailed'));
+      toast.error(e instanceof Error ? e.message : t('dataInsights.createFailed'));
     } finally {
       setSubmitting(false);
     }
@@ -71,13 +71,13 @@ export function DataExplorerPage() {
     <div className="resource-list">
       <div className="page-header resource-list-header">
         <div>
-          <h1>{t('dataExplorer.title')}</h1>
-          <p className="page-subtitle">{t('dataExplorer.subtitle')}</p>
+          <h1>{t('dataInsights.title')}</h1>
+          <p className="page-subtitle">{t('dataInsights.subtitle')}</p>
         </div>
         <div className="resource-list-header-actions">
           <button type="button" className="btn btn-primary" onClick={openCreate}>
             <Plus size={18} aria-hidden />
-            <span>{t('dataExplorer.newDashboard')}</span>
+            <span>{t('dataInsights.newDashboard')}</span>
           </button>
         </div>
       </div>
@@ -91,12 +91,12 @@ export function DataExplorerPage() {
       {!loading && dashboards.length === 0 && (
         <EmptyState
           icon={<Sparkles size={48} strokeWidth={1} />}
-          title={t('dataExplorer.empty')}
-          description={t('dataExplorer.subtitle')}
+          title={t('dataInsights.empty')}
+          description={t('dataInsights.subtitle')}
           action={
             <button type="button" className="btn btn-primary" onClick={openCreate}>
               <Plus size={18} aria-hidden />
-              <span>{t('dataExplorer.newDashboard')}</span>
+              <span>{t('dataInsights.newDashboard')}</span>
             </button>
           }
         />
@@ -109,7 +109,7 @@ export function DataExplorerPage() {
             return (
               <Link
                 key={dashboard.id}
-                to={`/data-explorer/${dashboard.id}`}
+                to={`/data-insights/${dashboard.id}`}
                 className="resource-list-card"
               >
                 <div className="resource-list-card-top">
@@ -122,13 +122,13 @@ export function DataExplorerPage() {
                   className="resource-list-desc"
                   title={dashboard.question?.trim() || undefined}
                 >
-                  {dashboard.question || t('dataExplorer.noQuestion')}
+                  {dashboard.question || t('dataInsights.noQuestion')}
                 </p>
                 <div className="resource-list-meta">
                   <StatusChip tone={dashboard.status === 'ready' ? 'ok' : 'neutral'}>
-                    {t(`dataExplorer.status_${dashboard.status}`, { defaultValue: dashboard.status })}
+                    {t(`dataInsights.status_${dashboard.status}`, { defaultValue: dashboard.status })}
                   </StatusChip>
-                  <span>{t('dataExplorer.reportCount', { count: dashboard.report_count })}</span>
+                  <span>{t('dataInsights.reportCount', { count: dashboard.report_count })}</span>
                   {sources.length > 0 && <span>{sources.join(' + ')}</span>}
                 </div>
               </Link>
@@ -141,7 +141,7 @@ export function DataExplorerPage() {
         open={showForm}
         onClose={() => !submitting && setShowForm(false)}
         closeDisabled={submitting}
-        title={t('dataExplorer.newDashboard')}
+        title={t('dataInsights.newDashboard')}
         closeAriaLabel={t('shared.cancel')}
         size="sm"
         footer={
@@ -165,14 +165,14 @@ export function DataExplorerPage() {
           </>
         }
       >
-        <FormField label={t('dataExplorer.dashboardName')}>
+        <FormField label={t('dataInsights.dashboardName')}>
           <input value={name} onChange={(e) => setName(e.target.value)} />
         </FormField>
-        <FormField label={t('dataExplorer.question')}>
+        <FormField label={t('dataInsights.question')}>
           <input
             value={question}
             onChange={(e) => setQuestion(e.target.value)}
-            placeholder={t('dataExplorer.questionPlaceholder')}
+            placeholder={t('dataInsights.questionPlaceholder')}
           />
         </FormField>
       </Dialog>

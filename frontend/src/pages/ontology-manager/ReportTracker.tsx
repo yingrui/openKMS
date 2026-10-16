@@ -37,7 +37,7 @@ export function ReportTracker({
         {cells.length > 1 && <span>{cells[cells.length - 1].label}</span>}
       </div>
       {truncated && (
-        <p className="page-subtitle">{t('dataExplorer.trackerTruncated', { max: MAX_TRACKER_CELLS })}</p>
+        <p className="page-subtitle">{t('dataInsights.trackerTruncated', { max: MAX_TRACKER_CELLS })}</p>
       )}
     </div>
   );
