@@ -172,15 +172,16 @@ export function DashboardDetailPage() {
           <span className="entity-view__identity-note">
             {t('dataInsights.reportCount', { count: reports.length })}
           </span>
+          {/* An icon with the platform's own tooltip. The label used to *expand* on hover, which
+              re-wrapped the rail's row, moved the button out from under the cursor, and flickered. */}
           <button
             type="button"
-            className="is-danger is-icon-action"
+            className="is-danger"
             onClick={() => void handleDelete()}
             aria-label={t('dataInsights.deleteDashboard')}
             title={t('dataInsights.deleteDashboard')}
           >
             <Trash2 size={14} aria-hidden />
-            <span className="is-icon-action__label">{t('dataInsights.deleteDashboard')}</span>
           </button>
         </>
       }

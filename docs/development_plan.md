@@ -196,6 +196,17 @@ Active UX / quality gaps: [Tech debt](./tech_debt.md).
   rule, so it passed.) The previous highlight is kept when nothing is in the zone, and a click marks
   the target at once instead of waiting for the scroll to settle.
 
+### Fix: the delete icon flickered on hover (2026-10)
+
+- The dashboard's delete was an icon whose label **expanded** on hover (`max-width: 0 → 12rem`). In a
+  220 px rail that widened the identity row past its width, the row **wrapped**, the button moved out
+  from under the cursor, the hover ended, the label collapsed, the row unwrapped — a self-sustaining
+  loop, seen as a flicker.
+- The reveal is gone: an icon with the platform's own tooltip (`title`, plus `aria-label` for readers)
+  shows the name on hover and cannot change layout while doing it. Buttons whose labels reveal on hover
+  must not push layout — the two other reveals in this app (report tiles, section cards) animate
+  `opacity` only, which is why neither flickers.
+
 ### Register datasets in bulk, from the source (2026-10) — done
 
 - **Registering from a source** lives at `/datasets/sources`, reachable as an action on the Catalog ("From a data source") rather than a tab — it adds datasets to the Catalog, it is not a peer of it. There: pick a source, see its tables

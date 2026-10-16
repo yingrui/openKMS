@@ -105,26 +105,6 @@ body:has(.app-page-pane > .entity-view) .app-main {
   margin-top: var(--space-3);
 }
 
-// An identity action that is an **icon until hovered**, then says what it does (a destructive one
-// should be quiet, but never nameless). The label stays in the DOM and the button carries an
-// `aria-label`, so the reveal is decoration — a keyboard user hears the name without hovering.
-.entity-view__identity-action .is-icon-action {
-  .is-icon-action__label {
-    max-width: 0;
-    overflow: hidden;
-    white-space: nowrap;
-    opacity: 0;
-    transition: max-width 140ms ease, opacity 140ms ease, margin-left 140ms ease;
-  }
-
-  &:hover .is-icon-action__label,
-  &:focus-visible .is-icon-action__label {
-    max-width: 12rem;
-    margin-left: var(--space-2);
-    opacity: 1;
-  }
-}
-
 // A quiet fact on that row (a report count): muted, and never louder than the action beside it.
 .entity-view__identity-note {
   font-size: var(--text-xs);
