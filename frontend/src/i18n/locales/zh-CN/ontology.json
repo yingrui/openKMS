@@ -165,7 +165,8 @@
     "viewCompare_12": "前 12 行（去年同月，月度数据）",
     "chartCombo": "柱 + 线",
     "chartBars": "柱（左轴）",
-    "chartLines": "折线（右轴）"
+    "chartLines": "折线（右轴）",
+    "deleteDashboard": "删除看板"
   },
   "dataModel": {
     "title": "数据模型",

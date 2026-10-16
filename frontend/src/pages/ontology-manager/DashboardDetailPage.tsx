@@ -158,33 +158,35 @@ export function DashboardDetailPage() {
           {` · ${t('dataExplorer.reportCount', { count: reports.length })}`}
         </>
       }
-      identityAction={
-        <button
-          type="button"
-          className="btn btn-primary"
-          onClick={() => void handleRun()}
-          disabled={running || reports.length === 0}
-        >
-          {running ? (
-            <Loader2 size={16} className="console-loading-spinner" aria-hidden />
-          ) : (
-            <Play size={16} aria-hidden />
-          )}
-          <span>{t('dataExplorer.run')}</span>
-        </button>
-      }
     >
+      {/* One action row for the document: what it does (Run), then what ends it (Delete). The shell's
+          identity slot is for a *text-style read* action (View YAML), so neither belongs there. */}
       <EntityViewHeader
         title=""
         actions={
-          <button
-            type="button"
-            className="btn btn-secondary"
-            onClick={() => void handleDelete()}
-            aria-label={t('shared.delete')}
-          >
-            <Trash2 size={16} aria-hidden />
-          </button>
+          <>
+            <button
+              type="button"
+              className="btn btn-primary"
+              onClick={() => void handleRun()}
+              disabled={running || reports.length === 0}
+            >
+              {running ? (
+                <Loader2 size={16} className="console-loading-spinner" aria-hidden />
+              ) : (
+                <Play size={16} aria-hidden />
+              )}
+              <span>{t('dataExplorer.run')}</span>
+            </button>
+            <button
+              type="button"
+              className="btn btn-secondary"
+              onClick={() => void handleDelete()}
+            >
+              <Trash2 size={16} aria-hidden />
+              <span>{t('dataExplorer.deleteDashboard')}</span>
+            </button>
+          </>
         }
       />
       <EntityViewPanel

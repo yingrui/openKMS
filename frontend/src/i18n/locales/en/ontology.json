@@ -165,7 +165,8 @@
     "viewCompare_12": "12 rows back (same month last year, monthly)",
     "chartCombo": "Bars + line",
     "chartBars": "Bars (left axis)",
-    "chartLines": "Line (right axis)"
+    "chartLines": "Line (right axis)",
+    "deleteDashboard": "Delete dashboard"
   },
   "dataModel": {
     "title": "Data Model",
