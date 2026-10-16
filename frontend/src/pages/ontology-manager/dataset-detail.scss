@@ -1,6 +1,15 @@
+/* The card's padding is cancelled so the grid bleeds edge to edge. Everything inside therefore
+   shares that context: the filter bar restores the padding for itself, and the grid owns the
+   scrolling — rows move, the bar above and the pager below stay put. */
 .dataset-detail-data {
   margin: calc(-1 * (var(--space-5) + var(--space-1) / 2)) calc(-1 * var(--space-6))
     calc(-1 * var(--space-6));
+
+  .dataset-filter-bar {
+    padding: calc(var(--space-5) + var(--space-1) / 2) var(--space-6) var(--space-3);
+    margin-bottom: 0;
+  }
+
 }
 
 .dataset-data-table td {
@@ -409,7 +418,6 @@
   display: flex;
   flex-direction: column;
   gap: var(--space-2);
-  margin-bottom: var(--space-3);
 }
 
 .dataset-filter-bar__head {

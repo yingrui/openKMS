@@ -23,6 +23,21 @@
     border-radius: 0;
     box-shadow: none;
   }
+
+  /**
+   * Bounded grid: the wrap itself scrolls, so the chrome around it (filters, pager, row count)
+   * stays on screen and the column headers stick to the wrap instead of the page.
+   */
+  &--scroll {
+    max-height: var(--ds-table-wrap-max-h, 60dvh);
+    overflow-y: auto;
+
+    thead th {
+      position: sticky;
+      top: 0;
+      z-index: 1;
+    }
+  }
 }
 
 // Alias kept for resource-list pages that already use the design-system name.

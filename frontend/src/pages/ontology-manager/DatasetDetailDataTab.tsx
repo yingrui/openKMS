@@ -343,115 +343,6 @@ export function DatasetDataTab() {
         </div>
       )}
       <EntityViewPanel>
-        <div className="dataset-filter-bar">
-          <div className="dataset-filter-bar__head">
-            <span className="dataset-filter-bar__count">
-              {rowsData
-                ? `${t('datasets.filterRows', { count: rowsData.total })}${
-                    appliedFilters.length > 0
-                      ? ` · ${t('datasets.filterCount', { count: appliedFilters.length })}`
-                      : ''
-                  }${rowsData.capped ? ` · ${t('datasets.filterCapped')}` : ''}`
-                : ''}
-            </span>
-            <div className="dataset-filter-bar__actions">
-              <button
-                type="button"
-                className="btn btn-secondary btn-sm"
-                onClick={addFilter}
-                disabled={filterColumns.length === 0}
-              >
-                <FilterIcon size={14} aria-hidden />
-                {t('datasets.filterAdd')}
-              </button>
-              {filterRows.length > 0 && (
-                <button
-                  type="button"
-                  className="btn btn-secondary btn-sm"
-                  onClick={() => commitFilters([])}
-                >
-                  {t('datasets.filterClear')}
-                </button>
-              )}
-            </div>
-          </div>
-
-          {filterRows.map((row) => {
-            const def = operatorDef(row.op);
-            return (
-              <div key={row.id} className="dataset-filter">
-                <select
-                  className="ds-control"
-                  value={row.column}
-                  aria-label={t('datasets.filterColumn')}
-                  onChange={(e) =>
-                    commitFilters(patchFilter(row.id, { column: e.target.value, value: '', value2: '' }))
-                  }
-                >
-                  <option value="">{t('datasets.filterColumn')}</option>
-                  {filterColumns.map((c) => (
-                    <option key={c.column_name} value={c.column_name}>
-                      {c.column_name} · {c.data_type}
-                    </option>
-                  ))}
-                </select>
-                <select
-                  className="ds-control dataset-filter__op"
-                  value={row.op}
-                  aria-label={t('datasets.filterOperator')}
-                  onChange={(e) => commitFilters(patchFilter(row.id, { op: e.target.value }))}
-                >
-                  {operatorsFor(kindOf(row.column)).map((op) => (
-                    <option key={op.id} value={op.id}>
-                      {opLabel(op.id)}
-                    </option>
-                  ))}
-                </select>
-                {def.values !== 'none' && (
-                  <input
-                    /* Remount on a column/operator change so the committed value is the one shown. */
-                    key={`${row.id}:${row.column}:${row.op}:1`}
-                    className="ds-control dataset-filter__value"
-                    type={kindOf(row.column) === 'number' ? 'number' : kindOf(row.column) === 'date' ? 'date' : 'text'}
-                    aria-label={t('datasets.filterValue')}
-                    placeholder={def.values === 'list' ? t('datasets.filterListPlaceholder') : undefined}
-                    defaultValue={row.value}
-                    onBlur={(e) => commitFilters(patchFilter(row.id, { value: e.target.value }))}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter') {
-                        commitFilters(patchFilter(row.id, { value: (e.target as HTMLInputElement).value }));
-                      }
-                    }}
-                  />
-                )}
-                {def.values === 'two' && (
-                  <input
-                    key={`${row.id}:${row.column}:${row.op}:2`}
-                    className="ds-control dataset-filter__value"
-                    type={kindOf(row.column) === 'date' ? 'date' : 'text'}
-                    aria-label={t('datasets.filterTo')}
-                    placeholder={t('datasets.filterTo')}
-                    defaultValue={row.value2}
-                    onBlur={(e) => commitFilters(patchFilter(row.id, { value2: e.target.value }))}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter') {
-                        commitFilters(patchFilter(row.id, { value2: (e.target as HTMLInputElement).value }));
-                      }
-                    }}
-                  />
-                )}
-                <button
-                  type="button"
-                  className="btn btn-secondary btn-sm"
-                  aria-label={t('datasets.filterRemove')}
-                  onClick={() => commitFilters(filterRows.filter((r) => r.id !== row.id))}
-                >
-                  <X size={14} aria-hidden />
-                </button>
-              </div>
-            );
-          })}
-        </div>
         {rowsLoading ? (
           <div className="console-loading">
             <Loader2 size={32} className="console-loading-spinner" aria-hidden />
@@ -459,7 +350,116 @@ export function DatasetDataTab() {
           </div>
         ) : (
           <div className="dataset-detail-data">
-            <div className="ds-table-wrap ds-table-wrap--flush">
+            <div className="dataset-filter-bar">
+              <div className="dataset-filter-bar__head">
+                <span className="dataset-filter-bar__count">
+                  {rowsData
+                    ? `${t('datasets.filterRows', { count: rowsData.total })}${
+                        appliedFilters.length > 0
+                          ? ` · ${t('datasets.filterCount', { count: appliedFilters.length })}`
+                          : ''
+                      }${rowsData.capped ? ` · ${t('datasets.filterCapped')}` : ''}`
+                    : ''}
+                </span>
+                <div className="dataset-filter-bar__actions">
+                  <button
+                    type="button"
+                    className="btn btn-secondary btn-sm"
+                    onClick={addFilter}
+                    disabled={filterColumns.length === 0}
+                  >
+                    <FilterIcon size={14} aria-hidden />
+                    {t('datasets.filterAdd')}
+                  </button>
+                  {filterRows.length > 0 && (
+                    <button
+                      type="button"
+                      className="btn btn-secondary btn-sm"
+                      onClick={() => commitFilters([])}
+                    >
+                      {t('datasets.filterClear')}
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              {filterRows.map((row) => {
+                const def = operatorDef(row.op);
+                return (
+                  <div key={row.id} className="dataset-filter">
+                    <select
+                      className="ds-control"
+                      value={row.column}
+                      aria-label={t('datasets.filterColumn')}
+                      onChange={(e) =>
+                        commitFilters(patchFilter(row.id, { column: e.target.value, value: '', value2: '' }))
+                      }
+                    >
+                      <option value="">{t('datasets.filterColumn')}</option>
+                      {filterColumns.map((c) => (
+                        <option key={c.column_name} value={c.column_name}>
+                          {c.column_name} · {c.data_type}
+                        </option>
+                      ))}
+                    </select>
+                    <select
+                      className="ds-control dataset-filter__op"
+                      value={row.op}
+                      aria-label={t('datasets.filterOperator')}
+                      onChange={(e) => commitFilters(patchFilter(row.id, { op: e.target.value }))}
+                    >
+                      {operatorsFor(kindOf(row.column)).map((op) => (
+                        <option key={op.id} value={op.id}>
+                          {opLabel(op.id)}
+                        </option>
+                      ))}
+                    </select>
+                    {def.values !== 'none' && (
+                      <input
+                        /* Remount on a column/operator change so the committed value is the one shown. */
+                        key={`${row.id}:${row.column}:${row.op}:1`}
+                        className="ds-control dataset-filter__value"
+                        type={kindOf(row.column) === 'number' ? 'number' : kindOf(row.column) === 'date' ? 'date' : 'text'}
+                        aria-label={t('datasets.filterValue')}
+                        placeholder={def.values === 'list' ? t('datasets.filterListPlaceholder') : undefined}
+                        defaultValue={row.value}
+                        onBlur={(e) => commitFilters(patchFilter(row.id, { value: e.target.value }))}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') {
+                            commitFilters(patchFilter(row.id, { value: (e.target as HTMLInputElement).value }));
+                          }
+                        }}
+                      />
+                    )}
+                    {def.values === 'two' && (
+                      <input
+                        key={`${row.id}:${row.column}:${row.op}:2`}
+                        className="ds-control dataset-filter__value"
+                        type={kindOf(row.column) === 'date' ? 'date' : 'text'}
+                        aria-label={t('datasets.filterTo')}
+                        placeholder={t('datasets.filterTo')}
+                        defaultValue={row.value2}
+                        onBlur={(e) => commitFilters(patchFilter(row.id, { value2: e.target.value }))}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') {
+                            commitFilters(patchFilter(row.id, { value2: (e.target as HTMLInputElement).value }));
+                          }
+                        }}
+                      />
+                    )}
+                    <button
+                      type="button"
+                      className="btn btn-secondary btn-sm"
+                      aria-label={t('datasets.filterRemove')}
+                      onClick={() => commitFilters(filterRows.filter((r) => r.id !== row.id))}
+                    >
+                      <X size={14} aria-hidden />
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
+            <div className="ds-table-wrap ds-table-wrap--flush ds-table-wrap--scroll">
               <table className="console-table dataset-data-table">
                 <thead>
                   {table.getHeaderGroups().map((hg) => (

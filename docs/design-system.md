@@ -217,7 +217,7 @@ npm run check   # typecheck → check:app-layout → check:app-modules → check
 | 3 | Raw `px` in `@media` / `@include max-width(Npx)` | **`ds.$bp-*`** tokens |
 | 4 | `MOBILE_BREAKPOINT_PX` ≠ `$bp-md-min` | Keep TS and Sass in sync |
 | 5 | Multiple **`<TableRowActions>`** per channel row | One instance in **`.channel-item-actions`** |
-| 6 | New `*-table-wrap` class | **`.ds-table-wrap`** |
+| 6 | New `*-table-wrap` class | **`.ds-table-wrap`** (a bounded grid adds **`--scroll`**: the wrap scrolls, headers stick to it, the chrome around it stays put) |
 | 7 | New `*-modal-overlay` / `*-dialog-overlay` | **`<Dialog>`** |
 | 8 | `window.confirm(` | **`useConfirm()`** |
 | 9 | Raw `rgba(0,0,0,…)` modal backdrop | **`var(--overlay-backdrop)`** |

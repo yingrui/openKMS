@@ -38,9 +38,18 @@ see the count change, share the URL. Nobody types SQL to browse a table.
 
 ## 3. Information architecture
 
-**Placement.** One **filter bar** directly above the grid (inside the Data panel), one row per condition,
-wrapping on narrow widths. The panel header reads `N rows · M filters` (and `· capped` when the page is
-full). Row-editing's save bar stays where it is.
+**Placement.** One **filter bar** directly above the grid, one row per condition, wrapping on narrow
+widths. Its head row reads `N rows · M filters` (plus `· capped` when the page is full) and carries
+*Add filter* / *Clear*. Row-editing's save bar stays where it is.
+
+**The grid owns the scrolling, the chrome stays put.** The data grid is bounded (`max-height: 60dvh`)
+and scrolls inside its own container, with the column headers sticky *within it*: rows move, while the
+filter bar above and the pager below never leave the screen. Without this the whole page scrolls and
+the controls — including the count you are watching — scroll away with the rows.
+
+**Bleed containers own their padding.** The grid intentionally cancels the card's padding to run edge
+to edge; the filter bar therefore lives *inside* that container and restores the padding for itself.
+Putting it outside (the first attempt) let the grid's negative margin climb over it.
 
 **What you can filter on.** The table's **physical columns** — from `GET /api/datasets/{id}/metadata`,
 which already carries each column's maintained `description` (Catalog → Columns). *Not* model fields:
