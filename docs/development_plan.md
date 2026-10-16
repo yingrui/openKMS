@@ -196,6 +196,17 @@ Active UX / quality gaps: [Tech debt](./tech_debt.md).
   rule, so it passed.) The previous highlight is kept when nothing is in the zone, and a click marks
   the target at once instead of waiting for the scroll to settle.
 
+### The Datasets app's tabs, and all metrics in one place (2026-10) — done
+
+- The app's tab bar reads **Catalog · Semantic Model · Metrics**: the middle one was called "Model",
+  which read as a *model instance* rather than the semantic layer; the word now matches what the layer
+  is called everywhere else (the skill's `semantic-models`, the Ossie documents, the API).
+- **Metrics** is new and read-only on purpose: it lists every metric with the model that defines it,
+  its type/datatype, its base dataset and its SQL, and links into that model for any change. A metric is
+  authored next to its fields and base dataset, so a second editing surface here would only be a second
+  place to get a definition wrong. It needed one frontend fix: `MetricResponse` never declared
+  `semantic_model_id`, which the API has always sent.
+
 ### The model's dataset tab reconciles columns and fields (2026-10) — done
 
 - A dataset's panel now **re-reads its columns** (and reports what moved) and reconciles them with the

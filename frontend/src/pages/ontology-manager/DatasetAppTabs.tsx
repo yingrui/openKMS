@@ -3,20 +3,23 @@ import { useTranslation } from 'react-i18next';
 import './dataset-app-tabs.scss';
 
 /**
- * Top-level tabs for the merged Datasets app: Catalog (datasets) and Model (ER + quality).
- * Both live under the single App Rail entry (`datasets`).
+ * Top-level tabs for the merged Datasets app, under one App Rail entry (`datasets`):
+ * the **Catalog** (the tables), the **Semantic Model** (relationships, fields, quality) and
+ * **Metrics** — the last read-only, because a metric is defined next to its model.
  */
 export function DatasetAppTabs() {
   const { t } = useTranslation('ontology');
   const { pathname } = useLocation();
-  const onModel = pathname.startsWith('/data-model') || pathname.startsWith('/datasets/model');
+  const onCatalog = pathname.startsWith('/datasets') && !pathname.startsWith('/datasets/model');
+  const onModel = pathname.startsWith('/data-model');
+  const onMetrics = pathname.startsWith('/data-metrics');
 
   return (
     <nav className="dataset-app-tabs" aria-label={t('datasets.title')}>
       <Link
         to="/datasets"
-        className={`dataset-app-tab${onModel ? '' : ' dataset-app-tab--active'}`}
-        aria-current={onModel ? undefined : 'page'}
+        className={`dataset-app-tab${onCatalog ? ' dataset-app-tab--active' : ''}`}
+        aria-current={onCatalog ? 'page' : undefined}
       >
         {t('datasets.tabCatalog')}
       </Link>
@@ -26,6 +29,13 @@ export function DatasetAppTabs() {
         aria-current={onModel ? 'page' : undefined}
       >
         {t('datasets.tabModel')}
+      </Link>
+      <Link
+        to="/data-metrics"
+        className={`dataset-app-tab${onMetrics ? ' dataset-app-tab--active' : ''}`}
+        aria-current={onMetrics ? 'page' : undefined}
+      >
+        {t('datasets.tabMetrics')}
       </Link>
     </nav>
   );

@@ -350,12 +350,17 @@
     "fieldsAdded_one": "已添加 {{count}} 个字段",
     "fieldsAdded_other": "已添加 {{count}} 个字段",
     "fieldsWithoutColumn_one": "有 {{count}} 个字段指向表中已不存在的列",
-    "fieldsWithoutColumn_other": "有 {{count}} 个字段指向表中已不存在的列"
+    "fieldsWithoutColumn_other": "有 {{count}} 个字段指向表中已不存在的列",
+    "metricModel": "模型",
+    "metricsSubtitle": "所有指标，以及定义它的模型。修改请到模型页。",
+    "metricsSearchPlaceholder": "搜索指标…",
+    "metricsEmpty": "还没有指标",
+    "metricsEmptyHint": "指标在拥有它的模型页里定义。"
   },
   "datasets": {
     "title": "数据集",
     "tabCatalog": "目录",
-    "tabModel": "模型",
+    "tabModel": "语义模型",
     "subtitle": "从数据源注册 PostgreSQL 表，供对象类型与关联类型绑定。",
     "create": "新建数据集",
     "created": "数据集已创建",
@@ -639,7 +644,8 @@
     "keysPickPlaceholder": "输入列名…",
     "keysPickerTitle": "输入以筛选 · 回车添加 · 退格删除最后一个",
     "keysPickerEmpty": "没有匹配的列。",
-    "keysRemoveColumn": "移除 {{column}}"
+    "keysRemoveColumn": "移除 {{column}}",
+    "tabMetrics": "指标"
   },
   "groups": {
     "title": "分组",

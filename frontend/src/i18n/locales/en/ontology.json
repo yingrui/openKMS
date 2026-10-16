@@ -355,12 +355,17 @@
     "fieldsAdded_one": "{{count}} field added",
     "fieldsAdded_other": "{{count}} fields added",
     "fieldsWithoutColumn_one": "{{count}} field points at a column the table no longer has",
-    "fieldsWithoutColumn_other": "{{count}} fields point at columns the table no longer has"
+    "fieldsWithoutColumn_other": "{{count}} fields point at columns the table no longer has",
+    "metricModel": "Model",
+    "metricsSubtitle": "Every metric, and the model that defines it. Editing happens in the model.",
+    "metricsSearchPlaceholder": "Search metrics…",
+    "metricsEmpty": "No metrics yet",
+    "metricsEmptyHint": "A metric is defined next to the model that owns it."
   },
   "datasets": {
     "title": "Datasets",
     "tabCatalog": "Catalog",
-    "tabModel": "Model",
+    "tabModel": "Semantic Model",
     "subtitle": "Register PostgreSQL tables from data sources for object and link types.",
     "create": "New dataset",
     "created": "Dataset created",
@@ -646,7 +651,8 @@
     "keysPickPlaceholder": "Type a column name…",
     "keysPickerTitle": "Type to filter · Enter adds · Backspace removes the last one",
     "keysPickerEmpty": "No column matches.",
-    "keysRemoveColumn": "Remove {{column}}"
+    "keysRemoveColumn": "Remove {{column}}",
+    "tabMetrics": "Metrics"
   },
   "groups": {
     "title": "Groups",

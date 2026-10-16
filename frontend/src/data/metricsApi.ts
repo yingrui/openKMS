@@ -18,6 +18,8 @@ export interface MetricExpression {
 
 export interface MetricResponse {
   id: string;
+  /** The model that defines it — the API has always sent this; the type was missing it. */
+  semantic_model_id: string;
   base_dataset_id: string;
   base_dataset_name: string | null;
   name: string;
