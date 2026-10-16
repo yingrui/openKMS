@@ -131,10 +131,10 @@ matches the question:
 |-------------|-------|-------------------|
 | *(absent)* | the table | the reader needs the rows themselves (an audit, a list of names to act on) |
 | **`metric`** | one number, big, with its label | the query reduced to a single row — a total, a share, an average over everything |
-| **`metric` + `trend`** | a **KPI**: the series' last value, the change against the previous one, and the shape | "the number matters, the shape is context" (a latest average with its direction). Order the query so the row you want on top is **last** |
+| **`metric` + `trend`** | a **KPI**: the series' last value, the change, and the shape | "the number matters, the shape is context" (a latest average with its direction). Order the query so the row you want on top is **last**; `trend.compare` says how many rows back the change is measured against (`1` previous, `12` the same month last year on monthly data) |
 | **`bar_list`** | a ranking: label, bar, value, share | "top N by X" — 8 industries read far better as a list than as 8 bars, and labels never clip |
 | **`tracker`** | a strip of blocks, intensity = value / largest | coverage, missingness, streaks **over many periods** (a year of months, a month of days) — one line instead of a screen |
-| **`chart`** | `line` or `bar` | a **trend** over time (line) or a **comparison** across a few categories (bar) |
+| **`chart`** | `line`, `bar` or **`combo`** | a **trend** over time (line), a **comparison** across a few categories (bar), or **`combo`** for both at once: bars on the left axis with a line on the right (rows vs a rate — two scales, two axes) |
 
 ```jsonc
 { "title": "行业平均市盈率（前 8）", "insight": "…",
@@ -150,7 +150,7 @@ matches the question:
              "aggregates": [{"fn": "avg", "column": "pe_ttm", "name": "avg_pe"}],
              "order_by": [{"field": "trade_date", "direction": "asc"}] },
   "view": { "kind": "metric", "column": "avg_pe", "label": "平均 pe_ttm",
-            "trend": { "x": "trade_date" } } }              // KPI: last value + change + sparkline
+            "trend": { "x": "trade_date", "compare": 12 } } }   // KPI: last value, vs a year ago
 
 { "title": "每月缺失覆盖",
   "query": { "group_by": [{"column": "trade_date", "granularity": "month"}],
@@ -177,7 +177,8 @@ matches the question:
   "view": { "kind": "chart", "type": "line", "x": "trade_date", "y": "value" } }
 ```
 
-- `type`: `line` for a series over time, `bar` to compare categories.
+- `type`: `line` for a series over time, `bar` to compare categories, `combo` for a bar + line
+  pair (`lines` are drawn on the right axis — never mix two scales on one axis).
 - `x` / `y`: result columns to draw (`y` may be a list, e.g. `["count", "avg_pe"]`).
 - `series`: optional — one line/bar per distinct value of that column (`y` must then be one column);
   the app keeps the first 8 and says when it truncated.
