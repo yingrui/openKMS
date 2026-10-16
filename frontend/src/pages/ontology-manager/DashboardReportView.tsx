@@ -10,6 +10,7 @@ import { QueryFailureNotice, asQueryFailureKind } from '../../styles/design-syst
 import { ExplorerChart } from './ExplorerChart';
 import { ReportBarList } from './ReportBarList';
 import { ReportMetric } from './ReportMetric';
+import { ReportTracker } from './ReportTracker';
 import { absoluteTime, ageOf } from './reportAge';
 import { csvFileName, downloadCsv, toCsv } from './reportCsv';
 import {
@@ -166,6 +167,8 @@ export function DashboardReportView({
                 <ReportMetric view={view} rows={rows} />
               ) : view.kind === 'bar_list' ? (
                 <ReportBarList view={view} rows={rows} />
+              ) : view.kind === 'tracker' ? (
+                <ReportTracker view={view} rows={rows} />
               ) : series ? (
                 <ExplorerChart spec={view} series={series} />
               ) : null}

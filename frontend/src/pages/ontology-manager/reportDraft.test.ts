@@ -34,7 +34,8 @@ describe('guessView', () => {
   it('offers a line over the date column with the numeric measures', () => {
     expect(guessView(['trade_date', 'count', 'avg_pe'], MONTHLY)).toEqual({
       choice: 'line',
-      x: 'trade_date',
+      valueColumn: 'count',
+      axisColumn: 'trade_date',
       y: ['count', 'avg_pe'],
     });
   });
@@ -42,7 +43,8 @@ describe('guessView', () => {
   it('offers a metric when the answer is a single row', () => {
     expect(guessView(['total'], [{ total: 1007340 }])).toEqual({
       choice: 'metric',
-      x: 'total',
+      valueColumn: 'total',
+      axisColumn: '',
       y: [],
     });
   });
@@ -50,7 +52,8 @@ describe('guessView', () => {
   it('offers a ranking for a short non-temporal result', () => {
     expect(guessView(['industry', 'value'], INDUSTRIES)).toEqual({
       choice: 'bar_list',
-      x: 'value',
+      valueColumn: 'value',
+      axisColumn: 'industry',
       y: [],
     });
   });
@@ -59,7 +62,8 @@ describe('guessView', () => {
     const many = Array.from({ length: 20 }, (_, i) => ({ ts_code: `00000${i}.SZ`, pe_ttm: i }));
     expect(guessView(['ts_code', 'pe_ttm'], many)).toEqual({
       choice: 'bar',
-      x: 'ts_code',
+      valueColumn: 'pe_ttm',
+      axisColumn: 'ts_code',
       y: ['pe_ttm'],
     });
     expect(guessView(['ts_code', 'trade_date'], MONTHLY).choice).toBe('none');
@@ -73,50 +77,61 @@ describe('guessView', () => {
 });
 
 describe('viewSpec', () => {
-  it('builds each shape, and refuses an unusable choice', () => {
-    expect(viewSpec({ choice: 'bar', x: 'industry', y: ['value'] })).toEqual({
-      kind: 'chart',
-      type: 'bar',
-      x: 'industry',
-      y: ['value'],
-      series: null,
-    });
-    // a number and a ranking name their value column; the label is inferred when drawn
-    expect(viewSpec({ choice: 'metric', x: 'total', y: [] })).toEqual({
+  it('builds each shape', () => {
+    expect(
+      viewSpec({ choice: 'bar', valueColumn: 'value', axisColumn: 'industry', y: ['value'] }),
+    ).toEqual({ kind: 'chart', type: 'bar', x: 'industry', y: ['value'], series: null });
+    expect(viewSpec({ choice: 'metric', valueColumn: 'total', axisColumn: '', y: [] })).toEqual({
       kind: 'metric',
       column: 'total',
       label: null,
+      trend: null,
     });
-    expect(viewSpec({ choice: 'bar_list', x: 'value', y: [] })).toEqual({
-      kind: 'bar_list',
-      column: 'value',
-      labelColumn: null,
-    });
-    expect(viewSpec({ choice: 'line', x: 'trade_date', y: [] })).toBeNull();
-    expect(viewSpec({ choice: 'none', x: 'trade_date', y: ['count'] })).toBeNull();
-    expect(viewSpec({ choice: 'metric', x: '', y: [] })).toBeNull();
+    expect(
+      viewSpec({ choice: 'bar_list', valueColumn: 'value', axisColumn: 'industry', y: [] }),
+    ).toEqual({ kind: 'bar_list', column: 'value', labelColumn: null });
+    expect(
+      viewSpec({ choice: 'tracker', valueColumn: 'count', axisColumn: 'trade_date', y: [] }),
+    ).toEqual({ kind: 'tracker', column: 'count', x: 'trade_date', label: null });
+  });
+
+  it('makes a KPI when a metric names an order column, and refuses an unusable choice', () => {
+    expect(
+      viewSpec({ choice: 'metric', valueColumn: 'avg_pe', axisColumn: 'trade_date', y: [] }),
+    ).toEqual({ kind: 'metric', column: 'avg_pe', label: null, trend: { x: 'trade_date' } });
+    // an order column that *is* the value column is not a trend
+    expect(
+      viewSpec({ choice: 'metric', valueColumn: 'avg_pe', axisColumn: 'avg_pe', y: [] }),
+    ).toEqual({ kind: 'metric', column: 'avg_pe', label: null, trend: null });
+    expect(viewSpec({ choice: 'line', valueColumn: 'v', axisColumn: 'trade_date', y: [] })).toBeNull();
+    expect(viewSpec({ choice: 'tracker', valueColumn: 'count', axisColumn: 'count', y: [] })).toBeNull();
+    expect(viewSpec({ choice: 'metric', valueColumn: '', axisColumn: '', y: [] })).toBeNull();
   });
 });
 
 describe('viewDraftFromSpec', () => {
-  it('reads a stored view back, and falls back to the table for one the result cannot satisfy', () => {
+  it('reads each stored shape back', () => {
     expect(
       viewDraftFromSpec({ kind: 'chart', type: 'bar', x: 'industry', y: ['value'] }, ['industry', 'value']),
-    ).toEqual({
-      choice: 'bar',
-      x: 'industry',
-      y: ['value'],
-    });
-    expect(viewDraftFromSpec({ kind: 'metric', column: 'total' }, ['total'])).toEqual({
+    ).toEqual({ choice: 'bar', valueColumn: 'industry', axisColumn: 'industry', y: ['value'] });
+    expect(viewDraftFromSpec({ kind: 'metric', column: 'total' }, ['total', 'other'])).toEqual({
       choice: 'metric',
-      x: 'total',
+      valueColumn: 'total',
+      axisColumn: 'other',
       y: [],
     });
-    expect(viewDraftFromSpec(undefined, ['industry', 'value'])).toEqual({
-      choice: 'none',
-      x: 'industry',
-      y: [],
-    });
+    expect(
+      viewDraftFromSpec({ kind: 'metric', column: 'avg_pe', trend: { x: 'trade_date' } }, ['avg_pe', 'trade_date']),
+    ).toEqual({ choice: 'metric', valueColumn: 'avg_pe', axisColumn: 'trade_date', y: [] });
+    expect(
+      viewDraftFromSpec({ kind: 'tracker', column: 'count', x: 'trade_date' }, ['count', 'trade_date']),
+    ).toEqual({ choice: 'tracker', valueColumn: 'count', axisColumn: 'trade_date', y: [] });
+  });
+
+  it('falls back to the table for a view the result cannot satisfy', () => {
+    const draft = viewDraftFromSpec(undefined, ['industry', 'value']);
+    expect(draft.choice).toBe('none');
+    expect(draft.valueColumn).toBe('industry');
     expect(viewDraftFromSpec({ kind: 'metric', column: 'gone' }, ['industry']).choice).toBe('none');
   });
 });
@@ -126,7 +141,7 @@ describe('buildReportEntry', () => {
     const entry = buildReportEntry(DRAFT, {
       title: '  月度行数与均值  ',
       insight: '  Sep 是高点  ',
-      view: { choice: 'line', x: 'trade_date', y: ['count'] },
+      view: { choice: 'line', valueColumn: 'count', axisColumn: 'trade_date', y: ['count'] },
     });
     expect(entry).toEqual({
       title: '月度行数与均值',
@@ -141,7 +156,7 @@ describe('buildReportEntry', () => {
   it('names the model for a model report, and falls back to the default title', () => {
     const entry = buildReportEntry(
       { ...DRAFT, sourceKind: 'semantic_model', datasetId: null, semanticModelId: 'm1' },
-      { title: '   ', view: { choice: 'none', x: '', y: [] } },
+      { title: '   ', view: { choice: 'none', valueColumn: '', axisColumn: '', y: [] } },
     );
     expect(entry.title).toBe('tushare.daily_basic');
     expect(entry.semantic_model_id).toBe('m1');

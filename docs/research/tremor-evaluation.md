@@ -42,10 +42,12 @@ said "line or bar"):
 
 | Tremor | Ours (`view.kind`) | Why it matters |
 |--------|--------------------|----------------|
-| `Card` + `Metric` (+ `BadgeDelta`) | **`metric`** — one number, big, with its label | half of a real dashboard is single numbers; we could only draw charts or tables |
+| `Card` + `Metric` | **`metric`** — one number, big, with its label | half of a real dashboard is single numbers; we could only draw charts or tables |
 | `BarList` | **`bar_list`** — ranked rows with value + share, plain CSS (no chart runtime) | ranking 8 industries reads far better as a list than as 8 bars, and it never clips long labels |
-| `SparkLineChart` | *not yet* — a metric has no comparison column today; a sparkline needs a second value or a series | listed as a follow-up, not guessed at |
-| `Tracker`, `CategoryBar`, `ProgressBar` | *not yet* | they need targets/limits, which the data layer does not declare |
+| `Metric` + `BadgeDelta` + `SparkLineChart` | **`metric` with `trend`** — the series' last value, the change against the previous one, and a sparkline drawn as CSS bars | the KPI card: the number matters, the shape is context. No chart runtime for 24 points |
+| `Tracker` | **`tracker`** — a strip of blocks, intensity = value / largest | a year of months or a month of days of coverage/missingness in one line, without a threshold rule |
+| `CategoryBar`, `ProgressBar`, `ProgressCircle` | *not yet* | they need targets/limits, which the data layer does not declare — inventing them would be a lie |
+| `ComboChart`, `ScatterChart`, `FunnelChart`, `DateRangePicker` | *not yet* | real gaps; a date-range picker is the most likely next one |
 
 **What would change this answer:** if the app ever adopted Tailwind (it will not — the design system
 is the contract), or if we needed its date-range picker and combo/heatmap charts *now*; then copying

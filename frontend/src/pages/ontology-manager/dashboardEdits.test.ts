@@ -60,7 +60,7 @@ describe('applyReportFields', () => {
     const next = applyReportFields(RUN, {
       title: '  行业估值  ',
       insight: '  银行最低  ',
-      view: { choice: 'line', x: 'industry', y: ['value'] },
+      view: { choice: 'line', valueColumn: 'value', axisColumn: 'industry', y: ['value'] },
     });
     expect(next.title).toBe('行业估值');
     expect(next.insight).toBe('银行最低');
@@ -71,14 +71,14 @@ describe('applyReportFields', () => {
   });
 
   it('removes an emptied insight or chart instead of blanking it', () => {
-    const next = applyReportFields(RUN, { title: 'P/E', insight: '   ', view: { choice: 'none', x: '', y: [] } });
+    const next = applyReportFields(RUN, { title: 'P/E', insight: '   ', view: { choice: 'none', valueColumn: '', axisColumn: '', y: [] } });
     expect('insight' in next).toBe(false);
     expect('view' in next).toBe(false);
     expect(next.title).toBe('P/E');
   });
 
   it('keeps the old title when the new one is blank', () => {
-    expect(applyReportFields(RUN, { title: '  ', insight: '', view: { choice: 'none', x: '', y: [] } }).title).toBe(
+    expect(applyReportFields(RUN, { title: '  ', insight: '', view: { choice: 'none', valueColumn: '', axisColumn: '', y: [] } }).title).toBe(
       'P/E by industry',
     );
   });

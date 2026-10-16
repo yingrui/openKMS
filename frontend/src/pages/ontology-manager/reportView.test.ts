@@ -172,6 +172,7 @@ describe('parseView', () => {
       kind: 'metric',
       column: '总市值',
       label: '总市值（元）',
+      trend: null,
     });
     expect(parseView({ kind: 'bar_list', column: 'value' })).toEqual({
       kind: 'bar_list',
@@ -201,8 +202,8 @@ describe('parseView', () => {
 
 describe('viewFits', () => {
   it('checks the columns each kind needs', () => {
-    expect(viewFits({ kind: 'metric', column: 'total', label: null }, ['total'])).toBe(true);
-    expect(viewFits({ kind: 'metric', column: 'gone', label: null }, ['total'])).toBe(false);
+    expect(viewFits({ kind: 'metric', column: 'total', label: null, trend: null }, ['total'])).toBe(true);
+    expect(viewFits({ kind: 'metric', column: 'gone', label: null, trend: null }, ['total'])).toBe(false);
     expect(viewFits({ kind: 'bar_list', column: 'value', labelColumn: 'industry' }, ['value'])).toBe(false);
     expect(viewFits({ kind: 'bar_list', column: 'value', labelColumn: 'industry' }, ['value', 'industry'])).toBe(true);
     expect(viewFits(null, ['a'])).toBe(false);
@@ -211,10 +212,10 @@ describe('viewFits', () => {
 
 describe('metricValue', () => {
   it('shows the first row — a metric is what the query reduced to', () => {
-    expect(metricValue([{ total: 1007340 }], { kind: 'metric', column: 'total', label: null })).toBe(1007340);
-    expect(metricValue([{ total: '6.07' }], { kind: 'metric', column: 'total', label: null })).toBe('6.07');
-    expect(metricValue([], { kind: 'metric', column: 'total', label: null })).toBeNull();
-    expect(metricValue([{ other: 1 }], { kind: 'metric', column: 'total', label: null })).toBeNull();
+    expect(metricValue([{ total: 1007340 }], { kind: 'metric', column: 'total', label: null, trend: null })).toBe(1007340);
+    expect(metricValue([{ total: '6.07' }], { kind: 'metric', column: 'total', label: null, trend: null })).toBe('6.07');
+    expect(metricValue([], { kind: 'metric', column: 'total', label: null, trend: null })).toBeNull();
+    expect(metricValue([{ other: 1 }], { kind: 'metric', column: 'total', label: null, trend: null })).toBeNull();
   });
 });
 

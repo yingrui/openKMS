@@ -29,7 +29,12 @@ export function SaveReportDialog({ draft }: { draft: ReportDraftInput }) {
   const [newName, setNewName] = useState('');
   const [title, setTitle] = useState('');
   const [insight, setInsight] = useState('');
-  const [view, setView] = useState<ViewDraft>({ choice: 'none', x: '', y: [] });
+  const [view, setView] = useState<ViewDraft>({
+    choice: 'none',
+    valueColumn: '',
+    axisColumn: '',
+    y: [],
+  });
   const [saving, setSaving] = useState(false);
 
   const openDialog = useCallback(() => {

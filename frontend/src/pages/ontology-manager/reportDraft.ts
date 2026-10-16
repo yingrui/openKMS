@@ -16,8 +16,8 @@ import {
   type ReportView,
 } from './reportView';
 
-/** What a report can be presented as: a table, a trend, a number, or a ranking. */
-export type ViewChoice = 'none' | 'line' | 'bar' | 'metric' | 'bar_list';
+/** What a report can be presented as: a table, a trend, a number, a ranking, or a strip. */
+export type ViewChoice = 'none' | 'line' | 'bar' | 'metric' | 'bar_list' | 'tracker';
 
 /** A model query the Playground just ran, and the model/metric that name it. */
 export function modelReportDraft(args: {
@@ -74,9 +74,11 @@ export interface ReportDraftInput {
 
 export interface ViewDraft {
   choice: ViewChoice;
-  /** A chart's category axis; a metric's or a ranking's **value** column. */
-  x: string;
-  /** A chart's measures (a metric/ranking infers its label column). */
+  /** The column that is measured: a metric's number, a ranking's bar, a tracker's intensity. */
+  valueColumn: string;
+  /** The column that orders/labels: a chart's axis, a metric's trend, a tracker's strip order. */
+  axisColumn: string;
+  /** A chart's measures. */
   y: string[];
 }
 
@@ -91,19 +93,30 @@ export interface ViewDraft {
 export function guessView(columns: string[], rows: Array<Record<string, unknown>>): ViewDraft {
   const numeric = columns.filter((c) => isNumericColumn(rows, c));
   const temporal = detectTemporal(columns, rows);
+  const other = (column: string) => columns.find((c) => c !== column) ?? '';
   if (rows.length === 1 && numeric.length > 0) {
-    return { choice: 'metric', x: numeric[0], y: [] };
+    return { choice: 'metric', valueColumn: numeric[0], axisColumn: other(numeric[0]), y: [] };
   }
   if (temporal) {
     const y = numeric.filter((c) => c !== temporal).slice(0, 3);
-    return y.length > 0 ? { choice: 'line', x: temporal, y } : { choice: 'none', x: temporal, y: [] };
+    return {
+      choice: y.length > 0 ? 'line' : 'none',
+      valueColumn: y[0] ?? numeric[0] ?? '',
+      axisColumn: temporal,
+      y,
+    };
   }
   if (numeric.length > 0 && rows.length <= 12) {
-    return { choice: 'bar_list', x: numeric[0], y: [] };
+    return { choice: 'bar_list', valueColumn: numeric[0], axisColumn: other(numeric[0]), y: [] };
   }
-  const x = columns.find((c) => !numeric.includes(c)) ?? columns[0] ?? '';
-  const y = numeric.filter((c) => c !== x).slice(0, 3);
-  return x && y.length > 0 ? { choice: 'bar', x, y } : { choice: 'none', x, y: [] };
+  const axis = columns.find((c) => !numeric.includes(c)) ?? columns[0] ?? '';
+  const y = numeric.filter((c) => c !== axis).slice(0, 3);
+  return {
+    choice: axis && y.length > 0 ? 'bar' : 'none',
+    valueColumn: y[0] ?? numeric[0] ?? '',
+    axisColumn: axis,
+    y,
+  };
 }
 
 /**
@@ -130,19 +143,49 @@ export function buildReportEntry(
   return entry;
 }
 
+const EMPTY_DRAFT = (columns: string[]): ViewDraft => ({
+  choice: 'none',
+  valueColumn: columns[0] ?? '',
+  axisColumn: columns[1] ?? columns[0] ?? '',
+  y: [],
+});
+
 /** A stored view → the draft the view fields edit, falling back to a table. */
 export function viewDraftFromSpec(raw: unknown, columns: string[]): ViewDraft {
   const view = parseView(raw);
-  if (!view || !viewFits(view, columns)) return { choice: 'none', x: columns[0] ?? '', y: [] };
-  if (view.kind === 'chart') return { choice: view.type, x: view.x, y: view.y };
-  return { choice: view.kind, x: view.column, y: [] };
+  if (!view || !viewFits(view, columns)) return EMPTY_DRAFT(columns);
+  if (view.kind === 'chart') {
+    return { choice: view.type, valueColumn: columns[0] ?? '', axisColumn: view.x, y: view.y };
+  }
+  if (view.kind === 'metric') {
+    return {
+      choice: 'metric',
+      valueColumn: view.column,
+      axisColumn: view.trend?.x ?? columns.find((c) => c !== view.column) ?? '',
+      y: [],
+    };
+  }
+  if (view.kind === 'tracker') {
+    return { choice: 'tracker', valueColumn: view.column, axisColumn: view.x, y: [] };
+  }
+  return { choice: 'bar_list', valueColumn: view.column, axisColumn: '', y: [] };
 }
 
 /** A view draft → the stored view, or `null` for "table" / an unusable choice. */
 export function viewSpec(view: ViewDraft): ReportView | null {
-  if (!view.x) return null;
-  if (view.choice === 'metric') return { kind: 'metric', column: view.x, label: null };
-  if (view.choice === 'bar_list') return { kind: 'bar_list', column: view.x, labelColumn: null };
-  if (view.choice === 'none' || view.y.length === 0) return null;
-  return { kind: 'chart', type: view.choice, x: view.x, y: view.y, series: null };
+  if (view.choice === 'metric') {
+    if (!view.valueColumn) return null;
+    const trend =
+      view.axisColumn && view.axisColumn !== view.valueColumn ? { x: view.axisColumn } : null;
+    return { kind: 'metric', column: view.valueColumn, label: null, trend };
+  }
+  if (view.choice === 'bar_list') {
+    return view.valueColumn ? { kind: 'bar_list', column: view.valueColumn, labelColumn: null } : null;
+  }
+  if (view.choice === 'tracker') {
+    if (!view.valueColumn || !view.axisColumn || view.axisColumn === view.valueColumn) return null;
+    return { kind: 'tracker', column: view.valueColumn, x: view.axisColumn, label: null };
+  }
+  if (view.choice === 'none' || !view.axisColumn || view.y.length === 0) return null;
+  return { kind: 'chart', type: view.choice, x: view.axisColumn, y: view.y, series: null };
 }

@@ -177,3 +177,74 @@
     color: var(--color-text-secondary);
   }
 }
+
+// A KPI's change against the previous value, and the shape behind it.
+.report-metric {
+  &__delta {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-1);
+    font-size: var(--text-sm);
+    font-variant-numeric: tabular-nums;
+
+    &--up {
+      color: var(--color-success, #059669);
+    }
+
+    &--down {
+      color: var(--color-danger, #b91c1c);
+    }
+
+    &--flat {
+      color: var(--color-text-secondary);
+    }
+  }
+
+  &__delta-note {
+    color: var(--color-text-secondary);
+  }
+
+  // The series as bars: no chart runtime for 24 points, and it stays legible at KPI size.
+  &__spark {
+    display: flex;
+    align-items: flex-end;
+    gap: 2px;
+    height: 28px;
+    margin-top: var(--space-1);
+  }
+
+  &__spark-bar {
+    flex: 1 1 0;
+    min-width: 2px;
+    border-radius: 1px;
+    background: var(--color-accent);
+    opacity: 0.8;
+  }
+}
+
+// A strip of small blocks: one per row, intensity = value / largest.
+.report-tracker {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+
+  &__strip {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 2px;
+  }
+
+  &__cell {
+    width: 12px;
+    height: 12px;
+    border-radius: 2px;
+    background: var(--color-accent);
+  }
+
+  &__ends {
+    display: flex;
+    justify-content: space-between;
+    font-size: var(--text-sm);
+    color: var(--color-text-secondary);
+  }
+}

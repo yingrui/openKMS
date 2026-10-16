@@ -146,7 +146,15 @@
     "ageHours_one": "{{count}} hour ago",
     "ageHours_other": "{{count}} hours ago",
     "ageDays_one": "{{count}} day ago",
-    "ageDays_other": "{{count}} days ago"
+    "ageDays_other": "{{count}} days ago",
+    "viewTracker": "Strip (coverage)",
+    "viewTrendColumn": "Trend column",
+    "viewNoTrend": "No trend",
+    "viewOrderColumn": "Order column",
+    "deltaVsPrevious": "vs {{previous}}",
+    "deltaNoBaseline": "no baseline",
+    "noNumericSeries": "No numeric value to show a trend.",
+    "trackerTruncated": "Showing the last {{max}} only."
   },
   "dataModel": {
     "title": "Data Model",

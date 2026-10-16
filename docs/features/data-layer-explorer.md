@@ -109,11 +109,22 @@ dashboard with every report's result filled in:
 
 The app does **not** do NL→spec (the agent's job, like the Playground) and does not pretend to.
 
-**Presentation.** A report may carry a **`view`** — `{kind: "chart", type: "line"|"bar", x, y, series?}`
-for a trend, `{kind: "metric", column}` for a number, `{kind: "bar_list", column}` for a ranking,
-naming columns of that report's *result* (absent = the table). A dashboard is not four line charts:
-half of it is single numbers and rankings — vocabulary taken from [Tremor](../research/tremor-evaluation.md),
-drawn on recharts and our own tokens. It is presentation only: the report still owns its query, a
+**Presentation.** A report may carry a **`view`**, naming columns of that report's *result* (absent =
+the table). A dashboard is not four line charts — half of it is single numbers and shapes — so the
+five shapes are the vocabulary taken from [Tremor](../research/tremor-evaluation.md), drawn on recharts
+and our own tokens:
+
+| `view.kind` | shape | for |
+|---|---|---|
+| `chart` | `{type: "line"\|"bar", x, y, series?}` | a trend over time, a comparison across categories |
+| `metric` | `{column, label?, trend?: {x}}` | the answer is a number. **With `trend`** it is a KPI: the series' **last** value, its change against the previous one, and the shape (bars, no chart runtime) |
+| `bar_list` | `{column, label_column?}` | a ranking — labels never clip, the share is explicit |
+| `tracker` | `{column, x, label?}` | coverage/missingness/streaks over many periods, in one line |
+| *(absent)* | the table | the reader needs the rows |
+
+A metric's number is the **first** row without a trend (the query already reduced to one row) and the
+**last** row with one (a KPI is the current value) — so a KPI's query orders its series, and the tile
+says which value it is showing rather than guessing. It is presentation only: the report still owns its query, a
 run still writes the rows, and the spec survives a re-run. Without a spec (or when the result cannot
 satisfy one) the table is the answer, and the table is always one click away.
 

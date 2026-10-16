@@ -131,7 +131,9 @@ matches the question:
 |-------------|-------|-------------------|
 | *(absent)* | the table | the reader needs the rows themselves (an audit, a list of names to act on) |
 | **`metric`** | one number, big, with its label | the query reduced to a single row — a total, a share, an average over everything |
+| **`metric` + `trend`** | a **KPI**: the series' last value, the change against the previous one, and the shape | "the number matters, the shape is context" (a latest average with its direction). Order the query so the row you want on top is **last** |
 | **`bar_list`** | a ranking: label, bar, value, share | "top N by X" — 8 industries read far better as a list than as 8 bars, and labels never clip |
+| **`tracker`** | a strip of blocks, intensity = value / largest | coverage, missingness, streaks **over many periods** (a year of months, a month of days) — one line instead of a screen |
 | **`chart`** | `line` or `bar` | a **trend** over time (line) or a **comparison** across a few categories (bar) |
 
 ```jsonc
@@ -142,10 +144,27 @@ matches the question:
   "view": { "kind": "bar_list", "column": "value" } }        // labels from the other column
 ```
 
+```jsonc
+{ "title": "最新月平均 pe_ttm（含环比）",
+  "query": { "group_by": [{"column": "trade_date", "granularity": "month"}],
+             "aggregates": [{"fn": "avg", "column": "pe_ttm", "name": "avg_pe"}],
+             "order_by": [{"field": "trade_date", "direction": "asc"}] },
+  "view": { "kind": "metric", "column": "avg_pe", "label": "平均 pe_ttm",
+            "trend": { "x": "trade_date" } } }              // KPI: last value + change + sparkline
+
+{ "title": "每月缺失覆盖",
+  "query": { "group_by": [{"column": "trade_date", "granularity": "month"}],
+             "aggregates": [{"fn": "count"}], "filters": [{"field": "pe_ttm", "op": "is_null"}] },
+  "view": { "kind": "tracker", "column": "count", "x": "trade_date" } }
+```
+
 - `metric` and `bar_list` name their **value column**; a `bar_list` labels each row with the first
   column that is not the value (or give `label_column`), keeps the top 10 and shows each one's share.
 - `metric` shows the **first row** — so give it a query that returns one (a dataset summary with no
-  `group_by`, or a model query whose group-by is a single value).
+  `group_by`, or a model query whose group-by is a single value). Add `trend: {x}` and it shows the
+  **last** row instead, plus the change against the previous non-null value (skip the trend if the
+  query returns a single row — there would be nothing to compare).
+- `tracker` orders its blocks by `x` and keeps the last 60.
 - A bar list **always ranks by value, descending** (that is what a ranking is). If your query selected
   the *lowest* N, say so in the title — the reader sees the biggest of that selection first.
 

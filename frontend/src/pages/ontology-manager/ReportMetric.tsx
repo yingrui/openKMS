@@ -1,11 +1,18 @@
 import { useTranslation } from 'react-i18next';
-import { numericValue, type ReportMetricView } from './reportView';
+import { ArrowDown, ArrowUp, Minus } from 'lucide-react';
+import { numericValue, metricDelta, metricSeries, metricValue, type ReportMetricView } from './reportView';
+
+const NUMBER = (value: number) => new Intl.NumberFormat(undefined, { maximumFractionDigits: 2 }).format(value);
+const PERCENT = (ratio: number) =>
+  `${ratio > 0 ? '+' : ''}${new Intl.NumberFormat(undefined, { maximumFractionDigits: 1 }).format(ratio * 100)}%`;
 
 /**
- * A number, and what it is: the answer a query reduced to a single row.
+ * A number, and what it is.
  *
- * Half of a real dashboard is single numbers (a total, a share, an average), and neither a chart nor
- * a table reads well for them. Borrowed from Tremor's `Metric` idea, drawn with our own tokens.
+ * Without a `trend` it is the query reduced to one row. With one it is a **KPI** (Tremor's `Metric` +
+ * `BadgeDelta` + sparkline, on our tokens): the series' last value, the change against the previous
+ * one, and the shape behind both. The sparkline is drawn as bars in CSS — a KPI needs no chart
+ * runtime, and a bar per point stays readable at 24px.
  */
 export function ReportMetric({
   view,
@@ -15,23 +22,46 @@ export function ReportMetric({
   rows: Array<Record<string, unknown>>;
 }) {
   const { t } = useTranslation('ontology');
-  const raw = rows[0]?.[view.column];
+  const raw = metricValue(rows, view);
   const numeric = numericValue(raw);
   const shown =
     numeric === null
       ? raw === null || raw === undefined
         ? t('datasets.dash')
         : String(raw)
-      : new Intl.NumberFormat(undefined, { maximumFractionDigits: 2 }).format(numeric);
-  const isCount = view.column.toLowerCase() === 'count';
+      : NUMBER(numeric);
+  const delta = view.trend ? metricDelta(rows, view) : null;
+  const series = view.trend ? metricSeries(rows, view) : [];
+  const largest = series.reduce((max, p) => Math.max(max, Math.abs(p.value)), 0);
+  const DeltaIcon = delta?.direction === 'up' ? ArrowUp : delta?.direction === 'down' ? ArrowDown : Minus;
 
   return (
     <div className="report-metric">
       <span className="report-metric__value">{shown}</span>
-      <span className="report-metric__label">
-        {view.label ?? view.column}
-        {isCount && rows.length === 1 ? '' : ''}
-      </span>
+      <span className="report-metric__label">{view.label ?? view.column}</span>
+      {delta && (
+        <span className={`report-metric__delta report-metric__delta--${delta.direction}`}>
+          <DeltaIcon size={14} aria-hidden />
+          {delta.ratio === null ? t('dataExplorer.deltaNoBaseline') : PERCENT(delta.ratio)}
+          <span className="report-metric__delta-note">
+            {t('dataExplorer.deltaVsPrevious', { previous: NUMBER(delta.previous) })}
+          </span>
+        </span>
+      )}
+      {series.length > 1 && (
+        <span className="report-metric__spark" aria-hidden>
+          {series.map((point, i) => (
+            <span
+              key={`${point.label}-${i}`}
+              className="report-metric__spark-bar"
+              style={{ height: `${largest > 0 ? Math.max(8, (Math.abs(point.value) / largest) * 100) : 8}%` }}
+            />
+          ))}
+        </span>
+      )}
+      {view.trend && series.length === 0 && rows.length > 0 && (
+        <span className="report-metric__label">{t('dataExplorer.noNumericSeries')}</span>
+      )}
     </div>
   );
 }
