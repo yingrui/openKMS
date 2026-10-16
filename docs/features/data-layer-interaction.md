@@ -56,7 +56,7 @@ Tabs, in reading order:
 | Tab | What the user sees | First impression |
 |-----|--------------------|------------------|
 | **Overview** | **Read-only summary** — `MetricGrid` (columns, rows), the dataset's catalog facts (source, name, description, domain, tags, business definition, sensitivity) and **who depends on it** (object types / link types that use it as a backing source, each linked). One action: **Edit in Settings**. It never saves. | "what is this dataset, and who uses it" |
-| **Data** | paged table preview (TanStack: server sort + inline cell editing when row editing is on). **Filtering is designed** ([data grid filter](data-layer-grid-filter.md)) but not built: today you can sort and page, not find rows by value | "what's actually in it" |
+| **Data** | paged table preview (TanStack: server sort + inline cell editing when row editing is on) with a **filter bar**: one `column · operator · value` per condition, AND-ed, type-aware operators, the row count reflecting the filters, and the view reproducible from the URL ([design](data-layer-grid-filter.md)) | "what's actually in it" |
 | **Columns** | column list + type + ontology-type mapping + **description** (editable); schema history | "what's in it and what it means" |
 | **Relationships** | the FK edges this dataset takes part in (`from → to`, column pairs, INNER/LEFT) | "what does it connect to" |
 | **Quality** | declarative rules + run history | "can I trust it" |

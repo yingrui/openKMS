@@ -12,7 +12,7 @@ import {
   deleteDataset,
   fetchDataset,
   fetchDatasetMetadata,
-  fetchDatasetRows,
+  queryDatasetRows,
   type DatasetResponse,
 } from '../../data/datasetsApi';
 import {
@@ -89,7 +89,7 @@ export function DatasetDetailPage() {
       try {
         const [meta, rows] = await Promise.all([
           fetchDatasetMetadata(datasetId),
-          fetchDatasetRows(datasetId, { limit: 1, offset: 0 }),
+          queryDatasetRows(datasetId, { limit: 1 }),
         ]);
         if (cancelled) return;
         setColumnCount(meta.length);

@@ -8,7 +8,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.pagination import DEFAULT_PAGE_SIZE, MAX_PAGE_SIZE
+from app.constants import DEFAULT_PAGE_SIZE, MAX_PAGE_SIZE
 from app.api.auth import require_any_permission, require_auth, require_permission
 from app.api.datasets import get_dataset_scoped, get_dataset_scoped_write
 from app.database import get_db

@@ -26,17 +26,50 @@ def test_datasets_rows(mock_api):
     recorded, _ = mock_api
     from openkms.commands.datasets import cmd_rows
 
-    cmd_rows(_ns(id="d1", limit=10, offset=0, sort=None, order=None, after=None))
-    assert recorded[-1].url.path == "/api/datasets/d1/rows"
+    cmd_rows(_ns(id="d1", filter=None, limit=10, offset=0, sort=None, order=None, after=None))
+    assert recorded[-1].method == "POST"
+    assert recorded[-1].url.path == "/api/datasets/d1/rows/query"
 
 
-def test_datasets_rows_keyset_paging(mock_api):
+def test_datasets_rows_sends_filters(mock_api):
     recorded, _ = mock_api
     from openkms.commands.datasets import cmd_rows
 
-    cmd_rows(_ns(id="d1", limit=10, offset=None, sort="trade_date", order="desc", after="2026-01-31"))
-    q = dict(recorded[-1].url.params)
-    assert q == {"limit": "10", "sort": "trade_date", "order": "desc", "after": "2026-01-31"}
+    cmd_rows(
+        _ns(
+            id="d1",
+            filter=["close > 100", "trade_date between 2026-01-01..2026-01-31", "industry in 银行,证券", "note is_null"],
+            limit=None,
+            offset=None,
+            sort="trade_date",
+            order="desc",
+            after=None,
+        )
+    )
+    body = json.loads(recorded[-1].content)
+    assert body["filters"] == [
+        {"field": "close", "op": ">", "value": "100"},
+        {"field": "trade_date", "op": "between", "value": ["2026-01-01", "2026-01-31"]},
+        {"field": "industry", "op": "in", "value": ["银行", "证券"]},
+        {"field": "note", "op": "is_null"},
+    ]
+    assert body["sort"] == "trade_date" and body["order"] == "desc"
+    assert body["limit"] == 100 and body["offset"] == 0
+
+
+def test_datasets_rows_rejects_a_malformed_filter():
+    import pytest
+
+    from openkms.commands.datasets import cmd_rows
+
+    with pytest.raises(SystemExit, match="column op value"):
+        cmd_rows(_ns(id="d1", filter=["close"], limit=None, offset=None, sort=None, order=None, after=None))
+    with pytest.raises(SystemExit, match="needs"):
+        cmd_rows(_ns(id="d1", filter=["close >"], limit=None, offset=None, sort=None, order=None, after=None))
+    with pytest.raises(SystemExit, match="a..b"):
+        cmd_rows(
+            _ns(id="d1", filter=["d between 2026"], limit=None, offset=None, sort=None, order=None, after=None)
+        )
 
 
 def test_datasets_list_search_and_paging(mock_api):

@@ -40,20 +40,46 @@ def cmd_get(ns: argparse.Namespace) -> None:
     print_json(r.json())
 
 
+def _row_filter(raw: str) -> dict[str, Any]:
+    """`"column op value"` → the API's filter object.
+
+    Values: `between` takes `a..b`, `in` takes a comma list, `is_null`/`is_not_null` take none.
+    """
+    parts = raw.split(None, 2)
+    if len(parts) < 2:
+        raise SystemExit(f'--filter needs "column op value", got: {raw!r}')
+    column, op = parts[0], parts[1]
+    value = parts[2] if len(parts) > 2 else None
+    if op in ("is_null", "is_not_null"):
+        return {"field": column, "op": op}
+    if value is None:
+        raise SystemExit(f'--filter {op} needs a value: {raw!r}')
+    if op == "between":
+        bounds = [v.strip() for v in value.split("..", 1)]
+        if len(bounds) != 2 or not all(bounds):
+            raise SystemExit(f'--filter between needs "a..b", got: {value!r}')
+        return {"field": column, "op": op, "value": bounds}
+    if op == "in":
+        values = [v.strip() for v in value.split(",") if v.strip()]
+        return {"field": column, "op": op, "value": values}
+    return {"field": column, "op": op, "value": value}
+
+
 def cmd_rows(ns: argparse.Namespace) -> None:
-    params: dict[str, Any] = {}
-    if ns.limit is not None:
-        params["limit"] = ns.limit
-    if ns.offset is not None:
-        params["offset"] = ns.offset
+    """Browse a dataset table: filters + sort + paging (read-only)."""
+    body: dict[str, Any] = {
+        "filters": [_row_filter(raw) for raw in ns.filter or []],
+        "limit": ns.limit if ns.limit is not None else 100,
+        "offset": ns.offset if ns.offset is not None else 0,
+    }
     if ns.sort:
-        params["sort"] = ns.sort
+        body["sort"] = ns.sort
     if ns.order:
-        params["order"] = ns.order
+        body["order"] = ns.order
     if ns.after:
-        params["after"] = ns.after
+        body["after"] = ns.after
     with client() as s:
-        r = s.get(f"/api/datasets/{ns.id}/rows", params=params or None)
+        r = s.post(f"/api/datasets/{ns.id}/rows/query", json=body)
     r.raise_for_status()
     print_json(r.json())
 
@@ -352,13 +378,19 @@ def add_subparser(sub) -> None:
     gt.add_argument("--id", required=True)
     gt.set_defaults(fn=cmd_get)
 
-    rows = sp.add_parser("rows", help="Paginated rows (GET …/rows)")
+    rows = sp.add_parser("rows", help="Browse rows (POST …/rows/query): filters + sort + paging")
     rows.add_argument("--id", required=True)
+    rows.add_argument(
+        "--filter",
+        action="append",
+        default=None,
+        help='repeatable: "column op value" (between = "a..b", in = "a,b"; no value for is_null)',
+    )
     rows.add_argument("--limit", type=int, default=None)
     rows.add_argument("--offset", type=int, default=None)
     rows.add_argument("--sort", default=None, help="column to sort by")
     rows.add_argument("--order", choices=("asc", "desc"), default=None)
-    rows.add_argument("--after", default=None, help="keyset cursor: last value of --sort")
+    rows.add_argument("--after", default=None, help="keyset cursor: last value of --sort (needs --sort)")
     rows.set_defaults(fn=cmd_rows)
 
     md = sp.add_parser("metadata", help="Column metadata (GET …/metadata)")

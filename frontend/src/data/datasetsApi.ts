@@ -125,26 +125,45 @@ export async function updateColumnDescription(
   );
 }
 
+/** One grid filter: a table **column**, a whitelisted operator, a value. */
+export interface DatasetRowFilter {
+  field: string;
+  op: string;
+  value?: unknown;
+}
+
+/** A browse of a dataset table. Omitted fields fall back to the server's defaults. */
+export interface DatasetRowsQuery {
+  filters?: DatasetRowFilter[];
+  sort?: string | null;
+  order?: 'asc' | 'desc';
+  limit?: number;
+  offset?: number;
+  after?: string | null;
+}
+
 export interface DatasetRowsResponse {
+  /** The table's columns — present even when nothing matched, so the header still renders. */
+  columns: string[];
   rows: Record<string, unknown>[];
+  /** Rows matching the filters (not the whole table). */
   total: number;
   limit: number;
   offset: number;
   next_after: string | null;
+  /** The page is full: there may be more rows. */
+  capped: boolean;
 }
 
-export async function fetchDatasetRows(
+/** Browse a dataset's table (read-only): filters + sort + paging. */
+export async function queryDatasetRows(
   id: string,
-  params?: { limit?: number; offset?: number; sort?: string; order?: 'asc' | 'desc'; after?: string },
+  spec: DatasetRowsQuery = {},
 ): Promise<DatasetRowsResponse> {
-  return request<DatasetRowsResponse>(`/api/datasets/${id}/rows`, {
-    query: {
-      limit: params?.limit,
-      offset: params?.offset,
-      sort: params?.sort,
-      order: params?.order,
-      after: params?.after,
-    },
+  return request<DatasetRowsResponse>(`/api/datasets/${id}/rows/query`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ filters: [], order: 'asc', limit: 100, offset: 0, ...spec }),
   });
 }
 

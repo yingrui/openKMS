@@ -1,6 +1,6 @@
 # Data layer — data grid filter (design)
 
-Status: **design, not implemented** · Surface: `/datasets/{id}/data` (Data tab) + the rows read API · Owner: data layer
+Status: **P0 complete** (filter bar · server-side filtering · URL state · truthful count · `columns` in the response · skill `--filter` · statement timeout) · Surface: `/datasets/{id}/data` (Data tab) + `POST /api/datasets/{id}/rows/query` · Owner: data layer
 
 Part of the data-layer family: [feature reference](data-layer.md) · [interaction design](data-layer-interaction.md) · [implementation design](data-layer-implementation.md) · [semantic model](data-layer-semantic-model.md) · [semantic model Playground (design)](data-layer-playground.md).
 
@@ -142,6 +142,18 @@ object; carrying it in a query string would mean encoding JSON into a URL.
 - Browsing stays read-only and scoped: no writes, no table outside this dataset.
 
 ## 8. Decisions
+
+*(Shipped decisions, as implemented:)*
+
+- **Values commit on blur/Enter**, structure (column, operator) immediately: no per-keystroke query, and
+  the URL never carries half-typed text. A debounce is future polish, not a requirement.
+- **The unfiltered reader stays** (`dataset_tables.fetch_dataset_rows_page`) for the object/link
+  instance lists, whose batch sizes (up to 1000) deliberately exceed a browser's 500-row cap; folding
+  the two readers together means moving those callers onto the shared page-size convention first.
+- **`data:read` is enforced for the POST path** through a more specific permission pattern
+  (`POST /api/datasets/*/rows/query`), not by skipping the middleware — a read-only user may browse,
+  and row edits still need `data:edit`.
+
 
 1. **Filter the table's columns, not model fields.** This surface browses the physical substrate (with
    Catalog descriptions); the Playground is the model's lens over declared fields. Two address spaces,

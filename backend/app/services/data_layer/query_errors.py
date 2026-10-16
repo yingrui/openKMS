@@ -13,7 +13,7 @@ Postgres tells us via SQLSTATE, so the mapping is data, not guesswork.
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Any, Literal
 
 QueryFailureKind = Literal["definition", "data", "request"]
@@ -25,11 +25,16 @@ REQUEST: QueryFailureKind = "request"
 
 @dataclass(frozen=True)
 class QueryFailure:
-    """A stable message `code`, the `kind` of fix it needs, and the raw source text if any."""
+    """A stable message `code`, the `kind` of fix it needs, and the raw source text if any.
+
+    ``params`` feeds the localized message template (e.g. the column a filter got wrong), while
+    ``detail`` stays the source's own words for the details line.
+    """
 
     code: str
     kind: QueryFailureKind
     detail: str | None = None
+    params: dict[str, Any] = field(default_factory=dict)
 
 
 #: SQLSTATE → (code, kind). Only the codes worth explaining; anything else falls back.

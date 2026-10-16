@@ -430,6 +430,8 @@ DEFAULT_PATTERNS_BY_KEY: dict[str, tuple[list[str], list[str]]] = {
             "GET /api/datasets",
             "GET /api/datasets/*",
             "HEAD /api/datasets/*",
+            # Browsing a table is a read even though the filter set travels in a body.
+            "POST /api/datasets/*/rows/query",
             "GET /api/dataset-joins",
             "GET /api/dataset-joins/*",
             "GET /api/dataset-ingests",

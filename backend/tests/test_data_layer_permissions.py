@@ -1,5 +1,6 @@
 """Data-layer permission keys + pattern-engine resolution tests (pure)."""
 from app.services.permissions.permission_catalog import (
+    PERM_DATA_EDIT,
     PERM_DATA_READ,
     PERM_DATA_WRITE,
     OPERATION_KEY_HINTS,
@@ -65,6 +66,32 @@ def test_ingest_routes_are_covered_after_leaving_the_datasets_prefix():
     write_rules = _rules(PERM_DATA_WRITE)
     resolved_write = resolve_required_permission_keys("POST", "/api/dataset-ingests", write_rules)
     assert resolved_write is not None and PERM_DATA_WRITE in resolved_write
+
+
+def test_browsing_rows_is_a_read_even_though_it_is_a_post():
+    """`POST /api/datasets/*` is a write pattern; the rows query must win over it as a read.
+
+    The middleware compiles every key's patterns into one list and keeps the most specific match,
+    so a read-only user may browse a table while row edits still need the write/edit keys.
+    """
+    _, read = default_patterns_for_key(PERM_DATA_READ)
+    assert "POST /api/datasets/*/rows/query" in read
+
+    _, write = default_patterns_for_key(PERM_DATA_WRITE)
+    _, edit = default_patterns_for_key(PERM_DATA_EDIT)
+    all_rules = compile_rules_from_rows(
+        [
+            _Row(PERM_DATA_READ, read),
+            _Row(PERM_DATA_WRITE, write),
+            _Row(PERM_DATA_EDIT, edit),
+        ]
+    )
+
+    query_keys = resolve_required_permission_keys("POST", "/api/datasets/d1/rows/query", all_rules)
+    assert query_keys == frozenset({PERM_DATA_READ})
+
+    apply_keys = resolve_required_permission_keys("POST", "/api/datasets/d1/rows/apply", all_rules)
+    assert apply_keys is not None and PERM_DATA_EDIT in apply_keys
 
 
 def test_engine_resolves_data_read_for_reads():

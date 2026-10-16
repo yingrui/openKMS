@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import {
   flexRender,
@@ -9,14 +9,27 @@ import {
   type ColumnDef,
   type SortingState,
 } from '@tanstack/react-table';
-import { ArrowDown, ArrowUp, ArrowUpDown, Copy, Loader2, Save, Undo2 } from 'lucide-react';
+import { ArrowDown, ArrowUp, ArrowUpDown, Copy, Filter as FilterIcon, Loader2, Save, Undo2, X } from 'lucide-react';
 import { toast } from 'sonner';
 import {
   applyDatasetRows,
-  fetchDatasetRows,
+  fetchDatasetMetadata,
+  queryDatasetRows,
+  type ColumnMetadata,
+  type DatasetRowFilter,
   type DatasetRowOp,
   type DatasetRowsResponse,
 } from '../../data/datasetsApi';
+import {
+  columnKind,
+  filtersFromParam,
+  filtersToParam,
+  newFilterRow,
+  operatorDef,
+  operatorsFor,
+  toApiFilters,
+  type FilterRow,
+} from './datasetRowsFilter';
 import { useDatasetDetail } from './useDatasetDetail';
 import { EntityViewHeader, EntityViewPanel } from './EntityViewShell';
 
@@ -99,13 +112,64 @@ export function DatasetDataTab() {
   const pkCols = useMemo(() => dataset.primary_key_columns ?? [], [dataset.primary_key_columns]);
   const canEdit = dataset.is_editable;
 
+  const [params, setParams] = useSearchParams();
   const [rowsData, setRowsData] = useState<DatasetRowsResponse | null>(null);
   const [rowsLoading, setRowsLoading] = useState(true);
   const [page, setPage] = useState(0);
   const [pageSize, setPageSize] = useState(100);
   const [sorting, setSorting] = useState<SortingState>([]);
+  /** The filter bar's inputs (live while typing) and the set the last query used. */
+  const [filterRows, setFilterRows] = useState<FilterRow[]>(() => filtersFromParam(params.get('f')));
+  const [appliedFilters, setAppliedFilters] = useState<DatasetRowFilter[]>(() =>
+    toApiFilters(filtersFromParam(params.get('f'))),
+  );
+  const [filterColumns, setFilterColumns] = useState<ColumnMetadata[]>([]);
   const [dirty, setDirty] = useState<Draft>({});
   const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    if (!datasetId) return;
+    let cancelled = false;
+    void fetchDatasetMetadata(datasetId)
+      .then((meta) => {
+        if (cancelled) return;
+        setFilterColumns(meta);
+        // A column that the schema no longer has would fail every query: drop it and say so.
+        const known = new Set(meta.map((c) => c.column_name));
+        setFilterRows((prev) => {
+          const kept = prev.filter((row) => !row.column || known.has(row.column));
+          const dropped = prev.filter((row) => row.column && !known.has(row.column));
+          dropped.forEach((row) => toast.info(t('datasets.filterColumnDropped', { column: row.column })));
+          if (dropped.length > 0) {
+            setAppliedFilters(toApiFilters(kept));
+            setParams({ f: filtersToParam(kept) }, { replace: true });
+          }
+          return kept;
+        });
+      })
+      .catch(() => undefined);
+    return () => {
+      cancelled = true;
+    };
+  }, [datasetId, setParams, t]);
+
+  /** Commit the bar: what the query sees, and what a shared URL reproduces. */
+  const commitFilters = useCallback(
+    (next: FilterRow[]) => {
+      setFilterRows(next);
+      const applied = toApiFilters(next);
+      setAppliedFilters(applied);
+      setPage(0);
+      const search = new URLSearchParams(params);
+      if (applied.length > 0) {
+        search.set('f', filtersToParam(next));
+      } else {
+        search.delete('f');
+      }
+      setParams(search, { replace: true });
+    },
+    [params, setParams],
+  );
 
   const loadRows = useCallback(async () => {
     if (!datasetId) return;
@@ -113,10 +177,11 @@ export function DatasetDataTab() {
     try {
       const sort = sorting[0];
       setRowsData(
-        await fetchDatasetRows(datasetId, {
+        await queryDatasetRows(datasetId, {
+          filters: appliedFilters,
           limit: pageSize,
           offset: page * pageSize,
-          sort: sort?.id,
+          sort: sort?.id ?? null,
           order: sort?.desc ? 'desc' : 'asc',
         }),
       );
@@ -125,14 +190,14 @@ export function DatasetDataTab() {
     } finally {
       setRowsLoading(false);
     }
-  }, [datasetId, page, pageSize, sorting, t]);
+  }, [appliedFilters, datasetId, page, pageSize, sorting, t]);
 
   useEffect(() => {
     void loadRows();
   }, [loadRows]);
 
   const rows = rowsData?.rows ?? [];
-  const columns = rows[0] ? Object.keys(rows[0]) : [];
+  const columns = rowsData?.columns ?? [];
   const total = rowsData?.total ?? 0;
   const totalPages = total > 0 ? Math.ceil(total / pageSize) : 0;
 
@@ -226,6 +291,26 @@ export function DatasetDataTab() {
     }
   };
 
+  /** The type of a filter row's column decides which operators and inputs it gets. */
+  const kindOf = (column: string) =>
+    columnKind(filterColumns.find((c) => c.column_name === column)?.ontology_type);
+
+  const opLabel = (id: string) => {
+    if (id === 'contains') return t('datasets.filterOpContains');
+    if (id === 'startsWith') return t('datasets.filterOpStartsWith');
+    if (id === 'endsWith') return t('datasets.filterOpEndsWith');
+    return id;
+  };
+
+  const patchFilter = (id: number, next: Partial<FilterRow>) =>
+    filterRows.map((row) => (row.id === id ? { ...row, ...next } : row));
+
+  const addFilter = () => {
+    const nextId = filterRows.reduce((max, row) => Math.max(max, row.id), -1) + 1;
+    const first = filterColumns[0]?.column_name ?? '';
+    commitFilters([...filterRows, newFilterRow(nextId, first)]);
+  };
+
   const startRow = total > 0 ? page * pageSize + 1 : 0;
   const endRow = total > 0 ? Math.min((page + 1) * pageSize, total) : 0;
 
@@ -258,6 +343,115 @@ export function DatasetDataTab() {
         </div>
       )}
       <EntityViewPanel>
+        <div className="dataset-filter-bar">
+          <div className="dataset-filter-bar__head">
+            <span className="dataset-filter-bar__count">
+              {rowsData
+                ? `${t('datasets.filterRows', { count: rowsData.total })}${
+                    appliedFilters.length > 0
+                      ? ` · ${t('datasets.filterCount', { count: appliedFilters.length })}`
+                      : ''
+                  }${rowsData.capped ? ` · ${t('datasets.filterCapped')}` : ''}`
+                : ''}
+            </span>
+            <div className="dataset-filter-bar__actions">
+              <button
+                type="button"
+                className="btn btn-secondary btn-sm"
+                onClick={addFilter}
+                disabled={filterColumns.length === 0}
+              >
+                <FilterIcon size={14} aria-hidden />
+                {t('datasets.filterAdd')}
+              </button>
+              {filterRows.length > 0 && (
+                <button
+                  type="button"
+                  className="btn btn-secondary btn-sm"
+                  onClick={() => commitFilters([])}
+                >
+                  {t('datasets.filterClear')}
+                </button>
+              )}
+            </div>
+          </div>
+
+          {filterRows.map((row) => {
+            const def = operatorDef(row.op);
+            return (
+              <div key={row.id} className="dataset-filter">
+                <select
+                  className="ds-control"
+                  value={row.column}
+                  aria-label={t('datasets.filterColumn')}
+                  onChange={(e) =>
+                    commitFilters(patchFilter(row.id, { column: e.target.value, value: '', value2: '' }))
+                  }
+                >
+                  <option value="">{t('datasets.filterColumn')}</option>
+                  {filterColumns.map((c) => (
+                    <option key={c.column_name} value={c.column_name}>
+                      {c.column_name} · {c.data_type}
+                    </option>
+                  ))}
+                </select>
+                <select
+                  className="ds-control dataset-filter__op"
+                  value={row.op}
+                  aria-label={t('datasets.filterOperator')}
+                  onChange={(e) => commitFilters(patchFilter(row.id, { op: e.target.value }))}
+                >
+                  {operatorsFor(kindOf(row.column)).map((op) => (
+                    <option key={op.id} value={op.id}>
+                      {opLabel(op.id)}
+                    </option>
+                  ))}
+                </select>
+                {def.values !== 'none' && (
+                  <input
+                    /* Remount on a column/operator change so the committed value is the one shown. */
+                    key={`${row.id}:${row.column}:${row.op}:1`}
+                    className="ds-control dataset-filter__value"
+                    type={kindOf(row.column) === 'number' ? 'number' : kindOf(row.column) === 'date' ? 'date' : 'text'}
+                    aria-label={t('datasets.filterValue')}
+                    placeholder={def.values === 'list' ? t('datasets.filterListPlaceholder') : undefined}
+                    defaultValue={row.value}
+                    onBlur={(e) => commitFilters(patchFilter(row.id, { value: e.target.value }))}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        commitFilters(patchFilter(row.id, { value: (e.target as HTMLInputElement).value }));
+                      }
+                    }}
+                  />
+                )}
+                {def.values === 'two' && (
+                  <input
+                    key={`${row.id}:${row.column}:${row.op}:2`}
+                    className="ds-control dataset-filter__value"
+                    type={kindOf(row.column) === 'date' ? 'date' : 'text'}
+                    aria-label={t('datasets.filterTo')}
+                    placeholder={t('datasets.filterTo')}
+                    defaultValue={row.value2}
+                    onBlur={(e) => commitFilters(patchFilter(row.id, { value2: e.target.value }))}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        commitFilters(patchFilter(row.id, { value2: (e.target as HTMLInputElement).value }));
+                      }
+                    }}
+                  />
+                )}
+                <button
+                  type="button"
+                  className="btn btn-secondary btn-sm"
+                  aria-label={t('datasets.filterRemove')}
+                  onClick={() => commitFilters(filterRows.filter((r) => r.id !== row.id))}
+                >
+                  <X size={14} aria-hidden />
+                </button>
+              </div>
+            );
+          })}
+        </div>
         {rowsLoading ? (
           <div className="console-loading">
             <Loader2 size={32} className="console-loading-spinner" aria-hidden />
@@ -298,7 +492,20 @@ export function DatasetDataTab() {
                   {rows.length === 0 ? (
                     <tr>
                       <td colSpan={columns.length || 1} className="console-table-empty">
-                        {t('datasets.emptyRows')}
+                        {appliedFilters.length > 0 ? (
+                          <span className="dataset-filter-empty">
+                            {t('datasets.filterNoMatch')}
+                            <button
+                              type="button"
+                              className="btn btn-secondary btn-sm"
+                              onClick={() => commitFilters([])}
+                            >
+                              {t('datasets.filterClear')}
+                            </button>
+                          </span>
+                        ) : (
+                          t('datasets.emptyRows')
+                        )}
                       </td>
                     </tr>
                   ) : (

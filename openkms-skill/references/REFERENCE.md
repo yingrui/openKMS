@@ -212,7 +212,7 @@ All write subcommands accept `--yes` / `--dry-run`. Without `--yes` on non-TTY s
 | `datasets list` | GET | `/api/datasets` | Optional `?data_source_id=` / `?search=` / `?limit=` / `?offset=`. |
 | `datasets get` | GET | `/api/datasets/{id}` | |
 | `datasets discover` | GET | `/api/datasets/from-source/{data_source_id}` | Tables in a data source that can be registered. |
-| `datasets rows` | GET | `/api/datasets/{id}/rows` | `?limit=` / `?offset=` / `?sort=` / `?order=` / `?after=` (keyset cursor = last `sort` value). |
+| `datasets rows` | POST | `/api/datasets/{id}/rows/query` | Body `{filters:[{field, op, value}], sort?, order?, limit?, offset?, after?}` — **filters address the table's columns** (AND-ed, the same operator whitelist as `semantic-models query`); `--filter "column op value"` is repeatable (`between` = `a..b`, `in` = `a,b`). Response adds `columns` (a filtered-out result still renders a header) and `capped`. |
 | `datasets metadata` | GET | `/api/datasets/{id}/metadata` | Column metadata. |
 | `datasets create` *(write)* | POST | `/api/datasets` | Register existing table. |
 | `datasets update` *(write)* | PUT | `/api/datasets/{id}` | **Partial** update. Body from any of `--display-name`, `--description`, `--domain`, `--tags` (csv), `--business-definition`, `--sensitivity public\|internal\|confidential\|restricted\|""`, `--primary-key` (csv), `--unique-keys` (`"a,b;c"`), `--editable true|false`, `--ai-instructions`, `--ai-synonyms`, `--ai-examples`. |

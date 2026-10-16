@@ -29,3 +29,10 @@ class DocumentRelationType(StrEnum):
     AMENDS = "amends"
     IMPLEMENTS = "implements"
     SEE_ALSO = "see_also"
+
+# One page-size convention for list endpoints, and the timeout for browsing a table's rows
+# (a read that hangs is worse than one that fails). Both are enforced server-side, not just asked
+# for by the API schema.
+DEFAULT_PAGE_SIZE = 100
+MAX_PAGE_SIZE = 500
+ROWS_TIMEOUT_MS = 10_000

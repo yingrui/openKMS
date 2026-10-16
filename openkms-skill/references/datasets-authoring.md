@@ -136,12 +136,15 @@ config object wholesale.
 
 ```bash
 python scripts/cli.py datasets rows --id DS_ID --limit 5 --sort trade_date --order desc
+python scripts/cli.py datasets rows --id DS_ID --filter "close > 100" --filter "industry in 银行,证券"
 python scripts/cli.py datasets profile --id DS_ID
 python scripts/cli.py datasets schema-history --id DS_ID
 ```
 
-`rows` is keyset-paged: pass the last `--sort` value back as `--after` for the next page. `profile`
-computes null/distinct/min/max per column against the source.
+`rows` **filters the table's columns** (AND-ed; operators `= != like in > >= < <= between is_null
+is_not_null`, `between` written `a..b`) and is keyset-paged: pass the last `--sort` value back as
+`--after`. The response's `total` counts what the filters match. `profile` computes
+null/distinct/min/max per column against the source.
 
 ## 7. From dataset to meaning
 

@@ -4,6 +4,8 @@ from typing import Any
 
 from pydantic import BaseModel
 
+from app.constants import DEFAULT_PAGE_SIZE
+
 
 class DatasetCreate(BaseModel):
     data_source_id: str
@@ -90,13 +92,39 @@ class ColumnDescriptionUpdate(BaseModel):
     description: str | None = None
 
 
+class DatasetRowFilter(BaseModel):
+    """One grid filter: a table column, a whitelisted operator, a value."""
+
+    field: str
+    op: str
+    value: Any = None
+
+
+class DatasetRowsQuery(BaseModel):
+    """A browse of a dataset table: AND-ed filters, a sort, and offset or keyset paging."""
+
+    filters: list[DatasetRowFilter] = []
+    sort: str | None = None
+    order: str = "asc"
+    limit: int = DEFAULT_PAGE_SIZE
+    offset: int = 0
+    after: str | None = None
+
+
 class DatasetRowsResponse(BaseModel):
-    """Paginated rows from a dataset table."""
+    """Paginated rows from a dataset table.
+
+    ``columns`` always describes the table (so an empty, filtered-out result still renders a header)
+    and ``total`` counts the rows the filters match.
+    """
+
+    columns: list[str] = []
     rows: list[dict]
     total: int
     limit: int
     offset: int
     next_after: str | None = None
+    capped: bool = False
 
 
 class DatasetRowOp(BaseModel):

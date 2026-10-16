@@ -19,4 +19,4 @@ def query_failure_detail(request: Request | None, failure: QueryFailure) -> dict
     extra: dict[str, Any] = {"kind": failure.kind}
     if failure.detail:
         extra["detail"] = failure.detail
-    return error_detail_extra(request, failure.code, extra=extra)
+    return error_detail_extra(request, failure.code, extra=extra, **failure.params)

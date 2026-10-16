@@ -6,8 +6,9 @@ from sqlalchemy import func, or_, select, text
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.constants import MAX_PAGE_SIZE
 from app.api.auth import require_any_permission, require_auth, require_permission
-from app.api.pagination import DEFAULT_PAGE_SIZE, MAX_PAGE_SIZE
+from app.api.query_errors import query_failure_detail
 from app.services.permissions.permission_catalog import PERM_DATA_READ, PERM_DATA_WRITE
 from app.database import get_db
 from app.services.acl.data_scope import bootstrap_owner_acl
@@ -25,6 +26,9 @@ from app.services.ontology.property_types import (
 from app.models.data_source import DataSource
 from app.models.dataset import Dataset
 from app.models.dataset_profile import DatasetProfile
+from app.services.data_layer.dataset_rows import query_dataset_rows
+from app.services.data_layer.query import QueryError
+from app.services.data_layer.row_filters import RowFilterError
 from app.services.data_layer.columns import (
     ColumnError,
     description_map,
@@ -45,12 +49,12 @@ from app.schemas.dataset import (
     DatasetProfileResponse,
     DatasetResponse,
     DatasetRowsResponse,
+    DatasetRowsQuery,
     DatasetUpdate,
     SchemaSnapshotResponse,
     TableInfo,
 )
 from app.services.ontology.dataset_tables import (
-    fetch_dataset_rows_page,
     is_valid_identifier,
     pg_engine_for_datasource,
 )
@@ -254,31 +258,43 @@ async def create_dataset(
     return _dataset_response(dataset, ds.name)
 
 
-@router.get(
-    "/{dataset_id}/rows",
+@router.post(
+    "/{dataset_id}/rows/query",
     response_model=DatasetRowsResponse,
     dependencies=[Depends(require_any_permission(*_DATASET_VIEW))],
 )
-async def get_dataset_rows(
+async def query_dataset_rows_endpoint(
+    request: Request,
+    body: DatasetRowsQuery,
     dataset: Dataset = Depends(get_dataset_scoped),
     db: AsyncSession = Depends(get_db),
-    limit: int = Query(DEFAULT_PAGE_SIZE, ge=1, le=MAX_PAGE_SIZE),
-    offset: int = Query(0, ge=0),
-    sort: str | None = Query(None, description="column to sort by (validated)"),
-    order: str = Query("asc"),
-    after: str | None = Query(None, description="keyset cursor: last value of `sort`"),
 ):
-    """Fetch rows (PostgreSQL only) with optional server-side sort and keyset paging."""
+    """Browse this dataset's table: filters + sort + paging, read-only and capped.
+
+    Failures are classified like the query API's (`kind`: `request` for a bad filter, `data` for
+    what the source refused), so the grid explains them instead of echoing a driver error.
+    """
     try:
-        rows, total, next_after = await fetch_dataset_rows_page(
-            db, dataset.id, limit=limit, offset=offset, sort=sort, order=order, after=after
+        page = await query_dataset_rows(
+            db,
+            dataset.id,
+            filters=[f.model_dump() for f in body.filters],
+            sort=body.sort,
+            order=body.order,
+            after=body.after,
+            limit=body.limit,
+            offset=body.offset,
         )
-    except ValueError as exc:
-        raise HTTPException(status_code=400, detail=str(exc)) from exc
-    except SQLAlchemyError as exc:
-        raise HTTPException(status_code=502, detail=f"Failed to fetch rows: {exc}") from exc
+    except (QueryError, RowFilterError) as exc:
+        raise HTTPException(status_code=400, detail=query_failure_detail(request, exc.failure)) from exc
     return DatasetRowsResponse(
-        rows=rows, total=total, limit=limit, offset=offset, next_after=next_after
+        columns=page.columns,
+        rows=page.rows,
+        total=page.total,
+        limit=body.limit,
+        offset=body.offset,
+        next_after=page.next_after,
+        capped=page.capped,
     )
 
 

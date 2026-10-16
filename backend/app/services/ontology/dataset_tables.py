@@ -50,7 +50,10 @@ async def dataset_display_name(db: AsyncSession, dataset_id: str | None) -> str 
     return ds.display_name or f"{ds.schema_name}.{ds.table_name}"
 
 
-async def _pg_dataset_source(db: AsyncSession, dataset_id: str) -> tuple[Dataset, DataSource] | None:
+async def resolve_pg_dataset_source(
+    db: AsyncSession, dataset_id: str
+) -> tuple[Dataset, DataSource] | None:
+    """A dataset **and** its PostgreSQL source, or None when it is not a readable table."""
     dataset = await db.get(Dataset, dataset_id)
     if not dataset:
         return None
@@ -64,7 +67,7 @@ async def _pg_dataset_source(db: AsyncSession, dataset_id: str) -> tuple[Dataset
 
 async def get_dataset_row_count(db: AsyncSession, dataset_id: str) -> int:
     """Row count for a dataset table. Returns 0 if dataset not found or on error."""
-    resolved = await _pg_dataset_source(db, dataset_id)
+    resolved = await resolve_pg_dataset_source(db, dataset_id)
     if not resolved:
         return 0
     dataset, ds = resolved
@@ -83,7 +86,7 @@ async def get_dataset_row_count_where_not_null(
     db: AsyncSession, dataset_id: str, column_name: str
 ) -> int:
     """Count rows where column is not null. Returns 0 if dataset not found or on error."""
-    resolved = await _pg_dataset_source(db, dataset_id)
+    resolved = await resolve_pg_dataset_source(db, dataset_id)
     if not resolved or not is_valid_identifier(column_name):
         return 0
     dataset, ds = resolved
@@ -119,6 +122,32 @@ def keyset_cursor_error(sort: str | None, after: str | None) -> str | None:
     if not (sort and is_valid_identifier(str(sort))):
         return "`after` requires `sort` (the cursor is the last value of that column)."
     return None
+
+
+def table_column_names(ds: DataSource, schema: str, table: str) -> list[str]:
+    """The table's columns, in ordinal order — what a browsing reader validates filters against.
+
+    (Callers that also need types/descriptions use the metadata endpoint, which queries the same
+    view with more columns.)
+    """
+    engine = pg_engine_for_datasource(ds)
+    try:
+        with engine.connect() as conn:
+            return [
+                str(row[0])
+                for row in conn.execute(
+                    text(
+                        """
+                        SELECT column_name FROM information_schema.columns
+                        WHERE table_schema = :schema AND table_name = :table
+                        ORDER BY ordinal_position
+                        """
+                    ),
+                    {"schema": schema, "table": table},
+                ).fetchall()
+            ]
+    finally:
+        engine.dispose()
 
 
 async def fetch_dataset_rows_page(

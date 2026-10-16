@@ -52,6 +52,23 @@ MESSAGES: dict[str, dict[str, str]] = {
         "en": "The data source rejected the query. See the details for what it said.",
         "zh_CN": "数据源拒绝了该查询。详情见错误原文。",
     },
+    # Grid row filters (Data tab): the caller picked a column/operator that does not apply.
+    "DATASET_ROWS_UNKNOWN_COLUMN": {
+        "en": "There is no column '{column}' in this dataset.",
+        "zh_CN": "该数据集里没有列「{column}」。",
+    },
+    "DATASET_ROWS_BAD_OPERATOR": {
+        "en": "The operator '{op}' is not supported here.",
+        "zh_CN": "不支持运算符「{op}」。",
+    },
+    "DATASET_ROWS_INVALID_FILTER": {
+        "en": "That filter is not valid.",
+        "zh_CN": "该筛选条件无效。",
+    },
+    "DATASET_ROWS_TOO_MANY_FILTERS": {
+        "en": "Too many filters — at most {max} conditions can be combined.",
+        "zh_CN": "筛选条件过多——最多可组合 {max} 个条件。",
+    },
     "QUERY_UNKNOWN_METRIC": {
         "en": "That metric is not part of this semantic model.",
         "zh_CN": "该指标不属于此语义模型。",
