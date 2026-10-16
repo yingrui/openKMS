@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Save } from 'lucide-react';
 import { toast } from 'sonner';
@@ -9,17 +9,9 @@ import {
   updateDashboard,
   type ExplorerDashboard,
 } from '../../data/dashboardsApi';
-import { CheckList, CheckListItem, Dialog, FormField } from '../../styles/design-system';
-import { ExplorerChart } from './ExplorerChart';
-import { chartFits, chartSeries } from './explorerChartSpec';
-import {
-  buildReportEntry,
-  chartSpec,
-  guessChart,
-  type ChartChoice,
-  type ChartDraft,
-  type ReportDraftInput,
-} from './reportDraft';
+import { Dialog, FormField } from '../../styles/design-system';
+import { ReportChartFields } from './ReportChartFields';
+import { buildReportEntry, guessChart, type ChartDraft, type ReportDraftInput } from './reportDraft';
 
 const NEW_DASHBOARD = '__new__';
 
@@ -55,12 +47,6 @@ export function SaveReportDialog({ draft }: { draft: ReportDraftInput }) {
       .catch(() => undefined);
   }, [draft]);
 
-  const spec = useMemo(() => chartSpec(chart), [chart]);
-  const series = useMemo(
-    () => (chartFits(spec, draft.columns) && spec ? chartSeries(draft.rows, spec) : null),
-    [spec, draft.columns, draft.rows],
-  );
-
   const save = async () => {
     setSaving(true);
     try {
@@ -80,23 +66,6 @@ export function SaveReportDialog({ draft }: { draft: ReportDraftInput }) {
     } finally {
       setSaving(false);
     }
-  };
-
-  const toggleY = (column: string) => {
-    setChart((prev) => ({
-      ...prev,
-      y: prev.y.includes(column) ? prev.y.filter((c) => c !== column) : [...prev.y, column],
-    }));
-  };
-
-  /** Choosing a chart picks a measure to draw, so the choice is never "a chart of nothing". */
-  const chooseChart = (choice: ChartChoice) => {
-    setChart((prev) => {
-      if (choice === 'none') return { ...prev, choice };
-      const y = prev.y.length > 0 ? prev.y : draft.columns.filter((c) => c !== prev.x).slice(0, 1);
-      const x = prev.x || draft.columns[0] || '';
-      return { choice, x, y: y.filter((c) => c !== x) };
-    });
   };
 
   return (
@@ -158,49 +127,12 @@ export function SaveReportDialog({ draft }: { draft: ReportDraftInput }) {
             placeholder={t('dataExplorer.saveReportInsightPlaceholder')}
           />
         </FormField>
-        <FormField label={t('dataExplorer.saveReportChart')}>
-          <select
-            value={chart.choice}
-            onChange={(e) => chooseChart(e.target.value as ChartChoice)}
-          >
-            <option value="none">{t('dataExplorer.viewTable')}</option>
-            <option value="line">{t('dataExplorer.chartLine')}</option>
-            <option value="bar">{t('dataExplorer.chartBar')}</option>
-          </select>
-        </FormField>
-        {chart.choice !== 'none' && (
-          <>
-            <FormField label={t('dataExplorer.chartX')}>
-              <select value={chart.x} onChange={(e) => setChart((p) => ({ ...p, x: e.target.value }))}>
-                {draft.columns.map((c) => (
-                  <option key={c} value={c}>
-                    {c}
-                  </option>
-                ))}
-              </select>
-            </FormField>
-            <FormField label={t('dataExplorer.chartY')}>
-              <CheckList>
-                {draft.columns
-                  .filter((c) => c !== chart.x)
-                  .map((c) => (
-                    <CheckListItem
-                      key={c}
-                      checked={chart.y.includes(c)}
-                      onChange={() => toggleY(c)}
-                    >
-                      {c}
-                    </CheckListItem>
-                  ))}
-              </CheckList>
-            </FormField>
-            {spec && series ? (
-              <ExplorerChart spec={spec} series={series} />
-            ) : (
-              <p className="entity-view__readonly">{t('dataExplorer.saveReportNoChart')}</p>
-            )}
-          </>
-        )}
+        <ReportChartFields
+          columns={draft.columns}
+          rows={draft.rows}
+          chart={chart}
+          onChange={setChart}
+        />
       </Dialog>
     </>
   );

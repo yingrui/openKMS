@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   buildReportEntry,
+  chartDraftFromSpec,
   chartSpec,
   datasetReportDraft,
   guessChart,
@@ -154,5 +155,22 @@ describe('the two page drafts', () => {
       rows: MONTHLY,
     });
     expect(draft).toMatchObject({ sourceKind: 'dataset', datasetId: 'd1', semanticModelId: null });
+  });
+});
+
+describe('chartDraftFromSpec', () => {
+  it('reads a stored spec back into the fields, and refuses one the result cannot satisfy', () => {
+    expect(chartDraftFromSpec({ type: 'bar', x: 'industry', y: ['value'] }, ['industry', 'value'])).toEqual({
+      choice: 'bar',
+      x: 'industry',
+      y: ['value'],
+    });
+    expect(chartDraftFromSpec(undefined, ['industry', 'value'])).toEqual({
+      choice: 'none',
+      x: 'industry',
+      y: [],
+    });
+    // a column the result no longer has: the editor offers a table, not a broken chart
+    expect(chartDraftFromSpec({ type: 'line', x: 'gone', y: ['value'] }, ['industry', 'value']).choice).toBe('none');
   });
 });

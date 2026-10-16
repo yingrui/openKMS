@@ -8,7 +8,7 @@
 
 import type { DashboardReport, ExplorerSourceKind } from '../../data/dashboardsApi';
 import type { SemanticModelQueryResponse, SemanticModelQuerySpec } from '../../data/semanticModelsApi';
-import type { ExplorerChartSpec } from './explorerChartSpec';
+import { chartFits, parseChartSpec, type ExplorerChartSpec } from './explorerChartSpec';
 
 export type ChartChoice = 'none' | 'line' | 'bar';
 
@@ -134,6 +134,13 @@ export function buildReportEntry(
   const spec = chartSpec(options.chart);
   if (spec) entry.chart = spec;
   return entry;
+}
+
+/** A stored spec → the draft the chart fields edit, falling back to a table. */
+export function chartDraftFromSpec(raw: unknown, columns: string[]): ChartDraft {
+  const spec = parseChartSpec(raw);
+  if (!spec || !chartFits(spec, columns)) return { choice: 'none', x: columns[0] ?? '', y: [] };
+  return { choice: spec.type, x: spec.x, y: spec.y };
 }
 
 /** A chart draft → the stored spec, or `null` for "table" / an unusable choice. */

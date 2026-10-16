@@ -122,7 +122,17 @@
     "chartY": "度量",
     "saveReportNoChart": "选一个度量以预览图表；不选则保存为表格。",
     "saveReportSaved": "已存入看板",
-    "saveReportFailed": "保存报告失败"
+    "saveReportFailed": "保存报告失败",
+    "editReport": "编辑报告",
+    "removeReport": "移除报告",
+    "removeReportConfirm": "把这份报告从看板中移除？",
+    "reportRemoved": "报告已移除",
+    "reportUpdated": "报告已更新",
+    "moveUp": "上移",
+    "moveDown": "下移",
+    "reportsReordered": "顺序已保存",
+    "narrativeSaved": "结论已保存",
+    "narrativeEditHint": "结论才是看板的意义——先写它，数字变了再重跑。"
   },
   "dataModel": {
     "title": "数据模型",

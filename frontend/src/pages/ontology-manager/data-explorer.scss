@@ -54,6 +54,18 @@
   }
 }
 
+// A tile's header: its title, and the actions the page owns (edit / reorder / remove) beside it.
+.dashboard-report__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+
+  h3 {
+    margin: 0;
+  }
+}
+
 // A report's source, under its title — a dashboard's tiles may read different sources.
 .dashboard-report__source {
   margin: 0 0 var(--space-2);
@@ -82,4 +94,18 @@
 .explorer-chart {
   // `ResponsiveContainer` needs a parent with a height; 320px reads well next to the table.
   height: 320px;
+}
+
+// The answer is written here, in the app: a plain textarea (markdown is rendered on read).
+.dashboard-narrative__editor {
+  width: 100%;
+  padding: var(--space-3);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-bg);
+  color: var(--color-text);
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-size: var(--text-sm);
+  line-height: 1.6;
+  resize: vertical;
 }

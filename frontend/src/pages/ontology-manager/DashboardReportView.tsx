@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useState, type ReactNode } from 'react';
 import { ChartLine, ExternalLink, Table as TableIcon } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
@@ -20,10 +20,13 @@ export function DashboardReportView({
   report,
   datasets,
   models,
+  actions,
 }: {
   report: DashboardReport;
   datasets: DatasetResponse[];
   models: SemanticModelResponse[];
+  /** Edit / reorder / remove — owned by the page, rendered in the tile's header. */
+  actions?: ReactNode;
 }) {
   const { t } = useTranslation('ontology');
   const [showTable, setShowTable] = useState(false);
@@ -54,7 +57,10 @@ export function DashboardReportView({
 
   return (
     <section className="explorer-report-chart">
-      <h3>{report.title ?? t('dataExplorer.report')}</h3>
+      <div className="dashboard-report__head">
+        <h3>{report.title ?? t('dataExplorer.report')}</h3>
+        {actions && <div className="openkms-flex-row-gap">{actions}</div>}
+      </div>
       <p className="dashboard-report__source">
         <span>
           {isModel ? t('dataExplorer.sourceModel') : t('dataExplorer.sourceDataset')}

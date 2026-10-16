@@ -1,18 +1,30 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useNavigate, useParams } from 'react-router-dom';
-import { Loader2, Play, Trash2 } from 'lucide-react';
+import {
+  ArrowDown,
+  ArrowUp,
+  Loader2,
+  Pencil,
+  Play,
+  Trash2,
+} from 'lucide-react';
 import { toast } from 'sonner';
 import {
   deleteDashboard,
   fetchDashboard,
   runDashboard,
+  updateDashboard,
+  type DashboardReport,
   type ExplorerDashboard,
 } from '../../data/dashboardsApi';
 import { fetchDatasets, type DatasetResponse } from '../../data/datasetsApi';
 import { fetchSemanticModels, type SemanticModelResponse } from '../../data/semanticModelsApi';
+import { useAuth } from '../../contexts/AuthContext';
 import { useConfirm } from '../../contexts/ConfirmContext';
 import { DashboardReportView } from './DashboardReportView';
+import { EditReportDialog } from './EditReportDialog';
+import { applyReportFields, moveReport, removeReport, replaceReport } from './dashboardEdits';
 import '../ontology/ontology-admin.scss';
 import './data-explorer.scss';
 
@@ -21,9 +33,14 @@ export function DashboardDetailPage() {
   const { id = '' } = useParams();
   const navigate = useNavigate();
   const confirm = useConfirm();
+  const { hasPermission } = useAuth();
+  const canWrite = hasPermission('explorer:write');
   const [dashboard, setDashboard] = useState<ExplorerDashboard | null>(null);
   const [loading, setLoading] = useState(true);
   const [running, setRunning] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [editing, setEditing] = useState<number | null>(null);
+  const [narrativeDraft, setNarrativeDraft] = useState<string | null>(null);
   const [datasets, setDatasets] = useState<DatasetResponse[]>([]);
   const [models, setModels] = useState<SemanticModelResponse[]>([]);
 
@@ -54,6 +71,26 @@ export function DashboardDetailPage() {
       .catch(() => undefined);
   }, []);
 
+  const reports = dashboard?.reports ?? [];
+
+  /** The document **is** the dashboard, so every edit writes the array (or the narrative) back. */
+  const saveDocument = async (
+    body: { reports?: DashboardReport[]; narrative?: string | null },
+    message: string,
+  ) => {
+    setSaving(true);
+    try {
+      setDashboard(await updateDashboard(id, body));
+      toast.success(message);
+      return true;
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : t('dataExplorer.saveReportFailed'));
+      return false;
+    } finally {
+      setSaving(false);
+    }
+  };
+
   const handleRun = async () => {
     setRunning(true);
     try {
@@ -64,6 +101,19 @@ export function DashboardDetailPage() {
     } finally {
       setRunning(false);
     }
+  };
+
+  const handleRemoveReport = async (index: number) => {
+    if (
+      !(await confirm({
+        title: t('shared.delete'),
+        message: t('dataExplorer.removeReportConfirm'),
+        confirmLabel: t('shared.delete'),
+        danger: true,
+      }))
+    )
+      return;
+    await saveDocument({ reports: removeReport(reports, index) }, t('dataExplorer.reportRemoved'));
   };
 
   const handleDelete = async () => {
@@ -95,7 +145,7 @@ export function DashboardDetailPage() {
   }
   if (!dashboard) return null;
 
-  const reports = dashboard.reports ?? [];
+  const editingReport = editing === null ? null : reports[editing];
 
   return (
     <div className="ontology-admin">
@@ -133,21 +183,136 @@ export function DashboardDetailPage() {
         </div>
       </div>
       <div className="ontology-admin-content">
-        {dashboard.narrative ? (
+        {narrativeDraft === null ? (
           <section>
-            <h2>{t('dataExplorer.narrative')}</h2>
-            <div className="explorer-report-narrative">{dashboard.narrative}</div>
+            <div className="dashboard-report__head">
+              <h2>{t('dataExplorer.narrative')}</h2>
+              {canWrite && dashboard.narrative && (
+                <button
+                  type="button"
+                  className="btn btn-secondary btn-sm"
+                  onClick={() => setNarrativeDraft(dashboard.narrative ?? '')}
+                  title={t('shared.edit')}
+                >
+                  <Pencil size={14} aria-hidden />
+                  <span>{t('shared.edit')}</span>
+                </button>
+              )}
+            </div>
+            {dashboard.narrative ? (
+              <div className="explorer-report-narrative">{dashboard.narrative}</div>
+            ) : (
+              <p className="entity-view__readonly">{t('dataExplorer.noNarrative')}</p>
+            )}
           </section>
         ) : (
-          <p className="entity-view__readonly">{t('dataExplorer.noNarrative')}</p>
+          <section>
+            <h2>{t('dataExplorer.narrative')}</h2>
+            <textarea
+              className="dashboard-narrative__editor"
+              value={narrativeDraft}
+              onChange={(e) => setNarrativeDraft(e.target.value)}
+              rows={8}
+              aria-label={t('dataExplorer.narrative')}
+            />
+            <div className="openkms-flex-row-gap openkms-mt-2">
+              <button
+                type="button"
+                className="btn btn-primary btn-sm"
+                onClick={() => void saveDocument({ narrative: narrativeDraft }, t('dataExplorer.narrativeSaved')).then((ok) => ok && setNarrativeDraft(null))}
+                disabled={saving}
+              >
+                {saving ? t('shared.saving') : t('shared.save')}
+              </button>
+              <button
+                type="button"
+                className="btn btn-secondary btn-sm"
+                onClick={() => setNarrativeDraft(null)}
+                disabled={saving}
+              >
+                {t('shared.cancel')}
+              </button>
+            </div>
+          </section>
         )}
         {reports.length === 0 && (
           <p className="entity-view__readonly">{t('dataExplorer.reportsEmpty')}</p>
         )}
         {reports.map((report, i) => (
-          <DashboardReportView key={i} report={report} datasets={datasets} models={models} />
+          <DashboardReportView
+            key={i}
+            report={report}
+            datasets={datasets}
+            models={models}
+            actions={
+              canWrite ? (
+                <>
+                  <button
+                    type="button"
+                    className="btn btn-secondary btn-sm"
+                    onClick={() => setEditing(i)}
+                    title={t('dataExplorer.editReport')}
+                  >
+                    <Pencil size={14} aria-hidden />
+                  </button>
+                  <button
+                    type="button"
+                    className="btn btn-secondary btn-sm"
+                    onClick={() =>
+                      void saveDocument(
+                        { reports: moveReport(reports, i, -1) },
+                        t('dataExplorer.reportsReordered'),
+                      )
+                    }
+                    disabled={i === 0 || saving}
+                    title={t('dataExplorer.moveUp')}
+                  >
+                    <ArrowUp size={14} aria-hidden />
+                  </button>
+                  <button
+                    type="button"
+                    className="btn btn-secondary btn-sm"
+                    onClick={() =>
+                      void saveDocument(
+                        { reports: moveReport(reports, i, 1) },
+                        t('dataExplorer.reportsReordered'),
+                      )
+                    }
+                    disabled={i === reports.length - 1 || saving}
+                    title={t('dataExplorer.moveDown')}
+                  >
+                    <ArrowDown size={14} aria-hidden />
+                  </button>
+                  <button
+                    type="button"
+                    className="btn btn-secondary btn-sm"
+                    onClick={() => void handleRemoveReport(i)}
+                    disabled={saving}
+                    title={t('dataExplorer.removeReport')}
+                  >
+                    <Trash2 size={14} aria-hidden />
+                  </button>
+                </>
+              ) : null
+            }
+          />
         ))}
       </div>
+      {editingReport && (
+        <EditReportDialog
+          key={editing}
+          report={editingReport}
+          columns={editingReport.columns ?? []}
+          rows={editingReport.rows ?? []}
+          onClose={() => setEditing(null)}
+          onSave={(fields) => {
+            void saveDocument(
+              { reports: replaceReport(reports, editing ?? 0, applyReportFields(editingReport, fields)) },
+              t('dataExplorer.reportUpdated'),
+            ).then((ok) => ok && setEditing(null));
+          }}
+        />
+      )}
     </div>
   );
 }

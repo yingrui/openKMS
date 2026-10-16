@@ -122,7 +122,17 @@
     "chartY": "Measures",
     "saveReportNoChart": "Pick a measure to preview the chart; without one the report is a table.",
     "saveReportSaved": "Saved to the dashboard",
-    "saveReportFailed": "Could not save the report"
+    "saveReportFailed": "Could not save the report",
+    "editReport": "Edit report",
+    "removeReport": "Remove report",
+    "removeReportConfirm": "Remove this report from the dashboard?",
+    "reportRemoved": "Report removed",
+    "reportUpdated": "Report updated",
+    "moveUp": "Move up",
+    "moveDown": "Move down",
+    "reportsReordered": "Order saved",
+    "narrativeSaved": "Answer saved",
+    "narrativeEditHint": "The answer is the point of the dashboard — write it, then re-run if the numbers changed."
   },
   "dataModel": {
     "title": "Data Model",
