@@ -143,7 +143,7 @@
     "typeFile": "文件",
     "moveSelected": "移动所选…",
     "moveDialogTitle": "移动到前缀",
-    "moveDialogHint": "移动 {{count}} 个所选项。文件夹会以其当前名称放入目标前缀下（例如 documents/{hash}/）。",
+    "moveDialogHint": "移动 {{count}} 个所选项。文件夹会以其当前名称放入目标前缀下（例如 documents/…/）。",
     "destLabel": "目标父级前缀",
     "destPlaceholder": "例如 documents/abc…/",
     "destRequired": "请输入目标前缀",
@@ -703,7 +703,6 @@
     "cronExpression": "Cron：{{cron}}",
     "cronLastRun": "上次运行",
     "cronNextRun": "下次运行",
-    "cronLastRun": "上次运行",
     "cronLastStatus": "上次状态",
     "cronStatus": {
       "ok": "成功",

@@ -1,8 +1,12 @@
 #!/usr/bin/env python3
-"""Guardrail: every `t('key')` must exist in the locale files.
+"""Guardrail: every `t('key')` must exist in the locale files, and its placeholders must interpolate.
 
 A missing key does not crash — i18next renders the key itself, so the UI quietly shows
 `dataModel.removeDimension` instead of a label (that is exactly how two bugs shipped).
+A **single**-brace placeholder is the quieter twin: `{max}` is not i18next syntax (it wants
+`{{max}}`), so the reader sees the literal `{max}` — which is how "Showing the top {max} only."
+shipped. Both are checked here.
+
 This checks the files where the namespace is knowable:
 
 - the namespace(s) come from `useTranslation('ns')` / `useTranslation(['a','b'])` in the
@@ -32,6 +36,8 @@ USE_CALL = re.compile(r"useTranslation\(([^)]*)\)")
 NS_LIST = re.compile(r"['\"]([\w-]+)['\"]")
 T_CALL = re.compile(r"\bt\(\s*['\"]([^'\"]+)['\"]")
 PLURAL_SUFFIXES = ("_zero", "_one", "_two", "_few", "_many", "_other", "_plural")
+#: A single-brace placeholder i18next will not touch (double braces are interpolation).
+NOT_INTERPOLATED = re.compile(r"(?<!\{)\{([a-zA-Z_][a-zA-Z0-9_]*)\}(?!\})")
 
 
 def load_locales() -> dict[str, dict]:
@@ -103,6 +109,30 @@ def offenders() -> list[str]:
     return out
 
 
+def placeholder_offenders() -> list[str]:
+    """Locale strings that use `{name}` where i18next needs `{{name}}`.
+
+    Reported per file so the fix is obvious; the key path is what matters, not the source line.
+    """
+    out: list[str] = []
+    for path in sorted(LOCALES.glob("*/*.json")):
+        data = json.loads(path.read_text())
+
+        def walk(node, prefix: str = "") -> None:
+            if isinstance(node, dict):
+                for key, value in node.items():
+                    walk(value, f"{prefix}.{key}" if prefix else key)
+            elif isinstance(node, str):
+                for name in NOT_INTERPOLATED.findall(node):
+                    out.append(
+                        f"{path.relative_to(ROOT)}: {prefix} uses {{{name}}} — "
+                        f"i18next needs {{{{{name}}}}}"
+                    )
+
+        walk(data)
+    return out
+
+
 def main() -> int:
     found = offenders()
     if "--list" in sys.argv or found:
@@ -115,6 +145,18 @@ def main() -> int:
             file=sys.stderr,
         )
         return 1
+
+    bad_placeholders = placeholder_offenders()
+    if bad_placeholders:
+        for line in bad_placeholders:
+            print(line)
+        print(
+            f"check-shared-styles: {len(bad_placeholders)} i18n placeholder(s) would be shown "
+            "literally — see the note at the top of this script",
+            file=sys.stderr,
+        )
+        return 1
+
     print("check-shared-styles: i18n keys OK")
     return 0
 

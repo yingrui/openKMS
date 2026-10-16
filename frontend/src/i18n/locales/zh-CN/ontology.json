@@ -98,7 +98,7 @@
     "chart": "图表",
     "viewTable": "表格",
     "viewModeAria": "结果视图",
-    "chartTruncated": "仅显示前 {max} 个分组。",
+    "chartTruncated": "仅显示前 {{max}} 个分组。",
     "newDashboard": "新建看板",
     "dashboardName": "名称",
     "reportCount": "{{count}} 份报告",
@@ -137,7 +137,7 @@
     "viewMetric": "单个数字",
     "viewBarList": "排名列表",
     "viewValueColumn": "数值列",
-    "barListTruncated": "仅显示前 {max} 项。"
+    "barListTruncated": "仅显示前 {{max}} 项。"
   },
   "dataModel": {
     "title": "数据模型",

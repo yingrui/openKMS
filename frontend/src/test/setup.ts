@@ -13,3 +13,13 @@ if (!window.matchMedia) {
     dispatchEvent: () => false,
   })) as unknown as typeof window.matchMedia;
 }
+
+// jsdom implements no ResizeObserver; recharts' ResponsiveContainer asks for one when it mounts.
+if (!('ResizeObserver' in window)) {
+  class ResizeObserverStub {
+    observe() {}
+    unobserve() {}
+    disconnect() {}
+  }
+  window.ResizeObserver = ResizeObserverStub as unknown as typeof ResizeObserver;
+}

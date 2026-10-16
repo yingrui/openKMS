@@ -98,7 +98,7 @@
     "chart": "Chart",
     "viewTable": "Table",
     "viewModeAria": "Result view",
-    "chartTruncated": "Showing the first {max} groups only.",
+    "chartTruncated": "Showing the first {{max}} groups only.",
     "newDashboard": "New dashboard",
     "dashboardName": "Name",
     "reportCount": "{{count}} report",
@@ -137,7 +137,7 @@
     "viewMetric": "Single number",
     "viewBarList": "Ranked list",
     "viewValueColumn": "Value column",
-    "barListTruncated": "Showing the top {max} only."
+    "barListTruncated": "Showing the top {{max}} only."
   },
   "dataModel": {
     "title": "Data Model",
