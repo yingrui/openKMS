@@ -382,6 +382,7 @@ Encrypted values; **never returned**. Write/sync/delete reject personal API key 
 | GET | `/api/datasets/{id}/profile` | Last computed profile (`data:read`) |
 | POST | `/api/datasets/{id}/profile` | Recompute profile (`data:write`; write on dataset) |
 | GET | `/api/datasets/{id}/schema-history` | Schema snapshots (`data:read`) |
+| GET | `/api/quality-issues` | **The quality inbox** (`data:read`, oldest-worst first): every *enabled* rule across datasets with the latest run that judged it — `{dataset_id, dataset_name, name, rule_type, column_name, severity, status (passed\|failed\|error\|never), checked_count, failed_count, detail, error_message, last_run_at}`, optional `?status=`. Filtered by **dataset ACL** (an issue is a fact about its dataset), and a rule with no run reports `never`, which is not `passed` |
 | GET | `/api/datasets/{id}/quality-rules` | List quality rules (`data:read`) |
 | POST | `/api/datasets/{id}/quality-rules` | Create quality rule (`data:write`) |
 | PUT | `/api/datasets/{id}/quality-rules/{rule_id}` | Update quality rule (`data:write`) |

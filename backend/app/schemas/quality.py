@@ -47,3 +47,26 @@ class QualityRunResponse(BaseModel):
     detail: dict[str, Any] | None = None
     error_message: str | None = None
     created_at: datetime
+
+
+class QualityIssueResponse(BaseModel):
+    """One rule and the latest run that judged it — the whole of what an inbox needs."""
+
+    id: str
+    dataset_id: str
+    dataset_name: str
+    name: str
+    rule_type: str
+    column_name: str | None = None
+    severity: str
+    status: str  # passed | failed | error | never
+    checked_count: int | None = None
+    failed_count: int | None = None
+    detail: dict[str, Any] | None = None
+    error_message: str | None = None
+    last_run_at: datetime | None = None
+
+
+class QualityIssueListResponse(BaseModel):
+    items: list[QualityIssueResponse]
+    total: int

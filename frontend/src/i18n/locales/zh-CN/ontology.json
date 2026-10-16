@@ -647,7 +647,8 @@
     "keysRemoveColumn": "移除 {{column}}",
     "tabMetrics": "指标",
     "fromSource": "从数据源添加",
-    "fromSourceHint": "一次把某个数据源的多张表登记为数据集。"
+    "fromSourceHint": "一次把某个数据源的多张表登记为数据集。",
+    "tabQualityIssues": "质量问题"
   },
   "groups": {
     "title": "分组",
@@ -975,5 +976,31 @@
     "noTables": "这个源没有表",
     "noTablesHint": "暂时没有可登记的表。",
     "addConfirm": "把 {{source}} 的 {{count}} 张表登记为数据集？"
+  },
+  "qualityIssues": {
+    "title": "质量问题",
+    "subtitle": "所有未通过的规则，跨数据集汇总。要修改就去该数据集的「质量」标签页。",
+    "empty": "还没有质量规则",
+    "emptyHint": "规则写在数据集的「质量」标签页里——五种：非空、唯一、范围、引用、新鲜度。",
+    "summary": "{{total}} 条规则中有 {{failing}} 条未通过",
+    "neverCount_one": "{{count}} 条从未运行",
+    "neverCount_other": "{{count}} 条从未运行",
+    "filter": "显示",
+    "filterAll": "全部规则",
+    "filterFailing": "只看未通过",
+    "filterNever": "从未运行",
+    "dataset": "数据集",
+    "rule": "规则",
+    "status": "状态",
+    "numbers": "行数",
+    "lastRun": "上次运行",
+    "status_passed": "通过",
+    "status_failed": "未通过",
+    "status_error": "无法运行",
+    "status_never": "从未运行",
+    "critical": "严重",
+    "neverRun": "从未",
+    "checked": "已检查 {{count}} 行",
+    "failedOfChecked": "{{checked}} 行中 {{failed}} 行"
   }
 }

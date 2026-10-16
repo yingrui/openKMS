@@ -239,9 +239,16 @@ Two things came out of it:
   and there was no history command — so an agent learned "failed" and nothing else. `datasets quality
   runs` now lists the history, and `datasets quality run` prints the run it produced.
 
-Still open: rules run **only when asked** (no schedule, no run-after-ingest), and nothing surfaces a
-failure outside the dataset's Quality tab — the Data Model tile's "data-quality alerts" tagline is
-still a promise.
+- **A Quality Issues tab**, beside Catalog: every enabled rule that is not passing, across datasets,
+  with the numbers, worst first. It needed a **cross-dataset** read (`GET /api/quality-issues`, one
+  query joining each rule's latest run) rather than N per-dataset calls — and it filters by **dataset
+  ACL**, since an issue is a fact about its dataset. A rule with no run reports `never`, which is not
+  `passed`. Its rows link into the dataset's Quality tab, so noticing and fixing stay separate jobs.
+  Built from existing primitives (table, chips, empty state) — no new CSS.
+
+Still open: rules run **only when asked** (no schedule, no run-after-ingest). The inbox now shows what
+the Data Model tile's "data-quality alerts" line promised — which is the one thing that line was
+missing.
 
 ### Register datasets in bulk, from the source (2026-10) — done
 

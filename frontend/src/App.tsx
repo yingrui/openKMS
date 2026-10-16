@@ -257,6 +257,9 @@ const DataInsightsPage = lazy(() =>
 const DatasetSourcesPage = lazy(() =>
   import('./pages/ontology-manager/DatasetSourcesPage').then((m) => ({ default: m.DatasetSourcesPage })),
 );
+const QualityIssuesPage = lazy(() =>
+  import('./pages/ontology-manager/QualityIssuesPage').then((m) => ({ default: m.QualityIssuesPage })),
+);
 const DashboardDetailPage = lazy(() =>
   import('./pages/ontology-manager/DashboardDetailPage').then((m) => ({
     default: m.DashboardDetailPage,
@@ -460,6 +463,7 @@ function App() {
           </Route>
           <Route path="data-insights" element={<DataInsightsPage />} />
           <Route path="datasets/sources" element={<DatasetSourcesPage />} />
+          <Route path="datasets/quality-issues" element={<QualityIssuesPage />} />
           <Route path="data-insights/:id" element={<DashboardDetailPage />} />
           <Route path="datasets" element={<DatasetsListPage />} />
           <Route path="ontology-manager" element={<Outlet />}>

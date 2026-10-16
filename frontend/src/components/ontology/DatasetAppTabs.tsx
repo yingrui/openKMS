@@ -13,7 +13,12 @@ import './DatasetAppTabs.scss';
 export function DatasetAppTabs() {
   const { t } = useTranslation('ontology');
   const { pathname } = useLocation();
-  const onCatalog = pathname.startsWith('/datasets') && !pathname.startsWith('/datasets/model');
+  const onQuality = pathname.startsWith('/datasets/quality-issues');
+  const onCatalog =
+    pathname.startsWith('/datasets') &&
+    !onQuality &&
+    !pathname.startsWith('/datasets/model') &&
+    !pathname.startsWith('/datasets/sources');
   const onModel = pathname.startsWith('/data-model');
   const onMetrics = pathname.startsWith('/data-metrics');
 
@@ -25,6 +30,13 @@ export function DatasetAppTabs() {
         aria-current={onCatalog ? 'page' : undefined}
       >
         {t('datasets.tabCatalog')}
+      </Link>
+      <Link
+        to="/datasets/quality-issues"
+        className={`dataset-app-tab${onQuality ? ' dataset-app-tab--active' : ''}`}
+        aria-current={onQuality ? 'page' : undefined}
+      >
+        {t('datasets.tabQualityIssues')}
       </Link>
       <Link
         to="/data-model"

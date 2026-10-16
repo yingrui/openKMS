@@ -65,3 +65,30 @@ export async function fetchQualityRuns(
 ): Promise<QualityRunResponse[]> {
   return request<QualityRunResponse[]>(`/api/datasets/${datasetId}/quality-rules/${ruleId}/runs`);
 }
+
+/** One rule with the latest run that judged it — the quality inbox's row. */
+export interface QualityIssue {
+  id: string;
+  dataset_id: string;
+  dataset_name: string;
+  name: string;
+  rule_type: string;
+  column_name: string | null;
+  severity: string;
+  /** `passed` | `failed` | `error` | `never` (no run at all is a state of its own). */
+  status: string;
+  checked_count: number | null;
+  failed_count: number | null;
+  detail: Record<string, unknown> | null;
+  error_message: string | null;
+  last_run_at: string | null;
+}
+
+export interface QualityIssueListResponse {
+  items: QualityIssue[];
+  total: number;
+}
+
+export async function fetchQualityIssues(): Promise<QualityIssueListResponse> {
+  return request<QualityIssueListResponse>('/api/quality-issues');
+}

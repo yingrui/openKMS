@@ -55,6 +55,7 @@ from app.api.dataset_joins import router as dataset_joins_router
 from app.api.quality_rules import router as quality_rules_router
 from app.api.metrics import router as metrics_router
 from app.api.dashboards import router as dashboards_router
+from app.api.quality_issues import router as quality_issues_router
 from app.api.evaluations import router as evaluations_router
 from app.api.users_admin import router as users_admin_router
 from app.api.admin.resource_acl_admin import router as admin_resource_acl_router
@@ -209,6 +210,7 @@ app.include_router(dataset_joins_router, prefix="/api")
 app.include_router(quality_rules_router, prefix="/api")
 app.include_router(metrics_router, prefix="/api")
 app.include_router(dashboards_router, prefix="/api")
+app.include_router(quality_issues_router, prefix="/api")
 app.include_router(evaluations_router, prefix="/api")
 app.include_router(users_admin_router, prefix="/api")
 app.include_router(admin_groups_router, prefix="/api")
