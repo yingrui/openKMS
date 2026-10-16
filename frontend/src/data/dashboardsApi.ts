@@ -115,6 +115,25 @@ export async function runDashboard(id: string): Promise<ExplorerDashboard> {
   return request<ExplorerDashboard>(`/api/explorer-dashboards/${id}/run`, { method: 'POST' });
 }
 
+/** One run of a dashboard: when, how long, and how many of its reports failed. */
+export interface DashboardRun {
+  id: string;
+  ran_at: string;
+  duration_ms: number;
+  reports: number;
+  failed: number;
+  ran_by_name: string | null;
+}
+
+export interface DashboardRunListResponse {
+  items: DashboardRun[];
+  total: number;
+}
+
+export async function fetchDashboardRuns(id: string): Promise<DashboardRunListResponse> {
+  return request<DashboardRunListResponse>(`/api/explorer-dashboards/${id}/runs`);
+}
+
 export async function deleteDashboard(id: string): Promise<void> {
   await request<void>(`/api/explorer-dashboards/${id}`, { method: 'DELETE' });
 }

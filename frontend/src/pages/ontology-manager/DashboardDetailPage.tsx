@@ -13,9 +13,11 @@ import { toast } from 'sonner';
 import {
   deleteDashboard,
   fetchDashboard,
+  fetchDashboardRuns,
   runDashboard,
   updateDashboard,
   type DashboardReport,
+  type DashboardRun,
   type ExplorerDashboard,
 } from '../../data/dashboardsApi';
 import { fetchDatasets, type DatasetResponse } from '../../data/datasetsApi';
@@ -27,6 +29,7 @@ import { StatusChip } from '../../styles/design-system';
 import { DashboardReportView } from './DashboardReportView';
 import { EntityViewHeader, EntityViewLoading, EntityViewPanel, EntityViewShell } from './EntityViewShell';
 import { AddReportDialog } from './AddReportDialog';
+import { absoluteTime, ageOf } from './reportAge';
 import { reportSource } from './reportSource';
 import './data-explorer.scss';
 import { EditReportDialog } from './EditReportDialog';
@@ -46,6 +49,7 @@ export function DashboardDetailPage() {
   const [saving, setSaving] = useState(false);
   const [editing, setEditing] = useState<number | null>(null);
   const [narrativeDraft, setNarrativeDraft] = useState<string | null>(null);
+  const [runs, setRuns] = useState<DashboardRun[]>([]);
   const [datasets, setDatasets] = useState<DatasetResponse[]>([]);
   const [models, setModels] = useState<SemanticModelResponse[]>([]);
 
@@ -54,6 +58,9 @@ export function DashboardDetailPage() {
     setLoading(true);
     try {
       setDashboard(await fetchDashboard(id));
+      void fetchDashboardRuns(id)
+        .then((history) => setRuns(history.items))
+        .catch(() => undefined);
     } catch (e) {
       toast.error(e instanceof Error ? e.message : t('datasets.loadFailed'));
       setDashboard(null);
@@ -100,6 +107,9 @@ export function DashboardDetailPage() {
     setRunning(true);
     try {
       setDashboard(await runDashboard(id));
+      void fetchDashboardRuns(id)
+        .then((history) => setRuns(history.items))
+        .catch(() => undefined);
       toast.success(t('dataExplorer.ran'));
     } catch (e) {
       toast.error(e instanceof Error ? e.message : t('dataExplorer.runFailed'));
@@ -160,6 +170,7 @@ export function DashboardDetailPage() {
           label: report.title ?? t('dataExplorer.report'),
           hint: reportSource(report, datasets, models, t('dataExplorer.sourceMissing')).label,
         })),
+        ...(runs.length > 0 ? [{ sectionId: 'runs', label: t('dataExplorer.runs') }] : []),
       ]}
       meta={dashboard.question ?? t('dataExplorer.noQuestion')}
       identityAction={
@@ -328,6 +339,34 @@ export function DashboardDetailPage() {
             }
           />
         ))}
+      {runs.length > 0 && (
+        <EntityViewPanel id="runs" title={t('dataExplorer.runs')}>
+          <ul className="dashboard-runs">
+            {runs.map((run) => {
+              const age = ageOf(run.ran_at);
+              return (
+                <li key={run.id} className="dashboard-runs__row">
+                  <span title={absoluteTime(run.ran_at)}>
+                    {age
+                      ? age.bucket === 'just_now'
+                        ? t('dataExplorer.ageJustNow')
+                        : t(`dataExplorer.age_${age.bucket}`, { count: age.count })
+                      : t('datasets.dash')}
+                  </span>
+                  <span>{run.duration_ms} ms</span>
+                  <span>{t('dataExplorer.runReports', { count: run.reports })}</span>
+                  {run.failed > 0 ? (
+                    <span className="page-subtitle--error">
+                      {t('dataExplorer.runFailedCount', { count: run.failed })}
+                    </span>
+                  ) : null}
+                  {run.ran_by_name ? <span>{run.ran_by_name}</span> : null}
+                </li>
+              );
+            })}
+          </ul>
+        </EntityViewPanel>
+      )}
       {editingReport && (
         <EditReportDialog
           key={editing}
