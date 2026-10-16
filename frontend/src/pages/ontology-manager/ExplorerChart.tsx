@@ -1,6 +1,7 @@
 import {
   Bar,
   BarChart,
+  ComposedChart,
   CartesianGrid,
   Legend,
   Line,
@@ -32,7 +33,10 @@ const SERIES_COLORS = Array.from({ length: 8 }, (_, i) => `var(--report-series-$
 /** One dashboard report's result, drawn — the data comes from the server, this only draws it. */
 export function ExplorerChart({ spec, series }: { spec: ExplorerChartSpec; series: ChartSeries }) {
   const { keys, data } = series;
-  const Chart = spec.type === 'bar' ? BarChart : LineChart;
+  const bars = spec.y;
+  const lines = spec.lines ?? [];
+  const combo = spec.type === 'combo';
+  const Chart = combo ? ComposedChart : spec.type === 'bar' ? BarChart : LineChart;
   return (
     <div className="report-chart">
       <ResponsiveContainer width="100%" height="100%">
@@ -45,7 +49,22 @@ export function ExplorerChart({ spec, series }: { spec: ExplorerChartSpec; serie
             tickFormatter={xLabel}
             interval="preserveStartEnd"
           />
-          <YAxis stroke="var(--color-text-secondary)" tick={{ fontSize: 12 }} width={64} />
+          <YAxis
+            yAxisId="left"
+            stroke="var(--color-text-secondary)"
+            tick={{ fontSize: 12 }}
+            width={64}
+          />
+          {/* A combo puts its lines on a second axis: a count and a ratio share no scale. */}
+          {combo && (
+            <YAxis
+              yAxisId="right"
+              orientation="right"
+              stroke="var(--color-text-secondary)"
+              tick={{ fontSize: 12 }}
+              width={56}
+            />
+          )}
           <Tooltip
             contentStyle={{
               background: 'var(--color-bg-elevated, var(--color-bg))',
@@ -59,21 +78,24 @@ export function ExplorerChart({ spec, series }: { spec: ExplorerChartSpec; serie
             }}
           />
           <Legend wrapperStyle={{ fontSize: 12 }} />
-          {keys.map((key, i) =>
-            spec.type === 'bar' ? (
-              <Bar key={key} dataKey={key} fill={SERIES_COLORS[i % SERIES_COLORS.length]} />
+          {keys.map((key, i) => {
+            const asBar = combo ? bars.includes(key) : spec.type === 'bar';
+            const color = SERIES_COLORS[i % SERIES_COLORS.length];
+            return asBar ? (
+              <Bar key={key} dataKey={key} yAxisId="left" fill={color} />
             ) : (
               <Line
                 key={key}
                 type="monotone"
                 dataKey={key}
-                stroke={SERIES_COLORS[i % SERIES_COLORS.length]}
+                yAxisId={combo && lines.includes(key) ? 'right' : 'left'}
+                stroke={color}
                 strokeWidth={2}
                 dot={false}
                 connectNulls={false}
               />
-            ),
-          )}
+            );
+          })}
         </Chart>
       </ResponsiveContainer>
     </div>
