@@ -25,7 +25,7 @@ import { useConfirm } from '../../contexts/ConfirmContext';
 import { RichMarkdown } from '../../components/markdown/richMarkdown';
 import { StatusChip } from '../../styles/design-system';
 import { DashboardReportView } from './DashboardReportView';
-import { EntityViewHeader, EntityViewLoading, EntityViewPanel, EntityViewShell } from './EntityViewShell';
+import { EntityViewLoading, EntityViewPanel, EntityViewShell } from './EntityViewShell';
 import { AddReportDialog } from './AddReportDialog';
 import { reportSource } from './reportSource';
 import './data-insights.scss';
@@ -163,52 +163,45 @@ export function DashboardDetailPage() {
       ]}
       meta={dashboard.question ?? t('dataInsights.noQuestion')}
       identityAction={
-        /* One line for what this document *is* and the action that ends it: the state, how much is
-           in it, and the delete — a quiet text link (the slot's styling), never beside Run. */
+        /* What this document *is* (state, size, and the delete that ends it) — and under it what it
+           *does*: Run is the action you come back to, so it sits with the identity instead of in a
+           header row that would otherwise be empty. */
         <>
-          <StatusChip tone={dashboard.status === 'ready' ? 'ok' : 'neutral'}>
-            {t(`dataInsights.status_${dashboard.status}`, { defaultValue: dashboard.status })}
-          </StatusChip>
-          <span className="entity-view__identity-note">
-            {t('dataInsights.reportCount', { count: reports.length })}
-          </span>
+          <div className="openkms-flex-row-gap">
+            <StatusChip tone={dashboard.status === 'ready' ? 'ok' : 'neutral'}>
+              {t(`dataInsights.status_${dashboard.status}`, { defaultValue: dashboard.status })}
+            </StatusChip>
+            <span className="entity-view__identity-note">
+              {t('dataInsights.reportCount', { count: reports.length })}
+            </span>
           {/* An icon with the platform's own tooltip. The label used to *expand* on hover, which
               re-wrapped the rail's row, moved the button out from under the cursor, and flickered. */}
+            <button
+              type="button"
+              className="is-danger"
+              onClick={() => void handleDelete()}
+              aria-label={t('dataInsights.deleteDashboard')}
+              title={t('dataInsights.deleteDashboard')}
+            >
+              <Trash2 size={14} aria-hidden />
+            </button>
+          </div>
           <button
             type="button"
-            className="is-danger"
-            onClick={() => void handleDelete()}
-            aria-label={t('dataInsights.deleteDashboard')}
-            title={t('dataInsights.deleteDashboard')}
+            className="btn btn-primary"
+            onClick={() => void handleRun()}
+            disabled={running || reports.length === 0}
           >
-            <Trash2 size={14} aria-hidden />
+            {running ? (
+              <Loader2 size={16} className="console-loading-spinner" aria-hidden />
+            ) : (
+              <Play size={16} aria-hidden />
+            )}
+            <span>{t('dataInsights.run')}</span>
           </button>
         </>
       }
     >
-      {/* What the document *does* — the primary action, where a page's actions belong. */}
-      <EntityViewHeader
-        title=""
-        actions={
-          <>
-            {/* Write into this document without leaving it: build a query, try it, save the report. */}
-            <AddReportDialog dashboardId={id} reports={reports} onSaved={() => void load()} />
-            <button
-              type="button"
-              className="btn btn-primary"
-              onClick={() => void handleRun()}
-              disabled={running || reports.length === 0}
-            >
-              {running ? (
-                <Loader2 size={16} className="console-loading-spinner" aria-hidden />
-              ) : (
-                <Play size={16} aria-hidden />
-              )}
-              <span>{t('dataInsights.run')}</span>
-            </button>
-          </>
-        }
-      />
       <EntityViewPanel
         id="narrative"
         title={t('dataInsights.narrative')}
@@ -329,6 +322,12 @@ export function DashboardDetailPage() {
             }
           />
         ))}
+      {/* Adding a report is adding a section: it belongs at the end of the stack, not in a toolbar. */}
+      {canWrite && (
+        <div className="dashboard-add-report">
+          <AddReportDialog dashboardId={id} reports={reports} onSaved={() => void load()} />
+        </div>
+      )}
       {editingReport && (
         <EditReportDialog
           key={editing}

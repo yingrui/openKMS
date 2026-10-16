@@ -89,3 +89,10 @@
     gap: var(--space-3);
   }
 }
+
+// "Add a report" sits where the stack ends: a quiet affordance, not a toolbar button.
+.dashboard-add-report {
+  display: flex;
+  justify-content: flex-start;
+  margin-top: var(--space-1);
+}

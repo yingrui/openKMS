@@ -196,6 +196,18 @@ Active UX / quality gaps: [Tech debt](./tech_debt.md).
   rule, so it passed.) The previous highlight is kept when nothing is in the zone, and a click marks
   the target at once instead of waiting for the scroll to settle.
 
+### Run and "add a report" moved where they belong (2026-10)
+
+- Both sat in a page-header row of their own, with nothing on its left — a whole line of vertical space
+  for two buttons. They are not the same kind of action, so they split:
+  - **Run** is the action you keep coming back to, so it sits with the **identity** in the rail (a real
+    primary button under the state/size/delete line: "this dashboard → run it"). The rail's slot strips
+    button skins for its text-style actions (`View YAML`, the quiet delete), so that rule is now scoped
+    to `:not(.btn)` — a real button beside them keeps its skin.
+  - **Add a report** adds a *section*, so it sits **where the document ends** — an affordance at the
+    bottom of the stack, not a toolbar button.
+- The empty header row is gone.
+
 ### Fix: the delete icon flickered on hover (2026-10)
 
 - The dashboard's delete was an icon whose label **expanded** on hover (`max-width: 0 → 12rem`). In a

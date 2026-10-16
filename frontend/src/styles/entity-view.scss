@@ -99,9 +99,9 @@ body:has(.app-page-pane > .entity-view) .app-main {
 /* A model-wide read action (e.g. View YAML): same weight as the back link, not a header button. */
 .entity-view__identity-action {
   display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: var(--space-2);
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-3);
   margin-top: var(--space-3);
 }
 
@@ -111,7 +111,8 @@ body:has(.app-page-pane > .entity-view) .app-main {
   color: var(--color-text-muted);
 }
 
-.entity-view__identity-action button {
+/* Text-style identity actions (View YAML, a quiet delete). A `.btn` beside them keeps its skin. */
+.entity-view__identity-action button:not(.btn) {
   display: inline-flex;
   align-items: center;
   gap: var(--space-2);
@@ -124,11 +125,11 @@ body:has(.app-page-pane > .entity-view) .app-main {
 }
 
 // A destructive identity action is still a text link, but it says so on hover.
-.entity-view__identity-action button.is-danger:hover {
+.entity-view__identity-action button:not(.btn).is-danger:hover {
   color: var(--color-error);
 }
 
-.entity-view__identity-action button:hover {
+.entity-view__identity-action button:not(.btn):hover {
   color: var(--color-accent);
 }
 
