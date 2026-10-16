@@ -156,7 +156,16 @@
     "noNumericSeries": "没有可展示趋势的数值。",
     "trackerTruncated": "仅显示最近 {{max}} 项。",
     "status_draft": "草稿",
-    "status_ready": "已完成"
+    "status_ready": "已完成",
+    "viewCompare": "对比口径",
+    "viewCompareHint": "往前回看几行——是行数而不是日期规则，所以它不会替你猜周期。",
+    "viewCompare_1": "上一行",
+    "viewCompare_4": "前 4 行（去年同期季度，季度数据）",
+    "viewCompare_7": "前 7 行（上周同一天，日度数据）",
+    "viewCompare_12": "前 12 行（去年同月，月度数据）",
+    "chartCombo": "柱 + 线",
+    "chartBars": "柱（左轴）",
+    "chartLines": "折线（右轴）"
   },
   "dataModel": {
     "title": "数据模型",

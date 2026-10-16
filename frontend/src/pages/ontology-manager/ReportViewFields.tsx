@@ -11,6 +11,13 @@ import { viewSpec, type ViewChoice, type ViewDraft } from './reportDraft';
 const NO_TREND = '';
 
 /**
+ * How far back a KPI compares, in **rows** — a count, not a date rule, so it can never silently mean
+ * something else. Each option names the reading it assumes, because that is the part a person has to
+ * get right (a monthly series compares 12 rows back for a year, a quarterly one 4).
+ */
+const COMPARE_CHOICES = [1, 4, 7, 12];
+
+/**
  * How a report is presented: the table, a trend, a number, a ranking or a strip — over the columns of
  * its result, previewed by the same components the dashboard draws with.
  *
@@ -34,7 +41,7 @@ export function ReportViewFields({
     [spec, columns, rows],
   );
 
-  const chartLike = view.choice === 'line' || view.choice === 'bar';
+  const chartLike = view.choice === 'line' || view.choice === 'bar' || view.choice === 'combo';
   const singleValue = view.choice === 'bar_list' || view.choice === 'tracker';
 
   /** Choosing a presentation picks the columns it needs, so the choice is never "a chart of nothing". */
@@ -58,6 +65,14 @@ export function ReportViewFields({
     onChange({ ...next, valueColumn: value, axisColumn: axis, y: [] });
   };
 
+  const toggleLines = (column: string) => {
+    const lines = view.lines ?? [];
+    onChange({
+      ...view,
+      lines: lines.includes(column) ? lines.filter((c) => c !== column) : [...lines, column],
+    });
+  };
+
   const toggleY = (column: string) => {
     onChange({
       ...view,
@@ -72,6 +87,7 @@ export function ReportViewFields({
           <option value="none">{t('dataExplorer.viewTable')}</option>
           <option value="line">{t('dataExplorer.chartLine')}</option>
           <option value="bar">{t('dataExplorer.chartBar')}</option>
+          <option value="combo">{t('dataExplorer.chartCombo')}</option>
           <option value="metric">{t('dataExplorer.viewMetric')}</option>
           <option value="bar_list">{t('dataExplorer.viewBarList')}</option>
           <option value="tracker">{t('dataExplorer.viewTracker')}</option>
@@ -104,12 +120,33 @@ export function ReportViewFields({
             </select>
           </FormField>
           {chartLike && (
-            <FormField label={t('dataExplorer.chartY')}>
+            <FormField
+              label={
+                view.choice === 'combo' ? t('dataExplorer.chartBars') : t('dataExplorer.chartY')
+              }
+            >
               <CheckList>
                 {columns
-                  .filter((c) => c !== view.axisColumn)
+                  .filter((c) => c !== view.axisColumn && !(view.lines ?? []).includes(c))
                   .map((c) => (
                     <CheckListItem key={c} checked={view.y.includes(c)} onChange={() => toggleY(c)}>
+                      {c}
+                    </CheckListItem>
+                  ))}
+              </CheckList>
+            </FormField>
+          )}
+          {view.choice === 'combo' && (
+            <FormField label={t('dataExplorer.chartLines')}>
+              <CheckList>
+                {columns
+                  .filter((c) => c !== view.axisColumn && !view.y.includes(c))
+                  .map((c) => (
+                    <CheckListItem
+                      key={c}
+                      checked={(view.lines ?? []).includes(c)}
+                      onChange={() => toggleLines(c)}
+                    >
                       {c}
                     </CheckListItem>
                   ))}
@@ -130,6 +167,20 @@ export function ReportViewFields({
                       {c}
                     </option>
                   ))}
+              </select>
+            </FormField>
+          )}
+          {view.choice === 'metric' && view.axisColumn !== view.valueColumn && (
+            <FormField label={t('dataExplorer.viewCompare')} hint={t('dataExplorer.viewCompareHint')}>
+              <select
+                value={String(view.compare ?? 1)}
+                onChange={(e) => onChange({ ...view, compare: Number(e.target.value) })}
+              >
+                {COMPARE_CHOICES.map((choice) => (
+                  <option key={choice} value={String(choice)}>
+                    {t(`dataExplorer.viewCompare_${choice}`)}
+                  </option>
+                ))}
               </select>
             </FormField>
           )}

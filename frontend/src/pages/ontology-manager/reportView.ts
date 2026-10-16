@@ -9,16 +9,24 @@
  * rendering something misleading.
  */
 
-export type ExplorerChartType = 'line' | 'bar';
+export type ExplorerChartType = 'line' | 'bar' | 'combo';
 export type ReportViewKind = 'chart' | 'metric' | 'bar_list' | 'tracker';
 
 export interface ExplorerChartSpec {
   /** `line` for a series over time, `bar` to compare categories. */
   type: ExplorerChartType;
+    /**
+   * `line` for a series over time, `bar` to compare categories, `combo` for both at once — where
+   * `y` is drawn as **bars on the left axis** and `lines` as **lines on the right axis**, because a
+   * count and a ratio on one axis is how a combo chart lies (the line goes flat at the bottom).
+   */
+
   /** The column drawn along the category axis. */
   x: string;
-  /** The measure column(s) drawn along the value axis. */
+  /** The measure column(s) drawn as bars (for line/bar, the chart's only shape). */
   y: string[];
+  /** Combo only: the measure column(s) drawn as a line on the right axis. */
+  lines?: string[];
   /** Optional grouping column: one line/bar per distinct value (a single `y` only). */
   series: string | null;
 }
@@ -34,14 +42,19 @@ export const MAX_BAR_LIST_ROWS = 10;
  * One number, named by the column it comes from.
  *
  * With a `trend` it is a **KPI**: the headline becomes the series' **last** row (order your query so
- * the row you want on top is last), the tile shows the change against the previous value, and a
- * sparkline gives the shape. Without one it is the **first** row — a query reduced to a single row.
+ * the row you want on top is last), the tile shows the change and a sparkline of the shape. Without
+ * one it is the **first** row — a query reduced to a single row.
+ *
+ * `trend.compare` is **how many rows back** the change is measured against: `1` is the previous row
+ * (month over month for a monthly series), `12` is the same month a year earlier (year over year for
+ * a monthly one). It is a row count, not a date rule — the tile never guesses a period, and the
+ * editor labels each choice with the assumption it carries.
  */
 export interface ReportMetricView {
   kind: 'metric';
   column: string;
   label: string | null;
-  trend: { x: string } | null;
+  trend: { x: string; compare: number } | null;
 }
 
 /**
@@ -84,9 +97,18 @@ export function parseView(raw: unknown): ReportView | null {
     const rawTrend = record.trend;
     if (rawTrend !== undefined && rawTrend !== null) {
       if (typeof rawTrend !== 'object' || Array.isArray(rawTrend)) return null;
-      const x = asName((rawTrend as Record<string, unknown>).x);
+      const record = rawTrend as Record<string, unknown>;
+      const x = asName(record.x);
       if (!x) return null;
-      return { kind: 'metric', column, label, trend: { x } };
+      const rawCompare = record.compare;
+      const compare =
+        rawCompare === undefined || rawCompare === null
+          ? 1
+          : typeof rawCompare === 'number' && Number.isInteger(rawCompare) && rawCompare >= 1
+            ? rawCompare
+            : null;
+      if (compare === null) return null;
+      return { kind: 'metric', column, label, trend: { x, compare } };
     }
     return { kind: 'metric', column, label, trend: null };
   }
@@ -153,8 +175,9 @@ export interface MetricDelta {
 }
 
 /**
- * The change a KPI shows: the last two numeric rows of the series (nulls skipped, so a gap in the
- * middle of a series does not swallow the comparison). `null` when there is nothing to compare.
+ * The change a KPI shows: the last numeric row against the one `compare` rows before it (nulls
+ * skipped, so a gap in the middle of a series does not swallow the comparison). `null` when there is
+ * nothing to compare — a series shorter than the comparison says so rather than inventing a delta.
  */
 export function metricDelta(
   rows: Array<Record<string, unknown>>,
@@ -163,9 +186,10 @@ export function metricDelta(
   const values = [...rows]
     .map((row) => numericValue(row[view.column]))
     .filter((value): value is number => value !== null);
-  if (values.length < 2) return null;
+  const compare = view.trend?.compare ?? 1;
+  if (values.length <= compare) return null;
   const value = values[values.length - 1];
-  const previous = values[values.length - 2];
+  const previous = values[values.length - 1 - compare];
   const change = value - previous;
   return {
     value,
@@ -267,25 +291,37 @@ function asName(value: unknown): string | null {
 export function parseChartSpec(raw: unknown): ExplorerChartSpec | null {
   if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return null;
   const record = raw as Record<string, unknown>;
-  const type = record.type === 'bar' ? 'bar' : record.type === undefined || record.type === 'line' ? 'line' : null;
+  const type =
+    record.type === 'bar'
+      ? 'bar'
+      : record.type === 'combo'
+        ? 'combo'
+        : record.type === undefined || record.type === 'line'
+          ? 'line'
+          : null;
   if (!type) return null;
   const x = asName(record.x);
   if (!x) return null;
   const rawY = Array.isArray(record.y) ? record.y : [record.y];
   const y = rawY.map(asName).filter((name): name is string => name !== null);
-  if (y.length === 0) return null;
+  const rawLines = Array.isArray(record.lines) ? record.lines : [record.lines];
+  const lines = rawLines.map(asName).filter((name): name is string => name !== null);
+  // A combo needs something to draw in at least one of its two slots; line/bar ignore `lines`.
+  if (y.length === 0 && !(type === 'combo' && lines.length > 0)) return null;
   const series = record.series === undefined || record.series === null ? null : asName(record.series);
   if (record.series !== undefined && record.series !== null && !series) return null;
-  // A grouping column with several measures has no defined drawing — reject rather than guess.
-  if (series && y.length > 1) return null;
-  return { type, x, y, series };
+  // A grouping column with several measures has no defined drawing — reject rather than guess,
+  // and a grouped combo would pivot only its bars (the lines have nowhere to go).
+  if (series && (y.length > 1 || type === 'combo')) return null;
+  return type === 'combo' ? { type, x, y, lines, series } : { type, x, y, series };
 }
 
 /** Whether the chart's columns exist in the result the report returned. */
 export function chartFits(spec: ExplorerChartSpec | null, columns: string[] | undefined): boolean {
   if (!spec || !columns || columns.length === 0) return false;
   const known = new Set(columns);
-  return known.has(spec.x) && spec.y.every((name) => known.has(name)) && (!spec.series || known.has(spec.series));
+  const measures = [...spec.y, ...(spec.lines ?? [])];
+  return known.has(spec.x) && measures.every((name) => known.has(name)) && (!spec.series || known.has(spec.series));
 }
 
 /** The plotted value, or `null` when the cell is not numeric (a decimal arrives as a string). */
@@ -364,11 +400,13 @@ export function chartSeries(
   spec: ExplorerChartSpec,
 ): ChartSeries {
   if (!spec.series) {
+    // A combo plots both slots: the bars and the lines are data keys alike; the component decides
+    // which shape each one gets.
     return {
-      keys: spec.y,
+      keys: [...spec.y, ...(spec.lines ?? [])],
       data: rows.map((row) => {
         const point: Record<string, unknown> = { [X_KEY]: row[spec.x] };
-        for (const name of spec.y) point[name] = numericValue(row[name]);
+        for (const name of [...spec.y, ...(spec.lines ?? [])]) point[name] = numericValue(row[name]);
         return point;
       }),
       truncated: false,

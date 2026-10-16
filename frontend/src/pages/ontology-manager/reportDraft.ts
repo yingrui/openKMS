@@ -17,7 +17,7 @@ import {
 } from './reportView';
 
 /** What a report can be presented as: a table, a trend, a number, a ranking, or a strip. */
-export type ViewChoice = 'none' | 'line' | 'bar' | 'metric' | 'bar_list' | 'tracker';
+export type ViewChoice = 'none' | 'line' | 'bar' | 'combo' | 'metric' | 'bar_list' | 'tracker';
 
 /** A model query the Playground just ran, and the model/metric that name it. */
 export function modelReportDraft(args: {
@@ -78,8 +78,12 @@ export interface ViewDraft {
   valueColumn: string;
   /** The column that orders/labels: a chart's axis, a metric's trend, a tracker's strip order. */
   axisColumn: string;
-  /** A chart's measures. */
+  /** A chart's measures (a combo's **bars**). */
   y: string[];
+  /** A combo's line measures (right axis) — ignored by every other kind. */
+  lines?: string[];
+  /** A KPI's comparison distance in rows (1 = previous, 12 = the same month last year). */
+  compare?: number;
 }
 
 /**
@@ -95,7 +99,13 @@ export function guessView(columns: string[], rows: Array<Record<string, unknown>
   const temporal = detectTemporal(columns, rows);
   const other = (column: string) => columns.find((c) => c !== column) ?? '';
   if (rows.length === 1 && numeric.length > 0) {
-    return { choice: 'metric', valueColumn: numeric[0], axisColumn: other(numeric[0]), y: [] };
+    return {
+      choice: 'metric',
+      valueColumn: numeric[0],
+      axisColumn: other(numeric[0]),
+      y: [],
+      compare: 1,
+    };
   }
   if (temporal) {
     const y = numeric.filter((c) => c !== temporal).slice(0, 3);
@@ -104,10 +114,17 @@ export function guessView(columns: string[], rows: Array<Record<string, unknown>
       valueColumn: y[0] ?? numeric[0] ?? '',
       axisColumn: temporal,
       y,
+      compare: 1,
     };
   }
   if (numeric.length > 0 && rows.length <= 12) {
-    return { choice: 'bar_list', valueColumn: numeric[0], axisColumn: other(numeric[0]), y: [] };
+    return {
+      choice: 'bar_list',
+      valueColumn: numeric[0],
+      axisColumn: other(numeric[0]),
+      y: [],
+      compare: 1,
+    };
   }
   const axis = columns.find((c) => !numeric.includes(c)) ?? columns[0] ?? '';
   const y = numeric.filter((c) => c !== axis).slice(0, 3);
@@ -116,6 +133,7 @@ export function guessView(columns: string[], rows: Array<Record<string, unknown>
     valueColumn: y[0] ?? numeric[0] ?? '',
     axisColumn: axis,
     y,
+    compare: 1,
   };
 }
 
@@ -148,6 +166,7 @@ const EMPTY_DRAFT = (columns: string[]): ViewDraft => ({
   valueColumn: columns[0] ?? '',
   axisColumn: columns[1] ?? columns[0] ?? '',
   y: [],
+  compare: 1,
 });
 
 /** A stored view → the draft the view fields edit, falling back to a table. */
@@ -155,7 +174,14 @@ export function viewDraftFromSpec(raw: unknown, columns: string[]): ViewDraft {
   const view = parseView(raw);
   if (!view || !viewFits(view, columns)) return EMPTY_DRAFT(columns);
   if (view.kind === 'chart') {
-    return { choice: view.type, valueColumn: columns[0] ?? '', axisColumn: view.x, y: view.y };
+    return {
+      choice: view.type,
+      valueColumn: columns[0] ?? '',
+      axisColumn: view.x,
+      y: view.y,
+      lines: view.lines ?? [],
+      compare: 1,
+    };
   }
   if (view.kind === 'metric') {
     return {
@@ -163,12 +189,13 @@ export function viewDraftFromSpec(raw: unknown, columns: string[]): ViewDraft {
       valueColumn: view.column,
       axisColumn: view.trend?.x ?? columns.find((c) => c !== view.column) ?? '',
       y: [],
+      compare: view.trend?.compare ?? 1,
     };
   }
   if (view.kind === 'tracker') {
-    return { choice: 'tracker', valueColumn: view.column, axisColumn: view.x, y: [] };
+    return { choice: 'tracker', valueColumn: view.column, axisColumn: view.x, y: [], compare: 1 };
   }
-  return { choice: 'bar_list', valueColumn: view.column, axisColumn: '', y: [] };
+  return { choice: 'bar_list', valueColumn: view.column, axisColumn: '', y: [], compare: 1 };
 }
 
 /** A view draft → the stored view, or `null` for "table" / an unusable choice. */
@@ -176,7 +203,9 @@ export function viewSpec(view: ViewDraft): ReportView | null {
   if (view.choice === 'metric') {
     if (!view.valueColumn) return null;
     const trend =
-      view.axisColumn && view.axisColumn !== view.valueColumn ? { x: view.axisColumn } : null;
+      view.axisColumn && view.axisColumn !== view.valueColumn
+        ? { x: view.axisColumn, compare: view.compare || 1 }
+        : null;
     return { kind: 'metric', column: view.valueColumn, label: null, trend };
   }
   if (view.choice === 'bar_list') {
@@ -186,6 +215,12 @@ export function viewSpec(view: ViewDraft): ReportView | null {
     if (!view.valueColumn || !view.axisColumn || view.axisColumn === view.valueColumn) return null;
     return { kind: 'tracker', column: view.valueColumn, x: view.axisColumn, label: null };
   }
-  if (view.choice === 'none' || !view.axisColumn || view.y.length === 0) return null;
+  if (view.choice === 'none' || !view.axisColumn) return null;
+  if (view.choice === 'combo') {
+    const lines = view.lines ?? [];
+    if (view.y.length + lines.length === 0) return null;
+    return { kind: 'chart', type: 'combo', x: view.axisColumn, y: view.y, lines, series: null };
+  }
+  if (view.y.length === 0) return null;
   return { kind: 'chart', type: view.choice, x: view.axisColumn, y: view.y, series: null };
 }

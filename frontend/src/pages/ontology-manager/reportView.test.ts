@@ -8,6 +8,7 @@ import {
   detectTemporal,
   isNumericColumn,
   looksTemporal,
+  metricDelta,
   metricValue,
   numericValue,
   parseChartSpec,
@@ -270,5 +271,79 @@ describe('detectTemporal', () => {
   it('finds the date column, if there is one', () => {
     expect(detectTemporal(['trade_date', 'count'], MONTHLY)).toBe('trade_date');
     expect(detectTemporal(['industry', 'value'], INDUSTRIES)).toBeNull();
+  });
+});
+
+describe('metricDelta with a compare distance', () => {
+  const VIEW = (compare: number) =>
+    ({ kind: 'metric', column: 'pe', label: null, trend: { x: 'month', compare } }) as const;
+  const SERIES = Array.from({ length: 14 }, (_, i) => ({ month: `m${i}`, pe: i + 1 }));
+
+  it('compares against the previous row by default', () => {
+    expect(metricDelta(SERIES, VIEW(1))?.previous).toBe(13);
+    expect(metricDelta(SERIES, VIEW(1))?.value).toBe(14);
+  });
+
+  it('compares against the same month last year when asked for 12 rows back', () => {
+    // a monthly series of 14 points: the last (14) against the one 12 before it (2)
+    expect(metricDelta(SERIES, VIEW(12))).toMatchObject({ value: 14, previous: 2, direction: 'up' });
+  });
+
+  it('says nothing when the series is shorter than the comparison', () => {
+    const short = SERIES.slice(0, 12);
+    expect(metricDelta(short, VIEW(12))).toBeNull();
+    expect(metricDelta(SERIES.slice(0, 1), VIEW(1))).toBeNull();
+  });
+
+  it('skips nulls before counting rows back, so a gap does not shift the comparison', () => {
+    const gappy = [
+      { month: 'm1', pe: 10 },
+      { month: 'm2', pe: null },
+      { month: 'm3', pe: 30 },
+    ];
+    // with no nulls it would compare 30 against 10; the gap is skipped, not counted as a row
+    expect(metricDelta(gappy, VIEW(2))).toBeNull(); // only two usable values
+    expect(metricDelta(gappy, VIEW(1))).toMatchObject({ value: 30, previous: 10 });
+  });
+});
+
+describe('combo charts', () => {
+  it('parses bars plus lines, and accepts lines alone', () => {
+    expect(parseView({ kind: 'chart', type: 'combo', x: 'trade_date', y: ['count'], lines: ['avg_pe'] })).toEqual({
+      kind: 'chart',
+      type: 'combo',
+      x: 'trade_date',
+      y: ['count'],
+      lines: ['avg_pe'],
+      series: null,
+    });
+    // a combo of only lines is a line chart, but it is still a usable spec
+    const linesOnly = parseView({ kind: 'chart', type: 'combo', x: 'm', y: [], lines: 'share' });
+    expect(linesOnly?.kind === 'chart' && linesOnly.lines).toEqual(['share']);
+  });
+
+  it('refuses a combo with nothing to draw, and keeps `lines` out of line/bar', () => {
+    expect(parseView({ kind: 'chart', type: 'combo', x: 'm', y: [] })).toBeNull();
+    expect(parseView({ kind: 'chart', type: 'line', x: 'm', y: ['a'], lines: ['b'] })).toEqual({
+      kind: 'chart',
+      type: 'line',
+      x: 'm',
+      y: ['a'],
+      series: null,
+    });
+  });
+
+  it('needs every column of both slots to exist', () => {
+    const combo = parseView({ kind: 'chart', type: 'combo', x: 'm', y: ['a'], lines: ['b'] });
+    expect(viewFits(combo, ['m', 'a', 'b'])).toBe(true);
+    expect(viewFits(combo, ['m', 'a'])).toBe(false);
+    expect(combo?.kind === 'chart' && chartFits(combo, ['m', 'a', 'b'])).toBe(true);
+  });
+
+  it('plots both slots as data keys', () => {
+    const combo = parseChartSpec({ type: 'combo', x: 'm', y: ['a'], lines: ['b'] })!;
+    const series = chartSeries([{ m: 'jan', a: 3, b: '0.5' }], combo);
+    expect(series.keys).toEqual(['a', 'b']);
+    expect(series.data).toEqual([{ __x: 'jan', a: 3, b: 0.5 }]);
   });
 });

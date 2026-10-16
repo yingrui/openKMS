@@ -42,7 +42,7 @@ describe('ReportMetric as a KPI (with a trend)', () => {
     { trade_date: '2026-09-01', avg_pe: 184.01 },
     { trade_date: '2026-10-01', avg_pe: 173.05 },
   ];
-  const KPI = { kind: 'metric', column: 'avg_pe', label: '平均 pe_ttm', trend: { x: 'trade_date' } } as const;
+  const KPI = { kind: 'metric', column: 'avg_pe', label: '平均 pe_ttm', trend: { x: 'trade_date', compare: 1 } } as const;
 
   it('shows the last value, not the first, and the change against the previous one', () => {
     render(<ReportMetric view={KPI} rows={MONTHLY} />);

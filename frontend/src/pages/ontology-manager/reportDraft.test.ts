@@ -37,6 +37,7 @@ describe('guessView', () => {
       valueColumn: 'count',
       axisColumn: 'trade_date',
       y: ['count', 'avg_pe'],
+      compare: 1,
     });
   });
 
@@ -46,6 +47,7 @@ describe('guessView', () => {
       valueColumn: 'total',
       axisColumn: '',
       y: [],
+      compare: 1,
     });
   });
 
@@ -55,6 +57,7 @@ describe('guessView', () => {
       valueColumn: 'value',
       axisColumn: 'industry',
       y: [],
+      compare: 1,
     });
   });
 
@@ -65,6 +68,7 @@ describe('guessView', () => {
       valueColumn: 'pe_ttm',
       axisColumn: 'ts_code',
       y: ['pe_ttm'],
+      compare: 1,
     });
     expect(guessView(['ts_code', 'trade_date'], MONTHLY).choice).toBe('none');
     expect(guessView([], []).choice).toBe('none');
@@ -98,7 +102,7 @@ describe('viewSpec', () => {
   it('makes a KPI when a metric names an order column, and refuses an unusable choice', () => {
     expect(
       viewSpec({ choice: 'metric', valueColumn: 'avg_pe', axisColumn: 'trade_date', y: [] }),
-    ).toEqual({ kind: 'metric', column: 'avg_pe', label: null, trend: { x: 'trade_date' } });
+    ).toEqual({ kind: 'metric', column: 'avg_pe', label: null, trend: { x: 'trade_date', compare: 1 } });
     // an order column that *is* the value column is not a trend
     expect(
       viewSpec({ choice: 'metric', valueColumn: 'avg_pe', axisColumn: 'avg_pe', y: [] }),
@@ -113,19 +117,42 @@ describe('viewDraftFromSpec', () => {
   it('reads each stored shape back', () => {
     expect(
       viewDraftFromSpec({ kind: 'chart', type: 'bar', x: 'industry', y: ['value'] }, ['industry', 'value']),
-    ).toEqual({ choice: 'bar', valueColumn: 'industry', axisColumn: 'industry', y: ['value'] });
+    ).toEqual({
+      choice: 'bar',
+      valueColumn: 'industry',
+      axisColumn: 'industry',
+      y: ['value'],
+      lines: [],
+      compare: 1,
+    });
     expect(viewDraftFromSpec({ kind: 'metric', column: 'total' }, ['total', 'other'])).toEqual({
       choice: 'metric',
       valueColumn: 'total',
       axisColumn: 'other',
       y: [],
+      compare: 1,
     });
     expect(
-      viewDraftFromSpec({ kind: 'metric', column: 'avg_pe', trend: { x: 'trade_date' } }, ['avg_pe', 'trade_date']),
-    ).toEqual({ choice: 'metric', valueColumn: 'avg_pe', axisColumn: 'trade_date', y: [] });
+      viewDraftFromSpec(
+        { kind: 'metric', column: 'avg_pe', trend: { x: 'trade_date', compare: 1 } },
+        ['avg_pe', 'trade_date'],
+      ),
+    ).toEqual({
+      choice: 'metric',
+      valueColumn: 'avg_pe',
+      axisColumn: 'trade_date',
+      y: [],
+      compare: 1,
+    });
     expect(
       viewDraftFromSpec({ kind: 'tracker', column: 'count', x: 'trade_date' }, ['count', 'trade_date']),
-    ).toEqual({ choice: 'tracker', valueColumn: 'count', axisColumn: 'trade_date', y: [] });
+    ).toEqual({
+      choice: 'tracker',
+      valueColumn: 'count',
+      axisColumn: 'trade_date',
+      y: [],
+      compare: 1,
+    });
   });
 
   it('falls back to the table for a view the result cannot satisfy', () => {

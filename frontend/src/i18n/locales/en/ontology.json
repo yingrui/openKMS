@@ -156,7 +156,16 @@
     "noNumericSeries": "No numeric value to show a trend.",
     "trackerTruncated": "Showing the last {{max}} only.",
     "status_draft": "draft",
-    "status_ready": "ready"
+    "status_ready": "ready",
+    "viewCompare": "Compare against",
+    "viewCompareHint": "How many rows back — a count, so it never guesses a period.",
+    "viewCompare_1": "Previous row",
+    "viewCompare_4": "4 rows back (same quarter last year, quarterly)",
+    "viewCompare_7": "7 rows back (same weekday last week, daily)",
+    "viewCompare_12": "12 rows back (same month last year, monthly)",
+    "chartCombo": "Bars + line",
+    "chartBars": "Bars (left axis)",
+    "chartLines": "Line (right axis)"
   },
   "dataModel": {
     "title": "Data Model",
