@@ -165,6 +165,17 @@ Active UX / quality gaps: [Tech debt](./tech_debt.md).
 - Domain depth (specimen/event, Darwin Core, interactive keys) — see [knowledge-types](features/knowledge-types.md) entomology workflow **future** column
 - Agent ↔ frontend protocol: align to **AG-UI** (today custom NDJSON `delta`/`tool_*`/`done`; artifacts via A2UI surfaces)
 
+### Date filters that speak in periods (2026-10) — done
+
+- A temporal column (or a model field with `is_time`) gets a day picker + **quick ranges** (last 7/30
+  days, this month, last month, this year, last year); the grammar maps onto the operators we already
+  have (`between` / `>=` / `<=` / `=`), and a reversed range is shown rather than silently empty.
+- `dateRange.ts` is pure, so the month/year boundaries are tested (previous December, leap February,
+  31-day months). Verified against live data: this month 11,116 rows, last month 116,588, this year
+  1,007,340.
+- The Playground's filter had a plain text value even for time fields; it now has the picker too
+  (extracted to `PlaygroundFilters` when the section hit the 700-line guardrail).
+
 ### Data Explorer aligned with the app's pages (2026-10) — done
 
 - Audited against a sibling detail page, a sibling list page and the design system

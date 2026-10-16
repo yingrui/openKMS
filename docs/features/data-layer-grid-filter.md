@@ -116,6 +116,25 @@ object; carrying it in a query string would mean encoding JSON into a URL.
   slowest part of the request, so it shares the statement timeout; if it proves too slow in practice the
   follow-up is an estimate (`EXPLAIN`-based) or `total_estimate: true`, not a hung page.
 
+## Date filters: a day picker, not a text box
+
+A temporal column gets `type="date"` inputs (the grid already knew the column kind) plus a **quick
+range** — last 7 / 30 days, this month, last month, this year, last year — because "last month" is
+what a person actually wants and typing two ISO days to say it is not a UI. The ranges are computed
+in `dateRange.ts` from a date the caller passes, so the month/year boundaries are unit-tested
+(January's last month is the previous December; a leap February is 29 days; the month before March
+*is* that February) instead of guessed at runtime.
+
+Two things the control does by mapping onto the vocabulary we already had — no new operators:
+
+- both ends → `between`; only `from` → `>=`; only `to` → `<=`; equal ends → `=` (a range of one day is
+  a day, not a degenerate `between`);
+- a **reversed** range (`from > to`) is **shown** ("the start is after the end — this matches
+  nothing") rather than silently returning zero rows.
+
+The same control serves the **Playground** for the fields the model declares as time dimensions
+(`is_time`) — there the value input was plain text, so a date had to be typed by hand.
+
 ## 5. Scope guards (what this is not)
 
 - **No free-text `where`.** Operators only — a browsing grid is not a SQL console.

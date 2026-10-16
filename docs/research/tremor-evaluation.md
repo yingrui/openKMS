@@ -47,7 +47,8 @@ said "line or bar"):
 | `Metric` + `BadgeDelta` + `SparkLineChart` | **`metric` with `trend`** — the series' last value, the change against the previous one, and a sparkline drawn as CSS bars | the KPI card: the number matters, the shape is context. No chart runtime for 24 points |
 | `Tracker` | **`tracker`** — a strip of blocks, intensity = value / largest | a year of months or a month of days of coverage/missingness in one line, without a threshold rule |
 | `CategoryBar`, `ProgressBar`, `ProgressCircle` | *not yet* | they need targets/limits, which the data layer does not declare — inventing them would be a lie |
-| `ComboChart`, `ScatterChart`, `FunnelChart`, `DateRangePicker` | *not yet* | real gaps; a date-range picker is the most likely next one |
+| **`DateRangePicker`** | **quick ranges + native day inputs** (`dateRange.ts`, in both query builders) | taken in spirit, not in code: Tremor wraps `react-day-picker`, while two `type="date"` inputs plus the six ranges people actually ask for need no dependency and stay keyboard-native |
+| `ComboChart`, `ScatterChart`, `FunnelChart` | *not yet* | real gaps; a combo chart is the most likely next one |
 
 ## Styling lessons taken (separate from the vocabulary)
 
