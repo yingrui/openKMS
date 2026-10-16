@@ -1,5 +1,5 @@
 // A query that failed, told apart by cause: definition (the model/metric), request (what was asked
-// for), data (what the source refused). Used by the Playground and the Data Explorer, so it lives
+// for), data (what the source refused). Used by the Playground and the Data Insights, so it lives
 // here rather than in a page sheet — a page sheet only ships with its own route.
 .query-failure {
   display: flex;

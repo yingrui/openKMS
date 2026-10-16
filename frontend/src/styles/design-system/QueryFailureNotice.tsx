@@ -14,7 +14,7 @@ export interface QueryFailureNoticeProps {
 }
 
 /**
- * A failed query, rendered the same way wherever a query can fail (Playground, Data Explorer).
+ * A failed query, rendered the same way wherever a query can fail (Playground, Data Insights).
  * The cause comes from the backend (`kind`), so a definition problem never reads like a data one.
  */
 export function QueryFailureNotice({

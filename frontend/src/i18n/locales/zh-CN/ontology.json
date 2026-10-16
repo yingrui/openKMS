@@ -75,7 +75,7 @@
     "schemaRelatedLinkTypes": "schema 中的链接类型"
   },
   "dataInsights": {
-    "title": "数据探索",
+    "title": "数据洞察",
     "subtitle": "用 Agent 探索数据；已保存的分析都在这里。",
     "sourceDataset": "数据集",
     "sourceModel": "语义模型",

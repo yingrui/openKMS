@@ -1,4 +1,4 @@
-/** API for Data Explorer dashboards. */
+/** API for Data Insights dashboards. */
 import { request } from './apiClient';
 
 /** What a report reads: a Catalog dataset, or a semantic model (fields + metrics). */

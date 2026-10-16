@@ -75,7 +75,7 @@
     "schemaRelatedLinkTypes": "Link types in schema"
   },
   "dataInsights": {
-    "title": "Data Explorer",
+    "title": "Data Insights",
     "subtitle": "Explore data with agents; saved analyses live here.",
     "sourceDataset": "Dataset",
     "sourceModel": "Semantic model",
