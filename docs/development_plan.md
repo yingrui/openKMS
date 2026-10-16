@@ -196,6 +196,18 @@ Active UX / quality gaps: [Tech debt](./tech_debt.md).
   rule, so it passed.) The previous highlight is kept when nothing is in the zone, and a click marks
   the target at once instead of waiting for the scroll to settle.
 
+### The model's dataset tab reconciles columns and fields (2026-10) — done
+
+- A dataset's panel now **re-reads its columns** (and reports what moved) and reconciles them with the
+  model's fields: columns without a field get a one-click "add them as fields" (typed from the column),
+  and fields pointing at a dropped column are named — otherwise silent breakage.
+- `fieldCoverage` is pure and tested (5): computed fields are ignored on both sides, a column-backed
+  field covers its column whatever else it carries, and several fields on one column count once.
+- Kept the **Add field** button: this panel is the only place a model field is created (the model has
+  no Fields tab), so the objection that prompted this ("is Add field realistic?") turned out to be
+  about the *missing* reconciliation, not the button. The refresh re-reads **columns only**; the
+  profile and schema-history snapshot stay in the Catalog's Columns tab.
+
 ### Picking columns by typing, not scrolling (2026-10) — done
 
 - **A dataset's Keys** rendered every column as a checkbox row — for the primary key, and again for

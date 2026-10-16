@@ -115,6 +115,24 @@ No stable ids: everything is referenced **by name** (`source` for datasets), so 
 
 ---
 
+## A dataset's tab reconciles the table with the model
+
+The model has **no Fields tab** of its own: a field belongs to a dataset (its columns, its AI context),
+so it is authored — created and edited — in that dataset's panel under **Datasets**. That panel now
+also does what only it can:
+
+- **re-reads the table's columns** on demand and says what moved (`＋2 / −1`), because a source table
+  gains and loses columns without telling us. **Columns only**: the profile — row counts, per-column
+  statistics, the schema-history snapshot — is heavier and has its own home in the Catalog's Columns
+  tab (reading this table's 19 columns is instant; profiling its million rows took seven seconds,
+  measured);
+- **reconciles columns against fields** (`fieldCoverage`, pure): columns no field references — with a
+  one-click "add them as fields", typed from the column's own type and time role — and fields pointing
+  at a column the table no longer has, which is otherwise silent breakage.
+
+The block appears only when there is something to reconcile. On the Stock model today it is invisible
+(4 + 17 + 19 columns, 40 fields, no drift) — which is the state it exists to keep.
+
 ## Data model changes
 
 Authoritative, staged list: [refactoring plan](data-layer.md#refactoring-plan). At spec level: `datasets` gains `unique_keys` + `ai_context` (✅ Stage 2); **`dataset_joins`** re-modelled as an FK (✅ Stage 1); **`semantic_model_fields`** are model-scoped (✅ Stage 3, revised) + **`dataset_columns`** (column descriptions); `metric_definitions` is model-level with no `dimensions` (✅ Stage 4) + **`metric_runs`** audit; **`semantic_models`** + membership are first-class; **Ossie export/import** per model (✅ Stage 6); **`saved_queries`** removed (decision #23).
