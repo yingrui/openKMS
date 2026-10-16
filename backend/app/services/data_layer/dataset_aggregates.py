@@ -65,7 +65,14 @@ def parse_group_by(
     A granularity is a query-time grain (never stored on the column) and is only valid on a
     temporal one, which is why the caller passes the table's column types.
     """
-    entries = [g for g in (raw or []) if isinstance(g, (str, dict))]
+    entries = list(raw or [])
+    for entry in entries:
+        if not isinstance(entry, (str, dict)):
+            # Dropping it would answer a *different* question ("by month" turning into "everything").
+            raise RowFilterError(
+                "A group column is a name or {column, granularity}.",
+                _failure("DATASET_AGGREGATE_BAD_GROUP", str(entry), group=str(entry)),
+            )
     if len(entries) > MAX_GROUP_BY:
         raise RowFilterError(
             f"Too many group-by columns ({len(entries)} > {MAX_GROUP_BY}).",

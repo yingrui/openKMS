@@ -79,6 +79,10 @@ MESSAGES: dict[str, dict[str, str]] = {
         "en": "'{fn}' is not an aggregate this platform runs (count / sum / avg / min / max).",
         "zh_CN": "「{fn}」不是平台支持的聚合（count / sum / avg / min / max）。",
     },
+    "DATASET_AGGREGATE_BAD_GROUP": {
+        "en": "A group column is a name or {column, granularity} — '{group}' is neither.",
+        "zh_CN": "分组列是一个列名或 {column, granularity}——「{group}」都不是。",
+    },
     "DATASET_AGGREGATE_BAD_GRAIN": {
         "en": "That grouping grain is not valid here ({column}).",
         "zh_CN": "该分组粒度在此不适用（{column}）。",

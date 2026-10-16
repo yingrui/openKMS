@@ -142,3 +142,27 @@ def test_an_unknown_grain_is_rejected():
     with pytest.raises(RowFilterError) as excinfo:
         parse_group_by([{"column": "trade_date", "granularity": "fortnight"}], set(types), types)
     assert excinfo.value.code == "DATASET_AGGREGATE_BAD_GRAIN"
+
+
+def test_the_api_schema_accepts_a_grain():
+    """The endpoint must take what the reader supports: `{column, granularity}` for a date column.
+
+    It did not — the schema still said `list[str]`, so "by month" answered 422 while the very same
+    spec ran fine through a report (which calls the reader directly). Found by running the query.
+    """
+    from app.schemas.dataset import DatasetSummaryQuery
+
+    body = DatasetSummaryQuery(
+        group_by=[{"column": "trade_date", "granularity": "month"}, "industry"],
+        aggregates=[{"fn": "count"}, {"fn": "avg", "column": "pe_ttm", "name": "avg_pe"}],
+    )
+    dumped = body.model_dump()
+    assert dumped["group_by"][0] == {"column": "trade_date", "granularity": "month"}
+    assert dumped["group_by"][1] == "industry"
+
+
+def test_a_group_entry_the_reader_does_not_understand_is_refused():
+    """Not dropped: dropping it answered a different question ("by month" → everything)."""
+    with pytest.raises(RowFilterError) as excinfo:
+        parse_group_by([{"column": "trade_date", "granularity": "month"}, 42], COLUMNS)
+    assert excinfo.value.code == "DATASET_AGGREGATE_BAD_GROUP"

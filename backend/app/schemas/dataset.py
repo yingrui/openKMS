@@ -111,6 +111,13 @@ class DatasetRowsQuery(BaseModel):
     after: str | None = None
 
 
+class DatasetGroupBy(BaseModel):
+    """One group column, optionally truncated to a grain (a temporal column only)."""
+
+    column: str
+    granularity: str | None = None
+
+
 class DatasetAggregate(BaseModel):
     """One output of a dataset summary: `fn` over `column` (none = `COUNT(*)`)."""
 
@@ -129,7 +136,8 @@ class DatasetRowOrder(BaseModel):
 class DatasetSummaryQuery(BaseModel):
     """Summarise a dataset table: group-by columns + aggregates, over the grid's filters."""
 
-    group_by: list[str] = []
+    #: A bare column name, or `{column, granularity}` to group a date column by a grain.
+    group_by: list[str | DatasetGroupBy] = []
     aggregates: list[DatasetAggregate] = []
     filters: list[DatasetRowFilter] = []
     order_by: list[DatasetRowOrder] = []

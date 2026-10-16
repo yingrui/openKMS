@@ -281,7 +281,7 @@ async def summarise_dataset(
         summary = await query_dataset_summary(
             db,
             dataset.id,
-            group_by=body.group_by,
+            group_by=[g if isinstance(g, str) else g.model_dump() for g in body.group_by],
             aggregates=[a.model_dump() for a in body.aggregates],
             filters=[f.model_dump() for f in body.filters],
             order_by=[o.model_dump() for o in body.order_by],
