@@ -196,6 +196,19 @@ Active UX / quality gaps: [Tech debt](./tech_debt.md).
   rule, so it passed.) The previous highlight is kept when nothing is in the zone, and a click marks
   the target at once instead of waiting for the scroll to settle.
 
+### Register datasets in bulk, from the source (2026-10) — done
+
+- **Data sources** is a tab in the Datasets app now (`/datasets/sources`): pick a source, see its tables
+  with what is already registered, tick the rest and add them in one go. It reads with `data:read` and
+  writes with `data:write` — the checkboxes are disabled without it — and only lists sources this layer
+  can register from (a graph store is not one, and used to answer 400).
+- **The confirm is the guard**: the app's own database has 103 tables, 100 of them unregistered
+  (`alembic_version`, a jobs queue, …), so "select all" is a footgun unless the count and the source are
+  on screen first.
+- Using it turned up a permission mismatch: `GET /api/datasets/from-source/{id}` required `data:write`
+  while the permission patterns granted it to `data:read` — and it only lists **names**, so it is a read.
+  Fixed on the endpoint (the pattern was right).
+
 ### Data Explorer → **Data Insights** (2026-10) — renamed end to end
 
 - The old name described nothing it did: exploring data happens in the Catalog, the app holds **saved

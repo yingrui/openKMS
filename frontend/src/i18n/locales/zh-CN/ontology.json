@@ -645,7 +645,8 @@
     "keysPickerTitle": "输入以筛选 · 回车添加 · 退格删除最后一个",
     "keysPickerEmpty": "没有匹配的列。",
     "keysRemoveColumn": "移除 {{column}}",
-    "tabMetrics": "指标"
+    "tabMetrics": "指标",
+    "tabSources": "数据源"
   },
   "groups": {
     "title": "分组",
@@ -949,5 +950,29 @@
     "availableQueries": "已发布查询",
     "availableQueriesHint": "点击插入 client(\"...\").execute_function()",
     "noPublishedQueries": "暂无其他已发布函数。"
+  },
+  "dataSources": {
+    "title": "数据源",
+    "subtitle": "数据集从哪里来。选一个源，把它的表批量登记成数据集。",
+    "manage": "管理连接",
+    "pick": "数据源",
+    "empty": "还没有数据源",
+    "emptyHint": "先在控制台登记一个连接——数据集都是从它登记出来的。",
+    "tableCount": "{{total}} 张表中有 {{pending}} 张还没有登记",
+    "selectAll": "选中所有未登记的",
+    "addSelected": "把 {{count}} 张登记为数据集",
+    "register": "登记",
+    "dataset": "数据集",
+    "alreadyRegistered": "已登记",
+    "notRegistered": "—",
+    "registerTable": "登记 {{table}}",
+    "added_one": "已添加 {{count}} 个数据集",
+    "added_other": "已添加 {{count}} 个数据集",
+    "failed_one": "有 {{count}} 张表添加失败",
+    "failed_other": "有 {{count}} 张表添加失败",
+    "needWrite": "登记数据集需要 data:write 权限。",
+    "noTables": "这个源没有表",
+    "noTablesHint": "暂时没有可登记的表。",
+    "addConfirm": "把 {{source}} 的 {{count}} 张表登记为数据集？"
   }
 }

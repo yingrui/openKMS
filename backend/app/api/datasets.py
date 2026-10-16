@@ -123,13 +123,18 @@ async def get_dataset_scoped_manage(
 @router.get(
     "/from-source/{data_source_id}",
     response_model=list[TableInfo],
-    dependencies=[Depends(require_permission(PERM_DATA_WRITE))],
+    dependencies=[Depends(require_any_permission(*_DATASET_VIEW))],
 )
 async def list_tables_from_source(
     data_source_id: str,
     db: AsyncSession = Depends(get_db),
 ):
-    """List PostgreSQL tables from a data source (for picker when creating dataset)."""
+    """List a source's tables — a **read**, and the pattern says so.
+
+    It used to require `data:write`, which left a reader unable to see what a source offers (and
+    contradicted `GET /api/datasets/*` in the permission patterns, which grants it to `data:read`).
+    Names only; registering one still needs `data:write`.
+    """
     ds = await db.get(DataSource, data_source_id)
     if not ds:
         raise HTTPException(status_code=404, detail="Data source not found")

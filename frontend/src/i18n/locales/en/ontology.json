@@ -652,7 +652,8 @@
     "keysPickerTitle": "Type to filter · Enter adds · Backspace removes the last one",
     "keysPickerEmpty": "No column matches.",
     "keysRemoveColumn": "Remove {{column}}",
-    "tabMetrics": "Metrics"
+    "tabMetrics": "Metrics",
+    "tabSources": "Data sources"
   },
   "groups": {
     "title": "Groups",
@@ -956,5 +957,29 @@
     "availableQueries": "Published queries",
     "availableQueriesHint": "Click to insert client(\"...\").execute_function()",
     "noPublishedQueries": "No other published functions yet."
+  },
+  "dataSources": {
+    "title": "Data sources",
+    "subtitle": "Where the datasets come from. Pick a source, then register its tables in bulk.",
+    "manage": "Manage connections",
+    "pick": "Source",
+    "empty": "No data sources yet",
+    "emptyHint": "Register a connection in the Console first — datasets are registered from one.",
+    "tableCount": "{{pending}} of {{total}} tables are not datasets yet",
+    "selectAll": "Select all unregistered",
+    "addSelected": "Add {{count}} as datasets",
+    "register": "Register",
+    "dataset": "Dataset",
+    "alreadyRegistered": "registered",
+    "notRegistered": "—",
+    "registerTable": "Register {{table}}",
+    "added_one": "{{count}} dataset added",
+    "added_other": "{{count}} datasets added",
+    "failed_one": "{{count}} table could not be added",
+    "failed_other": "{{count}} tables could not be added",
+    "needWrite": "Registering a dataset needs data:write.",
+    "noTables": "This source has no tables",
+    "noTablesHint": "Nothing to register from it yet.",
+    "addConfirm": "Add {{count}} tables from {{source}} as datasets?"
   }
 }

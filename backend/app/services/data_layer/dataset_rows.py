@@ -64,7 +64,7 @@ class DatasetSummary:
     """A grouped summary of a dataset's table.
 
     Shaped like the model query's answer (`sql`/`columns`/`rows`/`row_count`/`capped`/`duration_ms`)
-    so a caller — the Data Explorer, an agent — treats a dataset answer and a model answer alike.
+    so a caller — the Data Insights, an agent — treats a dataset answer and a model answer alike.
     """
 
     sql: str
