@@ -116,8 +116,8 @@ and our own tokens:
 
 | `view.kind` | shape | for |
 |---|---|---|
-| `chart` | `{type: "line"\|"bar", x, y, series?}` | a trend over time, a comparison across categories |
-| `metric` | `{column, label?, trend?: {x}}` | the answer is a number. **With `trend`** it is a KPI: the series' **last** value, its change against the previous one, and the shape (bars, no chart runtime) |
+| `chart` | `{type: "line"\|"bar"\|"combo", x, y, series?, lines?}` | a trend over time, a comparison across categories, or **both**: a combo draws `y` as bars on the **left** axis and `lines` on the **right** one — a count and a ratio share no scale, and putting them on one axis is how a combo chart lies |
+| `metric` | `{column, label?, trend?: {x, compare?}}` | the answer is a number. **With `trend`** it is a KPI: the series' **last** value, its change, and the shape (bars, no chart runtime). `compare` is **how many rows back** the change is measured against — `1` the previous row, `12` the same month a year earlier — a row count, never a guessed period |
 | `bar_list` | `{column, label_column?}` | a ranking — labels never clip, the share is explicit |
 | `tracker` | `{column, x, label?}` | coverage/missingness/streaks over many periods, in one line |
 | *(absent)* | the table | the reader needs the rows |

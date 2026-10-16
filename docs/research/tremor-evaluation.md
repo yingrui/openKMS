@@ -48,7 +48,9 @@ said "line or bar"):
 | `Tracker` | **`tracker`** — a strip of blocks, intensity = value / largest | a year of months or a month of days of coverage/missingness in one line, without a threshold rule |
 | `CategoryBar`, `ProgressBar`, `ProgressCircle` | *not yet* | they need targets/limits, which the data layer does not declare — inventing them would be a lie |
 | **`DateRangePicker`** | **quick ranges + native day inputs** (`dateRange.ts`, in both query builders) | taken in spirit, not in code: Tremor wraps `react-day-picker`, while two `type="date"` inputs plus the six ranges people actually ask for need no dependency and stay keyboard-native |
-| `ComboChart`, `ScatterChart`, `FunnelChart` | *not yet* | real gaps; a combo chart is the most likely next one |
+| **`ComboChart`** | **`chart` type `combo`** — bars on the left axis, a line on the right | taken on our own chart host (recharts `ComposedChart`), with the two-axis rule made explicit: a count and a ratio must not share one scale |
+| `ScatterChart`, `FunnelChart` | *not yet* | real gaps, but neither is asked for by an analysis we have |
+| — | **KPI comparison distance** (`metric` + `trend.compare`) | *ours, not theirs*: Tremor's `BadgeDelta` shows a change against whatever the caller computed; we let the report say **how many rows back** it compares (month over month, or year over year on monthly data) |
 
 ## Styling lessons taken (separate from the vocabulary)
 

@@ -165,6 +165,25 @@ Active UX / quality gaps: [Tech debt](./tech_debt.md).
 - Domain depth (specimen/event, Darwin Core, interactive keys) — see [knowledge-types](features/knowledge-types.md) entomology workflow **future** column
 - Agent ↔ frontend protocol: align to **AG-UI** (today custom NDJSON `delta`/`tool_*`/`done`; artifacts via A2UI surfaces)
 
+### Analyse deeper: compare, combo, and dead classes (2026-10) — done
+
+- **KPI comparison distance**: `metric` + `trend.compare` compares the last row against the one **N
+  rows back** (1 = previous, 12 = the same month last year on monthly data, 4 = a quarter, 7 = a
+  weekday count). It is a row count, never a guessed period, and the editor labels each choice with
+  the reading it assumes. Tests cover 1/4/12, a series shorter than the comparison (no delta invented)
+  and nulls being skipped *before* counting back.
+- **Combo charts**: `chart` gains `type: "combo"` — `y` as bars on the **left** axis, `lines` on the
+  **right**. Two axes because a count and a ratio share no scale, and pretending otherwise is exactly
+  how a combo chart misleads. A grouped combo is rejected (the lines would have nowhere to pivot), and
+  a render smoke test covers the wiring (a wrong `yAxisId` throws).
+- **Dead class names**: `AppCatalogGrid` carried `app-catalog` / `app-catalog-section` /
+  `app-catalog-grid` on its elements — defined in no stylesheet and referenced nowhere (the SCSS file
+  beside it defines only the `--launcher` / `--home` variants, which are kept). Dropped.
+  *Reported, not removed* (used consistently and deliberately unstyled, or out of this area):
+  `app-loading` (4 call sites, no definition — style it or drop all four), `HomeStaticLanding`'s
+  `home` / `home--public`, and the `--home` catalog variants that `Home.scss` overrides but nothing
+  defines.
+
 ### Date filters that speak in periods (2026-10) — done
 
 - A temporal column (or a model field with `is_time`) gets a day picker + **quick ranges** (last 7/30
