@@ -76,7 +76,7 @@
   },
   "dataInsights": {
     "title": "数据洞察",
-    "subtitle": "用 Agent 探索数据；已保存的分析都在这里。",
+    "subtitle": "已保存的分析，以及支撑它们的报告。",
     "sourceDataset": "数据集",
     "sourceModel": "语义模型",
     "sourceMissing": "未选择",

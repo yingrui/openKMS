@@ -76,7 +76,7 @@
   },
   "dataInsights": {
     "title": "Data Insights",
-    "subtitle": "Explore data with agents; saved analyses live here.",
+    "subtitle": "Your saved analyses, and the reports behind them.",
     "sourceDataset": "Dataset",
     "sourceModel": "Semantic model",
     "sourceMissing": "not chosen",
