@@ -374,13 +374,33 @@ def cmd_quality_update(ns: argparse.Namespace) -> None:
     print_json(r.json())
 
 
+def cmd_quality_runs(ns: argparse.Namespace) -> None:
+    """A rule's run history — newest first, and the numbers behind `passed` / `failed`.
+
+    Running a rule answers with the *rule*, which carries only `last_status`; how many rows were
+    checked and how many failed lives here, and that is the answer a caller acts on.
+    """
+    with client() as s:
+        r = s.get(f"/api/datasets/{ns.id}/quality-rules/{ns.rule_id}/runs")
+    r.raise_for_status()
+    print_json(r.json())
+
+
 def cmd_quality_run(ns: argparse.Namespace) -> None:
     path = f"/api/datasets/{ns.id}/quality-rules/{ns.rule_id}/run"
     confirm_or_abort("run quality rule", "POST", path, None, ns.yes, ns.dry_run)
     with client() as s:
         r = s.post(path)
-    r.raise_for_status()
-    print_json(r.json())
+        r.raise_for_status()
+        if ns.dry_run:
+            print_json(r.json())
+            return
+        # Report the run it produced, not the rule: `checked_count` / `failed_count` are the answer.
+        history = s.get(f"/api/datasets/{ns.id}/quality-rules/{ns.rule_id}/runs")
+    history.raise_for_status()
+    runs = history.json()
+    runs = runs if isinstance(runs, list) else runs.get("items", [])
+    print_json(runs[0] if runs else r.json())
 
 
 def cmd_quality_delete(ns: argparse.Namespace) -> None:
@@ -574,7 +594,12 @@ def add_subparser(sub) -> None:
     )
     add_write_flags(qu)
     qu.set_defaults(fn=cmd_quality_update)
-    qr = qsp.add_parser("run", help="Run a quality rule")
+    qs = qsp.add_parser("runs", help="A rule's run history (newest first, with the numbers)")
+    qs.add_argument("--id", required=True)
+    qs.add_argument("--rule-id", required=True)
+    qs.set_defaults(fn=cmd_quality_runs)
+
+    qr = qsp.add_parser("run", help="Run a quality rule (prints the run it produced)")
     qr.add_argument("--id", required=True)
     qr.add_argument("--rule-id", required=True)
     add_write_flags(qr)

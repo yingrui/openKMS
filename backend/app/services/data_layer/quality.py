@@ -49,10 +49,14 @@ async def run_rule(db: AsyncSession, dataset: Dataset, rule: QualityRule) -> dic
                     )
                 ).mappings().first()
             elif rule.rule_type == "unique":
+                # Nulls are not duplicates: SQL's UNIQUE allows many of them, and the range rule above
+                # already reads "checked" as the non-null rows. Counting them here (as this did) made
+                # every nullable column fail with a number that was mostly missing data.
                 row = conn.execute(
                     text(
-                        f'SELECT COUNT(*) AS checked, '
-                        f'COUNT(*) - COUNT(DISTINCT "{col}") AS failed FROM {table}'
+                        f'SELECT COUNT(*) FILTER (WHERE "{col}" IS NOT NULL) AS checked, '
+                        f'COUNT(*) FILTER (WHERE "{col}" IS NOT NULL) - COUNT(DISTINCT "{col}") '
+                        f"AS failed FROM {table}"
                     )
                 ).mappings().first()
             elif rule.rule_type == "range":

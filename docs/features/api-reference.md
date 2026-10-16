@@ -386,7 +386,8 @@ Encrypted values; **never returned**. Write/sync/delete reject personal API key 
 | POST | `/api/datasets/{id}/quality-rules` | Create quality rule (`data:write`) |
 | PUT | `/api/datasets/{id}/quality-rules/{rule_id}` | Update quality rule (`data:write`) |
 | DELETE | `/api/datasets/{id}/quality-rules/{rule_id}` | Delete quality rule (`data:write`) |
-| POST | `/api/datasets/{id}/quality-rules/{rule_id}/run` | Run a quality rule (`data:write`) |
+| POST | `/api/datasets/{id}/quality-rules/{rule_id}/run` | Run one rule (`data:write`) → the **rule** (with `last_status`); the numbers are in its history below |
+| GET | `/api/datasets/{id}/quality-rules/{rule_id}/runs` | The rule's runs, newest first: `{status, checked_count, failed_count, detail, error_message}`. `detail` carries what the check measured (`{latest, max_age_days}` for freshness) | Run a quality rule (`data:write`) |
 | GET | `/api/datasets/{id}/quality-rules/{rule_id}/runs` | Rule run history (`data:read`) |
 | GET | `/api/metrics` | List metrics (`semantic_model_id` / `base_dataset_id` filter; `data:read`) |
 | POST | `/api/metrics` | Create a metric `{name, semantic_model_id, base_dataset_id, type, expression:{dialects:[{dialect, expression}]}, datatype?, filters?, joins?, ai_context?}` (`data:write`; base dataset must be in the model's scope) |

@@ -220,6 +220,29 @@ Active UX / quality gaps: [Tech debt](./tech_debt.md).
   must not push layout — the two other reveals in this app (report tiles, section cards) animate
   `opacity` only, which is why neither flickers.
 
+### Quality rules, used for the first time (2026-10)
+
+They shipped in Phase 2 and had never been created — 13 datasets, zero rules — so this was the first
+time anyone ran one. Three real ones now guard `daily_basic` (`not_null ts_code` **passed**,
+`freshness trade_date ≤30d` **passed** with `detail: {latest: 2026-10-09}`, `range pe_ttm [0.1, 300]`
+**failed**: 51,425 of 725,192 non-null rows — 7.1% — fall outside the credible range).
+
+Two things came out of it:
+
+- **`unique` counted nulls as duplicates.** `COUNT(*) - COUNT(DISTINCT col)` made every nullable column
+  fail, with a number that was mostly missing data (491,919 = 282,148 nulls + 209,771 real duplicates
+  on `pe_ttm`). SQL's UNIQUE allows many nulls, and the neighbouring `range` rule already reads
+  `checked` as the non-null rows. Fixed and verified live: the same rule now reports 725,192 checked /
+  209,771 failed — the same `checked` as `range`, which is how you can tell they agree about what a row
+  *is*.
+- **The skill could not see the numbers.** Running a rule answers with the *rule* (`last_status` only),
+  and there was no history command — so an agent learned "failed" and nothing else. `datasets quality
+  runs` now lists the history, and `datasets quality run` prints the run it produced.
+
+Still open: rules run **only when asked** (no schedule, no run-after-ingest), and nothing surfaces a
+failure outside the dataset's Quality tab — the Data Model tile's "data-quality alerts" tagline is
+still a promise.
+
 ### Register datasets in bulk, from the source (2026-10) — done
 
 - **Registering from a source** lives at `/datasets/sources`, reachable as an action on the Catalog ("From a data source") rather than a tab — it adds datasets to the Catalog, it is not a peer of it. There: pick a source, see its tables

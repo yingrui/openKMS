@@ -228,7 +228,8 @@ All write subcommands accept `--yes` / `--dry-run`. Without `--yes` on non-TTY s
 | `datasets quality list` | GET | `/api/datasets/{id}/quality-rules` | Declarative quality rules + last status. |
 | `datasets quality add` *(write)* | POST | `/api/datasets/{id}/quality-rules` | Body `{name, rule_type, column_name, config}`. |
 | `datasets quality update` *(write)* | PUT | `/api/datasets/{id}/quality-rules/{rule_id}` | Body from `--name`, `--column`, `--severity`, `--enabled true|false`, `--config` (JSON, replaces the config object). |
-| `datasets quality run` *(write)* | POST | `/api/datasets/{id}/quality-rules/{rule_id}/run` | |
+| `datasets quality run` *(write)* | POST | `/api/datasets/{id}/quality-rules/{rule_id}/run` | Prints the **run** it produced (`status`, `checked_count`, `failed_count`, `detail`) — the POST answers with the rule, which carries only `last_status`. |
+| `datasets quality runs` | GET | `/api/datasets/{id}/quality-rules/{rule_id}/runs` | A rule's run history, newest first. |
 | `datasets quality delete` *(write)* | DELETE | `/api/datasets/{id}/quality-rules/{rule_id}` | |
 | `metrics list` | GET | `/api/metrics` | Metrics; optional `?semantic_model_id=` / `?base_dataset_id=`. |
 | `metrics add` *(write)* | POST | `/api/metrics` | Body `{name, semantic_model_id, base_dataset_id, type, expression:{dialects:{ANSI_SQL}}, datatype?, joins?, ai_context?}`. `expression` is an aggregate SQL fragment (Ossie); the base dataset must be in the model's scope. |

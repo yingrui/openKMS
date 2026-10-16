@@ -420,3 +420,28 @@ def test_datasets_aggregate(mock_api):
         "limit": 12,
         "offset": 0,
     }
+
+
+def test_quality_run_reports_the_run_it_produced(mock_api):
+    """The run endpoint answers with the *rule*; the numbers live in the history, so the command
+    fetches it and prints that — otherwise a caller only ever sees `passed` / `failed`."""
+    recorded, responses = mock_api
+    responses[("POST", "/api/datasets/d1/quality-rules/r1/run")] = (200, {"id": "r1", "last_status": "failed"})
+    responses[("GET", "/api/datasets/d1/quality-rules/r1/runs")] = (
+        200,
+        [{"id": "run1", "status": "failed", "checked_count": 10, "failed_count": 3}],
+    )
+    from openkms.commands.datasets import cmd_quality_run
+
+    cmd_quality_run(_ns(id="d1", rule_id="r1", yes=True, dry_run=False))
+    assert recorded[-1].method == "GET"
+    assert recorded[-1].url.path == "/api/datasets/d1/quality-rules/r1/runs"
+
+
+def test_quality_runs_lists_the_history(mock_api):
+    recorded, responses = mock_api
+    responses[("GET", "/api/datasets/d1/quality-rules/r1/runs")] = (200, [{"id": "run1"}])
+    from openkms.commands.datasets import cmd_quality_runs
+
+    cmd_quality_runs(_ns(id="d1", rule_id="r1"))
+    assert recorded[-1].url.path == "/api/datasets/d1/quality-rules/r1/runs"

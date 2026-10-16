@@ -21,7 +21,7 @@ Order of operations, and what each step buys:
 | 2. Describe columns | `datasets metadata` → `datasets column-description` | Physical column meaning (a **field** is the model-scoped version) |
 | 3. Make it usable | `datasets update` | Display name, description, domain, tags, business definition, sensitivity, keys, row editing, `ai_context` |
 | 4. Connect | `datasets joins add` | FK edges (`from` many → `to` one) that metrics can join across |
-| 5. Trust | `datasets quality add` / `run` | Declarative rules over the table |
+| 5. Trust | `datasets quality add` / `run` / `runs` | Declarative rules over the table — five kinds: `not_null`, `unique`, `range`, `referential`, `freshness` (never arbitrary SQL) |
 | 6. Verify | `datasets profile` / `schema-history` / `rows` | What the data actually looks like |
 | 7. (Optional) speak semantically | `semantic-models …` | Fields + metrics over these datasets; an ontology object type can also promote one |
 
@@ -119,7 +119,7 @@ python scripts/cli.py datasets joins delete --join-id JOIN_ID --yes
 ## 5. Quality rules
 
 ```bash
-python scripts/cli.py datasets quality list --id DS_ID
+python scripts/cli.py datasets quality list --id DS_ID          # rules + last status
 python scripts/cli.py datasets quality add --id DS_ID \
   --name "close is never null" --type not_null --column close --yes
 python scripts/cli.py datasets quality run --id DS_ID --rule-id RULE_ID --yes
