@@ -3,6 +3,11 @@
 
 A missing key does not crash — i18next renders the key itself, so the UI quietly shows
 `dataModel.removeDimension` instead of a label (that is exactly how two bugs shipped).
+A **built** key — ``t(`dataInsights.age_${bucket}`)`` — cannot be checked like a literal, so it is
+checked by its **static prefix**: the locale must have at least one key starting with it. That is the
+cheap half of the problem, and the half that bit: the code asked for `age_minutes` while the locale had
+`ageMinutes`, so the reader was shown the key itself.
+
 A **single**-brace placeholder is the quieter twin: `{max}` is not i18next syntax (it wants
 `{{max}}`), so the reader sees the literal `{max}` — which is how "Showing the top {max} only."
 shipped. Both are checked here.
@@ -133,6 +138,43 @@ def placeholder_offenders() -> list[str]:
     return out
 
 
+#: `t(`a.b_${x}`)` — a key whose tail comes from data. Matches only backtick literals after `t(`.
+BUILT_CALL = re.compile(r"\bt\(\s*`([^`]*\$\{[^`]*)`")
+
+
+def built_key_offenders() -> list[str]:
+    """Built keys whose static prefix matches no key in the locale (English is the source)."""
+    locales = load_locales()
+    everything: set[str] = set()
+    for namespace in locales.values():
+        everything |= set(key_paths(namespace))
+    out: list[str] = []
+    for path in SRC.rglob("*.tsx"):
+        if ".test." in path.name:
+            continue
+        for match in BUILT_CALL.finditer(path.read_text(errors="ignore")):
+            literal = match.group(1)
+            prefix = literal.split("${", 1)[0]
+            if not prefix or " " in prefix or not re.search(r"[a-zA-Z]", prefix):
+                continue
+            # A prefix with no separator yet (`` `${kind}Title` ``) belongs to a namespace we cannot name.
+            if "." not in prefix:
+                continue
+            if not any(key.startswith(prefix) for key in everything):
+                out.append(f"{path.relative_to(ROOT)}: t(`{literal}`) — no key starts with '{prefix}'")
+    return out
+
+
+def key_paths(node, prefix: str = "") -> list[str]:
+    """Every key in a namespace, as a flat path."""
+    if not isinstance(node, dict):
+        return [prefix]
+    out: list[str] = []
+    for key, value in node.items():
+        out.extend(key_paths(value, f"{prefix}.{key}" if prefix else key))
+    return out
+
+
 def main() -> int:
     found = offenders()
     if "--list" in sys.argv or found:
@@ -142,6 +184,17 @@ def main() -> int:
         print(
             f"check-shared-styles: {len(found)} i18n key(s) above are missing from the "
             "locale files — the UI would render the raw key",
+            file=sys.stderr,
+        )
+        return 1
+
+    built = built_key_offenders()
+    if built:
+        for line in built:
+            print(line)
+        print(
+            f"check-shared-styles: {len(built)} built i18n key(s) above have no matching prefix in the "
+            "locale files — the UI would render the built string itself",
             file=sys.stderr,
         )
         return 1

@@ -648,7 +648,11 @@
     "tabMetrics": "指标",
     "fromSource": "从数据源添加",
     "fromSourceHint": "一次把某个数据源的多张表登记为数据集。",
-    "tabQualityIssues": "质量问题"
+    "tabQualityIssues": "质量问题",
+    "editQualityRule": "编辑规则",
+    "qualityUpdated": "规则已更新",
+    "qualityUpdateFailed": "无法更新规则",
+    "qualityTypeFixed": "规则类型不可更改——其余部分是为它写的。"
   },
   "groups": {
     "title": "分组",
@@ -1001,6 +1005,13 @@
     "critical": "严重",
     "neverRun": "从未",
     "checked": "已检查 {{count}} 行",
-    "failedOfChecked": "{{checked}} 行中 {{failed}} 行"
+    "failedOfChecked": "{{checked}} 行中 {{failed}} 行",
+    "runAll": "运行全部规则",
+    "running": "正在运行 {{done}}/{{total}}…",
+    "runSummaryPassed_one": "{{count}} 条规则通过",
+    "runSummaryPassed_other": "{{count}} 条规则通过",
+    "runSummaryFailed": "{{passed}} 通过 · {{failed}} 未通过",
+    "runFailed_one": "{{count}} 条规则无法运行",
+    "runFailed_other": "{{count}} 条规则无法运行"
   }
 }

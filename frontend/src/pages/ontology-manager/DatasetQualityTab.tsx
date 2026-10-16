@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Play, Plus, Trash2 } from 'lucide-react';
+import { Pencil, Play, Plus, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useDatasetDetail } from './useDatasetDetail';
 import { fetchDatasetMetadata, fetchDatasets, type ColumnMetadata, type DatasetResponse } from '../../data/datasetsApi';
@@ -9,6 +9,7 @@ import {
   deleteQualityRule,
   fetchQualityRules,
   runQualityRule,
+  updateQualityRule,
   type QualityRuleResponse,
 } from '../../data/qualityApi';
 import { useConfirm } from '../../contexts/ConfirmContext';
@@ -30,6 +31,8 @@ export function DatasetQualityTab() {
   const [busyId, setBusyId] = useState<string | null>(null);
 
   const [showForm, setShowForm] = useState(false);
+  /** Non-null = the dialog is editing that rule instead of creating one. */
+  const [editingId, setEditingId] = useState<string | null>(null);
   const [name, setName] = useState('');
   const [ruleType, setRuleType] = useState<string>('not_null');
   const [column, setColumn] = useState('');
@@ -63,6 +66,7 @@ export function DatasetQualityTab() {
   }, [load]);
 
   const openCreate = () => {
+    setEditingId(null);
     setName('');
     setRuleType('not_null');
     setColumn('');
@@ -71,6 +75,21 @@ export function DatasetQualityTab() {
     setRefDatasetId('');
     setRefColumn('');
     setMaxAge('1');
+    setShowForm(true);
+  };
+
+  /** Load a rule into the dialog. Its type is fixed — changing it would orphan the config. */
+  const openEdit = (rule: QualityRuleResponse) => {
+    const config = (rule.config ?? {}) as Record<string, unknown>;
+    setEditingId(rule.id);
+    setName(rule.name);
+    setRuleType(rule.rule_type);
+    setColumn(rule.column_name ?? '');
+    setMin(config.min != null ? String(config.min) : '');
+    setMax(config.max != null ? String(config.max) : '');
+    setRefDatasetId(typeof config.ref_dataset_id === 'string' ? config.ref_dataset_id : '');
+    setRefColumn(typeof config.ref_column === 'string' ? config.ref_column : '');
+    setMaxAge(config.max_age_days != null ? String(config.max_age_days) : '1');
     setShowForm(true);
   };
 
@@ -91,13 +110,22 @@ export function DatasetQualityTab() {
     }
     setSubmitting(true);
     try {
-      await createQualityRule(datasetId, {
-        name: name.trim(),
-        rule_type: ruleType,
-        column_name: column || null,
-        config,
-      });
-      toast.success(t('datasets.qualityCreated'));
+      if (editingId) {
+        await updateQualityRule(datasetId, editingId, {
+          name: name.trim(),
+          column_name: column || null,
+          config,
+        });
+        toast.success(t('datasets.qualityUpdated'));
+      } else {
+        await createQualityRule(datasetId, {
+          name: name.trim(),
+          rule_type: ruleType,
+          column_name: column || null,
+          config,
+        });
+        toast.success(t('datasets.qualityCreated'));
+      }
       setShowForm(false);
       await load();
     } catch (e) {
@@ -191,6 +219,14 @@ export function DatasetQualityTab() {
                       <div className="console-table-btns">
                         <button
                           type="button"
+                          title={t('datasets.editQualityRule')}
+                          aria-label={t('datasets.editQualityRule')}
+                          onClick={() => openEdit(r)}
+                        >
+                          <Pencil size={16} />
+                        </button>
+                        <button
+                          type="button"
                           title={t('datasets.qualityRun')}
                           onClick={() => void handleRun(r.id)}
                           disabled={busyId === r.id}
@@ -218,7 +254,7 @@ export function DatasetQualityTab() {
         open={showForm}
         onClose={() => !submitting && setShowForm(false)}
         closeDisabled={submitting}
-        title={t('datasets.addQualityRule')}
+        title={editingId ? t('datasets.editQualityRule') : t('datasets.addQualityRule')}
         closeAriaLabel={t('shared.cancel')}
         size="sm"
         footer={
@@ -237,7 +273,7 @@ export function DatasetQualityTab() {
               onClick={() => void handleCreate()}
               disabled={!name.trim() || submitting}
             >
-              {submitting ? t('shared.saving') : t('datasets.joinCreate')}
+              {submitting ? t('shared.saving') : editingId ? t('shared.save') : t('datasets.joinCreate')}
             </button>
           </>
         }
@@ -245,8 +281,16 @@ export function DatasetQualityTab() {
         <FormField label={t('datasets.colName')}>
           <input value={name} onChange={(e) => setName(e.target.value)} />
         </FormField>
-        <FormField label={t('datasets.qualityType')}>
-          <select value={ruleType} onChange={(e) => setRuleType(e.target.value)}>
+        <FormField
+          label={t('datasets.qualityType')}
+          hint={editingId ? t('datasets.qualityTypeFixed') : undefined}
+        >
+          {/* Fixed while editing: a new type would make the existing config meaningless. */}
+          <select
+            value={ruleType}
+            disabled={editingId !== null}
+            onChange={(e) => setRuleType(e.target.value)}
+          >
             {RULE_TYPES.map((rt) => (
               <option key={rt} value={rt}>
                 {rt}

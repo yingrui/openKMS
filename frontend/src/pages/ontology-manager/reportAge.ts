@@ -21,6 +21,17 @@ const DAY = 24 * HOUR;
 /** Under a minute reads as "just now", and a clock skew must not read as the future. */
 const JUST_NOW = MINUTE;
 
+/**
+ * The i18n key for a bucket.
+ *
+ * Here, not at the call sites, because a built key escapes the static i18n check: the label looked up
+ * `age_minutes` while the locale had `ageMinutes`, i18next rendered the key itself, and two pages
+ * showed `dataInsights.age_days` instead of "3 days ago". One place to name it means one place to test.
+ */
+export function ageKey(bucket: AgeBucket): string {
+  return bucket === 'just_now' ? 'shared.age_just_now' : `shared.age_${bucket}`;
+}
+
 export function ageOf(ranAt: string | null | undefined, now: number = Date.now()): Age | null {
   if (!ranAt) return null;
   const ran = Date.parse(ranAt);

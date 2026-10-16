@@ -655,7 +655,11 @@
     "tabMetrics": "Metrics",
     "fromSource": "From a data source",
     "fromSourceHint": "Register many of a source's tables as datasets at once.",
-    "tabQualityIssues": "Quality Issues"
+    "tabQualityIssues": "Quality Issues",
+    "editQualityRule": "Edit rule",
+    "qualityUpdated": "Rule updated",
+    "qualityUpdateFailed": "Could not update the rule",
+    "qualityTypeFixed": "The rule type cannot change — the rest of the rule is written for it."
   },
   "groups": {
     "title": "Groups",
@@ -1008,6 +1012,13 @@
     "critical": "critical",
     "neverRun": "never",
     "checked": "{{count}} rows checked",
-    "failedOfChecked": "{{failed}} of {{checked}}"
+    "failedOfChecked": "{{failed}} of {{checked}}",
+    "runAll": "Run all rules",
+    "running": "Running {{done}}/{{total}}…",
+    "runSummaryPassed_one": "{{count}} rule passed",
+    "runSummaryPassed_other": "{{count}} rules passed",
+    "runSummaryFailed": "{{passed}} passed · {{failed}} failed",
+    "runFailed_one": "{{count}} rule could not run",
+    "runFailed_other": "{{count}} rules could not run"
   }
 }

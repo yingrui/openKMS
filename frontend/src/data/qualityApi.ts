@@ -49,6 +49,26 @@ export async function createQualityRule(
   });
 }
 
+/** A rule's editable surface. `rule_type` is deliberately absent: changing it would orphan its config. */
+export interface QualityRuleUpdate {
+  name?: string;
+  column_name?: string | null;
+  config?: Record<string, unknown>;
+  severity?: string;
+  enabled?: boolean;
+}
+
+export async function updateQualityRule(
+  datasetId: string,
+  ruleId: string,
+  body: QualityRuleUpdate,
+): Promise<QualityRuleResponse> {
+  return request<QualityRuleResponse>(`/api/datasets/${datasetId}/quality-rules/${ruleId}`, {
+    method: 'PUT',
+    body: JSON.stringify(body),
+  });
+}
+
 export async function deleteQualityRule(datasetId: string, ruleId: string): Promise<void> {
   return request<void>(`/api/datasets/${datasetId}/quality-rules/${ruleId}`, { method: 'DELETE' });
 }

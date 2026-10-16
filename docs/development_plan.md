@@ -220,6 +220,26 @@ Active UX / quality gaps: [Tech debt](./tech_debt.md).
   must not push layout — the two other reveals in this app (report tiles, section cards) animate
   `opacity` only, which is why neither flickers.
 
+### Quality rules: editable, and runnable from the inbox (2026-10)
+
+Three things a reader found by using the product:
+
+- **The inbox can run them.** A **Run all rules** button (`data:write`, hidden when there are no rules)
+  loops the per-rule endpoint sequentially with progress and a summary. There is no cross-dataset "run
+  all" endpoint on purpose: a rule is one query against one table, and a page that already holds the list
+  can do the fan-out without the server gaining a job runner. One dataset that cannot be written does not
+  stop the others — the failure is counted and reported. It runs **every enabled rule**, not the filtered
+  view: the filter is a view.
+- **A rule could not be edited in the UI**, only created and deleted — while the skill had
+  `datasets quality update` all along. The dataset's Quality tab now has an edit dialog for name, column
+  and thresholds. The rule **type** is fixed while editing: a new type would make the existing config
+  meaningless.
+- **The built-key class of i18n bug** (below) got a guard: `check-i18n-keys.py` now requires the static
+  prefix of every built key (`` t(`shared.age_${bucket}`) ``) to match at least one locale key, and a test
+  pins every age bucket by name — a prefix check cannot see a *partial* mismatch (one plural form
+  renamed). Both were verified with probes: deleting the family fails the check, renaming one variant
+  fails the test.
+
 ### Fix: the relative-time labels were showing raw keys (2026-10)
 
 A reader asked what "Last run" meant and why Data Insights came into it — and the answer was that the

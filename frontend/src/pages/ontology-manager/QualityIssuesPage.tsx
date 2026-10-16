@@ -1,12 +1,13 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
-import { CheckCircle2, Loader2 } from 'lucide-react';
+import { CheckCircle2, Loader2, Play } from 'lucide-react';
 import { toast } from 'sonner';
-import { fetchQualityIssues, type QualityIssue } from '../../data/qualityApi';
+import { fetchQualityIssues, runQualityRule, type QualityIssue } from '../../data/qualityApi';
+import { useAuth } from '../../contexts/AuthContext';
 import { EmptyState, StatusChip, type StatusTone } from '../../styles/design-system';
 import { DatasetAppTabs } from '../../components/ontology/DatasetAppTabs';
-import { ageOf } from './reportAge';
+import { ageKey, ageOf } from './reportAge';
 import '../ontology/ontology-admin.scss';
 
 /** The three states worth telling apart: broken, unable to judge, never judged. */
@@ -23,23 +24,61 @@ type Filter = 'all' | 'failing' | 'never';
 export function QualityIssuesPage() {
   const { t } = useTranslation('ontology');
   const [issues, setIssues] = useState<QualityIssue[]>([]);
+  const { hasPermission } = useAuth();
+  // Running a rule writes to the dataset (it records a run), so it asks for `data:write`.
+  const canWrite = hasPermission('data:write');
+
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<Filter>('all');
+  const [running, setRunning] = useState(false);
+  const [progress, setProgress] = useState({ done: 0, total: 0 });
+
+  const load = useCallback(async () => {
+    try {
+      const page = await fetchQualityIssues();
+      setIssues(page.items);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : t('datasets.loadFailed'));
+    } finally {
+      setLoading(false);
+    }
+  }, [t]);
 
   useEffect(() => {
-    let cancelled = false;
-    void fetchQualityIssues()
-      .then((page) => {
-        if (!cancelled) setIssues(page.items);
-      })
-      .catch((e) => toast.error(e instanceof Error ? e.message : t('datasets.loadFailed')))
-      .finally(() => {
-        if (!cancelled) setLoading(false);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [t]);
+    void load();
+  }, [load]);
+
+  /**
+   * Run every enabled rule, one after another.
+   *
+   * A rule is a query against one table, so the loop is the API: there is no cross-dataset "run all"
+   * endpoint, and inventing one would put the fan-out on the server for a page that already knows the
+   * list. One failure is recorded and the rest still run — a dataset you may not write must not stop
+   * the others.
+   */
+  const runAll = async () => {
+    setRunning(true);
+    setProgress({ done: 0, total: issues.length });
+    const outcomes: string[] = [];
+    for (const [index, issue] of issues.entries()) {
+      setProgress({ done: index, total: issues.length });
+      try {
+        const updated = await runQualityRule(issue.dataset_id, issue.id);
+        outcomes.push(updated.last_status ?? 'error');
+      } catch {
+        outcomes.push('error');
+      }
+    }
+    setProgress({ done: issues.length, total: issues.length });
+    setRunning(false);
+    await load();
+    const passed = outcomes.filter((o) => o === 'passed').length;
+    const failed = outcomes.filter((o) => o === 'failed').length;
+    const errored = outcomes.filter((o) => o === 'error').length;
+    if (errored > 0) toast.warning(t('qualityIssues.runFailed', { count: errored }));
+    if (failed > 0) toast.error(t('qualityIssues.runSummaryFailed', { failed, passed }));
+    else toast.success(t('qualityIssues.runSummaryPassed', { count: passed }));
+  };
 
   const failing = issues.filter((i) => i.status === 'failed' || i.status === 'error');
   const never = issues.filter((i) => i.status === 'never');
@@ -55,8 +94,8 @@ export function QualityIssuesPage() {
     const age = ageOf(at);
     if (!age) return t('datasets.dash');
     return age.bucket === 'just_now'
-      ? t('shared.age_just_now')
-      : t(`shared.age_${age.bucket}`, { count: age.count });
+      ? t(ageKey('just_now'))
+      : t(ageKey(age.bucket), { count: age.count });
   };
 
   return (
@@ -66,6 +105,22 @@ export function QualityIssuesPage() {
           <h1>{t('qualityIssues.title')}</h1>
           <p className="page-subtitle">{t('qualityIssues.subtitle')}</p>
         </div>
+        {canWrite && issues.length > 0 && (
+          // Nothing runs these on a schedule, so asking is the only way they run at all.
+          <div className="page-header-actions">
+            <button
+              type="button"
+              className="btn btn-primary"
+              onClick={() => void runAll()}
+              disabled={running}
+            >
+              <Play size={16} aria-hidden />
+              {running
+                ? t('qualityIssues.running', { done: progress.done, total: progress.total })
+                : t('qualityIssues.runAll')}
+            </button>
+          </div>
+        )}
       </header>
       <DatasetAppTabs />
       <div className="ontology-admin-content">

@@ -13,7 +13,7 @@ import { ReportChart } from './ReportChart';
 import { ReportBarList } from './ReportBarList';
 import { ReportMetric } from './ReportMetric';
 import { ReportTracker } from './ReportTracker';
-import { absoluteTime, ageOf } from './reportAge';
+import { absoluteTime, ageKey, ageOf } from './reportAge';
 import { csvFileName, downloadCsv, toCsv } from './reportCsv';
 import {
   MAX_BAR_LIST_ROWS,
@@ -61,8 +61,8 @@ export function DashboardReportView({
   const age = ageOf(report.ran_at);
   const ageLabel = age
     ? age.bucket === 'just_now'
-      ? t('shared.age_just_now')
-      : t(`shared.age_${age.bucket}`, { count: age.count })
+      ? t(ageKey('just_now'))
+      : t(ageKey(age.bucket), { count: age.count })
     : null;
   const source = reportSource(report, datasets, models, t('dataInsights.sourceMissing'));
   const isModel = source.kind === 'semantic_model';
