@@ -217,6 +217,9 @@ able to ask "where did this come from?" and get an answer from the dashboard its
 - **Authoring a report inside the dashboard page**: a person can save a report from the Playground
   (a model query) or the Data tab (a dataset slice) into a dashboard, but writing a whole dashboard —
   narrative, several reports, insights — is still this skill's job (or an agent's).
+- **Freshness is "as of", not "unchanged"**: each report shows when it was last run. If the answer
+  depends on the data being fresh, say the period in the insight ("2026-01 → 2026-10") — and re-run
+  rather than trusting numbers you fetched earlier.
 - **A person can export CSV** from any report (what it is showing, client-side); a *shareable*
   document (static HTML, a PDF) is still this skill's `research-report` path.
 - **The app does not turn a question into a query** — you author the report spec; the app runs it.

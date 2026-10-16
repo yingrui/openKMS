@@ -138,7 +138,15 @@
     "viewBarList": "Ranked list",
     "viewValueColumn": "Value column",
     "barListTruncated": "Showing the top {{max}} only.",
-    "exportCsv": "Export CSV"
+    "exportCsv": "Export CSV",
+    "asOf": "as of {{age}}",
+    "ageJustNow": "just now",
+    "ageMinutes_one": "{{count}} minute ago",
+    "ageMinutes_other": "{{count}} minutes ago",
+    "ageHours_one": "{{count}} hour ago",
+    "ageHours_other": "{{count}} hours ago",
+    "ageDays_one": "{{count}} day ago",
+    "ageDays_other": "{{count}} days ago"
   },
   "dataModel": {
     "title": "Data Model",

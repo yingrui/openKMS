@@ -160,6 +160,10 @@ analyses, and sharing analyses does not hand out dataset management:
   *source kind*, not new SQL.
 - **Not the Playground**: nothing here is a definition editor, and a report never owns a metric.
 - **Not the Data tab**: no inline row editing — the Explorer reads.
+- **Every result says when it is from.** A tile shows `as of <relative>` with the exact instant on
+  hover (`ran_at`). It never claims "the data has not changed": a source table is written outside this
+  system, so knowing that needs a **declared watermark** (a time field to compare against) — listed as
+  a follow-up rather than guessed at, which is exactly the lineage lesson from this layer's history.
 - **Export is CSV, client-side.** A reader exports the rows a report is showing — its columns, its
   filters, the page it returned — with RFC-4180 quoting and a UTF-8 BOM (Excel on Windows reads a
   UTF-8 CSV without one as Latin-1, which would mangle every Chinese label). A *document* export

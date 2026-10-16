@@ -10,6 +10,7 @@ import { QueryFailureNotice, asQueryFailureKind } from '../../styles/design-syst
 import { ExplorerChart } from './ExplorerChart';
 import { ReportBarList } from './ReportBarList';
 import { ReportMetric } from './ReportMetric';
+import { absoluteTime, ageOf } from './reportAge';
 import { csvFileName, downloadCsv, toCsv } from './reportCsv';
 import {
   MAX_BAR_LIST_ROWS,
@@ -51,6 +52,12 @@ export function DashboardReportView({
     [view, columns, rows],
   );
 
+  const age = ageOf(report.ran_at);
+  const ageLabel = age
+    ? age.bucket === 'just_now'
+      ? t('dataExplorer.ageJustNow')
+      : t(`dataExplorer.age_${age.bucket}`, { count: age.count })
+    : null;
   const isModel = report.source_kind === 'semantic_model';
   const source = isModel
     ? models.find((m) => m.id === report.semantic_model_id)
@@ -110,6 +117,15 @@ export function DashboardReportView({
               {t('datasets.filterRows', { count: report.total ?? rows.length })}
               {report.capped ? ` · ${t('datasets.filterCapped')}` : ''}
               {report.duration_ms != null ? ` · ${report.duration_ms} ms` : ''}
+              {/* As of *when* — never "the data has not changed", which nothing here can know. */}
+              {ageLabel && (
+                <>
+                  {' · '}
+                  <span title={absoluteTime(report.ran_at)}>
+                    {t('dataExplorer.asOf', { age: ageLabel })}
+                  </span>
+                </>
+              )}
             </p>
             <div className="openkms-flex-row-gap">
               {/* Exporting what is on screen is a reader's action, so it sits beside the view toggle. */}

@@ -90,6 +90,13 @@ describe('DashboardReportView', () => {
     expect(screen.getByRole('table')).toBeInTheDocument();
   });
 
+  it('says when the numbers are from, with the exact instant on hover', () => {
+    renderReport({ ...BASE, ran_at: '2026-10-16T00:00:00Z' });
+    // the bucket is relative, so assert the frame rather than a count that would age
+    const asOf = screen.getByText(/^as of /i);
+    expect(asOf).toHaveAttribute('title', expect.stringMatching(/\d{4}/));
+  });
+
   it('names the source, linking into the Catalog', () => {
     renderReport({ ...BASE });
     const link = screen.getByRole('link', { name: /tushare.daily_basic/ });
