@@ -237,7 +237,8 @@ export function DatasetSourcesPage() {
                   <thead>
                     <tr>
                       <th>{t('dataSources.register')}</th>
-                      <th>{t('datasets.filterColumn')}</th>
+                      {/* The rows are tables, not columns — the Catalog calls this column the same. */}
+                      <th>{t('datasets.schemaTable')}</th>
                       <th>{t('dataSources.dataset')}</th>
                     </tr>
                   </thead>
