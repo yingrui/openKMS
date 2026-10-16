@@ -75,6 +75,9 @@ it can cover both layers in one place.
   person can ask it in place and paste the result here, and an agent can produce either.
 - **`source_kind` + the id live on the report**, not on the dashboard: two tiles may read two
   different sources, and each is checked against its own ACL.
+- **A list is a summary, a `get` is the document.** `GET /api/explorer-dashboards` returns what a
+  reader needs to choose one (name, status, `report_count`, the sources it reads — named) and never
+  every report's rows; the rows live in the document you get by id.
 - **`columns`/`rows`/`error`/`ran_at` are results**, not inputs: `POST /api/explorer-dashboards/{id}/run`
   runs every report against **its** source and persists them. A dashboard is therefore **live**:
   re-running is one call, and the app never shows a number it cannot reproduce.
@@ -120,7 +123,9 @@ satisfy one) the table is the answer, and the table is always one click away.
 - A spec the result cannot satisfy (unknown column; a grouping column with several measures) falls
   back to the table rather than drawing something misleading.
 
-The library is **recharts** (MIT, React 19) — [selection note](../research/chart-library-selection.md).
+The library is **recharts** (MIT, React 19) — [selection note](../research/chart-library-selection.md),
+re-checked against [Tremor](../research/tremor-evaluation.md) (a Tailwind-styled dashboard grammar on
+recharts 2.x, peer React 18 → not adopted; its vocabulary was).
 Failures render through the shared `<QueryFailureNotice>` (`.query-failure*`), promoted from a page
 sheet into the design system when this slice landed, because the Playground and the Explorer both
 need it.

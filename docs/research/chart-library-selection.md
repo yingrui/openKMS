@@ -1,5 +1,9 @@
 # Chart library selection (Data Explorer)
 
+**Revisited (2026-10):** [Tremor](tremor-evaluation.md) was suggested as an alternative — it is a
+*Tailwind*-styled dashboard grammar built **on** recharts (peer React 18), so we kept recharts and
+adopted Tremor's vocabulary instead (`view.kind` = chart / metric / bar list).
+
 **Context.** The Data Explorer's blocks hold a query's `columns`/`rows`. Drawing them needs a chart
 library in the SPA. Scope is deliberately small — **line and bar, no dashboards, no pivot** — so the
 evaluation weighs licence, React fit and bundle cost, not feature count.

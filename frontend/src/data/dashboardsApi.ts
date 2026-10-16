@@ -45,8 +45,31 @@ export interface ExplorerDashboard {
   updated_at: string;
 }
 
+/** One source a dashboard's reports read. */
+export interface DashboardSource {
+  kind: ExplorerSourceKind;
+  id: string;
+  label: string;
+}
+
+/**
+ * A dashboard *in a list* — what it is, how many reports, which sources. Deliberately not the
+ * document: listing must not carry every report's rows.
+ */
+export interface DashboardSummary {
+  id: string;
+  name: string;
+  question: string | null;
+  status: string;
+  report_count: number;
+  sources: DashboardSource[];
+  created_by_name: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface ExplorerDashboardListResponse {
-  items: ExplorerDashboard[];
+  items: DashboardSummary[];
   total: number;
 }
 

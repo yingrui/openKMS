@@ -5,6 +5,7 @@ import { Link } from 'react-router-dom';
 import type { DatasetResponse } from '../../data/datasetsApi';
 import type { DashboardReport } from '../../data/dashboardsApi';
 import type { SemanticModelResponse } from '../../data/semanticModelsApi';
+import { RichMarkdown } from '../../components/markdown/richMarkdown';
 import { QueryFailureNotice, asQueryFailureKind } from '../../styles/design-system';
 import { ExplorerChart } from './ExplorerChart';
 import { MAX_CHART_SERIES, chartFits, chartSeries, parseChartSpec } from './explorerChartSpec';
@@ -74,7 +75,9 @@ export function DashboardReportView({
           )}
         </span>
       </p>
-      {report.insight && <p className="explorer-report-chart__insight">{report.insight}</p>}
+      {report.insight && (
+        <RichMarkdown className="explorer-report-chart__insight">{report.insight}</RichMarkdown>
+      )}
       {report.error ? (
         <QueryFailureNotice
           kind={asQueryFailureKind(report.error.kind)}

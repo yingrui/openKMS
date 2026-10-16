@@ -22,6 +22,7 @@ import { fetchDatasets, type DatasetResponse } from '../../data/datasetsApi';
 import { fetchSemanticModels, type SemanticModelResponse } from '../../data/semanticModelsApi';
 import { useAuth } from '../../contexts/AuthContext';
 import { useConfirm } from '../../contexts/ConfirmContext';
+import { RichMarkdown } from '../../components/markdown/richMarkdown';
 import { DashboardReportView } from './DashboardReportView';
 import { EditReportDialog } from './EditReportDialog';
 import { applyReportFields, moveReport, removeReport, replaceReport } from './dashboardEdits';
@@ -200,7 +201,7 @@ export function DashboardDetailPage() {
               )}
             </div>
             {dashboard.narrative ? (
-              <div className="explorer-report-narrative">{dashboard.narrative}</div>
+              <RichMarkdown className="explorer-report-narrative">{dashboard.narrative}</RichMarkdown>
             ) : (
               <p className="entity-view__readonly">{t('dataExplorer.noNarrative')}</p>
             )}

@@ -7,7 +7,7 @@ import {
   fetchDashboard,
   fetchDashboards,
   updateDashboard,
-  type ExplorerDashboard,
+  type DashboardSummary,
 } from '../../data/dashboardsApi';
 import { Dialog, FormField } from '../../styles/design-system';
 import { ReportChartFields } from './ReportChartFields';
@@ -24,7 +24,7 @@ const NEW_DASHBOARD = '__new__';
 export function SaveReportDialog({ draft }: { draft: ReportDraftInput }) {
   const { t } = useTranslation('ontology');
   const [open, setOpen] = useState(false);
-  const [dashboards, setDashboards] = useState<ExplorerDashboard[]>([]);
+  const [dashboards, setDashboards] = useState<DashboardSummary[]>([]);
   const [target, setTarget] = useState(NEW_DASHBOARD);
   const [newName, setNewName] = useState('');
   const [title, setTitle] = useState('');

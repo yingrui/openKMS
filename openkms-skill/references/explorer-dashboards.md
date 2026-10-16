@@ -156,7 +156,8 @@ python scripts/cli.py explorer dashboards-create \
   --name "Stock valuation" --question "Which stocks look cheap vs their industry?" \
   --reports-file reports.json --yes
 
-# 3. run it, then read what came back (rows + per-report errors)
+# 3. run it, then read what came back (rows + per-report errors) — `dashboards-get` is the document;
+#    `dashboards-list` is only a summary (name, report count, sources)
 python scripts/cli.py explorer dashboards-run --id DASHBOARD_ID --yes
 python scripts/cli.py explorer dashboards-get --id DASHBOARD_ID
 

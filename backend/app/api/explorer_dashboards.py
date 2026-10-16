@@ -26,10 +26,14 @@ from app.api.auth import require_any_permission, require_auth, require_permissio
 from app.database import get_db
 from app.api.query_errors import query_failure_detail
 from app.models.explorer_dashboard import ExplorerDashboard
+from app.models.dataset import Dataset
+from app.models.semantic_model import SemanticModel
 from app.schemas.explorer_dashboard import (
     ExplorerDashboardCreate,
     ExplorerDashboardListResponse,
     ExplorerDashboardResponse,
+    ExplorerDashboardSource,
+    ExplorerDashboardSummary,
     ExplorerDashboardUpdate,
 )
 from app.services.data_layer.dataset_rows import query_dataset_rows, query_dataset_summary
@@ -147,6 +151,58 @@ async def _readable_datasets(db: AsyncSession, request: Request) -> set[str] | N
     )
 
 
+async def _source_labels(db: AsyncSession, sources: list[ExplorerDashboardSource]) -> None:
+    """Name the sources in place — two queries for the whole page, not one per report."""
+    dataset_ids = {s.id for s in sources if s.kind != SOURCE_SEMANTIC_MODEL}
+    model_ids = {s.id for s in sources if s.kind == SOURCE_SEMANTIC_MODEL}
+    labels: dict[str, str] = {}
+    if dataset_ids:
+        rows = (
+            await db.execute(
+                select(Dataset.id, Dataset.display_name, Dataset.schema_name, Dataset.table_name).where(
+                    Dataset.id.in_(dataset_ids)
+                )
+            )
+        ).all()
+        labels.update(
+            {str(i): (display or f"{schema}.{table}") for i, display, schema, table in rows}
+        )
+    if model_ids:
+        rows = (
+            await db.execute(select(SemanticModel.id, SemanticModel.name).where(SemanticModel.id.in_(model_ids)))
+        ).all()
+        labels.update({str(i): str(name) for i, name in rows})
+    for source in sources:
+        source.label = labels.get(source.id, source.id)
+
+
+def _summary(dashboard: ExplorerDashboard, readable: set[str] | None) -> ExplorerDashboardSummary:
+    """A list entry: only the reports this caller may read are counted (and their sources named)."""
+    sources: list[ExplorerDashboardSource] = []
+    seen: set[tuple[str, str | None]] = set()
+    report_count = 0
+    for entry in dashboard.reports or []:
+        source = report_source(entry)
+        if not _may_read(source, readable):
+            continue
+        report_count += 1
+        key = (source.kind, source.resource_id)
+        if source.resource_id and key not in seen:
+            seen.add(key)
+            sources.append(ExplorerDashboardSource(kind=source.kind, id=source.resource_id, label=source.resource_id))
+    return ExplorerDashboardSummary(
+        id=dashboard.id,
+        name=dashboard.name,
+        question=dashboard.question,
+        status=dashboard.status,
+        report_count=report_count,
+        sources=sources,
+        created_by_name=dashboard.created_by_name,
+        created_at=dashboard.created_at,
+        updated_at=dashboard.updated_at,
+    )
+
+
 async def _get(db: AsyncSession, dashboard_id: str) -> ExplorerDashboard:
     row = await db.get(ExplorerDashboard, dashboard_id)
     if not row:
@@ -181,9 +237,9 @@ async def list_dashboards(request: Request, db: AsyncSession = Depends(get_db)):
         for d in rows
         if not d.reports or any(_may_read(report_source(e), readable) for e in d.reports)
     ]
-    return ExplorerDashboardListResponse(
-        items=[_response(d, request, readable) for d in visible], total=len(visible)
-    )
+    summaries = [_summary(d, readable) for d in visible]
+    await _source_labels(db, [s for summary in summaries for s in summary.sources])
+    return ExplorerDashboardListResponse(items=summaries, total=len(summaries))
 
 
 @router.post(

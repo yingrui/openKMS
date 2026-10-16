@@ -38,6 +38,31 @@ class ExplorerDashboardResponse(BaseModel):
     updated_at: datetime
 
 
+class ExplorerDashboardSource(BaseModel):
+    """One source a dashboard's reports read — enough to label them without the rows."""
+
+    kind: str
+    id: str
+    label: str
+
+
+class ExplorerDashboardSummary(BaseModel):
+    """A dashboard in a list: what it is, how many reports it has, and which sources they read.
+
+    Deliberately **not** the document: listing dashboards must not carry every report's rows.
+    """
+
+    id: str
+    name: str
+    question: str | None = None
+    status: str
+    report_count: int = 0
+    sources: list[ExplorerDashboardSource] = []
+    created_by_name: str | None = None
+    created_at: datetime
+    updated_at: datetime
+
+
 class ExplorerDashboardListResponse(BaseModel):
-    items: list[ExplorerDashboardResponse]
+    items: list[ExplorerDashboardSummary]
     total: int
