@@ -36,6 +36,16 @@
   gap: var(--space-2);
 }
 
+// A line that stands where a value would be: "nothing here yet", "not run", "no rows".
+// Used by ~10 pages across several routes, so it belongs to the shared layer (it was defined in one
+// page's sheet, which meant every other page rendered it unstyled).
+.entity-view__readonly {
+  margin: 0;
+  padding: var(--padding-compact-y) 0;
+  font-size: var(--text-base);
+  color: var(--color-text);
+}
+
 // A control that is as wide as its content (a `<select>` of quick ranges, a small toggle).
 .openkms-w-fit {
   width: fit-content;

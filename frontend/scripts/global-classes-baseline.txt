@@ -25,7 +25,6 @@ entity-view__nav
 entity-view__panel
 entity-view__panel-footer
 entity-view__panel-toggle
-entity-view__readonly
 entity-view__sidebar
 entity-view__title
 resource-share-panel

@@ -28,7 +28,6 @@ import { DashboardReportView } from './DashboardReportView';
 import { EntityViewHeader, EntityViewLoading, EntityViewPanel, EntityViewShell } from './EntityViewShell';
 import { EditReportDialog } from './EditReportDialog';
 import { applyReportFields, moveReport, removeReport, replaceReport } from './dashboardEdits';
-import '../ontology/ontology-admin.scss';
 import './data-explorer.scss';
 
 export function DashboardDetailPage() {
