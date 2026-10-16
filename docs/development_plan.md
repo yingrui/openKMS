@@ -201,7 +201,8 @@ Active UX / quality gaps: [Tech debt](./tech_debt.md).
 - Both sat in a page-header row of their own, with nothing on its left — a whole line of vertical space
   for two buttons. They are not the same kind of action, so they split:
   - **Run** is the action you keep coming back to, so it sits with the **identity** in the rail (a real
-    primary button under the state/size/delete line: "this dashboard → run it"). The rail's slot strips
+    primary button under the state/size/delete line: "this dashboard → run it"). At `btn-sm`, with the icon at 14 px and the row's\    gap tightened: a 220 px rail has one text size, and a full-size primary button was the largest
+    thing on the page for the smallest label. The rail's slot strips
     button skins for its text-style actions (`View YAML`, the quiet delete), so that rule is now scoped
     to `:not(.btn)` — a real button beside them keeps its skin.
   - **Add a report** adds a *section*, so it sits **where the document ends** — an affordance at the

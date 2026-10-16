@@ -186,16 +186,18 @@ export function DashboardDetailPage() {
               <Trash2 size={14} aria-hidden />
             </button>
           </div>
+          {/* The small size: it sits in a 220 px rail beside the state line, and the primary button
+              should read as the strongest thing there without being the biggest. */}
           <button
             type="button"
-            className="btn btn-primary"
+            className="btn btn-primary btn-sm"
             onClick={() => void handleRun()}
             disabled={running || reports.length === 0}
           >
             {running ? (
-              <Loader2 size={16} className="console-loading-spinner" aria-hidden />
+              <Loader2 size={14} className="console-loading-spinner" aria-hidden />
             ) : (
-              <Play size={16} aria-hidden />
+              <Play size={14} aria-hidden />
             )}
             <span>{t('dataInsights.run')}</span>
           </button>
