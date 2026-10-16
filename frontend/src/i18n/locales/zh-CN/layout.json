@@ -81,8 +81,6 @@
   "accessDeniedBody": "您没有权限打开此页面。请联系管理员开通相应权限，或返回首页。",
   "authErrorRetry": "重试",
   "dismiss": "关闭",
-  "appLauncher": "应用",
-  "closeAppLauncher": "关闭应用列表",
   "openOntologyRail": "打开本体导航",
   "closeNavRail": "关闭导航",
   "platformOperations": "平台运维",

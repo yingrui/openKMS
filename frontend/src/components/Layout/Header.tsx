@@ -9,7 +9,6 @@ import { useConsoleMobileNav } from '../../contexts/ConsoleMobileNavContext';
 import { useIsMobile } from '../../hooks/useIsMobile';
 import { isConsoleShellPath } from '../../config/appModules';
 import logo from '../../assets/logo.svg';
-import { AppLauncher } from './AppLauncher';
 import { UserMenu } from './UserMenu';
 import './Header.scss';
 
@@ -123,7 +122,6 @@ export function Header() {
             <span className="ds-compact-label">{t('exitConsole')}</span>
           </Link>
         ) : null}
-        {!consoleShell && <AppLauncher />}
         <button
           type="button"
           onClick={toggleTheme}

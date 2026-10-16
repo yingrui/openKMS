@@ -81,8 +81,6 @@
   "accessDeniedBody": "You do not have permission to open this page. Ask an administrator for the appropriate access, or go back to home.",
   "authErrorRetry": "Retry",
   "dismiss": "Dismiss",
-  "appLauncher": "Apps",
-  "closeAppLauncher": "Close apps",
   "openOntologyRail": "Open ontology navigation",
   "closeNavRail": "Close navigation",
   "platformOperations": "Platform",

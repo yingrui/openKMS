@@ -1,13 +1,14 @@
 #!/usr/bin/env python3
-"""Guardrail: a component's stylesheet must be imported by a component beside it.
+"""Guardrail: a component's stylesheet must be imported by something.
 
 The third shape of the same mistake this codebase keeps making (a rename, a move, a deletion — and
 now a *creation*): `ChipPicker.scss` was written, the component was written, and nothing imported the
 sheet. The checks passed, the build passed, and every `.chip-picker*` class was defined in a file that
 no bundle ever loaded — which is only visible in the built CSS.
 
-A sheet in `src/components/**` belongs to a component in its own directory: one of them has to import
-it. (Sheets elsewhere are imported by pages, which the shared-style rules already police.)
+A sheet in `src/components/**` has to be imported *somewhere* under `src` — not necessarily by a
+sibling (the app catalog's grid sheet is imported by the Home page). What every other check is blind to
+is a sheet nothing imports at all: its rules are correct and no bundle loads them.
 
 Usage (from frontend/): python3 scripts/check-component-sheets.py [--list]
 """
@@ -22,15 +23,14 @@ COMPONENTS = ROOT / "src" / "components"
 
 def offenders() -> list[str]:
     out: list[str] = []
+    sources = [
+        p for p in (ROOT / "src").rglob("*.ts*") if ".test." not in p.name and ".spec." not in p.name
+    ]
     for sheet in sorted(COMPONENTS.rglob("*.scss")):
-        # The name alone: the import is written `'./Sidebar.scss'`, so a quoted match misses it.
-        importers = [
-            sibling
-            for sibling in sheet.parent.glob("*.tsx")
-            if sheet.name in sibling.read_text(errors="ignore")
-        ]
+        # The name alone: an import reads `'./Sidebar.scss'`, so a quoted match would miss it.
+        importers = [p for p in sources if sheet.name in p.read_text(errors="ignore")]
         if not importers:
-            out.append(f"{sheet.relative_to(ROOT)} is imported by no component beside it")
+            out.append(f"{sheet.relative_to(ROOT)} is imported nowhere under src/")
     return out
 
 

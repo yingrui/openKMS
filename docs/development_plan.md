@@ -196,6 +196,17 @@ Active UX / quality gaps: [Tech debt](./tech_debt.md).
   rule, so it passed.) The previous highlight is kept when nothing is in the zone, and a click marks
   the target at once instead of waiting for the scroll to settle.
 
+### The app launcher in the header is gone (2026-10)
+
+- It listed exactly the apps the App Rail already lists — every module with `showInLauncher: true` also
+  had `showInMainSidebar: true`, which is what made deleting it safe rather than a bet — so the header
+  lost a grid, its styles, two labels and the panel's open/close plumbing.
+- The check that asserted "AppLauncher must use `useVisibleLauncherModules`" now asserts the invariant
+  that mattered all along: **a module marked `showInLauncher` must also be in the rail**, or it is
+  reachable from nowhere. Probed: flipping one module fails with its id named.
+- `AppCatalogGrid` and the flag stay: the **Home** page still renders the grid, so `showInLauncher` now
+  means "show on Home" — worth renaming when someone next touches that config.
+
 ### The Datasets app's tabs, and all metrics in one place (2026-10) — done
 
 - The app's tab bar reads **Catalog · Semantic Model · Metrics**: the middle one was called "Model",
