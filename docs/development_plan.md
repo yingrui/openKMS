@@ -190,10 +190,11 @@ Active UX / quality gaps: [Tech debt](./tech_debt.md).
 ### The rail follows the reader (2026-10) — done
 
 - The table of contents highlights the section being read (`useActiveSection`): an
-  `IntersectionObserver` over the pane's top 40%, the *earliest* section in the zone wins, and the
-  previous highlight is kept when nothing is in it — a highlight that blinks off mid-scroll is worse
-  than one that lags. `pickActive` is pure and tested; the shell test stubs the observer and asserts
-  the item is marked and announced (`aria-current`).
+  `IntersectionObserver` over the pane's top 40%, and the **last** section in that zone wins — the one
+  scrolled furthest into. (The first rule took the *earliest*, which parked the highlight on the
+  opening section for most of the page and read as "it never moves"; the test had encoded that wrong
+  rule, so it passed.) The previous highlight is kept when nothing is in the zone, and a click marks
+  the target at once instead of waiting for the scroll to settle.
 
 ### The dashboard's identity row (2026-10) — done
 

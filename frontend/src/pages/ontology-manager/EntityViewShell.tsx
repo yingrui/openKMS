@@ -171,7 +171,7 @@ export function EntityViewShell({
   const sectionIds = navItems
     .map((item) => item.sectionId)
     .filter((id): id is string => typeof id === 'string');
-  const activeSection = useActiveSection(sectionIds);
+  const { active: activeSection, markActive } = useActiveSection(sectionIds);
 
   return (
     <div className="entity-view">
@@ -217,6 +217,7 @@ export function EntityViewShell({
                     );
                     if (!target) return;
                     event.preventDefault();
+                    markActive(item.sectionId ?? '');
                     target.scrollIntoView({ block: 'start', behavior: 'smooth' });
                   }}
                 >

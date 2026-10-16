@@ -3,23 +3,26 @@ import { useEffect, useRef, useState } from 'react';
 /**
  * Which section of a long page the reader is in — for a table of contents that follows along.
  *
- * The rule is deliberately simple and pure (`pickActive`): among the sections inside the reading zone
- * (the top ~40% of the scrolling pane), the **first in document order** is the current one; when
- * nothing is in the zone (between two sections, or at the very bottom), the previous one stays — a
- * highlight that blinks off while scrolling is worse than one that lags for a moment.
+ * The rule is pure (`pickActive`), and the subtle half is *which end* to take: the sections are tall,
+ * so several sit inside the reading zone (the top ~40% of the pane) at once, and the reader is in the
+ * **last** of them — the one scrolled furthest into. Taking the first (which this did) leaves the
+ * highlight parked on the opening section for most of the page, which reads as "it never moves".
+ *
+ * When nothing is in the zone (between two sections, or past the last one) the previous one stays: a
+ * highlight that blinks off mid-scroll is worse than one that lags a moment.
  */
 
 /** Ids cannot contain it, so it is a safe way to carry a list through a primitive dependency. */
 const SEPARATOR = '\u0000';
 
-/** The current section, from the ids currently in the zone and the document's order. */
+/** The current section: the one furthest down among those in the zone. */
 export function pickActive(
   intersecting: string[],
   order: string[],
   previous: string | null,
 ): string | null {
-  if (intersecting.length === 0) return previous;
-  return order.find((id) => intersecting.includes(id)) ?? previous;
+  const inZone = order.filter((id) => intersecting.includes(id));
+  return inZone.length > 0 ? inZone[inZone.length - 1] : previous;
 }
 
 /**
@@ -28,7 +31,11 @@ export function pickActive(
  * `IntersectionObserver` is not in every environment (jsdom, older browsers): without it this returns
  * `null` and the caller simply shows no highlight, which is the honest degradation.
  */
-export function useActiveSection(ids: string[]): string | null {
+export function useActiveSection(ids: string[]): {
+  active: string | null;
+  /** Set it directly, so a click moves the highlight at once instead of during the scroll. */
+  markActive: (id: string) => void;
+} {
   const [active, setActive] = useState<string | null>(null);
   /** Kept in a ref so the effect does not re-subscribe on every highlight change. */
   const previous = useRef<string | null>(null);
@@ -67,5 +74,11 @@ export function useActiveSection(ids: string[]): string | null {
     return () => observer.disconnect();
   }, [key]);
 
-  return active;
+  return {
+    active,
+    markActive: (id: string) => {
+      previous.current = id;
+      setActive(id);
+    },
+  };
 }

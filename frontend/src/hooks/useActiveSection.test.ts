@@ -4,15 +4,15 @@ import { pickActive } from './useActiveSection';
 const ORDER = ['narrative', 'report-0', 'report-1', 'report-2'];
 
 describe('pickActive', () => {
-  it('takes the first section in document order among those in the zone', () => {
-    // reported newest-first by the observer, but the reader is in the *earliest* one on the page
-    expect(pickActive(['report-1', 'report-0'], ORDER, null)).toBe('report-0');
-    expect(pickActive(['report-2', 'report-1'], ORDER, null)).toBe('report-1');
-    expect(pickActive(['report-2'], ORDER, null)).toBe('report-2');
+  it('takes the section furthest down among those in the zone', () => {
+    // tall sections: several are in the zone at once, and the reader is in the last of them
+    expect(pickActive(['report-0', 'report-1'], ORDER, null)).toBe('report-1');
+    expect(pickActive(['narrative', 'report-0', 'report-1'], ORDER, null)).toBe('report-1');
+    expect(pickActive(['narrative'], ORDER, null)).toBe('narrative');
   });
 
-  it('picks from the document order, not the order the observer reported', () => {
-    expect(pickActive(['report-2', 'narrative'], ORDER, null)).toBe('narrative');
+  it('reads the document order, not the order the observer reported', () => {
+    expect(pickActive(['report-2', 'narrative'], ORDER, null)).toBe('report-2');
   });
 
   it('keeps the previous section when nothing is in the zone', () => {
