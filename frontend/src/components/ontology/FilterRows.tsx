@@ -1,31 +1,33 @@
 import { useTranslation } from 'react-i18next';
 import { Plus, X } from 'lucide-react';
-import type { FilterRow } from './modelPlaygroundSpec';
-import { QuickRangeSelect } from './QuickRangeSelect';
-import { rangeError, rangeToValues, valuesToRange } from './dateRange';
+import type { FilterRow } from '../../pages/ontology-manager/datasetRowsFilter';
+import './FilterRows.scss';
+import { QuickRangeSelect } from '../../pages/ontology-manager/QuickRangeSelect';
+import { rangeError, rangeToValues, valuesToRange } from '../../pages/ontology-manager/dateRange';
 
 const NO_VALUE = new Set(['is_null', 'is_not_null']);
 
 /**
- * The Playground's filter rows: field, operator, value — and, for the fields the model declares as
- * time dimensions, a **date input** with the quick ranges a person actually asks for, plus a word
- * when a range is reversed (which matches nothing, silently, otherwise).
+ * Filter rows: column, operator, value — and, for the columns that are time dimensions, a **date
+ * input** with the quick ranges a person actually asks for, plus a word when a range is reversed
+ * (which matches nothing, silently, otherwise).
  *
- * Extracted from `ModelPlaygroundSection` when it hit the 700-line guardrail: this is a
- * self-contained editor over the rows, and the section keeps the layout around it.
+ * One component for both query builders (the Playground and "add a report"), because the vocabulary
+ * is shared: a model's declared fields and a dataset's physical columns differ in where they come
+ * from, not in how a filter row is written.
  */
-export function PlaygroundFilters({
+export function FilterRows({
   rows,
   onChange,
-  fieldOptions,
+  columns,
   timeRefs,
   ops,
 }: {
   rows: FilterRow[];
   onChange: (next: FilterRow[]) => void;
-  /** `{id, label}` per selectable field — the label carries its dataset when it is a joined one. */
-  fieldOptions: Array<{ id: string; label: string }>;
-  /** Field ids/names the model declares as time dimensions. */
+  /** `{id, label}` per selectable column — a joined field's label carries its dataset. */
+  columns: Array<{ id: string; label: string }>;
+  /** Column ids/names that carry dates (a model field with `is_time`, or a `date` column). */
   timeRefs: Set<string>;
   ops: readonly string[];
 }) {
@@ -37,15 +39,15 @@ export function PlaygroundFilters({
   return (
     <>
       {rows.map((row) => (
-        <div key={row.id} className="playground__filter">
+        <div key={row.id} className="filter-rows__row">
           <select
             className="ds-control"
-            value={row.field}
+            value={row.column}
             aria-label={t('datasets.fieldName')}
-            onChange={(e) => patch(row.id, { field: e.target.value })}
+            onChange={(e) => patch(row.id, { column: e.target.value })}
           >
             <option value="">{t('datasets.selectColumn')}</option>
-            {fieldOptions.map((option) => (
+            {columns.map((option) => (
               <option key={option.id} value={option.id}>
                 {option.label}
               </option>
@@ -63,7 +65,7 @@ export function PlaygroundFilters({
               </option>
             ))}
           </select>
-          {isTime(row.field) && !NO_VALUE.has(row.op) && (
+          {isTime(row.column) && !NO_VALUE.has(row.op) && (
             <QuickRangeSelect
               ariaLabel={t('datasets.filterQuickRange')}
               onPick={(range) => patch(row.id, rangeToValues(range))}
@@ -73,7 +75,7 @@ export function PlaygroundFilters({
             <input
               className="ds-control"
               /* A declared time field is a date: typing an ISO day by hand is not a UI. */
-              type={isTime(row.field) ? 'date' : 'text'}
+              type={isTime(row.column) ? 'date' : 'text'}
               value={row.value}
               aria-label={t('datasets.filterValue')}
               onChange={(e) => patch(row.id, { value: e.target.value })}
@@ -82,7 +84,7 @@ export function PlaygroundFilters({
           {row.op === 'between' && (
             <input
               className="ds-control"
-              type={isTime(row.field) ? 'date' : 'text'}
+              type={isTime(row.column) ? 'date' : 'text'}
               value={row.value2}
               aria-label={t('datasets.filterTo')}
               onChange={(e) => patch(row.id, { value2: e.target.value })}
@@ -105,11 +107,11 @@ export function PlaygroundFilters({
         type="button"
         className="btn btn-secondary btn-sm"
         onClick={() =>
-          onChange([...rows, { id: Date.now(), field: '', op: '=', value: '', value2: '' }])
+          onChange([...rows, { id: Date.now(), column: '', op: '=', value: '', value2: '' }])
         }
       >
         <Plus size={14} aria-hidden />
-        {t('dataModel.playgroundAddFilter')}
+        {t('datasets.filterAdd')}
       </button>
     </>
   );

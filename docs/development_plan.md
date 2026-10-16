@@ -165,6 +165,19 @@ Active UX / quality gaps: [Tech debt](./tech_debt.md).
 - Domain depth (specimen/event, Darwin Core, interactive keys) — see [knowledge-types](features/knowledge-types.md) entomology workflow **future** column
 - Agent ↔ frontend protocol: align to **AG-UI** (today custom NDJSON `delta`/`tool_*`/`done`; artifacts via A2UI surfaces)
 
+### Add a report from the dashboard (2026-10) — done
+
+- **Add a report** on the dashboard page: pick the source, write the query, **Try it** (nothing is saved
+  on a guess), then title/insight/presentation and save. Three shapes — a dataset's **rows**, a
+  dataset's **summary**, a model's **metric by fields** — with anything richer left to the Playground
+  and the Data tab, which save into a dashboard too.
+- `FilterRows` (the filter-row editor, with date inputs and quick ranges) moved out of the Playground
+  into `src/components/ontology/` **with its own sheet**, because two routes now render it — the
+  shared-but-local rule caught it on the first run.
+- Printing the form's three specs at the API found **two real bugs** in the dataset summary endpoint
+  (a schema that rejected `{column, granularity}`, and a reader that silently *dropped* a group entry
+  it could not read — answering "everything" for "by month"). Both fixed, with tests.
+
 ### One action row per dashboard (2026-10) — done
 
 - Run sat in `EntityViewShell`'s **identity slot**, whose CSS strips button styling and whose contract

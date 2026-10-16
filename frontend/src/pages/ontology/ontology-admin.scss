@@ -1851,18 +1851,6 @@
   }
 }
 
-.playground__filter {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-2);
-
-  .ds-control {
-    flex: 1 1 7rem;
-    width: auto;
-    min-width: 0;
-  }
-}
-
 // Field picker: a type-ahead menu, because an always-open checkbox wall eats the pane.
 .playground__picker {
   position: relative;

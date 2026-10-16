@@ -234,9 +234,10 @@ able to ask "where did this come from?" and get an answer from the dashboard its
 
 ## Not yet
 
-- **Authoring a report inside the dashboard page**: a person can save a report from the Playground
-  (a model query) or the Data tab (a dataset slice) into a dashboard, but writing a whole dashboard —
-  narrative, several reports, insights — is still this skill's job (or an agent's).
+- **A person can add a report in the dashboard** (source → query → try → save), in three shapes: a
+  dataset's rows, a dataset's summary, a model's metric by fields. Anything richer — joined fields,
+  several orders, a window — still comes from the Playground or the Data tab, and a whole *dashboard*
+  (narrative, several reports, insights) is still this skill's job (or an agent's).
 - **Freshness is "as of", not "unchanged"**: each report shows when it was last run. If the answer
   depends on the data being fresh, say the period in the insight ("2026-01 → 2026-10") — and re-run
   rather than trusting numbers you fetched earlier.

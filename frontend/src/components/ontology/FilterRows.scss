@@ -1,0 +1,21 @@
+// Filter rows: a wrapping row of controls that share one line where they fit.
+//
+// The component's own sheet (not a page's): the Playground and "add a report" both render it, and a
+// page sheet only ships with its own route.
+.filter-rows__row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+
+  .ds-control {
+    flex: 1 1 7rem;
+    width: auto;
+    min-width: 0;
+  }
+
+  // The invalid-range note takes its own line, under the controls it belongs to.
+  .page-subtitle--error {
+    flex: 1 1 100%;
+    margin: 0;
+  }
+}

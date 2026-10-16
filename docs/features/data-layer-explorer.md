@@ -105,7 +105,8 @@ dashboard with every report's result filled in:
 | Path | Who | How |
 |------|-----|-----|
 | **Agent** (primary, decision #4) | ask a question in chat → the agent queries each source (skill) → writes narrative + reports | `explorer dashboards-create/update --reports-file`, then `dashboards-run` |
-| **Person** | build the query where it belongs — the **Playground** (a model metric) or the **Data tab** (a dataset slice) — then **Save to a dashboard**, and hit **Run** there | those two pages, plus the dashboard page |
+| **Person, from the dashboard** | **Add a report** on the dashboard itself: source → query → **Try it** → title/insight/presentation → save. Three shapes: a dataset's **rows** (the grid's filter vocabulary), a dataset's **summary** (group by + aggregates), and a model's **metric by fields** | the dashboard page |
+| **Person, from a query they already built** | **Save to a dashboard** in the Playground (a model query) or the Data tab (a dataset slice) | those two pages |
 
 The app does **not** do NL→spec (the agent's job, like the Playground) and does not pretend to.
 
@@ -194,10 +195,10 @@ analyses, and sharing analyses does not hand out dataset management:
 
 - **Not a BI builder**: no drag-and-drop chart authoring, no pivot designer (a cross-tab is a *query*
   — group-by two columns — not a grid interaction).
-- **Reports are not authored inside the dashboard page** (yet): a person builds the query where it
-  already lives — the Playground for a model metric, the Data tab for a dataset slice — and saves it
-  into a dashboard; an agent writes the whole document through the skill. What the dialog asks for is
-  the presentation (title, insight, how to draw it), not the query.
+- **The in-dashboard builder is deliberately three shapes wide**, not a query language: rows, a
+  summary, a metric by fields. Joined fields, several orders, a window function — those are built in
+  the Playground or the Data tab and saved from there; the form says so rather than half-supporting
+  them. A whole *document* (narrative, many reports, insights) is still the skill's job.
 - **Not a second query engine**: both sources are the existing readers; a new source means a new
   *source kind*, not new SQL.
 - **Not the Playground**: nothing here is a definition editor, and a report never owns a metric.

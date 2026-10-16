@@ -167,6 +167,43 @@ export async function queryDatasetRows(
   });
 }
 
+/** One aggregate of a dataset summary — `count` needs no column (`COUNT(*)`). */
+export interface DatasetAggregate {
+  fn: string;
+  column?: string;
+  name?: string;
+}
+
+export interface DatasetSummaryQuery {
+  group_by?: Array<string | { column: string; granularity?: string }>;
+  aggregates?: DatasetAggregate[];
+  filters?: DatasetRowFilter[];
+  order_by?: Array<{ field: string; direction?: string }>;
+  limit?: number;
+  offset?: number;
+}
+
+/** A summary answer, shaped like the model query's so callers treat both alike. */
+export interface DatasetSummaryResponse {
+  sql: string;
+  columns: string[];
+  rows: Record<string, unknown>[];
+  row_count: number;
+  capped: boolean;
+  duration_ms: number;
+}
+
+export async function queryDatasetSummary(
+  id: string,
+  spec: DatasetSummaryQuery = {},
+): Promise<DatasetSummaryResponse> {
+  return request<DatasetSummaryResponse>(`/api/datasets/${id}/aggregate`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ group_by: [], aggregates: [], filters: [], limit: 100, offset: 0, ...spec }),
+  });
+}
+
 export interface DatasetRowOp {
   op: 'insert' | 'update' | 'delete';
   pk?: Record<string, unknown>;

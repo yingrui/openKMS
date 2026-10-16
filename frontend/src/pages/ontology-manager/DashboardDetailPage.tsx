@@ -26,6 +26,7 @@ import { RichMarkdown } from '../../components/markdown/richMarkdown';
 import { StatusChip } from '../../styles/design-system';
 import { DashboardReportView } from './DashboardReportView';
 import { EntityViewHeader, EntityViewLoading, EntityViewPanel, EntityViewShell } from './EntityViewShell';
+import { AddReportDialog } from './AddReportDialog';
 import { EditReportDialog } from './EditReportDialog';
 import { applyReportFields, moveReport, removeReport, replaceReport } from './dashboardEdits';
 import './data-explorer.scss';
@@ -177,19 +178,23 @@ export function DashboardDetailPage() {
       <EntityViewHeader
         title=""
         actions={
-          <button
-            type="button"
-            className="btn btn-primary"
-            onClick={() => void handleRun()}
-            disabled={running || reports.length === 0}
-          >
-            {running ? (
-              <Loader2 size={16} className="console-loading-spinner" aria-hidden />
-            ) : (
-              <Play size={16} aria-hidden />
-            )}
-            <span>{t('dataExplorer.run')}</span>
-          </button>
+          <>
+            {/* Write into this document without leaving it: build a query, try it, save the report. */}
+            <AddReportDialog dashboardId={id} reports={reports} onSaved={() => void load()} />
+            <button
+              type="button"
+              className="btn btn-primary"
+              onClick={() => void handleRun()}
+              disabled={running || reports.length === 0}
+            >
+              {running ? (
+                <Loader2 size={16} className="console-loading-spinner" aria-hidden />
+              ) : (
+                <Play size={16} aria-hidden />
+              )}
+              <span>{t('dataExplorer.run')}</span>
+            </button>
+          </>
         }
       />
       <EntityViewPanel

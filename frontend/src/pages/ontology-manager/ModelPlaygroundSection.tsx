@@ -27,7 +27,7 @@ import {
 } from './modelPlaygroundSpec';
 import { ModelPlaygroundAnswer, type RunError } from './ModelPlaygroundAnswer';
 import { modelReportDraft } from './reportDraft';
-import { PlaygroundFilters } from './PlaygroundFilters';
+import { FilterRows } from '../../components/ontology/FilterRows';
 import { useSemanticModelDetail } from './useSemanticModelDetail';
 
 const GRANULARITIES = ['day', 'week', 'month', 'quarter', 'year'];
@@ -455,10 +455,28 @@ export function ModelPlaygroundSection() {
                       .join(' · ')}
                   </p>
                 )}
-                <PlaygroundFilters
-                  rows={filterRows}
-                  onChange={setFilterRows}
-                  fieldOptions={groupable.map((f) => ({
+                <FilterRows
+                  /* The shared rows speak the dataset vocabulary (`column`); a model query's rows
+                     carry `field`, which is also what the API receives. Convert at the boundary. */
+                  rows={filterRows.map((row) => ({
+                    id: row.id,
+                    column: row.field,
+                    op: row.op,
+                    value: row.value,
+                    value2: row.value2,
+                  }))}
+                  onChange={(rows) =>
+                    setFilterRows(
+                      rows.map((row) => ({
+                        id: row.id,
+                        field: row.column,
+                        op: row.op,
+                        value: row.value,
+                        value2: row.value2,
+                      })),
+                    )
+                  }
+                  columns={groupable.map((f) => ({
                     id: f.id,
                     label:
                       metric && f.dataset_id !== metric.base_dataset_id
