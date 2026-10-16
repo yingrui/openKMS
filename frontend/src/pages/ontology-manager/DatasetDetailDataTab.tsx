@@ -31,6 +31,8 @@ import {
   type FilterRow,
 } from './datasetRowsFilter';
 import { useDatasetDetail } from './useDatasetDetail';
+import { QuickRangeSelect } from './QuickRangeSelect';
+import { rangeError, rangeToValues } from './dateRange';
 import { SaveReportDialog } from './SaveReportDialog';
 import { datasetReportDraft } from './reportDraft';
 import { EntityViewHeader, EntityViewPanel } from './EntityViewShell';
@@ -434,8 +436,9 @@ export function DatasetDataTab() {
                     </select>
                     {def.values !== 'none' && (
                       <input
-                        /* Remount on a column/operator change so the committed value is the one shown. */
-                        key={`${row.id}:${row.column}:${row.op}:1`}
+                        /* Remount after a commit (column/operator *or* value) so the shown value is
+                           the committed one — which is also how a quick range lands in the field. */
+                        key={`${row.id}:${row.column}:${row.op}:1:${row.value}`}
                         className="ds-control dataset-filter__value"
                         type={kindOf(row.column) === 'number' ? 'number' : kindOf(row.column) === 'date' ? 'date' : 'text'}
                         aria-label={t('datasets.filterValue')}
@@ -449,9 +452,18 @@ export function DatasetDataTab() {
                         }}
                       />
                     )}
+                    {kindOf(row.column) === 'date' && rangeError({ from: row.value, to: row.value2 }) && (
+                      <p className="page-subtitle--error">{t('datasets.filterRangeInvalid')}</p>
+                    )}
+                    {kindOf(row.column) === 'date' && row.op !== 'isNull' && row.op !== 'isNotNull' && (
+                      <QuickRangeSelect
+                        ariaLabel={t('datasets.filterQuickRange')}
+                        onPick={(range) => commitFilters(patchFilter(row.id, rangeToValues(range)))}
+                      />
+                    )}
                     {def.values === 'two' && (
                       <input
-                        key={`${row.id}:${row.column}:${row.op}:2`}
+                        key={`${row.id}:${row.column}:${row.op}:2:${row.value2}`}
                         className="ds-control dataset-filter__value"
                         type={kindOf(row.column) === 'date' ? 'date' : 'text'}
                         aria-label={t('datasets.filterTo')}

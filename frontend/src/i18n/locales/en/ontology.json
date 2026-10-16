@@ -579,7 +579,15 @@
     "pickDataset": "Pick a dataset",
     "fieldDimension": "Dimension",
     "fieldSearchPlaceholder": "Search fields…",
-    "relationshipAiHint": "Optional guidance for agents on when to traverse this relationship."
+    "relationshipAiHint": "Optional guidance for agents on when to traverse this relationship.",
+    "filterQuickRange": "Quick range",
+    "filterRangeInvalid": "The start is after the end — this matches nothing.",
+    "quickRange_last7": "Last 7 days",
+    "quickRange_last30": "Last 30 days",
+    "quickRange_thisMonth": "This month",
+    "quickRange_lastMonth": "Last month",
+    "quickRange_thisYear": "This year",
+    "quickRange_lastYear": "Last year"
   },
   "groups": {
     "title": "Groups",

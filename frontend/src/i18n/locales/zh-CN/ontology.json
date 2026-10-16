@@ -572,7 +572,15 @@
     "pickDataset": "请选择数据集",
     "fieldDimension": "维度",
     "fieldSearchPlaceholder": "搜索字段…",
-    "relationshipAiHint": "可选：告诉 Agent 什么时候该走这条关系。"
+    "relationshipAiHint": "可选：告诉 Agent 什么时候该走这条关系。",
+    "filterQuickRange": "快捷范围",
+    "filterRangeInvalid": "起始晚于结束——这个条件匹配不到任何行。",
+    "quickRange_last7": "最近 7 天",
+    "quickRange_last30": "最近 30 天",
+    "quickRange_thisMonth": "本月",
+    "quickRange_lastMonth": "上月",
+    "quickRange_thisYear": "今年",
+    "quickRange_lastYear": "去年"
   },
   "groups": {
     "title": "分组",

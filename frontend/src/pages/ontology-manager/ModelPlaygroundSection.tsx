@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useSearchParams } from 'react-router-dom';
-import { Check, Copy, Loader2, Play, Plus, Search, X } from 'lucide-react';
+import { Check, Copy, Loader2, Play, Search, X } from 'lucide-react';
 import { toast } from 'sonner';
 import { fetchMetrics, type MetricResponse } from '../../data/metricsApi';
 import { fetchDatasetJoins, type DatasetJoinResponse } from '../../data/joinsApi';
@@ -20,7 +20,6 @@ import { FormField } from '../../styles/design-system';
 import { useAsyncData } from '../../hooks/useAsyncData';
 import { EntityViewHeader, EntityViewPanel } from './EntityViewShell';
 import {
-  NO_VALUE,
   emptySpec,
   specFromUrl,
   toFilters,
@@ -28,6 +27,7 @@ import {
 } from './modelPlaygroundSpec';
 import { ModelPlaygroundAnswer, type RunError } from './ModelPlaygroundAnswer';
 import { modelReportDraft } from './reportDraft';
+import { PlaygroundFilters } from './PlaygroundFilters';
 import { useSemanticModelDetail } from './useSemanticModelDetail';
 
 const GRANULARITIES = ['day', 'week', 'month', 'quarter', 'year'];
@@ -63,6 +63,12 @@ export function ModelPlaygroundSection() {
   );
   const metrics = useMemo(() => data?.metrics ?? [], [data]);
   const fields = useMemo(() => data?.fields ?? [], [data]);
+
+  /** Fields the model declares as time dimensions — the only ones a date input makes sense for. */
+  const timeFieldRefs = useMemo(
+    () => new Set(fields.filter(isTimeDimension).flatMap((f) => [f.id, f.name])),
+    [fields],
+  );
 
   const [spec, setSpec] = useState<SemanticModelQuerySpec | null>(null);
   const [filterRows, setFilterRows] = useState<FilterRow[]>([]);
@@ -449,93 +455,19 @@ export function ModelPlaygroundSection() {
                       .join(' · ')}
                   </p>
                 )}
-                {filterRows.map((row) => (
-                  <div key={row.id} className="playground__filter">
-                    <select
-                      className="ds-control"
-                      value={row.field}
-                      aria-label={t('datasets.fieldName')}
-                      onChange={(e) =>
-                        setFilterRows((prev) =>
-                          prev.map((r) => (r.id === row.id ? { ...r, field: e.target.value } : r)),
-                        )
-                      }
-                    >
-                      <option value="">{t('datasets.selectColumn')}</option>
-                      {groupable.map((f) => (
-                        <option key={f.id} value={f.id}>
-                          {f.name}
-                          {metric && f.dataset_id !== metric.base_dataset_id
-                            ? ` · ${datasetLabel(f.dataset_id)}`
-                            : ''}
-                        </option>
-                      ))}
-                    </select>
-                    <select
-                      className="ds-control"
-                      value={row.op}
-                      aria-label={t('dataModel.playgroundOp')}
-                      onChange={(e) =>
-                        setFilterRows((prev) =>
-                          prev.map((r) => (r.id === row.id ? { ...r, op: e.target.value } : r)),
-                        )
-                      }
-                    >
-                      {OPS.map((op) => (
-                        <option key={op} value={op}>
-                          {op}
-                        </option>
-                      ))}
-                    </select>
-                    {!NO_VALUE.has(row.op) && (
-                      <input
-                        className="ds-control"
-                        type="text"
-                        value={row.value}
-                        placeholder={row.op === 'between' ? t('dataModel.playgroundFrom') : ''}
-                        onChange={(e) =>
-                          setFilterRows((prev) =>
-                            prev.map((r) => (r.id === row.id ? { ...r, value: e.target.value } : r)),
-                          )
-                        }
-                      />
-                    )}
-                    {row.op === 'between' && (
-                      <input
-                        className="ds-control"
-                        type="text"
-                        value={row.value2}
-                        placeholder={t('dataModel.playgroundTo')}
-                        onChange={(e) =>
-                          setFilterRows((prev) =>
-                            prev.map((r) => (r.id === row.id ? { ...r, value2: e.target.value } : r)),
-                          )
-                        }
-                      />
-                    )}
-                    <button
-                      type="button"
-                      className="btn btn-secondary btn-sm"
-                      aria-label={t('shared.delete')}
-                      onClick={() => setFilterRows((prev) => prev.filter((r) => r.id !== row.id))}
-                    >
-                      <X size={14} aria-hidden />
-                    </button>
-                  </div>
-                ))}
-                <button
-                  type="button"
-                  className="btn btn-secondary btn-sm"
-                  onClick={() =>
-                    setFilterRows((prev) => [
-                      ...prev,
-                      { id: Date.now(), field: '', op: '=', value: '', value2: '' },
-                    ])
-                  }
-                >
-                  <Plus size={14} aria-hidden />
-                  {t('dataModel.playgroundAddFilter')}
-                </button>
+                <PlaygroundFilters
+                  rows={filterRows}
+                  onChange={setFilterRows}
+                  fieldOptions={groupable.map((f) => ({
+                    id: f.id,
+                    label:
+                      metric && f.dataset_id !== metric.base_dataset_id
+                        ? `${f.name} · ${datasetLabel(f.dataset_id)}`
+                        : f.name,
+                  }))}
+                  timeRefs={timeFieldRefs}
+                  ops={OPS}
+                />
               </div>
 
               <div className="playground__section playground__section--row">
