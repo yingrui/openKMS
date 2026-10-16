@@ -239,10 +239,10 @@ All write subcommands accept `--yes` / `--dry-run`. Without `--yes` on non-TTY s
 | `semantic-models export` | GET | `/api/semantic-models/{id}/export` | Ossie document for one model (`?format=json|yaml`). |
 | `semantic-models import` *(write)* | POST | `/api/semantic-models/import` | Upsert a model (+ metrics/queries) from an Ossie document. |
 | `semantic-models fields list` | GET | `/api/semantic-models/{id}/fields` | Model-scoped fields (column ref / expression + role). |
-| `semantic-models fields add` *(write)* | POST | `/api/semantic-models/{id}/fields` | Body `{dataset_id, name, column_name?, expression?, datatype?, description?, dimension?, entity?, ai_context?}`. `dimension` = `{type: time\|categorical, granularity?, timezone?}`; `entity` = `{type: foreign\|primary, name}`. |
+| `semantic-models fields add` *(write)* | POST | `/api/semantic-models/{id}/fields` | Body `{dataset_id, name, column_name?\|expression?, datatype?, label?, description?, dimension?, ai_context?}`. `dimension` is the **time role only**: `{"is_time": true}` (omit to follow `datatype`); no `type`/`granularity`/`entity`. |
 | `semantic-models fields delete` *(write)* | DELETE | `/api/semantic-models/{id}/fields/{field_id}` | |
-| `semantic-models preview` | POST | `/api/semantic-models/{id}/preview` | Body `{metric_id, group_by:[field_id], filters?}` — runs a metric grouped by dimensions (ad-hoc, read-only); returns `{sql, columns, rows}`. |
-| `explorer reports-list` | GET | `/api/explorer-reports` | Data Explorer saved analyses. |
+| `semantic-models query` | POST | `/api/semantic-models/{id}/query` | Body `{metric, group_by:[{field, granularity?}], filters:[{field, op, value}], order_by:[{field, direction}], limit?}` — one ad-hoc question of a model (read-only, capped, audited); returns `{sql, columns, rows, row_count, capped, duration_ms}`. Failures carry `{code, message, kind}`. |
+| `explorer reports-list` | GET | `/api/explorer-reports` | Data Explorer reports: each binds to a **dataset or a semantic model** — see [explorer-report.md](explorer-report.md) for the block shapes. |
 | `explorer reports-get` | GET | `/api/explorer-reports/{id}` | |
 | `explorer reports-create` *(write)* | POST | `/api/explorer-reports` | Body `{name, question?, source_kind, dataset_id?\|semantic_model_id?, narrative?, blocks?}`. `--dataset-id` or `--semantic-model-id` picks the source (kind inferred); `--blocks-file` is `[{title, insight?, query}]` where `query` is that source's own spec. |
 | `explorer reports-update` *(write)* | PUT | `/api/explorer-reports/{id}` | Same fields as create (omit what you keep). |
