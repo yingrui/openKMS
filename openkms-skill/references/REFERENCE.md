@@ -244,8 +244,9 @@ All write subcommands accept `--yes` / `--dry-run`. Without `--yes` on non-TTY s
 | `semantic-models preview` | POST | `/api/semantic-models/{id}/preview` | Body `{metric_id, group_by:[field_id], filters?}` — runs a metric grouped by dimensions (ad-hoc, read-only); returns `{sql, columns, rows}`. |
 | `explorer reports-list` | GET | `/api/explorer-reports` | Data Explorer saved analyses. |
 | `explorer reports-get` | GET | `/api/explorer-reports/{id}` | |
-| `explorer reports-create` *(write)* | POST | `/api/explorer-reports` | Body `{name, question, dataset_id, narrative, charts}`. |
-| `explorer reports-update` *(write)* | PUT | `/api/explorer-reports/{id}` | |
+| `explorer reports-create` *(write)* | POST | `/api/explorer-reports` | Body `{name, question?, source_kind, dataset_id?\|semantic_model_id?, narrative?, blocks?}`. `--dataset-id` or `--semantic-model-id` picks the source (kind inferred); `--blocks-file` is `[{title, insight?, query}]` where `query` is that source's own spec. |
+| `explorer reports-update` *(write)* | PUT | `/api/explorer-reports/{id}` | Same fields as create (omit what you keep). |
+| `explorer reports-run` *(write)* | POST | `/api/explorer-reports/{id}/run` | Runs every block against the source and keeps the results; a failing block stores its classified reason and the rest still run. |
 | `explorer reports-delete` *(write)* | DELETE | `/api/explorer-reports/{id}` | |
 | `connectors kinds` | GET | `/api/connectors/kinds` | |
 | `connectors list` | GET | `/api/connectors` | |

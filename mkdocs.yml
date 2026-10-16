@@ -201,6 +201,7 @@ nav:
       - Data layer — semantic model (Ossie): features/data-layer-semantic-model.md
       - Data layer — semantic model Playground (design): features/data-layer-playground.md
       - Data layer — data grid filter (design): features/data-layer-grid-filter.md
+      - Data layer — Data Explorer (design): features/data-layer-explorer.md
       - Configuration: features/configuration.md
   - Security: security.md
   - Operations:

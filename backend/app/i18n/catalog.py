@@ -53,6 +53,15 @@ MESSAGES: dict[str, dict[str, str]] = {
         "zh_CN": "数据源拒绝了该查询。详情见错误原文。",
     },
     # Grid row filters (Data tab): the caller picked a column/operator that does not apply.
+    # Data Explorer: a run needs a source, and a semantic-model block needs a metric.
+    "EXPLORER_SOURCE_MISSING": {
+        "en": "This report has no {source} to analyze — pick one first.",
+        "zh_CN": "该报告还没有可分析的{source}——请先选择。",
+    },
+    "EXPLORER_BLOCK_METRIC_MISSING": {
+        "en": "A block of a semantic-model report needs a metric.",
+        "zh_CN": "语义模型报告的区块需要一个指标。",
+    },
     "DATASET_ROWS_UNKNOWN_COLUMN": {
         "en": "There is no column '{column}' in this dataset.",
         "zh_CN": "该数据集里没有列「{column}」。",

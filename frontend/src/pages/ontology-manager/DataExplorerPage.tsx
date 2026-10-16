@@ -5,9 +5,14 @@ import { Loader2, Plus, Sparkles } from 'lucide-react';
 import { toast } from 'sonner';
 import { fetchDatasets, type DatasetResponse } from '../../data/datasetsApi';
 import {
+  fetchSemanticModels,
+  type SemanticModelResponse,
+} from '../../data/semanticModelsApi';
+import {
   createExplorerReport,
   fetchExplorerReports,
   type ExplorerReport,
+  type ExplorerSourceKind,
 } from '../../data/explorerApi';
 import { Dialog, EmptyState, FormField } from '../../styles/design-system';
 import '../ontology/ontology-admin.scss';
@@ -18,19 +23,27 @@ export function DataExplorerPage() {
   const navigate = useNavigate();
   const [reports, setReports] = useState<ExplorerReport[]>([]);
   const [datasets, setDatasets] = useState<DatasetResponse[]>([]);
+  const [models, setModels] = useState<SemanticModelResponse[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [name, setName] = useState('');
   const [question, setQuestion] = useState('');
+  const [sourceKind, setSourceKind] = useState<ExplorerSourceKind>('dataset');
   const [datasetId, setDatasetId] = useState('');
+  const [modelId, setModelId] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const [r, ds] = await Promise.all([fetchExplorerReports(), fetchDatasets()]);
+      const [r, ds, ms] = await Promise.all([
+        fetchExplorerReports(),
+        fetchDatasets(),
+        fetchSemanticModels(),
+      ]);
       setReports(r.items);
       setDatasets(ds.items);
+      setModels(ms.items);
     } catch (e) {
       toast.error(e instanceof Error ? e.message : t('datasets.loadFailed'));
     } finally {
@@ -45,7 +58,9 @@ export function DataExplorerPage() {
   const openCreate = () => {
     setName('');
     setQuestion('');
+    setSourceKind('dataset');
     setDatasetId('');
+    setModelId('');
     setShowForm(true);
   };
 
@@ -59,7 +74,9 @@ export function DataExplorerPage() {
       const created = await createExplorerReport({
         name: name.trim(),
         question: question.trim() || null,
-        dataset_id: datasetId || null,
+        source_kind: sourceKind,
+        dataset_id: sourceKind === 'dataset' ? datasetId || null : null,
+        semantic_model_id: sourceKind === 'semantic_model' ? modelId || null : null,
       });
       toast.success(t('dataExplorer.created'));
       setShowForm(false);
@@ -71,8 +88,13 @@ export function DataExplorerPage() {
     }
   };
 
-  const datasetName = (id: string | null) => {
-    const d = datasets.find((x) => x.id === id);
+  /** What a report analyzes: a dataset's table, or a model's fields + metrics. */
+  const sourceName = (r: ExplorerReport) => {
+    if (r.source_kind === 'semantic_model') {
+      const m = models.find((x) => x.id === r.semantic_model_id);
+      return m ? m.name : null;
+    }
+    const d = datasets.find((x) => x.id === r.dataset_id);
     return d ? d.display_name || `${d.schema_name}.${d.table_name}` : null;
   };
 
@@ -109,7 +131,10 @@ export function DataExplorerPage() {
                   <strong>{r.name}</strong>
                   {r.question && <span className="explorer-report-card__q">{r.question}</span>}
                   <span className="explorer-report-card__meta">
-                    {datasetName(r.dataset_id) ?? t('dataExplorer.noDataset')} · {r.status}
+                    {r.source_kind === 'semantic_model'
+                      ? t('dataExplorer.sourceModel')
+                      : t('dataExplorer.sourceDataset')}
+                    : {sourceName(r) ?? t('dataExplorer.sourceMissing')} · {r.status}
                   </span>
                 </span>
               </Link>
@@ -139,9 +164,9 @@ export function DataExplorerPage() {
               type="button"
               className="btn btn-primary"
               onClick={() => void handleCreate()}
-              disabled={!name.trim() || submitting}
+              disabled={!name.trim() || submitting || (sourceKind === 'dataset' ? !datasetId : !modelId)}
             >
-              {submitting ? t('shared.saving') : t('datasets.joinCreate')}
+              {submitting ? t('shared.saving') : t('shared.create')}
             </button>
           </>
         }
@@ -156,16 +181,38 @@ export function DataExplorerPage() {
             placeholder={t('dataExplorer.questionPlaceholder')}
           />
         </FormField>
-        <FormField label={t('datasets.fieldDataSource')}>
-          <select value={datasetId} onChange={(e) => setDatasetId(e.target.value)}>
-            <option value="">{t('dataExplorer.noDataset')}</option>
-            {datasets.map((d) => (
-              <option key={d.id} value={d.id}>
-                {d.display_name || `${d.schema_name}.${d.table_name}`}
-              </option>
-            ))}
+        <FormField label={t('dataExplorer.sourceKind')}>
+          <select
+            value={sourceKind}
+            onChange={(e) => setSourceKind(e.target.value as ExplorerSourceKind)}
+          >
+            <option value="dataset">{t('dataExplorer.sourceDataset')}</option>
+            <option value="semantic_model">{t('dataExplorer.sourceModel')}</option>
           </select>
         </FormField>
+        {sourceKind === 'dataset' ? (
+          <FormField label={t('dataExplorer.sourceDataset')}>
+            <select value={datasetId} onChange={(e) => setDatasetId(e.target.value)}>
+              <option value="">{t('dataExplorer.sourceMissing')}</option>
+              {datasets.map((d) => (
+                <option key={d.id} value={d.id}>
+                  {d.display_name || `${d.schema_name}.${d.table_name}`}
+                </option>
+              ))}
+            </select>
+          </FormField>
+        ) : (
+          <FormField label={t('dataExplorer.sourceModel')}>
+            <select value={modelId} onChange={(e) => setModelId(e.target.value)}>
+              <option value="">{t('dataExplorer.sourceMissing')}</option>
+              {models.map((m) => (
+                <option key={m.id} value={m.id}>
+                  {m.name}
+                </option>
+              ))}
+            </select>
+          </FormField>
+        )}
       </Dialog>
     </div>
   );

@@ -407,9 +407,10 @@ Encrypted values; **never returned**. Write/sync/delete reject personal API key 
 | POST | `/api/semantic-models/import` | Upsert a model (+ fields/metrics) from an Ossie document (`data:write`) |
 | POST | `/api/semantic-models/{model_id}/query` | Answer one ad-hoc question (read-only, capped, audited): body `{metric, group_by:[{field, granularity?}], filters:[{field, op, value}], order_by:[{field, direction}], limit}` → `{sql, columns, rows, row_count, capped, duration_ms}`. Fields are addressed by id **or name**; ops: `= != > >= < <= like in between is_null is_not_null`; `order_by.field` is `value` or a grouped field (`data:read`). **Failures are classified** — 400 with `{code, message, kind, detail?}`: `kind` is `definition` (the model author must fix it: `QUERY_METRIC_NOT_AGGREGATE`, `QUERY_UNKNOWN_COLUMN`/`_TABLE`/`_FUNCTION`, `QUERY_TYPE_MISMATCH`, `QUERY_SYNTAX`, `QUERY_DEFINITION_INVALID`), `data` (the source refused: `QUERY_PERMISSION_DENIED`, `QUERY_TIMEOUT`, `QUERY_SOURCE_UNREACHABLE`, `QUERY_FAILED`) or `request` (`QUERY_UNKNOWN_METRIC`/`_FIELD`/`_DATASET`, `QUERY_ORDER_NOT_GROUPED`, `QUERY_INVALID_REQUEST`); `message` is localized (`app/i18n/catalog.py`), `detail` holds the source's own text. Mapping is by SQLSTATE (`app/services/data_layer/query_errors.py`) |
 | GET | `/api/explorer-reports` | List explorer reports (`data:read`) |
-| POST | `/api/explorer-reports` | Create explorer report (`data:write`) |
-| GET | `/api/explorer-reports/{id}` | Get explorer report (`data:read`) |
+| POST | `/api/explorer-reports` | Create explorer report (`data:write`) — body `{name, question?, source_kind: dataset\|semantic_model, dataset_id?\|semantic_model_id?, narrative?, blocks?}` |
+| GET | `/api/explorer-reports/{id}` | Get explorer report (`data:read`) — `blocks` carry the query they came from plus the last run's `columns`/`rows`/`capped`/`duration_ms`/`sql`/`ran_at`/`error` |
 | PUT | `/api/explorer-reports/{id}` | Update explorer report (`data:write`) |
+| POST | `/api/explorer-reports/{id}/run` | **Run every block** against the report's source and persist the results (`data:write`). Blocks go to `POST /api/datasets/{id}/rows/query` (dataset source) or `POST /api/semantic-models/{id}/query` (model source); one block failing stores its classified `{code, message, kind}` and the others still run (`EXPLORER_SOURCE_MISSING` / `EXPLORER_BLOCK_METRIC_MISSING` are `request`) |
 | DELETE | `/api/explorer-reports/{id}` | Delete explorer report (`data:write`) |
 
 ## Feature toggles

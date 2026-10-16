@@ -120,6 +120,8 @@ The Model tab lists **semantic models** — **named scopes** over the **shared**
 
 The entry point is a **question**, not a chart builder. Mirrors the Agents surface users already know.
 
+**Shipped (P0):** a report binds to a **dataset or a semantic model**, carries **blocks** (each with the query it came from), and `Run` re-executes every block through that source's engine — the narrative, insights and the block queries themselves are authored by the agent or a person, and the app renders and re-runs them ([design](data-layer-explorer.md)). **Next:** visual charts (the block already carries columns/rows) and the question-first streamed dashboard below.
+
 ### Main screen
 
 - **Top:** a single prompt box — "Ask your data a question" — with example chips underneath (*"why did this stock underperform its industry?"*, *"show monthly turnover"*).
