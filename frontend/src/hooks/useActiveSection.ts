@@ -9,6 +9,9 @@ import { useEffect, useRef, useState } from 'react';
  * highlight that blinks off while scrolling is worse than one that lags for a moment.
  */
 
+/** Ids cannot contain it, so it is a safe way to carry a list through a primitive dependency. */
+const SEPARATOR = '\u0000';
+
 /** The current section, from the ids currently in the zone and the document's order. */
 export function pickActive(
   intersecting: string[],
@@ -29,13 +32,12 @@ export function useActiveSection(ids: string[]): string | null {
   const [active, setActive] = useState<string | null>(null);
   /** Kept in a ref so the effect does not re-subscribe on every highlight change. */
   const previous = useRef<string | null>(null);
-  /* The caller derives `ids` on every render; a primitive key keeps the observer from being rebuilt. */
-  const key = ids.join('\n');
-  const idsRef = useRef(ids);
-  idsRef.current = ids;
+  /* The caller derives `ids` on every render, so the effect keys off a primitive instead of the
+     array identity — and reads the ids back out of that key, which keeps refs out of render. */
+  const key = ids.join(SEPARATOR);
 
   useEffect(() => {
-    const current = idsRef.current;
+    const current = key ? key.split(SEPARATOR) : [];
     if (current.length === 0 || typeof IntersectionObserver === 'undefined') return;
     const elements = current
       .map((id) => document.getElementById(id))
@@ -50,7 +52,7 @@ export function useActiveSection(ids: string[]): string | null {
           if (entry.isIntersecting) inside.add(id);
           else inside.delete(id);
         }
-        const next = pickActive([...inside], idsRef.current, previous.current);
+        const next = pickActive([...inside], current, previous.current);
         previous.current = next;
         setActive(next);
       },
