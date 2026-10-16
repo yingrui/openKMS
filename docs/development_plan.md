@@ -207,6 +207,11 @@ Active UX / quality gaps: [Tech debt](./tech_debt.md).
   habits (↑↓ move, Enter adds, Backspace drops the last).
 - The extraction dropped two things the guardrails then caught: the `ds-control-exempt` note on the
   picker's input (so it was reported as an unstyled control) and an i18n key that never existed.
+- **A third thing, caught by checking the build instead**: `ChipPicker.scss` was written and never
+  imported, so every rule in it lived in a file no bundle loaded — and *no check saw it*, because the
+  undefined-classes rule compares JSX against SCSS, not against what shipped. There is now a check for
+  that too (`check-component-sheets.py`, probed both ways): a component sheet must be imported by a
+  component beside it. Fourth member of the same family — rename, move, delete, create.
 
 ### The dashboard's identity row (2026-10) — done
 

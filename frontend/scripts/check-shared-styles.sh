@@ -213,6 +213,13 @@ if ! python3 scripts/check-undefined-classes.py; then
   status=1
 fi
 
+# --- 12. Component sheets that nothing imports --------------------------------
+# A sheet beside a component must be imported by one — writing both halves and forgetting the import
+# leaves every rule in a file no bundle loads (visible only in the built CSS).
+if ! python3 scripts/check-component-sheets.py; then
+  status=1
+fi
+
 if [ "$status" -eq 0 ]; then
   echo "check-shared-styles: OK"
 fi

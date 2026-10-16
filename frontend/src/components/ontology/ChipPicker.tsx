@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
 import { Check, Search } from 'lucide-react';
+import './ChipPicker.scss';
 
 /**
  * Pick a few things out of a long list — by typing, not by scrolling a wall of checkboxes.
