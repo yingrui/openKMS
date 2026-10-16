@@ -3,6 +3,8 @@ from app.services.permissions.permission_catalog import (
     PERM_DATA_EDIT,
     PERM_DATA_READ,
     PERM_DATA_WRITE,
+    PERM_EXPLORER_READ,
+    PERM_EXPLORER_WRITE,
     OPERATION_KEY_HINTS,
 )
 from app.services.permissions.permission_default_patterns import default_patterns_for_key
@@ -28,11 +30,13 @@ def test_data_keys_are_in_the_catalog():
 
 def test_data_read_patterns_cover_the_spa_and_read_apis():
     fe, be = default_patterns_for_key(PERM_DATA_READ)
-    for path in ("/datasets", "/datasets/*", "/data-model", "/data-explorer"):
+    for path in ("/datasets", "/datasets/*", "/data-model"):
         assert path in fe
     assert "GET /api/datasets" in be
     assert "GET /api/datasets/*" in be
-    assert "GET /api/explorer-reports" in be
+    # Reports are their own grant: reading data does not read saved analyses.
+    assert "/data-explorer" not in fe
+    assert not [p for p in be if "explorer-reports" in p]
 
 
 def test_data_write_patterns_cover_writes():
@@ -47,9 +51,10 @@ def test_data_write_patterns_cover_writes():
         assert pattern in be
 
 
-def _rules(key: str):
-    _, be = default_patterns_for_key(key)
-    return compile_rules_from_rows([_Row(key, be)])
+def _rules(*keys: str):
+    return compile_rules_from_rows(
+        [_Row(key, default_patterns_for_key(key)[1]) for key in keys]
+    )
 
 
 def test_ingest_routes_are_covered_after_leaving_the_datasets_prefix():
@@ -101,8 +106,8 @@ def test_engine_resolves_data_read_for_reads():
     rules = _rules(PERM_DATA_READ)
     required = resolve_required_permission_keys("GET", "/api/datasets/abc/rows", rules)
     assert required is not None and PERM_DATA_READ in required
-    required2 = resolve_required_permission_keys("GET", "/api/explorer-reports", rules)
-    assert required2 is not None and PERM_DATA_READ in required2
+    # Reports are not data: this rule may not resolve an explorer route at all.
+    assert resolve_required_permission_keys("GET", "/api/explorer-reports", rules) is None
 
 
 def test_engine_resolves_data_write_for_writes():
@@ -126,3 +131,49 @@ def test_console_datasets_does_not_cover_data_app():
     fe, be = default_patterns_for_key("console:datasets")
     assert "/datasets" not in fe
     assert "/api/datasets/*" not in be
+
+
+def test_explorer_keys_are_in_the_catalog():
+    keys = {h.key for h in OPERATION_KEY_HINTS}
+    assert PERM_EXPLORER_READ in keys
+    assert PERM_EXPLORER_WRITE in keys
+
+
+def test_explorer_read_patterns_own_the_app_the_reads_and_the_refresh():
+    fe, be = default_patterns_for_key(PERM_EXPLORER_READ)
+    assert "/data-explorer" in fe and "/data-explorer/*" in fe
+    for pattern in (
+        "GET /api/explorer-reports",
+        "GET /api/explorer-reports/*",
+        "HEAD /api/explorer-reports/*",
+        # A refresh recomputes the report from its source — a read, not an edit.
+        "POST /api/explorer-reports/*/run",
+    ):
+        assert pattern in be
+
+
+def test_explorer_write_patterns_own_the_edits_but_not_the_run():
+    _, be = default_patterns_for_key(PERM_EXPLORER_WRITE)
+    for pattern in (
+        "POST /api/explorer-reports",
+        "PUT /api/explorer-reports/*",
+        "PATCH /api/explorer-reports/*",
+        "DELETE /api/explorer-reports/*",
+    ):
+        assert pattern in be
+    assert "POST /api/explorer-reports/*/run" not in be
+
+
+def test_engine_separates_data_access_from_analysis_access():
+    rules = _rules(PERM_DATA_READ, PERM_DATA_WRITE, PERM_EXPLORER_READ, PERM_EXPLORER_WRITE)
+    for method, path, key in (
+        ("GET", "/api/explorer-reports", PERM_EXPLORER_READ),
+        ("GET", "/api/explorer-reports/r1", PERM_EXPLORER_READ),
+        ("POST", "/api/explorer-reports/r1/run", PERM_EXPLORER_READ),
+        ("POST", "/api/explorer-reports", PERM_EXPLORER_WRITE),
+        ("PUT", "/api/explorer-reports/r1", PERM_EXPLORER_WRITE),
+        ("DELETE", "/api/explorer-reports/r1", PERM_EXPLORER_WRITE),
+    ):
+        assert resolve_required_permission_keys(method, path, rules) == frozenset({key})
+    # ... while the data layer keeps its own routes.
+    assert resolve_required_permission_keys("GET", "/api/datasets", rules) == frozenset({PERM_DATA_READ})

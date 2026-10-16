@@ -3,15 +3,22 @@
 A report binds to a **dataset** or a **semantic model**, carries blocks (each with the query it came
 from) and can be re-run: `POST /{id}/run` executes every block through that source's engine.
 
-Reads: `data:read`. Writes (create/update/run/delete): `data:write`.
-Agents author the narrative + blocks through `openkms-skill`; this API also runs them.
+**Reports have their own permissions** (`explorer:read` / `explorer:write`): an analysis is not the
+same grant as the data it came from — reading data does not hand out saved analyses, and sharing
+analyses does not hand out dataset management. Re-running is a **read** (it recomputes the report
+from its source and writes only our own cached results), so it needs `explorer:read`.
+
+**The source's own ACL still applies.** A report's results are stored, so viewing or running one is
+viewing the data behind it: a dataset-backed report is visible only while that dataset is (the same
+check browsing it makes). Semantic models carry no per-resource ACL — they are gated by the
+data-layer keys. Agents author the narrative + blocks through `openkms-skill`; this API also runs them.
 """
 import time
 import uuid
 from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, Request
-from sqlalchemy import select
+from sqlalchemy import or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.auth import require_any_permission, require_auth, require_permission
@@ -36,14 +43,18 @@ from app.services.data_layer.explorer import (
 from app.services.data_layer.query import QueryError, run_query
 from app.services.data_layer.query_errors import QueryFailure
 from app.services.data_layer.row_filters import RowFilterError
-from app.services.permissions.permission_catalog import PERM_DATA_READ, PERM_DATA_WRITE
+from app.services.acl.resource_acl_constants import PERM_READ, RT_DATASET
+from app.services.acl.resource_list_acl import readable_id_filter
+from app.services.evaluations.dataset_scope import load_dataset_scoped
+from app.services.permissions.permission_catalog import PERM_EXPLORER_READ, PERM_EXPLORER_WRITE
 
 router = APIRouter(
     prefix="/explorer-reports",
     tags=["explorer"],
     dependencies=[Depends(require_auth)],
 )
-_VIEW = (PERM_DATA_READ,)
+_VIEW = (PERM_EXPLORER_READ,)
+_WRITE = (PERM_EXPLORER_WRITE,)
 
 
 def _failure_dict(failure: QueryFailure) -> dict:
@@ -93,6 +104,14 @@ def _response(r: ExplorerReport, request: Request | None = None) -> ExplorerRepo
     )
 
 
+async def require_source_access(db: AsyncSession, request: Request, report: ExplorerReport) -> None:
+    """A dataset-backed report is readable only while its dataset is — results are stored data."""
+    if report.source_kind == SOURCE_SEMANTIC_MODEL or not report.dataset_id:
+        return
+    # Raises 403/404 exactly like browsing that dataset would.
+    await load_dataset_scoped(db, request, report.dataset_id, PERM_READ)
+
+
 async def _get(db: AsyncSession, report_id: str) -> ExplorerReport:
     row = await db.get(ExplorerReport, report_id)
     if not row:
@@ -106,9 +125,19 @@ async def _get(db: AsyncSession, report_id: str) -> ExplorerReport:
     dependencies=[Depends(require_any_permission(*_VIEW))],
 )
 async def list_reports(request: Request, db: AsyncSession = Depends(get_db)):
-    rows = (
-        await db.execute(select(ExplorerReport).order_by(ExplorerReport.updated_at.desc()))
-    ).scalars().all()
+    """Reports whose source the caller can read (a semantic model has no per-resource ACL)."""
+    payload = request.state.openkms_jwt_payload
+    sub = payload.get("sub")
+    acl_filters, none_readable = await readable_id_filter(
+        db, payload, sub if isinstance(sub, str) else None, RT_DATASET, ExplorerReport.dataset_id
+    )
+    stmt = select(ExplorerReport).order_by(ExplorerReport.updated_at.desc())
+    model_backed = ExplorerReport.source_kind == SOURCE_SEMANTIC_MODEL
+    if none_readable:
+        stmt = stmt.where(model_backed)
+    elif acl_filters:
+        stmt = stmt.where(or_(model_backed, *acl_filters))
+    rows = (await db.execute(stmt)).scalars().all()
     return ExplorerReportListResponse(items=[_response(r, request) for r in rows], total=len(rows))
 
 
@@ -116,7 +145,7 @@ async def list_reports(request: Request, db: AsyncSession = Depends(get_db)):
     "",
     response_model=ExplorerReportResponse,
     status_code=201,
-    dependencies=[Depends(require_permission(PERM_DATA_WRITE))],
+    dependencies=[Depends(require_permission(PERM_EXPLORER_WRITE))],
 )
 async def create_report(
     request: Request,
@@ -138,6 +167,7 @@ async def create_report(
         created_by=payload.get("sub") if isinstance(payload.get("sub"), str) else None,
         created_by_name=str(uname)[:256] if isinstance(uname, str) and uname.strip() else None,
     )
+    await require_source_access(db, request, report)
     db.add(report)
     await db.commit()
     await db.refresh(report)
@@ -150,13 +180,15 @@ async def create_report(
     dependencies=[Depends(require_any_permission(*_VIEW))],
 )
 async def get_report(report_id: str, request: Request, db: AsyncSession = Depends(get_db)):
-    return _response(await _get(db, report_id), request)
+    report = await _get(db, report_id)
+    await require_source_access(db, request, report)
+    return _response(report, request)
 
 
 @router.put(
     "/{report_id}",
     response_model=ExplorerReportResponse,
-    dependencies=[Depends(require_permission(PERM_DATA_WRITE))],
+    dependencies=[Depends(require_permission(PERM_EXPLORER_WRITE))],
 )
 async def update_report(
     report_id: str,
@@ -178,6 +210,7 @@ async def update_report(
     ):
         if field in data:
             setattr(report, field, data[field])
+    await require_source_access(db, request, report)
     await db.commit()
     await db.refresh(report)
     return _response(report, request)
@@ -243,7 +276,7 @@ async def _run_block(
 @router.post(
     "/{report_id}/run",
     response_model=ExplorerReportResponse,
-    dependencies=[Depends(require_permission(PERM_DATA_WRITE))],
+    dependencies=[Depends(require_permission(PERM_EXPLORER_WRITE))],
 )
 async def run_report(report_id: str, request: Request, db: AsyncSession = Depends(get_db)):
     """Run every block against the report's source and keep the results.
@@ -252,6 +285,7 @@ async def run_report(report_id: str, request: Request, db: AsyncSession = Depend
     (`{code, message, kind}` in the response) and the rest still run.
     """
     report = await _get(db, report_id)
+    await require_source_access(db, request, report)
     source_error = source_failure(report.source_kind, report.dataset_id, report.semantic_model_id)
     report.blocks = [
         await _run_block(db, report, block, source_error) for block in (report.blocks or [])
@@ -264,7 +298,7 @@ async def run_report(report_id: str, request: Request, db: AsyncSession = Depend
 @router.delete(
     "/{report_id}",
     status_code=204,
-    dependencies=[Depends(require_permission(PERM_DATA_WRITE))],
+    dependencies=[Depends(require_permission(PERM_EXPLORER_WRITE))],
 )
 async def delete_report(report_id: str, db: AsyncSession = Depends(get_db)):
     report = await _get(db, report_id)

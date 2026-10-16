@@ -49,6 +49,8 @@ PERM_PROJECTS_WRITE = "projects:write"
 PERM_DATA_READ = "data:read"
 PERM_DATA_WRITE = "data:write"
 PERM_DATA_EDIT = "data:edit"
+PERM_EXPLORER_READ = "explorer:read"
+PERM_EXPLORER_WRITE = "explorer:write"
 
 DEFAULT_MEMBER_PERMISSIONS: frozenset[str] = frozenset({PERM_ALL})
 
@@ -281,19 +283,31 @@ OPERATION_KEY_HINTS: tuple[OperationKeyHint, ...] = (
     OperationKeyHint(
         PERM_DATA_READ,
         "View data layer",
-        "Datasets, joins, profile, quality, metrics, and Data Explorer reports (read).",
+        "Datasets, joins, profile, quality, metrics, semantic models (read).",
         "data",
     ),
     OperationKeyHint(
         PERM_DATA_WRITE,
         "Manage data layer",
-        "Register/ingest datasets, manage joins, quality rules, metrics, and explorer reports.",
+        "Register/ingest datasets, manage joins, quality rules, metrics, and semantic models.",
         "data",
     ),
     OperationKeyHint(
         PERM_DATA_EDIT,
         "Edit dataset rows",
         "Insert, update, and delete rows in editable datasets' backing tables.",
+        "data",
+    ),
+    OperationKeyHint(
+        PERM_EXPLORER_READ,
+        "View data analyses",
+        "Open the Data Explorer and its reports, and re-run a report (a refresh is a read).",
+        "data",
+    ),
+    OperationKeyHint(
+        PERM_EXPLORER_WRITE,
+        "Manage data analyses",
+        "Create, update, and delete Data Explorer reports.",
         "data",
     ),
 )

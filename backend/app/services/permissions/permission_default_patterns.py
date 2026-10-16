@@ -42,6 +42,8 @@ from app.services.permissions.permission_catalog import (
     PERM_DATA_READ,
     PERM_DATA_WRITE,
     PERM_DATA_EDIT,
+    PERM_EXPLORER_READ,
+    PERM_EXPLORER_WRITE,
 )
 
 # (frontend_route_patterns, backend_api_patterns)
@@ -423,8 +425,6 @@ DEFAULT_PATTERNS_BY_KEY: dict[str, tuple[list[str], list[str]]] = {
             "/datasets/*",
             "/data-model",
             "/data-model/*",
-            "/data-explorer",
-            "/data-explorer/*",
         ],
         [
             "GET /api/datasets",
@@ -447,10 +447,6 @@ DEFAULT_PATTERNS_BY_KEY: dict[str, tuple[list[str], list[str]]] = {
             "GET /api/semantic-models/*",
             "HEAD /api/semantic-models",
             "HEAD /api/semantic-models/*",
-            "GET /api/explorer-reports",
-            "GET /api/explorer-reports/*",
-            "HEAD /api/explorer-reports",
-            "HEAD /api/explorer-reports/*",
         ],
     ),
     PERM_DATA_WRITE: (
@@ -459,8 +455,6 @@ DEFAULT_PATTERNS_BY_KEY: dict[str, tuple[list[str], list[str]]] = {
             "/datasets/*",
             "/data-model",
             "/data-model/*",
-            "/data-explorer",
-            "/data-explorer/*",
         ],
         [
             "POST /api/datasets/*",
@@ -483,7 +477,26 @@ DEFAULT_PATTERNS_BY_KEY: dict[str, tuple[list[str], list[str]]] = {
             "PUT /api/semantic-models/*",
             "PATCH /api/semantic-models/*",
             "DELETE /api/semantic-models/*",
-            "POST /api/explorer-reports/*",
+        ],
+    ),
+    PERM_EXPLORER_READ: (
+        [
+            "/data-explorer",
+            "/data-explorer/*",
+        ],
+        [
+            "GET /api/explorer-reports",
+            "GET /api/explorer-reports/*",
+            "HEAD /api/explorer-reports",
+            "HEAD /api/explorer-reports/*",
+            # Re-running a report recomputes it from the source: a read, not an edit.
+            "POST /api/explorer-reports/*/run",
+        ],
+    ),
+    PERM_EXPLORER_WRITE: (
+        [],
+        [
+            "POST /api/explorer-reports",
             "PUT /api/explorer-reports/*",
             "PATCH /api/explorer-reports/*",
             "DELETE /api/explorer-reports/*",

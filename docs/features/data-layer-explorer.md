@@ -115,6 +115,21 @@ Failures render through the shared `<QueryFailureNotice>` (`.query-failure*`), p
 sheet into the design system when this slice landed, because the Playground and the Explorer both
 need it.
 
+## Permissions
+
+The Data Explorer is a **suite app with its own keys** — `explorer:read` (open it, read reports, and
+re-run one) and `explorer:write` (create/update/delete). Reading data does not hand out saved
+analyses, and sharing analyses does not hand out dataset management:
+
+- **A refresh is a read.** Re-running recomputes the report from its source and writes only our own
+  cached results, so it needs `explorer:read`; create/update/delete need `explorer:write`.
+- **The bound source's ACL still applies.** A report's results are stored, so viewing or running one
+  is viewing the data behind it: a dataset-backed report (and its rows in a list) is visible only
+  while that dataset is — the same check browsing it makes. A semantic model carries no
+  per-resource ACL, so model-backed reports are gated by the data-layer keys alone.
+- The app's rail/launcher tile follows the same permission (it is derived from the route patterns),
+  so a member without `explorer:read` simply does not see the Explorer.
+
 ## 5. Scope guards (what this is not)
 
 - **Not a BI builder**: no drag-and-drop chart authoring, no pivot designer (a cross-tab is a *query*

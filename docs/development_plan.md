@@ -174,6 +174,14 @@ Active UX / quality gaps: [Tech debt](./tech_debt.md).
 - Dataset summaries (`POST /api/datasets/{id}/aggregate`) give the Catalog half "by month" without a
   semantic model.
 
+### Data Explorer permissions (2026-10) — done
+
+- Reports moved off `data:read` / `data:write` onto their own `explorer:read` / `explorer:write`; a
+  refresh is a **read**. The migration re-applies the two old keys' patterns and backfills grants, so
+  nobody loses access.
+- Viewing/running a dataset-backed report is now checked against **that dataset's ACL** (it used to
+  be a way around it, since the results are stored).
+
 ## Conventions
 
 - **Before commit**: Update the matching `docs/features/*.md` page, [API reference](features/api-reference.md) / [Data models](features/data-models.md) when needed; add or remove rows in [Functionalities](./functionalities.md) only when a feature page is added or removed. See `AGENTS.md` (docs before commit).

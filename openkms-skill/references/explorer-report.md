@@ -16,6 +16,14 @@ interchangeable:
 A report binds to exactly one. The two engines have different query specs, so a block written for one
 will not run on the other.
 
+## Permissions
+
+- `explorer:read` — list/read a report, and **re-run** it (a refresh recomputes from the source).
+- `explorer:write` — create, update, delete.
+- **Plus the bound dataset's ACL** when the report is dataset-backed: a report whose dataset the
+  caller cannot read answers 404, and it is absent from `reports-list`. Model-backed reports have no
+  per-resource ACL.
+
 ## The report document
 
 ```jsonc
