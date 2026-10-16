@@ -38,6 +38,7 @@ from app.services.data_layer.query_errors import (
 )
 from app.services.data_layer.sql_build import (
     SqlBuildError,
+    join_dataset_aliases,
     build_conditions,
     build_joins_sql,
 )
@@ -78,16 +79,19 @@ class QueryError(ValueError):
         return self.failure.detail
 
 
-def field_sql(field: SemanticModelField) -> str:
-    """A field's SQL, **qualified with the base alias** so a join onto another dataset
-    that shares the column name (e.g. ``ts_code``) stays unambiguous."""
+def field_sql(field: SemanticModelField, alias: str = _BASE_ALIAS) -> str:
+    """A field's SQL, qualified with **its dataset's alias**.
+
+    ``base`` by default; a field of a dataset the metric joins is qualified with that join's alias,
+    so a shared column name (e.g. ``ts_code`` in both daily_basic and stock_basic) stays
+    unambiguous."""
     if field.column_name:
         if not is_valid_identifier(field.column_name):
             raise QueryError(
                 f"Field '{field.name}' has an invalid column.",
                 QueryFailure("QUERY_UNKNOWN_COLUMN", DEFINITION),
             )
-        return f"{_BASE_ALIAS}.{_quote(field.column_name)}"
+        return f"{alias}.{_quote(field.column_name)}"
     expr = dialect_sql(field.expression, ANSI)
     if not expr:
         raise QueryError(
@@ -97,9 +101,11 @@ def field_sql(field: SemanticModelField) -> str:
     return expr
 
 
-def dimension_sql(field: SemanticModelField, granularity: str | None) -> str:
+def dimension_sql(
+    field: SemanticModelField, granularity: str | None, alias: str = _BASE_ALIAS
+) -> str:
     """A field used as a group-by dimension; a time dimension is truncated to its grain."""
-    expr = field_sql(field)
+    expr = field_sql(field, alias)
     if not resolve_is_time(field.dimension, field.datatype):
         return expr
     grain = granularity if granularity in GRANULARITIES else "day"
@@ -147,6 +153,51 @@ def _order_sql(ref: str, direction: str, value_expr: str, dims: dict[str, str]) 
             QueryFailure("QUERY_ORDER_NOT_GROUPED", REQUEST),
         )
     return f"{dims[ref]} {direction.upper()} NULLS LAST"
+
+
+def resolve_field(
+    ref: Any,
+    by_id: dict[str, SemanticModelField],
+    by_name: dict[str, list[SemanticModelField]],
+    *,
+    base_dataset_id: str | None = None,
+) -> SemanticModelField:
+    """A field of the metric's scope, by id **or** name.
+
+    The scope is the base dataset plus the datasets the metric joins. A **name** prefers the metric's
+    own dataset (so ``ts_code`` keeps meaning the base's), and is an error when two joined datasets
+    both declare it — address those by id.
+    """
+    if not isinstance(ref, str):
+        raise QueryError(
+            "A field reference must be a string.",
+            QueryFailure("QUERY_INVALID_REQUEST", REQUEST),
+        )
+    field = by_id.get(ref)
+    if field is not None:
+        return field
+    candidates = by_name.get(ref) or []
+    if not candidates:
+        raise QueryError(
+            f"Field '{ref}' is not a field of this metric's scope.",
+            QueryFailure("QUERY_UNKNOWN_FIELD", REQUEST, ref, params={"field": ref}),
+        )
+    if base_dataset_id is not None:
+        for candidate in candidates:
+            if candidate.dataset_id == base_dataset_id:
+                return candidate
+    if len(candidates) > 1:
+        names = ", ".join(sorted({c.dataset_id for c in candidates}))
+        raise QueryError(
+            f"Field name '{ref}' is ambiguous across datasets ({names}); address it by id.",
+            QueryFailure(
+                "QUERY_AMBIGUOUS_FIELD",
+                REQUEST,
+                names,
+                params={"field": ref, "datasets": names},
+            ),
+        )
+    return candidates[0]
 
 
 async def _load_metric(
@@ -210,38 +261,46 @@ async def run_query(
             str(exc), QueryFailure("QUERY_DEFINITION_INVALID", DEFINITION)
         ) from exc
 
-    # Fields are addressed by id or name and must belong to the metric's dataset.
+    # The metric's relationships define its **field scope**: its own dataset, plus every dataset it
+    # joins to. Resolving them first means a field of a joined dataset can be selected, grouped and
+    # filtered exactly like one of the base's.
+    joins_by_id, datasets_by_id = await resolve_joins(db, base, definition.joins)
+    alias_by_dataset = join_dataset_aliases(
+        base,
+        list(definition.joins or []),
+        joins_by_id=joins_by_id,
+        datasets_by_id=datasets_by_id,
+    )
+    scope_ids = [base.id, *alias_by_dataset]
+
     field_rows = (
         await db.execute(
             select(SemanticModelField).where(
                 SemanticModelField.semantic_model_id == model_id,
-                SemanticModelField.dataset_id == base.id,
+                SemanticModelField.dataset_id.in_(scope_ids),
             )
         )
     ).scalars().all()
-    by_id = {f.id: f for f in field_rows}
-    by_name = {f.name: f for f in field_rows}
+    # Base fields first, so a name that exists on both sides keeps meaning the base's.
+    ordered = sorted(field_rows, key=lambda f: 0 if f.dataset_id == base.id else 1)
+    by_id = {f.id: f for f in ordered}
+    by_name: dict[str, list[SemanticModelField]] = {}
+    for f in ordered:
+        by_name.setdefault(f.name, []).append(f)
 
-    def resolve(ref: Any) -> SemanticModelField:
-        if not isinstance(ref, str):
-            raise QueryError(
-                "A field reference must be a string.",
-                QueryFailure("QUERY_INVALID_REQUEST", REQUEST),
-            )
-        field = by_id.get(ref) or by_name.get(ref)
-        if not field:
-            raise QueryError(
-                f"Field '{ref}' is not a field of this metric's dataset.",
-                QueryFailure("QUERY_UNKNOWN_FIELD", REQUEST),
-            )
-        return field
+    def alias_for(field: SemanticModelField) -> str:
+        return alias_by_dataset.get(field.dataset_id, _BASE_ALIAS)
 
     dimensions: list[tuple[str, str]] = []
     dims_by_name: dict[str, str] = {}
     for entry in group_by or []:
         ref = entry.get("field") if isinstance(entry, dict) else entry
-        field = resolve(ref)
-        expr = dimension_sql(field, entry.get("granularity") if isinstance(entry, dict) else None)
+        field = resolve_field(ref, by_id, by_name, base_dataset_id=base.id)
+        expr = dimension_sql(
+            field,
+            entry.get("granularity") if isinstance(entry, dict) else None,
+            alias_for(field),
+        )
         dimensions.append((expr, field.name))
         dims_by_name[field.name] = expr
 
@@ -251,10 +310,10 @@ async def run_query(
         if isinstance(f.get("column"), str) and is_valid_identifier(f["column"])
     ]
     for f in filters or []:
-        conditions.append((field_sql(resolve(f.get("field"))), str(f.get("op")), f.get("value")))
+        filtered = resolve_field(f.get("field"), by_id, by_name, base_dataset_id=base.id)
+        conditions.append((field_sql(filtered, alias_for(filtered)), str(f.get("op")), f.get("value")))
 
     capped_limit = min(max(1, int(limit or DEFAULT_LIMIT)), DEFAULT_ROW_CAP)
-    joins_by_id, datasets_by_id = await resolve_joins(db, base, definition.joins)
     try:
         joins_sql = build_joins_sql(
             base,

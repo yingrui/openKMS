@@ -18,6 +18,39 @@ class SqlBuildError(ValueError):
     """Raised when a generated query is invalid; wrapped by callers."""
 
 
+def join_alias(index: int) -> str:
+    """The SQL alias of the ``index``-th relationship in a metric's join list."""
+    return f"j{index}"
+
+
+def join_dataset_aliases(
+    base_dataset: Dataset,
+    join_ids: list[str] | None,
+    *,
+    joins_by_id: dict[str, DatasetJoin],
+    datasets_by_id: dict[str, Dataset],
+) -> dict[str, str]:
+    """``dataset id → alias`` for the datasets a metric joins to its base.
+
+    A field of one of those datasets can be selected/grouped/filtered, so the resolver needs the
+    same alias `build_joins_sql` emits — this is that single source of truth.
+    """
+    aliases: dict[str, str] = {}
+    for i, join_id in enumerate(join_ids or []):
+        join = joins_by_id.get(join_id)
+        if not join:
+            continue
+        if join.from_dataset_id == base_dataset.id:
+            other_id = join.to_dataset_id
+        elif join.to_dataset_id == base_dataset.id:
+            other_id = join.from_dataset_id
+        else:
+            continue
+        if other_id in datasets_by_id:
+            aliases[other_id] = join_alias(i)
+    return aliases
+
+
 def build_joins_sql(
     base_dataset: Dataset,
     join_ids: list[str],
@@ -42,7 +75,7 @@ def build_joins_sql(
             raise SqlBuildError("Joined dataset not found.")
         if not (is_valid_identifier(other.schema_name) and is_valid_identifier(other.table_name)):
             raise SqlBuildError("Invalid joined table.")
-        alias = f"j{i}"
+        alias = join_alias(i)
         from_cols = list(join.from_columns or [])
         to_cols = list(join.to_columns or [])
         if len(from_cols) != len(to_cols) or not from_cols:

@@ -87,8 +87,12 @@ MESSAGES: dict[str, dict[str, str]] = {
         "zh_CN": "指标的基表已不存在。",
     },
     "QUERY_UNKNOWN_FIELD": {
-        "en": "A referenced field is not a field of the metric's dataset.",
-        "zh_CN": "引用的字段不属于该指标所在的数据集。",
+        "en": "There is no field '{field}' in this metric's scope (its dataset, plus the datasets it joins).",
+        "zh_CN": "指标作用域内没有字段「{field}」（作用域 = 指标自己的数据集 + 它 join 的数据集）。",
+    },
+    "QUERY_AMBIGUOUS_FIELD": {
+        "en": "The field name '{field}' exists in several joined datasets ({datasets}) — address it by id.",
+        "zh_CN": "字段名「{field}」在多个 join 的数据集中都存在（{datasets}）——请用字段 id 指定。",
     },
     "QUERY_ORDER_NOT_GROUPED": {
         "en": "Cannot order by a field that is not grouped — add it to the group-by first.",

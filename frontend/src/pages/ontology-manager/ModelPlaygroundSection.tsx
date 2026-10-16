@@ -114,10 +114,24 @@ export function ModelPlaygroundSection() {
     [metric?.filters, filterRows],
   );
 
-  /** Fields are the model's declared attributes of the metric's own dataset. */
+  /**
+   * The metric's field scope: its own dataset, plus the datasets it joins (a joined field can be
+   * grouped or filtered exactly like the base's — the engine resolves them the same way).
+   */
+  const scopeIds = useMemo(() => {
+    if (!metric) return null;
+    const joined = (usedJoins ?? []).map((j) =>
+      j.from_dataset_id === metric.base_dataset_id ? j.to_dataset_id : j.from_dataset_id,
+    );
+    return new Set([metric.base_dataset_id, ...joined]);
+  }, [metric, usedJoins]);
   const groupable = useMemo(
-    () => fields.filter((f) => !metric || f.dataset_id === metric.base_dataset_id),
-    [fields, metric],
+    () =>
+      fields
+        .filter((f) => !scopeIds || scopeIds.has(f.dataset_id))
+        // The base dataset first: a name that exists on both sides means its field.
+        .sort((a, b) => Number(b.dataset_id === metric?.base_dataset_id) - Number(a.dataset_id === metric?.base_dataset_id)),
+    [fields, metric?.base_dataset_id, scopeIds],
   );
   const timeDims = groupable.filter(isTimeDimension);
   const otherFields = groupable.filter((f) => !isTimeDimension(f));
@@ -126,6 +140,7 @@ export function ModelPlaygroundSection() {
     [spec?.group_by],
   );
   const fieldLabel = (ref: string) => fields.find((f) => f.id === ref || f.name === ref)?.name ?? ref;
+  const datasetLabel = (id: string) => model.datasets.find((d) => d.id === id)?.name ?? id;
   const matched = (f: SemanticModelFieldResponse) =>
     !search.trim() ||
     f.name.toLowerCase().includes(search.trim().toLowerCase()) ||
@@ -449,6 +464,9 @@ export function ModelPlaygroundSection() {
                       {groupable.map((f) => (
                         <option key={f.id} value={f.id}>
                           {f.name}
+                          {metric && f.dataset_id !== metric.base_dataset_id
+                            ? ` · ${datasetLabel(f.dataset_id)}`
+                            : ''}
                         </option>
                       ))}
                     </select>

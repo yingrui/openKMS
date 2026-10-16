@@ -56,9 +56,12 @@ will not run on the other.
 
 - `metric` is **required** (a block without one fails with `EXPLORER_BLOCK_METRIC_MISSING`), addressed
   by id **or** name.
-- `group_by[].field` is a field id or name; add `"granularity": "month"` for a time dimension (grain is
-  a query-time choice, never stored on the field).
-- `filters` address **fields**; operators: `= != > >= < <= like in between is_null is_not_null`
+- `group_by[].field` is a field id or name — of the metric's **base dataset or one it joins** (`industry`
+  lives on `stock_basic` while the metric lives on `daily_basic`; the relationship the metric declares is
+  what makes it addressable). Add `"granularity": "month"` for a time dimension (grain is a query-time
+  choice, never stored on the field). A name shared with the base means the base's field; two joined
+  datasets sharing one is a 400 — address those by id.
+- `filters` address **fields** (joined ones included, e.g. `industry`); operators: `= != > >= < <= like in between is_null is_not_null`
   (`in` = a list, `between` = two values).
 - `order_by[].field` is `"value"` or a grouped field. `limit` is capped at **1000**.
 

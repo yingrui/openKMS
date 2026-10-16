@@ -13,8 +13,15 @@ from app.services.data_layer.query import (
     _order_sql,
     build_sql,
     dimension_sql,
+    field_sql,
+    resolve_field,
 )
-from app.services.data_layer.sql_build import SqlBuildError, build_conditions, build_joins_sql
+from app.services.data_layer.sql_build import (
+    SqlBuildError,
+    build_conditions,
+    build_joins_sql,
+    join_dataset_aliases,
+)
 
 
 def _field(**kw) -> SemanticModelField:
@@ -327,3 +334,87 @@ def test_join_must_touch_the_base_dataset():
 def test_relationship_columns_must_be_aligned():
     with pytest.raises(SqlBuildError):
         _joins_sql(_dataset("a"), _join(from_columns=["x", "y"], to_columns=["u"]), _dataset("b"))
+
+
+# --- the metric's field scope: its own dataset, plus the datasets it joins ---------------
+
+
+def _scope_dataset(ds_id: str, table: str = "t") -> Dataset:
+    return Dataset(id=ds_id, data_source_id="ds", schema_name="public", table_name=table)
+
+
+def _scope_join(join_id: str, from_id: str, to_id: str, column: str = "k") -> DatasetJoin:
+    return DatasetJoin(
+        id=join_id,
+        from_dataset_id=from_id,
+        to_dataset_id=to_id,
+        from_columns=[column],
+        to_columns=[column],
+        required=False,
+    )
+
+
+def test_resolve_field_prefers_the_metrics_own_dataset_on_a_name_clash():
+    base_field = _field(id="f1", name="ts_code", column_name="ts_code", dataset_id="base")
+    joined_field = _field(id="f2", name="ts_code", column_name="ts_code", dataset_id="other")
+    by_id = {"f1": base_field, "f2": joined_field}
+    by_name = {"ts_code": [base_field, joined_field]}  # base first, as run_query orders them
+
+    assert resolve_field("ts_code", by_id, by_name, base_dataset_id="base") is base_field
+    assert resolve_field("f2", by_id, by_name, base_dataset_id="base") is joined_field
+
+
+def test_resolve_field_rejects_a_name_two_joined_datasets_share():
+    a = _field(id="f1", name="area", column_name="area", dataset_id="base")
+    b = _field(id="f2", name="industry", column_name="industry", dataset_id="j-a")
+    c = _field(id="f3", name="industry", column_name="industry", dataset_id="j-b")
+    by_id = {"f1": a, "f2": b, "f3": c}
+    by_name = {"area": [a], "industry": [b, c]}
+
+    with pytest.raises(QueryError) as excinfo:
+        resolve_field("industry", by_id, by_name, base_dataset_id="base")
+    assert excinfo.value.code == "QUERY_AMBIGUOUS_FIELD"
+    assert excinfo.value.kind == "request"
+    assert excinfo.value.failure.params["datasets"] == "j-a, j-b"
+
+
+def test_resolve_field_names_the_missing_field():
+    with pytest.raises(QueryError) as excinfo:
+        resolve_field("nope", {}, {})
+    assert excinfo.value.code == "QUERY_UNKNOWN_FIELD"
+    assert excinfo.value.failure.params == {"field": "nope"}
+
+
+def test_a_joined_field_is_qualified_with_its_own_alias():
+    joined = _field(id="f1", name="industry", column_name="industry", dataset_id="other")
+    assert field_sql(joined, "j0") == 'j0."industry"'
+    assert field_sql(joined) == 'base."industry"'  # the default is unchanged
+
+
+def test_a_joined_time_dimension_truncates_its_own_alias():
+    joined = _field(
+        id="f1",
+        name="trade_date",
+        column_name="trade_date",
+        dataset_id="other",
+        dimension={"is_time": True},
+    )
+    assert dimension_sql(joined, "month", "j1") == "date_trunc('month', j1.\"trade_date\")"
+
+
+def test_join_aliases_are_the_ones_build_joins_sql_emits():
+    """Both sides iterate the metric's join list; a renumbering in one must fail here."""
+    base = _scope_dataset("base")
+    other_a, other_b = _scope_dataset("a", "a"), _scope_dataset("b", "b")
+    joins = {
+        "j1": _scope_join("j1", "base", "a"),
+        "j2": _scope_join("j2", "b", "base"),
+    }
+    datasets_by_id = {"a": other_a, "b": other_b}
+
+    sql = build_joins_sql(base, ["j1", "j2"], joins_by_id=joins, datasets_by_id=datasets_by_id)
+    assert 'JOIN "public"."a" j0 ON' in sql[0]
+    assert 'JOIN "public"."b" j1 ON' in sql[1]
+
+    aliases = join_dataset_aliases(base, ["j1", "j2"], joins_by_id=joins, datasets_by_id=datasets_by_id)
+    assert aliases == {"a": "j0", "b": "j1"}
