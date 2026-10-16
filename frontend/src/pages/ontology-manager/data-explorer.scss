@@ -109,3 +109,71 @@
   line-height: 1.6;
   resize: vertical;
 }
+
+// A single number (a metric report): big, with its label under it.
+.report-metric {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  padding: var(--space-2) 0;
+
+  &__value {
+    font-size: 2.25rem;
+    font-weight: 600;
+    line-height: 1.1;
+    font-variant-numeric: tabular-nums;
+    color: var(--color-text);
+  }
+
+  &__label {
+    font-size: var(--text-sm);
+    color: var(--color-text-secondary);
+  }
+}
+
+// A ranking: label, bar, value, share — one row per category.
+.report-bar-list {
+  &__rows {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-1);
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  &__row {
+    display: grid;
+    grid-template-columns: minmax(6rem, 14rem) 1fr auto auto;
+    align-items: center;
+    gap: var(--space-2);
+    font-size: var(--text-sm);
+  }
+
+  &__label {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    color: var(--color-text-secondary);
+  }
+
+  &__bar {
+    height: 0.75rem;
+    min-width: 2px;
+    border-radius: var(--radius-sm);
+    background: var(--color-accent);
+    opacity: 0.75;
+  }
+
+  &__value {
+    font-variant-numeric: tabular-nums;
+    color: var(--color-text);
+  }
+
+  &__share {
+    min-width: 3rem;
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+    color: var(--color-text-secondary);
+  }
+}

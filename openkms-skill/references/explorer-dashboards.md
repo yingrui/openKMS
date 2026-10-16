@@ -40,7 +40,7 @@ Dashboards have **no source of their own** — never put one there.
       "source_kind": "semantic_model",       // per report: inferred from which id you give
       "semantic_model_id": "…",              // or "dataset_id": "…"
       "query": { … },                        // that source's own spec, see below
-      "chart": { "type": "bar", "x": "industry", "y": "value" }
+      "view": { "kind": "bar_list", "column": "value" }
     },
     {
       "title": "Null share of pe_ttm",
@@ -121,25 +121,50 @@ Dashboards have **no source of their own** — never put one there.
 - `order_by.field` is a group-by column or an aggregate `name`.
 - This is how a **dataset** answers "turnover by month" without a model; the same number from a model metric should agree (a good cross-check to mention in the insight).
 
-## Drawing a report (`chart`)
+## Presenting a report (`view`)
 
-A report may say how to draw its result. The spec names **columns of that report's result**, never
-expressions:
+A report may say how its result is read. The view names **columns of that report's result**, never
+expressions — and it is the difference between a dashboard and a wall of tables. Pick the shape that
+matches the question:
+
+| `view.kind` | Shape | Reach for it when |
+|-------------|-------|-------------------|
+| *(absent)* | the table | the reader needs the rows themselves (an audit, a list of names to act on) |
+| **`metric`** | one number, big, with its label | the query reduced to a single row — a total, a share, an average over everything |
+| **`bar_list`** | a ranking: label, bar, value, share | "top N by X" — 8 industries read far better as a list than as 8 bars, and labels never clip |
+| **`chart`** | `line` or `bar` | a **trend** over time (line) or a **comparison** across a few categories (bar) |
+
+```jsonc
+{ "title": "行业平均市盈率（前 8）", "insight": "…",
+  "semantic_model_id": "…",
+  "query": { "metric": "平均市盈率", "group_by": [{"field": "industry"}],
+             "order_by": [{"field": "value", "direction": "asc"}], "limit": 8 },
+  "view": { "kind": "bar_list", "column": "value" } }        // labels from the other column
+```
+
+- `metric` and `bar_list` name their **value column**; a `bar_list` labels each row with the first
+  column that is not the value (or give `label_column`), keeps the top 10 and shows each one's share.
+- `metric` shows the **first row** — so give it a query that returns one (a dataset summary with no
+  `group_by`, or a model query whose group-by is a single value).
+- A bar list **always ranks by value, descending** (that is what a ranking is). If your query selected
+  the *lowest* N, say so in the title — the reader sees the biggest of that selection first.
+
+### Trend and comparison (`chart`)
 
 ```json
 { "title": "月度平均市盈率", "insight": "…",
   "semantic_model_id": "…",
   "query": { "metric": "平均市盈率", "group_by": [{"field": "trade_date", "granularity": "month"}] },
-  "chart": { "type": "line", "x": "trade_date", "y": "value" } }
+  "view": { "kind": "chart", "type": "line", "x": "trade_date", "y": "value" } }
 ```
 
 - `type`: `line` for a series over time, `bar` to compare categories.
 - `x` / `y`: result columns to draw (`y` may be a list, e.g. `["count", "avg_pe"]`).
 - `series`: optional — one line/bar per distinct value of that column (`y` must then be one column);
   the app keeps the first 8 and says when it truncated.
-- The chart is **presentation only**: it never changes what is queried, and a spec the result cannot
+- The view is **presentation only**: it never changes what is queried, and a view the result cannot
   satisfy falls back to the table. So author the report, **run it**, read `columns` from the response,
-  and add `chart` only then — a guessed column name gets the reader a table.
+  and add `view` only then — a guessed column name gets the reader a table.
 - Numbers arrive as numbers *or* numeric strings (`AVG(numeric)`); both plot, and a null is a gap, not
   a zero.
 

@@ -132,7 +132,12 @@
     "moveDown": "Move down",
     "reportsReordered": "Order saved",
     "narrativeSaved": "Answer saved",
-    "narrativeEditHint": "The answer is the point of the dashboard — write it, then re-run if the numbers changed."
+    "narrativeEditHint": "The answer is the point of the dashboard — write it, then re-run if the numbers changed.",
+    "viewKind": "Show as",
+    "viewMetric": "Single number",
+    "viewBarList": "Ranked list",
+    "viewValueColumn": "Value column",
+    "barListTruncated": "Showing the top {max} only."
   },
   "dataModel": {
     "title": "Data Model",

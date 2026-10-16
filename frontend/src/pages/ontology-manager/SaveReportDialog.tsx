@@ -10,8 +10,8 @@ import {
   type DashboardSummary,
 } from '../../data/dashboardsApi';
 import { Dialog, FormField } from '../../styles/design-system';
-import { ReportChartFields } from './ReportChartFields';
-import { buildReportEntry, guessChart, type ChartDraft, type ReportDraftInput } from './reportDraft';
+import { ReportViewFields } from './ReportViewFields';
+import { buildReportEntry, guessView, type ReportDraftInput, type ViewDraft } from './reportDraft';
 
 const NEW_DASHBOARD = '__new__';
 
@@ -29,13 +29,13 @@ export function SaveReportDialog({ draft }: { draft: ReportDraftInput }) {
   const [newName, setNewName] = useState('');
   const [title, setTitle] = useState('');
   const [insight, setInsight] = useState('');
-  const [chart, setChart] = useState<ChartDraft>({ choice: 'none', x: '', y: [] });
+  const [view, setView] = useState<ViewDraft>({ choice: 'none', x: '', y: [] });
   const [saving, setSaving] = useState(false);
 
   const openDialog = useCallback(() => {
     setTitle(draft.defaultTitle);
     setInsight('');
-    setChart(guessChart(draft.columns, draft.rows));
+    setView(guessView(draft.columns, draft.rows));
     setTarget(NEW_DASHBOARD);
     setNewName(draft.defaultTitle);
     setOpen(true);
@@ -50,7 +50,7 @@ export function SaveReportDialog({ draft }: { draft: ReportDraftInput }) {
   const save = async () => {
     setSaving(true);
     try {
-      const entry = buildReportEntry(draft, { title, insight, chart });
+      const entry = buildReportEntry(draft, { title, insight, view });
       const name = newName.trim() || title.trim() || draft.defaultTitle;
       if (target === NEW_DASHBOARD) {
         await createDashboard({ name, reports: [entry] });
@@ -127,12 +127,7 @@ export function SaveReportDialog({ draft }: { draft: ReportDraftInput }) {
             placeholder={t('dataExplorer.saveReportInsightPlaceholder')}
           />
         </FormField>
-        <ReportChartFields
-          columns={draft.columns}
-          rows={draft.rows}
-          chart={chart}
-          onChange={setChart}
-        />
+        <ReportViewFields columns={draft.columns} rows={draft.rows} view={view} onChange={setView} />
       </Dialog>
     </>
   );

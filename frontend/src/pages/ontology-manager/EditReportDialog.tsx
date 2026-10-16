@@ -2,8 +2,8 @@ import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { DashboardReport } from '../../data/dashboardsApi';
 import { Dialog, FormField } from '../../styles/design-system';
-import { ReportChartFields } from './ReportChartFields';
-import { chartDraftFromSpec } from './reportDraft';
+import { ReportViewFields } from './ReportViewFields';
+import { viewDraftFromSpec } from './reportDraft';
 import type { ReportFields } from './dashboardEdits';
 
 /**
@@ -30,7 +30,7 @@ export function EditReportDialog({
   const [title, setTitle] = useState(report.title ?? '');
   const [insight, setInsight] = useState(report.insight ?? '');
   /** Parsed once per report — this dialog is keyed by the report it edits. */
-  const [chart, setChart] = useState(() => chartDraftFromSpec(report.chart, columns));
+  const [view, setView] = useState(() => viewDraftFromSpec(report.view, columns));
   const canSave = useMemo(() => title.trim() !== '' || (report.title ?? '') !== '', [title, report.title]);
 
   return (
@@ -48,7 +48,7 @@ export function EditReportDialog({
           <button
             type="button"
             className="btn btn-primary"
-            onClick={() => onSave({ title, insight, chart })}
+            onClick={() => onSave({ title, insight, view })}
             disabled={!canSave}
           >
             {t('shared.save')}
@@ -66,7 +66,7 @@ export function EditReportDialog({
           placeholder={t('dataExplorer.saveReportInsightPlaceholder')}
         />
       </FormField>
-      <ReportChartFields columns={columns} rows={rows} chart={chart} onChange={setChart} />
+      <ReportViewFields columns={columns} rows={rows} view={view} onChange={setView} />
     </Dialog>
   );
 }

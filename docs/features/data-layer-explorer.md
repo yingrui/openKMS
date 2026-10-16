@@ -109,8 +109,11 @@ dashboard with every report's result filled in:
 
 The app does **not** do NL→spec (the agent's job, like the Playground) and does not pretend to.
 
-**Presentation.** A report may carry a **`chart` spec** — `{type: "line"|"bar", x, y, series?}`,
-naming columns of that report's *result*. It is presentation only: the report still owns its query, a
+**Presentation.** A report may carry a **`view`** — `{kind: "chart", type: "line"|"bar", x, y, series?}`
+for a trend, `{kind: "metric", column}` for a number, `{kind: "bar_list", column}` for a ranking,
+naming columns of that report's *result* (absent = the table). A dashboard is not four line charts:
+half of it is single numbers and rankings — vocabulary taken from [Tremor](../research/tremor-evaluation.md),
+drawn on recharts and our own tokens. It is presentation only: the report still owns its query, a
 run still writes the rows, and the spec survives a re-run. Without a spec (or when the result cannot
 satisfy one) the table is the answer, and the table is always one click away.
 

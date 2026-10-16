@@ -8,7 +8,16 @@ import type { SemanticModelResponse } from '../../data/semanticModelsApi';
 import { RichMarkdown } from '../../components/markdown/richMarkdown';
 import { QueryFailureNotice, asQueryFailureKind } from '../../styles/design-system';
 import { ExplorerChart } from './ExplorerChart';
-import { MAX_CHART_SERIES, chartFits, chartSeries, parseChartSpec } from './explorerChartSpec';
+import { ReportBarList } from './ReportBarList';
+import { ReportMetric } from './ReportMetric';
+import {
+  MAX_BAR_LIST_ROWS,
+  MAX_CHART_SERIES,
+  chartFits,
+  chartSeries,
+  parseView,
+  viewFits,
+} from './reportView';
 
 /**
  * One **report** in a dashboard — a tile, not the document.
@@ -34,9 +43,12 @@ export function DashboardReportView({
 
   const rows = report.rows ?? [];
   const columns = report.columns ?? (rows[0] ? Object.keys(rows[0]) : []);
-  const spec = useMemo(() => parseChartSpec(report.chart), [report.chart]);
-  const canChart = chartFits(spec, columns);
-  const series = useMemo(() => (spec && canChart ? chartSeries(rows, spec) : null), [spec, canChart, rows]);
+  const view = useMemo(() => parseView(report.view), [report.view]);
+  const canDraw = viewFits(view, columns);
+  const series = useMemo(
+    () => (view?.kind === 'chart' && chartFits(view, columns) ? chartSeries(rows, view) : null),
+    [view, columns, rows],
+  );
 
   const isModel = report.source_kind === 'semantic_model';
   const source = isModel
@@ -98,7 +110,7 @@ export function DashboardReportView({
               {report.capped ? ` · ${t('datasets.filterCapped')}` : ''}
               {report.duration_ms != null ? ` · ${report.duration_ms} ms` : ''}
             </p>
-            {spec && canChart ? (
+            {view && canDraw ? (
               <div className="ds-view-toggle" role="group" aria-label={t('dataExplorer.viewModeAria')}>
                 <button
                   type="button"
@@ -119,12 +131,23 @@ export function DashboardReportView({
               </div>
             ) : null}
           </div>
-          {spec && series && !showTable ? (
+          {view && canDraw && !showTable ? (
             <>
-              <ExplorerChart spec={spec} series={series} />
-              {series.truncated && (
+              {view.kind === 'metric' ? (
+                <ReportMetric view={view} rows={rows} />
+              ) : view.kind === 'bar_list' ? (
+                <ReportBarList view={view} rows={rows} />
+              ) : series ? (
+                <ExplorerChart spec={view} series={series} />
+              ) : null}
+              {series?.truncated && (
                 <p className="page-subtitle">
                   {t('dataExplorer.chartTruncated', { max: MAX_CHART_SERIES })}
+                </p>
+              )}
+              {view.kind === 'bar_list' && rows.length > MAX_BAR_LIST_ROWS && (
+                <p className="page-subtitle">
+                  {t('dataExplorer.barListTruncated', { max: MAX_BAR_LIST_ROWS })}
                 </p>
               )}
             </>

@@ -18,8 +18,8 @@ export interface DashboardReport {
   semantic_model_id?: string | null;
   /** The source's own query spec (a dataset rows/summary query, or a model metric query). */
   query?: Record<string, unknown>;
-  /** How to draw the result: `{type: 'line'|'bar', x, y, series?}` (presentation only). */
-  chart?: unknown;
+  /** How to present the result — `{kind: 'chart'|'metric'|'bar_list', …}` (presentation only). */
+  view?: unknown;
   columns?: string[];
   rows?: Record<string, unknown>[];
   /** Rows the query matches (a dataset report's page may be a slice of this). */

@@ -16,7 +16,7 @@ import {
   xLabel,
   type ChartSeries,
   type ExplorerChartSpec,
-} from './explorerChartSpec';
+} from './reportView';
 
 /**
  * The colours a series is drawn in.

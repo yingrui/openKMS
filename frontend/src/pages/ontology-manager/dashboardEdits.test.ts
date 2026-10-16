@@ -49,7 +49,7 @@ describe('applyReportFields', () => {
     source_kind: 'dataset',
     dataset_id: 'd1',
     query: { filters: [] },
-    chart: { type: 'bar', x: 'industry', y: ['value'] },
+    view: { kind: 'chart', type: 'bar', x: 'industry', y: ['value'], series: null },
     columns: ['industry', 'value'],
     rows: [{ industry: '银行', value: 6.07 }],
     total: 10,
@@ -60,25 +60,25 @@ describe('applyReportFields', () => {
     const next = applyReportFields(RUN, {
       title: '  行业估值  ',
       insight: '  银行最低  ',
-      chart: { choice: 'line', x: 'industry', y: ['value'] },
+      view: { choice: 'line', x: 'industry', y: ['value'] },
     });
     expect(next.title).toBe('行业估值');
     expect(next.insight).toBe('银行最低');
-    expect(next.chart).toEqual({ type: 'line', x: 'industry', y: ['value'], series: null });
+    expect(next.view).toEqual({ kind: 'chart', type: 'line', x: 'industry', y: ['value'], series: null });
     expect(next.query).toEqual(RUN.query);
     expect(next.rows).toEqual(RUN.rows);
     expect(next.ran_at).toBe(RUN.ran_at);
   });
 
   it('removes an emptied insight or chart instead of blanking it', () => {
-    const next = applyReportFields(RUN, { title: 'P/E', insight: '   ', chart: { choice: 'none', x: '', y: [] } });
+    const next = applyReportFields(RUN, { title: 'P/E', insight: '   ', view: { choice: 'none', x: '', y: [] } });
     expect('insight' in next).toBe(false);
-    expect('chart' in next).toBe(false);
+    expect('view' in next).toBe(false);
     expect(next.title).toBe('P/E');
   });
 
   it('keeps the old title when the new one is blank', () => {
-    expect(applyReportFields(RUN, { title: '  ', insight: '', chart: { choice: 'none', x: '', y: [] } }).title).toBe(
+    expect(applyReportFields(RUN, { title: '  ', insight: '', view: { choice: 'none', x: '', y: [] } }).title).toBe(
       'P/E by industry',
     );
   });

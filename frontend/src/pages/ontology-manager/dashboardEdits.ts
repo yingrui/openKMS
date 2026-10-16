@@ -7,19 +7,19 @@
  */
 
 import type { DashboardReport } from '../../data/dashboardsApi';
-import { chartSpec, type ChartDraft } from './reportDraft';
+import { viewSpec, type ViewDraft } from './reportDraft';
 
 /** What the report editor can change: what it *is* (source/query) stays where it was built. */
 export interface ReportFields {
   title: string;
   insight: string;
-  chart: ChartDraft;
+  view: ViewDraft;
 }
 
 /**
  * Apply edited fields to a report, keeping its source, query and last run.
  *
- * An emptied insight or chart is **removed**, not blanked: the document should not carry keys that
+ * An emptied insight or view is **removed**, not blanked: the document should not carry keys that
  * mean nothing.
  */
 export function applyReportFields(report: DashboardReport, fields: ReportFields): DashboardReport {
@@ -29,11 +29,11 @@ export function applyReportFields(report: DashboardReport, fields: ReportFields)
   } else {
     delete next.insight;
   }
-  const spec = chartSpec(fields.chart);
-  if (spec) {
-    next.chart = spec;
+  const view = viewSpec(fields.view);
+  if (view) {
+    next.view = view;
   } else {
-    delete next.chart;
+    delete next.view;
   }
   return next;
 }

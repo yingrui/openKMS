@@ -132,7 +132,12 @@
     "moveDown": "下移",
     "reportsReordered": "顺序已保存",
     "narrativeSaved": "结论已保存",
-    "narrativeEditHint": "结论才是看板的意义——先写它，数字变了再重跑。"
+    "narrativeEditHint": "结论才是看板的意义——先写它，数字变了再重跑。",
+    "viewKind": "呈现为",
+    "viewMetric": "单个数字",
+    "viewBarList": "排名列表",
+    "viewValueColumn": "数值列",
+    "barListTruncated": "仅显示前 {max} 项。"
   },
   "dataModel": {
     "title": "数据模型",

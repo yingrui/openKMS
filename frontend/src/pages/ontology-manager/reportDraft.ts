@@ -7,10 +7,17 @@
  */
 
 import type { DashboardReport, ExplorerSourceKind } from '../../data/dashboardsApi';
+import { parseView } from './reportView';
 import type { SemanticModelQueryResponse, SemanticModelQuerySpec } from '../../data/semanticModelsApi';
-import { chartFits, parseChartSpec, type ExplorerChartSpec } from './explorerChartSpec';
+import {
+  detectTemporal,
+  isNumericColumn,
+  viewFits,
+  type ReportView,
+} from './reportView';
 
-export type ChartChoice = 'none' | 'line' | 'bar';
+/** What a report can be presented as: a table, a trend, a number, or a ranking. */
+export type ViewChoice = 'none' | 'line' | 'bar' | 'metric' | 'bar_list';
 
 /** A model query the Playground just ran, and the model/metric that name it. */
 export function modelReportDraft(args: {
@@ -65,51 +72,38 @@ export interface ReportDraftInput {
   defaultTitle: string;
 }
 
-export interface ChartDraft {
-  choice: ChartChoice;
+export interface ViewDraft {
+  choice: ViewChoice;
+  /** A chart's category axis; a metric's or a ranking's **value** column. */
   x: string;
+  /** A chart's measures (a metric/ranking infers its label column). */
   y: string[];
 }
 
-/** Whether a column holds numbers in the rows we have (a database may send them as strings). */
-export function isNumericColumn(rows: Array<Record<string, unknown>>, column: string): boolean {
-  let seen = 0;
-  for (const row of rows) {
-    const value = row[column];
-    if (value === null || value === undefined) continue;
-    if (typeof value === 'number') {
-      seen += 1;
-      continue;
-    }
-    if (typeof value === 'string' && value.trim() !== '' && Number.isFinite(Number(value))) {
-      seen += 1;
-      continue;
-    }
-    return false;
+/**
+ * The view to offer by default — a guess, never a decision:
+ *
+ * 1. **one row with a number** → a metric (a total is a number, not a chart);
+ * 2. **a date column** → a line, with the numeric measures;
+ * 3. **a short non-temporal result** → a bar list (a ranking reads better than bars);
+ * 4. anything else → bars.
+ */
+export function guessView(columns: string[], rows: Array<Record<string, unknown>>): ViewDraft {
+  const numeric = columns.filter((c) => isNumericColumn(rows, c));
+  const temporal = detectTemporal(columns, rows);
+  if (rows.length === 1 && numeric.length > 0) {
+    return { choice: 'metric', x: numeric[0], y: [] };
   }
-  return seen > 0;
-}
-
-/** Whether a column reads like dates — a time series wants a line, not bars. */
-export function looksTemporal(rows: Array<Record<string, unknown>>, column: string): boolean {
-  let samples = 0;
-  for (const row of rows) {
-    const value = row[column];
-    if (value === null || value === undefined) continue;
-    if (typeof value !== 'string' && !(value instanceof Date)) return false;
-    if (!/^\d{4}-\d{2}-\d{2}/.test(String(value))) return false;
-    samples += 1;
-    if (samples >= 2) return true;
+  if (temporal) {
+    const y = numeric.filter((c) => c !== temporal).slice(0, 3);
+    return y.length > 0 ? { choice: 'line', x: temporal, y } : { choice: 'none', x: temporal, y: [] };
   }
-  return false;
-}
-
-/** A chart to offer by default: measures over the first date column, else over the first column. */
-export function guessChart(columns: string[], rows: Array<Record<string, unknown>>): ChartDraft {
-  const x = columns.find((c) => looksTemporal(rows, c)) ?? columns[0] ?? '';
-  const y = columns.filter((c) => c !== x && isNumericColumn(rows, c)).slice(0, 3);
-  if (!x || y.length === 0) return { choice: 'none', x, y: [] };
-  return { choice: looksTemporal(rows, x) ? 'line' : 'bar', x, y };
+  if (numeric.length > 0 && rows.length <= 12) {
+    return { choice: 'bar_list', x: numeric[0], y: [] };
+  }
+  const x = columns.find((c) => !numeric.includes(c)) ?? columns[0] ?? '';
+  const y = numeric.filter((c) => c !== x).slice(0, 3);
+  return x && y.length > 0 ? { choice: 'bar', x, y } : { choice: 'none', x, y: [] };
 }
 
 /**
@@ -118,7 +112,7 @@ export function guessChart(columns: string[], rows: Array<Record<string, unknown
  */
 export function buildReportEntry(
   draft: ReportDraftInput,
-  options: { title: string; insight?: string | null; chart: ChartDraft },
+  options: { title: string; insight?: string | null; view: ViewDraft },
 ): DashboardReport {
   const entry: DashboardReport = {
     title: options.title.trim() || draft.defaultTitle,
@@ -131,20 +125,24 @@ export function buildReportEntry(
     entry.dataset_id = draft.datasetId;
   }
   if (options.insight?.trim()) entry.insight = options.insight.trim();
-  const spec = chartSpec(options.chart);
-  if (spec) entry.chart = spec;
+  const view = viewSpec(options.view);
+  if (view) entry.view = view;
   return entry;
 }
 
-/** A stored spec → the draft the chart fields edit, falling back to a table. */
-export function chartDraftFromSpec(raw: unknown, columns: string[]): ChartDraft {
-  const spec = parseChartSpec(raw);
-  if (!spec || !chartFits(spec, columns)) return { choice: 'none', x: columns[0] ?? '', y: [] };
-  return { choice: spec.type, x: spec.x, y: spec.y };
+/** A stored view → the draft the view fields edit, falling back to a table. */
+export function viewDraftFromSpec(raw: unknown, columns: string[]): ViewDraft {
+  const view = parseView(raw);
+  if (!view || !viewFits(view, columns)) return { choice: 'none', x: columns[0] ?? '', y: [] };
+  if (view.kind === 'chart') return { choice: view.type, x: view.x, y: view.y };
+  return { choice: view.kind, x: view.column, y: [] };
 }
 
-/** A chart draft → the stored spec, or `null` for "table" / an unusable choice. */
-export function chartSpec(chart: ChartDraft): ExplorerChartSpec | null {
-  if (chart.choice === 'none' || !chart.x || chart.y.length === 0) return null;
-  return { type: chart.choice, x: chart.x, y: chart.y, series: null };
+/** A view draft → the stored view, or `null` for "table" / an unusable choice. */
+export function viewSpec(view: ViewDraft): ReportView | null {
+  if (!view.x) return null;
+  if (view.choice === 'metric') return { kind: 'metric', column: view.x, label: null };
+  if (view.choice === 'bar_list') return { kind: 'bar_list', column: view.x, labelColumn: null };
+  if (view.choice === 'none' || view.y.length === 0) return null;
+  return { kind: 'chart', type: view.choice, x: view.x, y: view.y, series: null };
 }
