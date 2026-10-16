@@ -345,7 +345,17 @@
     "playgroundRowCount_other": "{{count}} rows",
     "playgroundCapped": "the limit was reached — narrow the query for the whole answer",
     "playgroundRemoveDimension": "Remove {{name}}",
-    "playgroundTimeDimensions": "Time dimensions"
+    "playgroundTimeDimensions": "Time dimensions",
+    "refreshColumns": "Refresh columns",
+    "columnsUnchanged": "The table's columns are unchanged.",
+    "columnsRefreshed": "Columns refreshed: {{added}} added, {{removed}} removed.",
+    "columnsWithoutFields_one": "{{count}} column has no field",
+    "columnsWithoutFields_other": "{{count}} columns have no field",
+    "addMissingFields": "Add them as fields",
+    "fieldsAdded_one": "{{count}} field added",
+    "fieldsAdded_other": "{{count}} fields added",
+    "fieldsWithoutColumn_one": "{{count}} field points at a column the table no longer has",
+    "fieldsWithoutColumn_other": "{{count}} fields point at columns the table no longer has"
   },
   "datasets": {
     "title": "Datasets",

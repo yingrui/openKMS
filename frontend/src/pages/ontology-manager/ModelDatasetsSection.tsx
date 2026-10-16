@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
-import { ExternalLink, Plus, Trash2 } from 'lucide-react';
+import { ExternalLink, Loader2, Plus, RefreshCw, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { fetchDatasetMetadata, type ColumnMetadata } from '../../data/datasetsApi';
 import {
@@ -17,6 +17,7 @@ import {
 import { useConfirm } from '../../contexts/ConfirmContext';
 import { Dialog, FormField, Pagination } from '../../styles/design-system';
 import { EntityViewHeader, EntityViewPanel } from './EntityViewShell';
+import { fieldCoverage } from './fieldCoverage';
 import { useSemanticModelDetail } from './useSemanticModelDetail';
 import type { DatasetResponse } from '../../data/datasetsApi';
 
@@ -48,6 +49,9 @@ export function ModelDatasetsSection() {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [pages, setPages] = useState<Record<string, number>>({});
+  /** The table's own columns per dataset: what a field may point at, and what a refresh re-reads. */
+  const [tableColumns, setTableColumns] = useState<Record<string, ColumnMetadata[]>>({});
+  const [refreshing, setRefreshing] = useState<string | null>(null);
 
   const [formDatasetId, setFormDatasetId] = useState<string | null>(null);
   const [editing, setEditing] = useState<SemanticModelFieldResponse | null>(null);
@@ -113,6 +117,76 @@ export function ModelDatasetsSection() {
   const visible = scope.filter(
     (d) => !query || d.name.toLowerCase().includes(query) || (byDataset[d.id] ?? []).some(matches),
   );
+
+  /* A dataset's columns live in the source, so they are read per dataset (usually one or two). */
+  const visibleIds = visible.map((ref) => ref.id).join(',');
+  useEffect(() => {
+    if (!visibleIds) return;
+    let cancelled = false;
+    void Promise.all(
+      visibleIds.split(',').map(async (id) => [id, await fetchDatasetMetadata(id)] as const),
+    )
+      .then((entries) => {
+        if (!cancelled) setTableColumns(Object.fromEntries(entries));
+      })
+      .catch(() => undefined);
+    return () => {
+      cancelled = true;
+    };
+  }, [visibleIds]);
+
+  /**
+   * Re-read the table's columns: it gains them without telling us, and a field can end up pointing at
+   * one that was dropped — the two things this tab is in a position to notice.
+   *
+   * Columns only, deliberately: the profile (row counts, per-column statistics and the schema-history
+   * snapshot) is a heavier thing with its own home in the Catalog's Columns tab. Reading this table's
+   * 19 columns takes a moment; profiling its million rows took seven seconds.
+   */
+  const refreshColumns = async (datasetId: string) => {
+    setRefreshing(datasetId);
+    try {
+      const before = (tableColumns[datasetId] ?? []).map((c) => c.column_name);
+      const after = await fetchDatasetMetadata(datasetId);
+      setTableColumns((prev) => ({ ...prev, [datasetId]: after }));
+      const added = after.map((c) => c.column_name).filter((c) => !before.includes(c));
+      const removed = before.filter((c) => !after.map((x) => x.column_name).includes(c));
+      if (added.length === 0 && removed.length === 0) toast.success(t('dataModel.columnsUnchanged'));
+      else toast.success(t('dataModel.columnsRefreshed', { added: added.length, removed: removed.length }));
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : t('datasets.loadColumnsFailed'));
+    } finally {
+      setRefreshing(null);
+    }
+  };
+
+  /** Add the columns nobody has a field for, using the column's own type and time role. */
+  const addMissingFields = async (datasetId: string, missing: string[], all: ColumnMetadata[]) => {
+    setRefreshing(datasetId);
+    try {
+      for (const column of missing) {
+        const meta = all.find((c) => c.column_name === column);
+        const isTime = meta?.ontology_type === 'date' || meta?.ontology_type === 'datetime';
+        await createModelField(modelId, {
+          dataset_id: datasetId,
+          name: column,
+          column_name: column,
+          expression: { dialects: [{ dialect: 'ANSI_SQL', expression: `"${column}"` }] },
+          datatype: meta?.ontology_type ?? null,
+          label: null,
+          description: null,
+          dimension: isTime ? { is_time: true } : null,
+          ai_context: null,
+        });
+      }
+      toast.success(t('dataModel.fieldsAdded', { count: missing.length }));
+      await load();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : t('datasets.fieldSaveFailed'));
+    } finally {
+      setRefreshing(null);
+    }
+  };
 
   /** Only the *time* role is modelled by the spec (`dimension.is_time`). */
   const dimensionLabel = (f: SemanticModelFieldResponse) => {
@@ -291,6 +365,63 @@ export function ModelDatasetsSection() {
                 <dd>{p.instructions || t('datasets.dash')}</dd>
               </dl>
 
+              {/* What the table and the model disagree about — the reason to be in this tab. */}
+              {(() => {
+                const coverage = fieldCoverage(
+                  (tableColumns[ref.id] ?? []).map((c) => c.column_name),
+                  own,
+                );
+                if (
+                  coverage.columnsWithoutFields.length === 0 &&
+                  coverage.fieldsWithoutColumn.length === 0
+                ) {
+                  return null;
+                }
+                return (
+                  <div className="model-dataset__coverage">
+                    {coverage.columnsWithoutFields.length > 0 && (
+                      <p className="model-dataset__coverage-line">
+                        <span>
+                          {t('dataModel.columnsWithoutFields', {
+                            count: coverage.columnsWithoutFields.length,
+                          })}
+                          {': '}
+                          <span className="model-dataset__coverage-names">
+                            {coverage.columnsWithoutFields.join(', ')}
+                          </span>
+                        </span>
+                        <button
+                          type="button"
+                          className="btn btn-primary btn-sm"
+                          onClick={() =>
+                            void addMissingFields(
+                              ref.id,
+                              coverage.columnsWithoutFields,
+                              tableColumns[ref.id] ?? [],
+                            )
+                          }
+                          disabled={refreshing === ref.id}
+                        >
+                          <Plus size={14} aria-hidden />
+                          {t('dataModel.addMissingFields')}
+                        </button>
+                      </p>
+                    )}
+                    {coverage.fieldsWithoutColumn.length > 0 && (
+                      <p className="model-dataset__coverage-line page-subtitle--error">
+                        {t('dataModel.fieldsWithoutColumn', {
+                          count: coverage.fieldsWithoutColumn.length,
+                        })}
+                        {': '}
+                        {coverage.fieldsWithoutColumn
+                          .map((f) => `${f.name} → ${f.column_name}`)
+                          .join(', ')}
+                      </p>
+                    )}
+                  </div>
+                );
+              })()}
+
               <div className="model-dataset__head">
                 <span className="page-subtitle">
                   {t('dataModel.fieldCount', { count: own.length })}
@@ -300,6 +431,22 @@ export function ModelDatasetsSection() {
                     <ExternalLink size={14} aria-hidden />
                     {t('dataModel.openInCatalog')}
                   </Link>
+                  {/* The source table changes on its own — re-read it and see what moved. */}
+                  <button
+                    type="button"
+                    className="btn btn-secondary btn-sm"
+                    onClick={() => void refreshColumns(ref.id)}
+                    disabled={refreshing === ref.id}
+                  >
+                    {refreshing === ref.id ? (
+                      <Loader2 size={14} className="spin" aria-hidden />
+                    ) : (
+                      <RefreshCw size={14} aria-hidden />
+                    )}
+                    {t('dataModel.refreshColumns')}
+                  </button>
+                  {/* …and this is where a field is authored: the model has no Fields tab of its own —
+                      a field belongs to a dataset, so it is created (and edited) in that context. */}
                   <button
                     type="button"
                     className="btn btn-primary btn-sm"

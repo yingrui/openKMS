@@ -340,7 +340,17 @@
     "playgroundRowCount_other": "{{count}} 行",
     "playgroundCapped": "已触发行数上限 —— 收窄条件才能看到完整答案",
     "playgroundRemoveDimension": "移除 {{name}}",
-    "playgroundTimeDimensions": "时间维度"
+    "playgroundTimeDimensions": "时间维度",
+    "refreshColumns": "刷新列",
+    "columnsUnchanged": "表的列没有变化。",
+    "columnsRefreshed": "列已刷新：新增 {{added}} 列，移除 {{removed}} 列。",
+    "columnsWithoutFields_one": "有 {{count}} 列还没有字段",
+    "columnsWithoutFields_other": "有 {{count}} 列还没有字段",
+    "addMissingFields": "全部加为字段",
+    "fieldsAdded_one": "已添加 {{count}} 个字段",
+    "fieldsAdded_other": "已添加 {{count}} 个字段",
+    "fieldsWithoutColumn_one": "有 {{count}} 个字段指向表中已不存在的列",
+    "fieldsWithoutColumn_other": "有 {{count}} 个字段指向表中已不存在的列"
   },
   "datasets": {
     "title": "数据集",
