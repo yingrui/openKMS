@@ -6,8 +6,14 @@ import '../../styles/account-page.scss';
 import './entity-view.scss';
 
 export type EntityViewNavItem = {
-  to: string;
+  /** A route — the usual case (a tab). */
+  to?: string;
+  /** …or a section of *this* page: the link scrolls to the element with this id (a document's own
+   * table of contents, which is what this rail is for on a page without tabs). */
+  sectionId?: string;
   label: string;
+  /** A second line under the label — where a report's numbers come from, say. */
+  hint?: string;
   end?: boolean;
 };
 
@@ -66,6 +72,7 @@ export function EntityViewStat({ label, value }: { label: string; value: ReactNo
 
 /** Section card — reuses shared `.account-card` surface from account-page styles. */
 export function EntityViewPanel({
+  id,
   title,
   description,
   actions,
@@ -73,6 +80,8 @@ export function EntityViewPanel({
   footer,
   defaultCollapsed = false,
 }: {
+  /** An anchor target — a dashboard's table of contents links to its sections by id. */
+  id?: string;
   title?: string;
   description?: ReactNode;
   /** What acts on the section (edit / reorder / remove): it sits in the head, not above the card. */
@@ -86,7 +95,7 @@ export function EntityViewPanel({
   const [open, setOpen] = useState(!defaultCollapsed);
 
   return (
-    <section className="account-card entity-view__panel">
+    <section id={id} className="account-card entity-view__panel">
       {title || description || actions ? (
         <div className="account-card-head">
           {collapsible ? (
@@ -175,16 +184,23 @@ export function EntityViewShell({
         {navItems.length > 0 ? (
           <nav className="entity-view__nav">
             {navItems.map((item) => (
-              <NavLink
-                key={item.to}
-                to={item.to}
-                end={item.end}
-                className={({ isActive }) =>
-                  `entity-view__nav-item${isActive ? ' entity-view__nav-item--active' : ''}`
-                }
-              >
-                {item.label}
-              </NavLink>
+              item.to ? (
+                <NavLink
+                  key={item.to}
+                  to={item.to}
+                  end={item.end}
+                  className={({ isActive }) =>
+                    `entity-view__nav-item${isActive ? ' entity-view__nav-item--active' : ''}`
+                  }
+                >
+                  {item.label}
+                </NavLink>
+              ) : (
+                <a key={item.sectionId} className="entity-view__nav-item" href={`#${item.sectionId}`}>
+                  {item.label}
+                  {item.hint ? <span className="entity-view__nav-item-hint">{item.hint}</span> : null}
+                </a>
+              )
             ))}
           </nav>
         ) : null}

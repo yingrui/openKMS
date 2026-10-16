@@ -122,6 +122,22 @@ body:has(.app-page-pane > .entity-view) .app-main {
   color: var(--color-accent);
 }
 
+// The second line of a nav item: where a report's numbers come from, or any quiet annotation.
+.entity-view__nav-item-hint {
+  display: block;
+  margin-top: 2px;
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+// A section linked from the rail must not sit flush under the pane's top edge when scrolled to.
+.entity-view__panel {
+  scroll-margin-top: var(--space-4);
+}
+
 .entity-view__nav {
   display: flex;
   flex-direction: column;

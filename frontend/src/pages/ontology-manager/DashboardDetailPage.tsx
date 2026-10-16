@@ -27,6 +27,7 @@ import { StatusChip } from '../../styles/design-system';
 import { DashboardReportView } from './DashboardReportView';
 import { EntityViewHeader, EntityViewLoading, EntityViewPanel, EntityViewShell } from './EntityViewShell';
 import { AddReportDialog } from './AddReportDialog';
+import { reportSource } from './reportSource';
 import './data-explorer.scss';
 import { EditReportDialog } from './EditReportDialog';
 import { applyReportFields, moveReport, removeReport, replaceReport } from './dashboardEdits';
@@ -150,6 +151,16 @@ export function DashboardDetailPage() {
       backTo="/data-explorer"
       backLabel={t('dataExplorer.backToDashboards')}
       title={dashboard.name}
+      /* The rail is this app's table of contents; a dashboard's sections are its reports, so it
+         lists them (the answer first), with where each one's numbers come from underneath. */
+      navItems={[
+        { sectionId: 'narrative', label: t('dataExplorer.narrative') },
+        ...reports.map((report, i) => ({
+          sectionId: `report-${i}`,
+          label: report.title ?? t('dataExplorer.report'),
+          hint: reportSource(report, datasets, models, t('dataExplorer.sourceMissing')).label,
+        })),
+      ]}
       meta={
         <>
           {dashboard.question ?? t('dataExplorer.noQuestion')}
@@ -199,6 +210,7 @@ export function DashboardDetailPage() {
         }
       />
       <EntityViewPanel
+        id="narrative"
         title={t('dataExplorer.narrative')}
         actions={
           narrativeDraft === null && canWrite && dashboard.narrative ? (

@@ -7,6 +7,7 @@ import type { DashboardReport } from '../../data/dashboardsApi';
 import type { SemanticModelResponse } from '../../data/semanticModelsApi';
 import { RichMarkdown } from '../../components/markdown/richMarkdown';
 import { EntityViewPanel } from './EntityViewShell';
+import { reportSource } from './reportSource';
 import { QueryFailureNotice, asQueryFailureKind } from '../../styles/design-system';
 import { ExplorerChart } from './ExplorerChart';
 import { ReportBarList } from './ReportBarList';
@@ -60,23 +61,8 @@ export function DashboardReportView({
       ? t('dataExplorer.ageJustNow')
       : t(`dataExplorer.age_${age.bucket}`, { count: age.count })
     : null;
-  const isModel = report.source_kind === 'semantic_model';
-  const source = isModel
-    ? models.find((m) => m.id === report.semantic_model_id)
-    : datasets.find((d) => d.id === report.dataset_id);
-  const sourceName = source
-    ? isModel
-      ? (source as SemanticModelResponse).name
-      : (source as DatasetResponse).display_name ||
-        `${(source as DatasetResponse).schema_name}.${(source as DatasetResponse).table_name}`
-    : t('dataExplorer.sourceMissing');
-  const sourceHref = isModel
-    ? report.semantic_model_id
-      ? `/data-model/${report.semantic_model_id}`
-      : null
-    : report.dataset_id
-      ? `/datasets/${report.dataset_id}`
-      : null;
+  const source = reportSource(report, datasets, models, t('dataExplorer.sourceMissing'));
+  const isModel = source.kind === 'semantic_model';
 
   return (
     <EntityViewPanel
@@ -91,12 +77,12 @@ export function DashboardReportView({
           <span className="dashboard-report__source">
             {isModel ? t('dataExplorer.sourceModel') : t('dataExplorer.sourceDataset')}
             {': '}
-            {sourceHref ? (
-              <Link to={sourceHref}>
-                {sourceName} <ExternalLink size={12} aria-hidden />
+            {source.href ? (
+              <Link to={source.href}>
+                {source.label} <ExternalLink size={12} aria-hidden />
               </Link>
             ) : (
-              sourceName
+              source.label
             )}
           </span>
         </>

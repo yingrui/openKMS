@@ -162,7 +162,19 @@ system). Three deviations were real; the rest are deliberate:
 | **Numbers** | one formatter is the natural home | four copies of `Intl.NumberFormat` | **fixed** — `reportFormat.ts` |
 | **Chart colours** | theme tokens (`--*`) | eight hex literals in a component | **fixed** — `--report-series-1…8`, lifted in dark mode |
 | A **tile's actions** | row actions live in a head/cell, revealed by CSS | always-visible button row | **fixed** — revealed on hover/focus-within (still in the tab order; always visible without hover) |
+| **The left rail** | `EntityViewShell`'s navigation column: tabs on entity pages | the identity, then blank space (a dashboard has no tabs) | **fixed** — it lists the document's sections (the answer, then each report with its source); a nav item may now be an in-page section, which the shell supports for any long detail page |
 | **Document actions** | the primary action is a button in the page action row; a **destructive** one lives with the identity (Datasets/Models go further and keep theirs in a Settings danger zone) | Run and Delete both sat in the action row, then Delete alone in the header corner | **fixed twice** — first into one row (which made a delete as loud as the primary action), then to where it belongs: Run is the page's primary button, Delete is a **text link with the identity** (`is-danger`, red on hover) — visible and discoverable, never the loudest thing on the page |
+
+## The rail is the dashboard's table of contents
+
+`EntityViewShell`'s left rail is this app's **navigation column**: on dataset/model pages it holds tab
+links. A dashboard has no tabs — its sections *are* its reports — so the rail lists them: the answer
+first, then every report by title, each with **where its numbers come from** underneath. Clicking one
+scrolls to that section (the rail is fixed, the main pane scrolls).
+
+That also gives the shell a general capability instead of a dashboard-only one: a nav item is either a
+**route** (`to`, a tab) or a **section of the page** (`sectionId`, an anchor), and `EntityViewPanel`
+takes an `id` to be that anchor's target. Any long detail page can now carry its own contents list.
 
 ## The page, as a reader sees it
 

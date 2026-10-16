@@ -165,6 +165,19 @@ Active UX / quality gaps: [Tech debt](./tech_debt.md).
 - Domain depth (specimen/event, Darwin Core, interactive keys) — see [knowledge-types](features/knowledge-types.md) entomology workflow **future** column
 - Agent ↔ frontend protocol: align to **AG-UI** (today custom NDJSON `delta`/`tool_*`/`done`; artifacts via A2UI surfaces)
 
+### The dashboard's rail became its table of contents (2026-10) — done
+
+- The left rail was blank for a dashboard (it is the app's navigation column, and a dashboard has no
+  tabs). It now lists the document's sections — the answer, then each report with where it reads from —
+  and clicking one scrolls there.
+- `EntityViewShell`'s nav item is now either a **route** or a **section of the page** (`sectionId`), and
+  `EntityViewPanel` takes an `id`: a capability any long detail page can use, not a dashboard special.
+- Trying to verify it against the build led to a second lesson: chunk names are **hashed**, so a stale
+  `dist/` keeps the previous build around and a "missing" class can be a stale file. The verification
+  rule now says to clear `dist/` (or grep the newest chunk) first.
+- The "which source does this report read" resolution was written twice (the tile and the rail) —
+  it is `reportSource()` now, with the tile and the contents list sharing it.
+
 ### The narrative editor had no styles (2026-10) — fixed
 
 - Tidying `data-explorer.scss` with a **line-range slice** cut `.dashboard-narrative` and its editor
