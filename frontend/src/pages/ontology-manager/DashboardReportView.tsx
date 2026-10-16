@@ -1,5 +1,5 @@
 import { useMemo, useState, type ReactNode } from 'react';
-import { ChartLine, ExternalLink, Table as TableIcon } from 'lucide-react';
+import { ChartLine, Download, ExternalLink, Table as TableIcon } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import type { DatasetResponse } from '../../data/datasetsApi';
@@ -10,6 +10,7 @@ import { QueryFailureNotice, asQueryFailureKind } from '../../styles/design-syst
 import { ExplorerChart } from './ExplorerChart';
 import { ReportBarList } from './ReportBarList';
 import { ReportMetric } from './ReportMetric';
+import { csvFileName, downloadCsv, toCsv } from './reportCsv';
 import {
   MAX_BAR_LIST_ROWS,
   MAX_CHART_SERIES,
@@ -110,7 +111,18 @@ export function DashboardReportView({
               {report.capped ? ` · ${t('datasets.filterCapped')}` : ''}
               {report.duration_ms != null ? ` · ${report.duration_ms} ms` : ''}
             </p>
-            {view && canDraw ? (
+            <div className="openkms-flex-row-gap">
+              {/* Exporting what is on screen is a reader's action, so it sits beside the view toggle. */}
+              <button
+                type="button"
+                className="btn btn-secondary btn-sm"
+                onClick={() => downloadCsv(toCsv(columns, rows), csvFileName(report.title))}
+                title={t('dataExplorer.exportCsv')}
+              >
+                <Download size={14} aria-hidden />
+                <span>CSV</span>
+              </button>
+              {view && canDraw ? (
               <div className="ds-view-toggle" role="group" aria-label={t('dataExplorer.viewModeAria')}>
                 <button
                   type="button"
@@ -129,7 +141,8 @@ export function DashboardReportView({
                   <TableIcon size={16} aria-hidden />
                 </button>
               </div>
-            ) : null}
+              ) : null}
+            </div>
           </div>
           {view && canDraw && !showTable ? (
             <>

@@ -165,6 +165,15 @@ Active UX / quality gaps: [Tech debt](./tech_debt.md).
 - Domain depth (specimen/event, Darwin Core, interactive keys) — see [knowledge-types](features/knowledge-types.md) entomology workflow **future** column
 - Agent ↔ frontend protocol: align to **AG-UI** (today custom NDJSON `delta`/`tool_*`/`done`; artifacts via A2UI surfaces)
 
+### Report views and export (2026-10) — done
+
+- A report's presentation is a **`view`**: `metric` (one number), `bar_list` (a ranking), `chart`
+  (line/bar) or the table — vocabulary taken from [Tremor](research/tremor-evaluation.md) after
+  evaluating it (Tailwind + React 18 peer + a second recharts major → not adopted).
+- CSV export, client-side, with RFC-4180 quoting and a UTF-8 BOM.
+- First component tests in the repo, which caught an i18next placeholder bug (`{max}` vs `{{max}}`)
+  now enforced by `check-i18n-keys.py`.
+
 ### Dashboards of reports (2026-10) — done
 
 - The model was inverted: the saved document is a **dashboard**, each tile in it is a **report**, and

@@ -137,7 +137,8 @@
     "viewMetric": "单个数字",
     "viewBarList": "排名列表",
     "viewValueColumn": "数值列",
-    "barListTruncated": "仅显示前 {{max}} 项。"
+    "barListTruncated": "仅显示前 {{max}} 项。",
+    "exportCsv": "导出 CSV"
   },
   "dataModel": {
     "title": "数据模型",

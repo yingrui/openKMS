@@ -137,7 +137,8 @@
     "viewMetric": "Single number",
     "viewBarList": "Ranked list",
     "viewValueColumn": "Value column",
-    "barListTruncated": "Showing the top {{max}} only."
+    "barListTruncated": "Showing the top {{max}} only.",
+    "exportCsv": "Export CSV"
   },
   "dataModel": {
     "title": "Data Model",

@@ -160,8 +160,10 @@ analyses, and sharing analyses does not hand out dataset management:
   *source kind*, not new SQL.
 - **Not the Playground**: nothing here is a definition editor, and a report never owns a metric.
 - **Not the Data tab**: no inline row editing — the Explorer reads.
-- **No export in P0**: the artifact is the report document; CSV/static-HTML export is its own slice
-  (the sibling `research-report` skill already proves the static-HTML path).
+- **Export is CSV, client-side.** A reader exports the rows a report is showing — its columns, its
+  filters, the page it returned — with RFC-4180 quoting and a UTF-8 BOM (Excel on Windows reads a
+  UTF-8 CSV without one as Latin-1, which would mangle every Chinese label). A *document* export
+  (static HTML/PDF, a shareable artifact) stays the skill's `research-report` path, not the app's.
 
 ## 6. P0 — what "usable" means
 
