@@ -8,23 +8,24 @@ import { EntityViewHeader, EntityViewLoading, EntityViewPanel, EntityViewShell }
  * it does with `sectionId` (a dashboard's own table of contents), and that a panel can be an anchor
  * target.
  */
+const renderShell = (navItems: Parameters<typeof EntityViewShell>[0]['navItems']) =>
+  render(
+    <MemoryRouter>
+      <EntityViewShell
+        backTo="/data-explorer"
+        backLabel="All dashboards"
+        title="估值体检"
+        meta="一个问题"
+        navItems={navItems}
+      >
+        <EntityViewPanel id="report-0" title="按月">
+          body
+        </EntityViewPanel>
+      </EntityViewShell>
+    </MemoryRouter>,
+  );
+
 describe('EntityViewShell', () => {
-  const renderShell = (navItems: Parameters<typeof EntityViewShell>[0]['navItems']) =>
-    render(
-      <MemoryRouter>
-        <EntityViewShell
-          backTo="/data-explorer"
-          backLabel="All dashboards"
-          title="估值体检"
-          meta="一个问题"
-          navItems={navItems}
-        >
-          <EntityViewPanel id="report-0" title="按月">
-            body
-          </EntityViewPanel>
-        </EntityViewShell>
-      </MemoryRouter>,
-    );
 
   it('navigates with a route item, and scrolls with a section item', () => {
     renderShell([
@@ -85,5 +86,33 @@ describe('EntityViewShell', () => {
   it('leaves the rail without a nav when a page has no sections', () => {
     const { container } = renderShell([]);
     expect(container.querySelector('.entity-view__nav')).toBeNull();
+  });
+});
+
+describe('EntityViewShell — the rail follows the reader', () => {
+  it('marks the section the reader is in, and announces it', () => {
+    /* jsdom has no IntersectionObserver: stub one that reports the first section as being read, which
+       is what the browser would do a moment after the page settles. */
+    const observers: Array<(entries: unknown[]) => void> = [];
+    class ObserverStub {
+      constructor(callback: (entries: unknown[]) => void) {
+        observers.push(callback);
+      }
+      observe(element: Element) {
+        observers.at(-1)?.([{ target: element, isIntersecting: true }]);
+      }
+      disconnect() {}
+      unobserve() {}
+    }
+    const original = window.IntersectionObserver;
+    window.IntersectionObserver = ObserverStub as unknown as typeof IntersectionObserver;
+    try {
+      renderShell([{ sectionId: 'report-0', label: '按月' }]);
+      const item = screen.getByRole('link', { name: /按月/ });
+      expect(item.className).toContain('entity-view__nav-item--active');
+      expect(item).toHaveAttribute('aria-current', 'true');
+    } finally {
+      window.IntersectionObserver = original;
+    }
   });
 });

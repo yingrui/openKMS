@@ -165,6 +165,14 @@ Active UX / quality gaps: [Tech debt](./tech_debt.md).
 - Domain depth (specimen/event, Darwin Core, interactive keys) — see [knowledge-types](features/knowledge-types.md) entomology workflow **future** column
 - Agent ↔ frontend protocol: align to **AG-UI** (today custom NDJSON `delta`/`tool_*`/`done`; artifacts via A2UI surfaces)
 
+### The rail follows the reader (2026-10) — done
+
+- The table of contents highlights the section being read (`useActiveSection`): an
+  `IntersectionObserver` over the pane's top 40%, the *earliest* section in the zone wins, and the
+  previous highlight is kept when nothing is in it — a highlight that blinks off mid-scroll is worse
+  than one that lags. `pickActive` is pure and tested; the shell test stubs the observer and asserts
+  the item is marked and announced (`aria-current`).
+
 ### The dashboard's identity row (2026-10) — done
 
 - The rail's identity block reads in three parts: the name, the question, then **one quiet row** —

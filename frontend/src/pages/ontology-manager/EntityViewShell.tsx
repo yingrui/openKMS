@@ -1,6 +1,7 @@
 import { useState, type ReactNode } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import { ArrowLeft, ChevronDown, Loader2 } from 'lucide-react';
+import { useActiveSection } from '../../hooks/useActiveSection';
 import { Metric, MetricGrid } from '../../styles/design-system';
 import '../../styles/account-page.scss';
 import '../../styles/entity-view.scss';
@@ -166,6 +167,11 @@ export function EntityViewShell({
   children,
 }: EntityViewShellProps) {
   const navigate = useNavigate();
+  /* A section item scrolls the pane; this makes the rail follow along while the reader scrolls it. */
+  const sectionIds = navItems
+    .map((item) => item.sectionId)
+    .filter((id): id is string => typeof id === 'string');
+  const activeSection = useActiveSection(sectionIds);
 
   return (
     <div className="entity-view">
@@ -198,7 +204,10 @@ export function EntityViewShell({
               ) : (
                 <a
                   key={item.sectionId}
-                  className="entity-view__nav-item"
+                  className={`entity-view__nav-item${
+                    activeSection === item.sectionId ? ' entity-view__nav-item--active' : ''
+                  }`}
+                  aria-current={activeSection === item.sectionId ? 'true' : undefined}
                   href={`#${item.sectionId}`}
                   onClick={(event) => {
                     /* The scrolling box is the main pane, not the document (the shell pins it), so a
