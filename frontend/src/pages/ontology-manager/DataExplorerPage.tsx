@@ -3,15 +3,18 @@ import { useTranslation } from 'react-i18next';
 import { Link, useNavigate } from 'react-router-dom';
 import { Loader2, Plus, Sparkles } from 'lucide-react';
 import { toast } from 'sonner';
-import {
-  createDashboard,
-  fetchDashboards,
-  type DashboardSummary,
-} from '../../data/dashboardsApi';
+import { createDashboard, fetchDashboards, type DashboardSummary } from '../../data/dashboardsApi';
 import { Dialog, EmptyState, FormField, StatusChip } from '../../styles/design-system';
-import '../ontology/ontology-admin.scss';
-import './data-explorer.scss';
+import '../../styles/resource-list.scss';
 
+/**
+ * All dashboards — the app's shared card list (`resource-list.scss`, the same chrome as Knowledge
+ * Bases and Wiki spaces): one page header with the primary action, a card grid, and a card whose
+ * top row is an icon, then a title, a description and a meta line.
+ *
+ * What is specific to a dashboard lives *inside* that grammar: the question is the description, and
+ * the meta line carries the state, the report count and the sources the reports read.
+ */
 export function DataExplorerPage() {
   const { t } = useTranslation('ontology');
   const navigate = useNavigate();
@@ -65,62 +68,74 @@ export function DataExplorerPage() {
   };
 
   return (
-    <div className="ontology-admin">
-      <div className="page-header">
+    <div className="resource-list">
+      <div className="page-header resource-list-header">
         <div>
           <h1>{t('dataExplorer.title')}</h1>
           <p className="page-subtitle">{t('dataExplorer.subtitle')}</p>
         </div>
-        <div className="page-header-actions">
+        <div className="resource-list-header-actions">
           <button type="button" className="btn btn-primary" onClick={openCreate}>
             <Plus size={18} aria-hidden />
             <span>{t('dataExplorer.newDashboard')}</span>
           </button>
         </div>
       </div>
-      <div className="ontology-admin-content">
-        {loading ? (
-          <div className="console-loading">
-            <Loader2 size={32} className="console-loading-spinner" aria-hidden />
-            <p>{t('shared.loading')}</p>
-          </div>
-        ) : dashboards.length === 0 ? (
-          <EmptyState
-            title={t('dataExplorer.empty')}
-            description={t('dataExplorer.subtitle')}
-            action={
-              <button type="button" className="btn btn-primary" onClick={openCreate}>
-                <Plus size={18} aria-hidden />
-                <span>{t('dataExplorer.newDashboard')}</span>
-              </button>
-            }
-          />
-        ) : (
-          <div className="dashboard-list">
-            {dashboards.map((d) => {
-              const names = d.sources.map((s) => s.label);
-              return (
-                <Link key={d.id} to={`/data-explorer/${d.id}`} className="dashboard-card">
-                  <span className="dashboard-card__icon" aria-hidden>
-                    <Sparkles size={18} />
-                  </span>
-                  <span className="dashboard-card__body">
-                    <strong>{d.name}</strong>
-                    {d.question && <span className="dashboard-card__question">{d.question}</span>}
-                    <span className="dashboard-card__meta">
-                      <StatusChip tone={d.status === 'ready' ? 'ok' : 'neutral'}>
-                        {t(`dataExplorer.status_${d.status}`, { defaultValue: d.status })}
-                      </StatusChip>
-                      <span>{t('dataExplorer.reportCount', { count: d.report_count })}</span>
-                      {names.length > 0 && <span>{names.join(' + ')}</span>}
-                    </span>
-                  </span>
-                </Link>
-              );
-            })}
-          </div>
-        )}
-      </div>
+
+      {loading && (
+        <p className="resource-list-loading">
+          <Loader2 size={18} className="spin" aria-hidden /> {t('shared.loading')}
+        </p>
+      )}
+
+      {!loading && dashboards.length === 0 && (
+        <EmptyState
+          icon={<Sparkles size={48} strokeWidth={1} />}
+          title={t('dataExplorer.empty')}
+          description={t('dataExplorer.subtitle')}
+          action={
+            <button type="button" className="btn btn-primary" onClick={openCreate}>
+              <Plus size={18} aria-hidden />
+              <span>{t('dataExplorer.newDashboard')}</span>
+            </button>
+          }
+        />
+      )}
+
+      {!loading && dashboards.length > 0 && (
+        <div className="resource-list-grid">
+          {dashboards.map((dashboard) => {
+            const sources = dashboard.sources.map((s) => s.label);
+            return (
+              <Link
+                key={dashboard.id}
+                to={`/data-explorer/${dashboard.id}`}
+                className="resource-list-card"
+              >
+                <div className="resource-list-card-top">
+                  <div className="resource-list-icon">
+                    <Sparkles size={28} strokeWidth={1.5} />
+                  </div>
+                </div>
+                <h3>{dashboard.name}</h3>
+                <p
+                  className="resource-list-desc"
+                  title={dashboard.question?.trim() || undefined}
+                >
+                  {dashboard.question || t('dataExplorer.noQuestion')}
+                </p>
+                <div className="resource-list-meta">
+                  <StatusChip tone={dashboard.status === 'ready' ? 'ok' : 'neutral'}>
+                    {t(`dataExplorer.status_${dashboard.status}`, { defaultValue: dashboard.status })}
+                  </StatusChip>
+                  <span>{t('dataExplorer.reportCount', { count: dashboard.report_count })}</span>
+                  {sources.length > 0 && <span>{sources.join(' + ')}</span>}
+                </div>
+              </Link>
+            );
+          })}
+        </div>
+      )}
 
       <Dialog
         open={showForm}

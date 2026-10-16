@@ -165,6 +165,14 @@ Active UX / quality gaps: [Tech debt](./tech_debt.md).
 - Domain depth (specimen/event, Darwin Core, interactive keys) — see [knowledge-types](features/knowledge-types.md) entomology workflow **future** column
 - Agent ↔ frontend protocol: align to **AG-UI** (today custom NDJSON `delta`/`tool_*`/`done`; artifacts via A2UI surfaces)
 
+### All dashboards joins the app's card list (2026-10) — done
+
+- The list page was the one screen that matched nothing: its own header, its own grid, its own card.
+  It now uses the shared `resource-list.scss` (the same chrome as Knowledge Bases and Wiki spaces) —
+  page header + primary action, card grid, icon/title/description/meta card — with the question as
+  the card description and state + report count + sources in the meta line. 82 lines of bespoke CSS
+  deleted, and the `resource-list` vocabulary means the page reads like the rest of the app.
+
 ### Analyse deeper: compare, combo, and dead classes (2026-10) — done
 
 - **KPI comparison distance**: `metric` + `trend.compare` compares the last row against the one **N
