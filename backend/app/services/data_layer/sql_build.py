@@ -18,6 +18,11 @@ class SqlBuildError(ValueError):
     """Raised when a generated query is invalid; wrapped by callers."""
 
 
+def quote_identifier(identifier: str) -> str:
+    """`"column"`, with embedded quotes doubled. Callers validate the identifier first."""
+    return '"' + str(identifier).replace('"', '""') + '"'
+
+
 def join_alias(index: int) -> str:
     """The SQL alias of the ``index``-th relationship in a metric's join list."""
     return f"j{index}"

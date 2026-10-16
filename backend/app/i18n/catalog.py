@@ -62,6 +62,35 @@ MESSAGES: dict[str, dict[str, str]] = {
         "en": "A block of a semantic-model report needs a metric.",
         "zh_CN": "语义模型报告的区块需要一个指标。",
     },
+    # Dataset summaries (Data tab / Explorer dataset blocks): group by + aggregates.
+    "DATASET_AGGREGATE_MISSING": {
+        "en": "A summary needs at least one aggregate (count / sum / avg / min / max).",
+        "zh_CN": "汇总至少需要一个聚合（count / sum / avg / min / max）。",
+    },
+    "DATASET_AGGREGATE_BAD_FN": {
+        "en": "'{fn}' is not an aggregate this platform runs (count / sum / avg / min / max).",
+        "zh_CN": "「{fn}」不是平台支持的聚合（count / sum / avg / min / max）。",
+    },
+    "DATASET_AGGREGATE_BAD_GRAIN": {
+        "en": "That grouping grain is not valid here ({column}).",
+        "zh_CN": "该分组粒度在此不适用（{column}）。",
+    },
+    "DATASET_AGGREGATE_TOO_MANY": {
+        "en": "Too many aggregates — at most {max} per summary.",
+        "zh_CN": "聚合过多——每个汇总最多 {max} 个。",
+    },
+    "DATASET_AGGREGATE_TOO_MANY_GROUPS": {
+        "en": "Too many group-by columns — at most {max}.",
+        "zh_CN": "分组列过多——最多 {max} 个。",
+    },
+    "DATASET_AGGREGATE_DUPLICATE_NAME": {
+        "en": "Duplicate output name '{name}' — give each aggregate its own name.",
+        "zh_CN": "输出名「{name}」重复——请给每个聚合不同的名字。",
+    },
+    "DATASET_AGGREGATE_ORDER_UNKNOWN": {
+        "en": "Cannot order by '{field}': group by it or aggregate it first.",
+        "zh_CN": "不能按「{field}」排序——请先分组它或对它做聚合。",
+    },
     "DATASET_ROWS_UNKNOWN_COLUMN": {
         "en": "There is no column '{column}' in this dataset.",
         "zh_CN": "该数据集里没有列「{column}」。",

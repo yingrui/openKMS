@@ -84,6 +84,39 @@ def cmd_rows(ns: argparse.Namespace) -> None:
     print_json(r.json())
 
 
+def _aggregate(raw: str) -> dict[str, Any]:
+    """`"fn[:column][=name]"` → the API's aggregate object (`count` needs no column)."""
+    spec, _, name = raw.partition("=")
+    fn, _, column = spec.partition(":")
+    body: dict[str, Any] = {"fn": fn.strip().lower()}
+    if column.strip():
+        body["column"] = column.strip()
+    if name.strip():
+        body["name"] = name.strip()
+    return body
+
+
+def cmd_aggregate(ns: argparse.Namespace) -> None:
+    """Summarise a dataset table: group by columns (optionally by grain) + aggregates."""
+    group_by: list[dict[str, Any]] = [
+        {"column": c, "granularity": ns.granularity} if ns.granularity else {"column": c}
+        for c in _split_csv(ns.group_by)
+    ]
+    body: dict[str, Any] = {
+        "group_by": group_by,
+        "aggregates": [_aggregate(raw) for raw in ns.aggregate or []],
+        "filters": [_row_filter(raw) for raw in ns.filter or []],
+        "limit": ns.limit if ns.limit is not None else 100,
+        "offset": ns.offset if ns.offset is not None else 0,
+    }
+    if ns.order_by:
+        body["order_by"] = [{"field": ns.order_by, "direction": ns.order_direction or "asc"}]
+    with client() as s:
+        r = s.post(f"/api/datasets/{ns.id}/aggregate", json=body)
+    r.raise_for_status()
+    print_json(r.json())
+
+
 def cmd_metadata(ns: argparse.Namespace) -> None:
     with client() as s:
         r = s.get(f"/api/datasets/{ns.id}/metadata")
@@ -392,6 +425,33 @@ def add_subparser(sub) -> None:
     rows.add_argument("--order", choices=("asc", "desc"), default=None)
     rows.add_argument("--after", default=None, help="keyset cursor: last value of --sort (needs --sort)")
     rows.set_defaults(fn=cmd_rows)
+
+    ag = sp.add_parser("aggregate", help="Group + aggregate a table (POST …/aggregate)")
+    ag.add_argument("--id", required=True)
+    ag.add_argument("--group-by", required=True, help="comma-separated columns")
+    ag.add_argument(
+        "--granularity",
+        default=None,
+        choices=("day", "week", "month", "quarter", "year"),
+        help="date_trunc grain applied to every --group-by column (date columns only)",
+    )
+    ag.add_argument(
+        "--aggregate",
+        action="append",
+        required=True,
+        help='repeatable: "fn[:column][=name]" — count, sum:amount, avg:pe_ttm=avg_pe',
+    )
+    ag.add_argument(
+        "--filter",
+        action="append",
+        default=None,
+        help='repeatable: "column op value" (between = "a..b", in = "a,b")',
+    )
+    ag.add_argument("--order-by", default=None, help="a group-by column or an aggregate name")
+    ag.add_argument("--order-direction", choices=("asc", "desc"), default=None)
+    ag.add_argument("--limit", type=int, default=None)
+    ag.add_argument("--offset", type=int, default=None)
+    ag.set_defaults(fn=cmd_aggregate)
 
     md = sp.add_parser("metadata", help="Column metadata (GET …/metadata)")
     md.add_argument("--id", required=True)

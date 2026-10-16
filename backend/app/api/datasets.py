@@ -26,7 +26,7 @@ from app.services.ontology.property_types import (
 from app.models.data_source import DataSource
 from app.models.dataset import Dataset
 from app.models.dataset_profile import DatasetProfile
-from app.services.data_layer.dataset_rows import query_dataset_rows
+from app.services.data_layer.dataset_rows import query_dataset_rows, query_dataset_summary
 from app.services.data_layer.query import QueryError
 from app.services.data_layer.row_filters import RowFilterError
 from app.services.data_layer.columns import (
@@ -50,6 +50,8 @@ from app.schemas.dataset import (
     DatasetResponse,
     DatasetRowsResponse,
     DatasetRowsQuery,
+    DatasetSummaryQuery,
+    DatasetSummaryResponse,
     DatasetUpdate,
     SchemaSnapshotResponse,
     TableInfo,
@@ -256,6 +258,46 @@ async def create_dataset(
     await db.commit()
     await db.refresh(dataset)
     return _dataset_response(dataset, ds.name)
+
+
+@router.post(
+    "/{dataset_id}/aggregate",
+    response_model=DatasetSummaryResponse,
+    dependencies=[Depends(require_any_permission(*_DATASET_VIEW))],
+)
+async def summarise_dataset(
+    request: Request,
+    body: DatasetSummaryQuery,
+    dataset: Dataset = Depends(get_dataset_scoped),
+    db: AsyncSession = Depends(get_db),
+):
+    """Group and aggregate this dataset's table — read-only, capped and timed.
+
+    The dataset-side answer to "turnover by month": the same filters as the grid, a whitelisted
+    aggregate list, and the model query's response shape. A failure is classified like the others
+    (`kind`: `request` for a bad column/aggregate, `data` for what the source refused).
+    """
+    try:
+        summary = await query_dataset_summary(
+            db,
+            dataset.id,
+            group_by=body.group_by,
+            aggregates=[a.model_dump() for a in body.aggregates],
+            filters=[f.model_dump() for f in body.filters],
+            order_by=[o.model_dump() for o in body.order_by],
+            limit=body.limit,
+            offset=body.offset,
+        )
+    except (QueryError, RowFilterError) as exc:
+        raise HTTPException(status_code=400, detail=query_failure_detail(request, exc.failure)) from exc
+    return DatasetSummaryResponse(
+        sql=summary.sql,
+        columns=summary.columns,
+        rows=summary.rows,
+        row_count=summary.row_count,
+        capped=summary.capped,
+        duration_ms=summary.duration_ms,
+    )
 
 
 @router.post(

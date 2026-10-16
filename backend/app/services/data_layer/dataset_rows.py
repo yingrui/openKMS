@@ -1,4 +1,4 @@
-"""Read a dataset's table for the Data tab's grid: filters + sort + keyset paging.
+"""Read a dataset's table: browse rows (filters + sort + keyset paging) or summarise it.
 
 It is read-only, runs the count and the page inside one transaction with a statement timeout, and
 answers with the table's columns so an empty result can still render a header.
@@ -14,6 +14,8 @@ no "definition" side to fix, so `kind=definition` would misdirect the user.
 
 from __future__ import annotations
 
+import time
+
 from dataclasses import dataclass
 from typing import Any
 
@@ -26,9 +28,15 @@ from app.models.data_source import DataSource
 from app.models.dataset import Dataset
 from app.services.data_layer.query import QueryError
 from app.services.data_layer.query_errors import DATA, REQUEST, QueryFailure, classify_sql_error
+from app.services.data_layer.dataset_aggregates import (
+    build_summary_sql,
+    parse_aggregates,
+    parse_group_by,
+)
 from app.services.data_layer.row_filters import build_row_where, parse_row_filters
 from app.services.ontology.dataset_tables import (
     is_valid_identifier,
+    table_column_types,
     keyset_cursor_error,
     pg_engine_for_datasource,
     resolve_pg_dataset_source,
@@ -36,18 +44,35 @@ from app.services.ontology.dataset_tables import (
 )
 from app.services.ontology.property_types import serialize_cell_value
 
-__all__ = ["DatasetRowsPage", "query_dataset_rows"]
+__all__ = ["DatasetRowsPage", "DatasetSummary", "query_dataset_rows", "query_dataset_summary"]
 
 
 @dataclass(frozen=True)
 class DatasetRowsPage:
     """One page of a dataset's table, with the facts the grid needs to describe it."""
 
+    sql: str
     columns: list[str]
     rows: list[dict[str, Any]]
     total: int
     capped: bool
     next_after: str | None
+
+
+@dataclass(frozen=True)
+class DatasetSummary:
+    """A grouped summary of a dataset's table.
+
+    Shaped like the model query's answer (`sql`/`columns`/`rows`/`row_count`/`capped`/`duration_ms`)
+    so a caller — the Data Explorer, an agent — treats a dataset answer and a model answer alike.
+    """
+
+    sql: str
+    columns: list[str]
+    rows: list[dict[str, Any]]
+    row_count: int
+    capped: bool
+    duration_ms: int
 
 
 def _data_failure(exc: BaseException) -> QueryFailure:
@@ -66,6 +91,80 @@ async def _resolve(db: AsyncSession, dataset_id: str) -> tuple[Dataset, DataSour
             QueryFailure("QUERY_UNKNOWN_DATASET", REQUEST),
         )
     return resolved
+
+
+async def query_dataset_summary(
+    db: AsyncSession,
+    dataset_id: str,
+    *,
+    group_by: list[str] | None = None,
+    aggregates: list[dict[str, Any]] | None = None,
+    filters: list[dict[str, Any]] | None = None,
+    order_by: list[dict[str, Any]] | None = None,
+    limit: int = 100,
+    offset: int = 0,
+) -> DatasetSummary:
+    """Group and aggregate one dataset table (read-only, capped, timed).
+
+    The same column validation, filter vocabulary and timeout as the rows query, plus a whitelisted
+    aggregate list; the answer is shaped like a model query's so callers need no special case.
+    """
+    dataset, ds = await _resolve(db, dataset_id)
+    schema, table = dataset.schema_name, dataset.table_name
+    quoted = f'"{schema}"."{table}"'
+    limit = min(max(1, int(limit)), MAX_PAGE_SIZE)
+    offset = max(0, int(offset))
+
+    try:
+        types = table_column_types(ds, schema, table)
+    except (SQLAlchemyError, OSError, TypeError, ValueError) as exc:
+        raise QueryError(f"Reading the table's columns failed: {exc}", _data_failure(exc)) from exc
+
+    known = set(types)
+    grouped = parse_group_by(group_by, known, types)
+    parsed_aggregates = parse_aggregates(aggregates, known)
+    conditions, params = build_row_where(parse_row_filters(filters, known))
+    # One extra row separates "exactly the limit" from "there is more".
+    sql, params = build_summary_sql(
+        table=quoted,
+        group_by=grouped,
+        aggregates=parsed_aggregates,
+        conditions=conditions,
+        params=params,
+        order_by=order_by,
+        limit=limit + 1,
+        offset=offset,
+    )
+
+    engine = pg_engine_for_datasource(ds)
+    started = time.perf_counter()
+    try:
+        with engine.connect() as conn:
+            tx = conn.begin()
+            conn.exec_driver_sql(f"SET LOCAL statement_timeout = {int(ROWS_TIMEOUT_MS)}")
+            result = conn.execute(text(sql), params)
+            names = list(result.keys())
+            rows = [
+                {k: serialize_cell_value(v) for k, v in zip(names, r, strict=True)}
+                for r in result.fetchall()
+            ]
+            tx.rollback()
+    except (SQLAlchemyError, OSError, TypeError, ValueError) as exc:
+        raise QueryError(f"Summarising rows failed: {exc}", _data_failure(exc)) from exc
+    finally:
+        engine.dispose()
+
+    duration_ms = int((time.perf_counter() - started) * 1000)
+    capped = len(rows) > limit
+    rows = rows[:limit]
+    return DatasetSummary(
+        sql=sql,
+        columns=names,
+        rows=rows,
+        row_count=len(rows),
+        capped=capped,
+        duration_ms=duration_ms,
+    )
 
 
 async def query_dataset_rows(
@@ -138,6 +237,7 @@ async def query_dataset_rows(
         candidate = rows[-1].get(str(sort))
         next_after = None if candidate is None else str(candidate)
     return DatasetRowsPage(
+        sql=sql,
         columns=columns,
         rows=rows,
         total=int(total),

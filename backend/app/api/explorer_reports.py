@@ -24,10 +24,12 @@ from app.schemas.explorer_report import (
     ExplorerReportResponse,
     ExplorerReportUpdate,
 )
-from app.services.data_layer.dataset_rows import query_dataset_rows
+from app.services.data_layer.dataset_rows import query_dataset_rows, query_dataset_summary
 from app.services.data_layer.explorer import (
     SOURCE_SEMANTIC_MODEL,
     dataset_query_kwargs,
+    dataset_summary_kwargs,
+    is_summary_query,
     model_query_kwargs,
     source_failure,
 )
@@ -206,12 +208,26 @@ async def _run_block(
                 "duration_ms": duration_ms,
                 "sql": sql,
             }
+        elif is_summary_query(block.get("query")):
+            summary = await query_dataset_summary(
+                db, report.dataset_id or "", **dataset_summary_kwargs(block.get("query"))
+            )
+            result = {
+                "sql": summary.sql,
+                "columns": summary.columns,
+                "rows": summary.rows,
+                # `total` = the summary's rows (one per group).
+                "total": summary.row_count,
+                "capped": summary.capped,
+                "duration_ms": summary.duration_ms,
+            }
         else:
             started = time.perf_counter()
             page = await query_dataset_rows(
                 db, report.dataset_id or "", **dataset_query_kwargs(block.get("query"))
             )
             result = {
+                "sql": page.sql,
                 "columns": page.columns,
                 "rows": page.rows,
                 # `total` counts the rows the filters match — the page may be a slice of it.

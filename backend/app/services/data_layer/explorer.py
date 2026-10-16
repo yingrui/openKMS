@@ -49,6 +49,28 @@ def dataset_query_kwargs(query: dict[str, Any] | None) -> dict[str, Any]:
     }
 
 
+def dataset_summary_kwargs(query: dict[str, Any] | None) -> dict[str, Any]:
+    """A dataset block's stored query → `query_dataset_summary` arguments.
+
+    A block is a **summary** when it carries `aggregates`; otherwise it is a row browse. The reader
+    validates the columns, aggregates and filters (the same rules the grid and the API apply).
+    """
+    q = query or {}
+    return {
+        "group_by": q.get("group_by") or [],
+        "aggregates": q.get("aggregates") or [],
+        "filters": q.get("filters") or [],
+        "order_by": q.get("order_by") or [],
+        "limit": q.get("limit") or 100,
+        "offset": q.get("offset") or 0,
+    }
+
+
+def is_summary_query(query: dict[str, Any] | None) -> bool:
+    """Whether a dataset block asks for a summary rather than a page of rows."""
+    return bool((query or {}).get("aggregates"))
+
+
 def model_query_kwargs(query: dict[str, Any] | None) -> dict[str, Any]:
     """A model block's stored query → `run_query` arguments (a metric is required)."""
     q = query or {}

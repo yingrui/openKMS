@@ -111,6 +111,43 @@ class DatasetRowsQuery(BaseModel):
     after: str | None = None
 
 
+class DatasetAggregate(BaseModel):
+    """One output of a dataset summary: `fn` over `column` (none = `COUNT(*)`)."""
+
+    fn: str
+    column: str | None = None
+    name: str | None = None
+
+
+class DatasetRowOrder(BaseModel):
+    """Order a summary by a group-by column or an aggregate's name."""
+
+    field: str
+    direction: str = "asc"
+
+
+class DatasetSummaryQuery(BaseModel):
+    """Summarise a dataset table: group-by columns + aggregates, over the grid's filters."""
+
+    group_by: list[str] = []
+    aggregates: list[DatasetAggregate] = []
+    filters: list[DatasetRowFilter] = []
+    order_by: list[DatasetRowOrder] = []
+    limit: int = DEFAULT_PAGE_SIZE
+    offset: int = 0
+
+
+class DatasetSummaryResponse(BaseModel):
+    """A summary answer — the model query's shape, so callers treat both alike."""
+
+    sql: str
+    columns: list[str] = []
+    rows: list[dict] = []
+    row_count: int = 0
+    capped: bool = False
+    duration_ms: int = 0
+
+
 class DatasetRowsResponse(BaseModel):
     """Paginated rows from a dataset table.
 

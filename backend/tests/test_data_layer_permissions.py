@@ -90,6 +90,9 @@ def test_browsing_rows_is_a_read_even_though_it_is_a_post():
     query_keys = resolve_required_permission_keys("POST", "/api/datasets/d1/rows/query", all_rules)
     assert query_keys == frozenset({PERM_DATA_READ})
 
+    summary_keys = resolve_required_permission_keys("POST", "/api/datasets/d1/aggregate", all_rules)
+    assert summary_keys == frozenset({PERM_DATA_READ})
+
     apply_keys = resolve_required_permission_keys("POST", "/api/datasets/d1/rows/apply", all_rules)
     assert apply_keys is not None and PERM_DATA_EDIT in apply_keys
 

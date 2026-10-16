@@ -27,7 +27,7 @@ A report binds to **one source**, and the two sources answer different questions
 
 | Source | What it is | Query it runs | Typical question |
 |--------|-----------|---------------|------------------|
-| **Dataset** (Catalog) | A physical table (+ its columns, keys, AI context) | `POST /api/datasets/{id}/rows/query` | "what is in this table, sliced by hand" |
+| **Dataset** (Catalog) | A physical table (+ its columns, keys, AI context) | `POST /api/datasets/{id}/rows/query` (browse) or `POST /api/datasets/{id}/aggregate` (group + aggregates) | "what is in this table" — a slice, or *turnover by month* |
 | **Semantic model** | A named scope: fields + metrics + relationships over datasets | `POST /api/semantic-models/{id}/query` | "the metric, by these fields" — the **governed** answer |
 
 A dataset source is the substrate: raw columns, ad-hoc filters, rows. A model source is the lens: a
@@ -63,6 +63,7 @@ it can cover both layers in one place.
 }
 ```
 
+- **A dataset block is a summary when it carries `aggregates`** (`group_by` + `aggregates` + filters), otherwise it is a page of rows; both answer in the model query's shape, so the app treats them alike.
 - **`query` is the source's own spec** — the same object the Data tab or the Playground sends, so a
   person can ask it in place and paste the result here, and an agent can produce either.
 - **`columns`/`rows`/`error`/`ran_at` are results**, not inputs: `POST /api/explorer-reports/{id}/run`

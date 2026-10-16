@@ -212,6 +212,7 @@ All write subcommands accept `--yes` / `--dry-run`. Without `--yes` on non-TTY s
 | `datasets list` | GET | `/api/datasets` | Optional `?data_source_id=` / `?search=` / `?limit=` / `?offset=`. |
 | `datasets get` | GET | `/api/datasets/{id}` | |
 | `datasets discover` | GET | `/api/datasets/from-source/{data_source_id}` | Tables in a data source that can be registered. |
+| `datasets aggregate` | POST | `/api/datasets/{id}/aggregate` | Body `{group_by, aggregates, filters?, order_by?, limit?, offset?}` — group by columns (optionally by a date grain) with `count/sum/avg/min/max` (`--aggregate "fn[:column][=name]"`, repeatable). The dataset-side answer to "by month". |
 | `datasets rows` | POST | `/api/datasets/{id}/rows/query` | Body `{filters:[{field, op, value}], sort?, order?, limit?, offset?, after?}` — **filters address the table's columns** (AND-ed, the same operator whitelist as `semantic-models query`); `--filter "column op value"` is repeatable (`between` = `a..b`, `in` = `a,b`). Response adds `columns` (a filtered-out result still renders a header) and `capped`. |
 | `datasets metadata` | GET | `/api/datasets/{id}/metadata` | Column metadata. |
 | `datasets create` *(write)* | POST | `/api/datasets` | Register existing table. |

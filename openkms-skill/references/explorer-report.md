@@ -65,7 +65,7 @@ will not run on the other.
   (`in` = a list, `between` = two values).
 - `order_by[].field` is `"value"` or a grouped field. `limit` is capped at **1000**.
 
-### Dataset block
+### Dataset block — a page of rows
 
 ```json
 {
@@ -75,6 +75,26 @@ will not run on the other.
   "limit": 50
 }
 ```
+
+### Dataset block — a summary (`aggregates` makes it one)
+
+```json
+{
+  "group_by": [{ "column": "trade_date", "granularity": "month" }],
+  "aggregates": [
+    { "fn": "count" },
+    { "fn": "avg", "column": "pe_ttm", "name": "avg_pe" }
+  ],
+  "filters": [{ "field": "pe_ttm", "op": "between", "value": [0.1, 300] }],
+  "order_by": [{ "field": "trade_date", "direction": "asc" }],
+  "limit": 12
+}
+```
+
+- `fn` ∈ `count` (no column = `COUNT(*)`) / `sum` / `avg` / `min` / `max`; give several aggregates distinct `name`s.
+- A `granularity` (`day`…`year`) truncates that group column to a grain — query-time, and only on a date column.
+- `order_by.field` is a group-by column or an aggregate `name`.
+- This is how a **dataset** answers "turnover by month" without a model; the same number from a model metric should agree (a good cross-check to mention in the insight).
 
 - `filters` address the table's **columns** (physical names, ≤ 10 conditions), same operator
   vocabulary.

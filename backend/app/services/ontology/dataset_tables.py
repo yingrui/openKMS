@@ -13,7 +13,10 @@ from sqlalchemy.pool import NullPool
 from app.models.data_source import DataSource
 from app.models.dataset import Dataset
 from app.services.credentials.credential_encryption import decrypt
-from app.services.ontology.property_types import serialize_cell_value
+from app.services.ontology.property_types import (
+    normalize_postgresql_column_type,
+    serialize_cell_value,
+)
 
 _IDENTIFIER = re.compile(r"^[a-zA-Z0-9_]+$")
 
@@ -146,6 +149,29 @@ def table_column_names(ds: DataSource, schema: str, table: str) -> list[str]:
                     {"schema": schema, "table": table},
                 ).fetchall()
             ]
+    finally:
+        engine.dispose()
+
+
+def table_column_types(ds: DataSource, schema: str, table: str) -> dict[str, str]:
+    """The table's columns and their normalized types — time granularity is only valid on a date."""
+    engine = pg_engine_for_datasource(ds)
+    try:
+        with engine.connect() as conn:
+            rows = conn.execute(
+                text(
+                    """
+                    SELECT column_name, data_type, udt_name FROM information_schema.columns
+                    WHERE table_schema = :schema AND table_name = :table
+                    ORDER BY ordinal_position
+                    """
+                ),
+                {"schema": schema, "table": table},
+            ).fetchall()
+        return {
+            str(name): normalize_postgresql_column_type(str(data_type), str(udt or ""))
+            for name, data_type, udt in rows
+        }
     finally:
         engine.dispose()
 

@@ -413,3 +413,35 @@ def test_metric_datatype_is_checked_before_sending():
     assert out.returncode != 0
     assert "invalid choice: 'number'" in out.stderr
     assert "Decimal" in out.stderr
+
+
+def test_datasets_aggregate(mock_api):
+    recorded, _ = mock_api
+    from openkms.commands.datasets import cmd_aggregate
+
+    cmd_aggregate(
+        _ns(
+            id="d1",
+            group_by="trade_date",
+            granularity="month",
+            aggregate=["count", "avg:pe_ttm=avg_pe"],
+            filter=["pe_ttm > 0"],
+            order_by="trade_date",
+            order_direction="asc",
+            limit=12,
+            offset=None,
+        )
+    )
+    assert recorded[-1].method == "POST"
+    assert recorded[-1].url.path == "/api/datasets/d1/aggregate"
+    assert json.loads(recorded[-1].content) == {
+        "group_by": [{"column": "trade_date", "granularity": "month"}],
+        "aggregates": [
+            {"fn": "count"},
+            {"fn": "avg", "column": "pe_ttm", "name": "avg_pe"},
+        ],
+        "filters": [{"field": "pe_ttm", "op": ">", "value": "0"}],
+        "order_by": [{"field": "trade_date", "direction": "asc"}],
+        "limit": 12,
+        "offset": 0,
+    }

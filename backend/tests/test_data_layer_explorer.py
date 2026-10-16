@@ -60,6 +60,21 @@ def test_model_blocks_carry_the_model_query():
     assert kwargs["order_by"] == [{"field": "value"}]
 
 
+def test_a_dataset_block_is_a_summary_when_it_carries_aggregates():
+    from app.services.data_layer.explorer import dataset_summary_kwargs, is_summary_query
+
+    assert is_summary_query({"filters": [{"field": "close", "op": ">"}]}) is False
+    assert is_summary_query({"aggregates": [{"fn": "count"}]}) is True
+    assert dataset_summary_kwargs({"group_by": ["industry"], "aggregates": [{"fn": "count"}], "limit": 5}) == {
+        "group_by": ["industry"],
+        "aggregates": [{"fn": "count"}],
+        "filters": [],
+        "order_by": [],
+        "limit": 5,
+        "offset": 0,
+    }
+
+
 def test_a_model_block_without_a_metric_is_a_request_failure():
     with pytest.raises(QueryError) as excinfo:
         model_query_kwargs({"group_by": [{"field": "industry"}]})
