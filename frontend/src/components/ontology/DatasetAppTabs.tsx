@@ -32,13 +32,6 @@ export function DatasetAppTabs() {
         {t('datasets.tabCatalog')}
       </Link>
       <Link
-        to="/datasets/quality-issues"
-        className={`dataset-app-tab${onQuality ? ' dataset-app-tab--active' : ''}`}
-        aria-current={onQuality ? 'page' : undefined}
-      >
-        {t('datasets.tabQualityIssues')}
-      </Link>
-      <Link
         to="/data-model"
         className={`dataset-app-tab${onModel ? ' dataset-app-tab--active' : ''}`}
         aria-current={onModel ? 'page' : undefined}
@@ -51,6 +44,13 @@ export function DatasetAppTabs() {
         aria-current={onMetrics ? 'page' : undefined}
       >
         {t('datasets.tabMetrics')}
+      </Link>
+      <Link
+        to="/datasets/quality-issues"
+        className={`dataset-app-tab${onQuality ? ' dataset-app-tab--active' : ''}`}
+        aria-current={onQuality ? 'page' : undefined}
+      >
+        {t('datasets.tabQualityIssues')}
       </Link>
     </nav>
   );

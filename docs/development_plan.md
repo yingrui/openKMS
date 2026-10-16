@@ -239,7 +239,7 @@ Two things came out of it:
   and there was no history command — so an agent learned "failed" and nothing else. `datasets quality
   runs` now lists the history, and `datasets quality run` prints the run it produced.
 
-- **A Quality Issues tab**, beside Catalog: every enabled rule that is not passing, across datasets,
+- **A Quality Issues tab**, last in the bar (the content tabs keep the front): every enabled rule that is not passing, across datasets,
   with the numbers, worst first. It needed a **cross-dataset** read (`GET /api/quality-issues`, one
   query joining each rule's latest run) rather than N per-dataset calls — and it filters by **dataset
   ACL**, since an issue is a fact about its dataset. A rule with no run reports `never`, which is not
