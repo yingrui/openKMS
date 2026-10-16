@@ -1,6 +1,6 @@
 import { Link, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import './dataset-app-tabs.scss';
+import './DatasetAppTabs.scss';
 
 /**
  * Top-level tabs for the merged Datasets app, under one App Rail entry (`datasets`):

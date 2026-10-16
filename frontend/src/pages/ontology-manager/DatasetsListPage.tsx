@@ -15,7 +15,7 @@ import {
 import { fetchAllDataSources, type DataSourceResponse } from '../../data/dataSourcesApi';
 import { fetchDatasetJoins, type DatasetJoinResponse } from '../../data/joinsApi';
 import { DatasetUploadWizard } from './DatasetUploadWizard';
-import { DatasetAppTabs } from './DatasetAppTabs';
+import { DatasetAppTabs } from '../../components/ontology/DatasetAppTabs';
 import { DatasetErGraph, type ErGraphLink, type ErGraphNode } from './DatasetErGraph';
 import { useConfirm } from '../../contexts/ConfirmContext';
 import { Dialog, EmptyState, FormField, Pagination, ResourceViewToggle } from '../../styles/design-system';

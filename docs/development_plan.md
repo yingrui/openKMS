@@ -201,6 +201,10 @@ Active UX / quality gaps: [Tech debt](./tech_debt.md).
 - The app's tab bar reads **Catalog · Semantic Model · Metrics**: the middle one was called "Model",
   which read as a *model instance* rather than the semantic layer; the word now matches what the layer
   is called everywhere else (the skill's `semantic-models`, the Ossie documents, the API).
+- The tab bar is now **app chrome** (`src/components/ontology/DatasetAppTabs.tsx`, its own sheet): the
+  Metrics page was written without it, so the switch it was supposed to enable did not exist — and
+  moving it into `components/` is what the shared-styles rule asks for anyway, since two routes render
+  it (it fired on the first run).
 - **Metrics** is new and read-only on purpose: it lists every metric with the model that defines it,
   its type/datatype, its base dataset and its SQL, and links into that model for any change. A metric is
   authored next to its fields and base dataset, so a second editing surface here would only be a second

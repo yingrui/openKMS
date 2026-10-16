@@ -9,7 +9,7 @@ import {
   type SemanticModelResponse,
 } from '../../data/semanticModelsApi';
 import { EmptyState } from '../../styles/design-system';
-import { DatasetAppTabs } from './DatasetAppTabs';
+import { DatasetAppTabs } from '../../components/ontology/DatasetAppTabs';
 import { SemanticModelWizard } from './SemanticModelWizard';
 import '../ontology/ontology-admin.scss';
 

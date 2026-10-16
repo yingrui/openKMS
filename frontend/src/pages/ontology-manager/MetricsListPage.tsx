@@ -5,6 +5,7 @@ import { Loader2, Search } from 'lucide-react';
 import { fetchMetrics, metricExpressionSql, type MetricResponse } from '../../data/metricsApi';
 import { fetchSemanticModels, type SemanticModelResponse } from '../../data/semanticModelsApi';
 import { EmptyState } from '../../styles/design-system';
+import { DatasetAppTabs } from '../../components/ontology/DatasetAppTabs';
 import '../ontology/ontology-admin.scss';
 
 /**
@@ -60,6 +61,8 @@ export function MetricsListPage() {
           <p className="page-subtitle">{t('dataModel.metricsSubtitle')}</p>
         </div>
       </header>
+      {/* The app's own tab bar, in the same place its siblings put it: title, tabs, content. */}
+      <DatasetAppTabs />
       <div className="ontology-admin-content">
         <div className="console-datasets-toolbar">
           <label className="console-datasets-search">
