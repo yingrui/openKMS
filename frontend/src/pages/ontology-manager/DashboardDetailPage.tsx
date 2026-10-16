@@ -161,29 +161,27 @@ export function DashboardDetailPage() {
           hint: reportSource(report, datasets, models, t('dataExplorer.sourceMissing')).label,
         })),
       ]}
-      meta={
+      meta={dashboard.question ?? t('dataExplorer.noQuestion')}
+      identityAction={
+        /* One line for what this document *is* and the action that ends it: the state, how much is
+           in it, and the delete — a quiet text link (the slot's styling), never beside Run. */
         <>
-          {dashboard.question ?? t('dataExplorer.noQuestion')}
-          {' · '}
           <StatusChip tone={dashboard.status === 'ready' ? 'ok' : 'neutral'}>
             {t(`dataExplorer.status_${dashboard.status}`, { defaultValue: dashboard.status })}
           </StatusChip>
-          {` · ${t('dataExplorer.reportCount', { count: reports.length })}`}
+          <span className="entity-view__identity-note">
+            {t('dataExplorer.reportCount', { count: reports.length })}
+          </span>
+          <button
+            type="button"
+            className="is-danger"
+            onClick={() => void handleDelete()}
+            title={t('dataExplorer.deleteConfirm')}
+          >
+            <Trash2 size={14} aria-hidden />
+            {t('dataExplorer.deleteDashboard')}
+          </button>
         </>
-      }
-      identityAction={
-        /* The destructive action belongs *with the identity*, not beside the primary one: the shell
-           renders this slot as a text link, which is the treatment a delete should have (visible,
-           discoverable, not the most prominent thing on the page). */
-        <button
-          type="button"
-          className="is-danger"
-          onClick={() => void handleDelete()}
-          title={t('dataExplorer.deleteConfirm')}
-        >
-          <Trash2 size={14} aria-hidden />
-          {t('dataExplorer.deleteDashboard')}
-        </button>
       }
     >
       {/* What the document *does* — the primary action, where a page's actions belong. */}

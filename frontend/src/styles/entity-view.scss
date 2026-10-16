@@ -98,7 +98,17 @@ body:has(.app-page-pane > .entity-view) .app-main {
 
 /* A model-wide read action (e.g. View YAML): same weight as the back link, not a header button. */
 .entity-view__identity-action {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
   margin-top: var(--space-3);
+}
+
+// A quiet fact on that row (a report count): muted, and never louder than the action beside it.
+.entity-view__identity-note {
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
 }
 
 .entity-view__identity-action button {

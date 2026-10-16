@@ -216,9 +216,10 @@ So there are two checks, and both are worth running after a class edit:
 ```bash
 python3 scripts/check-undefined-classes.py            # a class used in JSX exists in some sheet
 python3 scripts/check-global-classes.py               # a shared class is not page-owned
-rm -rf dist && npm run build && rg -l '\.new-class-name\b' dist/assets/*.css   # what shipped
-# (chunk names are hashed, so a stale dist keeps the *previous* build around — a "missing" class may
-#  be a stale file, not a missing rule: clear dist, or grep the newest chunk)
+rm -rf dist && npm run build && rg -l '\.class-name\b' dist/assets/*.css   # what shipped
+# Clear dist first: chunk names are hashed, so a stale build leaves *older* files beside the new ones
+# and a "missing" class may just be a stale file. And grep **all** chunks, never "the newest" — a
+# shared sheet lands in whichever chunk imports its component (here: EntityViewShell-*.css).
 ```
 
 The first is rule 11 in the list below (83 accepted classes style nothing today — dead markup or a

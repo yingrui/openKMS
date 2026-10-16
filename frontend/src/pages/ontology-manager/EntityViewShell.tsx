@@ -23,9 +23,9 @@ type EntityViewShellProps = {
   title: string;
   meta?: ReactNode;
   /**
-   * Identity-level actions, rendered as **text links** with the identity rather than as buttons in
-   * the action row: a read action (e.g. "View YAML"), or a destructive one that should not sit
-   * beside the primary action (add `className="is-danger"` so it says so on hover).
+   * Identity-level items, on one quiet row under the meta: facts (a status chip, a count) and the
+   * action that belongs with them — a read action like "View YAML", or a destructive one that must
+   * not sit beside the primary action (add `className="is-danger"` so it says so on hover).
    */
   identityAction?: ReactNode;
   navItems?: EntityViewNavItem[];
