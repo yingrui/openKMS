@@ -165,6 +165,13 @@ Active UX / quality gaps: [Tech debt](./tech_debt.md).
 - Domain depth (specimen/event, Darwin Core, interactive keys) — see [knowledge-types](features/knowledge-types.md) entomology workflow **future** column
 - Agent ↔ frontend protocol: align to **AG-UI** (today custom NDJSON `delta`/`tool_*`/`done`; artifacts via A2UI surfaces)
 
+### One action row per dashboard (2026-10) — done
+
+- Run sat in `EntityViewShell`'s **identity slot**, whose CSS strips button styling and whose contract
+  is a *text-style read* action (`View YAML`) — so the document's primary action rendered as muted
+  text, and Delete floated alone in the header corner. Both now share the page's single action row,
+  primary first, with Delete labelled.
+
 ### All dashboards joins the app's card list (2026-10) — done
 
 - The "nothing here yet" line (`entity-view__readonly`) moved to the shared utilities — it was
