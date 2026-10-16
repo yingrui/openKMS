@@ -196,6 +196,22 @@ Import from page TSX: **`import '../../styles/<name>.scss'`**. Never import anot
 6. **Reuse** — shared SCSS + design-system components before one-off patterns.
 7. **Gutters & exceptions** — § App shell layout; run **`check:app-layout`** when touching shell files.
 
+## Renaming a class
+
+A rename is a **two-file edit** (the SCSS and every `className`), and the second half fails silently:
+`className="explorer-chart"` survived a rename to `.report-chart` and the chart host quietly lost its
+height — no type error, no test failure. So after renaming in a layout-critical sheet, check the build
+output, which is the ground truth about what shipped:
+
+```bash
+npm run build && rg -l '\.new-class-name\b' dist/assets/*.css   # global sheet → index-*.css
+rg -n 'old-class-name' src --glob '*.tsx' --glob '*.scss'          # no stragglers
+```
+
+(An "undefined class" checker was written and dropped: SCSS nesting and compound selectors
+(`.a.b`) make the static answer wrong often enough — four false positives on the very files it was
+meant to protect — that it would have been a checker nobody trusts.)
+
 ## Style guardrails
 
 From **`frontend/`** — one command, the same one CI runs:

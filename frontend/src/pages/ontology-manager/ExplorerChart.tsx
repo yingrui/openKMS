@@ -45,7 +45,7 @@ export function ExplorerChart({ spec, series }: { spec: ExplorerChartSpec; serie
   const { keys, data } = series;
   const Chart = spec.type === 'bar' ? BarChart : LineChart;
   return (
-    <div className="explorer-chart">
+    <div className="report-chart">
       <ResponsiveContainer width="100%" height="100%">
         <Chart data={data} margin={{ top: 8, right: 16, bottom: 8, left: 0 }}>
           <CartesianGrid stroke="var(--color-border)" strokeDasharray="3 3" vertical={false} />
