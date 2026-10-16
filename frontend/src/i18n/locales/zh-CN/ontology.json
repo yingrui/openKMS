@@ -193,7 +193,10 @@
     "grain_week": "周",
     "grain_month": "月",
     "grain_quarter": "季度",
-    "grain_year": "年"
+    "grain_year": "年",
+    "chartScatter": "散点（两个度量）",
+    "chartXMeasure": "横向度量（X）",
+    "chartYMeasure": "纵向度量（Y）"
   },
   "dataModel": {
     "title": "数据模型",

@@ -165,6 +165,14 @@ Active UX / quality gaps: [Tech debt](./tech_debt.md).
 - Domain depth (specimen/event, Darwin Core, interactive keys) — see [knowledge-types](features/knowledge-types.md) entomology workflow **future** column
 - Agent ↔ frontend protocol: align to **AG-UI** (today custom NDJSON `delta`/`tool_*`/`done`; artifacts via A2UI surfaces)
 
+### Scatter: two measures against each other (2026-10) — done
+
+- `chart` gains `type: "scatter"`: the horizontal `x` is a **number** (not a category axis) and `y` is
+  a single vertical measure — "is a bigger company more expensive?" is a question this data actually
+  raises. More than one `y`, any `lines` and any grouping are refused: those are different charts.
+- The axis type is declared (`type="number"`), because recharts otherwise treats every price as a
+  category and stacks the points into columns. Covered by parse/series tests and the render smoke test.
+
 ### The rail follows the reader (2026-10) — done
 
 - The table of contents highlights the section being read (`useActiveSection`): an

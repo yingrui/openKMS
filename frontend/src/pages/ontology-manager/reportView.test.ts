@@ -347,3 +347,37 @@ describe('combo charts', () => {
     expect(series.data).toEqual([{ __x: 'jan', a: 3, b: 0.5 }]);
   });
 });
+
+describe('scatter charts', () => {
+  it('parses two measures: `x` is the horizontal measure, `y` the single vertical one', () => {
+    expect(parseView({ kind: 'chart', type: 'scatter', x: 'total_mv', y: 'pe_ttm' })).toEqual({
+      kind: 'chart',
+      type: 'scatter',
+      x: 'total_mv',
+      y: ['pe_ttm'],
+      series: null,
+    });
+  });
+
+  it('refuses a scatter that is not a pair, or that groups by a category', () => {
+    expect(parseView({ kind: 'chart', type: 'scatter', x: 'a', y: [] })).toBeNull();
+    expect(parseView({ kind: 'chart', type: 'scatter', x: 'a', y: ['b', 'c'] })).toBeNull();
+    expect(parseView({ kind: 'chart', type: 'scatter', x: 'a', y: ['b'], lines: ['c'] })).toBeNull();
+    expect(parseView({ kind: 'chart', type: 'scatter', x: 'a', y: ['b'], series: 'industry' })).toBeNull();
+  });
+
+  it('puts numbers on both axes — a category on the horizontal one would line the points up', () => {
+    const scatter = parseChartSpec({ type: 'scatter', x: 'total_mv', y: 'pe_ttm' })!;
+    const series = chartSeries(
+      [
+        { total_mv: '1.2e10', pe_ttm: '12.5' },
+        { total_mv: 'n/a', pe_ttm: '9' },
+      ],
+      scatter,
+    );
+    expect(series.data).toEqual([
+      { __x: 12000000000, pe_ttm: 12.5 },
+      { __x: null, pe_ttm: 9 },
+    ]);
+  });
+});

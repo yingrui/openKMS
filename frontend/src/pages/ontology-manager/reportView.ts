@@ -9,7 +9,7 @@
  * rendering something misleading.
  */
 
-export type ExplorerChartType = 'line' | 'bar' | 'combo';
+export type ExplorerChartType = 'line' | 'bar' | 'combo' | 'scatter';
 export type ReportViewKind = 'chart' | 'metric' | 'bar_list' | 'tracker';
 
 export interface ExplorerChartSpec {
@@ -18,7 +18,9 @@ export interface ExplorerChartSpec {
     /**
    * `line` for a series over time, `bar` to compare categories, `combo` for both at once — where
    * `y` is drawn as **bars on the left axis** and `lines` as **lines on the right axis**, because a
-   * count and a ratio on one axis is how a combo chart lies (the line goes flat at the bottom).
+   * count and a ratio on one axis is how a combo chart lies (the line goes flat at the bottom) — and
+   * **`scatter`** for the relationship between two **measures**: `x` is the horizontal measure (not a
+   * category axis) and `y` holds the single vertical one.
    */
 
   /** The column drawn along the category axis. */
@@ -296,9 +298,11 @@ export function parseChartSpec(raw: unknown): ExplorerChartSpec | null {
       ? 'bar'
       : record.type === 'combo'
         ? 'combo'
-        : record.type === undefined || record.type === 'line'
-          ? 'line'
-          : null;
+        : record.type === 'scatter'
+          ? 'scatter'
+          : record.type === undefined || record.type === 'line'
+            ? 'line'
+            : null;
   if (!type) return null;
   const x = asName(record.x);
   if (!x) return null;
@@ -310,9 +314,11 @@ export function parseChartSpec(raw: unknown): ExplorerChartSpec | null {
   if (y.length === 0 && !(type === 'combo' && lines.length > 0)) return null;
   const series = record.series === undefined || record.series === null ? null : asName(record.series);
   if (record.series !== undefined && record.series !== null && !series) return null;
-  // A grouping column with several measures has no defined drawing — reject rather than guess,
-  // and a grouped combo would pivot only its bars (the lines have nowhere to go).
-  if (series && (y.length > 1 || type === 'combo')) return null;
+  // A grouping column with several measures has no defined drawing — reject rather than guess, a
+  // grouped combo would pivot only its bars (the lines have nowhere to go), and a scatter plots one
+  // pair of measures (colouring by category is a different chart).
+  if (series && (y.length > 1 || type === 'combo' || type === 'scatter')) return null;
+  if (type === 'scatter' && (y.length !== 1 || lines.length > 0)) return null;
   return type === 'combo' ? { type, x, y, lines, series } : { type, x, y, series };
 }
 
@@ -401,11 +407,14 @@ export function chartSeries(
 ): ChartSeries {
   if (!spec.series) {
     // A combo plots both slots: the bars and the lines are data keys alike; the component decides
-    // which shape each one gets.
+    // which shape each one gets. A scatter puts a *number* on the horizontal axis, not a category.
+    const scatter = spec.type === 'scatter';
     return {
       keys: [...spec.y, ...(spec.lines ?? [])],
       data: rows.map((row) => {
-        const point: Record<string, unknown> = { [X_KEY]: row[spec.x] };
+        const point: Record<string, unknown> = {
+          [X_KEY]: scatter ? numericValue(row[spec.x]) : row[spec.x],
+        };
         for (const name of [...spec.y, ...(spec.lines ?? [])]) point[name] = numericValue(row[name]);
         return point;
       }),

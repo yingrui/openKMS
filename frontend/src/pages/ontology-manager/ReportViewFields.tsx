@@ -41,7 +41,8 @@ export function ReportViewFields({
     [spec, columns, rows],
   );
 
-  const chartLike = view.choice === 'line' || view.choice === 'bar' || view.choice === 'combo';
+  const chartLike =
+    view.choice === 'line' || view.choice === 'bar' || view.choice === 'combo' || view.choice === 'scatter';
   const singleValue = view.choice === 'bar_list' || view.choice === 'tracker';
 
   /** Choosing a presentation picks the columns it needs, so the choice is never "a chart of nothing". */
@@ -88,6 +89,7 @@ export function ReportViewFields({
           <option value="line">{t('dataExplorer.chartLine')}</option>
           <option value="bar">{t('dataExplorer.chartBar')}</option>
           <option value="combo">{t('dataExplorer.chartCombo')}</option>
+          <option value="scatter">{t('dataExplorer.chartScatter')}</option>
           <option value="metric">{t('dataExplorer.viewMetric')}</option>
           <option value="bar_list">{t('dataExplorer.viewBarList')}</option>
           <option value="tracker">{t('dataExplorer.viewTracker')}</option>
@@ -97,9 +99,11 @@ export function ReportViewFields({
         <>
           <FormField
             label={
-              singleValue || view.choice === 'metric'
-                ? t('dataExplorer.viewValueColumn')
-                : t('dataExplorer.chartX')
+              view.choice === 'scatter'
+                ? t('dataExplorer.chartXMeasure')
+                : singleValue || view.choice === 'metric'
+                  ? t('dataExplorer.viewValueColumn')
+                  : t('dataExplorer.chartX')
             }
           >
             <select
@@ -122,9 +126,28 @@ export function ReportViewFields({
           {chartLike && (
             <FormField
               label={
-                view.choice === 'combo' ? t('dataExplorer.chartBars') : t('dataExplorer.chartY')
+                view.choice === 'scatter'
+                  ? t('dataExplorer.chartYMeasure')
+                  : view.choice === 'combo'
+                    ? t('dataExplorer.chartBars')
+                    : t('dataExplorer.chartY')
               }
             >
+              {view.choice === 'scatter' ? (
+                <select
+                  value={view.y[0] ?? ''}
+                  onChange={(e) => onChange({ ...view, y: e.target.value ? [e.target.value] : [] })}
+                >
+                  <option value="">{t('dataExplorer.queryNoMetric')}</option>
+                  {columns
+                    .filter((c) => c !== view.axisColumn)
+                    .map((c) => (
+                      <option key={c} value={c}>
+                        {c}
+                      </option>
+                    ))}
+                </select>
+              ) : (
               <CheckList>
                 {columns
                   .filter((c) => c !== view.axisColumn && !(view.lines ?? []).includes(c))
@@ -134,6 +157,7 @@ export function ReportViewFields({
                     </CheckListItem>
                   ))}
               </CheckList>
+              )}
             </FormField>
           )}
           {view.choice === 'combo' && (

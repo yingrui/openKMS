@@ -193,7 +193,10 @@
     "grain_week": "Week",
     "grain_month": "Month",
     "grain_quarter": "Quarter",
-    "grain_year": "Year"
+    "grain_year": "Year",
+    "chartScatter": "Scatter (two measures)",
+    "chartXMeasure": "Horizontal measure (X)",
+    "chartYMeasure": "Vertical measure (Y)"
   },
   "dataModel": {
     "title": "Data Model",

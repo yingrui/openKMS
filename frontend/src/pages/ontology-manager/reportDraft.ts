@@ -17,7 +17,7 @@ import {
 } from './reportView';
 
 /** What a report can be presented as: a table, a trend, a number, a ranking, or a strip. */
-export type ViewChoice = 'none' | 'line' | 'bar' | 'combo' | 'metric' | 'bar_list' | 'tracker';
+export type ViewChoice = 'none' | 'line' | 'bar' | 'combo' | 'scatter' | 'metric' | 'bar_list' | 'tracker';
 
 /** A model query the Playground just ran, and the model/metric that name it. */
 export function modelReportDraft(args: {
@@ -216,6 +216,12 @@ export function viewSpec(view: ViewDraft): ReportView | null {
     return { kind: 'tracker', column: view.valueColumn, x: view.axisColumn, label: null };
   }
   if (view.choice === 'none' || !view.axisColumn) return null;
+  if (view.choice === 'scatter') {
+    // Two measures and nothing else: the horizontal one is the `x` column, the vertical one the only
+    // `y` — anything more is a different chart, and the form does not offer it.
+    if (view.y.length !== 1 || view.y[0] === view.axisColumn) return null;
+    return { kind: 'chart', type: 'scatter', x: view.axisColumn, y: [view.y[0]], series: null };
+  }
   if (view.choice === 'combo') {
     const lines = view.lines ?? [];
     if (view.y.length + lines.length === 0) return null;

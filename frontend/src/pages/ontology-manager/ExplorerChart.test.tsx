@@ -38,6 +38,8 @@ describe('ExplorerChart', () => {
         y: ['count'],
         lines: ['avg_pe'],
       },
+      // two measures, numeric axes: a wrong axis `type` throws or plots categories
+      { kind: 'chart', type: 'scatter', x: 'count', y: ['avg_pe'] },
     ]) {
       const { container, unmount } = draw(spec);
       expect(container.querySelector('.report-chart')).not.toBeNull();

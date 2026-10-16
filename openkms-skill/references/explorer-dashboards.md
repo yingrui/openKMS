@@ -134,7 +134,7 @@ matches the question:
 | **`metric` + `trend`** | a **KPI**: the series' last value, the change, and the shape | "the number matters, the shape is context" (a latest average with its direction). Order the query so the row you want on top is **last**; `trend.compare` says how many rows back the change is measured against (`1` previous, `12` the same month last year on monthly data) |
 | **`bar_list`** | a ranking: label, bar, value, share | "top N by X" — 8 industries read far better as a list than as 8 bars, and labels never clip |
 | **`tracker`** | a strip of blocks, intensity = value / largest | coverage, missingness, streaks **over many periods** (a year of months, a month of days) — one line instead of a screen |
-| **`chart`** | `line`, `bar` or **`combo`** | a **trend** over time (line), a **comparison** across a few categories (bar), or **`combo`** for both at once: bars on the left axis with a line on the right (rows vs a rate — two scales, two axes) |
+| **`chart`** | `line`, `bar`, **`combo`** or **`scatter`** | a **trend** over time (line), a **comparison** across a few categories (bar), **`combo`** for both at once (bars left, line right — two scales, two axes), or **`scatter`** for the relationship between **two measures** (`x` is a number, `y` the single vertical one — "is a bigger company more expensive?") |
 
 ```jsonc
 { "title": "行业平均市盈率（前 8）", "insight": "…",
@@ -178,7 +178,8 @@ matches the question:
 ```
 
 - `type`: `line` for a series over time, `bar` to compare categories, `combo` for a bar + line
-  pair (`lines` are drawn on the right axis — never mix two scales on one axis).
+  pair (`lines` are drawn on the right axis — never mix two scales on one axis), `scatter` for two
+  measures against each other (both axes numeric; `series`/`lines` and a second `y` are refused).
 - `x` / `y`: result columns to draw (`y` may be a list, e.g. `["count", "avg_pe"]`).
 - `series`: optional — one line/bar per distinct value of that column (`y` must then be one column);
   the app keeps the first 8 and says when it truncated.
