@@ -165,6 +165,16 @@ Active UX / quality gaps: [Tech debt](./tech_debt.md).
 - Domain depth (specimen/event, Darwin Core, interactive keys) — see [knowledge-types](features/knowledge-types.md) entomology workflow **future** column
 - Agent ↔ frontend protocol: align to **AG-UI** (today custom NDJSON `delta`/`tool_*`/`done`; artifacts via A2UI surfaces)
 
+### The narrative editor had no styles (2026-10) — fixed
+
+- Tidying `data-explorer.scss` with a **line-range slice** cut `.dashboard-narrative` and its editor
+  out of the sheet — the tile styles survived only because they are nested inside `.dashboard-report`.
+  Restored, and the page now imports its own sheet rather than relying on a child component to.
+- Because this was the third "a class styles nothing" incident, and every one came from a mechanical
+  edit (rename / move / delete), `scripts/check-undefined-classes.py` now checks it: 83 accepted
+  classes, a baseline that only shrinks, and a probe confirming a deleted block fails with the file
+  and class named.
+
 ### Add a report from the dashboard (2026-10) — done
 
 - **Add a report** on the dashboard page: pick the source, write the query, **Try it** (nothing is saved

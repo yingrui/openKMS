@@ -206,6 +206,13 @@ if [ "${LEGACY_MODAL_NOW:-0}" -gt "${LEGACY_MODAL_BASELINE:-0}" ]; then
   report "hand-rolled modal markup grew ($LEGACY_MODAL_NOW > $LEGACY_MODAL_BASELINE); use <Dialog> and lower scripts/legacy-modals-baseline.txt"
 fi
 
+# --- 11. Classes that style nothing ------------------------------------------
+# A class used in JSX must exist in some sheet — renames, moves and *deletions* all have a second
+# half, and a missing one is silent. `undefined-classes-baseline.txt` is accepted debt (shrink it).
+if ! python3 scripts/check-undefined-classes.py; then
+  status=1
+fi
+
 if [ "$status" -eq 0 ]; then
   echo "check-shared-styles: OK"
 fi

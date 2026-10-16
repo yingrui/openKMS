@@ -6,6 +6,36 @@
 // Page-local on purpose — only this route loads it. Anything a view component needs lives in
 // `src/styles/report-view.scss`, because the save/view editing dialogs are opened from the Playground
 // and the Data tab too.
+// ---- The answer, read and written ---------------------------------------------------------
+// Read: markdown, with the section's own spacing instead of the renderer's block margins.
+.dashboard-narrative {
+  line-height: 1.6;
+
+  > :first-child {
+    margin-top: 0;
+  }
+
+  > :last-child {
+    margin-bottom: 0;
+  }
+}
+
+// Written: a monospace editor, because the answer is markdown and its structure is visible while
+// typing — indentation, quotes, a table's pipes.
+.dashboard-narrative__editor {
+  width: 100%;
+  min-height: 12rem;
+  padding: var(--space-3);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-bg);
+  color: var(--color-text);
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-size: var(--text-sm);
+  line-height: 1.6;
+  resize: vertical;
+}
+
 // ---- One report in it ---------------------------------------------------------------------
 // The tile is an app section card (`EntityViewPanel` → `.account-card`); these are the bits inside
 // it: where the numbers come from, the insight, the provenance line, and the result's toolbar.

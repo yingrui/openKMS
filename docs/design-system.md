@@ -198,6 +198,30 @@ Import from page TSX: **`import '../../styles/<name>.scss'`**. Never import anot
 6. **Reuse** — shared SCSS + design-system components before one-off patterns.
 7. **Gutters & exceptions** — § App shell layout; run **`check:app-layout`** when touching shell files.
 
+## Renaming — or deleting — a class
+
+A class edit has **two halves** (the SCSS and every `className`), and the missing half is silent:
+no type error, no failing test, just something unstyled. Three times, each from a *mechanical* edit:
+
+* `className="explorer-chart"` survived a rename to `.report-chart`, so the chart host lost its
+  height;
+* the report views' styles lived in one page's sheet while another route rendered them (a move's
+  other half);
+* tidying a sheet with a **line-range slice** cut `.dashboard-narrative` and its editor, and the
+  narrative was a bare browser textarea until a reader said so.
+
+So there are two checks, and both are worth running after a class edit:
+
+```bash
+python3 scripts/check-undefined-classes.py            # a class used in JSX exists in some sheet
+python3 scripts/check-global-classes.py               # a shared class is not page-owned
+npm run build && rg -l '\.new-class-name\b' dist/assets/*.css   # what actually shipped
+```
+
+The first is rule 11 in the list below (83 accepted classes style nothing today — dead markup or a
+real gap — and the file only shrinks). It is deliberately flat: tokens, not ownership, because SCSS
+nesting and compound selectors made a cleverer version wrong often enough to be ignored.
+
 ## Renaming a class
 
 A rename is a **two-file edit** (the SCSS and every `className`), and the second half fails silently:

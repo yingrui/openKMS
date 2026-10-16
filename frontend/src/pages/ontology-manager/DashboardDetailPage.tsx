@@ -27,6 +27,7 @@ import { StatusChip } from '../../styles/design-system';
 import { DashboardReportView } from './DashboardReportView';
 import { EntityViewHeader, EntityViewLoading, EntityViewPanel, EntityViewShell } from './EntityViewShell';
 import { AddReportDialog } from './AddReportDialog';
+import './data-explorer.scss';
 import { EditReportDialog } from './EditReportDialog';
 import { applyReportFields, moveReport, removeReport, replaceReport } from './dashboardEdits';
 import './data-explorer.scss';
