@@ -12,6 +12,8 @@ export interface ExplorerReportBlock {
   query?: Record<string, unknown>;
   columns?: string[];
   rows?: Record<string, unknown>[];
+  /** Rows the query matches (a dataset block's page may be a slice of this). */
+  total?: number;
   /** The last run's classified failure, localized for the reader by the API. */
   error?: { code?: string; message?: string; kind?: string; detail?: string | null } | null;
   ran_at?: string | null;

@@ -14,6 +14,14 @@ def _split(raw: str | None) -> list[str]:
     return [x.strip() for x in (raw or "").split(",") if x.strip()]
 
 
+def cmd_get(ns: argparse.Namespace) -> None:
+    """One model's scope (datasets) + ai_context — the summary `list` gives, in full."""
+    with client() as s:
+        r = s.get(f"/api/semantic-models/{ns.id}")
+    r.raise_for_status()
+    print_json(r.json())
+
+
 def cmd_list(ns: argparse.Namespace) -> None:
     with client() as s:
         r = s.get("/api/semantic-models")
@@ -145,6 +153,10 @@ def cmd_fields_delete(ns: argparse.Namespace) -> None:
 def add_subparser(sub) -> None:
     p = sub.add_parser("semantic-models", help="Named semantic models (Ossie scopes)")
     sp = p.add_subparsers(dest="semantic_models_cmd", required=True)
+
+    gt = sp.add_parser("get", help="Get one semantic model (scope, ai_context)")
+    gt.add_argument("--id", required=True)
+    gt.set_defaults(fn=cmd_get)
 
     sl = sp.add_parser("list", help="List semantic models")
     sl.set_defaults(fn=cmd_list)

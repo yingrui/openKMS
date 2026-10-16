@@ -6,6 +6,7 @@ from) and can be re-run: `POST /{id}/run` executes every block through that sour
 Reads: `data:read`. Writes (create/update/run/delete): `data:write`.
 Agents author the narrative + blocks through `openkms-skill`; this API also runs them.
 """
+import time
 import uuid
 from datetime import datetime, timezone
 
@@ -206,10 +207,18 @@ async def _run_block(
                 "sql": sql,
             }
         else:
+            started = time.perf_counter()
             page = await query_dataset_rows(
                 db, report.dataset_id or "", **dataset_query_kwargs(block.get("query"))
             )
-            result = {"columns": page.columns, "rows": page.rows, "capped": page.capped}
+            result = {
+                "columns": page.columns,
+                "rows": page.rows,
+                # `total` counts the rows the filters match — the page may be a slice of it.
+                "total": page.total,
+                "capped": page.capped,
+                "duration_ms": int((time.perf_counter() - started) * 1000),
+            }
     except (QueryError, RowFilterError) as exc:
         return {**block, "error": _failure_dict(exc.failure), "ran_at": ran_at}
     return {**block, **result, "error": None, "ran_at": ran_at}

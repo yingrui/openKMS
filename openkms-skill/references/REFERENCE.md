@@ -234,6 +234,7 @@ All write subcommands accept `--yes` / `--dry-run`. Without `--yes` on non-TTY s
 | `metrics compute` | GET | `/api/metrics/{metric_id}/compute` | Runs the metric **read-only** (statement timeout + row cap); records a run. |
 | `metrics runs` | GET | `/api/metrics/{metric_id}/runs` | Recent executions (audit). |
 | `metrics delete` *(write)* | DELETE | `/api/metrics/{metric_id}` | |
+| `semantic-models get` | GET | `/api/semantic-models/{id}` | One model's scope (datasets) + `ai_context` — the full record, not the list summary. |
 | `semantic-models list` | GET | `/api/semantic-models` | Named semantic models (scope = dataset ids). |
 | `semantic-models add` *(write)* | POST | `/api/semantic-models` | Body `{name, dataset_ids, description?}`. |
 | `semantic-models export` | GET | `/api/semantic-models/{id}/export` | Ossie document for one model (`?format=json|yaml`). |

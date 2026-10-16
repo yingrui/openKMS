@@ -42,6 +42,8 @@ _PATCHED_MODULES = (
     "openkms.commands.groups",
     "openkms.commands.evaluation",
     "openkms.commands.explorer",
+    "openkms.commands.semantic_models",
+    "openkms.commands.metrics",
 )
 
 

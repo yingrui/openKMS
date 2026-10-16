@@ -86,7 +86,12 @@ def add_subparser(sub) -> None:
         default="simple",
         choices=("simple", "ratio", "derived", "cumulative", "conversion"),
     )
-    ma.add_argument("--datatype", default=None)
+    ma.add_argument(
+        "--datatype",
+        default=None,
+        choices=("String", "Integer", "Decimal", "Float", "Boolean", "Date", "Time", "DateTime", "DateTimeTz", "Opaque"),
+        help="Ossie DataType of the aggregate (Decimal for money / ratios)",
+    )
     ma.add_argument("--joins", default=None, help="comma-separated relationship ids")
     ma.add_argument("--definition", default=None)
     ma.add_argument("--ai-instructions", default=None, dest="ai_instructions")

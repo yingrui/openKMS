@@ -371,3 +371,45 @@ def test_explorer_report_run(mock_api):
     cmd_run(_ns(id="r1"))
     assert recorded[-1].method == "POST"
     assert recorded[-1].url.path == "/api/explorer-reports/r1/run"
+
+
+def test_semantic_model_get(mock_api):
+    recorded, responses = mock_api
+    responses[("GET", "/api/semantic-models/m1")] = (200, {"id": "m1", "name": "Stock", "datasets": []})
+    from openkms.commands.semantic_models import cmd_get
+
+    cmd_get(_ns(id="m1"))
+    assert recorded[-1].url.path == "/api/semantic-models/m1"
+
+
+def test_metric_datatype_is_checked_before_sending():
+    """The API answers 400 with the whitelist; the CLI should refuse locally with the same list."""
+    import subprocess
+    import sys
+    from pathlib import Path
+
+    cli = Path(__file__).resolve().parents[1] / "scripts" / "cli.py"
+    out = subprocess.run(
+        [
+            sys.executable,
+            str(cli),
+            "metrics",
+            "add",
+            "--datatype",
+            "number",
+            "--name",
+            "x",
+            "--semantic-model-id",
+            "m",
+            "--base-dataset-id",
+            "d",
+            "--expression",
+            "AVG(1)",
+            "--dry-run",
+        ],
+        capture_output=True,
+        text=True,
+    )
+    assert out.returncode != 0
+    assert "invalid choice: 'number'" in out.stderr
+    assert "Decimal" in out.stderr

@@ -38,8 +38,7 @@ will not run on the other.
 
 - **`narrative` is the answer**; **`insight` is the one-paragraph reading of a block** (what it shows,
   the anomaly, the next question). They are the difference between a dashboard and a data dump.
-- **A run writes the results back** into each block: `columns`, `rows`, `capped`, `duration_ms`, `sql`,
-  `ran_at`. Those are *not* part of what you author.
+- **A run writes the results back** into each block: `columns`, `rows`, `capped`, `duration_ms`, `sql`, `total` (a dataset block: rows the filters match, may exceed the page), `ran_at`. Those are *not* part of what you author.
 
 ## Block queries — the exact shapes
 

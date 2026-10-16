@@ -178,7 +178,7 @@ export function ExplorerReportDetail() {
             ) : (
               <>
                 <p className="page-subtitle">
-                  {t('datasets.filterRows', { count: block.rows?.length ?? 0 })}
+                  {t('datasets.filterRows', { count: block.total ?? block.rows?.length ?? 0 })}
                   {block.capped ? ` · ${t('datasets.filterCapped')}` : ''}
                   {block.duration_ms != null ? ` · ${block.duration_ms} ms` : ''}
                 </p>
