@@ -10,6 +10,7 @@ import {
   XAxis,
   YAxis,
 } from 'recharts';
+import { formatNumber } from './reportFormat';
 import {
   CHART_X_KEY,
   numericValue,
@@ -19,26 +20,14 @@ import {
 } from './reportView';
 
 /**
- * The colours a series is drawn in.
+ * The colours a series is drawn in — **theme tokens, not constants in code**.
  *
- * Presentation constants, not tokens: a chart needs several *distinguishable* hues at once, and the
- * theme's semantic colours are not meant for that. They are picked to stay apart on light and dark
- * surfaces; the grid/labels still come from theme variables.
+ * A chart needs several hues that stay distinguishable from each other (the theme's semantic colours
+ * are not meant for that), but *which* hues is a theming question: dark mode lifts them. So the
+ * palette lives in `_css-variables.scss` as `--report-series-1…8` and the chart only picks one per
+ * series. (Tremor does the same thing with its own theme's chart colours.)
  */
-const SERIES_COLORS = [
-  '#0d9488',
-  '#2563eb',
-  '#d97706',
-  '#9333ea',
-  '#dc2626',
-  '#0891b2',
-  '#65a30d',
-  '#db2777',
-] as const;
-
-function compact(value: number): string {
-  return new Intl.NumberFormat(undefined, { maximumFractionDigits: 2 }).format(value);
-}
+const SERIES_COLORS = Array.from({ length: 8 }, (_, i) => `var(--report-series-${i + 1})`);
 
 /** One dashboard report's result, drawn — the data comes from the server, this only draws it. */
 export function ExplorerChart({ spec, series }: { spec: ExplorerChartSpec; series: ChartSeries }) {
@@ -66,7 +55,7 @@ export function ExplorerChart({ spec, series }: { spec: ExplorerChartSpec; serie
             }}
             formatter={(value) => {
               const n = numericValue(value);
-              return n === null ? '—' : compact(n);
+              return n === null ? '—' : formatNumber(n);
             }}
           />
           <Legend wrapperStyle={{ fontSize: 12 }} />

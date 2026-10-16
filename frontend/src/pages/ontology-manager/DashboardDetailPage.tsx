@@ -1,9 +1,8 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link, useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import {
   ArrowDown,
-  ArrowLeft,
   ArrowUp,
   Loader2,
   Pencil,
@@ -24,7 +23,9 @@ import { fetchSemanticModels, type SemanticModelResponse } from '../../data/sema
 import { useAuth } from '../../contexts/AuthContext';
 import { useConfirm } from '../../contexts/ConfirmContext';
 import { RichMarkdown } from '../../components/markdown/richMarkdown';
+import { StatusChip } from '../../styles/design-system';
 import { DashboardReportView } from './DashboardReportView';
+import { EntityViewHeader, EntityViewLoading, EntityViewPanel, EntityViewShell } from './EntityViewShell';
 import { EditReportDialog } from './EditReportDialog';
 import { applyReportFields, moveReport, removeReport, replaceReport } from './dashboardEdits';
 import '../ontology/ontology-admin.scss';
@@ -137,43 +138,46 @@ export function DashboardDetailPage() {
     }
   };
 
-  if (loading) {
-    return (
-      <div className="console-loading">
-        <Loader2 size={32} className="console-loading-spinner" aria-hidden />
-        <p>{t('shared.loading')}</p>
-      </div>
-    );
-  }
+  if (loading) return <EntityViewLoading label={t('shared.loading')} />;
   if (!dashboard) return null;
 
   const editingReport = editing === null ? null : reports[editing];
 
   return (
-    <div className="ontology-admin">
-      <div className="page-header">
-        <div>
-          <h1>{dashboard.name}</h1>
-          <p className="page-subtitle">{dashboard.question ?? t('dataExplorer.noQuestion')}</p>
-        </div>
-        <div className="page-header-actions">
-          <Link to="/data-explorer" className="btn btn-secondary">
-            <ArrowLeft size={16} aria-hidden />
-            <span>{t('dataExplorer.backToDashboards')}</span>
-          </Link>
-          <button
-            type="button"
-            className="btn btn-primary"
-            onClick={() => void handleRun()}
-            disabled={running || reports.length === 0}
-          >
-            {running ? (
-              <Loader2 size={16} className="console-loading-spinner" aria-hidden />
-            ) : (
-              <Play size={16} aria-hidden />
-            )}
-            <span>{t('dataExplorer.run')}</span>
-          </button>
+    <>
+    <EntityViewShell
+      backTo="/data-explorer"
+      backLabel={t('dataExplorer.backToDashboards')}
+      title={dashboard.name}
+      meta={
+        <>
+          {dashboard.question ?? t('dataExplorer.noQuestion')}
+          {' · '}
+          <StatusChip tone={dashboard.status === 'ready' ? 'ok' : 'neutral'}>
+            {t(`dataExplorer.status_${dashboard.status}`, { defaultValue: dashboard.status })}
+          </StatusChip>
+          {` · ${t('dataExplorer.reportCount', { count: reports.length })}`}
+        </>
+      }
+      identityAction={
+        <button
+          type="button"
+          className="btn btn-primary"
+          onClick={() => void handleRun()}
+          disabled={running || reports.length === 0}
+        >
+          {running ? (
+            <Loader2 size={16} className="console-loading-spinner" aria-hidden />
+          ) : (
+            <Play size={16} aria-hidden />
+          )}
+          <span>{t('dataExplorer.run')}</span>
+        </button>
+      }
+    >
+      <EntityViewHeader
+        title=""
+        actions={
           <button
             type="button"
             className="btn btn-secondary"
@@ -182,34 +186,31 @@ export function DashboardDetailPage() {
           >
             <Trash2 size={16} aria-hidden />
           </button>
-        </div>
-      </div>
-      <div className="ontology-admin-content dashboard-document">
+        }
+      />
+      <EntityViewPanel
+        title={t('dataExplorer.narrative')}
+        actions={
+          narrativeDraft === null && canWrite && dashboard.narrative ? (
+            <button
+              type="button"
+              className="btn btn-secondary btn-sm"
+              onClick={() => setNarrativeDraft(dashboard.narrative ?? '')}
+              title={t('shared.edit')}
+            >
+              <Pencil size={14} aria-hidden />
+            </button>
+          ) : null
+        }
+      >
         {narrativeDraft === null ? (
-          <section>
-            <div className="dashboard-section__head">
-              <h2>{t('dataExplorer.narrative')}</h2>
-              {canWrite && dashboard.narrative && (
-                <button
-                  type="button"
-                  className="btn btn-secondary btn-sm"
-                  onClick={() => setNarrativeDraft(dashboard.narrative ?? '')}
-                  title={t('shared.edit')}
-                >
-                  <Pencil size={14} aria-hidden />
-                  <span>{t('shared.edit')}</span>
-                </button>
-              )}
-            </div>
-            {dashboard.narrative ? (
-              <RichMarkdown className="dashboard-narrative">{dashboard.narrative}</RichMarkdown>
-            ) : (
-              <p className="entity-view__readonly">{t('dataExplorer.noNarrative')}</p>
-            )}
-          </section>
+          dashboard.narrative ? (
+            <RichMarkdown className="dashboard-narrative">{dashboard.narrative}</RichMarkdown>
+          ) : (
+            <p className="entity-view__readonly">{t('dataExplorer.noNarrative')}</p>
+          )
         ) : (
-          <section>
-            <h2>{t('dataExplorer.narrative')}</h2>
+          <>
             <textarea
               className="dashboard-narrative__editor"
               value={narrativeDraft}
@@ -221,7 +222,12 @@ export function DashboardDetailPage() {
               <button
                 type="button"
                 className="btn btn-primary btn-sm"
-                onClick={() => void saveDocument({ narrative: narrativeDraft }, t('dataExplorer.narrativeSaved')).then((ok) => ok && setNarrativeDraft(null))}
+                onClick={() =>
+                  void saveDocument(
+                    { narrative: narrativeDraft },
+                    t('dataExplorer.narrativeSaved'),
+                  ).then((ok) => ok && setNarrativeDraft(null))
+                }
                 disabled={saving}
               >
                 {saving ? t('shared.saving') : t('shared.save')}
@@ -235,11 +241,12 @@ export function DashboardDetailPage() {
                 {t('shared.cancel')}
               </button>
             </div>
-          </section>
+          </>
         )}
-        {reports.length === 0 && (
-          <p className="entity-view__readonly">{t('dataExplorer.reportsEmpty')}</p>
-        )}
+      </EntityViewPanel>
+      {reports.length === 0 && (
+        <p className="entity-view__readonly">{t('dataExplorer.reportsEmpty')}</p>
+      )}
         {reports.map((report, i) => (
           <DashboardReportView
             key={i}
@@ -299,7 +306,6 @@ export function DashboardDetailPage() {
             }
           />
         ))}
-      </div>
       {editingReport && (
         <EditReportDialog
           key={editing}
@@ -315,6 +321,7 @@ export function DashboardDetailPage() {
           }}
         />
       )}
-    </div>
+    </EntityViewShell>
+    </>
   );
 }

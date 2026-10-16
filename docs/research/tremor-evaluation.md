@@ -49,6 +49,19 @@ said "line or bar"):
 | `CategoryBar`, `ProgressBar`, `ProgressCircle` | *not yet* | they need targets/limits, which the data layer does not declare — inventing them would be a lie |
 | `ComboChart`, `ScatterChart`, `FunnelChart`, `DateRangePicker` | *not yet* | real gaps; a date-range picker is the most likely next one |
 
+## Styling lessons taken (separate from the vocabulary)
+
+Tremor's `className`s are Tailwind utilities and are not portable here, but three of its *styling
+habits* are, and they are now ours:
+
+| Tremor's habit | Ours |
+|----------------|------|
+| Chart colours come from the **theme** (`chartColors`), not from the calling component — so a dark theme can lift them | `--report-series-1…8` in `_css-variables.scss`, with a dark-mode override; `ExplorerChart` picks a token per series and never names a hex |
+| One **formatter** per surface (`valueFormatter` passed in, one rounding rule) | `reportFormat.ts` (`formatNumber` / `formatPercent`) — the KPI, the ranking, the strip and the chart tooltip all format the same way |
+| Data surfaces are **cards with one rhythm** (`rounded-lg p-4` everywhere), never free-floating blocks | the app's section card (`EntityViewPanel` → `.account-card`) with the shared spacing scale; the Explorer's tiles are those cards, and `.account-card-head` now takes section actions |
+| Skeletons while loading | **not taken** — the app uses one spinner idiom (`.console-loading` / `EntityViewLoading`); adding skeletons to one area would be the inconsistency, not the improvement |
+| Density props, theme object | **not taken** — no consumer needs them, and a config surface nothing sets is dead weight |
+
 **What would change this answer:** if the app ever adopted Tailwind (it will not — the design system
 is the contract), or if we needed its date-range picker and combo/heatmap charts *now*; then copying
 Tremor **Raw** components (Apache-2.0) is a legitimate option, with the Tailwind cost accepted

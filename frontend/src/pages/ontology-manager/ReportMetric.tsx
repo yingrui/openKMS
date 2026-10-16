@@ -1,10 +1,7 @@
 import { useTranslation } from 'react-i18next';
 import { ArrowDown, ArrowUp, Minus } from 'lucide-react';
+import { formatNumber, formatPercent } from './reportFormat';
 import { numericValue, metricDelta, metricSeries, metricValue, type ReportMetricView } from './reportView';
-
-const NUMBER = (value: number) => new Intl.NumberFormat(undefined, { maximumFractionDigits: 2 }).format(value);
-const PERCENT = (ratio: number) =>
-  `${ratio > 0 ? '+' : ''}${new Intl.NumberFormat(undefined, { maximumFractionDigits: 1 }).format(ratio * 100)}%`;
 
 /**
  * A number, and what it is.
@@ -29,7 +26,7 @@ export function ReportMetric({
       ? raw === null || raw === undefined
         ? t('datasets.dash')
         : String(raw)
-      : NUMBER(numeric);
+      : formatNumber(numeric);
   const delta = view.trend ? metricDelta(rows, view) : null;
   const series = view.trend ? metricSeries(rows, view) : [];
   const largest = series.reduce((max, p) => Math.max(max, Math.abs(p.value)), 0);
@@ -42,9 +39,9 @@ export function ReportMetric({
       {delta && (
         <span className={`report-metric__delta report-metric__delta--${delta.direction}`}>
           <DeltaIcon size={14} aria-hidden />
-          {delta.ratio === null ? t('dataExplorer.deltaNoBaseline') : PERCENT(delta.ratio)}
+          {delta.ratio === null ? t('dataExplorer.deltaNoBaseline') : formatPercent(delta.ratio)}
           <span className="report-metric__delta-note">
-            {t('dataExplorer.deltaVsPrevious', { previous: NUMBER(delta.previous) })}
+            {t('dataExplorer.deltaVsPrevious', { previous: formatNumber(delta.previous) })}
           </span>
         </span>
       )}

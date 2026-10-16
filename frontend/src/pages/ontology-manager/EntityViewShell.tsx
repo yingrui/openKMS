@@ -64,12 +64,15 @@ export function EntityViewStat({ label, value }: { label: string; value: ReactNo
 export function EntityViewPanel({
   title,
   description,
+  actions,
   children,
   footer,
   defaultCollapsed = false,
 }: {
   title?: string;
   description?: ReactNode;
+  /** What acts on the section (edit / reorder / remove): it sits in the head, not above the card. */
+  actions?: ReactNode;
   children: ReactNode;
   footer?: ReactNode;
   /** When true, body starts collapsed (title row toggles). Requires a title. */
@@ -80,7 +83,7 @@ export function EntityViewPanel({
 
   return (
     <section className="account-card entity-view__panel">
-      {title || description ? (
+      {title || description || actions ? (
         <div className="account-card-head">
           {collapsible ? (
             <button
@@ -105,6 +108,7 @@ export function EntityViewPanel({
               {description ? <p className="account-card-desc">{description}</p> : null}
             </div>
           )}
+          {actions ? <div className="entity-view__panel-actions">{actions}</div> : null}
         </div>
       ) : null}
       {open ? (

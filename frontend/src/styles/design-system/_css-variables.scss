@@ -37,6 +37,17 @@
   --color-error: #dc2626;
   --color-danger: var(--color-error);
 
+  /* Report series colours (charts, rankings): a set of *distinguishable* hues, themed rather than
+   hard-coded in a component — dark mode lifts them, and a caller may retheme without touching TS. */
+  --report-series-1: #0d9488;
+  --report-series-2: #2563eb;
+  --report-series-3: #d97706;
+  --report-series-4: #9333ea;
+  --report-series-5: #dc2626;
+  --report-series-6: #0891b2;
+  --report-series-7: #65a30d;
+  --report-series-8: #db2777;
+
   /* Intent surfaces (alerts, inline banners, chips) */
   --color-error-bg: #fef2f2;
   --color-error-border: #fecaca;
@@ -149,6 +160,16 @@
 }
 
 [data-theme='dark'] {
+  /* Lifted for dark surfaces: the light set is chosen against white. */
+  --report-series-1: #2dd4bf;
+  --report-series-2: #60a5fa;
+  --report-series-3: #fbbf24;
+  --report-series-4: #c084fc;
+  --report-series-5: #f87171;
+  --report-series-6: #22d3ee;
+  --report-series-7: #a3e635;
+  --report-series-8: #f472b6;
+
   color-scheme: dark;
 
   --color-bg: #1a1816;

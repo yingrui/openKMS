@@ -1,7 +1,6 @@
 import { useTranslation } from 'react-i18next';
+import { formatNumber } from './reportFormat';
 import { MAX_TRACKER_CELLS, trackerCells, type ReportTrackerView } from './reportView';
-
-const NUMBER = (value: number) => new Intl.NumberFormat(undefined, { maximumFractionDigits: 2 }).format(value);
 
 /**
  * A strip of small blocks, one per row — coverage, missingness, streaks.
@@ -29,7 +28,7 @@ export function ReportTracker({
             key={`${cell.label}-${i}`}
             className="report-tracker__cell"
             style={{ opacity: 0.25 + cell.intensity * 0.75 }}
-            title={`${cell.label}: ${NUMBER(cell.value)}`}
+            title={`${cell.label}: ${formatNumber(cell.value)}`}
           />
         ))}
       </div>

@@ -24,6 +24,7 @@ SCSS tokens, shared layouts, and UI conventions for the SPA (`frontend/src/style
 | **`_check-row.scss`** / **`CheckRow.tsx`** | Checkbox + title + hint card row (uses `.ds-checkbox`). |
 | **`_query-failure.scss`** / **`QueryFailureNotice.tsx`** | A failed query, told apart by cause (`definition` / `request` / `data`) with the driver detail folded away. Shared by the Playground and the Data Explorer — **not** a page sheet, because both routes need it. |
 | **`_status.scss`** / **`StatusChip.tsx`** | A short state word (`draft` / `ready` / …) as a chip, so list pages stop inventing their own pill. Tones: neutral (default) / accent / ok / warn. |
+| **`--report-series-1…8`** (`_css-variables.scss`) | The Data Explorer's series palette — distinguishable hues for charts and rankings, **themed** (dark mode lifts them) rather than hard-coded in a component. A caller may retheme without touching TS. |
 | **`CheckList.tsx`** | Dense membership / filter lists (`CheckList` / `CheckListItem`). |
 | **`_field.scss`** / **`FormField.tsx`** | Labeled text field stack (`.ds-field`) + shared control look (`.ds-control`). |
 | **`_index.scss`** | Optional Sass barrel (`@forward` tokens + mixins). |
@@ -62,6 +63,7 @@ Use these instead of per-page copies. **`npm run check:styles`** blocks regressi
 | **`<CheckRow>`** (`.ds-check-row`) | Card-style checkbox with title + optional hint (settings / entity toggles). |
 | **`<QueryFailureNotice>`** (`.query-failure*`) | A query failure — anywhere a query can fail. Pass the classified cause (`kind`) so a definition problem never reads like a data one; the label is localized by the caller. |
 | **`<StatusChip>`** (`.ds-status`) | A state word in a list or a header. Neutral by default; only reach for `ok` / `warn` when the state really is one. |
+| **`<EntityViewPanel actions>`** | What acts on a section (edit / reorder / remove) belongs in the card head, not above the card — and it reveals on hover/focus-within so a reader is not looking at a button wall. |
 | **`<CheckList>` / `<CheckListItem>`** (`.ds-check-list*`) | Dense multi-select lists (e.g. group ↔ object-type membership). |
 | **`<FormField>`** (`.ds-field` / `.ds-control`) | Label + text input / select / textarea in dialogs and forms. Prefer over bare `<input>` or page-local **`console-form-control`** / **`account-input`** for new UI. |
 | **`.ds-compact-label`** | Hide button/link text ≤768px; keep **`aria-label`**. |

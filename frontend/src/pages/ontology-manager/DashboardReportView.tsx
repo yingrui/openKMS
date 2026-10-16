@@ -6,6 +6,7 @@ import type { DatasetResponse } from '../../data/datasetsApi';
 import type { DashboardReport } from '../../data/dashboardsApi';
 import type { SemanticModelResponse } from '../../data/semanticModelsApi';
 import { RichMarkdown } from '../../components/markdown/richMarkdown';
+import { EntityViewPanel } from './EntityViewShell';
 import { QueryFailureNotice, asQueryFailureKind } from '../../styles/design-system';
 import { ExplorerChart } from './ExplorerChart';
 import { ReportBarList } from './ReportBarList';
@@ -78,27 +79,29 @@ export function DashboardReportView({
       : null;
 
   return (
-    <section className="dashboard-report">
-      <div className="dashboard-section__head">
-        <h3>{report.title ?? t('dataExplorer.report')}</h3>
-        {actions && <div className="dashboard-report__actions">{actions}</div>}
-      </div>
-      <p className="dashboard-report__source">
-        <span>
-          {isModel ? t('dataExplorer.sourceModel') : t('dataExplorer.sourceDataset')}
-          {': '}
-          {sourceHref ? (
-            <Link to={sourceHref}>
-              {sourceName} <ExternalLink size={12} aria-hidden />
-            </Link>
-          ) : (
-            sourceName
+    <EntityViewPanel
+      title={report.title ?? t('dataExplorer.report')}
+      actions={actions}
+      description={
+        <>
+          {report.insight && (
+            <RichMarkdown className="dashboard-report__insight">{report.insight}</RichMarkdown>
           )}
-        </span>
-      </p>
-      {report.insight && (
-        <RichMarkdown className="dashboard-report__insight">{report.insight}</RichMarkdown>
-      )}
+          {/* Where the numbers come from — named, and linked when the reader may open the source. */}
+          <span className="dashboard-report__source">
+            {isModel ? t('dataExplorer.sourceModel') : t('dataExplorer.sourceDataset')}
+            {': '}
+            {sourceHref ? (
+              <Link to={sourceHref}>
+                {sourceName} <ExternalLink size={12} aria-hidden />
+              </Link>
+            ) : (
+              sourceName
+            )}
+          </span>
+        </>
+      }
+    >
       {report.error ? (
         <QueryFailureNotice
           kind={asQueryFailureKind(report.error.kind)}
@@ -203,6 +206,6 @@ export function DashboardReportView({
           )}
         </>
       )}
-    </section>
+    </EntityViewPanel>
   );
 }

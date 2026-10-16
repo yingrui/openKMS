@@ -144,6 +144,24 @@ Failures render through the shared `<QueryFailureNotice>` (`.query-failure*`), p
 sheet into the design system when this slice landed, because the Playground and the Explorer both
 need it.
 
+## How it looks next to the rest of the app
+
+Audited against the app's own patterns (a sibling detail page, a sibling list page, the design
+system). Three deviations were real; the rest are deliberate:
+
+| Element | What the app does | What the Explorer did | Verdict |
+|---------|-------------------|-----------------------|---------|
+| A **detail page** | `EntityViewShell`: left identity rail (back link, title, meta, one identity action, optional tabs) + a main pane with `.account-card` sections | a bespoke `page-header` + free-floating `<section>`s | **fixed** — it now uses the shell: back link + name + status/report count in the rail, **Run** as the identity action, the answer and every report as section cards |
+| A **section** | `EntityViewPanel` → `.account-card` (title + description + body) | bare `<section>` with its own `h3` | **fixed** — a report is a card; its **insight is the card's description** (body text), its actions sit in the card head |
+| A **list page** | `.ontology-admin` + `.page-header` + `.ontology-admin-content` (datasets), or a shared card grid (`resource-list.scss`, KB/Wiki) | the same chrome **plus a fourth card grid** of its own | **kept** — the chrome matches; the card grid is page-local and small, and unifying it with `resource-list.scss` is a separate tidy-up |
+| **Status** | documents list has its own pills; most pages print the word | printed the word, then a bespoke pill | **fixed** — `<StatusChip>` (`ds-status`), now shared |
+| **Busy state** | `.console-loading` spinner, or `EntityViewLoading` inside the shell | its own spinner block | **fixed** — `EntityViewLoading` |
+| **Empty state** | `<EmptyState>` | `<EmptyState>` without the action it supports | **fixed** — gets the "New dashboard" action |
+| **Error** | `toast.error` + `QueryFailureNotice` | same | already consistent |
+| **Numbers** | one formatter is the natural home | four copies of `Intl.NumberFormat` | **fixed** — `reportFormat.ts` |
+| **Chart colours** | theme tokens (`--*`) | eight hex literals in a component | **fixed** — `--report-series-1…8`, lifted in dark mode |
+| A **tile's actions** | row actions live in a head/cell, revealed by CSS | always-visible button row | **fixed** — revealed on hover/focus-within (still in the tab order; always visible without hover) |
+
 ## The page, as a reader sees it
 
 One dashboard is a **document**: the answer first (markdown, editable in place), then one section per

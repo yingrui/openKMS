@@ -165,6 +165,18 @@ Active UX / quality gaps: [Tech debt](./tech_debt.md).
 - Domain depth (specimen/event, Darwin Core, interactive keys) — see [knowledge-types](features/knowledge-types.md) entomology workflow **future** column
 - Agent ↔ frontend protocol: align to **AG-UI** (today custom NDJSON `delta`/`tool_*`/`done`; artifacts via A2UI surfaces)
 
+### Data Explorer aligned with the app's pages (2026-10) — done
+
+- Audited against a sibling detail page, a sibling list page and the design system
+  ([table](features/data-layer-explorer.md#how-it-looks-next-to-the-rest-of-the-app)). The dashboard
+  page was the only detail page **not** using `EntityViewShell`; it does now (identity rail with
+  **Run** as its action, the answer and every report as `.account-card` sections), so the tiles read
+  like every other section in the app.
+- `<EntityViewPanel>` gained an `actions` slot (revealed on hover/focus-within); `<StatusChip>` and
+  `EntityViewLoading` replace the page's own pill and spinner.
+- From Tremor's *styling* (not its dependencies): the chart palette became theme tokens
+  (`--report-series-1…8`, lifted in dark mode) and number formatting moved into one module.
+
 ### Data Explorer UI pass (2026-10) — done
 
 - The document reads top-down: answer → a section per report (title, source, insight, result, a

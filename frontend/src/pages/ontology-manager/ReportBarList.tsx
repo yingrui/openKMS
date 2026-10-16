@@ -1,4 +1,5 @@
 import { useTranslation } from 'react-i18next';
+import { formatNumber } from './reportFormat';
 import { MAX_BAR_LIST_ROWS, barListRows, type ReportBarListView } from './reportView';
 
 /**
@@ -32,7 +33,7 @@ export function ReportBarList({
               aria-hidden
             />
             <span className="report-bar-list__value">
-              {new Intl.NumberFormat(undefined, { maximumFractionDigits: 2 }).format(row.value)}
+              {formatNumber(row.value)}
             </span>
             <span className="report-bar-list__share">{Math.round(row.share * 100)}%</span>
           </li>
