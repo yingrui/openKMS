@@ -102,7 +102,7 @@ dashboard with every report's result filled in:
 | Path | Who | How |
 |------|-----|-----|
 | **Agent** (primary, decision #4) | ask a question in chat → the agent queries each source (skill) → writes narrative + reports | `explorer dashboards-create/update --reports-file`, then `dashboards-run` |
-| **Person** | create the dashboard, hit **Run**, read the tiles | the dashboard page (authoring a report inside it is still the agent's path) |
+| **Person** | build the query where it belongs — the **Playground** (a model metric) or the **Data tab** (a dataset slice) — then **Save to a dashboard**, and hit **Run** there | those two pages, plus the dashboard page |
 
 The app does **not** do NL→spec (the agent's job, like the Playground) and does not pretend to.
 
@@ -144,6 +144,10 @@ analyses, and sharing analyses does not hand out dataset management:
 
 - **Not a BI builder**: no drag-and-drop chart authoring, no pivot designer (a cross-tab is a *query*
   — group-by two columns — not a grid interaction).
+- **Reports are not authored inside the dashboard page** (yet): a person builds the query where it
+  already lives — the Playground for a model metric, the Data tab for a dataset slice — and saves it
+  into a dashboard; an agent writes the whole document through the skill. What the dialog asks for is
+  the presentation (title, insight, how to draw it), not the query.
 - **Not a second query engine**: both sources are the existing readers; a new source means a new
   *source kind*, not new SQL.
 - **Not the Playground**: nothing here is a definition editor, and a report never owns a metric.

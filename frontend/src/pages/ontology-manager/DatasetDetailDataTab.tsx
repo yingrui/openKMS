@@ -31,6 +31,8 @@ import {
   type FilterRow,
 } from './datasetRowsFilter';
 import { useDatasetDetail } from './useDatasetDetail';
+import { SaveReportDialog } from './SaveReportDialog';
+import { datasetReportDraft } from './reportDraft';
 import { EntityViewHeader, EntityViewPanel } from './EntityViewShell';
 
 const UUID_RE = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/;
@@ -362,6 +364,22 @@ export function DatasetDataTab() {
                     : ''}
                 </span>
                 <div className="dataset-filter-bar__actions">
+                  <SaveReportDialog
+                    draft={datasetReportDraft({
+                      datasetId,
+                      tableLabel: dataset.display_name || `${dataset.schema_name}.${dataset.table_name}`,
+                      // The same filters the grid used; the report queries its own first page.
+                      query: {
+                        filters: appliedFilters,
+                        sort: sorting[0]?.id ?? null,
+                        order: sorting[0]?.desc ? 'desc' : 'asc',
+                        limit: pageSize,
+                        offset: 0,
+                      },
+                      columns,
+                      rows,
+                    })}
+                  />
                   <button
                     type="button"
                     className="btn btn-secondary btn-sm"

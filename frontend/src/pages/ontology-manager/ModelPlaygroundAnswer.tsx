@@ -3,6 +3,8 @@ import { useTranslation } from 'react-i18next';
 import type { SemanticModelQueryResponse } from '../../data/semanticModelsApi';
 import { EntityViewPanel } from './EntityViewShell';
 import { QueryFailureNotice, asQueryFailureKind } from '../../styles/design-system';
+import { SaveReportDialog } from './SaveReportDialog';
+import type { ReportDraftInput } from './reportDraft';
 
 /** A failed run, as the query API classified it: who can fix it, what it said, and the source's words. */
 export type RunError = { kind: string; message: string; detail?: string };
@@ -15,10 +17,13 @@ export function ModelPlaygroundAnswer({
   result,
   runError,
   filtersApplied,
+  saveDraft,
 }: {
   result: SemanticModelQueryResponse | null;
   runError: RunError | null;
   filtersApplied: boolean;
+  /** When set, the result can be saved into a dashboard as a report. */
+  saveDraft?: ReportDraftInput | null;
 }) {
   const { t } = useTranslation('ontology');
   const [showSql, setShowSql] = useState(false);
@@ -104,13 +109,16 @@ export function ModelPlaygroundAnswer({
                 </table>
               </div>
             )}
-            <button
-              type="button"
-              className="btn btn-secondary btn-sm playground__sql-toggle"
-              onClick={() => setShowSql((v) => !v)}
-            >
-              {t('dataModel.playgroundSql')}
-            </button>
+            <div className="openkms-flex-row-gap">
+              <button
+                type="button"
+                className="btn btn-secondary btn-sm playground__sql-toggle"
+                onClick={() => setShowSql((v) => !v)}
+              >
+                {t('dataModel.playgroundSql')}
+              </button>
+              {saveDraft && <SaveReportDialog draft={saveDraft} />}
+            </div>
             {showSql && <pre className="playground__sql">{result.sql}</pre>}
           </>
         )}

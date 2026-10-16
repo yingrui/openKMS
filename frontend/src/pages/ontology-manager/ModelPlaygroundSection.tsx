@@ -27,6 +27,7 @@ import {
   type FilterRow,
 } from './modelPlaygroundSpec';
 import { ModelPlaygroundAnswer, type RunError } from './ModelPlaygroundAnswer';
+import { modelReportDraft } from './reportDraft';
 import { useSemanticModelDetail } from './useSemanticModelDetail';
 
 const GRANULARITIES = ['day', 'week', 'month', 'quarter', 'year'];
@@ -642,7 +643,18 @@ export function ModelPlaygroundSection() {
           )}
         </div>
 
-        <ModelPlaygroundAnswer result={result} runError={runError} filtersApplied={filtersApplied} />
+        <ModelPlaygroundAnswer
+          result={result}
+          runError={runError}
+          filtersApplied={filtersApplied}
+          saveDraft={modelReportDraft({
+            modelId,
+            modelName: model.name,
+            metricName: metrics.find((m) => m.id === spec?.metric)?.name,
+            spec,
+            result,
+          })}
+        />
       </div>
     </>
   );

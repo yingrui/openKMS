@@ -120,7 +120,7 @@ definition. Everything that **keeps, dresses or spans** an answer lives on anoth
 | Item | Where it goes | Why not here |
 |------|---------------|--------------|
 | A run-history panel | **nowhere** (keep the audit in the API/skill) |
-| Save the query/report, "Open in Explorer" | **Data Explorer** (`explorer_dashboards`) | a saved artifact is consumption (decision #23) |
+| Save the query/report, "Open in Explorer" | **Data Explorer** (`explorer_dashboards`) | a saved artifact is consumption (decision #23) — **shipped** as *Save to a dashboard* on the Playground's answer, which is why the Playground has no save of its own |
 | Bar / line charts | **Data Explorer** | the Playground is a table; dressing an answer is the Explorer's job |
 | Pivot / cross-tab (industry × month) | **Data Explorer** | a separate feature, not a query-builder control |
 | CSV / file export | **Data Explorer** | consumption |

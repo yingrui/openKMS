@@ -109,7 +109,20 @@
     "report": "Report",
     "reportNotRun": "This report has not been run yet — hit Run.",
     "reportNoRows": "The query returned no rows.",
-    "reportFailed": "This report failed"
+    "reportFailed": "This report failed",
+    "saveToDashboard": "Save to a dashboard",
+    "saveReport": "Save report",
+    "saveReportDashboard": "Dashboard",
+    "saveReportInsight": "Insight (optional)",
+    "saveReportInsightPlaceholder": "what this shows, the anomaly, the next question",
+    "saveReportChart": "Show as",
+    "chartLine": "Line chart",
+    "chartBar": "Bar chart",
+    "chartX": "Category axis",
+    "chartY": "Measures",
+    "saveReportNoChart": "Pick a measure to preview the chart; without one the report is a table.",
+    "saveReportSaved": "Saved to the dashboard",
+    "saveReportFailed": "Could not save the report"
   },
   "dataModel": {
     "title": "Data Model",

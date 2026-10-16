@@ -171,6 +171,9 @@ Active UX / quality gaps: [Tech debt](./tech_debt.md).
   a report owns **its own source** — so one dashboard mixes a model metric with a raw-dataset check.
   `explorer_reports`/`blocks` renamed to `explorer_dashboards`/`reports`, API included.
 - Per-report source ACLs: a report out of reach answers `EXPLORER_SOURCE_FORBIDDEN`, never its rows.
+- **Save to a dashboard** closes the round trip the design promised: a Playground query (model) or a
+  Data-tab slice (dataset) becomes a report, with the chart offered as a default the person can change
+  and previewed with the same component the dashboard draws.
 
 ### Data Explorer charts (2026-10) — done
 

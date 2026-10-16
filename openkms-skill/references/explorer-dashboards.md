@@ -188,8 +188,9 @@ able to ask "where did this come from?" and get an answer from the dashboard its
 
 ## Not yet
 
-- **In-app report authoring**: a person can create a dashboard and run it, but reports are authored
-  through this skill (or an agent) today.
+- **Authoring a report inside the dashboard page**: a person can save a report from the Playground
+  (a model query) or the Data tab (a dataset slice) into a dashboard, but writing a whole dashboard —
+  narrative, several reports, insights — is still this skill's job (or an agent's).
 - **The app does not turn a question into a query** — you author the report spec; the app runs it.
 - **A dashboard never defines metrics or fields.** If the metric you need does not exist, that is model
   authoring (`semantic-models`, `metrics`) or the Playground — say so instead of computing it in a

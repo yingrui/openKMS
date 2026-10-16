@@ -109,7 +109,20 @@
     "report": "报告",
     "reportNotRun": "这份报告尚未运行——点「运行」。",
     "reportNoRows": "查询没有返回任何行。",
-    "reportFailed": "这份报告失败了"
+    "reportFailed": "这份报告失败了",
+    "saveToDashboard": "存入看板",
+    "saveReport": "保存报告",
+    "saveReportDashboard": "看板",
+    "saveReportInsight": "解读（可选）",
+    "saveReportInsightPlaceholder": "这张图说明什么、异常在哪、下一个问题",
+    "saveReportChart": "显示为",
+    "chartLine": "折线图",
+    "chartBar": "柱状图",
+    "chartX": "分类轴",
+    "chartY": "度量",
+    "saveReportNoChart": "选一个度量以预览图表；不选则保存为表格。",
+    "saveReportSaved": "已存入看板",
+    "saveReportFailed": "保存报告失败"
   },
   "dataModel": {
     "title": "数据模型",
