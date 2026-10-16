@@ -1,6 +1,8 @@
-# Data grid filter — Dataset data view (design)
+# Data layer — data grid filter (design)
 
 Status: **design, not implemented** · Surface: `/datasets/{id}/data` (Data tab) + the rows read API · Owner: data layer
+
+Part of the data-layer family: [feature reference](data-layer.md) · [interaction design](data-layer-interaction.md) · [implementation design](data-layer-implementation.md) · [semantic model](data-layer-semantic-model.md).
 
 The Data tab answers *"what is actually in this table"*. Today it sorts and pages, and finding rows by
 value over a large table is still manual. This designs exactly that one job — a **server-side filter bar
