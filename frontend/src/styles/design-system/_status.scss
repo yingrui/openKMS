@@ -1,0 +1,30 @@
+// A short state word — draft / ready / failed — as a chip.
+//
+// One look for "what state is this in" across list pages, so a page does not invent its own pill.
+.ds-status {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: 0 var(--space-2);
+  border-radius: 999px;
+  background: var(--color-bg-muted);
+  color: var(--color-text-secondary);
+  font-size: var(--text-xs);
+  line-height: 1.7;
+  white-space: nowrap;
+
+  &--accent {
+    background: var(--color-accent-subtle);
+    color: var(--color-accent);
+  }
+
+  &--ok {
+    background: var(--color-success-bg);
+    color: var(--color-success-fg);
+  }
+
+  &--warn {
+    background: var(--color-warning-bg);
+    color: var(--color-warning-fg);
+  }
+}

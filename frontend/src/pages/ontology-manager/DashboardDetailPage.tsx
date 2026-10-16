@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import {
   ArrowDown,
+  ArrowLeft,
   ArrowUp,
   Loader2,
   Pencil,
@@ -153,13 +154,13 @@ export function DashboardDetailPage() {
       <div className="page-header">
         <div>
           <h1>{dashboard.name}</h1>
-          <p className="page-subtitle">
-            {dashboard.question ?? t('dataExplorer.noQuestion')}
-            {' · '}
-            <Link to="/data-explorer">{t('dataExplorer.backToDashboards')}</Link>
-          </p>
+          <p className="page-subtitle">{dashboard.question ?? t('dataExplorer.noQuestion')}</p>
         </div>
         <div className="page-header-actions">
+          <Link to="/data-explorer" className="btn btn-secondary">
+            <ArrowLeft size={16} aria-hidden />
+            <span>{t('dataExplorer.backToDashboards')}</span>
+          </Link>
           <button
             type="button"
             className="btn btn-primary"
@@ -183,10 +184,10 @@ export function DashboardDetailPage() {
           </button>
         </div>
       </div>
-      <div className="ontology-admin-content">
+      <div className="ontology-admin-content dashboard-document">
         {narrativeDraft === null ? (
           <section>
-            <div className="dashboard-report__head">
+            <div className="dashboard-section__head">
               <h2>{t('dataExplorer.narrative')}</h2>
               {canWrite && dashboard.narrative && (
                 <button
@@ -201,7 +202,7 @@ export function DashboardDetailPage() {
               )}
             </div>
             {dashboard.narrative ? (
-              <RichMarkdown className="explorer-report-narrative">{dashboard.narrative}</RichMarkdown>
+              <RichMarkdown className="dashboard-narrative">{dashboard.narrative}</RichMarkdown>
             ) : (
               <p className="entity-view__readonly">{t('dataExplorer.noNarrative')}</p>
             )}

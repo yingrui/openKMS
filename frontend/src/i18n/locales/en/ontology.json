@@ -154,7 +154,9 @@
     "deltaVsPrevious": "vs {{previous}}",
     "deltaNoBaseline": "no baseline",
     "noNumericSeries": "No numeric value to show a trend.",
-    "trackerTruncated": "Showing the last {{max}} only."
+    "trackerTruncated": "Showing the last {{max}} only.",
+    "status_draft": "draft",
+    "status_ready": "ready"
   },
   "dataModel": {
     "title": "Data Model",

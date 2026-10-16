@@ -8,7 +8,7 @@ import {
   fetchDashboards,
   type DashboardSummary,
 } from '../../data/dashboardsApi';
-import { Dialog, EmptyState, FormField } from '../../styles/design-system';
+import { Dialog, EmptyState, FormField, StatusChip } from '../../styles/design-system';
 import '../ontology/ontology-admin.scss';
 import './data-explorer.scss';
 
@@ -85,29 +85,34 @@ export function DataExplorerPage() {
             <p>{t('shared.loading')}</p>
           </div>
         ) : dashboards.length === 0 ? (
-          <EmptyState title={t('dataExplorer.empty')} description={t('dataExplorer.subtitle')} />
+          <EmptyState
+            title={t('dataExplorer.empty')}
+            description={t('dataExplorer.subtitle')}
+            action={
+              <button type="button" className="btn btn-primary" onClick={openCreate}>
+                <Plus size={18} aria-hidden />
+                <span>{t('dataExplorer.newDashboard')}</span>
+              </button>
+            }
+          />
         ) : (
-          <div className="explorer-reports">
+          <div className="dashboard-list">
             {dashboards.map((d) => {
               const names = d.sources.map((s) => s.label);
               return (
-                <Link key={d.id} to={`/data-explorer/${d.id}`} className="explorer-report-card">
-                  <span className="explorer-report-card__icon" aria-hidden>
+                <Link key={d.id} to={`/data-explorer/${d.id}`} className="dashboard-card">
+                  <span className="dashboard-card__icon" aria-hidden>
                     <Sparkles size={18} />
                   </span>
-                  <span className="explorer-report-card__body">
+                  <span className="dashboard-card__body">
                     <strong>{d.name}</strong>
-                    {d.question && <span className="explorer-report-card__q">{d.question}</span>}
-                    <span className="explorer-report-card__meta">
-                      {t('dataExplorer.reportCount', { count: d.report_count })}
-                      {names.length > 0 && (
-                        <>
-                          {' · '}
-                          {names.join(' + ')}
-                        </>
-                      )}
-                      {' · '}
-                      {d.status}
+                    {d.question && <span className="dashboard-card__question">{d.question}</span>}
+                    <span className="dashboard-card__meta">
+                      <StatusChip tone={d.status === 'ready' ? 'ok' : 'neutral'}>
+                        {t(`dataExplorer.status_${d.status}`, { defaultValue: d.status })}
+                      </StatusChip>
+                      <span>{t('dataExplorer.reportCount', { count: d.report_count })}</span>
+                      {names.length > 0 && <span>{names.join(' + ')}</span>}
                     </span>
                   </span>
                 </Link>

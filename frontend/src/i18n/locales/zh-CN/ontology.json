@@ -154,7 +154,9 @@
     "deltaVsPrevious": "对比 {{previous}}",
     "deltaNoBaseline": "无对比基线",
     "noNumericSeries": "没有可展示趋势的数值。",
-    "trackerTruncated": "仅显示最近 {{max}} 项。"
+    "trackerTruncated": "仅显示最近 {{max}} 项。",
+    "status_draft": "草稿",
+    "status_ready": "已完成"
   },
   "dataModel": {
     "title": "数据模型",

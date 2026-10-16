@@ -165,6 +165,20 @@ Active UX / quality gaps: [Tech debt](./tech_debt.md).
 - Domain depth (specimen/event, Darwin Core, interactive keys) — see [knowledge-types](features/knowledge-types.md) entomology workflow **future** column
 - Agent ↔ frontend protocol: align to **AG-UI** (today custom NDJSON `delta`/`tool_*`/`done`; artifacts via A2UI surfaces)
 
+### Data Explorer UI pass (2026-10) — done
+
+- The document reads top-down: answer → a section per report (title, source, insight, result, a
+  quieter provenance line with **as of**); tile actions reveal on hover/focus.
+- Vocabulary in CSS matches the model: no more `explorer-report-*` (the inverted names that survived
+  the backend rename).
+- The report views' styles moved to `src/styles/report-view.scss` — they were page-owned while the
+  Playground and the Data tab rendered them, so that preview was unstyled.
+- **Rule 16 was measuring the wrong thing** (route *areas*, not routes), which is how that slipped
+  through. It now derives routes from the `App.tsx` import graph, finds **29** pre-existing
+  shared-but-local classes (frozen as debt; e.g. `.auth-mode-compat-banner`, used by 26 routes), and
+  fails on the next one — probed both ways.
+- `<StatusChip>` (`ds-status`) added for state words; empty states get their action button.
+
 ### Report views and export (2026-10) — done
 
 - A report's presentation is a **`view`**: `metric` (one number), `bar_list` (a ranking), `chart`

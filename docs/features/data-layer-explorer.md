@@ -144,6 +144,18 @@ Failures render through the shared `<QueryFailureNotice>` (`.query-failure*`), p
 sheet into the design system when this slice landed, because the Playground and the Explorer both
 need it.
 
+## The page, as a reader sees it
+
+One dashboard is a **document**: the answer first (markdown, editable in place), then one section per
+report. A tile reads top-down in the order a reader asks questions — title, **where the numbers come
+from** (the source, linked), **what it says** (the insight, body text), then the result, then the
+provenance line (rows, cap, duration, **as of** when) in a quieter treatment than the insight. The
+tile's own actions (edit, reorder, remove) are revealed on hover/focus, so a reader is not looking at
+four buttons per tile — but they stay in the tab order, and a touch device shows them always. The
+rule behind the styles: a view's classes live in `src/styles/report-view.scss`, because the same
+components render in the editor, which other routes open (see
+[design system](../design-system.md) rule 16).
+
 ## Permissions
 
 The Data Explorer is a **suite app with its own keys** — `explorer:read` (open it, read reports, and

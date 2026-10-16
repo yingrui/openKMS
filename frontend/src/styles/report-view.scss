@@ -1,0 +1,174 @@
+@use './design-system/mixins' as *;
+@use './design-system/tokens' as ds;
+
+// How a report's result is presented, wherever it is presented.
+//
+// **Shared, not a page sheet**: the same components draw a report on the dashboard page *and*
+// preview it inside "save this query" — which the Playground and the Data tab open, in two other
+// route chunks. A page sheet only ships with its own route, so the preview would render unstyled
+// there (the mistake this layer already made once with a failure block).
+//
+// The view components: ReportMetric (a number or a KPI), ReportBarList (a ranking),
+// ReportTracker (a strip), and ExplorerChart's host.
+
+// ---- The chart host: recharts fills it, so it needs a height ------------------------------
+.report-chart {
+  // Reads well beside a table; a phone screen gets less.
+  height: 320px;
+  max-width: 100%;
+
+  @include max-width(ds.$bp-xs-max) {
+    height: 220px;
+  }
+}
+
+// ---- A number, or a KPI (number + change + shape) ----------------------------------------
+.report-metric {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  // A KPI is a tile, not a paragraph: do not let it stretch across a wide pane.
+  max-width: 24rem;
+  padding: var(--space-2) 0;
+
+  &__value {
+    font-size: 2.25rem;
+    font-weight: var(--font-weight-semibold, 600);
+    line-height: 1.1;
+    font-variant-numeric: tabular-nums;
+    color: var(--color-text);
+  }
+
+  &__label {
+    font-size: var(--text-sm);
+    color: var(--color-text-secondary);
+  }
+
+  &__delta {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-1);
+    font-size: var(--text-sm);
+    font-variant-numeric: tabular-nums;
+
+    &--up {
+      color: var(--color-success, #059669);
+    }
+
+    &--down {
+      color: var(--color-danger, #b91c1c);
+    }
+
+    &--flat {
+      color: var(--color-text-secondary);
+    }
+  }
+
+  &__delta-note {
+    color: var(--color-text-secondary);
+  }
+
+  // The series as bars: no chart runtime for a couple of dozen points, and it stays legible
+  // at KPI size.
+  &__spark {
+    display: flex;
+    align-items: flex-end;
+    gap: 2px;
+    height: 28px;
+    max-width: 20rem;
+    margin-top: var(--space-1);
+  }
+
+  &__spark-bar {
+    flex: 1 1 0;
+    min-width: 2px;
+    border-radius: 1px;
+    background: var(--color-accent);
+    opacity: 0.8;
+  }
+}
+
+// ---- A ranking: label, bar, value, share -------------------------------------------------
+.report-bar-list {
+  &__rows {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-1);
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  &__row {
+    display: grid;
+    grid-template-columns: minmax(6rem, 14rem) 1fr auto auto;
+    align-items: center;
+    gap: var(--space-2);
+    font-size: var(--text-sm);
+  }
+
+  &__label {
+    @include text-truncate;
+
+    color: var(--color-text-secondary);
+  }
+
+  &__bar {
+    height: 0.75rem;
+    min-width: 2px;
+    border-radius: var(--radius-sm);
+    background: var(--color-accent);
+    opacity: 0.75;
+  }
+
+  &__value {
+    font-variant-numeric: tabular-nums;
+    color: var(--color-text);
+  }
+
+  &__share {
+    min-width: 3rem;
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+    color: var(--color-text-secondary);
+  }
+
+  // On a phone the label column and the share fight for the same line: keep the bar, which is
+  // the thing a ranking is for.
+  @include max-width(ds.$bp-xs-max) {
+    &__row {
+      grid-template-columns: minmax(4rem, 8rem) 1fr auto;
+    }
+
+    &__share {
+      display: none;
+    }
+  }
+}
+
+// ---- A strip: one block per period, intensity = value / largest ---------------------------
+.report-tracker {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+
+  &__strip {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 2px;
+  }
+
+  &__cell {
+    width: 12px;
+    height: 12px;
+    border-radius: 2px;
+    background: var(--color-accent);
+  }
+
+  &__ends {
+    display: flex;
+    justify-content: space-between;
+    font-size: var(--text-sm);
+    color: var(--color-text-secondary);
+  }
+}

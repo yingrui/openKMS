@@ -25,3 +25,4 @@ export {
 export { FormField, type FormFieldProps } from './FormField';
 export { QueryFailureNotice, type QueryFailureNoticeProps } from './QueryFailureNotice';
 export { asQueryFailureKind, type QueryFailureKind } from './queryFailureKind';
+export { StatusChip, type StatusChipProps, type StatusTone } from './StatusChip';

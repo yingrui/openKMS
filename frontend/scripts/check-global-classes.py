@@ -1,13 +1,20 @@
 #!/usr/bin/env python3
-"""Guardrail: a class used from two routes must not live in one route's stylesheet.
+"""Guardrail: a class used by two routes must not live in one route's stylesheet.
 
 Vite ships a page's SCSS with that page's lazy chunk, so a class defined in
 `pages/<area>/x.scss` and reused from another route silently loses its styles depending on
-which page the visitor opened first (this is how the semantic-model page's Add buttons
-shipped unstyled). Anything shared belongs in `src/styles/`.
+which page the visitor opened first. Three times now: the semantic-model page's Add buttons
+shipped unstyled, a failure block was styled only because `ontology-admin.scss` happened to be
+in the bundle, and the report view styles (KPI / ranking / strip) lived in `data-explorer.scss`
+while the same components render inside "save this query" — opened from the Playground and the
+Data tab.
 
-Detection: collect the classes defined in **non-global** SCSS (everything outside
-`src/styles/`, `App.scss`, `index.scss`), then flag those used from ≥2 route areas.
+Detection: collect the classes **page** sheets define (everything outside `src/styles/`,
+`App.scss`, `index.scss`, and `components/` — a component's own colocated sheet travels with it),
+then flag those used by a file that **two or more routes can render**. Route membership comes
+from the import graph rooted at the lazily-imported page files in `App.tsx`, so two sections of
+the *same* area count as two routes — which is exactly how the report view styles slipped past an
+earlier, area-based version of this check.
 `scripts/global-classes-baseline.txt` freezes today's offenders — the check ratchets:
 fixing them is always fine, adding one fails. Regenerate with `--update-baseline`.
 
@@ -93,8 +100,58 @@ def is_global(scss: Path) -> bool:
     return rel.parts[0] == "styles" or scss.name in GLOBAL_FILES
 
 
-def area_of(path: Path) -> str:
-    return "/".join(path.relative_to(SRC).parts[:2])
+IMPORT = re.compile(r"""(?:from|import)\s*\(?\s*['"](\.[^'"]+)['"]""")
+CLASS_LITERAL = re.compile(r"""className=(?:"([^"]*)"|\{`([^`]*)`\}|'([^']*)')""")
+
+
+def module_files() -> list[Path]:
+    return [p for p in SRC.rglob("*.tsx") if ".test." not in p.name and ".spec." not in p.name]
+
+
+def resolve(base: Path, spec: str) -> Path | None:
+    for suffix in ("", ".tsx", ".ts", "/index.tsx", "/index.ts"):
+        candidate = (base.parent / f"{spec}{suffix}").resolve()
+        if candidate.is_file():
+            return candidate
+    return None
+
+
+def import_graph(files: list[Path]) -> dict[Path, set[Path]]:
+    graph: dict[Path, set[Path]] = {}
+    for path in files:
+        graph[path] = {
+            target
+            for match in IMPORT.finditer(path.read_text(errors="ignore"))
+            if (target := resolve(path, match.group(1))) is not None
+        }
+    return graph
+
+
+def page_entries(graph: dict[Path, set[Path]]) -> list[Path]:
+    """The page files a route mounts — every `import('./pages/…')` in App.tsx."""
+    app = SRC / "App.tsx"
+    return sorted(
+        {
+            target
+            for match in re.finditer(r"""import\(['"]([^'"]+)['"]\)""", app.read_text(errors="ignore"))
+            if (target := resolve(app, match.group(1))) is not None and "pages/" in str(target)
+        }
+    )
+
+
+def pages_rendering(graph: dict[Path, set[Path]], pages: list[Path]) -> dict[Path, set[Path]]:
+    """module → the routes that can render it (walk **down** each page's imports)."""
+    out: dict[Path, set[Path]] = {}
+    for page in pages:
+        seen, stack = {page}, [page]
+        while stack:
+            for child in graph.get(stack.pop(), ()):
+                if child not in seen:
+                    seen.add(child)
+                    stack.append(child)
+        for module in seen:
+            out.setdefault(module, set()).add(page)
+    return out
 
 
 def defined_locally() -> dict[str, set[str]]:
@@ -109,17 +166,27 @@ def defined_locally() -> dict[str, set[str]]:
 
 
 def offenders() -> dict[str, set[str]]:
+    """class → the routes that use it, for classes only a page sheet defines."""
     owner = defined_locally()
     for name in global_classes():
         owner.pop(name, None)      # already global → a page override is not ownership
+
+    files = module_files()
+    graph = import_graph(files)
+    routes = pages_rendering(graph, page_entries(graph))
     users: dict[str, set[str]] = collections.defaultdict(set)
-    for tsx in SRC.rglob("*.tsx"):
-        area = area_of(tsx)
-        for token in CLASSNAME.findall(tsx.read_text(errors="ignore")):
-            for name in token.split():
-                if name in owner:
-                    users[name].add(area)
-    return {name: areas for name, areas in users.items() if len(areas) > 1}
+    for tsx in files:
+        rendering = routes.get(tsx)
+        if not rendering or len(rendering) < 2:
+            continue
+        text = tsx.read_text(errors="ignore")
+        used: set[str] = set()
+        for match in CLASS_LITERAL.finditer(text):
+            literal = next(g for g in match.groups() if g)
+            used |= {token for token in literal.split() if token}
+        for name in used & owner.keys():
+            users[name] |= {str(page.relative_to(ROOT)) for page in rendering}
+    return {name: routes for name, routes in users.items() if len(routes) > 1}
 
 
 def main() -> int:
@@ -145,7 +212,7 @@ def main() -> int:
     new = sorted(set(found) - baseline)
     if "--list" in sys.argv:
         for name in sorted(found):
-            print(f".{name}  used by {sorted(found[name])}")
+            print(f".{name}  used by {len(found[name])} routes: {sorted(found[name])}")
     if new:
         for name in new:
             print(f".{name}  used by {sorted(found[name])}")

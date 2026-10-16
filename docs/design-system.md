@@ -23,6 +23,7 @@ SCSS tokens, shared layouts, and UI conventions for the SPA (`frontend/src/style
 | **`_checkbox.scss`** | Shared checkbox skin (`.ds-checkbox`) + dense multi-select list (`.ds-check-list`). |
 | **`_check-row.scss`** / **`CheckRow.tsx`** | Checkbox + title + hint card row (uses `.ds-checkbox`). |
 | **`_query-failure.scss`** / **`QueryFailureNotice.tsx`** | A failed query, told apart by cause (`definition` / `request` / `data`) with the driver detail folded away. Shared by the Playground and the Data Explorer — **not** a page sheet, because both routes need it. |
+| **`_status.scss`** / **`StatusChip.tsx`** | A short state word (`draft` / `ready` / …) as a chip, so list pages stop inventing their own pill. Tones: neutral (default) / accent / ok / warn. |
 | **`CheckList.tsx`** | Dense membership / filter lists (`CheckList` / `CheckListItem`). |
 | **`_field.scss`** / **`FormField.tsx`** | Labeled text field stack (`.ds-field`) + shared control look (`.ds-control`). |
 | **`_index.scss`** | Optional Sass barrel (`@forward` tokens + mixins). |
@@ -60,6 +61,7 @@ Use these instead of per-page copies. **`npm run check:styles`** blocks regressi
 | **`.ds-checkbox`** | Opt-in checkbox skin (accent fill + focus ring). Prefer over bare native checkboxes. |
 | **`<CheckRow>`** (`.ds-check-row`) | Card-style checkbox with title + optional hint (settings / entity toggles). |
 | **`<QueryFailureNotice>`** (`.query-failure*`) | A query failure — anywhere a query can fail. Pass the classified cause (`kind`) so a definition problem never reads like a data one; the label is localized by the caller. |
+| **`<StatusChip>`** (`.ds-status`) | A state word in a list or a header. Neutral by default; only reach for `ok` / `warn` when the state really is one. |
 | **`<CheckList>` / `<CheckListItem>`** (`.ds-check-list*`) | Dense multi-select lists (e.g. group ↔ object-type membership). |
 | **`<FormField>`** (`.ds-field` / `.ds-control`) | Label + text input / select / textarea in dialogs and forms. Prefer over bare `<input>` or page-local **`console-form-control`** / **`account-input`** for new UI. |
 | **`.ds-compact-label`** | Hide button/link text ≤768px; keep **`aria-label`**. |
@@ -172,6 +174,7 @@ Soft limit **700 lines** per page `.tsx` / hook (enforced by **`check:styles`** 
 | **`settings-page.scss`** | Settings shell (tabs, fields, actions) |
 | **`resource-list.scss`** | KB and Wiki card-grid lists |
 | **`document-detail.scss`** | Shared Document / Article / Media detail chrome |
+| **`report-view.scss`** | The Data Explorer's report views — `metric` (a number, or a KPI with a trend), `bar_list` (a ranking), `tracker` (a coverage strip), and the chart host. Global **because the same components render in "save this query"**, which the Playground and the Data tab open |
 
 Import from page TSX: **`import '../../styles/<name>.scss'`**. Never import another page's colocated SCSS.
 
@@ -229,7 +232,7 @@ npm run check   # typecheck → check:app-layout → check:app-modules → check
 | 13 | Icon-only `<button>` with no accessible name | **`aria-label`** (or `title`) |
 | 14 | `console.log` / `console.debug` / `debugger` | remove before shipping |
 | 15 | `font-size: <n>px` in SCSS | **`var(--text-*)`**; the root `html { font-size }` is exempt |
-| 16 | A class used from 2+ routes but defined in one route's SCSS (Vite ships it with that route's chunk only) | move it to **`src/styles/`**. The check counts only classes a **page** sheet *defines*: a class also defined globally, one owned by a component's own sheet, and a *scoped override* (`.page--fill .component-class`, `.a.b`) are not ownership. `scripts/global-classes-baseline.txt` is a ratchet and is **0** — a new page-owned shared class fails the check. `pages/ontology/ontology-admin.scss` no longer acts as an app sheet (its shared half is `src/styles/design-system/_console.scss`) |
+| 16 | A class used by 2+ **routes** but defined in one route's SCSS (Vite ships it with that route's chunk only) | move it to **`src/styles/`**. Route membership comes from the import graph rooted at the lazily-imported pages in `App.tsx`, so two sections of *one* area count as two routes — an earlier area-based version missed exactly that (the report view styles lived in `data-explorer.scss` while the Playground and the Data tab rendered the same components). The check counts only classes a **page** sheet *defines*: a class also defined globally, one owned by a component's colocated sheet, and a *scoped override* (`.page--fill .component-class`, `.a.b`) are not ownership. `scripts/global-classes-baseline.txt` is a ratchet (**29** today, all pre-existing): fixing one is fine, adding one fails |
 | 17 | New hand-rolled `console-modal-overlay` markup (dialog migration debt) | **`<Dialog>`** — every hand-rolled modal is gone (`scripts/legacy-modals-baseline.txt` is **0**, so a new one fails the check). The dead `.console-modal-overlay` / `.console-modal` / `-header` / `-body` / `-actions` chrome and the legacy field rules that were scoped to `.console-modal-body` were deleted with them; the content-level helpers (`.console-modal-hint`, `-section`, `-fk-*`, `-index-*`) remain |
 
 **`check:styles` is currently clean** (all pre-existing findings cleared: the two over-long files were split, the raw `px` media query / `rgba` backdrop / `window.confirm` / A2UI overlay allowlist entry are gone or justified). Keep it that way — a new finding should be fixed, not allowlisted.

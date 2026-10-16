@@ -78,10 +78,10 @@ export function DashboardReportView({
       : null;
 
   return (
-    <section className="explorer-report-chart">
-      <div className="dashboard-report__head">
+    <section className="dashboard-report">
+      <div className="dashboard-section__head">
         <h3>{report.title ?? t('dataExplorer.report')}</h3>
-        {actions && <div className="openkms-flex-row-gap">{actions}</div>}
+        {actions && <div className="dashboard-report__actions">{actions}</div>}
       </div>
       <p className="dashboard-report__source">
         <span>
@@ -97,7 +97,7 @@ export function DashboardReportView({
         </span>
       </p>
       {report.insight && (
-        <RichMarkdown className="explorer-report-chart__insight">{report.insight}</RichMarkdown>
+        <RichMarkdown className="dashboard-report__insight">{report.insight}</RichMarkdown>
       )}
       {report.error ? (
         <QueryFailureNotice
@@ -113,21 +113,15 @@ export function DashboardReportView({
         <p className="entity-view__readonly">{t('dataExplorer.reportNoRows')}</p>
       ) : (
         <>
-          <div className="explorer-block__toolbar">
-            <p className="page-subtitle">
-              {t('datasets.filterRows', { count: report.total ?? rows.length })}
-              {report.capped ? ` · ${t('datasets.filterCapped')}` : ''}
-              {report.duration_ms != null ? ` · ${report.duration_ms} ms` : ''}
-              {/* As of *when* — never "the data has not changed", which nothing here can know. */}
-              {ageLabel && (
-                <>
-                  {' · '}
-                  <span title={absoluteTime(report.ran_at)}>
-                    {t('dataExplorer.asOf', { age: ageLabel })}
-                  </span>
-                </>
-              )}
-            </p>
+          {/* Provenance: how much, how fresh, how slow — quieter than the insight above it. */}
+          <p className="dashboard-report__meta">
+            <span>{t('datasets.filterRows', { count: report.total ?? rows.length })}</span>
+            {report.capped && <span>{t('datasets.filterCapped')}</span>}
+            {report.duration_ms != null && <span>{report.duration_ms} ms</span>}
+            {/* As of *when* — never "the data has not changed", which nothing here can know. */}
+            {ageLabel && <span title={absoluteTime(report.ran_at)}>{t('dataExplorer.asOf', { age: ageLabel })}</span>}
+          </p>
+          <div className="dashboard-report__toolbar">
             <div className="openkms-flex-row-gap">
               {/* Exporting what is on screen is a reader's action, so it sits beside the view toggle. */}
               <button
