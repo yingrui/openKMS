@@ -1,6 +1,8 @@
-# Playground design (semantic model)
+# Data layer — semantic model Playground (design)
 
 Status: **P0 complete** (query engine · builder · picker · classified errors · answer context) · Surface: `/data-model/{id}/playground` · Owner: data layer
+
+Part of the data-layer family: [feature reference](data-layer.md) · [interaction design](data-layer-interaction.md) · [implementation design](data-layer-implementation.md) · [semantic model](data-layer-semantic-model.md) · [data grid filter (design)](data-layer-grid-filter.md).
 
 The Playground is where a person *asks a question of a semantic model* and sees the answer, the
 generated SQL and the definition it came from. It is the human twin of the query API an agent

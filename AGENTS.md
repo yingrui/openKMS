@@ -58,7 +58,7 @@ Agent 工作指南（原 `.cursor/rules/` 合并版）。
 
 **回复：** 长短匹配任务；无套话收尾；外链用 markdown link，代码用 path/citation。  
 **提交：** 祈使句主题；**无用户明示禁止 commit/push**；用户说 commit 时只 stage 本任务文件。  
-**docs/：** 技术细节可写密；表格/标题与邻页一致。
+**docs/：** 技术细节可写密；表格/标题与邻页一致。**我们自己的设计/计划（含设计稿，如 `data-layer-*.md`）→ `features/`**；**外部对比 / 调研 / vendored 规范（`*_vs_openkms.md`、`ossie/`、库选型）→ `research/`**。
 
 ---
 

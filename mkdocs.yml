@@ -199,6 +199,7 @@ nav:
       - Data layer — implementation design: features/data-layer-implementation.md
       - Data layer — interaction design: features/data-layer-interaction.md
       - Data layer — semantic model (Ossie): features/data-layer-semantic-model.md
+      - Data layer — semantic model Playground (design): features/data-layer-playground.md
       - Data layer — data grid filter (design): features/data-layer-grid-filter.md
       - Configuration: features/configuration.md
   - Security: security.md
@@ -222,7 +223,6 @@ nav:
       - Ontology Functions & Actions: research/ontology_functions_and_actions.md
       - Ontology Manager alignment (platform vs DIY): research/ontology_manager_alignment.md
       - Data grid selection: research/data_grid_selection.md
-      - Semantic model Playground (design): research/playground_design.md
       - Apache Ossie semantic layer: research/ossie_semantic_layer.md
       - Apache Ossie core spec (vendored): research/ossie/spec.md
       - Apache Ossie expression language (vendored): research/ossie/expression_language.md
