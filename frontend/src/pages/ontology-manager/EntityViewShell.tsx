@@ -16,7 +16,11 @@ type EntityViewShellProps = {
   backLabel: string;
   title: string;
   meta?: ReactNode;
-  /** Model-wide read actions (e.g. "View YAML"): they sit with the identity, not above the section. */
+  /**
+   * Identity-level actions, rendered as **text links** with the identity rather than as buttons in
+   * the action row: a read action (e.g. "View YAML"), or a destructive one that should not sit
+   * beside the primary action (add `className="is-danger"` so it says so on hover).
+   */
   identityAction?: ReactNode;
   navItems?: EntityViewNavItem[];
   children: ReactNode;

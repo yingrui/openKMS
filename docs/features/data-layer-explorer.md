@@ -161,7 +161,7 @@ system). Three deviations were real; the rest are deliberate:
 | **Numbers** | one formatter is the natural home | four copies of `Intl.NumberFormat` | **fixed** — `reportFormat.ts` |
 | **Chart colours** | theme tokens (`--*`) | eight hex literals in a component | **fixed** — `--report-series-1…8`, lifted in dark mode |
 | A **tile's actions** | row actions live in a head/cell, revealed by CSS | always-visible button row | **fixed** — revealed on hover/focus-within (still in the tab order; always visible without hover) |
-| **Document actions** | one action row in the page header (Groups puts Save + Delete together) | Run sat in the shell's **identity slot** (whose CSS strips button styling — it is a *text-style read* action, `View YAML`), so it rendered as muted text, and Delete floated alone in the header | **fixed** — Run and a labelled Delete share the page's one action row, primary first |
+| **Document actions** | the primary action is a button in the page action row; a **destructive** one lives with the identity (Datasets/Models go further and keep theirs in a Settings danger zone) | Run and Delete both sat in the action row, then Delete alone in the header corner | **fixed twice** — first into one row (which made a delete as loud as the primary action), then to where it belongs: Run is the page's primary button, Delete is a **text link with the identity** (`is-danger`, red on hover) — visible and discoverable, never the loudest thing on the page |
 
 ## The page, as a reader sees it
 

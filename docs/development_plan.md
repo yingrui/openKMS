@@ -168,9 +168,13 @@ Active UX / quality gaps: [Tech debt](./tech_debt.md).
 ### One action row per dashboard (2026-10) — done
 
 - Run sat in `EntityViewShell`'s **identity slot**, whose CSS strips button styling and whose contract
-  is a *text-style read* action (`View YAML`) — so the document's primary action rendered as muted
-  text, and Delete floated alone in the header corner. Both now share the page's single action row,
-  primary first, with Delete labelled.
+  was a *text-style read* action (`View YAML`) — so the document's primary action rendered as muted
+  text, and Delete floated alone in the header corner.
+- Fixing that by putting both in the action row made the **delete as loud as the primary action**,
+  which is worse. The slot's own styling turned out to be the answer: Run is now the page's primary
+  button, and Delete is a **text link with the identity** (`is-danger`, red on hover) — low
+  prominence, still discoverable. The slot's contract was widened to "identity-level actions,
+  rendered as text links" for exactly this case.
 
 ### All dashboards joins the app's card list (2026-10) — done
 

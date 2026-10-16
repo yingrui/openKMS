@@ -113,6 +113,11 @@ body:has(.app-page-pane > .entity-view) .app-main {
   font-size: var(--text-sm);
 }
 
+// A destructive identity action is still a text link, but it says so on hover.
+.entity-view__identity-action button.is-danger:hover {
+  color: var(--color-error);
+}
+
 .entity-view__identity-action button:hover {
   color: var(--color-accent);
 }

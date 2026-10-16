@@ -158,35 +158,38 @@ export function DashboardDetailPage() {
           {` · ${t('dataExplorer.reportCount', { count: reports.length })}`}
         </>
       }
+      identityAction={
+        /* The destructive action belongs *with the identity*, not beside the primary one: the shell
+           renders this slot as a text link, which is the treatment a delete should have (visible,
+           discoverable, not the most prominent thing on the page). */
+        <button
+          type="button"
+          className="is-danger"
+          onClick={() => void handleDelete()}
+          title={t('dataExplorer.deleteConfirm')}
+        >
+          <Trash2 size={14} aria-hidden />
+          {t('dataExplorer.deleteDashboard')}
+        </button>
+      }
     >
-      {/* One action row for the document: what it does (Run), then what ends it (Delete). The shell's
-          identity slot is for a *text-style read* action (View YAML), so neither belongs there. */}
+      {/* What the document *does* — the primary action, where a page's actions belong. */}
       <EntityViewHeader
         title=""
         actions={
-          <>
-            <button
-              type="button"
-              className="btn btn-primary"
-              onClick={() => void handleRun()}
-              disabled={running || reports.length === 0}
-            >
-              {running ? (
-                <Loader2 size={16} className="console-loading-spinner" aria-hidden />
-              ) : (
-                <Play size={16} aria-hidden />
-              )}
-              <span>{t('dataExplorer.run')}</span>
-            </button>
-            <button
-              type="button"
-              className="btn btn-secondary"
-              onClick={() => void handleDelete()}
-            >
-              <Trash2 size={16} aria-hidden />
-              <span>{t('dataExplorer.deleteDashboard')}</span>
-            </button>
-          </>
+          <button
+            type="button"
+            className="btn btn-primary"
+            onClick={() => void handleRun()}
+            disabled={running || reports.length === 0}
+          >
+            {running ? (
+              <Loader2 size={16} className="console-loading-spinner" aria-hidden />
+            ) : (
+              <Play size={16} aria-hidden />
+            )}
+            <span>{t('dataExplorer.run')}</span>
+          </button>
         }
       />
       <EntityViewPanel
