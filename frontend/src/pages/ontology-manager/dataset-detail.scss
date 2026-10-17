@@ -375,9 +375,11 @@
   }
 }
 
-/* Delete sits at the far left of the footer row; Cancel/Save stay together on the right. */
-.quality-rule-delete {
-  margin-right: auto;
+/* Cancel and Save are one act — keep them side by side, hard against the right edge. */
+.quality-rule-savebar {
+  display: flex;
+  gap: var(--space-2);
+  margin-left: auto;
 }
 
 /* The SQL block of a rule: the query wants the width, the short fields do not. */

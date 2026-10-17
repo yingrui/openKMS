@@ -704,7 +704,8 @@
     "qualityResultNothingFound": "found nothing — there should be rows",
     "qualityTemplate_coverage": "Rows exist for today",
     "qualityResultFreshnessLatest": "Latest {{latest}}",
-    "qualityWhen": "When"
+    "qualityWhen": "When",
+    "qualityDeleteHint": "Deleting the rule removes its runs with it. The data is not touched."
   },
   "groups": {
     "title": "Groups",

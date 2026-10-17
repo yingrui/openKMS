@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useNavigate, useParams } from 'react-router-dom';
-import { ArrowLeft, Play } from 'lucide-react';
+import { ArrowLeft, Play, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { fetchDatasetMetadata, fetchDatasets, type ColumnMetadata, type DatasetResponse } from '../../data/datasetsApi';
 import {
@@ -310,6 +310,20 @@ export function QualityRuleEditorPage() {
             )}
           </>
         }
+        actions={
+          !isNew ? (
+            <button
+              type="button"
+              className="btn btn-primary"
+              onClick={() => void handleRun()}
+              disabled={running || isDirty}
+              title={isDirty ? t('datasets.qualityRunNeedsSave') : undefined}
+            >
+              <Play size={16} aria-hidden />
+              {running ? t('datasets.qualityRunning') : t('datasets.qualityRun')}
+            </button>
+          ) : undefined
+        }
       />
 
       <EntityViewPanel>
@@ -456,41 +470,21 @@ export function QualityRuleEditorPage() {
           </div>
         )}
 
+        {/* The draft's commit pair, together and on the right — one job per row. */}
         <div className="entity-view__panel-footer">
-          {!isNew && (
-            /* Far left, across a gap: a destructive action keeps its distance from the verbs. */
+          <div className="quality-rule-savebar">
+            <Link to={`${base}/quality`} className="btn btn-secondary">
+              {t('shared.cancel')}
+            </Link>
             <button
               type="button"
-              className="btn btn-danger btn-sm quality-rule-delete"
-              onClick={() => void handleDelete()}
+              className="btn btn-primary"
+              onClick={() => void handleSave()}
+              disabled={!name.trim() || submitting || (!isNew && !isDirty)}
             >
-              {t('shared.delete')}
+              {submitting ? t('shared.saving') : t('shared.save')}
             </button>
-          )}
-          <Link to={`${base}/quality`} className="btn btn-secondary">
-            {t('shared.cancel')}
-          </Link>
-          {!isNew && (
-            // Secondary, not primary: Save is what commits; Run re-reads what was committed.
-            <button
-              type="button"
-              className="btn btn-secondary"
-              onClick={() => void handleRun()}
-              disabled={running || isDirty}
-              title={isDirty ? t('datasets.qualityRunNeedsSave') : undefined}
-            >
-              <Play size={16} aria-hidden />
-              {running ? t('datasets.qualityRunning') : t('datasets.qualityRun')}
-            </button>
-          )}
-          <button
-            type="button"
-            className="btn btn-primary"
-            onClick={() => void handleSave()}
-            disabled={!name.trim() || submitting || (!isNew && !isDirty)}
-          >
-            {submitting ? t('shared.saving') : t('shared.save')}
-          </button>
+          </div>
         </div>
         {!isNew && isDirty && (
           <p className="page-subtitle">{t('datasets.qualityRunNeedsSave')}</p>
@@ -563,6 +557,17 @@ export function QualityRuleEditorPage() {
             </>
           )}
         </EntityViewPanel>
+      )}
+      {!isNew && (
+        /* Its own zone, not a button in a toolbar: the app deletes datasets the same way. */
+        <div className="ontology-danger-zone">
+          <h2>{t('datasets.dangerZone')}</h2>
+          <p className="page-subtitle">{t('datasets.qualityDeleteHint')}</p>
+          <button type="button" className="btn btn-danger" onClick={() => void handleDelete()}>
+            <Trash2 size={16} aria-hidden />
+            {t('shared.delete')}
+          </button>
+        </div>
       )}
     </>
   );

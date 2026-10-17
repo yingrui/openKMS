@@ -426,7 +426,7 @@
     "allowEditing": "允许在页面上编辑行数据",
     "allowEditingHint": "开启后，拥有 data:edit 的用户可对底层表执行增删改。",
     "primaryKeyHint": "主键 — 用于定位更新的行，也可作为关系目标：",
-    "dangerZone": "危险区",
+    "dangerZone": "危险操作",
     "deleteHint": "删除数据集只移除登记，不会删除底层表。",
     "descriptionLabel": "描述",
     "domainLabel": "领域",
@@ -697,7 +697,8 @@
     "qualityResultNothingFound": "一行都没有找到——本应有数据",
     "qualityTemplate_coverage": "今天有数据",
     "qualityResultFreshnessLatest": "最新数据 {{latest}}",
-    "qualityWhen": "时间"
+    "qualityWhen": "时间",
+    "qualityDeleteHint": "删除规则会连同它的运行记录一起删除。数据本身不受影响。"
   },
   "groups": {
     "title": "分组",

@@ -237,6 +237,17 @@ the exact live shape as a test. The general rule is the one this cost: **never c
 by its JSON text** — key order, number formatting and `undefined` all make that lie, and a database is
 entitled to reorder what it stores.
 
+### Buttons grouped by meaning, not by space (2026-10)
+
+The rule page had one action row holding four buttons of three kinds: Run (an action on the saved rule),
+Cancel/Save (committing the draft), Delete (destroying the rule). A reader said the layout was still off,
+and it was: the first fix moved them *together* without asking what they had in common, which was nothing.
+
+Grouped by subject now, following the app's own grammar: **Run** sits with the rule's identity in the
+header; **Cancel/Save** are one act, side by side, hard against the right edge of the form's footer; and
+**Delete** gets the popup's own danger zone, the same one the dataset's settings page uses for deleting a
+dataset. Each row has one job, which is a better rule than any amount of spacing.
+
 ### A passed run that says "no date to compare" (2026-10)
 
 The freshness rule reported **passed** and, in the same panel, *"No date to compare"*. Two parts of one
