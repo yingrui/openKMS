@@ -47,12 +47,14 @@ def run_readonly(
     return rows
 
 
-def run_readonly_scalar(ds: DataSource, sql: str, *, timeout_ms: int) -> tuple[int, list[Any]]:
-    """Run ``sql`` read-only and report its **shape** (column count) plus the first row.
+def run_readonly_names(
+    ds: DataSource, sql: str, params: dict[str, Any], *, timeout_ms: int
+) -> tuple[list[str], list[list[Any]]]:
+    """Read-only rows **with their column names, duplicates intact**.
 
-    `run_readonly` returns dicts, and a dict collapses duplicate column names — so
-    ``SELECT count(*), count(*)`` looked like one column and passed a check that wanted exactly one.
-    This is the same envelope (read-only transaction, statement timeout), reported without that loss.
+    `run_readonly` returns dicts, and a dict collapses duplicate column names — so `SELECT count(*),
+    count(*)` once looked like one column and passed a check that wanted exactly one. Rules read results
+    by name, so they need the names as the query produced them. Same envelope as `run_readonly`.
     """
     engine = pg_engine_for_datasource(ds)
     try:
@@ -61,13 +63,12 @@ def run_readonly_scalar(ds: DataSource, sql: str, *, timeout_ms: int) -> tuple[i
             tx = conn.begin()
             conn.exec_driver_sql("SET TRANSACTION READ ONLY")
             conn.exec_driver_sql(f"SET LOCAL statement_timeout = {int(timeout_ms)}")
-            result = conn.execute(text(sql))
-            column_count = len(result.keys())
-            row = result.fetchone()
-            rows = [serialize_cell_value(v) for v in row] if row is not None else []
+            result = conn.execute(text(sql), params)
+            names = list(result.keys())
+            rows = [[serialize_cell_value(v) for v in row] for row in result.fetchall()]
             tx.rollback()
         finally:
             conn.close()
     finally:
         engine.dispose()
-    return column_count, rows
+    return names, rows

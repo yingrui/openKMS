@@ -220,6 +220,32 @@ Active UX / quality gaps: [Tech debt](./tech_debt.md).
   must not push layout — the two other reveals in this app (report tiles, section cards) animate
   `opacity` only, which is why neither flickers.
 
+### Several ways to configure a rule, one way to execute one (2026-10)
+
+The five declarative types each had their own branch of Python — assembling a string, running it, reading
+its rows — and `sql` had a sixth. Six ways to execute, which is five too many: the branches could (and
+did) drift on nulls, on whether a column was quoted, on how a result was read.
+
+They are **generators** now (`rule_sql.py`, pure and tested): a `not_null` rule *is*
+`count(*) FILTER (WHERE col IS NULL)`, a `range` rule *is* a `BETWEEN`, a `referential` rule *is* a
+`NOT EXISTS` against the target table. Execution is a single path — read-only transaction, statement
+timeout, one result contract (“how many rows break this rule”, `> 0` fails) — and **every** run records
+the SQL it used in `detail.sql`, so a declarative rule stops being a black box that reports a number.
+
+The declarative types are **not** downgraded: a form with a column and a threshold is the normal way to
+configure a rule, and it now sits on top of the same truth as the hand-written one. Configuring and
+executing were the same thing before, which is why adding a style meant adding a runner.
+
+Two things fell out of the consolidation:
+
+- **the bounds are parameters now.** `range` pasted `min`/`max` into the SQL text with an f-string; they
+  are bound (`:min`, `:max`), like the identifiers they sit beside.
+- **`detail.sql` is inspectable by the UI** — it reads that field for any rule type, so the rule page's
+  “The SQL that ran” is not a feature of `sql` rules only.
+
+Verified by re-running all five live rules and comparing: 1,007,340/0, 725,192/51,425, 1/0 with
+`latest = 2026-10-09`, and 178,222 — the same numbers as before the refactor.
+
 ### A JSON body without its content type (2026-10)
 
 A reader pressed **Try** on a `sql` rule and got `The query failed: Input should be a valid dictionary or

@@ -21,7 +21,7 @@ Order of operations, and what each step buys:
 | 2. Describe columns | `datasets metadata` → `datasets column-description` | Physical column meaning (a **field** is the model-scoped version) |
 | 3. Make it usable | `datasets update` | Display name, description, domain, tags, business definition, sensitivity, keys, row editing, `ai_context` |
 | 4. Connect | `datasets joins add` | FK edges (`from` many → `to` one) that metrics can join across |
-| 5. Trust | `datasets quality add` / `run` / `runs` | Rules over the table — five **declarative** kinds (`not_null`, `unique`, `range`, `referential`, `freshness`), or `sql` for a business-specific constraint (`--sql`) |
+| 5. Trust | `datasets quality add` / `run` / `runs` | Rules over the table — five **declarative** kinds (`not_null`, `unique`, `range`, `referential`, `freshness`), or `sql` for a business-specific constraint (`--sql`). Every kind executes as one read-only query, and `runs` shows the SQL it used in `detail.sql` |
 | 6. Verify | `datasets profile` / `schema-history` / `rows` | What the data actually looks like |
 | 7. (Optional) speak semantically | `semantic-models …` | Fields + metrics over these datasets; an ontology object type can also promote one |
 
