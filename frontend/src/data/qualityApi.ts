@@ -86,6 +86,13 @@ export async function validateQualityRule(
   });
 }
 
+export async function fetchQualityRule(
+  datasetId: string,
+  ruleId: string,
+): Promise<QualityRuleResponse> {
+  return request<QualityRuleResponse>(`/api/datasets/${datasetId}/quality-rules/${ruleId}`);
+}
+
 export async function deleteQualityRule(datasetId: string, ruleId: string): Promise<void> {
   return request<void>(`/api/datasets/${datasetId}/quality-rules/${ruleId}`, { method: 'DELETE' });
 }

@@ -675,7 +675,9 @@
     "qualityTemplate_futureDates": "没有未来日期",
     "editQualityRuleNamed": "正在编辑「{{name}}」",
     "discardDraft": "放弃未保存的规则？",
-    "discardDraftHint": "编辑中的修改会丢失。"
+    "discardDraftHint": "编辑中的修改会丢失。",
+    "qualityHistory": "运行历史",
+    "qualityNoHistory": "这条规则还没有运行过"
   },
   "groups": {
     "title": "分组",

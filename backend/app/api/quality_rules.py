@@ -153,6 +153,21 @@ async def create_quality_rule(
     return _rule_response(rule, None)
 
 
+@router.get(
+    "/{dataset_id}/quality-rules/{rule_id}",
+    response_model=QualityRuleResponse,
+    dependencies=[Depends(require_permission(PERM_DATA_READ))],
+)
+async def get_quality_rule(
+    rule_id: str,
+    dataset: Dataset = Depends(get_dataset_scoped),
+    db: AsyncSession = Depends(get_db),
+):
+    """One rule — what a detail page addresses; the list is not a detail page's data source."""
+    rule = await _get_rule(db, dataset.id, rule_id)
+    return _rule_response(rule, await _latest_run(db, rule.id))
+
+
 @router.put(
     "/{dataset_id}/quality-rules/{rule_id}",
     response_model=QualityRuleResponse,

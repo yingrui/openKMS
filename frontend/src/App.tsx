@@ -286,6 +286,11 @@ const DatasetQualityTab = lazy(() =>
     default: m.DatasetQualityTab,
   })),
 );
+const QualityRuleEditorPage = lazy(() =>
+  import('./pages/ontology-manager/QualityRuleEditorPage').then((m) => ({
+    default: m.QualityRuleEditorPage,
+  })),
+);
 const DatasetSharingTab = lazy(() =>
   import('./pages/ontology-manager/DatasetDetailPage').then((m) => ({ default: m.DatasetSharingTab })),
 );
@@ -457,6 +462,8 @@ function App() {
               <Route path="columns" element={<DatasetColumnsTab />} />
               <Route path="relationships" element={<DatasetRelationshipsTab />} />
               <Route path="quality" element={<DatasetQualityTab />} />
+              <Route path="quality/new" element={<QualityRuleEditorPage />} />
+              <Route path="quality/:ruleId" element={<QualityRuleEditorPage />} />
               <Route path="settings" element={<DatasetSettingsTab />} />
               <Route path="sharing" element={<DatasetSharingTab />} />
             </Route>

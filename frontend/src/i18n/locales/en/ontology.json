@@ -682,7 +682,9 @@
     "qualityTemplate_futureDates": "No future dates",
     "editQualityRuleNamed": "Editing “{{name}}”",
     "discardDraft": "Discard the unsaved rule?",
-    "discardDraftHint": "The changes in the editor will be lost."
+    "discardDraftHint": "The changes in the editor will be lost.",
+    "qualityHistory": "Run history",
+    "qualityNoHistory": "This rule has not run yet"
   },
   "groups": {
     "title": "Groups",

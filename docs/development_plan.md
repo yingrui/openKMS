@@ -220,19 +220,25 @@ Active UX / quality gaps: [Tech debt](./tech_debt.md).
   must not push layout — the two other reveals in this app (report tiles, section cards) animate
   `opacity` only, which is why neither flickers.
 
-### Editing a rule is a page, not a dialog (2026-10)
+### Editing a rule: list ↔ detail, not a dialog and not a panel (2026-10)
 
 A reader pushed back on the modal editor, and was right: a rule is not a short form. With `sql` it is a
-query you **iterate** on — write, try, read the failure, fix it — and a dialog traps that loop (you cannot
-see the columns or the other rules, the result sits in a small box, and closing it loses everything).
+query you **iterate** on — write, try, read the failure, fix it — and a dialog traps that loop.
 
-The editor is now an **inline panel above the rules list** on the same tab: the short fields in the app's
-`.entity-view__form`, the query in a full-width block (it wants the width; the fields do not), and the
-app's `.entity-view__panel-footer` as the save bar. One 5-line rule (`.quality-rule-sql`) is the only new
-CSS. It scrolls itself into view, because a pencil clicked twenty rows down should not look like a no-op.
+The first fix replaced the dialog with an **inline panel above the rules list**. A second look, also
+right: that is *both views at once* — the list is what you scan, the rule is what you work on, and
+stacking them means neither gets the room. So the rule has **its own page**:
 
-What the dialog gave for free had to be rebuilt, not dropped: the draft is snapshotted when the editor
-opens, and leaving (Cancel, or opening another rule) asks before discarding it.
+- `/datasets/{id}/quality` — the list: what do I have, what is broken, run it, delete it, open it;
+- `/datasets/{id}/quality/new` and `/datasets/{id}/quality/{ruleId}` — the rule: name, type, column,
+  thresholds, and for `sql` the query at full width with Try; plus its **run history**.
+
+`GET /api/datasets/{id}/quality-rules/{rule_id}` exists because a detail page addresses a rule, not a
+list. One component serves both routes; the absence of an id is "create". This is the app's own grammar
+(the dashboard and its reports work the same way), which is the argument that decided it.
+
+What the dialog gave for free had to be rebuilt rather than dropped: saving returns you to the rule's
+page, and the Cancel/back link leaves the draft behind deliberately — there is a page to come back to.
 
 ### Quality rules that fit real business needs: `sql` (2026-10)
 
