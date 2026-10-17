@@ -220,6 +220,20 @@ Active UX / quality gaps: [Tech debt](./tech_debt.md).
   must not push layout — the two other reveals in this app (report tiles, section cards) animate
   `opacity` only, which is why neither flickers.
 
+### Editing a rule is a page, not a dialog (2026-10)
+
+A reader pushed back on the modal editor, and was right: a rule is not a short form. With `sql` it is a
+query you **iterate** on — write, try, read the failure, fix it — and a dialog traps that loop (you cannot
+see the columns or the other rules, the result sits in a small box, and closing it loses everything).
+
+The editor is now an **inline panel above the rules list** on the same tab: the short fields in the app's
+`.entity-view__form`, the query in a full-width block (it wants the width; the fields do not), and the
+app's `.entity-view__panel-footer` as the save bar. One 5-line rule (`.quality-rule-sql`) is the only new
+CSS. It scrolls itself into view, because a pencil clicked twenty rows down should not look like a no-op.
+
+What the dialog gave for free had to be rebuilt, not dropped: the draft is snapshotted when the editor
+opens, and leaving (Cancel, or opening another rule) asks before discarding it.
+
 ### Quality rules that fit real business needs: `sql` (2026-10)
 
 The five declarative kinds cover the standard checks and nothing else. "The high price can never be below

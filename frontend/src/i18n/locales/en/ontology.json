@@ -17,7 +17,8 @@
     "age_hours_one": "{{count}} hour ago",
     "age_hours_other": "{{count}} hours ago",
     "age_days_one": "{{count}} day ago",
-    "age_days_other": "{{count}} days ago"
+    "age_days_other": "{{count}} days ago",
+    "discard": "Discard"
   },
   "functions": {
     "title": "Functions",
@@ -678,7 +679,10 @@
     "qualityTemplate_twoColumns": "High ≥ low",
     "qualityTemplate_duplicates": "No duplicates",
     "qualityTemplate_nullShare": "Null share under 30%",
-    "qualityTemplate_futureDates": "No future dates"
+    "qualityTemplate_futureDates": "No future dates",
+    "editQualityRuleNamed": "Editing “{{name}}”",
+    "discardDraft": "Discard the unsaved rule?",
+    "discardDraftHint": "The changes in the editor will be lost."
   },
   "groups": {
     "title": "Groups",

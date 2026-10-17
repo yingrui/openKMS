@@ -14,7 +14,7 @@ import {
   type QualityRuleResponse,
 } from '../../data/qualityApi';
 import { useConfirm } from '../../contexts/ConfirmContext';
-import { Dialog, EmptyState, FormField, QueryFailureNotice, StatusChip } from '../../styles/design-system';
+import { EmptyState, FormField, QueryFailureNotice, StatusChip } from '../../styles/design-system';
 import { EntityViewHeader, EntityViewPanel, EntityViewLoading } from './EntityViewShell';
 
 const RULE_TYPES = ['not_null', 'unique', 'range', 'referential', 'freshness', 'sql'] as const;
@@ -58,6 +58,19 @@ export function DatasetQualityTab() {
   const [submitting, setSubmitting] = useState(false);
   const [trying, setTrying] = useState(false);
   const [sqlResult, setSqlResult] = useState<{ ok: boolean; failed_count: number | null; error: string | null } | null>(null);
+  /** The draft as it was when the editor opened; a different value means there is something to lose. */
+  const [savedKey, setSavedKey] = useState('');
+  // The editor opens above the table, so a pencil clicked twenty rows down would otherwise seem to do
+  // nothing at all.
+  useEffect(() => {
+    if (showForm) {
+      document.getElementById('quality-rule-editor')?.scrollIntoView({ block: 'nearest' });
+    }
+  }, [showForm]);
+
+  const draftKey = JSON.stringify([
+    name, ruleType, column, min, max, refDatasetId, refColumn, maxAge, sql,
+  ]);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -81,7 +94,25 @@ export function DatasetQualityTab() {
     void load();
   }, [load]);
 
-  const openCreate = () => {
+  /** Opening another rule (or "add") discards the draft, so ask when there is one. */
+  const guardDraft = async () => {
+    if (!showForm || draftKey === savedKey) return true;
+    return confirm({
+      title: t('datasets.discardDraft'),
+      message: t('datasets.discardDraftHint'),
+      confirmLabel: t('shared.discard'),
+      danger: true,
+    });
+  };
+
+  const closeEditor = async () => {
+    if (!(await guardDraft())) return;
+    setShowForm(false);
+    setEditingId(null);
+  };
+
+  const openCreate = async () => {
+    if (!(await guardDraft())) return;
     setEditingId(null);
     setName('');
     setRuleType('not_null');
@@ -93,11 +124,15 @@ export function DatasetQualityTab() {
     setMaxAge('1');
     setSql('');
     setSqlResult(null);
+    setSavedKey(
+      JSON.stringify(['', 'not_null', '', '', '', '', '', '1', '']),
+    );
     setShowForm(true);
   };
 
   /** Load a rule into the dialog. Its type is fixed — changing it would orphan the config. */
-  const openEdit = (rule: QualityRuleResponse) => {
+  const openEdit = async (rule: QualityRuleResponse) => {
+    if (!(await guardDraft())) return;
     const config = (rule.config ?? {}) as Record<string, unknown>;
     setEditingId(rule.id);
     setName(rule.name);
@@ -110,6 +145,19 @@ export function DatasetQualityTab() {
     setMaxAge(config.max_age_days != null ? String(config.max_age_days) : '1');
     setSql(typeof config.sql === 'string' ? config.sql : '');
     setSqlResult(null);
+    setSavedKey(
+      JSON.stringify([
+        rule.name,
+        rule.rule_type,
+        rule.column_name ?? '',
+        config.min != null ? String(config.min) : '',
+        config.max != null ? String(config.max) : '',
+        typeof config.ref_dataset_id === 'string' ? config.ref_dataset_id : '',
+        typeof config.ref_column === 'string' ? config.ref_column : '',
+        config.max_age_days != null ? String(config.max_age_days) : '1',
+        typeof config.sql === 'string' ? config.sql : '',
+      ]),
+    );
     setShowForm(true);
   };
 
@@ -149,6 +197,7 @@ export function DatasetQualityTab() {
         toast.success(t('datasets.qualityCreated'));
       }
       setShowForm(false);
+      setEditingId(null);
       await load();
     } catch (e) {
       toast.error(e instanceof Error ? e.message : t('datasets.qualityCreateFailed'));
@@ -215,10 +264,180 @@ export function DatasetQualityTab() {
   return (
     <>
       <EntityViewHeader title={t('datasets.quality')} subtitle={t('datasets.qualityHint')} />
+      {showForm && (
+        <EntityViewPanel id="quality-rule-editor">
+          <div className="dataset-joins__toolbar">
+            <h3>
+              {editingId
+                ? t('datasets.editQualityRuleNamed', { name })
+                : t('datasets.addQualityRule')}
+            </h3>
+          </div>
+          {/* Editing is a page, not a dialog: a rule — especially a SQL one — is written, tried, fixed
+              and tried again while the rules and the columns stay in sight. */}
+          <div className="entity-view__form">
+            <FormField label={t('datasets.colName')}>
+              <input value={name} onChange={(e) => setName(e.target.value)} />
+            </FormField>
+            <FormField
+              label={t('datasets.qualityType')}
+              hint={editingId ? t('datasets.qualityTypeFixed') : undefined}
+            >
+              {/* Fixed while editing: a new type would make the existing config meaningless. */}
+              <select
+                value={ruleType}
+                disabled={editingId !== null}
+                onChange={(e) => setRuleType(e.target.value)}
+              >
+                {RULE_TYPES.map((rt) => (
+                  <option key={rt} value={rt}>
+                    {t(`datasets.qualityType_${rt}`)}
+                  </option>
+                ))}
+              </select>
+            </FormField>
+            {ruleType !== 'freshness' && (
+              <FormField label={t('datasets.colColumn')}>
+                <select value={column} onChange={(e) => setColumn(e.target.value)}>
+                  <option value="">{t('datasets.joinColumnPlaceholder')}</option>
+                  {columns.map((c) => (
+                    <option key={c.column_name} value={c.column_name}>
+                      {c.column_name}
+                    </option>
+                  ))}
+                </select>
+              </FormField>
+            )}
+            {ruleType === 'freshness' && (
+              <>
+                <FormField label={t('datasets.colColumn')}>
+                  <select value={column} onChange={(e) => setColumn(e.target.value)}>
+                    <option value="">{t('datasets.joinColumnPlaceholder')}</option>
+                    {columns.map((c) => (
+                      <option key={c.column_name} value={c.column_name}>
+                        {c.column_name}
+                      </option>
+                    ))}
+                  </select>
+                </FormField>
+                <FormField label={t('datasets.qualityMaxAgeDays')}>
+                  <input value={maxAge} onChange={(e) => setMaxAge(e.target.value)} />
+                </FormField>
+              </>
+            )}
+            {ruleType === 'range' && (
+              <>
+                <FormField label={t('datasets.qualityMin')}>
+                  <input value={min} onChange={(e) => setMin(e.target.value)} />
+                </FormField>
+                <FormField label={t('datasets.qualityMax')}>
+                  <input value={max} onChange={(e) => setMax(e.target.value)} />
+                </FormField>
+              </>
+            )}
+            {ruleType === 'referential' && (
+              <>
+                <FormField label={t('datasets.qualityRefDataset')}>
+                  <select value={refDatasetId} onChange={(e) => setRefDatasetId(e.target.value)}>
+                    <option value="">{t('datasets.selectTable')}</option>
+                    {datasets
+                      .filter((d) => d.id !== datasetId)
+                      .map((d) => (
+                        <option key={d.id} value={d.id}>
+                          {d.display_name || `${d.schema_name}.${d.table_name}`}
+                        </option>
+                      ))}
+                  </select>
+                </FormField>
+                <FormField label={t('datasets.qualityRefColumn')}>
+                  <input value={refColumn} onChange={(e) => setRefColumn(e.target.value)} />
+                </FormField>
+              </>
+            )}
+          </div>
+          {ruleType === 'sql' && (
+            /* Outside `.entity-view__form` on purpose: a query wants the width. */
+            <div className="quality-rule-sql">
+              <FormField label={t('datasets.qualitySql')} hint={t('datasets.qualitySqlHint')}>
+                <textarea
+                  className="ds-control ds-control--mono"
+                  rows={9}
+                  spellCheck={false}
+                  value={sql}
+                  onChange={(e) => {
+                    setSql(e.target.value);
+                    setSqlResult(null);
+                  }}
+                />
+              </FormField>
+              <div className="openkms-flex-row-gap">
+                {SQL_TEMPLATES.map((tpl) => (
+                  <button
+                    key={tpl.key}
+                    type="button"
+                    className="btn btn-secondary btn-sm"
+                    onClick={() => {
+                      setSql(tpl.sql);
+                      setSqlResult(null);
+                    }}
+                  >
+                    {t(`datasets.qualityTemplate_${tpl.key}`)}
+                  </button>
+                ))}
+              </div>
+              <div className="openkms-flex-row-gap">
+                <button
+                  type="button"
+                  className="btn btn-secondary btn-sm"
+                  onClick={() => void handleTrySql()}
+                  disabled={!sql.trim() || trying}
+                >
+                  {trying ? t('datasets.qualitySqlTrying') : t('datasets.qualitySqlTry')}
+                </button>
+                {sqlResult?.ok && (
+                  <>
+                    <StatusChip tone={sqlResult.failed_count ? 'warn' : 'ok'}>
+                      {sqlResult.failed_count
+                        ? t('datasets.qualitySqlResult', { count: sqlResult.failed_count })
+                        : t('datasets.qualitySqlPassed')}
+                    </StatusChip>
+                    <span className="page-subtitle">{t('datasets.qualitySqlNotSaved')}</span>
+                  </>
+                )}
+              </div>
+              {sqlResult && !sqlResult.ok && (
+                <QueryFailureNotice
+                  title={t('datasets.qualitySqlError')}
+                  message={sqlResult.error}
+                  detailsLabel={t('datasets.qualitySql')}
+                />
+              )}
+            </div>
+          )}
+          <div className="entity-view__panel-footer">
+            <button
+              type="button"
+              className="btn btn-secondary"
+              onClick={() => void closeEditor()}
+              disabled={submitting}
+            >
+              {t('shared.cancel')}
+            </button>
+            <button
+              type="button"
+              className="btn btn-primary"
+              onClick={() => void handleCreate()}
+              disabled={!name.trim() || submitting}
+            >
+              {submitting ? t('shared.saving') : editingId ? t('shared.save') : t('datasets.joinCreate')}
+            </button>
+          </div>
+        </EntityViewPanel>
+      )}
       <EntityViewPanel>
         <div className="dataset-joins__toolbar">
           <h3>{t('datasets.qualityRules')}</h3>
-          <button type="button" className="btn btn-secondary" onClick={openCreate}>
+          <button type="button" className="btn btn-secondary" onClick={() => void openCreate()}>
             <Plus size={16} aria-hidden />
             {t('datasets.addQualityRule')}
           </button>
@@ -260,7 +479,7 @@ export function DatasetQualityTab() {
                           type="button"
                           title={t('datasets.editQualityRule')}
                           aria-label={t('datasets.editQualityRule')}
-                          onClick={() => openEdit(r)}
+                          onClick={() => void openEdit(r)}
                         >
                           <Pencil size={16} />
                         </button>
@@ -289,171 +508,6 @@ export function DatasetQualityTab() {
         )}
       </EntityViewPanel>
 
-      <Dialog
-        open={showForm}
-        onClose={() => !submitting && setShowForm(false)}
-        closeDisabled={submitting}
-        title={editingId ? t('datasets.editQualityRule') : t('datasets.addQualityRule')}
-        closeAriaLabel={t('shared.cancel')}
-        size="sm"
-        footer={
-          <>
-            <button
-              type="button"
-              className="btn btn-secondary"
-              onClick={() => !submitting && setShowForm(false)}
-              disabled={submitting}
-            >
-              {t('shared.cancel')}
-            </button>
-            <button
-              type="button"
-              className="btn btn-primary"
-              onClick={() => void handleCreate()}
-              disabled={!name.trim() || submitting}
-            >
-              {submitting ? t('shared.saving') : editingId ? t('shared.save') : t('datasets.joinCreate')}
-            </button>
-          </>
-        }
-      >
-        <FormField label={t('datasets.colName')}>
-          <input value={name} onChange={(e) => setName(e.target.value)} />
-        </FormField>
-        <FormField
-          label={t('datasets.qualityType')}
-          hint={editingId ? t('datasets.qualityTypeFixed') : undefined}
-        >
-          {/* Fixed while editing: a new type would make the existing config meaningless. */}
-          <select
-            value={ruleType}
-            disabled={editingId !== null}
-            onChange={(e) => setRuleType(e.target.value)}
-          >
-            {RULE_TYPES.map((rt) => (
-              <option key={rt} value={rt}>
-                {t(`datasets.qualityType_${rt}`)}
-              </option>
-            ))}
-          </select>
-        </FormField>
-        {ruleType !== 'freshness' && (
-          <FormField label={t('datasets.colColumn')}>
-            <select value={column} onChange={(e) => setColumn(e.target.value)}>
-              <option value="">{t('datasets.joinColumnPlaceholder')}</option>
-              {columns.map((c) => (
-                <option key={c.column_name} value={c.column_name}>
-                  {c.column_name}
-                </option>
-              ))}
-            </select>
-          </FormField>
-        )}
-        {ruleType === 'freshness' && (
-          <>
-            <FormField label={t('datasets.colColumn')}>
-              <select value={column} onChange={(e) => setColumn(e.target.value)}>
-                <option value="">{t('datasets.joinColumnPlaceholder')}</option>
-                {columns.map((c) => (
-                  <option key={c.column_name} value={c.column_name}>
-                    {c.column_name}
-                  </option>
-                ))}
-              </select>
-            </FormField>
-            <FormField label={t('datasets.qualityMaxAgeDays')}>
-              <input value={maxAge} onChange={(e) => setMaxAge(e.target.value)} />
-            </FormField>
-          </>
-        )}
-        {ruleType === 'range' && (
-          <>
-            <FormField label={t('datasets.qualityMin')}>
-              <input value={min} onChange={(e) => setMin(e.target.value)} />
-            </FormField>
-            <FormField label={t('datasets.qualityMax')}>
-              <input value={max} onChange={(e) => setMax(e.target.value)} />
-            </FormField>
-          </>
-        )}
-        {ruleType === 'sql' && (
-          <>
-            <FormField label={t('datasets.qualitySql')} hint={t('datasets.qualitySqlHint')}>
-              <textarea
-                className="ds-control ds-control--mono"
-                rows={8}
-                spellCheck={false}
-                value={sql}
-                onChange={(e) => {
-                  setSql(e.target.value);
-                  setSqlResult(null);
-                }}
-              />
-            </FormField>
-            <div className="openkms-flex-row-gap">
-              {SQL_TEMPLATES.map((tpl) => (
-                <button
-                  key={tpl.key}
-                  type="button"
-                  className="btn btn-secondary btn-sm"
-                  onClick={() => {
-                    setSql(tpl.sql);
-                    setSqlResult(null);
-                  }}
-                >
-                  {t(`datasets.qualityTemplate_${tpl.key}`)}
-                </button>
-              ))}
-            </div>
-            <div className="openkms-flex-row-gap">
-              <button
-                type="button"
-                className="btn btn-secondary btn-sm"
-                onClick={() => void handleTrySql()}
-                disabled={!sql.trim() || trying}
-              >
-                {trying ? t('datasets.qualitySqlTrying') : t('datasets.qualitySqlTry')}
-              </button>
-              {sqlResult?.ok && (
-                <>
-                  <StatusChip tone={sqlResult.failed_count ? 'warn' : 'ok'}>
-                    {sqlResult.failed_count
-                      ? t('datasets.qualitySqlResult', { count: sqlResult.failed_count })
-                      : t('datasets.qualitySqlPassed')}
-                  </StatusChip>
-                  <span className="page-subtitle">{t('datasets.qualitySqlNotSaved')}</span>
-                </>
-              )}
-            </div>
-            {sqlResult && !sqlResult.ok && (
-              <QueryFailureNotice
-                title={t('datasets.qualitySqlError')}
-                message={sqlResult.error}
-                detailsLabel={t('datasets.qualitySql')}
-              />
-            )}
-          </>
-        )}
-        {ruleType === 'referential' && (
-          <>
-            <FormField label={t('datasets.qualityRefDataset')}>
-              <select value={refDatasetId} onChange={(e) => setRefDatasetId(e.target.value)}>
-                <option value="">{t('datasets.selectTable')}</option>
-                {datasets
-                  .filter((d) => d.id !== datasetId)
-                  .map((d) => (
-                    <option key={d.id} value={d.id}>
-                      {d.display_name || `${d.schema_name}.${d.table_name}`}
-                    </option>
-                  ))}
-              </select>
-            </FormField>
-            <FormField label={t('datasets.qualityRefColumn')}>
-              <input value={refColumn} onChange={(e) => setRefColumn(e.target.value)} />
-            </FormField>
-          </>
-        )}
-      </Dialog>
     </>
   );
 }

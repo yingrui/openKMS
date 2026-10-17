@@ -17,7 +17,8 @@
     "age_hours_one": "{{count}} 小时前",
     "age_hours_other": "{{count}} 小时前",
     "age_days_one": "{{count}} 天前",
-    "age_days_other": "{{count}} 天前"
+    "age_days_other": "{{count}} 天前",
+    "discard": "放弃"
   },
   "functions": {
     "title": "函数",
@@ -671,7 +672,10 @@
     "qualityTemplate_twoColumns": "最高 ≥ 最低",
     "qualityTemplate_duplicates": "无重复",
     "qualityTemplate_nullShare": "空值占比低于 30%",
-    "qualityTemplate_futureDates": "没有未来日期"
+    "qualityTemplate_futureDates": "没有未来日期",
+    "editQualityRuleNamed": "正在编辑「{{name}}」",
+    "discardDraft": "放弃未保存的规则？",
+    "discardDraftHint": "编辑中的修改会丢失。"
   },
   "groups": {
     "title": "分组",

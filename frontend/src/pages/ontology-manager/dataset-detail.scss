@@ -344,6 +344,14 @@
 }
 
 
+/* The SQL block of a rule: the query wants the width, the short fields do not. */
+.quality-rule-sql {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  margin-top: var(--space-4);
+}
+
 .quality-pill {
   display: inline-block;
   padding: 1px 8px;
