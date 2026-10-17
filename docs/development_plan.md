@@ -220,6 +220,23 @@ Active UX / quality gaps: [Tech debt](./tech_debt.md).
   must not push layout — the two other reveals in this app (report tiles, section cards) animate
   `opacity` only, which is why neither flickers.
 
+### "Save first" on a rule nobody touched (2026-10)
+
+A reader opened the `range` rule and was told *"Save first — Run re-reads the saved rule, not this
+draft"* about a rule that was exactly as saved. The draft comparison was
+`JSON.stringify(config) !== JSON.stringify(rule.config)`, and the config is stored as **JSONB** — which
+normalizes object keys. The API returned `{"max":300,"min":0.1}`, the form built `{"min":0.1,"max":300}`,
+and the two strings were never equal.
+
+The sharp part: **only that rule could show it.** `range` is the only config with two keys; `not_null`
+holds `{}`, `freshness` and `sql` hold one key each, and those serialize identically either way. A
+comparison that fails only for multi-key data reads like a one-off glitch rather than a bug.
+
+Fixed by comparing **by value**: `canonicalJson` (sorted keys, recursive) and `isRuleDraftDirty`, with
+the exact live shape as a test. The general rule is the one this cost: **never compare structured data
+by its JSON text** — key order, number formatting and `undefined` all make that lie, and a database is
+entitled to reorder what it stores.
+
 ### Several ways to configure a rule, one way to execute one (2026-10)
 
 The five declarative types each had their own branch of Python — assembling a string, running it, reading

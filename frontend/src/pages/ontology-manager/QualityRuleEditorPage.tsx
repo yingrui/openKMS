@@ -20,6 +20,7 @@ import { FormField, QueryFailureNotice, StatusChip } from '../../styles/design-s
 import { SqlEditor } from '../../components/quality/SqlEditor';
 import { EntityViewHeader, EntityViewLoading, EntityViewPanel } from './EntityViewShell';
 import { readRun, type RunReading } from './qualityRunResult';
+import { isRuleDraftDirty } from './ruleDraft';
 
 const RULE_TYPES = ['not_null', 'unique', 'range', 'referential', 'freshness', 'sql'] as const;
 
@@ -163,12 +164,9 @@ export function QualityRuleEditorPage() {
    * Run executes the **saved** rule, so a draft that differs would quietly run something else. The
    * button says so by being disabled instead of running the old definition.
    */
+  // By value, not by JSON text: the stored config comes back with JSONB's key order, not the form's.
   const isDirty =
-    !isNew &&
-    rule !== null &&
-    (name !== rule.name ||
-      (column || '') !== (rule.column_name ?? '') ||
-      JSON.stringify(config) !== JSON.stringify(rule.config ?? {}));
+    !isNew && rule !== null && isRuleDraftDirty(rule, { name, column: column || null, config });
 
   const handleSave = async () => {
     if (!name.trim()) {
