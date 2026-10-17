@@ -25,6 +25,8 @@ import { isRuleDraftDirty } from './ruleDraft';
 const RULE_TYPES = ['not_null', 'unique', 'range', 'referential', 'freshness', 'sql'] as const;
 
 const num = (value: number) => value.toLocaleString();
+/** The history is paged: a rule that runs daily for a year must not render 365 rows at once. */
+const RUN_PAGE = 10;
 
 /** What a run measured, said in words — a number without a subject is not a result. */
 function ReadingText({ reading }: { reading: RunReading }) {
@@ -113,6 +115,8 @@ export function QualityRuleEditorPage() {
   const [expect, setExpect] = useState<'zero' | 'nonzero'>('zero');
   const [submitting, setSubmitting] = useState(false);
   const [running, setRunning] = useState(false);
+  const [hasMoreRuns, setHasMoreRuns] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [trying, setTrying] = useState(false);
   const [sqlResult, setSqlResult] = useState<{
     ok: boolean;
@@ -133,10 +137,11 @@ export function QualityRuleEditorPage() {
       if (!isNew && ruleId) {
         const [loaded, history] = await Promise.all([
           fetchQualityRule(datasetId, ruleId),
-          fetchQualityRuns(datasetId, ruleId),
+          fetchQualityRuns(datasetId, ruleId, { limit: RUN_PAGE }),
         ]);
         setRule(loaded);
         setRuns(history);
+        setHasMoreRuns(history.length === RUN_PAGE);
         const config = (loaded.config ?? {}) as Record<string, unknown>;
         setName(loaded.name);
         setRuleType(loaded.rule_type);
@@ -251,7 +256,10 @@ export function QualityRuleEditorPage() {
     try {
       const updated = await runQualityRule(datasetId, ruleId);
       setRule(updated);
-      setRuns(await fetchQualityRuns(datasetId, ruleId));
+      // Back to the first page: the run just made is now the newest, and the list must agree.
+      const history = await fetchQualityRuns(datasetId, ruleId, { limit: RUN_PAGE });
+      setRuns(history);
+      setHasMoreRuns(history.length === RUN_PAGE);
       toast.success(
         updated.last_status === 'passed' ? t('datasets.qualityPassed') : t('datasets.qualityFailed'),
       );
@@ -259,6 +267,25 @@ export function QualityRuleEditorPage() {
       toast.error(e instanceof Error ? e.message : t('datasets.qualityRunFailed'));
     } finally {
       setRunning(false);
+    }
+  };
+
+  const loadMoreRuns = async () => {
+    const last = runs[runs.length - 1];
+    if (!last) return;
+    setLoadingMore(true);
+    try {
+      const next = await fetchQualityRuns(datasetId, ruleId ?? '', {
+        limit: RUN_PAGE,
+        before: last.created_at,
+        beforeId: last.id,
+      });
+      setRuns((prev) => [...prev, ...next]);
+      setHasMoreRuns(next.length === RUN_PAGE);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : t('datasets.loadFailed'));
+    } finally {
+      setLoadingMore(false);
     }
   };
 
@@ -553,6 +580,16 @@ export function QualityRuleEditorPage() {
                     </tbody>
                   </table>
                 </div>
+              )}
+              {hasMoreRuns && (
+                <button
+                  type="button"
+                  className="btn btn-secondary btn-sm"
+                  onClick={() => void loadMoreRuns()}
+                  disabled={loadingMore}
+                >
+                  {loadingMore ? t('shared.loading') : t('datasets.qualityLoadMore')}
+                </button>
               )}
             </>
           )}

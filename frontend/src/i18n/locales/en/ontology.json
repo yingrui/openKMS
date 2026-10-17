@@ -705,7 +705,8 @@
     "qualityTemplate_coverage": "Rows exist for today",
     "qualityResultFreshnessLatest": "Latest {{latest}}",
     "qualityWhen": "When",
-    "qualityDeleteHint": "Deleting the rule removes its runs with it. The data is not touched."
+    "qualityDeleteHint": "Deleting the rule removes its runs with it. The data is not touched.",
+    "qualityLoadMore": "Load older runs"
   },
   "groups": {
     "title": "Groups",

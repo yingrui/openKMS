@@ -384,8 +384,12 @@ def cmd_quality_runs(ns: argparse.Namespace) -> None:
     Running a rule answers with the *rule*, which carries only `last_status`; how many rows were
     checked and how many failed lives here, and that is the answer a caller acts on.
     """
+    params = {"limit": ns.limit}
+    if ns.before and ns.before_id:
+        # The cursor is a timestamp *and* an id: two runs can share an instant.
+        params["before"], params["before_id"] = ns.before, ns.before_id
     with client() as s:
-        r = s.get(f"/api/datasets/{ns.id}/quality-rules/{ns.rule_id}/runs")
+        r = s.get(f"/api/datasets/{ns.id}/quality-rules/{ns.rule_id}/runs", params=params)
     r.raise_for_status()
     print_json(r.json())
 
@@ -619,6 +623,9 @@ def add_subparser(sub) -> None:
     qr = qsp.add_parser("run", help="Run a quality rule (prints the run it produced)")
     qr.add_argument("--id", required=True)
     qr.add_argument("--rule-id", required=True)
+    qr.add_argument("--limit", type=int, default=20, help="newest first (the API caps at MAX_PAGE_SIZE)")
+    qr.add_argument("--before", default=None, help="cursor: the `created_at` of the last run you have")
+    qr.add_argument("--before-id", default=None, dest="before_id", help="…and that run's id")
     add_write_flags(qr)
     qr.set_defaults(fn=cmd_quality_run)
     qd = qsp.add_parser("delete", help="Delete a quality rule")

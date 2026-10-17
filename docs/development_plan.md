@@ -237,6 +237,23 @@ the exact live shape as a test. The general rule is the one this cost: **never c
 by its JSON text** — key order, number formatting and `undefined` all make that lie, and a database is
 entitled to reorder what it stores.
 
+### Run history pages, and says so (2026-10)
+
+A reader asked whether the run history pages. It did not — and worse, it *looked* like it did: the API
+accepted a `limit` (an ordinary page size) and the UI rendered whatever came back as "the history". A
+rule run daily for a year would have shown fifty runs and silently called them all.
+
+- The API takes a **keyset cursor**: `?before=&before_id=` — the `created_at` **and** id of the last row,
+  because two runs can share an instant and a timestamp alone would skip or repeat. Half a cursor is a
+  `400`, not a guess. Ordering is `(created_at, id)` descending, which is what the row comparison uses.
+- The page loads **ten**, then "load older runs" appends. Running the rule returns to the first page,
+  because the run just made is the newest and the list has to agree with the reading above it.
+- The response shape is unchanged — a list — so `datasets quality runs` and its `--limit` keep working;
+  "is there more" is `len(page) == limit`, decided by the caller.
+
+Verified live on the rule with eight runs: four pages of two, a fifth empty, no duplicate ids, and the
+union equal to the full set.
+
 ### Buttons grouped by meaning, not by space (2026-10)
 
 The rule page had one action row holding four buttons of three kinds: Run (an action on the saved rule),

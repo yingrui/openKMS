@@ -123,6 +123,7 @@ python scripts/cli.py datasets quality list --id DS_ID          # rules + last s
 python scripts/cli.py datasets quality add --id DS_ID \
   --name "close is never null" --type not_null --column close --yes
 python scripts/cli.py datasets quality run --id DS_ID --rule-id RULE_ID --yes
+python scripts/cli.py datasets quality runs --id DS_ID --rule-id RULE_ID --limit 20  # newest first, paged
 # A business-specific constraint: one read-only SELECT returning ONE number = the count of violating
 # rows (>0 fails). Must read {{table}}; {{column}} is optional and gets quoted.
 # `expect` is what the number means: `zero` (default) = rows that break the rule; `nonzero` = coverage,

@@ -698,7 +698,8 @@
     "qualityTemplate_coverage": "今天有数据",
     "qualityResultFreshnessLatest": "最新数据 {{latest}}",
     "qualityWhen": "时间",
-    "qualityDeleteHint": "删除规则会连同它的运行记录一起删除。数据本身不受影响。"
+    "qualityDeleteHint": "删除规则会连同它的运行记录一起删除。数据本身不受影响。",
+    "qualityLoadMore": "加载更早的运行"
   },
   "groups": {
     "title": "分组",

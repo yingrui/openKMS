@@ -111,8 +111,17 @@ export async function runQualityRule(datasetId: string, ruleId: string): Promise
 export async function fetchQualityRuns(
   datasetId: string,
   ruleId: string,
+  /** Cursor paging: the last run you already have, newest first. */
+  page?: { limit: number; before?: string; beforeId?: string },
 ): Promise<QualityRunResponse[]> {
-  return request<QualityRunResponse[]>(`/api/datasets/${datasetId}/quality-rules/${ruleId}/runs`);
+  const query: Record<string, string | number> = page ? { limit: page.limit } : {};
+  if (page?.before && page.beforeId) {
+    query.before = page.before;
+    query.before_id = page.beforeId;
+  }
+  return request<QualityRunResponse[]>(`/api/datasets/${datasetId}/quality-rules/${ruleId}/runs`, {
+    query,
+  });
 }
 
 /** One rule with the latest run that judged it — the quality inbox's row. */

@@ -443,5 +443,8 @@ def test_quality_runs_lists_the_history(mock_api):
     responses[("GET", "/api/datasets/d1/quality-rules/r1/runs")] = (200, [{"id": "run1"}])
     from openkms.commands.datasets import cmd_quality_runs
 
-    cmd_quality_runs(_ns(id="d1", rule_id="r1"))
+    cmd_quality_runs(_ns(id="d1", rule_id="r1", limit=20, before=None, before_id=None))
     assert recorded[-1].url.path == "/api/datasets/d1/quality-rules/r1/runs"
+    # The list is paged: the command always says how many, and pages only when given a cursor.
+    assert recorded[-1].url.params["limit"] == "20"
+    assert "before" not in recorded[-1].url.params

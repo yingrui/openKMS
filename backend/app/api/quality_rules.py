@@ -3,9 +3,10 @@
 Reads: `console:datasets` or `ontology:read`. Writes: `console:datasets`.
 """
 import uuid
+from datetime import datetime
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
-from sqlalchemy import select
+from sqlalchemy import select, tuple_
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.constants import DEFAULT_PAGE_SIZE, MAX_PAGE_SIZE
@@ -253,14 +254,27 @@ async def list_quality_runs(
     dataset: Dataset = Depends(get_dataset_scoped),
     db: AsyncSession = Depends(get_db),
     limit: int = Query(DEFAULT_PAGE_SIZE, ge=1, le=MAX_PAGE_SIZE),
+    before: str | None = Query(None, description="the `created_at` of the last run you already have"),
+    before_id: str | None = Query(None, description="…and its id: two runs share an instant"),
 ):
     rule = await _get_rule(db, dataset.id, rule_id)
+    stmt = select(QualityRun).where(QualityRun.rule_id == rule.id)
+    if bool(before) != bool(before_id):
+        # A cursor of a timestamp *and* an id, because a run can share its instant with another.
+        raise HTTPException(
+            status_code=400, detail="Paging needs both `before` and `before_id`."
+        )
+    if before and before_id:
+        try:
+            cursor_ts = datetime.fromisoformat(before.replace("Z", "+00:00"))
+        except ValueError as exc:
+            raise HTTPException(status_code=400, detail="`before` must be an ISO timestamp.") from exc
+        stmt = stmt.where(
+            tuple_(QualityRun.created_at, QualityRun.id) < (cursor_ts, before_id)
+        )
     runs = (
         await db.execute(
-            select(QualityRun)
-            .where(QualityRun.rule_id == rule.id)
-            .order_by(QualityRun.created_at.desc())
-            .limit(limit)
+            stmt.order_by(QualityRun.created_at.desc(), QualityRun.id.desc()).limit(limit)
         )
     ).scalars().all()
     return [
