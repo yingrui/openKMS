@@ -65,6 +65,7 @@ export async function updateQualityRule(
 ): Promise<QualityRuleResponse> {
   return request<QualityRuleResponse>(`/api/datasets/${datasetId}/quality-rules/${ruleId}`, {
     method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body),
   });
 }
@@ -82,6 +83,7 @@ export async function validateQualityRule(
 ): Promise<QualityRuleValidateResult> {
   return request<QualityRuleValidateResult>(`/api/datasets/${datasetId}/quality-rules/validate`, {
     method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body),
   });
 }

@@ -220,6 +220,13 @@ if ! python3 scripts/check-component-sheets.py; then
   status=1
 fi
 
+# --- 18. JSON bodies that do not declare themselves ---------------------------
+# `fetch` does not default to JSON: without the content type the body reaches the server as a string
+# and FastAPI answers "Input should be a valid dictionary or object to extract fields from".
+if ! python3 scripts/check-request-bodies.py; then
+  status=1
+fi
+
 if [ "$status" -eq 0 ]; then
   echo "check-shared-styles: OK"
 fi

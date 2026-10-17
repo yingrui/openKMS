@@ -220,6 +220,26 @@ Active UX / quality gaps: [Tech debt](./tech_debt.md).
   must not push layout — the two other reveals in this app (report tiles, section cards) animate
   `opacity` only, which is why neither flickers.
 
+### A JSON body without its content type (2026-10)
+
+A reader pressed **Try** on a `sql` rule and got `The query failed: Input should be a valid dictionary or
+object to extract fields from`. That is Pydantic's way of saying the request body arrived as a **string**:
+two functions I had written — `validateQualityRule` and `updateQualityRule` — passed `body: JSON.stringify(…)`
+but no `Content-Type`, and `fetch` does not default to JSON. Reproduced by sending the same body as
+`text/plain` (the exact message) and as `application/json` (200).
+
+Two consequences worth recording:
+
+- **The UI's save was broken too.** My earlier "editing works, verified live" ran through the **CLI**,
+  which sets the header — so it exercised a different layer than the one the reader used. That is the
+  same shape as the earlier quality bugs (the 500 that only happened with a real payload, the two-column
+  check that a dict collapsed): *verify through the layer the user touches.*
+- **The class is now a check.** `check-request-bodies.py` (section 18 of `check-shared-styles.sh`) fails
+  a call with `body: JSON.stringify(…)` and no `headers:` at all. It found four more suspects that were
+  legitimate (`headers: JSON_HEADERS`), so the rule was narrowed to the shape the bug actually had —
+  no false positives, and it says what it does not cover. A positive control (removing one header) fails
+  it, and it caught a header I lost myself while probing.
+
 ### Editing a rule: list ↔ detail, not a dialog and not a panel (2026-10)
 
 A reader pushed back on the modal editor, and was right: a rule is not a short form. With `sql` it is a
