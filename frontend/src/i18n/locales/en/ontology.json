@@ -702,7 +702,7 @@
     "qualityExpectNonzero": "Nothing found (= 0 fails)",
     "qualityResultCoverage": "found {{count}} rows",
     "qualityResultNothingFound": "found nothing — there should be rows",
-    "qualityTemplate_coverage": "Rows exist for today",
+    "qualityTemplate_coverage": "Rows in the last 7 days",
     "qualityResultFreshnessLatest": "Latest {{latest}}",
     "qualityWhen": "When",
     "qualityDeleteHint": "Deleting the rule removes its runs with it. The data is not touched.",

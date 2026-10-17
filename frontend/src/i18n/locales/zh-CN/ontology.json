@@ -695,7 +695,7 @@
     "qualityExpectNonzero": "一行都没有（= 0 失败）",
     "qualityResultCoverage": "找到 {{count}} 行",
     "qualityResultNothingFound": "一行都没有找到——本应有数据",
-    "qualityTemplate_coverage": "今天有数据",
+    "qualityTemplate_coverage": "近 7 天有数据",
     "qualityResultFreshnessLatest": "最新数据 {{latest}}",
     "qualityWhen": "时间",
     "qualityDeleteHint": "删除规则会连同它的运行记录一起删除。数据本身不受影响。",

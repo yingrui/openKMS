@@ -130,8 +130,12 @@ python scripts/cli.py datasets quality runs --id DS_ID --rule-id RULE_ID --limit
 # where finding nothing (= 0) is the failure.
 python scripts/cli.py datasets quality add --id DS_ID --name "PE above 100" --type sql --column pe_ttm \
   --sql 'SELECT count(*) FROM {{table}} WHERE {{column}} > 100' --yes
-python scripts/cli.py datasets quality add --id DS_ID --name "Rows for today" --type sql --column trade_date \
-  --expect nonzero --sql 'SELECT count(*) FROM {{table}} WHERE {{column}} = CURRENT_DATE' --yes
+# A coverage check fails when nothing is found. Ask the **trading calendar**, not the clock: on a weekend
+# `= CURRENT_DATE` reports missing data that is not missing.
+python scripts/cli.py datasets quality add --id DS_ID --name "Latest trading day has data" \
+  --type sql --column trade_date --expect nonzero \
+  --sql 'SELECT count(*) FROM {{table}} WHERE {{column}} = (SELECT max(cal_date::date) FROM tushare.trade_calendar WHERE is_open = 1 AND cal_date::date <= CURRENT_DATE)' \
+  --yes
 python scripts/cli.py datasets quality update --id DS_ID --rule-id RULE_ID --enabled false --yes
 python scripts/cli.py datasets quality delete --id DS_ID --rule-id RULE_ID --yes
 ```

@@ -237,6 +237,30 @@ the exact live shape as a test. The general rule is the one this cost: **never c
 by its JSON text** — key order, number formatting and `undefined` all make that lie, and a database is
 entitled to reorder what it stores.
 
+### "Today has data" is a calendar question (2026-10)
+
+The coverage rule the `expect: nonzero` direction was built for read `WHERE trade_date = CURRENT_DATE`, and
+a reader corrected it: on a weekend or a holiday that is a **false alarm** — the data is not missing, the
+market is closed. The question is not "does today have rows" but "does the **latest trading day** have
+rows", and only a calendar can answer it:
+
+```sql
+SELECT count(*) FROM {{table}} WHERE {{column}} = (
+  SELECT max(cal_date::date) FROM tushare.trade_calendar
+  WHERE is_open = 1 AND cal_date::date <= CURRENT_DATE)
+```
+
+Which is also the first time the `sql` type earned its place in production: it reaches another table of
+the same source, which no declarative form can do. (The calendar's `cal_date` is **text** — `'20261231'`
+— and the table carries *future* dates, so both the cast and the `<= CURRENT_DATE` bound matter.)
+
+Two things followed:
+
+- the editor's coverage starting point is a **window** now (`>= CURRENT_DATE - 7`), not `= CURRENT_DATE`,
+  because I had written the same mistake into it;
+- `freshness` still compares to `current_date`, which is right for "not older than N days" and wrong for
+  "the last trading day is present". The skill reference says which to use for which.
+
 ### Run history pages, and says so (2026-10)
 
 A reader asked whether the run history pages. It did not — and worse, it *looked* like it did: the API

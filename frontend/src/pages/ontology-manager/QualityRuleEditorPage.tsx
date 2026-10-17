@@ -78,7 +78,9 @@ const SQL_TEMPLATES = [
   { key: 'nullShare', sql: 'SELECT CASE WHEN 100.0 * count(*) FILTER (WHERE {{column}} IS NULL) / count(*) > 30 THEN 1 ELSE 0 END FROM {{table}}' },
   { key: 'futureDates', sql: 'SELECT count(*) FROM {{table}} WHERE {{column}} > CURRENT_DATE' },
   // A coverage check: the number counts rows that *should* be there, so finding none is the failure.
-  { key: 'coverage', sql: 'SELECT count(*) FROM {{table}} WHERE {{column}} = CURRENT_DATE', expect: 'nonzero' as const },
+  // A window, not "today": whether today is a trading day is a calendar question, and writing
+  // `= CURRENT_DATE` makes a weekend look like missing data.
+  { key: 'coverage', sql: 'SELECT count(*) FROM {{table}} WHERE {{column}} >= CURRENT_DATE - 7', expect: 'nonzero' as const },
 ] as const;
 
 /**
