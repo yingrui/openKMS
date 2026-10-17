@@ -73,8 +73,14 @@ export interface DashboardListResponse {
   total: number;
 }
 
-export async function fetchDashboards(): Promise<DashboardListResponse> {
-  return request<DashboardListResponse>('/api/dashboards');
+export async function fetchDashboards(params?: {
+  search?: string;
+  /** Reverse lookup: dashboards with a report on this dataset. */
+  datasetId?: string;
+}): Promise<DashboardListResponse> {
+  return request<DashboardListResponse>('/api/dashboards', {
+    query: { search: params?.search, dataset_id: params?.datasetId },
+  });
 }
 
 export async function fetchDashboard(id: string): Promise<Dashboard> {

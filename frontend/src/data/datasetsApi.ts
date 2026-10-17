@@ -35,6 +35,8 @@ export interface TableInfo {
 export async function fetchDatasets(params?: {
   data_source_id?: string;
   search?: string;
+  domain?: string;
+  tag?: string;
   limit?: number;
   offset?: number;
 }): Promise<DatasetListResponse> {
@@ -42,10 +44,28 @@ export async function fetchDatasets(params?: {
     query: {
       data_source_id: params?.data_source_id,
       search: params?.search,
+      domain: params?.domain,
+      tag: params?.tag,
       limit: params?.limit,
       offset: params?.offset,
     },
   });
+}
+
+export interface DatasetFacet {
+  value: string;
+  count: number;
+}
+
+export interface DatasetFacets {
+  domains: DatasetFacet[];
+  tags: DatasetFacet[];
+  sources: DatasetFacet[];
+}
+
+/** The filter values the reader can see, with counts — a count says where things are. */
+export async function fetchDatasetFacets(): Promise<DatasetFacets> {
+  return request<DatasetFacets>('/api/datasets/facets');
 }
 
 export async function fetchTablesFromSource(dataSourceId: string): Promise<TableInfo[]> {

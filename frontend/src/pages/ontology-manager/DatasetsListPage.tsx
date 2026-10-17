@@ -6,9 +6,11 @@ import { toast } from 'sonner';
 import {
   createDataset,
   deleteDataset,
+  fetchDatasetFacets,
   fetchDatasets,
   fetchTablesFromSource,
   updateDataset,
+  type DatasetFacets,
   type DatasetResponse,
   type TableInfo,
 } from '../../data/datasetsApi';
@@ -37,6 +39,9 @@ export function DatasetsListPage() {
   const [tables, setTables] = useState<TableInfo[]>([]);
   const [loadingTables, setLoadingTables] = useState(false);
   const [filterDataSourceId, setFilterDataSourceId] = useState('');
+  const [filterDomain, setFilterDomain] = useState('');
+  const [filterTag, setFilterTag] = useState('');
+  const [facets, setFacets] = useState<DatasetFacets>({ domains: [], tags: [], sources: [] });
   const [search, setSearch] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [showUpload, setShowUpload] = useState(false);
@@ -79,6 +84,8 @@ export function DatasetsListPage() {
       const [dsRes, dRes, jRes] = await Promise.all([
         fetchDatasets({
           data_source_id: filterDataSourceId || undefined,
+          domain: filterDomain || undefined,
+          tag: filterTag || undefined,
           search: debouncedSearch.trim() || undefined,
           limit: isGraph ? undefined : pageSize,
           offset: isGraph ? 0 : page * pageSize,
@@ -95,7 +102,7 @@ export function DatasetsListPage() {
     } finally {
       setLoading(false);
     }
-  }, [filterDataSourceId, debouncedSearch, page, pageSize, view, t]);
+  }, [filterDataSourceId, filterDomain, filterTag, debouncedSearch, page, pageSize, view, t]);
 
   useEffect(() => {
     void load();
@@ -108,7 +115,14 @@ export function DatasetsListPage() {
 
   useEffect(() => {
     setPage(0);
-  }, [debouncedSearch, filterDataSourceId, view]);
+  }, [debouncedSearch, filterDataSourceId, filterDomain, filterTag, view]);
+
+  useEffect(() => {
+    // Facets are a browsing aid, so a failure to load them must not break the list.
+    void fetchDatasetFacets()
+      .then(setFacets)
+      .catch(() => setFacets({ domains: [], tags: [], sources: [] }));
+  }, []);
 
   useEffect(() => {
     const maxPage = Math.max(0, Math.ceil(total / pageSize) - 1);
@@ -218,7 +232,7 @@ export function DatasetsListPage() {
   };
 
   const showEmptyState =
-    !loading && total === 0 && !search.trim() && !filterDataSourceId;
+    !loading && total === 0 && !search.trim() && !filterDataSourceId && !filterDomain && !filterTag;
 
   return (
     <div className="ontology-admin">
@@ -284,6 +298,34 @@ export function DatasetsListPage() {
                   {dataSources.map((ds) => (
                     <option key={ds.id} value={ds.id}>
                       {ds.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            )}
+            {facets.domains.length > 0 && (
+              <label className="console-datasets-filter">
+                {t('datasets.filterDomain')}
+                {/* ds-control-exempt: `.console-datasets-filter` styles this select (its own sheet) */}
+                <select value={filterDomain} onChange={(e) => setFilterDomain(e.target.value)}>
+                  <option value="">{t('datasets.filterAll')}</option>
+                  {facets.domains.map((f) => (
+                    <option key={f.value} value={f.value}>
+                      {f.value} ({f.count})
+                    </option>
+                  ))}
+                </select>
+              </label>
+            )}
+            {facets.tags.length > 0 && (
+              <label className="console-datasets-filter">
+                {t('datasets.filterTag')}
+                {/* ds-control-exempt: `.console-datasets-filter` styles this select (its own sheet) */}
+                <select value={filterTag} onChange={(e) => setFilterTag(e.target.value)}>
+                  <option value="">{t('datasets.filterAll')}</option>
+                  {facets.tags.map((f) => (
+                    <option key={f.value} value={f.value}>
+                      {f.value} ({f.count})
                     </option>
                   ))}
                 </select>

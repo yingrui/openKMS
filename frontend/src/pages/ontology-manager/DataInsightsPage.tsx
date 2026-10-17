@@ -19,6 +19,8 @@ export function DataInsightsPage() {
   const { t } = useTranslation('ontology');
   const navigate = useNavigate();
   const [dashboards, setDashboards] = useState<DashboardSummary[]>([]);
+  const [search, setSearch] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [name, setName] = useState('');
@@ -28,17 +30,22 @@ export function DataInsightsPage() {
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      setDashboards((await fetchDashboards()).items);
+      setDashboards((await fetchDashboards({ search: debouncedSearch.trim() || undefined })).items);
     } catch (e) {
       toast.error(e instanceof Error ? e.message : t('datasets.loadFailed'));
     } finally {
       setLoading(false);
     }
-  }, [t]);
+  }, [debouncedSearch, t]);
 
   useEffect(() => {
     void load();
   }, [load]);
+
+  useEffect(() => {
+    const handle = setTimeout(() => setDebouncedSearch(search), 300);
+    return () => clearTimeout(handle);
+  }, [search]);
 
   const openCreate = () => {
     setName('');
@@ -75,6 +82,15 @@ export function DataInsightsPage() {
           <p className="page-subtitle">{t('dataInsights.subtitle')}</p>
         </div>
         <div className="resource-list-header-actions">
+          {/* A hundred dashboards is a lookup, not a browse: the name, the question or the narrative. */}
+          <input
+            type="search"
+            className="ds-control resource-list-search"
+            aria-label={t('dataInsights.searchAria')}
+            placeholder={t('dataInsights.searchPlaceholder')}
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+          />
           <button type="button" className="btn btn-primary" onClick={openCreate}>
             <Plus size={18} aria-hidden />
             <span>{t('dataInsights.newDashboard')}</span>
@@ -88,7 +104,11 @@ export function DataInsightsPage() {
         </p>
       )}
 
-      {!loading && dashboards.length === 0 && (
+      {!loading && dashboards.length === 0 && debouncedSearch.trim() && (
+        <p className="page-subtitle">{t('dataInsights.noMatches')}</p>
+      )}
+
+      {!loading && dashboards.length === 0 && !debouncedSearch.trim() && (
         <EmptyState
           icon={<Sparkles size={48} strokeWidth={1} />}
           title={t('dataInsights.empty')}

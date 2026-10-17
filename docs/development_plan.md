@@ -261,6 +261,32 @@ Two things followed:
 - `freshness` still compares to `current_date`, which is right for "not older than N days" and wrong for
   "the last trading day is present". The skill reference says which to use for which.
 
+### Finding one of a hundred: facets, not channels (2026-10)
+
+Asked how a catalog stays usable at 100+ datasets and 100+ dashboards, and whether to copy the documents
+app's channels.
+
+**No channels.** A channel is a single-parent editorial hierarchy: it answers "which home does this
+document have", and a document has one. A dataset has several **true** parents — its source, its domain,
+its tags, the model that reads it, the dashboard that reports on it — so a tree would force a choice that
+reality does not make, then hide duplicates in different branches. Copying the documents app's *shape*
+without its *reason* is the failure mode to avoid.
+
+What shipped instead, in the order that pays:
+
+1. **Search where it was missing** — Data Insights had none. It searches name, question and narrative.
+2. **Facets with counts** — `GET /api/datasets/facets` returns `{domains, tags, sources}` with counts,
+   ACL-filtered; the list filters by `domain` and `tag` (JSONB containment) and searches tags too. The
+   tag/domain selects only appear when there is something to filter.
+3. **Reverse lookup** — `GET /api/dashboards?dataset_id=…` answers "which dashboards read this table?",
+   which no amount of grouping would.
+
+Not done, and honest about why: **usage ranking** ("last used", "nothing reads this") needs access
+tracking that does not exist; **saved views** (the *useful* half of channels — a named filter) come after
+that. And the sharp part: at a hundred, the problem is not navigation but **duplication and naming drift**
+— which a tree makes worse, and which needs signals (owner, last used, same table registered twice) that
+facets can carry later.
+
 ### Run history pages, and says so (2026-10)
 
 A reader asked whether the run history pages. It did not — and worse, it *looked* like it did: the API

@@ -18,7 +18,7 @@ import time
 import uuid
 from datetime import datetime, timezone
 
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -226,16 +226,37 @@ async def _require_sources(db: AsyncSession, request: Request, dashboard: Dashbo
     response_model=DashboardListResponse,
     dependencies=[Depends(require_any_permission(*_VIEW))],
 )
-async def list_dashboards(request: Request, db: AsyncSession = Depends(get_db)):
-    """Dashboards with at least one readable report (or none yet, when a draft just started)."""
+async def list_dashboards(
+    request: Request,
+    search: str | None = None,
+    dataset_id: str | None = Query(None, description="only dashboards with a report on this dataset"),
+    db: AsyncSession = Depends(get_db),
+):
+    """Dashboards with at least one readable report (or none yet, when a draft just started).
+
+    `dataset_id` is the reverse lookup a catalog needs: "which dashboards read this table?" — a report
+    carries its own source, so it is a question about the reports, not about the dashboard.
+    """
     readable = await _readable_datasets(db, request)
     rows = (
         await db.execute(select(Dashboard).order_by(Dashboard.updated_at.desc()))
     ).scalars().all()
+    needle = (search or "").strip().casefold()
     visible = [
         d
         for d in rows
-        if not d.reports or any(_may_read(report_source(e), readable) for e in d.reports)
+        if (not d.reports or any(_may_read(report_source(e), readable) for e in d.reports))
+        and (
+            not dataset_id
+            or any(report_source(e).dataset_id == dataset_id for e in (d.reports or []))
+        )
+        and (
+            not needle
+            or any(
+                needle in field.casefold()
+                for field in (d.name, d.question or "", d.narrative or "")
+            )
+        )
     ]
     summaries = [_summary(d, readable) for d in visible]
     await _source_labels(db, [s for summary in summaries for s in summary.sources])

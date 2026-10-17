@@ -1,8 +1,9 @@
 """Datasets API – CRUD and list tables from DataSource (admin-only)."""
 import uuid
+from collections import Counter
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
-from sqlalchemy import func, or_, select, text
+from sqlalchemy import String, cast, func, or_, select, text
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -45,6 +46,8 @@ from app.schemas.dataset import (
     ColumnMetadata,
     ColumnDescriptionUpdate,
     DatasetCreate,
+    DatasetFacet,
+    DatasetFacetsResponse,
     DatasetListResponse,
     DatasetProfileResponse,
     DatasetResponse,
@@ -167,11 +170,15 @@ async def list_datasets(
     request: Request,
     data_source_id: str | None = None,
     search: str | None = None,
+    domain: str | None = None,
+    tag: str | None = None,
     limit: int | None = Query(None, ge=1, le=MAX_PAGE_SIZE),
     offset: int = Query(0, ge=0),
     db: AsyncSession = Depends(get_db),
 ):
-    """List datasets (optional `data_source_id` / `search`); paginate with `limit`/`offset`."""
+    """List datasets, filtered by source / domain / tag / text; paginate with `limit`/`offset`.
+
+    `tag` is a JSONB containment match, so one tag narrows to the datasets that carry it."""
     p = request.state.openkms_jwt_payload
     sub = p.get("sub")
     acl_filters, empty = await readable_id_filter(
@@ -183,6 +190,11 @@ async def list_datasets(
     conditions = list(acl_filters)
     if data_source_id:
         conditions.append(Dataset.data_source_id == data_source_id)
+    if domain:
+        conditions.append(Dataset.domain == domain)
+    if tag:
+        # JSONB containment: a tag is one member of the dataset's `tags` array.
+        conditions.append(Dataset.tags.contains([tag]))
     if search and search.strip():
         like = f"%{search.strip()}%"
         conditions.append(
@@ -190,6 +202,9 @@ async def list_datasets(
                 Dataset.display_name.ilike(like),
                 Dataset.schema_name.ilike(like),
                 Dataset.table_name.ilike(like),
+                Dataset.description.ilike(like),
+                # A tag is a name people search by; casting is enough for a small array.
+                cast(Dataset.tags, String).ilike(like),
             )
         )
 
@@ -425,6 +440,57 @@ async def update_column_description(
     except ColumnError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     return {"column_name": column_name, "description": body.description}
+
+
+@router.get(
+    "/facets",
+    response_model=DatasetFacetsResponse,
+    dependencies=[Depends(require_any_permission(PERM_DATA_READ))],
+)
+async def dataset_facets(
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+):
+    """The filter values the reader can see, with counts.
+
+    One query for the readable datasets, counted in Python: a catalog is tens or hundreds of rows, and
+    `jsonb_array_elements_text … GROUP BY` here would buy nothing but a harder query to read. Revisit when
+    a deployment reaches thousands — the shapes do not change, only where they are counted. Declared
+    before `/{dataset_id}`, or "facets" would be read as a dataset id.
+    """
+    p = request.state.openkms_jwt_payload
+    sub = p.get("sub")
+    acl_filters, empty = await readable_id_filter(
+        db, p, sub if isinstance(sub, str) else None, RT_DATASET, Dataset.id
+    )
+    if empty:
+        return DatasetFacetsResponse(domains=[], tags=[], sources=[])
+
+    rows = (
+        await db.execute(
+            select(Dataset.domain, Dataset.tags, Dataset.data_source_id).where(*acl_filters)
+        )
+    ).all()
+
+    domains: Counter[str] = Counter()
+    tags: Counter[str] = Counter()
+    sources: Counter[str] = Counter()
+    for domain, raw_tags, data_source_id in rows:
+        if domain:
+            domains[domain] += 1
+        for tag in raw_tags or []:
+            if isinstance(tag, str) and tag:
+                tags[tag] += 1
+        if data_source_id:
+            sources[data_source_id] += 1
+
+    def facets(counter: Counter[str]) -> list[DatasetFacet]:
+        return sorted(
+            (DatasetFacet(value=value, count=count) for value, count in counter.items()),
+            key=lambda facet: (-facet.count, facet.value),
+        )
+
+    return DatasetFacetsResponse(domains=facets(domains), tags=facets(tags), sources=facets(sources))
 
 
 @router.get("/{dataset_id}", response_model=DatasetResponse, dependencies=[Depends(require_any_permission(*_DATASET_VIEW))])

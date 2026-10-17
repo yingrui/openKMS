@@ -197,7 +197,10 @@
     "grain_year": "年",
     "chartScatter": "散点（两个度量）",
     "chartXMeasure": "横向度量（X）",
-    "chartYMeasure": "纵向度量（Y）"
+    "chartYMeasure": "纵向度量（Y）",
+    "noMatches": "没有匹配的数据看板。",
+    "searchAria": "搜索数据看板",
+    "searchPlaceholder": "搜索名称、问题或叙述"
   },
   "dataModel": {
     "title": "数据模型",
@@ -699,7 +702,9 @@
     "qualityResultFreshnessLatest": "最新数据 {{latest}}",
     "qualityWhen": "时间",
     "qualityDeleteHint": "删除规则会连同它的运行记录一起删除。数据本身不受影响。",
-    "qualityLoadMore": "加载更早的运行"
+    "qualityLoadMore": "加载更早的运行",
+    "filterDomain": "业务域",
+    "filterTag": "标签"
   },
   "groups": {
     "title": "分组",

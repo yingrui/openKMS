@@ -62,6 +62,21 @@ class DatasetResponse(BaseModel):
     model_config = {"from_attributes": True}
 
 
+class DatasetFacet(BaseModel):
+    """One filter value and how many readable datasets carry it."""
+
+    value: str
+    count: int
+
+
+class DatasetFacetsResponse(BaseModel):
+    """The values worth filtering a catalog by, with counts — a facet count says where things are."""
+
+    domains: list[DatasetFacet]
+    tags: list[DatasetFacet]
+    sources: list[DatasetFacet]
+
+
 class DatasetListResponse(BaseModel):
     items: list[DatasetResponse]
     total: int

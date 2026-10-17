@@ -197,7 +197,10 @@
     "grain_year": "Year",
     "chartScatter": "Scatter (two measures)",
     "chartXMeasure": "Horizontal measure (X)",
-    "chartYMeasure": "Vertical measure (Y)"
+    "chartYMeasure": "Vertical measure (Y)",
+    "noMatches": "No dashboard matches that.",
+    "searchAria": "Search dashboards",
+    "searchPlaceholder": "Search name, question or narrative"
   },
   "dataModel": {
     "title": "Data Model",
@@ -706,7 +709,9 @@
     "qualityResultFreshnessLatest": "Latest {{latest}}",
     "qualityWhen": "When",
     "qualityDeleteHint": "Deleting the rule removes its runs with it. The data is not touched.",
-    "qualityLoadMore": "Load older runs"
+    "qualityLoadMore": "Load older runs",
+    "filterDomain": "Domain",
+    "filterTag": "Tag"
   },
   "groups": {
     "title": "Groups",
