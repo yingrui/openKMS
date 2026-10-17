@@ -1,8 +1,8 @@
 import { render } from '@testing-library/react';
 import { beforeAll, describe, expect, it } from 'vitest';
 import i18n from '../../i18n/config';
-import { ReportChart } from './ReportChart';
-import { chartSeries, parseView, viewFits } from './reportView';
+import { FindingChart } from './FindingChart';
+import { chartSeries, parseView, viewFits } from './findingView';
 
 beforeAll(async () => {
   await i18n.changeLanguage('en');
@@ -17,7 +17,7 @@ function draw(spec: unknown) {
   const view = parseView(spec)!;
   expect(viewFits(view, ['trade_date', 'count', 'avg_pe'])).toBe(true);
   return render(
-    <ReportChart spec={view as never} series={chartSeries(ROWS, view as never)} />,
+    <FindingChart spec={view as never} series={chartSeries(ROWS, view as never)} />,
   );
 }
 
@@ -26,7 +26,7 @@ function draw(spec: unknown) {
  * *can* catch is a spec the chart accepts but the library cannot draw — a combo with two axes is
  * exactly that kind of wiring (a wrong `yAxisId` throws).
  */
-describe('ReportChart', () => {
+describe('FindingChart', () => {
   it('draws a line, a bar, and a combo without throwing', () => {
     for (const spec of [
       { kind: 'chart', type: 'line', x: 'trade_date', y: ['count'] },
@@ -42,7 +42,7 @@ describe('ReportChart', () => {
       { kind: 'chart', type: 'scatter', x: 'count', y: ['avg_pe'] },
     ]) {
       const { container, unmount } = draw(spec);
-      expect(container.querySelector('.report-chart')).not.toBeNull();
+      expect(container.querySelector('.finding-chart')).not.toBeNull();
       unmount();
     }
   });

@@ -13,7 +13,7 @@ export type EntityViewNavItem = {
    * table of contents, which is what this rail is for on a page without tabs). */
   sectionId?: string;
   label: string;
-  /** A second line under the label — where a report's numbers come from, say. */
+  /** A second line under the label — where a finding's numbers come from, say. */
   hint?: string;
   end?: boolean;
 };
@@ -81,7 +81,7 @@ export function EntityViewPanel({
   footer,
   defaultCollapsed = false,
 }: {
-  /** An anchor target — a dashboard's table of contents links to its sections by id. */
+  /** An anchor target — a story's table of contents links to its sections by id. */
   id?: string;
   title?: string;
   description?: ReactNode;

@@ -488,21 +488,21 @@ DEFAULT_PATTERNS_BY_KEY: dict[str, tuple[list[str], list[str]]] = {
             "/data-insights/*",
         ],
         [
-            "GET /api/dashboards",
-            "GET /api/dashboards/*",
-            "HEAD /api/dashboards",
-            "HEAD /api/dashboards/*",
-            # Re-running a report recomputes it from the source: a read, not an edit.
-            "POST /api/dashboards/*/run",
+            "GET /api/stories",
+            "GET /api/stories/*",
+            "HEAD /api/stories",
+            "HEAD /api/stories/*",
+            # Re-running a finding recomputes it from the source: a read, not an edit.
+            "POST /api/stories/*/run",
         ],
     ),
     PERM_INSIGHTS_WRITE: (
         [],
         [
-            "POST /api/dashboards",
-            "PUT /api/dashboards/*",
-            "PATCH /api/dashboards/*",
-            "DELETE /api/dashboards/*",
+            "POST /api/stories",
+            "PUT /api/stories/*",
+            "PATCH /api/stories/*",
+            "DELETE /api/stories/*",
         ],
     ),
     PERM_DATA_EDIT: (

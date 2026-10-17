@@ -33,8 +33,8 @@ import {
 import { useDatasetDetail } from './useDatasetDetail';
 import { QuickRangeSelect } from './QuickRangeSelect';
 import { rangeError, rangeToValues } from './dateRange';
-import { SaveReportDialog } from './SaveReportDialog';
-import { datasetReportDraft } from './reportDraft';
+import { SaveFindingDialog } from './SaveFindingDialog';
+import { datasetFindingDraft } from './findingDraft';
 import { EntityViewHeader, EntityViewPanel } from './EntityViewShell';
 
 const UUID_RE = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/;
@@ -366,11 +366,11 @@ export function DatasetDataTab() {
                     : ''}
                 </span>
                 <div className="dataset-filter-bar__actions">
-                  <SaveReportDialog
-                    draft={datasetReportDraft({
+                  <SaveFindingDialog
+                    draft={datasetFindingDraft({
                       datasetId,
                       tableLabel: dataset.display_name || `${dataset.schema_name}.${dataset.table_name}`,
-                      // The same filters the grid used; the report queries its own first page.
+                      // The same filters the grid used; the finding queries its own first page.
                       query: {
                         filters: appliedFilters,
                         sort: sorting[0]?.id ?? null,

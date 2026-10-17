@@ -294,16 +294,16 @@ def test_kb_wiki_spaces_link(mock_api):
     assert json.loads(recorded[-1].content) == {"wiki_space_id": "sp1"}
 
 
-# --- Data Insights: a dashboard of reports, each with its own source ---
+# --- Data Insights: a story of findings, each with its own source ---
 
 
-def test_dashboard_create_from_a_reports_file(mock_api, tmp_path):
+def test_story_create_from_a_findings_file(mock_api, tmp_path):
     recorded, responses = mock_api
-    responses[("POST", "/api/dashboards")] = (201, {"id": "d1"})
-    from openkms.commands.dashboards import cmd_create
+    responses[("POST", "/api/stories")] = (201, {"id": "d1"})
+    from openkms.commands.stories import cmd_create
 
-    reports = tmp_path / "reports.json"
-    reports.write_text(
+    findings = tmp_path / "findings.json"
+    findings.write_text(
         json.dumps(
             [
                 {"title": "P/E by industry", "semantic_model_id": "m1", "query": {"metric": "pe"}},
@@ -317,35 +317,35 @@ def test_dashboard_create_from_a_reports_file(mock_api, tmp_path):
         encoding="utf-8",
     )
 
-    cmd_create(_ns(name="Valuation", question=None, narrative=None, narrative_file=None, reports_file=str(reports)))
+    cmd_create(_ns(name="Valuation", question=None, narrative=None, narrative_file=None, findings_file=str(findings)))
     body = json.loads(recorded[-1].content)
     assert body["name"] == "Valuation"
-    # The dashboard carries no source of its own: every report names the one it reads.
+    # The story carries no source of its own: every finding names the one it reads.
     assert "dataset_id" not in body and "source_kind" not in body
-    assert [r["title"] for r in body["reports"]] == ["P/E by industry", "Null share"]
-    assert body["reports"][0]["semantic_model_id"] == "m1"
-    assert body["reports"][1]["dataset_id"] == "d1"
+    assert [r["title"] for r in body["findings"]] == ["P/E by industry", "Null share"]
+    assert body["findings"][0]["semantic_model_id"] == "m1"
+    assert body["findings"][1]["dataset_id"] == "d1"
 
 
-def test_dashboard_report_without_a_source_is_refused(tmp_path):
+def test_story_finding_without_a_source_is_refused(tmp_path):
     import pytest
 
-    from openkms.commands.dashboards import cmd_create
+    from openkms.commands.stories import cmd_create
 
-    reports = tmp_path / "reports.json"
-    reports.write_text('[{"title": "Nowhere", "query": {}}]', encoding="utf-8")
+    findings = tmp_path / "findings.json"
+    findings.write_text('[{"title": "Nowhere", "query": {}}]', encoding="utf-8")
     with pytest.raises(SystemExit, match="names no source"):
-        cmd_create(_ns(name="X", question=None, narrative=None, narrative_file=None, reports_file=str(reports)))
+        cmd_create(_ns(name="X", question=None, narrative=None, narrative_file=None, findings_file=str(findings)))
 
 
-def test_dashboard_run(mock_api):
+def test_story_run(mock_api):
     recorded, responses = mock_api
-    responses[("POST", "/api/dashboards/d1/run")] = (200, {"id": "d1", "reports": []})
-    from openkms.commands.dashboards import cmd_run
+    responses[("POST", "/api/stories/d1/run")] = (200, {"id": "d1", "findings": []})
+    from openkms.commands.stories import cmd_run
 
     cmd_run(_ns(id="d1"))
     assert recorded[-1].method == "POST"
-    assert recorded[-1].url.path == "/api/dashboards/d1/run"
+    assert recorded[-1].url.path == "/api/stories/d1/run"
 
 
 def test_semantic_model_get(mock_api):
@@ -422,7 +422,7 @@ def test_datasets_aggregate(mock_api):
     }
 
 
-def test_quality_run_reports_the_run_it_produced(mock_api):
+def test_quality_run_findings_the_run_it_produced(mock_api):
     """The run endpoint answers with the *rule*; the numbers live in the history, so the command
     fetches it and prints that — otherwise a caller only ever sees `passed` / `failed`."""
     recorded, responses = mock_api

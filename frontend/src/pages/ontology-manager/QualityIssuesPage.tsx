@@ -7,7 +7,7 @@ import { fetchQualityIssues, runQualityRule, type QualityIssue } from '../../dat
 import { useAuth } from '../../contexts/AuthContext';
 import { EmptyState, StatusChip, type StatusTone } from '../../styles/design-system';
 import { DatasetAppTabs } from '../../components/ontology/DatasetAppTabs';
-import { ageKey, ageOf } from './reportAge';
+import { ageKey, ageOf } from './relativeAge';
 import '../ontology/ontology-admin.scss';
 
 /** The three states worth telling apart: broken, unable to judge, never judged. */

@@ -41,7 +41,7 @@ _PATCHED_MODULES = (
     "openkms.commands.action_types",
     "openkms.commands.groups",
     "openkms.commands.evaluation",
-    "openkms.commands.dashboards",
+    "openkms.commands.stories",
     "openkms.commands.semantic_models",
     "openkms.commands.metrics",
 )

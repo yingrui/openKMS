@@ -55,22 +55,22 @@ MESSAGES: dict[str, dict[str, str]] = {
     # Grid row filters (Data tab): the caller picked a column/operator that does not apply.
     # Data Insights: a run needs a source, and a semantic-model block needs a metric.
     "REPORT_SOURCE_KIND_UNKNOWN": {
-        "en": "A report's source is a dataset or a semantic model — '{kind}' is neither.",
+        "en": "A finding's source is a dataset or a semantic model — '{kind}' is neither.",
         "zh_CN": "报告的来源是数据集或语义模型——「{kind}」都不是。",
     },
     "REPORT_SOURCE_FORBIDDEN": {
-        "en": "You do not have access to this report's source data.",
+        "en": "You do not have access to this finding's source data.",
         "zh_CN": "你没有这份报告的数据源访问权限。",
     },
     "REPORT_SOURCE_MISSING": {
-        "en": "This report has no {source} to analyze — pick one first.",
+        "en": "This finding has no {source} to analyze — pick one first.",
         "zh_CN": "该报告还没有可分析的{source}——请先选择。",
     },
     "REPORT_METRIC_MISSING": {
-        "en": "A block of a semantic-model report needs a metric.",
+        "en": "A block of a semantic-model finding needs a metric.",
         "zh_CN": "语义模型报告的区块需要一个指标。",
     },
-    # Dataset summaries (Data tab / a dashboard report): group by + aggregates.
+    # Dataset summaries (Data tab / a story finding): group by + aggregates.
     "DATASET_AGGREGATE_MISSING": {
         "en": "A summary needs at least one aggregate (count / sum / avg / min / max).",
         "zh_CN": "汇总至少需要一个聚合（count / sum / avg / min / max）。",

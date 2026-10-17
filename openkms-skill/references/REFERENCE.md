@@ -245,12 +245,12 @@ All write subcommands accept `--yes` / `--dry-run`. Without `--yes` on non-TTY s
 | `semantic-models fields add` *(write)* | POST | `/api/semantic-models/{id}/fields` | Body `{dataset_id, name, column_name?\|expression?, datatype?, label?, description?, dimension?, ai_context?}`. `dimension` is the **time role only**: `{"is_time": true}` (omit to follow `datatype`); no `type`/`granularity`/`entity`. |
 | `semantic-models fields delete` *(write)* | DELETE | `/api/semantic-models/{id}/fields/{field_id}` | |
 | `semantic-models query` | POST | `/api/semantic-models/{id}/query` | Body `{metric, group_by:[{field, granularity?}], filters:[{field, op, value}], order_by:[{field, direction}], limit?}` — one ad-hoc question of a model (read-only, capped, audited); returns `{sql, columns, rows, row_count, capped, duration_ms}`. Failures carry `{code, message, kind}`. |
-| `dashboards list` | GET | `/api/dashboards` | Data Insights **dashboards**: a document of **reports**, each with its own source — see [dashboards.md](dashboards.md). |
-| `dashboards get` | GET | `/api/dashboards/{id}` | |
-| `dashboards create` *(write)* | POST | `/api/dashboards` | Body `{name, question?, narrative?, reports?}`. `--reports-file` is `[{title?, insight?, dataset_id\|semantic_model_id, query, chart?}]` — **every report names its own source**, so one dashboard can mix a model and a dataset. |
-| `dashboards update` *(write)* | PUT | `/api/dashboards/{id}` | Same fields as create (omit what you keep). |
-| `dashboards run` *(write)* | POST | `/api/dashboards/{id}/run` | Runs every report against **its own** source and keeps the results; a failing report stores its classified reason and the rest still run. |
-| `dashboards delete` *(write)* | DELETE | `/api/dashboards/{id}` | |
+| `stories list` | GET | `/api/stories` | Data Insights **stories**: a document of **findings**, each with its own source — see [stories.md](stories.md). |
+| `stories get` | GET | `/api/stories/{id}` | |
+| `stories create` *(write)* | POST | `/api/stories` | Body `{name, question?, narrative?, findings?}`. `--findings-file` is `[{title?, insight?, dataset_id\|semantic_model_id, query, chart?}]` — **every finding names its own source**, so one story can mix a model and a dataset. |
+| `stories update` *(write)* | PUT | `/api/stories/{id}` | Same fields as create (omit what you keep). |
+| `stories run` *(write)* | POST | `/api/stories/{id}/run` | Runs every finding against **its own** source and keeps the results; a failing finding stores its classified reason and the rest still run. |
+| `stories delete` *(write)* | DELETE | `/api/stories/{id}` | |
 | `connectors kinds` | GET | `/api/connectors/kinds` | |
 | `connectors list` | GET | `/api/connectors` | |
 | `connectors get` | GET | `/api/connectors/{id}` | |

@@ -5,7 +5,7 @@ place to *notice* one: nobody opens thirteen datasets to find out whether anythi
 the inbox: each rule with the latest run that judged it, the dataset it guards, and the numbers.
 
 Read-only, `data:read`, and **filtered by dataset ACL** — an issue is a fact about a dataset, so it is
-visible exactly when that dataset is (the same rule the dashboards list follows).
+visible exactly when that dataset is (the same rule the stories list follows).
 """
 from __future__ import annotations
 

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { emptyForm, toQuery } from './addReportForm';
+import { emptyForm, toQuery } from './addFindingForm';
 
 describe('toQuery', () => {
   it('refuses without a source, a metric, a group column or an aggregate', () => {

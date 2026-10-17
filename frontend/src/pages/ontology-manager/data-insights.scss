@@ -1,14 +1,14 @@
 @use '../../styles/design-system/mixins' as *;
 @use '../../styles/design-system/tokens' as ds;
 
-// One dashboard (the list page uses the shared `resource-list.scss`, like Knowledge Bases and Wiki).
+// One story (the list page uses the shared `resource-list.scss`, like Knowledge Bases and Wiki).
 //
 // Page-local on purpose — only this route loads it. Anything a view component needs lives in
-// `src/styles/report-view.scss`, because the save/view editing dialogs are opened from the Playground
+// `src/styles/finding-view.scss`, because the save/view editing dialogs are opened from the Playground
 // and the Data tab too.
 // ---- The answer, read and written ---------------------------------------------------------
 // Read: markdown, with the section's own spacing instead of the renderer's block margins.
-.dashboard-narrative {
+.story-narrative {
   line-height: 1.6;
 
   > :first-child {
@@ -22,7 +22,7 @@
 
 // Written: a monospace editor, because the answer is markdown and its structure is visible while
 // typing — indentation, quotes, a table's pipes.
-.dashboard-narrative__editor {
+.story-narrative__editor {
   width: 100%;
   min-height: 12rem;
   padding: var(--space-3);
@@ -36,10 +36,10 @@
   resize: vertical;
 }
 
-// ---- One report in it ---------------------------------------------------------------------
+// ---- One finding in it ---------------------------------------------------------------------
 // The tile is an app section card (`EntityViewPanel` → `.account-card`); these are the bits inside
-// it: where the numbers come from, the insight, the provenance line, and the result's toolbar.
-.dashboard-report {
+// it: where the numbers come from, the takeaway, the provenance line, and the result's toolbar.
+.story-finding {
 
   // Where the numbers come from — named, and linked when the reader may open the source.
   &__source {
@@ -54,8 +54,8 @@
     }
   }
 
-  // What the report says. Body text: it is the point of the tile, not a caption.
-  &__insight {
+  // What the finding says. Body text: it is the point of the tile, not a caption.
+  &__takeaway {
     margin: var(--space-2) 0 0;
     font-size: var(--text-sm);
     line-height: 1.6;
@@ -70,7 +70,7 @@
     }
   }
 
-  // How much, how fresh, how slow — provenance, deliberately quieter than the insight.
+  // How much, how fresh, how slow — provenance, deliberately quieter than the takeaway.
   &__meta {
     display: flex;
     flex-wrap: wrap;
@@ -90,8 +90,8 @@
   }
 }
 
-// "Add a report" sits where the stack ends: a quiet affordance, not a toolbar button.
-.dashboard-add-report {
+// "Add a finding" sits where the stack ends: a quiet affordance, not a toolbar button.
+.story-add-finding {
   display: flex;
   justify-content: flex-start;
   margin-top: var(--space-1);

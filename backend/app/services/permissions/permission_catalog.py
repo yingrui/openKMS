@@ -301,13 +301,13 @@ OPERATION_KEY_HINTS: tuple[OperationKeyHint, ...] = (
     OperationKeyHint(
         PERM_INSIGHTS_READ,
         "View data insights",
-        "Open Data Insights, read its dashboards, and re-run one (a refresh is a read).",
+        "Open Data Insights, read its stories, and re-run one (a refresh is a read).",
         "data",
     ),
     OperationKeyHint(
         PERM_INSIGHTS_WRITE,
         "Manage data insights",
-        "Create, update, and delete Data Insights dashboards.",
+        "Create, update, and delete Data Insights stories.",
         "data",
     ),
 )

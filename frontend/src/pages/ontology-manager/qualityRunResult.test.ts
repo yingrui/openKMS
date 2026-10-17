@@ -73,7 +73,7 @@ describe('readRun', () => {
     });
   });
 
-  it('reports an error as an error, whatever the rule type', () => {
+  it('findings an error as an error, whatever the rule type', () => {
     expect(
       readRun(run({ status: 'error', error_message: 'column "high" does not exist' }), 'sql'),
     ).toEqual({ kind: 'error' });

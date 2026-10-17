@@ -14,7 +14,7 @@ from . import (
     document_channels,
     documents,
     evaluation,
-    dashboards,
+    stories,
     glossaries,
     jobs,
     kb,
@@ -61,4 +61,4 @@ def register(sub: _SubParsersAction) -> None:
     semantic_models.add_subparser(sub)
     ontology.add_subparser(sub)  # exposes `ontology cypher/...`, `ontology objects ...`, `ontology links ...`
     evaluation.add_subparser(sub)
-    dashboards.add_subparser(sub)
+    stories.add_subparser(sub)

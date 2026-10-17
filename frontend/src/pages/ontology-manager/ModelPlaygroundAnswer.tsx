@@ -3,8 +3,8 @@ import { useTranslation } from 'react-i18next';
 import type { SemanticModelQueryResponse } from '../../data/semanticModelsApi';
 import { EntityViewPanel } from './EntityViewShell';
 import { QueryFailureNotice, asQueryFailureKind } from '../../styles/design-system';
-import { SaveReportDialog } from './SaveReportDialog';
-import type { ReportDraftInput } from './reportDraft';
+import { SaveFindingDialog } from './SaveFindingDialog';
+import type { FindingDraftInput } from './findingDraft';
 
 /** A failed run, as the query API classified it: who can fix it, what it said, and the source's words. */
 export type RunError = { kind: string; message: string; detail?: string };
@@ -22,8 +22,8 @@ export function ModelPlaygroundAnswer({
   result: SemanticModelQueryResponse | null;
   runError: RunError | null;
   filtersApplied: boolean;
-  /** When set, the result can be saved into a dashboard as a report. */
-  saveDraft?: ReportDraftInput | null;
+  /** When set, the result can be saved into a story as a finding. */
+  saveDraft?: FindingDraftInput | null;
 }) {
   const { t } = useTranslation('ontology');
   const [showSql, setShowSql] = useState(false);
@@ -117,7 +117,7 @@ export function ModelPlaygroundAnswer({
               >
                 {t('dataModel.playgroundSql')}
               </button>
-              {saveDraft && <SaveReportDialog draft={saveDraft} />}
+              {saveDraft && <SaveFindingDialog draft={saveDraft} />}
             </div>
             {showSql && <pre className="playground__sql">{result.sql}</pre>}
           </>

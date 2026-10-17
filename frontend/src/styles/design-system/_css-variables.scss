@@ -39,14 +39,14 @@
 
   /* Report series colours (charts, rankings): a set of *distinguishable* hues, themed rather than
    hard-coded in a component — dark mode lifts them, and a caller may retheme without touching TS. */
-  --report-series-1: #0d9488;
-  --report-series-2: #2563eb;
-  --report-series-3: #d97706;
-  --report-series-4: #9333ea;
-  --report-series-5: #dc2626;
-  --report-series-6: #0891b2;
-  --report-series-7: #65a30d;
-  --report-series-8: #db2777;
+  --finding-series-1: #0d9488;
+  --finding-series-2: #2563eb;
+  --finding-series-3: #d97706;
+  --finding-series-4: #9333ea;
+  --finding-series-5: #dc2626;
+  --finding-series-6: #0891b2;
+  --finding-series-7: #65a30d;
+  --finding-series-8: #db2777;
 
   /* Syntax colours for the SQL rule editor: a *code* palette, themed like the report series rather
      than hard-coded in a component. Muted on purpose — code should read as code, not as status. */
@@ -171,14 +171,14 @@
 
 [data-theme='dark'] {
   /* Lifted for dark surfaces: the light set is chosen against white. */
-  --report-series-1: #2dd4bf;
-  --report-series-2: #60a5fa;
-  --report-series-3: #fbbf24;
-  --report-series-4: #c084fc;
-  --report-series-5: #f87171;
-  --report-series-6: #22d3ee;
-  --report-series-7: #a3e635;
-  --report-series-8: #f472b6;
+  --finding-series-1: #2dd4bf;
+  --finding-series-2: #60a5fa;
+  --finding-series-3: #fbbf24;
+  --finding-series-4: #c084fc;
+  --finding-series-5: #f87171;
+  --finding-series-6: #22d3ee;
+  --finding-series-7: #a3e635;
+  --finding-series-8: #f472b6;
   --sql-keyword: #a5b4fc;
   --sql-string: #6ee7b7;
   --sql-number: #fcd34d;

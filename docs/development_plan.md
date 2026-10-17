@@ -279,6 +279,38 @@ route's sheet; nothing catches a class used by **one** page and defined in a she
 Adding that needs parent-route reachability (a tab's parent sheet *is* in scope, e.g. `quality-pill` from
 `dataset-detail.scss`), which is why it is a follow-up rather than a five-line check.
 
+### Dashboard → Story, Report → Finding (2026-10)
+
+The object is a **narrative with evidence**, not a screen: it does not refresh itself, its centre is what
+was written, and it is exported and sent to people. "Dashboard" promised monitoring, and calling its
+tiles "reports" put the two words one level off from every BI tool (`report` names the deliverable; no
+product in the comparison table uses it for a tile). Renamed end to end:
+
+| was | now |
+|---|---|
+| `dashboards` table · `/api/dashboards` · `dashboards` skill group | `stories` · `/api/stories` · `stories` |
+| `reports` JSONB column | `findings` |
+| each finding's `insight` | `takeaway` (a finding's insight was a finding inside a finding) |
+| `ReportResponse` / `ReportChart` / `reportView.ts` / `dashboardsApi.ts` … | `Finding*` / `findingView.ts` / `storiesApi.ts` … |
+| `--report-series-*` chart palette | `--finding-series-*` |
+
+One migration does the table, the column, the JSONB key and a **re-apply of the `insights` patterns**
+(the routes moved), and `alembic downgrade` reverses all four. Ids, ACL rows and permission keys are
+untouched — the app is still Data Insights, so `insights:read` / `insights:write` do not move — which is
+why grants carry over with no backfill. `/api/dashboards` answers 404: no legacy alias.
+
+Two casualties of the mechanical pass, both worth remembering:
+
+- **`LayoutDashboard` is a lucide icon**, and the replace turned it into `LayoutStory` — a library's
+  export is not our vocabulary. Exclude external names.
+- Several files had their *contents* renamed but not their *names* (`ReportBarList.tsx` importing
+  `FindingBarList`): the compiler catches that, which is the point — but it only catches two of the three
+  axes. **Names, identifiers and prose** all have to move, and only the first two are type-checked; the
+  docs and the skill references were checked by reading them.
+
+`reportAge.ts` became `relativeAge.ts` rather than `findingAge.ts`, because the quality inbox uses it too
+— a shared helper must not be named after one caller.
+
 ### Finding one of a hundred: facets, not channels (2026-10)
 
 Asked how a catalog stays usable at 100+ datasets and 100+ dashboards, and whether to copy the documents

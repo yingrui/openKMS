@@ -26,7 +26,7 @@ import {
   type FilterRow,
 } from './modelPlaygroundSpec';
 import { ModelPlaygroundAnswer, type RunError } from './ModelPlaygroundAnswer';
-import { modelReportDraft } from './reportDraft';
+import { modelFindingDraft } from './findingDraft';
 import { ChipPicker } from '../../components/ontology/ChipPicker';
 import { FilterRows } from '../../components/ontology/FilterRows';
 import { useSemanticModelDetail } from './useSemanticModelDetail';
@@ -500,7 +500,7 @@ export function ModelPlaygroundSection() {
           result={result}
           runError={runError}
           filtersApplied={filtersApplied}
-          saveDraft={modelReportDraft({
+          saveDraft={modelFindingDraft({
             modelId,
             modelName: model.name,
             metricName: metrics.find((m) => m.id === spec?.metric)?.name,

@@ -15,7 +15,7 @@ import {
   parseView,
   viewFits,
   xLabel,
-} from './reportView';
+} from './findingView';
 
 const MONTHLY = [
   { trade_date: '2026-01-01T00:00:00+00:00', count: 1 },

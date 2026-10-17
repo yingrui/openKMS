@@ -1,7 +1,7 @@
 import type { QualityRunResponse } from '../../data/qualityApi';
 
 /**
- * What a run *measured*, in the only shapes a rule can report.
+ * What a run *measured*, in the only shapes a rule can finding.
  *
  * A run row that says "failed 51,425" is a number without a subject: 51,425 of what, and allowed how
  * much? Each rule type already stores what it looked at (`detail`) — this turns it into something a

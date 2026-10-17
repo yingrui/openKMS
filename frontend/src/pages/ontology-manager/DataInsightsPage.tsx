@@ -3,22 +3,22 @@ import { useTranslation } from 'react-i18next';
 import { Link, useNavigate } from 'react-router-dom';
 import { Loader2, Plus, Sparkles } from 'lucide-react';
 import { toast } from 'sonner';
-import { createDashboard, fetchDashboards, type DashboardSummary } from '../../data/dashboardsApi';
+import { createStory, fetchStories, type StorySummary } from '../../data/storiesApi';
 import { Dialog, EmptyState, FormField, StatusChip } from '../../styles/design-system';
 import '../../styles/resource-list.scss';
 
 /**
- * All dashboards — the app's shared card list (`resource-list.scss`, the same chrome as Knowledge
+ * All stories — the app's shared card list (`resource-list.scss`, the same chrome as Knowledge
  * Bases and Wiki spaces): one page header with the primary action, a card grid, and a card whose
  * top row is an icon, then a title, a description and a meta line.
  *
- * What is specific to a dashboard lives *inside* that grammar: the question is the description, and
- * the meta line carries the state, the report count and the sources the reports read.
+ * What is specific to a story lives *inside* that grammar: the question is the description, and
+ * the meta line carries the state, the finding count and the sources the findings read.
  */
 export function DataInsightsPage() {
   const { t } = useTranslation('ontology');
   const navigate = useNavigate();
-  const [dashboards, setDashboards] = useState<DashboardSummary[]>([]);
+  const [stories, setStories] = useState<StorySummary[]>([]);
   const [search, setSearch] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
   const [loading, setLoading] = useState(true);
@@ -30,7 +30,7 @@ export function DataInsightsPage() {
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      setDashboards((await fetchDashboards({ search: debouncedSearch.trim() || undefined })).items);
+      setStories((await fetchStories({ search: debouncedSearch.trim() || undefined })).items);
     } catch (e) {
       toast.error(e instanceof Error ? e.message : t('datasets.loadFailed'));
     } finally {
@@ -60,7 +60,7 @@ export function DataInsightsPage() {
     }
     setSubmitting(true);
     try {
-      const created = await createDashboard({
+      const created = await createStory({
         name: name.trim(),
         question: question.trim() || null,
       });
@@ -84,7 +84,7 @@ export function DataInsightsPage() {
         <div className="resource-list-header-actions">
           <button type="button" className="btn btn-primary" onClick={openCreate}>
             <Plus size={18} aria-hidden />
-            <span>{t('dataInsights.newDashboard')}</span>
+            <span>{t('dataInsights.newStory')}</span>
           </button>
         </div>
       </div>
@@ -92,7 +92,7 @@ export function DataInsightsPage() {
       {/* Search is a view control, not an action: it sits with the list it filters, on its own row —
           inside the header's action cluster it wrapped under the "new" button. */}
       {/* Also while a search finds nothing: otherwise the box that would let you clear it disappears. */}
-      {!loading && (dashboards.length > 0 || debouncedSearch.trim() !== '') && (
+      {!loading && (stories.length > 0 || debouncedSearch.trim() !== '') && (
         <div className="resource-list-toolbar">
           <input
             type="search"
@@ -111,11 +111,11 @@ export function DataInsightsPage() {
         </p>
       )}
 
-      {!loading && dashboards.length === 0 && debouncedSearch.trim() && (
+      {!loading && stories.length === 0 && debouncedSearch.trim() && (
         <p className="page-subtitle">{t('dataInsights.noMatches')}</p>
       )}
 
-      {!loading && dashboards.length === 0 && !debouncedSearch.trim() && (
+      {!loading && stories.length === 0 && !debouncedSearch.trim() && (
         <EmptyState
           icon={<Sparkles size={48} strokeWidth={1} />}
           title={t('dataInsights.empty')}
@@ -123,20 +123,20 @@ export function DataInsightsPage() {
           action={
             <button type="button" className="btn btn-primary" onClick={openCreate}>
               <Plus size={18} aria-hidden />
-              <span>{t('dataInsights.newDashboard')}</span>
+              <span>{t('dataInsights.newStory')}</span>
             </button>
           }
         />
       )}
 
-      {!loading && dashboards.length > 0 && (
+      {!loading && stories.length > 0 && (
         <div className="resource-list-grid">
-          {dashboards.map((dashboard) => {
-            const sources = dashboard.sources.map((s) => s.label);
+          {stories.map((story) => {
+            const sources = story.sources.map((s) => s.label);
             return (
               <Link
-                key={dashboard.id}
-                to={`/data-insights/${dashboard.id}`}
+                key={story.id}
+                to={`/data-insights/${story.id}`}
                 className="resource-list-card"
               >
                 <div className="resource-list-card-top">
@@ -144,18 +144,18 @@ export function DataInsightsPage() {
                     <Sparkles size={28} strokeWidth={1.5} />
                   </div>
                 </div>
-                <h3>{dashboard.name}</h3>
+                <h3>{story.name}</h3>
                 <p
                   className="resource-list-desc"
-                  title={dashboard.question?.trim() || undefined}
+                  title={story.question?.trim() || undefined}
                 >
-                  {dashboard.question || t('dataInsights.noQuestion')}
+                  {story.question || t('dataInsights.noQuestion')}
                 </p>
                 <div className="resource-list-meta">
-                  <StatusChip tone={dashboard.status === 'ready' ? 'ok' : 'neutral'}>
-                    {t(`dataInsights.status_${dashboard.status}`, { defaultValue: dashboard.status })}
+                  <StatusChip tone={story.status === 'ready' ? 'ok' : 'neutral'}>
+                    {t(`dataInsights.status_${story.status}`, { defaultValue: story.status })}
                   </StatusChip>
-                  <span>{t('dataInsights.reportCount', { count: dashboard.report_count })}</span>
+                  <span>{t('dataInsights.findingCount', { count: story.finding_count })}</span>
                   {sources.length > 0 && <span>{sources.join(' + ')}</span>}
                 </div>
               </Link>
@@ -168,7 +168,7 @@ export function DataInsightsPage() {
         open={showForm}
         onClose={() => !submitting && setShowForm(false)}
         closeDisabled={submitting}
-        title={t('dataInsights.newDashboard')}
+        title={t('dataInsights.newStory')}
         closeAriaLabel={t('shared.cancel')}
         size="sm"
         footer={
@@ -192,7 +192,7 @@ export function DataInsightsPage() {
           </>
         }
       >
-        <FormField label={t('dataInsights.dashboardName')}>
+        <FormField label={t('dataInsights.storyName')}>
           <input value={name} onChange={(e) => setName(e.target.value)} />
         </FormField>
         <FormField label={t('dataInsights.question')}>
