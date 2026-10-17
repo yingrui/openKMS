@@ -10,13 +10,26 @@ import {
   fetchQualityRules,
   runQualityRule,
   updateQualityRule,
+  validateQualityRule,
   type QualityRuleResponse,
 } from '../../data/qualityApi';
 import { useConfirm } from '../../contexts/ConfirmContext';
-import { Dialog, EmptyState, FormField } from '../../styles/design-system';
+import { Dialog, EmptyState, FormField, QueryFailureNotice, StatusChip } from '../../styles/design-system';
 import { EntityViewHeader, EntityViewPanel, EntityViewLoading } from './EntityViewShell';
 
-const RULE_TYPES = ['not_null', 'unique', 'range', 'referential', 'freshness'] as const;
+const RULE_TYPES = ['not_null', 'unique', 'range', 'referential', 'freshness', 'sql'] as const;
+
+/**
+ * The business constraints people keep asking for, as starting points. They are SQL, not templates in
+ * the i18n sense — the labels are translated, the query is not.
+ */
+const SQL_TEMPLATES = [
+  { key: 'enumerated', sql: 'SELECT count(*) FROM {{table}} WHERE {{column}} NOT IN (\'a\', \'b\')' },
+  { key: 'twoColumns', sql: 'SELECT count(*) FROM {{table}} WHERE high < low' },
+  { key: 'duplicates', sql: 'SELECT count(*) FROM (SELECT {{column}}, count(*) FROM {{table}} GROUP BY 1 HAVING count(*) > 1) d' },
+  { key: 'nullShare', sql: 'SELECT CASE WHEN 100.0 * count(*) FILTER (WHERE {{column}} IS NULL) / count(*) > 30 THEN 1 ELSE 0 END FROM {{table}}' },
+  { key: 'futureDates', sql: 'SELECT count(*) FROM {{table}} WHERE {{column}} > CURRENT_DATE' },
+] as const;
 
 export function DatasetQualityTab() {
   const { t } = useTranslation('ontology');
@@ -41,7 +54,10 @@ export function DatasetQualityTab() {
   const [refDatasetId, setRefDatasetId] = useState('');
   const [refColumn, setRefColumn] = useState('');
   const [maxAge, setMaxAge] = useState('1');
+  const [sql, setSql] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [trying, setTrying] = useState(false);
+  const [sqlResult, setSqlResult] = useState<{ ok: boolean; failed_count: number | null; error: string | null } | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -75,6 +91,8 @@ export function DatasetQualityTab() {
     setRefDatasetId('');
     setRefColumn('');
     setMaxAge('1');
+    setSql('');
+    setSqlResult(null);
     setShowForm(true);
   };
 
@@ -90,6 +108,8 @@ export function DatasetQualityTab() {
     setRefDatasetId(typeof config.ref_dataset_id === 'string' ? config.ref_dataset_id : '');
     setRefColumn(typeof config.ref_column === 'string' ? config.ref_column : '');
     setMaxAge(config.max_age_days != null ? String(config.max_age_days) : '1');
+    setSql(typeof config.sql === 'string' ? config.sql : '');
+    setSqlResult(null);
     setShowForm(true);
   };
 
@@ -107,6 +127,8 @@ export function DatasetQualityTab() {
       config.ref_column = refColumn;
     } else if (ruleType === 'freshness') {
       config.max_age_days = Number(maxAge) || 1;
+    } else if (ruleType === 'sql') {
+      config.sql = sql;
     }
     setSubmitting(true);
     try {
@@ -132,6 +154,23 @@ export function DatasetQualityTab() {
       toast.error(e instanceof Error ? e.message : t('datasets.qualityCreateFailed'));
     } finally {
       setSubmitting(false);
+    }
+  };
+
+  /** Try the rule before saving it: the same endpoint path the run uses, nothing stored. */
+  const handleTrySql = async () => {
+    setTrying(true);
+    setSqlResult(null);
+    try {
+      setSqlResult(await validateQualityRule(datasetId, { sql, column_name: column || null }));
+    } catch (e) {
+      setSqlResult({
+        ok: false,
+        failed_count: null,
+        error: e instanceof Error ? e.message : t('datasets.qualityRunFailed'),
+      });
+    } finally {
+      setTrying(false);
     }
   };
 
@@ -204,7 +243,7 @@ export function DatasetQualityTab() {
                     <td>
                       <strong>{r.name}</strong>
                     </td>
-                    <td>{r.rule_type}</td>
+                    <td>{t(`datasets.qualityType_${r.rule_type}`, { defaultValue: r.rule_type })}</td>
                     <td>{r.column_name ?? t('datasets.dash')}</td>
                     <td>
                       {r.last_status ? (
@@ -293,7 +332,7 @@ export function DatasetQualityTab() {
           >
             {RULE_TYPES.map((rt) => (
               <option key={rt} value={rt}>
-                {rt}
+                {t(`datasets.qualityType_${rt}`)}
               </option>
             ))}
           </select>
@@ -335,6 +374,64 @@ export function DatasetQualityTab() {
             <FormField label={t('datasets.qualityMax')}>
               <input value={max} onChange={(e) => setMax(e.target.value)} />
             </FormField>
+          </>
+        )}
+        {ruleType === 'sql' && (
+          <>
+            <FormField label={t('datasets.qualitySql')} hint={t('datasets.qualitySqlHint')}>
+              <textarea
+                className="ds-control ds-control--mono"
+                rows={8}
+                spellCheck={false}
+                value={sql}
+                onChange={(e) => {
+                  setSql(e.target.value);
+                  setSqlResult(null);
+                }}
+              />
+            </FormField>
+            <div className="openkms-flex-row-gap">
+              {SQL_TEMPLATES.map((tpl) => (
+                <button
+                  key={tpl.key}
+                  type="button"
+                  className="btn btn-secondary btn-sm"
+                  onClick={() => {
+                    setSql(tpl.sql);
+                    setSqlResult(null);
+                  }}
+                >
+                  {t(`datasets.qualityTemplate_${tpl.key}`)}
+                </button>
+              ))}
+            </div>
+            <div className="openkms-flex-row-gap">
+              <button
+                type="button"
+                className="btn btn-secondary btn-sm"
+                onClick={() => void handleTrySql()}
+                disabled={!sql.trim() || trying}
+              >
+                {trying ? t('datasets.qualitySqlTrying') : t('datasets.qualitySqlTry')}
+              </button>
+              {sqlResult?.ok && (
+                <>
+                  <StatusChip tone={sqlResult.failed_count ? 'warn' : 'ok'}>
+                    {sqlResult.failed_count
+                      ? t('datasets.qualitySqlResult', { count: sqlResult.failed_count })
+                      : t('datasets.qualitySqlPassed')}
+                  </StatusChip>
+                  <span className="page-subtitle">{t('datasets.qualitySqlNotSaved')}</span>
+                </>
+              )}
+            </div>
+            {sqlResult && !sqlResult.ok && (
+              <QueryFailureNotice
+                title={t('datasets.qualitySqlError')}
+                message={sqlResult.error}
+                detailsLabel={t('datasets.qualitySql')}
+              />
+            )}
           </>
         )}
         {ruleType === 'referential' && (

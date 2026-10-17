@@ -69,6 +69,23 @@ export async function updateQualityRule(
   });
 }
 
+export interface QualityRuleValidateResult {
+  ok: boolean;
+  failed_count: number | null;
+  error: string | null;
+}
+
+/** Run a `sql` rule without saving it — the same code path as running it. */
+export async function validateQualityRule(
+  datasetId: string,
+  body: { sql: string; column_name?: string | null },
+): Promise<QualityRuleValidateResult> {
+  return request<QualityRuleValidateResult>(`/api/datasets/${datasetId}/quality-rules/validate`, {
+    method: 'POST',
+    body: JSON.stringify(body),
+  });
+}
+
 export async function deleteQualityRule(datasetId: string, ruleId: string): Promise<void> {
   return request<void>(`/api/datasets/${datasetId}/quality-rules/${ruleId}`, { method: 'DELETE' });
 }

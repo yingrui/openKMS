@@ -14,6 +14,19 @@ class QualityRuleCreate(BaseModel):
     enabled: bool = True
 
 
+class QualityRuleValidateRequest(BaseModel):
+    """A dry run of a `sql` rule: the same code path as running it, before anything is saved."""
+
+    sql: str
+    column_name: str | None = None
+
+
+class QualityRuleValidateResponse(BaseModel):
+    ok: bool
+    failed_count: int | None = None
+    error: str | None = None
+
+
 class QualityRuleUpdate(BaseModel):
     name: str | None = None
     column_name: str | None = None

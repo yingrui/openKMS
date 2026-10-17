@@ -335,6 +335,8 @@ def cmd_quality_add(ns: argparse.Namespace) -> None:
         config["ref_column"] = ns.ref_column
     if ns.max_age_days is not None:
         config["max_age_days"] = ns.max_age_days
+    if ns.sql:
+        config["sql"] = ns.sql
     body: dict[str, Any] = {
         "name": ns.name,
         "rule_type": ns.rule_type,
@@ -578,6 +580,12 @@ def add_subparser(sub) -> None:
     qa.add_argument("--ref-dataset-id", default=None)
     qa.add_argument("--ref-column", default=None)
     qa.add_argument("--max-age-days", type=int, default=None)
+    qa.add_argument(
+        "--sql",
+        default=None,
+        help="for --type sql: a single read-only SELECT returning ONE number = the count of violating "
+        "rows (>0 fails). Must reference {{table}}; {{column}} is optional.",
+    )
     add_write_flags(qa)
     qa.set_defaults(fn=cmd_quality_add)
     qu = qsp.add_parser("update", help="Update a quality rule (PUT …/quality-rules/{rule_id})")

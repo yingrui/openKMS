@@ -220,6 +220,33 @@ Active UX / quality gaps: [Tech debt](./tech_debt.md).
   must not push layout — the two other reveals in this app (report tiles, section cards) animate
   `opacity` only, which is why neither flickers.
 
+### Quality rules that fit real business needs: `sql` (2026-10)
+
+The five declarative kinds cover the standard checks and nothing else. "The high price can never be below
+the low", "the share of null P/E is under 30%", "this column is not in the allowed set" are all
+**business** constraints, and every one of them is a query. So a sixth type, `sql`, carries one.
+
+The contract is the smallest one that works, and the same one dbt tests and Soda use: **one read-only
+query returning one number — the count of violating rows**, `>0` fails. It must read `{{table}}` (so it
+is a rule *about this dataset*, not an arbitrary query with a misleading home), `{{column}}` is optional
+and gets quoted, and it runs through the read-only-transaction + statement-timeout path. `checked_count`
+is `null`: an arbitrary query does not tell us how many rows it looked at, and saying 0 would be a lie.
+
+`POST …/quality-rules/validate` dry-runs it through the **same code path** (an unsaved rule object), so
+"it validated" and "it runs" cannot mean different things; a bad query is a `200 {ok: false}` so the
+author reads the message instead of a toast. The editor has a monospace textarea, five starting points,
+and that Try button.
+
+Two bugs found while verifying it live:
+
+- **A database error was a 500.** The SQL branch returned before the branch-wide `except`, so a missing
+  column produced a traceback that quoted the SQL instead of a 400 and a recorded `error` run. Fixed and
+  covered by a test, because it is exactly the kind of placement bug a comment does not prevent.
+- **`SELECT count(*), count(*)` passed.** `run_readonly` returns dicts, and a dict collapses duplicate
+  column names — so a two-column query looked like a one-column one. The rule path now reads the shape
+  through `run_readonly_scalar` (same envelope) and the verdict takes the column count separately; the
+  case is a test.
+
 ### Quality rules: editable, and runnable from the inbox (2026-10)
 
 Three things a reader found by using the product:

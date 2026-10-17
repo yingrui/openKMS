@@ -384,7 +384,8 @@ Encrypted values; **never returned**. Write/sync/delete reject personal API key 
 | GET | `/api/datasets/{id}/schema-history` | Schema snapshots (`data:read`) |
 | GET | `/api/quality-issues` | **The quality inbox** (`data:read`, oldest-worst first): every *enabled* rule across datasets with the latest run that judged it — `{dataset_id, dataset_name, name, rule_type, column_name, severity, status (passed\|failed\|error\|never), checked_count, failed_count, detail, error_message, last_run_at}`, optional `?status=`. Filtered by **dataset ACL** (an issue is a fact about its dataset), and a rule with no run reports `never`, which is not `passed` |
 | GET | `/api/datasets/{id}/quality-rules` | List quality rules (`data:read`) |
-| POST | `/api/datasets/{id}/quality-rules` | Create quality rule (`data:write`) |
+| POST | `/api/datasets/{id}/quality-rules` | Create quality rule (`data:write`) — five declarative types, or `sql` with `config.sql` |
+| POST | `/api/datasets/{id}/quality-rules/validate` | **Dry run** a `sql` rule (`data:write`): `{sql, column_name?}` → `{ok, failed_count, error}`. Same code path as running it, so a rule that validates cannot fail for a different reason later; a bad query is a `200 {ok: false}` so the author sees the message |
 | PUT | `/api/datasets/{id}/quality-rules/{rule_id}` | Update quality rule (`data:write`) |
 | DELETE | `/api/datasets/{id}/quality-rules/{rule_id}` | Delete quality rule (`data:write`) |
 | POST | `/api/datasets/{id}/quality-rules/{rule_id}/run` | Run one rule (`data:write`) → the **rule** (with `last_status`); the numbers are in its history below |

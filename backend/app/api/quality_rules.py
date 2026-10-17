@@ -18,6 +18,8 @@ from app.schemas.quality import (
     QualityRuleCreate,
     QualityRuleResponse,
     QualityRuleUpdate,
+    QualityRuleValidateRequest,
+    QualityRuleValidateResponse,
     QualityRunResponse,
 )
 from app.services.data_layer.quality import RULE_TYPES, QualityError, run_rule
@@ -80,6 +82,39 @@ async def list_quality_rules(
         )
     ).scalars().all()
     return [_rule_response(r, await _latest_run(db, r.id)) for r in rules]
+
+
+@router.post(
+    "/{dataset_id}/quality-rules/validate",
+    response_model=QualityRuleValidateResponse,
+    dependencies=[Depends(require_permission(PERM_DATA_WRITE))],
+)
+async def validate_quality_rule(
+    body: QualityRuleValidateRequest,
+    dataset: Dataset = Depends(get_dataset_scoped_write),
+    db: AsyncSession = Depends(get_db),
+):
+    """Run a `sql` rule without saving it.
+
+    Same code path as running it (an unsaved rule object), so "it validated" and "it runs" cannot
+    mean different things. A bad query is a `200 {ok: false}` — the author needs the message, not a
+    4xx that the form would show as a toast.
+    """
+    draft = QualityRule(
+        id="draft",
+        dataset_id=dataset.id,
+        name="draft",
+        rule_type="sql",
+        column_name=body.column_name,
+        config={"sql": body.sql},
+        severity="warning",
+        enabled=True,
+    )
+    try:
+        result = await run_rule(db, dataset, draft)
+    except QualityError as exc:
+        return QualityRuleValidateResponse(ok=False, error=str(exc))
+    return QualityRuleValidateResponse(ok=True, failed_count=result["failed_count"])
 
 
 @router.post(
