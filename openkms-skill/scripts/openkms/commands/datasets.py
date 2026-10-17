@@ -337,6 +337,8 @@ def cmd_quality_add(ns: argparse.Namespace) -> None:
         config["max_age_days"] = ns.max_age_days
     if ns.sql:
         config["sql"] = ns.sql
+    if ns.expect:
+        config["expect"] = ns.expect
     body: dict[str, Any] = {
         "name": ns.name,
         "rule_type": ns.rule_type,
@@ -580,6 +582,13 @@ def add_subparser(sub) -> None:
     qa.add_argument("--ref-dataset-id", default=None)
     qa.add_argument("--ref-column", default=None)
     qa.add_argument("--max-age-days", type=int, default=None)
+    qa.add_argument(
+        "--expect",
+        choices=("zero", "nonzero"),
+        default=None,
+        help="for --type sql: what the number means. `zero` (default) = rows that break the rule, >0 "
+        "fails; `nonzero` = a coverage check, where finding nothing (=0) is the failure.",
+    )
     qa.add_argument(
         "--sql",
         default=None,

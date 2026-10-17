@@ -19,11 +19,16 @@ class QualityRuleValidateRequest(BaseModel):
 
     sql: str
     column_name: str | None = None
+    #: What the number means — see `rule_sql.Expect`. Absent means "rows that break it".
+    expect: str | None = None
 
 
 class QualityRuleValidateResponse(BaseModel):
     ok: bool
     failed_count: int | None = None
+    #: What the query found — the number itself, so the caller can say it in the rule's own direction.
+    value: int | None = None
+    expect: str | None = None
     error: str | None = None
 
 

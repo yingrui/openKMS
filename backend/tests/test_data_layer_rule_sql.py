@@ -60,6 +60,29 @@ class TestGenerators:
         assert q.shape == "freshness"
         assert q.params == {"max_age": 30}
 
+    @pytest.mark.parametrize("expect", ["zero", "nonzero"])
+    def test_sql_rule_carries_what_its_number_means(self, expect):
+        q = build_rule_query(
+            "sql",
+            table=TABLE,
+            column=None,
+            config={"sql": "SELECT count(*) FROM {{table}}", "expect": expect},
+        )
+        assert q.expect == expect
+
+    def test_sql_rule_defaults_to_counting_violations(self):
+        q = build_rule_query("sql", table=TABLE, column=None, config={"sql": "SELECT count(*) FROM {{table}}"})
+        assert q.expect == "zero"
+
+    def test_an_unknown_expect_is_refused(self):
+        with pytest.raises(QualityError, match="expect"):
+            build_rule_query(
+                "sql",
+                table=TABLE,
+                column=None,
+                config={"sql": "SELECT count(*) FROM {{table}}", "expect": "sometimes"},
+            )
+
     def test_sql_rule_is_rendered_and_kept_to_one_statement(self):
         q = build_rule_query(
             "sql", table=TABLE, column="pe_ttm", config={"sql": "SELECT count(*) FROM {{table}} WHERE {{column}} > 100"}
@@ -120,6 +143,21 @@ class TestAuthorSql:
 
 
 class TestInterpret:
+    def test_a_coverage_number_is_a_verdict_in_the_other_direction(self):
+        # "Are there rows for today?" — the absence is the violation, so 0 fails and >0 passes.
+        found = interpret("number", ["count"], [[5]], expect="nonzero")
+        assert found["status"] == "passed"
+        assert found["failed_count"] == 0
+        assert found["detail"] == {"value": 5, "expect": "nonzero"}
+
+        missing = interpret("number", ["count"], [[0]], expect="nonzero")
+        assert missing["status"] == "failed"
+        assert missing["failed_count"] == 1          # one verdict: nothing was found
+        assert missing["detail"] == {"value": 0, "expect": "nonzero"}
+
+    def test_the_default_direction_still_reads_zero_as_a_pass(self):
+        assert interpret("number", ["count"], [[0]])["detail"] == {"value": 0, "expect": "zero"}
+
     def test_a_number_is_a_verdict(self):
         assert interpret("number", ["count"], [[0]])["status"] == "passed"
         failed = interpret("number", ["count"], [[5]])

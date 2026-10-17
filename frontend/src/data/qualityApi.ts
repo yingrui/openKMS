@@ -73,13 +73,16 @@ export async function updateQualityRule(
 export interface QualityRuleValidateResult {
   ok: boolean;
   failed_count: number | null;
+  /** The number the query returned, so it can be said in the rule's own direction. */
+  value: number | null;
+  expect: 'zero' | 'nonzero' | null;
   error: string | null;
 }
 
 /** Run a `sql` rule without saving it — the same code path as running it. */
 export async function validateQualityRule(
   datasetId: string,
-  body: { sql: string; column_name?: string | null },
+  body: { sql: string; column_name?: string | null; expect?: 'zero' | 'nonzero' },
 ): Promise<QualityRuleValidateResult> {
   return request<QualityRuleValidateResult>(`/api/datasets/${datasetId}/quality-rules/validate`, {
     method: 'POST',

@@ -38,12 +38,18 @@ function ReadingText({ reading }: { reading: RunReading }) {
     );
   }
   if (reading.kind === 'sql') {
-    return (
-      <>
-        {reading.failed
-          ? t('datasets.qualitySqlResult', { count: num(reading.failed) })
-          : t('datasets.qualitySqlPassed')}
-      </>
+    if (reading.expect === 'nonzero') {
+      // A count of coverage, not of violations: "found 0" is the sentence that matters.
+      return reading.passed ? (
+        <>{t('datasets.qualityResultCoverage', { count: num(reading.found) })}</>
+      ) : (
+        <>{t('datasets.qualityResultNothingFound')}</>
+      );
+    }
+    return reading.found ? (
+      <>{t('datasets.qualitySqlResult', { count: num(reading.found) })}</>
+    ) : (
+      <>{t('datasets.qualitySqlPassed')}</>
     );
   }
   if (reading.failed === 0) {
@@ -66,6 +72,8 @@ const SQL_TEMPLATES = [
   { key: 'duplicates', sql: 'SELECT count(*) FROM (SELECT {{column}}, count(*) FROM {{table}} GROUP BY 1 HAVING count(*) > 1) d' },
   { key: 'nullShare', sql: 'SELECT CASE WHEN 100.0 * count(*) FILTER (WHERE {{column}} IS NULL) / count(*) > 30 THEN 1 ELSE 0 END FROM {{table}}' },
   { key: 'futureDates', sql: 'SELECT count(*) FROM {{table}} WHERE {{column}} > CURRENT_DATE' },
+  // A coverage check: the number counts rows that *should* be there, so finding none is the failure.
+  { key: 'coverage', sql: 'SELECT count(*) FROM {{table}} WHERE {{column}} = CURRENT_DATE', expect: 'nonzero' as const },
 ] as const;
 
 /**
@@ -98,12 +106,16 @@ export function QualityRuleEditorPage() {
   const [refColumn, setRefColumn] = useState('');
   const [maxAge, setMaxAge] = useState('1');
   const [sql, setSql] = useState('');
+  /** What the query's number means: rows that break the rule, or rows that must exist. */
+  const [expect, setExpect] = useState<'zero' | 'nonzero'>('zero');
   const [submitting, setSubmitting] = useState(false);
   const [running, setRunning] = useState(false);
   const [trying, setTrying] = useState(false);
   const [sqlResult, setSqlResult] = useState<{
     ok: boolean;
     failed_count: number | null;
+    value: number | null;
+    expect: 'zero' | 'nonzero' | null;
     error: string | null;
   } | null>(null);
 
@@ -132,6 +144,7 @@ export function QualityRuleEditorPage() {
         setRefColumn(typeof config.ref_column === 'string' ? config.ref_column : '');
         setMaxAge(config.max_age_days != null ? String(config.max_age_days) : '1');
         setSql(typeof config.sql === 'string' ? config.sql : '');
+        setExpect(config.expect === 'nonzero' ? 'nonzero' : 'zero');
       }
     } catch (e) {
       toast.error(e instanceof Error ? e.message : t('datasets.loadFailed'));
@@ -156,9 +169,11 @@ export function QualityRuleEditorPage() {
       out.max_age_days = Number(maxAge) || 1;
     } else if (ruleType === 'sql') {
       out.sql = sql;
+      // `zero` is the default, so it is only stored when it differs.
+      if (expect !== 'zero') out.expect = expect;
     }
     return out;
-  }, [ruleType, min, max, refDatasetId, refColumn, maxAge, sql]);
+  }, [ruleType, min, max, refDatasetId, refColumn, maxAge, sql, expect]);
 
   /**
    * Run executes the **saved** rule, so a draft that differs would quietly run something else. The
@@ -211,11 +226,15 @@ export function QualityRuleEditorPage() {
     setTrying(true);
     setSqlResult(null);
     try {
-      setSqlResult(await validateQualityRule(datasetId, { sql, column_name: column || null }));
+      setSqlResult(
+        await validateQualityRule(datasetId, { sql, column_name: column || null, expect }),
+      );
     } catch (e) {
       setSqlResult({
         ok: false,
         failed_count: null,
+        value: null,
+        expect: null,
         error: e instanceof Error ? e.message : t('datasets.qualityRunFailed'),
       });
     } finally {
@@ -371,6 +390,18 @@ export function QualityRuleEditorPage() {
                 }}
               />
             </FormField>
+            <FormField label={t('datasets.qualityExpect')} hint={t('datasets.qualityExpectHint')}>
+              <select
+                value={expect}
+                onChange={(e) => {
+                  setExpect(e.target.value as 'zero' | 'nonzero');
+                  setSqlResult(null);
+                }}
+              >
+                <option value="zero">{t('datasets.qualityExpectZero')}</option>
+                <option value="nonzero">{t('datasets.qualityExpectNonzero')}</option>
+              </select>
+            </FormField>
             <div className="openkms-flex-row-gap">
               {SQL_TEMPLATES.map((tpl) => (
                 <button
@@ -379,6 +410,8 @@ export function QualityRuleEditorPage() {
                   className="btn btn-secondary btn-sm"
                   onClick={() => {
                     setSql(tpl.sql);
+                    // A template may switch the direction too — a coverage query reads backwards.
+                    setExpect('expect' in tpl ? tpl.expect : 'zero');
                     setSqlResult(null);
                   }}
                 >
@@ -398,9 +431,13 @@ export function QualityRuleEditorPage() {
               {sqlResult?.ok && (
                 <>
                   <StatusChip tone={sqlResult.failed_count ? 'warn' : 'ok'}>
-                    {sqlResult.failed_count
-                      ? t('datasets.qualitySqlResult', { count: sqlResult.failed_count })
-                      : t('datasets.qualitySqlPassed')}
+                    {sqlResult.expect === 'nonzero' ? (
+                      t('datasets.qualityResultCoverage', { count: num(sqlResult.value ?? 0) })
+                    ) : sqlResult.value ? (
+                      t('datasets.qualitySqlResult', { count: num(sqlResult.value) })
+                    ) : (
+                      t('datasets.qualitySqlPassed')
+                    )}
                   </StatusChip>
                   <span className="page-subtitle">{t('datasets.qualitySqlNotSaved')}</span>
                 </>

@@ -10,7 +10,7 @@ import type { QualityRunResponse } from '../../data/qualityApi';
 export type RunReading =
   | { kind: 'error' }
   | { kind: 'freshness'; latest: string | null; maxAgeDays: number | null }
-  | { kind: 'sql'; failed: number }
+  | { kind: 'sql'; found: number; expect: 'zero' | 'nonzero'; passed: boolean }
   | { kind: 'counts'; checked: number | null; failed: number };
 
 export function readRun(run: QualityRunResponse, ruleType: string): RunReading {
@@ -26,8 +26,16 @@ export function readRun(run: QualityRunResponse, ruleType: string): RunReading {
     };
   }
   if (ruleType === 'sql') {
-    // An arbitrary query cannot say how many rows it looked at; it only says how many broke the rule.
-    return { kind: 'sql', failed: run.failed_count ?? 0 };
+    // A count is not always a count of problems: `expect: 'nonzero'` makes it a coverage check, where
+    // finding nothing is the failure. The number the query returned is kept in `detail.value`.
+    const detail = (run.detail ?? {}) as { value?: unknown; expect?: unknown };
+    const expect = detail.expect === 'nonzero' ? 'nonzero' : 'zero';
+    const found =
+      typeof detail.value === 'number'
+        ? detail.value
+        : // runs recorded before `detail.value` existed only have the verdict count
+          (run.failed_count ?? 0);
+    return { kind: 'sql', found, expect, passed: run.status === 'passed' };
   }
   return { kind: 'counts', checked: run.checked_count, failed: run.failed_count ?? 0 };
 }

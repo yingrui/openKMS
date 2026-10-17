@@ -125,8 +125,12 @@ python scripts/cli.py datasets quality add --id DS_ID \
 python scripts/cli.py datasets quality run --id DS_ID --rule-id RULE_ID --yes
 # A business-specific constraint: one read-only SELECT returning ONE number = the count of violating
 # rows (>0 fails). Must read {{table}}; {{column}} is optional and gets quoted.
+# `expect` is what the number means: `zero` (default) = rows that break the rule; `nonzero` = coverage,
+# where finding nothing (= 0) is the failure.
 python scripts/cli.py datasets quality add --id DS_ID --name "PE above 100" --type sql --column pe_ttm \
   --sql 'SELECT count(*) FROM {{table}} WHERE {{column}} > 100' --yes
+python scripts/cli.py datasets quality add --id DS_ID --name "Rows for today" --type sql --column trade_date \
+  --expect nonzero --sql 'SELECT count(*) FROM {{table}} WHERE {{column}} = CURRENT_DATE' --yes
 python scripts/cli.py datasets quality update --id DS_ID --rule-id RULE_ID --enabled false --yes
 python scripts/cli.py datasets quality delete --id DS_ID --rule-id RULE_ID --yes
 ```

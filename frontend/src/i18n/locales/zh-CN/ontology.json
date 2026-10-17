@@ -688,7 +688,14 @@
     "qualityResultFailedOnly": "{{failed}} 行违反",
     "qualitySqlRan": "实际执行的 SQL",
     "qualityRunning": "运行中…",
-    "qualityRunNeedsSave": "请先保存——「运行」读的是已保存的规则，不是这份草稿。"
+    "qualityRunNeedsSave": "请先保存——「运行」读的是已保存的规则，不是这份草稿。",
+    "qualityExpect": "什么算作问题",
+    "qualityExpectHint": "查询返回一个数。它要么是「违反规则的行数」（> 0 即失败），要么是「必须存在的行数」（= 0 即失败）。",
+    "qualityExpectZero": "有行违反（> 0 失败）",
+    "qualityExpectNonzero": "一行都没有（= 0 失败）",
+    "qualityResultCoverage": "找到 {{count}} 行",
+    "qualityResultNothingFound": "一行都没有找到——本应有数据",
+    "qualityTemplate_coverage": "今天有数据"
   },
   "groups": {
     "title": "分组",

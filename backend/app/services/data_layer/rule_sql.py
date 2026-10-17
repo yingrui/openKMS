@@ -37,6 +37,13 @@ RULE_SQL_TIMEOUT_MS = 20_000
 #: `freshness` = those plus `latest`.
 Shape = Literal["number", "rows", "freshness"]
 
+#: What an author's number *means*. A count is not always a count of problems:
+#:
+#: - `zero` (the default) — the number is how many rows **break** the rule; `> 0` fails. "PE above 100".
+#: - `nonzero` — the number is how many rows **satisfy** a requirement; `0` fails. "Are there rows for
+#:   today?" A coverage check has no violating row to count: the absence *is* the violation.
+Expect = Literal["zero", "nonzero"]
+
 
 class QualityError(ValueError):
     """Raised when a rule cannot run; surfaced as HTTP 400."""
@@ -49,6 +56,8 @@ class RuleQuery:
     sql: str
     shape: Shape
     params: dict[str, Any] = field(default_factory=dict)
+    #: Only `number` (an author's query) reads this: whether the number counts problems or coverage.
+    expect: Expect = "zero"
 
 
 def _quote(identifier: str) -> str:
@@ -182,12 +191,23 @@ def build_rule_query(
 
     if rule_type == "sql":
         body = normalize_rule_sql(str(config.get("sql") or ""))
-        return RuleQuery(sql=render_rule_sql(body, table, column), shape="number")
+        expect = config.get("expect", "zero")
+        if expect not in ("zero", "nonzero"):
+            raise QualityError("`expect` must be `zero` (rows that break it) or `nonzero` (rows found).")
+        return RuleQuery(
+            sql=render_rule_sql(body, table, column), shape="number", expect=expect
+        )
 
     raise QualityError(f"Unknown rule type '{rule_type}'.")
 
 
-def interpret(shape: Shape, names: list[str], rows: list[list[Any]]) -> dict[str, Any]:
+def interpret(
+    shape: Shape,
+    names: list[str],
+    rows: list[list[Any]],
+    *,
+    expect: Expect = "zero",
+) -> dict[str, Any]:
     """Turn a rule query's result into the run's verdict — pure, so every branch has a test.
 
     One row is the contract for all three shapes: a rule answers a single question.
@@ -208,12 +228,21 @@ def interpret(shape: Shape, names: list[str], rows: list[list[Any]]) -> dict[str
             failed = int(float(value))
         except (TypeError, ValueError) as exc:
             raise QualityError("A SQL rule must return a number (the count of violating rows).") from exc
+        if expect == "nonzero":
+            # The number is coverage, not violations: finding nothing is the failure. `failed_count` is
+            # the verdict (0 or 1), and the number itself is kept as what the query found.
+            return {
+                "status": "passed" if failed > 0 else "failed",
+                "checked_count": None,
+                "failed_count": 0 if failed > 0 else 1,
+                "detail": {"value": failed, "expect": "nonzero"},
+            }
         return {
             "status": "failed" if failed else "passed",
             # An arbitrary query does not say how many rows it looked at; 0 would be a lie.
             "checked_count": None,
             "failed_count": failed,
-            "detail": {},
+            "detail": {"value": failed, "expect": "zero"},
         }
 
     if "failed" not in row:

@@ -237,6 +237,24 @@ the exact live shape as a test. The general rule is the one this cost: **never c
 by its JSON text** — key order, number formatting and `undefined` all make that lie, and a database is
 entitled to reorder what it stores.
 
+### A count is not always a count of problems (2026-10)
+
+A reader pointed out that a `sql` rule's number is usually a count, but the *direction* is not fixed:
+`> 0` is a problem for "rows with a PE above 100", while `0` is the problem for "are there rows for
+today?" — a **coverage** check has no violating row to count, because the absence *is* the violation. The
+contract only had the first direction, so the second could only be written as a `CASE` that inverted it —
+easy to get backwards and unreadable once it is.
+
+`config.expect` is that direction, and the UI asks the domain question rather than naming it: **"what
+counts as a problem?"** — *rows that break it (> 0 fails)* or *nothing found (= 0 fails)*. `zero` is the
+default and is not stored, so existing rules and old runs are untouched; `detail.value` keeps the number
+the query actually returned, and `failed_count` stays the verdict (0 or 1) for a coverage rule.
+
+Verified by asking the same query both ways on `tushare.daily_basic`: `count(*) WHERE trade_date =
+CURRENT_DATE` gives `failed_count 0` as a violations check and `1` as a coverage check — opposite
+verdicts from one number. As a real rule it caught something: the table's latest date is 2026-10-09, so
+"今天有交易数据" fails.
+
 ### Several ways to configure a rule, one way to execute one (2026-10)
 
 The five declarative types each had their own branch of Python — assembling a string, running it, reading

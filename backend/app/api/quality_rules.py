@@ -106,7 +106,7 @@ async def validate_quality_rule(
         name="draft",
         rule_type="sql",
         column_name=body.column_name,
-        config={"sql": body.sql},
+        config={"sql": body.sql, **({"expect": body.expect} if body.expect else {})},
         severity="warning",
         enabled=True,
     )
@@ -114,7 +114,13 @@ async def validate_quality_rule(
         result = await run_rule(db, dataset, draft)
     except QualityError as exc:
         return QualityRuleValidateResponse(ok=False, error=str(exc))
-    return QualityRuleValidateResponse(ok=True, failed_count=result["failed_count"])
+    detail = result.get("detail") or {}
+    return QualityRuleValidateResponse(
+        ok=True,
+        failed_count=result["failed_count"],
+        value=detail.get("value"),
+        expect=detail.get("expect"),
+    )
 
 
 @router.post(

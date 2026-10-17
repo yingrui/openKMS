@@ -695,7 +695,14 @@
     "qualityResultFailedOnly": "{{failed}} rows break it",
     "qualitySqlRan": "The SQL that ran",
     "qualityRunning": "Running…",
-    "qualityRunNeedsSave": "Save first — Run re-reads the saved rule, not this draft."
+    "qualityRunNeedsSave": "Save first — Run re-reads the saved rule, not this draft.",
+    "qualityExpect": "What counts as a problem",
+    "qualityExpectHint": "The query returns one number. Either it is rows that break the rule (so > 0 fails), or rows that must exist (so 0 fails).",
+    "qualityExpectZero": "Rows that break it (> 0 fails)",
+    "qualityExpectNonzero": "Nothing found (= 0 fails)",
+    "qualityResultCoverage": "found {{count}} rows",
+    "qualityResultNothingFound": "found nothing — there should be rows",
+    "qualityTemplate_coverage": "Rows exist for today"
   },
   "groups": {
     "title": "Groups",

@@ -33,9 +33,35 @@ describe('readRun', () => {
   });
 
   it('reads a sql run as the count of violating rows only — it never claims a checked count', () => {
-    expect(readRun(run({ status: 'failed', checked_count: null, failed_count: 178_222 }), 'sql')).toEqual({
+    expect(
+      readRun(
+        run({ status: 'failed', checked_count: null, failed_count: 178_222, detail: { value: 178_222, expect: 'zero' } }),
+        'sql',
+      ),
+    ).toEqual({ kind: 'sql', found: 178_222, expect: 'zero', passed: false });
+  });
+
+  it('reads a coverage run in its own direction: nothing found is the failure', () => {
+    expect(
+      readRun(
+        run({ status: 'failed', checked_count: null, failed_count: 1, detail: { value: 0, expect: 'nonzero' } }),
+        'sql',
+      ),
+    ).toEqual({ kind: 'sql', found: 0, expect: 'nonzero', passed: false });
+    expect(
+      readRun(
+        run({ status: 'passed', checked_count: null, failed_count: 0, detail: { value: 5, expect: 'nonzero' } }),
+        'sql',
+      ),
+    ).toEqual({ kind: 'sql', found: 5, expect: 'nonzero', passed: true });
+  });
+
+  it('falls back to the verdict count for runs recorded before detail.value', () => {
+    expect(readRun(run({ status: 'failed', checked_count: null, failed_count: 7 }), 'sql')).toEqual({
       kind: 'sql',
-      failed: 178_222,
+      found: 7,
+      expect: 'zero',
+      passed: false,
     });
   });
 
