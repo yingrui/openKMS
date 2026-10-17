@@ -82,7 +82,18 @@ export function DataInsightsPage() {
           <p className="page-subtitle">{t('dataInsights.subtitle')}</p>
         </div>
         <div className="resource-list-header-actions">
-          {/* A hundred dashboards is a lookup, not a browse: the name, the question or the narrative. */}
+          <button type="button" className="btn btn-primary" onClick={openCreate}>
+            <Plus size={18} aria-hidden />
+            <span>{t('dataInsights.newDashboard')}</span>
+          </button>
+        </div>
+      </div>
+
+      {/* Search is a view control, not an action: it sits with the list it filters, on its own row —
+          inside the header's action cluster it wrapped under the "new" button. */}
+      {/* Also while a search finds nothing: otherwise the box that would let you clear it disappears. */}
+      {!loading && (dashboards.length > 0 || debouncedSearch.trim() !== '') && (
+        <div className="resource-list-toolbar">
           <input
             type="search"
             className="ds-control resource-list-search"
@@ -91,12 +102,8 @@ export function DataInsightsPage() {
             value={search}
             onChange={(e) => setSearch(e.target.value)}
           />
-          <button type="button" className="btn btn-primary" onClick={openCreate}>
-            <Plus size={18} aria-hidden />
-            <span>{t('dataInsights.newDashboard')}</span>
-          </button>
         </div>
-      </div>
+      )}
 
       {loading && (
         <p className="resource-list-loading">

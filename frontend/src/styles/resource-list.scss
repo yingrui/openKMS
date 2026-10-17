@@ -19,6 +19,21 @@
   gap: var(--space-5);
 }
 
+/* The list's own controls, on a row above it — the same place the catalog puts its search. */
+.resource-list-toolbar {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  margin-bottom: var(--space-4);
+}
+
+/* Wide enough to type a name, not a toolbar's worth of space. */
+.resource-list-search {
+  width: 18rem;
+  max-width: 100%;
+}
+
 .resource-list-header-actions {
   display: flex;
   align-items: center;

@@ -261,6 +261,24 @@ Two things followed:
 - `freshness` still compares to `current_date`, which is right for "not older than N days" and wrong for
   "the last trading day is present". The skill reference says which to use for which.
 
+### The search box wrapped, and the sheet nobody imported (2026-10)
+
+The new search field on Data Insights landed **above** the "New dashboard" button. Two mistakes:
+
+- It was in the header's **action cluster**, which is `flex-wrap: wrap`; an 18rem field beside a primary
+  button wrapped under it. Search is a **view control**, not an action, so it moved to its own toolbar row
+  above the list — where the catalog already puts its search. It also stays visible while a search finds
+  nothing, or the box that would clear it would disappear with the results.
+- The styles went into `data-insights.scss`, which the **list** page does not import (it imports
+  `styles/resource-list.scss`; only the detail page imports the other). So the rules shipped in the wrong
+  chunk and applied to nothing. They live in the shared sheet now.
+
+The second one is the same trap as the report-view classes earlier in this project, and the guardrails
+still do not cover it: `check-global-classes` catches a class **used by 2+ routes** but defined in one
+route's sheet; nothing catches a class used by **one** page and defined in a sheet that page never loads.
+Adding that needs parent-route reachability (a tab's parent sheet *is* in scope, e.g. `quality-pill` from
+`dataset-detail.scss`), which is why it is a follow-up rather than a five-line check.
+
 ### Finding one of a hundred: facets, not channels (2026-10)
 
 Asked how a catalog stays usable at 100+ datasets and 100+ dashboards, and whether to copy the documents
