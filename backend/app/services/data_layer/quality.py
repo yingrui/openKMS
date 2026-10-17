@@ -67,7 +67,8 @@ async def run_rule(db: AsyncSession, dataset: Dataset, rule: QualityRule) -> dic
         raise QualityError(f"Rule execution failed: {exc}") from exc
 
     result = interpret(built.shape, names, rows, expect=built.expect)
-    # Every rule can say what it ran — the declarative ones included, because they are SQL too.
-    result["detail"] = {**(result.get("detail") or {}), "sql": built.sql}
+    # What the run measured, the threshold it was judged against, and the SQL it used — the measurement
+    # wins over the setting if they ever collide.
+    result["detail"] = {**built.detail, **(result.get("detail") or {}), "sql": built.sql}
     return result
 

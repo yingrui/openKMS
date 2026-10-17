@@ -695,7 +695,9 @@
     "qualityExpectNonzero": "一行都没有（= 0 失败）",
     "qualityResultCoverage": "找到 {{count}} 行",
     "qualityResultNothingFound": "一行都没有找到——本应有数据",
-    "qualityTemplate_coverage": "今天有数据"
+    "qualityTemplate_coverage": "今天有数据",
+    "qualityResultFreshnessLatest": "最新数据 {{latest}}",
+    "qualityWhen": "时间"
   },
   "groups": {
     "title": "分组",

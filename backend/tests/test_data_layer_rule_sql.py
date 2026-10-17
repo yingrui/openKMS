@@ -59,6 +59,8 @@ class TestGenerators:
         assert "AS latest" in q.sql
         assert q.shape == "freshness"
         assert q.params == {"max_age": 30}
+        # The threshold is part of what a run records: a date alone cannot explain the verdict.
+        assert q.detail == {"max_age_days": 30}
 
     @pytest.mark.parametrize("expect", ["zero", "nonzero"])
     def test_sql_rule_carries_what_its_number_means(self, expect):

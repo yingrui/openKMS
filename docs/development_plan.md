@@ -237,6 +237,26 @@ the exact live shape as a test. The general rule is the one this cost: **never c
 by its JSON text** — key order, number formatting and `undefined` all make that lie, and a database is
 entitled to reorder what it stores.
 
+### A passed run that says "no date to compare" (2026-10)
+
+The freshness rule reported **passed** and, in the same panel, *"No date to compare"*. Two parts of one
+answer disagreeing is the tell: the verdict came from the new unified runner, and the sentence came from
+a field that runner no longer recorded. Turning the five rule types into generators kept `latest` in the
+run's `detail` and dropped `max_age_days` — so the reader had a date and a threshold, saw only one, and
+fell back to "nothing to compare".
+
+Two fixes, because there were two mistakes:
+
+- **the threshold travels with the query** (`RuleQuery.detail`), so a run records what it was judged
+  against. A date alone cannot explain why it passed.
+- **the reader degrades instead of lying**: a run recorded while the threshold was missing still shows
+  *"Latest 2026-10-09"*, and only a genuinely empty result says "no date to compare".
+
+The refactor's own verification compared numbers — verdicts and counts — and passed. It could not see a
+field that had been *removed* from the record, because nothing asserted the shape of `detail`. The lesson
+is the narrow one: a verification that checks the verdicts of a refactor must also check the **payload**
+it hands to the UI.
+
 ### A count is not always a count of problems (2026-10)
 
 A reader pointed out that a `sql` rule's number is usually a count, but the *direction* is not fixed:

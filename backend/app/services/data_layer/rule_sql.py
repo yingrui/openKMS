@@ -58,6 +58,8 @@ class RuleQuery:
     params: dict[str, Any] = field(default_factory=dict)
     #: Only `number` (an author's query) reads this: whether the number counts problems or coverage.
     expect: Expect = "zero"
+    #: Context a run should record beside the measurement (the threshold it was judged against).
+    detail: dict[str, Any] = field(default_factory=dict)
 
 
 def _quote(identifier: str) -> str:
@@ -187,6 +189,9 @@ def build_rule_query(
             ),
             shape="freshness",
             params={"max_age": max_age},
+            # A run stores the threshold it was judged against — "latest 2026-10-09" alone cannot
+            # explain why that passed 30 days later.
+            detail={"max_age_days": max_age},
         )
 
     if rule_type == "sql":

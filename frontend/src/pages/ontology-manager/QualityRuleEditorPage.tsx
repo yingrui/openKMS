@@ -31,10 +31,13 @@ function ReadingText({ reading }: { reading: RunReading }) {
   const { t } = useTranslation('ontology');
   if (reading.kind === 'error') return <>{t('datasets.qualityResultError')}</>;
   if (reading.kind === 'freshness') {
-    return reading.latest && reading.maxAgeDays != null ? (
+    if (!reading.latest) return <>{t('datasets.qualityResultFreshnessNoData')}</>;
+    if (reading.maxAgeDays == null) {
+      // A run recorded while the threshold was not stored still knows the date it saw.
+      return <>{t('datasets.qualityResultFreshnessLatest', { latest: reading.latest })}</>;
+    }
+    return (
       <>{t('datasets.qualityResultFreshness', { latest: reading.latest, maxAge: reading.maxAgeDays })}</>
-    ) : (
-      <>{t('datasets.qualityResultFreshnessNoData')}</>
     );
   }
   if (reading.kind === 'sql') {
@@ -534,7 +537,7 @@ export function QualityRuleEditorPage() {
                   <table className="console-table">
                     <thead>
                       <tr>
-                        <th>{t('qualityIssues.lastRun')}</th>
+                        <th>{t('datasets.qualityWhen')}</th>
                         <th>{t('datasets.qualityStatus')}</th>
                         <th>{t('datasets.qualityResult')}</th>
                       </tr>
