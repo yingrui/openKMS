@@ -198,7 +198,8 @@ async def run_rule(db: AsyncSession, dataset: Dataset, rule: QualityRule) -> dic
                     "status": "failed" if failed else "passed",
                     "checked_count": 1,
                     "failed_count": failed,
-                    "detail": {"latest": str(latest), "max_age_days": max_age},
+                    # `str(None)` is "None": a date that does not exist must be null, not a word.
+                    "detail": {"latest": str(latest) if latest is not None else None, "max_age_days": max_age},
                 }
             else:
                 raise QualityError(f"Unknown rule type '{rule.rule_type}'.")

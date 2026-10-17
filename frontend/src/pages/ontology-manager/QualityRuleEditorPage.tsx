@@ -19,8 +19,41 @@ import { useConfirm } from '../../contexts/ConfirmContext';
 import { FormField, QueryFailureNotice, StatusChip } from '../../styles/design-system';
 import { SqlEditor } from '../../components/quality/SqlEditor';
 import { EntityViewHeader, EntityViewLoading, EntityViewPanel } from './EntityViewShell';
+import { readRun, type RunReading } from './qualityRunResult';
 
 const RULE_TYPES = ['not_null', 'unique', 'range', 'referential', 'freshness', 'sql'] as const;
+
+const num = (value: number) => value.toLocaleString();
+
+/** What a run measured, said in words — a number without a subject is not a result. */
+function ReadingText({ reading }: { reading: RunReading }) {
+  const { t } = useTranslation('ontology');
+  if (reading.kind === 'error') return <>{t('datasets.qualityResultError')}</>;
+  if (reading.kind === 'freshness') {
+    return reading.latest && reading.maxAgeDays != null ? (
+      <>{t('datasets.qualityResultFreshness', { latest: reading.latest, maxAge: reading.maxAgeDays })}</>
+    ) : (
+      <>{t('datasets.qualityResultFreshnessNoData')}</>
+    );
+  }
+  if (reading.kind === 'sql') {
+    return (
+      <>
+        {reading.failed
+          ? t('datasets.qualitySqlResult', { count: num(reading.failed) })
+          : t('datasets.qualitySqlPassed')}
+      </>
+    );
+  }
+  if (reading.failed === 0) {
+    return <>{t('datasets.qualityResultChecked', { checked: num(reading.checked ?? 0) })}</>;
+  }
+  return reading.checked != null ? (
+    <>{t('datasets.qualityResultCounts', { checked: num(reading.checked), failed: num(reading.failed) })}</>
+  ) : (
+    <>{t('datasets.qualityResultFailedOnly', { failed: num(reading.failed) })}</>
+  );
+}
 
 /**
  * The business constraints people keep asking for, as starting points. They are SQL, not templates in
@@ -125,6 +158,17 @@ export function QualityRuleEditorPage() {
     }
     return out;
   }, [ruleType, min, max, refDatasetId, refColumn, maxAge, sql]);
+
+  /**
+   * Run executes the **saved** rule, so a draft that differs would quietly run something else. The
+   * button says so by being disabled instead of running the old definition.
+   */
+  const isDirty =
+    !isNew &&
+    rule !== null &&
+    (name !== rule.name ||
+      (column || '') !== (rule.column_name ?? '') ||
+      JSON.stringify(config) !== JSON.stringify(rule.config ?? {}));
 
   const handleSave = async () => {
     if (!name.trim()) {
@@ -245,19 +289,6 @@ export function QualityRuleEditorPage() {
               </span>
             )}
           </>
-        }
-        actions={
-          !isNew ? (
-            <button
-              type="button"
-              className="btn btn-primary btn-sm"
-              onClick={() => void handleRun()}
-              disabled={running}
-            >
-              <Play size={14} aria-hidden />
-              {t('datasets.qualityRun')}
-            </button>
-          ) : undefined
         }
       />
 
@@ -389,7 +420,7 @@ export function QualityRuleEditorPage() {
 
         <div className="entity-view__panel-footer">
           {!isNew && (
-            /* Away from Run (the header) and from Save: a destructive action keeps its distance. */
+            /* Far left, across a gap: a destructive action keeps its distance from the verbs. */
             <button
               type="button"
               className="btn btn-danger btn-sm quality-rule-delete"
@@ -401,56 +432,97 @@ export function QualityRuleEditorPage() {
           <Link to={`${base}/quality`} className="btn btn-secondary">
             {t('shared.cancel')}
           </Link>
+          {!isNew && (
+            // Secondary, not primary: Save is what commits; Run re-reads what was committed.
+            <button
+              type="button"
+              className="btn btn-secondary"
+              onClick={() => void handleRun()}
+              disabled={running || isDirty}
+              title={isDirty ? t('datasets.qualityRunNeedsSave') : undefined}
+            >
+              <Play size={16} aria-hidden />
+              {running ? t('datasets.qualityRunning') : t('datasets.qualityRun')}
+            </button>
+          )}
           <button
             type="button"
             className="btn btn-primary"
             onClick={() => void handleSave()}
-            disabled={!name.trim() || submitting}
+            disabled={!name.trim() || submitting || (!isNew && !isDirty)}
           >
             {submitting ? t('shared.saving') : t('shared.save')}
           </button>
         </div>
+        {!isNew && isDirty && (
+          <p className="page-subtitle">{t('datasets.qualityRunNeedsSave')}</p>
+        )}
       </EntityViewPanel>
 
       {!isNew && (
         <EntityViewPanel>
           <div className="dataset-joins__toolbar">
-            <h3>{t('datasets.qualityHistory')}</h3>
+            <h3>{t('datasets.qualityResultTitle')}</h3>
+            {runs[0] && (
+              <span className="page-subtitle" title={runs[0].created_at}>
+                {new Date(runs[0].created_at).toLocaleString()}
+              </span>
+            )}
           </div>
           {runs.length === 0 ? (
             <p className="page-subtitle">{t('datasets.qualityNoHistory')}</p>
           ) : (
-            <div className="ds-table-wrap">
-              <table className="console-table">
-                <thead>
-                  <tr>
-                    <th>{t('datasets.qualityStatus')}</th>
-                    <th>{t('qualityIssues.numbers')}</th>
-                    <th>{t('qualityIssues.lastRun')}</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {runs.map((r) => (
-                    <tr key={r.id}>
-                      <td>
-                        <StatusChip tone={r.status === 'passed' ? 'ok' : 'warn'}>{r.status}</StatusChip>
-                      </td>
-                      <td>
-                        {r.failed_count != null && r.checked_count != null
-                          ? t('qualityIssues.failedOfChecked', {
-                              failed: r.failed_count,
-                              checked: r.checked_count,
-                            })
-                          : (r.failed_count ?? t('datasets.dash'))}
-                      </td>
-                      <td title={r.created_at}>
-                        {new Date(r.created_at).toLocaleString()}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+            <>
+              {/* The latest run, said in words: "51,425 of 725,192 rows break it" is a result;
+                  "failed 51,425" is a number without a subject. */}
+              <p className="quality-rule-reading">
+                <StatusChip tone={runs[0].status === 'passed' ? 'ok' : 'warn'}>
+                  {runs[0].status}
+                </StatusChip>
+                <ReadingText reading={readRun(runs[0], ruleType)} />
+              </p>
+              {runs[0].status === 'error' && runs[0].error_message && (
+                <QueryFailureNotice
+                  title={t('datasets.qualityResultError')}
+                  message={runs[0].error_message}
+                  detailsLabel={t('datasets.qualitySql')}
+                />
+              )}
+              {typeof (runs[0].detail as { sql?: unknown } | null)?.sql === 'string' && (
+                <details className="quality-rule-sql-ran">
+                  <summary>{t('datasets.qualitySqlRan')}</summary>
+                  <pre>{(runs[0].detail as { sql: string }).sql}</pre>
+                </details>
+              )}
+              {runs.length > 1 && (
+                <div className="ds-table-wrap">
+                  <table className="console-table">
+                    <thead>
+                      <tr>
+                        <th>{t('qualityIssues.lastRun')}</th>
+                        <th>{t('datasets.qualityStatus')}</th>
+                        <th>{t('datasets.qualityResult')}</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {runs.slice(1).map((r) => (
+                        <tr key={r.id}>
+                          <td title={r.created_at}>{new Date(r.created_at).toLocaleString()}</td>
+                          <td>
+                            <StatusChip tone={r.status === 'passed' ? 'ok' : 'warn'}>
+                              {r.status}
+                            </StatusChip>
+                          </td>
+                          <td>
+                            <ReadingText reading={readRun(r, ruleType)} />
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </>
           )}
         </EntityViewPanel>
       )}

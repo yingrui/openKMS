@@ -684,7 +684,18 @@
     "discardDraft": "Discard the unsaved rule?",
     "discardDraftHint": "The changes in the editor will be lost.",
     "qualityHistory": "Run history",
-    "qualityNoHistory": "This rule has not run yet"
+    "qualityNoHistory": "This rule has not run yet",
+    "qualityResultTitle": "Run result",
+    "qualityResult": "Result",
+    "qualityResultError": "Could not run",
+    "qualityResultFreshness": "Latest {{latest}} · allowed {{maxAge}} days",
+    "qualityResultFreshnessNoData": "No date to compare",
+    "qualityResultChecked": "all {{checked}} rows pass",
+    "qualityResultCounts": "{{failed}} of {{checked}} rows break it",
+    "qualityResultFailedOnly": "{{failed}} rows break it",
+    "qualitySqlRan": "The SQL that ran",
+    "qualityRunning": "Running…",
+    "qualityRunNeedsSave": "Save first — Run re-reads the saved rule, not this draft."
   },
   "groups": {
     "title": "Groups",

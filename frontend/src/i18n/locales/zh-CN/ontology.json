@@ -677,7 +677,18 @@
     "discardDraft": "放弃未保存的规则？",
     "discardDraftHint": "编辑中的修改会丢失。",
     "qualityHistory": "运行历史",
-    "qualityNoHistory": "这条规则还没有运行过"
+    "qualityNoHistory": "这条规则还没有运行过",
+    "qualityResultTitle": "运行结果",
+    "qualityResult": "结果",
+    "qualityResultError": "无法运行",
+    "qualityResultFreshness": "最新数据 {{latest}} · 允许 {{maxAge}} 天",
+    "qualityResultFreshnessNoData": "没有可比较的日期",
+    "qualityResultChecked": "{{checked}} 行全部通过",
+    "qualityResultCounts": "{{checked}} 行中有 {{failed}} 行违反",
+    "qualityResultFailedOnly": "{{failed}} 行违反",
+    "qualitySqlRan": "实际执行的 SQL",
+    "qualityRunning": "运行中…",
+    "qualityRunNeedsSave": "请先保存——「运行」读的是已保存的规则，不是这份草稿。"
   },
   "groups": {
     "title": "分组",
