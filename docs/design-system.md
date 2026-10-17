@@ -25,6 +25,7 @@ SCSS tokens, shared layouts, and UI conventions for the SPA (`frontend/src/style
 | **`_query-failure.scss`** / **`QueryFailureNotice.tsx`** | A failed query, told apart by cause (`definition` / `request` / `data`) with the driver detail folded away. Shared by the Playground and the Data Insights — **not** a page sheet, because both routes need it. |
 | **`_status.scss`** / **`StatusChip.tsx`** | A short state word (`draft` / `ready` / …) as a chip, so list pages stop inventing their own pill. Tones: neutral (default) / accent / ok / warn. |
 | **`--report-series-1…8`** (`_css-variables.scss`) | The Data Insights's series palette — distinguishable hues for charts and rankings, **themed** (dark mode lifts them) rather than hard-coded in a component. A caller may retheme without touching TS. |
+| **`--sql-keyword/string/number/comment/placeholder`** | Syntax colours for the SQL rule editor — a *code* palette, themed like the series, muted so code reads as code rather than as status. **`--color-selection`** is translucent on purpose: that selection sits over a highlight layer. |
 | **`CheckList.tsx`** | Dense membership / filter lists (`CheckList` / `CheckListItem`). |
 | **`_field.scss`** / **`FormField.tsx`** | Labeled text field stack (`.ds-field`) + shared control look (`.ds-control`). |
 | **`_index.scss`** | Optional Sass barrel (`@forward` tokens + mixins). |
@@ -298,6 +299,7 @@ Reach for a **shared primitive** before writing markup. The list below is the an
 |------|-----|-------|
 | Labelled field (text / number / select / textarea) | **`<FormField label hint>`** from `styles/design-system` | supplies ids, label, hint, and the control skin |
 | A control with no visible label | **`className="ds-control"`** | same skin, standalone |
+| A SQL query field | **`<SqlEditor>`** from `components/quality` | a textarea with syntax highlighting, **zero dependencies** (the textarea stays the input, a `<pre>` behind it paints). The two layers must lay text out identically — `join(highlightSql(x)) === x` is a test, not a hope. Tab indents |
 | Checkbox / switch row | **`.ds-check-row`** (or `<CheckRow>`) | never a bare `<input type=checkbox>` |
 | Multi-select list (pick several) | **`<CheckList>` + `<CheckListItem>`** | scrollable, uses the shared checkbox skin |
 | Buttons | **`btn btn-primary` / `btn-secondary` / `btn-danger`** | `btn-danger` for destructive actions only |

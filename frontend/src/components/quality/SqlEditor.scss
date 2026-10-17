@@ -1,0 +1,76 @@
+/* The textarea is the input; the <pre> behind it paints the colours. Both layers must lay the text out
+   identically or the caret drifts from the characters — same font, size, line height, padding, wrapping. */
+.sql-editor {
+  position: relative;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md, 8px);
+  background: var(--color-surface);
+
+  &:focus-within {
+    border-color: var(--color-accent);
+  }
+}
+
+.sql-editor__highlight,
+.sql-editor__input {
+  margin: 0;
+  padding: var(--space-3);
+  font-family: var(--font-mono, ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace);
+  font-size: var(--text-sm);
+  line-height: 1.6;
+  letter-spacing: normal;
+  tab-size: 2;
+  white-space: pre-wrap;
+  overflow-wrap: break-word;
+  word-break: normal;
+}
+
+.sql-editor__highlight {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+  border: 0;
+  background: transparent;
+}
+
+.sql-editor__input {
+  position: relative;
+  display: block;
+  width: 100%;
+  border: 0;
+  background: transparent;
+  /* The colours live in the layer behind; the caret stays visible in the text colour. */
+  color: transparent;
+  caret-color: var(--color-text);
+  resize: vertical;
+  outline: none;
+
+  &::selection {
+    color: transparent;
+    background: var(--color-selection);
+  }
+}
+
+.sql-editor__keyword {
+  color: var(--sql-keyword);
+  font-weight: 600;
+}
+
+.sql-editor__string {
+  color: var(--sql-string);
+}
+
+.sql-editor__number {
+  color: var(--sql-number);
+}
+
+.sql-editor__comment {
+  color: var(--sql-comment);
+  font-style: italic;
+}
+
+.sql-editor__placeholder {
+  color: var(--sql-placeholder);
+  font-weight: 600;
+}

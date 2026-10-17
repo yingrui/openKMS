@@ -48,6 +48,16 @@
   --report-series-7: #65a30d;
   --report-series-8: #db2777;
 
+  /* Syntax colours for the SQL rule editor: a *code* palette, themed like the report series rather
+     than hard-coded in a component. Muted on purpose — code should read as code, not as status. */
+  --sql-keyword: #4f46e5;
+  --sql-string: #047857;
+  --sql-number: #b45309;
+  --sql-comment: #6b7280;
+  --sql-placeholder: #0f766e;
+  /* Translucent on purpose: the SQL editor's selection sits over a highlight layer. */
+  --color-selection: rgb(59 130 246 / 28%);
+
   /* Intent surfaces (alerts, inline banners, chips) */
   --color-error-bg: #fef2f2;
   --color-error-border: #fecaca;
@@ -169,6 +179,12 @@
   --report-series-6: #22d3ee;
   --report-series-7: #a3e635;
   --report-series-8: #f472b6;
+  --sql-keyword: #a5b4fc;
+  --sql-string: #6ee7b7;
+  --sql-number: #fcd34d;
+  --sql-comment: #8b8b8b;
+  --sql-placeholder: #5eead4;
+  --color-selection: rgb(96 165 250 / 34%);
 
   color-scheme: dark;
 

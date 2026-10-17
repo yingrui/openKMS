@@ -6,6 +6,7 @@ import { toast } from 'sonner';
 import { fetchDatasetMetadata, fetchDatasets, type ColumnMetadata, type DatasetResponse } from '../../data/datasetsApi';
 import {
   createQualityRule,
+  deleteQualityRule,
   fetchQualityRule,
   fetchQualityRuns,
   runQualityRule,
@@ -14,7 +15,9 @@ import {
   type QualityRuleResponse,
   type QualityRunResponse,
 } from '../../data/qualityApi';
+import { useConfirm } from '../../contexts/ConfirmContext';
 import { FormField, QueryFailureNotice, StatusChip } from '../../styles/design-system';
+import { SqlEditor } from '../../components/quality/SqlEditor';
 import { EntityViewHeader, EntityViewLoading, EntityViewPanel } from './EntityViewShell';
 
 const RULE_TYPES = ['not_null', 'unique', 'range', 'referential', 'freshness', 'sql'] as const;
@@ -45,6 +48,7 @@ export function QualityRuleEditorPage() {
   const base = `/datasets/${datasetId}`;
   const navigate = useNavigate();
 
+  const confirm = useConfirm();
   const [rule, setRule] = useState<QualityRuleResponse | null>(null);
   const [runs, setRuns] = useState<QualityRunResponse[]>([]);
   const [columns, setColumns] = useState<ColumnMetadata[]>([]);
@@ -194,6 +198,24 @@ export function QualityRuleEditorPage() {
     }
   };
 
+  const handleDelete = async () => {
+    if (!ruleId) return;
+    const confirmed = await confirm({
+      title: t('shared.delete'),
+      message: t('datasets.qualityDeleteConfirm'),
+      confirmLabel: t('shared.delete'),
+      danger: true,
+    });
+    if (!confirmed) return;
+    try {
+      await deleteQualityRule(datasetId, ruleId);
+      toast.success(t('datasets.qualityDeleted'));
+      navigate(`${base}/quality`, { replace: true });
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : t('datasets.qualityDeleteFailed'));
+    }
+  };
+
   if (loading) return <EntityViewLoading label={t('shared.loading')} />;
 
   const title = isNew ? t('datasets.addQualityRule') : (rule?.name ?? t('datasets.editQualityRule'));
@@ -311,13 +333,11 @@ export function QualityRuleEditorPage() {
           /* Outside `.entity-view__form` on purpose: a query wants the width. */
           <div className="quality-rule-sql">
             <FormField label={t('datasets.qualitySql')} hint={t('datasets.qualitySqlHint')}>
-              <textarea
-                className="ds-control ds-control--mono"
-                rows={9}
-                spellCheck={false}
+              <SqlEditor
                 value={sql}
-                onChange={(e) => {
-                  setSql(e.target.value);
+                ariaLabel={t('datasets.qualitySql')}
+                onChange={(next) => {
+                  setSql(next);
                   setSqlResult(null);
                 }}
               />
@@ -368,6 +388,16 @@ export function QualityRuleEditorPage() {
         )}
 
         <div className="entity-view__panel-footer">
+          {!isNew && (
+            /* Away from Run (the header) and from Save: a destructive action keeps its distance. */
+            <button
+              type="button"
+              className="btn btn-danger btn-sm quality-rule-delete"
+              onClick={() => void handleDelete()}
+            >
+              {t('shared.delete')}
+            </button>
+          )}
           <Link to={`${base}/quality`} className="btn btn-secondary">
             {t('shared.cancel')}
           </Link>

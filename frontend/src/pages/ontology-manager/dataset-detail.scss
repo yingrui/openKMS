@@ -344,6 +344,11 @@
 }
 
 
+/* Delete sits at the far left of the footer row; Cancel/Save stay together on the right. */
+.quality-rule-delete {
+  margin-right: auto;
+}
+
 /* The SQL block of a rule: the query wants the width, the short fields do not. */
 .quality-rule-sql {
   display: flex;
