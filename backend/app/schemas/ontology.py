@@ -20,6 +20,9 @@ class PropertyDef(BaseModel):
 
 class ObjectTypeCreate(BaseModel):
     name: str
+    # Frozen identifier code/Cypher use. Generated from `name` when it has ASCII parts;
+    # required explicitly for a name without them (e.g. 中文).
+    api_name: str | None = None
     description: str | None = None
     dataset_id: str | None = None
     key_property: str | None = None
@@ -30,6 +33,8 @@ class ObjectTypeCreate(BaseModel):
 
 class ObjectTypeUpdate(BaseModel):
     name: str | None = None
+    # Only claimable while unset (rows that predate the column); renaming is refused.
+    api_name: str | None = None
     description: str | None = None
     dataset_id: str | None = None
     key_property: str | None = None
@@ -41,6 +46,7 @@ class ObjectTypeUpdate(BaseModel):
 class ObjectTypeResponse(BaseModel):
     id: str
     name: str
+    api_name: str | None = None  # frozen identifier for Function code and Cypher; NULL on legacy rows
     neo4j_label: str | None = None  # stable graph identity; unchanged when `name` is renamed
     description: str | None = None
     dataset_id: str | None = None
@@ -96,6 +102,8 @@ CARDINALITY_CHOICES = ("one-to-one", "one-to-many", "many-to-one", "many-to-many
 
 class LinkTypeCreate(BaseModel):
     name: str
+    # See ObjectTypeCreate.api_name.
+    api_name: str | None = None
     description: str | None = None
     source_object_type_id: str
     target_object_type_id: str
@@ -109,6 +117,8 @@ class LinkTypeCreate(BaseModel):
 
 class LinkTypeUpdate(BaseModel):
     name: str | None = None
+    # Only claimable while unset; renaming is refused.
+    api_name: str | None = None
     description: str | None = None
     source_object_type_id: str | None = None
     target_object_type_id: str | None = None
@@ -123,6 +133,7 @@ class LinkTypeUpdate(BaseModel):
 class LinkTypeResponse(BaseModel):
     id: str
     name: str
+    api_name: str | None = None  # frozen identifier for Function code and Cypher
     neo4j_rel_type: str | None = None  # stable graph identity; unchanged when `name` is renamed
     description: str | None = None
     source_object_type_id: str

@@ -12,6 +12,11 @@ export interface PropertyDef {
 export interface ObjectTypeResponse {
   id: string;
   name: string;
+  /**
+   * The name Function code and Cypher use (`client("WorkItem")`, `MATCH (n:WorkItem)`).
+   * Fixed at creation; `name` is the label people see and may change. Null on legacy rows.
+   */
+  api_name?: string | null;
   /** Neo4j node label — fixed at creation, so a rename keeps indexed nodes addressable. */
   neo4j_label?: string | null;
   description?: string | null;
@@ -51,6 +56,8 @@ export async function fetchObjectType(
 
 export async function createObjectType(data: {
   name: string;
+  /** Generated from `name` when it has ASCII parts; required for names that do not. */
+  api_name?: string;
   description?: string;
   dataset_id?: string;
   key_property?: string;
@@ -67,7 +74,7 @@ export async function createObjectType(data: {
 
 export async function updateObjectType(
   objectTypeId: string,
-  data: { name?: string; description?: string; dataset_id?: string; key_property?: string; is_master_data?: boolean; display_property?: string; properties?: PropertyDef[] }
+  data: { name?: string; api_name?: string; description?: string; dataset_id?: string; key_property?: string; is_master_data?: boolean; display_property?: string; properties?: PropertyDef[] }
 ): Promise<ObjectTypeResponse> {
   return request<ObjectTypeResponse>(`/api/object-types/${objectTypeId}`, {
     method: 'PUT',
@@ -260,6 +267,8 @@ export type Cardinality = (typeof CARDINALITY_OPTIONS)[number];
 export interface LinkTypeResponse {
   id: string;
   name: string;
+  /** Frozen identifier for Function code and Cypher; `name` is the display label. */
+  api_name?: string | null;
   /** Neo4j relationship type — fixed at creation, so a rename keeps indexed edges addressable. */
   neo4j_rel_type?: string | null;
   description?: string | null;

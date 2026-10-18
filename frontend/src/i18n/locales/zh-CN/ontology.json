@@ -855,7 +855,11 @@
         "edit": "编辑已有的 {{name}} 对象。",
         "delete": "删除 {{name}} 对象。"
       }
-    }
+    },
+    "apiName": "API 名称",
+    "apiNameHint": "代码和 Cypher 使用的名称（client(\"WorkItem\")、MATCH (n:WorkItem)）。创建后不可修改；上面的名称才是给人看的显示名。",
+    "apiNameInvalid": "需以字母开头，且只能包含字母、数字和下划线。",
+    "apiNameFixed": "创建时固定 —— 已发布的 Function 用它调用该类型。"
   },
   "linkTypes": {
     "title": "链接类型",

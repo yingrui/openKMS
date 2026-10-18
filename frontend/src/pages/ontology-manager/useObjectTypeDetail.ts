@@ -22,6 +22,9 @@ export type ObjectTypeDetailContext = {
   neo4jDataSources: DataSourceResponse[];
   name: string;
   setName: (v: string) => void;
+  /** Frozen identifier; empty when the row predates the column and has not claimed one. */
+  apiName: string;
+  setApiName: (v: string) => void;
   description: string;
   setDescription: (v: string) => void;
   isMasterData: boolean;

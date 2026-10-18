@@ -15,6 +15,12 @@ class ObjectType(Base):
 
     id: Mapped[str] = mapped_column(String(64), primary_key=True)
     name: Mapped[str] = mapped_column(String(256), nullable=False, unique=True)
+    # The name code and Cypher use for this type (`client("WorkItem")`, `MATCH (n:WorkItem)`).
+    # Fixed at creation: published Function source holds it as a string. `name` is the label
+    # people see and may change. NULL only on rows created before the column existed.
+    api_name: Mapped[str | None] = mapped_column(
+        String(128), nullable=True, unique=True, index=True
+    )
     # Graph identity: assigned at creation, never rewritten. Renaming `name` must not orphan
     # the nodes already indexed under this label (see object_neo4j_store.object_label).
     neo4j_label: Mapped[str | None] = mapped_column(String(256), nullable=True)

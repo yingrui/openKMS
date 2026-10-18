@@ -15,10 +15,10 @@ from app.services.ontology.dataset_tables import (
     get_dataset_row_count,
     get_dataset_row_count_where_not_null,
 )
+from app.services.ontology.api_names import ApiNameError, resolve_api_name
 from app.services.ontology.object_neo4j_store import (
     get_first_neo4j_datasource,
     link_rel_type,
-    neo4j_safe_rel_type,
     object_label,
     resolve_id_property,
     resolve_neo4j_id_column_for_row,
@@ -192,6 +192,14 @@ async def _neo4j_rel_counts_batch(
     return await run_with_neo4j_driver(ds, _run)
 
 
+async def _taken_api_names(db: AsyncSession, *, exclude_id: str | None = None) -> set[str]:
+    """Every api_name already claimed — the set a new/claiming row must not collide with."""
+    query = select(LinkType.api_name).where(LinkType.api_name.isnot(None))
+    if exclude_id:
+        query = query.where(LinkType.id != exclude_id)
+    return set((await db.execute(query)).scalars().all())
+
+
 async def _to_response(db: AsyncSession, link_type: LinkType, link_count_override: int | None = None) -> LinkTypeResponse:
     count = link_count_override if link_count_override is not None else await _link_count_for_type(db, link_type)
     source_type = await db.get(ObjectType, link_type.source_object_type_id)
@@ -200,6 +208,7 @@ async def _to_response(db: AsyncSession, link_type: LinkType, link_count_overrid
     return LinkTypeResponse(
         id=link_type.id,
         name=link_type.name,
+        api_name=getattr(link_type, "api_name", None),
         neo4j_rel_type=link_rel_type(link_type),
         description=link_type.description,
         source_object_type_id=link_type.source_object_type_id,
@@ -297,8 +306,17 @@ async def create_link_type(
     p = request.state.openkms_jwt_payload
     sub = p.get("sub")
     uname = p.get("preferred_username") or p.get("name")
-    # Fixed at creation so renaming the link type keeps the indexed edges addressable.
-    rel_type = neo4j_safe_rel_type(body.name)
+    # `api_name` is the frozen identifier code/Cypher use, and it doubles as the relationship
+    # type: both are assigned here, so renaming `name` later changes neither.
+    try:
+        api_name = resolve_api_name(
+            requested=body.api_name,
+            display_name=body.name,
+            taken=await _taken_api_names(db),
+        )
+    except ApiNameError as e:
+        raise HTTPException(status_code=400, detail=str(e)) from e
+    rel_type = api_name
     rel_clash = (
         await db.execute(select(LinkType).where(LinkType.neo4j_rel_type == rel_type))
     ).scalars().first()
@@ -307,12 +325,13 @@ async def create_link_type(
             status_code=400,
             detail=(
                 f"Graph relationship type '{rel_type}' is already used by link type "
-                f"'{rel_clash.name}'. Names that differ only in punctuation map to the same type."
+                f"'{rel_clash.name}' indexed before api_name existed. Pick another api_name."
             ),
         )
     link_type = LinkType(
         id=str(uuid.uuid4()),
         name=body.name,
+        api_name=api_name,
         neo4j_rel_type=rel_type,
         description=body.description,
         source_object_type_id=body.source_object_type_id,
@@ -383,7 +402,25 @@ async def update_link_type(
         raise HTTPException(status_code=404, detail="Link type not found")
     await _require_link_type_read(request, db, link_type_id)
     if body.name is not None:
+        # `neo4j_rel_type` stays as it was — a rename is a display change, not a re-index.
         link_type.name = body.name
+    if body.api_name is not None and body.api_name.strip():
+        if link_type.api_name:
+            raise HTTPException(
+                status_code=400,
+                detail=(
+                    "api_name is fixed at creation — published Functions reference this link type "
+                    "by it. Rename the display name instead."
+                ),
+            )
+        try:
+            link_type.api_name = resolve_api_name(
+                requested=body.api_name,
+                display_name=link_type.name,
+                taken=await _taken_api_names(db, exclude_id=link_type_id),
+            )
+        except ApiNameError as e:
+            raise HTTPException(status_code=400, detail=str(e)) from e
     if body.description is not None:
         link_type.description = body.description
     if body.source_object_type_id is not None:

@@ -28,8 +28,8 @@ Rules:
 
 | Call | Meaning |
 |------|---------|
-| `client("ObjectTypeName").search(limit=N, filters={"search": "…", "status": "in_progress"})` | List instances; non-`search` keys become `prop.<name>=` equality filters |
-| `client("ObjectTypeName").fetch_one(object_id)` | One instance by id |
+| `client("ObjectTypeApiName").search(limit=N, filters={"search": "…", "status": "in_progress"})` | List instances; non-`search` keys become `prop.<name>=` equality filters. Resolves by `api_name`, then display `name`, then id |
+| `client("ObjectTypeApiName").fetch_one(object_id)` | One instance by id |
 | `client.get_links("LinkTypeName", source_id=…, limit=N)` | Link rows filtered by `source_object_id` on the server |
 | `client("publishedApiName").execute_function({…})` | Call another **published** Function |
 | `client("apiName").execute_function({…})` | Compose another published Function by api name |

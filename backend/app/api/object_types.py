@@ -28,12 +28,12 @@ from app.services.ontology.neo4j_async import (
 )
 from app.models.object_instance import ObjectInstance
 from app.models.object_type import ObjectType
+from app.services.ontology.api_names import ApiNameError, resolve_api_name
 from app.services.ontology.query_filters import parse_prop_filters
 from app.services.ontology.object_neo4j_store import (
     fetch_object_from_neo4j,
     get_first_neo4j_datasource,
     merge_object_row_to_neo4j,
-    neo4j_safe_label,
     object_label,
     query_neo4j_nodes,
     resolve_id_property,
@@ -125,6 +125,7 @@ def _to_response(obj_type: ObjectType, instance_count: int, dataset_name: str | 
     return ObjectTypeResponse(
         id=obj_type.id,
         name=obj_type.name,
+        api_name=getattr(obj_type, "api_name", None),
         neo4j_label=object_label(obj_type),
         description=obj_type.description,
         dataset_id=obj_type.dataset_id,
@@ -201,6 +202,14 @@ def _validate_property_refs(
             )
 
 
+async def _taken_api_names(db: AsyncSession, *, exclude_id: str | None = None) -> set[str]:
+    """Every api_name already claimed — the set a new/claiming row must not collide with."""
+    query = select(ObjectType.api_name).where(ObjectType.api_name.isnot(None))
+    if exclude_id:
+        query = query.where(ObjectType.id != exclude_id)
+    return set((await db.execute(query)).scalars().all())
+
+
 @router.get("", response_model=ObjectTypeListResponse)
 async def list_object_types(
     request: Request,
@@ -256,9 +265,17 @@ async def create_object_type(
         key_property=body.key_property,
         display_property=body.display_property,
     )
-    # The graph label is fixed here, not derived from `name` on every read: renaming a type
-    # must not orphan the nodes already indexed under it.
-    label = neo4j_safe_label(body.name)
+    # `api_name` is the frozen identifier code/Cypher use, and it doubles as the graph label:
+    # both are assigned here, so renaming `name` later changes neither (see object_label).
+    try:
+        api_name = resolve_api_name(
+            requested=body.api_name,
+            display_name=body.name,
+            taken=await _taken_api_names(db),
+        )
+    except ApiNameError as e:
+        raise HTTPException(status_code=400, detail=str(e)) from e
+    label = api_name
     label_clash = (
         await db.execute(select(ObjectType).where(ObjectType.neo4j_label == label))
     ).scalars().first()
@@ -267,7 +284,7 @@ async def create_object_type(
             status_code=400,
             detail=(
                 f"Graph label '{label}' is already used by object type "
-                f"'{label_clash.name}'. Names that differ only in punctuation map to the same label."
+                f"'{label_clash.name}' indexed before api_name existed. Pick another api_name."
             ),
         )
     p = request.state.openkms_jwt_payload
@@ -276,6 +293,7 @@ async def create_object_type(
     obj_type = ObjectType(
         id=str(uuid.uuid4()),
         name=body.name,
+        api_name=api_name,
         neo4j_label=label,
         description=body.description,
         dataset_id=body.dataset_id,
@@ -347,6 +365,25 @@ async def update_object_type(
             raise HTTPException(status_code=400, detail="Object type with this name already exists")
         # `neo4j_label` stays as it was — a rename is a display change, not a re-index.
         obj_type.name = body.name
+    if body.api_name is not None and body.api_name.strip():
+        if obj_type.api_name:
+            raise HTTPException(
+                status_code=400,
+                detail=(
+                    "api_name is fixed at creation — published Functions call this type by it. "
+                    "Rename the display name instead."
+                ),
+            )
+        try:
+            # Claiming one for a row created before the column existed. The graph label stays
+            # where the data already is, so this is not a re-index either.
+            obj_type.api_name = resolve_api_name(
+                requested=body.api_name,
+                display_name=obj_type.name,
+                taken=await _taken_api_names(db, exclude_id=object_type_id),
+            )
+        except ApiNameError as e:
+            raise HTTPException(status_code=400, detail=str(e)) from e
     if body.key_property is not None:
         obj_type.key_property = body.key_property.strip() or None
     if body.description is not None:

@@ -67,21 +67,39 @@ class Client:
         except urllib.error.URLError as e:
             raise OntologyApiError(str(e)) from e
 
+    @staticmethod
+    def _match_entity(items: list, api_name: str) -> str | None:
+        """`api_name` first (the frozen identifier), then the display name, then the id.
+
+        The display-name match keeps Functions written before api_name existed working; the id
+        match is what an agent with only an id can use.
+        """
+        for item in items:
+            if item.get("api_name") == api_name:
+                return item["id"]
+        for item in items:
+            if item.get("name") == api_name:
+                return item["id"]
+        for item in items:
+            if item.get("id") == api_name:
+                return item["id"]
+        return None
+
     def _resolve_object_type_id(self, object_type_api_name: str) -> str:
         data = self._request("GET", "/api/object-types")
         items = data.get("items") if isinstance(data, dict) else data if isinstance(data, list) else []
-        for ot in items:
-            if ot.get("name") == object_type_api_name or ot.get("id") == object_type_api_name:
-                return ot["id"]
-        raise OntologyApiError(f"Object type not found: {object_type_api_name}")
+        type_id = self._match_entity(list(items or []), object_type_api_name)
+        if type_id is None:
+            raise OntologyApiError(f"Object type not found: {object_type_api_name}")
+        return type_id
 
     def _resolve_link_type_id(self, link_type_api_name: str) -> str:
         data = self._request("GET", "/api/link-types")
         items = data.get("items") if isinstance(data, dict) else data if isinstance(data, list) else []
-        for lt in items:
-            if lt.get("name") == link_type_api_name or lt.get("id") == link_type_api_name:
-                return lt["id"]
-        raise OntologyApiError(f"Link type not found: {link_type_api_name}")
+        type_id = self._match_entity(list(items or []), link_type_api_name)
+        if type_id is None:
+            raise OntologyApiError(f"Link type not found: {link_type_api_name}")
+        return type_id
 
     def get_object(self, object_type_api_name: str, object_id: str) -> dict:
         type_id = self._resolve_object_type_id(object_type_api_name)

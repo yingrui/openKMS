@@ -276,9 +276,9 @@ The bundled **openkms-skill** CLI wraps **lifecycle** and **relationships** the 
 | Method | Path | Description |
 |--------|------|-------------|
 | GET | `/api/object-types` | List object types (authenticated, read ACL); ?count_from_neo4j=true for instance_count from Neo4j |
-| POST | `/api/object-types` | Create object type (admin-only); bootstraps owner ACL. Sets the immutable `neo4j_label` (rejects a name whose label is already taken); `key_property` / `display_property` must be declared properties |
+| POST | `/api/object-types` | Create object type (admin-only); bootstraps owner ACL. Accepts optional `api_name` (the frozen identifier code/Cypher use): generated from `name` when it has ASCII parts, **required** when it has none, **400** when malformed or taken. `neo4j_label` is set to it. `key_property` / `display_property` must be declared properties |
 | GET | `/api/object-types/{id}` | Get object type; ?count_from_neo4j=true for instance_count from Neo4j |
-| PUT | `/api/object-types/{id}` | Update object type (admin-only). A rename keeps `neo4j_label`, so indexed nodes stay addressable |
+| PUT | `/api/object-types/{id}` | Update object type (admin-only). Renaming `name` keeps `api_name` and `neo4j_label` — display only. `api_name` is accepted **only while unset** (a row predating the column); sending it for a row that has one is **400** |
 | DELETE | `/api/object-types/{id}` | Delete object type (admin-only) |
 | GET | `/api/object-types/{id}/objects` | List object instances **from the graph only** (read ACL on parent type). `?search=` and `?prop.<name>=` run in Neo4j, so `?limit=`/`?offset=` and `total` describe the filtered set. **409** when no Neo4j data source is configured; **503** when the graph is unreachable; `indexed: false` when the type has rows to index but the label is empty |
 | POST | `/api/object-types/{id}/objects` | Create object instance into apply queue + same-request Neo4j sync when DS exists (admin-only + write ACL; no-dataset types only) |
@@ -289,9 +289,9 @@ The bundled **openkms-skill** CLI wraps **lifecycle** and **relationships** the 
 | POST | `/api/object-types/index-to-neo4j` | Index object types that have a linked dataset or stored instances to Neo4j as nodes (admin-only; body: neo4j_data_source_id) |
 | POST | `/api/object-types/{id}/index-to-neo4j` | Index one object type to Neo4j from its dataset, or drain the `object_instances` apply queue when there is no dataset (admin-only; body: neo4j_data_source_id; 400 if neither applies) |
 | GET | `/api/link-types` | List link types (authenticated); ?count_from_neo4j=true for link_count from Neo4j |
-| POST | `/api/link-types` | Create link type (admin-only). Sets the immutable `neo4j_rel_type` (rejects a name whose type is already taken) |
+| POST | `/api/link-types` | Create link type (admin-only). Same `api_name` rules as object types; `neo4j_rel_type` is set to it |
 | GET | `/api/link-types/{id}` | Get link type; ?count_from_neo4j=true for link_count from Neo4j |
-| PUT | `/api/link-types/{id}` | Update link type (admin-only) |
+| PUT | `/api/link-types/{id}` | Update link type (admin-only). `name` is display only; `api_name` is claimable only while unset |
 | DELETE | `/api/link-types/{id}` | Delete link type (admin-only) |
 | GET | `/api/link-types/{id}/links` | List link instances (from Neo4j when available; `?limit=`, `?offset=`, optional `?source_object_id=`, `?source_key_value=`). Junction-table and source-FK paths push those filters into SQL, so `total` matches the filtered set |
 | POST | `/api/link-types/{id}/links` | Create link instance (admin-only; rejected when link type uses junction dataset) |

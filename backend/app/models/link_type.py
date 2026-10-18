@@ -17,6 +17,11 @@ class LinkType(Base):
 
     id: Mapped[str] = mapped_column(String(64), primary_key=True)
     name: Mapped[str] = mapped_column(String(256), nullable=False)
+    # The name code and Cypher use for this link type (`client("governed_by")`). Fixed at
+    # creation; `name` is the label people see. NULL only on rows predating the column.
+    api_name: Mapped[str | None] = mapped_column(
+        String(128), nullable=True, unique=True, index=True
+    )
     # Graph identity: assigned at creation, never rewritten (see object_neo4j_store.link_rel_type).
     neo4j_rel_type: Mapped[str | None] = mapped_column(String(256), nullable=True)
     description: Mapped[str | None] = mapped_column(Text, nullable=True)

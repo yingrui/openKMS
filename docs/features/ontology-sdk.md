@@ -26,7 +26,7 @@ def execute(input: dict, client: Client) -> dict:
 
 - Publish validates `uses=` against published functions.
 - Nested `execute_function` is depth- and cycle-guarded.
-- `client("…")` resolves object types / link types / functions by api name over the HTTP API.
+- `client("…")` resolves over the HTTP API: object/link types match **`api_name`** (the frozen identifier), then the display `name` (legacy rows predate `api_name`), then the row `id`. Functions match their `api_name`.
 
 ## External callers (same Client)
 

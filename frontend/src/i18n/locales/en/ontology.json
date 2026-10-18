@@ -862,7 +862,11 @@
         "edit": "Edit an existing {{name}} object.",
         "delete": "Delete a {{name}} object."
       }
-    }
+    },
+    "apiName": "API name",
+    "apiNameHint": "The name code and Cypher use (client(\"WorkItem\"), MATCH (n:WorkItem)). Fixed after creation; the name above is what people see.",
+    "apiNameInvalid": "Start with a letter; use only letters, digits and underscores.",
+    "apiNameFixed": "Fixed at creation — published Functions call this type by it."
   },
   "linkTypes": {
     "title": "Link Types",

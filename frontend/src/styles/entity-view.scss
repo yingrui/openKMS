@@ -532,3 +532,15 @@ body:has(.app-page-pane > .entity-view) .app-main {
   align-items: center;
   gap: var(--space-2);
 }
+
+/* A frozen identifier is read, not edited — show it as code rather than as a field. */
+.entity-view__code {
+  align-self: flex-start;
+  padding: 2px var(--space-2);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-bg-elevated);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: var(--text-sm);
+  cursor: help;
+}

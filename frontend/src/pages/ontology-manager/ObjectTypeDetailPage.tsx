@@ -63,6 +63,7 @@ export function ObjectTypeDetailPage() {
   const [saving, setSaving] = useState(false);
   const [indexing, setIndexing] = useState(false);
   const [name, setName] = useState('');
+  const [apiName, setApiName] = useState('');
   const [description, setDescription] = useState('');
   const [isMasterData, setIsMasterData] = useState(false);
   const [displayProperty, setDisplayProperty] = useState('');
@@ -81,6 +82,7 @@ export function ObjectTypeDetailPage() {
   const applyObjectType = useCallback((ot: ObjectTypeResponse) => {
     setObjectType(ot);
     setName(ot.name);
+    setApiName(ot.api_name || '');
     setDescription(ot.description || '');
     setIsMasterData(ot.is_master_data ?? false);
     setDisplayProperty(ot.display_property || '');
@@ -204,6 +206,9 @@ export function ObjectTypeDetailPage() {
     try {
       const updated = await updateObjectType(typeId, {
         name: name.trim(),
+        // Only a row that predates api_name can claim one; sending it again would be a rename,
+        // which the API refuses (published Functions call this type by it).
+        ...(objectType?.api_name ? {} : apiName.trim() ? { api_name: apiName.trim() } : {}),
         description: description.trim() || undefined,
         dataset_id: datasetId || undefined,
         properties: datasetId ? toPropertyDefs(properties) : toHandCreatedPropertyDefs(properties),
@@ -228,6 +233,8 @@ export function ObjectTypeDetailPage() {
     keyProperty,
     isMasterData,
     displayProperty,
+    apiName,
+    objectType?.api_name,
     applyObjectType,
     t,
   ]);
@@ -265,6 +272,8 @@ export function ObjectTypeDetailPage() {
             neo4jDataSources,
             name,
             setName,
+            apiName,
+            setApiName,
             description,
             setDescription,
             isMasterData,
@@ -293,6 +302,7 @@ export function ObjectTypeDetailPage() {
       datasets,
       neo4jDataSources,
       name,
+      apiName,
       description,
       isMasterData,
       displayProperty,

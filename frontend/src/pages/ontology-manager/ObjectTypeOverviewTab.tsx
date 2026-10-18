@@ -24,6 +24,8 @@ export function ObjectTypeOverviewTab() {
     relatedFunctions,
     name,
     setName,
+    apiName,
+    setApiName,
     description,
     setDescription,
     isMasterData,
@@ -143,6 +145,21 @@ export function ObjectTypeOverviewTab() {
         <div className="entity-view__form">
           <EntityViewField label={t('objectTypes.name')}>
             <input className="console-form-control" value={name} onChange={(e) => setName(e.target.value)} />
+          </EntityViewField>
+          <EntityViewField label={t('objectTypes.apiName')}>
+            {objectType.api_name ? (
+              <code className="entity-view__code" title={t('objectTypes.apiNameFixed')}>
+                {objectType.api_name}
+              </code>
+            ) : (
+              <input
+                className="console-form-control"
+                value={apiName}
+                onChange={(e) => setApiName(e.target.value)}
+                placeholder={t('objectTypes.apiName')}
+                title={t('objectTypes.apiNameHint')}
+              />
+            )}
           </EntityViewField>
           <EntityViewField label={t('objectTypes.description')}>
             <textarea

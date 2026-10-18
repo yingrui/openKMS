@@ -14,7 +14,11 @@ import {
   type OntologyGroupResponse,
 } from '../../data/ontologyFunctionsApi';
 import { intentToRuleType } from './actionRuleTypes';
-import { actionApiName } from './objectTypeNaming';
+import {
+  actionApiName,
+  isValidApiName,
+  toPascalCaseApiName,
+} from './objectTypeNaming';
 import { PropertiesEditor } from './objectTypeFormParts';
 import {
   ontologyTypeFromColumn,
@@ -61,6 +65,10 @@ export function ObjectTypeCreateWizard({
   const [submitting, setSubmitting] = useState(false);
 
   const [name, setName] = useState('');
+  // The frozen identifier code/Cypher use. Prefilled from `name` until the author edits it;
+  // required for names that have no ASCII parts (`toPascalCaseApiName` returns the fallback).
+  const [apiName, setApiName] = useState('');
+  const [apiNameTouched, setApiNameTouched] = useState(false);
   const [description, setDescription] = useState('');
   const [groupId, setGroupId] = useState('');
   const [isMasterData, setIsMasterData] = useState(false);
@@ -74,7 +82,9 @@ export function ObjectTypeCreateWizard({
   const savedPropNamesRef = useRef<Set<string> | null>(null);
 
   const step = STEPS[stepIndex];
-  const canNextIdentity = name.trim().length > 0;
+  const effectiveApiName = (apiNameTouched ? apiName : toPascalCaseApiName(name)).trim();
+  const apiNameInvalid = effectiveApiName.length > 0 && !isValidApiName(effectiveApiName);
+  const canNextIdentity = name.trim().length > 0 && effectiveApiName.length > 0 && !apiNameInvalid;
 
   const groupName = useMemo(
     () => groups.find((g) => g.id === groupId)?.display_name,
@@ -97,6 +107,8 @@ export function ObjectTypeCreateWizard({
     setStepIndex(0);
     setSubmitting(false);
     setName('');
+    setApiName('');
+    setApiNameTouched(false);
     setDescription('');
     setGroupId(
       initialGroupId && groups.some((g) => g.id === initialGroupId) ? initialGroupId : '',
@@ -173,6 +185,7 @@ export function ObjectTypeCreateWizard({
     try {
       const created = await createObjectType({
         name: otName,
+        api_name: effectiveApiName,
         description: description.trim() || undefined,
         dataset_id: datasetId || undefined,
         properties: datasetId ? toPropertyDefs(properties) : toHandCreatedPropertyDefs(properties),
@@ -336,6 +349,22 @@ export function ObjectTypeCreateWizard({
                 </FormField>
               )}
             </div>
+            <FormField
+              label={t('objectTypes.apiName')}
+              hint={apiNameInvalid ? t('objectTypes.apiNameInvalid') : t('objectTypes.apiNameHint')}
+            >
+              <input
+                type="text"
+                value={effectiveApiName}
+                onChange={(e) => {
+                  setApiNameTouched(true);
+                  setApiName(e.target.value);
+                }}
+                placeholder="e.g. Disease"
+                disabled={submitting}
+                aria-invalid={apiNameInvalid}
+              />
+            </FormField>
             <FormField label={t('objectTypes.description')}>
               <input
                 type="text"

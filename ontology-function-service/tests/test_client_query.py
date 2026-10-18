@@ -53,3 +53,49 @@ def test_get_links_passes_source_object_id():
     assert method == "GET"
     assert path.endswith("/links")
     assert query == {"limit": "20", "source_object_id": "wi-1"}
+
+
+def test_api_name_wins_over_a_stale_display_name():
+    """The frozen identifier is what a Function should match, even after a display rename."""
+
+    class _Renamed(_FakeClient):
+        def _request(self, method, path, *, query=None, body=None, extra_headers=None):
+            self.calls.append((method, path, query))
+            if path == "/api/object-types":
+                return {"items": [{"id": "ot-1", "api_name": "WorkItem", "name": "Task"}]}
+            if "/objects" in path:
+                return {"id": "wi-1", "data": {"status": "open"}}
+            return {}
+
+    c = _Renamed()
+    assert c.get_object("WorkItem", "wi-1")["id"] == "wi-1"
+
+
+def test_display_name_match_keeps_legacy_functions_working():
+    """Rows created before api_name existed have `api_name: null` and resolve by name."""
+
+    class _Legacy(_FakeClient):
+        def _request(self, method, path, *, query=None, body=None, extra_headers=None):
+            self.calls.append((method, path, query))
+            if path == "/api/object-types":
+                return {"items": [{"id": "ot-1", "api_name": None, "name": "WorkItem"}]}
+            if "/objects" in path:
+                return {"id": "wi-1", "data": {}}
+            return {}
+
+    c = _Legacy()
+    assert c.get_object("WorkItem", "wi-1")["id"] == "wi-1"
+
+
+def test_a_uuid_still_resolves():
+    class _ById(_FakeClient):
+        def _request(self, method, path, *, query=None, body=None, extra_headers=None):
+            self.calls.append((method, path, query))
+            if path == "/api/object-types":
+                return {"items": [{"id": "536033d0", "api_name": "Stock", "name": "股票"}]}
+            if "/objects" in path:
+                return {"id": "536033d0", "data": {}}
+            return {}
+
+    c = _ById()
+    assert c.get_object("536033d0", "x")["id"] == "536033d0"
