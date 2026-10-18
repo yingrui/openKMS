@@ -13,6 +13,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.data_source import DataSource
+from app.models.link_type import LinkType
 from app.models.object_instance import ObjectInstance
 from app.models.object_type import ObjectType
 from app.services.boundaries import boundary
@@ -21,8 +22,41 @@ from app.services.ontology.neo4j_async import run_with_neo4j_driver
 
 def neo4j_safe_label(name: str) -> str:
     """Convert object type name to Neo4j-safe label (alphanumeric, underscore)."""
-    s = re.sub(r"[^a-zA-Z0-9_]", "_", name)
-    return s or "Node"
+    return neo4j_safe_rel_type(name, fallback="Node")
+
+
+def neo4j_safe_rel_type(name: str, *, fallback: str = "relates_to") -> str:
+    """Convert a schema name to a Neo4j-safe label / relationship type.
+
+    Case is preserved: link type names are lower_snake_case in Postgres and indexed
+    verbatim in Neo4j (e.g. ``governed_by``).
+    """
+    s = re.sub(r"[^a-zA-Z0-9_]", "_", (name or "").strip())
+    return s or fallback
+
+
+def object_label(obj_type: ObjectType) -> str:
+    """The Neo4j node label this object type is indexed under.
+
+    Read from ``ObjectType.neo4j_label``, which is assigned once at creation and never
+    rewritten. Renaming the object type therefore changes only the display name; the
+    already-indexed nodes stay addressable instead of being orphaned under the old label.
+
+    The name-derived fallback keeps rows created before that column existed readable (the
+    migration backfills them to exactly this value).
+    """
+    stored = getattr(obj_type, "neo4j_label", None)
+    if isinstance(stored, str) and stored.strip():
+        return stored.strip()
+    return neo4j_safe_label(obj_type.name)
+
+
+def link_rel_type(link_type: LinkType) -> str:
+    """The Neo4j relationship type a link type is indexed under (stable, like ``object_label``)."""
+    stored = getattr(link_type, "neo4j_rel_type", None)
+    if isinstance(stored, str) and stored.strip():
+        return stored.strip()
+    return neo4j_safe_rel_type(link_type.name)
 
 
 # Platform object identity on Neo4j (hand-created / Action-managed). Not a schema property.

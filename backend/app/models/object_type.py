@@ -15,6 +15,9 @@ class ObjectType(Base):
 
     id: Mapped[str] = mapped_column(String(64), primary_key=True)
     name: Mapped[str] = mapped_column(String(256), nullable=False, unique=True)
+    # Graph identity: assigned at creation, never rewritten. Renaming `name` must not orphan
+    # the nodes already indexed under this label (see object_neo4j_store.object_label).
+    neo4j_label: Mapped[str | None] = mapped_column(String(256), nullable=True)
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
     dataset_id: Mapped[str | None] = mapped_column(
         String(64), ForeignKey("datasets.id", ondelete="SET NULL"), nullable=True, index=True

@@ -41,6 +41,7 @@ class ObjectTypeUpdate(BaseModel):
 class ObjectTypeResponse(BaseModel):
     id: str
     name: str
+    neo4j_label: str | None = None  # stable graph identity; unchanged when `name` is renamed
     description: str | None = None
     dataset_id: str | None = None
     dataset_name: str | None = None
@@ -119,6 +120,7 @@ class LinkTypeUpdate(BaseModel):
 class LinkTypeResponse(BaseModel):
     id: str
     name: str
+    neo4j_rel_type: str | None = None  # stable graph identity; unchanged when `name` is renamed
     description: str | None = None
     source_object_type_id: str
     target_object_type_id: str

@@ -146,11 +146,11 @@ All write subcommands accept `--yes` / `--dry-run`. Without `--yes` on non-TTY s
 |---|---|---|---|
 | `ontology objects list` | GET | `/api/object-types` | Optional `?is_master_data=true&count_from_neo4j=true`. Returns `{items:[ObjectType], total}`. |
 | `ontology objects get` | GET | `/api/object-types/{id}` | Optional `?count_from_neo4j=true`. |
-| `ontology objects create-type` *(write)* | POST | `/api/object-types` | Body `{name, description?, dataset_id?, key_property?, is_master_data, display_property?, properties:[{name,type,required}]}`. |
+| `ontology objects create-type` *(write)* | POST | `/api/object-types` | Body `{name, description?, dataset_id?, key_property?, is_master_data, display_property?, properties:[{name,type,required}]}`. `key_property` / `display_property` must be declared properties. The response carries `neo4j_label` — the Cypher label, fixed at creation (renaming does not move it). |
 | `ontology objects update-type` *(write)* | PUT | `/api/object-types/{id}` | Only the flags you pass are sent (all `ObjectTypeUpdate` fields optional). Empty update exits 2. |
 | `ontology objects delete-type` *(write)* | DELETE | `/api/object-types/{id}` | Cascades; no body. |
-| `ontology objects instances list` | GET | `/api/object-types/{id}/objects` | `?search=&limit=&offset=`. |
-| `ontology objects instances get` | GET | `/api/object-types/{type-id}/objects/{id}` | — |
+| `ontology objects instances list` | GET | `/api/object-types/{id}/objects` | `?search=&limit=&offset=&prop.<name>=v`. Reads Neo4j when a Neo4j data source exists, else the linked dataset table, else `object_instances` (types without a dataset) — so it lists without Neo4j too. Filters run in the source, so `total`/`offset` describe the filtered set. |
+| `ontology objects instances get` | GET | `/api/object-types/{type-id}/objects/{id}` | Resolves Neo4j → dataset row (`key_property` / `id` / declared property) → queue row. Use the `id` the list returned. |
 | `ontology objects instances create` *(write)* | POST | `/api/object-types/{type-id}/objects` | Body `{data: {…property values…}}`. |
 | `ontology objects instances update` *(write)* | PUT | `/api/object-types/{type-id}/objects/{id}` | Body `{data: {…}}`. |
 | `ontology objects instances delete` *(write)* | DELETE | `/api/object-types/{type-id}/objects/{id}` | — |

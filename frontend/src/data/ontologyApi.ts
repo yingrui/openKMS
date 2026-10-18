@@ -12,6 +12,8 @@ export interface PropertyDef {
 export interface ObjectTypeResponse {
   id: string;
   name: string;
+  /** Neo4j node label — fixed at creation, so a rename keeps indexed nodes addressable. */
+  neo4j_label?: string | null;
   description?: string | null;
   dataset_id?: string | null;
   dataset_name?: string | null;
@@ -253,6 +255,8 @@ export type Cardinality = (typeof CARDINALITY_OPTIONS)[number];
 export interface LinkTypeResponse {
   id: string;
   name: string;
+  /** Neo4j relationship type — fixed at creation, so a rename keeps indexed edges addressable. */
+  neo4j_rel_type?: string | null;
   description?: string | null;
   source_object_type_id: string;
   target_object_type_id: string;

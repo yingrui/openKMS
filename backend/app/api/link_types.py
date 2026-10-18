@@ -17,7 +17,10 @@ from app.services.ontology.dataset_tables import (
 )
 from app.services.ontology.object_neo4j_store import (
     get_first_neo4j_datasource,
-    neo4j_safe_label,
+    link_rel_type,
+    neo4j_safe_rel_type,
+    object_label,
+    resolve_id_property,
     resolve_neo4j_id_column_for_row,
 )
 from app.database import get_db
@@ -197,6 +200,7 @@ async def _to_response(db: AsyncSession, link_type: LinkType, link_count_overrid
     return LinkTypeResponse(
         id=link_type.id,
         name=link_type.name,
+        neo4j_rel_type=link_rel_type(link_type),
         description=link_type.description,
         source_object_type_id=link_type.source_object_type_id,
         target_object_type_id=link_type.target_object_type_id,
@@ -246,9 +250,9 @@ async def list_link_types(
                 if source_type and target_type:
                     keys.append(
                         (
-                            neo4j_safe_label(source_type.name),
-                            neo4j_safe_label(target_type.name),
-                            _neo4j_safe_rel_type(t.name),
+                            object_label(source_type),
+                            object_label(target_type),
+                            link_rel_type(t),
                         )
                     )
             unique_keys = list(dict.fromkeys(keys))
@@ -264,9 +268,9 @@ async def list_link_types(
             target_type = object_types_by_id.get(t.target_object_type_id)
             if source_type and target_type:
                 key = (
-                    neo4j_safe_label(source_type.name),
-                    neo4j_safe_label(target_type.name),
-                    _neo4j_safe_rel_type(t.name),
+                    object_label(source_type),
+                    object_label(target_type),
+                    link_rel_type(t),
                 )
                 count_override = neo4j_counts.get(key)
         items.append(await _to_response(db, t, count_override))
@@ -293,9 +297,23 @@ async def create_link_type(
     p = request.state.openkms_jwt_payload
     sub = p.get("sub")
     uname = p.get("preferred_username") or p.get("name")
+    # Fixed at creation so renaming the link type keeps the indexed edges addressable.
+    rel_type = neo4j_safe_rel_type(body.name)
+    rel_clash = (
+        await db.execute(select(LinkType).where(LinkType.neo4j_rel_type == rel_type))
+    ).scalars().first()
+    if rel_clash:
+        raise HTTPException(
+            status_code=400,
+            detail=(
+                f"Graph relationship type '{rel_type}' is already used by link type "
+                f"'{rel_clash.name}'. Names that differ only in punctuation map to the same type."
+            ),
+        )
     link_type = LinkType(
         id=str(uuid.uuid4()),
         name=body.name,
+        neo4j_rel_type=rel_type,
         description=body.description,
         source_object_type_id=body.source_object_type_id,
         target_object_type_id=body.target_object_type_id,
@@ -339,9 +357,9 @@ async def get_link_type(
             target_type = await db.get(ObjectType, link_type.target_object_type_id)
             if source_type and target_type:
                 key = (
-                    neo4j_safe_label(source_type.name),
-                    neo4j_safe_label(target_type.name),
-                    _neo4j_safe_rel_type(link_type.name),
+                    object_label(source_type),
+                    object_label(target_type),
+                    link_rel_type(link_type),
                 )
                 try:
                     counts = await _neo4j_rel_counts_batch(neo4j_ds, [key])
@@ -442,9 +460,9 @@ async def _index_link_type_m2m_junction(
     target_type: ObjectType,
 ) -> int:
     """MERGE relationships from many-to-many junction dataset rows."""
-    src_label = neo4j_safe_label(source_type.name)
-    tgt_label = neo4j_safe_label(target_type.name)
-    rel_type = _neo4j_safe_rel_type(link_type.name)
+    src_label = object_label(source_type)
+    tgt_label = object_label(target_type)
+    rel_type = link_rel_type(link_type)
     src_col = link_type.source_dataset_column
     tgt_col = link_type.target_dataset_column
     src_key = link_type.source_key_property or "id"
@@ -489,9 +507,9 @@ async def _index_link_type_m2o_source_fk(
     """MERGE relationships from source object dataset rows (FK column → target node id)."""
     if not source_type.dataset_id:
         return 0
-    src_label = neo4j_safe_label(source_type.name)
-    tgt_label = neo4j_safe_label(target_type.name)
-    rel_type = _neo4j_safe_rel_type(link_type.name)
+    src_label = object_label(source_type)
+    tgt_label = object_label(target_type)
+    rel_type = link_rel_type(link_type)
     fk_col = link_type.source_key_property
     src_key = link_type.target_key_property or "id"
     tgt_key = src_key
@@ -538,9 +556,9 @@ async def _index_link_type_from_saved_instances(
     target_type: ObjectType,
 ) -> int:
     """MERGE relationships from link_instances (object ids resolved to Neo4j keys via instance data)."""
-    src_label = neo4j_safe_label(source_type.name)
-    tgt_label = neo4j_safe_label(target_type.name)
-    rel_type = _neo4j_safe_rel_type(link_type.name)
+    src_label = object_label(source_type)
+    tgt_label = object_label(target_type)
+    rel_type = link_rel_type(link_type)
     relationships_created = 0
     offset = 0
     batch_size = 500
@@ -693,9 +711,9 @@ async def list_link_instances(
         target_type = await db.get(ObjectType, link_type.target_object_type_id)
         if source_type and target_type:
             try:
-                src_label = neo4j_safe_label(source_type.name)
-                tgt_label = neo4j_safe_label(target_type.name)
-                rel_type = _neo4j_safe_rel_type(link_type.name)
+                src_label = object_label(source_type)
+                tgt_label = object_label(target_type)
+                rel_type = link_rel_type(link_type)
                 if link_type.cardinality in ("many-to-one", "one-to-many"):
                     src_key = link_type.target_key_property or "id"
                     tgt_key = src_key
@@ -745,19 +763,23 @@ async def list_link_instances(
         and link_type.source_dataset_column
         and link_type.target_dataset_column
     ):
-        try:
-            rows, total = await fetch_dataset_rows(db, link_type.dataset_id, limit=limit, offset=offset)
-        except ValueError as e:
-            raise HTTPException(status_code=400, detail=str(e)) from e
         src_col = link_type.source_dataset_column
         tgt_col = link_type.target_dataset_column
+        try:
+            rows, total = await fetch_dataset_rows(
+                db,
+                link_type.dataset_id,
+                limit=limit,
+                offset=offset,
+                filters=({src_col: neo4j_source_key} if neo4j_source_key is not None else None),
+            )
+        except ValueError as e:
+            raise HTTPException(status_code=400, detail=str(e)) from e
         items = []
         for i, row in enumerate(rows):
             src_val = row.get(src_col)
             tgt_val = row.get(tgt_col)
             if src_val is not None and tgt_val is not None:
-                if neo4j_source_key is not None and str(src_val) != neo4j_source_key:
-                    continue
                 items.append(
                     LinkInstanceResponse(
                         id=f"dataset:{offset + i}",
@@ -783,24 +805,28 @@ async def list_link_instances(
     ):
         source_type = await db.get(ObjectType, link_type.source_object_type_id)
         if source_type and source_type.dataset_id:
+            fk_col = link_type.source_key_property
+            # Same id the object list shows for this type, so a row's link filter matches it.
+            src_id_col = resolve_id_property(source_type)
             try:
-                rows, _ = await fetch_dataset_rows(db, source_type.dataset_id, limit=limit, offset=offset)
-                total = await get_dataset_row_count_where_not_null(
-                    db, source_type.dataset_id, link_type.source_key_property
+                rows, total = await fetch_dataset_rows(
+                    db,
+                    source_type.dataset_id,
+                    limit=limit,
+                    offset=offset,
+                    filters=(
+                        {src_id_col: neo4j_source_key} if neo4j_source_key is not None else None
+                    ),
+                    # A row without the FK is not a link: filtering it after paging emptied pages.
+                    not_null=[fk_col],
                 )
             except ValueError as e:
                 raise HTTPException(status_code=400, detail=str(e)) from e
-            fk_col = link_type.source_key_property
-            src_id_col = "id" if (rows and "id" in rows[0]) else (list(rows[0].keys())[0] if rows else "id")
             items = []
             for i, row in enumerate(rows):
                 tgt_val = row.get(fk_col)
-                if tgt_val is None:
-                    continue
                 src_val = row.get(src_id_col)
-                if src_val is None:
-                    continue
-                if neo4j_source_key is not None and str(src_val) != neo4j_source_key:
+                if tgt_val is None or src_val is None:
                     continue
                 items.append(
                     LinkInstanceResponse(
@@ -818,7 +844,7 @@ async def list_link_instances(
                 )
             return LinkInstanceListResponse(
                 items=items,
-                total=len(items) if neo4j_source_key else total,
+                total=total,
             )
     # Otherwise: from link_instances table
     where = [LinkInstance.link_type_id == link_type_id]

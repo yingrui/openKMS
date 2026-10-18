@@ -17,6 +17,8 @@ class LinkType(Base):
 
     id: Mapped[str] = mapped_column(String(64), primary_key=True)
     name: Mapped[str] = mapped_column(String(256), nullable=False)
+    # Graph identity: assigned at creation, never rewritten (see object_neo4j_store.link_rel_type).
+    neo4j_rel_type: Mapped[str | None] = mapped_column(String(256), nullable=True)
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
     source_object_type_id: Mapped[str] = mapped_column(
         String(64), ForeignKey("object_types.id", ondelete="CASCADE"), nullable=False, index=True

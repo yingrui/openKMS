@@ -8,7 +8,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.auth import require_any_permission, require_auth
 from app.services.permissions.permission_catalog import PERM_CONSOLE_OBJECT_TYPES, PERM_ONTOLOGY_WRITE
-from app.services.ontology.dataset_tables import dataset_display_name, fetch_dataset_rows, get_dataset_row_count
+from app.services.ontology.dataset_tables import (
+    dataset_display_name,
+    fetch_dataset_row_by_object_id,
+    fetch_dataset_rows,
+    get_dataset_row_count,
+)
 from app.database import get_db
 from app.services.acl.data_resource_policy import object_type_visible
 from app.services.acl.data_scope import bootstrap_owner_acl
@@ -24,12 +29,13 @@ from app.services.ontology.neo4j_async import (
 )
 from app.models.object_instance import ObjectInstance
 from app.models.object_type import ObjectType
-from app.services.ontology.query_filters import parse_prop_filters, row_matches_prop_filters
+from app.services.ontology.query_filters import object_instance_conditions, parse_prop_filters
 from app.services.ontology.object_neo4j_store import (
     fetch_object_from_neo4j,
     get_first_neo4j_datasource,
     merge_object_row_to_neo4j,
     neo4j_safe_label,
+    object_label,
     query_neo4j_nodes,
     resolve_id_property,
     resolve_neo4j_id_column_for_row,
@@ -90,7 +96,7 @@ class PurgeOntologyDataResponse(BaseModel):
 
 
 def _purge_object_type_neo4j(session, obj_type: ObjectType) -> int:
-    label = neo4j_safe_label(obj_type.name)
+    label = object_label(obj_type)
     count_row = session.run(f"MATCH (n:{label}) RETURN count(n) AS c").single()
     n = int(count_row["c"] or 0) if count_row else 0
     if n:
@@ -120,6 +126,7 @@ def _to_response(obj_type: ObjectType, instance_count: int, dataset_name: str | 
     return ObjectTypeResponse(
         id=obj_type.id,
         name=obj_type.name,
+        neo4j_label=object_label(obj_type),
         description=obj_type.description,
         dataset_id=obj_type.dataset_id,
         dataset_name=dataset_name,
@@ -158,13 +165,13 @@ def _query_neo4j_nodes(
 ) -> tuple[list[dict], int]:
     return query_neo4j_nodes(driver, label, search, limit, offset, id_prop, prop_filters=prop_filters)
 
-async def _neo4j_node_counts_for_types(ds: DataSource, type_names: list[str]) -> dict[str, int | None]:
+async def _neo4j_node_counts_for_types(ds: DataSource, obj_types: list[ObjectType]) -> dict[str, int | None]:
     """Return label -> count; None when count fails for that label."""
 
     def _run(driver) -> dict[str, int | None]:
         out: dict[str, int | None] = {}
-        for name in type_names:
-            label = neo4j_safe_label(name)
+        for obj_type in obj_types:
+            label = object_label(obj_type)
             try:
                 out[label] = _neo4j_node_count(driver, label)
             except NEO4J_ERRORS:
@@ -172,6 +179,27 @@ async def _neo4j_node_counts_for_types(ds: DataSource, type_names: list[str]) ->
         return out
 
     return await run_with_neo4j_driver(ds, _run)
+
+
+def _validate_property_refs(
+    *, properties: list[dict], key_property: str | None, display_property: str | None
+) -> None:
+    """`key_property` / `display_property` must name a property the type declares.
+
+    An unknown name used to resolve silently to *another* column, so the list id and the
+    Action `object_id` disagreed about what an object's identity is. When the type declares no
+    properties at all the check is skipped — modeling an id before its schema is a legal order.
+    """
+    names = {p.get("name") for p in properties if isinstance(p, dict) and p.get("name")}
+    if not names:
+        return
+    for field, value in (("key_property", key_property), ("display_property", display_property)):
+        ref = (value or "").strip()
+        if ref and ref not in names:
+            raise HTTPException(
+                status_code=400,
+                detail=f"{field} {ref!r} is not a declared property of this object type",
+            )
 
 
 @router.get("", response_model=ObjectTypeListResponse)
@@ -196,12 +224,12 @@ async def list_object_types(
         neo4j_ds = await get_first_neo4j_datasource(db)
         if neo4j_ds:
             try:
-                neo4j_counts = await _neo4j_node_counts_for_types(neo4j_ds, [t.name for t in types])
+                neo4j_counts = await _neo4j_node_counts_for_types(neo4j_ds, types)
             except ImportError:
                 neo4j_counts = {}
     items = []
     for t in types:
-        label = neo4j_safe_label(t.name)
+        label = object_label(t)
         neo4j_count = neo4j_counts.get(label)
         if neo4j_count is not None:
             count = neo4j_count
@@ -224,12 +252,32 @@ async def create_object_type(
     if existing.scalar_one_or_none():
         raise HTTPException(status_code=400, detail="Object type with this name already exists")
     props = _prop_defs_to_dicts(body.properties)
+    _validate_property_refs(
+        properties=props,
+        key_property=body.key_property,
+        display_property=body.display_property,
+    )
+    # The graph label is fixed here, not derived from `name` on every read: renaming a type
+    # must not orphan the nodes already indexed under it.
+    label = neo4j_safe_label(body.name)
+    label_clash = (
+        await db.execute(select(ObjectType).where(ObjectType.neo4j_label == label))
+    ).scalars().first()
+    if label_clash:
+        raise HTTPException(
+            status_code=400,
+            detail=(
+                f"Graph label '{label}' is already used by object type "
+                f"'{label_clash.name}'. Names that differ only in punctuation map to the same label."
+            ),
+        )
     p = request.state.openkms_jwt_payload
     sub = p.get("sub")
     uname = p.get("preferred_username") or p.get("name")
     obj_type = ObjectType(
         id=str(uuid.uuid4()),
         name=body.name,
+        neo4j_label=label,
         description=body.description,
         dataset_id=body.dataset_id,
         key_property=body.key_property,
@@ -268,8 +316,8 @@ async def get_object_type(
         neo4j_ds = await get_first_neo4j_datasource(db)
         if neo4j_ds:
             try:
-                label = neo4j_safe_label(obj_type.name)
-                counts = await _neo4j_node_counts_for_types(neo4j_ds, [obj_type.name])
+                label = object_label(obj_type)
+                counts = await _neo4j_node_counts_for_types(neo4j_ds, [obj_type])
                 neo4j_count = counts.get(label)
                 if neo4j_count is not None:
                     ds_name = await dataset_display_name(db, obj_type.dataset_id)
@@ -298,6 +346,7 @@ async def update_object_type(
         )
         if existing.scalar_one_or_none():
             raise HTTPException(status_code=400, detail="Object type with this name already exists")
+        # `neo4j_label` stays as it was — a rename is a display change, not a re-index.
         obj_type.name = body.name
     if body.key_property is not None:
         obj_type.key_property = body.key_property.strip() or None
@@ -311,6 +360,11 @@ async def update_object_type(
         obj_type.display_property = body.display_property.strip() or None
     if body.properties is not None:
         obj_type.properties = _prop_defs_to_dicts(body.properties)
+    _validate_property_refs(
+        properties=[p for p in (obj_type.properties or []) if isinstance(p, dict)],
+        key_property=obj_type.key_property,
+        display_property=obj_type.display_property,
+    )
     await db.flush()
     await db.refresh(obj_type)
     count = await _resolve_instance_count(db, obj_type)
@@ -340,7 +394,7 @@ async def _index_object_type_dataset_to_neo4j_session(
     if not obj_type.dataset_id:
         return 0
     nodes_created = 0
-    label = neo4j_safe_label(obj_type.name)
+    label = object_label(obj_type)
     offset = 0
     batch_size = 1000
     while True:
@@ -368,7 +422,7 @@ async def _index_object_type_instances_to_neo4j_session(
     obj_type: ObjectType,
 ) -> int:
     """MERGE rows from object_instances into Neo4j (same MERGE rules as dataset rows)."""
-    label = neo4j_safe_label(obj_type.name)
+    label = object_label(obj_type)
     offset = 0
     batch_size = 1000
     nodes_created = 0
@@ -594,15 +648,18 @@ async def list_object_instances(
     offset: int = Query(0, ge=0),
     db: AsyncSession = Depends(get_db),
 ):
-    """List object instances.
+    """List object instances, filtered.
 
-    Types with a linked dataset: prefer Neo4j when a Neo4j data source exists (indexed
-    projection), else the dataset SQL path.
+    One type, three possible sources, tried in order:
 
-    Types without a dataset: read Neo4j only (query SoT). ``object_instances`` is the
-    Action/REST apply queue and is never used for list. Without a Neo4j DS, returns empty.
+    1. **Neo4j**, when a Neo4j data source exists (indexed projection; the query SoT for
+       types without a dataset).
+    2. **The linked dataset's table**, for dataset-backed types.
+    3. **``object_instances``**, for types without a dataset — the apply queue is the only
+       place those objects exist, so it is the fallback instead of an empty list.
 
-    Property equality filters: ``prop.<name>=value`` (repeatable).
+    ``search`` and ``prop.<name>=value`` filters are applied by each source (not after
+    paging), so ``total`` and ``offset`` describe the filtered set.
     """
     obj_type = await db.get(ObjectType, object_type_id)
     if not obj_type:
@@ -612,92 +669,130 @@ async def list_object_instances(
     id_prop = resolve_id_property(obj_type)
     prop_filters = parse_prop_filters(request)
 
-    # No-dataset types: query SoT is Neo4j only (never object_instances).
-    if not obj_type.dataset_id:
-        neo4j_ds = await get_first_neo4j_datasource(db)
-        if not neo4j_ds:
-            return ObjectInstanceListResponse(items=[], total=0)
-        try:
-            label = neo4j_safe_label(obj_type.name)
-
-            def _query(driver):
-                return _query_neo4j_nodes(
-                    driver, label, search, limit, offset, id_prop, prop_filters=prop_filters
-                )
-
-            rows, total = await run_with_neo4j_driver(neo4j_ds, _query)
-            return ObjectInstanceListResponse(
-                items=[
-                    ObjectInstanceResponse(
-                        id=str(r["id"]),
-                        object_type_id=object_type_id,
-                        data=r["data"],
-                        created_at=None,
-                        updated_at=None,
-                    )
-                    for r in rows
-                ],
-                total=total,
-            )
-        except NEO4J_ERRORS:
-            return ObjectInstanceListResponse(items=[], total=0)
-
     neo4j_ds = await get_first_neo4j_datasource(db)
     if neo4j_ds:
-        try:
-            label = neo4j_safe_label(obj_type.name)
+        label = object_label(obj_type)
 
-            def _query(driver):
-                return _query_neo4j_nodes(
-                    driver, label, search, limit, offset, id_prop, prop_filters=prop_filters
-                )
-
-            rows, total = await run_with_neo4j_driver(neo4j_ds, _query)
-            return ObjectInstanceListResponse(
-                items=[
-                    ObjectInstanceResponse(
-                        id=str(r["id"]),
-                        object_type_id=object_type_id,
-                        data=r["data"],
-                        created_at=None,
-                        updated_at=None,
-                    )
-                    for r in rows
-                ],
-                total=total,
+        def _query(driver):
+            return _query_neo4j_nodes(
+                driver, label, search, limit, offset, id_prop, prop_filters=prop_filters
             )
+
+        try:
+            rows, total = await run_with_neo4j_driver(neo4j_ds, _query)
+            return _instances_from_graph(rows, object_type_id, total)
         except NEO4J_ERRORS:
             pass
 
+    if obj_type.dataset_id:
+        return await _instances_from_dataset(db, obj_type, search, limit, offset, prop_filters)
+    return await _instances_from_queue(db, obj_type, search, limit, offset, prop_filters)
+
+
+def _instances_from_graph(
+    rows: list[dict], object_type_id: str, total: int
+) -> ObjectInstanceListResponse:
+    return ObjectInstanceListResponse(
+        items=[
+            ObjectInstanceResponse(
+                id=str(r["id"]),
+                object_type_id=object_type_id,
+                data=r["data"],
+                created_at=None,
+                updated_at=None,
+            )
+            for r in rows
+        ],
+        total=total,
+    )
+
+
+def _dataset_row_id(obj_type: ObjectType, row: dict) -> object | None:
+    """The row's API id — ``key_property`` when that column exists, else the indexed id column."""
+    if obj_type.key_property and obj_type.key_property in row:
+        return row[obj_type.key_property]
+    return row.get(resolve_neo4j_id_column_for_row(obj_type, row))
+
+
+def _dataset_id_candidates(obj_type: ObjectType) -> list[str]:
+    """Columns that can hold the id a list/Explorer row was shown with, in priority order."""
+    names = [obj_type.key_property, "id"] if obj_type.key_property else ["id"]
+    names.extend(
+        p.get("name") for p in (obj_type.properties or []) if isinstance(p, dict) and p.get("name")
+    )
+    return list(dict.fromkeys(n for n in names if n))
+
+
+async def _instances_from_dataset(
+    db: AsyncSession,
+    obj_type: ObjectType,
+    search: str | None,
+    limit: int,
+    offset: int,
+    prop_filters: dict[str, str],
+) -> ObjectInstanceListResponse:
     try:
-        # Fetch a page then filter in memory (dataset SQL path has no prop pushdown yet).
-        rows, total = await fetch_dataset_rows(db, obj_type.dataset_id, limit=limit, offset=offset)
+        rows, total = await fetch_dataset_rows(
+            db,
+            obj_type.dataset_id,
+            limit=limit,
+            offset=offset,
+            filters=prop_filters,
+            search=search,
+        )
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e)) from e
-    id_col = (
-        obj_type.key_property
-        if obj_type.key_property and rows and rows[0] and obj_type.key_property in rows[0]
-        else ("id" if (rows and rows[0] and "id" in rows[0])
-              else (list(rows[0].keys())[0] if rows else "id"))
-    )
-    items = []
+    items: list[ObjectInstanceResponse] = []
     for row in rows:
-        row_id = row.get(id_col, row.get(list(row.keys())[0]) if row else None)
+        row_id = _dataset_row_id(obj_type, row)
         if row_id is None:
-            continue
-        data = {k: v for k, v in row.items() if v is not None}
-        if not row_matches_prop_filters(data, prop_filters):
             continue
         items.append(
             ObjectInstanceResponse(
                 id=str(row_id),
-                object_type_id=object_type_id,
-                data=data,
+                object_type_id=obj_type.id,
+                data={k: v for k, v in row.items() if v is not None},
                 created_at=None,
                 updated_at=None,
             )
         )
-    return ObjectInstanceListResponse(items=items, total=len(items) if prop_filters else total)
+    return ObjectInstanceListResponse(items=items, total=total)
+
+
+async def _instances_from_queue(
+    db: AsyncSession,
+    obj_type: ObjectType,
+    search: str | None,
+    limit: int,
+    offset: int,
+    prop_filters: dict[str, str],
+) -> ObjectInstanceListResponse:
+    conditions = [ObjectInstance.object_type_id == obj_type.id]
+    conditions.extend(object_instance_conditions(ObjectInstance, prop_filters, search))
+    total = (
+        await db.execute(select(func.count()).select_from(ObjectInstance).where(*conditions))
+    ).scalar_one()
+    result = await db.execute(
+        select(ObjectInstance)
+        .where(*conditions)
+        .order_by(ObjectInstance.created_at.desc(), ObjectInstance.id)
+        .limit(limit)
+        .offset(offset)
+    )
+    instances = result.scalars().all()
+    return ObjectInstanceListResponse(
+        items=[
+            ObjectInstanceResponse(
+                id=i.id,
+                object_type_id=i.object_type_id,
+                data=i.data or {},
+                created_at=i.created_at,
+                updated_at=i.updated_at,
+            )
+            for i in instances
+        ],
+        total=int(total),
+    )
 
 
 @router.post("/{object_type_id}/objects", response_model=ObjectInstanceResponse, status_code=201)
@@ -746,15 +841,19 @@ async def get_object_instance(
     request: Request,
     db: AsyncSession = Depends(get_db),
 ):
+    """Read one object, from whichever source the list got its id from.
+
+    Neo4j first (indexed projection), then the dataset row, then the apply-queue row. A
+    dataset-backed object's id is its business key, not a queue primary key, so reading only
+    the queue 404'd every row the Object Explorer had just listed.
+    """
     await _require_object_type_read(request, db, object_type_id)
     obj_type = await db.get(ObjectType, object_type_id)
     if not obj_type:
         raise HTTPException(status_code=404, detail="Object type not found")
 
-    if not obj_type.dataset_id:
-        props = await fetch_object_from_neo4j(db, obj_type, object_id)
-        if not props:
-            raise HTTPException(status_code=404, detail="Object not found")
+    props = await fetch_object_from_neo4j(db, obj_type, object_id)
+    if props:
         return ObjectInstanceResponse(
             id=object_id,
             object_type_id=object_type_id,
@@ -762,6 +861,22 @@ async def get_object_instance(
             created_at=None,
             updated_at=None,
         )
+
+    if obj_type.dataset_id:
+        row = await fetch_dataset_row_by_object_id(
+            db,
+            obj_type.dataset_id,
+            candidate_columns=_dataset_id_candidates(obj_type),
+            object_id=object_id,
+        )
+        if row is not None:
+            return ObjectInstanceResponse(
+                id=object_id,
+                object_type_id=object_type_id,
+                data={k: v for k, v in row.items() if v is not None},
+                created_at=None,
+                updated_at=None,
+            )
 
     instance = await db.get(ObjectInstance, object_id)
     if not instance or instance.object_type_id != object_type_id:

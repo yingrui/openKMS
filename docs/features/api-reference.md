@@ -260,24 +260,24 @@ The bundled **openkms-skill** CLI wraps **lifecycle** and **relationships** the 
 | Method | Path | Description |
 |--------|------|-------------|
 | GET | `/api/object-types` | List object types (authenticated, read ACL); ?count_from_neo4j=true for instance_count from Neo4j |
-| POST | `/api/object-types` | Create object type (admin-only); bootstraps owner ACL |
+| POST | `/api/object-types` | Create object type (admin-only); bootstraps owner ACL. Sets the immutable `neo4j_label` (rejects a name whose label is already taken); `key_property` / `display_property` must be declared properties |
 | GET | `/api/object-types/{id}` | Get object type; ?count_from_neo4j=true for instance_count from Neo4j |
-| PUT | `/api/object-types/{id}` | Update object type (admin-only) |
+| PUT | `/api/object-types/{id}` | Update object type (admin-only). A rename keeps `neo4j_label`, so indexed nodes stay addressable |
 | DELETE | `/api/object-types/{id}` | Delete object type (admin-only) |
-| GET | `/api/object-types/{id}/objects` | List object instances (read ACL on parent type; no-dataset types from Neo4j only — empty if no Neo4j DS; dataset-backed from Neo4j when available else dataset SQL; optional `?search=`, `?prop.<name>=` equality filters, `?limit=`, `?offset=`) |
+| GET | `/api/object-types/{id}/objects` | List object instances (read ACL on parent type). One type, three sources, in order: Neo4j when a data source exists → the linked dataset table → `object_instances` (types without a dataset; the apply queue is their only store, so it is the fallback, not an empty list). `?search=` and `?prop.<name>=` are pushed into every source, so `?limit=`/`?offset=` and `total` describe the filtered set |
 | POST | `/api/object-types/{id}/objects` | Create object instance into apply queue + same-request Neo4j sync when DS exists (admin-only + write ACL; no-dataset types only) |
-| GET | `/api/object-types/{id}/objects/{obj_id}` | Get object instance (read ACL; no-dataset from Neo4j) |
+| GET | `/api/object-types/{id}/objects/{obj_id}` | Get object instance (read ACL). Neo4j → dataset row matching `key_property`/`id`/declared property names → queue row, so an id from the list can always be opened |
 | PUT | `/api/object-types/{id}/objects/{obj_id}` | Update object instance queue row + same-request Neo4j sync (admin-only + write ACL; no-dataset types only) |
 | DELETE | `/api/object-types/{id}/objects/{obj_id}` | Delete queue row + same-request Neo4j DETACH DELETE (admin-only + write ACL; no-dataset types only) |
 | POST | `/api/object-types/{id}/purge-instances` | **Dangerous.** Clear queue rows for one object type and DETACH DELETE its Neo4j label. Body: `{ confirm: "PURGE {ObjectTypeName}", neo4j_data_source_id? }`. |
 | POST | `/api/object-types/index-to-neo4j` | Index object types that have a linked dataset or stored instances to Neo4j as nodes (admin-only; body: neo4j_data_source_id) |
 | POST | `/api/object-types/{id}/index-to-neo4j` | Index one object type to Neo4j from its dataset, or drain the `object_instances` apply queue when there is no dataset (admin-only; body: neo4j_data_source_id; 400 if neither applies) |
 | GET | `/api/link-types` | List link types (authenticated); ?count_from_neo4j=true for link_count from Neo4j |
-| POST | `/api/link-types` | Create link type (admin-only) |
+| POST | `/api/link-types` | Create link type (admin-only). Sets the immutable `neo4j_rel_type` (rejects a name whose type is already taken) |
 | GET | `/api/link-types/{id}` | Get link type; ?count_from_neo4j=true for link_count from Neo4j |
 | PUT | `/api/link-types/{id}` | Update link type (admin-only) |
 | DELETE | `/api/link-types/{id}` | Delete link type (admin-only) |
-| GET | `/api/link-types/{id}/links` | List link instances (from Neo4j when available; `?limit=`, `?offset=`, optional `?source_object_id=`, `?source_key_value=`) |
+| GET | `/api/link-types/{id}/links` | List link instances (from Neo4j when available; `?limit=`, `?offset=`, optional `?source_object_id=`, `?source_key_value=`). Junction-table and source-FK paths push those filters into SQL, so `total` matches the filtered set |
 | POST | `/api/link-types/{id}/links` | Create link instance (admin-only; rejected when link type uses junction dataset) |
 | DELETE | `/api/link-types/{id}/links/{link_id}` | Delete link instance (admin-only; rejected when link type uses junction dataset) |
 | POST | `/api/link-types/index-to-neo4j` | Index link types to Neo4j: M:M junction, M:1/1:M from source dataset when configured, else saved link instances (admin-only) |
