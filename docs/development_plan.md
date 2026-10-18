@@ -284,10 +284,16 @@ Adding that needs parent-route reachability (a tab's parent sheet *is* in scope,
 ### The route table is not a mirror either (2026-10)
 
 Filling the 93 undocumented routes was the obvious next step, until the count said what they were: **85
-real consumer routes**, most with no docstring, in areas nobody is working on. Writing one line per route
-from a path string would have made the number zero and the page worse — and it is the *same mistake* the
+real consumer routes**, most with no docstring. Writing one line per route from a path string would have
+made the number zero and the page worse — and it is the *same mistake* the
 `data-models.md` decision was about: a hand-kept table of 431 endpoints is a mirror of the code, and it had
 already drifted 93 routes, exactly like the table of 88 models drifted 45.
+
+An earlier draft of this entry justified the decision by saying those routes were "in areas nobody is
+working on". That was unsupported when written and wrong on the numbers: in the 30 days to this decision,
+269 commits touched the API, including `projects` (7), `admin` (4), `ontology` (2) and `media` (2). The only
+defensible statement is narrower — *we* were not working there — and the decision never needed it: whether a
+page is a mirror does not depend on how busy its subject is.
 
 So the reference no longer claims to be complete. Its scope is **the routes whose behaviour needs
 explaining** — auth, permissions, edge cases — and the complete list is what FastAPI already publishes:
