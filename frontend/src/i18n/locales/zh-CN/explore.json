@@ -276,7 +276,10 @@
       "systemIdHint": "实例平台身份（只读）。Action / App 调用时用此 RID。",
       "runAction": "运行 {{name}}",
       "actionRunOk": "{{name}} 已完成",
-      "actionRunFailed": "操作执行失败"
+      "actionRunFailed": "操作执行失败",
+      "notIndexed": "该对象类型已有数据待索引，但图中还没有。请先在本体管理器中索引，然后刷新。",
+      "notIndexedCta": "前往本体管理器",
+      "graphReadFailed": "无法从本体图读取对象。"
     }
   },
   "objects": {

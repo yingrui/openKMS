@@ -264,9 +264,9 @@ The bundled **openkms-skill** CLI wraps **lifecycle** and **relationships** the 
 | GET | `/api/object-types/{id}` | Get object type; ?count_from_neo4j=true for instance_count from Neo4j |
 | PUT | `/api/object-types/{id}` | Update object type (admin-only). A rename keeps `neo4j_label`, so indexed nodes stay addressable |
 | DELETE | `/api/object-types/{id}` | Delete object type (admin-only) |
-| GET | `/api/object-types/{id}/objects` | List object instances (read ACL on parent type). One type, three sources, in order: Neo4j when a data source exists → the linked dataset table → `object_instances` (types without a dataset; the apply queue is their only store, so it is the fallback, not an empty list). `?search=` and `?prop.<name>=` are pushed into every source, so `?limit=`/`?offset=` and `total` describe the filtered set |
+| GET | `/api/object-types/{id}/objects` | List object instances **from the graph only** (read ACL on parent type). `?search=` and `?prop.<name>=` run in Neo4j, so `?limit=`/`?offset=` and `total` describe the filtered set. **409** when no Neo4j data source is configured; **503** when the graph is unreachable; `indexed: false` when the type has rows to index but the label is empty |
 | POST | `/api/object-types/{id}/objects` | Create object instance into apply queue + same-request Neo4j sync when DS exists (admin-only + write ACL; no-dataset types only) |
-| GET | `/api/object-types/{id}/objects/{obj_id}` | Get object instance (read ACL). Neo4j → dataset row matching `key_property`/`id`/declared property names → queue row, so an id from the list can always be opened |
+| GET | `/api/object-types/{id}/objects/{obj_id}` | Get object instance from the graph (read ACL). 404 when the node is absent — including an object that exists only in the write queue (index the type first) |
 | PUT | `/api/object-types/{id}/objects/{obj_id}` | Update object instance queue row + same-request Neo4j sync (admin-only + write ACL; no-dataset types only) |
 | DELETE | `/api/object-types/{id}/objects/{obj_id}` | Delete queue row + same-request Neo4j DETACH DELETE (admin-only + write ACL; no-dataset types only) |
 | POST | `/api/object-types/{id}/purge-instances` | **Dangerous.** Clear queue rows for one object type and DETACH DELETE its Neo4j label. Body: `{ confirm: "PURGE {ObjectTypeName}", neo4j_data_source_id? }`. |

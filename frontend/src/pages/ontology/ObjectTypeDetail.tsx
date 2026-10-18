@@ -43,6 +43,11 @@ export function ObjectTypeDetail() {
   const [instances, setInstances] = useState<ObjectInstanceResponse[]>([]);
   const [loading, setLoading] = useState(true);
   const [instancesLoading, setInstancesLoading] = useState(true);
+  // Objects come from the ontology graph only: an unconfigured graph, or a type that was never
+  // indexed, must read as a state — not as "this type has no objects".
+  const [graphNotice, setGraphNotice] = useState<
+    { kind: 'error'; detail: string } | { kind: 'notIndexed' } | null
+  >(null);
   const [search, setSearch] = useState('');
   const [showForm, setShowForm] = useState(false);
   const [editInstance, setEditInstance] = useState<ObjectInstanceResponse | null>(null);
@@ -74,8 +79,13 @@ export function ObjectTypeDetail() {
           search: (searchQuery ?? search).trim() || undefined,
         });
         setInstances(res.items);
-      } catch {
-        /* noop */
+        setGraphNotice(res.indexed === false ? { kind: 'notIndexed' } : null);
+      } catch (e: unknown) {
+        setInstances([]);
+        setGraphNotice({
+          kind: 'error',
+          detail: e instanceof Error && e.message ? e.message : '',
+        });
       } finally {
         setInstancesLoading(false);
       }
@@ -265,6 +275,23 @@ export function ObjectTypeDetail() {
       </div>
 
       <div className="ds-table-wrap">
+        {graphNotice ? (
+          <div className={`object-type-graph-notice object-type-graph-notice--${graphNotice.kind}`} role="status">
+            {graphNotice.kind === 'notIndexed' ? (
+              <>
+                <span>{t('ontology.objectTypeDetail.notIndexed')}</span>
+                <Link to="/ontology-manager/object-types" className="object-type-graph-notice-link">
+                  {t('ontology.objectTypeDetail.notIndexedCta')}
+                </Link>
+              </>
+            ) : (
+              <span>
+                {t('ontology.objectTypeDetail.graphReadFailed')}
+                {graphNotice.detail ? ` ${graphNotice.detail}` : ''}
+              </span>
+            )}
+          </div>
+        ) : null}
         <table className="object-type-table">
           <thead>
             <tr>

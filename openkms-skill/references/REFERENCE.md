@@ -149,12 +149,12 @@ All write subcommands accept `--yes` / `--dry-run`. Without `--yes` on non-TTY s
 | `ontology objects create-type` *(write)* | POST | `/api/object-types` | Body `{name, description?, dataset_id?, key_property?, is_master_data, display_property?, properties:[{name,type,required}]}`. `key_property` / `display_property` must be declared properties. The response carries `neo4j_label` — the Cypher label, fixed at creation (renaming does not move it). |
 | `ontology objects update-type` *(write)* | PUT | `/api/object-types/{id}` | Only the flags you pass are sent (all `ObjectTypeUpdate` fields optional). Empty update exits 2. |
 | `ontology objects delete-type` *(write)* | DELETE | `/api/object-types/{id}` | Cascades; no body. |
-| `ontology objects instances list` | GET | `/api/object-types/{id}/objects` | `?search=&limit=&offset=&prop.<name>=v`. Reads Neo4j when a Neo4j data source exists, else the linked dataset table, else `object_instances` (types without a dataset) — so it lists without Neo4j too. Filters run in the source, so `total`/`offset` describe the filtered set. |
-| `ontology objects instances get` | GET | `/api/object-types/{type-id}/objects/{id}` | Resolves Neo4j → dataset row (`key_property` / `id` / declared property) → queue row. Use the `id` the list returned. |
+| `ontology objects instances list` | GET | `/api/object-types/{id}/objects` | `?search=&limit=&offset=&prop.<name>=v`. **Graph only** — index the type first. Filters/paging run in Neo4j. `409` when no Neo4j data source is configured, `503` when the graph is unreachable, `indexed:false` when the type has rows to index but the label is empty. |
+| `ontology objects instances get` | GET | `/api/object-types/{type-id}/objects/{id}` | Graph only; 404 when the node is absent (including a queue-only object — index first). Use the `id` the list returned. |
 | `ontology objects instances create` *(write)* | POST | `/api/object-types/{type-id}/objects` | Body `{data: {…property values…}}`. |
 | `ontology objects instances update` *(write)* | PUT | `/api/object-types/{type-id}/objects/{id}` | Body `{data: {…}}`. |
 | `ontology objects instances delete` *(write)* | DELETE | `/api/object-types/{type-id}/objects/{id}` | — |
-| `ontology objects sync-neo4j` *(write)* | POST | `/api/object-types/index-to-neo4j` | Body `{neo4j_data_source_id}`. Returns `{object_types_indexed, nodes_created}`. Indexes every object type that has a linked dataset or stored instances. |
+| `ontology objects sync-neo4j` *(write)* | POST | `/api/object-types/index-to-neo4j` | Body `{neo4j_data_source_id}`. Returns `{object_types_indexed, nodes_created}`. Indexes every object type that has a linked dataset or stored instances. **Run after dataset/queue changes — object reads come from the graph.** |
 | `ontology objects sync-neo4j-type` *(write)* | POST | `/api/object-types/{id}/index-to-neo4j` | Same body. One type only (dataset rows or `object_instances` when no dataset). |
 
 ### Ontology — link types (`ontology links`)

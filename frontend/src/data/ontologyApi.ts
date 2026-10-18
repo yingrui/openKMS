@@ -198,6 +198,11 @@ export interface ObjectInstanceResponse {
 export interface ObjectInstanceListResponse {
   items: ObjectInstanceResponse[];
   total: number;
+  /**
+   * `false` when the type has rows to index but the graph shows none (never indexed), `null`
+   * when no verdict was made. Objects are read from the graph only.
+   */
+  indexed?: boolean | null;
 }
 
 export async function fetchObjectInstances(

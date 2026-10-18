@@ -84,6 +84,9 @@ class ObjectInstanceResponse(BaseModel):
 class ObjectInstanceListResponse(BaseModel):
     items: list[ObjectInstanceResponse]
     total: int
+    # False when the type has rows to index but the graph shows none (never indexed / stale).
+    # None when no verdict was made (a filtered page, or a non-empty result).
+    indexed: bool | None = None
 
 
 # --- Link Type ---

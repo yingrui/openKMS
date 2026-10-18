@@ -137,7 +137,7 @@ Today: [Documents](features/documents.md) lifecycle + relationships; `is_current
 
 | Item | Notes |
 |------|--------|
-| Read-path consistency (object list / detail) | **Shipped** — one type reads Neo4j → dataset table → `object_instances`; `search` / `prop.<name>=` / `source_key_value` filters are pushed into SQL, so `total` and paging describe the filtered set. Types without a Neo4j data source list from the queue instead of returning empty, and a listed dataset-backed id opens (dataset row lookup). |
+| Object access goes through the graph | **Shipped** — object list/detail read Neo4j only (dataset table and `object_instances` are the index source and the write queue). No Neo4j data source → 409; graph unreachable → 503; type not indexed while it has rows to index → `indexed: false`, which the Explorer surfaces as "index it". Filters and paging run in the graph. Link-instance filters (junction / source FK) are pushed into SQL so their `total` matches the page. |
 | Stable graph identity | **Shipped** — `object_types.neo4j_label` / `link_types.neo4j_rel_type` are fixed at creation (backfilled to the previous name-derived value), so a rename no longer orphans indexed nodes; label collisions are rejected at create. `key_property` / `display_property` must name a declared property. |
 | Action `create` / `modify` / `delete` apply (resolvable instance ids) | **Shipped** — apply `output.edits` after Action OFS ok (`applied.created_ids` / `modified_ids` / `deleted_ids`). |
 | Dataset/Neo4j synthetic Action `object_id` + link create/delete edit ops | **Deferred** — see [Manager alignment](research/ontology_manager_alignment.md#capability-audit-shipped-vs-diy-blockers). |

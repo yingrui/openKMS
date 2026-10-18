@@ -314,3 +314,30 @@
   color: var(--color-text-muted);
   margin: 0;
 }
+
+/* Empty object list has two very different causes: no objects, or none in the graph yet. */
+.object-type-graph-notice {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  margin-bottom: var(--space-4);
+  padding: var(--padding-compact-y) calc(var(--space-3) + var(--space-1) / 2);
+  border: 1px solid var(--color-warning-border);
+  border-radius: var(--radius-md);
+  background: var(--color-warning-bg);
+  color: var(--color-warning-fg);
+  font-size: 0.875rem;
+}
+
+.object-type-graph-notice--error {
+  border-color: var(--color-error-border);
+  background: var(--color-error-bg);
+  color: var(--color-error);
+}
+
+.object-type-graph-notice-link {
+  color: inherit;
+  font-weight: 600;
+  text-decoration: underline;
+}

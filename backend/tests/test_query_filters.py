@@ -40,39 +40,3 @@ def test_row_matches_prop_filters():
     assert not row_matches_prop_filters({"status": "done"}, {"status": "open"})
     assert row_matches_prop_filters({"n": 1}, {"n": "1"})
     assert row_matches_prop_filters({}, {})
-
-
-def test_object_instance_conditions_bound_properties():
-    """Queue-path filters must be SQL predicates, not a post-page in-memory sweep."""
-    from sqlalchemy.dialects import postgresql
-
-    from app.models.object_instance import ObjectInstance
-    from app.services.ontology.query_filters import object_instance_conditions
-
-    search, equality = object_instance_conditions(ObjectInstance, {"status": "done"}, "weekly target")
-    search_sql = str(search.compile(dialect=postgresql.dialect()))
-    assert "object_instances.data" in search_sql
-    assert "LIKE" in search_sql.upper()
-    assert list(search.compile(dialect=postgresql.dialect()).params.values()) == ["%weekly target%"]
-
-    equality_compiled = equality.compile(dialect=postgresql.dialect())
-    assert "->>" in str(equality_compiled)
-    # Both the JSONB key and the value are bound, so neither can reach the SQL text.
-    assert sorted(equality_compiled.params.values(), key=str) == ["done", "status"]
-
-
-def test_object_instance_conditions_without_filters_is_empty():
-    from app.models.object_instance import ObjectInstance
-    from app.services.ontology.query_filters import object_instance_conditions
-
-    assert object_instance_conditions(ObjectInstance, {}, None) == []
-    assert object_instance_conditions(ObjectInstance, {}, "   ") == []
-
-
-def test_object_instance_conditions_rejects_bad_filter_name():
-    from app.models.object_instance import ObjectInstance
-    from app.services.ontology.query_filters import object_instance_conditions
-
-    with pytest.raises(HTTPException) as ei:
-        object_instance_conditions(ObjectInstance, {"status;drop": "x"}, None)
-    assert ei.value.status_code == 400

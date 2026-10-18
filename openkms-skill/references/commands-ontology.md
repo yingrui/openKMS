@@ -12,7 +12,7 @@ Prefix with `python scripts/cli.py`. Writes need `--yes` / `--dry-run`. Before F
 | NL → Cypher only | `ontology text-to-cypher --question "…"` |
 | NL → Cypher → answer (3-call chain) | `ontology ask --question "…"` |
 | Object types | `ontology objects list [--master-data-only] [--count-from-neo4j]` · `ontology objects get --id OT_ID` |
-| Object instances | `ontology objects instances list --type-id OT_ID --limit 50` · `… instances get --type-id OT_ID --id OI_ID` (use the `id` the list returned — it resolves against Neo4j, the dataset row, or the queue) |
+| Object instances | `ontology objects instances list --type-id OT_ID --limit 50` · `… instances get --type-id OT_ID --id OI_ID` (graph only — index the type first; `409` means no Neo4j data source, `indexed:false` means not indexed yet) |
 | Link types / instances | `ontology links list` · `ontology links get --id LT_ID` · `ontology links instances list --type-id LT_ID --limit 50` |
 | Functions | `ontology functions list` · `ontology functions execute-by-api-name --api-name NAME --input-json '{}' --yes` |
 | Action types | `ontology action-types list` |

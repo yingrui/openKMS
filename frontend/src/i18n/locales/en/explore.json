@@ -276,7 +276,10 @@
       "systemIdHint": "Platform identity for this instance (read-only). Use this RID with Actions and Apps.",
       "runAction": "Run {{name}}",
       "actionRunOk": "{{name}} completed",
-      "actionRunFailed": "Action failed"
+      "actionRunFailed": "Action failed",
+      "notIndexed": "This object type has rows to index but none in the graph yet. Index it from Ontology Manager, then reload.",
+      "notIndexedCta": "Open in Ontology Manager",
+      "graphReadFailed": "Could not read objects from the ontology graph."
     }
   },
   "objects": {

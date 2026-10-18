@@ -10,7 +10,6 @@ from app.api.auth import require_any_permission, require_auth
 from app.services.permissions.permission_catalog import PERM_CONSOLE_OBJECT_TYPES, PERM_ONTOLOGY_WRITE
 from app.services.ontology.dataset_tables import (
     dataset_display_name,
-    fetch_dataset_row_by_object_id,
     fetch_dataset_rows,
     get_dataset_row_count,
 )
@@ -29,7 +28,7 @@ from app.services.ontology.neo4j_async import (
 )
 from app.models.object_instance import ObjectInstance
 from app.models.object_type import ObjectType
-from app.services.ontology.query_filters import object_instance_conditions, parse_prop_filters
+from app.services.ontology.query_filters import parse_prop_filters
 from app.services.ontology.object_neo4j_store import (
     fetch_object_from_neo4j,
     get_first_neo4j_datasource,
@@ -648,49 +647,61 @@ async def list_object_instances(
     offset: int = Query(0, ge=0),
     db: AsyncSession = Depends(get_db),
 ):
-    """List object instances, filtered.
+    """List object instances from the ontology graph.
 
-    One type, three possible sources, tried in order:
+    The graph *is* the object layer: dataset tables and ``object_instances`` are what gets
+    indexed into it (a source and a write queue), never a second read path. A deployment
+    without a Neo4j data source, or a type that was never indexed, therefore gets an explicit
+    answer instead of a silently empty list.
 
-    1. **Neo4j**, when a Neo4j data source exists (indexed projection; the query SoT for
-       types without a dataset).
-    2. **The linked dataset's table**, for dataset-backed types.
-    3. **``object_instances``**, for types without a dataset — the apply queue is the only
-       place those objects exist, so it is the fallback instead of an empty list.
-
-    ``search`` and ``prop.<name>=value`` filters are applied by each source (not after
-    paging), so ``total`` and ``offset`` describe the filtered set.
+    ``search`` and ``prop.<name>=value`` filters, plus ``limit``/``offset``, are applied in the
+    graph, so ``total`` describes the filtered set.
     """
     obj_type = await db.get(ObjectType, object_type_id)
     if not obj_type:
         raise HTTPException(status_code=404, detail="Object type not found")
     await _require_object_type_read(request, db, object_type_id)
 
-    id_prop = resolve_id_property(obj_type)
     prop_filters = parse_prop_filters(request)
-
+    id_prop = resolve_id_property(obj_type)
     neo4j_ds = await get_first_neo4j_datasource(db)
-    if neo4j_ds:
-        label = object_label(obj_type)
+    if not neo4j_ds:
+        raise HTTPException(
+            status_code=409,
+            detail=(
+                "Ontology objects are read from the graph. Add a Neo4j data source "
+                "(Console → Data Sources), then index this object type."
+            ),
+        )
 
-        def _query(driver):
-            return _query_neo4j_nodes(
-                driver, label, search, limit, offset, id_prop, prop_filters=prop_filters
-            )
+    label = object_label(obj_type)
 
-        try:
-            rows, total = await run_with_neo4j_driver(neo4j_ds, _query)
-            return _instances_from_graph(rows, object_type_id, total)
-        except NEO4J_ERRORS:
-            pass
+    def _query(driver):
+        return _query_neo4j_nodes(
+            driver, label, search, limit, offset, id_prop, prop_filters=prop_filters
+        )
 
+    try:
+        rows, total = await run_with_neo4j_driver(neo4j_ds, _query)
+    except NEO4J_ERRORS as e:
+        raise HTTPException(status_code=503, detail=f"Ontology graph unavailable: {e}") from e
+
+    # An empty, unfiltered page can mean "no objects" or "never indexed". Say which.
+    indexed: bool | None = True
+    if total == 0 and not search and not prop_filters:
+        indexed = not await _has_unindexed_source(db, obj_type)
+    return _instances_from_graph(rows, object_type_id, total, indexed)
+
+
+async def _has_unindexed_source(db: AsyncSession, obj_type: ObjectType) -> bool:
+    """Whether this type has rows to index that the graph does not show."""
     if obj_type.dataset_id:
-        return await _instances_from_dataset(db, obj_type, search, limit, offset, prop_filters)
-    return await _instances_from_queue(db, obj_type, search, limit, offset, prop_filters)
+        return await get_dataset_row_count(db, obj_type.dataset_id) > 0
+    return await _object_instance_count(db, obj_type.id) > 0
 
 
 def _instances_from_graph(
-    rows: list[dict], object_type_id: str, total: int
+    rows: list[dict], object_type_id: str, total: int, indexed: bool | None = None
 ) -> ObjectInstanceListResponse:
     return ObjectInstanceListResponse(
         items=[
@@ -704,94 +715,7 @@ def _instances_from_graph(
             for r in rows
         ],
         total=total,
-    )
-
-
-def _dataset_row_id(obj_type: ObjectType, row: dict) -> object | None:
-    """The row's API id — ``key_property`` when that column exists, else the indexed id column."""
-    if obj_type.key_property and obj_type.key_property in row:
-        return row[obj_type.key_property]
-    return row.get(resolve_neo4j_id_column_for_row(obj_type, row))
-
-
-def _dataset_id_candidates(obj_type: ObjectType) -> list[str]:
-    """Columns that can hold the id a list/Explorer row was shown with, in priority order."""
-    names = [obj_type.key_property, "id"] if obj_type.key_property else ["id"]
-    names.extend(
-        p.get("name") for p in (obj_type.properties or []) if isinstance(p, dict) and p.get("name")
-    )
-    return list(dict.fromkeys(n for n in names if n))
-
-
-async def _instances_from_dataset(
-    db: AsyncSession,
-    obj_type: ObjectType,
-    search: str | None,
-    limit: int,
-    offset: int,
-    prop_filters: dict[str, str],
-) -> ObjectInstanceListResponse:
-    try:
-        rows, total = await fetch_dataset_rows(
-            db,
-            obj_type.dataset_id,
-            limit=limit,
-            offset=offset,
-            filters=prop_filters,
-            search=search,
-        )
-    except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e)) from e
-    items: list[ObjectInstanceResponse] = []
-    for row in rows:
-        row_id = _dataset_row_id(obj_type, row)
-        if row_id is None:
-            continue
-        items.append(
-            ObjectInstanceResponse(
-                id=str(row_id),
-                object_type_id=obj_type.id,
-                data={k: v for k, v in row.items() if v is not None},
-                created_at=None,
-                updated_at=None,
-            )
-        )
-    return ObjectInstanceListResponse(items=items, total=total)
-
-
-async def _instances_from_queue(
-    db: AsyncSession,
-    obj_type: ObjectType,
-    search: str | None,
-    limit: int,
-    offset: int,
-    prop_filters: dict[str, str],
-) -> ObjectInstanceListResponse:
-    conditions = [ObjectInstance.object_type_id == obj_type.id]
-    conditions.extend(object_instance_conditions(ObjectInstance, prop_filters, search))
-    total = (
-        await db.execute(select(func.count()).select_from(ObjectInstance).where(*conditions))
-    ).scalar_one()
-    result = await db.execute(
-        select(ObjectInstance)
-        .where(*conditions)
-        .order_by(ObjectInstance.created_at.desc(), ObjectInstance.id)
-        .limit(limit)
-        .offset(offset)
-    )
-    instances = result.scalars().all()
-    return ObjectInstanceListResponse(
-        items=[
-            ObjectInstanceResponse(
-                id=i.id,
-                object_type_id=i.object_type_id,
-                data=i.data or {},
-                created_at=i.created_at,
-                updated_at=i.updated_at,
-            )
-            for i in instances
-        ],
-        total=int(total),
+        indexed=indexed,
     )
 
 
@@ -841,11 +765,11 @@ async def get_object_instance(
     request: Request,
     db: AsyncSession = Depends(get_db),
 ):
-    """Read one object, from whichever source the list got its id from.
+    """Read one object from the ontology graph.
 
-    Neo4j first (indexed projection), then the dataset row, then the apply-queue row. A
-    dataset-backed object's id is its business key, not a queue primary key, so reading only
-    the queue 404'd every row the Object Explorer had just listed.
+    The graph is the object layer; the queue row is a write buffer, not a read path. A type
+    that was never indexed therefore answers 404 rather than handing back a queue row the
+    rest of the ontology cannot see.
     """
     await _require_object_type_read(request, db, object_type_id)
     obj_type = await db.get(ObjectType, object_type_id)
@@ -862,32 +786,14 @@ async def get_object_instance(
             updated_at=None,
         )
 
-    if obj_type.dataset_id:
-        row = await fetch_dataset_row_by_object_id(
-            db,
-            obj_type.dataset_id,
-            candidate_columns=_dataset_id_candidates(obj_type),
-            object_id=object_id,
-        )
-        if row is not None:
-            return ObjectInstanceResponse(
-                id=object_id,
-                object_type_id=object_type_id,
-                data={k: v for k, v in row.items() if v is not None},
-                created_at=None,
-                updated_at=None,
-            )
-
     instance = await db.get(ObjectInstance, object_id)
-    if not instance or instance.object_type_id != object_type_id:
-        raise HTTPException(status_code=404, detail="Object not found")
-    return ObjectInstanceResponse(
-        id=instance.id,
-        object_type_id=instance.object_type_id,
-        data=instance.data or {},
-        created_at=instance.created_at,
-        updated_at=instance.updated_at,
-    )
+    if instance and instance.object_type_id == object_type_id:
+        # The row exists in the write queue but not in the graph: it is not readable yet.
+        raise HTTPException(
+            status_code=404,
+            detail="Object is not in the ontology graph yet. Index this object type and retry.",
+        )
+    raise HTTPException(status_code=404, detail="Object not found")
 
 
 @router.put("/{object_type_id}/objects/{object_id}", response_model=ObjectInstanceResponse)
