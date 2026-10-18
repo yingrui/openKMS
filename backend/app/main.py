@@ -5,6 +5,10 @@ import traceback
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, Request
+from fastapi.openapi.docs import get_swagger_ui_html
+from fastapi.responses import HTMLResponse
+from fastapi.staticfiles import StaticFiles
+from pathlib import Path
 from procrastinate.exceptions import ProcrastinateException
 from sqlalchemy.exc import SQLAlchemyError
 from fastapi.middleware.cors import CORSMiddleware
@@ -122,7 +126,26 @@ app = FastAPI(
     title=settings.app_title,
     version=settings.app_version,
     lifespan=lifespan,
+    # The UI is served from this repo, not from a CDN: jsdelivr is unreachable from some of the networks
+    # this runs on, and a docs page that needs a third party is a docs page that is sometimes blank.
+    docs_url=None,
+    redoc_url=None,
 )
+
+_SWAGGER_UI = Path(__file__).parent / "static" / "swagger-ui"
+app.mount("/static/swagger-ui", StaticFiles(directory=_SWAGGER_UI), name="swagger-ui")
+
+
+@app.get("/docs", include_in_schema=False)
+async def swagger_ui() -> HTMLResponse:
+    """Swagger UI, with its assets from `/static/swagger-ui` (vendored; `swagger-ui-dist`)."""
+    return get_swagger_ui_html(
+        openapi_url=app.openapi_url or "/openapi.json",
+        title=f"{app.title} — docs",
+        swagger_js_url="/static/swagger-ui/swagger-ui-bundle.js",
+        swagger_css_url="/static/swagger-ui/swagger-ui.css",
+        swagger_favicon_url="/static/swagger-ui/favicon-32x32.png",
+    )
 
 
 @app.exception_handler(Exception)

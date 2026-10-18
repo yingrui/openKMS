@@ -51,7 +51,10 @@ _OPENAPI_EXACT: frozenset[tuple[str, str]] = frozenset(
     {
         ("GET", "/openapi.json"),
         ("GET", "/docs"),
-        ("GET", "/redoc"),
+        # The docs UI's own assets — vendored, so the page works without a CDN.
+        ("GET", "/static/swagger-ui/swagger-ui-bundle.js"),
+        ("GET", "/static/swagger-ui/swagger-ui.css"),
+        ("GET", "/static/swagger-ui/favicon-32x32.png"),
     }
 )
 
