@@ -286,7 +286,7 @@ Adding that needs parent-route reachability (a tab's parent sheet *is* in scope,
 Filling the 93 undocumented routes was the obvious next step, until the count said what they were: **85
 real consumer routes**, most with no docstring. Writing one line per route from a path string would have
 made the number zero and the page worse — and it is the *same mistake* the
-`data-models.md` decision was about: a hand-kept table of 431 endpoints is a mirror of the code, and it had
+`data-models.md` decision was about: a hand-kept table of 566 operations is a mirror of the code, and it had
 already drifted 93 routes, exactly like the table of 88 models drifted 45.
 
 An earlier draft of this entry justified the decision by saying those routes were "in areas nobody is
@@ -335,7 +335,8 @@ Asked to find where docs and implementation disagree. Compared against the **cod
 FastAPI's own `app.routes`, the models' `__tablename__`, `permission_catalog`, the skill manifest, and the
 guardrail baselines.
 
-**No ghosts, and our line is clean.** Of 431 real routes, **none** is documented-but-missing (every route
+**No ghosts, and our line is clean.** Of 431 real routes (566 operations — the comparison collapses different
+paths that differ only in a parameter name), **none** is documented-but-missing (every route
 `api-reference.md` describes exists), and the Data Insights / quality / datasets routes are **all**
 documented. The drift is incompleteness elsewhere — 97 routes undocumented, by area: ontology 24,
 projects 18, admin 11, media 10, app-builder 10, knowledge-map 7, media-channels 7, user 3, resource-acl 2
