@@ -282,6 +282,17 @@ route's sheet; nothing catches a class used by **one** page and defined in a she
 Adding that needs parent-route reachability (a tab's parent sheet *is* in scope, e.g. `quality-pill` from
 `dataset-detail.scss`), which is why it is a follow-up rather than a five-line check.
 
+### Backups: written, and honestly not yet proven (2026-10)
+
+The first item on the list was the only real net: backups with a restore that has been performed. Two
+scripts now exist — `scripts/pg_backup.sh` (`pg_dump -Fc`, keeps the newest N, connection from
+`app.config` so there is one DSN source) and `scripts/restore_drill.sh` (restores into a scratch database,
+compares row counts on the tables that would break loudly, drops it).
+
+They are **not claimed to work**: this machine has no `pg_dump`, so only the preflight was exercised (it
+refuses with an installation hint, verified). The drill is what turns a file into a backup, and until it
+prints `restore drill ok`, the honest state is untested.
+
 ### The audit log: a mutation is recorded even when it fails (2026-10)
 
 The security note ended with "backups, then a key per agent, then soft delete and an audit log". The log is

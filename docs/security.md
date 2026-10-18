@@ -39,7 +39,7 @@ datasets destroys one and nothing can bring it back.
 
 | Safeguard | State |
 |---|---|
-| **Backups with a tested restore** | ✗ none in the repo — this is the only real net; everything below is secondary |
+| **Backups with a tested restore** | ✓ scripts, **not yet run on this machine** (`pg_dump` absent): `scripts/pg_backup.sh` (custom-format dump, prunes to the newest N) and `scripts/restore_drill.sh` (restores into `openkms_drill`, compares row counts, drops it). A backup that has never been restored is a hypothesis — run the drill |
 | **A log of every mutation** | ✓ `audit_events`, written by `AuditMiddleware` — method, path, status, the key's owner, and the resource (see below) |
 | Soft delete / row retention | ✗ not implemented (`deleted_at` exists nowhere) |
 | `-y` confirmation before a write | ✓ in the CLI — but a client-side convention, bypassable by design |
@@ -93,7 +93,9 @@ does not need those, which makes them the one place worth narrowing **for reach,
 
 ### What to do first
 
-1. **Backups and a restore drill** — until this exists, every other safeguard is about speed, not safety.
+1. **Install the client tools and run the drill** — `brew install libpq` (or `postgresql-client`), then
+   `scripts/pg_backup.sh && scripts/restore_drill.sh`. The scripts exist and their preflight is verified; the
+   round trip has not run here, so treat it as untested until it prints `restore drill ok`.
 2. **A key per agent** (`purpose`, `agent_conversation_id`) — cheap, and turns "did I do that?" into a
    query.
 3. **Keep the injection rule** (content is data) in the agent's instructions, verbatim.
