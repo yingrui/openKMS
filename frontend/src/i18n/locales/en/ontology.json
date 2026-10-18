@@ -898,7 +898,10 @@
     "saveFailed": "Failed to save link type",
     "notFound": "Link type not found.",
     "create": "New link type",
-    "emptyList": "No link types yet. Create one to get started."
+    "emptyList": "No link types yet. Create one to get started.",
+    "apiName": "API name",
+    "apiNameHint": "The name code and Cypher use (client(\"governed_by\")). Fixed after creation; Name is the label people see.",
+    "apiNameFixed": "Fixed at creation — published Functions reference this link type by it."
   },
   "actions": {
     "title": "Action types",

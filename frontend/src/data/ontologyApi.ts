@@ -310,6 +310,8 @@ export async function fetchLinkType(
 
 export async function createLinkType(data: {
   name: string;
+  /** Generated from `name` when it has ASCII parts; required for names that do not. */
+  api_name?: string;
   description?: string;
   source_object_type_id: string;
   target_object_type_id: string;
@@ -331,6 +333,7 @@ export async function updateLinkType(
   linkTypeId: string,
   data: {
     name?: string;
+    api_name?: string;
     description?: string;
     source_object_type_id?: string;
     target_object_type_id?: string;

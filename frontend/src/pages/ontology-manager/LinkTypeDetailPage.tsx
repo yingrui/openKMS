@@ -32,6 +32,9 @@ type LinkTypeDetailContext = {
   datasetColumns: { column_name: string }[];
   name: string;
   setName: (v: string) => void;
+  /** Frozen identifier; empty when the row predates the column and has not claimed one. */
+  apiName: string;
+  setApiName: (v: string) => void;
   description: string;
   setDescription: (v: string) => void;
   sourceId: string;
@@ -72,6 +75,7 @@ export function LinkTypeDetailPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [name, setName] = useState('');
+  const [apiName, setApiName] = useState('');
   const [description, setDescription] = useState('');
   const [sourceId, setSourceId] = useState('');
   const [targetId, setTargetId] = useState('');
@@ -85,6 +89,7 @@ export function LinkTypeDetailPage() {
   const applyLinkType = useCallback((lt: LinkTypeResponse) => {
     setLinkType(lt);
     setName(lt.name);
+    setApiName(lt.api_name || '');
     setDescription(lt.description || '');
     setSourceId(lt.source_object_type_id);
     setTargetId(lt.target_object_type_id);
@@ -136,6 +141,9 @@ export function LinkTypeDetailPage() {
     try {
       const updated = await updateLinkType(linkTypeId, {
         name: name.trim(),
+        // Only a row that predates api_name can claim one; sending it again is a rename,
+        // which the API refuses (published Functions reference this link type by it).
+        ...(linkType?.api_name ? {} : apiName.trim() ? { api_name: apiName.trim() } : {}),
         description: description.trim() || undefined,
         source_object_type_id: sourceId,
         target_object_type_id: targetId,
@@ -165,6 +173,8 @@ export function LinkTypeDetailPage() {
     targetKeyProperty,
     sourceDatasetColumn,
     targetDatasetColumn,
+    apiName,
+    linkType?.api_name,
     applyLinkType,
     t,
   ]);
@@ -179,6 +189,8 @@ export function LinkTypeDetailPage() {
             datasetColumns,
             name,
             setName,
+            apiName,
+            setApiName,
             description,
             setDescription,
             sourceId,
@@ -207,6 +219,7 @@ export function LinkTypeDetailPage() {
       datasets,
       datasetColumns,
       name,
+      apiName,
       description,
       sourceId,
       targetId,
@@ -262,6 +275,8 @@ export function LinkTypeOverviewTab() {
     objectTypes,
     name,
     setName,
+    apiName,
+    setApiName,
     description,
     setDescription,
     sourceId,
@@ -323,6 +338,21 @@ export function LinkTypeOverviewTab() {
         <div className="entity-view__form">
           <EntityViewField label={t('linkTypes.name')}>
             <input className="console-form-control" value={name} onChange={(e) => setName(e.target.value)} />
+          </EntityViewField>
+          <EntityViewField label={t('linkTypes.apiName')}>
+            {linkType.api_name ? (
+              <code className="entity-view__code" title={t('linkTypes.apiNameFixed')}>
+                {linkType.api_name}
+              </code>
+            ) : (
+              <input
+                className="console-form-control"
+                value={apiName}
+                onChange={(e) => setApiName(e.target.value)}
+                placeholder={t('linkTypes.apiName')}
+                title={t('linkTypes.apiNameHint')}
+              />
+            )}
           </EntityViewField>
           <EntityViewField label={t('linkTypes.description')}>
             <textarea

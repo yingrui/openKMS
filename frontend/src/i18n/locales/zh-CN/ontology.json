@@ -891,7 +891,10 @@
     "saveFailed": "保存链接类型失败",
     "notFound": "未找到链接类型。",
     "create": "新建链接类型",
-    "emptyList": "暂无链接类型。创建一个以开始。"
+    "emptyList": "暂无链接类型。创建一个以开始。",
+    "apiName": "API 名称",
+    "apiNameHint": "代码和 Cypher 使用的名称（client(\"governed_by\")）。创建后不可修改；名称才是给人看的显示名。",
+    "apiNameFixed": "创建时固定 —— 已发布的 Function 用它引用该链接类型。"
   },
   "actions": {
     "title": "操作类型",

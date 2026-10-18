@@ -19,6 +19,7 @@ import {
 import { fetchDatasets, fetchDatasetMetadata, type DatasetResponse } from '../../data/datasetsApi';
 import { fetchAllDataSources, type DataSourceResponse } from '../../data/dataSourcesApi';
 import { useConfirm } from '../../contexts/ConfirmContext';
+import { isValidApiName, toPascalCaseApiName } from '../ontology-manager/objectTypeNaming';
 import './ontology-admin.scss';
 
 /** True when indexing reads from a junction or source-side dataset (not only saved links). */
@@ -51,6 +52,9 @@ export function LinkTypesPage() {
   const [showForm, setShowForm] = useState(false);
   const [editType, setEditType] = useState<LinkTypeResponse | null>(null);
   const [formName, setFormName] = useState('');
+  // The frozen identifier code/Cypher use; prefilled from the name until edited.
+  const [formApiName, setFormApiName] = useState('');
+  const [formApiNameTouched, setFormApiNameTouched] = useState(false);
   const [formDescription, setFormDescription] = useState('');
   const [formSourceId, setFormSourceId] = useState('');
   const [formTargetId, setFormTargetId] = useState('');
@@ -100,6 +104,8 @@ export function LinkTypesPage() {
   const openCreate = () => {
     setEditType(null);
     setFormName('');
+    setFormApiName('');
+    setFormApiNameTouched(false);
     setFormDescription('');
     setFormSourceId(objectTypes[0]?.id || '');
     setFormTargetId(objectTypes[0]?.id || '');
@@ -131,8 +137,11 @@ export function LinkTypesPage() {
   const sourceProperties = sourceObjectType?.properties ?? [];
   const targetProperties = targetObjectType?.properties ?? [];
 
+  const effectiveApiName = (formApiNameTouched ? formApiName : toPascalCaseApiName(formName)).trim();
+  const apiNameInvalid = effectiveApiName.length > 0 && !isValidApiName(effectiveApiName);
+
   const handleSubmit = async () => {
-    if (!formName.trim() || !formSourceId || !formTargetId) return;
+    if (!formName.trim() || !formSourceId || !formTargetId || apiNameInvalid) return;
     setSubmitting(true);
     try {
       if (editType) {
@@ -152,6 +161,7 @@ export function LinkTypesPage() {
       } else {
         await createLinkType({
           name: formName.trim(),
+          api_name: effectiveApiName || undefined,
           description: formDescription.trim() || undefined,
           source_object_type_id: formSourceId,
           target_object_type_id: formTargetId,
@@ -393,6 +403,8 @@ export function LinkTypesPage() {
                 onClick={handleSubmit}
                 disabled={
                   !formName.trim() ||
+                  !effectiveApiName ||
+                  apiNameInvalid ||
                   !formSourceId ||
                   !formTargetId ||
                   (formCardinality === 'many-to-many' && (!formDatasetId || !formSourceDatasetColumn || !formTargetDatasetColumn)) ||
@@ -411,6 +423,21 @@ export function LinkTypesPage() {
                   value={formName}
                   onChange={(e) => setFormName(e.target.value)}
                   placeholder="e.g. covers"
+                />
+</FormField>
+              <FormField
+                label="API name"
+                hint={apiNameInvalid ? 'Start with a letter; use only letters, digits and underscores.' : 'What code and Cypher call it (client("covers")). Fixed after creation; Name is the label people see.'}
+              >
+<input
+                  type="text"
+                  value={effectiveApiName}
+                  onChange={(e) => {
+                    setFormApiNameTouched(true);
+                    setFormApiName(e.target.value);
+                  }}
+                  placeholder="e.g. covers"
+                  aria-invalid={apiNameInvalid}
                 />
 </FormField>
               <FormField label="Description">
