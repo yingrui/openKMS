@@ -51,7 +51,7 @@ flowchart TB
 
 | 层 | 作用 |
 |----|------|
-| **PostgreSQL + pgvector** | 系统记录 — 元数据、权限与向量 embedding。领域：**认证与 ACL**（用户、角色、组、资源 ACL）、**通道与内容**（文档、文章、版本、关系）、**知识**（知识库、分块、FAQ、维基、术语表）、**本体**（对象/链接类型与实例、数据集）、**运维**（流水线、任务、模型、评测、知识地图）、**系统**（设置、功能开关）。完整表清单：[data-models.md](features/data-models.md)。 |
+| **PostgreSQL + pgvector** | 系统记录 — 元数据、权限与向量 embedding。领域：**认证与 ACL**（用户、角色、组、资源 ACL）、**通道与内容**（文档、文章、版本、关系）、**知识**（知识库、分块、FAQ、维基、术语表）、**本体**（对象/链接类型与实例、数据集）、**运维**（流水线、任务、模型、评测、知识地图）、**系统**（设置、功能开关）。权威表清单是 `backend/app/models/`（以及 `alembic/versions/` 里某个库实际存在的东西）。 |
 | **S3/MinIO** | 大文件 — 文档原件（`{file_hash}/…`）、文章包、维基 vault 镜像与临时文件、维基链接图缓存 JSON。浏览器经 API presigned 重定向访问。 |
 | **Worker** | procrastinate worker 执行延迟任务（文档解析、知识库索引等），拉起 **openkms-cli**；在 PostgreSQL 中更新状态。 |
 | **LLM 提供商** | 外部 OpenAI 兼容 API，配置为 **api_providers** / **api_models** — 元数据抽取、FAQ 生成、embedding、模型 playground。 |

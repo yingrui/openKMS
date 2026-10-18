@@ -34,7 +34,7 @@
 |------|----------|
 | [知识类型](features/knowledge-types.md) | 分类（制品、索引、维度）；**昆虫研究**工作流表；**何时新增 Recordings/Video 功能**（[锚点](features/knowledge-types.md#video-as-functionality)） |
 | [API 参考](features/api-reference.md) | 按领域分组的 HTTP 端点总表 |
-| [数据模型](features/data-models.md) | 各持久化表的 schema |
+| 数据模型 | 各持久化表的 schema |
 | [配置](features/configuration.md) | 后端依赖、pgvector、S3/MinIO、贡献者规则 |
 
 ## 新增内容放哪里
@@ -42,7 +42,7 @@
 代码变更时，编辑上表中最具体的页面：
 
 - **新端点** → 对应功能页 **以及** [API 参考](features/api-reference.md)。
-- **新 schema 列** → [数据模型](features/data-models.md) **以及** 使用该列的功能页。
+- **新 schema 列** → 数据模型 **以及** 使用该列的功能页。
 - **新功能面** → 专用功能页；若无合适页面，在 `docs/features/` 下新增文件、在此链接，并在 `mkdocs.yml` 的 `nav:` 中登记。
 
 完整编辑清单见 [AI 代理文档规范](agents.md)。

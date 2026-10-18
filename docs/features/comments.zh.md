@@ -36,4 +36,4 @@
 
 ## 数据模型
 
-表 **`content_comments`**：多态 `resource_type` + `resource_id`，可选 `parent_comment_id`，`body`，`rank`（仅顶层），`created_by`，`created_by_name`，时间戳。见 [数据模型 — ContentComment](data-models.md#contentcomment)。
+表 **`content_comments`**：多态 `resource_type` + `resource_id`，可选 `parent_comment_id`，`body`，`rank`（仅顶层），`created_by`，`created_by_name`，时间戳。见 数据模型 — ContentComment。

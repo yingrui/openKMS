@@ -2,7 +2,7 @@
 
 控制台中的 **已登记 Kubernetes 集群** 管理，供操作员与 Agent 使用。支持 **接入已有集群**（粘贴 kubeconfig、加密落库、连通性测试），并 **浏览** Namespace、Deployment、Service、Pod。控制台可 **apply** 白名单 YAML、**删除** 这些 kind、**查看 Pod 日志**，以及 **把 Service 登记到应用**。不包含云厂商建集群。
 
-相关：[控制台与认证](console-and-auth.md)、[Agents](openkms-agents.md)、[应用（托管模块）](app-builder.md)、[API 参考](api-reference.md#kubernetes-clusters-consolekubernetes)、[数据模型](data-models.md#kubernetescluster)。
+相关：[控制台与认证](console-and-auth.md)、[Agents](openkms-agents.md)、[应用（托管模块）](app-builder.md)、[API 参考](api-reference.md#kubernetes-clusters-consolekubernetes)、数据模型。
 
 ## 控制台 UI
 

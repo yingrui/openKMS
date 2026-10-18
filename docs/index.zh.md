@@ -46,7 +46,7 @@ openKMS 把这些视为**同一张网络**，而非割裂的「给人用的 KM�
 | 自己动手：Tushare → Stock → Function 案例 | [教程：Tushare 市场分析本体](tutorials/tushare-market-ontology.md) |
 | 理解系统整体 | [架构](architecture.md) · [功能索引](functionalities.md) |
 | 查找具体功能或 API | [功能索引](functionalities.md) → `features/*.md` |
-| HTTP 或 schema 参考 | [API 参考](features/api-reference.md) · [数据模型](features/data-models.md) |
+| HTTP 或 schema 参考 | [API 参考](features/api-reference.md) · 数据模型 |
 | 知识制品类型 | [知识类型](features/knowledge-types.md) |
 | 共享与资源 ACL | [数据安全](features/data-security.md) |
 | 用 Agent Skill / CLI 访问 openKMS | [openkms-skill](features/openkms-skill.md) |

@@ -39,7 +39,7 @@ Per-feature reference, split by topic under `docs/features/`. The table below is
 |---|---|
 | [Knowledge types](features/knowledge-types.md) | Taxonomy (artifacts, indexes, dimensions); **insect-research** workflow table; **when to add a Recordings/Video functionality** ([anchor](features/knowledge-types.md#video-as-functionality)) |
 | [API reference](features/api-reference.md) | One table of every HTTP endpoint, grouped by area |
-| [Data models](features/data-models.md) | Schema for every persisted table |
+| Data models | Schema for every persisted table |
 | [Configuration](features/configuration.md) | Backend deps, pgvector, S3/MinIO, contributor rules |
 
 ## Where to add new content
@@ -47,7 +47,7 @@ Per-feature reference, split by topic under `docs/features/`. The table below is
 When something changes in code, edit the most specific page in the table above:
 
 - **New endpoint** → matching feature page **and** [API reference](features/api-reference.md).
-- **New schema column** → [Data models](features/data-models.md) **and** the feature page that uses it.
+- **New schema column** → Data models **and** the feature page that uses it.
 - **New feature surface** → its dedicated feature page; if no page fits, add a new file under `docs/features/`, link it here, and add a `nav:` entry in `mkdocs.yml`.
 
 See [Doc conventions for AI agents](agents.md) for the full editing checklist.

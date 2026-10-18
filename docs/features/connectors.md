@@ -79,7 +79,7 @@ Secret: **`ZHIPU_API_KEY`**. Inputs include `api_base_url`, `search_engine`, `co
 | **`scheduled_triggers`** | Cron registry; v1 target kind `connector_sync` |
 | **`datasets`** | Sync sink — must match slot `dataset_schema` when the kind defines columns |
 
-Full columns: [Data models — Connector](data-models.md#connector).
+Full columns: Data models — Connector.
 
 ## Implementation map
 

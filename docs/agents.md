@@ -7,7 +7,7 @@
 三层：
 
 1. **顶层参考文件** — `architecture.md`（模块/流程/配置）、`functionalities.md`（路由）、`development_plan.md`（进度）、`security.md`、`tech_debt.md`
-2. **功能页** — `features/` 下每个产品领域一页，加上 `api-reference.md`、`data-models.md`、`configuration.md`。大部分代码变更落在这里
+2. **功能页** — `features/` 下每个产品领域一页，加上 `api-reference.md`、`configuration.md`。大部分代码变更落在这里
 3. **入口页** — `index.md`、`quickstart.md`、`operations/docker.md`、`developer/setup.md`
 
 不确定改哪里时，先改最具体的 feature page，再更新交叉引用。
@@ -19,7 +19,7 @@
 | 新模块/流程/布局/配置 | `architecture.md` |
 | 新功能/UI | 对应 `features/` 页面 |
 | 新 HTTP 端点 | feature page + `features/api-reference.md` |
-| 新表/字段 | feature page + `features/data-models.md` |
+| 新表/字段 | feature page（+ 模型 docstring / 迁移注释里的“为什么”） |
 | 完成的任务/计划调整 | `development_plan.md` |
 | 新领域 | 新建 `features/xxx.md`，链入 `functionalities.md`，加入 `mkdocs.yml` |
 | `backend/app/models/` 变更 | 需要 Alembic migration |

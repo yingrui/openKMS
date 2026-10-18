@@ -1,5 +1,10 @@
 # API reference
 
+> Checked against the app: `backend/scripts/check_api_doc.py` (run by `backend/check.sh`) reads
+> FastAPI's own route table. A route documented here that the app does not serve fails the build; a
+> route the app serves and this page omits is frozen in `backend/scripts/api-doc-baseline.txt`, which only
+> shrinks.
+
 Every HTTP route the backend exposes. Browser-facing routes live under `/api/...`; routes that return provider secrets for **`openkms-cli`**, **qa-agent**, and workers live under `/internal-api/...` and require an **internal service** JWT (`sub=local-cli` or OIDC `azp` on **`OPENKMS_INTERNAL_SERVICE_CLIENT_IDS`**). The unauthenticated routes are explicitly marked.
 
 For per-feature context (when an endpoint is used, what it returns), see the matching feature page in the [Features index](../functionalities.md).

@@ -2,7 +2,7 @@
 
 **Mechanics** for resource ACL, sharing UI, list filters, and resolver code. For principles (default-open, admin vs data access, trust boundaries, identity modes), see [Security design](../security.md).
 
-**Related:** [Console & authentication](console-and-auth.md) (login, catalog keys, tokens), [Data models — Data security](data-models.md#data-security-access-groups-resource-acl) (schemas), [API reference — resource ACL](api-reference.md) (HTTP).
+**Related:** [Console & authentication](console-and-auth.md) (login, catalog keys, tokens), Data models — Data security (schemas), [API reference — resource ACL](api-reference.md) (HTTP).
 
 ---
 
@@ -18,7 +18,7 @@
 | Sharing API | `GET`/`PUT /api/resource-acl/{type}/{id}`; `GET …/owner-candidates` |
 | Legacy | Data-resource scope APIs → **410**; use resource ACL |
 
-New **list/get** handlers: use `resource_guard.load_scoped_resource` / `require_resource_by_id` for standalone types, or `check_resource_access` / `instance_visible` / channel predicates for hierarchical types. New securable types: extend `RESOURCE_REGISTRY` in `resource_guard.py`, `SECURABLE_RESOURCE_TYPES`, `resource_context_chain`, Alembic, this page + `data-models.md`.
+New **list/get** handlers: use `resource_guard.load_scoped_resource` / `require_resource_by_id` for standalone types, or `check_resource_access` / `instance_visible` / channel predicates for hierarchical types. New securable types: extend `RESOURCE_REGISTRY` in `resource_guard.py`, `SECURABLE_RESOURCE_TYPES`, `resource_context_chain`, the Alembic revision, and this page.
 
 ---
 
@@ -54,7 +54,7 @@ Canonical keys: [Console & authentication — Permission catalog](console-and-au
 | `access_groups` | Named groups (`grantee_type=group`) |
 | `access_group_members` | `subject` ↔ `group_id` (local id, OIDC `sub`, or alias strings) |
 
-Columns: [Data models — Data security](data-models.md#data-security-access-groups-resource-acl).
+Columns: Data models — Data security.
 
 ### Securable types
 

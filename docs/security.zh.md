@@ -95,7 +95,7 @@ flowchart TB
 | Console、目录、OIDC/本地登录、**获取 token** | [控制台与认证](features/console-and-auth.md) |
 | 环境变量与开关 | [配置](features/configuration.md) |
 | 部署与 auth 模式对齐 | [Docker 运维](operations/docker.md) |
-| Schema | [数据模型 — 数据安全](features/data-models.md#data-security-access-groups-resource-acl) |
+| Schema | 数据模型 — 数据安全 |
 
 ---
 

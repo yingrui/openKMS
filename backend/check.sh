@@ -28,6 +28,11 @@ while IFS= read -r hit; do
   fi
 done < <(rg -n --no-heading '#\s*noqa' app tests --glob '*.py' || true)
 
+echo "→ api doc routes"
+# The reference must not describe a route the app lacks (always a failure), and may not fall further
+# behind than scripts/api-doc-baseline.txt allows (a ratchet that only shrinks).
+uv run python scripts/check_api_doc.py || status=1
+
 echo "→ pytest"
 uv run pytest -q || status=1
 

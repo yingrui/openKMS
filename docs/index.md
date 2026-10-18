@@ -46,7 +46,7 @@ Content lives in **channel trees** (like folder hierarchies). Typical surfaces:
 | DIY a Tushare → Stock → Function case study | [Tutorial: Tushare market ontology](tutorials/tushare-market-ontology.md) |
 | Understand the system | [Architecture](architecture.md) · [Functionalities](functionalities.md) |
 | Find a specific feature or API | [Functionalities](functionalities.md) → `features/*.md` |
-| HTTP or schema reference | [API reference](features/api-reference.md) · [Data models](features/data-models.md) |
+| HTTP or schema reference | [API reference](features/api-reference.md) · Data models |
 | Knowledge artifact types | [Knowledge types](features/knowledge-types.md) |
 | Sharing and resource ACL | [Data security](features/data-security.md) |
 | Use openKMS from an agent (skill + CLI) | [openkms-skill](features/openkms-skill.md) |

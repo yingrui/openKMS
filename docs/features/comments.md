@@ -36,4 +36,4 @@ Integrated on: Article detail, Document detail, Knowledge base detail (hidden in
 
 ## Data model
 
-Table **`content_comments`**: polymorphic `resource_type` + `resource_id`, optional `parent_comment_id`, `body`, `rank` (top-level only), `created_by`, `created_by_name`, timestamps. See [Data models — Comments](data-models.md#contentcomment).
+Table **`content_comments`**: polymorphic `resource_type` + `resource_id`, optional `parent_comment_id`, `body`, `rank` (top-level only), `created_by`, `created_by_name`, timestamps. See Data models — Comments.

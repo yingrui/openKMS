@@ -16,7 +16,7 @@ Main **units** of content users create, import, or curate. Each maps to tables/A
 | **Glossary term** | Term record (e.g. bilingual definitions, import/export). | [Glossaries](glossaries.md) |
 | **Ontology object instance** | Typed row in an object type (master or transactional data). | [Ontology](ontology.md) |
 | **Ontology link instance** | Typed relationship between two objects (or via a junction dataset). | [Ontology](ontology.md) |
-| **Dataset** (ontology) | Tabular source backing object types / many-to-many link patterns. | [Ontology](ontology.md), [Data models](data-models.md) |
+| **Dataset** (ontology) | Tabular source backing object types / many-to-many link patterns. | [Ontology](ontology.md), Data models |
 | **Evaluation item** | Labeled query + expected answer (and metadata) for a KB evaluation run. | [Evaluation](evaluation.md) |
 
 ## Organizational layers (not duplicates of body text)

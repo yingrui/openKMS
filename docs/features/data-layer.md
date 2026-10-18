@@ -4,7 +4,7 @@ Feature reference for the openKMS **data layer**: the **Datasets** app (Catalog 
 
 **Status:** shipped in part, with a pending refactor to the **Apache Ossie** semantic model. See [Refactoring plan](#refactoring-plan) · [Semantic model spec](data-layer-semantic-model.md) · [Interaction design](data-layer-interaction.md).
 
-**Related:** [Development plan](../development_plan.md) · [Data models](data-models.md) · [API reference](api-reference.md) · [Semantic model spec](data-layer-semantic-model.md) · [Interaction design](data-layer-interaction.md) · [Implementation design](data-layer-implementation.md) · [Ossie research](../research/ossie_semantic_layer.md) · [Data grid selection](../research/data_grid_selection.md)
+**Related:** [Development plan](../development_plan.md) · Data models · [API reference](api-reference.md) · [Semantic model spec](data-layer-semantic-model.md) · [Interaction design](data-layer-interaction.md) · [Implementation design](data-layer-implementation.md) · [Ossie research](../research/ossie_semantic_layer.md) · [Data grid selection](../research/data_grid_selection.md)
 
 ---
 
@@ -182,7 +182,7 @@ So a table is described (catalog), modeled (fields/relationships), trusted (qual
 
 ## Delivery obligations
 
-- Update `features/data-models.md`, `features/api-reference.md`, `functionalities.md`, `development_plan.md` with each shipped stage.
+- Update `features/api-reference.md`, `functionalities.md`, `development_plan.md` with each shipped stage.
 - **Feature toggle:** a `data` toggle (off during rollout, on at GA), mirroring `connectors` / `agents`.
 - **Acceptance:** backend `pytest` green; frontend `npm run build` + `check:app-modules` + `check:app-layout` + `check:styles` green.
 

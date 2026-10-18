@@ -279,6 +279,32 @@ route's sheet; nothing catches a class used by **one** page and defined in a she
 Adding that needs parent-route reachability (a tab's parent sheet *is* in scope, e.g. `quality-pill` from
 `dataset-detail.scss`), which is why it is a follow-up rather than a five-line check.
 
+### `data-models.md` is gone, and the route table is checked (2026-10)
+
+**Deleted** `docs/features/data-models.md` (456 lines). It mirrored the SQLAlchemy models by hand, and the
+drift scan had just shown what hand-mirrors do: 45 of 88 tables missing, including the `stories` table the
+rename had added. Everything in it was derivable — columns from the models, seeded rows from migrations,
+enum meanings from the code — and its own opening line sent readers to a feature page for runtime
+semantics anyway, so it was duplicating by construction. Links were rewritten in 17 docs (plus `AGENTS.md`,
+`agents.md`, `architecture.md`/`.zh`), and the authority is now stated where the mirror used to be: the
+models and the Alembic revisions.
+
+**The route table is checked now** (`backend/scripts/check_api_doc.py`, run by `backend/check.sh`). It
+compares `docs/features/api-reference.md` against **FastAPI's own `app.routes`** — not against parsed
+`@router` decorators: prefixes come from `include_router(...)` in several places and routers are nested, so
+a static reader missed 99 real routes and invented as many phantoms.
+
+The two directions are not equally bad, so they are treated differently:
+
+- a **documented route the app does not serve** is a lie → always fails, no baseline (there are none);
+- a **route the app serves and the page omits** is a gap → frozen in `scripts/api-doc-baseline.txt`
+  (**93** today, the four FastAPI built-ins excluded), a ratchet that only shrinks. `--update-baseline`
+  regenerates it, and documenting a route without deleting its line is harmless: the comparison is a set,
+  so the baseline being larger than the gap never fails.
+
+Both directions were proven with probes — a fabricated row in the reference fails, and a shortened
+baseline fails — and the reference says at the top that it is checked, so nobody has to guess.
+
 ### Documentation drift scan (2026-10)
 
 Asked to find where docs and implementation disagree. Compared against the **code**, not by reading:
@@ -866,7 +892,7 @@ missing.
 
 ## Conventions
 
-- **Before commit**: Update the matching `docs/features/*.md` page, [API reference](features/api-reference.md) / [Data models](features/data-models.md) when needed; add or remove rows in [Functionalities](./functionalities.md) only when a feature page is added or removed. See `AGENTS.md` (docs before commit).
+- **Before commit**: Update the matching `docs/features/*.md` page, [API reference](features/api-reference.md) / Data models when needed; add or remove rows in [Functionalities](./functionalities.md) only when a feature page is added or removed. See `AGENTS.md` (docs before commit).
 
 ## Open Questions
 

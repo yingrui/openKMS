@@ -95,7 +95,7 @@ Login behaviour, API keys, and token examples: [Console & authentication](featur
 | Console, catalog, OIDC/local login, **obtaining tokens** | [Console & authentication](features/console-and-auth.md) |
 | Env vars and toggles | [Configuration](features/configuration.md) |
 | Deploy and auth-mode alignment | [Docker operations](operations/docker.md) |
-| Schemas | [Data models — Data security](features/data-models.md#data-security-access-groups-resource-acl) |
+| Schemas | Data models — Data security |
 
 ---
 

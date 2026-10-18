@@ -51,7 +51,7 @@ flowchart TB
 
 | Layer | Role |
 |-------|------|
-| **PostgreSQL + pgvector** | System of record — metadata, permissions, and vector embeddings. Domains: **auth & ACL** (users, roles, groups, resource ACLs), **channels & content** (documents, articles, versions, relationships), **knowledge** (KBs, chunks, FAQs, wiki pages, glossaries), **ontology** (object/link types and instances, datasets), **operations** (pipelines, jobs, models, evaluations, knowledge map), **system** (settings, feature toggles). Full table list: [data-models.md](features/data-models.md). |
+| **PostgreSQL + pgvector** | System of record — metadata, permissions, and vector embeddings. Domains: **auth & ACL** (users, roles, groups, resource ACLs), **channels & content** (documents, articles, versions, relationships), **knowledge** (KBs, chunks, FAQs, wiki pages, glossaries), **ontology** (object/link types and instances, datasets), **operations** (pipelines, jobs, models, evaluations, knowledge map), **system** (settings, feature toggles). The authoritative table list is `backend/app/models/` (and `alembic/versions/` for what exists in a given database). |
 | **S3/MinIO** | Large blobs — document originals (`{file_hash}/…`), article bundles, wiki vault mirror and ad-hoc files, cached wiki link-graph JSON. Browser access via presigned redirects from the API. |
 | **Worker** | procrastinate worker runs deferred jobs (document parse, KB index, …) by spawning **openkms-cli**; updates status in PostgreSQL. |
 | **LLM providers** | External OpenAI-compatible APIs configured as **api_providers** / **api_models** — metadata extraction, FAQ generation, embeddings, playground. |

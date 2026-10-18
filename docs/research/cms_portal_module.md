@@ -325,7 +325,7 @@ For openKMS’s positioning ([Goals — unified layer for agents and people](../
 4. **Treat PageAdmin as a pattern library**, not a requirements checklist—prioritize knowledge binds, publish safety, and reader UX over generic form/workflow builders.
 5. **Document the public render and ACL rules before coding bindings**—the highest risk is leaking governed content to anonymous visitors.
 
-Next implementation steps (when approved): feature doc `docs/features/cms-portal.md`, permission keys in catalog, data model draft in `docs/features/data-models.md`, and a thin vertical slice (one site, one page, one article block, publish).
+Next implementation steps (when approved): feature doc `docs/features/cms-portal.md`, permission keys in catalog, models + one Alembic revision, and a thin vertical slice (one site, one page, one article block, publish).
 
 ---
 
