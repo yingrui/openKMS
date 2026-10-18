@@ -24,6 +24,72 @@ How openKMS thinks about security: principles and trust boundaries. For **mechan
 
 ---
 
+## Agents as actors
+
+An agent is meant to **do a person's work**, so the goal is not fewer capabilities — it is a **blast radius
+you can live with** when the agent is wrong, and a trail you can read afterwards. Ordered by what actually
+bites:
+
+### 1. Destruction has no undo
+
+The risk is not a hostile agent; it is a **misread instruction**. `DELETE /api/datasets/{id}`,
+`DELETE /api/stories/{id}`, `objects delete`, `kubernetes delete` are **hard** deletes today: there is no
+soft delete, no trash, no general audit log, and no backup job in the repository. An agent that confuses two
+datasets destroys one and nothing can bring it back.
+
+| Safeguard | State |
+|---|---|
+| **Backups with a tested restore** | ✗ none in the repo — this is the only real net; everything below is secondary |
+| Soft delete / row retention | ✗ not implemented (`deleted_at` exists nowhere) |
+| `-y` confirmation before a write | ✓ in the CLI — but a client-side convention, bypassable by design |
+| "Destructive operations need a human's explicit yes" | ✓ in the skill's instructions — prompt-level, not enforcement |
+
+### 2. Attribution: which agent, not just which person
+
+A human's key makes every action look like that human. `user_api_keys` already carries what is needed for
+the opposite: `purpose`, `agent_conversation_id`, `last_used_at`, `key_prefix`, `revoked_at` — and secrets
+are stored **hashed**.
+
+| Safeguard | State |
+|---|---|
+| One key per agent, same role | ✓ supported (`purpose` + `agent_conversation_id`) — no capability is lost, only ambiguity |
+| Revoke one agent without touching the person | ✓ `revoked_at` |
+| Expiry | ✗ no `expires_at` — a key lives until revoked, so rotation is a habit, not a guarantee |
+
+### 3. Prompt injection through content — the likeliest incident
+
+This system's job is to read documents, wiki pages, KB chunks and articles. **That text is untrusted**, and
+an agent that treats it as instruction will do what a document says: delete, export, rewrite.
+
+| Safeguard | State |
+|---|---|
+| Retrieved content is **data, never instructions** | ✓ stated in the agent guidance; the one rule that must never be relaxed |
+| No destructive tool in the same context as untrusted content without confirmation | ✓ by convention |
+| Provenance on retrieved text | partial — citations exist, "untrusted" marking does not |
+
+### 4. Blast radius: secrets and the console
+
+`/internal-api/*` (provider credentials) is behind an **internal service JWT**, not a user key ✓ — but
+`console:*` still reaches deploy secrets, kubeconfigs and model credentials. An agent doing analysis work
+does not need those, which makes them the one place worth narrowing **for reach, not for ability**.
+
+### 5. The rest
+
+- **No application-level rate limiting** ✗ — a looping agent can hammer the API; the CLI's timeouts are the
+  only brake today.
+- **`/openapi.json` is public** ✓ by design (it describes endpoints, not data); every **call** is authorised.
+- **Egress**: the agent runs in a network that can reach the API and (sometimes) not the public internet;
+  treat outbound allow-listing as a control, not a nuisance.
+
+### What to do first
+
+1. **Backups and a restore drill** — until this exists, every other safeguard is about speed, not safety.
+2. **A key per agent** (`purpose`, `agent_conversation_id`) — cheap, and turns "did I do that?" into a
+   query.
+3. **Keep the injection rule** (content is data) in the agent's instructions, verbatim.
+4. **Then** decide on soft delete and an audit log; both are real work and both make the next incident
+   readable.
+
 ## Trust boundaries
 
 ```mermaid
