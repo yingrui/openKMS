@@ -279,6 +279,22 @@ route's sheet; nothing catches a class used by **one** page and defined in a she
 Adding that needs parent-route reachability (a tab's parent sheet *is* in scope, e.g. `quality-pill` from
 `dataset-detail.scss`), which is why it is a follow-up rather than a five-line check.
 
+### The route table is not a mirror either (2026-10)
+
+Filling the 93 undocumented routes was the obvious next step, until the count said what they were: **85
+real consumer routes**, most with no docstring, in areas nobody is working on. Writing one line per route
+from a path string would have made the number zero and the page worse — and it is the *same mistake* the
+`data-models.md` decision was about: a hand-kept table of 431 endpoints is a mirror of the code, and it had
+already drifted 93 routes, exactly like the table of 88 models drifted 45.
+
+So the reference no longer claims to be complete. Its scope is **the routes whose behaviour needs
+explaining** — auth, permissions, edge cases — and the complete list is what FastAPI already publishes:
+`/openapi.json`. The check keeps only what is always a bug: a route **documented here that the app does not
+serve**. The gap direction is informational.
+
+The baseline is gone with it. A ratchet that can be satisfied by writing 85 unverified rows is not a
+guardrail, it is a target.
+
 ### `data-models.md` is gone, and the route table is checked (2026-10)
 
 **Deleted** `docs/features/data-models.md` (456 lines). It mirrored the SQLAlchemy models by hand, and the

@@ -1,18 +1,22 @@
 #!/usr/bin/env python3
-"""The API reference against the app's own route table.
+"""The API reference against the app's own route table — in one direction only.
 
-Hand-maintained route tables drift, and the two directions are not equally bad:
+A **documented route the app does not have** is a lie, and always a failure. That is the check.
 
-- a **documented route the app does not have** is a lie — always a failure, no baseline;
-- a **route the reference does not describe** is a gap — real, but it accrues, so it is ratcheted
-  against `scripts/api-doc-baseline.txt`, which may only shrink.
+The other direction — routes the reference does not describe — is deliberately **not** a failure. This
+page is not a mirror of the route table: a table that enumerates 431 endpoints is the same kind of object
+as the `data-models.md` that mirrored 88 tables by hand, and it drifted 93 routes in exactly the same way.
+The complete, always-accurate list is generated: **`/openapi.json`**. This page carries the routes whose
+*behaviour* needs explaining.
+
+Earlier this check ratcheted the gap against a baseline. That made it possible to "fix" the number by
+writing 85 one-line rows nobody verified — documentation theater, which is worse than an honest gap.
 
 The route table is read from FastAPI itself (`app.routes`), not by parsing `@router` decorators: prefixes
-come from `include_router(..., prefix=…)` in several places and routers are nested, so a static reader
-silently misses routes — which is exactly how the first version of this comparison produced 99 phantom
-"documented but missing" entries.
+come from `include_router(...)` in several places and routers are nested, so a static reader missed 99 real
+routes and invented as many phantoms.
 
-Run from `backend/`:  `uv run python scripts/check_api_doc.py [--update-baseline]`
+Run from `backend/`:  `uv run python scripts/check_api_doc.py`
 """
 from __future__ import annotations
 
@@ -21,7 +25,6 @@ import sys
 from pathlib import Path
 
 BACKEND = Path(__file__).resolve().parent.parent
-BASELINE = BACKEND / "scripts" / "api-doc-baseline.txt"
 REFERENCE = BACKEND.parent / "docs" / "features" / "api-reference.md"
 
 #: FastAPI's own endpoints. They are infrastructure, not API surface.
@@ -55,34 +58,9 @@ def documented_routes() -> set[tuple[str, str]]:
     return {(method, normalize(path)) for method, path in ROW.findall(text)}
 
 
-def load_baseline() -> set[tuple[str, str]]:
-    if not BASELINE.exists():
-        return set()
-    lines = [ln.strip() for ln in BASELINE.read_text().splitlines() if ln.strip() and not ln.startswith("#")]
-    return {(ln.split(" ", 1)[0], ln.split(" ", 1)[1]) for ln in lines}
-
-
-def write_baseline(missing: set[tuple[str, str]]) -> None:
-    body = "\n".join(f"{m} {p}" for m, p in sorted(missing))
-    header = (
-        "# Routes the app serves that docs/features/api-reference.md does not describe.\n"
-        "# Frozen so the list only shrinks: document a route and delete its line.\n"
-        "# Regenerate: uv run python scripts/check_api_doc.py --update-baseline\n"
-    )
-    BASELINE.write_text(header + body + "\n")
-
-
 def main() -> int:
     real, documented = app_routes(), documented_routes()
-    missing = real - documented
     ghosts = documented - real
-
-    if "--update-baseline" in sys.argv:
-        write_baseline(missing)
-        print(f"check-api-doc: baseline written with {len(missing)} route(s)")
-        return 0
-
-    status = 0
     if ghosts:
         print(
             f"check-api-doc: {len(ghosts)} route(s) documented but not served — the reference is lying:",
@@ -90,22 +68,10 @@ def main() -> int:
         )
         for method, path in sorted(ghosts):
             print(f"  {method:6} {path}", file=sys.stderr)
-        status = 1
-
-    grown = missing - load_baseline()
-    if grown:
-        print(
-            f"check-api-doc: {len(grown)} new route(s) not in api-reference.md (baseline: "
-            f"{len(load_baseline())}, now {len(missing)}) — document them, or regenerate the baseline:",
-            file=sys.stderr,
-        )
-        for method, path in sorted(grown):
-            print(f"  {method:6} {path}", file=sys.stderr)
-        status = 1
-
-    if status == 0:
-        print(f"check-api-doc: OK ({len(missing)} undocumented, frozen at baseline)")
-    return status
+        return 1
+    # Not a failure: the page is a curated subset, `/openapi.json` is the complete list.
+    print(f"check-api-doc: OK ({len(real - documented)} route(s) served but not described here)")
+    return 0
 
 
 if __name__ == "__main__":
