@@ -4,19 +4,15 @@ description: >-
   Operates an openKMS deployment via personal API key using bundled scripts/cli.py only
   (no ad-hoc curl/HTTP). Covers search, documents/articles/wiki/KB, glossaries, knowledge-map,
   evaluations, data-sources/datasets/connectors/jobs, ontology (objects/links/functions/actions),
-  module Apps, and Kubernetes (apply, register-app, dev-sync, logs) on registered clusters.
-  When writing Function --source-code-file: open references/functions-authoring.md.
-  When creating/updating/deleting/executing ontology action-types: open references/actions-authoring.md.
-  When registering or patching module Apps: open references/app-builder.md.
-  When kubernetes apply/delete/dev-sync: open references/kubernetes.md.
-  When setting up or changing datasets (register/upload, describe columns, keys, AI context,
-  relationships, quality): open references/datasets-authoring.md.
-  When authoring or re-running a Data Insights report (save an analysis, a dashboard): open
-  references/dashboards.md.
-  When producing a research / data-analysis report (recommended: Reveal.js + Plotly
-  static HTML; see assets/report-examples/): open references/research-report.md.
-  Use when agents must read or push openKMS content without the web UI. Only config.yml
-  may be edited for credentials when the user asks.
+  module Apps, and Kubernetes (apply, register-app, dev-sync, logs).
+  Open references/functions-authoring.md for Function --source-code-file;
+  references/actions-authoring.md for ontology action-types; references/app-builder.md for module App
+  registration/patching; references/kubernetes.md for kubernetes apply/delete/dev-sync;
+  references/datasets-authoring.md for dataset setup (register/upload, columns, keys, AI context,
+  relationships, quality); references/stories.md for Data Insights stories and their findings;
+  references/research-report.md for research reports (see assets/report-examples/).
+  Use when agents must read or push openKMS content without the web UI. Only config.yml may be edited
+  for credentials when the user asks.
 ---
 
 # openKMS skill
@@ -42,7 +38,7 @@ Match the task, then open **one** guide. Skip rows that do not apply.
 | **Author** Function source (`--source-code-file` / validate / publish) | [references/functions-authoring.md](references/functions-authoring.md) |
 | **Author** Action types (create / update / delete / execute) | [references/actions-authoring.md](references/actions-authoring.md) |
 | **Author/set up** datasets (register, upload, keys, `ai_context`, relationships, quality) | [references/datasets-authoring.md](references/datasets-authoring.md) |
-| **Author / re-run** a Data Insights dashboard (reports, each over its own dataset or model) | [references/dashboards.md](references/dashboards.md) |
+| **Author / re-run** a Data Insights story (findings, each over its own dataset or model) | [references/stories.md](references/stories.md) |
 | Data sources / connectors / jobs / Apps list / Kubernetes browse | [references/commands-ops.md](references/commands-ops.md) |
 | Register or patch a **module App** (`apps …` / `kubernetes register-app`) | [references/app-builder.md](references/app-builder.md) (`bindings.k8s` only) |
 | Kubernetes **apply / delete / dev-sync** | [references/kubernetes.md](references/kubernetes.md) |

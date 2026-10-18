@@ -279,6 +279,21 @@ route's sheet; nothing catches a class used by **one** page and defined in a she
 Adding that needs parent-route reachability (a tab's parent sheet *is* in scope, e.g. `quality-pill` from
 `dataset-detail.scss`), which is why it is a follow-up rather than a five-line check.
 
+### The skill's description outgrew the loader (2026-10)
+
+pi refused the skill: `description exceeds 1024 characters (1270)`. The manifest had grown a line per
+reference file until it passed the limit, and because the loader **skips** a skill that fails, the whole
+CLI workflow disappeared without a single failing command.
+
+Trimmed to 1006 characters with every trigger kept (the description is what makes the skill load at the
+right moment, so cutting coverage to save characters would be the wrong trade). It also still pointed at
+`references/dashboards.md`, which the story rename had moved — so a second, quieter break was waiting
+behind the first.
+
+Both are tests now (`tests/test_skill_manifest.py`): the description fits, **every** `references/*.md`
+named in `SKILL.md` exists, and every reference file is linked. That last one is a mirror check — a
+reference nobody links is a reference the agent will never read.
+
 ### Dashboard → Story, Report → Finding (2026-10)
 
 The object is a **narrative with evidence**, not a screen: it does not refresh itself, its centre is what
