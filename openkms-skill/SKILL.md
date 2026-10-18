@@ -46,7 +46,7 @@ Match the task, then open **one** guide. Skip rows that do not apply.
 | Multi-step recipes (A–I, Tushare DIY, register-app, research report) | [references/workflows.md](references/workflows.md) |
 | Research / data-analysis report → Reveal + Plotly HTML (examples in assets/) | [references/research-report.md](references/research-report.md) |
 | Confirm CLI → HTTP (grep full CLI in backticks; never reimplement) | [references/REFERENCE.md](references/REFERENCE.md) |
-| **A route this skill does not wrap** — its parameters, body, or what it returns | `python scripts/cli.py api spec --path /api/<area>` (reads the generated `/openapi.json`; `--full` for the operation objects). Do **not** guess a path from this skill's prose |
+| **A route this skill does not wrap** — its parameters, body, or what it returns | `python scripts/cli.py api spec --path /api/<area>` (reads the generated `/openapi.json`; `--full` for the operation objects). Do **not** guess a path from this skill's prose — and **reading a route is not permission to call it**: if you need a route the CLI does not wrap, stop and report the gap (see the rule above) |
 
 Authoring / Apps / k8s mutate guides matter only for those write paths — inventing Function shape, A2UI Source, or omitting `bindings.k8s` is what goes wrong if you skip **that** row.
 

@@ -12,7 +12,10 @@
 > cannot reach jsdelivr it renders blank with `SwaggerUIBundle is not defined`. ReDoc is off for the same
 > reason — its bundle would be a second CDN download.
 >
-> They are **unauthenticated**: the API's shape is public unless a deployment turns it off. A hand-kept table of those is the same kind of
+> They are **unauthenticated**: the API's shape is public unless a deployment turns it off. The **calls** are
+> not — every one is authorised by the API key's role, which is the only boundary that is actually enforced.
+> (The skill's "use `scripts/cli.py`, no ad-hoc HTTP" rule is about validated inputs, `-y` confirmations and
+> dry runs, not about access: a key with `all` can already call anything.) A hand-kept table of those is the same kind of
 > object as the `data-models.md` that mirrored 88 tables by hand — and it drifted 93 routes the same way.
 >
 > Agents read the generated document through the skill, not through this page: `openkms api spec --path

@@ -281,6 +281,25 @@ route's sheet; nothing catches a class used by **one** page and defined in a she
 Adding that needs parent-route reachability (a tab's parent sheet *is* in scope, e.g. `quality-pill` from
 `dataset-detail.scss`), which is why it is a follow-up rather than a five-line check.
 
+### Reading a route is not permission to call it (2026-10)
+
+`api spec` raised the fair objection that if the skill can read the backend's API, an agent can bypass the
+CLI. The measurement made it worse than the objection: the key this runs with is **`is_admin` with `all`**,
+so the CLI was never a boundary — it was a convention, and a `curl` would already have done anything.
+
+Two things follow, and they are not the same:
+
+- **capability vs knowledge.** The key already had the capability; the spec adds knowledge (paths,
+  parameters, responses). Hiding knowledge is not a control either: `/openapi.json` is served
+  **unauthenticated**, so the shape of the API was always public.
+- **the boundary is the key's role**, enforced server-side. Nothing a client-side convention does can
+  substitute for it. The honest recommendation for agents is a scoped role (`data:read` + `insights:write`,
+  no `console:*`, not admin) — then a bypass can only do what the agent was allowed to do anyway.
+
+What the CLI is actually for, then: validated inputs, `-y` before writes, dry runs, and being tested. That
+is reliability and hygiene, worth keeping — but it is not access control, and the skill now says so in all
+three places it could be read otherwise (`api spec`'s docstring, the routing table, and `api-reference.md`).
+
 ### The reference keeps concepts; agents read the generated spec (2026-10)
 
 The page's job is the part a generator cannot write: auth shape, permissions, the edge case that bit
