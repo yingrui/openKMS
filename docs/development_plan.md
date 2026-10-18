@@ -282,6 +282,29 @@ route's sheet; nothing catches a class used by **one** page and defined in a she
 Adding that needs parent-route reachability (a tab's parent sheet *is* in scope, e.g. `quality-pill` from
 `dataset-detail.scss`), which is why it is a follow-up rather than a five-line check.
 
+### The audit log: a mutation is recorded even when it fails (2026-10)
+
+The security note ended with "backups, then a key per agent, then soft delete and an audit log". The log is
+here; it is a **middleware**, not a handler concern, because the operations worth recording are exactly the
+ones nobody wants to think about afterwards.
+
+- `audit_events` + `AuditMiddleware`: method, path, status, the key's owner (`actor_sub` / `actor_name`), and
+  a coarse subject read out of the path (`datasets` + the id when it is a UUID). Mutations only — reads are
+  volume without a destruction story.
+- **Failures are the point.** The first version recorded after `call_next`, so an endpoint that **raised**
+  produced no event at all — the case you most want. It now catches, records `status 500` with
+  `detail.error` = the exception type, and re-raises: a crash is in the log and still crashes.
+- It writes with **its own session** (a request rollback must not erase the record of the attempt) and
+  swallows only `SQLAlchemyError` / `OSError`, loudly: an audit outage must not turn a successful write into
+  a 500.
+- **No request bodies** are stored. Bodies carry secrets; the path and the status answer the question.
+- Read side: `GET /api/console/audit-events` (`console:permissions`, keyset paging) and `openkms audit list
+  --actor/--resource-id/--path/--since`.
+
+Verified live: creating a story recorded `POST /api/stories → 201`, deleting it recorded `DELETE
+/api/stories/{id} → 204`, both attributed and pointing at the id. Still missing: retention, and soft delete
+— the log makes an incident *readable*, not *undoable*.
+
 ### Reading a route is not permission to call it (2026-10)
 
 `api spec` raised the fair objection that if the skill can read the backend's API, an agent can bypass the

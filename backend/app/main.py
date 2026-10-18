@@ -58,6 +58,7 @@ from app.api.dataset_rows import router as dataset_rows_router
 from app.api.dataset_joins import router as dataset_joins_router
 from app.api.quality_rules import router as quality_rules_router
 from app.api.metrics import router as metrics_router
+from app.api.admin.audit_log import router as audit_log_router
 from app.api.stories import router as stories_router
 from app.api.quality_issues import router as quality_issues_router
 from app.api.evaluations import router as evaluations_router
@@ -77,6 +78,7 @@ from app.api.system_settings import router as system_settings_router
 from app.api.knowledge_map import router as knowledge_map_router
 from app.config import settings
 from app.logging_config import configure_logging
+from app.middleware.audit import AuditMiddleware
 from app.middleware.strict_permission_patterns import StrictPermissionPatternMiddleware
 
 configure_logging(
@@ -184,6 +186,9 @@ app.add_middleware(
 )
 
 app.include_router(auth_router)
+
+# Outermost on purpose: it records the status of requests other middleware rejects (403s included).
+app.add_middleware(AuditMiddleware)
 app.include_router(api_auth_router)
 app.include_router(system_public_router, prefix="/api")
 app.include_router(system_settings_router, prefix="/api")
@@ -233,6 +238,7 @@ app.include_router(dataset_joins_router, prefix="/api")
 app.include_router(quality_rules_router, prefix="/api")
 app.include_router(metrics_router, prefix="/api")
 app.include_router(stories_router, prefix="/api")
+app.include_router(audit_log_router, prefix="/api")
 app.include_router(quality_issues_router, prefix="/api")
 app.include_router(evaluations_router, prefix="/api")
 app.include_router(users_admin_router, prefix="/api")

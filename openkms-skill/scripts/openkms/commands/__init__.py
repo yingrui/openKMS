@@ -5,6 +5,7 @@ from argparse import _SubParsersAction
 
 from . import (
     api,
+    audit,
     apps,
     article_channels,
     articles,
@@ -38,6 +39,7 @@ def register(sub: _SubParsersAction) -> None:
     """Register every top-level subcommand with the parent parser."""
     ping.add_subparser(sub)
     api.add_subparser(sub)
+    audit.add_subparser(sub)
     apps.add_subparser(sub)
     search.add_subparser(sub)
     document_channels.add_subparser(sub)

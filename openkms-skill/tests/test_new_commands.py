@@ -469,3 +469,18 @@ def test_api_spec_indexes_the_operations_under_a_path(mock_api, capsys):
     assert "/api/stories" in out and "Get a story" in out
     assert "/api/datasets" not in out          # the prefix narrowed it
     assert '"post"' not in out                  # --method narrowed it
+
+
+def test_audit_list_narrows_by_what_changed(mock_api):
+    recorded, responses = mock_api
+    responses[("GET", "/api/console/audit-events")] = (200, {"items": [], "total": 0})
+    from openkms.commands.audit import cmd_audit_list
+
+    cmd_audit_list(
+        _ns(actor="ag-1", resource_type="datasets", resource_id="d1", method="PUT", path=None, since=None, limit=20)
+    )
+    params = recorded[-1].url.params
+    assert params["actor_sub"] == "ag-1"
+    assert params["resource_id"] == "d1"
+    assert params["limit"] == "20"
+    assert "path" not in params

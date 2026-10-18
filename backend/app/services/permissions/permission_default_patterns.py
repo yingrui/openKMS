@@ -488,6 +488,8 @@ DEFAULT_PATTERNS_BY_KEY: dict[str, tuple[list[str], list[str]]] = {
             "/data-insights/*",
         ],
         [
+            "GET /api/console/audit-events",
+            "HEAD /api/console/audit-events",
             "GET /api/stories",
             "GET /api/stories/*",
             "HEAD /api/stories",

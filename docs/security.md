@@ -40,9 +40,19 @@ datasets destroys one and nothing can bring it back.
 | Safeguard | State |
 |---|---|
 | **Backups with a tested restore** | ✗ none in the repo — this is the only real net; everything below is secondary |
+| **A log of every mutation** | ✓ `audit_events`, written by `AuditMiddleware` — method, path, status, the key's owner, and the resource (see below) |
 | Soft delete / row retention | ✗ not implemented (`deleted_at` exists nowhere) |
 | `-y` confirmation before a write | ✓ in the CLI — but a client-side convention, bypassable by design |
 | "Destructive operations need a human's explicit yes" | ✓ in the skill's instructions — prompt-level, not enforcement |
+
+**The log** (`GET /api/console/audit-events`, `console:permissions`; `openkms audit list`) records every
+POST / PUT / PATCH / DELETE — including the ones that **failed** and the ones that **crashed**: the
+middleware records the 4xx/5xx and a `{"error": "<ExceptionType>"}` before re-raising, so a 500 is in the
+log rather than only in the server's stderr. It writes with its own session (a rollback cannot erase the
+record of the attempt) and never fails the request (an audit outage must not turn a successful write into
+an error). It stores **no request bodies** — bodies carry secrets.
+
+What it does not do: retention (nothing prunes it), reads (volume without a destruction story), or a UI.
 
 ### 2. Attribution: which agent, not just which person
 
