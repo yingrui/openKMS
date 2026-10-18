@@ -29,6 +29,7 @@ Create keys in the openKMS web app: **Settings** (header user menu → **Setting
 | CLI | Method | Path | Notes |
 |---|---|---|---|
 | `ping` | GET | `/api/auth/me` | Returns the authenticated user's profile + permissions. |
+| `api spec` | GET | `/openapi.json` | The backend's generated OpenAPI document, as an index of `{method, path, summary}`. `--path /api/<area>` narrows by prefix, `--method` by verb, `--full` prints the operation objects (parameters, request body, responses). |
 | `search` | GET | `/api/search` | Query params: `q` (required), `types` (`all` or comma list of `documents,articles,wiki_spaces,knowledge_bases`), `document_channel_id`, `article_channel_id`, `updated_after`, `updated_before` (ISO-8601), `limit` (1-100, default 30). Returns sections grouped by content type with `items[{id,name,kind,url_path,channel_id,channel_name,updated_at}]` and per-type `total`. |
 
 ### Channels

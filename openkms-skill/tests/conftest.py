@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import importlib
+import pathlib
 import sys
 from pathlib import Path
 from typing import Any
@@ -13,38 +14,22 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "scripts"))
 
 
-_PATCHED_MODULES = (
-    "openkms.commands.ping",
-    "openkms.commands.search",
-    "openkms.commands.document_channels",
-    "openkms.commands.pipelines",
-    "openkms.commands.article_channels",
-    "openkms.commands.documents",
-    "openkms.commands.articles",
-    "openkms.commands.wiki_spaces",
-    "openkms.commands.wiki",
-    "openkms.commands.kb",
-    "openkms.commands.kb_faq",
-    "openkms.commands.glossaries",
-    "openkms.commands.knowledge_map",
-    "openkms.commands.data_sources",
-    "openkms.commands.datasets",
-    "openkms.commands.connectors",
-    "openkms.commands.jobs",
-    "openkms.commands.kubernetes",
-    "openkms.commands.comments",
-    "openkms.commands.media",
-    "openkms.commands.ontology",
-    "openkms.commands.objects",
-    "openkms.commands.links",
-    "openkms.commands.functions",
-    "openkms.commands.action_types",
-    "openkms.commands.groups",
-    "openkms.commands.evaluation",
-    "openkms.commands.stories",
-    "openkms.commands.semantic_models",
-    "openkms.commands.metrics",
-)
+def _patched_modules() -> list[str]:
+    """Every command module that does `from ..client import client`.
+
+    Derived rather than listed: the list used to be hand-kept, so a new command module silently used the
+    real HTTP client in tests — `api spec` did, and answered from the network instead of the mock.
+    """
+    package = pathlib.Path(importlib.import_module("openkms.commands").__path__[0])
+    names: list[str] = []
+    for source in sorted(package.glob("*.py")):
+        if source.name == "__init__.py":
+            continue
+        # Only the modules that import the client — importing the rest is how the fixture used to break.
+        if "client import client" not in source.read_text():
+            continue
+        names.append(f"openkms.commands.{source.stem}")
+    return names
 
 
 @pytest.fixture
@@ -80,7 +65,7 @@ def mock_api(monkeypatch):
 
     import openkms.client as oc
     monkeypatch.setattr(oc, "client", fake_client)
-    for mod_name in _PATCHED_MODULES:
+    for mod_name in _patched_modules():
         m = importlib.import_module(mod_name)
         monkeypatch.setattr(m, "client", fake_client)
 

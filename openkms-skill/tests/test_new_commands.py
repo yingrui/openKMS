@@ -448,3 +448,24 @@ def test_quality_runs_lists_the_history(mock_api):
     # The list is paged: the command always says how many, and pages only when given a cursor.
     assert recorded[-1].url.params["limit"] == "20"
     assert "before" not in recorded[-1].url.params
+
+
+def test_api_spec_indexes_the_operations_under_a_path(mock_api, capsys):
+    recorded, responses = mock_api
+    responses[("GET", "/openapi.json")] = (
+        200,
+        {
+            "paths": {
+                "/api/stories": {"get": {"summary": "List stories"}, "post": {"summary": "Create"}},
+                "/api/stories/{story_id}": {"get": {"summary": "Get a story"}},
+                "/api/datasets": {"get": {"summary": "List datasets"}},
+            }
+        },
+    )
+    from openkms.commands.api import cmd_api_spec
+
+    cmd_api_spec(_ns(path="/api/stories", method="GET", full=False))
+    out = capsys.readouterr().out
+    assert "/api/stories" in out and "Get a story" in out
+    assert "/api/datasets" not in out          # the prefix narrowed it
+    assert '"post"' not in out                  # --method narrowed it

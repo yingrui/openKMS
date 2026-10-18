@@ -15,6 +15,9 @@
 > They are **unauthenticated**: the API's shape is public unless a deployment turns it off. A hand-kept table of those is the same kind of
 > object as the `data-models.md` that mirrored 88 tables by hand — and it drifted 93 routes the same way.
 >
+> Agents read the generated document through the skill, not through this page: `openkms api spec --path
+> /api/<area>` (see `openkms-skill/references/REFERENCE.md`).
+>
 > `backend/scripts/check_api_doc.py` (run by `backend/check.sh`) reads FastAPI's own route table and fails
 > if a route **documented here does not exist** — a documented route that is not served is a lie. It does
 > **not** require this page to describe every route, and prints the count instead.

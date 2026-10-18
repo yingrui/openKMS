@@ -281,6 +281,24 @@ route's sheet; nothing catches a class used by **one** page and defined in a she
 Adding that needs parent-route reachability (a tab's parent sheet *is* in scope, e.g. `quality-pill` from
 `dataset-detail.scss`), which is why it is a follow-up rather than a five-line check.
 
+### The reference keeps concepts; agents read the generated spec (2026-10)
+
+The page's job is the part a generator cannot write: auth shape, permissions, the edge case that bit
+someone. The complete route list is FastAPI's, and an **agent** should read it from there rather than from
+prose — which raised the only real obstacle: the skill forbids ad-hoc HTTP (`curl` / `httpx`), so an agent
+could not reach `/openapi.json` at all.
+
+`openkms api spec` is the sanctioned path: it reads the document and prints an **index** of
+`{method, path, summary}`, with `--path /api/<area>` to narrow by prefix, `--method` by verb, and `--full`
+for the operation objects (parameters, request body, responses). So the skill's rule holds — no ad-hoc
+HTTP — and its routing table can say "you were not told about this route; ask the spec" instead of inviting
+a guess from prose.
+
+That command also exposed a test-infra trap: the mock fixture patched `client` in a **hand-kept list** of
+command modules, so a new module silently talked to the network. The list is derived now — every module
+under `openkms/commands/` whose source imports `client` — and a probe proved a brand-new module is covered
+without touching the fixture.
+
 ### The route table is not a mirror either (2026-10)
 
 Filling the 93 undocumented routes was the obvious next step, until the count said what they were: **85
