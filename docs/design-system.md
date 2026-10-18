@@ -276,7 +276,7 @@ npm run check   # typecheck → check:app-layout → check:app-modules → check
 | 8 | `window.confirm(` | **`useConfirm()`** |
 | 9 | Raw `rgba(0,0,0,…)` modal backdrop | **`var(--overlay-backdrop)`** |
 | 10 | New page `.tsx` > 700 lines | Split like **`DocumentDetail`** |
-| 11 | `select` / text `input` with no skin (outside `<FormField>`, no `.ds-control`) | **`<FormField>`**, or **`className="ds-control"`**; `// ds-control-exempt` when a bespoke wrapper styles it. `scripts/ds-controls-baseline.txt` freezes the legacy hits (273) — a file only fails when it *adds* one |
+| 11 | `select` / text `input` with no skin (outside `<FormField>`, no `.ds-control`) | **`<FormField>`**, or **`className="ds-control"`**; `// ds-control-exempt` when a bespoke wrapper styles it. `scripts/ds-controls-baseline.txt` freezes the legacy hits (**70**) — a file only fails when it *adds* one |
 | 12 | `t('key')` missing from the locale files (i18next prints the key, so the UI shows `dataModel.removeDimension`) | add the key, or fix the reference. Only files whose namespace is knowable are checked; a dynamic `useTranslation(ns)` falls back to "exists in some namespace" |
 | 13 | Icon-only `<button>` with no accessible name | **`aria-label`** (or `title`) |
 | 14 | `console.log` / `console.debug` / `debugger` | remove before shipping |

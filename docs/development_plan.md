@@ -279,6 +279,37 @@ route's sheet; nothing catches a class used by **one** page and defined in a she
 Adding that needs parent-route reachability (a tab's parent sheet *is* in scope, e.g. `quality-pill` from
 `dataset-detail.scss`), which is why it is a follow-up rather than a five-line check.
 
+### Documentation drift scan (2026-10)
+
+Asked to find where docs and implementation disagree. Compared against the **code**, not by reading:
+FastAPI's own `app.routes`, the models' `__tablename__`, `permission_catalog`, the skill manifest, and the
+guardrail baselines.
+
+**No ghosts, and our line is clean.** Of 431 real routes, **none** is documented-but-missing (every route
+`api-reference.md` describes exists), and the Data Insights / quality / datasets routes are **all**
+documented. The drift is incompleteness elsewhere — 97 routes undocumented, by area: ontology 24,
+projects 18, admin 11, media 10, app-builder 10, knowledge-map 7, media-channels 7, user 3, resource-acl 2
+(plus `/docs`, `/redoc`, `/openapi.json`, `/health`, which should stay undocumented).
+
+Fixed here, because it is ours or it is plainly wrong:
+
+- **`stories` was missing from `data-models.md`** — a page that opens with "Schema for every persisted
+  table". The rename added the table and forgot the doc. Documented with its JSONB finding shape.
+- **One stale ratchet number**: `check-ds-controls` froze "273" unskinned controls; the real count is
+  **70** (the other three — 28 / 83 / 0 — were correct).
+- **`media:read` / `media:write`** existed in the catalog and in no doc; they are in the permission table.
+- **The rename never reached `console-and-auth.md`** ("read reports", "a dataset-backed report") — the
+  page still said report where the API says finding.
+
+Known and not fixed (recorded so it is a decision, not an oversight): 35 tables still unmentioned in
+`data-models.md` despite its "every table" claim — mostly ontology (`object_instances`, `link_types`, …),
+wiki/faq/media, and `dataset_columns` / `dataset_edits` / `dataset_ingests` / `dataset_joins` /
+`dataset_profiles` / `metric_runs` / `quality_runs` / `schema_snapshots` / `semantic_model_fields` from
+the data layer. And the 97 undocumented routes above.
+
+A drift **check** is possible and cheap — `app.routes` against the reference table, with a baseline that
+only shrinks — but it would have to be baselined at 97 today, so it is offered rather than smuggled in.
+
 ### The skill's description outgrew the loader (2026-10)
 
 pi refused the skill: `description exceeds 1024 characters (1270)`. The manifest had grown a line per

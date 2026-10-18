@@ -445,3 +445,12 @@ Design and enforcement: [Data security](data-security.md).
 
 - `id`, `document_id` (FK → documents, CASCADE), `version_number` (sequential per document), `tag`, `note`, `markdown`, `metadata` (JSONB snapshot), `created_at`, `created_by_sub`, `created_by_name`
 - User-triggered checkpoint of `documents.markdown` + `documents.metadata`; restored via `POST /api/documents/{id}/versions/{vid}/restore`.
+
+## Data Insights
+
+### Story
+
+- `id`, `name` (the question's short form), `question`, `status` (`draft` | `ready`), `narrative` (Markdown prose), `findings` (JSONB array), `created_by`, `created_by_name`, `created_at`, `updated_at`
+- A **story** is the document: a question, a written answer, and the findings in it. It has **no source of its own** — every finding does, so one story can put a model metric beside a raw-dataset check.
+- Each element of `findings` carries `title`, `takeaway` (the one sentence that says what the numbers mean), `source_kind` (`dataset` | `semantic_model`) with `dataset_id` or `semantic_model_id`, `query` (the query it came from), `view` (`chart` | `metric` | `bar_list` | `tracker`; absent = the table), and the last result (`rows`, `columns`, `total`, `capped`, `duration_ms`, `ran_at`, `error`), plus the `sql` that ran where the source is a dataset
+- Renamed from `dashboards` / `reports` (`insight` → `takeaway`): the object is a narrative with evidence, and `report` names a deliverable, not a tile
