@@ -79,6 +79,11 @@ export default defineConfig({
         target: 'http://localhost:8102',
         changeOrigin: true,
       },
+      // The API's own documentation, so it is reachable from the dev origin. FastAPI serves these, not
+      // the app: without the proxy, `/openapi.json` falls through to the SPA and renders a blank page.
+      '/openapi.json': { target: 'http://localhost:8102', changeOrigin: true },
+      '/docs': { target: 'http://localhost:8102', changeOrigin: true },
+      '/redoc': { target: 'http://localhost:8102', changeOrigin: true },
       '/sync-session': { target: 'http://localhost:8102', changeOrigin: true },
       '/clear-session': { target: 'http://localhost:8102', changeOrigin: true },
       '/buckets/openkms': {
