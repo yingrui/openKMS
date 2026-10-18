@@ -167,9 +167,9 @@ All write subcommands accept `--yes` / `--dry-run`. Without `--yes` on non-TTY s
 | `ontology links create-type` *(write)* | POST | `/api/link-types` | Body `{name, api_name?, source_object_type_id, target_object_type_id, cardinality, description?, dataset_id?, source_key_property?, target_key_property?, source_dataset_column?, target_dataset_column?}`. `cardinality ∈ {one-to-one, one-to-many, many-to-one, many-to-many}` (default `one-to-many`). `api_name` is frozen, same rules as object types. |
 | `ontology links update-type` *(write)* | PUT | `/api/link-types/{id}` | Only the flags you pass are sent. Empty update exits 2. |
 | `ontology links delete-type` *(write)* | DELETE | `/api/link-types/{id}` | — |
-| `ontology links instances list` | GET | `/api/link-types/{id}/links` | `?limit=&offset=`. |
-| `ontology links instances create` *(write)* | POST | `/api/link-types/{type-id}/links` | Body `{source_object_id, target_object_id}`. **Server rejects when type is m2m+dataset** (junction table is the source of truth) — surface the 4xx. |
-| `ontology links instances delete` *(write)* | DELETE | `/api/link-types/{type-id}/links/{id}` | Same m2m+dataset rejection rule. |
+| `ontology links instances list` | GET | `/api/link-types/{id}/links` | `?limit=&offset=&source_object_id=&source_key_value=`. **Graph only** — index the link type first. `409` without a Neo4j data source, `indexed:false` when the junction/FK/saved rows are not indexed. Endpoint values are the ids the object API shows. |
+| `ontology links instances create` *(write)* | POST | `/api/link-types/{type-id}/links` | Body `{source_object_id, target_object_id}`. Writes `link_instances` **and** MERGEs the edge (same request); `409` when an endpoint is not in the graph yet — index the object types first. **Server rejects when type is m2m+dataset** (junction table is the source of truth) — surface the 4xx. |
+| `ontology links instances delete` *(write)* | DELETE | `/api/link-types/{type-id}/links/{id}` | Deletes the queue row **and** the edge. Same m2m+dataset rejection rule. |
 | `ontology links sync-neo4j` *(write)* | POST | `/api/link-types/index-to-neo4j` | Body `{neo4j_data_source_id}`. Returns `{link_types_indexed, relationships_created}`. Junction / source-FK datasets or saved link rows. |
 | `ontology links sync-neo4j-type` *(write)* | POST | `/api/link-types/{id}/index-to-neo4j` | Same body. One link type only. |
 

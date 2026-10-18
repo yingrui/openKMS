@@ -293,9 +293,9 @@ The bundled **openkms-skill** CLI wraps **lifecycle** and **relationships** the 
 | GET | `/api/link-types/{id}` | Get link type; ?count_from_neo4j=true for link_count from Neo4j |
 | PUT | `/api/link-types/{id}` | Update link type (admin-only). `name` is display only; `api_name` is claimable only while unset |
 | DELETE | `/api/link-types/{id}` | Delete link type (admin-only) |
-| GET | `/api/link-types/{id}/links` | List link instances (from Neo4j when available; `?limit=`, `?offset=`, optional `?source_object_id=`, `?source_key_value=`). Junction-table and source-FK paths push those filters into SQL, so `total` matches the filtered set |
-| POST | `/api/link-types/{id}/links` | Create link instance (admin-only; rejected when link type uses junction dataset) |
-| DELETE | `/api/link-types/{id}/links/{link_id}` | Delete link instance (admin-only; rejected when link type uses junction dataset) |
+| GET | `/api/link-types/{id}/links` | List link instances **from the graph only**. `?limit=`, `?offset=`, optional `?source_object_id=` / `?source_key_value=` filter on the source endpoint's id (the id the object API shows). **409** without a Neo4j data source; **503** when the graph is unreachable; `indexed: false` when the junction/source-FK/saved-link rows exist but no edges do |
+| POST | `/api/link-types/{id}/links` | Create link instance (admin-only; rejected when link type uses junction dataset). Writes `link_instances` **and** MERGEs the edge in the same request; **409** when an endpoint is not in the graph yet |
+| DELETE | `/api/link-types/{id}/links/{link_id}` | Delete link instance (admin-only; rejected when link type uses junction dataset); deletes the edge too |
 | POST | `/api/link-types/index-to-neo4j` | Index link types to Neo4j: M:M junction, M:1/1:M from source dataset when configured, else saved link instances (admin-only) |
 | POST | `/api/link-types/{id}/index-to-neo4j` | Index one link type to Neo4j (same rules as bulk; 400 if nothing to index) (admin-only) |
 | POST | `/api/ontology/explore` | Execute read-only Cypher query against Neo4j (body: `{ cypher }`); used by Object Explorer |

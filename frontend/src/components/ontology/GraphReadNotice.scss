@@ -1,0 +1,26 @@
+/* An empty table has two very different causes: no rows, or none in the graph yet. */
+.graph-read-notice {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  margin-bottom: var(--space-4);
+  padding: var(--padding-compact-y) calc(var(--space-3) + var(--space-1) / 2);
+  border: 1px solid var(--color-warning-border);
+  border-radius: var(--radius-md);
+  background: var(--color-warning-bg);
+  color: var(--color-warning-fg);
+  font-size: 0.875rem;
+}
+
+.graph-read-notice--error {
+  border-color: var(--color-error-border);
+  background: var(--color-error-bg);
+  color: var(--color-error);
+}
+
+.graph-read-notice__link {
+  color: inherit;
+  font-weight: 600;
+  text-decoration: underline;
+}

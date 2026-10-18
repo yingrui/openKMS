@@ -331,3 +331,150 @@ async def sync_edit_apply_result_to_neo4j(
         upsert_ids=list(applied.get("created_ids") or []) + list(applied.get("modified_ids") or []),
         delete_ids=list(applied.get("deleted_ids") or []),
     )
+
+
+# --- Link instances ---------------------------------------------------------
+#
+# A link is an edge between two *object* nodes, so both ends are keyed by the same identity the
+# object layer writes (`resolve_write_id_column`: `__rid` for hand-created types, the business key
+# for dataset-backed ones). Reading a link therefore uses that key too — the endpoint value a link
+# reports is the same id the object API shows for that object.
+
+
+def link_endpoint_keys(
+    source_type: ObjectType, target_type: ObjectType
+) -> tuple[str, str]:
+    """The properties each end of a relationship is matched on."""
+    return resolve_write_id_column(source_type), resolve_write_id_column(target_type)
+
+
+def link_endpoint_value(obj_type: ObjectType, instance: ObjectInstance, key: str) -> Any:
+    """The value the endpoint node holds for ``key``."""
+    if key == SYSTEM_RID_PROPERTY:
+        return instance.id
+    return (dict(instance.data or {})).get(key, instance.id)
+
+
+def merge_link_between_nodes(
+    session,
+    *,
+    src_label: str,
+    tgt_label: str,
+    rel_type: str,
+    src_key: str,
+    tgt_key: str,
+    src_val: Any,
+    tgt_val: Any,
+) -> bool:
+    """MERGE one relationship between two existing nodes. False when an endpoint is missing."""
+    result = session.run(
+        f"MATCH (a:{src_label} {{`{src_key}`: $src_val}}) "
+        f"MATCH (b:{tgt_label} {{`{tgt_key}`: $tgt_val}}) "
+        f"MERGE (a)-[r:{rel_type}]->(b) RETURN count(r) AS c",
+        src_val=src_val,
+        tgt_val=tgt_val,
+    )
+    row = result.single()
+    return bool(row and row["c"])
+
+
+def delete_link_between_nodes(
+    session,
+    *,
+    src_label: str,
+    tgt_label: str,
+    rel_type: str,
+    src_key: str,
+    tgt_key: str,
+    src_val: Any,
+    tgt_val: Any,
+) -> int:
+    """DELETE the relationship(s) between two nodes. Returns how many were removed."""
+    result = session.run(
+        f"MATCH (a:{src_label} {{`{src_key}`: $src_val}})"
+        f"-[r:{rel_type}]->"
+        f"(b:{tgt_label} {{`{tgt_key}`: $tgt_val}}) DELETE r",
+        src_val=src_val,
+        tgt_val=tgt_val,
+    )
+    return int(result.consume().counters.relationships_deleted)
+
+
+async def sync_link_instances_to_neo4j(
+    db: AsyncSession,
+    link_type: LinkType,
+    source_type: ObjectType,
+    target_type: ObjectType,
+    *,
+    upsert: list[tuple[str, str]],
+    delete: list[tuple[str, str]],
+) -> None:
+    """Same-request sync of hand-created links: MERGE / delete the edge in the graph.
+
+    No-op when there is no Neo4j data source. Raises ValueError when an endpoint node is not in
+    the graph yet — a link to a node nothing can read is worse than a failed write, and the caller
+    turns it into "index these types first". Other Neo4j failures propagate as-is.
+    """
+    if not upsert and not delete:
+        return
+    neo4j_ds = await get_first_neo4j_datasource(db)
+    if not neo4j_ds:
+        return
+
+    src_label = object_label(source_type)
+    tgt_label = object_label(target_type)
+    rel_type = link_rel_type(link_type)
+    src_key, tgt_key = link_endpoint_keys(source_type, target_type)
+
+    async def _values(pairs: list[tuple[str, str]]) -> list[tuple[Any, Any]]:
+        out: list[tuple[Any, Any]] = []
+        for source_id, target_id in pairs:
+            src = await db.get(ObjectInstance, source_id)
+            tgt = await db.get(ObjectInstance, target_id)
+            if not src or not tgt:
+                continue
+            out.append(
+                (
+                    link_endpoint_value(source_type, src, src_key),
+                    link_endpoint_value(target_type, tgt, tgt_key),
+                )
+            )
+        return out
+
+    upsert_vals = await _values(upsert)
+    delete_vals = await _values(delete)
+    missing: list[str] = []
+
+    def _run(driver) -> None:
+        with driver.session() as session:
+            for src_val, tgt_val in upsert_vals:
+                if not merge_link_between_nodes(
+                    session,
+                    src_label=src_label,
+                    tgt_label=tgt_label,
+                    rel_type=rel_type,
+                    src_key=src_key,
+                    tgt_key=tgt_key,
+                    src_val=src_val,
+                    tgt_val=tgt_val,
+                ):
+                    missing.append(f"{src_val} -> {tgt_val}")
+            for src_val, tgt_val in delete_vals:
+                delete_link_between_nodes(
+                    session,
+                    src_label=src_label,
+                    tgt_label=tgt_label,
+                    rel_type=rel_type,
+                    src_key=src_key,
+                    tgt_key=tgt_key,
+                    src_val=src_val,
+                    tgt_val=tgt_val,
+                )
+
+    await run_with_neo4j_driver(neo4j_ds, _run)
+    if missing:
+        raise ValueError(
+            "An endpoint of this link is not in the ontology graph yet ("
+            + ", ".join(missing[:3])
+            + "). Index the object types, then link them."
+        )

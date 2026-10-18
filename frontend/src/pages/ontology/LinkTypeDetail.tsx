@@ -13,6 +13,7 @@ import {
   type LinkTypeResponse,
   type LinkInstanceResponse,
 } from '../../data/ontologyApi';
+import { GraphReadNotice } from '../../components/ontology/GraphReadNotice';
 import './LinkTypeDetail.scss';
 
 function objectLabel(
@@ -40,6 +41,9 @@ export function LinkTypeDetail() {
   const [formSourceId, setFormSourceId] = useState('');
   const [formTargetId, setFormTargetId] = useState('');
   const [saving, setSaving] = useState(false);
+  const [graphNotice, setGraphNotice] = useState<
+    { kind: 'error'; detail: string } | { kind: 'notIndexed' } | null
+  >(null);
 
   const loadType = useCallback(async () => {
     if (!typeId) return;
@@ -58,8 +62,14 @@ export function LinkTypeDetail() {
     try {
       const res = await fetchLinkInstances(typeId);
       setInstances(res.items);
-    } catch {
-      /* noop */
+      setGraphNotice(res.indexed === false ? { kind: 'notIndexed' } : null);
+    } catch (e: unknown) {
+      // Links come from the graph only: a failed read is a state, not an empty table.
+      setInstances([]);
+      setGraphNotice({
+        kind: 'error',
+        detail: e instanceof Error && e.message ? e.message : '',
+      });
     }
   }, [typeId]);
 
@@ -177,6 +187,13 @@ export function LinkTypeDetail() {
       </div>
 
       <div className="ds-table-wrap">
+        {graphNotice ? (
+          <GraphReadNotice
+            kind={graphNotice.kind}
+            detail={graphNotice.kind === 'error' ? graphNotice.detail : undefined}
+            managePath="/ontology-manager/link-types"
+          />
+        ) : null}
         <table className="link-type-table">
           <thead>
             <tr>

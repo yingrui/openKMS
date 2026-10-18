@@ -374,6 +374,11 @@ export interface LinkInstanceResponse {
 export interface LinkInstanceListResponse {
   items: LinkInstanceResponse[];
   total: number;
+  /**
+   * `false` when the link type has source rows to index but the graph shows no edges, `null`
+   * when no verdict was made. Links are read from the graph only.
+   */
+  indexed?: boolean | null;
 }
 
 export async function fetchLinkInstances(linkTypeId: string): Promise<LinkInstanceListResponse> {

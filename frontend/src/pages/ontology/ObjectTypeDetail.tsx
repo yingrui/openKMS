@@ -20,6 +20,7 @@ import {
   type OntologyActionTypeResponse,
 } from '../../data/ontologyFunctionsApi';
 import { isRunnableAction } from '../ontology-manager/actionRuleTypes';
+import { GraphReadNotice } from '../../components/ontology/GraphReadNotice';
 import {
   isReservedPropertyName,
   SYSTEM_RID_PROPERTY_NAME,
@@ -276,21 +277,11 @@ export function ObjectTypeDetail() {
 
       <div className="ds-table-wrap">
         {graphNotice ? (
-          <div className={`object-type-graph-notice object-type-graph-notice--${graphNotice.kind}`} role="status">
-            {graphNotice.kind === 'notIndexed' ? (
-              <>
-                <span>{t('ontology.objectTypeDetail.notIndexed')}</span>
-                <Link to="/ontology-manager/object-types" className="object-type-graph-notice-link">
-                  {t('ontology.objectTypeDetail.notIndexedCta')}
-                </Link>
-              </>
-            ) : (
-              <span>
-                {t('ontology.objectTypeDetail.graphReadFailed')}
-                {graphNotice.detail ? ` ${graphNotice.detail}` : ''}
-              </span>
-            )}
-          </div>
+          <GraphReadNotice
+            kind={graphNotice.kind}
+            detail={graphNotice.kind === 'error' ? graphNotice.detail : undefined}
+            managePath="/ontology-manager/object-types"
+          />
         ) : null}
         <table className="object-type-table">
           <thead>

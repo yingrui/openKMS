@@ -276,10 +276,7 @@
       "systemIdHint": "实例平台身份（只读）。Action / App 调用时用此 RID。",
       "runAction": "运行 {{name}}",
       "actionRunOk": "{{name}} 已完成",
-      "actionRunFailed": "操作执行失败",
-      "notIndexed": "该对象类型已有数据待索引，但图中还没有。请先在本体管理器中索引，然后刷新。",
-      "notIndexedCta": "前往本体管理器",
-      "graphReadFailed": "无法从本体图读取对象。"
+      "actionRunFailed": "操作执行失败"
     }
   },
   "objects": {
@@ -293,5 +290,10 @@
     "subtitle": "浏览对象之间的关系类型。架构在控制台 → 关联类型 中管理。",
     "loadFailed": "无法加载关联类型",
     "empty": "暂无关联类型。请在控制台 → 关联类型 中添加。"
+  },
+  "graphRead": {
+    "notIndexed": "该类型已有数据待索引，但图中还没有。请先在本体管理器中索引，然后刷新。",
+    "notIndexedCta": "前往本体管理器",
+    "failed": "无法从本体图读取数据。"
   }
 }

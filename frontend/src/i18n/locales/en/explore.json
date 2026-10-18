@@ -276,10 +276,7 @@
       "systemIdHint": "Platform identity for this instance (read-only). Use this RID with Actions and Apps.",
       "runAction": "Run {{name}}",
       "actionRunOk": "{{name}} completed",
-      "actionRunFailed": "Action failed",
-      "notIndexed": "This object type has rows to index but none in the graph yet. Index it from Ontology Manager, then reload.",
-      "notIndexedCta": "Open in Ontology Manager",
-      "graphReadFailed": "Could not read objects from the ontology graph."
+      "actionRunFailed": "Action failed"
     }
   },
   "objects": {
@@ -293,5 +290,10 @@
     "subtitle": "Browse relationship types between objects. Schema is managed in Console → Link Types.",
     "loadFailed": "Failed to load link types",
     "empty": "No link types yet. Add them in Console → Link Types."
+  },
+  "graphRead": {
+    "notIndexed": "This type has rows to index but none in the graph yet. Index it from Ontology Manager, then reload.",
+    "notIndexedCta": "Open in Ontology Manager",
+    "failed": "Could not read from the ontology graph."
   }
 }

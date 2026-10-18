@@ -184,3 +184,5 @@ class LinkInstanceResponse(BaseModel):
 class LinkInstanceListResponse(BaseModel):
     items: list[LinkInstanceResponse]
     total: int
+    # False when the link type has source rows to index but the graph shows no edges.
+    indexed: bool | None = None

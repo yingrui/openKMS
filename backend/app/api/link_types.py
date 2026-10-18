@@ -18,10 +18,11 @@ from app.services.ontology.dataset_tables import (
 from app.services.ontology.api_names import ApiNameError, resolve_api_name
 from app.services.ontology.object_neo4j_store import (
     get_first_neo4j_datasource,
+    link_endpoint_keys,
+    link_endpoint_value,
     link_rel_type,
     object_label,
-    resolve_id_property,
-    resolve_neo4j_id_column_for_row,
+    sync_link_instances_to_neo4j,
 )
 from app.database import get_db
 from app.services.acl.data_resource_policy import link_type_visible
@@ -502,8 +503,8 @@ async def _index_link_type_m2m_junction(
     rel_type = link_rel_type(link_type)
     src_col = link_type.source_dataset_column
     tgt_col = link_type.target_dataset_column
-    src_key = link_type.source_key_property or "id"
-    tgt_key = link_type.target_key_property or "id"
+    # Keyed like the object layer keys these nodes, so the edge joins the node the object API shows.
+    src_key, tgt_key = link_endpoint_keys(source_type, target_type)
     relationships_created = 0
     offset = 0
     batch_size = 1000
@@ -548,8 +549,7 @@ async def _index_link_type_m2o_source_fk(
     tgt_label = object_label(target_type)
     rel_type = link_rel_type(link_type)
     fk_col = link_type.source_key_property
-    src_key = link_type.target_key_property or "id"
-    tgt_key = src_key
+    src_key, tgt_key = link_endpoint_keys(source_type, target_type)
     relationships_created = 0
     offset = 0
     batch_size = 1000
@@ -615,12 +615,10 @@ async def _index_link_type_from_saved_instances(
             target_obj = await db.get(ObjectInstance, li.target_object_id)
             if not source_obj or not target_obj:
                 continue
-            src_row = {**(source_obj.data or {}), "id": source_obj.id}
-            tgt_row = {**(target_obj.data or {}), "id": target_obj.id}
-            src_key = resolve_neo4j_id_column_for_row(source_type, src_row)
-            tgt_key = resolve_neo4j_id_column_for_row(target_type, tgt_row)
-            src_val = src_row.get(src_key)
-            tgt_val = tgt_row.get(tgt_key)
+            # Same identity the object layer MERGEs these nodes on (no-dataset → __rid).
+            src_key, tgt_key = link_endpoint_keys(source_type, target_type)
+            src_val = link_endpoint_value(source_type, source_obj, src_key)
+            tgt_val = link_endpoint_value(target_type, target_obj, tgt_key)
             if src_val is None or tgt_val is None:
                 continue
             session.run(
@@ -729,199 +727,108 @@ async def list_link_instances(
     source_key_value: str | None = None,
     db: AsyncSession = Depends(get_db),
 ):
-    """List link instances. Links page loads from Neo4j when a Neo4j data source exists.
+    """List link instances from the ontology graph.
 
-    Optional filters: ``source_object_id`` (hand-created links) and/or ``source_key_value``
-    (dataset / Neo4j-backed links). When only ``source_object_id`` is set on indexed paths,
-    it is also matched against the source key value.
+    The junction table, the source-table FK and ``link_instances`` are what gets *indexed into* the
+    graph; they are not read paths. So this answers like the object list: **409** without a Neo4j
+    data source, **503** when the graph is unreachable, and ``indexed: false`` when a type has
+    source rows but no indexed edges.
+
+    ``source_object_id`` / ``source_key_value`` filter on the source endpoint's id — the same id the
+    object API shows for that object.
     """
     link_type = await db.get(LinkType, link_type_id)
     if not link_type:
         raise HTTPException(status_code=404, detail="Link type not found")
     await _require_link_type_read(request, db, link_type_id)
 
-    neo4j_source_key = source_key_value or source_object_id
-
+    source_type = await db.get(ObjectType, link_type.source_object_type_id)
+    target_type = await db.get(ObjectType, link_type.target_object_type_id)
     neo4j_ds = await get_first_neo4j_datasource(db)
-    if neo4j_ds:
-        source_type = await db.get(ObjectType, link_type.source_object_type_id)
-        target_type = await db.get(ObjectType, link_type.target_object_type_id)
-        if source_type and target_type:
-            try:
-                src_label = object_label(source_type)
-                tgt_label = object_label(target_type)
-                rel_type = link_rel_type(link_type)
-                if link_type.cardinality in ("many-to-one", "one-to-many"):
-                    src_key = link_type.target_key_property or "id"
-                    tgt_key = src_key
-                else:
-                    src_key = link_type.source_key_property or "id"
-                    tgt_key = link_type.target_key_property or "id"
+    if not neo4j_ds:
+        raise HTTPException(
+            status_code=409,
+            detail=(
+                "Link instances are read from the graph. Add a Neo4j data source "
+                "(Console → Data Sources), then index this link type."
+            ),
+        )
+    if not source_type or not target_type:
+        raise HTTPException(
+            status_code=409,
+            detail="This link type points at an object type that no longer exists; fix it first.",
+        )
 
-                def _query(driver):
-                    return _query_neo4j_relationships(
-                        driver,
-                        src_label,
-                        tgt_label,
-                        rel_type,
-                        src_key,
-                        tgt_key,
-                        limit,
-                        offset,
-                        source_key_value=neo4j_source_key,
-                    )
+    source_key = source_key_value or source_object_id
+    src_label = object_label(source_type)
+    tgt_label = object_label(target_type)
+    rel_type = link_rel_type(link_type)
+    # A relationship joins two objects, so both ends use the identity the object layer writes.
+    src_key, tgt_key = link_endpoint_keys(source_type, target_type)
 
-                rows, total = await run_with_neo4j_driver(neo4j_ds, _query)
-                return LinkInstanceListResponse(
-                    items=[
-                        LinkInstanceResponse(
-                            id=f"neo4j:{r['source_key_value']}:{r['target_key_value']}",
-                            link_type_id=link_type_id,
-                            source_object_id="",
-                            target_object_id="",
-                            source_key_value=r["source_key_value"],
-                            target_key_value=r["target_key_value"],
-                            source_data=r["source_data"],
-                            target_data=r["target_data"],
-                            created_at=None,
-                            updated_at=None,
-                        )
-                        for r in rows
-                    ],
-                    total=total,
-                )
-            except NEO4J_ERRORS:
-                pass
+    def _query(driver):
+        return _query_neo4j_relationships(
+            driver,
+            src_label,
+            tgt_label,
+            rel_type,
+            src_key,
+            tgt_key,
+            limit,
+            offset,
+            source_key_value=source_key,
+        )
 
-    # Many-to-many with dataset: connections come from junction table
+    try:
+        rows, total = await run_with_neo4j_driver(neo4j_ds, _query)
+    except NEO4J_ERRORS as e:
+        raise HTTPException(status_code=503, detail=f"Ontology graph unavailable: {e}") from e
+
+    # An empty, unfiltered page can mean "no links" or "never indexed". Say which.
+    indexed: bool | None = True
+    if total == 0 and source_key is None:
+        indexed = not await _has_unindexed_link_source(db, link_type, source_type)
+    return LinkInstanceListResponse(
+        items=[
+            LinkInstanceResponse(
+                id=f"neo4j:{r['source_key_value']}:{r['target_key_value']}",
+                link_type_id=link_type_id,
+                source_object_id="",
+                target_object_id="",
+                source_key_value=r["source_key_value"],
+                target_key_value=r["target_key_value"],
+                source_data=r["source_data"],
+                target_data=r["target_data"],
+                created_at=None,
+                updated_at=None,
+            )
+            for r in rows
+        ],
+        total=total,
+        indexed=indexed,
+    )
+
+
+async def _has_unindexed_link_source(
+    db: AsyncSession, link_type: LinkType, source_type: ObjectType
+) -> bool:
+    """Whether this link type has source rows to index that the graph does not show."""
     if (
         link_type.cardinality == "many-to-many"
         and link_type.dataset_id
         and link_type.source_dataset_column
         and link_type.target_dataset_column
     ):
-        src_col = link_type.source_dataset_column
-        tgt_col = link_type.target_dataset_column
-        try:
-            rows, total = await fetch_dataset_rows(
-                db,
-                link_type.dataset_id,
-                limit=limit,
-                offset=offset,
-                filters=({src_col: neo4j_source_key} if neo4j_source_key is not None else None),
-            )
-        except ValueError as e:
-            raise HTTPException(status_code=400, detail=str(e)) from e
-        items = []
-        for i, row in enumerate(rows):
-            src_val = row.get(src_col)
-            tgt_val = row.get(tgt_col)
-            if src_val is not None and tgt_val is not None:
-                items.append(
-                    LinkInstanceResponse(
-                        id=f"dataset:{offset + i}",
-                        link_type_id=link_type_id,
-                        source_object_id="",
-                        target_object_id="",
-                        source_key_value=str(src_val),
-                        target_key_value=str(tgt_val),
-                        source_data={src_col: src_val},
-                        target_data={tgt_col: tgt_val},
-                        created_at=None,
-                        updated_at=None,
-                    )
+        return await get_dataset_row_count(db, link_type.dataset_id) > 0
+    if link_type.cardinality in ("many-to-one", "one-to-many") and link_type.source_key_property:
+        if source_type.dataset_id:
+            return (
+                await get_dataset_row_count_where_not_null(
+                    db, source_type.dataset_id, link_type.source_key_property
                 )
-        return LinkInstanceListResponse(
-            items=items,
-            total=len(items) if neo4j_source_key else total,
-        )
-    # many-to-one / one-to-many: from source dataset
-    if (
-        link_type.cardinality in ("many-to-one", "one-to-many")
-        and link_type.source_key_property
-    ):
-        source_type = await db.get(ObjectType, link_type.source_object_type_id)
-        if source_type and source_type.dataset_id:
-            fk_col = link_type.source_key_property
-            # Same id the object list shows for this type, so a row's link filter matches it.
-            src_id_col = resolve_id_property(source_type)
-            try:
-                rows, total = await fetch_dataset_rows(
-                    db,
-                    source_type.dataset_id,
-                    limit=limit,
-                    offset=offset,
-                    filters=(
-                        {src_id_col: neo4j_source_key} if neo4j_source_key is not None else None
-                    ),
-                    # A row without the FK is not a link: filtering it after paging emptied pages.
-                    not_null=[fk_col],
-                )
-            except ValueError as e:
-                raise HTTPException(status_code=400, detail=str(e)) from e
-            items = []
-            for i, row in enumerate(rows):
-                tgt_val = row.get(fk_col)
-                src_val = row.get(src_id_col)
-                if tgt_val is None or src_val is None:
-                    continue
-                items.append(
-                    LinkInstanceResponse(
-                        id=f"dataset:{offset + i}",
-                        link_type_id=link_type_id,
-                        source_object_id="",
-                        target_object_id="",
-                        source_key_value=str(src_val),
-                        target_key_value=str(tgt_val),
-                        source_data={k: v for k, v in row.items() if v is not None},
-                        target_data={fk_col: tgt_val},
-                        created_at=None,
-                        updated_at=None,
-                    )
-                )
-            return LinkInstanceListResponse(
-                items=items,
-                total=total,
+                > 0
             )
-    # Otherwise: from link_instances table
-    where = [LinkInstance.link_type_id == link_type_id]
-    if source_object_id:
-        where.append(LinkInstance.source_object_id == source_object_id)
-    total = int(
-        (await db.execute(select(func.count()).select_from(LinkInstance).where(*where))).scalar_one()
-    )
-    result = await db.execute(
-        select(LinkInstance)
-        .where(*where)
-        .order_by(LinkInstance.created_at.desc())
-        .offset(offset)
-        .limit(limit)
-    )
-    links = result.scalars().all()
-    items = []
-    for li in links:
-        source_obj = await db.get(ObjectInstance, li.source_object_id)
-        target_obj = await db.get(ObjectInstance, li.target_object_id)
-        if source_key_value is not None and source_key_value != "":
-            src_data = (source_obj.data or {}) if source_obj else {}
-            # Optional key-value filter on hand-created path: match any property or id
-            if str(li.source_object_id) != source_key_value and source_key_value not in {
-                str(v) for v in src_data.values()
-            }:
-                continue
-        items.append(
-            LinkInstanceResponse(
-                id=li.id,
-                link_type_id=li.link_type_id,
-                source_object_id=li.source_object_id,
-                target_object_id=li.target_object_id,
-                source_data=source_obj.data if source_obj else None,
-                target_data=target_obj.data if target_obj else None,
-                created_at=li.created_at,
-                updated_at=li.updated_at,
-            )
-        )
-    return LinkInstanceListResponse(items=items, total=total if not source_key_value else len(items))
+    return await _link_instance_count(db, link_type.id) > 0
 
 
 @router.post("/{link_type_id}/links", response_model=LinkInstanceResponse, status_code=201)
@@ -952,6 +859,10 @@ async def create_link_instance(
         raise HTTPException(status_code=400, detail="Source object must be of source type")
     if target_obj.object_type_id != link_type.target_object_type_id:
         raise HTTPException(status_code=400, detail="Target object must be of target type")
+    source_type = await db.get(ObjectType, link_type.source_object_type_id)
+    target_type = await db.get(ObjectType, link_type.target_object_type_id)
+    if not source_type or not target_type:
+        raise HTTPException(status_code=400, detail="Link type references a missing object type")
     link_instance = LinkInstance(
         id=str(uuid.uuid4()),
         link_type_id=link_type_id,
@@ -960,6 +871,22 @@ async def create_link_instance(
     )
     db.add(link_instance)
     await db.flush()
+    # Same-request graph sync, like an object write: a link nothing can read is not a link.
+    try:
+        await sync_link_instances_to_neo4j(
+            db,
+            link_type,
+            source_type,
+            target_type,
+            upsert=[(body.source_object_id, body.target_object_id)],
+            delete=[],
+        )
+    except ValueError as e:
+        await db.rollback()
+        raise HTTPException(status_code=409, detail=str(e)) from e
+    except Exception as e:
+        await db.rollback()
+        raise HTTPException(status_code=502, detail=f"Queued but Neo4j sync failed: {e}") from e
     await db.refresh(link_instance)
     return LinkInstanceResponse(
         id=link_instance.id,
@@ -993,4 +920,16 @@ async def delete_link_instance(
     link_instance = await db.get(LinkInstance, link_id)
     if not link_instance or link_instance.link_type_id != link_type_id:
         raise HTTPException(status_code=404, detail="Link not found")
+    source_type = await db.get(ObjectType, link_type.source_object_type_id)
+    target_type = await db.get(ObjectType, link_type.target_object_type_id)
+    endpoints = (link_instance.source_object_id, link_instance.target_object_id)
     await db.delete(link_instance)
+    await db.flush()
+    if source_type and target_type:
+        try:
+            await sync_link_instances_to_neo4j(
+                db, link_type, source_type, target_type, upsert=[], delete=[endpoints]
+            )
+        except Exception as e:
+            await db.rollback()
+            raise HTTPException(status_code=502, detail=f"Deleted but Neo4j sync failed: {e}") from e
