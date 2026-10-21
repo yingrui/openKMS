@@ -838,14 +838,8 @@
     "subtitle": "通过 API 发生的每一次变更——谁做的、动了什么、成功了吗。",
     "refresh": "刷新",
     "noAccess": "你的账号没有查看审计日志的权限。",
-    "filterActor": "操作者",
-    "filterActorPlaceholder": "谁（邮箱或 key 所有者）",
     "filterMethod": "方法",
     "filterAll": "全部",
-    "filterResourceType": "资源类型",
-    "filterResourceTypePlaceholder": "datasets、stories …",
-    "filterResourceId": "资源 id",
-    "filterResourceIdPlaceholder": "知道 id 时填这里",
     "when": "时间",
     "actor": "操作者",
     "request": "请求",
@@ -855,6 +849,17 @@
     "empty": "还没有任何变更——或者没有符合筛选条件的。",
     "loadMore": "加载更早",
     "loadFailed": "无法读取审计日志",
-    "loading": "加载中…"
+    "loading": "加载中…",
+    "scopeAria": "筛选日志",
+    "all": "全部",
+    "byResource": "在哪儿",
+    "byResult": "结果如何",
+    "byActor": "谁做的",
+    "window": "计数统计范围：最近 {{days}} 天。",
+    "status_ok": "成功",
+    "status_4xx": "被拒绝（4xx）",
+    "status_5xx": "崩溃（5xx）",
+    "filterPath": "路径",
+    "filterPathPlaceholder": "路径片段"
   }
 }

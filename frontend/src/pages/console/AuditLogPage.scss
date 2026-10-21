@@ -1,0 +1,82 @@
+/* The audit page borrows the ontology manager's shape: a rail on the left that answers "where", and the
+   record on the right. A filter rail is a list of decisions with counts — the count is what makes it
+   navigable, so it is visible on every row rather than hidden in a menu. */
+.audit-log {
+  display: flex;
+  align-items: stretch;
+  gap: var(--space-5);
+  min-height: 0;
+}
+
+.audit-log__rail {
+  width: 220px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  padding-right: var(--space-4);
+  border-right: 1px solid var(--color-border);
+  overflow: auto;
+}
+
+.audit-log__group {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.audit-log__group-title {
+  padding: 0 8px 4px;
+  font-size: var(--text-xs);
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+}
+
+.audit-log__item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  width: 100%;
+  padding: 6px 8px;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--color-text-secondary);
+  font-size: var(--text-sm);
+  text-align: left;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+
+.audit-log__item:hover {
+  background: var(--color-surface-alt, var(--color-surface));
+  color: var(--color-text);
+}
+
+.audit-log__item.is-active {
+  background: var(--color-surface-alt, var(--color-surface));
+  color: var(--color-text);
+  font-weight: 600;
+}
+
+.audit-log__count {
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.audit-log__main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.audit-log__code {
+  font-family: var(--font-mono, ui-monospace, Menlo, monospace);
+  font-size: var(--text-sm);
+}

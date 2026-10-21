@@ -839,14 +839,8 @@
     "subtitle": "Every change made through the API — who made it, what it touched, and whether it worked.",
     "refresh": "Refresh",
     "noAccess": "Your account cannot read the audit log.",
-    "filterActor": "Actor",
-    "filterActorPlaceholder": "who (email or key owner)",
     "filterMethod": "Method",
     "filterAll": "all",
-    "filterResourceType": "Resource type",
-    "filterResourceTypePlaceholder": "datasets, stories, …",
-    "filterResourceId": "Resource id",
-    "filterResourceIdPlaceholder": "the id, when you have it",
     "when": "When",
     "actor": "Actor",
     "request": "Request",
@@ -856,6 +850,17 @@
     "empty": "Nothing has changed yet — or nothing matches these filters.",
     "loadMore": "Load older",
     "loadFailed": "Could not read the audit log",
-    "loading": "Loading…"
+    "loading": "Loading…",
+    "scopeAria": "Filter the log",
+    "all": "Everything",
+    "byResource": "Where",
+    "byResult": "How it went",
+    "byActor": "Who",
+    "window": "Counts cover the last {{days}} days.",
+    "status_ok": "succeeded",
+    "status_4xx": "rejected (4xx)",
+    "status_5xx": "crashed (5xx)",
+    "filterPath": "Path",
+    "filterPathPlaceholder": "substring of the path"
   }
 }

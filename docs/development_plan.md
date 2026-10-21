@@ -293,6 +293,20 @@ They are **not claimed to work**: this machine has no `pg_dump`, so only the pre
 refuses with an installation hint, verified). The drill is what turns a file into a backup, and until it
 prints `restore drill ok`, the honest state is untested.
 
+### The audit page gets a rail, because "where" is a map (2026-10)
+
+The page opened with four empty filter boxes, which asks the reader to guess what exists. It now borrows the
+ontology manager's shape: a **rail on the left that answers "where"** — the parts of the system, how the
+mutation turned out (`succeeded` / `rejected 4xx` / `crashed 5xx`), and who did it — each row carrying a
+**count**, so the shape of the log is visible before anything is filtered. The right side is the record.
+
+Counts need a query, not a page of results: `GET /api/console/audit-events/facets` groups over a **30-day
+window** (a log only grows, and a `GROUP BY` over a year would stall a page that should open instantly).
+The window is returned so the rail can say what it counted.
+
+A `status` group filter came with it (`ok` / `4xx` / `5xx` / `error`), because "what failed" is the second
+question anyone asks and a min/max range UI would be worse than a word.
+
 ### The audit log has a page, behind the user menu (2026-10)
 
 Reading it needed `curl`. Now: **top-right user menu → Audit log** → `/audit-log`, a table of every

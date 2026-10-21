@@ -26,6 +26,8 @@ export interface AuditFilters {
   resource_id?: string;
   method?: string;
   path?: string;
+  /** A group: `ok` (2xx), `4xx`, `5xx`, `error`. */
+  status?: string;
   limit: number;
   /** Keyset cursor: the `at` of the last row you have. */
   before?: string;
@@ -39,8 +41,27 @@ export async function fetchAuditEvents(filters: AuditFilters): Promise<AuditEven
       resource_id: filters.resource_id,
       method: filters.method,
       path: filters.path,
+      status: filters.status,
       limit: filters.limit,
       before: filters.before,
     },
   });
+}
+
+export interface AuditFacet {
+  value: string;
+  label: string | null;
+  count: number;
+}
+
+export interface AuditFacetsResponse {
+  resource_types: AuditFacet[];
+  statuses: AuditFacet[];
+  actors: AuditFacet[];
+  since: string;
+}
+
+/** Counts for the rail — where changes happened, how they turned out, who made them. */
+export async function fetchAuditFacets(days = 30): Promise<AuditFacetsResponse> {
+  return request<AuditFacetsResponse>('/api/console/audit-events/facets', { query: { days } });
 }

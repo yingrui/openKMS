@@ -27,3 +27,17 @@ class AuditEventResponse(BaseModel):
 class AuditEventListResponse(BaseModel):
     items: list[AuditEventResponse]
     total: int
+
+class AuditFacet(BaseModel):
+    value: str
+    label: str | None = None
+    count: int
+
+
+class AuditFacetsResponse(BaseModel):
+    """Counts for the rail: where the changes happened, how they turned out, and who made them."""
+
+    resource_types: list[AuditFacet]
+    statuses: list[AuditFacet]
+    actors: list[AuditFacet]
+    since: datetime
