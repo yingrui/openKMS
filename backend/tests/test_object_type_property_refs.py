@@ -40,3 +40,19 @@ def test_undeclared_display_property_is_rejected():
 def test_a_type_without_properties_is_still_creatable():
     """Modeling the id before the schema is a legal order of operations."""
     _validate_property_refs(properties=[], key_property="ts_code", display_property="trade_date")
+
+
+# --- prune safety -----------------------------------------------------------
+def test_prune_declines_an_empty_source():
+    """An empty keep-set is a broken read far more often than 'delete every node'."""
+    from app.services.ontology.object_neo4j_store import prune_refused_reason
+
+    assert prune_refused_reason(set()) is not None
+    assert "no rows" in prune_refused_reason(set())
+
+
+def test_prune_declines_a_fact_table_sized_key_set():
+    from app.services.ontology.object_neo4j_store import PRUNE_KEY_LIMIT, prune_refused_reason
+
+    assert prune_refused_reason({"a"}) is None
+    assert prune_refused_reason(set(str(i) for i in range(PRUNE_KEY_LIMIT + 1))) is not None

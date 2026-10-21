@@ -217,25 +217,33 @@ def cmd_instances_delete(ns: argparse.Namespace) -> None:
 # ---------------------------------------------------------------------------
 # Write — Neo4j sync
 # ---------------------------------------------------------------------------
+def _sync_path(base: str, prune: bool) -> str:
+    return f"{base}?prune=true" if prune else base
+
+
 def cmd_sync_neo4j(ns: argparse.Namespace) -> None:
     body = {"neo4j_data_source_id": ns.neo4j_data_source_id}
+    path = _sync_path("/api/object-types/index-to-neo4j", bool(getattr(ns, "prune", False)))
     confirm_or_abort(
-        action="sync object types to Neo4j (MERGE nodes)",
+        action="sync object types to Neo4j (MERGE nodes"
+        + (", delete nodes whose source row is gone)" if getattr(ns, "prune", False) else ")"),
         method="POST",
-        path="/api/object-types/index-to-neo4j",
+        path=path,
         body=body,
         yes=ns.yes,
         dry_run=ns.dry_run,
     )
     with client() as s:
-        r = s.post("/api/object-types/index-to-neo4j", json=body)
+        r = s.post(path, json=body)
     r.raise_for_status()
     print_json(r.json())
 
 
 def cmd_sync_neo4j_type(ns: argparse.Namespace) -> None:
     body = {"neo4j_data_source_id": ns.neo4j_data_source_id}
-    path = f"/api/object-types/{ns.type_id}/index-to-neo4j"
+    path = _sync_path(
+        f"/api/object-types/{ns.type_id}/index-to-neo4j", bool(getattr(ns, "prune", False))
+    )
     confirm_or_abort(
         action=f"sync object type {ns.type_id!r} to Neo4j (MERGE nodes)",
         method="POST",

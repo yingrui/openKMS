@@ -155,8 +155,8 @@ All write subcommands accept `--yes` / `--dry-run`. Without `--yes` on non-TTY s
 | `ontology objects instances create` *(write)* | POST | `/api/object-types/{type-id}/objects` | Body `{data: {…property values…}}`. |
 | `ontology objects instances update` *(write)* | PUT | `/api/object-types/{type-id}/objects/{id}` | Body `{data: {…}}`. |
 | `ontology objects instances delete` *(write)* | DELETE | `/api/object-types/{type-id}/objects/{id}` | — |
-| `ontology objects sync-neo4j` *(write)* | POST | `/api/object-types/index-to-neo4j` | Body `{neo4j_data_source_id}`. Returns `{object_types_indexed, nodes_created}`. Indexes every object type that has a linked dataset or stored instances. **Run after dataset/queue changes — object reads come from the graph.** |
-| `ontology objects sync-neo4j-type` *(write)* | POST | `/api/object-types/{id}/index-to-neo4j` | Same body. One type only (dataset rows or `object_instances` when no dataset). |
+| `ontology objects sync-neo4j` *(write)* | POST | `/api/object-types/index-to-neo4j` | Body `{neo4j_data_source_id}`. Returns `{object_types_indexed, nodes_created}`. Indexes every object type that has a linked dataset or stored instances. **Run after dataset/queue changes — object reads come from the graph.** Add `?prune=true` (`--prune`) when the type mirrors a table you own: it deletes nodes whose source row is gone (indexing is MERGE-only otherwise). |
+| `ontology objects sync-neo4j-type` *(write)* | POST | `/api/object-types/{id}/index-to-neo4j` | Same body; `--prune` → `?prune=true`. One type only (dataset rows or `object_instances` when no dataset). |
 
 ### Ontology — link types (`ontology links`)
 

@@ -35,6 +35,8 @@ from app.services.ontology.object_neo4j_store import (
     get_first_neo4j_datasource,
     merge_object_row_to_neo4j,
     object_label,
+    prune_object_nodes,
+    prune_refused_reason,
     query_neo4j_nodes,
     resolve_id_property,
     resolve_neo4j_id_column_for_row,
@@ -75,6 +77,9 @@ class IndexToNeo4jRequest(BaseModel):
 class IndexToNeo4jResponse(BaseModel):
     object_types_indexed: int
     nodes_created: int
+    #: Only non-zero when the request asked to prune (`?prune=true`).
+    nodes_pruned: int = 0
+    prune_skipped: str | None = None
 
 
 class PurgeOntologyDataRequest(BaseModel):
@@ -425,11 +430,16 @@ async def _index_object_type_dataset_to_neo4j_session(
     db: AsyncSession,
     session,
     obj_type: ObjectType,
-) -> int:
-    """MERGE dataset rows for one object type into Neo4j (sync Neo4j session). Returns nodes_created."""
+) -> tuple[int, str | None, set]:
+    """MERGE dataset rows for one object type. Returns (created, id_col, ids written).
+
+    The id set is what `prune` keeps: everything else under the label is stale.
+    """
     if not obj_type.dataset_id:
-        return 0
+        return 0, None, set()
     nodes_created = 0
+    keep: set = set()
+    id_col: str | None = None
     label = object_label(obj_type)
     offset = 0
     batch_size = 1000
@@ -446,19 +456,23 @@ async def _index_object_type_dataset_to_neo4j_session(
         id_col = resolve_neo4j_id_column_for_row(obj_type, rows[0])
         for row in rows:
             nodes_created += merge_object_row_to_neo4j(session, label, id_col, row)
+            value = row.get(id_col)
+            if value is not None:
+                keep.add(value)
         offset += len(rows)
         if offset >= total:
             break
-    return nodes_created
+    return nodes_created, id_col, keep
 
 
 async def _index_object_type_instances_to_neo4j_session(
     db: AsyncSession,
     session,
     obj_type: ObjectType,
-) -> int:
-    """MERGE rows from object_instances into Neo4j (same MERGE rules as dataset rows)."""
+) -> tuple[int, str, set]:
+    """MERGE rows from object_instances (same MERGE rules as dataset rows)."""
     label = object_label(obj_type)
+    keep: set = set()
     offset = 0
     batch_size = 1000
     nodes_created = 0
@@ -477,10 +491,11 @@ async def _index_object_type_instances_to_neo4j_session(
         for inst in instances:
             row = instance_row_for_neo4j(obj_type, inst)
             nodes_created += merge_object_row_to_neo4j(session, label, id_col, row)
+            keep.add(inst.id)
         offset += len(instances)
         if len(instances) < batch_size:
             break
-    return nodes_created
+    return nodes_created, id_col, keep
 
 
 async def _open_neo4j_driver_for_index(body: IndexToNeo4jRequest, db: AsyncSession):
@@ -604,12 +619,14 @@ async def purge_object_type_instances(
 )
 async def index_objects_to_neo4j(
     body: IndexToNeo4jRequest,
+    prune: bool = Query(False, description="Delete nodes this run did not write (a mirror type)"),
     db: AsyncSession = Depends(get_db),
 ):
     """Index object types that have a linked dataset or queued instances to Neo4j.
 
     For types without a dataset this drains the ``object_instances`` apply queue
-    (full MERGE of current queue rows). Admin only.
+    (full MERGE of current queue rows). With ``prune=true`` it also deletes nodes whose source row
+    is gone — the reason a removed holding stops answering queries. Admin only.
     """
     has_instances = exists().where(ObjectInstance.object_type_id == ObjectType.id)
     result = await db.execute(
@@ -622,16 +639,39 @@ async def index_objects_to_neo4j(
         return IndexToNeo4jResponse(object_types_indexed=0, nodes_created=0)
     driver = await _open_neo4j_driver_for_index(body, db)
     nodes_created = 0
+    nodes_pruned = 0
+    prune_skipped: str | None = None
     try:
         with driver.session() as session:
             for obj_type in obj_types:
                 if obj_type.dataset_id:
-                    nodes_created += await _index_object_type_dataset_to_neo4j_session(db, session, obj_type)
+                    created, id_col, keep = await _index_object_type_dataset_to_neo4j_session(
+                        db, session, obj_type
+                    )
                 else:
-                    nodes_created += await _index_object_type_instances_to_neo4j_session(db, session, obj_type)
+                    created, id_col, keep = await _index_object_type_instances_to_neo4j_session(
+                        db, session, obj_type
+                    )
+                nodes_created += created
+                if prune and id_col:
+                    reason = prune_refused_reason(keep)
+                    if reason:
+                        prune_skipped = reason
+                    else:
+                        nodes_pruned += prune_object_nodes(
+                            session,
+                            label=object_label(obj_type),
+                            id_col=id_col,
+                            keep=keep,
+                        )
     finally:
         driver.close()
-    return IndexToNeo4jResponse(object_types_indexed=len(obj_types), nodes_created=nodes_created)
+    return IndexToNeo4jResponse(
+        object_types_indexed=len(obj_types),
+        nodes_created=nodes_created,
+        nodes_pruned=nodes_pruned,
+        prune_skipped=prune_skipped,
+    )
 
 
 @router.post(
@@ -642,10 +682,14 @@ async def index_objects_to_neo4j(
 async def index_one_object_type_to_neo4j(
     object_type_id: str,
     body: IndexToNeo4jRequest,
+    prune: bool = Query(False, description="Delete nodes this run did not write (a mirror type)"),
     db: AsyncSession = Depends(get_db),
 ):
     """Index one object type to Neo4j from its linked dataset, or drain the
-    object_instances apply queue when there is no dataset."""
+    object_instances apply queue when there is no dataset.
+
+    ``prune=true`` also deletes nodes under this label that the source no longer has.
+    """
     obj_type = await db.get(ObjectType, object_type_id)
     if not obj_type:
         raise HTTPException(status_code=404, detail="Object type not found")
@@ -662,15 +706,34 @@ async def index_one_object_type_to_neo4j(
                 ),
             )
     driver = await _open_neo4j_driver_for_index(body, db)
+    nodes_pruned = 0
+    prune_skipped: str | None = None
     try:
         with driver.session() as session:
             if obj_type.dataset_id:
-                nodes_created = await _index_object_type_dataset_to_neo4j_session(db, session, obj_type)
+                nodes_created, id_col, keep = await _index_object_type_dataset_to_neo4j_session(
+                    db, session, obj_type
+                )
             else:
-                nodes_created = await _index_object_type_instances_to_neo4j_session(db, session, obj_type)
+                nodes_created, id_col, keep = await _index_object_type_instances_to_neo4j_session(
+                    db, session, obj_type
+                )
+            if prune:
+                reason = prune_refused_reason(keep)
+                if reason:
+                    prune_skipped = reason
+                else:
+                    nodes_pruned = prune_object_nodes(
+                        session, label=object_label(obj_type), id_col=id_col, keep=keep
+                    )
     finally:
         driver.close()
-    return IndexToNeo4jResponse(object_types_indexed=1, nodes_created=nodes_created)
+    return IndexToNeo4jResponse(
+        object_types_indexed=1,
+        nodes_created=nodes_created,
+        nodes_pruned=nodes_pruned,
+        prune_skipped=prune_skipped,
+    )
 
 
 # --- Object instances (nested under object type) ---

@@ -459,3 +459,56 @@ async def sync_link_instances_to_neo4j(
             + ", ".join(missing[:3])
             + "). Index the object types, then link them."
         )
+
+
+# --- Pruning -----------------------------------------------------------------
+#
+# MERGE-only indexing never removes a node or edge, so a deleted source row leaves a phantom that
+# keeps answering queries. Pruning is **opt-in** (`?prune=true`): it deletes what this run did not
+# write, which is exactly what a mirror of an owned table wants — and exactly what a hand-maintained
+# graph must not do by accident.
+
+PRUNE_KEY_LIMIT = 100_000
+
+
+def prune_refused_reason(keep: set | list) -> str | None:
+    """Why pruning must be skipped, or None when it is safe to run.
+
+    An empty keep-set means the source produced no rows. That is far more often a broken read than
+    an instruction to delete every node under the label, so the prune declines and says so.
+    """
+    if not keep:
+        return "the source produced no rows; refusing to delete every node"
+    if len(keep) > PRUNE_KEY_LIMIT:
+        return f"more than {PRUNE_KEY_LIMIT} keys to keep; prune a mirror type, not a fact table"
+    return None
+
+
+def prune_object_nodes(session, *, label: str, id_col: str, keep: set) -> int:
+    """DETACH DELETE nodes of `label` whose identity is not in `keep`. Returns nodes deleted."""
+    result = session.run(
+        f"MATCH (n:{label}) WHERE NOT n.`{id_col}` IN $keep DETACH DELETE n",
+        keep=list(keep),
+    )
+    return int(result.consume().counters.nodes_deleted)
+
+
+def prune_link_relationships(
+    session,
+    *,
+    src_label: str,
+    tgt_label: str,
+    rel_type: str,
+    src_key: str,
+    tgt_key: str,
+    keep: set,
+) -> int:
+    """DELETE edges of this type whose endpoint pair was not written. Returns edges deleted."""
+    pairs = [[str(src), str(tgt)] for src, tgt in keep]
+    result = session.run(
+        f"MATCH (a:{src_label})-[r:{rel_type}]->(b:{tgt_label}) "
+        f"WHERE NOT [toString(a.`{src_key}`), toString(b.`{tgt_key}`)] IN $keep "
+        f"DELETE r",
+        keep=pairs,
+    )
+    return int(result.consume().counters.relationships_deleted)

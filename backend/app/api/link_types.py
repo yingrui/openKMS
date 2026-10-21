@@ -4,6 +4,8 @@ import uuid
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from pydantic import BaseModel
+from dataclasses import dataclass
+
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -19,6 +21,8 @@ from app.services.ontology.api_names import ApiNameError, resolve_api_name
 from app.services.ontology.object_neo4j_store import (
     fetch_object_from_neo4j,
     get_first_neo4j_datasource,
+    prune_link_relationships,
+    prune_refused_reason,
     link_endpoint_keys,
     link_rel_type,
     object_label,
@@ -72,6 +76,9 @@ class IndexToNeo4jRequest(BaseModel):
 class IndexToNeo4jResponse(BaseModel):
     link_types_indexed: int
     relationships_created: int
+    #: Only non-zero when the request asked to prune (`?prune=true`).
+    relationships_pruned: int = 0
+    prune_skipped: str | None = None
 
 
 async def _link_instance_count(db: AsyncSession, link_type_id: str) -> int:
@@ -496,8 +503,11 @@ async def _index_link_type_m2m_junction(
     link_type: LinkType,
     source_type: ObjectType,
     target_type: ObjectType,
-) -> int:
-    """MERGE relationships from many-to-many junction dataset rows."""
+) -> tuple[int, set]:
+    """MERGE relationships from many-to-many junction dataset rows.
+
+    Returns (created, endpoint pairs written) — the pair set is what pruning keeps.
+    """
     src_label = object_label(source_type)
     tgt_label = object_label(target_type)
     rel_type = link_rel_type(link_type)
@@ -506,6 +516,7 @@ async def _index_link_type_m2m_junction(
     # Keyed like the object layer keys these nodes, so the edge joins the node the object API shows.
     src_key, tgt_key = link_endpoint_keys(source_type, target_type)
     relationships_created = 0
+    keep: set = set()
     offset = 0
     batch_size = 1000
     while True:
@@ -528,11 +539,12 @@ async def _index_link_type_m2m_junction(
                 src_id=src_val,
                 tgt_id=tgt_val,
             )
+            keep.add((src_val, tgt_val))
             relationships_created += 1
         offset += len(rows)
         if offset >= total:
             break
-    return relationships_created
+    return relationships_created, keep
 
 
 async def _index_link_type_m2o_source_fk(
@@ -541,16 +553,17 @@ async def _index_link_type_m2o_source_fk(
     link_type: LinkType,
     source_type: ObjectType,
     target_type: ObjectType,
-) -> int:
+) -> tuple[int, set]:
     """MERGE relationships from source object dataset rows (FK column → target node id)."""
     if not source_type.dataset_id:
-        return 0
+        return 0, set()
     src_label = object_label(source_type)
     tgt_label = object_label(target_type)
     rel_type = link_rel_type(link_type)
     fk_col = link_type.source_key_property
     src_key, tgt_key = link_endpoint_keys(source_type, target_type)
     relationships_created = 0
+    keep: set = set()
     offset = 0
     batch_size = 1000
     while True:
@@ -578,11 +591,12 @@ async def _index_link_type_m2o_source_fk(
                 src_id=src_val,
                 tgt_id=tgt_val,
             )
+            keep.add((src_val, tgt_val))
             relationships_created += 1
         offset += len(rows)
         if offset >= total:
             break
-    return relationships_created
+    return relationships_created, keep
 
 
 async def _index_link_type_from_saved_instances(
@@ -591,12 +605,13 @@ async def _index_link_type_from_saved_instances(
     link_type: LinkType,
     source_type: ObjectType,
     target_type: ObjectType,
-) -> int:
-    """MERGE relationships from link_instances (object ids resolved to Neo4j keys via instance data)."""
+) -> tuple[int, set]:
+    """MERGE relationships from link_instances (object ids are the node keys)."""
     src_label = object_label(source_type)
     tgt_label = object_label(target_type)
     rel_type = link_rel_type(link_type)
     relationships_created = 0
+    keep: set = set()
     offset = 0
     batch_size = 500
     while True:
@@ -626,65 +641,121 @@ async def _index_link_type_from_saved_instances(
                 src_id=src_val,
                 tgt_id=tgt_val,
             )
+            keep.add((src_val, tgt_val))
             relationships_created += 1
         offset += len(links)
         if len(links) < batch_size:
             break
-    return relationships_created
+    return relationships_created, keep
+
+
+@dataclass(frozen=True)
+class _LinkPruneContext:
+    """What a prune needs after a link type has been indexed."""
+
+    src_label: str
+    tgt_label: str
+    rel_type: str
+    src_key: str
+    tgt_key: str
+    keep: set
+
+
+def _prune_kwargs(ctx: _LinkPruneContext) -> dict:
+    return {
+        "src_label": ctx.src_label,
+        "tgt_label": ctx.tgt_label,
+        "rel_type": ctx.rel_type,
+        "src_key": ctx.src_key,
+        "tgt_key": ctx.tgt_key,
+        "keep": ctx.keep,
+    }
 
 
 async def _index_one_link_type_to_neo4j_session(
     db: AsyncSession,
     session,
     link_type: LinkType,
-) -> tuple[int, bool]:
-    """Returns (relationships_created, did_run_an_indexing_mode)."""
+) -> tuple[int, bool, _LinkPruneContext | None]:
+    """Returns (relationships_created, did_run_an_indexing_mode, prune_context)."""
     source_type = await db.get(ObjectType, link_type.source_object_type_id)
     target_type = await db.get(ObjectType, link_type.target_object_type_id)
     if not source_type or not target_type:
-        return 0, False
+        return 0, False, None
     if (
         link_type.cardinality == "many-to-many"
         and link_type.dataset_id
         and link_type.source_dataset_column
         and link_type.target_dataset_column
     ):
-        n = await _index_link_type_m2m_junction(db, session, link_type, source_type, target_type)
-        return n, True
-    if (
+        n, keep = await _index_link_type_m2m_junction(db, session, link_type, source_type, target_type)
+    elif (
         link_type.cardinality in ("many-to-one", "one-to-many")
         and link_type.source_key_property
         and source_type.dataset_id
     ):
-        n = await _index_link_type_m2o_source_fk(db, session, link_type, source_type, target_type)
-        return n, True
-    n_inst = await _link_instance_count(db, link_type.id)
-    if n_inst == 0:
-        return 0, False
-    n = await _index_link_type_from_saved_instances(db, session, link_type, source_type, target_type)
-    return n, True
+        n, keep = await _index_link_type_m2o_source_fk(db, session, link_type, source_type, target_type)
+    else:
+        n_inst = await _link_instance_count(db, link_type.id)
+        if n_inst == 0:
+            return 0, False, None
+        n, keep = await _index_link_type_from_saved_instances(
+            db, session, link_type, source_type, target_type
+        )
+    src_key, tgt_key = link_endpoint_keys(source_type, target_type)
+    return (
+        n,
+        True,
+        _LinkPruneContext(
+            src_label=object_label(source_type),
+            tgt_label=object_label(target_type),
+            rel_type=link_rel_type(link_type),
+            src_key=src_key,
+            tgt_key=tgt_key,
+            keep=keep,
+        ),
+    )
 
 
 @router.post("/index-to-neo4j", response_model=IndexToNeo4jResponse, dependencies=[Depends(require_any_permission(PERM_CONSOLE_LINK_TYPES, PERM_ONTOLOGY_WRITE))])
 async def index_links_to_neo4j(
     body: IndexToNeo4jRequest,
+    prune: bool = Query(False, description="Delete edges this run did not write (a mirror type)"),
     db: AsyncSession = Depends(get_db),
 ):
-    """Index link types to Neo4j: junction or source-FK datasets when configured, else saved link instances."""
+    """Index link types to Neo4j: junction or source-FK datasets when configured, else saved link instances.
+
+    With ``prune=true`` it also deletes edges of that type whose endpoint pair the source no longer
+    has — removing a row leaves the edge otherwise.
+    """
     driver = await _open_neo4j_driver_for_link_index(body, db)
     relationships_created = 0
+    relationships_pruned = 0
+    prune_skipped: str | None = None
     link_types_indexed = 0
     try:
         with driver.session() as session:
             result = await db.execute(select(LinkType).order_by(LinkType.name))
             for link_type in result.scalars().all():
-                n, ok = await _index_one_link_type_to_neo4j_session(db, session, link_type)
-                if ok:
-                    link_types_indexed += 1
-                    relationships_created += n
+                n, ok, ctx = await _index_one_link_type_to_neo4j_session(db, session, link_type)
+                if not ok:
+                    continue
+                link_types_indexed += 1
+                relationships_created += n
+                if prune and ctx is not None:
+                    reason = prune_refused_reason(ctx.keep)
+                    if reason:
+                        prune_skipped = reason
+                    else:
+                        relationships_pruned += prune_link_relationships(session, **_prune_kwargs(ctx))
     finally:
         driver.close()
-    return IndexToNeo4jResponse(link_types_indexed=link_types_indexed, relationships_created=relationships_created)
+    return IndexToNeo4jResponse(
+        link_types_indexed=link_types_indexed,
+        relationships_created=relationships_created,
+        relationships_pruned=relationships_pruned,
+        prune_skipped=prune_skipped,
+    )
 
 
 @router.post(
@@ -695,6 +766,7 @@ async def index_links_to_neo4j(
 async def index_one_link_type_to_neo4j(
     link_type_id: str,
     body: IndexToNeo4jRequest,
+    prune: bool = Query(False, description="Delete edges this run did not write (a mirror type)"),
     db: AsyncSession = Depends(get_db),
 ):
     """Index one link type to Neo4j (dataset path or saved instances). Admin only."""
@@ -702,9 +774,17 @@ async def index_one_link_type_to_neo4j(
     if not link_type:
         raise HTTPException(status_code=404, detail="Link type not found")
     driver = await _open_neo4j_driver_for_link_index(body, db)
+    relationships_pruned = 0
+    prune_skipped: str | None = None
     try:
         with driver.session() as session:
-            n, ok = await _index_one_link_type_to_neo4j_session(db, session, link_type)
+            n, ok, ctx = await _index_one_link_type_to_neo4j_session(db, session, link_type)
+            if ok and prune and ctx is not None:
+                reason = prune_refused_reason(ctx.keep)
+                if reason:
+                    prune_skipped = reason
+                else:
+                    relationships_pruned = prune_link_relationships(session, **_prune_kwargs(ctx))
     finally:
         driver.close()
     if not ok:
@@ -712,7 +792,12 @@ async def index_one_link_type_to_neo4j(
             status_code=400,
             detail="This link type has no junction or source-dataset configuration and no saved links to index.",
         )
-    return IndexToNeo4jResponse(link_types_indexed=1, relationships_created=n)
+    return IndexToNeo4jResponse(
+        link_types_indexed=1,
+        relationships_created=n,
+        relationships_pruned=relationships_pruned,
+        prune_skipped=prune_skipped,
+    )
 
 
 # --- Link instances (nested under link type) ---

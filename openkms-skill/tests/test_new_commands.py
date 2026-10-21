@@ -578,3 +578,15 @@ def test_external_services_create_k8s_service_sends_coordinates(mock_api):
         8200,
     )
     assert "base_url" not in body
+
+
+def test_object_sync_needs_an_explicit_prune_flag(mock_api):
+    recorded, responses = mock_api
+    responses[("POST", "/api/object-types/index-to-neo4j")] = (200, {"nodes_created": 0})
+    from openkms.commands.objects import cmd_sync_neo4j
+
+    cmd_sync_neo4j(argparse.Namespace(neo4j_data_source_id="neo1", yes=True, dry_run=False, prune=True))
+    assert recorded[-1].url.params.get("prune") == "true"
+
+    cmd_sync_neo4j(argparse.Namespace(neo4j_data_source_id="neo1", yes=True, dry_run=False))
+    assert "prune" not in recorded[-1].url.params

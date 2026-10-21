@@ -286,8 +286,8 @@ The bundled **openkms-skill** CLI wraps **lifecycle** and **relationships** the 
 | PUT | `/api/object-types/{id}/objects/{obj_id}` | Update object instance queue row + same-request Neo4j sync (admin-only + write ACL; no-dataset types only) |
 | DELETE | `/api/object-types/{id}/objects/{obj_id}` | Delete queue row + same-request Neo4j DETACH DELETE (admin-only + write ACL; no-dataset types only) |
 | POST | `/api/object-types/{id}/purge-instances` | **Dangerous.** Clear queue rows for one object type and DETACH DELETE its Neo4j label. Body: `{ confirm: "PURGE {ObjectTypeName}", neo4j_data_source_id? }`. |
-| POST | `/api/object-types/index-to-neo4j` | Index object types that have a linked dataset or stored instances to Neo4j as nodes (admin-only; body: neo4j_data_source_id) |
-| POST | `/api/object-types/{id}/index-to-neo4j` | Index one object type to Neo4j from its dataset, or drain the `object_instances` apply queue when there is no dataset (admin-only; body: neo4j_data_source_id; 400 if neither applies) |
+| POST | `/api/object-types/index-to-neo4j` | Index object types that have a linked dataset or stored instances to Neo4j as nodes (admin-only; body: neo4j_data_source_id). `?prune=true` also **deletes** nodes whose source row is gone and reports `nodes_pruned` (declines, with `prune_skipped`, when the source yields no rows) |
+| POST | `/api/object-types/{id}/index-to-neo4j` | Index one object type to Neo4j from its dataset, or drain the `object_instances` apply queue when there is no dataset (admin-only; body: neo4j_data_source_id; 400 if neither applies). Accepts `?prune=true` |
 | GET | `/api/link-types` | List link types (authenticated); ?count_from_neo4j=true for link_count from Neo4j |
 | POST | `/api/link-types` | Create link type (admin-only). Same `api_name` rules as object types; `neo4j_rel_type` is set to it |
 | GET | `/api/link-types/{id}` | Get link type; ?count_from_neo4j=true for link_count from Neo4j |
@@ -296,8 +296,8 @@ The bundled **openkms-skill** CLI wraps **lifecycle** and **relationships** the 
 | GET | `/api/link-types/{id}/links` | List link instances **from the graph only**. `?limit=`, `?offset=`, optional `?source_object_id=` / `?source_key_value=` filter on the source endpoint's id (the id the object API shows). **409** without a Neo4j data source; **503** when the graph is unreachable; `indexed: false` when the junction/source-FK/saved-link rows exist but no edges do |
 | POST | `/api/link-types/{id}/links` | Create link instance (admin-only; rejected when link type uses junction dataset). Endpoints are looked up **in the graph** by object id (409 when either is not indexed; either end may be dataset-backed). Writes `link_instances` **and** MERGEs the edge in the same request |
 | DELETE | `/api/link-types/{id}/links/{link_id}` | Delete link instance (admin-only; rejected when link type uses junction dataset); deletes the edge too |
-| POST | `/api/link-types/index-to-neo4j` | Index link types to Neo4j: M:M junction, M:1/1:M from source dataset when configured, else saved link instances (admin-only) |
-| POST | `/api/link-types/{id}/index-to-neo4j` | Index one link type to Neo4j (same rules as bulk; 400 if nothing to index) (admin-only) |
+| POST | `/api/link-types/index-to-neo4j` | Index link types to Neo4j: M:M junction, M:1/1:M from source dataset when configured, else saved link instances (admin-only). `?prune=true` also deletes edges whose endpoint pair the source no longer has |
+| POST | `/api/link-types/{id}/index-to-neo4j` | Index one link type to Neo4j (same rules as bulk; 400 if nothing to index) (admin-only). Accepts `?prune=true` |
 | POST | `/api/ontology/explore` | Execute read-only Cypher query against Neo4j (body: `{ cypher }`); used by Object Explorer |
 | GET | `/api/ontology/groups/{id}/related` | Link types / Functions / Actions derived from the group's saved object types (`ontology:read`) |
 | POST | `/api/ontology/action-types/{id}/execute` | Run Action: **built-in** `object_create` / `object_modify` / `object_delete` (no Function) or Function + audit + `output.edits`; response may include `applied` |

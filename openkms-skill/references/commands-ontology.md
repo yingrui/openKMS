@@ -30,7 +30,7 @@ Prefix with `python scripts/cli.py`. Writes need `--yes` / `--dry-run`. Before F
 | Link instance CRUD | `ontology links instances create\|delete … --yes` — writes the row **and** the edge in one request; **`409` when an endpoint object is not in the graph yet** (index the object types first). Dataset-backed M2M returns 4xx (junction table is SoT) — see [pitfalls.md](pitfalls.md) |
 | Sync links → Neo4j | `ontology links sync-neo4j --neo4j-data-source-id DS --yes` · `sync-neo4j-type --type-id LT_ID --neo4j-data-source-id DS --yes` |
 
-`sync-neo4j*` **requires** `--neo4j-data-source-id` from `data-sources list` (kind `neo4j`). **Run it after bulk dataset changes** — object and link reads come from the graph, not the tables.
+`sync-neo4j*` **requires** `--neo4j-data-source-id` from `data-sources list` (kind `neo4j`). Add `--prune` when the type mirrors a table you own — without it, deleted rows leave nodes/edges behind that keep answering queries. **Run it after bulk dataset changes** — object and link reads come from the graph, not the tables.
 
 ## Write — Functions & Actions
 

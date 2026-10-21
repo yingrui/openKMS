@@ -58,6 +58,8 @@ Object and link access go through **one** place: the ontology graph (Neo4j). Dat
 
 `object_types.neo4j_label` / `link_types.neo4j_rel_type` remain the persisted **graph** identity. For types created since `api_name` existed they *are* `api_name`; rows that predate the column keep the label their nodes were indexed under (so claiming an `api_name` later is not a re-index). `Client` resolves `api_name` → `name` → `id`, so Functions written before the column keep working.
 
+**Deletions need `prune`.** Indexing only MERGEs, so a row deleted in the source leaves a node (or edge) that keeps answering queries. `POST …/index-to-neo4j?prune=true` deletes what that run did not write and reports `nodes_pruned` / `relationships_pruned`; it is opt-in because that is right for a type mirroring a table this deployment owns, and wrong for a hand-maintained graph. It declines (with `prune_skipped`) when the source yields no rows — an empty table is more often a broken read than an instruction to wipe the label.
+
 **Freshness is explicit.** The graph is a projection, not a live view: editing rows in the data layer does not move them into the graph until the type is indexed again. `indexed: false` covers the empty case; a partially stale label still reads stale values — re-index after bulk dataset changes, and after a keying change (a type indexed under an older identity keeps its edges under the old key until it is purged and re-indexed).
 
 ## Data sources and datasets
