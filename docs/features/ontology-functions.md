@@ -9,7 +9,7 @@ Author and run **Python Ontology Functions** — Palantir-style logic on top of 
 | App | Route | Role |
 |-----|-------|------|
 | **Ontology Manager** | `/ontology-manager/functions` | Registry, optional primary object type, Usage (bound action types), publish, Observability |
-| **Function Editor** | `/function-editor` | Create (optional primary object type), edit, validate, Live Preview |
+| **Function Editor** | `/function-editor` | Create (optional primary object type), edit, validate, Live Preview. **External services** live here too (`/function-editor/external-services`): the list shows each service's kind, target, credential type and which Functions call it, so removing one says what it would break |
 | **Object Explorer** | — | Instance browse; Action triggers |
 
 Legacy `/ontology/*` redirects to `/ontology-manager/*`. Optional `object_type_id` on a Function is an affiliation for Groups related resources and Overview Graph — execution still may call any type via `Client`.

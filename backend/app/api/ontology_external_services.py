@@ -15,6 +15,7 @@ code change. Secrets are stored encrypted, never listed, and resolved only at ca
 from __future__ import annotations
 
 import json
+import re
 import uuid
 from urllib.parse import urlparse
 
@@ -28,6 +29,7 @@ from app.api.ontology.deps import validate_api_name
 from app.database import get_db
 from app.models.external_service import AUTH_KINDS, SERVICE_KINDS, ExternalService
 from app.models.kubernetes_cluster import KubernetesCluster
+from app.models.ontology_function import OntologyFunction, OntologyFunctionVersion
 from app.services.credentials.credential_encryption import decrypt, encrypt
 from app.services.kubernetes.cluster_service_proxy import (
     identity_headers,
@@ -85,6 +87,12 @@ class ExternalServiceUpdate(BaseModel):
     timeout_seconds: int | None = None
 
 
+class ExternalServiceFunctionRef(BaseModel):
+    id: str
+    api_name: str
+    display_name: str
+
+
 class ExternalServiceResponse(BaseModel):
     id: str
     api_name: str
@@ -102,6 +110,9 @@ class ExternalServiceResponse(BaseModel):
     has_secret: bool
     allowed_paths: list[str]
     timeout_seconds: int
+    #: Functions whose (published or latest) source mentions `client.external("<api_name>")` —
+    #: a source scan, so it answers "is it safe to rotate/delete this?" rather than being a graph.
+    used_by: list[ExternalServiceFunctionRef] = []
     created_at: object
     updated_at: object
 
@@ -265,7 +276,49 @@ async def _validate_kind_fields(
     }
 
 
-def _to_response(service: ExternalService) -> ExternalServiceResponse:
+_EXTERNAL_CALLS_RE = re.compile(r"external\(\s*['\"]([A-Za-z][A-Za-z0-9_]*)['\"]")
+
+
+async def _function_references(db: AsyncSession) -> dict[str, list[ExternalServiceFunctionRef]]:
+    """api_name -> functions whose source calls `external(api_name)`.
+
+    Both the published version and the newest version are scanned: a draft that drops the call does
+    not make the published Function stop using the service.
+    """
+    functions = (await db.execute(select(OntologyFunction))).scalars().all()
+    refs: dict[str, list[ExternalServiceFunctionRef]] = {}
+    for fn in functions:
+        version_ids: list[str] = []
+        if fn.published_version_id:
+            version_ids.append(fn.published_version_id)
+        latest = (
+            await db.execute(
+                select(OntologyFunctionVersion.id)
+                .where(OntologyFunctionVersion.function_id == fn.id)
+                .order_by(OntologyFunctionVersion.version.desc())
+                .limit(1)
+            )
+        ).scalar_one_or_none()
+        if latest and latest not in version_ids:
+            version_ids.append(latest)
+        used: set[str] = set()
+        for version_id in version_ids:
+            version = await db.get(OntologyFunctionVersion, version_id)
+            if version and version.source_code:
+                used.update(_EXTERNAL_CALLS_RE.findall(version.source_code))
+        for name in used:
+            refs.setdefault(name, []).append(
+                ExternalServiceFunctionRef(
+                    id=fn.id, api_name=fn.api_name, display_name=fn.display_name
+                )
+            )
+    return refs
+
+
+def _to_response(
+    service: ExternalService,
+    used_by: list[ExternalServiceFunctionRef] | None = None,
+) -> ExternalServiceResponse:
     return ExternalServiceResponse(
         id=service.id,
         api_name=service.api_name,
@@ -283,6 +336,7 @@ def _to_response(service: ExternalService) -> ExternalServiceResponse:
         has_secret=bool(service.secret_encrypted),
         allowed_paths=list(service.allowed_paths or []),
         timeout_seconds=service.timeout_seconds,
+        used_by=used_by or [],
         created_at=service.created_at,
         updated_at=service.updated_at,
     )
@@ -334,7 +388,8 @@ async def list_external_services(
     rows = (
         await db.execute(select(ExternalService).order_by(ExternalService.api_name))
     ).scalars().all()
-    return [_to_response(r) for r in rows]
+    references = await _function_references(db)
+    return [_to_response(r, references.get(r.api_name)) for r in rows]
 
 
 @router.get("/k8s-clusters", response_model=list[K8sClusterOption])

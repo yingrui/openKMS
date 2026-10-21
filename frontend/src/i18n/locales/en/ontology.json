@@ -1060,7 +1060,15 @@
       "port": "Port",
       "basePath": "Base path",
       "basePathHint": "Fixed prefix the service mounts at, e.g. /app. Leave empty when it serves /api/... at its root.",
-      "target": "Target"
+      "target": "Target",
+      "pageSubtitle": "HTTP endpoints this deployment’s Functions may call with client.external(\"name\"). A URL is called by the function sandbox; a Kubernetes Service is called by openKMS through the cluster. Secrets are stored encrypted and never shown again.",
+      "emptyHint": "Register the endpoint once, then call it from any Function. The Function source names the service — never the URL or the credential.",
+      "usedBy": "Used by",
+      "usedByNone": "no Function",
+      "editTitle": "Edit external service",
+      "deleteConfirm": "Remove {{name}}? Functions that call it will fail at their next run.",
+      "deleteInUse": "Remove this service? These Functions call it and will fail at their next run: {{functions}}.",
+      "deleteTitle": "Remove {{name}}"
     }
   },
   "dataSources": {

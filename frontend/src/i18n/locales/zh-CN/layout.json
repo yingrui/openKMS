@@ -109,5 +109,6 @@
   "appTaglineEvaluations": "评测与改进回答质量",
   "dataInsights": "数据洞察",
   "appTaglineDataInsights": "已保存的分析与报告",
-  "auditLog": "审计日志"
+  "auditLog": "审计日志",
+  "externalServices": "外部接口"
 }

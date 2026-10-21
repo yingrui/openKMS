@@ -193,6 +193,9 @@ const FunctionEditorListPage = lazy(() =>
 const FunctionEditorWorkspacePage = lazy(() =>
   import('./pages/function-editor/FunctionEditorWorkspacePage').then((m) => ({ default: m.FunctionEditorWorkspacePage })),
 );
+const FunctionEditorExternalServicesPage = lazy(() =>
+  import('./pages/function-editor/ExternalServicesPage').then((m) => ({ default: m.ExternalServicesPage })),
+);
 const AppsGalleryPage = lazy(() =>
   import('./pages/apps/AppsGalleryPage').then((m) => ({ default: m.AppsGalleryPage })),
 );
@@ -525,6 +528,7 @@ function App() {
           <Route path="function-editor" element={<Outlet />}>
             <Route index element={<FunctionEditorListPage />} />
             <Route path="new" element={<FunctionEditorWorkspacePage />} />
+            <Route path="external-services" element={<FunctionEditorExternalServicesPage />} />
             <Route path=":functionId" element={<FunctionEditorWorkspacePage />} />
           </Route>
           <Route path="app-builder" element={<Navigate to="/apps" replace />} />

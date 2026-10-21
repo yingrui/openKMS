@@ -109,5 +109,6 @@
   "appTaglineEvaluations": "Measure and improve answer quality",
   "dataInsights": "Data Insights",
   "appTaglineDataInsights": "Saved analyses of your data",
-  "auditLog": "Audit log"
+  "auditLog": "Audit log",
+  "externalServices": "External services"
 }

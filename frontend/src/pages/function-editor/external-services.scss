@@ -42,3 +42,8 @@
   border-color: var(--color-accent);
   color: var(--color-accent);
 }
+
+/* The page reuses the list chrome; only the sheet's own name has to exist. */
+.function-editor-list {
+  width: 100%;
+}

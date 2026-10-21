@@ -20,6 +20,8 @@ export interface ExternalServiceResponse {
   has_secret: boolean;
   allowed_paths: string[];
   timeout_seconds: number;
+  /** Functions whose source calls `external("<api_name>")` — what a removal would break. */
+  used_by: { id: string; api_name: string; display_name: string }[];
   created_at: string;
   updated_at: string;
 }
