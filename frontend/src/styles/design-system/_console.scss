@@ -31,6 +31,8 @@
   align-items: center;
   gap: calc(var(--space-2) + var(--space-1) / 2);
   flex-shrink: 0;
+  /* Stays on the right even when a long subtitle pushes it onto its own line. */
+  margin-left: auto;
 }
 
 .ontology-admin-content {

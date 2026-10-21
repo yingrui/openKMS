@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
-import { Loader2, Pencil, Plug, Plus, Trash2 } from 'lucide-react';
+import { ArrowLeft, Loader2, Pencil, Plug, Plus, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { EmptyState } from '../../styles/design-system';
 import { useConfirm } from '../../contexts/ConfirmContext';
@@ -93,15 +93,21 @@ export function ExternalServicesPage() {
 
   return (
     <div className="ontology-admin function-editor-list">
+      <Link to="/function-editor" className="function-editor-page-back">
+        <ArrowLeft size={16} aria-hidden />
+        {t('editor.allFunctions')}
+      </Link>
       <header className="page-header">
         <div>
           <h1>{t('editor.external.title')}</h1>
           <p className="page-subtitle">{t('editor.external.pageSubtitle')}</p>
         </div>
-        <button type="button" className="btn btn-primary" onClick={openCreate}>
-          <Plus size={16} aria-hidden />
-          {t('editor.external.add')}
-        </button>
+        <div className="page-header-actions">
+          <button type="button" className="btn btn-primary" onClick={openCreate}>
+            <Plus size={16} aria-hidden />
+            {t('editor.external.add')}
+          </button>
+        </div>
       </header>
 
       <div className="ontology-admin-content">
@@ -115,12 +121,6 @@ export function ExternalServicesPage() {
             icon={<Plug size={32} aria-hidden />}
             title={t('editor.external.empty')}
             description={t('editor.external.emptyHint')}
-            action={
-              <button type="button" className="btn btn-primary" onClick={openCreate}>
-                <Plus size={16} aria-hidden />
-                {t('editor.external.add')}
-              </button>
-            }
           />
         ) : (
           <div className="ds-table-wrap">
