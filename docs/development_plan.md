@@ -305,8 +305,10 @@ Reading the page against the rest of the app found four things that were "almost
   "Object types" / "Sync session" — in the rail *and* in the table's resource column, so the two agree.
 - **The empty state was a sentence.** It is the shared `EmptyState` now, with a hint that says how to widen
   the search rather than just that there is nothing.
-- Buttons were already right: the header's refresh is `.btn .btn-secondary`, the same as the console's health
-  page, and paging is the shared `Pagination`.
+- The **refresh button was in the wrong row**: in the header it read as a page-level action, while the thing
+  it acts on — the query — lives in the toolbar below. Refresh re-runs *this* query, so it sits at the end of
+  the filter row (`.btn-secondary.btn-sm`, matching the controls' height) and the header is a title again.
+- Paging is the shared `Pagination`.
 
 ### The gutter was on the wrong element (2026-10)
 

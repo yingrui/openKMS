@@ -168,17 +168,6 @@ export function AuditLogPage() {
               <h1>{t('auditLog.title')}</h1>
               <p className="page-subtitle">{t('auditLog.subtitle')}</p>
             </div>
-            <div className="page-header-actions">
-              <button
-                type="button"
-                className="btn btn-secondary"
-                onClick={() => void load()}
-                disabled={loading}
-              >
-                <RefreshCw size={16} aria-hidden />
-                {t('auditLog.refresh')}
-              </button>
-            </div>
           </header>
 
           <div className="console-datasets-toolbar">
@@ -205,6 +194,17 @@ export function AuditLogPage() {
                 ))}
               </select>
             </label>
+            {/* Refresh re-runs this query, so it belongs to the query's row — not in the header beside
+                the title, where it read as a page-level action it is not. */}
+            <button
+              type="button"
+              className="btn btn-secondary btn-sm"
+              onClick={() => void load()}
+              disabled={loading}
+            >
+              <RefreshCw size={16} aria-hidden />
+              {t('auditLog.refresh')}
+            </button>
           </div>
 
           {loading ? (
