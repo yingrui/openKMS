@@ -2,7 +2,6 @@ import { NavLink, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { Code2, List } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
-import './OntologyNavRail.scss';
 
 export function FunctionEditorNavRail() {
   const { t } = useTranslation('layout');
@@ -15,13 +14,13 @@ export function FunctionEditorNavRail() {
     location.pathname === '/function-editor' || location.pathname === '/function-editor/';
 
   return (
-    <aside className="ontology-nav-rail" aria-label={t('functionEditorNav')}>
-      <div className="ontology-nav-rail__title">{t('functionEditor')}</div>
-      <nav className="ontology-nav-rail__nav">
+    <aside className="filter-rail" aria-label={t('functionEditorNav')}>
+      <div className="filter-rail__title">{t('functionEditor')}</div>
+      <nav className="filter-rail__nav">
         <NavLink
           to="/function-editor"
           end
-          className={`ontology-nav-rail__link${listActive ? ' ontology-nav-rail__link--active' : ''}`}
+          className={`filter-rail__link${listActive ? ' filter-rail__link--active' : ''}`}
           title={t('allFunctions')}
         >
           <List size={16} strokeWidth={1.75} aria-hidden />
@@ -29,7 +28,7 @@ export function FunctionEditorNavRail() {
         </NavLink>
         <NavLink
           to="/function-editor/new"
-          className={`ontology-nav-rail__link${location.pathname === '/function-editor/new' ? ' ontology-nav-rail__link--active' : ''}`}
+          className={`filter-rail__link${location.pathname === '/function-editor/new' ? ' filter-rail__link--active' : ''}`}
           title={t('createFunction')}
         >
           <Code2 size={16} strokeWidth={1.75} aria-hidden />

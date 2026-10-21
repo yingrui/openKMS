@@ -29,8 +29,9 @@ export interface AuditFilters {
   /** A group: `ok` (2xx), `4xx`, `5xx`, `error`. */
   status?: string;
   limit: number;
-  /** Keyset cursor: the `at` of the last row you have. */
-  before?: string;
+  offset: number;
+  /** The window the log is read over — the same one the rail counts. */
+  days?: number;
 }
 
 export async function fetchAuditEvents(filters: AuditFilters): Promise<AuditEventListResponse> {
@@ -43,7 +44,8 @@ export async function fetchAuditEvents(filters: AuditFilters): Promise<AuditEven
       path: filters.path,
       status: filters.status,
       limit: filters.limit,
-      before: filters.before,
+      offset: filters.offset,
+      days: filters.days,
     },
   });
 }

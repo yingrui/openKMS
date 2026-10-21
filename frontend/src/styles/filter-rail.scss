@@ -1,14 +1,18 @@
-.ontology-nav-rail {
-  width: var(--ontology-app-rail-width, 200px);
+/* A vertical rail of destinations or filters — the left column the Ontology Manager introduced and the
+   audit log now shares. Shared on purpose: one look, one place to change it. The active row is the accent,
+   not a heavier weight, because a rail is scanned rather than read. */
+.filter-rail {
+  width: var(--filter-rail-width, 200px);
   flex-shrink: 0;
   border-right: 1px solid var(--color-border);
   background: var(--color-bg-elevated);
   display: flex;
   flex-direction: column;
   min-height: 0;
+  overflow: auto;
 }
 
-.ontology-nav-rail__title {
+.filter-rail__title {
   padding: 16px 14px 8px;
   font-size: 0.75rem;
   font-weight: 600;
@@ -17,7 +21,7 @@
   color: var(--color-text-muted);
 }
 
-.ontology-nav-rail__nav {
+.filter-rail__nav {
   display: flex;
   flex-direction: column;
   gap: 2px;
@@ -25,25 +29,39 @@
   overflow: auto;
 }
 
-.ontology-nav-rail__link {
+.filter-rail__link {
   display: flex;
   align-items: center;
   gap: 10px;
   padding: 8px 10px;
+  border: 0;
+  width: 100%;
   border-radius: var(--radius-sm);
+  background: transparent;
   font-size: 0.875rem;
+  font-family: inherit;
   color: var(--color-text-secondary);
   text-decoration: none;
+  text-align: left;
+  cursor: pointer;
   transition: background 0.15s, color 0.15s;
 }
 
-.ontology-nav-rail__link:hover {
+.filter-rail__link:hover {
   background: var(--color-bg-muted);
   color: var(--color-text);
 }
 
-.ontology-nav-rail__link--active {
+.filter-rail__link--active {
   background: var(--color-accent-subtle);
   color: var(--color-accent);
   font-weight: 500;
+}
+
+/* A count on the right of a row: what makes a rail a map rather than a guess. */
+.filter-rail__count {
+  margin-left: auto;
+  font-size: 0.75rem;
+  color: var(--color-text-muted);
+  font-variant-numeric: tabular-nums;
 }

@@ -477,10 +477,23 @@ def test_audit_list_narrows_by_what_changed(mock_api):
     from openkms.commands.audit import cmd_audit_list
 
     cmd_audit_list(
-        _ns(actor="ag-1", resource_type="datasets", resource_id="d1", method="PUT", path=None, since=None, limit=20)
+        _ns(
+            actor="ag-1",
+            resource_type="datasets",
+            resource_id="d1",
+            method="PUT",
+            path=None,
+            since=None,
+            limit=20,
+            offset=40,
+            days=7,
+        )
     )
     params = recorded[-1].url.params
     assert params["actor_sub"] == "ag-1"
     assert params["resource_id"] == "d1"
     assert params["limit"] == "20"
+    # the log is read over a window and paged by offset — the same shapes the app's page uses
+    assert params["offset"] == "40"
+    assert params["days"] == "7"
     assert "path" not in params

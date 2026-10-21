@@ -848,19 +848,18 @@
     "resource": "Resource",
     "anonymous": "anonymous",
     "empty": "Nothing has changed yet — or nothing matches these filters.",
-    "loadMore": "Load older",
     "loadFailed": "Could not read the audit log",
     "loading": "Loading…",
     "scopeAria": "Filter the log",
     "all": "Everything",
     "byResource": "Where",
     "byResult": "How it went",
-    "byActor": "Who",
     "window": "Counts cover the last {{days}} days.",
     "status_ok": "succeeded",
     "status_4xx": "rejected (4xx)",
     "status_5xx": "crashed (5xx)",
     "filterPath": "Path",
-    "filterPathPlaceholder": "substring of the path"
+    "filterPathPlaceholder": "substring of the path",
+    "scope": "Scope"
   }
 }

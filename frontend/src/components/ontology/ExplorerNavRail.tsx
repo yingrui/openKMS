@@ -2,7 +2,6 @@ import { NavLink, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { Box, Compass, Link2 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
-import './OntologyNavRail.scss';
 
 type NavItem = {
   to: string;
@@ -45,9 +44,9 @@ export function ExplorerNavRail() {
   if (items.length === 0) return null;
 
   return (
-    <aside className="ontology-nav-rail" aria-label={t('objectExplorerNav')}>
-      <div className="ontology-nav-rail__title">{t('objectExplorer')}</div>
-      <nav className="ontology-nav-rail__nav">
+    <aside className="filter-rail" aria-label={t('objectExplorerNav')}>
+      <div className="filter-rail__title">{t('objectExplorer')}</div>
+      <nav className="filter-rail__nav">
         {items.map((item) => {
           const Icon = item.icon;
           const active = item.match(location.pathname);
@@ -55,7 +54,7 @@ export function ExplorerNavRail() {
             <NavLink
               key={item.to}
               to={item.to}
-              className={`ontology-nav-rail__link${active ? ' ontology-nav-rail__link--active' : ''}`}
+              className={`filter-rail__link${active ? ' filter-rail__link--active' : ''}`}
               title={t(item.labelKey)}
             >
               <Icon size={16} strokeWidth={1.75} aria-hidden />

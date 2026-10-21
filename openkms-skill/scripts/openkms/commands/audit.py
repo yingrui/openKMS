@@ -13,7 +13,7 @@ from .._io import print_json
 
 
 def cmd_audit_list(ns: argparse.Namespace) -> None:
-    params: dict[str, object] = {"limit": ns.limit}
+    params: dict[str, object] = {"limit": ns.limit, "offset": ns.offset, "days": ns.days}
     for key, value in (
         ("actor_sub", ns.actor),
         ("resource_type", ns.resource_type),
@@ -41,4 +41,6 @@ def add_subparser(sub) -> None:
     ls.add_argument("--path", default=None, help="substring of the path")
     ls.add_argument("--since", default=None, help="ISO timestamp")
     ls.add_argument("--limit", type=int, default=50)
+    ls.add_argument("--offset", type=int, default=0, help="page through the window")
+    ls.add_argument("--days", type=int, default=30, help="the window the log is read over")
     ls.set_defaults(fn=cmd_audit_list)

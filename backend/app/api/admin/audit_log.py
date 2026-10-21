@@ -9,7 +9,7 @@ from collections import Counter
 from datetime import datetime, timedelta, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, Query
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.auth import require_auth, require_permission
@@ -93,9 +93,12 @@ async def list_audit_events(
         None, description="a group: `ok` (2xx), `4xx`, `5xx`, or `error` (>=400)"
     ),
     path: str | None = Query(None, description="substring match"),
-    since: datetime | None = None,
-    before: str | None = Query(None, description="keyset cursor: the `at` of the last row you have"),
-    limit: int = Query(100, ge=1, le=500),
+    since: datetime | None = Query(
+        None, description="start of the window; defaults to `days` ago, as the rail's counts do"
+    ),
+    days: int = Query(30, ge=1, le=365),
+    offset: int = Query(0, ge=0),
+    limit: int = Query(50, ge=1, le=500),
     db: AsyncSession = Depends(get_db),
 ):
     """Newest first. Every filter narrows; nothing is required."""
@@ -120,15 +123,18 @@ async def list_audit_events(
         stmt = stmt.where(groups[status])
     if path:
         stmt = stmt.where(AuditEvent.path.ilike(f"%{path}%"))
-    if since:
-        stmt = stmt.where(AuditEvent.at >= since)
-    if before:
-        stmt = stmt.where(AuditEvent.at < before)
+    # A window, not all time — the same one the rail counts, so the number in the rail is the number of
+    # pages you can turn. An append-only log has no stable offsets, which is why the window matters.
+    start = since or (datetime.now(timezone.utc) - timedelta(days=days))
+    stmt = stmt.where(AuditEvent.at >= start)
 
+    total = int((await db.execute(select(func.count()).select_from(stmt.subquery()))).scalar_one())
     rows = (
-        await db.execute(stmt.order_by(AuditEvent.at.desc(), AuditEvent.id.desc()).limit(limit))
+        await db.execute(
+            stmt.order_by(AuditEvent.at.desc(), AuditEvent.id.desc()).offset(offset).limit(limit)
+        )
     ).scalars().all()
     return AuditEventListResponse(
         items=[AuditEventResponse.model_validate(row, from_attributes=True) for row in rows],
-        total=len(rows),
+        total=total,
     )

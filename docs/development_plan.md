@@ -293,6 +293,23 @@ They are **not claimed to work**: this machine has no `pg_dump`, so only the pre
 refuses with an installation hint, verified). The drill is what turns a file into a backup, and until it
 prints `restore drill ok`, the honest state is untested.
 
+### The rail is the Ontology Manager's, and paging is the app's (2026-10)
+
+Two things were wrong with the first rail: it *looked* like the Ontology Manager's rail without being it
+(parallel `audit-log__*` rules that drifted on the first try), and it reserved a group for **people**, which
+cannot be a navigation — there are as many actors as there are keys.
+
+- The rail is now **shared**: `src/styles/filter-rail.scss` (`.filter-rail*`), used by the audit page and by
+  the three Ontology Manager rails. Their own sheet is gone; `App.scss`'s layout rules follow the class that
+  exists.
+- **No "who" group.** Filtering by actor still exists on the endpoint and in `openkms audit list --actor`,
+  for when you know which key you are looking for — that is a filter, not a map.
+- **Paging is the app's `Pagination`**, not a hand-rolled "load older": the list and the rail now read the
+  **same 30-day window** (an append-only log has no stable offsets, which is why the window matters), and
+  the API returns a real `total` over that window, so the rail's count is the number of pages you can turn.
+
+Verified live: `total=51`, pages 1 and 2 with no overlap, and `filter-rail__*` in the shared stylesheet.
+
 ### The audit page gets a rail, because "where" is a map (2026-10)
 
 The page opened with four empty filter boxes, which asks the reader to guess what exists. It now borrows the

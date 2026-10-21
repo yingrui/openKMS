@@ -256,7 +256,7 @@ body:has(.app-content--with-channel-rail) .app-main {
   height: 100%;
 }
 
-.ontology-section-layout__rail .ontology-nav-rail {
+.ontology-section-layout__rail .filter-rail {
   height: 100%;
 }
 
@@ -482,7 +482,7 @@ body.openkms-agents-fullpage .agents-workspace {
     }
   }
 
-  .ontology-section-layout__rail .ontology-nav-rail {
+  .ontology-section-layout__rail .filter-rail {
     box-shadow: var(--shadow-lg);
   }
 

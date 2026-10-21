@@ -8,10 +8,8 @@ import {
   type AuditEvent,
   type AuditFacetsResponse,
 } from '../../data/auditApi';
-import { StatusChip } from '../../styles/design-system';
+import { Pagination, StatusChip } from '../../styles/design-system';
 import './AuditLogPage.scss';
-
-const PAGE = 50;
 
 const EMPTY_FACETS: AuditFacetsResponse = {
   resource_types: [],
@@ -38,8 +36,9 @@ export function AuditLogPage() {
   const [events, setEvents] = useState<AuditEvent[]>([]);
   const [facets, setFacets] = useState<AuditFacetsResponse>(EMPTY_FACETS);
   const [loading, setLoading] = useState(true);
-  const [loadingMore, setLoadingMore] = useState(false);
-  const [hasMore, setHasMore] = useState(false);
+  const [page, setPage] = useState(0);
+  const [pageSize, setPageSize] = useState(50);
+  const [total, setTotal] = useState(0);
   const [scope, setScope] = useState<Scope>({ kind: 'all', value: '' });
   const [method, setMethod] = useState('');
   const [path, setPath] = useState('');
@@ -57,12 +56,12 @@ export function AuditLogPage() {
     setLoading(true);
     setDenied(false);
     try {
-      const [page, counts] = await Promise.all([
-        fetchAuditEvents({ ...filters, limit: PAGE }),
+      const [result, counts] = await Promise.all([
+        fetchAuditEvents({ ...filters, limit: pageSize, offset: page * pageSize }),
         fetchAuditFacets(),
       ]);
-      setEvents(page.items);
-      setHasMore(page.items.length === PAGE);
+      setEvents(result.items);
+      setTotal(result.total);
       setFacets(counts);
     } catch (e) {
       // 403 is the expected answer for someone without `console:permissions`; say so, do not shout.
@@ -73,29 +72,18 @@ export function AuditLogPage() {
       setLoading(false);
     }
     // `filters` is derived from the state above, so those are the dependencies.
-  }, [scope, method, path, t]);
+  }, [scope, method, path, page, pageSize, t]);
 
   useEffect(() => {
     void load();
   }, [load]);
 
-  const loadMore = async () => {
-    const last = events[events.length - 1];
-    if (!last) return;
-    setLoadingMore(true);
-    try {
-      const next = await fetchAuditEvents({ ...filters, limit: PAGE, before: last.at });
-      setEvents((prev) => [...prev, ...next.items]);
-      setHasMore(next.items.length === PAGE);
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : t('auditLog.loadFailed'));
-    } finally {
-      setLoadingMore(false);
-    }
-  };
+  useEffect(() => {
+    setPage(0);
+  }, [scope, method, path]);
 
   const time = (iso: string) => new Date(iso).toLocaleString();
-  const total = facets.resource_types.reduce((sum, f) => sum + f.count, 0);
+  const allCount = facets.resource_types.reduce((sum, f) => sum + f.count, 0);
 
   const RailItem = ({
     active,
@@ -110,12 +98,12 @@ export function AuditLogPage() {
   }) => (
     <button
       type="button"
-      className={`audit-log__item${active ? ' is-active' : ''}`}
+      className={`filter-rail__link${active ? ' filter-rail__link--active' : ''}`}
       aria-pressed={active}
       onClick={onClick}
     >
       <span>{label}</span>
-      <span className="audit-log__count">{count}</span>
+      <span className="filter-rail__count">{count}</span>
     </button>
   );
 
@@ -136,18 +124,21 @@ export function AuditLogPage() {
   return (
     <div className="app-page-pane">
       <div className="audit-log">
-        <aside className="audit-log__rail" aria-label={t('auditLog.scopeAria')}>
-          <div className="audit-log__group">
+        <aside className="filter-rail" aria-label={t('auditLog.scopeAria')}>
+          <div className="filter-rail__title">{t('auditLog.scope')}</div>
+
+          {/* One nav per group: the rail's rhythm is a list of lists, exactly as the Ontology Manager's. */}
+          <div className="filter-rail__nav">
             <RailItem
               active={scope.kind === 'all'}
               label={t('auditLog.all')}
-              count={total}
+              count={allCount}
               onClick={() => setScope({ kind: 'all', value: '' })}
             />
           </div>
 
-          <div className="audit-log__group">
-            <span className="audit-log__group-title">{t('auditLog.byResource')}</span>
+          <div className="filter-rail__nav">
+            <span className="filter-rail__title">{t('auditLog.byResource')}</span>
             {facets.resource_types.map((facet) => (
               <RailItem
                 key={facet.value}
@@ -159,8 +150,8 @@ export function AuditLogPage() {
             ))}
           </div>
 
-          <div className="audit-log__group">
-            <span className="audit-log__group-title">{t('auditLog.byResult')}</span>
+          <div className="filter-rail__nav">
+            <span className="filter-rail__title">{t('auditLog.byResult')}</span>
             {facets.statuses.map((facet) => (
               <RailItem
                 key={facet.value}
@@ -171,21 +162,6 @@ export function AuditLogPage() {
               />
             ))}
           </div>
-
-          {facets.actors.length > 0 ? (
-            <div className="audit-log__group">
-              <span className="audit-log__group-title">{t('auditLog.byActor')}</span>
-              {facets.actors.slice(0, 8).map((facet) => (
-                <RailItem
-                  key={facet.value}
-                  active={scope.kind === 'actor' && scope.value === facet.value}
-                  label={facet.label ?? facet.value}
-                  count={facet.count}
-                  onClick={() => setScope({ kind: 'actor', value: facet.value })}
-                />
-              ))}
-            </div>
-          ) : null}
 
           <p className="page-subtitle">{t('auditLog.window', { days: 30 })}</p>
         </aside>
@@ -278,16 +254,17 @@ export function AuditLogPage() {
                   </tbody>
                 </table>
               </div>
-              {hasMore ? (
-                <button
-                  type="button"
-                  className="btn btn-secondary btn-sm"
-                  onClick={() => void loadMore()}
-                  disabled={loadingMore}
-                >
-                  {loadingMore ? t('auditLog.loading') : t('auditLog.loadMore')}
-                </button>
-              ) : null}
+              <Pagination
+                total={total}
+                page={page}
+                pageSize={pageSize}
+                loading={loading}
+                onPageChange={setPage}
+                onPageSizeChange={(size) => {
+                  setPageSize(size);
+                  setPage(0);
+                }}
+              />
             </>
           )}
         </div>
