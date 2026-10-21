@@ -108,5 +108,6 @@
   "appTaglineApps": "Open, configure, and manage hosted apps",
   "appTaglineEvaluations": "Measure and improve answer quality",
   "dataInsights": "Data Insights",
-  "appTaglineDataInsights": "Saved analyses of your data"
+  "appTaglineDataInsights": "Saved analyses of your data",
+  "auditLog": "Audit log"
 }

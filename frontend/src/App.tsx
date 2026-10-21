@@ -81,6 +81,9 @@ function AppLoadingFallback() {
 }
 
 const Home = lazy(() => import('./pages/Home').then((m) => ({ default: m.Home })));
+const AuditLogPage = lazy(() =>
+  import('./pages/console/AuditLogPage').then((m) => ({ default: m.AuditLogPage })),
+);
 const GlobalSearch = lazy(() => import('./pages/GlobalSearch').then((m) => ({ default: m.GlobalSearch })));
 const DocumentsIndex = lazy(() => import('./pages/documents/DocumentsIndex').then((m) => ({ default: m.DocumentsIndex })));
 const DocumentChannel = lazy(() => import('./pages/documents/DocumentChannel').then((m) => ({ default: m.DocumentChannel })));
@@ -564,9 +567,11 @@ function App() {
             <Route path="kubernetes/:clusterId" element={<ConsoleKubernetesDetail />} />
             <Route path="settings" element={<ConsoleSettings />} />
             <Route path="users" element={<ConsoleUsers />} />
+
             <Route path="feature-toggles" element={<ConsoleFeatureToggles />} />
             <Route path="storage" element={<ConsoleStorage />} />
           </Route>
+          <Route path="audit-log" element={<AuditLogPage />} />
         </Route>
       </Routes>
       </Suspense>

@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { LayoutDashboard, LogIn, LogOut, Settings, User, UserCircle } from 'lucide-react';
+import { LayoutDashboard, LogIn, LogOut, ScrollText, Settings, User, UserCircle } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { isConsoleShellPath } from '../../config/appModules';
 import './UserMenu.scss';
@@ -18,7 +18,7 @@ interface Props {
 export function UserMenu({ placement = 'down' }: Props) {
   const { t } = useTranslation('layout');
   const location = useLocation();
-  const { isAuthenticated, isLoading, user, canAccessConsole, login, logout } = useAuth();
+  const { isAuthenticated, isLoading, user, canAccessConsole, hasPermission, login, logout } = useAuth();
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
@@ -68,6 +68,12 @@ export function UserMenu({ placement = 'down' }: Props) {
             <Settings size={18} />
             <span>{t('settings')}</span>
           </Link>
+          {hasPermission('console:permissions') ? (
+            <Link to="/audit-log" className="user-menu-item" onClick={() => setOpen(false)}>
+              <ScrollText size={18} aria-hidden />
+              <span>{t('auditLog')}</span>
+            </Link>
+          ) : null}
           {canAccessConsole && !isConsoleShellPath(location.pathname) ? (
             <Link to="/console" className="user-menu-item" onClick={() => setOpen(false)}>
               <LayoutDashboard size={18} aria-hidden />

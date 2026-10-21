@@ -108,5 +108,6 @@
   "appTaglineApps": "打开、配置与管理托管应用",
   "appTaglineEvaluations": "评测与改进回答质量",
   "dataInsights": "数据洞察",
-  "appTaglineDataInsights": "已保存的分析与报告"
+  "appTaglineDataInsights": "已保存的分析与报告",
+  "auditLog": "审计日志"
 }

@@ -832,5 +832,29 @@
     "loading": "加载中…",
     "loadFailed": "加载失败",
     "notFoundTitle": "未找到"
+  },
+  "auditLog": {
+    "title": "审计日志",
+    "subtitle": "通过 API 发生的每一次变更——谁做的、动了什么、成功了吗。",
+    "refresh": "刷新",
+    "noAccess": "你的账号没有查看审计日志的权限。",
+    "filterActor": "操作者",
+    "filterActorPlaceholder": "谁（邮箱或 key 所有者）",
+    "filterMethod": "方法",
+    "filterAll": "全部",
+    "filterResourceType": "资源类型",
+    "filterResourceTypePlaceholder": "datasets、stories …",
+    "filterResourceId": "资源 id",
+    "filterResourceIdPlaceholder": "知道 id 时填这里",
+    "when": "时间",
+    "actor": "操作者",
+    "request": "请求",
+    "result": "结果",
+    "resource": "资源",
+    "anonymous": "匿名",
+    "empty": "还没有任何变更——或者没有符合筛选条件的。",
+    "loadMore": "加载更早",
+    "loadFailed": "无法读取审计日志",
+    "loading": "加载中…"
   }
 }

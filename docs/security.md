@@ -41,7 +41,9 @@ question "what changed this dataset, and did it work?" belongs to anyone who can
   `SQLAlchemyError`/`OSError`, loudly: an audit outage must not turn a successful write into a 500.
 - **No request bodies** — they carry secrets. Response bodies are buffered only for `application/json` under
   32 KB, and only to read an `id`.
-- Read it with `GET /api/console/audit-events` (`console:permissions`, keyset paging) or
+- Read it three ways: the app's **user menu → Audit log** (`/audit-log`; the item appears only to
+  accounts holding `console:permissions`, which is what the API requires), `GET /api/console/audit-events`
+  (`console:permissions`, keyset paging), or
   `openkms audit list --actor/--resource-type/--resource-id/--method/--path/--since`.
 
 Not done: **retention** (nothing prunes it), and reads of sensitive data. Soft delete is separate — this log

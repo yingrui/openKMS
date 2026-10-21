@@ -293,6 +293,20 @@ They are **not claimed to work**: this machine has no `pg_dump`, so only the pre
 refuses with an installation hint, verified). The drill is what turns a file into a backup, and until it
 prints `restore drill ok`, the honest state is untested.
 
+### The audit log has a page, behind the user menu (2026-10)
+
+Reading it needed `curl`. Now: **top-right user menu → Audit log** → `/audit-log`, a table of every
+mutation — when, who, `METHOD path`, status (with `detail.error` beside a 500), and the resource.
+
+- The menu item is shown only to accounts holding `console:permissions` — the same key the API requires, so
+  the entry does not appear for someone who would get a 403.
+- `/audit-log` is a **top-level route**, not a console page: the flow is the user menu, and a console
+  deep-link would drag in the console shell's own gate (`console:access`) that an auditor need not have.
+- Filters: actor, method, resource type, resource id. Newest first, key-set paged ("load older"), because a
+  log only grows.
+- A 403 renders "your account cannot read the audit log" rather than a toast that says something went wrong
+  — that state is not an error, it is the answer.
+
 ### The audit log: a mutation is recorded even when it fails (2026-10)
 
 The security note ended with "backups, then a key per agent, then soft delete and an audit log". The log is

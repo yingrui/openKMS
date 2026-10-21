@@ -704,7 +704,6 @@
     "cronExpression": "Cron: {{cron}}",
     "cronLastRun": "Last run",
     "cronNextRun": "Next run",
-    "cronLastRun": "Last run",
     "cronLastStatus": "Last status",
     "cronStatus": {
       "ok": "succeeded",
@@ -834,5 +833,29 @@
     "loading": "Loading…",
     "loadFailed": "Failed to load",
     "notFoundTitle": "Not found"
+  },
+  "auditLog": {
+    "title": "Audit log",
+    "subtitle": "Every change made through the API — who made it, what it touched, and whether it worked.",
+    "refresh": "Refresh",
+    "noAccess": "Your account cannot read the audit log.",
+    "filterActor": "Actor",
+    "filterActorPlaceholder": "who (email or key owner)",
+    "filterMethod": "Method",
+    "filterAll": "all",
+    "filterResourceType": "Resource type",
+    "filterResourceTypePlaceholder": "datasets, stories, …",
+    "filterResourceId": "Resource id",
+    "filterResourceIdPlaceholder": "the id, when you have it",
+    "when": "When",
+    "actor": "Actor",
+    "request": "Request",
+    "result": "Result",
+    "resource": "Resource",
+    "anonymous": "anonymous",
+    "empty": "Nothing has changed yet — or nothing matches these filters.",
+    "loadMore": "Load older",
+    "loadFailed": "Could not read the audit log",
+    "loading": "Loading…"
   }
 }
