@@ -859,6 +859,7 @@
     "status_5xx": "崩溃（5xx）",
     "filterPath": "路径",
     "filterPathPlaceholder": "路径片段",
-    "scope": "范围"
+    "scope": "范围",
+    "emptyHint": "最近 30 天的写操作会出现在这里——可以放宽时间窗口或清空筛选。"
   }
 }

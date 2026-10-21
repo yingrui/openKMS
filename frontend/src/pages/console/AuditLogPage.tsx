@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Loader2, RefreshCw } from 'lucide-react';
+import { Loader2, RefreshCw, Search } from 'lucide-react';
 import { toast } from 'sonner';
 import {
   fetchAuditEvents,
@@ -8,7 +8,8 @@ import {
   type AuditEvent,
   type AuditFacetsResponse,
 } from '../../data/auditApi';
-import { Pagination, StatusChip } from '../../styles/design-system';
+import { EmptyState, Pagination, StatusChip } from '../../styles/design-system';
+import { resourceLabel } from './auditFormat';
 import './AuditLogPage.scss';
 
 const EMPTY_FACETS: AuditFacetsResponse = {
@@ -142,7 +143,7 @@ export function AuditLogPage() {
               <RailItem
                 key={facet.value}
                 active={scope.kind === 'resource' && scope.value === facet.value}
-                label={facet.value}
+                label={resourceLabel(facet.value)}
                 count={facet.count}
                 onClick={() => setScope({ kind: 'resource', value: facet.value })}
               />
@@ -181,6 +182,17 @@ export function AuditLogPage() {
           </header>
 
           <div className="console-datasets-toolbar">
+            <div className="console-datasets-search">
+              <Search size={18} aria-hidden />
+              {/* ds-control-exempt: `.console-datasets-search input` styles it (design-system/_console.scss) */}
+              <input
+                type="search"
+                aria-label={t('auditLog.filterPath')}
+                placeholder={t('auditLog.filterPathPlaceholder')}
+                value={path}
+                onChange={(e) => setPath(e.target.value)}
+              />
+            </div>
             <label className="console-datasets-filter">
               {t('auditLog.filterMethod')}
               {/* ds-control-exempt: `.console-datasets-filter` styles this select (its own sheet) */}
@@ -193,13 +205,6 @@ export function AuditLogPage() {
                 ))}
               </select>
             </label>
-            <input
-              className="ds-control"
-              aria-label={t('auditLog.filterPath')}
-              placeholder={t('auditLog.filterPathPlaceholder')}
-              value={path}
-              onChange={(e) => setPath(e.target.value)}
-            />
           </div>
 
           {loading ? (
@@ -208,7 +213,7 @@ export function AuditLogPage() {
               <p>{t('auditLog.loading')}</p>
             </div>
           ) : events.length === 0 ? (
-            <p className="page-subtitle">{t('auditLog.empty')}</p>
+            <EmptyState title={t('auditLog.empty')} description={t('auditLog.emptyHint')} />
           ) : (
             <>
               <div className="ds-table-wrap">
@@ -239,7 +244,7 @@ export function AuditLogPage() {
                           ) : null}
                         </td>
                         <td>
-                          {event.resource_type ?? t('datasets.dash')}
+                          {event.resource_type ? resourceLabel(event.resource_type) : t('datasets.dash')}
                           {event.resource_id ? (
                             <span className="page-subtitle"> · {event.resource_id}</span>
                           ) : null}

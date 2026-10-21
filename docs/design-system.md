@@ -134,6 +134,8 @@ With the header gone, the left rail is the only chrome: brand → Home at the to
 | Home | **`.app-content`** | Optional **`.app-page-shell`** (max-width only) |
 | Full-bleed | Exception row below | SCSS comment **`app-layout-exception:`** |
 
+**List toolbar** (`design-system/_console.scss`): **`.console-datasets-toolbar`**, **`.console-datasets-search`** (the search pill, magnifier inside), **`.console-datasets-filter`** (a labelled select). Shared by every list — the catalog, the audit log — so one toolbar does not drift into four.
+
 **Shell classes** (`app-page.scss`): **`.app-page-pane`**, **`.app-page-shell`**, **`.app-page-section*`**, **`.page-header`**, **`.page-subtitle`**.
 
 ### Layout exceptions

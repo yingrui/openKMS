@@ -293,6 +293,21 @@ They are **not claimed to work**: this machine has no `pg_dump`, so only the pre
 refuses with an installation hint, verified). The drill is what turns a file into a backup, and until it
 prints `restore drill ok`, the honest state is untested.
 
+### A design pass on the audit page (2026-10)
+
+Reading the page against the rest of the app found four things that were "almost" the app's grammar:
+
+- **The search field** was a bare `.ds-control` input — no magnifier, no pill, a different height from the
+  select beside it. It is now `.console-datasets-search`, the app's search pill… which lived in the
+  *ontology page's* sheet, so using it on a second route meant moving it into `design-system/_console.scss`
+  with the rest of the toolbar family (`.console-datasets-toolbar` / `-filter` already lived there).
+- **The rail read as path segments**: `object-types`, `sync-session`. A pure `resourceLabel` turns them into
+  "Object types" / "Sync session" — in the rail *and* in the table's resource column, so the two agree.
+- **The empty state was a sentence.** It is the shared `EmptyState` now, with a hint that says how to widen
+  the search rather than just that there is nothing.
+- Buttons were already right: the header's refresh is `.btn .btn-secondary`, the same as the console's health
+  page, and paging is the shared `Pagination`.
+
 ### The gutter was on the wrong element (2026-10)
 
 The audit page still had "大片 padding": the rail floated inside `.app-page-pane`, so the page gutter wrapped
