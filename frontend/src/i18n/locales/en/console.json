@@ -837,7 +837,6 @@
   "auditLog": {
     "title": "Audit log",
     "subtitle": "Every change made through the API — who made it, what it touched, and whether it worked.",
-    "refresh": "Refresh",
     "noAccess": "Your account cannot read the audit log.",
     "filterMethod": "Method",
     "filterAll": "all",
@@ -862,6 +861,7 @@
     "filterPathPlaceholder": "substring of the path",
     "scope": "Scope",
     "emptyHint": "Mutations from the last 30 days appear here — try widening the window or clearing filters.",
-    "reset": "Clear filters"
+    "reset": "Clear filters",
+    "query": "Query"
   }
 }

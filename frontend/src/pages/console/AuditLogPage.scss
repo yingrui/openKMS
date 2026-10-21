@@ -20,3 +20,10 @@
   font-family: var(--font-mono, ui-monospace, Menlo, monospace);
   font-size: var(--text-sm);
 }
+
+/* A timestamp is one unit: it must not wrap onto two lines, and its digits must not shift as it changes.
+   The path column is the one that may take the room — it is the only cell whose length is unknown. */
+.audit-log__when {
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}

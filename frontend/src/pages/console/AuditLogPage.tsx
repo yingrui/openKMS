@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Loader2, RefreshCw, Search } from 'lucide-react';
+import { Loader2, Search } from 'lucide-react';
 import { toast } from 'sonner';
 import {
   fetchAuditEvents,
@@ -41,6 +41,10 @@ export function AuditLogPage() {
   const [pageSize, setPageSize] = useState(50);
   const [total, setTotal] = useState(0);
   const [scope, setScope] = useState<Scope>({ kind: 'all', value: '' });
+  // What the form holds, and what the query uses. Typing does not query: a path is a filter you finish
+  // writing, and a request per keystroke is a request nobody asked for.
+  const [draftMethod, setDraftMethod] = useState('');
+  const [draftPath, setDraftPath] = useState('');
   const [method, setMethod] = useState('');
   const [path, setPath] = useState('');
   const [denied, setDenied] = useState(false);
@@ -81,14 +85,25 @@ export function AuditLogPage() {
 
   useEffect(() => {
     setPage(0);
-  }, [scope, method, path]);
+  }, [scope, path, method]);
 
   const time = (iso: string) => new Date(iso).toLocaleString();
   // Refresh re-runs the query; reset gives you a way out of it. Two different jobs — and the rail alone
   // cannot undo a method or a path, so reset has to exist.
-  const filtered = scope.kind !== 'all' || method !== '' || path.trim() !== '';
+  const filtered = scope.kind !== 'all' || method !== '' || path !== '';
+  const dirty = draftMethod !== method || draftPath.trim() !== path;
+
+  /** Apply the form: the rail is immediate (a click is a decision), the text field waits for this. */
+  const query = () => {
+    setMethod(draftMethod);
+    setPath(draftPath.trim());
+    setPage(0);
+  };
+
   const reset = () => {
     setScope({ kind: 'all', value: '' });
+    setDraftMethod('');
+    setDraftPath('');
     setMethod('');
     setPath('');
     setPage(0);
@@ -187,14 +202,17 @@ export function AuditLogPage() {
                 type="search"
                 aria-label={t('auditLog.filterPath')}
                 placeholder={t('auditLog.filterPathPlaceholder')}
-                value={path}
-                onChange={(e) => setPath(e.target.value)}
+                value={draftPath}
+                onChange={(e) => setDraftPath(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') query();
+                }}
               />
             </div>
             <label className="console-datasets-filter">
               {t('auditLog.filterMethod')}
               {/* ds-control-exempt: `.console-datasets-filter` styles this select (its own sheet) */}
-              <select value={method} onChange={(e) => setMethod(e.target.value)}>
+              <select value={draftMethod} onChange={(e) => setDraftMethod(e.target.value)}>
                 <option value="">{t('auditLog.filterAll')}</option>
                 {['POST', 'PUT', 'PATCH', 'DELETE'].map((m) => (
                   <option key={m} value={m}>
@@ -203,16 +221,16 @@ export function AuditLogPage() {
                 ))}
               </select>
             </label>
-            {/* Refresh re-runs this query, so it belongs to the query's row — not in the header beside
-                the title, where it read as a page-level action it is not. */}
+            {/* The form commits here — and nowhere else. Enter does the same, because a filter row that
+                ignores Enter is a filter row people fight. */}
             <button
               type="button"
-              className="btn btn-secondary btn-sm"
-              onClick={() => void load()}
-              disabled={loading}
+              className="btn btn-primary btn-sm"
+              onClick={query}
+              disabled={loading || !dirty}
             >
-              <RefreshCw size={16} aria-hidden />
-              {t('auditLog.refresh')}
+              <Search size={16} aria-hidden />
+              {t('auditLog.query')}
             </button>
             {filtered ? (
               <button type="button" className="btn-link" onClick={reset}>
@@ -230,7 +248,9 @@ export function AuditLogPage() {
             <EmptyState title={t('auditLog.empty')} description={t('auditLog.emptyHint')} />
           ) : (
             <>
-              <div className="ds-table-wrap">
+              {/* A bounded grid: the table scrolls with its headers stuck, so the pager below stays put
+                  instead of being pushed off the page by fifty rows. */}
+              <div className="ds-table-wrap ds-table-wrap--scroll">
                 <table className="console-table">
                   <thead>
                     <tr>
@@ -244,12 +264,14 @@ export function AuditLogPage() {
                   <tbody>
                     {events.map((event) => (
                       <tr key={event.id}>
-                        <td title={event.at}>{time(event.at)}</td>
+                        <td className="audit-log__when" title={event.at}>
+                          {time(event.at)}
+                        </td>
                         <td>{event.actor_name ?? event.actor_sub ?? t('auditLog.anonymous')}</td>
                         <td className="audit-log__code">
                           {event.method} {event.path}
                         </td>
-                        <td>
+                        <td className="audit-log__when">
                           <StatusChip tone={event.status_code < 300 ? 'ok' : 'warn'}>
                             {event.status_code}
                           </StatusChip>

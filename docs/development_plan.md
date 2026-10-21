@@ -293,6 +293,17 @@ They are **not claimed to work**: this machine has no `pg_dump`, so only the pre
 refuses with an installation hint, verified). The drill is what turns a file into a backup, and until it
 prints `restore drill ok`, the honest state is untested.
 
+### The filter row commits on Query, not on every keystroke (2026-10)
+
+The button said Refresh and the text field queried as you typed — a request per keystroke, and a button
+whose only job was to ask for what was already happening. The row is a **form** now:
+
+- the **rail** stays immediate (a click is a decision), the **method and path** are drafts;
+- **Query** applies them, and so does **Enter** — a filter row that ignores Enter is a filter row people
+  fight; the button is the row's primary action and disables itself when nothing has changed;
+- **Reset** clears drafts, applied filters, the rail's scope and the page in one go, and only appears when
+  something is filtered.
+
 ### Worker runs are operations too, and a way out of a filter (2026-10)
 
 Two questions, both fair. "Why Refresh and not Reset?" — because it *is* a refresh (it re-runs the query),

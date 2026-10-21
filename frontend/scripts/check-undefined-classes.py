@@ -40,16 +40,44 @@ FOREIGN_PREFIXES = ("a2ui-", "force-graph", "mermaid", "katex", "cm-", "recharts
 
 
 def defined_classes() -> set[str]:
+    """Every class any sheet defines, including the `&__x` / `&-x` / `&--x` a nested block builds.
+
+    The parent of a `&` is the class of the block it sits **in**, tracked by brace depth — not "the last
+    class name seen", which is what this used to do: inside `.ds-table-wrap { … .ds-pagination { … } &
+    --scroll { … } }` the last name seen was `ds-pagination`, so `ds-table-wrap--scroll` looked undefined
+    and sat in the baseline as debt for a class that was styled all along.
+    """
     out: set[str] = set()
     for sheet in SRC.rglob("*.scss"):
         text = sheet.read_text(errors="ignore")
         out |= set(SCSS_CLASS.findall(text))
-        last = None
-        for match in re.finditer(r"\.([a-zA-Z][a-zA-Z0-9_-]*)|&(__|-)([a-zA-Z0-9-]+)", text):
-            if match.group(1):
-                last = match.group(1)
-            elif last:
-                out.add(f"{last}{'__' if match.group(2) == '__' else '-'}{match.group(3)}")
+
+        # base_of_block[depth] = the class that `&` refers to inside that block
+        base_of_block: list[str | None] = [None]
+        pending: str | None = None
+        i = 0
+        while i < len(text):
+            char = text[i]
+            if char == "{":
+                base_of_block.append(pending or base_of_block[-1])
+                pending = None
+            elif char == "}":
+                if len(base_of_block) > 1:
+                    base_of_block.pop()
+                pending = None
+            elif char == "&":
+                match = re.match(r"&(__|--|-)([a-zA-Z0-9-]+)", text[i:])
+                if match and base_of_block[-1]:
+                    out.add(f"{base_of_block[-1]}{match.group(1)}{match.group(2)}")
+                    i += len(match.group(0))
+                    continue
+            elif char == ".":
+                match = re.match(r"\.([a-zA-Z][a-zA-Z0-9_-]*)", text[i:])
+                if match:
+                    pending = match.group(1)
+                    i += len(match.group(0))
+                    continue
+            i += 1
     return out
 
 
