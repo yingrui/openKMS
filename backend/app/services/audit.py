@@ -45,9 +45,15 @@ async def record_audit_event(
     actor_name: str | None,
     auth_mode: str | None,
     detail: dict[str, Any] | None = None,
+    response_id: str | None = None,
 ) -> None:
-    """Write one event. Narrow failures are swallowed **loudly**: the request already answered."""
-    resource_type, resource_id = audit_target(path)
+    """Write one event. Narrow failures are swallowed **loudly**: the request already answered.
+
+    `response_id` wins over the path: a create has no id in its URL, and the object it returned *is* the
+    subject. This is how the log stays general — a route that returns `{"id": …}` needs no special case.
+    """
+    resource_type, path_id = audit_target(path)
+    resource_id = response_id or path_id
     try:
         async with async_session_maker() as db:
             db.add(

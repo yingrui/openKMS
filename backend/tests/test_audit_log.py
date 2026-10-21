@@ -37,7 +37,15 @@ def _fake_app() -> FastAPI:
 
     @app.post("/api/datasets")
     async def create() -> dict[str, str]:
-        return {"id": "new"}
+        return {"id": "0f1e2d3c-4b5a-4969-8787-6a5b4c3d2e1f", "name": "new"}
+
+    @app.post("/api/bulk")
+    async def bulk() -> list[str]:
+        return ["not-an-object"]
+
+    @app.post("/api/big")
+    async def big() -> dict[str, str]:
+        return {"id": "x", "pad": "y" * (audit_middleware.MAX_CAPTURE + 10)}
 
     @app.get("/api/datasets")
     async def listing() -> dict[str, list[str]]:
@@ -61,9 +69,8 @@ def recorded(monkeypatch):
     return events
 
 
-def test_a_mutation_is_recorded_with_its_status(recorded):
-    client = TestClient(_fake_app())
-    client.post("/api/datasets")
+def test_a_mutation_is_recorded_with_its_status_and_the_id_it_created(recorded):
+    TestClient(_fake_app()).post("/api/datasets")
     assert recorded == [
         {
             "method": "POST",
@@ -72,6 +79,7 @@ def test_a_mutation_is_recorded_with_its_status(recorded):
             "actor_sub": None,
             "actor_name": None,
             "auth_mode": None,
+            "response_id": "0f1e2d3c-4b5a-4969-8787-6a5b4c3d2e1f",
             "detail": None,
         }
     ]
@@ -94,6 +102,17 @@ def test_a_crash_is_recorded_before_it_propagates(recorded):
             "actor_sub": None,
             "actor_name": None,
             "auth_mode": None,
+            "response_id": None,
             "detail": {"error": "RuntimeError"},
         }
     ]
+
+
+def test_a_response_that_is_not_an_object_yields_no_id(recorded):
+    TestClient(_fake_app()).post("/api/bulk")
+    assert recorded[0]["response_id"] is None
+
+
+def test_an_oversized_response_is_not_buffered(recorded):
+    TestClient(_fake_app()).post("/api/big")
+    assert recorded[0]["response_id"] is None
