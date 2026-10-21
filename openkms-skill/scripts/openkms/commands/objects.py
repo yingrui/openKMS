@@ -72,6 +72,8 @@ def cmd_instances_get(ns: argparse.Namespace) -> None:
 # ---------------------------------------------------------------------------
 def cmd_create_type(ns: argparse.Namespace) -> None:
     body: dict[str, Any] = {"name": ns.name, "is_master_data": bool(ns.is_master_data)}
+    if getattr(ns, "api_name", ""):
+        body["api_name"] = ns.api_name
     if ns.description:
         body["description"] = ns.description
     if ns.dataset_id:
@@ -101,6 +103,8 @@ def cmd_update_type(ns: argparse.Namespace) -> None:
     body: dict[str, Any] = {}
     if ns.name is not None:
         body["name"] = ns.name
+    if getattr(ns, "api_name", None) is not None:
+        body["api_name"] = ns.api_name
     if ns.description is not None:
         body["description"] = ns.description
     if ns.dataset_id is not None:
@@ -267,6 +271,14 @@ def add_subparser(sub) -> None:
     # ---- Write — types ----
     ct = sp.add_parser("create-type", help="Create object type (POST /api/object-types)")
     ct.add_argument("--name", required=True)
+    ct.add_argument(
+        "--api-name",
+        default="",
+        help=(
+            "Frozen identifier code/Cypher use (client(\"WorkItem\"), MATCH (n:WorkItem)). "
+            "Generated from --name when it has ASCII parts; REQUIRED for a name with none (e.g. 中文)."
+        ),
+    )
     ct.add_argument("--description", default="")
     ct.add_argument("--dataset-id", default="")
     ct.add_argument("--key-property", default="")
@@ -282,6 +294,11 @@ def add_subparser(sub) -> None:
 
     ut = sp.add_parser("update-type", help="Update object type (PUT /api/object-types/{id})")
     ut.add_argument("--id", required=True)
+    ut.add_argument(
+        "--api-name",
+        default=None,
+        help="Only claimable while the row has none (it is otherwise frozen → 400).",
+    )
     ut.add_argument("--name", default=None)
     ut.add_argument("--description", default=None)
     ut.add_argument("--dataset-id", default=None)

@@ -62,6 +62,8 @@ def cmd_create_type(ns: argparse.Namespace) -> None:
         "target_object_type_id": ns.target_type_id,
         "cardinality": ns.cardinality,
     }
+    if getattr(ns, "api_name", ""):
+        body["api_name"] = ns.api_name
     if ns.description:
         body["description"] = ns.description
     if ns.dataset_id:
@@ -106,6 +108,8 @@ def cmd_update_type(ns: argparse.Namespace) -> None:
         v = getattr(ns, arg)
         if v is not None:
             body[key] = v
+    if getattr(ns, "api_name", None) is not None:
+        body["api_name"] = ns.api_name
 
     if not body:
         print("update-type: nothing to update (no fields supplied)", file=sys.stderr)
@@ -237,6 +241,14 @@ def add_subparser(sub) -> None:
     # ---- Write — types ----
     ct = sp.add_parser("create-type", help="Create link type (POST /api/link-types)")
     ct.add_argument("--name", required=True)
+    ct.add_argument(
+        "--api-name",
+        default="",
+        help=(
+            "Frozen identifier code/Cypher use (client(\"governed_by\")). Generated from --name "
+            "when it has ASCII parts; REQUIRED for a name with none (e.g. 中文)."
+        ),
+    )
     ct.add_argument("--source-type-id", required=True)
     ct.add_argument("--target-type-id", required=True)
     ct.add_argument("--cardinality", default="one-to-many", choices=CARDINALITY_CHOICES)
@@ -251,6 +263,11 @@ def add_subparser(sub) -> None:
 
     ut = sp.add_parser("update-type", help="Update link type (PUT /api/link-types/{id})")
     ut.add_argument("--id", required=True)
+    ut.add_argument(
+        "--api-name",
+        default=None,
+        help="Only claimable while the row has none (it is otherwise frozen → 400).",
+    )
     ut.add_argument("--name", default=None)
     ut.add_argument("--description", default=None)
     ut.add_argument("--source-type-id", default=None)

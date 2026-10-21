@@ -94,6 +94,35 @@ def test_create_type_yes_posts_correct_body(mock_api):
     }
 
 
+def test_create_type_sends_api_name_when_given(mock_api):
+    """A name with no ASCII characters has no derivable identifier — the CLI must pass one."""
+    recorded, responses = mock_api
+    responses[("POST", "/api/object-types")] = (200, {"id": "ot9"})
+
+    from openkms.commands.objects import cmd_create_type
+    cmd_create_type(_ns(
+        name="工作任务", api_name="WorkItem", description="", dataset_id="",
+        key_property="", is_master_data=False, display_property="",
+        properties_json="",
+    ))
+
+    assert json.loads(recorded[-1].content)["api_name"] == "WorkItem"
+
+
+def test_create_type_omits_api_name_when_empty(mock_api):
+    """Omitted, so the API derives it from the name (or explains why it cannot)."""
+    recorded, responses = mock_api
+    responses[("POST", "/api/object-types")] = (200, {"id": "ot9"})
+
+    from openkms.commands.objects import cmd_create_type
+    cmd_create_type(_ns(
+        name="Disease", api_name="", description="", dataset_id="", key_property="",
+        is_master_data=False, display_property="", properties_json="",
+    ))
+
+    assert "api_name" not in json.loads(recorded[-1].content)
+
+
 def test_create_type_non_tty_aborts_without_yes(mock_api, monkeypatch):
     recorded, _ = mock_api
     monkeypatch.setattr(sys.stdin, "isatty", lambda: False)

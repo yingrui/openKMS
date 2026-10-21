@@ -90,6 +90,28 @@ def test_create_type_yes_full_body(mock_api):
     }
 
 
+def test_create_type_sends_api_name_when_given(mock_api):
+    recorded, responses = mock_api
+    responses[("POST", "/api/link-types")] = (200, {"id": "lt9"})
+
+    from openkms.commands.links import cmd_create_type
+    cmd_create_type(_ns(
+        name="属于",
+        api_name="governed_by",
+        source_type_id="ot_a",
+        target_type_id="ot_b",
+        cardinality="many-to-one",
+        description="",
+        dataset_id="",
+        source_key_property="",
+        target_key_property="",
+        source_dataset_column="",
+        target_dataset_column="",
+    ))
+
+    assert json.loads(recorded[-1].content)["api_name"] == "governed_by"
+
+
 def test_create_type_dry_run(mock_api):
     recorded, _ = mock_api
     from openkms.commands.links import cmd_create_type
