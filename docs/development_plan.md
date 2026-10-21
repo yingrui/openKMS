@@ -293,6 +293,22 @@ They are **not claimed to work**: this machine has no `pg_dump`, so only the pre
 refuses with an installation hint, verified). The drill is what turns a file into a backup, and until it
 prints `restore drill ok`, the honest state is untested.
 
+### Worker runs are operations too, and a way out of a filter (2026-10)
+
+Two questions, both fair. "Why Refresh and not Reset?" — because it *is* a refresh (it re-runs the query),
+and the missing button was reset: the rail alone cannot undo a method or a path, so a "clear filters" link
+appears whenever anything is filtered, and Refresh stays at the end of the query row.
+
+"Does every operation get an audit event?" — **no**, and the honest audit found two gaps:
+
+- **Worker tasks were invisible.** The middleware only sees HTTP, and `run_pipeline`, `run_kb_index`,
+  `run_connector_sync`, `run_scheduled_project_agent` … mutate data with no request in sight. They register
+  through `audited_task` now — one decorator, all eight tasks — recording `JOB job/<task>`, the job id as the
+  subject, and 500 with the exception type when they raise. The enqueue was an HTTP call and is already in
+  the log; `detail.job_id` joins the two halves.
+- **Reads are not recorded**, deliberately. Documented in `security.md` along with what an app-level log
+  structurally cannot see (direct database access, migrations).
+
 ### A design pass on the audit page (2026-10)
 
 Reading the page against the rest of the app found four things that were "almost" the app's grammar:

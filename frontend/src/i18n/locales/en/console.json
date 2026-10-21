@@ -861,6 +861,7 @@
     "filterPath": "Path",
     "filterPathPlaceholder": "substring of the path",
     "scope": "Scope",
-    "emptyHint": "Mutations from the last 30 days appear here — try widening the window or clearing filters."
+    "emptyHint": "Mutations from the last 30 days appear here — try widening the window or clearing filters.",
+    "reset": "Clear filters"
   }
 }

@@ -1,6 +1,7 @@
 """Procrastinate task definitions for document processing."""
 import asyncio
 import base64
+import functools
 import json
 import logging
 import shlex
@@ -12,6 +13,7 @@ from procrastinate.job_context import JobContext
 from app.config import settings
 from app.constants import DocumentStatus
 from app.jobs import job_app
+from app.services.audit import job_audit_fields, record_audit_event
 from app.services.documents.document_storage import document_prefix
 from app.services.openkms_cli_subprocess import (
     build_openkms_cli_subprocess_env,
@@ -80,7 +82,50 @@ def render_command(
     return command.format(**context)
 
 
-@job_app.task(name="run_pipeline", pass_context=True)
+def audited_task(**task_kwargs: object) -> object:
+    """`job_app.task`, plus one audit event per **run**.
+
+    The middleware only sees HTTP; a worker mutates data with no request in sight. This records
+    `JOB job/<task>` with the job id as the subject, and 500 with the exception type when it raises. The
+    enqueue was an HTTP call and is already in the log — `detail.job_id` joins the two halves.
+    """
+
+    def decorate(fn: object) -> object:
+        @job_app.task(**task_kwargs)  # type: ignore[arg-type]
+        @functools.wraps(fn)  # type: ignore[arg-type]
+        async def wrapped(*args: object, **kwargs: object) -> object:
+            context = args[0] if args else None
+            job = getattr(context, "job", None)
+            fields = job_audit_fields(
+                str(task_kwargs.get("name") or getattr(fn, "__name__", "task")),
+                getattr(job, "id", None),
+            )
+            status = 200
+            error: dict[str, object] | None = None
+            try:
+                return await fn(*args, **kwargs)  # type: ignore[misc]
+            except Exception as exc:
+                status, error = 500, {"error": type(exc).__name__}
+                raise
+            finally:
+                await record_audit_event(
+                    method=fields["method"],
+                    path=fields["path"],
+                    status_code=status,
+                    resource_type=fields["resource_type"],
+                    resource_id=fields["resource_id"],
+                    actor_sub=None,
+                    actor_name=None,
+                    auth_mode="worker",
+                    detail={**(fields["detail"] or {}), **(error or {})} or None,
+                )
+
+        return wrapped
+
+    return decorate
+
+
+@audited_task(name="run_pipeline", pass_context=True)
 async def run_pipeline(
     context: JobContext,
     document_id: str,
@@ -334,7 +379,7 @@ async def run_pipeline(
         await persist_job_run_worker_log_best_effort(job_pk, log_cmd, log_out, log_err)
 
 
-@job_app.task(name="run_spreadsheet_preview", pass_context=True)
+@audited_task(name="run_spreadsheet_preview", pass_context=True)
 async def run_spreadsheet_preview(
     context: JobContext,
     document_id: str,
@@ -397,7 +442,7 @@ async def run_spreadsheet_preview(
         await persist_job_run_worker_log_best_effort(job_pk, log_cmd, log_out, log_err)
 
 
-@job_app.task(name="run_mindmap_preview", pass_context=True)
+@audited_task(name="run_mindmap_preview", pass_context=True)
 async def run_mindmap_preview(
     context: JobContext,
     document_id: str,
@@ -460,7 +505,7 @@ async def run_mindmap_preview(
         await persist_job_run_worker_log_best_effort(job_pk, log_cmd, log_out, log_err)
 
 
-@job_app.task(name="run_kb_index", pass_context=True)
+@audited_task(name="run_kb_index", pass_context=True)
 async def run_kb_index(
     context: JobContext,
     knowledge_base_id: str,
@@ -523,7 +568,7 @@ async def run_kb_index(
         await persist_job_run_worker_log_best_effort(job_pk, log_cmd, log_out, log_err)
 
 
-@job_app.task(name="run_kb_wiki_space_index", pass_context=True)
+@audited_task(name="run_kb_wiki_space_index", pass_context=True)
 async def run_kb_wiki_space_index(
     context: JobContext,
     knowledge_base_id: str,
@@ -753,7 +798,7 @@ def _pipeline_exit_human_hint(code: int) -> str:
     return ""
 
 
-@job_app.task(name="run_connector_sync", pass_context=True)
+@audited_task(name="run_connector_sync", pass_context=True)
 async def run_connector_sync(
     context: JobContext,
     connector_id: str,
@@ -858,7 +903,7 @@ async def run_connector_sync(
         await persist_job_run_worker_log_best_effort(job_id, None, "\n".join(log_lines), "")
 
 
-@job_app.task(name="run_scheduled_project_agent", pass_context=True)
+@audited_task(name="run_scheduled_project_agent", pass_context=True)
 async def run_scheduled_project_agent(
     context: JobContext,
     trigger_id: str,
@@ -936,7 +981,7 @@ async def run_scheduled_project_agent(
         await persist_job_run_worker_log_best_effort(job_id, None, "\n".join(log_lines), "")
 
 
-@job_app.task(name="run_media_generation", pass_context=True)
+@audited_task(name="run_media_generation", pass_context=True)
 async def run_media_generation(
     context: JobContext,
     channel_id: str,

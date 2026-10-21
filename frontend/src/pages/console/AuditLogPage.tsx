@@ -84,6 +84,15 @@ export function AuditLogPage() {
   }, [scope, method, path]);
 
   const time = (iso: string) => new Date(iso).toLocaleString();
+  // Refresh re-runs the query; reset gives you a way out of it. Two different jobs — and the rail alone
+  // cannot undo a method or a path, so reset has to exist.
+  const filtered = scope.kind !== 'all' || method !== '' || path.trim() !== '';
+  const reset = () => {
+    setScope({ kind: 'all', value: '' });
+    setMethod('');
+    setPath('');
+    setPage(0);
+  };
   const allCount = facets.resource_types.reduce((sum, f) => sum + f.count, 0);
 
   const RailItem = ({
@@ -205,6 +214,11 @@ export function AuditLogPage() {
               <RefreshCw size={16} aria-hidden />
               {t('auditLog.refresh')}
             </button>
+            {filtered ? (
+              <button type="button" className="btn-link" onClick={reset}>
+                {t('auditLog.reset')}
+              </button>
+            ) : null}
           </div>
 
           {loading ? (

@@ -116,3 +116,26 @@ def test_a_response_that_is_not_an_object_yields_no_id(recorded):
 def test_an_oversized_response_is_not_buffered(recorded):
     TestClient(_fake_app()).post("/api/big")
     assert recorded[0]["response_id"] is None
+
+
+class TestWorkerRuns:
+    """A worker mutates data with no HTTP request, so it records its own event."""
+
+    def test_a_job_records_job_and_its_id_as_the_subject(self):
+        from app.services.audit import job_audit_fields
+
+        assert job_audit_fields("run_kb_index", 42) == {
+            "method": "JOB",
+            "path": "job/run_kb_index",
+            "resource_type": "jobs",
+            "resource_id": "42",
+            "detail": {"job_id": "42"},
+        }
+
+    def test_a_job_without_an_id_still_records(self):
+        from app.services.audit import job_audit_fields
+
+        fields = job_audit_fields("run_pipeline", None)
+        assert fields["resource_id"] is None
+        assert fields["detail"] is None
+        assert fields["path"] == "job/run_pipeline"

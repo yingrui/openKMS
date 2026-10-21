@@ -72,3 +72,20 @@ async def record_audit_event(
             await db.commit()
     except (SQLAlchemyError, OSError) as exc:
         logger.error("audit event not recorded (%s %s): %s", method, path, exc)
+
+
+def job_audit_fields(task_name: str, job_id: int | str | None) -> dict[str, Any]:
+    """The audit fields for one worker run — pure, so the mapping is testable.
+
+    A job has no HTTP verb and no URL, so it records `JOB` and a `job/<task>` path, with the id as the
+    subject. The *enqueue* was an HTTP call and is already in the log with an actor; this row is the other
+    half of that pair, and `detail.job_id` joins them.
+    """
+    resource_id = str(job_id) if job_id is not None else None
+    return {
+        "method": "JOB",
+        "path": f"job/{task_name}",
+        "resource_type": "jobs",
+        "resource_id": resource_id,
+        "detail": {"job_id": resource_id} if resource_id else None,
+    }
