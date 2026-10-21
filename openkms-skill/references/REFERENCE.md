@@ -189,7 +189,10 @@ All write subcommands accept `--yes` / `--dry-run`. Without `--yes` on non-TTY s
 | `ontology functions execute` *(write)* | POST | `/api/ontology/functions/{id}/execute` | Body `{input, version_id?, use_published?}`. |
 | `ontology functions execute-by-api-name` *(write)* | POST | `/api/ontology/functions/by-api-name/{api_name}/execute` | Published only. |
 | `ontology functions executions` | GET | `/api/ontology/functions/{id}/executions` | |
-| `ontology functions delete` *(write)* | DELETE | `/api/ontology/functions/{id}` | |
+| `ontology functions delete` *(write)* | DELETE | `/api/ontology/functions/{id}` |
+| `ontology external-services list` | GET | `/api/ontology/external-services` | Services a Function can call with `client.external("name")`. Secrets are never returned (`has_secret` only). |
+| `ontology external-services create` | POST | `/api/ontology/external-services` | `{api_name, display_name, base_url, auth_kind: none\|bearer\|header\|hmac, auth_header_name?, secret?, allowed_paths[], timeout_seconds?}` |
+| `ontology external-services resolve` | POST | `/api/ontology/external-services/by-api-name/{api_name}/resolve` | Runtime use only — the Function client calls it. |
 | `ontology action-types list` | GET | `/api/ontology/action-types` | All statuses (including archived). |
 | `ontology action-types get` | GET | `/api/ontology/action-types/{id}` | |
 | `ontology action-types create` *(write)* | POST | `/api/ontology/action-types` | **`--rule-type` required.** Prefer `object_create` / `object_modify` / `object_delete` (no Function). Use `function` + `--function-id` only for custom FoO. |

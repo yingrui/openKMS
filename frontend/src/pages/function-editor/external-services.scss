@@ -1,0 +1,28 @@
+@use '../../styles/design-system/mixins' as *;
+@use '../../styles/design-system/tokens' as ds;
+
+.external-services__hint {
+  margin: 0 0 var(--space-3);
+  color: var(--color-text-muted);
+  font-size: 0.875rem;
+}
+
+.external-services__name {
+  color: var(--color-text-muted);
+  font-size: 0.8125rem;
+}
+
+.external-services__form {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-3);
+
+  @include max-width(ds.$bp-xs-max) {
+    grid-template-columns: 1fr;
+  }
+}
+
+.external-services-dialog .ds-dialog__body {
+  max-height: min(70vh, 640px);
+  overflow-y: auto;
+}

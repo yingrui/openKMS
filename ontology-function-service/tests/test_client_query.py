@@ -99,3 +99,88 @@ def test_a_uuid_still_resolves():
 
     c = _ById()
     assert c.get_object("536033d0", "x")["id"] == "536033d0"
+
+
+# --- external services ------------------------------------------------------
+def test_external_service_is_resolved_once_and_sends_the_credential(monkeypatch):
+    """The source names a service; the registry supplies URL + secret; the sandbox sends it."""
+    import json as _json
+    import urllib.request as _urllib
+
+    calls: list[tuple[str, dict]] = []
+    sent: list[_urllib.Request] = []
+
+    def _fake_urlopen(req, timeout=None):
+        sent.append(req)
+
+        class _Resp:
+            def __enter__(self):
+                return self
+
+            def __exit__(self, *exc):
+                return False
+
+            def read(self):
+                return _json.dumps({"ok": True, "id": "job-1"}).encode()
+
+        return _Resp()
+
+    monkeypatch.setattr(_urllib, "urlopen", _fake_urlopen)
+
+    class _C(Client):
+        def _request(self, method, path, *, query=None, body=None, extra_headers=None):
+            calls.append((method, path, query))
+            return {
+                "api_name": "turtle",
+                "base_url": "http://backend:8200",
+                "auth_kind": "bearer",
+                "secret": "s3cret",
+                "allowed_paths": ["/api/jobs"],
+                "timeout_seconds": 5,
+            }
+
+    c = _C("http://example.test", "tok")
+    out = c.external("turtle").post("/api/jobs", {"type": "simulation"})
+    assert out == {"ok": True, "id": "job-1"}
+    assert len(calls) == 1 and "/external-services/by-api-name/turtle/resolve" in calls[0][1]
+    assert sent[0].full_url == "http://backend:8200/api/jobs"
+    assert sent[0].get_header("Authorization") == "Bearer s3cret"
+    # Second use reuses the resolution.
+    c.external("turtle").post("/api/jobs", {})
+    assert len(calls) == 1
+
+
+def test_external_service_refuses_a_path_outside_the_allowlist():
+    from openkms_functions.errors import OntologyApiError
+    from openkms_functions.external import ExternalService
+
+    svc = ExternalService(
+        None,
+        {
+            "api_name": "turtle",
+            "base_url": "http://backend:8200",
+            "allowed_paths": ["/api/jobs"],
+        },
+    )
+    try:
+        svc.post("/api/portfolios", {})
+    except OntologyApiError as e:
+        assert "not in the allowed prefixes" in str(e)
+    else:
+        raise AssertionError("expected the allowlist to refuse a foreign path")
+
+
+def test_external_service_refuses_an_absolute_url():
+    from openkms_functions.errors import OntologyApiError
+    from openkms_functions.external import ExternalService
+
+    svc = ExternalService(
+        None,
+        {"api_name": "turtle", "base_url": "http://backend:8200", "allowed_paths": ["/api/"]},
+    )
+    try:
+        svc.get("http://evil.test/api/x")
+    except OntologyApiError as e:
+        assert "must start with '/'" in str(e)
+    else:
+        raise AssertionError("expected an absolute URL to be refused")

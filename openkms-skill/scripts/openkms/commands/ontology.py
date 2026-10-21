@@ -117,6 +117,7 @@ def add_subparser(sub) -> None:
 
     from . import (
         action_types as _action_types,
+        external_services as _external_services,
         functions as _functions,
         groups as _groups,
         links as _links,
@@ -127,4 +128,5 @@ def add_subparser(sub) -> None:
     _links.add_subparser(sp)
     _functions.add_subparser(sp)
     _action_types.add_subparser(sp)
+    _external_services.add_subparser(sp)
     _groups.add_subparser(sp)

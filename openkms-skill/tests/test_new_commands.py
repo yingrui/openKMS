@@ -497,3 +497,41 @@ def test_audit_list_narrows_by_what_changed(mock_api):
     assert params["offset"] == "40"
     assert params["days"] == "7"
     assert "path" not in params
+
+
+def test_external_services_list_returns_services(mock_api):
+    recorded, responses = mock_api
+    responses[("GET", "/api/ontology/external-services")] = (
+        200,
+        [{"id": "es1", "api_name": "turtle", "has_secret": True, "allowed_paths": ["/api/jobs"]}],
+    )
+    from openkms.commands.external_services import cmd_list
+
+    cmd_list(argparse.Namespace())
+    assert recorded[-1].url.path == "/api/ontology/external-services"
+
+
+def test_external_services_create_sends_allowlist_and_write_gate(mock_api):
+    recorded, responses = mock_api
+    responses[("POST", "/api/ontology/external-services")] = (201, {"id": "es1", "api_name": "turtle"})
+    from openkms.commands.external_services import cmd_create
+
+    cmd_create(
+        argparse.Namespace(
+            api_name="turtle",
+            display_name="Turtle",
+            base_url="http://backend:8200",
+            auth_kind="hmac",
+            auth_header_name="X-OpenKMS-Signature",
+            secret="s3cret",
+            allowed_paths=["/api/jobs", "/api/webhooks/openkms/"],
+            timeout_seconds=30,
+            description="",
+            yes=True,
+            dry_run=False,
+        )
+    )
+    body = json.loads(recorded[-1].content)
+    assert body["allowed_paths"] == ["/api/jobs", "/api/webhooks/openkms/"]
+    assert body["auth_kind"] == "hmac"
+    assert body["secret"] == "s3cret"

@@ -35,6 +35,33 @@ def execute(input: dict, client: Client) -> dict:
 
 Backend logic: `function_service.py`, `execution_service.py`, `ontology_io_schema.py`.
 
+## External services (calling another system)
+
+A Function's only vocabulary was the openKMS API, so anything that needed another system had to be wired
+outside the ontology. **Function Editor → External services** registers the endpoint and gives the author a
+name:
+
+```python
+@function()
+def execute(input: dict, client) -> dict:
+    job = client.external("turtle").post("/api/jobs", {"type": "simulation", "portfolio": input["portfolio"]})
+    return {"job_id": job.get("id")}
+```
+
+| Field | Meaning |
+|-------|---------|
+| `api_name` | what the source writes (`client.external("turtle")`); fixed at creation |
+| `base_url` | origin only (`http://backend:8200`) — the Function supplies the path |
+| `auth_kind` | `none` · `bearer` · `header` (named header) · `hmac` (SHA-256 signature of the body, header `X-OpenKMS-Signature` by default) |
+| `allowed_paths` | prefixes this service may be called on; anything else is refused **before** the request leaves |
+| `timeout_seconds` | 1–60 |
+
+The secret is stored encrypted, never returned by the list API, and resolved at execution time by the
+function runtime (`POST …/by-api-name/{name}/resolve`, audited like any other write-shaped call), so it is
+not part of the Function source. Note what this design does **not** claim: the sandbox makes the request,
+so the allowlist is enforced by the client and by the receiver — not by a network boundary. A deployment
+that needs that boundary puts the function runner on a restricted network.
+
 ## API
 
 | Method | Path | Description |
@@ -49,6 +76,7 @@ Backend logic: `function_service.py`, `execution_service.py`, `ontology_io_schem
 | POST | `/api/ontology/functions/by-api-name/{apiName}/execute` | Run published by api name |
 | GET | `/api/ontology/functions/{id}/executions` | Observability |
 
+External services: `/api/ontology/external-services` (CRUD + `POST …/by-api-name/{api_name}/resolve`).
 Groups: `/api/ontology/groups` (related resources: `GET /api/ontology/groups/{id}/related`). Action types: `/api/ontology/action-types` (honor optional pinned `function_version`). **Built-in** rules `object_create` / `object_modify` / `object_delete` apply edits directly (no Function). **Function** rule type runs the bound Function, audits, and **applies `output.edits` `create` / `modify` / `delete` ops** onto resolvable object instances (`applied.created_ids` / `modified_ids` / `deleted_ids`). Dataset/Neo4j synthetic `object_id` remains deferred ([alignment](../research/ontology_manager_alignment.md#product-decision-action-write-back-b1)). Object list supports `prop.<name>=` equality; link list supports `source_object_id`. Domain object types and Function source remain tenant content, not platform seeds.
 
 ## Runtime

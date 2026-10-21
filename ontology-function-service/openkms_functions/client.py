@@ -9,6 +9,7 @@ import urllib.parse
 import urllib.request
 
 from openkms_functions.errors import OntologyApiError
+from openkms_functions.external import ExternalService
 
 CALL_DEPTH_HEADER = "X-OpenKMS-Function-Call-Depth"
 CALL_STACK_HEADER = "X-OpenKMS-Function-Call-Stack"
@@ -30,10 +31,32 @@ class Client:
         self._token = token
         self._call_depth = call_depth
         self._call_stack = list(call_stack or [])
+        self._externals: dict[str, ExternalService] = {}
 
     def __call__(self, entity: object) -> "ClientBound":
         """Palantir-style binding: client(Entity).method(...)."""
         return ClientBound(self, entity)
+
+    def external(self, api_name: str) -> ExternalService:
+        """A registered external service, e.g. `client.external("turtle").post(...)`.
+
+        Resolved once per run (the registry holds the URL, credential and allowed path prefixes);
+        the Function source never sees the secret. An unknown name raises at first use.
+        """
+        service = self._externals.get(api_name)
+        if service is None:
+            service = ExternalService(self, self.resolve_external_service(api_name))
+            self._externals[api_name] = service
+        return service
+
+    def resolve_external_service(self, api_name: str) -> dict:
+        data = self._request(
+            "POST",
+            f"/api/ontology/external-services/by-api-name/{urllib.parse.quote(api_name, safe='')}/resolve",
+        )
+        if not isinstance(data, dict):
+            raise OntologyApiError(f"Invalid external service resolution for {api_name!r}")
+        return data
 
     def _request(
         self,

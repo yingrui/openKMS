@@ -42,6 +42,19 @@ print(client("helloGreeting").execute_function({"name": "openKMS"}))
 
 Use a personal API key (`Authorization: Bearer`). The Client talks to existing REST endpoints (`/api/object-types/…`, `/api/ontology/functions/by-api-name/…/execute`).
 
+## External services
+
+```python
+@function()
+def execute(input: dict, client) -> dict:
+    return client.external("turtle").post("/api/jobs", {"type": "simulation", "portfolio": input.get("portfolio")})
+```
+
+`client.external(name)` resolves a service registered in **Function Editor → External services** (base URL,
+credential, allowed path prefixes, timeout) and returns a small HTTP client: `get/post/put/patch/delete`.
+Absolute URLs are refused and the path must match a registered prefix — the registry decides where a
+Function may reach. The credential never appears in the source.
+
 ## Edits (foundation)
 
 ```python

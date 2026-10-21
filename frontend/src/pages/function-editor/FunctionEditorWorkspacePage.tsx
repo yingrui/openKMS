@@ -1,12 +1,15 @@
+import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowLeft, Loader2, Play, Save, Trash2 } from 'lucide-react';
+import { ArrowLeft, Loader2, Plug, Play, Save, Trash2 } from 'lucide-react';
 import { AvailableQueriesPanel } from './AvailableQueriesPanel';
 import { FunctionCodeEditor } from './FunctionCodeEditor';
 import { FunctionPreviewPanel } from './FunctionPreviewPanel';
+import { ExternalServicesDialog } from './ExternalServicesDialog';
 import { useFunctionEditorWorkspace } from './useFunctionEditorWorkspace';
 import './function-editor.scss';
 
 export function FunctionEditorWorkspacePage() {
+  const [externalOpen, setExternalOpen] = useState(false);
   const {
     t,
     isNew,
@@ -58,6 +61,15 @@ export function FunctionEditorWorkspacePage() {
           {!isNew && apiName && <span className="function-editor-workspace__api">{apiName}</span>}
         </div>
         <div className="function-editor-workspace__actions">
+          <button
+            type="button"
+            className="btn btn-secondary btn-sm"
+            onClick={() => setExternalOpen(true)}
+            title={t('editor.external.title')}
+          >
+            <Plug size={16} aria-hidden />
+            {t('editor.external.button')}
+          </button>
           {!isNew && (
             <button type="button" className="btn btn-secondary btn-sm" onClick={() => void onDelete()}>
               <Trash2 size={16} aria-hidden />
@@ -82,6 +94,8 @@ export function FunctionEditorWorkspacePage() {
           </button>
         </div>
       </header>
+
+      <ExternalServicesDialog open={externalOpen} onClose={() => setExternalOpen(false)} />
 
       <div className="function-editor-workspace__meta">
         {isNew ? (

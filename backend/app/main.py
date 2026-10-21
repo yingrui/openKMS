@@ -41,6 +41,7 @@ from app.api.glossaries import router as glossaries_router
 from app.api.object_types import router as object_types_router
 from app.api.link_types import router as link_types_router
 from app.api.ontology_explore import router as ontology_explore_router
+from app.api.ontology_external_services import router as ontology_external_services_router
 from app.api.ontology_functions import router as ontology_functions_router
 from app.api.ontology_groups import router as ontology_groups_router
 from app.api.ontology_action_types import router as ontology_action_types_router
@@ -222,6 +223,7 @@ app.include_router(object_types_router, prefix="/api")
 app.include_router(link_types_router, prefix="/api")
 app.include_router(ontology_explore_router, prefix="/api")
 app.include_router(ontology_functions_router, prefix="/api")
+app.include_router(ontology_external_services_router, prefix="/api")
 app.include_router(ontology_groups_router, prefix="/api")
 app.include_router(ontology_action_types_router, prefix="/api")
 app.include_router(app_builder_router, prefix="/api")
