@@ -50,10 +50,14 @@ def execute(input: dict, client) -> dict:
     return client.external("turtle").post("/api/jobs", {"type": "simulation", "portfolio": input.get("portfolio")})
 ```
 
-`client.external(name)` resolves a service registered in **Function Editor → External services** (base URL,
-credential, allowed path prefixes, timeout) and returns a small HTTP client: `get/post/put/patch/delete`.
-Absolute URLs are refused and the path must match a registered prefix — the registry decides where a
-Function may reach. The credential never appears in the source.
+`client.external(name)` resolves a service registered in **Function Editor → External services** and returns a
+small HTTP client: `get/post/put/patch/delete`. Absolute URLs are refused and the path must match a
+registered prefix — the registry decides where a Function may reach. The credential never appears in the
+source.
+
+A service is either an `http` URL (the sandbox calls it) or a Kubernetes Service (`k8s_service`: the backend
+relays the call through the cluster, since the sandbox cannot resolve cluster DNS). **The call site does
+not change** — switching transport is a registry edit, not a code edit.
 
 ## Edits (foundation)
 

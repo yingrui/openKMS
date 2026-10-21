@@ -1041,7 +1041,19 @@
       "created": "外部接口已注册",
       "saved": "外部接口已更新",
       "deleted": "外部接口已删除",
-      "authHmac": "HMAC 签名（放在请求头里）"
+      "authHmac": "HMAC 签名（放在请求头里）",
+      "kind": "服务位置",
+      "kindHint": "HTTP 地址由函数沙箱直接调用；集群里的 Service 由 openKMS 通过该集群调用，因为沙箱解析不到集群 DNS。",
+      "kindHttp": "HTTP 地址",
+      "kindK8s": "Kubernetes Service",
+      "cluster": "集群",
+      "clusterNone": "请选择…",
+      "namespace": "命名空间",
+      "serviceName": "Service",
+      "port": "端口",
+      "basePath": "基础路径",
+      "basePathHint": "服务挂载的固定前缀，例如 /app。根路径直接提供 /api/... 时留空。",
+      "target": "目标"
     }
   },
   "dataSources": {

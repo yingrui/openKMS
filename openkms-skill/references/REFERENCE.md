@@ -191,7 +191,8 @@ All write subcommands accept `--yes` / `--dry-run`. Without `--yes` on non-TTY s
 | `ontology functions executions` | GET | `/api/ontology/functions/{id}/executions` | |
 | `ontology functions delete` *(write)* | DELETE | `/api/ontology/functions/{id}` |
 | `ontology external-services list` | GET | `/api/ontology/external-services` | Services a Function can call with `client.external("name")`. Secrets are never returned (`has_secret` only). |
-| `ontology external-services create` | POST | `/api/ontology/external-services` | `{api_name, display_name, base_url, auth_kind: none\|bearer\|header\|hmac, auth_header_name?, secret?, allowed_paths[], timeout_seconds?}` |
+| `ontology external-services create` | POST | `/api/ontology/external-services` | `{api_name, display_name, kind: http\|k8s_service, base_url? (http), cluster_id?/namespace?/service?/port?/base_path? (k8s_service), auth_kind: none\|bearer\|header\|hmac, auth_header_name?, secret?, allowed_paths[], timeout_seconds?}`. `k8s_service` is called by the backend through the cluster — use it when the target is a cluster Service. |
+| `ontology external-services clusters` | GET | `/api/ontology/external-services/k8s-clusters` | Cluster ids usable by a `k8s_service` entry |
 | `ontology external-services resolve` | POST | `/api/ontology/external-services/by-api-name/{api_name}/resolve` | Runtime use only — the Function client calls it. |
 | `ontology action-types list` | GET | `/api/ontology/action-types` | All statuses (including archived). |
 | `ontology action-types get` | GET | `/api/ontology/action-types/{id}` | |

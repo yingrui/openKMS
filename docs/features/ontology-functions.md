@@ -51,16 +51,29 @@ def execute(input: dict, client) -> dict:
 | Field | Meaning |
 |-------|---------|
 | `api_name` | what the source writes (`client.external("turtle")`); fixed at creation |
-| `base_url` | origin only (`http://backend:8200`) — the Function supplies the path |
+| `kind` | `http` — the sandbox calls the URL itself. `k8s_service` — the **backend** calls the Service through that cluster's kubeconfig, because the Service's DNS only resolves inside the cluster |
+| `base_url` | `http` only: origin (`http://backend:8200`) — the Function supplies the path |
+| `cluster_id` / `namespace` / `service` / `port` / `base_path` | `k8s_service` only: the coordinates (and an optional mount prefix) the backend dials |
 | `auth_kind` | `none` · `bearer` · `header` (named header) · `hmac` (SHA-256 signature of the body, header `X-OpenKMS-Signature` by default) |
 | `allowed_paths` | prefixes this service may be called on; anything else is refused **before** the request leaves |
 | `timeout_seconds` | 1–60 |
 
 The secret is stored encrypted, never returned by the list API, and resolved at execution time by the
 function runtime (`POST …/by-api-name/{name}/resolve`, audited like any other write-shaped call), so it is
-not part of the Function source. Note what this design does **not** claim: the sandbox makes the request,
-so the allowlist is enforced by the client and by the receiver — not by a network boundary. A deployment
-that needs that boundary puts the function runner on a restricted network.
+not part of the Function source.
+
+Who sends the request depends on the kind, and that is the whole reason there are two:
+
+| | `http` | `k8s_service` |
+|---|---|---|
+| Request leaves from | the function sandbox | the openKMS backend |
+| Credential | resolved into the sandbox | never leaves the backend |
+| Allowlist enforced by | the client, and the receiver | the backend (re-checked; the caller's copy is not trusted) |
+| Works when | the sandbox can route to the origin | the Service is only reachable inside its cluster |
+
+Neither kind gives a hard network boundary: for `http` the sandbox makes the call, so the allowlist is a
+rule the client keeps. A deployment that needs the boundary itself puts the function runner on a
+restricted network — and then `k8s_service` (relayed by the backend) is the kind that still works.
 
 ## API
 

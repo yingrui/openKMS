@@ -184,3 +184,81 @@ def test_external_service_refuses_an_absolute_url():
         assert "must start with '/'" in str(e)
     else:
         raise AssertionError("expected an absolute URL to be refused")
+
+
+def test_a_k8s_service_is_relayed_through_the_backend(monkeypatch):
+    """The sandbox cannot resolve a cluster Service, so the backend makes that call."""
+    calls: list[tuple[str, str, dict]] = []
+    bodies: list[dict] = []
+
+    class _C(Client):
+        def _request(self, method, path, *, query=None, body=None, extra_headers=None):
+            calls.append((method, path, body))
+            if path.endswith("/resolve"):
+                return {
+                    "api_name": "turtle",
+                    "kind": "k8s_service",
+                    "transport": "backend",
+                    "auth_kind": "hmac",
+                    "secret": None,
+                    "allowed_paths": ["/api/jobs"],
+                    "timeout_seconds": 10,
+                }
+            bodies.append(body or {})
+            return {"status": 201, "body": {"id": "job-7"}}
+
+    c = _C("http://example.test", "tok")
+    out = c.external("turtle").post("/api/jobs", {"type": "simulation"})
+    assert out == {"id": "job-7"}
+    assert calls[-1][1].endswith("/by-api-name/turtle/call")
+    assert bodies[-1] == {
+        "method": "POST",
+        "path": "/api/jobs",
+        "query": None,
+        "body": {"type": "simulation"},
+    }
+
+
+def test_a_relayed_error_becomes_an_ontology_error():
+    from openkms_functions.errors import OntologyApiError
+
+    class _C(Client):
+        def _request(self, method, path, *, query=None, body=None, extra_headers=None):
+            if path.endswith("/resolve"):
+                return {
+                    "api_name": "turtle",
+                    "kind": "k8s_service",
+                    "transport": "backend",
+                    "allowed_paths": ["/api/jobs"],
+                }
+            return {"status": 500, "body": {"detail": "boom"}}
+
+    c = _C("http://example.test", "tok")
+    try:
+        c.external("turtle").post("/api/jobs", {})
+    except OntologyApiError as e:
+        assert e.status_code == 500
+        assert "boom" in str(e)
+    else:
+        raise AssertionError("expected the relayed failure to raise")
+
+
+def test_the_allowlist_also_guards_relayed_calls():
+    from openkms_functions.errors import OntologyApiError
+    from openkms_functions.external import ExternalService
+
+    svc = ExternalService(
+        None,
+        {
+            "api_name": "turtle",
+            "kind": "k8s_service",
+            "transport": "backend",
+            "allowed_paths": ["/api/jobs"],
+        },
+    )
+    try:
+        svc.get("/api/portfolios")
+    except OntologyApiError as e:
+        assert "not in the allowed prefixes" in str(e)
+    else:
+        raise AssertionError("expected the allowlist to refuse a foreign path")

@@ -27,6 +27,9 @@ class ExternalService:
     def __init__(self, client: "ExternalClientProtocol", resolution: dict):
         self._client = client
         self.api_name = str(resolution.get("api_name") or "")
+        self.kind = str(resolution.get("kind") or "http")
+        #: `backend` for a cluster Service (the sandbox cannot resolve its DNS); `direct` otherwise.
+        self.transport = str(resolution.get("transport") or "direct")
         self.base_url = str(resolution.get("base_url") or "").rstrip("/")
         self.auth_kind = str(resolution.get("auth_kind") or "none")
         self.auth_header_name = resolution.get("auth_header_name")
@@ -57,6 +60,9 @@ class ExternalService:
         query: dict | None = None,
         body: object | None = None,
     ) -> object:
+        self._check_path(path)
+        if self.transport == "backend":
+            return self._relay(method, path, query=query, body=body)
         url = self._url_for(path, query)
         data = json.dumps(body).encode("utf-8") if body is not None else None
         req = urllib.request.Request(url, data=data, method=method.upper())
@@ -86,8 +92,8 @@ class ExternalService:
         except urllib.error.URLError as e:
             raise OntologyApiError(f"{self.api_name} {method.upper()} {path} unreachable: {e.reason}") from e
 
-    def _url_for(self, path: str, query: dict | None) -> str:
-        """Absolute URLs are refused: a registered service is only reachable through its own base."""
+    def _check_path(self, path: str) -> str:
+        """Absolute URLs are refused and the path must match a registered prefix."""
         cleaned = (path or "").strip()
         if "://" in cleaned or not cleaned.startswith("/"):
             raise OntologyApiError(
@@ -98,6 +104,40 @@ class ExternalService:
             raise OntologyApiError(
                 f"external({self.api_name!r}): path {cleaned!r} is not in the allowed prefixes "
                 f"{self.allowed_paths}"
+            )
+        return cleaned
+
+    def _relay(
+        self, method: str, path: str, *, query: dict | None, body: object | None
+    ) -> object:
+        """Ask the openKMS backend to make the call (cluster Service: no route from the sandbox)."""
+        payload = self._client._request(  # noqa: SLF001 - the registry client is the only caller
+            "POST",
+            f"/api/ontology/external-services/by-api-name/"
+            f"{urllib.parse.quote(self.api_name, safe='')}/call",
+            body={
+                "method": method.upper(),
+                "path": self._check_path(path),
+                "query": query,
+                "body": body,
+            },
+        )
+        if not isinstance(payload, dict):
+            raise OntologyApiError(f"{self.api_name}: invalid relay response")
+        status = int(payload.get("status") or 0)
+        if status >= 400:
+            raise OntologyApiError(
+                f"{self.api_name} {method.upper()} {path} failed: {payload.get('body')}",
+                status_code=status,
+            )
+        return payload.get("body")
+
+    def _url_for(self, path: str, query: dict | None) -> str:
+        cleaned = self._check_path(path)
+        if not self.base_url:
+            raise OntologyApiError(
+                f"external({self.api_name!r}): no base_url — a cluster service is called through "
+                "the backend"
             )
         url = f"{self.base_url}{cleaned}"
         if query:

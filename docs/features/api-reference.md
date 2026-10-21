@@ -304,10 +304,12 @@ The bundled **openkms-skill** CLI wraps **lifecycle** and **relationships** the 
 | PATCH | `/api/ontology/action-types/{id}` | Update Action; switching `rule_type` to built-in clears `function_id` when omitted |
 | DELETE | `/api/ontology/action-types/{id}` | Delete Action (frees `api_name`; archive alone does not) |
 | GET | `/api/ontology/external-services` | External HTTP services a Function may call (`client.external("name")`). Secrets are never returned — only `has_secret` (`ontology:read`) |
-| POST | `/api/ontology/external-services` | Register one (`ontology:write`): `{api_name, display_name, base_url, auth_kind: none\|bearer\|header\|hmac, auth_header_name?, secret?, allowed_paths[], timeout_seconds?}` |
+| POST | `/api/ontology/external-services` | Register one (`ontology:write`): `{api_name, display_name, kind: http\|k8s_service, base_url? (http), cluster_id?/namespace?/service?/port?/base_path? (k8s_service), auth_kind: none\|bearer\|header\|hmac, auth_header_name?, secret?, allowed_paths[], timeout_seconds?}` |
 | PATCH | `/api/ontology/external-services/{id}` | Update; omit `secret` to keep it, send `""` to clear |
 | DELETE | `/api/ontology/external-services/{id}` | Remove |
-| POST | `/api/ontology/external-services/by-api-name/{api_name}/resolve` | Runtime-only: base URL + decrypted secret + allowed paths for the function runner (caller token required; recorded by the audit middleware) |
+| GET | `/api/ontology/external-services/k8s-clusters` | Clusters a `k8s_service` entry can point at (`ontology:read`) |
+| POST | `/api/ontology/external-services/by-api-name/{api_name}/resolve` | Runtime-only: `kind` + `transport` (`direct`/`backend`), URL + decrypted secret for `http`, allowed paths (caller token required; recorded by the audit middleware) |
+| POST | `/api/ontology/external-services/by-api-name/{api_name}/call` | Relays a `k8s_service` call through the cluster's kubeconfig: `{method, path, query?, body?}` → `{status, body}`. Allowlist re-checked server-side; credential applied here; **502** when the cluster call fails |
 | GET | `/api/app-builder/apps` | List **module** apps (`?status=`); `ontology:read` |
 | POST | `/api/app-builder/apps` | Create module app (`bindings.k8s` required; publishes immediately; needs `console:kubernetes` + `ontology:write`) |
 | GET | `/api/app-builder/apps/{id}` | Published run document only (404 if draft) |

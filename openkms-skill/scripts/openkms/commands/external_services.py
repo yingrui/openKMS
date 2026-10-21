@@ -32,10 +32,20 @@ def cmd_create(ns: argparse.Namespace) -> None:
     body: dict[str, Any] = {
         "api_name": ns.api_name,
         "display_name": ns.display_name,
-        "base_url": ns.base_url,
+        "kind": ns.kind,
         "auth_kind": ns.auth_kind,
         "allowed_paths": ns.allowed_paths,
     }
+    if ns.base_url:
+        body["base_url"] = ns.base_url
+    for key in ("cluster_id", "namespace", "service"):
+        value = getattr(ns, key, "")
+        if value:
+            body[key] = value
+    if ns.port:
+        body["port"] = ns.port
+    if ns.base_path:
+        body["base_path"] = ns.base_path
     if ns.description:
         body["description"] = ns.description
     if ns.auth_header_name:
@@ -61,7 +71,20 @@ def cmd_create(ns: argparse.Namespace) -> None:
 
 def cmd_update(ns: argparse.Namespace) -> None:
     body: dict[str, Any] = {}
-    for key in ("display_name", "base_url", "auth_kind", "auth_header_name", "secret", "timeout_seconds"):
+    for key in (
+        "display_name",
+        "base_url",
+        "kind",
+        "cluster_id",
+        "namespace",
+        "service",
+        "port",
+        "base_path",
+        "auth_kind",
+        "auth_header_name",
+        "secret",
+        "timeout_seconds",
+    ):
         value = getattr(ns, key, None)
         if value is not None:
             body[key] = value
@@ -112,7 +135,13 @@ def add_subparser(sub) -> None:
     cr = sp.add_parser("create", help="Register a service")
     cr.add_argument("--api-name", required=True, help='name the Function uses: client.external("NAME")')
     cr.add_argument("--display-name", required=True)
-    cr.add_argument("--base-url", required=True, help="origin only, e.g. http://backend:8200")
+    cr.add_argument("--kind", default="http", choices=("http", "k8s_service"))
+    cr.add_argument("--base-url", default="", help="http only: origin, e.g. http://backend:8200")
+    cr.add_argument("--cluster-id", default="", help="k8s_service only")
+    cr.add_argument("--namespace", default="", help="k8s_service only")
+    cr.add_argument("--service", default="", help="k8s_service only")
+    cr.add_argument("--port", type=int, default=0, help="k8s_service only")
+    cr.add_argument("--base-path", default="", help="fixed mount prefix, e.g. /app")
     cr.add_argument(
         "--auth-kind", default="none", choices=("none", "bearer", "header", "hmac")
     )
@@ -133,6 +162,12 @@ def add_subparser(sub) -> None:
     up.add_argument("--id", required=True)
     up.add_argument("--display-name", default=None)
     up.add_argument("--base-url", default=None)
+    up.add_argument("--kind", default=None, choices=("http", "k8s_service"))
+    up.add_argument("--cluster-id", default=None)
+    up.add_argument("--namespace", default=None)
+    up.add_argument("--service", default=None)
+    up.add_argument("--port", type=int, default=None)
+    up.add_argument("--base-path", default=None)
     up.add_argument("--auth-kind", default=None, choices=("none", "bearer", "header", "hmac"))
     up.add_argument("--auth-header-name", default=None)
     up.add_argument("--secret", default=None)

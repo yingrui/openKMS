@@ -6,9 +6,11 @@ import { Dialog, FormField } from '../../styles/design-system';
 import {
   createExternalService,
   deleteExternalService,
+  fetchClusterOptions,
   fetchExternalServices,
   updateExternalService,
   type ExternalServiceResponse,
+  type K8sClusterOption,
 } from '../../data/externalServicesApi';
 import './external-services.scss';
 
@@ -16,7 +18,13 @@ type Draft = {
   api_name: string;
   display_name: string;
   description: string;
+  kind: ExternalServiceResponse['kind'];
   base_url: string;
+  cluster_id: string;
+  namespace: string;
+  service: string;
+  port: string;
+  base_path: string;
   auth_kind: ExternalServiceResponse['auth_kind'];
   auth_header_name: string;
   secret: string;
@@ -28,7 +36,13 @@ const EMPTY: Draft = {
   api_name: '',
   display_name: '',
   description: '',
+  kind: 'http',
   base_url: '',
+  cluster_id: '',
+  namespace: '',
+  service: '',
+  port: '',
+  base_path: '',
   auth_kind: 'none',
   auth_header_name: '',
   secret: '',
@@ -41,7 +55,13 @@ function toDraft(service: ExternalServiceResponse): Draft {
     api_name: service.api_name,
     display_name: service.display_name,
     description: service.description || '',
-    base_url: service.base_url,
+    kind: service.kind,
+    base_url: service.base_url || '',
+    cluster_id: service.cluster_id || '',
+    namespace: service.namespace || '',
+    service: service.service || '',
+    port: service.port ? String(service.port) : '',
+    base_path: service.base_path || '',
     auth_kind: service.auth_kind,
     auth_header_name: service.auth_header_name || '',
     // Never prefilled: the stored secret is not returned. Empty = keep it.
@@ -68,6 +88,7 @@ function pathsFrom(text: string): string[] {
 export function ExternalServicesDialog({ open, onClose }: { open: boolean; onClose: () => void }) {
   const { t } = useTranslation('ontology');
   const [services, setServices] = useState<ExternalServiceResponse[]>([]);
+  const [clusters, setClusters] = useState<K8sClusterOption[]>([]);
   const [loading, setLoading] = useState(false);
   const [editing, setEditing] = useState<ExternalServiceResponse | null>(null);
   const [draft, setDraft] = useState<Draft>(EMPTY);
@@ -77,7 +98,12 @@ export function ExternalServicesDialog({ open, onClose }: { open: boolean; onClo
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      setServices(await fetchExternalServices());
+      const [rows, clusterRows] = await Promise.all([
+        fetchExternalServices(),
+        fetchClusterOptions(),
+      ]);
+      setServices(rows);
+      setClusters(clusterRows);
     } catch (e: unknown) {
       toast.error(e instanceof Error ? e.message : t('editor.external.loadFailed'));
     } finally {
@@ -104,9 +130,16 @@ export function ExternalServicesDialog({ open, onClose }: { open: boolean; onClo
     setShowForm(true);
   };
 
+  const targetReady =
+    draft.kind === 'http'
+      ? draft.base_url.trim().length > 0
+      : draft.cluster_id.trim().length > 0 &&
+        draft.namespace.trim().length > 0 &&
+        draft.service.trim().length > 0 &&
+        Number(draft.port) > 0;
   const canSave =
     draft.display_name.trim() &&
-    draft.base_url.trim() &&
+    targetReady &&
     pathsFrom(draft.allowed_paths).length > 0 &&
     (editing || /^[a-zA-Z][a-zA-Z0-9_]*$/.test(draft.api_name.trim())) &&
     (editing?.has_secret || draft.auth_kind === 'none' || draft.secret.trim() || editing);
@@ -120,7 +153,13 @@ export function ExternalServicesDialog({ open, onClose }: { open: boolean; onClo
         await updateExternalService(editing.id, {
           display_name: draft.display_name.trim(),
           description: draft.description.trim(),
-          base_url: draft.base_url.trim(),
+          kind: draft.kind,
+          base_url: draft.kind === 'http' ? draft.base_url.trim() : undefined,
+          cluster_id: draft.kind === 'k8s_service' ? draft.cluster_id : undefined,
+          namespace: draft.kind === 'k8s_service' ? draft.namespace.trim() : undefined,
+          service: draft.kind === 'k8s_service' ? draft.service.trim() : undefined,
+          port: draft.kind === 'k8s_service' ? Number(draft.port) : undefined,
+          base_path: draft.base_path.trim(),
           auth_kind: draft.auth_kind,
           auth_header_name:
             draft.auth_kind === 'header' || draft.auth_kind === 'hmac'
@@ -137,7 +176,13 @@ export function ExternalServicesDialog({ open, onClose }: { open: boolean; onClo
           api_name: draft.api_name.trim(),
           display_name: draft.display_name.trim(),
           description: draft.description.trim() || undefined,
-          base_url: draft.base_url.trim(),
+          kind: draft.kind,
+          base_url: draft.kind === 'http' ? draft.base_url.trim() : undefined,
+          cluster_id: draft.kind === 'k8s_service' ? draft.cluster_id : undefined,
+          namespace: draft.kind === 'k8s_service' ? draft.namespace.trim() : undefined,
+          service: draft.kind === 'k8s_service' ? draft.service.trim() : undefined,
+          port: draft.kind === 'k8s_service' ? Number(draft.port) : undefined,
+          base_path: draft.base_path.trim(),
           auth_kind: draft.auth_kind,
           auth_header_name:
             draft.auth_kind === 'header' || draft.auth_kind === 'hmac'
@@ -221,12 +266,85 @@ export function ExternalServicesDialog({ open, onClose }: { open: boolean; onClo
               onChange={(e) => setDraft({ ...draft, display_name: e.target.value })}
             />
           </FormField>
-          <FormField label={t('editor.external.baseUrl')}>
+          <FormField label={t('editor.external.kind')} hint={t('editor.external.kindHint')}>
+            <select
+              className="console-form-control"
+              value={draft.kind}
+              onChange={(e) =>
+                setDraft({ ...draft, kind: e.target.value as Draft['kind'] })
+              }
+            >
+              <option value="http">{t('editor.external.kindHttp')}</option>
+              <option value="k8s_service">{t('editor.external.kindK8s')}</option>
+            </select>
+          </FormField>
+          {draft.kind === 'http' ? (
+            <FormField label={t('editor.external.baseUrl')}>
+              <input
+                className="console-form-control"
+                value={draft.base_url}
+                onChange={(e) => setDraft({ ...draft, base_url: e.target.value })}
+                placeholder="http://backend:8200"
+              />
+            </FormField>
+          ) : (
+            <>
+              <FormField label={t('editor.external.cluster')}>
+                <select
+                  className="console-form-control"
+                  value={draft.cluster_id}
+                  onChange={(e) => {
+                    const cluster = clusters.find((c) => c.id === e.target.value);
+                    setDraft({
+                      ...draft,
+                      cluster_id: e.target.value,
+                      namespace: draft.namespace || cluster?.default_namespace || '',
+                    });
+                  }}
+                >
+                  <option value="">{t('editor.external.clusterNone')}</option>
+                  {clusters.map((cluster) => (
+                    <option key={cluster.id} value={cluster.id}>
+                      {cluster.name}
+                    </option>
+                  ))}
+                </select>
+              </FormField>
+              <FormField label={t('editor.external.namespace')}>
+                <input
+                  className="console-form-control"
+                  value={draft.namespace}
+                  onChange={(e) => setDraft({ ...draft, namespace: e.target.value })}
+                  placeholder="stock"
+                />
+              </FormField>
+              <FormField label={t('editor.external.serviceName')}>
+                <input
+                  className="console-form-control"
+                  value={draft.service}
+                  onChange={(e) => setDraft({ ...draft, service: e.target.value })}
+                  placeholder="backend"
+                />
+              </FormField>
+              <FormField label={t('editor.external.port')}>
+                <input
+                  className="console-form-control"
+                  type="number"
+                  min={1}
+                  max={65535}
+                  value={draft.port}
+                  onChange={(e) => setDraft({ ...draft, port: e.target.value })}
+                  placeholder="8200"
+                />
+              </FormField>
+            </>
+          )}
+          <FormField label={t('editor.external.basePath')} hint={t('editor.external.basePathHint')}>
             <input
               className="console-form-control"
-              value={draft.base_url}
-              onChange={(e) => setDraft({ ...draft, base_url: e.target.value })}
-              placeholder="http://backend:8200"
+              value={draft.base_path}
+              onChange={(e) => setDraft({ ...draft, base_path: e.target.value })}
+              placeholder="/"
             />
           </FormField>
           <FormField label={t('editor.external.auth')}>
@@ -301,7 +419,7 @@ export function ExternalServicesDialog({ open, onClose }: { open: boolean; onClo
             <thead>
               <tr>
                 <th>{t('editor.external.apiName')}</th>
-                <th>{t('editor.external.baseUrl')}</th>
+                <th>{t('editor.external.target')}</th>
                 <th>{t('editor.external.auth')}</th>
                 <th>{t('editor.external.allowedPaths')}</th>
                 <th className="console-table-actions">{t('shared.actions')}</th>
@@ -315,7 +433,16 @@ export function ExternalServicesDialog({ open, onClose }: { open: boolean; onClo
                     <div className="external-services__name">{service.display_name}</div>
                   </td>
                   <td>
-                    <code>{service.base_url}</code>
+                    {service.kind === 'k8s_service' ? (
+                      <code>
+                        {service.cluster_id
+                          ? clusters.find((c) => c.id === service.cluster_id)?.name || 'k8s'
+                          : 'k8s'}
+                        :{service.namespace}/{service.service}:{service.port}
+                      </code>
+                    ) : (
+                      <code>{service.base_url}</code>
+                    )}
                   </td>
                   <td>{service.auth_kind === 'none' ? '—' : service.auth_kind}</td>
                   <td>

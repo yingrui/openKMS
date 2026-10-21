@@ -521,6 +521,12 @@ def test_external_services_create_sends_allowlist_and_write_gate(mock_api):
             api_name="turtle",
             display_name="Turtle",
             base_url="http://backend:8200",
+            kind="http",
+            cluster_id="",
+            namespace="",
+            service="",
+            port=0,
+            base_path="",
             auth_kind="hmac",
             auth_header_name="X-OpenKMS-Signature",
             secret="s3cret",
@@ -535,3 +541,40 @@ def test_external_services_create_sends_allowlist_and_write_gate(mock_api):
     assert body["allowed_paths"] == ["/api/jobs", "/api/webhooks/openkms/"]
     assert body["auth_kind"] == "hmac"
     assert body["secret"] == "s3cret"
+
+
+def test_external_services_create_k8s_service_sends_coordinates(mock_api):
+    recorded, responses = mock_api
+    responses[("POST", "/api/ontology/external-services")] = (201, {"id": "es2", "api_name": "turtle"})
+    from openkms.commands.external_services import cmd_create
+
+    cmd_create(
+        argparse.Namespace(
+            api_name="turtle",
+            display_name="Turtle",
+            base_url="",
+            kind="k8s_service",
+            cluster_id="cl1",
+            namespace="stock",
+            service="backend",
+            port=8200,
+            base_path="",
+            auth_kind="none",
+            auth_header_name="",
+            secret="",
+            allowed_paths=["/api/jobs"],
+            timeout_seconds=0,
+            description="",
+            yes=True,
+            dry_run=False,
+        )
+    )
+    body = json.loads(recorded[-1].content)
+    assert body["kind"] == "k8s_service"
+    assert (body["cluster_id"], body["namespace"], body["service"], body["port"]) == (
+        "cl1",
+        "stock",
+        "backend",
+        8200,
+    )
+    assert "base_url" not in body

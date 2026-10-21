@@ -6,7 +6,14 @@ export interface ExternalServiceResponse {
   api_name: string;
   display_name: string;
   description?: string | null;
-  base_url: string;
+  /** `http` = a URL the sandbox calls; `k8s_service` = relayed by the backend via the cluster. */
+  kind: 'http' | 'k8s_service';
+  base_url?: string | null;
+  cluster_id?: string | null;
+  namespace?: string | null;
+  service?: string | null;
+  port?: number | null;
+  base_path?: string;
   /** `hmac` signs the body (header `X-OpenKMS-Signature` by default). */
   auth_kind: 'none' | 'bearer' | 'header' | 'hmac';
   auth_header_name?: string | null;
@@ -17,15 +24,31 @@ export interface ExternalServiceResponse {
   updated_at: string;
 }
 
+export interface K8sClusterOption {
+  id: string;
+  name: string;
+  default_namespace: string;
+}
+
 export async function fetchExternalServices(): Promise<ExternalServiceResponse[]> {
   return request<ExternalServiceResponse[]>('/api/ontology/external-services');
+}
+
+export async function fetchClusterOptions(): Promise<K8sClusterOption[]> {
+  return request<K8sClusterOption[]>('/api/ontology/external-services/k8s-clusters');
 }
 
 export async function createExternalService(data: {
   api_name: string;
   display_name: string;
   description?: string;
-  base_url: string;
+  kind: 'http' | 'k8s_service';
+  base_url?: string;
+  cluster_id?: string;
+  namespace?: string;
+  service?: string;
+  port?: number;
+  base_path?: string;
   auth_kind: string;
   auth_header_name?: string;
   secret?: string;
@@ -44,7 +67,13 @@ export async function updateExternalService(
   data: {
     display_name?: string;
     description?: string;
+    kind?: 'http' | 'k8s_service';
     base_url?: string;
+    cluster_id?: string;
+    namespace?: string;
+    service?: string;
+    port?: number;
+    base_path?: string;
     auth_kind?: string;
     auth_header_name?: string;
     /** Omit to keep the stored secret; send '' to clear it. */

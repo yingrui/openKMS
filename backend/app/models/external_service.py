@@ -14,13 +14,16 @@ from __future__ import annotations
 
 from datetime import datetime
 
-from sqlalchemy import DateTime, Integer, String, Text, func
+from sqlalchemy import DateTime, ForeignKey, Integer, String, Text, func
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.database import Base
 
 AUTH_KINDS = ("none", "bearer", "header", "hmac")
+#: How the request reaches the service: a URL called from the sandbox, or a Service inside a
+#: registered cluster called by the backend through that cluster's kubeconfig.
+SERVICE_KINDS = ("http", "k8s_service")
 
 
 class ExternalService(Base):
@@ -30,8 +33,22 @@ class ExternalService(Base):
     api_name: Mapped[str] = mapped_column(String(128), nullable=False, unique=True, index=True)
     display_name: Mapped[str] = mapped_column(String(256), nullable=False)
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
-    #: Origin only (scheme + host + optional port + optional base path) — a Function supplies the rest.
-    base_url: Mapped[str] = mapped_column(String(512), nullable=False)
+    kind: Mapped[str] = mapped_column(
+        String(16), nullable=False, default="http", server_default="http"
+    )
+    #: `http`: origin only (scheme + host + optional port + optional base path) — a Function
+    #: supplies the rest. `k8s_service`: null; the coordinates below are used instead.
+    base_url: Mapped[str | None] = mapped_column(String(512), nullable=True)
+    cluster_id: Mapped[str | None] = mapped_column(
+        String(64), ForeignKey("kubernetes_clusters.id", ondelete="SET NULL"), nullable=True, index=True
+    )
+    namespace: Mapped[str | None] = mapped_column(String(256), nullable=True)
+    service: Mapped[str | None] = mapped_column(String(256), nullable=True)
+    port: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    #: Fixed path prefix the service mounts at (``""`` when it serves ``/api/...`` at its root).
+    base_path: Mapped[str] = mapped_column(
+        String(512), nullable=False, default="", server_default=""
+    )
     auth_kind: Mapped[str] = mapped_column(
         String(16), nullable=False, default="none", server_default="none"
     )

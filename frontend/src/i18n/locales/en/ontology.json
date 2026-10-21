@@ -1048,7 +1048,19 @@
       "created": "External service registered",
       "saved": "External service updated",
       "deleted": "External service removed",
-      "authHmac": "HMAC signature (sent as a header)"
+      "authHmac": "HMAC signature (sent as a header)",
+      "kind": "Where it lives",
+      "kindHint": "A URL is called by the function sandbox. A cluster Service is called by openKMS through the cluster, because the sandbox cannot resolve its DNS.",
+      "kindHttp": "HTTP URL",
+      "kindK8s": "Kubernetes Service",
+      "cluster": "Cluster",
+      "clusterNone": "Select…",
+      "namespace": "Namespace",
+      "serviceName": "Service",
+      "port": "Port",
+      "basePath": "Base path",
+      "basePathHint": "Fixed prefix the service mounts at, e.g. /app. Leave empty when it serves /api/... at its root.",
+      "target": "Target"
     }
   },
   "dataSources": {
