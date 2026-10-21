@@ -101,8 +101,9 @@ export function AuditLogPage() {
       className={`filter-rail__link${active ? ' filter-rail__link--active' : ''}`}
       aria-pressed={active}
       onClick={onClick}
+      title={label}
     >
-      <span>{label}</span>
+      <span className="filter-rail__label">{label}</span>
       <span className="filter-rail__count">{count}</span>
     </button>
   );
@@ -125,20 +126,19 @@ export function AuditLogPage() {
     <div className="app-page-pane">
       <div className="audit-log">
         <aside className="filter-rail" aria-label={t('auditLog.scopeAria')}>
-          <div className="filter-rail__title">{t('auditLog.scope')}</div>
-
-          {/* One nav per group: the rail's rhythm is a list of lists, exactly as the Ontology Manager's. */}
-          <div className="filter-rail__nav">
+          <div className="filter-rail__head">
+            <h2 className="filter-rail__title">{t('auditLog.scope')}</h2>
+            <span className="filter-rail__hint">{t('auditLog.window', { days: 30 })}</span>
+          </div>
+          <nav className="filter-rail__nav">
             <RailItem
               active={scope.kind === 'all'}
               label={t('auditLog.all')}
               count={allCount}
               onClick={() => setScope({ kind: 'all', value: '' })}
             />
-          </div>
 
-          <div className="filter-rail__nav">
-            <span className="filter-rail__title">{t('auditLog.byResource')}</span>
+            <div className="filter-rail__group">{t('auditLog.byResource')}</div>
             {facets.resource_types.map((facet) => (
               <RailItem
                 key={facet.value}
@@ -148,10 +148,8 @@ export function AuditLogPage() {
                 onClick={() => setScope({ kind: 'resource', value: facet.value })}
               />
             ))}
-          </div>
 
-          <div className="filter-rail__nav">
-            <span className="filter-rail__title">{t('auditLog.byResult')}</span>
+            <div className="filter-rail__group">{t('auditLog.byResult')}</div>
             {facets.statuses.map((facet) => (
               <RailItem
                 key={facet.value}
@@ -161,9 +159,7 @@ export function AuditLogPage() {
                 onClick={() => setScope({ kind: 'status', value: facet.value })}
               />
             ))}
-          </div>
-
-          <p className="page-subtitle">{t('auditLog.window', { days: 30 })}</p>
+          </nav>
         </aside>
 
         <div className="audit-log__main">

@@ -293,6 +293,23 @@ They are **not claimed to work**: this machine has no `pg_dump`, so only the pre
 refuses with an installation hint, verified). The drill is what turns a file into a backup, and until it
 prints `restore drill ok`, the honest state is untested.
 
+### The rail now follows the Documents channel rail (2026-10)
+
+Sharing the Ontology Manager's rail was the right instinct and the wrong reference: that rail is a plain
+200px list of 0.875rem links, and the audit page inherited its plainness. The **Documents channel rail** is
+the app's best-made left column, so the shared rail now follows it:
+
+- **240px**, `height: 100%`, `align-self: stretch` — a rail is a column of the page, not a box in it;
+- a **head** (14/12/10 padding, title 0.8125rem semibold in normal case, a rule under it) instead of an
+  uppercase micro-label shouting "SCOPE";
+- one **scroll area** (8/10/12) holding the groups, so the title stays put while the list moves;
+- items at the channel tree's spec — `4px 8px`, 0.8125rem, muted text lifting on hover, the accent pair when
+  selected — with the label ellipsised and the count as a quiet 999px badge rather than a second label.
+
+Three navigation rails (Ontology Manager, Object Explorer, Function editor) and the audit page share it, and
+their titles moved into the new head. The lesson is the one this file keeps relearning: before inventing a
+component, read the app for the one that already solved it.
+
 ### The rail is the Ontology Manager's, and paging is the app's (2026-10)
 
 Two things were wrong with the first rail: it *looked* like the Ontology Manager's rail without being it

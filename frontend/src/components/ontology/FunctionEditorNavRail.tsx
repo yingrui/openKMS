@@ -15,7 +15,9 @@ export function FunctionEditorNavRail() {
 
   return (
     <aside className="filter-rail" aria-label={t('functionEditorNav')}>
-      <div className="filter-rail__title">{t('functionEditor')}</div>
+      <div className="filter-rail__head">
+        <h2 className="filter-rail__title">{t('functionEditor')}</h2>
+      </div>
       <nav className="filter-rail__nav">
         <NavLink
           to="/function-editor"

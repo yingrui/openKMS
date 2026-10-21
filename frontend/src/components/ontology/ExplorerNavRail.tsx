@@ -45,7 +45,9 @@ export function ExplorerNavRail() {
 
   return (
     <aside className="filter-rail" aria-label={t('objectExplorerNav')}>
-      <div className="filter-rail__title">{t('objectExplorer')}</div>
+      <div className="filter-rail__head">
+        <h2 className="filter-rail__title">{t('objectExplorer')}</h2>
+      </div>
       <nav className="filter-rail__nav">
         {items.map((item) => {
           const Icon = item.icon;

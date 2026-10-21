@@ -67,7 +67,9 @@ export function ManagerNavRail() {
 
   return (
     <aside className="filter-rail" aria-label={t('ontologyManagerNav')}>
-      <div className="filter-rail__title">{t('ontologyManager')}</div>
+      <div className="filter-rail__head">
+        <h2 className="filter-rail__title">{t('ontologyManager')}</h2>
+      </div>
       <nav className="filter-rail__nav">
         {items.map((item) => {
           const Icon = item.icon;
