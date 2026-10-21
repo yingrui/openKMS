@@ -72,7 +72,6 @@ Agent 工作指南（原 `.cursor/rules/` 合并版）。
 | `docs/development_plan.md` | 任务完成/计划变更 |
 | `docs/features/<area>.md` | 功能/UI 变更 |
 | `docs/features/api-reference.md` | HTTP 路由变更 |
-| `docs/features/data-models.md` | 表/列变更 |
 | `docs/design-system.md` | 共享 SCSS/token/布局原语 |
 
 `docs/functionalities.md` 仅增删功能页时改。英文 `docs/**/*.md` 为源；有 `.zh.md` 则英先中后；链接不带 `.zh` 后缀。  
