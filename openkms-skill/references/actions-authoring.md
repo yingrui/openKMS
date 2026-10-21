@@ -85,3 +85,19 @@ python scripts/cli.py ontology action-types create … --api-name createWorkItem
 - Leave archived Actions that still hold `api_name`s you need — **delete** them.
 - Expect Action execute alone to update **dataset-backed** synthetic ids (deferred).
 - Bypass CLI with ad-hoc HTTP — if a subcommand is missing, report the gap to the user; only a maintainer working in a skill-source checkout adds it there.
+
+## Webhooks (no Function needed)
+
+If an Action's job is "change the ontology, then tell the owning application", register the
+destination on the Action instead of writing a Function:
+
+```bash
+ontology action-types update --id AT --webhook-service turtle \
+  --webhook-path /api/webhooks/openkms/portfolio-changes --yes
+```
+
+After a successful run the platform posts `{event: "action.executed", action, object, input,
+applied, caller, status, action_log_id, at}` — `object` is the instance the Action acted on
+(resolved through the graph). Delivery is best-effort **after** the change is committed, so a
+receiver that is down never fails the Action; the outcome is on the action log
+(`output_payload.webhook`). Clearing: `--webhook-service ''`.

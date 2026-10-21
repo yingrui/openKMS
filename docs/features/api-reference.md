@@ -300,8 +300,9 @@ The bundled **openkms-skill** CLI wraps **lifecycle** and **relationships** the 
 | POST | `/api/link-types/{id}/index-to-neo4j` | Index one link type to Neo4j (same rules as bulk; 400 if nothing to index) (admin-only). Accepts `?prune=true` |
 | POST | `/api/ontology/explore` | Execute read-only Cypher query against Neo4j (body: `{ cypher }`); used by Object Explorer |
 | GET | `/api/ontology/groups/{id}/related` | Link types / Functions / Actions derived from the group's saved object types (`ontology:read`) |
-| POST | `/api/ontology/action-types/{id}/execute` | Run Action: **built-in** `object_create` / `object_modify` / `object_delete` (no Function) or Function + audit + `output.edits`; response may include `applied` |
-| PATCH | `/api/ontology/action-types/{id}` | Update Action; switching `rule_type` to built-in clears `function_id` when omitted |
+| POST | `/api/ontology/action-types/{id}/execute` | Run Action: **built-in** `object_create` / `object_modify` / `object_delete` (no Function) or Function + audit + `output.edits`; response may include `applied`, and `webhook` when the Action registers one (best-effort, after commit) |
+| PATCH | `/api/ontology/action-types/{id}` | Update Action; switching `rule_type` to built-in clears `function_id` when omitted. `webhook_service_id` + `webhook_path` register the destination (path must be inside the service's allowlist; `null` detaches) |
+| POST | `/api/ontology/action-types` | Create Action (`ontology:write`); optional `webhook_service_id` / `webhook_path` |
 | DELETE | `/api/ontology/action-types/{id}` | Delete Action (frees `api_name`; archive alone does not) |
 | GET | `/api/ontology/external-services` | External HTTP services a Function may call (`client.external("name")`). Secrets are never returned — only `has_secret` (`ontology:read`) |
 | POST | `/api/ontology/external-services` | Register one (`ontology:write`): `{api_name, display_name, kind: http\|k8s_service, base_url? (http; **400** for a `*.svc.cluster.local` origin — use `k8s_service`), cluster_id?/namespace?/service?/port?/base_path? (k8s_service), auth_kind: none\|bearer\|header\|hmac, auth_header_name?, secret?, allowed_paths[], timeout_seconds?}` |

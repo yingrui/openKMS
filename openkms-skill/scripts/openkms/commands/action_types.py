@@ -35,6 +35,17 @@ def cmd_get(ns: argparse.Namespace) -> None:
     print_json(r.json())
 
 
+def _resolve_service_id(api_name: str) -> str:
+    """External services are referenced by id; the CLI takes the readable api_name."""
+    with client() as s:
+        r = s.get("/api/ontology/external-services")
+    r.raise_for_status()
+    for service in r.json():
+        if service.get("api_name") == api_name:
+            return str(service["id"])
+    raise SystemExit(f"unknown external service: {api_name}")
+
+
 def cmd_create(ns: argparse.Namespace) -> None:
     body: dict[str, Any] = {
         "api_name": ns.api_name,
@@ -50,6 +61,10 @@ def cmd_create(ns: argparse.Namespace) -> None:
         body["function_version"] = ns.function_version
     if ns.parameters_json:
         body["parameters"] = _parse_json_arg("parameters-json", ns.parameters_json)
+    webhook_service = getattr(ns, "webhook_service", None)
+    if webhook_service:
+        body["webhook_service_id"] = _resolve_service_id(webhook_service)
+        body["webhook_path"] = getattr(ns, "webhook_path", None)
     confirm_or_abort(
         action=f"create action type {ns.api_name!r}",
         method="POST",
@@ -83,6 +98,14 @@ def cmd_update(ns: argparse.Namespace) -> None:
         body["parameters"] = _parse_json_arg("parameters-json", ns.parameters_json)
     if ns.status is not None:
         body["status"] = ns.status
+    webhook_service = getattr(ns, "webhook_service", None)
+    if webhook_service is not None:
+        if webhook_service == "":
+            body["webhook_service_id"] = None
+            body["webhook_path"] = None
+        else:
+            body["webhook_service_id"] = _resolve_service_id(webhook_service)
+            body["webhook_path"] = getattr(ns, "webhook_path", None)
     if not body:
         print("update: nothing to update", file=sys.stderr)
         sys.exit(2)
@@ -172,6 +195,12 @@ def add_subparser(sub) -> None:
     cr.add_argument("--function-id", default=None)
     cr.add_argument("--function-version", type=int, default=None)
     cr.add_argument("--parameters-json", default=None)
+    cr.add_argument(
+        "--webhook-service",
+        default=None,
+        help='external-service api_name to announce successful runs to (e.g. turtle)',
+    )
+    cr.add_argument("--webhook-path", default=None, help="path on that service, inside its allowlist")
     add_write_flags(cr)
     cr.set_defaults(fn=cmd_create)
 
@@ -193,6 +222,8 @@ def add_subparser(sub) -> None:
     )
     up.add_argument("--function-version", type=int, default=None)
     up.add_argument("--parameters-json", default=None)
+    up.add_argument("--webhook-service", default=None, help="external-service api_name, or '' to detach")
+    up.add_argument("--webhook-path", default=None)
     up.add_argument("--status", default=None, help="active | archived")
     add_write_flags(up)
     up.set_defaults(fn=cmd_update)

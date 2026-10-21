@@ -191,6 +191,10 @@ class OntologyActionTypeResponse(BaseModel):
     function_id: str | None = None
     function_version: int | None = None
     parameters: dict | list | None = None
+    #: Where a successful run is announced (external service + path), or null.
+    webhook_service_id: str | None = None
+    webhook_service_name: str | None = None
+    webhook_path: str | None = None
     status: str
     created_at: datetime
     updated_at: datetime
@@ -207,6 +211,9 @@ class OntologyActionTypeCreate(BaseModel):
     function_id: str | None = None
     function_version: int | None = None
     parameters: dict | list | None = None
+    #: Deliver the result to a registered service path after a successful run.
+    webhook_service_id: str | None = None
+    webhook_path: str | None = None
 
 
 class OntologyActionTypeUpdate(BaseModel):
@@ -217,6 +224,9 @@ class OntologyActionTypeUpdate(BaseModel):
     function_version: int | None = None
     parameters: dict | list | None = None
     status: str | None = None
+    #: Send `webhook_service_id: null` (or an empty path) to stop delivering.
+    webhook_service_id: str | None = None
+    webhook_path: str | None = None
 
 
 class OntologyActionExecuteRequest(BaseModel):
@@ -231,6 +241,8 @@ class OntologyActionExecuteResponse(BaseModel):
     duration_ms: int | None = None
     log_id: str | None = None
     applied: dict | None = None
+    #: Delivery outcome when the Action has a registered webhook (never fails the Action).
+    webhook: dict | None = None
 
 
 class OntologyActionLogResponse(BaseModel):

@@ -35,6 +35,34 @@ def execute(input: dict, client: Client) -> dict:
 
 Backend logic: `function_service.py`, `execution_service.py`, `ontology_io_schema.py`.
 
+## Action webhooks (telling the app behind the data)
+
+An Action changes objects and links; the application that owns those rows needs to hear about it. Registering the destination **on the Action** — an external service + path — makes that a platform behaviour instead of a bespoke Function, and keeps the URL out of source:
+
+```json
+POST <service base><path>
+{
+  "event": "action.executed",
+  "action": {"id": "at-…", "api_name": "…", "display_name": "…", "rule_type": "…"},
+  "object": {"object_type": "Portfolio", "id": "…", "properties": {"name": "main", …}},
+  "input": {…the caller's input, plus the resolved object…},
+  "applied": {"created_ids": […], "modified_ids": […], "deleted_ids": […]},
+  "caller": {"sub": "…", "name": "…"},
+  "status": "ok",
+  "action_log_id": "al-…",
+  "at": "2026-10-21T14:19:42+00:00"
+}
+```
+
+| Rule | Why |
+|------|-----|
+| Fires only after a **successful** run (`status: ok`), for built-in and Function rules alike | An error changed nothing to announce |
+| Best-effort, **after** the change is committed | A receiver that is down must not fail an Action that already happened |
+| Outcome recorded next to the Action log (`output_payload.webhook`) and returned as `webhook` | "Did anyone hear it?" is answerable without a second table |
+| Path must be inside the service's `allowed_paths`; the credential comes from the service (`none` / `bearer` / `header` / `hmac`) | The registry stays the only place a destination is declared |
+
+The webhook is **not** a Function: no `client.external(...)` in source, no per-integration code. `object` is the object the Action acted on — resolved through the graph, so a dataset-backed `Portfolio` works — and `applied` carries the ids for a create, where there was no object yet.
+
 ## External services (calling another system)
 
 A Function's only vocabulary was the openKMS API, so anything that needed another system had to be wired

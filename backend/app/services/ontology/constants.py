@@ -14,6 +14,10 @@ ACTION_LOG_ID_PREFIX = "al-"
 ID_HEX_LENGTH = 12
 EXECUTION_ID_HEX_LENGTH = 16
 
+#: Ceiling for a backend-issued external call (Action webhook, runtime relay). A slow service must
+#: not hold an API request open longer than this.
+EXTERNAL_CALL_TIMEOUT_SECONDS = 10
+
 MAX_FUNCTION_CALL_DEPTH = 5
 CALL_DEPTH_HEADER = "X-OpenKMS-Function-Call-Depth"
 CALL_STACK_HEADER = "X-OpenKMS-Function-Call-Stack"

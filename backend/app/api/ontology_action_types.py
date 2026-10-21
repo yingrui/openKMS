@@ -11,6 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.api.auth import require_any_permission, require_auth
 from app.api.ontology.deps import jwt_user_from_request, require_caller_token, validate_api_name
 from app.database import get_db
+from app.models.external_service import ExternalService
 from app.models.object_type import ObjectType
 from app.models.ontology_function import OntologyActionLog, OntologyActionType
 from app.schemas.ontology_functions import (
@@ -49,6 +50,41 @@ async def _resolve_input_schema(db: AsyncSession, at: OntologyActionType) -> dic
     return ver.input_schema if isinstance(ver.input_schema, dict) else None
 
 
+def _caller_name(request: Request) -> str | None:
+    payload = getattr(request.state, "openkms_jwt_payload", None) or {}
+    name = payload.get("preferred_username") or payload.get("name")
+    return str(name) if name else None
+
+
+async def _webhook_service_name(db: AsyncSession, service_id: str | None) -> str | None:
+    if not service_id:
+        return None
+    service = await db.get(ExternalService, service_id)
+    return service.api_name if service else None
+
+
+async def _validate_webhook(
+    db: AsyncSession, *, service_id: str | None, path: str | None
+) -> None:
+    """A path without a service (or one outside its allowlist) is a webhook that never lands."""
+    if not service_id and not path:
+        return
+    if not service_id:
+        raise HTTPException(status_code=400, detail="webhook_path needs webhook_service_id")
+    service = await db.get(ExternalService, service_id)
+    if not service:
+        raise HTTPException(status_code=400, detail="Unknown webhook service")
+    if not path:
+        return
+    if not path.startswith("/") or "://" in path:
+        raise HTTPException(status_code=400, detail="webhook_path must start with '/' and be relative")
+    if not any(path.startswith(prefix) for prefix in (service.allowed_paths or [])):
+        raise HTTPException(
+            status_code=400,
+            detail=f"webhook_path {path!r} is not in the service's allowed prefixes {service.allowed_paths}",
+        )
+
+
 async def _to_response(db: AsyncSession, at: OntologyActionType) -> OntologyActionTypeResponse:
     return OntologyActionTypeResponse(
         id=at.id,
@@ -60,6 +96,9 @@ async def _to_response(db: AsyncSession, at: OntologyActionType) -> OntologyActi
         function_id=at.function_id,
         function_version=at.function_version,
         parameters=at.parameters,
+        webhook_service_id=at.webhook_service_id,
+        webhook_service_name=await _webhook_service_name(db, at.webhook_service_id),
+        webhook_path=at.webhook_path,
         status=at.status,
         created_at=at.created_at,
         updated_at=at.updated_at,
@@ -126,6 +165,9 @@ async def create_action_type(
     ).scalar_one_or_none()
     if exists:
         raise HTTPException(status_code=409, detail="api_name already exists")
+    await _validate_webhook(
+        db, service_id=body.webhook_service_id, path=body.webhook_path
+    )
     uid, uname = jwt_user_from_request(request)
     at = OntologyActionType(
         id=f"{ACTION_TYPE_ID_PREFIX}{uuid.uuid4().hex[:ID_HEX_LENGTH]}",
@@ -137,6 +179,8 @@ async def create_action_type(
         function_id=body.function_id,
         function_version=body.function_version,
         parameters=body.parameters,
+        webhook_service_id=body.webhook_service_id,
+        webhook_path=(body.webhook_path or "").strip() or None,
         created_by=uid,
         created_by_name=uname,
     )
@@ -165,6 +209,12 @@ async def update_action_type(
         next_function_id = at.function_id
     if "rule_type" in data or "function_id" in data:
         _validate_action_type_fields(rule_type=next_rule_type, function_id=next_function_id)
+    if "webhook_service_id" in data or "webhook_path" in data:
+        await _validate_webhook(
+            db,
+            service_id=data.get("webhook_service_id", at.webhook_service_id),
+            path=data.get("webhook_path", at.webhook_path),
+        )
     for field, val in data.items():
         setattr(at, field, val)
     if "rule_type" in data and is_builtin_object_rule(data["rule_type"]) and "function_id" not in data:
@@ -230,6 +280,7 @@ async def execute_action_type(
             input_payload=input_payload,
             object_id=object_id,
             caller_user_id=uid,
+            caller_name=_caller_name(request),
         )
 
     if not at.function_id:
@@ -251,6 +302,7 @@ async def execute_action_type(
         object_id=object_id,
         caller_user_id=uid,
         caller_token=require_caller_token(request),
+        caller_name=_caller_name(request),
     )
 
 

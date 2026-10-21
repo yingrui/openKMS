@@ -112,6 +112,12 @@ class OntologyActionType(Base):
     )
     function_version: Mapped[int | None] = mapped_column(Integer, nullable=True)
     parameters: Mapped[list | None] = mapped_column(JSONB, nullable=True)
+    #: After a successful run the platform posts a standard envelope to this service + path.
+    #: Registered on the Action, not written into a Function: the destination is visible here.
+    webhook_service_id: Mapped[str | None] = mapped_column(
+        String(64), ForeignKey("external_services.id", ondelete="SET NULL"), nullable=True, index=True
+    )
+    webhook_path: Mapped[str | None] = mapped_column(String(512), nullable=True)
     status: Mapped[str] = mapped_column(String(32), nullable=False, default="active", server_default="active")
     created_by: Mapped[str | None] = mapped_column(String(512), nullable=True)
     created_by_name: Mapped[str | None] = mapped_column(String(256), nullable=True)

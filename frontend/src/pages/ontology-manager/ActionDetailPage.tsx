@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { Save } from 'lucide-react';
 import { toast } from 'sonner';
 import { fetchObjectTypes, type ObjectTypeResponse } from '../../data/ontologyApi';
+import { fetchExternalServices, type ExternalServiceResponse } from '../../data/externalServicesApi';
 import {
   fetchOntologyActionLogs,
   fetchOntologyActionType,
@@ -45,6 +46,10 @@ type ActionDetailContext = {
   writableFields: string[];
   setWritableFields: Dispatch<SetStateAction<string[]>>;
   saving: boolean;
+  webhookServiceId: string;
+  setWebhookServiceId: (v: string) => void;
+  webhookPath: string;
+  setWebhookPath: (v: string) => void;
   onSave: () => Promise<void>;
 };
 
@@ -60,6 +65,17 @@ function allPropertyNames(ot: ObjectTypeResponse | null): string[] {
   return (ot?.properties ?? []).map((p) => p.name).filter(Boolean);
 }
 
+/** The services a webhook can point at: registered external services (no secrets in this list). */
+function useExternalServicesForWebhook(): { services: ExternalServiceResponse[] } {
+  const [services, setServices] = useState<ExternalServiceResponse[]>([]);
+  useEffect(() => {
+    fetchExternalServices()
+      .then(setServices)
+      .catch(() => setServices([]));
+  }, []);
+  return { services };
+}
+
 export function ActionDetailPage() {
   const { t } = useTranslation('ontology');
   const { actionTypeId = '', actionId: legacyActionId = '' } = useParams();
@@ -70,6 +86,8 @@ export function ActionDetailPage() {
   const [functions, setFunctions] = useState<OntologyFunctionResponse[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [webhookServiceId, setWebhookServiceId] = useState('');
+  const [webhookPath, setWebhookPath] = useState('');
   const [displayName, setDisplayName] = useState('');
   const [description, setDescription] = useState('');
   const [status, setStatus] = useState('active');
@@ -105,6 +123,8 @@ export function ActionDetailPage() {
       setDisplayName(at.display_name);
       setDescription(at.description ?? '');
       setStatus(at.status);
+      setWebhookServiceId(at.webhook_service_id ?? '');
+      setWebhookPath(at.webhook_path ?? '');
       setFunctionId(at.function_id ?? '');
       const ot = typesRes.items.find((row) => row.id === at.object_type_id) ?? null;
       const savedFields = writableFieldsFromParameters(at.parameters);
@@ -130,6 +150,9 @@ export function ActionDetailPage() {
         display_name: displayName.trim(),
         description: description.trim() || undefined,
         status,
+        // Null clears the webhook; a path without a service is rejected by the API.
+        webhook_service_id: webhookServiceId || null,
+        webhook_path: webhookServiceId ? webhookPath.trim() || null : null,
       };
       if (isBuiltin) {
         body.function_id = null;
@@ -184,6 +207,10 @@ export function ActionDetailPage() {
             setFunctionId,
             writableFields,
             setWritableFields,
+            webhookServiceId,
+            setWebhookServiceId,
+            webhookPath,
+            setWebhookPath,
             saving,
             onSave,
           }
@@ -199,6 +226,8 @@ export function ActionDetailPage() {
       status,
       functionId,
       writableFields,
+      webhookServiceId,
+      webhookPath,
       saving,
       onSave,
     ],
@@ -240,9 +269,14 @@ export function ActionOverviewTab() {
     setDescription,
     status,
     setStatus,
+    webhookServiceId,
+    setWebhookServiceId,
+    webhookPath,
+    setWebhookPath,
     saving,
     onSave,
   } = useActionDetail();
+  const { services } = useExternalServicesForWebhook();
 
   return (
     <>
@@ -287,6 +321,34 @@ export function ActionOverviewTab() {
               <option value="inactive">{t('actions.statusInactive')}</option>
             </select>
           </EntityViewField>
+        </div>
+      </EntityViewPanel>
+      <EntityViewPanel title={t('actions.webhook')} description={t('actions.webhookHint')}>
+        <div className="entity-view__form">
+          <EntityViewField label={t('actions.webhookService')}>
+            <select
+              className="console-form-control"
+              value={webhookServiceId}
+              onChange={(e) => setWebhookServiceId(e.target.value)}
+            >
+              <option value="">{t('actions.webhookNone')}</option>
+              {services.map((service) => (
+                <option key={service.id} value={service.id}>
+                  {service.api_name} · {service.display_name}
+                </option>
+              ))}
+            </select>
+          </EntityViewField>
+          {webhookServiceId ? (
+            <EntityViewField label={t('actions.webhookPath')} hint={t('actions.webhookPathHint')}>
+              <input
+                className="console-form-control"
+                value={webhookPath}
+                onChange={(e) => setWebhookPath(e.target.value)}
+                placeholder="/api/webhooks/openkms/..."
+              />
+            </EntityViewField>
+          ) : null}
         </div>
       </EntityViewPanel>
     </>

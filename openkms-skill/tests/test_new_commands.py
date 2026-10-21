@@ -590,3 +590,33 @@ def test_object_sync_needs_an_explicit_prune_flag(mock_api):
 
     cmd_sync_neo4j(argparse.Namespace(neo4j_data_source_id="neo1", yes=True, dry_run=False))
     assert "prune" not in recorded[-1].url.params
+
+
+def test_action_type_create_resolves_the_webhook_service_by_name(mock_api):
+    recorded, responses = mock_api
+    responses[("GET", "/api/ontology/external-services")] = (
+        200,
+        [{"id": "es1", "api_name": "turtle"}],
+    )
+    responses[("POST", "/api/ontology/action-types")] = (201, {"id": "at1"})
+    from openkms.commands.action_types import cmd_create
+
+    cmd_create(
+        argparse.Namespace(
+            api_name="applyPortfolioChanges",
+            display_name="Apply",
+            object_type_id="ot1",
+            rule_type="function",
+            description=None,
+            function_id=None,
+            function_version=None,
+            parameters_json=None,
+            webhook_service="turtle",
+            webhook_path="/api/webhooks/openkms/portfolio-changes",
+            yes=True,
+            dry_run=False,
+        )
+    )
+    body = json.loads(recorded[-1].content)
+    assert body["webhook_service_id"] == "es1"
+    assert body["webhook_path"] == "/api/webhooks/openkms/portfolio-changes"

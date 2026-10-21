@@ -11,6 +11,10 @@ export interface OntologyActionTypeResponse {
   function_id?: string | null;
   function_version?: number | null;
   parameters?: Record<string, unknown> | unknown[] | null;
+  /** Where a successful run is announced (external service + path), or null. */
+  webhook_service_id?: string | null;
+  webhook_service_name?: string | null;
+  webhook_path?: string | null;
   status: string;
   created_at: string;
   updated_at: string;
@@ -54,6 +58,8 @@ export async function updateOntologyActionType(
     function_version?: number | null;
     parameters?: Record<string, unknown> | unknown[] | null;
     status?: string;
+    webhook_service_id?: string | null;
+    webhook_path?: string | null;
   },
 ): Promise<OntologyActionTypeResponse> {
   return ontologyFetch<OntologyActionTypeResponse>(

@@ -976,7 +976,13 @@
     "rulesFunctionSubtitle": "绑定触发此操作时运行的已发布函数。",
     "log": "日志",
     "general": "常规",
-    "generalHint": "此操作类型的显示名称、状态与标识。"
+    "generalHint": "此操作类型的显示名称、状态与标识。",
+    "webhook": "Webhook 通知",
+    "webhookHint": "执行成功后，平台把「作用的对象 + 输入 + 实际变更的 id」POST 到这个地址。投递是尽力而为：对象变更已经提交，Webhook 失败不会回滚。",
+    "webhookService": "外部接口",
+    "webhookNone": "不通知",
+    "webhookPath": "路径",
+    "webhookPathHint": "必须在该外部接口的允许路径内。"
   },
   "editor": {
     "title": "函数",

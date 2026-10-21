@@ -34,6 +34,7 @@ from app.services.ontology.function_runtime import FunctionExecutionError, execu
 from app.services.ontology.function_service import get_function, get_function_by_api_name, resolve_version_for_execute
 from app.services.ontology.input_schema import validate_input_against_schema
 from app.models.object_type import ObjectType
+from app.services.ontology import action_webhook
 from app.services.ontology.builtin_action_service import build_edits_for_builtin_action
 from app.services.ontology.edit_apply_service import apply_edit_batch_to_objects, extract_edits
 from app.services.ontology.object_neo4j_store import sync_edit_apply_result_to_neo4j
@@ -215,6 +216,7 @@ async def _apply_edits_and_audit(
     output: dict | None,
     duration_ms: int | None,
     pre_apply_errors: list[str] | None = None,
+    caller_name: str | None = None,
 ) -> OntologyActionExecuteResponse:
     """Apply edit batch, sync Neo4j, write audit log."""
     log_id = new_action_log_id()
@@ -273,6 +275,30 @@ async def _apply_edits_and_audit(
     )
     db.add(log)
     await db.commit()
+
+    # The change is committed, so delivery is notification, not part of the transaction: a failing
+    # webhook must not fail the Action. Its outcome is recorded next to the log.
+    webhook: dict | None = None
+    webhook_service_id = getattr(at, "webhook_service_id", None)
+    webhook_path = getattr(at, "webhook_path", None)
+    if status == "ok" and webhook_service_id and webhook_path:
+        obj_type = await db.get(ObjectType, at.object_type_id)
+        payload = action_webhook.build_payload(
+            action=at,
+            object_type_name=obj_type.api_name if obj_type else None,
+            object_id=object_id,
+            object_properties=input_payload.get("object"),
+            input_payload=input_payload,
+            applied=applied,
+            caller_user_id=caller_user_id,
+            caller_name=caller_name,
+            action_log_id=log_id,
+        )
+        webhook = await action_webhook.deliver(db, at, payload)
+        if webhook is not None:
+            log.output_payload = {**(log.output_payload or {}), "webhook": webhook}
+            await db.commit()
+
     return OntologyActionExecuteResponse(
         status=status,
         output=output,
@@ -280,6 +306,7 @@ async def _apply_edits_and_audit(
         duration_ms=duration_ms,
         log_id=log_id,
         applied=applied,
+        webhook=webhook,
     )
 
 
@@ -291,6 +318,7 @@ async def execute_builtin_action_and_audit(
     input_payload: dict,
     object_id: str | None,
     caller_user_id: str | None,
+    caller_name: str | None = None,
 ) -> OntologyActionExecuteResponse:
     edits, errors = build_edits_for_builtin_action(
         at=at,
@@ -309,6 +337,7 @@ async def execute_builtin_action_and_audit(
         output=output,
         duration_ms=0,
         pre_apply_errors=errors or None,
+        caller_name=caller_name,
     )
 
 
@@ -322,6 +351,7 @@ async def execute_action_and_audit(
     object_id: str | None,
     caller_user_id: str | None,
     caller_token: str,
+    caller_name: str | None = None,
 ) -> OntologyActionExecuteResponse:
     await db.commit()
     outcome = await _run_ofs(
@@ -341,6 +371,7 @@ async def execute_action_and_audit(
         output=outcome.output,
         duration_ms=outcome.duration_ms,
         pre_apply_errors=[outcome.error] if outcome.status != "ok" and outcome.error else None,
+        caller_name=caller_name,
     )
 
 

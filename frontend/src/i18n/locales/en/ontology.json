@@ -983,7 +983,13 @@
     "recentLogs": "Recent runs",
     "logObject": "Object",
     "logError": "Error",
-    "noLogs": "No runs yet. Trigger this action type from Object Explorer."
+    "noLogs": "No runs yet. Trigger this action type from Object Explorer.",
+    "webhook": "Webhook",
+    "webhookHint": "After a successful run the platform posts the object it acted on, the input and the applied ids to this endpoint. Delivery is best-effort: the change is already committed.",
+    "webhookService": "Service",
+    "webhookNone": "No webhook",
+    "webhookPath": "Path",
+    "webhookPathHint": "Must be inside the service’s allowed prefixes."
   },
   "editor": {
     "title": "Functions",
