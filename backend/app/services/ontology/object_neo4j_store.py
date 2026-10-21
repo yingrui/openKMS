@@ -348,13 +348,6 @@ def link_endpoint_keys(
     return resolve_write_id_column(source_type), resolve_write_id_column(target_type)
 
 
-def link_endpoint_value(obj_type: ObjectType, instance: ObjectInstance, key: str) -> Any:
-    """The value the endpoint node holds for ``key``."""
-    if key == SYSTEM_RID_PROPERTY:
-        return instance.id
-    return (dict(instance.data or {})).get(key, instance.id)
-
-
 def merge_link_between_nodes(
     session,
     *,
@@ -426,23 +419,11 @@ async def sync_link_instances_to_neo4j(
     rel_type = link_rel_type(link_type)
     src_key, tgt_key = link_endpoint_keys(source_type, target_type)
 
-    async def _values(pairs: list[tuple[str, str]]) -> list[tuple[Any, Any]]:
-        out: list[tuple[Any, Any]] = []
-        for source_id, target_id in pairs:
-            src = await db.get(ObjectInstance, source_id)
-            tgt = await db.get(ObjectInstance, target_id)
-            if not src or not tgt:
-                continue
-            out.append(
-                (
-                    link_endpoint_value(source_type, src, src_key),
-                    link_endpoint_value(target_type, tgt, tgt_key),
-                )
-            )
-        return out
-
-    upsert_vals = await _values(upsert)
-    delete_vals = await _values(delete)
+    # An object's API id *is* the value its node is keyed by: `__rid` for hand-created types
+    # (the queue PK) and the business key for dataset-backed ones. So the ids are used directly —
+    # requiring a queue row is what used to reject every dataset-backed endpoint.
+    upsert_vals = list(upsert)
+    delete_vals = list(delete)
     missing: list[str] = []
 
     def _run(driver) -> None:

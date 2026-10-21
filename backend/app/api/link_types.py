@@ -17,9 +17,9 @@ from app.services.ontology.dataset_tables import (
 )
 from app.services.ontology.api_names import ApiNameError, resolve_api_name
 from app.services.ontology.object_neo4j_store import (
+    fetch_object_from_neo4j,
     get_first_neo4j_datasource,
     link_endpoint_keys,
-    link_endpoint_value,
     link_rel_type,
     object_label,
     sync_link_instances_to_neo4j,
@@ -615,10 +615,10 @@ async def _index_link_type_from_saved_instances(
             target_obj = await db.get(ObjectInstance, li.target_object_id)
             if not source_obj or not target_obj:
                 continue
-            # Same identity the object layer MERGEs these nodes on (no-dataset → __rid).
+            # Same identity the object layer MERGEs these nodes on; the stored id *is* that value.
             src_key, tgt_key = link_endpoint_keys(source_type, target_type)
-            src_val = link_endpoint_value(source_type, source_obj, src_key)
-            tgt_val = link_endpoint_value(target_type, target_obj, tgt_key)
+            src_val = li.source_object_id
+            tgt_val = li.target_object_id
             if src_val is None or tgt_val is None:
                 continue
             session.run(
@@ -848,21 +848,25 @@ async def create_link_instance(
             status_code=400,
             detail="Links come from the junction table dataset; add/remove rows there.",
         )
-    # Validate source/target belong to correct types
-    source_obj = await db.get(ObjectInstance, body.source_object_id)
-    target_obj = await db.get(ObjectInstance, body.target_object_id)
-    if not source_obj:
-        raise HTTPException(status_code=400, detail="Source object not found")
-    if not target_obj:
-        raise HTTPException(status_code=400, detail="Target object not found")
-    if source_obj.object_type_id != link_type.source_object_type_id:
-        raise HTTPException(status_code=400, detail="Source object must be of source type")
-    if target_obj.object_type_id != link_type.target_object_type_id:
-        raise HTTPException(status_code=400, detail="Target object must be of target type")
     source_type = await db.get(ObjectType, link_type.source_object_type_id)
     target_type = await db.get(ObjectType, link_type.target_object_type_id)
     if not source_type or not target_type:
         raise HTTPException(status_code=400, detail="Link type references a missing object type")
+    # Endpoints are resolved through the graph, not the write queue: a link joins two *objects*,
+    # and a dataset-backed object has no queue row at all. Looking the id up inside the declared
+    # type also proves it is of that type.
+    source_props = await fetch_object_from_neo4j(db, source_type, body.source_object_id)
+    if source_props is None:
+        raise HTTPException(
+            status_code=409,
+            detail=f"Source object {body.source_object_id} is not in the ontology graph yet. Index {source_type.name} first.",
+        )
+    target_props = await fetch_object_from_neo4j(db, target_type, body.target_object_id)
+    if target_props is None:
+        raise HTTPException(
+            status_code=409,
+            detail=f"Target object {body.target_object_id} is not in the ontology graph yet. Index {target_type.name} first.",
+        )
     link_instance = LinkInstance(
         id=str(uuid.uuid4()),
         link_type_id=link_type_id,
@@ -893,8 +897,8 @@ async def create_link_instance(
         link_type_id=link_instance.link_type_id,
         source_object_id=link_instance.source_object_id,
         target_object_id=link_instance.target_object_id,
-        source_data=source_obj.data,
-        target_data=target_obj.data,
+        source_data=source_props,
+        target_data=target_props,
         created_at=link_instance.created_at,
         updated_at=link_instance.updated_at,
     )

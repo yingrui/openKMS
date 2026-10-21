@@ -904,6 +904,14 @@ async def delete_object_instance(
 
     instance = await db.get(ObjectInstance, object_id)
     if instance and instance.object_type_id == object_type_id:
+        await db.execute(
+            LinkInstance.__table__.delete().where(
+                or_(
+                    LinkInstance.source_object_id == object_id,
+                    LinkInstance.target_object_id == object_id,
+                )
+            )
+        )
         await db.delete(instance)
         await db.flush()
     else:
