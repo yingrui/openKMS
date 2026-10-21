@@ -140,6 +140,9 @@ class K8sClusterOption(BaseModel):
     default_namespace: str
 
 
+CLUSTER_DNS_SUFFIXES = (".svc", ".svc.cluster.local")
+
+
 def _validate_base_url(value: str) -> str:
     parsed = urlparse(value.strip())
     if parsed.scheme not in ("http", "https") or not parsed.netloc:
@@ -148,6 +151,16 @@ def _validate_base_url(value: str) -> str:
         )
     if parsed.query or parsed.fragment:
         raise HTTPException(status_code=400, detail="base_url must not carry a query or fragment")
+    host = (parsed.hostname or "").lower()
+    if host.endswith(CLUSTER_DNS_SUFFIXES) or ".svc." in host:
+        # The sandbox has no cluster DNS; registering this as `http` would fail at the first call.
+        raise HTTPException(
+            status_code=400,
+            detail=(
+                f"'{host}' is a cluster-internal Service name — the function sandbox cannot resolve it. "
+                "Register it with kind=k8s_service (cluster/namespace/service/port) instead."
+            ),
+        )
     return value.strip().rstrip("/")
 
 

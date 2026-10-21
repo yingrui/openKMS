@@ -52,7 +52,7 @@ def execute(input: dict, client) -> dict:
 |-------|---------|
 | `api_name` | what the source writes (`client.external("turtle")`); fixed at creation |
 | `kind` | `http` — the sandbox calls the URL itself. `k8s_service` — the **backend** calls the Service through that cluster's kubeconfig, because the Service's DNS only resolves inside the cluster |
-| `base_url` | `http` only: origin (`http://backend:8200`) — the Function supplies the path |
+| `base_url` | `http` only: origin (`http://backend:8200`) — the Function supplies the path. A cluster DNS name (`*.svc.cluster.local`) is refused here with a pointer to `k8s_service`, because the sandbox cannot resolve it |
 | `cluster_id` / `namespace` / `service` / `port` / `base_path` | `k8s_service` only: the coordinates (and an optional mount prefix) the backend dials |
 | `auth_kind` | `none` · `bearer` · `header` (named header) · `hmac` (SHA-256 signature of the body, header `X-OpenKMS-Signature` by default) |
 | `allowed_paths` | prefixes this service may be called on; anything else is refused **before** the request leaves |

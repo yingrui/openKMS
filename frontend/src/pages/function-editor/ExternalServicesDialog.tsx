@@ -419,6 +419,7 @@ export function ExternalServicesDialog({ open, onClose }: { open: boolean; onClo
             <thead>
               <tr>
                 <th>{t('editor.external.apiName')}</th>
+                <th>{t('editor.external.kind')}</th>
                 <th>{t('editor.external.target')}</th>
                 <th>{t('editor.external.auth')}</th>
                 <th>{t('editor.external.allowedPaths')}</th>
@@ -433,15 +434,26 @@ export function ExternalServicesDialog({ open, onClose }: { open: boolean; onClo
                     <div className="external-services__name">{service.display_name}</div>
                   </td>
                   <td>
+                    {/* The kind is the thing that decides who sends the request, so it is named,
+                        not inferred from the shape of the target. */}
+                    <span className={`external-services__kind external-services__kind--${service.kind}`}>
+                      {service.kind === 'k8s_service'
+                        ? t('editor.external.kindK8s')
+                        : t('editor.external.kindHttp')}
+                    </span>
+                  </td>
+                  <td>
                     {service.kind === 'k8s_service' ? (
-                      <code>
-                        {service.cluster_id
-                          ? clusters.find((c) => c.id === service.cluster_id)?.name || 'k8s'
-                          : 'k8s'}
+                      <code title={service.cluster_id || undefined}>
+                        {clusters.find((c) => c.id === service.cluster_id)?.name ||
+                          (service.cluster_id ? service.cluster_id.slice(0, 8) : '—')}
                         :{service.namespace}/{service.service}:{service.port}
+                        {service.base_path ? service.base_path : ''}
                       </code>
                     ) : (
-                      <code>{service.base_url}</code>
+                      <code>
+                        {(service.base_url || '—') + (service.base_path || '')}
+                      </code>
                     )}
                   </td>
                   <td>{service.auth_kind === 'none' ? '—' : service.auth_kind}</td>

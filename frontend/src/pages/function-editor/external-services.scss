@@ -26,3 +26,19 @@
   max-height: min(70vh, 640px);
   overflow-y: auto;
 }
+
+/* The kind decides who sends the request; make it readable at a glance. */
+.external-services__kind {
+  display: inline-block;
+  padding: 1px var(--space-2);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-bg-elevated);
+  font-size: 0.75rem;
+  white-space: nowrap;
+}
+
+.external-services__kind--k8s_service {
+  border-color: var(--color-accent);
+  color: var(--color-accent);
+}
