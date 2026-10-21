@@ -332,6 +332,11 @@ def add_subparser(sub) -> None:
         help="MERGE link relationships into Neo4j (POST /api/link-types/index-to-neo4j): junction/source datasets or saved links",
     )
     sn.add_argument(
+        "--prune",
+        action="store_true",
+        help="Also delete graph entries the source no longer has (a type that mirrors an owned table)",
+    )
+    sn.add_argument(
         "--neo4j-data-source-id",
         required=True,
         help="Required Neo4j data source id (discover via: data-sources list)",
@@ -344,6 +349,11 @@ def add_subparser(sub) -> None:
         help="MERGE one link type into Neo4j (POST /api/link-types/{id}/index-to-neo4j)",
     )
     snt.add_argument("--type-id", required=True)
+    snt.add_argument(
+        "--prune",
+        action="store_true",
+        help="Also delete graph entries the source no longer has (a type that mirrors an owned table)",
+    )
     snt.add_argument(
         "--neo4j-data-source-id",
         required=True,

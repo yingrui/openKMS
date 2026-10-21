@@ -364,6 +364,11 @@ def add_subparser(sub) -> None:
         help="MERGE all indexable object types into Neo4j (POST /api/object-types/index-to-neo4j): dataset rows or stored instances",
     )
     sn.add_argument(
+        "--prune",
+        action="store_true",
+        help="Also delete graph entries the source no longer has (a type that mirrors an owned table)",
+    )
+    sn.add_argument(
         "--neo4j-data-source-id",
         required=True,
         help="Required Neo4j data source id (discover via: data-sources list)",
@@ -376,6 +381,11 @@ def add_subparser(sub) -> None:
         help="MERGE one object type into Neo4j (POST /api/object-types/{id}/index-to-neo4j)",
     )
     snt.add_argument("--type-id", required=True)
+    snt.add_argument(
+        "--prune",
+        action="store_true",
+        help="Also delete graph entries the source no longer has (a type that mirrors an owned table)",
+    )
     snt.add_argument(
         "--neo4j-data-source-id",
         required=True,
