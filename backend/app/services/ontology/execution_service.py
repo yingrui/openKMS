@@ -248,7 +248,9 @@ async def _apply_edits_and_audit(
         else:
             await db.flush()
             ot = await db.get(ObjectType, at.object_type_id)
-            if ot and not ot.dataset_id:
+            # Dataset-backed types included: a modify is an overlay written into the node by its
+            # business id. Creates/deletes never reach here for them (apply refuses).
+            if ot:
                 try:
                     await sync_edit_apply_result_to_neo4j(db, ot, applied)
                 except (SQLAlchemyError, *NEO4J_ERRORS) as e:

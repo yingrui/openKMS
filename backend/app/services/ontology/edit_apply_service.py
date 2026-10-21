@@ -1,8 +1,15 @@
 """Apply Function edit batches to the object_instances apply queue.
 
 Applies ``create`` / ``modify`` / ``delete`` on resolvable queue rows (instance id as
-``primary_key``). Dataset-backed object types are rejected. Callers sync the queue
-into Neo4j in the same request when a Neo4j data source exists.
+``primary_key``).
+
+**Dataset-backed types are modify-only.** Their rows are created and deleted by the owning
+application, so the ontology cannot invent or remove one; but a ``modify`` is the ontology's own
+decision: the queue row is keyed by the object's business id, the node is merged in place, and the
+Action's webhook tells the app. The bound table stays authoritative — the next index writes the
+table's values back, so a webhook that never landed is reverted rather than believed.
+
+Callers sync the queue into Neo4j in the same request when a Neo4j data source exists.
 """
 
 from __future__ import annotations
@@ -74,9 +81,14 @@ async def _resolve_ot_for_edit(
             f"edit object type {object_type} does not match action object type"
         )
         return None
-    if getattr(ot, "dataset_id", None):
+    if getattr(ot, "dataset_id", None) and op != "modify":
+        # A dataset-backed object's identity and existence belong to the owning table. Editing the
+        # mirror graph alone cannot create or remove a row, and a create would show a uuid the
+        # table never had. Modifying is the case an Action does own: it rewrites the node, the app
+        # is told by the Action's webhook, and the next index confirms (or reverts) from the table.
         result.errors.append(
-            f"cannot apply {op} to dataset-backed object type {object_type}"
+            f"cannot {op} an object of dataset-backed type {object_type}: the owning application "
+            f"creates and deletes those rows. Call the app (or its webhook), then re-index."
         )
         return None
     return ot

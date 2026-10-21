@@ -86,6 +86,14 @@ python scripts/cli.py ontology action-types create … --api-name createWorkItem
 - Expect Action execute alone to update **dataset-backed** synthetic ids (deferred).
 - Bypass CLI with ad-hoc HTTP — if a subcommand is missing, report the gap to the user; only a maintainer working in a skill-source checkout adds it there.
 
+## Dataset-backed object types: modify only
+
+Their rows are created and deleted by the owning application, so an Action on such a type may only
+`object_modify` (create/delete are refused with a message naming the owner). The edit lands on the
+object's node as an overlay; the bound table stays authoritative, and the next index writes the
+table's values back — a webhook that failed is reverted, not believed. So: use a modify Action for
+"adjust this object", and call the app (or its Function) for "add/remove a row".
+
 ## Webhooks (no Function needed)
 
 If an Action's job is "change the ontology, then tell the owning application", register the

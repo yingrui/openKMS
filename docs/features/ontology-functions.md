@@ -61,6 +61,8 @@ POST <service base><path>
 | Outcome recorded next to the Action log (`output_payload.webhook`) and returned as `webhook` | "Did anyone hear it?" is answerable without a second table |
 | Path must be inside the service's `allowed_paths`; the credential comes from the service (`none` / `bearer` / `header` / `hmac`) | The registry stays the only place a destination is declared |
 
+For a **dataset-backed** object type the Action may only `modify` (the owning app creates and deletes those rows). The edit is written as an overlay on the object's node, the webhook announces it, and the next index re-asserts the bound table — a delivery that failed is reverted, not believed. See [the graph is the ontology layer](ontology.md#the-graph-is-the-ontology-layer).
+
 The webhook is **not** a Function: no `client.external(...)` in source, no per-integration code. `object` is the object the Action acted on — resolved through the graph, so a dataset-backed `Portfolio` works — and `applied` carries the ids for a create, where there was no object yet.
 
 ## External services (calling another system)
