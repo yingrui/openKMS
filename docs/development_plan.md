@@ -293,6 +293,18 @@ They are **not claimed to work**: this machine has no `pg_dump`, so only the pre
 refuses with an installation hint, verified). The drill is what turns a file into a backup, and until it
 prints `restore drill ok`, the honest state is untested.
 
+### The gutter was on the wrong element (2026-10)
+
+The audit page still had "大片 padding": the rail floated inside `.app-page-pane`, so the page gutter wrapped
+the rail as well, and the rail read as a box instead of a column.
+
+Documents puts the gutter on the **main column**: `.app-content` drops its padding (`--with-*-rail`) and
+`.app-page-pane` — carrying the gutter and the scroll — sits on the content beside the rail. The audit page
+does the same, with a new generic `--with-rail` modifier that `MainLayout` adds for `/audit-log`; the two
+near-identical rail blocks in `App.scss` (channels, ontology suite) are now one selector list that includes
+it. Registered in the design-system's layout-exception table, which is what the `app-layout-exception:`
+comment points at.
+
 ### The rail now follows the Documents channel rail (2026-10)
 
 Sharing the Ontology Manager's rail was the right instinct and the wrong reference: that rail is a plain

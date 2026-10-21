@@ -112,6 +112,8 @@ function MainLayoutInner() {
     location.pathname === '/documents' || location.pathname.startsWith('/documents/');
   const onMedia = location.pathname === '/media' || location.pathname.startsWith('/media/');
   const showChannelRail = onArticles || onDocuments || onMedia;
+  // A page with its own left rail: the rail runs to the window edge, the gutter moves onto the main column.
+  const showRail = location.pathname === '/audit-log';
   const consoleShell = isConsoleShellPath(location.pathname);
   const showConsoleMobileNav = consoleShell && canAccessConsole && consoleNavOpen;
 
@@ -186,7 +188,7 @@ function MainLayoutInner() {
         {!showAuthRequired && !showPathDenied && (
           <SidebarLayoutProvider sidebarCollapsed={sidebarCollapsed}>
             <div
-              className={`app-content ${isDetailPage ? 'app-content--compact' : ''}${isHome ? ' app-content--home' : ''}${isSearchPage ? ' app-content--search' : ''}${isExplorePage ? ' app-content--object-explorer' : ''}${isEditorWorkspace ? ' app-content--function-editor-workspace' : ''}${isAppsRun ? ' app-content--apps-run' : ''}${showChannelRail ? ' app-content--with-channel-rail' : ''}${ontologyRailModifier}`}
+              className={`app-content ${isDetailPage ? 'app-content--compact' : ''}${isHome ? ' app-content--home' : ''}${isSearchPage ? ' app-content--search' : ''}${isExplorePage ? ' app-content--object-explorer' : ''}${isEditorWorkspace ? ' app-content--function-editor-workspace' : ''}${isAppsRun ? ' app-content--apps-run' : ''}${showChannelRail ? ' app-content--with-channel-rail' : ''}${showRail ? ' app-content--with-rail' : ''}${ontologyRailModifier}`}
             >
               {ontologyOutlet}
             </div>

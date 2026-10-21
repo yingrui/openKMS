@@ -180,35 +180,10 @@
   padding: var(--app-page-padding-y) var(--app-page-padding-x);
 }
 
-/* app-layout-exception: rail layouts — gutter on .app-page-pane, not .app-content */
-.app-content--with-channel-rail {
-  display: flex;
-  flex-direction: column;
-  flex: 1;
-  min-height: 0;
-  height: 100%;
-  max-height: 100%;
-  overflow: hidden;
-  padding: 0;
-}
-
-/* Keep channel tree pinned; scroll only the main column */
-body:has(.app-content--with-channel-rail) {
-  height: 100vh;
-  max-height: 100dvh;
-  overflow: hidden;
-}
-
-body:has(.app-content--with-channel-rail) #root,
-body:has(.app-content--with-channel-rail) .app-layout,
-body:has(.app-content--with-channel-rail) .app-shell-body,
-body:has(.app-content--with-channel-rail) .app-main {
-  height: 100%;
-  min-height: 0;
-  overflow: hidden;
-}
-
-/* app-layout-exception: ontology suite rails — gutter on .app-page-pane */
+/* app-layout-exception: rail layouts — the rail runs to the window edge, so the gutter lives on
+   .app-page-pane (the main column) instead of .app-content. One rule for every rail page. */
+.app-content--with-rail,
+.app-content--with-channel-rail,
 .app-content--with-ontology-rail,
 .app-content--with-ontology-manager-rail,
 .app-content--with-object-explorer-rail,
@@ -218,7 +193,73 @@ body:has(.app-content--with-channel-rail) .app-main {
   flex: 1;
   min-height: 0;
   height: 100%;
+  max-height: 100%;
   padding: 0;
+  overflow: hidden;
+}
+
+/* Keep the rail pinned; scroll only the main column. */
+body:has(
+  :is(
+    .app-content--with-rail,
+    .app-content--with-channel-rail,
+    .app-content--with-ontology-rail,
+    .app-content--with-ontology-manager-rail,
+    .app-content--with-object-explorer-rail,
+    .app-content--with-function-editor-rail
+  )
+) {
+  height: 100vh;
+  max-height: 100dvh;
+  overflow: hidden;
+}
+
+body:has(
+    :is(
+      .app-content--with-rail,
+      .app-content--with-channel-rail,
+      .app-content--with-ontology-rail,
+      .app-content--with-ontology-manager-rail,
+      .app-content--with-object-explorer-rail,
+      .app-content--with-function-editor-rail
+    )
+  )
+  #root,
+body:has(
+    :is(
+      .app-content--with-rail,
+      .app-content--with-channel-rail,
+      .app-content--with-ontology-rail,
+      .app-content--with-ontology-manager-rail,
+      .app-content--with-object-explorer-rail,
+      .app-content--with-function-editor-rail
+    )
+  )
+  .app-layout,
+body:has(
+    :is(
+      .app-content--with-rail,
+      .app-content--with-channel-rail,
+      .app-content--with-ontology-rail,
+      .app-content--with-ontology-manager-rail,
+      .app-content--with-object-explorer-rail,
+      .app-content--with-function-editor-rail
+    )
+  )
+  .app-shell-body,
+body:has(
+    :is(
+      .app-content--with-rail,
+      .app-content--with-channel-rail,
+      .app-content--with-ontology-rail,
+      .app-content--with-ontology-manager-rail,
+      .app-content--with-object-explorer-rail,
+      .app-content--with-function-editor-rail
+    )
+  )
+  .app-main {
+  height: 100%;
+  min-height: 0;
   overflow: hidden;
 }
 

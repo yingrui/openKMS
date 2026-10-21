@@ -141,7 +141,7 @@ With the header gone, the left rail is the only chrome: brand → Home at the to
 | Pattern | Reason |
 |---------|--------|
 | `.app-content--search` | Wider search gutters |
-| `.app-content--with-*-rail` → `padding: 0` | Gutter on pane only; `:not(rail…)` avoids double padding on ≤768 detail |
+| `.app-content--with-rail` (and `--with-channel-rail`, `--with-ontology-*`) → `padding: 0` | **A page with its own left rail** — the gutter moves onto `.app-page-pane` (the main column) so the rail runs to the window edge. The audit log at `/audit-log` uses the generic `--with-rail`; `MainLayout` adds it per route |
 | `.app-content--function-editor-workspace` | Full-height IDE |
 | `.app-content--apps-run` → `padding: 0` | Apps Run gutters on `.apps-page--run` (not editor workspace) |
 | `.app-content--compact:has(.kb-detail--qa-fullpage)` | KB Q&A full page |

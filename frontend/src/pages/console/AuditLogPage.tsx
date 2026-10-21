@@ -123,8 +123,7 @@ export function AuditLogPage() {
   }
 
   return (
-    <div className="app-page-pane">
-      <div className="audit-log">
+    <div className="audit-log">
         <aside className="filter-rail" aria-label={t('auditLog.scopeAria')}>
           <div className="filter-rail__head">
             <h2 className="filter-rail__title">{t('auditLog.scope')}</h2>
@@ -162,7 +161,7 @@ export function AuditLogPage() {
           </nav>
         </aside>
 
-        <div className="audit-log__main">
+        <div className="app-page-pane audit-log__main">
           <header className="page-header">
             <div>
               <h1>{t('auditLog.title')}</h1>
@@ -264,7 +263,6 @@ export function AuditLogPage() {
             </>
           )}
         </div>
-      </div>
     </div>
   );
 }
