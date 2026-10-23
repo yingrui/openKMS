@@ -179,3 +179,74 @@ def test_a_session_cookie_sync_is_not_an_event(recorded):
 
     TestClient(app).post("/sync-session")
     assert recorded == []
+
+
+class TestSessionEvents:
+    """Sign-in and sign-out are GETs and a cookie POST, so they record themselves — and the call must match
+    `record_audit_event`'s signature. It did not, and `/logout` and `/clear-session` answered 500."""
+
+    def test_logout_is_recorded_as_auth_logout(self, monkeypatch):
+        import asyncio
+
+        from app.api import auth as auth_module
+
+        events: list[dict] = []
+
+        async def fake_record(**kwargs) -> None:
+            events.append(kwargs)
+
+        monkeypatch.setattr(auth_module, "record_audit_event", fake_record)
+        asyncio.run(
+            auth_module.record_session_event(
+                "logout", {"sub": "u1", "email": "a@b.c", "auth_mode": "api_key"}
+            )
+        )
+        assert events == [
+            {
+                "method": "AUTH",
+                "path": "auth/logout",
+                "status_code": 200,
+                "actor_sub": "u1",
+                "actor_name": "a@b.c",
+                "auth_mode": "api_key",
+            }
+        ]
+
+    def test_an_unknown_actor_is_still_recorded(self, monkeypatch):
+        import asyncio
+
+        from app.api import auth as auth_module
+
+        events: list[dict] = []
+
+        async def fake_record(**kwargs) -> None:
+            events.append(kwargs)
+
+        monkeypatch.setattr(auth_module, "record_audit_event", fake_record)
+        asyncio.run(auth_module.record_session_event("logout", {}))
+        assert events[0]["actor_sub"] is None
+        assert events[0]["path"] == "auth/logout"
+
+
+def test_a_forged_or_expired_cookie_yields_no_actor(monkeypatch):
+    """A logout still records; it just cannot say who. An unverified decode would let a forged token
+    misattribute itself in the log — the one thing an audit log exists to prevent."""
+    from fastapi import HTTPException
+
+    from app.api import auth as auth_module
+
+    class FakeSession(dict):
+        pass
+
+    class FakeRequest:
+        def __init__(self, token: str | None) -> None:
+            self.session = FakeSession({} if token is None else {"access_token": token})
+
+    def boom(_token: str) -> dict:
+        raise HTTPException(status_code=401, detail="expired")
+
+    monkeypatch.setattr(auth_module, "_verify_token_for_mode", boom)
+    assert auth_module._session_actor(FakeRequest("junk")) == {}
+    assert auth_module._session_actor(FakeRequest(None)) == {}
+    monkeypatch.setattr(auth_module, "_verify_token_for_mode", lambda _t: {"sub": "u1"})
+    assert auth_module._session_actor(FakeRequest("ok")) == {"sub": "u1"}

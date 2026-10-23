@@ -377,6 +377,24 @@ require_service_client = require_internal_client
 router = APIRouter(tags=["auth"])
 
 
+def _session_actor(request: Request) -> dict:
+    """Who is signing out — read from the cookie's token **before** it is cleared, and verified.
+
+    An unverified decode would let anyone set the name in the audit log by handing us a forged token, which
+    is precisely the misattribution an audit log exists to prevent. An expired token is normal at logout, so
+    this is best effort: no answer is better than a wrong one.
+    """
+    token = request.session.get("access_token")
+    if not isinstance(token, str) or not token.strip():
+        return {}
+    try:
+        return _verify_token_for_mode(token.strip())
+    except HTTPException:
+        # The verifiers already turn every failure into an HTTPException (expired, wrong issuer, bad
+        # signature), so this is the whole failure surface — not a blanket catch.
+        return {}
+
+
 async def record_session_event(kind: str, payload: dict) -> None:
     """Record a sign-in / sign-out. Best effort: an audit outage must not block logging in or out."""
     sub = payload.get("sub")
@@ -392,7 +410,7 @@ async def record_session_event(kind: str, payload: dict) -> None:
             or None
         ),
         auth_mode=payload.get("auth_mode") if isinstance(payload.get("auth_mode"), str) else None,
-        resource_type="sessions",
+        # `resource_type` is derived from the path (`auth/logout` → `auth`); passing it is a TypeError.
     )
 
 
@@ -504,16 +522,24 @@ async def oauth2_callback(
 
 @router.post("/clear-session")
 async def clear_session(request: Request) -> dict:
+    """Sign out of the SPA: the token lives in this cookie, so clearing it ends the session.
+
+    Recorded as the same `auth/logout` event as `GET /logout` — it is the same act, and one act should not
+    read as two kinds of thing. Excluded from the generic middleware for that reason (`NOT_AUDITED`).
+    """
+    payload = _session_actor(request)
     request.session.clear()
+    await record_session_event("logout", payload)
     return {"ok": True}
 
 
 @router.get("/logout")
 async def logout(request: Request) -> RedirectResponse:
     """Clear session; in oidc mode redirect to IdP logout."""
+    payload = _session_actor(request)
     request.session.clear()
     # A GET cannot carry a mutation to the middleware, but it is the end of a session.
-    await record_session_event("logout", getattr(request.state, "openkms_jwt_payload", None) or {})
+    await record_session_event("logout", payload)
     if settings.auth_mode == "local":
         return RedirectResponse(url=_frontend_base(), status_code=302)
     meta = get_oidc_provider_metadata()

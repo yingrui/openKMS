@@ -298,6 +298,26 @@ They are **not claimed to work**: this machine has no `pg_dump`, so only the pre
 refuses with an installation hint, verified). The drill is what turns a file into a backup, and until it
 prints `restore drill ok`, the honest state is untested.
 
+### `clear-session` *is* the logout — and two bugs under it (2026-10)
+
+"Then is clear-session redundant with logout?" — **functionally yes**: both call `session.clear()`, and the
+SPA uses `POST /clear-session` while `GET /api/auth/logout` exists for a full-page flow that also ends the
+IdP session. So the audit records them as **one** event, `AUTH auth/logout`, and `clear-session` left the
+generic middleware.
+
+Under that question were two real bugs, both found by running the flow rather than reading it:
+
+- the frontend called **`POST /api/auth/logout`**, but that route is a **GET** — a 405 that always fell
+  through, silently, on every sign-out. Removed; `clear-session` had already done the work.
+- `record_session_event` passed `resource_type` to `record_audit_event`, which derives it from the path and
+  does not take it: `POST /clear-session` and `GET /logout` both answered **500** ✗. A test covers the call
+  shape now, because the middleware tests could not see it.
+
+A sign-out also names its actor, read from the cookie's token **and verified** — an unverified decode would
+let a forged token name itself in the log. Best effort: a token is usually expired at logout, and no answer
+beats a wrong one. The unit test covers the verify/no-verify branches; the browser path cannot be reproduced
+with an API key, which is a JWT-less credential by construction.
+
 ### Sessions: record the login, not the cookie sync (2026-10)
 
 Asked whether `/sync-session` and `/clear-session` need auditing. Reading them settled it:

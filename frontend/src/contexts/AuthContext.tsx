@@ -486,8 +486,9 @@ function LocalAuthProvider({
   const logout = useCallback(async () => {
     setAuthError(null);
     try {
+      // One call: clearing the cookie *is* the sign-out. `GET /api/auth/logout` exists for a full-page
+      // flow (it also ends the IdP session); posting to it was a 405 that always fell through.
       await fetch(`${config.apiUrl}/clear-session`, { method: 'POST', credentials: 'include' });
-      await fetch(`${config.apiUrl}/api/auth/logout`, { method: 'POST', credentials: 'include' });
     } catch {
       // ignore
     }

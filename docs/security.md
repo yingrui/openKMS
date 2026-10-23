@@ -48,6 +48,9 @@ question "what changed this dataset, and did it work?" belongs to anyone who can
   `detail.error` = the exception type *before* the exception propagates.
 - Its **own session** (a request rollback must not erase the record of the attempt), and it swallows only
   `SQLAlchemyError`/`OSError`, loudly: an audit outage must not turn a successful write into a 500.
+- **A sign-out names its actor** from the cookie's token, **verified**: an unverified decode would let a
+  forged token name itself in the log, which is the misattribution an audit log exists to prevent. An expired
+  token at logout is normal, so this is best effort — no answer is better than a wrong one.
 - **No request bodies** — they carry secrets. Response bodies are buffered only for `application/json` under
   32 KB, and only to read an `id`.
 - Read it three ways: the app's **user menu → Audit log** (`/audit-log`; the item appears only to
@@ -61,7 +64,7 @@ question "what changed this dataset, and did it work?" belongs to anyone who can
 |---|---|
 | Every POST / PUT / PATCH / DELETE over HTTP — 2xx, 4xx, 5xx, authenticated or not | **Reads** — deliberate: volume without a destruction story |
 | **Worker runs** (`job_app.task` wraps each task, so this cannot be forgotten): `JOB job/<task>`, the job id as subject, 500 with the exception type when it raises | **Direct database access** and **migrations** — an app-level log cannot see those; that is what a database audit log is for |
-| **Sign-in and sign-out**: `AUTH auth/login` (OIDC callback), `AUTH auth/logout`, `POST /clear-session` | `/sync-session` — a cookie copy that fires on every app load and changes nothing after the first |
+| **Sign-in and sign-out**: `AUTH auth/login` (OIDC callback), `AUTH auth/logout` (`GET /logout` **and** `POST /clear-session` — the same act, one event) | `/sync-session` — a cookie copy that fires on every app load and changes nothing after the first |
 
 A worker run and the HTTP call that enqueued it are two rows with the same `detail.job_id`: "asked by X" and
 "ran, and here is how it ended".
