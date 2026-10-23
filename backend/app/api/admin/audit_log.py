@@ -134,7 +134,35 @@ async def list_audit_events(
             stmt.order_by(AuditEvent.at.desc(), AuditEvent.id.desc()).offset(offset).limit(limit)
         )
     ).scalars().all()
-    return AuditEventListResponse(
-        items=[AuditEventResponse.model_validate(row, from_attributes=True) for row in rows],
-        total=total,
-    )
+
+    items = [AuditEventResponse.model_validate(row, from_attributes=True) for row in rows]
+    await _fill_labels(db, items)
+    return AuditEventListResponse(items=items, total=total)
+
+
+async def _fill_labels(db: AsyncSession, items: list[AuditEventResponse]) -> None:
+    """Give a subject-less row the name the log learned elsewhere.
+
+    A delete is a 204: no body, so unless its handler volunteered the name, the row has an id and nothing
+    else — and the object it points at is gone. The log itself usually knows: a create or a patch of the
+    same resource recorded `display_name`/`name`. One query per page fills every such row, for every entity,
+    including rows written before the label existed — no handler has to opt in.
+    """
+    unknown = {item.resource_id for item in items if item.resource_id and not item.resource_label}
+    if not unknown:
+        return
+
+    rows = (
+        await db.execute(
+            select(AuditEvent.resource_id, AuditEvent.resource_label)
+            .where(AuditEvent.resource_id.in_(unknown), AuditEvent.resource_label.is_not(None))
+            .order_by(AuditEvent.at.desc())
+        )
+    ).all()
+    known: dict[str, str] = {}
+    for resource_id, label in rows:
+        if resource_id and label and resource_id not in known:
+            known[resource_id] = label  # newest wins: the name it had when last touched
+    for item in items:
+        if item.resource_id and not item.resource_label:
+            item.resource_label = known.get(item.resource_id)

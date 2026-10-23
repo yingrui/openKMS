@@ -298,6 +298,21 @@ They are **not claimed to work**: this machine has no `pg_dump`, so only the pre
 refuses with an installation hint, verified). The drill is what turns a file into a backup, and until it
 prints `restore drill ok`, the honest state is untested.
 
+### The log already knew the name (2026-10)
+
+Asked whether the other ten delete endpoints deserve the label hook. Counting first: there are **74** DELETE
+routes, and most delete sub-resources nobody needs a name for (messages, attachments, conversations). The ones
+that matter are about ten — but each needs a service to return the name and a handler to pass it, ~15 files.
+
+The cheaper answer is right, and better: **the log usually knows the name already.** A create or a patch of
+the same `resource_id` recorded `display_name`/`name`, so the read endpoint fills a label-less row from the
+newest row that had one — one query per page, for every entity, **including rows written before the column
+existed**. Verified on the existing rows: three historical function deletes now show
+`Hello Greeting`, `审计验证（第二次）`, `审计验证函数（临时）` where they showed ids.
+
+The handler hook stays for what the log cannot know: an object that was never created or renamed through
+this API.
+
 ### An audit row that says *what* was deleted, not only *which* (2026-10)
 
 A reader pointed at two rows: `DELETE /api/ontology/functions/fn-dd4b5f0ed07b → 204 | Ontology`. It tells you
