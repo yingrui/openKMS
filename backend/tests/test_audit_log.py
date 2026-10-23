@@ -167,3 +167,15 @@ def test_a_delete_records_the_name_only_the_handler_knew(recorded):
 def test_the_label_prefers_a_display_name_over_a_machine_name(recorded):
     TestClient(_fake_app()).post("/api/functions")
     assert recorded[0]["response_label"] == "每日行情入库"
+
+
+def test_a_session_cookie_sync_is_not_an_event(recorded):
+    """`/sync-session` fires on every app load and changes nothing after the first — noise, not a login."""
+    app = _fake_app()
+
+    @app.post("/sync-session")
+    async def sync() -> dict[str, bool]:
+        return {"ok": True}
+
+    TestClient(app).post("/sync-session")
+    assert recorded == []

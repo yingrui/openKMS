@@ -19,6 +19,11 @@ logger = logging.getLogger(__name__)
 
 MUTATING = frozenset({"POST", "PUT", "PATCH", "DELETE"})
 
+#: Mutating paths that are not a change worth logging. `/sync-session` copies the browser's token into the
+#: session cookie on **every** app load — idempotent, and it buried the real operations in the rail's counts.
+#: Login and logout are recorded where they actually happen (the OIDC callback and `/logout`).
+NOT_AUDITED = frozenset({"/sync-session"})
+
 #: Our ids are UUIDs; a path segment that looks like one is the subject, anything else is a noun
 #: (`/api/system/settings` reports `system` and no id, which is honest enough for a log).
 _UUID = re.compile(r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$", re.I)

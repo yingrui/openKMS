@@ -24,6 +24,7 @@ from app.database import async_session_maker, get_db
 from app.models.user import User
 from app.models.user_api_key import UserApiKey
 from app.models.user_preference import UserPreference
+from app.services.audit import record_audit_event
 from app.services.permissions.permission_catalog import PERM_ALL
 from app.services.permissions.security_permission_service import list_permissions_sorted, sorted_permission_keys
 from app.services.permissions.permission_resolution import (
@@ -376,6 +377,25 @@ require_service_client = require_internal_client
 router = APIRouter(tags=["auth"])
 
 
+async def record_session_event(kind: str, payload: dict) -> None:
+    """Record a sign-in / sign-out. Best effort: an audit outage must not block logging in or out."""
+    sub = payload.get("sub")
+    await record_audit_event(
+        method="AUTH",
+        path=f"auth/{kind}",
+        status_code=200,
+        actor_sub=sub if isinstance(sub, str) else None,
+        actor_name=(
+            payload.get("username")
+            or payload.get("email")
+            or payload.get("preferred_username")
+            or None
+        ),
+        auth_mode=payload.get("auth_mode") if isinstance(payload.get("auth_mode"), str) else None,
+        resource_type="sessions",
+    )
+
+
 @router.post("/sync-session")
 async def sync_session(request: Request, db: AsyncSession = Depends(get_db)) -> dict:
     """Sync browser JWT to backend session (cookie) for credentialed img/object requests."""
@@ -475,6 +495,8 @@ async def oauth2_callback(
         payload = _verify_oidc_jwt(access_token.strip())
         await upsert_oidc_identity_from_jwt(db, payload)
         await db.commit()
+        # Signing in is the security event; the callback is a GET, so the mutation middleware never saw it.
+        await record_session_event("login", payload)
 
     frontend = _frontend_base()
     return RedirectResponse(url=frontend, status_code=302)
@@ -490,6 +512,8 @@ async def clear_session(request: Request) -> dict:
 async def logout(request: Request) -> RedirectResponse:
     """Clear session; in oidc mode redirect to IdP logout."""
     request.session.clear()
+    # A GET cannot carry a mutation to the middleware, but it is the end of a session.
+    await record_session_event("logout", getattr(request.state, "openkms_jwt_payload", None) or {})
     if settings.auth_mode == "local":
         return RedirectResponse(url=_frontend_base(), status_code=302)
     meta = get_oidc_provider_metadata()

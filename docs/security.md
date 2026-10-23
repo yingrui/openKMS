@@ -61,7 +61,7 @@ question "what changed this dataset, and did it work?" belongs to anyone who can
 |---|---|
 | Every POST / PUT / PATCH / DELETE over HTTP — 2xx, 4xx, 5xx, authenticated or not | **Reads** — deliberate: volume without a destruction story |
 | **Worker runs** (`job_app.task` wraps each task, so this cannot be forgotten): `JOB job/<task>`, the job id as subject, 500 with the exception type when it raises | **Direct database access** and **migrations** — an app-level log cannot see those; that is what a database audit log is for |
-| Auth housekeeping (`/sync-session`, `/clear-session`) | |
+| **Sign-in and sign-out**: `AUTH auth/login` (OIDC callback), `AUTH auth/logout`, `POST /clear-session` | `/sync-session` — a cookie copy that fires on every app load and changes nothing after the first |
 
 A worker run and the HTTP call that enqueued it are two rows with the same `detail.job_id`: "asked by X" and
 "ran, and here is how it ended".

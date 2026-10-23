@@ -16,7 +16,7 @@ from __future__ import annotations
 import json
 from typing import Any
 
-from app.services.audit import MUTATING, record_audit_event
+from app.services.audit import MUTATING, NOT_AUDITED, record_audit_event
 
 #: A response larger than this is not an object with an id; stop buffering rather than hold it in memory.
 MAX_CAPTURE = 32 * 1024
@@ -27,7 +27,11 @@ class AuditMiddleware:
         self.app = app
 
     async def __call__(self, scope: dict, receive: Any, send: Any) -> None:
-        if scope.get("type") != "http" or scope.get("method") not in MUTATING:
+        if (
+            scope.get("type") != "http"
+            or scope.get("method") not in MUTATING
+            or scope.get("path") in NOT_AUDITED
+        ):
             await self.app(scope, receive, send)
             return
 

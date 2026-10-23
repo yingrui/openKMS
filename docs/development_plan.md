@@ -298,6 +298,21 @@ They are **not claimed to work**: this machine has no `pg_dump`, so only the pre
 refuses with an installation hint, verified). The drill is what turns a file into a backup, and until it
 prints `restore drill ok`, the honest state is untested.
 
+### Sessions: record the login, not the cookie sync (2026-10)
+
+Asked whether `/sync-session` and `/clear-session` need auditing. Reading them settled it:
+
+- **`clear-session` is a logout** (`session.clear()`) — keep it.
+- **`sync-session` is not a login**: it copies the browser's token into the session cookie so `<img>` requests
+  carry credentials, idempotently, on **every app load**. It was 55 of the events in the log — the noise that
+  put `sync-session` above the real work in the rail's counts. It is excluded now (`NOT_AUDITED`).
+- **And the real gap**: sign-in was **not recorded at all** ✗. The OIDC callback is a `GET`, and the middleware
+  only records mutations — so the log had session *housekeeping* and no session *start*. Both ends are
+  recorded explicitly now (`AUTH auth/login` in the callback, `AUTH auth/logout` in `/logout`), with the actor
+  from the verified token, and best-effort so an audit outage cannot block logging in or out.
+
+Verified: a `/sync-session` call adds no event (55 → 55).
+
 ### The log already knew the name (2026-10)
 
 Asked whether the other ten delete endpoints deserve the label hook. Counting first: there are **74** DELETE
