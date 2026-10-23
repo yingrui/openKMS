@@ -99,6 +99,16 @@ PostgreSQL and Neo4j connections live in **Console → Data Sources**; mappings 
 | M:1/1:M link count | ✅ | When source object type has dataset and source_key_property (FK column), link_count from rows where FK is not null |
 | Index to Neo4j | ✅ | Ontology **Object types** / **Link types** pages: Index Objects/Links button when Neo4j data source exists; indexes datasets as nodes, link types as relationships |
 
+### What belongs in the graph
+
+A record's *identity and verdict* belong on the object; the rows behind it stay datasets. The
+`Simulation` object carries a run's stored summary (`return_rate_pct`, `cagr`, `max_drawdown_pct`,
+`win_count`, `trade_count`, `window_start`/`window_end`, …) because that is the question a reader
+asks. The equity curve is `public.simulation_daily` — a dataset keyed `run_id,trade_date`, joined
+to `Simulation runs` — and the fills are ledger rows in `public.portfolio_transactions`. The
+`traded` link type (many-to-many over that ledger, `simulation_run_id` → `ts_code`) is what turns
+"which stocks did this run trade" into a graph question without turning the ledger into objects.
+
 ## Ontology overview graph
 
 `/ontology-manager` **Graph** toggle shows the schema diagram (`OntologySchemaGraph.tsx`, `ontologySchemaGraphModel.ts`): object types as nodes, link types as straight directed edges; self-referential link types omitted; **disconnected type groups pack into a 2D grid** (not a single vertical column) with wider layer/node gaps. **Actions** / **Functions** overlays are off by default; when enabled, logic chips sit in a grid under their object type (not around it) so LR neighbors stay readable. Functions also link to every Object Type named in their I/O `x-ontology` contract (and Link Type endpoints). Logic nodes navigate to Manager detail; OT/LT edges still open Object Explorer. Instance exploration and layout lessons for query results are documented in [Object Explorer](object-explorer.md).
