@@ -38,6 +38,8 @@ export interface OntologyFunctionResponse {
   published_version?: number | null;
   latest_version?: number | null;
   schema_relations?: OntologyFunctionSchemaRelations | null;
+  /** External services its source calls with `client.external(...)`. */
+  external_services?: { api_name: string; registered: boolean }[];
   created_at: string;
   updated_at: string;
 }

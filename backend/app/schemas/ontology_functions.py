@@ -46,6 +46,12 @@ class OntologyFunctionSchemaRelations(BaseModel):
     version: int | None = None
 
 
+class OntologyFunctionExternalService(BaseModel):
+    api_name: str
+    #: False when the source calls a name that is not in the external-services registry.
+    registered: bool = True
+
+
 class OntologyFunctionResponse(BaseModel):
     id: str
     api_name: str
@@ -59,6 +65,8 @@ class OntologyFunctionResponse(BaseModel):
     published_version: int | None = None
     latest_version: int | None = None
     schema_relations: OntologyFunctionSchemaRelations | None = None
+    #: External services its source calls with `client.external(...)`; empty for a pure function.
+    external_services: list[OntologyFunctionExternalService] = []
     created_by: str | None = None
     created_by_name: str | None = None
     created_at: datetime

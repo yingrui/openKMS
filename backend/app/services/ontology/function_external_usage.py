@@ -15,6 +15,7 @@ import re
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.models.external_service import ExternalService
 from app.models.ontology_function import OntologyFunction, OntologyFunctionVersion
 
 EXTERNAL_CALLS_RE = re.compile(r"external\(\s*['\"]([A-Za-z][A-Za-z0-9_]*)['\"]")
@@ -57,3 +58,23 @@ async def function_external_services(db: AsyncSession, function_id: str) -> list
     if not function:
         return []
     return external_service_names(*await function_sources(db, function))
+
+
+async def function_external_service_status(
+    db: AsyncSession, function_id: str
+) -> list[tuple[str, bool]]:
+    """(api_name, is_registered) for each service the Function's source calls.
+
+    A name that is not in the registry is a Function that will fail on that line — worth showing
+    rather than hiding behind a successful scan.
+    """
+    function = await db.get(OntologyFunction, function_id)
+    if not function:
+        return []
+    names = external_service_names(*await function_sources(db, function))
+    if not names:
+        return []
+    registered = set(
+        (await db.execute(select(ExternalService.api_name))).scalars().all()
+    )
+    return [(name, name in registered) for name in names]

@@ -80,7 +80,10 @@
     "schemaTypeNameRequired": "对象/链接字段需要选择类型",
     "noVersionForSchema": "请先在编辑器中保存函数源码，再编辑 schema",
     "schemaRelatedObjectTypes": "schema 中的对象类型",
-    "schemaRelatedLinkTypes": "schema 中的链接类型"
+    "schemaRelatedLinkTypes": "schema 中的链接类型",
+    "externalServices": "外部接口",
+    "externalServiceRegistered": "已在 Function Editor → 外部接口 注册",
+    "externalServiceMissing": "源码里调用了但未注册 —— 运行时这一行会失败"
   },
   "dataInsights": {
     "title": "数据洞察",

@@ -15,7 +15,9 @@ from app.models.ontology_function import (
 )
 from app.models.link_type import LinkType
 from app.models.object_type import ObjectType
+from app.services.ontology.function_external_usage import function_external_service_status
 from app.schemas.ontology_functions import (
+    OntologyFunctionExternalService,
     OntologyFunctionCreate,
     OntologyFunctionResponse,
     OntologyFunctionSchemaRelations,
@@ -207,6 +209,7 @@ def function_to_response(
     latest_version_num: int | None,
     published_version_num: int | None,
     schema_relations: OntologyFunctionSchemaRelations | None = None,
+    external_services: list[OntologyFunctionExternalService] | None = None,
 ) -> OntologyFunctionResponse:
     return OntologyFunctionResponse(
         id=fn.id,
@@ -221,6 +224,7 @@ def function_to_response(
         published_version=published_version_num,
         latest_version=latest_version_num,
         schema_relations=schema_relations,
+        external_services=external_services or [],
         created_by=fn.created_by,
         created_by_name=fn.created_by_name,
         created_at=fn.created_at,
@@ -236,6 +240,10 @@ async def function_to_response_for_one(db: AsyncSession, fn: OntologyFunction) -
         latest_version_num=latest.get(fn.id),
         published_version_num=pub.get(fn.id),
         schema_relations=_relations_from_version(ver_map.get(fn.id)),
+        external_services=[
+            OntologyFunctionExternalService(api_name=name, registered=registered)
+            for name, registered in await function_external_service_status(db, fn.id)
+        ],
     )
 
 

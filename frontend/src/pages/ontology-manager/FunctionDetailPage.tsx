@@ -484,6 +484,36 @@ export function FunctionOverviewTab() {
         <EntityViewStat label={t('functions.latestVersion')} value={fn.latest_version ?? '—'} />
         <EntityViewStat label={t('functions.developmentStatus')} value={fn.development_status} />
         <EntityViewStat label={t('functions.objectType')} value={objectTypeName} />
+        <EntityViewStat
+          label={t('functions.externalServices')}
+          value={
+            (fn.external_services?.length ?? 0) === 0 ? (
+              '—'
+            ) : (
+              <span>
+                {fn.external_services?.map((service, i) => (
+                  <span key={service.api_name}>
+                    {i > 0 ? ', ' : ''}
+                    <Link
+                      to="/function-editor/external-services"
+                      className={
+                        service.registered ? undefined : 'function-detail__missing-service'
+                      }
+                      title={
+                        service.registered
+                          ? t('functions.externalServiceRegistered')
+                          : t('functions.externalServiceMissing')
+                      }
+                    >
+                      {service.api_name}
+                      {service.registered ? '' : ' (!)'}
+                    </Link>
+                  </span>
+                ))}
+              </span>
+            )
+          }
+        />
       </EntityViewStats>
       <EntityViewPanel title={t('functions.general')} description={t('functions.objectTypeHint')}>
         <div className="entity-view__form">

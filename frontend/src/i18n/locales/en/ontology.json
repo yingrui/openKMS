@@ -80,7 +80,10 @@
     "schemaTypeNameRequired": "Object/link fields need a type",
     "noVersionForSchema": "Save function source in the editor before editing the schema",
     "schemaRelatedObjectTypes": "Object types in schema",
-    "schemaRelatedLinkTypes": "Link types in schema"
+    "schemaRelatedLinkTypes": "Link types in schema",
+    "externalServices": "External services",
+    "externalServiceRegistered": "Registered in Function Editor → External services",
+    "externalServiceMissing": "Called by the source but not registered — this line will fail at run time"
   },
   "dataInsights": {
     "title": "Data Insights",

@@ -14,6 +14,8 @@ Author and run **Python Ontology Functions** — Palantir-style logic on top of 
 
 Legacy `/ontology/*` redirects to `/ontology-manager/*`. Optional `object_type_id` on a Function is an affiliation for Groups related resources and Overview Graph — execution still may call any type via `Client`.
 
+**Manager → Functions → Overview** shows **External services**: the names its source calls with `client.external(…)`, scanned from the published and latest versions, each linking to the registry. A name that is not registered is marked `(!)` — that Function will fail on that line at run time.
+
 ## Authoring with SDK
 
 ```python
