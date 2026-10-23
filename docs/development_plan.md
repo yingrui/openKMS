@@ -311,7 +311,9 @@ Asked to check all of them. 16 files, 22 `<Pagination>` uses, in three shapes:
 |---|---|---|
 | `ds-table-wrap` with the pager **inside** | models, schedules, job runs, console permissions, console access groups, document channel, audit log | the design system's intent (`.ds-table-wrap .ds-pagination { border-radius: 0 }`) |
 | `ds-table-wrap` with the pager **outside** | the datasets catalog — one place | **fixed**: moved inside, so a card's footer is a footer |
-| their **own** container, pager outside | ontology list, glossaries, evaluation, articles, and the `resource-list` card grids (wiki, KB, projects) | each page's own convention; a pager under a **card grid** cannot be a table footer, so it stays where it is |
+| `ds-resource-table-wrap` (the alias) with the pager outside | glossaries, evaluation, wiki, KB, and the model page's datasets section | **fixed**: moved inside, same as the datasets catalog |
+| a **card grid**, pager below | the project list (and any `resource-list` page without a table) | correct as it is: a pager under a grid of cards is not a table footer |
+| four render functions sharing one pager | the ontology list | left alone: moving it means passing the pager into each renderer, which is a refactor, not a move |
 
 The bug that started this — the clip — was **never per-page**: the fix went into `.ds-table-wrap` itself
 (`flex-shrink: 0`), so every card-footed pager in the app is safe by construction, not by this audit.

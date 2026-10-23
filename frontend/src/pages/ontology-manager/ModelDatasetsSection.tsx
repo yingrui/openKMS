@@ -517,15 +517,15 @@ export function ModelDatasetsSection() {
                         ))}
                       </tbody>
                     </table>
+                    <Pagination
+                      total={shown.length}
+                      page={safePage}
+                      pageSize={PAGE_SIZE}
+                      pageSizeOptions={[PAGE_SIZE]}
+                      onPageChange={(next) => setPages((prev) => ({ ...prev, [ref.id]: next }))}
+                      onPageSizeChange={() => undefined}
+                    />
                   </div>
-                  <Pagination
-                    total={shown.length}
-                    page={safePage}
-                    pageSize={PAGE_SIZE}
-                    pageSizeOptions={[PAGE_SIZE]}
-                    onPageChange={(next) => setPages((prev) => ({ ...prev, [ref.id]: next }))}
-                    onPageSizeChange={() => undefined}
-                  />
                 </>
               )}
             </EntityViewPanel>

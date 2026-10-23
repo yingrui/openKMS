@@ -268,18 +268,18 @@ export function KnowledgeBaseList() {
                 ))}
               </tbody>
             </table>
+            <Pagination
+              total={total}
+              page={listPage}
+              pageSize={listPageSize}
+              loading={loading}
+              onPageChange={setListPage}
+              onPageSizeChange={(size) => {
+                setListPageSize(size);
+                setListPage(0);
+              }}
+            />
           </div>
-          <Pagination
-            total={total}
-            page={listPage}
-            pageSize={listPageSize}
-            loading={loading}
-            onPageChange={setListPage}
-            onPageSizeChange={(size) => {
-              setListPageSize(size);
-              setListPage(0);
-            }}
-          />
         </>
       ) : null}
 
