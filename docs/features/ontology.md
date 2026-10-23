@@ -109,6 +109,15 @@ to `Simulation runs` — and the fills are ledger rows in `public.portfolio_tran
 `traded` link type (many-to-many over that ledger, `simulation_run_id` → `ts_code`) is what turns
 "which stocks did this run trade" into a graph question without turning the ledger into objects.
 
+The factor library splits the same way. `Factor` is an object type over `factor_definitions`
+(key `code`, so `mom_20d` *is* the object id): an agent can ask which factors exist, which are
+computable, and how far each one got — `value_count`, `stock_count`, `last_date`, `computed_at`
+are stored on the definition by the compute step. The panel itself, `factor_values`
+(`factor_id, ts_code, trade_date → value`), stays a dataset, joined to `Factor definitions` by
+`factor_id` and to `Stock basic` by `ts_code`. There is deliberately **no `Factor —appliesTo→
+Stock` link type**: its junction would be every row of that panel (millions), so the edge set would
+be a second copy of the fact table that takes hours to index and answers nothing the dataset cannot.
+
 ## Ontology overview graph
 
 `/ontology-manager` **Graph** toggle shows the schema diagram (`OntologySchemaGraph.tsx`, `ontologySchemaGraphModel.ts`): object types as nodes, link types as straight directed edges; self-referential link types omitted; **disconnected type groups pack into a 2D grid** (not a single vertical column) with wider layer/node gaps. **Actions** / **Functions** overlays are off by default; when enabled, logic chips sit in a grid under their object type (not around it) so LR neighbors stay readable. Functions also link to every Object Type named in their I/O `x-ontology` contract (and Link Type endpoints). Logic nodes navigate to Manager detail; OT/LT edges still open Object Explorer. Instance exploration and layout lessons for query results are documented in [Object Explorer](object-explorer.md).
