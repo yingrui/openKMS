@@ -96,10 +96,12 @@ async def update_function(
 @router.delete("/{function_id}", status_code=204)
 async def delete_function(
     function_id: str,
+    request: Request,
     db: AsyncSession = Depends(get_db),
     _: None = Depends(require_any_permission(PERM_ONTOLOGY_WRITE)),
 ):
-    await function_service.delete_function(db, function_id)
+    # The audit middleware records the path; only this handler knows the name that path is about.
+    request.state.audit_label = await function_service.delete_function(db, function_id)
 
 
 @router.get("/{function_id}/versions", response_model=list[OntologyFunctionVersionResponse])

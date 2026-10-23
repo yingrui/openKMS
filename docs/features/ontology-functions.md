@@ -142,4 +142,4 @@ Start ofs locally: `cd ontology-function-service && ./dev.sh`.
 
 ## Seed
 
-Migration seeds **`helloGreeting`** — pass `{"name": "openKMS"}` in Live Preview.
+Migration seeds **`helloGreeting`** — pass `{"name": "openKMS"}` in Live Preview. It is a demo Function and safe to delete (archive first: a published Function cannot be deleted outright; Function Editor's Delete does both steps).

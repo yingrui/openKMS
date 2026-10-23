@@ -96,3 +96,41 @@ def test_input_schema_for_modify_includes_properties():
     assert schema["properties"] == {"title": {"type": "string"}, "object_id": {"type": "string"}}
     # A modify patches an existing object: its own required columns are not inputs.
     assert schema["required"] == ["object_id"]
+
+
+def test_deleting_a_function_returns_a_label_for_the_audit_log():
+    """The label is read before the row is gone — a Function has no `name` column."""
+    import asyncio
+
+    from app.models.ontology_function import OntologyFunction
+    from app.services.ontology import function_service
+
+    fn = OntologyFunction(
+        id="fn-1", api_name="helloGreeting", display_name="Hello Greeting", status="archived"
+    )
+
+    class _Db:
+        async def execute(self, stmt):
+            class _R:
+                def scalar_one(self):
+                    return 0
+
+            return _R()
+
+        async def delete(self, row):
+            self.deleted = row
+
+        async def commit(self):
+            pass
+
+    # Exercise the label logic directly: get_function is patched, the rest is a stub.
+    async def _patched(db, function_id):
+        return fn
+
+    original = function_service.get_function
+    function_service.get_function = _patched
+    try:
+        label = asyncio.run(function_service.delete_function(_Db(), "fn-1"))
+    finally:
+        function_service.get_function = original
+    assert label == "Hello Greeting"

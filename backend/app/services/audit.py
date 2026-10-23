@@ -46,6 +46,7 @@ async def record_audit_event(
     auth_mode: str | None,
     detail: dict[str, Any] | None = None,
     response_id: str | None = None,
+    response_label: str | None = None,
 ) -> None:
     """Write one event. Narrow failures are swallowed **loudly**: the request already answered.
 
@@ -66,6 +67,7 @@ async def record_audit_event(
                     auth_mode=auth_mode,
                     resource_type=resource_type,
                     resource_id=resource_id,
+                    resource_label=response_label,
                     detail=detail,
                 )
             )

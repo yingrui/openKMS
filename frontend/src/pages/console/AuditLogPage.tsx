@@ -281,8 +281,16 @@ export function AuditLogPage() {
                         </td>
                         <td>
                           {event.resource_type ? resourceLabel(event.resource_type) : t('datasets.dash')}
-                          {event.resource_id ? (
-                            <span className="page-subtitle"> · {event.resource_id}</span>
+                          {event.resource_label ? (
+                            <span className="audit-log__label"> · {event.resource_label}</span>
+                          ) : event.resource_id ? (
+                            <span
+                              className="page-subtitle audit-log__id"
+                              title={event.resource_id}
+                            >
+                              {' '}
+                              · {event.resource_id.slice(0, 8)}…
+                            </span>
                           ) : null}
                         </td>
                       </tr>

@@ -27,3 +27,13 @@
   white-space: nowrap;
   font-variant-numeric: tabular-nums;
 }
+
+/* The name of the thing, when anything knew it: the id is a fallback and stays quiet. */
+.audit-log__label {
+  color: var(--color-text);
+  font-weight: 500;
+}
+
+.audit-log__id {
+  font-family: var(--font-mono, ui-monospace, Menlo, monospace);
+}

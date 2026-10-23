@@ -328,7 +328,8 @@ async def update_function(db: AsyncSession, function_id: str, body: OntologyFunc
     return fn
 
 
-async def delete_function(db: AsyncSession, function_id: str) -> None:
+async def delete_function(db: AsyncSession, function_id: str) -> str:
+    """Delete a function and return its name — the audit log cannot learn it after the row is gone."""
     fn = await get_function(db, function_id)
     if fn.published_version_id and fn.status != "archived":
         raise HTTPException(status_code=400, detail="Archive or unpublish before delete")
@@ -339,8 +340,11 @@ async def delete_function(db: AsyncSession, function_id: str) -> None:
     ).scalar_one()
     if bound:
         raise HTTPException(status_code=400, detail="Function is referenced by actions")
+    # The label the audit log keeps; the row is about to disappear.
+    name = fn.display_name or fn.api_name
     await db.delete(fn)
     await db.commit()
+    return name
 
 
 async def list_versions(db: AsyncSession, function_id: str) -> list[OntologyFunctionVersionResponse]:

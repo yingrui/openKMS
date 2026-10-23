@@ -6,7 +6,7 @@ the surface it has: the method, the path, the caller the auth layer put on `requ
 from __future__ import annotations
 
 import pytest
-from fastapi import FastAPI
+from fastapi import FastAPI, Request, Response
 from fastapi.testclient import TestClient
 
 from app.middleware import audit as audit_middleware
@@ -35,6 +35,10 @@ def _fake_app() -> FastAPI:
     app = FastAPI()
     app.add_middleware(audit_middleware.AuditMiddleware)
 
+    @app.post("/api/functions")
+    async def create_function() -> dict[str, str]:
+        return {"id": "fn-1", "api_name": "probe", "display_name": "每日行情入库"}
+
     @app.post("/api/datasets")
     async def create() -> dict[str, str]:
         return {"id": "0f1e2d3c-4b5a-4969-8787-6a5b4c3d2e1f", "name": "new"}
@@ -50,6 +54,12 @@ def _fake_app() -> FastAPI:
     @app.get("/api/datasets")
     async def listing() -> dict[str, list[str]]:
         return {"items": []}
+
+    @app.delete("/api/functions/fn-1", status_code=204)
+    async def destroy(request: Request) -> Response:
+        # What a delete handler does: the row is about to be gone, so only the handler knows the name.
+        request.state.audit_label = "每日行情入库"
+        return Response(status_code=204)
 
     @app.post("/api/datasets/boom")
     async def boom() -> dict[str, str]:
@@ -80,6 +90,7 @@ def test_a_mutation_is_recorded_with_its_status_and_the_id_it_created(recorded):
             "actor_name": None,
             "auth_mode": None,
             "response_id": "0f1e2d3c-4b5a-4969-8787-6a5b4c3d2e1f",
+            "response_label": "new",
             "detail": None,
         }
     ]
@@ -103,6 +114,7 @@ def test_a_crash_is_recorded_before_it_propagates(recorded):
             "actor_name": None,
             "auth_mode": None,
             "response_id": None,
+            "response_label": None,
             "detail": {"error": "RuntimeError"},
         }
     ]
@@ -139,3 +151,19 @@ class TestWorkerRuns:
         assert fields["resource_id"] is None
         assert fields["detail"] is None
         assert fields["path"] == "job/run_pipeline"
+
+def test_a_name_from_the_response_is_recorded_beside_the_id(recorded):
+    TestClient(_fake_app()).post("/api/datasets")
+    assert recorded[0]["response_label"] == "new"
+
+
+def test_a_delete_records_the_name_only_the_handler_knew(recorded):
+    # A 204 carries no body, so the id in the path would be all the log had — "deleted something".
+    assert TestClient(_fake_app()).delete("/api/functions/fn-1").status_code == 204
+    assert recorded[0]["response_id"] is None
+    assert recorded[0]["response_label"] == "每日行情入库"
+    assert recorded[0]["status_code"] == 204
+
+def test_the_label_prefers_a_display_name_over_a_machine_name(recorded):
+    TestClient(_fake_app()).post("/api/functions")
+    assert recorded[0]["response_label"] == "每日行情入库"

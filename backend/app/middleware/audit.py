@@ -67,13 +67,22 @@ class AuditMiddleware:
 
         # The subject a route agreed to, if a handler set one; otherwise the id it returned.
         response_id: str | None = None
+        response_label: str | None = None
         if body:
             try:
                 parsed = json.loads(body)
             except ValueError:
                 parsed = None
-            if isinstance(parsed, dict) and isinstance(parsed.get("id"), str):
-                response_id = parsed["id"]
+            if isinstance(parsed, dict):
+                if isinstance(parsed.get("id"), str):
+                    response_id = parsed["id"]
+                # A name is what a reader recognises; the id only says which row.
+                # A human label first, a machine name last: "审计验证函数" is what a reader recognises,
+                # `audit_probe_fn` is what a grep finds.
+                for key in ("display_name", "name", "title", "label", "api_name"):
+                    if isinstance(parsed.get(key), str) and parsed[key].strip():
+                        response_label = parsed[key].strip()
+                        break
 
         await record_audit_event(
             method=scope["method"],
@@ -88,5 +97,8 @@ class AuditMiddleware:
             ),
             auth_mode=payload.get("auth_mode") if isinstance(payload.get("auth_mode"), str) else None,
             response_id=response_id,
+            # A handler that destroys something knows its name; nothing in a 204 does.
+            response_label=(state.get("audit_label") if isinstance(state.get("audit_label"), str) else None)
+            or response_label,
             detail=detail,
         )

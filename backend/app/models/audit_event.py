@@ -37,5 +37,9 @@ class AuditEvent(Base):
     #: Coarse subject, from the path: `datasets` + the id when it looks like one.
     resource_type: Mapped[str | None] = mapped_column(String(64), nullable=True, index=True)
     resource_id: Mapped[str | None] = mapped_column(String(128), nullable=True, index=True)
+    #: What it was called — the label a reader recognises. From the JSON response when there is one, or
+    #: from the handler (`request.state.audit_label`), which is the only code that knows what it is about
+    #: to delete. An id alone answers "which row"; a name answers "what did I lose".
+    resource_label: Mapped[str | None] = mapped_column(String(256), nullable=True)
     #: Room for what a handler knows and a middleware does not. Never a request body: bodies carry secrets.
     detail: Mapped[dict[str, Any] | None] = mapped_column(JSONB, nullable=True)

@@ -12,6 +12,8 @@ export interface AuditEvent {
   status_code: number;
   resource_type: string | null;
   resource_id: string | null;
+  /** What the thing was called, when anything knew: a name answers "what did I lose", an id does not. */
+  resource_label: string | null;
   detail: Record<string, unknown> | null;
 }
 

@@ -11,6 +11,7 @@ import {
   fetchFunctionVersions,
   fetchOntologyFunction,
   saveFunctionVersion,
+  updateOntologyFunction,
   validateFunctionSource,
 } from '../../data/ontologyFunctionsApi';
 import { fetchObjectTypes, type ObjectTypeResponse } from '../../data/ontologyApi';
@@ -188,8 +189,8 @@ export function useFunctionEditorWorkspace() {
     if (!id) return;
     if (
       !(await confirm({
-        title: t('shared.delete'),
-        message: t('shared.delete'),
+        title: t('editor.deleteTitle', { name: displayName || apiName }),
+        message: t('editor.deleteConfirm'),
         confirmLabel: t('shared.delete'),
         danger: true,
       }))
@@ -197,11 +198,33 @@ export function useFunctionEditorWorkspace() {
       return;
     try {
       await deleteOntologyFunction(id);
-      toast.success(t('editor.deleted'));
-      navigate('/function-editor');
     } catch (e: unknown) {
-      toast.error(e instanceof Error ? e.message : t('editor.deleteFailed'));
+      // A published Function is callable, so the API refuses to delete it outright. Say what has
+      // to happen and do it, instead of leaving the reader with a toast and no control for it.
+      const message = e instanceof Error ? e.message : '';
+      if (!/archive|unpublish/i.test(message)) {
+        toast.error(message || t('editor.deleteFailed'));
+        return;
+      }
+      if (
+        !(await confirm({
+          title: t('editor.archiveAndDeleteTitle'),
+          message: t('editor.archiveAndDeleteMessage'),
+          confirmLabel: t('editor.archiveAndDelete'),
+          danger: true,
+        }))
+      )
+        return;
+      try {
+        await updateOntologyFunction(id, { status: 'archived' });
+        await deleteOntologyFunction(id);
+      } catch (inner: unknown) {
+        toast.error(inner instanceof Error ? inner.message : t('editor.deleteFailed'));
+        return;
+      }
     }
+    toast.success(t('editor.deleted'));
+    navigate('/function-editor');
   };
 
   return {

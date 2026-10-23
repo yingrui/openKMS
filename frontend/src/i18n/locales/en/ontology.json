@@ -1082,7 +1082,12 @@
       "deleteConfirm": "Remove {{name}}? Functions that call it will fail at their next run.",
       "deleteInUse": "Remove this service? These Functions call it and will fail at their next run: {{functions}}.",
       "deleteTitle": "Remove {{name}}"
-    }
+    },
+    "deleteTitle": "Delete \"{{name}}\"?",
+    "deleteConfirm": "The Function and its versions are removed. Any caller that invokes it by api name will fail.",
+    "archiveAndDeleteTitle": "This Function is published",
+    "archiveAndDeleteMessage": "Published Functions can be called, so they are archived first and then deleted. Callers that use it by api name will break.",
+    "archiveAndDelete": "Archive and delete"
   },
   "dataSources": {
     "title": "Data sources",

@@ -21,6 +21,7 @@ class AuditEventResponse(BaseModel):
     status_code: int
     resource_type: str | None
     resource_id: str | None
+    resource_label: str | None
     detail: dict[str, Any] | None
 
 

@@ -1075,7 +1075,12 @@
       "deleteConfirm": "删除 {{name}}？调用它的 Function 下次运行会失败。",
       "deleteInUse": "删除该接口？以下 Function 正在调用它，下次运行会失败：{{functions}}。",
       "deleteTitle": "删除 {{name}}"
-    }
+    },
+    "deleteTitle": "删除「{{name}}」？",
+    "deleteConfirm": "Function 及其所有版本会被删除；任何按 api name 调用它的地方都会失败。",
+    "archiveAndDeleteTitle": "该 Function 处于已发布状态",
+    "archiveAndDeleteMessage": "已发布的 Function 可被调用，因此先归档再删除。按 api name 调用它的地方会失败。",
+    "archiveAndDelete": "归档并删除"
   },
   "dataSources": {
     "title": "数据源",
