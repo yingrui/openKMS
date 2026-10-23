@@ -52,6 +52,8 @@ type ActionDetailContext = {
   setWebhookPath: (v: string) => void;
   webhookBody: 'envelope' | 'object';
   setWebhookBody: (v: 'envelope' | 'object') => void;
+  webhookMethod: string;
+  setWebhookMethod: (v: string) => void;
   onSave: () => Promise<void>;
 };
 
@@ -91,6 +93,7 @@ export function ActionDetailPage() {
   const [webhookServiceId, setWebhookServiceId] = useState('');
   const [webhookPath, setWebhookPath] = useState('');
   const [webhookBody, setWebhookBody] = useState<'envelope' | 'object'>('envelope');
+  const [webhookMethod, setWebhookMethod] = useState('POST');
   const [displayName, setDisplayName] = useState('');
   const [description, setDescription] = useState('');
   const [status, setStatus] = useState('active');
@@ -129,6 +132,7 @@ export function ActionDetailPage() {
       setWebhookServiceId(at.webhook_service_id ?? '');
       setWebhookPath(at.webhook_path ?? '');
       setWebhookBody(at.webhook_body ?? 'envelope');
+      setWebhookMethod(at.webhook_method ?? 'POST');
       setFunctionId(at.function_id ?? '');
       const ot = typesRes.items.find((row) => row.id === at.object_type_id) ?? null;
       const savedFields = writableFieldsFromParameters(at.parameters);
@@ -158,6 +162,7 @@ export function ActionDetailPage() {
         webhook_service_id: webhookServiceId || null,
         webhook_path: webhookServiceId ? webhookPath.trim() || null : null,
         webhook_body: webhookBody,
+        webhook_method: webhookMethod,
       };
       if (isBuiltin) {
         body.function_id = null;
@@ -218,6 +223,8 @@ export function ActionDetailPage() {
             setWebhookPath,
             webhookBody,
             setWebhookBody,
+            webhookMethod,
+            setWebhookMethod,
             saving,
             onSave,
           }
@@ -236,6 +243,7 @@ export function ActionDetailPage() {
       webhookServiceId,
       webhookPath,
       webhookBody,
+      webhookMethod,
       saving,
       onSave,
     ],
@@ -283,6 +291,8 @@ export function ActionOverviewTab() {
     setWebhookPath,
     webhookBody,
     setWebhookBody,
+    webhookMethod,
+    setWebhookMethod,
     saving,
     onSave,
   } = useActionDetail();
@@ -359,12 +369,26 @@ export function ActionOverviewTab() {
           {webhookServiceId ? (
             <>
               <EntityViewField label={t('actions.webhookPath')} hint={t('actions.webhookPathHint')}>
-                <input
-                  className="console-form-control"
-                  value={webhookPath}
-                  onChange={(e) => setWebhookPath(e.target.value)}
-                  placeholder="/api/portfolios/{portfolio_id}/stocks"
-                />
+                <div className="entity-view__inline-controls">
+                  <select
+                    className="console-form-control entity-view__method"
+                    value={webhookMethod}
+                    onChange={(e) => setWebhookMethod(e.target.value)}
+                    aria-label={t('actions.webhookMethod')}
+                  >
+                    {['POST', 'PUT', 'PATCH', 'DELETE', 'GET'].map((method) => (
+                      <option key={method} value={method}>
+                        {method}
+                      </option>
+                    ))}
+                  </select>
+                  <input
+                    className="console-form-control"
+                    value={webhookPath}
+                    onChange={(e) => setWebhookPath(e.target.value)}
+                    placeholder="/api/portfolios/{portfolio_id}/stocks"
+                  />
+                </div>
               </EntityViewField>
               <EntityViewField label={t('actions.webhookBody')} hint={t('actions.webhookBodyHint')}>
                 <select

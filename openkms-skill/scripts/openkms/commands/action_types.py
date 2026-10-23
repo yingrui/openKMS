@@ -67,6 +67,8 @@ def cmd_create(ns: argparse.Namespace) -> None:
         body["webhook_path"] = getattr(ns, "webhook_path", None)
         if getattr(ns, "webhook_body", None):
             body["webhook_body"] = ns.webhook_body
+        if getattr(ns, "webhook_method", None):
+            body["webhook_method"] = ns.webhook_method
     confirm_or_abort(
         action=f"create action type {ns.api_name!r}",
         method="POST",
@@ -110,6 +112,8 @@ def cmd_update(ns: argparse.Namespace) -> None:
             body["webhook_path"] = getattr(ns, "webhook_path", None)
             if getattr(ns, "webhook_body", None):
                 body["webhook_body"] = ns.webhook_body
+            if getattr(ns, "webhook_method", None):
+                body["webhook_method"] = ns.webhook_method
     if not body:
         print("update: nothing to update", file=sys.stderr)
         sys.exit(2)
@@ -206,6 +210,7 @@ def add_subparser(sub) -> None:
     )
     cr.add_argument("--webhook-path", default=None, help="path on that service, inside its allowlist; {field} placeholders allowed")
     cr.add_argument("--webhook-body", default=None, choices=("envelope", "object"))
+    cr.add_argument("--webhook-method", default=None, choices=("POST", "PUT", "PATCH", "DELETE", "GET"))
     add_write_flags(cr)
     cr.set_defaults(fn=cmd_create)
 
@@ -230,6 +235,7 @@ def add_subparser(sub) -> None:
     up.add_argument("--webhook-service", default=None, help="external-service api_name, or '' to detach")
     up.add_argument("--webhook-path", default=None, help='{field} placeholders allowed')
     up.add_argument("--webhook-body", default=None, choices=("envelope", "object"))
+    up.add_argument("--webhook-method", default=None, choices=("POST", "PUT", "PATCH", "DELETE", "GET"))
     up.add_argument("--status", default=None, help="active | archived")
     add_write_flags(up)
     up.set_defaults(fn=cmd_update)

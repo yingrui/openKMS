@@ -371,22 +371,80 @@ def test_a_modify_on_a_dataset_backed_type_is_an_overlay_edit(monkeypatch):
     assert db.rows["h-1"].data["target_weight"] == 0.05
 
 
-def test_create_and_delete_on_a_dataset_backed_type_point_at_the_owner():
+def test_a_create_on_a_dataset_backed_type_needs_the_business_key():
+    """Without the key the row the app inserts could not be the object we just wrote."""
     from app.services.ontology import edit_apply_service as svc
 
     _, db = _dataset_type_harness({"id": ""})
 
     async def _run():
-        return (
-            await svc.apply_edit_batch_to_objects(
-                db, [{"op": "create", "object_type": "Holding", "properties": {"id": "x"}}]
-            ),
-            await svc.apply_edit_batch_to_objects(
-                db, [{"op": "delete", "object_type": "Holding", "primary_key": "h-1"}]
-            ),
+        return await svc.apply_edit_batch_to_objects(
+            db, [{"op": "create", "object_type": "Holding", "properties": {"ts_code": "600519.SH"}}]
         )
 
-    created, deleted = asyncio.run(_run())
-    for result, op in ((created, "create"), (deleted, "delete")):
-        assert result.errors
-        assert f"cannot {op} an object of dataset-backed type" in result.errors[0]
+    result = asyncio.run(_run())
+    assert result.errors
+    assert "needs its key" in result.errors[0]
+
+
+def test_a_create_with_the_key_uses_it_as_the_identity():
+    from app.services.ontology import edit_apply_service as svc
+
+    _, db = _dataset_type_harness({"id": ""})
+
+    async def _run():
+        return await svc.apply_edit_batch_to_objects(
+            db,
+            [{"op": "create", "object_type": "Holding",
+              "properties": {"id": "h-9", "ts_code": "600519.SH"}}],
+        )
+
+    result = asyncio.run(_run())
+    assert result.errors == []
+    assert result.created_ids == ["h-9"]          # the key, so the table and the graph agree
+    assert db.rows["h-9"].data["ts_code"] == "600519.SH"
+
+
+def test_a_delete_on_a_dataset_backed_type_is_allowed_when_the_node_exists(monkeypatch):
+    from app.services.ontology import edit_apply_service as svc
+
+    _, db = _dataset_type_harness({"id": ""})
+
+    async def fake_fetch(_db, _ot, object_id):
+        return {"id": object_id, "ts_code": "600519.SH"}
+
+    monkeypatch.setattr(svc, "fetch_object_from_neo4j", fake_fetch)
+
+    async def _run():
+        return await svc.apply_edit_batch_to_objects(
+            db, [{"op": "delete", "object_type": "Holding", "primary_key": "h-1"}]
+        )
+
+    result = asyncio.run(_run())
+    assert result.errors == []
+    assert result.deleted_ids == ["h-1"]
+
+
+# --- input schema per rule ---------------------------------------------------
+def test_modify_and_delete_require_only_the_target_object():
+    from app.services.ontology.builtin_action_service import input_schema_for_action
+
+    ot = SimpleNamespace(
+        id="ot-holding",
+        name="Holding",
+        dataset_id="ds-1",
+        key_property="id",
+        properties=[
+            {"name": "id", "type": "string", "required": True},
+            {"name": "ts_code", "type": "string", "required": True},
+            {"name": "target_weight", "type": "number", "required": False},
+        ],
+    )
+    at = SimpleNamespace(rule_type="object_modify", parameters=None)
+    assert input_schema_for_action(at, ot).get("required") == ["object_id"]
+
+    at_delete = SimpleNamespace(rule_type="object_delete", parameters=None)
+    assert input_schema_for_action(at_delete, ot).get("required") == ["object_id"]
+
+    at_create = SimpleNamespace(rule_type="object_create", parameters=None)
+    assert input_schema_for_action(at_create, ot).get("required") == ["id", "ts_code"]

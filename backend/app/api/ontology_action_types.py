@@ -51,6 +51,18 @@ async def _resolve_input_schema(db: AsyncSession, at: OntologyActionType) -> dic
     return ver.input_schema if isinstance(ver.input_schema, dict) else None
 
 
+WEBHOOK_METHODS = ("POST", "PUT", "PATCH", "DELETE", "GET")
+
+
+def _validate_webhook_method(method: str | None) -> None:
+    if method is None:
+        return
+    if method.upper() not in WEBHOOK_METHODS:
+        raise HTTPException(
+            status_code=400, detail=f"webhook_method must be one of {WEBHOOK_METHODS}"
+        )
+
+
 def _validate_webhook_body(mode: str | None) -> None:
     if mode is None:
         return
@@ -110,6 +122,7 @@ async def _to_response(db: AsyncSession, at: OntologyActionType) -> OntologyActi
         webhook_service_name=await _webhook_service_name(db, at.webhook_service_id),
         webhook_path=at.webhook_path,
         webhook_body=getattr(at, "webhook_body", None) or "envelope",
+        webhook_method=getattr(at, "webhook_method", None) or "POST",
         function_external_services=(
             await function_external_services(db, at.function_id) if at.function_id else []
         ),
@@ -180,6 +193,7 @@ async def create_action_type(
     if exists:
         raise HTTPException(status_code=409, detail="api_name already exists")
     _validate_webhook_body(body.webhook_body)
+    _validate_webhook_method(body.webhook_method)
     await _validate_webhook(
         db, service_id=body.webhook_service_id, path=body.webhook_path
     )
@@ -197,6 +211,7 @@ async def create_action_type(
         webhook_service_id=body.webhook_service_id,
         webhook_path=(body.webhook_path or "").strip() or None,
         webhook_body=body.webhook_body,
+        webhook_method=body.webhook_method.upper(),
         created_by=uid,
         created_by_name=uname,
     )
@@ -227,6 +242,9 @@ async def update_action_type(
         _validate_action_type_fields(rule_type=next_rule_type, function_id=next_function_id)
     if "webhook_body" in data:
         _validate_webhook_body(data["webhook_body"])
+    if "webhook_method" in data and data["webhook_method"]:
+        _validate_webhook_method(data["webhook_method"])
+        data["webhook_method"] = data["webhook_method"].upper()
     if "webhook_service_id" in data or "webhook_path" in data:
         await _validate_webhook(
             db,

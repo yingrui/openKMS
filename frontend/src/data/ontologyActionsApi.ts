@@ -17,6 +17,8 @@ export interface OntologyActionTypeResponse {
   webhook_path?: string | null;
   /** `envelope` = metadata payload; `object` = the resource representation a REST API accepts. */
   webhook_body?: 'envelope' | 'object';
+  /** The receiver's verb (a removal is DELETE). */
+  webhook_method?: string;
   /** External services the bound Function calls — where a Function-rule Action actually goes. */
   function_external_services?: string[];
   status: string;
@@ -69,6 +71,7 @@ export async function updateOntologyActionType(
     webhook_service_id?: string | null;
     webhook_path?: string | null;
     webhook_body?: 'envelope' | 'object';
+    webhook_method?: string;
   },
 ): Promise<OntologyActionTypeResponse> {
   return ontologyFetch<OntologyActionTypeResponse>(

@@ -195,7 +195,7 @@ async def deliver(
         status, response_body = await external_calls.call_service(
             service,
             cluster,
-            method="POST",
+            method=(getattr(action, "webhook_method", None) or "POST").upper(),
             path=path,
             body=body,
             identity=identity,
@@ -205,6 +205,7 @@ async def deliver(
                 "status": None, "error": str(failed[0])[:500]}
     return {
         "service": service.api_name,
+        "method": (getattr(action, "webhook_method", None) or "POST").upper(),
         "path": path,
         "body": mode,
         "status": status,

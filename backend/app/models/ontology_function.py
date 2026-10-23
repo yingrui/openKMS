@@ -118,6 +118,10 @@ class OntologyActionType(Base):
         String(64), ForeignKey("external_services.id", ondelete="SET NULL"), nullable=True, index=True
     )
     webhook_path: Mapped[str | None] = mapped_column(String(512), nullable=True)
+    #: The receiver's verb: a removal is `DELETE /things/{id}`, not a POST that happens to work.
+    webhook_method: Mapped[str] = mapped_column(
+        String(8), nullable=False, default="POST", server_default="POST"
+    )
     #: `envelope` = the metadata payload; `object` = the object's properties (+ input) so the
     #: receiver's own REST endpoint accepts it.
     webhook_body: Mapped[str] = mapped_column(

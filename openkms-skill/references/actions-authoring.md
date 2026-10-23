@@ -86,13 +86,16 @@ python scripts/cli.py ontology action-types create … --api-name createWorkItem
 - Expect Action execute alone to update **dataset-backed** synthetic ids (deferred).
 - Bypass CLI with ad-hoc HTTP — if a subcommand is missing, report the gap to the user; only a maintainer working in a skill-source checkout adds it there.
 
-## Dataset-backed object types: modify only
+## Dataset-backed object types
 
-Their rows are created and deleted by the owning application, so an Action on such a type may only
-`object_modify` (create/delete are refused with a message naming the owner). The edit lands on the
-object's node as an overlay; the bound table stays authoritative, and the next index writes the
-table's values back — a webhook that failed is reverted, not believed. So: use a modify Action for
-"adjust this object", and call the app (or its Function) for "add/remove a row".
+Create / modify / delete all work. One rule: an `object_create` must carry the object's **business
+key** in `properties` (`id`, `ts_code`, …) — the node and the row the app inserts have to be the
+same object, so a create without it is refused. `object_modify` / `object_delete` need only
+`object_id`; an existing object's own required columns are not inputs.
+
+The edit lands on the object's node as an overlay, the webhook tells the app, and the next index
+writes the table's values back — a delivery that failed is reverted, not believed. So the whole
+add/modify/remove cycle is Actions plus webhooks; no Function is needed for a state write.
 
 ## Webhooks (no Function needed)
 
@@ -104,7 +107,8 @@ ontology action-types update --id AT --webhook-service turtle \
   --webhook-path /api/webhooks/openkms/portfolio-changes --yes
 ```
 
-**Body shape.** `--webhook-body envelope` (default) posts
+**Verb and body.** `--webhook-method` picks the receiver's verb (a removal is `DELETE`), and
+`--webhook-body envelope` (default) posts
 `{event, action, object, input, applied, caller, status, action_log_id, at}`; `--webhook-body object`
 posts the **resource representation** — the object's properties with the Action's input on top — so
 the receiver's own REST endpoint accepts it and the app needs no webhook-shaped handler:

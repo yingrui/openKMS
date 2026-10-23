@@ -60,12 +60,13 @@ POST <service base><path>
 | Best-effort, **after** the change is committed | A receiver that is down must not fail an Action that already happened |
 | Outcome recorded next to the Action log (`output_payload.webhook`) and returned as `webhook` | "Did anyone hear it?" is answerable without a second table |
 | Path must be inside the service's `allowed_paths`; the credential comes from the service (`none` / `bearer` / `header` / `hmac`) | The registry stays the only place a destination is declared |
+| `webhook_method` (POST / PUT / PATCH / DELETE / GET) | A removal is `DELETE /things/{id}`; posting everything as POST only fit endpoints that upsert |
 | `webhook_body`: `envelope` (metadata payload) or `object` (the object's properties + the Action's input) | `object` is the resource representation a REST endpoint already accepts, so the app keeps **its own** API instead of growing a webhook-shaped one |
 | Path placeholders — `/api/portfolios/{portfolio_id}/stocks` — resolve from the object's properties, the input, `object_id` / `object_type` | One Action can address a resource whose id lives in the object; nothing is templated beyond `{field}` |
 | A Function-rule Action with no webhook shows **`Called by its Function: <service>`** | Its destination lives in the Function source; the page says so instead of implying it goes nowhere |
 | Delivery outcome is **columns** on the action log (`webhook_ok` / `webhook_status` / `webhook_error`) | "Did anyone hear it?" is a filter on the log, not a JSONB dig. Nothing re-indexes on failure — refresh the type explicitly when you want the table to win again |
 
-For a **dataset-backed** object type the Action may only `modify` (the owning app creates and deletes those rows). The edit is written as an overlay on the object's node, the webhook announces it, and the next index re-asserts the bound table — a delivery that failed is reverted, not believed. See [the graph is the ontology layer](ontology.md#the-graph-is-the-ontology-layer).
+For a **dataset-backed** object type all three ops work, provided a create carries the object's business key (the node and the app's row must share identity). The edit is written as an overlay on the object's node, the webhook announces it, and the next index re-asserts the bound table — a delivery that failed is reverted, not believed. `object_modify` / `object_delete` require only `object_id`: an existing object's own required columns are not inputs. See [the graph is the ontology layer](ontology.md#the-graph-is-the-ontology-layer).
 
 The webhook is **not** a Function: no `client.external(...)` in source, no per-integration code. `object` is the object the Action acted on — resolved through the graph, so a dataset-backed `Portfolio` works — and `applied` carries the ids for a create, where there was no object yet.
 

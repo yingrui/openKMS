@@ -995,7 +995,8 @@
     "webhookBodyHint": "The envelope carries the action/caller metadata. The object body is the resource itself (object properties + the Action input), so the receiver’s own REST endpoint accepts it. A placeholder in the path (a field name in braces) is filled from the object or the input.",
     "webhookBodyEnvelope": "Envelope (object + metadata)",
     "webhookBodyObject": "Object body (REST shape)",
-    "webhookViaFunction": "Called by its Function"
+    "webhookViaFunction": "Called by its Function",
+    "webhookMethod": "HTTP method"
   },
   "editor": {
     "title": "Functions",

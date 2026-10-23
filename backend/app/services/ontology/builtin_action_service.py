@@ -62,8 +62,10 @@ def input_schema_for_action(at: OntologyActionType, ot: ObjectType) -> dict[str,
 
     if at.rule_type in ("object_modify", "object_delete"):
         properties.setdefault("object_id", {"type": "string"})
-        if at.rule_type == "object_modify":
-            required = list(dict.fromkeys(required))
+        # The object already exists, so its own required columns are not inputs — a modify is a
+        # patch and a delete supplies nothing. Only the target is required, and the executor
+        # injects it from `object_id`.
+        required = ["object_id"]
 
     schema: dict[str, Any] = {"type": "object", "properties": properties}
     if required:

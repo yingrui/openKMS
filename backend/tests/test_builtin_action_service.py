@@ -94,4 +94,5 @@ def test_input_schema_for_modify_includes_properties():
     )
     schema = input_schema_for_action(at, ot)
     assert schema["properties"] == {"title": {"type": "string"}, "object_id": {"type": "string"}}
-    assert schema["required"] == ["title"]
+    # A modify patches an existing object: its own required columns are not inputs.
+    assert schema["required"] == ["object_id"]
