@@ -495,7 +495,7 @@ export function FunctionOverviewTab() {
                   <span key={service.api_name}>
                     {i > 0 ? ', ' : ''}
                     <Link
-                      to="/ontology-manager/external-services"
+                      to="/external-services"
                       className={
                         service.registered ? undefined : 'function-detail__missing-service'
                       }

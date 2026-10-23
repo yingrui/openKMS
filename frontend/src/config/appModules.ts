@@ -69,6 +69,11 @@ const objectExplorerActive = (pathname: string) =>
 const functionEditorActive = (pathname: string) =>
   pathname === '/function-editor' || pathname.startsWith('/function-editor/');
 
+const externalServicesActive = (pathname: string) =>
+  pathname === '/external-services' ||
+  pathname.startsWith('/external-services/') ||
+  pathname.startsWith('/ontology-manager/external-services');
+
 /**
  * Canonical suite app order — App Rail, App Launcher, and Home Apps must all use
  * `sortSuiteApps()` after visibility filtering. Reorder here only; do not sort in UI code.
@@ -257,6 +262,22 @@ export const APP_MODULES: AppModule[] = [
     showInMainSidebar: true,
     showInConsoleNav: false,
     isActive: functionEditorActive,
+  },
+  {
+    id: 'external-services',
+    kind: 'suite_app',
+    layer: 'ontology',
+    order: 83,
+    homePath: '/external-services',
+    icon: Plug,
+    labelKey: 'externalServices',
+    taglineKey: 'appTaglineExternalServices',
+    showInLauncher: true,
+    showInMainSidebar: true,
+    showInConsoleNav: false,
+    // The old homes: Function Editor first, then the Manager rail.
+    accessPaths: ['/function-editor/external-services', '/ontology-manager/external-services'],
+    isActive: externalServicesActive,
   },
   {
     id: 'apps',

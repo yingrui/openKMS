@@ -511,7 +511,6 @@ function App() {
               <Route path="related" element={<GroupRelatedTab />} />
             </Route>
             <Route path="action-types" element={<ActionsListPage />} />
-            <Route path="external-services" element={<ExternalServicesPage />} />
             <Route path="action-types/:actionTypeId" element={<ActionDetailPage />}>
               <Route index element={<ActionOverviewTab />} />
               <Route path="rules" element={<ActionRulesTab />} />
@@ -530,10 +529,13 @@ function App() {
             <Route path="links/:typeId" element={<LinkTypeDetail />} />
             <Route path="explore" element={<ObjectExplorer />} />
           </Route>
+          <Route path="ontology-manager/external-services" element={<Navigate to="/external-services" replace />} />
+          <Route path="function-editor/external-services" element={<Navigate to="/external-services" replace />} />
+          <Route path="external-services" element={<ExternalServicesPage />} />
           <Route path="function-editor" element={<Outlet />}>
             <Route index element={<FunctionEditorListPage />} />
             <Route path="new" element={<FunctionEditorWorkspacePage />} />
-            <Route path="external-services" element={<Navigate to="/ontology-manager/external-services" replace />} />
+            <Route path="external-services" element={<Navigate to="/external-services" replace />} />
             <Route path=":functionId" element={<FunctionEditorWorkspacePage />} />
           </Route>
           <Route path="app-builder" element={<Navigate to="/apps" replace />} />

@@ -33,7 +33,7 @@ Rules:
 | `client.get_links("LinkTypeName", source_id=…, limit=N)` | Link rows filtered by `source_object_id` on the server |
 | `client("publishedApiName").execute_function({…})` | Call another **published** Function |
 | `client("apiName").execute_function({…})` | Compose another published Function by api name |
-| `client.external("serviceName").post("/api/path", {…})` | Call a **registered external service** (base URL, credential, allowed path prefixes are managed in Ontology Manager → External services). Absolute URLs are refused; a path outside the allowlist fails before the request is sent. |
+| `client.external("serviceName").post("/api/path", {…})` | Call a **registered external service** (base URL, credential, allowed path prefixes are managed in the External services app (`/external-services`)). Absolute URLs are refused; a path outside the allowlist fails before the request is sent. |
 
 Object-type argument is the ontology **object type `name`** (e.g. `Stock`), not the dataset table name.
 

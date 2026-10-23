@@ -430,7 +430,7 @@ export function ActionWebhookTab() {
                   </option>
                 ))}
               </select>
-              <Link to="/ontology-manager/external-services" className="btn btn-secondary btn-sm">
+              <Link to="/external-services" className="btn btn-secondary btn-sm">
                 {t('actions.webhookManageServices')}
               </Link>
             </div>

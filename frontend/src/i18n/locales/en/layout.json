@@ -110,5 +110,6 @@
   "dataInsights": "Data Insights",
   "appTaglineDataInsights": "Saved analyses of your data",
   "auditLog": "Audit log",
-  "externalServices": "External services"
+  "externalServices": "External services",
+  "appTaglineExternalServices": "Endpoints the ontology may call: Functions, and Action webhooks"
 }

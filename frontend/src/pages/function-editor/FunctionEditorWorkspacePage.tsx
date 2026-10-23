@@ -59,7 +59,7 @@ export function FunctionEditorWorkspacePage() {
         </div>
         <div className="function-editor-workspace__actions">
           <Link
-            to="/ontology-manager/external-services"
+            to="/external-services"
             className="btn btn-secondary btn-sm"
             title={t('editor.external.pageSubtitle')}
           >
