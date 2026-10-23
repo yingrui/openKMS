@@ -20,12 +20,14 @@ class PropertyDef(BaseModel):
 
 class ObjectTypeCreate(BaseModel):
     name: str
+    #: The properties that identify an object (1..n). One for a natural key, several for a
+    #: table that is unique on the tuple.
+    key_properties: list[str] = []
     # Frozen identifier code/Cypher use. Generated from `name` when it has ASCII parts;
     # required explicitly for a name without them (e.g. 中文).
     api_name: str | None = None
     description: str | None = None
     dataset_id: str | None = None
-    key_property: str | None = None
     is_master_data: bool = False
     display_property: str | None = None
     properties: list[PropertyDef] = []
@@ -33,11 +35,11 @@ class ObjectTypeCreate(BaseModel):
 
 class ObjectTypeUpdate(BaseModel):
     name: str | None = None
+    key_properties: list[str] | None = None
     # Only claimable while unset (rows that predate the column); renaming is refused.
     api_name: str | None = None
     description: str | None = None
     dataset_id: str | None = None
-    key_property: str | None = None
     is_master_data: bool | None = None
     display_property: str | None = None
     properties: list[PropertyDef] | None = None
@@ -51,7 +53,7 @@ class ObjectTypeResponse(BaseModel):
     description: str | None = None
     dataset_id: str | None = None
     dataset_name: str | None = None
-    key_property: str | None = None
+    key_properties: list[str] = []
     is_master_data: bool = False
     display_property: str | None = None
     properties: list[dict] = []  # e.g. [{"name": "icd_code", "type": "string", "required": False}]

@@ -245,7 +245,7 @@ async def _apply_edits_and_audit(
     # Captured before any rollback below can expire the instance.
     ot = await db.get(ObjectType, at.object_type_id)
     ot_display_property = getattr(ot, "display_property", None) if ot else None
-    ot_key_property = getattr(ot, "key_property", None) if ot else None
+    ot_key_property = (getattr(ot, "key_properties", None) or [None])[0] if ot else None
 
     if pre_apply_errors:
         status = "error"

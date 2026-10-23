@@ -87,7 +87,7 @@ export function PropertiesEditor({
   properties,
   fromDataset,
   nameTypeReadOnly,
-  keyProperty,
+  keyProperties,
   loadingMetadata,
   onAdd,
   onChange,
@@ -98,7 +98,7 @@ export function PropertiesEditor({
   properties: FormProperty[];
   fromDataset: boolean;
   nameTypeReadOnly: boolean;
-  keyProperty: string;
+  keyProperties: string[];
   loadingMetadata?: boolean;
   onAdd?: () => void;
   onChange: (idx: number, p: FormProperty) => void;
@@ -153,10 +153,8 @@ export function PropertiesEditor({
                 prop={p}
                 fromDataset={fromDataset}
                 nameTypeReadOnly={nameTypeReadOnly}
-                isPrimaryKey={keyProperty === p.name}
-                onPrimaryKeyChange={() =>
-                  onKeyPropertyChange(keyProperty === p.name ? '' : p.name)
-                }
+                isPrimaryKey={keyProperties.includes(p.name)}
+                onPrimaryKeyChange={() => onKeyPropertyChange(p.name)}
                 onChange={(np) => {
                   if (sourceIdx < 0) return;
                   onChange(sourceIdx, np);

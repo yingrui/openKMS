@@ -35,8 +35,8 @@ export type ObjectTypeDetailContext = {
   setDatasetId: (v: string) => void;
   properties: FormProperty[];
   setProperties: Dispatch<SetStateAction<FormProperty[]>>;
-  keyProperty: string;
-  setKeyProperty: (v: string) => void;
+  keyProperties: string[];
+  setKeyProperties: Dispatch<SetStateAction<string[]>>;
   loadingMetadata: boolean;
   saving: boolean;
   indexing: boolean;

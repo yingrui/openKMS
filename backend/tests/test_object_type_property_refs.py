@@ -19,27 +19,39 @@ PROPS = [
 
 
 def test_declared_refs_are_accepted():
-    _validate_property_refs(properties=PROPS, key_property="ts_code", display_property="trade_date")
-    _validate_property_refs(properties=PROPS, key_property=None, display_property="")
+    _validate_property_refs(
+        properties=PROPS, key_properties=["ts_code"], display_property="trade_date"
+    )
+    _validate_property_refs(
+        properties=PROPS, key_properties=["ts_code", "trade_date"], display_property=""
+    )
+    _validate_property_refs(properties=PROPS, key_properties=[], display_property=None)
 
 
-def test_undeclared_key_property_is_rejected():
+def test_an_undeclared_key_column_is_rejected():
     with pytest.raises(HTTPException) as ei:
-        _validate_property_refs(properties=PROPS, key_property="ts-code", display_property=None)
+        _validate_property_refs(properties=PROPS, key_properties=["ts-code"], display_property=None)
     assert ei.value.status_code == 400
-    assert "key_property" in str(ei.value.detail)
+    assert "key_properties" in str(ei.value.detail)
+
+
+def test_one_bad_composite_key_column_is_enough_to_reject():
+    with pytest.raises(HTTPException):
+        _validate_property_refs(
+            properties=PROPS, key_properties=["ts_code", "nope"], display_property=None
+        )
 
 
 def test_undeclared_display_property_is_rejected():
     with pytest.raises(HTTPException) as ei:
-        _validate_property_refs(properties=PROPS, key_property=None, display_property="title")
+        _validate_property_refs(properties=PROPS, key_properties=[], display_property="title")
     assert ei.value.status_code == 400
     assert "display_property" in str(ei.value.detail)
 
 
 def test_a_type_without_properties_is_still_creatable():
     """Modeling the id before the schema is a legal order of operations."""
-    _validate_property_refs(properties=[], key_property="ts_code", display_property="trade_date")
+    _validate_property_refs(properties=[], key_properties=["ts_code"], display_property="trade_date")
 
 
 # --- prune safety -----------------------------------------------------------

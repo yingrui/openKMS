@@ -23,7 +23,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.object_instance import ObjectInstance
 from app.models.object_type import ObjectType
-from app.services.ontology.object_neo4j_store import fetch_object_from_neo4j
+from app.services.ontology.object_neo4j_store import (
+    encode_object_id,
+    fetch_object_from_neo4j,
+    object_key_properties,
+)
 
 
 @dataclass
@@ -133,16 +137,17 @@ async def _apply_create(
     primary_key = edit.get("primary_key")
     pk = str(primary_key).strip() if primary_key else ""
     if not pk and getattr(ot, "dataset_id", None):
-        # The table's identity is not ours to invent: pick the value the app will find again.
-        key = getattr(ot, "key_property", None) or "id"
-        candidate = dict(properties).get(key)
-        if candidate is None or str(candidate).strip() == "":
+        # The table's identity is not ours to invent: take the key columns the app will find again.
+        columns = object_key_properties(ot)
+        values = [dict(properties).get(column) for column in columns]
+        missing = [c for c, v in zip(columns, values, strict=True) if v is None or str(v).strip() == ""]
+        if missing:
             result.errors.append(
                 f"creating an object of dataset-backed type {ot.name} needs its key "
-                f"({key!r}) in properties, so the row the app inserts has this identity"
+                f"({', '.join(columns)}) in properties, so the row the app inserts has this identity"
             )
             return
-        pk = str(candidate).strip()
+        pk = encode_object_id(values)
     if not pk:
         pk = str(uuid.uuid4())
 

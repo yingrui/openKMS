@@ -148,7 +148,7 @@ async def _load_schema_snapshot(db: AsyncSession) -> tuple[list[dict], list[dict
         {
             "name": ot.name,
             "description": ot.description,
-            "key_property": ot.key_property,
+            "key_properties": list(getattr(ot, "key_properties", None) or []),
             "properties": ot.properties or [],
         }
         for ot in ot_rows

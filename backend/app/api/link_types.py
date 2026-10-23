@@ -19,11 +19,16 @@ from app.services.ontology.dataset_tables import (
 )
 from app.services.ontology.api_names import ApiNameError, resolve_api_name
 from app.services.ontology.object_neo4j_store import (
+    _endpoint_map,
+    decode_object_id,
+    encode_object_id,
     fetch_object_from_neo4j,
     get_first_neo4j_datasource,
+    link_endpoint_keys,
+    link_endpoint_values,
+    object_id_from_props,
     prune_link_relationships,
     prune_refused_reason,
-    link_endpoint_keys,
     link_rel_type,
     object_label,
     sync_link_instances_to_neo4j,
@@ -116,8 +121,8 @@ def _query_neo4j_relationships(
     src_label: str,
     tgt_label: str,
     rel_type: str,
-    src_key: str,
-    tgt_key: str,
+    src_key: list[str],
+    tgt_key: list[str],
     limit: int,
     offset: int,
     *,
@@ -142,7 +147,7 @@ def _query_neo4j_relationships(
     where = ""
     params: dict = {"offset": offset, "limit": limit}
     if source_key_value is not None and source_key_value != "":
-        safe_src_key = re.sub(r"[^a-zA-Z0-9_]", "_", src_key) or "id"
+        safe_src_key = re.sub(r"[^a-zA-Z0-9_]", "_", src_key[0]) or "id"
         where = f"WHERE toString(a.`{safe_src_key}`) = $source_key_value"
         params["source_key_value"] = source_key_value
 
@@ -167,8 +172,10 @@ def _query_neo4j_relationships(
                 continue
             source_data = _node_to_data(a_node)
             target_data = _node_to_data(b_node)
-            src_val = source_data.get(src_key, list(source_data.values())[0] if source_data else None)
-            tgt_val = target_data.get(tgt_key, list(target_data.values())[0] if target_data else None)
+            src_id = object_id_from_props(source_data, src_key)
+            tgt_id = object_id_from_props(target_data, tgt_key)
+            src_val = src_id or (list(source_data.values())[0] if source_data else None)
+            tgt_val = tgt_id or (list(target_data.values())[0] if target_data else None)
             if src_val is not None and tgt_val is not None:
                 rows.append({
                     "source_key_value": str(src_val),
@@ -514,7 +521,15 @@ async def _index_link_type_m2m_junction(
     src_col = link_type.source_dataset_column
     tgt_col = link_type.target_dataset_column
     # Keyed like the object layer keys these nodes, so the edge joins the node the object API shows.
-    src_key, tgt_key = link_endpoint_keys(source_type, target_type)
+    src_columns, tgt_columns = link_endpoint_keys(source_type, target_type)
+    if len(src_columns) > 1 or len(tgt_columns) > 1:
+        raise HTTPException(
+            status_code=400,
+            detail=(
+                "A junction table supplies one column per endpoint, so it cannot identify an "
+                "object whose key is composite. Use saved link instances for this link type."
+            ),
+        )
     relationships_created = 0
     keep: set = set()
     offset = 0
@@ -535,7 +550,9 @@ async def _index_link_type_m2m_junction(
             if src_val is None or tgt_val is None:
                 continue
             session.run(
-                f"MERGE (a:{src_label} {{`{src_key}`: $src_id}}) MERGE (b:{tgt_label} {{`{tgt_key}`: $tgt_id}}) MERGE (a)-[r:{rel_type}]->(b)",
+                f"MERGE (a:{src_label} {{`{src_columns[0]}`: $src_id}}) "
+                f"MERGE (b:{tgt_label} {{`{tgt_columns[0]}`: $tgt_id}}) "
+                f"MERGE (a)-[r:{rel_type}]->(b)",
                 src_id=src_val,
                 tgt_id=tgt_val,
             )
@@ -561,7 +578,15 @@ async def _index_link_type_m2o_source_fk(
     tgt_label = object_label(target_type)
     rel_type = link_rel_type(link_type)
     fk_col = link_type.source_key_property
-    src_key, tgt_key = link_endpoint_keys(source_type, target_type)
+    src_columns, tgt_columns = link_endpoint_keys(source_type, target_type)
+    if len(tgt_columns) > 1:
+        raise HTTPException(
+            status_code=400,
+            detail=(
+                "This link type points at an object type with a composite key, which one FK column "
+                "cannot identify. Use a junction dataset or saved link instances."
+            ),
+        )
     relationships_created = 0
     keep: set = set()
     offset = 0
@@ -578,20 +603,21 @@ async def _index_link_type_m2o_source_fk(
             ) from e
         if not rows:
             break
-        src_id_col = "id" if "id" in rows[0] else list(rows[0].keys())[0]
         for row in rows:
             tgt_val = row.get(fk_col)
             if tgt_val is None:
                 continue
-            src_val = row.get(src_id_col)
-            if src_val is None:
+            src_values = link_endpoint_values(src_columns, row)
+            if src_values is None:
                 continue
             session.run(
-                f"MERGE (a:{src_label} {{`{src_key}`: $src_id}}) MERGE (b:{tgt_label} {{`{tgt_key}`: $tgt_id}}) MERGE (a)-[r:{rel_type}]->(b)",
-                src_id=src_val,
+                f"MERGE (a:{src_label} {{{_endpoint_map('s', src_columns)}}}) "
+                f"MERGE (b:{tgt_label} {{`{tgt_columns[0]}`: $tgt_id}}) "
+                f"MERGE (a)-[r:{rel_type}]->(b)",
+                **{f"s{i}": v for i, v in enumerate(src_values)},
                 tgt_id=tgt_val,
             )
-            keep.add((src_val, tgt_val))
+            keep.add((encode_object_id(src_values), tgt_val))
             relationships_created += 1
         offset += len(rows)
         if offset >= total:
@@ -630,18 +656,21 @@ async def _index_link_type_from_saved_instances(
             target_obj = await db.get(ObjectInstance, li.target_object_id)
             if not source_obj or not target_obj:
                 continue
-            # Same identity the object layer MERGEs these nodes on; the stored id *is* that value.
-            src_key, tgt_key = link_endpoint_keys(source_type, target_type)
-            src_val = li.source_object_id
-            tgt_val = li.target_object_id
-            if src_val is None or tgt_val is None:
+            # The stored ids *are* the objects' identities (encoded when composite).
+            src_columns, tgt_columns = link_endpoint_keys(source_type, target_type)
+            try:
+                src_values = decode_object_id(li.source_object_id, src_columns)
+                tgt_values = decode_object_id(li.target_object_id, tgt_columns)
+            except ValueError:
                 continue
             session.run(
-                f"MERGE (a:{src_label} {{`{src_key}`: $src_id}}) MERGE (b:{tgt_label} {{`{tgt_key}`: $tgt_id}}) MERGE (a)-[r:{rel_type}]->(b)",
-                src_id=src_val,
-                tgt_id=tgt_val,
+                f"MERGE (a:{src_label} {{{_endpoint_map('s', src_columns)}}}) "
+                f"MERGE (b:{tgt_label} {{{_endpoint_map('t', tgt_columns)}}}) "
+                f"MERGE (a)-[r:{rel_type}]->(b)",
+                **{f"s{i}": v for i, v in enumerate(src_values)},
+                **{f"t{i}": v for i, v in enumerate(tgt_values)},
             )
-            keep.add((src_val, tgt_val))
+            keep.add((encode_object_id(src_values), encode_object_id(tgt_values)))
             relationships_created += 1
         offset += len(links)
         if len(links) < batch_size:
@@ -656,8 +685,8 @@ class _LinkPruneContext:
     src_label: str
     tgt_label: str
     rel_type: str
-    src_key: str
-    tgt_key: str
+    src_key: list[str]
+    tgt_key: list[str]
     keep: set
 
 

@@ -60,13 +60,17 @@ Object and link access go through **one** place: the ontology graph (Neo4j). Dat
 
 **Deletions need `prune`.** Indexing only MERGEs, so a row deleted in the source leaves a node (or edge) that keeps answering queries. `POST …/index-to-neo4j?prune=true` deletes what that run did not write and reports `nodes_pruned` / `relationships_pruned`; it is opt-in because that is right for a type mirroring a table this deployment owns, and wrong for a hand-maintained graph. It declines (with `prune_skipped`) when the source yields no rows — an empty table is more often a broken read than an instruction to wipe the label.
 
-**Writes to a dataset-backed object are overlay edits, and the table wins.** All three ops are the ontology's decision, with one rule: the object's **business key must be known**, because that is how the node and the table row stay the same object.
+**Identity is the object's key, one column or several.** `object_types.key_properties` names them (`["ts_code"]` for a stock master, `["portfolio_id", "ts_code"]` for a table unique on the pair); the API id is their encoded join (`b10f1cca…\|600999.SH`), and every merge/list/get/delete matches on **all** of them. A type without a source table is identified by the platform `__rid` instead.
+
+**Writes to a dataset-backed object are overlay edits, and the table wins.** All three ops are the ontology's decision, with one rule: the object's **key must be known**, because that is how the node and the table row stay the same object.
 
 | Op | What the ontology writes | Requirement |
 |----|--------------------------|-------------|
-| `object_create` | queue row + node keyed by the key value | `properties` must carry the key (`id`, `ts_code`, …); a create without it is refused — an object the app cannot find again is an object it cannot insert |
+| `object_create` | queue row + node keyed by every key column | `properties` must carry all of them; a create without them is refused — an object the app cannot find again is an object it cannot insert. Columns the app generates (a surrogate `id`, an auto-increment) are **not** the ontology's to invent: leave them out and the app fills them |
 | `object_modify` | the node, keyed by `object_id` | — |
 | `object_delete` | node removed (DETACH) | — |
+
+**Link endpoints and composite keys.** A junction table or an FK column supplies one value per endpoint, so a link whose endpoint has a composite key is refused (400) unless it is a saved link instance — indexing refuses rather than merging into whichever node matched first.
 
 The Action's [webhook](ontology-functions.md#action-webhooks-telling-the-app-behind-the-data) then tells the owning app (add → `POST`, remove → `DELETE`, weight → `POST` — the Action names the verb and the path, `{portfolio_id}` / `{ts_code}` filled from the object). The bound table stays authoritative: the next index writes the table's values back, so a webhook that never landed is **reverted** rather than believed. Verified both ways: an edit that never reached the app came back on re-index; an add the app accepted survived the index with the **same id**.
 

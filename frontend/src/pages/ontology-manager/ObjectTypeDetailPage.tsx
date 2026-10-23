@@ -37,6 +37,7 @@ import {
   ontologyTypeFromColumn,
   toHandCreatedPropertyDefs,
   toPropertyDefs,
+  toggleKeyProperty,
   withoutReservedProperties,
   type FormProperty,
 } from './objectTypeFormModel';
@@ -69,7 +70,7 @@ export function ObjectTypeDetailPage() {
   const [displayProperty, setDisplayProperty] = useState('');
   const [datasetId, setDatasetId] = useState('');
   const [properties, setProperties] = useState<FormProperty[]>([]);
-  const [keyProperty, setKeyProperty] = useState('');
+  const [keyProperties, setKeyProperties] = useState<string[]>([]);
   const [loadingMetadata, setLoadingMetadata] = useState(false);
   const savedPropNamesRef = useRef<Set<string> | null>(null);
   const skipNextDatasetLoad = useRef(true);
@@ -86,7 +87,7 @@ export function ObjectTypeDetailPage() {
     setDescription(ot.description || '');
     setIsMasterData(ot.is_master_data ?? false);
     setDisplayProperty(ot.display_property || '');
-    setKeyProperty(ot.key_property || '');
+    setKeyProperties(ot.key_properties ?? []);
     const dsId = ot.dataset_id || '';
     skipNextDatasetLoad.current = true;
     if (dsId) {
@@ -182,8 +183,8 @@ export function ObjectTypeDetailPage() {
           enabled: enabledNames ? enabledNames.has(c.column_name) : true,
         }));
         setProperties(props);
-        setKeyProperty((prev) =>
-          prev && cols.some((c) => c.column_name === prev) ? prev : '',
+        setKeyProperties((prev) =>
+          prev.filter((name) => cols.some((c) => c.column_name === name)),
         );
       })
       .catch((e) => {
@@ -212,8 +213,8 @@ export function ObjectTypeDetailPage() {
         description: description.trim() || undefined,
         dataset_id: datasetId || undefined,
         properties: datasetId ? toPropertyDefs(properties) : toHandCreatedPropertyDefs(properties),
-        // Business primary key (optional). Empty string clears on update.
-        key_property: keyProperty,
+        // The columns that identify an object; the API id is their encoded join.
+        key_properties: keyProperties,
         is_master_data: isMasterData,
         display_property: displayProperty || undefined,
       });
@@ -230,7 +231,7 @@ export function ObjectTypeDetailPage() {
     description,
     datasetId,
     properties,
-    keyProperty,
+    keyProperties,
     isMasterData,
     displayProperty,
     apiName,
@@ -284,8 +285,8 @@ export function ObjectTypeDetailPage() {
             setDatasetId,
             properties,
             setProperties,
-            keyProperty,
-            setKeyProperty,
+            keyProperties,
+            setKeyProperties,
             loadingMetadata,
             saving,
             indexing,
@@ -308,7 +309,7 @@ export function ObjectTypeDetailPage() {
       displayProperty,
       datasetId,
       properties,
-      keyProperty,
+      keyProperties,
       loadingMetadata,
       saving,
       indexing,
@@ -359,8 +360,8 @@ export function ObjectTypePropertiesTab() {
     datasetId,
     properties,
     setProperties,
-    keyProperty,
-    setKeyProperty,
+    keyProperties,
+    setKeyProperties,
     loadingMetadata,
     saving,
     onSave,
@@ -383,7 +384,7 @@ export function ObjectTypePropertiesTab() {
           properties={properties}
           fromDataset={!!datasetId}
           nameTypeReadOnly={!!datasetId}
-          keyProperty={keyProperty}
+          keyProperties={keyProperties}
           loadingMetadata={loadingMetadata}
           onAdd={
             datasetId
@@ -412,7 +413,9 @@ export function ObjectTypePropertiesTab() {
                   })
               : undefined
           }
-          onKeyPropertyChange={setKeyProperty}
+          onKeyPropertyChange={(name) =>
+            setKeyProperties((prev) => toggleKeyProperty(prev, name))
+          }
         />
       </EntityViewPanel>
     </>

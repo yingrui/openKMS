@@ -38,9 +38,10 @@ from app.services.ontology.object_neo4j_store import (
     prune_object_nodes,
     prune_refused_reason,
     query_neo4j_nodes,
-    resolve_id_property,
-    resolve_neo4j_id_column_for_row,
-    resolve_write_id_column,
+    encode_object_id,
+    resolve_id_properties,
+    resolve_neo4j_id_columns_for_row,
+    resolve_write_id_columns,
     instance_row_for_neo4j,
     sync_queue_ids_to_neo4j,
 )
@@ -135,7 +136,7 @@ def _to_response(obj_type: ObjectType, instance_count: int, dataset_name: str | 
         description=obj_type.description,
         dataset_id=obj_type.dataset_id,
         dataset_name=dataset_name,
-        key_property=obj_type.key_property,
+        key_properties=list(getattr(obj_type, "key_properties", None) or []),
         is_master_data=getattr(obj_type, "is_master_data", False),
         display_property=getattr(obj_type, "display_property", None),
         properties=props,
@@ -165,10 +166,12 @@ def _query_neo4j_nodes(
     search: str | None,
     limit: int,
     offset: int,
-    id_prop: str,
+    key_properties: list[str],
     prop_filters: dict[str, str] | None = None,
 ) -> tuple[list[dict], int]:
-    return query_neo4j_nodes(driver, label, search, limit, offset, id_prop, prop_filters=prop_filters)
+    return query_neo4j_nodes(
+        driver, label, search, limit, offset, key_properties, prop_filters=prop_filters
+    )
 
 async def _neo4j_node_counts_for_types(ds: DataSource, obj_types: list[ObjectType]) -> dict[str, int | None]:
     """Return label -> count; None when count fails for that label."""
@@ -187,9 +190,9 @@ async def _neo4j_node_counts_for_types(ds: DataSource, obj_types: list[ObjectTyp
 
 
 def _validate_property_refs(
-    *, properties: list[dict], key_property: str | None, display_property: str | None
+    *, properties: list[dict], key_properties: list[str], display_property: str | None
 ) -> None:
-    """`key_property` / `display_property` must name a property the type declares.
+    """`key_properties` / `display_property` must name properties the type declares.
 
     An unknown name used to resolve silently to *another* column, so the list id and the
     Action `object_id` disagreed about what an object's identity is. When the type declares no
@@ -198,13 +201,18 @@ def _validate_property_refs(
     names = {p.get("name") for p in properties if isinstance(p, dict) and p.get("name")}
     if not names:
         return
-    for field, value in (("key_property", key_property), ("display_property", display_property)):
-        ref = (value or "").strip()
-        if ref and ref not in names:
+    for ref in key_properties:
+        if ref and ref.strip() and ref.strip() not in names:
             raise HTTPException(
                 status_code=400,
-                detail=f"{field} {ref!r} is not a declared property of this object type",
+                detail=f"key_properties entry {ref!r} is not a declared property of this object type",
             )
+    ref = (display_property or "").strip()
+    if ref and ref not in names:
+        raise HTTPException(
+            status_code=400,
+            detail=f"display_property {ref!r} is not a declared property of this object type",
+        )
 
 
 async def _taken_api_names(db: AsyncSession, *, exclude_id: str | None = None) -> set[str]:
@@ -265,9 +273,10 @@ async def create_object_type(
     if existing.scalar_one_or_none():
         raise HTTPException(status_code=400, detail="Object type with this name already exists")
     props = _prop_defs_to_dicts(body.properties)
+    key_properties = [k.strip() for k in body.key_properties if k and k.strip()]
     _validate_property_refs(
         properties=props,
-        key_property=body.key_property,
+        key_properties=key_properties,
         display_property=body.display_property,
     )
     # `api_name` is the frozen identifier code/Cypher use, and it doubles as the graph label:
@@ -302,7 +311,7 @@ async def create_object_type(
         neo4j_label=label,
         description=body.description,
         dataset_id=body.dataset_id,
-        key_property=body.key_property,
+        key_properties=key_properties,
         is_master_data=body.is_master_data,
         display_property=body.display_property,
         properties=props,
@@ -389,8 +398,8 @@ async def update_object_type(
             )
         except ApiNameError as e:
             raise HTTPException(status_code=400, detail=str(e)) from e
-    if body.key_property is not None:
-        obj_type.key_property = body.key_property.strip() or None
+    if body.key_properties is not None:
+        obj_type.key_properties = [k.strip() for k in body.key_properties if k and k.strip()]
     if body.description is not None:
         obj_type.description = body.description
     if body.dataset_id is not None:
@@ -403,7 +412,7 @@ async def update_object_type(
         obj_type.properties = _prop_defs_to_dicts(body.properties)
     _validate_property_refs(
         properties=[p for p in (obj_type.properties or []) if isinstance(p, dict)],
-        key_property=obj_type.key_property,
+        key_properties=list(getattr(obj_type, "key_properties", None) or []),
         display_property=obj_type.display_property,
     )
     await db.flush()
@@ -431,7 +440,7 @@ async def _index_object_type_dataset_to_neo4j_session(
     session,
     obj_type: ObjectType,
 ) -> tuple[int, str | None, set]:
-    """MERGE dataset rows for one object type. Returns (created, id_col, ids written).
+    """MERGE dataset rows for one object type. Returns (created, key columns, ids written).
 
     The id set is what `prune` keeps: everything else under the label is stale.
     """
@@ -439,7 +448,7 @@ async def _index_object_type_dataset_to_neo4j_session(
         return 0, None, set()
     nodes_created = 0
     keep: set = set()
-    id_col: str | None = None
+    columns: list[str] | None = None
     label = object_label(obj_type)
     offset = 0
     batch_size = 1000
@@ -453,23 +462,23 @@ async def _index_object_type_dataset_to_neo4j_session(
             ) from e
         if not rows:
             break
-        id_col = resolve_neo4j_id_column_for_row(obj_type, rows[0])
+        columns = resolve_neo4j_id_columns_for_row(obj_type, rows[0])
         for row in rows:
-            nodes_created += merge_object_row_to_neo4j(session, label, id_col, row)
-            value = row.get(id_col)
-            if value is not None:
-                keep.add(value)
+            nodes_created += merge_object_row_to_neo4j(session, label, columns, row)
+            values = [row.get(column) for column in columns]
+            if all(value is not None for value in values):
+                keep.add(encode_object_id(values))
         offset += len(rows)
         if offset >= total:
             break
-    return nodes_created, id_col, keep
+    return nodes_created, columns, keep
 
 
 async def _index_object_type_instances_to_neo4j_session(
     db: AsyncSession,
     session,
     obj_type: ObjectType,
-) -> tuple[int, str, set]:
+) -> tuple[int, list[str], set]:
     """MERGE rows from object_instances (same MERGE rules as dataset rows)."""
     label = object_label(obj_type)
     keep: set = set()
@@ -487,15 +496,15 @@ async def _index_object_type_instances_to_neo4j_session(
         instances = result.scalars().all()
         if not instances:
             break
-        id_col = resolve_write_id_column(obj_type)
+        columns = resolve_write_id_columns(obj_type)
         for inst in instances:
             row = instance_row_for_neo4j(obj_type, inst)
-            nodes_created += merge_object_row_to_neo4j(session, label, id_col, row)
+            nodes_created += merge_object_row_to_neo4j(session, label, columns, row)
             keep.add(inst.id)
         offset += len(instances)
         if len(instances) < batch_size:
             break
-    return nodes_created, id_col, keep
+    return nodes_created, columns, keep
 
 
 async def _open_neo4j_driver_for_index(body: IndexToNeo4jRequest, db: AsyncSession):
@@ -645,15 +654,15 @@ async def index_objects_to_neo4j(
         with driver.session() as session:
             for obj_type in obj_types:
                 if obj_type.dataset_id:
-                    created, id_col, keep = await _index_object_type_dataset_to_neo4j_session(
+                    created, columns, keep = await _index_object_type_dataset_to_neo4j_session(
                         db, session, obj_type
                     )
                 else:
-                    created, id_col, keep = await _index_object_type_instances_to_neo4j_session(
+                    created, columns, keep = await _index_object_type_instances_to_neo4j_session(
                         db, session, obj_type
                     )
                 nodes_created += created
-                if prune and id_col:
+                if prune and columns:
                     reason = prune_refused_reason(keep)
                     if reason:
                         prune_skipped = reason
@@ -661,7 +670,7 @@ async def index_objects_to_neo4j(
                         nodes_pruned += prune_object_nodes(
                             session,
                             label=object_label(obj_type),
-                            id_col=id_col,
+                            columns=columns,
                             keep=keep,
                         )
     finally:
@@ -711,11 +720,11 @@ async def index_one_object_type_to_neo4j(
     try:
         with driver.session() as session:
             if obj_type.dataset_id:
-                nodes_created, id_col, keep = await _index_object_type_dataset_to_neo4j_session(
+                nodes_created, columns, keep = await _index_object_type_dataset_to_neo4j_session(
                     db, session, obj_type
                 )
             else:
-                nodes_created, id_col, keep = await _index_object_type_instances_to_neo4j_session(
+                nodes_created, columns, keep = await _index_object_type_instances_to_neo4j_session(
                     db, session, obj_type
                 )
             if prune:
@@ -724,7 +733,7 @@ async def index_one_object_type_to_neo4j(
                     prune_skipped = reason
                 else:
                     nodes_pruned = prune_object_nodes(
-                        session, label=object_label(obj_type), id_col=id_col, keep=keep
+                        session, label=object_label(obj_type), columns=columns, keep=keep
                     )
     finally:
         driver.close()
@@ -763,7 +772,7 @@ async def list_object_instances(
     await _require_object_type_read(request, db, object_type_id)
 
     prop_filters = parse_prop_filters(request)
-    id_prop = resolve_id_property(obj_type)
+    id_props = resolve_id_properties(obj_type)
     neo4j_ds = await get_first_neo4j_datasource(db)
     if not neo4j_ds:
         raise HTTPException(
@@ -778,7 +787,7 @@ async def list_object_instances(
 
     def _query(driver):
         return _query_neo4j_nodes(
-            driver, label, search, limit, offset, id_prop, prop_filters=prop_filters
+            driver, label, search, limit, offset, id_props, prop_filters=prop_filters
         )
 
     try:

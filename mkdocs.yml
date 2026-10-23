@@ -182,6 +182,7 @@ nav:
       - Knowledge map & home: features/knowledge-map.md
       - Global search: features/global-search.md
       - Ontology — objects, links, datasets: features/ontology.md
+      - Ontology — identity design note: features/ontology-identity.md
       - Ontology Functions: features/ontology-functions.md
       - Apps (hosted modules): features/app-builder.md
       - Ontology Function Client: features/ontology-sdk.md

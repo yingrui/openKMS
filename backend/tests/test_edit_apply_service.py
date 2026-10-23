@@ -258,7 +258,7 @@ def test_execute_action_applies_edits_on_ok(monkeypatch: pytest.MonkeyPatch) -> 
     asyncio.run(_run())
 
 
-def test_apply_rejects_dataset_backed_type():
+def test_apply_rejects_create_and_delete_on_a_dataset_backed_type():
     async def _run() -> None:
         ot = SimpleNamespace(id="ot-stock", name="Stock", dataset_id="ds-1")
         db = AsyncMock()

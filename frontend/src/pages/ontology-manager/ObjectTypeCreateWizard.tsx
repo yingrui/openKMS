@@ -24,6 +24,7 @@ import {
   ontologyTypeFromColumn,
   toHandCreatedPropertyDefs,
   toPropertyDefs,
+  toggleKeyProperty,
   type FormProperty,
 } from './objectTypeFormModel';
 
@@ -74,7 +75,7 @@ export function ObjectTypeCreateWizard({
   const [isMasterData, setIsMasterData] = useState(false);
   const [datasetId, setDatasetId] = useState('');
   const [properties, setProperties] = useState<FormProperty[]>([]);
-  const [keyProperty, setKeyProperty] = useState('');
+  const [keyProperties, setKeyProperties] = useState<string[]>([]);
   const [displayProperty, setDisplayProperty] = useState('');
   const [loadingMetadata, setLoadingMetadata] = useState(false);
   const [selectedActions, setSelectedActions] = useState<Set<ActionTemplateId>>(new Set());
@@ -116,7 +117,7 @@ export function ObjectTypeCreateWizard({
     setIsMasterData(false);
     setDatasetId('');
     setProperties([]);
-    setKeyProperty('');
+    setKeyProperties([]);
     setDisplayProperty('');
     setLoadingMetadata(false);
     setSelectedActions(new Set());
@@ -127,7 +128,7 @@ export function ObjectTypeCreateWizard({
     if (!open) return;
     if (!datasetId) {
       setProperties([]);
-      setKeyProperty('');
+      setKeyProperties([]);
       savedPropNamesRef.current = null;
       return;
     }
@@ -145,8 +146,8 @@ export function ObjectTypeCreateWizard({
           enabled: enabledNames ? enabledNames.has(c.column_name) : true,
         }));
         setProperties(props);
-        setKeyProperty((prev) =>
-          prev && cols.some((c) => c.column_name === prev) ? prev : '',
+        setKeyProperties((prev) =>
+          prev.filter((name) => cols.some((c) => c.column_name === name)),
         );
       })
       .catch((e) => {
@@ -189,7 +190,7 @@ export function ObjectTypeCreateWizard({
         description: description.trim() || undefined,
         dataset_id: datasetId || undefined,
         properties: datasetId ? toPropertyDefs(properties) : toHandCreatedPropertyDefs(properties),
-        key_property: keyProperty || undefined,
+        key_properties: keyProperties,
         is_master_data: isMasterData,
         display_property: displayProperty || undefined,
       });
@@ -426,7 +427,7 @@ export function ObjectTypeCreateWizard({
               properties={properties}
               fromDataset={!!datasetId}
               nameTypeReadOnly={false}
-              keyProperty={keyProperty}
+              keyProperties={keyProperties}
               loadingMetadata={loadingMetadata}
               onAdd={() =>
                 setProperties((prev) => [
@@ -452,7 +453,9 @@ export function ObjectTypeCreateWizard({
                       })
                   : undefined
               }
-              onKeyPropertyChange={setKeyProperty}
+              onKeyPropertyChange={(name) =>
+                setKeyProperties((prev) => toggleKeyProperty(prev, name))
+              }
             />
           </div>
         )}

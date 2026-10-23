@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import re
 from typing import Any
+from urllib.parse import quote, unquote
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -63,68 +64,126 @@ def link_rel_type(link_type: LinkType) -> str:
 SYSTEM_RID_PROPERTY = "__rid"
 
 
-def resolve_id_property(obj_type: ObjectType) -> str:
-    """Property name used as list/get API id.
+ID_SEPARATOR = "|"
 
-    Prefer ``key_property`` for **dataset-backed** types (business key column).
 
-    For hand-created / Action-managed types (no dataset), always use ``__rid`` so list
-    ids match Action ``object_id`` and queue primary keys — never use a schema
-    property such as ``title`` (that would overwrite the business field on MERGE).
+def object_key_properties(obj_type: ObjectType, *, sample_row: dict | None = None) -> list[str]:
+    """The properties that identify an object in its source table — one, or several.
+
+    A dataset-backed type names them in ``key_properties`` (e.g. ``[portfolio_id, ts_code]`` for
+    a table that is unique on the pair). Fallbacks never pick a *business* column by accident:
+    ``id`` first, then a declared property, then a column of the row — in that order.
+
+    A hand-created / Action-managed type has no source table, so its identity is the platform
+    ``__rid`` (the queue primary key, the same value Actions call ``object_id``).
     """
     if not getattr(obj_type, "dataset_id", None):
-        return SYSTEM_RID_PROPERTY
-    key = getattr(obj_type, "key_property", None)
-    if key and str(key).strip():
-        prop_names = [p.get("name") for p in (obj_type.properties or []) if isinstance(p, dict) and p.get("name")]
-        if key in (prop_names or [key]):
-            return str(key).strip()
-    prop_names = [p.get("name") for p in (obj_type.properties or []) if isinstance(p, dict) and p.get("name")]
-    return "id" if (prop_names and "id" in prop_names) else (prop_names[0] if prop_names else "id")
-
-
-def resolve_write_id_column(obj_type: ObjectType) -> str:
-    """Stable MERGE identity for Action/queue sync.
-
-    No-dataset types always MERGE on ``__rid`` (queue PK). Dataset-backed types may use
-    ``key_property`` as the natural key column. Never fall back to the first schema
-    property (e.g. title) — that made Explorer saves overwrite title with the UUID.
-    """
-    if not getattr(obj_type, "dataset_id", None):
-        return SYSTEM_RID_PROPERTY
-    key = getattr(obj_type, "key_property", None)
-    if key and str(key).strip():
-        return str(key).strip()
-    return "id"
-
-
-def resolve_neo4j_id_column_for_row(obj_type: ObjectType, sample_row: dict) -> str:
-    """Pick MERGE id property from a representative row (dataset index path)."""
-    prop_names = [p.get("name") for p in (obj_type.properties or []) if isinstance(p, dict) and p.get("name")]
-    if obj_type.key_property and sample_row and obj_type.key_property in sample_row:
-        return obj_type.key_property
-    if (prop_names and "id" in prop_names) or (sample_row and "id" in sample_row):
-        return "id"
+        return [SYSTEM_RID_PROPERTY]
+    declared = [
+        str(k).strip() for k in (getattr(obj_type, "key_properties", None) or []) if str(k).strip()
+    ]
+    declared = [k for k in declared if sample_row is None or k in sample_row]
+    if declared:
+        return declared
+    prop_names = [
+        p.get("name")
+        for p in (getattr(obj_type, "properties", None) or [])
+        if isinstance(p, dict) and p.get("name")
+    ]
+    if "id" in prop_names or (sample_row and "id" in sample_row):
+        return ["id"]
     if prop_names:
-        return prop_names[0]
+        return [str(prop_names[0])]
     if sample_row:
-        return list(sample_row.keys())[0]
-    return "id"
+        return [str(next(iter(sample_row)))]
+    return ["id"]
+
+
+def encode_object_id(values: list[Any]) -> str:
+    """The API id of an object with a (possibly composite) key: `a|b`, each part URL-escaped."""
+    return ID_SEPARATOR.join(quote(str(v), safe="") for v in values)
+
+
+def decode_object_id(object_id: str, key_properties: list[str]) -> list[str]:
+    """Split an API id back into its key values. Raises ValueError when the count does not match."""
+    parts = str(object_id).split(ID_SEPARATOR)
+    if len(parts) != len(key_properties):
+        raise ValueError(
+            f"id {object_id!r} has {len(parts)} part(s); "
+            f"{', '.join(key_properties)} need {len(key_properties)}"
+        )
+    return [unquote(part) for part in parts]
+
+
+def link_endpoint_values(
+    columns: list[str],
+    row: dict,
+    *,
+    fallback: list[Any] | None = None,
+) -> list[Any] | None:
+    """Endpoint values for a node, taken from the row the link was derived from.
+
+    A composite key needs every one of its columns in that row; when one is missing the caller
+    cannot identify the node and must skip instead of merging into whatever matched.
+    """
+    values = [row.get(column) for column in columns]
+    if any(value is None for value in values):
+        return fallback if fallback is not None else None
+    return values
+
+
+def key_map(columns: list[str], values: list[Any]) -> dict[str, Any]:
+    """The property map a MERGE / MATCH uses for these key columns."""
+    return {column: value for column, value in zip(columns, values, strict=True)}
+
+
+def object_id_from_props(props: dict | None, key_properties: list[str]) -> str | None:
+    """The API id of an object, read from its node properties."""
+    if not props:
+        return None
+    values = [props.get(k) for k in key_properties]
+    if any(v is None for v in values):
+        return None
+    return encode_object_id(values)
+
+
+def resolve_id_properties(obj_type: ObjectType) -> list[str]:
+    """The properties the list/get API id is built from (see ``object_key_properties``)."""
+    return object_key_properties(obj_type)
+
+
+def resolve_write_id_columns(obj_type: ObjectType) -> list[str]:
+    """The columns a write MERGEs on — the same identity, never a business column by accident."""
+    return object_key_properties(obj_type)
+
+
+def resolve_neo4j_id_columns_for_row(obj_type: ObjectType, sample_row: dict) -> list[str]:
+    """MERGE columns for the dataset index path, from a representative row."""
+    return object_key_properties(obj_type, sample_row=sample_row)
 
 
 def instance_row_for_neo4j(obj_type: ObjectType, instance: ObjectInstance) -> dict[str, Any]:
-    """Flat props for MERGE: instance data plus platform ``__rid`` / business key."""
+    """Flat props for MERGE: instance data plus the platform ``__rid`` or the business key values."""
     row = {k: v for k, v in dict(instance.data or {}).items() if k != SYSTEM_RID_PROPERTY}
-    id_col = resolve_write_id_column(obj_type)
-    row[id_col] = instance.id
+    columns = resolve_write_id_columns(obj_type)
+    if columns == [SYSTEM_RID_PROPERTY]:
+        row[SYSTEM_RID_PROPERTY] = instance.id
+        return row
+    # A dataset-backed overlay row is keyed by the encoded business id; split it back into columns.
+    values = decode_object_id(instance.id, columns)
+    row.update(key_map(columns, values))
     return row
 
 
-def merge_object_row_to_neo4j(session, label: str, id_col: str, row: dict) -> int:
-    """MERGE one flat property map into Neo4j. Returns 1 if a node was written, else 0."""
+def merge_object_row_to_neo4j(session, label: str, columns: list[str], row: dict) -> int:
+    """MERGE one flat property map into Neo4j. Returns 1 if a node was written, else 0.
+
+    The identity is the whole key, so a table unique on `(portfolio_id, ts_code)` produces one
+    node per pair instead of one node per whichever column was configured first.
+    """
     props = {k: v for k, v in row.items() if v is not None}
-    node_id = props.get(id_col, props.get(list(props.keys())[0]) if props else None)
-    if node_id is None:
+    values = [props.get(column) for column in columns]
+    if any(value is None for value in values):
         return 0
     safe_props: dict = {}
     for k, v in props.items():
@@ -132,19 +191,25 @@ def merge_object_row_to_neo4j(session, label: str, id_col: str, row: dict) -> in
             safe_props[k] = v
         else:
             safe_props[k] = str(v)
+    identity = ", ".join(f"`{column}`: $k{i}" for i, column in enumerate(columns))
+    params = {f"k{i}": safe_props.get(column) for i, column in enumerate(columns)}
+    params["props"] = safe_props
     session.run(
-        f"MERGE (n:{label} {{`{id_col}`: $id_val}}) SET n += $props",
-        id_val=safe_props.get(id_col, node_id),
-        props=safe_props,
+        f"MERGE (n:{label} {{{identity}}}) SET n += $props",
+        **params,
     )
     return 1
 
 
-def delete_object_node(session, label: str, id_col: str, id_val: str) -> int:
-    """DETACH DELETE one node by MERGE identity. Returns deleted count."""
+def _match_map(columns: list[str]) -> str:
+    return ", ".join(f"`{column}`: $k{i}" for i, column in enumerate(columns))
+
+
+def delete_object_node(session, label: str, columns: list[str], values: list[Any]) -> int:
+    """DETACH DELETE one node by its (possibly composite) identity. Returns deleted count."""
     result = session.run(
-        f"MATCH (n:{label} {{`{id_col}`: $id_val}}) DETACH DELETE n RETURN count(*) AS c",
-        id_val=id_val,
+        f"MATCH (n:{label} {{{_match_map(columns)}}}) DETACH DELETE n RETURN count(*) AS c",
+        **{f"k{i}": value for i, value in enumerate(values)},
     )
     row = result.single()
     return int(row["c"] or 0) if row else 0
@@ -156,7 +221,7 @@ def query_neo4j_nodes(
     search: str | None,
     limit: int,
     offset: int,
-    id_prop: str,
+    key_properties: list[str],
     prop_filters: dict[str, str] | None = None,
 ) -> tuple[list[dict], int]:
     """Query nodes from Neo4j by label. Returns (rows, total)."""
@@ -202,18 +267,23 @@ def query_neo4j_nodes(
                 continue
             props = dict(node) if hasattr(node, "__iter__") and hasattr(node, "keys") else {}
             data = {k: _serialize_val(v) for k, v in props.items() if v is not None}
-            row_id = data.get(id_prop, list(data.values())[0] if data else None)
+            row_id = object_id_from_props(data, key_properties)
+            if row_id is None:
+                # A node missing part of its key is still listed (it exists), by whatever it has.
+                row_id = next(iter(data.values()), None) if data else None
             if row_id is not None:
                 rows.append({"id": row_id, "data": data})
         return rows, total
 
 
-def get_neo4j_node_by_id(driver, label: str, id_col: str, id_val: str) -> dict | None:
+def get_neo4j_node_by_id(
+    driver, label: str, columns: list[str], values: list[Any]
+) -> dict | None:
     """Return node props dict or None."""
     with driver.session() as session:
         result = session.run(
-            f"MATCH (n:{label} {{`{id_col}`: $id_val}}) RETURN n LIMIT 1",
-            id_val=id_val,
+            f"MATCH (n:{label} {{{_match_map(columns)}}}) RETURN n LIMIT 1",
+            **{f"k{i}": value for i, value in enumerate(values)},
         )
         record = result.single()
         if not record or record["n"] is None:
@@ -247,11 +317,15 @@ async def fetch_object_from_neo4j(
     neo4j_ds = await get_first_neo4j_datasource(db)
     if not neo4j_ds:
         return None
-    label = neo4j_safe_label(obj_type.name)
-    id_col = resolve_write_id_column(obj_type)
+    label = object_label(obj_type)
+    columns = resolve_write_id_columns(obj_type)
+    try:
+        values = decode_object_id(object_id, columns)
+    except ValueError:
+        return None
 
     def _query(driver):
-        return get_neo4j_node_by_id(driver, label, id_col, object_id)
+        return get_neo4j_node_by_id(driver, label, columns, values)
 
     # Best-effort read: an unreachable or mis-configured mirror means "not found" here; the
     # mutation paths below are the ones that report Neo4j failures.
@@ -271,8 +345,7 @@ async def resolve_object_props_for_action(
     """
     props = await fetch_object_from_neo4j(db, obj_type, object_id)
     if props is not None:
-        id_col = resolve_write_id_column(obj_type)
-        canonical = str(props.get(id_col) or props.get("id") or object_id)
+        canonical = object_id_from_props(props, resolve_write_id_columns(obj_type)) or object_id
         return canonical, props
 
     instance = await db.get(ObjectInstance, object_id)
@@ -299,22 +372,27 @@ async def sync_queue_ids_to_neo4j(
     if not neo4j_ds:
         return
 
-    label = neo4j_safe_label(obj_type.name)
-    id_col = resolve_write_id_column(obj_type)
+    label = object_label(obj_type)
+    columns = resolve_write_id_columns(obj_type)
     rows: list[dict] = []
     for oid in upsert_ids:
         inst = await db.get(ObjectInstance, oid)
         if not inst or inst.object_type_id != obj_type.id:
             continue
         rows.append(instance_row_for_neo4j(obj_type, inst))
-    delete_vals = list(delete_ids)
+    delete_vals: list[list[Any]] = []
+    for oid in delete_ids:
+        try:
+            delete_vals.append(decode_object_id(oid, columns))
+        except ValueError:
+            continue
 
     def _run(driver) -> None:
         with driver.session() as session:
             for row in rows:
-                merge_object_row_to_neo4j(session, label, id_col, row)
-            for oid in delete_vals:
-                delete_object_node(session, label, id_col, oid)
+                merge_object_row_to_neo4j(session, label, columns, row)
+            for values in delete_vals:
+                delete_object_node(session, label, columns, values)
 
     await run_with_neo4j_driver(neo4j_ds, _run)
 
@@ -343,9 +421,14 @@ async def sync_edit_apply_result_to_neo4j(
 
 def link_endpoint_keys(
     source_type: ObjectType, target_type: ObjectType
-) -> tuple[str, str]:
-    """The properties each end of a relationship is matched on."""
-    return resolve_write_id_column(source_type), resolve_write_id_column(target_type)
+) -> tuple[list[str], list[str]]:
+    """The properties each end of a relationship is matched on (1..n per end)."""
+    return resolve_write_id_columns(source_type), resolve_write_id_columns(target_type)
+
+
+def _endpoint_map(side: str, columns: list[str]) -> str:
+    """`a: $s0, b: $s1` — the parameter names the callers bind."""
+    return ", ".join(f"`{column}`: ${side}{i}" for i, column in enumerate(columns))
 
 
 def merge_link_between_nodes(
@@ -354,18 +437,19 @@ def merge_link_between_nodes(
     src_label: str,
     tgt_label: str,
     rel_type: str,
-    src_key: str,
-    tgt_key: str,
-    src_val: Any,
-    tgt_val: Any,
+    src_columns: list[str],
+    tgt_columns: list[str],
+    src_values: list[Any],
+    tgt_values: list[Any],
 ) -> bool:
     """MERGE one relationship between two existing nodes. False when an endpoint is missing."""
+    params = {f"src_{i}": v for i, v in enumerate(src_values)}
+    params.update({f"tgt_{i}": v for i, v in enumerate(tgt_values)})
     result = session.run(
-        f"MATCH (a:{src_label} {{`{src_key}`: $src_val}}) "
-        f"MATCH (b:{tgt_label} {{`{tgt_key}`: $tgt_val}}) "
+        f"MATCH (a:{src_label} {{{_endpoint_map('src', src_columns)}}}) "
+        f"MATCH (b:{tgt_label} {{{_endpoint_map('tgt', tgt_columns)}}}) "
         f"MERGE (a)-[r:{rel_type}]->(b) RETURN count(r) AS c",
-        src_val=src_val,
-        tgt_val=tgt_val,
+        **params,
     )
     row = result.single()
     return bool(row and row["c"])
@@ -377,18 +461,19 @@ def delete_link_between_nodes(
     src_label: str,
     tgt_label: str,
     rel_type: str,
-    src_key: str,
-    tgt_key: str,
-    src_val: Any,
-    tgt_val: Any,
+    src_columns: list[str],
+    tgt_columns: list[str],
+    src_values: list[Any],
+    tgt_values: list[Any],
 ) -> int:
     """DELETE the relationship(s) between two nodes. Returns how many were removed."""
+    params = {f"src_{i}": v for i, v in enumerate(src_values)}
+    params.update({f"tgt_{i}": v for i, v in enumerate(tgt_values)})
     result = session.run(
-        f"MATCH (a:{src_label} {{`{src_key}`: $src_val}})"
+        f"MATCH (a:{src_label} {{{_endpoint_map('src', src_columns)}}})"
         f"-[r:{rel_type}]->"
-        f"(b:{tgt_label} {{`{tgt_key}`: $tgt_val}}) DELETE r",
-        src_val=src_val,
-        tgt_val=tgt_val,
+        f"(b:{tgt_label} {{{_endpoint_map('tgt', tgt_columns)}}}) DELETE r",
+        **params,
     )
     return int(result.consume().counters.relationships_deleted)
 
@@ -417,39 +502,54 @@ async def sync_link_instances_to_neo4j(
     src_label = object_label(source_type)
     tgt_label = object_label(target_type)
     rel_type = link_rel_type(link_type)
-    src_key, tgt_key = link_endpoint_keys(source_type, target_type)
+    src_columns, tgt_columns = link_endpoint_keys(source_type, target_type)
 
-    # An object's API id *is* the value its node is keyed by: `__rid` for hand-created types
-    # (the queue PK) and the business key for dataset-backed ones. So the ids are used directly —
-    # requiring a queue row is what used to reject every dataset-backed endpoint.
-    upsert_vals = list(upsert)
-    delete_vals = list(delete)
+    # An object's API id is its (possibly composite) key value(s): `__rid` for hand-created types,
+    # the business key columns for dataset-backed ones.
+    def _pairs(pairs: list[tuple[str, str]]) -> list[tuple[list[Any], list[Any]]]:
+        out: list[tuple[list[Any], list[Any]]] = []
+        for source_id, target_id in pairs:
+            try:
+                out.append(
+                    (
+                        decode_object_id(source_id, src_columns),
+                        decode_object_id(target_id, tgt_columns),
+                    )
+                )
+            except ValueError:
+                continue
+        return out
+
+    upsert_vals = _pairs(upsert)
+    delete_vals = _pairs(delete)
     missing: list[str] = []
 
     def _run(driver) -> None:
         with driver.session() as session:
-            for src_val, tgt_val in upsert_vals:
+            for src_values, tgt_values in upsert_vals:
                 if not merge_link_between_nodes(
                     session,
                     src_label=src_label,
                     tgt_label=tgt_label,
                     rel_type=rel_type,
-                    src_key=src_key,
-                    tgt_key=tgt_key,
-                    src_val=src_val,
-                    tgt_val=tgt_val,
+                    src_columns=src_columns,
+                    tgt_columns=tgt_columns,
+                    src_values=src_values,
+                    tgt_values=tgt_values,
                 ):
-                    missing.append(f"{src_val} -> {tgt_val}")
-            for src_val, tgt_val in delete_vals:
+                    missing.append(
+                        f"{encode_object_id(src_values)} -> {encode_object_id(tgt_values)}"
+                    )
+            for src_values, tgt_values in delete_vals:
                 delete_link_between_nodes(
                     session,
                     src_label=src_label,
                     tgt_label=tgt_label,
                     rel_type=rel_type,
-                    src_key=src_key,
-                    tgt_key=tgt_key,
-                    src_val=src_val,
-                    tgt_val=tgt_val,
+                    src_columns=src_columns,
+                    tgt_columns=tgt_columns,
+                    src_values=src_values,
+                    tgt_values=tgt_values,
                 )
 
     await run_with_neo4j_driver(neo4j_ds, _run)
@@ -484,10 +584,24 @@ def prune_refused_reason(keep: set | list) -> str | None:
     return None
 
 
-def prune_object_nodes(session, *, label: str, id_col: str, keep: set) -> int:
-    """DETACH DELETE nodes of `label` whose identity is not in `keep`. Returns nodes deleted."""
+def prune_object_nodes(session, *, label: str, columns: list[str], keep: set[str]) -> int:
+    """DETACH DELETE nodes of `label` whose encoded identity is not in `keep`.
+
+    `keep` holds the API ids this run wrote (`encode_object_id`), so a composite key prunes as
+    one identity instead of one column at a time.
+    """
+    if len(columns) == 1:
+        result = session.run(
+            f"MATCH (n:{label}) WHERE NOT toString(n.`{columns[0]}`) IN $keep DETACH DELETE n",
+            keep=list(keep),
+        )
+        return int(result.consume().counters.nodes_deleted)
+    # Composite: keep-list is encoded ids, so compare against the node's encoded key.
+    parts = " + '|' + ".join(
+        f"toString(n.`{column}`)" for column in columns
+    )
     result = session.run(
-        f"MATCH (n:{label}) WHERE NOT n.`{id_col}` IN $keep DETACH DELETE n",
+        f"MATCH (n:{label}) WHERE NOT ({parts}) IN $keep DETACH DELETE n",
         keep=list(keep),
     )
     return int(result.consume().counters.nodes_deleted)

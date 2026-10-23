@@ -27,7 +27,7 @@ HARD RULES:
   Match them in that exact direction. NEVER reverse the arrow.
   Example: schema says `(InsuranceProduct)-[:targets]->(AgeSegment)` ->
   use `MATCH (p:InsuranceProduct)-[:targets]->(a:AgeSegment)` (NOT the other way).
-- Use the listed `key_property` (or any listed property) when the user names an entity.
+- Use the listed `key_properties` (or any listed property) when the user names an entity.
   The properties on a node are exactly the ones in `props=[...]`. Do not invent new ones.
 - The query MUST be read-only: MATCH / OPTIONAL MATCH / WHERE / RETURN / WITH / ORDER BY / LIMIT only.
 - Never emit CREATE, MERGE, SET, DELETE, REMOVE, DETACH, DROP, CALL, apoc.*, dbms.*.
@@ -52,10 +52,11 @@ def _build_schema_block(object_types: list[dict], link_types: list[dict]) -> str
     for ot in object_types:
         props = ot.get("properties") or []
         prop_names = [p.get("name") for p in props if isinstance(p, dict) and p.get("name")]
-        key = ot.get("key_property") or "(none)"
+        keys = [k for k in (ot.get("key_properties") or []) if k]
+        key = ", ".join(keys) or "(none)"
         prop_str = ", ".join(prop_names) if prop_names else "(no declared props)"
         desc = (ot.get("description") or "").strip()
-        line = f"- ({ot['name']}) key_property={key} props=[{prop_str}]"
+        line = f"- ({ot['name']}) key_properties={key} props=[{prop_str}]"
         if desc:
             line += f"  // {desc[:80]}"
         lines.append(line)

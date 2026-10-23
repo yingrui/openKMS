@@ -78,7 +78,7 @@ export function useDocumentDetail(id: string | undefined) {
   const [savingInfo, setSavingInfo] = useState(false);
   const [savingMetadata, setSavingMetadata] = useState(false);
   const [extractWarnings, setExtractWarnings] = useState<string[]>([]);
-  const [labelObjectTypes, setLabelObjectTypes] = useState<Record<string, { display_property?: string | null; key_property?: string | null }>>({});
+  const [labelObjectTypes, setLabelObjectTypes] = useState<Record<string, { display_property?: string | null; key_properties?: string[] }>>({});
   const [labelInstances, setLabelInstances] = useState<Record<string, { id: string; data: Record<string, unknown> }[]>>({});
   const [rightPanelView, setRightPanelView] = useState<'markdown' | 'pageIndex'>('markdown');
   const [pageIndex, setPageIndex] = useState<{ structure: PageIndexNode[]; doc_name?: string | null } | null>(null);
@@ -371,12 +371,12 @@ export function useDocumentDetail(id: string | undefined) {
           Promise.all(uniqueIds.map((otid) => fetchObjectInstances(otid))),
         ]);
         if (cancelled) return;
-        const typesMap: Record<string, { display_property?: string | null; key_property?: string | null }> = {};
+        const typesMap: Record<string, { display_property?: string | null; key_properties?: string[] }> = {};
         const instancesMap: Record<string, { id: string; data: Record<string, unknown> }[]> = {};
         uniqueIds.forEach((otid, i) => {
           typesMap[otid] = {
             display_property: typesRes[i]?.display_property ?? null,
-            key_property: typesRes[i]?.key_property ?? null,
+            key_properties: typesRes[i]?.key_properties ?? [],
           };
           instancesMap[otid] = (instancesRes[i]?.items ?? []).map((x) => ({ id: x.id, data: x.data ?? {} }));
         });
@@ -395,7 +395,7 @@ export function useDocumentDetail(id: string | undefined) {
 
   const getInstanceDisplay = useCallback((otid: string, instance: { id: string; data: Record<string, unknown> }) => {
     const ot = labelObjectTypes[otid];
-    const displayProp = ot?.display_property ?? ot?.key_property;
+    const displayProp = ot?.display_property ?? ot?.key_properties?.[0];
     if (displayProp && instance.data[displayProp] != null) {
       return String(instance.data[displayProp]);
     }

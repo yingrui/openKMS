@@ -23,7 +23,7 @@ Prefix with `python scripts/cli.py`. Writes need `--yes` / `--dry-run`. Before F
 
 | Goal | Command |
 |------|---------|
-| Object type CRUD | `ontology objects create-type --name "Disease" [--api-name Disease] --properties-json '[…]' --yes` · `update-type` · `delete-type`. `--api-name` is the **frozen** identifier code/Cypher use: derived from `--name` when it has ASCII parts, **required** when it has none (中文). `update-type --api-name` only fills a row that has none. |
+| Object type CRUD | `ontology objects create-type --name "Disease" [--api-name Disease] [--key-properties icd_code] --properties-json '[…]' --yes` · `update-type` · `delete-type`. `--api-name` is the **frozen** identifier code/Cypher use: derived from `--name` when it has ASCII parts, **required** when it has none (中文). `update-type --api-name` only fills a row that has none. |
 | Object instance CRUD | `ontology objects instances create\|update\|delete … --yes` (each write also syncs that object into the graph) |
 | Sync objects → Neo4j | `ontology objects sync-neo4j --neo4j-data-source-id DS --yes` · `sync-neo4j-type --type-id OT_ID --neo4j-data-source-id DS --yes` |
 | Link type CRUD | `ontology links create-type --name covers [--api-name covers] --source-type-id … --target-type-id … --cardinality many-to-many --yes` · `update-type` · `delete-type` (same `--api-name` rules) |

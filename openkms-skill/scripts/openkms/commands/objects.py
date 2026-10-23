@@ -78,8 +78,8 @@ def cmd_create_type(ns: argparse.Namespace) -> None:
         body["description"] = ns.description
     if ns.dataset_id:
         body["dataset_id"] = ns.dataset_id
-    if ns.key_property:
-        body["key_property"] = ns.key_property
+    if ns.key_properties:
+        body["key_properties"] = [k.strip() for k in ns.key_properties.split(",") if k.strip()]
     if ns.display_property:
         body["display_property"] = ns.display_property
     if ns.properties_json:
@@ -109,8 +109,10 @@ def cmd_update_type(ns: argparse.Namespace) -> None:
         body["description"] = ns.description
     if ns.dataset_id is not None:
         body["dataset_id"] = ns.dataset_id
-    if ns.key_property is not None:
-        body["key_property"] = ns.key_property
+    if ns.key_properties is not None:
+        body["key_properties"] = [
+            k.strip() for k in ns.key_properties.split(",") if k.strip()
+        ]
     if ns.is_master_data is not None:
         body["is_master_data"] = bool(ns.is_master_data)
     if ns.display_property is not None:
@@ -289,7 +291,11 @@ def add_subparser(sub) -> None:
     )
     ct.add_argument("--description", default="")
     ct.add_argument("--dataset-id", default="")
-    ct.add_argument("--key-property", default="")
+    ct.add_argument(
+        "--key-properties",
+        default="",
+        help="comma-separated columns that identify an object, e.g. portfolio_id,ts_code",
+    )
     ct.add_argument("--is-master-data", action="store_true")
     ct.add_argument("--display-property", default="")
     ct.add_argument(
@@ -310,7 +316,11 @@ def add_subparser(sub) -> None:
     ut.add_argument("--name", default=None)
     ut.add_argument("--description", default=None)
     ut.add_argument("--dataset-id", default=None)
-    ut.add_argument("--key-property", default=None)
+    ut.add_argument(
+        "--key-properties",
+        default=None,
+        help="comma-separated columns; empty string clears the key",
+    )
     ut.add_argument("--is-master-data", type=lambda s: s.lower() in ("1", "true", "yes"), default=None)
     ut.add_argument("--display-property", default=None)
     ut.add_argument("--properties-json", default=None)

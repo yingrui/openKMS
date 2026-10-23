@@ -43,3 +43,10 @@ export function toPropertyDefs(properties: FormProperty[]): PropertyDef[] {
 export function toHandCreatedPropertyDefs(properties: FormProperty[]): PropertyDef[] {
   return toPropertyDefs(withoutReservedProperties(properties));
 }
+
+/** Add or remove a column from the object's key — a table can be unique on a tuple. */
+export function toggleKeyProperty(keyProperties: string[], name: string): string[] {
+  return keyProperties.includes(name)
+    ? keyProperties.filter((k) => k !== name)
+    : [...keyProperties, name];
+}

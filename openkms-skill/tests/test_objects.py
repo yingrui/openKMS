@@ -62,7 +62,7 @@ def test_create_type_dry_run_makes_no_request(mock_api, capsys):
     from openkms.commands.objects import cmd_create_type
     with pytest.raises(SystemExit) as exc:
         cmd_create_type(_ns(
-            name="Disease", description="", dataset_id="", key_property="",
+            name="Disease", description="", dataset_id="", key_properties="",
             is_master_data=False, display_property="",
             properties_json='[{"name":"icd","type":"string"}]',
             yes=False, dry_run=True,
@@ -78,7 +78,7 @@ def test_create_type_yes_posts_correct_body(mock_api):
 
     from openkms.commands.objects import cmd_create_type
     cmd_create_type(_ns(
-        name="Disease", description="ICD-10", dataset_id="", key_property="icd",
+        name="Disease", description="ICD-10", dataset_id="", key_properties="icd",
         is_master_data=True, display_property="name",
         properties_json='[{"name":"icd","type":"string","required":true}]',
     ))
@@ -88,7 +88,7 @@ def test_create_type_yes_posts_correct_body(mock_api):
         "name": "Disease",
         "is_master_data": True,
         "description": "ICD-10",
-        "key_property": "icd",
+        "key_properties": ["icd"],
         "display_property": "name",
         "properties": [{"name": "icd", "type": "string", "required": True}],
     }
@@ -102,7 +102,7 @@ def test_create_type_sends_api_name_when_given(mock_api):
     from openkms.commands.objects import cmd_create_type
     cmd_create_type(_ns(
         name="工作任务", api_name="WorkItem", description="", dataset_id="",
-        key_property="", is_master_data=False, display_property="",
+        key_properties="", is_master_data=False, display_property="",
         properties_json="",
     ))
 
@@ -116,7 +116,7 @@ def test_create_type_omits_api_name_when_empty(mock_api):
 
     from openkms.commands.objects import cmd_create_type
     cmd_create_type(_ns(
-        name="Disease", api_name="", description="", dataset_id="", key_property="",
+        name="Disease", api_name="", description="", dataset_id="", key_properties="",
         is_master_data=False, display_property="", properties_json="",
     ))
 
@@ -130,7 +130,7 @@ def test_create_type_non_tty_aborts_without_yes(mock_api, monkeypatch):
     from openkms.commands.objects import cmd_create_type
     with pytest.raises(SystemExit) as exc:
         cmd_create_type(_ns(
-            name="X", description="", dataset_id="", key_property="",
+            name="X", description="", dataset_id="", key_properties="",
             is_master_data=False, display_property="", properties_json="",
             yes=False, dry_run=False,
         ))
@@ -145,7 +145,7 @@ def test_update_type_only_sends_provided_fields(mock_api):
     cmd_update_type(_ns(
         id="ot1",
         name="NewName",
-        description=None, dataset_id=None, key_property=None,
+        description=None, dataset_id=None, key_properties=None,
         is_master_data=None, display_property=None, properties_json=None,
     ))
 
@@ -160,7 +160,7 @@ def test_update_type_aborts_when_nothing_to_update():
     with pytest.raises(SystemExit) as exc:
         cmd_update_type(_ns(
             id="ot1", name=None, description=None, dataset_id=None,
-            key_property=None, is_master_data=None, display_property=None,
+            key_properties=None, is_master_data=None, display_property=None,
             properties_json=None,
         ))
     assert exc.value.code == 2

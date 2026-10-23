@@ -22,7 +22,8 @@ export interface ObjectTypeResponse {
   description?: string | null;
   dataset_id?: string | null;
   dataset_name?: string | null;
-  key_property?: string | null;
+  /** The properties that identify an object (1..n); the API id is their encoded join. */
+  key_properties?: string[];
   is_master_data?: boolean;
   display_property?: string | null;
   properties: PropertyDef[];
@@ -60,7 +61,7 @@ export async function createObjectType(data: {
   api_name?: string;
   description?: string;
   dataset_id?: string;
-  key_property?: string;
+  key_properties?: string[];
   is_master_data?: boolean;
   display_property?: string;
   properties?: PropertyDef[];
@@ -74,7 +75,7 @@ export async function createObjectType(data: {
 
 export async function updateObjectType(
   objectTypeId: string,
-  data: { name?: string; api_name?: string; description?: string; dataset_id?: string; key_property?: string; is_master_data?: boolean; display_property?: string; properties?: PropertyDef[] }
+  data: { name?: string; api_name?: string; description?: string; dataset_id?: string; key_properties?: string[]; is_master_data?: boolean; display_property?: string; properties?: PropertyDef[] }
 ): Promise<ObjectTypeResponse> {
   return request<ObjectTypeResponse>(`/api/object-types/${objectTypeId}`, {
     method: 'PUT',
