@@ -38,7 +38,7 @@ export function AuditLogPage() {
   const [facets, setFacets] = useState<AuditFacetsResponse>(EMPTY_FACETS);
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(0);
-  const [pageSize, setPageSize] = useState(50);
+  const [pageSize, setPageSize] = useState(25);
   const [total, setTotal] = useState(0);
   const [scope, setScope] = useState<Scope>({ kind: 'all', value: '' });
   // What the form holds, and what the query uses. Typing does not query: a path is a filter you finish
@@ -248,9 +248,10 @@ export function AuditLogPage() {
             <EmptyState title={t('auditLog.empty')} description={t('auditLog.emptyHint')} />
           ) : (
             <>
-              {/* A bounded grid: the table scrolls with its headers stuck, so the pager below stays put
-                  instead of being pushed off the page by fifty rows. */}
-              <div className="ds-table-wrap ds-table-wrap--scroll">
+              {/* The pager goes *inside* the card, as `ds-table-wrap` is designed for: it is the card's
+                  footer (top border, muted background, no radius). Outside, it floats as a bar with one border
+                  and no sides — which is what made this page's paging look unlike the Documents list's. */}
+              <div className="ds-table-wrap">
                 <table className="console-table">
                   <thead>
                     <tr>
@@ -306,18 +307,18 @@ export function AuditLogPage() {
                     ))}
                   </tbody>
                 </table>
+                <Pagination
+                  total={total}
+                  page={page}
+                  pageSize={pageSize}
+                  loading={loading}
+                  onPageChange={setPage}
+                  onPageSizeChange={(size) => {
+                    setPageSize(size);
+                    setPage(0);
+                  }}
+                />
               </div>
-              <Pagination
-                total={total}
-                page={page}
-                pageSize={pageSize}
-                loading={loading}
-                onPageChange={setPage}
-                onPageSizeChange={(size) => {
-                  setPageSize(size);
-                  setPage(0);
-                }}
-              />
             </>
           )}
         </div>

@@ -303,6 +303,17 @@ They are **not claimed to work**: this machine has no `pg_dump`, so only the pre
 refuses with an installation hint, verified). The drill is what turns a file into a backup, and until it
 prints `restore drill ok`, the honest state is untested.
 
+### The pager belongs *inside* the card (2026-10)
+
+The audit pager still looked unlike other pages, and the Documents list showed why: it puts `<Pagination>`
+**inside** `.ds-table-wrap` — which is what `.ds-table-wrap .ds-pagination { border-radius: 0 }` was written
+for. Outside the card the pager keeps a top border with no sides, so it reads as a floating bar rather than
+the card's footer.
+
+Moved inside, and `--scroll` dropped with it (a bounded card that scrolls would take its own pagination with
+it), and the page size is 25 like the catalog's. `.audit-log__main` keeps no flex gap: the pager must hug the
+table, and the sections above it carry their own bottom margins.
+
 ### Two logins in one second (2026-10)
 
 The login appeared — twice, same actor, same second. The SPA syncs the token from two hooks (`runOidcInit`
