@@ -109,6 +109,14 @@ to `Simulation runs` — and the fills are ledger rows in `public.portfolio_tran
 `traded` link type (many-to-many over that ledger, `simulation_run_id` → `ts_code`) is what turns
 "which stocks did this run trade" into a graph question without turning the ledger into objects.
 
+The rule behind both: a row becomes an **object** when a reader asks about *that row* ("which trades
+did this run make, and at what price?"), and stays a **dataset** when it is a panel read in bulk
+("every factor value, every day"). `Transaction` is therefore an object type over
+`portfolio_transactions` — keyed by its uuid `id`, linked to its `Portfolio`, its `Stock`, and the
+`Simulation` that produced it (`ofPortfolio`, `onStock`, `fromRun`) — because the ledger is small
+(dozens of rows) and those three links are exactly the questions. The `traded` link type still
+rolls a run up to the stocks it touched without walking the fills.
+
 The factor library splits the same way. `Factor` is an object type over `factor_definitions`
 (key `code`, so `mom_20d` *is* the object id): an agent can ask which factors exist, which are
 computable, and how far each one got — `value_count`, `stock_count`, `last_date`, `computed_at`
