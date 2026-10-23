@@ -1,5 +1,5 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type Dispatch, type SetStateAction } from 'react';
-import { Outlet, useParams } from 'react-router-dom';
+import { Link, Outlet, useParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { Save } from 'lucide-react';
 import { toast } from 'sonner';
@@ -265,6 +265,7 @@ export function ActionDetailPage() {
         navItems={[
           { to: base, label: t('actions.overview'), end: true },
           { to: `${base}/rules`, label: t('actions.rules') },
+          { to: `${base}/webhook`, label: t('actions.webhook') },
           { to: `${base}/log`, label: t('actions.log') },
         ]}
       >
@@ -285,19 +286,9 @@ export function ActionOverviewTab() {
     setDescription,
     status,
     setStatus,
-    webhookServiceId,
-    setWebhookServiceId,
-    webhookPath,
-    setWebhookPath,
-    webhookBody,
-    setWebhookBody,
-    webhookMethod,
-    setWebhookMethod,
     saving,
     onSave,
   } = useActionDetail();
-  const { services } = useExternalServicesForWebhook();
-
   return (
     <>
       <EntityViewHeader
@@ -316,6 +307,24 @@ export function ActionOverviewTab() {
         <EntityViewStat
           label={t('actions.ruleType')}
           value={t(`actions.ruleTypeLabel.${action.rule_type}`, { defaultValue: action.rule_type })}
+        />
+        <EntityViewStat
+          label={t('actions.webhookTarget')}
+          value={
+            action.webhook_service_id && action.webhook_path ? (
+              <Link to={`/ontology-manager/action-types/${action.id}/webhook`}>
+                <code>
+                  {action.webhook_method || 'POST'} {action.webhook_path}
+                </code>
+              </Link>
+            ) : (action.function_external_services?.length ?? 0) > 0 ? (
+              t('actions.webhookViaFunctionShort', {
+                services: action.function_external_services?.join(', '),
+              })
+            ) : (
+              '—'
+            )
+          }
         />
       </EntityViewStats>
       <EntityViewPanel title={t('actions.general')} description={t('actions.generalHint')}>
@@ -343,6 +352,68 @@ export function ActionOverviewTab() {
           </EntityViewField>
         </div>
       </EntityViewPanel>
+    </>
+  );
+}
+
+export function ActionWebhookTab() {
+  const { t } = useTranslation('ontology');
+  const {
+    action,
+    webhookServiceId,
+    setWebhookServiceId,
+    webhookPath,
+    setWebhookPath,
+    webhookBody,
+    setWebhookBody,
+    webhookMethod,
+    setWebhookMethod,
+    saving,
+    onSave,
+  } = useActionDetail();
+  const { services } = useExternalServicesForWebhook();
+  const last = action.last_webhook;
+
+  return (
+    <>
+      <EntityViewHeader
+        title={t('actions.webhook')}
+        subtitle={t('actions.webhookPageSubtitle')}
+        actions={
+          <button
+            type="button"
+            className="btn btn-primary"
+            onClick={() => void onSave()}
+            disabled={saving}
+          >
+            <Save size={16} aria-hidden />
+            {saving ? t('shared.saving') : t('shared.save')}
+          </button>
+        }
+      />
+      <EntityViewStats>
+        <EntityViewStat
+          label={t('actions.webhookLastDelivery')}
+          value={
+            !action.webhook_service_id ? (
+              '—'
+            ) : !last ? (
+              t('actions.webhookNeverDelivered')
+            ) : (
+              <span
+                className={last.ok ? 'ds-status ds-status--ok' : 'ds-status ds-status--warn'}
+                title={last.error ?? undefined}
+              >
+                {last.status ?? (last.ok ? 'ok' : 'failed')}
+              </span>
+            )
+          }
+        />
+        <EntityViewStat
+          label={t('actions.webhookLastAt')}
+          value={last ? new Date(last.at).toLocaleString() : '—'}
+        />
+      </EntityViewStats>
       <EntityViewPanel title={t('actions.webhook')} description={t('actions.webhookHint')}>
         <div className="entity-view__form">
           <EntityViewField label={t('actions.webhookService')}>
@@ -408,6 +479,7 @@ export function ActionOverviewTab() {
   );
 }
 
+
 export function ActionRulesTab() {
   const { t } = useTranslation('ontology');
   const {
@@ -450,6 +522,24 @@ export function ActionRulesTab() {
         <EntityViewStat
           label={t('actions.ruleType')}
           value={t(`actions.ruleTypeLabel.${action.rule_type}`, { defaultValue: action.rule_type })}
+        />
+        <EntityViewStat
+          label={t('actions.webhookTarget')}
+          value={
+            action.webhook_service_id && action.webhook_path ? (
+              <Link to={`/ontology-manager/action-types/${action.id}/webhook`}>
+                <code>
+                  {action.webhook_method || 'POST'} {action.webhook_path}
+                </code>
+              </Link>
+            ) : (action.function_external_services?.length ?? 0) > 0 ? (
+              t('actions.webhookViaFunctionShort', {
+                services: action.function_external_services?.join(', '),
+              })
+            ) : (
+              '—'
+            )
+          }
         />
       </EntityViewStats>
       <EntityViewPanel>

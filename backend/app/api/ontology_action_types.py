@@ -15,6 +15,7 @@ from app.models.external_service import ExternalService
 from app.models.object_type import ObjectType
 from app.models.ontology_function import OntologyActionLog, OntologyActionType
 from app.schemas.ontology_functions import (
+    OntologyActionWebhookState,
     OntologyActionExecuteRequest,
     OntologyActionExecuteResponse,
     OntologyActionLogResponse,
@@ -107,7 +108,46 @@ async def _validate_webhook(
         )
 
 
-async def _to_response(db: AsyncSession, at: OntologyActionType) -> OntologyActionTypeResponse:
+async def _last_webhook_states(
+    db: AsyncSession, action_ids: list[str]
+) -> dict[str, OntologyActionWebhookState]:
+    """Newest delivery attempt per Action — one query, DISTINCT ON, no N+1 on the list page."""
+    if not action_ids:
+        return {}
+    rows = (
+        await db.execute(
+            select(
+                OntologyActionLog.action_type_id,
+                OntologyActionLog.webhook_ok,
+                OntologyActionLog.webhook_status,
+                OntologyActionLog.webhook_error,
+                OntologyActionLog.created_at,
+            )
+            .where(
+                OntologyActionLog.action_type_id.in_(action_ids),
+                OntologyActionLog.webhook_ok.isnot(None),
+            )
+            .order_by(OntologyActionLog.action_type_id, OntologyActionLog.created_at.desc())
+            .distinct(OntologyActionLog.action_type_id)
+        )
+    ).all()
+    return {
+        row.action_type_id: OntologyActionWebhookState(
+            ok=bool(row.webhook_ok),
+            status=row.webhook_status,
+            error=row.webhook_error,
+            at=row.created_at,
+        )
+        for row in rows
+    }
+
+
+async def _to_response(
+    db: AsyncSession,
+    at: OntologyActionType,
+    *,
+    last_webhook: OntologyActionWebhookState | None = None,
+) -> OntologyActionTypeResponse:
     return OntologyActionTypeResponse(
         id=at.id,
         api_name=at.api_name,
@@ -126,6 +166,7 @@ async def _to_response(db: AsyncSession, at: OntologyActionType) -> OntologyActi
         function_external_services=(
             await function_external_services(db, at.function_id) if at.function_id else []
         ),
+        last_webhook=last_webhook,
         status=at.status,
         created_at=at.created_at,
         updated_at=at.updated_at,
@@ -166,7 +207,8 @@ async def list_action_types(
     if object_type_id:
         q = q.where(OntologyActionType.object_type_id == object_type_id)
     rows = (await db.execute(q)).scalars().all()
-    return [await _to_response(db, r) for r in rows]
+    states = await _last_webhook_states(db, [r.id for r in rows])
+    return [await _to_response(db, r, last_webhook=states.get(r.id)) for r in rows]
 
 
 @router.get("/{action_type_id}", response_model=OntologyActionTypeResponse)
@@ -175,7 +217,8 @@ async def get_action_type(
     db: AsyncSession = Depends(get_db),
     _: None = Depends(require_any_permission(PERM_ONTOLOGY_READ)),
 ):
-    return await _to_response(db, await _get_action_type(db, action_type_id))
+    at = await _get_action_type(db, action_type_id)
+    return await _to_response(db, at, last_webhook=(await _last_webhook_states(db, [at.id])).get(at.id))
 
 
 @router.post("", response_model=OntologyActionTypeResponse, status_code=201)

@@ -21,6 +21,13 @@ export interface OntologyActionTypeResponse {
   webhook_method?: string;
   /** External services the bound Function calls — where a Function-rule Action actually goes. */
   function_external_services?: string[];
+  /** Newest delivery attempt for its webhook (null when it has none or never ran). */
+  last_webhook?: {
+    ok: boolean;
+    status?: number | null;
+    error?: string | null;
+    at: string;
+  } | null;
   status: string;
   created_at: string;
   updated_at: string;

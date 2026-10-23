@@ -189,6 +189,15 @@ class OntologyGroupRelatedResponse(BaseModel):
     action_types: list[OntologyGroupRelatedAction] = Field(default_factory=list)
 
 
+class OntologyActionWebhookState(BaseModel):
+    """The newest delivery attempt for an Action's webhook."""
+
+    ok: bool
+    status: int | None = None
+    error: str | None = None
+    at: datetime
+
+
 class OntologyActionTypeResponse(BaseModel):
     id: str
     api_name: str
@@ -209,6 +218,8 @@ class OntologyActionTypeResponse(BaseModel):
     #: External services the bound Function's source calls — where a Function-rule Action goes
     #: when it has no webhook of its own.
     function_external_services: list[str] = []
+    #: Newest delivery attempt (null when the Action has no webhook or never ran).
+    last_webhook: OntologyActionWebhookState | None = None
     status: str
     created_at: datetime
     updated_at: datetime

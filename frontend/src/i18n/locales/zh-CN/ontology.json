@@ -992,7 +992,18 @@
     "webhookBodyEnvelope": "信封（对象 + 元数据）",
     "webhookBodyObject": "对象体（REST 形状）",
     "webhookViaFunction": "由绑定的 Function 调用",
-    "webhookMethod": "HTTP 方法"
+    "webhookMethod": "HTTP 方法",
+    "webhooksTitle": "Webhook",
+    "webhooksSubtitle": "所有会对外通知的 Action：打到哪、上一次投递是否成功。点一行即可配置。",
+    "webhooksEmpty": "还没有 Action。",
+    "webhooksLoadFailed": "无法加载 Action",
+    "webhookTarget": "目标",
+    "webhookServiceMissing": "未知接口",
+    "webhookViaFunctionShort": "由绑定的 Function 调用：{{services}}",
+    "webhookPageSubtitle": "把该 Action 通知给拥有这份数据的应用。变更提交后尽力投递。",
+    "webhookLastDelivery": "最近一次投递",
+    "webhookLastAt": "时间",
+    "webhookNeverDelivered": "尚未投递"
   },
   "editor": {
     "title": "函数",
