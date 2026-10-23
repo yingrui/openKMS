@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react';
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
@@ -247,7 +248,7 @@ export function OntologyList() {
     </div>
   );
 
-  const renderObjectTable = (items: ObjectTypeResponse[]) => (
+  const renderObjectTable = (items: ObjectTypeResponse[], footer?: ReactNode) => (
     <div className="ds-resource-table-wrap">
       <table className="ds-resource-table">
         <thead>
@@ -273,10 +274,11 @@ export function OntologyList() {
           ))}
         </tbody>
       </table>
-    </div>
+
+      {footer}    </div>
   );
 
-  const renderLinkTable = (items: LinkTypeResponse[]) => (
+  const renderLinkTable = (items: LinkTypeResponse[], footer?: ReactNode) => (
     <div className="ds-resource-table-wrap">
       <table className="ds-resource-table">
         <thead>
@@ -304,10 +306,11 @@ export function OntologyList() {
           ))}
         </tbody>
       </table>
-    </div>
+
+      {footer}    </div>
   );
 
-  const renderFunctionTable = (items: OntologyFunctionResponse[]) => (
+  const renderFunctionTable = (items: OntologyFunctionResponse[], footer?: ReactNode) => (
     <div className="ds-resource-table-wrap">
       <table className="ds-resource-table">
         <thead>
@@ -340,10 +343,11 @@ export function OntologyList() {
           ))}
         </tbody>
       </table>
-    </div>
+
+      {footer}    </div>
   );
 
-  const renderActionTable = (items: OntologyActionTypeResponse[]) => (
+  const renderActionTable = (items: OntologyActionTypeResponse[], footer?: ReactNode) => (
     <div className="ds-resource-table-wrap">
       <table className="ds-resource-table">
         <thead>
@@ -374,7 +378,8 @@ export function OntologyList() {
           ))}
         </tbody>
       </table>
-    </div>
+
+      {footer}    </div>
   );
 
   const cardPreviewHint = (shown: number, total: number) =>
@@ -489,14 +494,16 @@ export function OntologyList() {
               </div>
             ) : (
               <>
-                {renderObjectTable(listObjectTypes)}
-                <Pagination
-                  total={objectTypes.length}
-                  page={objPage}
-                  pageSize={listPageSize}
-                  onPageChange={setObjPage}
-                  onPageSizeChange={onListPageSizeChange}
-                />
+                {renderObjectTable(
+                  listObjectTypes,
+                  <Pagination
+                    total={objectTypes.length}
+                    page={objPage}
+                    pageSize={listPageSize}
+                    onPageChange={setObjPage}
+                    onPageSizeChange={onListPageSizeChange}
+                  />,
+                )}
               </>
             )}
           </section>
@@ -510,14 +517,16 @@ export function OntologyList() {
               </div>
             ) : (
               <>
-                {renderLinkTable(listLinkTypes)}
-                <Pagination
-                  total={linkTypes.length}
-                  page={linkPage}
-                  pageSize={listPageSize}
-                  onPageChange={setLinkPage}
-                  onPageSizeChange={onListPageSizeChange}
-                />
+                {renderLinkTable(
+                  listLinkTypes,
+                  <Pagination
+                    total={linkTypes.length}
+                    page={linkPage}
+                    pageSize={listPageSize}
+                    onPageChange={setLinkPage}
+                    onPageSizeChange={onListPageSizeChange}
+                  />,
+                )}
               </>
             )}
           </section>
@@ -531,14 +540,16 @@ export function OntologyList() {
               </div>
             ) : (
               <>
-                {renderFunctionTable(listFunctions)}
-                <Pagination
-                  total={functions.length}
-                  page={fnPage}
-                  pageSize={listPageSize}
-                  onPageChange={setFnPage}
-                  onPageSizeChange={onListPageSizeChange}
-                />
+                {renderFunctionTable(
+                  listFunctions,
+                  <Pagination
+                    total={functions.length}
+                    page={fnPage}
+                    pageSize={listPageSize}
+                    onPageChange={setFnPage}
+                    onPageSizeChange={onListPageSizeChange}
+                  />,
+                )}
               </>
             )}
           </section>
@@ -552,14 +563,16 @@ export function OntologyList() {
               </div>
             ) : (
               <>
-                {renderActionTable(listActionTypes)}
-                <Pagination
-                  total={actionTypes.length}
-                  page={actionPage}
-                  pageSize={listPageSize}
-                  onPageChange={setActionPage}
-                  onPageSizeChange={onListPageSizeChange}
-                />
+                {renderActionTable(
+                  listActionTypes,
+                  <Pagination
+                    total={actionTypes.length}
+                    page={actionPage}
+                    pageSize={listPageSize}
+                    onPageChange={setActionPage}
+                    onPageSizeChange={onListPageSizeChange}
+                  />,
+                )}
               </>
             )}
           </section>
