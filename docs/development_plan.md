@@ -303,6 +303,25 @@ They are **not claimed to work**: this machine has no `pg_dump`, so only the pre
 refuses with an installation hint, verified). The drill is what turns a file into a backup, and until it
 prints `restore drill ok`, the honest state is untested.
 
+### The browser signs in against the IdP, not against us (2026-10)
+
+The login hook was in the backend's OAuth callback, and no login ever appeared. The SPA uses
+`oidc-client-ts` (`UserManager`, PKCE) — it signs in against Keycloak **itself** and then hands the token to
+`POST /sync-session`, so the backend's callback is never called. The one place the backend sees a browser
+sign-in is a call that also fires on every page load.
+
+Two ways to tell them apart, kept because each fails where the other holds:
+
+- **the client says so** (`?reason=login`): the SPA sets a marker when *it* starts the sign-in, the marker
+  survives the IdP round trip, and it is cleared once recorded. Explicit, and independent of what the IdP puts
+  in a token.
+- **the session identity** (`auth_time` / `sid`, compared with the token the cookie held): a token refresh
+  keeps it, a new sign-in changes it. Free, but only if the IdP includes those claims in the **access** token —
+  Keycloak often puts them only in the ID token, which is why it cannot be the only mechanism.
+
+Verified: the endpoint accepts the parameter (401 without a JWT), and the decision has unit tests for both
+signals. A real browser sign-in could not be exercised here; it is what the next one will confirm.
+
 ### The login, for both auth modes — and its failures (2026-10)
 
 "Nothing records the login." True, in two ways:

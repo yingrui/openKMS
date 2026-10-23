@@ -376,3 +376,60 @@ class TestLocalLogin:
         assert events[0]["actor_sub"] is None
         # The account *attempted* is data, not an actor: nobody authenticated.
         assert events[0]["detail"] == {"via": "local-login", "attempted": "Mallory"}
+
+
+class TestSignInThroughSyncSession:
+    """The SPA signs in with the IdP itself (PKCE) and hands the token to `sync-session` — so that call, not
+    the backend's OAuth callback, is where a browser login becomes visible. It also fires on every load, so
+    the decision is by session identity, not by the call."""
+
+    def test_auth_time_identifies_the_sign_in_not_the_token(self):
+        from app.api.auth import session_identity
+
+        first = session_identity({"sub": "u1", "auth_time": 100, "sid": "s1"})
+        refreshed = session_identity({"sub": "u1", "auth_time": 100, "sid": "s1"})
+        second_login = session_identity({"sub": "u1", "auth_time": 900, "sid": "s2"})
+        assert first == refreshed          # a token refresh is the same sign-in
+        assert first != second_login       # signing in again is not
+        assert session_identity({"sub": "u1"}) is None   # nothing to compare: do not guess
+
+    def test_sync_session_records_a_login_when_the_session_is_new(self, monkeypatch):
+        import asyncio
+        from types import SimpleNamespace
+
+        from app.api import auth as auth_module
+
+        events: list[dict] = []
+
+        async def fake_record(**kwargs) -> None:
+            events.append(kwargs)
+
+        class FakeRequest:
+            session: dict = {}
+            state = SimpleNamespace()
+            headers: dict = {}
+
+        class FakeDb:
+            async def commit(self) -> None: ...
+
+        async def upsert(*_a, **_k) -> None: ...
+
+        # The route imports this inside the function, so the patch belongs on the service module.
+        from app.services.users import oidc_identity_service
+
+        monkeypatch.setattr(oidc_identity_service, "upsert_oidc_identity_from_jwt", upsert)
+        monkeypatch.setattr(auth_module, "record_audit_event", fake_record)
+        monkeypatch.setattr(auth_module, "_verify_token_for_mode",
+                            lambda _t: {"sub": "u1", "email": "a@b.c", "auth_time": 100, "sid": "s1"})
+
+        request = FakeRequest()
+        request.headers = {"Authorization": "Bearer tok"}
+        asyncio.run(auth_module.sync_session(request, reason=None, db=FakeDb()))
+        assert [e["path"] for e in events] == ["auth/login"]
+        assert events[0]["detail"] == {"via": "sync-session"}
+
+        # The same session syncing again (a reload) is not a second login.
+        events.clear()
+        request.headers = {"Authorization": "Bearer tok"}
+        asyncio.run(auth_module.sync_session(request, reason=None, db=FakeDb()))
+        assert events == []

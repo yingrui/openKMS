@@ -11,7 +11,7 @@ from urllib.parse import urlencode
 
 import bcrypt
 import jwt
-from fastapi import APIRouter, Depends, HTTPException, Request, Response
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response
 from fastapi.responses import RedirectResponse
 from jwt import PyJWKClient
 from pydantic import BaseModel, EmailStr, Field
@@ -427,8 +427,31 @@ async def record_session_event(
     )
 
 
+def session_identity(payload: dict) -> tuple | None:
+    """Who the session belongs to, and when they authenticated — stable across token refreshes.
+
+    The SPA signs in with the IdP itself (oidc-client-ts, PKCE) and then hands the token here, so this call is
+    the only place the backend sees a login — but it also fires on every load. `auth_time` is the claim that
+    distinguishes them: it is the moment the user actually signed in and does **not** move when the token is
+    refreshed, while a new `sid` (Keycloak) means a new session. Returns None when there is nothing to compare.
+    """
+    sub = payload.get("sub")
+    if not isinstance(sub, str) or not sub:
+        return None
+    auth_time = payload.get("auth_time")
+    sid = payload.get("sid")
+    session_state = payload.get("session_state")
+    if auth_time is None and sid is None and session_state is None:
+        return None
+    return (sub, auth_time, sid or session_state)
+
+
 @router.post("/sync-session")
-async def sync_session(request: Request, db: AsyncSession = Depends(get_db)) -> dict:
+async def sync_session(
+    request: Request,
+    reason: str | None = Query(None, description="`login` when the client just signed in"),
+    db: AsyncSession = Depends(get_db),
+) -> dict:
     """Sync browser JWT to backend session (cookie) for credentialed img/object requests."""
     auth_header = request.headers.get("Authorization")
     if not auth_header or not auth_header.lower().startswith("bearer "):
@@ -437,6 +460,14 @@ async def sync_session(request: Request, db: AsyncSession = Depends(get_db)) -> 
     if not token:
         raise http_error(request, 401, "BEARER_TOKEN_REQUIRED")
     payload = _verify_token_for_mode(token)
+
+    # A sign-in, one of two ways: the client says so (`?reason=login`, set by the SPA when *it* started the
+    # login and cleared once recorded), or the session differs from the one the cookie held. The second
+    # depends on claims the IdP may not put in an access token, so the explicit signal is the reliable one.
+    previous = _session_actor(request)[0]
+    if reason == "login" or session_identity(payload) != session_identity(previous):
+        await record_session_event("login", payload, via="sync-session")
+
     request.session["access_token"] = token
     from app.services.users.oidc_identity_service import upsert_oidc_identity_from_jwt
 

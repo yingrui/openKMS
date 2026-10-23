@@ -259,13 +259,25 @@ async function fetchAuthMeWithBearer(accessToken: string): Promise<AuthUser | nu
   }
 }
 
+/**
+ * This call is the only place the backend sees a browser sign-in: the SPA authenticates with the IdP itself
+ * (oidc-client-ts, PKCE), so the backend's OAuth callback never runs. It also fires on every load, so a
+ * user-initiated sign-in sets a marker that survives the IdP round trip and says `reason=login` exactly once.
+ */
+const PENDING_SIGNIN = 'openkms:pending-signin';
+
 async function syncTokenToBackend(token: string) {
+  const pending = sessionStorage.getItem(PENDING_SIGNIN) === '1';
   try {
-    await authAwareFetch(`${config.apiUrl}/sync-session`, {
-      method: 'POST',
-      headers: { Authorization: `Bearer ${token}` },
-      credentials: 'include',
-    });
+    await authAwareFetch(
+      `${config.apiUrl}/sync-session${pending ? '?reason=login' : ''}`,
+      {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
+        credentials: 'include',
+      },
+    );
+    if (pending) sessionStorage.removeItem(PENDING_SIGNIN);
   } catch {
     // Ignore; API may still work via Bearer on each request
   }
@@ -695,6 +707,8 @@ function OidcAuthProvider({
       } catch {
         // ignore stale authorize-state cleanup failures
       }
+      // Mark the sign-in: the callback lands on the app origin and this marker survives the IdP round trip.
+      sessionStorage.setItem(PENDING_SIGNIN, '1');
       await mgr.signinRedirect();
     })();
   }, []);
