@@ -158,3 +158,23 @@ def test_placeholder_values_are_url_escaped():
         )
         == "/api/x/a%2Fb%20c"
     )
+
+
+# --- where a Function-rule Action actually goes -----------------------------
+def test_only_external_calls_in_the_source_are_reported():
+    from app.services.ontology.function_external_usage import external_service_names
+
+    source = """
+from openkms_functions import Client, function
+
+@function()
+def execute(input, client: Client):
+    rows = client("WorkItem").search(limit=1)
+    a = client.external("turtle").post("/api/jobs", {})
+    b = client.external( 'turtle' ).post("/api/jobs", {})
+    c = client.external("otherService").get("/x")
+    return {"a": a, "b": b, "c": c}
+"""
+    assert external_service_names(source) == ["otherService", "turtle"]
+    assert external_service_names("") == []
+    assert external_service_names("client.external('')") == []

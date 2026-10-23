@@ -25,6 +25,7 @@ from app.schemas.ontology_functions import (
 from app.services.ontology.constants import ACTION_TYPE_ID_PREFIX, ID_HEX_LENGTH
 from app.services.ontology.action_rule_types import is_builtin_object_rule, normalize_rule_type
 from app.services.ontology import action_webhook, execution_service
+from app.services.ontology.function_external_usage import function_external_services
 from app.services.ontology.builtin_action_service import input_schema_for_action
 from app.services.ontology.input_schema import validate_input_against_schema
 from app.services.ontology.object_neo4j_store import resolve_object_props_for_action
@@ -109,6 +110,9 @@ async def _to_response(db: AsyncSession, at: OntologyActionType) -> OntologyActi
         webhook_service_name=await _webhook_service_name(db, at.webhook_service_id),
         webhook_path=at.webhook_path,
         webhook_body=getattr(at, "webhook_body", None) or "envelope",
+        function_external_services=(
+            await function_external_services(db, at.function_id) if at.function_id else []
+        ),
         status=at.status,
         created_at=at.created_at,
         updated_at=at.updated_at,

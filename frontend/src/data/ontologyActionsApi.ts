@@ -17,6 +17,8 @@ export interface OntologyActionTypeResponse {
   webhook_path?: string | null;
   /** `envelope` = metadata payload; `object` = the resource representation a REST API accepts. */
   webhook_body?: 'envelope' | 'object';
+  /** External services the bound Function calls — where a Function-rule Action actually goes. */
+  function_external_services?: string[];
   status: string;
   created_at: string;
   updated_at: string;

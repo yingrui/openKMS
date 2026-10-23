@@ -987,7 +987,8 @@
     "webhookBody": "投递内容",
     "webhookBodyHint": "信封带 action/调用者等元数据；对象体就是资源本身（对象属性 + Action 输入），接收方自家的 REST 接口可直接接受。路径里的占位符（用花括号包住字段名）会用对象属性或输入填充。",
     "webhookBodyEnvelope": "信封（对象 + 元数据）",
-    "webhookBodyObject": "对象体（REST 形状）"
+    "webhookBodyObject": "对象体（REST 形状）",
+    "webhookViaFunction": "由绑定的 Function 调用"
   },
   "editor": {
     "title": "函数",

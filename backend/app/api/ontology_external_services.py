@@ -15,7 +15,6 @@ code change. Secrets are stored encrypted, never listed, and resolved only at ca
 from __future__ import annotations
 
 import json
-import re
 import uuid
 from urllib.parse import urlparse
 
@@ -29,8 +28,9 @@ from app.api.ontology.deps import validate_api_name
 from app.database import get_db
 from app.models.external_service import AUTH_KINDS, SERVICE_KINDS, ExternalService
 from app.models.kubernetes_cluster import KubernetesCluster
-from app.models.ontology_function import OntologyFunction, OntologyFunctionVersion
+from app.models.ontology_function import OntologyFunction
 from app.services.credentials.credential_encryption import decrypt, encrypt
+from app.services.ontology.function_external_usage import external_service_names, function_sources
 from app.services.kubernetes.cluster_service_proxy import (
     identity_headers,
     join_proxy_path,
@@ -276,9 +276,6 @@ async def _validate_kind_fields(
     }
 
 
-_EXTERNAL_CALLS_RE = re.compile(r"external\(\s*['\"]([A-Za-z][A-Za-z0-9_]*)['\"]")
-
-
 async def _function_references(db: AsyncSession) -> dict[str, list[ExternalServiceFunctionRef]]:
     """api_name -> functions whose source calls `external(api_name)`.
 
@@ -288,25 +285,7 @@ async def _function_references(db: AsyncSession) -> dict[str, list[ExternalServi
     functions = (await db.execute(select(OntologyFunction))).scalars().all()
     refs: dict[str, list[ExternalServiceFunctionRef]] = {}
     for fn in functions:
-        version_ids: list[str] = []
-        if fn.published_version_id:
-            version_ids.append(fn.published_version_id)
-        latest = (
-            await db.execute(
-                select(OntologyFunctionVersion.id)
-                .where(OntologyFunctionVersion.function_id == fn.id)
-                .order_by(OntologyFunctionVersion.version.desc())
-                .limit(1)
-            )
-        ).scalar_one_or_none()
-        if latest and latest not in version_ids:
-            version_ids.append(latest)
-        used: set[str] = set()
-        for version_id in version_ids:
-            version = await db.get(OntologyFunctionVersion, version_id)
-            if version and version.source_code:
-                used.update(_EXTERNAL_CALLS_RE.findall(version.source_code))
-        for name in used:
+        for name in external_service_names(*await function_sources(db, fn)):
             refs.setdefault(name, []).append(
                 ExternalServiceFunctionRef(
                     id=fn.id, api_name=fn.api_name, display_name=fn.display_name

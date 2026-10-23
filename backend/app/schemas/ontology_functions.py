@@ -197,6 +197,9 @@ class OntologyActionTypeResponse(BaseModel):
     webhook_path: str | None = None
     #: `envelope` (metadata payload) or `object` (the resource representation a REST API accepts).
     webhook_body: str = "envelope"
+    #: External services the bound Function's source calls — where a Function-rule Action goes
+    #: when it has no webhook of its own.
+    function_external_services: list[str] = []
     status: str
     created_at: datetime
     updated_at: datetime

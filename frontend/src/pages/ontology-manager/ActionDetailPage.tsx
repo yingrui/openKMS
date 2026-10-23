@@ -349,6 +349,13 @@ export function ActionOverviewTab() {
               ))}
             </select>
           </EntityViewField>
+          {!webhookServiceId && (action.function_external_services?.length ?? 0) > 0 ? (
+            <EntityViewField label={t('actions.webhookViaFunction')}>
+              <span className="console-table-muted">
+                {action.function_external_services?.join(', ')}
+              </span>
+            </EntityViewField>
+          ) : null}
           {webhookServiceId ? (
             <>
               <EntityViewField label={t('actions.webhookPath')} hint={t('actions.webhookPathHint')}>
