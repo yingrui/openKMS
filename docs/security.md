@@ -49,8 +49,10 @@ question "what changed this dataset, and did it work?" belongs to anyone who can
 - Its **own session** (a request rollback must not erase the record of the attempt), and it swallows only
   `SQLAlchemyError`/`OSError`, loudly: an audit outage must not turn a successful write into a 500.
 - **A sign-out names its actor** from the cookie's token, **verified**: an unverified decode would let a
-  forged token name itself in the log, which is the misattribution an audit log exists to prevent. An expired
-  token at logout is normal, so this is best effort — no answer is better than a wrong one.
+  forged token name itself in the log, which is the misattribution an audit log exists to prevent.
+- **One sign-out, one event.** The SPA calls `clear-session` once deliberately and again from its
+  session-invalid handler seconds later; by then the cookie is gone. Nothing was ended, so nothing is
+  recorded — the same for an expired or unverified token. Only a live session produces a row.
 - **No request bodies** — they carry secrets. Response bodies are buffered only for `application/json` under
   32 KB, and only to read an `id`.
 - Read it three ways: the app's **user menu → Audit log** (`/audit-log`; the item appears only to

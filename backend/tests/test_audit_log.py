@@ -255,3 +255,29 @@ def test_a_forged_or_expired_cookie_yields_no_actor(monkeypatch):
     assert auth_module._session_actor(FakeRequest(None)) == ({}, "no_session_token")
     monkeypatch.setattr(auth_module, "_verify_token_for_mode", lambda _t: {"sub": "u1"})
     assert auth_module._session_actor(FakeRequest("ok")) == ({"sub": "u1"}, None)
+
+
+def test_only_the_sign_out_that_had_a_session_is_recorded(monkeypatch):
+    """The SPA calls `clear-session` once deliberately and again from the session-invalid handler, seconds
+    later. The second call has no cookie — nothing was ended, so it must not be a second event."""
+    import asyncio
+
+    from app.api import auth as auth_module
+
+    events: list[dict] = []
+
+    async def fake_record(**kwargs) -> None:
+        events.append(kwargs)
+
+    class FakeRequest:
+        def __init__(self, token: str | None) -> None:
+            self.session = {} if token is None else {"access_token": token}
+
+    monkeypatch.setattr(auth_module, "record_audit_event", fake_record)
+    monkeypatch.setattr(auth_module, "_verify_token_for_mode", lambda _t: {"sub": "u1", "email": "a@b.c"})
+
+    asyncio.run(auth_module.clear_session(FakeRequest("live-token")))   # the real sign-out
+    asyncio.run(auth_module.clear_session(FakeRequest(None)))           # the cleanup that follows
+    assert len(events) == 1
+    assert events[0]["actor_sub"] == "u1"
+    assert events[0]["detail"] == {"via": "clear-session"}

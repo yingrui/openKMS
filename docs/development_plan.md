@@ -302,6 +302,16 @@ They are **not claimed to work**: this machine has no `pg_dump`, so only the pre
 refuses with an installation hint, verified). The drill is what turns a file into a backup, and until it
 prints `restore drill ok`, the honest state is untested.
 
+### One sign-out, one event (2026-10)
+
+Two logout rows two seconds apart: one named, one `anonymous | no session cookie`. Same act, twice — the SPA
+calls `clear-session` deliberately, then its session-invalid handler calls it again when an in-flight request
+comes back rejected.
+
+The frontend could stop calling it twice; the **backend** can also know it did nothing: no cookie means no
+session was ended, and an expired/unverified token is the same case. A sign-out is recorded now only when a
+live session ended — which also removes the `anonymous` rows whose only honest reading was "the cleanup".
+
 ### `clear-session` *is* the logout — and two bugs under it (2026-10)
 
 "Then is clear-session redundant with logout?" — **functionally yes**: both call `session.clear()`, and the

@@ -538,7 +538,11 @@ async def clear_session(request: Request) -> dict:
     """
     payload, reason = _session_actor(request)
     request.session.clear()
-    await record_session_event("logout", payload, via="clear-session", reason=reason)
+    # One sign-out, one event. The SPA calls this again from its session-invalid handler, seconds later,
+    # when the cookie is already gone — nothing was ended, so nothing is recorded. An expired or unverified
+    # token is the same case: there was no live session to end.
+    if reason is None:
+        await record_session_event("logout", payload, via="clear-session")
     return {"ok": True}
 
 
@@ -547,8 +551,9 @@ async def logout(request: Request) -> RedirectResponse:
     """Clear session; in oidc mode redirect to IdP logout."""
     payload, reason = _session_actor(request)
     request.session.clear()
-    # A GET cannot carry a mutation to the middleware, but it is the end of a session.
-    await record_session_event("logout", payload, via="logout", reason=reason)
+    # A GET cannot carry a mutation to the middleware, but it is the end of a session — when there was one.
+    if reason is None:
+        await record_session_event("logout", payload, via="logout")
     if settings.auth_mode == "local":
         return RedirectResponse(url=_frontend_base(), status_code=302)
     meta = get_oidc_provider_metadata()
