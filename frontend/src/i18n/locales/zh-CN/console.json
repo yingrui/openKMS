@@ -861,6 +861,8 @@
     "scope": "范围",
     "emptyHint": "最近 30 天的写操作会出现在这里——可以放宽时间窗口或清空筛选。",
     "reset": "重置筛选",
-    "query": "查询"
+    "query": "查询",
+    "reason_no_session_token": "没有会话 cookie",
+    "reason_token_not_verified": "token 已过期或无效"
   }
 }

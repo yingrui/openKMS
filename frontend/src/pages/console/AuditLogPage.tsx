@@ -275,8 +275,17 @@ export function AuditLogPage() {
                           <StatusChip tone={event.status_code < 300 ? 'ok' : 'warn'}>
                             {event.status_code}
                           </StatusChip>
+                          {/* A 500 names its exception; a session event says why it could not name anyone
+                              — "anonymous" is an answer only when it explains itself. */}
                           {typeof event.detail?.error === 'string' ? (
                             <span className="page-subtitle"> {event.detail.error}</span>
+                          ) : typeof event.detail?.reason === 'string' ? (
+                            <span className="page-subtitle">
+                              {' '}
+                              {t(`auditLog.reason_${event.detail.reason}`, {
+                                defaultValue: String(event.detail.reason),
+                              })}
+                            </span>
                           ) : null}
                         </td>
                         <td>

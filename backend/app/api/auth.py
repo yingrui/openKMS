@@ -377,7 +377,7 @@ require_service_client = require_internal_client
 router = APIRouter(tags=["auth"])
 
 
-def _session_actor(request: Request) -> dict:
+def _session_actor(request: Request) -> tuple[dict, str | None]:
     """Who is signing out — read from the cookie's token **before** it is cleared, and verified.
 
     An unverified decode would let anyone set the name in the audit log by handing us a forged token, which
@@ -386,17 +386,25 @@ def _session_actor(request: Request) -> dict:
     """
     token = request.session.get("access_token")
     if not isinstance(token, str) or not token.strip():
-        return {}
+        return {}, "no_session_token"
     try:
-        return _verify_token_for_mode(token.strip())
+        return _verify_token_for_mode(token.strip()), None
     except HTTPException:
         # The verifiers already turn every failure into an HTTPException (expired, wrong issuer, bad
         # signature), so this is the whole failure surface — not a blanket catch.
-        return {}
+        return {}, "token_not_verified"
 
 
-async def record_session_event(kind: str, payload: dict) -> None:
-    """Record a sign-in / sign-out. Best effort: an audit outage must not block logging in or out."""
+async def record_session_event(
+    kind: str, payload: dict, *, via: str, reason: str | None = None
+) -> None:
+    """Record a sign-in / sign-out. Best effort: an audit outage must not block logging in or out.
+
+    `via` names the entry point (`clear-session`, `logout`, `oidc-callback`) and `reason` says why there is no
+    actor — "anonymous" on a logout is usually *correct*: the SPA also clears the cookie when the API has
+    already rejected it, and a dead token cannot name anyone. Saying which case it was is the difference
+    between an explained event and a suspicious one.
+    """
     sub = payload.get("sub")
     await record_audit_event(
         method="AUTH",
@@ -411,6 +419,7 @@ async def record_session_event(kind: str, payload: dict) -> None:
         ),
         auth_mode=payload.get("auth_mode") if isinstance(payload.get("auth_mode"), str) else None,
         # `resource_type` is derived from the path (`auth/logout` → `auth`); passing it is a TypeError.
+        detail={"via": via, **({"reason": reason} if reason else {})},
     )
 
 
@@ -514,7 +523,7 @@ async def oauth2_callback(
         await upsert_oidc_identity_from_jwt(db, payload)
         await db.commit()
         # Signing in is the security event; the callback is a GET, so the mutation middleware never saw it.
-        await record_session_event("login", payload)
+        await record_session_event("login", payload, via="oidc-callback")
 
     frontend = _frontend_base()
     return RedirectResponse(url=frontend, status_code=302)
@@ -527,19 +536,19 @@ async def clear_session(request: Request) -> dict:
     Recorded as the same `auth/logout` event as `GET /logout` — it is the same act, and one act should not
     read as two kinds of thing. Excluded from the generic middleware for that reason (`NOT_AUDITED`).
     """
-    payload = _session_actor(request)
+    payload, reason = _session_actor(request)
     request.session.clear()
-    await record_session_event("logout", payload)
+    await record_session_event("logout", payload, via="clear-session", reason=reason)
     return {"ok": True}
 
 
 @router.get("/logout")
 async def logout(request: Request) -> RedirectResponse:
     """Clear session; in oidc mode redirect to IdP logout."""
-    payload = _session_actor(request)
+    payload, reason = _session_actor(request)
     request.session.clear()
     # A GET cannot carry a mutation to the middleware, but it is the end of a session.
-    await record_session_event("logout", payload)
+    await record_session_event("logout", payload, via="logout", reason=reason)
     if settings.auth_mode == "local":
         return RedirectResponse(url=_frontend_base(), status_code=302)
     meta = get_oidc_provider_metadata()

@@ -198,7 +198,7 @@ class TestSessionEvents:
         monkeypatch.setattr(auth_module, "record_audit_event", fake_record)
         asyncio.run(
             auth_module.record_session_event(
-                "logout", {"sub": "u1", "email": "a@b.c", "auth_mode": "api_key"}
+                "logout", {"sub": "u1", "email": "a@b.c", "auth_mode": "api_key"}, via="clear-session"
             )
         )
         assert events == [
@@ -209,6 +209,7 @@ class TestSessionEvents:
                 "actor_sub": "u1",
                 "actor_name": "a@b.c",
                 "auth_mode": "api_key",
+                "detail": {"via": "clear-session"},
             }
         ]
 
@@ -223,9 +224,13 @@ class TestSessionEvents:
             events.append(kwargs)
 
         monkeypatch.setattr(auth_module, "record_audit_event", fake_record)
-        asyncio.run(auth_module.record_session_event("logout", {}))
+        asyncio.run(
+            auth_module.record_session_event("logout", {}, via="clear-session", reason="no_session_token")
+        )
         assert events[0]["actor_sub"] is None
         assert events[0]["path"] == "auth/logout"
+        # "anonymous" is an answer only when it says why it could not name anyone.
+        assert events[0]["detail"] == {"via": "clear-session", "reason": "no_session_token"}
 
 
 def test_a_forged_or_expired_cookie_yields_no_actor(monkeypatch):
@@ -246,7 +251,7 @@ def test_a_forged_or_expired_cookie_yields_no_actor(monkeypatch):
         raise HTTPException(status_code=401, detail="expired")
 
     monkeypatch.setattr(auth_module, "_verify_token_for_mode", boom)
-    assert auth_module._session_actor(FakeRequest("junk")) == {}
-    assert auth_module._session_actor(FakeRequest(None)) == {}
+    assert auth_module._session_actor(FakeRequest("junk")) == ({}, "token_not_verified")
+    assert auth_module._session_actor(FakeRequest(None)) == ({}, "no_session_token")
     monkeypatch.setattr(auth_module, "_verify_token_for_mode", lambda _t: {"sub": "u1"})
-    assert auth_module._session_actor(FakeRequest("ok")) == {"sub": "u1"}
+    assert auth_module._session_actor(FakeRequest("ok")) == ({"sub": "u1"}, None)

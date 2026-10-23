@@ -862,6 +862,8 @@
     "scope": "Scope",
     "emptyHint": "Mutations from the last 30 days appear here — try widening the window or clearing filters.",
     "reset": "Clear filters",
-    "query": "Query"
+    "query": "Query",
+    "reason_no_session_token": "no session cookie",
+    "reason_token_not_verified": "token expired or invalid"
   }
 }
