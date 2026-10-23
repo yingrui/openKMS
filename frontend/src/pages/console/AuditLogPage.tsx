@@ -87,6 +87,13 @@ export function AuditLogPage() {
     setPage(0);
   }, [scope, path, method]);
 
+  // The window moves (rows age out, filters narrow it, the page size changes) and `page` can end up past the
+  // end — which shows "nothing" with no way back if the pager lives inside the table branch. Clamp instead.
+  useEffect(() => {
+    const lastPage = Math.max(0, Math.ceil(total / pageSize) - 1);
+    if (page > lastPage) setPage(lastPage);
+  }, [page, total, pageSize]);
+
   const time = (iso: string) => new Date(iso).toLocaleString();
   // Refresh re-runs the query; reset gives you a way out of it. Two different jobs — and the rail alone
   // cannot undo a method or a path, so reset has to exist.
@@ -245,7 +252,21 @@ export function AuditLogPage() {
               <p>{t('auditLog.loading')}</p>
             </div>
           ) : events.length === 0 ? (
-            <EmptyState title={t('auditLog.empty')} description={t('auditLog.emptyHint')} />
+            <>
+              <EmptyState title={t('auditLog.empty')} description={t('auditLog.emptyHint')} />
+              {/* A filtered or out-of-range page still needs the pager: it is the way back. */}
+              <Pagination
+                total={total}
+                page={page}
+                pageSize={pageSize}
+                loading={loading}
+                onPageChange={setPage}
+                onPageSizeChange={(size) => {
+                  setPageSize(size);
+                  setPage(0);
+                }}
+              />
+            </>
           ) : (
             <>
               {/* The pager goes *inside* the card, as `ds-table-wrap` is designed for: it is the card's
