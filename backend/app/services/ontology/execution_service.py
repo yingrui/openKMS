@@ -56,6 +56,25 @@ def normalize_output(output: object | None) -> dict | None:
     return {"result": output}
 
 
+def object_label_for_log(
+    props: dict | None,
+    *,
+    display_property: str | None = None,
+    key_property: str | None = None,
+) -> str | None:
+    """How a reader names the object: its display property, its key, or a common name column."""
+    if not props:
+        return None
+    candidates = (display_property, key_property, "name", "title", "id")
+    for key in candidates:
+        if not key:
+            continue
+        value = props.get(key)
+        if value is not None and str(value).strip():
+            return str(value).strip()[:256]
+    return None
+
+
 @dataclass
 class ExecutionOutcome:
     status: str
@@ -223,6 +242,10 @@ async def _apply_edits_and_audit(
     applied: dict | None = None
     status = "ok"
     error: str | None = None
+    # Captured before any rollback below can expire the instance.
+    ot = await db.get(ObjectType, at.object_type_id)
+    ot_display_property = getattr(ot, "display_property", None) if ot else None
+    ot_key_property = getattr(ot, "key_property", None) if ot else None
 
     if pre_apply_errors:
         status = "error"
@@ -247,7 +270,6 @@ async def _apply_edits_and_audit(
             }
         else:
             await db.flush()
-            ot = await db.get(ObjectType, at.object_type_id)
             # Dataset-backed types included: a modify is an overlay written into the node by its
             # business id. Creates/deletes never reach here for them (apply refuses).
             if ot:
@@ -265,10 +287,20 @@ async def _apply_edits_and_audit(
                         "errors": [error],
                     }
 
+    # A create has no incoming object_id: the object it wrote is the one it acted on.
+    created = (applied or {}).get("created_ids") or []
+    logged_object_id = object_id or (created[0] if len(created) == 1 else None)
+    snapshot = input_payload.get("object")
+    if not isinstance(snapshot, dict):
+        # A create's input *is* the object's properties.
+        snapshot = input_payload if getattr(at, "rule_type", None) == "object_create" else None
     log = OntologyActionLog(
         id=log_id,
         action_type_id=at.id,
-        object_id=object_id,
+        object_id=logged_object_id,
+        object_label=object_label_for_log(
+            snapshot, display_property=ot_display_property, key_property=ot_key_property
+        ),
         caller_user_id=caller_user_id,
         status=status,
         input_payload=input_payload,
@@ -284,10 +316,9 @@ async def _apply_edits_and_audit(
     webhook_service_id = getattr(at, "webhook_service_id", None)
     webhook_path = getattr(at, "webhook_path", None)
     if status == "ok" and webhook_service_id and webhook_path:
-        obj_type = await db.get(ObjectType, at.object_type_id)
         payload = action_webhook.build_payload(
             action=at,
-            object_type_name=obj_type.api_name if obj_type else None,
+            object_type_name=(ot.api_name if ot else None),
             object_id=object_id,
             object_properties=input_payload.get("object"),
             input_payload=input_payload,

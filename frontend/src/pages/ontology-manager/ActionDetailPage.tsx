@@ -611,7 +611,7 @@ export function ActionRulesTab() {
 
 export function ActionLogTab() {
   const { t } = useTranslation('ontology');
-  const { logs } = useActionDetail();
+  const { logs, objectTypeName } = useActionDetail();
 
   return (
     <>
@@ -639,7 +639,22 @@ export function ActionLogTab() {
                 ) : (
                   logs.map((log) => (
                     <tr key={log.id}>
-                      <td className="console-table-muted">{log.object_id ?? '—'}</td>
+                      <td>
+                        {log.object_id || log.object_label ? (
+                          <>
+                            {log.object_label ? <div>{log.object_label}</div> : null}
+                            <div
+                              className="external-services__name"
+                              title={log.object_id ?? undefined}
+                            >
+                              {objectTypeName}
+                              {log.object_id ? ` · ${log.object_id.slice(0, 8)}…` : ''}
+                            </div>
+                          </>
+                        ) : (
+                          <span className="console-table-muted">—</span>
+                        )}
+                      </td>
                       <td>{log.status}</td>
                       <td className="console-table-muted">{new Date(log.created_at).toLocaleString()}</td>
                       <td>

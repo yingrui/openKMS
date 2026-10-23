@@ -278,6 +278,8 @@ class OntologyActionLogResponse(BaseModel):
     id: str
     action_type_id: str
     object_id: str | None = None
+    #: What a reader recognises the object by, captured when the row existed.
+    object_label: str | None = None
     caller_user_id: str | None = None
     status: str
     input_payload: dict | None = None

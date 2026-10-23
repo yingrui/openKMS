@@ -39,6 +39,8 @@ export interface OntologyActionLogResponse {
   id: string;
   action_type_id: string;
   object_id?: string | null;
+  /** What the object was called when the Action ran (display/key property). */
+  object_label?: string | null;
   caller_user_id?: string | null;
   status: string;
   input_payload?: Record<string, unknown> | null;

@@ -406,6 +406,7 @@ async def list_action_logs(
             id=r.id,
             action_type_id=r.action_type_id,
             object_id=r.object_id,
+            object_label=r.object_label,
             caller_user_id=r.caller_user_id,
             status=r.status,
             input_payload=r.input_payload,

@@ -134,3 +134,15 @@ def test_deleting_a_function_returns_a_label_for_the_audit_log():
     finally:
         function_service.get_function = original
     assert label == "Hello Greeting"
+
+
+def test_the_log_label_prefers_display_then_key_then_name():
+    from app.services.ontology.execution_service import object_label_for_log
+
+    props = {"id": "h-1", "ts_code": "600519.SH", "name": "贵州茅台"}
+    assert object_label_for_log(props, display_property="name", key_property="id") == "贵州茅台"
+    assert object_label_for_log(props, key_property="ts_code") == "600519.SH"
+    assert object_label_for_log({"name": "x"}) == "x"
+    assert object_label_for_log({"id": "h-1"}, key_property="id") == "h-1"
+    assert object_label_for_log(None) is None
+    assert object_label_for_log({"id": None}) is None

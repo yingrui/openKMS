@@ -144,6 +144,9 @@ class OntologyActionLog(Base):
         String(64), ForeignKey("ontology_action_types.id", ondelete="CASCADE"), nullable=False, index=True
     )
     object_id: Mapped[str | None] = mapped_column(String(256), nullable=True)
+    #: What a reader recognises the object by (its display/key property), captured when the row
+    #: still existed. A create has no incoming object_id, so both are written from the result.
+    object_label: Mapped[str | None] = mapped_column(String(256), nullable=True)
     caller_user_id: Mapped[str | None] = mapped_column(String(512), nullable=True, index=True)
     status: Mapped[str] = mapped_column(String(32), nullable=False)
     input_payload: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
