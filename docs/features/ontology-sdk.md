@@ -50,7 +50,7 @@ def execute(input: dict, client) -> dict:
     return client.external("turtle").post("/api/jobs", {"type": "simulation", "portfolio": input.get("portfolio")})
 ```
 
-`client.external(name)` resolves a service registered in **Function Editor → External services** and returns a
+`client.external(name)` resolves a service registered in **Ontology Manager → External services** and returns a
 small HTTP client: `get/post/put/patch/delete`. Absolute URLs are refused and the path must match a
 registered prefix — the registry decides where a Function may reach. The credential never appears in the
 source.

@@ -998,7 +998,9 @@
     "webhookPageSubtitle": "把该 Action 通知给拥有这份数据的应用。变更提交后尽力投递。",
     "webhookLastDelivery": "最近一次投递",
     "webhookLastAt": "时间",
-    "webhookNeverDelivered": "尚未投递"
+    "webhookNeverDelivered": "尚未投递",
+    "webhookEndpoint": "请求地址",
+    "webhookManageServices": "管理外部接口"
   },
   "editor": {
     "title": "函数",

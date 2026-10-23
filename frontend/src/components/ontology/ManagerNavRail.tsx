@@ -1,6 +1,6 @@
 import { NavLink, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { Box, Code2, FolderTree, Link2, Network, Zap } from 'lucide-react';
+import { Box, Code2, FolderTree, Link2, Network, Plug, Zap } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 
 type NavItem = {
@@ -39,6 +39,13 @@ const MANAGER_NAV: NavItem[] = [
     icon: Link2,
     match: (p) => p.startsWith('/ontology-manager/link-types'),
     canPath: '/ontology-manager/link-types',
+  },
+  {
+    to: '/ontology-manager/external-services',
+    labelKey: 'externalServices',
+    icon: Plug,
+    match: (p) => p.startsWith('/ontology-manager/external-services'),
+    canPath: '/ontology-manager/external-services',
   },
   {
     to: '/ontology-manager/functions',

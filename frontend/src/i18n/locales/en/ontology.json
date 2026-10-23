@@ -1005,7 +1005,9 @@
     "webhookPageSubtitle": "Post this Action to the application that owns the data. Delivery is best-effort after the change is committed.",
     "webhookLastDelivery": "Last delivery",
     "webhookLastAt": "When",
-    "webhookNeverDelivered": "never delivered"
+    "webhookNeverDelivered": "never delivered",
+    "webhookEndpoint": "Endpoint",
+    "webhookManageServices": "Manage services"
   },
   "editor": {
     "title": "Functions",

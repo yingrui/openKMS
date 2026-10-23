@@ -8,8 +8,8 @@ Author and run **Python Ontology Functions** — Palantir-style logic on top of 
 
 | App | Route | Role |
 |-----|-------|------|
-| **Ontology Manager** | `/ontology-manager/functions` | Registry, optional primary object type, Usage (bound action types), publish, Observability |
-| **Function Editor** | `/function-editor` | Create (optional primary object type), edit, validate, Live Preview. **External services** live here too (`/function-editor/external-services`): the list shows each service's kind, target, credential type and which Functions call it, so removing one says what it would break |
+| **Ontology Manager** | `/ontology-manager/functions` | Registry, optional primary object type, Usage (bound action types), publish, Observability. **External services** (`/ontology-manager/external-services`) live here: Functions *and* Action webhooks call them |
+| **Function Editor** | `/function-editor` | Create (optional primary object type), edit, validate, Live Preview. The workspace links to **External services** (registered in Manager), so an author can add one without leaving the flow |
 | **Object Explorer** | — | Instance browse; Action triggers |
 
 Legacy `/ontology/*` redirects to `/ontology-manager/*`. Optional `object_type_id` on a Function is an affiliation for Groups related resources and Overview Graph — execution still may call any type via `Client`.
@@ -76,8 +76,7 @@ The webhook is **not** a Function: no `client.external(...)` in source, no per-i
 ## External services (calling another system)
 
 A Function's only vocabulary was the openKMS API, so anything that needed another system had to be wired
-outside the ontology. **Function Editor → External services** registers the endpoint and gives the author a
-name:
+outside the ontology. **Ontology Manager → External services** registers the endpoint — one registry for both consumers, a Function's `client.external(…)` and an Action's webhook — and gives the author a name:
 
 ```python
 @function()

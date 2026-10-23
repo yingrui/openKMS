@@ -80,3 +80,40 @@ textarea.ds-control {
   flex-direction: column;
   gap: var(--space-4);
 }
+
+/* One address: the method is a prefix of the field, not a second field beside it. */
+.ds-endpoint {
+  display: flex;
+  align-items: stretch;
+  width: 100%;
+}
+
+/* Both controls keep `.ds-control`; these rules only reshape the seam between them. */
+.ds-control.ds-endpoint__method {
+  flex: 0 0 auto;
+  width: 6.5rem;
+  border-top-right-radius: 0;
+  border-bottom-right-radius: 0;
+  border-right: none;
+  font-variant-numeric: tabular-nums;
+}
+
+.ds-control.ds-endpoint__path {
+  flex: 1 1 auto;
+  min-width: 0;
+  border-top-left-radius: 0;
+  border-bottom-left-radius: 0;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: var(--text-sm);
+}
+
+.ds-endpoint__method:focus,
+.ds-endpoint__path:focus {
+  outline: none;
+  border-color: var(--color-accent);
+}
+
+.ds-endpoint:focus-within {
+  box-shadow: 0 0 0 2px var(--color-accent-muted);
+  border-radius: var(--radius-md);
+}

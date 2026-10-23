@@ -417,18 +417,23 @@ export function ActionWebhookTab() {
       <EntityViewPanel title={t('actions.webhook')} description={t('actions.webhookHint')}>
         <div className="entity-view__form">
           <EntityViewField label={t('actions.webhookService')}>
-            <select
-              className="console-form-control"
-              value={webhookServiceId}
-              onChange={(e) => setWebhookServiceId(e.target.value)}
-            >
-              <option value="">{t('actions.webhookNone')}</option>
-              {services.map((service) => (
-                <option key={service.id} value={service.id}>
-                  {service.api_name} · {service.display_name}
-                </option>
-              ))}
-            </select>
+            <div className="entity-view__inline-controls">
+              <select
+                className="console-form-control"
+                value={webhookServiceId}
+                onChange={(e) => setWebhookServiceId(e.target.value)}
+              >
+                <option value="">{t('actions.webhookNone')}</option>
+                {services.map((service) => (
+                  <option key={service.id} value={service.id}>
+                    {service.api_name} · {service.display_name}
+                  </option>
+                ))}
+              </select>
+              <Link to="/ontology-manager/external-services" className="btn btn-secondary btn-sm">
+                {t('actions.webhookManageServices')}
+              </Link>
+            </div>
           </EntityViewField>
           {!webhookServiceId && (action.function_external_services?.length ?? 0) > 0 ? (
             <EntityViewField label={t('actions.webhookViaFunction')}>
@@ -439,10 +444,14 @@ export function ActionWebhookTab() {
           ) : null}
           {webhookServiceId ? (
             <>
-              <EntityViewField label={t('actions.webhookPath')} hint={t('actions.webhookPathHint')}>
-                <div className="entity-view__inline-controls">
+              <EntityViewField
+                label={t('actions.webhookEndpoint')}
+                hint={t('actions.webhookPathHint')}
+              >
+                {/* Method and path read as one address: a prefix selector inside the field. */}
+                <div className="ds-endpoint">
                   <select
-                    className="console-form-control entity-view__method"
+                    className="ds-control ds-endpoint__method"
                     value={webhookMethod}
                     onChange={(e) => setWebhookMethod(e.target.value)}
                     aria-label={t('actions.webhookMethod')}
@@ -454,10 +463,11 @@ export function ActionWebhookTab() {
                     ))}
                   </select>
                   <input
-                    className="console-form-control"
+                    className="ds-control ds-endpoint__path"
                     value={webhookPath}
                     onChange={(e) => setWebhookPath(e.target.value)}
                     placeholder="/api/portfolios/{portfolio_id}/stocks"
+                    aria-label={t('actions.webhookPath')}
                   />
                 </div>
               </EntityViewField>

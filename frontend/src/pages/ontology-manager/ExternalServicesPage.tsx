@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
-import { ArrowLeft, Loader2, Pencil, Plug, Plus, Trash2 } from 'lucide-react';
+import { Loader2, Pencil, Plug, Plus, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { EmptyState } from '../../styles/design-system';
 import { useConfirm } from '../../contexts/ConfirmContext';
@@ -14,15 +14,14 @@ import {
 } from '../../data/externalServicesApi';
 import { ExternalServiceFormDialog } from './ExternalServiceFormDialog';
 import '../ontology/ontology-admin.scss';
-import './function-editor.scss';
 import './external-services.scss';
 
 /**
- * The external services a Function may call, managed as a page rather than a modal off one Function.
+ * The external services the ontology may call — registered and governed with the rest of the ontology.
  *
- * It is authoring infrastructure, so it lives in the Function Editor app next to the Functions that
- * use it — but it is reachable on its own, deep-linkable, and shows what would break if an entry were
- * removed.
+ * Two consumers: a Function's `client.external("name")` and an **Action's webhook**. That makes it
+ * integration configuration, not Function tooling, so it sits under Ontology Manager; the Function
+ * Editor links here for the author who needs one while writing code.
  */
 export function ExternalServicesPage() {
   const { t } = useTranslation('ontology');
@@ -93,10 +92,6 @@ export function ExternalServicesPage() {
 
   return (
     <div className="ontology-admin function-editor-list">
-      <Link to="/function-editor" className="function-editor-page-back">
-        <ArrowLeft size={16} aria-hidden />
-        {t('editor.allFunctions')}
-      </Link>
       <header className="page-header">
         <div>
           <h1>{t('editor.external.title')}</h1>

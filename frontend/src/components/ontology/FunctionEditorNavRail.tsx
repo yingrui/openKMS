@@ -1,6 +1,6 @@
 import { NavLink, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { Code2, List, Plug } from 'lucide-react';
+import { Code2, List } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 
 export function FunctionEditorNavRail() {
@@ -27,14 +27,6 @@ export function FunctionEditorNavRail() {
         >
           <List size={16} strokeWidth={1.75} aria-hidden />
           <span>{t('allFunctions')}</span>
-        </NavLink>
-        <NavLink
-          to="/function-editor/external-services"
-          className={`filter-rail__link${location.pathname.startsWith('/function-editor/external-services') ? ' filter-rail__link--active' : ''}`}
-          title={t('externalServices')}
-        >
-          <Plug size={16} strokeWidth={1.75} aria-hidden />
-          <span>{t('externalServices')}</span>
         </NavLink>
         <NavLink
           to="/function-editor/new"
