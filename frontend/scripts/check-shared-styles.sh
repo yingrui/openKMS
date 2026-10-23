@@ -227,7 +227,17 @@ if ! python3 scripts/check-request-bodies.py; then
   status=1
 fi
 
+
+# --- 19. A clipping table card must not be squeezed ---------------------------------------
+# `.ds-table-wrap` clips vertically (`overflow-y: hidden`) and is often a flex item. Without
+# `flex-shrink: 0` a column flex parent shrinks it to the available height and the clip eats the
+# last rows — and whatever sits under them (a pager), with no scrollbar to show anything is missing.
+if ! grep -q "flex-shrink: 0" src/styles/design-system/_table-wrap.scss; then
+  report "_table-wrap.scss: .ds-table-wrap must declare 'flex-shrink: 0' — it clips (overflow-y: hidden) and is used as a flex item, so it gets squeezed and the clip silently eats its last rows"
+fi
+
 if [ "$status" -eq 0 ]; then
   echo "check-shared-styles: OK"
 fi
 exit "$status"
+

@@ -303,6 +303,22 @@ They are **not claimed to work**: this machine has no `pg_dump`, so only the pre
 refuses with an installation hint, verified). The drill is what turns a file into a backup, and until it
 prints `restore drill ok`, the honest state is untested.
 
+### Make the clip impossible, then guard the rule (2026-10)
+
+The pager was in the DOM the whole time and still invisible: a card that **clips** (`overflow-y: hidden`) was
+**squeezed** as a flex item, so a column flex parent shrank it to the available height and the clip ate its last
+rows — and the pagination under them — with no scrollbar to say anything was missing.
+
+Two answers, both kept:
+
+- **structurally**: `.ds-table-wrap` declares `flex-shrink: 0`. A card that clips keeps its natural height; the
+  pane above it is the scroll container and it can scroll.
+- **in the guardrails**: `check-shared-styles.sh` §19 fails if that declaration disappears, with the reason in the
+  message. One grep — and it encodes *why* the line exists, which is the half a comment alone never enforces.
+
+That beats the check that was about to be written (a JSX-plus-CSS analysis of every flex parent): the bug is gone
+by construction, and the guard only stops someone putting it back.
+
 ### The pager belongs *inside* the card (2026-10)
 
 The audit pager still looked unlike other pages, and the Documents list showed why: it puts `<Pagination>`

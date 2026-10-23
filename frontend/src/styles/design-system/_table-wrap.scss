@@ -2,6 +2,10 @@
 // overflow-x: auto so narrow viewports can scroll instead of clipping columns.
 
 .ds-table-wrap {
+  /* A flex item that clips must not be squeezed: as a column flex child it shrank to its container's height
+     and `overflow-y: hidden` then cut off the last rows — and, on the audit page, the pagination below them,
+     with no scrollbar to say so. Keep the card at its natural height; the scroll container above it scrolls. */
+  flex-shrink: 0;
   overflow-x: auto;
   overflow-y: hidden;
   border: 1px solid var(--color-border);
