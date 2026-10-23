@@ -14,9 +14,11 @@
    meant to sit flush against the table's last row. A gap floated it as a detached bar, which is what made this
    page's pager look unlike every other page's. The spacing between the sections comes from `.page-header` and
    `.console-datasets-toolbar`, which already carry their own bottom margins. */
+/* A block column on purpose. As a flex column, `.ds-table-wrap` became a flex item that *shrinks* to the
+   pane's height — and the wrap is `overflow-y: hidden`, so the last rows and the pager were clipped away
+   with no scrollbar to say so. In normal flow the card keeps its height and the pane scrolls. */
 .audit-log__main {
-  display: flex;
-  flex-direction: column;
+  display: block;
 }
 
 .audit-log__code {
