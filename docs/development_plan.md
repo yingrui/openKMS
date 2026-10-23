@@ -303,6 +303,23 @@ They are **not claimed to work**: this machine has no `pg_dump`, so only the pre
 refuses with an installation hint, verified). The drill is what turns a file into a backup, and until it
 prints `restore drill ok`, the honest state is untested.
 
+### Every pager, audited (2026-10)
+
+Asked to check all of them. 16 files, 22 `<Pagination>` uses, in three shapes:
+
+| shape | where | verdict |
+|---|---|---|
+| `ds-table-wrap` with the pager **inside** | models, schedules, job runs, console permissions, console access groups, document channel, audit log | the design system's intent (`.ds-table-wrap .ds-pagination { border-radius: 0 }`) |
+| `ds-table-wrap` with the pager **outside** | the datasets catalog — one place | **fixed**: moved inside, so a card's footer is a footer |
+| their **own** container, pager outside | ontology list, glossaries, evaluation, articles, and the `resource-list` card grids (wiki, KB, projects) | each page's own convention; a pager under a **card grid** cannot be a table footer, so it stays where it is |
+
+The bug that started this — the clip — was **never per-page**: the fix went into `.ds-table-wrap` itself
+(`flex-shrink: 0`), so every card-footed pager in the app is safe by construction, not by this audit.
+
+A note on the method: a JSX tag walker was written to classify all 22 automatically and it mislabelled the
+document channel (inside, reported outside). Reading the files was slower and correct; the walker is the kind of
+tool that produces a confident wrong table.
+
 ### Make the clip impossible, then guard the rule (2026-10)
 
 The pager was in the DOM the whole time and still invisible: a card that **clips** (`overflow-y: hidden`) was

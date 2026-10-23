@@ -433,21 +433,22 @@ export function DatasetsListPage() {
                 )}
               </tbody>
             </table>
+            {/* Inside the card: `.ds-table-wrap .ds-pagination` is the card's footer — same as the
+                Documents list, the job runs and the console tables. */}
+            {!loading && total > 0 ? (
+              <Pagination
+                total={total}
+                page={page}
+                pageSize={pageSize}
+                loading={loading}
+                onPageChange={setPage}
+                onPageSizeChange={(size) => {
+                  setPageSize(size);
+                  setPage(0);
+                }}
+              />
+            ) : null}
           </div>
-        )}
-
-        {view === 'list' && !loading && total > 0 && (
-          <Pagination
-            total={total}
-            page={page}
-            pageSize={pageSize}
-            loading={loading}
-            onPageChange={setPage}
-            onPageSizeChange={(size) => {
-              setPageSize(size);
-              setPage(0);
-            }}
-          />
         )}
       </div>
 
