@@ -10,10 +10,13 @@
   overflow: hidden;
 }
 
+/* No flex gap: `.ds-pagination` is the table card's footer — a top border and a muted background that are
+   meant to sit flush against the table's last row. A gap floated it as a detached bar, which is what made this
+   page's pager look unlike every other page's. The spacing between the sections comes from `.page-header` and
+   `.console-datasets-toolbar`, which already carry their own bottom margins. */
 .audit-log__main {
   display: flex;
   flex-direction: column;
-  gap: var(--space-4);
 }
 
 .audit-log__code {
