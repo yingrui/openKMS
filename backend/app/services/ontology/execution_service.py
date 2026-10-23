@@ -299,6 +299,9 @@ async def _apply_edits_and_audit(
         webhook = await action_webhook.deliver(db, at, payload)
         if webhook is not None:
             log.output_payload = {**(log.output_payload or {}), "webhook": webhook}
+            log.webhook_ok = bool(webhook.get("ok"))
+            log.webhook_status = webhook.get("status")
+            log.webhook_error = webhook.get("error")
             await db.commit()
 
     return OntologyActionExecuteResponse(

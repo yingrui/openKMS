@@ -24,7 +24,7 @@ from app.schemas.ontology_functions import (
 )
 from app.services.ontology.constants import ACTION_TYPE_ID_PREFIX, ID_HEX_LENGTH
 from app.services.ontology.action_rule_types import is_builtin_object_rule, normalize_rule_type
-from app.services.ontology import execution_service
+from app.services.ontology import action_webhook, execution_service
 from app.services.ontology.builtin_action_service import input_schema_for_action
 from app.services.ontology.input_schema import validate_input_against_schema
 from app.services.ontology.object_neo4j_store import resolve_object_props_for_action
@@ -48,6 +48,15 @@ async def _resolve_input_schema(db: AsyncSession, at: OntologyActionType) -> dic
     except ValueError:
         return None
     return ver.input_schema if isinstance(ver.input_schema, dict) else None
+
+
+def _validate_webhook_body(mode: str | None) -> None:
+    if mode is None:
+        return
+    if mode not in action_webhook.BODY_MODES:
+        raise HTTPException(
+            status_code=400, detail=f"webhook_body must be one of {action_webhook.BODY_MODES}"
+        )
 
 
 def _caller_name(request: Request) -> str | None:
@@ -99,6 +108,7 @@ async def _to_response(db: AsyncSession, at: OntologyActionType) -> OntologyActi
         webhook_service_id=at.webhook_service_id,
         webhook_service_name=await _webhook_service_name(db, at.webhook_service_id),
         webhook_path=at.webhook_path,
+        webhook_body=getattr(at, "webhook_body", None) or "envelope",
         status=at.status,
         created_at=at.created_at,
         updated_at=at.updated_at,
@@ -165,6 +175,7 @@ async def create_action_type(
     ).scalar_one_or_none()
     if exists:
         raise HTTPException(status_code=409, detail="api_name already exists")
+    _validate_webhook_body(body.webhook_body)
     await _validate_webhook(
         db, service_id=body.webhook_service_id, path=body.webhook_path
     )
@@ -181,6 +192,7 @@ async def create_action_type(
         parameters=body.parameters,
         webhook_service_id=body.webhook_service_id,
         webhook_path=(body.webhook_path or "").strip() or None,
+        webhook_body=body.webhook_body,
         created_by=uid,
         created_by_name=uname,
     )
@@ -209,6 +221,8 @@ async def update_action_type(
         next_function_id = at.function_id
     if "rule_type" in data or "function_id" in data:
         _validate_action_type_fields(rule_type=next_rule_type, function_id=next_function_id)
+    if "webhook_body" in data:
+        _validate_webhook_body(data["webhook_body"])
     if "webhook_service_id" in data or "webhook_path" in data:
         await _validate_webhook(
             db,
@@ -332,6 +346,9 @@ async def list_action_logs(
             input_payload=r.input_payload,
             output_payload=r.output_payload,
             error_message=r.error_message,
+            webhook_ok=r.webhook_ok,
+            webhook_status=r.webhook_status,
+            webhook_error=r.webhook_error,
             created_at=r.created_at,
         )
         for r in rows

@@ -989,7 +989,12 @@
     "webhookService": "Service",
     "webhookNone": "No webhook",
     "webhookPath": "Path",
-    "webhookPathHint": "Must be inside the service’s allowed prefixes."
+    "webhookPathHint": "Must be inside the service’s allowed prefixes.",
+    "logWebhook": "Webhook",
+    "webhookBody": "Body",
+    "webhookBodyHint": "The envelope carries the action/caller metadata. The object body is the resource itself (object properties + the Action input), so the receiver’s own REST endpoint accepts it. A placeholder in the path (a field name in braces) is filled from the object or the input.",
+    "webhookBodyEnvelope": "Envelope (object + metadata)",
+    "webhookBodyObject": "Object body (REST shape)"
   },
   "editor": {
     "title": "Functions",

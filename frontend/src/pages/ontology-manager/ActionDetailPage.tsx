@@ -50,6 +50,8 @@ type ActionDetailContext = {
   setWebhookServiceId: (v: string) => void;
   webhookPath: string;
   setWebhookPath: (v: string) => void;
+  webhookBody: 'envelope' | 'object';
+  setWebhookBody: (v: 'envelope' | 'object') => void;
   onSave: () => Promise<void>;
 };
 
@@ -88,6 +90,7 @@ export function ActionDetailPage() {
   const [saving, setSaving] = useState(false);
   const [webhookServiceId, setWebhookServiceId] = useState('');
   const [webhookPath, setWebhookPath] = useState('');
+  const [webhookBody, setWebhookBody] = useState<'envelope' | 'object'>('envelope');
   const [displayName, setDisplayName] = useState('');
   const [description, setDescription] = useState('');
   const [status, setStatus] = useState('active');
@@ -125,6 +128,7 @@ export function ActionDetailPage() {
       setStatus(at.status);
       setWebhookServiceId(at.webhook_service_id ?? '');
       setWebhookPath(at.webhook_path ?? '');
+      setWebhookBody(at.webhook_body ?? 'envelope');
       setFunctionId(at.function_id ?? '');
       const ot = typesRes.items.find((row) => row.id === at.object_type_id) ?? null;
       const savedFields = writableFieldsFromParameters(at.parameters);
@@ -153,6 +157,7 @@ export function ActionDetailPage() {
         // Null clears the webhook; a path without a service is rejected by the API.
         webhook_service_id: webhookServiceId || null,
         webhook_path: webhookServiceId ? webhookPath.trim() || null : null,
+        webhook_body: webhookBody,
       };
       if (isBuiltin) {
         body.function_id = null;
@@ -211,6 +216,8 @@ export function ActionDetailPage() {
             setWebhookServiceId,
             webhookPath,
             setWebhookPath,
+            webhookBody,
+            setWebhookBody,
             saving,
             onSave,
           }
@@ -228,6 +235,7 @@ export function ActionDetailPage() {
       writableFields,
       webhookServiceId,
       webhookPath,
+      webhookBody,
       saving,
       onSave,
     ],
@@ -273,6 +281,8 @@ export function ActionOverviewTab() {
     setWebhookServiceId,
     webhookPath,
     setWebhookPath,
+    webhookBody,
+    setWebhookBody,
     saving,
     onSave,
   } = useActionDetail();
@@ -340,14 +350,26 @@ export function ActionOverviewTab() {
             </select>
           </EntityViewField>
           {webhookServiceId ? (
-            <EntityViewField label={t('actions.webhookPath')} hint={t('actions.webhookPathHint')}>
-              <input
-                className="console-form-control"
-                value={webhookPath}
-                onChange={(e) => setWebhookPath(e.target.value)}
-                placeholder="/api/webhooks/openkms/..."
-              />
-            </EntityViewField>
+            <>
+              <EntityViewField label={t('actions.webhookPath')} hint={t('actions.webhookPathHint')}>
+                <input
+                  className="console-form-control"
+                  value={webhookPath}
+                  onChange={(e) => setWebhookPath(e.target.value)}
+                  placeholder="/api/portfolios/{portfolio_id}/stocks"
+                />
+              </EntityViewField>
+              <EntityViewField label={t('actions.webhookBody')} hint={t('actions.webhookBodyHint')}>
+                <select
+                  className="console-form-control"
+                  value={webhookBody}
+                  onChange={(e) => setWebhookBody(e.target.value as 'envelope' | 'object')}
+                >
+                  <option value="envelope">{t('actions.webhookBodyEnvelope')}</option>
+                  <option value="object">{t('actions.webhookBodyObject')}</option>
+                </select>
+              </EntityViewField>
+            </>
           ) : null}
         </div>
       </EntityViewPanel>
@@ -472,13 +494,14 @@ export function ActionLogTab() {
                   <th>{t('actions.logObject')}</th>
                   <th>{t('functions.execStatus')}</th>
                   <th>{t('functions.execTime')}</th>
+                  <th>{t('actions.logWebhook')}</th>
                   <th>{t('actions.logError')}</th>
                 </tr>
               </thead>
               <tbody>
                 {logs.length === 0 ? (
                   <tr>
-                    <td colSpan={4} className="console-table-empty">
+                    <td colSpan={5} className="console-table-empty">
                       {t('actions.noLogs')}
                     </td>
                   </tr>
@@ -488,6 +511,20 @@ export function ActionLogTab() {
                       <td className="console-table-muted">{log.object_id ?? '—'}</td>
                       <td>{log.status}</td>
                       <td className="console-table-muted">{new Date(log.created_at).toLocaleString()}</td>
+                      <td>
+                        {log.webhook_ok == null ? (
+                          <span className="console-table-muted">—</span>
+                        ) : log.webhook_ok ? (
+                          <span className="ds-status ds-status--ok">{log.webhook_status ?? 'ok'}</span>
+                        ) : (
+                          <span
+                            className="ds-status ds-status--warn"
+                            title={log.webhook_error ?? undefined}
+                          >
+                            {log.webhook_status ?? 'failed'}
+                          </span>
+                        )}
+                      </td>
                       <td className="console-table-muted">{log.error_message ?? '—'}</td>
                     </tr>
                   ))

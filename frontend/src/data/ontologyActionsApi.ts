@@ -15,6 +15,8 @@ export interface OntologyActionTypeResponse {
   webhook_service_id?: string | null;
   webhook_service_name?: string | null;
   webhook_path?: string | null;
+  /** `envelope` = metadata payload; `object` = the resource representation a REST API accepts. */
+  webhook_body?: 'envelope' | 'object';
   status: string;
   created_at: string;
   updated_at: string;
@@ -31,6 +33,10 @@ export interface OntologyActionLogResponse {
   input_payload?: Record<string, unknown> | null;
   output_payload?: Record<string, unknown> | null;
   error_message?: string | null;
+  /** Webhook delivery outcome — null when the Action registers none. */
+  webhook_ok?: boolean | null;
+  webhook_status?: number | null;
+  webhook_error?: string | null;
   created_at: string;
 }
 
@@ -60,6 +66,7 @@ export async function updateOntologyActionType(
     status?: string;
     webhook_service_id?: string | null;
     webhook_path?: string | null;
+    webhook_body?: 'envelope' | 'object';
   },
 ): Promise<OntologyActionTypeResponse> {
   return ontologyFetch<OntologyActionTypeResponse>(

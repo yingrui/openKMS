@@ -65,6 +65,8 @@ def cmd_create(ns: argparse.Namespace) -> None:
     if webhook_service:
         body["webhook_service_id"] = _resolve_service_id(webhook_service)
         body["webhook_path"] = getattr(ns, "webhook_path", None)
+        if getattr(ns, "webhook_body", None):
+            body["webhook_body"] = ns.webhook_body
     confirm_or_abort(
         action=f"create action type {ns.api_name!r}",
         method="POST",
@@ -106,6 +108,8 @@ def cmd_update(ns: argparse.Namespace) -> None:
         else:
             body["webhook_service_id"] = _resolve_service_id(webhook_service)
             body["webhook_path"] = getattr(ns, "webhook_path", None)
+            if getattr(ns, "webhook_body", None):
+                body["webhook_body"] = ns.webhook_body
     if not body:
         print("update: nothing to update", file=sys.stderr)
         sys.exit(2)
@@ -200,7 +204,8 @@ def add_subparser(sub) -> None:
         default=None,
         help='external-service api_name to announce successful runs to (e.g. turtle)',
     )
-    cr.add_argument("--webhook-path", default=None, help="path on that service, inside its allowlist")
+    cr.add_argument("--webhook-path", default=None, help="path on that service, inside its allowlist; {field} placeholders allowed")
+    cr.add_argument("--webhook-body", default=None, choices=("envelope", "object"))
     add_write_flags(cr)
     cr.set_defaults(fn=cmd_create)
 
@@ -223,7 +228,8 @@ def add_subparser(sub) -> None:
     up.add_argument("--function-version", type=int, default=None)
     up.add_argument("--parameters-json", default=None)
     up.add_argument("--webhook-service", default=None, help="external-service api_name, or '' to detach")
-    up.add_argument("--webhook-path", default=None)
+    up.add_argument("--webhook-path", default=None, help='{field} placeholders allowed')
+    up.add_argument("--webhook-body", default=None, choices=("envelope", "object"))
     up.add_argument("--status", default=None, help="active | archived")
     add_write_flags(up)
     up.set_defaults(fn=cmd_update)

@@ -1,7 +1,7 @@
 """Ontology Function registry, versions, executions, groups, and actions."""
 from datetime import datetime
 
-from sqlalchemy import DateTime, ForeignKey, Integer, String, Text, func
+from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, String, Text, func
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -118,6 +118,11 @@ class OntologyActionType(Base):
         String(64), ForeignKey("external_services.id", ondelete="SET NULL"), nullable=True, index=True
     )
     webhook_path: Mapped[str | None] = mapped_column(String(512), nullable=True)
+    #: `envelope` = the metadata payload; `object` = the object's properties (+ input) so the
+    #: receiver's own REST endpoint accepts it.
+    webhook_body: Mapped[str] = mapped_column(
+        String(16), nullable=False, default="envelope", server_default="envelope"
+    )
     status: Mapped[str] = mapped_column(String(32), nullable=False, default="active", server_default="active")
     created_by: Mapped[str | None] = mapped_column(String(512), nullable=True)
     created_by_name: Mapped[str | None] = mapped_column(String(256), nullable=True)
@@ -140,4 +145,9 @@ class OntologyActionLog(Base):
     input_payload: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
     output_payload: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
     error_message: Mapped[str | None] = mapped_column(Text, nullable=True)
+    #: Webhook delivery outcome (null when the Action has no webhook). Columns, not a JSON key:
+    #: "did it land?" should be a filter, not a JSONB dig.
+    webhook_ok: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
+    webhook_status: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    webhook_error: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())

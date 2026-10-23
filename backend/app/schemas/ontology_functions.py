@@ -195,6 +195,8 @@ class OntologyActionTypeResponse(BaseModel):
     webhook_service_id: str | None = None
     webhook_service_name: str | None = None
     webhook_path: str | None = None
+    #: `envelope` (metadata payload) or `object` (the resource representation a REST API accepts).
+    webhook_body: str = "envelope"
     status: str
     created_at: datetime
     updated_at: datetime
@@ -214,6 +216,7 @@ class OntologyActionTypeCreate(BaseModel):
     #: Deliver the result to a registered service path after a successful run.
     webhook_service_id: str | None = None
     webhook_path: str | None = None
+    webhook_body: str = "envelope"
 
 
 class OntologyActionTypeUpdate(BaseModel):
@@ -227,6 +230,7 @@ class OntologyActionTypeUpdate(BaseModel):
     #: Send `webhook_service_id: null` (or an empty path) to stop delivering.
     webhook_service_id: str | None = None
     webhook_path: str | None = None
+    webhook_body: str | None = None
 
 
 class OntologyActionExecuteRequest(BaseModel):
@@ -254,4 +258,8 @@ class OntologyActionLogResponse(BaseModel):
     input_payload: dict | None = None
     output_payload: dict | None = None
     error_message: str | None = None
+    #: Webhook delivery outcome (null when the Action registers none).
+    webhook_ok: bool | None = None
+    webhook_status: int | None = None
+    webhook_error: str | None = None
     created_at: datetime

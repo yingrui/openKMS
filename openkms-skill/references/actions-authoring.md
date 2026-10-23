@@ -104,8 +104,18 @@ ontology action-types update --id AT --webhook-service turtle \
   --webhook-path /api/webhooks/openkms/portfolio-changes --yes
 ```
 
-After a successful run the platform posts `{event: "action.executed", action, object, input,
-applied, caller, status, action_log_id, at}` — `object` is the instance the Action acted on
-(resolved through the graph). Delivery is best-effort **after** the change is committed, so a
-receiver that is down never fails the Action; the outcome is on the action log
-(`output_payload.webhook`). Clearing: `--webhook-service ''`.
+**Body shape.** `--webhook-body envelope` (default) posts
+`{event, action, object, input, applied, caller, status, action_log_id, at}`; `--webhook-body object`
+posts the **resource representation** — the object's properties with the Action's input on top — so
+the receiver's own REST endpoint accepts it and the app needs no webhook-shaped handler:
+
+```bash
+ontology action-types update --id AT --webhook-service turtle \
+  --webhook-path '/api/portfolios/{portfolio_id}/stocks' --webhook-body object --yes
+```
+
+`{field}` in the path is filled from the object's properties, the input, `object_id`/`object_type`;
+a missing field is an error, not a guess. Delivery is best-effort **after** the change is committed,
+so a receiver that is down never fails the Action. **Nothing re-indexes on failure** — check the
+action log (`webhook_ok` / `webhook_status` / `webhook_error`) and refresh the type explicitly when
+you want the bound table to win again. Clearing: `--webhook-service ''`.

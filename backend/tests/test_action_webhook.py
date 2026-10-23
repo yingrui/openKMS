@@ -101,3 +101,60 @@ def test_a_path_outside_the_allowlist_is_refused():
             await _validate_webhook(_Db(), service_id="es-1", path="http://evil/api")
 
     asyncio.run(_run())
+
+
+def test_object_body_is_the_resource_representation():
+    """A REST-minded receiver gets its own shape: the object's properties, input on top."""
+    body = action_webhook.build_object_body(
+        object_properties={"id": "h-1", "ts_code": "600519.SH", "target_weight": 0.01},
+        input_payload={"target_weight": 0.05},
+    )
+    assert body == {"id": "h-1", "ts_code": "600519.SH", "target_weight": 0.05}
+
+
+def test_path_placeholders_resolve_from_object_and_input():
+    path = action_webhook.resolve_path(
+        "/api/portfolios/{portfolio_id}/stocks",
+        object_properties={"portfolio_id": "b10f1cca", "ts_code": "600519.SH"},
+        input_payload={"target_weight": 0.05},
+        object_id="h-1",
+        object_type="Holding",
+    )
+    assert path == "/api/portfolios/b10f1cca/stocks"
+
+
+def test_input_wins_over_the_stale_object_value():
+    assert (
+        action_webhook.resolve_path(
+            "/api/x/{status}",
+            object_properties={"status": "watching"},
+            input_payload={"status": "holding"},
+            object_id=None,
+            object_type=None,
+        )
+        == "/api/x/holding"
+    )
+
+
+def test_a_missing_placeholder_is_an_error_not_a_guess():
+    with pytest.raises(ValueError, match="no value"):
+        action_webhook.resolve_path(
+            "/api/x/{missing}",
+            object_properties={"a": 1},
+            input_payload={},
+            object_id=None,
+            object_type=None,
+        )
+
+
+def test_placeholder_values_are_url_escaped():
+    assert (
+        action_webhook.resolve_path(
+            "/api/x/{name}",
+            object_properties={"name": "a/b c"},
+            input_payload={},
+            object_id=None,
+            object_type=None,
+        )
+        == "/api/x/a%2Fb%20c"
+    )
