@@ -48,6 +48,12 @@ def input_schema_for_action(at: OntologyActionType, ot: ObjectType) -> dict[str,
     fields = writable_field_names(ot, at.parameters)
     properties: dict[str, Any] = {}
     required: list[str] = []
+    #: A dataset-backed create only needs the identity: the application fills the rest, including
+    #: any surrogate id it owns. A hand-created create is written by us, so its required properties
+    #: stay required.
+    key_properties: list[str] = [
+        str(k) for k in (getattr(ot, "key_properties", None) or []) if str(k).strip()
+    ]
     prop_by_name = {
         str(p.get("name")): p
         for p in (ot.properties or [])
@@ -66,6 +72,9 @@ def input_schema_for_action(at: OntologyActionType, ot: ObjectType) -> dict[str,
         # patch and a delete supplies nothing. Only the target is required, and the executor
         # injects it from `object_id`.
         required = ["object_id"]
+
+    if at.rule_type == "object_create" and getattr(ot, "dataset_id", None) and key_properties:
+        required = [k for k in key_properties if k in properties]
 
     schema: dict[str, Any] = {"type": "object", "properties": properties}
     if required:

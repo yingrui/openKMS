@@ -33,6 +33,7 @@ def test_the_envelope_carries_the_object_the_action_acted_on():
         object_type_name="Portfolio",
         object_id="b10f1cca",
         object_properties={"name": "main"},
+        object_key={"id": "b10f1cca"},
         input_payload={"changes": [{"action": "add", "ts_code": "600519.SH"}]},
         applied={"created_ids": [], "modified_ids": ["h1"], "deleted_ids": []},
         caller_user_id="u1",
@@ -44,6 +45,7 @@ def test_the_envelope_carries_the_object_the_action_acted_on():
     assert payload["object"] == {
         "object_type": "Portfolio",
         "id": "b10f1cca",
+        "key": {"id": "b10f1cca"},
         "properties": {"name": "main"},
     }
     assert payload["applied"]["modified_ids"] == ["h1"]

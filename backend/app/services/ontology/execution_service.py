@@ -323,6 +323,14 @@ async def _apply_edits_and_audit(
             # must record, so the object block is filled from the result, not from the request.
             object_id=logged_object_id,
             object_properties=snapshot if isinstance(snapshot, dict) else None,
+            object_key=(
+                {
+                    column: (snapshot or {}).get(column)
+                    for column in (getattr(ot, "key_properties", None) or [])
+                }
+                if isinstance(snapshot, dict)
+                else None
+            ),
             input_payload=input_payload,
             applied=applied,
             caller_user_id=caller_user_id,

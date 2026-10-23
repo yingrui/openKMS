@@ -74,7 +74,9 @@ For a **dataset-backed** object type all three ops work, provided a create carri
 
 The webhook is **not** a Function: no `client.external(...)` in source, no per-integration code. `object` is the object the Action acted on — resolved through the graph, so a dataset-backed `Portfolio` works.
 
-**A create has no incoming object id, so the payload is built from the result.** `object.id`, `input.id` (when the caller supplied it) and `applied.created_ids[0]` are the same value — the id the ontology stored. A dataset-backed type refuses a create that does not carry its key (the app could never find the row again); a hand-created type gets a platform uuid, and the receiver is expected to **store that id as its own**. An app that invents its own id instead ends up with two objects for one row, and the next index prunes the ontology's copy.
+**A create has no incoming object id, so the payload is built from the result.** `object.id`, `input.id` (when the caller supplied it) and `applied.created_ids[0]` are the same value — the id the ontology stored — and `object.key` carries the key columns with their values so the receiver can address its row without parsing the property map.
+
+**Whether the app adopts that id is the app's decision.** A dataset-backed type requires only its key columns; a surrogate `id` is just another property a caller may pass or leave for the app to generate. An app may store `object.id`, ignore it, or keep its own primary key — the ontology identifies the object by its key either way. (If an app both ignores it *and* ends up with a different row identity, the next prune removes the ontology's copy — that is the "table wins" rule.)
 
 ## External services (calling another system)
 

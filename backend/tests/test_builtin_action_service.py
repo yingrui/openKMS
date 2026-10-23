@@ -146,3 +146,35 @@ def test_the_log_label_prefers_display_then_key_then_name():
     assert object_label_for_log({"id": "h-1"}, key_property="id") == "h-1"
     assert object_label_for_log(None) is None
     assert object_label_for_log({"id": None}) is None
+
+
+def test_a_dataset_backed_create_only_requires_its_key():
+    """The app fills everything else — including a surrogate id the ontology must not invent."""
+    from app.services.ontology.builtin_action_service import input_schema_for_action
+
+    ot = SimpleNamespace(
+        dataset_id="ds-1",
+        key_properties=["portfolio_id", "ts_code"],
+        properties=[
+            {"name": "id", "type": "string", "required": True},
+            {"name": "portfolio_id", "type": "string", "required": True},
+            {"name": "ts_code", "type": "string", "required": True},
+            {"name": "status", "type": "string", "required": True},
+        ],
+    )
+    at = SimpleNamespace(rule_type="object_create", parameters=None)
+    schema = input_schema_for_action(at, ot)
+    assert schema["required"] == ["portfolio_id", "ts_code"]
+    assert "id" in schema["properties"]      # passable, not required: the app decides
+
+
+def test_a_hand_created_create_still_requires_its_declared_required_fields():
+    from app.services.ontology.builtin_action_service import input_schema_for_action
+
+    ot = SimpleNamespace(
+        dataset_id=None,
+        key_properties=[],
+        properties=[{"name": "title", "type": "string", "required": True}],
+    )
+    at = SimpleNamespace(rule_type="object_create", parameters=None)
+    assert input_schema_for_action(at, ot)["required"] == ["title"]

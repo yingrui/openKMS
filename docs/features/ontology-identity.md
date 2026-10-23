@@ -21,9 +21,10 @@ therefore not a display concern — it is the identity (`portfolio_id|ts_code`).
 
 ### What a key cannot do
 
-- **A surrogate the application generates** (`id` uuid, `SERIAL`) is not the ontology's to invent. A
-  create must leave it out and let the app fill it; the ontology identifies the object by the
-  natural columns instead.
+- **A surrogate the application generates** (`id` uuid, `SERIAL`) is not the ontology's to invent,
+  but it is not forbidden either: a caller may pass it as an ordinary property and the app decides
+  whether to adopt it. Only the key columns are required for a create; the ontology identifies the
+  object by those columns regardless.
 - **A junction table or an FK column** supplies one value per endpoint, so it cannot address an
   object with a composite key. Indexing refuses (400) rather than merging into whichever node
   matched first; saved link instances are the supported path.

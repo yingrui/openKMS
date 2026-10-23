@@ -110,6 +110,7 @@ def build_payload(
     object_type_name: str | None,
     object_id: str | None,
     object_properties: dict | None,
+    object_key: dict | None = None,
     input_payload: dict,
     applied: dict | None,
     caller_user_id: str | None,
@@ -129,6 +130,9 @@ def build_payload(
             {
                 "object_type": object_type_name,
                 "id": object_id,
+                # The identity columns and their values, so the receiver can address its row
+                # without parsing the property map. Whether it *stores* `id` is its decision.
+                "key": object_key or {},
                 "properties": object_properties or {},
             }
             if object_type_name and object_id

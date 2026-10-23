@@ -66,7 +66,7 @@ Object and link access go through **one** place: the ontology graph (Neo4j). Dat
 
 | Op | What the ontology writes | Requirement |
 |----|--------------------------|-------------|
-| `object_create` | queue row + node keyed by every key column | `properties` must carry all of them; a create without them is refused — an object the app cannot find again is an object it cannot insert. Columns the app generates (a surrogate `id`, an auto-increment) are **not** the ontology's to invent: leave them out and the app fills them |
+| `object_create` | queue row + node keyed by every key column | `properties` must carry all of them; a create without them is refused — an object the app cannot find again is an object it cannot insert. **Only the key columns are required**: every other property is optional, including a surrogate `id`, so the caller may supply one and the receiving app decides whether to adopt it or generate its own |
 | `object_modify` | the node, keyed by `object_id` | — |
 | `object_delete` | node removed (DETACH) | — |
 
