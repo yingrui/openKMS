@@ -303,6 +303,23 @@ They are **not claimed to work**: this machine has no `pg_dump`, so only the pre
 refuses with an installation hint, verified). The drill is what turns a file into a backup, and until it
 prints `restore drill ok`, the honest state is untested.
 
+### The login, for both auth modes — and its failures (2026-10)
+
+"Nothing records the login." True, in two ways:
+
+- the **local** password login (`POST /api/auth/login`) *is* a mutation, so the middleware wrote a row — but
+  the actor is in the **response body**, so the row read `POST /api/auth/login, anonymous`: an anonymous
+  request, not a sign-in;
+- on this deployment the local path answers 404 (`PASSWORD_LOGIN_LOCAL_ONLY`) — it is OIDC — so the login
+  that matters is the **callback**, which was recorded, but only from the change that added it.
+
+Both paths record `AUTH auth/login` now, naming the user, and the generic row for the route is suppressed —
+one act, one event, like `clear-session`. A failed login records `AUTH auth/login-failed` with the account
+**attempted**, as data rather than as an actor: brute force looks exactly like this, and nobody authenticated.
+
+The local paths are unit-tested (success and failure). The OIDC callback cannot be exercised without a
+browser and an IdP, so that one is not claimed as verified — it will show up on the next fresh sign-in.
+
 ### One sign-out, one event (2026-10)
 
 Two logout rows two seconds apart: one named, one `anonymous | no session cookie`. Same act, twice — the SPA

@@ -281,3 +281,98 @@ def test_only_the_sign_out_that_had_a_session_is_recorded(monkeypatch):
     assert len(events) == 1
     assert events[0]["actor_sub"] == "u1"
     assert events[0]["detail"] == {"via": "clear-session"}
+
+
+class TestLocalLogin:
+    """A local sign-in is a POST, but the actor is in the response body — the middleware sees nothing. It
+    records itself, success and failure, and the generic row for the route is suppressed."""
+
+    def test_a_successful_login_names_the_user(self, monkeypatch):
+        import asyncio
+        from types import SimpleNamespace
+
+        from app.api import auth as auth_module
+
+        events: list[dict] = []
+
+        async def fake_record(**kwargs) -> None:
+            events.append(kwargs)
+
+        class FakeRequest:
+            session: dict = {}
+            state = SimpleNamespace()
+
+        user = SimpleNamespace(
+            id="u1", username="yingrui", email="a@b.c", password_hash="h", is_admin=False
+        )
+
+        class FakeResult:
+            def scalar_one_or_none(self):
+                return user
+
+        class FakeDb:
+            async def execute(self, *_a, **_k):
+                return FakeResult()
+
+        monkeypatch.setattr(auth_module, "record_audit_event", fake_record)
+        monkeypatch.setattr(auth_module, "_verify_password", lambda *_: True)
+        monkeypatch.setattr(auth_module, "mint_local_user_jwt", lambda _u: "token")
+
+        async def permissions(*_a, **_k):
+            return {"data:read"}
+
+        monkeypatch.setattr(auth_module, "resolve_user_permission_keys", permissions)
+        monkeypatch.setattr(auth_module.settings, "auth_mode", "local")
+
+        asyncio.run(
+            auth_module.login_json(FakeRequest(), auth_module.LoginBody(login="yingrui", password="x"), FakeDb())
+        )
+        assert events[0]["method"] == "AUTH"
+        assert events[0]["path"] == "auth/login"
+        assert events[0]["actor_sub"] == "u1"
+        assert events[0]["detail"] == {"via": "local-login"}
+
+    def test_a_failed_login_records_the_account_attempted_not_an_actor(self, monkeypatch):
+        import asyncio
+        from types import SimpleNamespace
+
+        from fastapi import HTTPException
+
+        from app.api import auth as auth_module
+
+        events: list[dict] = []
+
+        async def fake_record(**kwargs) -> None:
+            events.append(kwargs)
+
+        class FakeRequest:
+            session: dict = {}
+            state = SimpleNamespace()
+            headers: dict = {}
+
+        class FakeResult:
+            def scalar_one_or_none(self):
+                return None
+
+        class FakeDb:
+            async def execute(self, *_a, **_k):
+                return FakeResult()
+
+        monkeypatch.setattr(auth_module, "record_audit_event", fake_record)
+        monkeypatch.setattr(auth_module.settings, "auth_mode", "local")
+
+        try:
+            asyncio.run(
+                auth_module.login_json(
+                    FakeRequest(), auth_module.LoginBody(login="Mallory", password="guess"), FakeDb()
+                )
+            )
+        except HTTPException as exc:
+            assert exc.status_code == 401
+        else:  # pragma: no cover - the call must fail
+            raise AssertionError("a bad password must 401")
+
+        assert events[0]["path"] == "auth/login-failed"
+        assert events[0]["actor_sub"] is None
+        # The account *attempted* is data, not an actor: nobody authenticated.
+        assert events[0]["detail"] == {"via": "local-login", "attempted": "Mallory"}

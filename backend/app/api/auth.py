@@ -396,7 +396,7 @@ def _session_actor(request: Request) -> tuple[dict, str | None]:
 
 
 async def record_session_event(
-    kind: str, payload: dict, *, via: str, reason: str | None = None
+    kind: str, payload: dict, *, via: str, reason: str | None = None, attempted: str | None = None
 ) -> None:
     """Record a sign-in / sign-out. Best effort: an audit outage must not block logging in or out.
 
@@ -419,7 +419,11 @@ async def record_session_event(
         ),
         auth_mode=payload.get("auth_mode") if isinstance(payload.get("auth_mode"), str) else None,
         # `resource_type` is derived from the path (`auth/logout` → `auth`); passing it is a TypeError.
-        detail={"via": via, **({"reason": reason} if reason else {})},
+        detail={
+            "via": via,
+            **({"reason": reason} if reason else {}),
+            **({"attempted": attempted} if attempted else {}),
+        },
     )
 
 
@@ -698,8 +702,23 @@ async def login_json(request: Request, body: LoginBody, db: AsyncSession = Depen
     )
     user = result.scalar_one_or_none()
     if not user or not _verify_password(body.password, user.password_hash):
+        # A failed sign-in is a security event — brute force looks exactly like this — and it names the
+        # account *attempted*, as data rather than as an actor: nobody authenticated.
+        await record_session_event(
+            "login-failed", {}, via="local-login", attempted=raw or None
+        )
         raise http_error(request, 401, "INVALID_CREDENTIALS")
 
+    await record_session_event(
+        "login",
+        {
+            "sub": str(user.id),
+            "username": user.username,
+            "email": user.email,
+            "auth_mode": "local",
+        },
+        via="local-login",
+    )
     token = mint_local_user_jwt(user)
     roles = ["admin"] if user.is_admin else []
     perm_set = await resolve_user_permission_keys(db, str(user.id))

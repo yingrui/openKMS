@@ -22,7 +22,13 @@ MUTATING = frozenset({"POST", "PUT", "PATCH", "DELETE"})
 #: Mutating paths that are not a change worth logging. `/sync-session` copies the browser's token into the
 #: session cookie on **every** app load — idempotent, and it buried the real operations in the rail's counts.
 #: Login and logout are recorded where they actually happen (the OIDC callback and `/logout`).
-NOT_AUDITED = frozenset({"/sync-session", "/clear-session"})
+NOT_AUDITED = frozenset({
+    "/sync-session",
+    "/clear-session",
+    # Sign-in records itself (`AUTH auth/login` / `auth/login-failed`, with the account); a generic
+    # `POST /api/auth/login` row would be the same act in an anonymous-looking shape.
+    "/api/auth/login",
+})
 
 #: Our ids are UUIDs; a path segment that looks like one is the subject, anything else is a noun
 #: (`/api/system/settings` reports `system` and no id, which is honest enough for a log).
