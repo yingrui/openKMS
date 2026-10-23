@@ -35,6 +35,11 @@ question "what changed this dataset, and did it work?" belongs to anyone who can
   path when there is one — otherwise the `id` of the JSON object the route returned. That is how
   `POST /api/whatever` naming nothing in its URL still records *what* it created, without any feature being
   special-cased here.
+- **A name, not just an id.** `resource_label` is the label a reader recognises: from the JSON response
+  (`display_name` first, then `name` / `title` / `label` / `api_name`), or — when the response carries
+  nothing, as a `204` delete does — from the handler, which is the only code that knows what it is about to
+  destroy: `request.state.audit_label = fn.display_name`. An id answers "which row"; a name answers "what did
+  I lose". Adoption is opt-in per delete endpoint (one line), starting with ontology functions.
 - **Failures are the point**: a 4xx/5xx is recorded, and a handler that **raises** is recorded as 500 with
   `detail.error` = the exception type *before* the exception propagates.
 - Its **own session** (a request rollback must not erase the record of the attempt), and it swallows only

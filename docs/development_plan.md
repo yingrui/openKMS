@@ -298,6 +298,26 @@ They are **not claimed to work**: this machine has no `pg_dump`, so only the pre
 refuses with an installation hint, verified). The drill is what turns a file into a backup, and until it
 prints `restore drill ok`, the honest state is untested.
 
+### An audit row that says *what* was deleted, not only *which* (2026-10)
+
+A reader pointed at two rows: `DELETE /api/ontology/functions/fn-dd4b5f0ed07b → 204 | Ontology`. It tells you
+something was deleted and nothing about what — and the id is a dead link, because the object is gone.
+
+`resource_label` now carries the name, from two places:
+
+- **generically**, from the JSON response when there is one (`display_name`, then `name` / `title` / `label` /
+  `api_name`) — so a create or a patch shows a name without any handler participating;
+- **from the handler** when the response says nothing: `request.state.audit_label = fn.name` before the
+  delete. Only the handler knows what it is about to destroy; a `204` has no body to read.
+
+`delete_function` returns the name it deleted for that purpose (the row is gone by the time the middleware
+runs), and the API/schema/UI carry the field. Verified live: creating a function logs
+`label='审计验证（第二次）'` from the response's `display_name`, deleting it logs the same label from the
+handler — where before both said `fn-…`.
+
+Still opt-in: the other delete endpoints (datasets, stories, object types, link types) show only an id until
+each gets that one line.
+
 ### The filter row commits on Query, not on every keystroke (2026-10)
 
 The button said Refresh and the text field queried as you typed — a request per keystroke, and a button
