@@ -110,6 +110,5 @@
   "dataInsights": "数据洞察",
   "appTaglineDataInsights": "已保存的分析与报告",
   "auditLog": "审计日志",
-  "externalServices": "外部接口",
-  "ontologyWebhooks": "Webhook"
+  "externalServices": "外部接口"
 }

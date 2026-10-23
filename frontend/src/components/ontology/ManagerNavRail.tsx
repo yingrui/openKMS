@@ -1,6 +1,6 @@
 import { NavLink, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { Box, Code2, FolderTree, Link2, Network, Webhook, Zap } from 'lucide-react';
+import { Box, Code2, FolderTree, Link2, Network, Zap } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 
 type NavItem = {
@@ -53,13 +53,6 @@ const MANAGER_NAV: NavItem[] = [
     icon: Zap,
     match: (p) =>
       p.startsWith('/ontology-manager/action-types') || p.startsWith('/ontology-manager/actions'),
-    canPath: '/ontology-manager/action-types',
-  },
-  {
-    to: '/ontology-manager/webhooks',
-    labelKey: 'ontologyWebhooks',
-    icon: Webhook,
-    match: (p) => p.startsWith('/ontology-manager/webhooks'),
     canPath: '/ontology-manager/action-types',
   },
 ];

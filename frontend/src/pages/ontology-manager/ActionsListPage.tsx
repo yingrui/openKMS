@@ -154,6 +154,8 @@ export function ActionsListPage() {
                   <th>{t('actions.displayName')}</th>
                   <th>{t('actions.objectType')}</th>
                   <th>{t('actions.ruleType')}</th>
+                  <th>{t('actions.webhookTarget')}</th>
+                  <th>{t('actions.webhookLastDelivery')}</th>
                   <th>{t('actions.status')}</th>
                   <th className="console-table-actions">{t('shared.actions')}</th>
                 </tr>
@@ -179,6 +181,42 @@ export function ActionsListPage() {
                         : action.function_id
                           ? functionNameById.get(action.function_id) ?? action.function_id
                           : t('actions.noFunction')}
+                    </td>
+                    <td>
+                      {action.webhook_service_id && action.webhook_path ? (
+                        <Link
+                          to={`/ontology-manager/action-types/${action.id}/webhook`}
+                          className="ontology-manager-list__api-link"
+                        >
+                          <code>
+                            {action.webhook_method || 'POST'} {action.webhook_path}
+                          </code>
+                        </Link>
+                      ) : (action.function_external_services?.length ?? 0) > 0 ? (
+                        <span className="console-table-muted">
+                          {t('actions.webhookViaFunctionShort', {
+                            services: action.function_external_services?.join(', '),
+                          })}
+                        </span>
+                      ) : (
+                        <span className="console-table-muted">—</span>
+                      )}
+                    </td>
+                    <td>
+                      {action.webhook_service_id && action.last_webhook ? (
+                        <span
+                          className={
+                            action.last_webhook.ok
+                              ? 'ds-status ds-status--ok'
+                              : 'ds-status ds-status--warn'
+                          }
+                          title={action.last_webhook.error ?? undefined}
+                        >
+                          {action.last_webhook.status ?? (action.last_webhook.ok ? 'ok' : 'failed')}
+                        </span>
+                      ) : (
+                        <span className="console-table-muted">—</span>
+                      )}
                     </td>
                     <td>
                       <span className={statusBadgeClass(action.status)}>{action.status}</span>

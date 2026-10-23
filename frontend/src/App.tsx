@@ -131,9 +131,6 @@ const GroupsListPage = lazy(() =>
 const ActionsListPage = lazy(() =>
   import('./pages/ontology-manager/ActionsListPage').then((m) => ({ default: m.ActionsListPage })),
 );
-const WebhooksPage = lazy(() =>
-  import('./pages/ontology-manager/WebhooksPage').then((m) => ({ default: m.WebhooksPage })),
-);
 const ActionDetailPage = lazy(() =>
   import('./pages/ontology-manager/ActionDetailPage').then((m) => ({ default: m.ActionDetailPage })),
 );
@@ -514,7 +511,6 @@ function App() {
               <Route path="related" element={<GroupRelatedTab />} />
             </Route>
             <Route path="action-types" element={<ActionsListPage />} />
-            <Route path="webhooks" element={<WebhooksPage />} />
             <Route path="action-types/:actionTypeId" element={<ActionDetailPage />}>
               <Route index element={<ActionOverviewTab />} />
               <Route path="rules" element={<ActionRulesTab />} />
