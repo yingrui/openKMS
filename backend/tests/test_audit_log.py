@@ -195,7 +195,7 @@ class TestSessionEvents:
         async def fake_record(**kwargs) -> None:
             events.append(kwargs)
 
-        monkeypatch.setattr(auth_module, "record_audit_event", fake_record)
+        monkeypatch.setattr(auth_module, "record_session_event_once", fake_record)
         asyncio.run(
             auth_module.record_session_event(
                 "logout", {"sub": "u1", "email": "a@b.c", "auth_mode": "api_key"}, via="clear-session"
@@ -203,9 +203,7 @@ class TestSessionEvents:
         )
         assert events == [
             {
-                "method": "AUTH",
                 "path": "auth/logout",
-                "status_code": 200,
                 "actor_sub": "u1",
                 "actor_name": "a@b.c",
                 "auth_mode": "api_key",
@@ -223,7 +221,7 @@ class TestSessionEvents:
         async def fake_record(**kwargs) -> None:
             events.append(kwargs)
 
-        monkeypatch.setattr(auth_module, "record_audit_event", fake_record)
+        monkeypatch.setattr(auth_module, "record_session_event_once", fake_record)
         asyncio.run(
             auth_module.record_session_event("logout", {}, via="clear-session", reason="no_session_token")
         )
@@ -273,7 +271,7 @@ def test_only_the_sign_out_that_had_a_session_is_recorded(monkeypatch):
         def __init__(self, token: str | None) -> None:
             self.session = {} if token is None else {"access_token": token}
 
-    monkeypatch.setattr(auth_module, "record_audit_event", fake_record)
+    monkeypatch.setattr(auth_module, "record_session_event_once", fake_record)
     monkeypatch.setattr(auth_module, "_verify_token_for_mode", lambda _t: {"sub": "u1", "email": "a@b.c"})
 
     asyncio.run(auth_module.clear_session(FakeRequest("live-token")))   # the real sign-out
@@ -314,7 +312,7 @@ class TestLocalLogin:
             async def execute(self, *_a, **_k):
                 return FakeResult()
 
-        monkeypatch.setattr(auth_module, "record_audit_event", fake_record)
+        monkeypatch.setattr(auth_module, "record_session_event_once", fake_record)
         monkeypatch.setattr(auth_module, "_verify_password", lambda *_: True)
         monkeypatch.setattr(auth_module, "mint_local_user_jwt", lambda _u: "token")
 
@@ -327,7 +325,6 @@ class TestLocalLogin:
         asyncio.run(
             auth_module.login_json(FakeRequest(), auth_module.LoginBody(login="yingrui", password="x"), FakeDb())
         )
-        assert events[0]["method"] == "AUTH"
         assert events[0]["path"] == "auth/login"
         assert events[0]["actor_sub"] == "u1"
         assert events[0]["detail"] == {"via": "local-login"}
@@ -358,7 +355,7 @@ class TestLocalLogin:
             async def execute(self, *_a, **_k):
                 return FakeResult()
 
-        monkeypatch.setattr(auth_module, "record_audit_event", fake_record)
+        monkeypatch.setattr(auth_module, "record_session_event_once", fake_record)
         monkeypatch.setattr(auth_module.settings, "auth_mode", "local")
 
         try:
@@ -418,7 +415,7 @@ class TestSignInThroughSyncSession:
         from app.services.users import oidc_identity_service
 
         monkeypatch.setattr(oidc_identity_service, "upsert_oidc_identity_from_jwt", upsert)
-        monkeypatch.setattr(auth_module, "record_audit_event", fake_record)
+        monkeypatch.setattr(auth_module, "record_session_event_once", fake_record)
         monkeypatch.setattr(auth_module, "_verify_token_for_mode",
                             lambda _t: {"sub": "u1", "email": "a@b.c", "auth_time": 100, "sid": "s1"})
 
@@ -433,3 +430,33 @@ class TestSignInThroughSyncSession:
         request.headers = {"Authorization": "Bearer tok"}
         asyncio.run(auth_module.sync_session(request, reason=None, db=FakeDb()))
         assert events == []
+
+
+class TestSessionEventDedupe:
+    """The SPA syncs the token twice after a sign-in (the init and the user-loaded hook). One act, one row —
+    enforced where it must be, in the writer, because a client cannot be relied on to be careful.
+
+    One event loop for the whole class: the engine's pool is bound to the loop that created it, so a second
+    `asyncio.run` in the same process fails with "attached to a different loop".
+    """
+
+    def test_a_repeated_event_is_dropped_and_another_actor_is_not(self):
+        import asyncio
+        import uuid
+
+        from app.services.audit import record_session_event_once
+
+        actor = f"probe-{uuid.uuid4()}"
+
+        async def scenario() -> tuple[bool, bool, bool, bool]:
+            base = dict(
+                path="auth/login", actor_name="probe", auth_mode="oidc", detail={"via": "sync-session"}
+            )
+            first = await record_session_event_once(actor_sub=actor, **base)
+            repeat = await record_session_event_once(actor_sub=actor, **base)
+            other = await record_session_event_once(actor_sub=f"other-{uuid.uuid4()}", **base)
+            anonymous_first = await record_session_event_once(actor_sub=None, **base)
+            anonymous_repeat = await record_session_event_once(actor_sub=None, **base)
+            return first, repeat, other, anonymous_first and not anonymous_repeat
+
+        assert asyncio.run(scenario()) == (True, False, True, True)

@@ -24,7 +24,7 @@ from app.database import async_session_maker, get_db
 from app.models.user import User
 from app.models.user_api_key import UserApiKey
 from app.models.user_preference import UserPreference
-from app.services.audit import record_audit_event
+from app.services.audit import record_session_event_once
 from app.services.permissions.permission_catalog import PERM_ALL
 from app.services.permissions.security_permission_service import list_permissions_sorted, sorted_permission_keys
 from app.services.permissions.permission_resolution import (
@@ -406,10 +406,10 @@ async def record_session_event(
     between an explained event and a suspicious one.
     """
     sub = payload.get("sub")
-    await record_audit_event(
-        method="AUTH",
+    # One sign-in, one row: the SPA syncs the token twice (the init and the user-loaded hook), milliseconds
+    # apart, and both say `reason=login`. A repeated identical session event inside the window is the same act.
+    await record_session_event_once(
         path=f"auth/{kind}",
-        status_code=200,
         actor_sub=sub if isinstance(sub, str) else None,
         actor_name=(
             payload.get("username")
@@ -418,7 +418,6 @@ async def record_session_event(
             or None
         ),
         auth_mode=payload.get("auth_mode") if isinstance(payload.get("auth_mode"), str) else None,
-        # `resource_type` is derived from the path (`auth/logout` → `auth`); passing it is a TypeError.
         detail={
             "via": via,
             **({"reason": reason} if reason else {}),

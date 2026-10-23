@@ -303,6 +303,19 @@ They are **not claimed to work**: this machine has no `pg_dump`, so only the pre
 refuses with an installation hint, verified). The drill is what turns a file into a backup, and until it
 prints `restore drill ok`, the honest state is untested.
 
+### Two logins in one second (2026-10)
+
+The login appeared — twice, same actor, same second. The SPA syncs the token from two hooks (`runOidcInit`
+and `UserLoaded`), and both carried `reason=login`; the existing dedupe covered the profile fetch, not this.
+
+The client could be made to send it once. The writer does it instead: two identical session events inside five
+seconds are one act, and the check is **atomic** — `pg_advisory_xact_lock(hashtext(path:actor))` before the
+`NOT EXISTS` insert, because a plain check-then-insert lets two concurrent requests both see nothing. That is
+the place for it: a client cannot be relied on to be careful, and every session event goes through this one
+function.
+
+Verified by a database test (first True, repeat False, another actor True, anonymous repeat dropped).
+
 ### The browser signs in against the IdP, not against us (2026-10)
 
 The login hook was in the backend's OAuth callback, and no login ever appeared. The SPA uses

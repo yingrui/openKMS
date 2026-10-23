@@ -10,6 +10,7 @@ import logging
 import re
 from typing import Any
 
+from sqlalchemy import func, select, text
 from sqlalchemy.exc import SQLAlchemyError
 
 from app.database import async_session_maker
@@ -45,6 +46,10 @@ def audit_target(path: str) -> tuple[str | None, str | None]:
     resource_type = segments[0]
     resource_id = segments[1] if len(segments) > 1 and _UUID.match(segments[1]) else None
     return resource_type, resource_id
+
+
+#: Two identical session events inside this window are one act (a double-click, a client that syncs twice).
+SESSION_EVENT_WINDOW_SECONDS = 5
 
 
 async def record_audit_event(
@@ -102,3 +107,55 @@ def job_audit_fields(task_name: str, job_id: int | str | None) -> dict[str, Any]
         "resource_id": resource_id,
         "detail": {"job_id": resource_id} if resource_id else None,
     }
+
+
+async def record_session_event_once(
+    *,
+    path: str,
+    actor_sub: str | None,
+    actor_name: str | None,
+    auth_mode: str | None,
+    detail: dict[str, Any] | None,
+) -> bool:
+    """Write a session event unless the same one was written a moment ago; True when written.
+
+    The lock is what makes it correct: check-then-insert races when two requests carry the same sign-in, and
+    the client does send two. `pg_advisory_xact_lock` serialises the same (path, actor) pair, so the second
+    request sees the first row instead of writing its own. Narrow failures are swallowed loudly, as everywhere
+    here — an audit outage must not block signing in or out.
+    """
+    key = f"audit-session:{path}:{actor_sub or ''}"
+    try:
+        async with async_session_maker() as db:
+            await db.execute(text("SELECT pg_advisory_xact_lock(hashtext(:k))"), {"k": key})
+            recent = (
+                await db.execute(
+                    select(AuditEvent.id)
+                    .where(
+                        AuditEvent.path == path,
+                        AuditEvent.actor_sub.is_not_distinct_from(actor_sub),
+                        AuditEvent.at
+                        >= func.now() - text(f"interval '{int(SESSION_EVENT_WINDOW_SECONDS)} seconds'"),
+                    )
+                    .limit(1)
+                )
+            ).first()
+            if recent is not None:
+                return False
+            db.add(
+                AuditEvent(
+                    method="AUTH",
+                    path=path,
+                    status_code=200,
+                    actor_sub=actor_sub,
+                    actor_name=actor_name,
+                    auth_mode=auth_mode,
+                    resource_type="auth",
+                    detail=detail,
+                )
+            )
+            await db.commit()
+            return True
+    except (SQLAlchemyError, OSError) as exc:
+        logger.error("session event not recorded (%s): %s", path, exc)
+        return False

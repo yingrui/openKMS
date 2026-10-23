@@ -50,6 +50,10 @@ question "what changed this dataset, and did it work?" belongs to anyone who can
   `SQLAlchemyError`/`OSError`, loudly: an audit outage must not turn a successful write into a 500.
 - **A sign-out names its actor** from the cookie's token, **verified**: an unverified decode would let a
   forged token name itself in the log, which is the misattribution an audit log exists to prevent.
+- **One session event, one row.** The SPA syncs the token twice after a sign-in and calls `clear-session` twice
+  after a sign-out; each pair lands in the same second. The writer serialises the same `(path, actor)` pair
+  under `pg_advisory_xact_lock` and drops a repeat inside five seconds — a client cannot be relied on to be
+  careful, so the idempotence lives where the write happens.
 - **One sign-out, one event.** The SPA calls `clear-session` once deliberately and again from its
   session-invalid handler seconds later; by then the cookie is gone. Nothing was ended, so nothing is
   recorded — the same for an expired or unverified token. Only a live session produces a row.
