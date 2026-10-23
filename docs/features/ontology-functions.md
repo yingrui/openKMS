@@ -72,7 +72,9 @@ POST <service base><path>
 
 For a **dataset-backed** object type all three ops work, provided a create carries the object's business key (the node and the app's row must share identity). The edit is written as an overlay on the object's node, the webhook announces it, and the next index re-asserts the bound table — a delivery that failed is reverted, not believed. `object_modify` / `object_delete` require only `object_id`: an existing object's own required columns are not inputs. See [the graph is the ontology layer](ontology.md#the-graph-is-the-ontology-layer).
 
-The webhook is **not** a Function: no `client.external(...)` in source, no per-integration code. `object` is the object the Action acted on — resolved through the graph, so a dataset-backed `Portfolio` works — and `applied` carries the ids for a create, where there was no object yet.
+The webhook is **not** a Function: no `client.external(...)` in source, no per-integration code. `object` is the object the Action acted on — resolved through the graph, so a dataset-backed `Portfolio` works.
+
+**A create has no incoming object id, so the payload is built from the result.** `object.id`, `input.id` (when the caller supplied it) and `applied.created_ids[0]` are the same value — the id the ontology stored. A dataset-backed type refuses a create that does not carry its key (the app could never find the row again); a hand-created type gets a platform uuid, and the receiver is expected to **store that id as its own**. An app that invents its own id instead ends up with two objects for one row, and the next index prunes the ontology's copy.
 
 ## External services (calling another system)
 

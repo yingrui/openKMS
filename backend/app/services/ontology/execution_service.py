@@ -319,8 +319,10 @@ async def _apply_edits_and_audit(
         payload = action_webhook.build_payload(
             action=at,
             object_type_name=(ot.api_name if ot else None),
-            object_id=object_id,
-            object_properties=input_payload.get("object"),
+            # A create has no incoming object_id — the id it just wrote is the one the receiver
+            # must record, so the object block is filled from the result, not from the request.
+            object_id=logged_object_id,
+            object_properties=snapshot if isinstance(snapshot, dict) else None,
             input_payload=input_payload,
             applied=applied,
             caller_user_id=caller_user_id,
