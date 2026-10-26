@@ -70,6 +70,14 @@ async def validate_join(
     to = await db.get(Dataset, to_dataset_id)
     if not frm or not to:
         raise JoinValidationError("Dataset not found.")
+    for dataset in (frm, to):
+        if (dataset.kind or "table") == "file":
+            # Reading a file dataset is column/row selection, not SQL — a relationship would have
+            # nothing to execute it with.
+            raise JoinValidationError(
+                "A file dataset cannot take part in a relationship: relationships are joins, and "
+                "file datasets support column and row selection only."
+            )
 
     from_avail = await _pg_columns(db, frm)
     to_avail = await _pg_columns(db, to)

@@ -209,6 +209,12 @@ async def fetch_dataset_rows_page(
     dataset = await db.get(Dataset, dataset_id)
     if not dataset:
         raise ValueError("Dataset not found")
+    if (dataset.kind or "table") == "file":
+        # Indexers and agents read rows through here; a file dataset has no SQL address, and a page
+        # preview standing in for the whole table would be a wrong answer, not a fallback.
+        raise ValueError(
+            "This dataset is a file dataset: read it through /api/dataset-versions/{id}/{version}/rows"
+        )
     ds = await db.get(DataSource, dataset.data_source_id)
     if not ds or ds.kind != "postgresql":
         raise ValueError("Dataset rows only supported for PostgreSQL sources")

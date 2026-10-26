@@ -215,7 +215,7 @@ All write subcommands accept `--yes` / `--dry-run`. Without `--yes` on non-TTY s
 | `data-sources get` | GET | `/api/data-sources/{id}` | |
 | `data-sources create` *(write)* | POST | `/api/data-sources` | |
 | `data-sources test` *(write)* | POST | `/api/data-sources/{id}/test` | |
-| `datasets list` | GET | `/api/datasets` | Optional `?data_source_id=` / `?search=` / `?limit=` / `?offset=`. |
+| `datasets list` | GET | `/api/datasets` | Optional `?data_source_id=` / `?kind=table\|file` / `?search=` / `?limit=` / `?offset=`. |
 | `datasets get` | GET | `/api/datasets/{id}` | |
 | `datasets discover` | GET | `/api/datasets/from-source/{data_source_id}` | Tables in a data source that can be registered. |
 | `datasets aggregate` | POST | `/api/datasets/{id}/aggregate` | Body `{group_by, aggregates, filters?, order_by?, limit?, offset?}` — group by columns (optionally by a date grain) with `count/sum/avg/min/max` (`--aggregate "fn[:column][=name]"`, repeatable). The dataset-side answer to "by month". |
@@ -231,6 +231,17 @@ All write subcommands accept `--yes` / `--dry-run`. Without `--yes` on non-TTY s
 | `datasets joins add` *(write)* | POST | `/api/dataset-joins` | Body `{from_dataset_id, to_dataset_id, from_columns:[…], to_columns:[…], required}`. `from` = many side (FK holder), `to` = one side (referenced key); `required=true` → INNER (only matched rows), default `false` → LEFT. Composite keys: aligned `from_columns`/`to_columns` arrays. |
 | `datasets joins delete` *(write)* | DELETE | `/api/dataset-joins/{join_id}` | |
 | `datasets ingest` *(write)* | POST | `/api/dataset-ingests` → `…/preview` → `…/load` | Upload a file, parse it, load into a data-layer PostgreSQL table. |
+| `datasets file-create` *(write)* | POST | `/api/datasets` | Body `{kind:"file", display_name}` — a **file dataset**: immutable, numbered versions of files (parquet/csv/jsonl) in the platform bucket. No table, no joins. |
+| `datasets versions` | GET | `/api/dataset-versions/{id}` | Versions oldest first: `draft` (being assembled) · `published` (frozen, pinnable) · `deprecated` (kept). |
+| `datasets version-get` | GET | `/api/dataset-versions/{id}/{version}` | One version with its files (name, rows, bytes, sha256, date range, `reused_from_version`) and `manifest_key`. |
+| `datasets version-open` *(write)* | POST | `/api/dataset-versions/{id}` | Open the next draft. `--from-version N` reuses that version's files (references, no copy). |
+| `datasets file-put` *(write)* | POST | `/api/dataset-versions/{id}/{version}/files` | Upload one file into a draft (`--path`); the server records rows, bytes, sha256 and the file's date range. |
+| `datasets file-get` | GET | `…/files/{name}/url` + sha256 check | Presigned download (`--out DIR`) that verifies the hash against the published file. |
+| `datasets version-delete` *(write)* | DELETE | `/api/dataset-versions/{id}/{version}` | Delete a **draft**; a published version is kept (deprecate instead). |
+| `datasets version-publish` *(write)* | POST | `…/{version}/publish` | Freeze: writes `manifest.json`, becomes pinnable. Adding data afterwards means a new version. |
+| `datasets version-deprecate` *(write)* | POST | `…/{version}/deprecate` | Mark superseded; stays readable. |
+| `datasets file-rows` | GET | `…/{version}/rows` | Column + row selection: `--columns`, `--start`, `--end`, `--limit`, `--offset`. Files outside the window are skipped unread. **Not a join, not SQL.** |
+| `datasets file-preview` | GET | `…/{version}/preview` | First rows of the version's first file. |
 | `datasets quality list` | GET | `/api/datasets/{id}/quality-rules` | Declarative quality rules + last status. |
 | `datasets quality add` *(write)* | POST | `/api/datasets/{id}/quality-rules` | Body `{name, rule_type, column_name, config}`. |
 | `datasets quality update` *(write)* | PUT | `/api/datasets/{id}/quality-rules/{rule_id}` | Body from `--name`, `--column`, `--severity`, `--enabled true|false`, `--config` (JSON, replaces the config object). |

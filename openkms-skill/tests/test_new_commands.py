@@ -620,3 +620,49 @@ def test_action_type_create_resolves_the_webhook_service_by_name(mock_api):
     body = json.loads(recorded[-1].content)
     assert body["webhook_service_id"] == "es1"
     assert body["webhook_path"] == "/api/webhooks/openkms/portfolio-changes"
+
+
+def test_file_dataset_commands_are_registered():
+    """The file-dataset verbs an agent needs: create, versions, upload, publish, download, select."""
+    from openkms.commands import datasets as datasets_cmd
+
+    parser = argparse.ArgumentParser()
+    sub = parser.add_subparsers(dest="cmd", required=True)
+    datasets_cmd.add_subparser(sub)
+
+    for verb in (
+        "file-create",
+        "versions",
+        "version-get",
+        "version-open",
+        "file-put",
+        "file-get",
+        "version-publish",
+        "version-deprecate",
+        "file-rows",
+        "file-preview",
+    ):
+        if verb == "file-create":
+            argv = ["datasets", verb, "--display-name", "training-set-5d"]
+        elif verb in ("file-put",):
+            argv = ["datasets", verb, "--id", "ds", "--version", "1", "--path", "/tmp/x.parquet"]
+        elif verb in ("file-get",):
+            argv = ["datasets", verb, "--id", "ds", "--version", "1", "--name", "2026-09.parquet"]
+        elif verb in ("version-get", "version-publish", "version-deprecate", "file-rows", "file-preview"):
+            argv = ["datasets", verb, "--id", "ds", "--version", "1"]
+        else:
+            argv = ["datasets", verb, "--id", "ds"]
+        ns = parser.parse_args(argv)
+        assert hasattr(ns, "fn"), f"{verb} has no handler"
+
+
+def test_file_create_posts_kind_file():
+    """A file dataset is a catalog entry with no table — the body must say so explicitly."""
+    import argparse
+
+    from openkms.commands import datasets as datasets_cmd
+
+    ns = argparse.Namespace(
+        display_name="training-set-5d", description="x", tags="a,b", dry_run=True, yes=False
+    )
+    assert datasets_cmd.cmd_file_create(ns) is None

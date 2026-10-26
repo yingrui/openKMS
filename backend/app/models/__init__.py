@@ -14,6 +14,8 @@ from app.models.glossary import Glossary
 from app.models.glossary_term import GlossaryTerm
 from app.models.data_source import DataSource
 from app.models.dataset import Dataset
+from app.models.dataset_version import DatasetVersion as DatasetVersion
+from app.models.dataset_version import DatasetVersionFile as DatasetVersionFile
 from app.models.connector import Connector
 from app.models.kubernetes_cluster import KubernetesCluster
 

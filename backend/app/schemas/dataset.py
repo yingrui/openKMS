@@ -1,5 +1,5 @@
 """Dataset schemas."""
-from datetime import datetime
+from datetime import date, datetime
 from typing import Any
 
 from pydantic import BaseModel
@@ -8,9 +8,12 @@ from app.constants import DEFAULT_PAGE_SIZE
 
 
 class DatasetCreate(BaseModel):
-    data_source_id: str
-    schema_name: str
-    table_name: str
+    """A table dataset names its table; a file dataset only names itself (`kind="file"`)."""
+
+    kind: str = "table"
+    data_source_id: str | None = None
+    schema_name: str | None = None
+    table_name: str | None = None
     display_name: str | None = None
     description: str | None = None
     domain: str | None = None
@@ -43,8 +46,10 @@ class DatasetResponse(BaseModel):
     id: str
     data_source_id: str
     data_source_name: str | None = None
-    schema_name: str
-    table_name: str
+    #: table = a table in a SQL source; file = immutable numbered versions of files.
+    kind: str = "table"
+    schema_name: str | None = None
+    table_name: str | None = None
     display_name: str | None = None
     description: str | None = None
     owner_sub: str | None = None
@@ -228,3 +233,65 @@ class SchemaSnapshotResponse(BaseModel):
     dataset_id: str
     columns: list[ColumnMetadata]
     captured_at: datetime
+
+
+class FileDatasetCreate(BaseModel):
+    """A file dataset: a catalog entry for immutable, versioned files."""
+
+    display_name: str
+    description: str | None = None
+    domain: str | None = None
+    tags: list[str] | None = None
+
+
+class DatasetVersionCreate(BaseModel):
+    notes: str | None = None
+    #: Carry over a previous version's files without copying them (default: none).
+    from_version: int | None = None
+
+
+class DatasetVersionResponse(BaseModel):
+    dataset_id: str
+    version: int
+    notes: str | None = None
+    status: str
+    columns: list[dict[str, Any]] = []
+    file_count: int = 0
+    row_count: int = 0
+    byte_size: int = 0
+    date_from: date | None = None
+    date_to: date | None = None
+    published_at: datetime | None = None
+    created_by_name: str | None = None
+    created_at: datetime
+    manifest_key: str | None = None
+
+    model_config = {"from_attributes": True}
+
+
+class DatasetVersionFileResponse(BaseModel):
+    name: str
+    storage_key: str
+    sha256: str
+    rows: int
+    bytes: int = 0
+    date_from: date | None = None
+    date_to: date | None = None
+    reused_from_version: int | None = None
+    created_by: str | None = None
+    created_at: datetime
+
+    model_config = {"from_attributes": True}
+
+
+class DatasetVersionDetailResponse(DatasetVersionResponse):
+    files: list[DatasetVersionFileResponse] = []
+
+
+class FileRowsResponse(BaseModel):
+    """Rows selected out of a published version — column and row selection, never a join."""
+
+    version: int
+    columns: list[str] = []
+    rows: list[dict[str, Any]] = []
+    total_scanned: int = 0

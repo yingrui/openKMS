@@ -14,6 +14,8 @@ def cmd_list(ns: argparse.Namespace) -> None:
     params: dict[str, Any] = {}
     if ns.data_source_id:
         params["data_source_id"] = ns.data_source_id
+    if getattr(ns, "kind", None):
+        params["kind"] = ns.kind
     if ns.search:
         params["search"] = ns.search
     if ns.limit is not None:
@@ -420,12 +422,186 @@ def cmd_quality_delete(ns: argparse.Namespace) -> None:
     print(f"deleted quality rule {ns.rule_id}")
 
 
+def cmd_file_create(ns: argparse.Namespace) -> None:
+    """Create a file dataset: a catalog entry for immutable, versioned files."""
+    body: dict[str, Any] = {"kind": "file", "display_name": ns.display_name}
+    if ns.description:
+        body["description"] = ns.description
+    if ns.tags:
+        body["tags"] = [t.strip() for t in ns.tags.split(",") if t.strip()]
+    if not (ns.yes or ns.dry_run):
+        confirm_or_abort(f"create file dataset '{ns.display_name}'")
+    if ns.dry_run:
+        print_json(body)
+        return
+    with client() as s:
+        r = s.post("/api/datasets", json=body)
+    r.raise_for_status()
+    print_json(r.json())
+
+
+def cmd_versions(ns: argparse.Namespace) -> None:
+    with client() as s:
+        r = s.get(f"/api/dataset-versions/{ns.id}")
+    r.raise_for_status()
+    print_json(r.json())
+
+
+def cmd_version_get(ns: argparse.Namespace) -> None:
+    with client() as s:
+        r = s.get(f"/api/dataset-versions/{ns.id}/{ns.version}")
+    r.raise_for_status()
+    print_json(r.json())
+
+
+def cmd_version_open(ns: argparse.Namespace) -> None:
+    """Open the next draft; `--from-version` reuses another version's files without copying."""
+    body: dict[str, Any] = {}
+    if ns.notes:
+        body["notes"] = ns.notes
+    if ns.from_version is not None:
+        body["from_version"] = ns.from_version
+    if not (ns.yes or ns.dry_run):
+        confirm_or_abort(f"open a draft version on {ns.id}")
+    if ns.dry_run:
+        print_json(body)
+        return
+    with client() as s:
+        r = s.post(f"/api/dataset-versions/{ns.id}", json=body)
+    r.raise_for_status()
+    print_json(r.json())
+
+
+def cmd_file_put(ns: argparse.Namespace) -> None:
+    """Upload one file into a draft version (small files; big ones go straight to object storage)."""
+    from pathlib import Path
+
+    path = Path(ns.path)
+    if not path.exists():
+        raise SystemExit(f"no such file: {path}")
+    if not (ns.yes or ns.dry_run):
+        confirm_or_abort(f"upload {path.name} ({path.stat().st_size:,} bytes) into {ns.id} v{ns.version}")
+    if ns.dry_run:
+        print_json({"dataset": ns.id, "version": ns.version, "file": path.name, "bytes": path.stat().st_size})
+        return
+    with client() as s:
+        with path.open("rb") as handle:
+            r = s.post(
+                f"/api/dataset-versions/{ns.id}/{ns.version}/files",
+                files={"file": (path.name, handle, "application/octet-stream")},
+            )
+    r.raise_for_status()
+    print_json(r.json())
+
+
+def cmd_file_get(ns: argparse.Namespace) -> None:
+    """Download a published version's file via a presigned URL, then verify its sha256."""
+    import hashlib
+    from pathlib import Path
+
+    import httpx
+
+    with client() as s:
+        r = s.get(f"/api/dataset-versions/{ns.id}/{ns.version}/files/{ns.name}/url")
+        r.raise_for_status()
+        expected = None
+        detail = s.get(f"/api/dataset-versions/{ns.id}/{ns.version}")
+        if detail.status_code == 200:
+            for entry in detail.json().get("files", []):
+                if entry["name"] == ns.name:
+                    expected = entry["sha256"]
+        url = r.json()["url"]
+    target = Path(ns.out or ".") / ns.name
+    target.parent.mkdir(parents=True, exist_ok=True)
+    with httpx.stream("GET", url, timeout=300) as response:
+        response.raise_for_status()
+        digest = hashlib.sha256()
+        with target.open("wb") as handle:
+            for chunk in response.iter_bytes():
+                handle.write(chunk)
+                digest.update(chunk)
+    ok = expected is None or digest.hexdigest() == expected
+    print_json(
+        {
+            "file": str(target),
+            "bytes": target.stat().st_size,
+            "sha256": digest.hexdigest(),
+            "sha256_matches": ok,
+        }
+    )
+    if not ok:
+        raise SystemExit("sha256 mismatch: the downloaded file is not the published one")
+
+
+def cmd_version_delete(ns: argparse.Namespace) -> None:
+    """Delete a draft. A published version is kept: deprecate it instead."""
+    if not (ns.yes or ns.dry_run):
+        confirm_or_abort(f"delete draft {ns.id} v{ns.version}")
+    if ns.dry_run:
+        print_json({"delete": {"dataset": ns.id, "version": ns.version}})
+        return
+    with client() as s:
+        r = s.delete(f"/api/dataset-versions/{ns.id}/{ns.version}")
+    r.raise_for_status()
+    print_json({"deleted": {"dataset": ns.id, "version": ns.version}})
+
+
+def cmd_version_publish(ns: argparse.Namespace) -> None:
+    """Freeze a draft: writes the manifest and makes the version pinnable."""
+    if not (ns.yes or ns.dry_run):
+        confirm_or_abort(f"publish {ns.id} v{ns.version}")
+    if ns.dry_run:
+        print_json({"publish": {"dataset": ns.id, "version": ns.version}})
+        return
+    with client() as s:
+        r = s.post(f"/api/dataset-versions/{ns.id}/{ns.version}/publish")
+    r.raise_for_status()
+    print_json(r.json())
+
+
+def cmd_version_deprecate(ns: argparse.Namespace) -> None:
+    if not (ns.yes or ns.dry_run):
+        confirm_or_abort(f"deprecate {ns.id} v{ns.version}")
+    if ns.dry_run:
+        print_json({"deprecate": {"dataset": ns.id, "version": ns.version}})
+        return
+    with client() as s:
+        r = s.post(f"/api/dataset-versions/{ns.id}/{ns.version}/deprecate")
+    r.raise_for_status()
+    print_json(r.json())
+
+
+def cmd_file_rows(ns: argparse.Namespace) -> None:
+    """Column and row selection inside a published version (not a join, not SQL)."""
+    params: dict[str, Any] = {"limit": ns.limit}
+    if ns.columns:
+        params["columns"] = ns.columns
+    if ns.start:
+        params["start"] = ns.start
+    if ns.end:
+        params["end"] = ns.end
+    if ns.offset:
+        params["offset"] = ns.offset
+    with client() as s:
+        r = s.get(f"/api/dataset-versions/{ns.id}/{ns.version}/rows", params=params)
+    r.raise_for_status()
+    print_json(r.json())
+
+
+def cmd_file_preview(ns: argparse.Namespace) -> None:
+    with client() as s:
+        r = s.get(f"/api/dataset-versions/{ns.id}/{ns.version}/preview", params={"limit": ns.limit})
+    r.raise_for_status()
+    print_json(r.json())
+
+
 def add_subparser(sub) -> None:
     p = sub.add_parser("datasets", help="Ontology / connector datasets")
     sp = p.add_subparsers(dest="dset_cmd", required=True)
 
     ls = sp.add_parser("list", help="List datasets")
     ls.add_argument("--data-source-id", default=None)
+    ls.add_argument("--kind", choices=("table", "file"), default=None, help="file datasets only: --kind file")
     ls.add_argument("--search", default=None, help="match name / schema / table")
     ls.add_argument("--limit", type=int, default=None)
     ls.add_argument("--offset", type=int, default=None)
@@ -634,3 +810,76 @@ def add_subparser(sub) -> None:
     add_write_flags(qd)
     qd.set_defaults(fn=cmd_quality_delete)
 
+
+    # --- file datasets: versions, files, selection -------------------------------------
+    fc = sp.add_parser("file-create", help="Create a file dataset (immutable, versioned files)")
+    fc.add_argument("--display-name", required=True)
+    fc.add_argument("--description", default=None)
+    fc.add_argument("--tags", default=None, help="comma-separated")
+    add_write_flags(fc)
+    fc.set_defaults(fn=cmd_file_create)
+
+    vs = sp.add_parser("versions", help="List a file dataset's versions")
+    vs.add_argument("--id", required=True)
+    vs.set_defaults(fn=cmd_versions)
+
+    vg = sp.add_parser("version-get", help="One version with its files and manifest key")
+    vg.add_argument("--id", required=True)
+    vg.add_argument("--version", type=int, required=True)
+    vg.set_defaults(fn=cmd_version_get)
+
+    vo = sp.add_parser("version-open", help="Open the next draft version")
+    vo.add_argument("--id", required=True)
+    vo.add_argument("--notes", default=None)
+    vo.add_argument("--from-version", type=int, default=None, dest="from_version",
+                    help="reuse that version's files instead of uploading them again")
+    add_write_flags(vo)
+    vo.set_defaults(fn=cmd_version_open)
+
+    fu = sp.add_parser("file-put", help="Upload a file into a draft version")
+    fu.add_argument("--id", required=True)
+    fu.add_argument("--version", type=int, required=True)
+    fu.add_argument("--path", required=True)
+    add_write_flags(fu)
+    fu.set_defaults(fn=cmd_file_put)
+
+    fg = sp.add_parser("file-get", help="Download a published file (presigned) and verify sha256")
+    fg.add_argument("--id", required=True)
+    fg.add_argument("--version", type=int, required=True)
+    fg.add_argument("--name", required=True)
+    fg.add_argument("--out", default=None, help="directory (default: current)")
+    fg.set_defaults(fn=cmd_file_get)
+
+    vx = sp.add_parser("version-delete", help="Delete a draft (published versions are kept)")
+    vx.add_argument("--id", required=True)
+    vx.add_argument("--version", type=int, required=True)
+    add_write_flags(vx)
+    vx.set_defaults(fn=cmd_version_delete)
+
+    vp = sp.add_parser("version-publish", help="Publish a draft: freezes it and writes the manifest")
+    vp.add_argument("--id", required=True)
+    vp.add_argument("--version", type=int, required=True)
+    add_write_flags(vp)
+    vp.set_defaults(fn=cmd_version_publish)
+
+    vd = sp.add_parser("version-deprecate", help="Deprecate a published version (kept forever)")
+    vd.add_argument("--id", required=True)
+    vd.add_argument("--version", type=int, required=True)
+    add_write_flags(vd)
+    vd.set_defaults(fn=cmd_version_deprecate)
+
+    fr = sp.add_parser("file-rows", help="Select columns and rows inside a published version")
+    fr.add_argument("--id", required=True)
+    fr.add_argument("--version", type=int, required=True)
+    fr.add_argument("--columns", default=None, help="comma-separated column names")
+    fr.add_argument("--start", default=None, help="inclusive lower bound on the date column")
+    fr.add_argument("--end", default=None, help="inclusive upper bound on the date column")
+    fr.add_argument("--limit", type=int, default=100)
+    fr.add_argument("--offset", type=int, default=0)
+    fr.set_defaults(fn=cmd_file_rows)
+
+    fp = sp.add_parser("file-preview", help="First rows of a version's first file")
+    fp.add_argument("--id", required=True)
+    fp.add_argument("--version", type=int, required=True)
+    fp.add_argument("--limit", type=int, default=100)
+    fp.set_defaults(fn=cmd_file_preview)

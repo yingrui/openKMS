@@ -15,7 +15,8 @@ if TYPE_CHECKING:
 
 
 class Dataset(Base):
-    """A table in a PostgreSQL DataSource. Can be mapped to ObjectType/LinkType later."""
+    """A dataset: a table in a PostgreSQL source (`kind='table'`), or a set of files in object
+    storage (`kind='file'`, in which case versions live in `dataset_versions`)."""
 
     __tablename__ = "datasets"
 
@@ -23,8 +24,13 @@ class Dataset(Base):
     data_source_id: Mapped[str] = mapped_column(
         String(64), ForeignKey("data_sources.id", ondelete="CASCADE"), nullable=False, index=True
     )
-    schema_name: Mapped[str] = mapped_column(String(128), nullable=False)
-    table_name: Mapped[str] = mapped_column(String(256), nullable=False)
+    #: table = a table in a SQL source; file = immutable, versioned files in the platform bucket.
+    kind: Mapped[str] = mapped_column(
+        String(16), nullable=False, default="table", server_default="table"
+    )
+    # Table datasets only: their identity in the source. Null for a file dataset.
+    schema_name: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    table_name: Mapped[str | None] = mapped_column(String(256), nullable=True)
     display_name: Mapped[str | None] = mapped_column(String(256), nullable=True)
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
     owner_sub: Mapped[str | None] = mapped_column(String(512), nullable=True)

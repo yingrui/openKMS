@@ -392,10 +392,10 @@ Encrypted values; **never returned**. Write/sync/delete reject personal API key 
 | PATCH | `/api/schedules/{id}` | Update schedule (`enabled`, `cron`, `timezone`; agent kinds also `prompt`); sync kinds mirror `settings.sync_schedule` on the connector (`connectors:write` or `projects:write`) |
 | POST | `/api/schedules/{id}/run-now` | Queue the scheduled target now (`run_connector_sync` or `run_scheduled_project_agent`); returns `{ job_id }` (202) |
 | POST | `/internal-api/process-heartbeat` | **Internal service client only**; worker/scheduler liveness (`role`, `instance_id`); in-memory registry for Console health (no history table) |
-| GET | `/api/datasets` | List datasets (`data:read`; filtered by dataset ACL) — optional `data_source_id`, `domain`, `tag` (JSONB containment), `search` (name / schema.table / description / tag), `limit` (≤500), `offset`; returns `total` for pagination |
+| GET | `/api/datasets` | List datasets (`data:read`; filtered by dataset ACL) — optional `data_source_id`, `kind` (`table` \| `file`), `domain`, `tag` (JSONB containment), `search` (name / schema.table / description / tag), `limit` (≤500), `offset`; returns `total` for pagination |
 | GET | `/api/datasets/facets` | The filter values the reader can see, with counts: `{domains, tags, sources}` — each `[{value, count}]`, most-used first (`data:read`, ACL-filtered). Declared before `/{dataset_id}` so “facets” is not read as an id |
 | GET | `/api/datasets/from-source/{id}` | List a PostgreSQL source's tables — names only, so it is a **read** (`data:read` + dataset ACL): a reader must be able to see what a source offers. It used to require `data:write`, which contradicted the pattern for `GET /api/datasets/*` and left readers blind. Registering one of them still needs `data:write` |
-| POST | `/api/datasets` | Create dataset (`data:write`) |
+| POST | `/api/datasets` | Create dataset (`data:write`). `kind="file"` creates a file dataset (a catalog entry for immutable versioned files; no table needed) and ignores `data_source_id` |
 | GET | `/api/datasets/{id}` | Get dataset (`data:read`; dataset ACL) |
 | POST | `/api/datasets/{id}/aggregate` | **Summarise** a dataset table (`data:read`; dataset ACL) — body `{group_by:["column" \| {column, granularity?}], aggregates:[{fn, column?, name?}], filters?, order_by?, limit?, offset?}` → `{sql, columns, rows, row_count, capped, duration_ms}`. `fn` ∈ `count` (no column = `COUNT(*)`) / `sum` / `avg` / `min` / `max`; a `granularity` (`day`…`year`) is a query-time `date_trunc` and only valid on a temporal column; `order_by.field` is a group-by column or an aggregate name. Same operator vocabulary and statement timeout as the rows query; bad column/fn/grain answers 400 with the classified `{code, message, kind}` shape |
 | POST | `/api/datasets/{id}/rows/query` | Browse a dataset's table (`data:read`; dataset ACL) — body `{filters:[{field, op, value}], sort?, order?, limit?, offset?, after?}` → `{columns, rows, total, limit, offset, next_after, capped}`. `filters` address the table's **columns** (AND-ed, the operator whitelist of `semantic-models query`; ≤ 10 conditions), `total` counts what they match, `columns` is always the table's so a filtered-out result still renders a header, and the read has a statement timeout. **`after` requires `sort`** (400 otherwise). A bad filter answers 400 with the classified `{code, message, kind}` shape (`DATASET_ROWS_UNKNOWN_COLUMN` / `_BAD_OPERATOR` / `_INVALID_FILTER` / `_TOO_MANY_FILTERS`, `kind=request`) |
@@ -453,6 +453,27 @@ Encrypted values; **never returned**. Write/sync/delete reject personal API key 
 | PUT | `/api/stories/{id}` | **A finding is** `{title?, insight?, source_kind, dataset_id\|semantic_model_id, query, view?, …}`. `view` is presentation only — `{kind: "chart", type: "line"\|"bar", x, y, series?}` \| `{kind: "metric", column, label?}` \| `{kind: "bar_list", column, label_column?}`, naming columns of that finding's result; absent = a table, and a view the result cannot satisfy falls back to one. A run merges into the finding (`{**finding, **result}`), so `title`/`insight`/`query`/`view` survive a re-run |
 | POST | `/api/stories/{id}/run` | **Run every finding against its own source** and persist the results (`insights:read` — a refresh recomputes, it does not edit — plus each source's read ACL). A dataset finding goes to `POST /api/datasets/{id}/rows/query` (or `/aggregate` when its query carries `aggregates`), a model finding to `POST /api/semantic-models/{id}/query`. One finding failing — or being out of reach (`REPORT_SOURCE_FORBIDDEN`) — stores its classified `{code, message, kind}` and the rest still run (`REPORT_SOURCE_MISSING` / `REPORT_METRIC_MISSING` are `request`) |
 | DELETE | `/api/stories/{id}` | Delete story (`insights:write`) |
+
+### File datasets — `/api/dataset-versions`
+
+A file dataset is versioned: `draft` (files added/removed) → `published` (frozen, manifest written,
+pinnable) → `deprecated` (kept forever). Reading is **column and row selection**, never SQL or a join
+— a file dataset is refused by `/api/datasets/{id}/rows/query`, `/aggregate`, relationships and
+object-type binding on purpose.
+
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `/api/dataset-versions/{dataset_id}` | Versions, oldest first (`data:read`) |
+| POST | `/api/dataset-versions/{dataset_id}` | Open the next draft (`data:write`) — `{notes?, from_version?}`; `from_version` reuses that version's files without copying objects |
+| GET | `/api/dataset-versions/{dataset_id}/{version}` | One version with its files and `manifest_key` |
+| POST | `/api/dataset-versions/{dataset_id}/{version}/files` | Upload a file into a draft (multipart `file`); parquet/csv/jsonl/json; records rows, bytes, sha256 and the file's date range |
+| DELETE | `/api/dataset-versions/{dataset_id}/{version}/files/{name}` | Remove a file (draft only) |
+| DELETE | `/api/dataset-versions/{dataset_id}/{version}` | Delete a **draft** (400 for a published/deprecated version — deprecate instead) |
+| POST | `/api/dataset-versions/{dataset_id}/{version}/publish` | Freeze: writes `manifest.json`, sets `published_at`, makes the version readable |
+| POST | `/api/dataset-versions/{dataset_id}/{version}/deprecate` | Mark a published version superseded (still readable) |
+| GET | `/api/dataset-versions/{dataset_id}/{version}/files/{name}/url` | Presigned download (`expires_in`, default 900 s) |
+| GET | `/api/dataset-versions/{dataset_id}/{version}/preview` | First rows of the version's first file |
+| GET | `/api/dataset-versions/{dataset_id}/{version}/rows` | Column + row selection: `columns`, `start`, `end` (bounds on the date column), `limit`, `offset`; files outside the window are skipped unread |
 
 ## Feature toggles
 

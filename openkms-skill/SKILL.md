@@ -38,6 +38,7 @@ Match the task, then open **one** guide. Skip rows that do not apply.
 | **Author** Function source (`--source-code-file` / validate / publish) | [references/functions-authoring.md](references/functions-authoring.md) |
 | **Author** Action types (create / update / delete / execute) | [references/actions-authoring.md](references/actions-authoring.md) |
 | **Author/set up** datasets (register, upload, keys, `ai_context`, relationships, quality) | [references/datasets-authoring.md](references/datasets-authoring.md) |
+| **Publish a file dataset** (training slice: create → upload → publish → select rows) | [references/datasets-authoring.md](references/datasets-authoring.md#file-datasets-training-sets-and-other-immutable-artifacts) |
 | **Author / re-run** a Data Insights story (findings, each over its own dataset or model) | [references/stories.md](references/stories.md) |
 | Data sources / connectors / jobs / Apps list / Kubernetes browse | [references/commands-ops.md](references/commands-ops.md) |
 | Register or patch a **module App** (`apps …` / `kubernetes register-app`) | [references/app-builder.md](references/app-builder.md) (`bindings.k8s` only) |

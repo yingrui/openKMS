@@ -28,6 +28,7 @@ from app.models.data_source import DataSource
 from app.models.dataset import Dataset
 from app.models.dataset_profile import DatasetProfile
 from app.services.data_layer.dataset_rows import query_dataset_rows, query_dataset_summary
+from app.services.data_layer.file_datasets import create_file_dataset
 from app.services.data_layer.query import QueryError
 from app.services.data_layer.row_filters import RowFilterError
 from app.services.data_layer.columns import (
@@ -74,11 +75,24 @@ router = APIRouter(
 _DATASET_VIEW = (PERM_DATA_READ,)
 
 
+def _reject_file_dataset(dataset: Dataset, action: str) -> None:
+    """A file dataset is not SQL-addressable: say so instead of failing three layers down."""
+    if (dataset.kind or "table") == "file":
+        raise HTTPException(
+            status_code=400,
+            detail=(
+                f"{action} reads a table with SQL, which a file dataset is not. "
+                "Read its versions through /api/dataset-versions/{id}/{version}/rows instead."
+            ),
+        )
+
+
 def _dataset_response(d: Dataset, data_source_name: str | None) -> DatasetResponse:
     return DatasetResponse(
         id=d.id,
         data_source_id=d.data_source_id,
         data_source_name=data_source_name,
+        kind=d.kind or "table",
         schema_name=d.schema_name,
         table_name=d.table_name,
         display_name=d.display_name,
@@ -169,6 +183,7 @@ async def list_tables_from_source(
 async def list_datasets(
     request: Request,
     data_source_id: str | None = None,
+    kind: str | None = Query(None, pattern="^(table|file)$"),
     search: str | None = None,
     domain: str | None = None,
     tag: str | None = None,
@@ -190,6 +205,8 @@ async def list_datasets(
     conditions = list(acl_filters)
     if data_source_id:
         conditions.append(Dataset.data_source_id == data_source_id)
+    if kind:
+        conditions.append(Dataset.kind == kind)
     if domain:
         conditions.append(Dataset.domain == domain)
     if tag:
@@ -239,7 +256,30 @@ async def create_dataset(
     body: DatasetCreate,
     db: AsyncSession = Depends(get_db),
 ):
-    """Create a dataset."""
+    """Create a dataset. A file dataset gets the built-in object-storage source instead."""
+    if body.kind == "file":
+        p = request.state.openkms_jwt_payload
+        sub = p.get("sub")
+        uname = p.get("preferred_username") or p.get("name")
+        if not body.display_name:
+            raise HTTPException(status_code=400, detail="A file dataset needs a display name.")
+        dataset = await create_file_dataset(
+            db,
+            display_name=body.display_name,
+            description=body.description,
+            owner_sub=sub if isinstance(sub, str) else None,
+            owner_name=str(uname)[:256] if isinstance(uname, str) and uname.strip() else None,
+            domain=body.domain,
+            tags=body.tags,
+        )
+        if isinstance(sub, str):
+            await bootstrap_owner_acl(db, RT_DATASET, dataset.id, sub)
+            await db.commit()
+        return _dataset_response(dataset, "Object Storage")
+    if not body.data_source_id or not body.schema_name or not body.table_name:
+        raise HTTPException(
+            status_code=400, detail="A table dataset needs a data source, schema and table."
+        )
     ds = await db.get(DataSource, body.data_source_id)
     if not ds:
         raise HTTPException(status_code=400, detail="Data source not found")
@@ -297,6 +337,7 @@ async def summarise_dataset(
     aggregate list, and the model query's response shape. A failure is classified like the others
     (`kind`: `request` for a bad column/aggregate, `data` for what the source refused).
     """
+    _reject_file_dataset(dataset, "Aggregating")
     try:
         summary = await query_dataset_summary(
             db,

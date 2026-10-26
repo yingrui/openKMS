@@ -1,7 +1,7 @@
 # Datasets — file datasets and versions
 
-Design note. **Not implemented.** A companion decision to [Ontology — objects, links,
-datasets](ontology.md): a dataset is the catalog entry for *data*, not necessarily for a *table*.
+Implemented. A companion to [Ontology — objects, links, datasets](ontology.md): a dataset is the
+catalog entry for *data*, not necessarily for a *table*.
 
 The trigger is MLOps: a training set is a file (parquet), not a table. It has to be browsable in the
 same Catalog as `factor_values`, downloadable by an agent, and **pinnable** — "model v7 was trained
@@ -243,6 +243,17 @@ on published ones.
 - **Schema is recorded, not enforced.** Adding a column later is the dataset owner's decision; the
   platform does not police compatibility.
 - **Deprecated versions are retained indefinitely.**
+
+## What shipped
+
+| Piece | Where |
+|-------|-------|
+| `datasets.kind`, seeded `Object Storage` source | migration `d1f2a3b4c5d6` |
+| `dataset_versions` (draft → published → deprecated), `dataset_version_files` | same migration |
+| Create/list/read versions, upload, remove, publish, deprecate, presigned URL, preview, row selection | `app/api/dataset_versions.py`, `app/services/data_layer/file_datasets.py` |
+| Guards: relationships, object-type binding, every row reader | `data_layer/joins.py`, `api/object_types.py`, `ontology/dataset_tables.py` |
+| Agent CLI | `datasets file-create \| versions \| version-open \| file-put \| file-get \| version-publish \| version-deprecate \| file-rows \| file-preview` |
+| Parquet support | `pyarrow` added to the backend |
 
 ## Still open
 

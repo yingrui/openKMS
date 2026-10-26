@@ -19,6 +19,7 @@ from app.services.acl.data_scope import bootstrap_owner_acl
 from app.services.ontology.ontology_type_scope import require_object_type_permission
 from app.services.acl.resource_acl_constants import PERM_READ, PERM_WRITE, RT_OBJECT_TYPE
 from app.models.data_source import DataSource
+from app.models.dataset import Dataset
 from app.models.link_instance import LinkInstance
 from app.services.ontology.neo4j_async import (
     NEO4J_ERRORS,
@@ -223,6 +224,21 @@ async def _taken_api_names(db: AsyncSession, *, exclude_id: str | None = None) -
     return set((await db.execute(query)).scalars().all())
 
 
+async def _reject_file_dataset(db: AsyncSession, dataset_id: str | None) -> None:
+    """An object type needs a key, MERGE and write-back; a file snapshot has none of them."""
+    if not dataset_id:
+        return
+    dataset = await db.get(Dataset, dataset_id)
+    if dataset is not None and (dataset.kind or "table") == "file":
+        raise HTTPException(
+            status_code=400,
+            detail=(
+                "An object type cannot be backed by a file dataset: objects need a key to identify "
+                "and write back, and a file snapshot is immutable."
+            ),
+        )
+
+
 @router.get("", response_model=ObjectTypeListResponse)
 async def list_object_types(
     request: Request,
@@ -301,6 +317,7 @@ async def create_object_type(
                 f"'{label_clash.name}' indexed before api_name existed. Pick another api_name."
             ),
         )
+    await _reject_file_dataset(db, body.dataset_id)
     p = request.state.openkms_jwt_payload
     sub = p.get("sub")
     uname = p.get("preferred_username") or p.get("name")
@@ -403,6 +420,7 @@ async def update_object_type(
     if body.description is not None:
         obj_type.description = body.description
     if body.dataset_id is not None:
+        await _reject_file_dataset(db, body.dataset_id)
         obj_type.dataset_id = body.dataset_id
     if body.is_master_data is not None:
         obj_type.is_master_data = body.is_master_data

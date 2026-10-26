@@ -179,3 +179,30 @@ null/distinct/min/max per column against the source.
   than hand-writing HTTP.
 - **Deleting a dataset** removes the catalog entry, not the table: `datasets delete --id DS_ID --yes`.
   Check `datasets joins list` and any model that scopes it first.
+
+
+## File datasets (training sets and other immutable artifacts)
+
+A **file dataset** is a catalog entry for immutable, versioned files rather than a table — a training
+slice, a monthly export, an artifact you want pinnable. It takes part in no relationship, backs no
+object type, and answers no SQL: reading is column and row selection.
+
+```
+datasets file-create --display-name training-set-5d          # catalog entry (kind=file)
+datasets version-open --id <dataset> --notes "2026Q3 冻结"     # → draft v1
+datasets file-put --id <dataset> --version 1 --path 2026-09.parquet
+datasets version-publish --id <dataset> --version 1           # freezes it, writes manifest.json
+datasets file-rows --id <dataset> --version 1 --columns ts_code,trade_date,label \
+                   --start 2026-09-20 --limit 100
+datasets file-get  --id <dataset> --version 1 --name 2026-09.parquet --out /tmp/  # verifies sha256
+```
+
+Rules worth knowing:
+
+- **draft → published is one-way.** A draft's files can be added and removed; publishing writes the
+  manifest and freezes it. More data afterwards means a new version.
+- **A draft cannot be pinned** — there is no manifest yet, and reads refuse it.
+- **Reuse, don't re-upload:** `datasets version-open --from-version 2` carries v2's files over by
+  reference, so a new month costs one new file, not a copy of the history.
+- **Deprecated versions are kept** and stay readable: a model can always be traced to the data it saw.
+- Recording a pin in a training run: `dataset=<name> version=<n> file=<name> sha256=<hash>`.
