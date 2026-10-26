@@ -734,7 +734,12 @@
     "fileName": "File",
     "download": "Download",
     "filterFrom": "From",
-    "query": "Query"
+    "query": "Query",
+    "versionLatest": "latest",
+    "versionFacts": "{{files}} files · {{rows}} rows · {{size}} · {{columns}} columns",
+    "versionPublishedAt": "published {{when}} by {{who}}",
+    "fileSampleSubtitle": "A sample of v{{version}} — {{rows}} rows, {{from}} → {{to}}",
+    "fileSampleHint": "This is a sample. The full data is taken as a version: download its files in the Versions tab."
   },
   "groups": {
     "title": "Groups",

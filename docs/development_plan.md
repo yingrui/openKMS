@@ -308,6 +308,28 @@ They are **not claimed to work**: this machine has no `pg_dump`, so only the pre
 refuses with an installation hint, verified). The drill is what turns a file into a backup, and until it
 prints `restore drill ok`, the honest state is untested.
 
+### Why the two Data pages diverged (2026-10)
+
+Side by side, the differences were three, and only one of them was a design decision:
+
+| | table | file (before) |
+|---|---|---|
+| card | `ds-table-wrap --flush --scroll` | `ds-table-wrap` |
+| cells | `formatValue` (instants, floats, dashes) | `String(value)` |
+| controls | a filter bar | none — it is a sample |
+
+The **cells** are the tell. `String('2026-08-03T00:00:00.000')` and `String(0.1734234234)` are what made the sample
+look like a different product; both pages read the same data. `formatCell` is shared now, with tests.
+
+The **card** was the table page's `--flush --scroll` — no border, and a footer inside a scrolling box, which is the
+opposite of the rule this file already established. Both are plain `ds-table-wrap`.
+
+Why it happened, plainly: I wrote the file page **from scratch** instead of generalising the table page, and then
+patched its shape four times in one afternoon (selector → toolbar → date range → sample) without ever re-reading the
+sibling. The structural cause is that `DatasetDetailDataTab` is 600 lines with its own filter bar, its own cell
+renderer and its own card modifiers — there was nothing to reuse, so the second consumer invented. **A component
+written twice will differ; the fix is a shared piece, not another patch.**
+
 ### A window query that actually returns the window (2026-10)
 
 Bounding the reads introduced a subtler bug than the one it fixed: `nrows = offset + limit + 1` truncates **before**

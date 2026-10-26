@@ -487,7 +487,9 @@ export function DatasetDataTab() {
                 );
               })}
             </div>
-            <div className="ds-table-wrap ds-table-wrap--flush ds-table-wrap--scroll">
+            {/* The app's table card: a border, and the pager as its footer. `--flush`/`--scroll` made this the one
+                Data page with different edges and a scrolling footer. */}
+            <div className="ds-table-wrap">
               <table className="console-table dataset-data-table">
                 <thead>
                   {table.getHeaderGroups().map((hg) => (
