@@ -37,16 +37,16 @@ dataset      the logical asset: name, description, owner, schema contract
     └ files  immutable data units, one per slice (e.g. one parquet per month)
 ```
 
-**Adding data is adding a file, not cutting a version.** A new month lands as a new file under the
-current version's successor; a version is cut when the business decides (a training snapshot, a
-schema change, a re-export) and is labelled by hand:
+**Adding data is adding a file, not cutting a version.** A new month lands as a new file; a version
+is cut when someone decides to freeze one (a training snapshot, a re-export):
 
 ```
-version 3  "2026Q3 训练集"   files: 2026-01 … 2026-09
+v3   notes: "2026Q3 冻结，用于 5 日 Top-50 模型第 7 版"   files: 2026-01 … 2026-09
 ```
 
-The version number is an auto-increment integer (safe in a storage key); the business name lives in
-`label`. Both are shown in the UI; only `version` appears in paths.
+The version **is** its integer — `v1`, `v2`, `v3`. There is no business label to keep in sync and no
+"current version" pointer: a consumer that needs a specific one asks for it (`--version 2`), and
+"latest" is just the highest number. `notes` is free text for the human who cut it.
 
 ### Versions are immutable — and files are shared, not copied
 
@@ -73,9 +73,7 @@ The manifest is the contract. It is written once when the version is cut and nev
 {
   "dataset_id": "…",
   "version": 2,
-  "label": "2026Q3 训练集",
-  "notes": "加入 turnover 相关列之后第一次冻结",
-  "supersedes": 1,
+  "notes": "2026Q3 冻结，用于 5 日 Top-50 模型第 7 版",
   "created_by": "yingrui",
   "created_at": "2026-10-26T09:12:00Z",
   "schema": [
@@ -101,8 +99,9 @@ Two properties earn their keep:
 
 - **`date_range` per file** lets a read skip whole slices — "only June to September" never opens
   January's object;
-- **`schema` on the version** is checked before any data is read, so a model that expects a column
-  fails with a clear message rather than a KeyError three layers down.
+- **`schema` on the version** is *recorded*, not enforced. It exists so a reader knows what to
+  expect; whether a later file may add a column is the dataset owner's call, not a rule the platform
+  applies. A model that finds a missing column fails loudly on its own side.
 
 `sha256` here is the **byte** hash: it proves a download is intact. It is *not* a content identity —
 two parquet writes of the same rows differ by writer version and compression. "Same data" is
@@ -111,9 +110,10 @@ answered by the version + file set, which is why pinning is `(dataset_id, versio
 ## Data model
 
 ```sql
--- an object-storage connection, same credential encryption/test as the other kinds
-data_sources.kind: postgresql | neo4j | object_storage
-    -- bucket / prefix / region live in options
+-- One built-in source, no configuration: the platform's own MinIO bucket.
+-- It is seeded, not created by a user, and it has no credentials form or "test connection" —
+-- the deployment already holds those (OPENKMS_S3_*). Every file dataset points at it.
+data_sources  (kind='object_storage', name='Object Storage')
 
 datasets
     + kind             -- 'table' | 'file'
@@ -123,10 +123,8 @@ datasets
 
 dataset_versions
     id, dataset_id → datasets
-    version       int            -- auto-increment per dataset
-    label         text           -- business name
-    notes         text
-    supersedes    int | null
+    version       int            -- auto-increment per dataset; it *is* the version ("v3")
+    notes         text           -- why it was cut, written by whoever cut it
     manifest_key  text           -- the object holding the manifest above
     schema        jsonb          -- column contract, copied out of the manifest for querying
     row_count     bigint, byte_size bigint, file_count int
@@ -165,7 +163,7 @@ POST   /api/datasets                        {kind: "file", ...}      # catalog e
 GET    /api/datasets?kind=file
 GET    /api/datasets/{id}/versions
 GET    /api/datasets/{id}/versions/{version}          # manifest + files
-POST   /api/datasets/{id}/versions                    # cut a version: {label, notes, files[]}
+POST   /api/datasets/{id}/versions                    # cut a version: {notes, files[]} → {version: 3}
 GET    /api/datasets/{id}/versions/{v}/files/{name}/url  # presigned download
 
 # data
@@ -182,7 +180,7 @@ CLI (skill), because an agent has to be able to do all of this without a browser
 
 ```
 datasets file put    --id <dataset> --version <v> --path ./2026-10.parquet   # presigned, direct
-datasets version cut --id <dataset> --label "2026Q4" --notes "…" --include 1,2,3
+datasets version cut --id <dataset> --notes "2026Q4 冻结" --include 1,2,3
 datasets file get    --id <dataset> --version 3 --out ./cache/          # honours file date_range
 datasets file list   --id <dataset> --version 3
 ```
@@ -191,8 +189,8 @@ datasets file list   --id <dataset> --version 3
 
 Datasets list gains a **kind badge**. A file dataset's detail page has Overview · Versions · Data
 (preview + download) · Usage · Sharing, and hides Columns (live) and Relationships, which have no
-meaning for a file. Cutting a version is an explicit button with a required label — the version list
-is the audit trail of what was frozen when, and by whom.
+meaning for a file. Cutting a version is an explicit button with an optional note; the version list
+(v1, v2, v3 with file counts, total rows, who and when) is the audit trail of what was frozen.
 
 ## Deletion and retention
 
@@ -210,11 +208,19 @@ is the audit trail of what was frozen when, and by whom.
 - openKMS does not record which MLflow run used a version. The consumer records that (the training
   script knows its run id), which keeps openKMS from mirroring MLflow's lineage.
 
-## Open questions
+## Decided
 
-1. Version labels: free text, or constrained (`YYYYQn`) so lists sort meaningfully?
-2. Do we need "restore a deprecated version as current" (a pointer), or is "latest is current" enough?
-3. Object-storage source: one connection per bucket, or bucket-per-dataset inside one connection?
-4. Schema contract strictness: new columns in a later file — allowed (superset) or does it force a new
-   *dataset*? The current rule elsewhere is "new columns = a different dataset", which would mean a
-   full re-export of history; worth re-checking when the first real schema change arrives.
+- **Version is an integer.** No label, no "current version" pointer; a consumer asks for the version
+  it needs, and "latest" is the highest number.
+- **One object-storage source, unconfigured** — the deployment's MinIO bucket, seeded rather than
+  entered by a user. A dataset's data lives under `datasets/<dataset_id>/` in that bucket.
+- **Schema is recorded, not enforced.** Adding a column later is the dataset owner's decision; the
+  platform does not police compatibility.
+
+## Still open
+
+1. Can a version's file set be extended after it is cut? The design says no (immutability); the
+   workflow may want "draft version, add files, then publish" — decide before the UI is built.
+2. Retention: the design keeps deprecated versions forever by default. If that becomes expensive,
+   the rule should be "delete only files no version's manifest references", which is already
+   computable.
