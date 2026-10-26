@@ -32,8 +32,8 @@ and its own design note.
 ## Three layers
 
 ```
-dataset      the logical asset: name, description, owner, schema contract
- └ versions  a business milestone — immutable, labelled, notes, supersedes
+dataset      the logical asset: name, description, owner, recorded schema
+ └ versions  a numbered milestone — draft while being assembled, immutable once published
     └ files  immutable data units, one per slice (e.g. one parquet per month)
 ```
 
@@ -48,10 +48,24 @@ The version **is** its integer — `v1`, `v2`, `v3`. There is no business label 
 "current version" pointer: a consumer that needs a specific one asks for it (`--version 2`), and
 "latest" is just the highest number. `notes` is free text for the human who cut it.
 
-### Versions are immutable — and files are shared, not copied
+### A version is a draft until it is published
 
-A version's file set never changes. A newer version **reuses the files it did not change** by
-referencing their existing keys, so storage grows with the data, not with the square of it:
+Assembling a version is iterative: create `v3` as a **draft**, add the files as they are produced,
+look at the totals, then **publish**. Only publishing freezes it.
+
+| State | File set | Manifest | Pinnable (readable by a consumer) |
+|---|---|---|---|
+| `draft` | mutable — files added, removed | none yet | no |
+| `published` | frozen | written once | yes |
+| `deprecated` | frozen (unchanged) | unchanged | yes — a consumer may still ask for it by number |
+
+A published version's file set never changes; adding data afterwards means `v4`. Deprecating is a
+label, not a change: deprecated versions are kept (see retention).
+
+### Files are shared, not copied
+
+A newer version **reuses the files it did not change** by referencing their existing keys, so
+storage grows with the data, not with the square of it:
 
 ```
 datasets/<dataset_id>/versions/1/files/2026-01.parquet
@@ -67,7 +81,8 @@ Version 2's manifest points `2026-01` and `2026-02` at **version 1's** keys. Con
 
 ### manifest.json
 
-The manifest is the contract. It is written once when the version is cut and never edited.
+The manifest is the contract. It is written **at publish** and never edited; a draft has no manifest,
+which is exactly why a draft cannot be pinned.
 
 ```json
 {
@@ -125,11 +140,12 @@ dataset_versions
     id, dataset_id → datasets
     version       int            -- auto-increment per dataset; it *is* the version ("v3")
     notes         text           -- why it was cut, written by whoever cut it
-    manifest_key  text           -- the object holding the manifest above
+    status        text           -- draft | published | deprecated
+    manifest_key  text           -- null until published, then the object holding the manifest
     schema        jsonb          -- column contract, copied out of the manifest for querying
     row_count     bigint, byte_size bigint, file_count int
     date_from, date_to date      -- overall coverage
-    status        text           -- active | deprecated
+    published_at  timestamptz    -- null while draft
     created_by, created_by_name, created_at
     UNIQUE (dataset_id, version)
 
@@ -138,6 +154,7 @@ dataset_version_files
     name, storage_key, sha256
     rows, bytes, date_from, date_to
     reused_from_version int | null
+    created_by, created_at          -- a draft can be filled by more than one person
     PRIMARY KEY (version_id, name)
 ```
 
@@ -163,7 +180,11 @@ POST   /api/datasets                        {kind: "file", ...}      # catalog e
 GET    /api/datasets?kind=file
 GET    /api/datasets/{id}/versions
 GET    /api/datasets/{id}/versions/{version}          # manifest + files
-POST   /api/datasets/{id}/versions                    # cut a version: {notes, files[]} → {version: 3}
+POST   /api/datasets/{id}/versions                    # open a draft: {notes} → {version: 3, status: draft}
+POST   /api/datasets/{id}/versions/{v}/files          # add a file to a draft
+DELETE /api/datasets/{id}/versions/{v}/files/{name}   # only while draft
+POST   /api/datasets/{id}/versions/{v}/publish        # freeze: writes the manifest
+POST   /api/datasets/{id}/versions/{v}/deprecate
 GET    /api/datasets/{id}/versions/{v}/files/{name}/url  # presigned download
 
 # data
@@ -179,26 +200,29 @@ split is what makes "agent uploads a 500 MB parquet" workable.
 CLI (skill), because an agent has to be able to do all of this without a browser:
 
 ```
-datasets file put    --id <dataset> --version <v> --path ./2026-10.parquet   # presigned, direct
-datasets version cut --id <dataset> --notes "2026Q4 冻结" --include 1,2,3
-datasets file get    --id <dataset> --version 3 --out ./cache/          # honours file date_range
-datasets file list   --id <dataset> --version 3
+datasets version create --id <dataset> --notes "2026Q4 数据入湖"        # → draft v3
+datasets file put      --id <dataset> --version 3 --path ./2026-10.parquet   # presigned, direct
+datasets version publish --id <dataset> --version 3
+datasets version deprecate --id <dataset> --version 2
+datasets file get      --id <dataset> --version 3 --out ./cache/        # honours file date_range
+datasets file list     --id <dataset> --version 3
 ```
 
 ## UI
 
 Datasets list gains a **kind badge**. A file dataset's detail page has Overview · Versions · Data
 (preview + download) · Usage · Sharing, and hides Columns (live) and Relationships, which have no
-meaning for a file. Cutting a version is an explicit button with an optional note; the version list
-(v1, v2, v3 with file counts, total rows, who and when) is the audit trail of what was frozen.
+meaning for a file. The version list reads like a ledger — `v3 draft · 8 files · 900k rows`, `v2
+published 2026-10-01 · used by 2 versions` — with *add file* and *publish* on drafts and *deprecate*
+on published ones.
 
 ## Deletion and retention
 
-- A version can be `deprecated` but stays addressable; nothing that has been used for a training
-  snapshot is hard-deleted by policy (that decision belongs to the data owner, not to a lifecycle
-  rule);
-- a file is deletable only when **no version's manifest references it**;
-- the reference check runs on delete and is surfaced in the UI as "used by versions 2, 3".
+- **Deprecated versions are kept.** They stay readable and pinnable, so a model can always be traced
+  back to the data it saw. Nothing expires by policy.
+- A draft may be deleted outright — it was never publishable, so nothing can reference it.
+- A file becomes deletable only when **no published manifest references it**; the reference check
+  runs on delete and is surfaced as "used by versions 2, 3".
 
 ## Non-goals
 
@@ -212,15 +236,17 @@ meaning for a file. Cutting a version is an explicit button with an optional not
 
 - **Version is an integer.** No label, no "current version" pointer; a consumer asks for the version
   it needs, and "latest" is the highest number.
+- **Draft → published.** A version is assembled as a draft (files added, removed), then published,
+  and publishing is what freezes it and writes the manifest.
 - **One object-storage source, unconfigured** — the deployment's MinIO bucket, seeded rather than
   entered by a user. A dataset's data lives under `datasets/<dataset_id>/` in that bucket.
 - **Schema is recorded, not enforced.** Adding a column later is the dataset owner's decision; the
   platform does not police compatibility.
+- **Deprecated versions are retained indefinitely.**
 
 ## Still open
 
-1. Can a version's file set be extended after it is cut? The design says no (immutability); the
-   workflow may want "draft version, add files, then publish" — decide before the UI is built.
-2. Retention: the design keeps deprecated versions forever by default. If that becomes expensive,
-   the rule should be "delete only files no version's manifest references", which is already
-   computable.
+1. Who may publish? Opening a draft is `data:write`, but publishing is the moment a training set
+   becomes pinnable — it may deserve its own permission once more than one person touches a dataset.
+2. Two people adding files to the same draft: last-writer-wins is fine for now, but the UI should
+   show who added which file (`dataset_version_files.created_by`) so a surprise is explainable.
