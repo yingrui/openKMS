@@ -308,6 +308,24 @@ They are **not claimed to work**: this machine has no `pg_dump`, so only the pre
 refuses with an installation hint, verified). The drill is what turns a file into a backup, and until it
 prints `restore drill ok`, the honest state is untested.
 
+### Bounded reads, a real schema, and the files themselves (2026-10)
+
+Three follow-ups from using the file dataset's page.
+
+- **Memory.** `rows()` downloaded each file whole and parsed it whole — a season of tick data would have OOMed the
+  API from a grid asking for 100 rows. The bounds are in the reader now: `columns` prunes at the parser, `nrows`
+  caps the rows (`offset + limit + 1`), files whose recorded date range misses the window are skipped without being
+  read, and a file over 512 MB is refused **by name**. Parquet row-group filters would be the next step, and are not
+  guessed: they need the date column's name, which a version does not store. Tests cover the bounds and the refusal.
+- **Columns.** The tab asked a SQL source for metadata, so a file dataset got "Metadata only supported for
+  PostgreSQL sources". It reads the **version's recorded schema** now — the same truth, captured at upload.
+- **Files.** The versions table expands: each file's rows, date range and size, with a presigned download. The
+  download path was wrong in the first pass (`…/download-url` — the endpoint is `…/files/{name}/url`), which the
+  live check caught: 200, two files, 112,106 + 96,295 rows.
+
+Not built, and worth saying: there is **no query UI** on the Data tab (a version selector and 100 rows), and the
+API's `start`/`end` columns-and-date selection has no inputs yet.
+
 ### A detail page that knows what kind of dataset it is (2026-10)
 
 The Datasets app holds two kinds — `table` and `file` (immutable versions in the bucket) — and the frontend knew

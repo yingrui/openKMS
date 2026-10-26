@@ -727,7 +727,12 @@
     "versionWhen": "Published",
     "fileDataHint": "Rows from a published version — column and date selection out of the files, not SQL.",
     "fileRowsScanned": "{{count}} rows of {{rows}} scanned in this version.",
-    "noPublishedVersion": "No published version yet"
+    "noPublishedVersion": "No published version yet",
+    "fileColumnsHint": "The schema a version recorded when its files were read.",
+    "colType": "Type",
+    "noFiles": "This version has no files.",
+    "fileName": "File",
+    "download": "Download"
   },
   "groups": {
     "title": "Groups",

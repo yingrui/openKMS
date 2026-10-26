@@ -10,6 +10,7 @@ import {
 } from '../../data/datasetVersionsApi';
 import { EmptyState } from '../../styles/design-system';
 import { EntityViewHeader, EntityViewPanel } from './EntityViewShell';
+import { DatasetColumnsTab } from './DatasetColumnsTab';
 import { DatasetDataTab } from './DatasetDetailDataTab';
 import { useDatasetDetail } from './useDatasetDetail';
 
@@ -144,5 +145,97 @@ export function DatasetDataRoute() {
     <FileDatasetData datasetId={dataset.id} />
   ) : (
     <DatasetDataTab />
+  );
+}
+
+/**
+ * The `/columns` route for a file dataset: the schema a version recorded when its files were read.
+ *
+ * The table version asks the SQL source for its columns; a bucket has no source to ask, and the API says so
+ * ("Metadata only supported for PostgreSQL sources"). A version's manifest already knows its columns — that is
+ * the same truth, recorded at upload instead of inferred from a table.
+ */
+export function DatasetColumnsRoute() {
+  const { dataset } = useDatasetDetail();
+  return dataset.kind === 'file' ? (
+    <FileDatasetColumns datasetId={dataset.id} />
+  ) : (
+    <DatasetColumnsTab />
+  );
+}
+
+function FileDatasetColumns({ datasetId }: { datasetId: string }) {
+  const { t } = useTranslation('ontology');
+  const [versions, setVersions] = useState<DatasetVersion[]>([]);
+  const [version, setVersion] = useState<number | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let cancelled = false;
+    void fetchDatasetVersions(datasetId)
+      .then((all) => {
+        if (cancelled) return;
+        setVersions(all);
+        setVersion(all.length > 0 ? all[all.length - 1].version : null);
+      })
+      .catch((e) => toast.error(e instanceof Error ? e.message : t('datasets.loadFailed')))
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [datasetId, t]);
+
+  if (loading) return <Loader2 size={20} className="spin" aria-hidden />;
+
+  const selected = versions.find((v) => v.version === version) ?? null;
+
+  return (
+    <>
+      <EntityViewHeader
+        title={t('datasets.columns')}
+        subtitle={t('datasets.fileColumnsHint')}
+        actions={
+          versions.length > 0 ? (
+            <label className="console-datasets-filter">
+              {t('datasets.version')}
+              {/* ds-control-exempt: `.console-datasets-filter` styles this select (its own sheet) */}
+              <select value={version ?? ''} onChange={(e) => setVersion(Number(e.target.value))}>
+                {[...versions].reverse().map((v) => (
+                  <option key={v.version} value={v.version}>
+                    v{v.version}
+                  </option>
+                ))}
+              </select>
+            </label>
+          ) : undefined
+        }
+      />
+      <EntityViewPanel>
+        {!selected || selected.columns.length === 0 ? (
+          <EmptyState title={t('datasets.noVersions')} description={t('datasets.versionsHint')} />
+        ) : (
+          <div className="ds-table-wrap">
+            <table className="console-table">
+              <thead>
+                <tr>
+                  <th>{t('datasets.colName')}</th>
+                  <th>{t('datasets.colType')}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {selected.columns.map((column) => (
+                  <tr key={column.name}>
+                    <td>{column.name}</td>
+                    <td>{column.type}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </EntityViewPanel>
+    </>
   );
 }

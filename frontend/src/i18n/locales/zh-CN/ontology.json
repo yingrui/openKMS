@@ -720,7 +720,12 @@
     "versionWhen": "发布时间",
     "fileDataHint": "来自已发布版本的行——直接从文件里按列/日期取，不是 SQL。",
     "fileRowsScanned": "本版本共 {{rows}} 行，当前取 {{count}} 行。",
-    "noPublishedVersion": "还没有已发布的版本"
+    "noPublishedVersion": "还没有已发布的版本",
+    "fileColumnsHint": "版本在读取文件时记录下来的列结构。",
+    "colType": "类型",
+    "noFiles": "这个版本还没有文件。",
+    "fileName": "文件",
+    "download": "下载"
   },
   "groups": {
     "title": "分组",

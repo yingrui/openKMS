@@ -34,6 +34,10 @@ DATE_COLUMN_CANDIDATES = ("trade_date", "date", "dt", "as_of_date", "asof", "tim
 
 SUPPORTED_SUFFIXES = (".parquet", ".csv", ".jsonl", ".json")
 
+#: A single file is downloaded whole before it is parsed (parquet needs a seekable stream), so its size is the
+#: memory floor. Refuse the absurd ones by name instead of letting the process discover the limit.
+MAX_READ_BYTES = 512 * 1024 * 1024
+
 
 class FileDatasetError(ValueError):
     """A request the file dataset layer refuses; surfaced as HTTP 400."""
@@ -54,19 +58,44 @@ def file_key(dataset_id: str, version: int, name: str) -> str:
 # --- reading a file --------------------------------------------------------------------
 
 
-def read_file_bytes(content: bytes, name: str, *, nrows: int | None = None) -> pd.DataFrame:
-    """Parse an uploaded/previewed file. Parquet is the format training sets are written in."""
+def read_file_bytes(
+    content: bytes,
+    name: str,
+    *,
+    nrows: int | None = None,
+    columns: list[str] | None = None,
+    filters: list[tuple[str, str, Any]] | None = None,
+) -> pd.DataFrame:
+    """Parse a file with the bounds the caller can afford — never the whole frame by accident.
+
+    Reading is the expensive part, so the pruning happens **in the reader**: `columns` and `filters` go to
+    pyarrow for parquet (column pruning and row-group skipping), `usecols`/`nrows` to the CSV parser. A file
+    dataset can hold a season of tick data; a grid asking for 100 rows must not materialise all of it.
+    """
+    if len(content) > MAX_READ_BYTES:
+        raise FileDatasetError(
+            f"{name} is {len(content) // (1024 * 1024)} MB, over the {MAX_READ_BYTES // (1024 * 1024)} MB read "
+            "limit. Narrow the version's files, or raise MAX_READ_BYTES deliberately."
+        )
     suffix = ("." + name.rsplit(".", 1)[-1].lower()) if "." in name else ""
     if suffix not in SUPPORTED_SUFFIXES:
         raise FileDatasetError(f"Unsupported file type '{name}'. Use parquet, csv, jsonl or json.")
     try:
         if suffix == ".parquet":
-            return pd.read_parquet(io.BytesIO(content)).head(nrows) if nrows else pd.read_parquet(io.BytesIO(content))
+            frame = pd.read_parquet(
+                io.BytesIO(content), columns=columns, filters=filters or None
+            )
+            return frame.head(nrows) if nrows else frame
         if suffix == ".csv":
-            return pd.read_csv(io.BytesIO(content), nrows=nrows)
+            frame = pd.read_csv(io.BytesIO(content), nrows=nrows, usecols=columns or None)
+            return frame
         if suffix == ".jsonl":
-            return pd.read_json(io.BytesIO(content), lines=True, nrows=nrows)
-        return pd.read_json(io.BytesIO(content)).head(nrows) if nrows else pd.read_json(io.BytesIO(content))
+            frame = pd.read_json(io.BytesIO(content), lines=True, nrows=nrows)
+        else:
+            frame = pd.read_json(io.BytesIO(content))
+            if nrows:
+                frame = frame.head(nrows)
+        return frame[[c for c in (columns or []) if c in frame.columns]] if columns else frame
     except FileDatasetError:
         raise
     except Exception as exc:  # a corrupt file is the uploader's problem, not a server error
@@ -452,7 +481,15 @@ async def rows(
             continue
         if end and f.date_from and f.date_from > end:
             continue
-        frame = read_file_bytes(get_object(f.storage_key), f.name)
+        # Read only what this page needs: `columns` prunes at the parser, `nrows` bounds the row count, and the
+        # per-file date range above skips whole files. (Parquet row-group filters would need the date column's
+        # name, which a version does not store — the follow-up, not a guess.)
+        frame = read_file_bytes(
+            get_object(f.storage_key),
+            f.name,
+            nrows=offset + limit + 1,
+            columns=columns,
+        )
         date_column = _date_column(frame)
         if date_column and (start or end):
             values = pd.to_datetime(frame[date_column], errors="coerce")

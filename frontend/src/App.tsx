@@ -282,9 +282,9 @@ const DatasetDataRoute = lazy(() =>
     default: m.DatasetDataRoute,
   })),
 );
-const DatasetColumnsTab = lazy(() =>
-  import('./pages/ontology-manager/DatasetColumnsTab').then((m) => ({
-    default: m.DatasetColumnsTab,
+const DatasetColumnsRoute = lazy(() =>
+  import('./pages/ontology-manager/FileDatasetData').then((m) => ({
+    default: m.DatasetColumnsRoute,
   })),
 );
 const DatasetRelationshipsTab = lazy(() =>
@@ -475,7 +475,7 @@ function App() {
             <Route path="datasets/:id" element={<DatasetManagerDetailPage />}>
               <Route index element={<DatasetOverviewTab />} />
               <Route path="data" element={<DatasetDataRoute />} />
-              <Route path="columns" element={<DatasetColumnsTab />} />
+              <Route path="columns" element={<DatasetColumnsRoute />} />
               <Route path="relationships" element={<DatasetRelationshipsTab />} />
               <Route path="quality" element={<DatasetQualityTab />} />
               <Route path="versions" element={<DatasetVersionsTab />} />
