@@ -171,7 +171,7 @@ export function StoryFindingView({
               )}
             </>
           ) : (
-            <div className="ds-table-wrap">
+            <div className="ds-table-wrap ds-table-wrap--flush">
               <table className="console-table">
                 <thead>
                   <tr>

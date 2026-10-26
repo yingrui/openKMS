@@ -308,6 +308,18 @@ They are **not claimed to work**: this machine has no `pg_dump`, so only the pre
 refuses with an installation hint, verified). The drill is what turns a file into a backup, and until it
 prints `restore drill ok`, the honest state is untested.
 
+### Two rounded boxes in one card (2026-10)
+
+The Data page showed a rounded card inside a rounded card. `EntityViewPanel` renders `.account-card` — border,
+`--radius-lg`, shadow, padding — and the table wrap inside it kept its own border and radius. `--flush` exists for
+exactly this ("drop chrome when nested inside an outer card"), and the table page had used it until I removed the
+modifier one step earlier while chasing "the Data pages should look the same". I fixed the symptom by making the two
+pages match and introduced the cause.
+
+Seven places had it, not two: the two Data pages, the quality rules tab, the quality rule's run history, the versions
+tab and the report finding view. All flushed, and **§20** of the style checks fails if one comes back — a nested table
+card is a three-line grep, and the message says what it looks like.
+
 ### Why the two Data pages diverged (2026-10)
 
 Side by side, the differences were three, and only one of them was a design decision:

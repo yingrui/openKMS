@@ -15,6 +15,8 @@ export interface DatasetVersion {
   published_at: string | null;
   created_by_name: string | null;
   created_at: string;
+  /** Which recorded column the range was guessed from at upload; null means there is no range to speak of. */
+  date_column: string | null;
 }
 
 /** Rows selected out of a version: column and row selection, never SQL and never a join. */

@@ -236,6 +236,15 @@ if ! grep -q "flex-shrink: 0" src/styles/design-system/_table-wrap.scss; then
   report "_table-wrap.scss: .ds-table-wrap must declare 'flex-shrink: 0' — it clips (overflow-y: hidden) and is used as a flex item, so it gets squeezed and the clip silently eats its last rows"
 fi
 
+
+# --- 20. A table card nested in a panel -----------------------------------------------------
+# `EntityViewPanel` is `.account-card` — rounded, bordered, padded. A `ds-table-wrap` inside it keeps its own
+# border and radius, so the page shows a rounded card inside a rounded card. `--flush` exists for exactly this
+# ("drop chrome when nested inside an outer card") and is what every other nested table uses.
+if ! python3 scripts/check-panel-tables.py; then
+  status=1
+fi
+
 if [ "$status" -eq 0 ]; then
   echo "check-shared-styles: OK"
 fi

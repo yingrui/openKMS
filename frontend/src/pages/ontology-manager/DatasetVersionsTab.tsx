@@ -104,9 +104,6 @@ export function DatasetVersionsTab() {
                   size: bytes(version.byte_size),
                   columns: version.columns.length,
                 })}
-                {version.date_from && version.date_to
-                  ? ` · ${version.date_from} → ${version.date_to}`
-                  : ''}
                 {version.published_at
                   ? ` · ${t('datasets.versionPublishedAt', {
                       when: new Date(version.published_at).toLocaleString(),
@@ -119,13 +116,12 @@ export function DatasetVersionsTab() {
               {files.length === 0 ? (
                 <p className="page-subtitle">{t('datasets.noFiles')}</p>
               ) : (
-                <div className="ds-table-wrap">
+                <div className="ds-table-wrap ds-table-wrap--flush">
                   <table className="console-table">
                     <thead>
                       <tr>
                         <th>{t('datasets.fileName')}</th>
                         <th>{t('datasets.versionRows')}</th>
-                        <th>{t('datasets.versionRange')}</th>
                         <th>{t('datasets.versionSize')}</th>
                         <th className="console-table-actions">{t('shared.actions')}</th>
                       </tr>
@@ -133,13 +129,17 @@ export function DatasetVersionsTab() {
                     <tbody>
                       {files.map((file) => (
                         <tr key={file.name}>
-                          <td>{file.name}</td>
-                          <td>{file.rows.toLocaleString()}</td>
                           <td>
-                            {file.date_from && file.date_to
-                              ? `${file.date_from} → ${file.date_to}`
-                              : t('datasets.dash')}
+                            {file.name}
+                            {/* A note, not a field: this came from a column-name guess at upload. */}
+                            {file.date_from && file.date_to ? (
+                              <span className="page-subtitle">
+                                {' '}
+                                · {file.date_from} → {file.date_to}
+                              </span>
+                            ) : null}
                           </td>
+                          <td>{file.rows.toLocaleString()}</td>
                           <td>{bytes(file.bytes)}</td>
                           <td className="console-table-actions">
                             <button

@@ -72,15 +72,13 @@ export function FileDatasetData({ datasetId }: { datasetId: string }) {
         subtitle={t('datasets.fileSampleSubtitle', {
           version: version.version,
           rows: version.row_count.toLocaleString(),
-          from: version.date_from ?? '—',
-          to: version.date_to ?? '—',
         })}
       />
       <EntityViewPanel>
         {rows === null || rows.rows.length === 0 ? (
           <EmptyState title={t('datasets.emptyRows')} description={t('datasets.versionsHint')} />
         ) : (
-          <div className="ds-table-wrap">
+          <div className="ds-table-wrap ds-table-wrap--flush">
             <table className="console-table">
               <thead>
                 <tr>
@@ -174,7 +172,7 @@ function FileDatasetColumns({ datasetId }: { datasetId: string }) {
         {!selected || selected.columns.length === 0 ? (
           <EmptyState title={t('datasets.noVersions')} description={t('datasets.versionsHint')} />
         ) : (
-          <div className="ds-table-wrap">
+          <div className="ds-table-wrap ds-table-wrap--flush">
             <table className="console-table">
               <thead>
                 <tr>

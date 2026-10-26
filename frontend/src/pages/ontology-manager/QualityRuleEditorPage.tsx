@@ -556,7 +556,7 @@ export function QualityRuleEditorPage() {
                 </details>
               )}
               {runs.length > 1 && (
-                <div className="ds-table-wrap">
+                <div className="ds-table-wrap ds-table-wrap--flush">
                   <table className="console-table">
                     <thead>
                       <tr>

@@ -731,7 +731,7 @@
     "versionLatest": "最新",
     "versionFacts": "{{files}} 个文件 · {{rows}} 行 · {{size}} · {{columns}} 列",
     "versionPublishedAt": "{{when}} 由 {{who}} 发布",
-    "fileSampleSubtitle": "v{{version}} 的示例——共 {{rows}} 行，{{from}} → {{to}}",
+    "fileSampleSubtitle": "v{{version}} 的示例——该版本共 {{rows}} 行",
     "fileSampleHint": "这里只是示例。完整数据请按版本取：在「版本」标签里下载文件。"
   },
   "groups": {

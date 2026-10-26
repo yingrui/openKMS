@@ -105,7 +105,7 @@ export function DatasetQualityTab() {
         {rules.length === 0 ? (
           <EmptyState title={t('datasets.qualityEmpty')} description={t('datasets.qualityHint')} />
         ) : (
-          <div className="ds-table-wrap">
+          <div className="ds-table-wrap ds-table-wrap--flush">
             <table className="console-table">
               <thead>
                 <tr>
