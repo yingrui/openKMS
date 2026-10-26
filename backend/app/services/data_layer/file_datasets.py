@@ -102,6 +102,69 @@ def read_file_bytes(
         raise FileDatasetError(f"Failed to parse {name}: {exc}") from exc
 
 
+def date_column_of(columns: list[dict]) -> str | None:
+    """Which recorded column carries the date — the candidate list, matched against what the version stored."""
+    names = {entry.get("name") for entry in columns or []}
+    return next((c for c in DATE_COLUMN_CANDIDATES if c in names), None)
+
+
+def iter_filtered_frames(
+    content: bytes,
+    name: str,
+    *,
+    columns: list[str] | None,
+    start: date | None,
+    end: date | None,
+    date_column: str | None,
+    need: int,
+):
+    """Yield frames from one file that fall inside the window, ~50k rows at a time.
+
+    A window is not "the first N rows": the rows it wants can be anywhere in the file, and a `nrows` cap before
+    the filter silently returns nothing for any window that does not begin at the top. Bounded memory and a
+    correct answer need both halves — chunked reads, a per-chunk filter, and a stop once `need` is satisfied.
+    """
+    suffix = ("." + name.rsplit(".", 1)[-1].lower()) if "." in name else ""
+    if len(content) > MAX_READ_BYTES:
+        raise FileDatasetError(
+            f"{name} is {len(content) // (1024 * 1024)} MB, over the {MAX_READ_BYTES // (1024 * 1024)} MB read "
+            "limit. Narrow the version's files, or raise MAX_READ_BYTES deliberately."
+        )
+    if suffix not in SUPPORTED_SUFFIXES:
+        raise FileDatasetError(f"Unsupported file type '{name}'. Use parquet, csv, jsonl or json.")
+    buffer = io.BytesIO(content)
+    produced = 0
+    try:
+        if suffix == ".parquet":
+            import pyarrow.parquet as pq
+
+            # Batches, with `columns` pruned before decompression.
+            chunks = (b.to_pandas() for b in pq.ParquetFile(buffer).iter_batches(batch_size=50_000, columns=columns or None))
+        elif suffix == ".csv":
+            chunks = pd.read_csv(buffer, usecols=columns or None, chunksize=50_000)
+        elif suffix == ".jsonl":
+            chunks = [pd.read_json(buffer, lines=True)]
+        else:
+            chunks = [pd.read_json(buffer)]
+        for frame in chunks:
+            if date_column and (start or end) and date_column in frame.columns:
+                values = pd.to_datetime(frame[date_column], errors="coerce")
+                if start:
+                    frame = frame[values >= pd.Timestamp(start)]
+                if end:
+                    frame = frame[values <= pd.Timestamp(end)]
+            if frame.empty:
+                continue
+            yield frame
+            produced += len(frame)
+            if produced >= need:
+                return
+    except FileDatasetError:
+        raise
+    except Exception as exc:  # a corrupt file is the uploader's problem, not a server error
+        raise FileDatasetError(f"Failed to parse {name}: {exc}") from exc
+
+
 def _json_type(dtype: Any) -> str:
     if pd.api.types.is_integer_dtype(dtype):
         return "integer"
@@ -474,35 +537,35 @@ async def rows(
         if unknown:
             raise FileDatasetError(f"not in this version: {', '.join(sorted(unknown))}")
 
+    date_column = date_column_of(version.columns or [])
     collected: list[pd.DataFrame] = []
+    skip = offset
     produced = 0
     for f in files:
         if start and f.date_to and f.date_to < start:
             continue
         if end and f.date_from and f.date_from > end:
             continue
-        # Read only what this page needs: `columns` prunes at the parser, `nrows` bounds the row count, and the
-        # per-file date range above skips whole files. (Parquet row-group filters would need the date column's
-        # name, which a version does not store — the follow-up, not a guess.)
-        frame = read_file_bytes(
+        # Chunked, filtered, and stopped once this page is full: a window can start anywhere in the file, so a
+        # `nrows` cap before the filter is not an optimisation, it is a wrong answer.
+        for frame in iter_filtered_frames(
             get_object(f.storage_key),
             f.name,
-            nrows=offset + limit + 1,
             columns=columns,
-        )
-        date_column = _date_column(frame)
-        if date_column and (start or end):
-            values = pd.to_datetime(frame[date_column], errors="coerce")
-            if start:
-                frame = frame[values >= pd.Timestamp(start)]
-            if end:
-                frame = frame[values <= pd.Timestamp(end)]
-        if columns:
-            frame = frame[[c for c in columns if c in frame.columns]]
-        produced += len(frame)
-        if produced > offset:
-            collected.append(frame)
-        if produced >= offset + limit:
+            start=start,
+            end=end,
+            date_column=date_column,
+            need=offset + limit + 1,
+        ):
+            if skip >= len(frame):
+                skip -= len(frame)
+                continue
+            collected.append(frame.iloc[skip:])
+            skip = 0
+            produced += len(collected[-1])
+            if produced >= limit:
+                break
+        if produced >= limit:
             break
 
     if not collected:

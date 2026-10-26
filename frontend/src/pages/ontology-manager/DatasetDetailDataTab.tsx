@@ -36,6 +36,7 @@ import { rangeError, rangeToValues } from './dateRange';
 import { SaveFindingDialog } from './SaveFindingDialog';
 import { datasetFindingDraft } from './findingDraft';
 import { EntityViewHeader, EntityViewPanel } from './EntityViewShell';
+import { Pagination } from '../../styles/design-system';
 
 const UUID_RE = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/;
 const HEX_RE = /^[0-9a-fA-F]{16,}$/;
@@ -203,7 +204,6 @@ export function DatasetDataTab() {
   const rows = rowsData?.rows ?? [];
   const columns = rowsData?.columns ?? [];
   const total = rowsData?.total ?? 0;
-  const totalPages = total > 0 ? Math.ceil(total / pageSize) : 0;
 
   const rowId = useCallback(
     (row: RowData, idx: number): string =>
@@ -315,8 +315,6 @@ export function DatasetDataTab() {
     commitFilters([...filterRows, newFilterRow(nextId, first)]);
   };
 
-  const startRow = total > 0 ? page * pageSize + 1 : 0;
-  const endRow = total > 0 ? Math.min((page + 1) * pageSize, total) : 0;
 
   return (
     <>
@@ -549,72 +547,21 @@ export function DatasetDataTab() {
                   )}
                 </tbody>
               </table>
+              {/* The shared pager, inside the card — one paging control in this app, not a second one. */}
+              {rowsData ? (
+                <Pagination
+                  total={total}
+                  page={page}
+                  pageSize={pageSize}
+                  loading={rowsLoading}
+                  onPageChange={setPage}
+                  onPageSizeChange={(size) => {
+                    setPageSize(size);
+                    setPage(0);
+                  }}
+                />
+              ) : null}
             </div>
-            {rowsData && (
-              <div className="dataset-detail-pagination">
-                <div className="dataset-detail-pagination__info">
-                  <span>{t('datasets.paginationRange', { start: startRow, end: endRow, total })}</span>
-                  <label>
-                    <span>{t('datasets.pageSize')}</span>
-                    <select
-                      value={pageSize}
-                      onChange={(e) => {
-                        setPageSize(Number(e.target.value));
-                        setPage(0);
-                      }}
-                      disabled={rowsLoading}
-                    >
-                      {[25, 50, 100, 200, 500].map((n) => (
-                        <option key={n} value={n}>
-                          {n}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-                </div>
-                {totalPages > 1 && (
-                  <div className="dataset-detail-pagination__btns">
-                    <button
-                      type="button"
-                      className="btn btn-secondary btn-sm"
-                      onClick={() => setPage(0)}
-                      disabled={page === 0 || rowsLoading}
-                      title={t('datasets.firstPage')}
-                    >
-                      «
-                    </button>
-                    <button
-                      type="button"
-                      className="btn btn-secondary btn-sm"
-                      onClick={() => setPage((p) => Math.max(0, p - 1))}
-                      disabled={page === 0 || rowsLoading}
-                    >
-                      {t('datasets.previous')}
-                    </button>
-                    <span className="dataset-detail-pagination__page">
-                      {t('datasets.pageOf', { current: page + 1, total: totalPages })}
-                    </span>
-                    <button
-                      type="button"
-                      className="btn btn-secondary btn-sm"
-                      onClick={() => setPage((p) => Math.min(totalPages - 1, p + 1))}
-                      disabled={page >= totalPages - 1 || rowsLoading}
-                    >
-                      {t('datasets.next')}
-                    </button>
-                    <button
-                      type="button"
-                      className="btn btn-secondary btn-sm"
-                      onClick={() => setPage(totalPages - 1)}
-                      disabled={page >= totalPages - 1 || rowsLoading}
-                      title={t('datasets.lastPage')}
-                    >
-                      »
-                    </button>
-                  </div>
-                )}
-              </div>
-            )}
           </div>
         )}
       </EntityViewPanel>

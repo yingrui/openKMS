@@ -405,7 +405,7 @@
     "filterRows_other": "{{count}} 行",
     "filterCount_other": "{{count}} 个筛选",
     "filterCapped": "本页已满",
-    "filterNoMatch": "没有行匹配这些筛选条件。",
+    "filterNoMatch": "这个区间里没有数据",
     "filterRemove": "移除筛选",
     "filterColumnDropped": "已移除对「{{column}}」的筛选——该列已不存在。",
     "filterOpContains": "包含",
@@ -725,7 +725,9 @@
     "colType": "类型",
     "noFiles": "这个版本还没有文件。",
     "fileName": "文件",
-    "download": "下载"
+    "download": "下载",
+    "filterFrom": "从",
+    "query": "查询"
   },
   "groups": {
     "title": "分组",

@@ -308,6 +308,25 @@ They are **not claimed to work**: this machine has no `pg_dump`, so only the pre
 refuses with an installation hint, verified). The drill is what turns a file into a backup, and until it
 prints `restore drill ok`, the honest state is untested.
 
+### A window query that actually returns the window (2026-10)
+
+Bounding the reads introduced a subtler bug than the one it fixed: `nrows = offset + limit + 1` truncates **before**
+the date filter, so any window that does not begin at the top of the file returns nothing. Live: `9/10–9/12` →
+`scanned=0`. Memory was traded for correctness, silently.
+
+The fix is chunked reading that keeps both: parquet goes through `pyarrow.ParquetFile.iter_batches` (columns pruned
+before decompression), CSV through `chunksize=50_000`, each chunk filtered, and the loop stops as soon as the page is
+full. Verified live: `9/10–9/12` → first row `2026-09-10`, `8/20–8/22` → `2026-08-20`, scanned counts bounded at
+~10k instead of the whole file.
+
+Two process notes, both mine:
+
+- a script that **printed "All checks passed" wrote nothing** — `write_text` was never called. Every write now ends
+  with a `grep`/assertion that the text landed.
+- the table Data tab had its **own** pager (`dataset-detail-pagination`: first/prev/next buttons) and its own card
+  footer, which is why the two Data tabs looked like different products. It uses the shared `Pagination` inside the
+  card now — one paging control, matching every other list in the app.
+
 ### Bounded reads, a real schema, and the files themselves (2026-10)
 
 Three follow-ups from using the file dataset's page.

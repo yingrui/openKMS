@@ -405,14 +405,14 @@
     "filterColumn": "Column",
     "filterOperator": "Operator",
     "filterValue": "Value",
-    "filterTo": "to",
+    "filterTo": "To",
     "filterListPlaceholder": "a, b, c",
     "filterRows_one": "{{count}} row",
     "filterRows_other": "{{count}} rows",
     "filterCount_one": "{{count}} filter",
     "filterCount_other": "{{count}} filters",
     "filterCapped": "page full",
-    "filterNoMatch": "No rows match these filters.",
+    "filterNoMatch": "Nothing in this range",
     "filterRemove": "Remove filter",
     "filterColumnDropped": "Dropped a filter on '{{column}}' — the column no longer exists.",
     "filterOpContains": "contains",
@@ -732,7 +732,9 @@
     "colType": "Type",
     "noFiles": "This version has no files.",
     "fileName": "File",
-    "download": "Download"
+    "download": "Download",
+    "filterFrom": "From",
+    "query": "Query"
   },
   "groups": {
     "title": "Groups",
