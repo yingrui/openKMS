@@ -52,7 +52,14 @@ export function FileDatasetData({ datasetId }: { datasetId: string }) {
     };
   }, [datasetId, t]);
 
-  if (loading) return <Loader2 size={20} className="spin" aria-hidden />;
+  if (loading) {
+    return (
+      <div className="console-loading">
+        <Loader2 size={32} className="console-loading-spinner" aria-hidden />
+        <p>{t('shared.loading')}</p>
+      </div>
+    );
+  }
 
   if (version === null) {
     return (

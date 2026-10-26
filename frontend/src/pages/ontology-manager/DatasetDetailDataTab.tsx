@@ -36,6 +36,7 @@ import { rangeError, rangeToValues } from './dateRange';
 import { SaveFindingDialog } from './SaveFindingDialog';
 import { datasetFindingDraft } from './findingDraft';
 import { EntityViewHeader, EntityViewPanel } from './EntityViewShell';
+import { formatCell } from './datasetCellFormat';
 import { Pagination } from '../../styles/design-system';
 
 const UUID_RE = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/;
@@ -104,11 +105,6 @@ function ReadCell({ value }: { value: unknown }) {
   );
 }
 
-function formatValue(value: unknown, t: (k: string) => string): string {
-  if (value === null || value === undefined) return t('datasets.dash');
-  if (typeof value === 'object') return JSON.stringify(value);
-  return String(value);
-}
 
 export function DatasetDataTab() {
   const { t } = useTranslation('ontology');
@@ -248,7 +244,7 @@ export function DatasetDataTab() {
           if (!cellContext.canEdit) return <ReadCell value={display} />;
           return (
             <EditableCell
-              value={formatValue(display, cellContext.t)}
+              value={formatCell(display, cellContext.t('datasets.dash'))}
               dirty={changed !== undefined}
               onCommit={(raw) => cellContext.setCell(rid, col, coerce(original, raw))}
             />
