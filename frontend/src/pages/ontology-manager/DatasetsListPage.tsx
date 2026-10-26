@@ -160,10 +160,14 @@ export function DatasetsListPage() {
   const openEdit = (d: DatasetResponse) => {
     setEditItem(d);
     setFormDataSourceId(d.data_source_id);
-    setFormSchema(d.schema_name);
-    setFormTable(d.table_name);
+    setFormSchema(d.schema_name ?? '');
+    setFormTable(d.table_name ?? '');
     setFormDisplayName(d.display_name ?? '');
-    setTables([{ schema_name: d.schema_name, table_name: d.table_name }]);
+    setTables(
+      d.schema_name && d.table_name
+        ? [{ schema_name: d.schema_name, table_name: d.table_name }]
+        : [],
+    );
     setShowForm(true);
   };
 

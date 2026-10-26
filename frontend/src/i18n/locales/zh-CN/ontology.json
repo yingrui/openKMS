@@ -707,7 +707,20 @@
     "qualityDeleteHint": "删除规则会连同它的运行记录一起删除。数据本身不受影响。",
     "qualityLoadMore": "加载更早的运行",
     "filterDomain": "业务域",
-    "filterTag": "标签"
+    "filterTag": "标签",
+    "versions": "版本",
+    "versionsHint": "这些文件的发布版本——发布即冻结，所以训练集可以按版本引用。",
+    "noVersions": "还没有版本。",
+    "version": "版本",
+    "versionStatus": "状态",
+    "versionFiles": "文件数",
+    "versionRows": "行数",
+    "versionRange": "日期范围",
+    "versionSize": "大小",
+    "versionWhen": "发布时间",
+    "fileDataHint": "来自已发布版本的行——直接从文件里按列/日期取，不是 SQL。",
+    "fileRowsScanned": "本版本共 {{rows}} 行，当前取 {{count}} 行。",
+    "noPublishedVersion": "还没有已发布的版本"
   },
   "groups": {
     "title": "分组",

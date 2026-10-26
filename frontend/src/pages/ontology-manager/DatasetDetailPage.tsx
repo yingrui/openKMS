@@ -40,8 +40,10 @@ import {
 import '../ontology/ontology-admin.scss';
 import './dataset-detail.scss';
 
-function tableLabel(d: DatasetResponse): string {
-  return `${d.schema_name}.${d.table_name}`;
+/** What the dataset *is*, in one line: a table has a schema-qualified name; a file dataset has a source. */
+function datasetIdentity(d: DatasetResponse): string {
+  if (d.kind === 'file') return d.data_source_name ?? 'Object storage';
+  return d.schema_name && d.table_name ? `${d.schema_name}.${d.table_name}` : (d.display_name ?? '');
 }
 
 /** Sensitivity is stored as a stable value; the summary shows its label. */
@@ -132,7 +134,7 @@ export function DatasetDetailPage() {
 
   const onDelete = useCallback(async () => {
     if (!datasetId || !dataset) return;
-    const name = dataset.display_name?.trim() || tableLabel(dataset);
+    const name = dataset.display_name?.trim() || datasetIdentity(dataset);
     if (
       !(await confirm({
         title: t('shared.delete'),
@@ -177,7 +179,7 @@ export function DatasetDetailPage() {
     return <EntityViewLoading label={t('shared.loading')} />;
   }
 
-  const title = dataset.display_name?.trim() || tableLabel(dataset);
+  const title = dataset.display_name?.trim() || datasetIdentity(dataset);
   const base = `/datasets/${datasetId}`;
 
   return (
@@ -186,16 +188,31 @@ export function DatasetDetailPage() {
         backTo="/datasets"
         backLabel={t('datasets.backToList')}
         title={title}
-        meta={`${tableLabel(dataset)}${dataset.data_source_name ? ` · ${dataset.data_source_name}` : ''}`}
-        navItems={[
-          { to: base, label: t('datasets.overview'), end: true },
-          { to: `${base}/data`, label: t('datasets.data') },
-          { to: `${base}/columns`, label: t('datasets.columns') },
-          { to: `${base}/relationships`, label: t('datasets.relationships') },
-          { to: `${base}/quality`, label: t('datasets.quality') },
-          { to: `${base}/settings`, label: t('datasets.settings') },
-          { to: `${base}/sharing`, label: t('datasets.sharing') },
-        ]}
+        meta={
+          dataset.kind === 'file'
+            ? (dataset.data_source_name ?? 'Object storage')
+            : `${datasetIdentity(dataset)}${dataset.data_source_name ? ` · ${dataset.data_source_name}` : ''}`
+        }
+        navItems={
+          dataset.kind === 'file'
+            ? [
+                { to: base, label: t('datasets.overview'), end: true },
+                { to: `${base}/data`, label: t('datasets.data') },
+                { to: `${base}/versions`, label: t('datasets.versions') },
+                { to: `${base}/columns`, label: t('datasets.columns') },
+                { to: `${base}/settings`, label: t('datasets.settings') },
+                { to: `${base}/sharing`, label: t('datasets.sharing') },
+              ]
+            : [
+                { to: base, label: t('datasets.overview'), end: true },
+                { to: `${base}/data`, label: t('datasets.data') },
+                { to: `${base}/columns`, label: t('datasets.columns') },
+                { to: `${base}/relationships`, label: t('datasets.relationships') },
+                { to: `${base}/quality`, label: t('datasets.quality') },
+                { to: `${base}/settings`, label: t('datasets.settings') },
+                { to: `${base}/sharing`, label: t('datasets.sharing') },
+              ]
+        }
       >
         <Outlet />
       </EntityViewShell>

@@ -714,7 +714,20 @@
     "qualityDeleteHint": "Deleting the rule removes its runs with it. The data is not touched.",
     "qualityLoadMore": "Load older runs",
     "filterDomain": "Domain",
-    "filterTag": "Tag"
+    "filterTag": "Tag",
+    "versions": "Versions",
+    "versionsHint": "Published versions of these files — frozen when published, so a training set can be named by version.",
+    "noVersions": "No versions yet.",
+    "version": "Version",
+    "versionStatus": "Status",
+    "versionFiles": "Files",
+    "versionRows": "Rows",
+    "versionRange": "Date range",
+    "versionSize": "Size",
+    "versionWhen": "Published",
+    "fileDataHint": "Rows from a published version — column and date selection out of the files, not SQL.",
+    "fileRowsScanned": "{{count}} rows of {{rows}} scanned in this version.",
+    "noPublishedVersion": "No published version yet"
   },
   "groups": {
     "title": "Groups",

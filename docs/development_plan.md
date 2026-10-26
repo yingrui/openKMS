@@ -308,6 +308,27 @@ They are **not claimed to work**: this machine has no `pg_dump`, so only the pre
 refuses with an installation hint, verified). The drill is what turns a file into a backup, and until it
 prints `restore drill ok`, the honest state is untested.
 
+### A detail page that knows what kind of dataset it is (2026-10)
+
+The Datasets app holds two kinds — `table` and `file` (immutable versions in the bucket) — and the frontend knew
+about **neither**: `dataset.kind` appeared nowhere, and a file dataset got the table page. Data went to
+`/rows/query` (SQL over a table that does not exist), Columns read metadata from a source it has no table in,
+Relationships looked for foreign keys in a bucket, Quality ran SQL rules over files, and the header printed
+`null.null`. The backend, meanwhile, had the whole lifecycle: eleven endpoints under `/api/dataset-versions`.
+
+- **Types told the truth first**: `kind` added, `schema_name`/`table_name` made nullable. `tsc` then found the five
+  places that had assumed a table — all mechanical.
+- **Tabs follow the kind**: a file dataset gets **Data · Versions · Columns · Settings · Sharing**. `Data` stays,
+  because "show me the rows" is a question about the data, not about how it is stored — it reads
+  `…/{version}/rows` (column and date selection out of parquet/CSV) instead of SQL. No Relationships, no Quality.
+- **Versions** lists published and draft versions with files, rows, date range, size and when it was frozen.
+- The route decides: `/data` renders one of two readers, because an early return inside the grid would run before
+  its hooks.
+
+Verified against the live file dataset (`training-set-5d`): two published versions, 96,295 and 208,401 rows, 23
+columns, dates 2026-08-03 → 2026-09-24, and the rows endpoint returning real parquet rows. The page itself was not
+seen in a browser.
+
 ### Every pager, audited (2026-10)
 
 Asked to check all of them. 16 files, 22 `<Pagination>` uses, in three shapes:

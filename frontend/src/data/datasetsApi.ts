@@ -5,8 +5,12 @@ export interface DatasetResponse {
   id: string;
   data_source_id: string;
   data_source_name: string | null;
-  schema_name: string;
-  table_name: string;
+  /** `table` — a table in a SQL source; `file` — immutable numbered versions of files in the bucket. */
+  kind: 'table' | 'file';
+  //: Null for a file dataset: it has no schema-qualified table, and pretending otherwise produced
+  //: "null.null" in the detail header.
+  schema_name: string | null;
+  table_name: string | null;
   display_name: string | null;
   description: string | null;
   owner_sub: string | null;

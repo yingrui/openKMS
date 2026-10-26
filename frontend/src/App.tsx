@@ -277,8 +277,10 @@ const StoryDetailPage = lazy(() =>
 const DatasetOverviewTab = lazy(() =>
   import('./pages/ontology-manager/DatasetDetailPage').then((m) => ({ default: m.DatasetOverviewTab })),
 );
-const DatasetDataTab = lazy(() =>
-  import('./pages/ontology-manager/DatasetDetailDataTab').then((m) => ({ default: m.DatasetDataTab })),
+const DatasetDataRoute = lazy(() =>
+  import('./pages/ontology-manager/FileDatasetData').then((m) => ({
+    default: m.DatasetDataRoute,
+  })),
 );
 const DatasetColumnsTab = lazy(() =>
   import('./pages/ontology-manager/DatasetColumnsTab').then((m) => ({
@@ -293,6 +295,11 @@ const DatasetRelationshipsTab = lazy(() =>
 const DatasetQualityTab = lazy(() =>
   import('./pages/ontology-manager/DatasetQualityTab').then((m) => ({
     default: m.DatasetQualityTab,
+  })),
+);
+const DatasetVersionsTab = lazy(() =>
+  import('./pages/ontology-manager/DatasetVersionsTab').then((m) => ({
+    default: m.DatasetVersionsTab,
   })),
 );
 const QualityRuleEditorPage = lazy(() =>
@@ -467,10 +474,11 @@ function App() {
             </Route>
             <Route path="datasets/:id" element={<DatasetManagerDetailPage />}>
               <Route index element={<DatasetOverviewTab />} />
-              <Route path="data" element={<DatasetDataTab />} />
+              <Route path="data" element={<DatasetDataRoute />} />
               <Route path="columns" element={<DatasetColumnsTab />} />
               <Route path="relationships" element={<DatasetRelationshipsTab />} />
               <Route path="quality" element={<DatasetQualityTab />} />
+              <Route path="versions" element={<DatasetVersionsTab />} />
               <Route path="quality/new" element={<QualityRuleEditorPage />} />
               <Route path="quality/:ruleId" element={<QualityRuleEditorPage />} />
               <Route path="settings" element={<DatasetSettingsTab />} />
