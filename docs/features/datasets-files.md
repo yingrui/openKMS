@@ -221,6 +221,9 @@ on published ones.
 - **Deprecated versions are kept.** They stay readable and pinnable, so a model can always be traced
   back to the data it saw. Nothing expires by policy.
 - A draft may be deleted outright — it was never publishable, so nothing can reference it.
+- Deleting a **file dataset** clears its stored objects (`datasets/<id>/`) along with the rows: a
+  catalog entry is the only index to those objects, so leaving them behind grows the bucket forever
+  with nothing pointing at them.
 - A file becomes deletable only when **no published manifest references it**; the reference check
   runs on delete and is surfaced as "used by versions 2, 3".
 

@@ -1,8 +1,16 @@
 # openKMS goals and business problems
 
-**North star:** *Frontline confidence · Expert contribution · Organizational governance · Agent readiness.*
+**openKMS turns enterprise knowledge into decision systems: every decision has a basis you can check, a validity you can judge, and an owner you can trace.**
 
-**Agent-ready** means discoverable, retrievable, answerable, and traceable—on knowledge that stays current, accurate, and permission-aware.
+That sentence is the product definition, not a slogan. It fixes three things:
+
+- **A basis you can check** — every conclusion can name the rule, evidence, source, and version behind it.
+- **A validity you can judge** — the rule in force is identifiable, and superseded rules stop deciding.
+- **An owner you can trace** — a person, not a model, is accountable for the rule and for the decision.
+
+**The unit is the decision system, not the document.** In the agent era the bottleneck has moved from writing code to supplying context: agents can implement, but they do not know the domain model, the rules, the exceptions, or who has authority. That context is enterprise knowledge—and it has to be structured, current, and owned before an agent can build or run anything on it.
+
+**Agent-ready means decision-ready.** Being reachable through an API is table stakes. What matters is whether the conclusion can withstand being questioned: *what is the basis, is it still current, who has authority, and can it be reviewed or reversed?* (See [What "dependable" means](#goals-dependable).) Discoverability and retrievability are the entry fee; currency and traceability are the differentiator.
 
 This page explains openKMS direction from a **business and knowledge-engineering** perspective. Capabilities and implementation paths live in [Functionalities](functionalities.md), [Architecture](architecture.md), and [Development plan](development_plan.md) (shipped index, strategic priorities, backlog). Doc entry: [Home](index.md).
 
@@ -24,6 +32,62 @@ These are not separate “consumer vs enterprise” products—they are two dema
 
 - **Retrieval** depends on org-side aggregation, structure, indexing, and permissions; **contribution** depends on low-friction tools and feedback (parsing, evaluation, lifecycle).
 - **Governance and AI readiness** must live in real workflows; if experts and frontline staff don’t enter the system daily, rules drift from reality.
+
+---
+
+## The unit is the decision system {#goals-decision-systems}
+
+The old unit was the **document**; the new unit is the **decision system**. Inside it, a single decision is neither a page nor a new object—it is a governed **Action**: it takes a case in, applies rules and evidence, records an outcome, and carries an owner and a validity window.
+
+| | Document-centric | Decision-centric |
+|---|---|---|
+| Unit | page or file | a governed Action (case → outcome) |
+| Bottleneck | writing | supplying context and rules |
+| Expert owns | prose | rules and their authority |
+| Agent does | retrieve | build and operate |
+| Success | pages published | decisions that hold up |
+
+A decision is an Action that carries five things:
+
+| A decision needs | Why |
+|---|---|
+| **A case** | what is being decided |
+| **Rules** | what applies, and which version |
+| **Evidence** | what the decision rests on |
+| **An outcome and rationale** | what was decided, and why |
+| **Authority and validity** | who may decide, and until when |
+
+Documents, datasets, and ontology instances are the **context** that goes into that Action—carriers, not the decision.
+
+This is also why no new top-level object is required. openKMS already has typed, permissioned, audited Actions; what is missing is the five semantics above—declarative rules, evidence, outcome, authority, and review—not another entity.
+
+Four consequences define the product:
+
+1. **A decision needs an operational model, not a document store.** Entities, relations, data, rules, actions, and authority—a *decision-scoped ontology*, not a complete enterprise model.
+2. **Experts own rules and authority, not prose.** Documents remain the evidence and explanation; the rule, its validity window, and who may change it are the asset.
+3. **Context now exceeds code.** Agents can write the implementation, but the domain model, rules, exceptions, and accountability live in enterprise knowledge. The knowledge system becomes the *build input*, not only a reference.
+4. **The loop is the product.** Knowledge → rule → decision → operation → review → rule change. Every step exists in openKMS; the loop does not.
+
+### Who does what
+
+| Role | Owns | Not |
+|---|---|---|
+| **Agent** | Build, implement, test, run, surface exceptions | Authority, final judgement |
+| **Business expert** | Rules, exceptions, validity, sign-off | Prose volume |
+| **Organization** | Permissions, dependencies, audit, review queue | Day-to-day authoring |
+
+### What "dependable" means {#goals-dependable}
+
+A decision is dependable when it can answer four questions:
+
+| Question | Property |
+|---|---|
+| What is the basis? | rule, evidence, source, version |
+| Is it still current? | rule in force, data freshness |
+| Who has authority? | owner, delegated scope |
+| Can it be reviewed or reversed? | decision record, rollback |
+
+Answer all four and it is dependable; miss one and it is just an output.
 
 ---
 

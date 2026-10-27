@@ -565,7 +565,21 @@ async def delete_dataset(
     dataset: Dataset = Depends(get_dataset_scoped_manage),
     db: AsyncSession = Depends(get_db),
 ):
-    """Delete a dataset."""
+    """Delete a dataset. A file dataset takes its stored objects with it.
+
+    Leaving the parquet files behind would grow the bucket forever with no catalog entry pointing at
+    them, which is the one thing worse than not deleting at all.
+    """
+    if (dataset.kind or "table") == "file":
+        from app.services.storage import STORAGE_ERRORS, delete_objects_by_prefix
+
+        try:
+            delete_objects_by_prefix(f"datasets/{dataset.id}/")
+        except STORAGE_ERRORS as exc:
+            raise HTTPException(
+                status_code=502,
+                detail=f"Could not clear stored files for this dataset: {type(exc).__name__}: {exc}",
+            ) from exc
     await db.delete(dataset)
 
 
