@@ -308,6 +308,19 @@ They are **not claimed to work**: this machine has no `pg_dump`, so only the pre
 refuses with an installation hint, verified). The drill is what turns a file into a backup, and until it
 prints `restore drill ok`, the honest state is untested.
 
+### The description is a column, not a composition (2026-10)
+
+The reader's second thought was better than my first: rather than removing a composed "· 2026-01-05 → 2026-01-30" from
+the file row, **give the file a description**. It is a column now (`dataset_version_files.description`), written once when
+the file is read at upload, and everything else copies it:
+
+- the files table has a **Description** column rendering the field — no string built from `date_from`/`date_to` in TS;
+- the manifest copies `file.description` rather than deriving the sentence a second time;
+- the migration backfills it from what is stored (the file's own recorded `columns` + its date bounds), so the nine
+  existing files show a description without a re-upload.
+
+The "range from trade_date" line in the panel title is gone: it was the same composition in another place.
+
 ### The manifest had a field for a guess (2026-10)
 
 Its file entries carried `"date_range": [from, to]` — a bespoke field for something derived from a **column-name guess**

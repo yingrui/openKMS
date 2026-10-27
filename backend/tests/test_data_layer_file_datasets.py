@@ -64,9 +64,8 @@ class TestManifestShape:
             SimpleNamespace(
                 name="2026-09.parquet", storage_key="k", reused_from_version=None,
                 rows=96295, bytes=11582583, sha256="abc",
-                date_from="2026-09-01", date_to="2026-09-24",
-            ),
-            "trade_date",
+                description="trade_date 2026-09-01 → 2026-09-24",
+            )
         )
         assert "date_range" not in entry
         assert entry["description"] == "trade_date 2026-09-01 → 2026-09-24"
@@ -80,8 +79,7 @@ class TestManifestShape:
         entry = file_manifest_entry(
             SimpleNamespace(
                 name="f.parquet", storage_key="k", reused_from_version=None,
-                rows=1, bytes=1, sha256="x", date_from=None, date_to=None,
-            ),
-            None,
+                rows=1, bytes=1, sha256="x", description=None,
+            )
         )
         assert entry["description"] is None

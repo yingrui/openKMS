@@ -29,6 +29,8 @@ export interface FileRows {
 
 export interface DatasetVersionFile {
   name: string;
+  /** One line about the file, written at upload: "trade_date 2026-01-05 → 2026-01-30", or null. */
+  description: string | null;
   storage_key: string;
   sha256: string;
   rows: number;

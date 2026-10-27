@@ -733,11 +733,11 @@
     "versionPublishedAt": "{{when}} 由 {{who}} 发布",
     "fileSampleSubtitle": "v{{version}} 的示例——该版本共 {{rows}} 行",
     "versionFilesOf": "v{{version}} 的文件",
-    "versionRangeNote": "区间来自 {{column}}",
     "manifest": "Manifest",
     "manifestOf": "v{{version}} 里到底有什么",
     "manifestShow": "展开查看",
-    "manifestHint": "版本发布时写一次：每个文件与它的 sha256、行数和列结构——之后不再改动。所以「v2」永远指同一批数据。"
+    "manifestHint": "版本发布时写一次：每个文件与它的 sha256、行数和列结构——之后不再改动。所以「v2」永远指同一批数据。",
+    "fileDescription": "描述"
   },
   "groups": {
     "title": "分组",

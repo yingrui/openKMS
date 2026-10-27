@@ -283,6 +283,7 @@ class DatasetVersionResponse(BaseModel):
 
 class DatasetVersionFileResponse(BaseModel):
     name: str
+    description: str | None = None
     storage_key: str
     sha256: str
     rows: int

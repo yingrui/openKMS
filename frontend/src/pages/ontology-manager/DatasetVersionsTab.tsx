@@ -189,12 +189,6 @@ export function DatasetVersionsTab() {
           <div className="dataset-joins__toolbar">
             <h3>
               {t('datasets.versionFilesOf', { version: selectedVersion.version })}
-              {selectedVersion.date_column ? (
-                <span className="page-subtitle">
-                  {' '}
-                  · {t('datasets.versionRangeNote', { column: selectedVersion.date_column })}
-                </span>
-              ) : null}
             </h3>
             <StatusChip tone={TONE[selectedVersion.status] ?? 'neutral'}>
               {selectedVersion.status}
@@ -210,6 +204,7 @@ export function DatasetVersionsTab() {
                 <thead>
                   <tr>
                     <th>{t('datasets.fileName')}</th>
+                    <th>{t('datasets.fileDescription')}</th>
                     <th>{t('datasets.versionRows')}</th>
                     <th>{t('datasets.versionSize')}</th>
                     <th className="console-table-actions">{t('shared.actions')}</th>
@@ -218,15 +213,9 @@ export function DatasetVersionsTab() {
                 <tbody>
                   {detail.files.map((file) => (
                     <tr key={file.name}>
+                      <td>{file.name}</td>
                       <td>
-                        {file.name}
-                        {/* A note, not a field: this came from a column-name guess at upload. */}
-                        {file.date_from && file.date_to ? (
-                          <span className="page-subtitle">
-                            {' '}
-                            · {file.date_from} → {file.date_to}
-                          </span>
-                        ) : null}
+                        {file.description ?? <span className="page-subtitle">{t('datasets.dash')}</span>}
                       </td>
                       <td>{file.rows.toLocaleString()}</td>
                       <td>{bytes(file.bytes)}</td>

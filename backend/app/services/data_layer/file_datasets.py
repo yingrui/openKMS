@@ -312,6 +312,7 @@ async def add_file(
     upload_object(key, content, "application/octet-stream")
 
     date_from, date_to = _date_bounds(frame)
+    date_column = _date_column(frame)
     row = DatasetVersionFile(
         version_id=version.id,
         name=safe_name,
@@ -322,6 +323,11 @@ async def add_file(
         bytes=len(content),
         date_from=date_from,
         date_to=date_to,
+        description=(
+            f"{date_column} {date_from} → {date_to}"
+            if date_column and date_from and date_to
+            else None
+        ),
         created_by=user.get("sub"),
     )
     db.add(row)
@@ -407,17 +413,12 @@ def _schema_from_files(files: list[DatasetVersionFile]) -> list[dict]:
     return [entry for f in files for entry in (f.columns or [])]
 
 
-def file_manifest_entry(file: DatasetVersionFile, date_column: str | None) -> dict[str, Any]:
+def file_manifest_entry(file: DatasetVersionFile) -> dict[str, Any]:
     """One file's entry in the manifest — the facts, plus a sentence a person can read.
 
-    `date_range: [from, to]` was a bespoke field for something derived from a column-name guess; it is a note about the
-    file, so it is written as one: a `description` that says which column, from when to when. Nothing else is invented.
+    `date_range: [from, to]` was a bespoke field for something derived from a column-name guess; the note is the file's
+    own `description` now — written once at upload, copied here, never composed in a second place.
     """
-    span = (
-        f"{date_column} {file.date_from} → {file.date_to}"
-        if date_column and file.date_from and file.date_to
-        else None
-    )
     return {
         "name": file.name,
         "key": file.storage_key,
@@ -425,7 +426,7 @@ def file_manifest_entry(file: DatasetVersionFile, date_column: str | None) -> di
         "rows": int(file.rows or 0),
         "bytes": int(file.bytes or 0),
         "sha256": file.sha256,
-        "description": span,
+        "description": file.description,
     }
 
 
@@ -443,7 +444,6 @@ async def publish(db: AsyncSession, dataset: Dataset, version: DatasetVersion) -
     if not files:
         raise FileDatasetError("a version needs at least one file before it can be published")
 
-    date_column = date_column_of(version.columns or [])
     key = manifest_key(dataset.id, version.version)
     manifest = {
         "dataset_id": dataset.id,
@@ -453,7 +453,7 @@ async def publish(db: AsyncSession, dataset: Dataset, version: DatasetVersion) -
         "created_by": version.created_by_name or version.created_by,
         "created_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
         "schema": version.columns or [],
-        "files": [file_manifest_entry(f, date_column) for f in files],
+        "files": [file_manifest_entry(f) for f in files],
     }
     upload_object(key, json.dumps(manifest, ensure_ascii=False, indent=1).encode(), "application/json")
     version.manifest_key = key

@@ -89,6 +89,10 @@ class DatasetVersionFile(Base):
     bytes: Mapped[int] = mapped_column(BigInteger, nullable=False, default=0, server_default="0")
     date_from: Mapped[date | None] = mapped_column(Date, nullable=True)
     date_to: Mapped[date | None] = mapped_column(Date, nullable=True)
+    #: One line about the file, written once at upload — "trade_date 2026-01-05 → 2026-01-30" when a date column
+    #: was recognised, nothing otherwise. A **field**, so the UI renders it instead of composing it, and the manifest
+    #: copies it instead of deriving it a second time.
+    description: Mapped[str | None] = mapped_column(String(512), nullable=True)
     #: Set when this version reused an earlier version's file instead of uploading a new one.
     reused_from_version: Mapped[int | None] = mapped_column(Integer, nullable=True)
     created_by: Mapped[str | None] = mapped_column(String(512), nullable=True)
