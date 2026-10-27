@@ -308,6 +308,18 @@ They are **not claimed to work**: this machine has no `pg_dump`, so only the pre
 refuses with an installation hint, verified). The drill is what turns a file into a backup, and until it
 prints `restore drill ok`, the honest state is untested.
 
+### One data view reads as one control (2026-10)
+
+The two Data pages, side by side, differed in thirteen ways. Five were real visual differences; the rest were content
+(a sample versus a grid — sorting, filters, paging, row actions). Of the five: the cell formatter and the loading state
+were accidents and are shared now; the remaining two were choices.
+
+- **The card bleeds to the panel's edges** in the file page too (`dataset-detail-data`, the same negative-margin
+  wrapper the table grid uses). The reader said it best: it should look like **one control**, not a card floating
+  inside a card. The sample's hint moved above the card so the text is not at the edge.
+- **No 28ch truncation** in the sample: the grid caps long cells at a readable width because it is for scanning
+  everything; a sample of fifty rows exists to *show the values*, so it shows them whole.
+
 ### Two rounded boxes in one card (2026-10)
 
 The Data page showed a rounded card inside a rounded card. `EntityViewPanel` renders `.account-card` — border,

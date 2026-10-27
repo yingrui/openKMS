@@ -81,33 +81,37 @@ export function FileDatasetData({ datasetId }: { datasetId: string }) {
           rows: version.row_count.toLocaleString(),
         })}
       />
+      <p className="page-subtitle">{t('datasets.fileSampleHint')}</p>
       <EntityViewPanel>
         {rows === null || rows.rows.length === 0 ? (
           <EmptyState title={t('datasets.emptyRows')} description={t('datasets.versionsHint')} />
         ) : (
-          <div className="ds-table-wrap ds-table-wrap--flush">
-            <table className="console-table">
-              <thead>
-                <tr>
-                  {rows.columns.map((c) => (
-                    <th key={c}>{c}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {rows.rows.map((row, index) => (
-                  // Rows arrive as objects without a stable id; the index is the position in the sample.
-                  <tr key={index}>
+          // The same bleed as the table grid: the card runs edge to edge in the panel, so a data view reads
+          // as one control rather than a card floating inside a card.
+          <div className="dataset-detail-data">
+            <div className="ds-table-wrap ds-table-wrap--flush">
+              <table className="console-table">
+                <thead>
+                  <tr>
                     {rows.columns.map((c) => (
-                      <td key={c}>{formatCell(row[c], t('datasets.dash'))}</td>
+                      <th key={c}>{c}</th>
                     ))}
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {rows.rows.map((row, index) => (
+                    // Rows arrive as objects without a stable id; the index is the position in the sample.
+                    <tr key={index}>
+                      {rows.columns.map((c) => (
+                        <td key={c}>{formatCell(row[c], t('datasets.dash'))}</td>
+                      ))}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </div>
         )}
-        <p className="page-subtitle">{t('datasets.fileSampleHint')}</p>
       </EntityViewPanel>
     </>
   );
