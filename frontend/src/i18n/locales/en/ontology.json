@@ -716,7 +716,7 @@
     "filterDomain": "Domain",
     "filterTag": "Tag",
     "versions": "Versions",
-    "versionsHint": "Published versions of these files — frozen when published, so a training set can be named by version.",
+    "versionsHint": "Publishing records exactly which files a version contains, so a training set can be named by version — v2 always means the same data.",
     "noVersions": "No versions yet.",
     "version": "Version",
     "versionStatus": "Status",
@@ -741,7 +741,7 @@
     "fileSampleSubtitle": "A sample of v{{version}} — {{rows}} rows in the version",
     "versionFilesOf": "Files in v{{version}}",
     "versionRangeNote": "range from {{column}}",
-    "manifest": "Manifest (the frozen record)",
+    "manifest": "Manifest",
     "manifestOf": "what v{{version}} contains",
     "manifestShow": "Show it",
     "manifestHint": "Written once when the version was published — every file with its sha256, the row counts and the schema — and never changed since. That is why v2 always means the same bytes."

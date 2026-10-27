@@ -709,7 +709,7 @@
     "filterDomain": "业务域",
     "filterTag": "标签",
     "versions": "版本",
-    "versionsHint": "这些文件的发布版本——发布即冻结，所以训练集可以按版本引用。",
+    "versionsHint": "每次发布都会记下该版本包含哪些文件，所以训练集可以按版本引用——「v2」永远指同一批数据。",
     "noVersions": "还没有版本。",
     "version": "版本",
     "versionStatus": "状态",
@@ -734,7 +734,7 @@
     "fileSampleSubtitle": "v{{version}} 的示例——该版本共 {{rows}} 行",
     "versionFilesOf": "v{{version}} 的文件",
     "versionRangeNote": "区间来自 {{column}}",
-    "manifest": "Manifest（发布时冻结的记录）",
+    "manifest": "Manifest",
     "manifestOf": "v{{version}} 里到底有什么",
     "manifestShow": "展开查看",
     "manifestHint": "版本发布时写一次：每个文件与它的 sha256、行数和列结构——之后不再改动。所以「v2」永远指同一批数据。"
