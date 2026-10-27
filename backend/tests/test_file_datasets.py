@@ -39,12 +39,34 @@ def storage(monkeypatch):
     return objects
 
 
+async def _drop_test_datasets() -> None:
+    """Test datasets publish manifests into a stubbed store, so their rows outlive the objects.
+
+    A failed assertion used to leave such a row behind, and the catalog then listed a version whose
+    manifest object does not exist — a 500 in the Versions panel.
+    """
+    from sqlalchemy import select
+
+    from app.database import async_session_maker
+    from app.models.dataset import Dataset
+
+    async with async_session_maker() as session:
+        for row in (
+            await session.execute(
+                select(Dataset).where(Dataset.display_name.like("test-training-set-%"))
+            )
+        ).scalars().all():
+            await session.delete(row)
+        await session.commit()
+
+
 @pytest_asyncio.fixture
 async def db():
     from app.database import async_session_maker
 
     async with async_session_maker() as session:
         yield session
+    await _drop_test_datasets()
 
 
 @pytest_asyncio.fixture(autouse=True)

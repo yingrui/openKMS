@@ -31,7 +31,7 @@ from app.schemas.dataset import (
     FileRowsResponse,
 )
 from app.services.data_layer import file_datasets
-from app.services.storage import get_object
+from app.services.storage import STORAGE_ERRORS, get_object
 from app.services.data_layer.file_datasets import FileDatasetError
 from app.services.permissions.permission_catalog import PERM_DATA_READ, PERM_DATA_WRITE
 
@@ -268,6 +268,16 @@ async def manifest(dataset_id: str, version: int, db: AsyncSession = Depends(get
         raise HTTPException(status_code=404, detail="This version has no manifest: publish it first.")
     try:
         return json.loads(get_object(row.manifest_key))
+    except STORAGE_ERRORS as exc:
+        # A manifest row without its object means the storage write never happened (a test fixture,
+        # a bucket that was wiped). Say that instead of leaking a raw botocore NoSuchKey as a 500.
+        raise HTTPException(
+            status_code=404,
+            detail=(
+                f"v{version} is published but its manifest object is missing "
+                f"({row.manifest_key}): {type(exc).__name__}"
+            ),
+        ) from exc
     except FileDatasetError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
 
