@@ -21,6 +21,7 @@ import { fetchAllDataSources, type DataSourceResponse } from '../../data/dataSou
 import { useConfirm } from '../../contexts/ConfirmContext';
 import { isValidApiName, toPascalCaseApiName } from '../ontology-manager/objectTypeNaming';
 import './ontology-admin.scss';
+import { datasetLabel } from '../ontology-manager/datasetLabel';
 
 /** True when indexing reads from a junction or source-side dataset (not only saved links). */
 function linkTypeUsesDatasetIndexing(t: LinkTypeResponse, objectTypes: ObjectTypeResponse[]): boolean {
@@ -496,7 +497,7 @@ export function LinkTypesPage() {
                     <option value="">Select dataset…</option>
                     {datasets.map((d) => (
                       <option key={d.id} value={d.id}>
-                        {d.display_name || `${d.schema_name}.${d.table_name}`}
+                        {datasetLabel(d)}
                       </option>
                     ))}
                   </select>

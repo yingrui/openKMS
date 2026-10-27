@@ -21,6 +21,7 @@ import { SqlEditor } from '../../components/quality/SqlEditor';
 import { EntityViewHeader, EntityViewLoading, EntityViewPanel } from './EntityViewShell';
 import { readRun, type RunReading } from './qualityRunResult';
 import { isRuleDraftDirty } from './ruleDraft';
+import { datasetLabel } from './datasetLabel';
 
 const RULE_TYPES = ['not_null', 'unique', 'range', 'referential', 'freshness', 'sql'] as const;
 
@@ -411,7 +412,7 @@ export function QualityRuleEditorPage() {
                     .filter((d) => d.id !== datasetId)
                     .map((d) => (
                       <option key={d.id} value={d.id}>
-                        {d.display_name || `${d.schema_name}.${d.table_name}`}
+                        {datasetLabel(d)}
                       </option>
                     ))}
                 </select>

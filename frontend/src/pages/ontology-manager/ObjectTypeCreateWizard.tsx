@@ -20,6 +20,7 @@ import {
   toPascalCaseApiName,
 } from './objectTypeNaming';
 import { PropertiesEditor } from './objectTypeFormParts';
+import { datasetLabel } from './datasetLabel';
 import {
   ontologyTypeFromColumn,
   toHandCreatedPropertyDefs,
@@ -402,7 +403,7 @@ export function ObjectTypeCreateWizard({
                 <option value="">{t('objectTypes.none')}</option>
                 {datasets.map((d) => (
                   <option key={d.id} value={d.id}>
-                    {d.display_name || `${d.schema_name}.${d.table_name}`}
+                    {datasetLabel(d)}
                   </option>
                 ))}
               </select>

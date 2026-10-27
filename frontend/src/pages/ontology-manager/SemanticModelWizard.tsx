@@ -10,10 +10,7 @@ import {
   type SemanticModelResponse,
 } from '../../data/semanticModelsApi';
 import { Dialog, EmptyState, FormField } from '../../styles/design-system';
-
-function datasetLabel(d: DatasetResponse): string {
-  return d.display_name || `${d.schema_name}.${d.table_name}`;
-}
+import { datasetLabel } from './datasetLabel';
 
 type DraftMetric = { key: string; baseDatasetId: string; name: string; expression: string };
 

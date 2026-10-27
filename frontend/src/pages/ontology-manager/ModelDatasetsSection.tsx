@@ -19,7 +19,7 @@ import { Dialog, FormField, Pagination } from '../../styles/design-system';
 import { EntityViewHeader, EntityViewPanel } from './EntityViewShell';
 import { fieldCoverage } from './fieldCoverage';
 import { useSemanticModelDetail } from './useSemanticModelDetail';
-import type { DatasetResponse } from '../../data/datasetsApi';
+import { datasetLabel } from './datasetLabel';
 
 const PAGE_SIZE = 25;
 
@@ -30,10 +30,6 @@ const splitList = (s: string) =>
     .split(',')
     .map((x) => x.trim())
     .filter(Boolean);
-
-function datasetLabel(d: DatasetResponse): string {
-  return d.display_name || `${d.schema_name}.${d.table_name}`;
-}
 
 /**
  * Model → Datasets: the datasets in the model's scope, each showing its **fields** (which the

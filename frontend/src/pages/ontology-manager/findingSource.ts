@@ -8,6 +8,7 @@
 import type { StoryFinding } from '../../data/storiesApi';
 import type { DatasetResponse } from '../../data/datasetsApi';
 import type { SemanticModelResponse } from '../../data/semanticModelsApi';
+import { datasetLabel } from './datasetLabel';
 
 export interface FindingSource {
   label: string;
@@ -34,7 +35,7 @@ export function findingSource(
   return {
     kind: 'dataset',
     label: dataset
-      ? dataset.display_name || `${dataset.schema_name}.${dataset.table_name}`
+      ? datasetLabel(dataset)
       : missingLabel,
     href: finding.dataset_id ? `/datasets/${finding.dataset_id}` : null,
   };

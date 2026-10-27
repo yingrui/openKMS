@@ -24,6 +24,7 @@ import {
   EntityViewStats,
 } from './EntityViewShell';
 import '../ontology/ontology-admin.scss';
+import { datasetLabel } from './datasetLabel';
 
 type LinkTypeDetailContext = {
   linkType: LinkTypeResponse;
@@ -482,7 +483,7 @@ export function LinkTypeDatasourcesTab() {
               <option value="">{t('objectTypes.none')}</option>
               {datasets.map((d) => (
                 <option key={d.id} value={d.id}>
-                  {d.display_name || `${d.schema_name}.${d.table_name}`}
+                  {datasetLabel(d)}
                 </option>
               ))}
             </select>

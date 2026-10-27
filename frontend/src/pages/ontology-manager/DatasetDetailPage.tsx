@@ -39,12 +39,8 @@ import {
 } from './useDatasetDetail';
 import '../ontology/ontology-admin.scss';
 import './dataset-detail.scss';
+import { datasetLabel } from './datasetLabel';
 
-/** What the dataset *is*, in one line: a table has a schema-qualified name; a file dataset has a source. */
-function datasetIdentity(d: DatasetResponse): string {
-  if (d.kind === 'file') return d.data_source_name ?? 'Object storage';
-  return d.schema_name && d.table_name ? `${d.schema_name}.${d.table_name}` : (d.display_name ?? '');
-}
 
 /** Sensitivity is stored as a stable value; the summary shows its label. */
 const SENSITIVITY_KEYS: Record<string, string> = {
@@ -134,7 +130,7 @@ export function DatasetDetailPage() {
 
   const onDelete = useCallback(async () => {
     if (!datasetId || !dataset) return;
-    const name = dataset.display_name?.trim() || datasetIdentity(dataset);
+    const name = dataset.display_name?.trim() || datasetLabel(dataset);
     if (
       !(await confirm({
         title: t('shared.delete'),
@@ -179,7 +175,7 @@ export function DatasetDetailPage() {
     return <EntityViewLoading label={t('shared.loading')} />;
   }
 
-  const title = dataset.display_name?.trim() || datasetIdentity(dataset);
+  const title = dataset.display_name?.trim() || datasetLabel(dataset);
   const base = `/datasets/${datasetId}`;
 
   return (
@@ -191,7 +187,7 @@ export function DatasetDetailPage() {
         meta={
           dataset.kind === 'file'
             ? (dataset.data_source_name ?? 'Object storage')
-            : `${datasetIdentity(dataset)}${dataset.data_source_name ? ` · ${dataset.data_source_name}` : ''}`
+            : `${datasetLabel(dataset)}${dataset.data_source_name ? ` · ${dataset.data_source_name}` : ''}`
         }
         navItems={
           dataset.kind === 'file'

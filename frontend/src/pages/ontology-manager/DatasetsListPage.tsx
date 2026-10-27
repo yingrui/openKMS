@@ -22,6 +22,7 @@ import { DatasetErGraph, type ErGraphLink, type ErGraphNode } from './DatasetErG
 import { useConfirm } from '../../contexts/ConfirmContext';
 import { Dialog, EmptyState, FormField, Pagination, ResourceViewToggle } from '../../styles/design-system';
 import '../ontology/ontology-admin.scss';
+import { datasetLabel } from './datasetLabel';
 
 export function DatasetsListPage() {
   const { t } = useTranslation('ontology');
@@ -60,7 +61,7 @@ export function DatasetsListPage() {
     () =>
       items.map((d) => ({
         id: d.id,
-        name: d.display_name || `${d.schema_name}.${d.table_name}`,
+        name: datasetLabel(d),
         joins: joins.filter((j) => j.from_dataset_id === d.id || j.to_dataset_id === d.id).length,
       })),
     [items, joins],
@@ -397,7 +398,7 @@ export function DatasetsListPage() {
                           to={`/datasets/${d.id}`}
                           className="ontology-manager-list__api-link"
                         >
-                          <strong>{d.display_name || `${d.schema_name}.${d.table_name}`}</strong>
+                          <strong>{datasetLabel(d)}</strong>
                         </Link>
                       </td>
                       <td>{d.data_source_name ?? t('datasets.dash')}</td>

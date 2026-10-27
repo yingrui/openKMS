@@ -11,6 +11,7 @@ import {
 import { ChipPicker } from '../../components/ontology/ChipPicker';
 import { CheckRow, FormField } from '../../styles/design-system';
 import { EntityViewHeader, EntityViewPanel, EntityViewLoading } from './EntityViewShell';
+import { datasetLabel } from './datasetLabel';
 
 type AiContext = { instructions: string; synonyms: string; examples: string };
 
@@ -135,7 +136,7 @@ export function DatasetSettingsTab() {
               type="text"
               value={displayName}
               onChange={(e) => setDisplayName(e.target.value)}
-              placeholder={`${dataset.schema_name}.${dataset.table_name}`}
+              placeholder={datasetLabel(dataset)}
             />
           </FormField>
           <FormField label={t('datasets.descriptionLabel')}>

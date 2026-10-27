@@ -19,6 +19,7 @@ import { useConfirm } from '../../contexts/ConfirmContext';
 import { Dialog, EmptyState, FormField } from '../../styles/design-system';
 import { EntityViewHeader, EntityViewPanel, EntityViewLoading } from './EntityViewShell';
 import { DatasetErDiagram, type ErNode } from './DatasetErDiagram';
+import { datasetLabel } from './datasetLabel';
 
 /** A column pair: `from` = FK column, `to` = referenced key column. */
 type ColumnPair = { from: string; to: string };
@@ -178,7 +179,7 @@ export function DatasetRelationshipsTab() {
 
   if (loading) return <EntityViewLoading label={t('shared.loading')} />;
 
-  const centerLabel = dataset.display_name?.trim() || `${dataset.schema_name}.${dataset.table_name}`;
+  const centerLabel = datasetLabel(dataset);
 
   return (
     <>
@@ -264,7 +265,7 @@ export function DatasetRelationshipsTab() {
               <option value="">{t('datasets.selectTable')}</option>
               {otherDatasets.map((d) => (
                 <option key={d.id} value={d.id}>
-                  {d.display_name || `${d.schema_name}.${d.table_name}`}
+                  {datasetLabel(d)}
                 </option>
               ))}
             </select>

@@ -18,6 +18,7 @@ import { useConfirm } from '../../contexts/ConfirmContext';
 import { Dialog, FormField } from '../../styles/design-system';
 import { EntityViewHeader, EntityViewPanel } from './EntityViewShell';
 import { useSemanticModelDetail } from './useSemanticModelDetail';
+import { datasetLabel } from './datasetLabel';
 
 const METRIC_TYPES = ['simple', 'ratio', 'derived', 'cumulative', 'conversion'] as const;
 
@@ -168,9 +169,10 @@ export function ModelMetricsSection() {
     }
   };
 
-  const datasetLabel = (id: string) => {
+  /** Which dataset a metric sits on, by id — a lookup, not the label helper. */
+  const datasetNameById = (id: string) => {
     const d = datasets.find((x) => x.id === id);
-    return d ? d.display_name || `${d.schema_name}.${d.table_name}` : id;
+    return d ? datasetLabel(d) : id;
   };
 
   return (
@@ -209,7 +211,7 @@ export function ModelMetricsSection() {
                   <td>
                     <strong>{m.name}</strong>
                   </td>
-                  <td>{m.base_dataset_name ?? datasetLabel(m.base_dataset_id)}</td>
+                  <td>{m.base_dataset_name ?? datasetNameById(m.base_dataset_id)}</td>
                   <td>{m.type}</td>
                   <td>
                     <code>{metricExpressionSql(m)}</code>
@@ -286,7 +288,7 @@ export function ModelMetricsSection() {
                   <option value="">{t('datasets.selectDataset')}</option>
                   {datasets.map((d) => (
                     <option key={d.id} value={d.id}>
-                      {d.display_name || `${d.schema_name}.${d.table_name}`}
+                      {datasetLabel(d)}
                     </option>
                   ))}
                 </select>

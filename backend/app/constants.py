@@ -36,3 +36,7 @@ class DocumentRelationType(StrEnum):
 DEFAULT_PAGE_SIZE = 100
 MAX_PAGE_SIZE = 500
 ROWS_TIMEOUT_MS = 10_000
+
+#: Column names that make a file sliceable by date. One list: the upload path, the read path and the API's note about a
+#: version all have to agree on what "the date column" means, and a second copy is how they drift.
+DATE_COLUMN_CANDIDATES = ("trade_date", "date", "dt", "as_of_date", "asof", "timestamp")

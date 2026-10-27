@@ -24,14 +24,13 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.dataset import Dataset
 from app.models.dataset_version import DatasetVersion, DatasetVersionFile
+from app.constants import DATE_COLUMN_CANDIDATES
 from app.services.storage import get_object, get_redirect_url, object_exists, upload_object
 
 #: The seeded source for the deployment's own bucket (see migration `d1f2a3b4c5d6`).
 BUILTIN_SOURCE_ID = "00000000-0000-4000-8000-00000000f11e"
 
 #: Columns that make a file sliceable; the first one present becomes the version's date column.
-DATE_COLUMN_CANDIDATES = ("trade_date", "date", "dt", "as_of_date", "asof", "timestamp")
-
 SUPPORTED_SUFFIXES = (".parquet", ".csv", ".jsonl", ".json")
 
 #: A single file is downloaded whole before it is parsed (parquet needs a seekable stream), so its size is the

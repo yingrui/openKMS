@@ -245,6 +245,14 @@ if ! python3 scripts/check-panel-tables.py; then
   status=1
 fi
 
+
+# --- 21. Composed dataset labels ------------------------------------------------------------
+# `d.display_name || `${d.schema_name}.${d.table_name}`` was written in thirteen places, and every one printed
+# "null.null" for a file dataset. `datasetLabel()` knows the three shapes; call sites must not build their own.
+if ! python3 scripts/check-dataset-labels.py; then
+  status=1
+fi
+
 if [ "$status" -eq 0 ]; then
   echo "check-shared-styles: OK"
 fi

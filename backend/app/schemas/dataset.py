@@ -4,6 +4,8 @@ from typing import Any
 
 from pydantic import BaseModel, model_validator
 
+from app.constants import DATE_COLUMN_CANDIDATES
+
 from app.constants import DEFAULT_PAGE_SIZE
 
 
@@ -273,7 +275,7 @@ class DatasetVersionResponse(BaseModel):
     def _date_column(self) -> "DatasetVersionResponse":
         names = {c.get("name") for c in self.columns or []}
         self.date_column = next(
-            (c for c in ("trade_date", "date", "dt", "as_of_date", "asof", "timestamp") if c in names),
+            (c for c in DATE_COLUMN_CANDIDATES if c in names),
             None,
         )
         return self

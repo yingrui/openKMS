@@ -8,6 +8,7 @@ import { FormField } from '../../styles/design-system';
 import { OPERATORS, columnKind } from './datasetRowsFilter';
 import { FilterRows } from '../../components/ontology/FilterRows';
 import { AGGREGATE_FNS, GRANULARITIES, type AddFindingForm } from './addFindingForm';
+import { datasetLabel } from './datasetLabel';
 
 /**
  * The source and the query, for a finding being added to a story.
@@ -42,7 +43,7 @@ export function FindingQueryBuilder({
 
   const datasetOptions = datasets.map((d) => ({
     id: d.id,
-    label: d.display_name || `${d.schema_name}.${d.table_name}`,
+    label: datasetLabel(d),
   }));
   const datasetColumnOptions = datasetColumns.map((c) => ({
     id: c.column_name,

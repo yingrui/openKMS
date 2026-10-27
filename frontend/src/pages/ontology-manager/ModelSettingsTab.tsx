@@ -8,6 +8,7 @@ import { useConfirm } from '../../contexts/ConfirmContext';
 import { FormField } from '../../styles/design-system';
 import { EntityViewHeader, EntityViewPanel } from './EntityViewShell';
 import { useSemanticModelDetail } from './useSemanticModelDetail';
+import { datasetLabel } from './datasetLabel';
 
 type AiContext = { instructions: string; synonyms: string; examples: string };
 
@@ -39,8 +40,6 @@ export function ModelSettingsTab() {
   const [ai, setAi] = useState<AiContext>(() => readAiContext(model.ai_context));
   const [saving, setSaving] = useState(false);
 
-  const datasetLabel = (d: (typeof allDatasets)[number]) =>
-    d.display_name || `${d.schema_name}.${d.table_name}`;
 
   const [pick, setPick] = useState('');
   const selectedDatasets = allDatasets.filter((d) => datasetIds.includes(d.id));

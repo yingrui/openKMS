@@ -50,6 +50,7 @@ import {
 } from './EntityViewShell';
 import { ObjectTypeDetailCtx, useObjectTypeDetail } from './useObjectTypeDetail';
 import '../ontology/ontology-admin.scss';
+import { datasetLabel } from './datasetLabel';
 
 export function ObjectTypeDetailPage() {
   const { t } = useTranslation('ontology');
@@ -449,7 +450,7 @@ export function ObjectTypeDatasourcesTab() {
               <option value="">{t('objectTypes.none')}</option>
               {datasets.map((d) => (
                 <option key={d.id} value={d.id}>
-                  {d.display_name || `${d.schema_name}.${d.table_name}`}
+                  {datasetLabel(d)}
                 </option>
               ))}
             </select>
