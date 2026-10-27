@@ -81,7 +81,6 @@ export function FileDatasetData({ datasetId }: { datasetId: string }) {
           rows: version.row_count.toLocaleString(),
         })}
       />
-      <p className="page-subtitle">{t('datasets.fileSampleHint')}</p>
       <EntityViewPanel>
         {rows === null || rows.rows.length === 0 ? (
           <EmptyState title={t('datasets.emptyRows')} description={t('datasets.versionsHint')} />
