@@ -731,7 +731,9 @@
     "versionLatest": "最新",
     "versionFacts": "{{files}} 个文件 · {{rows}} 行 · {{size}} · {{columns}} 列",
     "versionPublishedAt": "{{when}} 由 {{who}} 发布",
-    "fileSampleSubtitle": "v{{version}} 的示例——该版本共 {{rows}} 行"
+    "fileSampleSubtitle": "v{{version}} 的示例——该版本共 {{rows}} 行",
+    "versionFilesOf": "v{{version}} 的文件",
+    "versionRangeNote": "区间来自 {{column}}"
   },
   "groups": {
     "title": "分组",

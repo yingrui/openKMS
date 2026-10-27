@@ -738,7 +738,9 @@
     "versionLatest": "latest",
     "versionFacts": "{{files}} files · {{rows}} rows · {{size}} · {{columns}} columns",
     "versionPublishedAt": "published {{when}} by {{who}}",
-    "fileSampleSubtitle": "A sample of v{{version}} — {{rows}} rows in the version"
+    "fileSampleSubtitle": "A sample of v{{version}} — {{rows}} rows in the version",
+    "versionFilesOf": "Files in v{{version}}",
+    "versionRangeNote": "range from {{column}}"
   },
   "groups": {
     "title": "Groups",
