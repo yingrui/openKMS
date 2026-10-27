@@ -44,8 +44,8 @@ export function DatasetVersionsTab() {
   const [loading, setLoading] = useState(true);
   const [selected, setSelected] = useState<number | null>(null);
   const [detail, setDetail] = useState<DatasetVersionDetail | null>(null);
-  /** Loaded on demand: the manifest is the audit trail, not something you read on every visit. */
-  const [manifest, setManifest] = useState<Record<string, unknown> | null>(null);
+  /** Loaded on demand and kept with its version: the manifest is the audit trail, not a page fixture. */
+  const [manifest, setManifest] = useState<{ version: number; data: Record<string, unknown> } | null>(null);
   const [page, setPage] = useState(0);
   const [pageSize, setPageSize] = useState(PAGE);
 
@@ -83,13 +83,15 @@ export function DatasetVersionsTab() {
     };
   }, [datasetId, selected, t]);
 
+  const current = manifest && manifest.version === selected ? manifest.data : null;
+
   const showManifest = async (version: number) => {
-    if (manifest) {
+    if (current) {
       setManifest(null);
       return;
     }
     try {
-      setManifest(await fetchVersionManifest(datasetId, version));
+      setManifest({ version, data: await fetchVersionManifest(datasetId, version) });
     } catch (e) {
       toast.error(e instanceof Error ? e.message : t('datasets.loadFailed'));
     }
@@ -244,14 +246,28 @@ export function DatasetVersionsTab() {
               </table>
             </div>
           )}
+        </EntityViewPanel>
+      ) : null}
+
+      {selectedVersion ? (
+        <EntityViewPanel>
+          <div className="dataset-joins__toolbar">
+            <h3>
+              {t('datasets.manifest')}
+              <span className="page-subtitle">
+                {' '}
+                · {t('datasets.manifestOf', { version: selectedVersion.version })}
+              </span>
+            </h3>
+          </div>
           <details className="dataset-manifest">
             <summary onClick={() => void showManifest(selectedVersion.version)}>
-              {t('datasets.manifest')}
+              {t('datasets.manifestShow')}
             </summary>
-            {manifest ? (
-              <pre>{JSON.stringify(manifest, null, 2)}</pre>
+            {current ? (
+              <pre>{JSON.stringify(current, null, 2)}</pre>
             ) : (
-              <p className="page-subtitle">{t('shared.loading')}</p>
+              <p className="page-subtitle">{t('datasets.manifestHint')}</p>
             )}
           </details>
         </EntityViewPanel>

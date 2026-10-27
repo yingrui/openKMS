@@ -734,7 +734,10 @@
     "fileSampleSubtitle": "v{{version}} 的示例——该版本共 {{rows}} 行",
     "versionFilesOf": "v{{version}} 的文件",
     "versionRangeNote": "区间来自 {{column}}",
-    "manifest": "Manifest（发布时冻结的记录）"
+    "manifest": "Manifest（发布时冻结的记录）",
+    "manifestOf": "v{{version}} 发布时冻结的记录",
+    "manifestShow": "展开 JSON",
+    "manifestHint": "发布时写一次：文件与 sha256、行数、当时记录的列结构。"
   },
   "groups": {
     "title": "分组",

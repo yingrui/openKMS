@@ -741,7 +741,10 @@
     "fileSampleSubtitle": "A sample of v{{version}} — {{rows}} rows in the version",
     "versionFilesOf": "Files in v{{version}}",
     "versionRangeNote": "range from {{column}}",
-    "manifest": "Manifest (the frozen record)"
+    "manifest": "Manifest (the frozen record)",
+    "manifestOf": "the record frozen when v{{version}} was published",
+    "manifestShow": "Show the JSON",
+    "manifestHint": "Written once at publish: files with their sha256, row counts, the recorded schema."
   },
   "groups": {
     "title": "Groups",
