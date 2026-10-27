@@ -735,9 +735,9 @@
     "versionFilesOf": "v{{version}} 的文件",
     "versionRangeNote": "区间来自 {{column}}",
     "manifest": "Manifest（发布时冻结的记录）",
-    "manifestOf": "v{{version}} 发布时冻结的记录",
-    "manifestShow": "展开 JSON",
-    "manifestHint": "发布时写一次：文件与 sha256、行数、当时记录的列结构。"
+    "manifestOf": "v{{version}} 里到底有什么",
+    "manifestShow": "展开查看",
+    "manifestHint": "版本发布时写一次：每个文件与它的 sha256、行数和列结构——之后不再改动。所以「v2」永远指同一批数据。"
   },
   "groups": {
     "title": "分组",

@@ -742,9 +742,9 @@
     "versionFilesOf": "Files in v{{version}}",
     "versionRangeNote": "range from {{column}}",
     "manifest": "Manifest (the frozen record)",
-    "manifestOf": "the record frozen when v{{version}} was published",
-    "manifestShow": "Show the JSON",
-    "manifestHint": "Written once at publish: files with their sha256, row counts, the recorded schema."
+    "manifestOf": "what v{{version}} contains",
+    "manifestShow": "Show it",
+    "manifestHint": "Written once when the version was published — every file with its sha256, the row counts and the schema — and never changed since. That is why v2 always means the same bytes."
   },
   "groups": {
     "title": "Groups",
