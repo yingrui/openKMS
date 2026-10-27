@@ -89,93 +89,91 @@ export function DatasetColumnsTab() {
     <>
       <EntityViewHeader title={t('datasets.columns')} subtitle={t('datasets.columnsHint')} />
       <EntityViewPanel>
-        <div className="dataset-columns__toolbar">
-          <span>
-            {profile?.computed_at
-              ? t('datasets.profileComputedAt', { time: profile.computed_at })
-              : t('datasets.profileEmpty')}
-          </span>
-          <button
-            type="button"
-            className="btn btn-secondary btn-sm"
-            onClick={() => void refreshProfile()}
-            disabled={profiling}
-          >
-            {profiling ? <Loader2 size={14} className="console-loading-spinner" aria-hidden /> : null}
-            {t('datasets.refreshProfile')}
-          </button>
-        </div>
-        {loading ? (
-          <div className="console-loading">
-            <Loader2 size={32} className="console-loading-spinner" aria-hidden />
-            <p>{t('shared.loading')}</p>
+        <div className="dataset-detail-data">
+          <div className="dataset-columns__toolbar">
+            <span>
+              {profile?.computed_at
+                ? t('datasets.profileComputedAt', { time: profile.computed_at })
+                : t('datasets.profileEmpty')}
+            </span>
+            <button
+              type="button"
+              className="btn btn-secondary btn-sm"
+              onClick={() => void refreshProfile()}
+              disabled={profiling}
+            >
+              {profiling ? <Loader2 size={14} className="console-loading-spinner" aria-hidden /> : null}
+              {t('datasets.refreshProfile')}
+            </button>
           </div>
-        ) : (
-          // The card bleeds to the panel's edges, as the Data grid does: a table is one control, not a card
-          // floating inside a card. The toolbar above keeps its own padding.
-          <div className="dataset-detail-data">
+          {loading ? (
+            <div className="console-loading">
+              <Loader2 size={32} className="console-loading-spinner" aria-hidden />
+              <p>{t('shared.loading')}</p>
+            </div>
+          ) : (
             <div className="ds-table-wrap ds-table-wrap--flush">
-            <table className="console-table">
-              <thead>
-                <tr>
-                  <th>{t('datasets.colColumn')}</th>
-                  <th>{t('datasets.colDataType')}</th>
-                  <th>{t('datasets.colNullable')}</th>
-                  <th>{t('datasets.colPosition')}</th>
-                  <th>{t('datasets.colDescription')}</th>
-                  <th>{t('datasets.colNulls')}</th>
-                  <th>{t('datasets.colDistinct')}</th>
-                  <th>{t('datasets.colMin')}</th>
-                  <th>{t('datasets.colMax')}</th>
-                </tr>
-              </thead>
-              <tbody>
-                {metadata.length === 0 ? (
+              <table className="console-table">
+                <thead>
                   <tr>
-                    <td colSpan={9} className="console-table-empty">
-                      {t('datasets.emptyColumns')}
-                    </td>
+                    <th>{t('datasets.colColumn')}</th>
+                    <th>{t('datasets.colDataType')}</th>
+                    <th>{t('datasets.colNullable')}</th>
+                    <th>{t('datasets.colPosition')}</th>
+                    <th>{t('datasets.colDescription')}</th>
+                    <th>{t('datasets.colNulls')}</th>
+                    <th>{t('datasets.colDistinct')}</th>
+                    <th>{t('datasets.colMin')}</th>
+                    <th>{t('datasets.colMax')}</th>
                   </tr>
-                ) : (
-                  metadata.map((col) => {
-                    const s = statsByColumn.get(col.column_name);
-                    return (
-                      <tr key={col.column_name}>
-                        <td>
-                          <strong>{col.column_name}</strong>
-                        </td>
-                        <td>{col.data_type}</td>
-                        <td>{col.is_nullable ? t('datasets.yes') : t('datasets.no')}</td>
-                        <td>{col.ordinal_position}</td>
-                        <td>
-                          <input
-                            type="text"
-                            className="dataset-column-desc"
-                            placeholder={t('datasets.colDescriptionPlaceholder')}
-                            value={descriptions[col.column_name] ?? ''}
-                            disabled={savingCol === col.column_name}
-                            onChange={(e) =>
-                              setDescriptions((prev) => ({
-                                ...prev,
-                                [col.column_name]: e.target.value,
-                              }))
-                            }
-                            onBlur={() => void saveDescription(col)}
-                          />
-                        </td>
-                        <td>{s ? fmt(s.null_count) : t('datasets.dash')}</td>
-                        <td>{s ? fmt(s.distinct_count) : t('datasets.dash')}</td>
-                        <td>{s ? fmt(s.min) : t('datasets.dash')}</td>
-                        <td>{s ? fmt(s.max) : t('datasets.dash')}</td>
-                      </tr>
-                    );
-                  })
-                )}
-              </tbody>
-            </table>
-          </div>
-          </div>
-        )}
+                </thead>
+                <tbody>
+                  {metadata.length === 0 ? (
+                    <tr>
+                      <td colSpan={9} className="console-table-empty">
+                        {t('datasets.emptyColumns')}
+                      </td>
+                    </tr>
+                  ) : (
+                    metadata.map((col) => {
+                      const s = statsByColumn.get(col.column_name);
+                      return (
+                        <tr key={col.column_name}>
+                          <td>
+                            <strong>{col.column_name}</strong>
+                          </td>
+                          <td>{col.data_type}</td>
+                          <td>{col.is_nullable ? t('datasets.yes') : t('datasets.no')}</td>
+                          <td>{col.ordinal_position}</td>
+                          <td>
+                            <input
+                              type="text"
+                              className="dataset-column-desc"
+                              placeholder={t('datasets.colDescriptionPlaceholder')}
+                              value={descriptions[col.column_name] ?? ''}
+                              disabled={savingCol === col.column_name}
+                              onChange={(e) =>
+                                setDescriptions((prev) => ({
+                                  ...prev,
+                                  [col.column_name]: e.target.value,
+                                }))
+                              }
+                              onBlur={() => void saveDescription(col)}
+                            />
+                          </td>
+                          <td>{s ? fmt(s.null_count) : t('datasets.dash')}</td>
+                          <td>{s ? fmt(s.distinct_count) : t('datasets.dash')}</td>
+                          <td>{s ? fmt(s.min) : t('datasets.dash')}</td>
+                          <td>{s ? fmt(s.max) : t('datasets.dash')}</td>
+                        </tr>
+                      );
+                    })
+                  )}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
       </EntityViewPanel>
     </>
   );

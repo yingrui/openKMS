@@ -308,6 +308,15 @@ They are **not claimed to work**: this machine has no `pg_dump`, so only the pre
 refuses with an installation hint, verified). The drill is what turns a file into a backup, and until it
 prints `restore drill ok`, the honest state is untested.
 
+### A bleed has to include whatever sits above the table (2026-10)
+
+Wrapping only the Columns card in `dataset-detail-data` pulled the table **up over its own toolbar**: the wrapper's
+negative top margin cancels the panel's padding, which the Data page gets away with because the wrapper there starts
+**above** the filter bar and the bar restores the padding for itself. A table-only bleed has nothing to restore it.
+
+So the bleed starts above the toolbar, and `.dataset-columns__toolbar` carries the same padding rule as the filter bar.
+The rule, now stated: **a bleed includes everything in the panel, and each padded row inside it re-states its padding.**
+
 ### The criterion, not just the pages (2026-10)
 
 "Columns should look like Data too" was right, and the question behind it was worth writing down: **a table that is the
