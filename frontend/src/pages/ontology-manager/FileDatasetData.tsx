@@ -183,23 +183,25 @@ function FileDatasetColumns({ datasetId }: { datasetId: string }) {
         {!selected || selected.columns.length === 0 ? (
           <EmptyState title={t('datasets.noVersions')} description={t('datasets.versionsHint')} />
         ) : (
-          <div className="ds-table-wrap ds-table-wrap--flush">
-            <table className="console-table">
-              <thead>
-                <tr>
-                  <th>{t('datasets.colName')}</th>
+          <div className="dataset-detail-data">
+            <div className="ds-table-wrap ds-table-wrap--flush">
+              <table className="console-table">
+                <thead>
+                  <tr>
+                    <th>{t('datasets.colName')}</th>
                   <th>{t('datasets.colType')}</th>
                 </tr>
               </thead>
               <tbody>
-                {selected.columns.map((column) => (
-                  <tr key={column.name}>
-                    <td>{column.name}</td>
-                    <td>{column.type}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+                  {selected.columns.map((column) => (
+                    <tr key={column.name}>
+                      <td>{column.name}</td>
+                      <td>{column.type}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </div>
         )}
       </EntityViewPanel>

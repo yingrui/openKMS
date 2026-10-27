@@ -111,7 +111,10 @@ export function DatasetColumnsTab() {
             <p>{t('shared.loading')}</p>
           </div>
         ) : (
-          <div className="ds-table-wrap ds-table-wrap--flush">
+          // The card bleeds to the panel's edges, as the Data grid does: a table is one control, not a card
+          // floating inside a card. The toolbar above keeps its own padding.
+          <div className="dataset-detail-data">
+            <div className="ds-table-wrap ds-table-wrap--flush">
             <table className="console-table">
               <thead>
                 <tr>
@@ -170,6 +173,7 @@ export function DatasetColumnsTab() {
                 )}
               </tbody>
             </table>
+          </div>
           </div>
         )}
       </EntityViewPanel>

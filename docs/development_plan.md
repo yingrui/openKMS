@@ -308,6 +308,18 @@ They are **not claimed to work**: this machine has no `pg_dump`, so only the pre
 refuses with an installation hint, verified). The drill is what turns a file into a backup, and until it
 prints `restore drill ok`, the honest state is untested.
 
+### The criterion, not just the pages (2026-10)
+
+"Columns should look like Data too" was right, and the question behind it was worth writing down: **a table that is the
+panel's body bleeds to the panel's edges; a table that is one part of a section does not.** That is why only the two
+Data pages bled and eleven other table panels did not — a distinction nobody had stated, which is how "the pages look
+different" happens.
+
+Applied to both Columns tabs (the table dataset's schema, and a file version's recorded schema); the toolbar above each
+keeps its padding. The other nine table panels — the quality rules, the versions, the run history, the model page's
+sections, the action and function detail logs — are panels *with* a table in them rather than a table *as* the panel,
+and stay as they are. If one of them starts to feel like a data view, the test is the same sentence.
+
 ### One data view reads as one control (2026-10)
 
 The two Data pages, side by side, differed in thirteen ways. Five were real visual differences; the rest were content
