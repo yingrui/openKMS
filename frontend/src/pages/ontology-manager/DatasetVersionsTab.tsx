@@ -6,6 +6,7 @@ import {
   fetchDatasetVersion,
   fetchDatasetVersions,
   fetchVersionDownloadUrl,
+  fetchVersionManifest,
   type DatasetVersion,
   type DatasetVersionDetail,
 } from '../../data/datasetVersionsApi';
@@ -43,6 +44,8 @@ export function DatasetVersionsTab() {
   const [loading, setLoading] = useState(true);
   const [selected, setSelected] = useState<number | null>(null);
   const [detail, setDetail] = useState<DatasetVersionDetail | null>(null);
+  /** Loaded on demand: the manifest is the audit trail, not something you read on every visit. */
+  const [manifest, setManifest] = useState<Record<string, unknown> | null>(null);
   const [page, setPage] = useState(0);
   const [pageSize, setPageSize] = useState(PAGE);
 
@@ -79,6 +82,18 @@ export function DatasetVersionsTab() {
       cancelled = true;
     };
   }, [datasetId, selected, t]);
+
+  const showManifest = async (version: number) => {
+    if (manifest) {
+      setManifest(null);
+      return;
+    }
+    try {
+      setManifest(await fetchVersionManifest(datasetId, version));
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : t('datasets.loadFailed'));
+    }
+  };
 
   const download = async (version: number, name: string) => {
     try {
@@ -229,6 +244,16 @@ export function DatasetVersionsTab() {
               </table>
             </div>
           )}
+          <details className="dataset-manifest">
+            <summary onClick={() => void showManifest(selectedVersion.version)}>
+              {t('datasets.manifest')}
+            </summary>
+            {manifest ? (
+              <pre>{JSON.stringify(manifest, null, 2)}</pre>
+            ) : (
+              <p className="page-subtitle">{t('shared.loading')}</p>
+            )}
+          </details>
         </EntityViewPanel>
       ) : null}
     </>

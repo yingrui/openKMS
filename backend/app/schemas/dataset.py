@@ -2,7 +2,7 @@
 from datetime import date, datetime
 from typing import Any
 
-from pydantic import BaseModel
+from pydantic import BaseModel, model_validator
 
 from app.constants import DEFAULT_PAGE_SIZE
 
@@ -265,6 +265,18 @@ class DatasetVersionResponse(BaseModel):
     created_by_name: str | None = None
     created_at: datetime
     manifest_key: str | None = None
+    #: Which recorded column the date range came from — **guessed** by name at upload, so the range is a note
+    #: about the files, not a field of the version. Null means there is no date range to speak of.
+    date_column: str | None = None
+
+    @model_validator(mode="after")
+    def _date_column(self) -> "DatasetVersionResponse":
+        names = {c.get("name") for c in self.columns or []}
+        self.date_column = next(
+            (c for c in ("trade_date", "date", "dt", "as_of_date", "asof", "timestamp") if c in names),
+            None,
+        )
+        return self
 
     model_config = {"from_attributes": True}
 

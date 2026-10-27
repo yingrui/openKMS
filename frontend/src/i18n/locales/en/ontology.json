@@ -740,7 +740,8 @@
     "versionPublishedAt": "published {{when}} by {{who}}",
     "fileSampleSubtitle": "A sample of v{{version}} — {{rows}} rows in the version",
     "versionFilesOf": "Files in v{{version}}",
-    "versionRangeNote": "range from {{column}}"
+    "versionRangeNote": "range from {{column}}",
+    "manifest": "Manifest (the frozen record)"
   },
   "groups": {
     "title": "Groups",

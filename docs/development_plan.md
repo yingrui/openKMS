@@ -308,6 +308,17 @@ They are **not claimed to work**: this machine has no `pg_dump`, so only the pre
 refuses with an installation hint, verified). The drill is what turns a file into a backup, and until it
 prints `restore drill ok`, the honest state is untested.
 
+### The manifest, where you would look for it (2026-10)
+
+`manifest.json` was written at publish and stored — and unreadable through the API: the version carried a
+`manifest_key`, and nothing served it. A reader asked where to see it, which is the answer: nowhere.
+
+`GET /api/dataset-versions/{id}/{version}/manifest` returns it verbatim (404 for a draft: there is nothing frozen yet),
+and the versions page folds it under the selected version's files. Loaded on demand — the manifest is the audit trail,
+not something to read on every visit — and read-only, like everything else on that page.
+
+Verified against the live version: 200, with `files`, `schema` and `version` in it.
+
 ### A bleed has to include whatever sits above the table (2026-10)
 
 Wrapping only the Columns card in `dataset-detail-data` pulled the table **up over its own toolbar**: the wrapper's

@@ -733,7 +733,8 @@
     "versionPublishedAt": "{{when}} 由 {{who}} 发布",
     "fileSampleSubtitle": "v{{version}} 的示例——该版本共 {{rows}} 行",
     "versionFilesOf": "v{{version}} 的文件",
-    "versionRangeNote": "区间来自 {{column}}"
+    "versionRangeNote": "区间来自 {{column}}",
+    "manifest": "Manifest（发布时冻结的记录）"
   },
   "groups": {
     "title": "分组",

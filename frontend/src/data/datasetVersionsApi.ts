@@ -82,3 +82,11 @@ export async function fetchVersionDownloadUrl(
   );
   return result.url;
 }
+
+/** The version's manifest, verbatim: the frozen record written at publish. */
+export async function fetchVersionManifest(
+  datasetId: string,
+  version: number,
+): Promise<Record<string, unknown>> {
+  return request<Record<string, unknown>>(`/api/dataset-versions/${datasetId}/${version}/manifest`);
+}

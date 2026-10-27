@@ -31,3 +31,22 @@ class TestBoundedReads:
 
         with pytest.raises(FileDatasetError, match="parquet, csv, jsonl or json"):
             read_file_bytes(b"x", "x.xlsx")
+
+
+class TestDateRangeIsANoteNotAField:
+    """The range comes from a name heuristic (`trade_date`, `date`, …) at upload, so it cannot be presented as a
+    fact of the version — and a window that cannot be applied is refused, never silently ignored."""
+
+    def test_the_version_says_which_column_the_guess_used(self):
+        from app.schemas.dataset import DatasetVersionResponse
+
+        with_date = DatasetVersionResponse(
+            dataset_id="d", version=1, status="published", created_at="2026-10-01T00:00:00Z",
+            columns=[{"name": "trade_date", "type": "date"}],
+        )
+        without = DatasetVersionResponse(
+            dataset_id="d", version=1, status="published", created_at="2026-10-01T00:00:00Z",
+            columns=[{"name": "customer", "type": "string"}],
+        )
+        assert with_date.date_column == "trade_date"
+        assert without.date_column is None

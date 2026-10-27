@@ -13,6 +13,8 @@ version readable by a consumer.
 
 from __future__ import annotations
 
+import json
+
 from datetime import date
 
 from fastapi import APIRouter, Depends, File, HTTPException, Query, Request, UploadFile
@@ -29,6 +31,7 @@ from app.schemas.dataset import (
     FileRowsResponse,
 )
 from app.services.data_layer import file_datasets
+from app.services.storage import get_object
 from app.services.data_layer.file_datasets import FileDatasetError
 from app.services.permissions.permission_catalog import PERM_DATA_READ, PERM_DATA_WRITE
 
@@ -242,6 +245,29 @@ async def file_url(
     try:
         row = await file_datasets.get_version(db, dataset_id, version)
         return {"url": await file_datasets.download_url(db, row, name, expires_in=expires_in)}
+    except FileDatasetError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+
+
+@router.get(
+    "/{dataset_id}/{version}/manifest",
+    dependencies=[Depends(require_any_permission(*_VIEW))],
+)
+async def manifest(dataset_id: str, version: int, db: AsyncSession = Depends(get_db)):
+    """The version's manifest, verbatim — the frozen record of what was published.
+
+    It is written once at publish and never touched again: files with their sha256, row counts, the schema that was
+    read from them. Reading it is how someone checks "what exactly is in v2" without trusting a summary.
+    """
+    await _file_dataset(db, dataset_id)
+    try:
+        row = await file_datasets.get_version(db, dataset_id, version)
+    except FileDatasetError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    if not row.manifest_key:
+        raise HTTPException(status_code=404, detail="This version has no manifest: publish it first.")
+    try:
+        return json.loads(get_object(row.manifest_key))
     except FileDatasetError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
 

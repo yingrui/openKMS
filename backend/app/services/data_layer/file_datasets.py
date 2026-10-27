@@ -538,6 +538,12 @@ async def rows(
             raise FileDatasetError(f"not in this version: {', '.join(sorted(unknown))}")
 
     date_column = date_column_of(version.columns or [])
+    if (start or end) and date_column is None:
+        # Silently ignoring the window would answer a different question than the one asked.
+        raise FileDatasetError(
+            "This version has no date column, so start/end cannot be applied. "
+            "A date range is a note about the files, not a field of the version."
+        )
     collected: list[pd.DataFrame] = []
     skip = offset
     produced = 0
