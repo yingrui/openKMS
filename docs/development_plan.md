@@ -308,6 +308,21 @@ They are **not claimed to work**: this machine has no `pg_dump`, so only the pre
 refuses with an installation hint, verified). The drill is what turns a file into a backup, and until it
 prints `restore drill ok`, the honest state is untested.
 
+### The manifest had a field for a guess (2026-10)
+
+Its file entries carried `"date_range": [from, to]` — a bespoke field for something derived from a **column-name guess**
+at upload. A schema-shaped field promises more than the guess can: that every version has a range, that the range is a
+property rather than a note.
+
+It is a `description` now — one sentence, `trade_date 2026-09-01 → 2026-09-24`, or nothing when no date column was
+recognised. The facts stay as facts (`name`, `key`, `rows`, `bytes`, `sha256`); the note stays a note.
+
+Manifests published before this keep `date_range`, because a manifest is written once and never rewritten — that is the
+promise being made. Versions published from now on get `description`; the two shapes coexist by design, not by oversight.
+
+Found while verifying: a 500 on the live endpoint, `NoSuchKey` — the dataset the query picked was one the **test suite**
+had created in the dev database (its manifest exists as a row, never as a stored object). Real datasets answer 200.
+
 ### The manifest, where you would look for it (2026-10)
 
 `manifest.json` was written at publish and stored — and unreadable through the API: the version carried a

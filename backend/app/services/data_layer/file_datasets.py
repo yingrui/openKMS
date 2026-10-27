@@ -407,6 +407,28 @@ def _schema_from_files(files: list[DatasetVersionFile]) -> list[dict]:
     return [entry for f in files for entry in (f.columns or [])]
 
 
+def file_manifest_entry(file: DatasetVersionFile, date_column: str | None) -> dict[str, Any]:
+    """One file's entry in the manifest — the facts, plus a sentence a person can read.
+
+    `date_range: [from, to]` was a bespoke field for something derived from a column-name guess; it is a note about the
+    file, so it is written as one: a `description` that says which column, from when to when. Nothing else is invented.
+    """
+    span = (
+        f"{date_column} {file.date_from} → {file.date_to}"
+        if date_column and file.date_from and file.date_to
+        else None
+    )
+    return {
+        "name": file.name,
+        "key": file.storage_key,
+        "reused_from_version": file.reused_from_version,
+        "rows": int(file.rows or 0),
+        "bytes": int(file.bytes or 0),
+        "sha256": file.sha256,
+        "description": span,
+    }
+
+
 async def publish(db: AsyncSession, dataset: Dataset, version: DatasetVersion) -> DatasetVersion:
     """Freeze the version: write its manifest, then make it pinnable."""
     if version.status != "draft":
@@ -421,6 +443,7 @@ async def publish(db: AsyncSession, dataset: Dataset, version: DatasetVersion) -
     if not files:
         raise FileDatasetError("a version needs at least one file before it can be published")
 
+    date_column = date_column_of(version.columns or [])
     key = manifest_key(dataset.id, version.version)
     manifest = {
         "dataset_id": dataset.id,
@@ -430,21 +453,7 @@ async def publish(db: AsyncSession, dataset: Dataset, version: DatasetVersion) -
         "created_by": version.created_by_name or version.created_by,
         "created_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
         "schema": version.columns or [],
-        "files": [
-            {
-                "name": f.name,
-                "key": f.storage_key,
-                "reused_from_version": f.reused_from_version,
-                "rows": int(f.rows or 0),
-                "bytes": int(f.bytes or 0),
-                "sha256": f.sha256,
-                "date_range": [
-                    f.date_from.isoformat() if f.date_from else None,
-                    f.date_to.isoformat() if f.date_to else None,
-                ],
-            }
-            for f in files
-        ],
+        "files": [file_manifest_entry(f, date_column) for f in files],
     }
     upload_object(key, json.dumps(manifest, ensure_ascii=False, indent=1).encode(), "application/json")
     version.manifest_key = key

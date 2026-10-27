@@ -50,3 +50,38 @@ class TestDateRangeIsANoteNotAField:
         )
         assert with_date.date_column == "trade_date"
         assert without.date_column is None
+
+
+class TestManifestShape:
+    """The manifest is facts plus a sentence — not a schema of guessed fields."""
+
+    def test_a_file_entry_has_no_date_range_field(self):
+        from types import SimpleNamespace
+
+        from app.services.data_layer.file_datasets import file_manifest_entry
+
+        entry = file_manifest_entry(
+            SimpleNamespace(
+                name="2026-09.parquet", storage_key="k", reused_from_version=None,
+                rows=96295, bytes=11582583, sha256="abc",
+                date_from="2026-09-01", date_to="2026-09-24",
+            ),
+            "trade_date",
+        )
+        assert "date_range" not in entry
+        assert entry["description"] == "trade_date 2026-09-01 → 2026-09-24"
+        assert entry["sha256"] == "abc"
+
+    def test_without_a_guessed_column_the_note_is_simply_absent(self):
+        from types import SimpleNamespace
+
+        from app.services.data_layer.file_datasets import file_manifest_entry
+
+        entry = file_manifest_entry(
+            SimpleNamespace(
+                name="f.parquet", storage_key="k", reused_from_version=None,
+                rows=1, bytes=1, sha256="x", date_from=None, date_to=None,
+            ),
+            None,
+        )
+        assert entry["description"] is None

@@ -124,7 +124,8 @@ async def test_draft_publish_and_pin(storage, db):
 
     manifest = json.loads(storage[published.manifest_key])
     assert [f["name"] for f in manifest["files"]] == ["2026-01.parquet", "2026-02.parquet"]
-    assert manifest["files"][0]["date_range"] == ["2026-01-05", "2026-01-06"]
+    # The range is a note, not a field: the manifest describes the file, it does not invent a schema.
+    assert manifest["files"][0]["description"] == "trade_date 2026-01-05 → 2026-01-06"
     assert manifest["schema"][0]["name"] == "ts_code"
 
     # A version is frozen once published.
