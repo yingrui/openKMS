@@ -380,6 +380,19 @@ were accidents and are shared now; the remaining two were choices.
 - **No 28ch truncation** in the sample: the grid caps long cells at a readable width because it is for scanning
   everything; a sample of fifty rows exists to *show the values*, so it shows them whole.
 
+### By kind, not by a pipe (2026-10)
+
+The Overview's "Data source" row still read **null.null · Object Storage** for a file dataset: it built
+`schema.table` and appended the source, and a file dataset has neither of the first two. My shared `datasetLabel()` did
+not help, because this row was not asking for a label — it was composing a fact.
+
+The reader's framing is the rule: **display by kind, not by `a || b`**. A pipe cannot know that `schema_name` is null
+because this dataset *has no table*, so it happily prints the emptiness. The row branches on `kind` now: a table shows
+`schema.table · source`, a file dataset shows **Object storage dataset · source**.
+
+The same pipe, split across two lines so §21's one-line regex missed it, was in the connector's dataset option label; it
+uses `datasetLabel` now.
+
 ### Two rounded boxes in one card (2026-10)
 
 The Data page showed a rounded card inside a rounded card. `EntityViewPanel` renders `.account-card` — border,

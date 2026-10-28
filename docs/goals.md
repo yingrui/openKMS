@@ -37,36 +37,44 @@ These are not separate “consumer vs enterprise” products—they are two dema
 
 ## The unit is the decision system {#goals-decision-systems}
 
-The old unit was the **document**; the new unit is the **decision system**. Inside it, a single decision is neither a page nor a new object—it is a governed **Action**: it takes a case in, applies rules and evidence, records an outcome, and carries an owner and a validity window.
+We used to work around documents: write them, store them, find them. What we actually deliver is a **decision**: given a case, reach a conclusion that holds up.
+
+Documents, data, and the ontology are still here, but their role changes. They are no longer the product; they are the material a decision is made from.
 
 | | Document-centric | Decision-centric |
 |---|---|---|
-| Unit | page or file | a governed Action (case → outcome) |
-| Bottleneck | writing | supplying context and rules |
-| Expert owns | prose | rules and their authority |
-| Agent does | retrieve | build and operate |
-| Success | pages published | decisions that hold up |
+| What ships | pages and files | a conclusion for a case |
+| The work | writing | getting the material, rules, and evidence ready |
+| Who owns it | whoever wrote it | whoever is accountable for the conclusion |
+| Success | pages published | a conclusion that holds up |
 
-A decision is an Action that carries five things:
+A decision is, plainly, **a change to a business object**: move a status from "pending" to "approved", add a link, write down the reasoning. An Action is just the verb that makes the change—a create, update, or delete on an object or a link.
 
-| A decision needs | Why |
+What turns that change into a decision is whether it can answer five questions:
+
+| Question | What it means |
 |---|---|
-| **A case** | what is being decided |
-| **Rules** | what applies, and which version |
-| **Evidence** | what the decision rests on |
-| **An outcome and rationale** | what was decided, and why |
-| **Authority and validity** | who may decide, and until when |
+| What is being decided? | the case |
+| Which rule applies? | the rule, and which version |
+| What is the evidence? | the document or data it rests on |
+| What was decided, and why? | the outcome and the reasoning |
+| Who is accountable, and until when? | the owner and the validity window |
 
-Documents, datasets, and ontology instances are the **context** that goes into that Action—carriers, not the decision.
+These five do not have to become five fields on the Action. They can live as fields on the business object, as a separate Decision object, or as a record on the change itself—whatever the domain needs.
 
-This is also why no new top-level object is required. openKMS already has typed, permissioned, audited Actions; what is missing is the five semantics above—declarative rules, evidence, outcome, authority, and review—not another entity.
+**What is missing is not a new object. It is two things:**
 
-Four consequences define the product:
+1. **Every change can say why.** The reason, the evidence, the rule version, and who made it.
+2. **Objects can express reliance.** A version, an owner, a validity window, and what depends on them.
 
-1. **A decision needs an operational model, not a document store.** Entities, relations, data, rules, actions, and authority—a *decision-scoped ontology*, not a complete enterprise model.
-2. **Experts own rules and authority, not prose.** Documents remain the evidence and explanation; the rule, its validity window, and who may change it are the asset.
-3. **Context now exceeds code.** Agents can write the implementation, but the domain model, rules, exceptions, and accountability live in enterprise knowledge. The knowledge system becomes the *build input*, not only a reference.
-4. **The loop is the product.** Knowledge → rule → decision → operation → review → rule change. Every step exists in openKMS; the loop does not.
+How a decision is stored—fields, a separate object, or a record on the change—is a choice each project makes. The platform should not force one.
+
+Four things follow:
+
+1. **Decisions need a model, not a pile of documents.** Objects, links, data, rules, actions—one small slice of the business is enough. It does not need to be the whole enterprise.
+2. **Experts provide rules and judgement, not prose.** Documents explain the basis; what is valuable is the rule itself, who set it, and when it is in force.
+3. **Code documentation is no longer enough to build software.** An agent can write the code, but it does not know the business rules, the exceptions, or who is accountable—those live in enterprise knowledge. The knowledge system becomes material for building, not just a reference.
+4. **The product is the whole chain, not a feature.** Knowledge → rule → decision → operation → review → rule change. We have a part of every step; we have not connected them into a chain.
 
 ### Who does what
 

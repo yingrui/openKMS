@@ -744,7 +744,8 @@
     "manifestOf": "what v{{version}} contains",
     "manifestShow": "Show it",
     "manifestHint": "Written once when the version was published — every file with its sha256, the row counts and the schema — and never changed since. That is why v2 always means the same bytes.",
-    "fileDescription": "Description"
+    "fileDescription": "Description",
+    "fileDataset": "Object storage dataset"
   },
   "groups": {
     "title": "Groups",

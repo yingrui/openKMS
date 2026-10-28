@@ -251,7 +251,16 @@ export function DatasetOverviewTab() {
       <EntityViewPanel>
         <dl className="entity-view__dl">
           <dt>{t('datasets.dataSource')}</dt>
-          <dd>{fact(`${dataset.schema_name}.${dataset.table_name}`)}{dataset.data_source_name ? ` · ${dataset.data_source_name}` : ''}</dd>
+          <dd>
+            {/* By kind, not by pipe: a file dataset has no schema.table, and `a || b` would print "null.null". */}
+            {fact(
+              dataset.kind === 'file'
+                ? [t('datasets.fileDataset'), dataset.data_source_name].filter(Boolean).join(' · ')
+                : `${dataset.schema_name}.${dataset.table_name}${
+                    dataset.data_source_name ? ` · ${dataset.data_source_name}` : ''
+                  }`,
+            )}
+          </dd>
           <dt>{t('datasets.displayName')}</dt>
           <dd>{fact(dataset.display_name)}</dd>
           <dt>{t('datasets.descriptionLabel')}</dt>

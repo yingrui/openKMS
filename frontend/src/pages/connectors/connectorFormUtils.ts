@@ -1,6 +1,7 @@
 import type { ConnectorKindOut, ConnectorResponse } from '../../data/connectorsApi';
 import type { DatasetResponse } from '../../data/datasetsApi';
 import { stripSyncScheduleFromSettings, syncScheduleToSettingsPayload, type SyncScheduleFormState } from './connectorScheduleUtils';
+import { datasetLabel } from '../ontology-manager/datasetLabel';
 
 export type KvRow = { id: string; key: string; value: string };
 
@@ -125,7 +126,7 @@ export function secretRowsForKind(kinds: ConnectorKindOut[], kind: string): KvRo
 }
 
 export function datasetOptionLabel(d: DatasetResponse): string {
-  const base = (d.display_name && d.display_name.trim()) || `${d.schema_name}.${d.table_name}`;
+  const base = datasetLabel(d);
   return d.data_source_name ? `${base} · ${d.data_source_name}` : base;
 }
 
