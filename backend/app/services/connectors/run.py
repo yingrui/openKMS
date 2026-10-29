@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from collections.abc import Awaitable, Callable
+from collections.abc import Awaitable, Callable, Sequence
 from typing import Any
 
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -56,10 +56,13 @@ async def run_connector_sync_for_row(
     *,
     start_date: str | None = None,
     end_date: str | None = None,
+    slots: Sequence[str] | None = None,
 ) -> dict[str, int]:
     if not connector.enabled:
         raise ValueError("Connector is disabled")
     handler = _SYNC_HANDLERS.get(connector.kind)
     if not handler:
         raise ValueError(f"No sync handler for kind '{connector.kind}'")
-    return await handler(db, connector, start_date=start_date, end_date=end_date)
+    return await handler(
+        db, connector, start_date=start_date, end_date=end_date, slots=slots
+    )

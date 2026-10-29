@@ -12,6 +12,8 @@ from app.services.connectors.dataset_schemas import ConnectorDatasetColumn
 from app.services.connectors.tushare.schemas import (
     TUSHARE_DAILY_BASIC_COLUMNS,
     TUSHARE_DIVIDENDS_COLUMNS,
+    TUSHARE_INDEX_BASIC_COLUMNS,
+    TUSHARE_INDEX_DAILY_COLUMNS,
     TUSHARE_PG_SCHEMA,
     TUSHARE_STOCK_ADJ_DAILY_COLUMNS,
     TUSHARE_STOCK_BASIC_COLUMNS,
@@ -73,7 +75,7 @@ CONNECTOR_KINDS: dict[str, ConnectorKindSpec] = {
         kind="tushare",
         category=CATEGORY_SYNC,
         label="Tushare",
-        description="China market data via tushare.pro (token + API URL; sync targets trade calendar, stock basic, daily quotes, daily basics, adj factors, and dividends).",
+        description="China market data via tushare.pro (token + API URL; sync targets trade calendar, stock basic, daily quotes, daily basics, adj factors, dividends, and index basic/daily).",
         secret_keys=frozenset({"TUSHARE_TOKEN"}),
         input_fields=(
             ConnectorInputField(
@@ -140,11 +142,30 @@ CONNECTOR_KINDS: dict[str, ConnectorKindSpec] = {
                 default_pg_schema=TUSHARE_PG_SCHEMA,
                 default_table_name="dividends",
             ),
+            ConnectorOutputSlot(
+                slot="index_basic",
+                label="Index basic",
+                description="Index reference data for every market (index_basic API, paginated per market).",
+                resource="dataset",
+                dataset_columns=TUSHARE_INDEX_BASIC_COLUMNS,
+                default_pg_schema=TUSHARE_PG_SCHEMA,
+                default_table_name="index_basic",
+            ),
+            ConnectorOutputSlot(
+                slot="index_daily",
+                label="Index daily quotes",
+                description="Daily index OHLCV for the codes in setting sync_index_codes (index_daily API, one call per code and calendar year).",
+                resource="dataset",
+                dataset_columns=TUSHARE_INDEX_DAILY_COLUMNS,
+                default_pg_schema=TUSHARE_PG_SCHEMA,
+                default_table_name="index_daily",
+            ),
         ),
         default_settings={
             "sync_start_date": "19900101",
             "sync_api_min_interval_seconds": 0.31,
             "sync_trade_cal_min_interval_seconds": 0.31,
+            "sync_index_codes": "000300.SH,000905.SH,000852.SH,000001.SH,399001.SZ,399006.SZ",
         },
     ),
     "zhipu_web_search": ConnectorKindSpec(
@@ -359,6 +380,30 @@ def normalize_and_validate_outputs(kind: str, outputs: dict[str, Any] | None) ->
             "Configure every output dataset, or clear all output datasets to save without targets."
         )
     return out
+
+
+def normalize_sync_request_slots(kind: str, slots: list[str] | None) -> tuple[str, ...] | None:
+    """Validate a manual run's slot selection. ``None`` means every slot the kind declares.
+
+    A partial selection is the point: refreshing one slot should not pay for the other seven. Scheduled
+    runs never pass ``slots``, so a schedule stays a full sync.
+    """
+    spec = get_kind_spec(kind)
+    if spec is None or not slots:
+        return None
+    declared = {s.slot for s in spec.output_slots}
+    wanted: list[str] = []
+    for raw in slots:
+        slot = (raw or "").strip()
+        if not slot:
+            continue
+        if slot not in declared:
+            raise ValueError(f"Unknown output slot '{slot}' for connector kind '{kind}'.")
+        if slot not in wanted:
+            wanted.append(slot)
+    if not wanted:
+        raise ValueError("Select at least one output slot to sync.")
+    return tuple(wanted)
 
 
 def validate_sync_run_outputs(kind: str, outputs: dict[str, str] | None) -> None:

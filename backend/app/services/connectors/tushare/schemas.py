@@ -69,6 +69,38 @@ TUSHARE_DAILY_BASIC_COLUMNS: tuple[ConnectorDatasetColumn, ...] = (
     ConnectorDatasetColumn("limit_status", "INTEGER", nullable=True),
 )
 
+TUSHARE_INDEX_BASIC_COLUMNS: tuple[ConnectorDatasetColumn, ...] = (
+    ConnectorDatasetColumn("ts_code", "TEXT", primary_key=True),
+    ConnectorDatasetColumn("name", "TEXT", nullable=True),
+    ConnectorDatasetColumn("fullname", "TEXT", nullable=True),
+    ConnectorDatasetColumn("market", "TEXT", nullable=True),
+    ConnectorDatasetColumn("publisher", "TEXT", nullable=True),
+    ConnectorDatasetColumn("index_type", "TEXT", nullable=True),
+    ConnectorDatasetColumn("category", "TEXT", nullable=True),
+    ConnectorDatasetColumn("base_date", "DATE", nullable=True),
+    ConnectorDatasetColumn("base_point", "NUMERIC", nullable=True),
+    ConnectorDatasetColumn("list_date", "DATE", nullable=True),
+    ConnectorDatasetColumn("weight_rule", "TEXT", nullable=True),
+    # Tushare field is ``desc`` (reserved word in PostgreSQL) → stored as description.
+    ConnectorDatasetColumn("description", "TEXT", nullable=True),
+    ConnectorDatasetColumn("exp_date", "DATE", nullable=True),
+)
+
+# Same grain/shape as stock_trade_daily so index and stock series join on trade_date.
+TUSHARE_INDEX_DAILY_COLUMNS: tuple[ConnectorDatasetColumn, ...] = (
+    ConnectorDatasetColumn("ts_code", "TEXT", nullable=False, primary_key=True),
+    ConnectorDatasetColumn("trade_date", "DATE", nullable=False, primary_key=True),
+    ConnectorDatasetColumn("open", "NUMERIC", nullable=True),
+    ConnectorDatasetColumn("high", "NUMERIC", nullable=True),
+    ConnectorDatasetColumn("low", "NUMERIC", nullable=True),
+    ConnectorDatasetColumn("close", "NUMERIC", nullable=True),
+    ConnectorDatasetColumn("pre_close", "NUMERIC", nullable=True),
+    ConnectorDatasetColumn("change", "NUMERIC", nullable=True),
+    ConnectorDatasetColumn("pct_chg", "NUMERIC", nullable=True),
+    ConnectorDatasetColumn("vol", "NUMERIC", nullable=True),
+    ConnectorDatasetColumn("amount", "NUMERIC", nullable=True),
+)
+
 TUSHARE_STOCK_ADJ_DAILY_COLUMNS: tuple[ConnectorDatasetColumn, ...] = (
     ConnectorDatasetColumn("ts_code", "VARCHAR(10)", nullable=True, primary_key=True),
     ConnectorDatasetColumn("trade_date", "DATE", nullable=True, primary_key=True),

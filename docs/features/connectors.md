@@ -38,6 +38,8 @@ Job runs from sync appear under **`/job-runs`** with task name **`run_connector_
 
 **Manual date range:** both `start_date` and `end_date` required. **Omitted dates:** kind-specific default window (Tushare: incremental from last row through today).
 
+**Slot selection:** the **Run sync** dialog lists the kind's output slots, all checked; unchecking one skips it for that run only (e.g. refresh `index_daily` without re-pulling every daily table). The selection travels as `slots` on **`POST /api/connectors/{id}/sync`**, and a rate-limited run re-queues with the same selection. Scheduled syncs never pass `slots`, so the schedule stays a full sync.
+
 **Schedules:** connector **Schedule** tab and **`PATCH /api/schedules/{id}`** both update `settings.sync_schedule` on the connector and the registry row (`kind=connector_sync`, `target_id=connector id`). Delete connector removes its trigger row.
 
 Docker runs a dedicated **`scheduler`** service (`python scheduler.py`); worker heartbeats and scheduler liveness surface on Console **System health** — see [Pipelines, jobs & models](pipelines-and-jobs.md).
@@ -54,8 +56,22 @@ China market data via [tushare.pro](https://tushare.pro). Secret: **`TUSHARE_TOK
 | `daily_basic` | `tushare` | `daily_basic` | `daily_basic` — turnover, PE/PB/PS, market cap, limit status |
 | `stock_adj_daily` | `tushare` | `stock_adj_daily` | `adj_factor` |
 | `dividends` | `tushare` | `dividends` | `dividend` by `ex_date` |
+| `index_basic` | `tushare` | `index_basic` | `index_basic` — paginated per market (SSE/SZSE/CSI/CICC/SW/MSCI/OTH); Tushare `desc` stored as `description` |
+| `index_daily` | `tushare` | `index_daily` | `index_daily` per code in `sync_index_codes`, chunked by calendar year; same columns as `stock_trade_daily` |
 
 Rate limiting: `settings.sync_api_min_interval_seconds` and `sync_trade_cal_min_interval_seconds` (default **0.31** s ≈ 200 req/min). Short rate-limit waits retry in-process; longer waits re-queue with `scheduled_at`.
+
+**Index benchmarks:** three settings decide what `index_daily` pulls.
+
+| Setting | Meaning |
+|---------|---------|
+| `sync_index_codes` | Explicit Tushare codes, comma-separated (default `000300.SH,000905.SH,000852.SH,000001.SH,399001.SZ,399006.SZ`) |
+| `sync_index_markets` | Derive codes from the synced `index_basic` catalog: `market` values (`SSE`, `SZSE`, `CSI`, `CICC`, `SW`, `MSCI`, `OTH`) |
+| `sync_index_categories` | Derive codes from the catalog: `category` values (`规模指数`, `行业指数`, `主题指数`, …) |
+
+The final code set is `sync_index_codes` ∪ catalog matches (deduped, explicit first). Both filters empty = explicit codes only. Catalog matches skip indices whose `exp_date` has passed; list a retired code explicitly to backfill it. A filter that matches nothing fails the run instead of silently syncing fewer indices. `index_daily` covers neither 申万 (`SW`) series nor every catalog entry, so a run logs the codes that returned no rows.
+
+`index_daily` requires `ts_code`, so each code is fetched separately; default runs are incremental per code (a newly added code backfills from `sync_start_date`), while an explicit date range applies to every code.
 
 **Probe:** **`POST /api/connectors/{id}/probe`** — live `daily` request; returns rows + `debug`; **429** when rate-limited; no dataset writes.
 

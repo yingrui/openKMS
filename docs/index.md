@@ -20,7 +20,7 @@ Most organizations already have files, wikis, and AI chat. The gap is **one plac
 
 openKMS treats those as **one network**, not separate “KM for humans” and “RAG for bots.” If governance exists but nobody uses the system—or if search works but answers cannot be trusted for compliance—both sides fail.
 
-North star: [Goals](goals.md) — *Frontline confidence · Expert contribution · Organizational governance · Agent readiness*.
+North star: [Goals](goals.md) — *Help enterprises quickly build intelligent decision systems that are trustworthy and built to evolve*.
 
 ## What you build in openKMS
 

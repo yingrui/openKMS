@@ -20,6 +20,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.models.data_source import DataSource
 from app.models.dataset import Dataset
 from app.models.dataset_edit import DatasetEdit
+from app.services.data_layer.sql_build import qualified_table
 from app.services.ontology.dataset_tables import is_valid_identifier, pg_engine_for_datasource
 
 
@@ -28,9 +29,12 @@ class RowEditError(ValueError):
 
 
 def _quote_table(dataset: Dataset) -> str:
-    if not (is_valid_identifier(dataset.schema_name) and is_valid_identifier(dataset.table_name)):
+    quoted = qualified_table(dataset.schema_name, dataset.table_name)
+    if quoted is None:
         raise RowEditError("Invalid dataset table.")
-    return f'"{dataset.schema_name}"."{dataset.table_name}"'
+    return quoted
+
+
 
 
 def _pk_columns(dataset: Dataset) -> list[str]:

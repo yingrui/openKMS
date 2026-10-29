@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import re
 from datetime import date, datetime
+from typing import Any
 from urllib.parse import quote_plus
 
 from sqlalchemy import create_engine, text
@@ -98,6 +99,75 @@ def max_ymd_in_table(
         return None
     parsed = ymd_to_date(val)
     return date_to_ymd(parsed) if parsed else None
+
+
+def max_ymd_in_table_where(
+    engine: Engine,
+    *,
+    schema_name: str,
+    table_name: str,
+    column: str,
+    where_column: str,
+    where_value: Any,
+) -> str | None:
+    """MAX(date column) for rows matching ``where_column = where_value`` as YYYYMMDD.
+
+    Used by per-series syncs (e.g. index codes) so a newly added series backfills
+    from the configured start instead of from the global table maximum.
+    """
+    for ident in (column, where_column):
+        if not _IDENTIFIER.match(ident):
+            raise ValueError(f"Invalid column name: {ident}")
+    table_q = f"{quote_ident(schema_name)}.{quote_ident(table_name)}"
+    with engine.connect() as conn:
+        val = conn.execute(
+            text(
+                f"SELECT MAX({quote_ident(column)}) FROM {table_q} "
+                f"WHERE {quote_ident(where_column)} = :where_value"
+            ),
+            {"where_value": where_value},
+        ).scalar()
+    if val is None:
+        return None
+    parsed = ymd_to_date(val)
+    return date_to_ymd(parsed) if parsed else None
+
+
+def index_codes_from_table(
+    engine: Engine,
+    *,
+    schema_name: str,
+    table_name: str,
+    markets: tuple[str, ...] = (),
+    categories: tuple[str, ...] = (),
+    active_only: bool = True,
+) -> tuple[str, ...]:
+    """Index codes from a synced ``index_basic`` table, narrowed by market / category.
+
+    The Tushare kind lets a connector pick indices by declaration (``sync_index_markets`` /
+    ``sync_index_categories``) instead of listing every code, so the catalog is the selector.
+    ``active_only`` drops indices whose ``exp_date`` has passed: they publish no quotes any more, and
+    listing them explicitly in ``sync_index_codes`` stays the way to backfill a retired series.
+    """
+    if not markets and not categories:
+        return ()
+    table_q = f"{quote_ident(schema_name)}.{quote_ident(table_name)}"
+    clauses: list[str] = []
+    params: dict[str, Any] = {}
+    for column, values, prefix in (("market", markets, "m"), ("category", categories, "c")):
+        if not values:
+            continue
+        keys: list[str] = []
+        for i, value in enumerate(values):
+            params[f"{prefix}{i}"] = value
+            keys.append(f":{prefix}{i}")
+        clauses.append(f"{quote_ident(column)} IN ({', '.join(keys)})")
+    if active_only:
+        clauses.append("(exp_date IS NULL OR exp_date > CURRENT_DATE)")
+    sql = f"SELECT ts_code FROM {table_q} WHERE {' AND '.join(clauses)} ORDER BY ts_code"
+    with engine.connect() as conn:
+        rows = conn.execute(text(sql), params).fetchall()
+    return tuple(str(row[0]) for row in rows if row[0])
 
 
 def open_trade_dates_from_table(

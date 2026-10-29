@@ -18,6 +18,19 @@ class SqlBuildError(ValueError):
     """Raised when a generated query is invalid; wrapped by callers."""
 
 
+def qualified_table(schema: str | None, table: str | None) -> str | None:
+    """`"schema"."table"`, or **None** when either part is not a plain identifier.
+
+    Both callers raise their own error (a bad rule, a bad edit) but must agree on what counts as a table name: a second
+    copy of `f'"{schema}"."{table}"'` is how the validation drifts away from the quoting.
+    """
+    from app.services.ontology.dataset_tables import is_valid_identifier
+
+    if not (schema and table and is_valid_identifier(schema) and is_valid_identifier(table)):
+        return None
+    return f"{quote_identifier(schema)}.{quote_identifier(table)}"
+
+
 def quote_identifier(identifier: str) -> str:
     """`"column"`, with embedded quotes doubled. Callers validate the identifier first."""
     return '"' + str(identifier).replace('"', '""') + '"'

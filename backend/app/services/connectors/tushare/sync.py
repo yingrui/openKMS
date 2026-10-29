@@ -3,7 +3,10 @@
 from __future__ import annotations
 
 import logging
+import re
+from collections.abc import Awaitable, Callable, Sequence
 from datetime import date, datetime, timezone
+from functools import partial
 from typing import Any
 
 from sqlalchemy.engine import Engine
@@ -12,11 +15,13 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.models.connector import Connector
 from app.models.data_source import DataSource
 from app.models.dataset import Dataset
-from app.services.connectors.connector_catalog import decrypt_secrets_blob
+from app.services.connectors.connector_catalog import decrypt_secrets_blob, normalize_sync_request_slots
 from app.services.connectors.pg import (
     calendar_range_covered,
     date_to_ymd,
+    index_codes_from_table,
     max_ymd_in_table,
+    max_ymd_in_table_where,
     open_trade_dates_from_table,
     pg_engine_for_datasource,
     upsert_rows,
@@ -27,6 +32,8 @@ from app.services.connectors.tushare.client import TushareClient
 from app.services.connectors.tushare.schemas import (
     TUSHARE_DAILY_BASIC_COLUMNS,
     TUSHARE_DIVIDENDS_COLUMNS,
+    TUSHARE_INDEX_BASIC_COLUMNS,
+    TUSHARE_INDEX_DAILY_COLUMNS,
     TUSHARE_STOCK_ADJ_DAILY_COLUMNS,
     TUSHARE_STOCK_BASIC_COLUMNS,
     TUSHARE_STOCK_TRADE_DAILY_COLUMNS,
@@ -49,6 +56,22 @@ _DEFAULT_API_MIN_INTERVAL_SECONDS = 0.31
 _DEFAULT_TRADE_CAL_MIN_INTERVAL_SECONDS = 0.31
 _MIN_API_MIN_INTERVAL_SECONDS = 0.1
 _MAX_API_MIN_INTERVAL_SECONDS = 7200
+
+# Benchmarks used for relative performance; override with setting ``sync_index_codes``.
+_DEFAULT_INDEX_CODES: tuple[str, ...] = (
+    "000300.SH",  # 沪深300
+    "000905.SH",  # 中证500
+    "000852.SH",  # 中证1000
+    "000001.SH",  # 上证指数
+    "399001.SZ",  # 深证成指
+    "399006.SZ",  # 创业板指
+)
+_INDEX_CODE_RE = re.compile(r"^[0-9A-Z]{2,10}\.[A-Z]{2,4}$")
+# index_basic defaults to market=SSE, so all markets are walked to get the full catalog.
+_INDEX_BASIC_MARKETS: tuple[str, ...] = ("SSE", "SZSE", "CSI", "CICC", "SW", "MSCI", "OTH")
+# index_basic returns at most 8000 rows per call.
+_INDEX_BASIC_PAGE_SIZE = 8000
+_INDEX_BASIC_MAX_PAGES = 10
 
 
 def _sync_settings(settings: dict[str, Any] | None) -> dict[str, Any]:
@@ -77,7 +100,54 @@ def _sync_settings(settings: dict[str, Any] | None) -> dict[str, Any]:
         "sync_start_date": start,
         "api_min_interval_seconds": interval,
         "trade_cal_min_interval_seconds": trade_cal_interval,
+        "index_codes": parse_index_codes(raw.get("sync_index_codes")),
+        "index_markets": _filter_tokens(raw.get("sync_index_markets"), upper=True),
+        "index_categories": _filter_tokens(raw.get("sync_index_categories")),
     }
+
+
+def _csv_tokens(raw: Any) -> list[str]:
+    """Comma / whitespace separated setting → tokens; a JSON array is accepted too."""
+    if raw is None:
+        return []
+    if isinstance(raw, (list, tuple, set)):
+        candidates = [str(t) for t in raw]
+    else:
+        candidates = re.split(r"[,，\s]+", str(raw))
+    return [t.strip() for t in candidates if t.strip()]
+
+
+def _filter_tokens(raw: Any, *, upper: bool = False) -> tuple[str, ...]:
+    out: list[str] = []
+    for token in _csv_tokens(raw):
+        value = token.upper() if upper else token
+        if value not in out:
+            out.append(value)
+    return tuple(out)
+
+
+def parse_index_codes(raw: Any) -> tuple[str, ...]:
+    """Parse ``sync_index_codes`` (comma/space separated Tushare codes) into a deduped tuple."""
+    codes: list[str] = []
+    for token in _csv_tokens(raw):
+        code = token.upper()
+        if not _INDEX_CODE_RE.match(code):
+            raise ValueError(
+                f"Invalid index code '{token}' in setting sync_index_codes; "
+                "use Tushare codes like 000300.SH."
+            )
+        if code not in codes:
+            codes.append(code)
+    return tuple(codes) or _DEFAULT_INDEX_CODES
+
+
+def merge_index_codes(explicit: tuple[str, ...], derived: tuple[str, ...]) -> tuple[str, ...]:
+    """Explicit codes keep their order; catalog-derived codes follow, deduped."""
+    merged = list(explicit)
+    for code in derived:
+        if code not in merged:
+            merged.append(code)
+    return tuple(merged)
 
 
 def _today_utc() -> date:
@@ -367,6 +437,19 @@ _DAILY_BASIC_FIELDS = (
     "dv_ratio,dv_ttm,total_share,float_share,free_share,total_mv,circ_mv,limit_status"
 )
 _ADJ_FIELDS = "ts_code,trade_date,adj_factor"
+_INDEX_BASIC_FIELDS = (
+    "ts_code,name,fullname,market,publisher,index_type,category,base_date,base_point,"
+    "list_date,weight_rule,desc,exp_date"
+)
+
+
+def _index_basic_row(row: dict[str, Any]) -> dict[str, Any]:
+    out = {col.name: row.get(col.name) for col in TUSHARE_INDEX_BASIC_COLUMNS}
+    # Tushare exposes ``desc``; ``desc`` is a PostgreSQL reserved word → description column.
+    out["description"] = row.get("desc")
+    return out
+
+
 _DIVIDEND_FIELDS = (
     "ts_code,end_date,ann_date,div_proc,stk_div,stk_bo_rate,stk_co_rate,cash_div,cash_div_tax,"
     "record_date,ex_date,pay_date,div_listdate,imp_ann_date,base_date,base_share,update_flag"
@@ -505,6 +588,223 @@ async def sync_daily_basic(
         connector.id,
         written,
         len(trade_dates),
+        dataset.schema_name,
+        dataset.table_name,
+    )
+    return written
+
+
+async def sync_index_basic(
+    client: TushareClient,
+    db: AsyncSession,
+    connector: Connector,
+    *,
+    engine: Engine | None = None,
+) -> int:
+    """Refresh the full index catalog (paginated index_basic calls, one pass per market)."""
+    dataset, data_source = await _load_output_dataset(db, connector.outputs, "index_basic")
+    own_engine = engine is None
+    if own_engine:
+        engine = pg_engine_for_datasource(data_source)
+    written = 0
+    try:
+        for market in _INDEX_BASIC_MARKETS:
+            offset = 0
+            for _page in range(_INDEX_BASIC_MAX_PAGES):
+                fetched = await client.query(
+                    "index_basic",
+                    {"market": market, "offset": offset, "limit": _INDEX_BASIC_PAGE_SIZE},
+                    _INDEX_BASIC_FIELDS,
+                )
+                rows = [_index_basic_row(row) for row in fetched if row.get("ts_code")]
+                if rows:
+                    logger.info(
+                        "index_basic market=%s offset=%s: %s rows -> %s.%s",
+                        market,
+                        offset,
+                        len(rows),
+                        dataset.schema_name,
+                        dataset.table_name,
+                    )
+                    written += upsert_rows(
+                        engine,
+                        schema_name=dataset.schema_name,
+                        table_name=dataset.table_name,
+                        columns=TUSHARE_INDEX_BASIC_COLUMNS,
+                        rows=rows,
+                    )
+                if len(fetched) < _INDEX_BASIC_PAGE_SIZE:
+                    break
+                offset += _INDEX_BASIC_PAGE_SIZE
+    finally:
+        if own_engine and engine is not None:
+            engine.dispose()
+    logger.info(
+        "Synced index_basic for connector %s: %s rows into %s.%s",
+        connector.id,
+        written,
+        dataset.schema_name,
+        dataset.table_name,
+    )
+    return written
+
+
+def _year_chunks(start: date, end: date) -> list[tuple[date, date]]:
+    """Split a window into calendar-year chunks so each API call stays well bounded."""
+    chunks: list[tuple[date, date]] = []
+    cursor = start
+    while cursor <= end:
+        chunk_end = min(date(cursor.year, 12, 31), end)
+        chunks.append((cursor, chunk_end))
+        if chunk_end >= end:
+            break
+        cursor = date(cursor.year + 1, 1, 1)
+    return chunks
+
+
+async def _resolve_index_codes(
+    db: AsyncSession,
+    connector: Connector,
+    *,
+    explicit: tuple[str, ...],
+    markets: tuple[str, ...],
+    categories: tuple[str, ...],
+) -> tuple[str, ...]:
+    """Explicit ``sync_index_codes`` plus whatever the ``index_basic`` catalog selects.
+
+    Runs after ``sync_index_basic`` in the same job, so a first run already sees a fresh catalog.
+    """
+    if not (markets or categories):
+        return explicit
+    catalog, catalog_source = await _load_output_dataset(db, connector.outputs, "index_basic")
+    engine = pg_engine_for_datasource(catalog_source)
+    try:
+        derived = index_codes_from_table(
+            engine,
+            schema_name=catalog.schema_name,
+            table_name=catalog.table_name,
+            markets=markets,
+            categories=categories,
+        )
+    finally:
+        engine.dispose()
+    if not derived:
+        raise ValueError(
+            "Setting sync_index_markets / sync_index_categories matched no index in "
+            f"{catalog.schema_name}.{catalog.table_name} "
+            f"(markets={list(markets)}, categories={list(categories)}); "
+            "check the spelling against index_basic, or clear both settings."
+        )
+    merged = merge_index_codes(explicit, derived)
+    logger.info(
+        "index_daily code set for %s: %s explicit + %s from catalog = %s codes",
+        connector.id,
+        len(explicit),
+        len(derived),
+        len(merged),
+    )
+    return merged
+
+
+async def sync_index_daily(
+    client: TushareClient,
+    db: AsyncSession,
+    connector: Connector,
+    *,
+    start: date | None,
+    end: date,
+    index_codes: tuple[str, ...],
+    sync_start_date: date,
+    index_markets: tuple[str, ...] = (),
+    index_categories: tuple[str, ...] = (),
+) -> int:
+    """Sync index OHLCV per index code (``index_daily`` requires ``ts_code``).
+
+    ``start=None`` means per-code incremental from that code's last stored trade_date,
+    so indices added later still backfill from ``sync_start_date``.
+    """
+    dataset, data_source = await _load_output_dataset(db, connector.outputs, "index_daily")
+    index_codes = await _resolve_index_codes(
+        db,
+        connector,
+        explicit=index_codes,
+        markets=index_markets,
+        categories=index_categories,
+    )
+    engine = pg_engine_for_datasource(data_source)
+    written = 0
+    calls = 0
+    empty_codes: list[str] = []
+    try:
+        for code in index_codes:
+            code_rows = 0
+            code_start = start
+            if code_start is None:
+                latest = max_ymd_in_table_where(
+                    engine,
+                    schema_name=dataset.schema_name,
+                    table_name=dataset.table_name,
+                    column="trade_date",
+                    where_column="ts_code",
+                    where_value=code,
+                )
+                code_start = ymd_to_date(latest) if latest else sync_start_date
+            if code_start > end:
+                logger.info("index_daily %s already up to date through %s", code, date_to_ymd(end))
+                continue
+            for chunk_start, chunk_end in _year_chunks(code_start, end):
+                fetched = await client.query(
+                    "index_daily",
+                    {
+                        "ts_code": code,
+                        "start_date": date_to_ymd(chunk_start),
+                        "end_date": date_to_ymd(chunk_end),
+                    },
+                    _DAILY_FIELDS,
+                )
+                calls += 1
+                rows = [
+                    {col.name: row.get(col.name) for col in TUSHARE_INDEX_DAILY_COLUMNS}
+                    for row in fetched
+                    if row.get("ts_code") and row.get("trade_date")
+                ]
+                if rows:
+                    code_rows += len(rows)
+                    logger.info(
+                        "index_daily %s %s → %s: %s rows -> %s.%s",
+                        code,
+                        date_to_ymd(chunk_start),
+                        date_to_ymd(chunk_end),
+                        len(rows),
+                        dataset.schema_name,
+                        dataset.table_name,
+                    )
+                    written += upsert_rows(
+                        engine,
+                        schema_name=dataset.schema_name,
+                        table_name=dataset.table_name,
+                        columns=TUSHARE_INDEX_DAILY_COLUMNS,
+                        rows=rows,
+                    )
+            if not code_rows:
+                empty_codes.append(code)
+    finally:
+        engine.dispose()
+    if empty_codes:
+        # Not a failure: `index_daily` does not cover every catalog entry (申万 sector series, retired
+        # indices, codes that only publish elsewhere). Naming them beats wondering why one is missing.
+        logger.warning(
+            "index_daily returned no rows for %s of %s code(s): %s",
+            len(empty_codes),
+            len(index_codes),
+            ",".join(empty_codes),
+        )
+    logger.info(
+        "Synced index_daily for connector %s: %s rows (%s codes, %s API calls) into %s.%s",
+        connector.id,
+        written,
+        len(index_codes),
+        calls,
         dataset.schema_name,
         dataset.table_name,
     )
@@ -656,7 +956,15 @@ async def sync_tushare_connector(
     *,
     start_date: date | str | None = None,
     end_date: date | str | None = None,
+    slots: Sequence[str] | None = None,
 ) -> dict[str, int]:
+    """Sync the Tushare slots that are selected for this run.
+
+    ``slots=None`` runs every slot (the schedule's behaviour). A manual run may pass a subset so that one
+    dataset can be refreshed without paying for the rest.
+    """
+    selected = normalize_sync_request_slots(connector.kind, list(slots) if slots else None)
+    wanted = set(selected) if selected else None
     requested = parse_sync_date_range(start_date, end_date)
     today = _today_utc()
     secrets = decrypt_secrets_blob(connector.secrets_encrypted)
@@ -708,66 +1016,101 @@ async def sync_tushare_connector(
                 date_to_ymd(daily_end),
             )
 
-        calendar_rows = await sync_trade_calendar(
-            client,
-            db,
-            connector,
-            start=cal_start,
-            end=cal_end,
-            engine=calendar_engine,
-        )
-        basic_rows = await sync_stock_basic(
-            client,
-            db,
-            connector,
-            engine=basic_engine,
-        )
-        daily_rows = await sync_stock_trade_daily(
-            client,
-            db,
-            connector,
-            start=daily_start,
-            end=daily_end,
-            calendar_dataset=calendar_dataset,
-            calendar_engine=calendar_engine,
-        )
-        daily_basic_rows = await sync_daily_basic(
-            client,
-            db,
-            connector,
-            start=daily_start,
-            end=daily_end,
-            calendar_dataset=calendar_dataset,
-            calendar_engine=calendar_engine,
-        )
-        adj_rows = await sync_stock_adj_daily(
-            client,
-            db,
-            connector,
-            start=daily_start,
-            end=daily_end,
-            calendar_dataset=calendar_dataset,
-            calendar_engine=calendar_engine,
-        )
-        dividend_rows = await sync_dividends(
-            client,
-            db,
-            connector,
-            start=daily_start,
-            end=daily_end,
-            calendar_dataset=calendar_dataset,
-            calendar_engine=calendar_engine,
-        )
+        steps: list[tuple[str, Callable[[], Awaitable[int]]]] = [
+            (
+                "trade_calendar",
+                partial(
+                    sync_trade_calendar,
+                    client,
+                    db,
+                    connector,
+                    start=cal_start,
+                    end=cal_end,
+                    engine=calendar_engine,
+                ),
+            ),
+            (
+                "stock_basic",
+                partial(sync_stock_basic, client, db, connector, engine=basic_engine),
+            ),
+            ("index_basic", partial(sync_index_basic, client, db, connector)),
+            (
+                "stock_trade_daily",
+                partial(
+                    sync_stock_trade_daily,
+                    client,
+                    db,
+                    connector,
+                    start=daily_start,
+                    end=daily_end,
+                    calendar_dataset=calendar_dataset,
+                    calendar_engine=calendar_engine,
+                ),
+            ),
+            (
+                "index_daily",
+                partial(
+                    sync_index_daily,
+                    client,
+                    db,
+                    connector,
+                    start=daily_start if requested.is_explicit else None,
+                    end=daily_end,
+                    index_codes=cfg["index_codes"],
+                    sync_start_date=cfg["sync_start_date"],
+                    index_markets=cfg["index_markets"],
+                    index_categories=cfg["index_categories"],
+                ),
+            ),
+            (
+                "daily_basic",
+                partial(
+                    sync_daily_basic,
+                    client,
+                    db,
+                    connector,
+                    start=daily_start,
+                    end=daily_end,
+                    calendar_dataset=calendar_dataset,
+                    calendar_engine=calendar_engine,
+                ),
+            ),
+            (
+                "stock_adj_daily",
+                partial(
+                    sync_stock_adj_daily,
+                    client,
+                    db,
+                    connector,
+                    start=daily_start,
+                    end=daily_end,
+                    calendar_dataset=calendar_dataset,
+                    calendar_engine=calendar_engine,
+                ),
+            ),
+            (
+                "dividends",
+                partial(
+                    sync_dividends,
+                    client,
+                    db,
+                    connector,
+                    start=daily_start,
+                    end=daily_end,
+                    calendar_dataset=calendar_dataset,
+                    calendar_engine=calendar_engine,
+                ),
+            ),
+        ]
+        results: dict[str, int] = {}
+        for slot, step in steps:
+            if wanted is not None and slot not in wanted:
+                logger.info("Tushare slot %s not selected for this run; skipping", slot)
+                continue
+            results[slot] = await step()
     finally:
         calendar_engine.dispose()
         daily_engine.dispose()
         basic_engine.dispose()
 
-    return {
-        "trade_calendar": calendar_rows,
-        "stock_basic": basic_rows,
-        "stock_trade_daily": daily_rows,
-        "daily_basic": daily_basic_rows,
-        "stock_adj_daily": adj_rows,
-        "dividends": dividend_rows,
-    }
+    return results

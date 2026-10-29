@@ -63,14 +63,20 @@ async def record_audit_event(
     detail: dict[str, Any] | None = None,
     response_id: str | None = None,
     response_label: str | None = None,
+    resource_type: str | None = None,
+    resource_id: str | None = None,
 ) -> None:
     """Write one event. Narrow failures are swallowed **loudly**: the request already answered.
 
     `response_id` wins over the path: a create has no id in its URL, and the object it returned *is* the
     subject. This is how the log stays general — a route that returns `{"id": …}` needs no special case.
+
+    `resource_type` / `resource_id` are for callers with no URL to read: a worker run has a job, not a
+    route ([job_audit_fields]). They win over the path; the HTTP middleware never passes them.
     """
-    resource_type, path_id = audit_target(path)
-    resource_id = response_id or path_id
+    path_type, path_id = audit_target(path)
+    resource_type = resource_type or path_type
+    resource_id = resource_id or response_id or path_id
     try:
         async with async_session_maker() as db:
             db.add(

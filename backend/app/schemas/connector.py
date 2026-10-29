@@ -83,6 +83,13 @@ class ConnectorSyncTriggerRequest(BaseModel):
         default=None,
         description="Inclusive sync end (YYYY-MM-DD). Omit both dates so the connector kind picks its default window.",
     )
+    slots: list[str] | None = Field(
+        default=None,
+        description=(
+            "Output slots to sync. Omit to sync every slot the kind declares; a partial list runs only "
+            "those, so one slot can be refreshed without paying for the rest."
+        ),
+    )
 
 
 class ConnectorSyncTriggerResponse(BaseModel):

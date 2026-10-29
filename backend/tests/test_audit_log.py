@@ -5,6 +5,8 @@ the surface it has: the method, the path, the caller the auth layer put on `requ
 """
 from __future__ import annotations
 
+import asyncio
+
 import pytest
 from fastapi import FastAPI, Request, Response
 from fastapi.testclient import TestClient
@@ -151,6 +153,44 @@ class TestWorkerRuns:
         assert fields["resource_id"] is None
         assert fields["detail"] is None
         assert fields["path"] == "job/run_pipeline"
+
+    def test_the_writer_accepts_what_the_wrapper_sends(self, monkeypatch):
+        # `jobs/tasks.py`'s `audited_task` spreads `job_audit_fields` into the writer. A worker run
+        # has no URL, so the subject arrives as kwargs — a mismatch here marked every job as Error.
+        from app.services import audit as audit_module
+        from app.services.audit import job_audit_fields, record_audit_event
+
+        added: list[object] = []
+
+        class _Session:
+            def add(self, obj: object) -> None:
+                added.append(obj)
+
+            async def commit(self) -> None:
+                return None
+
+            async def __aenter__(self) -> "_Session":
+                return self
+
+            async def __aexit__(self, *exc: object) -> bool:
+                return False
+
+        monkeypatch.setattr(audit_module, "async_session_maker", lambda: _Session())
+
+        asyncio.run(
+            record_audit_event(
+                **job_audit_fields("run_connector_sync", 658),
+                status_code=200,
+                actor_sub=None,
+                actor_name=None,
+                auth_mode="worker",
+            )
+        )
+
+        event = added[0]
+        assert (event.method, event.resource_type, event.resource_id) == ("JOB", "jobs", "658")
+        assert event.path == "job/run_connector_sync"
+        assert event.detail == {"job_id": "658"}
 
 def test_a_name_from_the_response_is_recorded_beside_the_id(recorded):
     TestClient(_fake_app()).post("/api/datasets")
@@ -447,10 +487,13 @@ class TestSessionEventDedupe:
         from app.services.audit import record_session_event_once
 
         actor = f"probe-{uuid.uuid4()}"
+        # A unique path per run: the dedupe window is wall-clock, so two runs inside 5 s would otherwise
+        # read the previous run's anonymous row and report the window as closed.
+        probe_path = f"auth/probe-{uuid.uuid4()}"
 
         async def scenario() -> tuple[bool, bool, bool, bool]:
             base = dict(
-                path="auth/login", actor_name="probe", auth_mode="oidc", detail={"via": "sync-session"}
+                path=probe_path, actor_name="probe", auth_mode="oidc", detail={"via": "sync-session"}
             )
             first = await record_session_event_once(actor_sub=actor, **base)
             repeat = await record_session_event_once(actor_sub=actor, **base)

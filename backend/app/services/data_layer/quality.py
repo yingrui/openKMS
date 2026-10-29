@@ -22,15 +22,18 @@ from app.services.data_layer.rule_sql import (
     interpret,
 )
 from app.services.data_layer.sql_runner import run_readonly_names
-from app.services.ontology.dataset_tables import is_valid_identifier
+from app.services.data_layer.sql_build import qualified_table
 
 __all__ = ["RULE_TYPES", "QualityError", "run_rule"]
 
 
 def _quote_table(dataset: Dataset) -> str:
-    if not (is_valid_identifier(dataset.schema_name) and is_valid_identifier(dataset.table_name)):
+    quoted = qualified_table(dataset.schema_name, dataset.table_name)
+    if quoted is None:
         raise QualityError("Invalid dataset table.")
-    return f'"{dataset.schema_name}"."{dataset.table_name}"'
+    return quoted
+
+
 
 
 async def run_rule(db: AsyncSession, dataset: Dataset, rule: QualityRule) -> dict[str, Any]:

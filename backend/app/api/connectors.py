@@ -41,6 +41,7 @@ from app.services.connectors.connector_catalog import (
     normalize_and_validate_inputs,
     normalize_and_validate_outputs,
     normalize_and_validate_settings,
+    normalize_sync_request_slots,
     validate_sync_run_outputs,
     validate_sync_schedule_outputs,
     secrets_status,
@@ -295,7 +296,10 @@ async def trigger_connector_sync(
     body: ConnectorSyncTriggerRequest | None = None,
     db: AsyncSession = Depends(get_db),
 ):
-    """Queue a sync job. Manual runs pass start_date + end_date; omit both for connector-defined defaults."""
+    """Queue a sync job. Manual runs pass start_date + end_date; omit both for connector-defined defaults.
+
+    ``slots`` narrows the run to some of the kind's output slots; omitting it syncs all of them.
+    """
     row = await db.get(Connector, connector_id)
     if not row:
         raise HTTPException(status_code=404, detail="Connector not found")
@@ -312,6 +316,7 @@ async def trigger_connector_sync(
     req = body or ConnectorSyncTriggerRequest()
     try:
         parse_sync_date_range(req.start_date, req.end_date)
+        slots = normalize_sync_request_slots(row.kind, req.slots)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e)) from e
 
@@ -319,10 +324,12 @@ async def trigger_connector_sync(
     from app.jobs.tasks import run_connector_sync
     from app.services.schedules.schedule_handlers import CONNECTOR_SYNC_LOCK_PREFIX
 
-    defer_kwargs: dict[str, str] = {"connector_id": row.id}
+    defer_kwargs: dict[str, str | list[str]] = {"connector_id": row.id}
     if req.start_date is not None and req.end_date is not None:
         defer_kwargs["start_date"] = req.start_date.isoformat()
         defer_kwargs["end_date"] = req.end_date.isoformat()
+    if slots is not None:
+        defer_kwargs["slots"] = list(slots)
     job_id = await defer_task(
         run_connector_sync.configure(lock=f"{CONNECTOR_SYNC_LOCK_PREFIX}{row.id}"),
         **defer_kwargs,

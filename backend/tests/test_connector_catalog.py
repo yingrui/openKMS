@@ -99,6 +99,8 @@ def test_tushare_outputs_requires_all_slots_when_any_set():
             "daily_basic": "f" * 32,
             "stock_adj_daily": "d" * 32,
             "dividends": "e" * 32,
+            "index_basic": "g" * 32,
+            "index_daily": "h" * 32,
         },
     )
     assert set(out.keys()) == {
@@ -108,6 +110,8 @@ def test_tushare_outputs_requires_all_slots_when_any_set():
         "daily_basic",
         "stock_adj_daily",
         "dividends",
+        "index_basic",
+        "index_daily",
     }
 
 
@@ -132,6 +136,8 @@ def test_validate_sync_run_outputs_requires_all_slots():
             "daily_basic": "f" * 32,
             "stock_adj_daily": "d" * 32,
             "dividends": "e" * 32,
+            "index_basic": "g" * 32,
+            "index_daily": "h" * 32,
         },
     )
 
@@ -151,6 +157,31 @@ def test_validate_sync_schedule_outputs_requires_datasets_when_enabled():
         {},
         {"sync_schedule": {"enabled": False, "cron": None, "timezone": "UTC"}},
     )
+
+
+def test_tushare_settings_default_index_codes():
+    out = normalize_and_validate_settings("tushare", None)
+    assert "000300.SH" in out["sync_index_codes"]
+
+
+def test_sync_request_slots_defaults_to_all():
+    from app.services.connectors.connector_catalog import normalize_sync_request_slots
+
+    assert normalize_sync_request_slots("tushare", None) is None
+    assert normalize_sync_request_slots("tushare", []) is None
+
+
+def test_sync_request_slots_dedupes_and_validates():
+    from app.services.connectors.connector_catalog import normalize_sync_request_slots
+
+    assert normalize_sync_request_slots("tushare", ["index_daily", "index_daily", "dividends"]) == (
+        "index_daily",
+        "dividends",
+    )
+    with pytest.raises(ValueError, match="Unknown output slot"):
+        normalize_sync_request_slots("tushare", ["index_weight"])
+    with pytest.raises(ValueError, match="at least one"):
+        normalize_sync_request_slots("tushare", ["  "])
 
 
 def test_zhipu_outputs_must_be_empty():

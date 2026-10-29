@@ -76,7 +76,7 @@ Aligns with [Goals — retrieve and contribute](goals.md#goals-user-value) and [
 
 | Item | Notes |
 |------|--------|
-| **Tushare sync** | ✅ `run_connector_sync`, dataset outputs, manual + scheduled runs, Probe tab |
+| **Tushare sync** | ✅ `run_connector_sync`, dataset outputs, manual + scheduled runs, Probe tab; slots: trade calendar, stock basic, daily quotes/basics, adj factor, dividends, index basic + index daily (`sync_index_codes`) |
 | **search_tool** (Zhipu web search) | ✅ kind + `POST /api/connectors/{id}/search`; Agents **`search_connector_id`** + `web_search` tool |
 | Operator UX | ✅ Manual **Run sync**, **Schedules** hub (`/job-runs/schedules`), scheduler cron, last run on trigger row; richer per-slot stats still open |
 | Kind expansion | Additional **sync** catalogs beyond Tushare (`run_connector_sync_for_row` is kind-dispatched) |
@@ -379,6 +379,19 @@ were accidents and are shared now; the remaining two were choices.
   inside a card. The sample's hint moved above the card so the text is not at the edge.
 - **No 28ch truncation** in the sample: the grid caps long cells at a readable width because it is for scanning
   everything; a sample of fifty rows exists to *show the values*, so it shows them whole.
+
+### The same table name, decided once (2026-10)
+
+`_quote_table` existed twice — a quality rule's and a row edit's — and each carried **its own copy of the identifier
+validation next to its own copy of the quoting**. Two copies of a security check that must agree with the string it
+guards is the kind of duplication that drifts silently; the error type was the only intended difference.
+
+`sql_build.qualified_table(schema, table)` returns `"schema"."table"` or **None**, and each caller raises its own error.
+Tests cover the quoting, the injection attempt and the empty case.
+
+**Not done, deliberately:** the five-line engine/`try`/`finally dispose()` boilerplate appears in six modules, and it is
+identical in all six — but consolidating it is six files of indentation surgery with zero behaviour change, on a day that
+already contains three mechanical edits gone wrong. Left as it is, and written down as a decision rather than an oversight.
 
 ### By kind, not by a pipe (2026-10)
 

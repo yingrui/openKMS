@@ -804,8 +804,12 @@ async def run_connector_sync(
     connector_id: str,
     start_date: str | None = None,
     end_date: str | None = None,
+    slots: list[str] | None = None,
 ) -> None:
-    """Run a sync connector job (Tushare and other sync kinds)."""
+    """Run a sync connector job (Tushare and other sync kinds).
+
+    ``slots`` is the manual run's selection; scheduled runs pass nothing and sync every slot.
+    """
     from app.database import async_session_maker
     from app.models.connector import Connector
     from app.services.connectors.connector_catalog import CATEGORY_SYNC, get_kind_spec
@@ -835,9 +839,11 @@ async def run_connector_sync(
             )
         else:
             log_lines.append("No date window in job args; connector kind applies its default range")
+        if slots:
+            log_lines.append(f"Selected slots: {', '.join(slots)}")
         try:
             stats = await run_connector_sync_for_row(
-                session, row, start_date=start_date, end_date=end_date
+                session, row, start_date=start_date, end_date=end_date, slots=slots
             )
             for slot, count in stats.items():
                 log_lines.append(f"{slot}: {count} rows upserted")
@@ -876,6 +882,9 @@ async def run_connector_sync(
                     connector_id=connector_id,
                     start_date=start_date,
                     end_date=end_date,
+                    # The continuation must stay the run it continues: a rate-limited partial run
+                    # that came back as a full sync would silently redo every slot.
+                    slots=slots,
                 )
                 logger.info(
                     "Deferred connector sync for %s as job %s (in %ss)",

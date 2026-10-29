@@ -28,7 +28,7 @@ Market data is a stress test for ontology design:
 That matches the intro tutorial’s anti-patterns and Palantir’s split between objects and time series ([TSP overview](https://www.palantir.com/docs/foundry/time-series/time-series-overview/)). openKMS interim: FoO returns `points[]` instead of native TSP.
 
 ```text
-Connector sync  →  Datasets (six Tushare tables)
+Connector sync  →  Datasets (Tushare tables)
                       ↓
               Object type Stock  →  Neo4j index (masters only)
                       ↓
@@ -71,6 +71,8 @@ After connector sync (defaults under schema `tushare`):
 | `daily_basic` | same | Fact → PE, turnover, limits |
 | `stock_adj_daily` | same | Fact → adj factor |
 | `dividends` | Code + ex date | Event facts |
+| `index_basic` | One row per index `ts_code` | Benchmark lookup (CSI 300, CSI 500, …) |
+| `index_daily` | Index code + trade date | Benchmark series → relative performance facts |
 
 **Checkpoint mindset:** Sync ⇒ datasets exist and have rows. **Stock** exists only after you create the object type (intro: dataset ≠ object type).
 
@@ -95,7 +97,7 @@ python scripts/cli.py data-sources list
 
 ## 5. Step 1 — Connector and datasets
 
-**UI:** Connectors → kind `tushare` → `TUSHARE_TOKEN` → Provision all six slots → Run sync → **Manager → Datasets** → open `stock_basic` → **Data / Columns / Usage**.
+**UI:** Connectors → kind `tushare` → `TUSHARE_TOKEN` → Provision all slots → Run sync → **Manager → Datasets** → open `stock_basic` → **Data / Columns / Usage**.
 
 **CLI:**
 
