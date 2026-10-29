@@ -8,6 +8,11 @@
 set -euo pipefail
 cd "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
+# CI installs `--extra test`; this script never did, so it depended on whatever the venv happened to contain. A plain
+# `uv sync` (no extras) removes pytest-asyncio, and the gate then fails with a collection error that has nothing to do
+# with the change — which is how "it passed 30 minutes ago" turns into an afternoon.
+uv sync --extra test --quiet
+
 status=0
 
 echo "→ ruff"
