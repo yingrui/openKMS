@@ -59,8 +59,8 @@ export function ConnectorDetailPage() {
     setSyncDialogOpen(true);
   };
 
-  const confirmSync = async (range: ConnectorSyncDateRange) => {
-    const jobId = await handleRunSync(range);
+  const confirmSync = async (range: ConnectorSyncDateRange, slots?: string[]) => {
+    const jobId = await handleRunSync(range, slots);
     if (jobId != null) {
       setSyncDialogOpen(false);
     }
@@ -264,6 +264,7 @@ export function ConnectorDetailPage() {
         <ConnectorSyncDialog
           open={syncDialogOpen}
           syncing={syncing}
+          slots={selectedKindMeta?.output_slots ?? []}
           onClose={() => setSyncDialogOpen(false)}
           onConfirm={confirmSync}
         />

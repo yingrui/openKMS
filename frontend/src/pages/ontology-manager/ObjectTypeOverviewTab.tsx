@@ -5,6 +5,7 @@ import { Database, ExternalLink, Save } from 'lucide-react';
 import { toast } from 'sonner';
 import { useConfirm } from '../../contexts/ConfirmContext';
 import { purgeObjectTypeInstances } from '../../data/ontologyApi';
+import { CheckRow } from '../../styles/design-system';
 import {
   EntityViewField,
   EntityViewHeader,
@@ -169,18 +170,12 @@ export function ObjectTypeOverviewTab() {
               rows={3}
             />
           </EntityViewField>
-          <label
-            className="console-modal-checkbox-row entity-view__checkbox-row"
-            title={t('objectTypes.masterDataHint')}
-          >
-            <input
-              type="checkbox"
-              className="ds-checkbox"
-              checked={isMasterData}
-              onChange={(e) => setIsMasterData(e.target.checked)}
-            />
-            <span>{t('objectTypes.masterData')}</span>
-          </label>
+          <CheckRow
+            checked={isMasterData}
+            onChange={setIsMasterData}
+            title={t('objectTypes.masterData')}
+            hint={t('objectTypes.masterDataHint')}
+          />
           <EntityViewField label={t('objectTypes.displayProperty')}>
             <select
               className="console-form-control"

@@ -1,9 +1,17 @@
 import { useState } from 'react';
 import { Loader2, Play } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
-import { Dialog, FormField } from '../../styles/design-system';
+import {
+  CheckList,
+  CheckListItem,
+  Dialog,
+  FormField,
+} from '../../styles/design-system';
+import type { ConnectorKindOutputSlotOut } from '../../data/connectorsApi';
 import {
   defaultManualSyncDateRange,
+  syncSlotIds,
+  syncSlotSelectionPayload,
   validateSyncDateRange,
   yearSyncDateRange,
   type ConnectorSyncDateRange,
@@ -12,16 +20,20 @@ import {
 export function ConnectorSyncDialog({
   open,
   syncing,
+  slots,
   onClose,
   onConfirm,
 }: {
   open: boolean;
   syncing: boolean;
+  slots: ConnectorKindOutputSlotOut[];
   onClose: () => void;
-  onConfirm: (range: ConnectorSyncDateRange) => void | Promise<unknown>;
+  onConfirm: (range: ConnectorSyncDateRange, slots: string[] | undefined) => void | Promise<unknown>;
 }) {
   const { t } = useTranslation('console');
+  const allSlotIds = syncSlotIds(slots);
   const [range, setRange] = useState<ConnectorSyncDateRange>(() => defaultManualSyncDateRange());
+  const [selectedSlots, setSelectedSlots] = useState<string[]>(allSlotIds);
 
   const presetYears = (() => {
     const y = new Date().getFullYear();
@@ -32,10 +44,14 @@ export function ConnectorSyncDialog({
   const [lastOpen, setLastOpen] = useState(open);
   if (open !== lastOpen) {
     setLastOpen(open);
-    if (open) setRange(defaultManualSyncDateRange());
+    if (open) {
+      setRange(defaultManualSyncDateRange());
+      setSelectedSlots(allSlotIds);
+    }
   }
 
-  const validation = validateSyncDateRange(range);
+  const rangeError = validateSyncDateRange(range);
+  const noSlots = selectedSlots.length === 0;
 
   return (
     <Dialog
@@ -53,8 +69,10 @@ export function ConnectorSyncDialog({
           <button
             type="button"
             className="btn btn-primary"
-            disabled={syncing || validation !== null}
-            onClick={() => void onConfirm(range)}
+            disabled={syncing || rangeError !== null || noSlots}
+            onClick={() =>
+              void onConfirm(range, syncSlotSelectionPayload(selectedSlots, allSlotIds))
+            }
           >
             {syncing ? (
               <Loader2 size={16} className="console-loading-spinner" />
@@ -106,11 +124,58 @@ export function ConnectorSyncDialog({
         </FormField>
       </div>
 
-      {validation === 'order' ? (
+      {rangeError === 'order' ? (
         <p className="console-form-error" role="alert">
           {t('connectors.syncDateOrderError')}
         </p>
       ) : null}
+
+      <div className="connector-sync-slots">
+        <div className="connector-sync-slots-head">
+          <span className="connector-sync-presets-label">{t('connectors.syncDialogSlots')}</span>
+          <div className="connector-sync-presets-row">
+            <button
+              type="button"
+              className="btn btn-secondary btn-sm"
+              disabled={syncing || selectedSlots.length === allSlotIds.length}
+              onClick={() => setSelectedSlots(allSlotIds)}
+            >
+              {t('connectors.syncDialogSlotsAll')}
+            </button>
+            <button
+              type="button"
+              className="btn btn-secondary btn-sm"
+              disabled={syncing || noSlots}
+              onClick={() => setSelectedSlots([])}
+            >
+              {t('connectors.syncDialogSlotsNone')}
+            </button>
+          </div>
+        </div>
+        <p className="console-modal-hint">{t('connectors.syncDialogSlotsHint')}</p>
+        <CheckList>
+          {slots.map((slot) => (
+            <CheckListItem
+              key={slot.slot}
+              checked={selectedSlots.includes(slot.slot)}
+              disabled={syncing}
+              onChange={(checked) =>
+                setSelectedSlots((prev) =>
+                  checked ? [...prev, slot.slot] : prev.filter((s) => s !== slot.slot)
+                )
+              }
+            >
+              {slot.label}
+              <code className="connector-sync-slot-id">{slot.slot}</code>
+            </CheckListItem>
+          ))}
+        </CheckList>
+        {noSlots ? (
+          <p className="console-form-error" role="alert">
+            {t('connectors.syncDialogSlotsRequired')}
+          </p>
+        ) : null}
+      </div>
     </Dialog>
   );
 }

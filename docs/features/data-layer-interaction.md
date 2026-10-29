@@ -55,13 +55,15 @@ Tabs, in reading order:
 
 | Tab | What the user sees | First impression |
 |-----|--------------------|------------------|
-| **Overview** | **Read-only summary** — `MetricGrid` (columns, rows), the dataset's catalog facts (source, name, description, domain, tags, business definition, sensitivity) and **who depends on it** (object types / link types that use it as a backing source, each linked). One action: **Edit in Settings**. It never saves. | "what is this dataset, and who uses it" |
+| **Overview** | **Read-only summary**, by kind: a table shows `MetricGrid` with **columns · rows**; a file dataset shows **versions · files** (the published version's file count), because it has no columns and no single row count. Below that, the catalog facts (source, name, description, domain, tags, business definition, sensitivity). One action: **Edit in Settings**. It never saves. | "what is this dataset" |
 | **Data** | paged table preview (TanStack: server sort + inline cell editing when row editing is on) with a **filter bar**: one `column · operator · value` per condition, AND-ed, type-aware operators, the row count reflecting the filters, and the view reproducible from the URL ([design](data-layer-grid-filter.md)) | "what's actually in it" |
 | **Columns** | column list + type + ontology-type mapping + **description** (editable); schema history | "what's in it and what it means" |
 | **Relationships** | the FK edges this dataset takes part in (`from → to`, column pairs, INNER/LEFT) | "what does it connect to" |
 | **Quality** | declarative rules + run history | "can I trust it" |
 | **Settings** | **the single edit surface**: identity + catalog fields, row-editing toggle, keys (primary + unique), **AI context**, and the delete zone — one **Save** in the header | "what can I change about it" |
 | **Sharing** | existing `ResourceSharePanel` | "who else can see it" |
+
+**The Overview no longer carries a "who depends on it" panel.** It listed the object types and link types whose backing source is this dataset, computed by fetching *every* object type and *every* link type and filtering — two full lists per view — and for a file dataset it was **always empty**, because nothing in the ontology binds to one. The reverse lookup lives where the dependency is, on the object type's own page; the Overview now answers only what it can answer (its stats and its facts).
 
 **Read vs write is the split:** Overview reads, Settings writes (both used to be forms with their own Save, over the same `PUT /api/datasets/{id}`). The Settings page follows the Model Settings shape: `FormField` everywhere, one concern per panel, one Save in the header, the delete zone last.
 

@@ -5,17 +5,19 @@ export type CheckRowProps = {
   onChange: (checked: boolean) => void;
   title: string;
   hint?: ReactNode;
+  disabled?: boolean;
   className?: string;
 };
 
 /** Labeled checkbox with optional supporting hint. */
-export function CheckRow({ checked, onChange, title, hint, className }: CheckRowProps) {
+export function CheckRow({ checked, onChange, title, hint, disabled, className }: CheckRowProps) {
   return (
     <label className={['ds-check-row', className].filter(Boolean).join(' ')}>
       <input
         type="checkbox"
         className="ds-checkbox"
         checked={checked}
+        disabled={disabled}
         onChange={(e) => onChange(e.target.checked)}
       />
       <span className="ds-check-row__body">

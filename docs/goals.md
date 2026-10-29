@@ -61,14 +61,50 @@ These four do not have to be four fields. They can live on the business object, 
 
 It is not "the code is easy to edit." It is "after the change, you know who it affects." That takes three things: version history, dependencies between objects, and a review queue.
 
-## Who does what
+## We are working out a method {#goals-method}
+
+Building these systems is not "install a product." There is a way of doing it. We call it **decision-oriented development**: start from knowledge, build with AI, deliver decisions that can be defended.
+
+Seven steps:
+
+| Step | What happens | Who |
+|---|---|---|
+| 1. Collect | documents, data, market knowledge, research methods | consultant + agent |
+| 2. Model | objects, relations, time | agent + expert |
+| 3. Define | the expert writes the logic in plain language; AI compiles it into code or an algorithm | expert + agent |
+| 4. Assemble | case view, evidence, decision entry | agent + engineer |
+| 5. Replay | run historical cases and compare with human outcomes | agent + expert |
+| 6. Operate | make the decision; the system records the basis | business user |
+| 7. Change | when the logic changes, see who is affected and review | organization + expert |
+
+Four principles:
+
+- The decision is the unit, not the document.
+- Knowledge is the material, not an attachment.
+- Every conclusion has a basis, a validity, and an owner.
+- AI builds, experts decide, people are accountable; change one thing and you see the impact.
+
+Who does what:
 
 | Role | Owns | Not |
 |---|---|---|
-| Consultant / engineer | Build the system, connect data, build the UI | The final call |
-| Business expert | Rules, exceptions, validity | How much is written |
-| Business user | Make decisions in the system | Maintain the system |
-| Organization | Permissions, dependencies, audit, review | Day-to-day writing |
+| Consultant / engineer | Collect, model, assemble | The final call |
+| Business expert | Logic, exceptions, validity | How much is written |
+| Business user | Make decisions | Maintain the system |
+| Organization | Permissions, impact, audit, review | Day-to-day writing |
+
+Compared with other approaches:
+
+| Approach | Centered on | Who implements |
+|---|---|---|
+| DDD | domain model | developers |
+| DMN | decision tables | business + developers |
+| Data-driven / ML | data and models | data scientists |
+| Palantir | ontology + apps | forward-deployed engineers |
+| Low-code | forms and flows | business configuration |
+| **Us** | **the decision** | **AI builds, experts decide, people are accountable** |
+
+The method is still taking shape: process, principles, enforcement, measurement, and a reference case all need work.
 
 ## What is missing today
 

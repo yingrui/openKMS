@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import type { ConnectorKindOut } from '../../data/connectorsApi';
 import type { DataSourceResponse } from '../../data/dataSourcesApi';
 import type { DatasetResponse } from '../../data/datasetsApi';
+import { CheckRow } from '../../styles/design-system';
 import { newKvRow, type KvRow } from './connectorFormUtils';
 import { ConnectorOutputSlotField } from './ConnectorOutputSlotField';
 
@@ -72,16 +73,12 @@ export function ConnectorFormFields({
 
     if (f.field_type === 'boolean') {
       return (
-        <label className="console-modal-checkbox-row connector-input-boolean">
-          <input
-            id={fieldId}
-            type="checkbox"
-            checked={value === 'true' || value === '1'}
-            onChange={(e) => onChange(e.target.checked ? 'true' : 'false')}
-            disabled={readOnly}
-          />
-          <span>{f.label}</span>
-        </label>
+        <CheckRow
+          checked={value === 'true' || value === '1'}
+          onChange={(checked) => onChange(checked ? 'true' : 'false')}
+          disabled={readOnly}
+          title={f.label}
+        />
       );
     }
     if (f.field_type === 'select' && (f.options?.length ?? 0) > 0) {
@@ -160,6 +157,13 @@ export function ConnectorFormFields({
         </select>
       </div>
       {selectedKindMeta ? <p className="console-modal-hint">{selectedKindMeta.description}</p> : null}
+      <CheckRow
+        checked={formEnabled}
+        onChange={onFormEnabledChange}
+        disabled={readOnly}
+        title={t('connectors.connectorEnabled')}
+        hint={t('connectors.connectorEnabledHint')}
+      />
 
       {hasInputFields && selectedKindMeta ? (
         <div className="console-modal-section">
@@ -313,15 +317,6 @@ export function ConnectorFormFields({
         </div>
       </div>
 
-      <label className="console-modal-checkbox-row">
-        <input
-          type="checkbox"
-          checked={formEnabled}
-          onChange={(e) => onFormEnabledChange(e.target.checked)}
-          disabled={readOnly}
-        />
-        <span>{t('connectors.fieldEnabled')}</span>
-      </label>
     </div>
   );
 }

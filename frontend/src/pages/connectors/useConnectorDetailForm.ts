@@ -204,7 +204,7 @@ export function useConnectorDetailForm(
   }, []);
 
   const handleRunSync = useCallback(
-    async (range: ConnectorSyncDateRange): Promise<number | null> => {
+    async (range: ConnectorSyncDateRange, slots?: string[]): Promise<number | null> => {
       if (!canWrite || !id || !isSyncConnector) return null;
       if (!areAllOutputSlotsConfigured(selectedKindMeta, outputDatasetIds)) {
         toast.error(t('connectors.syncRequiresOutputs'));
@@ -215,6 +215,7 @@ export function useConnectorDetailForm(
         const { job_id: jobId } = await triggerConnectorSync(id, {
           start_date: range.startDate,
           end_date: range.endDate,
+          ...(slots && slots.length > 0 ? { slots } : {}),
         });
         setLastSyncJobId(jobId);
         toast.success(t('connectors.syncStarted', { jobId }));

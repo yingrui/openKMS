@@ -2,6 +2,7 @@ import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { ConnectorSyncSchedule } from '../../data/connectorsApi';
 import { timezoneSelectOptions } from '../../utils/commonTimezones';
+import { CheckRow } from '../../styles/design-system';
 import { dailyCronFromForm, type SyncScheduleFormState } from './connectorScheduleUtils';
 
 function pad2(n: number): string {
@@ -47,18 +48,13 @@ export function ConnectorCronSettings({
     <div className="connector-cron-settings">
       <p className="console-modal-hint">{t('connectors.cronHint')}</p>
 
-      <label className="console-modal-checkbox-row">
-        <input
-          type="checkbox"
-          checked={value.enabled}
-          disabled={readOnly || (!outputsConfigured && !value.enabled)}
-          onChange={(e) => onChange({ ...value, enabled: e.target.checked })}
-        />
-        <span>{t('connectors.cronEnabled')}</span>
-      </label>
-      {!outputsConfigured ? (
-        <p className="console-modal-hint">{t('connectors.cronRequiresOutputs')}</p>
-      ) : null}
+      <CheckRow
+        checked={value.enabled}
+        disabled={readOnly || (!outputsConfigured && !value.enabled)}
+        onChange={(enabled) => onChange({ ...value, enabled })}
+        title={t('connectors.cronEnabled')}
+        hint={!outputsConfigured ? t('connectors.cronRequiresOutputs') : undefined}
+      />
 
       <div className={`connector-cron-fields${!value.enabled ? ' connector-cron-fields--disabled' : ''}`}>
         <div className="console-form-field">

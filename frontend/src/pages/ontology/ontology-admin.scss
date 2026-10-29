@@ -233,7 +233,9 @@
   margin-bottom: var(--space-4);
 }
 
-.console-form-field > label {
+// The field's caption only. A `<CheckRow>` is also a `<label>`, and it carries its own card
+// layout — `display: block` here would stack its checkbox above its title.
+.console-form-field > label:not(.ds-check-row) {
   display: block;
   font-size: var(--text-md);
   font-weight: 500;
@@ -245,36 +247,6 @@
   margin: 0;
   font-size: var(--text-md);
   color: var(--color-error);
-}
-
-.connector-form-fields label.console-modal-checkbox-row {
-  display: flex;
-  align-items: center;
-  gap: calc(var(--space-2) + var(--space-1) / 2);
-  margin-top: var(--space-2);
-  margin-bottom: 0;
-  cursor: pointer;
-
-  span {
-    font-size: var(--text-base);
-    font-weight: 500;
-    color: var(--color-text);
-    line-height: 1.4;
-  }
-
-  input[type='checkbox'] {
-    width: 1rem;
-    height: 1rem;
-    margin: 0;
-    flex-shrink: 0;
-    cursor: pointer;
-    accent-color: var(--color-accent);
-  }
-
-  &:has(input:disabled) {
-    cursor: not-allowed;
-    opacity: 0.7;
-  }
 }
 
 .console-modal-subheading {
@@ -861,35 +833,6 @@
   flex-direction: column;
   gap: calc(var(--space-3) + var(--space-1) / 2);
   max-width: 560px;
-
-  label.console-modal-checkbox-row {
-    display: flex;
-    align-items: center;
-    gap: calc(var(--space-2) + var(--space-1) / 2);
-    margin: var(--space-1) 0 0;
-    cursor: pointer;
-
-    input[type='checkbox'] {
-      width: 1rem;
-      height: 1rem;
-      margin: 0;
-      flex-shrink: 0;
-      cursor: pointer;
-      accent-color: var(--color-accent);
-    }
-
-    span {
-      font-size: var(--text-base);
-      font-weight: 500;
-      color: var(--color-text);
-      line-height: 1.4;
-    }
-
-    &:has(input:disabled) {
-      cursor: not-allowed;
-      opacity: 0.7;
-    }
-  }
 }
 
 .connector-sync-presets {
@@ -913,6 +856,29 @@
 
 .connector-sync-preset-btn {
   min-width: 4.5rem;
+}
+
+.connector-sync-slots {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin-top: var(--space-5);
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--color-border-subtle);
+}
+
+.connector-sync-slots-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.connector-sync-slot-id {
+  margin-left: var(--space-2);
+  font-family: var(--font-mono, monospace);
+  font-size: var(--text-xs);
+  color: var(--color-text-tertiary);
 }
 
 .connector-sync-date-row {

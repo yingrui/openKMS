@@ -6,7 +6,7 @@ import {
 } from 'react';
 import { Link, Outlet, useNavigate, useParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { Loader2, Pencil } from 'lucide-react';
+import { Pencil } from 'lucide-react';
 import { toast } from 'sonner';
 import {
   deleteDataset,
@@ -15,12 +15,6 @@ import {
   queryDatasetRows,
   type DatasetResponse,
 } from '../../data/datasetsApi';
-import {
-  fetchLinkTypes,
-  fetchObjectTypes,
-  type LinkTypeResponse,
-  type ObjectTypeResponse,
-} from '../../data/ontologyApi';
 import { ResourceSharePanel } from '../../components/ResourceSharePanel';
 import { RESOURCE_TYPES } from '../../data/resourceAclApi';
 import { useConfirm } from '../../contexts/ConfirmContext';
@@ -40,6 +34,7 @@ import {
 import '../ontology/ontology-admin.scss';
 import './dataset-detail.scss';
 import { datasetLabel } from './datasetLabel';
+import { fetchDatasetVersions } from '../../data/datasetVersionsApi';
 
 
 /** Sensitivity is stored as a stable value; the summary shows its label. */
@@ -59,9 +54,8 @@ export function DatasetDetailPage() {
   const [loading, setLoading] = useState(true);
   const [columnCount, setColumnCount] = useState<number | null>(null);
   const [rowTotal, setRowTotal] = useState<number | null>(null);
-  const [usageObjectTypes, setUsageObjectTypes] = useState<ObjectTypeResponse[]>([]);
-  const [usageLinkTypes, setUsageLinkTypes] = useState<LinkTypeResponse[]>([]);
-  const [usageLoading, setUsageLoading] = useState(true);
+  const [versionCount, setVersionCount] = useState<number | null>(null);
+  const [fileCount, setFileCount] = useState<number | null>(null);
 
   const load = useCallback(async () => {
     if (!datasetId) return;
@@ -81,7 +75,7 @@ export function DatasetDetailPage() {
   }, [load]);
 
   useEffect(() => {
-    if (!datasetId) return;
+    if (!datasetId || dataset?.kind !== 'table') return;
     let cancelled = false;
     void (async () => {
       try {
@@ -102,31 +96,30 @@ export function DatasetDetailPage() {
     return () => {
       cancelled = true;
     };
-  }, [datasetId]);
+  }, [datasetId, dataset?.kind]);
 
+  // What a file dataset *is*: versions of files, not columns of rows.
   useEffect(() => {
-    if (!datasetId) return;
+    if (!datasetId || dataset?.kind !== 'file') return;
     let cancelled = false;
-    setUsageLoading(true);
     void (async () => {
       try {
-        const [otRes, ltRes] = await Promise.all([fetchObjectTypes(), fetchLinkTypes()]);
+        const versions = await fetchDatasetVersions(datasetId);
         if (cancelled) return;
-        setUsageObjectTypes(otRes.items.filter((ot) => ot.dataset_id === datasetId));
-        setUsageLinkTypes(ltRes.items.filter((lt) => lt.dataset_id === datasetId));
+        setVersionCount(versions.length);
+        const published = versions.find((v) => v.status === 'published') ?? versions[0];
+        setFileCount(published ? published.file_count : 0);
       } catch {
         if (!cancelled) {
-          setUsageObjectTypes([]);
-          setUsageLinkTypes([]);
+          setVersionCount(null);
+          setFileCount(null);
         }
-      } finally {
-        if (!cancelled) setUsageLoading(false);
       }
     })();
     return () => {
       cancelled = true;
     };
-  }, [datasetId]);
+  }, [datasetId, dataset?.kind]);
 
   const onDelete = useCallback(async () => {
     if (!datasetId || !dataset) return;
@@ -157,18 +150,16 @@ export function DatasetDetailPage() {
       onDelete,
       columnCount,
       rowTotal,
-      usageObjectTypes,
-      usageLinkTypes,
-      usageLoading,
+      versionCount,
+      fileCount,
     };
   }, [
     dataset,
     onDelete,
     columnCount,
     rowTotal,
-    usageObjectTypes,
-    usageLinkTypes,
-    usageLoading,
+    versionCount,
+    fileCount,
   ]);
 
   if (loading || !dataset || !ctx) {
@@ -218,9 +209,7 @@ export function DatasetDetailPage() {
 
 export function DatasetOverviewTab() {
   const { t } = useTranslation('ontology');
-  const { dataset, columnCount, rowTotal, usageObjectTypes, usageLinkTypes, usageLoading } =
-    useDatasetDetail();
-  const empty = usageObjectTypes.length === 0 && usageLinkTypes.length === 0;
+  const { dataset, columnCount, rowTotal, versionCount, fileCount } = useDatasetDetail();
   const sensitivity = SENSITIVITY_KEYS[dataset.sensitivity ?? ''] ?? t('datasets.sensitivityNone');
   const fact = (value: string | number | null | undefined) =>
     value === null || value === undefined || value === '' ? t('datasets.dash') : value;
@@ -238,14 +227,30 @@ export function DatasetOverviewTab() {
         }
       />
       <EntityViewStats>
-        <EntityViewStat
-          label={t('datasets.metricColumns')}
-          value={columnCount == null ? t('datasets.dash') : columnCount}
-        />
-        <EntityViewStat
-          label={t('datasets.metricRows')}
-          value={rowTotal == null ? t('datasets.dash') : rowTotal}
-        />
+        {dataset.kind === 'file' ? (
+          <>
+            {/* A file dataset has no columns and no single row count; its shape is versions of files. */}
+            <EntityViewStat
+              label={t('datasets.metricVersions')}
+              value={versionCount == null ? t('datasets.dash') : versionCount}
+            />
+            <EntityViewStat
+              label={t('datasets.metricFiles')}
+              value={fileCount == null ? t('datasets.dash') : fileCount}
+            />
+          </>
+        ) : (
+          <>
+            <EntityViewStat
+              label={t('datasets.metricColumns')}
+              value={columnCount == null ? t('datasets.dash') : columnCount}
+            />
+            <EntityViewStat
+              label={t('datasets.metricRows')}
+              value={rowTotal == null ? t('datasets.dash') : rowTotal}
+            />
+          </>
+        )}
       </EntityViewStats>
       {/* Read-only summary: everything editable lives in Settings, so this page never saves. */}
       <EntityViewPanel>
@@ -275,47 +280,6 @@ export function DatasetOverviewTab() {
           <dd>{sensitivity}</dd>
         </dl>
       </EntityViewPanel>
-      {/* Who depends on this dataset — a couple of lists, not a tab of their own. */}
-      <EntityViewPanel title={t('datasets.usage')} description={t('datasets.usageHint')}>
-        {usageLoading ? (
-          <div className="console-loading">
-            <Loader2 size={32} className="console-loading-spinner" aria-hidden />
-            <p>{t('shared.loading')}</p>
-          </div>
-        ) : empty ? (
-          <p className="entity-view__readonly">
-            {t('datasets.usageEmpty')} {t('datasets.usageEmptyHint')}
-          </p>
-        ) : (
-          <div className="dataset-detail-usage">
-            {usageObjectTypes.length > 0 && (
-              <section>
-                <h3 className="dataset-detail-usage__heading">{t('datasets.usageObjectTypes')}</h3>
-                <ul className="dataset-detail-usage__list">
-                  {usageObjectTypes.map((ot) => (
-                    <li key={ot.id}>
-                      <Link to={`/ontology-manager/object-types/${ot.id}`}>{ot.name}</Link>
-                    </li>
-                  ))}
-                </ul>
-              </section>
-            )}
-            {usageLinkTypes.length > 0 && (
-              <section>
-                <h3 className="dataset-detail-usage__heading">{t('datasets.usageLinkTypes')}</h3>
-                <ul className="dataset-detail-usage__list">
-                  {usageLinkTypes.map((lt) => (
-                    <li key={lt.id}>
-                      <Link to={`/ontology-manager/link-types/${lt.id}`}>{lt.name}</Link>
-                    </li>
-                  ))}
-                </ul>
-              </section>
-            )}
-          </div>
-        )}
-      </EntityViewPanel>
-
     </>
   );
 }

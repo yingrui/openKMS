@@ -32,3 +32,14 @@ export function validateSyncDateRange(range: ConnectorSyncDateRange): string | n
   }
   return null;
 }
+
+/** Output slot ids a sync run may target. */
+export function syncSlotIds(slots: { slot: string }[] | undefined): string[] {
+  return (slots ?? []).map((s) => s.slot);
+}
+
+/** An all-slots selection is the same as no selection: say so in one place. */
+export function syncSlotSelectionPayload(selected: string[], all: string[]): string[] | undefined {
+  if (all.length > 0 && selected.length === all.length) return undefined;
+  return selected;
+}

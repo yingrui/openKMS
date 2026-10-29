@@ -420,12 +420,6 @@
     "filterOpEndsWith": "ends with",
     "columns": "Columns",
     "columnsHint": "Schema metadata from the data source.",
-    "usage": "Usage",
-    "usageHint": "Object types and link types that use this dataset as a backing source.",
-    "usageEmpty": "Nothing uses this dataset yet.",
-    "usageEmptyHint": "Bind it from an object type or link type Datasources tab.",
-    "usageObjectTypes": "Object types",
-    "usageLinkTypes": "Link types",
     "sharing": "Sharing",
     "sharingHint": "Control who can view or edit this dataset.",
     "displayName": "Display name",
@@ -745,7 +739,9 @@
     "manifestShow": "Show it",
     "manifestHint": "Written once when the version was published — every file with its sha256, the row counts and the schema — and never changed since. That is why v2 always means the same bytes.",
     "fileDescription": "Description",
-    "fileDataset": "Object storage dataset"
+    "fileDataset": "Object storage dataset",
+    "metricVersions": "Versions",
+    "metricFiles": "Files"
   },
   "groups": {
     "title": "Groups",

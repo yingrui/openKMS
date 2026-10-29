@@ -113,6 +113,8 @@ export interface ConnectorSyncSchedule {
 export interface ConnectorSyncTriggerBody {
   start_date: string;
   end_date: string;
+  /** Output slots to sync; omit to sync every slot the kind declares. */
+  slots?: string[];
 }
 
 export interface ConnectorResponse {

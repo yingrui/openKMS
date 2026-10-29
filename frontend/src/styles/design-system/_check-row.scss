@@ -16,6 +16,11 @@
   margin-top: 2px;
 }
 
+.ds-check-row:has(input:disabled) {
+  cursor: not-allowed;
+  opacity: 0.7;
+}
+
 .ds-check-row__body {
   display: flex;
   flex-direction: column;
