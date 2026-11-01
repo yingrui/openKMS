@@ -2,39 +2,40 @@
 
 **Open Knowledge Management System** — openKMS helps enterprises build intelligent decision systems that are dependable and adaptable.
 
-AI can already write software. The harder problem is what comes after: knowledge, data, and ontology must come first; business experts and AI lead the build; IT provides data access, permissions, security, and delivery. Every decision should be traceable, recomputable, and clear about its boundary.
+A decision system takes a case in, applies rules and evidence, and returns a conclusion. The hard part is making the conclusion dependable: it has a basis, can be recomputed, and states its boundary.
 
 [Repository on GitHub :material-github:](https://github.com/yingrui/openKMS){ .md-button .md-button--primary }
 [Quickstart](quickstart.md){ .md-button }
 
 ---
 
-## Why openKMS?
+## What you build
 
-Most organizations already have files, wikis, and AI chat. The gap is **one place** where:
+A decision system: case in → conclusion out, with its basis, computation, and boundary attached.
 
-- **Business experts and AI** can maintain rules and exceptions together, without waiting on IT scheduling.
-- **The enterprise platform** provides the knowledge, data, and ontology the system is built on.
-- **IT** handles data access, permissions, security, and delivery.
-- **Frontline staff and agents** use the same system to decide and execute.
+Typical domains: customs classification, insurance underwriting, quality release, compliance review.
 
-The same system serves the people who decide and the agents that execute. If governance exists but nobody uses it—or if answers cannot be trusted for compliance—both sides fail.
+It is not an app generator, a document store, a chat window, or a BI tool. The longer argument is in [Goals](goals.md).
 
-North star: [Goals](goals.md) — *Help enterprises build intelligent decision systems that are dependable and adaptable*.
+## How it works
 
-## What you build in openKMS
+- Knowledge, data, and ontology come first; AI builds the system on top.
+- Rules are explicit; conclusions are computed from sourced data, not guessed.
+- Business experts change the rules; IT handles data access, permissions, security, and delivery.
 
-Content lives in **channel trees** (like folder hierarchies). Typical surfaces:
+## What's inside
 
 | Surface | Role |
 |---------|------|
-| **Documents** | Upload PDFs and office files; parse to editable Markdown (PaddleOCR-VL via a separate VLM server); versions and policy **lifecycle**. |
-| **Articles** | Markdown CMS with channels, attachments, and relationships (`supersedes`, `amends`, `see_also`, …). |
-| **Wiki spaces** | Path-based notes, vault import, page graph, semantic page search. |
-| **Knowledge bases** | Hybrid search and **Q&A with provenance** (chunks, sources, optional QA Agent service). |
-| **Knowledge map & ontology** | Terms linked to channels/spaces; optional structured data and graph explore. |
+| **[Documents](features/documents.md)** | Upload PDFs and office files; parse to editable Markdown (PaddleOCR-VL via a separate VLM server); versions and policy **lifecycle**. |
+| **[Articles](features/articles.md)** | Markdown CMS with channels, attachments, and relationships (`supersedes`, `amends`, `see_also`, …). |
+| **[Wiki spaces](features/wiki-spaces.md)** | Path-based notes, vault import, page graph, semantic page search. |
+| **[Knowledge bases](features/knowledge-bases.md)** | Hybrid search and **Q&A with provenance** (chunks, sources, optional QA Agent service). |
+| **[Ontology](features/ontology.md) & [data layer](features/data-layer.md)** | Object/link types, instances, datasets, and semantic models; graph and relational queries. |
+| **[Functions & actions](features/ontology-functions.md)** | Published functions and typed actions on objects; execution and audit. |
+| **[Agents](features/openkms-agents.md) & [skill](features/openkms-skill.md)** | Deep Agents workspaces, and the openkms skill/CLI for agents calling the public API. |
 
-**Under the hood:** [operation permissions + resource ACL](features/data-security.md) (admin does not imply read-all data), [evaluations](features/evaluation.md) for retrieval and wiki coverage, and [development plan](development_plan.md) for what is shipped vs next.
+**Foundations:** [operation permissions + resource ACL](features/data-security.md) (admin does not imply read-all data), and [evaluations](features/evaluation.md) for retrieval and wiki coverage.
 
 ## Where to start
 

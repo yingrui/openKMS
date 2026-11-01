@@ -2,39 +2,40 @@
 
 **开放知识管理系统（Open Knowledge Management System）** — openKMS 帮助企业快速构建站得住、改得动的智能决策系统。
 
-AI 已经能写软件。更难的是之后的事：知识、数据与本体先行；业务专家与 AI 主导研发；IT 负责数据接入、权限、安全与交付。每个决策都应可溯源、可复算，并明确适用边界。
+决策系统：案件进来，套用规则与证据，给出一个结论。难的不是把应用做出来，而是让结论可依赖：有依据、可复算、说清边界。
 
 [GitHub 仓库 :material-github:](https://github.com/yingrui/openKMS){ .md-button .md-button--primary }
 [快速开始](quickstart.md){ .md-button }
 
 ---
 
-## 为什么选择 openKMS？
+## 你用它建什么
 
-多数组织已有文件、维基和 AI 聊天。缺口在于**一个统一入口**：
+一个决策系统：案件进来 → 结论出去，并带上它的依据、计算和边界。
 
-- **业务专家与 AI** 可以协同维护规则与例外，不再依赖 IT 排期。
-- **企业内部平台** 提供知识、数据与本体，作为系统的底座。
-- **IT** 负责数据接入、权限、安全与交付。
-- **一线与 Agent** 用同一套系统做决策、执行。
+典型场景：报关归类、保险核保、质量放行、合规审查。
 
-同一套系统同时服务做决策的人和执行的 Agent。若治理存在但无人使用，或答案不能用于合规，两侧都会失败。
+它不是应用生成器、文档库、聊天窗口或 BI 工具。完整论证见[目标与愿景](goals.md)。
 
-北极星：[目标与愿景](goals.md) — *帮助企业快速构建站得住、改得动的智能决策系统*。
+## 它怎么工作
 
-## 在 openKMS 里构建什么
+- 知识、数据、本体先行；AI 在其上构建系统。
+- 规则明确；结论由有出处的数据算出来，不靠猜。
+- 业务专家改规则；IT 负责数据接入、权限、安全与交付。
 
-内容存放在**通道树**（类似文件夹层级）中。典型表面包括：
+## 里面有什么
 
 | 表面 | 作用 |
 |------|------|
-| **文档（Documents）** | 上传 PDF 与 Office 文件；解析为可编辑 Markdown（PaddleOCR-VL，经独立 VLM 服务）；版本与策略**生命周期**。 |
-| **文章（Articles）** | Markdown CMS，含通道、附件与关系（`supersedes`、`amends`、`see_also` 等）。 |
-| **维基空间（Wiki spaces）** | 基于路径的笔记、vault 导入、页面图谱、语义页面搜索。 |
-| **知识库（Knowledge bases）** | 混合检索与**带来源的问答**（分块、来源、可选 QA Agent 服务）。 |
-| **知识地图与本体** | 术语关联通道/空间；可选结构化数据与图谱浏览。 |
+| **[文档（Documents）](features/documents.md)** | 上传 PDF 与 Office 文件；解析为可编辑 Markdown（PaddleOCR-VL，经独立 VLM 服务）；版本与策略**生命周期**。 |
+| **[文章（Articles）](features/articles.md)** | Markdown CMS，含通道、附件与关系（`supersedes`、`amends`、`see_also` 等）。 |
+| **[维基空间（Wiki spaces）](features/wiki-spaces.md)** | 基于路径的笔记、vault 导入、页面图谱、语义页面搜索。 |
+| **[知识库（Knowledge bases）](features/knowledge-bases.md)** | 混合检索与**带来源的问答**（分块、来源、可选 QA Agent 服务）。 |
+| **[本体](features/ontology.md)与[数据层](features/data-layer.md)** | 对象/链接类型、实例、数据集、语义模型；图查询与关系查询。 |
+| **[函数与动作](features/ontology-functions.md)** | 已发布函数、对象上的类型化动作；执行与审计。 |
+| **[Agent](features/openkms-agents.md)与 [skill](features/openkms-skill.md)** | Deep Agents 工作区，以及供 Agent 调用公共 API 的 openkms skill/CLI。 |
 
-**底层能力：** [操作权限 + 资源 ACL](features/data-security.md)（管理员不意味着可读全部数据）、面向检索与维基覆盖的[评测](features/evaluation.md)，以及说明已交付与后续计划的[开发计划](development_plan.md)。
+**底座：** [操作权限 + 资源 ACL](features/data-security.md)（管理员不意味着可读全部数据）、面向检索与 wiki 覆盖的[评测](features/evaluation.md)。
 
 ## 从哪里开始
 
