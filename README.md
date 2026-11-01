@@ -1,17 +1,52 @@
 # openKMS
 
-**Open Knowledge Management System** — openKMS helps enterprises build intelligent decision systems that hold up and can change.
+**Open Knowledge Management System** — build intelligent decision systems that hold up and can change.
 
-AI can already write software. The harder problem is what comes after: knowledge, data, and ontology must come first; business experts and AI lead the build; IT provides data access, permissions, security, and delivery. Every decision should be traceable, recomputable, and clear about its boundary. [Documentation](https://yingrui.github.io/openKMS/) · Vision: [`docs/goals.md`](docs/goals.md).
+A decision system takes a case in, applies rules and evidence, and returns a conclusion. The hard part is not generating the application; it is making the conclusion dependable: it has a basis, can be recomputed, and states its boundary. openKMS is the layer that makes that possible.
+
+## What you build
+
+A decision system: case in → conclusion out, with its basis, computation, and boundary attached.
+
+Typical domains: customs classification, insurance underwriting, quality release, compliance review.
+
+It is not an app generator, a document store, a chat window, or a BI tool. The longer argument is in [Goals](docs/goals.md).
+
+## How it works
+
+- Knowledge, data, and ontology come first; AI builds the system on top.
+- Rules are explicit; conclusions are computed from sourced data, not guessed.
+- Business experts change the rules; IT handles data access, permissions, security, and delivery.
+
+## Quick start
+
+**Prerequisite:** document parsing needs a VLM server. Run `vlm-server/` (mlx-vlm) on the host; without it, uploads and parse jobs fail. See [`vlm-server/README.md`](vlm-server/README.md).
+
+**Docker**
+
+1. `cp backend/.env.example backend/.env` and edit (secrets, auth, optional LLM URLs).
+2. `docker compose -f docker/docker-compose.yml up -d --build`
+3. Open **http://localhost:8082**.
+
+**Backend and frontend on the host**
+
+1. `cp backend/.env.example backend/.env` and `cp frontend/.env.example frontend/.env`.
+2. `cd docker && docker compose -f docker-compose.yml up -d postgres minio neo4j`
+3. `cd ../backend && uv sync && alembic upgrade head`
+4. `uvicorn app.main:app --reload --port 8102`
+5. `cd ../frontend && npm install && npm run dev`
+6. Open **http://localhost:5173** (Vite proxies `/api` to the backend).
+
+Detailed setup: [`docs/developer/setup.md`](docs/developer/setup.md). Docker ports and env overrides: [`docker/README.md`](docker/README.md).
 
 ## Repository layout
 
 - **`backend/`** — FastAPI API (default port **8102**)
 - **`frontend/`** — React + Vite (default port **5173**)
 - **`openkms-cli/`** — Parse and pipeline CLI (used by the background worker)
-- **`openkms-skill/`** — Optional Agent Skill + Python CLI for agents calling the public HTTP API (personal API keys in the app under **Settings**; see **`docs/features/openkms-skill.md`**)
+- **`openkms-skill/`** — Optional Agent Skill + Python CLI for agents calling the public HTTP API (personal API keys in the app under **Settings**; see [`docs/features/openkms-skill.md`](docs/features/openkms-skill.md))
 - **`vlm-server/`** — **mlx-vlm** HTTP server for **PaddleOCR-VL** document parsing (run this separately)
-- **`docker/`** — Dockerfiles and **`docker-compose.yml`** (run via **`docker compose -f docker/docker-compose.yml …`** from repo root; see **`docker/README.md`**)
+- **`docker/`** — Dockerfiles and **`docker-compose.yml`** (run via `docker compose -f docker/docker-compose.yml …` from the repo root)
 - **`docs/`** — Architecture, features, developer setup, and research notes (published at [yingrui.github.io/openKMS](https://yingrui.github.io/openKMS/))
 - **`qa-agent/`** — Optional LangGraph Q&A service (proxied by the backend for KB chat)
 
@@ -19,40 +54,15 @@ AI can already write software. The harder problem is what comes after: knowledge
 
 | Topic | Where |
 |--------|--------|
+| Vision and direction | [`docs/goals.md`](docs/goals.md) |
 | Run locally | [`docs/quickstart.md`](docs/quickstart.md) · [`docs/developer/setup.md`](docs/developer/setup.md) |
-| Vision | [`docs/goals.md`](docs/goals.md) |
 | Features & APIs | [`docs/functionalities.md`](docs/functionalities.md) |
 | Security design | [`docs/security.md`](docs/security.md) · [`docs/features/data-security.md`](docs/features/data-security.md) |
 | Roadmap | [`docs/development_plan.md`](docs/development_plan.md) |
-| Comparisons & evaluation research | [`docs/research/`](docs/research/) (RAGFlow, Confluence AI, OKF, text quality) |
+| Comparisons and research | [`docs/research/`](docs/research/) |
 
-## Quick start
+## Status and license
 
-### Option A — Everything in Docker
+Active development (0.1.x). Core surfaces are usable; some modules (evaluation, connectors, media) are partial or experimental. See [Development plan](docs/development_plan.md).
 
-1. **Recommended:** start **mlx-vlm** separately (see above and **`vlm-server/README.md`**).
-2. `cp backend/.env.example backend/.env` and edit (secrets, auth, optional LLM URLs).
-3. `docker compose -f docker/docker-compose.yml up -d --build` — builds images and starts Postgres (pgvector), MinIO, Neo4j, backend, worker, and frontend (nginx).
-4. Open **http://localhost:8082**.
-
-See **`docker/README.md`** for ports, env overrides, and how the worker reaches a host VLM.
-
-### Option B — Backend and frontend on the host
-
-1. **Recommended:** start **mlx-vlm** separately for parsing (**`vlm-server/README.md`**).
-2. `cp backend/.env.example backend/.env` and `cp frontend/.env.example frontend/.env`.
-3. Start Postgres, MinIO, and Neo4j (optional for ontology): `cd docker && docker compose -f docker-compose.yml up -d postgres minio neo4j`
-4. `cd backend && uv sync && alembic upgrade head`
-5. Run **`uvicorn app.main:app --reload --port 8102`** in `backend/` and **`npm install && npm run dev`** in `frontend/` (two terminals).
-6. Open **http://localhost:5173** (Vite proxies `/api` to the backend).
-
-For a full walkthrough, auth modes, and optional services (QA agent, etc.), see **`docs/developer/setup.md`** and **[the docs site](https://yingrui.github.io/openKMS/)**.
-
-## PaddleOCR-VL / mlx-vlm (run separately)
-
-Document parsing expects a **VLM server** compatible with PaddleOCR-VL (default URL **http://localhost:8101**). **Do not rely on the main Docker stack for this** — run **mlx-vlm** on the host (or another machine) so you can use Apple Silicon / GPU and avoid huge images.
-
-1. See **`vlm-server/README.md`** for how to start the server (e.g. `./start.sh` in `vlm-server/`).
-2. Point **`OPENKMS_VLM_URL`** (backend, worker, `openkms-cli`) at that URL. In the full Docker stack, the worker defaults to **`http://host.docker.internal:8101`** so a host-run mlx-vlm is reachable.
-
-Without a running VLM, uploads and pipeline jobs that parse documents will fail.
+Apache-2.0. See [LICENSE](LICENSE).
