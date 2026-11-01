@@ -1,8 +1,8 @@
 # openKMS
 
-**Open Knowledge Management System** — one governed knowledge network for people and agents.
+**Open Knowledge Management System** — openKMS helps enterprises build intelligent decision systems that hold up and can change.
 
-Teams **retrieve**, **contribute**, and **govern** the same corpus—so answers stay sourced and permission-aware, not trapped in private chat or stale files. [Documentation](https://yingrui.github.io/openKMS/) · Vision: [`docs/goals.md`](docs/goals.md).
+AI can already write software. The harder problem is what comes after: knowledge, data, and ontology must come first; business experts and AI lead the build; IT provides data access, permissions, security, and delivery. Every decision should be traceable, recomputable, and clear about its boundary. [Documentation](https://yingrui.github.io/openKMS/) · Vision: [`docs/goals.md`](docs/goals.md).
 
 ## Repository layout
 

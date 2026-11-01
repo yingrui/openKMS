@@ -1,17 +1,12 @@
 # openKMS Development Plan
 
-Business **why** and long-form narrative: [Goals (vision)](goals.md) — [user vs organization](goals.md) framing (same knowledge network; personal **retrieve / contribute** vs enterprise **governance / AI-ready**). This page tracks **what is shipped**, **strategic priorities**, and **backlog**.
+Business **why** and long-form narrative: [Goals](goals.md) — the direction is organized around three questions: build fast, be trustworthy, and change. This page tracks **what is shipped**, **strategic priorities**, and **backlog**.
 
 ## How priorities map to Goals {#goals-mapping}
 
-| [Goals](goals.md) lens | What “done” looks like in product | Where tracked here |
-|------------------------|-----------------------------------|--------------------|
-| **User** — [pains](goals.md#goals-user-value) (e.g. can’t find, can’t trust) | Shorter paths to **find, trust, learn, contribute** | [Backlog](#backlog) rows tagged **user** below |
-| **User** — [retrieve / contribute](goals.md#goals-user-value) | Retrieve with provenance; deposit without heavy authoring | Shipped: KB delivery (search/Q&A), wiki, parse+edit, **KB Q&A → Save as FAQ**; gaps: in-app maintenance assistant, eval→fix loop, wiki promote |
-| **User** — [enterprise roles](goals.md#goals-user-value) | Frontline staff and experts adopt daily; admins and compliance can govern | Console, ACL, eval, connectors (partial) — see [Current State](#current-state) |
-| **Organization** — [organization pillar](goals.md#goals-organization) | Structure, lifecycle, multimodal ingest, unified layer for agents | **Strategic priorities** + org-tagged backlog |
+Priorities are judged against the three questions in [Goals](goals.md): does it make the system faster to build, more trustworthy, or easier to change? Items that serve none of them stay in the backlog.
 
-If a release improves only org tooling but not **frontline staff / domain experts** daily paths, pains such as **keeping answers private** and **no time to contribute** will persist (see [Goals](goals.md)).
+Backlog tags (**user** / **org**) are internal shorthand for who is affected; they do not replace the three-question test.
 
 ## Agent lanes (delivery vs in-app) {#agent-lanes}
 

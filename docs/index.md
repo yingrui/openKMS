@@ -1,8 +1,8 @@
 # openKMS
 
-**Open Knowledge Management System** — one governed knowledge network for people and agents.
+**Open Knowledge Management System** — openKMS helps enterprises build intelligent decision systems that hold up and can change.
 
-Teams **retrieve**, **contribute**, and **govern** the same corpus—so answers stay sourced and permission-aware, not trapped in private chat or stale files.
+AI can already write software. The harder problem is what comes after: knowledge, data, and ontology must come first; business experts and AI lead the build; IT provides data access, permissions, security, and delivery. Every decision should be traceable, recomputable, and clear about its boundary.
 
 [Repository on GitHub :material-github:](https://github.com/yingrui/openKMS){ .md-button .md-button--primary }
 [Quickstart](quickstart.md){ .md-button }
@@ -13,14 +13,14 @@ Teams **retrieve**, **contribute**, and **govern** the same corpus—so answers 
 
 Most organizations already have files, wikis, and AI chat. The gap is **one place** where:
 
-- **Frontline staff** can find answers **with sources** they dare use in real work.
-- **Experts** can contribute without a separate publishing project.
-- **The organization** can govern who sees what, what is still valid, and what must be reviewed.
-- **Agents** can discover, retrieve, answer, and **cite** in-bounds content—not only a model with no corpus.
+- **Business experts and AI** can maintain rules and exceptions together, without waiting on IT scheduling.
+- **The enterprise platform** provides the knowledge, data, and ontology the system is built on.
+- **IT** handles data access, permissions, security, and delivery.
+- **Frontline staff and agents** use the same system to decide and execute.
 
-openKMS treats those as **one network**, not separate “KM for humans” and “RAG for bots.” If governance exists but nobody uses the system—or if search works but answers cannot be trusted for compliance—both sides fail.
+The same system serves the people who decide and the agents that execute. If governance exists but nobody uses it—or if answers cannot be trusted for compliance—both sides fail.
 
-North star: [Goals](goals.md) — *Help enterprises quickly build intelligent decision systems that are trustworthy and built to evolve*.
+North star: [Goals](goals.md) — *Help enterprises build intelligent decision systems that hold up and can change*.
 
 ## What you build in openKMS
 
