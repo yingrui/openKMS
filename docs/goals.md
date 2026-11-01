@@ -1,69 +1,157 @@
 # openKMS goals and business problems
 
-**openKMS helps enterprises quickly build intelligent decision systems that are trustworthy and built to evolve.**
+> **Elevator pitch**
+>
+> AI can already write code, build interfaces, and handle data. But software that runs is not a decision that holds up—**AI is just as confident when it is wrong.**
+>
+> openKMS makes AI-built decision systems trustworthy and able to hold up. It puts enterprise knowledge, data, and ontology first, then directs AI to turn rules into a working system in days; every conclusion is computed from explicit rules and sourced data, not guessed; the business changes the rules, IT runs the platform, and changing one part does not require rebuilding the rest.
+>
+> **Others sell faster development. We sell decisions that hold up.**
 
-- **Fast to build**: AI turns business logic into a working system—people set the logic and make the call; AI implements and tests.
-- **Trustworthy**: every conclusion stands on the enterprise's own knowledge and data—what it rests on, where it comes from, which version, whether it is current, who set it, and who can change it are all answerable.
-- **Easy to change**: business can change the logic, engineering can iterate the system—change one criterion and you know which decisions used the old version and what needs review.
+## 1. Goal and value positioning
 
-We do not sell a fixed piece of software. We provide what it takes to build these systems: material, rules, actions, and the mechanism that makes a decision reliable.
+**openKMS helps enterprises quickly build decision systems that hold up and can change.**
 
-## What a decision system is {#goals-decision-systems}
+AI can already write software. The hard part is no longer "can we build it," but "does the decision it produces hold up."
 
-A case comes in. Rules are applied, documents and data are read, and a conclusion comes out. Customs classification, insurance underwriting, quality release, compliance review—these are all decision systems.
+Enterprises end up asking three questions:
 
-It is not a document store, not a chat window, not a BI report. It has to answer three things: on what basis, is it still valid, and who is accountable.
+- Can it be built fast?
+- Can it be trusted?
+- Can it change?
 
-## Why it does not work today {#goals-user-value}
+That is our position: not a faster app generator, but making AI-built decision systems trustworthy and able to hold up.
 
-**For people**: can't find it, can't trust it, no time to write, stale without notice, answers stay private.
+### Background
 
-**For the organization** {#goals-organization}:
+AI has collapsed the cost of writing software. The real shift is not putting more processes into systems, but letting software make decisions.
 
-- **Information is scattered** {#goals-unified-source}: email, file shares, legacy systems, and tickets each hold a copy.
-- **Documents are hard to read** {#goals-documents}: PDFs, scans, decks, and tables are mixed together; machines can't read the layout.
-- **There is no front door** {#goals-library}: people browse by luck; agents need a clear structure.
-- **Experience stays in people's heads** {#goals-tacit}: judgement, exceptions, and combined conditions live with the expert.
-- **Rules expire unnoticed** {#goals-lifecycle}: when a policy, regulation, or contract changes, everything that depends on it goes stale.
-- **From "found it" to "can decide"** {#goals-decision}: finding a paragraph is not enough; you need to know how it relates to the object, the data, and the rule.
-- **For agents** {#goals-agent-service}: an agent does not need a chat window; it needs something it can query, compute with, act on, and rely on.
+Decision systems are not new. Customs classification, insurance underwriting, quality release, compliance review have always existed; they were simply too expensive and too slow, so only a few critical processes could afford them.
+{: #goals-decision-systems}
 
-**One thing, two sides** {#goals-pain-map}: what users feel ("can't find it, can't trust it, nobody owns it") is what the organization sees ("scattered, hard to read, expired").
+Lower cost means more decisions can become systems. It also exposes the real bottleneck: **a system can be generated; a decision still may not hold up.**
 
-## Fast to build: what it takes
+### Our judgment
 
-**The material is already there.** Documents, data, business objects and their relations exist; AI does not start from zero.
+**Cheaper code does not make decisions more dependable.**
 
-**Reuse.** The first project becomes a template; the second starts from it. Do it once, and the next one is faster.
+Being dependable is not about a smarter model. It is about a system with provenance, rules, and records: where the data came from, which version of the rule, how the conclusion was computed. None of these appear just because the model gets stronger; they have to be designed in.
 
-What this needs is a working build loop: **logic (plain language) → code or algorithm → test → publish**, and a place to assemble the parts.
+So the direction is not "use AI to write systems faster," but "make the system dependable by design."
 
-## Trustworthy: what makes it hold {#goals-dependable}
+## 2. Users and what they care about
 
-A decision is trustworthy when it can answer four questions:
+### Two roles matter most
 
-| Question | What it must show |
-|---|---|
-| What is the basis? | rule, evidence, source, version |
-| Is it still current? | whether the rule expired, whether the data is fresh |
-| Who has the authority? | owner, delegated scope |
-| Can it be reviewed or reversed? | decision record, rollback |
+**The business expert**: the rules live in their head, and every change needs a ticket. The system has to let them change the rules and confirm exceptions without waiting for IT.
+{: #goals-user-value}
 
-These four do not have to be four fields. They can live on the business object, in a separate decision record, or in the change log—whatever the work needs.
+**The IT team**: every requirement means development, integration, and release, plus keeping data, permissions, security, and uptime in order. The system has to let IT run the platform, not write every rule for the business.
+{: #goals-organization}
 
-## Easy to change: what it takes
+In one line: **the business changes the rules; IT runs the platform.**
 
-**Versions and impact.** Business logic is not carved in stone; it changes. When it does, the system has to know:
+But not only these two. The frontline use it to decide, compliance uses it to review, managers use it to see risk, and agents use it to execute. The two are the maintainers; the rest are the users.
+{: #goals-agent-service}
 
-- which version of the logic is current;
-- which decisions used the old one;
-- what depends on it and needs review.
+### What each one cares about
 
-It is not "the code is easy to edit." It is "after the change, you know who it affects." That takes three things: version history, dependencies between objects, and a review queue.
+| Role | Cares most about | Fears most |
+|---|---|---|
+| Business expert | Changing rules, explaining exceptions | Waiting on IT for every change |
+| IT team | A stable platform, clean integration, control | Writing code for every requirement |
 
-## We are working out a method {#goals-method}
+## 3. What we will do
 
-Building these systems is not "install a product." There is a way of doing it. We call it **decision-oriented development**: start from knowledge, build with AI, deliver decisions that can be defended.
+Three answers, then a direction.
+
+### Can it be built fast?
+
+**Fast starts with putting knowledge, data, and ontology first.**
+
+Enterprises do not lack knowledge: policies, tariff schedules, product specs, past rulings, and the judgement in an expert's head. They do not lack data. The business objects and relations already exist. What they lack is treating these as first-class: they are scattered, in different formats, and unstructured.
+
+- Information is scattered: the policy is in email, the tariff in a file share, the product spec in a deck.
+  {: #goals-unified-source}
+- Documents are hard to read: scans, tables, and slides mixed together; machines cannot read the layout.
+  {: #goals-documents}
+- There is no front door: people browse by luck; agents need a clear structure.
+  {: #goals-library}
+- Experience stays in people's heads: judgement, exceptions, and combined conditions were never written down.
+  {: #goals-tacit}
+
+**A weak foundation makes AI guess.** A system built on guesses does not hold up.
+
+So we do three things first: turn knowledge into a searchable, citable basis; turn data into sourced, traceable facts; turn the ontology into clear objects and relations. With those three in place, we direct AI to build the decision system—rules written in plain language, compiled into code, tests, and a release.
+
+**What does fast look like? Knowledge, data, and ontology in place; AI assembles the first working system in days; a change does not require a rebuild.**
+
+**Fast does not mean a template. It means laying the foundation first, then letting AI build on it.**
+
+### Can it be trusted?
+
+**The most dangerous thing about AI is not that it gets it wrong. It is that it gets it wrong with the same confidence as when it gets it right.**
+
+Ask it why, and it cannot tell you. It was not computing. It was guessing.
+
+A decision system you can use cannot run on guesses:
+
+- Not "the model thinks," but "the data says."
+  {: #goals-decision}
+- Not "it was right this time," but "it is the same every time."
+  {: #goals-dependable}
+- Not "it can answer anything," but "it says it cannot decide."
+
+Pass these three, and the conclusion is safe to use. Accountability does not rest on one person; it rests on the rule and the record: who defined the rule, where the data came from, how the conclusion was computed.
+
+**What does trustworthy look like? The conclusion traces to a source, and it can be recomputed.**
+
+### Can it change?
+
+**A system is not a one-off. When the business changes, the architecture has to keep up.**
+
+Many systems cannot change, not because the code is hard to edit, but because three things are tangled together: knowledge, data, and the ontology. Change a rule and you touch the data; change a data source and you rewrite the logic; change the business model and the whole application is rebuilt.
+
+We keep them apart: knowledge answers "what is the basis," data answers "what is the fact," and the ontology answers "what exists in the business, and how it connects." Each has its own abstraction and a clear interface, so each can be replaced and evolve on its own; modules combine through abstractions, not hard-coded links.
+
+Change one without rebuilding the whole. When a rule changes, you also know which decisions used the old version and what needs review.
+{: #goals-lifecycle}
+
+**Easy to change is not "the code is easy to edit." It is "the architecture lets each part change on its own."**
+
+**What does changeable look like? Change one part without rebuilding the set.**
+
+### Direction
+
+What we do: **make AI-built decision systems trustworthy and able to hold up.**
+
+Not an app generator—it solves "can we build it"; we solve "does the decision hold up."
+Not a document store—it solves "keep it"; we solve "can it be used."
+Not a chat window—it solves "answer once"; we solve "make the decision."
+
+What we build serves two roles first: **the business expert and IT.** The business changes the rules; IT runs the platform; they decide whether the system can be built, changed, and kept alive.
+
+But not only these two. The frontline use it to decide, compliance uses it to review, managers use it to see risk, and agents use it to execute. The two are the maintainers; the rest are the users.
+
+What we build works like this: **AI builds, rules compute.** AI turns knowledge into a system; at runtime, the conclusion is computed from explicit rules and sourced data. Knowledge, data, and ontology stay separate: each can be replaced on its own, and modules combine through abstractions, not hard-coding.
+
+One decision domain at a time. Take it all the way, then repeat. No complete ontology, no enterprise twin.
+
+**What we do not do:** app generators, document stores, chat windows, BI, backtesting/execution/risk engines, the template business, complete ontology or digital twin.
+
+### Trade-offs
+
+This product has three standards:
+
+1. Which of fast, trustworthy, or changeable does it make stronger?
+2. Does it let the business expert stop waiting for IT, or let IT write less code?
+3. Does it make the conclusion more traceable and computable, or let one part change on its own?
+
+Anything outside these three standards does not get built, however appealing it looks.
+
+### How it lands: decision-oriented development {#goals-method}
+
+Not with a feature. With a way of working. We call it **decision-oriented development**: start from knowledge, build with AI, deliver decisions that can be defended.
 
 Seven steps:
 
@@ -75,23 +163,23 @@ Seven steps:
 | 4. Assemble | case view, evidence, decision entry | agent + engineer |
 | 5. Replay | run historical cases and compare with human outcomes | agent + expert |
 | 6. Operate | make the decision; the system records the basis | business user |
-| 7. Change | when the logic changes, see who is affected and review | organization + expert |
+| 7. Change | when the logic changes, see who is affected and review | IT + expert |
 
 Four principles:
 
 - The decision is the unit, not the document.
 - Knowledge is the material, not an attachment.
-- Every conclusion has a basis, a validity, and an owner.
+- Every conclusion is sourced, computable, and bounded.
 - AI builds, experts decide, people are accountable; change one thing and you see the impact.
 
 Who does what:
 
 | Role | Owns | Not |
 |---|---|---|
-| Consultant / engineer | Collect, model, assemble | The final call |
-| Business expert | Logic, exceptions, validity | How much is written |
-| Business user | Make decisions | Maintain the system |
-| Organization | Permissions, impact, audit, review | Day-to-day writing |
+| Consultant / implementer | Build the first version, hand over | Long-term operations |
+| Business expert | Logic, exceptions, validity | Code, platform |
+| IT team | Platform, data, permissions, security, operations | Business rules |
+| Frontline | Make decisions | Maintain the system |
 
 Compared with other approaches:
 
@@ -104,20 +192,21 @@ Compared with other approaches:
 | Low-code | forms and flows | business configuration |
 | **Us** | **the decision** | **AI builds, experts decide, people are accountable** |
 
-The method is still taking shape: process, principles, enforcement, measurement, and a reference case all need work.
+The method is still taking shape: process, principles, enforcement, measurement, and a reference case are still being worked out.
 
-## What is missing today
+### Two steps remain
 
-Not a new object. Two things:
+We still have two steps to take.
 
-1. **Every change can say why**: the reason, the evidence, the version, and who made it.
-2. **Objects can show they are reliable**: a version, an owner, a validity window, and what depends on them.
+First, **every change can say why**: the reason, the evidence, the version, and who made it.
 
-And one chain is not connected: knowledge → rule → decision → operation → review → rule change. We have a part of every step, but not the chain.
+Second, **objects can show they are dependable**: a version, an owner, a validity window, and what depends on them.
 
-## What we are not
+The chain is also not fully closed: knowledge → rule → decision → operation → review → rule change. We have every part, but the loop is not closed.
 
-- **Not a document store**: storing files is not the point.
-- **Not a chat window**: an answer that ends the conversation is not a decision system.
-- **Not BI**: charts alone do not make a decision, and nobody is accountable for a chart.
-- **Not a digital twin**: we do not model the whole enterprise, only the slice a decision needs.
+## In one line
+
+AI made *deciding* cheap, but making a decision *right* is still expensive. **Others sell faster development. We sell decisions that hold up.**
+{: #goals-pain-map}
+
+The stable version of these principles: [Product principles](agents.md#product-principles).

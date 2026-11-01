@@ -1,6 +1,6 @@
 # Chart library selection (Data Insights)
 
-**Revisited (2026-10):** [Tremor](tremor-evaluation.md) was suggested as an alternative — it is a
+**Revisited (2026-10):** Tremor was suggested as an alternative — it is a
 *Tailwind*-styled dashboard grammar built **on** recharts (peer React 18), so we kept recharts and
 adopted Tremor's vocabulary instead (`view.kind` = chart / metric / bar list).
 
@@ -32,3 +32,10 @@ because the static-HTML report path already covers heavy/exportable charts.
 to the source (a dataset rows/summary query, or a model metric query), a run writes the rows, and a
 spec the result cannot satisfy falls back to the table. Swapping the drawing library later changes
 one component (`ExplorerChart.tsx`), not the document or the API.
+
+## Decision (2026-10)
+
+Keep **recharts** (MIT, React 19). We did not adopt `@tremor/react` as a dependency: it is a
+Tailwind-styled dashboard grammar built on recharts, and it would add a second styling system for a
+small set of shapes. What we took is its **vocabulary** — `view.kind` = chart / metric / bar list —
+implemented on our own tokens. The separate Tremor evaluation note has been folded into this page.

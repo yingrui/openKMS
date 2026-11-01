@@ -183,7 +183,6 @@ nav:
       - Global search: features/global-search.md
       - Ontology — objects, links, datasets: features/ontology.md
       - Datasets — file datasets and versions: features/datasets-files.md
-      - Ontology — identity design note: features/ontology-identity.md
       - Ontology Functions: features/ontology-functions.md
       - Apps (hosted modules): features/app-builder.md
       - Ontology Function Client: features/ontology-sdk.md
@@ -197,11 +196,8 @@ nav:
       - openkms-skill: features/openkms-skill.md
       - API reference: features/api-reference.md
       - Data layer (Datasets · Data Model · Data Insights): features/data-layer.md
-      - Data layer — implementation design: features/data-layer-implementation.md
-      - Data layer — interaction design: features/data-layer-interaction.md
+      - Data layer — design notes: features/data-layer-design-notes.md
       - Data layer — semantic model (Ossie): features/data-layer-semantic-model.md
-      - Data layer — semantic model Playground (design): features/data-layer-playground.md
-      - Data layer — data grid filter (design): features/data-layer-grid-filter.md
       - Data layer — Data Insights (design): features/data-layer-insights.md
       - Configuration: features/configuration.md
   - Security: security.md
@@ -213,6 +209,7 @@ nav:
       - Doc conventions for AI agents: agents.md
   - Roadmap:
       - Development plan: development_plan.md
+      - Shipped history: shipped-history.md
       - Tech debt: tech_debt.md
   - Research:
       - LLM wiki vs openKMS: research/llm_wiki_comparison.md
@@ -220,11 +217,10 @@ nav:
       - Confluence AI vs openKMS: research/confluence_ai_vs_openkms.md
       - KM dimension — Operational Knowledge Fitness: research/km_dimension_operational_fitness.md
       - Text content evaluation: research/text_content_evaluation.md
-      - CMS / Portal module: research/cms_portal_module.md
-      - Enterprise KM in the AI era (insight draft): research/enterprise_km_ai_era_insight.md
       - Ontology Functions & Actions: research/ontology_functions_and_actions.md
       - Ontology Manager alignment (platform vs DIY): research/ontology_manager_alignment.md
       - TRIZ analysis of openKMS: research/triz-openkms.md
+      - Decision-oriented development: research/decision-oriented-development.md
       - Data grid selection: research/data_grid_selection.md
       - Apache Ossie semantic layer: research/ossie_semantic_layer.md
       - Apache Ossie core spec (vendored): research/ossie/spec.md

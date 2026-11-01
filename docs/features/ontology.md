@@ -129,3 +129,32 @@ be a second copy of the fact table that takes hours to index and answers nothing
 ## Ontology overview graph
 
 `/ontology-manager` **Graph** toggle shows the schema diagram (`OntologySchemaGraph.tsx`, `ontologySchemaGraphModel.ts`): object types as nodes, link types as straight directed edges; self-referential link types omitted; **disconnected type groups pack into a 2D grid** (not a single vertical column) with wider layer/node gaps. **Actions** / **Functions** overlays are off by default; when enabled, logic chips sit in a grid under their object type (not around it) so LR neighbors stay readable. Functions also link to every Object Type named in their I/O `x-ontology` contract (and Link Type endpoints). Logic nodes navigate to Manager detail; OT/LT edges still open Object Explorer. Instance exploration and layout lessons for query results are documented in [Object Explorer](object-explorer.md).
+
+## Identity: key columns and the missing RID
+
+Where an object *is* has three answers, and only two are implemented. This is a design note, not a
+shipped platform id.
+
+| Field | Meaning | Mutable |
+|-------|---------|---------|
+| `object_types.key_properties` | Columns that identify a row in the source table (1..n) | editable; changes need a re-index |
+| API id | `encode_object_id(values)` — key values joined and URL-escaped | follows the key |
+| `__rid` | Platform uuid used only when the type has no source table | never |
+| `neo4j_label` | Graph label, frozen at creation | never |
+
+A composite key is identity, not display: `portfolio_id|ts_code`. A junction table or FK column
+supplies one value per endpoint, so it cannot address a composite key — indexing refuses (400)
+rather than merging into whichever node matched first.
+
+**What a RID would close.** The ontology reads through to the application's table, so there is
+nowhere to keep an identity that survives the app changing its key (a re-keyed product code, a
+rebuilt table, an import that reassigns ids). Palantir's RID solves this because Foundry
+materialises objects; a read-through ontology needs one more piece:
+
+1. Write `__rid` on every node, not only hand-created types.
+2. Persist the mapping `rid ↔ key values` in `object_instances`.
+3. Actions, logs and links address objects by RID; the webhook carries both `object.id` and `object.key`.
+4. `id_strategy` per object type: `application_key` (today) or `rid`.
+
+**Trigger to build:** the first application that regenerates its primary keys, or wants an object
+whose key is not stable enough to be a contract. Until then `key_properties` is the identity.

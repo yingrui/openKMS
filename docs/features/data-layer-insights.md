@@ -2,7 +2,7 @@
 
 Status: **shipped** (stories of findings · per-finding source · server-side run · charts · provenance · skill) · Surface: `/data-insights` · Owner: data layer
 
-Part of the data-layer family: [feature reference](data-layer.md) · [interaction design](data-layer-interaction.md) · [implementation design](data-layer-implementation.md) · [semantic model](data-layer-semantic-model.md) · [Playground (design)](data-layer-playground.md) · [grid filter (design)](data-layer-grid-filter.md).
+Part of the data-layer family: [feature reference](data-layer.md) · [design notes](data-layer-design-notes.md) · [semantic model](data-layer-semantic-model.md).
 
 The Explorer is the **consumption** half of the data layer: where a question becomes a saved, dressed-up
 answer — narrative, tables, charts, exports — while the Playground and the Data tab stay builders that
@@ -112,7 +112,7 @@ The app does **not** do NL→spec (the agent's job, like the Playground) and doe
 
 **Presentation.** A finding may carry a **`view`**, naming columns of that finding's *result* (absent =
 the table). A story is not four line charts — half of it is single numbers and shapes — so the
-five shapes are the vocabulary taken from [Tremor](../research/tremor-evaluation.md), drawn on recharts
+five shapes are the vocabulary taken from [Tremor's vocabulary](../research/chart-library-selection.md), drawn on recharts
 and our own tokens:
 
 | `view.kind` | shape | for |
@@ -139,7 +139,7 @@ satisfy one) the table is the answer, and the table is always one click away.
   back to the table rather than drawing something misleading.
 
 The library is **recharts** (MIT, React 19) — [selection note](../research/chart-library-selection.md),
-re-checked against [Tremor](../research/tremor-evaluation.md) (a Tailwind-styled story grammar on
+re-checked against [Tremor's vocabulary](../research/chart-library-selection.md) (a Tailwind-styled story grammar on
 recharts 2.x, peer React 18 → not adopted; its vocabulary was).
 Failures render through the shared `<QueryFailureNotice>` (`.query-failure*`), promoted from a page
 sheet into the design system when this slice landed, because the Playground and the Explorer both
