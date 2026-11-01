@@ -371,9 +371,9 @@
   },
   "datasets": {
     "title": "Datasets",
-    "tabCatalog": "Catalog",
+    "tabCatalog": "Datasets",
     "tabModel": "Semantic Model",
-    "subtitle": "Register PostgreSQL tables from data sources for object and link types.",
+    "subtitle": "Registered tables and file versions, with the model, metrics and quality built on them.",
     "create": "New dataset",
     "created": "Dataset created",
     "updated": "Dataset updated",

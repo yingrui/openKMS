@@ -82,7 +82,7 @@ const externalServicesActive = (pathname: string) =>
  *
  * Application layer: agent workspaces, document capture, content, knowledge structure
  * Ontology layer: Ontology Manager / Object Explorer / Function Editor
- * Data layer: Datasets / Data Model / Data Insights
+ * Data layer: Catalog (datasets) / Data Model / Data Insights
  */
 export const APP_MODULES: AppModule[] = [
   {

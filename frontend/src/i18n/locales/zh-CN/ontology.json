@@ -366,9 +366,9 @@
   },
   "datasets": {
     "title": "数据集",
-    "tabCatalog": "目录",
+    "tabCatalog": "数据集",
     "tabModel": "语义模型",
-    "subtitle": "从数据源注册 PostgreSQL 表，供对象类型与关联类型绑定。",
+    "subtitle": "已登记的表与文件版本，以及建立在其上的语义模型、指标与质量规则。",
     "create": "新建数据集",
     "created": "数据集已创建",
     "updated": "数据集已更新",

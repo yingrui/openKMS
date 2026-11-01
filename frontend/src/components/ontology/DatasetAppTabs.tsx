@@ -3,18 +3,18 @@ import { useTranslation } from 'react-i18next';
 import './DatasetAppTabs.scss';
 
 /**
- * Top-level tabs for the merged Datasets app, under one App Rail entry (`datasets`):
- * the **Catalog** (the tables), the **Semantic Model** (relationships, fields, quality) and
- * **Metrics** — the last read-only, because a metric is defined next to its model.
+ * Top-level tabs for the **Catalog** app (`datasets` in the rail), one entry per question it answers:
+ * **Datasets** (what we have), the **Semantic Model** (what it means), **Metrics** (the numbers), and **Quality
+ * Issues** — the last two read-only where they are defined somewhere else.
  *
- * Registering from a data source is deliberately **not** a tab: it is something you do to the Catalog
- * (add datasets), and it is reachable from there as an action.
+ * Registering from a data source is deliberately **not** a tab: it is something you do *to* the datasets
+ * (add one), and it is reachable from there as an action.
  */
 export function DatasetAppTabs() {
   const { t } = useTranslation('ontology');
   const { pathname } = useLocation();
   const onQuality = pathname.startsWith('/datasets/quality-issues');
-  const onCatalog =
+  const onDatasets =
     pathname.startsWith('/datasets') &&
     !onQuality &&
     !pathname.startsWith('/datasets/model') &&
@@ -26,8 +26,8 @@ export function DatasetAppTabs() {
     <nav className="dataset-app-tabs" aria-label={t('datasets.title')}>
       <Link
         to="/datasets"
-        className={`dataset-app-tab${onCatalog ? ' dataset-app-tab--active' : ''}`}
-        aria-current={onCatalog ? 'page' : undefined}
+        className={`dataset-app-tab${onDatasets ? ' dataset-app-tab--active' : ''}`}
+        aria-current={onDatasets ? 'page' : undefined}
       >
         {t('datasets.tabCatalog')}
       </Link>
