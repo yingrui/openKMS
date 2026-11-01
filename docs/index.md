@@ -1,6 +1,6 @@
 # openKMS
 
-**Open Knowledge Management System** — openKMS helps enterprises build intelligent decision systems that hold up and can change.
+**Open Knowledge Management System** — openKMS helps enterprises build intelligent decision systems that are dependable and adaptable.
 
 AI can already write software. The harder problem is what comes after: knowledge, data, and ontology must come first; business experts and AI lead the build; IT provides data access, permissions, security, and delivery. Every decision should be traceable, recomputable, and clear about its boundary.
 
@@ -20,7 +20,7 @@ Most organizations already have files, wikis, and AI chat. The gap is **one plac
 
 The same system serves the people who decide and the agents that execute. If governance exists but nobody uses it—or if answers cannot be trusted for compliance—both sides fail.
 
-North star: [Goals](goals.md) — *Help enterprises build intelligent decision systems that hold up and can change*.
+North star: [Goals](goals.md) — *Help enterprises build intelligent decision systems that are dependable and adaptable*.
 
 ## What you build in openKMS
 

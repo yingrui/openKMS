@@ -1,6 +1,6 @@
 # openKMS
 
-**Open Knowledge Management System** — build intelligent decision systems that hold up and can change.
+**Open Knowledge Management System** — build intelligent decision systems that are dependable and adaptable.
 
 A decision system takes a case in, applies rules and evidence, and returns a conclusion. The hard part is not generating the application; it is making the conclusion dependable: it has a basis, can be recomputed, and states its boundary. openKMS is the layer that makes that possible.
 

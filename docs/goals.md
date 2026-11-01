@@ -2,7 +2,7 @@
 
 ## 1. What we do
 
-**openKMS helps enterprises build intelligent decision systems that hold up and can change.**
+**openKMS helps enterprises build intelligent decision systems that are dependable and adaptable.**
 
 The direction is: business experts and AI lead the R&D; the enterprise's internal platform provides data and technical support; IT handles data access, permissions, security, and delivery.
 
