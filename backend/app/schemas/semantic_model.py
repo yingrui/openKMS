@@ -92,3 +92,10 @@ class QueryResponse(BaseModel):
     capped: bool = False
     duration_ms: int = 0
     run_id: str | None = None
+
+
+class SqlLabRequest(BaseModel):
+    """One SQL Lab statement against a model's table datasets (read-only SELECT)."""
+
+    sql: str
+    limit: int | None = None

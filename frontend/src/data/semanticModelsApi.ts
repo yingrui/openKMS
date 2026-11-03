@@ -55,11 +55,19 @@ export interface SemanticModelQueryOrder {
   direction: 'asc' | 'desc';
 }
 
-/** One ad-hoc question of a model: metric × fields × filters × order × limit. */
+/**
+ * One ad-hoc question of a model: either a saved ``metric`` or a one-shot ``expression``
+ * (+ ``base_dataset`` / optional ``joins``), with filters / where / having / order / limit.
+ */
 export interface SemanticModelQuerySpec {
-  metric: string;
+  metric?: string | null;
+  expression?: string | Record<string, unknown> | null;
+  base_dataset?: string | null;
+  joins?: string[] | null;
   group_by: SemanticModelQueryGroupBy[];
   filters: SemanticModelQueryFilter[];
+  where?: string | null;
+  having?: string | null;
   order_by: SemanticModelQueryOrder[];
   limit: number;
 }
@@ -71,6 +79,12 @@ export interface SemanticModelQueryResponse {
   row_count: number;
   capped: boolean;
   duration_ms: number;
+  run_id?: string | null;
+}
+
+export interface SemanticModelSqlRequest {
+  sql: string;
+  limit?: number | null;
 }
 
 export async function querySemanticModel(
@@ -81,6 +95,17 @@ export async function querySemanticModel(
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(spec),
+  });
+}
+
+export async function querySemanticModelSql(
+  modelId: string,
+  body: SemanticModelSqlRequest,
+): Promise<SemanticModelQueryResponse> {
+  return request<SemanticModelQueryResponse>(`/api/semantic-models/${modelId}/sql`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
   });
 }
 export async function fetchSemanticModels(): Promise<SemanticModelListResponse> {

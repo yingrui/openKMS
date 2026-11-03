@@ -253,7 +253,7 @@ qa-agent/
 ├── pyproject.toml           # FastAPI, LangGraph, langchain-openai, httpx
 ├── qa_agent/
 │   ├── __init__.py
-│   ├── main.py              # FastAPI app with /ask and /ask/stream (NDJSON)
+│   ├── main.py              # FastAPI: /knowledge-bases/{kb_id}/ask|/ask/stream|/retrieve
 │   ├── config.py            # Settings (backend URL, LLM)
 │   ├── agent.py             # LangGraph agent: retrieve → generate (with tools) → tools
 │   ├── retriever.py         # Calls backend search API (no DB access)
@@ -264,10 +264,10 @@ qa-agent/
 └── README.md
 ```
 
-- **Purpose**: Separate RAG + ontology + Catalog service for Q&A against knowledge bases; configurable per KB via `agent_url`
-- **Architecture**: LangGraph state graph: `retrieve` (KB search) → `generate` (LLM with tools) ⇄ `tools` (ontology / page_index / catalog). RAG via `POST /api/knowledge-bases/{id}/search`; ontology via groups/object-types/link-types + `POST /api/ontology/explore` (Cypher); Catalog via linked semantic models + `POST /api/semantic-models/{id}/query`. Does not access the database directly. Linked models/groups on the KB (`kb_semantic_models` / `kb_ontology_groups`) scope tools only — not RAG ACL.
-- **Ontology / Catalog skills**: Ontology tools may restrict schema to linked groups. Catalog skill lists metrics on linked models and runs Chart-Data-like queries (metric or expression + filters/where/having); answers cite `metric` / `semantic_model` sources.
-- **Integration**: Backend proxies `POST /api/knowledge-bases/{kb_id}/ask` and **`POST …/ask/stream`** to `{kb.agent_url}/ask` and **`/ask/stream`**, passing the user's access token so the agent can call the backend APIs. For **persisted threads**, **`POST /api/knowledge-bases/{kb_id}/agent-conversations/{cid}/messages`** stores each turn in PostgreSQL and streams by forwarding qa-agent NDJSON (then writes the final assistant message, **`kb_qa_sources_v1`**, and optional tool traces). The SPA full-page Q&A uses the same **`delta` / `tool_*` / `done`** shapes as project agents for the live rail.
+- **Purpose**: Separate RAG + ontology + Catalog service for Q&A against knowledge bases; configurable per KB via `agent_url` and **`agent_skills`**
+- **Architecture**: LangGraph state graph: `retrieve` (KB search) → `generate` (LLM with tools for the selected skills) ⇄ `tools` (union of registered skill tools). RAG via `POST /api/knowledge-bases/{id}/search`; ontology via groups/object-types/link-types + `POST /api/ontology/explore` (Cypher); Catalog via linked semantic models + `POST /api/semantic-models/{id}/query`. Does not access the database directly. Linked models/groups on the KB (`kb_semantic_models` / `kb_ontology_groups`) scope tools only — not RAG ACL. Path `kb_id` is authoritative; body `agent_skills` selects which skills bind (null → core: ontology, catalog, page_index).
+- **Ontology / Catalog skills**: Ontology tools may restrict schema to linked groups. Catalog skill lists metrics on linked models and runs Chart-Data-like queries (metric or expression + filters/where/having); answers cite `metric` / `semantic_model` sources. Optional insurance demo skills load only when listed on the KB.
+- **Integration**: Backend proxies `POST /api/knowledge-bases/{kb_id}/ask` and **`POST …/ask/stream`** to `{kb.agent_url}/knowledge-bases/{kb_id}/ask` and **`…/ask/stream`**, passing the user's access token and **`agent_skills`**. For **persisted threads**, **`POST /api/knowledge-bases/{kb_id}/agent-conversations/{cid}/messages`** stores each turn in PostgreSQL and streams by forwarding qa-agent NDJSON (then writes the final assistant message, **`kb_qa_sources_v1`**, and optional tool traces). The SPA full-page Q&A uses the same **`delta` / `tool_*` / `done`** shapes as project agents for the live rail.
 - **Port**: 8103 by default
 
 ## Data Flow

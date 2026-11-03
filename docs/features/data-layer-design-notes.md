@@ -43,8 +43,10 @@ operator whitelist (`= != > >= < <= like in not_in between is_null is_not_null`)
 differs: the Playground addresses declared **fields**, the Data tab addresses **columns**.
 
 - **AND only** in v1; a boolean tree is a model-level feature, not a browsing grid.
-- **No free-text `where`**; no new operators (`contains` is UI sugar over `like`).
-- **Safety:** identifiers validated against the table, values parameterized, operators whitelisted,
+- **Builder / Data tab:** no free-text `where`; no new operators (`contains` is UI sugar over `like`).
+- **Playground Advanced:** opt-in free-text `where` / `having` (and `expression`) on the same `/query` contract — fragments only; FROM/JOIN still compiled.
+- **Playground SQL Lab:** free `SELECT` via `/sql` — shape check + model table allowlist + single data source + READ ONLY txn (not a full SQL parser product).
+- **Safety (structured filters):** identifiers validated against the table, values parameterized, operators whitelisted,
   ≤ 10 conditions, read-only, statement timeout, row cap.
 - **Classified errors:** `400 {code, message, kind}` with `kind` = `definition` / `data` / `request`;
   raw SQL is a details line, never the message.
@@ -53,11 +55,12 @@ differs: the Playground addresses declared **fields**, the Data tab addresses **
 
 ## Playground
 
-- The human twin of the model query API: one query specification, so a person and an agent get
-  identical results from identical input.
+- The human twin of the model query API: Builder/Advanced share `/query` with agents; SQL Lab uses
+  `/sql` (Playground-first, not the agent path yet).
 - **No save, no pivot, table only.** Saved answers/charts belong to Data Insights.
 - `POST /semantic-models/{id}/query` replaces `/preview`; `POST /metrics/{id}/compute` stays as the
-  metric-addressed single value (the same engine with no grouping).
+  metric-addressed single value (the same engine with no grouping). `POST …/sql` is the free-SELECT
+  path (allowlisted tables, single data source).
 - A failed query is classified, not just reported; the pane says who can fix it.
 
 ## Data tab

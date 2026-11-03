@@ -29,6 +29,7 @@ import {
   saveFAQs,
   searchKnowledgeBase,
   updateKnowledgeBase,
+  CORE_AGENT_SKILL_IDS,
   updateChunk,
   enqueueKnowledgeBaseIndexJob,
   enqueueKnowledgeBaseWikiSpaceIndexJob,
@@ -204,6 +205,7 @@ export function useKnowledgeBaseDetail() {
 
   // Settings
   const [settingsAgentUrl, setSettingsAgentUrl] = useState('');
+  const [settingsAgentSkills, setSettingsAgentSkills] = useState<string[]>([...CORE_AGENT_SKILL_IDS]);
   const [settingsEmbeddingModelId, setSettingsEmbeddingModelId] = useState('');
   const [settingsFaqPrompt, setSettingsFaqPrompt] = useState('');
   const [settingsChunkStrategy, setSettingsChunkStrategy] = useState('fixed_size');
@@ -231,6 +233,11 @@ export function useKnowledgeBaseDetail() {
       const data = await fetchKnowledgeBase(kbId);
       setKb(data);
       setSettingsAgentUrl(data.agent_url || '');
+      setSettingsAgentSkills(
+        Array.isArray(data.agent_skills) && data.agent_skills.length > 0
+          ? data.agent_skills.filter((s): s is string => typeof s === 'string' && s.trim().length > 0)
+          : [...CORE_AGENT_SKILL_IDS],
+      );
       setSettingsEmbeddingModelId(data.embedding_model_id || '');
       const cc = (data.chunk_config || {}) as Record<string, unknown>;
       setSettingsChunkStrategy((cc.strategy as string) || 'fixed_size');
@@ -359,10 +366,10 @@ export function useKnowledgeBaseDetail() {
   useEffect(() => {
     if (activeTab === 'documents') void loadDocs();
     if (activeTab === 'wiki_spaces') void loadKbWikiSpaces();
+    if (activeTab === 'data_scope') void loadKbAgentScope();
     if (activeTab === 'faqs') loadFaqs();
     if (activeTab === 'chunks') loadChunks();
-    if (activeTab === 'settings') void loadKbAgentScope();
-  }, [activeTab, loadDocs, loadKbWikiSpaces, loadFaqs, loadChunks, loadKbAgentScope]);
+  }, [activeTab, loadDocs, loadKbWikiSpaces, loadKbAgentScope, loadFaqs, loadChunks]);
 
   useEffect(() => {
     if (qaFullPage && kb && !kb.agent_url) {
@@ -1208,6 +1215,12 @@ export function useKnowledgeBaseDetail() {
     }
   };
 
+  const toggleSettingsAgentSkill = (skillId: string) => {
+    setSettingsAgentSkills((prev) =>
+      prev.includes(skillId) ? prev.filter((s) => s !== skillId) : [...prev, skillId],
+    );
+  };
+
   // --- Settings ---
   const handleSaveSettings = async () => {
     if (!kbId) return;
@@ -1219,6 +1232,7 @@ export function useKnowledgeBaseDetail() {
         .filter(Boolean);
       await updateKnowledgeBase(kbId, {
         agent_url: settingsAgentUrl || null,
+        agent_skills: settingsAgentSkills.length > 0 ? settingsAgentSkills : null,
         embedding_model_id: settingsEmbeddingModelId || null,
         chunk_config: {
           strategy: settingsChunkStrategy,
@@ -1405,6 +1419,8 @@ export function useKnowledgeBaseDetail() {
     kbQaMainScrollRef,
     settingsAgentUrl,
     setSettingsAgentUrl,
+    settingsAgentSkills,
+    toggleSettingsAgentSkill,
     settingsEmbeddingModelId,
     setSettingsEmbeddingModelId,
     settingsFaqPrompt,

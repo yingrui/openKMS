@@ -108,6 +108,7 @@ async def create_knowledge_base(
         embedding_model_id=body.embedding_model_id,
         judge_model_id=body.judge_model_id,
         agent_url=body.agent_url,
+        agent_skills=body.agent_skills,
         chunk_config=body.chunk_config,
         faq_prompt=body.faq_prompt,
         metadata_keys=body.metadata_keys,

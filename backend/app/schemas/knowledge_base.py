@@ -13,6 +13,7 @@ class KnowledgeBaseCreate(BaseModel):
     embedding_model_id: str | None = None
     judge_model_id: str | None = None
     agent_url: str | None = None
+    agent_skills: list[str] | None = None
     chunk_config: dict[str, Any] | None = None
     faq_prompt: str | None = None
     metadata_keys: list[str] | None = None
@@ -24,6 +25,7 @@ class KnowledgeBaseUpdate(BaseModel):
     embedding_model_id: str | None = None
     judge_model_id: str | None = None
     agent_url: str | None = None
+    agent_skills: list[str] | None = None
     chunk_config: dict[str, Any] | None = None
     faq_prompt: str | None = None
     metadata_keys: list[str] | None = None
@@ -36,6 +38,7 @@ class KnowledgeBaseResponse(BaseModel):
     embedding_model_id: str | None = None
     judge_model_id: str | None = None
     agent_url: str | None = None
+    agent_skills: list[str] | None = None
     chunk_config: dict[str, Any] | None = None
     faq_prompt: str | None = None
     metadata_keys: list[str] | None = None

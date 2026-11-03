@@ -21,9 +21,7 @@ from langchain_core.runnables import RunnableConfig
 from langchain_core.tools import tool
 
 from ..config import settings
-from ..request_context import get_tool_access_token
-
-DEFAULT_KB_ID = "b1af9d71-092d-40fb-89b1-9fa5388f71fa"
+from ..request_context import get_tool_access_token, get_tool_knowledge_base_id
 
 # (dimension display name, KB query seed)
 DIMENSIONS: list[tuple[str, str]] = [
@@ -39,9 +37,12 @@ SNIPPET_CHARS = 360
 TOP_EVIDENCE_PER_CELL = 2
 
 
-def _kb_search(query: str, access_token: str, top_k: int = 3, kb_id: str = DEFAULT_KB_ID) -> list[dict[str, Any]]:
+def _kb_search(query: str, access_token: str, top_k: int = 3, kb_id: str | None = None) -> list[dict[str, Any]]:
+    kid = (kb_id or "").strip() or get_tool_knowledge_base_id()
+    if not kid:
+        raise ValueError("knowledge_base_id missing for product comparator search")
     base = settings.openkms_backend_url.rstrip("/")
-    url = f"{base}/api/knowledge-bases/{kb_id}/search"
+    url = f"{base}/api/knowledge-bases/{kid}/search"
     headers = {"Authorization": f"Bearer {access_token}"} if access_token else {}
     with httpx.Client(timeout=30.0) as client:
         resp = client.post(

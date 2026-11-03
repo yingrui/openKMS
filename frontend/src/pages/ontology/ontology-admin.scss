@@ -1648,6 +1648,67 @@
   max-width: none;
 }
 
+.playground__modes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1);
+  margin-bottom: var(--space-3);
+}
+
+.playground__mode {
+  border: 1px solid var(--color-border);
+  background: var(--color-bg-elevated);
+  color: var(--color-text-secondary);
+  border-radius: var(--radius-sm);
+  padding: var(--space-1) var(--space-3);
+  font-size: var(--text-sm);
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.playground__mode.is-active {
+  border-color: var(--color-accent);
+  color: var(--color-accent);
+  background: color-mix(in srgb, var(--color-accent) 10%, var(--color-bg-elevated));
+}
+
+.playground__sql-editor {
+  font-family: var(--font-mono, ui-monospace, SFMono-Regular, Menlo, monospace);
+  min-height: 14rem;
+}
+
+.playground__sql-tables {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.playground__sql-table-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.playground__sql-table-list li {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  align-items: baseline;
+  font-size: var(--text-sm);
+}
+
+.playground__sql-table-name {
+  color: var(--color-text-secondary);
+}
+
+.chip.is-selected {
+  border-color: var(--color-accent);
+  background: color-mix(in srgb, var(--color-accent) 12%, var(--color-bg-elevated));
+}
+
 .playground__label {
   font-size: var(--text-sm);
   font-weight: 600;

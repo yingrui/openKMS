@@ -43,6 +43,7 @@ async def semantic_search(
     pipeline does not honor those filters; they go straight to the dense-only service.
     """
     from app.services.knowledge_bases.kb_search import search_knowledge_base
+    from app.services.knowledge_bases.qa_agent_proxy import agent_kb_path, retrieve_agent_body
 
     has_filters = bool(
         body.label_filters
@@ -52,17 +53,16 @@ async def semantic_search(
     )
 
     if kb.agent_url and not has_filters and not body.force_dense:
-        agent_url = kb.agent_url.rstrip("/")
         try:
             async with httpx.AsyncClient(timeout=180.0) as client:
                 resp = await client.post(
-                    f"{agent_url}/retrieve",
-                    json={
-                        "knowledge_base_id": kb_id,
-                        "query": body.query,
-                        "access_token": token,
-                        "top_k": body.top_k,
-                    },
+                    agent_kb_path(kb.agent_url, kb_id, "retrieve"),
+                    json=retrieve_agent_body(
+                        kb=kb,
+                        query=body.query,
+                        access_token=token,
+                        top_k=body.top_k,
+                    ),
                 )
                 resp.raise_for_status()
                 data = resp.json()
@@ -97,18 +97,20 @@ async def ask_question(
     if not kb.agent_url:
         raise HTTPException(status_code=400, detail="No agent URL configured for this knowledge base")
 
-    agent_url = kb.agent_url.rstrip("/")
+    from app.services.knowledge_bases.qa_agent_proxy import agent_kb_path, ask_agent_body
+
+    url = agent_kb_path(kb.agent_url, kb_id, "ask")
     try:
         async with httpx.AsyncClient(timeout=120.0) as client:
             resp = await client.post(
-                f"{agent_url}/ask",
-                json={
-                    "knowledge_base_id": kb_id,
-                    "question": body.question,
-                    "conversation_history": body.conversation_history,
-                    "access_token": token,
-                    "session_id": body.session_id,
-                },
+                url,
+                json=ask_agent_body(
+                    kb=kb,
+                    question=body.question,
+                    conversation_history=body.conversation_history,
+                    access_token=token,
+                    session_id=body.session_id,
+                ),
             )
             resp.raise_for_status()
             data = resp.json()
@@ -120,7 +122,7 @@ async def ask_question(
         logger.error("Agent returned error: %s %s", e.response.status_code, e.response.text[:200])
         raise HTTPException(status_code=502, detail="Agent service returned an error") from e
     except Exception as e:
-        logger.error("Failed to reach agent at %s: %s", agent_url, e)
+        logger.error("Failed to reach agent at %s: %s", url, e)
         raise HTTPException(status_code=502, detail="Could not reach agent service") from e
 
 
@@ -135,21 +137,24 @@ async def ask_question_stream(
     if not kb.agent_url:
         raise HTTPException(status_code=400, detail="No agent URL configured for this knowledge base")
 
-    agent_url = kb.agent_url.rstrip("/")
+    from app.services.knowledge_bases.qa_agent_proxy import agent_kb_path, ask_agent_body
+
+    url = agent_kb_path(kb.agent_url, kb_id, "ask/stream")
+    payload = ask_agent_body(
+        kb=kb,
+        question=body.question,
+        conversation_history=body.conversation_history,
+        access_token=token,
+        session_id=body.session_id,
+    )
 
     async def proxy_stream():
         try:
             async with httpx.AsyncClient(timeout=120.0) as client:
                 async with client.stream(
                     "POST",
-                    f"{agent_url}/ask/stream",
-                    json={
-                        "knowledge_base_id": kb_id,
-                        "question": body.question,
-                        "conversation_history": body.conversation_history,
-                        "access_token": token,
-                        "session_id": body.session_id,
-                    },
+                    url,
+                    json=payload,
                 ) as resp:
                     if resp.status_code >= 400:
                         err_body = (await resp.aread()).decode("utf-8", errors="replace")[:800]
@@ -162,7 +167,7 @@ async def ask_question_stream(
                     async for chunk in resp.aiter_bytes():
                         yield chunk
         except httpx.HTTPError as e:
-            logger.error("Agent stream failed at %s: %s", agent_url, e)
+            logger.error("Agent stream failed at %s: %s", url, e)
             yield (
                 '{"type":"error","detail":'
                 + json.dumps("Could not reach agent service")

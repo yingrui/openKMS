@@ -138,18 +138,20 @@ async def _run_kb_ask_non_stream(
 ) -> tuple[str, list[SearchResult]]:
     if not kb.agent_url:
         raise HTTPException(status_code=400, detail="No agent URL configured for this knowledge base")
-    agent_url = kb.agent_url.rstrip("/")
+    from app.services.knowledge_bases.qa_agent_proxy import agent_kb_path, ask_agent_body
+
+    url = agent_kb_path(kb.agent_url, kb_id, "ask")
     try:
         async with httpx.AsyncClient(timeout=120.0) as client:
             resp = await client.post(
-                f"{agent_url}/ask",
-                json={
-                    "knowledge_base_id": kb_id,
-                    "question": question,
-                    "conversation_history": history,
-                    "access_token": token,
-                    "session_id": session_id,
-                },
+                url,
+                json=ask_agent_body(
+                    kb=kb,
+                    question=question,
+                    conversation_history=history,
+                    access_token=token,
+                    session_id=session_id,
+                ),
             )
             resp.raise_for_status()
             data = resp.json()
@@ -157,7 +159,7 @@ async def _run_kb_ask_non_stream(
         logger.error("Agent returned error: %s %s", e.response.status_code, e.response.text[:200])
         raise HTTPException(status_code=502, detail="Agent service returned an error") from e
     except Exception as e:
-        logger.error("Failed to reach agent at %s: %s", agent_url, e)
+        logger.error("Failed to reach agent at %s: %s", url, e)
         raise HTTPException(status_code=502, detail="Could not reach agent service") from e
     answer = str(data.get("answer", "") or "")
     raw_sources = data.get("sources", [])
@@ -215,7 +217,16 @@ async def _ndjson_kb_qa_stream_persist(
         )
         return
 
-    agent_url = kb.agent_url.rstrip("/")
+    from app.services.knowledge_bases.qa_agent_proxy import agent_kb_path, ask_agent_body
+
+    stream_url = agent_kb_path(kb.agent_url, kb_id, "ask/stream")
+    stream_payload = ask_agent_body(
+        kb=kb,
+        question=question,
+        conversation_history=history,
+        access_token=token,
+        session_id=session_id,
+    )
     acc: list[str] = []
     tool_traces: list[dict[str, str]] = []
     stream_builder = AssistantStreamPartsBuilder()
@@ -283,14 +294,8 @@ async def _ndjson_kb_qa_stream_persist(
         async with httpx.AsyncClient(timeout=120.0) as client:
             async with client.stream(
                 "POST",
-                f"{agent_url}/ask/stream",
-                json={
-                    "knowledge_base_id": kb_id,
-                    "question": question,
-                    "conversation_history": history,
-                    "access_token": token,
-                    "session_id": session_id,
-                },
+                stream_url,
+                json=stream_payload,
             ) as resp:
                 if resp.status_code >= 400:
                     err_body = (await resp.aread()).decode("utf-8", errors="replace")[:800]

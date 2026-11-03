@@ -22,8 +22,10 @@ from app.schemas.semantic_model import (
     SemanticModelListResponse,
     SemanticModelResponse,
     SemanticModelUpdate,
+    SqlLabRequest,
 )
 from app.api.query_errors import query_failure_detail
+from app.services.data_layer.model_sql import run_model_sql
 from app.services.data_layer.query import QueryError, run_query
 from app.services.data_layer.semantic_model import (
     export_semantic_model,
@@ -285,6 +287,81 @@ async def query_semantic_model(
             )
         )
         await db.commit()
+
+    return QueryResponse(
+        sql=sql,
+        columns=columns,
+        rows=rows,
+        row_count=len(rows),
+        capped=capped,
+        duration_ms=duration,
+        run_id=run_id,
+    )
+
+
+@router.post(
+    "/{model_id}/sql",
+    response_model=QueryResponse,
+    dependencies=[Depends(require_any_permission(*_VIEW))],
+)
+async def sql_lab_semantic_model(
+    model_id: str,
+    body: SqlLabRequest,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+):
+    """Run one read-only SELECT against this model's tables (SQL Lab)."""
+    import uuid
+
+    from app.models.semantic_model_query_run import SemanticModelQueryRun
+
+    await _load(db, model_id)
+    members = set(await member_ids(db, model_id))
+    payload = getattr(request.state, "openkms_jwt_payload", None) or {}
+    uname = payload.get("preferred_username") or payload.get("name")
+    request_summary = {"mode": "sql", **body.model_dump(exclude_none=True)}
+    try:
+        sql, columns, rows, capped, duration = await run_model_sql(
+            db,
+            model_id=model_id,
+            sql=body.sql,
+            limit=body.limit,
+            member_dataset_ids=members,
+        )
+    except QueryError as exc:
+        db.add(
+            SemanticModelQueryRun(
+                id=str(uuid.uuid4()),
+                semantic_model_id=model_id,
+                status="error",
+                request=request_summary,
+                sql=None,
+                row_count=0,
+                duration_ms=0,
+                error=str(exc),
+                ran_by=payload.get("sub") if isinstance(payload.get("sub"), str) else None,
+                ran_by_name=str(uname)[:256] if isinstance(uname, str) and uname.strip() else None,
+            )
+        )
+        await db.commit()
+        raise HTTPException(status_code=400, detail=query_failure_detail(request, exc.failure)) from exc
+
+    run_id = str(uuid.uuid4())
+    db.add(
+        SemanticModelQueryRun(
+            id=run_id,
+            semantic_model_id=model_id,
+            status="ok",
+            request=request_summary,
+            sql=sql,
+            row_count=len(rows),
+            duration_ms=duration,
+            error=None,
+            ran_by=payload.get("sub") if isinstance(payload.get("sub"), str) else None,
+            ran_by_name=str(uname)[:256] if isinstance(uname, str) and uname.strip() else None,
+        )
+    )
+    await db.commit()
 
     return QueryResponse(
         sql=sql,

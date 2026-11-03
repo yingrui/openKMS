@@ -5,6 +5,17 @@ import type { JobResponse } from './jobsApi';
 
 // --- Types ---
 
+/** qa-agent skill ids stored on the knowledge base (null → core only). */
+export const CORE_AGENT_SKILL_IDS = ['ontology', 'catalog', 'page_index'] as const;
+export const DEMO_AGENT_SKILL_IDS = [
+  'insurance_calculator',
+  'premium_estimator',
+  'product_comparator',
+] as const;
+export type AgentSkillId =
+  | (typeof CORE_AGENT_SKILL_IDS)[number]
+  | (typeof DEMO_AGENT_SKILL_IDS)[number];
+
 export interface KnowledgeBaseResponse {
   id: string;
   name: string;
@@ -12,6 +23,8 @@ export interface KnowledgeBaseResponse {
   embedding_model_id?: string | null;
   judge_model_id?: string | null;
   agent_url?: string | null;
+  /** Enabled qa-agent skills; null/omitted means core only. */
+  agent_skills?: string[] | null;
   chunk_config?: Record<string, unknown> | null;
   faq_prompt?: string | null;
   metadata_keys?: string[] | null;
@@ -525,6 +538,7 @@ export async function updateKnowledgeBase(
     embedding_model_id?: string | null;
     judge_model_id?: string | null;
     agent_url?: string | null;
+    agent_skills?: string[] | null;
     chunk_config?: Record<string, unknown> | null;
     faq_prompt?: string | null;
     metadata_keys?: string[] | null;

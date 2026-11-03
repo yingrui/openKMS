@@ -34,7 +34,12 @@ from .request_context import (
 )
 from .retriever import retrieve
 from .schemas import SourceItem
-from .skills import get_all_skill_tools, get_skill_prompt_fragments
+from .skills import (
+    get_all_skill_tools,
+    get_skill_prompt_fragments,
+    get_union_skill_tools,
+    normalize_skill_ids,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -47,6 +52,7 @@ class AgentState(TypedDict):
     context: list[SourceItem]
     messages: Annotated[list, add_messages]
     answer: str
+    agent_skills: list[str]
 
 
 def retrieve_node(state: dict[str, Any]) -> dict[str, Any]:
@@ -66,7 +72,7 @@ def retrieve_node(state: dict[str, Any]) -> dict[str, Any]:
     return {"context": sources}
 
 
-def _build_system_prompt(context: list[SourceItem]) -> str:
+def _build_system_prompt(context: list[SourceItem], skills: list[str] | None) -> str:
     def _source_ref(s: SourceItem) -> str:
         parts = []
         if s.document_id:
@@ -81,16 +87,15 @@ def _build_system_prompt(context: list[SourceItem]) -> str:
         f"[{s.source_type}] {s.source_name or 'FAQ'} (relevance: {s.score:.0%}){_source_ref(s)}:\n{s.content}"
         for s in context
     )
-    skill_prompt = get_skill_prompt_fragments()
+    skill_ids = normalize_skill_ids(skills)
+    skill_prompt = get_skill_prompt_fragments(skill_ids)
     return (
-        "You are a helpful assistant answering questions based on a knowledge base, documents, "
-        "a knowledge graph (ontology), and Catalog semantic models (metrics).\n\n"
-        "You have these sources:\n"
+        "You are a helpful assistant answering questions based on **this** knowledge base "
+        "(and only the skills enabled for it). Do not invent a different product domain "
+        "(e.g. insurance) unless the retrieved context or enabled skills are about that domain.\n\n"
+        "Sources you may use:\n"
         "1. **Knowledge base** – Document chunks and FAQs (context below).\n"
-        "2. **Page Index skill** – Navigate documents by table of contents when chunks are insufficient.\n"
-        "3. **Ontology skill** – Groups linked to this KB, then Neo4j Cypher for relationships.\n"
-        "4. **Catalog skill** – Semantic models linked to this KB; query metrics via the query API "
-        "(saved metric or expression fragment — never a full SELECT).\n\n"
+        "2. **Enabled skills** – described next (only these tools are available).\n\n"
         f"{skill_prompt}\n\n"
         "Context from the knowledge base:\n"
         f"{context_text}\n\n"
@@ -110,11 +115,12 @@ def generate_node(state: dict[str, Any]) -> dict[str, Any]:
         temperature=0.3,
         streaming=True,
     )
-    tools = get_all_skill_tools()
+    skill_ids = normalize_skill_ids(state.get("agent_skills"))
+    tools = get_all_skill_tools(skill_ids)
     llm_with_tools = llm.bind_tools(tools)
 
     messages = build_messages_for_generate(
-        context_prompt=_build_system_prompt(state["context"]),
+        context_prompt=_build_system_prompt(state["context"], skill_ids),
         conversation_history=state["conversation_history"],
         question=state["question"],
         existing_graph_messages=list(state.get("messages") or []),
@@ -151,11 +157,11 @@ def should_continue(state: dict[str, Any]) -> Literal["tools", "__end__"]:
 
 
 def build_graph() -> StateGraph:
-    """Build the RAG + ontology agent graph."""
+    """Build the RAG + skills agent graph."""
     graph = StateGraph(AgentState)
 
-    tools = get_all_skill_tools()
-    tool_node = ToolNode(tools)
+    # Union of all skill tools so opted-in insurance tools can execute; generate binds a subset.
+    tool_node = ToolNode(get_union_skill_tools())
 
     graph.add_node("retrieve", retrieve_node)
     graph.add_node("generate", generate_node)
@@ -197,18 +203,21 @@ def invoke_agent(
     conversation_history: list[dict[str, str]],
     access_token: str,
     session_id: str | None = None,
+    agent_skills: list[str] | None = None,
 ) -> dict[str, Any]:
     """Invoke the agent and return answer + sources."""
     from .langfuse_client import build_langgraph_trace_config
 
+    skill_ids = normalize_skill_ids(agent_skills)
     h = set_request_access_token(access_token or "")
     h_kb = set_request_knowledge_base_id(knowledge_base_id or "")
     t0 = time.monotonic()
     logger.info(
-        "invoke_agent start kb=%s history=%d session=%s",
+        "invoke_agent start kb=%s history=%d session=%s skills=%s",
         knowledge_base_id,
         len(conversation_history or []),
         session_id or "-",
+        skill_ids,
     )
     logger.debug("invoke_agent question=%r", preview_text(question, 200))
     try:
@@ -223,6 +232,7 @@ def invoke_agent(
                 "context": [],
                 "messages": [],
                 "answer": "",
+                "agent_skills": skill_ids,
             },
             config=config,
         )
@@ -312,18 +322,21 @@ async def astream_agent_ndjson(
     conversation_history: list[dict[str, str]],
     access_token: str,
     session_id: str | None = None,
+    agent_skills: list[str] | None = None,
 ) -> AsyncIterator[bytes]:
     """NDJSON stream: ``delta`` / ``tool_*`` events (wiki-copilot-compatible), then ``done`` or ``error``."""
     from .langfuse_client import build_langgraph_trace_config, get_langfuse_callback
 
+    skill_ids = normalize_skill_ids(agent_skills)
     h = set_request_access_token(access_token or "")
     h_kb = set_request_knowledge_base_id(knowledge_base_id or "")
     t0 = time.monotonic()
     logger.info(
-        "astream_agent_ndjson start kb=%s history=%d session=%s",
+        "astream_agent_ndjson start kb=%s history=%d session=%s skills=%s",
         knowledge_base_id,
         len(conversation_history or []),
         session_id or "-",
+        skill_ids,
     )
     logger.debug("astream_agent_ndjson question=%r", preview_text(question, 200))
     try:
@@ -342,6 +355,7 @@ async def astream_agent_ndjson(
             "context": ctx,
             "messages": [],
             "answer": "",
+            "agent_skills": skill_ids,
         }
         agent = get_agent()
         stream_cb = get_langfuse_callback() if settings.langfuse_trace_streaming else None
@@ -553,6 +567,7 @@ async def astream_agent_ndjson(
                 conversation_history,
                 access_token,
                 session_id,
+                skill_ids,
             )
             answer = result.get("answer", "") or ""
             sources_list = select_display_sources(

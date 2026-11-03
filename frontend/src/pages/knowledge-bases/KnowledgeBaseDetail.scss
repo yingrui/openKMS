@@ -1866,11 +1866,51 @@ body.openkms-kb-qa-fullpage .kb-qa-shell {
   color: var(--color-text-secondary);
 }
 
-.kb-agent-scope-fieldset .kb-settings-help {
+.kb-settings-agent-skills-help {
+  display: block;
   margin: 0;
-  font-size: var(--text-sm);
   color: var(--color-text-secondary);
+  font-size: var(--text-sm);
   line-height: 1.4;
+}
+
+.kb-settings-skill-row {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+  margin: 0;
+
+  input[type='checkbox'] {
+    margin-top: 0.2rem;
+    flex-shrink: 0;
+  }
+
+  .kb-settings-skill-name {
+    display: block;
+    font-weight: 500;
+  }
+
+  small {
+    display: block;
+    margin-top: 0.125rem;
+    color: var(--color-text-secondary);
+  }
+}
+
+.kb-settings-skills-demo-legend {
+  margin: var(--space-2) 0 0;
+  font-size: var(--text-xs);
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: var(--color-text-secondary);
+}
+
+.kb-agent-scope-panel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+  max-width: 36rem;
 }
 
 .kb-agent-scope-block {

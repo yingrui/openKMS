@@ -14,7 +14,7 @@ Track these **separately** — see [Goals — agent service](goals.md#goals-agen
 
 | Lane | What it is | Tracked under |
 |------|------------|---------------|
-| **KB Q&A delivery** | Per-KB **qa-agent** service: hybrid search, `/ask`, `/retrieve`, sourced answers; optional **Catalog + ontology-group scope** on the KB (live query tools, not RAG) | [Knowledge bases](features/knowledge-bases.md) (API + SPA Q&A UI) |
+| **KB Q&A delivery** | Per-KB **qa-agent** service: path-scoped `/knowledge-bases/{id}/ask|stream|retrieve`, sourced answers; KB **`agent_skills`** + optional **Catalog + ontology-group scope** (live query tools, not RAG) | [Knowledge bases](features/knowledge-bases.md) (API + SPA Q&A UI) |
 | **In-app agents** | Assistants and workspaces to **author and maintain** content inside openKMS | [openkms-agents](features/openkms-agents.md), map designer; backlog [#in-product-agents-high](#in-product-agents-high) |
 
 **Not in scope for “unified in-app assistant”:** merging KB Q&A delivery with project agents or a single global chat shell.

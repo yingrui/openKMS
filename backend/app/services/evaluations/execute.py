@@ -172,7 +172,9 @@ async def run_qa_answer_evaluation(
             detail="No agent URL configured for this knowledge base. QA evaluation requires KB agent_url.",
         )
 
-    agent_url = kb.agent_url.rstrip("/")
+    from app.services.knowledge_bases.qa_agent_proxy import agent_kb_path, ask_agent_body
+
+    ask_url = agent_kb_path(kb.agent_url, kb.id, "ask")
     items = await _load_evaluation_items(db, evaluation_id)
     out: list[dict[str, Any]] = []
 
@@ -180,13 +182,13 @@ async def run_qa_answer_evaluation(
         for item in items:
             try:
                 resp = await client.post(
-                    f"{agent_url}/ask",
-                    json={
-                        "knowledge_base_id": kb.id,
-                        "question": item.query,
-                        "conversation_history": [],
-                        "access_token": access_token,
-                    },
+                    ask_url,
+                    json=ask_agent_body(
+                        kb=kb,
+                        question=item.query,
+                        conversation_history=[],
+                        access_token=access_token,
+                    ),
                 )
                 resp.raise_for_status()
                 data = resp.json()

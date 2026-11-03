@@ -4,17 +4,17 @@ RAG-based question answering agent for openKMS knowledge bases, built with FastA
 
 ## Architecture
 
-- **FastAPI** web server with **`POST /ask`** (JSON answer) and **`POST /ask/stream`** (NDJSON: `delta` {`t`}, optional **`tool_start` / `tool_end` / `tool_error`** like the wiki copilot stream, then `done` with `answer` and `sources`). Response **`sources`**: hybrid retrieval hits unless **Page Index** (`get_section_content_tool` → **`document_section`**) or **ontology** (successful **`run_cypher_tool`** → **`ontology`** rows listing object types + query summaries). Optional body field **`session_id`** is forwarded as Langfuse **`langfuse_session_id`** so multi-turn Q&A groups under one **Session**.
-- **LangGraph** agent with nodes: `retrieve` (KB search), `generate` (LLM with tools), `tools` (skill tools)
+- **FastAPI** web server with path-scoped **`POST /knowledge-bases/{kb_id}/ask`** (JSON answer), **`…/ask/stream`** (NDJSON: `delta` {`t`}, optional **`tool_start` / `tool_end` / `tool_error`** like the wiki copilot stream, then `done` with `answer` and `sources`), and **`…/retrieve`**. Response **`sources`**: hybrid retrieval hits unless **Page Index** (`get_section_content_tool` → **`document_section`**) or **ontology** (successful **`run_cypher_tool`** → **`ontology`** rows listing object types + query summaries). Optional body field **`session_id`** is forwarded as Langfuse **`langfuse_session_id`** so multi-turn Q&A groups under one **Session**. Body **`agent_skills`** selects which skills bind (null/omit → core only).
+- **LangGraph** agent with nodes: `retrieve` (KB search), `generate` (LLM with tools for selected skills), `tools` (skill tools)
 - **RAG**: `POST /api/knowledge-bases/{id}/search` (semantic search over chunks and FAQs)
-- **LangGraph skills** (in `qa_agent/skills/`): ontology (Cypher/graph, optionally scoped to KB-linked groups), page_index (document TOC navigation), **catalog** (linked semantic models → query API)
+- **LangGraph skills** (in `qa_agent/skills/`): ontology (Cypher/graph, optionally scoped to KB-linked groups), page_index (document TOC navigation), **catalog** (linked semantic models → query API); optional insurance demos when opted in on the KB
 - **OpenAI-compatible** LLM for answer generation, with the same **`extra_body` / `enable_thinking` / `reasoning_content` shim** behavior as wiki copilot (see **Configuration** below and `docs/features/configuration.md`).
 
-The backend forwards the user's access token when calling the agent. The agent uses that token to call the backend APIs (search, ontology, Catalog). KB-linked semantic models and ontology groups are **tool scope only** (not RAG).
+The backend forwards the user's access token and the KB's **`agent_skills`** when calling the agent. The agent uses that token to call the backend APIs (search, ontology, Catalog) against the path `kb_id`. KB-linked semantic models and ontology groups are **tool scope only** (not RAG).
 
 ## LangGraph Skills
 
-Skills are modules in `qa_agent/skills/` that provide tools and prompt fragments. The agent uses them when the question matches the skill domain.
+Skills are modules in `qa_agent/skills/` that provide tools and prompt fragments. The agent binds only the skills listed in **`agent_skills`** (from KB Settings). Known ids: `ontology`, `catalog`, `page_index`, `insurance_calculator`, `premium_estimator`, `product_comparator`.
 
 ### Ontology skill
 
@@ -85,15 +85,17 @@ When **all three** Langfuse variables (secret, public, **base URL**) are set, **
 
 ## API
 
-### POST /ask
+### POST /knowledge-bases/{kb_id}/ask
+
+Path `kb_id` is authoritative. Optional body `knowledge_base_id` must match if present.
 
 Request:
 ```json
 {
-  "knowledge_base_id": "kb-uuid",
   "question": "How do I deploy the application?",
   "conversation_history": [],
-  "access_token": "Bearer token passed by backend"
+  "access_token": "Bearer token passed by backend",
+  "agent_skills": ["ontology", "catalog", "page_index"]
 }
 ```
 
@@ -114,6 +116,8 @@ Response:
 }
 ```
 
+Also: **`POST /knowledge-bases/{kb_id}/ask/stream`** (NDJSON) and **`POST /knowledge-bases/{kb_id}/retrieve`**.
+
 ## Integration
 
-In the openKMS frontend, configure the **Agent URL** in Knowledge Base Settings to point to this service (e.g., `http://localhost:8103`). The openKMS backend will proxy Q&A requests to this agent, passing the user's access token so the agent can call the backend search API.
+In the openKMS frontend, configure the **Agent URL** and **Agent skills** in Knowledge Base Settings. The openKMS backend proxies Q&A to `{agent_url}/knowledge-bases/{kb_id}/…`, passing the user's access token and the KB's skill list.
