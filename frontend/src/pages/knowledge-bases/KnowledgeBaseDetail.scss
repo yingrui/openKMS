@@ -1447,6 +1447,13 @@ body.openkms-kb-qa-fullpage .kb-qa-shell {
   background: color-mix(in srgb, var(--color-ontology-source) 10%, var(--color-bg-elevated));
 }
 
+.kb-qa-source-chip--metric {
+  border-left: 2px solid var(--color-info-fg);
+  padding-left: 7px;
+  border-radius: var(--radius-sm);
+  background: color-mix(in srgb, var(--color-info-fg) 10%, var(--color-bg-elevated));
+}
+
 .kb-qa-sources-panels {
   margin-top: var(--space-3);
   display: flex;
@@ -1557,6 +1564,19 @@ body.openkms-kb-qa-fullpage .kb-qa-shell {
 
 .kb-qa-source-card--ontology .kb-qa-source-card__kind {
   color: var(--color-ontology-fg);
+}
+
+.kb-qa-source-card--metric {
+  border-left-color: var(--color-info-fg);
+  background: linear-gradient(
+    135deg,
+    color-mix(in srgb, var(--color-info-fg) 12%, var(--color-bg-elevated)),
+    var(--color-bg-elevated)
+  );
+}
+
+.kb-qa-source-card--metric .kb-qa-source-card__kind {
+  color: var(--color-info-fg);
 }
 
 [data-theme="dark"] .kb-qa-source-card--ontology {
@@ -1843,6 +1863,70 @@ body.openkms-kb-qa-fullpage .kb-qa-shell {
   font-size: var(--text-md);
   font-weight: 600;
   padding: 0 8px;
+  color: var(--color-text-secondary);
+}
+
+.kb-agent-scope-fieldset .kb-settings-help {
+  margin: 0;
+  font-size: var(--text-sm);
+  color: var(--color-text-secondary);
+  line-height: 1.4;
+}
+
+.kb-agent-scope-block {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.kb-agent-scope-heading {
+  font-size: var(--text-sm);
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+.kb-agent-scope-add select {
+  width: 100%;
+}
+
+.kb-agent-scope-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.kb-agent-scope-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  padding: var(--space-2);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-bg-elevated);
+}
+
+.kb-agent-scope-item-main {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.kb-agent-scope-item-name {
+  font-size: var(--text-sm);
+  font-weight: 600;
+  color: var(--color-text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.kb-agent-scope-item-meta {
+  font-size: var(--text-xs);
   color: var(--color-text-secondary);
 }
 

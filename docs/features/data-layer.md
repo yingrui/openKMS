@@ -106,10 +106,11 @@ Goal: the Catalog app **manages the Ossie semantic model**, with each definition
 - **Verify:** ✅ a round-trip re-imports with a stable document (verified live).
 
 ### Stage 7 — Playground (the human twin of the query API) ✅
-- **API:** `POST /api/semantic-models/{id}/query` — one spec object `{metric, group_by[{field, granularity?}], filters[{field, op, value}], order_by[{field, direction}], limit}` shared by the UI (encoded in the URL as `?q=`), `openkms-skill` and any agent; read-only, statement timeout, row cap, audited (`metric_runs`).
+- **API:** `POST /api/semantic-models/{id}/query` — Chart-Data-like spec: **`metric` *or* `expression`** (+ `base_dataset` / `joins`), `group_by`, structured `filters`, optional `where` / `having` boolean fragments, `order_by`, `limit`. Shared by the UI (encoded in the URL as `?q=`), `openkms-skill`, and qa-agent Catalog skill; read-only, statement timeout, row cap. Saved-metric runs audit via `metric_runs`; temporary expression / where / having also write **`semantic_model_query_runs`**. Callers never submit FROM/JOIN text — the API compiles them from the model.
 - **Frontend:** **Model → a model → Playground** — metric → group-by fields (**type-ahead menu**, time ones with a query-time grain; selections as chips) + filters (the metric's own filters listed read-only) + order + limit; the answer states **row count / cap / duration**, the **null share per column** and *why* it is empty, the generated **SQL**, and the metric **definition** (expression, base dataset, type, the **relationships it uses** by name, description, `ai_context`). A metric row links *into* here (`Test in Playground`), and `Copy query` hands the spec to an agent verbatim.
 - **Failures are classified:** the API maps SQLSTATE to a stable code + `kind` — `definition` (the model author fixes it), `data` (the source refused) or `request` — and localizes the explanation, so the pane says who can fix a failed question instead of echoing SQL. See [design notes](data-layer-design-notes.md).
-- **Not here (decided):** saving, charts, pivots, CSV export (Data Insights); NL → spec (agent).
+- **KB grounding:** a knowledge base may link many semantic models (and ontology groups) as **qa-agent scope only** — live Catalog tools, not row ingest into RAG (decision #16).
+- **Not here (decided):** saving, charts, pivots, CSV export (Data Insights); NL → spec (agent); full SQL parser.
 - **Verify:** ✅ `pytest tests/test_data_layer_query_errors.py`; a misplaced expression findings `kind=definition`.
 
 ### Cross-cutting (all stages)

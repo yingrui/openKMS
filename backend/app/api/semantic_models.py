@@ -196,6 +196,20 @@ async def import_semantic_model_endpoint(body: dict[str, Any], db: AsyncSession 
     return await import_semantic_model(db, body)
 
 
+def _query_needs_audit(body: QueryRequest) -> bool:
+    """Temporary expression / where / having must leave a run row; saved-metric-only Playground may skip."""
+    if body.expression is not None and (
+        (isinstance(body.expression, str) and body.expression.strip())
+        or (isinstance(body.expression, dict) and body.expression)
+    ):
+        return True
+    if body.where and str(body.where).strip():
+        return True
+    if body.having and str(body.having).strip():
+        return True
+    return False
+
+
 @router.post(
     "/{model_id}/query",
     response_model=QueryResponse,
@@ -208,19 +222,70 @@ async def query_semantic_model(
     db: AsyncSession = Depends(get_db),
 ):
     """Answer one ad-hoc question of this model — read-only, capped and audited."""
+    import uuid
+
+    from app.models.semantic_model_query_run import SemanticModelQueryRun
+
     await _load(db, model_id)
+    members = set(await member_ids(db, model_id))
+    payload = getattr(request.state, "openkms_jwt_payload", None) or {}
+    uname = payload.get("preferred_username") or payload.get("name")
+    audit = _query_needs_audit(body)
+    request_summary = body.model_dump(exclude_none=True)
     try:
         sql, columns, rows, capped, duration = await run_query(
             db,
             model_id=model_id,
             metric=body.metric,
+            expression=body.expression,
+            base_dataset_id=body.base_dataset,
+            joins=body.joins,
             group_by=[g.model_dump() for g in body.group_by],
             filters=[f.model_dump() for f in body.filters],
+            where=body.where,
+            having=body.having,
             order_by=[o.model_dump() for o in body.order_by],
             limit=body.limit,
+            member_dataset_ids=members,
         )
     except QueryError as exc:
+        if audit:
+            db.add(
+                SemanticModelQueryRun(
+                    id=str(uuid.uuid4()),
+                    semantic_model_id=model_id,
+                    status="error",
+                    request=request_summary,
+                    sql=None,
+                    row_count=0,
+                    duration_ms=0,
+                    error=str(exc),
+                    ran_by=payload.get("sub") if isinstance(payload.get("sub"), str) else None,
+                    ran_by_name=str(uname)[:256] if isinstance(uname, str) and uname.strip() else None,
+                )
+            )
+            await db.commit()
         raise HTTPException(status_code=400, detail=query_failure_detail(request, exc.failure)) from exc
+
+    run_id: str | None = None
+    if audit:
+        run_id = str(uuid.uuid4())
+        db.add(
+            SemanticModelQueryRun(
+                id=run_id,
+                semantic_model_id=model_id,
+                status="ok",
+                request=request_summary,
+                sql=sql,
+                row_count=len(rows),
+                duration_ms=duration,
+                error=None,
+                ran_by=payload.get("sub") if isinstance(payload.get("sub"), str) else None,
+                ran_by_name=str(uname)[:256] if isinstance(uname, str) and uname.strip() else None,
+            )
+        )
+        await db.commit()
+
     return QueryResponse(
         sql=sql,
         columns=columns,
@@ -228,4 +293,5 @@ async def query_semantic_model(
         row_count=len(rows),
         capped=capped,
         duration_ms=duration,
+        run_id=run_id,
     )

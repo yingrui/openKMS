@@ -27,7 +27,12 @@ from app.schemas.metric import (
     MetricUpdate,
 )
 from app.services.data_layer.expressions import normalize_expression
-from app.services.data_layer.metrics import MetricError, validate_metric_definition
+from app.services.data_layer.metrics import (
+    MetricError,
+    resolve_joins,
+    validate_metric_definition,
+    validate_metric_filters,
+)
 from app.api.query_errors import query_failure_detail
 from app.services.data_layer.query_errors import DEFINITION, QueryFailure
 from app.services.data_layer.query import QueryError, run_query
@@ -136,13 +141,18 @@ async def create_metric(
         raise HTTPException(status_code=400, detail="Base dataset not found")
     if not await db.get(SemanticModel, body.semantic_model_id):
         raise HTTPException(status_code=400, detail="Semantic model not found")
-    if body.base_dataset_id not in set(await member_ids(db, body.semantic_model_id)):
+    members = set(await member_ids(db, body.semantic_model_id))
+    if body.base_dataset_id not in members:
         raise HTTPException(
             status_code=400, detail="The base dataset is not in this semantic model."
         )
     try:
         validate_metric_definition(name=body.name, type=body.type, expression=body.expression)
         validate_datatype(body.datatype)
+        cleaned_filters = validate_metric_filters(
+            [f.model_dump() for f in body.filters] if body.filters else None
+        )
+        await resolve_joins(db, base, body.joins, member_dataset_ids=members)
     except (MetricError, FieldError) as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
@@ -157,7 +167,7 @@ async def create_metric(
         type=body.type,
         expression=normalize_expression(body.expression),
         datatype=body.datatype,
-        filters=[f.model_dump() for f in body.filters] if body.filters else None,
+        filters=cleaned_filters or None,
         joins=body.joins,
         ai_context=body.ai_context,
         created_by=p.get("sub") if isinstance(p.get("sub"), str) else None,
@@ -200,10 +210,14 @@ async def update_metric(
     new_base_id = data.get("base_dataset_id", m.base_dataset_id)
     if not await db.get(SemanticModel, new_model_id):
         raise HTTPException(status_code=400, detail="Semantic model not found")
-    if new_base_id not in set(await member_ids(db, new_model_id)):
+    members = set(await member_ids(db, new_model_id))
+    if new_base_id not in members:
         raise HTTPException(
             status_code=400, detail="The base dataset is not in this semantic model."
         )
+    base = await db.get(Dataset, new_base_id)
+    if not base:
+        raise HTTPException(status_code=400, detail="Base dataset not found")
     try:
         validate_metric_definition(
             name=data.get("name", m.name),
@@ -211,11 +225,14 @@ async def update_metric(
             expression=data.get("expression", m.expression),
         )
         validate_datatype(data.get("datatype", m.datatype))
+        if "filters" in data:
+            data["filters"] = validate_metric_filters(data["filters"]) or None
+        await resolve_joins(
+            db, base, data.get("joins", m.joins), member_dataset_ids=members
+        )
     except (MetricError, FieldError) as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
-    if "filters" in data:
-        data["filters"] = data["filters"] or None
     if "expression" in data:
         data["expression"] = normalize_expression(data["expression"])
     if "name" in data:

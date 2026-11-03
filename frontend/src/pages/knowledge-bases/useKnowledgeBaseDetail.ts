@@ -8,6 +8,12 @@ import {
   fetchKBDocuments,
   fetchAllKBDocuments,
   fetchKBWikiSpaces,
+  fetchKBSemanticModels,
+  fetchKBOntologyGroups,
+  addKBSemanticModel,
+  removeKBSemanticModel,
+  addKBOntologyGroup,
+  removeKBOntologyGroup,
   fetchFAQs,
   fetchChunks,
   fetchChunkById,
@@ -38,6 +44,8 @@ import {
   type KnowledgeBaseResponse,
   type KBDocumentResponse,
   type KBWikiSpaceResponse,
+  type KBSemanticModelResponse,
+  type KBOntologyGroupResponse,
   type FAQResponse,
   type FAQGenerateResult,
   type ChunkResponse,
@@ -46,6 +54,8 @@ import {
 import type { AgentConversationResponse } from '../../data/agentApi';
 import { fetchDocuments, fetchDocumentById, type DocumentListItemResponse } from '../../data/documentsApi';
 import { fetchAllWikiSpaces, type WikiSpaceResponse } from '../../data/wikiSpacesApi';
+import { fetchSemanticModels } from '../../data/semanticModelsApi';
+import { fetchOntologyGroups } from '../../data/ontologyGroupsApi';
 import { fetchChannelById } from '../../data/channelsApi';
 import { useEnsureDocumentChannels } from '../../contexts/DocumentChannelsContext';
 import { useImmersiveView } from '../../contexts/ImmersiveShellContext';
@@ -102,6 +112,11 @@ export function useKnowledgeBaseDetail() {
   const pickerDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const [kbWikiSpaces, setKbWikiSpaces] = useState<KBWikiSpaceResponse[]>([]);
+  const [kbSemanticModels, setKbSemanticModels] = useState<KBSemanticModelResponse[]>([]);
+  const [kbOntologyGroups, setKbOntologyGroups] = useState<KBOntologyGroupResponse[]>([]);
+  const [allSemanticModels, setAllSemanticModels] = useState<{ id: string; name: string }[]>([]);
+  const [allOntologyGroups, setAllOntologyGroups] = useState<{ id: string; display_name: string }[]>([]);
+  const [scopeBusyId, setScopeBusyId] = useState<string | null>(null);
   const [showWikiSpacePicker, setShowWikiSpacePicker] = useState(false);
   const [wikiSpacePickerItems, setWikiSpacePickerItems] = useState<WikiSpaceResponse[]>([]);
   const [wikiSpacePickerLoading, setWikiSpacePickerLoading] = useState(false);
@@ -258,6 +273,22 @@ export function useKnowledgeBaseDetail() {
     } catch { /* noop */ }
   }, [kbId]);
 
+  const loadKbAgentScope = useCallback(async () => {
+    if (!kbId) return;
+    try {
+      const [linkedModels, linkedGroups, models, groups] = await Promise.all([
+        fetchKBSemanticModels(kbId),
+        fetchKBOntologyGroups(kbId),
+        fetchSemanticModels(),
+        fetchOntologyGroups(),
+      ]);
+      setKbSemanticModels(linkedModels);
+      setKbOntologyGroups(linkedGroups);
+      setAllSemanticModels(models.items.map((m) => ({ id: m.id, name: m.name })));
+      setAllOntologyGroups(groups.map((g) => ({ id: g.id, display_name: g.display_name })));
+    } catch { /* noop */ }
+  }, [kbId]);
+
   const loadFaqs = useCallback(async () => {
     if (!kbId) return;
     try {
@@ -330,7 +361,8 @@ export function useKnowledgeBaseDetail() {
     if (activeTab === 'wiki_spaces') void loadKbWikiSpaces();
     if (activeTab === 'faqs') loadFaqs();
     if (activeTab === 'chunks') loadChunks();
-  }, [activeTab, loadDocs, loadKbWikiSpaces, loadFaqs, loadChunks]);
+    if (activeTab === 'settings') void loadKbAgentScope();
+  }, [activeTab, loadDocs, loadKbWikiSpaces, loadFaqs, loadChunks, loadKbAgentScope]);
 
   useEffect(() => {
     if (qaFullPage && kb && !kb.agent_url) {
@@ -565,6 +597,62 @@ export function useKnowledgeBaseDetail() {
       toast.error(e instanceof Error ? e.message : t('detail.toastWikiSpaceRemoveFailed'));
     } finally {
       setWikiSpaceBusyId(null);
+    }
+  };
+
+  const handleAddSemanticModelToKb = async (semanticModelId: string) => {
+    if (!kbId || !semanticModelId) return;
+    setScopeBusyId(semanticModelId);
+    try {
+      await addKBSemanticModel(kbId, semanticModelId);
+      toast.success(t('detail.toastSemanticModelLinked'));
+      await loadKbAgentScope();
+    } catch (e: unknown) {
+      toast.error(e instanceof Error ? e.message : t('detail.toastSemanticModelLinkFailed'));
+    } finally {
+      setScopeBusyId(null);
+    }
+  };
+
+  const handleRemoveSemanticModelFromKb = async (semanticModelId: string) => {
+    if (!kbId) return;
+    setScopeBusyId(semanticModelId);
+    try {
+      await removeKBSemanticModel(kbId, semanticModelId);
+      toast.success(t('detail.toastSemanticModelRemoved'));
+      await loadKbAgentScope();
+    } catch (e: unknown) {
+      toast.error(e instanceof Error ? e.message : t('detail.toastSemanticModelRemoveFailed'));
+    } finally {
+      setScopeBusyId(null);
+    }
+  };
+
+  const handleAddOntologyGroupToKb = async (ontologyGroupId: string) => {
+    if (!kbId || !ontologyGroupId) return;
+    setScopeBusyId(ontologyGroupId);
+    try {
+      await addKBOntologyGroup(kbId, ontologyGroupId);
+      toast.success(t('detail.toastOntologyGroupLinked'));
+      await loadKbAgentScope();
+    } catch (e: unknown) {
+      toast.error(e instanceof Error ? e.message : t('detail.toastOntologyGroupLinkFailed'));
+    } finally {
+      setScopeBusyId(null);
+    }
+  };
+
+  const handleRemoveOntologyGroupFromKb = async (ontologyGroupId: string) => {
+    if (!kbId) return;
+    setScopeBusyId(ontologyGroupId);
+    try {
+      await removeKBOntologyGroup(kbId, ontologyGroupId);
+      toast.success(t('detail.toastOntologyGroupRemoved'));
+      await loadKbAgentScope();
+    } catch (e: unknown) {
+      toast.error(e instanceof Error ? e.message : t('detail.toastOntologyGroupRemoveFailed'));
+    } finally {
+      setScopeBusyId(null);
     }
   };
 
@@ -1196,6 +1284,11 @@ export function useKnowledgeBaseDetail() {
     setPickerAdding,
     kbWikiSpaces,
     setKbWikiSpaces,
+    kbSemanticModels,
+    kbOntologyGroups,
+    allSemanticModels,
+    allOntologyGroups,
+    scopeBusyId,
     showWikiSpacePicker,
     setShowWikiSpacePicker,
     wikiSpacePickerItems,
@@ -1338,6 +1431,7 @@ export function useKnowledgeBaseDetail() {
     refreshLinkedDocIds,
     loadDocs,
     loadKbWikiSpaces,
+    loadKbAgentScope,
     loadFaqs,
     loadChunks,
     enqueueIndexJob,
@@ -1361,6 +1455,10 @@ export function useKnowledgeBaseDetail() {
     closeWikiSpacePicker,
     handleAddWikiSpaceToKb,
     handleRemoveWikiSpaceFromKb,
+    handleAddSemanticModelToKb,
+    handleRemoveSemanticModelFromKb,
+    handleAddOntologyGroupToKb,
+    handleRemoveOntologyGroupFromKb,
     handleIndexWikiSpace,
     closeFaqDialog,
     openFaqFromQa,

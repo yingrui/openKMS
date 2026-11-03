@@ -65,11 +65,21 @@ class QueryOrder(BaseModel):
 
 
 class QueryRequest(BaseModel):
-    """One ad-hoc question of a semantic model: metric × fields × filters × order × limit."""
+    """One ad-hoc question of a semantic model.
 
-    metric: str
+    Either ``metric`` (a saved definition) or ``expression`` (one-shot aggregate fragment
+    with ``base_dataset`` / optional ``joins``). ``where`` / ``having`` are boolean SQL
+    fragments AND-ed into those clauses; callers never submit FROM / JOIN text.
+    """
+
+    metric: str | None = None
+    expression: dict[str, Any] | str | None = None
+    base_dataset: str | None = None
+    joins: list[str] | None = None
     group_by: list[QueryGroupBy] = []
     filters: list[QueryFilter] = []
+    where: str | None = None
+    having: str | None = None
     order_by: list[QueryOrder] = []
     limit: int | None = None
 
@@ -81,3 +91,4 @@ class QueryResponse(BaseModel):
     row_count: int = 0
     capped: bool = False
     duration_ms: int = 0
+    run_id: str | None = None

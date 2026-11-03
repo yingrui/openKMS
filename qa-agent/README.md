@@ -7,10 +7,10 @@ RAG-based question answering agent for openKMS knowledge bases, built with FastA
 - **FastAPI** web server with **`POST /ask`** (JSON answer) and **`POST /ask/stream`** (NDJSON: `delta` {`t`}, optional **`tool_start` / `tool_end` / `tool_error`** like the wiki copilot stream, then `done` with `answer` and `sources`). Response **`sources`**: hybrid retrieval hits unless **Page Index** (`get_section_content_tool` → **`document_section`**) or **ontology** (successful **`run_cypher_tool`** → **`ontology`** rows listing object types + query summaries). Optional body field **`session_id`** is forwarded as Langfuse **`langfuse_session_id`** so multi-turn Q&A groups under one **Session**.
 - **LangGraph** agent with nodes: `retrieve` (KB search), `generate` (LLM with tools), `tools` (skill tools)
 - **RAG**: `POST /api/knowledge-bases/{id}/search` (semantic search over chunks and FAQs)
-- **LangGraph skills** (in `qa_agent/skills/`): ontology (Cypher/graph), page_index (document TOC navigation)
+- **LangGraph skills** (in `qa_agent/skills/`): ontology (Cypher/graph, optionally scoped to KB-linked groups), page_index (document TOC navigation), **catalog** (linked semantic models → query API)
 - **OpenAI-compatible** LLM for answer generation, with the same **`extra_body` / `enable_thinking` / `reasoning_content` shim** behavior as wiki copilot (see **Configuration** below and `docs/features/configuration.md`).
 
-The backend forwards the user's access token when calling the agent. The agent uses that token to call the backend APIs (search, object-types, link-types, ontology/explore).
+The backend forwards the user's access token when calling the agent. The agent uses that token to call the backend APIs (search, ontology, Catalog). KB-linked semantic models and ontology groups are **tool scope only** (not RAG).
 
 ## LangGraph Skills
 
@@ -19,8 +19,14 @@ Skills are modules in `qa_agent/skills/` that provide tools and prompt fragments
 ### Ontology skill
 
 For coverage/relationship questions (e.g. "Which insurance products cover heart attack?"):
-- **get_ontology_schema_tool** – Fetches object types and link types from the backend
+- **get_ontology_schema_tool** – Fetches object types and link types from the backend (restricted to linked ontology groups when the KB has any)
 - **run_cypher_tool** – Executes read-only Cypher against Neo4j
+
+### Catalog skill
+
+For numeric / metric questions grounded in Catalog:
+- Lists metrics on semantic models linked to the knowledge base
+- Runs `POST /api/semantic-models/{id}/query` with a Chart-Data-like body (`metric` or `expression` + filters / where / having); cites `metric` / `semantic_model` sources
 
 ### Page Index skill
 

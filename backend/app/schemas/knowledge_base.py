@@ -97,6 +97,37 @@ class KBWikiSpaceResponse(BaseModel):
     model_config = {"from_attributes": True}
 
 
+class KBSemanticModelAdd(BaseModel):
+    semantic_model_id: str
+
+
+class KBSemanticModelResponse(BaseModel):
+    """A semantic model linked to a KB — includes a short summary for agent selection."""
+
+    id: str
+    knowledge_base_id: str
+    semantic_model_id: str
+    name: str
+    description: str | None = None
+    metric_names: list[str] = []
+    ai_context: dict[str, Any] | None = None
+    created_at: datetime
+
+
+class KBOntologyGroupAdd(BaseModel):
+    ontology_group_id: str
+
+
+class KBOntologyGroupResponse(BaseModel):
+    id: str
+    knowledge_base_id: str
+    ontology_group_id: str
+    display_name: str
+    description: str | None = None
+    object_type_count: int = 0
+    created_at: datetime
+
+
 class WikiPageForKbIndexItem(BaseModel):
     """Wiki page row for offline KB indexing (includes body)."""
 

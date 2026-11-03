@@ -12,6 +12,7 @@ from .schemas import SourceItem
 PAGE_SECTION_TOOL_NAME = "get_section_content_tool"
 ONTOLOGY_SCHEMA_TOOL_NAME = "get_ontology_schema_tool"
 RUN_CYPHER_TOOL_NAME = "run_cypher_tool"
+QUERY_SEMANTIC_MODEL_TOOL_NAME = "query_semantic_model_tool"
 
 _MAX_SECTION_SOURCE_CHARS = 12_000
 _MAX_ONTOLOGY_BODY_CHARS = 8_000
@@ -332,6 +333,69 @@ def extract_cypher_run_from_tool(inp: Any, out: Any) -> tuple[str, dict[str, Any
     return (cy, parsed)
 
 
+def sources_from_catalog_tools(messages: list[Any]) -> list[SourceItem] | None:
+    """If the agent ran a successful Catalog query, cite metric / expression + SQL."""
+    meta = _tool_call_meta_by_id(messages)
+    out: list[SourceItem] = []
+    for m in messages:
+        if not isinstance(m, ToolMessage):
+            continue
+        tid = str(m.tool_call_id or "")
+        name = ""
+        args: dict[str, Any] = {}
+        if tid and tid in meta:
+            name, args = meta[tid]
+        else:
+            name = str(m.name or "")
+        base = name.split("/")[-1]
+        if base != QUERY_SEMANTIC_MODEL_TOOL_NAME:
+            continue
+        text = _coerce_tool_output(m.content)
+        if not text or text.startswith("Error"):
+            continue
+        try:
+            data = json.loads(text)
+        except (json.JSONDecodeError, TypeError):
+            continue
+        if not isinstance(data, dict) or "sql" not in data:
+            continue
+        metric = args.get("metric") if isinstance(args, dict) else None
+        expression = args.get("expression") if isinstance(args, dict) else None
+        model_id = args.get("model_id") if isinstance(args, dict) else None
+        label = (
+            f"Metric {metric}"
+            if metric
+            else f"Expression {expression}" if expression else "Catalog query"
+        )
+        sql = str(data.get("sql") or "")
+        rows = data.get("rows") or []
+        preview = json.dumps(rows[:5], ensure_ascii=False, default=str)
+        if len(preview) > 2_000:
+            preview = preview[:1997] + "..."
+        content = (
+            f"{label}\n"
+            f"model_id={model_id}\n"
+            f"SQL: {sql}\n"
+            f"Rows ({data.get('row_count', len(rows))}): {preview}"
+        )
+        if len(content) > _MAX_ONTOLOGY_BODY_CHARS:
+            content = content[: _MAX_ONTOLOGY_BODY_CHARS - 3] + "..."
+        source_type = "metric" if metric else "semantic_model"
+        out.append(
+            SourceItem(
+                id=f"catalog:query:{len(out)}",
+                source_type=source_type,
+                content=content,
+                score=1.0,
+                source_name=str(label)[:120],
+                document_id=str(model_id) if model_id else None,
+                wiki_page_id=None,
+                wiki_space_id=None,
+            )
+        )
+    return out or None
+
+
 def select_display_sources(
     retrieve_chunks: list[SourceItem],
     *,
@@ -340,11 +404,14 @@ def select_display_sources(
     streamed_ontology_schema_names: list[str] | None = None,
     streamed_ontology_cypher_runs: list[tuple[str, dict[str, Any]]] | None = None,
 ) -> list[SourceItem]:
-    """Prefer Page Index sections, then ontology graph evidence, else RAG chunks."""
+    """Prefer Page Index, then Catalog query, then ontology graph, else RAG chunks."""
     if messages:
         page = sources_from_page_index_tools(messages)
         if page:
             return page
+        catalog = sources_from_catalog_tools(messages)
+        if catalog:
+            return catalog
         onto = sources_from_ontology_tools(messages)
         if onto:
             return onto

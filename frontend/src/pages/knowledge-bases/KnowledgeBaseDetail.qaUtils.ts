@@ -38,7 +38,16 @@ function kbQaFeedbackKey(msg: ChatMessage, index: number): string {
 
 function kbQaNormalizeSourceKind(sourceType: string | null | undefined): string {
   const k = (sourceType || 'chunk').toLowerCase();
-  if (k === 'ontology' || k === 'document_section' || k === 'faq' || k === 'chunk') return k;
+  if (
+    k === 'ontology' ||
+    k === 'document_section' ||
+    k === 'faq' ||
+    k === 'chunk' ||
+    k === 'metric' ||
+    k === 'semantic_model'
+  ) {
+    return k;
+  }
   return 'chunk';
 }
 
@@ -47,6 +56,7 @@ function kbQaSourceCardModifierClass(sourceType: string | null | undefined): str
   if (k === 'ontology') return 'kb-qa-source-card--ontology';
   if (k === 'document_section') return 'kb-qa-source-card--section';
   if (k === 'faq') return 'kb-qa-source-card--faq';
+  if (k === 'metric' || k === 'semantic_model') return 'kb-qa-source-card--metric';
   return 'kb-qa-source-card--chunk';
 }
 
@@ -59,7 +69,9 @@ function kbQaTruncatePreview(text: string, maxLen: number): string {
 
 function kbQaShowRetrievalScore(sourceType: string | null | undefined, score: number): boolean {
   const k = kbQaNormalizeSourceKind(sourceType);
-  if (k === 'ontology' || k === 'document_section') return false;
+  if (k === 'ontology' || k === 'document_section' || k === 'metric' || k === 'semantic_model') {
+    return false;
+  }
   return score < 0.999;
 }
 
@@ -68,6 +80,7 @@ function kbQaSourceChipModifierClass(sourceType: string | null | undefined): str
   if (k === 'ontology') return 'kb-qa-source-chip--ontology';
   if (k === 'document_section') return 'kb-qa-source-chip--section';
   if (k === 'faq') return 'kb-qa-source-chip--faq';
+  if (k === 'metric' || k === 'semantic_model') return 'kb-qa-source-chip--metric';
   return 'kb-qa-source-chip--chunk';
 }
 
@@ -85,7 +98,7 @@ function kbQaChipTitle(s: SearchResult, maxLen = 26): string {
 
 function kbQaExpandedDetailPreviewMaxLen(sourceType: string | null | undefined): number {
   const k = kbQaNormalizeSourceKind(sourceType);
-  if (k === 'ontology') return 12_000;
+  if (k === 'ontology' || k === 'metric' || k === 'semantic_model') return 12_000;
   if (k === 'document_section') return 4_000;
   return 1_200;
 }

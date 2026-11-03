@@ -196,6 +196,7 @@ def test_build_sql_composes_dimensions_where_order_and_limit():
         dimensions=[('base."area"', "area"), ("date_trunc('month', base.\"d\")", "d")],
         joins_sql=[],
         where=['base."area" = :f0'],
+        having=[],
         order_by=["(SUM(amount)) DESC NULLS LAST"],
         limit=50,
     )
@@ -215,6 +216,7 @@ def test_build_sql_without_grouping_is_the_single_value():
         dimensions=[],
         joins_sql=[],
         where=[],
+        having=[],
         order_by=[],
         limit=2,
     )
@@ -416,5 +418,30 @@ def test_join_aliases_are_the_ones_build_joins_sql_emits():
     assert 'JOIN "public"."a" j0 ON' in sql[0]
     assert 'JOIN "public"."b" j1 ON' in sql[1]
 
-    aliases = join_dataset_aliases(base, ["j1", "j2"], joins_by_id=joins, datasets_by_id=datasets_by_id)
+    aliases, ambiguous = join_dataset_aliases(
+        base, ["j1", "j2"], joins_by_id=joins, datasets_by_id=datasets_by_id
+    )
     assert aliases == {"a": "j0", "b": "j1"}
+    assert ambiguous == set()
+
+
+def test_duplicate_join_to_same_dataset_is_ambiguous():
+    base = _scope_dataset("base")
+    other = _scope_dataset("a", "a")
+    joins = {
+        "j1": _scope_join("j1", "base", "a", column="k1"),
+        "j2": _scope_join("j2", "base", "a", column="k2"),
+    }
+    aliases, ambiguous = join_dataset_aliases(
+        base, ["j1", "j2"], joins_by_id=joins, datasets_by_id={"a": other}
+    )
+    assert aliases == {}
+    assert ambiguous == {"a"}
+
+
+def test_expression_rejects_select_subquery():
+    from app.services.data_layer.metrics import MetricError, validate_sql_fragment
+
+    with pytest.raises(MetricError):
+        validate_sql_fragment("SUM((SELECT 1))", what="expression")
+    assert validate_sql_fragment("SUM(amount)") == "SUM(amount)"

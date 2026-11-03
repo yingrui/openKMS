@@ -38,6 +38,27 @@ export interface KBWikiSpaceResponse {
   created_at: string;
 }
 
+export interface KBSemanticModelResponse {
+  id: string;
+  knowledge_base_id: string;
+  semantic_model_id: string;
+  name: string;
+  description?: string | null;
+  metric_names: string[];
+  ai_context?: Record<string, unknown> | null;
+  created_at: string;
+}
+
+export interface KBOntologyGroupResponse {
+  id: string;
+  knowledge_base_id: string;
+  ontology_group_id: string;
+  display_name: string;
+  description?: string | null;
+  object_type_count: number;
+  created_at: string;
+}
+
 export interface KBDocumentListResponse {
   items: KBDocumentResponse[];
   total: number;
@@ -574,6 +595,54 @@ export async function addKBWikiSpace(kbId: string, wikiSpaceId: string): Promise
 export async function removeKBWikiSpace(kbId: string, wikiSpaceId: string): Promise<void> {
   return request<void>(
     `/api/knowledge-bases/${kbId}/wiki-spaces/${encodeURIComponent(wikiSpaceId)}`,
+    { method: 'DELETE' },
+  );
+}
+
+// --- KB semantic models (Catalog scope for qa-agent; not RAG) ---
+
+export async function fetchKBSemanticModels(kbId: string): Promise<KBSemanticModelResponse[]> {
+  return request<KBSemanticModelResponse[]>(`/api/knowledge-bases/${kbId}/semantic-models`);
+}
+
+export async function addKBSemanticModel(
+  kbId: string,
+  semanticModelId: string,
+): Promise<KBSemanticModelResponse> {
+  return request<KBSemanticModelResponse>(`/api/knowledge-bases/${kbId}/semantic-models`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ semantic_model_id: semanticModelId }),
+  });
+}
+
+export async function removeKBSemanticModel(kbId: string, semanticModelId: string): Promise<void> {
+  return request<void>(
+    `/api/knowledge-bases/${kbId}/semantic-models/${encodeURIComponent(semanticModelId)}`,
+    { method: 'DELETE' },
+  );
+}
+
+// --- KB ontology groups (schema scope for qa-agent) ---
+
+export async function fetchKBOntologyGroups(kbId: string): Promise<KBOntologyGroupResponse[]> {
+  return request<KBOntologyGroupResponse[]>(`/api/knowledge-bases/${kbId}/ontology-groups`);
+}
+
+export async function addKBOntologyGroup(
+  kbId: string,
+  ontologyGroupId: string,
+): Promise<KBOntologyGroupResponse> {
+  return request<KBOntologyGroupResponse>(`/api/knowledge-bases/${kbId}/ontology-groups`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ ontology_group_id: ontologyGroupId }),
+  });
+}
+
+export async function removeKBOntologyGroup(kbId: string, ontologyGroupId: string): Promise<void> {
+  return request<void>(
+    `/api/knowledge-bases/${kbId}/ontology-groups/${encodeURIComponent(ontologyGroupId)}`,
     { method: 'DELETE' },
   );
 }

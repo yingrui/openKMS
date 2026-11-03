@@ -30,8 +30,13 @@ from app.models.chunk import Chunk
 from app.models.document import Document
 from app.models.faq import FAQ
 from app.models.kb_document import KBDocument
+from app.models.kb_ontology_group import KBOntologyGroup
+from app.models.kb_semantic_model import KBSemanticModel
 from app.models.kb_wiki_space import KBWikiSpace
 from app.models.knowledge_base import KnowledgeBase
+from app.models.metric_definition import MetricDefinition
+from app.models.ontology_function import OntologyGroup, OntologyGroupObjectType
+from app.models.semantic_model import SemanticModel
 from app.models.wiki_models import WikiPage, WikiSpace
 from app.schemas.job import JobResponse
 from app.schemas.knowledge_base import (
@@ -52,6 +57,10 @@ from app.schemas.knowledge_base import (
     KBDocumentAdd,
     KBDocumentListResponse,
     KBDocumentResponse,
+    KBOntologyGroupAdd,
+    KBOntologyGroupResponse,
+    KBSemanticModelAdd,
+    KBSemanticModelResponse,
     KBWikiSpaceAdd,
     KBWikiSpaceResponse,
     KnowledgeBaseCreate,
@@ -392,6 +401,215 @@ async def remove_kb_wiki_space(
         raise HTTPException(status_code=404, detail="Wiki space not linked to this knowledge base")
     page_ids = select(WikiPage.id).where(WikiPage.wiki_space_id == wiki_space_id)
     await db.execute(delete(Chunk).where(Chunk.knowledge_base_id == kb_id, Chunk.wiki_page_id.in_(page_ids)))
+
+    await db.delete(row)
+
+
+# --- KB semantic models (Catalog scope for this KB's qa-agent; not indexed into RAG) ---
+
+
+@router.get("/{kb_id}/semantic-models", response_model=list[KBSemanticModelResponse])
+async def list_kb_semantic_models(
+    kb_id: str,
+    kb: KnowledgeBase = Depends(get_kb_scoped),
+    db: AsyncSession = Depends(get_db),
+):
+    result = await db.execute(
+        select(KBSemanticModel, SemanticModel)
+        .join(SemanticModel, KBSemanticModel.semantic_model_id == SemanticModel.id)
+        .where(KBSemanticModel.knowledge_base_id == kb_id)
+        .order_by(KBSemanticModel.created_at.desc())
+    )
+    rows = result.all()
+    model_ids = [m.id for _, m in rows]
+    names_by_model: dict[str, list[str]] = {mid: [] for mid in model_ids}
+    if model_ids:
+        metrics = (
+            await db.execute(
+                select(MetricDefinition.semantic_model_id, MetricDefinition.name).where(
+                    MetricDefinition.semantic_model_id.in_(model_ids)
+                )
+            )
+        ).all()
+        for mid, name in metrics:
+            names_by_model.setdefault(mid, []).append(name)
+    return [
+        KBSemanticModelResponse(
+            id=link.id,
+            knowledge_base_id=link.knowledge_base_id,
+            semantic_model_id=model.id,
+            name=model.name,
+            description=model.description,
+            metric_names=sorted(names_by_model.get(model.id, [])),
+            ai_context=model.ai_context,
+            created_at=link.created_at,
+        )
+        for link, model in rows
+    ]
+
+
+@router.post("/{kb_id}/semantic-models", response_model=KBSemanticModelResponse, status_code=201)
+async def add_kb_semantic_model(
+    kb_id: str,
+    body: KBSemanticModelAdd,
+    kb: KnowledgeBase = Depends(get_kb_scoped_write),
+    db: AsyncSession = Depends(get_db),
+):
+    model = await db.get(SemanticModel, body.semantic_model_id)
+    if not model:
+        raise HTTPException(status_code=404, detail="Semantic model not found")
+    existing = await db.execute(
+        select(KBSemanticModel).where(
+            KBSemanticModel.knowledge_base_id == kb_id,
+            KBSemanticModel.semantic_model_id == body.semantic_model_id,
+        )
+    )
+    if existing.scalar_one_or_none():
+        raise HTTPException(status_code=409, detail="Semantic model already linked to this knowledge base")
+    link = KBSemanticModel(
+        id=str(uuid.uuid4()),
+        knowledge_base_id=kb_id,
+        semantic_model_id=body.semantic_model_id,
+    )
+    db.add(link)
+    await db.flush()
+    await db.refresh(link)
+    metric_names = (
+        await db.execute(
+            select(MetricDefinition.name).where(MetricDefinition.semantic_model_id == model.id)
+        )
+    ).scalars().all()
+    return KBSemanticModelResponse(
+        id=link.id,
+        knowledge_base_id=link.knowledge_base_id,
+        semantic_model_id=model.id,
+        name=model.name,
+        description=model.description,
+        metric_names=sorted(metric_names),
+        ai_context=model.ai_context,
+        created_at=link.created_at,
+    )
+
+
+@router.delete("/{kb_id}/semantic-models/{semantic_model_id}", status_code=204)
+async def remove_kb_semantic_model(
+    kb_id: str,
+    semantic_model_id: str,
+    kb: KnowledgeBase = Depends(get_kb_scoped_write),
+    db: AsyncSession = Depends(get_db),
+):
+    result = await db.execute(
+        select(KBSemanticModel).where(
+            KBSemanticModel.knowledge_base_id == kb_id,
+            KBSemanticModel.semantic_model_id == semantic_model_id,
+        )
+    )
+    row = result.scalar_one_or_none()
+    if not row:
+        raise HTTPException(status_code=404, detail="Semantic model not linked to this knowledge base")
+    await db.delete(row)
+
+
+# --- KB ontology groups (schema scope for this KB's qa-agent) ---
+
+
+@router.get("/{kb_id}/ontology-groups", response_model=list[KBOntologyGroupResponse])
+async def list_kb_ontology_groups(
+    kb_id: str,
+    kb: KnowledgeBase = Depends(get_kb_scoped),
+    db: AsyncSession = Depends(get_db),
+):
+    result = await db.execute(
+        select(KBOntologyGroup, OntologyGroup)
+        .join(OntologyGroup, KBOntologyGroup.ontology_group_id == OntologyGroup.id)
+        .where(KBOntologyGroup.knowledge_base_id == kb_id)
+        .order_by(KBOntologyGroup.created_at.desc())
+    )
+    rows = result.all()
+    group_ids = [g.id for _, g in rows]
+    counts: dict[str, int] = {gid: 0 for gid in group_ids}
+    if group_ids:
+        count_rows = (
+            await db.execute(
+                select(OntologyGroupObjectType.group_id, func.count())
+                .where(OntologyGroupObjectType.group_id.in_(group_ids))
+                .group_by(OntologyGroupObjectType.group_id)
+            )
+        ).all()
+        for gid, n in count_rows:
+            counts[gid] = int(n)
+    return [
+        KBOntologyGroupResponse(
+            id=link.id,
+            knowledge_base_id=link.knowledge_base_id,
+            ontology_group_id=group.id,
+            display_name=group.display_name,
+            description=group.description,
+            object_type_count=counts.get(group.id, 0),
+            created_at=link.created_at,
+        )
+        for link, group in rows
+    ]
+
+
+@router.post("/{kb_id}/ontology-groups", response_model=KBOntologyGroupResponse, status_code=201)
+async def add_kb_ontology_group(
+    kb_id: str,
+    body: KBOntologyGroupAdd,
+    kb: KnowledgeBase = Depends(get_kb_scoped_write),
+    db: AsyncSession = Depends(get_db),
+):
+    group = await db.get(OntologyGroup, body.ontology_group_id)
+    if not group:
+        raise HTTPException(status_code=404, detail="Ontology group not found")
+    existing = await db.execute(
+        select(KBOntologyGroup).where(
+            KBOntologyGroup.knowledge_base_id == kb_id,
+            KBOntologyGroup.ontology_group_id == body.ontology_group_id,
+        )
+    )
+    if existing.scalar_one_or_none():
+        raise HTTPException(status_code=409, detail="Ontology group already linked to this knowledge base")
+    link = KBOntologyGroup(
+        id=str(uuid.uuid4()),
+        knowledge_base_id=kb_id,
+        ontology_group_id=body.ontology_group_id,
+    )
+    db.add(link)
+    await db.flush()
+    await db.refresh(link)
+    ot_count = (
+        await db.execute(
+            select(func.count()).where(OntologyGroupObjectType.group_id == group.id)
+        )
+    ).scalar_one()
+    return KBOntologyGroupResponse(
+        id=link.id,
+        knowledge_base_id=link.knowledge_base_id,
+        ontology_group_id=group.id,
+        display_name=group.display_name,
+        description=group.description,
+        object_type_count=int(ot_count or 0),
+        created_at=link.created_at,
+    )
+
+
+@router.delete("/{kb_id}/ontology-groups/{ontology_group_id}", status_code=204)
+async def remove_kb_ontology_group(
+    kb_id: str,
+    ontology_group_id: str,
+    kb: KnowledgeBase = Depends(get_kb_scoped_write),
+    db: AsyncSession = Depends(get_db),
+):
+    result = await db.execute(
+        select(KBOntologyGroup).where(
+            KBOntologyGroup.knowledge_base_id == kb_id,
+            KBOntologyGroup.ontology_group_id == ontology_group_id,
+        )
+    )
+    row = result.scalar_one_or_none()
+    if not row:
+        raise HTTPException(status_code=404, detail="Ontology group not linked to this knowledge base")
     await db.delete(row)
 
 

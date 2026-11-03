@@ -1,9 +1,10 @@
 """Ad-hoc query of a semantic model — the Playground's engine (and the agent's).
 
-One query shape, shared by the UI and the API: a **metric** over **group-by fields**
-(each optionally with a query-time grain), **filters** on the model's fields, an
-**order** and a **limit**. Read-only, with a statement timeout and a row cap, and every
-run is audited. A query with no grouping is the metric's single value.
+One query shape, shared by the UI and the API: a **metric** (saved or a one-shot
+``expression``) over **group-by fields**, **filters** on the model's fields, optional
+``where`` / ``having`` fragments, an **order** and a **limit**. Read-only, with a
+statement timeout and a row cap. ``FROM`` / ``JOIN`` are compiled here from the base
+dataset and registered relationships — callers never submit those clauses.
 """
 from __future__ import annotations
 
@@ -26,6 +27,8 @@ from app.services.data_layer.metrics import (
     MetricError,
     resolve_joins,
     validate_metric_definition,
+    validate_metric_filters,
+    validate_sql_fragment,
 )
 from app.services.data_layer.semantic_model_fields import resolve_is_time
 from app.services.data_layer.query_errors import (
@@ -80,11 +83,7 @@ class QueryError(ValueError):
 
 
 def field_sql(field: SemanticModelField, alias: str = _BASE_ALIAS) -> str:
-    """A field's SQL, qualified with **its dataset's alias**.
-
-    ``base`` by default; a field of a dataset the metric joins is qualified with that join's alias,
-    so a shared column name (e.g. ``ts_code`` in both daily_basic and stock_basic) stays
-    unambiguous."""
+    """A field's SQL, qualified with **its dataset's alias**."""
     if field.column_name:
         if not is_valid_identifier(field.column_name):
             raise QueryError(
@@ -119,10 +118,11 @@ def build_sql(
     dimensions: list[tuple[str, str]],
     joins_sql: list[str],
     where: list[str],
+    having: list[str],
     order_by: list[str],
     limit: int,
 ) -> str:
-    """Compose the statement: ``SELECT <dims>, (<metric>) AS value … [ORDER BY] LIMIT n``."""
+    """Compose the statement: ``SELECT <dims>, (<metric>) AS value … [HAVING] [ORDER BY] LIMIT n``."""
     select = [f'{expr} AS {_quote(alias)}' for expr, alias in dimensions]
     select.append(f'({metric_expr}) AS "value"')
     sql = f'SELECT {", ".join(select)} FROM "{base.schema_name}"."{base.table_name}" base'
@@ -132,6 +132,8 @@ def build_sql(
         sql += " WHERE " + " AND ".join(where)
     if dimensions:
         sql += " GROUP BY " + ", ".join(expr for expr, _ in dimensions)
+    if having:
+        sql += " HAVING " + " AND ".join(having)
     if order_by:
         sql += " ORDER BY " + ", ".join(order_by)
     return f"{sql} LIMIT {int(limit)}"
@@ -144,7 +146,6 @@ def _order_sql(ref: str, direction: str, value_expr: str, dims: dict[str, str]) 
             "Order direction must be 'asc' or 'desc'.",
             QueryFailure("QUERY_INVALID_REQUEST", REQUEST),
         )
-    # NULLS LAST either way: an empty group should never top the list.
     if ref == "value":
         return f"({value_expr}) {direction.upper()} NULLS LAST"
     if ref not in dims:
@@ -162,12 +163,7 @@ def resolve_field(
     *,
     base_dataset_id: str | None = None,
 ) -> SemanticModelField:
-    """A field of the metric's scope, by id **or** name.
-
-    The scope is the base dataset plus the datasets the metric joins. A **name** prefers the metric's
-    own dataset (so ``ts_code`` keeps meaning the base's), and is an error when two joined datasets
-    both declare it — address those by id.
-    """
+    """A field of the metric's scope, by id **or** name."""
     if not isinstance(ref, str):
         raise QueryError(
             "A field reference must be a string.",
@@ -218,33 +214,111 @@ async def _load_metric(
     )
 
 
+def _definition_filters(
+    filters: list[dict[str, Any]] | None,
+) -> list[tuple[str, str, Any]]:
+    """Metric-owned column filters → parameterized conditions; invalid ones are definition errors."""
+    try:
+        cleaned = validate_metric_filters(filters)
+    except MetricError as exc:
+        raise QueryError(str(exc), QueryFailure("QUERY_DEFINITION_INVALID", DEFINITION)) from exc
+    return [
+        (f'{_BASE_ALIAS}.{_quote(f["column"])}', str(f["op"]), f.get("value"))
+        for f in cleaned
+    ]
+
+
 async def run_query(
     db: AsyncSession,
     *,
     model_id: str,
-    metric: str,
+    metric: str | None = None,
+    expression: dict[str, Any] | str | None = None,
+    base_dataset_id: str | None = None,
+    joins: list[str] | None = None,
     group_by: list[dict[str, Any]] | None = None,
     filters: list[dict[str, Any]] | None = None,
+    where: str | None = None,
+    having: str | None = None,
     order_by: list[dict[str, Any]] | None = None,
     limit: int | None = None,
+    member_dataset_ids: set[str] | None = None,
     timeout_ms: int = DEFAULT_TIMEOUT_MS,
 ) -> tuple[str, list[str], list[dict[str, Any]], bool, int]:
     """Run one query of a semantic model.
 
-    ``group_by`` entries are ``{"field": <id|name>, "granularity": <grain|null>}``;
-    ``filters`` are ``{"field": <id|name>, "op": …, "value": …}`` (the metric's own
-    filters are always applied); ``order_by`` entries are ``{"field": "value"|<grouped
-    field ref>, "direction": "asc"|"desc"}``.
+    Either ``metric`` (saved definition) or ``expression`` (one-shot fragment +
+    ``base_dataset_id`` / optional ``joins``). ``where`` / ``having`` are boolean
+    fragments AND-ed into the matching clause.
 
-    Returns ``(sql, columns, rows, capped, duration_ms)`` — ``capped`` means the limit
-    was reached, i.e. the answer is not the whole truth.
+    Returns ``(sql, columns, rows, capped, duration_ms)``.
     """
-    definition = await _load_metric(db, model_id, metric)
-    base = await db.get(Dataset, definition.base_dataset_id)
+    has_metric = bool(metric and str(metric).strip())
+    has_expression = expression is not None and (
+        (isinstance(expression, str) and expression.strip())
+        or (isinstance(expression, dict) and expression)
+    )
+    if has_metric == has_expression:
+        raise QueryError(
+            "Provide either metric or expression, not both.",
+            QueryFailure("QUERY_INVALID_REQUEST", REQUEST),
+        )
+
+    definition: MetricDefinition | None = None
+    metric_filters: list[dict[str, Any]] | None = None
+    join_ids: list[str]
+
+    if has_metric:
+        definition = await _load_metric(db, model_id, str(metric).strip())
+        base_id = definition.base_dataset_id
+        join_ids = list(definition.joins or [])
+        metric_filters = list(definition.filters or []) if definition.filters else None
+        try:
+            metric_expr = validate_metric_definition(
+                name=definition.name, type=definition.type, expression=definition.expression
+            )
+        except MetricError as exc:
+            raise QueryError(
+                str(exc), QueryFailure("QUERY_DEFINITION_INVALID", DEFINITION)
+            ) from exc
+    else:
+        if not base_dataset_id:
+            raise QueryError(
+                "expression requires base_dataset.",
+                QueryFailure("QUERY_INVALID_REQUEST", REQUEST),
+            )
+        base_id = base_dataset_id
+        join_ids = list(joins or [])
+        if isinstance(expression, str):
+            expr_payload: dict[str, Any] = {
+                "dialects": [{"dialect": "ANSI_SQL", "expression": expression}]
+            }
+        else:
+            expr_payload = expression  # type: ignore[assignment]
+        try:
+            metric_expr = validate_metric_definition(
+                name="adhoc", type="simple", expression=expr_payload
+            )
+        except MetricError as exc:
+            raise QueryError(
+                str(exc), QueryFailure("QUERY_INVALID_REQUEST", REQUEST)
+            ) from exc
+
+    base = await db.get(Dataset, base_id)
     if not base:
         raise QueryError(
-            "Base dataset not found.", QueryFailure("QUERY_UNKNOWN_DATASET", DEFINITION)
+            "Base dataset not found.",
+            QueryFailure(
+                "QUERY_UNKNOWN_DATASET",
+                DEFINITION if has_metric else REQUEST,
+            ),
         )
+    if member_dataset_ids is not None and base.id not in member_dataset_ids:
+        raise QueryError(
+            "The base dataset is not in this semantic model.",
+            QueryFailure("QUERY_INVALID_REQUEST", REQUEST),
+        )
+
     ds = await db.get(DataSource, base.data_source_id)
     if not ds or ds.kind != "postgresql":
         raise QueryError(
@@ -253,25 +327,20 @@ async def run_query(
         )
 
     try:
-        metric_expr = validate_metric_definition(
-            name=definition.name, type=definition.type, expression=definition.expression
+        joins_by_id, datasets_by_id = await resolve_joins(
+            db, base, join_ids, member_dataset_ids=member_dataset_ids
         )
     except MetricError as exc:
-        raise QueryError(
-            str(exc), QueryFailure("QUERY_DEFINITION_INVALID", DEFINITION)
-        ) from exc
+        kind = DEFINITION if has_metric else REQUEST
+        raise QueryError(str(exc), QueryFailure("QUERY_DEFINITION_INVALID", kind)) from exc
 
-    # The metric's relationships define its **field scope**: its own dataset, plus every dataset it
-    # joins to. Resolving them first means a field of a joined dataset can be selected, grouped and
-    # filtered exactly like one of the base's.
-    joins_by_id, datasets_by_id = await resolve_joins(db, base, definition.joins)
-    alias_by_dataset = join_dataset_aliases(
+    alias_by_dataset, ambiguous_datasets = join_dataset_aliases(
         base,
-        list(definition.joins or []),
+        join_ids,
         joins_by_id=joins_by_id,
         datasets_by_id=datasets_by_id,
     )
-    scope_ids = [base.id, *alias_by_dataset]
+    scope_ids = [base.id, *alias_by_dataset, *ambiguous_datasets]
 
     field_rows = (
         await db.execute(
@@ -281,7 +350,6 @@ async def run_query(
             )
         )
     ).scalars().all()
-    # Base fields first, so a name that exists on both sides keeps meaning the base's.
     ordered = sorted(field_rows, key=lambda f: 0 if f.dataset_id == base.id else 1)
     by_id = {f.id: f for f in ordered}
     by_name: dict[str, list[SemanticModelField]] = {}
@@ -289,6 +357,17 @@ async def run_query(
         by_name.setdefault(f.name, []).append(f)
 
     def alias_for(field: SemanticModelField) -> str:
+        if field.dataset_id in ambiguous_datasets:
+            raise QueryError(
+                f"Dataset for field '{field.name}' is reached by more than one relationship; "
+                "address the field after removing the duplicate join.",
+                QueryFailure(
+                    "QUERY_AMBIGUOUS_FIELD",
+                    REQUEST,
+                    field.dataset_id,
+                    params={"field": field.name, "datasets": field.dataset_id},
+                ),
+            )
         return alias_by_dataset.get(field.dataset_id, _BASE_ALIAS)
 
     dimensions: list[tuple[str, str]] = []
@@ -304,41 +383,69 @@ async def run_query(
         dimensions.append((expr, field.name))
         dims_by_name[field.name] = expr
 
-    conditions: list[tuple[str, str, Any]] = [
-        (f'{_BASE_ALIAS}.{_quote(str(f.get("column")))}', str(f.get("op")), f.get("value"))
-        for f in (definition.filters or [])
-        if isinstance(f.get("column"), str) and is_valid_identifier(f["column"])
-    ]
+    definition_conditions = _definition_filters(metric_filters)
+    request_conditions: list[tuple[str, str, Any]] = []
     for f in filters or []:
         filtered = resolve_field(f.get("field"), by_id, by_name, base_dataset_id=base.id)
-        conditions.append((field_sql(filtered, alias_for(filtered)), str(f.get("op")), f.get("value")))
+        request_conditions.append(
+            (field_sql(filtered, alias_for(filtered)), str(f.get("op")), f.get("value"))
+        )
 
     capped_limit = min(max(1, int(limit or DEFAULT_LIMIT)), DEFAULT_ROW_CAP)
     try:
         joins_sql = build_joins_sql(
             base,
-            list(definition.joins or []),
+            join_ids,
             joins_by_id=joins_by_id,
             datasets_by_id=datasets_by_id,
         )
-        where, params = build_conditions(conditions)
+    except SqlBuildError as exc:
+        kind = DEFINITION if has_metric else REQUEST
+        raise QueryError(str(exc), QueryFailure("QUERY_DEFINITION_INVALID", kind)) from exc
+
+    try:
+        def_where, def_params = build_conditions(definition_conditions, key_prefix="d")
     except SqlBuildError as exc:
         raise QueryError(
             str(exc), QueryFailure("QUERY_DEFINITION_INVALID", DEFINITION)
         ) from exc
+    try:
+        req_where, req_params = build_conditions(request_conditions, key_prefix="r")
+    except SqlBuildError as exc:
+        raise QueryError(
+            str(exc), QueryFailure("QUERY_INVALID_REQUEST", REQUEST)
+        ) from exc
+
+    where_parts = [*def_where, *req_where]
+    params = {**def_params, **req_params}
+    having_parts: list[str] = []
+    if where and str(where).strip():
+        try:
+            where_parts.append(validate_sql_fragment(str(where), what="where"))
+        except MetricError as exc:
+            raise QueryError(
+                str(exc), QueryFailure("QUERY_INVALID_REQUEST", REQUEST)
+            ) from exc
+    if having and str(having).strip():
+        try:
+            having_parts.append(validate_sql_fragment(str(having), what="having"))
+        except MetricError as exc:
+            raise QueryError(
+                str(exc), QueryFailure("QUERY_INVALID_REQUEST", REQUEST)
+            ) from exc
 
     order = [
         _order_sql(str(o.get("field")), str(o.get("direction") or "asc"), metric_expr, dims_by_name)
         for o in (order_by or [])
         if isinstance(o, dict)
     ]
-    # Fetch one extra row so we can tell "exactly the limit" from "there is more".
     sql = build_sql(
         base,
         metric_expr=metric_expr,
         dimensions=dimensions,
         joins_sql=joins_sql,
-        where=where,
+        where=where_parts,
+        having=having_parts,
         order_by=order,
         limit=capped_limit + 1,
     )
@@ -347,7 +454,6 @@ async def run_query(
     try:
         rows = run_readonly(ds, sql, params, timeout_ms=timeout_ms)
     except (SQLAlchemyError, OSError, TypeError, ValueError) as exc:
-        # The source answered with an error: classify it so the answer pane can explain it.
         failure = classify_sql_error(exc)
         raise QueryError(f"Query failed: {exc}", failure) from exc
     duration_ms = int((time.perf_counter() - started) * 1000)

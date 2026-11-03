@@ -64,7 +64,8 @@ export function KnowledgeBaseDetail() {
      pickerResults,  pickerLoading, pickerSelected, 
     pickerSelectedChannel,  pickerChannelExpanded, 
       pickerPage, setPickerPage, pickerPageSize,
-    pickerTotal,  pickerAdding,  kbWikiSpaces, 
+    pickerTotal,  pickerAdding,  kbWikiSpaces,
+    kbSemanticModels, kbOntologyGroups, allSemanticModels, allOntologyGroups, scopeBusyId,
     showWikiSpacePicker,  wikiSpacePickerItems, 
     wikiSpacePickerLoading,  wikiSpaceBusyId,  faqs,
     faqTotal, faqPage, setFaqPage, faqPageSize, setFaqPageSize, showFaqDialog, setShowFaqDialog,
@@ -96,6 +97,8 @@ export function KnowledgeBaseDetail() {
     openDocPicker, closeDocPicker,  handlePickerSearch, handlePickerChannelSelect,
     handlePickerChannelToggle, handleAddSelectedDocuments, handleRemoveDocument, togglePickerDoc,
     pickerTotalPages, openWikiSpacePicker, closeWikiSpacePicker, handleAddWikiSpaceToKb, handleRemoveWikiSpaceFromKb,
+    handleAddSemanticModelToKb, handleRemoveSemanticModelFromKb,
+    handleAddOntologyGroupToKb, handleRemoveOntologyGroupFromKb,
     handleIndexWikiSpace, closeFaqDialog, openFaqFromQa, handlePolishFaqAnswer, handleSaveFaq,
     handleDeleteFaq, openGenerateModal, closeGenerateModal, handleGenerateFaqs, handleSaveGeneratedFaqs,
     handleGenBackToConfig, openChunkEdit, openChunkViewFromId, openChunkEditFromId, closeChunkDialog,
@@ -1358,6 +1361,109 @@ export function KnowledgeBaseDetail() {
                     />
                     <small>{t('detail.qaAgentUrlHelp')}</small>
                   </label>
+
+                  <fieldset className="kb-settings-fieldset kb-agent-scope-fieldset">
+                    <legend>{t('detail.agentScopeTitle')}</legend>
+                    <p className="kb-settings-help">{t('detail.agentScopeHelp')}</p>
+
+                    <div className="kb-agent-scope-block">
+                      <div className="kb-agent-scope-heading">{t('detail.agentScopeSemanticModels')}</div>
+                      <div className="kb-agent-scope-add">
+                        <select
+                          className="ds-control"
+                          aria-label={t('detail.agentScopeAddSemanticModel')}
+                          defaultValue=""
+                          disabled={!!scopeBusyId}
+                          onChange={(e) => {
+                            const id = e.target.value;
+                            e.target.value = '';
+                            if (id) void handleAddSemanticModelToKb(id);
+                          }}
+                        >
+                          <option value="">{t('detail.agentScopeAddSemanticModel')}</option>
+                          {allSemanticModels
+                            .filter((m) => !kbSemanticModels.some((k) => k.semantic_model_id === m.id))
+                            .map((m) => (
+                              <option key={m.id} value={m.id}>{m.name}</option>
+                            ))}
+                        </select>
+                      </div>
+                      {kbSemanticModels.length === 0 ? (
+                        <p className="kb-empty-text">{t('detail.agentScopeEmptySemanticModels')}</p>
+                      ) : (
+                        <ul className="kb-agent-scope-list">
+                          {kbSemanticModels.map((m) => (
+                            <li key={m.id} className="kb-agent-scope-item">
+                              <div className="kb-agent-scope-item-main">
+                                <span className="kb-agent-scope-item-name">{m.name}</span>
+                                {m.metric_names.length > 0 ? (
+                                  <span className="kb-agent-scope-item-meta">
+                                    {t('detail.agentScopeMetricCount', { count: m.metric_names.length })}
+                                  </span>
+                                ) : null}
+                              </div>
+                              <button
+                                type="button"
+                                className="btn btn-ghost btn-sm"
+                                disabled={scopeBusyId === m.semantic_model_id}
+                                onClick={() => void handleRemoveSemanticModelFromKb(m.semantic_model_id)}
+                              >
+                                {t('detail.remove')}
+                              </button>
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+                    </div>
+
+                    <div className="kb-agent-scope-block">
+                      <div className="kb-agent-scope-heading">{t('detail.agentScopeOntologyGroups')}</div>
+                      <div className="kb-agent-scope-add">
+                        <select
+                          className="ds-control"
+                          aria-label={t('detail.agentScopeAddOntologyGroup')}
+                          defaultValue=""
+                          disabled={!!scopeBusyId}
+                          onChange={(e) => {
+                            const id = e.target.value;
+                            e.target.value = '';
+                            if (id) void handleAddOntologyGroupToKb(id);
+                          }}
+                        >
+                          <option value="">{t('detail.agentScopeAddOntologyGroup')}</option>
+                          {allOntologyGroups
+                            .filter((g) => !kbOntologyGroups.some((k) => k.ontology_group_id === g.id))
+                            .map((g) => (
+                              <option key={g.id} value={g.id}>{g.display_name}</option>
+                            ))}
+                        </select>
+                      </div>
+                      {kbOntologyGroups.length === 0 ? (
+                        <p className="kb-empty-text">{t('detail.agentScopeEmptyOntologyGroups')}</p>
+                      ) : (
+                        <ul className="kb-agent-scope-list">
+                          {kbOntologyGroups.map((g) => (
+                            <li key={g.id} className="kb-agent-scope-item">
+                              <div className="kb-agent-scope-item-main">
+                                <span className="kb-agent-scope-item-name">{g.display_name}</span>
+                                <span className="kb-agent-scope-item-meta">
+                                  {t('detail.agentScopeObjectTypeCount', { count: g.object_type_count })}
+                                </span>
+                              </div>
+                              <button
+                                type="button"
+                                className="btn btn-ghost btn-sm"
+                                disabled={scopeBusyId === g.ontology_group_id}
+                                onClick={() => void handleRemoveOntologyGroupFromKb(g.ontology_group_id)}
+                              >
+                                {t('detail.remove')}
+                              </button>
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+                    </div>
+                  </fieldset>
 
                   <label>
                     <span>{t('detail.embeddingModel')}</span>

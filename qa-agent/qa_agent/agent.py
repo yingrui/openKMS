@@ -26,7 +26,12 @@ from .kb_answer_sources import (
     source_from_page_section_tool,
 )
 from .llm_chat import build_messages_for_generate, make_qa_chat_openai, text_from_lc_content
-from .request_context import reset_request_access_token, set_request_access_token
+from .request_context import (
+    reset_request_access_token,
+    reset_request_knowledge_base_id,
+    set_request_access_token,
+    set_request_knowledge_base_id,
+)
 from .retriever import retrieve
 from .schemas import SourceItem
 from .skills import get_all_skill_tools, get_skill_prompt_fragments
@@ -78,11 +83,14 @@ def _build_system_prompt(context: list[SourceItem]) -> str:
     )
     skill_prompt = get_skill_prompt_fragments()
     return (
-        "You are a helpful assistant answering questions based on a knowledge base, document structure (Page Index), and a knowledge graph (ontology).\n\n"
-        "You have three sources:\n"
-        "1. **Knowledge base** – Document chunks and FAQs (context below). Use for questions about documents, policies, procedures.\n"
-        "2. **Page Index skill** – Navigate documents by table of contents when chunks are insufficient. See skill workflow below.\n"
-        "3. **Ontology skill** – Query Neo4j for relationships and coverage. See skill workflow below.\n\n"
+        "You are a helpful assistant answering questions based on a knowledge base, documents, "
+        "a knowledge graph (ontology), and Catalog semantic models (metrics).\n\n"
+        "You have these sources:\n"
+        "1. **Knowledge base** – Document chunks and FAQs (context below).\n"
+        "2. **Page Index skill** – Navigate documents by table of contents when chunks are insufficient.\n"
+        "3. **Ontology skill** – Groups linked to this KB, then Neo4j Cypher for relationships.\n"
+        "4. **Catalog skill** – Semantic models linked to this KB; query metrics via the query API "
+        "(saved metric or expression fragment — never a full SELECT).\n\n"
         f"{skill_prompt}\n\n"
         "Context from the knowledge base:\n"
         f"{context_text}\n\n"
@@ -194,6 +202,7 @@ def invoke_agent(
     from .langfuse_client import build_langgraph_trace_config
 
     h = set_request_access_token(access_token or "")
+    h_kb = set_request_knowledge_base_id(knowledge_base_id or "")
     t0 = time.monotonic()
     logger.info(
         "invoke_agent start kb=%s history=%d session=%s",
@@ -252,6 +261,7 @@ def invoke_agent(
         )
         raise
     finally:
+        reset_request_knowledge_base_id(h_kb)
         reset_request_access_token(h)
 
 
@@ -307,6 +317,7 @@ async def astream_agent_ndjson(
     from .langfuse_client import build_langgraph_trace_config, get_langfuse_callback
 
     h = set_request_access_token(access_token or "")
+    h_kb = set_request_knowledge_base_id(knowledge_base_id or "")
     t0 = time.monotonic()
     logger.info(
         "astream_agent_ndjson start kb=%s history=%d session=%s",
@@ -572,4 +583,5 @@ async def astream_agent_ndjson(
         if callback and hasattr(callback, "flush"):
             callback.flush()
     finally:
+        reset_request_knowledge_base_id(h_kb)
         reset_request_access_token(h)

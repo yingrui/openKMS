@@ -8,16 +8,24 @@ a row cap; the data-source credential is the privilege boundary.
 """
 from __future__ import annotations
 
+import re
+from typing import Any
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.dataset import Dataset
 from app.models.dataset_join import DatasetJoin
 from app.services.data_layer.expressions import ANSI, dialect_sql
+from app.services.data_layer.sql_build import VALID_OPS
+from app.services.ontology.dataset_tables import is_valid_identifier
 
 METRIC_TYPES = ("simple", "ratio", "derived", "cumulative", "conversion")
 DEFAULT_ROW_CAP = 1000
 DEFAULT_TIMEOUT_MS = 10_000
+
+# A second statement or a nested SELECT would let a fragment invent its own FROM.
+_FORBIDDEN_IN_FRAGMENT = (";", "--", "/*", "*/")
+_SELECT_TOKEN = re.compile(r"\bSELECT\b", re.IGNORECASE)
 
 
 class MetricError(ValueError):
@@ -29,6 +37,18 @@ def metric_expression_sql(expression: dict | None) -> str | None:
     return dialect_sql(expression, ANSI)
 
 
+def validate_sql_fragment(sql: str, *, what: str = "expression") -> str:
+    """A single SQL fragment: no second statement, no comments, no nested SELECT."""
+    text = (sql or "").strip()
+    if not text:
+        raise MetricError(f"The {what} must not be empty.")
+    if any(tok in text for tok in _FORBIDDEN_IN_FRAGMENT):
+        raise MetricError(f"The {what} must be a single SQL fragment (no ';' or comments).")
+    if _SELECT_TOKEN.search(text):
+        raise MetricError(f"The {what} must not contain a SELECT (no subqueries).")
+    return text
+
+
 def validate_metric_definition(*, name: str | None, type: str, expression: dict | None) -> str:
     """Validate a metric definition and return its expression fragment."""
     if not (name or "").strip():
@@ -38,14 +58,36 @@ def validate_metric_definition(*, name: str | None, type: str, expression: dict 
     sql = metric_expression_sql(expression)
     if not sql or not sql.strip():
         raise MetricError("The metric needs an expression (its aggregate SQL fragment).")
-    if any(tok in sql for tok in (";", "--", "/*", "*/")):
-        raise MetricError("The expression must be a single SQL fragment (no ';' or comments).")
-    return sql
+    return validate_sql_fragment(sql, what="expression")
+
+
+def validate_metric_filters(filters: list[dict[str, Any]] | list[Any] | None) -> list[dict[str, Any]]:
+    """Metric-owned filters are base-table columns; reject bad columns/ops instead of dropping them."""
+    if not filters:
+        return []
+    out: list[dict[str, Any]] = []
+    for f in filters:
+        raw = f if isinstance(f, dict) else getattr(f, "model_dump", lambda: None)()
+        if not isinstance(raw, dict):
+            raise MetricError("Each metric filter must be an object.")
+        column = raw.get("column")
+        op = raw.get("op")
+        if not isinstance(column, str) or not is_valid_identifier(column):
+            raise MetricError(f"Metric filter column '{column}' is not a valid identifier.")
+        if not isinstance(op, str) or op not in VALID_OPS:
+            raise MetricError(f"Unsupported metric filter operator '{op}'.")
+        out.append({"column": column, "op": op, "value": raw.get("value")})
+    return out
 
 
 async def resolve_joins(
-    db: AsyncSession, base_dataset: Dataset, join_ids: list[str] | None
+    db: AsyncSession,
+    base_dataset: Dataset,
+    join_ids: list[str] | None,
+    *,
+    member_dataset_ids: set[str] | None = None,
 ) -> tuple[dict[str, DatasetJoin], dict[str, Dataset]]:
+    """Load relationships that touch the base; optionally require the other end in the model."""
     joins_by_id: dict[str, DatasetJoin] = {}
     datasets_by_id: dict[str, Dataset] = {}
     for join_id in join_ids or []:
@@ -60,6 +102,10 @@ async def resolve_joins(
             if join.from_dataset_id == base_dataset.id
             else join.from_dataset_id
         )
+        if member_dataset_ids is not None and other_id not in member_dataset_ids:
+            raise MetricError(
+                f"Relationship '{join_id}' joins a dataset that is not in this semantic model."
+            )
         if other_id not in datasets_by_id:
             other = await db.get(Dataset, other_id)
             if not other:

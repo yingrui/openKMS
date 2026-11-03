@@ -1,5 +1,5 @@
-"""LangGraph skills: ontology (Cypher/graph), page_index (document TOC navigation),
-and three KB-grounded insurance skills (calculator / premium estimator / product comparator)."""
+"""LangGraph skills: ontology, catalog (semantic models), page_index, insurance demos."""
+from .catalog import catalog_tools
 from .insurance_calculator import calculator_tools
 from .ontology import ontology_tools
 from .page_index import page_index_tools
@@ -8,6 +8,7 @@ from .product_comparator import comparator_tools
 
 __all__ = [
     "ontology_tools",
+    "catalog_tools",
     "page_index_tools",
     "calculator_tools",
     "premium_tools",
@@ -21,6 +22,7 @@ def get_all_skill_tools() -> list:
     """Return all tools from all skills for the agent."""
     return [
         *ontology_tools,
+        *catalog_tools,
         *page_index_tools,
         *calculator_tools,
         *premium_tools,
@@ -30,6 +32,7 @@ def get_all_skill_tools() -> list:
 
 def get_skill_prompt_fragments() -> str:
     """Return combined prompt fragments describing when and how to use each skill."""
+    from .catalog import CATALOG_PROMPT
     from .insurance_calculator import CALCULATOR_PROMPT
     from .ontology import ONTOLOGY_PROMPT
     from .page_index import PAGE_INDEX_PROMPT
@@ -38,6 +41,7 @@ def get_skill_prompt_fragments() -> str:
     return "\n\n".join(
         [
             ONTOLOGY_PROMPT,
+            CATALOG_PROMPT,
             PAGE_INDEX_PROMPT,
             CALCULATOR_PROMPT,
             PREMIUM_PROMPT,

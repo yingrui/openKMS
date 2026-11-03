@@ -47,13 +47,16 @@ def join_dataset_aliases(
     *,
     joins_by_id: dict[str, DatasetJoin],
     datasets_by_id: dict[str, Dataset],
-) -> dict[str, str]:
-    """``dataset id → alias`` for the datasets a metric joins to its base.
+) -> tuple[dict[str, str], set[str]]:
+    """``dataset id → alias`` plus datasets that appear in more than one join.
 
     A field of one of those datasets can be selected/grouped/filtered, so the resolver needs the
-    same alias `build_joins_sql` emits — this is that single source of truth.
+    same alias `build_joins_sql` emits — this is that single source of truth. When the same dataset
+    is reached by two relationships, callers must not silently pick the last alias; they raise on
+    field resolve instead.
     """
     aliases: dict[str, str] = {}
+    ambiguous: set[str] = set()
     for i, join_id in enumerate(join_ids or []):
         join = joins_by_id.get(join_id)
         if not join:
@@ -64,9 +67,16 @@ def join_dataset_aliases(
             other_id = join.from_dataset_id
         else:
             continue
-        if other_id in datasets_by_id:
-            aliases[other_id] = join_alias(i)
-    return aliases
+        if other_id not in datasets_by_id:
+            continue
+        if other_id in ambiguous:
+            continue
+        if other_id in aliases:
+            aliases.pop(other_id)
+            ambiguous.add(other_id)
+            continue
+        aliases[other_id] = join_alias(i)
+    return aliases, ambiguous
 
 
 def build_joins_sql(
@@ -120,11 +130,14 @@ def build_joins_sql(
 
 def build_conditions(
     conditions: list[tuple[str, str, Any]] | None,
+    *,
+    key_prefix: str = "f",
 ) -> tuple[list[str], dict[str, Any]]:
     """Build parameterized ``<expr> <op> :param`` conditions.
 
     ``expr`` is a **trusted, already-qualified SQL expression** (a field's resolved SQL);
-    operators and values are validated/parameterized here.
+    operators and values are validated/parameterized here. ``key_prefix`` keeps definition
+    filters and request filters from colliding when both contribute params.
     """
     params: dict[str, Any] = {}
     where: list[str] = []
@@ -142,17 +155,17 @@ def build_conditions(
                 raise SqlBuildError("IN filter value must be a list.")
             keys: list[str] = []
             for j, v in enumerate(val):
-                k = f"f{i}_{j}"
+                k = f"{key_prefix}{i}_{j}"
                 params[k] = v
                 keys.append(f":{k}")
             where.append(f"{expr} {'IN' if op == 'in' else 'NOT IN'} ({', '.join(keys)})")
         elif op == "between":
             if not isinstance(val, (list, tuple)) or len(val) != 2:
                 raise SqlBuildError("BETWEEN needs a two-value list.")
-            params[f"f{i}_lo"], params[f"f{i}_hi"] = val[0], val[1]
-            where.append(f"{expr} BETWEEN :f{i}_lo AND :f{i}_hi")
+            params[f"{key_prefix}{i}_lo"], params[f"{key_prefix}{i}_hi"] = val[0], val[1]
+            where.append(f"{expr} BETWEEN :{key_prefix}{i}_lo AND :{key_prefix}{i}_hi")
         else:
-            k = f"f{i}"
+            k = f"{key_prefix}{i}"
             params[k] = val
             where.append(f"{expr} {_OP_MAP[op]} :{k}")
     return where, params
