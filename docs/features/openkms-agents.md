@@ -21,6 +21,12 @@ In-product **Agents** area: personal **projects** with an on-disk workspace (`{O
 
 Console operators can register clusters under `/console/kubernetes` (`console:kubernetes`); see [Kubernetes clusters](kubernetes-clusters.md). **Project settings → Deploy** stores encrypted secrets and syncs them to the cluster; agents only reference Secret names. Workspace shell still runs in the backend/worker process. Operators can apply YAML in the cluster detail page; Agents use the **openkms skill** (`kubernetes apply`, `kubernetes register-app`, `kubernetes dev-sync`) — kubeconfig is never injected into the workspace. Dev-sync packs project files server-side into a Pod for hot iteration (see [Dev sync](kubernetes-clusters.md#dev-sync)).
 
+## Home default project
+
+Signed-in **Home** (`/`) can ask from a composer when Agents is enabled: a large “What can I do for you?” heading, one input, and the default project carried quietly in the helper text (`Enter to start a new chat in <project>`) — no separate project chip or “Change default” link. The user picks one **default Agent Project** (stored as `user_preferences.default_agent_project_id`, exposed on `GET /api/auth/me` and `GET /api/home/hub` as `default_agent_project`). With no default, Home shows a Quick start card that opens **Agent Projects** in “choose default” mode. Submitting the composer creates a **new** conversation and opens `/projects/{id}/sessions/{sessionId}` with the first message handed off to the workspace stream.
+
+**Agent Projects** marks the current Home default with a **Home default** badge (accent border on the card); other cards show a home icon to adopt it. **Project settings → General** has a **Use as Home default** checkbox that sets or clears the same preference, so users don't need to leave the project to change it.
+
 ## Layout
 
 - **Agents area:** **Projects | Skills** tabs at `/agents` and `/agents/skills`. **Project settings → General** has a danger-zone **Delete project** (workspace files, sessions, and schedules).

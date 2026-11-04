@@ -7,7 +7,7 @@
 ```mermaid
 flowchart TB
   subgraph Frontend["前端 (React/Vite)"]
-    FE["首页（有 knowledge_map:read 时展示知识地图力导向图）、知识地图、文档、文章、知识库、维基空间、术语表、流水线、任务运行、模型"]
+    FE["首页（开启 agents 时显示 Agent 输入框或设置卡片，下方为应用）、知识地图、文档、文章、知识库、维基空间、术语表、流水线、任务运行、模型"]
   end
 
   subgraph Backend["后端 (FastAPI)"]

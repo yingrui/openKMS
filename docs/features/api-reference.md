@@ -63,8 +63,8 @@ Clients may send **`Accept-Language`** (the SPA sends `en` or `zh-CN`). Many aut
 | PUT | `/api/system/settings` | Authenticated `console:settings` (or admin): update system-wide display settings |
 | POST | `/api/auth/register` | Local mode only: create user, returns JWT + user |
 | POST | `/api/auth/login` | Local mode only: body `{ "login", "password" }` — `login` is username or email; returns JWT + user |
-| GET | `/api/auth/me` | Current user from Bearer, session, (local) CLI Basic, or **personal API key** (`okms.*`); includes `permissions` (resolved keys) and optional `ui_locale` (`en` \| `zh-CN`) from `user_preferences` |
-| PATCH | `/api/auth/me` | Authenticated user: body `{ "ui_locale": "en" \| "zh-CN" }` — save SPA display language to `user_preferences` (keyed by JWT `sub`; local and OIDC) |
+| GET | `/api/auth/me` | Current user from Bearer, session, (local) CLI Basic, or **personal API key** (`okms.*`); includes `permissions` (resolved keys), optional `ui_locale` (`en` \| `zh-CN`), and optional `default_agent_project_id` from `user_preferences` (cleared in the response when the project is missing or not owned) |
+| PATCH | `/api/auth/me` | Authenticated user: body may include `ui_locale` (`en` \| `zh-CN`), and/or `default_agent_project_id` (project id or `null` to clear — field must be present to update). Saves to `user_preferences` (keyed by JWT `sub`; local and OIDC). Setting a project id requires an owned Agent Project |
 | POST | `/api/auth/api-keys` | Authenticated user: create personal API key; response includes plaintext `token` once |
 | GET | `/api/auth/api-keys` | List caller's keys (metadata only; query `include_revoked=true` optional) |
 | DELETE | `/api/auth/api-keys/{id}` | Revoke caller's key (soft) |
@@ -96,7 +96,7 @@ Clients may send **`Accept-Language`** (the SPA sends `en` or `zh-CN`). Many aut
 | POST | `/sync-session` | Sync frontend JWT to backend session (Bearer required) |
 | POST | `/clear-session` | Clear backend session (called before logout) |
 | GET | `/logout` | Clear session; OIDC: redirect to IdP logout; local: redirect to frontend |
-| GET | `/api/home/hub` | Any authenticated user. Returns **`site_summary`**: `{ document_count, kb_count, wiki_page_count, article_count }` for the platform Home welcome panel. (Phase 2 may add **`recent_activity`** from audit logs.) |
+| GET | `/api/home/hub` | Any authenticated user. Returns **`site_summary`**: `{ document_count, kb_count, wiki_page_count, article_count }` and optional **`default_agent_project`**: `{ id, name }` when the user’s Home default Agent Project is set and still owned. (Phase 2 may add **`recent_activity`** from audit logs.) |
 | GET | `/api/search` | Authenticated unified metadata search: query `q`, `types` (`all` or comma-list: `documents`, `articles`, `wiki_spaces`, `knowledge_bases`), optional `document_channel_id`, `article_channel_id`, `updated_after` / `updated_before` (ISO 8601), `limit` (1–100, default 30). Returns sections with `items` (`id`, `name`, `title`, `kind`, `url_path`, `channel_id`, `channel_name`, `updated_at`) and `total` per type; types the user cannot read are empty; **403** if none of the requested types are allowed; **404** if a channel id is unknown. Scoped like list APIs (documents, articles, wiki spaces, KB visibility). **`wiki_spaces`** items use **`url_path`** **`/wikis/{id}/pages/graph`**. |
 | HEAD | `/api/search` | Same auth / permission overlap check as GET; no JSON body |
 | GET | `/api/providers/{id}/models` | Authenticated: list models registered under this provider |

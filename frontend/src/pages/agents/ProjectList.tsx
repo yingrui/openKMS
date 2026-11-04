@@ -1,10 +1,11 @@
 import { useCallback, useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { Bot, Plus, Settings } from 'lucide-react';
+import { Bot, Home, Plus, Settings, X } from 'lucide-react';
 import { toast } from 'sonner';
 import { ErrorBanner } from '../../components/ErrorBanner';
 import { Dialog, FormField, Pagination } from '../../styles/design-system';
+import { fetchAuthMe, patchAuthDefaultAgentProject } from '../../data/authApi';
 import {
   createProject,
   listGitCredentials,
@@ -21,6 +22,12 @@ const PROJECT_PAGE_SIZE_DEFAULT = 24;
 export function ProjectList() {
   const { t } = useTranslation('agents');
   const { t: ts } = useTranslation('explore');
+  const navigate = useNavigate();
+  const location = useLocation();
+  const chooseHomeDefault = Boolean(
+    (location.state as { chooseHomeDefault?: boolean } | null)?.chooseHomeDefault,
+  );
+  const [hintDismissed, setHintDismissed] = useState(false);
   const [projects, setProjects] = useState<ProjectResponse[]>([]);
   const [total, setTotal] = useState(0);
   const [listPage, setListPage] = useState(0);
@@ -35,6 +42,13 @@ export function ProjectList() {
   const [gitBranch, setGitBranch] = useState('');
   const [gitCredentialId, setGitCredentialId] = useState('');
   const [credentials, setCredentials] = useState<UserGitCredential[]>([]);
+  const [defaultProjectId, setDefaultProjectId] = useState<string | null>(null);
+
+  useEffect(() => {
+    fetchAuthMe()
+      .then((me) => setDefaultProjectId(me.default_agent_project_id ?? null))
+      .catch(() => setDefaultProjectId(null));
+  }, []);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -95,7 +109,7 @@ export function ProjectList() {
     }
     setCreating(true);
     try {
-      await createProject({
+      const created = await createProject({
         name: name.trim(),
         description: description.trim() || undefined,
         git_url: url || undefined,
@@ -103,6 +117,11 @@ export function ProjectList() {
         git_credential_id: gitCredentialId || undefined,
       });
       resetForm();
+      if (chooseHomeDefault) {
+        await patchAuthDefaultAgentProject(created.id);
+        void navigate('/', { replace: true });
+        return;
+      }
       void load();
     } catch (err) {
       toast.error(err instanceof Error ? err.message : t('list.createError'));
@@ -125,9 +144,33 @@ export function ProjectList() {
 
   const hasProjects = !loading && !error && total > 0;
 
+  const onSetHomeDefault = async (projectId: string, projectName: string) => {
+    try {
+      await patchAuthDefaultAgentProject(projectId);
+      setDefaultProjectId(projectId);
+      toast.success(t('list.homeDefaultSaved', { name: projectName }));
+      if (chooseHomeDefault) void navigate('/', { replace: true });
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : t('list.homeDefaultFailed'));
+    }
+  };
+
   return (
     <div className={`agents-list page${!loading && projects.length === 0 ? ' agents-list--empty' : ''}`}>
       <AgentsAreaNav />
+      {chooseHomeDefault && !hintDismissed ? (
+        <div className="agents-home-default-hint" role="status">
+          <span>{t('list.chooseHomeDefaultHint')}</span>
+          <button
+            type="button"
+            className="agents-home-default-hint-dismiss"
+            onClick={() => setHintDismissed(true)}
+            aria-label={t('list.dismissHint')}
+          >
+            <X size={14} aria-hidden />
+          </button>
+        </div>
+      ) : null}
       {error && <ErrorBanner message={error} onDismiss={() => setError(null)} />}
       {hasProjects ? (
         <div className="page-header agents-toolbar">
@@ -169,12 +212,34 @@ export function ProjectList() {
         <>
         <div className="agents-grid">
           {projects.map((p) => (
-            <div key={p.id} className="agents-card">
+            <div
+              key={p.id}
+              className={`agents-card${p.id === defaultProjectId ? ' agents-card--home-default' : ''}`}
+            >
               <div className="agents-card-top">
                 <Link to={`/projects/${p.id}`} className="agents-card-icon" aria-hidden>
                   <Bot size={26} strokeWidth={1.5} />
                 </Link>
                 <div className="agents-card-actions">
+                  {p.id === defaultProjectId ? (
+                    <span
+                      className="agents-card-home-badge"
+                      title={t('list.isHomeDefault')}
+                    >
+                      <Home size={13} aria-hidden />
+                      {t('list.homeDefaultBadge')}
+                    </span>
+                  ) : (
+                    <button
+                      type="button"
+                      className="agents-card-action-btn"
+                      title={t('list.useAsHomeDefault')}
+                      aria-label={t('list.useAsHomeDefault')}
+                      onClick={() => void onSetHomeDefault(p.id, p.name)}
+                    >
+                      <Home size={15} aria-hidden />
+                    </button>
+                  )}
                   <Link
                     to={`/projects/${p.id}/settings`}
                     title={t('settings.title')}

@@ -96,7 +96,14 @@
     "gitBranchPlaceholder": "main",
     "gitCredential": "Git 凭据",
     "gitCredentialHint": "私有仓库需要凭据。可在设置中添加。",
-    "gitCredentialNone": "无（公开仓库）"
+    "gitCredentialNone": "无（公开仓库）",
+    "useAsHomeDefault": "设为首页默认",
+    "isHomeDefault": "首页默认",
+    "homeDefaultBadge": "首页默认",
+    "homeDefaultSaved": "已将 {{name}} 设为首页默认",
+    "homeDefaultFailed": "无法设置首页默认项目",
+    "chooseHomeDefaultHint": "选一个项目，点卡片上的房子图标把它设为首页默认。",
+    "dismissHint": "关闭"
   },
   "sessions": {
     "back": "全部智能体项目",
@@ -325,6 +332,11 @@
     "searchConnectorEmpty": "没有已启用的搜索工具连接器。请在「连接器」中创建。",
     "slug": "标识",
     "slugHint": "在会话侧栏显示。工作区文件夹使用项目 ID。",
+    "homeDefaultTitle": "设为首页默认",
+    "homeDefaultHint": "首页的新对话会在这个项目中开启。取消勾选后首页将没有默认项目。",
+    "homeDefaultOn": "已将本项目设为首页默认",
+    "homeDefaultOff": "本项目不再是首页默认",
+    "homeDefaultError": "无法更新首页默认项目",
     "invalidJson": "智能体设置必须是有效的 JSON。",
     "saveError": "无法保存项目设置",
     "saved": "项目设置已保存",

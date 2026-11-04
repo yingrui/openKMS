@@ -436,6 +436,7 @@ export function useProjectSessionRouting(projectId: string, sessionId?: string) 
 
   return {
     conversations,
+    conversationsReady,
     activeConv,
     convId,
     messages,

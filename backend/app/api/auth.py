@@ -635,6 +635,10 @@ class AuthUserOut(BaseModel):
         default=None,
         description="Saved UI language from user_preferences (en or zh-CN).",
     )
+    default_agent_project_id: str | None = Field(
+        default=None,
+        description="Preferred Agent Project for Home composer (projects.id owned by the user).",
+    )
 
 
 class TokenResponse(BaseModel):
@@ -931,6 +935,8 @@ async def revoke_api_key(
 
 class MePatchBody(BaseModel):
     ui_locale: Literal["en", "zh-CN"] | None = None
+    # Present in the body (including null) updates the preference; omit to leave unchanged.
+    default_agent_project_id: str | None = None
     current_password: str | None = None
     new_password: str | None = None
 
@@ -950,12 +956,49 @@ async def _pref_ui_locale(db: AsyncSession, sub: str) -> str | None:
     return None
 
 
+async def _pref_default_agent_project_id(db: AsyncSession, sub: str) -> str | None:
+    """Return the saved default when the project still belongs to this user."""
+    from app.models.project import Project
+
+    row = await db.get(UserPreference, sub)
+    if row is None or not row.default_agent_project_id:
+        return None
+    pid = row.default_agent_project_id.strip()
+    if not pid:
+        return None
+    project = await db.get(Project, pid)
+    if project is None or project.user_sub != sub:
+        return None
+    return pid
+
+
 async def _save_pref_ui_locale(db: AsyncSession, sub: str, ui_locale: Literal["en", "zh-CN"]) -> None:
     row = await db.get(UserPreference, sub)
     if row is None:
         db.add(UserPreference(subject_sub=sub, ui_locale=ui_locale))
     else:
         row.ui_locale = ui_locale
+    await db.flush()
+
+
+async def _save_pref_default_agent_project(
+    db: AsyncSession, sub: str, project_id: str | None
+) -> None:
+    from app.models.project import Project
+
+    if project_id is not None:
+        pid = project_id.strip()
+        if not pid:
+            raise ValueError("default_agent_project_id must be non-empty or null")
+        project = await db.get(Project, pid)
+        if project is None or project.user_sub != sub:
+            raise LookupError("project")
+        project_id = pid
+    row = await db.get(UserPreference, sub)
+    if row is None:
+        db.add(UserPreference(subject_sub=sub, default_agent_project_id=project_id))
+    else:
+        row.default_agent_project_id = project_id
     await db.flush()
 
 
@@ -990,6 +1033,7 @@ async def build_auth_user_out(request: Request, db: AsyncSession) -> AuthUserOut
         perm_set = await resolve_oidc_permission_keys(db, p)
         perms = sorted(perm_set)
     ui_loc = await _pref_ui_locale(db, sub)
+    default_project = await _pref_default_agent_project_id(db, sub)
     return AuthUserOut(
         id=sub,
         email=email or "",
@@ -998,6 +1042,7 @@ async def build_auth_user_out(request: Request, db: AsyncSession) -> AuthUserOut
         roles=role_strs,
         permissions=perms,
         ui_locale=ui_loc,
+        default_agent_project_id=default_project,
     )
 
 
@@ -1020,6 +1065,13 @@ async def patch_auth_me(request: Request, body: MePatchBody, db: AsyncSession = 
         raise http_error(request, 403, "CANNOT_EDIT_PROFILE_PRINCIPAL")
     if body.ui_locale is not None:
         await _save_pref_ui_locale(db, sub, body.ui_locale)
+    if "default_agent_project_id" in body.model_fields_set:
+        try:
+            await _save_pref_default_agent_project(db, sub, body.default_agent_project_id)
+        except LookupError:
+            raise http_error(request, 404, "PROJECT_NOT_FOUND") from None
+        except ValueError:
+            raise http_error(request, 400, "INVALID_DEFAULT_AGENT_PROJECT") from None
     if body.new_password is not None:
         if settings.auth_mode != "local":
             raise http_error(request, 403, "PASSWORD_CHANGE_LOCAL_ONLY")

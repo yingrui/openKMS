@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Link, useParams } from 'react-router-dom';
+import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
 import { ArrowLeft, FolderTree, MessagesSquare, Settings } from 'lucide-react';
@@ -15,6 +15,8 @@ import { useImmersiveView } from '../../contexts/ImmersiveShellContext';
 import { useProjectAgentStream } from './useProjectAgentStream';
 import { useProjectSessionRouting } from './useProjectSessionRouting';
 import '../../components/agents/AgentsWorkspace.scss';
+
+type HomeHandoffState = { homeDraft?: string };
 
 const SESSIONS_WIDTH_PX = 240;
 const CHAT_MIN_PX = 300;
@@ -38,6 +40,8 @@ function readFilesRailWidth(): number {
 export function ProjectWorkspace() {
   const { projectId = '', sessionId } = useParams<{ projectId: string; sessionId?: string }>();
   const { t } = useTranslation('agents');
+  const location = useLocation();
+  const navigate = useNavigate();
   const isMobile = useIsMobile();
   const [project, setProject] = useState<ProjectResponse | null>(null);
   const [planMode, setPlanMode] = useState(false);
@@ -45,6 +49,7 @@ export function ProjectWorkspace() {
   const [sessionsOpen, setSessionsOpen] = useState(false);
   const [filesOpen, setFilesOpen] = useState(false);
   const bodyRef = useRef<HTMLDivElement>(null);
+  const homeDraftConsumedRef = useRef(false);
 
   const session = useProjectSessionRouting(projectId, sessionId);
   // Live NDJSON vs durable poll: stream.loading = browser stream; turnInProgress = server last_turn.
@@ -64,6 +69,33 @@ export function ProjectWorkspace() {
     turnInProgress: session.turnInProgress,
     t,
   });
+  const onSendRef = useRef(stream.onSend);
+  useEffect(() => {
+    onSendRef.current = stream.onSend;
+  }, [stream.onSend]);
+
+  // Home composer: create session then land here with `{ homeDraft }` to send once.
+  useEffect(() => {
+    if (homeDraftConsumedRef.current) return;
+    if (!session.conversationsReady || !session.convId) return;
+    if (sessionId && session.convId !== sessionId) return;
+    const draft = (location.state as HomeHandoffState | null)?.homeDraft?.trim();
+    if (!draft) return;
+    homeDraftConsumedRef.current = true;
+    navigate(
+      { pathname: location.pathname, search: location.search },
+      { replace: true, state: {} },
+    );
+    void onSendRef.current(draft);
+  }, [
+    session.conversationsReady,
+    session.convId,
+    sessionId,
+    location.state,
+    location.pathname,
+    location.search,
+    navigate,
+  ]);
 
   /** Pure: the available width comes in as an argument, so this is safe to call while
    *  rendering (reading `bodyRef.current` here would be a ref read during render). */

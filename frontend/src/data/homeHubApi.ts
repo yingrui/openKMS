@@ -7,8 +7,14 @@ export type HomeSiteSummary = {
   article_count: number;
 };
 
+export type HomeDefaultAgentProject = {
+  id: string;
+  name: string;
+};
+
 export type HomeHubResponse = {
   site_summary: HomeSiteSummary;
+  default_agent_project?: HomeDefaultAgentProject | null;
 };
 
 export async function fetchHomeHub(): Promise<HomeHubResponse> {

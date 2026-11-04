@@ -96,7 +96,14 @@
     "gitBranchPlaceholder": "main",
     "gitCredential": "Git credential",
     "gitCredentialHint": "Required for private repositories. Add credentials in Settings.",
-    "gitCredentialNone": "None (public repository)"
+    "gitCredentialNone": "None (public repository)",
+    "useAsHomeDefault": "Use as Home default",
+    "isHomeDefault": "Home default",
+    "homeDefaultBadge": "Home default",
+    "homeDefaultSaved": "{{name}} is now your Home default",
+    "homeDefaultFailed": "Could not set Home default project",
+    "chooseHomeDefaultHint": "Pick a project and use the home button on its card to make it your Home default.",
+    "dismissHint": "Dismiss"
   },
   "sessions": {
     "back": "All agent projects",
@@ -325,6 +332,11 @@
     "searchConnectorEmpty": "No enabled search_tool connectors. Create one under Connectors.",
     "slug": "Slug",
     "slugHint": "Display label in the session sidebar. Workspace folder uses the project ID.",
+    "homeDefaultTitle": "Use as Home default",
+    "homeDefaultHint": "Home opens new chats in this project. Turning it off leaves Home without a default.",
+    "homeDefaultOn": "This project is now your Home default",
+    "homeDefaultOff": "This project is no longer your Home default",
+    "homeDefaultError": "Could not update the Home default",
     "invalidJson": "Agent settings must be valid JSON.",
     "saveError": "Could not save project settings",
     "saved": "Project settings saved",

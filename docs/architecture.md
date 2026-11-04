@@ -7,7 +7,7 @@
 ```mermaid
 flowchart TB
   subgraph Frontend["Frontend (React/Vite)"]
-    FE["Home (Knowledge Map force graph when knowledge_map:read), Knowledge Map, Documents, Articles, Knowledge Bases, Wiki Spaces, Glossaries, Pipelines, Job runs, Models"]
+    FE["Home (Agent composer or setup card when agents is on, plus Apps), Knowledge Map, Documents, Articles, Knowledge Bases, Wiki Spaces, Glossaries, Pipelines, Job runs, Models"]
   end
 
   subgraph Backend["Backend (FastAPI)"]

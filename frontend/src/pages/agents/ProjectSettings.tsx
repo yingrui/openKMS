@@ -27,6 +27,10 @@ import {
   type ConnectorKindOut,
   type ConnectorResponse,
 } from '../../data/connectorsApi';
+import {
+  fetchAuthMe,
+  patchAuthDefaultAgentProject,
+} from '../../data/authApi';
 import { AgentsSettingsSkeleton } from '../../components/agents/AgentsPageSkeleton';
 import { ProjectSchedulesTab } from '../../components/agents/ProjectSchedulesTab';
 import { ProjectDeploySecretsTab } from '../../components/agents/ProjectDeploySecretsTab';
@@ -64,6 +68,9 @@ export function ProjectSettings() {
   const [selectedVersions, setSelectedVersions] = useState<Record<string, string>>({});
   const [skillActionLoading, setSkillActionLoading] = useState<string | null>(null);
   const [deleting, setDeleting] = useState(false);
+  // Home default is a per-user preference, not project settings.
+  const [homeDefaultId, setHomeDefaultId] = useState<string | null>(null);
+  const [homeDefaultSaving, setHomeDefaultSaving] = useState(false);
 
   const connectorKindLabels = useMemo(() => {
     const map = new Map<string, string>();
@@ -113,6 +120,12 @@ export function ProjectSettings() {
       .catch((e) => toast.error(String(e)))
       .finally(() => setLoading(false));
   }, [projectId]);
+
+  useEffect(() => {
+    fetchAuthMe()
+      .then((me) => setHomeDefaultId(me.default_agent_project_id ?? null))
+      .catch(() => setHomeDefaultId(null));
+  }, []);
 
   const refreshInstalled = async () => {
     const installed = await listProjectSkills(projectId);
@@ -192,6 +205,19 @@ export function ProjectSettings() {
       setError(e instanceof Error ? e.message : t('settings.saveError'));
     } finally {
       setSaving(false);
+    }
+  };
+
+  const onToggleHomeDefault = async (next: boolean) => {
+    setHomeDefaultSaving(true);
+    try {
+      await patchAuthDefaultAgentProject(next ? projectId : null);
+      setHomeDefaultId(next ? projectId : null);
+      toast.success(next ? t('settings.homeDefaultOn') : t('settings.homeDefaultOff'));
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : t('settings.homeDefaultError'));
+    } finally {
+      setHomeDefaultSaving(false);
     }
   };
 
@@ -305,6 +331,13 @@ export function ProjectSettings() {
               <FormField label={t('settings.slug')} hint={t('settings.slugHint')} htmlFor="project-slug">
                 <input type="text" value={slug} onChange={(e) => setSlug(e.target.value)} autoComplete="off" />
               </FormField>
+              <CheckRow
+                checked={homeDefaultId === projectId}
+                onChange={(next) => void onToggleHomeDefault(next)}
+                disabled={homeDefaultSaving}
+                title={t('settings.homeDefaultTitle')}
+                hint={t('settings.homeDefaultHint')}
+              />
             </section>
             <ProjectGitRemoteSection
               project={project}

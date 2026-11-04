@@ -35,6 +35,39 @@
   gap: calc(var(--space-2) + var(--space-1) / 2);
 }
 
+.agents-home-default-hint {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  margin: 0 0 var(--space-4);
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-bg-muted);
+  color: var(--color-text-secondary);
+  font-size: var(--text-sm);
+}
+
+.agents-home-default-hint-dismiss {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  padding: var(--gap-compact);
+  border: none;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  transition: color 0.15s, background 0.15s;
+
+  &:hover {
+    background: var(--color-bg-elevated);
+    color: var(--color-text);
+  }
+}
+
 .agents-toolbar-actions .btn {
   display: inline-flex;
   align-items: center;
@@ -186,21 +219,46 @@
 
 .agents-card-actions {
   display: flex;
+  align-items: center;
   gap: var(--space-1);
 }
 
-.agents-card-actions a {
+.agents-card-home-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: 0 var(--space-2);
+  height: 24px;
+  border-radius: 999px;
+  background: var(--color-accent-subtle);
+  color: var(--color-accent);
+  font-size: var(--text-xs);
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.agents-card--home-default {
+  border-color: color-mix(in srgb, var(--color-accent) 45%, var(--color-border));
+}
+
+.agents-card-actions a,
+.agents-card-action-btn {
   display: flex;
   align-items: center;
   justify-content: center;
   padding: var(--gap-compact);
+  border: none;
   border-radius: var(--radius-sm);
+  background: transparent;
   color: var(--color-text-muted);
   text-decoration: none;
+  cursor: pointer;
+  font: inherit;
   transition: color 0.15s, background 0.15s;
 }
 
-.agents-card-actions a:hover {
+.agents-card-actions a:hover,
+.agents-card-action-btn:hover {
   background: var(--color-bg-muted);
   color: var(--color-text);
 }
@@ -375,7 +433,8 @@
     align-self: center;
   }
 
-  .agents-card-actions a {
+  .agents-card-actions a,
+  .agents-card-action-btn {
     min-width: var(--tap-min);
     min-height: var(--tap-min);
   }
