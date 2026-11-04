@@ -29,6 +29,8 @@ NOT_AUDITED = frozenset({
     # Sign-in records itself (`AUTH auth/login` / `auth/login-failed`, with the account); a generic
     # `POST /api/auth/login` row would be the same act in an anonymous-looking shape.
     "/api/auth/login",
+    # 内部心跳/健康检查：每个 worker 定时打点，记下来只是噪音，看不出"谁改了什么"。
+    "/internal-api/process-heartbeat",
 })
 
 #: Our ids are UUIDs; a path segment that looks like one is the subject, anything else is a noun
