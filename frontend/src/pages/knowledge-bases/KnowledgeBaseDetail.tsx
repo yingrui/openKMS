@@ -58,7 +58,7 @@ import './KnowledgeBaseDetail.scss';
 export function KnowledgeBaseDetail() {
   const {
     kbId,   channels, t, kb,  activeTab, setActiveTab, qaFullPage,
-    setQaFullPage, loading, docs, docTotal, docPage, setDocPage, docPageSize, setDocPageSize,
+    openQaFullPage, exitQaFullPageNav, openQaSettingsNav, loading, docs, docTotal, docPage, setDocPage, docPageSize, setDocPageSize,
       genDocs,  showDocPicker,  pickerSearch,
      pickerResults,  pickerLoading, pickerSelected, 
     pickerSelectedChannel,  pickerChannelExpanded, 
@@ -148,16 +148,15 @@ export function KnowledgeBaseDetail() {
   const exitQaFullPage = () => {
     clearQaTraceSession();
     setQaSourcesPanel(null);
-    setQaFullPage(false);
     setQaSessionsOpen(false);
+    exitQaFullPageNav();
   };
 
   const openQaSettings = () => {
     clearQaTraceSession();
     setQaSourcesPanel(null);
-    setQaFullPage(false);
     setQaSessionsOpen(false);
-    setActiveTab('settings');
+    openQaSettingsNav();
   };
 
   if (qaFullPage && kb.agent_url) {
@@ -447,7 +446,7 @@ export function KnowledgeBaseDetail() {
             className="btn btn-primary btn-sm kb-detail-header-qa-btn"
             onClick={() => {
               beginQaTraceSession();
-              setQaFullPage(true);
+              openQaFullPage();
             }}
             aria-label={t('detail.qaOpenChat')}
           >

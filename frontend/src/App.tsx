@@ -426,6 +426,8 @@ function App() {
             <Route path="view/:id" element={<MediaDetail />} />
           </Route>
           <Route path="knowledge-bases" element={<KnowledgeBaseList />} />
+          <Route path="knowledge-bases/:id/qa/:conversationId" element={<KnowledgeBaseDetail />} />
+          <Route path="knowledge-bases/:id/qa" element={<KnowledgeBaseDetail />} />
           <Route path="knowledge-bases/:id" element={<KnowledgeBaseDetail />} />
           <Route path="agents" element={<FeatureGate feature="agents"><ProjectList /></FeatureGate>} />
           <Route path="agents/skills/:skillId/settings" element={<FeatureGate feature="agents"><AgentSkillSettings /></FeatureGate>} />

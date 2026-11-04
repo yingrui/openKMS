@@ -111,7 +111,11 @@ export function ModelPlaygroundSection() {
     setAdoptedFor(modelId);
     const fromUrl = specFromUrl(params.get('q'));
     const initialMode = modeFromUrl(params.get('mode'));
+    const sqlFromUrl = (params.get('sql') || '').trim();
     setMode(initialMode);
+    if (initialMode === 'sql' && sqlFromUrl) {
+      setSqlText(sqlFromUrl);
+    }
     if (fromUrl) {
       setSpec(fromUrl);
       setFilterRows(
@@ -124,6 +128,9 @@ export function ModelPlaygroundSection() {
         })),
       );
     } else if (initialMode === 'advanced') {
+      setSpec(emptyAdvancedSpec(model.dataset_ids[0] ?? ''));
+      setFilterRows([]);
+    } else if (initialMode === 'sql') {
       setSpec(emptyAdvancedSpec(model.dataset_ids[0] ?? ''));
       setFilterRows([]);
     } else if (data.metrics[0]) {
@@ -254,6 +261,7 @@ export function ModelPlaygroundSection() {
       (prev) => {
         const p = new URLSearchParams(prev);
         p.set('mode', next);
+        if (next !== 'sql') p.delete('sql');
         return p;
       },
       { replace: true },
@@ -275,6 +283,8 @@ export function ModelPlaygroundSection() {
             const p = new URLSearchParams(prev);
             p.set('mode', 'sql');
             p.delete('q');
+            if (sqlText.trim()) p.set('sql', sqlText);
+            else p.delete('sql');
             return p;
           },
           { replace: true },

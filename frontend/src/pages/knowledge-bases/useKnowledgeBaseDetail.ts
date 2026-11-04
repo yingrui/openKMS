@@ -1,6 +1,6 @@
 import { useEffect, useLayoutEffect, useState, useCallback, useRef, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
+import { useLocation, useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { Settings, Users } from 'lucide-react';
 import { toast } from 'sonner';
 import {
@@ -79,17 +79,48 @@ import {
   type TabId,
 } from './KnowledgeBaseDetail.types';
 
+function kbQaPath(kbId: string, conversationId?: string | null): string {
+  if (conversationId) return `/knowledge-bases/${kbId}/qa/${conversationId}`;
+  return `/knowledge-bases/${kbId}/qa`;
+}
+
 export function useKnowledgeBaseDetail() {
-  const { id: kbId } = useParams<{ id: string }>();
+  const { id: kbId, conversationId: routeConversationId } = useParams<{
+    id: string;
+    conversationId?: string;
+  }>();
   const navigate = useNavigate();
+  const location = useLocation();
   const [searchParams] = useSearchParams();
   const { channels } = useEnsureDocumentChannels();
   const { t } = useTranslation('knowledgeBase');
   const [kb, setKb] = useState<KnowledgeBaseResponse | null>(null);
   const initialTab = (searchParams.get('tab') as TabId) || 'documents';
   const [activeTab, setActiveTab] = useState<TabId>(TAB_ORDER.includes(initialTab) ? initialTab : 'documents');
-  const [qaFullPage, setQaFullPage] = useState(false);
+  const qaFullPage = Boolean(
+    kbId &&
+      (location.pathname === `/knowledge-bases/${kbId}/qa` ||
+        location.pathname.startsWith(`/knowledge-bases/${kbId}/qa/`)),
+  );
   const [loading, setLoading] = useState(true);
+
+  const openQaFullPage = useCallback(
+    (conversationId?: string | null) => {
+      if (!kbId) return;
+      navigate(kbQaPath(kbId, conversationId));
+    },
+    [kbId, navigate],
+  );
+
+  const exitQaFullPageNav = useCallback(() => {
+    if (!kbId) return;
+    navigate(`/knowledge-bases/${kbId}`);
+  }, [kbId, navigate]);
+
+  const openQaSettingsNav = useCallback(() => {
+    if (!kbId) return;
+    navigate(`/knowledge-bases/${kbId}?tab=settings`);
+  }, [kbId, navigate]);
 
   // Documents
   const [docs, setDocs] = useState<KBDocumentResponse[]>([]);
@@ -372,9 +403,9 @@ export function useKnowledgeBaseDetail() {
 
   useEffect(() => {
     if (qaFullPage && kb && !kb.agent_url) {
-      setQaFullPage(false);
+      exitQaFullPageNav();
     }
-  }, [qaFullPage, kb]);
+  }, [qaFullPage, kb, exitQaFullPageNav]);
 
   useImmersiveView('openkms-kb-qa-fullpage', Boolean(qaFullPage && kb?.agent_url));
 
@@ -405,12 +436,19 @@ export function useKnowledgeBaseDetail() {
         const items = await listKbAgentConversations(kbId);
         if (cancelled) return;
         setKbQaConversations(items);
+        const routeValid =
+          routeConversationId && items.some((x) => x.id === routeConversationId)
+            ? routeConversationId
+            : null;
         const stored = getStoredKbQaConversationId(kbId);
         const validStored = stored && items.some((x) => x.id === stored) ? stored : null;
-        const nextId = validStored || items[0]?.id || null;
+        const nextId = routeValid || validStored || items[0]?.id || null;
         setKbQaConvId(nextId);
         if (nextId) {
           setStoredKbQaConversationId(kbId, nextId);
+          if (nextId !== routeConversationId) {
+            navigate(kbQaPath(kbId, nextId), { replace: true });
+          }
           try {
             await loadKbQaMessagesForConversation(nextId);
           } catch {
@@ -421,6 +459,9 @@ export function useKnowledgeBaseDetail() {
           }
         } else {
           clearStoredKbQaConversationId(kbId);
+          if (routeConversationId) {
+            navigate(kbQaPath(kbId), { replace: true });
+          }
           if (!cancelled) setChatMessages([]);
         }
       } catch {
@@ -435,7 +476,14 @@ export function useKnowledgeBaseDetail() {
     return () => {
       cancelled = true;
     };
-  }, [qaFullPage, kbId, t, loadKbQaMessagesForConversation]);
+  }, [
+    qaFullPage,
+    kbId,
+    routeConversationId,
+    navigate,
+    t,
+    loadKbQaMessagesForConversation,
+  ]);
 
   // --- Document picker ---
   const alreadyAddedIds = linkedDocIds;
@@ -1020,6 +1068,7 @@ export function useKnowledgeBaseDetail() {
     if (!kbId || !id || id === kbQaConvId) return;
     setKbQaConvId(id);
     setStoredKbQaConversationId(kbId, id);
+    navigate(kbQaPath(kbId, id));
     try {
       await loadKbQaMessagesForConversation(id);
     } catch {
@@ -1036,6 +1085,7 @@ export function useKnowledgeBaseDetail() {
       setKbQaConversations((prev) => [c, ...prev.filter((x) => x.id !== c.id)]);
       setChatMessages([]);
       setQaFeedback({});
+      navigate(kbQaPath(kbId, c.id));
     } catch (e: unknown) {
       toast.error(e instanceof Error ? e.message : t('detail.qaToastNewChatFailed'));
     }
@@ -1063,9 +1113,11 @@ export function useKnowledgeBaseDetail() {
       setKbQaConvId(next);
       if (next) {
         setStoredKbQaConversationId(kbId, next);
+        navigate(kbQaPath(kbId, next), { replace: true });
         await loadKbQaMessagesForConversation(next);
       } else {
         clearStoredKbQaConversationId(kbId);
+        navigate(kbQaPath(kbId), { replace: true });
         setChatMessages([]);
       }
     } catch (e: unknown) {
@@ -1103,6 +1155,7 @@ export function useKnowledgeBaseDetail() {
         setKbQaConvId(c.id);
         setKbQaConversations((prev) => [c, ...prev.filter((x) => x.id !== c.id)]);
         setStoredKbQaConversationId(kbId, c.id);
+        navigate(kbQaPath(kbId, c.id), { replace: true });
       }
 
       await postKbAgentMessageStream(
@@ -1261,7 +1314,9 @@ export function useKnowledgeBaseDetail() {
     activeTab,
     setActiveTab,
     qaFullPage,
-    setQaFullPage,
+    openQaFullPage,
+    exitQaFullPageNav,
+    openQaSettingsNav,
     loading,
     docs,
     docTotal,

@@ -4,6 +4,7 @@ import type { TFunction } from 'i18next';
 import { highlightSql } from '../../components/quality/sqlHighlight';
 import '../../components/quality/SqlEditor.scss';
 import type { CatalogDataQuery, SearchResult } from '../../data/knowledgeBasesApi';
+import { playgroundHrefFromDataQuery } from './kbQaPlaygroundHref';
 
 function cellText(value: unknown): string {
   if (value == null) return '';
@@ -107,7 +108,7 @@ export function KbQaEvidenceCard({ s, t }: { s: SearchResult; t: TFunction }) {
           </span>
         ) : null}
         {modelId ? (
-          <Link className="kb-qa-data-card__link" to={`/data-model/${modelId}/playground`}>
+          <Link className="kb-qa-data-card__link" to={playgroundHrefFromDataQuery(modelId, dq)}>
             {t('detail.qaDataEvidenceOpenPlayground')}
           </Link>
         ) : null}
