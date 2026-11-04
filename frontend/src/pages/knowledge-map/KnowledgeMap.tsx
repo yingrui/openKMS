@@ -40,6 +40,9 @@ const KnowledgeMapForceGraph3D = lazy(() =>
   import('../../components/KnowledgeMapForceGraph3D').then((m) => ({ default: m.KnowledgeMapForceGraph3D })),
 );
 
+type MapUiTab = 'edit' | 'exploreGraph' | 'explore3d' | 'overview';
+const MAP_UI_VIEWS = new Set<MapUiTab>(['edit', 'exploreGraph', 'explore3d', 'overview']);
+
 function flattenKnowledgeMapOptions(nodes: KnowledgeMapNode[], prefix = ''): { id: string; label: string }[] {
   const out: { id: string; label: string }[] = [];
   for (const n of nodes) {
@@ -413,8 +416,12 @@ export function KnowledgeMap() {
   const { channels } = useEnsureDocumentChannels();
   const [searchParams, setSearchParams] = useSearchParams();
   const nodeFromUrl = searchParams.get('node');
+  const viewFromUrl = searchParams.get('view');
   const canRead = hasPermission('knowledge_map:read') || hasPermission('all');
   const canWrite = hasPermission('knowledge_map:write') || hasPermission('all');
+
+  const mapUiTab: MapUiTab =
+    viewFromUrl && MAP_UI_VIEWS.has(viewFromUrl as MapUiTab) ? (viewFromUrl as MapUiTab) : 'edit';
 
   const [tree, setTree] = useState<KnowledgeMapNode[]>([]);
   const [links, setLinks] = useState<ResourceLink[]>([]);
@@ -435,7 +442,41 @@ export function KnowledgeMap() {
   const [wikiOptions, setWikiOptions] = useState<{ id: string; label: string }[]>([]);
   const lastAppliedNodeParam = useRef<string | undefined>(undefined);
 
-  const [mapUiTab, setMapUiTab] = useState<'edit' | 'exploreGraph' | 'explore3d' | 'overview'>('edit');
+  const patchMapParams = useCallback(
+    (mutate: (next: URLSearchParams) => void, replace = true) => {
+      setSearchParams(
+        (prev) => {
+          const next = new URLSearchParams(prev);
+          mutate(next);
+          return next;
+        },
+        { replace },
+      );
+    },
+    [setSearchParams],
+  );
+
+  const setMapUiTab = useCallback(
+    (tab: MapUiTab) => {
+      patchMapParams((next) => {
+        if (tab === 'edit') next.delete('view');
+        else next.set('view', tab);
+        if (tab !== 'overview') next.delete('conversation');
+      });
+    },
+    [patchMapParams],
+  );
+
+  const selectMapNode = useCallback(
+    (id: string | null) => {
+      setSelectedNodeId(id);
+      patchMapParams((next) => {
+        if (id) next.set('node', id);
+        else next.delete('node');
+      });
+    },
+    [patchMapParams],
+  );
 
   const load = useCallback(
     async (opts?: { silent?: boolean }) => {
@@ -507,8 +548,8 @@ export function KnowledgeMap() {
   useEffect(() => {
     if (!selectedNodeId) return;
     const ids = collectKnowledgeMapIds(tree);
-    if (!ids.has(selectedNodeId)) setSelectedNodeId(null);
-  }, [tree, selectedNodeId]);
+    if (!ids.has(selectedNodeId)) selectMapNode(null);
+  }, [tree, selectedNodeId, selectMapNode]);
 
   useEffect(() => {
     if (!tree.length) return;
@@ -574,7 +615,7 @@ export function KnowledgeMap() {
       // Reload tree before selecting: avoids a frame where selection points at a term not yet in `tree`,
       // which triggered the sync effect and broke updates (especially first term from empty tree).
       await load({ silent: true });
-      setSelectedNodeId(created.id);
+      selectMapNode(created.id);
     } catch (err) {
       setCreateError(err instanceof Error ? err.message : t('toastCreateFailed'));
     } finally {
@@ -626,21 +667,13 @@ export function KnowledgeMap() {
 
   useEffect(() => {
     if (!tree.length && (mapUiTab === 'explore3d' || mapUiTab === 'exploreGraph')) setMapUiTab('edit');
-  }, [tree.length, mapUiTab]);
+  }, [tree.length, mapUiTab, setMapUiTab]);
 
   const onSelectTermFromGraph = useCallback(
     (id: string) => {
-      setSelectedNodeId(id);
-      setSearchParams(
-        (prev) => {
-          const next = new URLSearchParams(prev);
-          next.set('node', id);
-          return next;
-        },
-        { replace: true },
-      );
+      selectMapNode(id);
     },
-    [setSearchParams],
+    [selectMapNode],
   );
 
   if (!canRead) {
@@ -768,7 +801,7 @@ export function KnowledgeMap() {
                       tree={tree}
                       canWrite={canWrite}
                       selectedNodeId={selectedNodeId}
-                      onSelectNode={setSelectedNodeId}
+                      onSelectNode={selectMapNode}
                       onReload={() => load({ silent: true })}
                       getMoveParentOptions={getMoveParentOptions}
                     />

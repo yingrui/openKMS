@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useSearchParams } from 'react-router-dom';
 import { Bot, Loader2, MessageCirclePlus, Send, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import {
@@ -34,6 +35,8 @@ type Props = {
 export function KnowledgeMapOverview({ canRead, canWrite }: Props) {
   const { t } = useTranslation('knowledgeMap');
   const confirm = useConfirm();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const conversationFromUrl = searchParams.get('conversation');
   const [view, setView] = useState<OverviewView | null>(null);
   const [loading, setLoading] = useState(true);
   const [workingA2ui, setWorkingA2ui] = useState<Record<string, unknown>[] | null>(null);
@@ -41,6 +44,22 @@ export function KnowledgeMapOverview({ canRead, canWrite }: Props) {
   const [lines, setLines] = useState<ChatLine[]>([]);
   const [conversations, setConversations] = useState<OverviewDesignerConversation[]>([]);
   const [activeConversationId, setActiveConversationId] = useState<string | null>(null);
+
+  const setConversationInUrl = useCallback(
+    (id: string | null, replace = true) => {
+      setSearchParams(
+        (prev) => {
+          const next = new URLSearchParams(prev);
+          next.set('view', 'overview');
+          if (id) next.set('conversation', id);
+          else next.delete('conversation');
+          return next;
+        },
+        { replace },
+      );
+    },
+    [setSearchParams],
+  );
   const [convBootstrapBusy, setConvBootstrapBusy] = useState(false);
   const [draftInput, setDraftInput] = useState('');
   const [sending, setSending] = useState(false);
@@ -102,7 +121,11 @@ export function KnowledgeMapOverview({ canRead, canWrite }: Props) {
         const list = await fetchOverviewDesignerConversations();
         if (cancelled) return;
         let nextList = list;
-        let activeId: string | null = list[0]?.id ?? null;
+        const routeValid =
+          conversationFromUrl && list.some((c) => c.id === conversationFromUrl)
+            ? conversationFromUrl
+            : null;
+        let activeId: string | null = routeValid || list[0]?.id || null;
         if (!activeId && canWrite) {
           const created = await createOverviewDesignerConversation();
           if (cancelled) return;
@@ -111,6 +134,9 @@ export function KnowledgeMapOverview({ canRead, canWrite }: Props) {
         }
         setConversations(nextList);
         setActiveConversationId(activeId);
+        if (activeId && activeId !== conversationFromUrl) {
+          setConversationInUrl(activeId, true);
+        }
         if (activeId) {
           const { messages } = await fetchOverviewDesignerSession(activeId);
           if (cancelled) return;
@@ -127,7 +153,7 @@ export function KnowledgeMapOverview({ canRead, canWrite }: Props) {
     return () => {
       cancelled = true;
     };
-  }, [canRead, canWrite, t, loadMessagesIntoState]);
+  }, [canRead, canWrite, t, loadMessagesIntoState, conversationFromUrl, setConversationInUrl]);
 
   const onSend = async () => {
     const text = draftInput.trim();
@@ -235,6 +261,7 @@ export function KnowledgeMapOverview({ canRead, canWrite }: Props) {
       const created = await createOverviewDesignerConversation();
       setConversations((prev) => [created, ...prev]);
       setActiveConversationId(created.id);
+      setConversationInUrl(created.id, false);
       setLines([]);
     } catch {
       toast.error(t('overviewDesignerNewChatFailed'));
@@ -243,6 +270,7 @@ export function KnowledgeMapOverview({ canRead, canWrite }: Props) {
 
   const onSwitchChat = async (id: string) => {
     setActiveConversationId(id);
+    setConversationInUrl(id, false);
     try {
       const { messages } = await fetchOverviewDesignerSession(id);
       loadMessagesIntoState(messages);
@@ -267,6 +295,7 @@ export function KnowledgeMapOverview({ canRead, canWrite }: Props) {
       if (activeConversationId === id) {
         const fallback = next[0]?.id ?? null;
         setActiveConversationId(fallback);
+        setConversationInUrl(fallback, true);
         if (fallback) {
           const { messages } = await fetchOverviewDesignerSession(fallback);
           loadMessagesIntoState(messages);

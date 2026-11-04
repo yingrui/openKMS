@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useSearchParams } from 'react-router-dom';
 import ForceGraph2D, { type ForceGraphMethods } from 'react-force-graph-2d';
 import { Box, ChevronLeft, ChevronRight, Crosshair, Expand, Link2, Maximize2, Minimize2, Play, Loader2, List, Network, RotateCcw, Sparkles, ZoomIn, ZoomOut } from 'lucide-react';
 import { toast } from 'sonner';
@@ -186,8 +187,24 @@ type ObjectExplorerQueryTab = 'cypher' | 'natural';
 const LIST_PAGE_SIZE_OPTIONS = [25, 50, 100, 200] as const;
 const DEFAULT_LIST_PAGE_SIZE = 50;
 
+function parseIdSet(raw: string | null): Set<string> {
+  if (!raw) return new Set();
+  return new Set(
+    raw
+      .split(',')
+      .map((s) => s.trim())
+      .filter(Boolean),
+  );
+}
+
+function serializeIdSet(ids: Set<string>): string {
+  return [...ids].sort().join(',');
+}
+
 export function ObjectExplorer() {
   const { t } = useTranslation('objectExplorer');
+  const [searchParams, setSearchParams] = useSearchParams();
+  const urlHydratedRef = useRef(false);
   const [objectTypes, setObjectTypes] = useState<ObjectTypeResponse[]>([]);
   const [linkTypes, setLinkTypes] = useState<LinkTypeResponse[]>([]);
   const [selectedObjectTypeIds, setSelectedObjectTypeIds] = useState<Set<string>>(new Set());
@@ -243,6 +260,56 @@ export function ObjectExplorer() {
   useEffect(() => {
     setListPage(0);
   }, [result, listPageSize]);
+
+  // Restore selection / tab / question / result view from the URL once types are loaded.
+  useEffect(() => {
+    if (loading || urlHydratedRef.current) return;
+    urlHydratedRef.current = true;
+    const knownObjects = new Set(objectTypes.map((o) => o.id));
+    const knownLinks = new Set(linkTypes.map((l) => l.id));
+    const types = [...parseIdSet(searchParams.get('types'))].filter((id) => knownObjects.has(id));
+    const links = [...parseIdSet(searchParams.get('links'))].filter((id) => knownLinks.has(id));
+    if (types.length) setSelectedObjectTypeIds(new Set(types));
+    if (links.length) setSelectedLinkTypeIds(new Set(links));
+    const tab = searchParams.get('tab');
+    if (tab === 'cypher' || tab === 'natural') setQueryTab(tab);
+    const view = searchParams.get('view');
+    if (view === 'list' || view === 'graph') setResultView(view);
+    const q = searchParams.get('q');
+    if (q) setUserQuestion(q);
+  }, [loading, objectTypes, linkTypes, searchParams]);
+
+  useEffect(() => {
+    if (!urlHydratedRef.current || loading) return;
+    setSearchParams(
+      (prev) => {
+        const next = new URLSearchParams(prev);
+        const types = serializeIdSet(selectedObjectTypeIds);
+        const links = serializeIdSet(selectedLinkTypeIds);
+        if (types) next.set('types', types);
+        else next.delete('types');
+        if (links) next.set('links', links);
+        else next.delete('links');
+        if (queryTab === 'cypher') next.delete('tab');
+        else next.set('tab', queryTab);
+        if (resultView === 'list') next.delete('view');
+        else next.set('view', resultView);
+        const q = userQuestion.trim();
+        if (q) next.set('q', q);
+        else next.delete('q');
+        return next;
+      },
+      { replace: true },
+    );
+  }, [
+    loading,
+    selectedObjectTypeIds,
+    selectedLinkTypeIds,
+    queryTab,
+    resultView,
+    userQuestion,
+    setSearchParams,
+  ]);
 
   const selectedObjects = useMemo(
     () => objectTypes.filter((t) => selectedObjectTypeIds.has(t.id)),

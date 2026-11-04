@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link, useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import {
   ArrowLeft,
@@ -51,6 +51,9 @@ import './EvaluationDatasetDetail.scss';
 export function EvaluationDatasetDetail() {
   const { t } = useTranslation('workspace');
   const { id: evaluationId } = useParams<{ id: string }>();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const runFromUrl = searchParams.get('run');
+  const compareFromUrl = searchParams.get('compare');
   const [dataset, setDataset] = useState<EvaluationResponse | null>(null);
   const [items, setItems] = useState<EvaluationItemResponse[]>([]);
   const [itemsTotal, setItemsTotal] = useState(0);
@@ -147,6 +150,55 @@ export function EvaluationDatasetDetail() {
       setEvaluationType(EVAL_TYPE_SEARCH);
     }
   }, [dataset, evaluationType]);
+
+  useEffect(() => {
+    if (!compareFromUrl) return;
+    const [a, b] = compareFromUrl.split(',').map((s) => s.trim());
+    if (a) setCompareRunA(a);
+    if (b) setCompareRunB(b);
+  }, [compareFromUrl]);
+
+  useEffect(() => {
+    if (!evaluationId || !runFromUrl) return;
+    if (runView?.run_id === runFromUrl) return;
+    let cancelled = false;
+    void (async () => {
+      try {
+        const res = await getEvaluationRun(evaluationId, runFromUrl);
+        if (!cancelled) setRunView(res);
+      } catch {
+        if (!cancelled) {
+          toast.error(t('evaluationDetail.toastLoadRunFailed'));
+          setSearchParams(
+            (prev) => {
+              const next = new URLSearchParams(prev);
+              next.delete('run');
+              return next;
+            },
+            { replace: true },
+          );
+        }
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [evaluationId, runFromUrl, runView?.run_id, setSearchParams, t]);
+
+  const setRunInUrl = useCallback(
+    (runId: string | null) => {
+      setSearchParams(
+        (prev) => {
+          const next = new URLSearchParams(prev);
+          if (runId) next.set('run', runId);
+          else next.delete('run');
+          return next;
+        },
+        { replace: true },
+      );
+    },
+    [setSearchParams],
+  );
 
   const handleAddItem = async () => {
     if (!evaluationId || !itemQuery.trim() || !itemExpected.trim()) return;
@@ -247,6 +299,7 @@ export function EvaluationDatasetDetail() {
     try {
       const res = await runEvaluation(evaluationId, { evaluation_type: evaluationType });
       setRunView(res);
+      setRunInUrl(res.run_id);
       toast.success(
         t('evaluationDetail.toastRunSuccess', {
           runId: `${res.run_id.slice(0, 8)}…`,
@@ -267,6 +320,7 @@ export function EvaluationDatasetDetail() {
     try {
       const res = await getEvaluationRun(evaluationId, runId);
       setRunView(res);
+      setRunInUrl(runId);
       toast.success(t('evaluationDetail.toastLoadedRun'));
     } catch (e: unknown) {
       toast.error(e instanceof Error ? e.message : t('evaluationDetail.toastLoadRunFailed'));
@@ -278,7 +332,10 @@ export function EvaluationDatasetDetail() {
     setDeletingRunId(runId);
     try {
       await deleteEvaluationRun(evaluationId, runId);
-      if (runView?.run_id === runId) setRunView(null);
+      if (runView?.run_id === runId) {
+        setRunView(null);
+        setRunInUrl(null);
+      }
       if (compareRunA === runId) setCompareRunA('');
       if (compareRunB === runId) setCompareRunB('');
       if (

@@ -1,6 +1,6 @@
 # Object Explorer
 
-Run Cypher (or plain-language text-to-Cypher) against the configured **Neo4j** data source and inspect results as a **list** or **instance graph** at `/object-explorer`. Sidebar checkboxes filter which object/link types appear in generated queries; ACL limits which types are listed.
+Run Cypher (or plain-language text-to-Cypher) against the configured **Neo4j** data source and inspect results as a **list** or **instance graph** at `/object-explorer/explore`. Query params restore the workspace: **`?types=`** / **`?links=`** (comma-separated ids), **`?tab=cypher|natural`**, **`?q=`** (natural-language question), **`?view=list|graph`**. Sidebar checkboxes filter which object/link types appear in generated queries; ACL limits which types are listed.
 
 Broader ontology schema, datasets, and indexing are documented in [Ontology — objects, links, datasets](ontology.md). This page focuses on **Graph view** behavior and implementation lessons.
 

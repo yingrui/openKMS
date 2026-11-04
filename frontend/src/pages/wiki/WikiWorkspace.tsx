@@ -37,8 +37,9 @@ export function WikiWorkspace() {
   const { t } = useTranslation('explore');
   const { id: spaceId, pageId: pageIdParam } = useParams<{ id: string; pageId?: string }>();
   const location = useLocation();
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
+  const modeFromUrl = searchParams.get('mode') === 'edit' ? 'edit' : 'preview';
 
   const isGraph = useMemo(() => /\/pages\/graph\/?$/.test(location.pathname), [location.pathname]);
 
@@ -70,8 +71,25 @@ export function WikiWorkspace() {
 
   useEffect(() => {
     if (!pageIdParam) return;
-    setPanelModes((m) => (m[pageIdParam] !== undefined ? m : { ...m, [pageIdParam]: 'preview' }));
-  }, [pageIdParam]);
+    setPanelModes((m) => ({ ...m, [pageIdParam]: modeFromUrl }));
+  }, [pageIdParam, modeFromUrl]);
+
+  const setPageMode = useCallback(
+    (mode: 'edit' | 'preview') => {
+      if (!pageIdParam) return;
+      setPanelModes((m) => ({ ...m, [pageIdParam]: mode }));
+      setSearchParams(
+        (prev) => {
+          const next = new URLSearchParams(prev);
+          if (mode === 'preview') next.delete('mode');
+          else next.set('mode', mode);
+          return next;
+        },
+        { replace: true },
+      );
+    },
+    [pageIdParam, setSearchParams],
+  );
 
   useEffect(() => {
     setSaveBusy(false);
@@ -310,7 +328,7 @@ export function WikiWorkspace() {
                           role="tab"
                           aria-selected={(panelModes[pageIdParam] ?? 'preview') === 'edit'}
                           className={(panelModes[pageIdParam] ?? 'preview') === 'edit' ? 'active' : undefined}
-                          onClick={() => setPanelModes((m) => ({ ...m, [pageIdParam]: 'edit' }))}
+                          onClick={() => setPageMode('edit')}
                         >
                           {t('wiki.pageEditor.edit')}
                         </button>
@@ -319,7 +337,7 @@ export function WikiWorkspace() {
                           role="tab"
                           aria-selected={(panelModes[pageIdParam] ?? 'preview') === 'preview'}
                           className={(panelModes[pageIdParam] ?? 'preview') === 'preview' ? 'active' : undefined}
-                          onClick={() => setPanelModes((m) => ({ ...m, [pageIdParam]: 'preview' }))}
+                          onClick={() => setPageMode('preview')}
                         >
                           {t('wiki.pageEditor.preview')}
                         </button>

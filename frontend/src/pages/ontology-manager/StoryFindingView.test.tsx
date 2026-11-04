@@ -104,6 +104,6 @@ describe('StoryFindingView', () => {
   it('names the source, linking into the Catalog', () => {
     renderFinding({ ...BASE });
     const link = screen.getByRole('link', { name: /tushare.daily_basic/ });
-    expect(link).toHaveAttribute('href', '/datasets/d1');
+    expect(link).toHaveAttribute('href', '/datasets/d1/data');
   });
 });

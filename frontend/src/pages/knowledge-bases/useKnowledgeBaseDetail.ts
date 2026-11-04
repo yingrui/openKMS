@@ -112,15 +112,33 @@ export function useKnowledgeBaseDetail() {
     [kbId, navigate],
   );
 
+  const kbDetailPath = useCallback(
+    (tab: TabId) => {
+      if (!kbId) return '/knowledge-bases';
+      if (tab === 'documents') return `/knowledge-bases/${kbId}`;
+      return `/knowledge-bases/${kbId}?tab=${encodeURIComponent(tab)}`;
+    },
+    [kbId],
+  );
+
+  const selectKbTab = useCallback(
+    (tab: TabId) => {
+      setActiveTab(tab);
+      if (!kbId || qaFullPage) return;
+      navigate(kbDetailPath(tab), { replace: true });
+    },
+    [kbId, qaFullPage, navigate, kbDetailPath],
+  );
+
   const exitQaFullPageNav = useCallback(() => {
     if (!kbId) return;
-    navigate(`/knowledge-bases/${kbId}`);
-  }, [kbId, navigate]);
+    navigate(kbDetailPath(activeTab));
+  }, [kbId, navigate, kbDetailPath, activeTab]);
 
   const openQaSettingsNav = useCallback(() => {
     if (!kbId) return;
-    navigate(`/knowledge-bases/${kbId}?tab=settings`);
-  }, [kbId, navigate]);
+    navigate(kbDetailPath('settings'));
+  }, [kbId, navigate, kbDetailPath]);
 
   // Documents
   const [docs, setDocs] = useState<KBDocumentResponse[]>([]);
@@ -1312,7 +1330,7 @@ export function useKnowledgeBaseDetail() {
     kb,
     initialTab,
     activeTab,
-    setActiveTab,
+    setActiveTab: selectKbTab,
     qaFullPage,
     openQaFullPage,
     exitQaFullPageNav,

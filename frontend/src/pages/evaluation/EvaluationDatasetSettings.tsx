@@ -257,7 +257,7 @@ export function EvaluationDatasetSettings() {
           </div>
           {knowledgeBaseIdField.trim() ? (
             <Link
-              to={`/knowledge-bases/${knowledgeBaseIdField.trim()}`}
+              to={`/knowledge-bases/${knowledgeBaseIdField.trim()}?tab=search`}
               className="eval-dataset-settings-kb-link"
             >
               {t('evaluationSettings.openKnowledgeBase')}

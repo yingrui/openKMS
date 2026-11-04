@@ -5,7 +5,7 @@ Index documents into a knowledge base, generate FAQs and chunks, run hybrid sema
 | Feature | Status | Description |
 |---------|--------|-------------|
 | SPA i18n | ✅ | List + detail UI use **`knowledgeBase`** namespace (`frontend/src/i18n/locales/{en,zh-CN}/knowledgeBase.json`) |
-| KB management | ✅ | CRUD via `/api/knowledge-bases`; KnowledgeBaseList with create/edit/delete; **resource ACL** per KB (`knowledge_base`); create bootstraps owner ACL; mutations require write on the KB when ACL applies; delete requires manage |
+| KB management | ✅ | CRUD via `/api/knowledge-bases`; KnowledgeBaseList with create/edit/delete; detail tabs sync to **`?tab=`** (and Back from Q&A restores the last tab); **resource ACL** per KB (`knowledge_base`); create bootstraps owner ACL; mutations require write on the KB when ACL applies; delete requires manage |
 | KB sharing | ✅ | Settings → **Sharing** sub-tab (`ResourceSharePanel`); `GET/PUT /api/resource-acl/knowledge_base/{id}`. **New** KBs: owner-only ACL bootstrap (Others denied). **Pre-existing** KBs (before migration `h8i9j0k1l2m3`): seeded Others **r/w/m** to preserve open-by-default. |
 | KB documents | ✅ | Add/remove documents to KB (join table); **Documents** tab paginated (`GET …/documents?offset=&limit=`); Add Documents dialog: channel tree + searchable document picker with pagination |
 | KB wiki spaces | ✅ | Dedicated **Wiki spaces** tab on KB detail (same pattern as Documents): link spaces (`GET/POST/DELETE …/wiki-spaces`); per-row **Index wiki pages** queues **`run_kb_wiki_space_index`** (replaces that space’s wiki chunks only; one page → one chunk when ≤ 8000 chars); full **`kb-index`** also uses page-as-chunk rules for wiki pages (not KB chunk_config) |

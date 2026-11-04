@@ -83,7 +83,9 @@ it can cover both layers in one place.
   re-running is one call, and the app never shows a number it cannot reproduce.
 - **Provenance is part of every tile** (its source, plus the metric/fields inside its query, and it is
   labelled in the UI with a link to that source), so every number on screen answers "where did this
-  come from?" — the interaction doc's "provenance always visible".
+  come from?" — the interaction doc's "provenance always visible". Source links deep-open the
+  Catalog: models → Playground with `?mode`/`?q`/`?sql` from the finding's query; datasets →
+  `/datasets/{id}/data?f=` when filters are present.
 
 ## 4. Contract
 
