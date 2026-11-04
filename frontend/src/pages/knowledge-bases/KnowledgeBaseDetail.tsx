@@ -33,6 +33,11 @@ import { KbQaSessionSidebar } from '../../components/knowledge-bases/KbQaSession
 import { AgentMessageBody } from '../../components/agents/AgentMessageBody';
 import { KbRetrievalProvenancePanel } from './KbRetrievalProvenancePanel';
 import {
+  KbQaSourcesDrawer,
+  KbQaSourcesPill,
+  type KbQaSourcesPanelPayload,
+} from './KbQaSourcesDrawer';
+import {
   KbChunkDialog,
   KbDocPickerDialog,
   KbFaqDialog,
@@ -40,14 +45,8 @@ import {
   KbWikiSpacePickerDialog,
 } from './KnowledgeBaseDetail.dialogs';
 import {
-  kbQaChipTitle,
-  kbQaExpandedDetailPreviewMaxLen,
   kbQaFeedbackKey,
-  kbQaNormalizeSourceKind,
-  kbQaShowRetrievalScore,
-  kbQaSourceCardModifierClass,
-  kbQaSourceChipModifierClass,
-  kbQaTruncatePreview,
+  splitQaSources,
 } from './KnowledgeBaseDetail.qaUtils';
 import { TAB_ICONS, TAB_ORDER } from './KnowledgeBaseDetail.types';
 import { useKnowledgeBaseDetail } from './useKnowledgeBaseDetail';
@@ -84,7 +83,7 @@ export function KnowledgeBaseDetail() {
     searchLabelFilters, searchMetadataFilters, setSearchMetadataFilters, searchTopK, setSearchTopK,
     searchForceDense, setSearchForceDense, searchRetrievalDiff,  qaInput,
     setQaInput, chatMessages,  qaFeedback,  qaLoading, 
-    beginQaTraceSession, clearQaTraceSession, qaSourcesExpanded, setQaSourcesExpanded, kbQaConvId,
+    beginQaTraceSession, clearQaTraceSession, kbQaConvId,
      kbQaConversations,  kbQaConvsLoading, 
     kbQaConvReady,  kbQaMainScrollRef, settingsAgentUrl, setSettingsAgentUrl,
     settingsAgentSkills, toggleSettingsAgentSkill,
@@ -108,6 +107,7 @@ export function KnowledgeBaseDetail() {
   } = useKnowledgeBaseDetail();
   const isMobile = useIsMobile();
   const [qaSessionsOpen, setQaSessionsOpen] = useState(false);
+  const [qaSourcesPanel, setQaSourcesPanel] = useState<KbQaSourcesPanelPayload | null>(null);
 
   // Leaving the mobile layout closes the sessions drawer. Adjusting state during render
   // (instead of in an effect) avoids a second render pass with a stale drawer.
@@ -147,12 +147,14 @@ export function KnowledgeBaseDetail() {
 
   const exitQaFullPage = () => {
     clearQaTraceSession();
+    setQaSourcesPanel(null);
     setQaFullPage(false);
     setQaSessionsOpen(false);
   };
 
   const openQaSettings = () => {
     clearQaTraceSession();
+    setQaSourcesPanel(null);
     setQaFullPage(false);
     setQaSessionsOpen(false);
     setActiveTab('settings');
@@ -170,8 +172,14 @@ export function KnowledgeBaseDetail() {
         onSessionActivate={isMobile ? () => setQaSessionsOpen(false) : undefined}
         onBack={exitQaFullPage}
         onOpenSettings={openQaSettings}
-        onSelectSession={(id) => void onSelectKbQaConversation(id)}
-        onNewChat={() => void onNewKbQaChat()}
+        onSelectSession={(id) => {
+          setQaSourcesPanel(null);
+          void onSelectKbQaConversation(id);
+        }}
+        onNewChat={() => {
+          setQaSourcesPanel(null);
+          void onNewKbQaChat();
+        }}
         onRename={onRenameKbQaChat}
         onDelete={onDeleteKbQaChat}
       />
@@ -280,173 +288,71 @@ export function KnowledgeBaseDetail() {
                         </div>
                       )}
                       {msg.role === 'assistant' &&
-                        kbQaAssistantText(msg) &&
                         !(qaLoading && isLast) &&
                         (() => {
+                          const assistantText = kbQaAssistantText(msg);
+                          const { evidence, references } = splitQaSources(msg.sources ?? []);
+                          const hasSources = evidence.length > 0 || references.length > 0;
+                          const showFeedback = Boolean(assistantText);
+                          if (!hasSources && !showFeedback) return null;
                           const feedbackKey = kbQaFeedbackKey(msg, i);
                           const feedback = qaFeedback[feedbackKey];
                           const prev = chatMessages[i - 1];
                           const question = prev?.role === 'user' ? prev.content.trim() : '';
+                          const rk = msg.replyKey ?? `legacy-${i}`;
+                          const sourcesOpen = qaSourcesPanel?.replyKey === rk;
                           return (
-                            <div className="kb-qa-msg-actions kb-qa-msg-feedback">
-                              <button
-                                type="button"
-                                className={`kb-qa-feedback-btn kb-qa-feedback-btn--up${feedback === 'up' ? ' kb-qa-feedback-btn--active' : ''}`}
-                                aria-label={t('detail.qaFeedbackUpAria')}
-                                aria-pressed={feedback === 'up'}
-                                onClick={() => setKbQaFeedbackVote(feedbackKey, 'up')}
-                              >
-                                <ThumbsUp size={16} strokeWidth={2} aria-hidden />
-                              </button>
-                              <button
-                                type="button"
-                                className={`kb-qa-feedback-btn kb-qa-feedback-btn--down${feedback === 'down' ? ' kb-qa-feedback-btn--active' : ''}`}
-                                aria-label={t('detail.qaFeedbackDownAria')}
-                                aria-pressed={feedback === 'down'}
-                                onClick={() => setKbQaFeedbackVote(feedbackKey, 'down')}
-                              >
-                                <ThumbsDown size={16} strokeWidth={2} aria-hidden />
-                              </button>
-                              {feedback === 'up' && question ? (
-                                <button
-                                  type="button"
-                                  className="kb-qa-sources-action-btn"
-                                  aria-label={t('detail.qaSaveAsFaqAria')}
-                                  onClick={() => openFaqFromQa(question, kbQaAssistantText(msg))}
-                                >
-                                  {t('detail.qaSaveAsFaq')}
-                                </button>
+                            <div className="kb-qa-msg-actions">
+                              {hasSources ? (
+                                <KbQaSourcesPill
+                                  evidenceCount={evidence.length}
+                                  referenceCount={references.length}
+                                  open={sourcesOpen}
+                                  t={t}
+                                  onClick={() =>
+                                    setQaSourcesPanel((prev) =>
+                                      prev?.replyKey === rk
+                                        ? null
+                                        : { replyKey: rk, evidence, references }
+                                    )
+                                  }
+                                />
+                              ) : null}
+                              {showFeedback ? (
+                                <div className="kb-qa-msg-feedback">
+                                  <button
+                                    type="button"
+                                    className={`kb-qa-feedback-btn kb-qa-feedback-btn--up${feedback === 'up' ? ' kb-qa-feedback-btn--active' : ''}`}
+                                    aria-label={t('detail.qaFeedbackUpAria')}
+                                    aria-pressed={feedback === 'up'}
+                                    onClick={() => setKbQaFeedbackVote(feedbackKey, 'up')}
+                                  >
+                                    <ThumbsUp size={16} strokeWidth={2} aria-hidden />
+                                  </button>
+                                  <button
+                                    type="button"
+                                    className={`kb-qa-feedback-btn kb-qa-feedback-btn--down${feedback === 'down' ? ' kb-qa-feedback-btn--active' : ''}`}
+                                    aria-label={t('detail.qaFeedbackDownAria')}
+                                    aria-pressed={feedback === 'down'}
+                                    onClick={() => setKbQaFeedbackVote(feedbackKey, 'down')}
+                                  >
+                                    <ThumbsDown size={16} strokeWidth={2} aria-hidden />
+                                  </button>
+                                  {feedback === 'up' && question ? (
+                                    <button
+                                      type="button"
+                                      className="kb-qa-sources-action-btn"
+                                      aria-label={t('detail.qaSaveAsFaqAria')}
+                                      onClick={() => openFaqFromQa(question, assistantText)}
+                                    >
+                                      {t('detail.qaSaveAsFaq')}
+                                    </button>
+                                  ) : null}
+                                </div>
                               ) : null}
                             </div>
                           );
                         })()}
-                      {msg.sources && msg.sources.length > 0 && (() => {
-                        const rk = msg.replyKey ?? `legacy-${i}`;
-                        const expandedSet = qaSourcesExpanded[rk];
-                        const expandedList = expandedSet ? [...expandedSet].sort((a, b) => a - b) : [];
-                        return (
-                          <div className="kb-qa-sources" role="region" aria-label={t('detail.qaSourcesAria')}>
-                            <div className="kb-qa-sources-toolbar">
-                              <div className="kb-qa-sources-heading">{t('detail.qaSourcesHeading')}</div>
-                              <div className="kb-qa-sources-actions">
-                                <button
-                                  type="button"
-                                  className="kb-qa-sources-action-btn"
-                                  onClick={() =>
-                                    setQaSourcesExpanded((prev) => ({
-                                      ...prev,
-                                      [rk]: new Set(msg.sources!.map((_, ix) => ix)),
-                                    }))
-                                  }
-                                >
-                                  {t('detail.qaSourcesExpandAll')}
-                                </button>
-                                <button
-                                  type="button"
-                                  className="kb-qa-sources-action-btn"
-                                  onClick={() => setQaSourcesExpanded((prev) => ({ ...prev, [rk]: new Set() }))}
-                                >
-                                  {t('detail.qaSourcesCollapseAll')}
-                                </button>
-                              </div>
-                            </div>
-                            <div className="kb-qa-sources-chips" role="list">
-                              {msg.sources.map((s, j) => {
-                                const kind = kbQaNormalizeSourceKind(s.source_type);
-                                const chipMod = kbQaSourceChipModifierClass(s.source_type);
-                                const kindLabel = t(`detail.qaSourceKind.${kind}`, {
-                                  defaultValue: s.source_type || kind,
-                                });
-                                const showScore = kbQaShowRetrievalScore(s.source_type, s.score);
-                                const chipTitle = kbQaChipTitle(s);
-                                const isOpen = expandedSet?.has(j) ?? false;
-                                return (
-                                  <button
-                                    key={`${s.id}-${j}`}
-                                    type="button"
-                                    role="listitem"
-                                    className={`kb-qa-source-chip ${chipMod}${isOpen ? ' kb-qa-source-chip--open' : ''}`}
-                                    aria-expanded={isOpen}
-                                    aria-label={t('detail.qaSourceChipAria', { kind: kindLabel, title: chipTitle })}
-                                    onClick={() =>
-                                      setQaSourcesExpanded((prev) => {
-                                        const next = { ...prev };
-                                        const cur = new Set(next[rk] || []);
-                                        if (cur.has(j)) cur.delete(j);
-                                        else cur.add(j);
-                                        next[rk] = cur;
-                                        return next;
-                                      })
-                                    }
-                                  >
-                                    <span className="kb-qa-source-chip__kind">{kindLabel}</span>
-                                    <span className="kb-qa-source-chip__title">{chipTitle}</span>
-                                    {showScore ? (
-                                      <span className="kb-qa-source-chip__score">
-                                        {t('detail.qaSourceScore', { pct: (s.score * 100).toFixed(0) })}
-                                      </span>
-                                    ) : null}
-                                  </button>
-                                );
-                              })}
-                            </div>
-                            {expandedList.length > 0 ? (
-                              <div className="kb-qa-sources-panels">
-                                {expandedList.map((j) => {
-                                  const s = msg.sources![j];
-                                  const kind = kbQaNormalizeSourceKind(s.source_type);
-                                  const mod = kbQaSourceCardModifierClass(s.source_type);
-                                  const kindLabel = t(`detail.qaSourceKind.${kind}`, {
-                                    defaultValue: s.source_type || kind,
-                                  });
-                                  const detailPreview = kbQaTruncatePreview(
-                                    s.content || '',
-                                    kbQaExpandedDetailPreviewMaxLen(s.source_type)
-                                  );
-                                  const showScore = kbQaShowRetrievalScore(s.source_type, s.score);
-                                  return (
-                                    <div
-                                      key={`panel-${rk}-${j}-${s.id}`}
-                                      className={`kb-qa-source-card kb-qa-source-card--static ${mod}`}
-                                    >
-                                      <div className="kb-qa-source-card__head">
-                                        <span className="kb-qa-source-card__kind">{kindLabel}</span>
-                                        {showScore ? (
-                                          <span className="kb-qa-source-card__score">
-                                            {t('detail.qaSourceScore', { pct: (s.score * 100).toFixed(0) })}
-                                          </span>
-                                        ) : null}
-                                      </div>
-                                      <div className="kb-qa-source-card__title">
-                                        {s.wiki_page_id && s.wiki_space_id ? (
-                                          <Link
-                                            className="kb-qa-source-card__link"
-                                            to={`/wikis/${s.wiki_space_id}/pages/${s.wiki_page_id}`}
-                                          >
-                                            {s.source_name || s.wiki_page_id}
-                                          </Link>
-                                        ) : s.document_id ? (
-                                          <Link className="kb-qa-source-card__link" to={`/documents/view/${s.document_id}`}>
-                                            {s.source_name || s.document_id}
-                                          </Link>
-                                        ) : (
-                                          <span className="kb-qa-source-card__title-text">
-                                            {s.source_name || t('detail.faqSourceFallback')}
-                                          </span>
-                                        )}
-                                      </div>
-                                      {detailPreview ? (
-                                        <p className="kb-qa-source-card__preview">{detailPreview}</p>
-                                      ) : null}
-                                      <KbRetrievalProvenancePanel s={s} t={t} />
-                                    </div>
-                                  );
-                                })}
-                              </div>
-                            ) : null}
-                          </div>
-                        );
-                      })()}
                     </div>
                   );
                 })}
@@ -485,6 +391,11 @@ export function KnowledgeBaseDetail() {
                 </form>
               </div>
             </main>
+            <KbQaSourcesDrawer
+              panel={qaSourcesPanel}
+              onClose={() => setQaSourcesPanel(null)}
+              t={t}
+            />
           </div>
         </div>
         {faqDialog}

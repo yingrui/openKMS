@@ -51,6 +51,24 @@ function kbQaNormalizeSourceKind(sourceType: string | null | undefined): string 
   return 'chunk';
 }
 
+function isDataEvidenceSource(s: SearchResult): boolean {
+  const k = kbQaNormalizeSourceKind(s.source_type);
+  return k === 'metric' || k === 'semantic_model';
+}
+
+function splitQaSources(sources: SearchResult[]): {
+  evidence: SearchResult[];
+  references: SearchResult[];
+} {
+  const evidence: SearchResult[] = [];
+  const references: SearchResult[] = [];
+  for (const s of sources) {
+    if (isDataEvidenceSource(s)) evidence.push(s);
+    else references.push(s);
+  }
+  return { evidence, references };
+}
+
 function kbQaSourceCardModifierClass(sourceType: string | null | undefined): string {
   const k = kbQaNormalizeSourceKind(sourceType);
   if (k === 'ontology') return 'kb-qa-source-card--ontology';
@@ -108,6 +126,8 @@ export {
   kbQaLineId,
   kbQaFeedbackKey,
   kbQaNormalizeSourceKind,
+  isDataEvidenceSource,
+  splitQaSources,
   kbQaSourceCardModifierClass,
   kbQaTruncatePreview,
   kbQaShowRetrievalScore,

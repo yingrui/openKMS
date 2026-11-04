@@ -39,24 +39,25 @@ export function ContentCommentsShell({
     rail.setOpenPersist(false);
   }, [rail]);
 
+  const showUtility = !hideComments && enabled && Boolean(resourceId);
   const shellClass = [
     'content-comments-shell',
-    'content-comments-shell--has-utility',
-    rail.open ? 'content-comments-shell--comments-open' : '',
+    showUtility ? 'content-comments-shell--has-utility' : '',
+    showUtility && rail.open ? 'content-comments-shell--comments-open' : '',
     className ?? '',
   ]
     .filter(Boolean)
     .join(' ');
 
   const shellStyle = {
-    '--comments-utility-w': '40px',
-    '--comments-rail-w': rail.open ? `${rail.widthPx}px` : '0px',
+    '--comments-utility-w': showUtility ? '40px' : '0px',
+    '--comments-rail-w': showUtility && rail.open ? `${rail.widthPx}px` : '0px',
   } as CSSProperties;
 
   return (
     <div className={shellClass} style={shellStyle}>
       <div className="content-comments-shell__main">{children}</div>
-      {!hideComments && enabled && resourceId ? (
+      {showUtility ? (
         <>
           {rail.open ? (
             <div

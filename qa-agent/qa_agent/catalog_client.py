@@ -74,6 +74,33 @@ def query_semantic_model(
         return resp.json()
 
 
+def run_model_sql(
+    access_token: str, model_id: str, sql: str, limit: int | None = None
+) -> dict[str, Any]:
+    """SQL Lab: one read-only SELECT against the model's table datasets."""
+    url = f"{_base()}/api/semantic-models/{model_id}/sql"
+    body: dict[str, Any] = {"sql": sql}
+    if limit is not None:
+        body["limit"] = limit
+    with httpx.Client(timeout=60.0) as client:
+        resp = client.post(url, headers=_headers(access_token), json=body)
+        if resp.status_code >= 400:
+            try:
+                detail = resp.json()
+            except Exception:
+                detail = resp.text
+            raise RuntimeError(f"sql lab failed ({resp.status_code}): {detail}")
+        return resp.json()
+
+
+def get_dataset(access_token: str, dataset_id: str) -> dict[str, Any]:
+    url = f"{_base()}/api/datasets/{dataset_id}"
+    with httpx.Client(timeout=30.0) as client:
+        resp = client.get(url, headers=_headers(access_token))
+        resp.raise_for_status()
+        return resp.json()
+
+
 def list_kb_ontology_groups(access_token: str, knowledge_base_id: str) -> list[dict[str, Any]]:
     url = f"{_base()}/api/knowledge-bases/{knowledge_base_id}/ontology-groups"
     with httpx.Client(timeout=30.0) as client:

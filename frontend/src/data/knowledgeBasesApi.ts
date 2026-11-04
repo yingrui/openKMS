@@ -137,6 +137,19 @@ export interface ChunkListResponse {
   total: number;
 }
 
+/** Structured Catalog / SQL Lab evidence on a KB Q&A source. */
+export interface CatalogDataQuery {
+  mode?: 'metric' | 'expression' | 'sql' | string;
+  model_id?: string | null;
+  metric?: string | null;
+  expression?: string | null;
+  sql?: string | null;
+  columns?: string[];
+  rows?: Record<string, unknown>[];
+  row_count?: number;
+  capped?: boolean;
+}
+
 export interface SearchResult {
   id: string;
   source_type: string;
@@ -153,6 +166,8 @@ export interface SearchResult {
   retrieval_mode?: string | null;
   /** Stage ranks/scores for operator debugging. */
   retrieval_debug?: Record<string, unknown> | null;
+  /** Catalog metric / SQL Lab evidence (table + SQL). */
+  data_query?: CatalogDataQuery | null;
 }
 
 export interface SearchResponse {

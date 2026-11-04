@@ -194,7 +194,6 @@ export function useKnowledgeBaseDetail() {
     qaTraceSessionRef.current = null;
   }, []);
   /** Which source indexes are expanded (full detail), keyed by assistant ``replyKey``. */
-  const [qaSourcesExpanded, setQaSourcesExpanded] = useState<Record<string, Set<number>>>({});
   const kbIdRef = useRef(kbId);
   kbIdRef.current = kbId;
   const [kbQaConvId, setKbQaConvId] = useState<string | null>(null);
@@ -1406,8 +1405,6 @@ export function useKnowledgeBaseDetail() {
     setQaLoading,
     beginQaTraceSession,
     clearQaTraceSession,
-    qaSourcesExpanded,
-    setQaSourcesExpanded,
     kbQaConvId,
     setKbQaConvId,
     kbQaConversations,

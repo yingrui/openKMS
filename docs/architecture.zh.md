@@ -249,8 +249,8 @@ qa-agent/
 ```
 
 - **目的**：独立 RAG + 本体 + Catalog 服务，供知识库问答；经 KB 的 `agent_url` 配置
-- **架构**：LangGraph：`retrieve` → `generate` ⇄ `tools`（本体 / page_index / catalog）。RAG 经 `POST /api/knowledge-bases/{id}/search`；本体经分组/object-types/link-types + ontology/explore（Cypher）；Catalog 经已关联语义模型 + `POST /api/semantic-models/{id}/query`。不直连数据库。KB 上关联的模型/分组（`kb_semantic_models` / `kb_ontology_groups`）仅约束工具范围，不是 RAG ACL。
-- **本体 / Catalog 技能**：本体工具可按已关联分组收窄 schema。Catalog 技能列出已关联模型上的指标，并以 Chart-Data 风格查询（metric 或 expression + filters/where/having）；回答引用 `metric` / `semantic_model` 来源。
+- **架构**：LangGraph：`retrieve` → `generate` ⇄ `tools`（本体 / page_index / catalog）。RAG 经 `POST /api/knowledge-bases/{id}/search`；本体经分组/object-types/link-types + ontology/explore（Cypher）；Catalog 经已关联语义模型 + `POST /api/semantic-models/{id}/query` 与 **`…/sql`**（SQL Lab）。不直连数据库。KB 上关联的模型/分组（`kb_semantic_models` / `kb_ontology_groups`）仅约束工具范围，不是 RAG ACL。
+- **本体 / Catalog 技能**：本体工具可按已关联分组收窄 schema。Catalog 技能列出已关联模型上的指标，可走 Chart-Data 风格查询（metric / expression）或对模型表执行只读 SELECT（SQL Lab）；回答引用 `metric` / `semantic_model` 来源。
 - **集成**：后端代理 `POST …/ask` 与 **`…/ask/stream`** 到 `{agent_url}/knowledge-bases/{kb_id}/…`，转发用户 token 与 KB **`agent_skills`**；持久化线程经 **`agent-conversations/.../messages`** 存 PostgreSQL 并转发 NDJSON。SPA 全页 Q&A 与项目 Agent 共用 **`delta` / `tool_*` / `done`** 形状。
 - **端口**：默认 8103
 

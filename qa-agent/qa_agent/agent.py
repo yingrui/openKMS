@@ -23,6 +23,7 @@ from .kb_answer_sources import (
     extract_cypher_run_from_tool,
     extract_schema_names_from_tool_output,
     select_display_sources,
+    source_from_catalog_tool,
     source_from_page_section_tool,
 )
 from .llm_chat import build_messages_for_generate, make_qa_chat_openai, text_from_lc_content
@@ -369,9 +370,12 @@ async def astream_agent_ndjson(
         buf: list[str] = []
         streamed_sections: list[SourceItem] = []
         seen_section_ids: set[str] = set()
+        streamed_catalog: list[SourceItem] = []
         stream_schema_names: list[str] = []
         stream_schema_seen: set[str] = set()
         stream_cypher_runs: list[tuple[str, dict[str, Any]]] = []
+        # tool_start input by run_id — catalog evidence needs args (metric / model_id / sql).
+        tool_inputs_by_run: dict[str, Any] = {}
         graph_events = 0
         tool_starts = 0
         tool_ends = 0
@@ -403,6 +407,8 @@ async def astream_agent_ndjson(
                     data = ev.get("data") or {}
                     inp = data.get("input")
                     run_id = str(ev.get("run_id") or "")
+                    if run_id:
+                        tool_inputs_by_run[run_id] = inp
                     inp_preview = preview_text(_tool_io_preview(inp, 400), 400)
                     logger.info(
                         "tool_start #%d name=%s run_id=%s",
@@ -451,8 +457,11 @@ async def astream_agent_ndjson(
                             "output": _tool_io_preview(out, 10_000),
                         }
                     )
+                    tool_inp = data.get("input")
+                    if tool_inp is None and run_id:
+                        tool_inp = tool_inputs_by_run.get(run_id)
                     if name == PAGE_SECTION_TOOL_NAME:
-                        src = source_from_page_section_tool(data.get("input"), out)
+                        src = source_from_page_section_tool(tool_inp, out)
                         if src is not None and src.id not in seen_section_ids:
                             seen_section_ids.add(src.id)
                             streamed_sections.append(src)
@@ -462,9 +471,15 @@ async def astream_agent_ndjson(
                                 stream_schema_seen.add(n)
                                 stream_schema_names.append(n)
                     elif name == RUN_CYPHER_TOOL_NAME:
-                        pair = extract_cypher_run_from_tool(data.get("input"), out)
+                        pair = extract_cypher_run_from_tool(tool_inp, out)
                         if pair is not None:
                             stream_cypher_runs.append(pair)
+                    else:
+                        cat = source_from_catalog_tool(
+                            name, tool_inp, out, index=len(streamed_catalog)
+                        )
+                        if cat is not None:
+                            streamed_catalog.append(cat)
                 elif ename == "on_tool_error":
                     tool_errors += 1
                     data = ev.get("data") or {}
@@ -549,6 +564,7 @@ async def astream_agent_ndjson(
             ctx,
             messages=None,
             streamed_sections=streamed_sections if streamed_sections else None,
+            streamed_catalog=streamed_catalog if streamed_catalog else None,
             streamed_ontology_schema_names=stream_schema_names if stream_schema_names else None,
             streamed_ontology_cypher_runs=stream_cypher_runs if stream_cypher_runs else None,
         )
@@ -574,6 +590,7 @@ async def astream_agent_ndjson(
                 list(result.get("context") or ctx),
                 messages=list(result.get("messages") or []),
                 streamed_sections=streamed_sections if streamed_sections else None,
+                streamed_catalog=streamed_catalog if streamed_catalog else None,
                 streamed_ontology_schema_names=stream_schema_names if stream_schema_names else None,
                 streamed_ontology_cypher_runs=stream_cypher_runs if stream_cypher_runs else None,
             )

@@ -383,10 +383,20 @@ body:has(.app-content--function-editor-workspace) .app-main {
   overflow: hidden;
 }
 
-.app-content--compact:has(.kb-detail--qa-fullpage) > .kb-detail.kb-detail--qa-fullpage {
+/* kb-detail may sit under ContentCommentsShell — match both direct and nested. */
+.app-content--compact:has(.kb-detail--qa-fullpage) .kb-detail.kb-detail--qa-fullpage {
   flex: 1;
   min-height: 0;
   height: auto;
+}
+
+.app-content--compact:has(.kb-detail--qa-fullpage) .content-comments-shell,
+.app-content--compact:has(.kb-detail--qa-fullpage) .content-comments-shell__main {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
 }
 
 /* Immersive KB Q&A: reclaim header row for conversation (exit via sidebar back) */
@@ -394,7 +404,7 @@ body.openkms-kb-qa-fullpage .header {
   display: none;
 }
 
-body.openkms-kb-qa-fullpage .app-content--compact:has(.kb-detail--qa-fullpage) > .kb-detail.kb-detail--qa-fullpage {
+body.openkms-kb-qa-fullpage .app-content--compact:has(.kb-detail--qa-fullpage) .kb-detail.kb-detail--qa-fullpage {
   min-height: 0;
 }
 
@@ -409,7 +419,18 @@ body.openkms-kb-qa-fullpage .app-content.app-content--compact {
 }
 
 /* Fill the main column; override generic compact kb-detail height (still subtracts header even when hidden) */
-body.openkms-kb-qa-fullpage .app-content--compact > .kb-detail.kb-detail--qa-fullpage {
+body.openkms-kb-qa-fullpage .app-content--compact .content-comments-shell,
+body.openkms-kb-qa-fullpage .app-content--compact .content-comments-shell__main {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  height: 100%;
+  max-height: 100%;
+}
+
+body.openkms-kb-qa-fullpage .app-content--compact .kb-detail.kb-detail--qa-fullpage {
   flex: 1;
   min-height: 0;
   height: 100%;

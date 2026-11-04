@@ -17,6 +17,8 @@ class SourceItem(BaseModel):
     chunk_index: int | None = None
     retrieval_mode: str | None = None
     retrieval_debug: dict[str, Any] | None = None
+    #: Structured Catalog / SQL Lab evidence (mode, sql, columns, rows, …).
+    data_query: dict[str, Any] | None = None
 
 
 class AskRequest(BaseModel):

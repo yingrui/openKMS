@@ -26,7 +26,7 @@ For coverage/relationship questions (e.g. "Which insurance products cover heart 
 
 For numeric / metric questions grounded in Catalog:
 - Lists metrics on semantic models linked to the knowledge base
-- Runs `POST /api/semantic-models/{id}/query` with a Chart-Data-like body (`metric` or `expression` + filters / where / having); cites `metric` / `semantic_model` sources
+- Runs `POST /api/semantic-models/{id}/query` with a Chart-Data-like body (`metric` or `expression` + filters / where / having), or **`POST …/sql`** (SQL Lab: one read-only SELECT against the model’s tables); cites `metric` / `semantic_model` sources
 
 ### Page Index skill
 

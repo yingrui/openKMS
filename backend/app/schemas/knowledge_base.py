@@ -311,6 +311,8 @@ class SearchResult(BaseModel):
     retrieval_mode: str | None = None
     #: Stage-level scores/ranks for operator debugging (keys may evolve).
     retrieval_debug: dict[str, Any] | None = None
+    #: Catalog metric / SQL Lab evidence for KB Q&A (structured table + SQL).
+    data_query: dict[str, Any] | None = None
 
 
 class SearchResponse(BaseModel):

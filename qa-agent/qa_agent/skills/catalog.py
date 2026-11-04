@@ -45,9 +45,42 @@ def list_semantic_models_tool(_config: RunnableConfig) -> str:
         return f"Error listing semantic models: {e}"
 
 
+def _model_tables(token: str, model: dict[str, Any]) -> list[dict[str, Any]]:
+    """Physical tables the SQL Lab allowlist accepts for this model."""
+    tables: list[dict[str, Any]] = []
+    for ref in model.get("datasets") or []:
+        if not isinstance(ref, dict):
+            continue
+        did = ref.get("id")
+        if not did:
+            continue
+        try:
+            ds = catalog_client.get_dataset(token, str(did))
+        except Exception as e:
+            tables.append({"id": did, "name": ref.get("name"), "error": str(e)})
+            continue
+        if ds.get("kind") and ds.get("kind") != "table":
+            continue
+        schema = ds.get("schema_name")
+        table = ds.get("table_name")
+        tables.append(
+            {
+                "id": did,
+                "name": ds.get("display_name") or ref.get("name") or did,
+                "kind": ds.get("kind"),
+                "schema_name": schema,
+                "table_name": table,
+                "qualified_name": (
+                    f"{schema}.{table}" if schema and table else table or None
+                ),
+            }
+        )
+    return tables
+
+
 @tool
 def get_semantic_model_tool(model_id: str, _config: RunnableConfig) -> str:
-    """Get one linked semantic model plus its metrics and fields (for building a query).
+    """Get one linked semantic model plus metrics, fields, and physical tables (for query or SQL Lab).
     model_id must be from list_semantic_models_tool."""
     try:
         token = get_tool_access_token(_config)
@@ -61,6 +94,7 @@ def get_semantic_model_tool(model_id: str, _config: RunnableConfig) -> str:
         return json.dumps(
             {
                 "model": model,
+                "tables": _model_tables(token, model),
                 "metrics": [
                     {
                         "id": m.get("id"),
@@ -109,10 +143,11 @@ def query_semantic_model_tool(
     order_by: list[dict[str, Any]] | None = None,
     limit: int | None = 100,
 ) -> str:
-    """Run one Catalog query. Prefer a saved metric name; otherwise pass an aggregate expression
-    fragment (e.g. SUM(amount)) with base_dataset (dataset id) and optional joins (relationship ids).
-    filters: [{field, op, value}] on model fields. where/having: boolean SQL fragments AND-ed in.
-    Do NOT submit a full SELECT or FROM/JOIN text. model_id must be linked to this KB."""
+    """Run one Catalog metric query (not a full SELECT). Prefer a saved metric name; otherwise pass
+    an aggregate expression fragment (e.g. SUM(amount)) with base_dataset (dataset id) and optional
+    joins (relationship ids). filters: [{field, op, value}] on model fields. where/having: boolean
+    SQL fragments AND-ed in. For ad-hoc SELECT/JOIN use sql_semantic_model_tool instead.
+    model_id must be linked to this KB."""
     try:
         token = get_tool_access_token(_config)
         kb_id = get_tool_knowledge_base_id(_config)
@@ -143,19 +178,47 @@ def query_semantic_model_tool(
         return f"Error querying semantic model: {e}"
 
 
+@tool
+def sql_semantic_model_tool(
+    model_id: str,
+    sql: str,
+    _config: RunnableConfig,
+    limit: int | None = 100,
+) -> str:
+    """Run one read-only SQL Lab SELECT against tables in this semantic model.
+    Use when a saved metric / expression query is awkward (multi-table JOIN, window functions,
+    row samples, custom projections). sql must be a single SELECT or WITH…SELECT; only tables
+    listed under get_semantic_model_tool.tables (prefer schema.table) are allowed. Do not write
+    INSERT/UPDATE/DELETE or multiple statements. model_id must be linked to this KB."""
+    try:
+        token = get_tool_access_token(_config)
+        kb_id = get_tool_knowledge_base_id(_config)
+        if not kb_id:
+            return "Error: knowledge_base_id missing."
+        _ensure_model_in_kb(token, kb_id, model_id)
+        result = catalog_client.run_model_sql(token, model_id, sql, limit=limit)
+        return json.dumps(result, indent=2, default=str)
+    except Exception as e:
+        return f"Error running SQL Lab: {e}"
+
+
 catalog_tools = [
     list_semantic_models_tool,
     get_semantic_model_tool,
     query_semantic_model_tool,
+    sql_semantic_model_tool,
 ]
 
 CATALOG_PROMPT = (
-    "**Catalog skill** – For numeric / metric questions (e.g. totals, breakdowns by month):\n"
+    "**Catalog skill** – For numeric / tabular questions against linked semantic models:\n"
     "1. Call **list_semantic_models_tool** (only models linked to this knowledge base).\n"
-    "2. Call **get_semantic_model_tool** on the matching model to learn metric and field names.\n"
-    "3. Prefer **query_semantic_model_tool** with `metric=<saved name>` plus group_by/filters.\n"
-    "4. If no saved metric fits, pass `expression` (aggregate fragment only, e.g. `SUM(amount)`), "
-    "`base_dataset`, optional `joins`, and field filters. Use `where`/`having` for OR or "
-    "expression predicates. Never submit a full SELECT.\n"
-    "5. Cite the metric name or the expression + returned SQL. If the KB has no linked models, say so."
+    "2. Call **get_semantic_model_tool** for metrics, fields, and **tables** "
+    "(``schema.table`` allowlist for SQL Lab).\n"
+    "3. Prefer **query_semantic_model_tool** with `metric=<saved name>` (or `expression` + "
+    "`base_dataset` / joins / filters) when a metric-style aggregate fits.\n"
+    "4. Use **sql_semantic_model_tool** for ad-hoc analysis: one SELECT/WITH against "
+    "``tables[].qualified_name`` only (JOINs, windows, samples, custom columns). "
+    "Never mutate data; never query tables outside the model.\n"
+    "5. Cite the metric name, expression, or SQL + a short row preview. "
+    "If the KB has no linked models, say so."
 )

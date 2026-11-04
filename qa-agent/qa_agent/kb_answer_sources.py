@@ -13,6 +13,10 @@ PAGE_SECTION_TOOL_NAME = "get_section_content_tool"
 ONTOLOGY_SCHEMA_TOOL_NAME = "get_ontology_schema_tool"
 RUN_CYPHER_TOOL_NAME = "run_cypher_tool"
 QUERY_SEMANTIC_MODEL_TOOL_NAME = "query_semantic_model_tool"
+SQL_SEMANTIC_MODEL_TOOL_NAME = "sql_semantic_model_tool"
+_CATALOG_QUERY_TOOL_NAMES = frozenset(
+    {QUERY_SEMANTIC_MODEL_TOOL_NAME, SQL_SEMANTIC_MODEL_TOOL_NAME}
+)
 
 _MAX_SECTION_SOURCE_CHARS = 12_000
 _MAX_ONTOLOGY_BODY_CHARS = 8_000
@@ -333,8 +337,107 @@ def extract_cypher_run_from_tool(inp: Any, out: Any) -> tuple[str, dict[str, Any
     return (cy, parsed)
 
 
+def _catalog_preview_rows(rows: Any, *, limit: int = 50) -> list[dict[str, Any]]:
+    if not isinstance(rows, list):
+        return []
+    out: list[dict[str, Any]] = []
+    for row in rows[:limit]:
+        if isinstance(row, dict):
+            out.append({str(k): v for k, v in row.items()})
+    return out
+
+
+def source_from_catalog_tool(
+    tool_name: str,
+    tool_input: Any,
+    tool_output: Any,
+    *,
+    index: int = 0,
+) -> SourceItem | None:
+    """Build one Catalog evidence source from a tool call (stream or graph messages)."""
+    base = (tool_name or "").split("/")[-1]
+    if base not in _CATALOG_QUERY_TOOL_NAMES:
+        return None
+    text = _coerce_tool_output(tool_output)
+    if not text or text.startswith("Error"):
+        return None
+    try:
+        data = json.loads(text)
+    except (json.JSONDecodeError, TypeError):
+        return None
+    if not isinstance(data, dict) or "sql" not in data:
+        return None
+
+    args: dict[str, Any] = tool_input if isinstance(tool_input, dict) else {}
+    if not args and isinstance(tool_input, str):
+        try:
+            parsed = json.loads(tool_input)
+            if isinstance(parsed, dict):
+                args = parsed
+        except (json.JSONDecodeError, TypeError):
+            args = {}
+
+    metric = args.get("metric")
+    expression = args.get("expression")
+    model_id = args.get("model_id")
+    is_sql_lab = base == SQL_SEMANTIC_MODEL_TOOL_NAME
+    sql = str(data.get("sql") or "")
+    rows_raw = data.get("rows") or []
+    preview_rows = _catalog_preview_rows(rows_raw)
+    row_count = int(data.get("row_count") or len(rows_raw) or 0)
+    capped = bool(data.get("capped"))
+    columns = data.get("columns")
+    if not isinstance(columns, list) or not columns:
+        columns = list(preview_rows[0].keys()) if preview_rows else []
+    else:
+        columns = [str(c) for c in columns]
+
+    if is_sql_lab:
+        mode = "sql"
+        label = "SQL Lab"
+        source_type = "semantic_model"
+    elif metric:
+        mode = "metric"
+        label = str(metric)
+        source_type = "metric"
+    elif expression:
+        mode = "expression"
+        label = str(expression)
+        source_type = "semantic_model"
+    else:
+        mode = "expression"
+        label = "Catalog query"
+        source_type = "semantic_model"
+
+    data_query: dict[str, Any] = {
+        "mode": mode,
+        "model_id": str(model_id) if model_id else None,
+        "metric": str(metric) if metric else None,
+        "expression": str(expression) if expression else None,
+        "sql": sql,
+        "columns": columns,
+        "rows": preview_rows,
+        "row_count": row_count,
+        "capped": capped,
+    }
+    content = f"{label} · {row_count} row{'s' if row_count != 1 else ''}"
+    if capped:
+        content += " (capped)"
+    return SourceItem(
+        id=f"catalog:query:{index}",
+        source_type=source_type,
+        content=content,
+        score=1.0,
+        source_name=str(label)[:120],
+        document_id=str(model_id) if model_id else None,
+        wiki_page_id=None,
+        wiki_space_id=None,
+        data_query=data_query,
+    )
+
+
 def sources_from_catalog_tools(messages: list[Any]) -> list[SourceItem] | None:
-    """If the agent ran a successful Catalog query, cite metric / expression + SQL."""
+    """If the agent ran a successful Catalog query or SQL Lab, cite metric / expression / SQL."""
     meta = _tool_call_meta_by_id(messages)
     out: list[SourceItem] = []
     for m in messages:
@@ -347,52 +450,9 @@ def sources_from_catalog_tools(messages: list[Any]) -> list[SourceItem] | None:
             name, args = meta[tid]
         else:
             name = str(m.name or "")
-        base = name.split("/")[-1]
-        if base != QUERY_SEMANTIC_MODEL_TOOL_NAME:
-            continue
-        text = _coerce_tool_output(m.content)
-        if not text or text.startswith("Error"):
-            continue
-        try:
-            data = json.loads(text)
-        except (json.JSONDecodeError, TypeError):
-            continue
-        if not isinstance(data, dict) or "sql" not in data:
-            continue
-        metric = args.get("metric") if isinstance(args, dict) else None
-        expression = args.get("expression") if isinstance(args, dict) else None
-        model_id = args.get("model_id") if isinstance(args, dict) else None
-        label = (
-            f"Metric {metric}"
-            if metric
-            else f"Expression {expression}" if expression else "Catalog query"
-        )
-        sql = str(data.get("sql") or "")
-        rows = data.get("rows") or []
-        preview = json.dumps(rows[:5], ensure_ascii=False, default=str)
-        if len(preview) > 2_000:
-            preview = preview[:1997] + "..."
-        content = (
-            f"{label}\n"
-            f"model_id={model_id}\n"
-            f"SQL: {sql}\n"
-            f"Rows ({data.get('row_count', len(rows))}): {preview}"
-        )
-        if len(content) > _MAX_ONTOLOGY_BODY_CHARS:
-            content = content[: _MAX_ONTOLOGY_BODY_CHARS - 3] + "..."
-        source_type = "metric" if metric else "semantic_model"
-        out.append(
-            SourceItem(
-                id=f"catalog:query:{len(out)}",
-                source_type=source_type,
-                content=content,
-                score=1.0,
-                source_name=str(label)[:120],
-                document_id=str(model_id) if model_id else None,
-                wiki_page_id=None,
-                wiki_space_id=None,
-            )
-        )
+        src = source_from_catalog_tool(name, args, m.content, index=len(out))
+        if src is not None:
+            out.append(src)
     return out or None
 
 
@@ -401,6 +461,7 @@ def select_display_sources(
     *,
     messages: list[Any] | None = None,
     streamed_sections: list[SourceItem] | None = None,
+    streamed_catalog: list[SourceItem] | None = None,
     streamed_ontology_schema_names: list[str] | None = None,
     streamed_ontology_cypher_runs: list[tuple[str, dict[str, Any]]] | None = None,
 ) -> list[SourceItem]:
@@ -417,6 +478,8 @@ def select_display_sources(
             return onto
     if streamed_sections:
         return streamed_sections
+    if streamed_catalog:
+        return list(streamed_catalog)
     if streamed_ontology_cypher_runs:
         src = ontology_sources_from_stream_parts(
             schema_object_names=list(streamed_ontology_schema_names or []),
