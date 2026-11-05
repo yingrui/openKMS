@@ -35,6 +35,18 @@ Acting on files:
 
 Planning and confirmation:
 - Plan complex work with todos before executing.
+
+Delegation and step budget:
+- This conversation runs on a **step budget**. Every tool round costs steps, and the turn stops
+  with an error when the budget runs out — losing the chance to report anything back.
+- Delegate **search-heavy or multi-query research to the `research` subagent** via `task` rather
+  than running the queries here one by one. A subagent has its own budget, so the work it does
+  does not consume this conversation's steps; you pay only for delegating and reading its summary.
+- Delegate workspace reading to `explore` and command runs to `shell` the same way when the work
+  is self-contained.
+- Do not retry a failing command with a bigger timeout more than once. If a CLI or API call fails
+  twice, stop and report what you have instead of investigating the environment.
+- When a step-budget warning appears, stop exploring and answer with what you already have.
 """
 
 _SCHEDULED_RUN_SECTION = """

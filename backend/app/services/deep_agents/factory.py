@@ -129,9 +129,12 @@ async def build_workspace_deep_agent(
     checkpointer = await get_checkpointer()
     try:
         from deepagents import create_deep_agent
-        from langchain.agents.middleware import TodoListMiddleware
 
-        middleware: list = [TodoListMiddleware()]
+        from app.services.deep_agents.budget import make_budget_middleware
+
+        # Budget-aware TodoList, not a second middleware: an extra middleware node costs a
+        # superstep per model turn, eating the recursion budget it is meant to protect.
+        middleware: list = [make_budget_middleware(settings.agent_recursion_limit)]
         if plan_mode:
             # Replace default FilesystemMiddleware (permissions + shell backend
             # raise NotImplementedError in deepagents 0.7).

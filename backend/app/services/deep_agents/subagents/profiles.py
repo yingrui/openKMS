@@ -34,10 +34,17 @@ def build_subagents(
     }
     research: dict[str, Any] = {
         "name": "research",
-        "description": "Deep research using web search and installed skills.",
+        "description": (
+            "Deep research using web search and installed skills. Delegate search-heavy or "
+            "multi-query research here: it has its own step budget, so the queries it runs do "
+            "not consume the parent conversation's budget."
+        ),
         "system_prompt": (
             "You perform deep research: web search and installed skill CLIs when relevant. "
-            "Synthesize findings with citations. Do not mutate the project unless asked."
+            "Synthesize findings with citations. Do not mutate the project unless asked. "
+            "Return a compact summary with sources — the caller only sees your final answer, "
+            "so include the concrete numbers and links it needs. "
+            "If a search or command fails twice, stop retrying and report what you found."
         ),
     }
     if plan_mode:

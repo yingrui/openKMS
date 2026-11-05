@@ -11,9 +11,19 @@ import logging
 from typing import Any
 from urllib.parse import urlparse
 
+import httpx
+
 logger = logging.getLogger(__name__)
 
 _SHIM_CLS: type | None = None
+
+# Streaming read timeout is the longest tolerated gap between chunks, so it can be short:
+# a provider or middlebox that drops a connection mid-turn leaves the socket ESTABLISHED but
+# silent, and without a bound the client waits forever while the surrounding turn stays
+# "running". Non-streaming read timeout covers a whole completion instead, so it must allow
+# for `agent_max_output_tokens` on a slow model.
+DEFAULT_STREAM_TIMEOUT = httpx.Timeout(connect=10.0, read=180.0, write=30.0, pool=10.0)
+DEFAULT_BLOCKING_TIMEOUT = httpx.Timeout(connect=10.0, read=1800.0, write=60.0, pool=10.0)
 
 
 def chat_extra_body_disable_thinking(raw_json: str | None) -> dict[str, Any]:
@@ -100,8 +110,15 @@ def make_langchain_chat_openai(
     extra_body: dict[str, Any],
     use_shim: bool,
     max_tokens: int | None = None,
+    timeout: httpx.Timeout | None = None,
 ) -> Any:
-    """Build ChatOpenAI; optionally inject empty ``reasoning_content`` on assistant rows."""
+    """Build ChatOpenAI; optionally inject empty ``reasoning_content`` on assistant rows.
+
+    ``timeout`` must never be left to langchain: its ``request_timeout`` defaults to ``None``
+    and is forwarded to ``AsyncOpenAI(timeout=None)``, which *disables* the SDK's own
+    ``read=600s`` bound. A provider that drops the stream then leaves the request pending
+    forever, so a stalled turn never errors and never releases its ``last_turn`` lease.
+    """
     from langchain_openai import ChatOpenAI
 
     common: dict[str, Any] = {
@@ -111,6 +128,8 @@ def make_langchain_chat_openai(
         "temperature": temperature,
         "streaming": streaming,
         "extra_body": extra_body,
+        "timeout": timeout
+        or (DEFAULT_STREAM_TIMEOUT if streaming else DEFAULT_BLOCKING_TIMEOUT),
     }
     if max_tokens is not None:
         common["max_tokens"] = max_tokens

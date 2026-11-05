@@ -147,7 +147,8 @@ Docker: `projects_data` volume on `backend` and `worker` (include `agent-skills`
 | Empty chat after leave/sleep (pre-fix) | Stream was bound to the HTTP request: disconnect cancelled the turn and rolled back the uncommitted messages. | Fixed: early commit + background turn + poll on reopen. Redeploy backend/frontend if still seen on an old build. |
 | Mid-turn UI frozen after fast session switch | Older SPA builds could drop the live NDJSON bridge without re-attaching poll. | Current SPA aborts NDJSON on leave, marks `running` optimistically, and polls when the session is visible again. Hard-refresh if on an old bundle. |
 | **`409` A turn is already running** | Another interactive turn for the session has `last_turn.status=running` (or a stale one under ~2h). | Wait / reopen session; if the API process died mid-turn, wait for stale timeout or inspect `last_turn`. |
-| **`agent_turn_failed`** in backend logs with LLM/tool text; error line in chat after refresh | In-app failure (misconfigured model, recursion limit, tool error). HTTP **200** + NDJSON **`error`**. | `docker compose logs -f backend 2>&1 \| rg 'ERROR.*agent_turn'`; conversation **`context.last_turn`**. |
+| **`agent_turn_failed`** in backend logs with LLM/tool text; error line in chat after refresh | In-app failure (misconfigured model, tool error, or a turn that exhausted its step budget even after one continuation). HTTP **200** + NDJSON **`error`**. | `docker compose logs -f backend 2>&1 \| rg 'ERROR.*agent_turn'`; conversation **`context.last_turn`**. |
+| **`Recursion limit exceeded`** after a long research turn | The turn spent `OPENKMS_AGENT_RECURSION_LIMIT` supersteps (**~90 tool calls** at the default 200). Each tool round costs about two steps. | Warning at 75% and one automatic +60-step continuation are built in. If it still happens, the model ignored the budget warning — **send another message to continue from the saved thread** (all tool results are kept), or raise the limit. `rg 'agent_budget_warning\|recursion_continuing'` shows which path ran. |
 | 400 **`reasoning_content` … must be passed back** (DeepSeek thinking) | Thinking mode on + tools; history missing **`reasoning_content`**. Deep Agents disables thinking + shims via **`deep_agents/llm_chat.py`**. | Redeploy backend; or set **`OPENKMS_AGENT_LLM_REASONING_CONTENT_SHIM=true`**. |
 | **`another command is already in progress`** (psycopg) on revert + resend | Fixed: checkpointer now uses **`AsyncConnectionPool`**. Redeploy backend if still seen on an old image. | Ensure no overlapping streams on the same session (wait for revert toast before resend). |
 | Empty chat after reload, toast on load | **`GET …/messages`** failed (auth/network). | Browser network tab; backend access log. |
@@ -157,6 +158,17 @@ Local dev (**`./dev.sh`**, Vite **5173**) has no nginx; long-turn timeouts are u
 ### Runtime (Deep Agents)
 
 Workspace chat uses **deepagents ≥0.7.21**. The Plan checklist UI depends on `write_todos`, so the workspace factory opts in with LangChain **`TodoListMiddleware`** (opt-in since deepagents 0.7). Plan mode is hard read-only by replacing `FilesystemMiddleware` with a tools allowlist (`ls` / `read_file` / `glob` / `grep` only) — deepagents 0.7 does not support `FilesystemPermission` together with a shell-capable backend. Explore always uses that read-only filesystem stack; research uses it in plan mode.
+
+#### Step budget
+
+`OPENKMS_AGENT_RECURSION_LIMIT` (default **200**) caps LangGraph supersteps per turn. A tool round costs about **two** supersteps (one model call, one tool node), so 200 is roughly **90 tool calls** — reachable by an ordinary research turn. Two mechanisms keep a turn from ending on a raw limit string:
+
+- **Warning before the wall** — `deep_agents/budget.py` subclasses the existing `TodoListMiddleware` and, at **75%** of the budget (minus 8 turns of headroom), injects one `SystemMessage` telling the model to stop exploring and answer, delegating any remaining research to `task`. It deliberately reuses the `after_model` hook instead of adding a middleware: **every extra middleware installs its own graph node and costs one superstep per turn**, which would work against the budget it protects (measured: same step count as the plain todo middleware).
+- **One continuation** — if the turn still hits the limit, `runner._stream_parts_with_continuation` resumes from the checkpoint with **+60** steps and a nudge not to repeat finished calls. The checkpoint survives `GraphRecursionError`, so no tool results are lost; only one continuation is allowed, then the error is reported normally. Scheduled (non-streaming) turns do the same in `run_project_turn`.
+
+**Delegation is the structural lever:** a subagent runs on its own budget, so work delegated via `task` does not consume the parent conversation's steps (verified: a parent with `recursion_limit=15` let a subagent run 30 tool calls). The system prompt directs search-heavy research to the `research` subagent, tells the model not to retry a failing command with a bigger timeout more than once, and to wrap up when the budget warning appears.
+
+When a turn *does* exhaust everything, the error is reported as `Recursion limit exceeded (…)` with no raw stack detail, the persisted assistant row keeps all tool traces, and **sending another message continues from the saved thread** rather than starting over.
 
 ### Implementation layout
 

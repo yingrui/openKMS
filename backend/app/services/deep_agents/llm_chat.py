@@ -7,6 +7,8 @@ from __future__ import annotations
 
 from typing import Any
 
+import httpx
+
 from app.config import settings
 from app.services.openai_compat import (
     chat_extra_body_disable_thinking,
@@ -39,6 +41,7 @@ def build_deep_agent_chat_openai(
     temperature: float,
     streaming: bool,
     max_tokens: int | None = None,
+    timeout: httpx.Timeout | None = None,
 ) -> Any:
     return make_langchain_chat_openai(
         base_url=base_url,
@@ -47,6 +50,7 @@ def build_deep_agent_chat_openai(
         temperature=temperature,
         streaming=streaming,
         max_tokens=max_tokens,
+        timeout=timeout,
         extra_body=deep_agent_chat_extra_body(),
         use_shim=deep_agent_use_reasoning_content_shim(base_url),
     )

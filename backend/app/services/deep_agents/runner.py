@@ -6,13 +6,14 @@ import logging
 from collections.abc import AsyncIterator
 from typing import Any
 
-from langchain_core.messages import AIMessage
+from langchain_core.messages import AIMessage, SystemMessage
 from langgraph.errors import GraphRecursionError
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.agent_models import AgentConversation, AgentMessage
 from app.services.boundaries import boundary
+from app.config import settings
 from app.services.agent.tool_transcripts import (
     AGENT_TOOL_TRANSCRIPTS_KEY,
     tool_payload_from_traces,
@@ -63,6 +64,57 @@ def _turn_failure(exc: BaseException) -> tuple[str, BaseException | None]:
     if isinstance(exc, GraphRecursionError):
         return f"Recursion limit exceeded ({exc!s})", None
     return str(exc), exc
+
+
+# --- Step-budget continuation -------------------------------------------------------
+#
+# `recursion_limit` is a per-invocation budget, but the checkpoint survives the error, so a
+# turn that ran out mid-research can pick up where it stopped instead of handing the user a
+# raw limit string with all its work stranded in the thread. Each continuation gets a small
+# extra budget and a nudge to finish rather than explore further.
+CONTINUATION_STEPS = 60
+CONTINUATION_MAX = 1
+
+_CONTINUATION_NUDGE = (
+    "【预算补充】上一轮在步数上限处中断，现在追加了少量步数。"
+    "checkpoint 里的工具结果都还在，不要重复已完成的调用。"
+    "请直接基于已有结论收尾并回答用户；确实还缺关键信息时，最多再补一两次查询。"
+)
+
+
+def _budget_config(cfg: dict[str, Any], extra_steps: int) -> dict[str, Any]:
+    """Same runnable config with a fresh step budget for one continuation."""
+    base = int(cfg.get("recursion_limit") or settings.agent_recursion_limit)
+    return {**cfg, "recursion_limit": base + extra_steps}
+
+
+async def _stream_parts_with_continuation(
+    agent: Any,
+    graph_input: Any,
+    cfg: dict[str, Any],
+) -> AsyncIterator[ProjectStreamPart]:
+    """Stream a turn, continuing once when the step budget runs out.
+
+    Only the *first* attempt receives the caller's input. Continuations pass a nudge instead,
+    so the graph resumes from its checkpoint rather than restarting from the user message.
+    """
+    payload = graph_input
+    for attempt in range(CONTINUATION_MAX + 1):
+        last_attempt = attempt == CONTINUATION_MAX
+        try:
+            async for part in iter_langgraph_stream_parts(agent, payload, cfg):
+                yield part
+            return
+        except GraphRecursionError:
+            if last_attempt:
+                raise
+            logger.warning(
+                "agent_turn_recursion_continuing attempt=%s limit=%s",
+                attempt + 1,
+                cfg.get("recursion_limit"),
+            )
+            cfg = _budget_config(cfg, CONTINUATION_STEPS)
+            payload = {"messages": [SystemMessage(content=_CONTINUATION_NUDGE)]}
 
 
 async def iter_project_stream_parts(
@@ -129,7 +181,9 @@ async def iter_project_stream_parts(
         return
     any_text = False
     with boundary("stream the agent turn") as failed:
-        async for part in iter_langgraph_stream_parts(agent, {"messages": turn_messages}, cfg):
+        async for part in _stream_parts_with_continuation(
+            agent, {"messages": turn_messages}, cfg
+        ):
             if part.get("type") == "delta":
                 any_text = True
             yield part
@@ -223,16 +277,35 @@ async def run_project_turn(
         msg = f"Context preparation failed: {failed[0]}"
         turn.log_failed(msg, exc=failed[0], conversation=conversation)
         return msg, None
-    with boundary("run the agent turn to completion") as failed:
-        if scheduled_run:
-            out = await ainvoke_with_scheduled_auto_resume(
-                agent, {"messages": turn_messages}, cfg
-            )
-        else:
-            out = await agent.ainvoke({"messages": turn_messages}, cfg)
-    if failed:
-        msg, record = _turn_failure(failed[0])
-        turn.log_failed(msg, exc=record, conversation=conversation)
+    out: dict[str, Any] | None = None
+    for attempt in range(CONTINUATION_MAX + 1):
+        with boundary("run the agent turn to completion") as failed:
+            if scheduled_run:
+                out = await ainvoke_with_scheduled_auto_resume(
+                    agent, {"messages": turn_messages}, cfg
+                )
+            else:
+                payload: Any = (
+                    {"messages": turn_messages}
+                    if attempt == 0
+                    else {"messages": [SystemMessage(content=_CONTINUATION_NUDGE)]}
+                )
+                out = await agent.ainvoke(payload, cfg)
+        if not failed:
+            break
+        if not isinstance(failed[0], GraphRecursionError) or attempt == CONTINUATION_MAX:
+            msg, record = _turn_failure(failed[0])
+            turn.log_failed(msg, exc=record, conversation=conversation)
+            return msg, None
+        logger.warning(
+            "scheduled_turn_recursion_continuing attempt=%s limit=%s",
+            attempt + 1,
+            cfg.get("recursion_limit"),
+        )
+        cfg = _budget_config(cfg, CONTINUATION_STEPS)
+    if out is None:  # pragma: no cover - the loop either returns or assigns
+        msg = "Agent turn produced no result"
+        turn.log_failed(msg, conversation=conversation)
         return msg, None
     traces = tool_traces_from_tool_messages(out.get("messages") or [])
     after = list(out.get("messages") or [])
