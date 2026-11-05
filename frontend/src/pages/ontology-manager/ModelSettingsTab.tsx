@@ -38,6 +38,9 @@ export function ModelSettingsTab() {
   const [description, setDescription] = useState(model.description ?? '');
   const [datasetIds, setDatasetIds] = useState<string[]>(model.dataset_ids);
   const [ai, setAi] = useState<AiContext>(() => readAiContext(model.ai_context));
+  const [accessMode, setAccessMode] = useState<'public' | 'gated'>(
+    model.access_mode === 'gated' ? 'gated' : 'public',
+  );
   const [saving, setSaving] = useState(false);
 
 
@@ -59,6 +62,7 @@ export function ModelSettingsTab() {
         name: name.trim(),
         description: description.trim() || null,
         dataset_ids: datasetIds,
+        access_mode: accessMode,
         ai_context: hasAi
           ? { instructions: ai.instructions.trim(), synonyms, examples }
           : null,
@@ -117,6 +121,18 @@ export function ModelSettingsTab() {
               value={description}
               onChange={(e) => setDescription(e.target.value)}
             />
+          </FormField>
+          <FormField
+            label={t('dataModel.accessMode')}
+            hint={t('dataModel.accessModeHint')}
+          >
+            <select
+              value={accessMode}
+              onChange={(e) => setAccessMode(e.target.value as 'public' | 'gated')}
+            >
+              <option value="public">{t('dataModel.accessModePublic')}</option>
+              <option value="gated">{t('dataModel.accessModeGated')}</option>
+            </select>
           </FormField>
           <FormField
             label={t('dataModel.modelDatasets')}

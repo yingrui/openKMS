@@ -1,0 +1,109 @@
+"""FastAPI dependencies for the **Catalog data plane**.
+
+Catalog reads — a model's fields/metrics, answering a query, running SQL Lab — are decided
+by the **data resource grant**, not by an operation key. `data:read` says "may open the Data
+Model page"; it does not say "may read these rows". Keeping them separate is the whole point:
+
+- a principal with a grant can query the slice without being a Catalog user;
+- a principal with `data:read` can administer the Catalog without seeing gated rows;
+- a **public** model is readable by any authenticated principal, which is what "public"
+  means and is a deliberate decision, not an accident of a missing check.
+
+Write paths (creating datasets, editing models, configuring resources) stay on
+`data:write` — that *is* an operation permission.
+"""
+
+from __future__ import annotations
+
+from fastapi import Depends, HTTPException, Request
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.api.auth import require_auth
+from app.database import get_db
+from app.models.semantic_model import SemanticModel
+from app.services.data_layer.catalog_access import ACCESS_GATED, has_model_grant
+
+
+def _subject(request: Request) -> tuple[dict, str | None]:
+    payload = getattr(request.state, "openkms_jwt_payload", None) or {}
+    sub = payload.get("sub")
+    return payload, sub if isinstance(sub, str) else None
+
+
+async def require_model_read(model_id: str, request: Request, db: AsyncSession) -> None:
+    """May this caller see the model's definition (fields, metrics, tables) and query it?
+
+    Public model → any authenticated caller. Gated model → only with a read grant on one of
+    its data resources. Being an admin, or holding `data:read`, is **not** sufficient.
+    """
+    model = await db.get(SemanticModel, model_id)
+    if model is None:
+        raise HTTPException(status_code=404, detail="Semantic model not found")
+    if (model.access_mode or "public") != ACCESS_GATED:
+        return
+    payload, sub = _subject(request)
+    if await has_model_grant(db, payload=payload, sub=sub, model_id=model_id):
+        return
+    raise HTTPException(
+        status_code=403,
+        detail={
+            "code": "MODEL_FORBIDDEN",
+            "message": "This semantic model is gated and no data resource is granted to you.",
+        },
+    )
+
+
+async def readable_model_ids(db: AsyncSession, *, payload: dict, sub: str | None) -> set[str]:
+    """Model ids this caller may read: every public model, plus gated ones with a grant.
+
+    Used by list endpoints, which must not turn "no grant" into "no results at all" — a public
+    model is readable by any authenticated caller.
+    """
+    rows = (await db.execute(select(SemanticModel.id, SemanticModel.access_mode))).all()
+    out: set[str] = set()
+    for model_id, access_mode in rows:
+        if (access_mode or "public") != ACCESS_GATED:
+            out.add(model_id)
+        elif sub and await has_model_grant(
+            db, payload=payload, sub=sub, model_id=model_id
+        ):
+            out.add(model_id)
+    return out
+
+
+def require_model_access(model_id_param: str = "model_id"):
+    """Bind `require_model_read` to a path parameter (defaults to `model_id`)."""
+
+    async def _check(
+        request: Request,
+        db: AsyncSession = Depends(get_db),
+        _auth: str = Depends(require_auth),
+    ) -> None:
+        model_id = request.path_params.get(model_id_param)
+        if not isinstance(model_id, str) or not model_id:
+            raise HTTPException(status_code=400, detail="Missing model id")
+        await require_model_read(model_id, request, db)
+
+    return _check
+
+
+async def require_metric_access(
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+    _auth: str = Depends(require_auth),
+) -> None:
+    """A metric route resolves its model first, then applies the same gate.
+
+    Metrics belong to a model; gating them independently would let a caller read a gated
+    model's definitions through the metric endpoint.
+    """
+    from app.models.metric_definition import MetricDefinition
+
+    metric_id = request.path_params.get("metric_id")
+    if not isinstance(metric_id, str) or not metric_id:
+        raise HTTPException(status_code=400, detail="Missing metric id")
+    metric = await db.get(MetricDefinition, metric_id)
+    if metric is None:
+        raise HTTPException(status_code=404, detail="Metric not found")
+    await require_model_read(metric.semantic_model_id, request, db)

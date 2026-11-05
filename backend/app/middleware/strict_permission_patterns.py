@@ -59,6 +59,38 @@ _OPENAPI_EXACT: frozenset[tuple[str, str]] = frozenset(
 )
 
 
+#: **Catalog data plane** — reads decided by the data resource grant, not by an operation key.
+#: These paths deliberately match no `security_permissions` pattern: matching one would mean
+#: a key decided whether a caller may read rows, which is the confusion this split removes.
+#: The handlers enforce their own gate (`require_model_access`, `resolve_catalog_scope`).
+_DATA_PLANE_GET_SUFFIXES: tuple[str, ...] = (
+    "/fields",
+    "/export",
+    "/metrics",
+    "/compute",
+    "/runs",
+)
+
+
+def _is_data_plane(method: str, path: str) -> bool:
+    """True for a Catalog read/query path whose gate is the resource grant."""
+    parts = [p for p in path.split("/") if p]
+    # /api/semantic-models/{id}[/...]
+    if len(parts) >= 3 and parts[:2] == ["api", "semantic-models"]:
+        rest = parts[3:]
+        if method in ("POST",) and rest in (["query"], ["sql"]):
+            return True
+        if method in ("GET", "HEAD") and (not rest or path.endswith(_DATA_PLANE_GET_SUFFIXES)):
+            return True
+    # /api/metrics[/{id}[/compute|/runs]]
+    if parts[:2] == ["api", "metrics"] and method in ("GET", "HEAD"):
+        return True
+    # /api/data-resources[/{id}] — a granted caller must be able to find their resource.
+    if parts[:2] == ["api", "data-resources"] and method in ("GET", "HEAD"):
+        return True
+    return False
+
+
 def _norm_path(path: str) -> str:
     p = path.split("?", 1)[0]
     if len(p) > 1 and p.endswith("/"):
@@ -122,6 +154,13 @@ class StrictPermissionPatternMiddleware:
             return
 
         if path.startswith("/api/auth/api-keys"):
+            await self.app(scope, receive, send)
+            return
+
+        # Catalog data plane: authentication is enough here — the handler decides access from
+        # the data resource grant (a public model is open to any authenticated caller). No
+        # permission key may stand in for that decision.
+        if _is_data_plane(method, path):
             await self.app(scope, receive, send)
             return
 

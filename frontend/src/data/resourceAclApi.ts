@@ -69,4 +69,5 @@ export const RESOURCE_TYPES = {
   linkType: 'link_type',
   glossary: 'glossary',
   project: 'project',
+  dataResource: 'data_resource',
 } as const;

@@ -25,6 +25,8 @@ RT_OBJECT_TYPE = "object_type"
 RT_LINK_TYPE = "link_type"
 RT_GLOSSARY = "glossary"
 RT_PROJECT = "project"
+#: Catalog data capability: a named slice of a semantic model (see `data_resources`).
+RT_DATA_RESOURCE = "data_resource"
 
 SECURABLE_RESOURCE_TYPES = frozenset(
     {
@@ -39,6 +41,7 @@ SECURABLE_RESOURCE_TYPES = frozenset(
         RT_LINK_TYPE,
         RT_GLOSSARY,
         RT_PROJECT,
+        RT_DATA_RESOURCE,
     }
 )
 

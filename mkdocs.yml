@@ -198,6 +198,7 @@ nav:
       - Data layer (Datasets · Data Model · Data Insights): features/data-layer.md
       - Data layer — design notes: features/data-layer-design-notes.md
       - Data layer — semantic model (Ossie): features/data-layer-semantic-model.md
+      - Catalog data access (resources · grants · rows · how to use): features/catalog-data-access.md
       - Data layer — Data Insights (design): features/data-layer-insights.md
       - Configuration: features/configuration.md
   - Security: security.md

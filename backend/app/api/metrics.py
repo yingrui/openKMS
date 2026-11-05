@@ -11,7 +11,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.auth import require_any_permission, require_auth, require_permission
+from app.api.auth import require_permission
 from app.database import get_db
 from app.models.dataset import Dataset
 from app.models.metric_definition import MetricDefinition
@@ -33,14 +33,14 @@ from app.services.data_layer.metrics import (
     validate_metric_definition,
     validate_metric_filters,
 )
+from app.api.catalog_scoped import require_metric_access, readable_model_ids
 from app.api.query_errors import query_failure_detail
 from app.services.data_layer.query_errors import DEFINITION, QueryFailure
 from app.services.data_layer.query import QueryError, run_query
 from app.services.data_layer.semantic_model_fields import FieldError, validate_datatype
-from app.services.permissions.permission_catalog import PERM_DATA_READ, PERM_DATA_WRITE
+from app.services.permissions.permission_catalog import PERM_DATA_WRITE
 
-router = APIRouter(prefix="/metrics", tags=["metrics"], dependencies=[Depends(require_auth)])
-_VIEW = (PERM_DATA_READ,)
+router = APIRouter(prefix="/metrics", tags=["metrics"])
 
 
 async def _name_map(db: AsyncSession, ids: set[str]) -> dict[str, str]:
@@ -102,20 +102,34 @@ async def _record_run(
     await db.commit()
 
 
-@router.get(
-    "",
-    response_model=MetricListResponse,
-    dependencies=[Depends(require_any_permission(*_VIEW))],
-)
+@router.get("", response_model=MetricListResponse)
 async def list_metrics(
+    request: Request,
     semantic_model_id: str | None = None,
     base_dataset_id: str | None = None,
     db: AsyncSession = Depends(get_db),
 ):
-    """List metrics, scoped to a semantic model and/or anchored on a base dataset."""
+    """List metrics, scoped to a semantic model and/or anchored on a base dataset.
+
+    Filtered by the data plane: a public model's metrics are listed for any caller, a gated
+    model's only when the caller holds a grant on one of its resources.
+    """
+    payload = getattr(request.state, "openkms_jwt_payload", None) or {}
+    sub = payload.get("sub") if isinstance(payload.get("sub"), str) else None
+    readable = await readable_model_ids(db, payload=payload, sub=sub)
+    if semantic_model_id and semantic_model_id not in readable:
+        raise HTTPException(
+            status_code=403,
+            detail={
+                "code": "MODEL_FORBIDDEN",
+                "message": "This semantic model is gated and no data resource is granted to you.",
+            },
+        )
     query = select(MetricDefinition).order_by(MetricDefinition.created_at.desc())
     if semantic_model_id:
         query = query.where(MetricDefinition.semantic_model_id == semantic_model_id)
+    else:
+        query = query.where(MetricDefinition.semantic_model_id.in_(readable or {""}))
     if base_dataset_id:
         query = query.where(MetricDefinition.base_dataset_id == base_dataset_id)
     rows = (await db.execute(query)).scalars().all()
@@ -183,7 +197,7 @@ async def create_metric(
 @router.get(
     "/{metric_id}",
     response_model=MetricResponse,
-    dependencies=[Depends(require_any_permission(*_VIEW))],
+    dependencies=[Depends(require_metric_access)],
 )
 async def get_metric(metric_id: str, db: AsyncSession = Depends(get_db)):
     m = await _load_metric(db, metric_id)
@@ -270,7 +284,7 @@ async def delete_metric(metric_id: str, db: AsyncSession = Depends(get_db)):
 @router.get(
     "/{metric_id}/compute",
     response_model=MetricComputeResponse,
-    dependencies=[Depends(require_any_permission(*_VIEW))],
+    dependencies=[Depends(require_metric_access)],
 )
 async def compute_metric_endpoint(
     request: Request,
@@ -303,7 +317,7 @@ async def compute_metric_endpoint(
 @router.get(
     "/{metric_id}/runs",
     response_model=list[MetricRunResponse],
-    dependencies=[Depends(require_any_permission(*_VIEW))],
+    dependencies=[Depends(require_metric_access)],
 )
 async def list_metric_runs(metric_id: str, db: AsyncSession = Depends(get_db)):
     """Recent executions of a metric (audit)."""

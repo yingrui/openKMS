@@ -10,7 +10,8 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.auth import require_any_permission, require_auth, require_permission
+from app.api.auth import require_permission
+from app.api.catalog_scoped import require_model_access
 from app.database import get_db
 from app.models.dataset import Dataset
 from app.models.semantic_model import SemanticModel
@@ -32,12 +33,11 @@ from app.services.data_layer.semantic_model_fields import (
     validate_field,
 )
 from app.services.data_layer.semantic_models import member_ids
-from app.services.permissions.permission_catalog import PERM_DATA_READ, PERM_DATA_WRITE
+from app.services.permissions.permission_catalog import PERM_DATA_WRITE
 
-router = APIRouter(
-    prefix="/semantic-models", tags=["semantic-model-fields"], dependencies=[Depends(require_auth)]
-)
-_VIEW = (PERM_DATA_READ,)
+# Reading a model's fields is part of querying it, so it follows the data-plane gate
+# (`require_model_access`) rather than the Catalog operation key.
+router = APIRouter(prefix="/semantic-models", tags=["semantic-model-fields"])
 
 
 async def _load_model(db: AsyncSession, model_id: str) -> SemanticModel:
@@ -69,7 +69,7 @@ async def _dataset_columns(db: AsyncSession, model_id: str, dataset_id: str) -> 
 @router.get(
     "/{model_id}/fields",
     response_model=SemanticModelFieldListResponse,
-    dependencies=[Depends(require_any_permission(*_VIEW))],
+    dependencies=[Depends(require_model_access())],
 )
 async def list_model_fields(model_id: str, db: AsyncSession = Depends(get_db)):
     """List a model's fields, seeded from its datasets' columns on first read."""

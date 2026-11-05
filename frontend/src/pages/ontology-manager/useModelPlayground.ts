@@ -17,6 +17,7 @@ import {
   type SemanticModelQuerySpec,
 } from '../../data/semanticModelsApi';
 import { useAsyncData } from '../../hooks/useAsyncData';
+import { fetchDataResources } from '../../data/dataResourcesApi';
 import {
   canRunQuery,
   compactSpec,
@@ -73,6 +74,18 @@ export function useModelPlayground() {
       ),
     [modelId],
   );
+  const gated = model.access_mode === 'gated';
+  // A gated model answers only inside a granted resource, so the scope is picked up front
+  // and rides along on every run instead of being inferred at submit time.
+  const { data: resourcePage } = useAsyncData(
+    () => (gated ? fetchDataResources(modelId) : Promise.resolve({ items: [], total: 0 })),
+    [gated, modelId],
+  );
+  const resources = useMemo(() => resourcePage?.items ?? [], [resourcePage]);
+  const [resourceId, setResourceId] = useState<string>('');
+  const activeResourceId = resourceId || resources[0]?.id || '';
+  const activeResource = resources.find((r) => r.id === activeResourceId) ?? null;
+
   const metrics = useMemo(() => data?.metrics ?? [], [data]);
   const fields = useMemo(() => data?.fields ?? [], [data]);
   const allJoins = useMemo(() => data?.joins ?? [], [data]);
@@ -270,7 +283,13 @@ export function useModelPlayground() {
       }
       setRunning(true);
       try {
-        setResult(await querySemanticModelSql(modelId, { sql: sqlText, limit: sqlLimit }));
+        setResult(
+          await querySemanticModelSql(modelId, {
+            sql: sqlText,
+            limit: sqlLimit,
+            resource_id: activeResourceId || null,
+          }),
+        );
         setRunError(null);
         setParams(
           (prev) => {
@@ -299,7 +318,9 @@ export function useModelPlayground() {
     setRunning(true);
     const runSpec = compactSpec({ ...spec, filters: toFilters(filterRows) });
     try {
-      setResult(await querySemanticModel(modelId, runSpec));
+      setResult(
+        await querySemanticModel(modelId, { ...runSpec, resource_id: activeResourceId || null }),
+      );
       setRunError(null);
       setParams({ mode, q: JSON.stringify(runSpec) }, { replace: true });
     } catch (e) {
@@ -334,7 +355,9 @@ export function useModelPlayground() {
   };
 
   const runDisabled =
-    running || (mode === 'sql' ? !sqlText.trim() : !spec || !canRunQuery(spec));
+    running ||
+    (gated && !activeResourceId) ||
+    (mode === 'sql' ? !sqlText.trim() : !spec || !canRunQuery(spec));
 
   return {
     t,
@@ -345,8 +368,12 @@ export function useModelPlayground() {
     modelDatasets,
     modelJoins,
     loading,
-    mode,
-    spec,
+    gated,
+    resources,
+    activeResourceId,
+    activeResource,
+    setResourceId,
+    mode,    spec,
     patch,
     filterRows,
     setFilterRows,

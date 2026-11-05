@@ -443,13 +443,13 @@ DEFAULT_PATTERNS_BY_KEY: dict[str, tuple[list[str], list[str]]] = {
             "HEAD /api/dataset-joins",
             "HEAD /api/dataset-joins/*",
             "GET /api/metrics",
-            "GET /api/metrics/*",
             "HEAD /api/metrics",
-            "HEAD /api/metrics/*",
+            # Only the **list** stays on the operation key: a bare name/description browse.
+            # Every model-scoped read (a model, its fields, metrics, query, SQL) is decided by
+            # the data resource grant instead — see `catalog_scoped.py` and
+            # docs/features/catalog-data-access.md.
             "GET /api/semantic-models",
-            "GET /api/semantic-models/*",
             "HEAD /api/semantic-models",
-            "HEAD /api/semantic-models/*",
         ],
     ),
     PERM_DATA_WRITE: (
@@ -476,10 +476,16 @@ DEFAULT_PATTERNS_BY_KEY: dict[str, tuple[list[str], list[str]]] = {
             "PATCH /api/metrics/*",
             "DELETE /api/metrics/*",
             "POST /api/semantic-models",
-            "POST /api/semantic-models/*",
             "PUT /api/semantic-models/*",
             "PATCH /api/semantic-models/*",
             "DELETE /api/semantic-models/*",
+            "POST /api/data-resources",
+            "PUT /api/data-resources/*",
+            "PATCH /api/data-resources/*",
+            "DELETE /api/data-resources/*",
+            # Grants on a data resource are configured by whoever holds `data:write`
+            # plus manage on the resource; the ACL API itself is permission-agnostic.
+            "PUT /api/resource-acl/data_resource/*",
         ],
     ),
     PERM_INSIGHTS_READ: (

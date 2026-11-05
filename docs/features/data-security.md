@@ -65,7 +65,7 @@ Columns: Data models — Data security.
 | `document_channel` | Parent channels to root |
 | `article_channel` | Parent article channels |
 | `wiki_space` | — |
-| `knowledge_base`, `evaluation`, `glossary`, `dataset`, `object_type`, `link_type` | Standalone |
+| `knowledge_base`, `evaluation`, `glossary`, `dataset`, `object_type`, `link_type`, `data_resource` | Standalone |
 
 **Wiki pages** are not securable rows: visibility is **wiki space ACL only** (`wiki_page_scope`), same pattern as documents on channels.
 

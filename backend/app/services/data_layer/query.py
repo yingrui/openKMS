@@ -30,6 +30,7 @@ from app.services.data_layer.metrics import (
     validate_metric_filters,
     validate_sql_fragment,
 )
+from app.services.data_layer.row_policy import policy_conditions
 from app.services.data_layer.semantic_model_fields import resolve_is_time
 from app.services.data_layer.query_errors import (
     DATA,
@@ -244,12 +245,19 @@ async def run_query(
     limit: int | None = None,
     member_dataset_ids: set[str] | None = None,
     timeout_ms: int = DEFAULT_TIMEOUT_MS,
+    row_policy: list[dict[str, Any]] | None = None,
+    policy_claims: dict[str, Any] | None = None,
+    policy_base_dataset_id: str | None = None,
 ) -> tuple[str, list[str], list[dict[str, Any]], bool, int]:
     """Run one query of a semantic model.
 
     Either ``metric`` (saved definition) or ``expression`` (one-shot fragment +
     ``base_dataset_id`` / optional ``joins``). ``where`` / ``having`` are boolean
     fragments AND-ed into the matching clause.
+
+    ``row_policy`` is a granted data resource's row scope: rendered against the base table
+    alias and AND-ed last, so nothing in the request can remove it. ``policy_claims``
+    resolves claim bindings (missing claim → the policy renders as an error).
 
     Returns ``(sql, columns, rows, capped, duration_ms)``.
     """
@@ -316,6 +324,12 @@ async def run_query(
     if member_dataset_ids is not None and base.id not in member_dataset_ids:
         raise QueryError(
             "The base dataset is not in this semantic model.",
+            QueryFailure("QUERY_INVALID_REQUEST", REQUEST),
+        )
+    if row_policy and policy_base_dataset_id and base.id != policy_base_dataset_id:
+        raise QueryError(
+            "This query reads a table outside the granted data resource; "
+            "use the resource's base dataset.",
             QueryFailure("QUERY_INVALID_REQUEST", REQUEST),
         )
 
@@ -439,12 +453,17 @@ async def run_query(
         for o in (order_by or [])
         if isinstance(o, dict)
     ]
+    # Resource row policy: ANDed onto the base table, after definition and request filters —
+    # callers can narrow the result, never widen it, and cannot drop this part.
+    policy_where, policy_params = policy_conditions(
+        row_policy, alias=_BASE_ALIAS, claims=policy_claims or {}, key_prefix="p"
+    )
     sql = build_sql(
         base,
         metric_expr=metric_expr,
         dimensions=dimensions,
         joins_sql=joins_sql,
-        where=where_parts,
+        where=[*where_parts, *policy_where],
         having=having_parts,
         order_by=order,
         limit=capped_limit + 1,
@@ -452,7 +471,7 @@ async def run_query(
 
     started = time.perf_counter()
     try:
-        rows = run_readonly(ds, sql, params, timeout_ms=timeout_ms)
+        rows = run_readonly(ds, sql, {**params, **policy_params}, timeout_ms=timeout_ms)
     except (SQLAlchemyError, OSError, TypeError, ValueError) as exc:
         failure = classify_sql_error(exc)
         raise QueryError(f"Query failed: {exc}", failure) from exc

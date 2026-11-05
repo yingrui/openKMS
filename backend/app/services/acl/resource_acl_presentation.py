@@ -13,6 +13,7 @@ from app.services.acl.resource_acl_constants import (
     GRANTEE_USER,
     PERM_ALL_DATA,
     RT_ARTICLE_CHANNEL,
+    RT_DATA_RESOURCE,
     RT_DATASET,
     RT_DOCUMENT_CHANNEL,
     RT_EVALUATION,
@@ -39,6 +40,7 @@ async def resource_creator_identity(
     db: AsyncSession, resource_type: str, resource_id: str
 ) -> tuple[str | None, str | None]:
     from app.models.article_channel import ArticleChannel
+    from app.models.data_resource import DataResource
     from app.models.dataset import Dataset
     from app.models.document_channel import DocumentChannel
     from app.models.evaluation import Evaluation
@@ -60,6 +62,7 @@ async def resource_creator_identity(
         RT_OBJECT_TYPE: ObjectType,
         RT_LINK_TYPE: LinkType,
         RT_PROJECT: Project,
+        RT_DATA_RESOURCE: DataResource,
     }.get(resource_type)
     row = await db.get(model, resource_id) if model else None
     if not row:

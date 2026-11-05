@@ -23,6 +23,10 @@ class SemanticModel(Base):
     id: Mapped[str] = mapped_column(String(64), primary_key=True)
     name: Mapped[str] = mapped_column(String(256), nullable=False)
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
+    #: `public` = any caller with `data:read`; `gated` = a data-resource grant is required.
+    access_mode: Mapped[str] = mapped_column(
+        String(16), nullable=False, default="public", server_default="public"
+    )
     ai_context: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
     created_by: Mapped[str | None] = mapped_column(String(512), nullable=True)
     created_by_name: Mapped[str | None] = mapped_column(String(256), nullable=True)

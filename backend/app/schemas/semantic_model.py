@@ -1,6 +1,6 @@
 """Semantic model schemas (a named scope over shared datasets)."""
 from datetime import datetime
-from typing import Any
+from typing import Any, Literal
 
 from pydantic import BaseModel
 
@@ -16,6 +16,8 @@ class SemanticModelCreate(BaseModel):
     description: str | None = None
     dataset_ids: list[str] = []
     ai_context: dict[str, Any] | None = None
+    #: `public` (default) or `gated` — gated models are reachable only through a resource grant.
+    access_mode: Literal["public", "gated"] | None = None
 
 
 class SemanticModelUpdate(BaseModel):
@@ -23,6 +25,7 @@ class SemanticModelUpdate(BaseModel):
     description: str | None = None
     dataset_ids: list[str] | None = None
     ai_context: dict[str, Any] | None = None
+    access_mode: Literal["public", "gated"] | None = None
 
 
 class SemanticModelResponse(BaseModel):
@@ -32,6 +35,7 @@ class SemanticModelResponse(BaseModel):
     dataset_ids: list[str] = []
     datasets: list[SemanticModelDatasetRef] = []
     ai_context: dict[str, Any] | None = None
+    access_mode: Literal["public", "gated"] = "public"
     created_by_name: str | None = None
     created_at: datetime
     updated_at: datetime
@@ -82,6 +86,8 @@ class QueryRequest(BaseModel):
     having: str | None = None
     order_by: list[QueryOrder] = []
     limit: int | None = None
+    #: Required when the model is `gated`; ignored for `public` models.
+    resource_id: str | None = None
 
 
 class QueryResponse(BaseModel):
@@ -99,3 +105,5 @@ class SqlLabRequest(BaseModel):
 
     sql: str
     limit: int | None = None
+    #: Required when the model is `gated`; ignored for `public` models.
+    resource_id: str | None = None

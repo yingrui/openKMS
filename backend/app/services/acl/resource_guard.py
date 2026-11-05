@@ -12,6 +12,7 @@ from typing import Any
 from fastapi import HTTPException, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.models.data_resource import DataResource
 from app.models.dataset import Dataset
 from app.models.evaluation import Evaluation
 from app.models.glossary import Glossary
@@ -24,6 +25,7 @@ from app.services.acl.resource_acl_constants import (
     PERM_MANAGE,
     PERM_READ,
     PERM_WRITE,
+    RT_DATA_RESOURCE,
     RT_DATASET,
     RT_EVALUATION,
     RT_GLOSSARY,
@@ -43,6 +45,7 @@ class SecurableResourceSpec:
 
 
 RESOURCE_REGISTRY: dict[str, SecurableResourceSpec] = {
+    RT_DATA_RESOURCE: SecurableResourceSpec(DataResource, "Data resource not found"),
     RT_DATASET: SecurableResourceSpec(Dataset, "Dataset not found"),
     RT_EVALUATION: SecurableResourceSpec(Evaluation, "Evaluation not found"),
     RT_GLOSSARY: SecurableResourceSpec(Glossary, "Glossary not found"),
@@ -119,7 +122,6 @@ async def load_scoped_resource(
 
 
 # --- Permission-level shortcuts (common Depends patterns) ---
-
 async def require_read(
     db: AsyncSession, request: Request, resource_type: str, resource: Any
 ) -> Any:

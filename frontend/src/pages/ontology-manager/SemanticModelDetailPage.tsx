@@ -66,6 +66,7 @@ export function SemanticModelDetailPage() {
           { to: `${base}/datasets`, label: t('datasets.title') },
           { to: `${base}/relationships`, label: t('datasets.relationships') },
           { to: `${base}/playground`, label: t('dataModel.playgroundTitle') },
+          { to: `${base}/resources`, label: t('dataModel.resources') },
           { to: `${base}/settings`, label: t('dataModel.settings') },
         ]}
         identityAction={

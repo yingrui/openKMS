@@ -46,6 +46,7 @@ import app.models.metric_run  # noqa: F401 - register models with Base.metadata
 import app.models.audit_event  # noqa: F401 - register models with Base.metadata
 import app.models.story  # noqa: F401 - register models with Base.metadata
 import app.models.semantic_model  # noqa: F401 - register models with Base.metadata
+import app.models.data_resource  # noqa: F401 - register models with Base.metadata
 import app.models.semantic_model_dataset  # noqa: F401 - register models with Base.metadata
 import app.models.semantic_model_field  # noqa: F401 - register models with Base.metadata
 import app.models.dataset_column  # noqa: F401 - register models with Base.metadata

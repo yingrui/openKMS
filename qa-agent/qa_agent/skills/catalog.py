@@ -45,6 +45,31 @@ def list_semantic_models_tool(_config: RunnableConfig) -> str:
         return f"Error listing semantic models: {e}"
 
 
+def _resolve_resource(token: str, model_id: str, resource_id: str | None) -> str | None:
+    """The data resource a gated model needs; a public model ignores it.
+
+    Returns the id to send, or None for a public model. Raises when the model is gated and
+    the caller has no usable resource — better a clear message than the API's bare 400.
+    """
+    model = catalog_client.get_semantic_model(token, model_id)
+    if (model.get("access_mode") or "public") != "gated":
+        return None
+    available = catalog_client.list_data_resources(token, model_id)
+    ids = [r.get("id") for r in available if r.get("id")]
+    if resource_id:
+        if resource_id in ids:
+            return resource_id
+        raise ValueError(
+            f"Data resource '{resource_id}' is not granted to you for this model."
+        )
+    if not ids:
+        raise ValueError(
+            "This semantic model is gated and no data resource is granted to you. "
+            "Ask an owner for access before querying it."
+        )
+    return ids[0]
+
+
 def _model_tables(token: str, model: dict[str, Any]) -> list[dict[str, Any]]:
     """Physical tables the SQL Lab allowlist accepts for this model."""
     tables: list[dict[str, Any]] = []
@@ -91,9 +116,18 @@ def get_semantic_model_tool(model_id: str, _config: RunnableConfig) -> str:
         model = catalog_client.get_semantic_model(token, model_id)
         metrics = catalog_client.list_model_metrics(token, model_id)
         fields = catalog_client.list_model_fields(token, model_id)
+        resources = (
+            catalog_client.list_data_resources(token, model_id)
+            if (model.get("access_mode") or "public") == "gated"
+            else []
+        )
         return json.dumps(
             {
                 "model": model,
+                "data_resources": [
+                    {"id": r.get("id"), "name": r.get("name"), "rows": len(r.get("row_policy") or [])}
+                    for r in resources
+                ],
                 "tables": _model_tables(token, model),
                 "metrics": [
                     {
@@ -142,11 +176,15 @@ def query_semantic_model_tool(
     having: str | None = None,
     order_by: list[dict[str, Any]] | None = None,
     limit: int | None = 100,
+    resource_id: str | None = None,
 ) -> str:
     """Run one Catalog metric query (not a full SELECT). Prefer a saved metric name; otherwise pass
     an aggregate expression fragment (e.g. SUM(amount)) with base_dataset (dataset id) and optional
     joins (relationship ids). filters: [{field, op, value}] on model fields. where/having: boolean
     SQL fragments AND-ed in. For ad-hoc SELECT/JOIN use sql_semantic_model_tool instead.
+    resource_id: which granted data resource to query — required in effect when the model is
+    gated (the resource decides the row scope, which you cannot widen). Defaults to the first
+    resource granted to the caller.
     model_id must be linked to this KB."""
     try:
         token = get_tool_access_token(_config)
@@ -172,7 +210,8 @@ def query_semantic_model_tool(
             body["where"] = where
         if having:
             body["having"] = having
-        result = catalog_client.query_semantic_model(token, model_id, body)
+        resource_id = _resolve_resource(token, model_id, resource_id)
+        result = catalog_client.query_semantic_model(token, model_id, body, resource_id)
         return json.dumps(result, indent=2, default=str)
     except Exception as e:
         return f"Error querying semantic model: {e}"
@@ -184,19 +223,25 @@ def sql_semantic_model_tool(
     sql: str,
     _config: RunnableConfig,
     limit: int | None = 100,
+    resource_id: str | None = None,
 ) -> str:
     """Run one read-only SQL Lab SELECT against tables in this semantic model.
     Use when a saved metric / expression query is awkward (multi-table JOIN, window functions,
     row samples, custom projections). sql must be a single SELECT or WITH…SELECT; only tables
     listed under get_semantic_model_tool.tables (prefer schema.table) are allowed. Do not write
-    INSERT/UPDATE/DELETE or multiple statements. model_id must be linked to this KB."""
+    INSERT/UPDATE/DELETE or multiple statements. resource_id selects the granted data
+    resource (required in effect for a gated model; it fixes which rows you may read).
+    model_id must be linked to this KB."""
     try:
         token = get_tool_access_token(_config)
         kb_id = get_tool_knowledge_base_id(_config)
         if not kb_id:
             return "Error: knowledge_base_id missing."
         _ensure_model_in_kb(token, kb_id, model_id)
-        result = catalog_client.run_model_sql(token, model_id, sql, limit=limit)
+        resource_id = _resolve_resource(token, model_id, resource_id)
+        result = catalog_client.run_model_sql(
+            token, model_id, sql, limit=limit, resource_id=resource_id
+        )
         return json.dumps(result, indent=2, default=str)
     except Exception as e:
         return f"Error running SQL Lab: {e}"
@@ -219,6 +264,9 @@ CATALOG_PROMPT = (
     "4. Use **sql_semantic_model_tool** for ad-hoc analysis: one SELECT/WITH against "
     "``tables[].qualified_name`` only (JOINs, windows, samples, custom columns). "
     "Never mutate data; never query tables outside the model.\n"
+    "4b. When ``data_resources`` is non-empty the model is **gated**: pass the chosen "
+    "``resource_id`` on every query / sql call. The resource fixes the rows you can read; "
+    "you cannot widen it, and a missing grant is an error, not a fallback.\n"
     "5. Cite the metric name, expression, or SQL + a short row preview. "
     "If the KB has no linked models, say so."
 )

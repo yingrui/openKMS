@@ -46,6 +46,21 @@ def list_model_metrics(access_token: str, model_id: str) -> list[dict[str, Any]]
     return data.get("items", []) if isinstance(data, dict) else []
 
 
+def list_data_resources(access_token: str, model_id: str) -> list[dict[str, Any]]:
+    """Data resources granted for one model; a gated model answers only inside one of them."""
+    url = f"{_base()}/api/data-resources"
+    with httpx.Client(timeout=30.0) as client:
+        resp = client.get(
+            url, headers=_headers(access_token), params={"semantic_model_id": model_id}
+        )
+        if resp.status_code >= 400:
+            return []
+        data = resp.json()
+    if isinstance(data, dict):
+        return data.get("items", [])
+    return []
+
+
 def list_model_fields(access_token: str, model_id: str) -> list[dict[str, Any]]:
     url = f"{_base()}/api/semantic-models/{model_id}/fields"
     with httpx.Client(timeout=30.0) as client:
@@ -60,9 +75,11 @@ def list_model_fields(access_token: str, model_id: str) -> list[dict[str, Any]]:
 
 
 def query_semantic_model(
-    access_token: str, model_id: str, body: dict[str, Any]
+    access_token: str, model_id: str, body: dict[str, Any], resource_id: str | None = None
 ) -> dict[str, Any]:
     url = f"{_base()}/api/semantic-models/{model_id}/query"
+    if resource_id:
+        body = {**body, "resource_id": resource_id}
     with httpx.Client(timeout=60.0) as client:
         resp = client.post(url, headers=_headers(access_token), json=body)
         if resp.status_code >= 400:
@@ -75,13 +92,19 @@ def query_semantic_model(
 
 
 def run_model_sql(
-    access_token: str, model_id: str, sql: str, limit: int | None = None
+    access_token: str,
+    model_id: str,
+    sql: str,
+    limit: int | None = None,
+    resource_id: str | None = None,
 ) -> dict[str, Any]:
     """SQL Lab: one read-only SELECT against the model's table datasets."""
     url = f"{_base()}/api/semantic-models/{model_id}/sql"
     body: dict[str, Any] = {"sql": sql}
     if limit is not None:
         body["limit"] = limit
+    if resource_id:
+        body["resource_id"] = resource_id
     with httpx.Client(timeout=60.0) as client:
         resp = client.post(url, headers=_headers(access_token), json=body)
         if resp.status_code >= 400:

@@ -30,10 +30,14 @@ export function ModelPlaygroundSection() {
     modelDatasets,
     modelJoins,
     loading,
+    gated,
+    resources,
+    activeResourceId,
+    activeResource,
+    setResourceId,
     mode,
     spec,
-    patch,
-    filterRows,
+    patch,    filterRows,
     setFilterRows,
     setSpec,
     sqlText,
@@ -79,6 +83,37 @@ export function ModelPlaygroundSection() {
     </div>
   );
 
+  // A gated model is answered inside one granted resource; the choice is part of the query,
+  // not an afterthought, so it sits above the editor and blocks Run until it is made.
+  const resourceScope = gated ? (
+    <div className="playground__resource">
+      <span className="playground__label">{t('dataModel.playgroundResource')}</span>
+      {resources.length > 0 ? (
+        <select
+          className="ds-control"
+          value={activeResourceId}
+          aria-label={t('dataModel.playgroundResource')}
+          onChange={(e) => setResourceId(e.target.value)}
+        >
+          {resources.map((r) => (
+            <option key={r.id} value={r.id}>
+              {r.name}
+            </option>
+          ))}
+        </select>
+      ) : (
+        <p className="page-subtitle">{t('dataModel.playgroundNoResource')}</p>
+      )}
+      {activeResource?.row_policy.length ? (
+        <p className="page-subtitle">
+          {t('dataModel.playgroundResourceRows', {
+            count: activeResource.row_policy.length,
+          })}
+        </p>
+      ) : null}
+    </div>
+  ) : null;
+
   if (loading) {
     return (
       <>
@@ -90,12 +125,24 @@ export function ModelPlaygroundSection() {
     );
   }
 
+  if (gated && !loading && resources.length === 0) {
+    return (
+      <>
+        <EntityViewHeader title={t('dataModel.playgroundTitle')} subtitle={t('dataModel.playgroundHint')} />
+        <EntityViewPanel>
+          <p className="entity-view__readonly">{t('dataModel.playgroundNoResource')}</p>
+        </EntityViewPanel>
+      </>
+    );
+  }
+
   if (mode === 'builder' && metrics.length === 0) {
     return (
       <>
         <EntityViewHeader title={t('dataModel.playgroundTitle')} subtitle={t('dataModel.playgroundHint')} />
         <EntityViewPanel>
           {modeTabs}
+          {resourceScope}
           <p className="entity-view__readonly">{t('dataModel.playgroundNoMetrics')}</p>
         </EntityViewPanel>
       </>
@@ -145,6 +192,7 @@ export function ModelPlaygroundSection() {
         <div className="playground__query">
           <EntityViewPanel>
             {modeTabs}
+            {resourceScope}
 
             {mode === 'sql' ? (
               <div className="entity-view__form playground__form">

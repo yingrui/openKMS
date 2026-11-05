@@ -13,6 +13,8 @@ export interface SemanticModelResponse {
   dataset_ids: string[];
   datasets: SemanticModelDatasetRef[];
   ai_context: Record<string, unknown> | null;
+  /** `gated` models are reachable only through a data resource grant. */
+  access_mode: 'public' | 'gated';
   created_by_name: string | null;
   created_at: string;
   updated_at: string;
@@ -28,6 +30,7 @@ export interface SemanticModelPayload {
   description?: string | null;
   dataset_ids: string[];
   ai_context?: Record<string, unknown> | null;
+  access_mode?: 'public' | 'gated';
 }
 
 export interface SemanticModelImportSummary {
@@ -70,6 +73,8 @@ export interface SemanticModelQuerySpec {
   having?: string | null;
   order_by: SemanticModelQueryOrder[];
   limit: number;
+  /** Required when the model is `gated`. */
+  resource_id?: string | null;
 }
 
 export interface SemanticModelQueryResponse {
@@ -85,6 +90,8 @@ export interface SemanticModelQueryResponse {
 export interface SemanticModelSqlRequest {
   sql: string;
   limit?: number | null;
+  /** Required when the model is `gated`. */
+  resource_id?: string | null;
 }
 
 export async function querySemanticModel(

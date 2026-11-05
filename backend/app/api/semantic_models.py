@@ -11,7 +11,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.auth import require_any_permission, require_auth, require_permission
+from app.api.auth import require_any_permission, require_permission
 from app.database import get_db
 from app.models.semantic_model import SemanticModel
 from app.schemas.semantic_model import (
@@ -24,7 +24,9 @@ from app.schemas.semantic_model import (
     SemanticModelUpdate,
     SqlLabRequest,
 )
+from app.api.catalog_scoped import require_model_access
 from app.api.query_errors import query_failure_detail
+from app.services.data_layer.catalog_access import resolve_catalog_scope
 from app.services.data_layer.model_sql import run_model_sql
 from app.services.data_layer.query import QueryError, run_query
 from app.services.data_layer.semantic_model import (
@@ -41,10 +43,10 @@ from app.services.data_layer.semantic_models import (
 )
 from app.services.permissions.permission_catalog import PERM_DATA_READ, PERM_DATA_WRITE
 
-router = APIRouter(
-    prefix="/semantic-models", tags=["semantic-models"], dependencies=[Depends(require_auth)]
-)
-_VIEW = (PERM_DATA_READ,)
+# Read/query routes are gated by the **data resource grant** (`require_model_access`), not by
+# an operation key: `data:read` is "may use the Data Model feature", which is a different
+# question from "may read this slice". See docs/features/catalog-data-access.md.
+router = APIRouter(prefix="/semantic-models", tags=["semantic-models"])
 
 
 async def _response(db: AsyncSession, model: SemanticModel) -> SemanticModelResponse:
@@ -59,6 +61,7 @@ async def _response(db: AsyncSession, model: SemanticModel) -> SemanticModelResp
             SemanticModelDatasetRef(id=i, name=refs.get(i, i)) for i in ids
         ],
         ai_context=model.ai_context,
+        access_mode="gated" if model.access_mode == "gated" else "public",
         created_by_name=model.created_by_name,
         created_at=model.created_at,
         updated_at=model.updated_at,
@@ -75,7 +78,7 @@ async def _load(db: AsyncSession, model_id: str) -> SemanticModel:
 @router.get(
     "",
     response_model=SemanticModelListResponse,
-    dependencies=[Depends(require_any_permission(*_VIEW))],
+    dependencies=[Depends(require_any_permission(PERM_DATA_READ))],
 )
 async def list_semantic_models(db: AsyncSession = Depends(get_db)):
     models = (
@@ -96,6 +99,7 @@ async def list_semantic_models(db: AsyncSession = Depends(get_db)):
                     for i in members.get(m.id, [])
                 ],
                 ai_context=m.ai_context,
+                access_mode="gated" if m.access_mode == "gated" else "public",
                 created_by_name=m.created_by_name,
                 created_at=m.created_at,
                 updated_at=m.updated_at,
@@ -129,6 +133,10 @@ async def create_semantic_model_endpoint(
             sub=p.get("sub") if isinstance(p.get("sub"), str) else None,
             uname=str(uname)[:256] if isinstance(uname, str) and uname.strip() else None,
         )
+        if body.access_mode:
+            model.access_mode = body.access_mode
+            await db.commit()
+            await db.refresh(model)
     except SemanticModelError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     return await _response(db, model)
@@ -137,7 +145,7 @@ async def create_semantic_model_endpoint(
 @router.get(
     "/{model_id}",
     response_model=SemanticModelResponse,
-    dependencies=[Depends(require_any_permission(*_VIEW))],
+    dependencies=[Depends(require_model_access())],
 )
 async def get_semantic_model_endpoint(model_id: str, db: AsyncSession = Depends(get_db)):
     return await _response(db, await _load(db, model_id))
@@ -154,10 +162,16 @@ async def update_semantic_model_endpoint(
     db: AsyncSession = Depends(get_db),
 ):
     model = await _load(db, model_id)
+    data = body.model_dump(exclude_unset=True)
+    access_mode = data.pop("access_mode", None)
     try:
-        await apply_update(db, model, body.model_dump(exclude_unset=True))
+        await apply_update(db, model, data)
     except SemanticModelError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
+    if access_mode:
+        model.access_mode = access_mode
+        await db.commit()
+        await db.refresh(model)
     return await _response(db, model)
 
 
@@ -171,7 +185,10 @@ async def delete_semantic_model_endpoint(model_id: str, db: AsyncSession = Depen
     await db.delete(model)
 
 
-@router.get("/{model_id}/export", dependencies=[Depends(require_any_permission(*_VIEW))])
+@router.get(
+    "/{model_id}/export",
+    dependencies=[Depends(require_model_access())],
+)
 async def export_semantic_model_endpoint(
     model_id: str,
     fmt: str = Query("json", alias="format", pattern="^(json|yaml)$"),
@@ -215,7 +232,7 @@ def _query_needs_audit(body: QueryRequest) -> bool:
 @router.post(
     "/{model_id}/query",
     response_model=QueryResponse,
-    dependencies=[Depends(require_any_permission(*_VIEW))],
+    dependencies=[Depends(require_model_access())],
 )
 async def query_semantic_model(
     model_id: str,
@@ -228,9 +245,17 @@ async def query_semantic_model(
 
     from app.models.semantic_model_query_run import SemanticModelQueryRun
 
-    await _load(db, model_id)
+    model = await _load(db, model_id)
     members = set(await member_ids(db, model_id))
     payload = getattr(request.state, "openkms_jwt_payload", None) or {}
+    sub = payload.get("sub") if isinstance(payload.get("sub"), str) else None
+    scope = await resolve_catalog_scope(
+        db,
+        payload=payload,
+        sub=sub,
+        model=model,
+        resource_id=body.resource_id,
+    )
     uname = payload.get("preferred_username") or payload.get("name")
     audit = _query_needs_audit(body)
     request_summary = body.model_dump(exclude_none=True)
@@ -249,6 +274,9 @@ async def query_semantic_model(
             order_by=[o.model_dump() for o in body.order_by],
             limit=body.limit,
             member_dataset_ids=members,
+            row_policy=scope.resource.row_policy if scope.resource else None,
+            policy_claims=payload,
+            policy_base_dataset_id=scope.resource.base_dataset_id if scope.resource else None,
         )
     except QueryError as exc:
         if audit:
@@ -256,13 +284,14 @@ async def query_semantic_model(
                 SemanticModelQueryRun(
                     id=str(uuid.uuid4()),
                     semantic_model_id=model_id,
+                    data_resource_id=scope.resource_id,
                     status="error",
                     request=request_summary,
                     sql=None,
                     row_count=0,
                     duration_ms=0,
                     error=str(exc),
-                    ran_by=payload.get("sub") if isinstance(payload.get("sub"), str) else None,
+                    ran_by=sub,
                     ran_by_name=str(uname)[:256] if isinstance(uname, str) and uname.strip() else None,
                 )
             )
@@ -276,13 +305,14 @@ async def query_semantic_model(
             SemanticModelQueryRun(
                 id=run_id,
                 semantic_model_id=model_id,
+                data_resource_id=scope.resource_id,
                 status="ok",
                 request=request_summary,
                 sql=sql,
                 row_count=len(rows),
                 duration_ms=duration,
                 error=None,
-                ran_by=payload.get("sub") if isinstance(payload.get("sub"), str) else None,
+                ran_by=sub,
                 ran_by_name=str(uname)[:256] if isinstance(uname, str) and uname.strip() else None,
             )
         )
@@ -302,7 +332,7 @@ async def query_semantic_model(
 @router.post(
     "/{model_id}/sql",
     response_model=QueryResponse,
-    dependencies=[Depends(require_any_permission(*_VIEW))],
+    dependencies=[Depends(require_model_access())],
 )
 async def sql_lab_semantic_model(
     model_id: str,
@@ -315,9 +345,17 @@ async def sql_lab_semantic_model(
 
     from app.models.semantic_model_query_run import SemanticModelQueryRun
 
-    await _load(db, model_id)
+    model = await _load(db, model_id)
     members = set(await member_ids(db, model_id))
     payload = getattr(request.state, "openkms_jwt_payload", None) or {}
+    sub = payload.get("sub") if isinstance(payload.get("sub"), str) else None
+    scope = await resolve_catalog_scope(
+        db,
+        payload=payload,
+        sub=sub,
+        model=model,
+        resource_id=body.resource_id,
+    )
     uname = payload.get("preferred_username") or payload.get("name")
     request_summary = {"mode": "sql", **body.model_dump(exclude_none=True)}
     try:
@@ -327,19 +365,23 @@ async def sql_lab_semantic_model(
             sql=body.sql,
             limit=body.limit,
             member_dataset_ids=members,
+            base_dataset_id=scope.resource.base_dataset_id if scope.resource else None,
+            row_policy=scope.resource.row_policy if scope.resource else None,
+            policy_claims=payload,
         )
     except QueryError as exc:
         db.add(
             SemanticModelQueryRun(
                 id=str(uuid.uuid4()),
                 semantic_model_id=model_id,
+                data_resource_id=scope.resource_id,
                 status="error",
                 request=request_summary,
                 sql=None,
                 row_count=0,
                 duration_ms=0,
                 error=str(exc),
-                ran_by=payload.get("sub") if isinstance(payload.get("sub"), str) else None,
+                ran_by=sub,
                 ran_by_name=str(uname)[:256] if isinstance(uname, str) and uname.strip() else None,
             )
         )
@@ -351,13 +393,14 @@ async def sql_lab_semantic_model(
         SemanticModelQueryRun(
             id=run_id,
             semantic_model_id=model_id,
+            data_resource_id=scope.resource_id,
             status="ok",
             request=request_summary,
             sql=sql,
             row_count=len(rows),
             duration_ms=duration,
             error=None,
-            ran_by=payload.get("sub") if isinstance(payload.get("sub"), str) else None,
+            ran_by=sub,
             ran_by_name=str(uname)[:256] if isinstance(uname, str) and uname.strip() else None,
         )
     )

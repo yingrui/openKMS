@@ -260,6 +260,11 @@ const ModelSettingsTab = lazy(() =>
     default: m.ModelSettingsTab,
   })),
 );
+const ModelDataResourcesSection = lazy(() =>
+  import('./pages/ontology-manager/ModelDataResourcesSection').then((m) => ({
+    default: m.ModelDataResourcesSection,
+  })),
+);
 const DataInsightsPage = lazy(() =>
   import('./pages/ontology-manager/DataInsightsPage').then((m) => ({ default: m.DataInsightsPage })),
 );
@@ -472,6 +477,7 @@ function App() {
               <Route path="datasets" element={<ModelDatasetsSection />} />
               <Route path="relationships" element={<ModelRelationshipsSection />} />
               <Route path="playground" element={<ModelPlaygroundSection />} />
+              <Route path="resources" element={<ModelDataResourcesSection />} />
               <Route path="settings" element={<ModelSettingsTab />} />
             </Route>
             <Route path="datasets/:id" element={<DatasetManagerDetailPage />}>

@@ -17,6 +17,20 @@ def _acl_subject(payload: dict, subject: str | None) -> bool:
     return True
 
 
+def is_service_subject(payload: dict, subject: str | None) -> bool:
+    """True for an internal service principal (``local-cli``, or an allowlisted machine client).
+
+    Services skip the *content* ACL because they act on behalf of an already-authorized
+    operation (a worker indexing a document). That is not true of the **Catalog data plane**:
+    there a service is just another principal that must hold a grant, so
+    ``catalog_access`` evaluates its grants explicitly instead of taking the bypass.
+    """
+    if subject == "local-cli":
+        return True
+    client_id = payload.get("azp") or payload.get("client_id")
+    return isinstance(client_id, str) and bool(client_id)
+
+
 def acl_applies(payload: dict, subject: str | None) -> bool:
     """True when resource ACL filtering should run for this caller."""
     return _acl_subject(payload, subject)

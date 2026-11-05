@@ -54,6 +54,7 @@ from app.api.kubernetes_clusters import router as kubernetes_clusters_router
 from app.api.datasets import router as datasets_router
 from app.api.dataset_versions import router as dataset_versions_router
 from app.api.semantic_models import router as semantic_models_router
+from app.api.data_resources import router as data_resources_router
 from app.api.semantic_model_fields import router as semantic_model_fields_router
 from app.api.dataset_ingests import router as dataset_ingests_router
 from app.api.dataset_rows import router as dataset_rows_router
@@ -237,6 +238,7 @@ app.include_router(dataset_rows_router, prefix="/api")
 app.include_router(datasets_router, prefix="/api")
 app.include_router(dataset_versions_router, prefix="/api")
 app.include_router(semantic_models_router, prefix="/api")
+app.include_router(data_resources_router, prefix="/api")
 app.include_router(semantic_model_fields_router, prefix="/api")
 app.include_router(dataset_joins_router, prefix="/api")
 app.include_router(quality_rules_router, prefix="/api")

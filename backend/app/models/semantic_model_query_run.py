@@ -23,6 +23,8 @@ class SemanticModelQueryRun(Base):
         index=True,
     )
     status: Mapped[str] = mapped_column(String(16), nullable=False)  # ok | error
+    #: The granted data resource the query ran under (null for public models).
+    data_resource_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
     request: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
     sql: Mapped[str | None] = mapped_column(Text, nullable=True)
     row_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
