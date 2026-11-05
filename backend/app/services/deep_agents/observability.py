@@ -136,6 +136,11 @@ class AgentTurnContext:
             "scheduled_run": self.scheduled_run,
             "plan_mode": self.plan_mode,
         }
+        if status == "running":
+            # Heartbeat: the freshness of this field is what tells a stalled turn apart from a
+            # slow one, both here and in the SPA. It is refreshed whenever the turn persists
+            # progress (`touch_running`), so a wedged loop stops looking "in progress".
+            last_turn["updated_at"] = datetime.now(timezone.utc).isoformat()
         if aid:
             last_turn["assistant_message_id"] = aid
         # Persist HITL payload only while waiting; clear on running/completed/failed.
@@ -160,3 +165,17 @@ class AgentTurnContext:
             status="running",
             assistant_message_id=assistant_message_id,
         )
+
+    def touch_running(self, conversation: AgentConversation) -> None:
+        """Refresh the heartbeat of an in-flight turn.
+
+        Without this, `last_turn.updated_at` would stay at the start time, so a turn that is
+        genuinely working looks exactly like one that died — and a turn that died looks
+        alive until the much longer staleness bound expires.
+        """
+        ctx = dict(conversation.context or {})
+        lt = ctx.get("last_turn")
+        if not isinstance(lt, dict) or lt.get("status") != "running":
+            return
+        ctx["last_turn"] = {**lt, "updated_at": datetime.now(timezone.utc).isoformat()}
+        conversation.context = ctx

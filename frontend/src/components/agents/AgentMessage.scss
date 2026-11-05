@@ -110,7 +110,22 @@
 
 .agents-stream__tool-pill-running {
   flex-shrink: 0;
-  color: var(--color-text-muted);
+  color: var(--color-accent);
+  letter-spacing: 0.1em;
+}
+
+/* A running tool reads as active: accent label plus a soft left edge. Finished rows stay
+   muted, so "in progress" and "done" are separable at a glance rather than by reading text. */
+.agents-stream__tool-row--running {
+  border-left: 2px solid var(--color-accent);
+  padding-left: var(--space-2, 0.5rem);
+  margin-left: calc(-1 * var(--space-2, 0.5rem));
+  background: color-mix(in srgb, var(--color-accent) 5%, transparent);
+  border-radius: 0 var(--radius-sm, 0.25rem) var(--radius-sm, 0.25rem) 0;
+}
+
+.agents-stream__tool-row--running .agents-stream__tool-pill-kind {
+  color: var(--color-accent);
 }
 
 .agents-stream__tool-row--subagent .agents-stream__tool-pill-kind {

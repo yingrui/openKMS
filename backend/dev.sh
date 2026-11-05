@@ -60,5 +60,13 @@ else
   exit 1
 fi
 
-exec python -m uvicorn app.main:app --reload --port 8102 \
-  --reload-exclude 'data/*'
+# Reload is **opt-in** (`OPENKMS_DEV_RELOAD=1`). It is off by default because on macOS the
+# watchfiles supervisor can restart the worker without handing it the listening socket: the
+# parent keeps `LISTEN`, the worker answers nothing, and every request — `/health` included —
+# hangs until the process is killed. That failure looks exactly like a stuck agent turn, so it
+# costs more than the convenience of auto-restart is worth.
+if [[ "${OPENKMS_DEV_RELOAD:-0}" == "1" ]]; then
+  exec python -m uvicorn app.main:app --reload --port 8102 \
+    --reload-exclude 'data/*'
+fi
+exec python -m uvicorn app.main:app --port 8102

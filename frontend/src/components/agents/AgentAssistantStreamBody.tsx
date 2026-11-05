@@ -98,26 +98,28 @@ function ToolRow({ part }: { part: Extract<AssistantStreamPart, { type: 'tool' }
   const { step } = part;
   const kind = toolKindLabel(step.name);
   const detail = toolDetailLabel(step.name, step.input);
+  const running = step.status === 'running';
   const hasIo = Boolean(step.input || step.output || step.error);
-  const expandable = hasIo && (step.status !== 'running' || Boolean(step.input));
+  const expandable = hasIo && (!running || Boolean(step.input));
+  const rowClass = `agents-stream__tool-row${running ? ' agents-stream__tool-row--running' : ''}`;
 
   if (!expandable) {
     return (
-      <div className="agents-stream__tool-row">
+      <div className={rowClass}>
         <div className="agents-stream__tool-pill-line">
-          <ToolPillHead name={step.name} kind={kind} running={step.status === 'running'} detail={detail} />
+          <ToolPillHead name={step.name} kind={kind} running={running} detail={detail} />
         </div>
       </div>
     );
   }
 
   return (
-    <details className="agents-stream__tool-row agents-stream__tool-row--expand">
+    <details className={`${rowClass} agents-stream__tool-row--expand`}>
       <summary className="agents-stream__tool-pill-line">
         <ToolPillHead
           name={step.name}
           kind={kind}
-          running={step.status === 'running'}
+          running={running}
           expandable
           detail={detail}
         />
@@ -146,6 +148,7 @@ function SubagentRow({ part }: { part: Extract<AssistantStreamPart, { type: 'sub
     </div>
   );
 }
+
 
 function renderToolish(item: Extract<VisiblePart, { kind: 'tool' | 'subagent' }>): ReactNode {
   if (item.kind === 'subagent') {

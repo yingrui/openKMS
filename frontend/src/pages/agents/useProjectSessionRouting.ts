@@ -4,6 +4,7 @@ import { toast } from 'sonner';
 import type { ChatMessage } from '../../components/agents/AgentChatMain';
 import {
   conversationTurnIsActive,
+  conversationTurnIsStalled,
   sessionLabel,
 } from '../../components/agents/projectSessionUtils';
 import { assistantHistoryStreamParts } from '../../components/wiki/wikiCopilotStreamParts';
@@ -272,6 +273,8 @@ export function useProjectSessionRouting(projectId: string, sessionId?: string) 
 
   const activeConv = conversations.find((c) => c.id === convId);
   const turnInProgress = conversationTurnIsActive(activeConv);
+  // A stalled turn keeps its lease but reports nothing; the UI must stop claiming progress.
+  const turnStalled = conversationTurnIsStalled(activeConv);
 
   // After leave/sleep, reload chat while a durable turn is still running on the visible session.
   // Keep the interval even while live NDJSON is open — ticks no-op until the bridge ends
@@ -448,6 +451,7 @@ export function useProjectSessionRouting(projectId: string, sessionId?: string) 
     markTurnRunning,
     /** True when visible session has a non-stale server-side running turn. */
     turnInProgress,
+    turnStalled,
     hasMoreOlder,
     loadingOlder,
     loadOlderMessages,

@@ -459,6 +459,31 @@ $agents-pane-header-height: 49px;
   padding: 8px 0;
   font-size: 0.8125rem;
   color: var(--color-text-muted);
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 6px;
+}
+
+.agents-chat-typing__label {
+  flex-shrink: 0;
+}
+
+/* The tool currently executing: named, so "in progress" is distinguishable from "stuck". */
+.agents-chat-typing__tool {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--color-text);
+  font-family: var(--font-mono, ui-monospace, SFMono-Regular, Menlo, monospace);
+  font-size: 0.75rem;
+}
+
+.agents-chat-typing__more,
+.agents-chat-typing__done {
+  flex-shrink: 0;
+  opacity: 0.75;
 }
 
 .agents-plan-panel {
@@ -1960,4 +1985,8 @@ $agents-pane-header-height: 49px;
     min-width: var(--tap-min);
     min-height: var(--tap-min);
   }
+}
+
+.agents-chat-typing--stalled {
+  color: var(--color-warning, #b45309);
 }

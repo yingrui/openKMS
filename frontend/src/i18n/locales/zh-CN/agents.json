@@ -173,7 +173,8 @@
     "attach": "添加图片",
     "attachRemove": "移除图片",
     "attaching": "图片上传中…",
-    "attachFailed": "图片上传失败"
+    "attachFailed": "图片上传失败",
+    "turnStalled": "已有一段时间没有进展，这次执行可能卡住了；几分钟后会自动释放。"
   },
   "stream": {
     "replyAria": "助手回复",

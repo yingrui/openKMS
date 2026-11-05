@@ -233,11 +233,18 @@ export function ProjectWorkspace() {
   const filesRailWidth = clampFilesRailWidth(filesRailWidthPx, bodyWidthPx);
   const toolbarTitle = session.sessionTitle?.trim() || project.name;
 
+  // A live stream delivering parts is itself proof of progress: while polling is skipped the
+  // persisted heartbeat is stale by design, so trusting it made every streaming turn look
+  // stalled and hid "Thinking…" between tools. Judge staleness only without a live connection
+  // (reopening a session, or waking from sleep).
+  const stalledVisible = session.turnStalled && !stream.liveStreamingVisible;
+
   const chat = (
     <AgentChatMain
       sessionTitle={session.sessionTitle}
       messages={session.messages}
       loading={stream.liveStreamingVisible || session.turnInProgress}
+      stalled={stalledVisible}
       planMode={planMode}
       onPlanModeChange={setPlanMode}
       onSend={stream.onSend}

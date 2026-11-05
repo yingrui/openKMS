@@ -1,8 +1,9 @@
-import { memo, useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ArrowUp, Copy, Paperclip, RefreshCw, X } from 'lucide-react';
 import { toast } from 'sonner';
 import { AgentAssistantStreamBody } from './AgentAssistantStreamBody';
+import { turnHasRunningTool } from './agentLiveStatus';
 import { PERSISTED_AGENT_MESSAGE_ID } from './agentConstants';
 import { AgentInterruptBar } from './AgentInterruptBar';
 import { AgentPlanPanel } from './AgentPlanPanel';
@@ -23,6 +24,8 @@ interface Props {
   sessionTitle: string | null;
   messages: ChatMessage[];
   loading: boolean;
+  /** A running turn that stopped reporting progress — say so instead of "Thinking…". */
+  stalled?: boolean;
   planMode: boolean;
   onPlanModeChange: (v: boolean) => void;
   onSend: (text: string, attachments: AgentAttachment[]) => void;
@@ -181,6 +184,7 @@ export function AgentChatMain({
   sessionTitle,
   messages,
   loading,
+  stalled = false,
   planMode,
   onPlanModeChange,
   onSend,
@@ -275,6 +279,13 @@ export function AgentChatMain({
     el.style.height = `${Math.min(el.scrollHeight, 140)}px`;
   };
 
+  // Tools of the live turn: their per-call status is what the status line reports, so the
+  // reader sees "running a query" instead of a bare "Thinking…".
+  const toolRunning = useMemo(
+    () => turnHasRunningTool(messages[messages.length - 1]?.streamParts),
+    [messages],
+  );
+
   const submit = (e?: React.FormEvent) => {
     e?.preventDefault();
     const text = input.trim();
@@ -323,7 +334,24 @@ export function AgentChatMain({
             );
           })
         )}
-        {loading ? <div className="agents-chat-typing">{t('chat.thinking')}</div> : null}
+        {loading ? (
+          <div
+            className={`agents-chat-typing${stalled ? ' agents-chat-typing--stalled' : ''}`}
+            role="status"
+            aria-live="polite"
+          >
+            {stalled ? (
+              <span className="agents-chat-typing__label">{t('chat.turnStalled')}</span>
+            ) : toolRunning ? (
+              // A running tool already renders its own row above, with the command and a
+              // spinner. Repeating it here duplicated the same sentence on screen, so the
+              // status line stays silent while a tool is visibly working.
+              null
+            ) : (
+              <span className="agents-chat-typing__label">{t('chat.thinking')}</span>
+            )}
+          </div>
+        ) : null}
       </div>
       {interruptSummary && onInterruptApprove && onInterruptReject ? (
         <AgentInterruptBar

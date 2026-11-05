@@ -6,7 +6,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from app.services.deep_agents.constants import STALE_RUNNING_SECONDS
+from app.services.deep_agents.constants import STALE_RUNNING_SECONDS, STALLED_TURN_SECONDS
 from app.services.deep_agents.factory import ephemeral_runnable_config
 from app.services.deep_agents.llm_chat import normalize_openai_base_url
 from app.services.deep_agents.runner import iter_project_stream_parts
@@ -23,7 +23,13 @@ def test_normalize_openai_base_url() -> None:
 
 
 def test_stale_running_seconds_matches_frontend_window() -> None:
-    assert STALE_RUNNING_SECONDS == 2 * 60 * 60
+    """The lease must expire fast enough that a dead turn does not block a session for long."""
+    assert STALE_RUNNING_SECONDS == 10 * 60
+
+
+def test_stalled_window_is_shorter_than_the_lease() -> None:
+    """Stop *claiming* progress before a competing turn may take over."""
+    assert 0 < STALLED_TURN_SECONDS < STALE_RUNNING_SECONDS
 
 
 def test_tool_payload_from_traces() -> None:

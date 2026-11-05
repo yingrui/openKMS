@@ -138,6 +138,7 @@ async def _flush_assistant_progress(
     asst: AgentMessage,
     acc: ProjectStreamAccumulator,
     *,
+    turn: AgentTurnContext | None = None,
     existing_traces: list[dict[str, str]] | None = None,
     existing_stream_parts: list[dict[str, Any]] | None = None,
     content_prefix: str = "",
@@ -148,6 +149,11 @@ async def _flush_assistant_progress(
     asst.tool_calls = _assistant_tool_calls(
         merged, acc, existing_stream_parts=existing_stream_parts
     )
+    # Persisting progress **is** progress: refresh the heartbeat in the same transaction, so
+    # "no activity for N minutes" reflects the turn rather than the moment it started. Without
+    # this the SPA calls every turn stalled once it outlives the window.
+    if turn is not None:
+        turn.touch_running(conversation)
     _bump_conversation_timestamp(conversation)
     await session.commit()
 
@@ -277,6 +283,7 @@ async def run_project_turn_background(
                     conversation,
                     asst,
                     acc,
+                    turn=turn,
                     existing_traces=existing_traces,
                     existing_stream_parts=existing_stream_parts,
                     content_prefix=content_prefix,
@@ -311,6 +318,7 @@ async def run_project_turn_background(
                     conversation,
                     asst,
                     acc,
+                    turn=turn,
                     existing_traces=existing_traces,
                     existing_stream_parts=existing_stream_parts,
                     content_prefix=content_prefix,

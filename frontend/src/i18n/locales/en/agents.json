@@ -173,7 +173,8 @@
     "attach": "Attach image",
     "attachRemove": "Remove image",
     "attaching": "Uploading image…",
-    "attachFailed": "Could not upload image"
+    "attachFailed": "Could not upload image",
+    "turnStalled": "No progress for a while — this turn may be stuck. It will free up in a few minutes."
   },
   "stream": {
     "replyAria": "Agent reply",
