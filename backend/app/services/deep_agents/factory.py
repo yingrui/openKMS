@@ -11,6 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
 from app.services.agent.llm import resolve_agent_llm_config
+from app.services.deep_agents.command_policy import parse_denied
 from app.services.deep_agents.env import build_project_shell_env
 from app.services.deep_agents.hitl import interrupt_map
 from app.services.deep_agents.langfuse import build_deep_agent_langgraph_config
@@ -72,6 +73,7 @@ def project_workspace_backend(
         inherit_env=True,
         env=shell_env,
         timeout=settings.agent_sandbox_timeout_seconds,
+        denied_commands=parse_denied(settings.agent_denied_commands),
     )
     return backend, shell_env
 

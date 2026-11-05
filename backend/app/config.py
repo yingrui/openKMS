@@ -109,6 +109,16 @@ class Settings(BaseSettings):
         le=600,
         validation_alias="OPENKMS_AGENT_SANDBOX_TIMEOUT_SECONDS",
     )
+    agent_denied_commands: str | None = Field(
+        default=None,
+        validation_alias="OPENKMS_AGENT_DENIED_COMMANDS",
+        description=(
+            "Comma-separated host-control binaries the project agent shell may not run "
+            "(docker, kubectl, systemctl, …). Unset = built-in defaults; an **empty string** "
+            "disables the check for local development. Matched by command position, so "
+            "`cd docker && ls` still works."
+        ),
+    )
     agent_log_level: str = Field(
         default="INFO",
         validation_alias="OPENKMS_AGENT_LOG_LEVEL",

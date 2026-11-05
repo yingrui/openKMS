@@ -112,6 +112,7 @@ Attach images in the composer — **paste**, **drag & drop**, or the **paperclip
 | `OPENKMS_AGENT_LLM_EXTRA_BODY` | unset | Deep Agents façade (`deep_agents/llm_chat.py`); **`enable_thinking`** always forced **false** |
 | `OPENKMS_AGENT_LLM_REASONING_CONTENT_SHIM` | unset (**auto**) | Same façade: inject empty **`reasoning_content`** on assistant rows for non-`api.openai.com` bases |
 | `OPENKMS_AGENT_SANDBOX_TIMEOUT_SECONDS` | `60` | Python sandbox in project dir |
+| `OPENKMS_AGENT_DENIED_COMMANDS` | built-in list | Comma-separated host-control binaries the project agent shell may not run (`docker`, `docker-compose`, `kubectl`, `podman`, `systemctl`, `launchctl`, `service`, `iptables`, `mount`, `shutdown`, `reboot`, `lsof`, `ps`). Unset = defaults; **empty string disables** the check for local development. |
 | `OPENKMS_AGENT_LOG_LEVEL` | `INFO` | Project agent turn logs (`agent_turn_start` / `agent_turn_done` at INFO; **`agent_turn_failed` at ERROR**). Use `DEBUG` for verbose deep-agents detail. |
 | `OPENKMS_BACKEND_LOG_LEVEL` | — | Root log level for all `app.*` loggers when set (default INFO). |
 
@@ -169,6 +170,14 @@ Workspace chat uses **deepagents ≥0.7.21**. The Plan checklist UI depends on `
 **Delegation is the structural lever:** a subagent runs on its own budget, so work delegated via `task` does not consume the parent conversation's steps (verified: a parent with `recursion_limit=15` let a subagent run 30 tool calls). The system prompt directs search-heavy research to the `research` subagent, tells the model not to retry a failing command with a bigger timeout more than once, and to wrap up when the budget warning appears.
 
 When a turn *does* exhaust everything, the error is reported as `Recursion limit exceeded (…)` with no raw stack detail, the persisted assistant row keeps all tool traces, and **sending another message continues from the saved thread** rather than starting over.
+
+#### Shell boundary
+
+`execute` runs `Popen(shell=True)` as the backend process's own user, outside the project directory and without OS isolation — it is what makes real Python, git and the skill CLIs work. `virtual_mode` only constrains **file paths**, never shell commands. `deep_agents/command_policy.py` therefore denies a configurable list of **host-control binaries** (`OPENKMS_AGENT_DENIED_COMMANDS`), and the system prompt states the boundary so the model does not go looking for it.
+
+Matching is **by command position**, so `cd docker && ls`, `rg docker backend/` and `echo 'docker ps'` stay allowed while `docker ps`, `sudo -n docker ps` and `sh -c 'docker ps'` are refused. A refusal returns a normal tool result (`exit_code: 126` + explanation) instead of raising, so the model can adapt rather than the turn failing.
+
+This is a **guard rail, not a sandbox**: it stops the model from wandering into host inspection, but a deliberate escape (`python -c "import subprocess; subprocess.run(['docker','ps'])"`) still gets through. Real isolation needs a container or VM around the shell. Note that in Docker deployments the binaries are absent anyway (no `docker` CLI, no `/var/run/docker.sock`, no kubeconfig in the container) — the local `./dev.sh` setup is the exposed case, since the shell runs directly on the host.
 
 ### Implementation layout
 

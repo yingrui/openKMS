@@ -24,11 +24,17 @@ import signal
 import subprocess
 import sys
 import threading
+from collections.abc import Iterable
 from dataclasses import dataclass, field
 from pathlib import Path
 
 from deepagents.backends import LocalShellBackend
 
+from app.services.deep_agents.command_policy import (
+    DEFAULT_DENIED,
+    CommandDenied,
+    check_command,
+)
 from app.services.deep_agents.constants import MAX_TOOL_OUTPUT_BYTES
 
 
@@ -214,6 +220,28 @@ async def run_shell_command_async(
 class ProjectWorkspaceBackend(LocalShellBackend):
     """`LocalShellBackend` with normalized paths, a thread-safe shell and a real timeout."""
 
+    def __init__(
+        self,
+        root_dir: str | Path | None = None,
+        *,
+        virtual_mode: bool = True,
+        timeout: int = 120,
+        max_output_bytes: int = 100_000,
+        env: dict[str, str] | None = None,
+        inherit_env: bool = False,
+        denied_commands: Iterable[str] | None = None,
+    ) -> None:
+        super().__init__(
+            root_dir=root_dir,
+            virtual_mode=virtual_mode,
+            timeout=timeout,
+            max_output_bytes=max_output_bytes,
+            env=env,
+            inherit_env=inherit_env,
+        )
+        # Empty tuple = policy disabled; None = the module defaults.
+        self._denied_commands = DEFAULT_DENIED if denied_commands is None else tuple(denied_commands)
+
     def _resolve_path(self, key: str) -> Path:
         return super()._resolve_path(normalize_workspace_path(self.cwd, key))
 
@@ -227,6 +255,12 @@ class ProjectWorkspaceBackend(LocalShellBackend):
                 exit_code=1,
                 truncated=False,
             )
+        # A denial is reported as a tool result, not raised: the model sees the boundary and
+        # can choose another approach instead of the turn failing.
+        try:
+            check_command(command, self._denied_commands)
+        except CommandDenied as denied:
+            return ExecuteResponse(output=denied.reason, exit_code=126, truncated=False)
         effective = timeout if timeout is not None else self._default_timeout
         result = run_shell_command(
             command,
