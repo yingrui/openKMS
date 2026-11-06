@@ -124,7 +124,9 @@ A restricted model **requires `resource_id`** on every query/SQL call; omitting 
 
 ### 2. Create a data resource
 
-**Data Model** → model → **Data resources** → New.
+**Data Model** → model → **Data resources** lists what exists. **New resource** opens a dialog
+for the name and row conditions; creating one goes straight to the resource's own page, because
+granting access is the next thing an author does there.
 
 ```text
 DataResource {
@@ -158,6 +160,10 @@ needs to see which one they are approving.
 
 API: `PUT /api/resource-acl/data_resource/{id}`. Console → **Data Security** manages access groups
 and flags sharing problems across every securable type.
+
+**Page layout.** The resources list answers "what slices exist" — name and the condition in one
+line, plus delete. Editing a condition and managing readers live on `/data-model/{id}/resources/{resourceId}`,
+so the access panel appears once, for the resource you are looking at, instead of under every row.
 
 ### 4. Call it
 

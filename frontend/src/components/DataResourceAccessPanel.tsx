@@ -1,7 +1,7 @@
-import { useCallback, useEffect, useState } from 'react';
-import { useTranslation } from 'react-i18next';
-import { Plus, Trash2 } from 'lucide-react';
-import { toast } from 'sonner';
+import { useCallback, useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
+import { Plus, Trash2 } from "lucide-react";
+import { toast } from "sonner";
 import {
   fetchResourceAcl,
   fetchResourceAclOwnerCandidates,
@@ -9,11 +9,10 @@ import {
   RESOURCE_TYPES,
   type AclGrant,
   type OwnerCandidate,
-} from '../data/resourceAclApi';
-import type { RowPolicyCondition } from '../data/dataResourcesApi';
-import { FormField } from '../styles/design-system';
-import './DataResourceAccessPanel.scss';
-
+} from "../data/resourceAclApi";
+import type { RowPolicyCondition } from "../data/dataResourcesApi";
+import { FormField } from "../styles/design-system";
+import "./DataResourceAccessPanel.scss";
 
 /**
  * Who may read one data resource.
@@ -29,7 +28,7 @@ import './DataResourceAccessPanel.scss';
  *   are different grants, and the approver has to see which one they are making.
  */
 type Row = {
-  grantee_type: 'user' | 'group' | 'authenticated';
+  grantee_type: "user" | "group" | "authenticated";
   grantee_id: string | null;
   label: string;
   read: boolean;
@@ -37,7 +36,7 @@ type Row = {
 };
 
 function permsOf(read: boolean, manage: boolean): string {
-  return `${read ? 'r' : ''}${manage ? 'm' : ''}`;
+  return `${read ? "r" : ""}${manage ? "m" : ""}`;
 }
 
 function toRows(grants: AclGrant[]): Row[] {
@@ -46,11 +45,9 @@ function toRows(grants: AclGrant[]): Row[] {
     grantee_id: g.grantee_id,
     label:
       g.grantee_label?.trim() ||
-      (g.grantee_type === 'authenticated'
-        ? ''
-        : g.grantee_id ?? ''),
-    read: g.permissions.includes('r') || g.permissions.includes('m'),
-    manage: g.permissions.includes('m'),
+      (g.grantee_type === "authenticated" ? "" : (g.grantee_id ?? "")),
+    read: g.permissions.includes("r") || g.permissions.includes("m"),
+    manage: g.permissions.includes("m"),
   }));
 }
 
@@ -60,13 +57,13 @@ function describePolicy(policy: RowPolicyCondition[]): string {
       const right = c.claim
         ? `claim:${c.claim}`
         : Array.isArray(c.value)
-          ? c.value.join(', ')
-          : String(c.value ?? '');
-      return c.op === 'is_null' || c.op === 'is_not_null'
+          ? c.value.join(", ")
+          : String(c.value ?? "");
+      return c.op === "is_null" || c.op === "is_not_null"
         ? `${c.column} ${c.op}`
         : `${c.column} ${c.op} ${right}`;
     })
-    .join(' AND ');
+    .join(" AND ");
 }
 
 interface Props {
@@ -75,21 +72,32 @@ interface Props {
   rowPolicy: RowPolicyCondition[];
 }
 
-export function DataResourceAccessPanel({ resourceId, resourceName, rowPolicy }: Props) {
-  const { t } = useTranslation('ontology');
+export function DataResourceAccessPanel({
+  resourceId,
+  resourceName,
+  rowPolicy,
+}: Props) {
+  const { t } = useTranslation("ontology");
   const [rows, setRows] = useState<Row[]>([]);
   const [candidates, setCandidates] = useState<OwnerCandidate[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [pick, setPick] = useState('');
+  const [pick, setPick] = useState("");
 
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const acl = await fetchResourceAcl(RESOURCE_TYPES.dataResource, resourceId);
+      const acl = await fetchResourceAcl(
+        RESOURCE_TYPES.dataResource,
+        resourceId,
+      );
       setRows(toRows(acl.grants));
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : t('dataModel.resourceAccessLoadFailed'));
+      toast.error(
+        e instanceof Error
+          ? e.message
+          : t("dataModel.resourceAccessLoadFailed"),
+      );
     } finally {
       setLoading(false);
     }
@@ -117,10 +125,14 @@ export function DataResourceAccessPanel({ resourceId, resourceName, rowPolicy }:
           permissions: permsOf(r.read, r.manage),
         })),
       );
-      toast.success(t('dataModel.resourceAccessSaved'));
+      toast.success(t("dataModel.resourceAccessSaved"));
       await load();
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : t('dataModel.resourceAccessSaveFailed'));
+      toast.error(
+        e instanceof Error
+          ? e.message
+          : t("dataModel.resourceAccessSaveFailed"),
+      );
     } finally {
       setSaving(false);
     }
@@ -130,66 +142,74 @@ export function DataResourceAccessPanel({ resourceId, resourceName, rowPolicy }:
     if (!pick) return;
     const candidate = candidates.find((c) => c.subject === pick);
     if (rows.some((r) => r.grantee_id === pick)) {
-      setPick('');
+      setPick("");
       return;
     }
     setRows((prev) => [
       ...prev,
       {
-        grantee_type: 'user',
+        grantee_type: "user",
         grantee_id: pick,
         label: candidate?.label || pick,
         read: true,
         manage: false,
       },
     ]);
-    setPick('');
+    setPick("");
   };
 
   return (
     <section className="data-resource-access">
       <header className="data-resource-access__header">
-        <h3>{t('dataModel.resourceAccess')}</h3>
-        <p className="page-subtitle">{t('dataModel.resourceAccessHint')}</p>
+        <h3>{t("dataModel.resourceAccess")}</h3>
+        <p className="page-subtitle">{t("dataModel.resourceAccessHint")}</p>
       </header>
 
       {/* The row conditions are part of the grant: approving "all Stock data" and "only
           semiconductor stocks" are different acts. */}
       <div className="data-resource-access__scope">
         <span className="data-resource-access__scope-label">
-          {t('dataModel.resourceAccessScope')}
+          {t("dataModel.resourceAccessScope")}
         </span>
-        <code>{rowPolicy.length ? describePolicy(rowPolicy) : t('dataModel.resourceRowsNone')}</code>
+        <code>
+          {rowPolicy.length
+            ? describePolicy(rowPolicy)
+            : t("dataModel.resourceRowsNone")}
+        </code>
       </div>
 
       {loading ? (
-        <p className="page-subtitle">{t('shared.loading')}</p>
+        <p className="page-subtitle">{t("shared.loading")}</p>
       ) : (
         <table className="data-resource-access__table">
           <thead>
             <tr>
-              <th>{t('dataModel.resourceAccessGrantee')}</th>
-              <th>{t('dataModel.resourceAccessRead')}</th>
-              <th>{t('dataModel.resourceAccessManage')}</th>
-              <th aria-label={t('shared.delete')} />
+              <th>{t("dataModel.resourceAccessGrantee")}</th>
+              <th>{t("dataModel.resourceAccessRead")}</th>
+              <th>{t("dataModel.resourceAccessManage")}</th>
+              <th aria-label={t("shared.delete")} />
             </tr>
           </thead>
           <tbody>
             {rows.map((row, index) => (
-              <tr key={`${row.grantee_type}:${row.grantee_id ?? 'others'}`}>
+              <tr key={`${row.grantee_type}:${row.grantee_id ?? "others"}`}>
                 <td>
-                  {row.grantee_type === 'authenticated'
-                    ? t('dataModel.resourceAccessOthers', { name: resourceName })
+                  {row.grantee_type === "authenticated"
+                    ? t("dataModel.resourceAccessOthers", {
+                        name: resourceName,
+                      })
                     : row.label}
                 </td>
                 <td>
                   <input
                     type="checkbox"
                     checked={row.read}
-                    aria-label={t('dataModel.resourceAccessRead')}
+                    aria-label={t("dataModel.resourceAccessRead")}
                     onChange={(e) =>
                       setRows((prev) =>
-                        prev.map((r, i) => (i === index ? { ...r, read: e.target.checked } : r)),
+                        prev.map((r, i) =>
+                          i === index ? { ...r, read: e.target.checked } : r,
+                        ),
                       )
                     }
                   />
@@ -198,7 +218,7 @@ export function DataResourceAccessPanel({ resourceId, resourceName, rowPolicy }:
                   <input
                     type="checkbox"
                     checked={row.manage}
-                    aria-label={t('dataModel.resourceAccessManage')}
+                    aria-label={t("dataModel.resourceAccessManage")}
                     onChange={(e) =>
                       setRows((prev) =>
                         prev.map((r, i) =>
@@ -220,8 +240,10 @@ export function DataResourceAccessPanel({ resourceId, resourceName, rowPolicy }:
                   <button
                     type="button"
                     className="btn btn-secondary btn-sm"
-                    aria-label={t('shared.delete')}
-                    onClick={() => setRows((prev) => prev.filter((_, i) => i !== index))}
+                    aria-label={t("shared.delete")}
+                    onClick={() =>
+                      setRows((prev) => prev.filter((_, i) => i !== index))
+                    }
                   >
                     <Trash2 size={14} aria-hidden />
                   </button>
@@ -233,9 +255,9 @@ export function DataResourceAccessPanel({ resourceId, resourceName, rowPolicy }:
       )}
 
       <div className="data-resource-access__add">
-        <FormField label={t('dataModel.resourceAccessAdd')}>
+        <FormField label={t("dataModel.resourceAccessAdd")}>
           <select value={pick} onChange={(e) => setPick(e.target.value)}>
-            <option value="">{t('dataModel.resourceAccessPick')}</option>
+            <option value="">{t("dataModel.resourceAccessPick")}</option>
             {candidates
               .filter((c) => !rows.some((r) => r.grantee_id === c.subject))
               .map((c) => (
@@ -252,13 +274,18 @@ export function DataResourceAccessPanel({ resourceId, resourceName, rowPolicy }:
           onClick={addGrantee}
         >
           <Plus size={14} aria-hidden />
-          {t('dataModel.resourceAccessAddOwner')}
+          {t("dataModel.resourceAccessAddOwner")}
         </button>
       </div>
 
       <div className="data-resource-access__actions">
-        <button type="button" className="btn btn-primary" disabled={saving} onClick={() => void save()}>
-          {saving ? t('shared.saving') : t('dataModel.resourceAccessSave')}
+        <button
+          type="button"
+          className="btn btn-primary"
+          disabled={saving}
+          onClick={() => void save()}
+        >
+          {saving ? t("shared.saving") : t("dataModel.resourceAccessSave")}
         </button>
       </div>
     </section>

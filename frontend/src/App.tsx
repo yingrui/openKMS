@@ -265,6 +265,11 @@ const ModelDataResourcesSection = lazy(() =>
     default: m.ModelDataResourcesSection,
   })),
 );
+const ModelDataResourceDetail = lazy(() =>
+  import('./pages/ontology-manager/ModelDataResourceDetail').then((m) => ({
+    default: m.ModelDataResourceDetail,
+  })),
+);
 const ModelSharingTab = lazy(() =>
   import('./pages/ontology-manager/ModelSharingTab').then((m) => ({
     default: m.ModelSharingTab,
@@ -483,6 +488,7 @@ function App() {
               <Route path="relationships" element={<ModelRelationshipsSection />} />
               <Route path="playground" element={<ModelPlaygroundSection />} />
               <Route path="resources" element={<ModelDataResourcesSection />} />
+              <Route path="resources/:resourceId" element={<ModelDataResourceDetail />} />
               <Route path="sharing" element={<ModelSharingTab />} />
               <Route path="settings" element={<ModelSettingsTab />} />
             </Route>

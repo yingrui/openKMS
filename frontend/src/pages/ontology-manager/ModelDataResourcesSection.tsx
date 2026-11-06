@@ -1,70 +1,42 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Plus, Trash2 } from 'lucide-react';
+import { Link, useNavigate } from 'react-router-dom';
+import { ChevronRight, Plus, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import {
   createDataResource,
   deleteDataResource,
   fetchDataResources,
   type DataResourceResponse,
-  type RowPolicyCondition,
 } from '../../data/dataResourcesApi';
 import { useConfirm } from '../../contexts/ConfirmContext';
-import { FormField } from '../../styles/design-system';
-import { DataResourceAccessPanel } from '../../components/DataResourceAccessPanel';
+import { Dialog, FormField } from '../../styles/design-system';
 import { EntityViewHeader, EntityViewPanel } from './EntityViewShell';
+import { ResourceRowEditor } from './ResourceRowEditor';
+import { describePolicy, toPolicy, type RowDraft } from './modelRowPolicy';
 import { useSemanticModelDetail } from './useSemanticModelDetail';
 
-type Draft = { column: string; op: string; value: string };
-
-const OPS = ['=', '!=', '>', '>=', '<', '<=', 'like', 'in', 'is_null', 'is_not_null'];
-
-/** Turn the row editor's strings into the policy the API validates. */
-function toPolicy(rows: Draft[]): RowPolicyCondition[] {
-  return rows
-    .filter((r) => r.column.trim())
-    .map((r) => {
-      if (r.op === 'is_null' || r.op === 'is_not_null') {
-        return { column: r.column.trim(), op: r.op as RowPolicyCondition['op'] };
-      }
-      return {
-        column: r.column.trim(),
-        op: r.op as RowPolicyCondition['op'],
-        value:
-          r.op === 'in'
-            ? r.value.split(',').map((v) => v.trim()).filter(Boolean)
-            : r.value,
-      };
-    });
-}
-
-function describe(policy: RowPolicyCondition[]): string {
-  return policy
-    .map((c) => {
-      const right = c.claim ? `claim:${c.claim}` : Array.isArray(c.value) ? c.value.join(', ') : String(c.value ?? '');
-      return c.op === 'is_null' || c.op === 'is_not_null' ? `${c.column} ${c.op}` : `${c.column} ${c.op} ${right}`;
-    })
-    .join(' AND ');
-}
-
 /**
- * Model → Data resources: the named slices operators grant in Data Security.
+ * Model → Data resources: **the list**.
  *
- * A restricted model is reachable only through one of these, and a resource's row policy is what
- * the data layer injects — so this page is where "which rows" is decided, and the sharing
- * panel on each row is where "who" is decided.
+ * A resource has two things worth looking at — its row conditions and who may read it — and
+ * rendering every resource's full access panel inline made a page that was 90% form. This is now
+ * a list; editing a resource and managing its readers live on the resource's own page.
  */
 export function ModelDataResourcesSection() {
   const { t } = useTranslation('ontology');
+  const navigate = useNavigate();
   const confirm = useConfirm();
   const { model } = useSemanticModelDetail();
 
   const [resources, setResources] = useState<DataResourceResponse[]>([]);
   const [loading, setLoading] = useState(true);
+  const [creating, setCreating] = useState(false);
+  const [showCreate, setShowCreate] = useState(false);
   const [name, setName] = useState('');
+  const [rows, setRows] = useState<RowDraft[]>([]);
 
-  const [rows, setRows] = useState<Draft[]>([]);
-  const [saving, setSaving] = useState(false);
+  const base = `/data-model/${model.id}/resources`;
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -82,27 +54,32 @@ export function ModelDataResourcesSection() {
     void load();
   }, [load]);
 
+  const resetForm = () => {
+    setShowCreate(false);
+    setName('');
+    setRows([]);
+  };
 
   const onCreate = async () => {
     if (!name.trim()) {
       toast.error(t('dataModel.resourceNameRequired'));
       return;
     }
-    setSaving(true);
+    setCreating(true);
     try {
-      await createDataResource({
+      const created = await createDataResource({
         name: name.trim(),
         semantic_model_id: model.id,
         row_policy: toPolicy(rows),
       });
-      setName('');
-      setRows([]);
+      resetForm();
       toast.success(t('dataModel.resourceCreated'));
-      await load();
+      // Straight to the new resource: granting access is the next thing an author does.
+      navigate(`${base}/${created.id}`);
     } catch (e) {
       toast.error(e instanceof Error ? e.message : t('dataModel.resourceCreateFailed'));
     } finally {
-      setSaving(false);
+      setCreating(false);
     }
   };
 
@@ -128,99 +105,103 @@ export function ModelDataResourcesSection() {
       <EntityViewHeader
         title={t('dataModel.resources')}
         subtitle={t('dataModel.resourcesHint')}
+        actions={
+          <button type="button" className="btn btn-primary" onClick={() => setShowCreate(true)}>
+            <Plus size={16} aria-hidden />
+            {t('dataModel.resourceNew')}
+          </button>
+        }
       />
 
-      <EntityViewPanel title={t('dataModel.resourceNew')}>
-        <div className="entity-view__form">
-          <FormField label={t('dataModel.resourceName')}>
-            <input type="text" value={name} onChange={(e) => setName(e.target.value)} />
-          </FormField>
-          <FormField label={t('dataModel.resourceRows')} hint={t('dataModel.resourceRowsHint')}>
-            {rows.map((row, idx) => (
-              <div key={idx} className="model-scope-add">
-                <input
-                  type="text"
-                  aria-label={t('dataModel.resourceColumn')}
-                  placeholder={t('dataModel.resourceColumn')}
-                  value={row.column}
-                  onChange={(e) =>
-                    setRows((prev) => prev.map((r, i) => (i === idx ? { ...r, column: e.target.value } : r)))
-                  }
-                />
-                <select
-                  aria-label={t('dataModel.resourceOperator')}
-                  value={row.op}
-                  onChange={(e) =>
-                    setRows((prev) => prev.map((r, i) => (i === idx ? { ...r, op: e.target.value } : r)))
-                  }
-                >
-                  {OPS.map((op) => (
-                    <option key={op} value={op}>
-                      {op}
-                    </option>
-                  ))}
-                </select>
-                {row.op !== 'is_null' && row.op !== 'is_not_null' ? (
-                  <input
-                    type="text"
-                    aria-label={t('dataModel.resourceValue')}
-                    placeholder={t('dataModel.resourceValue')}
-                    value={row.value}
-                    onChange={(e) =>
-                      setRows((prev) => prev.map((r, i) => (i === idx ? { ...r, value: e.target.value } : r)))
-                    }
-                  />
-                ) : null}
-                <button
-                  type="button"
-                  className="btn btn-secondary btn-sm"
-                  aria-label={t('shared.delete')}
-                  onClick={() => setRows((prev) => prev.filter((_, i) => i !== idx))}
-                >
-                  <Trash2 size={14} aria-hidden />
-                </button>
-              </div>
-            ))}
-            <button
-              type="button"
-              className="btn btn-secondary btn-sm"
-              onClick={() => setRows((prev) => [...prev, { column: '', op: '=', value: '' }])}
-            >
-              <Plus size={14} aria-hidden />
-              {t('dataModel.resourceAddCondition')}
-            </button>
-          </FormField>
-          <button type="button" className="btn btn-primary" disabled={saving} onClick={() => void onCreate()}>
-            {saving ? t('shared.saving') : t('dataModel.resourceCreate')}
-          </button>
-        </div>
+      <EntityViewPanel>
+        {loading ? (
+          <p className="page-subtitle">{t('shared.loading')}</p>
+        ) : resources.length === 0 ? (
+          <p className="page-subtitle">{t('dataModel.resourceEmpty')}</p>
+        ) : (
+          <div className="ds-table-wrap ds-table-wrap--flush">
+            <table className="console-table">
+              <thead>
+                <tr>
+                  <th>{t('dataModel.resourceName')}</th>
+                  <th>{t('dataModel.resourceRows')}</th>
+                  <th aria-label={t('shared.delete')} />
+                </tr>
+              </thead>
+              <tbody>
+                {resources.map((resource) => (
+                  <tr key={resource.id}>
+                    <td>
+                      <Link to={`${base}/${resource.id}`}>
+                        {resource.name}
+                        <ChevronRight size={14} aria-hidden />
+                      </Link>
+                    </td>
+                    <td>
+                      {resource.row_policy.length ? (
+                        <code>{describePolicy(resource.row_policy)}</code>
+                      ) : (
+                        <span className="page-subtitle">{t('dataModel.resourceRowsNone')}</span>
+                      )}
+                    </td>
+                    <td>
+                      <button
+                        type="button"
+                        className="btn btn-secondary btn-sm"
+                        aria-label={t('shared.delete')}
+                        onClick={() => void onDelete(resource)}
+                      >
+                        <Trash2 size={14} aria-hidden />
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
       </EntityViewPanel>
 
-      {loading ? <p className="page-subtitle">{t('shared.loading')}</p> : null}
-
-      {resources.map((resource) => (
-        <EntityViewPanel key={resource.id} title={resource.name}>
-          <div className="entity-view__dl">
-            <dt>{t('dataModel.resourceRows')}</dt>
-            <dd>{resource.row_policy.length ? describe(resource.row_policy) : t('dataModel.resourceRowsNone')}</dd>
-          </div>
-          <div className="model-scope-add">
+      <Dialog
+        open={showCreate}
+        onClose={resetForm}
+        closeDisabled={creating}
+        title={t('dataModel.resourceNew')}
+        size="md"
+        footer={
+          <>
             <button
               type="button"
-              className="btn btn-secondary btn-sm"
-              onClick={() => void onDelete(resource)}
+              className="btn btn-secondary"
+              onClick={resetForm}
+              disabled={creating}
             >
-              <Trash2 size={14} aria-hidden />
-              {t('shared.delete')}
+              {t('shared.cancel')}
             </button>
-          </div>
-          <DataResourceAccessPanel
-            resourceId={resource.id}
-            resourceName={resource.name}
-            rowPolicy={resource.row_policy}
+            <button
+              type="button"
+              className="btn btn-primary"
+              disabled={!name.trim() || creating}
+              onClick={() => void onCreate()}
+            >
+              {creating ? t('shared.saving') : t('dataModel.resourceCreate')}
+            </button>
+          </>
+        }
+      >
+        <FormField label={t('dataModel.resourceName')}>
+          <input
+            type="text"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            autoFocus
+            autoComplete="off"
           />
-        </EntityViewPanel>
-      ))}
+        </FormField>
+        <FormField label={t('dataModel.resourceRows')} hint={t('dataModel.resourceRowsHint')}>
+          <ResourceRowEditor rows={rows} onChange={setRows} />
+        </FormField>
+      </Dialog>
     </>
   );
 }

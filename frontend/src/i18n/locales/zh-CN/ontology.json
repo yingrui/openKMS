@@ -423,7 +423,12 @@
     "resourceAccessSave": "保存授权",
     "resourceAccessSaved": "授权已保存",
     "resourceAccessSaveFailed": "无法保存授权",
-    "resourceAccessLoadFailed": "无法加载授权"
+    "resourceAccessLoadFailed": "无法加载授权",
+    "resourceEmpty": "还没有数据资源。创建一个即可把该模型按行切片授权出去。",
+    "resourceDefinition": "定义",
+    "resourceNotFound": "未找到该数据资源。",
+    "resourceSaved": "数据资源已保存",
+    "resourceSaveFailed": "无法保存数据资源"
   },
   "datasets": {
     "title": "数据集",
