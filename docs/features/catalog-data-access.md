@@ -143,16 +143,23 @@ DataResource {
 
 ### 3. Grant it
 
-**A data resource is not shared like a document.** Its only meaningful verb is *read*: the
-rows a caller may query. Content resources (documents, knowledge bases, wikis, datasets) use the
-standard **sharing** panel with `r` / `w` / `m`, because those objects can be edited and their
-sharing changed. A data resource cannot be edited, and a "write" bit on it would do nothing.
+**A data resource's access list answers one question: who may read these rows.**
+
+It is not a sharing panel. Three things are deliberately absent:
+
+- **No write.** There is no content to edit; a `w` bit would authorize nothing. The ACL API
+  strips it for this type rather than storing a permission no check reads.
+- **No manage.** "May administer this resource" is *ownership*, not data access — it belongs in
+  **Sharing** with every other resource, not in the list of people allowed to query rows.
+  Letting the reader list also grant `m` meant saving a read list could hand out administrative
+  rights as a side effect.
+- **No channel wording.** "Channel creator / New channels" describes documents, not data grants.
 
 | Object | Panel | Bits that mean something |
 |---|---|---|
 | Semantic model | **Settings → Sharing** | `r` / `w` / `m` |
 | Dataset | **Sharing** in dataset detail | `r` / `w` / `m` |
-| Data resource | **Access** under the resource on the Data resources tab | **`r`** (`m` only for who may re-grant) |
+| Data resource | **Access** on the resource's page | **`r` only** — who may administer the resource is set in its **Sharing** |
 
 When granting a data resource, the panel should also show **the row conditions being granted** —
 granting `industry = 半导体` is a different act from granting the whole model, and the reviewer

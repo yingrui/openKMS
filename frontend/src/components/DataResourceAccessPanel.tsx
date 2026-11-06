@@ -17,27 +17,26 @@ import "./DataResourceAccessPanel.scss";
 /**
  * Who may read one data resource.
  *
- * Deliberately **not** the generic sharing panel. A data resource is a row-scoped, read-only
- * capability: it has no contents to edit, so a `write` checkbox would offer a permission that no
- * check reads — and the generic panel's "Channel creator / New channels" wording describes
- * documents, not data grants. What matters here is narrower and worth stating plainly:
+ * Who may **read** one data resource — nothing else.
  *
- * - **read** — may query the rows this resource exposes;
- * - **manage** — may change this list (an administrative act, shown separately);
- * - **the row conditions** — because "read all Stock data" and "read only semiconductor stocks"
- *   are different grants, and the approver has to see which one they are making.
+ * A data resource is a read-only row scope, so this panel answers a single question: may this
+ * person query the rows it exposes? Two things it deliberately does not do:
+ *
+ * - **No write.** There is no content to edit; a `w` bit would authorize nothing.
+ * - **No manage.** "May administer this resource" is not a data permission — it is who owns the
+ *   thing, and it is decided in **Sharing** (like every other resource), not in the list of
+ *   people allowed to read rows. Mixing the two let a reader's panel grant administrative
+ *   rights as a side effect of saving.
+ *
+ * It does show **the row conditions being granted**: "read all Stock data" and "read only
+ * semiconductor stocks" are different approvals, and the reviewer has to see which one it is.
  */
 type Row = {
   grantee_type: "user" | "group" | "authenticated";
   grantee_id: string | null;
   label: string;
   read: boolean;
-  manage: boolean;
 };
-
-function permsOf(read: boolean, manage: boolean): string {
-  return `${read ? "r" : ""}${manage ? "m" : ""}`;
-}
 
 function toRows(grants: AclGrant[]): Row[] {
   return grants.map((g) => ({
@@ -47,7 +46,6 @@ function toRows(grants: AclGrant[]): Row[] {
       g.grantee_label?.trim() ||
       (g.grantee_type === "authenticated" ? "" : (g.grantee_id ?? "")),
     read: g.permissions.includes("r") || g.permissions.includes("m"),
-    manage: g.permissions.includes("m"),
   }));
 }
 
@@ -114,15 +112,23 @@ export function DataResourceAccessPanel({
   }, [resourceId]);
 
   const save = async () => {
+    // A row with no read is not a grant: sending an empty permission set is rejected, and
+    // "granted but may read nothing" is not a state this panel can express.
+    const grants = rows.filter((r) => r.read);
+    if (!grants.length) {
+      toast.error(t('dataModel.resourceAccessNeedsReader'));
+      return;
+    }
     setSaving(true);
     try {
       await putResourceAcl(
         RESOURCE_TYPES.dataResource,
         resourceId,
-        rows.map((r) => ({
+        // Read only: `m` is not ours to set from this panel (see the docstring above).
+        grants.map((r) => ({
           grantee_type: r.grantee_type,
           grantee_id: r.grantee_id,
-          permissions: permsOf(r.read, r.manage),
+          permissions: 'r',
         })),
       );
       toast.success(t("dataModel.resourceAccessSaved"));
@@ -152,7 +158,6 @@ export function DataResourceAccessPanel({
         grantee_id: pick,
         label: candidate?.label || pick,
         read: true,
-        manage: false,
       },
     ]);
     setPick("");
@@ -186,7 +191,6 @@ export function DataResourceAccessPanel({
             <tr>
               <th>{t("dataModel.resourceAccessGrantee")}</th>
               <th>{t("dataModel.resourceAccessRead")}</th>
-              <th>{t("dataModel.resourceAccessManage")}</th>
               <th aria-label={t("shared.delete")} />
             </tr>
           </thead>
@@ -209,28 +213,6 @@ export function DataResourceAccessPanel({
                       setRows((prev) =>
                         prev.map((r, i) =>
                           i === index ? { ...r, read: e.target.checked } : r,
-                        ),
-                      )
-                    }
-                  />
-                </td>
-                <td>
-                  <input
-                    type="checkbox"
-                    checked={row.manage}
-                    aria-label={t("dataModel.resourceAccessManage")}
-                    onChange={(e) =>
-                      setRows((prev) =>
-                        prev.map((r, i) =>
-                          // manage implies read: someone who may change this list can also
-                          // read what they are sharing.
-                          i === index
-                            ? {
-                                ...r,
-                                manage: e.target.checked,
-                                read: e.target.checked ? true : r.read,
-                              }
-                            : r,
                         ),
                       )
                     }

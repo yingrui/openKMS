@@ -64,6 +64,25 @@ def _parse_grants(body: ResourceAclPut) -> list[dict]:
     return out
 
 
+def _normalize_data_resource_grants(parsed: list[dict]) -> list[dict]:
+    """Strip `w` from data-resource grants and drop rows that then authorize nothing.
+
+    A data resource is a read-only row scope: `r` means "may query these rows" and `m` means
+    "may administer the resource". A `w` bit exists in the shared vocabulary for other resource
+    types but no data-resource check reads it, so storing one would record a permission that
+    looks meaningful and is not.
+
+    Applied **after** the owner row is ensured, because bootstrap writes the owner as `rwm` and
+    that row must be reduced too rather than slipping through unnormalized.
+    """
+    out: list[dict] = []
+    for grant in parsed:
+        grant = {**grant, "permissions": grant["permissions"] & ~PERM_WRITE}
+        if grant["permissions"] or grant["grantee_type"] == GRANTEE_AUTHENTICATED:
+            out.append(grant)
+    return out
+
+
 async def _ensure_owner_in_parsed(
     db: AsyncSession,
     resource_type: str,
@@ -114,19 +133,6 @@ async def persist_resource_acl(
                 raise HTTPException(status_code=403, detail="Manage permission required to change sharing")
 
     parsed = _parse_grants(body)
-    if resource_type == RT_DATA_RESOURCE:
-        # A data resource is a row-scoped view over read-only data: a `write` bit authorizes
-        # nothing, because no check reads it. Accepting one would put a permission in the table
-        # that looks meaningful and is not; `read` means "may query these rows", `manage` means
-        # "may change this sharing".
-        if any(g["permissions"] & PERM_WRITE for g in parsed):
-            raise HTTPException(
-                status_code=400,
-                detail=(
-                    "A data resource is read-only: grant 'r' to read its rows and 'm' to let "
-                    "someone change its sharing. A 'w' grant would authorize nothing."
-                ),
-            )
     for g in parsed:
         if g["grantee_type"] == GRANTEE_GROUP and g["grantee_id"]:
             if not await db.get(AccessGroup, g["grantee_id"]):
@@ -135,6 +141,17 @@ async def persist_resource_acl(
             g["grantee_id"] = await normalize_owner_grantee_id(db, g["grantee_id"], payload)
 
     await _ensure_owner_in_parsed(db, resource_type, resource_id, parsed)
+
+    if resource_type == RT_DATA_RESOURCE:
+        # Normalize **after** the owner is ensured, so the owner row bootstrap wrote as `rwm` is
+        # reduced here too instead of slipping through as an unchecked grant.
+        parsed = _normalize_data_resource_grants(parsed)
+        if not any(g["permissions"] & PERM_READ for g in parsed):
+            raise HTTPException(
+                status_code=400,
+                detail="A data resource needs at least one read grant.",
+            )
+
     entries = await replace_resource_acl(db, resource_type, resource_id, parsed)
     await db.commit()
     return await serialize_resource_acl(

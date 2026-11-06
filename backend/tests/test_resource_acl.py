@@ -339,3 +339,30 @@ def test_user_grant_matches_local_user_id_for_oidc_subject():
         assert matched is True
 
     asyncio.run(_run())
+
+
+
+def test_data_resource_normalization_strips_write_and_keeps_manage():
+    """The rule the handler applies to a data resource: no `w`, `r`/`m` survive.
+
+    Exercised as a pure function because the order matters and is easy to get wrong: the owner
+    row bootstrap wrote as `rwm` must be normalized **after** it is ensured, or it slips through.
+    """
+    from app.api.resource_acl import _normalize_data_resource_grants
+
+    parsed = [
+        {"grantee_type": "user", "grantee_id": "owner", "permissions": 1 | 2 | 4},
+        {"grantee_type": "group", "grantee_id": "g1", "permissions": 1 | 2},
+    ]
+    out = _normalize_data_resource_grants(parsed)
+    assert [g["permissions"] for g in out] == [1 | 4, 1]
+
+
+def test_data_resource_normalization_drops_a_grant_that_only_had_write():
+    """`w` alone means nothing here, so the row disappears rather than becoming an empty grant."""
+    from app.api.resource_acl import _normalize_data_resource_grants
+
+    out = _normalize_data_resource_grants(
+        [{"grantee_type": "user", "grantee_id": "u1", "permissions": 2}]
+    )
+    assert out == []
