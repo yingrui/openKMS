@@ -96,6 +96,12 @@ Six compile-time tokens in **`_tokens.scss`** — use **`@include max-width(ds.$
 
 4px grid — **`var(--space-*)`** in rules. Common: label↔control **`--space-2`**, form gap **`--space-3`**, card stack **`--space-5`**, actions **`--space-6`**, page header→content **`--space-6`**. App gutters: **`--app-page-padding-x/y`** on **`.app-content`** or **`.app-page-pane`** only. Half-step: **`--gap-compact`**, **`--padding-compact-*`**.
 
+**Dividers do not stack.** `.entity-view__main .page-header` carries `padding-bottom` and a
+`border-bottom` because content usually follows it directly. When a **tab strip** follows instead,
+the strip already draws the top edge of the card — a page-local rule therefore cancels the header's
+own padding and border (`:has(+ .settings-page-tabs)` in `entity-view.scss`). Two adjacent
+dividers plus two paddings is what reads as "a large unexplained gap".
+
 ## App shell layout
 
 **Goal:** one gutter source per scroll column — no stacked padding on shell + page root.
@@ -314,7 +320,7 @@ Reach for a **shared primitive** before writing markup. The list below is the an
 | Whole detail page with several sections | **`<EntityViewShell>` + `navItems`** (see the dataset and semantic-model pages) | sidebar identity + routed sections |
 | Collapsible section | **`<EntityViewPanel title defaultCollapsed>`** | not a hand-rolled `<details>` |
 | Card surface | **`.account-card`** / **`<EntityViewPanel>`** | |
-| Tabs | page-local tab row (KB) **or** `EntityViewShell` nav | no `ds-tabs` primitive exists |
+| Tabs | **`.settings-page-tabs` + `.settings-page-form`** (shared, `src/styles/settings-page.scss`) for page sections; page-local tab row (KB) **or** `EntityViewShell` nav where the route already uses that shell | no `ds-tabs` primitive exists. A page that uses these classes **must import `settings-page.scss`** — the class names match nothing otherwise, which renders unstyled buttons and a white gap where the card belongs |
 | Pagination | **`<Pagination>`** | server-side when the API supports it, otherwise slice |
 | Empty / loading state | **`<EmptyState>`** / `console-loading` | |
 | Search box | **`.console-datasets-search`** (list) or `ds-control` (in a header) | no primitive; do not invent a third |
