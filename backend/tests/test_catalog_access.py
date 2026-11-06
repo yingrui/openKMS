@@ -12,12 +12,8 @@ import pytest
 from fastapi import HTTPException
 
 from app.models.data_resource import DataResource
-from app.models.semantic_model import SemanticModel
-from app.services.data_layer.catalog_access import (
-    ACCESS_RESTRICTED,
-    ACCESS_PUBLIC,
-    resolve_catalog_scope,
-)
+from app.models.semantic_model import ACCESS_PUBLIC, ACCESS_RESTRICTED, SemanticModel
+from app.services.data_layer.catalog_access import resolve_catalog_scope
 
 
 class _FakeDB:

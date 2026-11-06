@@ -36,11 +36,6 @@ from app.services.data_layer.row_policy import (
     policy_fingerprint,
 )
 
-ACCESS_PUBLIC = "public"
-ACCESS_RESTRICTED = "restricted"
-ACCESS_MODES = frozenset({ACCESS_PUBLIC, ACCESS_RESTRICTED})
-
-
 @dataclass(frozen=True)
 class CatalogScope:
     """What one Catalog call may read, after both gates passed."""
@@ -81,8 +76,8 @@ async def check_data_resource_access(
     if not subject:
         return False
     if not await acl_check_required(db, RT_DATA_RESOURCE, resource_id):
-        # An un-granted resource is not "open": the model's `restricted` mode already denied the
-        # call before we get here, so the absence of ACL rows means nobody holds it.
+        # An un-granted resource is not "open": the model's `restricted` mode already denied
+        # the call before we get here, so no ACL rows means nobody holds it.
         return False
     bits = await effective_permissions(db, subject, RT_DATA_RESOURCE, resource_id, payload)
     return perm_satisfies(bits, required)
@@ -130,8 +125,7 @@ async def resolve_catalog_scope(
     Raises 400 when a restricted model is queried without `resource_id`, 404 when the resource
     is not this model's (or is unknown), 403 when the caller holds no read grant.
     """
-    restricted = (model.access_mode or ACCESS_PUBLIC) == ACCESS_RESTRICTED
-    if not restricted:
+    if not model.is_restricted:
         # A public model ignores `resource_id`: it is already open to the operation key.
         return CatalogScope(model=model)
 

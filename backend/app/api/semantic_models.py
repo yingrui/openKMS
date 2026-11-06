@@ -13,7 +13,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.auth import require_any_permission, require_permission
 from app.database import get_db
-from app.models.semantic_model import SemanticModel
+from app.models.semantic_model import ACCESS_PUBLIC, ACCESS_RESTRICTED, SemanticModel
 from app.schemas.semantic_model import (
     QueryRequest,
     QueryResponse,
@@ -49,6 +49,15 @@ from app.services.permissions.permission_catalog import PERM_DATA_READ, PERM_DAT
 router = APIRouter(prefix="/semantic-models", tags=["semantic-models"])
 
 
+def _access_mode(model: SemanticModel) -> str:
+    """The API value for a stored access mode: anything unrecognised reads as `public`.
+
+    One mapping instead of the same ternary at every response site — a second copy is how the
+    default silently differs between the detail and the list endpoint.
+    """
+    return ACCESS_RESTRICTED if model.is_restricted else ACCESS_PUBLIC
+
+
 async def _response(db: AsyncSession, model: SemanticModel) -> SemanticModelResponse:
     ids = await member_ids(db, model.id)
     refs = await dataset_refs(db, ids)
@@ -61,7 +70,7 @@ async def _response(db: AsyncSession, model: SemanticModel) -> SemanticModelResp
             SemanticModelDatasetRef(id=i, name=refs.get(i, i)) for i in ids
         ],
         ai_context=model.ai_context,
-        access_mode="restricted" if model.access_mode == "restricted" else "public",
+        access_mode=_access_mode(model),
         created_by_name=model.created_by_name,
         created_at=model.created_at,
         updated_at=model.updated_at,
@@ -99,7 +108,7 @@ async def list_semantic_models(db: AsyncSession = Depends(get_db)):
                     for i in members.get(m.id, [])
                 ],
                 ai_context=m.ai_context,
-                access_mode="restricted" if m.access_mode == "restricted" else "public",
+                access_mode=_access_mode(m),
                 created_by_name=m.created_by_name,
                 created_at=m.created_at,
                 updated_at=m.updated_at,

@@ -146,28 +146,36 @@ def test_the_data_resource_type_is_securable():
 
 
 class _ModelRowsDB:
-    """`execute(...)` serving both shapes these functions use.
+    """`execute(...)` answering by the entity the statement selects.
 
-    `readable_model_ids` asks for `.all()` of `(model_id, access_mode)`; `has_model_grant`
-    asks for `.scalars().all()` of resource ids. One fake covers both.
+    `readable_model_ids` selects whole `SemanticModel` rows; `has_model_grant` selects
+    `DataResource.id`. The fake inspects the statement rather than guessing from call order, so
+    it exercises the real `is_restricted` predicate instead of re-spelling it here.
     """
 
-    def __init__(self, rows: list[tuple[str, str]], resource_ids: list[str] | None = None):
-        self._rows = rows
+    def __init__(self, rows: list[tuple[str, str | None]], resource_ids: list[str] | None = None):
+        from app.models.semantic_model import SemanticModel
+
+        self._models = [
+            SemanticModel(id=model_id, name=model_id, access_mode=mode or "public")
+            for model_id, mode in rows
+        ]
         self._resource_ids = resource_ids or []
 
-    async def execute(self, _stmt):
-        rows = self._rows
-        resource_ids = self._resource_ids
+    async def execute(self, stmt):
+        from app.models.data_resource import DataResource
+
+        entity = (stmt.column_descriptions or [{}])[0].get("entity")
+        values = self._resource_ids if entity is DataResource else self._models
 
         class _Result:
             def all(self):
-                return list(rows)
+                return list(values)
 
             def scalars(self):
                 class _Scalars:
                     def all(_self):
-                        return list(resource_ids)
+                        return list(values)
 
                 return _Scalars()
 

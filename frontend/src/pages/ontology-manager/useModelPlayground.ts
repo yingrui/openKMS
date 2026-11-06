@@ -18,6 +18,7 @@ import {
 } from '../../data/semanticModelsApi';
 import { useAsyncData } from '../../hooks/useAsyncData';
 import { fetchDataResources } from '../../data/dataResourcesApi';
+import { isRestrictedAccess } from '../../data/semanticModelsApi';
 import {
   canRunQuery,
   compactSpec,
@@ -74,7 +75,7 @@ export function useModelPlayground() {
       ),
     [modelId],
   );
-  const restricted = model.access_mode === 'restricted';
+  const restricted = isRestrictedAccess(model.access_mode);
   // A restricted model answers only inside a granted resource, so the scope is picked up front
   // and rides along on every run instead of being inferred at submit time.
   const { data: resourcePage } = useAsyncData(

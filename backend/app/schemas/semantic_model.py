@@ -4,6 +4,11 @@ from typing import Any, Literal
 
 from pydantic import BaseModel
 
+from app.models.semantic_model import ACCESS_MODES
+
+#: The stored vocabulary, so the API cannot drift from the column it mirrors.
+AccessMode = Literal[ACCESS_MODES]  # type: ignore[valid-type]
+
 
 
 class SemanticModelDatasetRef(BaseModel):
@@ -17,7 +22,7 @@ class SemanticModelCreate(BaseModel):
     dataset_ids: list[str] = []
     ai_context: dict[str, Any] | None = None
     #: `public` (default) or `restricted` — restricted models are reachable only through a resource grant.
-    access_mode: Literal["public", "restricted"] | None = None
+    access_mode: AccessMode | None = None
 
 
 class SemanticModelUpdate(BaseModel):
@@ -25,7 +30,7 @@ class SemanticModelUpdate(BaseModel):
     description: str | None = None
     dataset_ids: list[str] | None = None
     ai_context: dict[str, Any] | None = None
-    access_mode: Literal["public", "restricted"] | None = None
+    access_mode: AccessMode | None = None
 
 
 class SemanticModelResponse(BaseModel):
@@ -35,7 +40,7 @@ class SemanticModelResponse(BaseModel):
     dataset_ids: list[str] = []
     datasets: list[SemanticModelDatasetRef] = []
     ai_context: dict[str, Any] | None = None
-    access_mode: Literal["public", "restricted"] = "public"
+    access_mode: AccessMode = ACCESS_MODES[0]
     created_by_name: str | None = None
     created_at: datetime
     updated_at: datetime

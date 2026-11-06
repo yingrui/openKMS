@@ -22,7 +22,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.api.auth import require_auth
 from app.database import get_db
 from app.models.semantic_model import SemanticModel
-from app.services.data_layer.catalog_access import ACCESS_RESTRICTED, has_model_grant
+from app.services.data_layer.catalog_access import has_model_grant
 
 
 def _subject(request: Request) -> tuple[dict, str | None]:
@@ -40,7 +40,7 @@ async def require_model_read(model_id: str, request: Request, db: AsyncSession) 
     model = await db.get(SemanticModel, model_id)
     if model is None:
         raise HTTPException(status_code=404, detail="Semantic model not found")
-    if (model.access_mode or "public") != ACCESS_RESTRICTED:
+    if not model.is_restricted:
         return
     payload, sub = _subject(request)
     if await has_model_grant(db, payload=payload, sub=sub, model_id=model_id):
@@ -58,17 +58,16 @@ async def readable_model_ids(db: AsyncSession, *, payload: dict, sub: str | None
     """Model ids this caller may read: every public model, plus restricted ones with a grant.
 
     Used by list endpoints, which must not turn "no grant" into "no results at all" — a public
-    model is readable by any authenticated caller.
+    model is readable by any authenticated caller. Kept as one query plus one grant probe per
+    restricted model, so a list never silently drops models a caller could actually read.
     """
-    rows = (await db.execute(select(SemanticModel.id, SemanticModel.access_mode))).all()
+    models = (await db.execute(select(SemanticModel))).scalars().all()
     out: set[str] = set()
-    for model_id, access_mode in rows:
-        if (access_mode or "public") != ACCESS_RESTRICTED:
-            out.add(model_id)
-        elif sub and await has_model_grant(
-            db, payload=payload, sub=sub, model_id=model_id
-        ):
-            out.add(model_id)
+    for model in models:
+        if not model.is_restricted:
+            out.add(model.id)
+        elif sub and await has_model_grant(db, payload=payload, sub=sub, model_id=model.id):
+            out.add(model.id)
     return out
 
 

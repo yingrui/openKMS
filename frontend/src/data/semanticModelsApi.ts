@@ -1,6 +1,17 @@
 /** API for semantic models (named scopes over the shared data layer). */
 import { request, requestText } from './apiClient';
 
+/**
+ * Who may read a model. Mirrors the backend `ACCESS_MODES`; one alias so a call site does not
+ * re-spell the pair (and so a future value is a one-line change).
+ */
+export type SemanticModelAccessMode = 'public' | 'restricted';
+
+/** True when reading the model requires a data resource grant. */
+export function isRestrictedAccess(mode: SemanticModelAccessMode | null | undefined): boolean {
+  return mode === 'restricted';
+}
+
 export interface SemanticModelDatasetRef {
   id: string;
   name: string;
@@ -14,7 +25,7 @@ export interface SemanticModelResponse {
   datasets: SemanticModelDatasetRef[];
   ai_context: Record<string, unknown> | null;
   /** `restricted` models are reachable only through a data resource grant. */
-  access_mode: 'public' | 'restricted';
+  access_mode: SemanticModelAccessMode;
   created_by_name: string | null;
   created_at: string;
   updated_at: string;
@@ -30,7 +41,7 @@ export interface SemanticModelPayload {
   description?: string | null;
   dataset_ids: string[];
   ai_context?: Record<string, unknown> | null;
-  access_mode?: 'public' | 'restricted';
+  access_mode?: SemanticModelAccessMode;
 }
 
 export interface SemanticModelImportSummary {
