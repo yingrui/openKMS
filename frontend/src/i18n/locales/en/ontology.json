@@ -417,7 +417,6 @@
     "modelSharing": "Sharing",
     "modelSharingHint": "Who may see and use this model — its metrics, fields and relationships. Row-level access is granted separately, per data resource.",
     "resourceAccessHint": "This resource is read-only: a grant lets someone query its rows. Who may administer the resource itself is set in Sharing.",
-    "resourceAccessScope": "Grants apply to",
     "resourceAccessGrantee": "Grantee",
     "resourceAccessRead": "Read",
     "resourceAccessOthers": "Anyone signed in (all of {{name}})",
@@ -433,7 +432,11 @@
     "resourceNotFound": "Data resource not found.",
     "resourceSaved": "Data resource saved",
     "resourceSaveFailed": "Could not save the data resource",
-    "resourceAccessNeedsReader": "Keep at least one reader, or delete the resource instead."
+    "resourceAccessNeedsReader": "Keep at least one reader, or delete the resource instead.",
+    "resourceTab_definition": "Definition",
+    "resourceTab_access": "Access",
+    "resourceAccessSearch": "Find a user",
+    "resourceAccessSearchPlaceholder": "Name or email…"
   },
   "datasets": {
     "title": "Datasets",

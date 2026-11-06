@@ -412,7 +412,6 @@
     "modelSharing": "共享",
     "modelSharingHint": "谁可以看见并使用该模型——包括它的指标、字段与关系。行级访问在「数据资源」上单独授权。",
     "resourceAccessHint": "该资源只读：授权只让对方查询它包含的行。谁能管理该资源本身，在「共享」里设置。",
-    "resourceAccessScope": "授权范围",
     "resourceAccessGrantee": "授权对象",
     "resourceAccessRead": "读取",
     "resourceAccessOthers": "所有登录用户（{{name}} 全部数据）",
@@ -428,7 +427,11 @@
     "resourceNotFound": "未找到该数据资源。",
     "resourceSaved": "数据资源已保存",
     "resourceSaveFailed": "无法保存数据资源",
-    "resourceAccessNeedsReader": "至少保留一个可读取的对象，或直接删除该资源。"
+    "resourceAccessNeedsReader": "至少保留一个可读取的对象，或直接删除该资源。",
+    "resourceTab_definition": "定义",
+    "resourceTab_access": "访问权限",
+    "resourceAccessSearch": "查找用户",
+    "resourceAccessSearchPlaceholder": "姓名或邮箱…"
   },
   "datasets": {
     "title": "数据集",

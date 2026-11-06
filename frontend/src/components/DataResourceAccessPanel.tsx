@@ -10,7 +10,6 @@ import {
   type AclGrant,
   type OwnerCandidate,
 } from "../data/resourceAclApi";
-import type { RowPolicyCondition } from "../data/dataResourcesApi";
 import { FormField } from "../styles/design-system";
 import "./DataResourceAccessPanel.scss";
 
@@ -49,38 +48,20 @@ function toRows(grants: AclGrant[]): Row[] {
   }));
 }
 
-function describePolicy(policy: RowPolicyCondition[]): string {
-  return policy
-    .map((c) => {
-      const right = c.claim
-        ? `claim:${c.claim}`
-        : Array.isArray(c.value)
-          ? c.value.join(", ")
-          : String(c.value ?? "");
-      return c.op === "is_null" || c.op === "is_not_null"
-        ? `${c.column} ${c.op}`
-        : `${c.column} ${c.op} ${right}`;
-    })
-    .join(" AND ");
-}
-
 interface Props {
   resourceId: string;
+  /** Only used to label the "everyone signed in" row, which is about this resource. */
   resourceName: string;
-  rowPolicy: RowPolicyCondition[];
 }
 
-export function DataResourceAccessPanel({
-  resourceId,
-  resourceName,
-  rowPolicy,
-}: Props) {
+export function DataResourceAccessPanel({ resourceId, resourceName }: Props) {
   const { t } = useTranslation("ontology");
   const [rows, setRows] = useState<Row[]>([]);
   const [candidates, setCandidates] = useState<OwnerCandidate[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [pick, setPick] = useState("");
+  const [filter, setFilter] = useState("");
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -144,6 +125,15 @@ export function DataResourceAccessPanel({
     }
   };
 
+  // Search the candidate list rather than scrolling a select: identity lists grow with the
+  // instance, and the one you want is rarely near the top.
+  const visibleCandidates = candidates.filter((c) => {
+    if (rows.some((r) => r.grantee_id === c.subject)) return false;
+    const q = filter.trim().toLowerCase();
+    if (!q) return true;
+    return c.subject.toLowerCase().includes(q) || c.label.toLowerCase().includes(q);
+  });
+
   const addGrantee = () => {
     if (!pick) return;
     const candidate = candidates.find((c) => c.subject === pick);
@@ -165,23 +155,7 @@ export function DataResourceAccessPanel({
 
   return (
     <section className="data-resource-access">
-      <header className="data-resource-access__header">
-        <h3>{t("dataModel.resourceAccess")}</h3>
-        <p className="page-subtitle">{t("dataModel.resourceAccessHint")}</p>
-      </header>
-
-      {/* The row conditions are part of the grant: approving "all Stock data" and "only
-          semiconductor stocks" are different acts. */}
-      <div className="data-resource-access__scope">
-        <span className="data-resource-access__scope-label">
-          {t("dataModel.resourceAccessScope")}
-        </span>
-        <code>
-          {rowPolicy.length
-            ? describePolicy(rowPolicy)
-            : t("dataModel.resourceRowsNone")}
-        </code>
-      </div>
+      <p className="page-subtitle">{t('dataModel.resourceAccessHint')}</p>
 
       {loading ? (
         <p className="page-subtitle">{t("shared.loading")}</p>
@@ -237,17 +211,34 @@ export function DataResourceAccessPanel({
       )}
 
       <div className="data-resource-access__add">
-        <FormField label={t("dataModel.resourceAccessAdd")}>
-          <select value={pick} onChange={(e) => setPick(e.target.value)}>
-            <option value="">{t("dataModel.resourceAccessPick")}</option>
-            {candidates
-              .filter((c) => !rows.some((r) => r.grantee_id === c.subject))
-              .map((c) => (
+        <FormField label={t("dataModel.resourceAccessAdd")} hint={t("dataModel.resourceAccessSearch")}>
+          <input
+            type="search"
+            className="ds-control"
+            value={filter}
+            onChange={(e) => {
+              setFilter(e.target.value);
+              setPick("");
+            }}
+            placeholder={t("dataModel.resourceAccessSearchPlaceholder")}
+            aria-label={t("dataModel.resourceAccessSearch")}
+            autoComplete="off"
+          />
+          {filter.trim() ? (
+            <select
+              className="ds-control"
+              value={pick}
+              onChange={(e) => setPick(e.target.value)}
+              aria-label={t("dataModel.resourceAccessPick")}
+            >
+              <option value="">{t("dataModel.resourceAccessPick")}</option>
+              {visibleCandidates.map((c) => (
                 <option key={c.subject} value={c.subject}>
                   {c.label || c.subject}
                 </option>
               ))}
-          </select>
+            </select>
+          ) : null}
         </FormField>
         <button
           type="button"

@@ -22,7 +22,12 @@ import { describePolicy, toDrafts, toPolicy, type RowDraft } from './modelRowPol
  * The list page used to render every resource's full access panel inline, which made a page that
  * was 90% form. Splitting them means the list answers "what resources exist", and this page
  * answers "what exactly does *this* one allow, and to whom".
+ *
+ * Definition and readers are two tabs rather than two stacked panels: they are edited at
+ * different times for different reasons, and giving each the full pane is what makes a condition
+ * list and a grantee list readable at once.
  */
+const TABS = ['definition', 'access'] as const;
 export function ModelDataResourceDetail() {
   const { t } = useTranslation('ontology');
   const { modelId = '', resourceId = '' } = useParams();
@@ -34,6 +39,7 @@ export function ModelDataResourceDetail() {
   const [name, setName] = useState('');
   const [rows, setRows] = useState<RowDraft[]>([]);
   const [saving, setSaving] = useState(false);
+  const [activeTab, setActiveTab] = useState<(typeof TABS)[number]>('definition');
 
   const base = `/data-model/${modelId}/resources`;
 
@@ -124,36 +130,56 @@ export function ModelDataResourceDetail() {
               <Trash2 size={16} aria-hidden />
               {t('shared.delete')}
             </button>
-            <button
-              type="button"
-              className="btn btn-primary"
-              disabled={saving || !name.trim()}
-              onClick={() => void onSave()}
-            >
-              {saving ? t('shared.saving') : t('shared.save')}
-            </button>
+            {activeTab === 'definition' ? (
+              <button
+                type="button"
+                className="btn btn-primary"
+                disabled={saving || !name.trim()}
+                onClick={() => void onSave()}
+              >
+                {saving ? t('shared.saving') : t('shared.save')}
+              </button>
+            ) : null}
           </>
         }
       />
 
-      <EntityViewPanel title={t('dataModel.resourceDefinition')}>
-        <div className="entity-view__form">
-          <FormField label={t('dataModel.resourceName')}>
-            <input type="text" value={name} onChange={(e) => setName(e.target.value)} />
-          </FormField>
-          <FormField label={t('dataModel.resourceRows')} hint={t('dataModel.resourceRowsHint')}>
-            <ResourceRowEditor rows={rows} onChange={setRows} />
-          </FormField>
-        </div>
-      </EntityViewPanel>
+      {/* Definition and readers are edited independently, by different acts of thought. Two
+          tabs give each the full pane instead of stacking a form above a table. */}
+      <div className="model-resource-tabs" role="tablist" aria-label={resource.name}>
+        {TABS.map((tab) => (
+          <button
+            key={tab}
+            type="button"
+            role="tab"
+            aria-selected={activeTab === tab}
+            className={`model-resource-tab${activeTab === tab ? ' active' : ''}`}
+            onClick={() => setActiveTab(tab)}
+          >
+            {t(`dataModel.resourceTab_${tab}`)}
+          </button>
+        ))}
+      </div>
 
-      {/* Access is a property of this resource, so it lives on the resource's page rather than
-          being repeated (and edited) once per row on the list. */}
-      <DataResourceAccessPanel
-        resourceId={resource.id}
-        resourceName={resource.name}
-        rowPolicy={resource.row_policy}
-      />
+      {activeTab === 'definition' ? (
+        <EntityViewPanel title={t('dataModel.resourceDefinition')}>
+          <div className="entity-view__form">
+            <FormField label={t('dataModel.resourceName')}>
+              <input type="text" value={name} onChange={(e) => setName(e.target.value)} />
+            </FormField>
+            <FormField label={t('dataModel.resourceRows')} hint={t('dataModel.resourceRowsHint')}>
+              <ResourceRowEditor rows={rows} onChange={setRows} />
+            </FormField>
+          </div>
+        </EntityViewPanel>
+      ) : (
+        /* Access is a property of this resource, so it stays on the resource's page rather than
+           being repeated per row on the list. */
+        <DataResourceAccessPanel
+          resourceId={resource.id}
+          resourceName={resource.name}
+        />
+      )}
     </>
   );
 }

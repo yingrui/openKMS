@@ -169,8 +169,10 @@ API: `PUT /api/resource-acl/data_resource/{id}`. Console → **Data Security** m
 and flags sharing problems across every securable type.
 
 **Page layout.** The resources list answers "what slices exist" — name and the condition in one
-line, plus delete. Editing a condition and managing readers live on `/data-model/{id}/resources/{resourceId}`,
-so the access panel appears once, for the resource you are looking at, instead of under every row.
+line, plus delete. The resource page (`/data-model/{id}/resources/{resourceId}`) splits its two
+concerns into tabs: **Definition** (name, row conditions) and **Access** (who may read). They are
+edited at different times for different reasons, and the condition itself is already in the page
+header — repeating it above the grantee table was noise.
 
 ### 4. Call it
 
