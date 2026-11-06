@@ -20,6 +20,7 @@ from app.models.knowledge_base import KnowledgeBase
 from app.models.link_type import LinkType
 from app.models.object_type import ObjectType
 from app.models.project import Project
+from app.models.semantic_model import SemanticModel
 from app.models.wiki_models import WikiSpace
 from app.services.acl.resource_acl_constants import (
     PERM_MANAGE,
@@ -33,6 +34,7 @@ from app.services.acl.resource_acl_constants import (
     RT_LINK_TYPE,
     RT_OBJECT_TYPE,
     RT_PROJECT,
+    RT_SEMANTIC_MODEL,
     RT_WIKI_SPACE,
 )
 from app.services.acl.resource_acl_service import check_resource_access, scope_applies
@@ -53,6 +55,7 @@ RESOURCE_REGISTRY: dict[str, SecurableResourceSpec] = {
     RT_OBJECT_TYPE: SecurableResourceSpec(ObjectType, "Object type not found"),
     RT_LINK_TYPE: SecurableResourceSpec(LinkType, "Link type not found"),
     RT_PROJECT: SecurableResourceSpec(Project, "Project not found"),
+    RT_SEMANTIC_MODEL: SecurableResourceSpec(SemanticModel, "Semantic model not found"),
     RT_WIKI_SPACE: SecurableResourceSpec(WikiSpace, "Wiki space not found"),
 }
 

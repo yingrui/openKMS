@@ -65,7 +65,14 @@ Columns: Data models — Data security.
 | `document_channel` | Parent channels to root |
 | `article_channel` | Parent article channels |
 | `wiki_space` | — |
-| `knowledge_base`, `evaluation`, `glossary`, `dataset`, `object_type`, `link_type`, `data_resource` | Standalone |
+| `knowledge_base`, `evaluation`, `glossary`, `dataset`, `object_type`, `link_type` | Standalone |
+| `data_resource` | Standalone — a row-scoped slice of one semantic model; read is the only meaningful bit. See [Catalog data access](catalog-data-access.md) |
+| `semantic_model` | Standalone — who may see and query a model at all; row scope is granted separately per data resource |
+
+**Semantic models are securable** (sharing panel in model **Settings**). They answer a different
+question from a data resource under them: "may this caller use this model" versus "which rows of
+it may they read". A model with any ACL row is closed to non-grantees even when `access_mode` is
+`public`; new models bootstrap an owner-only grant.
 
 **Wiki pages** are not securable rows: visibility is **wiki space ACL only** (`wiki_page_scope`), same pattern as documents on channels.
 

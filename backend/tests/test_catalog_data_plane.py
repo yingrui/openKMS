@@ -8,6 +8,7 @@ any authenticated caller regardless of which feature keys they hold.
 from __future__ import annotations
 
 import asyncio
+from types import SimpleNamespace
 
 import pytest
 from fastapi import HTTPException
@@ -52,6 +53,16 @@ def _resource(resource_id: str = "r1", model_id: str = "m1") -> DataResource:
 
 def _run(coro):
     return asyncio.run(coro)
+
+
+@pytest.fixture(autouse=True)
+def _model_sharing_open(monkeypatch):
+    """Model-level sharing is a separate gate; these cases are about the row scope."""
+
+    async def allowed(*_args, **_kwargs):
+        return True
+
+    monkeypatch.setattr("app.api.catalog_scoped.check_resource_access", allowed)
 
 
 @pytest.fixture
@@ -163,10 +174,19 @@ class _ModelRowsDB:
         self._resource_ids = resource_ids or []
 
     async def execute(self, stmt):
+        from app.models.access_group import AccessGroupMember
         from app.models.data_resource import DataResource
+        from app.models.resource_acl import ResourceAclEntry
 
         entity = (stmt.column_descriptions or [{}])[0].get("entity")
-        values = self._resource_ids if entity is DataResource else self._models
+        if entity is AccessGroupMember:
+            values = []
+        elif entity is ResourceAclEntry:
+            values = []
+        elif entity is DataResource:
+            values = self._resource_ids
+        else:
+            values = self._models
 
         class _Result:
             def all(self):
@@ -210,3 +230,43 @@ def test_readable_model_ids_tolerates_a_null_access_mode():
 
     db = _ModelRowsDB([("m1", None)])
     assert _run(readable_model_ids(db, payload={}, sub=None)) == {"m1"}
+
+
+def test_a_public_model_still_honours_model_sharing(monkeypatch):
+    """Model sharing is its own gate: `public` decides row scope, not who may open the model."""
+    from app.api.catalog_scoped import require_model_read
+    from app.models.semantic_model import SemanticModel
+
+    async def denied(*_args, **_kwargs):
+        return False
+
+    monkeypatch.setattr("app.api.catalog_scoped.check_resource_access", denied)
+
+    class _DB:
+        async def get(self, cls, key):
+            return SemanticModel(id=key, name="Stock", access_mode="public")
+
+    request = SimpleNamespace(state=SimpleNamespace(openkms_jwt_payload={"sub": "u1"}))
+
+    with pytest.raises(HTTPException) as excinfo:
+        _run(require_model_read("m1", request, _DB()))
+    assert excinfo.value.status_code == 403
+    assert excinfo.value.detail["code"] == "MODEL_FORBIDDEN"
+
+
+def test_a_model_granted_read_is_readable_even_when_public(monkeypatch):
+    from app.api.catalog_scoped import require_model_read
+    from app.models.semantic_model import SemanticModel
+
+    async def allowed(*_args, **_kwargs):
+        return True
+
+    monkeypatch.setattr("app.api.catalog_scoped.check_resource_access", allowed)
+
+    class _DB:
+        async def get(self, cls, key):
+            return SemanticModel(id=key, name="Stock", access_mode="public")
+
+    request = SimpleNamespace(state=SimpleNamespace(openkms_jwt_payload={"sub": "u1"}))
+
+    _run(require_model_read("m1", request, _DB()))  # no raise

@@ -17,6 +17,8 @@ from app.services.acl.resource_acl_constants import (
     PERM_ALL_DATA,
     PERM_MANAGE,
     PERM_READ,
+    PERM_WRITE,
+    RT_DATA_RESOURCE,
     SECURABLE_RESOURCE_TYPES,
     parse_perm_string,
 )
@@ -112,6 +114,19 @@ async def persist_resource_acl(
                 raise HTTPException(status_code=403, detail="Manage permission required to change sharing")
 
     parsed = _parse_grants(body)
+    if resource_type == RT_DATA_RESOURCE:
+        # A data resource is a row-scoped view over read-only data: a `write` bit authorizes
+        # nothing, because no check reads it. Accepting one would put a permission in the table
+        # that looks meaningful and is not; `read` means "may query these rows", `manage` means
+        # "may change this sharing".
+        if any(g["permissions"] & PERM_WRITE for g in parsed):
+            raise HTTPException(
+                status_code=400,
+                detail=(
+                    "A data resource is read-only: grant 'r' to read its rows and 'm' to let "
+                    "someone change its sharing. A 'w' grant would authorize nothing."
+                ),
+            )
     for g in parsed:
         if g["grantee_type"] == GRANTEE_GROUP and g["grantee_id"]:
             if not await db.get(AccessGroup, g["grantee_id"]):

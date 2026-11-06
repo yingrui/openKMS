@@ -27,6 +27,8 @@ RT_GLOSSARY = "glossary"
 RT_PROJECT = "project"
 #: Catalog data capability: a named slice of a semantic model (see `data_resources`).
 RT_DATA_RESOURCE = "data_resource"
+#: Semantic model definition — who may see and query a model at all, before any row scope.
+RT_SEMANTIC_MODEL = "semantic_model"
 
 SECURABLE_RESOURCE_TYPES = frozenset(
     {
@@ -42,6 +44,7 @@ SECURABLE_RESOURCE_TYPES = frozenset(
         RT_GLOSSARY,
         RT_PROJECT,
         RT_DATA_RESOURCE,
+        RT_SEMANTIC_MODEL,
     }
 )
 

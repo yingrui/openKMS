@@ -70,4 +70,5 @@ export const RESOURCE_TYPES = {
   glossary: 'glossary',
   project: 'project',
   dataResource: 'data_resource',
+  semanticModel: 'semantic_model',
 } as const;

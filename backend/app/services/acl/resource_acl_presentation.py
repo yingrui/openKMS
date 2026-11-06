@@ -22,6 +22,7 @@ from app.services.acl.resource_acl_constants import (
     RT_LINK_TYPE,
     RT_OBJECT_TYPE,
     RT_PROJECT,
+    RT_SEMANTIC_MODEL,
     RT_WIKI_SPACE,
     perm_label,
 )
@@ -49,6 +50,7 @@ async def resource_creator_identity(
     from app.models.link_type import LinkType
     from app.models.object_type import ObjectType
     from app.models.project import Project
+    from app.models.semantic_model import SemanticModel
     from app.models.wiki_models import WikiSpace
 
     model = {
@@ -62,6 +64,7 @@ async def resource_creator_identity(
         RT_OBJECT_TYPE: ObjectType,
         RT_LINK_TYPE: LinkType,
         RT_PROJECT: Project,
+        RT_SEMANTIC_MODEL: SemanticModel,
         RT_DATA_RESOURCE: DataResource,
     }.get(resource_type)
     row = await db.get(model, resource_id) if model else None

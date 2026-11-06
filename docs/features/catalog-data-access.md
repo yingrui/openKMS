@@ -1,6 +1,6 @@
-# Catalog data access (resources · grants · rows)
+# Catalog data access (models · resources · rows)
 
-How openKMS decides **which rows of which tables** a Catalog caller may read — including
+How openKMS decides **who may read which rows of which tables** through the Catalog — including
 intranet services that are not openKMS users.
 
 **Related:** [Data security](data-security.md) (resource ACL mechanics), [Security design](../security.md)
@@ -12,7 +12,7 @@ intranet services that are not openKMS users.
 
 | Question | Answer |
 |---|---|
-| What is a data resource? | A named slice of **one** semantic model: optional base table + row policy |
+| What is a data resource? | A named slice of **one** semantic model, defined by **row conditions on entities** |
 | Who decides access? | `resource_acl_entries` with `resource_type = 'data_resource'` — **not** an operation key |
 | Public vs restricted | `semantic_models.access_mode`; `public` answers **any authenticated caller**, `restricted` needs a grant |
 | Row enforcement | `row_policy` injected at query compile / SQL rewrite — never sent by the caller |
@@ -22,7 +22,54 @@ intranet services that are not openKMS users.
 
 ---
 
-## Two planes — only one of them is an operation permission
+## Three grants, three different questions
+
+A Catalog answer passes **three independent gates**, and they are not interchangeable. Treating
+them as one is what produced the current confusion: a "sharing panel" that offered a *write*
+checkbox on data that is read-only, and a semantic model with no sharing at all.
+
+| Layer | Object | Question it answers | Granted through |
+|---|---|---|---|
+| **Model** | Semantic model | May this caller **see and use** this model — its metrics, fields, relationships? | resource ACL, `resource_type = 'semantic_model'` (model **Settings → Sharing**) |
+| **Dataset** | Physical table | May this caller **touch this table**? | resource ACL, `resource_type = 'dataset'` (already exists) |
+| **Rows** | Data resource | Within the model, **which entities** may this caller read? | resource ACL, `resource_type = 'data_resource'` |
+
+```mermaid
+flowchart TB
+  model["Semantic model — sharing<br/>(who may use the model)"]
+  dataset["Dataset — sharing<br/>(who may touch the table)"]
+  rows["Data resource — grant<br/>(which rows are readable)"]
+  query[Query runs]
+  model -->|"metrics, fields, relationships"| query
+  dataset -->|"physical table access"| query
+  rows -->|"row conditions compiled per query base"| query
+```
+
+**Why they are separate objects, not one setting.** A model is a *definition* (curated metrics
+and joins over several tables). A dataset is a *physical table* shared with the same mechanics as
+a document or a knowledge base. A data resource is neither: it is a **row-scoped capability over
+one model**, and its only meaningful verb is *read*. Collapsing the third into the first would
+mean a "write" permission on something that cannot be written, and no way to express "read only
+semiconductors" separately from "may use the Stock model".
+
+### How the three combine on a query
+
+`POST /semantic-models/{id}/query` must satisfy, in order:
+
+1. **Model access** — the caller holds a read grant on the model (`Settings → Sharing`).
+2. **Row scope** — when the model is `restricted`, a granted `resource_id` is required, and its
+   row conditions are compiled against whichever dataset the query reads.
+3. **Table access** — the datasets the query touches are the model's own; the row condition is
+   what narrows them, not the dataset ACL. (Dataset ACL governs *direct* table access such as
+   `GET /api/datasets/{id}` and the rows browser.)
+
+> **Order matters.** Model sharing is checked first: a model with an ACL row is closed to
+> callers outside its grants, whether or not it is `public`. `access_mode` then decides the
+> **row scope within** a model the caller may already open. A new model bootstraps an owner-only
+> grant, so it starts closed to everyone but its creator — the same rule every securable type
+> follows.
+
+## Operation permissions vs data permissions
 
 `data:read` answers "may this caller use the Data Model feature". It does **not** answer
 "may this caller read these rows". Conflating them gave two wrong answers at once: a granted
@@ -39,7 +86,7 @@ flowchart LR
   caller[Caller] -->|"model, fields, metrics, query, sql"| plane{access_mode}
   plane -->|public| run[Run query]
   plane -->|restricted| grant["data_resource grant"]
-  grant --> policy["Inject row policy on base table"]
+  grant --> policy["Compile row conditions per query base"]
   policy --> run
   admin["data:write"] -.->|"CRUD only, no read"| catalog[Catalog management]
 ```
@@ -83,8 +130,8 @@ A restricted model **requires `resource_id`** on every query/SQL call; omitting 
 DataResource {
   name, description
   semantic_model_id      # the model this slice belongs to
-  base_dataset_id        # table the row policy applies to (null = whole model)
-  row_policy[]           # ANDed into every query; [] = whole base table
+  base_dataset_id        # optional legacy anchor; conditions no longer need it
+  row_policy[]           # entity-level conditions, ANDed into every query
 }
 ```
 
@@ -94,9 +141,23 @@ DataResource {
 
 ### 3. Grant it
 
-Same page, the sharing panel under each resource: add a **user** or **access group** with `r`.
-Console → **Data Security** manages groups and flags sharing problems.
-API equivalent: `PUT /api/resource-acl/data_resource/{id}`.
+**A data resource is not shared like a document.** Its only meaningful verb is *read*: the
+rows a caller may query. Content resources (documents, knowledge bases, wikis, datasets) use the
+standard **sharing** panel with `r` / `w` / `m`, because those objects can be edited and their
+sharing changed. A data resource cannot be edited, and a "write" bit on it would do nothing.
+
+| Object | Panel | Bits that mean something |
+|---|---|---|
+| Semantic model | **Settings → Sharing** | `r` / `w` / `m` |
+| Dataset | **Sharing** in dataset detail | `r` / `w` / `m` |
+| Data resource | **Access** under the resource on the Data resources tab | **`r`** (`m` only for who may re-grant) |
+
+When granting a data resource, the panel should also show **the row conditions being granted** —
+granting `industry = 半导体` is a different act from granting the whole model, and the reviewer
+needs to see which one they are approving.
+
+API: `PUT /api/resource-acl/data_resource/{id}`. Console → **Data Security** manages access groups
+and flags sharing problems across every securable type.
 
 ### 4. Call it
 
@@ -124,10 +185,42 @@ A policy is a **structured list**, never SQL text:
 
 ```json
 [
-  { "column": "region", "op": "=", "value": "east" },
+  { "column": "industry", "op": "=", "value": "半导体" },
   { "column": "org_id", "op": "=", "claim": "ext.org_id" }
 ]
 ```
+
+### Conditions describe entities, not tables
+
+A model is a set of datasets joined on shared keys, and a metric's `FROM` is only one of them.
+Writing `industry = 半导体` must therefore constrain a query whose base is `daily_basic` just as
+much as one whose base is `stock_basic` — otherwise the restriction is configured but enforces
+nothing, because the query never reads the table the condition was written against.
+
+The compiler walks the model's **relationships** (the Ossie `from` → `to` foreign keys) and
+emits, for a base that does not own the column:
+
+```sql
+EXISTS (
+  SELECT 1 FROM "tushare"."stock_basic" rpo0
+  WHERE base."ts_code" = rpo0."ts_code"
+    AND rpo0."industry" = :param
+)
+```
+
+When the base *does* own the column it becomes a plain predicate on the base alias.
+
+**Every ambiguous case refuses the query** instead of guessing — two paths can produce
+different row sets, so "pick one" would silently change who sees what:
+
+| Situation | Code |
+|---|---|
+| Column exists on several datasets and was not qualified | `ROW_POLICY_AMBIGUOUS_COLUMN` |
+| Column names no dataset of the model | `ROW_POLICY_UNKNOWN_COLUMN` |
+| Owner unreachable, or reachable by more than one equally short path | `ROW_POLICY_NO_PATH` |
+
+A column may be qualified as `table.column` (table name, id, or display label) to resolve an
+otherwise ambiguous name.
 
 | Rule | Why |
 |---|---|
@@ -144,7 +237,7 @@ A policy is a **structured list**, never SQL text:
 | Path | Mechanism |
 |---|---|
 | Builder / metric query | Conditions AND-ed onto the base alias **after** definition and request filters |
-| SQL Lab | Every reference to the base table becomes `(SELECT * FROM base WHERE <policy>)`, keeping the caller's alias |
+| SQL Lab | The base relation is aliased `rpbase`; the policy compiled against that alias is applied, and a statement that already aliases the base is refused with instructions |
 | Dataset rows API | Unchanged — dataset ACL; resource grants are the Catalog gate |
 
 Request filters narrow the result and can never widen it: the policy is appended last and the
@@ -155,7 +248,7 @@ SQL Lab cannot be rewritten generically, so it **fails closed**:
 | Statement | Result |
 |---|---|
 | Only public dimension tables | Allowed — no base rows involved |
-| Base table of a restricted model | Resource required; policy injected |
+| Base table of a restricted model | Resource required; policy compiled against it |
 | `"schema"."table"."column"` three-part reference | Refused — the substitution cannot preserve it |
 | Dimension table that is itself restricted | Its own resource rules apply |
 
