@@ -11,7 +11,6 @@ import {
 } from '../../data/dataResourcesApi';
 import { DataResourceAccessPanel } from '../../components/DataResourceAccessPanel';
 import { useConfirm } from '../../contexts/ConfirmContext';
-import { FormField } from '../../styles/design-system';
 import { EntityViewHeader, EntityViewLoading } from './EntityViewShell';
 import { ResourceRowEditor } from './ResourceRowEditor';
 import { describePolicy, toDrafts, toPolicy, type RowDraft } from './modelRowPolicy';
@@ -167,14 +166,23 @@ export function ModelDataResourceDetail() {
 
       {activeTab === 'definition' ? (
         <div className="settings-page-form">
-          <div className="entity-view__form">
-            <FormField label={t('dataModel.resourceName')}>
-              <input type="text" value={name} onChange={(e) => setName(e.target.value)} />
-            </FormField>
-            <FormField label={t('dataModel.resourceRows')} hint={t('dataModel.resourceRowsHint')}>
+          <section className="settings-page-section">
+            <div className="settings-page-field">
+              <label htmlFor="data-resource-name">{t('dataModel.resourceName')}</label>
+              <input
+                id="data-resource-name"
+                type="text"
+                className="ds-control"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+              />
+            </div>
+            <div className="settings-page-field">
+              <label>{t('dataModel.resourceRows')}</label>
+              <p className="settings-page-hint">{t('dataModel.resourceRowsHint')}</p>
               <ResourceRowEditor rows={rows} onChange={setRows} />
-            </FormField>
-          </div>
+            </div>
+          </section>
         </div>
       ) : (
         /* Access is a property of this resource, so it stays on the resource's page rather than
