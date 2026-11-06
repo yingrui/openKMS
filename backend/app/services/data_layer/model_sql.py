@@ -201,13 +201,19 @@ def constrain_base_policy(
     **different** table than the query's base, so the substitution has to give the base an
     alias the predicate can correlate to:
 
-        FROM "s"."t"                ->  FROM "s"."t" AS rpbase       (predicate on rpbase)
-        FROM (SELECT * FROM "s"."t" WHERE <policy>) AS rpbase
+        FROM "s"."t"                ->  FROM "s"."t" AS rpbase
+        FROM "s"."t" [AS a]         ->  FROM (SELECT * FROM "s"."t" AS rpbase
+                                              WHERE <policy>) AS rpbase
+
+    The inner relation carries the **same** alias the policy was compiled against. A condition
+    on the base table is a plain `rpbase."c" = :p` and an entity-level one is an `EXISTS` that
+    correlates to `rpbase`, so both need that name to resolve *inside* the subquery; letting the
+    inner table stay unaliased left the predicate referring to a name that only existed outside
+    it, which PostgreSQL rejected with `missing FROM-clause entry`.
 
     Two shapes are refused rather than run unfiltered: a statement addressing the base table
     through a schema-qualified column path (`"s"."t"."c"`), and a base reference that already
-    carries an alias this rewrite would have to rename (renaming would break the caller's own
-    qualified columns).
+    carries a caller alias (renaming it would break that caller's own qualified columns).
     """
     if not conditions:
         return sql
@@ -251,10 +257,8 @@ def constrain_base_policy(
                 QueryFailure("QUERY_INVALID_REQUEST", REQUEST),
             )
         filtered = (
-            f'{_quote(base_schema)}.{_quote(base_table)} AS "{base_alias}"'
-            if not where
-            else f'(SELECT * FROM {_quote(base_schema)}.{_quote(base_table)} WHERE {where}) '
-            f'AS "{base_alias}"'
+            f'(SELECT * FROM {_quote(base_schema)}.{_quote(base_table)} AS "{base_alias}" '
+            f"WHERE {where}) AS \"{base_alias}\""
         )
         out = out[:start] + filtered + out[end:]
     return out

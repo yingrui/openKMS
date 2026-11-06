@@ -39,7 +39,7 @@ def test_no_policy_returns_the_statement_untouched():
 
 def test_a_plain_from_becomes_a_filtered_subquery_with_the_fixed_alias():
     out = _constrain('SELECT * FROM "public"."orders"')
-    assert out.startswith('SELECT * FROM (SELECT * FROM "public"."orders" WHERE')
+    assert out.startswith('SELECT * FROM (SELECT * FROM "public"."orders" AS "rpbase" WHERE')
     assert f') AS "{ALIAS}"' in out
     # The surviving table name sits inside the filtered subquery, never as a bare scan.
     assert out.count('"public"."orders"') == 1
@@ -86,3 +86,97 @@ def test_a_base_dataset_without_a_physical_table_is_refused():
         constrain_base_policy(
             'SELECT 1', base_schema=None, base_table=None, conditions=CONDITIONS
         )
+
+
+# --- The rewritten statement has to actually run ------------------------------------------
+# String assertions missed the bug these cover: the policy predicate referred to `rpbase`,
+# which the old rewrite only defined *outside* the subquery it placed the predicate in. Every
+# string test passed while PostgreSQL answered `missing FROM-clause entry for table "rpbase"`.
+
+def _executable_rewrite(conditions: list[str]) -> str:
+    """Compile a policy against the base, then rewrite it the way SQL Lab does."""
+    from app.models.dataset import Dataset
+    from app.models.dataset_join import DatasetJoin
+    from app.services.data_layer.entity_scope import (
+        EntityScope,
+        ModelGraph,
+        compile_entity_scope,
+    )
+
+    def ds(dataset_id: str, table: str) -> Dataset:
+        return Dataset(
+            id=dataset_id,
+            data_source_id="src",
+            kind="table",
+            schema_name="public",
+            table_name=table,
+            display_name=table,
+        )
+
+    fact, dim = "f", "d"
+    graph = ModelGraph.build(
+        [fact, dim],
+        {fact: ds(fact, "orders"), dim: ds(dim, "customers")},
+        [
+            DatasetJoin(
+                id="j1",
+                from_dataset_id=fact,
+                to_dataset_id=dim,
+                from_columns=["customer_id"],
+                to_columns=["id"],
+            )
+        ],
+    )
+    scope = EntityScope(
+        graph=graph,
+        policy=conditions,
+        claims={},
+        columns_by_dataset={fact: {"id", "customer_id", "amount"}, dim: {"id", "region"}},
+    )
+    where, params = compile_entity_scope(scope, base_dataset_id=fact, base_alias=ALIAS)
+    out = constrain_base_policy(
+        'SELECT id, amount FROM "public"."orders"',
+        base_schema="public",
+        base_table="orders",
+        conditions=where,
+        base_alias=ALIAS,
+    )
+    return out, params
+
+
+def _sqlite_orders_and_customers(tmp_path):
+    """A real file DB so the rewrite's `"public"."orders"` can resolve via ATTACH."""
+    import sqlite3
+
+    schema_db = tmp_path / "public.db"
+    conn = sqlite3.connect(":memory:")
+    conn.execute("ATTACH DATABASE ? AS public", (str(schema_db),))
+    conn.execute("CREATE TABLE public.orders(id INTEGER, customer_id INTEGER, amount REAL)")
+    conn.execute("CREATE TABLE public.customers(id INTEGER, region TEXT)")
+    conn.executemany(
+        "INSERT INTO public.customers VALUES(?,?)",
+        [(1, "east"), (2, "west")],
+    )
+    conn.executemany(
+        "INSERT INTO public.orders VALUES(?,?,?)",
+        [(10, 1, 100.0), (11, 2, 200.0), (12, 1, 300.0)],
+    )
+    conn.commit()
+    return conn
+
+
+def test_a_condition_on_the_base_table_executes(tmp_path):
+    sql, params = _executable_rewrite([{"column": "amount", "op": ">", "value": 150}])
+    conn = _sqlite_orders_and_customers(tmp_path)
+    rows = conn.execute(sql.replace(":rpc0_0", "?"), list(params.values())).fetchall()
+    assert sorted(r[1] for r in rows) == [200.0, 300.0]
+
+
+def test_an_entity_level_condition_executes_as_an_exists(tmp_path):
+    """The case the whole feature exists for: `region` lives on the joined table."""
+    sql, params = _executable_rewrite([{"column": "region", "op": "=", "value": "east"}])
+    assert "EXISTS" in sql
+    conn = _sqlite_orders_and_customers(tmp_path)
+    rows = conn.execute(sql.replace(":rpc0_0", "?"), list(params.values())).fetchall()
+    # Only the east customer's rows survive; the rewrite must not drop or widen them.
+    assert sorted(r[1] for r in rows) == [100.0, 300.0]

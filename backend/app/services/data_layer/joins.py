@@ -6,12 +6,14 @@ one is declared). Optionality (`required`) is the only query-ish flag an edge ke
 """
 from __future__ import annotations
 
-from sqlalchemy import text
+import asyncio
+
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.data_source import DataSource
 from app.models.dataset import Dataset
-from app.services.ontology.dataset_tables import is_valid_identifier, pg_engine_for_datasource
+from app.services.data_layer.columns import cached_column_names
+from app.services.ontology.dataset_tables import is_valid_identifier
 
 
 class JoinValidationError(ValueError):
@@ -35,19 +37,10 @@ async def _pg_columns(db: AsyncSession, dataset: Dataset) -> set[str]:
         raise JoinValidationError("Relationships are only supported for PostgreSQL datasets.")
     if not is_valid_identifier(dataset.schema_name) or not is_valid_identifier(dataset.table_name):
         raise JoinValidationError("Invalid dataset table.")
-    engine = pg_engine_for_datasource(ds)
-    try:
-        with engine.connect() as conn:
-            rows = conn.execute(
-                text(
-                    "SELECT column_name FROM information_schema.columns "
-                    "WHERE table_schema = :s AND table_name = :t"
-                ),
-                {"s": dataset.schema_name, "t": dataset.table_name},
-            ).fetchall()
-        return {str(r[0]) for r in rows}
-    finally:
-        engine.dispose()
+    names = await asyncio.to_thread(
+        cached_column_names, ds, dataset.schema_name, dataset.table_name
+    )
+    return set(names)
 
 
 async def validate_join(

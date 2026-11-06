@@ -34,6 +34,7 @@ from app.services.data_layer.row_filters import RowFilterError
 from app.services.data_layer.columns import (
     ColumnError,
     description_map,
+    invalidate_columns,
     set_description,
 )
 from app.services.data_layer.profile import (
@@ -580,6 +581,11 @@ async def delete_dataset(
                 status_code=502,
                 detail=f"Could not clear stored files for this dataset: {type(exc).__name__}: {exc}",
             ) from exc
+    invalidate_columns(
+        data_source_id=dataset.data_source_id,
+        schema_name=dataset.schema_name,
+        table_name=dataset.table_name,
+    )
     await db.delete(dataset)
 
 

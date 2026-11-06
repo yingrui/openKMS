@@ -27,6 +27,7 @@ Two paths can yield different row sets, so picking one would silently change who
 
 from __future__ import annotations
 
+import asyncio
 from dataclasses import dataclass, field
 from typing import Any
 
@@ -35,8 +36,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.dataset import Dataset
 from app.models.dataset_join import DatasetJoin
+from app.models.data_source import DataSource
 from app.models.semantic_model_dataset import SemanticModelDataset
-from app.services.data_layer.columns import ColumnError, pg_columns
+from app.services.data_layer.columns import ColumnError, cached_column_names
 from app.services.data_layer.query_errors import REQUEST, QueryFailure
 from app.services.data_layer.row_policy import (
     _claim_value,
@@ -209,19 +211,52 @@ async def load_columns(
 ) -> dict[str, set[str]]:
     """Live column names per member dataset (one `information_schema` read each).
 
-    Read at query time rather than cached in metadata: a row condition must be validated
+    Read from the source rather than cached in metadata: a row condition must be validated
     against the table that actually exists, and `dataset_columns` is not a reliable mirror.
+
+    The reads run **concurrently**: each one is a fresh connection (``NullPool``), so a
+    ten-dataset model was paying ten serial connection setups before every restricted query.
+    A table that cannot be read is left out, so a column that only exists there is reported
+    unknown instead of silently trusted.
     """
-    out: dict[str, set[str]] = {}
-    for dataset_id, dataset in graph.datasets.items():
-        if dataset.kind != "table":
-            continue
+    entries = [
+        (dataset_id, dataset)
+        for dataset_id, dataset in graph.datasets.items()
+        if dataset.kind == "table"
+    ]
+    if not entries:
+        return {}
+
+    # Resolve sources once, concurrently, so each table read does not re-query `data_sources`.
+    source_ids = {dataset.data_source_id for _, dataset in entries}
+    sources = {
+        source.id: source
+        for source in (
+            await asyncio.gather(*(db.get(DataSource, sid) for sid in source_ids))
+        )
+        if source is not None
+    }
+
+    async def one(dataset: Dataset) -> tuple[str, set[str] | None]:
+        ds = sources.get(dataset.data_source_id)
+        if ds is None or ds.kind != "postgresql":
+            return dataset.id, None
+        if not is_valid_identifier(dataset.schema_name) or not is_valid_identifier(
+            dataset.table_name
+        ):
+            return dataset.id, None
         try:
-            out[dataset_id] = {c["column_name"] for c in await pg_columns(db, dataset)}
+            names = await asyncio.to_thread(
+                cached_column_names, ds, dataset.schema_name, dataset.table_name
+            )
         except (ColumnError, OSError):
-            # An unreadable table cannot own a verified condition; leave it out so a column
-            # that only exists there is reported unknown instead of silently trusted.
-            continue
+            return dataset.id, None
+        return dataset.id, set(names)
+
+    out: dict[str, set[str]] = {}
+    for dataset_id, columns in await asyncio.gather(*(one(d) for _, d in entries)):
+        if columns is not None:
+            out[dataset_id] = columns
     return out
 
 
@@ -369,6 +404,44 @@ def _chain_sql(
     return " ".join(joins_sql), " AND ".join(correlation)
 
 
+def _forward_only(graph: ModelGraph, path: tuple[str, ...], start_dataset_id: str) -> bool:
+    """True when every hop walks the many → one direction.
+
+    Merging conditions changes meaning unless at most one owner row can match a base row: two
+    separate `EXISTS` let different owner rows satisfy different conditions, one `EXISTS … AND …`
+    demands a single row satisfy all of them. A path that ever walks a relationship backwards
+    (one → many) can match several owner rows, so those conditions stay separate.
+    """
+    current = start_dataset_id
+    for join_id in path:
+        join = graph.joins[join_id]
+        if join.from_dataset_id != current:
+            return False
+        current = join.to_dataset_id
+    return True
+
+
+def _owner_row_is_unique(graph: ModelGraph, path: tuple[str, ...], owner_id: str) -> bool:
+    """True when the final hop's `to` columns are the owner's declared PK or unique key."""
+    join = graph.joins[path[-1]]
+    to_columns = {str(c) for c in (join.to_columns or [])}
+    dataset = graph.datasets.get(owner_id)
+    if dataset is None or not to_columns:
+        return False
+    declared: list[set[str]] = []
+    if dataset.primary_key_columns:
+        declared.append({str(c) for c in dataset.primary_key_columns})
+    for key in dataset.unique_keys or []:
+        if key:
+            declared.append({str(c) for c in key})
+    return to_columns in declared
+
+
+def _mergeable(graph: ModelGraph, path: tuple[str, ...], start: str, owner: str) -> bool:
+    """Whether several conditions on one owner may share a single `EXISTS`."""
+    return _forward_only(graph, path, start) and _owner_row_is_unique(graph, path, owner)
+
+
 def compile_entity_scope(
     scope: EntityScope,
     *,
@@ -379,11 +452,26 @@ def compile_entity_scope(
     """Conditions constraining a query whose base table is `base_dataset_id`."""
     where: list[str] = []
     params: dict[str, Any] = {}
+
+    # Resolve ownership once, then group so conditions landing on the same dataset can share a
+    # subquery. Each separate `EXISTS` re-reads the base table, so three conditions on one
+    # dimension cost three semi-joins where one would do.
+    resolved: list[tuple[int, dict[str, Any], str, str]] = []
+    groups: dict[str, list[int]] = {}
     for index, condition in enumerate(scope.policy):
         column = str(condition["column"])
         owner = _owner_of(scope.graph, scope.columns_by_dataset, column)
         _, bare = _split_column(column)
+        resolved.append((index, condition, owner, bare))
+        if owner != base_dataset_id:
+            groups.setdefault(owner, []).append(index)
 
+    by_index = {index: (condition, owner, bare) for index, condition, owner, bare in resolved}
+    emitted: set[int] = set()
+
+    for index, condition, owner, bare in resolved:
+        if index in emitted:
+            continue
         if owner == base_dataset_id:
             rendered, rendered_params = policy_conditions(
                 [{**condition, "column": bare}],
@@ -393,6 +481,7 @@ def compile_entity_scope(
             )
             params.update(rendered_params)
             where.append(rendered[0])
+            emitted.add(index)
             continue
 
         path = scope.graph.path_between(base_dataset_id, owner)
@@ -403,6 +492,14 @@ def compile_entity_scope(
                 "this query cannot be constrained.",
                 QueryFailure("ROW_POLICY_NO_PATH", REQUEST),
             )
+
+        siblings = groups[owner]
+        merge = len(siblings) > 1 and _mergeable(
+            scope.graph, path, base_dataset_id, owner
+        )
+        group_indices = siblings if merge else [index]
+        emitted.update(group_indices)
+
         owner_alias = f"rpo{index}"
         from_sql, correlation = _chain_sql(
             scope.graph,
@@ -411,14 +508,18 @@ def compile_entity_scope(
             start_alias=base_alias,
             owner_alias=owner_alias,
         )
-        rendered, rendered_params = policy_conditions(
-            [{**condition, "column": bare}],
-            alias=owner_alias,
-            claims=scope.claims,
-            key_prefix=f"{key_prefix}c{index}_",
-        )
-        params.update(rendered_params)
+        parts: list[str] = []
+        for member in group_indices:
+            member_condition, _, member_bare = by_index[member]
+            rendered, rendered_params = policy_conditions(
+                [{**member_condition, "column": member_bare}],
+                alias=owner_alias,
+                claims=scope.claims,
+                key_prefix=f"{key_prefix}c{member}_",
+            )
+            params.update(rendered_params)
+            parts.append(rendered[0])
         where.append(
-            f"EXISTS (SELECT 1 FROM {from_sql} WHERE {correlation} AND {rendered[0]})"
+            f"EXISTS (SELECT 1 FROM {from_sql} WHERE {correlation} AND {' AND '.join(parts)})"
         )
     return where, params

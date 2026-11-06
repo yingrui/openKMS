@@ -189,3 +189,167 @@ def test_multiple_conditions_are_all_enforced():
 def test_an_empty_policy_compiles_to_nothing():
     where, params = compile_entity_scope(_scope([]), base_dataset_id=FACT, base_alias="base")
     assert where == [] and params == {}
+
+
+# --- Conditions on one owner share a subquery, but only when that is provably equivalent -----
+# Two separate `EXISTS` clauses let *different* owner rows satisfy different conditions; one
+# `EXISTS … AND …` demands a single row satisfy all of them. Merging is therefore only safe when
+# a base row can match at most one owner row — the path walks many → one throughout, and the final
+# hop lands on the owner's declared key.
+
+def _graph_with_keys(pk: list[str] | None = None, unique: list[list[str]] | None = None) -> ModelGraph:
+    dim = _ds(DIM, "stock_basic")
+    dim.primary_key_columns = pk
+    dim.unique_keys = unique or []
+    return ModelGraph.build(
+        [FACT, DIM],
+        {FACT: _ds(FACT, "daily_basic"), DIM: dim},
+        [_join("j1", FACT, DIM)],
+    )
+
+
+def _scope_on(graph: ModelGraph, policy: list[dict]) -> EntityScope:
+    return EntityScope(
+        graph=graph,
+        policy=policy,
+        claims={},
+        columns_by_dataset={FACT: {"ts_code", "close"}, DIM: {"ts_code", "industry", "area"}},
+    )
+
+
+TWO_ON_DIM = [
+    {"column": "industry", "op": "=", "value": "半导体"},
+    {"column": "area", "op": "=", "value": "华东"},
+]
+
+
+def test_conditions_on_a_keyed_owner_share_one_subquery():
+    scope = _scope_on(_graph_with_keys(pk=["ts_code"]), TWO_ON_DIM)
+    where, params = compile_entity_scope(scope, base_dataset_id=FACT, base_alias="base")
+    assert len(where) == 1
+    assert where[0].count("EXISTS") == 1
+    # Both predicates are inside the single subquery, joined by AND.
+    assert '"industry"' in where[0] and '"area"' in where[0]
+    assert len(params) == 2
+
+
+def test_conditions_are_not_merged_without_a_declared_key():
+    """No key declared: the owner may match several rows, so keep the conditions independent."""
+    scope = _scope_on(_graph_with_keys(pk=None), TWO_ON_DIM)
+    where, _ = compile_entity_scope(scope, base_dataset_id=FACT, base_alias="base")
+    assert len(where) == 2
+    assert all("EXISTS" in w for w in where)
+
+
+def test_a_declared_unique_key_also_allows_merging():
+    scope = _scope_on(_graph_with_keys(pk=None, unique=[["ts_code"]]), TWO_ON_DIM)
+    where, _ = compile_entity_scope(scope, base_dataset_id=FACT, base_alias="base")
+    assert len(where) == 1
+
+
+def test_conditions_stay_separate_when_the_path_walks_one_to_many():
+    """Reached backwards, an owner row is not unique per base row — merging would narrow rows."""
+    dim = _ds(DIM, "stock_basic")
+    dim.primary_key_columns = ["ts_code"]
+    graph = ModelGraph.build(
+        [FACT, DIM],
+        {FACT: _ds(FACT, "daily_basic"), DIM: dim},
+        [
+            # DIM on the many side: the same dimension row points at several fact rows.
+            DatasetJoin(
+                id="j1",
+                from_dataset_id=DIM,
+                to_dataset_id=FACT,
+                from_columns=["ts_code"],
+                to_columns=["ts_code"],
+            )
+        ],
+    )
+    scope = _scope_on(graph, TWO_ON_DIM)
+    where, _ = compile_entity_scope(scope, base_dataset_id=FACT, base_alias="base")
+    assert len(where) == 2
+
+
+def test_a_single_condition_is_unchanged_by_the_merge_path():
+    scope = _scope_on(_graph_with_keys(pk=["ts_code"]), [TWO_ON_DIM[0]])
+    where, _ = compile_entity_scope(scope, base_dataset_id=FACT, base_alias="base")
+    assert len(where) == 1
+    assert where[0].count("EXISTS") == 1
+
+
+def test_conditions_on_different_owners_stay_apart():
+    other = "ds_other"
+    graph = ModelGraph.build(
+        [FACT, DIM, other],
+        {
+            FACT: _ds(FACT, "daily_basic"),
+            DIM: _graph_with_keys(pk=["ts_code"]).datasets[DIM],
+            other: _ds(other, "industry_map"),
+        },
+        [_join("j1", FACT, DIM), _join("j2", FACT, other)],
+    )
+    scope = EntityScope(
+        graph=graph,
+        policy=TWO_ON_DIM,
+        claims={},
+        columns_by_dataset={
+            FACT: {"ts_code", "close"},
+            DIM: {"ts_code", "industry"},
+            other: {"ts_code", "area"},
+        },
+    )
+    where, _ = compile_entity_scope(scope, base_dataset_id=FACT, base_alias="base")
+    assert len(where) == 2
+
+
+def test_a_base_condition_and_a_merged_owner_condition_coexist():
+    scope = _scope_on(
+        _graph_with_keys(pk=["ts_code"]),
+        [{"column": "close", "op": ">", "value": 10}, *TWO_ON_DIM],
+    )
+    where, params = compile_entity_scope(scope, base_dataset_id=FACT, base_alias="base")
+    assert len(where) == 2
+    assert where[0].startswith('base."close"')
+    assert where[1].count("EXISTS") == 1
+    assert len(params) == 3
+
+
+def test_merging_and_not_merging_select_the_same_rows_on_a_unique_owner():
+    """The equivalence the merge relies on, checked by running both forms."""
+    import sqlite3
+
+    conn = sqlite3.connect(":memory:")
+    conn.execute("CREATE TABLE daily_basic(ts_code TEXT, close REAL)")
+    conn.execute("CREATE TABLE stock_basic(ts_code TEXT PRIMARY KEY, industry TEXT, area TEXT)")
+    conn.executemany(
+        "INSERT INTO stock_basic VALUES(?,?,?)",
+        [("A", "半导体", "华东"), ("B", "半导体", "华北"), ("C", "银行", "华东")],
+    )
+    conn.executemany(
+        "INSERT INTO daily_basic VALUES(?,?)",
+        [("A", 1.0), ("B", 2.0), ("C", 3.0)],
+    )
+
+    merged, merged_params = compile_entity_scope(
+        _scope_on(_graph_with_keys(pk=["ts_code"]), TWO_ON_DIM),
+        base_dataset_id=FACT,
+        base_alias="base",
+    )
+    separate, separate_params = compile_entity_scope(
+        _scope_on(_graph_with_keys(pk=None), TWO_ON_DIM),
+        base_dataset_id=FACT,
+        base_alias="base",
+    )
+    assert len(merged) == 1 and len(separate) == 2
+
+    def rows(where: list[str], params: dict) -> list[str]:
+        sql = (
+            f'SELECT base.ts_code FROM daily_basic base WHERE {" AND ".join(where)} '
+            f"ORDER BY base.ts_code"
+        )
+        # The compiled SQL uses `:name`; sqlite3 wants positional or named dicts.
+        sql = sql.replace('"tushare"."stock_basic"', "stock_basic")
+        return [r[0] for r in conn.execute(sql, params).fetchall()]
+
+    assert rows(merged, merged_params) == ["A"]
+    assert rows(separate, separate_params) == ["A"]
