@@ -15,7 +15,6 @@ from app.api.auth import require_auth, require_permission
 from app.database import get_db
 from app.models.data_resource import DataResource
 from app.models.semantic_model import SemanticModel
-from app.models.semantic_model_dataset import SemanticModelDataset
 from app.schemas.data_resource import (
     DataResourceCreate,
     DataResourceListResponse,
@@ -43,7 +42,6 @@ def _out(resource: DataResource) -> DataResourceResponse:
         name=resource.name,
         description=resource.description,
         semantic_model_id=resource.semantic_model_id,
-        base_dataset_id=resource.base_dataset_id,
         row_policy=list(resource.row_policy or []),
         created_by_name=resource.created_by_name,
         created_at=resource.created_at,
@@ -55,23 +53,11 @@ async def _validate(
     db: AsyncSession,
     *,
     semantic_model_id: str,
-    base_dataset_id: str | None,
     row_policy: list[dict] | None,
 ) -> list[dict]:
     model = await db.get(SemanticModel, semantic_model_id)
     if not model:
         raise HTTPException(status_code=400, detail="Unknown semantic model")
-    if base_dataset_id:
-        # Membership is a composite-key join row (no `id` column): select the dataset id and
-        # test for a row, which is what "is this dataset in the model" means.
-        member = await db.execute(
-            select(SemanticModelDataset.dataset_id).where(
-                SemanticModelDataset.semantic_model_id == semantic_model_id,
-                SemanticModelDataset.dataset_id == base_dataset_id,
-            )
-        )
-        if member.first() is None:
-            raise HTTPException(status_code=400, detail="Base dataset is not in this model")
     try:
         policy = validate_policy(row_policy)
     except RowPolicyError as exc:
@@ -146,7 +132,6 @@ async def create_data_resource(
     policy = await _validate(
         db,
         semantic_model_id=body.semantic_model_id,
-        base_dataset_id=body.base_dataset_id,
         row_policy=body.row_policy,
     )
     payload = request.state.openkms_jwt_payload
@@ -156,7 +141,6 @@ async def create_data_resource(
         name=body.name.strip(),
         description=body.description,
         semantic_model_id=body.semantic_model_id,
-        base_dataset_id=body.base_dataset_id,
         row_policy=policy,
         created_by=sub,
         created_by_name=str(uname)[:256] if isinstance(uname, str) and uname.strip() else None,
@@ -205,12 +189,10 @@ async def update_data_resource(
     resource = await _load(db, resource_id)
     await _require_manage(db, request, resource_id)
     data = body.model_dump(exclude_unset=True)
-    base_dataset_id = data.get("base_dataset_id", resource.base_dataset_id)
     row_policy = data.get("row_policy", resource.row_policy)
     policy = await _validate(
         db,
         semantic_model_id=resource.semantic_model_id,
-        base_dataset_id=base_dataset_id,
         row_policy=row_policy,
     )
     if "name" in data:
@@ -219,7 +201,6 @@ async def update_data_resource(
         resource.name = data["name"].strip()
     if "description" in data:
         resource.description = data["description"]
-    resource.base_dataset_id = base_dataset_id
     resource.row_policy = policy
     await db.commit()
     await db.refresh(resource)

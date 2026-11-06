@@ -36,9 +36,7 @@ class DataResource(Base):
         nullable=False,
         index=True,
     )
-    #: The table the row policy applies to (must be a dataset of the model).
-    base_dataset_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
-    #: `[]` (whole base table) or `[{column, op, value|claim}]`, ANDed into every query.
+    #: `[]` (whole model) or `[{column, op, value|claim}]`, ANDed into every query.
     row_policy: Mapped[list] = mapped_column(
         JSONB, nullable=False, default=list, server_default="[]"
     )

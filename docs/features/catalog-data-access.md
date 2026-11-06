@@ -112,7 +112,7 @@ for a grant.**
 
 ### 1. Choose public or restricted
 
-**Data Model** → model → **Settings** → Access.
+**Data Model** → model → **Settings** → **Access mode**.
 
 | `access_mode` | Who can query | Row policy |
 |---|---|---|
@@ -132,7 +132,6 @@ granting access is the next thing an author does there.
 DataResource {
   name, description
   semantic_model_id      # the model this slice belongs to
-  base_dataset_id        # optional legacy anchor; conditions no longer need it
   row_policy[]           # entity-level conditions, ANDed into every query
 }
 ```
@@ -159,7 +158,7 @@ It is not a sharing panel. Three things are deliberately absent:
 |---|---|---|
 | Semantic model | **Settings → Sharing** | `r` / `w` / `m` |
 | Dataset | **Sharing** in dataset detail | `r` / `w` / `m` |
-| Data resource | **Access** on the resource's page | **`r` only** — who may administer the resource is set in its **Sharing** |
+| Data resource | **Grantees** tab on the resource's page | **`r` only** — who may administer the resource is set in its **Sharing** |
 
 When granting a data resource, the panel should also show **the row conditions being granted** —
 granting `industry = 半导体` is a different act from granting the whole model, and the reviewer

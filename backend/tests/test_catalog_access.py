@@ -60,7 +60,6 @@ def _resource(policy: list[dict] | None = None, *, model_id: str = "m1") -> Data
         id="r1",
         name="华东订单",
         semantic_model_id=model_id,
-        base_dataset_id="ds1",
         row_policy=policy or [],
     )
 

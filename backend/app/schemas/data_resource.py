@@ -9,8 +9,6 @@ class DataResourceCreate(BaseModel):
     name: str
     description: str | None = None
     semantic_model_id: str
-    #: The table the row policy applies to; must be one of the model's datasets.
-    base_dataset_id: str | None = None
     #: `[{column, op, value}]` or `[{column, op, claim}]` — ANDed into every query.
     row_policy: list[dict[str, Any]] = []
 
@@ -18,7 +16,6 @@ class DataResourceCreate(BaseModel):
 class DataResourceUpdate(BaseModel):
     name: str | None = None
     description: str | None = None
-    base_dataset_id: str | None = None
     row_policy: list[dict[str, Any]] | None = None
 
 
@@ -27,7 +24,6 @@ class DataResourceResponse(BaseModel):
     name: str
     description: str | None = None
     semantic_model_id: str
-    base_dataset_id: str | None = None
     row_policy: list[dict[str, Any]] = []
     created_by_name: str | None = None
     created_at: datetime
