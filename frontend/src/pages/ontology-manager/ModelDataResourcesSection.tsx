@@ -52,7 +52,7 @@ function describe(policy: RowPolicyCondition[]): string {
 /**
  * Model → Data resources: the named slices operators grant in Data Security.
  *
- * A gated model is reachable only through one of these, and a resource's row policy is what
+ * A restricted model is reachable only through one of these, and a resource's row policy is what
  * the data layer injects — so this page is where "which rows" is decided, and the sharing
  * panel on each row is where "who" is decided.
  */

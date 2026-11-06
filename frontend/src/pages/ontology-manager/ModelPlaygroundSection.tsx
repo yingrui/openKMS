@@ -30,7 +30,7 @@ export function ModelPlaygroundSection() {
     modelDatasets,
     modelJoins,
     loading,
-    gated,
+    restricted,
     resources,
     activeResourceId,
     activeResource,
@@ -83,9 +83,9 @@ export function ModelPlaygroundSection() {
     </div>
   );
 
-  // A gated model is answered inside one granted resource; the choice is part of the query,
+  // A restricted model is answered inside one granted resource; the choice is part of the query,
   // not an afterthought, so it sits above the editor and blocks Run until it is made.
-  const resourceScope = gated ? (
+  const resourceScope = restricted ? (
     <div className="playground__resource">
       <span className="playground__label">{t('dataModel.playgroundResource')}</span>
       {resources.length > 0 ? (
@@ -125,7 +125,7 @@ export function ModelPlaygroundSection() {
     );
   }
 
-  if (gated && !loading && resources.length === 0) {
+  if (restricted && !loading && resources.length === 0) {
     return (
       <>
         <EntityViewHeader title={t('dataModel.playgroundTitle')} subtitle={t('dataModel.playgroundHint')} />

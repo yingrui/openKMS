@@ -5,7 +5,7 @@ by the **data resource grant**, not by an operation key. `data:read` says "may o
 Model page"; it does not say "may read these rows". Keeping them separate is the whole point:
 
 - a principal with a grant can query the slice without being a Catalog user;
-- a principal with `data:read` can administer the Catalog without seeing gated rows;
+- a principal with `data:read` can administer the Catalog without seeing restricted rows;
 - a **public** model is readable by any authenticated principal, which is what "public"
   means and is a deliberate decision, not an accident of a missing check.
 
@@ -22,7 +22,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.api.auth import require_auth
 from app.database import get_db
 from app.models.semantic_model import SemanticModel
-from app.services.data_layer.catalog_access import ACCESS_GATED, has_model_grant
+from app.services.data_layer.catalog_access import ACCESS_RESTRICTED, has_model_grant
 
 
 def _subject(request: Request) -> tuple[dict, str | None]:
@@ -34,13 +34,13 @@ def _subject(request: Request) -> tuple[dict, str | None]:
 async def require_model_read(model_id: str, request: Request, db: AsyncSession) -> None:
     """May this caller see the model's definition (fields, metrics, tables) and query it?
 
-    Public model → any authenticated caller. Gated model → only with a read grant on one of
+    Public model → any authenticated caller. Restricted model → only with a read grant on one of
     its data resources. Being an admin, or holding `data:read`, is **not** sufficient.
     """
     model = await db.get(SemanticModel, model_id)
     if model is None:
         raise HTTPException(status_code=404, detail="Semantic model not found")
-    if (model.access_mode or "public") != ACCESS_GATED:
+    if (model.access_mode or "public") != ACCESS_RESTRICTED:
         return
     payload, sub = _subject(request)
     if await has_model_grant(db, payload=payload, sub=sub, model_id=model_id):
@@ -49,13 +49,13 @@ async def require_model_read(model_id: str, request: Request, db: AsyncSession) 
         status_code=403,
         detail={
             "code": "MODEL_FORBIDDEN",
-            "message": "This semantic model is gated and no data resource is granted to you.",
+            "message": "This semantic model is restricted and no data resource is granted to you.",
         },
     )
 
 
 async def readable_model_ids(db: AsyncSession, *, payload: dict, sub: str | None) -> set[str]:
-    """Model ids this caller may read: every public model, plus gated ones with a grant.
+    """Model ids this caller may read: every public model, plus restricted ones with a grant.
 
     Used by list endpoints, which must not turn "no grant" into "no results at all" — a public
     model is readable by any authenticated caller.
@@ -63,7 +63,7 @@ async def readable_model_ids(db: AsyncSession, *, payload: dict, sub: str | None
     rows = (await db.execute(select(SemanticModel.id, SemanticModel.access_mode))).all()
     out: set[str] = set()
     for model_id, access_mode in rows:
-        if (access_mode or "public") != ACCESS_GATED:
+        if (access_mode or "public") != ACCESS_RESTRICTED:
             out.add(model_id)
         elif sub and await has_model_grant(
             db, payload=payload, sub=sub, model_id=model_id
@@ -95,7 +95,7 @@ async def require_metric_access(
 ) -> None:
     """A metric route resolves its model first, then applies the same gate.
 
-    Metrics belong to a model; gating them independently would let a caller read a gated
+    Metrics belong to a model; gating them independently would let a caller read a restricted
     model's definitions through the metric endpoint.
     """
     from app.models.metric_definition import MetricDefinition

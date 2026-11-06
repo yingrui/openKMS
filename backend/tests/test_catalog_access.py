@@ -1,6 +1,6 @@
-"""Catalog access resolution: public vs gated models, resource grants, row scope.
+"""Catalog access resolution: public vs restricted models, resource grants, row scope.
 
-The rule this file pins down: a **gated** model is reachable only with a `resource_id` and a
+The rule this file pins down: a **restricted** model is reachable only with a `resource_id` and a
 read grant, and there is no admin escape hatch. Everything else is a 400/403/404.
 """
 
@@ -14,7 +14,7 @@ from fastapi import HTTPException
 from app.models.data_resource import DataResource
 from app.models.semantic_model import SemanticModel
 from app.services.data_layer.catalog_access import (
-    ACCESS_GATED,
+    ACCESS_RESTRICTED,
     ACCESS_PUBLIC,
     resolve_catalog_scope,
 )
@@ -81,8 +81,8 @@ def test_a_public_model_ignores_a_resource_id(monkeypatch):
     assert scope.resource is None
 
 
-def test_a_gated_model_without_a_resource_id_is_a_bad_request(monkeypatch):
-    model = _model(ACCESS_GATED)
+def test_a_restricted_model_without_a_resource_id_is_a_bad_request(monkeypatch):
+    model = _model(ACCESS_RESTRICTED)
     db = _FakeDB(model=model, resources=[])
     with pytest.raises(HTTPException) as excinfo:
         _run(resolve_catalog_scope(db, payload=USER, sub="u1", model=model, resource_id=None))
@@ -90,8 +90,8 @@ def test_a_gated_model_without_a_resource_id_is_a_bad_request(monkeypatch):
     assert excinfo.value.detail["code"] == "RESOURCE_REQUIRED"
 
 
-def test_a_gated_model_rejects_a_resource_from_another_model(monkeypatch):
-    model = _model(ACCESS_GATED)
+def test_a_restricted_model_rejects_a_resource_from_another_model(monkeypatch):
+    model = _model(ACCESS_RESTRICTED)
     other = _resource(model_id="m2")
     db = _FakeDB(model=model, resources=[other])
     with pytest.raises(HTTPException) as excinfo:
@@ -99,8 +99,8 @@ def test_a_gated_model_rejects_a_resource_from_another_model(monkeypatch):
     assert excinfo.value.status_code == 404
 
 
-def test_a_gated_model_requires_a_read_grant(monkeypatch):
-    model = _model(ACCESS_GATED)
+def test_a_restricted_model_requires_a_read_grant(monkeypatch):
+    model = _model(ACCESS_RESTRICTED)
     db = _FakeDB(model=model, resources=[_resource()])
     _patched_check(monkeypatch, allowed=False)
     with pytest.raises(HTTPException) as excinfo:
@@ -111,7 +111,7 @@ def test_a_gated_model_requires_a_read_grant(monkeypatch):
 
 def test_an_admin_without_a_grant_is_still_denied(monkeypatch):
     """Platform admin may configure grants; it does not imply data access."""
-    model = _model(ACCESS_GATED)
+    model = _model(ACCESS_RESTRICTED)
     db = _FakeDB(model=model, resources=[_resource()])
     _patched_check(monkeypatch, allowed=False)
     admin = {"sub": "root", "realm_access": {"roles": ["admin"]}}
@@ -121,7 +121,7 @@ def test_an_admin_without_a_grant_is_still_denied(monkeypatch):
 
 
 def test_a_granted_resource_renders_its_row_policy_on_the_base_alias(monkeypatch):
-    model = _model(ACCESS_GATED)
+    model = _model(ACCESS_RESTRICTED)
     db = _FakeDB(
         model=model,
         resources=[_resource([{"column": "region", "op": "=", "value": "east"}])],
@@ -136,7 +136,7 @@ def test_a_granted_resource_renders_its_row_policy_on_the_base_alias(monkeypatch
 
 
 def test_a_claim_bound_policy_resolves_from_the_caller(monkeypatch):
-    model = _model(ACCESS_GATED)
+    model = _model(ACCESS_RESTRICTED)
     db = _FakeDB(
         model=model,
         resources=[_resource([{"column": "org_id", "op": "=", "claim": "org_id"}])],
@@ -151,7 +151,7 @@ def test_a_claim_bound_policy_resolves_from_the_caller(monkeypatch):
 
 
 def test_a_missing_claim_is_a_forbidden_call_not_an_unfiltered_query(monkeypatch):
-    model = _model(ACCESS_GATED)
+    model = _model(ACCESS_RESTRICTED)
     db = _FakeDB(
         model=model,
         resources=[_resource([{"column": "org_id", "op": "=", "claim": "org_id"}])],
@@ -163,8 +163,8 @@ def test_a_missing_claim_is_a_forbidden_call_not_an_unfiltered_query(monkeypatch
     assert excinfo.value.detail["code"] == "ROW_POLICY_CLAIM_MISSING"
 
 
-def test_an_anonymous_caller_cannot_use_a_gated_model(monkeypatch):
-    model = _model(ACCESS_GATED)
+def test_an_anonymous_caller_cannot_use_a_restricted_model(monkeypatch):
+    model = _model(ACCESS_RESTRICTED)
     db = _FakeDB(model=model, resources=[_resource()])
     _patched_check(monkeypatch, allowed=True)
     with pytest.raises(HTTPException) as excinfo:

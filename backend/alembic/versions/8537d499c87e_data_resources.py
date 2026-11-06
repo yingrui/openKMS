@@ -6,7 +6,7 @@ Create Date: 2026-11-04
 
 A **data resource** is the access capability operators grant in Data Security: a named
 slice of one semantic model, optionally carrying a row policy. Models gain an explicit
-`access_mode` so “public” (anyone with `data:read`) and “gated” (resource grant required)
+`access_mode` so “public” (anyone with `data:read`) and “restricted” (resource grant required)
 are states of the model rather than an inference from resource rows.
 """
 

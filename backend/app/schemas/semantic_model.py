@@ -16,8 +16,8 @@ class SemanticModelCreate(BaseModel):
     description: str | None = None
     dataset_ids: list[str] = []
     ai_context: dict[str, Any] | None = None
-    #: `public` (default) or `gated` — gated models are reachable only through a resource grant.
-    access_mode: Literal["public", "gated"] | None = None
+    #: `public` (default) or `restricted` — restricted models are reachable only through a resource grant.
+    access_mode: Literal["public", "restricted"] | None = None
 
 
 class SemanticModelUpdate(BaseModel):
@@ -25,7 +25,7 @@ class SemanticModelUpdate(BaseModel):
     description: str | None = None
     dataset_ids: list[str] | None = None
     ai_context: dict[str, Any] | None = None
-    access_mode: Literal["public", "gated"] | None = None
+    access_mode: Literal["public", "restricted"] | None = None
 
 
 class SemanticModelResponse(BaseModel):
@@ -35,7 +35,7 @@ class SemanticModelResponse(BaseModel):
     dataset_ids: list[str] = []
     datasets: list[SemanticModelDatasetRef] = []
     ai_context: dict[str, Any] | None = None
-    access_mode: Literal["public", "gated"] = "public"
+    access_mode: Literal["public", "restricted"] = "public"
     created_by_name: str | None = None
     created_at: datetime
     updated_at: datetime
@@ -86,7 +86,7 @@ class QueryRequest(BaseModel):
     having: str | None = None
     order_by: list[QueryOrder] = []
     limit: int | None = None
-    #: Required when the model is `gated`; ignored for `public` models.
+    #: Required when the model is `restricted`; ignored for `public` models.
     resource_id: str | None = None
 
 
@@ -105,5 +105,5 @@ class SqlLabRequest(BaseModel):
 
     sql: str
     limit: int | None = None
-    #: Required when the model is `gated`; ignored for `public` models.
+    #: Required when the model is `restricted`; ignored for `public` models.
     resource_id: str | None = None

@@ -14,9 +14,9 @@ intranet services that are not openKMS users.
 |---|---|
 | What is a data resource? | A named slice of **one** semantic model: optional base table + row policy |
 | Who decides access? | `resource_acl_entries` with `resource_type = 'data_resource'` — **not** an operation key |
-| Public vs gated | `semantic_models.access_mode`; `public` answers **any authenticated caller**, `gated` needs a grant |
+| Public vs restricted | `semantic_models.access_mode`; `public` answers **any authenticated caller**, `restricted` needs a grant |
 | Row enforcement | `row_policy` injected at query compile / SQL rewrite — never sent by the caller |
-| Admin escape hatch | **None** for reading gated data; `admin` / `all` configure grants, they do not bypass them |
+| Admin escape hatch | **None** for reading restricted data; `admin` / `all` configure grants, they do not bypass them |
 | Missing claim | Denies the query; a predicate is never silently dropped |
 | Tables | `data_resources`, `semantic_models.access_mode`, `semantic_model_query_runs.data_resource_id` |
 
@@ -27,7 +27,7 @@ intranet services that are not openKMS users.
 `data:read` answers "may this caller use the Data Model feature". It does **not** answer
 "may this caller read these rows". Conflating them gave two wrong answers at once: a granted
 external service could not query without also being made a Catalog user, and a Catalog user
-could read gated rows.
+could read restricted rows.
 
 | Plane | Question | Gate |
 |---|---|---|
@@ -38,7 +38,7 @@ could read gated rows.
 flowchart LR
   caller[Caller] -->|"model, fields, metrics, query, sql"| plane{access_mode}
   plane -->|public| run[Run query]
-  plane -->|gated| grant["data_resource grant"]
+  plane -->|restricted| grant["data_resource grant"]
   grant --> policy["Inject row policy on base table"]
   policy --> run
   admin["data:write"] -.->|"CRUD only, no read"| catalog[Catalog management]
@@ -49,7 +49,7 @@ flowchart LR
 | `GET /api/semantic-models`, `GET /api/metrics` (lists) | `data:read` — a browse of names/descriptions, filtered to readable models |
 | `GET /api/semantic-models/{id}`, `/fields`, `/export` | **data plane** |
 | `GET /api/metrics/{id}`, `/{id}/compute`, `/{id}/runs` | **data plane**, via the metric's model |
-| `POST /api/semantic-models/{id}/query`, `…/sql` | **data plane** (`resource_id` required when gated) |
+| `POST /api/semantic-models/{id}/query`, `…/sql` | **data plane** (`resource_id` required when restricted) |
 | `GET /api/data-resources[/{id}]` | **data plane** — filtered to resources you may read |
 | Model / dataset / metric / resource CRUD, import | `data:write` |
 
@@ -63,16 +63,16 @@ for a grant.**
 
 ## How to use it
 
-### 1. Choose public or gated
+### 1. Choose public or restricted
 
 **Data Model** → model → **Settings** → Access.
 
 | `access_mode` | Who can query | Row policy |
 |---|---|---|
 | `public` (default) | Any authenticated caller | none |
-| `gated` | Only holders of a read grant on one of the model's resources | that resource's `row_policy` |
+| `restricted` | Only holders of a read grant on one of the model's resources | that resource's `row_policy` |
 
-A gated model **requires `resource_id`** on every query/SQL call; omitting it is `400`
+A restricted model **requires `resource_id`** on every query/SQL call; omitting it is `400`
 `RESOURCE_REQUIRED`. Several grants do not auto-pick — the caller chooses.
 
 ### 2. Create a data resource
@@ -155,9 +155,9 @@ SQL Lab cannot be rewritten generically, so it **fails closed**:
 | Statement | Result |
 |---|---|
 | Only public dimension tables | Allowed — no base rows involved |
-| Base table of a gated model | Resource required; policy injected |
+| Base table of a restricted model | Resource required; policy injected |
 | `"schema"."table"."column"` three-part reference | Refused — the substitution cannot preserve it |
-| Dimension table that is itself gated | Its own resource rules apply |
+| Dimension table that is itself restricted | Its own resource rules apply |
 
 ---
 
@@ -165,8 +165,8 @@ SQL Lab cannot be rewritten generically, so it **fails closed**:
 
 | Status / code | Meaning | Fix |
 |---|---|---|
-| `400 RESOURCE_REQUIRED` | Gated model, no `resource_id` | Pass a granted resource |
-| `403 MODEL_FORBIDDEN` | Gated model, no grant at all | Ask the owner for access |
+| `400 RESOURCE_REQUIRED` | Restricted model, no `resource_id` | Pass a granted resource |
+| `403 MODEL_FORBIDDEN` | Restricted model, no grant at all | Ask the owner for access |
 | `403 RESOURCE_FORBIDDEN` | Resource id passed, no read grant | Same |
 | `403 ROW_POLICY_CLAIM_MISSING` | Policy binds a claim the token lacks | Supply the claim, or use a policy without it |
 | SQL Lab "schema.table.column" | Statement cannot be constrained | Reference columns via an alias or unqualified |

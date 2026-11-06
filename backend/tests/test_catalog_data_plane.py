@@ -93,22 +93,22 @@ def test_a_public_model_does_not_consult_the_grant(monkeypatch):
 
 
 def test_has_model_grant_is_false_without_a_grant(no_grant):
-    db = _FakeDB([_model("gated")], [_resource()])
+    db = _FakeDB([_model("restricted")], [_resource()])
     assert not _run(has_model_grant(db, payload={"sub": "u1"}, sub="u1", model_id="m1"))
 
 
 def test_has_model_grant_is_true_with_a_grant(grant):
-    db = _FakeDB([_model("gated")], [_resource()])
+    db = _FakeDB([_model("restricted")], [_resource()])
     assert _run(has_model_grant(db, payload={"sub": "u1"}, sub="u1", model_id="m1"))
 
 
 def test_an_anonymous_caller_never_has_a_model_grant(grant):
-    db = _FakeDB([_model("gated")], [_resource()])
+    db = _FakeDB([_model("restricted")], [_resource()])
     assert not _run(has_model_grant(db, payload={}, sub=None, model_id="m1"))
 
 
-def test_gated_query_without_a_resource_id_is_still_a_bad_request(no_grant):
-    model = _model("gated")
+def test_restricted_query_without_a_resource_id_is_still_a_bad_request(no_grant):
+    model = _model("restricted")
     with pytest.raises(HTTPException) as excinfo:
         _run(
             resolve_catalog_scope(
@@ -123,8 +123,8 @@ def test_gated_query_without_a_resource_id_is_still_a_bad_request(no_grant):
     assert excinfo.value.detail["code"] == "RESOURCE_REQUIRED"
 
 
-def test_gated_query_without_a_grant_is_forbidden(no_grant):
-    model = _model("gated")
+def test_restricted_query_without_a_grant_is_forbidden(no_grant):
+    model = _model("restricted")
     with pytest.raises(HTTPException) as excinfo:
         _run(
             resolve_catalog_scope(
@@ -178,26 +178,26 @@ def test_readable_model_ids_includes_every_public_model(no_grant):
     """A public model is readable without any grant — including by a caller with no keys."""
     from app.api.catalog_scoped import readable_model_ids
 
-    db = _ModelRowsDB([("m1", "public"), ("m2", "gated")])
+    db = _ModelRowsDB([("m1", "public"), ("m2", "restricted")])
     assert _run(readable_model_ids(db, payload={}, sub=None)) == {"m1"}
 
 
-def test_readable_model_ids_adds_gated_models_only_with_a_grant(grant):
+def test_readable_model_ids_adds_restricted_models_only_with_a_grant(grant):
     from app.api.catalog_scoped import readable_model_ids
 
-    db = _ModelRowsDB([("m1", "public"), ("m2", "gated")], resource_ids=["r2"])
+    db = _ModelRowsDB([("m1", "public"), ("m2", "restricted")], resource_ids=["r2"])
     assert _run(readable_model_ids(db, payload={"sub": "u1"}, sub="u1")) == {"m1", "m2"}
 
 
-def test_readable_model_ids_excludes_gated_models_without_a_grant(no_grant):
+def test_readable_model_ids_excludes_restricted_models_without_a_grant(no_grant):
     from app.api.catalog_scoped import readable_model_ids
 
-    db = _ModelRowsDB([("m1", "public"), ("m2", "gated")], resource_ids=["r2"])
+    db = _ModelRowsDB([("m1", "public"), ("m2", "restricted")], resource_ids=["r2"])
     assert _run(readable_model_ids(db, payload={"sub": "u1"}, sub="u1")) == {"m1"}
 
 
 def test_readable_model_ids_tolerates_a_null_access_mode():
-    """Rows created before the column existed read as public, not as gated."""
+    """Rows created before the column existed read as public, not as restricted."""
     from app.api.catalog_scoped import readable_model_ids
 
     db = _ModelRowsDB([("m1", None)])

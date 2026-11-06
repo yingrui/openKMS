@@ -56,6 +56,19 @@ Agent 工作指南（原 `.cursor/rules/` 合并版）。
 | Explorer 创建实例 | PG-only 对象（产品类别） |
 | Action apply / 写回 | Action 写 Postgres |
 
+**术语要专业：** 面向用户和文档的概念，用**行业通用词**，不用自造词或只描述状态的词。判断标准：这个领域的读者（数据平台、治理、安全）看到会立刻理解，且能从中读出**规则本身**，而不只是「有个门槛」。
+
+| 用 | 别用 | 为什么 |
+|----|------|--------|
+| restricted（access / model） | gated | gated 只说「有门」，不说门槛是授权；且不是数据平台的通用词 |
+| public / private | open-ish、semi-open | 没有确切边界 |
+| grant / permission | 权限配置项、开关 | 无法区分「授权边」与「功能开关」 |
+| row policy / row-level security | 行过滤、行限制规则 | 与数据安全的既有术语脱节 |
+
+**内部枚举也要一致。** 一旦某个值会出现在 API、迁移、外部服务里，它就是一个公开词表的一部分——UI 文案、schema、migration、qa-agent 必须用同一个词。**改词就一次改到底**（枚举值 + 已有数据迁移 + 引用），不留 `gated` 与 `restricted` 并存的状态。
+
+改名时若有数据已落库且迁移**已 push**，新增补丁迁移改数据；**未 push** 则直接改原迁移。
+
 **回复：** 长短匹配任务；无套话收尾；外链用 markdown link，代码用 path/citation。  
 **提交：** 祈使句主题；**无用户明示禁止 commit/push**；用户说 commit 时只 stage 本任务文件。  
 **docs/：** 技术细节可写密；表格/标题与邻页一致。**我们自己的设计/计划（含设计稿，如 `data-layer-*.md`）→ `features/`**；**外部对比 / 调研 / vendored 规范（`*_vs_openkms.md`、`ossie/`、库选型）→ `research/`**。

@@ -1,6 +1,6 @@
 """A Catalog resource: a named data capability over one semantic model.
 
-`resource_gated` models are reachable **only** through a resource grant; a resource may
+`resource_restricted` models are reachable **only** through a resource grant; a resource may
 carry a row policy that the data layer injects on the model's base table. Nothing here
 decides *who* may use the resource — that is the ACL entry (`resource_acl_entries` with
 `resource_type = 'data_resource'`).

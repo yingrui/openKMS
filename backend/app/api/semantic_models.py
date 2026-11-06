@@ -43,7 +43,7 @@ from app.services.data_layer.semantic_models import (
 )
 from app.services.permissions.permission_catalog import PERM_DATA_READ, PERM_DATA_WRITE
 
-# Read/query routes are gated by the **data resource grant** (`require_model_access`), not by
+# Read/query routes are restricted by the **data resource grant** (`require_model_access`), not by
 # an operation key: `data:read` is "may use the Data Model feature", which is a different
 # question from "may read this slice". See docs/features/catalog-data-access.md.
 router = APIRouter(prefix="/semantic-models", tags=["semantic-models"])
@@ -61,7 +61,7 @@ async def _response(db: AsyncSession, model: SemanticModel) -> SemanticModelResp
             SemanticModelDatasetRef(id=i, name=refs.get(i, i)) for i in ids
         ],
         ai_context=model.ai_context,
-        access_mode="gated" if model.access_mode == "gated" else "public",
+        access_mode="restricted" if model.access_mode == "restricted" else "public",
         created_by_name=model.created_by_name,
         created_at=model.created_at,
         updated_at=model.updated_at,
@@ -99,7 +99,7 @@ async def list_semantic_models(db: AsyncSession = Depends(get_db)):
                     for i in members.get(m.id, [])
                 ],
                 ai_context=m.ai_context,
-                access_mode="gated" if m.access_mode == "gated" else "public",
+                access_mode="restricted" if m.access_mode == "restricted" else "public",
                 created_by_name=m.created_by_name,
                 created_at=m.created_at,
                 updated_at=m.updated_at,

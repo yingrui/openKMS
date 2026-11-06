@@ -46,13 +46,13 @@ def list_semantic_models_tool(_config: RunnableConfig) -> str:
 
 
 def _resolve_resource(token: str, model_id: str, resource_id: str | None) -> str | None:
-    """The data resource a gated model needs; a public model ignores it.
+    """The data resource a restricted model needs; a public model ignores it.
 
-    Returns the id to send, or None for a public model. Raises when the model is gated and
+    Returns the id to send, or None for a public model. Raises when the model is restricted and
     the caller has no usable resource — better a clear message than the API's bare 400.
     """
     model = catalog_client.get_semantic_model(token, model_id)
-    if (model.get("access_mode") or "public") != "gated":
+    if (model.get("access_mode") or "public") != "restricted":
         return None
     available = catalog_client.list_data_resources(token, model_id)
     ids = [r.get("id") for r in available if r.get("id")]
@@ -64,7 +64,7 @@ def _resolve_resource(token: str, model_id: str, resource_id: str | None) -> str
         )
     if not ids:
         raise ValueError(
-            "This semantic model is gated and no data resource is granted to you. "
+            "This semantic model is restricted and no data resource is granted to you. "
             "Ask an owner for access before querying it."
         )
     return ids[0]
@@ -118,7 +118,7 @@ def get_semantic_model_tool(model_id: str, _config: RunnableConfig) -> str:
         fields = catalog_client.list_model_fields(token, model_id)
         resources = (
             catalog_client.list_data_resources(token, model_id)
-            if (model.get("access_mode") or "public") == "gated"
+            if (model.get("access_mode") or "public") == "restricted"
             else []
         )
         return json.dumps(
@@ -183,7 +183,7 @@ def query_semantic_model_tool(
     joins (relationship ids). filters: [{field, op, value}] on model fields. where/having: boolean
     SQL fragments AND-ed in. For ad-hoc SELECT/JOIN use sql_semantic_model_tool instead.
     resource_id: which granted data resource to query — required in effect when the model is
-    gated (the resource decides the row scope, which you cannot widen). Defaults to the first
+    restricted (the resource decides the row scope, which you cannot widen). Defaults to the first
     resource granted to the caller.
     model_id must be linked to this KB."""
     try:
@@ -230,7 +230,7 @@ def sql_semantic_model_tool(
     row samples, custom projections). sql must be a single SELECT or WITH…SELECT; only tables
     listed under get_semantic_model_tool.tables (prefer schema.table) are allowed. Do not write
     INSERT/UPDATE/DELETE or multiple statements. resource_id selects the granted data
-    resource (required in effect for a gated model; it fixes which rows you may read).
+    resource (required in effect for a restricted model; it fixes which rows you may read).
     model_id must be linked to this KB."""
     try:
         token = get_tool_access_token(_config)
@@ -264,7 +264,7 @@ CATALOG_PROMPT = (
     "4. Use **sql_semantic_model_tool** for ad-hoc analysis: one SELECT/WITH against "
     "``tables[].qualified_name`` only (JOINs, windows, samples, custom columns). "
     "Never mutate data; never query tables outside the model.\n"
-    "4b. When ``data_resources`` is non-empty the model is **gated**: pass the chosen "
+    "4b. When ``data_resources`` is non-empty the model is **restricted**: pass the chosen "
     "``resource_id`` on every query / sql call. The resource fixes the rows you can read; "
     "you cannot widen it, and a missing grant is an error, not a fallback.\n"
     "5. Cite the metric name, expression, or SQL + a short row preview. "

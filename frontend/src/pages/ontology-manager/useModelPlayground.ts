@@ -74,12 +74,12 @@ export function useModelPlayground() {
       ),
     [modelId],
   );
-  const gated = model.access_mode === 'gated';
-  // A gated model answers only inside a granted resource, so the scope is picked up front
+  const restricted = model.access_mode === 'restricted';
+  // A restricted model answers only inside a granted resource, so the scope is picked up front
   // and rides along on every run instead of being inferred at submit time.
   const { data: resourcePage } = useAsyncData(
-    () => (gated ? fetchDataResources(modelId) : Promise.resolve({ items: [], total: 0 })),
-    [gated, modelId],
+    () => (restricted ? fetchDataResources(modelId) : Promise.resolve({ items: [], total: 0 })),
+    [restricted, modelId],
   );
   const resources = useMemo(() => resourcePage?.items ?? [], [resourcePage]);
   const [resourceId, setResourceId] = useState<string>('');
@@ -356,7 +356,7 @@ export function useModelPlayground() {
 
   const runDisabled =
     running ||
-    (gated && !activeResourceId) ||
+    (restricted && !activeResourceId) ||
     (mode === 'sql' ? !sqlText.trim() : !spec || !canRunQuery(spec));
 
   return {
@@ -368,7 +368,7 @@ export function useModelPlayground() {
     modelDatasets,
     modelJoins,
     loading,
-    gated,
+    restricted,
     resources,
     activeResourceId,
     activeResource,

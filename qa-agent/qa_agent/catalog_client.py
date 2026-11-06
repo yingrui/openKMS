@@ -47,7 +47,7 @@ def list_model_metrics(access_token: str, model_id: str) -> list[dict[str, Any]]
 
 
 def list_data_resources(access_token: str, model_id: str) -> list[dict[str, Any]]:
-    """Data resources granted for one model; a gated model answers only inside one of them."""
+    """Data resources granted for one model; a restricted model answers only inside one of them."""
     url = f"{_base()}/api/data-resources"
     with httpx.Client(timeout=30.0) as client:
         resp = client.get(

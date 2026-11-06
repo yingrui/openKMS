@@ -38,8 +38,8 @@ export function ModelSettingsTab() {
   const [description, setDescription] = useState(model.description ?? '');
   const [datasetIds, setDatasetIds] = useState<string[]>(model.dataset_ids);
   const [ai, setAi] = useState<AiContext>(() => readAiContext(model.ai_context));
-  const [accessMode, setAccessMode] = useState<'public' | 'gated'>(
-    model.access_mode === 'gated' ? 'gated' : 'public',
+  const [accessMode, setAccessMode] = useState<'public' | 'restricted'>(
+    model.access_mode === 'restricted' ? 'restricted' : 'public',
   );
   const [saving, setSaving] = useState(false);
 
@@ -128,10 +128,10 @@ export function ModelSettingsTab() {
           >
             <select
               value={accessMode}
-              onChange={(e) => setAccessMode(e.target.value as 'public' | 'gated')}
+              onChange={(e) => setAccessMode(e.target.value as 'public' | 'restricted')}
             >
               <option value="public">{t('dataModel.accessModePublic')}</option>
-              <option value="gated">{t('dataModel.accessModeGated')}</option>
+              <option value="restricted">{t('dataModel.accessModeRestricted')}</option>
             </select>
           </FormField>
           <FormField

@@ -4,9 +4,9 @@ Two gates, both must pass:
 
 1. **Layer 1** — the caller holds a Catalog operation key (`data:read`). Checked by the
    routes, not here.
-2. **Layer 2** — when the model is `gated`, the caller must present a `resource_id` and
+2. **Layer 2** — when the model is `restricted`, the caller must present a `resource_id` and
    hold a **read grant** on that data resource. There is deliberately **no admin bypass**:
-   JWT `admin` / `all` may configure grants but cannot read gated data without one.
+   JWT `admin` / `all` may configure grants but cannot read restricted data without one.
 
 The resolved scope answers: which model, which resource, and which row conditions to inject
 on the model's base table. Public models resolve to an empty scope (no injection).
@@ -37,8 +37,8 @@ from app.services.data_layer.row_policy import (
 )
 
 ACCESS_PUBLIC = "public"
-ACCESS_GATED = "gated"
-ACCESS_MODES = frozenset({ACCESS_PUBLIC, ACCESS_GATED})
+ACCESS_RESTRICTED = "restricted"
+ACCESS_MODES = frozenset({ACCESS_PUBLIC, ACCESS_RESTRICTED})
 
 
 @dataclass(frozen=True)
@@ -81,7 +81,7 @@ async def check_data_resource_access(
     if not subject:
         return False
     if not await acl_check_required(db, RT_DATA_RESOURCE, resource_id):
-        # An un-granted resource is not "open": the model's `gated` mode already denied the
+        # An un-granted resource is not "open": the model's `restricted` mode already denied the
         # call before we get here, so the absence of ACL rows means nobody holds it.
         return False
     bits = await effective_permissions(db, subject, RT_DATA_RESOURCE, resource_id, payload)
@@ -110,7 +110,7 @@ async def has_model_grant(
     return False
 
 
-async def load_gated_model(db: AsyncSession, model_id: str) -> SemanticModel:
+async def load_restricted_model(db: AsyncSession, model_id: str) -> SemanticModel:
     model = await db.get(SemanticModel, model_id)
     if not model:
         raise HTTPException(status_code=404, detail="Semantic model not found")
@@ -127,11 +127,11 @@ async def resolve_catalog_scope(
 ) -> CatalogScope:
     """Authorize one Catalog call and render its row conditions.
 
-    Raises 400 when a gated model is queried without `resource_id`, 404 when the resource
+    Raises 400 when a restricted model is queried without `resource_id`, 404 when the resource
     is not this model's (or is unknown), 403 when the caller holds no read grant.
     """
-    gated = (model.access_mode or ACCESS_PUBLIC) == ACCESS_GATED
-    if not gated:
+    restricted = (model.access_mode or ACCESS_PUBLIC) == ACCESS_RESTRICTED
+    if not restricted:
         # A public model ignores `resource_id`: it is already open to the operation key.
         return CatalogScope(model=model)
 
