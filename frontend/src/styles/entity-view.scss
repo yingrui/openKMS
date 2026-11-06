@@ -208,9 +208,12 @@ body:has(.app-page-pane > .entity-view) .app-main {
   border-bottom: 1px solid var(--color-border);
 }
 
-/* A page header followed by a tab strip keeps no divider of its own: the strip draws the top
-   edge of the card, so header border + padding read as a stray gap between the two. */
-.entity-view__main .page-header:has(+ .settings-page-tabs) {
+/* A page header followed by settings chrome keeps no divider of its own: the tab strip draws
+   the top edge of the card, so header border + padding read as a stray gap between the two.
+   The strip may be a direct sibling, or nested in `.settings-page` so account-stack gap cannot
+   sit between the strip and the form. */
+.entity-view__main .page-header:has(+ .settings-page-tabs),
+.entity-view__main .page-header:has(+ .settings-page) {
   padding-bottom: 0;
   border-bottom: none;
 }

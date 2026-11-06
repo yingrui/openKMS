@@ -253,6 +253,16 @@ if ! python3 scripts/check-dataset-labels.py; then
   status=1
 fi
 
+# --- 21. Page chrome that compiles but does not lay out ----------------------
+# Two failures that typecheck, lint and build cleanly and only show up in a screenshot:
+#   * a tab strip and its form rendered as siblings inside EntityViewShell's `.account-stack`
+#     (the ancestor's `gap` splits one card into two), and
+#   * a local margin on a `.page-subtitle` that ties with the global `margin: 0` and loses by
+#     load order, leaving a hint flush against the toolbar below it.
+if ! python3 scripts/check-page-chrome.py; then
+  status=1
+fi
+
 if [ "$status" -eq 0 ]; then
   echo "check-shared-styles: OK"
 fi

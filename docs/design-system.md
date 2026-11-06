@@ -99,8 +99,19 @@ Six compile-time tokens in **`_tokens.scss`** — use **`@include max-width(ds.$
 **Dividers do not stack.** `.entity-view__main .page-header` carries `padding-bottom` and a
 `border-bottom` because content usually follows it directly. When a **tab strip** follows instead,
 the strip already draws the top edge of the card — a page-local rule therefore cancels the header's
-own padding and border (`:has(+ .settings-page-tabs)` in `entity-view.scss`). Two adjacent
-dividers plus two paddings is what reads as "a large unexplained gap".
+own padding and border (`:has(+ .settings-page-tabs)`, `:has(+ .settings-page)` in `entity-view.scss`).
+Two adjacent dividers plus two paddings is what reads as "a large unexplained gap".
+
+**A tab strip and its panel are one card.** `EntityViewShell` puts page children in `.account-stack`
+(`gap: var(--space-5)`). Render `.settings-page-tabs` and `.settings-page-form` as siblings there and
+the ancestor's gap opens a 25px hole between the two halves of the card — no page rule can cancel a
+flex `gap`. Wrap both in one `<div className="settings-page">`. Pages living in
+`.ontology-admin-content` (e.g. `ConnectorDetailPage`) have no such gap and may keep them as siblings.
+`scripts/check-page-chrome.py` flags the entity-view case.
+
+**A local margin on `.page-subtitle` must be scoped.** The global rule is `margin: 0`
+(`app-page.scss`). A colocated `.foo { margin-bottom: … }` ties on specificity, so it only applies if
+its sheet loads last. Scope it (`settings-page-form .foo`) instead of relying on import order.
 
 ## App shell layout
 
@@ -320,7 +331,7 @@ Reach for a **shared primitive** before writing markup. The list below is the an
 | Whole detail page with several sections | **`<EntityViewShell>` + `navItems`** (see the dataset and semantic-model pages) | sidebar identity + routed sections |
 | Collapsible section | **`<EntityViewPanel title defaultCollapsed>`** | not a hand-rolled `<details>` |
 | Card surface | **`.account-card`** / **`<EntityViewPanel>`** | |
-| Tabs | **`.settings-page-tabs` + `.settings-page-form`** (shared, `src/styles/settings-page.scss`) for page sections; page-local tab row (KB) **or** `EntityViewShell` nav where the route already uses that shell | no `ds-tabs` primitive exists. A page that uses these classes **must import `settings-page.scss`** — the class names match nothing otherwise, which renders unstyled buttons and a white gap where the card belongs |
+| Tabs | **`.settings-page-tabs` + `.settings-page-form`** (shared, `src/styles/settings-page.scss`) for page sections; page-local tab row (KB) **or** `EntityViewShell` nav where the route already uses that shell | no `ds-tabs` primitive exists. A page that uses these classes **must import `settings-page.scss`** — the class names match nothing otherwise, which renders unstyled buttons and a white gap where the card belongs. Inside `EntityViewShell`, wrap the strip and the panel in one **`.settings-page`** so `.account-stack`'s gap cannot split the card |
 | Pagination | **`<Pagination>`** | server-side when the API supports it, otherwise slice |
 | Empty / loading state | **`<EmptyState>`** / `console-loading` | |
 | Search box | **`.console-datasets-search`** (list) or `ds-control` (in a header) | no primitive; do not invent a third |
