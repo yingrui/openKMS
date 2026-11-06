@@ -179,6 +179,10 @@ On **Grantees**, the toolbar filters the people who already have access, and **A
 dialog to pick someone new. Filtering a table and choosing an identity are different tasks; the
 earlier inline "search then select" did both in the table footer and read like neither.
 
+On **Grantees**, the toolbar filters the people who already have access, and **Add** opens a
+dialog to pick someone new. Filtering a table and choosing an identity are different tasks; the
+earlier inline "search then select" did both in the table footer and read like neither.
+
 ### 4. Call it
 
 ```http
