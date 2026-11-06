@@ -15,6 +15,9 @@ import { FormField } from '../../styles/design-system';
 import { EntityViewHeader, EntityViewLoading } from './EntityViewShell';
 import { ResourceRowEditor } from './ResourceRowEditor';
 import { describePolicy, toDrafts, toPolicy, type RowDraft } from './modelRowPolicy';
+// The shared tab + form chrome. Without this import the `settings-page-*` classes below match
+// no rule, which is why the tabs rendered as unstyled buttons with a stray white gap.
+import '../../styles/settings-page.scss';
 
 /**
  * One data resource: its row conditions and who may read it.

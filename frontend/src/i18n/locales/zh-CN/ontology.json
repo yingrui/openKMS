@@ -416,8 +416,6 @@
     "resourceAccessRead": "读取",
     "resourceAccessOthers": "所有登录用户（{{name}} 全部数据）",
     "resourceAccessAdd": "添加用户",
-    "resourceAccessPick": "选择用户…",
-    "resourceAccessAddOwner": "添加",
     "resourceAccessSave": "保存授权",
     "resourceAccessSaved": "授权已保存",
     "resourceAccessSaveFailed": "无法保存授权",
@@ -431,7 +429,13 @@
     "resourceTab_definition": "定义",
     "resourceTab_access": "授权对象",
     "resourceAccessSearch": "查找用户",
-    "resourceAccessSearchPlaceholder": "姓名或邮箱…"
+    "resourceAccessSearchPlaceholder": "姓名或邮箱…",
+    "resourceAccessFilterPlaceholder": "过滤已授权对象…",
+    "resourceAccessAddConfirm": "添加",
+    "resourceAccessEmpty": "还没有授权对象，先添加一个可读取的人。",
+    "resourceAccessNoMatch": "没有匹配的授权对象。",
+    "resourceAccessNoCandidate": "没有匹配的身份。",
+    "resourceAccessSearchHint": "选择可以读取该资源的人。"
   },
   "datasets": {
     "title": "数据集",

@@ -1,9 +1,29 @@
-/* Access panel for one data resource: a row-scoped, read-only capability. */
-.data-resource-access {
+/* Grantees list for one data resource. Layout chrome comes from `settings-page-form`. */
+.data-resource-access__intro {
+  margin: 0 0 var(--space-4);
+}
+
+/* Filter the people who already have access, and the one action that adds someone. */
+.data-resource-access__toolbar {
   display: flex;
-  flex-direction: column;
+  align-items: center;
+  justify-content: space-between;
   gap: var(--space-3);
-  margin-top: var(--space-4);
+  margin-bottom: var(--space-3);
+}
+
+.data-resource-access__search {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex: 1;
+  min-width: 0;
+  color: var(--color-text-muted);
+}
+
+.data-resource-access__search .ds-control {
+  flex: 1;
+  min-width: 0;
 }
 
 .data-resource-access__table {
@@ -24,13 +44,40 @@
   color: var(--color-text-secondary);
 }
 
-.data-resource-access__add {
-  display: flex;
-  align-items: flex-end;
-  gap: var(--space-2);
-}
-
 .data-resource-access__actions {
   display: flex;
   justify-content: flex-end;
+  margin-top: var(--space-4);
+}
+
+/* Candidate list in the add dialog: click a person, then confirm. */
+.data-resource-access__candidates {
+  list-style: none;
+  margin: var(--space-2) 0 0;
+  padding: 0;
+  max-height: 18rem;
+  overflow-y: auto;
+}
+
+.data-resource-access__candidate {
+  display: block;
+  width: 100%;
+  padding: var(--space-2) var(--space-3);
+  border: none;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--color-text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+
+  &:hover {
+    background: var(--color-bg-muted);
+  }
+
+  &.is-picked {
+    background: var(--color-accent-subtle);
+    color: var(--color-accent);
+    font-weight: 600;
+  }
 }

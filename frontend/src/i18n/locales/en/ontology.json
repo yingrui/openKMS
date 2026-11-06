@@ -421,8 +421,6 @@
     "resourceAccessRead": "Read",
     "resourceAccessOthers": "Anyone signed in (all of {{name}})",
     "resourceAccessAdd": "Add a user",
-    "resourceAccessPick": "Select a user…",
-    "resourceAccessAddOwner": "Add",
     "resourceAccessSave": "Save access",
     "resourceAccessSaved": "Access saved",
     "resourceAccessSaveFailed": "Could not save access",
@@ -436,7 +434,13 @@
     "resourceTab_definition": "Definition",
     "resourceTab_access": "Grantees",
     "resourceAccessSearch": "Find a user",
-    "resourceAccessSearchPlaceholder": "Name or email…"
+    "resourceAccessSearchPlaceholder": "Name or email…",
+    "resourceAccessFilterPlaceholder": "Filter grantees…",
+    "resourceAccessAddConfirm": "Add",
+    "resourceAccessEmpty": "Nobody has access yet. Add the first reader.",
+    "resourceAccessNoMatch": "No grantee matches that filter.",
+    "resourceAccessNoCandidate": "No matching identity.",
+    "resourceAccessSearchHint": "Pick the person who may read this resource."
   },
   "datasets": {
     "title": "Datasets",
