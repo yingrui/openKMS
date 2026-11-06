@@ -19,7 +19,11 @@ from app.models.dataset import Dataset
 from app.services.data_layer.metrics import DEFAULT_ROW_CAP, DEFAULT_TIMEOUT_MS
 from app.services.data_layer.query import QueryError
 from app.services.data_layer.query_errors import DATA, REQUEST, QueryFailure, classify_sql_error
-from app.services.data_layer.row_policy import policy_conditions
+from app.services.data_layer.entity_scope import (
+    EntityScope,
+    EntityScopeError,
+    compile_entity_scope,
+)
 from app.services.data_layer.sql_runner import run_readonly
 
 MAX_SQL_CHARS = 20_000
@@ -152,6 +156,11 @@ _NOT_ALIAS = frozenset(
     """.split()
 )
 _ALIAS_AFTER = re.compile(r"\s+(?:as\s+)?(\"[^\"]+\"|[A-Za-z_][\w$]*)", re.IGNORECASE)
+#: The relation right after the statement's first top-level `FROM`.
+_FROM_HEAD = re.compile(
+    r"""\bfrom\s+(?!\()((?:(?:"[^"]+"|[A-Za-z_][\w$]*)\s*\.\s*)?(?:"[^"]+"|[A-Za-z_][\w$]*))""",
+    re.IGNORECASE,
+)
 _QUALIFIED_REF = re.compile(
     r"""(\"[^\"]+\"|[A-Za-z_][\w$]*)\s*\.\s*(\"[^\"]+\"|[A-Za-z_][\w$]*)\s*\.\s*(\"[^\"]+\"|[A-Za-z_][\w$]*)"""
 )
@@ -184,15 +193,21 @@ def constrain_base_policy(
     base_schema: str | None,
     base_table: str | None,
     conditions: list[str],
-    key_prefix: str = "rp",
+    base_alias: str = "rpbase",
 ) -> str:
-    """Replace every reference to the base table with its row-filtered subquery.
+    """Constrain the base table's rows inside an arbitrary SELECT.
 
-    Raw SQL has no generic rewrite, so the safe move is a **substitution that keeps the
-    table's own name as the alias**: ``FROM "s"."t" x`` becomes
-    ``FROM (SELECT * FROM "s"."t" WHERE <policy>) AS x``. A statement that addresses the
-    base table's columns through a schema-qualified path (``"s"."t"."c"``) cannot keep
-    working after that substitution, so it is refused instead of run unfiltered.
+    Raw SQL cannot be rewritten generically, and an entity-level condition may live on a
+    **different** table than the query's base, so the substitution has to give the base an
+    alias the predicate can correlate to:
+
+        FROM "s"."t"                ->  FROM "s"."t" AS rpbase       (predicate on rpbase)
+        FROM (SELECT * FROM "s"."t" WHERE <policy>) AS rpbase
+
+    Two shapes are refused rather than run unfiltered: a statement addressing the base table
+    through a schema-qualified column path (`"s"."t"."c"`), and a base reference that already
+    carries an alias this rewrite would have to rename (renaming would break the caller's own
+    qualified columns).
     """
     if not conditions:
         return sql
@@ -223,14 +238,51 @@ def constrain_base_policy(
         return sql
 
     where = " AND ".join(conditions)
-    filtered = f'(SELECT * FROM "{base_schema}"."{base_table}" WHERE {where})'
     out = sql
     for start, end in sorted(spans, reverse=True):
-        original = out[start:end]
-        replacement = filtered if _has_alias(out, end) else f'{filtered} AS "{base_table}"'
-        out = out[:start] + replacement + out[end:]
-        del original
+        if _has_alias(out, end):
+            # The statement already names this relation. Rewriting the alias would silently
+            # break its qualified columns, so ask the author to do the rename they can reason
+            # about: alias the table, then this rewrite applies the policy to that alias.
+            raise QueryError(
+                "SQL Lab could not apply a row restriction to this table: alias it as "
+                f"\"{base_alias}\" (e.g. FROM {base_schema}.{base_table} {base_alias}) "
+                "and reference its columns through that alias.",
+                QueryFailure("QUERY_INVALID_REQUEST", REQUEST),
+            )
+        filtered = (
+            f'{_quote(base_schema)}.{_quote(base_table)} AS "{base_alias}"'
+            if not where
+            else f'(SELECT * FROM {_quote(base_schema)}.{_quote(base_table)} WHERE {where}) '
+            f'AS "{base_alias}"'
+        )
+        out = out[:start] + filtered + out[end:]
     return out
+
+
+def _anchor_dataset_id(sql: str, datasets: list[Dataset]) -> str | None:
+    """The model dataset a statement's first FROM relation refers to."""
+    match = _FROM_HEAD.search(sql)
+    if not match:
+        return None
+    raw = match.group(1)
+    parts = [p.strip() for p in re.split(r"\s*\.\s*", raw) if p.strip()]
+    table = _unquote(parts[-1]).lower()
+    schema = _unquote(parts[-2]).lower() if len(parts) >= 2 else None
+    for dataset in datasets:
+        if (dataset.table_name or "").lower() != table:
+            continue
+        if schema is None or (dataset.schema_name or "").lower() == schema:
+            return dataset.id
+    return None
+
+
+def quote_ident(ident: str) -> str:
+    return '"' + str(ident).replace('"', '""') + '"'
+
+
+def _quote(ident: str) -> str:
+    return quote_ident(ident)
 
 
 async def run_model_sql(
@@ -241,17 +293,14 @@ async def run_model_sql(
     limit: int | None,
     member_dataset_ids: set[str] | None,
     base_dataset_id: str | None = None,
-    row_policy: list[dict[str, Any]] | None = None,
-    policy_claims: dict[str, Any] | None = None,
+    entity_scope: EntityScope | None = None,
+    base_alias: str = "rpbase",
 ) -> tuple[str, list[str], list[dict[str, Any]], bool, int]:
     """Run one SQL Lab statement. Returns ``(sql_run, columns, rows, capped, duration_ms)``.
 
-    ``row_policy`` constrains the model's **base table**. Raw SQL cannot be rewritten
-    generically, so the policy is enforced by running the statement against a filtered
-    subquery of each allowlisted table that the statement names: every base-table reference
-    is replaced by ``(SELECT * FROM base WHERE <policy>) AS "schema"."table"``. A statement
-    that names the base table in a shape this rewrite cannot express is refused rather than
-    run unfiltered.
+    ``entity_scope`` restricts rows. Raw SQL cannot be rewritten generically, so the base table
+    is given an alias and a policy compiled **against that alias** is applied; see
+    ``constrain_base_policy`` for the shapes that are refused instead of run unfiltered.
     """
     body = normalize_lab_sql(sql)
     lim = DEFAULT_LIMIT if limit is None else max(1, min(int(limit), DEFAULT_ROW_CAP))
@@ -281,12 +330,14 @@ async def run_model_sql(
 
     assert_tables_allowed(body, datasets)
 
-    base_dataset = next(
-        (d for d in datasets if base_dataset_id and d.id == base_dataset_id), None
-    )
-    if row_policy and base_dataset is None:
+    # The statement's first FROM relation is the anchor a row restriction correlates to.
+    # Falling back to "apply to every table" would be wrong: an EXISTS needs one row identity.
+    anchor_id = base_dataset_id or _anchor_dataset_id(body, datasets)
+    base_dataset = next((d for d in datasets if d.id == anchor_id), None)
+    if entity_scope is not None and entity_scope.policy and base_dataset is None:
         raise QueryError(
-            "The model's base dataset is not among its table datasets.",
+            "This statement does not read a model table as its FROM, so a row restriction "
+            "cannot be applied to it.",
             QueryFailure("QUERY_INVALID_REQUEST", REQUEST),
         )
 
@@ -299,15 +350,22 @@ async def run_model_sql(
 
     params: dict[str, Any] = {}
     constrained = body
-    if row_policy:
-        policy_where, params = policy_conditions(
-            row_policy, alias=None, claims=policy_claims or {}, key_prefix="rp"
-        )
+    if entity_scope is not None and entity_scope.policy:
+        try:
+            policy_where, params = compile_entity_scope(
+                entity_scope,
+                base_dataset_id=base_dataset.id,
+                base_alias=base_alias,
+                key_prefix="rp",
+            )
+        except EntityScopeError as exc:
+            raise QueryError(str(exc), exc.failure) from exc
         constrained = constrain_base_policy(
             body,
             base_schema=base_dataset.schema_name,
             base_table=base_dataset.table_name,
             conditions=policy_where,
+            base_alias=base_alias,
         )
 
     capped_sql = wrap_with_limit(constrained, lim)

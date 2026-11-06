@@ -30,7 +30,11 @@ from app.services.data_layer.metrics import (
     validate_metric_filters,
     validate_sql_fragment,
 )
-from app.services.data_layer.row_policy import policy_conditions
+from app.services.data_layer.entity_scope import (
+    EntityScope,
+    EntityScopeError,
+    compile_entity_scope,
+)
 from app.services.data_layer.semantic_model_fields import resolve_is_time
 from app.services.data_layer.query_errors import (
     DATA,
@@ -245,9 +249,7 @@ async def run_query(
     limit: int | None = None,
     member_dataset_ids: set[str] | None = None,
     timeout_ms: int = DEFAULT_TIMEOUT_MS,
-    row_policy: list[dict[str, Any]] | None = None,
-    policy_claims: dict[str, Any] | None = None,
-    policy_base_dataset_id: str | None = None,
+    entity_scope: EntityScope | None = None,
 ) -> tuple[str, list[str], list[dict[str, Any]], bool, int]:
     """Run one query of a semantic model.
 
@@ -255,9 +257,11 @@ async def run_query(
     ``base_dataset_id`` / optional ``joins``). ``where`` / ``having`` are boolean
     fragments AND-ed into the matching clause.
 
-    ``row_policy`` is a granted data resource's row scope: rendered against the base table
-    alias and AND-ed last, so nothing in the request can remove it. ``policy_claims``
-    resolves claim bindings (missing claim → the policy renders as an error).
+    ``entity_scope`` is a granted data resource's row scope, compiled **against whichever
+    base dataset this query reads** and AND-ed last, so nothing in the request can remove it.
+    A condition that lives on a dimension table is enforced through an `EXISTS` over the
+    model's relationships, so restricting by `industry` works for a metric based on
+    `daily_basic` as well as for a query based on `stock_basic`.
 
     Returns ``(sql, columns, rows, capped, duration_ms)``.
     """
@@ -326,13 +330,6 @@ async def run_query(
             "The base dataset is not in this semantic model.",
             QueryFailure("QUERY_INVALID_REQUEST", REQUEST),
         )
-    if row_policy and policy_base_dataset_id and base.id != policy_base_dataset_id:
-        raise QueryError(
-            "This query reads a table outside the granted data resource; "
-            "use the resource's base dataset.",
-            QueryFailure("QUERY_INVALID_REQUEST", REQUEST),
-        )
-
     ds = await db.get(DataSource, base.data_source_id)
     if not ds or ds.kind != "postgresql":
         raise QueryError(
@@ -455,9 +452,15 @@ async def run_query(
     ]
     # Resource row policy: ANDed onto the base table, after definition and request filters —
     # callers can narrow the result, never widen it, and cannot drop this part.
-    policy_where, policy_params = policy_conditions(
-        row_policy, alias=_BASE_ALIAS, claims=policy_claims or {}, key_prefix="p"
-    )
+    policy_where: list[str] = []
+    policy_params: dict[str, Any] = {}
+    if entity_scope is not None and entity_scope.policy:
+        try:
+            policy_where, policy_params = compile_entity_scope(
+                entity_scope, base_dataset_id=base.id, base_alias=_BASE_ALIAS, key_prefix="p"
+            )
+        except EntityScopeError as exc:
+            raise QueryError(str(exc), exc.failure) from exc
     sql = build_sql(
         base,
         metric_expr=metric_expr,

@@ -8,14 +8,18 @@ Two gates, both must pass:
    hold a **read grant** on that data resource. There is deliberately **no admin bypass**:
    JWT `admin` / `all` may configure grants but cannot read restricted data without one.
 
-The resolved scope answers: which model, which resource, and which row conditions to inject
-on the model's base table. Public models resolve to an empty scope (no injection).
+The resolved scope answers: which model, which resource it acts as, and the **entity scope**
+to compile against whatever base table the query uses. Public models resolve to an empty
+scope (no injection).
+
+Row conditions are entity-level, not table-level: a condition on `stock_basic.industry`
+constrains a query whose base is `daily_basic` too, by walking the model's relationships. See
+`entity_scope.py` for the compilation rules and what gets refused.
 """
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
-from typing import Any
+from dataclasses import dataclass
 
 from fastapi import HTTPException
 from sqlalchemy import select
@@ -30,11 +34,13 @@ from app.services.acl.resource_acl_constants import (
     RT_DATA_RESOURCE,
     perm_satisfies,
 )
-from app.services.data_layer.row_policy import (
-    RowPolicyError,
-    policy_conditions,
-    policy_fingerprint,
+from app.services.data_layer.entity_scope import (
+    EntityScope,
+    EntityScopeError,
+    build_entity_scope,
+    load_model_graph,
 )
+from app.services.data_layer.row_policy import RowPolicyError, policy_fingerprint
 
 @dataclass(frozen=True)
 class CatalogScope:
@@ -42,10 +48,12 @@ class CatalogScope:
 
     model: SemanticModel
     resource: DataResource | None = None
-    #: SQL conditions ANDed onto the base table (rendered from the resource's row policy).
-    base_conditions: list[str] = field(default_factory=list)
-    base_params: dict[str, Any] = field(default_factory=dict)
-    claims_used: list[str] = field(default_factory=list)
+    #: The resource's row policy bound to the model graph; compiled per query base.
+    entity_scope: EntityScope | None = None
+
+    @property
+    def claims_used(self) -> list[str]:
+        return list(self.entity_scope.claims_used) if self.entity_scope else []
     @property
     def resource_id(self) -> str | None:
         return self.resource.id if self.resource else None
@@ -146,10 +154,11 @@ async def resolve_catalog_scope(
         raise _deny(403, "RESOURCE_FORBIDDEN", "You do not have access to this data resource.")
 
     try:
-        conditions, params = policy_conditions(
-            resource.row_policy, alias="base", claims=payload
+        graph = await load_model_graph(db, model.id)
+        entity = await build_entity_scope(
+            db, graph=graph, policy=resource.row_policy or [], claims=payload
         )
-    except RowPolicyError as exc:
+    except (EntityScopeError, RowPolicyError) as exc:
         failure = exc.failure
         raise _deny(
             403 if failure.code == "ROW_POLICY_CLAIM_MISSING" else 400,
@@ -157,13 +166,4 @@ async def resolve_catalog_scope(
             str(exc),
         ) from exc
 
-    claims_used = sorted(
-        {c["claim"] for c in (resource.row_policy or []) if isinstance(c, dict) and "claim" in c}
-    )
-    return CatalogScope(
-        model=model,
-        resource=resource,
-        base_conditions=conditions,
-        base_params=params,
-        claims_used=claims_used,
-    )
+    return CatalogScope(model=model, resource=resource, entity_scope=entity)

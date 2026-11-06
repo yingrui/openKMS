@@ -25,6 +25,11 @@ from app.schemas.data_resource import (
 from app.services.acl.acl_store import bootstrap_owner_acl
 from app.services.acl.resource_acl_constants import PERM_MANAGE, PERM_READ, RT_DATA_RESOURCE
 from app.services.data_layer.catalog_access import check_data_resource_access
+from app.services.data_layer.entity_scope import (
+    EntityScopeError,
+    build_entity_scope,
+    load_model_graph,
+)
 from app.services.acl.resource_acl_presentation import serialize_resource_acl
 from app.services.data_layer.row_policy import RowPolicyError, validate_policy
 from app.services.permissions.permission_catalog import PERM_DATA_WRITE
@@ -57,18 +62,29 @@ async def _validate(
     if not model:
         raise HTTPException(status_code=400, detail="Unknown semantic model")
     if base_dataset_id:
+        # Membership is a composite-key join row (no `id` column): select the dataset id and
+        # test for a row, which is what "is this dataset in the model" means.
         member = await db.execute(
-            select(SemanticModelDataset.id).where(
+            select(SemanticModelDataset.dataset_id).where(
                 SemanticModelDataset.semantic_model_id == semantic_model_id,
                 SemanticModelDataset.dataset_id == base_dataset_id,
             )
         )
-        if member.scalar_one_or_none() is None:
+        if member.first() is None:
             raise HTTPException(status_code=400, detail="Base dataset is not in this model")
     try:
-        return validate_policy(row_policy)
+        policy = validate_policy(row_policy)
     except RowPolicyError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
+    if policy:
+        # Attribute each column now: an ambiguous or unknown column is a definition mistake,
+        # and reporting it at save time is the only moment the author can still fix it cheaply.
+        try:
+            graph = await load_model_graph(db, semantic_model_id)
+            await build_entity_scope(db, graph=graph, policy=policy, claims={})
+        except EntityScopeError as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
+    return policy
 
 
 async def _load(db: AsyncSession, resource_id: str) -> DataResource:

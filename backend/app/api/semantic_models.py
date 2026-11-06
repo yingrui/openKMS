@@ -283,9 +283,7 @@ async def query_semantic_model(
             order_by=[o.model_dump() for o in body.order_by],
             limit=body.limit,
             member_dataset_ids=members,
-            row_policy=scope.resource.row_policy if scope.resource else None,
-            policy_claims=payload,
-            policy_base_dataset_id=scope.resource.base_dataset_id if scope.resource else None,
+            entity_scope=scope.entity_scope,
         )
     except QueryError as exc:
         if audit:
@@ -374,9 +372,7 @@ async def sql_lab_semantic_model(
             sql=body.sql,
             limit=body.limit,
             member_dataset_ids=members,
-            base_dataset_id=scope.resource.base_dataset_id if scope.resource else None,
-            row_policy=scope.resource.row_policy if scope.resource else None,
-            policy_claims=payload,
+            entity_scope=scope.entity_scope,
         )
     except QueryError as exc:
         db.add(

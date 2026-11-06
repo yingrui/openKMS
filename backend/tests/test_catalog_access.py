@@ -16,10 +16,33 @@ from app.models.semantic_model import ACCESS_PUBLIC, ACCESS_RESTRICTED, Semantic
 from app.services.data_layer.catalog_access import resolve_catalog_scope
 
 
+@pytest.fixture
+def entity_graph_db(monkeypatch):
+    """Stub the DB reads a scope build needs, then run the **real** build/validation path."""
+    from app.services.data_layer import entity_scope as es
+
+    async def fake_graph(db, model_id):
+        return es.ModelGraph(
+            dataset_ids=frozenset({"ds1"}), datasets={}, labels={"ds1": "orders"}
+        )
+
+    async def fake_columns(db, graph):
+        return {"ds1": {"region", "org_id"}}
+
+    monkeypatch.setattr("app.services.data_layer.catalog_access.load_model_graph", fake_graph)
+    monkeypatch.setattr(es, "load_columns", fake_columns)
+
+
 class _FakeDB:
     """Just enough `db.get`: resources and models by id."""
 
-    def __init__(self, *, model: SemanticModel, resources: list[DataResource]):
+    def __init__(
+        self,
+        *,
+        model: SemanticModel,
+        resources: list[DataResource],
+        graph_db: object | None = None,
+    ):
         self._model = model
         self._by_id = {model.id: model, **{r.id: r for r in resources}}
 
@@ -64,7 +87,7 @@ def test_a_public_model_needs_no_resource(monkeypatch):
         resolve_catalog_scope(db, payload=USER, sub="u1", model=_model(), resource_id=None)
     )
     assert scope.resource is None
-    assert scope.base_conditions == []
+    assert scope.entity_scope is None
 
 
 def test_a_public_model_ignores_a_resource_id(monkeypatch):
@@ -116,41 +139,50 @@ def test_an_admin_without_a_grant_is_still_denied(monkeypatch):
     assert excinfo.value.status_code == 403
 
 
-def test_a_granted_resource_renders_its_row_policy_on_the_base_alias(monkeypatch):
+def test_a_granted_resource_carries_an_entity_scope(monkeypatch, entity_graph_db):
+    """The grant resolves to a policy bound to the model graph, not to a SQL snippet.
+
+    Compiling it is per query base (the base differs between metrics), so this asserts the
+    scope is present and correctly attributed rather than asserting SQL text here.
+    """
     model = _model(ACCESS_RESTRICTED)
     db = _FakeDB(
         model=model,
         resources=[_resource([{"column": "region", "op": "=", "value": "east"}])],
+        graph_db=entity_graph_db,
     )
     _patched_check(monkeypatch, allowed=True)
     scope = _run(
         resolve_catalog_scope(db, payload=USER, sub="u1", model=model, resource_id="r1")
     )
-    assert scope.base_conditions == ['base."region" = :rp0']
-    assert scope.base_params == {"rp0": "east"}
+    assert scope.entity_scope is not None
+    assert scope.entity_scope.policy == [{"column": "region", "op": "=", "value": "east"}]
     assert scope.policy_fingerprint
 
 
-def test_a_claim_bound_policy_resolves_from_the_caller(monkeypatch):
+def test_a_claim_bound_policy_records_the_claim_it_needs(monkeypatch, entity_graph_db):
     model = _model(ACCESS_RESTRICTED)
     db = _FakeDB(
         model=model,
         resources=[_resource([{"column": "org_id", "op": "=", "claim": "org_id"}])],
+        graph_db=entity_graph_db,
     )
     _patched_check(monkeypatch, allowed=True)
     caller = {**USER, "org_id": "acme"}
     scope = _run(
         resolve_catalog_scope(db, payload=caller, sub="u1", model=model, resource_id="r1")
     )
-    assert scope.base_params == {"rp0": "acme"}
     assert scope.claims_used == ["org_id"]
 
 
-def test_a_missing_claim_is_a_forbidden_call_not_an_unfiltered_query(monkeypatch):
+def test_a_missing_claim_is_a_forbidden_call_not_an_unfiltered_query(
+    monkeypatch, entity_graph_db
+):
     model = _model(ACCESS_RESTRICTED)
     db = _FakeDB(
         model=model,
         resources=[_resource([{"column": "org_id", "op": "=", "claim": "org_id"}])],
+        graph_db=entity_graph_db,
     )
     _patched_check(monkeypatch, allowed=True)
     with pytest.raises(HTTPException) as excinfo:

@@ -9,13 +9,11 @@ import {
   type DataResourceResponse,
   type RowPolicyCondition,
 } from '../../data/dataResourcesApi';
-import { RESOURCE_TYPES } from '../../data/resourceAclApi';
 import { useConfirm } from '../../contexts/ConfirmContext';
 import { FormField } from '../../styles/design-system';
-import { ResourceSharePanel } from '../../components/ResourceSharePanel';
+import { DataResourceAccessPanel } from '../../components/DataResourceAccessPanel';
 import { EntityViewHeader, EntityViewPanel } from './EntityViewShell';
 import { useSemanticModelDetail } from './useSemanticModelDetail';
-import { datasetLabel } from './datasetLabel';
 
 type Draft = { column: string; op: string; value: string };
 
@@ -59,12 +57,12 @@ function describe(policy: RowPolicyCondition[]): string {
 export function ModelDataResourcesSection() {
   const { t } = useTranslation('ontology');
   const confirm = useConfirm();
-  const { model, allDatasets } = useSemanticModelDetail();
+  const { model } = useSemanticModelDetail();
 
   const [resources, setResources] = useState<DataResourceResponse[]>([]);
   const [loading, setLoading] = useState(true);
   const [name, setName] = useState('');
-  const [baseDatasetId, setBaseDatasetId] = useState(model.dataset_ids[0] ?? '');
+
   const [rows, setRows] = useState<Draft[]>([]);
   const [saving, setSaving] = useState(false);
 
@@ -84,12 +82,6 @@ export function ModelDataResourcesSection() {
     void load();
   }, [load]);
 
-  const modelDatasets = allDatasets.filter((d) => model.dataset_ids.includes(d.id));
-  const baseLabel = (datasetId: string | null): string => {
-    if (!datasetId) return t('dataModel.resourceNoBase');
-    const found = allDatasets.find((d) => d.id === datasetId);
-    return found ? datasetLabel(found) : datasetId;
-  };
 
   const onCreate = async () => {
     if (!name.trim()) {
@@ -101,7 +93,6 @@ export function ModelDataResourcesSection() {
       await createDataResource({
         name: name.trim(),
         semantic_model_id: model.id,
-        base_dataset_id: baseDatasetId || null,
         row_policy: toPolicy(rows),
       });
       setName('');
@@ -143,16 +134,6 @@ export function ModelDataResourcesSection() {
         <div className="entity-view__form">
           <FormField label={t('dataModel.resourceName')}>
             <input type="text" value={name} onChange={(e) => setName(e.target.value)} />
-          </FormField>
-          <FormField label={t('dataModel.resourceBaseDataset')} hint={t('dataModel.resourceBaseDatasetHint')}>
-            <select value={baseDatasetId} onChange={(e) => setBaseDatasetId(e.target.value)}>
-              <option value="">{t('dataModel.resourceNoBase')}</option>
-              {modelDatasets.map((d) => (
-                <option key={d.id} value={d.id}>
-                  {datasetLabel(d)}
-                </option>
-              ))}
-            </select>
           </FormField>
           <FormField label={t('dataModel.resourceRows')} hint={t('dataModel.resourceRowsHint')}>
             {rows.map((row, idx) => (
@@ -220,8 +201,6 @@ export function ModelDataResourcesSection() {
       {resources.map((resource) => (
         <EntityViewPanel key={resource.id} title={resource.name}>
           <div className="entity-view__dl">
-            <dt>{t('dataModel.resourceBaseDataset')}</dt>
-            <dd>{baseLabel(resource.base_dataset_id)}</dd>
             <dt>{t('dataModel.resourceRows')}</dt>
             <dd>{resource.row_policy.length ? describe(resource.row_policy) : t('dataModel.resourceRowsNone')}</dd>
           </div>
@@ -235,10 +214,10 @@ export function ModelDataResourcesSection() {
               {t('shared.delete')}
             </button>
           </div>
-          <ResourceSharePanel
-            resourceType={RESOURCE_TYPES.dataResource}
+          <DataResourceAccessPanel
             resourceId={resource.id}
-            title={t('dataModel.resourceAccess')}
+            resourceName={resource.name}
+            rowPolicy={resource.row_policy}
           />
         </EntityViewPanel>
       ))}
