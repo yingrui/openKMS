@@ -33,8 +33,6 @@ export interface DataResourceResponse {
   name: string;
   description: string | null;
   semantic_model_id: string;
-  /** The table the row policy applies to; null means the whole model. */
-  base_dataset_id: string | null;
   row_policy: RowPolicyCondition[];
   created_by_name: string | null;
   created_at: string;
@@ -50,7 +48,6 @@ export interface DataResourcePayload {
   name: string;
   description?: string | null;
   semantic_model_id: string;
-  base_dataset_id?: string | null;
   row_policy?: RowPolicyCondition[];
 }
 
@@ -61,6 +58,10 @@ export async function fetchDataResources(
     ? `?semantic_model_id=${encodeURIComponent(semanticModelId)}`
     : '';
   return request<DataResourceListResponse>(`/api/data-resources${qs}`);
+}
+
+export async function fetchDataResource(id: string): Promise<DataResourceResponse> {
+  return request<DataResourceResponse>(`/api/data-resources/${id}`);
 }
 
 export async function createDataResource(body: DataResourcePayload): Promise<DataResourceResponse> {

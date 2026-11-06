@@ -10,34 +10,36 @@ import {
   type AclGrant,
   type OwnerCandidate,
 } from '../data/resourceAclApi';
-import { Dialog, FormField } from '../styles/design-system';
-import './DataResourceAccessPanel.scss';
+import { Dialog, FormField, Pagination } from '../styles/design-system';
+import './DataResourceGranteesPanel.scss';
+
+const PAGE_SIZE_DEFAULT = 10;
 
 /**
  * Who may **read** one data resource — the only permission this list grants.
  *
  * A data resource is a read-only row scope, so two things are deliberately absent:
- * `w` (nothing to write) and `m` (administration is *ownership*, set in **Sharing**, not in a
- * list about who can query rows — mixing them let saving a read list hand out admin rights).
+ * `w` (nothing to write) and `m` (administration is *ownership*, set in **Sharing**).
  *
- * The toolbar filters the **grantee list**; adding a candidate is a dialog, so the table stays
- * about the people who already have access rather than doubling as a picker.
+ * Add and remove write through immediately: a draft + Save step made delete look like it
+ * already worked while the grant was still live.
  */
 type Row = {
   grantee_type: 'user' | 'group' | 'authenticated';
   grantee_id: string | null;
   label: string;
-  read: boolean;
 };
 
 function toRows(grants: AclGrant[]): Row[] {
-  return grants.map((g) => ({
-    grantee_type: g.grantee_type,
-    grantee_id: g.grantee_id,
-    label:
-      g.grantee_label?.trim() || (g.grantee_type === 'authenticated' ? '' : (g.grantee_id ?? '')),
-    read: g.permissions.includes('r') || g.permissions.includes('m'),
-  }));
+  return grants
+    .filter((g) => g.permissions.includes('r') || g.permissions.includes('m'))
+    .map((g) => ({
+      grantee_type: g.grantee_type,
+      grantee_id: g.grantee_id,
+      label:
+        g.grantee_label?.trim() ||
+        (g.grantee_type === 'authenticated' ? '' : (g.grantee_id ?? '')),
+    }));
 }
 
 interface Props {
@@ -46,15 +48,15 @@ interface Props {
   resourceName: string;
 }
 
-export function DataResourceAccessPanel({ resourceId, resourceName }: Props) {
+export function DataResourceGranteesPanel({ resourceId, resourceName }: Props) {
   const { t } = useTranslation('ontology');
   const [rows, setRows] = useState<Row[]>([]);
   const [candidates, setCandidates] = useState<OwnerCandidate[]>([]);
   const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
-  // Toolbar filter over the grantees already listed.
+  const [busy, setBusy] = useState(false);
   const [filter, setFilter] = useState('');
-  // Dialog state for adding someone new.
+  const [page, setPage] = useState(0);
+  const [pageSize, setPageSize] = useState(PAGE_SIZE_DEFAULT);
   const [adding, setAdding] = useState(false);
   const [pick, setPick] = useState('');
   const [candidateQuery, setCandidateQuery] = useState('');
@@ -81,29 +83,29 @@ export function DataResourceAccessPanel({ resourceId, resourceName }: Props) {
       .catch(() => setCandidates([]));
   }, [resourceId]);
 
-  const save = async () => {
-    const grants = rows.filter((r) => r.read);
-    if (!grants.length) {
+  const persist = async (next: Row[]): Promise<boolean> => {
+    if (!next.length) {
       toast.error(t('dataModel.resourceAccessNeedsReader'));
-      return;
+      return false;
     }
-    setSaving(true);
+    setBusy(true);
     try {
       await putResourceAcl(
         RESOURCE_TYPES.dataResource,
         resourceId,
-        grants.map((r) => ({
+        next.map((r) => ({
           grantee_type: r.grantee_type,
           grantee_id: r.grantee_id,
           permissions: 'r',
         })),
       );
-      toast.success(t('dataModel.resourceAccessSaved'));
-      await load();
+      setRows(next);
+      return true;
     } catch (e) {
       toast.error(e instanceof Error ? e.message : t('dataModel.resourceAccessSaveFailed'));
+      return false;
     } finally {
-      setSaving(false);
+      setBusy(false);
     }
   };
 
@@ -113,6 +115,13 @@ export function DataResourceAccessPanel({ resourceId, resourceName }: Props) {
     return r.label.toLowerCase().includes(q);
   });
 
+  // The ACL endpoint returns the whole grant list, so paging is over the filtered array. Clamp
+  // instead of storing an out-of-range page: removing the last row of page 3 must not blank the
+  // table while earlier rows still exist.
+  const pageCount = Math.max(1, Math.ceil(visibleRows.length / pageSize));
+  const safePage = Math.min(page, pageCount - 1);
+  const pagedRows = visibleRows.slice(safePage * pageSize, safePage * pageSize + pageSize);
+
   const availableCandidates = candidates.filter((c) => {
     if (rows.some((r) => r.grantee_id === c.subject)) return false;
     const q = candidateQuery.trim().toLowerCase();
@@ -120,47 +129,63 @@ export function DataResourceAccessPanel({ resourceId, resourceName }: Props) {
     return c.subject.toLowerCase().includes(q) || c.label.toLowerCase().includes(q);
   });
 
-  const confirmAdd = () => {
+  const confirmAdd = async () => {
     if (!pick) return;
     const candidate = candidates.find((c) => c.subject === pick);
-    setRows((prev) => [
-      ...prev,
+    const next: Row[] = [
+      ...rows,
       {
         grantee_type: 'user',
         grantee_id: pick,
         label: candidate?.label || pick,
-        read: true,
       },
-    ]);
-    setAdding(false);
-    setPick('');
-    setCandidateQuery('');
+    ];
+    if (await persist(next)) {
+      setAdding(false);
+      setPick('');
+      setCandidateQuery('');
+    }
+  };
+
+  const removeRow = async (row: Row) => {
+    const next = rows.filter(
+      (r) => !(r.grantee_type === row.grantee_type && r.grantee_id === row.grantee_id),
+    );
+    await persist(next);
   };
 
   return (
     <>
       <div className="settings-page-form">
-        <p className="page-subtitle data-resource-access__intro">
+        <p className="page-subtitle data-resource-grantees__intro">
           {t('dataModel.resourceAccessHint')}
         </p>
 
-        <div className="data-resource-access__toolbar">
-          <div className="data-resource-access__search">
+        <div className="data-resource-grantees__toolbar">
+          <button
+            type="button"
+            className="btn btn-secondary"
+            disabled={busy}
+            onClick={() => setAdding(true)}
+          >
+            <Plus size={15} aria-hidden />
+            {t('dataModel.resourceAccessAdd')}
+          </button>
+          <div className="data-resource-grantees__search">
             <Search size={15} strokeWidth={2} aria-hidden />
             <input
               type="search"
               className="ds-control"
               value={filter}
-              onChange={(e) => setFilter(e.target.value)}
+              onChange={(e) => {
+                setFilter(e.target.value);
+                setPage(0);
+              }}
               placeholder={t('dataModel.resourceAccessFilterPlaceholder')}
               aria-label={t('dataModel.resourceAccessFilterPlaceholder')}
               autoComplete="off"
             />
           </div>
-          <button type="button" className="btn btn-secondary" onClick={() => setAdding(true)}>
-            <Plus size={15} aria-hidden />
-            {t('dataModel.resourceAccessAdd')}
-          </button>
         </div>
 
         {loading ? (
@@ -172,80 +197,59 @@ export function DataResourceAccessPanel({ resourceId, resourceName }: Props) {
               : t('dataModel.resourceAccessNoMatch')}
           </p>
         ) : (
-          <table className="data-resource-access__table">
-            <thead>
-              <tr>
-                <th>{t('dataModel.resourceAccessGrantee')}</th>
-                <th>{t('dataModel.resourceAccessRead')}</th>
-                <th aria-label={t('shared.delete')} />
-              </tr>
-            </thead>
-            <tbody>
-              {visibleRows.map((row) => (
-                <tr key={`${row.grantee_type}:${row.grantee_id ?? 'others'}`}>
-                  <td>
-                    {row.grantee_type === 'authenticated'
-                      ? t('dataModel.resourceAccessOthers', { name: resourceName })
-                      : row.label}
-                  </td>
-                  <td>
-                    <input
-                      type="checkbox"
-                      checked={row.read}
-                      aria-label={t('dataModel.resourceAccessRead')}
-                      onChange={(e) =>
-                        setRows((prev) =>
-                          prev.map((r) =>
-                            r.grantee_type === row.grantee_type &&
-                            r.grantee_id === row.grantee_id
-                              ? { ...r, read: e.target.checked }
-                              : r,
-                          ),
-                        )
-                      }
-                    />
-                  </td>
-                  <td>
-                    <button
-                      type="button"
-                      className="btn btn-secondary btn-sm"
-                      aria-label={t('shared.delete')}
-                      onClick={() =>
-                        setRows((prev) =>
-                          prev.filter(
-                            (r) =>
-                              !(
-                                r.grantee_type === row.grantee_type &&
-                                r.grantee_id === row.grantee_id
-                              ),
-                          ),
-                        )
-                      }
-                    >
-                      <Trash2 size={14} aria-hidden />
-                    </button>
-                  </td>
+          <>
+            <table className="data-resource-grantees__table">
+              <thead>
+                <tr>
+                  <th>{t('dataModel.resourceAccessGrantee')}</th>
+                  <th aria-label={t('shared.delete')} />
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {pagedRows.map((row) => (
+                  <tr key={`${row.grantee_type}:${row.grantee_id ?? 'others'}`}>
+                    <td>
+                      {row.grantee_type === 'authenticated'
+                        ? t('dataModel.resourceAccessOthers', { name: resourceName })
+                        : row.label}
+                    </td>
+                    <td>
+                      <button
+                        type="button"
+                        className="btn btn-secondary btn-sm"
+                        aria-label={t('shared.delete')}
+                        disabled={busy}
+                        onClick={() => void removeRow(row)}
+                      >
+                        <Trash2 size={14} aria-hidden />
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            {visibleRows.length > PAGE_SIZE_DEFAULT ? (
+              <Pagination
+                className="data-resource-grantees__pagination"
+                total={visibleRows.length}
+                page={safePage}
+                pageSize={pageSize}
+                loading={busy}
+                onPageChange={setPage}
+                onPageSizeChange={(size) => {
+                  setPageSize(size);
+                  setPage(0);
+                }}
+              />
+            ) : null}
+          </>
         )}
-
-        <div className="data-resource-access__actions">
-          <button
-            type="button"
-            className="btn btn-primary"
-            disabled={saving}
-            onClick={() => void save()}
-          >
-            {saving ? t('shared.saving') : t('dataModel.resourceAccessSave')}
-          </button>
-        </div>
       </div>
 
       <Dialog
         open={adding}
         onClose={() => {
+          if (busy) return;
           setAdding(false);
           setPick('');
           setCandidateQuery('');
@@ -257,6 +261,7 @@ export function DataResourceAccessPanel({ resourceId, resourceName }: Props) {
             <button
               type="button"
               className="btn btn-secondary"
+              disabled={busy}
               onClick={() => {
                 setAdding(false);
                 setPick('');
@@ -268,18 +273,15 @@ export function DataResourceAccessPanel({ resourceId, resourceName }: Props) {
             <button
               type="button"
               className="btn btn-primary"
-              disabled={!pick}
-              onClick={confirmAdd}
+              disabled={!pick || busy}
+              onClick={() => void confirmAdd()}
             >
-              {t('dataModel.resourceAccessAddConfirm')}
+              {busy ? t('shared.saving') : t('dataModel.resourceAccessAddConfirm')}
             </button>
           </>
         }
       >
-        <FormField
-          label={t('dataModel.resourceAccessSearch')}
-          hint={t('dataModel.resourceAccessSearchHint')}
-        >
+        <FormField label={t('dataModel.resourceAccessSearch')}>
           <input
             type="search"
             className="ds-control"
@@ -297,12 +299,12 @@ export function DataResourceAccessPanel({ resourceId, resourceName }: Props) {
           availableCandidates.length === 0 ? (
             <p className="page-subtitle">{t('dataModel.resourceAccessNoCandidate')}</p>
           ) : (
-            <ul className="data-resource-access__candidates">
+            <ul className="data-resource-grantees__candidates">
               {availableCandidates.map((c) => (
                 <li key={c.subject}>
                   <button
                     type="button"
-                    className={`data-resource-access__candidate${pick === c.subject ? ' is-picked' : ''}`}
+                    className={`data-resource-grantees__candidate${pick === c.subject ? ' is-picked' : ''}`}
                     onClick={() => setPick(c.subject)}
                   >
                     {c.label || c.subject}

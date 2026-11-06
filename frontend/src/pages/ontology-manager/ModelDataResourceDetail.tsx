@@ -5,11 +5,11 @@ import { ArrowLeft, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import {
   deleteDataResource,
-  fetchDataResources,
+  fetchDataResource,
   updateDataResource,
   type DataResourceResponse,
 } from '../../data/dataResourcesApi';
-import { DataResourceAccessPanel } from '../../components/DataResourceAccessPanel';
+import { DataResourceGranteesPanel } from '../../components/DataResourceGranteesPanel';
 import { useConfirm } from '../../contexts/ConfirmContext';
 import { EntityViewHeader, EntityViewLoading } from './EntityViewShell';
 import { ResourceRowEditor } from './ResourceRowEditor';
@@ -48,19 +48,16 @@ export function ModelDataResourceDetail() {
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const page = await fetchDataResources(modelId);
-      const found = page.items.find((r) => r.id === resourceId) ?? null;
+      const found = await fetchDataResource(resourceId);
       setResource(found);
-      if (found) {
-        setName(found.name);
-        setRows(toDrafts(found.row_policy));
-      }
+      setName(found.name);
+      setRows(toDrafts(found.row_policy));
     } catch (e) {
       toast.error(e instanceof Error ? e.message : t('dataModel.resourceLoadFailed'));
     } finally {
       setLoading(false);
     }
-  }, [modelId, resourceId, t]);
+  }, [resourceId, t]);
 
   useEffect(() => {
     void load();
@@ -127,12 +124,55 @@ export function ModelDataResourceDetail() {
             : t('dataModel.resourceRowsNone')
         }
         actions={
-          <>
-            <button type="button" className="btn btn-secondary" onClick={() => void onDelete()}>
-              <Trash2 size={16} aria-hidden />
-              {t('shared.delete')}
+          <button type="button" className="btn btn-secondary" onClick={() => void onDelete()}>
+            <Trash2 size={16} aria-hidden />
+            {t('shared.delete')}
+          </button>
+        }
+      />
+
+      {/* Tabs + panel must be one account-stack child. The shell wraps every page in
+          `.account-stack` (gap: space-5); leaving the strip and form as siblings puts that gap
+          between them and breaks the connected card the settings-page classes assume. */}
+      <div className="settings-page">
+        <div className="settings-page-tabs" role="tablist" aria-label={resource.name}>
+          {TABS.map((tab) => (
+            <button
+              key={tab}
+              type="button"
+              role="tab"
+              aria-selected={activeTab === tab}
+              className={`settings-page-tab${activeTab === tab ? ' active' : ''}`}
+              onClick={() => setActiveTab(tab)}
+            >
+              {t(`dataModel.resourceTab_${tab}`)}
             </button>
-            {activeTab === 'definition' ? (
+          ))}
+        </div>
+
+        {activeTab === 'definition' ? (
+          <div className="settings-page-form">
+            <section className="settings-page-section">
+              <div className="settings-page-field">
+                <label htmlFor="data-resource-name">{t('dataModel.resourceName')}</label>
+                <input
+                  id="data-resource-name"
+                  type="text"
+                  className="ds-control"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                />
+              </div>
+              <div className="settings-page-field">
+                <label>{t('dataModel.resourceRows')}</label>
+                <p className="settings-page-hint">{t('dataModel.resourceRowsHint')}</p>
+                <ResourceRowEditor rows={rows} onChange={setRows} />
+              </div>
+            </section>
+            {/* Save belongs to the tab that owns the fields it writes. In the page header it
+                read as "save this page" while the Grantees tab had already saved itself on
+                every click — the same button meant two different things depending on the tab. */}
+            <div className="settings-page-actions">
               <button
                 type="button"
                 className="btn btn-primary"
@@ -141,57 +181,17 @@ export function ModelDataResourceDetail() {
               >
                 {saving ? t('shared.saving') : t('shared.save')}
               </button>
-            ) : null}
-          </>
-        }
-      />
-
-      {/* Definition and readers are edited independently, by different acts of thought. Two
-          tabs give each the full pane instead of stacking a form above a table. The classes are
-          the shared settings-page tab strip, so this page reads like the rest of the app. */}
-      <div className="settings-page-tabs" role="tablist" aria-label={resource.name}>
-        {TABS.map((tab) => (
-          <button
-            key={tab}
-            type="button"
-            role="tab"
-            aria-selected={activeTab === tab}
-            className={`settings-page-tab${activeTab === tab ? ' active' : ''}`}
-            onClick={() => setActiveTab(tab)}
-          >
-            {t(`dataModel.resourceTab_${tab}`)}
-          </button>
-        ))}
+            </div>
+          </div>
+        ) : (
+          /* Grantees are a property of this resource, so the panel stays on the resource's page
+             rather than being repeated per row on the list. */
+          <DataResourceGranteesPanel
+            resourceId={resource.id}
+            resourceName={resource.name}
+          />
+        )}
       </div>
-
-      {activeTab === 'definition' ? (
-        <div className="settings-page-form">
-          <section className="settings-page-section">
-            <div className="settings-page-field">
-              <label htmlFor="data-resource-name">{t('dataModel.resourceName')}</label>
-              <input
-                id="data-resource-name"
-                type="text"
-                className="ds-control"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-              />
-            </div>
-            <div className="settings-page-field">
-              <label>{t('dataModel.resourceRows')}</label>
-              <p className="settings-page-hint">{t('dataModel.resourceRowsHint')}</p>
-              <ResourceRowEditor rows={rows} onChange={setRows} />
-            </div>
-          </section>
-        </div>
-      ) : (
-        /* Access is a property of this resource, so it stays on the resource's page rather than
-           being repeated per row on the list. */
-        <DataResourceAccessPanel
-          resourceId={resource.id}
-          resourceName={resource.name}
-        />
-      )}
     </>
   );
 }
