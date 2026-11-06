@@ -434,7 +434,7 @@
     "resourceSaveFailed": "Could not save the data resource",
     "resourceAccessNeedsReader": "Keep at least one reader, or delete the resource instead.",
     "resourceTab_definition": "Definition",
-    "resourceTab_access": "Access",
+    "resourceTab_access": "Grantees",
     "resourceAccessSearch": "Find a user",
     "resourceAccessSearchPlaceholder": "Name or email…"
   },

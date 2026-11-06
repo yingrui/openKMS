@@ -170,9 +170,10 @@ and flags sharing problems across every securable type.
 
 **Page layout.** The resources list answers "what slices exist" — name and the condition in one
 line, plus delete. The resource page (`/data-model/{id}/resources/{resourceId}`) splits its two
-concerns into tabs: **Definition** (name, row conditions) and **Access** (who may read). They are
-edited at different times for different reasons, and the condition itself is already in the page
-header — repeating it above the grantee table was noise.
+concerns into tabs: **Definition** (name, row conditions) and **Grantees** (who may read). They
+are edited at different times for different reasons, and the condition itself is already in the
+page header — repeating it above the grantee table was noise. The tab strip is the shared
+settings-page one, so this page reads like the rest of the app.
 
 ### 4. Call it
 

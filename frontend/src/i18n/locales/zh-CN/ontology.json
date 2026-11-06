@@ -429,7 +429,7 @@
     "resourceSaveFailed": "无法保存数据资源",
     "resourceAccessNeedsReader": "至少保留一个可读取的对象，或直接删除该资源。",
     "resourceTab_definition": "定义",
-    "resourceTab_access": "访问权限",
+    "resourceTab_access": "授权对象",
     "resourceAccessSearch": "查找用户",
     "resourceAccessSearchPlaceholder": "姓名或邮箱…"
   },

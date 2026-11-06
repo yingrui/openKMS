@@ -12,7 +12,7 @@ import {
 import { DataResourceAccessPanel } from '../../components/DataResourceAccessPanel';
 import { useConfirm } from '../../contexts/ConfirmContext';
 import { FormField } from '../../styles/design-system';
-import { EntityViewHeader, EntityViewLoading, EntityViewPanel } from './EntityViewShell';
+import { EntityViewHeader, EntityViewLoading } from './EntityViewShell';
 import { ResourceRowEditor } from './ResourceRowEditor';
 import { describePolicy, toDrafts, toPolicy, type RowDraft } from './modelRowPolicy';
 
@@ -145,15 +145,16 @@ export function ModelDataResourceDetail() {
       />
 
       {/* Definition and readers are edited independently, by different acts of thought. Two
-          tabs give each the full pane instead of stacking a form above a table. */}
-      <div className="model-resource-tabs" role="tablist" aria-label={resource.name}>
+          tabs give each the full pane instead of stacking a form above a table. The classes are
+          the shared settings-page tab strip, so this page reads like the rest of the app. */}
+      <div className="settings-page-tabs" role="tablist" aria-label={resource.name}>
         {TABS.map((tab) => (
           <button
             key={tab}
             type="button"
             role="tab"
             aria-selected={activeTab === tab}
-            className={`model-resource-tab${activeTab === tab ? ' active' : ''}`}
+            className={`settings-page-tab${activeTab === tab ? ' active' : ''}`}
             onClick={() => setActiveTab(tab)}
           >
             {t(`dataModel.resourceTab_${tab}`)}
@@ -162,7 +163,7 @@ export function ModelDataResourceDetail() {
       </div>
 
       {activeTab === 'definition' ? (
-        <EntityViewPanel title={t('dataModel.resourceDefinition')}>
+        <div className="settings-page-form">
           <div className="entity-view__form">
             <FormField label={t('dataModel.resourceName')}>
               <input type="text" value={name} onChange={(e) => setName(e.target.value)} />
@@ -171,7 +172,7 @@ export function ModelDataResourceDetail() {
               <ResourceRowEditor rows={rows} onChange={setRows} />
             </FormField>
           </div>
-        </EntityViewPanel>
+        </div>
       ) : (
         /* Access is a property of this resource, so it stays on the resource's page rather than
            being repeated per row on the list. */

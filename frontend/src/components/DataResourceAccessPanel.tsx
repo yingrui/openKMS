@@ -154,7 +154,7 @@ export function DataResourceAccessPanel({ resourceId, resourceName }: Props) {
   };
 
   return (
-    <section className="data-resource-access">
+    <section className="data-resource-access settings-page-form">
       <p className="page-subtitle">{t('dataModel.resourceAccessHint')}</p>
 
       {loading ? (
