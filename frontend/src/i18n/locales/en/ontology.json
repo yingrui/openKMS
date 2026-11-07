@@ -312,7 +312,7 @@
     "joinOptional": "Left join",
     "noRelationships": "No relationship joins the datasets in this scope yet — add them in the Catalog.",
     "playgroundTitle": "Playground",
-    "playgroundHint": "Read-only queries against this model.",
+    "playgroundHint": "Ask this model a question with its metrics and fields. Save what you find to a story.",
     "playgroundModes": "Playground modes",
     "playgroundMode_builder": "Builder",
     "playgroundMode_advanced": "Advanced",

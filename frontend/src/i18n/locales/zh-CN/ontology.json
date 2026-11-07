@@ -308,7 +308,7 @@
     "joinOptional": "左连接",
     "noRelationships": "当前范围内还没有连接这些数据集的关系 —— 请到 Catalog 添加。",
     "playgroundTitle": "演练场",
-    "playgroundHint": "对该模型的只读查询。",
+    "playgroundHint": "用该模型的指标与字段提问；有价值的结论可存为 story。",
     "playgroundModes": "演练场模式",
     "playgroundMode_builder": "构建器",
     "playgroundMode_advanced": "高级",
