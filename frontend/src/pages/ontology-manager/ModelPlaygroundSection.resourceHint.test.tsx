@@ -82,13 +82,49 @@ describe('the selected resource hint', () => {
       </MemoryRouter>,
     );
 
-    const hint = await screen.findByText(/industry = 半导体/, undefined, { timeout: 3000 });
-    const text = hint.textContent ?? '';
-    // The condition itself, not just a count of them.
-    expect(text).toContain('industry = 半导体');
-    // And an explicit statement that the caller may keep narrowing.
-    expect(text.toLowerCase()).toMatch(/still add|own filters/);
+    // The condition is shown directly, as the chip's own text.
+    const chip = await screen.findByText('industry = 半导体', undefined, { timeout: 3000 });
+    expect(chip.tagName).toBe('CODE');
+    // The explanation (that the caller's filters still apply) moved into the chip's tooltip, so
+    // the row stays one line. It must still be reachable, not deleted.
+    const tooltip = chip.getAttribute('title') ?? '';
+    expect(tooltip).toContain('industry = 半导体');
+    expect(tooltip.toLowerCase()).toMatch(/filters|grouping/);
     // The old wording implied the resource capped the caller's query.
-    expect(text).not.toMatch(/limits rows with/i);
+    expect(chip.textContent ?? '').not.toMatch(/limits rows with/i);
+  });
+
+  it('puts the resource in its own panel, not among the query fields', async () => {
+    fetchMetrics.mockResolvedValue({ items: [], total: 0 });
+    fetchModelFields.mockResolvedValue({ items: [], total: 0 });
+    fetchDatasetJoins.mockResolvedValue({ items: [], total: 0 });
+    fetchDataResources.mockResolvedValue({
+      items: [
+        {
+          id: 'r1',
+          name: 'Stock of semi-conductor',
+          description: null,
+          semantic_model_id: 'm1',
+          row_policy: [{ column: 'industry', op: '=', value: '半导体' }],
+          created_by_name: null,
+          created_at: '2026-11-01T00:00:00Z',
+          updated_at: '2026-11-01T00:00:00Z',
+        },
+      ],
+      total: 1,
+    });
+
+    render(
+      <MemoryRouter initialEntries={['/x']}>
+        <ModelPlaygroundSection />
+      </MemoryRouter>,
+    );
+
+    const select = await screen.findByLabelText(/data resource/i, undefined, { timeout: 3000 });
+    // Its own card: a `section.account-card`, headed by a visible title.
+    const panel = select.closest('section.account-card');
+    expect(panel).not.toBeNull();
+    // And it is not inside the query editor panel (`FormField` wraps the metric, grouping, ...).
+    expect(select.closest('.entity-view__form')).toBeNull();
   });
 });

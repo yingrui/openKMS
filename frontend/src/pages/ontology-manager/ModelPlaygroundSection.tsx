@@ -84,14 +84,15 @@ export function ModelPlaygroundSection() {
     </div>
   );
 
-  // A restricted model is answered inside one granted resource; the choice is part of the query,
-  // not an afterthought, so it sits above the editor and blocks Run until it is made.
+  // A restricted model is answered inside one granted resource, so the choice is part of the
+  // query. The panel title says what this is; the row below shows the picker and, next to it, the
+  // condition that resource enforces — the only part worth reading twice.
   const resourceScope = restricted ? (
-    <div className="playground__resource">
-      <span className="playground__label">{t('dataModel.playgroundResource')}</span>
-      {resources.length > 0 ? (
+    resources.length > 0 ? (
+      <>
         <select
-          className="ds-control"
+          id="pg-resource"
+          className="ds-control playground__scope-select"
           value={activeResourceId}
           aria-label={t('dataModel.playgroundResource')}
           onChange={(e) => setResourceId(e.target.value)}
@@ -102,17 +103,20 @@ export function ModelPlaygroundSection() {
             </option>
           ))}
         </select>
-      ) : (
-        <p className="page-subtitle">{t('dataModel.playgroundNoResource')}</p>
-      )}
-      {activeResource?.row_policy.length ? (
-        <p className="page-subtitle">
-          {t('dataModel.playgroundResourceRows', {
-            conditions: describePolicy(activeResource.row_policy),
-          })}
-        </p>
-      ) : null}
-    </div>
+        {activeResource?.row_policy.length ? (
+          <code
+            className="playground__scope-condition"
+            title={t('dataModel.playgroundResourceRows', {
+              conditions: describePolicy(activeResource.row_policy),
+            })}
+          >
+            {describePolicy(activeResource.row_policy)}
+          </code>
+        ) : null}
+      </>
+    ) : (
+      <p className="page-subtitle">{t('dataModel.playgroundNoResource')}</p>
+    )
   ) : null;
 
   /**
@@ -209,7 +213,6 @@ export function ModelPlaygroundSection() {
         <div className="playground__query">
           <EntityViewPanel>
             {modeTabs}
-            {resourceScope}
 
             {mode === 'sql' ? (
               <div className="entity-view__form playground__form">
@@ -540,6 +543,17 @@ export function ModelPlaygroundSection() {
               </div>
             )}
           </EntityViewPanel>
+
+          {/* Data resource is a setting of the question, not a field of it: it decides which rows
+              exist before the metric, grouping and filters are read. Keeping it out of the query
+              panel is what separates "what am I asking" from "what am I allowed to ask about".
+              It stays expanded: the choice is one line, and a collapsed panel would hide both the
+              selected scope and the reason Run can be disabled. */}
+          {resourceScope ? (
+            <EntityViewPanel title={t('dataModel.playgroundResource')}>
+              <div className="playground__scope">{resourceScope}</div>
+            </EntityViewPanel>
+          ) : null}
 
           {mode === 'builder' && metric && (
             <EntityViewPanel title={t('dataModel.playgroundDefinition')} defaultCollapsed>
