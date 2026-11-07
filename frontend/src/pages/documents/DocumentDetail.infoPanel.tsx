@@ -246,7 +246,7 @@ export function DocumentDetailInfoPanel({
                       </button>
                       <button
                         type="button"
-                        className="document-detail-info-cancel-btn"
+                        className="btn btn-secondary btn-sm"
                         onClick={onCancelInfoEdit}
                         disabled={savingInfo}
                       >
@@ -431,7 +431,7 @@ export function DocumentDetailInfoPanel({
                     <div className="document-detail-version-panel-actions">
                       <button
                         type="button"
-                        className="document-detail-version-panel-btn document-detail-version-panel-btn--ghost"
+                        className="btn btn-secondary btn-sm"
                         onClick={onOpenVersionsModal}
                         title={t('detail.versionsBtnTitle')}
                       >
@@ -441,7 +441,7 @@ export function DocumentDetailInfoPanel({
                       {showSaveVersionButton && (
                         <button
                           type="button"
-                          className="btn btn-primary btn-sm document-detail-version-panel-btn--primary"
+                          className="btn btn-primary btn-sm"
                           onClick={onOpenSaveVersion}
                           title={t('detail.saveVersionBtnTitle')}
                         >
@@ -663,7 +663,7 @@ export function DocumentDetailInfoPanel({
                       </button>
                       <button
                         type="button"
-                        className="document-detail-metadata-cancel-btn"
+                        className="btn btn-secondary btn-sm"
                         onClick={onCancelMetadataEdit}
                         disabled={savingMetadata}
                       >
@@ -795,7 +795,7 @@ export function DocumentDetailInfoPanel({
                                 </button>
                                 <button
                                   type="button"
-                                  className="document-detail-metadata-cancel-btn"
+                                  className="btn btn-secondary btn-sm"
                                   onClick={() => onSetLifecycleEdit(false)}
                                   disabled={lifecycleSaving}
                                 >

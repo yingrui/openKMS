@@ -1,4 +1,0 @@
-src/pages/articles/ArticleDetail.tsx
-src/pages/console/AuditLogPage.tsx
-src/pages/documents/DocumentDetail.infoPanel.tsx
-src/pages/documents/DocumentDetail.modals.tsx

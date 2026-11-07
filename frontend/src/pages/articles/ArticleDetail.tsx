@@ -115,7 +115,7 @@ export function ArticleDetail() {
                             </button>
                             <button
                               type="button"
-                              className="document-detail-info-cancel-btn"
+                              className="btn btn-secondary btn-sm"
                               onClick={handleCancelTitleEdit}
                               disabled={savingTitle}
                             >
@@ -178,7 +178,7 @@ export function ArticleDetail() {
                                 </button>
                                 <button
                                   type="button"
-                                  className="document-detail-info-cancel-btn"
+                                  className="btn btn-secondary btn-sm"
                                   onClick={handleCancelSourceEdit}
                                   disabled={savingSource}
                                 >

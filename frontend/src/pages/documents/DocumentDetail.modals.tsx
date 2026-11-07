@@ -338,7 +338,7 @@ export function DocumentDetailVersionModals({
                 </button>
                 <button
                   type="button"
-                  className="document-detail-metadata-cancel-btn"
+                  className="btn btn-secondary btn-sm"
                   onClick={() => !restoreSubmitting && onCloseRestore()}
                   disabled={restoreSubmitting}
                 >

@@ -454,34 +454,6 @@
   align-items: center;
 }
 
-.document-detail-version-panel-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--gap-compact);
-  padding: var(--gap-compact) calc(var(--space-2) + var(--space-1) / 2);
-  font-size: var(--text-xs);
-  font-weight: 500;
-  line-height: 1.2;
-  border-radius: var(--radius-md);
-  cursor: pointer;
-  transition: color 0.15s, border-color 0.15s, background 0.15s;
-}
-
-.document-detail-version-panel-btn--ghost {
-  background: var(--color-bg-elevated);
-  border: 1px solid var(--color-border);
-  color: var(--color-text-secondary);
-}
-
-.document-detail-version-panel-btn--ghost:hover {
-  color: var(--color-text);
-  border-color: color-mix(in srgb, var(--color-accent) 35%, var(--color-border));
-}
-
-.document-detail-version-panel-btn--primary {
-  gap: var(--gap-compact);
-}
-
 /* Metadata subsection (inside combined info section) */
 .document-detail-labels-body {
   margin-top: 0;
@@ -679,23 +651,6 @@
   align-items: center;
 }
 
-.document-detail-info-cancel-btn {
-  padding: var(--gap-compact) calc(var(--space-3) + var(--space-1) / 2);
-  font-size: var(--text-md);
-  font-weight: 500;
-  background: transparent;
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
-  color: var(--color-text-secondary);
-  cursor: pointer;
-  transition: background 0.15s, border-color 0.15s;
-}
-
-.document-detail-info-cancel-btn:hover:not(:disabled) {
-  background: var(--color-bg-muted);
-  border-color: color-mix(in srgb, var(--color-accent) 30%, transparent);
-}
-
 .document-detail-metadata-edit {
   margin-bottom: var(--space-3);
 }
@@ -730,22 +685,8 @@
   margin-top: var(--space-3);
 }
 
-.document-detail-metadata-cancel-btn {
-  padding: var(--gap-compact) calc(var(--space-3) + var(--space-1) / 2);
-  font-size: var(--text-md);
-  font-weight: 500;
-  background: transparent;
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
-  color: var(--color-text-secondary);
-  cursor: pointer;
-  transition: background 0.15s, border-color 0.15s;
-}
 
-.document-detail-metadata-cancel-btn:hover:not(:disabled) {
-  background: var(--color-bg-muted);
-  border-color: color-mix(in srgb, var(--color-accent) 30%, transparent);
-}
+
 
 @include max-width(ds.$bp-md-min) {
   .document-detail {

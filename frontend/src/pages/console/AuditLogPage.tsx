@@ -240,7 +240,7 @@ export function AuditLogPage() {
               {t('auditLog.query')}
             </button>
             {filtered ? (
-              <button type="button" className="btn-link" onClick={reset}>
+              <button type="button" className="btn btn-secondary btn-sm" onClick={reset}>
                 {t('auditLog.reset')}
               </button>
             ) : null}
