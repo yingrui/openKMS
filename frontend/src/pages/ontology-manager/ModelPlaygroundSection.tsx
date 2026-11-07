@@ -238,7 +238,6 @@ export function ModelPlaygroundSection() {
 
             {mode === 'sql' ? (
               <div className="entity-view__form playground__form">
-                <p className="page-subtitle">{t('dataModel.playgroundSqlHelp')}</p>
                 {modelDatasets.length > 0 ? (
                   <div className="playground__sql-tables">
                     <span className="playground__label">{t('dataModel.playgroundSqlTables')}</span>
