@@ -4,6 +4,7 @@ import type { SemanticModelQueryResponse } from '../../data/semanticModelsApi';
 import { EntityViewPanel } from './EntityViewShell';
 import { QueryFailureNotice, asQueryFailureKind } from '../../styles/design-system';
 import { SaveFindingDialog } from './SaveFindingDialog';
+import { formatSql, shouldFormat } from './formatSql';
 import type { FindingDraftInput } from './findingDraft';
 
 /** A failed run, as the query API classified it: who can fix it, what it said, and the source's words. */
@@ -122,7 +123,11 @@ export function ModelPlaygroundAnswer({
               </button>
               {saveDraft && <SaveFindingDialog draft={saveDraft} />}
             </div>
-            {showSql && <pre className="playground__sql">{result.sql}</pre>}
+            {showSql && (
+              <pre className="playground__sql">
+                {shouldFormat(result.sql) ? formatSql(result.sql) : result.sql}
+              </pre>
+            )}
           </>
         )}
     </EntityViewPanel>
