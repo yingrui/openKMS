@@ -109,10 +109,13 @@ export function ModelPlaygroundAnswer({
                 </table>
               </div>
             )}
-            <div className="openkms-flex-row-gap">
+            {/* Both actions are the same size: a `btn-sm` toggle beside a full-size dialog button
+                centres on different heights, which reads as two misaligned rows rather than one
+                toolbar. `SaveFindingDialog` renders `btn-sm`, so the toggle matches it. */}
+            <div className="playground__result-actions">
               <button
                 type="button"
-                className="btn btn-secondary btn-sm playground__sql-toggle"
+                className="btn btn-secondary btn-sm"
                 onClick={() => setShowSql((v) => !v)}
               >
                 {t('dataModel.playgroundSql')}

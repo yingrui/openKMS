@@ -263,6 +263,15 @@ if ! python3 scripts/check-page-chrome.py; then
   status=1
 fi
 
+# --- 22. Button rows ------------------------------------------------------------------------
+# A group of buttons sharing a parent must be a flex row, and must use one size. `btn` and
+# `btn-sm` differ in padding *and* line height, so `align-items: center` centres their boxes but
+# leaves their edges at different heights — two rows that were meant to be one. Both render and
+# lint cleanly; only a screenshot shows it. Baseline: scripts/button-row-baseline.txt.
+if ! node scripts/check-button-rows.cjs; then
+  status=1
+fi
+
 if [ "$status" -eq 0 ]; then
   echo "check-shared-styles: OK"
 fi

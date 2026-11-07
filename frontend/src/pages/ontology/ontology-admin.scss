@@ -1898,7 +1898,13 @@
   display: block;
 }
 
-.playground__sql-toggle {
+/* The answer's actions: the SQL toggle and Save to a story sit on one line, at one height.
+   Both carry `btn-sm`; a size mismatch centre-aligns their boxes but leaves the top edges at
+   different heights, which reads as two rows. */
+.playground__result-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
   margin-top: var(--space-3);
 }
 

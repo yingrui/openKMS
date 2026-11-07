@@ -109,6 +109,14 @@ flex `gap`. Wrap both in one `<div className="settings-page">`. Pages living in
 `.ontology-admin-content` (e.g. `ConnectorDetailPage`) have no such gap and may keep them as siblings.
 `scripts/check-page-chrome.py` flags the entity-view case.
 
+**Buttons on one row share one size.** `.btn` and `.btn-sm` differ in padding (10px vs 6px) *and*
+line height (`--text-md--line` vs `--text-sm--line`). Under `align-items: center` their boxes centre
+on each other, so the edges land at different heights — it reads as two rows. Pick one size for the
+group; do not nudge one of them with a margin. A group of controls also needs a row container
+(`display: flex; align-items: center`, e.g. the `.openkms-flex-row-gap` utility or a local
+`*-actions` class); siblings in a plain block stack vertically.
+`scripts/check-button-rows.cjs` checks the JSX tree for both.
+
 **A local margin on `.page-subtitle` must be scoped.** The global rule is `margin: 0`
 (`app-page.scss`). A colocated `.foo { margin-bottom: … }` ties on specificity, so it only applies if
 its sheet loads last. Scope it (`settings-page-form .foo`) instead of relying on import order.
