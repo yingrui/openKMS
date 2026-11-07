@@ -1677,38 +1677,78 @@
   min-height: 14rem;
 }
 
-/* Data resource panel: the picker and the condition it enforces on one line.
-   It lives in its own collapsed panel (like Definition), so the query editor below holds only
-   what the caller controls — metric, grouping, filters — and the scope reads as a setting of the
-   question rather than one of its fields. */
+/* Data resource panel: every granted slice, each with the condition it enforces.
+   An analyst normally holds several grants on one model, and choosing between them means
+   comparing scopes — a `<select>` showed one at a time and hid the rest. Rows stay one line each:
+   name, then its condition, so two slices of the same model are told apart at a glance. */
 .playground__scope {
   display: flex;
-  flex-wrap: wrap;
+  flex-direction: column;
+  gap: var(--space-1);
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: none;
+}
+
+.playground__scope-legend {
+  padding: 0;
+  margin-bottom: var(--space-2);
+  font-size: var(--text-sm);
+  font-weight: 600;
+  color: var(--color-text-secondary);
+}
+
+/* One grant: there is nothing to choose, so it is a statement, not a control. */
+.playground__scope-single {
+  margin: 0;
+  font-size: var(--text-sm);
+  color: var(--color-text-secondary);
+}
+
+.playground__scope-option {
+  display: flex;
   align-items: center;
   gap: var(--space-2);
   min-width: 0;
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+
+  &:hover {
+    background: var(--color-bg-muted);
+  }
+
+  &.is-active {
+    border-color: var(--color-accent);
+    background: color-mix(in srgb, var(--color-accent) 8%, transparent);
+  }
 }
 
-.playground__scope-select {
+.playground__scope-name {
   flex: 0 1 auto;
   min-width: 0;
-  max-width: 18rem;
+  overflow: hidden;
+  font-weight: 500;
+  color: var(--color-text);
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .playground__scope-condition {
   flex: 0 1 auto;
   min-width: 0;
+  margin-left: auto;
   overflow: hidden;
-  padding: var(--space-1) var(--space-2);
+  padding: 0 var(--space-2);
   font-family: var(--font-mono, ui-monospace, SFMono-Regular, Menlo, monospace);
   font-size: var(--text-sm);
-  color: var(--color-text-secondary);
+  color: var(--color-text-muted);
   background: var(--color-bg-muted);
-  border: 1px solid var(--color-border);
   border-radius: var(--radius-sm);
   text-overflow: ellipsis;
   white-space: nowrap;
-  cursor: help;
 }
 
 .playground__sql-tables {

@@ -82,19 +82,18 @@ describe('the selected resource hint', () => {
       </MemoryRouter>,
     );
 
-    // The condition is shown directly, as the chip's own text.
-    const chip = await screen.findByText('industry = 半导体', undefined, { timeout: 3000 });
-    expect(chip.tagName).toBe('CODE');
-    // The explanation (that the caller's filters still apply) moved into the chip's tooltip, so
-    // the row stays one line. It must still be reachable, not deleted.
-    const tooltip = chip.getAttribute('title') ?? '';
-    expect(tooltip).toContain('industry = 半导体');
-    expect(tooltip.toLowerCase()).toMatch(/filters|grouping/);
-    // The old wording implied the resource capped the caller's query.
-    expect(chip.textContent ?? '').not.toMatch(/limits rows with/i);
+    // With one grant there is nothing to choose, so the panel states the scope it applies.
+    const scope = await screen.findByText(
+      'Stock of semi-conductor · industry = 半导体',
+      undefined,
+      { timeout: 3000 },
+    );
+    // It is its own card, not one of the query editor's fields.
+    expect(scope.closest('section.account-card')).not.toBeNull();
+    expect(scope.closest('.entity-view__form')).toBeNull();
   });
 
-  it('puts the resource in its own panel, not among the query fields', async () => {
+  it('explains, on the condition itself, that the caller may still narrow', async () => {
     fetchMetrics.mockResolvedValue({ items: [], total: 0 });
     fetchModelFields.mockResolvedValue({ items: [], total: 0 });
     fetchDatasetJoins.mockResolvedValue({ items: [], total: 0 });
@@ -120,11 +119,10 @@ describe('the selected resource hint', () => {
       </MemoryRouter>,
     );
 
-    const select = await screen.findByLabelText(/data resource/i, undefined, { timeout: 3000 });
-    // Its own card: a `section.account-card`, headed by a visible title.
-    const panel = select.closest('section.account-card');
-    expect(panel).not.toBeNull();
-    // And it is not inside the query editor panel (`FormField` wraps the metric, grouping, ...).
-    expect(select.closest('.entity-view__form')).toBeNull();
+    // The condition is part of the statement, so it is readable without hovering.
+    const scope = await screen.findByText(/industry = 半导体/, undefined, { timeout: 3000 });
+    expect(scope.textContent).toContain('industry = 半导体');
+    // The old wording implied the resource capped the caller's query.
+    expect(scope.textContent ?? '').not.toMatch(/limits rows with/i);
   });
 });

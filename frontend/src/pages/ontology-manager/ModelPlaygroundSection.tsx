@@ -85,35 +85,47 @@ export function ModelPlaygroundSection() {
   );
 
   // A restricted model is answered inside one granted resource, so the choice is part of the
-  // query. The panel title says what this is; the row below shows the picker and, next to it, the
-  // condition that resource enforces — the only part worth reading twice.
+  // query. An analyst normally holds several slices of the same model, and the point of choosing
+  // is comparing their scopes — so every granted resource is listed with its own condition
+  // rather than hidden behind a dropdown that shows one at a time.
+  const single = resources.length === 1;
+  const activeResourceLabel = activeResource
+    ? `${activeResource.name} · ${describePolicy(activeResource.row_policy) || t('dataModel.resourceRowsNone')}`
+    : t('dataModel.playgroundNoResource');
+
   const resourceScope = restricted ? (
     resources.length > 0 ? (
-      <>
-        <select
-          id="pg-resource"
-          className="ds-control playground__scope-select"
-          value={activeResourceId}
-          aria-label={t('dataModel.playgroundResource')}
-          onChange={(e) => setResourceId(e.target.value)}
-        >
-          {resources.map((r) => (
-            <option key={r.id} value={r.id}>
-              {r.name}
-            </option>
-          ))}
-        </select>
-        {activeResource?.row_policy.length ? (
-          <code
-            className="playground__scope-condition"
-            title={t('dataModel.playgroundResourceRows', {
-              conditions: describePolicy(activeResource.row_policy),
-            })}
-          >
-            {describePolicy(activeResource.row_policy)}
-          </code>
-        ) : null}
-      </>
+      single ? (
+        // One grant: nothing to choose, so show what it is and stop there.
+        <p className="playground__scope-single">{activeResourceLabel}</p>
+      ) : (
+        <fieldset className="playground__scope">
+          <legend className="playground__scope-legend">
+            {t('dataModel.playgroundResourcePick')}
+          </legend>
+          {resources.map((r) => {
+            const checked = r.id === activeResourceId;
+            return (
+              <label
+                key={r.id}
+                className={`playground__scope-option${checked ? ' is-active' : ''}`}
+              >
+                <input
+                  type="radio"
+                  name="pg-resource"
+                  value={r.id}
+                  checked={checked}
+                  onChange={() => setResourceId(r.id)}
+                />
+                <span className="playground__scope-name">{r.name}</span>
+                <code className="playground__scope-condition">
+                  {describePolicy(r.row_policy) || t('dataModel.resourceRowsNone')}
+                </code>
+              </label>
+            );
+          })}
+        </fieldset>
+      )
     ) : (
       <p className="page-subtitle">{t('dataModel.playgroundNoResource')}</p>
     )
@@ -550,8 +562,11 @@ export function ModelPlaygroundSection() {
               It stays expanded: the choice is one line, and a collapsed panel would hide both the
               selected scope and the reason Run can be disabled. */}
           {resourceScope ? (
-            <EntityViewPanel title={t('dataModel.playgroundResource')}>
-              <div className="playground__scope">{resourceScope}</div>
+            <EntityViewPanel
+              title={t('dataModel.playgroundResource')}
+              description={activeResourceLabel}
+            >
+              {resourceScope}
             </EntityViewPanel>
           ) : null}
 

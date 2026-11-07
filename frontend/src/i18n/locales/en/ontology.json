@@ -390,6 +390,7 @@
     "metricsEmptyHint": "A metric is defined next to the model that owns it.",
     "playgroundResource": "Data resource",
     "playgroundResourceRows": "Every query on this resource is filtered to {{conditions}}. Your own filters and grouping still apply on top.",
+    "playgroundResourcePick": "Read from",
     "playgroundNoResource": "No data resource is granted to you for this model. Ask an owner for access.",
     "resources": "Data resources",
     "resourcesHint": "A data resource is the access capability you grant: a named slice of this model. Row conditions name entities, not tables — a condition on `industry` restricts every query from this model, whichever table its metric reads.",
