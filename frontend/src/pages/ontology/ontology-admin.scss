@@ -1699,13 +1699,6 @@
   color: var(--color-text-secondary);
 }
 
-/* One grant: there is nothing to choose, so it is a statement, not a control. */
-.playground__scope-single {
-  margin: 0;
-  font-size: var(--text-sm);
-  color: var(--color-text-secondary);
-}
-
 .playground__scope-option {
   display: flex;
   align-items: center;

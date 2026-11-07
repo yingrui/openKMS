@@ -37,9 +37,12 @@ vi.mock('../../data/semanticModelFieldsApi', async () => {
 vi.mock('../../data/joinsApi', () => ({
   fetchDatasetJoins: (...a: unknown[]) => fetchDatasetJoins(...a),
 }));
-vi.mock('../../data/dataResourcesApi', () => ({
-  fetchDataResources: (...a: unknown[]) => fetchDataResources(...a),
-}));
+vi.mock('../../data/dataResourcesApi', async () => {
+  const actual = await vi.importActual<typeof import('../../data/dataResourcesApi')>(
+    '../../data/dataResourcesApi',
+  );
+  return { ...actual, fetchDataResources: (...a: unknown[]) => fetchDataResources(...a) };
+});
 vi.mock('./useSemanticModelDetail', () => ({
   useSemanticModelDetail: () => ({
     model: {
@@ -82,12 +85,16 @@ describe('the selected resource hint', () => {
       </MemoryRouter>,
     );
 
-    // With one grant there is nothing to choose, so the panel states the scope it applies.
-    const scope = await screen.findByText(
-      'Stock of semi-conductor · industry = 半导体',
+    // With one grant there is nothing to choose, so the panel states the scope it applies —
+    // once, in its description. Two copies of the same line under one heading is not emphasis.
+    const matches = await screen.findAllByText(
+      /Stock of semi-conductor · industry = 半导体/,
       undefined,
       { timeout: 3000 },
     );
+    expect(matches).toHaveLength(1);
+
+    const scope = matches[0];
     // It is its own card, not one of the query editor's fields.
     expect(scope.closest('section.account-card')).not.toBeNull();
     expect(scope.closest('.entity-view__form')).toBeNull();

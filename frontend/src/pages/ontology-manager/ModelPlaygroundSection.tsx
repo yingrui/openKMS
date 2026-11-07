@@ -89,45 +89,38 @@ export function ModelPlaygroundSection() {
   // is comparing their scopes — so every granted resource is listed with its own condition
   // rather than hidden behind a dropdown that shows one at a time.
   const single = resources.length === 1;
-  const activeResourceLabel = activeResource
-    ? `${activeResource.name} · ${describePolicy(activeResource.row_policy) || t('dataModel.resourceRowsNone')}`
-    : t('dataModel.playgroundNoResource');
-
+  // The panel description already names the active scope, so a single grant needs no body at all:
+  // printing the same line twice under one title is noise, not emphasis.
   const resourceScope = restricted ? (
-    resources.length > 0 ? (
-      single ? (
-        // One grant: nothing to choose, so show what it is and stop there.
-        <p className="playground__scope-single">{activeResourceLabel}</p>
-      ) : (
-        <fieldset className="playground__scope">
-          <legend className="playground__scope-legend">
-            {t('dataModel.playgroundResourcePick')}
-          </legend>
-          {resources.map((r) => {
-            const checked = r.id === activeResourceId;
-            return (
-              <label
-                key={r.id}
-                className={`playground__scope-option${checked ? ' is-active' : ''}`}
-              >
-                <input
-                  type="radio"
-                  name="pg-resource"
-                  value={r.id}
-                  checked={checked}
-                  onChange={() => setResourceId(r.id)}
-                />
-                <span className="playground__scope-name">{r.name}</span>
-                <code className="playground__scope-condition">
-                  {describePolicy(r.row_policy) || t('dataModel.resourceRowsNone')}
-                </code>
-              </label>
-            );
-          })}
-        </fieldset>
-      )
-    ) : (
+    resources.length === 0 ? (
       <p className="page-subtitle">{t('dataModel.playgroundNoResource')}</p>
+    ) : single ? null : (
+      <fieldset className="playground__scope">
+        <legend className="playground__scope-legend">
+          {t('dataModel.playgroundResourcePick')}
+        </legend>
+        {resources.map((r) => {
+          const checked = r.id === activeResourceId;
+          return (
+            <label
+              key={r.id}
+              className={`playground__scope-option${checked ? ' is-active' : ''}`}
+            >
+              <input
+                type="radio"
+                name="pg-resource"
+                value={r.id}
+                checked={checked}
+                onChange={() => setResourceId(r.id)}
+              />
+              <span className="playground__scope-name">{r.name}</span>
+              <code className="playground__scope-condition">
+                {describePolicy(r.row_policy) || t('dataModel.resourceRowsNone')}
+              </code>
+            </label>
+          );
+        })}
+      </fieldset>
     )
   ) : null;
 
@@ -146,6 +139,23 @@ export function ModelPlaygroundSection() {
       group,
     };
   };
+
+  // One definition of the panel, so every early return renders the resource the same way. It is a
+  // setting of the question, not a field of it — it belongs beside the editor, never inside it.
+  const resourcePanel = restricted ? (
+    <EntityViewPanel
+      title={t('dataModel.playgroundResource')}
+      description={
+        activeResource
+          ? `${activeResource.name} · ${
+              describePolicy(activeResource.row_policy) || t('dataModel.resourceRowsNone')
+            }`
+          : undefined
+      }
+    >
+      {resourceScope}
+    </EntityViewPanel>
+  ) : null;
 
   if (loading) {
     return (
@@ -175,9 +185,9 @@ export function ModelPlaygroundSection() {
         <EntityViewHeader title={t('dataModel.playgroundTitle')} subtitle={t('dataModel.playgroundHint')} />
         <EntityViewPanel>
           {modeTabs}
-          {resourceScope}
           <p className="entity-view__readonly">{t('dataModel.playgroundNoMetrics')}</p>
         </EntityViewPanel>
+        {resourcePanel}
       </>
     );
   }
@@ -559,16 +569,9 @@ export function ModelPlaygroundSection() {
           {/* Data resource is a setting of the question, not a field of it: it decides which rows
               exist before the metric, grouping and filters are read. Keeping it out of the query
               panel is what separates "what am I asking" from "what am I allowed to ask about".
-              It stays expanded: the choice is one line, and a collapsed panel would hide both the
-              selected scope and the reason Run can be disabled. */}
-          {resourceScope ? (
-            <EntityViewPanel
-              title={t('dataModel.playgroundResource')}
-              description={activeResourceLabel}
-            >
-              {resourceScope}
-            </EntityViewPanel>
-          ) : null}
+              The title carries the active scope, so one grant needs no body — two copies of the
+              same line under one heading is noise. Several grants get the list to choose from. */}
+          {resourcePanel}
 
           {mode === 'builder' && metric && (
             <EntityViewPanel title={t('dataModel.playgroundDefinition')} defaultCollapsed>
