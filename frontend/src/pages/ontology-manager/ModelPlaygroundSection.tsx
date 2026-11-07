@@ -4,6 +4,7 @@ import { isTimeDimension } from '../../data/semanticModelFieldsApi';
 import { EntityViewHeader, EntityViewPanel } from './EntityViewShell';
 import { ModelPlaygroundAnswer } from './ModelPlaygroundAnswer';
 import { modelFindingDraft } from './findingDraft';
+import { describePolicy } from './modelRowPolicy';
 import { emptySpec } from './modelPlaygroundSpec';
 import { ChipPicker } from '../../components/ontology/ChipPicker';
 import { FilterRows } from '../../components/ontology/FilterRows';
@@ -107,12 +108,28 @@ export function ModelPlaygroundSection() {
       {activeResource?.row_policy.length ? (
         <p className="page-subtitle">
           {t('dataModel.playgroundResourceRows', {
-            count: activeResource.row_policy.length,
+            conditions: describePolicy(activeResource.row_policy),
           })}
         </p>
       ) : null}
     </div>
   ) : null;
+
+  /**
+   * A picker option for one field. A column name is not unique across a model — `ts_code` lives on
+   * both the fact and the dimension — so when the same name appears twice the option has to say
+   * which table it came from. Two identical rows are indistinguishable, and picking "the other
+   * one" silently changes what the query groups by.
+   */
+  const toOption = (f: (typeof fields)[number], group: string) => {
+    const duplicate = fields.some((o) => o.id !== f.id && o.name === f.name);
+    return {
+      id: f.id,
+      label: duplicate ? `${f.name} · ${datasetLabel(f.dataset_id)}` : f.name,
+      hint: f.datatype ?? '',
+      group,
+    };
+  };
 
   if (loading) {
     return (
@@ -382,18 +399,15 @@ export function ModelPlaygroundSection() {
                   <ChipPicker
                     idPrefix="playground-field"
                     options={[
-                      ...timeDims.map((f) => ({
-                        id: f.id,
-                        label: f.name,
-                        hint: f.datatype ?? '',
-                        group: t('dataModel.playgroundTimeDimensions'),
-                      })),
-                      ...otherFields.map((f) => ({
-                        id: f.id,
-                        label: f.name,
-                        hint: f.datatype ?? '',
-                        group: t('dataModel.playgroundOtherFields', { count: otherFields.length }),
-                      })),
+                      ...timeDims.map((f) =>
+                        toOption(f, t('dataModel.playgroundTimeDimensions')),
+                      ),
+                      ...otherFields.map((f) =>
+                        toOption(
+                          f,
+                          t('dataModel.playgroundOtherFields', { count: otherFields.length }),
+                        ),
+                      ),
                     ]}
                     groups={[
                       t('dataModel.playgroundTimeDimensions'),

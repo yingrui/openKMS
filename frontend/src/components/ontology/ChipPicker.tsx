@@ -192,7 +192,14 @@ function renderOption(
       id={`${idPrefix}-${option.id}`}
       role="option"
       aria-selected={picked}
+      // Focusable so that pressing an option moves focus *into* the picker instead of to
+      // `<body>`. Without it the blur handler sees focus leave, closes the menu, and the click
+      // lands on an element that no longer exists — the "clicking does nothing" bug.
+      tabIndex={-1}
       className={`chip-picker__option${active?.id === option.id ? ' chip-picker__option--active' : ''}`}
+      // Keep focus on the input while the option is being pressed. Focus moving away would
+      // unmount the menu on blur before `click` fires, so the selection silently never happens.
+      onMouseDown={(event) => event.preventDefault()}
       onClick={() => onSelect(option)}
     >
       <span className="chip-picker__option-label">{option.label}</span>
