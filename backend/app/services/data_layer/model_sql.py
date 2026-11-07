@@ -179,12 +179,29 @@ def _relation_span_matches(sql: str) -> list[tuple[int, int, str, str | None]]:
     return out
 
 
-def _has_alias(sql: str, end: int) -> bool:
-    alias = _ALIAS_AFTER.match(sql, end)
-    if not alias:
-        return False
-    token = _unquote(alias.group(1)).lower()
-    return token not in _NOT_ALIAS
+def _alias_after(sql: str, end: int) -> tuple[str, int] | None:
+    """Return ``(alias, alias_end)`` for a relation alias at ``end``, or None."""
+    match = _ALIAS_AFTER.match(sql, end)
+    if not match:
+        return None
+    token = _unquote(match.group(1)).lower()
+    if token in _NOT_ALIAS:
+        return None
+    return _unquote(match.group(1)), match.end()
+
+
+def _base_table_alias(
+    sql: str, base_schema: str | None, base_table: str | None
+) -> str | None:
+    """The alias already naming the base relation in ``sql``, or None when unaliased."""
+    for _start, end, schema, table in _relation_span_matches(sql):
+        if table.lower() == (base_table or "").lower() and (
+            not schema or schema.lower() == (base_schema or "").lower()
+        ):
+            alias = _alias_after(sql, end)
+            if alias is not None:
+                return alias[0]
+    return None
 
 
 def constrain_base_policy(
@@ -211,9 +228,15 @@ def constrain_base_policy(
     inner table stay unaliased left the predicate referring to a name that only existed outside
     it, which PostgreSQL rejected with `missing FROM-clause entry`.
 
+    When the statement already names the base relation (Builder emits `FROM "s"."t" base`), the
+    policy is compiled against **that** alias instead of ``rpbase`` and the relation is wrapped
+    as ``(SELECT * FROM "s"."t" AS "base" WHERE <policy>) AS "base"``, so the caller's own
+    qualified columns keep resolving.
+
     Two shapes are refused rather than run unfiltered: a statement addressing the base table
-    through a schema-qualified column path (`"s"."t"."c"`), and a base reference that already
-    carries a caller alias (renaming it would break that caller's own qualified columns).
+    through a schema-qualified column path (`"s"."t"."c"`), and a base reference whose existing
+    alias differs from the one the policy was compiled against (renaming it would break that
+    caller's own qualified columns).
     """
     if not conditions:
         return sql
@@ -246,21 +269,25 @@ def constrain_base_policy(
     where = " AND ".join(conditions)
     out = sql
     for start, end in sorted(spans, reverse=True):
-        if _has_alias(out, end):
-            # The statement already names this relation. Rewriting the alias would silently
-            # break its qualified columns, so ask the author to do the rename they can reason
-            # about: alias the table, then this rewrite applies the policy to that alias.
-            raise QueryError(
-                "SQL Lab could not apply a row restriction to this table: alias it as "
-                f"\"{base_alias}\" (e.g. FROM {base_schema}.{base_table} {base_alias}) "
-                "and reference its columns through that alias.",
-                QueryFailure("QUERY_INVALID_REQUEST", REQUEST),
-            )
+        alias = _alias_after(out, end)
+        span_end = end
+        if alias is not None:
+            # The statement already names this relation. If it used a different name than the
+            # one the policy was compiled against, renaming it would silently break the
+            # caller's own qualified columns, so that shape stays refused rather than leaked.
+            name, span_end = alias
+            if name.lower() != base_alias.lower():
+                raise QueryError(
+                    "SQL Lab could not apply a row restriction to this table: alias it as "
+                    f"\"{base_alias}\" (e.g. FROM {base_schema}.{base_table} {base_alias}) "
+                    "and reference its columns through that alias.",
+                    QueryFailure("QUERY_INVALID_REQUEST", REQUEST),
+                )
         filtered = (
             f'(SELECT * FROM {_quote(base_schema)}.{_quote(base_table)} AS "{base_alias}" '
             f"WHERE {where}) AS \"{base_alias}\""
         )
-        out = out[:start] + filtered + out[end:]
+        out = out[:start] + filtered + out[span_end:]
     return out
 
 
@@ -355,11 +382,17 @@ async def run_model_sql(
     params: dict[str, Any] = {}
     constrained = body
     if entity_scope is not None and entity_scope.policy:
+        # Compile the policy against the alias the statement already names the base table
+        # (Builder emits `FROM "s"."t" base`), falling back to the canonical one otherwise.
+        effective_alias = (
+            _base_table_alias(body, base_dataset.schema_name, base_dataset.table_name)
+            or base_alias
+        )
         try:
             policy_where, params = compile_entity_scope(
                 entity_scope,
                 base_dataset_id=base_dataset.id,
-                base_alias=base_alias,
+                base_alias=effective_alias,
                 key_prefix="rp",
             )
         except EntityScopeError as exc:
@@ -369,7 +402,7 @@ async def run_model_sql(
             base_schema=base_dataset.schema_name,
             base_table=base_dataset.table_name,
             conditions=policy_where,
-            base_alias=base_alias,
+            base_alias=effective_alias,
         )
 
     capped_sql = wrap_with_limit(constrained, lim)

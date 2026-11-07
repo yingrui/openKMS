@@ -45,7 +45,22 @@ def test_a_plain_from_becomes_a_filtered_subquery_with_the_fixed_alias():
     assert out.count('"public"."orders"') == 1
 
 
-def test_an_existing_alias_is_refused_with_the_alias_to_use():
+def test_an_existing_alias_matching_the_compiled_one_is_rewritten():
+    """The policy is compiled against the alias Builder already emits, so it is preserved."""
+    out = constrain_base_policy(
+        'SELECT base.amount FROM "public"."orders" base',
+        base_schema="public",
+        base_table="orders",
+        conditions=['base."region" = :rp0'],
+        base_alias="base",
+    )
+    assert out.startswith('SELECT base.amount FROM (SELECT * FROM "public"."orders" AS "base"')
+    assert 'WHERE base."region" = :rp0) AS "base"' in out
+    # The surviving table name sits inside the filtered subquery, never as a bare scan.
+    assert out.count('"public"."orders"') == 1
+
+
+def test_an_existing_alias_with_a_different_name_is_refused():
     """Renaming it silently would break the caller's own qualified columns."""
     with pytest.raises(QueryError, match=ALIAS):
         _constrain('SELECT o.amount FROM "public"."orders" o')
