@@ -91,28 +91,6 @@ async def check_data_resource_access(
     return perm_satisfies(bits, required)
 
 
-async def has_model_grant(
-    db: AsyncSession, *, payload: dict, sub: str | None, model_id: str
-) -> bool:
-    """Whether the caller holds **any** read grant on a data resource of this model.
-
-    This is the metadata gate, not the row gate: seeing a model's fields and metrics is part
-    of deciding to query it, and does not expose rows. Row access still needs an explicit
-    `resource_id` (see `resolve_catalog_scope`).
-    """
-    if not sub:
-        return False
-    rows = (
-        await db.execute(
-            select(DataResource.id).where(DataResource.semantic_model_id == model_id)
-        )
-    ).scalars().all()
-    for resource_id in rows:
-        if await check_data_resource_access(db, payload, sub, resource_id, PERM_READ):
-            return True
-    return False
-
-
 async def load_restricted_model(db: AsyncSession, model_id: str) -> SemanticModel:
     model = await db.get(SemanticModel, model_id)
     if not model:

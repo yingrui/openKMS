@@ -16,7 +16,7 @@ from fastapi import HTTPException
 from app.models.data_resource import DataResource
 from app.models.semantic_model import SemanticModel
 from app.services.acl.resource_acl_constants import PERM_READ, RT_DATA_RESOURCE
-from app.services.data_layer.catalog_access import has_model_grant, resolve_catalog_scope
+from app.services.data_layer.catalog_access import resolve_catalog_scope
 
 
 class _FakeDB:
@@ -103,19 +103,11 @@ def test_a_public_model_does_not_consult_the_grant(monkeypatch):
     assert scope.resource is None
 
 
-def test_has_model_grant_is_false_without_a_grant(no_grant):
-    db = _FakeDB([_model("restricted")], [_resource()])
-    assert not _run(has_model_grant(db, payload={"sub": "u1"}, sub="u1", model_id="m1"))
+def test_has_a_model_grant_helper_is_gone():
+    """The metadata gate must not consult data resources; the helper that did is removed."""
+    from app.services.data_layer import catalog_access
 
-
-def test_has_model_grant_is_true_with_a_grant(grant):
-    db = _FakeDB([_model("restricted")], [_resource()])
-    assert _run(has_model_grant(db, payload={"sub": "u1"}, sub="u1", model_id="m1"))
-
-
-def test_an_anonymous_caller_never_has_a_model_grant(grant):
-    db = _FakeDB([_model("restricted")], [_resource()])
-    assert not _run(has_model_grant(db, payload={}, sub=None, model_id="m1"))
+    assert not hasattr(catalog_access, "has_model_grant")
 
 
 def test_restricted_query_without_a_resource_id_is_still_a_bad_request(no_grant):
@@ -202,26 +194,29 @@ class _ModelRowsDB:
         return _Result()
 
 
-def test_readable_model_ids_includes_every_public_model(no_grant):
-    """A public model is readable without any grant — including by a caller with no keys."""
-    from app.api.catalog_scoped import readable_model_ids
+def test_readable_model_ids_includes_every_model_sharing_allows(no_grant):
+    """Opening a model is decided by model sharing alone — the row scope does not hide it.
 
-    db = _ModelRowsDB([("m1", "public"), ("m2", "restricted")])
-    assert _run(readable_model_ids(db, payload={}, sub=None)) == {"m1"}
-
-
-def test_readable_model_ids_adds_restricted_models_only_with_a_grant(grant):
+    A restricted model still appears: the caller may read its metrics and relationships, and is
+    told which data resources exist. What they cannot do without a grant is read rows, which the
+    data plane enforces per call.
+    """
     from app.api.catalog_scoped import readable_model_ids
 
     db = _ModelRowsDB([("m1", "public"), ("m2", "restricted")], resource_ids=["r2"])
     assert _run(readable_model_ids(db, payload={"sub": "u1"}, sub="u1")) == {"m1", "m2"}
 
 
-def test_readable_model_ids_excludes_restricted_models_without_a_grant(no_grant):
+def test_readable_model_ids_still_hides_models_sharing_denies(monkeypatch):
     from app.api.catalog_scoped import readable_model_ids
 
-    db = _ModelRowsDB([("m1", "public"), ("m2", "restricted")], resource_ids=["r2"])
-    assert _run(readable_model_ids(db, payload={"sub": "u1"}, sub="u1")) == {"m1"}
+    async def denied(*_args, **_kwargs):
+        return False
+
+    monkeypatch.setattr("app.api.catalog_scoped.check_resource_access", denied)
+
+    db = _ModelRowsDB([("m1", "public"), ("m2", "restricted")])
+    assert _run(readable_model_ids(db, payload={"sub": "u1"}, sub="u1")) == set()
 
 
 def test_readable_model_ids_tolerates_a_null_access_mode():
@@ -230,6 +225,30 @@ def test_readable_model_ids_tolerates_a_null_access_mode():
 
     db = _ModelRowsDB([("m1", None)])
     assert _run(readable_model_ids(db, payload={}, sub=None)) == {"m1"}
+
+
+def test_a_restricted_model_opens_with_model_sharing_alone(monkeypatch):
+    """Reading a restricted model's definition does not need a data-resource grant.
+
+    This is the layering the two grant types are for: model sharing says who may open the model,
+    a data resource says which rows they may read. Requiring both here made a model un-openable
+    until somebody had already granted a slice of it — "look before you grant" was impossible.
+    """
+    from app.api.catalog_scoped import require_model_read
+    from app.models.semantic_model import SemanticModel
+
+    async def allowed(*_args, **_kwargs):
+        return True
+
+    monkeypatch.setattr("app.api.catalog_scoped.check_resource_access", allowed)
+
+    class _DB:
+        async def get(self, cls, key):
+            return SemanticModel(id=key, name="Stock", access_mode="restricted")
+
+    request = SimpleNamespace(state=SimpleNamespace(openkms_jwt_payload={"sub": "u1"}))
+    # No exception: the row gate is not consulted on a metadata read.
+    _run(require_model_read("m1", request, _DB()))
 
 
 def test_a_public_model_still_honours_model_sharing(monkeypatch):

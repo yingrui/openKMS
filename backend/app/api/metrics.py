@@ -111,8 +111,9 @@ async def list_metrics(
 ):
     """List metrics, scoped to a semantic model and/or anchored on a base dataset.
 
-    Filtered by the data plane: a public model's metrics are listed for any caller, a restricted
-    model's only when the caller holds a grant on one of its resources.
+    Scoped by **model sharing** only: a restricted model's metrics are part of its definition, so
+    they are listed to anyone who may open the model. Reading the *rows* still needs a data
+    resource grant, which the data plane enforces per call.
     """
     payload = getattr(request.state, "openkms_jwt_payload", None) or {}
     sub = payload.get("sub") if isinstance(payload.get("sub"), str) else None
@@ -122,7 +123,7 @@ async def list_metrics(
             status_code=403,
             detail={
                 "code": "MODEL_FORBIDDEN",
-                "message": "This semantic model is restricted and no data resource is granted to you.",
+                "message": "You do not have access to this semantic model.",
             },
         )
     query = select(MetricDefinition).order_by(MetricDefinition.created_at.desc())

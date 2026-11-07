@@ -1,16 +1,20 @@
 """FastAPI dependencies for the **Catalog data plane**.
 
-Catalog reads — a model's fields/metrics, answering a query, running SQL Lab — are decided
-by the **data resource grant**, not by an operation key. `data:read` says "may open the Data
-Model page"; it does not say "may read these rows". Keeping them separate is the whole point:
+Catalog reads are decided by two **independent** grants, and this module is careful about which
+one it checks where:
 
-- a principal with a grant can query the slice without being a Catalog user;
-- a principal with `data:read` can administer the Catalog without seeing restricted rows;
-- a **public** model is readable by any authenticated principal, which is what "public"
-  means and is a deliberate decision, not an accident of a missing check.
+- **Model sharing** (`resource_type = 'semantic_model'`) — may this caller open the model, see its
+  metrics, fields and relationships? Checked here, by `require_model_read`, and by nothing else.
+- **Data resource grant** (`resource_type = 'data_resource'`) — within the model, which rows may
+  this caller read? Checked per call in `resolve_catalog_scope`, when the data plane runs.
 
-Write paths (creating datasets, editing models, configuring resources) stay on
-`data:write` — that *is* an operation permission.
+Keeping them apart is the point: a Catalog user can open a `restricted` model and see what a data
+resource *would* give them without reading a restricted row, and a principal holding a grant can
+query its slice. Requiring a resource grant to open the model made "look before you grant"
+impossible — the model was un-openable until somebody had already been granted part of it.
+
+`data:read` says "may open the Data Model page". Write paths (creating datasets, editing models,
+configuring resources) stay on `data:write` — that *is* an operation permission.
 """
 
 from __future__ import annotations
@@ -24,7 +28,6 @@ from app.database import get_db
 from app.models.semantic_model import SemanticModel
 from app.services.acl.acl_resolve import check_resource_access
 from app.services.acl.resource_acl_constants import PERM_READ, RT_SEMANTIC_MODEL
-from app.services.data_layer.catalog_access import has_model_grant
 
 
 def _subject(request: Request) -> tuple[dict, str | None]:
@@ -36,8 +39,18 @@ def _subject(request: Request) -> tuple[dict, str | None]:
 async def require_model_read(model_id: str, request: Request, db: AsyncSession) -> None:
     """May this caller see the model's definition (fields, metrics, tables) and query it?
 
-    Public model → any authenticated caller. Restricted model → only with a read grant on one of
-    its data resources. Being an admin, or holding `data:read`, is **not** sufficient.
+    Two separate questions, and only one of them is answered here:
+
+    * **May this caller use the model at all?** Model sharing (`RT_SEMANTIC_MODEL`) — the same
+      grant that lets them open any other securable resource. This is the gate.
+    * **Which rows may they read?** `access_mode` plus a data-resource grant, decided per call in
+      `resolve_catalog_scope` when the data plane runs.
+
+    Keeping the row gate out of the metadata gate is what makes the two layers independent: a
+    Catalog user can open the model, read its metrics and see what a data resource *would* give
+    them, without being able to see a single restricted row. Requiring a resource grant here
+    instead made a model un-openable until someone had already been granted a slice of it — which
+    made "look before you grant" impossible.
     """
     model = await db.get(SemanticModel, model_id)
     if model is None:
@@ -56,36 +69,24 @@ async def require_model_read(model_id: str, request: Request, db: AsyncSession) 
                 "message": "You do not have access to this semantic model.",
             },
         )
-    if not model.is_restricted:
-        return
-    if await has_model_grant(db, payload=payload, sub=sub, model_id=model_id):
-        return
-    raise HTTPException(
-        status_code=403,
-        detail={
-            "code": "MODEL_FORBIDDEN",
-            "message": "This semantic model is restricted and no data resource is granted to you.",
-        },
-    )
 
 
 async def readable_model_ids(db: AsyncSession, *, payload: dict, sub: str | None) -> set[str]:
-    """Model ids this caller may read — the same two gates as `require_model_read`.
+    """Model ids this caller may read: **model sharing only**, never the row scope.
 
-    Model sharing first (an ACL row closes the model to non-grantees), then the row scope
-    (`access_mode`). A list endpoint must apply both: showing a model the caller cannot open
-    turns a click into a 403, and hiding one they *can* open makes the Catalog look empty.
+    A restricted model still appears in a list — the caller may open it, read its metrics and
+    relationships, and then be told which data resources exist. What they cannot do is read rows
+    without a grant, and that is enforced per call in `resolve_catalog_scope`, not here.
+
+    Hiding the model instead made the Catalog look empty to anyone who had not yet been granted a
+    slice of it.
     """
     models = (await db.execute(select(SemanticModel))).scalars().all()
     out: set[str] = set()
     for model in models:
-        if not await check_resource_access(
+        if await check_resource_access(
             db, payload, sub or "", RT_SEMANTIC_MODEL, model.id, PERM_READ
         ):
-            continue
-        if not model.is_restricted:
-            out.add(model.id)
-        elif sub and await has_model_grant(db, payload=payload, sub=sub, model_id=model.id):
             out.add(model.id)
     return out
 

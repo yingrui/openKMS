@@ -69,6 +69,20 @@ semiconductors" separately from "may use the Stock model".
 > grant, so it starts closed to everyone but its creator — the same rule every securable type
 > follows.
 
+**Model sharing and data resources are independent, and neither implies the other.** Model
+sharing answers *who may open the model*; a data resource answers *which rows of it they may
+read*. So:
+
+- A caller with model sharing and **no** data resource can still open the model, read its
+  metrics, fields and relationships, and see which data resources exist. They cannot read a
+  single row — the data plane refuses a `restricted` model without a granted `resource_id`.
+- A caller with a data resource grant does not thereby learn that the model exists; they also
+  need model sharing to open it.
+
+The metadata gate therefore consults **only** model sharing (`require_model_read`). Requiring a
+resource grant there as well made a model un-openable until someone had already granted a slice
+of it, which made "look before you grant" impossible.
+
 ## Operation permissions vs data permissions
 
 `data:read` answers "may this caller use the Data Model feature". It does **not** answer
