@@ -1,27 +1,4 @@
-src/components/ResourceSharePanel.tsx | no-row-container
-src/components/agents/AgentFilesPanel.tsx | no-row-container
-src/components/agents/AgentSessionSidebar.tsx | no-row-container
-src/components/agents/ProjectDeploySecretsTab.tsx | no-row-container
-src/components/comments/ContentCommentsUtilityRail.tsx | no-row-container
-src/components/knowledge-bases/KbQaSessionSidebar.tsx | no-row-container
-src/pages/articles/ArticleChannel.tsx | no-row-container
-src/pages/articles/ArticleDetail.tsx | mixed-sizes
-src/pages/console/AuditLogPage.tsx | mixed-sizes
-src/pages/console/ConsoleDataSources.tsx | no-row-container
-src/pages/console/ConsoleKubernetes.tsx | no-row-container
-src/pages/console/ConsoleKubernetesDetail.tsx | no-row-container
-src/pages/console/ConsoleStorage.tsx | no-row-container
-src/pages/console/KubernetesDeploymentEnvDialog.tsx | no-row-container
-src/pages/console/KubernetesDeploymentRowActions.tsx | no-row-container
-src/pages/console/KubernetesPodRowActions.tsx | no-row-container
-src/pages/console/KubernetesSecretsSection.tsx | no-row-container
-src/pages/console/KubernetesServiceRowActions.tsx | no-row-container
-src/pages/documents/DocumentChannel.tsx | no-row-container
-src/pages/documents/DocumentChannelSettings.tsx | no-row-container
-src/pages/documents/DocumentDetail.infoPanel.tsx | mixed-sizes
-src/pages/documents/DocumentDetail.infoPanel.tsx | no-row-container
-src/pages/documents/DocumentDetail.modals.tsx | mixed-sizes
-src/pages/evaluation/EvaluationDatasetDetail.tsx | no-row-container
-src/pages/glossaries/GlossaryDetail.tsx | no-row-container
-src/pages/ontology/LinkTypesPage.tsx | no-row-container
-src/pages/ontology/ObjectTypesPage.tsx | no-row-container
+src/pages/articles/ArticleDetail.tsx
+src/pages/console/AuditLogPage.tsx
+src/pages/documents/DocumentDetail.infoPanel.tsx
+src/pages/documents/DocumentDetail.modals.tsx

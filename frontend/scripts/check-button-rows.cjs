@@ -1,18 +1,22 @@
 #!/usr/bin/env node
 /**
- * Buttons that share a row must share a size, and a group of controls must actually be a row.
+ * Buttons in one group must share one size.
  *
- * Two failures that render, lint and typecheck cleanly and only show up as a crooked screenshot:
+ * `.btn` and `.btn-sm` differ in padding (10px vs 6px) *and* line height (`--text-md--line` vs
+ * `--text-sm--line`). Under `align-items: center` the boxes centre on each other but their edges
+ * land at different heights, so two buttons that belong on one line read as two rows — which is
+ * exactly the bug this check exists for (the Playground's SQL toggle beside Save to a story).
  *
- * **A. Mixed sizes on one line.** `btn` and `btn-sm` differ in padding *and* line height
- * (10px/20px vs 6px/18px). Inside `align-items: center` their boxes centre on each other, so the
- * top and bottom edges land at different heights — it reads as two rows that were meant to be one.
+ * **Only sizing is checked.** An earlier version also flagged "a group of controls whose parent is
+ * not a flex row". It could not be made reliable: `page-header`, `TableRowActions` and a dozen
+ * component-level wrappers are flex by construction in sheets the check cannot associate with the
+ * JSX, and `{cond ? (<>A</>) : (<>B</>)}` reports alternatives as siblings. It produced ~80%
+ * false positives, and a check people learn to ignore is worse than no check.
  *
- * **B. A group of controls with no row container.** Siblings in a plain block stack vertically.
+ * Size, by contrast, is stated in the JSX itself: no cross-file inference, no guessing.
  *
- * This reads the real JSX tree via the TypeScript compiler. A regex over source cannot tell a
- * sibling from an unrelated element twenty lines away, which made the first version of this check
- * report 132 false positives across the app and would have taught everyone to ignore it.
+ * Baseline: `button-row-baseline.txt`, one `file | kind` per line. It records existing debt; shrink
+ * it rather than growing it. `--all` prints every finding, baseline included.
  */
 'use strict';
 
@@ -24,11 +28,8 @@ const ROOT = path.resolve(__dirname, '..');
 const SRC = path.join(ROOT, 'src');
 const BASELINE = path.join(__dirname, 'button-row-baseline.txt');
 
-/** Size classes that change a button's box. */
+/** Size classes that change a button's box. Two different ones in one group is the bug. */
 const SIZE_CLASSES = ['btn-sm', 'btn-lg'];
-
-/** A class list that already lays children out in a row. */
-const ROW_CLASSES = /^(openkms-flex-row|.*-actions$|.*-toolbar$|.*-controls$)/;
 
 function walkDir(dir, out = []) {
   for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
@@ -39,7 +40,7 @@ function walkDir(dir, out = []) {
   return out;
 }
 
-/** The static text of a className attribute, or null when it is computed. */
+/** The static text of a className attribute, or null when it cannot be read statically. */
 function classText(node) {
   if (!ts.isJsxAttribute(node) || node.name.getText() !== 'className') return null;
   const init = node.initializer;
@@ -64,14 +65,14 @@ function classText(node) {
 }
 
 function classesOf(opening) {
-  const attrs = opening.attributes.properties;
-  for (const attr of attrs) {
+  for (const attr of opening.attributes.properties) {
     const text = classText(attr);
     if (text !== null) return text;
   }
   return '';
 }
 
+/** The size a class list selects, or null when the element is not a sized control. */
 function sizeOf(classes) {
   for (const size of SIZE_CLASSES) {
     if (new RegExp(`\\b${size}\\b`).test(classes)) return size;
@@ -80,40 +81,132 @@ function sizeOf(classes) {
   return null;
 }
 
-/** Whether a tag name reads as a control to a reviewer. */
+/**
+ * Whether a tag name reads as a control at the call site.
+ *
+ * A `*Button` is always a control. A `*Dialog` is ambiguous: some render a trigger button (and a
+ * dialog only when opened), others render a whole dialog. Its size is resolved from its definition
+ * instead of its name — see `componentSizes`.
+ */
 function isControl(name) {
   return name === 'button' || /Button$/.test(name) || /Dialog$/.test(name);
 }
 
+/**
+ * Size of each locally-defined component whose **root** renders one sized control.
+ *
+ * `SaveFindingDialog` returns a trigger `<button className="… btn-sm">` (plus a dialog it opens), so
+ * a caller writing `<SaveFindingDialog/>` beside a plain `.btn` reproduces the very bug this check
+ * exists for — with no className at the call site. A component whose root is, say, a `<div>` that
+ * merely contains buttons is a container, not a control, and is not recorded.
+ */
+function collectComponentSizes() {
+  const sizes = new Map();
+  for (const file of walkDir(SRC)) {
+    const source = ts.createSourceFile(
+      file,
+      fs.readFileSync(file, 'utf8'),
+      ts.ScriptTarget.Latest,
+      true,
+      ts.ScriptKind.TSX,
+    );
+    const visit = (node) => {
+      if (
+        (ts.isFunctionDeclaration(node) || ts.isVariableDeclaration(node)) &&
+        node.name &&
+        ts.isIdentifier(node.name)
+      ) {
+        const root = rootElementOf(node);
+        if (root && tagName(root) === 'button') {
+          const size = sizeOf(classesOf(root));
+          if (size) sizes.set(node.name.text, size);
+        }
+      }
+      ts.forEachChild(node, visit);
+    };
+    visit(source);
+  }
+  return sizes;
+}
+
+/** The element a component's returned JSX starts with, unwrapping parens, fragments, ternaries. */
+function rootElementOf(fn) {
+  let found = null;
+
+  const firstElementOf = (e) => {
+    if (!e) return;
+    if (ts.isJsxElement(e) || ts.isJsxSelfClosingElement(e)) {
+      found = ts.isJsxElement(e) ? e.openingElement : e;
+      return;
+    }
+    if (ts.isParenthesizedExpression(e)) return firstElementOf(e.expression);
+    if (ts.isJsxFragment(e)) {
+      for (const child of e.children) {
+        if (ts.isJsxElement(child) || ts.isJsxSelfClosingElement(child)) {
+          found = ts.isJsxElement(child) ? child.openingElement : child;
+          return;
+        }
+      }
+      return;
+    }
+    if (ts.isConditionalExpression(e)) {
+      firstElementOf(e.whenTrue);
+      if (!found) firstElementOf(e.whenFalse);
+    }
+  };
+
+  const visit = (n) => {
+    if (found) return;
+    if (ts.isReturnStatement(n) && n.expression) firstElementOf(n.expression);
+    ts.forEachChild(n, visit);
+  };
+  visit(fn);
+  return found;
+}
+
 function tagName(opening) {
   const tag = opening.tagName;
-  if (ts.isIdentifier(tag)) return tag.text;
-  return tag.getText();
+  return ts.isIdentifier(tag) ? tag.text : tag.getText();
+}
+
+/** Whether an expression contains a control anywhere inside it. */
+function containsControl(expr) {
+  let found = false;
+  const visit = (n) => {
+    if (found) return;
+    if (ts.isJsxElement(n)) {
+      if (isControl(tagName(n.openingElement))) found = true;
+      return;
+    }
+    if (ts.isJsxSelfClosingElement(n)) {
+      if (isControl(tagName(n))) found = true;
+      return;
+    }
+    ts.forEachChild(n, visit);
+  };
+  visit(expr);
+  return found;
+}
+
+/**
+ * Whether this element holds a ternary whose branches *both* contain a control.
+ *
+ * `{editing ? <Save/> <Cancel/> : <Edit/>}` is a choice, not a row: counting both branches reports
+ * controls that never render together.
+ */
+function hasExclusiveBranches(node) {
+  for (const child of node.children) {
+    if (!ts.isJsxExpression(child) || !child.expression) continue;
+    const expr = child.expression;
+    if (!ts.isConditionalExpression(expr)) continue;
+    if (containsControl(expr.whenTrue) && containsControl(expr.whenFalse)) return true;
+  }
+  return false;
 }
 
 const findings = [];
-const flexClasses = new Set();
-
-/** Collect every class that declares `display: flex` so a parent class can be recognised. */
-function collectFlexClasses() {
-  const scssFiles = [];
-  const walk = (dir) => {
-    for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
-      const full = path.join(dir, entry.name);
-      if (entry.isDirectory()) walk(full);
-      else if (entry.name.endsWith('.scss')) scssFiles.push(full);
-    }
-  };
-  walk(SRC);
-  for (const file of scssFiles) {
-    const css = fs.readFileSync(file, 'utf8');
-    const re = /\.([a-z][\w-]*)\s*\{([^}]*)\}/g;
-    let m;
-    while ((m = re.exec(css))) {
-      if (/display:\s*(inline-)?flex/.test(m[2])) flexClasses.add(m[1]);
-    }
-  }
-}
+/** Filled before the scan: component name → the button size it renders. */
+let componentSizes = new Map();
 
 function checkFile(file) {
   const source = ts.createSourceFile(
@@ -126,62 +219,46 @@ function checkFile(file) {
   const rel = path.relative(ROOT, file);
 
   const visit = (node) => {
-    if (ts.isJsxElement(node) || ts.isJsxFragment(node)) {
-      const container = ts.isJsxElement(node) ? node.openingElement : null;
-
-      // Direct children that are controls. A control nested in a control is that control's child,
-      // and one wrapped in a JSX expression (`{ok && <FooButton/>}`) is still a direct child.
-      const children = node.children;
-      const expanded = [];
-      for (const c of children) {
-        if (ts.isJsxElement(c) || ts.isJsxSelfClosingElement(c)) {
-          expanded.push(c);
-        } else if (ts.isJsxExpression(c) && c.expression) {
-          const visitExpr = (n) => {
-            if (ts.isJsxElement(n) || ts.isJsxSelfClosingElement(n)) {
-              expanded.push(n);
-              return;
-            }
-            ts.forEachChild(n, visitExpr);
-          };
-          visitExpr(c.expression);
+    if (ts.isJsxElement(node)) {
+      if (!hasExclusiveBranches(node)) {
+        // Direct children that are controls. A control wrapped in `{ok && <FooButton/>}` still
+        // counts as a direct child; anything inside a nested element belongs to that element.
+        const expanded = [];
+        for (const child of node.children) {
+          if (ts.isJsxElement(child) || ts.isJsxSelfClosingElement(child)) {
+            expanded.push(child);
+          } else if (ts.isJsxExpression(child) && child.expression) {
+            const collect = (n) => {
+              if (ts.isJsxElement(n) || ts.isJsxSelfClosingElement(n)) {
+                expanded.push(n);
+                return;
+              }
+              // Only unwrap expressions and fragments — never descend into element children.
+              if (ts.isParenthesizedExpression(n) || ts.isConditionalExpression(n) ||
+                  ts.isBinaryExpression(n) || ts.isJsxFragment(n)) {
+                ts.forEachChild(n, collect);
+              }
+            };
+            collect(child.expression);
+          }
         }
-      }
 
-      const controls = expanded.filter(
-        (c) => ts.isJsxElement(c) && isControl(tagName(c.openingElement)),
-      );
-      const selfClosing = expanded.filter(
-        (c) => ts.isJsxSelfClosingElement(c) && isControl(tagName(c)),
-      );
-      const all = [...controls, ...selfClosing];
-
-      if (all.length >= 2) {
         const sizes = new Set();
-        for (const c of all) {
-          const opening = ts.isJsxElement(c) ? c.openingElement : c;
-          const size = sizeOf(classesOf(opening));
+        for (const child of expanded) {
+          const opening = ts.isJsxElement(child) ? child.openingElement : child;
+          const name = tagName(opening);
+          if (!isControl(name)) continue;
+          // A component's size lives in its own definition; the call site has no className.
+          const size = sizeOf(classesOf(opening)) ?? componentSizes.get(name);
           if (size) sizes.add(size);
         }
-        const { line } = source.getLineAndCharacterOfPosition(node.getStart(source));
-        const where = `${rel}:${line + 1}`;
 
         if (sizes.size > 1) {
+          const { line } = source.getLineAndCharacterOfPosition(node.getStart(source));
           findings.push(
-            `${where}: buttons on one row mix sizes (${[...sizes].sort().join(', ')}) — ` +
-              'pick one size for the group',
+            `${rel}:${line + 1}: buttons in one group mix sizes ` +
+              `(${[...sizes].sort().join(', ')})`,
           );
-        } else if (container) {
-          const classes = classesOf(container);
-          const row =
-            ROW_CLASSES.test(classes) ||
-            classes.split(/\s+/).some((token) => flexClasses.has(token));
-          if (!row) {
-            findings.push(
-              `${where}: ${all.length} controls share a parent that is not a flex row — ` +
-                'they stack or misalign',
-            );
-          }
         }
       }
     }
@@ -191,42 +268,43 @@ function checkFile(file) {
   visit(source);
 }
 
-collectFlexClasses();
+componentSizes = collectComponentSizes();
 for (const file of walkDir(SRC)) checkFile(file);
-
-// Baselines are keyed by `file | kind`, not by line: a line number changes with every unrelated
-// edit above it, which would make the baseline fail for reasons nobody can act on.
 const baseline = new Set(
   fs.existsSync(BASELINE)
     ? fs
         .readFileSync(BASELINE, 'utf8')
         .split('\n')
-        .map((l) => l.trim())
-        .filter((l) => l && !l.startsWith('#'))
+        .map((line) => line.trim())
+        .filter((line) => line && !line.startsWith('#'))
     : [],
 );
 
-const key = (line) => {
-  const m = line.match(/^(src\/[^:]+):\d+: (.*)$/);
-  if (!m) return line;
-  const kind = /mix sizes/.test(m[2]) ? 'mixed-sizes' : 'no-row-container';
-  return `${m[1]} | ${kind}`;
-};
+/** Baselines key on `file`, not line: a line shifts with every edit above it. */
+const key = (line) => line.slice(0, line.indexOf(':'));
 
 const fresh = findings.filter((line) => !baseline.has(key(line)));
 const stale = [...baseline].filter((entry) => !findings.some((line) => key(line) === entry));
 
+if (process.argv.includes('--all')) {
+  for (const line of findings) {
+    console.log(`${baseline.has(key(line)) ? '[baseline] ' : '[new]      '}${line}`);
+  }
+  console.log(`\n${findings.length} finding(s), ${baseline.size} file(s) in baseline.`);
+  process.exit(0);
+}
+
 for (const line of fresh) console.log(line);
 if (stale.length) {
   console.error(
-    'check-shared-styles: baseline lists issues that no longer exist — remove these lines:',
+    'check-shared-styles: baseline lists files with no findings left — remove these lines:',
   );
   for (const line of stale) console.error(`  ${line}`);
 }
 if (fresh.length || stale.length) {
   console.error(
-    `check-shared-styles: ${fresh.length} new button-row issue(s) — see docs/design-system.md`,
+    `check-shared-styles: ${fresh.length} new mixed-size group(s) — see docs/design-system.md`,
   );
   process.exit(1);
 }
-console.log('check-shared-styles: button rows OK');
+console.log('check-shared-styles: button sizes OK');

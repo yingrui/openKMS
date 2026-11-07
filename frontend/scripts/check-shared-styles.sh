@@ -263,11 +263,13 @@ if ! python3 scripts/check-page-chrome.py; then
   status=1
 fi
 
-# --- 22. Button rows ------------------------------------------------------------------------
-# A group of buttons sharing a parent must be a flex row, and must use one size. `btn` and
-# `btn-sm` differ in padding *and* line height, so `align-items: center` centres their boxes but
-# leaves their edges at different heights — two rows that were meant to be one. Both render and
-# lint cleanly; only a screenshot shows it. Baseline: scripts/button-row-baseline.txt.
+# --- 22. Mixed button sizes in one group -----------------------------------------------------
+# `.btn` and `.btn-sm` differ in padding (10px/6px) and line height, so `align-items: center`
+# centres their boxes but leaves the edges at different heights — two buttons meant for one line
+# read as two rows. This is what made the Playground's SQL toggle sit crooked beside Save.
+# Only sizing is checked: "is the parent a flex row" cannot be judged from source (page-header and
+# a dozen component wrappers are flex in sheets the check cannot associate with the JSX).
+# Baseline: scripts/button-row-baseline.txt.
 if ! node scripts/check-button-rows.cjs; then
   status=1
 fi
