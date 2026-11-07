@@ -366,3 +366,98 @@ def test_data_resource_normalization_drops_a_grant_that_only_had_write():
         [{"grantee_type": "user", "grantee_id": "u1", "permissions": 2}]
     )
     assert out == []
+
+
+def _reader_check(db, resource, siblings, conflicts, parsed):
+    """Drive `_reject_cross_resource_reader_grants` with canned db query results."""
+    from unittest.mock import AsyncMock, MagicMock
+
+    from app.api.resource_acl import _reject_cross_resource_reader_grants
+
+    siblings_result = MagicMock()
+    siblings_result.scalars.return_value.all.return_value = siblings
+    conflicts_result = MagicMock()
+    conflicts_result.scalars.return_value.all.return_value = conflicts
+
+    db.get = AsyncMock(return_value=resource)
+    db.execute = AsyncMock(side_effect=[siblings_result, conflicts_result])
+    return _reject_cross_resource_reader_grants(db, resource.id, parsed)
+
+
+def test_cross_resource_reader_grant_is_rejected(monkeypatch):
+    """A second read grant on the same model is refused, naming the conflicting resource."""
+    from unittest.mock import AsyncMock, MagicMock
+
+    import pytest
+    from fastapi import HTTPException
+
+    from app.models.data_resource import DataResource
+    from app.models.resource_acl import ResourceAclEntry
+
+    resource = MagicMock(spec=DataResource)
+    resource.id = "res-a"
+    resource.semantic_model_id = "model-1"
+
+    sibling = MagicMock(spec=DataResource)
+    sibling.id = "res-b"
+    sibling.name = "Full access"
+
+    conflict = MagicMock(spec=ResourceAclEntry)
+    conflict.resource_id = "res-b"
+    conflict.grantee_id = "user-1"
+    conflict.permissions = PERM_READ
+
+    async def fake_display(_db, subject):
+        return "bob"
+
+    monkeypatch.setattr("app.api.resource_acl.resolve_subject_display", fake_display)
+
+    parsed = [{"grantee_type": "user", "grantee_id": "user-1", "permissions": PERM_READ}]
+
+    with pytest.raises(HTTPException) as excinfo:
+        asyncio.run(_reader_check(AsyncMock(), resource, [sibling], [conflict], parsed))
+
+    assert excinfo.value.status_code == 400
+    assert "Full access" in excinfo.value.detail
+
+
+def test_cross_resource_reader_grant_allows_a_first_grant(monkeypatch):
+    """No conflicting entry on a sibling resource → the grant goes through."""
+    from unittest.mock import AsyncMock, MagicMock
+
+    from app.models.data_resource import DataResource
+
+    resource = MagicMock(spec=DataResource)
+    resource.id = "res-a"
+    resource.semantic_model_id = "model-1"
+
+    sibling = MagicMock(spec=DataResource)
+    sibling.id = "res-b"
+    sibling.name = "Full access"
+
+    parsed = [{"grantee_type": "user", "grantee_id": "user-1", "permissions": PERM_READ}]
+    asyncio.run(_reader_check(AsyncMock(), resource, [sibling], [], parsed))
+
+
+def test_cross_resource_reader_grant_ignores_a_manager_on_a_sibling():
+    """A manager (`rm`) on a sibling is administration, not a row scope, so it does not block."""
+    from unittest.mock import AsyncMock, MagicMock
+
+    from app.models.data_resource import DataResource
+    from app.models.resource_acl import ResourceAclEntry
+
+    resource = MagicMock(spec=DataResource)
+    resource.id = "res-a"
+    resource.semantic_model_id = "model-1"
+
+    sibling = MagicMock(spec=DataResource)
+    sibling.id = "res-b"
+    sibling.name = "Full access"
+
+    conflict = MagicMock(spec=ResourceAclEntry)
+    conflict.resource_id = "res-b"
+    conflict.grantee_id = "user-1"
+    conflict.permissions = PERM_READ | PERM_MANAGE
+
+    parsed = [{"grantee_type": "user", "grantee_id": "user-1", "permissions": PERM_READ}]
+    asyncio.run(_reader_check(AsyncMock(), resource, [sibling], [conflict], parsed))

@@ -79,7 +79,10 @@ export function useModelPlayground() {
   // A restricted model answers only inside a granted resource, so the scope is picked up front
   // and rides along on every run instead of being inferred at submit time.
   const { data: resourcePage } = useAsyncData(
-    () => (restricted ? fetchDataResources(modelId) : Promise.resolve({ items: [], total: 0 })),
+    () =>
+      restricted
+        ? fetchDataResources(modelId, { grantedOnly: true })
+        : Promise.resolve({ items: [], total: 0 }),
     [restricted, modelId],
   );
   const resources = useMemo(() => resourcePage?.items ?? [], [resourcePage]);

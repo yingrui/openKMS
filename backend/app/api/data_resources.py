@@ -22,7 +22,13 @@ from app.schemas.data_resource import (
     DataResourceUpdate,
 )
 from app.services.acl.acl_store import bootstrap_owner_acl
-from app.services.acl.resource_acl_constants import PERM_MANAGE, PERM_READ, RT_DATA_RESOURCE
+from app.services.acl.acl_resolve import check_resource_access
+from app.services.acl.resource_acl_constants import (
+    PERM_MANAGE,
+    PERM_READ,
+    RT_DATA_RESOURCE,
+    RT_SEMANTIC_MODEL,
+)
 from app.services.data_layer.catalog_access import check_data_resource_access
 from app.services.data_layer.entity_scope import (
     EntityScopeError,
@@ -93,27 +99,56 @@ async def _require_manage(db: AsyncSession, request: Request, resource_id: str) 
 async def list_data_resources(
     request: Request,
     semantic_model_id: str | None = None,
+    granted_only: bool = False,
     db: AsyncSession = Depends(get_db),
 ):
-    """Resources the caller may use.
+    """Every data resource of a model the caller may open.
 
-    Data plane, not an operation key: a caller holding a grant must be able to find the
-    resource they were granted even without `data:read`. Rows without a read grant are
-    filtered out, and a resource with no ACL rows at all is not listed (nobody holds it).
+    Listing a resource is governed by **model sharing**, not by the resource's own read grant:
+    a Catalog user who may open the model should see all the slices it defines. "Which rows may
+    I read" is a data-plane question answered per query in `resolve_catalog_scope`, not by
+    hiding resource definitions here.
+
+    `granted_only` narrows the result to resources the caller actually holds a read grant on —
+    the Playground uses it to list the scopes a caller may query as, which must not be confused
+    with "which resources exist".
     """
     payload = getattr(request.state, "openkms_jwt_payload", None) or {}
     sub = payload.get("sub") if isinstance(payload.get("sub"), str) else None
-    stmt = select(DataResource).order_by(DataResource.created_at)
+
     if semantic_model_id:
-        stmt = stmt.where(DataResource.semantic_model_id == semantic_model_id)
-    rows = (await db.execute(stmt)).scalars().all()
-    visible = [
-        r
-        for r in rows
-        if sub
-        and await check_data_resource_access(db, payload, sub, r.id, PERM_READ)
-    ]
-    return DataResourceListResponse(items=[_out(r) for r in visible], total=len(visible))
+        if not await check_resource_access(
+            db, payload, sub or "", RT_SEMANTIC_MODEL, semantic_model_id, PERM_READ
+        ):
+            raise HTTPException(
+                status_code=403, detail="You do not have access to this semantic model."
+            )
+        rows = (
+            await db.execute(
+                select(DataResource)
+                .where(DataResource.semantic_model_id == semantic_model_id)
+                .order_by(DataResource.created_at)
+            )
+        ).scalars().all()
+    else:
+        # No model filter: every resource whose model the caller may open.
+        all_rows = (
+            await db.execute(select(DataResource).order_by(DataResource.created_at))
+        ).scalars().all()
+        rows = []
+        for r in all_rows:
+            if await check_resource_access(
+                db, payload, sub or "", RT_SEMANTIC_MODEL, r.semantic_model_id, PERM_READ
+            ):
+                rows.append(r)
+
+    if granted_only:
+        rows = [
+            r
+            for r in rows
+            if sub and await check_data_resource_access(db, payload, sub, r.id, PERM_READ)
+        ]
+    return DataResourceListResponse(items=[_out(r) for r in rows], total=len(rows))
 
 
 @router.post(
@@ -159,18 +194,18 @@ async def get_data_resource(
     request: Request,
     db: AsyncSession = Depends(get_db),
 ):
-    """One resource the caller may use (read or manage). Data plane, same as the list."""
+    """One resource's definition, gated by the model's sharing — like the list.
+
+    The row conditions are part of the model's definition, so anyone who may open the model may
+    read them. Who may *query* those rows is a separate question answered by the resource ACL
+    (the `/sharing` endpoint), not by hiding the definition.
+    """
     resource = await _load(db, resource_id)
     payload = request.state.openkms_jwt_payload
     sub = payload.get("sub") if isinstance(payload.get("sub"), str) else None
-    allowed = bool(
-        sub
-        and (
-            await check_data_resource_access(db, payload, sub, resource_id, PERM_READ)
-            or await check_data_resource_access(db, payload, sub, resource_id, PERM_MANAGE)
-        )
-    )
-    if not allowed:
+    if not await check_resource_access(
+        db, payload, sub or "", RT_SEMANTIC_MODEL, resource.semantic_model_id, PERM_READ
+    ):
         raise HTTPException(status_code=404, detail="Data resource not found")
     return _out(resource)
 

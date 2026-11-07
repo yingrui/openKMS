@@ -3,11 +3,13 @@
 from __future__ import annotations
 
 from fastapi import APIRouter, Depends, HTTPException
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.auth import get_jwt_payload, require_auth
 from app.database import get_db
 from app.models.access_group import AccessGroup
+from app.models.resource_acl import ResourceAclEntry
 from app.schemas.resource_acl import OwnerCandidateOut, ResourceAclOut, ResourceAclPut
 from app.services.acl.resource_acl_constants import (
     GRANTEE_AUTHENTICATED,
@@ -32,6 +34,7 @@ from app.services.acl.resource_acl_service import (
     list_acl_entries,
     normalize_owner_grantee_id,
     replace_resource_acl,
+    resolve_subject_display,
     resource_has_acl_restrictions,
 )
 
@@ -81,6 +84,77 @@ def _normalize_data_resource_grants(parsed: list[dict]) -> list[dict]:
         if grant["permissions"] or grant["grantee_type"] == GRANTEE_AUTHENTICATED:
             out.append(grant)
     return out
+
+
+async def _reject_cross_resource_reader_grants(
+    db: AsyncSession,
+    resource_id: str,
+    parsed: list[dict],
+) -> None:
+    """One reader = one row scope per semantic model.
+
+    Two read grants on the same model leave the data plane guessing which scope applies, so a
+    direct user may hold a *reader* grant (`r` without `m`) on at most one resource of a model.
+    `m` is ownership/administration, not a row scope, so a manager may administer several
+    resources without tripping this rule.
+    """
+    from app.models.data_resource import DataResource
+
+    resource = await db.get(DataResource, resource_id)
+    if resource is None:
+        return
+    readers = {
+        g["grantee_id"]
+        for g in parsed
+        if g["grantee_type"] == GRANTEE_USER
+        and g.get("grantee_id")
+        and (g["permissions"] & PERM_READ)
+        and not (g["permissions"] & PERM_MANAGE)
+    }
+    if not readers:
+        return
+
+    siblings = (
+        await db.execute(
+            select(DataResource).where(
+                DataResource.semantic_model_id == resource.semantic_model_id,
+                DataResource.id != resource_id,
+            )
+        )
+    ).scalars().all()
+    if not siblings:
+        return
+    sibling_names = {s.id: s.name for s in siblings}
+
+    rows = (
+        await db.execute(
+            select(ResourceAclEntry).where(
+                ResourceAclEntry.resource_type == RT_DATA_RESOURCE,
+                ResourceAclEntry.resource_id.in_(sibling_names),
+                ResourceAclEntry.grantee_type == GRANTEE_USER,
+                ResourceAclEntry.grantee_id.in_(readers),
+            )
+        )
+    ).scalars().all()
+    conflicts = [
+        r
+        for r in rows
+        if (r.permissions & PERM_READ) and not (r.permissions & PERM_MANAGE)
+    ]
+    if not conflicts:
+        return
+
+    subjects = sorted({c.grantee_id for c in conflicts if c.grantee_id})
+    names = sorted(
+        {sibling_names[c.resource_id] for c in conflicts if c.resource_id in sibling_names}
+    )
+    subject_labels = [await resolve_subject_display(db, s) for s in subjects]
+    detail = (
+        "A user may hold one read grant per semantic model. "
+        f"{', '.join(subject_labels)} already read {', '.join(names)}; "
+        "remove that grant before adding them here."
+    )
+    raise HTTPException(status_code=400, detail=detail)
 
 
 async def _ensure_owner_in_parsed(
@@ -151,6 +225,7 @@ async def persist_resource_acl(
                 status_code=400,
                 detail="A data resource needs at least one read grant.",
             )
+        await _reject_cross_resource_reader_grants(db, resource_id, parsed)
 
     entries = await replace_resource_acl(db, resource_type, resource_id, parsed)
     await db.commit()

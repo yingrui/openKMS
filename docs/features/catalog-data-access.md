@@ -111,7 +111,7 @@ flowchart LR
 | `GET /api/semantic-models/{id}`, `/fields`, `/export` | **data plane** |
 | `GET /api/metrics/{id}`, `/{id}/compute`, `/{id}/runs` | **data plane**, via the metric's model |
 | `POST /api/semantic-models/{id}/query`, `…/sql` | **data plane** (`resource_id` required when restricted) |
-| `GET /api/data-resources[/{id}]` | **data plane** — filtered to resources you may read |
+| `GET /api/data-resources` | **model sharing** — every resource of a model the caller may open (add `?granted_only=1` to list only the caller's read grants) |
 | Model / dataset / metric / resource CRUD, import | `data:write` |
 
 A public model is readable by **any authenticated principal**, including one that only uses
@@ -134,7 +134,8 @@ for a grant.**
 | `restricted` | Only holders of a read grant on one of the model's resources | that resource's `row_policy` |
 
 A restricted model **requires `resource_id`** on every query/SQL call; omitting it is `400`
-`RESOURCE_REQUIRED`. Several grants do not auto-pick — the caller chooses.
+`RESOURCE_REQUIRED`. A user holds **at most one read grant per model**, so the granted resource
+is that caller's single row scope; granting a second one on the same model is refused (`400`).
 
 ### 2. Create a data resource
 
@@ -177,6 +178,11 @@ It is not a sharing panel. Three things are deliberately absent:
 When granting a data resource, the panel should also show **the row conditions being granted** —
 granting `industry = 半导体` is a different act from granting the whole model, and the reviewer
 needs to see which one they are approving.
+
+A direct user holds **one reader grant per model**: adding a second `r` grant for the same user
+on another resource of the model is refused, naming the resource they already read. This keeps a
+reader's row scope unambiguous. `m` (manage) is ownership, not a scope, so a manager may
+administer several resources without tripping this rule.
 
 API: `PUT /api/resource-acl/data_resource/{id}`. Console → **Data Security** manages access groups
 and flags sharing problems across every securable type.

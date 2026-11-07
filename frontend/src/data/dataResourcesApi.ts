@@ -53,11 +53,13 @@ export interface DataResourcePayload {
 
 export async function fetchDataResources(
   semanticModelId?: string,
+  opts?: { grantedOnly?: boolean },
 ): Promise<DataResourceListResponse> {
-  const qs = semanticModelId
-    ? `?semantic_model_id=${encodeURIComponent(semanticModelId)}`
-    : '';
-  return request<DataResourceListResponse>(`/api/data-resources${qs}`);
+  const params = new URLSearchParams();
+  if (semanticModelId) params.set('semantic_model_id', semanticModelId);
+  if (opts?.grantedOnly) params.set('granted_only', '1');
+  const qs = params.toString();
+  return request<DataResourceListResponse>(`/api/data-resources${qs ? `?${qs}` : ''}`);
 }
 
 export async function fetchDataResource(id: string): Promise<DataResourceResponse> {
