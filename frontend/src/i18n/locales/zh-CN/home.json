@@ -9,7 +9,7 @@
   "quickStartHeading": "快速开始",
   "agentSetupCardTitle": "创建或设置常用的 Agent",
   "agentSetupCardDesc": "选定一个默认 Agent Project，之后在这里提问会直接在它下面开新会话。",
-  "agentComposerPlaceholder": "说说你想做什么…",
+  "agentComposerPlaceholder": "描述你的需求…",
   "agentComposerHint": "按 Enter 在 <projectLink>{{project}}</projectLink> 中开启新对话；Shift+Enter 换行。",
   "agentSendAria": "开始对话",
   "agentStartFailed": "无法开始对话",

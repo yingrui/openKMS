@@ -152,7 +152,7 @@
   },
   "chat": {
     "hero": "Ask the agent to explore files, plan work, or research your knowledge base.",
-    "placeholder": "Ask anything…",
+    "placeholder": "Describe what you need…",
     "send": "Send",
     "planMode": "Plan mode",
     "thinking": "Thinking…",

@@ -3,7 +3,7 @@
   "gallerySubtitle": "打开、配置或管理你的托管应用。",
   "loading": "加载中…",
   "emptyGallery": "还没有应用。",
-  "emptyGalleryHint": "可在「控制台 → Kubernetes」登记，或让 Agent 帮你登记。",
+  "emptyGalleryHint": "可在「控制台 → Kubernetes」登记，或由 Agent 登记。",
   "goToKubernetes": "去登记应用",
   "stale": "过期",
   "backToGallery": "返回全部应用",

@@ -12,7 +12,7 @@
   "delete": "删除",
   "save": "保存",
   "cancel": "取消",
-  "empty": "暂无评论，来发表第一条吧。",
+  "empty": "暂无评论，发表第一条反馈。",
   "selectRank": "评分 0–5",
   "rankLabel": "评分",
   "loadFailed": "无法加载评论",
