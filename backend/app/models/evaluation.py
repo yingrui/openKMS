@@ -2,6 +2,7 @@
 from datetime import datetime
 
 from sqlalchemy import DateTime, ForeignKey, Integer, String, Text, func
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.database import Base
@@ -16,6 +17,14 @@ class Evaluation(Base):
     name: Mapped[str] = mapped_column(String(256), nullable=False)
     knowledge_base_id: Mapped[str] = mapped_column(
         String(64), ForeignKey("knowledge_bases.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    #: A data-query evaluation judges a semantic model's answers; null for the RAG types.
+    semantic_model_id: Mapped[str | None] = mapped_column(
+        String(64), ForeignKey("semantic_models.id", ondelete="SET NULL"), nullable=True, index=True
+    )
+    #: For a restricted model, the data resource the evaluator acts as when reading answers.
+    data_resource_id: Mapped[str | None] = mapped_column(
+        String(64), nullable=True
     )
     wiki_space_id: Mapped[str | None] = mapped_column(
         String(64), ForeignKey("wiki_spaces.id", ondelete="SET NULL"), nullable=True, index=True
@@ -43,6 +52,8 @@ class EvaluationItem(Base):
     )
     query: Mapped[str] = mapped_column(Text, nullable=False)
     expected_answer: Mapped[str] = mapped_column(Text, nullable=False)
+    #: Data-query ground truth: every query the answer should have made (see docs/features/data-query-evaluation.md).
+    expected_query: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
     topic: Mapped[str | None] = mapped_column(String(256), nullable=True)
     sort_order: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())

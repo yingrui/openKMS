@@ -42,7 +42,9 @@ from app.services.workspace.evaluations.evaluation_scope import (
 )
 from app.services.identity.acl.resource_acl_constants import PERM_READ, RT_EVALUATION
 from app.services.workspace.evaluations.execute import (
+    run_data_query_evaluation,
     ALLOWED_EVALUATION_TYPES,
+    EVALUATION_TYPE_DATA_QUERY,
     EVALUATION_TYPE_QA_ANSWER,
     EVALUATION_TYPE_SEARCH_RETRIEVAL,
     EVALUATION_TYPE_WIKI_CONTENT_COVERAGE,
@@ -670,6 +672,8 @@ async def run_evaluation(
             item_rows = await run_wiki_content_coverage_evaluation(
                 db, ev.wiki_space_id, evaluation_id, judge_config
             )
+        elif eval_type == EVALUATION_TYPE_DATA_QUERY:
+            item_rows = await run_data_query_evaluation(db, kb, evaluation_id, token)
         else:
             raise HTTPException(
                 status_code=500,

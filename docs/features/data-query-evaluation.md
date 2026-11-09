@@ -35,21 +35,28 @@ half is deliberately ignored.
 
 ## Ground truth: what a correct *query* looks like
 
-An item needs a new shape, because `expected_answer` (prose) does not describe a query. New `expected_query` (JSONB):
+An item needs a new shape, because `expected_answer` (prose) does not describe a query — and one question rarely
+corresponds to one query. New `expected_query` (JSONB) is an **array**; every entry is one query the answer should have made:
 
 ```json
-{
-  "model_id": "745a2fbc-…",              // exact — the model that should have answered
-  "metric": "revenue_by_month",          // optional: the saved metric, when the question names one
-  "sql": {
-    "tables":   ["tushare.daily_basic"], // relations the SQL must touch (exact, unqualified ok)
-    "columns":  ["industry", "trade_date"], // fields it must reference
-    "filters":  [{"column": "industry", "op": "=", "value": "半导体"}],
-    "group_by": ["industry", "month"],   // the grain
-    "forbid":   ["pe_ttm"]               // optional: a field it must NOT use (the trap dimension)
+[
+  {
+    "model_id": "745a2fbc-…",              // exact — the model that should have answered
+    "metric": "revenue_by_month",          // optional, mode == "metric"
+    "sql": {
+      "tables":   ["tushare.daily_basic"], // relations the SQL must touch (exact, unqualified ok)
+      "columns":  ["industry", "trade_date"], // fields it must reference
+      "filters":  [{"column": "industry", "op": "=", "value": "半导体"}],
+      "group_by": ["industry", "month"],   // the grain
+      "forbid":   ["pe_ttm"]               // optional: a field it must NOT use (the trap dimension)
+    }
   }
-}
+]
 ```
+
+The array is the honest shape: "industry revenue by month" might need a revenue query *and* a universe query, and one item
+should be able to expect both. Matching is **set-based** — each expected query must be covered by at least one source; extra
+sources neither cover more nor fail anything (see D5).
 
 Three levels, cheapest first:
 
@@ -99,12 +106,17 @@ right table" does not need an LLM. Only *equivalence of two differently-shaped S
 `data:read` itself, because it never queries the model. This is a real simplification over the first draft: judging claims
 about a query is cheaper and safer than running it.
 
-**D4 — filters live in the SQL.** `data_query` has no separate `filters` field; the filters are the SQL's WHERE. The ground
-truth's `filters` list is compiled into feature expectations and matched against the WHERE the scanner extracts. If the
-agent later gains a structured `filters` field, the same expectations apply to it directly.
+**D4 — how precise the check can be depends on the tool.** A `metric`/`expression` query has a *structured*
+shape the backend compiled, so its SQL features (tables, WHERE, GROUP BY) are deterministically comparable. A **SQL Lab**
+source is a hand-written SQL string — it has no separate filters field and no guaranteed shape, so its accuracy is judged by
+**semantic equivalence** (the LLM), not by feature diffing. The rule: compare features where the tool gives you features;
+fall to the judge where the tool gives you only SQL.
 
-**D5 — several sources, one verdict.** Match the best source against `expected_query`; the item fails if none matches.
-Reasons are per-source in `detail`, so a spurious extra citation is visible without failing the item.
+**D5 — several sources, and the extras count as completeness.** An item passes when every expected query is
+covered by at least one source. Extra sources — the agent querying more than the ground truth — are **not** an error; a
+supplementary query is often the thing that makes an answer complete. They feed a **completeness bonus** on the score
+(relevant extra sources raise it, irrelevant ones do not), never the pass/fail line, and every source is listed in
+`detail` so a spurious citation is visible without failing the item.
 
 ## Stages
 

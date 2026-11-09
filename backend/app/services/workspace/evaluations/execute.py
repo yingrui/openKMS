@@ -20,12 +20,14 @@ logger = logging.getLogger(__name__)
 EVALUATION_TYPE_SEARCH_RETRIEVAL = "search_retrieval"
 EVALUATION_TYPE_QA_ANSWER = "qa_answer"
 EVALUATION_TYPE_WIKI_CONTENT_COVERAGE = "wiki_content_coverage"
+EVALUATION_TYPE_DATA_QUERY = "data_query"
 
 ALLOWED_EVALUATION_TYPES = frozenset(
     {
         EVALUATION_TYPE_SEARCH_RETRIEVAL,
         EVALUATION_TYPE_QA_ANSWER,
         EVALUATION_TYPE_WIKI_CONTENT_COVERAGE,
+        EVALUATION_TYPE_DATA_QUERY,
     }
 )
 
@@ -262,6 +264,107 @@ async def run_qa_answer_evaluation(
                     "detail": {
                         "answer": _snippet(answer, 8000),
                         "sources": stored_sources,
+                    },
+                }
+            )
+    return out
+
+
+EVALUATION_TYPE_DATA_QUERY = "data_query"
+
+
+async def run_data_query_evaluation(
+    db: AsyncSession,
+    kb: KnowledgeBase,
+    evaluation_id: str,
+    access_token: str,
+) -> list[dict[str, Any]]:
+    """Ask the KB agent per item, then judge the ``data_query`` sources it cited.
+
+    The evaluated thing is the *query*, not the numbers: each answer's sources carry ``data_query`` (model id + SQL),
+    and the deterministic judge checks that against ``EvaluationItem.expected_query``. The SQL is never re-run.
+    """
+    if not kb.agent_url:
+        raise HTTPException(
+            status_code=400,
+            detail="No agent URL configured for this knowledge base. Data-query evaluation requires KB agent_url.",
+        )
+
+    from app.services.content.knowledge_bases.qa_agent_proxy import agent_kb_path, ask_agent_body
+    from app.services.workspace.evaluations.data_query_judge import match_sources_to_queries
+
+    ask_url = agent_kb_path(kb.agent_url, kb.id, "ask")
+    items = await _load_evaluation_items(db, evaluation_id)
+    out: list[dict[str, Any]] = []
+
+    async with httpx.AsyncClient(timeout=120.0) as client:
+        for item in items:
+            try:
+                resp = await client.post(
+                    ask_url,
+                    json=ask_agent_body(
+                        kb=kb,
+                        question=item.query,
+                        conversation_history=[],
+                        access_token=access_token,
+                    ),
+                )
+                resp.raise_for_status()
+                data = resp.json()
+            except (httpx.HTTPError, ValueError) as e:
+                logger.warning("QA agent error: %s", e)
+                out.append(
+                    {
+                        "evaluation_item_id": item.id,
+                        "query": item.query,
+                        "expected_answer": item.expected_answer,
+                        "passed": False,
+                        "score": 0.0,
+                        "reasoning": f"Agent error: {e}",
+                        "detail": {"data_queries": [], "coverage": 0.0},
+                    }
+                )
+                continue
+
+            sources = data.get("sources") or []
+            data_queries: list[dict[str, Any]] = []
+            for s in sources:
+                dq = (s or {}).get("data_query") if isinstance(s, dict) else None
+                if isinstance(dq, dict) and dq.get("sql"):
+                    data_queries.append(dq)
+
+            expected = item.expected_query
+            if not isinstance(expected, list):
+                expected = []
+            result = match_sources_to_queries(expected, data_queries)
+
+            # The pass line is coverage: every expected query is covered. Extra sources are completeness — reported, and
+            # scored later (they must not fail an otherwise-correct answer).
+            reasons: list[str] = []
+            for u in result["uncovered"]:
+                reasons.append(f"query {u['query_index'] + 1}: {'; '.join(u['verdict']['reasons'])}")
+
+            out.append(
+                {
+                    "evaluation_item_id": item.id,
+                    "query": item.query,
+                    "expected_answer": item.expected_answer,
+                    "passed": result["passed"],
+                    "score": result["coverage"],
+                    "reasoning": "; ".join(reasons) if reasons else "every expected query was cited",
+                    "detail": {
+                        "data_queries": [
+                            {
+                                "mode": dq.get("mode"),
+                                "model_id": dq.get("model_id"),
+                                "metric": dq.get("metric"),
+                                "sql": dq.get("sql"),
+                            }
+                            for dq in data_queries
+                        ],
+                        "coverage": result["coverage"],
+                        "matched": len(result["matched"]),
+                        "extra_sources": len(result["extra_sources"]),
                     },
                 }
             )
