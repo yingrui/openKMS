@@ -24,7 +24,7 @@ from app.database import async_session_maker, get_db
 from app.models.user import User
 from app.models.user_api_key import UserApiKey
 from app.models.user_preference import UserPreference
-from app.services.audit import record_session_event_once
+from app.services.platform.audit import record_session_event_once
 from app.services.permissions.permission_catalog import PERM_ALL
 from app.services.permissions.security_permission_service import list_permissions_sorted, sorted_permission_keys
 from app.services.permissions.permission_resolution import (

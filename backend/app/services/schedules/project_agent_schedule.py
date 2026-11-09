@@ -23,7 +23,7 @@ from app.services.agent.agent_skill_install import ensure_skills_materialized
 from app.services.connectors.schedule import validate_cron_expression, validate_timezone
 from app.services.agent.shared import new_id
 from app.services.deep_agents.runner import run_project_turn
-from app.services.feature_toggles import is_feature_enabled
+from app.services.platform.feature_toggles import is_feature_enabled
 from app.services.permissions.permission_resolution import jwt_realm_role_names
 
 OnRunCompleted = Literal["keep", "delete"]

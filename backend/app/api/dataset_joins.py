@@ -20,7 +20,7 @@ from app.schemas.dataset_join import (
 )
 from app.services.data_layer.joins import JoinValidationError, validate_join
 from app.services.permissions.permission_catalog import PERM_DATA_READ, PERM_DATA_WRITE
-from app.services.dataset_label import dataset_label
+from app.services.platform.dataset_label import dataset_label
 
 router = APIRouter(
     prefix="/dataset-joins",

@@ -25,7 +25,7 @@ from app.services.acl.resource_acl_constants import (
     RT_WIKI_PAGE,
     RT_WIKI_SPACE,
 )
-from app.services.dataset_label import dataset_label
+from app.services.platform.dataset_label import dataset_label
 
 
 def share_path_for(resource_type: str, resource_id: str) -> str | None:

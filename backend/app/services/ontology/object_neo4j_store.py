@@ -17,7 +17,7 @@ from app.models.data_source import DataSource
 from app.models.link_type import LinkType
 from app.models.object_instance import ObjectInstance
 from app.models.object_type import ObjectType
-from app.services.boundaries import boundary
+from app.services.platform.boundaries import boundary
 from app.services.ontology.neo4j_async import run_with_neo4j_driver
 
 

@@ -19,7 +19,7 @@ from app.config import settings
 from app.models.agent_skill import AgentSkill, AgentSkillVersion
 from app.models.project import Project
 from app.services.agent.agent_skills_registry import resolve_version_for_skill, version_dir
-from app.services.project_fs import resolve_project_path
+from app.services.platform.project_fs import resolve_project_path
 
 logger = logging.getLogger(__name__)
 

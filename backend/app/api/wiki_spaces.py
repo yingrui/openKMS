@@ -54,7 +54,7 @@ from app.services.wiki.wiki_page_scope import get_wiki_page_in_space
 from app.services.wiki.wiki_scope import load_wiki_space_scoped, require_wiki_space_manage
 from app.services.wiki.page_index import md_to_tree_from_markdown
 from app.services.permissions.permission_catalog import PERM_WIKIS_READ, PERM_WIKIS_WRITE
-from app.services.storage import (
+from app.services.platform.storage import (
     STORAGE_ERRORS,
     delete_object,
     delete_objects_by_prefix,

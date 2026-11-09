@@ -13,9 +13,9 @@ from procrastinate.job_context import JobContext
 from app.config import settings
 from app.constants import DocumentStatus
 from app.jobs import job_app
-from app.services.audit import job_audit_fields, record_audit_event
+from app.services.platform.audit import job_audit_fields, record_audit_event
 from app.services.documents.document_storage import document_prefix
-from app.services.openkms_cli_subprocess import (
+from app.services.platform.openkms_cli_subprocess import (
     build_openkms_cli_subprocess_env,
     prepare_openkms_cli_argv,
 )
@@ -774,7 +774,7 @@ def _upload_page_index_from_hash(file_hash: str, doc_name: str | None, markdown:
     try:
         from app.services.documents.document_storage import document_object_key
         from app.services.wiki.page_index import md_to_tree_from_markdown
-        from app.services.storage import STORAGE_ERRORS, upload_object
+        from app.services.platform.storage import STORAGE_ERRORS, upload_object
 
         page_index = md_to_tree_from_markdown(markdown, doc_name=doc_name or "document")
         upload_object(
@@ -1014,7 +1014,7 @@ async def run_media_generation(
     from app.models.api_provider import ApiProvider
     from app.models.media_asset import MediaAsset
     from app.models.media_channel import MediaChannel
-    from app.services.feature_toggles import is_feature_enabled
+    from app.services.platform.feature_toggles import is_feature_enabled
     from app.services.jobs.job_run_worker_log import persist_job_run_worker_log_best_effort
     from app.services.media.zhipu import (
         download_url,
@@ -1025,7 +1025,7 @@ async def run_media_generation(
     )
     from app.services.media.media_derivatives import build_and_upload_derivatives
     from app.services.media.media_storage import MEDIA_KIND_IMAGE, media_original_key
-    from app.services.storage import upload_object
+    from app.services.platform.storage import upload_object
 
     job_id = int(context.job.id) if context.job and context.job.id else None
     log_lines: list[str] = [f"Media generation started: {media_kind}"]

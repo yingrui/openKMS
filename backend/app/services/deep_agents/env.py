@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from app.config import settings
 from app.services.deep_agents.git_service import git_env_for_shell
-from app.services.project_fs import resolve_project_path
+from app.services.platform.project_fs import resolve_project_path
 
 
 def build_project_shell_env(

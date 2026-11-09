@@ -18,7 +18,7 @@ from pydantic import BaseModel, Field, ValidationError
 from sqlalchemy import delete, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.services.boundaries import boundary
+from app.services.platform.boundaries import boundary
 from app.services.agent.shared import (
     _bump_conversation_timestamp,
     _maybe_set_conversation_title_from_first_user_message,

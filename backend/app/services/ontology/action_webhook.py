@@ -37,7 +37,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.models.external_service import ExternalService
 from app.models.kubernetes_cluster import KubernetesCluster
 from app.models.ontology_function import OntologyActionType
-from app.services.boundaries import boundary
+from app.services.platform.boundaries import boundary
 from app.services.ontology import external_calls
 
 logger = logging.getLogger(__name__)

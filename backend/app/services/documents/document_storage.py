@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import re
 
-from app.services.storage import STORAGE_ERRORS, object_exists
+from app.services.platform.storage import STORAGE_ERRORS, object_exists
 
 #: Reading a document artifact: it can be missing (OSError), unreadable (storage) or malformed.
 DOCUMENT_ARTIFACT_ERRORS: tuple[type[BaseException], ...] = (
@@ -84,7 +84,7 @@ def resolve_document_object_key(file_hash: str, path: str) -> str | None:
 
 
 def get_document_object(file_hash: str, path: str) -> bytes:
-    from app.services.storage import get_object
+    from app.services.platform.storage import get_object
 
     key = resolve_document_object_key(file_hash, path)
     if not key:

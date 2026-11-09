@@ -8,7 +8,7 @@ from typing import Any
 
 from openpyxl import load_workbook
 
-from app.services.boundaries import boundary
+from app.services.platform.boundaries import boundary
 
 DEFAULT_MAX_ROWS = 500
 DEFAULT_MAX_COLS = 64

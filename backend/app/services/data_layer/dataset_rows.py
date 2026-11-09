@@ -1,7 +1,13 @@
 """Read a dataset's table: browse rows (filters + sort + keyset paging) or summarise it.
 
-It is read-only, runs the count and the page inside one transaction with a statement timeout, and
-answers with the table's columns so an empty result can still render a header.
+It is read-only, and answers with the table's columns so an empty result can still render a header.
+
+**Row totalls cost money.** `SELECT count(*)` on a 66M-row table takes ~14s — more than the whole
+page is worth, and past the statement timeout, so the grid showed nothing at all. The total now has
+three honest states (`exact` / `estimated` / `unknown`): a big unfiltered table reports the planner's
+`reltuples` (sub-millisecond, ±5%), a filtered one counts exactly but under a short savepointed
+leash, and if that leash snaps the page still renders with the total left open. See
+`choose_total_source`.
 
 The unfiltered reader stays in `dataset_tables.fetch_dataset_rows_page` for the object/link instance
 lists, whose batch sizes (up to 1000) deliberately exceed a browser's page cap; folding the two
@@ -14,16 +20,17 @@ no "definition" side to fix, so `kind=definition` would misdirect the user.
 
 from __future__ import annotations
 
+import logging
 import time
 
 from dataclasses import dataclass
-from typing import Any
+from typing import Any, Literal
 
 from sqlalchemy import text
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.constants import MAX_PAGE_SIZE, ROWS_TIMEOUT_MS
+from app.constants import COUNT_TIMEOUT_MS, EXACT_COUNT_MAX_ROWS, MAX_PAGE_SIZE, ROWS_TIMEOUT_MS
 from app.models.data_source import DataSource
 from app.models.dataset import Dataset
 from app.services.data_layer.query import QueryError
@@ -44,7 +51,79 @@ from app.services.ontology.dataset_tables import (
 )
 from app.services.ontology.property_types import serialize_cell_value
 
-__all__ = ["DatasetRowsPage", "DatasetSummary", "query_dataset_rows", "query_dataset_summary"]
+logger = logging.getLogger(__name__)
+
+__all__ = [
+    "DatasetRowsPage",
+    "DatasetSummary",
+    "TotalKind",
+    "choose_total_source",
+    "query_dataset_rows",
+    "query_dataset_summary",
+]
+
+#: How much the reported total can be trusted: an exact count, the planner's estimate, or a count
+#: that ran out of time. The grid says "≈" for the second and nothing for the third.
+TotalKind = Literal["exact", "estimated", "unknown"]
+
+
+def choose_total_source(estimate: int | None, has_filters: bool) -> Literal["exact", "estimate", "bounded"]:
+    """Decide how to answer "how many rows" without walking a huge table.
+
+    - small (or never-analysed) table → count it: it is cheap and exactness is free there.
+    - big unfiltered browse → the planner's estimate. Nobody needs the last 5% of 66M.
+    - big filtered browse → count, but on a short leash: a filter usually hits an index, and the
+      caller can live with "unknown" when it does not.
+    """
+    small = estimate is not None and estimate < EXACT_COUNT_MAX_ROWS
+    if small:
+        return "exact"
+    if not has_filters:
+        return "estimate"
+    return "bounded"
+
+
+def _table_row_estimate(conn: Any, qualified: str) -> int | None:
+    """`pg_class.reltuples` — free and approximate; `None` when the table was never analysed."""
+    value = conn.execute(
+        text("SELECT reltuples::bigint FROM pg_class WHERE oid = to_regclass(:name)"),
+        {"name": qualified},
+    ).scalar()
+    if value is None:
+        return None
+    rows = int(value)
+    return rows if rows >= 0 else None
+
+
+def _resolve_total(
+    conn: Any,
+    *,
+    qualified: str,
+    where_sql: str,
+    params: dict[str, Any],
+) -> tuple[int | None, TotalKind]:
+    """The page's total, or the best available description of it."""
+    estimate = _table_row_estimate(conn, qualified)
+    source = choose_total_source(estimate, bool(where_sql))
+    if source == "estimate":
+        assert estimate is not None  # choose_total_source only estimates when it has one
+        return estimate, "estimated"
+
+    count_sql = text(f"SELECT COUNT(*) FROM {qualified}{where_sql}")
+    if source == "exact":
+        return int(conn.execute(count_sql, params).scalar() or 0), "exact"
+
+    # Bounded: a savepoint keeps a cancelled count from poisoning the page query's transaction,
+    # and `SET LOCAL` inside it is undone with the savepoint, so the page sets its own leash below.
+    savepoint = conn.begin_nested()
+    try:
+        conn.exec_driver_sql(f"SET LOCAL statement_timeout = {int(COUNT_TIMEOUT_MS)}")
+        return int(conn.execute(count_sql, params).scalar() or 0), "exact"
+    except SQLAlchemyError as exc:
+        savepoint.rollback()
+        logger.info("Row count gave up on %s (%s); total reported as unknown", qualified, type(exc).__name__)
+        return None, "unknown"
+
 
 
 @dataclass(frozen=True)
@@ -54,7 +133,8 @@ class DatasetRowsPage:
     sql: str
     columns: list[str]
     rows: list[dict[str, Any]]
-    total: int
+    total: int | None
+    total_kind: "TotalKind"
     capped: bool
     next_after: str | None
 
@@ -219,7 +299,12 @@ async def query_dataset_rows(
         with engine.connect() as conn:
             tx = conn.begin()
             conn.exec_driver_sql(f"SET LOCAL statement_timeout = {int(ROWS_TIMEOUT_MS)}")
-            total = conn.execute(text(f"SELECT COUNT(*) FROM {quoted}{where_sql}"), params).scalar() or 0
+            total, total_kind = _resolve_total(
+                conn, qualified=quoted, where_sql=where_sql, params=params
+            )
+            # The bounded count above may have shortened this transaction's leash (a savepoint
+            # rollback restores it, but not always): the page query gets the full browse timeout.
+            conn.exec_driver_sql(f"SET LOCAL statement_timeout = {int(ROWS_TIMEOUT_MS)}")
             result = conn.execute(text(sql), page_params)
             names = list(result.keys())
             rows = [
@@ -240,7 +325,8 @@ async def query_dataset_rows(
         sql=sql,
         columns=columns,
         rows=rows,
-        total=int(total),
+        total=None if total is None else int(total),
+        total_kind=total_kind,
         capped=len(rows) >= limit,
         next_after=next_after,
     )

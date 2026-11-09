@@ -1,6 +1,6 @@
 """Dataset schemas."""
 from datetime import date, datetime
-from typing import Any
+from typing import Any, Literal
 
 from pydantic import BaseModel, model_validator
 
@@ -181,13 +181,16 @@ class DatasetSummaryResponse(BaseModel):
 class DatasetRowsResponse(BaseModel):
     """Paginated rows from a dataset table.
 
-    ``columns`` always describes the table (so an empty, filtered-out result still renders a header)
-    and ``total`` counts the rows the filters match.
+    ``columns`` always describes the table (so an empty, filtered-out result still renders a header).
+    ``total`` counts the rows the filters match — or is absent when the table is too big to count
+    within the browse budget, in which case ``total_kind`` says what the number (if any) means:
+    ``exact``, ``estimated`` (the planner's ``reltuples``), or ``unknown``.
     """
 
     columns: list[str] = []
     rows: list[dict]
-    total: int
+    total: int | None = None
+    total_kind: Literal["exact", "estimated", "unknown"] = "exact"
     limit: int
     offset: int
     next_after: str | None = None

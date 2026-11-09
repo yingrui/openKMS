@@ -395,6 +395,7 @@ async def query_dataset_rows_endpoint(
         columns=page.columns,
         rows=page.rows,
         total=page.total,
+        total_kind=page.total_kind,
         limit=body.limit,
         offset=body.offset,
         next_after=page.next_after,
@@ -572,7 +573,7 @@ async def delete_dataset(
     them, which is the one thing worse than not deleting at all.
     """
     if (dataset.kind or "table") == "file":
-        from app.services.storage import STORAGE_ERRORS, delete_objects_by_prefix
+        from app.services.platform.storage import STORAGE_ERRORS, delete_objects_by_prefix
 
         try:
             delete_objects_by_prefix(f"datasets/{dataset.id}/")

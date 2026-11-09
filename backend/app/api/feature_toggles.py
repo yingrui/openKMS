@@ -9,7 +9,7 @@ from app.services.permissions.permission_catalog import PERM_CONSOLE_FEATURE_TOG
 from app.database import get_db
 from app.models.data_source import DataSource
 from app.models.feature_toggle import FeatureToggle
-from app.services.feature_toggles import DEFAULTS, load_feature_toggles
+from app.services.platform.feature_toggles import DEFAULTS, load_feature_toggles
 
 router = APIRouter(prefix="/feature-toggles", tags=["feature-toggles"])
 

@@ -29,7 +29,7 @@ from app.models.knowledge_map import (
     KnowledgeMapResourceLink,
 )
 from app.models.wiki_models import WikiSpace
-from app.services.boundaries import boundary
+from app.services.platform.boundaries import boundary
 from app.services.agent.llm import resolve_agent_llm_config
 from app.services.knowledge_map.knowledge_map_html import (
     designer_chat_via_llm,
@@ -51,7 +51,7 @@ from app.services.knowledge_map.knowledge_map_html_designer_session import (
     persist_designer_turn_safe,
 )
 from app.services.permissions.permission_catalog import PERM_KNOWLEDGE_MAP_READ, PERM_KNOWLEDGE_MAP_WRITE
-from app.services.feature_toggles import is_feature_enabled
+from app.services.platform.feature_toggles import is_feature_enabled
 
 router = APIRouter(prefix="/knowledge-map", tags=["knowledge-map"])
 logger = logging.getLogger(__name__)

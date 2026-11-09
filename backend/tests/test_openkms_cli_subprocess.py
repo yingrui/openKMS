@@ -5,7 +5,7 @@ import sys
 import pytest
 
 from app.config import settings
-from app.services.openkms_cli_subprocess import (
+from app.services.platform.openkms_cli_subprocess import (
     openkms_cli_auth_env,
     prepare_openkms_cli_argv,
     resolve_openkms_cli_argv,
@@ -51,7 +51,7 @@ def test_resolve_openkms_cli_argv_falls_back_to_python_module(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     monkeypatch.setattr(settings, "openkms_cli_executable", "")
-    monkeypatch.setattr("app.services.openkms_cli_subprocess.shutil.which", lambda _name: None)
+    monkeypatch.setattr("app.services.platform.openkms_cli_subprocess.shutil.which", lambda _name: None)
     assert resolve_openkms_cli_argv() == [sys.executable, "-m", "openkms_cli"]
 
 

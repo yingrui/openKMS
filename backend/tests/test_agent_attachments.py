@@ -108,7 +108,7 @@ def test_delete_attachment_ignores_invalid_ref(delete) -> None:
 
 
 def _page(keys_and_ages, token=None):
-    from app.services.storage import StorageListPage, StorageObjectInfo
+    from app.services.platform.storage import StorageListPage, StorageObjectInfo
 
     objects = [StorageObjectInfo(key=k, size=1, last_modified=ts) for k, ts in keys_and_ages]
     return StorageListPage(prefix="", folders=[], objects=objects, next_continuation_token=token, truncated=False)

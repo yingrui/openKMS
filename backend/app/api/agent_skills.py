@@ -28,7 +28,7 @@ from app.services.agent.agent_skills_registry import (
     validate_skill_id,
     version_dir,
 )
-from app.services.feature_toggles import require_agents_feature
+from app.services.platform.feature_toggles import require_agents_feature
 from app.services.permissions.permission_catalog import PERM_PROJECTS_READ, PERM_PROJECTS_WRITE
 
 router = APIRouter(

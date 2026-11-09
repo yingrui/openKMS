@@ -1,7 +1,7 @@
 """Feature toggle defaults and API schemas."""
 
 from app.api.feature_toggles import FeatureTogglesResponse, FeatureTogglesUpdate
-from app.services.feature_toggles import DEFAULTS
+from app.services.platform.feature_toggles import DEFAULTS
 
 
 def test_defaults_include_all_console_toggles() -> None:

@@ -23,7 +23,7 @@ from app.services.deep_agents.sandbox import make_sandbox_tools
 from app.services.deep_agents.skills.loader import list_skill_paths
 from app.services.deep_agents.subagents.profiles import build_subagents
 from app.services.deep_agents.tools.web_search import make_web_search_tools
-from app.services.project_fs import project_root
+from app.services.platform.project_fs import project_root
 
 logger = logging.getLogger(__name__)
 

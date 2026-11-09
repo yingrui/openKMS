@@ -14,7 +14,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.wiki_models import WikiFile, WikiPage
 from app.services.wiki.page_index import md_to_tree_from_markdown
-from app.services.storage import delete_object, object_exists, upload_object
+from app.services.platform.storage import delete_object, object_exists, upload_object
 
 # Limits (defense in depth; tune via env later if needed)
 MAX_VAULT_FILES = 2000

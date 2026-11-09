@@ -11,7 +11,7 @@ from sqlalchemy.orm import selectinload
 from app.models.api_model import ApiModel
 from app.models.evaluation import EvaluationItem
 from app.models.knowledge_base import KnowledgeBase
-from app.services.boundaries import boundary
+from app.services.platform.boundaries import boundary
 from app.services.knowledge_bases.kb_search import search_knowledge_base
 from app.services.evaluations.search_judge import judge_qa_answer, judge_search_results
 

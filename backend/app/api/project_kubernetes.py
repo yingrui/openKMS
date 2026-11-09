@@ -20,7 +20,7 @@ from app.services.permissions.permission_catalog import (
     PERM_CONSOLE_KUBERNETES,
     PERM_PROJECTS_WRITE,
 )
-from app.services.project_fs import resolve_project_path
+from app.services.platform.project_fs import resolve_project_path
 
 router = APIRouter()
 

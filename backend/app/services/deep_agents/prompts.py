@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from app.services.project_fs import read_agents_md
+from app.services.platform.project_fs import read_agents_md
 from app.services.deep_agents.skills.loader import list_installed_skill_ids
 
 _BASE_PROMPT = """You are an openKMS project agent. You work inside **one project workspace** — not the openKMS platform repository unless the user asks for that specifically.

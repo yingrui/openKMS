@@ -21,7 +21,7 @@ from app.services.articles.article_scope import scoped_article_predicate
 from app.services.articles.article_service import collect_channel_and_descendants
 from app.services.acl.data_resource_policy import knowledge_base_visible, scoped_document_predicate
 from app.services.acl.data_scope import effective_wiki_space_ids, scope_applies
-from app.services.feature_toggles import is_feature_enabled
+from app.services.platform.feature_toggles import is_feature_enabled
 from app.services.media.media_scope import scoped_media_predicate
 from app.services.media.media_service import collect_media_channel_and_descendants
 

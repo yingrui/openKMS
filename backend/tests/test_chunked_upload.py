@@ -5,7 +5,7 @@ from uuid import uuid4
 
 import pytest
 
-from app.services.chunked_upload import chunk_count, cleanup, reassemble, store_chunk
+from app.services.platform.chunked_upload import chunk_count, cleanup, reassemble, store_chunk
 
 
 @pytest.fixture

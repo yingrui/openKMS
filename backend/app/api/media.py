@@ -27,7 +27,7 @@ from app.schemas.media_asset import (
 )
 from app.services.channels.channel_list_filter import channel_subtree_ids_for_list
 from app.services.channels.channel_scope import require_media_channel_write
-from app.services.feature_toggles import require_media_feature
+from app.services.platform.feature_toggles import require_media_feature
 from app.services.media.media_scope import (
     load_media_scoped,
     media_list_predicate,
@@ -42,8 +42,8 @@ from app.services.media.media_storage import (
     media_prefix,
 )
 from app.services.acl.resource_acl_constants import PERM_READ, PERM_WRITE, RT_MEDIA_CHANNEL
-from app.services.chunked_upload import chunk_count, cleanup, reassemble, store_chunk
-from app.services.storage import delete_objects_by_prefix, get_redirect_url, upload_object
+from app.services.platform.chunked_upload import chunk_count, cleanup, reassemble, store_chunk
+from app.services.platform.storage import delete_objects_by_prefix, get_redirect_url, upload_object
 
 router = APIRouter(
     prefix="/media",

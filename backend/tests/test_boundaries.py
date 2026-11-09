@@ -6,7 +6,7 @@ import logging
 
 import pytest
 
-from app.services.boundaries import boundary
+from app.services.platform.boundaries import boundary
 
 
 def test_success_reports_no_failure() -> None:

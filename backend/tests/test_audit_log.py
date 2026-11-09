@@ -12,7 +12,7 @@ from fastapi import FastAPI, Request, Response
 from fastapi.testclient import TestClient
 
 from app.middleware import audit as audit_middleware
-from app.services.audit import audit_target
+from app.services.platform.audit import audit_target
 
 
 class TestAuditTarget:
@@ -136,7 +136,7 @@ class TestWorkerRuns:
     """A worker mutates data with no HTTP request, so it records its own event."""
 
     def test_a_job_records_job_and_its_id_as_the_subject(self):
-        from app.services.audit import job_audit_fields
+        from app.services.platform.audit import job_audit_fields
 
         assert job_audit_fields("run_kb_index", 42) == {
             "method": "JOB",
@@ -147,7 +147,7 @@ class TestWorkerRuns:
         }
 
     def test_a_job_without_an_id_still_records(self):
-        from app.services.audit import job_audit_fields
+        from app.services.platform.audit import job_audit_fields
 
         fields = job_audit_fields("run_pipeline", None)
         assert fields["resource_id"] is None
@@ -157,8 +157,8 @@ class TestWorkerRuns:
     def test_the_writer_accepts_what_the_wrapper_sends(self, monkeypatch):
         # `jobs/tasks.py`'s `audited_task` spreads `job_audit_fields` into the writer. A worker run
         # has no URL, so the subject arrives as kwargs — a mismatch here marked every job as Error.
-        from app.services import audit as audit_module
-        from app.services.audit import job_audit_fields, record_audit_event
+        from app.services.platform import audit as audit_module
+        from app.services.platform.audit import job_audit_fields, record_audit_event
 
         added: list[object] = []
 
@@ -484,7 +484,7 @@ class TestSessionEventDedupe:
         import asyncio
         import uuid
 
-        from app.services.audit import record_session_event_once
+        from app.services.platform.audit import record_session_event_once
 
         actor = f"probe-{uuid.uuid4()}"
         # A unique path per run: the dedupe window is wall-clock, so two runs inside 5 s would otherwise

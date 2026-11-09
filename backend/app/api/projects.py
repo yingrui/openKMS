@@ -53,9 +53,9 @@ from app.services.agent.agent_skill_install import (
 )
 from app.services.agent.agent_skills_registry import validate_skill_id
 from app.services.deep_agents import git_service
-from app.services.feature_toggles import require_agents_feature
+from app.services.platform.feature_toggles import require_agents_feature
 from app.services.permissions.permission_catalog import PERM_PROJECTS_READ, PERM_PROJECTS_WRITE
-from app.services.project_fs import (
+from app.services.platform.project_fs import (
     delete_path,
     list_dir,
     make_slug,
@@ -64,7 +64,7 @@ from app.services.project_fs import (
     scaffold_project_dir,
     write_file,
 )
-from app.services.project_fs import upload_file as fs_upload
+from app.services.platform.project_fs import upload_file as fs_upload
 
 router = APIRouter(
     prefix="/projects",

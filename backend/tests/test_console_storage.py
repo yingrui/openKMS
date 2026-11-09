@@ -4,7 +4,7 @@ from unittest.mock import patch
 
 import pytest
 
-from app.services.storage import (
+from app.services.platform.storage import (
     create_folder_placeholder,
     prefix_destination_under_parent,
     prefix_folder_basename,
@@ -19,15 +19,15 @@ def test_validate_folder_name_rejects_slashes() -> None:
         validate_folder_name("  ")
 
 
-@patch("app.services.storage.upload_object")
-@patch("app.services.storage.object_exists", return_value=False)
+@patch("app.services.platform.storage.upload_object")
+@patch("app.services.platform.storage.object_exists", return_value=False)
 def test_create_folder_placeholder_uploads_marker(_exists, upload) -> None:
     key = create_folder_placeholder("documents/", "reports")
     assert key == "documents/reports/"
     upload.assert_called_once_with(key, b"", content_type="application/x-directory")
 
 
-@patch("app.services.storage.object_exists", return_value=True)
+@patch("app.services.platform.storage.object_exists", return_value=True)
 def test_create_folder_placeholder_rejects_duplicate(_exists) -> None:
     with pytest.raises(ValueError, match="already exists"):
         create_folder_placeholder("", "foo")

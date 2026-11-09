@@ -1,7 +1,7 @@
 # Package layout: splitting `services/` and `pages/`
 
-**Status:** plan, not started. Written after a layout review (2026-11) and the split of
-`pages/ontology-manager/` into four apps.
+**Status:** **stage 1 and 2 done** (2026-11). Stage 3 is the decision point; stage 4 (Option B) not started. Written after a
+layout review and the split of `pages/ontology-manager/` into four apps.
 
 The two large packages are large in the same way: a **name that describes a layer**, holding the code of several areas.
 `services/` is half the backend and `pages/` is two thirds of the frontend, so "where does this live" answers itself for
@@ -38,12 +38,12 @@ a file inside its level or moves it down, never up.
 
 ### Option A — `services/platform/` for the loose modules *(recommended first)*
 
-Move the **16 root modules** — `storage`, `audit`, `boundaries`, `credentials`, `openai_compat`, `project_fs`,
-`feature_toggles`, `internal_service_auth`, `dataset_label`, `heartbeat`, `chunked_upload`, `openkms_cli_subprocess`, … —
-into `services/platform/`. Every one of them is imported by two or more areas and depends on almost nothing; today they
-sit beside `data_layer/` and `ontology/` as if they were peers.
+Move the loose root modules — `storage`, `audit`, `boundaries`, `project_fs`, `feature_toggles`, `internal_service_auth`,
+`dataset_label`, `chunked_upload`, `openkms_cli_subprocess` — into `services/platform/`. Every one of them is imported by
+two or more areas and depends on almost nothing; they sat beside `data_layer/` and `ontology/` as if they were peers.
 
-- Top-level names in `services/`: **30 → 15**. Files moved: **~16**. Import churn: ~60 references.
+- **Done:** 9 modules moved (the plan estimated 16 — the rest of the loose names are directories already), **68 files**
+  rewritten, top-level names in `services/` **38 → 30**. Import churn was ~90 references, not ~60.
 - Risk: low. Every moved module is a leaf; nothing imports *from* them in a way that changes shape.
 - Value: the remaining 14 directories become readable at a glance, because "is this an area or a utility" stops being a
   question.
@@ -100,14 +100,28 @@ here.
 So the tool for the backend is an `ast` walk (like `fix_imports.py`, but for `app.*`), and for the frontend the existing
 one. Both must be **reset-and-run-once** — start from a clean index, never re-run on a half-rewritten tree.
 
+Three more traps, all found by running it rather than by reading the plan:
+
+- **Sass needs the same treatment as TypeScript.** `@use '../../styles/…'` in a moved `.scss` is as broken as an import, and
+  the first attempt at stage 1 did not touch it — the typecheck passed and the **build** failed.
+- **`Path('X.modals').with_suffix('.tsx')` is `X.tsx`.** `.modals` looks like an extension, so appending is the only safe
+  form: `Path(f'{stem}.tsx')`.
+- **Python has a fifth form:** `from app.services import audit as m`. The dotted rewrite (`app.services.audit`) misses it, and
+  so does everything that looks like an import at a glance; stage 2 only failed once the suite ran.
+
+Path-keyed allowlists are the recurring cost. Three of them had to follow stage 1 and one had to follow stage 2
+(`check.sh`'s single `noqa` allowlist, `ds-controls-baseline.txt`, `undefined-classes-baseline.txt`, and the 700-line
+allowlist in `check-shared-styles.sh`). In every case the **count** was unchanged: a rename must not cost a waiver or earn
+one.
+
 ## Stages
 
 Each stage is one commit, ships alone, and is verified the same way.
 
 | # | Stage | Moves | Gate | Est. |
 |---|---|---|---|---|
-| 1 | `pages/console/` → four areas | 39 files | `npm run check` + re-point `ds-controls-baseline.txt`, `undefined-classes-baseline.txt` | ~1 h |
-| 2 | `services/platform/` (Option A) | ~16 files | `./check.sh` (pytest 1003, ruff, `check_import_cycles.py` empty) | ~1 h |
+| 1 | `pages/console/` → four areas | **38 files ✅** | `npm run check` + re-point `ds-controls-baseline.txt`, `undefined-classes-baseline.txt`, and the line-count allowlist | ~1 h |
+| 2 | `services/platform/` (Option A) | **9 modules ✅** (68 files rewritten) | `./check.sh` (pytest 1003, ruff, `check_import_cycles.py` empty) | ~1 h |
 | 3 | *decision point:* re-measure `services/` top-level names and ask whether A was enough | — | — | — |
 | 4 | Option B, one area per commit (identity → ontology → data → content → workspace → runtime), never two at once | ~251 total | same, plus `mkdocs build --strict` | 1–2 h per area |
 

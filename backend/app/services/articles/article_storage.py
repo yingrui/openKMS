@@ -5,7 +5,7 @@ from __future__ import annotations
 import re
 
 from app.config import settings
-from app.services.storage import upload_object
+from app.services.platform.storage import upload_object
 
 _ARTICLE_PREFIX = "articles"
 

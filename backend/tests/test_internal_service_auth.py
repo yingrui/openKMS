@@ -4,7 +4,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from app.services import internal_service_auth as auth
+from app.services.platform import internal_service_auth as auth
 
 
 def setup_function() -> None:
@@ -51,7 +51,7 @@ def test_oidc_mode_uses_worker_client_credentials(monkeypatch: pytest.MonkeyPatc
     mock_client.__exit__ = MagicMock(return_value=False)
     mock_client.post.return_value = mock_resp
 
-    with patch("app.services.internal_service_auth.httpx.Client", return_value=mock_client):
+    with patch("app.services.platform.internal_service_auth.httpx.Client", return_value=mock_client):
         headers, basic = auth.build_internal_service_request_auth()
 
     assert basic is None

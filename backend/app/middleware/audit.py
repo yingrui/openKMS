@@ -16,7 +16,7 @@ from __future__ import annotations
 import json
 from typing import Any
 
-from app.services.audit import MUTATING, NOT_AUDITED, record_audit_event
+from app.services.platform.audit import MUTATING, NOT_AUDITED, record_audit_event
 
 #: A response larger than this is not an object with an id; stop buffering rather than hold it in memory.
 MAX_CAPTURE = 32 * 1024

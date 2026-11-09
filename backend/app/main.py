@@ -104,7 +104,7 @@ async def lifespan(app: FastAPI):
             "Set OPENKMS_SECRET_KEY to a secure value in production."
         )
 
-    from app.services.storage import ensure_bucket
+    from app.services.platform.storage import ensure_bucket
 
     ensure_bucket()
 

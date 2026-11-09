@@ -10,7 +10,7 @@ import textwrap
 from langchain_core.tools import tool
 
 from app.config import settings
-from app.services.project_fs import project_root
+from app.services.platform.project_fs import project_root
 
 
 def run_python_in_project(project_id: str, code: str, *, shell_env: dict[str, str] | None = None) -> str:

@@ -26,7 +26,7 @@ from app.services.articles.article_storage import (
     safe_image_filename,
     sync_content_md_to_storage,
 )
-from app.services.storage import delete_objects_by_prefix, upload_object
+from app.services.platform.storage import delete_objects_by_prefix, upload_object
 
 
 # ----------------------------- channel helpers -----------------------------

@@ -11,7 +11,7 @@ from app.schemas.media_channel import (
     MediaChannelUpdate,
 )
 from app.services.acl.resource_acl_constants import RT_MEDIA_CHANNEL
-from app.services.feature_toggles import require_media_feature
+from app.services.platform.feature_toggles import require_media_feature
 
 
 def _channel_node(channel: MediaChannel, children: list[MediaChannelNode]) -> MediaChannelNode:

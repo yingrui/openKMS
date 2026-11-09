@@ -19,7 +19,7 @@ from uuid import uuid4
 from fastapi import HTTPException
 
 from app.config import settings
-from app.services.storage import (
+from app.services.platform.storage import (
     STORAGE_ERRORS,
     delete_object,
     delete_objects_by_prefix,

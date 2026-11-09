@@ -36,6 +36,10 @@ class DocumentRelationType(StrEnum):
 DEFAULT_PAGE_SIZE = 100
 MAX_PAGE_SIZE = 500
 ROWS_TIMEOUT_MS = 10_000
+#: Browsing a big table must not pay for an exact row count: past this many rows an unfiltered
+#: page reports the planner's estimate, and a filtered one counts under this shorter leash.
+EXACT_COUNT_MAX_ROWS = 200_000
+COUNT_TIMEOUT_MS = 3_000
 
 #: Column names that make a file sliceable by date. One list: the upload path, the read path and the API's note about a
 #: version all have to agree on what "the date column" means, and a second copy is how they drift.

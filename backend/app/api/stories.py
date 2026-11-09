@@ -376,7 +376,9 @@ async def _run_finding(
                 "columns": page.columns,
                 "rows": page.rows,
                 # `total` counts the rows the filters match — the page may be a slice of it.
+                # `None` means the table was too big to count within the browse budget.
                 "total": page.total,
+                "total_kind": page.total_kind,
                 "capped": page.capped,
                 "duration_ms": int((time.perf_counter() - started) * 1000),
             }

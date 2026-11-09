@@ -12,7 +12,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.agent_models import AgentConversation, AgentMessage
-from app.services.boundaries import boundary
+from app.services.platform.boundaries import boundary
 from app.config import settings
 from app.services.agent.tool_transcripts import (
     AGENT_TOOL_TRANSCRIPTS_KEY,

@@ -14,7 +14,7 @@ from app.models.evaluation import Evaluation, EvaluationItem
 from app.models.evaluation_run import EvaluationRun, EvaluationRunItem
 from app.models.knowledge_base import KnowledgeBase
 from app.models.wiki_models import WikiSpace
-from app.services.boundaries import boundary
+from app.services.platform.boundaries import boundary
 from app.schemas.evaluation import (
     EvaluationCompareResponse,
     EvaluationCompareRow,

@@ -16,7 +16,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.api.auth import ensure_permission, require_auth, require_permission
 from app.config import settings
 from app.database import get_db
-from app.services.storage import STORAGE_ERRORS
+from app.services.platform.storage import STORAGE_ERRORS
 from app.models.data_source import DataSource
 from app.schemas.health_status import (
     DataSourceHealthItem,
@@ -63,7 +63,7 @@ async def _check_storage() -> tuple[HealthStatusKind, str | None, int | None]:
     def _head_bucket() -> None:
         from botocore.exceptions import ClientError
 
-        from app.services.storage import _bucket, _client
+        from app.services.platform.storage import _bucket, _client
 
         client = _client()
         try:

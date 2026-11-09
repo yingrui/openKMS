@@ -70,8 +70,8 @@ from app.services.documents.document_storage import (
     resolve_document_object_key,
 )
 from app.services.documents.preview_errors import PREVIEW_ERRORS
-from app.services.chunked_upload import chunk_count, cleanup, reassemble, store_chunk
-from app.services.storage import (
+from app.services.platform.chunked_upload import chunk_count, cleanup, reassemble, store_chunk
+from app.services.platform.storage import (
     STORAGE_ERRORS,
     delete_objects_by_prefix,
     get_object,
@@ -667,7 +667,7 @@ async def get_document_page_index(
     if not key:
         raise HTTPException(status_code=404, detail="Page index not found (re-process document to build)")
     try:
-        from app.services.storage import get_object
+        from app.services.platform.storage import get_object
 
         content = get_object(key)
         data = json.loads(content.decode("utf-8"))

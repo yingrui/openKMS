@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from app.services.project_fs import resolve_project_path
+from app.services.platform.project_fs import resolve_project_path
 
 # Relative path for SkillsMiddleware + virtual_mode backend (parent of skill dirs).
 SKILLS_DIR_REL = ".openkms/skills"

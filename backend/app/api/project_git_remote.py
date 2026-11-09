@@ -14,7 +14,7 @@ from app.models.user_git_credential import UserGitCredential
 from app.schemas.project import GitCloneRequest, GitPatRequest, GitRemoteRequest
 from app.services.deep_agents import git_service
 from app.services.permissions.permission_catalog import PERM_PROJECTS_WRITE
-from app.services.project_fs import project_root
+from app.services.platform.project_fs import project_root
 
 router = APIRouter()
 

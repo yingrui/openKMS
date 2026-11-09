@@ -12,7 +12,7 @@ from sqlalchemy import text
 
 from app.models.data_source import DataSource
 from app.services.ontology.dataset_tables import is_valid_identifier, pg_engine_for_datasource
-from app.services.storage import get_object
+from app.services.platform.storage import get_object
 
 
 class IngestError(ValueError):

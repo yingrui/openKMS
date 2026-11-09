@@ -21,7 +21,7 @@ from pydantic_ai.profiles.openai import OpenAIModelProfile
 from pydantic_ai.providers.openai import OpenAIProvider
 
 from app.models.agent_models import AgentMessage
-from app.services.boundaries import boundary
+from app.services.platform.boundaries import boundary
 
 logger = logging.getLogger(__name__)
 

@@ -21,7 +21,7 @@ from app.schemas.quality import QualityIssueListResponse, QualityIssueResponse
 from app.services.acl.resource_acl_constants import RT_DATASET
 from app.services.acl.resource_list_acl import readable_id_filter
 from app.services.permissions.permission_catalog import PERM_DATA_READ
-from app.services.dataset_label import dataset_label
+from app.services.platform.dataset_label import dataset_label
 
 router = APIRouter(
     prefix="/quality-issues",

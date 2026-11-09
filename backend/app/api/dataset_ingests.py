@@ -25,7 +25,7 @@ from app.services.acl.data_scope import bootstrap_owner_acl
 from app.services.acl.resource_acl_constants import RT_DATASET
 from app.services.data_layer.ingest import IngestError, load_dataframe, preview_columns, read_head
 from app.services.permissions.permission_catalog import PERM_DATA_WRITE
-from app.services.storage import get_object, upload_object
+from app.services.platform.storage import get_object, upload_object
 
 router = APIRouter(
     prefix="/dataset-ingests",
