@@ -1,118 +1,125 @@
-# Data-query evaluation — evaluating "ask the data" answers
+# Data-query evaluation — judging the *query*, not the numbers
 
-**Status:** design, not started. Extends the existing Evaluation app, which today evaluates RAG: a
-`(query, expected_answer)` pair run against a **knowledge base**. This page plans how the same app evaluates **智能问数** —
-a natural-language question answered by querying a **semantic model** — where the expected answer is *data*, not prose.
+**Status:** design, not started. Extends the Evaluation app to judge **智能问数** answers — specifically, whether the
+answer's Sources cited the right semantic model and the right SQL. It deliberately does **not** judge the returned numbers:
+data changes over time, so "is the value correct" is a question nobody can answer twice.
 
-## Why the existing shape does not fit
+## The correction this page records
 
-`Evaluation` is RAG-shaped in three places, and each one is load-bearing:
+The first draft judged the **result** — an expected number, range or result set. That was wrong for the domain. A stock
+price, a row count, a "PE > 100" tally are all functions of *when* the question was asked, so a ground-truth number is
+stale the day after it is written. What is stable is the **question → query** step: given "semiconductor industry revenue by
+month", the answer should cite the semantic model that has that grain, and SQL whose FROM/JOIN/WHERE/GROUP BY match that
+intent. If those are right, the data is right by construction — and if they are wrong, the data being wrong is a symptom,
+not the thing to measure.
 
-| Field | What it assumes | What 智能问数 needs |
+So the unit of truth is the **query**, and the answer's Sources are where the query is exposed.
+
+## What is judged: the `data_query` evidence
+
+A KB Q&A answer carries one or more `data_query` sources (the Catalog / SQL Lab evidence). Each has:
+
+```
+mode        "metric" | "sql"
+model_id    which semantic model answered it
+metric      the saved metric id, when mode == "metric"
+expression  the one-shot aggregate fragment, when mode == "expression"
+sql         the executed SQL — FROM, JOIN, WHERE (the filters), GROUP BY
+columns     the result columns (not judged — see above)
+rows        a preview (not judged)
+row_count   not judged
+```
+
+The evaluation checks the **top half** — `model_id`, `metric`/`expression`, and `sql` — against ground truth. The bottom
+half is deliberately ignored.
+
+## Ground truth: what a correct *query* looks like
+
+An item needs a new shape, because `expected_answer` (prose) does not describe a query. New `expected_query` (JSONB):
+
+```json
+{
+  "model_id": "745a2fbc-…",              // exact — the model that should have answered
+  "metric": "revenue_by_month",          // optional: the saved metric, when the question names one
+  "sql": {
+    "tables":   ["tushare.daily_basic"], // relations the SQL must touch (exact, unqualified ok)
+    "columns":  ["industry", "trade_date"], // fields it must reference
+    "filters":  [{"column": "industry", "op": "=", "value": "半导体"}],
+    "group_by": ["industry", "month"],   // the grain
+    "forbid":   ["pe_ttm"]               // optional: a field it must NOT use (the trap dimension)
+  }
+}
+```
+
+Three levels, cheapest first:
+
+| check | deterministic? | what it catches |
 |---|---|---|
-| `knowledge_base_id` (NOT NULL) | the answer comes from a KB | the answer comes from a **semantic model** |
-| `EvaluationItem.expected_answer` (Text) | ground truth is a paragraph | ground truth is a **result** — a number, a range, a result set, or a fuzzy assertion |
-| `evaluation_type` ∈ {search_retrieval, qa_answer, wiki_content_coverage} | judge passages against prose | judge **rows against a value** |
+| `model_id` exact match | yes | the answer cited the wrong model entirely |
+| `sql` **features** (tables / columns / filters / group_by / forbid) | yes — extracted from the SQL with the same scanner `sql_scan.py` already ships | a query that is *shaped* wrong: wrong table, missing filter, wrong grain |
+| `sql` **semantic equivalence** | no — LLM judge | two SQLs that say the same thing differently (a `BETWEEN` vs two `>=`, a join order) |
 
-So this is not "add a fourth type and put the query in a field". The evaluation object and the ground-truth shape both
-change.
-
-## What is being evaluated
-
-One item is one question. The question turns into a structured `QueryRequest` against a semantic model
-(`POST /api/semantic-models/{id}/query`), the engine returns `{sql, columns, rows, row_count}`, and the evaluator judges
-whether those rows answer the question.
-
-There are two different abilities hidden in that sentence, and the design must not collapse them:
-
-1. **The translation** — natural language → a correct `QueryRequest` (right metric/expression, right filters, right grain).
-2. **The data** — the model and the engine return the number the question is after.
-
-A wrong answer can mean either. A regression test of (2) is cheap and deterministic; a test of (1) is the actual "智能问数"
-capability and needs a model to do the translation. The plan supports both, with (2) first.
-
-## Ground truth: what a correct answer looks like
-
-`EvaluationItem.expected_answer` stays for the RAG types. A new `expected_result` (JSONB, nullable) carries the data answer,
-with a `kind`:
-
-| kind | shape | judge |
-|---|---|---|
-| `scalar` | `{"kind":"scalar","value":178222}` | the query must return exactly one cell, equal within `tolerance` (abs or pct) |
-| `range` | `{"kind":"range","min":170000,"max":185000}` | one cell within the bounds — for numbers nobody can pin exactly ("PE>100 的行数在 17 万左右") |
-| `result_set` | `{"kind":"result_set","columns":["industry","n"],"rows":[["半导体",125430]],"tolerance":"pct"}` | same shape, values within tolerance — for "give me the top three" |
-| `assertion` | `{"kind":"assertion","text":"半导体行业的行数应该明显少于全市场"}` | an LLM judge reads the rows and the assertion — the escape hatch for fuzzy truth |
-
-`scalar`/`range`/`result_set` are judged **deterministically** — no model, reproducible, cheap. `assertion` reuses the LLM
-judge pattern from `search_judge.py`. The point of having the first three is that a number should not need an LLM to be
-checked.
+The deterministic layer is the workhorse and has no model cost; the LLM layer is the escape hatch for "not the same string,
+but the same meaning". Both are about the query, never about the rows.
 
 ## Data model
 
-- `evaluations` gains `semantic_model_id` (nullable, FK, index) and, for restricted models, `data_resource_id` (nullable).
-  A data-query evaluation has a model; a RAG evaluation has a KB. The two are mutually exclusive on the same row — enforced
-  in the API, not by a DB constraint that would fight the existing KB rows.
-- `evaluation_items.expected_result` (JSONB, nullable) carries the table above. `expected_answer` remains for RAG items; a
-  data-query item may carry either the structured result, or both the structured result and the prose question.
-- New `evaluation_type`: **`data_query`**.
+- `evaluations` gains nullable `semantic_model_id` (FK, index) and, for restricted models, `data_resource_id`. A
+  data-query evaluation has a model; a RAG evaluation has a KB. Mutually exclusive, enforced in the API.
+- `evaluation_items` gains `expected_query` (JSONB). `expected_answer` stays for RAG; a data-query item may carry the prose
+  question and the structured `expected_query`.
+- New `evaluation_type`: **`data_query`**. Run history, run items, compare — all reused; `evaluation_run_items.detail` can
+  hold `{sql, model_id, feature_diffs, judge_reasoning}`.
 
 ## Execution
 
 ```
-item.query (the question)
-   →  a QueryRequest          ← the translation step (decision D1 below)
-   →  POST /api/semantic-models/{id}/query
-   →  {columns, rows}
-   →  judge rows against item.expected_result
-   →  {passed, score, reasoning, detail:{sql, row_count, expected}}
+run the evaluation's QA path over item.query        (the answer, with its data_query sources)
+   →  for each source: judge against item.expected_query
+        model_id: exact compare
+        sql:      extract features (sql_scan) → diff against expected
+                  → deterministic pass/fail, or fall to the LLM judge for equivalence
+   →  {passed, score, reasoning, detail}
 ```
 
-Runs, run items, history and compare all reuse the existing machinery — `evaluation_runs` /
-`evaluation_run_items` already store `evaluation_type`, `score`, `reasoning` and a JSONB `detail`, which is exactly what
-this needs. No new run tables.
+One item may produce several sources; the item passes when the **best** source matches (a good answer that also cited a
+wrong secondary source should fail on the one that matters, not on the one that does not — decision D5).
 
-## Decisions that need a call
+## Decisions
 
-**D1 — who does the translation?** This is the one that decides scope.
+**D1 — judge the agent's sources, not a re-run.** The thing being evaluated is what the answer *claimed* — the
+`data_query` the agent put in its Sources. The evaluator reads that evidence and judges it; it does not re-execute the SQL
+to see what today's data says. Re-running adds a data question back into a query question.
 
-- **A (first): the item stores the QueryRequest.** `expected_result` plus an explicit `query_spec` (JSONB: the metric /
-  expression / filters / group_by). The run executes it verbatim. This evaluates (2) — the model and engine — and is a
-  regression suite for "did the definition or the query engine break".
-- **B (the real thing): the item stores only the question**, and a translation step turns it into a QueryRequest with an
-  LLM (the evaluation's judge model, or a model bound to the semantic model). This evaluates (1) — the 智能问数 capability —
-  and is what the name promises.
+**D2 — feature extraction is exact, not fuzzy.** `tables` / `columns` / `filters` / `group_by` compare structurally. "The
+right table" does not need an LLM. Only *equivalence of two differently-shaped SQLs* needs one.
 
-Recommendation: ship **A**, then B on top. A needs no new model and pins the engine; B is one new prompt plus the A judge,
-and A is the ground truth B is measured against.
+**D3 — permission.** Reading an answer and its sources needs the KB's read ACL; nothing new. If the evaluation also
+*fetches* the answer at run time through the QA agent, that uses the agent's existing key — the evaluator never needs
+`data:read` itself, because it never queries the model. This is a real simplification over the first draft: judging claims
+about a query is cheaper and safer than running it.
 
-**D2 — tolerance semantics.** "Within 5%" and "within 500 rows" are different for a percentage than for a count. Plan:
-`tolerance` is a number, `tolerance_kind` is `abs` | `pct`; for `result_set`, pct applies per numeric cell, strings compare
-exactly.
+**D4 — filters live in the SQL.** `data_query` has no separate `filters` field; the filters are the SQL's WHERE. The ground
+truth's `filters` list is compiled into feature expectations and matched against the WHERE the scanner extracts. If the
+agent later gains a structured `filters` field, the same expectations apply to it directly.
 
-**D3 — permission model.** A run reads a semantic model's data. The evaluator needs `data:read` **and**, for a restricted
-model, a read grant on the bound resource (the same `resolve_catalog_scope` gate the query itself uses). If the caller
-cannot read the model, the run fails at the start with `RESOURCE_FORBIDDEN`, not per-item — a run that silently returns
-empty rows for every item is worse than a refusal.
-
-**D4 — one expected result per item, or several?** Multiple `result_set` variants (one per grouping) would let one question
-check "top 3 by industry" *and* "grand total". Plan: an item has one `expected_result`; a second check is a second item.
-Multiple results per item would turn the compare view into a matrix for no gain.
+**D5 — several sources, one verdict.** Match the best source against `expected_query`; the item fails if none matches.
+Reasons are per-source in `detail`, so a spurious extra citation is visible without failing the item.
 
 ## Stages
 
 | # | Stage | Ships |
 |---|---|---|
-| 1 | Model + migration (`semantic_model_id`, `data_resource_id`, `expected_result` JSONB, `data_query` in the type allowlist) | schema only |
-| 2 | **D1-A** execution: run a stored `query_spec` through the query API, judge `scalar` / `range` / `result_set` deterministically | a regression suite for the engine |
-| 3 | `assertion` kind via the LLM judge, reusing `search_judge`'s client wiring | fuzzy truths |
-| 4 | **D1-B** translation step (question → QueryRequest), judged by the same machinery as A | the actual 智能问数 evaluation |
-| 5 | UI: evaluation settings gain a model selector (vs KB), item editor gains the expected-result editor; run history shows `detail.sql` | usable without the API |
+| 1 | Model + migration (`semantic_model_id`, `data_resource_id`, `expected_query` JSONB, `data_query` type) | schema |
+| 2 | `model_id` exact match + SQL feature extraction/diff (reuses `sql_scan.relation_refs`) | the deterministic judge |
+| 3 | SQL semantic-equivalence judge (LLM, reuse `search_judge` client wiring) | the escape hatch |
+| 4 | Run wiring: fetch an answer through the QA agent, read its `data_query` sources, judge, persist `detail` | end to end |
+| 5 | UI: model selector in evaluation settings, expected-query editor, run detail shows the SQL and the diffs | usable |
 
-Each stage is one commit and runs the existing gates; stages 1–3 do not touch the RAG types.
+Stages 1–3 do not touch the RAG types. Every stage is one commit and runs the existing gates.
 
-## Explicitly out of scope
+## Out of scope
 
-- Evaluating the **agent** that chats over a story or a dashboard (that is a conversation, judged differently).
-- A metric of "the query was cheap" (duration, scanned rows). Interesting, but it is an SLO, not a correctness question.
-- Reusing the **quality rules** inbox for this. A quality rule says "this data is broken"; an evaluation says "this
-  question is answered correctly". Different questions, different pages.
+- Judging the returned **numbers** (`rows`, `row_count`) — data moves; the query does not.
+- Evaluating the chat *style* of the answer, the prose, or the citations' formatting — that is `qa_answer`.
+- A "query was cheap" metric — an SLO, not a correctness question.
