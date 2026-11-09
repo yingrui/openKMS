@@ -2,6 +2,23 @@
 
 Delivered work and design history, moved out of the [Development plan](development_plan.md).
 
+### Orphaned grants, and an owner nobody could see (2026-11) — done
+
+- `resource_acl_entries.grantee_id` is a plain string — it has to be, since a grantee is a user, a group or
+  `authenticated` — so deleting a user leaves their grants behind. **83 grants across ten resource types** pointed at two
+  users that no longer existed. They can never grant anything, and they are what the sharing panel showed as a name nobody
+  could account for.
+- Removed (`scripts/clean_orphan_grants.py`, dry run by default, kept as the maintenance tool). **85 rows**, including a
+  model's creator whose id had also been deleted.
+- Two presentation bugs were hiding behind that data. `is_owner` was set for **every** user grant, so the panel protected
+  rows that were removable and called readers "owner"; it now means "this grantee is the resource's creator". And the
+  "default owner" fallback — for resources created before ACL rows existed — **manufactured** an owner from a deleted
+  creator's id, labelled with whatever the last API key for that subject was called. It now declines when the creator is
+  gone: no owner is better than a ghost one.
+- Separately, `GET /api/resource-acl/…` required **read**, so an administrator (manage but not read, by design) got a 404 on
+  the management view of a resource they could see. Read **or** manage now; the panel treats a 403/404 as an answer rather
+  than an error.
+
 ### `services/` became seven areas (2026-11) — done
 
 - 38 top-level names under `services/` (21 directories, 9 loose modules in the root, and the rest) became **seven areas**:

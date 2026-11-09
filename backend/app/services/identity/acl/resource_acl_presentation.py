@@ -98,7 +98,12 @@ async def grant_labels(
         elif g.grantee_type == GRANTEE_AUTHENTICATED:
             label = "Others"
         elif g.grantee_type == GRANTEE_USER and g.grantee_id:
-            is_owner = True
+            # "Owner" is a fact about one grantee, not a synonym for "a user grant": marking every reader as an owner told
+            # the sharing panel to protect rows that were removable, and described readers as owners.
+            is_owner = bool(creator_subject) and (
+                g.grantee_id == creator_subject
+                or await user_grant_matches(db, g.grantee_id, creator_subject, None)
+            )
             hint: str | None = getattr(g, "grantee_label", None)
             if hint and not str(hint).strip():
                 hint = None
@@ -133,8 +138,17 @@ async def enrich_default_owner_grant(
     creator_subject: str | None,
     creator_display_name: str | None,
 ) -> tuple[list[AclGrantOut], str | None, str | None]:
-    """When no persisted owner ACL exists, default to the resource creator with full permissions."""
+    """When no persisted owner ACL exists, default to the resource creator with full permissions.
+
+    **Only if that creator still exists.** The fallback exists so a resource created before ACLs had rows still has an owner;
+    it must not manufacture one from an id whose user was deleted, which is how a resource ended up showing a "owner" row
+    for nobody — labelled with whatever the last API key for that subject happened to be called.
+    """
     if any(e.grantee_type == GRANTEE_USER for e in entries) or not creator_subject:
+        return grant_rows, owner, owner_label
+    from app.models.user import User
+
+    if await db.get(User, creator_subject) is None:
         return grant_rows, owner, owner_label
     label = await resolve_subject_display(db, creator_subject, display_hint=creator_display_name)
     enriched = list(grant_rows) + [
