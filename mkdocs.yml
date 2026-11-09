@@ -207,6 +207,7 @@ nav:
   - Developer:
       - Setup: developer/setup.md
       - Design system: design-system.md
+      - Package layout (plan): features/packages-layout.md
       - Doc conventions for AI agents: agents.md
   - Roadmap:
       - Development plan: development_plan.md

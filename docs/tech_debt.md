@@ -10,6 +10,13 @@ Open items only. Closed work lives in git history.
 
 ## Medium priority
 
+### `services/` and `pages/` describe a layer, not an area
+
+`services/` is half the backend (251 files) behind one name, and `console/` is the last frontend directory that mixes four
+areas. Both have a staged plan with measured dependency levels and the two scripting traps the last split hit:
+[Package layout](features/packages-layout.md). Not debt for its own sake — the code is where it is because each file is
+where it needed to be, twice — but a map nobody can read is expensive in a way that never shows up as a bug.
+
 ### Cache the model graph in SQL Lab
 
 Every SQL Lab run (`POST /api/semantic-models/{id}/sql`) and every metric run rebuilds the same two things from the
