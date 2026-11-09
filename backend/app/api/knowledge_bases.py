@@ -831,7 +831,7 @@ async def polish_faq(
     db: AsyncSession = Depends(get_db),
 ):
     """Polish a draft FAQ answer with the KB judge model (or default LLM). Does not persist."""
-    from app.services.evaluations.execute import resolve_judge_config
+    from app.services.workspace.evaluations.execute import resolve_judge_config
     from app.services.content.knowledge_bases.faq_generation import polish_faq_answer
 
     _, model_config = await resolve_judge_config(db, kb)

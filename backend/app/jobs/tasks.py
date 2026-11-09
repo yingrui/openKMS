@@ -942,7 +942,7 @@ async def run_scheduled_project_agent(
         log_lines.append(f"Scheduled agent started: {trigger.display_name} ({trigger.kind})")
         try:
             from app.models.agent_models import AgentConversation
-            from app.services.schedules.project_agent_schedule import execute_scheduled_project_agent
+            from app.services.workspace.schedules.project_agent_schedule import execute_scheduled_project_agent
 
             await execute_scheduled_project_agent(session, trigger)
             await update_trigger_after_agent_job(

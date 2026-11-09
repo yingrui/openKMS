@@ -10,7 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.scheduled_trigger import ScheduledTrigger
 from app.jobs.schedule_handlers import defer_scheduled_trigger
-from app.services.schedules.schedule_slots import floor_to_minute, is_cron_due_for_slot
+from app.services.workspace.schedules.schedule_slots import floor_to_minute, is_cron_due_for_slot
 
 logger = logging.getLogger(__name__)
 

@@ -117,7 +117,7 @@ async def build_workspace_deep_agent(
 
     from app.models.project_deploy_secret import ProjectDeploySecret
     from app.services.deep_agents.checkpointer import get_checkpointer
-    from app.services.projects import deploy_secrets as deploy_svc
+    from app.services.runtime.projects import deploy_secrets as deploy_svc
 
     deploy_rows = (
         await db.execute(

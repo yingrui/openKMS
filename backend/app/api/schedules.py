@@ -22,8 +22,8 @@ from app.schemas.schedule import ScheduleListResponse, ScheduleOut, SchedulePatc
 from app.services.data.connectors.connector_catalog import CATEGORY_SYNC, get_kind_spec, normalize_and_validate_settings
 from app.services.data.connectors.schedule import compute_next_run_at, validate_cron_expression, validate_timezone
 from app.services.identity.permissions.permission_catalog import PERM_CONNECTORS_READ, PERM_CONNECTORS_WRITE, PERM_PROJECTS_READ, PERM_PROJECTS_WRITE
-from app.services.schedules.project_agent_schedule import normalize_agent_schedule_config
-from app.services.schedules.scheduled_triggers import upsert_connector_sync_trigger
+from app.services.workspace.schedules.project_agent_schedule import normalize_agent_schedule_config
+from app.services.workspace.schedules.scheduled_triggers import upsert_connector_sync_trigger
 
 router = APIRouter(
     prefix="/schedules",

@@ -12,7 +12,7 @@ from app.config import settings
 from app.database import get_db
 from app.i18n.errors import http_error
 from app.schemas.global_search import GlobalSearchResponse
-from app.services.global_search.global_search import allowed_types_from_permissions, parse_types_param, run_global_search
+from app.services.workspace.global_search.global_search import allowed_types_from_permissions, parse_types_param, run_global_search
 from app.services.identity.permissions.permission_resolution import resolve_oidc_permission_keys, resolve_user_permission_keys
 
 router = APIRouter(prefix="/search", tags=["search"], dependencies=[Depends(require_auth)])

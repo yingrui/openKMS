@@ -35,13 +35,13 @@ from app.schemas.evaluation import (
 )
 from app.services.identity.acl.data_resource_policy import knowledge_base_visible, wiki_space_visible
 from app.services.identity.acl.data_scope import bootstrap_owner_acl
-from app.services.evaluations.evaluation_scope import (
+from app.services.workspace.evaluations.evaluation_scope import (
     load_evaluation_scoped,
     require_evaluation_manage,
     require_evaluation_write,
 )
 from app.services.identity.acl.resource_acl_constants import PERM_READ, RT_EVALUATION
-from app.services.evaluations.execute import (
+from app.services.workspace.evaluations.execute import (
     ALLOWED_EVALUATION_TYPES,
     EVALUATION_TYPE_QA_ANSWER,
     EVALUATION_TYPE_SEARCH_RETRIEVAL,
@@ -51,8 +51,8 @@ from app.services.evaluations.execute import (
     run_qa_answer_evaluation,
     run_search_retrieval_evaluation,
 )
-from app.services.evaluations.wiki_execute import run_wiki_content_coverage_evaluation
-from app.services.evaluations.evaluation_read import (
+from app.services.workspace.evaluations.wiki_execute import run_wiki_content_coverage_evaluation
+from app.services.workspace.evaluations.evaluation_read import (
     evaluation_to_response,
     item_count,
     list_evaluations_page,

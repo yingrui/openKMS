@@ -53,7 +53,7 @@ from app.services.data.connectors.provision import (
     provision_dataset_for_slot,
     validate_connector_outputs,
 )
-from app.services.schedules.scheduled_triggers import (
+from app.services.workspace.schedules.scheduled_triggers import (
     delete_connector_sync_trigger,
     get_trigger_for_connector,
     merge_sync_schedule_response,

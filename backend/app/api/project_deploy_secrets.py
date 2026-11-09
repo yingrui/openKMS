@@ -29,7 +29,7 @@ from app.services.identity.permissions.permission_catalog import (
     PERM_PROJECTS_READ,
     PERM_PROJECTS_WRITE,
 )
-from app.services.projects import deploy_secrets as deploy_svc
+from app.services.runtime.projects import deploy_secrets as deploy_svc
 
 router = APIRouter()
 

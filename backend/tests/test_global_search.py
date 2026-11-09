@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from app.services.global_search.global_search import allowed_types_from_permissions, parse_types_param
+from app.services.workspace.global_search.global_search import allowed_types_from_permissions, parse_types_param
 from app.services.identity.permissions.permission_catalog import (
     PERM_ALL,
     PERM_ARTICLES_READ,

@@ -13,7 +13,7 @@ from app.models.evaluation import EvaluationItem
 from app.models.knowledge_base import KnowledgeBase
 from app.services.platform.boundaries import boundary
 from app.services.content.knowledge_bases.kb_search import search_knowledge_base
-from app.services.evaluations.search_judge import judge_qa_answer, judge_search_results
+from app.services.workspace.evaluations.search_judge import judge_qa_answer, judge_search_results
 
 logger = logging.getLogger(__name__)
 

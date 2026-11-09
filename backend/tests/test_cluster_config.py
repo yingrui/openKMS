@@ -6,7 +6,7 @@ from app.services.kubernetes.cluster_config import (
     validate_env_key,
     validate_resource_name,
 )
-from app.services.projects.deploy_secrets import encrypt_values, decrypt_values, merge_values
+from app.services.runtime.projects.deploy_secrets import encrypt_values, decrypt_values, merge_values
 
 
 def test_validate_resource_name():

@@ -14,7 +14,7 @@ from app.services.identity.permissions.permission_catalog import PERM_DATA_READ,
 from app.database import get_db
 from app.services.identity.acl.data_scope import bootstrap_owner_acl
 from app.services.identity.acl.resource_list_acl import readable_id_filter
-from app.services.evaluations.dataset_scope import (
+from app.services.workspace.evaluations.dataset_scope import (
     load_dataset_scoped,
     require_dataset_manage,
     require_dataset_write,

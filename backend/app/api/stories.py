@@ -53,7 +53,7 @@ from app.services.data.data_layer.query_errors import QueryFailure
 from app.services.data.data_layer.row_filters import RowFilterError
 from app.services.identity.acl.resource_acl_constants import PERM_READ, RT_DATASET
 from app.services.identity.acl.resource_acl_service import readable_resource_ids
-from app.services.evaluations.dataset_scope import load_dataset_scoped
+from app.services.workspace.evaluations.dataset_scope import load_dataset_scoped
 from app.services.identity.permissions.permission_catalog import PERM_INSIGHTS_READ, PERM_INSIGHTS_WRITE
 
 router = APIRouter(
