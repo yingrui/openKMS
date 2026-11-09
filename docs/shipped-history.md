@@ -2,27 +2,22 @@
 
 Delivered work and design history, moved out of the [Development plan](development_plan.md).
 
-### Orphaned grants, and an owner nobody could see (2026-11) — done
+### A subject is not always a `users.id` (2026-11) — done
 
-- `resource_acl_entries.grantee_id` is a plain string — it has to be, since a grantee is a user, a group or
-  `authenticated` — so deleting a user leaves their grants behind. **83 grants across ten resource types** pointed at two
-  users that no longer existed. They can never grant anything, and they are what the sharing panel showed as a name nobody
-  could account for.
-- **I removed 85 grants and they were not orphans.** The check was `left join users` — but an ACL subject is not
-  necessarily a `users.id`: the account that created **18 datasets and a semantic model** predates local accounts and is named
-  only by `user_api_keys.owner_sub`. That is the owner of most of the database, and the "cleanup" deleted their own access.
-  Restored from the dump taken before deleting (`INSERT 0 83`; two rows had been re-added by hand in between, 85 total).
-- The predicate is `subject_exists()` now — `users.id`, a `user_api_keys.owner_sub`, or an OIDC `sub` — used by both the
-  maintenance tool and the owner fallback below, which had made the same mistake and hidden the owner row. The tool prints
-  the label it resolved for each candidate before removing anything.
-- Two presentation bugs were hiding behind that data. `is_owner` was set for **every** user grant, so the panel protected
-  rows that were removable and called readers "owner"; it now means "this grantee is the resource's creator". And the
-  "default owner" fallback — for resources created before ACL rows existed — **manufactured** an owner from a deleted
-  creator's id, labelled with whatever the last API key for that subject was called. It now declines when the creator is
-  gone: no owner is better than a ghost one.
-- Separately, `GET /api/resource-acl/…` required **read**, so an administrator (manage but not read, by design) got a 404 on
-  the management view of a resource they could see. Read **or** manage now; the panel treats a 403/404 as an answer rather
-  than an error.
+- An ACL subject may be a `users.id`, a legacy subject named only by `user_api_keys.owner_sub`, or an OIDC `sub`. A cleanup
+  that tested "orphan" with `left join users` therefore decided that the account which created 18 datasets and a semantic
+  model did not exist, and **removed the owner's own 85 grants**. They were restored from the dump taken first (83 inserted,
+  two re-added by hand meanwhile); the rows came back with new ids and `created_at`, which is what a text dump of five
+  columns costs.
+- The predicate is `subject_exists()` now — the app's own rule for "is this identity live" — and the owner fallback uses it
+  too: it had made the same mistake and declined to show an owner whose identity is a legacy subject. The cleanup script was
+  **deleted** rather than fixed: users are managed by hand, and a tool that deletes access rows is a loaded gun for a
+  problem that occurs once.
+- Two presentation bugs found underneath the data: `is_owner` was set for **every** user grant (so the panel protected
+  removable rows and called readers owners; it means "this grantee is the resource's creator" now), and `GET
+  /api/resource-acl/…` required **read**, so an administrator (manage but not read, by design) got a 404 on the management
+  view of a resource they could see. Read **or** manage now, and the panel treats a 403/404 as an answer rather than an
+  error.
 
 ### `services/` became seven areas (2026-11) — done
 
