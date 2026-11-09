@@ -7,7 +7,7 @@ from typing import Any
 import httpx
 
 from app.models.connector import Connector
-from app.services.connectors.connector_catalog import ZHIPU_API_BASE_URL, decrypt_secrets_blob
+from app.services.data.connectors.connector_catalog import ZHIPU_API_BASE_URL, decrypt_secrets_blob
 
 _SEARCH_ENGINES = frozenset(
     {"search_std", "search_pro", "search_pro_sogou", "search_pro_quark"}

@@ -5,7 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import date
 
-from app.services.connectors.pg import ymd_to_date
+from app.services.data.connectors.pg import ymd_to_date
 
 
 @dataclass(frozen=True, slots=True)

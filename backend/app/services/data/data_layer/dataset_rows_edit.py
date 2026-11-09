@@ -20,7 +20,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.models.data_source import DataSource
 from app.models.dataset import Dataset
 from app.models.dataset_edit import DatasetEdit
-from app.services.data_layer.sql_build import qualified_table
+from app.services.data.data_layer.sql_build import qualified_table
 from app.services.ontology.dataset_tables import is_valid_identifier, pg_engine_for_datasource
 
 

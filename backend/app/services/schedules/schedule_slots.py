@@ -7,7 +7,7 @@ from zoneinfo import ZoneInfo
 
 from croniter import croniter
 
-from app.services.connectors.schedule import validate_cron_expression, validate_timezone
+from app.services.data.connectors.schedule import validate_cron_expression, validate_timezone
 
 
 def floor_to_minute(dt: datetime) -> datetime:

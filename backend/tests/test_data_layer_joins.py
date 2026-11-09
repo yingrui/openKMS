@@ -4,7 +4,7 @@ import asyncio
 import pytest
 
 from app.models.dataset import Dataset
-from app.services.data_layer.joins import (
+from app.services.data.data_layer.joins import (
     JoinValidationError,
     _declared_keys,
     validate_join,

@@ -16,7 +16,7 @@ from fastapi import HTTPException
 from app.models.data_resource import DataResource
 from app.models.semantic_model import SemanticModel
 from app.services.identity.acl.resource_acl_constants import PERM_READ, RT_DATA_RESOURCE
-from app.services.data_layer.catalog_access import resolve_catalog_scope
+from app.services.data.data_layer.catalog_access import resolve_catalog_scope
 
 
 class _FakeDB:
@@ -71,7 +71,7 @@ def no_grant(monkeypatch):
         return False
 
     monkeypatch.setattr(
-        "app.services.data_layer.catalog_access.check_data_resource_access", fake
+        "app.services.data.data_layer.catalog_access.check_data_resource_access", fake
     )
 
 
@@ -81,7 +81,7 @@ def grant(monkeypatch):
         return True
 
     monkeypatch.setattr(
-        "app.services.data_layer.catalog_access.check_data_resource_access", fake
+        "app.services.data.data_layer.catalog_access.check_data_resource_access", fake
     )
 
 
@@ -92,7 +92,7 @@ def test_a_public_model_does_not_consult_the_grant(monkeypatch):
         raise AssertionError("a public model must not check resource grants")
 
     monkeypatch.setattr(
-        "app.services.data_layer.catalog_access.check_data_resource_access", explode
+        "app.services.data.data_layer.catalog_access.check_data_resource_access", explode
     )
     model = _model("public")
     scope = _run(
@@ -105,7 +105,7 @@ def test_a_public_model_does_not_consult_the_grant(monkeypatch):
 
 def test_has_a_model_grant_helper_is_gone():
     """The metadata gate must not consult data resources; the helper that did is removed."""
-    from app.services.data_layer import catalog_access
+    from app.services.data.data_layer import catalog_access
 
     assert not hasattr(catalog_access, "has_model_grant")
 

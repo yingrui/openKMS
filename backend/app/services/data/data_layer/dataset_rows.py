@@ -33,14 +33,14 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.constants import COUNT_TIMEOUT_MS, EXACT_COUNT_MAX_ROWS, MAX_PAGE_SIZE, ROWS_TIMEOUT_MS
 from app.models.data_source import DataSource
 from app.models.dataset import Dataset
-from app.services.data_layer.query import QueryError
-from app.services.data_layer.query_errors import DATA, REQUEST, QueryFailure, classify_sql_error
-from app.services.data_layer.dataset_aggregates import (
+from app.services.data.data_layer.query import QueryError
+from app.services.data.data_layer.query_errors import DATA, REQUEST, QueryFailure, classify_sql_error
+from app.services.data.data_layer.dataset_aggregates import (
     build_summary_sql,
     parse_aggregates,
     parse_group_by,
 )
-from app.services.data_layer.row_filters import build_row_where, parse_row_filters
+from app.services.data.data_layer.row_filters import build_row_where, parse_row_filters
 from app.services.ontology.dataset_tables import (
     is_valid_identifier,
     table_column_types,

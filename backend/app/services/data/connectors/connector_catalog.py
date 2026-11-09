@@ -7,9 +7,9 @@ import re
 from dataclasses import dataclass
 from typing import Any
 
-from app.services.connectors.schemas import ZHIPU_WEB_SEARCH_OUTPUT_SCHEMA
-from app.services.connectors.dataset_schemas import ConnectorDatasetColumn
-from app.services.connectors.tushare.schemas import (
+from app.services.data.connectors.schemas import ZHIPU_WEB_SEARCH_OUTPUT_SCHEMA
+from app.services.data.connectors.dataset_schemas import ConnectorDatasetColumn
+from app.services.data.connectors.tushare.schemas import (
     TUSHARE_DAILY_BASIC_COLUMNS,
     TUSHARE_DIVIDENDS_COLUMNS,
     TUSHARE_INDEX_BASIC_COLUMNS,
@@ -332,7 +332,7 @@ def merge_kind_settings(kind: str, settings: dict[str, Any] | None) -> dict[str,
 
 def normalize_and_validate_settings(kind: str, settings: dict[str, Any] | None) -> dict[str, Any]:
     """Merge kind defaults and validate kind-specific settings when applicable."""
-    from app.services.connectors.schedule import normalize_sync_schedule_in_settings
+    from app.services.data.connectors.schedule import normalize_sync_schedule_in_settings
 
     merged = merge_kind_settings(kind, settings)
     merged = normalize_sync_schedule_in_settings(kind, merged)
@@ -425,7 +425,7 @@ def validate_sync_schedule_outputs(
     settings: dict[str, Any] | None,
 ) -> None:
     """Scheduled sync requires a full output dataset mapping."""
-    from app.services.connectors.schedule import extract_sync_schedule
+    from app.services.data.connectors.schedule import extract_sync_schedule
 
     spec = get_kind_spec(kind)
     if not spec or spec.category != CATEGORY_SYNC:

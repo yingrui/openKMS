@@ -32,7 +32,7 @@ from app.schemas.connector import (
     ConnectorSyncTriggerResponse,
     ConnectorUpdate,
 )
-from app.services.connectors.connector_catalog import (
+from app.services.data.connectors.connector_catalog import (
     CATEGORY_SEARCH_TOOL,
     CATEGORY_SYNC,
     get_kind_spec,
@@ -48,8 +48,8 @@ from app.services.connectors.connector_catalog import (
     validate_kind,
     validate_secrets_for_kind,
 )
-from app.services.connectors.run import run_connector_search
-from app.services.connectors.provision import (
+from app.services.data.connectors.run import run_connector_search
+from app.services.data.connectors.provision import (
     provision_dataset_for_slot,
     validate_connector_outputs,
 )
@@ -59,7 +59,7 @@ from app.services.schedules.scheduled_triggers import (
     merge_sync_schedule_response,
     upsert_connector_sync_trigger,
 )
-from app.services.connectors.sync_range import parse_sync_date_range
+from app.services.data.connectors.sync_range import parse_sync_date_range
 from app.services.identity.permissions.permission_catalog import (
     PERM_CONNECTORS_READ,
     PERM_CONNECTORS_WRITE,
@@ -372,8 +372,8 @@ async def search_connector(connector_id: str, body: ConnectorSearchRequest, db: 
 )
 async def probe_connector(connector_id: str, body: ConnectorProbeRequest, db: AsyncSession = Depends(get_db)):
     """Call a live Tushare API from the connector detail Probe tab (no dataset writes)."""
-    from app.services.connectors.tushare.client import TushareRateLimitError
-    from app.services.connectors.tushare.probe import run_tushare_probe
+    from app.services.data.connectors.tushare.client import TushareRateLimitError
+    from app.services.data.connectors.tushare.probe import run_tushare_probe
 
     row = await db.get(Connector, connector_id)
     if not row:

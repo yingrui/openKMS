@@ -17,7 +17,7 @@ from app.schemas.data_source import (
 )
 from app.services.platform.credentials.credential_encryption import decrypt, encrypt
 from app.services.platform.credentials.credential_encryption import DECRYPT_ERRORS
-from app.services.connectors.data_source_connection import test_data_source_connection_async
+from app.services.data.connectors.data_source_connection import test_data_source_connection_async
 from app.services.ontology.neo4j_async import (
     neo4j_delete_all as delete_all_neo4j_data,
     neo4j_driver_available,

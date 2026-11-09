@@ -13,13 +13,13 @@ from fastapi import HTTPException
 
 from app.models.data_resource import DataResource
 from app.models.semantic_model import ACCESS_PUBLIC, ACCESS_RESTRICTED, SemanticModel
-from app.services.data_layer.catalog_access import resolve_catalog_scope
+from app.services.data.data_layer.catalog_access import resolve_catalog_scope
 
 
 @pytest.fixture
 def entity_graph_db(monkeypatch):
     """Stub the DB reads a scope build needs, then run the **real** build/validation path."""
-    from app.services.data_layer import entity_scope as es
+    from app.services.data.data_layer import entity_scope as es
 
     async def fake_graph(db, model_id):
         return es.ModelGraph(
@@ -29,7 +29,7 @@ def entity_graph_db(monkeypatch):
     async def fake_columns(db, graph):
         return {"ds1": {"region", "org_id"}}
 
-    monkeypatch.setattr("app.services.data_layer.catalog_access.load_model_graph", fake_graph)
+    monkeypatch.setattr("app.services.data.data_layer.catalog_access.load_model_graph", fake_graph)
     monkeypatch.setattr(es, "load_columns", fake_columns)
 
 
@@ -76,7 +76,7 @@ def _patched_check(monkeypatch, allowed: bool):
         return allowed
 
     monkeypatch.setattr(
-        "app.services.data_layer.catalog_access.check_data_resource_access", fake_check
+        "app.services.data.data_layer.catalog_access.check_data_resource_access", fake_check
     )
 
 

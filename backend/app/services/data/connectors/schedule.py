@@ -11,7 +11,7 @@ from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from croniter import croniter
 
-from app.services.connectors.connector_catalog import CATEGORY_SYNC, get_kind_spec
+from app.services.data.connectors.connector_catalog import CATEGORY_SYNC, get_kind_spec
 
 SYNC_SCHEDULE_KEY = "sync_schedule"
 

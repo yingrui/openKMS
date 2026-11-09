@@ -19,8 +19,8 @@ import time
 import pytest
 
 from app.models.data_source import DataSource
-from app.services.data_layer import columns as columns_module
-from app.services.data_layer.columns import (
+from app.services.data.data_layer import columns as columns_module
+from app.services.data.data_layer.columns import (
     cached_column_names,
     invalidate_columns,
 )

@@ -23,7 +23,7 @@ from app.schemas.quality import (
     QualityRuleValidateResponse,
     QualityRunResponse,
 )
-from app.services.data_layer.quality import RULE_TYPES, QualityError, run_rule
+from app.services.data.data_layer.quality import RULE_TYPES, QualityError, run_rule
 from app.services.identity.permissions.permission_catalog import PERM_DATA_READ, PERM_DATA_WRITE
 
 router = APIRouter(prefix="/datasets", tags=["quality"], dependencies=[Depends(require_auth)])

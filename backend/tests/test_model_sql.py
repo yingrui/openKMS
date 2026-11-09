@@ -4,13 +4,13 @@ from __future__ import annotations
 import pytest
 
 from app.models.dataset import Dataset
-from app.services.data_layer.model_sql import (
+from app.services.data.data_layer.model_sql import (
     assert_tables_allowed,
     extract_relations,
     normalize_lab_sql,
     wrap_with_limit,
 )
-from app.services.data_layer.query import QueryError
+from app.services.data.data_layer.query import QueryError
 
 
 def test_normalize_accepts_select_and_with():

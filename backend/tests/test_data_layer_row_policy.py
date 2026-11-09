@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import pytest
 
-from app.services.data_layer.row_policy import (
+from app.services.data.data_layer.row_policy import (
     MAX_POLICY_CONDITIONS,
     RowPolicyError,
     policy_conditions,

@@ -8,9 +8,9 @@ from typing import Any
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.connector import Connector
-from app.services.connectors.connector_catalog import CATEGORY_SEARCH_TOOL, get_kind_spec
-from app.services.connectors.tushare.sync import sync_tushare_connector
-from app.services.connectors.zhipu import run_zhipu_web_search
+from app.services.data.connectors.connector_catalog import CATEGORY_SEARCH_TOOL, get_kind_spec
+from app.services.data.connectors.tushare.sync import sync_tushare_connector
+from app.services.data.connectors.zhipu import run_zhipu_web_search
 
 SearchHandler = Callable[..., Awaitable[dict[str, Any]]]
 SyncHandler = Callable[..., Awaitable[dict[str, int]]]

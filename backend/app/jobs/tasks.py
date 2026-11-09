@@ -812,9 +812,9 @@ async def run_connector_sync(
     """
     from app.database import async_session_maker
     from app.models.connector import Connector
-    from app.services.connectors.connector_catalog import CATEGORY_SYNC, get_kind_spec
-    from app.services.connectors.run import run_connector_sync_for_row
-    from app.services.connectors.sync_range import parse_sync_date_range
+    from app.services.data.connectors.connector_catalog import CATEGORY_SYNC, get_kind_spec
+    from app.services.data.connectors.run import run_connector_sync_for_row
+    from app.services.data.connectors.sync_range import parse_sync_date_range
     from app.services.jobs.job_run_worker_log import persist_job_run_worker_log_best_effort
 
     job_id = int(context.job.id) if context.job and context.job.id else None
@@ -859,7 +859,7 @@ async def run_connector_sync(
             logger.info("Connector sync finished for %s: %s", connector_id, stats)
             log_lines.append(f"Connector sync finished: {stats}")
         except Exception as exc:
-            from app.services.connectors.tushare.client import TushareRateLimitError
+            from app.services.data.connectors.tushare.client import TushareRateLimitError
 
             if isinstance(exc, TushareRateLimitError):
                 wait = int(exc.retry_after_seconds)

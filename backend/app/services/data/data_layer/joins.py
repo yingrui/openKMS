@@ -12,7 +12,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.data_source import DataSource
 from app.models.dataset import Dataset
-from app.services.data_layer.columns import cached_column_names
+from app.services.data.data_layer.columns import cached_column_names
 from app.services.ontology.dataset_tables import is_valid_identifier
 
 

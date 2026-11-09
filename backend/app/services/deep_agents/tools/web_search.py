@@ -8,8 +8,8 @@ from langchain_core.tools import StructuredTool
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.connector import Connector
-from app.services.connectors.connector_catalog import CATEGORY_SEARCH_TOOL, get_kind_spec
-from app.services.connectors.run import run_connector_search
+from app.services.data.connectors.connector_catalog import CATEGORY_SEARCH_TOOL, get_kind_spec
+from app.services.data.connectors.run import run_connector_search
 
 _WEB_SEARCH_DESCRIPTION = (
     "Search the web for up-to-date information. "

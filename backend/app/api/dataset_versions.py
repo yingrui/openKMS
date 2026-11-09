@@ -30,9 +30,9 @@ from app.schemas.dataset import (
     DatasetVersionResponse,
     FileRowsResponse,
 )
-from app.services.data_layer import file_datasets
+from app.services.data.data_layer import file_datasets
 from app.services.platform.storage import STORAGE_ERRORS, get_object
-from app.services.data_layer.file_datasets import FileDatasetError
+from app.services.data.data_layer.file_datasets import FileDatasetError
 from app.services.identity.permissions.permission_catalog import PERM_DATA_READ, PERM_DATA_WRITE
 
 router = APIRouter(

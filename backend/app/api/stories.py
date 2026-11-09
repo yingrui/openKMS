@@ -36,8 +36,8 @@ from app.schemas.story import (
     StorySummary,
     StoryUpdate,
 )
-from app.services.data_layer.dataset_rows import query_dataset_rows, query_dataset_summary
-from app.services.data_layer.stories import (
+from app.services.data.data_layer.dataset_rows import query_dataset_rows, query_dataset_summary
+from app.services.data.data_layer.stories import (
     SOURCE_SEMANTIC_MODEL,
     FindingSource,
     dataset_query_kwargs,
@@ -48,9 +48,9 @@ from app.services.data_layer.stories import (
     source_failure,
     source_forbidden,
 )
-from app.services.data_layer.query import QueryError, run_query
-from app.services.data_layer.query_errors import QueryFailure
-from app.services.data_layer.row_filters import RowFilterError
+from app.services.data.data_layer.query import QueryError, run_query
+from app.services.data.data_layer.query_errors import QueryFailure
+from app.services.data.data_layer.row_filters import RowFilterError
 from app.services.identity.acl.resource_acl_constants import PERM_READ, RT_DATASET
 from app.services.identity.acl.resource_acl_service import readable_resource_ids
 from app.services.evaluations.dataset_scope import load_dataset_scoped

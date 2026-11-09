@@ -2,7 +2,7 @@
 
 import pytest
 
-from app.services.connectors.connector_catalog import (
+from app.services.data.connectors.connector_catalog import (
     CATEGORY_SEARCH_TOOL,
     CATEGORY_SYNC,
     merge_secrets_encrypted,
@@ -116,7 +116,7 @@ def test_tushare_outputs_requires_all_slots_when_any_set():
 
 
 def test_validate_sync_run_outputs_requires_all_slots():
-    from app.services.connectors.connector_catalog import validate_sync_run_outputs
+    from app.services.data.connectors.connector_catalog import validate_sync_run_outputs
 
     with pytest.raises(ValueError, match="Configure all output datasets"):
         validate_sync_run_outputs("tushare", {})
@@ -143,7 +143,7 @@ def test_validate_sync_run_outputs_requires_all_slots():
 
 
 def test_validate_sync_schedule_outputs_requires_datasets_when_enabled():
-    from app.services.connectors.connector_catalog import validate_sync_schedule_outputs
+    from app.services.data.connectors.connector_catalog import validate_sync_schedule_outputs
 
     with pytest.raises(ValueError, match="Scheduled sync requires"):
         validate_sync_schedule_outputs(
@@ -165,14 +165,14 @@ def test_tushare_settings_default_index_codes():
 
 
 def test_sync_request_slots_defaults_to_all():
-    from app.services.connectors.connector_catalog import normalize_sync_request_slots
+    from app.services.data.connectors.connector_catalog import normalize_sync_request_slots
 
     assert normalize_sync_request_slots("tushare", None) is None
     assert normalize_sync_request_slots("tushare", []) is None
 
 
 def test_sync_request_slots_dedupes_and_validates():
-    from app.services.connectors.connector_catalog import normalize_sync_request_slots
+    from app.services.data.connectors.connector_catalog import normalize_sync_request_slots
 
     assert normalize_sync_request_slots("tushare", ["index_daily", "index_daily", "dividends"]) == (
         "index_daily",

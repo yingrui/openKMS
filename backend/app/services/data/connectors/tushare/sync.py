@@ -15,8 +15,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.models.connector import Connector
 from app.models.data_source import DataSource
 from app.models.dataset import Dataset
-from app.services.connectors.connector_catalog import decrypt_secrets_blob, normalize_sync_request_slots
-from app.services.connectors.pg import (
+from app.services.data.connectors.connector_catalog import decrypt_secrets_blob, normalize_sync_request_slots
+from app.services.data.connectors.pg import (
     calendar_range_covered,
     date_to_ymd,
     index_codes_from_table,
@@ -27,9 +27,9 @@ from app.services.connectors.pg import (
     upsert_rows,
     ymd_to_date,
 )
-from app.services.connectors.sync_range import SyncDateRange, parse_sync_date_range
-from app.services.connectors.tushare.client import TushareClient
-from app.services.connectors.tushare.schemas import (
+from app.services.data.connectors.sync_range import SyncDateRange, parse_sync_date_range
+from app.services.data.connectors.tushare.client import TushareClient
+from app.services.data.connectors.tushare.schemas import (
     TUSHARE_DAILY_BASIC_COLUMNS,
     TUSHARE_DIVIDENDS_COLUMNS,
     TUSHARE_INDEX_BASIC_COLUMNS,

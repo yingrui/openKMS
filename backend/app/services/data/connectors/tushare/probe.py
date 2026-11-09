@@ -5,10 +5,10 @@ from __future__ import annotations
 from typing import Any
 
 from app.models.connector import Connector
-from app.services.connectors.connector_catalog import decrypt_secrets_blob
-from app.services.connectors.pg import date_to_ymd, ymd_to_date
-from app.services.connectors.tushare.client import TushareClient
-from app.services.connectors.tushare.sync import _sync_settings
+from app.services.data.connectors.connector_catalog import decrypt_secrets_blob
+from app.services.data.connectors.pg import date_to_ymd, ymd_to_date
+from app.services.data.connectors.tushare.client import TushareClient
+from app.services.data.connectors.tushare.sync import _sync_settings
 
 _PROBE_ROW_LIMIT = 100
 _DAILY_FIELDS = "ts_code,trade_date,open,high,low,close,pre_close,change,pct_chg,vol,amount"

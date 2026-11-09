@@ -4,7 +4,7 @@ import asyncio
 import pytest
 
 from app.models.dataset import Dataset
-from app.services.data_layer.dataset_rows_edit import RowEditError, apply_row_ops
+from app.services.data.data_layer.dataset_rows_edit import RowEditError, apply_row_ops
 
 
 def _dataset(**kw) -> Dataset:

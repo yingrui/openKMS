@@ -19,7 +19,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.semantic_model import SemanticModel
 from app.models.semantic_model_field import SemanticModelField
-from app.services.data_layer.expressions import (
+from app.services.data.data_layer.expressions import (
     ANSI,
     dialect_sql,
     make_expression,

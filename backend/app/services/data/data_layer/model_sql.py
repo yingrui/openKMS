@@ -16,17 +16,17 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.data_source import DataSource
 from app.models.dataset import Dataset
-from app.services.data_layer.metrics import DEFAULT_ROW_CAP, DEFAULT_TIMEOUT_MS
-from app.services.data_layer.query import QueryError
-from app.services.data_layer.query_errors import DATA, REQUEST, QueryFailure, classify_sql_error
-from app.services.data_layer.entity_scope import (
+from app.services.data.data_layer.metrics import DEFAULT_ROW_CAP, DEFAULT_TIMEOUT_MS
+from app.services.data.data_layer.query import QueryError
+from app.services.data.data_layer.query_errors import DATA, REQUEST, QueryFailure, classify_sql_error
+from app.services.data.data_layer.entity_scope import (
     EntityScope,
     EntityScopeError,
     compile_entity_scope,
 )
-from app.services.data_layer.sql_runner import run_readonly
-from app.services.data_layer.sql_build import quote_identifier
-from app.services.data_layer.sql_scan import (
+from app.services.data.data_layer.sql_runner import run_readonly
+from app.services.data.data_layer.sql_build import quote_identifier
+from app.services.data.data_layer.sql_scan import (
     RelationShapeError,
     _unquote,
     mask_quoted,

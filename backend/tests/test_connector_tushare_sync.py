@@ -6,15 +6,15 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from app.services.connectors.pg import date_to_ymd, ymd_to_date
-from app.services.connectors.sync_range import SyncDateRange
-from app.services.connectors.tushare.client import (
+from app.services.data.connectors.pg import date_to_ymd, ymd_to_date
+from app.services.data.connectors.sync_range import SyncDateRange
+from app.services.data.connectors.tushare.client import (
     DEFER_RETRY_AFTER_SECONDS,
     TushareClient,
     TushareRateLimitError,
     parse_tushare_rate_limit_wait_seconds,
 )
-from app.services.connectors.tushare.sync import (
+from app.services.data.connectors.tushare.sync import (
     _DEFAULT_INDEX_CODES,
     _resolve_tushare_windows,
     _sync_settings,
@@ -96,11 +96,11 @@ def test_sync_stock_basic_single_api_call():
     async def _run():
         with (
             patch(
-                "app.services.connectors.tushare.sync._load_output_dataset",
+                "app.services.data.connectors.tushare.sync._load_output_dataset",
                 new_callable=AsyncMock,
                 return_value=(dataset, data_source),
             ),
-            patch("app.services.connectors.tushare.sync.upsert_rows", return_value=1) as mock_upsert,
+            patch("app.services.data.connectors.tushare.sync.upsert_rows", return_value=1) as mock_upsert,
         ):
             written = await sync_stock_basic(client, MagicMock(), connector, engine=engine)
         assert written == 1
@@ -141,17 +141,17 @@ def test_sync_daily_basic_one_api_call_per_trade_date():
     async def _run():
         with (
             patch(
-                "app.services.connectors.tushare.sync._load_output_dataset",
+                "app.services.data.connectors.tushare.sync._load_output_dataset",
                 new_callable=AsyncMock,
                 return_value=(dataset, data_source),
             ),
             patch(
-                "app.services.connectors.tushare.sync._resolve_open_trade_dates",
+                "app.services.data.connectors.tushare.sync._resolve_open_trade_dates",
                 new_callable=AsyncMock,
                 return_value=["20260610"],
             ),
-            patch("app.services.connectors.tushare.sync.pg_engine_for_datasource", return_value=engine),
-            patch("app.services.connectors.tushare.sync.upsert_rows", return_value=1) as mock_upsert,
+            patch("app.services.data.connectors.tushare.sync.pg_engine_for_datasource", return_value=engine),
+            patch("app.services.data.connectors.tushare.sync.upsert_rows", return_value=1) as mock_upsert,
         ):
             written = await sync_daily_basic(
                 client,
@@ -253,12 +253,12 @@ def test_sync_index_basic_walks_every_market():
     async def _run():
         with (
             patch(
-                "app.services.connectors.tushare.sync._load_output_dataset",
+                "app.services.data.connectors.tushare.sync._load_output_dataset",
                 new_callable=AsyncMock,
                 return_value=(dataset, MagicMock()),
             ),
-            patch("app.services.connectors.tushare.sync.pg_engine_for_datasource", return_value=MagicMock()),
-            patch("app.services.connectors.tushare.sync.upsert_rows", return_value=1) as mock_upsert,
+            patch("app.services.data.connectors.tushare.sync.pg_engine_for_datasource", return_value=MagicMock()),
+            patch("app.services.data.connectors.tushare.sync.upsert_rows", return_value=1) as mock_upsert,
         ):
             written = await sync_index_basic(client, MagicMock(), connector)
         # One call per market; a short page ends pagination for that market.
@@ -309,16 +309,16 @@ def test_sync_index_daily_incremental_per_code():
     async def _run():
         with (
             patch(
-                "app.services.connectors.tushare.sync._load_output_dataset",
+                "app.services.data.connectors.tushare.sync._load_output_dataset",
                 new_callable=AsyncMock,
                 return_value=(dataset, MagicMock()),
             ),
-            patch("app.services.connectors.tushare.sync.pg_engine_for_datasource", return_value=MagicMock()),
+            patch("app.services.data.connectors.tushare.sync.pg_engine_for_datasource", return_value=MagicMock()),
             patch(
-                "app.services.connectors.tushare.sync.max_ymd_in_table_where",
+                "app.services.data.connectors.tushare.sync.max_ymd_in_table_where",
                 return_value="20260609",
             ) as mock_max,
-            patch("app.services.connectors.tushare.sync.upsert_rows", return_value=1) as mock_upsert,
+            patch("app.services.data.connectors.tushare.sync.upsert_rows", return_value=1) as mock_upsert,
         ):
             written = await sync_index_daily(
                 client,
@@ -364,12 +364,12 @@ def test_sync_index_daily_derives_codes_from_catalog():
     async def _run():
         with (
             patch(
-                "app.services.connectors.tushare.sync._load_output_dataset",
+                "app.services.data.connectors.tushare.sync._load_output_dataset",
                 side_effect=_load,
             ),
-            patch("app.services.connectors.tushare.sync.pg_engine_for_datasource", return_value=MagicMock()),
+            patch("app.services.data.connectors.tushare.sync.pg_engine_for_datasource", return_value=MagicMock()),
             patch(
-                "app.services.connectors.tushare.sync.index_codes_from_table",
+                "app.services.data.connectors.tushare.sync.index_codes_from_table",
                 return_value=("000300.SH", "000905.SH"),
             ) as mock_catalog,
         ):
@@ -409,12 +409,12 @@ def test_sync_index_daily_rejects_empty_catalog_match():
     async def _run():
         with (
             patch(
-                "app.services.connectors.tushare.sync._load_output_dataset",
+                "app.services.data.connectors.tushare.sync._load_output_dataset",
                 new_callable=AsyncMock,
                 return_value=(catalog_dataset, MagicMock()),
             ),
-            patch("app.services.connectors.tushare.sync.pg_engine_for_datasource", return_value=MagicMock()),
-            patch("app.services.connectors.tushare.sync.index_codes_from_table", return_value=()),
+            patch("app.services.data.connectors.tushare.sync.pg_engine_for_datasource", return_value=MagicMock()),
+            patch("app.services.data.connectors.tushare.sync.index_codes_from_table", return_value=()),
         ):
             await sync_index_daily(
                 client,
@@ -447,15 +447,15 @@ def test_sync_index_daily_explicit_window_chunks_by_year():
     async def _run():
         with (
             patch(
-                "app.services.connectors.tushare.sync._load_output_dataset",
+                "app.services.data.connectors.tushare.sync._load_output_dataset",
                 new_callable=AsyncMock,
                 return_value=(dataset, MagicMock()),
             ),
-            patch("app.services.connectors.tushare.sync.pg_engine_for_datasource", return_value=MagicMock()),
+            patch("app.services.data.connectors.tushare.sync.pg_engine_for_datasource", return_value=MagicMock()),
             patch(
-                "app.services.connectors.tushare.sync.max_ymd_in_table_where",
+                "app.services.data.connectors.tushare.sync.max_ymd_in_table_where",
             ) as mock_max,
-            patch("app.services.connectors.tushare.sync.upsert_rows", return_value=0) as mock_upsert,
+            patch("app.services.data.connectors.tushare.sync.upsert_rows", return_value=0) as mock_upsert,
         ):
             written = await sync_index_daily(
                 client,
@@ -480,7 +480,7 @@ def test_sync_index_daily_explicit_window_chunks_by_year():
 
 
 def test_sync_connector_runs_only_selected_slots():
-    from app.services.connectors.tushare.sync import sync_tushare_connector
+    from app.services.data.connectors.tushare.sync import sync_tushare_connector
 
     connector = MagicMock()
     connector.id = "conn-1"
@@ -507,23 +507,23 @@ def test_sync_connector_runs_only_selected_slots():
 
     patchers = [
         patch(
-            "app.services.connectors.tushare.sync.decrypt_secrets_blob",
+            "app.services.data.connectors.tushare.sync.decrypt_secrets_blob",
             return_value={"TUSHARE_TOKEN": "tok"},
         ),
         patch(
-            "app.services.connectors.tushare.sync._load_output_dataset",
+            "app.services.data.connectors.tushare.sync._load_output_dataset",
             new_callable=AsyncMock,
             return_value=(dataset, MagicMock()),
         ),
         patch(
-            "app.services.connectors.tushare.sync.pg_engine_for_datasource",
+            "app.services.data.connectors.tushare.sync.pg_engine_for_datasource",
             return_value=MagicMock(),
         ),
         patch(
-            "app.services.connectors.tushare.sync._resolve_tushare_windows",
+            "app.services.data.connectors.tushare.sync._resolve_tushare_windows",
             return_value=((date(2026, 1, 1), date(2026, 1, 2)), (date(2026, 1, 1), date(2026, 1, 2))),
         ),
-        *(patch(f"app.services.connectors.tushare.sync.{name}", mock) for name, mock in slot_mocks.items()),
+        *(patch(f"app.services.data.connectors.tushare.sync.{name}", mock) for name, mock in slot_mocks.items()),
     ]
     for p in patchers:
         p.start()
@@ -552,7 +552,7 @@ def test_sync_connector_runs_only_selected_slots():
 
 
 def test_sync_connector_rejects_unknown_slot():
-    from app.services.connectors.tushare.sync import sync_tushare_connector
+    from app.services.data.connectors.tushare.sync import sync_tushare_connector
 
     connector = MagicMock()
     connector.id = "conn-1"

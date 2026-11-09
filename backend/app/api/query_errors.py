@@ -12,7 +12,7 @@ from typing import Any
 from fastapi import Request
 
 from app.i18n.errors import error_detail_extra
-from app.services.data_layer.query_errors import QueryFailure
+from app.services.data.data_layer.query_errors import QueryFailure
 
 
 def query_failure_detail(request: Request | None, failure: QueryFailure) -> dict[str, Any]:

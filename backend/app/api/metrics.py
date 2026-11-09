@@ -17,7 +17,7 @@ from app.models.dataset import Dataset
 from app.models.metric_definition import MetricDefinition
 from app.models.metric_run import MetricRun
 from app.models.semantic_model import SemanticModel
-from app.services.data_layer.semantic_models import member_ids
+from app.services.data.data_layer.semantic_models import member_ids
 from app.schemas.metric import (
     MetricComputeResponse,
     MetricCreate,
@@ -26,8 +26,8 @@ from app.schemas.metric import (
     MetricRunResponse,
     MetricUpdate,
 )
-from app.services.data_layer.expressions import normalize_expression
-from app.services.data_layer.metrics import (
+from app.services.data.data_layer.expressions import normalize_expression
+from app.services.data.data_layer.metrics import (
     MetricError,
     resolve_joins,
     validate_metric_definition,
@@ -35,9 +35,9 @@ from app.services.data_layer.metrics import (
 )
 from app.api.catalog_scoped import require_metric_access, readable_model_ids
 from app.api.query_errors import query_failure_detail
-from app.services.data_layer.query_errors import DEFINITION, QueryFailure
-from app.services.data_layer.query import QueryError, run_query
-from app.services.data_layer.semantic_model_fields import FieldError, validate_datatype
+from app.services.data.data_layer.query_errors import DEFINITION, QueryFailure
+from app.services.data.data_layer.query import QueryError, run_query
+from app.services.data.data_layer.semantic_model_fields import FieldError, validate_datatype
 from app.services.identity.permissions.permission_catalog import PERM_DATA_WRITE
 from app.services.platform.dataset_label import dataset_label
 

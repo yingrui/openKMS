@@ -10,8 +10,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.connector import Connector
 from app.models.scheduled_trigger import SCHEDULE_KIND_CONNECTOR_SYNC, ScheduledTrigger
-from app.services.connectors.connector_catalog import CATEGORY_SYNC, get_kind_spec
-from app.services.connectors.schedule import (
+from app.services.data.connectors.connector_catalog import CATEGORY_SYNC, get_kind_spec
+from app.services.data.connectors.schedule import (
     compute_next_run_at,
     extract_sync_schedule,
     validate_cron_expression,

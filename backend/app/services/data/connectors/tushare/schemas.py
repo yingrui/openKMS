@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from app.services.connectors.dataset_schemas import ConnectorDatasetColumn
+from app.services.data.connectors.dataset_schemas import ConnectorDatasetColumn
 
 TUSHARE_PG_SCHEMA = "tushare"
 

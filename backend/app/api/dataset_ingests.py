@@ -23,7 +23,7 @@ from app.schemas.dataset_ingest import (
 )
 from app.services.identity.acl.data_scope import bootstrap_owner_acl
 from app.services.identity.acl.resource_acl_constants import RT_DATASET
-from app.services.data_layer.ingest import IngestError, load_dataframe, preview_columns, read_head
+from app.services.data.data_layer.ingest import IngestError, load_dataframe, preview_columns, read_head
 from app.services.identity.permissions.permission_catalog import PERM_DATA_WRITE
 from app.services.platform.storage import get_object, upload_object
 

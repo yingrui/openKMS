@@ -19,7 +19,7 @@ import pytest_asyncio
 @pytest.fixture
 def storage(monkeypatch):
     """An in-memory object store behind the module's storage imports."""
-    from app.services.data_layer import file_datasets
+    from app.services.data.data_layer import file_datasets
 
     objects: dict[str, bytes] = {}
     monkeypatch.setattr(
@@ -99,7 +99,7 @@ def _february() -> bytes:
 
 
 def test_a_parquet_slice_is_parsed_with_its_types():
-    from app.services.data_layer.file_datasets import columns_of, read_file_bytes
+    from app.services.data.data_layer.file_datasets import columns_of, read_file_bytes
 
     frame = read_file_bytes(_january(), "2026-01.parquet")
 
@@ -109,7 +109,7 @@ def test_a_parquet_slice_is_parsed_with_its_types():
 
 
 def test_an_unsupported_file_type_is_refused_by_name():
-    from app.services.data_layer.file_datasets import FileDatasetError, read_file_bytes
+    from app.services.data.data_layer.file_datasets import FileDatasetError, read_file_bytes
 
     with pytest.raises(FileDatasetError, match="Unsupported file type"):
         read_file_bytes(b"PK\x03\x04", "model.xlsx")
@@ -117,7 +117,7 @@ def test_an_unsupported_file_type_is_refused_by_name():
 
 @pytest.mark.asyncio
 async def test_draft_publish_and_pin(storage, db):
-    from app.services.data_layer.file_datasets import (
+    from app.services.data.data_layer.file_datasets import (
         add_file,
         create_file_dataset,
         list_versions,
@@ -164,7 +164,7 @@ async def test_draft_publish_and_pin(storage, db):
 
 @pytest.mark.asyncio
 async def test_selection_reads_columns_and_skips_files_outside_the_window(storage, db):
-    from app.services.data_layer.file_datasets import (
+    from app.services.data.data_layer.file_datasets import (
         add_file,
         create_file_dataset,
         open_version,
@@ -193,7 +193,7 @@ async def test_selection_reads_columns_and_skips_files_outside_the_window(storag
 
 @pytest.mark.asyncio
 async def test_a_later_version_reuses_files_instead_of_copying_them(storage, db):
-    from app.services.data_layer.file_datasets import (
+    from app.services.data.data_layer.file_datasets import (
         add_file,
         create_file_dataset,
         open_version,
@@ -251,7 +251,7 @@ async def test_a_file_dataset_is_refused_where_sql_is_required():
 @pytest.mark.asyncio
 async def test_a_relationship_cannot_use_a_file_dataset():
     from app.models.dataset import Dataset
-    from app.services.data_layer.joins import JoinValidationError, validate_join
+    from app.services.data.data_layer.joins import JoinValidationError, validate_join
 
     file_dataset = Dataset(
         id="f1", data_source_id="00000000-0000-4000-8000-00000000f11e", kind="file", display_name="x"
@@ -275,7 +275,7 @@ async def test_a_relationship_cannot_use_a_file_dataset():
 @pytest.mark.asyncio
 async def test_only_a_draft_can_be_deleted(storage, db):
     """A published version is kept: it may be pinned, so removing it would strand a model."""
-    from app.services.data_layer import file_datasets as fd
+    from app.services.data.data_layer import file_datasets as fd
 
     dataset = await fd.create_file_dataset(
         db, display_name=f"test-training-set-{uuid.uuid4().hex[:8]}", description=None,

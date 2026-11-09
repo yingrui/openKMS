@@ -26,7 +26,7 @@ from app.schemas.health_status import (
     ProcessInstanceHealth,
 )
 import app.services.platform.heartbeat.process_heartbeat_registry as heartbeat_registry
-from app.services.connectors.data_source_connection import test_data_source_connection
+from app.services.data.connectors.data_source_connection import test_data_source_connection
 from app.services.identity.permissions.permission_catalog import PERM_CONSOLE_ACCESS, PERM_CONSOLE_DATA_SOURCES
 
 router = APIRouter(

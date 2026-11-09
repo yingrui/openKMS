@@ -11,8 +11,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.data_source import DataSource
 from app.models.dataset import Dataset
-from app.services.connectors.connector_catalog import get_kind_spec
-from app.services.connectors.dataset_schemas import ConnectorDatasetColumn
+from app.services.data.connectors.connector_catalog import get_kind_spec
+from app.services.data.connectors.dataset_schemas import ConnectorDatasetColumn
 from app.services.identity.acl.data_scope import bootstrap_owner_acl
 from app.services.identity.acl.resource_acl_constants import RT_DATASET
 from app.services.ontology.dataset_tables import pg_engine_for_datasource
