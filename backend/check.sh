@@ -41,6 +41,10 @@ uv run python scripts/check_api_doc.py || status=1
 echo "→ import cycles (ratchet)"
 uv run python scripts/check_import_cycles.py || status=1
 
+echo "→ doc paths"
+# A path in the docs that no longer exists reads fine and links fine; only a machine notices.
+uv run python scripts/check_doc_paths.py || status=1
+
 echo "→ pytest"
 uv run pytest -q || status=1
 

@@ -65,7 +65,7 @@ Embedding columns are **dimensionless** `vector` on purpose (each KB/wiki space 
 
 ### Project agents (Deep Agents) {#project-agents-deep-agents}
 
-Runtime: `backend/app/services/deep_agents/` + `POST /api/projects/…/messages` (see [Agents](features/openkms-agents.md)).
+Runtime: `backend/app/services/runtime/deep_agents/` + `POST /api/projects/…/messages` (see [Agents](features/openkms-agents.md)).
 
 **Refactored (Aug 2026 — keep out of this debt list):**
 
@@ -126,14 +126,14 @@ Runtime: `backend/app/services/deep_agents/` + `POST /api/projects/…/messages`
 | Area | Notes |
 |------|--------|
 | Session cookie | `max_age` in `backend/app/main.py` |
-| Presigned URLs | `expires_in` in `backend/app/services/storage.py` |
-| Model testing HTTP | Timeouts in `backend/app/services/models/model_testing.py` |
+| Presigned URLs | `expires_in` in `backend/app/services/platform/storage.py` |
+| Model testing HTTP | Timeouts in `backend/app/services/content/models/model_testing.py` |
 | KB index job | `run_kb_index` in `backend/app/jobs/tasks.py` uses **`subprocess.run`** with a fixed **1800s** timeout (blocks the worker thread); document pipeline path uses async subprocess. |
 | VLM URL | `vlm_url` is canonical; `paddleocr_vl_server_url` in `config.py` is deprecated alias — finish removing call sites and duplicate env docs when safe. |
 
 ### Missing or partial type hints
 
-Incremental typing backlog (examples): `get_template_variables` in `backend/app/api/pipelines.py`, `_row_to_response` in `backend/app/api/jobs.py`, helpers in `backend/app/services/storage.py`.
+Incremental typing backlog (examples): `get_template_variables` in `backend/app/api/pipelines.py`, `_row_to_response` in `backend/app/api/jobs.py`, helpers in `backend/app/services/platform/storage.py`.
 
 ### Frontend patterns to consolidate
 
@@ -169,7 +169,7 @@ FastAPI serves `/docs` and `/redoc`; optional export of `openapi.json` for exter
 
 ### Metadata extraction duplication
 
-Logic overlaps between `backend/app/services/documents/metadata_extraction.py` and `openkms-cli/openkms_cli/extract.py` (schema / pydantic-ai setup). Prefer a single implementation or a thin CLI that calls the backend when online.
+Logic overlaps between `backend/app/services/content/documents/metadata_extraction.py` and `openkms-cli/openkms_cli/extract.py` (schema / pydantic-ai setup). Prefer a single implementation or a thin CLI that calls the backend when online.
 
 ### Test coverage gaps
 
@@ -194,12 +194,12 @@ AST pass (span **≥55** lines) on `backend/app/**/*.py` and `openkms-cli/openkm
 | 207 | `openkms-cli/openkms_cli/parser.py` | `run_parser` |
 | 205 | `openkms-cli/openkms_cli/parse_cli.py` | `parse_run` |
 | 198 | `backend/app/api/link_types.py` | `list_link_instances` |
-| 167 | `backend/app/services/deep_agents/durable_stream.py` | `run_project_turn_background` |
-| 161 | `backend/app/services/global_search/global_search.py` | `run_global_search` |
+| 167 | `backend/app/services/runtime/deep_agents/durable_stream.py` | `run_project_turn_background` |
+| 161 | `backend/app/services/workspace/global_search/global_search.py` | `run_global_search` |
 | 155 | `backend/app/jobs/tasks.py` | `run_media_generation` |
-| 150 | `backend/app/services/knowledge_bases/kb_search.py` | `search_knowledge_base` |
-| 149 | `backend/app/services/knowledge_map/knowledge_map_overview_designer.py` | `iter_overview_designer_chat_ndjson` |
-| 149 | `backend/app/services/knowledge_map/knowledge_map_html.py` | `iter_designer_chat_llm_stream_events` |
+| 150 | `backend/app/services/content/knowledge_bases/kb_search.py` | `search_knowledge_base` |
+| 149 | `backend/app/services/ontology/knowledge_map/knowledge_map_overview_designer.py` | `iter_overview_designer_chat_ndjson` |
+| 149 | `backend/app/services/ontology/knowledge_map/knowledge_map_html.py` | `iter_designer_chat_llm_stream_events` |
 
 **Other ≥55-line hits (files):** `documents.py`, `articles.py`, `evaluations.py`, `jobs.py`, `media.py`, `object_types.py`, `project_conversations.py`, `eval_agent_conversations.py`, `strict_permission_patterns.py`, `wiki_vault_import.py`, `wiki_semantic_index.py`, `metadata_extraction.py`, `glossary_term_suggestion.py`, `faq_generation.py`, `search_judge.py`, `extract.py`, `a2ui.py`, `context_compaction.py`.
 

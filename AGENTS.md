@@ -12,7 +12,7 @@ Agent 工作指南（原 `.cursor/rules/` 合并版）。
 |------|------|
 | Backend | `backend/app/`（FastAPI + async SQLAlchemy） |
 | Frontend | `frontend/src/`（React 19 + Vite） |
-| Apps（托管模块） | `backend/app/services/app_builder/`、`backend/app/api/app_builder.py`、`frontend/src/pages/apps/` |
+| Apps（托管模块） | `backend/app/services/runtime/app_builder/`、`backend/app/api/app_builder.py`、`frontend/src/pages/apps/` |
 | Docker | `docker/`（见 `docker/README.md`） |
 | Docs | `docs/` |
 | VLM | `vlm-server/` |

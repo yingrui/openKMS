@@ -13,7 +13,7 @@ Related: [Ontology datasets](ontology.md#data-sources-and-datasets), [Pipelines,
 | **`sync`** | Pull external data on demand or on a schedule; write rows into bound datasets | One **dataset** per catalog **output slot** | `tushare` |
 | **`search_tool`** | On-demand search for operators (playground) and Agents | None; kind defines **`output_schema`** for normalized JSON | `zhipu_web_search` |
 
-Kind metadata (labels, input fields, secret key names, slots, schemas) is served by **`GET /api/connectors/kinds`** and defined in `backend/app/services/connectors/connector_catalog.py`.
+Kind metadata (labels, input fields, secret key names, slots, schemas) is served by **`GET /api/connectors/kinds`** and defined in `backend/app/services/data/connectors/connector_catalog.py`.
 
 ## UI
 
@@ -33,7 +33,7 @@ Job runs from sync appear under **`/job-runs`** with task name **`run_connector_
 
 1. Operator triggers **`POST /api/connectors/{id}/sync`** (optional `{ start_date, end_date }` ISO dates) or schedule fires via **`scheduler.py`** → **`dispatch_due_schedules`** (minute tick, PostgreSQL advisory lock).
 2. API defers **`run_connector_sync`** on the procrastinate worker with per-connector lock `connector_sync:{id}`.
-3. Worker calls **`run_connector_sync_for_row`** (`backend/app/services/connectors/run.py`) by **`connector.kind`**.
+3. Worker calls **`run_connector_sync_for_row`** (`backend/app/services/data/connectors/run.py`) by **`connector.kind`**.
 4. On completion, **`scheduled_triggers`** updates `last_run_at`, `last_status`, `last_job_id` (also mirrored on connector GET as `sync_schedule` runtime fields).
 
 **Manual date range:** both `start_date` and `end_date` required. **Omitted dates:** kind-specific default window (Tushare: incremental from last row through today).
@@ -85,7 +85,7 @@ The final code set is `sync_index_codes` ∪ catalog matches (deduped, explicit 
 
 Secret: **`ZHIPU_API_KEY`**. Inputs include `api_base_url`, `search_engine`, `count`, `content_size`, `search_recency_filter`, optional `search_domain_filter`. Settings may override `web_search_url`.
 
-**Agents:** project settings **`web_search`** + **`search_connector_id`** register the Deep Agents **`web_search`** tool (`backend/app/services/deep_agents/tools/web_search.py`). See [Agents](openkms-agents.md).
+**Agents:** project settings **`web_search`** + **`search_connector_id`** register the Deep Agents **`web_search`** tool (`backend/app/services/runtime/deep_agents/tools/web_search.py`). See [Agents](openkms-agents.md).
 
 ## Data model
 
@@ -102,11 +102,11 @@ Full columns: Data models — Connector.
 | Area | Path |
 |------|------|
 | HTTP API | `backend/app/api/connectors.py`, `backend/app/api/schedules.py` |
-| Kind catalog | `backend/app/services/connectors/connector_catalog.py` |
-| Sync dispatch | `backend/app/services/connectors/run.py`, `backend/app/jobs/tasks.py` (`run_connector_sync`) |
-| Tushare sync / probe | `backend/app/services/connector_sync/tushare/` |
-| Zhipu search | `backend/app/services/connectors/zhipu.py` |
-| Scheduler | `backend/scheduler.py`, `backend/app/services/schedules/schedule_dispatch.py` |
+| Kind catalog | `backend/app/services/data/connectors/connector_catalog.py` |
+| Sync dispatch | `backend/app/services/data/connectors/run.py`, `backend/app/jobs/tasks.py` (`run_connector_sync`) |
+| Tushare sync / probe | `backend/app/services/data/connectors/tushare/` |
+| Zhipu search | `backend/app/services/data/connectors/zhipu.py` |
+| Scheduler | `backend/scheduler.py`, `backend/app/jobs/schedule_dispatch.py` |
 | SPA | `frontend/src/pages/connectors/`, `frontend/src/pages/jobs/SchedulesPage.tsx` |
 
 ## Backlog

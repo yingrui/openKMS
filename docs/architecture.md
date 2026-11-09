@@ -56,7 +56,7 @@ flowchart TB
 | **Worker** | procrastinate worker runs deferred jobs (document parse, KB index, …) by spawning **openkms-cli**; updates status in PostgreSQL. |
 | **LLM providers** | External OpenAI-compatible APIs configured as **api_providers** / **api_models** — metadata extraction, FAQ generation, embeddings, playground. |
 | **QA Agent** | Separate FastAPI + LangGraph service per knowledge base; searches via backend API only (no direct DB). |
-| **In-app agents** | Run in the **main** API process: Deep Agents [project workspaces](features/openkms-agents.md) (`backend/app/services/deep_agents/`) and the knowledge map designer. Not the QA Agent. |
+| **In-app agents** | Run in the **main** API process: Deep Agents [project workspaces](features/openkms-agents.md) (`backend/app/services/runtime/deep_agents/`) and the knowledge map designer. Not the QA Agent. |
 
 ## Frontend Structure
 

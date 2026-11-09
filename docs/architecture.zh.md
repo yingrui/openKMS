@@ -56,7 +56,7 @@ flowchart TB
 | **Worker** | procrastinate worker 执行延迟任务（文档解析、知识库索引等），拉起 **openkms-cli**；在 PostgreSQL 中更新状态。 |
 | **LLM 提供商** | 外部 OpenAI 兼容 API，配置为 **api_providers** / **api_models** — 元数据抽取、FAQ 生成、embedding、模型 playground。 |
 | **QA Agent** | 按知识库配置的独立 FastAPI + LangGraph 服务；仅经后端 API 检索（不直连数据库）。 |
-| **应用内 Agent** | 运行在**主** API 进程内：Deep Agents [项目工作区](features/openkms-agents.md)（`backend/app/services/deep_agents/`）与知识地图设计器。与 QA Agent 不同。 |
+| **应用内 Agent** | 运行在**主** API 进程内：Deep Agents [项目工作区](features/openkms-agents.md)（`backend/app/services/runtime/deep_agents/`）与知识地图设计器。与 QA Agent 不同。 |
 
 ## 前端结构
 

@@ -58,7 +58,7 @@ Columns: Data models — Data security.
 
 ### Securable types
 
-`backend/app/services/acl/resource_acl_constants.py` — `SECURABLE_RESOURCE_TYPES`:
+`backend/app/services/identity/acl/resource_acl_constants.py` — `SECURABLE_RESOURCE_TYPES`:
 
 | `resource_type` | Container chain |
 |---|---|

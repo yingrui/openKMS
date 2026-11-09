@@ -18,7 +18,7 @@ Operator surface (`/console/*`), permission catalog and roles, system settings, 
 
 ## Permission catalog (canonical keys)
 
-Defined in [`backend/app/services/permissions/permission_catalog.py`](https://github.com/yingrui/openKMS/blob/main/backend/app/services/permission_catalog.py); seeded into `security_permissions` by migration. Roles may only assign keys that exist in the catalog.
+Defined in [`backend/app/services/identity/permissions/permission_catalog.py`](https://github.com/yingrui/openKMS/blob/main/backend/app/services/permission_catalog.py); seeded into `security_permissions` by migration. Roles may only assign keys that exist in the catalog.
 
 | Family | Keys |
 |---|---|

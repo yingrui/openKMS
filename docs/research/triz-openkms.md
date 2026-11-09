@@ -21,7 +21,7 @@ See [Goals](../goals.md) for the narrative and [Development plan](../development
 **Main useful function (MUF):** let one governed knowledge/data layer be **built and operated by
 agents end to end**, while people can **review, correct, and cite** it — "agent-operated,
 human-supervised". **[code]** The in-app agent's system prompt routes it to the installed skill
-(`.openkms/skills/<id>/scripts/cli.py`, `backend/app/services/deep_agents/prompts.py:15-19`), and
+(`.openkms/skills/<id>/scripts/cli.py`, `backend/app/services/runtime/deep_agents/prompts.py:15-19`), and
 the agent runtime registers only `run_python` plus optional web search
 (`deep_agents/factory.py:108,111`; `deep_agents/sandbox.py:44`). There are no built-in openKMS HTTP
 tools.

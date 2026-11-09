@@ -582,7 +582,7 @@ object-type binding on purpose.
 
 ## Projects (Agents workspace)
 
-Deep Agents runtime in `backend/app/services/deep_agents/`. Disk root: `OPENKMS_PROJECTS_ROOT/{project_id}/`. Permissions: `projects:read`, `projects:write`. Feature toggle: `agents`.
+Deep Agents runtime in `backend/app/services/runtime/deep_agents/`. Disk root: `OPENKMS_PROJECTS_ROOT/{project_id}/`. Permissions: `projects:read`, `projects:write`. Feature toggle: `agents`.
 
 | Method | Path | Description |
 |--------|------|-------------|
