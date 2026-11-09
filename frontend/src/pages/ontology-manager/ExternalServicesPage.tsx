@@ -14,7 +14,7 @@ import {
 } from '../../data/externalServicesApi';
 import { ExternalServiceFormDialog } from './ExternalServiceFormDialog';
 import '../ontology/ontology-admin.scss';
-import './external-services.scss';
+import '../catalog/external-services.scss';
 
 /**
  * The external services the ontology may call — registered and governed with the rest of the ontology.

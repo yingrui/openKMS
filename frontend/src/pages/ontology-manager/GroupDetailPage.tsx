@@ -20,7 +20,7 @@ import {
   EntityViewLoading,
   EntityViewPanel,
   EntityViewShell,
-} from './EntityViewShell';
+} from '../shared/EntityViewShell';
 import '../ontology/ontology-admin.scss';
 
 type GroupDetailContext = {

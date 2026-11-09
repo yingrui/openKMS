@@ -14,7 +14,7 @@ import {
 } from '../../data/ontologyFunctionsApi';
 import { useConfirm } from '../../contexts/ConfirmContext';
 import { ActionTypeCreateWizard } from './ActionTypeCreateWizard';
-import { isBuiltinObjectRule } from './actionRuleTypes';
+import { isBuiltinObjectRule } from '../shared/actionRuleTypes';
 import '../ontology/ontology-admin.scss';
 
 function statusBadgeClass(status: string): string {

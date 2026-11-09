@@ -41,7 +41,7 @@ import { ConsoleKubernetes } from './pages/console/ConsoleKubernetes';
 import { ConsoleKubernetesDetail } from './pages/console/ConsoleKubernetesDetail';
 import { ConnectorsPage } from './pages/connectors/ConnectorsPage';
 import { ConnectorDetailPage } from './pages/connectors/ConnectorDetailPage';
-import { DatasetsListPage } from './pages/ontology-manager/DatasetsListPage';
+import { DatasetsListPage } from './pages/catalog/DatasetsListPage';
 import { ConsolePermissionManagement } from './pages/console/ConsolePermissionManagement';
 import { ConsoleAccessGroups } from './pages/console/ConsoleAccessGroups';
 import { ConsoleDataSecurityIssues } from './pages/console/ConsoleDataSecurityIssues';
@@ -222,111 +222,111 @@ const ArticleChannelSettings = lazy(() =>
   import('./pages/articles/ArticleChannelSettings').then((m) => ({ default: m.ArticleChannelSettings })),
 );
 const DatasetManagerDetailPage = lazy(() =>
-  import('./pages/ontology-manager/DatasetDetailPage').then((m) => ({ default: m.DatasetDetailPage })),
+  import('./pages/catalog/DatasetDetailPage').then((m) => ({ default: m.DatasetDetailPage })),
 );
 const DataModelPage = lazy(() =>
-  import('./pages/ontology-manager/DataModelPage').then((m) => ({ default: m.DataModelPage })),
+  import('./pages/catalog/model/DataModelPage').then((m) => ({ default: m.DataModelPage })),
 );
 const MetricsListPage = lazy(() =>
-  import('./pages/ontology-manager/MetricsListPage').then((m) => ({ default: m.MetricsListPage })),
+  import('./pages/catalog/model/MetricsListPage').then((m) => ({ default: m.MetricsListPage })),
 );
 const SemanticModelDetailPage = lazy(() =>
-  import('./pages/ontology-manager/SemanticModelDetailPage').then((m) => ({
+  import('./pages/catalog/model/SemanticModelDetailPage').then((m) => ({
     default: m.SemanticModelDetailPage,
   })),
 );
 const ModelMetricsSection = lazy(() =>
-  import('./pages/ontology-manager/ModelMetricsSection').then((m) => ({
+  import('./pages/catalog/model/ModelMetricsSection').then((m) => ({
     default: m.ModelMetricsSection,
   })),
 );
 const ModelDatasetsSection = lazy(() =>
-  import('./pages/ontology-manager/ModelDatasetsSection').then((m) => ({
+  import('./pages/catalog/model/ModelDatasetsSection').then((m) => ({
     default: m.ModelDatasetsSection,
   })),
 );
 const ModelRelationshipsSection = lazy(() =>
-  import('./pages/ontology-manager/ModelRelationshipsSection').then((m) => ({
+  import('./pages/catalog/model/ModelRelationshipsSection').then((m) => ({
     default: m.ModelRelationshipsSection,
   })),
 );
 const ModelPlaygroundSection = lazy(() =>
-  import('./pages/ontology-manager/ModelPlaygroundSection').then((m) => ({
+  import('./pages/catalog/model/ModelPlaygroundSection').then((m) => ({
     default: m.ModelPlaygroundSection,
   })),
 );
 const ModelSettingsTab = lazy(() =>
-  import('./pages/ontology-manager/ModelSettingsTab').then((m) => ({
+  import('./pages/catalog/model/ModelSettingsTab').then((m) => ({
     default: m.ModelSettingsTab,
   })),
 );
 const ModelDataResourcesSection = lazy(() =>
-  import('./pages/ontology-manager/ModelDataResourcesSection').then((m) => ({
+  import('./pages/catalog/model/ModelDataResourcesSection').then((m) => ({
     default: m.ModelDataResourcesSection,
   })),
 );
 const ModelDataResourceDetail = lazy(() =>
-  import('./pages/ontology-manager/ModelDataResourceDetail').then((m) => ({
+  import('./pages/catalog/model/ModelDataResourceDetail').then((m) => ({
     default: m.ModelDataResourceDetail,
   })),
 );
 const ModelSharingTab = lazy(() =>
-  import('./pages/ontology-manager/ModelSharingTab').then((m) => ({
+  import('./pages/catalog/model/ModelSharingTab').then((m) => ({
     default: m.ModelSharingTab,
   })),
 );
 const DataInsightsPage = lazy(() =>
-  import('./pages/ontology-manager/DataInsightsPage').then((m) => ({ default: m.DataInsightsPage })),
+  import('./pages/insights/DataInsightsPage').then((m) => ({ default: m.DataInsightsPage })),
 );
 const DatasetSourcesPage = lazy(() =>
-  import('./pages/ontology-manager/DatasetSourcesPage').then((m) => ({ default: m.DatasetSourcesPage })),
+  import('./pages/catalog/DatasetSourcesPage').then((m) => ({ default: m.DatasetSourcesPage })),
 );
 const QualityIssuesPage = lazy(() =>
-  import('./pages/ontology-manager/QualityIssuesPage').then((m) => ({ default: m.QualityIssuesPage })),
+  import('./pages/catalog/QualityIssuesPage').then((m) => ({ default: m.QualityIssuesPage })),
 );
 const StoryDetailPage = lazy(() =>
-  import('./pages/ontology-manager/StoryDetailPage').then((m) => ({
+  import('./pages/insights/StoryDetailPage').then((m) => ({
     default: m.StoryDetailPage,
   })),
 );
 const DatasetOverviewTab = lazy(() =>
-  import('./pages/ontology-manager/DatasetDetailPage').then((m) => ({ default: m.DatasetOverviewTab })),
+  import('./pages/catalog/DatasetDetailPage').then((m) => ({ default: m.DatasetOverviewTab })),
 );
 const DatasetDataRoute = lazy(() =>
-  import('./pages/ontology-manager/FileDatasetData').then((m) => ({
+  import('./pages/catalog/FileDatasetData').then((m) => ({
     default: m.DatasetDataRoute,
   })),
 );
 const DatasetColumnsRoute = lazy(() =>
-  import('./pages/ontology-manager/FileDatasetData').then((m) => ({
+  import('./pages/catalog/FileDatasetData').then((m) => ({
     default: m.DatasetColumnsRoute,
   })),
 );
 const DatasetRelationshipsTab = lazy(() =>
-  import('./pages/ontology-manager/DatasetRelationshipsTab').then((m) => ({
+  import('./pages/catalog/DatasetRelationshipsTab').then((m) => ({
     default: m.DatasetRelationshipsTab,
   })),
 );
 const DatasetQualityTab = lazy(() =>
-  import('./pages/ontology-manager/DatasetQualityTab').then((m) => ({
+  import('./pages/catalog/DatasetQualityTab').then((m) => ({
     default: m.DatasetQualityTab,
   })),
 );
 const DatasetVersionsTab = lazy(() =>
-  import('./pages/ontology-manager/DatasetVersionsTab').then((m) => ({
+  import('./pages/catalog/DatasetVersionsTab').then((m) => ({
     default: m.DatasetVersionsTab,
   })),
 );
 const QualityRuleEditorPage = lazy(() =>
-  import('./pages/ontology-manager/QualityRuleEditorPage').then((m) => ({
+  import('./pages/catalog/QualityRuleEditorPage').then((m) => ({
     default: m.QualityRuleEditorPage,
   })),
 );
 const DatasetSharingTab = lazy(() =>
-  import('./pages/ontology-manager/DatasetDetailPage').then((m) => ({ default: m.DatasetSharingTab })),
+  import('./pages/catalog/DatasetDetailPage').then((m) => ({ default: m.DatasetSharingTab })),
 );
 const DatasetSettingsTab = lazy(() =>
-  import('./pages/ontology-manager/DatasetSettingsTab').then((m) => ({ default: m.DatasetSettingsTab })),
+  import('./pages/catalog/DatasetSettingsTab').then((m) => ({ default: m.DatasetSettingsTab })),
 );
 const KnowledgeMap = lazy(() => import('./pages/knowledge-map/KnowledgeMap').then((m) => ({ default: m.KnowledgeMap })));
 const ProjectList = lazy(() => import('./pages/agents/ProjectList').then((m) => ({ default: m.ProjectList })));

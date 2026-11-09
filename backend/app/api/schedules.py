@@ -192,7 +192,7 @@ async def run_schedule_now(schedule_id: str, db: AsyncSession = Depends(get_db))
     else:
         raise HTTPException(status_code=400, detail="Unsupported schedule kind")
 
-    from app.services.schedules.schedule_handlers import defer_scheduled_trigger
+    from app.jobs.schedule_handlers import defer_scheduled_trigger
 
     job_id = await defer_scheduled_trigger(row)
     row.last_run_at = datetime.now(timezone.utc)

@@ -12,7 +12,7 @@ import {
   EntityViewPanel,
   EntityViewStat,
   EntityViewStats,
-} from './EntityViewShell';
+} from '../shared/EntityViewShell';
 import { useObjectTypeDetail } from './useObjectTypeDetail';
 
 export function ObjectTypeOverviewTab() {

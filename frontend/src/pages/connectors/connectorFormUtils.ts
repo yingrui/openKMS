@@ -1,7 +1,7 @@
 import type { ConnectorKindOut, ConnectorResponse } from '../../data/connectorsApi';
 import type { DatasetResponse } from '../../data/datasetsApi';
 import { stripSyncScheduleFromSettings, syncScheduleToSettingsPayload, type SyncScheduleFormState } from './connectorScheduleUtils';
-import { datasetLabel } from '../ontology-manager/datasetLabel';
+import { datasetLabel } from '../catalog/datasetLabel';
 
 export type KvRow = { id: string; key: string; value: string };
 

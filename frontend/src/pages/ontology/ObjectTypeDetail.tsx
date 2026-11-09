@@ -19,7 +19,7 @@ import {
   fetchOntologyActionTypes,
   type OntologyActionTypeResponse,
 } from '../../data/ontologyFunctionsApi';
-import { isRunnableAction } from '../ontology-manager/actionRuleTypes';
+import { isRunnableAction } from '../shared/actionRuleTypes';
 import { GraphReadNotice } from '../../components/ontology/GraphReadNotice';
 import {
   isReservedPropertyName,

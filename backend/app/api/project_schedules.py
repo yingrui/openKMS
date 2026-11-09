@@ -187,7 +187,7 @@ def build_project_schedules_router() -> APIRouter:
         sub = get_jwt_sub(request)
         await get_project_owned(db, project_id, sub)
         row = await get_agent_schedule_for_project(db, project_id, schedule_id)
-        from app.services.schedules.schedule_handlers import defer_scheduled_trigger
+        from app.jobs.schedule_handlers import defer_scheduled_trigger
 
         job_id = await defer_scheduled_trigger(row)
         row.last_run_at = datetime.now(timezone.utc)

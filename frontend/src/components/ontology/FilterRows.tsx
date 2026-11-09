@@ -1,9 +1,9 @@
 import { useTranslation } from 'react-i18next';
 import { Plus, X } from 'lucide-react';
-import type { FilterRow } from '../../pages/ontology-manager/datasetRowsFilter';
+import type { FilterRow } from '../../pages/catalog/datasetRowsFilter';
 import './FilterRows.scss';
-import { QuickRangeSelect } from '../../pages/ontology-manager/QuickRangeSelect';
-import { rangeError, rangeToValues, valuesToRange } from '../../pages/ontology-manager/dateRange';
+import { QuickRangeSelect } from '../../pages/shared/QuickRangeSelect';
+import { rangeError, rangeToValues, valuesToRange } from '../../pages/catalog/dateRange';
 
 const NO_VALUE = new Set(['is_null', 'is_not_null']);
 

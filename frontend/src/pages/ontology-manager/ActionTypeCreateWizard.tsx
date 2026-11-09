@@ -13,7 +13,7 @@ import {
   FUNCTION_RULE_TYPE,
   intentToRuleType,
   type ActionIntentId,
-} from './actionRuleTypes';
+} from '../shared/actionRuleTypes';
 
 const STEPS = ['target', 'define', 'review'] as const;
 

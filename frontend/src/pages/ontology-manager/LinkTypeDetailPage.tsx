@@ -22,9 +22,9 @@ import {
   EntityViewShell,
   EntityViewStat,
   EntityViewStats,
-} from './EntityViewShell';
+} from '../shared/EntityViewShell';
 import '../ontology/ontology-admin.scss';
-import { datasetLabel } from './datasetLabel';
+import { datasetLabel } from '../catalog/datasetLabel';
 
 type LinkTypeDetailContext = {
   linkType: LinkTypeResponse;

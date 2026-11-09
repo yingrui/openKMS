@@ -38,7 +38,7 @@ import {
   EntityViewShell,
   EntityViewStat,
   EntityViewStats,
-} from './EntityViewShell';
+} from '../shared/EntityViewShell';
 import '../ontology/ontology-admin.scss';
 
 type FunctionDetailContext = {

@@ -1,2 +1,0 @@
-app/jobs <-> app/services/schedules
-app/services/agent <-> app/services/deep_agents

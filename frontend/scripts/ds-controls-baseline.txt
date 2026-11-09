@@ -55,9 +55,9 @@ src/pages/media/MediaGenerate.tsx 6
 src/pages/models/ModelDetail.tsx 2
 src/pages/models/Models.tsx 8
 src/pages/ontology-manager/ActionsListPage.tsx 1
-src/pages/ontology-manager/DatasetColumnsTab.tsx 1
-src/pages/ontology-manager/DatasetDetailDataTab.tsx 2
-src/pages/ontology-manager/DatasetsListPage.tsx 2
+src/pages/catalog/DatasetColumnsTab.tsx 1
+src/pages/catalog/DatasetDetailDataTab.tsx 2
+src/pages/catalog/DatasetsListPage.tsx 2
 src/pages/ontology-manager/GroupDetailPage.tsx 1
 src/pages/ontology-manager/objectTypeFormParts.tsx 2
 src/pages/ontology/LinkTypeDetail.tsx 2

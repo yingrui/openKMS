@@ -322,7 +322,7 @@ async def trigger_connector_sync(
 
     from app.jobs.defer import defer_task
     from app.jobs.tasks import run_connector_sync
-    from app.services.schedules.schedule_handlers import CONNECTOR_SYNC_LOCK_PREFIX
+    from app.jobs.schedule_handlers import CONNECTOR_SYNC_LOCK_PREFIX
 
     defer_kwargs: dict[str, str | list[str]] = {"connector_id": row.id}
     if req.start_date is not None and req.end_date is not None:

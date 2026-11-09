@@ -22,11 +22,11 @@ import {
   EntityViewShell,
   EntityViewStat,
   EntityViewStats,
-} from './EntityViewShell';
+} from '../shared/EntityViewShell';
 import {
   isBuiltinObjectRule,
   writableFieldsFromParameters,
-} from './actionRuleTypes';
+} from '../shared/actionRuleTypes';
 import '../ontology/ontology-admin.scss';
 
 type ActionDetailContext = {

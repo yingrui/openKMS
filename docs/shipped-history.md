@@ -2,6 +2,23 @@
 
 Delivered work and design history, moved out of the [Development plan](development_plan.md).
 
+### Four apps lived in one directory called `ontology-manager` (2026-11) — done
+
+- `frontend/src/pages/ontology-manager/` held 110 TS modules and 6 sheets: the **Ontology Manager** itself (object types,
+  link types, groups, actions, functions, external services), the **Catalog** (datasets, quality, versions, file data), the
+  **semantic model with its Playground**, and **Data Insights** (stories, reports, findings). The name described a quarter
+  of the contents, and the data layer — which the docs call a separate area — was inside it.
+- Split by the app that owns each file: `pages/ontology-manager/` (17 modules, what the name says), `pages/catalog/` (30),
+  `pages/catalog/model/` (27), `pages/insights/` (29), `pages/shared/` (7, plus the sheets with no same-named component).
+  Routes did not change — only file locations — so the route-based checks and deep links are untouched.
+- The move was scripted, and the script is the lesson: a specifier can be a static `from '…'`, a dynamic `import('…')`, a
+  `vi.mock('…')` **or a bare argument** (`vi.importActual('…')`), so matching two of the four rewrote a mock but not the
+  module it mocks. A second bug: `str(Path('./x.tsx').with_suffix(''))` drops the leading `./`, which silently turns a
+  relative specifier into a bare one. Typecheck caught both; the fix was to resolve every specifier from the file's **old**
+  location and re-relativise — one pass, no categories of import to forget.
+- Two path-keyed ratchet baselines were re-pointed (same counts, new paths): `ds-controls-baseline.txt`,
+  `undefined-classes-baseline.txt`.
+
 ### Import cycles are measured, not described (2026-11) — done
 
 - A review of the package layout found the direction sound (`api → services → models`; the data layer is allowed to sit

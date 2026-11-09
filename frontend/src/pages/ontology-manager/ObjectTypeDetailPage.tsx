@@ -47,10 +47,10 @@ import {
   EntityViewLoading,
   EntityViewPanel,
   EntityViewShell,
-} from './EntityViewShell';
+} from '../shared/EntityViewShell';
 import { ObjectTypeDetailCtx, useObjectTypeDetail } from './useObjectTypeDetail';
 import '../ontology/ontology-admin.scss';
-import { datasetLabel } from './datasetLabel';
+import { datasetLabel } from '../catalog/datasetLabel';
 
 export function ObjectTypeDetailPage() {
   const { t } = useTranslation('ontology');

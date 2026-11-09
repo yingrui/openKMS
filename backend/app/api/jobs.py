@@ -408,7 +408,7 @@ async def retry_job(job_id: int, request: Request, db: AsyncSession = Depends(ge
         if not trigger_id or not isinstance(trigger_id, str):
             raise HTTPException(status_code=400, detail="Job has no trigger_id in args")
         from app.models.scheduled_trigger import PROJECT_AGENT_SCHEDULE_KINDS, ScheduledTrigger
-        from app.services.schedules.schedule_handlers import defer_scheduled_trigger
+        from app.jobs.schedule_handlers import defer_scheduled_trigger
 
         trigger = await db.get(ScheduledTrigger, trigger_id.strip())
         if not trigger or trigger.kind not in PROJECT_AGENT_SCHEDULE_KINDS:

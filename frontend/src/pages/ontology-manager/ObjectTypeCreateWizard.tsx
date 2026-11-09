@@ -13,14 +13,14 @@ import {
   updateOntologyGroup,
   type OntologyGroupResponse,
 } from '../../data/ontologyFunctionsApi';
-import { intentToRuleType } from './actionRuleTypes';
+import { intentToRuleType } from '../shared/actionRuleTypes';
 import {
   actionApiName,
   isValidApiName,
   toPascalCaseApiName,
 } from './objectTypeNaming';
 import { PropertiesEditor } from './objectTypeFormParts';
-import { datasetLabel } from './datasetLabel';
+import { datasetLabel } from '../catalog/datasetLabel';
 import {
   ontologyTypeFromColumn,
   toHandCreatedPropertyDefs,

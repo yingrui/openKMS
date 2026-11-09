@@ -847,7 +847,7 @@ async def run_connector_sync(
             )
             for slot, count in stats.items():
                 log_lines.append(f"{slot}: {count} rows upserted")
-            from app.services.schedules.schedule_dispatch import update_trigger_after_sync
+            from app.jobs.schedule_dispatch import update_trigger_after_sync
 
             await update_trigger_after_sync(
                 session,
@@ -893,7 +893,7 @@ async def run_connector_sync(
                     wait,
                 )
                 return
-            from app.services.schedules.schedule_dispatch import update_trigger_after_sync
+            from app.jobs.schedule_dispatch import update_trigger_after_sync
 
             await update_trigger_after_sync(
                 session,
@@ -924,7 +924,7 @@ async def run_scheduled_project_agent(
     from app.database import async_session_maker
     from app.models.scheduled_trigger import PROJECT_AGENT_SCHEDULE_KINDS, ScheduledTrigger
     from app.services.jobs.job_run_worker_log import persist_job_run_worker_log_best_effort
-    from app.services.schedules.schedule_dispatch import update_trigger_after_agent_job
+    from app.jobs.schedule_dispatch import update_trigger_after_agent_job
 
     job_id = int(context.job.id) if context.job and context.job.id else None
     log_lines: list[str] = []

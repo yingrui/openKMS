@@ -56,8 +56,8 @@ src/pages/knowledge-bases/KnowledgeBaseDetail.tsx uses .kb-qa-msg-feedback
 src/pages/knowledge-bases/KnowledgeBaseDetail.tsx uses .kb-settings-col-models
 src/pages/knowledge-bases/KnowledgeBaseDetail.tsx uses .kb-settings-section
 src/pages/ontology-manager/ActionTypeCreateWizard.tsx uses .object-type-create-wizard__step-label
-src/pages/ontology-manager/DatasetErDiagram.tsx uses .dataset-er__node--center
-src/pages/ontology-manager/EntityViewShell.tsx uses .ontology-admin-loading
+src/pages/catalog/DatasetErDiagram.tsx uses .dataset-er__node--center
+src/pages/shared/EntityViewShell.tsx uses .ontology-admin-loading
 src/pages/ontology-manager/FunctionDetailPage.tsx uses .console-table-icon-btn
 src/pages/ontology-manager/FunctionDetailPage.tsx uses .entity-view__field-hint
 src/pages/ontology-manager/GroupDetailPage.tsx uses .entity-view__field-hint

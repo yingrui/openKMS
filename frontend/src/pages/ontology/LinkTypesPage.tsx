@@ -21,7 +21,7 @@ import { fetchAllDataSources, type DataSourceResponse } from '../../data/dataSou
 import { useConfirm } from '../../contexts/ConfirmContext';
 import { isValidApiName, toPascalCaseApiName } from '../ontology-manager/objectTypeNaming';
 import './ontology-admin.scss';
-import { datasetLabel } from '../ontology-manager/datasetLabel';
+import { datasetLabel } from '../catalog/datasetLabel';
 
 /** True when indexing reads from a junction or source-side dataset (not only saved links). */
 function linkTypeUsesDatasetIndexing(t: LinkTypeResponse, objectTypes: ObjectTypeResponse[]): boolean {
