@@ -178,6 +178,7 @@ nav:
       - Knowledge bases: features/knowledge-bases.md
       - Wiki spaces: features/wiki-spaces.md
       - Evaluation: features/evaluation.md
+      - Data-query evaluation (design): features/data-query-evaluation.md
       - Glossaries: features/glossaries.md
       - Knowledge map & home: features/knowledge-map.md
       - Global search: features/global-search.md
