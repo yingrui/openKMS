@@ -9,11 +9,11 @@ from langchain_core.messages import HumanMessage
 from langgraph.errors import GraphRecursionError
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.services.deep_agents.factory import (
+from app.services.runtime.deep_agents.factory import (
     build_improvement_deep_agent,
     ephemeral_runnable_config,
 )
-from app.services.deep_agents.stream_events import ProjectStreamPart, iter_langgraph_stream_parts
+from app.services.runtime.deep_agents.stream_events import ProjectStreamPart, iter_langgraph_stream_parts
 from app.services.platform.project_fs import read_agents_md, read_lessons_json, read_memory_md
 
 logger = logging.getLogger(__name__)

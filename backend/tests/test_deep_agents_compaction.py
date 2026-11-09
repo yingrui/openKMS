@@ -8,7 +8,7 @@ import pytest
 from langchain_core.messages import HumanMessage
 from langchain_openai import ChatOpenAI
 
-from app.services.deep_agents.context_compaction import compact_project_context_if_needed
+from app.services.runtime.deep_agents.context_compaction import compact_project_context_if_needed
 
 
 @pytest.mark.asyncio
@@ -33,7 +33,7 @@ async def test_compact_passes_session_id_and_persists_it(monkeypatch) -> None:
     mw._compute_state_cutoff.return_value = 2
 
     monkeypatch.setattr(
-        "app.services.deep_agents.context_compaction.create_summarization_middleware",
+        "app.services.runtime.deep_agents.context_compaction.create_summarization_middleware",
         lambda *_a, **_k: mw,
     )
 

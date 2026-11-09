@@ -12,8 +12,8 @@ from sqlalchemy import delete, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from app.services.agent.ndjson import ndjson_line
-from app.services.agent.shared import (
+from app.services.runtime.agent.ndjson import ndjson_line
+from app.services.runtime.agent.shared import (
     _bump_conversation_timestamp,
     _maybe_set_conversation_title_from_first_user_message,
     _msg_to_out,
@@ -32,8 +32,8 @@ from app.schemas.agent import (
     AgentMessagePostResponse,
 )
 from app.schemas.project import ProjectConversationCreate, ProjectConversationPatch, ProjectMessageCreate, ProjectMessageResume
-from app.services.agent.llm import resolve_agent_llm_config
-from app.services.agent.attachments import (
+from app.services.runtime.agent.llm import resolve_agent_llm_config
+from app.services.runtime.agent.attachments import (
     attachment_display_url,
     check_attachment_size,
     delete_attachment,
@@ -43,13 +43,13 @@ from app.services.agent.attachments import (
     prune_staged_attachments,
     save_attachment,
 )
-from app.services.agent.assistant_stream_parts import WIKI_ASSISTANT_STREAM_PARTS_KEY
-from app.services.agent.tool_transcripts import AGENT_TOOL_TRANSCRIPTS_KEY
-from app.services.agent.conversation_title import suggest_conversation_title
-from app.services.agent.agent_session_api_key import ensure_session_api_key, revoke_session_api_key
-from app.services.agent.agent_skill_install import ensure_skills_materialized
-from app.services.deep_agents.checkpointer import delete_conversation_thread
-from app.services.deep_agents.durable_stream import (
+from app.services.runtime.agent.assistant_stream_parts import WIKI_ASSISTANT_STREAM_PARTS_KEY
+from app.services.runtime.agent.tool_transcripts import AGENT_TOOL_TRANSCRIPTS_KEY
+from app.services.runtime.agent.conversation_title import suggest_conversation_title
+from app.services.runtime.agent.agent_session_api_key import ensure_session_api_key, revoke_session_api_key
+from app.services.runtime.agent.agent_skill_install import ensure_skills_materialized
+from app.services.runtime.deep_agents.checkpointer import delete_conversation_thread
+from app.services.runtime.deep_agents.durable_stream import (
     ClientBridge,
     conversation_turn_is_active,
     mark_streaming_turn_running,
@@ -57,14 +57,14 @@ from app.services.deep_agents.durable_stream import (
     prepare_streaming_turn,
     run_project_turn_background,
 )
-from app.services.deep_agents.observability import AgentTurnContext
-from app.services.deep_agents.runner import iter_project_stream_parts, resume_project_interrupt, run_project_turn
+from app.services.runtime.deep_agents.observability import AgentTurnContext
+from app.services.runtime.deep_agents.runner import iter_project_stream_parts, resume_project_interrupt, run_project_turn
 from app.services.identity.permissions.permission_catalog import PERM_PROJECTS_READ, PERM_PROJECTS_WRITE
 from app.services.platform.project_fs import read_lessons_json, write_lessons_json
-from app.services.agent.session_review import merge_lessons, review_session
-from app.services.deep_agents.improvement_runner import iter_improvement_stream_parts
+from app.services.runtime.agent.session_review import merge_lessons, review_session
+from app.services.runtime.deep_agents.improvement_runner import iter_improvement_stream_parts
 from app.services.platform.openai_compat import chat_extra_body_disable_thinking
-from app.services.deep_agents.llm_chat import normalize_openai_base_url
+from app.services.runtime.deep_agents.llm_chat import normalize_openai_base_url
 
 router = APIRouter()
 

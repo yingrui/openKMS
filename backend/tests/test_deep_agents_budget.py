@@ -8,8 +8,8 @@ import pytest
 from langchain_core.messages import HumanMessage, SystemMessage
 from langgraph.errors import GraphRecursionError
 
-from app.services.deep_agents import runner
-from app.services.deep_agents.budget import (
+from app.services.runtime.deep_agents import runner
+from app.services.runtime.deep_agents.budget import (
     WARN_AT_FRACTION,
     BudgetAwareTodoMiddleware,
     make_budget_middleware,
@@ -115,7 +115,7 @@ def test_turn_failure_hides_raw_recursion_text() -> None:
 
 
 def test_system_prompt_teaches_delegation_and_budget() -> None:
-    from app.services.deep_agents.prompts import _BASE_PROMPT
+    from app.services.runtime.deep_agents.prompts import _BASE_PROMPT
 
     assert "research` subagent" in _BASE_PROMPT
     assert "budget" in _BASE_PROMPT.lower()

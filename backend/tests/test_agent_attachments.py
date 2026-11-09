@@ -6,7 +6,7 @@ from unittest.mock import patch
 import pytest
 from fastapi import HTTPException
 
-from app.services.agent import attachments as att
+from app.services.runtime.agent import attachments as att
 
 _PNG = base64.b64decode(
     "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg=="
@@ -35,7 +35,7 @@ def test_check_attachment_size_rejects_oversized() -> None:
     assert err.value.status_code == 400
 
 
-@patch("app.services.agent.attachments.upload_object")
+@patch("app.services.runtime.agent.attachments.upload_object")
 def test_save_attachment_uploads_and_returns_descriptor(upload) -> None:
     saved = att.save_attachment("conv-1", filename="shot.PNG", content_type=None, body=_PNG)
     assert saved["mime"] == "image/png"  # resolved from the extension when content type is absent
@@ -44,7 +44,7 @@ def test_save_attachment_uploads_and_returns_descriptor(upload) -> None:
     upload.assert_called_once_with(att.attachment_key("conv-1", saved["id"], "image/png"), _PNG, content_type="image/png")
 
 
-@patch("app.services.agent.attachments.upload_object")
+@patch("app.services.runtime.agent.attachments.upload_object")
 def test_save_attachment_rejects_non_image(upload) -> None:
     with pytest.raises(HTTPException) as err:
         att.save_attachment("conv-1", filename="notes.txt", content_type="text/plain", body=b"hi")
@@ -52,7 +52,7 @@ def test_save_attachment_rejects_non_image(upload) -> None:
     upload.assert_not_called()
 
 
-@patch("app.services.agent.attachments.object_exists", return_value=True)
+@patch("app.services.runtime.agent.attachments.object_exists", return_value=True)
 def test_normalize_attachment_refs_requires_existing_object(_exists) -> None:
     refs = att.normalize_attachment_refs(
         [{"id": "att_0123456789ab", "name": "a.png", "mime": "image/png", "size": 3, "url": "ignored"}],
@@ -61,7 +61,7 @@ def test_normalize_attachment_refs_requires_existing_object(_exists) -> None:
     assert refs == [{"id": "att_0123456789ab", "name": "a.png", "mime": "image/png", "size": 3}]
 
 
-@patch("app.services.agent.attachments.object_exists", return_value=False)
+@patch("app.services.runtime.agent.attachments.object_exists", return_value=False)
 def test_normalize_attachment_refs_rejects_missing_object(_exists) -> None:
     with pytest.raises(HTTPException) as err:
         att.normalize_attachment_refs(
@@ -70,7 +70,7 @@ def test_normalize_attachment_refs_rejects_missing_object(_exists) -> None:
     assert err.value.status_code == 400
 
 
-@patch("app.services.agent.attachments.get_object", return_value=_PNG)
+@patch("app.services.runtime.agent.attachments.get_object", return_value=_PNG)
 def test_human_content_builds_text_plus_image_blocks(_get) -> None:
     blocks = att.human_content_with_attachments(
         "conv-1", "what is this?", [{"id": "att_0123456789ab", "mime": "image/png"}]
@@ -85,7 +85,7 @@ def test_human_content_falls_back_to_text_without_attachments() -> None:
     assert att.human_content_with_attachments("conv-1", "hello", []) == "hello"
 
 
-@patch("app.services.agent.attachments.get_object", side_effect=RuntimeError("gone"))
+@patch("app.services.runtime.agent.attachments.get_object", side_effect=RuntimeError("gone"))
 def test_human_content_skips_unreadable_image(_get) -> None:
     assert (
         att.human_content_with_attachments(
@@ -95,13 +95,13 @@ def test_human_content_skips_unreadable_image(_get) -> None:
     )
 
 
-@patch("app.services.agent.attachments.delete_object")
+@patch("app.services.runtime.agent.attachments.delete_object")
 def test_delete_attachment_targets_derived_key(delete) -> None:
     assert att.delete_attachment("conv-1", "att_0123456789ab", "image/png") is True
     delete.assert_called_once_with("agent-attachments/conv-1/att_0123456789ab.png")
 
 
-@patch("app.services.agent.attachments.delete_object")
+@patch("app.services.runtime.agent.attachments.delete_object")
 def test_delete_attachment_ignores_invalid_ref(delete) -> None:
     assert att.delete_attachment("conv-1", "not-an-id", "image/png") is False
     delete.assert_not_called()
@@ -114,8 +114,8 @@ def _page(keys_and_ages, token=None):
     return StorageListPage(prefix="", folders=[], objects=objects, next_continuation_token=token, truncated=False)
 
 
-@patch("app.services.agent.attachments.delete_object")
-@patch("app.services.agent.attachments.list_storage_page")
+@patch("app.services.runtime.agent.attachments.delete_object")
+@patch("app.services.runtime.agent.attachments.list_storage_page")
 def test_prune_removes_only_unreferenced_old_objects(listing, delete) -> None:
     from datetime import datetime, timedelta, timezone
 
@@ -135,8 +135,8 @@ def test_prune_removes_only_unreferenced_old_objects(listing, delete) -> None:
     delete.assert_called_once_with("agent-attachments/conv-1/att_0123456789ab.png")
 
 
-@patch("app.services.agent.attachments.delete_object")
-@patch("app.services.agent.attachments.list_storage_page")
+@patch("app.services.runtime.agent.attachments.delete_object")
+@patch("app.services.runtime.agent.attachments.list_storage_page")
 def test_prune_paginates(listing, delete) -> None:
     from datetime import datetime, timedelta, timezone
 
@@ -149,8 +149,8 @@ def test_prune_paginates(listing, delete) -> None:
     assert listing.call_count == 2
 
 
-@patch("app.services.agent.attachments.delete_object")
-@patch("app.services.agent.attachments.list_storage_page", side_effect=RuntimeError("offline"))
+@patch("app.services.runtime.agent.attachments.delete_object")
+@patch("app.services.runtime.agent.attachments.list_storage_page", side_effect=RuntimeError("offline"))
 def test_prune_swallows_storage_errors(listing, delete) -> None:
     assert att.prune_staged_attachments("conv-1", set()) == 0
     delete.assert_not_called()

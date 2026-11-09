@@ -12,7 +12,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.models.app_builder import AppBuilderApp, AppBuilderPublishedVersion
 from app.models.kubernetes_cluster import KubernetesCluster
 from app.schemas.app_builder import AppBuilderBindings, AppBuilderCreate, AppBuilderUpdate
-from app.services.app_builder.k8s_binding import normalize_module_bindings
+from app.services.runtime.app_builder.k8s_binding import normalize_module_bindings
 
 APP_ID_PREFIX = "oa-"
 ID_HEX = 12

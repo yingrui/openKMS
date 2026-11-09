@@ -122,7 +122,7 @@ async def lifespan(app: FastAPI):
         logger.warning("Procrastinate setup skipped: %s", e)
         yield
     finally:
-        from app.services.deep_agents.checkpointer import close_checkpointer
+        from app.services.runtime.deep_agents.checkpointer import close_checkpointer
 
         await close_checkpointer()
 

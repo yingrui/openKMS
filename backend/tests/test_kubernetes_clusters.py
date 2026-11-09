@@ -9,7 +9,7 @@ import pytest
 
 from app.api.kubernetes_clusters import _to_response
 from app.models.kubernetes_cluster import KubernetesCluster
-from app.services.kubernetes.cluster_connection import (
+from app.services.runtime.kubernetes.cluster_connection import (
     apply_api_server,
     extract_api_server,
     normalize_api_server,
@@ -107,7 +107,7 @@ def test_to_response_never_exposes_kubeconfig():
 
 @pytest.mark.asyncio
 async def test_probe_connection_async_passes_overridden_server():
-    with patch("app.services.kubernetes.cluster_connection._test_connection_sync") as sync:
+    with patch("app.services.runtime.kubernetes.cluster_connection._test_connection_sync") as sync:
         sync.return_value = (True, "ok")
         await probe_cluster_connection_async(
             SAMPLE_KUBECONFIG, api_server="https://host.docker.internal:26443"
@@ -118,7 +118,7 @@ async def test_probe_connection_async_passes_overridden_server():
 
 @pytest.mark.asyncio
 async def test_probe_connection_async_uses_version_api():
-    with patch("app.services.kubernetes.cluster_connection._test_connection_sync") as sync:
+    with patch("app.services.runtime.kubernetes.cluster_connection._test_connection_sync") as sync:
         sync.return_value = (True, "Connected (gitVersion=v1.29.0)")
         ok, message = await probe_cluster_connection_async(SAMPLE_KUBECONFIG)
     assert ok is True
@@ -146,7 +146,7 @@ def test_permission_patterns_include_kubernetes():
 def test_pod_ready_and_restarts():
     from types import SimpleNamespace
 
-    from app.services.kubernetes.cluster_resources import _pod_ready_and_restarts
+    from app.services.runtime.kubernetes.cluster_resources import _pod_ready_and_restarts
 
     pod = SimpleNamespace(
         status=SimpleNamespace(
@@ -161,7 +161,7 @@ def test_pod_ready_and_restarts():
 
 @pytest.mark.asyncio
 async def test_list_namespaces_async_invalid_kubeconfig():
-    from app.services.kubernetes.cluster_resources import list_namespaces_async
+    from app.services.runtime.kubernetes.cluster_resources import list_namespaces_async
 
     with pytest.raises(ValueError):
         await list_namespaces_async("   ")
@@ -169,10 +169,10 @@ async def test_list_namespaces_async_invalid_kubeconfig():
 
 @pytest.mark.asyncio
 async def test_list_namespaces_async_delegates_to_sync():
-    from app.services.kubernetes.cluster_resources import list_namespaces_async
+    from app.services.runtime.kubernetes.cluster_resources import list_namespaces_async
 
     with patch(
-        "app.services.kubernetes.cluster_resources._list_namespaces_sync",
+        "app.services.runtime.kubernetes.cluster_resources._list_namespaces_sync",
         return_value=[{"name": "default", "phase": "Active", "created_at": None}],
     ) as sync:
         items = await list_namespaces_async(SAMPLE_KUBECONFIG)

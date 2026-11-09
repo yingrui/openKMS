@@ -1,12 +1,12 @@
 """Workspace git origin URL and remote set-url."""
 
-from app.services.deep_agents.git_service import git_origin_url, git_remote_add, git_status
+from app.services.runtime.deep_agents.git_service import git_origin_url, git_remote_add, git_status
 
 
 def test_git_status_includes_origin(tmp_path, monkeypatch):
     root = tmp_path / "proj"
     root.mkdir()
-    monkeypatch.setattr("app.services.deep_agents.git_service.project_root", lambda _id: root)
+    monkeypatch.setattr("app.services.runtime.deep_agents.git_service.project_root", lambda _id: root)
     assert git_status("p1") == {
         "entries": [],
         "branch": None,
@@ -26,7 +26,7 @@ def test_git_status_includes_origin(tmp_path, monkeypatch):
 def test_git_remote_add_then_set_url(tmp_path, monkeypatch):
     root = tmp_path / "proj"
     root.mkdir()
-    monkeypatch.setattr("app.services.deep_agents.git_service.project_root", lambda _id: root)
+    monkeypatch.setattr("app.services.runtime.deep_agents.git_service.project_root", lambda _id: root)
     from subprocess import run
 
     run(["git", "init"], cwd=root, check=True, capture_output=True)

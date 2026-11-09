@@ -18,11 +18,11 @@ from app.models.scheduled_trigger import (
     SCHEDULE_KIND_PROJECT_AGENT_STATELESS,
     ScheduledTrigger,
 )
-from app.services.agent.agent_session_api_key import ensure_session_api_key, get_session_bearer_token, revoke_session_api_key
-from app.services.agent.agent_skill_install import ensure_skills_materialized
+from app.services.runtime.agent.agent_session_api_key import ensure_session_api_key, get_session_bearer_token, revoke_session_api_key
+from app.services.runtime.agent.agent_skill_install import ensure_skills_materialized
 from app.services.data.connectors.schedule import validate_cron_expression, validate_timezone
-from app.services.agent.shared import new_id
-from app.services.deep_agents.runner import run_project_turn
+from app.services.runtime.agent.shared import new_id
+from app.services.runtime.deep_agents.runner import run_project_turn
 from app.services.platform.feature_toggles import is_feature_enabled
 from app.services.identity.permissions.permission_resolution import jwt_realm_role_names
 
@@ -300,7 +300,7 @@ async def execute_scheduled_project_agent(
         and cfg.get("on_run_completed") == "delete"
         and created_conv is not None
     ):
-        from app.services.deep_agents.checkpointer import delete_conversation_thread
+        from app.services.runtime.deep_agents.checkpointer import delete_conversation_thread
 
         await revoke_session_api_key(db, created_conv)
         await delete_conversation_thread(db, created_conv.id)

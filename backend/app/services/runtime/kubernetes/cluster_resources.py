@@ -7,7 +7,7 @@ from typing import Any
 
 import yaml
 
-from app.services.kubernetes.cluster_connection import prepare_kubeconfig
+from app.services.runtime.kubernetes.cluster_connection import prepare_kubeconfig
 
 YAML_KINDS = frozenset({"ConfigMap", "Deployment", "Pod", "Secret", "Service"})
 
@@ -234,7 +234,7 @@ def _get_pod_sync(kubeconfig: dict[str, Any], namespace: str, name: str) -> dict
     from kubernetes import client
     from kubernetes.client.exceptions import ApiException
 
-    from app.services.kubernetes.cluster_config import validate_resource_name
+    from app.services.runtime.kubernetes.cluster_config import validate_resource_name
 
     name = validate_resource_name(name)
     with _build_api_client(kubeconfig) as api_client:
@@ -294,7 +294,7 @@ def _get_service_sync(kubeconfig: dict[str, Any], namespace: str, name: str) -> 
     from kubernetes import client
     from kubernetes.client.exceptions import ApiException
 
-    from app.services.kubernetes.cluster_config import validate_resource_name
+    from app.services.runtime.kubernetes.cluster_config import validate_resource_name
 
     name = validate_resource_name(name)
     with _build_api_client(kubeconfig) as api_client:
@@ -396,7 +396,7 @@ def _get_manifest_yaml_sync(
     from kubernetes import client
     from kubernetes.client.exceptions import ApiException
 
-    from app.services.kubernetes.cluster_config import validate_resource_name
+    from app.services.runtime.kubernetes.cluster_config import validate_resource_name
 
     kind = (kind or "").strip()
     if kind not in YAML_KINDS:

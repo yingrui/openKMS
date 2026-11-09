@@ -30,12 +30,12 @@ from pathlib import Path
 
 from deepagents.backends import LocalShellBackend
 
-from app.services.deep_agents.command_policy import (
+from app.services.runtime.deep_agents.command_policy import (
     DEFAULT_DENIED,
     CommandDenied,
     check_command,
 )
-from app.services.deep_agents.constants import MAX_TOOL_OUTPUT_BYTES
+from app.services.runtime.deep_agents.constants import MAX_TOOL_OUTPUT_BYTES
 
 
 def normalize_workspace_path(cwd: Path, key: str) -> str:

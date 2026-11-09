@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from app.config import settings
-from app.services.deep_agents.git_service import git_env_for_shell
+from app.services.runtime.deep_agents.git_service import git_env_for_shell
 from app.services.platform.project_fs import resolve_project_path
 
 

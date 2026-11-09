@@ -19,7 +19,7 @@ from app.schemas.project_deploy_secret import (
     ProjectDeploySecretUpdate,
 )
 from app.services.platform.credentials.credential_encryption import decrypt
-from app.services.kubernetes.cluster_config import (
+from app.services.runtime.kubernetes.cluster_config import (
     delete_secret_async,
     openkms_secret_labels,
     upsert_secret_async,
@@ -256,7 +256,7 @@ async def sync_deploy_secret(
         values = deploy_svc.decrypt_values(row.data_encrypted)
         plain = decrypt(cluster.kubeconfig_encrypted)
         # Read current keys in cluster via upsert: pass all values; remove stale keys separately
-        from app.services.kubernetes.cluster_config import list_secrets_async
+        from app.services.runtime.kubernetes.cluster_config import list_secrets_async
 
         existing = await list_secrets_async(plain, row.namespace, **_client_overrides(cluster))
         existing_keys = next((i["keys"] for i in existing if i["name"] == row.name), [])

@@ -6,8 +6,8 @@ from typing import Any
 
 import yaml
 
-from app.services.kubernetes.cluster_connection import prepare_kubeconfig
-from app.services.kubernetes.cluster_resources import _build_api_client
+from app.services.runtime.kubernetes.cluster_connection import prepare_kubeconfig
+from app.services.runtime.kubernetes.cluster_resources import _build_api_client
 
 ALLOWED_KINDS = frozenset({"ConfigMap", "Deployment", "Pod", "Service"})
 

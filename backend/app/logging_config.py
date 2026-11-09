@@ -28,7 +28,7 @@ def configure_logging(
     root = logging.getLogger()
     if getattr(configure_logging, "_configured", False):
         root.setLevel(root_level)
-        logging.getLogger("app.services.deep_agents").setLevel(agent_resolved)
+        logging.getLogger("app.services.runtime.deep_agents").setLevel(agent_resolved)
         return
 
     logging.basicConfig(
@@ -37,5 +37,5 @@ def configure_logging(
         stream=sys.stderr,
         force=True,
     )
-    logging.getLogger("app.services.deep_agents").setLevel(agent_resolved)
+    logging.getLogger("app.services.runtime.deep_agents").setLevel(agent_resolved)
     configure_logging._configured = True  # type: ignore[attr-defined]

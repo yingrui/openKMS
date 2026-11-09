@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import pytest
 
-from app.services.kubernetes.cluster_apply import parse_manifests, service_patch_body
+from app.services.runtime.kubernetes.cluster_apply import parse_manifests, service_patch_body
 
 
 def test_parse_service_and_deployment():

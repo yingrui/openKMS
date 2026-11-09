@@ -6,8 +6,8 @@ import base64
 import re
 from typing import Any
 
-from app.services.kubernetes.cluster_connection import prepare_kubeconfig
-from app.services.kubernetes.cluster_resources import _build_api_client
+from app.services.runtime.kubernetes.cluster_connection import prepare_kubeconfig
+from app.services.runtime.kubernetes.cluster_resources import _build_api_client
 
 LABEL_MANAGED_BY = "app.kubernetes.io/managed-by"
 LABEL_MANAGED_BY_VALUE = "openkms"

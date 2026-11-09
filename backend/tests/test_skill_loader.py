@@ -1,6 +1,6 @@
 """Tests for project skill path loading."""
 
-from app.services.deep_agents.skills.loader import SKILLS_DIR_REL, list_skill_paths
+from app.services.runtime.deep_agents.skills.loader import SKILLS_DIR_REL, list_skill_paths
 
 
 def test_list_skill_paths_returns_parent_dir(monkeypatch, tmp_path):
@@ -14,7 +14,7 @@ def test_list_skill_paths_returns_parent_dir(monkeypatch, tmp_path):
         return tmp_path / "proj-1" / ".openkms" / "skills"
 
     monkeypatch.setattr(
-        "app.services.deep_agents.skills.loader.resolve_project_path",
+        "app.services.runtime.deep_agents.skills.loader.resolve_project_path",
         fake_resolve,
     )
 

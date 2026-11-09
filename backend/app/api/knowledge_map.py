@@ -30,7 +30,7 @@ from app.models.knowledge_map import (
 )
 from app.models.wiki_models import WikiSpace
 from app.services.platform.boundaries import boundary
-from app.services.agent.llm import resolve_agent_llm_config
+from app.services.runtime.agent.llm import resolve_agent_llm_config
 from app.services.ontology.knowledge_map.knowledge_map_html import (
     designer_chat_via_llm,
     ensure_spa_link_targets,

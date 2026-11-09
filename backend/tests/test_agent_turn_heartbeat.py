@@ -12,7 +12,7 @@ import asyncio
 from datetime import datetime, timedelta, timezone
 
 from app.models.agent_models import AgentConversation
-from app.services.deep_agents.observability import AgentTurnContext
+from app.services.runtime.deep_agents.observability import AgentTurnContext
 
 
 def _conversation(status: str = "running") -> AgentConversation:
@@ -73,8 +73,8 @@ def test_touch_running_ignores_a_finished_turn():
 
 def test_flush_refreshes_the_heartbeat(monkeypatch):
     """The flush that persists progress is itself progress."""
-    from app.services.deep_agents import durable_stream as ds
-    from app.services.deep_agents.stream_accumulator import ProjectStreamAccumulator
+    from app.services.runtime.deep_agents import durable_stream as ds
+    from app.services.runtime.deep_agents.stream_accumulator import ProjectStreamAccumulator
 
     conv = _conversation()
     turn = _turn()

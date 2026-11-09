@@ -13,7 +13,7 @@ from __future__ import annotations
 
 import time
 
-from app.services.deep_agents.project_backend import run_shell_command
+from app.services.runtime.deep_agents.project_backend import run_shell_command
 
 
 def _run(cmd: str, *, timeout: float = 5.0, cwd=None):

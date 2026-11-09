@@ -19,7 +19,7 @@ from sqlalchemy import delete, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.services.platform.boundaries import boundary
-from app.services.agent.shared import (
+from app.services.runtime.agent.shared import (
     _bump_conversation_timestamp,
     _maybe_set_conversation_title_from_first_user_message,
     _msg_to_out,
@@ -38,11 +38,11 @@ from app.schemas.agent import (
     AgentMessagePostResponse,
 )
 from app.schemas.knowledge_base import SearchResult
-from app.services.agent.assistant_stream_parts import (
+from app.services.runtime.agent.assistant_stream_parts import (
     WIKI_ASSISTANT_STREAM_PARTS_KEY,
     AssistantStreamPartsBuilder,
 )
-from app.services.agent.shared import (
+from app.services.runtime.agent.shared import (
     WIKI_TOOL_TRANSCRIPTS_KEY,
     new_id,
 )

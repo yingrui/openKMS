@@ -4,14 +4,14 @@ from __future__ import annotations
 
 import pytest
 
-from app.services.deep_agents.command_policy import (
+from app.services.runtime.deep_agents.command_policy import (
     DEFAULT_DENIED,
     CommandDenied,
     check_command,
     find_violation,
     parse_denied,
 )
-from app.services.deep_agents.project_backend import ProjectWorkspaceBackend
+from app.services.runtime.deep_agents.project_backend import ProjectWorkspaceBackend
 
 
 # --- Config parsing -----------------------------------------------------------------

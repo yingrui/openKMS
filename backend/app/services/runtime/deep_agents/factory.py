@@ -10,19 +10,19 @@ from uuid import uuid4
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
-from app.services.agent.llm import resolve_agent_llm_config
-from app.services.deep_agents.command_policy import parse_denied
-from app.services.deep_agents.env import build_project_shell_env
-from app.services.deep_agents.hitl import interrupt_map
-from app.services.deep_agents.langfuse import build_deep_agent_langgraph_config
-from app.services.deep_agents.llm_chat import build_deep_agent_chat_openai, normalize_openai_base_url
-from app.services.deep_agents.plan_mode import read_only_filesystem_middleware
-from app.services.deep_agents.project_backend import ProjectWorkspaceBackend
-from app.services.deep_agents.prompts import build_project_system_prompt
-from app.services.deep_agents.sandbox import make_sandbox_tools
-from app.services.deep_agents.skills.loader import list_skill_paths
-from app.services.deep_agents.subagents.profiles import build_subagents
-from app.services.deep_agents.tools.web_search import make_web_search_tools
+from app.services.runtime.agent.llm import resolve_agent_llm_config
+from app.services.runtime.deep_agents.command_policy import parse_denied
+from app.services.runtime.deep_agents.env import build_project_shell_env
+from app.services.runtime.deep_agents.hitl import interrupt_map
+from app.services.runtime.deep_agents.langfuse import build_deep_agent_langgraph_config
+from app.services.runtime.deep_agents.llm_chat import build_deep_agent_chat_openai, normalize_openai_base_url
+from app.services.runtime.deep_agents.plan_mode import read_only_filesystem_middleware
+from app.services.runtime.deep_agents.project_backend import ProjectWorkspaceBackend
+from app.services.runtime.deep_agents.prompts import build_project_system_prompt
+from app.services.runtime.deep_agents.sandbox import make_sandbox_tools
+from app.services.runtime.deep_agents.skills.loader import list_skill_paths
+from app.services.runtime.deep_agents.subagents.profiles import build_subagents
+from app.services.runtime.deep_agents.tools.web_search import make_web_search_tools
 from app.services.platform.project_fs import project_root
 
 logger = logging.getLogger(__name__)
@@ -116,7 +116,7 @@ async def build_workspace_deep_agent(
     from sqlalchemy import select
 
     from app.models.project_deploy_secret import ProjectDeploySecret
-    from app.services.deep_agents.checkpointer import get_checkpointer
+    from app.services.runtime.deep_agents.checkpointer import get_checkpointer
     from app.services.runtime.projects import deploy_secrets as deploy_svc
 
     deploy_rows = (
@@ -132,7 +132,7 @@ async def build_workspace_deep_agent(
     try:
         from deepagents import create_deep_agent
 
-        from app.services.deep_agents.budget import make_budget_middleware
+        from app.services.runtime.deep_agents.budget import make_budget_middleware
 
         # Budget-aware TodoList, not a second middleware: an extra middleware node costs a
         # superstep per model turn, eating the recursion budget it is meant to protect.

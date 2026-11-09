@@ -1,6 +1,6 @@
 import pytest
 
-from app.services.kubernetes.cluster_config import (
+from app.services.runtime.kubernetes.cluster_config import (
     managed_project_id,
     openkms_secret_labels,
     validate_env_key,

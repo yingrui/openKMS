@@ -31,12 +31,12 @@ from app.models.kubernetes_cluster import KubernetesCluster
 from app.models.ontology_function import OntologyFunction
 from app.services.platform.credentials.credential_encryption import decrypt, encrypt
 from app.services.ontology.function_external_usage import external_service_names, function_sources
-from app.services.kubernetes.cluster_service_proxy import (
+from app.services.runtime.kubernetes.cluster_service_proxy import (
     identity_headers,
     join_proxy_path,
     proxy_service_async,
 )
-from app.services.kubernetes.cluster_config import validate_resource_name
+from app.services.runtime.kubernetes.cluster_config import validate_resource_name
 from app.services.identity.permissions.permission_catalog import PERM_ONTOLOGY_READ, PERM_ONTOLOGY_WRITE
 
 router = APIRouter(

@@ -8,9 +8,9 @@ from deepagents import create_deep_agent
 from langchain.agents.middleware import TodoListMiddleware
 from langchain_openai import ChatOpenAI
 
-from app.services.deep_agents.plan_mode import PLAN_MODE_FS_TOOLS, read_only_filesystem_middleware
-from app.services.deep_agents.project_backend import ProjectWorkspaceBackend
-from app.services.deep_agents.subagents.profiles import build_subagents
+from app.services.runtime.deep_agents.plan_mode import PLAN_MODE_FS_TOOLS, read_only_filesystem_middleware
+from app.services.runtime.deep_agents.project_backend import ProjectWorkspaceBackend
+from app.services.runtime.deep_agents.subagents.profiles import build_subagents
 
 
 def _llm() -> ChatOpenAI:

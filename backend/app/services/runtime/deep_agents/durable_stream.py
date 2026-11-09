@@ -19,12 +19,12 @@ from sqlalchemy.orm import selectinload
 
 from app.database import async_session_maker
 from app.models.agent_models import AgentConversation, AgentMessage
-from app.services.agent.ndjson import ndjson_line
-from app.services.agent.tool_transcripts import tool_payload_from_traces
-from app.services.agent.shared import _bump_conversation_timestamp, _msg_to_out
-from app.services.deep_agents.constants import STALE_RUNNING_SECONDS
-from app.services.deep_agents.observability import AgentTurnContext
-from app.services.deep_agents.stream_accumulator import ProjectStreamAccumulator
+from app.services.runtime.agent.ndjson import ndjson_line
+from app.services.runtime.agent.tool_transcripts import tool_payload_from_traces
+from app.services.runtime.agent.shared import _bump_conversation_timestamp, _msg_to_out
+from app.services.runtime.deep_agents.constants import STALE_RUNNING_SECONDS
+from app.services.runtime.deep_agents.observability import AgentTurnContext
+from app.services.runtime.deep_agents.stream_accumulator import ProjectStreamAccumulator
 
 logger = logging.getLogger(__name__)
 

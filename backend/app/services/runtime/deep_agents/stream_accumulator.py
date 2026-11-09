@@ -6,8 +6,8 @@ import re
 from dataclasses import dataclass, field
 from typing import Any, Literal
 
-from app.services.agent.assistant_stream_parts import AssistantStreamPartsBuilder
-from app.services.deep_agents.stream_events import ProjectStreamPart
+from app.services.runtime.agent.assistant_stream_parts import AssistantStreamPartsBuilder
+from app.services.runtime.deep_agents.stream_events import ProjectStreamPart
 
 _COMPACTION_BLOCK_RE = re.compile(
     r"SESSION INTENT\s*\n.*?\nNEXT STEPS\s*\n.*?(?=\n\n|\nSESSION INTENT|\Z)",

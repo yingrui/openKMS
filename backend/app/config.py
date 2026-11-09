@@ -122,7 +122,7 @@ class Settings(BaseSettings):
     agent_log_level: str = Field(
         default="INFO",
         validation_alias="OPENKMS_AGENT_LOG_LEVEL",
-        description="Log level for app.services.deep_agents (project agent turns). DEBUG adds verbose middleware detail.",
+        description="Log level for app.services.runtime.deep_agents (project agent turns). DEBUG adds verbose middleware detail.",
     )
     backend_log_level: str | None = Field(
         default=None,

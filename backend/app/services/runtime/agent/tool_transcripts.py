@@ -54,7 +54,7 @@ def tool_payload_from_traces(
         payload[AGENT_TOOL_TRANSCRIPTS_KEY] = traces
     if stream_parts:
         # Same key as wiki / KB so SPA `assistantHistoryStreamParts` prefers interleaved order.
-        from app.services.agent.assistant_stream_parts import WIKI_ASSISTANT_STREAM_PARTS_KEY
+        from app.services.runtime.agent.assistant_stream_parts import WIKI_ASSISTANT_STREAM_PARTS_KEY
 
         payload[WIKI_ASSISTANT_STREAM_PARTS_KEY] = stream_parts
     return payload or None

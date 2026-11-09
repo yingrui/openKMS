@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from app.services.deep_agents.plan_mode import read_only_filesystem_middleware
+from app.services.runtime.deep_agents.plan_mode import read_only_filesystem_middleware
 
 
 def build_subagents(

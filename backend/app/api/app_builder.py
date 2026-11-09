@@ -16,10 +16,10 @@ from app.schemas.app_builder import (
     AppBuilderUpdate,
     AppBuilderVersionOut,
 )
-from app.services.app_builder import service as apps_svc
+from app.services.runtime.app_builder import service as apps_svc
 from app.services.platform.credentials.credential_encryption import decrypt
 from app.services.platform.credentials.credential_encryption import DECRYPT_ERRORS
-from app.services.kubernetes.cluster_service_proxy import (
+from app.services.runtime.kubernetes.cluster_service_proxy import (
     identity_headers,
     join_proxy_path,
     proxy_service_async,

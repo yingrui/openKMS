@@ -7,7 +7,7 @@ from unittest.mock import patch
 import httpx
 from langchain_core.messages import AIMessage, HumanMessage
 
-from app.services.deep_agents.llm_chat import (
+from app.services.runtime.deep_agents.llm_chat import (
     build_deep_agent_chat_openai,
     deep_agent_chat_extra_body,
     deep_agent_use_reasoning_content_shim,

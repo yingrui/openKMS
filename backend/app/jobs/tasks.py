@@ -247,7 +247,7 @@ async def run_pipeline(
                 "(same credentials the API accepts for HTTP Basic); see backend/.env.example."
             )
 
-    from app.services.jobs.job_run_worker_log import persist_job_run_worker_log_best_effort
+    from app.services.runtime.jobs.job_run_worker_log import persist_job_run_worker_log_best_effort
 
     try:
         async with async_session_maker() as session:
@@ -391,7 +391,7 @@ async def run_spreadsheet_preview(
 
     from app.database import async_session_maker
     from app.models.document import Document
-    from app.services.jobs.job_run_worker_log import persist_job_run_worker_log_best_effort
+    from app.services.runtime.jobs.job_run_worker_log import persist_job_run_worker_log_best_effort
     from app.services.content.documents.spreadsheet_preview import build_xlsx_preview
 
     job_pk = context.job.id
@@ -454,7 +454,7 @@ async def run_mindmap_preview(
 
     from app.database import async_session_maker
     from app.models.document import Document
-    from app.services.jobs.job_run_worker_log import persist_job_run_worker_log_best_effort
+    from app.services.runtime.jobs.job_run_worker_log import persist_job_run_worker_log_best_effort
     from app.services.content.documents.mindmap_preview import build_xmind_preview
 
     job_pk = context.job.id
@@ -517,7 +517,7 @@ async def run_kb_index(
     """
     from app.database import async_session_maker
     from app.models.knowledge_base import KnowledgeBase
-    from app.services.jobs.job_run_worker_log import persist_job_run_worker_log_best_effort
+    from app.services.runtime.jobs.job_run_worker_log import persist_job_run_worker_log_best_effort
 
     job_pk = context.job.id
     log_cmd: str | None = f"run_kb_index knowledge_base_id={knowledge_base_id}"
@@ -580,7 +580,7 @@ async def run_kb_wiki_space_index(
     from app.database import async_session_maker
     from app.models.knowledge_base import KnowledgeBase
     from app.models.kb_wiki_space import KBWikiSpace
-    from app.services.jobs.job_run_worker_log import persist_job_run_worker_log_best_effort
+    from app.services.runtime.jobs.job_run_worker_log import persist_job_run_worker_log_best_effort
 
     job_pk = context.job.id
     log_cmd: str | None = (
@@ -815,7 +815,7 @@ async def run_connector_sync(
     from app.services.data.connectors.connector_catalog import CATEGORY_SYNC, get_kind_spec
     from app.services.data.connectors.run import run_connector_sync_for_row
     from app.services.data.connectors.sync_range import parse_sync_date_range
-    from app.services.jobs.job_run_worker_log import persist_job_run_worker_log_best_effort
+    from app.services.runtime.jobs.job_run_worker_log import persist_job_run_worker_log_best_effort
 
     job_id = int(context.job.id) if context.job and context.job.id else None
     log_lines: list[str] = []
@@ -923,7 +923,7 @@ async def run_scheduled_project_agent(
     """Run a scheduled project agent turn (stateful or stateless)."""
     from app.database import async_session_maker
     from app.models.scheduled_trigger import PROJECT_AGENT_SCHEDULE_KINDS, ScheduledTrigger
-    from app.services.jobs.job_run_worker_log import persist_job_run_worker_log_best_effort
+    from app.services.runtime.jobs.job_run_worker_log import persist_job_run_worker_log_best_effort
     from app.jobs.schedule_dispatch import update_trigger_after_agent_job
 
     job_id = int(context.job.id) if context.job and context.job.id else None
@@ -1015,7 +1015,7 @@ async def run_media_generation(
     from app.models.media_asset import MediaAsset
     from app.models.media_channel import MediaChannel
     from app.services.platform.feature_toggles import is_feature_enabled
-    from app.services.jobs.job_run_worker_log import persist_job_run_worker_log_best_effort
+    from app.services.runtime.jobs.job_run_worker_log import persist_job_run_worker_log_best_effort
     from app.services.content.media.zhipu import (
         download_url,
         extract_result_url,

@@ -2,7 +2,7 @@
 
 from pathlib import Path
 
-from app.services.deep_agents.project_backend import normalize_workspace_path
+from app.services.runtime.deep_agents.project_backend import normalize_workspace_path
 
 
 def test_host_absolute_under_cwd_maps_to_virtual():

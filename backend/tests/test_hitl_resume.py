@@ -4,8 +4,8 @@ from __future__ import annotations
 
 from types import SimpleNamespace
 
-from app.services.deep_agents.hitl import interrupt_map
-from app.services.deep_agents.hitl import (
+from app.services.runtime.deep_agents.hitl import interrupt_map
+from app.services.runtime.deep_agents.hitl import (
     build_hitl_resume_payload,
     count_pending_hitl_decisions,
 )

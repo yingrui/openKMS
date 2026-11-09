@@ -8,12 +8,12 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 from langchain_core.messages import HumanMessage
 
-from app.services.agent.tool_transcripts import AGENT_TOOL_TRANSCRIPTS_KEY
-from app.services.deep_agents.turn_input import (
+from app.services.runtime.agent.tool_transcripts import AGENT_TOOL_TRANSCRIPTS_KEY
+from app.services.runtime.deep_agents.turn_input import (
     resolve_turn_input_messages,
     seed_messages_from_db,
 )
-from app.services.deep_agents.turn_prepare import prepare_workspace_turn_messages
+from app.services.runtime.deep_agents.turn_prepare import prepare_workspace_turn_messages
 
 
 def _row(role: str, content: str, tool_calls=None, attachments=None):
@@ -42,7 +42,7 @@ def test_seed_messages_from_db_omits_tool_traces() -> None:
 
 def test_seed_messages_from_db_inlines_attached_images() -> None:
     rows = [_row("user", "look", attachments=[{"id": "att_0123456789ab", "mime": "image/png"}])]
-    with patch("app.services.agent.attachments.get_object", return_value=b"png-bytes"):
+    with patch("app.services.runtime.agent.attachments.get_object", return_value=b"png-bytes"):
         msgs = seed_messages_from_db(rows)
     assert [block["type"] for block in msgs[0].content] == ["text", "image_url"]
     assert msgs[0].content[0]["text"] == "look"
@@ -85,7 +85,7 @@ async def test_prepare_workspace_turn_messages_compacts_then_resolves() -> None:
     backend = MagicMock()
 
     with patch(
-        "app.services.deep_agents.turn_prepare.compact_project_context_if_needed",
+        "app.services.runtime.deep_agents.turn_prepare.compact_project_context_if_needed",
         new_callable=AsyncMock,
         return_value=1,
     ) as compact:

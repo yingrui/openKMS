@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
-from app.services.agent.assistant_stream_parts import WIKI_ASSISTANT_STREAM_PARTS_KEY
-from app.services.agent.tool_transcripts import AGENT_TOOL_TRANSCRIPTS_KEY, tool_payload_from_traces
-from app.services.deep_agents.stream_accumulator import ProjectStreamAccumulator
+from app.services.runtime.agent.assistant_stream_parts import WIKI_ASSISTANT_STREAM_PARTS_KEY
+from app.services.runtime.agent.tool_transcripts import AGENT_TOOL_TRANSCRIPTS_KEY, tool_payload_from_traces
+from app.services.runtime.deep_agents.stream_accumulator import ProjectStreamAccumulator
 
 
 def test_accumulator_interleaved_order_for_storage() -> None:

@@ -7,7 +7,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from app.config import settings
-from app.services.deep_agents import langfuse as lf
+from app.services.runtime.deep_agents import langfuse as lf
 
 
 @pytest.fixture(autouse=True)

@@ -8,8 +8,8 @@ from typing import Any
 from langchain_core.messages import AIMessage, BaseMessage, HumanMessage
 
 from app.models.agent_models import AgentMessage
-from app.services.agent.attachments import human_content_with_attachments
-from app.services.agent.tool_transcripts import assistant_lc_content_from_db_row
+from app.services.runtime.agent.attachments import human_content_with_attachments
+from app.services.runtime.agent.tool_transcripts import assistant_lc_content_from_db_row
 
 logger = logging.getLogger(__name__)
 

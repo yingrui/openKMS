@@ -17,7 +17,7 @@ from __future__ import annotations
 
 from langchain_core.messages import AIMessage, HumanMessage, ToolMessage
 
-from app.services.deep_agents.tool_call_repair import (
+from app.services.runtime.deep_agents.tool_call_repair import (
     INTERRUPTED_TOOL_CONTENT,
     assert_tool_call_pairing,
     repair_tool_call_pairing,

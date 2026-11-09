@@ -4,11 +4,11 @@ from __future__ import annotations
 
 import logging
 
-from app.services.deep_agents.observability import AgentTurnContext
+from app.services.runtime.deep_agents.observability import AgentTurnContext
 
 
 def test_agent_turn_success_logs_info(caplog):
-    caplog.set_level(logging.INFO, logger="app.services.deep_agents.observability")
+    caplog.set_level(logging.INFO, logger="app.services.runtime.deep_agents.observability")
     turn = AgentTurnContext.start(
         project_id="proj-1",
         conversation_id="conv-1",
@@ -22,7 +22,7 @@ def test_agent_turn_success_logs_info(caplog):
 
 
 def test_agent_turn_failure_logs_error_not_info(caplog):
-    caplog.set_level(logging.INFO, logger="app.services.deep_agents.observability")
+    caplog.set_level(logging.INFO, logger="app.services.runtime.deep_agents.observability")
     turn = AgentTurnContext.start(
         project_id="proj-1",
         conversation_id="conv-1",
@@ -36,7 +36,7 @@ def test_agent_turn_failure_logs_error_not_info(caplog):
 
 
 def test_agent_turn_failure_with_exc_logs_error(caplog):
-    caplog.set_level(logging.INFO, logger="app.services.deep_agents.observability")
+    caplog.set_level(logging.INFO, logger="app.services.runtime.deep_agents.observability")
     turn = AgentTurnContext(
         project_id="p",
         conversation_id="c",
@@ -61,7 +61,7 @@ def test_apply_last_turn_on_conversation():
 
 
 def test_agent_turn_idempotent_finish(caplog):
-    caplog.set_level(logging.INFO, logger="app.services.deep_agents.observability")
+    caplog.set_level(logging.INFO, logger="app.services.runtime.deep_agents.observability")
     turn = AgentTurnContext(project_id="p", conversation_id="c")
     turn.log_failed("once")
     turn.log_failed("twice")

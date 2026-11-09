@@ -4,8 +4,8 @@ from fastapi import HTTPException
 from starlette.requests import Request
 
 from app.api import auth
-from app.services.kubernetes import cluster_service_proxy as proxy
-from app.services.kubernetes.cluster_service_proxy import join_proxy_path, service_proxy_resource_path
+from app.services.runtime.kubernetes import cluster_service_proxy as proxy
+from app.services.runtime.kubernetes.cluster_service_proxy import join_proxy_path, service_proxy_resource_path
 
 
 def test_service_proxy_resource_path():

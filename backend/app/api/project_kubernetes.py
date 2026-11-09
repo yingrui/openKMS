@@ -15,7 +15,7 @@ from app.schemas.kubernetes_cluster import (
 )
 from app.services.platform.credentials.credential_encryption import decrypt
 from app.services.platform.credentials.credential_encryption import DECRYPT_ERRORS
-from app.services.kubernetes.cluster_dev_sync import sync_project_tree_async
+from app.services.runtime.kubernetes.cluster_dev_sync import sync_project_tree_async
 from app.services.identity.permissions.permission_catalog import (
     PERM_CONSOLE_KUBERNETES,
     PERM_PROJECTS_WRITE,

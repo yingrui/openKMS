@@ -6,11 +6,11 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from app.services.deep_agents.constants import STALE_RUNNING_SECONDS, STALLED_TURN_SECONDS
-from app.services.deep_agents.factory import ephemeral_runnable_config
-from app.services.deep_agents.llm_chat import normalize_openai_base_url
-from app.services.deep_agents.runner import iter_project_stream_parts
-from app.services.agent.tool_transcripts import (
+from app.services.runtime.deep_agents.constants import STALE_RUNNING_SECONDS, STALLED_TURN_SECONDS
+from app.services.runtime.deep_agents.factory import ephemeral_runnable_config
+from app.services.runtime.deep_agents.llm_chat import normalize_openai_base_url
+from app.services.runtime.deep_agents.runner import iter_project_stream_parts
+from app.services.runtime.agent.tool_transcripts import (
     AGENT_TOOL_TRANSCRIPTS_KEY,
     tool_payload_from_traces,
     truncate_tool_output_for_storage,
@@ -65,18 +65,18 @@ async def test_iter_project_stream_parts_yields_fatal_on_stream_error() -> None:
         return MagicMock(), None
 
     with patch(
-        "app.services.deep_agents.runner.build_workspace_deep_agent",
+        "app.services.runtime.deep_agents.runner.build_workspace_deep_agent",
         side_effect=fake_build,
     ), patch(
-        "app.services.deep_agents.runner._conversation_message_rows",
+        "app.services.runtime.deep_agents.runner._conversation_message_rows",
         new_callable=AsyncMock,
         return_value=[],
     ), patch(
-        "app.services.deep_agents.runner.prepare_workspace_turn_messages",
+        "app.services.runtime.deep_agents.runner.prepare_workspace_turn_messages",
         new_callable=AsyncMock,
         return_value=[],
     ), patch(
-        "app.services.deep_agents.runner.iter_langgraph_stream_parts",
+        "app.services.runtime.deep_agents.runner.iter_langgraph_stream_parts",
     ) as mock_stream:
 
         async def stream_error(*_a, **_k):

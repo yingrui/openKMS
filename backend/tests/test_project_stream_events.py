@@ -4,8 +4,8 @@ from __future__ import annotations
 
 from langchain_core.messages import AIMessageChunk
 
-from app.services.deep_agents.stream_accumulator import ProjectStreamAccumulator
-from app.services.deep_agents.stream_events import LangGraphStreamAdapter
+from app.services.runtime.deep_agents.stream_accumulator import ProjectStreamAccumulator
+from app.services.runtime.deep_agents.stream_events import LangGraphStreamAdapter
 
 
 def test_subagent_end_uses_start_label():

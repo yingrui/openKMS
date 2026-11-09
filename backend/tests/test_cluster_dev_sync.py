@@ -5,7 +5,7 @@ from pathlib import Path
 
 import pytest
 
-from app.services.kubernetes.cluster_dev_sync import (
+from app.services.runtime.kubernetes.cluster_dev_sync import (
     MAX_PACKED_BYTES,
     pack_local_tree,
     should_exclude,
@@ -56,7 +56,7 @@ def test_pack_local_tree_size_cap(tmp_path: Path, monkeypatch: pytest.MonkeyPatc
     src.mkdir()
     (src / "big.bin").write_bytes(b"x" * 1000)
     monkeypatch.setattr(
-        "app.services.kubernetes.cluster_dev_sync.MAX_PACKED_BYTES",
+        "app.services.runtime.kubernetes.cluster_dev_sync.MAX_PACKED_BYTES",
         100,
     )
     with pytest.raises(ValueError, match="exceed"):

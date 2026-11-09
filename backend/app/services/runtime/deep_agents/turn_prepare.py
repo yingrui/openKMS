@@ -8,9 +8,9 @@ from typing import Any
 from langchain_core.messages import BaseMessage
 
 from app.models.agent_models import AgentMessage
-from app.services.deep_agents.context_compaction import compact_project_context_if_needed
-from app.services.deep_agents.tool_call_repair import repair_tool_call_pairing
-from app.services.deep_agents.turn_input import resolve_turn_input_messages
+from app.services.runtime.deep_agents.context_compaction import compact_project_context_if_needed
+from app.services.runtime.deep_agents.tool_call_repair import repair_tool_call_pairing
+from app.services.runtime.deep_agents.turn_input import resolve_turn_input_messages
 
 logger = logging.getLogger(__name__)
 

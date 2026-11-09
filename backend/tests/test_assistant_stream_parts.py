@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from app.services.agent.assistant_stream_parts import (
+from app.services.runtime.agent.assistant_stream_parts import (
     WIKI_ASSISTANT_STREAM_PARTS_KEY,
     AssistantStreamPartsBuilder,
 )

@@ -8,9 +8,9 @@ import time
 from pathlib import Path
 from typing import Any
 
-from app.services.kubernetes.cluster_config import validate_resource_name
-from app.services.kubernetes.cluster_connection import KUBERNETES_ERRORS, prepare_kubeconfig
-from app.services.kubernetes.cluster_resources import _build_api_client
+from app.services.runtime.kubernetes.cluster_config import validate_resource_name
+from app.services.runtime.kubernetes.cluster_connection import KUBERNETES_ERRORS, prepare_kubeconfig
+from app.services.runtime.kubernetes.cluster_resources import _build_api_client
 
 MAX_PACKED_BYTES = 32 * 1024 * 1024  # 32 MiB
 

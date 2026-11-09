@@ -3,7 +3,7 @@
 from types import SimpleNamespace
 
 from app.models.agent_models import AgentMessage
-from app.services.agent.conversation_title import (
+from app.services.runtime.agent.conversation_title import (
     MAX_TOTAL_CHARS,
     _build_transcript,
     _fallback_title_from_messages,

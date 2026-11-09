@@ -7,10 +7,10 @@ from urllib.parse import quote
 
 import httpx
 
-from app.services.kubernetes.cluster_config import validate_resource_name
+from app.services.runtime.kubernetes.cluster_config import validate_resource_name
 from app.services.identity.permissions.permission_resolution import jwt_payload_is_admin
-from app.services.kubernetes.cluster_connection import prepare_kubeconfig
-from app.services.kubernetes.cluster_resources import _build_api_client
+from app.services.runtime.kubernetes.cluster_connection import prepare_kubeconfig
+from app.services.runtime.kubernetes.cluster_resources import _build_api_client
 
 _HOP_BY_HOP = frozenset(
     {

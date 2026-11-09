@@ -1,6 +1,6 @@
 """Git clone argument construction for project workspaces."""
 
-from app.services.deep_agents.git_service import clone_git_args
+from app.services.runtime.deep_agents.git_service import clone_git_args
 
 
 def test_clone_args_default_branch():

@@ -8,7 +8,7 @@ from app.database import get_db
 from app.models.api_model import VALID_API_KINDS
 from app.models.knowledge_base import KnowledgeBase
 from app.services.identity.acl.data_resource_policy import knowledge_base_visible
-from app.services.agent.llm import resolve_agent_llm_config
+from app.services.runtime.agent.llm import resolve_agent_llm_config
 from app.services.content.models.model_config_by_name import resolve_model_config_by_name
 from app.services.content.documents.document_parse_defaults import get_document_parse_vlm_defaults_for_cli
 from app.services.content.knowledge_bases.kb_embedding_cli_defaults import get_kb_embedding_credentials_for_cli

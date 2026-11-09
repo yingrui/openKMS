@@ -6,9 +6,9 @@ from typing import Any
 
 from app.models.agent_models import AgentConversation, AgentMessage
 from app.schemas.agent import AgentConversationResponse, AgentAttachmentItem, AgentMessageItem
-from app.services.agent.attachments import attachment_display_url
-from app.services.agent.ndjson import ndjson_line
-from app.services.agent.tool_transcripts import (
+from app.services.runtime.agent.attachments import attachment_display_url
+from app.services.runtime.agent.ndjson import ndjson_line
+from app.services.runtime.agent.tool_transcripts import (
     AGENT_TOOL_TRANSCRIPTS_KEY,
     WIKI_TOOL_TRANSCRIPTS_KEY,
     assistant_lc_content_from_db_row,

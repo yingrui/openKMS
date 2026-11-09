@@ -13,7 +13,7 @@ from app.models.document_channel import DocumentChannel
 from app.models.job_run_worker_log import JobRunWorkerLog
 from app.models.pipeline import Pipeline
 from app.schemas.job import JobCreate, JobEvent, JobListResponse, JobResponse
-from app.services.jobs.job_scope import job_args_allowed, require_job_args_access
+from app.services.runtime.jobs.job_scope import job_args_allowed, require_job_args_access
 from app.services.content.documents.document_scope import load_document_scoped
 from app.services.identity.acl.resource_acl_constants import PERM_WRITE
 

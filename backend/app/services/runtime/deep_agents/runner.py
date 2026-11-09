@@ -14,26 +14,26 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.models.agent_models import AgentConversation, AgentMessage
 from app.services.platform.boundaries import boundary
 from app.config import settings
-from app.services.agent.tool_transcripts import (
+from app.services.runtime.agent.tool_transcripts import (
     AGENT_TOOL_TRANSCRIPTS_KEY,
     tool_payload_from_traces,
     tool_traces_from_tool_messages,
 )
-from app.services.deep_agents.factory import (
+from app.services.runtime.deep_agents.factory import (
     ProjectAgentBuildContext,
     build_workspace_deep_agent,
     workspace_runnable_config,
 )
-from app.services.deep_agents.hitl import (
+from app.services.runtime.deep_agents.hitl import (
     ainvoke_with_scheduled_auto_resume,
     build_hitl_resume_payload,
     count_pending_hitl_decisions,
     interrupt_payload,
 )
-from app.services.deep_agents.observability import AgentTurnContext
-from app.services.deep_agents.stream_accumulator import strip_leaked_compaction_text
-from app.services.deep_agents.stream_events import ProjectStreamPart, iter_langgraph_stream_parts
-from app.services.deep_agents.turn_prepare import prepare_workspace_turn_messages
+from app.services.runtime.deep_agents.observability import AgentTurnContext
+from app.services.runtime.deep_agents.stream_accumulator import strip_leaked_compaction_text
+from app.services.runtime.deep_agents.stream_events import ProjectStreamPart, iter_langgraph_stream_parts
+from app.services.runtime.deep_agents.turn_prepare import prepare_workspace_turn_messages
 
 logger = logging.getLogger(__name__)
 

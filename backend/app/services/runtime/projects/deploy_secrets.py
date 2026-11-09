@@ -5,7 +5,7 @@ import json
 from typing import Any
 
 from app.services.platform.credentials.credential_encryption import decrypt, encrypt
-from app.services.kubernetes.cluster_config import validate_env_key, validate_resource_name
+from app.services.runtime.kubernetes.cluster_config import validate_env_key, validate_resource_name
 
 
 def encrypt_values(values: dict[str, str]) -> str:

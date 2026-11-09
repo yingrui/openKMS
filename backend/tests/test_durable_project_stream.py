@@ -5,8 +5,8 @@ from __future__ import annotations
 from datetime import datetime, timedelta, timezone
 
 from app.models.agent_models import AgentConversation
-from app.services.deep_agents.durable_stream import conversation_turn_is_active
-from app.services.deep_agents.observability import AgentTurnContext
+from app.services.runtime.deep_agents.durable_stream import conversation_turn_is_active
+from app.services.runtime.deep_agents.observability import AgentTurnContext
 
 
 def test_conversation_turn_is_active_running():

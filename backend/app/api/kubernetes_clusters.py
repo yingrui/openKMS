@@ -40,17 +40,17 @@ from app.schemas.kubernetes_cluster import (
 )
 from app.services.platform.credentials.credential_encryption import decrypt
 from app.services.platform.credentials.credential_encryption import DECRYPT_ERRORS, encrypt
-from app.services.kubernetes.cluster_apply import (
+from app.services.runtime.kubernetes.cluster_apply import (
     apply_manifests_async,
     delete_resource_async,
     pod_logs_async,
 )
-from app.services.kubernetes.cluster_connection import (
+from app.services.runtime.kubernetes.cluster_connection import (
     normalize_api_server,
     probe_cluster_connection_async,
     resolve_api_server_from_text,
 )
-from app.services.kubernetes.cluster_config import (
+from app.services.runtime.kubernetes.cluster_config import (
     delete_configmap_async,
     delete_secret_async,
     get_deployment_env_async,
@@ -61,7 +61,7 @@ from app.services.kubernetes.cluster_config import (
     upsert_secret_async,
     validate_resource_name,
 )
-from app.services.kubernetes.cluster_resources import (
+from app.services.runtime.kubernetes.cluster_resources import (
     get_manifest_yaml_async,
     get_pod_async,
     get_service_async,
