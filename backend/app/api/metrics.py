@@ -39,6 +39,7 @@ from app.services.data_layer.query_errors import DEFINITION, QueryFailure
 from app.services.data_layer.query import QueryError, run_query
 from app.services.data_layer.semantic_model_fields import FieldError, validate_datatype
 from app.services.permissions.permission_catalog import PERM_DATA_WRITE
+from app.services.ontology.dataset_tables import dataset_label
 
 router = APIRouter(prefix="/metrics", tags=["metrics"])
 
@@ -47,7 +48,7 @@ async def _name_map(db: AsyncSession, ids: set[str]) -> dict[str, str]:
     if not ids:
         return {}
     rows = (await db.execute(select(Dataset).where(Dataset.id.in_(ids)))).scalars().all()
-    return {d.id: (d.display_name or f"{d.schema_name}.{d.table_name}") for d in rows}
+    return {d.id: dataset_label(d) for d in rows}
 
 
 def _metric_response(m: MetricDefinition, base_name: str | None) -> MetricResponse:

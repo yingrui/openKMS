@@ -16,7 +16,9 @@ from app.schemas.quality import QualityRuleCreate, QualityRuleUpdate
 class TestVocabulary:
     def test_the_three_levels_are_accepted(self):
         for level in ("P0", "P1", "P2"):
-            assert QualityRuleCreate(name="n", rule_type="not_null", severity=level).severity == level
+            assert (
+                QualityRuleCreate(name="n", rule_type="not_null", severity=level).severity == level
+            )
 
     def test_the_old_default_is_not_a_level(self):
         with pytest.raises(ValidationError):
@@ -44,3 +46,51 @@ class TestOrder:
 
     def test_no_run_outranks_a_pass(self):
         assert issue_rank("P1", "never") < issue_rank("P1", "passed")
+
+
+class TestDatasetLabel:
+    """One label function, by kind — the backend half of the `null.null` bug the frontend fixed."""
+
+    def test_a_table_is_named_by_its_table_when_it_has_no_display_name(self):
+        from types import SimpleNamespace
+
+        from app.services.ontology.dataset_tables import dataset_label
+
+        assert (
+            dataset_label(
+                SimpleNamespace(
+                    display_name=None, kind="table", schema_name="tushare", table_name="daily_basic"
+                )
+            )
+            == "tushare.daily_basic"
+        )
+
+    def test_a_display_name_wins(self):
+        from types import SimpleNamespace
+
+        from app.services.ontology.dataset_tables import dataset_label
+
+        assert (
+            dataset_label(
+                SimpleNamespace(
+                    display_name=" 日线行情 ",
+                    kind="table",
+                    schema_name="tushare",
+                    table_name="daily_basic",
+                )
+            )
+            == "日线行情"
+        )
+
+    def test_a_file_dataset_never_says_null_null(self):
+        from types import SimpleNamespace
+
+        from app.services.ontology.dataset_tables import dataset_label
+
+        label = dataset_label(
+            SimpleNamespace(
+                display_name=None, kind="file", schema_name=None, table_name=None, id="ds-1"
+            )
+        )
+        assert label == "ds-1"
+        assert "null" not in label

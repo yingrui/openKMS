@@ -25,6 +25,7 @@ from app.services.acl.resource_acl_constants import (
     RT_WIKI_PAGE,
     RT_WIKI_SPACE,
 )
+from app.services.ontology.dataset_tables import dataset_label
 
 
 def share_path_for(resource_type: str, resource_id: str) -> str | None:
@@ -88,7 +89,7 @@ async def resolve_resource_label(db: AsyncSession, resource_type: str, resource_
         row = await db.get(Dataset, resource_id)
         if not row:
             return resource_id
-        return row.display_name or f"{row.schema_name}.{row.table_name}"
+        return dataset_label(row)
     if resource_type == RT_OBJECT_TYPE:
         row = await db.get(ObjectType, resource_id)
         return row.name if row else resource_id

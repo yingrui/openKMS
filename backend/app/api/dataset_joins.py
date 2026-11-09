@@ -20,6 +20,7 @@ from app.schemas.dataset_join import (
 )
 from app.services.data_layer.joins import JoinValidationError, validate_join
 from app.services.permissions.permission_catalog import PERM_DATA_READ, PERM_DATA_WRITE
+from app.services.ontology.dataset_tables import dataset_label
 
 router = APIRouter(
     prefix="/dataset-joins",
@@ -36,7 +37,7 @@ async def _name_map(db: AsyncSession, ids: set[str]) -> dict[str, str]:
     result = await db.execute(select(Dataset).where(Dataset.id.in_(ids)))
     names: dict[str, str] = {}
     for d in result.scalars().all():
-        names[d.id] = d.display_name or f"{d.schema_name}.{d.table_name}"
+        names[d.id] = dataset_label(d)
     return names
 
 

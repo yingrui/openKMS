@@ -15,6 +15,7 @@ from app.models.metric_definition import MetricDefinition
 from app.models.semantic_model import SemanticModel
 from app.models.semantic_model_dataset import SemanticModelDataset
 from app.models.semantic_model_field import SemanticModelField
+from app.services.ontology.dataset_tables import dataset_label
 
 
 class SemanticModelError(ValueError):
@@ -26,7 +27,7 @@ async def dataset_refs(db: AsyncSession, ids: list[str]) -> dict[str, str]:
     if not ids:
         return {}
     rows = (await db.execute(select(Dataset).where(Dataset.id.in_(ids)))).scalars().all()
-    return {d.id: (d.display_name or f"{d.schema_name}.{d.table_name}") for d in rows}
+    return {d.id: dataset_label(d) for d in rows}
 
 
 async def member_ids(db: AsyncSession, model_id: str) -> list[str]:

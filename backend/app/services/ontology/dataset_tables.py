@@ -44,13 +44,28 @@ def is_valid_identifier(name: str) -> bool:
     return bool(_IDENTIFIER.match(name))
 
 
+def dataset_label(dataset: Dataset) -> str:
+    """What to call a dataset in prose, lists and messages.
+
+    By kind, not by a fallback pipe: a **file** dataset has no `schema_name`/`table_name`, so `display_name or
+    f"{schema}.{table}"` prints **null.null** — the same bug the frontend fixed with its own `datasetLabel()`, found here
+    in five more places. A file dataset falls back to its id, because it has no physical table to name.
+    """
+    name = (dataset.display_name or "").strip()
+    if name:
+        return name
+    if dataset.kind == "file":
+        return dataset.id
+    return f"{dataset.schema_name}.{dataset.table_name}"
+
+
 async def dataset_display_name(db: AsyncSession, dataset_id: str | None) -> str | None:
     if not dataset_id:
         return None
     ds = await db.get(Dataset, dataset_id)
     if not ds:
         return None
-    return ds.display_name or f"{ds.schema_name}.{ds.table_name}"
+    return dataset_label(ds)
 
 
 async def resolve_pg_dataset_source(
@@ -97,9 +112,12 @@ async def get_dataset_row_count_where_not_null(
         engine = pg_engine_for_datasource(ds)
         with engine.connect() as conn:
             quoted = f'"{dataset.schema_name}"."{dataset.table_name}"'
-            total = conn.execute(
-                text(f'SELECT COUNT(*) FROM {quoted} WHERE "{column_name}" IS NOT NULL')
-            ).scalar() or 0
+            total = (
+                conn.execute(
+                    text(f'SELECT COUNT(*) FROM {quoted} WHERE "{column_name}" IS NOT NULL')
+                ).scalar()
+                or 0
+            )
         engine.dispose()
         return int(total)
     except (SQLAlchemyError, OSError, ValueError, TypeError):

@@ -2,6 +2,39 @@
 
 Delivered work and design history, moved out of the [Development plan](development_plan.md).
 
+### Quality severity: a failure's meaning, not just its status (2026-11) — done
+
+- A run reports a **fact** — "51,425 of 725,192 rows are outside the range". Whether anyone should act on it is a
+  second question, and the inbox only knew the first: `PE(TTM) > 100` looked exactly as urgent as a null primary key,
+  leaving a reader with a `failed` badge and no next step.
+- `severity` is `P0` (do not make a decision on this data) / `P1` (look at it) / `P2` (worth knowing — an anomaly, not a
+  fault). Enforced three times, because each layer can be bypassed alone: a DB **check constraint**, `Literal` in the
+  schemas (422 for anything else), and the migration that backfills the old `warning` as `P1`.
+- The rule editor asks "what does a failure mean" with the three levels and one line each — `P1` on its own is a lookup.
+  The inbox gains a severity column, `?severity=`, and orders **severity before status**: a P0 rule that could not be
+  judged leaves a decision uncovered, a failing P2 does not. Live, `ts_code 不能为空` (P0) sorts above `PE(TTM) > 100`
+  (P2, 178,222 rows).
+- The field existed all along, unused, with a default nothing read. Worth remembering: a column that no screen shows is
+  not a feature, it is a reserved word.
+
+### One dataset label, by kind (2026-10) — done
+
+- `display_name || `${schema}.${table}`` was written in **thirteen** frontend places and **seven** backend ones, and every
+  one printed **null.null** for a file dataset, which has neither. Fixed once in the detail page and left twelve siblings —
+  the pattern is the bug, not the instance.
+- Frontend: `datasetLabel()` (display name → table → source → id), tests for the file case, and **§23** of the style checks
+  fails a composed label (verified with a positive control). Backend: `dataset_label()` in `dataset_tables.py`, and the
+  async `dataset_display_name` now delegates to it.
+- The Overview's "Data source" row was the same mistake in another shape — it composed a **fact**, not a label, so the
+  shared helper could not help; it branches on `kind` now ("Object storage dataset · source").
+
+### check.sh installs what it runs (2026-10) — done
+
+- CI ran `uv sync --frozen --extra test`; the local gate only ran `uv run`, so it depended on whatever the venv happened to
+  contain. A plain `uv sync` removes `pytest-asyncio`, and `check.sh` then failed with seven collection errors unrelated to
+  the change — "it passed half an hour ago" became an afternoon. The header already claimed `uv run` guaranteed the
+  environment; it guarantees the venv, not the extras.
+
 ### Run history (2026-10) — added, then **removed**
 
 - It recorded every run (when, how long, how many reports failed, who) and served the last 20 as a

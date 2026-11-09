@@ -21,6 +21,7 @@ from app.schemas.quality import QualityIssueListResponse, QualityIssueResponse
 from app.services.acl.resource_acl_constants import RT_DATASET
 from app.services.acl.resource_list_acl import readable_id_filter
 from app.services.permissions.permission_catalog import PERM_DATA_READ
+from app.services.ontology.dataset_tables import dataset_label
 
 router = APIRouter(
     prefix="/quality-issues",
@@ -113,7 +114,7 @@ async def list_quality_issues(
         QualityIssueResponse(
             id=rule.id,
             dataset_id=rule.dataset_id,
-            dataset_name=dataset.display_name or f"{dataset.schema_name}.{dataset.table_name}",
+            dataset_name=dataset_label(dataset),
             name=rule.name,
             rule_type=rule.rule_type,
             column_name=rule.column_name,

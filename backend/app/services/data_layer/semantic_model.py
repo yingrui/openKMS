@@ -32,6 +32,7 @@ from app.services.data_layer.expressions import ANSI, dialect_sql, normalize_exp
 from app.services.data_layer.semantic_model_fields import OSSIE_DATATYPES
 from app.services.data_layer.semantic_models import member_ids, set_members
 from app.services.ontology.dataset_tables import is_valid_identifier
+from app.services.ontology.dataset_tables import dataset_label
 
 OSSIE_VERSION = "0.2.0.dev0"
 VENDOR = "OPENKMS"
@@ -52,7 +53,7 @@ _OSSIE_DATATYPE = {
 
 
 def _dataset_name(d: Dataset) -> str:
-    return d.display_name or f"{d.schema_name}.{d.table_name}"
+    return dataset_label(d)
 
 
 def _dataset_source(d: Dataset, ds_names: dict[str, str]) -> str:
