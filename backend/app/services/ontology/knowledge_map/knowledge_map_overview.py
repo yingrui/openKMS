@@ -14,19 +14,19 @@ from app.models.knowledge_map import (
     KnowledgeMapOverviewComposition,
 )
 from app.models.media_channel import MediaChannel
-from app.services.knowledge_map.knowledge_map_html import (
+from app.services.ontology.knowledge_map.knowledge_map_html import (
     knowledge_map_nodes_last_modified_at,
     load_semantic_snapshot,
     semantic_content_hash,
 )
-from app.services.knowledge_map.knowledge_map_read import (
+from app.services.ontology.knowledge_map.knowledge_map_read import (
     KnowledgeMapNodeOut,
     ResourceLinkOut,
     load_knowledge_map_tree,
     load_resource_labels,
     load_resource_links,
 )
-from app.services.knowledge_map.knowledge_map_overview_a2ui import (
+from app.services.ontology.knowledge_map.knowledge_map_overview_a2ui import (
     normalize_stored_a2ui_document,
     synthesize_overview_a2ui_messages,
     validate_a2ui_messages_against_snapshot,

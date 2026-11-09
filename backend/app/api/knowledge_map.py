@@ -31,7 +31,7 @@ from app.models.knowledge_map import (
 from app.models.wiki_models import WikiSpace
 from app.services.platform.boundaries import boundary
 from app.services.agent.llm import resolve_agent_llm_config
-from app.services.knowledge_map.knowledge_map_html import (
+from app.services.ontology.knowledge_map.knowledge_map_html import (
     designer_chat_via_llm,
     ensure_spa_link_targets,
     finalize_html_document,
@@ -41,7 +41,7 @@ from app.services.knowledge_map.knowledge_map_html import (
     semantic_content_hash,
     static_html_for_empty_knowledge_map,
 )
-from app.services.knowledge_map.knowledge_map_html_designer_session import (
+from app.services.ontology.knowledge_map.knowledge_map_html_designer_session import (
     append_designer_turn,
     create_designer_conversation,
     delete_designer_conversation,
@@ -90,7 +90,7 @@ def _nid() -> str:
     return uuid.uuid4().hex[:32]
 
 
-from app.services.knowledge_map.knowledge_map_read import (
+from app.services.ontology.knowledge_map.knowledge_map_read import (
     KnowledgeMapHtmlStatusOut,
     KnowledgeMapNodeOut,
     ResourceLinkOut,
@@ -662,7 +662,7 @@ async def map_html_publish(body: MapHtmlBodyHtml, db: AsyncSession = Depends(get
 
 # --- Overview (A2UI canvas + NDJSON designer, same dialect as map-html) ---
 
-from app.services.knowledge_map.knowledge_map_overview import (
+from app.services.ontology.knowledge_map.knowledge_map_overview import (
     OverviewStatusOut,
     OverviewViewOut,
     delete_overview_composition,
@@ -671,14 +671,14 @@ from app.services.knowledge_map.knowledge_map_overview import (
     load_resource_labels_with_media,
     publish_overview_a2ui,
 )
-from app.services.knowledge_map.knowledge_map_overview_a2ui import (
+from app.services.ontology.knowledge_map.knowledge_map_overview_a2ui import (
     validate_a2ui_messages_against_snapshot,
 )
-from app.services.knowledge_map.knowledge_map_overview_designer import (
+from app.services.ontology.knowledge_map.knowledge_map_overview_designer import (
     iter_overview_designer_chat_ndjson,
     last_user_content as overview_last_user_content,
 )
-from app.services.knowledge_map.knowledge_map_overview_session import (
+from app.services.ontology.knowledge_map.knowledge_map_overview_session import (
     create_overview_conversation,
     delete_overview_conversation,
     get_overview_conversation_owned,

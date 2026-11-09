@@ -14,13 +14,13 @@ from app.services.agent.shared import (
     _wiki_agent_chat_extra_body,
     _wiki_use_llm_reasoning_content_shim,
 )
-from app.services.knowledge_map.knowledge_map_html import (
+from app.services.ontology.knowledge_map.knowledge_map_html import (
     _merge_stream_tool_call_slots,
     _reasoning_delta_append,
     _tool_calls_from_stream_slots,
 )
 from app.services.platform.openai_compat import inject_reasoning_content_on_assistant_rows
-from app.services.knowledge_map.knowledge_map_overview_a2ui import (
+from app.services.ontology.knowledge_map.knowledge_map_overview_a2ui import (
     KM_OVERVIEW_A2UI_CATALOG_ID,
     KM_OVERVIEW_A2UI_SURFACE_ID,
     validate_a2ui_messages_against_snapshot,

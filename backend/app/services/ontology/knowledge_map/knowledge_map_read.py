@@ -19,7 +19,7 @@ from app.models.knowledge_map import (
     KnowledgeMapResourceLink,
 )
 from app.models.wiki_models import WikiSpace
-from app.services.knowledge_map.knowledge_map_html import (
+from app.services.ontology.knowledge_map.knowledge_map_html import (
     knowledge_map_nodes_last_modified_at,
     load_semantic_snapshot,
     semantic_content_hash,
