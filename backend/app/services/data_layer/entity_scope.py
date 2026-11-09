@@ -33,10 +33,10 @@ from typing import Any
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import joinedload
 
 from app.models.dataset import Dataset
 from app.models.dataset_join import DatasetJoin
-from app.models.data_source import DataSource
 from app.models.semantic_model_dataset import SemanticModelDataset
 from app.services.data_layer.columns import ColumnError, cached_column_names
 from app.services.data_layer.query_errors import REQUEST, QueryFailure
@@ -178,21 +178,23 @@ class ModelGraph:
 
 async def load_model_graph(db: AsyncSession, model_id: str) -> ModelGraph:
     """Membership, datasets and relationships for one model."""
-    member_ids = list(
-        (
-            await db.execute(
-                select(SemanticModelDataset.dataset_id).where(
-                    SemanticModelDataset.semantic_model_id == model_id
-                )
-            )
-        ).scalars().all()
-    )
-    if not member_ids:
-        return ModelGraph(dataset_ids=frozenset(), datasets={}, labels={})
+    # One round trip for membership **and** the datasets: the ids were fetched first only to be used as an `IN`, which
+    # is a second round trip that returns rows the join already has. The source is joined in for the same reason —
+    # `load_columns` needs it per dataset, and a lazy load there is a `MissingGreenlet`, not a slow query.
     datasets = {
         d.id: d
-        for d in (await db.execute(select(Dataset).where(Dataset.id.in_(member_ids)))).scalars()
+        for d in (
+            await db.execute(
+                select(Dataset)
+                .join(SemanticModelDataset, SemanticModelDataset.dataset_id == Dataset.id)
+                .where(SemanticModelDataset.semantic_model_id == model_id)
+                .options(joinedload(Dataset.data_source_rel))
+            )
+        ).scalars()
     }
+    member_ids = list(datasets)
+    if not member_ids:
+        return ModelGraph(dataset_ids=frozenset(), datasets={}, labels={})
     joins = list(
         (
             await db.execute(
@@ -227,14 +229,12 @@ async def load_columns(
     if not entries:
         return {}
 
-    # Resolve sources once, concurrently, so each table read does not re-query `data_sources`.
-    source_ids = {dataset.data_source_id for _, dataset in entries}
+    # Sources came with the datasets (`joinedload` in `load_model_graph`): a `db.get` per source here was a round trip
+    # that answered a question the first query had already answered.
     sources = {
-        source.id: source
-        for source in (
-            await asyncio.gather(*(db.get(DataSource, sid) for sid in source_ids))
-        )
-        if source is not None
+        dataset.data_source_id: dataset.data_source_rel
+        for _, dataset in entries
+        if dataset.data_source_rel is not None
     }
 
     async def one(dataset: Dataset) -> tuple[str, set[str] | None]:

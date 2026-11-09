@@ -10,6 +10,20 @@ Open items only. Closed work lives in git history.
 
 ## Medium priority
 
+### Cache the model graph in SQL Lab
+
+Every SQL Lab run (`POST /api/semantic-models/{id}/sql`) and every metric run rebuilds the same two things from the
+application database: the **model graph** (member datasets + relationship edges + their data sources) and the compiled
+**entity scope** (the resource's row policy → predicates).
+
+- After the round-trip merge this is **2 queries**, warm **~1.5 ms** and cold **~120 ms** on a port-forwarded database.
+  Not a problem today; it becomes one the moment a caller runs a batch of queries (an agent looping over a story).
+- A cache is safe if keyed on what the compile actually depends on: `(model_id, model.updated_at)` for the graph and the
+  graph plus `CatalogScope.policy_fingerprint` for the compiled scope. The fingerprint already exists
+  (`policy_fingerprint(resource.row_policy)`) and is written to the run audit — invalidation does not need a new concept.
+- Do **not** cache the query itself: the answer depends on the row policy's *claims* (the caller's identity), which is
+  where a cache turns into a data leak. Graph and scope only.
+
 ### Frontend error handling convention
 
 **Blocking load failures** → `ErrorBanner` + `setError` (dismissible). **Mutations / actions** → `toast.error`. See `frontend/src/components/ErrorBanner.tsx`. List/detail pages updated to match (`Models`, `ModelDetail`, `JobDetail`, `JobRuns`, `SchedulesPage`, `WikiSpaceList`, `ProjectList`, `ConsoleDataSources`).
