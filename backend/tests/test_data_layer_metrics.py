@@ -1,7 +1,7 @@
 """Metric definition validation (pure, no DB)."""
 import pytest
 
-from app.services.data.data_layer.metrics import MetricError, validate_metric_definition
+from app.services.data.metrics import MetricError, validate_metric_definition
 
 
 def test_expression_is_returned():

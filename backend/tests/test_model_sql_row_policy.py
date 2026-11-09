@@ -14,13 +14,13 @@ from types import SimpleNamespace
 
 import pytest
 
-from app.services.data.data_layer.model_sql import (
+from app.services.data.model_sql import (
     RelationShapeError,
     assert_tables_allowed,
     constrain_base_policy,
     relation_refs,
 )
-from app.services.data.data_layer.query import QueryError
+from app.services.data.query import QueryError
 
 CONDITIONS = ['rpbase."region" = :rp0']
 ALIAS = "rpbase"
@@ -119,7 +119,7 @@ def _executable_rewrite(conditions: list[str]) -> str:
     """Compile a policy against the base, then rewrite it the way SQL Lab does."""
     from app.models.dataset import Dataset
     from app.models.dataset_join import DatasetJoin
-    from app.services.data.data_layer.entity_scope import (
+    from app.services.data.entity_scope import (
         EntityScope,
         ModelGraph,
         compile_entity_scope,
@@ -279,7 +279,7 @@ class TestAnchorUsesTheSameScanner:
         ],
     )
     def test_the_anchor_dataset_is_found_for_every_shape(self, sql: str):
-        from app.services.data.data_layer.model_sql import _anchor_dataset_id
+        from app.services.data.model_sql import _anchor_dataset_id
 
         assert _anchor_dataset_id(sql, self.MODEL) == "ds-1"
 

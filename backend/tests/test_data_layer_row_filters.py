@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import pytest
 
-from app.services.data.data_layer.row_filters import (
+from app.services.data.row_filters import (
     MAX_FILTERS,
     RowFilterError,
     build_row_where,

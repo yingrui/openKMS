@@ -22,9 +22,9 @@ from app.schemas.semantic_model_field import (
     SemanticModelFieldResponse,
     SemanticModelFieldUpdate,
 )
-from app.services.data.data_layer.columns import ColumnError, pg_columns
-from app.services.data.data_layer.expressions import normalize_expression
-from app.services.data.data_layer.semantic_model_fields import (
+from app.services.data.columns import ColumnError, pg_columns
+from app.services.data.expressions import normalize_expression
+from app.services.data.semantic_model_fields import (
     FieldError,
     column_expression,
     list_fields,
@@ -32,7 +32,7 @@ from app.services.data.data_layer.semantic_model_fields import (
     validate_dimension,
     validate_field,
 )
-from app.services.data.data_layer.semantic_models import member_ids
+from app.services.data.semantic_models import member_ids
 from app.services.identity.permissions.permission_catalog import PERM_DATA_WRITE
 
 # Reading a model's fields is part of querying it, so it follows the data-plane gate

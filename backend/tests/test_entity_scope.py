@@ -15,7 +15,7 @@ import pytest
 
 from app.models.dataset import Dataset
 from app.models.dataset_join import DatasetJoin
-from app.services.data.data_layer.entity_scope import (
+from app.services.data.entity_scope import (
     EntityScope,
     EntityScopeError,
     ModelGraph,

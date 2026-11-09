@@ -27,17 +27,17 @@ from app.services.ontology.property_types import (
 from app.models.data_source import DataSource
 from app.models.dataset import Dataset
 from app.models.dataset_profile import DatasetProfile
-from app.services.data.data_layer.dataset_rows import query_dataset_rows, query_dataset_summary
-from app.services.data.data_layer.file_datasets import create_file_dataset
-from app.services.data.data_layer.query import QueryError
-from app.services.data.data_layer.row_filters import RowFilterError
-from app.services.data.data_layer.columns import (
+from app.services.data.dataset_rows import query_dataset_rows, query_dataset_summary
+from app.services.data.file_datasets import create_file_dataset
+from app.services.data.query import QueryError
+from app.services.data.row_filters import RowFilterError
+from app.services.data.columns import (
     ColumnError,
     description_map,
     invalidate_columns,
     set_description,
 )
-from app.services.data.data_layer.profile import (
+from app.services.data.profile import (
     ProfileError,
     compute_profile,
     list_schema_history,

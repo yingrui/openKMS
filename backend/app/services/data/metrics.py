@@ -2,7 +2,7 @@
 
 A metric is a model-level **SQL fragment** (Ossie ``expression.dialects``) anchored on a
 base dataset and traversing registered relationships. The statement itself is assembled
-and executed by the single engine in :mod:`app.services.data.data_layer.query` — a metric
+and executed by the single engine in :mod:`app.services.data.query` — a metric
 query is a query with no grouping. Executions run read-only with a statement timeout and
 a row cap; the data-source credential is the privilege boundary.
 """
@@ -15,8 +15,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.dataset import Dataset
 from app.models.dataset_join import DatasetJoin
-from app.services.data.data_layer.expressions import ANSI, dialect_sql
-from app.services.data.data_layer.sql_build import VALID_OPS
+from app.services.data.expressions import ANSI, dialect_sql
+from app.services.data.sql_build import VALID_OPS
 from app.services.ontology.dataset_tables import is_valid_identifier
 
 METRIC_TYPES = ("simple", "ratio", "derived", "cumulative", "conversion")

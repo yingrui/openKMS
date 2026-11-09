@@ -11,8 +11,8 @@ from __future__ import annotations
 
 from typing import Any, NamedTuple
 
-from app.services.data.data_layer.query import QueryError
-from app.services.data.data_layer.query_errors import REQUEST, QueryFailure
+from app.services.data.query import QueryError
+from app.services.data.query_errors import REQUEST, QueryFailure
 
 SOURCE_DATASET = "dataset"
 SOURCE_SEMANTIC_MODEL = "semantic_model"

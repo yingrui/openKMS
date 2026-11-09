@@ -11,12 +11,12 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any
 
-from app.services.data.data_layer.query_errors import (
+from app.services.data.query_errors import (
     REQUEST,
     QueryFailure,
     QueryFailureKind,
 )
-from app.services.data.data_layer.sql_build import VALID_OPS, SqlBuildError, build_conditions
+from app.services.data.sql_build import VALID_OPS, SqlBuildError, build_conditions
 from app.services.ontology.dataset_tables import is_valid_identifier
 
 #: A filter bar with more than this many conditions is a query, not browsing.

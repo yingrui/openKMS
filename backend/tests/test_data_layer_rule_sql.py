@@ -7,7 +7,7 @@ from decimal import Decimal
 
 import pytest
 
-from app.services.data.data_layer.rule_sql import (
+from app.services.data.rule_sql import (
     MAX_RULE_SQL,
     QualityError,
     build_rule_query,
@@ -223,7 +223,7 @@ class TestRunWrapsDatabaseErrors:
 
         from app.models.dataset import Dataset
         from app.models.quality_rule import QualityRule
-        from app.services.data.data_layer import quality as mod
+        from app.services.data import quality as mod
 
         def boom(*_a, **_k):
             raise RuntimeError('column "high" does not exist')

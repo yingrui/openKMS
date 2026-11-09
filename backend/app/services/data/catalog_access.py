@@ -33,13 +33,13 @@ from app.services.identity.acl.resource_acl_constants import (
     RT_DATA_RESOURCE,
     perm_satisfies,
 )
-from app.services.data.data_layer.entity_scope import (
+from app.services.data.entity_scope import (
     EntityScope,
     EntityScopeError,
     build_entity_scope,
     load_model_graph,
 )
-from app.services.data.data_layer.row_policy import RowPolicyError, policy_fingerprint
+from app.services.data.row_policy import RowPolicyError, policy_fingerprint
 
 @dataclass(frozen=True)
 class CatalogScope:

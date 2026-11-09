@@ -38,15 +38,15 @@ from sqlalchemy.orm import joinedload
 from app.models.dataset import Dataset
 from app.models.dataset_join import DatasetJoin
 from app.models.semantic_model_dataset import SemanticModelDataset
-from app.services.data.data_layer.columns import ColumnError, cached_column_names
-from app.services.data.data_layer.query_errors import REQUEST, QueryFailure
-from app.services.data.data_layer.row_policy import (
+from app.services.data.columns import ColumnError, cached_column_names
+from app.services.data.query_errors import REQUEST, QueryFailure
+from app.services.data.row_policy import (
     _claim_value,
     policy_conditions,
     validate_policy,
 )
 from app.services.ontology.dataset_tables import is_valid_identifier
-from app.services.data.data_layer.sql_build import quote_identifier
+from app.services.data.sql_build import quote_identifier
 
 QUALIFIER_SEP = "."
 

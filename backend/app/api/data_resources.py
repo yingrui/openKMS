@@ -29,14 +29,14 @@ from app.services.identity.acl.resource_acl_constants import (
     RT_DATA_RESOURCE,
     RT_SEMANTIC_MODEL,
 )
-from app.services.data.data_layer.catalog_access import check_data_resource_access
-from app.services.data.data_layer.entity_scope import (
+from app.services.data.catalog_access import check_data_resource_access
+from app.services.data.entity_scope import (
     EntityScopeError,
     build_entity_scope,
     load_model_graph,
 )
 from app.services.identity.acl.resource_acl_presentation import serialize_resource_acl
-from app.services.data.data_layer.row_policy import RowPolicyError, validate_policy
+from app.services.data.row_policy import RowPolicyError, validate_policy
 from app.services.identity.permissions.permission_catalog import PERM_DATA_WRITE
 
 router = APIRouter(prefix="/data-resources", tags=["data-resources"], dependencies=[Depends(require_auth)])

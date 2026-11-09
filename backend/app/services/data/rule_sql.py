@@ -25,7 +25,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from typing import Any, Literal
-from app.services.data.data_layer.sql_build import quote_identifier
+from app.services.data.sql_build import quote_identifier
 
 RULE_TYPES = ("not_null", "unique", "range", "referential", "freshness", "sql")
 

@@ -8,12 +8,12 @@ string it is supposed to guard.
 
 class TestQualifiedTable:
     def test_quotes_both_parts(self):
-        from app.services.data.data_layer.sql_build import qualified_table
+        from app.services.data.sql_build import qualified_table
 
         assert qualified_table("tushare", "daily_basic") == '"tushare"."daily_basic"'
 
     def test_refuses_injection_and_emptiness(self):
-        from app.services.data.data_layer.sql_build import qualified_table
+        from app.services.data.sql_build import qualified_table
 
         assert qualified_table("tushare; drop table x", "t") is None
         assert qualified_table(None, "t") is None

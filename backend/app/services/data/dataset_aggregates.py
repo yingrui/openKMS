@@ -12,9 +12,9 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any
 
-from app.services.data.data_layer.query_errors import REQUEST, QueryFailure
-from app.services.data.data_layer.row_filters import RowFilterError
-from app.services.data.data_layer.sql_build import quote_identifier
+from app.services.data.query_errors import REQUEST, QueryFailure
+from app.services.data.row_filters import RowFilterError
+from app.services.data.sql_build import quote_identifier
 from app.services.ontology.dataset_tables import is_valid_identifier
 
 #: Aggregates a summary may use. `count` with no column is `COUNT(*)`.

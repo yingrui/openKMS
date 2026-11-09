@@ -13,8 +13,8 @@ from __future__ import annotations
 
 from typing import Any
 
-from app.services.data.data_layer.query_errors import REQUEST, QueryFailure
-from app.services.data.data_layer.sql_build import build_conditions
+from app.services.data.query_errors import REQUEST, QueryFailure
+from app.services.data.sql_build import build_conditions
 from app.services.ontology.dataset_tables import is_valid_identifier
 
 #: Ops a resource policy may use. `not_in` is excluded on purpose: a deny-list row filter

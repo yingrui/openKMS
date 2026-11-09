@@ -11,7 +11,7 @@ from app.api.datasets import get_dataset_scoped_write
 from app.database import get_db
 from app.models.dataset import Dataset
 from app.schemas.dataset import DatasetRowsApplyRequest, DatasetRowsApplyResponse
-from app.services.data.data_layer.dataset_rows_edit import RowEditError, apply_row_ops
+from app.services.data.dataset_rows_edit import RowEditError, apply_row_ops
 from app.services.identity.permissions.permission_catalog import PERM_DATA_EDIT
 
 router = APIRouter(

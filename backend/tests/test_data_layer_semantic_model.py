@@ -1,5 +1,5 @@
 """Semantic-model export/import helper tests (pure, no DB)."""
-from app.services.data.data_layer.semantic_model import _resolve_dataset
+from app.services.data.semantic_model import _resolve_dataset
 
 
 def test_resolve_dataset_prefers_id():
@@ -26,7 +26,7 @@ def test_resolve_dataset_unresolved_and_non_string():
 
 
 def test_extension_omits_empty_values():
-    from app.services.data.data_layer.semantic_model import _extension
+    from app.services.data.semantic_model import _extension
 
     assert _extension({"required": False, "filters": None, "joins": [], "columns": {}}) == []
     ext = _extension({"required": True, "filters": None})
@@ -34,7 +34,7 @@ def test_extension_omits_empty_values():
 
 
 def test_entity_extension_round_trips_and_ignores_other_vendors():
-    from app.services.data.data_layer.semantic_model import _entity_extension
+    from app.services.data.semantic_model import _entity_extension
 
     entity = {
         "name": "r",
@@ -49,7 +49,7 @@ def test_entity_extension_round_trips_and_ignores_other_vendors():
 
 
 def test_source_column_is_derived_from_a_bare_expression():
-    from app.services.data.data_layer.semantic_model import _source_column
+    from app.services.data.semantic_model import _source_column
 
     def expr(sql):
         return {"dialects": [{"dialect": "ANSI_SQL", "expression": sql}]}
@@ -61,7 +61,7 @@ def test_source_column_is_derived_from_a_bare_expression():
 
 
 def test_plain_column_expression_is_emitted_unquoted():
-    from app.services.data.data_layer.semantic_model import _plain_column_expression
+    from app.services.data.semantic_model import _plain_column_expression
 
     def expr(sql):
         return {"dialects": [{"dialect": "ANSI_SQL", "expression": sql}]}

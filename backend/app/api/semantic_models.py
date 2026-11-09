@@ -26,14 +26,14 @@ from app.schemas.semantic_model import (
 )
 from app.api.catalog_scoped import require_model_access
 from app.api.query_errors import query_failure_detail
-from app.services.data.data_layer.catalog_access import resolve_catalog_scope
-from app.services.data.data_layer.model_sql import run_model_sql
-from app.services.data.data_layer.query import QueryError, run_query
-from app.services.data.data_layer.semantic_model import (
+from app.services.data.catalog_access import resolve_catalog_scope
+from app.services.data.model_sql import run_model_sql
+from app.services.data.query import QueryError, run_query
+from app.services.data.semantic_model import (
     export_semantic_model,
     import_semantic_model,
 )
-from app.services.data.data_layer.semantic_models import (
+from app.services.data.semantic_models import (
     SemanticModelError,
     apply_update,
     create_semantic_model,

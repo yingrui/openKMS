@@ -20,8 +20,8 @@ from app.models.data_source import DataSource
 from app.models.dataset import Dataset
 from app.models.metric_definition import MetricDefinition
 from app.models.semantic_model_field import SemanticModelField
-from app.services.data.data_layer.expressions import ANSI, dialect_sql
-from app.services.data.data_layer.metrics import (
+from app.services.data.expressions import ANSI, dialect_sql
+from app.services.data.metrics import (
     DEFAULT_ROW_CAP,
     DEFAULT_TIMEOUT_MS,
     MetricError,
@@ -30,13 +30,13 @@ from app.services.data.data_layer.metrics import (
     validate_metric_filters,
     validate_sql_fragment,
 )
-from app.services.data.data_layer.entity_scope import (
+from app.services.data.entity_scope import (
     EntityScope,
     EntityScopeError,
     compile_entity_scope,
 )
-from app.services.data.data_layer.semantic_model_fields import resolve_is_time
-from app.services.data.data_layer.query_errors import (
+from app.services.data.semantic_model_fields import resolve_is_time
+from app.services.data.query_errors import (
     DATA,
     DEFINITION,
     REQUEST,
@@ -44,15 +44,15 @@ from app.services.data.data_layer.query_errors import (
     QueryFailureKind,
     classify_sql_error,
 )
-from app.services.data.data_layer.sql_build import (
+from app.services.data.sql_build import (
     SqlBuildError,
     join_dataset_aliases,
     build_conditions,
     build_joins_sql,
 )
-from app.services.data.data_layer.sql_runner import run_readonly
+from app.services.data.sql_runner import run_readonly
 from app.services.ontology.dataset_tables import is_valid_identifier
-from app.services.data.data_layer.sql_build import quote_identifier
+from app.services.data.sql_build import quote_identifier
 
 _BASE_ALIAS = "base"
 GRANULARITIES = ("second", "minute", "hour", "day", "week", "month", "quarter", "year")

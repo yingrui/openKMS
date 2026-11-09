@@ -1,7 +1,7 @@
 """Semantic-model field validation tests (pure, no DB)."""
 import pytest
 
-from app.services.data.data_layer.semantic_model_fields import (
+from app.services.data.semantic_model_fields import (
     FieldError,
     column_expression,
     expression_sql,

@@ -8,7 +8,7 @@ class TestBoundedReads:
     """
 
     def test_nrows_and_columns_bound_what_is_read(self):
-        from app.services.data.data_layer.file_datasets import read_file_bytes
+        from app.services.data.file_datasets import read_file_bytes
 
         csv = b"a,b\n1,10\n2,20\n3,30\n"
         frame = read_file_bytes(csv, "x.csv", nrows=2, columns=["b"])
@@ -18,7 +18,7 @@ class TestBoundedReads:
     def test_an_oversized_file_is_refused_with_its_name(self, monkeypatch):
         import pytest
 
-        from app.services.data.data_layer import file_datasets
+        from app.services.data import file_datasets
 
         monkeypatch.setattr(file_datasets, "MAX_READ_BYTES", 8)
         with pytest.raises(file_datasets.FileDatasetError, match="over the 0 MB read limit"):
@@ -27,7 +27,7 @@ class TestBoundedReads:
     def test_an_unsupported_suffix_still_says_which_types_work(self):
         import pytest
 
-        from app.services.data.data_layer.file_datasets import FileDatasetError, read_file_bytes
+        from app.services.data.file_datasets import FileDatasetError, read_file_bytes
 
         with pytest.raises(FileDatasetError, match="parquet, csv, jsonl or json"):
             read_file_bytes(b"x", "x.xlsx")
@@ -58,7 +58,7 @@ class TestManifestShape:
     def test_a_file_entry_has_no_date_range_field(self):
         from types import SimpleNamespace
 
-        from app.services.data.data_layer.file_datasets import file_manifest_entry
+        from app.services.data.file_datasets import file_manifest_entry
 
         entry = file_manifest_entry(
             SimpleNamespace(
@@ -74,7 +74,7 @@ class TestManifestShape:
     def test_without_a_guessed_column_the_note_is_simply_absent(self):
         from types import SimpleNamespace
 
-        from app.services.data.data_layer.file_datasets import file_manifest_entry
+        from app.services.data.file_datasets import file_manifest_entry
 
         entry = file_manifest_entry(
             SimpleNamespace(

@@ -4,8 +4,8 @@ from __future__ import annotations
 
 import pytest
 
-from app.services.data.data_layer.query import QueryError, _order_sql
-from app.services.data.data_layer.query_errors import (
+from app.services.data.query import QueryError, _order_sql
+from app.services.data.query_errors import (
     DATA,
     DEFINITION,
     REQUEST,
@@ -83,7 +83,7 @@ def test_api_detail_is_localized_and_carries_the_kind():
     """The client branches on `kind` and shows `detail` in a collapsed line."""
     from app.api.query_errors import query_failure_detail
     from app.i18n.errors import resolve_locale
-    from app.services.data.data_layer.query_errors import QueryFailure
+    from app.services.data.query_errors import QueryFailure
 
     detail = query_failure_detail(
         None,  # the helper falls back to English without a request
@@ -98,7 +98,7 @@ def test_api_detail_is_localized_and_carries_the_kind():
 
 def test_api_detail_omits_the_source_text_when_there_is_none():
     from app.api.query_errors import query_failure_detail
-    from app.services.data.data_layer.query_errors import QueryFailure
+    from app.services.data.query_errors import QueryFailure
 
     detail = query_failure_detail(None, QueryFailure("QUERY_UNKNOWN_METRIC", REQUEST))
     assert detail == {

@@ -8,7 +8,7 @@ import pytest
 from app.models.dataset import Dataset
 from app.models.dataset_join import DatasetJoin
 from app.models.semantic_model_field import SemanticModelField
-from app.services.data.data_layer.query import (
+from app.services.data.query import (
     QueryError,
     _order_sql,
     build_sql,
@@ -16,7 +16,7 @@ from app.services.data.data_layer.query import (
     field_sql,
     resolve_field,
 )
-from app.services.data.data_layer.sql_build import (
+from app.services.data.sql_build import (
     SqlBuildError,
     build_conditions,
     build_joins_sql,
@@ -125,13 +125,13 @@ def test_explicit_true_makes_a_non_temporal_column_a_time_dimension():
 
 
 def _validate_datatype(datatype):
-    from app.services.data.data_layer.semantic_model_fields import validate_datatype
+    from app.services.data.semantic_model_fields import validate_datatype
 
     validate_datatype(datatype)
 
 
 def test_datatype_must_be_the_spec_enum():
-    from app.services.data.data_layer.semantic_model_fields import FieldError
+    from app.services.data.semantic_model_fields import FieldError
 
     for ok in ("String", "Integer", "Decimal", "Float", "Boolean", "Date", "Time",
                "DateTime", "DateTimeTz", "Opaque", None, ""):
@@ -146,7 +146,7 @@ def test_datatype_must_be_the_spec_enum():
 
 def test_dimension_is_optional_and_may_be_empty():
     """`dimension` may be absent, and `dimension: {}` is valid (no required keys)."""
-    from app.services.data.data_layer.semantic_model_fields import FieldError, validate_dimension
+    from app.services.data.semantic_model_fields import FieldError, validate_dimension
 
     validate_dimension(None)
     validate_dimension({})
@@ -440,7 +440,7 @@ def test_duplicate_join_to_same_dataset_is_ambiguous():
 
 
 def test_expression_rejects_select_subquery():
-    from app.services.data.data_layer.metrics import MetricError, validate_sql_fragment
+    from app.services.data.metrics import MetricError, validate_sql_fragment
 
     with pytest.raises(MetricError):
         validate_sql_fragment("SUM((SELECT 1))", what="expression")

@@ -14,15 +14,15 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.models.data_source import DataSource
 from app.models.dataset import Dataset
 from app.models.quality_rule import QualityRule
-from app.services.data.data_layer.rule_sql import (
+from app.services.data.rule_sql import (
     RULE_TYPES,
     QualityError,
     RULE_SQL_TIMEOUT_MS,
     build_rule_query,
     interpret,
 )
-from app.services.data.data_layer.sql_runner import run_readonly_names
-from app.services.data.data_layer.sql_build import qualified_table
+from app.services.data.sql_runner import run_readonly_names
+from app.services.data.sql_build import qualified_table
 
 __all__ = ["RULE_TYPES", "QualityError", "run_rule"]
 

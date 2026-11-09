@@ -4,13 +4,13 @@ from __future__ import annotations
 
 import pytest
 
-from app.services.data.data_layer.dataset_aggregates import (
+from app.services.data.dataset_aggregates import (
     MAX_AGGREGATES,
     build_summary_sql,
     parse_aggregates,
     parse_group_by,
 )
-from app.services.data.data_layer.row_filters import RowFilterError
+from app.services.data.row_filters import RowFilterError
 
 COLUMNS = {"ts_code", "trade_date", "close", "industry"}
 

@@ -28,9 +28,9 @@ from app.models.dataset_join import DatasetJoin
 from app.models.metric_definition import MetricDefinition
 from app.models.semantic_model import SemanticModel
 from app.models.semantic_model_field import SemanticModelField
-from app.services.data.data_layer.expressions import ANSI, dialect_sql, normalize_expression
-from app.services.data.data_layer.semantic_model_fields import OSSIE_DATATYPES
-from app.services.data.data_layer.semantic_models import member_ids, set_members
+from app.services.data.expressions import ANSI, dialect_sql, normalize_expression
+from app.services.data.semantic_model_fields import OSSIE_DATATYPES
+from app.services.data.semantic_models import member_ids, set_members
 from app.services.ontology.dataset_tables import is_valid_identifier
 from app.services.platform.dataset_label import dataset_label
 

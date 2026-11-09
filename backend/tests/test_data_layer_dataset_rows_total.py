@@ -5,7 +5,7 @@ from __future__ import annotations
 import pytest
 
 from app.constants import EXACT_COUNT_MAX_ROWS
-from app.services.data.data_layer.dataset_rows import choose_total_source
+from app.services.data.dataset_rows import choose_total_source
 
 
 @pytest.mark.parametrize(

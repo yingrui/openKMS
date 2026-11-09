@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import pytest
 
-from app.services.data.data_layer.stories import (
+from app.services.data.stories import (
     SOURCE_DATASET,
     SOURCE_SEMANTIC_MODEL,
     dataset_query_kwargs,
@@ -12,7 +12,7 @@ from app.services.data.data_layer.stories import (
     finding_source,
     source_failure,
 )
-from app.services.data.data_layer.query import QueryError
+from app.services.data.query import QueryError
 
 
 def test_a_dataset_finding_needs_a_dataset():
@@ -62,7 +62,7 @@ def test_model_findings_carry_the_model_query():
 
 
 def test_a_dataset_block_is_a_summary_when_it_carries_aggregates():
-    from app.services.data.data_layer.stories import dataset_summary_kwargs, is_summary_query
+    from app.services.data.stories import dataset_summary_kwargs, is_summary_query
 
     assert is_summary_query({"filters": [{"field": "close", "op": ">"}]}) is False
     assert is_summary_query({"aggregates": [{"fn": "count"}]}) is True
@@ -93,6 +93,6 @@ def test_a_finding_reads_exactly_one_source():
         finding_source({"source_kind": "spreadsheet"})
     assert excinfo.value.failure.code == "REPORT_SOURCE_KIND_UNKNOWN"
     # A forbidden source is a `request` failure that names what was out of reach, never a row.
-    from app.services.data.data_layer.stories import source_forbidden
+    from app.services.data.stories import source_forbidden
 
     assert source_forbidden(default).code == "REPORT_SOURCE_FORBIDDEN"
