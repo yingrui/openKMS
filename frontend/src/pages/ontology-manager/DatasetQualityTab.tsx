@@ -110,6 +110,7 @@ export function DatasetQualityTab() {
               <thead>
                 <tr>
                   <th>{t('datasets.colName')}</th>
+                  <th>{t('datasets.qualitySeverity')}</th>
                   <th>{t('datasets.qualityType')}</th>
                   <th>{t('datasets.colColumn')}</th>
                   <th>{t('datasets.qualityStatus')}</th>
@@ -124,6 +125,11 @@ export function DatasetQualityTab() {
                       <Link to={`${base}/quality/${r.id}`} className="console-table-link">
                         {r.name}
                       </Link>
+                    </td>
+                    <td>
+                      <span title={t(`datasets.severity${r.severity}Meaning`)}>
+                        {t(`datasets.severity${r.severity}`)}
+                      </span>
                     </td>
                     <td>{t(`datasets.qualityType_${r.rule_type}`, { defaultValue: r.rule_type })}</td>
                     <td>{r.column_name ?? t('datasets.dash')}</td>

@@ -534,3 +534,39 @@
     border-radius: var(--radius-sm);
   }
 }
+
+.quality-severity {
+  display: grid;
+  gap: var(--space-2);
+  border: 0;
+  padding: 0;
+  margin: 0;
+
+  legend {
+    font-weight: var(--font-weight-medium);
+    padding: 0;
+  }
+
+  &__hint {
+    margin: 0;
+    color: var(--color-text-secondary);
+    font-size: var(--font-size-sm);
+  }
+
+  &__option {
+    display: grid;
+    grid-template-columns: auto auto 1fr;
+    align-items: baseline;
+    gap: var(--space-2);
+    cursor: pointer;
+  }
+
+  &__level {
+    font-weight: var(--font-weight-medium);
+  }
+
+  &__meaning {
+    color: var(--color-text-secondary);
+    font-size: var(--font-size-sm);
+  }
+}

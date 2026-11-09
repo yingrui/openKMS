@@ -17,6 +17,7 @@ import {
 } from '../../data/qualityApi';
 import { useConfirm } from '../../contexts/ConfirmContext';
 import { FormField, QueryFailureNotice, StatusChip } from '../../styles/design-system';
+import { SEVERITIES, type Severity } from '../../data/qualityApi';
 import { SqlEditor } from '../../components/quality/SqlEditor';
 import { EntityViewHeader, EntityViewLoading, EntityViewPanel } from './EntityViewShell';
 import { readRun, type RunReading } from './qualityRunResult';
@@ -116,6 +117,7 @@ export function QualityRuleEditorPage() {
   const [sql, setSql] = useState('');
   /** What the query's number means: rows that break the rule, or rows that must exist. */
   const [expect, setExpect] = useState<'zero' | 'nonzero'>('zero');
+  const [severity, setSeverity] = useState<Severity>('P1');
   const [submitting, setSubmitting] = useState(false);
   const [running, setRunning] = useState(false);
   const [hasMoreRuns, setHasMoreRuns] = useState(false);
@@ -156,6 +158,7 @@ export function QualityRuleEditorPage() {
         setMaxAge(config.max_age_days != null ? String(config.max_age_days) : '1');
         setSql(typeof config.sql === 'string' ? config.sql : '');
         setExpect(config.expect === 'nonzero' ? 'nonzero' : 'zero');
+        setSeverity(loaded.severity);
       }
     } catch (e) {
       toast.error(e instanceof Error ? e.message : t('datasets.loadFailed'));
@@ -192,7 +195,7 @@ export function QualityRuleEditorPage() {
    */
   // By value, not by JSON text: the stored config comes back with JSONB's key order, not the form's.
   const isDirty =
-    !isNew && rule !== null && isRuleDraftDirty(rule, { name, column: column || null, config });
+    !isNew && rule !== null && isRuleDraftDirty(rule, { name, column: column || null, config, severity });
 
   const handleSave = async () => {
     if (!name.trim()) {
@@ -207,6 +210,7 @@ export function QualityRuleEditorPage() {
           rule_type: ruleType,
           column_name: column || null,
           config,
+          severity,
         });
         toast.success(t('datasets.qualityCreated'));
         // Land on the rule itself: its query can be tried and run from here.
@@ -216,6 +220,7 @@ export function QualityRuleEditorPage() {
           name: name.trim(),
           column_name: column || null,
           config,
+          severity,
         });
         setRule(updated);
         toast.success(t('datasets.qualityUpdated'));
@@ -358,6 +363,23 @@ export function QualityRuleEditorPage() {
 
       <EntityViewPanel>
         <div className="entity-view__form">
+          <fieldset className="quality-severity">
+            <legend>{t('datasets.qualitySeverity')}</legend>
+            <p className="quality-severity__hint">{t('datasets.qualitySeverityHint')}</p>
+            {SEVERITIES.map((level) => (
+              <label key={level} className="quality-severity__option">
+                <input
+                  type="radio"
+                  name="severity"
+                  value={level}
+                  checked={severity === level}
+                  onChange={() => setSeverity(level)}
+                />
+                <span className="quality-severity__level">{t(`datasets.severity${level}`)}</span>
+                <span className="quality-severity__meaning">{t(`datasets.severity${level}Meaning`)}</span>
+              </label>
+            ))}
+          </fieldset>
           <FormField label={t('datasets.colName')}>
             <input value={name} onChange={(e) => setName(e.target.value)} />
           </FormField>

@@ -12,6 +12,9 @@ import '../ontology/ontology-admin.scss';
 
 /** The three states worth telling apart: broken, unable to judge, never judged. */
 const TONE: Record<string, StatusTone> = { failed: 'warn', error: 'warn', never: 'neutral', passed: 'ok' };
+
+/** P0 reads as an alarm, P1 as something to look at, P2 as a note. Colour reinforces the text, never replaces it. */
+const SEVERITY_TONE: Record<string, StatusTone> = { P0: 'warn', P1: 'accent', P2: 'neutral' };
 type Filter = 'all' | 'failing' | 'never';
 
 /**
@@ -164,6 +167,7 @@ export function QualityIssuesPage() {
                   <tr>
                     <th>{t('qualityIssues.dataset')}</th>
                     <th>{t('qualityIssues.rule')}</th>
+                    <th>{t('qualityIssues.severity')}</th>
                     <th>{t('qualityIssues.status')}</th>
                     <th>{t('qualityIssues.numbers')}</th>
                     <th>{t('qualityIssues.lastRun')}</th>
@@ -186,8 +190,15 @@ export function QualityIssuesPage() {
                         <p className="page-subtitle">
                           {issue.rule_type}
                           {issue.column_name ? ` · ${issue.column_name}` : ''}
-                          {issue.severity === 'critical' ? ` · ${t('qualityIssues.critical')}` : ''}
                         </p>
+                      </td>
+                      <td>
+                        <StatusChip
+                          tone={SEVERITY_TONE[issue.severity] ?? 'neutral'}
+                          title={t(`datasets.severity${issue.severity}Meaning`)}
+                        >
+                          {t(`datasets.severity${issue.severity}`)}
+                        </StatusChip>
                       </td>
                       <td>
                         <StatusChip tone={TONE[issue.status] ?? 'neutral'}>

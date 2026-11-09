@@ -806,7 +806,15 @@
     "fileDescription": "Description",
     "fileDataset": "Object storage dataset",
     "metricVersions": "Versions",
-    "metricFiles": "Files"
+    "metricFiles": "Files",
+    "qualitySeverity": "Severity",
+    "qualitySeverityHint": "What a failure of this rule means. The run reports that it failed; this says whether anyone should act on it.",
+    "severityP0": "P0",
+    "severityP0Meaning": "Do not make a decision on this data",
+    "severityP1": "P1",
+    "severityP1Meaning": "Look at it — wrong data in a field decisions use",
+    "severityP2": "P2",
+    "severityP2Meaning": "Worth knowing — an anomaly, not a fault"
   },
   "groups": {
     "title": "Groups",
@@ -1237,7 +1245,6 @@
     "status_failed": "failed",
     "status_error": "could not run",
     "status_never": "never run",
-    "critical": "critical",
     "neverRun": "never",
     "checked": "{{count}} rows checked",
     "failedOfChecked": "{{failed}} of {{checked}}",
@@ -1247,6 +1254,7 @@
     "runSummaryPassed_other": "{{count}} rules passed",
     "runSummaryFailed": "{{passed}} passed · {{failed}} failed",
     "runFailed_one": "{{count}} rule could not run",
-    "runFailed_other": "{{count}} rules could not run"
+    "runFailed_other": "{{count}} rules could not run",
+    "severity": "Severity"
   }
 }

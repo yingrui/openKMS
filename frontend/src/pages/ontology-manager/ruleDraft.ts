@@ -1,10 +1,11 @@
-import type { QualityRuleResponse } from '../../data/qualityApi';
+import type { QualityRuleResponse, Severity } from '../../data/qualityApi';
 
 /** What the editor's form holds, in the shape the API takes back. */
 export interface RuleDraft {
   name: string;
   column: string | null;
   config: Record<string, unknown>;
+  severity: Severity;
 }
 
 /**
@@ -37,6 +38,7 @@ export function isRuleDraftDirty(rule: QualityRuleResponse, draft: RuleDraft): b
   return (
     draft.name !== rule.name ||
     (draft.column ?? '') !== (rule.column_name ?? '') ||
+    draft.severity !== rule.severity ||
     !sameConfig(draft.config, rule.config ?? {})
   );
 }

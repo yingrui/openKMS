@@ -9,7 +9,7 @@ const rule = (over: Partial<QualityRuleResponse> = {}): QualityRuleResponse => (
   rule_type: 'range',
   column_name: 'pe_ttm',
   config: { max: 300, min: 0.1 },
-  severity: 'warning',
+  severity: 'P1',
   enabled: true,
   created_by_name: null,
   created_at: '2026-10-16T00:00:00Z',
@@ -50,24 +50,25 @@ describe('isRuleDraftDirty', () => {
         name: 'pe_ttm 在可信区间内',
         column: 'pe_ttm',
         config: { min: 0.1, max: 300 },
+        severity: 'P1',
       }),
     ).toBe(false);
   });
 
   it('a changed threshold is a draft', () => {
     expect(
-      isRuleDraftDirty(rule(), { name: 'pe_ttm 在可信区间内', column: 'pe_ttm', config: { min: 0.5, max: 300 } }),
+      isRuleDraftDirty(rule(), { name: 'pe_ttm 在可信区间内', column: 'pe_ttm', config: { min: 0.5, max: 300 }, severity: 'P1' }),
     ).toBe(true);
   });
 
   it('clearing a bound is a draft, not an unchanged rule', () => {
     expect(
-      isRuleDraftDirty(rule(), { name: 'pe_ttm 在可信区间内', column: 'pe_ttm', config: { max: 300 } }),
+      isRuleDraftDirty(rule(), { name: 'pe_ttm 在可信区间内', column: 'pe_ttm', config: { max: 300 }, severity: 'P1' }),
     ).toBe(true);
   });
 
   it('watches the name and the column too', () => {
-    const draft = { name: 'pe_ttm 在可信区间内', column: 'pe_ttm', config: { max: 300, min: 0.1 } };
+    const draft = { name: 'pe_ttm 在可信区间内', column: 'pe_ttm', config: { max: 300, min: 0.1 }, severity: 'P1' as const };
     expect(isRuleDraftDirty(rule(), { ...draft, name: 'PE' })).toBe(true);
     expect(isRuleDraftDirty(rule(), { ...draft, column: 'pe' })).toBe(true);
     expect(isRuleDraftDirty(rule({ column_name: null }), { ...draft, column: '' })).toBe(false);

@@ -33,11 +33,28 @@ _VIEW = (PERM_DATA_READ,)
 #: run, or one that passed (the last is useful when auditing what *is* covered).
 STATUSES = ("failed", "error", "never", "passed")
 
+#: What a failure means, worst first. P0 = do not make a decision on this data; P2 = worth knowing. A failed run says
+#: *that* a rule broke; the severity says whether anyone should act — the two are different questions, and an inbox that
+#: only knows the first cannot be triaged.
+SEVERITIES = ("P0", "P1", "P2")
+
+
+#: Worst first, and "worst" starts with what the failure *means*: a P0 rule that could not be judged outranks a P2 rule
+#: that is failing, because the first leaves a decision uncovered. Within a severity: failed, error, never, passed.
+_STATUS_RANK = {"failed": 0, "error": 1, "never": 2, "passed": 3}
+_SEVERITY_RANK = {name: rank for rank, name in enumerate(SEVERITIES)}
+
+
+def issue_rank(severity: str, status: str) -> tuple[int, int]:
+    """Where an issue belongs in the inbox — the two dimensions, in the order that decides triage."""
+    return _SEVERITY_RANK.get(severity, 9), _STATUS_RANK.get(status, 9)
+
 
 @router.get("", response_model=QualityIssueListResponse, dependencies=[Depends(require_any_permission(*_VIEW))])
 async def list_quality_issues(
     request: Request,
     status: str | None = Query(None, description="failed | error | never | passed"),
+    severity: str | None = Query(None, description="P0 | P1 | P2"),
     db: AsyncSession = Depends(get_db),
 ):
     """Enabled rules with the latest run that judged them, newest judgement first."""
@@ -88,6 +105,8 @@ async def list_quality_issues(
         stmt = stmt.where(*acl_filters)
     if status in STATUSES:
         stmt = stmt.where(func.coalesce(latest.c.status, "never") == status)
+    if severity in SEVERITIES:
+        stmt = stmt.where(QualityRule.severity == severity)
     rows = (await db.execute(stmt)).all()
 
     items = [
@@ -109,7 +128,5 @@ async def list_quality_issues(
         )
         for rule, dataset, status, checked_count, failed_count, detail, error_message, ran_at in rows
     ]
-    # Worst first: what is broken, then what could not be judged, then what has never run.
-    order = {"failed": 0, "error": 1, "never": 2, "passed": 3}
-    items.sort(key=lambda i: (order.get(i.status, 9), i.dataset_name, i.name))
+    items.sort(key=lambda i: (*issue_rank(i.severity, i.status), i.dataset_name, i.name))
     return QualityIssueListResponse(items=items, total=len(items))

@@ -1,8 +1,11 @@
 """Quality rule + run schemas."""
 from datetime import datetime
-from typing import Any
+from typing import Any, Literal
 
 from pydantic import BaseModel
+
+
+Severity = Literal["P0", "P1", "P2"]
 
 
 class QualityRuleCreate(BaseModel):
@@ -10,7 +13,7 @@ class QualityRuleCreate(BaseModel):
     rule_type: str  # not_null | unique | range | referential | freshness
     column_name: str | None = None
     config: dict[str, Any] | None = None
-    severity: str = "warning"
+    severity: Severity = "P1"
     enabled: bool = True
 
 
@@ -36,7 +39,7 @@ class QualityRuleUpdate(BaseModel):
     name: str | None = None
     column_name: str | None = None
     config: dict[str, Any] | None = None
-    severity: str | None = None
+    severity: Severity | None = None
     enabled: bool | None = None
 
 
@@ -47,7 +50,7 @@ class QualityRuleResponse(BaseModel):
     rule_type: str
     column_name: str | None = None
     config: dict[str, Any] | None = None
-    severity: str
+    severity: Severity
     enabled: bool
     created_by_name: str | None = None
     created_at: datetime
@@ -76,7 +79,7 @@ class QualityIssueResponse(BaseModel):
     name: str
     rule_type: str
     column_name: str | None = None
-    severity: str
+    severity: Severity
     status: str  # passed | failed | error | never
     checked_count: int | None = None
     failed_count: int | None = None

@@ -24,7 +24,9 @@ class QualityRule(Base):
     rule_type: Mapped[str] = mapped_column(String(32), nullable=False)
     column_name: Mapped[str | None] = mapped_column(String(256), nullable=True)
     config: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
-    severity: Mapped[str] = mapped_column(String(16), nullable=False, default="warning")
+    # P0 = do not make a decision on this data; P1 = look at it; P2 = worth knowing. A failed run is a fact;
+    # severity is the judgement of what that fact means — one dimension cannot carry both.
+    severity: Mapped[str] = mapped_column(String(8), nullable=False, default="P1", server_default="P1")
     enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
     created_by: Mapped[str | None] = mapped_column(String(512), nullable=True)
     created_by_name: Mapped[str | None] = mapped_column(String(256), nullable=True)

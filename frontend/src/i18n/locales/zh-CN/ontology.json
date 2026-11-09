@@ -799,7 +799,15 @@
     "fileDescription": "描述",
     "fileDataset": "对象存储数据集",
     "metricVersions": "版本",
-    "metricFiles": "文件"
+    "metricFiles": "文件",
+    "qualitySeverity": "严重程度",
+    "qualitySeverityHint": "这条规则失败意味着什么。运行只报告\"失败了\"；这里决定这件事要不要处理。",
+    "severityP0": "P0",
+    "severityP0Meaning": "不能据此做决策",
+    "severityP1": "P1",
+    "severityP1Meaning": "需要处理 —— 决策会读的字段里有错",
+    "severityP2": "P2",
+    "severityP2Meaning": "知道就好 —— 是异常，不是错误"
   },
   "groups": {
     "title": "分组",
@@ -1230,7 +1238,6 @@
     "status_failed": "未通过",
     "status_error": "无法运行",
     "status_never": "从未运行",
-    "critical": "严重",
     "neverRun": "从未",
     "checked": "已检查 {{count}} 行",
     "failedOfChecked": "{{checked}} 行中 {{failed}} 行",
@@ -1240,6 +1247,7 @@
     "runSummaryPassed_other": "{{count}} 条规则通过",
     "runSummaryFailed": "{{passed}} 通过 · {{failed}} 未通过",
     "runFailed_one": "{{count}} 条规则无法运行",
-    "runFailed_other": "{{count}} 条规则无法运行"
+    "runFailed_other": "{{count}} 条规则无法运行",
+    "severity": "严重程度"
   }
 }

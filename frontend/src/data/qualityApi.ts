@@ -1,6 +1,17 @@
 /** API for dataset quality rules. */
 import { request } from './apiClient';
 
+/**
+ * What a failing rule means — a separate question from whether it failed.
+ *
+ * `P0` — do not make a decision on this data; `P1` — look at it; `P2` — worth knowing. A run reports a fact ("51,425 of
+ * 725,192 rows are outside the range"); the level says whether anyone should act on that fact. `PE(TTM) > 100` is
+ * normally a P2: an anomaly, not a fault.
+ */
+export type Severity = 'P0' | 'P1' | 'P2';
+
+export const SEVERITIES: Severity[] = ['P0', 'P1', 'P2'];
+
 export interface QualityRuleResponse {
   id: string;
   dataset_id: string;
@@ -8,7 +19,7 @@ export interface QualityRuleResponse {
   rule_type: string;
   column_name: string | null;
   config: Record<string, unknown> | null;
-  severity: string;
+  severity: Severity;
   enabled: boolean;
   created_by_name: string | null;
   created_at: string;
@@ -39,7 +50,7 @@ export async function createQualityRule(
     rule_type: string;
     column_name?: string | null;
     config?: Record<string, unknown> | null;
-    severity?: string;
+    severity?: Severity;
   },
 ): Promise<QualityRuleResponse> {
   return request<QualityRuleResponse>(`/api/datasets/${datasetId}/quality-rules`, {
@@ -54,7 +65,7 @@ export interface QualityRuleUpdate {
   name?: string;
   column_name?: string | null;
   config?: Record<string, unknown>;
-  severity?: string;
+  severity?: Severity;
   enabled?: boolean;
 }
 
@@ -132,7 +143,7 @@ export interface QualityIssue {
   name: string;
   rule_type: string;
   column_name: string | null;
-  severity: string;
+  severity: Severity;
   /** `passed` | `failed` | `error` | `never` (no run at all is a state of its own). */
   status: string;
   checked_count: number | null;
