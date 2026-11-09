@@ -4,8 +4,8 @@ from __future__ import annotations
 
 from app.models.link_type import LinkType
 from app.models.object_type import ObjectType
-from app.services.acl.resource_acl_constants import RT_LINK_TYPE, RT_OBJECT_TYPE
-from app.services.acl.resource_guard import require_resource_by_id
+from app.services.identity.acl.resource_acl_constants import RT_LINK_TYPE, RT_OBJECT_TYPE
+from app.services.identity.acl.resource_guard import require_resource_by_id
 
 __all__ = [
     "link_type_allowed",
@@ -16,13 +16,13 @@ __all__ = [
 
 
 async def object_type_allowed(db, request, object_type_id: str, required: int) -> bool:
-    from app.services.acl.resource_guard import resource_allowed
+    from app.services.identity.acl.resource_guard import resource_allowed
 
     return await resource_allowed(db, request, RT_OBJECT_TYPE, object_type_id, required)
 
 
 async def link_type_allowed(db, request, link_type_id: str, required: int) -> bool:
-    from app.services.acl.resource_guard import resource_allowed
+    from app.services.identity.acl.resource_guard import resource_allowed
 
     return await resource_allowed(db, request, RT_LINK_TYPE, link_type_id, required)
 

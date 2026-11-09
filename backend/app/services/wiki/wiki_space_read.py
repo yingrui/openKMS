@@ -8,7 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.wiki_models import WikiPage, WikiSpace
 from app.schemas.wiki import WikiSpaceListResponse, WikiSpaceResponse
-from app.services.acl.data_scope import effective_wiki_space_ids, scope_applies
+from app.services.identity.acl.data_scope import effective_wiki_space_ids, scope_applies
 
 
 async def wiki_page_counts_batch(db: AsyncSession, space_ids: list[str]) -> dict[str, int]:

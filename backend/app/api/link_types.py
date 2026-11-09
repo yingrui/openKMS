@@ -10,7 +10,7 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.auth import require_any_permission, require_auth
-from app.services.permissions.permission_catalog import PERM_CONSOLE_LINK_TYPES, PERM_ONTOLOGY_WRITE
+from app.services.identity.permissions.permission_catalog import PERM_CONSOLE_LINK_TYPES, PERM_ONTOLOGY_WRITE
 from app.services.ontology.dataset_tables import (
     dataset_display_name,
     fetch_dataset_rows,
@@ -34,10 +34,10 @@ from app.services.ontology.object_neo4j_store import (
     sync_link_instances_to_neo4j,
 )
 from app.database import get_db
-from app.services.acl.data_resource_policy import link_type_visible
-from app.services.acl.data_scope import bootstrap_owner_acl
+from app.services.identity.acl.data_resource_policy import link_type_visible
+from app.services.identity.acl.data_scope import bootstrap_owner_acl
 from app.services.ontology.ontology_type_scope import require_link_type_permission
-from app.services.acl.resource_acl_constants import PERM_READ, PERM_WRITE, RT_LINK_TYPE
+from app.services.identity.acl.resource_acl_constants import PERM_READ, PERM_WRITE, RT_LINK_TYPE
 from app.models.data_source import DataSource
 from app.models.link_instance import LinkInstance
 from app.services.ontology.neo4j_async import (

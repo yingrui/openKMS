@@ -21,9 +21,9 @@ from app.schemas.data_resource import (
     DataResourceResponse,
     DataResourceUpdate,
 )
-from app.services.acl.acl_store import bootstrap_owner_acl
-from app.services.acl.acl_resolve import check_resource_access
-from app.services.acl.resource_acl_constants import (
+from app.services.identity.acl.acl_store import bootstrap_owner_acl
+from app.services.identity.acl.acl_resolve import check_resource_access
+from app.services.identity.acl.resource_acl_constants import (
     PERM_MANAGE,
     PERM_READ,
     RT_DATA_RESOURCE,
@@ -35,9 +35,9 @@ from app.services.data_layer.entity_scope import (
     build_entity_scope,
     load_model_graph,
 )
-from app.services.acl.resource_acl_presentation import serialize_resource_acl
+from app.services.identity.acl.resource_acl_presentation import serialize_resource_acl
 from app.services.data_layer.row_policy import RowPolicyError, validate_policy
-from app.services.permissions.permission_catalog import PERM_DATA_WRITE
+from app.services.identity.permissions.permission_catalog import PERM_DATA_WRITE
 
 router = APIRouter(prefix="/data-resources", tags=["data-resources"], dependencies=[Depends(require_auth)])
 

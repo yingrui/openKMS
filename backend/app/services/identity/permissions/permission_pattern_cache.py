@@ -6,8 +6,8 @@ import time
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.services.permissions.permission_pattern_engine import CompiledRule, compile_rules_from_rows
-from app.services.permissions.security_permission_service import list_permissions_sorted
+from app.services.identity.permissions.permission_pattern_engine import CompiledRule, compile_rules_from_rows
+from app.services.identity.permissions.security_permission_service import list_permissions_sorted
 
 _cache_rules: list[CompiledRule] | None = None
 _cache_monotonic: float = 0.0

@@ -46,7 +46,7 @@ from app.services.agent.shared import (
     WIKI_TOOL_TRANSCRIPTS_KEY,
     new_id,
 )
-from app.services.permissions.permission_catalog import PERM_KB_READ
+from app.services.identity.permissions.permission_catalog import PERM_KB_READ
 
 logger = logging.getLogger(__name__)
 

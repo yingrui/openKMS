@@ -11,15 +11,15 @@ from app.models.article import Article
 from app.models.document import Document
 from app.models.media_asset import MediaAsset
 from app.models.wiki_models import WikiPage
-from app.services.acl.acl_channel_filters import (
+from app.services.identity.acl.acl_channel_filters import (
     readable_article_channel_ids,
     readable_document_channel_ids,
     readable_media_channel_ids,
 )
-from app.services.acl.acl_context import acl_check_required
-from app.services.acl.acl_resolve import check_resource_access
-from app.services.acl.acl_scope import scope_applies
-from app.services.acl.resource_acl_constants import (
+from app.services.identity.acl.acl_context import acl_check_required
+from app.services.identity.acl.acl_resolve import check_resource_access
+from app.services.identity.acl.acl_scope import scope_applies
+from app.services.identity.acl.resource_acl_constants import (
     PERM_READ,
     PERM_WRITE,
     RT_ARTICLE_CHANNEL,

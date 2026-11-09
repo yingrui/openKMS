@@ -15,7 +15,7 @@ from fastapi import HTTPException
 
 from app.models.data_resource import DataResource
 from app.models.semantic_model import SemanticModel
-from app.services.acl.resource_acl_constants import PERM_READ, RT_DATA_RESOURCE
+from app.services.identity.acl.resource_acl_constants import PERM_READ, RT_DATA_RESOURCE
 from app.services.data_layer.catalog_access import resolve_catalog_scope
 
 
@@ -142,7 +142,7 @@ def test_restricted_query_without_a_grant_is_forbidden(no_grant):
 
 
 def test_the_data_resource_type_is_securable():
-    from app.services.acl.resource_acl_constants import SECURABLE_RESOURCE_TYPES
+    from app.services.identity.acl.resource_acl_constants import SECURABLE_RESOURCE_TYPES
 
     assert RT_DATA_RESOURCE in SECURABLE_RESOURCE_TYPES
     assert PERM_READ == 1

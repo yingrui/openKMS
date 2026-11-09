@@ -10,16 +10,16 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.constants import MAX_PAGE_SIZE
 from app.api.auth import require_any_permission, require_auth, require_permission
 from app.api.query_errors import query_failure_detail
-from app.services.permissions.permission_catalog import PERM_DATA_READ, PERM_DATA_WRITE
+from app.services.identity.permissions.permission_catalog import PERM_DATA_READ, PERM_DATA_WRITE
 from app.database import get_db
-from app.services.acl.data_scope import bootstrap_owner_acl
-from app.services.acl.resource_list_acl import readable_id_filter
+from app.services.identity.acl.data_scope import bootstrap_owner_acl
+from app.services.identity.acl.resource_list_acl import readable_id_filter
 from app.services.evaluations.dataset_scope import (
     load_dataset_scoped,
     require_dataset_manage,
     require_dataset_write,
 )
-from app.services.acl.resource_acl_constants import PERM_READ, RT_DATASET
+from app.services.identity.acl.resource_acl_constants import PERM_READ, RT_DATASET
 from app.services.ontology.property_types import (
     map_source_type_to_ontology,
     normalize_postgresql_column_type,

@@ -6,7 +6,7 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.auth import require_auth, require_permission
-from app.services.permissions.permission_catalog import PERM_CONSOLE_DATA_SOURCES
+from app.services.identity.permissions.permission_catalog import PERM_CONSOLE_DATA_SOURCES
 from app.database import get_db
 from app.models.data_source import DataSource
 from app.schemas.data_source import (

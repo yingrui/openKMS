@@ -70,7 +70,7 @@ from app.services.kubernetes.cluster_resources import (
     list_pods_async,
     list_services_async,
 )
-from app.services.permissions.permission_catalog import PERM_CONSOLE_KUBERNETES
+from app.services.identity.permissions.permission_catalog import PERM_CONSOLE_KUBERNETES
 
 router = APIRouter(
     prefix="/kubernetes-clusters",

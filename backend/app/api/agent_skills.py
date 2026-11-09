@@ -29,7 +29,7 @@ from app.services.agent.agent_skills_registry import (
     version_dir,
 )
 from app.services.platform.feature_toggles import require_agents_feature
-from app.services.permissions.permission_catalog import PERM_PROJECTS_READ, PERM_PROJECTS_WRITE
+from app.services.identity.permissions.permission_catalog import PERM_PROJECTS_READ, PERM_PROJECTS_WRITE
 
 router = APIRouter(
     prefix="/agent-skills",

@@ -8,7 +8,7 @@ from app.schemas.article_channel import (
     ArticleChannelTreeListResponse,
     ArticleChannelUpdate,
 )
-from app.services.acl.resource_acl_constants import RT_ARTICLE_CHANNEL
+from app.services.identity.acl.resource_acl_constants import RT_ARTICLE_CHANNEL
 
 
 def _channel_node(channel: ArticleChannel, children: list[ArticleChannelNode]) -> ArticleChannelNode:

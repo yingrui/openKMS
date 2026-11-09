@@ -50,7 +50,7 @@ from app.services.knowledge_map.knowledge_map_html_designer_session import (
     list_designer_conversations,
     persist_designer_turn_safe,
 )
-from app.services.permissions.permission_catalog import PERM_KNOWLEDGE_MAP_READ, PERM_KNOWLEDGE_MAP_WRITE
+from app.services.identity.permissions.permission_catalog import PERM_KNOWLEDGE_MAP_READ, PERM_KNOWLEDGE_MAP_WRITE
 from app.services.platform.feature_toggles import is_feature_enabled
 
 router = APIRouter(prefix="/knowledge-map", tags=["knowledge-map"])

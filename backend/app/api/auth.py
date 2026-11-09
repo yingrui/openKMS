@@ -25,9 +25,9 @@ from app.models.user import User
 from app.models.user_api_key import UserApiKey
 from app.models.user_preference import UserPreference
 from app.services.platform.audit import record_session_event_once
-from app.services.permissions.permission_catalog import PERM_ALL
-from app.services.permissions.security_permission_service import list_permissions_sorted, sorted_permission_keys
-from app.services.permissions.permission_resolution import (
+from app.services.identity.permissions.permission_catalog import PERM_ALL
+from app.services.identity.permissions.security_permission_service import list_permissions_sorted, sorted_permission_keys
+from app.services.identity.permissions.permission_resolution import (
     resolve_oidc_permission_keys,
     resolve_user_permission_keys,
 )
@@ -468,7 +468,7 @@ async def sync_session(
         await record_session_event("login", payload, via="sync-session")
 
     request.session["access_token"] = token
-    from app.services.users.oidc_identity_service import upsert_oidc_identity_from_jwt
+    from app.services.identity.users.oidc_identity_service import upsert_oidc_identity_from_jwt
 
     await upsert_oidc_identity_from_jwt(db, payload)
     await db.commit()
@@ -551,7 +551,7 @@ async def oauth2_callback(
         del request.session["oauth_state"]
 
     if isinstance(access_token, str) and access_token.strip():
-        from app.services.users.oidc_identity_service import upsert_oidc_identity_from_jwt
+        from app.services.identity.users.oidc_identity_service import upsert_oidc_identity_from_jwt
 
         payload = _verify_oidc_jwt(access_token.strip())
         await upsert_oidc_identity_from_jwt(db, payload)
@@ -705,7 +705,7 @@ async def register(
     except IntegrityError:
         raise http_error(request, 409, "EMAIL_OR_USERNAME_TAKEN") from None
 
-    from app.services.users.user_roles_sync import sync_security_roles_for_user
+    from app.services.identity.users.user_roles_sync import sync_security_roles_for_user
 
     await sync_security_roles_for_user(db, user)
     token = mint_local_user_jwt(user)
@@ -862,7 +862,7 @@ async def create_api_key(
     db: AsyncSession = Depends(get_db),
     _: str = Depends(require_auth),
 ):
-    from app.services.users.user_api_key_service import mint_user_api_key
+    from app.services.identity.users.user_api_key_service import mint_user_api_key
 
     sub = _current_owner_sub(request)
     p = request.state.openkms_jwt_payload
@@ -1049,7 +1049,7 @@ async def build_auth_user_out(request: Request, db: AsyncSession) -> AuthUserOut
 @api_auth_router.get("/me", response_model=AuthUserOut)
 async def auth_me(request: Request, db: AsyncSession = Depends(get_db)):
     await authenticate_request(request, db)
-    from app.services.users.oidc_identity_service import upsert_oidc_identity_from_jwt
+    from app.services.identity.users.oidc_identity_service import upsert_oidc_identity_from_jwt
 
     await upsert_oidc_identity_from_jwt(db, request.state.openkms_jwt_payload)
     await db.commit()

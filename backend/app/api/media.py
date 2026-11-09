@@ -41,7 +41,7 @@ from app.services.media.media_storage import (
     media_original_key,
     media_prefix,
 )
-from app.services.acl.resource_acl_constants import PERM_READ, PERM_WRITE, RT_MEDIA_CHANNEL
+from app.services.identity.acl.resource_acl_constants import PERM_READ, PERM_WRITE, RT_MEDIA_CHANNEL
 from app.services.platform.chunked_upload import chunk_count, cleanup, reassemble, store_chunk
 from app.services.platform.storage import delete_objects_by_prefix, get_redirect_url, upload_object
 

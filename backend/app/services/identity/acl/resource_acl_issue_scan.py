@@ -9,18 +9,18 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.resource_acl import ResourceAclEntry
-from app.services.acl.resource_acl_constants import GRANTEE_AUTHENTICATED
-from app.services.acl.resource_acl_issue_detection import (
+from app.services.identity.acl.resource_acl_constants import GRANTEE_AUTHENTICATED
+from app.services.identity.acl.resource_acl_issue_detection import (
     ISSUE_TYPES_ORDER,
     ResourceAclIssueScan,
     detect_resource_acl_issues,
 )
-from app.services.acl.resource_acl_admin_helpers import (
+from app.services.identity.acl.resource_acl_admin_helpers import (
     resolve_resource_label,
     resource_type_label,
     share_path_for,
 )
-from app.services.acl.resource_acl_presentation import labeled_grants
+from app.services.identity.acl.resource_acl_presentation import labeled_grants
 
 
 @dataclass

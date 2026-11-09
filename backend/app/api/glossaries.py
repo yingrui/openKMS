@@ -24,13 +24,13 @@ from app.schemas.glossary import (
     GlossaryTermUpdate,
     GlossaryUpdate,
 )
-from app.services.acl.data_scope import bootstrap_owner_acl
+from app.services.identity.acl.data_scope import bootstrap_owner_acl
 from app.services.glossary.glossary_scope import (
     load_glossary_scoped,
     require_glossary_manage,
     require_glossary_write,
 )
-from app.services.acl.resource_acl_constants import PERM_READ, RT_GLOSSARY
+from app.services.identity.acl.resource_acl_constants import PERM_READ, RT_GLOSSARY
 from app.services.glossary.glossary_read import (
     glossary_term_count,
     glossary_to_response,

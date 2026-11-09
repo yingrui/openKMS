@@ -10,8 +10,8 @@ from app.models.evaluation import Evaluation, EvaluationItem
 from app.models.knowledge_base import KnowledgeBase
 from app.models.wiki_models import WikiSpace
 from app.schemas.evaluation import EvaluationListResponse, EvaluationResponse
-from app.services.acl.resource_acl_constants import RT_EVALUATION
-from app.services.acl.resource_list_acl import readable_id_filter
+from app.services.identity.acl.resource_acl_constants import RT_EVALUATION
+from app.services.identity.acl.resource_list_acl import readable_id_filter
 
 
 def evaluation_to_response(

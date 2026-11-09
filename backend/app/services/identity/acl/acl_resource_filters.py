@@ -8,19 +8,19 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.config import settings
 from app.models.wiki_models import WikiSpace
 from app.models.resource_acl import ResourceAclEntry
-from app.services.acl.acl_channel_filters import (
+from app.services.identity.acl.acl_channel_filters import (
     accessible_article_channel_ids,
     accessible_document_channel_ids,
     accessible_media_channel_ids,
     readable_document_channel_ids,
 )
-from app.services.acl.acl_context import acl_check_required
-from app.services.acl.acl_resolve import (
+from app.services.identity.acl.acl_context import acl_check_required
+from app.services.identity.acl.acl_resolve import (
     _effective_permissions_from_entries,
     check_resource_access,
 )
-from app.services.acl.acl_scope import scope_applies
-from app.services.acl.resource_acl_constants import (
+from app.services.identity.acl.acl_scope import scope_applies
+from app.services.identity.acl.resource_acl_constants import (
     PERM_READ,
     RT_DATASET,
     RT_EVALUATION,
@@ -92,7 +92,7 @@ async def readable_resource_ids(
     from app.models.knowledge_base import KnowledgeBase
     from app.models.link_type import LinkType
     from app.models.object_type import ObjectType
-    from app.services.acl.resource_acl_constants import (
+    from app.services.identity.acl.resource_acl_constants import (
         RT_DATASET,
         RT_EVALUATION,
         RT_GLOSSARY,
@@ -141,31 +141,31 @@ async def effective_wiki_space_ids(db: AsyncSession, subject: str, payload: dict
 
 
 async def effective_knowledge_base_ids(db: AsyncSession, subject: str, payload: dict | None = None) -> set[str] | None:
-    from app.services.acl.resource_acl_constants import RT_KNOWLEDGE_BASE
+    from app.services.identity.acl.resource_acl_constants import RT_KNOWLEDGE_BASE
 
     return await accessible_resource_ids(db, subject, RT_KNOWLEDGE_BASE, payload)
 
 
 async def effective_evaluation_ids(db: AsyncSession, subject: str, payload: dict | None = None) -> set[str] | None:
-    from app.services.acl.resource_acl_constants import RT_EVALUATION
+    from app.services.identity.acl.resource_acl_constants import RT_EVALUATION
 
     return await accessible_resource_ids(db, subject, RT_EVALUATION, payload)
 
 
 async def effective_dataset_ids(db: AsyncSession, subject: str, payload: dict | None = None) -> set[str] | None:
-    from app.services.acl.resource_acl_constants import RT_DATASET
+    from app.services.identity.acl.resource_acl_constants import RT_DATASET
 
     return await accessible_resource_ids(db, subject, RT_DATASET, payload)
 
 
 async def effective_object_type_ids(db: AsyncSession, subject: str, payload: dict | None = None) -> set[str] | None:
-    from app.services.acl.resource_acl_constants import RT_OBJECT_TYPE
+    from app.services.identity.acl.resource_acl_constants import RT_OBJECT_TYPE
 
     return await accessible_resource_ids(db, subject, RT_OBJECT_TYPE, payload)
 
 
 async def effective_link_type_ids(db: AsyncSession, subject: str, payload: dict | None = None) -> set[str] | None:
-    from app.services.acl.resource_acl_constants import RT_LINK_TYPE
+    from app.services.identity.acl.resource_acl_constants import RT_LINK_TYPE
 
     return await accessible_resource_ids(db, subject, RT_LINK_TYPE, payload)
 

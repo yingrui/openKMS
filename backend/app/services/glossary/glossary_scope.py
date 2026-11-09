@@ -3,8 +3,8 @@
 from __future__ import annotations
 
 from app.models.glossary import Glossary
-from app.services.acl.resource_acl_constants import PERM_READ, RT_GLOSSARY
-from app.services.acl.resource_guard import (
+from app.services.identity.acl.resource_acl_constants import PERM_READ, RT_GLOSSARY
+from app.services.identity.acl.resource_guard import (
     load_scoped_resource,
     require_manage,
     require_read,

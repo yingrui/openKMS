@@ -10,7 +10,7 @@ from app.schemas.media_channel import (
     MediaChannelTreeListResponse,
     MediaChannelUpdate,
 )
-from app.services.acl.resource_acl_constants import RT_MEDIA_CHANNEL
+from app.services.identity.acl.resource_acl_constants import RT_MEDIA_CHANNEL
 from app.services.platform.feature_toggles import require_media_feature
 
 

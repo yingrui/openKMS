@@ -14,14 +14,14 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.models.article_channel import ArticleChannel
 from app.models.document_channel import DocumentChannel
 from app.models.media_channel import MediaChannel
-from app.services.acl.resource_acl_constants import (
+from app.services.identity.acl.resource_acl_constants import (
     PERM_WRITE,
     RT_ARTICLE_CHANNEL,
     RT_DOCUMENT_CHANNEL,
     RT_MEDIA_CHANNEL,
 )
-from app.services.acl.resource_guard import resource_allowed
-from app.services.acl.resource_acl_service import (
+from app.services.identity.acl.resource_guard import resource_allowed
+from app.services.identity.acl.resource_acl_service import (
     readable_article_channel_ids,
     readable_document_channel_ids,
     readable_media_channel_ids,

@@ -48,12 +48,12 @@ from app.schemas.wiki import (
     WikiVaultMarkdownFileBody,
     WikiVaultMarkdownImportResponse,
 )
-from app.services.acl.data_scope import bootstrap_owner_acl
-from app.services.acl.resource_acl_constants import PERM_READ, PERM_WRITE, RT_WIKI_SPACE
+from app.services.identity.acl.data_scope import bootstrap_owner_acl
+from app.services.identity.acl.resource_acl_constants import PERM_READ, PERM_WRITE, RT_WIKI_SPACE
 from app.services.wiki.wiki_page_scope import get_wiki_page_in_space
 from app.services.wiki.wiki_scope import load_wiki_space_scoped, require_wiki_space_manage
 from app.services.wiki.page_index import md_to_tree_from_markdown
-from app.services.permissions.permission_catalog import PERM_WIKIS_READ, PERM_WIKIS_WRITE
+from app.services.identity.permissions.permission_catalog import PERM_WIKIS_READ, PERM_WIKIS_WRITE
 from app.services.platform.storage import (
     STORAGE_ERRORS,
     delete_object,

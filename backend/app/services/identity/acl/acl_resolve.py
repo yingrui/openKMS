@@ -6,14 +6,14 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
 from app.models.resource_acl import ResourceAclEntry
-from app.services.acl.acl_context import (
+from app.services.identity.acl.acl_context import (
     _acl_entries_for_resources,
     acl_check_required,
     resource_context_chain,
 )
-from app.services.acl.acl_identity import subject_aliases, user_grant_matches, user_group_ids
-from app.services.acl.acl_scope import _acl_subject, jwt_is_admin
-from app.services.acl.resource_acl_constants import (
+from app.services.identity.acl.acl_identity import subject_aliases, user_grant_matches, user_group_ids
+from app.services.identity.acl.acl_scope import _acl_subject, jwt_is_admin
+from app.services.identity.acl.resource_acl_constants import (
     GRANTEE_AUTHENTICATED,
     GRANTEE_GROUP,
     GRANTEE_USER,

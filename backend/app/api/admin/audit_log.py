@@ -21,7 +21,7 @@ from app.schemas.audit import (
     AuditFacet,
     AuditFacetsResponse,
 )
-from app.services.permissions.permission_catalog import PERM_CONSOLE_PERMISSIONS
+from app.services.identity.permissions.permission_catalog import PERM_CONSOLE_PERMISSIONS
 
 router = APIRouter(
     prefix="/console/audit-events",

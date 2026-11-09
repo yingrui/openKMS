@@ -26,9 +26,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.data_resource import DataResource
 from app.models.semantic_model import SemanticModel
-from app.services.acl.acl_context import acl_check_required
-from app.services.acl.acl_resolve import effective_permissions
-from app.services.acl.resource_acl_constants import (
+from app.services.identity.acl.acl_context import acl_check_required
+from app.services.identity.acl.acl_resolve import effective_permissions
+from app.services.identity.acl.resource_acl_constants import (
     PERM_READ,
     RT_DATA_RESOURCE,
     perm_satisfies,

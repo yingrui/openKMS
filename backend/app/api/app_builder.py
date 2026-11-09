@@ -26,7 +26,7 @@ from app.services.kubernetes.cluster_service_proxy import (
     proxy_service_direct_async,
     service_direct_base_url,
 )
-from app.services.permissions.permission_catalog import (
+from app.services.identity.permissions.permission_catalog import (
     PERM_CONSOLE_KUBERNETES,
     PERM_ONTOLOGY_READ,
     PERM_ONTOLOGY_WRITE,

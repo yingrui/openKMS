@@ -37,7 +37,7 @@ from app.services.kubernetes.cluster_service_proxy import (
     proxy_service_async,
 )
 from app.services.kubernetes.cluster_config import validate_resource_name
-from app.services.permissions.permission_catalog import PERM_ONTOLOGY_READ, PERM_ONTOLOGY_WRITE
+from app.services.identity.permissions.permission_catalog import PERM_ONTOLOGY_READ, PERM_ONTOLOGY_WRITE
 
 router = APIRouter(
     prefix="/ontology/external-services",

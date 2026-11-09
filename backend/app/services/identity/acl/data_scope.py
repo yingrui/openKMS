@@ -10,7 +10,7 @@ from app.models.article_channel import ArticleChannel
 from app.models.document_channel import DocumentChannel
 
 # Re-export ACL API (replaces legacy group-scope functions)
-from app.services.acl.resource_acl_service import (
+from app.services.identity.acl.resource_acl_service import (
     acl_applies,
     article_passes_scoped_predicate,
     bootstrap_owner_acl,

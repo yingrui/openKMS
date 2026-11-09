@@ -8,7 +8,7 @@ from fastapi import HTTPException
 
 from app.models.document import Document
 from app.services.documents.document_scope import load_document_scoped, require_document_write
-from app.services.acl.resource_acl_constants import PERM_READ, PERM_WRITE
+from app.services.identity.acl.resource_acl_constants import PERM_READ, PERM_WRITE
 
 
 def test_null_channel_id_denied_on_read():
@@ -16,9 +16,9 @@ def test_null_channel_id_denied_on_read():
     db = AsyncMock()
 
     async def _run():
-        with patch("app.services.acl.resource_acl_service.scope_applies", return_value=True):
+        with patch("app.services.identity.acl.resource_acl_service.scope_applies", return_value=True):
             ok = await __import__(
-                "app.services.acl.resource_acl_service", fromlist=["document_visible_via_channel"]
+                "app.services.identity.acl.resource_acl_service", fromlist=["document_visible_via_channel"]
             ).document_visible_via_channel(db, {"sub": "alice"}, "alice", doc)
             assert ok is False
 

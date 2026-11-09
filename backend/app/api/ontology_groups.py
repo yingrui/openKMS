@@ -26,7 +26,7 @@ from app.schemas.ontology_functions import (
     OntologyGroupResponse,
     OntologyGroupUpdate,
 )
-from app.services.permissions.permission_catalog import PERM_ONTOLOGY_READ, PERM_ONTOLOGY_WRITE
+from app.services.identity.permissions.permission_catalog import PERM_ONTOLOGY_READ, PERM_ONTOLOGY_WRITE
 
 router = APIRouter(prefix="/ontology/groups", tags=["ontology-groups"], dependencies=[Depends(require_auth)])
 

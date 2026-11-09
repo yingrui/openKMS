@@ -22,7 +22,7 @@ from app.models.object_type import ObjectType
 from app.models.project import Project
 from app.models.semantic_model import SemanticModel
 from app.models.wiki_models import WikiSpace
-from app.services.acl.resource_acl_constants import (
+from app.services.identity.acl.resource_acl_constants import (
     PERM_MANAGE,
     PERM_READ,
     PERM_WRITE,
@@ -37,7 +37,7 @@ from app.services.acl.resource_acl_constants import (
     RT_SEMANTIC_MODEL,
     RT_WIKI_SPACE,
 )
-from app.services.acl.resource_acl_service import check_resource_access, scope_applies
+from app.services.identity.acl.resource_acl_service import check_resource_access, scope_applies
 
 
 @dataclass(frozen=True)

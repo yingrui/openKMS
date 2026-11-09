@@ -59,7 +59,7 @@ from app.services.deep_agents.durable_stream import (
 )
 from app.services.deep_agents.observability import AgentTurnContext
 from app.services.deep_agents.runner import iter_project_stream_parts, resume_project_interrupt, run_project_turn
-from app.services.permissions.permission_catalog import PERM_PROJECTS_READ, PERM_PROJECTS_WRITE
+from app.services.identity.permissions.permission_catalog import PERM_PROJECTS_READ, PERM_PROJECTS_WRITE
 from app.services.platform.project_fs import read_lessons_json, write_lessons_json
 from app.services.agent.session_review import merge_lessons, review_session
 from app.services.deep_agents.improvement_runner import iter_improvement_stream_parts

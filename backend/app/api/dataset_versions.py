@@ -33,7 +33,7 @@ from app.schemas.dataset import (
 from app.services.data_layer import file_datasets
 from app.services.platform.storage import STORAGE_ERRORS, get_object
 from app.services.data_layer.file_datasets import FileDatasetError
-from app.services.permissions.permission_catalog import PERM_DATA_READ, PERM_DATA_WRITE
+from app.services.identity.permissions.permission_catalog import PERM_DATA_READ, PERM_DATA_WRITE
 
 router = APIRouter(
     prefix="/dataset-versions",

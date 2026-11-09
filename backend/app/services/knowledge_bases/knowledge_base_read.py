@@ -12,8 +12,8 @@ from app.models.kb_document import KBDocument
 from app.models.kb_wiki_space import KBWikiSpace
 from app.models.knowledge_base import KnowledgeBase
 from app.schemas.knowledge_base import KnowledgeBaseListResponse, KnowledgeBaseResponse
-from app.services.acl.resource_acl_constants import RT_KNOWLEDGE_BASE
-from app.services.acl.resource_list_acl import readable_id_filter
+from app.services.identity.acl.resource_acl_constants import RT_KNOWLEDGE_BASE
+from app.services.identity.acl.resource_list_acl import readable_id_filter
 
 
 async def kb_stats_batch(db: AsyncSession, kb_ids: list[str]) -> dict[str, dict[str, int]]:

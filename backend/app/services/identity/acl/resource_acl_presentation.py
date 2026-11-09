@@ -7,7 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.access_group import AccessGroup
 from app.schemas.resource_acl import AclGrantOut, OwnerCandidateOut, ResourceAclOut
-from app.services.acl.resource_acl_constants import (
+from app.services.identity.acl.resource_acl_constants import (
     GRANTEE_AUTHENTICATED,
     GRANTEE_GROUP,
     GRANTEE_USER,
@@ -26,7 +26,7 @@ from app.services.acl.resource_acl_constants import (
     RT_WIKI_SPACE,
     perm_label,
 )
-from app.services.acl.resource_acl_service import (
+from app.services.identity.acl.resource_acl_service import (
     effective_permissions,
     list_acl_entries,
     list_owner_candidates,

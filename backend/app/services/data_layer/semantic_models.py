@@ -127,8 +127,8 @@ async def create_semantic_model(
     await set_members(db, model.id, dataset_ids)
     # The creator owns the model, exactly like any other securable resource: sharing is what
     # decides who else may see and use it, so a new model must not start with nobody holding it.
-    from app.services.acl.acl_store import bootstrap_owner_acl
-    from app.services.acl.resource_acl_constants import RT_SEMANTIC_MODEL
+    from app.services.identity.acl.acl_store import bootstrap_owner_acl
+    from app.services.identity.acl.resource_acl_constants import RT_SEMANTIC_MODEL
 
     await bootstrap_owner_acl(db, RT_SEMANTIC_MODEL, model.id, sub)
     await db.commit()

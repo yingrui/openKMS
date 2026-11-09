@@ -8,8 +8,8 @@ from fastapi import HTTPException
 
 from app.models.article import Article
 from app.services.articles.article_scope import load_article_scoped
-from app.services.acl.resource_acl_constants import PERM_READ, RT_ARTICLE_CHANNEL
-from app.services.acl.resource_acl_service import article_visible_via_channel, scoped_article_predicate
+from app.services.identity.acl.resource_acl_constants import PERM_READ, RT_ARTICLE_CHANNEL
+from app.services.identity.acl.resource_acl_service import article_visible_via_channel, scoped_article_predicate
 
 
 def test_article_visible_denied_when_channel_not_readable():
@@ -17,9 +17,9 @@ def test_article_visible_denied_when_channel_not_readable():
     db = AsyncMock()
 
     async def _run():
-        with patch("app.services.acl.acl_content_visibility.scope_applies", return_value=True):
+        with patch("app.services.identity.acl.acl_content_visibility.scope_applies", return_value=True):
             with patch(
-                "app.services.acl.acl_content_visibility.check_resource_access",
+                "app.services.identity.acl.acl_content_visibility.check_resource_access",
                 new_callable=AsyncMock,
                 return_value=False,
             ) as check:
@@ -64,7 +64,7 @@ def test_scoped_article_predicate_uses_channel_ids_only():
 
     async def _run():
         with patch(
-            "app.services.acl.acl_content_visibility.readable_article_channel_ids",
+            "app.services.identity.acl.acl_content_visibility.readable_article_channel_ids",
             new_callable=AsyncMock,
             return_value={"ch-a"},
         ):

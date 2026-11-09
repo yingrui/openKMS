@@ -13,7 +13,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.config import settings
 from app.models.user import User
 from app.models.user_api_key import UserApiKey
-from app.services.permissions.permission_resolution import jwt_realm_role_names
+from app.services.identity.permissions.permission_resolution import jwt_realm_role_names
 
 ApiKeyPurpose = Literal["personal", "agent_session"]
 

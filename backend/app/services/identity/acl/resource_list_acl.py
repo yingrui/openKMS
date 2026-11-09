@@ -5,7 +5,7 @@ from __future__ import annotations
 from sqlalchemy import ColumnElement
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.services.acl.resource_acl_service import readable_resource_ids, scope_applies
+from app.services.identity.acl.resource_acl_service import readable_resource_ids, scope_applies
 
 
 async def readable_id_filter(

@@ -18,7 +18,7 @@ from app.services.comments.comment_resource_types import (
 from app.services.documents.document_scope import load_document_scoped
 from app.services.platform.feature_toggles import is_feature_enabled
 from app.services.knowledge_bases.kb_scope import load_knowledge_base_scoped
-from app.services.acl.resource_acl_constants import PERM_READ
+from app.services.identity.acl.resource_acl_constants import PERM_READ
 from app.services.wiki.wiki_scope import load_wiki_space_scoped
 
 

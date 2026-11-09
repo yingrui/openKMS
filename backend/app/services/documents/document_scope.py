@@ -6,8 +6,8 @@ from fastapi import HTTPException, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.document import Document
-from app.services.acl.resource_acl_constants import PERM_READ, PERM_WRITE
-from app.services.acl.resource_acl_service import (
+from app.services.identity.acl.resource_acl_constants import PERM_READ, PERM_WRITE
+from app.services.identity.acl.resource_acl_service import (
     channel_allowed_for_document_upload,
     document_visible_via_channel,
     scoped_document_predicate,

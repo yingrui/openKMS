@@ -9,7 +9,7 @@ from app.config import settings
 from app.models.access_group import AccessGroup, AccessGroupMember
 from app.models.resource_acl import ResourceAclEntry
 from app.models.user import User
-from app.services.acl.resource_acl_constants import (
+from app.services.identity.acl.resource_acl_constants import (
     GRANTEE_AUTHENTICATED,
     GRANTEE_GROUP,
     GRANTEE_USER,
@@ -18,7 +18,7 @@ from app.services.acl.resource_acl_constants import (
     PERM_WRITE,
     perm_label,
 )
-from app.services.acl.resource_acl_service import (
+from app.services.identity.acl.resource_acl_service import (
     _acl_entries_for_resources,
     _authenticated_bits_from_chain,
     resource_context_chain,

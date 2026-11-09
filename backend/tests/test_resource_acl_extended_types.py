@@ -1,6 +1,6 @@
 """Tests for evaluation, glossary, and ontology type resource ACL."""
 
-from app.services.acl.resource_acl_constants import (
+from app.services.identity.acl.resource_acl_constants import (
     PERM_MANAGE,
     PERM_READ,
     PERM_WRITE,

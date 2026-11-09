@@ -20,7 +20,7 @@ from app.schemas.project_agent_schedule import (
     ProjectAgentScheduleRunNowResponse,
 )
 from app.services.connectors.schedule import compute_next_run_at, validate_cron_expression, validate_timezone
-from app.services.permissions.permission_catalog import PERM_PROJECTS_READ, PERM_PROJECTS_WRITE
+from app.services.identity.permissions.permission_catalog import PERM_PROJECTS_READ, PERM_PROJECTS_WRITE
 from app.services.schedules.project_agent_schedule import (
     create_agent_schedule,
     delete_agent_schedule_row,

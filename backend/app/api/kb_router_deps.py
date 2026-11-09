@@ -14,7 +14,7 @@ from app.services.knowledge_bases.kb_scope import (
     load_knowledge_base_scoped,
     require_knowledge_base_write,
 )
-from app.services.acl.resource_acl_constants import PERM_READ
+from app.services.identity.acl.resource_acl_constants import PERM_READ
 
 
 async def _get_kb_or_404(

@@ -9,8 +9,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.models.glossary import Glossary
 from app.models.glossary_term import GlossaryTerm
 from app.schemas.glossary import GlossaryListResponse, GlossaryResponse
-from app.services.acl.resource_acl_constants import RT_GLOSSARY
-from app.services.acl.resource_list_acl import readable_id_filter
+from app.services.identity.acl.resource_acl_constants import RT_GLOSSARY
+from app.services.identity.acl.resource_list_acl import readable_id_filter
 
 
 def glossary_to_response(glossary: Glossary, term_count: int) -> GlossaryResponse:

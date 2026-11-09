@@ -6,8 +6,8 @@ from fastapi import HTTPException, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.wiki_models import WikiPage
-from app.services.acl.resource_acl_constants import PERM_READ, PERM_WRITE
-from app.services.acl.resource_acl_service import (
+from app.services.identity.acl.resource_acl_constants import PERM_READ, PERM_WRITE
+from app.services.identity.acl.resource_acl_service import (
     scope_applies,
     wiki_page_visible_via_space,
     wiki_page_writable_via_space,

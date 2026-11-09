@@ -26,8 +26,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.api.auth import require_auth
 from app.database import get_db
 from app.models.semantic_model import SemanticModel
-from app.services.acl.acl_resolve import check_resource_access
-from app.services.acl.resource_acl_constants import PERM_READ, RT_SEMANTIC_MODEL
+from app.services.identity.acl.acl_resolve import check_resource_access
+from app.services.identity.acl.resource_acl_constants import PERM_READ, RT_SEMANTIC_MODEL
 
 
 def _subject(request: Request) -> tuple[dict, str | None]:

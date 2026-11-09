@@ -9,7 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
 from app.models.security_role import SecurityRole, SecurityRolePermission, UserSecurityRole
-from app.services.permissions.permission_catalog import PERM_ALL
+from app.services.identity.permissions.permission_catalog import PERM_ALL
 
 
 def jwt_realm_role_names(payload: dict) -> set[str]:

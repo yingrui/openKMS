@@ -6,13 +6,13 @@ from fastapi import HTTPException, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.media_asset import MediaAsset
-from app.services.acl.resource_acl_constants import PERM_READ, PERM_WRITE
-from app.services.acl.resource_acl_service import (
+from app.services.identity.acl.resource_acl_constants import PERM_READ, PERM_WRITE
+from app.services.identity.acl.resource_acl_service import (
     channel_allowed_for_media_write,
     scoped_media_predicate,
     media_visible_via_channel,
 )
-from app.services.acl.data_scope import scope_applies
+from app.services.identity.acl.data_scope import scope_applies
 
 __all__ = [
     "load_media_scoped",

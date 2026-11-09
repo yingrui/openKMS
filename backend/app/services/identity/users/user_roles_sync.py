@@ -9,7 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.security_role import SecurityRole, SecurityRolePermission, UserSecurityRole
 from app.models.user import User
-from app.services.permissions.permission_catalog import ADMIN_ROLE_NAME, MEMBER_ROLE_NAME, PERM_ALL
+from app.services.identity.permissions.permission_catalog import ADMIN_ROLE_NAME, MEMBER_ROLE_NAME, PERM_ALL
 
 
 async def _role_id_by_name(db: AsyncSession, name: str) -> str | None:

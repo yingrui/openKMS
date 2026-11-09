@@ -41,7 +41,7 @@ from app.services.data_layer.semantic_models import (
     member_ids,
     members_map,
 )
-from app.services.permissions.permission_catalog import PERM_DATA_READ, PERM_DATA_WRITE
+from app.services.identity.permissions.permission_catalog import PERM_DATA_READ, PERM_DATA_WRITE
 
 # Read/query routes are restricted by the **data resource grant** (`require_model_access`), not by
 # an operation key: `data:read` is "may use the Data Model feature", which is a different

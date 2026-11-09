@@ -18,9 +18,9 @@ from app.database import get_db
 from app.models.dataset import Dataset
 from app.models.quality_rule import QualityRule, QualityRun
 from app.schemas.quality import QualityIssueListResponse, QualityIssueResponse
-from app.services.acl.resource_acl_constants import RT_DATASET
-from app.services.acl.resource_list_acl import readable_id_filter
-from app.services.permissions.permission_catalog import PERM_DATA_READ
+from app.services.identity.acl.resource_acl_constants import RT_DATASET
+from app.services.identity.acl.resource_list_acl import readable_id_filter
+from app.services.identity.permissions.permission_catalog import PERM_DATA_READ
 from app.services.platform.dataset_label import dataset_label
 
 router = APIRouter(

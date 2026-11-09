@@ -2,12 +2,12 @@
 
 from __future__ import annotations
 
-from app.services.acl.context_guard import (
+from app.services.identity.acl.context_guard import (
     require_channel_in_scope,
     require_channel_write,
     scoped_channel_ids,
 )
-from app.services.acl.resource_acl_constants import RT_ARTICLE_CHANNEL, RT_DOCUMENT_CHANNEL, RT_MEDIA_CHANNEL
+from app.services.identity.acl.resource_acl_constants import RT_ARTICLE_CHANNEL, RT_DOCUMENT_CHANNEL, RT_MEDIA_CHANNEL
 
 __all__ = [
     "require_article_channel_in_scope",

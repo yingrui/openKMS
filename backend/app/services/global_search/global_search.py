@@ -19,8 +19,8 @@ from app.models.wiki_models import WikiSpace
 from app.schemas.global_search import GlobalSearchHit, GlobalSearchResponse, GlobalSearchSection
 from app.services.articles.article_scope import scoped_article_predicate
 from app.services.articles.article_service import collect_channel_and_descendants
-from app.services.acl.data_resource_policy import knowledge_base_visible, scoped_document_predicate
-from app.services.acl.data_scope import effective_wiki_space_ids, scope_applies
+from app.services.identity.acl.data_resource_policy import knowledge_base_visible, scoped_document_predicate
+from app.services.identity.acl.data_scope import effective_wiki_space_ids, scope_applies
 from app.services.platform.feature_toggles import is_feature_enabled
 from app.services.media.media_scope import scoped_media_predicate
 from app.services.media.media_service import collect_media_channel_and_descendants
@@ -49,7 +49,7 @@ def parse_types_param(raw: str | None) -> set[str]:
 
 
 def allowed_types_from_permissions(perms: frozenset[str]) -> set[str]:
-    from app.services.permissions.permission_catalog import (
+    from app.services.identity.permissions.permission_catalog import (
         PERM_ALL,
         PERM_ARTICLES_READ,
         PERM_DOCUMENTS_READ,

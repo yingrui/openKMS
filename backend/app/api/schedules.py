@@ -21,7 +21,7 @@ from app.models.scheduled_trigger import (
 from app.schemas.schedule import ScheduleListResponse, ScheduleOut, SchedulePatch, ScheduleRunNowResponse
 from app.services.connectors.connector_catalog import CATEGORY_SYNC, get_kind_spec, normalize_and_validate_settings
 from app.services.connectors.schedule import compute_next_run_at, validate_cron_expression, validate_timezone
-from app.services.permissions.permission_catalog import PERM_CONNECTORS_READ, PERM_CONNECTORS_WRITE, PERM_PROJECTS_READ, PERM_PROJECTS_WRITE
+from app.services.identity.permissions.permission_catalog import PERM_CONNECTORS_READ, PERM_CONNECTORS_WRITE, PERM_PROJECTS_READ, PERM_PROJECTS_WRITE
 from app.services.schedules.project_agent_schedule import normalize_agent_schedule_config
 from app.services.schedules.scheduled_triggers import upsert_connector_sync_trigger
 

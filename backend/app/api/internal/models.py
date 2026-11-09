@@ -7,7 +7,7 @@ from app.api.auth import _is_internal_service_caller, require_internal_client
 from app.database import get_db
 from app.models.api_model import VALID_API_KINDS
 from app.models.knowledge_base import KnowledgeBase
-from app.services.acl.data_resource_policy import knowledge_base_visible
+from app.services.identity.acl.data_resource_policy import knowledge_base_visible
 from app.services.agent.llm import resolve_agent_llm_config
 from app.services.models.model_config_by_name import resolve_model_config_by_name
 from app.services.documents.document_parse_defaults import get_document_parse_vlm_defaults_for_cli

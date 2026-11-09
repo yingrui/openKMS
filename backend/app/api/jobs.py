@@ -15,7 +15,7 @@ from app.models.pipeline import Pipeline
 from app.schemas.job import JobCreate, JobEvent, JobListResponse, JobResponse
 from app.services.jobs.job_scope import job_args_allowed, require_job_args_access
 from app.services.documents.document_scope import load_document_scoped
-from app.services.acl.resource_acl_constants import PERM_WRITE
+from app.services.identity.acl.resource_acl_constants import PERM_WRITE
 
 logger = logging.getLogger(__name__)
 

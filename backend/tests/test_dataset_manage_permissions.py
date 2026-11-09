@@ -3,7 +3,7 @@
 import inspect
 
 from app.api import datasets as datasets_api
-from app.services.permissions.permission_catalog import (
+from app.services.identity.permissions.permission_catalog import (
     PERM_CONSOLE_DATASETS,
     PERM_DATA_READ,
     PERM_ONTOLOGY_READ,

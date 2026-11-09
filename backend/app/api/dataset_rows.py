@@ -12,7 +12,7 @@ from app.database import get_db
 from app.models.dataset import Dataset
 from app.schemas.dataset import DatasetRowsApplyRequest, DatasetRowsApplyResponse
 from app.services.data_layer.dataset_rows_edit import RowEditError, apply_row_ops
-from app.services.permissions.permission_catalog import PERM_DATA_EDIT
+from app.services.identity.permissions.permission_catalog import PERM_DATA_EDIT
 
 router = APIRouter(
     prefix="/datasets",

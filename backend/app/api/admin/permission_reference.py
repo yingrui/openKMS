@@ -6,8 +6,8 @@ from fastapi import APIRouter, Depends, Request
 from pydantic import BaseModel, Field
 
 from app.api.auth import require_permission
-from app.services.permissions.permission_catalog import PERM_CONSOLE_PERMISSIONS, list_operation_key_hints
-from app.services.permissions.permission_reference import list_api_operations, list_frontend_features
+from app.services.identity.permissions.permission_catalog import PERM_CONSOLE_PERMISSIONS, list_operation_key_hints
+from app.services.identity.permissions.permission_reference import list_api_operations, list_frontend_features
 
 router = APIRouter(prefix="/admin/permission-reference", tags=["admin-permission-reference"])
 

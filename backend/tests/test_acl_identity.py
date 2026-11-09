@@ -2,7 +2,7 @@
 
 import asyncio
 
-from app.services.acl.acl_identity import user_grant_matches
+from app.services.identity.acl.acl_identity import user_grant_matches
 
 
 def test_owner_acl_grant_matches_username_vs_uuid_sub():

@@ -9,8 +9,8 @@ from fastapi import HTTPException, Request
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.services.acl.resource_acl_constants import PERM_READ
-from app.services.acl.resource_acl_service import check_resource_access
+from app.services.identity.acl.resource_acl_constants import PERM_READ
+from app.services.identity.acl.resource_acl_service import check_resource_access
 
 __all__ = ["channel_subtree_ids_for_list"]
 

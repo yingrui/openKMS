@@ -9,7 +9,7 @@ from app.models.document import Document
 from app.models.document_channel import DocumentChannel
 from app.models.object_type import ObjectType
 from app.schemas.channel import ChannelNode, ChannelTreeListResponse, ChannelUpdate
-from app.services.acl.resource_acl_constants import RT_DOCUMENT_CHANNEL
+from app.services.identity.acl.resource_acl_constants import RT_DOCUMENT_CHANNEL
 
 
 def _strip_field_order(schema: dict[str, Any] | list | None) -> dict[str, Any] | list | None:

@@ -65,8 +65,8 @@ from app.services.articles.article_service import (
     update_article,
 )
 from app.services.articles.article_storage import article_object_key, is_allowed_article_file_path
-from app.services.acl.data_scope import scope_applies
-from app.services.acl.resource_acl_constants import PERM_READ, PERM_WRITE, RT_ARTICLE_CHANNEL
+from app.services.identity.acl.data_scope import scope_applies
+from app.services.identity.acl.resource_acl_constants import PERM_READ, PERM_WRITE, RT_ARTICLE_CHANNEL
 from app.services.platform.storage import STORAGE_ERRORS, delete_object, get_redirect_url, object_exists
 from app.config import settings
 

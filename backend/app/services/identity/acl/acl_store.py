@@ -8,7 +8,7 @@ from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.resource_acl import ResourceAclEntry
-from app.services.acl.resource_acl_constants import (
+from app.services.identity.acl.resource_acl_constants import (
     GRANTEE_USER,
     PERM_MANAGE,
     PERM_READ,

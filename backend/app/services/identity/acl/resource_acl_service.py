@@ -5,7 +5,7 @@ Implementation is split across acl_*.py modules; import from here for a stable p
 
 from __future__ import annotations
 
-from app.services.acl.acl_channel_filters import (
+from app.services.identity.acl.acl_channel_filters import (
     accessible_article_channel_ids,
     accessible_document_channel_ids,
     accessible_media_channel_ids,
@@ -13,7 +13,7 @@ from app.services.acl.acl_channel_filters import (
     readable_document_channel_ids,
     readable_media_channel_ids,
 )
-from app.services.acl.acl_content_visibility import (
+from app.services.identity.acl.acl_content_visibility import (
     article_passes_scoped_predicate,
     article_visible_via_channel,
     channel_allowed_for_article_write,
@@ -29,12 +29,12 @@ from app.services.acl.acl_content_visibility import (
     wiki_page_visible_via_space,
     wiki_page_writable_via_space,
 )
-from app.services.acl.acl_context import (
+from app.services.identity.acl.acl_context import (
     acl_check_required,
     resource_context_chain,
     resource_has_acl_restrictions,
 )
-from app.services.acl.acl_identity import (
+from app.services.identity.acl.acl_identity import (
     canonicalize_group_member_subjects,
     list_owner_candidates,
     normalize_owner_grantee_id,
@@ -44,13 +44,13 @@ from app.services.acl.acl_identity import (
     user_grant_matches,
     user_group_ids,
 )
-from app.services.acl.acl_resolve import (
+from app.services.identity.acl.acl_resolve import (
     _authenticated_bits_from_chain,
     _effective_permissions_from_entries,
     check_resource_access,
     effective_permissions,
 )
-from app.services.acl.acl_resource_filters import (
+from app.services.identity.acl.acl_resource_filters import (
     accessible_resource_ids,
     effective_article_channel_ids,
     effective_channel_ids,
@@ -63,9 +63,9 @@ from app.services.acl.acl_resource_filters import (
     effective_wiki_space_ids,
     readable_resource_ids,
 )
-from app.services.acl.acl_scope import acl_applies, jwt_is_admin, scope_applies
-from app.services.acl.acl_store import bootstrap_owner_acl, list_acl_entries, replace_resource_acl
-from app.services.acl.acl_context import _acl_entries_for_resources
+from app.services.identity.acl.acl_scope import acl_applies, jwt_is_admin, scope_applies
+from app.services.identity.acl.acl_store import bootstrap_owner_acl, list_acl_entries, replace_resource_acl
+from app.services.identity.acl.acl_context import _acl_entries_for_resources
 
 __all__ = [
     "_acl_entries_for_resources",

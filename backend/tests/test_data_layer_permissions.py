@@ -1,5 +1,5 @@
 """Data-layer permission keys + pattern-engine resolution tests (pure)."""
-from app.services.permissions.permission_catalog import (
+from app.services.identity.permissions.permission_catalog import (
     PERM_DATA_EDIT,
     PERM_DATA_READ,
     PERM_DATA_WRITE,
@@ -7,8 +7,8 @@ from app.services.permissions.permission_catalog import (
     PERM_INSIGHTS_WRITE,
     OPERATION_KEY_HINTS,
 )
-from app.services.permissions.permission_default_patterns import default_patterns_for_key
-from app.services.permissions.permission_pattern_engine import (
+from app.services.identity.permissions.permission_default_patterns import default_patterns_for_key
+from app.services.identity.permissions.permission_pattern_engine import (
     compile_rules_from_rows,
     resolve_required_permission_keys,
 )

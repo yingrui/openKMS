@@ -12,8 +12,8 @@ from app.models.article_channel import ArticleChannel
 from app.models.document_channel import DocumentChannel
 from app.models.media_channel import MediaChannel
 from app.models.resource_acl import ResourceAclEntry
-from app.services.acl.acl_resolve import check_resource_access
-from app.services.acl.resource_acl_constants import (
+from app.services.identity.acl.acl_resolve import check_resource_access
+from app.services.identity.acl.resource_acl_constants import (
     PERM_READ,
     RT_ARTICLE_CHANNEL,
     RT_DOCUMENT_CHANNEL,

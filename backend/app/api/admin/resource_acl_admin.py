@@ -10,11 +10,11 @@ from app.api.auth import get_jwt_payload, require_permission
 from app.api.resource_acl import persist_resource_acl
 from app.database import get_db
 from app.schemas.resource_acl import AclGrantOut, OwnerCandidateOut, ResourceAclOut, ResourceAclPut
-from app.services.acl.resource_acl_presentation import list_local_owner_candidates, serialize_resource_acl
-from app.services.permissions.permission_catalog import PERM_CONSOLE_GROUPS
-from app.services.acl.resource_acl_constants import SECURABLE_RESOURCE_TYPES
-from app.services.acl.resource_acl_issue_detection import ISSUE_TYPES_ORDER
-from app.services.acl.resource_acl_issue_scan import (
+from app.services.identity.acl.resource_acl_presentation import list_local_owner_candidates, serialize_resource_acl
+from app.services.identity.permissions.permission_catalog import PERM_CONSOLE_GROUPS
+from app.services.identity.acl.resource_acl_constants import SECURABLE_RESOURCE_TYPES
+from app.services.identity.acl.resource_acl_issue_detection import ISSUE_TYPES_ORDER
+from app.services.identity.acl.resource_acl_issue_scan import (
     aggregate_issue_counts,
     list_issue_page,
     scan_resources_with_issues,

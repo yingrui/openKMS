@@ -5,7 +5,7 @@ covers the SPA and API surface. Keys must match ``OPERATION_KEY_HINTS``."""
 
 from __future__ import annotations
 
-from app.services.permissions.permission_catalog import (
+from app.services.identity.permissions.permission_catalog import (
     PERM_ALL,
     PERM_CHANNELS_READ,
     PERM_CHANNELS_WRITE,

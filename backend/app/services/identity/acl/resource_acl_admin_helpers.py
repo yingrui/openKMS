@@ -13,7 +13,7 @@ from app.models.knowledge_base import KnowledgeBase
 from app.models.link_type import LinkType
 from app.models.object_type import ObjectType
 from app.models.wiki_models import WikiPage, WikiSpace
-from app.services.acl.resource_acl_constants import (
+from app.services.identity.acl.resource_acl_constants import (
     RT_ARTICLE_CHANNEL,
     RT_DATASET,
     RT_DOCUMENT_CHANNEL,

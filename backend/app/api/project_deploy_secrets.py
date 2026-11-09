@@ -24,7 +24,7 @@ from app.services.kubernetes.cluster_config import (
     openkms_secret_labels,
     upsert_secret_async,
 )
-from app.services.permissions.permission_catalog import (
+from app.services.identity.permissions.permission_catalog import (
     PERM_CONSOLE_KUBERNETES,
     PERM_PROJECTS_READ,
     PERM_PROJECTS_WRITE,

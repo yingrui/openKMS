@@ -24,7 +24,7 @@ from app.schemas.ontology_functions import (
 )
 from app.services.ontology.constants import CALL_DEPTH_HEADER, CALL_STACK_HEADER, MAX_FUNCTION_CALL_DEPTH
 from app.services.ontology import execution_service, function_service
-from app.services.permissions.permission_catalog import PERM_ONTOLOGY_READ, PERM_ONTOLOGY_WRITE
+from app.services.identity.permissions.permission_catalog import PERM_ONTOLOGY_READ, PERM_ONTOLOGY_WRITE
 
 router = APIRouter(
     prefix="/ontology/functions",

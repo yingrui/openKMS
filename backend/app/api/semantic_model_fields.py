@@ -33,7 +33,7 @@ from app.services.data_layer.semantic_model_fields import (
     validate_field,
 )
 from app.services.data_layer.semantic_models import member_ids
-from app.services.permissions.permission_catalog import PERM_DATA_WRITE
+from app.services.identity.permissions.permission_catalog import PERM_DATA_WRITE
 
 # Reading a model's fields is part of querying it, so it follows the data-plane gate
 # (`require_model_access`) rather than the Catalog operation key.

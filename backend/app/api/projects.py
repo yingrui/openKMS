@@ -40,8 +40,8 @@ from app.schemas.project import (
     ProjectResponse,
     ProjectUpdate,
 )
-from app.services.acl.acl_store import bootstrap_owner_acl
-from app.services.acl.resource_acl_constants import RT_PROJECT
+from app.services.identity.acl.acl_store import bootstrap_owner_acl
+from app.services.identity.acl.resource_acl_constants import RT_PROJECT
 from app.services.agent.agent_session_api_key import revoke_session_api_key
 from app.services.comments.comment_resource_types import COMMENT_RT_PROJECT
 from app.services.deep_agents.checkpointer import delete_conversation_thread
@@ -54,7 +54,7 @@ from app.services.agent.agent_skill_install import (
 from app.services.agent.agent_skills_registry import validate_skill_id
 from app.services.deep_agents import git_service
 from app.services.platform.feature_toggles import require_agents_feature
-from app.services.permissions.permission_catalog import PERM_PROJECTS_READ, PERM_PROJECTS_WRITE
+from app.services.identity.permissions.permission_catalog import PERM_PROJECTS_READ, PERM_PROJECTS_WRITE
 from app.services.platform.project_fs import (
     delete_path,
     list_dir,

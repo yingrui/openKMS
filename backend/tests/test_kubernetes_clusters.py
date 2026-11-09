@@ -134,8 +134,8 @@ async def test_probe_connection_async_invalid_kubeconfig():
 
 
 def test_permission_patterns_include_kubernetes():
-    from app.services.permissions.permission_catalog import PERM_CONSOLE_KUBERNETES
-    from app.services.permissions.permission_default_patterns import default_patterns_for_key
+    from app.services.identity.permissions.permission_catalog import PERM_CONSOLE_KUBERNETES
+    from app.services.identity.permissions.permission_default_patterns import default_patterns_for_key
 
     fe, be = default_patterns_for_key(PERM_CONSOLE_KUBERNETES)
     assert "/console/kubernetes" in fe

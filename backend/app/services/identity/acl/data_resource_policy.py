@@ -11,7 +11,7 @@ from app.models.knowledge_base import KnowledgeBase
 from app.models.link_type import LinkType
 from app.models.object_type import ObjectType
 from app.models.wiki_models import WikiSpace
-from app.services.acl.resource_acl_constants import (
+from app.services.identity.acl.resource_acl_constants import (
     RT_DATASET,
     RT_EVALUATION,
     RT_GLOSSARY,
@@ -20,7 +20,7 @@ from app.services.acl.resource_acl_constants import (
     RT_OBJECT_TYPE,
     RT_WIKI_SPACE,
 )
-from app.services.acl.resource_acl_service import (
+from app.services.identity.acl.resource_acl_service import (
     channel_allowed_for_document_upload,
     document_passes_scoped_predicate,
     document_visible_via_channel,

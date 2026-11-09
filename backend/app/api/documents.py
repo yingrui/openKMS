@@ -46,7 +46,7 @@ from app.schemas.document import (
     MetadataUpdateBody,
     ParsingResultResponse,
 )
-from app.services.acl.data_scope import scope_applies
+from app.services.identity.acl.data_scope import scope_applies
 from app.services.channels.channel_scope import require_document_channel_write
 from app.services.channels.channel_list_filter import channel_subtree_ids_for_list
 from app.services.documents.document_scope import (
@@ -55,7 +55,7 @@ from app.services.documents.document_scope import (
     require_document_read,
 )
 from app.services.documents.document_lifecycle import document_current_sql
-from app.services.acl.resource_acl_constants import PERM_READ, PERM_WRITE, RT_DOCUMENT_CHANNEL
+from app.services.identity.acl.resource_acl_constants import PERM_READ, PERM_WRITE, RT_DOCUMENT_CHANNEL
 from app.services.documents.metadata_extraction import extract_metadata, resolve_extraction_schema_for_llm
 from app.services.documents.document_page_index import (
     maybe_upload_page_index_from_markdown,

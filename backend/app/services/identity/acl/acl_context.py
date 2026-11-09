@@ -9,7 +9,7 @@ from app.config import settings
 from app.models.article_channel import ArticleChannel
 from app.models.document_channel import DocumentChannel
 from app.models.resource_acl import ResourceAclEntry
-from app.services.acl.resource_acl_constants import RT_ARTICLE_CHANNEL, RT_DOCUMENT_CHANNEL
+from app.services.identity.acl.resource_acl_constants import RT_ARTICLE_CHANNEL, RT_DOCUMENT_CHANNEL
 
 async def _acl_entries_for_resources(
     db: AsyncSession, pairs: list[tuple[str, str]]

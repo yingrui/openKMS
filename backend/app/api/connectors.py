@@ -60,7 +60,7 @@ from app.services.schedules.scheduled_triggers import (
     upsert_connector_sync_trigger,
 )
 from app.services.connectors.sync_range import parse_sync_date_range
-from app.services.permissions.permission_catalog import (
+from app.services.identity.permissions.permission_catalog import (
     PERM_CONNECTORS_READ,
     PERM_CONNECTORS_WRITE,
     PERM_CONSOLE_DATASETS,

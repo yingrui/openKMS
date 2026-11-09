@@ -5,7 +5,7 @@ Other permission rows are created by admins (see permission reference API for hi
 
 from __future__ import annotations
 
-from app.services.permissions.permission_catalog import PERM_ALL
+from app.services.identity.permissions.permission_catalog import PERM_ALL
 
 
 def default_permission_seed_rows() -> list[dict[str, object]]:

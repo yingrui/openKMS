@@ -13,12 +13,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.api.auth import require_auth
 from app.database import get_db
 from app.schemas.channel import ChannelCreate, ChannelMergeBody, ChannelReorderBody
-from app.services.acl.context_guard import (
+from app.services.identity.acl.context_guard import (
     require_channel_in_scope,
     require_channel_write,
     scoped_channel_ids,
 )
-from app.services.acl.data_scope import bootstrap_owner_acl
+from app.services.identity.acl.data_scope import bootstrap_owner_acl
 from app.services.channels.channel_tree_list import paginate_channels_for_tree
 
 

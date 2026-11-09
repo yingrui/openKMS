@@ -30,7 +30,7 @@ from app.services.ontology.function_external_usage import function_external_serv
 from app.services.ontology.builtin_action_service import input_schema_for_action
 from app.services.ontology.input_schema import validate_input_against_schema
 from app.services.ontology.object_neo4j_store import resolve_object_props_for_action
-from app.services.permissions.permission_catalog import PERM_ONTOLOGY_READ, PERM_ONTOLOGY_WRITE
+from app.services.identity.permissions.permission_catalog import PERM_ONTOLOGY_READ, PERM_ONTOLOGY_WRITE
 
 router = APIRouter(prefix="/ontology/action-types", tags=["ontology-action-types"], dependencies=[Depends(require_auth)])
 

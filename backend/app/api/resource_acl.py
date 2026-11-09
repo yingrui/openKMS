@@ -11,7 +11,7 @@ from app.database import get_db
 from app.models.access_group import AccessGroup
 from app.models.resource_acl import ResourceAclEntry
 from app.schemas.resource_acl import OwnerCandidateOut, ResourceAclOut, ResourceAclPut
-from app.services.acl.resource_acl_constants import (
+from app.services.identity.acl.resource_acl_constants import (
     GRANTEE_AUTHENTICATED,
     GRANTEE_GROUP,
     GRANTEE_USER,
@@ -24,12 +24,12 @@ from app.services.acl.resource_acl_constants import (
     SECURABLE_RESOURCE_TYPES,
     parse_perm_string,
 )
-from app.services.acl.resource_acl_presentation import (
+from app.services.identity.acl.resource_acl_presentation import (
     list_local_owner_candidates,
     resource_creator_identity,
     serialize_resource_acl,
 )
-from app.services.acl.resource_acl_service import (
+from app.services.identity.acl.resource_acl_service import (
     check_resource_access,
     list_acl_entries,
     normalize_owner_grantee_id,

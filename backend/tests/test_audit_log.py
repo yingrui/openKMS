@@ -452,7 +452,7 @@ class TestSignInThroughSyncSession:
         async def upsert(*_a, **_k) -> None: ...
 
         # The route imports this inside the function, so the patch belongs on the service module.
-        from app.services.users import oidc_identity_service
+        from app.services.identity.users import oidc_identity_service
 
         monkeypatch.setattr(oidc_identity_service, "upsert_oidc_identity_from_jwt", upsert)
         monkeypatch.setattr(auth_module, "record_session_event_once", fake_record)

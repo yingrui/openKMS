@@ -44,7 +44,7 @@ async def resolve_subject_display(
     from app.models.user_api_key import UserApiKey
 
     if settings.auth_mode == "oidc":
-        from app.services.users.oidc_identity_service import display_label_for_oidc_sub
+        from app.services.identity.users.oidc_identity_service import display_label_for_oidc_sub
 
         directory_label = await display_label_for_oidc_sub(db, subject)
         if directory_label:
@@ -409,7 +409,7 @@ async def normalize_user_grantee_id(
         oidc_sub = r.scalar_one_or_none()
         if oidc_sub:
             return oidc_sub
-    from app.services.users.oidc_identity_service import lookup_oidc_sub_by_alias
+    from app.services.identity.users.oidc_identity_service import lookup_oidc_sub_by_alias
 
     directory_sub = await lookup_oidc_sub_by_alias(db, raw)
     if directory_sub:
