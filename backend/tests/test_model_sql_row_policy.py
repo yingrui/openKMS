@@ -10,9 +10,16 @@ Anything the substitution would break is rejected instead of run unfiltered.
 
 from __future__ import annotations
 
+from types import SimpleNamespace
+
 import pytest
 
-from app.services.data_layer.model_sql import constrain_base_policy
+from app.services.data_layer.model_sql import (
+    RelationShapeError,
+    assert_tables_allowed,
+    constrain_base_policy,
+    relation_refs,
+)
 from app.services.data_layer.query import QueryError
 
 CONDITIONS = ['rpbase."region" = :rp0']
@@ -195,3 +202,83 @@ def test_an_entity_level_condition_executes_as_an_exists(tmp_path):
     rows = conn.execute(sql.replace(":rpc0_0", "?"), list(params.values())).fetchall()
     # Only the east customer's rows survive; the rewrite must not drop or widen them.
     assert sorted(r[1] for r in rows) == [100.0, 300.0]
+
+
+class TestRelationScannerCannotBeBypassed:
+    """A relation the scanner misses is a table the allowlist never checked — and rows the policy never filtered.
+
+    Every case below is valid PostgreSQL. A regex that required `\\s+` after FROM read `FROM"t"` and `FROM/**/"t"` as
+    *no relation at all*, so `extract_relations` returned an empty set (allowlist passes vacuously) and
+    `constrain_base_policy` returned the statement unchanged ("dimension-only"). One missing space removed the row
+    restriction.
+    """
+
+    MODEL = [SimpleNamespace(schema_name="tushare", table_name="daily_basic", id="ds-1")]
+    RESTRICTION = ['"rpbase"."ts_code" = :rp0']
+
+    @pytest.mark.parametrize(
+        "sql",
+        [
+            'SELECT * FROM "tushare"."daily_basic"',
+            'SELECT * FROM"tushare"."daily_basic"',
+            'SELECT * FROM/**/"tushare"."daily_basic"',
+            "SELECT * FROM /*c*/ \"tushare\".\"daily_basic\"",
+            'SELECT * FROM (SELECT * FROM "tushare"."daily_basic") x',
+        ],
+    )
+    def test_every_shape_that_names_the_table_is_filtered(self, sql: str):
+        out = constrain_base_policy(
+            sql,
+            base_schema="tushare",
+            base_table="daily_basic",
+            conditions=self.RESTRICTION,
+            base_alias="rpbase",
+        )
+        assert "WHERE" in out, f"row restriction was dropped for: {sql}"
+
+    @pytest.mark.parametrize(
+        "sql",
+        [
+            'SELECT * FROM"tushare"."secret"',
+            'SELECT * FROM/**/"tushare"."secret"',
+        ],
+    )
+    def test_the_allowlist_sees_the_table_even_without_a_space(self, sql: str):
+        with pytest.raises(QueryError, match="not in this semantic model"):
+            assert_tables_allowed(sql, self.MODEL)
+
+    @pytest.mark.parametrize(
+        "sql",
+        [
+            'SELECT * FROM ONLY "tushare"."daily_basic"',
+            'SELECT * FROM ( "tushare"."daily_basic" ) x',
+            'SELECT * FROM',
+        ],
+    )
+    def test_a_shape_it_cannot_read_is_refused_not_run(self, sql: str):
+        with pytest.raises(RelationShapeError):
+            relation_refs(sql)
+
+
+class TestAnchorUsesTheSameScanner:
+    """The anchor decides *which* dataset a policy compiles against — the second place that assumed `\\s+`.
+
+    With `FROM"t"` the anchor regex found nothing, so `base_dataset` was None and the query was refused with "does not
+    read a model table as its FROM". Safe, but wrong: the statement does read it, and a caller who wrote one space less
+    got a refusal that reads like a bug in their SQL. One scanner answers both questions now.
+    """
+
+    MODEL = [SimpleNamespace(schema_name="tushare", table_name="daily_basic", id="ds-1")]
+
+    @pytest.mark.parametrize(
+        "sql",
+        [
+            'SELECT * FROM "tushare"."daily_basic"',
+            'SELECT * FROM"tushare"."daily_basic"',
+            'SELECT * FROM/**/"tushare"."daily_basic"',
+        ],
+    )
+    def test_the_anchor_dataset_is_found_for_every_shape(self, sql: str):
+        from app.services.data_layer.model_sql import _anchor_dataset_id
+
+        assert _anchor_dataset_id(sql, self.MODEL) == "ds-1"

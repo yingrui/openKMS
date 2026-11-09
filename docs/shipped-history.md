@@ -2,6 +2,22 @@
 
 Delivered work and design history, moved out of the [Development plan](development_plan.md).
 
+### A space after FROM removed the row restriction (2026-11) — done
+
+- SQL Lab rewrites a restricted query by finding the base table and wrapping it: `FROM t` → `FROM (SELECT * FROM t AS
+  rpbase WHERE <policy>) AS rpbase`. Finding it was a regex, and the regex required `\s+` after FROM/JOIN.
+- PostgreSQL treats a comment as whitespace and does not need a space before a quoted name, so **`FROM"tushare"."daily_basic"`
+  and `FROM/**/"tushare"."daily_basic"` are valid SQL that the regex read as "no relation at all"** — the allowlist passed
+  vacuously (`extract_relations` returned an empty set) and `constrain_base_policy` returned the statement unchanged under
+  its "dimension-only" branch. One missing space turned a restricted read into a full table read.
+- **One scanner now**, used by extraction, the span lookup, the anchor and the shape check: it skips whitespace *and*
+  comments, accepts a `(SELECT …)` subquery, and **raises** on anything it cannot read — a relation it cannot see must
+  never mean "unrestricted". `FROM ONLY`, a parenthesised table name and a dangling FROM are refused with a reason.
+- A second copy of the same `\s+` assumption lived in the anchor regex (`_FROM_HEAD`): `FROM"t"` found no anchor, so the
+  query was refused ("does not read a model table as its FROM") — safe, but a refusal for SQL that is correct.
+- Verified end to end against the live restricted model (`industry = 半导体`): the four shapes — plain, no space, comment,
+  subquery — all return **125,430** rows, against **3,687,500** unrestricted.
+
 ### Quality severity: a failure's meaning, not just its status (2026-11) — done
 
 - A run reports a **fact** — "51,425 of 725,192 rows are outside the range". Whether anyone should act on it is a

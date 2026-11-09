@@ -29,17 +29,79 @@ from app.services.data_layer.sql_runner import run_readonly
 MAX_SQL_CHARS = 20_000
 DEFAULT_LIMIT = 100
 
-# Relation after FROM / JOIN / UPDATE / INTO — skip subquery ``(``.
-_RELATION = re.compile(
-    r"""(?ix)
-    \b(?:from|join|update|into)\s+
-    (?!\()
-    (
-      (?:(?:"[^"]+"|[A-Za-z_][\w$]*)\s*\.\s*)?
-      (?:"[^"]+"|[A-Za-z_][\w$]*)
-    )
+#: Whitespace *and* comments: in SQL a comment is whitespace, so `FROM"t"` and `FROM/**/"t"` are both valid
+#: PostgreSQL — and a regex that insists on `\s+` reads neither, which silently emptied the relation list (no allowlist
+#: check, and no row restriction either). Anything that follows FROM/JOIN is now parsed, not pattern-matched.
+_SKIP = re.compile(r"(?:\s+|--[^\n]*|/\*.*?\*/)+", re.S)
+_KEYWORD = re.compile(r"\b(?:from|join)\b", re.I)
+_NAME = re.compile(r'"(?:[^"]|"")*"|[A-Za-z_][\w$]*')
+
+
+class RelationShapeError(ValueError):
+    """A FROM/JOIN the scanner cannot read. Refused, because "not recognised" must never mean "unrestricted"."""
+
+
+def _skip_ws(sql: str, at: int) -> int:
+    match = _SKIP.match(sql, at)
+    return match.end() if match else at
+
+
+def _parse_name(sql: str, at: int) -> tuple[str, int] | None:
+    match = _NAME.match(sql, at)
+    if not match:
+        return None
+    return match.group(0), match.end()
+
+
+def relation_refs(sql: str) -> list[tuple[int, int, str | None, str]]:
+    """`(start, end, schema_or_None, table)` for every relation after FROM / JOIN.
+
+    Skips whitespace and comments, accepts a subquery `(SELECT …)` (its own FROM is scanned too, since every keyword is
+    visited), and **raises** on anything else — `ONLY`, a parenthesised table name, a stray operator. The caller refuses
+    the statement rather than running it unread: a relation the scanner missed is a table the allowlist never checked.
     """
-)
+    out: list[tuple[int, int, str | None, str]] = []
+    for match in _KEYWORD.finditer(sql):
+        at = _skip_ws(sql, match.end())
+        if at >= len(sql):
+            raise RelationShapeError("SQL ends right after FROM/JOIN.")
+        if sql[at] == "(":
+            # A subquery: legal, and its relations are found by this same scan. A parenthesised *table name* is not.
+            inner = _skip_ws(sql, at + 1)
+            word = _NAME.match(sql, inner)
+            if not word or word.group(0).lower() not in ("select", "with"):
+                raise RelationShapeError(
+                    "Wrap a subquery in FROM (SELECT …), or name the table directly: FROM schema.table."
+                )
+            continue
+        only = _NAME.match(sql, at)
+        if only and only.group(0).lower() == "only":
+            raise RelationShapeError(
+                "FROM ONLY is not supported in SQL Lab; drop ONLY (datasets never use table inheritance)."
+            )
+        parts: list[str] = []
+        start: int | None = None
+        end = at
+        while True:
+            parsed = _parse_name(sql, end)
+            if not parsed:
+                break
+            name, end = parsed
+            start = at if start is None else start
+            parts.append(_unquote(name))
+            after = _skip_ws(sql, end)
+            if after < len(sql) and sql[after] == ".":
+                end = _skip_ws(sql, after + 1)
+                continue
+            break
+        if not parts:
+            token = sql[at : at + 24].split()[0] if sql[at : at + 24].strip() else sql[at : at + 1]
+            raise RelationShapeError(
+                f"Cannot read the relation after {match.group(0).upper()} ({token!r}). "
+                "Name the table as schema.table or quote it."
+            )
+        out.append((start, end, parts[-2] if len(parts) >= 2 else None, parts[-1]))
+    return out
 
 
 def normalize_lab_sql(sql: str) -> str:
@@ -82,15 +144,10 @@ def extract_relations(sql: str) -> set[tuple[str | None, str]]:
     Returns ``{(schema_or_None, table)}`` with identifiers unquoted. Schema-less
     names use ``None`` for schema (resolved against the allowlist's default).
     """
-    out: set[tuple[str | None, str]] = set()
-    for match in _RELATION.finditer(sql):
-        raw = match.group(1)
-        parts = [p.strip() for p in re.split(r"\s*\.\s*", raw) if p.strip()]
-        if len(parts) == 1:
-            out.add((None, _unquote(parts[0])))
-        elif len(parts) >= 2:
-            out.add((_unquote(parts[-2]), _unquote(parts[-1])))
-    return out
+    try:
+        return {(schema, table) for _s, _e, schema, table in relation_refs(sql)}
+    except RelationShapeError as exc:
+        raise QueryError(str(exc), QueryFailure("QUERY_INVALID_REQUEST", REQUEST)) from exc
 
 
 def _allowed_keys(datasets: list[Dataset]) -> dict[tuple[str, str], Dataset]:
@@ -156,11 +213,6 @@ _NOT_ALIAS = frozenset(
     """.split()
 )
 _ALIAS_AFTER = re.compile(r"\s+(?:as\s+)?(\"[^\"]+\"|[A-Za-z_][\w$]*)", re.IGNORECASE)
-#: The relation right after the statement's first top-level `FROM`.
-_FROM_HEAD = re.compile(
-    r"""\bfrom\s+(?!\()((?:(?:"[^"]+"|[A-Za-z_][\w$]*)\s*\.\s*)?(?:"[^"]+"|[A-Za-z_][\w$]*))""",
-    re.IGNORECASE,
-)
 _QUALIFIED_REF = re.compile(
     r"""(\"[^\"]+\"|[A-Za-z_][\w$]*)\s*\.\s*(\"[^\"]+\"|[A-Za-z_][\w$]*)\s*\.\s*(\"[^\"]+\"|[A-Za-z_][\w$]*)"""
 )
@@ -168,15 +220,10 @@ _QUALIFIED_REF = re.compile(
 
 def _relation_span_matches(sql: str) -> list[tuple[int, int, str, str | None]]:
     """`(start, end, schema_or_empty, table)` for each FROM/JOIN relation, with its span."""
-    out: list[tuple[int, int, str, str | None]] = []
-    for match in _RELATION.finditer(sql):
-        raw = match.group(1)
-        parts = [p.strip() for p in re.split(r"\s*\.\s*", raw) if p.strip()]
-        if len(parts) == 1:
-            out.append((match.start(1), match.end(1), "", _unquote(parts[0])))
-        else:
-            out.append((match.start(1), match.end(1), _unquote(parts[-2]), _unquote(parts[-1])))
-    return out
+    try:
+        return [(start, end, schema or "", table) for start, end, schema, table in relation_refs(sql)]
+    except RelationShapeError as exc:
+        raise QueryError(str(exc), QueryFailure("QUERY_INVALID_REQUEST", REQUEST)) from exc
 
 
 def _alias_after(sql: str, end: int) -> tuple[str, int] | None:
@@ -263,7 +310,16 @@ def constrain_base_policy(
         and (not schema or schema.lower() == base_schema.lower())
     ]
     if not spans:
-        # Dimension-only statements carry no base rows, so no policy to apply.
+        # A statement that never reads the base table has no base rows to restrict (a dimension-only query, or one on
+        # another model table). But if it *names* the restricted table and the scan still found no span, the scanner is
+        # wrong — and running the statement plain would hand over exactly the rows the policy exists to hide.
+        named = re.search(rf"\b{re.escape(base_table)}\b", sql, re.IGNORECASE)
+        if named:
+            raise QueryError(
+                "SQL Lab could not apply a row restriction to this statement. "
+                "Name the restricted table directly: FROM schema.table [AS rpbase].",
+                QueryFailure("QUERY_INVALID_REQUEST", REQUEST),
+            )
         return sql
 
     where = " AND ".join(conditions)
@@ -291,15 +347,22 @@ def constrain_base_policy(
     return out
 
 
+def _has_relation(sql: str) -> bool:
+    """Whether the statement reads at least one relation (a scanner refusal is the caller's to judge)."""
+    try:
+        return bool(relation_refs(sql))
+    except RelationShapeError:
+        return False
+
+
 def _anchor_dataset_id(sql: str, datasets: list[Dataset]) -> str | None:
     """The model dataset a statement's first FROM relation refers to."""
-    match = _FROM_HEAD.search(sql)
-    if not match:
+    refs = _relation_span_matches(sql) if _has_relation(sql) else []
+    if not refs:
         return None
-    raw = match.group(1)
-    parts = [p.strip() for p in re.split(r"\s*\.\s*", raw) if p.strip()]
-    table = _unquote(parts[-1]).lower()
-    schema = _unquote(parts[-2]).lower() if len(parts) >= 2 else None
+    _start, _end, schema, table = refs[0]
+    table = table.lower()
+    schema = schema.lower() or None
     for dataset in datasets:
         if (dataset.table_name or "").lower() != table:
             continue
