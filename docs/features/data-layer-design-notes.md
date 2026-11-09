@@ -66,6 +66,16 @@ differs: the Playground addresses declared **fields**, the Data tab addresses **
 ## Data tab
 
 - `POST /api/datasets/{id}/rows/query` replaces `GET /rows` (no alias). A structured filter set is one
+- **A page's total is not worth 14 s.** `SELECT count(*)` over `public.factor_values` (65.9M rows, 24 GB)
+  took ~13.9 s — past the 10 s browse timeout, so the grid returned `QUERY_TIMEOUT` and rendered nothing
+  while the page query itself took 0.00 s. The total now has three states: an exact count for small
+  tables, `reltuples` (~0.5 ms, ±5%) for an unfiltered big one, and a filtered count on a 3 s savepointed
+  leash that degrades to `total: null` / `total_kind=unknown` instead of failing the page. Measured on the
+  same table: 12.1 s → timeout became 0.17 s with an estimate; an indexed filter 0.04 s exact; an
+  unindexed filter 3.1 s with the rows still delivered. Sorting by an unindexed column (`ORDER BY
+  trade_date`) remains a ~13 s sequential sort and still times out — that is an index question on the
+  table, not a paging one.
+
   object, not JSON encoded into a query string.
 - Keyset paging still requires `sort`; filtering does not change that.
 - Temporal columns get a date picker with quick ranges (last 7/30 days, this month, last month, this

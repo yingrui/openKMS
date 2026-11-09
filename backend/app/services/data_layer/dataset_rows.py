@@ -70,14 +70,15 @@ TotalKind = Literal["exact", "estimated", "unknown"]
 def choose_total_source(estimate: int | None, has_filters: bool) -> Literal["exact", "estimate", "bounded"]:
     """Decide how to answer "how many rows" without walking a huge table.
 
-    - small (or never-analysed) table → count it: it is cheap and exactness is free there.
+    - small table → count it: it is cheap and exactness is free there.
     - big unfiltered browse → the planner's estimate. Nobody needs the last 5% of 66M.
-    - big filtered browse → count, but on a short leash: a filter usually hits an index, and the
-      caller can live with "unknown" when it does not.
+    - never analysed, or a filter over a big table → count, but on a short leash: a filter usually
+      hits an index, and the caller can live with "unknown" when it does not.
     """
-    small = estimate is not None and estimate < EXACT_COUNT_MAX_ROWS
-    if small:
+    if estimate is not None and estimate < EXACT_COUNT_MAX_ROWS:
         return "exact"
+    if estimate is None:
+        return "bounded"
     if not has_filters:
         return "estimate"
     return "bounded"

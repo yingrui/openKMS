@@ -469,6 +469,8 @@
     "filterListPlaceholder": "a, b, c",
     "filterRows_other": "{{count}} 行",
     "filterCount_other": "{{count}} 个筛选",
+    "filterRowsApprox": "≈{{count}} 行",
+    "filterRowsUnknown": "行数未统计",
     "filterCapped": "本页已满",
     "filterNoMatch": "这个区间里没有数据",
     "filterRemove": "移除筛选",

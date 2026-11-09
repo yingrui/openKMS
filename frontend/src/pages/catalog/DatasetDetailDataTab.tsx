@@ -201,6 +201,23 @@ export function DatasetDataTab() {
   const rows = rowsData?.rows ?? [];
   const columns = rowsData?.columns ?? [];
   const total = rowsData?.total ?? 0;
+  // A big table reports an estimate or nothing rather than walking 66M rows to count them.
+  const countLabel = (() => {
+    if (!rowsData) return '';
+    const base =
+      rowsData.total == null
+        ? t('datasets.filterRowsUnknown')
+        : rowsData.total_kind === 'estimated'
+          ? t('datasets.filterRowsApprox', { count: rowsData.total })
+          : t('datasets.filterRows', { count: rowsData.total });
+    return [
+      base,
+      appliedFilters.length > 0 ? t('datasets.filterCount', { count: appliedFilters.length }) : null,
+      rowsData.capped ? t('datasets.filterCapped') : null,
+    ]
+      .filter(Boolean)
+      .join(' · ');
+  })();
 
   const rowId = useCallback(
     (row: RowData, idx: number): string =>
@@ -351,15 +368,7 @@ export function DatasetDataTab() {
           <div className="dataset-detail-data">
             <div className="dataset-filter-bar">
               <div className="dataset-filter-bar__head">
-                <span className="dataset-filter-bar__count">
-                  {rowsData
-                    ? `${t('datasets.filterRows', { count: rowsData.total })}${
-                        appliedFilters.length > 0
-                          ? ` · ${t('datasets.filterCount', { count: appliedFilters.length })}`
-                          : ''
-                      }${rowsData.capped ? ` · ${t('datasets.filterCapped')}` : ''}`
-                    : ''}
-                </span>
+                <span className="dataset-filter-bar__count">{countLabel}</span>
                 <div className="dataset-filter-bar__actions">
                   <SaveFindingDialog
                     draft={datasetFindingDraft({

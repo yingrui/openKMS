@@ -170,8 +170,13 @@ export interface DatasetRowsResponse {
   /** The table's columns — present even when nothing matched, so the header still renders. */
   columns: string[];
   rows: Record<string, unknown>[];
-  /** Rows matching the filters (not the whole table). */
-  total: number;
+  /**
+   * Rows matching the filters (not the whole table). `null` when the table was too big to count
+   * inside the browse budget — read `total_kind` before showing it.
+   */
+  total: number | null;
+  /** `exact` · `estimated` (planner estimate, ±5%) · `unknown` (the count gave up). */
+  total_kind: 'exact' | 'estimated' | 'unknown';
   limit: number;
   offset: number;
   next_after: string | null;

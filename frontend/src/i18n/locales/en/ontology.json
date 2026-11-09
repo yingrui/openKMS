@@ -476,6 +476,8 @@
     "filterRows_other": "{{count}} rows",
     "filterCount_one": "{{count}} filter",
     "filterCount_other": "{{count}} filters",
+    "filterRowsApprox": "≈{{count}} rows",
+    "filterRowsUnknown": "rows (total not counted)",
     "filterCapped": "page full",
     "filterNoMatch": "Nothing in this range",
     "filterRemove": "Remove filter",
