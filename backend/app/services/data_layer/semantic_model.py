@@ -32,7 +32,7 @@ from app.services.data_layer.expressions import ANSI, dialect_sql, normalize_exp
 from app.services.data_layer.semantic_model_fields import OSSIE_DATATYPES
 from app.services.data_layer.semantic_models import member_ids, set_members
 from app.services.ontology.dataset_tables import is_valid_identifier
-from app.services.ontology.dataset_tables import dataset_label
+from app.services.dataset_label import dataset_label
 
 OSSIE_VERSION = "0.2.0.dev0"
 VENDOR = "OPENKMS"

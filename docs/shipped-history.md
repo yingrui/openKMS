@@ -2,6 +2,19 @@
 
 Delivered work and design history, moved out of the [Development plan](development_plan.md).
 
+### Import cycles are measured, not described (2026-11) — done
+
+- A review of the package layout found the direction sound (`api → services → models`; the data layer is allowed to sit
+  above the ontology) and **three** package cycles: `jobs ⇄ services/schedules`, `services/agent ⇄ services/deep_agents`,
+  and `services/ontology ⇄ services/acl` — the last one created that morning, when `dataset_label` was put in the ontology
+  package and the ACL admin surface had to import upward to name a dataset.
+- `dataset_label` moved to `services/dataset_label.py`: it depends on nothing but the model, so it belongs **below** both.
+  Cycles: three → two.
+- `scripts/check_import_cycles.py` runs in `check.sh` as a ratchet: a cycle that is not in
+  `scripts/import-cycles-baseline.txt` fails, and a baseline entry that no longer exists also fails. Verified with a
+  positive control (adding one import to `dataset_label` fails the check) — the same standard as every other guard in the
+  repo, because an architecture described in prose is a claim nobody runs.
+
 ### The SQL scanner is a module, and quoting is one function (2026-11) — done
 
 - Two refactor findings from a review, both of the same shape: *several copies of a rule that has to agree with itself*.

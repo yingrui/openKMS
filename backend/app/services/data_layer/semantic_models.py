@@ -15,7 +15,7 @@ from app.models.metric_definition import MetricDefinition
 from app.models.semantic_model import SemanticModel
 from app.models.semantic_model_dataset import SemanticModelDataset
 from app.models.semantic_model_field import SemanticModelField
-from app.services.ontology.dataset_tables import dataset_label
+from app.services.dataset_label import dataset_label
 
 
 class SemanticModelError(ValueError):

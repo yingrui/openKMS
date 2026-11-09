@@ -38,6 +38,9 @@ echo "→ api doc routes"
 # behind than scripts/api-doc-baseline.txt allows (a ratchet that only shrinks).
 uv run python scripts/check_api_doc.py || status=1
 
+echo "→ import cycles (ratchet)"
+uv run python scripts/check_import_cycles.py || status=1
+
 echo "→ pytest"
 uv run pytest -q || status=1
 
