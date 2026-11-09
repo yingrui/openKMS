@@ -25,6 +25,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from typing import Any, Literal
+from app.services.data_layer.sql_build import quote_identifier
 
 RULE_TYPES = ("not_null", "unique", "range", "referential", "freshness", "sql")
 
@@ -62,16 +63,12 @@ class RuleQuery:
     detail: dict[str, Any] = field(default_factory=dict)
 
 
-def _quote(identifier: str) -> str:
-    """Identifiers are validated by the caller (``is_valid_identifier``), then quoted here."""
-    return f'"{identifier}"'
-
 
 def render_rule_sql(body: str, table: str, col: str | None) -> str:
     """Fill `{{table}}` / `{{column}}` in an author's query. `table` arrives quoted and validated."""
     rendered = body.replace("{{table}}", table)
     if col:
-        rendered = rendered.replace("{{column}}", _quote(col))
+        rendered = rendered.replace("{{column}}", quote_identifier(col))
     else:
         rendered = rendered.replace("{{column}}", "NULL")
     return rendered
@@ -112,7 +109,7 @@ def build_rule_query(
     `table` and `ref_table` arrive quoted and validated; values (min, max, max_age_days) are **bound**
     as parameters, never interpolated — the declarative types used to paste them into the string.
     """
-    col = _quote(column) if column else None
+    col = quote_identifier(column) if column else None
 
     def require_col() -> str:
         if col is None:
@@ -169,7 +166,7 @@ def build_rule_query(
             sql=(
                 f"SELECT count(*) FILTER (WHERE t.{c} IS NOT NULL) AS checked, "
                 f"count(*) FILTER (WHERE t.{c} IS NOT NULL AND NOT EXISTS ("
-                f"SELECT 1 FROM {ref_table} r WHERE r.{_quote(ref_col)} = t.{c})) AS failed "
+                f"SELECT 1 FROM {ref_table} r WHERE r.{quote_identifier(ref_col)} = t.{c})) AS failed "
                 f"FROM {table} t"
             ),
             shape="rows",

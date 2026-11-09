@@ -52,14 +52,12 @@ from app.services.data_layer.sql_build import (
 )
 from app.services.data_layer.sql_runner import run_readonly
 from app.services.ontology.dataset_tables import is_valid_identifier
+from app.services.data_layer.sql_build import quote_identifier
 
 _BASE_ALIAS = "base"
 GRANULARITIES = ("second", "minute", "hour", "day", "week", "month", "quarter", "year")
 DEFAULT_LIMIT = 100
 
-
-def _quote(identifier: str) -> str:
-    return '"' + identifier.replace('"', '""') + '"'
 
 
 class QueryError(ValueError):
@@ -95,7 +93,7 @@ def field_sql(field: SemanticModelField, alias: str = _BASE_ALIAS) -> str:
                 f"Field '{field.name}' has an invalid column.",
                 QueryFailure("QUERY_UNKNOWN_COLUMN", DEFINITION),
             )
-        return f"{alias}.{_quote(field.column_name)}"
+        return f"{alias}.{quote_identifier(field.column_name)}"
     expr = dialect_sql(field.expression, ANSI)
     if not expr:
         raise QueryError(
@@ -128,7 +126,7 @@ def build_sql(
     limit: int,
 ) -> str:
     """Compose the statement: ``SELECT <dims>, (<metric>) AS value … [HAVING] [ORDER BY] LIMIT n``."""
-    select = [f'{expr} AS {_quote(alias)}' for expr, alias in dimensions]
+    select = [f'{expr} AS {quote_identifier(alias)}' for expr, alias in dimensions]
     select.append(f'({metric_expr}) AS "value"')
     sql = f'SELECT {", ".join(select)} FROM "{base.schema_name}"."{base.table_name}" base'
     if joins_sql:
@@ -228,7 +226,7 @@ def _definition_filters(
     except MetricError as exc:
         raise QueryError(str(exc), QueryFailure("QUERY_DEFINITION_INVALID", DEFINITION)) from exc
     return [
-        (f'{_BASE_ALIAS}.{_quote(f["column"])}', str(f["op"]), f.get("value"))
+        (f'{_BASE_ALIAS}.{quote_identifier(f["column"])}', str(f["op"]), f.get("value"))
         for f in cleaned
     ]
 

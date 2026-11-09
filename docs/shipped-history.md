@@ -2,6 +2,17 @@
 
 Delivered work and design history, moved out of the [Development plan](development_plan.md).
 
+### The SQL scanner is a module, and quoting is one function (2026-11) — done
+
+- Two refactor findings from a review, both of the same shape: *several copies of a rule that has to agree with itself*.
+- **`sql_scan.py`** — the scanner (which relations a statement names, and where) has no dependencies and answers a pure
+  security question, so it is its own module: `mask_quoted`, `relation_refs`, `RelationShapeError`. `model_sql.py` lost 125
+  lines and kept the SQL *policy* (shape check, allowlist, alias rules, injection). The translation into `QueryError`
+  stayed with the policy — the scanner raises, the caller decides what a refusal means.
+- **One `quote_identifier`** in `sql_build.py`, used by `rule_sql`, `model_sql`, `entity_scope` and `query`. There were six
+  copies in the data layer and **two behaviours**: `rule_sql`'s was `f'"{identifier}"'` with no doubling, safe only because
+  every caller validated first. The last line before SQL text is not where a second opinion should live.
+
 ### A string literal is not a table (2026-11) — done
 
 - The same scanner read keywords out of **string literals**: `SELECT 'from here'` was refused as "Table here is not in

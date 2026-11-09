@@ -46,6 +46,7 @@ from app.services.data_layer.row_policy import (
     validate_policy,
 )
 from app.services.ontology.dataset_tables import is_valid_identifier
+from app.services.data_layer.sql_build import quote_identifier
 
 QUALIFIER_SEP = "."
 
@@ -58,12 +59,9 @@ class EntityScopeError(ValueError):
         self.failure = failure or QueryFailure("ROW_POLICY_INVALID", REQUEST)
 
 
-def _quote(ident: str) -> str:
-    return '"' + str(ident).replace('"', '""') + '"'
-
 
 def _qualified(dataset: Dataset) -> str:
-    return f"{_quote(dataset.schema_name)}.{_quote(dataset.table_name)}"
+    return f"{quote_identifier(dataset.schema_name)}.{quote_identifier(dataset.table_name)}"
 
 
 def _split_column(column: str) -> tuple[str | None, str]:
@@ -390,7 +388,7 @@ def _chain_sql(
                 )
             left_col, right_col = (from_col, to_col) if forward else (to_col, from_col)
             terms.append(
-                f'{current_alias}.{_quote(left_col)} = {alias}.{_quote(right_col)}'
+                f'{current_alias}.{quote_identifier(left_col)} = {alias}.{quote_identifier(right_col)}'
             )
         if index == 0:
             joins_sql.append(f"{_qualified(other)} {alias}")
