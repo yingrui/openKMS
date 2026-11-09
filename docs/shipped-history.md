@@ -2,6 +2,22 @@
 
 Delivered work and design history, moved out of the [Development plan](development_plan.md).
 
+### `services/` became seven areas (2026-11) — done
+
+- 38 top-level names under `services/` (21 directories, 9 loose modules in the root, and the rest) became **seven areas**:
+  `platform`, `identity`, `ontology`, `data`, `content`, `workspace`, `runtime`. The order is the measured dependency
+  order, so every move kept a file at its level or moved it down; the cycle check read zero at every step.
+- Done one area per commit (4.1–4.7), bottom-up, because a diff whose direction is provably downward is a diff
+  somebody can review. Then `data.data_layer.*` → `data.*`: the name said "data" three times and named a layer inside an
+  area.
+- **Two inversions surfaced that the coarser granularity made visible, and neither came from the move.** `app/schemas`
+  imported a service to compute a response field that decides whether a row is searchable — the predicate is pure, so it
+  moved below both into `app/lifecycle.py`, and the two byte-identical per-model copies collapsed into one. And `projects`
+  was in `workspace` while `deep_agents` imported it and it imported `deep_agents` back: it is the agent's own workspace,
+  so it belongs to `runtime`.
+- `platform/` stays flat with 16 modules on purpose: they are small independent leaves, and grouping a list is the thing
+  the split was meant to undo.
+
 ### Four apps lived in one directory called `ontology-manager` (2026-11) — done
 
 - `frontend/src/pages/ontology-manager/` held 110 TS modules and 6 sheets: the **Ontology Manager** itself (object types,

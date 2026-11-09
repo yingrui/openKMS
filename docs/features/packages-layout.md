@@ -1,11 +1,54 @@
 # Package layout: splitting `services/` and `pages/`
 
-**Status:** **stage 1 and 2 done** (2026-11). Stage 3 is the decision point; stage 4 (Option B) not started. Written after a
-layout review and the split of `pages/ontology-manager/` into four apps.
+**Status:** **done** (2026-11) — stages 1, 2 and the seven-area split (4.1–4.7) are in, plus the `data_layer` rename. Written
+after a layout review and the split of `pages/ontology-manager/` into four apps.
 
 The two large packages are large in the same way: a **name that describes a layer**, holding the code of several areas.
 `services/` is half the backend and `pages/` is two thirds of the frontend, so "where does this live" answers itself for
 neither. This page is the plan to fix that — in stages that each ship on their own.
+
+## Result
+
+```
+backend/app/services/           38 top-level names → 7 areas
+  platform/    16  boundaries, storage, audit, credentials, openai_compat, feature_toggles, internal_service_auth,
+                   dataset_label, project_fs, chunked_upload, openkms_cli_subprocess, heartbeat, …
+  identity/     3  users, acl, permissions
+  ontology/     2  ontology, knowledge_map
+  data/        27  rows, entity_scope, model_sql, sql_scan, quality, metrics, … + connectors/
+  content/      9  documents, articles, wiki, knowledge_bases, glossary, comments, media, channels, models
+  workspace/    3  evaluations, global_search, schedules
+  runtime/      6  jobs, agent, deep_agents, kubernetes, app_builder, projects
+```
+
+`frontend/src/pages/`: `ontology-manager/` 17, `catalog/` 30, `catalog/model/` 27, `insights/` 29, `shared/` 7,
+`console/{permissions,data,kubernetes,operations}/`. Routes, permissions and skill commands are untouched throughout.
+
+### Two inversions the move exposed
+
+Neither was visible before, and neither was introduced by the split — both had been there, hidden by granularity.
+
+1. **`app/schemas` imported a service.** `schemas/document.py` and `article.py` called into
+   `services/content/.../lifecycle` for "is this row searchable today", a **response field** computed from service code.
+   The predicate is pure, so it moved below both into `app/lifecycle.py`; the service keeps a three-line wrapper, and the
+   schema calls the rule directly. Writing it once also collapsed two functions that were byte-identical apart from their
+   receiver. A layer inversion is a design question, not a merge conflict, and it took the coarser granularity to see it.
+2. **`projects` was in the wrong area.** It sat in `workspace` while `deep_agents` imported it and it imported
+   `deep_agents` back — a genuine cycle the moment those two names shared an area. `projects` is the agent's own workspace
+   (conversations, skills, secrets), so it lives in `runtime` with the runtime it serves.
+
+The cycle check's granule is the **area**, and that turned out to be the right question: a cycle between two subpackages of
+one area is usually a caller and its helper; the same edge between two areas is a design error. Zero cycles before and
+after every step.
+
+### What stays as it is
+
+- **`platform/` stays flat** (16 modules). They are small, independent leaves; grouping them again would be a directory
+  tree describing a list — the thing the area split was meant to undo.
+- `data_layer` as a word survives only in prose. `app.services.data.data_layer.rows` was "data" three times and named a
+  layer inside an area; the modules are `app.services.data.rows` now.
+- `api/` (80 modules, one per resource), `models/`, `schemas/`, and the frontend's `components/` / `data/` / `styles/` were
+  never in scope: their shape is already the answer to "where does this live".
 
 ## What is there now
 
@@ -123,7 +166,7 @@ Each stage is one commit, ships alone, and is verified the same way.
 | 1 | `pages/console/` → four areas | **38 files ✅** | `npm run check` + re-point `ds-controls-baseline.txt`, `undefined-classes-baseline.txt`, and the line-count allowlist | ~1 h |
 | 2 | `services/platform/` (Option A) | **9 modules ✅** (68 files rewritten) | `./check.sh` (pytest 1003, ruff, `check_import_cycles.py` empty) | ~1 h |
 | 3 | *decision point:* re-measure `services/` top-level names and ask whether A was enough | — | — | — |
-| 4 | Option B, one area per commit (identity → ontology → data → content → workspace → runtime), never two at once | ~251 total | same, plus `mkdocs build --strict` | 1–2 h per area |
+| 4 | Option B, one area per commit (platform → identity → ontology → data → content → workspace → runtime), never two at once | **~251 ✅** | same, plus `mkdocs build --strict` | ~30 min per area |
 
 Stage 4's order is the DAG above, bottom first: moving `identity` before `content` means each commit's import diff is
 small and its direction is provably downward.
