@@ -20,8 +20,8 @@ from app.schemas.content_comment import (
     ContentCommentReplyCreate,
     ContentCommentUpdate,
 )
-from app.services.comments.comment_scope import ensure_comment_resource_readable, validate_resource_type
-from app.services.comments.content_comment_service import build_comment_tree, comment_to_out
+from app.services.content.comments.comment_scope import ensure_comment_resource_readable, validate_resource_type
+from app.services.content.comments.content_comment_service import build_comment_tree, comment_to_out
 
 router = APIRouter(
     prefix="/comments",

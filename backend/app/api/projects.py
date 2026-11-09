@@ -43,7 +43,7 @@ from app.schemas.project import (
 from app.services.identity.acl.acl_store import bootstrap_owner_acl
 from app.services.identity.acl.resource_acl_constants import RT_PROJECT
 from app.services.agent.agent_session_api_key import revoke_session_api_key
-from app.services.comments.comment_resource_types import COMMENT_RT_PROJECT
+from app.services.content.comments.comment_resource_types import COMMENT_RT_PROJECT
 from app.services.deep_agents.checkpointer import delete_conversation_thread
 from app.services.schedules.project_agent_schedule import list_agent_schedules_for_project
 from app.services.agent.agent_skill_install import (

@@ -17,13 +17,13 @@ from app.models.media_asset import MediaAsset
 from app.models.media_channel import MediaChannel
 from app.models.wiki_models import WikiSpace
 from app.schemas.global_search import GlobalSearchHit, GlobalSearchResponse, GlobalSearchSection
-from app.services.articles.article_scope import scoped_article_predicate
-from app.services.articles.article_service import collect_channel_and_descendants
+from app.services.content.articles.article_scope import scoped_article_predicate
+from app.services.content.articles.article_service import collect_channel_and_descendants
 from app.services.identity.acl.data_resource_policy import knowledge_base_visible, scoped_document_predicate
 from app.services.identity.acl.data_scope import effective_wiki_space_ids, scope_applies
 from app.services.platform.feature_toggles import is_feature_enabled
-from app.services.media.media_scope import scoped_media_predicate
-from app.services.media.media_service import collect_media_channel_and_descendants
+from app.services.content.media.media_scope import scoped_media_predicate
+from app.services.content.media.media_service import collect_media_channel_and_descendants
 
 
 def _collect_document_channel_descendants(channels: list[DocumentChannel], channel_id: str, out: set[str]) -> None:

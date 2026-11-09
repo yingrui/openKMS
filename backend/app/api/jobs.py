@@ -14,7 +14,7 @@ from app.models.job_run_worker_log import JobRunWorkerLog
 from app.models.pipeline import Pipeline
 from app.schemas.job import JobCreate, JobEvent, JobListResponse, JobResponse
 from app.services.jobs.job_scope import job_args_allowed, require_job_args_access
-from app.services.documents.document_scope import load_document_scoped
+from app.services.content.documents.document_scope import load_document_scoped
 from app.services.identity.acl.resource_acl_constants import PERM_WRITE
 
 logger = logging.getLogger(__name__)
@@ -527,7 +527,7 @@ async def mark_job_failed(job_id: int, request: Request, db: AsyncSession = Depe
     args = row.args or {}
     document_id = args.get("document_id")
     if document_id:
-        from app.services.documents.document_processing_status import sync_document_processing_status_from_jobs
+        from app.services.content.documents.document_processing_status import sync_document_processing_status_from_jobs
 
         await sync_document_processing_status_from_jobs(db, document_id)
     await db.commit()

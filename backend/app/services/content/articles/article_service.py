@@ -20,7 +20,7 @@ from app.config import settings
 from app.models.article import Article
 from app.models.article_attachment import ArticleAttachment
 from app.models.article_channel import ArticleChannel
-from app.services.articles.article_storage import (
+from app.services.content.articles.article_storage import (
     article_object_key,
     safe_attachment_filename,
     safe_image_filename,

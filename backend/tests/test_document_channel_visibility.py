@@ -7,7 +7,7 @@ import pytest
 from fastapi import HTTPException
 
 from app.models.document import Document
-from app.services.documents.document_scope import load_document_scoped
+from app.services.content.documents.document_scope import load_document_scoped
 from app.services.identity.acl.resource_acl_constants import PERM_READ, RT_DOCUMENT_CHANNEL
 from app.services.identity.acl.resource_acl_service import document_visible_via_channel, scoped_document_predicate
 
@@ -67,7 +67,7 @@ def test_load_document_scoped_returns_404_when_channel_denied():
 
     async def _run():
         with patch(
-            "app.services.documents.document_scope.document_visible_via_channel",
+            "app.services.content.documents.document_scope.document_visible_via_channel",
             new_callable=AsyncMock,
             return_value=False,
         ):

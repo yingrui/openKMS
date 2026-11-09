@@ -45,7 +45,7 @@ class DocumentListItemResponse(BaseModel):
         if isinstance(data, dict):
             return data
 
-        from app.services.documents.document_lifecycle import document_effective_for_rag
+        from app.lifecycle import row_effective_for_rag
 
         return {
             "id": data.id,
@@ -59,7 +59,7 @@ class DocumentListItemResponse(BaseModel):
             "effective_from": data.effective_from,
             "effective_to": data.effective_to,
             "lifecycle_status": data.lifecycle_status,
-            "is_current_for_rag": document_effective_for_rag(data),
+            "is_current_for_rag": row_effective_for_rag(data),
             "created_at": data.created_at,
             "updated_at": data.updated_at,
         }
@@ -98,7 +98,7 @@ class DocumentResponse(BaseModel):
     def _map_doc_metadata(cls, data: Any) -> Any:
         """Map Document.doc_metadata to metadata (SQLAlchemy reserves 'metadata')."""
         if hasattr(data, "doc_metadata"):
-            from app.services.documents.document_lifecycle import document_effective_for_rag
+            from app.lifecycle import row_effective_for_rag
 
             return {
                 "id": data.id,
@@ -115,7 +115,7 @@ class DocumentResponse(BaseModel):
                 "effective_from": data.effective_from,
                 "effective_to": data.effective_to,
                 "lifecycle_status": data.lifecycle_status,
-                "is_current_for_rag": document_effective_for_rag(data),
+                "is_current_for_rag": row_effective_for_rag(data),
                 "created_at": data.created_at,
                 "updated_at": data.updated_at,
             }

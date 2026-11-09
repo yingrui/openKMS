@@ -2,7 +2,7 @@
 
 from types import SimpleNamespace
 
-from app.services.knowledge_bases.qa_agent_proxy import (
+from app.services.content.knowledge_bases.qa_agent_proxy import (
     CORE_AGENT_SKILLS,
     agent_kb_path,
     ask_agent_body,

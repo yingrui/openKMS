@@ -6,8 +6,8 @@ from fastapi import HTTPException, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.project import Project
-from app.services.articles.article_scope import load_article_scoped
-from app.services.comments.comment_resource_types import (
+from app.services.content.articles.article_scope import load_article_scoped
+from app.services.content.comments.comment_resource_types import (
     COMMENT_RESOURCE_TYPES,
     COMMENT_RT_ARTICLE,
     COMMENT_RT_DOCUMENT,
@@ -15,11 +15,11 @@ from app.services.comments.comment_resource_types import (
     COMMENT_RT_PROJECT,
     COMMENT_RT_WIKI_SPACE,
 )
-from app.services.documents.document_scope import load_document_scoped
+from app.services.content.documents.document_scope import load_document_scoped
 from app.services.platform.feature_toggles import is_feature_enabled
-from app.services.knowledge_bases.kb_scope import load_knowledge_base_scoped
+from app.services.content.knowledge_bases.kb_scope import load_knowledge_base_scoped
 from app.services.identity.acl.resource_acl_constants import PERM_READ
-from app.services.wiki.wiki_scope import load_wiki_space_scoped
+from app.services.content.wiki.wiki_scope import load_wiki_space_scoped
 
 
 def validate_resource_type(resource_type: str) -> str:

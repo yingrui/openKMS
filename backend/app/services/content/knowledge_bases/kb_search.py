@@ -11,7 +11,7 @@ from app.models.chunk import Chunk
 from app.models.document import Document
 from app.models.faq import FAQ
 from app.models.wiki_models import WikiPage
-from app.services.documents.document_lifecycle import source_current_for_rag_sql
+from app.services.content.documents.document_lifecycle import source_current_for_rag_sql
 from app.models.knowledge_base import KnowledgeBase
 from app.models.api_model import ApiModel
 from app.schemas.knowledge_base import SearchResponse, SearchResult

@@ -10,7 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.models.evaluation import EvaluationItem
 from app.models.wiki_models import WikiPage, WikiSpace
 from app.services.evaluations.search_judge import judge_wiki_content_coverage
-from app.services.wiki.wiki_semantic_index import (
+from app.services.content.wiki.wiki_semantic_index import (
     semantic_match_pages,
     wiki_pages_string_match_ids,
 )

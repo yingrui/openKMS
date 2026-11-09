@@ -10,7 +10,7 @@ import subprocess
 import tempfile
 from pathlib import Path
 
-from app.services.media.media_storage import media_poster_key, media_thumbnail_key
+from app.services.content.media.media_storage import media_poster_key, media_thumbnail_key
 from app.services.platform.storage import upload_object
 
 logger = logging.getLogger(__name__)

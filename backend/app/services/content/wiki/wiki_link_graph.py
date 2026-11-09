@@ -12,7 +12,7 @@ from pathlib import PurePosixPath
 from typing import Any
 
 from app.models.wiki_models import WikiPage
-from app.services.wiki.wiki_vault_import import join_and_norm_dir_rel, md_relative_path_to_wiki_path
+from app.services.content.wiki.wiki_vault_import import join_and_norm_dir_rel, md_relative_path_to_wiki_path
 
 
 def link_graph_cache_key(space_id: str) -> str:

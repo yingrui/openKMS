@@ -42,8 +42,8 @@ async def semantic_search(
     Filtered requests (label/metadata/historical) skip qa-agent because the hybrid
     pipeline does not honor those filters; they go straight to the dense-only service.
     """
-    from app.services.knowledge_bases.kb_search import search_knowledge_base
-    from app.services.knowledge_bases.qa_agent_proxy import agent_kb_path, retrieve_agent_body
+    from app.services.content.knowledge_bases.kb_search import search_knowledge_base
+    from app.services.content.knowledge_bases.qa_agent_proxy import agent_kb_path, retrieve_agent_body
 
     has_filters = bool(
         body.label_filters
@@ -97,7 +97,7 @@ async def ask_question(
     if not kb.agent_url:
         raise HTTPException(status_code=400, detail="No agent URL configured for this knowledge base")
 
-    from app.services.knowledge_bases.qa_agent_proxy import agent_kb_path, ask_agent_body
+    from app.services.content.knowledge_bases.qa_agent_proxy import agent_kb_path, ask_agent_body
 
     url = agent_kb_path(kb.agent_url, kb_id, "ask")
     try:
@@ -137,7 +137,7 @@ async def ask_question_stream(
     if not kb.agent_url:
         raise HTTPException(status_code=400, detail="No agent URL configured for this knowledge base")
 
-    from app.services.knowledge_bases.qa_agent_proxy import agent_kb_path, ask_agent_body
+    from app.services.content.knowledge_bases.qa_agent_proxy import agent_kb_path, ask_agent_body
 
     url = agent_kb_path(kb.agent_url, kb_id, "ask/stream")
     payload = ask_agent_body(

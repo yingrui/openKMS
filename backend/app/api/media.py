@@ -25,15 +25,15 @@ from app.schemas.media_asset import (
     MediaGenerateRequest,
     MediaGenerateResponse,
 )
-from app.services.channels.channel_list_filter import channel_subtree_ids_for_list
-from app.services.channels.channel_scope import require_media_channel_write
+from app.services.content.channels.channel_list_filter import channel_subtree_ids_for_list
+from app.services.content.channels.channel_scope import require_media_channel_write
 from app.services.platform.feature_toggles import require_media_feature
-from app.services.media.media_scope import (
+from app.services.content.media.media_scope import (
     load_media_scoped,
     media_list_predicate,
 )
-from app.services.media.media_service import collect_media_channel_and_descendants
-from app.services.media.media_storage import (
+from app.services.content.media.media_service import collect_media_channel_and_descendants
+from app.services.content.media.media_storage import (
     ALLOWED_IMAGE_EXTENSIONS,
     ALLOWED_VIDEO_EXTENSIONS,
     MEDIA_KIND_IMAGE,
@@ -229,7 +229,7 @@ async def upload_media_asset(
         provenance="uploaded",
         series_id=asset_id,
     )
-    from app.services.media.media_derivatives import build_and_upload_derivatives
+    from app.services.content.media.media_derivatives import build_and_upload_derivatives
 
     thumb_key, poster_key = build_and_upload_derivatives(asset_id, body, media_kind, content_type)
     asset.thumbnail_key = thumb_key
@@ -336,7 +336,7 @@ async def upload_media_chunked(
     description: str | None = Form(default=None),
 ):
     """Chunked media upload. When the last chunk arrives, reassemble and process like /upload."""
-    from app.services.media.media_scope import require_media_channel_write
+    from app.services.content.media.media_scope import require_media_channel_write
 
     await require_media_channel_write(request, db, channel_id)
     ch = await db.get(MediaChannel, channel_id)
@@ -383,7 +383,7 @@ async def upload_media_chunked(
         provenance="uploaded",
         series_id=asset_id,
     )
-    from app.services.media.media_derivatives import build_and_upload_derivatives
+    from app.services.content.media.media_derivatives import build_and_upload_derivatives
 
     thumb_key, poster_key = build_and_upload_derivatives(asset_id, raw, media_kind, ct)
     asset.thumbnail_key = thumb_key

@@ -7,7 +7,7 @@ import pytest
 from fastapi import HTTPException
 
 from app.models.article import Article
-from app.services.articles.article_scope import load_article_scoped
+from app.services.content.articles.article_scope import load_article_scoped
 from app.services.identity.acl.resource_acl_constants import PERM_READ, RT_ARTICLE_CHANNEL
 from app.services.identity.acl.resource_acl_service import article_visible_via_channel, scoped_article_predicate
 
@@ -48,7 +48,7 @@ def test_load_article_scoped_returns_404_when_channel_denied():
 
     async def _run():
         with patch(
-            "app.services.articles.article_scope.article_visible_via_channel",
+            "app.services.content.articles.article_scope.article_visible_via_channel",
             new_callable=AsyncMock,
             return_value=False,
         ):

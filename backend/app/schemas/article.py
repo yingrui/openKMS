@@ -88,7 +88,7 @@ class ArticleResponse(BaseModel):
     @classmethod
     def _map_metadata(cls, data: Any) -> Any:
         if hasattr(data, "article_metadata"):
-            from app.services.articles.article_lifecycle import article_effective_for_rag
+            from app.lifecycle import row_effective_for_rag
 
             return {
                 "id": data.id,
@@ -101,7 +101,7 @@ class ArticleResponse(BaseModel):
                 "effective_from": data.effective_from,
                 "effective_to": data.effective_to,
                 "lifecycle_status": data.lifecycle_status,
-                "is_current_for_rag": article_effective_for_rag(data),
+                "is_current_for_rag": row_effective_for_rag(data),
                 "origin_article_id": data.origin_article_id,
                 "last_synced_at": data.last_synced_at,
                 "created_at": data.created_at,

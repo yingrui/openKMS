@@ -6,7 +6,7 @@ import httpx
 
 from app.models.api_model import model_has_capability
 from app.schemas.api_model import ApiModelTestResponse
-from app.services.media.zhipu import extract_result_url, poll_async_result
+from app.services.content.media.zhipu import extract_result_url, poll_async_result
 
 logger = logging.getLogger(__name__)
 

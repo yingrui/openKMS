@@ -12,7 +12,7 @@ from app.models.api_model import ApiModel
 from app.models.evaluation import EvaluationItem
 from app.models.knowledge_base import KnowledgeBase
 from app.services.platform.boundaries import boundary
-from app.services.knowledge_bases.kb_search import search_knowledge_base
+from app.services.content.knowledge_bases.kb_search import search_knowledge_base
 from app.services.evaluations.search_judge import judge_qa_answer, judge_search_results
 
 logger = logging.getLogger(__name__)
@@ -172,7 +172,7 @@ async def run_qa_answer_evaluation(
             detail="No agent URL configured for this knowledge base. QA evaluation requires KB agent_url.",
         )
 
-    from app.services.knowledge_bases.qa_agent_proxy import agent_kb_path, ask_agent_body
+    from app.services.content.knowledge_bases.qa_agent_proxy import agent_kb_path, ask_agent_body
 
     ask_url = agent_kb_path(kb.agent_url, kb.id, "ask")
     items = await _load_evaluation_items(db, evaluation_id)

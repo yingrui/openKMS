@@ -1,11 +1,12 @@
 """Document policy lifecycle: validity windows and default knowledge-base search/index eligibility."""
-from datetime import datetime, timezone
+from datetime import datetime
 
 from sqlalchemy import and_, func, or_
 from sqlalchemy.sql import ColumnElement
 
 from app.constants import DocumentLifecycleStatus
 from app.models.document import Document
+from app.lifecycle import row_effective_for_rag
 
 
 def source_current_for_rag_sql(
@@ -29,33 +30,6 @@ def document_current_sql(at_expr: ColumnElement) -> ColumnElement:
     )
 
 
-def document_effective_for_rag(doc: Document, at: datetime | None = None) -> bool:
-    """
-    Whether a document is currently applicable for default KB indexing and semantic search.
-
-    Legacy rows (lifecycle_status is None) are treated as applicable so existing deployments
-    behave unchanged. draft / superseded / withdrawn are excluded. in_force requires
-    optional effective_from / effective_to bounds.
-    """
-    at = at if at is not None else datetime.now(timezone.utc)
-    if at.tzinfo is None:
-        at = at.replace(tzinfo=timezone.utc)
-
-    if doc.lifecycle_status is None:
-        return True
-
-    ls = doc.lifecycle_status
-    if ls in (
-        DocumentLifecycleStatus.DRAFT.value,
-        DocumentLifecycleStatus.SUPERSEDED.value,
-        DocumentLifecycleStatus.WITHDRAWN.value,
-    ):
-        return False
-    if ls != DocumentLifecycleStatus.IN_FORCE.value:
-        return False
-
-    if doc.effective_from is not None and at < doc.effective_from:
-        return False
-    if doc.effective_to is not None and at > doc.effective_to:
-        return False
-    return True
+def document_effective_for_rag(row: Document, at: datetime | None = None) -> bool:
+    """Is this row in force for retrieval? The rule itself lives in `app.lifecycle`."""
+    return row_effective_for_rag(row, at)

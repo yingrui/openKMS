@@ -19,12 +19,12 @@ from app.api.kb_router_deps import (
 from app.api.jobs import read_job_response
 from app.database import get_db
 from app.services.identity.acl.data_scope import bootstrap_owner_acl, effective_wiki_space_ids, scope_applies
-from app.services.documents.document_lifecycle import source_current_for_rag_sql
-from app.services.documents.document_scope import require_document_by_id_read
-from app.services.knowledge_bases.knowledge_base_read import kb_stats, kb_to_response, list_knowledge_bases_page
-from app.services.knowledge_bases.kb_scope import require_knowledge_base_manage
-from app.services.wiki.wiki_page_scope import require_wiki_page_by_id_read
-from app.services.wiki.wiki_scope import load_wiki_space_scoped
+from app.services.content.documents.document_lifecycle import source_current_for_rag_sql
+from app.services.content.documents.document_scope import require_document_by_id_read
+from app.services.content.knowledge_bases.knowledge_base_read import kb_stats, kb_to_response, list_knowledge_bases_page
+from app.services.content.knowledge_bases.kb_scope import require_knowledge_base_manage
+from app.services.content.wiki.wiki_page_scope import require_wiki_page_by_id_read
+from app.services.content.wiki.wiki_scope import load_wiki_space_scoped
 from app.services.identity.acl.resource_acl_constants import PERM_WRITE, RT_KNOWLEDGE_BASE
 from app.models.chunk import Chunk
 from app.models.document import Document
@@ -832,7 +832,7 @@ async def polish_faq(
 ):
     """Polish a draft FAQ answer with the KB judge model (or default LLM). Does not persist."""
     from app.services.evaluations.execute import resolve_judge_config
-    from app.services.knowledge_bases.faq_generation import polish_faq_answer
+    from app.services.content.knowledge_bases.faq_generation import polish_faq_answer
 
     _, model_config = await resolve_judge_config(db, kb)
     try:
@@ -872,7 +872,7 @@ async def generate_faqs(
         "model_name": model.model_name or model.name,
     }
 
-    from app.services.knowledge_bases.faq_generation import generate_faq_pairs
+    from app.services.content.knowledge_bases.faq_generation import generate_faq_pairs
 
     effective_prompt = body.prompt or kb.faq_prompt
     results = []

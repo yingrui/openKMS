@@ -10,7 +10,7 @@ from app.database import get_db
 from app.models.knowledge_base import KnowledgeBase
 from app.models.kb_wiki_space import KBWikiSpace
 from app.models.wiki_models import WikiPage
-from app.services.knowledge_bases.kb_scope import (
+from app.services.content.knowledge_bases.kb_scope import (
     load_knowledge_base_scoped,
     require_knowledge_base_write,
 )

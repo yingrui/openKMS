@@ -47,29 +47,29 @@ from app.schemas.document import (
     ParsingResultResponse,
 )
 from app.services.identity.acl.data_scope import scope_applies
-from app.services.channels.channel_scope import require_document_channel_write
-from app.services.channels.channel_list_filter import channel_subtree_ids_for_list
-from app.services.documents.document_scope import (
+from app.services.content.channels.channel_scope import require_document_channel_write
+from app.services.content.channels.channel_list_filter import channel_subtree_ids_for_list
+from app.services.content.documents.document_scope import (
     document_list_predicate,
     load_document_scoped,
     require_document_read,
 )
-from app.services.documents.document_lifecycle import document_current_sql
+from app.services.content.documents.document_lifecycle import document_current_sql
 from app.services.identity.acl.resource_acl_constants import PERM_READ, PERM_WRITE, RT_DOCUMENT_CHANNEL
-from app.services.documents.metadata_extraction import extract_metadata, resolve_extraction_schema_for_llm
-from app.services.documents.document_page_index import (
+from app.services.content.documents.metadata_extraction import extract_metadata, resolve_extraction_schema_for_llm
+from app.services.content.documents.document_page_index import (
     maybe_upload_page_index_from_markdown,
     next_document_version_number,
     upload_page_index_from_markdown,
 )
-from app.services.documents.document_storage import (
+from app.services.content.documents.document_storage import (
     document_object_key,
     document_prefix,
     get_document_object,
     legacy_document_prefix,
     resolve_document_object_key,
 )
-from app.services.documents.preview_errors import PREVIEW_ERRORS
+from app.services.content.documents.preview_errors import PREVIEW_ERRORS
 from app.services.platform.chunked_upload import chunk_count, cleanup, reassemble, store_chunk
 from app.services.platform.storage import (
     STORAGE_ERRORS,
@@ -272,7 +272,7 @@ async def upload_document(
     if ext_lower == "xlsx":
         import asyncio
 
-        from app.services.documents.spreadsheet_preview import build_xlsx_preview
+        from app.services.content.documents.spreadsheet_preview import build_xlsx_preview
 
         try:
             preview, md = await asyncio.to_thread(build_xlsx_preview, content, file_hash=file_hash)
@@ -290,7 +290,7 @@ async def upload_document(
     elif ext_lower == "xmind":
         import asyncio
 
-        from app.services.documents.mindmap_preview import build_xmind_preview
+        from app.services.content.documents.mindmap_preview import build_xmind_preview
 
         try:
             preview, md = await asyncio.to_thread(build_xmind_preview, content, file_hash=file_hash)
@@ -1129,7 +1129,7 @@ async def upload_document_chunked(
     db: AsyncSession = Depends(get_db),
 ):
     """Chunked document upload. When the last chunk arrives, reassemble and process like /upload."""
-    from app.services.channels.channel_scope import require_document_channel_write
+    from app.services.content.channels.channel_scope import require_document_channel_write
 
     p = request.state.openkms_jwt_payload
     sub = p.get("sub")
@@ -1190,7 +1190,7 @@ async def upload_document_chunked(
     ext_lower = ext.lower()
     if ext_lower == "xlsx":
         import asyncio
-        from app.services.documents.spreadsheet_preview import build_xlsx_preview
+        from app.services.content.documents.spreadsheet_preview import build_xlsx_preview
         try:
             preview, md = await asyncio.to_thread(build_xlsx_preview, raw, file_hash=file_hash)
             doc.parsing_result = preview
@@ -1206,7 +1206,7 @@ async def upload_document_chunked(
             doc.status = DocumentStatus.FAILED
     elif ext_lower == "xmind":
         import asyncio
-        from app.services.documents.mindmap_preview import build_xmind_preview
+        from app.services.content.documents.mindmap_preview import build_xmind_preview
         try:
             preview, md = await asyncio.to_thread(build_xmind_preview, raw, file_hash=file_hash)
             doc.parsing_result = preview

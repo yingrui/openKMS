@@ -10,9 +10,9 @@ from app.models.connector import Connector
 from app.models.project import Project
 from app.models.scheduled_trigger import PROJECT_AGENT_SCHEDULE_KINDS, ScheduledTrigger
 from app.services.identity.acl.context_guard import context_resource_allowed
-from app.services.documents.document_scope import load_document_scoped
-from app.services.knowledge_bases.kb_scope import load_knowledge_base_scoped
-from app.services.media.media_scope import load_media_scoped
+from app.services.content.documents.document_scope import load_document_scoped
+from app.services.content.knowledge_bases.kb_scope import load_knowledge_base_scoped
+from app.services.content.media.media_scope import load_media_scoped
 from app.services.identity.permissions.permission_catalog import (
     PERM_ALL,
     PERM_CONNECTORS_READ,

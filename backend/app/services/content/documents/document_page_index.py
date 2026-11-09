@@ -10,9 +10,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.config import settings
 from app.models.document import Document
 from app.models.document_version import DocumentVersion
-from app.services.documents.document_storage import document_object_key
+from app.services.content.documents.document_storage import document_object_key
 from app.services.platform.storage import STORAGE_ERRORS, upload_object
-from app.services.wiki.page_index import md_to_tree_from_markdown
+from app.services.content.wiki.page_index import md_to_tree_from_markdown
 
 
 def upload_page_index_from_markdown(doc: Document, markdown: str) -> dict:

@@ -19,7 +19,7 @@ from app.services.identity.acl.context_guard import (
     scoped_channel_ids,
 )
 from app.services.identity.acl.data_scope import bootstrap_owner_acl
-from app.services.channels.channel_tree_list import paginate_channels_for_tree
+from app.services.content.channels.channel_tree_list import paginate_channels_for_tree
 
 
 @dataclass(frozen=True)

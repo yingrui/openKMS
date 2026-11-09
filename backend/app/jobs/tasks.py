@@ -14,7 +14,7 @@ from app.config import settings
 from app.constants import DocumentStatus
 from app.jobs import job_app
 from app.services.platform.audit import job_audit_fields, record_audit_event
-from app.services.documents.document_storage import document_prefix
+from app.services.content.documents.document_storage import document_prefix
 from app.services.platform.openkms_cli_subprocess import (
     build_openkms_cli_subprocess_env,
     prepare_openkms_cli_argv,
@@ -59,7 +59,7 @@ def render_command(
     from settings. extraction_args is the full extraction flags block when
     channel has extraction config; empty otherwise.
     """
-    from app.services.documents.document_storage import document_object_key, document_prefix
+    from app.services.content.documents.document_storage import document_object_key, document_prefix
 
     base_api_url = (api_url or settings.openkms_backend_url).rstrip("/")
     doc_prefix = document_prefix(file_hash)
@@ -392,7 +392,7 @@ async def run_spreadsheet_preview(
     from app.database import async_session_maker
     from app.models.document import Document
     from app.services.jobs.job_run_worker_log import persist_job_run_worker_log_best_effort
-    from app.services.documents.spreadsheet_preview import build_xlsx_preview
+    from app.services.content.documents.spreadsheet_preview import build_xlsx_preview
 
     job_pk = context.job.id
     log_cmd = f"run_spreadsheet_preview document_id={document_id} file_hash={file_hash} ext={file_ext}"
@@ -406,7 +406,7 @@ async def run_spreadsheet_preview(
             await session.commit()
 
         try:
-            from app.services.documents.document_storage import get_document_object
+            from app.services.content.documents.document_storage import get_document_object
 
             raw = await asyncio.to_thread(get_document_object, file_hash, f"original.{file_ext}")
             preview, md = await asyncio.to_thread(build_xlsx_preview, raw, file_hash=file_hash)
@@ -455,7 +455,7 @@ async def run_mindmap_preview(
     from app.database import async_session_maker
     from app.models.document import Document
     from app.services.jobs.job_run_worker_log import persist_job_run_worker_log_best_effort
-    from app.services.documents.mindmap_preview import build_xmind_preview
+    from app.services.content.documents.mindmap_preview import build_xmind_preview
 
     job_pk = context.job.id
     log_cmd = f"run_mindmap_preview document_id={document_id} file_hash={file_hash} ext={file_ext}"
@@ -469,7 +469,7 @@ async def run_mindmap_preview(
             await session.commit()
 
         try:
-            from app.services.documents.document_storage import get_document_object
+            from app.services.content.documents.document_storage import get_document_object
 
             raw = await asyncio.to_thread(get_document_object, file_hash, f"original.{file_ext}")
             preview, md = await asyncio.to_thread(build_xmind_preview, raw, file_hash=file_hash)
@@ -663,7 +663,7 @@ def _needs_metadata_extraction_after_parse_cache(
     """True when parse output can be reused but document metadata fields are still empty."""
     if not _metadata_extraction_requested(command):
         return False
-    from app.services.documents.pipeline_metadata_state import document_metadata_needs_extraction
+    from app.services.content.documents.pipeline_metadata_state import document_metadata_needs_extraction
 
     return document_metadata_needs_extraction(doc_metadata, extraction_schema)
 
@@ -699,7 +699,7 @@ async def _apply_cached_parse_to_document(
 
 def _load_result_from_s3(file_hash: str) -> dict:
     """Load result.json from S3 after pipeline completes."""
-    from app.services.documents.document_storage import (
+    from app.services.content.documents.document_storage import (
         DOCUMENT_ARTIFACT_ERRORS,
         get_document_object,
     )
@@ -714,7 +714,7 @@ def _load_result_from_s3(file_hash: str) -> dict:
 
 def _load_extracted_metadata_from_s3(file_hash: str) -> dict:
     """Load channel-extraction output written by openkms-cli during pipeline run."""
-    from app.services.documents.document_storage import (
+    from app.services.content.documents.document_storage import (
         DOCUMENT_ARTIFACT_ERRORS,
         get_document_object,
     )
@@ -745,7 +745,7 @@ def _s3_parse_cache_usable(parsing_result: dict) -> bool:
 
 def _load_parse_cache_from_s3(file_hash: str) -> tuple[dict, str] | None:
     """Return (parsing_result, markdown) if storage has a usable prior parse; else None."""
-    from app.services.documents.document_storage import (
+    from app.services.content.documents.document_storage import (
         DOCUMENT_ARTIFACT_ERRORS,
         get_document_object,
     )
@@ -772,8 +772,8 @@ def _upload_page_index_from_hash(file_hash: str, doc_name: str | None, markdown:
     if not file_hash or not settings.storage_enabled or not markdown or not markdown.strip():
         return
     try:
-        from app.services.documents.document_storage import document_object_key
-        from app.services.wiki.page_index import md_to_tree_from_markdown
+        from app.services.content.documents.document_storage import document_object_key
+        from app.services.content.wiki.page_index import md_to_tree_from_markdown
         from app.services.platform.storage import STORAGE_ERRORS, upload_object
 
         page_index = md_to_tree_from_markdown(markdown, doc_name=doc_name or "document")
@@ -1016,15 +1016,15 @@ async def run_media_generation(
     from app.models.media_channel import MediaChannel
     from app.services.platform.feature_toggles import is_feature_enabled
     from app.services.jobs.job_run_worker_log import persist_job_run_worker_log_best_effort
-    from app.services.media.zhipu import (
+    from app.services.content.media.zhipu import (
         download_url,
         extract_result_url,
         poll_async_result,
         submit_image_generation,
         submit_video_generation,
     )
-    from app.services.media.media_derivatives import build_and_upload_derivatives
-    from app.services.media.media_storage import MEDIA_KIND_IMAGE, media_original_key
+    from app.services.content.media.media_derivatives import build_and_upload_derivatives
+    from app.services.content.media.media_storage import MEDIA_KIND_IMAGE, media_original_key
     from app.services.platform.storage import upload_object
 
     job_id = int(context.job.id) if context.job and context.job.id else None

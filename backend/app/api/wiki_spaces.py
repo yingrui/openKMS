@@ -50,9 +50,9 @@ from app.schemas.wiki import (
 )
 from app.services.identity.acl.data_scope import bootstrap_owner_acl
 from app.services.identity.acl.resource_acl_constants import PERM_READ, PERM_WRITE, RT_WIKI_SPACE
-from app.services.wiki.wiki_page_scope import get_wiki_page_in_space
-from app.services.wiki.wiki_scope import load_wiki_space_scoped, require_wiki_space_manage
-from app.services.wiki.page_index import md_to_tree_from_markdown
+from app.services.content.wiki.wiki_page_scope import get_wiki_page_in_space
+from app.services.content.wiki.wiki_scope import load_wiki_space_scoped, require_wiki_space_manage
+from app.services.content.wiki.page_index import md_to_tree_from_markdown
 from app.services.identity.permissions.permission_catalog import PERM_WIKIS_READ, PERM_WIKIS_WRITE
 from app.services.platform.storage import (
     STORAGE_ERRORS,
@@ -64,14 +64,14 @@ from app.services.platform.storage import (
     object_last_modified,
     upload_object,
 )
-from app.services.wiki.wiki_link_graph import (
+from app.services.content.wiki.wiki_link_graph import (
     build_link_graph_payload,
     graph_payload_from_json_bytes,
     graph_payload_to_json_bytes,
     link_graph_cache_key,
 )
-from app.services.wiki.wiki_space_read import list_wiki_spaces_page
-from app.services.wiki.wiki_vault_import import (
+from app.services.content.wiki.wiki_space_read import list_wiki_spaces_page
+from app.services.content.wiki.wiki_vault_import import (
     delete_wiki_page_markdown_mirror,
     import_markdown_vault_file,
     import_vault_entries,
@@ -253,7 +253,7 @@ async def post_wiki_space_semantic_index(
     Uses this wiki space's configured embedding model when set, otherwise the global default
     embedding ApiModel (Models → api_kind Embeddings → set as default).
     """
-    from app.services.wiki.wiki_semantic_index import is_pgvector_server_missing, reindex_wiki_space_embeddings
+    from app.services.content.wiki.wiki_semantic_index import is_pgvector_server_missing, reindex_wiki_space_embeddings
 
     try:
         r = await reindex_wiki_space_embeddings(db, space.id)
@@ -387,7 +387,7 @@ async def link_document_to_wiki_space(
     space: WikiSpace = Depends(get_wiki_space_scoped_write),
     db: AsyncSession = Depends(get_db),
 ):
-    from app.services.documents.document_scope import require_document_by_id_read
+    from app.services.content.documents.document_scope import require_document_by_id_read
 
     doc = await require_document_by_id_read(db, request, body.document_id)
     link = WikiSpaceDocument(
@@ -497,7 +497,7 @@ async def wiki_pages_semantic_matches(
     (unless ``top_k`` is passed as a query override).
     When the space has no indexed embeddings, only string matching applies (empty semantic list, not skipped).
     """
-    from app.services.wiki.wiki_semantic_index import semantic_match_pages, wiki_pages_string_match_ids
+    from app.services.content.wiki.wiki_semantic_index import semantic_match_pages, wiki_pages_string_match_ids
 
     string_ids = await wiki_pages_string_match_ids(db, space.id, q, limit=text_match_limit)
     if string_ids:

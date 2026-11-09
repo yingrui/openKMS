@@ -10,7 +10,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.auth import get_jwt_payload, require_internal_client
-from app.services.documents.document_page_index import (
+from app.services.content.documents.document_page_index import (
     maybe_upload_page_index_from_markdown,
     next_document_version_number,
 )
@@ -24,7 +24,7 @@ from app.schemas.document import (
     MarkdownUpdateBody,
     MetadataUpdateBody,
 )
-from app.services.documents.pipeline_metadata_state import document_metadata_needs_extraction
+from app.services.content.documents.pipeline_metadata_state import document_metadata_needs_extraction
 
 router = APIRouter(
     prefix="/internal-api/documents",

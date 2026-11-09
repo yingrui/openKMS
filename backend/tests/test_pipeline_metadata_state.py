@@ -1,6 +1,6 @@
 """Pipeline metadata empty-check helpers."""
 
-from app.services.documents.pipeline_metadata_state import (
+from app.services.content.documents.pipeline_metadata_state import (
     document_metadata_needs_extraction,
     is_metadata_value_empty,
 )
