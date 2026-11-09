@@ -1,0 +1,174 @@
+@use '../../../styles/design-system/_mixins' as *;
+@use '../../../styles/design-system/_tokens' as ds;
+
+.console-users {
+  width: 100%;
+}
+
+.console-users-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  flex-wrap: wrap;
+  gap: var(--space-5);
+  margin-bottom: var(--space-5);
+}
+
+.console-users-toolbar {
+  margin-bottom: var(--space-5);
+}
+
+.console-users-search {
+  max-width: 360px;
+  display: flex;
+  align-items: center;
+  gap: calc(var(--space-2) + var(--space-1) / 2);
+  padding: var(--padding-compact-y) calc(var(--space-3) + var(--space-1) / 2);
+  background: var(--color-bg-elevated);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+}
+
+.console-users-search svg {
+  color: var(--color-text-muted);
+}
+
+.console-users-search input {
+  flex: 1;
+  border: none;
+  background: none;
+  font-size: var(--text-base);
+}
+
+.console-users-search input:focus {
+  outline: none;
+}
+
+.console-users-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--text-base);
+}
+
+.console-users-table th,
+.console-users-table td {
+  padding: var(--space-3) var(--space-4);
+  text-align: left;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.console-users-table th {
+  font-weight: 600;
+  color: var(--color-text-secondary);
+  background: var(--color-bg-muted);
+  font-size: var(--text-sm);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.console-users-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.console-users-table tbody tr:hover {
+  background: var(--color-bg-muted);
+}
+
+.console-users-table-name {
+  display: flex;
+  align-items: center;
+  gap: calc(var(--space-2) + var(--space-1) / 2);
+}
+
+.console-users-table-name svg {
+  color: var(--color-accent);
+  flex-shrink: 0;
+}
+
+.console-users-muted {
+  color: var(--color-text-muted);
+}
+
+.console-users-error {
+  color: var(--color-error);
+  margin-bottom: var(--space-4);
+}
+
+.console-users-notice {
+  display: flex;
+  gap: var(--space-3);
+  align-items: flex-start;
+  padding: calc(var(--space-3) + var(--space-1) / 2) var(--space-4);
+  margin-bottom: var(--space-5);
+  background: var(--color-bg-muted);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  font-size: var(--text-base);
+  line-height: 1.5;
+}
+
+.console-users-notice svg {
+  flex-shrink: 0;
+  color: var(--color-accent);
+  margin-top: 2px;
+}
+
+.console-users-notice p {
+  margin: 0;
+}
+
+.console-users-admin-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  cursor: pointer;
+  user-select: none;
+}
+
+.console-users-date {
+  color: var(--color-text-secondary);
+  font-size: var(--text-md);
+}
+
+.console-users-empty {
+  text-align: center;
+  color: var(--color-text-muted);
+  padding: var(--space-6) !important;
+}
+
+.console-users-delete {
+  font-size: var(--text-sm);
+}
+
+.console-users-modal {
+  /* shell from _dialog.scss; keep form padding */
+  padding: var(--space-6);
+  border: 1px solid var(--color-border);
+}
+
+.console-users-modal h2 {
+  margin: 0 0 var(--space-2);
+  font-size: var(--text-xl);
+}
+
+.console-users-modal-sub {
+  margin: 0 0 20px;
+  font-size: var(--text-md);
+  color: var(--color-text-muted);
+}
+
+.console-users-modal-check {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin: 16px 0;
+  font-size: var(--text-md);
+  cursor: pointer;
+}
+
+.console-users-modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: calc(var(--space-2) + var(--space-1) / 2);
+  margin-top: var(--space-5);
+}

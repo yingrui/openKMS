@@ -28,23 +28,23 @@ import { GlossaryList } from './pages/glossaries/GlossaryList';
 import { GlossaryDetail } from './pages/glossaries/GlossaryDetail';
 import { GlossarySettings } from './pages/glossaries/GlossarySettings';
 import { ConsoleLayout } from './pages/console/ConsoleLayout';
-import { ConsoleOverview } from './pages/console/ConsoleOverview';
-import { ConsoleSettings } from './pages/console/ConsoleSettings';
-import { ConsoleUsers } from './pages/console/ConsoleUsers';
-import { ConsoleFeatureToggles } from './pages/console/ConsoleFeatureToggles';
-import { ConsoleStorage } from './pages/console/ConsoleStorage';
-import { ConsoleHealth } from './pages/console/ConsoleHealth';
+import { ConsoleOverview } from './pages/console/operations/ConsoleOverview';
+import { ConsoleSettings } from './pages/console/operations/ConsoleSettings';
+import { ConsoleUsers } from './pages/console/permissions/ConsoleUsers';
+import { ConsoleFeatureToggles } from './pages/console/operations/ConsoleFeatureToggles';
+import { ConsoleStorage } from './pages/console/data/ConsoleStorage';
+import { ConsoleHealth } from './pages/console/operations/ConsoleHealth';
 import { ObjectTypesPage } from './pages/ontology/ObjectTypesPage';
 import { LinkTypesPage } from './pages/ontology/LinkTypesPage';
-import { ConsoleDataSources } from './pages/console/ConsoleDataSources';
-import { ConsoleKubernetes } from './pages/console/ConsoleKubernetes';
-import { ConsoleKubernetesDetail } from './pages/console/ConsoleKubernetesDetail';
+import { ConsoleDataSources } from './pages/console/data/ConsoleDataSources';
+import { ConsoleKubernetes } from './pages/console/kubernetes/ConsoleKubernetes';
+import { ConsoleKubernetesDetail } from './pages/console/kubernetes/ConsoleKubernetesDetail';
 import { ConnectorsPage } from './pages/connectors/ConnectorsPage';
 import { ConnectorDetailPage } from './pages/connectors/ConnectorDetailPage';
 import { DatasetsListPage } from './pages/catalog/DatasetsListPage';
-import { ConsolePermissionManagement } from './pages/console/ConsolePermissionManagement';
-import { ConsoleAccessGroups } from './pages/console/ConsoleAccessGroups';
-import { ConsoleDataSecurityIssues } from './pages/console/ConsoleDataSecurityIssues';
+import { ConsolePermissionManagement } from './pages/console/permissions/ConsolePermissionManagement';
+import { ConsoleAccessGroups } from './pages/console/permissions/ConsoleAccessGroups';
+import { ConsoleDataSecurityIssues } from './pages/console/data/ConsoleDataSecurityIssues';
 import { EvaluationDatasetList } from './pages/evaluation/EvaluationDatasetList';
 import { EvaluationDatasetDetail } from './pages/evaluation/EvaluationDatasetDetail';
 import { EvaluationDatasetSettings } from './pages/evaluation/EvaluationDatasetSettings';
@@ -82,7 +82,7 @@ function AppLoadingFallback() {
 
 const Home = lazy(() => import('./pages/Home').then((m) => ({ default: m.Home })));
 const AuditLogPage = lazy(() =>
-  import('./pages/console/AuditLogPage').then((m) => ({ default: m.AuditLogPage })),
+  import('./pages/console/operations/AuditLogPage').then((m) => ({ default: m.AuditLogPage })),
 );
 const GlobalSearch = lazy(() => import('./pages/GlobalSearch').then((m) => ({ default: m.GlobalSearch })));
 const DocumentsIndex = lazy(() => import('./pages/documents/DocumentsIndex').then((m) => ({ default: m.DocumentsIndex })));

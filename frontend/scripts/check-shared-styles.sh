@@ -127,7 +127,7 @@ done < <(rg -n --no-heading 'background:\s*rgba\(\s*0\s*,\s*0\s*,\s*0' src --glo
 PAGE_LINE_LIMIT=700
 PAGE_SIZE_ALLOW='src/pages/knowledge-bases/KnowledgeBaseDetail.tsx
 src/pages/knowledge-bases/useKnowledgeBaseDetail.ts
-src/pages/console/ConsolePermissionManagement.tsx
+src/pages/console/permissions/ConsolePermissionManagement.tsx
 src/pages/articles/ArticleDetail.tsx
 src/pages/documents/DocumentChannel.tsx
 src/pages/wiki/WikiSpaceSettings.tsx
@@ -138,7 +138,7 @@ src/pages/documents/useDocumentDetail.tsx
 src/pages/ontology/ObjectExplorer.tsx
 src/pages/evaluation/EvaluationDatasetDetail.tsx
 src/pages/ontology/ObjectTypesPage.tsx
-src/pages/console/ConsoleAccessGroups.tsx
+src/pages/console/permissions/ConsoleAccessGroups.tsx
 src/pages/ontology/LinkTypesPage.tsx
 src/contexts/AuthContext.tsx'
 

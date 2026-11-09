@@ -34,10 +34,10 @@ src/pages/auth/OidcSilentRenew.tsx uses .app-loading
 src/pages/connectors/ConnectorFormFields.tsx uses .connector-input-boolean
 src/pages/connectors/ConnectorOutputDatasetsFields.tsx uses .connector-output-datasets-fields
 src/pages/connectors/ConnectorsPage.tsx uses .console-table-row-link
-src/pages/console/ConsoleDataSecurityIssues.tsx uses .console-group-access
-src/pages/console/ConsolePermissionManagement.tsx uses .console-perm-onboarding-missing
-src/pages/console/KubernetesResourceYamlPanel.tsx uses .console-k8s-yaml
-src/pages/console/KubernetesSecretsSection.tsx uses .console-k8s-detail-kv__row
+src/pages/console/data/ConsoleDataSecurityIssues.tsx uses .console-group-access
+src/pages/console/permissions/ConsolePermissionManagement.tsx uses .console-perm-onboarding-missing
+src/pages/console/kubernetes/KubernetesResourceYamlPanel.tsx uses .console-k8s-yaml
+src/pages/console/kubernetes/KubernetesSecretsSection.tsx uses .console-k8s-detail-kv__row
 src/pages/documents/DocumentChannelSettings.tsx uses .dcs-schema-object-type
 src/pages/documents/DocumentDetail.loading.tsx uses .document-detail-loading-split
 src/pages/documents/DocumentDetail.modals.tsx uses .document-detail-version-preview-body
