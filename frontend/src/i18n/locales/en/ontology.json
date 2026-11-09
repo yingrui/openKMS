@@ -432,7 +432,8 @@
     "resourceAccessAddConfirm": "Add",
     "resourceAccessEmpty": "Nobody has access yet. Add the first reader.",
     "resourceAccessNoMatch": "No grantee matches that filter.",
-    "resourceAccessNoCandidate": "No matching identity."
+    "resourceAccessNoCandidate": "No matching identity.",
+    "resourceAccessNotManager": "Only someone who manages this resource can see or change who may read it."
   },
   "datasets": {
     "title": "Datasets",

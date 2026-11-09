@@ -26,7 +26,7 @@ from typing import Sequence, Union
 import sqlalchemy as sa
 from alembic import op
 
-from app.services.permissions.permission_catalog import PERM_DATA_READ, PERM_DATA_WRITE
+from app.services.identity.permissions.permission_catalog import PERM_DATA_READ, PERM_DATA_WRITE
 
 # Written as literals on purpose: this records the keys as they were then, and a later rename must not
 # be able to break the migration chain by renaming the constant it imported.
@@ -100,8 +100,8 @@ def upgrade() -> None:
     if "security_permissions" not in insp.get_table_names():
         return
 
-    from app.services.permissions.permission_catalog import OPERATION_KEY_HINTS
-    from app.services.permissions.permission_default_patterns import default_patterns_for_key
+    from app.services.identity.permissions.permission_catalog import OPERATION_KEY_HINTS
+    from app.services.identity.permissions.permission_default_patterns import default_patterns_for_key
 
     hints = {h.key: h for h in OPERATION_KEY_HINTS}
     for key in (*_NEW_KEYS, *_REFRESH):

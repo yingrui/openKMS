@@ -427,7 +427,8 @@
     "resourceAccessAddConfirm": "添加",
     "resourceAccessEmpty": "还没有授权对象，先添加一个可读取的人。",
     "resourceAccessNoMatch": "没有匹配的授权对象。",
-    "resourceAccessNoCandidate": "没有匹配的身份。"
+    "resourceAccessNoCandidate": "没有匹配的身份。",
+    "resourceAccessNotManager": "只有管理这个资源的人才能查看或修改谁可以读取它。"
   },
   "datasets": {
     "title": "数据集",

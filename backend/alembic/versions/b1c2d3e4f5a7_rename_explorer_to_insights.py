@@ -25,7 +25,7 @@ from typing import Sequence, Union
 import sqlalchemy as sa
 from alembic import op
 
-from app.services.permissions.permission_catalog import PERM_INSIGHTS_READ, PERM_INSIGHTS_WRITE
+from app.services.identity.permissions.permission_catalog import PERM_INSIGHTS_READ, PERM_INSIGHTS_WRITE
 
 revision: str = "b1c2d3e4f5a7"
 down_revision: Union[str, Sequence[str], None] = "a1b2c3d4e5f9"
@@ -70,8 +70,8 @@ def upgrade() -> None:
 
     if "security_permissions" not in tables:
         return
-    from app.services.permissions.permission_catalog import OPERATION_KEY_HINTS
-    from app.services.permissions.permission_default_patterns import default_patterns_for_key
+    from app.services.identity.permissions.permission_catalog import OPERATION_KEY_HINTS
+    from app.services.identity.permissions.permission_default_patterns import default_patterns_for_key
 
     hints = {h.key: h for h in OPERATION_KEY_HINTS}
     role_permissions = "security_role_permissions" in tables

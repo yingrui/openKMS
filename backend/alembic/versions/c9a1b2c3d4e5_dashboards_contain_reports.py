@@ -67,8 +67,8 @@ WHERE reports IS NOT NULL
 
 
 def _refresh_explorer_patterns(conn: sa.engine.Connection) -> None:
-    from app.services.permissions.permission_catalog import OPERATION_KEY_HINTS
-    from app.services.permissions.permission_default_patterns import default_patterns_for_key
+    from app.services.identity.permissions.permission_catalog import OPERATION_KEY_HINTS
+    from app.services.identity.permissions.permission_default_patterns import default_patterns_for_key
 
     hints = {h.key: h for h in OPERATION_KEY_HINTS}
     for key in (PERM_EXPLORER_READ, PERM_EXPLORER_WRITE):

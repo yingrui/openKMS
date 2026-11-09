@@ -22,7 +22,7 @@ from typing import Sequence, Union
 import sqlalchemy as sa
 from alembic import op
 
-from app.services.permissions.permission_catalog import PERM_DATA_READ, PERM_DATA_WRITE
+from app.services.identity.permissions.permission_catalog import PERM_DATA_READ, PERM_DATA_WRITE
 
 revision: str = "e6d5c4b3a2f1"
 down_revision: Union[str, Sequence[str], None] = "e0f1a2b3c4d5"

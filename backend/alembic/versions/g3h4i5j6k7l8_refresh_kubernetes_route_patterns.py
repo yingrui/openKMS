@@ -13,7 +13,7 @@ from typing import Sequence, Union
 import sqlalchemy as sa
 from alembic import op
 
-from app.services.permissions.permission_catalog import PERM_CONSOLE_KUBERNETES
+from app.services.identity.permissions.permission_catalog import PERM_CONSOLE_KUBERNETES
 
 revision: str = "g3h4i5j6k7l8"
 down_revision: Union[str, Sequence[str], None] = "f2a3b4c5d6e7"
@@ -27,7 +27,7 @@ def upgrade() -> None:
     if "security_permissions" not in insp.get_table_names():
         return
 
-    from app.services.permissions.permission_default_patterns import default_patterns_for_key
+    from app.services.identity.permissions.permission_default_patterns import default_patterns_for_key
 
     fe, be = default_patterns_for_key(PERM_CONSOLE_KUBERNETES)
     bind.execute(

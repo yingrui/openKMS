@@ -45,6 +45,10 @@ echo "→ doc paths"
 # A path in the docs that no longer exists reads fine and links fine; only a machine notices.
 uv run python scripts/check_doc_paths.py || status=1
 
+echo "→ module paths"
+# pytest never imports scheduler.py, worker.py or a migration — this does.
+uv run python scripts/check_module_paths.py || status=1
+
 echo "→ pytest"
 uv run pytest -q || status=1
 

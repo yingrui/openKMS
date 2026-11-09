@@ -14,7 +14,7 @@ from typing import Sequence, Union
 import sqlalchemy as sa
 from alembic import op
 
-from app.services.permissions.permission_catalog import PERM_DATA_EDIT, PERM_DATA_WRITE
+from app.services.identity.permissions.permission_catalog import PERM_DATA_EDIT, PERM_DATA_WRITE
 
 revision: str = "b4c5d6e7f8a9"
 down_revision: Union[str, Sequence[str], None] = "a3b4c5d6e7f8"
@@ -23,8 +23,8 @@ depends_on: Union[str, Sequence[str], None] = None
 
 
 def _upsert_permission(conn) -> None:
-    from app.services.permissions.permission_catalog import OPERATION_KEY_HINTS
-    from app.services.permissions.permission_default_patterns import default_patterns_for_key
+    from app.services.identity.permissions.permission_catalog import OPERATION_KEY_HINTS
+    from app.services.identity.permissions.permission_default_patterns import default_patterns_for_key
 
     hint = next((h for h in OPERATION_KEY_HINTS if h.key == PERM_DATA_EDIT), None)
     if hint is None:
@@ -70,8 +70,8 @@ def _upsert_permission(conn) -> None:
 
 
 def _refresh_all_patterns(conn) -> None:
-    from app.services.permissions.permission_catalog import OPERATION_KEY_HINTS
-    from app.services.permissions.permission_default_patterns import default_patterns_for_key
+    from app.services.identity.permissions.permission_catalog import OPERATION_KEY_HINTS
+    from app.services.identity.permissions.permission_default_patterns import default_patterns_for_key
 
     for h in OPERATION_KEY_HINTS:
         fe, be = default_patterns_for_key(h.key)

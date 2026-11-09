@@ -15,7 +15,7 @@ import sqlalchemy as sa
 from alembic import op
 from sqlalchemy.dialects import postgresql
 
-from app.services.permissions.permission_catalog import PERM_CONSOLE_KUBERNETES
+from app.services.identity.permissions.permission_catalog import PERM_CONSOLE_KUBERNETES
 
 revision: str = "f2a3b4c5d6e7"
 down_revision: Union[str, Sequence[str], None] = "e1f2a3b4c5d6"
@@ -55,8 +55,8 @@ def upgrade() -> None:
     if "security_permissions" not in insp.get_table_names():
         return
 
-    from app.services.permissions.permission_catalog import OPERATION_KEY_HINTS
-    from app.services.permissions.permission_default_patterns import default_patterns_for_key
+    from app.services.identity.permissions.permission_catalog import OPERATION_KEY_HINTS
+    from app.services.identity.permissions.permission_default_patterns import default_patterns_for_key
 
     hints_by_key = {h.key: h for h in OPERATION_KEY_HINTS}
     hint = hints_by_key.get(PERM_CONSOLE_KUBERNETES)

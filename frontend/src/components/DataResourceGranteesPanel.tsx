@@ -60,6 +60,9 @@ export function DataResourceGranteesPanel({ resourceId, resourceName }: Props) {
   const [adding, setAdding] = useState(false);
   const [pick, setPick] = useState('');
   const [candidateQuery, setCandidateQuery] = useState('');
+  //: Sharing is a **management** view. Someone who can read the resource but not manage it gets a 404 from the ACL (which
+  //: deliberately does not reveal whether the resource exists) — that is not a failure to report, it is an answer.
+  const [notManager, setNotManager] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -67,7 +70,12 @@ export function DataResourceGranteesPanel({ resourceId, resourceName }: Props) {
       const acl = await fetchResourceAcl(RESOURCE_TYPES.dataResource, resourceId);
       setRows(toRows(acl.grants));
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : t('dataModel.resourceAccessLoadFailed'));
+      const status = (e as { status?: number }).status;
+      if (status === 403 || status === 404) {
+        setNotManager(true);
+      } else {
+        toast.error(e instanceof Error ? e.message : t('dataModel.resourceAccessLoadFailed'));
+      }
     } finally {
       setLoading(false);
     }
@@ -190,6 +198,8 @@ export function DataResourceGranteesPanel({ resourceId, resourceName }: Props) {
 
         {loading ? (
           <p className="page-subtitle">{t('shared.loading')}</p>
+        ) : notManager ? (
+          <p className="page-subtitle">{t('dataModel.resourceAccessNotManager')}</p>
         ) : visibleRows.length === 0 ? (
           <p className="page-subtitle">
             {rows.length === 0

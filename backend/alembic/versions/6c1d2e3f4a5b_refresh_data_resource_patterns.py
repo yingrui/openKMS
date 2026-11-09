@@ -29,8 +29,8 @@ def upgrade() -> None:
     if "security_permissions" not in insp.get_table_names():
         return
 
-    from app.services.permissions.permission_catalog import PERM_DATA_READ, PERM_DATA_WRITE
-    from app.services.permissions.permission_default_patterns import default_patterns_for_key
+    from app.services.identity.permissions.permission_catalog import PERM_DATA_READ, PERM_DATA_WRITE
+    from app.services.identity.permissions.permission_default_patterns import default_patterns_for_key
 
     for key in (PERM_DATA_READ, PERM_DATA_WRITE):
         fe, be = default_patterns_for_key(key)

@@ -264,7 +264,13 @@ async def get_resource_acl(
     sub = payload.get("sub")
     if not isinstance(sub, str):
         raise HTTPException(status_code=401, detail="Unauthorized")
-    if not await check_resource_access(db, payload, sub, resource_type, resource_id, PERM_READ):
+    # **Read or manage.** The grantees list is the management view: an administrator holds manage but not read (by design —
+    # JWT admin may configure sharing, never read data it was not granted), and showing them "Resource not found" for a
+    # resource they can see and are supposed to administer is a dead end. Reading it still requires read.
+    if not (
+        await check_resource_access(db, payload, sub, resource_type, resource_id, PERM_READ)
+        or await check_resource_access(db, payload, sub, resource_type, resource_id, PERM_MANAGE)
+    ):
         raise HTTPException(status_code=404, detail="Resource not found")
 
     return await serialize_resource_acl(db, resource_type, resource_id, sub, payload)
