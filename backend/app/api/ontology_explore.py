@@ -13,7 +13,7 @@ from app.models.data_source import DataSource
 from app.models.link_type import LinkType
 from app.models.object_type import ObjectType
 from app.services.agent.llm import resolve_agent_llm_config
-from app.services.credentials.credential_encryption import decrypt
+from app.services.platform.credentials.credential_encryption import decrypt
 from app.services.ontology.neo4j_async import neo4j_driver_available
 from app.services.ontology.text_to_cypher import (
     generate_cypher_from_question,

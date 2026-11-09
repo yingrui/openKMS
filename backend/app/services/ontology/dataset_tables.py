@@ -13,7 +13,7 @@ from sqlalchemy.pool import NullPool
 from app.models.data_source import DataSource
 from app.models.dataset import Dataset
 from app.services.platform.dataset_label import dataset_label
-from app.services.credentials.credential_encryption import decrypt
+from app.services.platform.credentials.credential_encryption import decrypt
 from app.services.ontology.property_types import (
     normalize_postgresql_column_type,
     serialize_cell_value,

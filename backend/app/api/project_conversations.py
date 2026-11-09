@@ -63,7 +63,7 @@ from app.services.permissions.permission_catalog import PERM_PROJECTS_READ, PERM
 from app.services.platform.project_fs import read_lessons_json, write_lessons_json
 from app.services.agent.session_review import merge_lessons, review_session
 from app.services.deep_agents.improvement_runner import iter_improvement_stream_parts
-from app.services.openai_compat import chat_extra_body_disable_thinking
+from app.services.platform.openai_compat import chat_extra_body_disable_thinking
 from app.services.deep_agents.llm_chat import normalize_openai_base_url
 
 router = APIRouter()

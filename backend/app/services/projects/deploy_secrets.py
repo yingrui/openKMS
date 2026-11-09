@@ -4,7 +4,7 @@ from __future__ import annotations
 import json
 from typing import Any
 
-from app.services.credentials.credential_encryption import decrypt, encrypt
+from app.services.platform.credentials.credential_encryption import decrypt, encrypt
 from app.services.kubernetes.cluster_config import validate_env_key, validate_resource_name
 
 

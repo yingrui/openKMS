@@ -12,12 +12,12 @@ from app.services.deep_agents.llm_chat import (
     deep_agent_chat_extra_body,
     deep_agent_use_reasoning_content_shim,
 )
-from app.services.openai_compat import (
+from app.services.platform.openai_compat import (
     chat_extra_body_disable_thinking,
     inject_reasoning_content_on_assistant_rows,
     use_reasoning_content_shim,
 )
-from app.services.openai_compat.thinking import (
+from app.services.platform.openai_compat.thinking import (
     DEFAULT_BLOCKING_TIMEOUT,
     DEFAULT_STREAM_TIMEOUT,
     make_langchain_chat_openai,

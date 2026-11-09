@@ -13,7 +13,7 @@ from sqlalchemy.pool import NullPool
 
 from app.models.data_source import DataSource
 from app.services.connectors.dataset_schemas import ConnectorDatasetColumn
-from app.services.credentials.credential_encryption import decrypt
+from app.services.platform.credentials.credential_encryption import decrypt
 
 _IDENTIFIER = re.compile(r"^[a-zA-Z0-9_]+$")
 

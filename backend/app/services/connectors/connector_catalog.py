@@ -20,7 +20,7 @@ from app.services.connectors.tushare.schemas import (
     TUSHARE_STOCK_TRADE_DAILY_COLUMNS,
     TUSHARE_TRADE_CALENDAR_COLUMNS,
 )
-from app.services.credentials.credential_encryption import DECRYPT_ERRORS, decrypt, encrypt
+from app.services.platform.credentials.credential_encryption import DECRYPT_ERRORS, decrypt, encrypt
 
 CATEGORY_SYNC = "sync"
 CATEGORY_SEARCH_TOOL = "search_tool"

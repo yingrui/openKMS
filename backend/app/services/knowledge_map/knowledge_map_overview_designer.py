@@ -19,7 +19,7 @@ from app.services.knowledge_map.knowledge_map_html import (
     _reasoning_delta_append,
     _tool_calls_from_stream_slots,
 )
-from app.services.openai_compat import inject_reasoning_content_on_assistant_rows
+from app.services.platform.openai_compat import inject_reasoning_content_on_assistant_rows
 from app.services.knowledge_map.knowledge_map_overview_a2ui import (
     KM_OVERVIEW_A2UI_CATALOG_ID,
     KM_OVERVIEW_A2UI_SURFACE_ID,

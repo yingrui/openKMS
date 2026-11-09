@@ -22,7 +22,7 @@ from app.services.agent.shared import (
     _wiki_agent_chat_extra_body,
     _wiki_use_llm_reasoning_content_shim,
 )
-from app.services.openai_compat import inject_reasoning_content_on_assistant_rows
+from app.services.platform.openai_compat import inject_reasoning_content_on_assistant_rows
 
 logger = logging.getLogger(__name__)
 

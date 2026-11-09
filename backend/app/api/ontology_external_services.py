@@ -29,7 +29,7 @@ from app.database import get_db
 from app.models.external_service import AUTH_KINDS, SERVICE_KINDS, ExternalService
 from app.models.kubernetes_cluster import KubernetesCluster
 from app.models.ontology_function import OntologyFunction
-from app.services.credentials.credential_encryption import decrypt, encrypt
+from app.services.platform.credentials.credential_encryption import decrypt, encrypt
 from app.services.ontology.function_external_usage import external_service_names, function_sources
 from app.services.kubernetes.cluster_service_proxy import (
     identity_headers,

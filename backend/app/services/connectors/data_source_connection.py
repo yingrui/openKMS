@@ -7,7 +7,7 @@ import asyncio
 from sqlalchemy.exc import SQLAlchemyError
 
 from app.models.data_source import DataSource
-from app.services.credentials.credential_encryption import decrypt
+from app.services.platform.credentials.credential_encryption import decrypt
 from app.services.ontology.neo4j_async import NEO4J_ERRORS
 
 

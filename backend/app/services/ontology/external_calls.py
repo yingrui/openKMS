@@ -17,7 +17,7 @@ import httpx
 
 from app.models.external_service import ExternalService
 from app.models.kubernetes_cluster import KubernetesCluster
-from app.services.credentials.credential_encryption import decrypt
+from app.services.platform.credentials.credential_encryption import decrypt
 from app.services.kubernetes.cluster_service_proxy import join_proxy_path, proxy_service_async
 from app.services.ontology.constants import EXTERNAL_CALL_TIMEOUT_SECONDS
 

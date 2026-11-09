@@ -11,7 +11,7 @@ from app.api.auth import require_auth
 from app.database import get_db
 from app.models.user_git_credential import UserGitCredential
 from app.schemas.project import UserGitCredentialCreate, UserGitCredentialResponse
-from app.services.credentials.credential_crypto import encrypt_secret
+from app.services.platform.credentials.credential_crypto import encrypt_secret
 from app.services.platform.feature_toggles import require_agents_feature
 
 router = APIRouter(

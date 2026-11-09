@@ -2,7 +2,7 @@
 
 
 from app.api.admin import health_status
-import app.services.heartbeat.process_heartbeat_registry as registry
+import app.services.platform.heartbeat.process_heartbeat_registry as registry
 
 
 def setup_function() -> None:

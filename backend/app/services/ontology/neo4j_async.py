@@ -8,7 +8,7 @@ from collections.abc import Callable
 from typing import TypeVar
 
 from app.models.data_source import DataSource
-from app.services.credentials.credential_encryption import decrypt
+from app.services.platform.credentials.credential_encryption import decrypt
 
 T = TypeVar("T")
 

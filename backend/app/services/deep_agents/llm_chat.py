@@ -10,7 +10,7 @@ from typing import Any
 import httpx
 
 from app.config import settings
-from app.services.openai_compat import (
+from app.services.platform.openai_compat import (
     chat_extra_body_disable_thinking,
     make_langchain_chat_openai,
     use_reasoning_content_shim,

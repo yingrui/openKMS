@@ -107,7 +107,7 @@ def _ndjson_line(payload: Any) -> bytes:
 def _wiki_agent_chat_extra_body() -> dict[str, Any]:
     """Wiki / designer paths: merge OPENKMS_AGENT_LLM_EXTRA_BODY; force thinking off."""
     from app.config import settings
-    from app.services.openai_compat import chat_extra_body_disable_thinking
+    from app.services.platform.openai_compat import chat_extra_body_disable_thinking
 
     return chat_extra_body_disable_thinking(settings.agent_llm_extra_body_json)
 
@@ -115,7 +115,7 @@ def _wiki_agent_chat_extra_body() -> dict[str, Any]:
 def _wiki_use_llm_reasoning_content_shim(base_url: str) -> bool:
     """Wiki / designer paths: whether to inject reasoning_content for this gateway."""
     from app.config import settings
-    from app.services.openai_compat import use_reasoning_content_shim
+    from app.services.platform.openai_compat import use_reasoning_content_shim
 
     return use_reasoning_content_shim(
         base_url,

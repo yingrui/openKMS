@@ -9,7 +9,7 @@ import httpx
 
 from app.config import settings
 from app.services.platform.internal_service_auth import build_internal_service_request_auth
-from app.services.heartbeat.process_heartbeat_registry import ProcessRole
+from app.services.platform.heartbeat.process_heartbeat_registry import ProcessRole
 
 logger = logging.getLogger(__name__)
 

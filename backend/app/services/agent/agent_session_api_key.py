@@ -7,7 +7,7 @@ from typing import Any
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.agent_models import AgentConversation
-from app.services.credentials.credential_crypto import decrypt_secret, encrypt_secret
+from app.services.platform.credentials.credential_crypto import decrypt_secret, encrypt_secret
 from app.services.users.user_api_key_service import mint_user_api_key, revoke_user_api_key
 
 _CTX_KEY_ID = "session_api_key_id"

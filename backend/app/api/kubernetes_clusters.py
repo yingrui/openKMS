@@ -38,8 +38,8 @@ from app.schemas.kubernetes_cluster import (
     KubernetesServiceDetail,
     KubernetesServiceListResponse,
 )
-from app.services.credentials.credential_encryption import decrypt
-from app.services.credentials.credential_encryption import DECRYPT_ERRORS, encrypt
+from app.services.platform.credentials.credential_encryption import decrypt
+from app.services.platform.credentials.credential_encryption import DECRYPT_ERRORS, encrypt
 from app.services.kubernetes.cluster_apply import (
     apply_manifests_async,
     delete_resource_async,

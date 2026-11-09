@@ -18,7 +18,7 @@ from app.schemas.project_deploy_secret import (
     ProjectDeploySecretResponse,
     ProjectDeploySecretUpdate,
 )
-from app.services.credentials.credential_encryption import decrypt
+from app.services.platform.credentials.credential_encryption import decrypt
 from app.services.kubernetes.cluster_config import (
     delete_secret_async,
     openkms_secret_labels,
