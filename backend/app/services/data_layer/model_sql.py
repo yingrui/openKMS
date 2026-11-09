@@ -41,6 +41,49 @@ class RelationShapeError(ValueError):
     """A FROM/JOIN the scanner cannot read. Refused, because "not recognised" must never mean "unrestricted"."""
 
 
+def mask_quoted(sql: str, *, identifiers: bool = True) -> str:
+    """The same SQL with quoted text blanked out, same length, so offsets still line up.
+
+    A keyword inside `'…'` (or inside `"…"`, a quoted identifier) is not code: `SELECT 'from here'` has no FROM, and
+    rewriting it would put a subquery **inside the literal** — the user's value would change meaning, and `'joined from
+    here'` was refused as "Table here is not in this semantic model". Double quotes are blanked for keyword finding only;
+    the relation name itself is read from the original. `identifiers=False` keeps `"…"` visible — the guard against
+    `schema.table.column` has to *see* quoted names to refuse them.
+    """
+    out = list(sql)
+    i = 0
+    n = len(sql)
+    while i < n:
+        ch = sql[i]
+        if ch == "'" or (ch == '"' and identifiers):
+            quote = ch
+            j = i + 1
+            while j < n:
+                if sql[j] == quote:
+                    if j + 1 < n and sql[j + 1] == quote:  # '' and "" escape by doubling
+                        j += 2
+                        continue
+                    j += 1
+                    break
+                j += 1
+            for k in range(i, min(j, n)):
+                out[k] = " "
+            i = j
+            continue
+        if ch == "$":
+            dollar = re.match(r"\$[A-Za-z_]*\$", sql[i:])
+            if dollar:
+                tag = dollar.group(0)
+                close = sql.find(tag, i + len(tag))
+                end = n if close < 0 else close + len(tag)
+                for k in range(i, end):
+                    out[k] = " "
+                i = end
+                continue
+        i += 1
+    return "".join(out)
+
+
 def _skip_ws(sql: str, at: int) -> int:
     match = _SKIP.match(sql, at)
     return match.end() if match else at
@@ -61,7 +104,8 @@ def relation_refs(sql: str) -> list[tuple[int, int, str | None, str]]:
     the statement rather than running it unread: a relation the scanner missed is a table the allowlist never checked.
     """
     out: list[tuple[int, int, str | None, str]] = []
-    for match in _KEYWORD.finditer(sql):
+    masked = mask_quoted(sql)
+    for match in _KEYWORD.finditer(masked):
         at = _skip_ws(sql, match.end())
         if at >= len(sql):
             raise RelationShapeError("SQL ends right after FROM/JOIN.")
@@ -292,7 +336,7 @@ def constrain_base_policy(
             "This model's base dataset has no physical table to constrain.",
             QueryFailure("QUERY_INVALID_REQUEST", REQUEST),
         )
-    for schema, table, _ in _QUALIFIED_REF.findall(sql):
+    for schema, table, _ in _QUALIFIED_REF.findall(mask_quoted(sql, identifiers=False)):
         if (
             _unquote(schema).lower() == base_schema.lower()
             and _unquote(table).lower() == base_table.lower()

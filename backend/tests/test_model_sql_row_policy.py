@@ -282,3 +282,45 @@ class TestAnchorUsesTheSameScanner:
         from app.services.data_layer.model_sql import _anchor_dataset_id
 
         assert _anchor_dataset_id(sql, self.MODEL) == "ds-1"
+
+
+class TestStringsAreNotCode:
+    """The scanner reads keywords, not text — a literal must survive the rewrite byte for byte.
+
+    `SELECT 'from here'` was read as a relation named `here` (refused as "Table here is not in this semantic model"), and
+    `'from tushare.daily_basic'` was **rewritten inside the literal**, quietly changing the value the user's query returns.
+    """
+
+    MODEL = [SimpleNamespace(schema_name="tushare", table_name="daily_basic", id="ds-1")]
+    RESTRICTION = ['"rpbase"."ts_code" = :rp0']
+
+    def rewrite(self, sql: str) -> str:
+        return constrain_base_policy(
+            sql,
+            base_schema="tushare",
+            base_table="daily_basic",
+            conditions=self.RESTRICTION,
+            base_alias="rpbase",
+        )
+
+    @pytest.mark.parametrize(
+        "literal",
+        ["'from tushare.daily_basic'", "'joined from here'", "'it''s from x'", "$$from y$$"],
+    )
+    def test_a_literal_that_mentions_from_is_left_alone(self, literal: str):
+        sql = f'SELECT {literal} AS note FROM "tushare"."daily_basic"'
+        out = self.rewrite(sql)
+        assert literal in out, "the literal was rewritten"
+        assert "WHERE" in out, "the row restriction was dropped"
+
+    def test_only_the_table_is_a_relation(self):
+        assert [t for _s, _e, _sc, t in relation_refs("SELECT 'from x' AS a FROM \"tushare\".\"t\"")] == ["t"]
+
+    def test_a_literal_is_not_a_schema_qualified_column(self):
+        # It mentions schema.table.column, but inside a string: allowed, and still restricted.
+        out = self.rewrite("SELECT 'tushare.daily_basic.ts_code' AS s FROM tushare.daily_basic")
+        assert "WHERE" in out
+
+    def test_a_quoted_schema_qualified_column_is_still_refused(self):
+        with pytest.raises(QueryError, match="schema.table.column"):
+            self.rewrite('SELECT "tushare"."daily_basic"."ts_code" FROM tushare.daily_basic')

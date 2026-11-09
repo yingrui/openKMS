@@ -2,6 +2,15 @@
 
 Delivered work and design history, moved out of the [Development plan](development_plan.md).
 
+### A string literal is not a table (2026-11) — done
+
+- The same scanner read keywords out of **string literals**: `SELECT 'from here'` was refused as "Table here is not in
+  this semantic model", and `'from tushare.daily_basic'` was **rewritten inside the literal** — the statement still ran,
+  returning a different value than the author wrote. Neither leaks; both are wrong, and the second is silent.
+- Keywords are now found in a copy with `'…'`, `"…"` and `$$…$$` blanked out (same length, so offsets still line up);
+  the relation itself is read from the original. The `schema.table.column` guard uses the same masking **without**
+  blanking double quotes — it has to see quoted names to refuse them.
+
 ### A space after FROM removed the row restriction (2026-11) — done
 
 - SQL Lab rewrites a restricted query by finding the base table and wrapping it: `FROM t` → `FROM (SELECT * FROM t AS
