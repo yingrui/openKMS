@@ -10,6 +10,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
 from app.models.access_group import AccessGroupMember
+from app.models.user import User
+from app.models.user_api_key import UserApiKey
 
 
 def subject_aliases(subject: str, payload: dict | None = None) -> set[str]:
@@ -24,6 +26,31 @@ def subject_aliases(subject: str, payload: dict | None = None) -> set[str]:
         if isinstance(v, str) and v.strip():
             aliases.add(v.strip())
     return aliases
+
+
+async def subject_exists(db: AsyncSession, subject: str | None) -> bool:
+    """Whether an ACL subject is a live identity.
+
+    A grantee id is **not** necessarily a `users.id`: an ACL subject may be a legacy subject that predates local accounts and
+    is only named by `user_api_keys.owner_sub`, or an OIDC `sub` with no local row at all. Checking `users.id` alone decides
+    that the account which created most of the database does not exist — and a "clean the orphans" tool built on that
+    assumption deletes the owner's own grants.
+    """
+    if not subject or not subject.strip():
+        return False
+    subject = subject.strip()
+    if await db.get(User, subject):
+        return True
+    named_by_key = await db.scalar(
+        select(UserApiKey.id).where(UserApiKey.owner_sub == subject).limit(1)
+    )
+    if named_by_key:
+        return True
+    if settings.auth_mode == "oidc":
+        from app.services.identity.users.oidc_identity_service import display_label_for_oidc_sub
+
+        return await display_label_for_oidc_sub(db, subject) is not None
+    return False
 
 
 async def resolve_subject_display(

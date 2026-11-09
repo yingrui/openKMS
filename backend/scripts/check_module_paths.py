@@ -10,9 +10,12 @@ This checks the two things that were silently wrong: the module path exists, and
 from __future__ import annotations
 
 import importlib.util
+import logging
 import re
 import sys
 from pathlib import Path
+
+from app.services.platform.boundaries import boundary
 
 ROOT = Path(__file__).resolve().parent.parent
 ENTRY_POINTS = ('scheduler.py', 'worker.py')
@@ -56,10 +59,12 @@ def broken_entry_points() -> list[tuple[str, str]]:
             continue
         spec = importlib.util.spec_from_file_location(f'_check_{path.stem}', path)
         module = importlib.util.module_from_spec(spec)
-        try:
+        # A boundary, not a blind except: the contract here is "load it and report whatever went wrong", which is exactly
+        # what `app/services/platform/boundaries.py` exists for (`BLE001` is enabled repo-wide).
+        with boundary(f'import {name}', logger=logging.getLogger(__name__)) as failed:
             spec.loader.exec_module(module)
-        except Exception as exc:  # the point is to report any failure to load
-            out.append((name, f'{type(exc).__name__}: {exc}'))
+        if failed:
+            out.append((name, f'{type(failed[0]).__name__}: {failed[0]}'))
     return out
 
 

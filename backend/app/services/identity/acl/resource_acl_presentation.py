@@ -146,9 +146,9 @@ async def enrich_default_owner_grant(
     """
     if any(e.grantee_type == GRANTEE_USER for e in entries) or not creator_subject:
         return grant_rows, owner, owner_label
-    from app.models.user import User
+    from app.services.identity.acl.acl_identity import subject_exists
 
-    if await db.get(User, creator_subject) is None:
+    if not await subject_exists(db, creator_subject):
         return grant_rows, owner, owner_label
     label = await resolve_subject_display(db, creator_subject, display_hint=creator_display_name)
     enriched = list(grant_rows) + [

@@ -19,37 +19,51 @@ import sys
 from sqlalchemy import text
 
 from app.database import async_session_maker
+from app.services.identity.acl.acl_identity import resolve_subject_display, subject_exists
 
-ORPHANS = """
+#: Candidates only — whether a subject is live is decided by `subject_exists`, not by SQL. An ACL subject may be a
+#: `users.id`, a legacy subject named only by `user_api_keys.owner_sub`, or an OIDC `sub`; a `left join users` says the
+#: account behind most of this database does not exist.
+CANDIDATES = """
     select a.resource_type, a.resource_id, a.grantee_id, a.permissions
     from resource_acl_entries a
-    left join users u on u.id = a.grantee_id
-    where a.grantee_type = 'user' and u.id is null
+    where a.grantee_type = 'user'
     order by a.resource_type, a.resource_id
 """
 
 DELETE = """
-    delete from resource_acl_entries a
-    where a.grantee_type = 'user'
-      and not exists (select 1 from users u where u.id = a.grantee_id)
+    delete from resource_acl_entries
+    where resource_type = :resource_type and resource_id = :resource_id
+      and grantee_type = 'user' and grantee_id = :grantee_id
 """
 
 
 async def main() -> int:
     apply = '--apply' in sys.argv
     async with async_session_maker() as db:
-        rows = (await db.execute(text(ORPHANS))).all()
-        if not rows:
-            print('clean-orphan-grants: none')
+        candidates = (await db.execute(text(CANDIDATES))).all()
+        orphans = []
+        for resource_type, resource_id, grantee_id, permissions in candidates:
+            if await subject_exists(db, grantee_id):
+                continue
+            orphans.append((resource_type, resource_id, grantee_id, permissions))
+        if not orphans:
+            print(f'clean-orphan-grants: none ({len(candidates)} user grant(s), all with live subjects)')
             return 0
-        for resource_type, resource_id, grantee_id, permissions in rows:
-            print(f'  {resource_type:16} {resource_id:38} {grantee_id} {"r" if permissions & 1 else ""}{"w" if permissions & 2 else ""}{"m" if permissions & 4 else ""}')
+        for resource_type, resource_id, grantee_id, permissions in orphans:
+            label = await resolve_subject_display(db, grantee_id)
+            print(f'  {resource_type:16} {resource_id:38} {grantee_id} {label:20} {"r" if permissions & 1 else ""}{"w" if permissions & 2 else ""}{"m" if permissions & 4 else ""}')
         if not apply:
-            print(f'clean-orphan-grants: {len(rows)} orphan grant(s) — pass --apply to remove them')
+            print(f'clean-orphan-grants: {len(orphans)} grant(s) whose subject resolves to nothing — pass --apply to remove')
             return 0
-        result = await db.execute(text(DELETE))
+        removed = 0
+        for resource_type, resource_id, grantee_id, _permissions in orphans:
+            result = await db.execute(text(DELETE), {
+                'resource_type': resource_type, 'resource_id': resource_id, 'grantee_id': grantee_id,
+            })
+            removed += result.rowcount
         await db.commit()
-        print(f'clean-orphan-grants: removed {result.rowcount} orphan grant(s)')
+        print(f'clean-orphan-grants: removed {removed} grant(s)')
     return 0
 
 

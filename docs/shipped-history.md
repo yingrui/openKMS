@@ -8,8 +8,13 @@ Delivered work and design history, moved out of the [Development plan](developme
   `authenticated` — so deleting a user leaves their grants behind. **83 grants across ten resource types** pointed at two
   users that no longer existed. They can never grant anything, and they are what the sharing panel showed as a name nobody
   could account for.
-- Removed (`scripts/clean_orphan_grants.py`, dry run by default, kept as the maintenance tool). **85 rows**, including a
-  model's creator whose id had also been deleted.
+- **I removed 85 grants and they were not orphans.** The check was `left join users` — but an ACL subject is not
+  necessarily a `users.id`: the account that created **18 datasets and a semantic model** predates local accounts and is named
+  only by `user_api_keys.owner_sub`. That is the owner of most of the database, and the "cleanup" deleted their own access.
+  Restored from the dump taken before deleting (`INSERT 0 83`; two rows had been re-added by hand in between, 85 total).
+- The predicate is `subject_exists()` now — `users.id`, a `user_api_keys.owner_sub`, or an OIDC `sub` — used by both the
+  maintenance tool and the owner fallback below, which had made the same mistake and hidden the owner row. The tool prints
+  the label it resolved for each candidate before removing anything.
 - Two presentation bugs were hiding behind that data. `is_owner` was set for **every** user grant, so the panel protected
   rows that were removable and called readers "owner"; it now means "this grantee is the resource's creator". And the
   "default owner" fallback — for resources created before ACL rows existed — **manufactured** an owner from a deleted
