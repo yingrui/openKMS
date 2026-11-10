@@ -25,77 +25,105 @@ Two agent products, two postures. This is the frame every capability decision be
 Everything below follows from that row. A capability that is fine for the project agent is not automatically fine here — and
 conversely, a capability this service needs is not automatically fine *without a boundary*.
 
-## Execution and the sandbox
+### Terminology
 
-The product direction is **问数 → 问策**: from answering a question with a number to proposing an approach. That requires
-computation the Catalog cannot express — indicators, rolling windows, cross-dataset comparisons, a chart, a file the user
-keeps. Answering "what should we do" without the ability to compute is answering from rhetoric.
+Two different things, and the rest of this page keeps them apart:
 
-So execution is **in scope**, and that makes the sandbox a **hard requirement**, not an optional capability. It also raises
-the bar rather than lowering it: this is an **external-facing** service, so a hole in the boundary is arbitrary code
-execution on the host, on behalf of a stranger.
+- **Session workspace** — a directory per conversation: files the agent reads and writes. The project runtime's per-project
+  directory, one level finer.
+- **Execution boundary** — what happens when code actually runs. A workspace does not provide it.
 
-### The current implementation cannot be reused
+## The session workspace (files)
 
-`deep_agents/sandbox.py` runs:
+Two things are being conflated when the word "sandbox" is used, and they should be separate: **where the agent's files
+live** (this section) and **what a process may touch when code runs** (next section). The file layer is the one the product
+needs first.
 
-```
-subprocess.run([sys.executable, "-c", code], cwd=project_root, timeout=…, env=…)
-```
+The project runtime gives every **project** one directory (`project_fs.project_root(project_id)`,
+`settings.projects_root`). The KB agent needs the same thing at **session** granularity: one directory per conversation,
+because a conversation is the unit a user works in, and two users (or the same user twice) must not see each other's files.
 
-Same OS user as the backend, no container, no namespaces, no seccomp, no network policy — the isolation is *a working
-directory and a timeout*. And `build_project_shell_env` (`deep_agents/env.py`) puts credentials into that process:
-
-```
-OPENKMS_API_KEY=<the caller's bearer token>   OPENKMS_API_BASE_URL=<backend>
-```
-
-Verified: a child process started this way can read files above its `cwd` (including `backend/.env`) and sees the backend's
-environment. For the internal project agent that is a conscious trade. For the KB service it is remote code execution plus
-credential exfiltration, so the KB path must not use it.
-
-### What the KB sandbox must guarantee
-
-| Requirement | Detail |
-|---|---|
-| **Isolation** | container (preferred) or microVM. Read-only root filesystem; the only writable mount is the session directory. Never the Docker socket on the backend host — a compromised backend would then own the host. |
-| **No credentials** | zero `OPENKMS_*` variables, no DB URL, no model keys. The sandbox queries the Catalog through **tool calls the agent makes**, not through a key available to arbitrary code. |
-| **Network** | **deny by default**. Anything a skill needs is baked into the image; no `pip install` at run time. An allowlist is a separate, per-KB decision. |
-| **Quotas** | cpu, memory, disk, wall-clock, and executions per turn. A killed process is a **tool error** the model can react to, never a 500. |
-| **Lifetime** | created lazily on the first execution, reclaimed after an idle TTL, destroyed with the conversation. |
-| **Audit** | every execution recorded: code, exit status, duration, artifact sizes (`audit_events` already exists). |
-| **No git** | explicitly out of scope. Skills arrive as installed packages (`.openkms/skills/<id>/SKILL.md` + files), not cloned repositories. |
-
-### Per-session workspace, not per-KB and not per-user
+### Shape
 
 ```
-/workspace                  the only writable mount — one per conversation
-  uploads/                  data the session was explicitly given
-  out/                      artifacts: charts, CSV, notebooks, reports
+{OPENKMS_SESSIONS_ROOT}/{kb_id}/{session_id}/
+  AGENTS.md          copied from the KB's agent_config at session creation
+  .openkms/skills/   the KB's installed instructional skills, mounted read-only
+  uploads/           data the user attached to this conversation
+  out/               artifacts the agent produced: charts, CSV, notebooks, reports
   tmp/
 ```
 
-Session-scoped rather than user-scoped: two conversations with the same user do not see each other's files unless the user
-explicitly continues a conversation. Artifacts are copied out to object storage **before** the directory is reclaimed, and
-are returned as attachments together with the code that produced them — for 问策 the artifact *is* the evidence.
+- **Keyed by session, nested under the KB** — nesting keeps quota and cleanup per KB honest without making the path depend
+  on the user.
+- **Created lazily** on the first file or code use, not on every `/ask`.
+- **Reclaimed** after an idle TTL and destroyed with the conversation; `out/` is copied to object storage first so the
+  artifacts survive the directory.
+- **Bounded** by a disk quota per session, and by a per-sample limit on what a single tool call may read or write.
+
+### Implementation: the same backend, a different root
+
+`deep_agents/project_backend.py` already builds the thing needed:
+
+```python
+ProjectWorkspaceBackend(root_dir=…, virtual_mode=True, timeout=…, env=…)
+```
+
+It is a `deepagents` `LocalShellBackend` — `ls`, `read`, `write`, `edit`, `glob`, `grep`, `execute` — scoped to one root,
+with normalized paths, no inherited environment and a denied-command policy. For the KB it becomes
+`SessionWorkspaceBackend` with `root_dir = session dir`; the file tools then come from `FilesystemMiddleware` for free, and the
+rest of the design does not change.
+
+`project_fs.resolve_project_path` is the pattern to mirror for any path that does not go through the backend (upload, delete,
+artifact export): resolve under the root and **reject `..` and anything that escapes** — it already does exactly that.
+
+### What the workspace does **not** do
+
+**A directory is not a boundary.** `virtual_mode` normalizes paths for the *file tools*; it does not constrain a shell.
+`ProjectWorkspaceBackend.execute` runs `subprocess.run(..., cwd=root)` as the backend's OS user, so a child process can read
+`../../backend/.env` and every environment variable the API server holds. Verified. Inside a trusted project folder that is a
+conscious trade; in an external service it is remote code execution.
+
+So the session workspace gives: a place for files, isolation *between sessions for the file tools*, quota, and cleanup. It
+does **not** give isolation from the host. That is the next section, and it is only needed because 问策 needs computation.
+
+## Executing code
+
+The product direction is **问数 → 问策**: from answering with a number to proposing an approach. That needs computation the
+Catalog cannot express — indicators, rolling windows, cross-dataset comparisons, a chart, a file the user keeps. Answering
+"what should we do" without being able to compute is answering from rhetoric.
+
+So `execute` is in scope, and *that* is what requires a boundary — not the files. The requirement is about the **process**:
+
+| Requirement | Detail |
+|---|---|
+| **Isolation** | container or microVM; read-only rootfs; the session directory is the only writable mount; never the Docker socket (a compromised backend would own the host) |
+| **No credentials** | zero `OPENKMS_*` variables in the sandbox. The Catalog is reached through **tool calls the agent makes**, not a key available to arbitrary code. `build_project_shell_env` injects `OPENKMS_API_KEY` today — that must not happen here |
+| **Network** | denied by default; anything a skill needs is baked into the image (no `pip install` at run time) |
+| **Quotas** | cpu, memory, disk, wall-clock, executions per turn; a kill is a **tool error** the model can react to, never a 500 |
+| **Lifecycle** | the sandbox is created with the session and destroyed with it; the directory outlives individual executions |
+| **Audit** | every execution recorded: code, exit status, duration, artifact sizes |
+| **No git** | explicitly out. Skills arrive as installed packages, not cloned repositories |
+
+`ProjectWorkspaceBackend.execute` is the model for *how to run it safely from an async server* (off the event loop, kill the
+process group on timeout, stream partial output) — that part is reusable; the isolation around it is not, because there is
+none.
 
 ### Runtime choice
 
 | Option | Isolation | Start latency | Verdict |
 |---|---|---|---|
-| k8s Pod per session | clean | 1–3 s cold | **start here** — the boundary is explicit and the cluster already exists |
+| k8s Pod per session | clean | 1–3 s cold | **start here** — explicit boundary, the cluster already exists |
 | Warm pool of sandboxes | clean | low | later optimization, real maintenance cost |
-| Local Docker socket | weak | fast | **no** — backend compromise becomes host compromise |
+| Local Docker socket | weak | fast | **no** — a backend compromise becomes a host compromise |
+| In-process subprocess (today) | **none** | fastest | acceptable for the internal project agent only |
 
 ### Skills, now that execution exists
 
 | Skill kind | What it is | Where it runs |
 |---|---|---|
 | **Instructional** | a `SKILL.md`: which tool, in what order, with what checks | anywhere — it is text |
-| **Executable** | ships a CLI or script that must run | **only inside the sandbox**, with the table above in force |
-
-That keeps the delivery path's properties that matter (no credentials reach code, no host filesystem, quotas, audit) while
-allowing the capability the product needs.
+| **Executable** | ships a CLI or script that must run | **only inside the execution boundary**, with the table above in force |
 
 ## Optional tool: web search
 
@@ -179,7 +207,8 @@ new columns.
 | **Retrieval** | `top_k`, `rerank`, `hybrid_weights`, `min_score` — today `top_k=5` is hard-coded in `agent.py` |
 | **Answer policy** | `unknown_measure`, `require_grounded_numbers`, `evidence_labels`, `require_schema_lookup` (see "policies" below) |
 | **Orchestration** | `profile` (`rag_only` / `rag_tools` / `agent_loop` — an enum, not a graph), `max_tool_rounds`, `recursion_limit`, `retrieve` (`always` / `never` / `on_miss`) |
-| **Execution** | `sandbox.enabled`, `.profile` (`container` / `microvm`), `.image`, `.cpu`, `.mem_mb`, `.disk_mb`, `.wall_seconds`, `.max_exec_per_turn`, `.network` (`deny` / allowlist), `.session_ttl_minutes`, `.artifact_max_mb` |
+| **Workspace (files)** | `workspace.enabled`, `.disk_mb`, `.session_ttl_minutes`, `.artifact_max_mb`, `.upload_max_mb`, `.skills_read_only` (default true) |
+| **Execution (process)** | `sandbox.enabled`, `.profile` (`container` / `microvm`), `.image`, `.cpu`, `.mem_mb`, `.wall_seconds`, `.max_exec_per_turn`, `.network` (`deny` / allowlist) |
 | **Observability** | `langfuse_credential_id` (a **reference**, never the secret), `langfuse_tags`, `sample_rate` |
 | **Model** | `agent_llm_model_id` |
 
@@ -355,8 +384,12 @@ series is the measurement.
    three numbers that decide it. The open part is the retrieval fork: a node that always runs versus a tool the model calls.
 6. **Executable skills for the KB agent** — deliberately out today (see "File sandbox"). If the answer becomes yes, the
    question is what the isolation boundary is, because `run_python` is a subprocess, not a sandbox.
-7. **Sandbox runtime**: k8s Pod per session (clean boundary, 1–3 s cold start) versus a warm pool (fast, more maintenance).
-   The Docker-socket option is rejected: it makes a backend compromise a host compromise.
+7. **Execution boundary**: k8s Pod per session (clean, 1–3 s cold start) versus a warm pool (fast, more maintenance). The
+   Docker-socket option is rejected: it makes a backend compromise a host compromise. Note that the *workspace* does not
+   depend on this answer — files can ship before code execution does.
+9. **Workspace retention**: how long a session directory survives an idle conversation, and whether a user may keep one
+   ("continue this analysis tomorrow") — which turns a conversation into something that has a workspace, i.e. closer to a
+   project.
 8. **问策 evaluation**: an artifact plus its code needs a third ground-truth family next to `data_query` — artifact shape and
    the tables its code read are checkable; whether the *strategy* is sound is not, and stays a human review.
 
