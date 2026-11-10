@@ -134,3 +134,42 @@ class TestRawSqlExpectationDefersToTheLlm:
         assert result["passed"] is False  # not until the LLM says so
         assert len(result["pending_llm"]) == 1
         assert len(result["matched"]) == 0
+
+
+class TestNoExpectedQueryMeansRefuse:
+    """An empty `expected_query` is a requirement to refuse, not a test with nothing to check."""
+
+    def test_refusing_is_a_pass(self):
+        result = match_sources_to_queries([], [])
+        assert result["passed"] is True
+        assert result["expect_refusal"] is True
+
+    def test_citing_anything_when_it_should_refuse_fails(self):
+        result = match_sources_to_queries([], [source("SELECT * FROM tushare.daily_basic")])
+        assert result["passed"] is False
+        assert result["coverage"] == 0.0
+        assert len(result["extra_sources"]) == 1
+
+
+class TestFiltersLiveInTheWhere:
+    """`filters` is the ground-truth form of a WHERE condition; only the column is checked, never the value."""
+
+    def test_a_where_condition_is_extracted_at_any_level(self):
+        feats = extract_sql_features(
+            "SELECT * FROM (SELECT avg(pe_ttm) FROM tushare.daily_basic d "
+            "JOIN tushare.stock_basic s ON s.ts_code = d.ts_code WHERE s.industry = '半导体') x"
+        )
+        assert "industry" in feats["filters"]
+
+    def test_missing_filter_fails_and_names_the_column(self):
+        expected = {"model_id": "m1", "sql": {"tables": ["tushare.stock_basic"], "filters": [{"column": "list_status"}]}}
+        verdict = judge_query_features(expected, source("SELECT count(*) FROM tushare.stock_basic"))
+        assert verdict["passed"] is False
+        assert any("list_status" in r for r in verdict["reasons"])
+
+    def test_present_filter_passes(self):
+        expected = {"model_id": "m1", "sql": {"filters": [{"column": "list_status"}]}}
+        verdict = judge_query_features(
+            expected, source("SELECT count(*) FROM tushare.stock_basic WHERE list_status = 'L'")
+        )
+        assert verdict["passed"] is True, verdict["reasons"]

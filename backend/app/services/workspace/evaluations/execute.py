@@ -369,6 +369,10 @@ async def run_data_query_evaluation(
             reasons: list[str] = []
             for u in result["uncovered"]:
                 reasons.append(f"query {u['query_index'] + 1}: {'; '.join(u['verdict']['reasons'])}")
+            if result.get("expect_refusal"):
+                # No expected query means the model cannot answer this, so citing anything is the failure.
+                cited = len(result["extra_sources"])
+                reasons = [f"should have refused, but cited {cited} quer{'y' if cited == 1 else 'ies'}"] if cited else []
 
             out.append(
                 {
@@ -377,7 +381,11 @@ async def run_data_query_evaluation(
                     "expected_answer": item.expected_answer,
                     "passed": result["passed"],
                     "score": result["coverage"],
-                    "reasoning": "; ".join(reasons) if reasons else "every expected query was cited",
+                    "reasoning": (
+                        "; ".join(reasons)
+                        if reasons
+                        else ("refused, as required" if result.get("expect_refusal") else "every expected query was cited")
+                    ),
                     "detail": {
                         "data_queries": [
                             {

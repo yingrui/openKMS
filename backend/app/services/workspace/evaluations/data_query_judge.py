@@ -37,19 +37,43 @@ def _clause(sql: str, keyword: str) -> str | None:
     return rest[: stop.start()] if stop else rest
 
 
-def _columns_in(clause: str | None) -> set[str]:
-    """Every identifier in the SELECT list — columns, aliases, function names.
 
-    A superset on purpose: the evaluation asks "is the expected column referenced", and a superset answers that correctly
-    (extra identifiers like `count` or `sum` never hide a missing column).
+def _select_columns(sql: str) -> set[str]:
+    """Identifiers from **every** SELECT list in the statement, not just the outermost.
+
+    SQL Lab wraps what the agent wrote: `SELECT * FROM (SELECT industry, count(*) … ) AS _ok_sql_lab LIMIT 10`. Reading only
+    the first SELECT list sees `*` and nothing else, so every expectation that named a column failed against a SQL that
+    plainly contained it. Each level's select list is collected instead — a superset, which is what the check wants.
     """
-    return _words(clause)
+    masked = mask_quoted(sql, identifiers=False)
+    out: set[str] = set()
+    for match in re.finditer(r'\bselect\b', masked, re.IGNORECASE):
+        rest = masked[match.end():]
+        stop = re.search(r'\bfrom\b', rest, re.IGNORECASE)
+        out |= _words(rest[: stop.start()] if stop else rest)
+    return out
 
 
 def _words(clause: str | None) -> set[str]:
     if not clause:
         return set()
     return {_norm(w) for w in _IDENT.findall(clause)}
+
+
+def _where_columns(sql: str) -> set[str]:
+    """Identifiers in every WHERE clause — the filters, at any nesting level.
+
+    Only the **column** is checked, never the value: in metric mode the backend binds values as parameters, so the literal
+    is not in the SQL text at all, and a check that looked for it would fail every correct query. Value equality is the
+    LLM's question (a raw-SQL expectation), not this one.
+    """
+    masked = mask_quoted(sql, identifiers=False)
+    out: set[str] = set()
+    for match in re.finditer(r'\bwhere\b', masked, re.IGNORECASE):
+        rest = masked[match.end():]
+        stop = re.search(r'\b(?:group\s+by|having|order\s+by|limit|offset|join|union)\b', rest, re.IGNORECASE)
+        out |= _words(rest[: stop.start()] if stop else rest)
+    return out
 
 
 def extract_sql_features(sql: str) -> dict[str, set[str]]:
@@ -64,13 +88,15 @@ def extract_sql_features(sql: str) -> dict[str, set[str]]:
     for _start, _end, schema, table in relation_refs(sql):
         tables.add(f'{_norm(schema)}.{_norm(table)}' if schema else _norm(table))
 
-    select_clause = _clause(sql, 'select')
     group_clause = _clause(sql, 'group\\s+by')
+    select_columns = _select_columns(sql)
+    where_columns = _where_columns(sql)
     return {
         'tables': tables,
-        'columns': _columns_in(select_clause),
+        'columns': select_columns,
         'group_by': _words(group_clause),
-        'referenced': _columns_in(select_clause) | _words(group_clause),
+        'filters': where_columns,
+        'referenced': select_columns | _words(group_clause) | where_columns,
     }
 
 
@@ -134,6 +160,16 @@ def judge_query_features(
                 missing = sorted(want - feats[key])
                 reasons.append(f'{label} missing: {", ".join(missing)}')
 
+    expected_filters = expected_sql.get('filters') or []
+    wanted_filter_columns = {
+        str(f.get('column') if isinstance(f, dict) else f).lower() for f in expected_filters
+    }
+    if wanted_filter_columns:
+        missing = sorted(wanted_filter_columns - feats['filters'])
+        checks['filters'] = not missing
+        if missing:
+            reasons.append(f'filters missing from WHERE: {", ".join(missing)}')
+
     forbid = {str(x).lower() for x in (expected_sql.get('forbid') or [])}
     if forbid:
         used = forbid & feats['referenced']
@@ -160,6 +196,20 @@ def match_sources_to_queries(
     nothing is an extra query the agent made — possibly a useful supplement, possibly a red herring — and is reported
     separately so the run can score completeness without letting it pass or fail the item.
     """
+    # No expected query is a *requirement to refuse*: the model cannot answer this question, so any citation is a failure.
+    # An empty list must not be indistinguishable from "nothing to check".
+    if not expected_queries:
+        cited = [{'source_index': j, 'source': src} for j, src in enumerate(sources)]
+        return {
+            'matched': [],
+            'uncovered': [],
+            'pending_llm': [],
+            'extra_sources': cited,
+            'coverage': 1.0 if not cited else 0.0,
+            'passed': not cited,
+            'expect_refusal': True,
+        }
+
     matched: list[dict[str, Any]] = []
     uncovered: list[dict[str, Any]] = []
     pending_llm: list[dict[str, Any]] = []
