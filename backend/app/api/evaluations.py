@@ -681,7 +681,7 @@ async def run_evaluation(
                 db, ev.wiki_space_id, evaluation_id, judge_config
             )
         elif eval_type == EVALUATION_TYPE_DATA_QUERY:
-            item_rows = await run_data_query_evaluation(db, kb, evaluation_id, token)
+            item_rows = await run_data_query_evaluation(db, kb, evaluation_id, judge_config, token)
         else:
             raise HTTPException(
                 status_code=500,

@@ -114,3 +114,23 @@ class TestOneSourceCoversSeveralQueries:
         assert result["passed"] is True
         assert result["coverage"] == 1.0
         assert len(result["extra_sources"]) == 0
+
+
+class TestRawSqlExpectationDefersToTheLlm:
+    """An expected query written as raw SQL is not decided structurally — it returns `needs_llm`."""
+
+    def test_a_string_sql_expectation_needs_the_llm(self):
+        verdict = judge_query_features(
+            {"model_id": "m1", "sql": "SELECT industry, count(*) FROM tushare.stock_basic GROUP BY industry"},
+            source("SELECT industry, count(*) AS n FROM tushare.stock_basic GROUP BY industry"),
+        )
+        assert verdict["needs_llm"] is True
+        assert verdict["passed"] is None
+        assert verdict["expected_sql"].startswith("SELECT industry")
+
+    def test_pending_llm_is_reported_and_never_a_pass(self):
+        expected = [{"model_id": "m1", "sql": "SELECT count(*) FROM tushare.stock_basic"}]
+        result = match_sources_to_queries(expected, [source("SELECT count(*) FROM tushare.stock_basic")])
+        assert result["passed"] is False  # not until the LLM says so
+        assert len(result["pending_llm"]) == 1
+        assert len(result["matched"]) == 0

@@ -1,4 +1,5 @@
 """Run evaluation strategies: search + judge, QA agent + judge."""
+import json
 import logging
 from typing import Any
 
@@ -277,6 +278,7 @@ async def run_data_query_evaluation(
     db: AsyncSession,
     kb: KnowledgeBase,
     evaluation_id: str,
+    judge_config: dict[str, Any],
     access_token: str,
 ) -> list[dict[str, Any]]:
     """Ask the KB agent per item, then judge the ``data_query`` sources it cited.
@@ -338,6 +340,30 @@ async def run_data_query_evaluation(
                 expected = []
             result = match_sources_to_queries(expected, data_queries)
 
+            # A raw-SQL expectation is judged for equivalence, not structure. Resolve each pending query with the LLM
+            # and fold the verdicts back in, recomputing coverage.
+            if result["pending_llm"]:
+                by_query: dict[int, list[dict[str, Any]]] = {}
+                for p in result["pending_llm"]:
+                    by_query.setdefault(p["query_index"], []).append(p)
+                for query_index, pendings in by_query.items():
+                    resolution = {"passed": False, "reasoning": "no equivalent SQL cited"}
+                    for p in pendings:
+                        verdict = await judge_sql_equivalence(
+                            p["verdict"]["expected_sql"], p["verdict"]["actual_sql"], judge_config
+                        )
+                        if verdict["pass"]:
+                            resolution = {"passed": True, "reasoning": verdict["reasoning"]}
+                            break
+                        resolution["reasoning"] = verdict["reasoning"]
+                    if resolution["passed"]:
+                        result["matched"].append({"query_index": query_index, "source_index": -1, "verdict": {"passed": True}})
+                    else:
+                        result["uncovered"].append({"query_index": query_index, "source_index": -1, "verdict": {"passed": False, "reasons": [resolution["reasoning"]], "checks": {}}})
+                total = len(expected)
+                result["coverage"] = len(result["matched"]) / total if total else 0.0
+                result["passed"] = result["coverage"] == 1.0
+
             # The pass line is coverage: every expected query is covered. Extra sources are completeness — reported, and
             # scored later (they must not fail an otherwise-correct answer).
             reasons: list[str] = []
@@ -369,3 +395,61 @@ async def run_data_query_evaluation(
                 }
             )
     return out
+
+
+SQL_EQUIVALENCE_PROMPT = """You are judging whether two SQL statements answer the same question.
+
+Expected SQL (ground truth):
+{expected_sql}
+
+Actual SQL (what the agent ran):
+{actual_sql}
+
+The two may differ in formatting, aliases, join order, or `BETWEEN` vs two inequalities. Judge whether they are
+**semantically equivalent**: do they read the same tables, apply the same filters and the same grouping, and return the
+same measure? A difference in the *numbers' grain* or the *filters* is a real difference, not a formatting one.
+
+Respond with JSON only: {{"pass": true|false, "score": 0.0-1.0, "reasoning": "one or two sentences"}}
+- pass: true if they are equivalent, false otherwise
+- score: how close they are (1.0 identical meaning, 0.0 different question)
+- reasoning: what differs, if anything"""
+
+
+async def judge_sql_equivalence(
+    expected_sql: str,
+    actual_sql: str,
+    model_config: dict[str, Any],
+) -> dict[str, Any]:
+    """LLM judge for two SQLs that are not compared structurally (a SQL Lab source has only text)."""
+    from openai import AsyncOpenAI, OpenAIError
+
+    prompt = SQL_EQUIVALENCE_PROMPT.format(expected_sql=expected_sql, actual_sql=actual_sql)
+    base_url = model_config.get("base_url", "").rstrip("/")
+    if base_url and not base_url.endswith("/v1"):
+        base_url = f"{base_url}/v1"
+
+    client = AsyncOpenAI(base_url=base_url, api_key=model_config.get("api_key") or "no-key")
+    try:
+        response = await client.chat.completions.create(
+            model=model_config.get("model_name", "gpt-4o-mini"),
+            messages=[
+                {"role": "system", "content": "You are a SQL equivalence evaluator. Respond only with valid JSON."},
+                {"role": "user", "content": prompt},
+            ],
+            temperature=0.0,
+        )
+        content = (response.choices[0].message.content or "{}").strip()
+        if content.startswith("```"):
+            lines = content.split("\n")
+            content = "\n".join(lines[1:-1] if lines[-1].strip() == "```" else lines[1:])
+        data = json.loads(content)
+        if not isinstance(data, dict):
+            return {"pass": False, "score": 0.0, "reasoning": "Invalid judge response"}
+        return {
+            "pass": bool(data.get("pass", False)),
+            "score": float(data.get("score", 0.0)),
+            "reasoning": str(data.get("reasoning", "")),
+        }
+    except (ValueError, OpenAIError) as exc:
+        logger.warning("SQL equivalence judge failed: %s", exc)
+        return {"pass": False, "score": 0.0, "reasoning": f"judge error: {exc}"}

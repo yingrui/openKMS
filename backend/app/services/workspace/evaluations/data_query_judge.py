@@ -106,10 +106,24 @@ def judge_query_features(
         if not metric_ok:
             reasons.append(f'cited metric {actual.get("metric") or "<none>"}, expected {expected_metric}')
 
-    # SQL shape, only when the ground truth demands one
+    # SQL shape. Two ground-truth forms: a dict of features (deterministic), or a raw SQL string whose meaning has to be
+    # judged for equivalence by a model — a SQL Lab source has only SQL text, so its accuracy is semantic, not structural.
     sql = str(actual.get('sql') or '')
     feats = extract_sql_features(sql)
     expected_sql = expected.get('sql') or {}
+
+    if isinstance(expected_sql, str):
+        # Deterministic checks so far still apply (model id, metric); the SQL itself needs the LLM.
+        passed = bool(model_ok and (checks.get('metric', True)))
+        return {
+            'passed': None,  # undecided without a model
+            'needs_llm': True,
+            'expected_sql': expected_sql,
+            'actual_sql': sql,
+            'checks': checks,
+            'reasons': reasons,
+            'features': {k: sorted(v) for k, v in feats.items()},
+        }
 
     for key, label in (('tables', 'tables'), ('columns', 'columns'), ('group_by', 'group by')):
         want = {str(x).lower() for x in (expected_sql.get(key) or [])}
@@ -148,18 +162,26 @@ def match_sources_to_queries(
     """
     matched: list[dict[str, Any]] = []
     uncovered: list[dict[str, Any]] = []
+    pending_llm: list[dict[str, Any]] = []
 
     # A source is not consumed by a match: one subquery SQL can answer two expected queries
     # (stock count *and* calendar days), and both should count as covered.
     for i, expected in enumerate(expected_queries):
         best: dict[str, Any] | None = None
+        needs_llm: list[dict[str, Any]] = []
         for j, src in enumerate(sources):
             verdict = judge_query_features(expected, src)
+            if verdict.get('needs_llm'):
+                needs_llm.append({'query_index': i, 'source_index': j, 'verdict': verdict})
+                continue
             if verdict['passed']:
                 best = {'query_index': i, 'source_index': j, 'verdict': verdict}
                 break
         if best is not None:
             matched.append(best)
+        elif needs_llm:
+            # The query's SQL is given as a raw string, so equivalence is a model's call — deferred, not decided here.
+            pending_llm.extend(needs_llm)
         else:
             # keep the most informative failure: the source that attempted the most checks, then the fewest reasons
             failing: dict[str, Any] | None = None
@@ -190,11 +212,13 @@ def match_sources_to_queries(
     ]
 
     total = len(expected_queries)
+    # Coverage is provisional until the LLM resolves pending; the caller recomputes it after.
     coverage = len(matched) / total if total else 0.0
     return {
         'matched': matched,
         'uncovered': uncovered,
+        'pending_llm': pending_llm,
         'extra_sources': extra_sources,
         'coverage': coverage,
-        'passed': coverage == 1.0,
+        'passed': coverage == 1.0 and not pending_llm,
     }
