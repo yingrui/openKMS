@@ -144,7 +144,7 @@
     },
     "qaTitle": "问答",
     "qaOpenChat": "问答",
-    "qaBackToKb": "全部知识库",
+    "qaBackToKb": "返回知识库",
     "qaBackAria": "返回知识库概览",
     "qaSettingsTitle": "知识库设置",
     "qaSessionActions": "会话操作",
@@ -433,6 +433,10 @@
     },
     "qaFiles": "文件",
     "qaFilesEmpty": "本次会话还没有产生文件。",
-    "qaFilesLoading": "加载中…"
+    "qaFilesLoading": "加载中…",
+    "qaFilesRefresh": "刷新",
+    "qaFilesClose": "收起文件面板",
+    "qaFilesResize": "调整文件面板宽度",
+    "qaFilesResizeHint": "拖动调整文件面板宽度"
   }
 }

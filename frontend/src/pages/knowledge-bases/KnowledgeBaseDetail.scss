@@ -1089,6 +1089,17 @@ body.openkms-kb-qa-fullpage .kb-qa-shell {
       width: 100%;
     }
 
+    /* Phone: the files rail covers the chat, as the project's sheet does — the head's collapse
+       button is the way back, and the toolbar's Files button reopens it. */
+    .kb-qa-files-rail {
+      position: absolute;
+      inset: 0;
+      z-index: var(--z-modal);
+      width: 100%;
+      border-left: none;
+      background: var(--color-bg);
+    }
+
     .kb-qa-sources-drawer {
       position: absolute;
       inset: 0;
@@ -1533,13 +1544,15 @@ body.openkms-kb-qa-fullpage .kb-qa-shell {
   border-left: 1px solid var(--color-border);
 }
 
+/* Same row height as the files rail head beside it, so the two borders are one line. */
 .kb-qa-sources-drawer__head {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: var(--space-3);
   flex-shrink: 0;
-  padding: var(--space-3) var(--space-4);
+  min-height: ds.$pane-header-height;
+  padding: 0 var(--space-4);
   border-bottom: 1px solid var(--color-border);
 }
 
@@ -3129,95 +3142,14 @@ body.openkms-kb-qa-fullpage .kb-qa-shell {
   position: relative;
 }
 
-.kb-qa-files-toggle {
-  position: absolute;
-  top: var(--space-3);
-  right: var(--space-4);
-  z-index: 5;
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-2);
-  padding: var(--space-1) var(--space-3);
-  border: 1px solid var(--color-border);
-  border-radius: 999px;
-  background: var(--color-surface);
-  color: var(--color-text-secondary);
-  font-size: var(--font-size-sm);
-  cursor: pointer;
-
-  &.is-active {
-    border-color: var(--color-accent, #2563eb);
-    color: var(--color-accent, #2563eb);
-  }
-}
-
 .kb-qa-files-rail {
-  width: 0;
-  overflow: hidden;
-  border-left: 0 solid var(--color-border);
-  background: var(--color-surface);
-  transition: width 120ms ease;
-
-  &.is-open {
-    width: 20rem;
-    border-left-width: 1px;
-    overflow-y: auto;
-    padding: var(--space-3);
-  }
-}
-
-.kb-qa-files {
-  &__title {
-    display: flex;
-    align-items: center;
-    gap: var(--space-2);
-    margin: 0 0 var(--space-2);
-    font-size: var(--font-size-sm);
-    font-weight: var(--font-weight-medium);
-    color: var(--color-text-secondary);
-  }
-
-  &__count {
-    font-variant-numeric: tabular-nums;
-  }
-
-  ul {
-    list-style: none;
-    margin: 0;
-    padding: 0;
-  }
-
-  &__link {
-    display: flex;
-    align-items: center;
-    gap: var(--space-2);
-    width: 100%;
-    padding: var(--space-1) var(--space-2);
-    border: 0;
-    border-radius: var(--radius-sm);
-    background: none;
-    color: inherit;
-    font: inherit;
-    text-align: left;
-    cursor: pointer;
-
-    &:hover {
-      background: var(--color-surface-sunken);
-    }
-  }
-
-  &__name {
-    flex: 1;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-
-  &__size {
-    color: var(--color-text-secondary);
-    font-size: var(--font-size-xs);
-    font-variant-numeric: tabular-nums;
-  }
+  flex-shrink: 0;
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  border-left: 1px solid var(--color-border);
+  background: var(--color-bg-elevated);
 }
 
 /* Unsourced numbers, when the KB asks to be told about them. A note, not an error: the answer is still an answer. */
@@ -3252,91 +3184,4 @@ body.openkms-kb-qa-fullpage .kb-qa-shell {
   display: grid;
   gap: var(--space-4);
   max-width: 60rem;
-}
-
-/* The conversation's files, directly above the composer. */
-.kb-qa-files-row {
-  display: flex;
-  justify-content: flex-end;
-  padding: 0 var(--space-4) var(--space-2);
-}
-
-.kb-qa-files {
-  position: relative;
-
-  &__toggle {
-    display: inline-flex;
-    align-items: center;
-    gap: var(--space-2);
-    padding: var(--space-1) var(--space-3);
-    border: 1px solid var(--color-border);
-    border-radius: 999px;
-    background: var(--color-surface);
-    color: var(--color-text-secondary);
-    font-size: var(--font-size-sm);
-    cursor: pointer;
-
-    &.is-active {
-      border-color: var(--color-accent, #2563eb);
-      color: var(--color-accent, #2563eb);
-    }
-  }
-
-  &__count {
-    font-variant-numeric: tabular-nums;
-  }
-
-  &__panel {
-    position: absolute;
-    right: 0;
-    bottom: calc(100% + var(--space-2));
-    min-width: 18rem;
-    max-width: 32rem;
-    max-height: 18rem;
-    overflow: auto;
-    padding: var(--space-2);
-    background: var(--color-surface);
-    border: 1px solid var(--color-border);
-    border-radius: var(--radius-md);
-    box-shadow: var(--shadow-md);
-    z-index: 20;
-
-    ul {
-      list-style: none;
-      margin: 0;
-      padding: 0;
-    }
-  }
-
-  &__link {
-    display: flex;
-    align-items: center;
-    gap: var(--space-2);
-    width: 100%;
-    padding: var(--space-1) var(--space-2);
-    border: 0;
-    border-radius: var(--radius-sm);
-    background: none;
-    color: inherit;
-    font: inherit;
-    text-align: left;
-    cursor: pointer;
-
-    &:hover {
-      background: var(--color-surface-sunken);
-    }
-  }
-
-  &__name {
-    flex: 1;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-
-  &__size {
-    color: var(--color-text-secondary);
-    font-size: var(--font-size-xs);
-    font-variant-numeric: tabular-nums;
-  }
 }

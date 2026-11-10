@@ -432,6 +432,12 @@ export function useKnowledgeBaseDetail() {
     }
   }, [qaFullPage, kb, exitQaFullPageNav]);
 
+  // A visit starts on the entry button, but a reload or a pasted URL lands here without one — and then
+  // both the ask and the files rail would have no session to name, so the workspace would look empty.
+  useEffect(() => {
+    if (qaFullPage && kb?.agent_url && qaSessionId === null) beginQaTraceSession();
+  }, [qaFullPage, kb?.agent_url, qaSessionId, beginQaTraceSession]);
+
   useImmersiveView('openkms-kb-qa-fullpage', Boolean(qaFullPage && kb?.agent_url));
 
   useLayoutEffect(() => {

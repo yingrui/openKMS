@@ -16,35 +16,9 @@
   min-height: 0;
   overflow: hidden;
   width: 100%;
+  /* Anchor for the collapsed rail's chip (`.files-rail-toggle`). */
+  position: relative;
 }
-
-.agents-pane-resize-handle {
-  flex-shrink: 0;
-  width: 6px;
-  margin: 0 -3px;
-  cursor: col-resize;
-  touch-action: none;
-  align-self: stretch;
-  border-radius: 2px;
-  background: transparent;
-  z-index: 1;
-
-  &:hover {
-    background: var(--color-bg-muted);
-  }
-
-  &:focus-visible {
-    outline: 2px solid var(--color-accent);
-    outline-offset: 1px;
-  }
-
-  &--inner {
-    margin: 0;
-  }
-}
-
-/* Shared pane header height across chat, file viewer, and file tree */
-$agents-pane-header-height: 49px;
 
 /* —— Session rail (opencode-style) —— */
 .agents-sessions {
@@ -336,7 +310,7 @@ $agents-pane-header-height: 49px;
   flex-shrink: 0;
   display: flex;
   align-items: center;
-  min-height: $agents-pane-header-height;
+  min-height: ds.$pane-header-height;
   min-width: 0;
   padding: 0 20px;
   border-bottom: 1px solid var(--color-border);
@@ -854,7 +828,7 @@ $agents-pane-header-height: 49px;
   align-items: center;
   gap: 8px;
   flex-shrink: 0;
-  min-height: $agents-pane-header-height;
+  min-height: ds.$pane-header-height;
   padding: 0 12px 0 16px;
   border-bottom: 1px solid var(--color-border);
   background: var(--color-bg);
@@ -1060,61 +1034,6 @@ $agents-pane-header-height: 49px;
   border-left: 1px solid var(--color-border);
 }
 
-.agents-files-head {
-  flex-shrink: 0;
-  min-height: $agents-pane-header-height;
-  padding: 0 12px;
-  border-bottom: 1px solid var(--color-border);
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-}
-
-.agents-files-head-title {
-  font-size: 0.8125rem;
-  font-weight: 500;
-  color: var(--color-text-secondary);
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.agents-files-head-title-row {
-  display: flex;
-  align-items: center;
-  gap: 2px;
-  min-width: 0;
-  flex: 1;
-}
-
-.agents-files-back-btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-  width: 24px;
-  height: 24px;
-  margin-left: -4px;
-  border: none;
-  border-radius: var(--radius-sm);
-  background: transparent;
-  color: var(--color-text-muted);
-  cursor: pointer;
-
-  &:hover {
-    background: var(--color-bg-hover);
-    color: var(--color-text);
-  }
-}
-
-.agents-files-head-actions {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-}
-
 .agents-files-upload {
   position: relative;
 }
@@ -1157,30 +1076,6 @@ $agents-pane-header-height: 49px;
   }
 }
 
-.agents-files-icon-btn {
-  position: relative;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 28px;
-  height: 28px;
-  border: none;
-  border-radius: var(--radius-sm);
-  background: transparent;
-  color: var(--color-text-muted);
-  cursor: pointer;
-
-  &:hover {
-    background: var(--color-bg-hover);
-    color: var(--color-text);
-  }
-
-  &--active {
-    background: var(--color-accent-subtle);
-    color: var(--color-accent);
-  }
-}
-
 .agents-files-git-count {
   position: absolute;
   top: -2px;
@@ -1195,24 +1090,6 @@ $agents-pane-header-height: 49px;
   text-align: center;
   color: var(--color-bg);
   background: var(--color-accent);
-}
-
-.agents-files-all-btn {
-  padding: 4px 8px;
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-sm);
-  background: var(--color-bg);
-  font-size: 0.75rem;
-  color: var(--color-text-secondary);
-  cursor: pointer;
-
-  &:hover {
-    background: var(--color-bg-hover);
-  }
-
-  &--static {
-    cursor: default;
-  }
 }
 
 .agents-files-tree {
@@ -1976,8 +1853,8 @@ $agents-pane-header-height: 49px;
   .agents-session-more,
   .agents-composer-send,
   .agents-file-viewer-close,
-  .agents-files-back-btn,
-  .agents-files-icon-btn,
+  .files-rail-back-btn,
+  .files-rail-icon-btn,
   .agents-file-delete,
   .agents-chat-msg-meta button,
   .agents-mobile-back,

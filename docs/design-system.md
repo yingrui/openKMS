@@ -206,6 +206,7 @@ Soft limit **700 lines** per page `.tsx` / hook (enforced by **`check:styles`** 
 | **`document-detail.scss`** | Shared Document / Article / Media detail chrome |
 | **`entity-view.scss`** | The detail-page shell (`EntityViewShell`) — identity rail, nav, panels, and the pane layout exceptions. Shared, because every detail page renders the shell |
 | **`report-view.scss`** | The Data Insights's report views — `metric` (a number, or a KPI with a trend), `bar_list` (a ranking), `tracker` (a coverage strip), and the chart host. Global **because the same components render in "save this query"**, which the Playground and the Data tab open |
+| **`files-rail.scss`** | The right-hand files rail, chrome only: **`.files-rail-head`** (title row, back button, **`.files-rail-icon-btn`**, **`.files-rail-chip`**), **`.files-rail-toggle`** (the chip shown while the rail is collapsed), **`.files-rail-resize-handle`**, and the flat-list rows (**`.files-rail-row`**) the KB conversation renders. Shared because the project agent and the KB conversation dock the same rail; what is *inside* is not shared (a tree + viewer there, this conversation's artifacts here) |
 
 Import from page TSX: **`import '../../styles/<name>.scss'`**. Never import another page's colocated SCSS.
 

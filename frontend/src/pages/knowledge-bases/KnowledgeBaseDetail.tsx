@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
   ArrowLeft,
@@ -22,7 +22,7 @@ import {
   RefreshCw,
   ThumbsUp,
   ThumbsDown,
-  FolderOpen,
+  FolderTree,
 } from 'lucide-react';
 import { fetchDocumentById } from '../../data/documentsApi';
 import { fetchChannelById } from '../../data/channelsApi';
@@ -50,7 +50,7 @@ import {
   splitQaSources,
 } from './KnowledgeBaseDetail.qaUtils';
 import { KbAgentSettings } from './KbAgentSettings';
-import { KbQaFilesPanel } from './KbQaFilesPanel';
+import { KbQaFilesRail } from './KbQaFilesRail';
 import { TAB_ICONS, TAB_ORDER } from './KnowledgeBaseDetail.types';
 import { useKnowledgeBaseDetail } from './useKnowledgeBaseDetail';
 import { ContentCommentsShell } from '../../components/comments/ContentCommentsShell';
@@ -114,6 +114,7 @@ export function KnowledgeBaseDetail() {
   const [qaSourcesPanel, setQaSourcesPanel] = useState<KbQaSourcesPanelPayload | null>(null);
   /** The workspace rail: the conversation's files, on the right, hidden until asked for — as in the project agent. */
   const [qaFilesOpen, setQaFilesOpen] = useState(false);
+  const qaShellBodyRef = useRef<HTMLDivElement>(null);
 
   // Leaving the mobile layout closes the sessions drawer. Adjusting state during render
   // (instead of in an effect) avoids a second render pass with a stale drawer.
@@ -219,32 +220,34 @@ export function KnowledgeBaseDetail() {
                 </>
               }
               actions={
-                <button
-                  type="button"
-                  className={`kb-qa-mobile-chrome-btn${qaSessionsOpen ? ' is-active' : ''}`}
-                  onClick={() => setQaSessionsOpen((o) => !o)}
-                  aria-expanded={qaSessionsOpen}
-                  aria-controls="kb-qa-sessions-drawer"
-                  aria-label={t('detail.qaChatsAria')}
-                >
-                  <MessageSquare size={18} aria-hidden />
-                  <span className="ds-compact-label">{t('detail.qaChatsLabel')}</span>
-                </button>
+                <>
+                  <button
+                    type="button"
+                    className={`kb-qa-mobile-chrome-btn${qaSessionsOpen ? ' is-active' : ''}`}
+                    onClick={() => setQaSessionsOpen((o) => !o)}
+                    aria-expanded={qaSessionsOpen}
+                    aria-controls="kb-qa-sessions-drawer"
+                    aria-label={t('detail.qaChatsAria')}
+                  >
+                    <MessageSquare size={18} aria-hidden />
+                    <span className="ds-compact-label">{t('detail.qaChatsLabel')}</span>
+                  </button>
+                  <button
+                    type="button"
+                    className={`kb-qa-mobile-chrome-btn${qaFilesOpen ? ' is-active' : ''}`}
+                    onClick={() => setQaFilesOpen((v) => !v)}
+                    aria-expanded={qaFilesOpen}
+                    aria-controls="kb-qa-files-rail"
+                    aria-label={t('detail.qaFiles')}
+                  >
+                    <FolderTree size={18} aria-hidden />
+                    <span className="ds-compact-label">{t('detail.qaFiles')}</span>
+                  </button>
+                </>
               }
             />
           ) : null}
-          <button
-            type="button"
-            className={`kb-qa-files-toggle${qaFilesOpen ? ' is-active' : ''}`}
-            onClick={() => setQaFilesOpen((v) => !v)}
-            aria-expanded={qaFilesOpen}
-            aria-controls="kb-qa-files-rail"
-            title={t('detail.qaFiles')}
-          >
-            <FolderOpen size={18} aria-hidden />
-            <span className="ds-compact-label">{t('detail.qaFiles')}</span>
-          </button>
-          <div className="kb-qa-shell-body">
+          <div className="kb-qa-shell-body" ref={qaShellBodyRef}>
             {isMobile ? (
               <div
                 id="kb-qa-sessions-drawer"
@@ -418,13 +421,16 @@ export function KnowledgeBaseDetail() {
               </div>
             </main>
             {/* The conversation's files, as the project agent has them: a rail on the right that can be hidden. */}
-            <aside
-              id="kb-qa-files-rail"
-              className={`kb-qa-files-rail${qaFilesOpen ? ' is-open' : ''}`}
-              aria-hidden={!qaFilesOpen}
-            >
-              {qaFilesOpen ? <KbQaFilesPanel kbId={kb.id} sessionId={qaSessionId} /> : null}
-            </aside>
+            <KbQaFilesRail
+              kbId={kb.id}
+              sessionId={qaSessionId}
+              open={qaFilesOpen}
+              onOpen={() => setQaFilesOpen(true)}
+              onCollapse={() => setQaFilesOpen(false)}
+              isMobile={isMobile}
+              containerRef={qaShellBodyRef}
+              suppressToggle={qaSourcesPanel !== null}
+            />
             <KbQaSourcesDrawer
               panel={qaSourcesPanel}
               onClose={() => setQaSourcesPanel(null)}

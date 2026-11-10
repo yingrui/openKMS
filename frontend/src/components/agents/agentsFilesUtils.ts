@@ -74,6 +74,8 @@ export function isProtectedProjectPath(path: string): boolean {
 
 
 export interface AgentFilesPanelProps {
+  /** Lets the collapsed-state chip point `aria-controls` at the rail it reopens. */
+  id?: string;
   projectId: string;
   gitInitialized: boolean;
   railWidthPx: number;
@@ -81,5 +83,6 @@ export interface AgentFilesPanelProps {
   onGitChange?: () => void;
   /** Desktop side rail vs mobile bottom sheet (no fixed flex widths / resize). */
   variant?: 'rail' | 'sheet';
-  onCloseSheet?: () => void;
+  /** Close the rail: the head's one control, for both the side rail and the phone sheet. */
+  onCollapse: () => void;
 }

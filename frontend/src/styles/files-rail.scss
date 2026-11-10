@@ -1,0 +1,207 @@
+@use 'design-system/tokens' as ds;
+
+/* The right-hand files rail — the chrome only.
+ *
+ * Both the project agent and the KB conversation dock "what this session can read and produced" to
+ * the right of the chat, and both open and collapse it the same way, so the head, its icon buttons,
+ * the chip and the row shape live here rather than in either area's sheet (design-system rule 16: a
+ * look two routes render belongs in `src/styles/`).
+ *
+ * What sits inside the rail is deliberately not shared: the project browses a tree, opens files into
+ * a viewer and drives git in it; the KB lists what one conversation produced and links each to a
+ * download.
+ */
+
+/* The drag handle beside a rail. Shared with the rail itself: the same gesture widens the
+ * project's files pane, its inner tree, and the KB conversation's files. */
+.files-rail-resize-handle {
+  flex-shrink: 0;
+  width: 6px;
+  margin: 0 -3px;
+  cursor: col-resize;
+  touch-action: none;
+  align-self: stretch;
+  border-radius: 2px;
+  background: transparent;
+  z-index: 1;
+
+  &:hover {
+    background: var(--color-bg-muted);
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--color-accent);
+    outline-offset: 1px;
+  }
+
+  &--inner {
+    margin: 0;
+  }
+}
+
+.files-rail-head {
+  flex-shrink: 0;
+  min-height: ds.$pane-header-height;
+  padding: 0 12px;
+  border-bottom: 1px solid var(--color-border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.files-rail-head-title-row {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  min-width: 0;
+  flex: 1;
+}
+
+.files-rail-head-title {
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: var(--color-text-secondary);
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.files-rail-back-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 24px;
+  height: 24px;
+  margin-left: -4px;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--color-text-muted);
+  cursor: pointer;
+
+  &:hover {
+    background: var(--color-bg-hover);
+    color: var(--color-text);
+  }
+}
+
+.files-rail-head-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.files-rail-icon-btn {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--color-text-muted);
+  cursor: pointer;
+
+  &:hover {
+    background: var(--color-bg-hover);
+    color: var(--color-text);
+  }
+
+  &--active {
+    background: var(--color-accent-subtle);
+    color: var(--color-accent);
+  }
+}
+
+/* A bordered chip in the head (the project's "All files", the KB's count) and, when the rail is
+ * collapsed, the same chip over the chat's top-right corner to bring it back. */
+.files-rail-chip {
+  padding: 4px 8px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-bg);
+  font-size: 0.75rem;
+  color: var(--color-text-secondary);
+  cursor: pointer;
+
+  &:hover {
+    background: var(--color-bg-hover);
+  }
+
+  &--static {
+    cursor: default;
+
+    &:hover {
+      background: var(--color-bg);
+    }
+  }
+}
+
+/* Collapsed rail: one control per state — the head's collapse button while open, this while closed. */
+.files-rail-toggle {
+  position: absolute;
+  top: var(--space-3);
+  right: var(--space-4);
+  z-index: 5;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.files-rail-list {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  margin: 0;
+  padding: 6px 0;
+  list-style: none;
+}
+
+.files-rail-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  width: 100%;
+  padding: 5px 12px;
+  border: 0;
+  background: none;
+  font: inherit;
+  font-size: 0.8125rem;
+  line-height: 1.3;
+  color: var(--color-text-secondary);
+  text-align: left;
+  cursor: pointer;
+
+  &:hover,
+  &:focus-visible {
+    background: var(--color-bg-hover);
+    color: var(--color-text);
+  }
+}
+
+.files-rail-row-name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.files-rail-row-meta {
+  flex-shrink: 0;
+  font-size: 0.6875rem;
+  color: var(--color-text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.files-rail-empty {
+  padding: var(--space-3);
+  margin: 0;
+  font-size: 0.8125rem;
+  color: var(--color-text-secondary);
+}

@@ -1,6 +1,7 @@
-import { Folder, File, FolderUp, Upload, GitBranch, Loader2, RefreshCw, ChevronLeft, Trash2, X, FileDiff, History, Check, Plus, Minus, ChevronDown, ArrowDown, ArrowUp } from 'lucide-react';
+import { Folder, File, FolderUp, Upload, GitBranch, Loader2, RefreshCw, ChevronLeft, Trash2, FileDiff, History, Check, Plus, Minus, ChevronDown, ArrowDown, ArrowUp, PanelRightClose } from 'lucide-react';
 import { AgentFileViewer } from './AgentFileViewer';
 import { AgentDiffViewer } from './AgentDiffViewer';
+import '../../styles/files-rail.scss';
 import './AgentsWorkspace.scss';
 import type { InputHTMLAttributes } from 'react';
 import { useAgentFiles } from './useAgentFiles';
@@ -8,13 +9,14 @@ import {
   type AgentFilesPanelProps, TREE_MAX_PX, TREE_MIN_PX, clampTreeWidth, isProtectedProjectPath, relativeTime,
 } from './agentsFilesUtils';
 export function AgentFilesPanel({
+  id,
   projectId,
   gitInitialized,
   railWidthPx,
   onRailWidthChange,
   onGitChange,
   variant = 'rail',
-  onCloseSheet,
+  onCollapse,
 }: AgentFilesPanelProps) {
   const {
     t, cwd, setCwd, entries, selected, preview, previewBinary, previewLoading, gitBranch,
@@ -33,10 +35,12 @@ export function AgentFilesPanel({
     onRailWidthChange,
     onGitChange,
     variant,
+    onCollapse,
   });
 
   return (
     <div
+      id={id}
       className={`agents-files-rail${fileOpen ? ' agents-files-rail--open' : ''}${isSheet ? ' agents-files-rail--sheet' : ''}`}
       style={railStyle}
     >
@@ -61,7 +65,7 @@ export function AgentFilesPanel({
       ) : null}
       {fileOpen && !isSheet ? (
         <div
-          className="agents-pane-resize-handle agents-pane-resize-handle--inner"
+          className="files-rail-resize-handle files-rail-resize-handle--inner"
           role="separator"
           aria-orientation="vertical"
           aria-valuenow={treeWidth}
@@ -77,12 +81,12 @@ export function AgentFilesPanel({
         style={treeStyle}
         aria-label={t('files.title')}
       >
-        <div className="agents-files-head">
-          <div className="agents-files-head-title-row">
+        <div className="files-rail-head">
+          <div className="files-rail-head-title-row">
             {!scmOpen && cwd ? (
               <button
                 type="button"
-                className="agents-files-back-btn"
+                className="files-rail-back-btn"
                 onClick={goUp}
                 title={t('files.goUpHint')}
                 aria-label={t('files.goUp')}
@@ -90,11 +94,11 @@ export function AgentFilesPanel({
                 <ChevronLeft size={16} />
               </button>
             ) : null}
-            <span className="agents-files-head-title" title={!scmOpen ? cwd || undefined : undefined}>
+            <span className="files-rail-head-title" title={!scmOpen ? cwd || undefined : undefined}>
               {headTitle}
             </span>
           </div>
-          <div className="agents-files-head-actions">
+          <div className="files-rail-head-actions">
             {!scmOpen ? (
               <div className="agents-files-upload" ref={uploadMenuOpen ? uploadMenuRef : undefined}>
                 {uploadMenuOpen ? (
@@ -125,7 +129,7 @@ export function AgentFilesPanel({
                 ) : null}
                 <button
                   type="button"
-                  className="agents-files-icon-btn"
+                  className="files-rail-icon-btn"
                   onClick={() => setUploadMenuOpen((v) => !v)}
                   title={t('files.upload')}
                   aria-label={t('files.upload')}
@@ -139,7 +143,7 @@ export function AgentFilesPanel({
             ) : null}
             <button
               type="button"
-              className="agents-files-icon-btn"
+              className="files-rail-icon-btn"
               onClick={() => void onRefresh()}
               title={t('files.refreshHint')}
               aria-label={t('files.refresh')}
@@ -169,7 +173,7 @@ export function AgentFilesPanel({
             {!gitInitialized ? (
               <button
                 type="button"
-                className="agents-files-icon-btn"
+                className="files-rail-icon-btn"
                 onClick={() => void onGitInit()}
                 title={t('files.gitInit')}
                 aria-label={t('files.gitInit')}
@@ -179,7 +183,7 @@ export function AgentFilesPanel({
             ) : (
               <button
                 type="button"
-                className={`agents-files-icon-btn${scmOpen ? ' agents-files-icon-btn--active' : ''}`}
+                className={`files-rail-icon-btn${scmOpen ? ' files-rail-icon-btn--active' : ''}`}
                 onClick={() => setPanelMode((m) => (m === 'scm' ? 'files' : 'scm'))}
                 title={scmOpen ? t('files.showFiles') : t('files.sourceControl')}
                 aria-label={scmOpen ? t('files.showFiles') : t('files.sourceControl')}
@@ -194,11 +198,11 @@ export function AgentFilesPanel({
               </button>
             )}
             {!scmOpen && !cwd ? (
-              <span className="agents-files-all-btn agents-files-all-btn--static">{t('files.allFiles')}</span>
+              <span className="files-rail-chip files-rail-chip--static">{t('files.allFiles')}</span>
             ) : !scmOpen ? (
               <button
                 type="button"
-                className="agents-files-all-btn"
+                className="files-rail-chip"
                 onClick={() => {
                   setCwd('');
                   closeFile();
@@ -210,24 +214,22 @@ export function AgentFilesPanel({
             ) : (
               <button
                 type="button"
-                className="agents-files-all-btn"
+                className="files-rail-chip"
                 onClick={() => setPanelMode('files')}
                 title={t('files.showFiles')}
               >
                 {t('files.allFiles')}
               </button>
             )}
-            {onCloseSheet ? (
-              <button
-                type="button"
-                className="agents-files-icon-btn"
-                onClick={onCloseSheet}
-                aria-label={t('workspace.closeFiles')}
-                title={t('workspace.closeFiles')}
-              >
-                <X size={16} />
-              </button>
-            ) : null}
+            <button
+              type="button"
+              className="files-rail-icon-btn"
+              onClick={onCollapse}
+              aria-label={t('workspace.closeFiles')}
+              title={t('workspace.closeFiles')}
+            >
+              <PanelRightClose size={16} />
+            </button>
           </div>
         </div>
         {scmOpen ? (

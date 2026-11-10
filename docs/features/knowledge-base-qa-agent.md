@@ -468,7 +468,7 @@ a different question"). Those must not vary per knowledge base; they belong in c
 | Piece | Where | Note |
 |---|---|---|
 | Session workspace + file tools | `qa_agent/session_fs.py`, `skills/workspace.py` | one directory per conversation; `AGENTS.md` from the KB, `.openkms/` read-only, quota, TTL reaping |
-| Workspace reachable by the user | `qa_agent/main.py`, backend proxy, `KbQaFilesPanel` | list + download, scoped to the conversation's session id |
+| Workspace reachable by the user | `qa_agent/main.py`, backend proxy, `KbQaFilesPanel` | list + download, scoped to the conversation's session id. A rail on the right, docked and collapsed exactly as the project agent's — one shared head (`src/styles/files-rail.scss`), refresh because files appear while the conversation runs. Its chip lives in the chat's top-right and is hidden while the Sources drawer is open — that corner is the drawer's |
 | `agent_config` + Agent tab | `app/schemas/kb_agent_config.py`, `KbAgentSettings` | validated JSONB; every default equals the old behaviour |
 | `retrieve` modes, tool-round budget + `finalize` | `qa_agent/agent.py` | see 1d above; wrapping up beats an empty answer |
 | Answer policies | `_policy_fragments`, `evidence.py` | `unknown_measure`, `require_schema_lookup`, `require_grounded_numbers` |

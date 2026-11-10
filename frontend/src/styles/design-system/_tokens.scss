@@ -23,6 +23,9 @@ $grid-min-eval-card: 300px;
 $playground-messages-min-height: 300px;
 $playground-messages-max-height: 500px;
 
+// Pane header row (chat header, files rail head) — one height so the rows that sit side by side line up
+$pane-header-height: 49px;
+
 // Small modal cap (evaluation create dialog)
 $bp-dialog-sm: 440px;
 

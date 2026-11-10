@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Download, Loader2 } from 'lucide-react';
+import { Download, File, Loader2, PanelRightClose, RefreshCw } from 'lucide-react';
 import { downloadQaSessionFile, fetchQaSessionFiles, type QaSessionFile } from '../../data/knowledgeBasesApi';
+import '../../styles/files-rail.scss';
 
 /**
  * What this conversation produced, and what it was given.
@@ -9,13 +10,21 @@ import { downloadQaSessionFile, fetchQaSessionFiles, type QaSessionFile } from '
  * Until now the workspace belonged to the agent alone: an answer could say "saved as industry_count.csv" and the user had no
  * way to open it. This lists the files and links each to a download.
  *
- * **A list, not a panel with its own toggle.** The rail that holds it is opened and closed by one control in the shell; a
- * second button inside the list turned one action into two that did the same thing, which is what it looked like.
+ * The head is the project agent's (`src/styles/files-rail.scss`): title, icon buttons, a chip. The one control per state rule
+ * still holds — the rail opens from the shell's chip and closes from the head, never both at once.
  *
  * Scoped to the **conversation**: `sessionId` is this visit's id, so one user never sees another's files, and a new
  * conversation starts empty.
  */
-export function KbQaFilesPanel({ kbId, sessionId }: { kbId: string; sessionId: string | null }) {
+export function KbQaFilesPanel({
+  kbId,
+  sessionId,
+  onCollapse,
+}: {
+  kbId: string;
+  sessionId: string | null;
+  onCollapse: () => void;
+}) {
   const { t } = useTranslation('knowledgeBase');
   const [files, setFiles] = useState<QaSessionFile[]>([]);
   const [loading, setLoading] = useState(false);
@@ -37,38 +46,65 @@ export function KbQaFilesPanel({ kbId, sessionId }: { kbId: string; sessionId: s
     void load();
   }, [load]);
 
-  if (!sessionId) return null;
-
   return (
-    <div className="kb-qa-files" role="region" aria-label={t('detail.qaFiles')}>
-      <h2 className="kb-qa-files__title">
-        {t('detail.qaFiles')}
-        {files.length > 0 ? <span className="kb-qa-files__count">{files.length}</span> : null}
-      </h2>
-      {loading ? (
-        <p className="page-subtitle">
-          <Loader2 size={14} className="animate-spin" aria-hidden /> {t('detail.qaFilesLoading')}
-        </p>
-      ) : files.length === 0 ? (
-        <p className="page-subtitle">{t('detail.qaFilesEmpty')}</p>
-      ) : (
-        <ul>
+    <>
+      <div className="files-rail-head">
+        <div className="files-rail-head-title-row">
+          <span className="files-rail-head-title" title={t('detail.qaFiles')}>
+            {t('detail.qaFiles')}
+          </span>
+          {files.length > 0 ? (
+            <span className="files-rail-chip files-rail-chip--static">{files.length}</span>
+          ) : null}
+        </div>
+        <div className="files-rail-head-actions">
+          <button
+            type="button"
+            className="files-rail-icon-btn"
+            onClick={() => void load()}
+            disabled={loading || !sessionId}
+            title={t('detail.qaFilesRefresh')}
+            aria-label={t('detail.qaFilesRefresh')}
+          >
+            {loading ? <Loader2 size={15} className="animate-spin" /> : <RefreshCw size={15} />}
+          </button>
+          <button
+            type="button"
+            className="files-rail-icon-btn"
+            onClick={onCollapse}
+            title={t('detail.qaFilesClose')}
+            aria-label={t('detail.qaFilesClose')}
+          >
+            <PanelRightClose size={16} />
+          </button>
+        </div>
+      </div>
+      {sessionId && files.length > 0 ? (
+        <ul className="files-rail-list">
           {files.map((f) => (
             <li key={f.path}>
               <button
                 type="button"
-                className="kb-qa-files__link"
+                className="files-rail-row"
                 onClick={() => void downloadQaSessionFile(kbId, sessionId, f.path)}
+                title={f.path}
               >
+                <File size={14} aria-hidden />
+                <span className="files-rail-row-name">{f.path}</span>
+                <span className="files-rail-row-meta">{formatBytes(f.size ?? 0)}</span>
                 <Download size={14} aria-hidden />
-                <span className="kb-qa-files__name">{f.path}</span>
-                <span className="kb-qa-files__size">{formatBytes(f.size ?? 0)}</span>
               </button>
             </li>
           ))}
         </ul>
+      ) : loading ? (
+        <p className="files-rail-empty">
+          <Loader2 size={14} className="animate-spin" aria-hidden /> {t('detail.qaFilesLoading')}
+        </p>
+      ) : (
+        <p className="files-rail-empty">{t('detail.qaFilesEmpty')}</p>
       )}
-    </div>
+    </>
   );
 }
 

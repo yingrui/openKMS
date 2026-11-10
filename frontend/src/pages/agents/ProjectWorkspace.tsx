@@ -10,11 +10,13 @@ import { AgentsWorkspaceSkeleton } from '../../components/agents/AgentsPageSkele
 import { getProject, deleteProjectAttachment, uploadProjectAttachment } from '../../data/projectsApi';
 import type { ProjectResponse } from '../../data/projectsApi';
 import { useIsMobile } from '../../hooks/useIsMobile';
+import { useFilesRailWidth } from '../../hooks/useFilesRailWidth';
 import { PanelToolbar } from '../../styles/design-system';
 import { useImmersiveView } from '../../contexts/ImmersiveShellContext';
 import { useProjectAgentStream } from './useProjectAgentStream';
 import { useProjectSessionRouting } from './useProjectSessionRouting';
 import '../../components/agents/AgentsWorkspace.scss';
+import '../../styles/files-rail.scss';
 
 type HomeHandoffState = { homeDraft?: string };
 
@@ -23,18 +25,23 @@ const CHAT_MIN_PX = 300;
 const FILES_RAIL_MIN_PX = 200;
 const FILES_RAIL_DEFAULT_PX = 400;
 const FILES_RAIL_WIDTH_KEY = 'openkms_agents_files_rail_width_px_v1';
+const FILES_RAIL_OPEN_KEY = 'openkms_agents_files_rail_open_v1';
 
-function readFilesRailWidth(): number {
+/** Collapsed or not, remembered per browser. Default open: the rail was always there before it could be hidden. */
+function readFilesRailOpen(): boolean {
   try {
-    const raw = localStorage.getItem(FILES_RAIL_WIDTH_KEY);
-    if (raw != null) {
-      const n = parseInt(raw, 10);
-      if (Number.isFinite(n)) return n;
-    }
+    return localStorage.getItem(FILES_RAIL_OPEN_KEY) !== '0';
+  } catch {
+    return true;
+  }
+}
+
+function persistFilesRailOpen(open: boolean): void {
+  try {
+    localStorage.setItem(FILES_RAIL_OPEN_KEY, open ? '1' : '0');
   } catch {
     /* ignore */
   }
-  return FILES_RAIL_DEFAULT_PX;
 }
 
 export function ProjectWorkspace() {
@@ -45,7 +52,7 @@ export function ProjectWorkspace() {
   const isMobile = useIsMobile();
   const [project, setProject] = useState<ProjectResponse | null>(null);
   const [planMode, setPlanMode] = useState(false);
-  const [filesRailWidthPx, setFilesRailWidthPx] = useState(readFilesRailWidth);
+  const [filesRailOpen, setFilesRailOpen] = useState(readFilesRailOpen);
   const [sessionsOpen, setSessionsOpen] = useState(false);
   const [filesOpen, setFilesOpen] = useState(false);
   const bodyRef = useRef<HTMLDivElement>(null);
@@ -99,38 +106,23 @@ export function ProjectWorkspace() {
 
   /** Pure: the available width comes in as an argument, so this is safe to call while
    *  rendering (reading `bodyRef.current` here would be a ref read during render). */
-  /** The live body width — only for handlers/effects, never during render. */
-  const measuredBodyWidth = useCallback(
-    () => bodyRef.current?.clientWidth ?? window.innerWidth,
-    [],
-  );
-
   const clampFilesRailWidth = useCallback((w: number, bodyWidth: number) => {
     const max = Math.max(FILES_RAIL_MIN_PX, bodyWidth - SESSIONS_WIDTH_PX - CHAT_MIN_PX - 8);
     return Math.round(Math.min(max, Math.max(FILES_RAIL_MIN_PX, w)));
   }, []);
-  const [bodyWidthPx, setBodyWidthPx] = useState(() => window.innerWidth);
+
+  const filesRail = useFilesRailWidth({
+    storageKey: FILES_RAIL_WIDTH_KEY,
+    defaultPx: FILES_RAIL_DEFAULT_PX,
+    containerRef: bodyRef,
+    clamp: clampFilesRailWidth,
+  });
 
   useEffect(() => {
     getProject(projectId)
       .then(setProject)
       .catch((e) => toast.error(String(e)));
   }, [projectId]);
-
-  useEffect(() => {
-    if (isMobile) return;
-    const measure = () => {
-      const bodyWidth = bodyRef.current?.clientWidth ?? window.innerWidth;
-      setBodyWidthPx(bodyWidth);
-      setFilesRailWidthPx((w) => clampFilesRailWidth(w, bodyWidth));
-    };
-    const raf = requestAnimationFrame(measure);   // after layout, not during render
-    window.addEventListener('resize', measure);
-    return () => {
-      cancelAnimationFrame(raf);
-      window.removeEventListener('resize', measure);
-    };
-  }, [clampFilesRailWidth, isMobile]);
 
   useImmersiveView('openkms-agents-fullpage');
 
@@ -174,49 +166,10 @@ export function ProjectWorkspace() {
     setFilesOpen(false);
   };
 
-  const onFilesRailResizePointerDown = useCallback(
-    (e: React.MouseEvent) => {
-      e.preventDefault();
-      e.stopPropagation();
-      const startX = e.clientX;
-      const startW = filesRailWidthPx;
-      let latest = startW;
-      const prevUserSelect = document.body.style.userSelect;
-      document.body.style.userSelect = 'none';
-      const onMove = (ev: MouseEvent) => {
-        latest = clampFilesRailWidth(startW - (ev.clientX - startX), measuredBodyWidth());
-        setFilesRailWidthPx(latest);
-      };
-      const onUp = () => {
-        document.body.style.userSelect = prevUserSelect;
-        window.removeEventListener('mousemove', onMove);
-        window.removeEventListener('mouseup', onUp);
-        const final = clampFilesRailWidth(latest, measuredBodyWidth());
-        setFilesRailWidthPx(final);
-        try {
-          localStorage.setItem(FILES_RAIL_WIDTH_KEY, String(final));
-        } catch {
-          /* ignore */
-        }
-      };
-      window.addEventListener('mousemove', onMove);
-      window.addEventListener('mouseup', onUp);
-    },
-    [filesRailWidthPx, clampFilesRailWidth],
-  );
-
-  const onFilesRailWidthFromPanel = useCallback(
-    (width: number) => {
-      const next = clampFilesRailWidth(width, measuredBodyWidth());
-      setFilesRailWidthPx(next);
-      try {
-        localStorage.setItem(FILES_RAIL_WIDTH_KEY, String(next));
-      } catch {
-        /* ignore */
-      }
-    },
-    [clampFilesRailWidth],
-  );
+  const setFilesRailOpenPersisted = (open: boolean) => {
+    setFilesRailOpen(open);
+    persistFilesRailOpen(open);
+  };
 
   const loadProject = useCallback(async () => {
     setProject(await getProject(projectId));
@@ -230,7 +183,7 @@ export function ProjectWorkspace() {
 
   if (!project) return <AgentsWorkspaceSkeleton />;
 
-  const filesRailWidth = clampFilesRailWidth(filesRailWidthPx, bodyWidthPx);
+  const filesRailWidth = filesRail.width;
   const toolbarTitle = session.sessionTitle?.trim() || project.name;
 
   // A live stream delivering parts is itself proof of progress: while polling is skipped the
@@ -372,7 +325,7 @@ export function ProjectWorkspace() {
                   onGitChange={loadProject}
                   railWidthPx={filesRailWidth}
                   variant="sheet"
-                  onCloseSheet={closeOverlays}
+                  onCollapse={closeOverlays}
                 />
               ) : null}
             </div>
@@ -381,24 +334,44 @@ export function ProjectWorkspace() {
           <>
             {sidebar}
             {chat}
-            <div
-              className="agents-pane-resize-handle"
-              role="separator"
-              aria-orientation="vertical"
-              aria-valuenow={filesRailWidth}
-              aria-valuemin={FILES_RAIL_MIN_PX}
-              aria-valuemax={clampFilesRailWidth(9999, bodyWidthPx)}
-              aria-label={t('workspace.resizeFilesRail')}
-              title={t('workspace.resizeFilesRailHint')}
-              onMouseDown={onFilesRailResizePointerDown}
-            />
-            <AgentFilesPanel
-              projectId={projectId}
-              gitInitialized={project.git_initialized}
-              onGitChange={loadProject}
-              railWidthPx={filesRailWidth}
-              onRailWidthChange={onFilesRailWidthFromPanel}
-            />
+            {filesRailOpen ? (
+              <>
+                <div
+                  className="files-rail-resize-handle"
+                  role="separator"
+                  aria-orientation="vertical"
+                  aria-valuenow={filesRailWidth}
+                  aria-valuemin={FILES_RAIL_MIN_PX}
+                  aria-valuemax={clampFilesRailWidth(9999, filesRail.containerWidthPx)}
+                  aria-label={t('workspace.resizeFilesRail')}
+                  title={t('workspace.resizeFilesRailHint')}
+                  onMouseDown={filesRail.onResizePointerDown}
+                />
+                <AgentFilesPanel
+                  id="agents-files-rail"
+                  projectId={projectId}
+                  gitInitialized={project.git_initialized}
+                  onGitChange={loadProject}
+                  railWidthPx={filesRailWidth}
+                  onRailWidthChange={filesRail.setWidth}
+                  onCollapse={() => setFilesRailOpenPersisted(false)}
+                />
+              </>
+            ) : (
+              // Collapsed: one chip over the chat's top-right, the mirror of the head's collapse button.
+              <button
+                type="button"
+                className="files-rail-toggle files-rail-chip"
+                onClick={() => setFilesRailOpenPersisted(true)}
+                aria-expanded={false}
+                aria-controls="agents-files-rail"
+                title={t('workspace.files')}
+                aria-label={t('workspace.files')}
+              >
+                <FolderTree size={14} aria-hidden />
+                {t('workspace.files')}
+              </button>
+            )}
           </>
         )}
       </div>

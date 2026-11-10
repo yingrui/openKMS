@@ -212,6 +212,17 @@ The project agent system prompt includes the project name, slug, description, wo
 
 Feature toggle: **`agents`** (Console → Feature toggles).
 
+## Files rail
+
+The workspace is a rail on the right of the chat, and **it can be collapsed**: the head's rightmost
+button hides it, the **Files** chip in the chat's top-right brings it back, and the choice is
+remembered per browser (`openkms_agents_files_rail_open_v1`). Drag the edge to resize;
+the width is remembered too (`openkms_agents_files_rail_width_px_v1`).
+
+The head (title row, icon buttons, **All files** chip, resize handle) is shared with the KB
+conversation's files rail — `src/styles/files-rail.scss`, see [design system](../design-system.md#shared-layout-scss-frontendsrcstyles).
+On a phone the rail is a full-screen sheet opened from the toolbar, closed by the same head button.
+
 ## Git
 
 - **Local:** init, status, log, add, commit via the files rail. The git branch button opens a **Source Control** view modelled on VS Code: branch pill with `ahead`/`behind` and pull/push, a commit message box at the top (primary **Commit** for what is staged, with a **Commit All** / **Commit & Push** dropdown), **Staged Changes** and **Changes** groups with per-file stage / unstage / discard, a unified **diff** in the viewer pane (untracked files show as whole-file additions), and a commit list with ref badges. Toggle back to the file tree with the same button or **All files**. Agent shell (`execute`) can still run git in the project folder.
