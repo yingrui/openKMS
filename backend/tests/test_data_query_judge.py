@@ -94,3 +94,23 @@ class TestMatchSourcesToQueries:
         assert result["passed"] is True
         assert len(result["extra_sources"]) == 1
         assert result["extra_sources"][0]["source_index"] == 1
+
+
+class TestOneSourceCoversSeveralQueries:
+    """A subquery SQL that answers two expected queries covers both."""
+
+    def test_two_expected_queries_one_source(self):
+        expected = [
+            {"model_id": "m1", "sql": {"tables": ["tushare.stock_basic"]}},
+            {"model_id": "m1", "sql": {"tables": ["tushare.trade_calendar"]}},
+        ]
+        sources = [
+            source(
+                "SELECT (SELECT count(*) FROM tushare.stock_basic) AS s, "
+                "(SELECT count(*) FROM tushare.trade_calendar) AS c"
+            )
+        ]
+        result = match_sources_to_queries(expected, sources)
+        assert result["passed"] is True
+        assert result["coverage"] == 1.0
+        assert len(result["extra_sources"]) == 0

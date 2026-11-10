@@ -148,17 +148,15 @@ def match_sources_to_queries(
     """
     matched: list[dict[str, Any]] = []
     uncovered: list[dict[str, Any]] = []
-    used_sources: set[int] = set()
 
+    # A source is not consumed by a match: one subquery SQL can answer two expected queries
+    # (stock count *and* calendar days), and both should count as covered.
     for i, expected in enumerate(expected_queries):
         best: dict[str, Any] | None = None
         for j, src in enumerate(sources):
-            if j in used_sources:
-                continue
             verdict = judge_query_features(expected, src)
             if verdict['passed']:
                 best = {'query_index': i, 'source_index': j, 'verdict': verdict}
-                used_sources.add(j)
                 break
         if best is not None:
             matched.append(best)
@@ -184,10 +182,11 @@ def match_sources_to_queries(
                 }
             )
 
+    matched_source_ids = {m['source_index'] for m in matched}
     extra_sources = [
         {'source_index': j, 'source': sources[j]}
         for j in range(len(sources))
-        if j not in used_sources
+        if j not in matched_source_ids
     ]
 
     total = len(expected_queries)
