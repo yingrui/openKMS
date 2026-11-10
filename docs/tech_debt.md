@@ -81,7 +81,7 @@ callers saturate the service before anything dramatic happens. The four-question
 ### The sandbox cannot reuse `deep_agents/sandbox.py`
 
 The KB agent now runs Python for **问策** — an approach often needs computation the Catalog cannot express: indicators, rolling
-windows, cross-dataset comparisons, a chart. The runner is `qa_agent/sandbox.py`, which uses a container per execution.
+windows, cross-dataset comparisons, a chart. The runner is `qa_agent/sandbox.py`, a container per execution.
 
 What could not be reused, and why:
 
@@ -93,11 +93,10 @@ What could not be reused, and why:
 Inside a single-tenant project workspace that is a conscious trade. On an external service it is remote code execution plus
 credential exfiltration.
 
-Doing this needs, at minimum: a container or microVM per session with a read-only rootfs and only the session directory
-mounted; **zero** `OPENKMS_*` variables (the sandbox reaches the Catalog through tool calls, not a key); network denied by
-default; cpu/memory/disk/wall-clock quotas where a kill is a tool error rather than a 500; every execution audited; and a
-decision on the runtime (k8s Pod per session first, warm pool later — never the Docker socket, which would make a backend
-compromise a host compromise).
+Shipped instead: the container above, with the guarantees in its command line (`--network none`, no `OPENKMS_*`, `--read-only`
+plus the session mount, `--cap-drop ALL`, quotas, host-uid user). Still open here: **executions are not audited** beyond the
+agent's own log, and the image must already be on the host — nothing is pulled at run time, so a KB that names a missing image
+fails at the first run rather than at configuration.
 
 ## Architecture and coupling
 

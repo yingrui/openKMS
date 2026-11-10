@@ -125,7 +125,12 @@ The product direction is **问数 → 问策**: from answering with a number to 
 Catalog cannot express — indicators, rolling windows, cross-dataset comparisons, a chart, a file the user keeps. Answering
 "what should we do" without being able to compute is answering from rhetoric.
 
-So `execute` is in scope, and *that* is what requires a boundary — not the files. The requirement is about the **process**:
+So `execute` is in scope, and *that* is what requires a boundary — not the files. **Shipped**: `qa_agent/sandbox.py` runs
+each snippet in a container, and the table below is the command line it builds, not an intention. `run_python_tool` is bound
+only when `sandbox.enabled`, works in the session's `/workspace`, and the files it writes show up in the conversation's file
+list.
+
+The requirement is about the **process**:
 
 | Requirement | Detail |
 |---|---|
@@ -145,10 +150,11 @@ none.
 
 | Option | Isolation | Start latency | Verdict |
 |---|---|---|---|
-| k8s Pod per session | clean | 1–3 s cold | **start here** — explicit boundary, the cluster already exists |
-| Warm pool of sandboxes | clean | low | later optimization, real maintenance cost |
-| Local Docker socket | weak | fast | **no** — a backend compromise becomes a host compromise |
-| In-process subprocess (today) | **none** | fastest | acceptable for the internal project agent only |
+| **Container per execution** (shipped) | clean: no network, no credentials, only the session mounted | ~0.4 s warm image | **what runs today** — `docker run` from the agent host |
+| k8s Pod per session | clean | 1–3 s cold | the next step if executions must be scheduled away from the agent host |
+| Warm pool | clean | low | later optimization, real maintenance cost |
+| Local Docker *socket* mounted into the backend | weak | fast | **no** — a backend compromise becomes a host compromise; this design never asks for that |
+| In-process subprocess (the project runner) | **none** | fastest | acceptable for the internal project agent only |
 
 ### Skills, now that execution exists
 
@@ -446,8 +452,10 @@ a different question"). Those must not vary per knowledge base; they belong in c
 | Trace id and scores | `langfuse_client.py`, `evaluations/scores.py` | `/ask` names its trace; an evaluation posts `data_query_pass` / `data_query_coverage` onto it |
 | **Tenancy ceilings** | `qa_agent/limits.py`, `agent_config.limits` | requests/minute, in-flight, daily tokens — per KB, all off by default; a 429 carries its reason and `Retry-After` |
 | **Prompt store** | `models/agent_prompt.py`, `prompt_store.py`, `/agent-prompts` | versioned rows, **publish gated by an evaluation run made after the draft**, one live version per KB, rollback by republishing; each answer reports `prompt_version` |
+| **Code execution** | `qa_agent/sandbox.py`, `skills/sandbox.py` | a container per run: no network, no credentials, read-only root with only the session mounted, quotas, host-uid user; off unless `sandbox.enabled` |
 
-Still open: **executable skills inside a real boundary** — deferred by decision, with the evidence in `tech_debt.md`.
+Decided against: **per-KB tenant ceilings** — implemented, then removed, because who sets the numbers and what happens when they
+are hit had no answer; the reasoning is in `tech_debt.md`.
 
 ## Where each kind of answer is judged
 
