@@ -2,8 +2,9 @@
 
 **Status:** design note for discussion. Nothing here is implemented beyond what the "Today" sections describe.
 
-How the KB Q&A agent answers, what it can be configured with today, and three proposals for making its answers checkable —
-kept deliberately separate: **what must exist in code** versus **what a deployment should be allowed to tune**.
+How the KB Q&A agent answers, what it can be configured with today, and the open design decisions for making its
+answers checkable — kept deliberately separate: **what must exist in code** versus **what a deployment should be allowed to
+tune**.
 
 The concrete failure that prompted this: asked *"贵州茅台 2026 年上半年的营业收入是多少？"* the agent queried
 `SELECT ts_code, name, industry FROM tushare.stock_basic WHERE ts_code = '600519.SH'`, attached it as a source, and wrote
@@ -20,7 +21,7 @@ Two agent products, two postures. This is the frame every capability decision be
 | Trust in content | **low**: retrieved text can contain injected instructions | low, but the blast radius is one project |
 | Data scope | one KB, read-only, multi-tenant | one project workspace, read-write |
 | Consequence of failure | a wrong or leaked answer served to the outside | a bad edit in one workspace |
-| Therefore | **execution only inside a real isolation boundary** (§ sandbox) · per-session filesystem · strict tool allowlist · data reads stay read-only | may execute, may write, may delegate, on the host |
+| Therefore | **execution only inside a real isolation boundary** (§ Executing code) · per-session filesystem · strict tool allowlist · data reads stay read-only | may execute, may write, may delegate, on the host |
 
 Everything below follows from that row. A capability that is fine for the project agent is not automatically fine here — and
 conversely, a capability this service needs is not automatically fine *without a boundary*.
@@ -32,6 +33,36 @@ Two different things, and the rest of this page keeps them apart:
 - **Session workspace** — a directory per conversation: files the agent reads and writes. The project runtime's per-project
   directory, one level finer.
 - **Execution boundary** — what happens when code actually runs. A workspace does not provide it.
+
+One more word used throughout: a **session** (here) is one `/ask` conversation — the request carries or receives a
+`session_id`, and everything scoped "per session" is scoped to that id. It is not a login session and not a KB-wide scope;
+it is the unit that gets a workspace directory.
+
+## Tenancy and abuse
+
+The positioning row says "multi-tenant" and "low trust in the caller". The consequences are not yet designed, and they are
+the difference between an external service and an internal one.
+
+**Tenant isolation.** Two tenants share the same agent process, the same model, and the same backend. The design must make
+"one tenant's data appears in another's answer" impossible, not unlikely:
+
+- Every `/ask` is stateless: retrieval context, tool results and the session directory are keyed by `kb_id` + `session_id`
+  and never cross it.
+- The agent process must not hold a KB-wide cache of another KB's chunks, model config or agent config in a way a prompt can
+  read. Whatever is cached for speed is keyed per KB and never concatenated into a system prompt.
+- The Catalog tools already enforce the KB<->semantic-model link (`_ensure_model_in_kb`); that is the shape every new tool must
+  follow — a tool call can only reach what the *current* KB owns.
+
+**Cost and rate abuse.** Low trust means a caller may spend the tenant's money or the deployment's capacity. Open:
+
+- a per-KB request rate and a per-session step budget, so one conversation cannot hold the agent loop;
+- a per-KB cost ceiling (token spend), because a public endpoint with unbounded spend is a bill, not a feature;
+- sandbox quotas already bound compute; the *agent* budget (rounds, tokens) is the part that is not designed.
+
+**Artifacts are data.** `out/` is copied to object storage before a session directory is reclaimed. A chart or CSV produced
+from a KB's data is as sensitive as the data itself: it needs a per-KB bucket or prefix, the same ACL as the KB, and the
+same retention/cleanup question as the workspace. "Copied to storage" is a location, not an access decision — this page does
+not decide it, and it must not ship without it.
 
 ## The session workspace (files)
 
@@ -145,11 +176,16 @@ Design:
 - **Evidence gets a type.** A web result is not a `data_query`; it becomes a `web` source, labelled wherever it is shown. The
   data-query judge must never treat it as one.
 - **Not evaluated.** We do not judge whether a web answer is accurate — not the search provider's ranking, not the
-  summarisation of the snippet. The evaluation suites cover two things only: the **query** a data answer cited, and
-  (later) the **artifact** an analysis produced. A web answer is reported as *unverified by evaluation*, and the label says
-  so; grading the open web would measure the search vendor, not this product.
+  summarisation of the snippet. openKMS Evaluation covers the **query** a data answer cited and the **RAG** retrieval; 问策's artifact is judged in
+  Langfuse, not here. A web answer is reported as *unverified by evaluation*; grading the open web would measure the search
+  vendor, not this product.
 - **Injection surface grows.** Retrieved text is already untrusted; the open web is worse. A web source must never be
   allowed to justify a number the Catalog could have produced.
+
+MCP servers were raised as a further external-tool surface and are deliberately **not designed here**: each one is a
+credential, a trust boundary and an injection surface of its own, and it deserves the same treatment as web search — a
+reference to a vetted connector, read-only, with labelled evidence — rather than a free-form server list. Left out of the
+config table until that argument is made.
 
 ## How an answer is produced today
 
@@ -362,6 +398,20 @@ before the evaluation suite exists** — by then it is the thing that makes publ
 **What should not go in such a store:** the answer contract itself ("a number must come from a cited query", "do not answer
 a different question"). Those must not vary per knowledge base; they belong in code with tests.
 
+## Where each kind of answer is judged
+
+Not everything belongs in the Evaluation app. Splitting it keeps each place honest about what it can actually decide.
+
+| Answer kind | Judged in | What is decided | Why there |
+|---|---|---|---|
+| **问数** (a number from the Catalog) | **openKMS Evaluation** — `data_query` | whether the answer cited the right query: model, tables, filters, grain | deterministic, reproducible, stored next to the model it judges |
+| **RAG** (prose from chunks) | **openKMS Evaluation** — `search_retrieval` / `qa_answer` / `wiki_content_coverage` | whether retrieval supported the answer | already shipped |
+| **问策** (an approach, usually with an artifact) | **Langfuse** — scores on the trace, plus human review | whether the artifact exists and what its code read (automatable); whether the strategy is sound (not automatable) | the judgement is mostly human, and it is per-conversation rather than a fixed item set — Langfuse already holds the trace, the timings and the cost |
+| **web answer** (optional tool) | **nowhere** | — | grading the open web measures the search vendor, not this product |
+
+So the Evaluation app keeps its two families and gains a third only if 问策 ever becomes a fixed item set. Until then it is
+a Langfuse question: a score per conversation, a comment from the reviewer, and the trace to look at.
+
 ## What the test set already measures
 
 `backend/scripts/seed_quant_data_query_set.py` — 17 questions on the quant KB, ground truth = the query an answer must cite:
@@ -382,16 +432,21 @@ series is the measurement.
    than by wording?
 5. **Framework: keep the hand-written graph or move to `create_deep_agent`?** Not an opinion to settle — the A/B above has
    three numbers that decide it. The open part is the retrieval fork: a node that always runs versus a tool the model calls.
-6. **Executable skills for the KB agent** — deliberately out today (see "File sandbox"). If the answer becomes yes, the
-   question is what the isolation boundary is, because `run_python` is a subprocess, not a sandbox.
+6. **Executable skills and the boundary are one decision.** The body says executable skills run only inside the execution
+   boundary; that makes them contingent on question 7 — the workspace can ship without execution, executable skills cannot.
+   The question is the isolation mechanism, not whether execution is wanted.
 7. **Execution boundary**: k8s Pod per session (clean, 1–3 s cold start) versus a warm pool (fast, more maintenance). The
-   Docker-socket option is rejected: it makes a backend compromise a host compromise. Note that the *workspace* does not
-   depend on this answer — files can ship before code execution does.
-9. **Workspace retention**: how long a session directory survives an idle conversation, and whether a user may keep one
-   ("continue this analysis tomorrow") — which turns a conversation into something that has a workspace, i.e. closer to a
-   project.
-8. **问策 evaluation**: an artifact plus its code needs a third ground-truth family next to `data_query` — artifact shape and
-   the tables its code read are checkable; whether the *strategy* is sound is not, and stays a human review.
+   Docker-socket option is rejected: it makes a backend compromise a host compromise. The *workspace* does not depend on this
+   answer — files can ship before code execution does.
+8. **问策 scoring in Langfuse**: which scores to push automatically (artifact produced? code read the right tables?) and which
+   to leave to a reviewer, so the two are not confused on the same trace.
+9. **Tenancy limits**: per-KB request rate, per-session step budget and per-KB token ceiling — the abuse surface an external
+   endpoint opens. Not designed, listed in "Tenancy and abuse".
+10. **Artifact access**: the bucket/prefix and ACL for `out/` artifacts, and their retention. "Copied to storage" is a
+   location, not an access decision.
+
+Deliberately not decided here: **memory** — whether a session directory or its context outlives the conversation. That is a
+memory design question, and it changes what a conversation *is*; out of scope for this page.
 
 ## Not proposed
 
