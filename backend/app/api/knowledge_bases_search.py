@@ -98,7 +98,7 @@ async def ask_question(
     if not kb.agent_url:
         raise HTTPException(status_code=400, detail="No agent URL configured for this knowledge base")
 
-    from app.services.content.knowledge_bases.qa_agent_proxy import agent_kb_path, ask_agent_body
+    from app.services.content.knowledge_bases.qa_agent_proxy import agent_error, agent_kb_path, ask_agent_body
 
     url = agent_kb_path(kb.agent_url, kb_id, "ask")
     try:
@@ -126,7 +126,7 @@ async def ask_question(
             )
     except httpx.HTTPStatusError as e:
         logger.error("Agent returned error: %s %s", e.response.status_code, e.response.text[:200])
-        raise HTTPException(status_code=502, detail="Agent service returned an error") from e
+        raise agent_error(e) from e
     except Exception as e:
         logger.error("Failed to reach agent at %s: %s", url, e)
         raise HTTPException(status_code=502, detail="Could not reach agent service") from e

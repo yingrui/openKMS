@@ -65,6 +65,28 @@ Embedding columns are **dimensionless** `vector` on purpose (each KB/wiki space 
 
 ---
 
+### Executable skills for the KB agent (deferred by decision)
+
+The KB agent can write files but not run code, and its prompt says so ("writing a file is not executing one"). That is
+enough for 问数 — every number comes from a query — and not enough for **问策**, where an approach often needs computation
+the Catalog cannot express: indicators, rolling windows, cross-dataset comparisons, a chart.
+
+It is deferred deliberately, not forgotten. What exists today cannot be reused:
+
+- `deep_agents/sandbox.py` runs `subprocess.run([sys.executable, "-c", code], cwd=project_root)` as the **backend's own OS
+  user**, with no container, namespaces, seccomp or network policy. Verified: a child can read `../../backend/.env` and the
+  server's environment.
+- `build_project_shell_env` puts `OPENKMS_API_KEY` — the caller's bearer token — into that process.
+
+Inside a single-tenant project workspace that is a conscious trade. On an external service it is remote code execution plus
+credential exfiltration.
+
+Doing this needs, at minimum: a container or microVM per session with a read-only rootfs and only the session directory
+mounted; **zero** `OPENKMS_*` variables (the sandbox reaches the Catalog through tool calls, not a key); network denied by
+default; cpu/memory/disk/wall-clock quotas where a kill is a tool error rather than a 500; every execution audited; and a
+decision on the runtime (k8s Pod per session first, warm pool later — never the Docker socket, which would make a backend
+compromise a host compromise).
+
 ## Architecture and coupling
 
 ### Jobs API and Procrastinate internals

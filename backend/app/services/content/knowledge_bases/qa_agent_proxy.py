@@ -2,6 +2,14 @@
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
+import httpx
+from fastapi import HTTPException
+
+if TYPE_CHECKING:
+    pass
+
 from typing import Any
 
 from app.models.knowledge_base import KnowledgeBase
@@ -61,3 +69,26 @@ def retrieve_agent_body(
         "top_k": top_k,
         "agent_skills": resolve_agent_skills(kb),
     }
+
+
+def agent_error(exc: httpx.HTTPStatusError) -> HTTPException:
+    """A 4xx from the agent is a client-side condition, not a gateway failure.
+
+    The agent answers 400 for a bad request and 429 when a knowledge base has hit a ceiling; turning either into 502 told the
+    caller "the service is broken" and dropped the reason. 5xx stays a 502: that *is* the upstream failing.
+    """
+    status = exc.response.status_code
+    if status in (400, 404, 429):
+        detail: object = "Agent rejected the request"
+        try:
+            body = exc.response.json()
+            detail = body.get("detail", detail) if isinstance(body, dict) else detail
+        except ValueError:
+            pass
+        headers = {}
+        if status == 429:
+            retry = exc.response.headers.get("Retry-After")
+            if retry:
+                headers["Retry-After"] = retry
+        return HTTPException(status_code=status, detail=detail, headers=headers or None)
+    return HTTPException(status_code=502, detail="Agent service returned an error")

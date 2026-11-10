@@ -44,3 +44,21 @@ class TestValidation:
 
     def test_workspace_is_opt_in(self):
         assert parse_agent_config({"workspace": {"enabled": True}}).workspace.enabled is True
+
+
+class TestLimits:
+    def test_all_off_by_default(self):
+        limits = parse_agent_config(None).limits
+        assert limits.requests_per_minute is None
+        assert limits.max_concurrent is None
+        assert limits.daily_tokens is None
+
+    def test_ceilings_are_read(self):
+        limits = parse_agent_config({"limits": {"requests_per_minute": 30, "daily_tokens": 50_000}}).limits
+        assert limits.requests_per_minute == 30
+        assert limits.daily_tokens == 50_000
+
+    @pytest.mark.parametrize("bad", [0, -1])
+    def test_a_zero_ceiling_is_refused_not_silently_unlimited(self, bad):
+        with pytest.raises(ValidationError):
+            parse_agent_config({"limits": {"requests_per_minute": bad}})

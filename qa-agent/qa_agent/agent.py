@@ -28,6 +28,7 @@ from .kb_answer_sources import (
 )
 from . import agent_config as agent_config_module
 from .evidence import ground, grounding_warnings, label_sources
+from .limits import limiter, tokens_from_message
 from .llm_chat import build_messages_for_generate, make_qa_chat_openai, text_from_lc_content
 from .request_context import (
     reset_request_access_token,
@@ -176,6 +177,8 @@ def generate_node(state: dict[str, Any]) -> dict[str, Any]:
     )
 
     response = llm_with_tools.invoke(messages)
+    if (spent := tokens_from_message(response)) and (kb := state.get("knowledge_base_id")):
+        limiter.record_tokens(kb, spent)
 
     tool_calls = getattr(response, "tool_calls", None) or []
     if not tool_calls:
@@ -279,6 +282,8 @@ def finalize_node(state: dict[str, Any]) -> dict[str, Any]:
     messages = _answer_pending_tool_calls(messages)
     messages = [*messages, HumanMessage(content=FINALIZE_INSTRUCTION)]
     response = llm.invoke(messages)
+    if (spent := tokens_from_message(response)) and (kb := state.get("knowledge_base_id")):
+        limiter.record_tokens(kb, spent)
     answer_text = text_from_lc_content(response.content)
     logger.info("finalize_node answer_chars=%d", len(answer_text))
     return {"answer": answer_text, "messages": [*messages, response]}

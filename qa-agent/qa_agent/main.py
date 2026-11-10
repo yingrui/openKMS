@@ -68,6 +68,28 @@ def _kb_or_400(path_kb_id: str | None, body_kb_id: str | None) -> str:
         raise HTTPException(status_code=400, detail=str(e)) from e
 
 
+def _enforce_limits(kb_id: str, agent_config: dict | None) -> None:
+    """Take this turn's slot, or answer 429 with the reason. Nothing is consumed when it refuses."""
+    from .limits import limiter, limits_of
+
+    decision = limiter.acquire(kb_id, limits_of(agent_config))
+    if decision.allowed:
+        return
+    raise HTTPException(
+        status_code=429,
+        detail={
+            "code": decision.reason,
+            "message": {
+                "RATE_LIMIT": "This knowledge base is being asked too often. Try again shortly.",
+                "CONCURRENCY_LIMIT": "This knowledge base already has as many answers in flight as it allows.",
+                "DAILY_TOKEN_LIMIT": "This knowledge base has used its model budget for today.",
+            }.get(decision.reason or "", "Limit reached."),
+            "retry_after_seconds": decision.retry_after_seconds,
+        },
+        headers={"Retry-After": str(decision.retry_after_seconds or 5)},
+    )
+
+
 async def _ask_impl(kb_id: str, request: AskRequest) -> AskResponse:
     from .agent import invoke_agent
 
@@ -80,15 +102,21 @@ async def _ask_impl(kb_id: str, request: AskRequest) -> AskResponse:
         request.agent_skills,
     )
     logger.debug("POST ask question=%r", preview_text(request.question, 200))
-    result = invoke_agent(
-        knowledge_base_id=kb_id,
-        question=request.question,
-        conversation_history=request.conversation_history,
-        access_token=request.access_token or "",
-        session_id=request.session_id,
-        agent_skills=request.agent_skills,
-        agent_config=request.agent_config,
-    )
+    from .limits import limiter
+
+    _enforce_limits(kb_id, request.agent_config)
+    try:
+        result = invoke_agent(
+            knowledge_base_id=kb_id,
+            question=request.question,
+            conversation_history=request.conversation_history,
+            access_token=request.access_token or "",
+            session_id=request.session_id,
+            agent_skills=request.agent_skills,
+            agent_config=request.agent_config,
+        )
+    finally:
+        limiter.release(kb_id)
 
     sources: list[SourceItem] = []
     for s in result.get("context", []):
@@ -127,8 +155,19 @@ def _stream_response(kb_id: str, request: AskRequest) -> StreamingResponse:
         request.agent_skills,
     )
     logger.debug("POST ask/stream question=%r", preview_text(request.question, 200))
+    _enforce_limits(kb_id, request.agent_config)
+    from .limits import limiter
+
+    async def _releasing(stream):
+        """Hold the slot for exactly as long as the stream runs."""
+        try:
+            async for chunk in stream:
+                yield chunk
+        finally:
+            limiter.release(kb_id)
+
     return StreamingResponse(
-        astream_agent_ndjson(
+        _releasing(astream_agent_ndjson(
             knowledge_base_id=kb_id,
             question=request.question,
             conversation_history=request.conversation_history,
@@ -136,7 +175,7 @@ def _stream_response(kb_id: str, request: AskRequest) -> StreamingResponse:
             session_id=request.session_id,
             agent_skills=request.agent_skills,
             agent_config=request.agent_config,
-        ),
+        )),
         media_type="application/x-ndjson",
         headers={
             "Cache-Control": "no-cache",
