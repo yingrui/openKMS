@@ -434,6 +434,19 @@ before the evaluation suite exists** — by then it is the thing that makes publ
 **What should not go in such a store:** the answer contract itself ("a number must come from a cited query", "do not answer
 a different question"). Those must not vary per knowledge base; they belong in code with tests.
 
+## Shipped since this note was written
+
+| Piece | Where | Note |
+|---|---|---|
+| Session workspace + file tools | `qa_agent/session_fs.py`, `skills/workspace.py` | one directory per conversation; `AGENTS.md` from the KB, `.openkms/` read-only, quota, TTL reaping |
+| Workspace reachable by the user | `qa_agent/main.py`, backend proxy, `KbQaFilesPanel` | list + download, scoped to the conversation's session id |
+| `agent_config` + Agent tab | `app/schemas/kb_agent_config.py`, `KbAgentSettings` | validated JSONB; every default equals the old behaviour |
+| `retrieve` modes, tool-round budget + `finalize` | `qa_agent/agent.py` | see 1d above; wrapping up beats an empty answer |
+| Answer policies | `_policy_fragments`, `evidence.py` | `unknown_measure`, `require_schema_lookup`, `require_grounded_numbers` |
+| Trace id and scores | `langfuse_client.py`, `evaluations/scores.py` | `/ask` names its trace; an evaluation posts `data_query_pass` / `data_query_coverage` onto it |
+
+Still open: the prompt store (proposal 3), executable skills inside a real boundary, and the tenancy limits.
+
 ## Where each kind of answer is judged
 
 Not everything belongs in the Evaluation app. Splitting it keeps each place honest about what it can actually decide.
