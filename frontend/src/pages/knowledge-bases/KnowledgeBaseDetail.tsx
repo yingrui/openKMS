@@ -22,6 +22,7 @@ import {
   RefreshCw,
   ThumbsUp,
   ThumbsDown,
+  FolderOpen,
 } from 'lucide-react';
 import { fetchDocumentById } from '../../data/documentsApi';
 import { fetchChannelById } from '../../data/channelsApi';
@@ -111,6 +112,8 @@ export function KnowledgeBaseDetail() {
   const isMobile = useIsMobile();
   const [qaSessionsOpen, setQaSessionsOpen] = useState(false);
   const [qaSourcesPanel, setQaSourcesPanel] = useState<KbQaSourcesPanelPayload | null>(null);
+  /** The workspace rail: the conversation's files, on the right, hidden until asked for — as in the project agent. */
+  const [qaFilesOpen, setQaFilesOpen] = useState(false);
 
   // Leaving the mobile layout closes the sessions drawer. Adjusting state during render
   // (instead of in an effect) avoids a second render pass with a stale drawer.
@@ -230,7 +233,18 @@ export function KnowledgeBaseDetail() {
               }
             />
           ) : null}
-          <div className="kb-qa-shell-body">
+          <button
+            type="button"
+            className={`kb-qa-files-toggle${qaFilesOpen ? ' is-active' : ''}`}
+            onClick={() => setQaFilesOpen((v) => !v)}
+            aria-expanded={qaFilesOpen}
+            aria-controls="kb-qa-files-rail"
+            title={t('detail.qaFiles')}
+          >
+            <FolderOpen size={18} aria-hidden />
+            <span className="ds-compact-label">{t('detail.qaFiles')}</span>
+          </button>
+          <div className="kb-qa-shell-body" id="kb-qa-files-rail">
             {isMobile ? (
               <div
                 id="kb-qa-sessions-drawer"
@@ -371,11 +385,6 @@ export function KnowledgeBaseDetail() {
                   </div>
                 ) : null}
               </div>
-              {/* What this conversation produced, above the composer: the answer can say it wrote a file. */}
-              <div className="kb-qa-files-row">
-                <KbQaFilesPanel kbId={kb.id} sessionId={qaSessionId} />
-              </div>
-
               <div className="kb-qa-composer-outer">
                 <form className="kb-qa-composer" onSubmit={handleAsk}>
                   <textarea
@@ -408,6 +417,13 @@ export function KnowledgeBaseDetail() {
                 </form>
               </div>
             </main>
+            {/* The conversation's files, as the project agent has them: a rail on the right that can be hidden. */}
+            <aside
+              className={`kb-qa-files-rail${qaFilesOpen ? ' is-open' : ''}`}
+              aria-hidden={!qaFilesOpen}
+            >
+              {qaFilesOpen ? <KbQaFilesPanel kbId={kb.id} sessionId={qaSessionId} /> : null}
+            </aside>
             <KbQaSourcesDrawer
               panel={qaSourcesPanel}
               onClose={() => setQaSourcesPanel(null)}

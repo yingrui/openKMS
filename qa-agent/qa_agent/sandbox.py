@@ -245,12 +245,16 @@ def run_python(
     session_dir = str(session_fs.ensure_session_dir(kb_id, session_id))
     if not shutil.which(sys.executable):
         raise SandboxError("The interpreter for this execution is not available.")
-    return _run(
+    result = _run(
         [sys.executable, "-u", "-c", code],
         cwd=session_dir,
         env=_env(kb_id, session_id, access_token),
         timeout=int(settings.get("timeout_seconds", DEFAULT_TIMEOUT_SECONDS)),
     )
+    report_execution(
+        kb_id=kb_id, session_id=session_id, kind="python", result=result, code=code, access_token=access_token
+    )
+    return result
 
 
 def run_command(
@@ -268,12 +272,72 @@ def run_command(
     allowed = allowed_commands(settings, agent_config)
     check_command(command, allowed)
     session_dir = str(session_fs.ensure_session_dir(kb_id, session_id))
-    return _run(
+    result = _run(
         ["/bin/sh", "-c", command],
         cwd=session_dir,
         env=_env(kb_id, session_id, access_token),
         timeout=int(settings.get("timeout_seconds", DEFAULT_TIMEOUT_SECONDS)),
     )
+    report_execution(
+        kb_id=kb_id,
+        session_id=session_id,
+        kind="command",
+        result=result,
+        code=command,
+        program=(command.split() or [None])[0],
+        access_token=access_token,
+    )
+    return result
+
+
+def report_execution(
+    *,
+    kb_id: str,
+    session_id: str,
+    kind: str,
+    result: ExecResult,
+    code: str,
+    program: str | None = None,
+    access_token: str = "",
+) -> None:
+    """Tell the backend what ran, so it lands in the audit log with the user as the actor.
+
+    Best effort by design: the execution already happened, and an audit write that fails must not turn a successful run into
+    an error the model has to explain. The code itself is not sent — a size and a short hash identify it without storing it.
+    """
+    import hashlib
+    import json
+    import urllib.request
+
+    from .config import settings
+
+    if not access_token:
+        return
+    payload = {
+        "knowledge_base_id": kb_id,
+        "session_id": session_id,
+        "kind": kind,
+        "exit_code": result.exit_code,
+        "duration_ms": result.duration_ms,
+        "timed_out": result.timed_out,
+        "code_chars": len(code or ""),
+        "code_sha": hashlib.sha256((code or "").encode()).hexdigest()[:12],
+        "program": program,
+    }
+    url = f"{settings.openkms_backend_url.rstrip('/')}/internal-api/executions"
+    request = urllib.request.Request(
+        url,
+        data=json.dumps(payload).encode(),
+        headers={"Authorization": f"Bearer {access_token}", "Content-Type": "application/json"},
+        method="POST",
+    )
+    try:
+        with urllib.request.urlopen(request, timeout=3):
+            return
+    except (OSError, ValueError) as exc:  # network, auth, malformed — none of which the model should hear about
+        import logging
+
+        logging.getLogger(__name__).debug("execution audit not recorded: %s", exc)
 
 
 def _truncate(text: str) -> str:

@@ -129,3 +129,57 @@ class TestRunCommand:
     def test_it_runs_in_the_session_folder(self):
         result = sandbox.run_command("pwd", kb_id="kb1", session_id="s1", settings={"enabled": True})
         assert str(Path(result.stdout.strip()).resolve()).endswith("/kb1/s1")
+
+
+class TestAuditReporting:
+    """An execution tells the backend what ran, with the user's token as the actor."""
+
+    def test_it_posts_the_fields_and_not_the_code(self, monkeypatch):
+        calls: list[tuple[str, dict, dict]] = []
+
+        class FakeResponse:
+            def __enter__(self):
+                return self
+
+            def __exit__(self, *a):
+                return False
+
+        def fake_urlopen(request, timeout=None):
+            import json
+
+            calls.append((request.full_url, json.loads(request.data), dict(request.headers)))
+            return FakeResponse()
+
+        monkeypatch.setattr("urllib.request.urlopen", fake_urlopen)
+        result = sandbox.ExecResult(ok=True, exit_code=0, stdout="1", stderr="", duration_ms=12)
+        sandbox.report_execution(
+            kb_id="kb1", session_id="s1", kind="python", result=result,
+            code="print(secret_token)", access_token="user-jwt",
+        )
+        url, payload, headers = calls[0]
+        assert url.endswith("/internal-api/executions")
+        assert payload["code_chars"] == len("print(secret_token)")
+        assert "secret_token" not in str(payload)          # the body never leaves the agent
+        assert payload["code_sha"]
+        assert headers.get("Authorization") == "Bearer user-jwt"
+
+    def test_a_failing_report_does_not_raise(self, monkeypatch):
+        def boom(*a, **k):
+            raise OSError("backend down")
+
+        monkeypatch.setattr("urllib.request.urlopen", boom)
+        sandbox.report_execution(
+            kb_id="kb1", session_id="s1", kind="python",
+            result=sandbox.ExecResult(ok=True, exit_code=0, stdout="", stderr="", duration_ms=1),
+            code="print(1)", access_token="t",
+        )  # no exception
+
+    def test_without_a_token_nothing_is_sent(self, monkeypatch):
+        called = []
+        monkeypatch.setattr("urllib.request.urlopen", lambda *a, **k: called.append(1))
+        sandbox.report_execution(
+            kb_id="kb1", session_id="s1", kind="python",
+            result=sandbox.ExecResult(ok=True, exit_code=0, stdout="", stderr="", duration_ms=1),
+            code="print(1)", access_token="",
+        )
+        assert called == []

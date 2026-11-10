@@ -27,6 +27,7 @@ from app.api.feature_toggles import router as feature_toggles_router
 from app.api.jobs import router as jobs_router
 from app.api.internal import documents_router as internal_documents_router
 from app.api.internal import knowledge_bases_router as internal_knowledge_bases_router
+from app.api.internal import executions_router as internal_executions_router
 from app.api.internal import models_router as internal_models_router
 from app.api.internal import process_heartbeat_router as internal_process_heartbeat_router
 from app.api.models import router as models_router
@@ -210,6 +211,7 @@ app.include_router(feature_toggles_router, prefix="/api")
 app.include_router(pipelines_router, prefix="/api")
 app.include_router(models_router, prefix="/api")
 app.include_router(internal_models_router)
+app.include_router(internal_executions_router)
 app.include_router(internal_documents_router)
 app.include_router(internal_knowledge_bases_router)
 app.include_router(internal_process_heartbeat_router)

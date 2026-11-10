@@ -24,6 +24,9 @@ MUTATING = frozenset({"POST", "PUT", "PATCH", "DELETE"})
 #: session cookie on **every** app load — idempotent, and it buried the real operations in the rail's counts.
 #: Login and logout are recorded where they actually happen (the OIDC callback and `/logout`).
 NOT_AUDITED = frozenset({
+    # Records itself, with the user as the actor and the fields that matter. A generic row for this POST would say
+    # "someone posted to /internal-api/executions" and nothing else.
+    "/internal-api/executions",
     "/sync-session",
     "/clear-session",
     # Sign-in records itself (`AUTH auth/login` / `auth/login-failed`, with the account); a generic

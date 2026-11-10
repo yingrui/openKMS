@@ -99,8 +99,7 @@ database URL, and neither belongs in code a user asked for.
 
 Still open in the KB runner:
 
-- **Executions are not audited** beyond the agent's own log — `audit_events` has no record of what was run.
-- **No process/memory ceiling**: the timeout bounds wall-clock, and nothing bounds how much memory a run allocates.
+- **No memory limit**: the timeout bounds how long a run may take, and nothing bounds how much memory it may use.
 - **No persistent interpreter**: each run is a new process, so variables do not survive between turns and the agent re-reads
   from `/workspace`.
 

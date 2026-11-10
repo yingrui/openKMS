@@ -3124,6 +3124,130 @@ body.openkms-kb-qa-fullpage .kb-qa-shell {
   max-width: 60rem;
 }
 
+/* The conversation's files, as the project agent has them: a rail on the right, hidden until asked for. */
+.kb-qa-shell-body {
+  position: relative;
+}
+
+.kb-qa-files-toggle {
+  position: absolute;
+  top: var(--space-3);
+  right: var(--space-4);
+  z-index: 5;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-1) var(--space-3);
+  border: 1px solid var(--color-border);
+  border-radius: 999px;
+  background: var(--color-surface);
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-sm);
+  cursor: pointer;
+
+  &.is-active {
+    border-color: var(--color-accent, #2563eb);
+    color: var(--color-accent, #2563eb);
+  }
+}
+
+.kb-qa-files-rail {
+  width: 0;
+  overflow: hidden;
+  border-left: 0 solid var(--color-border);
+  background: var(--color-surface);
+  transition: width 120ms ease;
+
+  &.is-open {
+    width: 20rem;
+    border-left-width: 1px;
+    overflow-y: auto;
+    padding: var(--space-3);
+  }
+}
+
+.kb-qa-files {
+  &__toggle {
+    display: none; /* the rail's own header carries the title */
+  }
+
+  &__count {
+    font-variant-numeric: tabular-nums;
+  }
+
+  &__panel ul {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+  }
+
+  &__link {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    width: 100%;
+    padding: var(--space-1) var(--space-2);
+    border: 0;
+    border-radius: var(--radius-sm);
+    background: none;
+    color: inherit;
+    font: inherit;
+    text-align: left;
+    cursor: pointer;
+
+    &:hover {
+      background: var(--color-surface-sunken);
+    }
+  }
+
+  &__name {
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  &__size {
+    color: var(--color-text-secondary);
+    font-size: var(--font-size-xs);
+    font-variant-numeric: tabular-nums;
+  }
+}
+
+/* Unsourced numbers, when the KB asks to be told about them. A note, not an error: the answer is still an answer. */
+.kb-qa-grounding-warning {
+  flex-basis: 100%;
+  margin: 0 0 var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  border-left: 3px solid var(--color-warning, #d97706);
+  background: var(--color-surface-sunken);
+  border-radius: var(--radius-sm);
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+  list-style: none;
+}
+
+/* Did the answer use this source, or did the query merely run? Labelled, never filtered. */
+.kb-qa-source-card__usage {
+  font-size: var(--font-size-xs);
+  padding: 0 var(--space-2);
+  border-radius: 999px;
+  border: 1px solid var(--color-border);
+  color: var(--color-text-secondary);
+
+  &--used {
+    border-color: var(--color-accent, #2563eb);
+    color: var(--color-accent, #2563eb);
+  }
+}
+
+/* The Agent tab: policy sections, one concern each. */
+.kb-agent-settings {
+  display: grid;
+  gap: var(--space-4);
+  max-width: 60rem;
+}
+
 /* The conversation's files, directly above the composer. */
 .kb-qa-files-row {
   display: flex;
