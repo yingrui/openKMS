@@ -5,6 +5,7 @@ from .catalog import catalog_tools
 from .insurance_calculator import calculator_tools
 from .ontology import ontology_tools
 from .page_index import page_index_tools
+from .workspace import workspace_tools
 from .premium_estimator import premium_tools
 from .product_comparator import comparator_tools
 
@@ -15,6 +16,7 @@ __all__ = [
     "ontology_tools",
     "catalog_tools",
     "page_index_tools",
+    "workspace_tools",
     "calculator_tools",
     "premium_tools",
     "comparator_tools",
@@ -26,6 +28,9 @@ __all__ = [
 CORE_SKILL_IDS: tuple[str, ...] = ("ontology", "catalog", "page_index")
 ALL_SKILL_IDS: tuple[str, ...] = (
     *CORE_SKILL_IDS,
+    #: Opt-in per KB: file tools over this conversation's own directory. Not core — a KB that does not want the agent
+    #: touching files should not have to turn anything off.
+    "workspace",
     "insurance_calculator",
     "premium_estimator",
     "product_comparator",
@@ -35,6 +40,7 @@ _SKILL_TOOLS: dict[str, list] = {
     "ontology": ontology_tools,
     "catalog": catalog_tools,
     "page_index": page_index_tools,
+    "workspace": workspace_tools,
     "insurance_calculator": calculator_tools,
     "premium_estimator": premium_tools,
     "product_comparator": comparator_tools,
@@ -81,6 +87,7 @@ def get_skill_prompt_fragments(skills: list[str] | None = None) -> str:
     from .insurance_calculator import CALCULATOR_PROMPT
     from .ontology import ONTOLOGY_PROMPT
     from .page_index import PAGE_INDEX_PROMPT
+    from .workspace import WORKSPACE_PROMPT
     from .premium_estimator import PREMIUM_PROMPT
     from .product_comparator import COMPARATOR_PROMPT
 
@@ -88,6 +95,7 @@ def get_skill_prompt_fragments(skills: list[str] | None = None) -> str:
         "ontology": ONTOLOGY_PROMPT,
         "catalog": CATALOG_PROMPT,
         "page_index": PAGE_INDEX_PROMPT,
+        "workspace": WORKSPACE_PROMPT,
         "insurance_calculator": CALCULATOR_PROMPT,
         "premium_estimator": PREMIUM_PROMPT,
         "product_comparator": COMPARATOR_PROMPT,

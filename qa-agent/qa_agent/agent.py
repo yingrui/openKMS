@@ -30,8 +30,10 @@ from .llm_chat import build_messages_for_generate, make_qa_chat_openai, text_fro
 from .request_context import (
     reset_request_access_token,
     reset_request_knowledge_base_id,
+    reset_request_session_id,
     set_request_access_token,
     set_request_knowledge_base_id,
+    set_request_session_id,
 )
 from .retriever import retrieve
 from .schemas import SourceItem
@@ -212,6 +214,8 @@ def invoke_agent(
     skill_ids = normalize_skill_ids(agent_skills)
     h = set_request_access_token(access_token or "")
     h_kb = set_request_knowledge_base_id(knowledge_base_id or "")
+    # The workspace key. Tools read it from the request context, so a tool call cannot address another conversation.
+    h_sess = set_request_session_id(session_id or "")
     t0 = time.monotonic()
     logger.info(
         "invoke_agent start kb=%s history=%d session=%s skills=%s",
@@ -273,6 +277,7 @@ def invoke_agent(
         raise
     finally:
         reset_request_knowledge_base_id(h_kb)
+        reset_request_session_id(h_sess)
         reset_request_access_token(h)
 
 
@@ -331,6 +336,8 @@ async def astream_agent_ndjson(
     skill_ids = normalize_skill_ids(agent_skills)
     h = set_request_access_token(access_token or "")
     h_kb = set_request_knowledge_base_id(knowledge_base_id or "")
+    # The workspace key. Tools read it from the request context, so a tool call cannot address another conversation.
+    h_sess = set_request_session_id(session_id or "")
     t0 = time.monotonic()
     logger.info(
         "astream_agent_ndjson start kb=%s history=%d session=%s skills=%s",
@@ -616,4 +623,5 @@ async def astream_agent_ndjson(
             callback.flush()
     finally:
         reset_request_knowledge_base_id(h_kb)
+        reset_request_session_id(h_sess)
         reset_request_access_token(h)

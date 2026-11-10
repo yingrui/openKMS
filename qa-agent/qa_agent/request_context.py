@@ -7,6 +7,8 @@ from typing import Any
 
 _access_token: ContextVar[str] = ContextVar("qa_agent_access_token", default="")
 _knowledge_base_id: ContextVar[str] = ContextVar("qa_agent_knowledge_base_id", default="")
+#: The conversation this request belongs to — the key of its workspace directory. Never chosen by a tool call.
+_session_id: ContextVar[str] = ContextVar("qa_agent_session_id", default="")
 
 
 def set_request_access_token(token: str) -> Any:
@@ -24,6 +26,26 @@ def set_request_knowledge_base_id(kb_id: str) -> Any:
 
 def reset_request_knowledge_base_id(handle: Any) -> None:
     _knowledge_base_id.reset(handle)
+
+
+def set_request_session_id(session_id: str) -> Any:
+    return _session_id.set(session_id or "")
+
+
+def reset_request_session_id(handle: Any) -> None:
+    _session_id.reset(handle)
+
+
+def get_tool_session_id(config: dict[str, Any] | None = None) -> str:
+    """Current session id — the workspace key. Tools read it; they cannot choose it."""
+    ctx = _session_id.get()
+    if ctx:
+        return ctx
+    c = (config or {}).get("configurable") or {}
+    if isinstance(c, dict):
+        v = c.get("session_id")
+        return v if isinstance(v, str) else ""
+    return ""
 
 
 def get_tool_access_token(config: dict[str, Any] | None) -> str:
