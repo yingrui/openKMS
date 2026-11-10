@@ -444,8 +444,10 @@ a different question"). Those must not vary per knowledge base; they belong in c
 | `retrieve` modes, tool-round budget + `finalize` | `qa_agent/agent.py` | see 1d above; wrapping up beats an empty answer |
 | Answer policies | `_policy_fragments`, `evidence.py` | `unknown_measure`, `require_schema_lookup`, `require_grounded_numbers` |
 | Trace id and scores | `langfuse_client.py`, `evaluations/scores.py` | `/ask` names its trace; an evaluation posts `data_query_pass` / `data_query_coverage` onto it |
+| **Tenancy ceilings** | `qa_agent/limits.py`, `agent_config.limits` | requests/minute, in-flight, daily tokens — per KB, all off by default; a 429 carries its reason and `Retry-After` |
+| **Prompt store** | `models/agent_prompt.py`, `prompt_store.py`, `/agent-prompts` | versioned rows, **publish gated by an evaluation run made after the draft**, one live version per KB, rollback by republishing; each answer reports `prompt_version` |
 
-Still open: the prompt store (proposal 3), executable skills inside a real boundary, and the tenancy limits.
+Still open: **executable skills inside a real boundary** — deferred by decision, with the evidence in `tech_debt.md`.
 
 ## Where each kind of answer is judged
 
