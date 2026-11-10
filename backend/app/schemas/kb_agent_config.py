@@ -14,16 +14,10 @@ from __future__ import annotations
 
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field
 
 #: Today's `top_k` is hard-coded to 5 in `qa_agent/agent.py`; this is the value an empty config keeps.
 DEFAULT_TOP_K = 5
-
-#: The skills the agent has always had. `workspace` is opt-in, so a KB that does not want file tools needs no opt-out.
-DEFAULT_TOOLS = ("ontology", "catalog", "page_index")
-
-KNOWN_TOOLS = frozenset({*DEFAULT_TOOLS, "workspace"})
-
 
 class PromptsConfig(BaseModel):
     """KB-wide instructions — not a prompt store.
@@ -99,7 +93,8 @@ class AgentConfig(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
-    tools: list[str] = list(DEFAULT_TOOLS)
+    #: No `tools` key here on purpose: which skills are enabled is `knowledge_bases.agent_skills`, and it stays the single
+    #: source. Two places to tick the same box is how a KB ends up with a skill one screen shows and the agent does not have.
     model_id: str | None = None
     prompts: PromptsConfig = PromptsConfig()
     retrieval: RetrievalConfig = RetrievalConfig()
@@ -107,20 +102,6 @@ class AgentConfig(BaseModel):
     workspace: WorkspaceConfig = WorkspaceConfig()
     orchestration: OrchestrationConfig = OrchestrationConfig()
     observability: ObservabilityConfig = ObservabilityConfig()
-
-    @field_validator("tools")
-    @classmethod
-    def _known_tools(cls, value: list[str]) -> list[str]:
-        unknown = [t for t in value if t not in KNOWN_TOOLS]
-        if unknown:
-            # Silently dropping an unknown skill is how a typo becomes "the agent does nothing extra" instead of an error.
-            raise ValueError(f"Unknown agent tool(s): {', '.join(sorted(unknown))}")
-        seen: list[str] = []
-        for tool in value:
-            if tool not in seen:
-                seen.append(tool)
-        return seen
-
 
 def parse_agent_config(raw: object) -> AgentConfig:
     """Stored JSON → validated config. `None`/empty gives every default, which is today's behaviour."""

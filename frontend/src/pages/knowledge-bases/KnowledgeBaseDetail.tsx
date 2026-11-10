@@ -48,6 +48,7 @@ import {
   kbQaFeedbackKey,
   splitQaSources,
 } from './KnowledgeBaseDetail.qaUtils';
+import { KbAgentSettings } from './KbAgentSettings';
 import { TAB_ICONS, TAB_ORDER } from './KnowledgeBaseDetail.types';
 import { useKnowledgeBaseDetail } from './useKnowledgeBaseDetail';
 import { ContentCommentsShell } from '../../components/comments/ContentCommentsShell';
@@ -57,6 +58,7 @@ import './KnowledgeBaseDetail.scss';
 
 export function KnowledgeBaseDetail() {
   const {
+    loadKb,
     kbId,   channels, t, kb,  activeTab, setActiveTab, qaFullPage,
     openQaFullPage, exitQaFullPageNav, openQaSettingsNav, loading, docs, docTotal, docPage, setDocPage, docPageSize, setDocPageSize,
       genDocs,  showDocPicker,  pickerSearch,
@@ -293,7 +295,8 @@ export function KnowledgeBaseDetail() {
                           const { evidence, references } = splitQaSources(msg.sources ?? []);
                           const hasSources = evidence.length > 0 || references.length > 0;
                           const showFeedback = Boolean(assistantText);
-                          if (!hasSources && !showFeedback) return null;
+                          const warnings = msg.warnings ?? [];
+                          if (!hasSources && !showFeedback && warnings.length === 0) return null;
                           const feedbackKey = kbQaFeedbackKey(msg, i);
                           const feedback = qaFeedback[feedbackKey];
                           const prev = chatMessages[i - 1];
@@ -302,6 +305,15 @@ export function KnowledgeBaseDetail() {
                           const sourcesOpen = qaSourcesPanel?.replyKey === rk;
                           return (
                             <div className="kb-qa-msg-actions">
+                              {warnings.length > 0 ? (
+                                /* What the agent could not source. Shown, not hidden: the reader decides whether to trust
+                                   the numbers, and the KB asked to be told. */
+                                <ul className="kb-qa-grounding-warning" role="status">
+                                  {warnings.map((w) => (
+                                    <li key={w}>{w}</li>
+                                  ))}
+                                </ul>
+                              ) : null}
                               {hasSources ? (
                                 <KbQaSourcesPill
                                   evidenceCount={evidence.length}
@@ -1353,6 +1365,10 @@ export function KnowledgeBaseDetail() {
                   resourceId={kbId}
                   title={t('detail.sharingTitle')}
                 />
+              ) : null}
+
+              {settingsSubTab === 'agent' && kb ? (
+                <KbAgentSettings kb={kb} onSaved={loadKb} />
               ) : null}
 
               {settingsSubTab === 'general' ? (

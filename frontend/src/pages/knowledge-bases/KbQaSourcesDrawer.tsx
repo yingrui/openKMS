@@ -45,6 +45,16 @@ function ReferenceCard({
       </span>
       <div className="kb-qa-source-card__head">
         <span className="kb-qa-source-card__kind">{kindLabel}</span>
+        {s.usage ? (
+          /* Whether the answer drew on this source, or the query merely ran. Every source is kept either way. */
+          <span
+            className={`kb-qa-source-card__usage kb-qa-source-card__usage--${s.usage}`}
+            title={t(`detail.qaSourceUsage.${s.usage}Hint`)}
+          >
+            {t(`detail.qaSourceUsage.${s.usage}`)}
+            {s.usage === 'used' && s.traceable_numbers ? ` · ${s.traceable_numbers}` : ''}
+          </span>
+        ) : null}
         {showScore ? (
           <span className="kb-qa-source-card__score">
             {t('detail.qaSourceScore', { pct: (s.score * 100).toFixed(0) })}

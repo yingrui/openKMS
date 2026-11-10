@@ -1,9 +1,9 @@
 import { FileStack, BookOpen, Database, HelpCircle, Layers, Search as SearchIcon, Settings } from 'lucide-react';
-import type { SearchResult } from '../../data/knowledgeBasesApi';
+import type { GroundingReport, SearchResult } from '../../data/knowledgeBasesApi';
 import type { AssistantStreamPart } from '../../components/wiki/wikiCopilotStreamParts';
 
 export type TabId = 'documents' | 'wiki_spaces' | 'data_scope' | 'faqs' | 'chunks' | 'search' | 'settings';
-export type SettingsSubTabId = 'general' | 'sharing';
+export type SettingsSubTabId = 'general' | 'agent' | 'sharing';
 
 export const TAB_ORDER: TabId[] = [
   'documents',
@@ -47,6 +47,10 @@ export interface ChatMessage {
   sources?: SearchResult[];
   streamParts?: AssistantStreamPart[];
   replyKey?: string;
+  /** What the agent said about its own evidence: traceable/total, and any unsourced-number warning the KB asked for. */
+  grounding?: GroundingReport | null;
+  warnings?: string[];
+  verified?: boolean;
 }
 
 export type KbQaFeedbackVote = 'up' | 'down';

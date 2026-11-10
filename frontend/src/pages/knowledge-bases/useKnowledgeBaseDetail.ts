@@ -1,7 +1,7 @@
 import { useEffect, useLayoutEffect, useState, useCallback, useRef, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useLocation, useParams, useNavigate, useSearchParams } from 'react-router-dom';
-import { Settings, Users } from 'lucide-react';
+import { Bot, Settings, Users } from 'lucide-react';
 import { toast } from 'sonner';
 import {
   fetchKnowledgeBase,
@@ -69,6 +69,7 @@ import {
 } from './KnowledgeBaseDetail.qaUtils';
 import { kbComputeSearchDiff, kbSnapshotFromResults } from './KnowledgeBaseDetail.searchUtils';
 import { configValuesToMetadata, objToConfigValues } from './KnowledgeBaseDetail.metadataUtils';
+import type { GroundingReport } from '../../data/knowledgeBasesApi';
 import {
   TAB_ORDER,
   type ChatMessage,
@@ -270,6 +271,7 @@ export function useKnowledgeBaseDetail() {
     () =>
       [
         { id: 'general' as const, label: t('detail.settingsTabGeneral'), icon: Settings },
+        { id: 'agent' as const, label: t('detail.settingsTabAgent'), icon: Bot },
         { id: 'sharing' as const, label: t('detail.settingsTabSharing'), icon: Users },
       ],
     [t],
@@ -1242,6 +1244,10 @@ export function useKnowledgeBaseDetail() {
                 user: { id: string };
                 message: { id: string; content: string };
                 sources?: SearchResult[];
+              } & {
+                grounding?: GroundingReport | null;
+                warnings?: string[];
+                verified?: boolean;
               };
               const without = prev.filter(
                 (p) => p.id !== aId && p.id !== kbDone.user.id && (uId == null || p.id !== uId),
@@ -1255,6 +1261,9 @@ export function useKnowledgeBaseDetail() {
                   role: 'assistant' as const,
                   content: kbDone.message.content,
                   sources: kbDone.sources,
+                  grounding: kbDone.grounding ?? null,
+                  warnings: kbDone.warnings ?? [],
+                  verified: kbDone.verified ?? true,
                   streamParts: parts && parts.length > 0 ? parts : undefined,
                   replyKey: kbDone.message.id,
                 },

@@ -16,6 +16,26 @@ export type AgentSkillId =
   | (typeof CORE_AGENT_SKILL_IDS)[number]
   | (typeof DEMO_AGENT_SKILL_IDS)[number];
 
+/** Per-KB agent configuration. Every field defaults to today's behaviour; see docs/features/knowledge-base-qa-agent.md. */
+export interface KbAgentConfig {
+  prompts?: { agents_md?: string | null };
+  retrieval?: { top_k?: number; rerank?: boolean | null; min_score?: number | null };
+  answer_policy?: {
+    unknown_measure?: 'try_anyway' | 'refuse';
+    require_grounded_numbers?: 'off' | 'mark' | 'enforce';
+    evidence_labels?: 'flat' | 'used+consulted';
+    require_schema_lookup?: boolean;
+  };
+  workspace?: { enabled?: boolean; disk_mb?: number | null; session_ttl_minutes?: number | null; artifact_max_mb?: number | null };
+  orchestration?: {
+    profile?: 'rag_only' | 'rag_tools' | 'agent_loop';
+    max_tool_rounds?: number | null;
+    retrieve?: 'always' | 'never' | 'on_miss';
+  };
+  observability?: { langfuse_credential_id?: string | null; langfuse_tags?: string[]; sample_rate?: number | null };
+  model_id?: string | null;
+}
+
 export interface KnowledgeBaseResponse {
   id: string;
   name: string;
@@ -25,6 +45,8 @@ export interface KnowledgeBaseResponse {
   agent_url?: string | null;
   /** Enabled qa-agent skills; null/omitted means core only. */
   agent_skills?: string[] | null;
+  /** Validated per-KB agent configuration; null means every default. */
+  agent_config?: KbAgentConfig | null;
   chunk_config?: Record<string, unknown> | null;
   faq_prompt?: string | null;
   metadata_keys?: string[] | null;
@@ -168,6 +190,10 @@ export interface SearchResult {
   retrieval_debug?: Record<string, unknown> | null;
   /** Catalog metric / SQL Lab evidence (table + SQL). */
   data_query?: CatalogDataQuery | null;
+  /** `used` when the answer's numbers came from this source, `consulted` when the query merely ran. */
+  usage?: 'used' | 'consulted' | null;
+  /** How many of the answer's numbers appear in this source's rows. */
+  traceable_numbers?: number | null;
 }
 
 export interface SearchResponse {
@@ -175,9 +201,24 @@ export interface SearchResponse {
   query: string;
 }
 
+/** How many of the answer's numbers came from the cited evidence — a ratio, not a verdict. */
+export interface GroundingReport {
+  traceable: number;
+  total: number;
+  ratio: number;
+  untraced: number[];
+}
+
 export interface AskResponse {
   answer: string;
   sources: SearchResult[];
+  grounding?: GroundingReport | null;
+  /** The Langfuse trace of this turn — the handle an evaluation or a reviewer scores afterwards. */
+  langfuse_trace_id?: string | null;
+  /** Unsourced numbers, when the KB asks to be told about them. */
+  warnings?: string[];
+  /** False when the KB enforces grounding and the answer contained numbers no cited source supports. */
+  verified?: boolean;
 }
 
 /** NDJSON events from ``POST .../ask/stream`` (aligned with wiki copilot stream shape). */
@@ -186,7 +227,15 @@ export type KbAskStreamEvent =
   | { type: 'tool_start'; run_id: string; name: string; input: string }
   | { type: 'tool_end'; run_id: string; name: string; output: string }
   | { type: 'tool_error'; run_id: string; name: string; error: string }
-  | { type: 'done'; answer: string; sources: SearchResult[] }
+  | {
+      type: 'done';
+      answer: string;
+      sources: SearchResult[];
+      grounding?: GroundingReport | null;
+      warnings?: string[];
+      verified?: boolean;
+      langfuse_trace_id?: string | null;
+    }
   | { type: 'error'; detail: string; answer?: string };
 
 function parseKbAskStreamLine(line: string): KbAskStreamEvent | null {
@@ -225,7 +274,15 @@ function parseKbAskStreamLine(line: string): KbAskStreamEvent | null {
     };
   }
   if (typ === 'done' && typeof o.answer === 'string' && Array.isArray(o.sources)) {
-    return { type: 'done', answer: o.answer, sources: o.sources as SearchResult[] };
+    return {
+      type: 'done',
+      answer: o.answer,
+      sources: o.sources as SearchResult[],
+      grounding: (o.grounding as GroundingReport | null | undefined) ?? null,
+      warnings: Array.isArray(o.warnings) ? (o.warnings as string[]) : [],
+      verified: typeof o.verified === 'boolean' ? o.verified : true,
+      langfuse_trace_id: typeof o.langfuse_trace_id === 'string' ? o.langfuse_trace_id : null,
+    };
   }
   if (typ === 'error' && typeof o.detail === 'string') {
     return {
@@ -554,6 +611,7 @@ export async function updateKnowledgeBase(
     judge_model_id?: string | null;
     agent_url?: string | null;
     agent_skills?: string[] | null;
+    agent_config?: KbAgentConfig | null;
     chunk_config?: Record<string, unknown> | null;
     faq_prompt?: string | null;
     metadata_keys?: string[] | null;
