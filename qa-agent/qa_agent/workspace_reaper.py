@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+from pathlib import Path
 
 from . import session_fs
 
@@ -29,7 +30,23 @@ def sweep_once() -> list[str]:
     removed = session_fs.reclaim_expired(ttl)
     if removed:
         logger.info("session workspaces reclaimed: %d", len(removed))
+        _remove_containers(removed)
     return removed
+
+
+def _remove_containers(session_dirs: list[str]) -> None:
+    """A container belongs to its session: it goes when the directory does, never on its own timer."""
+    from . import sandbox
+
+    for path in session_dirs:
+        parts = Path(path).parts
+        if len(parts) < 2:
+            continue
+        session_id, kb_id = parts[-1], parts[-2]
+        try:
+            sandbox.remove_container(kb_id, session_id)
+        except sandbox.SandboxError as exc:  # docker missing is not the sweeper's problem
+            logger.warning("could not remove sandbox container for %s: %s", session_id, exc)
 
 
 async def run_forever(interval_seconds: int = SWEEP_INTERVAL_SECONDS) -> None:

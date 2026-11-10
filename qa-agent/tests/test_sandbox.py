@@ -31,7 +31,7 @@ class TestConfig:
 class TestCommand:
     def argv(self, **settings):
         conf = {"enabled": True, **settings}
-        return sandbox._docker_argv("print(1)", "/sessions/kb/s1", conf, "okms-sbx-test")
+        return sandbox._created_argv("/sessions/kb/s1", conf, "okms-sbx-test")
 
     def test_the_session_directory_is_the_only_mount(self):
         argv = self.argv()
@@ -63,6 +63,17 @@ class TestCommand:
         argv = self.argv()
         assert argv[argv.index("--user") + 1] == f"{os.getuid()}:{os.getgid()}"
 
+    def test_the_container_is_detached_and_idles_between_runs(self):
+        argv = self.argv()
+        assert "--detach" in argv
+        assert argv[-2:] == ["sleep", "infinity"]
+
+    def test_an_execution_runs_inside_the_existing_container_with_its_own_timeout(self):
+        argv = sandbox._exec_argv("okms-sbx-test", "print(1)", 45)
+        assert argv[:3] == ["docker", "exec", "-w"]
+        assert "okms-sbx-test" in argv
+        assert "timeout" in argv and "45s" in argv
+
     def test_quotas_come_from_the_configuration(self):
         argv = self.argv(memory_mb=256, cpus=2)
         assert "256m" in argv
@@ -87,7 +98,9 @@ class TestFailurePaths:
         with pytest.raises(sandbox.SandboxError, match="Nothing to run"):
             sandbox.run_python("   ", kb_id="kb", session_id="s", settings={"enabled": True})
 
-    def test_a_timeout_kills_the_container_and_reports_it(self, tmp_path, monkeypatch):
+    def test_a_timeout_reports_itself_and_leaves_the_container_alone(self, tmp_path, monkeypatch):
+        import subprocess
+
         from qa_agent.config import settings
 
         monkeypatch.setattr(settings, "sessions_root", str(tmp_path), raising=False)
@@ -95,17 +108,15 @@ class TestFailurePaths:
 
         def fake_run(argv, **kwargs):
             calls.append(list(argv))
-            if argv[:2] == ["docker", "rm"]:
-                return type("R", (), {"returncode": 0, "stdout": "", "stderr": ""})()
-            import subprocess
-
+            if argv[:2] == ["docker", "inspect"]:
+                return type("R", (), {"returncode": 0, "stdout": "true\n", "stderr": ""})()
             raise subprocess.TimeoutExpired(argv, kwargs.get("timeout"))
 
         monkeypatch.setattr(sandbox.subprocess, "run", fake_run)
         result = sandbox.run_python("while True: pass", kb_id="kb", session_id="s", settings={"enabled": True, "timeout_seconds": 5})
         assert result.timed_out is True
-        assert calls[-1][:2] == ["docker", "rm"]           # the container is removed, not left running
-        assert "--name" in calls[0]
+        # The container is *not* removed: the next attempt reuses it, which is the point of one container per session.
+        assert not any(c[:2] == ["docker", "rm"] for c in calls)
 
     def test_missing_docker_is_a_configuration_error(self, tmp_path, monkeypatch):
         from qa_agent.config import settings
@@ -155,3 +166,17 @@ class TestLiveContainer:
             kb_id="kb", session_id="s", settings=conf,
         )
         assert not net.ok, "the network is off"
+
+
+class TestWhatPerSessionMeans:
+    """A container per session buys startup and disk, not interpreter state — the distinction has to be written down."""
+
+    def test_the_name_is_deterministic_so_a_session_finds_its_container(self):
+        assert sandbox.container_name("kb", "s") == sandbox.container_name("kb", "s")
+        assert sandbox.container_name("kb", "s") != sandbox.container_name("kb", "other")
+        assert sandbox.container_name("kb", "s").startswith("okms-sbx-")
+
+    def test_each_execution_is_a_fresh_interpreter(self):
+        # `docker exec python -c` is a new process; the docstring says so, and this pins the command shape it refers to.
+        argv = sandbox._exec_argv("okms-sbx-x", "print(1)", 30)
+        assert argv[-3:] == ["-u", "-c", "print(1)"]
