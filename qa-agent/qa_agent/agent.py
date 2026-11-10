@@ -6,9 +6,9 @@ import time
 from collections.abc import AsyncIterator
 from typing import Annotated, Any, Literal
 
-from langchain_core.messages import AIMessage
+from langchain_core.messages import AIMessage, HumanMessage, ToolMessage
 from langgraph.errors import GraphRecursionError
-from langgraph.graph import StateGraph
+from langgraph.graph import END, StateGraph
 from langgraph.graph.message import add_messages
 from langgraph.prebuilt import ToolNode
 from typing_extensions import TypedDict
@@ -60,6 +60,8 @@ class AgentState(TypedDict):
     agent_skills: list[str]
     #: Retrieval depth for this request, from the KB's agent_config (defaults to 5).
     top_k: int
+    #: Tool rounds this request may use, from `orchestration.max_tool_rounds` (None = no bound).
+    max_tool_rounds: int | None
 
 
 def retrieve_node(state: dict[str, Any]) -> dict[str, Any]:
@@ -152,15 +154,92 @@ def generate_node(state: dict[str, Any]) -> dict[str, Any]:
     return {"messages": messages + [response]}
 
 
-def should_continue(state: dict[str, Any]) -> Literal["tools", "__end__"]:
-    """Route to tools node if there are tool calls, else end."""
+#: Tool rounds are bounded per request by `agent_config.orchestration.max_tool_rounds`; this is the ceiling used when a KB
+#: sets nothing, i.e. today's behaviour — only `recursion_limit` stopped a runaway loop.
+UNBOUNDED_TOOL_ROUNDS = 10_000
+
+
+def tool_rounds_used(messages: list[Any]) -> int:
+    """How many times the model has asked for tools in this turn.
+
+    Counted from the transcript rather than from a counter in state: the transcript is what the loop actually consumed, and
+    it survives the fallback path that rebuilds the graph state.
+    """
+    return sum(1 for m in messages if isinstance(m, AIMessage) and getattr(m, "tool_calls", None))
+
+
+def should_continue(state: dict[str, Any]) -> Literal["tools", "finalize", "__end__"]:
+    """Route to tools, to a wrap-up turn, or to the end.
+
+    Reaching the tool budget does not end the turn: cutting the loop mid-tool-call produced an **empty answer**, which is
+    worse than an incomplete one. It goes to `finalize`, which asks the model for an answer from what it already has.
+    """
     messages = state.get("messages", [])
     if not messages:
         return "__end__"
     last = messages[-1]
-    if isinstance(last, AIMessage) and last.tool_calls:
-        return "tools"
-    return "__end__"
+    if not (isinstance(last, AIMessage) and last.tool_calls):
+        return "__end__"
+    budget = int(state.get("max_tool_rounds") or UNBOUNDED_TOOL_ROUNDS)
+    used = tool_rounds_used(messages)
+    # The budget is the number of rounds *allowed*, so a request that uses the last one wraps up here.
+    if used >= budget:
+        logger.warning("tool round budget reached (%d/%d); wrapping up", used, budget)
+        return "finalize"
+    return "tools"
+
+
+FINALIZE_INSTRUCTION = (
+    "You have used the tool budget for this turn. Answer now using only what you already retrieved. "
+    "State plainly what you could not check, and do not guess a number you did not retrieve."
+)
+
+
+SKIPPED_TOOL_RESULT = (
+    "Not executed: the tool budget for this turn is exhausted. Answer from what you already have."
+)
+
+
+def _answer_pending_tool_calls(messages: list[Any]) -> list[Any]:
+    """Give every unanswered tool call a tool result, so the transcript is one the model API accepts."""
+    out = list(messages)
+    if not out:
+        return out
+    last = out[-1]
+    if not (isinstance(last, AIMessage) and getattr(last, "tool_calls", None)):
+        return out
+    for call in last.tool_calls:
+        call_id = call.get("id") if isinstance(call, dict) else getattr(call, "id", None)
+        if call_id:
+            out.append(ToolMessage(content=SKIPPED_TOOL_RESULT, tool_call_id=call_id))
+    return out
+
+
+def finalize_node(state: dict[str, Any]) -> dict[str, Any]:
+    """One last model turn with no tools bound, so a cut-short turn still yields an answer."""
+    llm_cfg = get_effective_llm_config()
+    llm = make_qa_chat_openai(
+        base_url=llm_cfg.openai_v1_base_url,
+        api_key=llm_cfg.api_key,
+        model_name=llm_cfg.model_name,
+        temperature=0.3,
+        streaming=True,
+    )
+    messages = build_messages_for_generate(
+        context_prompt=_build_system_prompt(state["context"], normalize_skill_ids(state.get("agent_skills"))),
+        conversation_history=state["conversation_history"],
+        question=state["question"],
+        existing_graph_messages=list(state.get("messages") or []),
+    )
+    # The transcript ends with an assistant turn that requested tools the loop never ran. An OpenAI-compatible API rejects
+    # that pairing ("insufficient tool messages following tool_calls"), so each unanswered call gets a tool result saying so —
+    # more honest than dropping the message, and it tells the model why the data is missing.
+    messages = _answer_pending_tool_calls(messages)
+    messages = [*messages, HumanMessage(content=FINALIZE_INSTRUCTION)]
+    response = llm.invoke(messages)
+    answer_text = text_from_lc_content(response.content)
+    logger.info("finalize_node answer_chars=%d", len(answer_text))
+    return {"answer": answer_text, "messages": [*messages, response]}
 
 
 def build_graph() -> StateGraph:
@@ -173,10 +252,16 @@ def build_graph() -> StateGraph:
     graph.add_node("retrieve", retrieve_node)
     graph.add_node("generate", generate_node)
     graph.add_node("tools", tool_node)
+    graph.add_node("finalize", finalize_node)
 
     graph.add_edge("retrieve", "generate")
-    graph.add_conditional_edges("generate", should_continue)
+    graph.add_conditional_edges(
+        "generate",
+        should_continue,
+        {"tools": "tools", "finalize": "finalize", "__end__": END},
+    )
     graph.add_edge("tools", "generate")
+    graph.add_edge("finalize", END)
     graph.set_entry_point("retrieve")
 
     return graph
@@ -246,6 +331,7 @@ def invoke_agent(
                 "answer": "",
                 "agent_skills": skill_ids,
                 "top_k": retrieve_k,
+                "max_tool_rounds": agent_config_module.max_tool_rounds(agent_config),
             },
             config=config,
         )
@@ -379,6 +465,7 @@ async def astream_agent_ndjson(
             "answer": "",
             "agent_skills": skill_ids,
             "top_k": retrieve_k,
+            "max_tool_rounds": agent_config_module.max_tool_rounds(agent_config),
         }
         agent = get_agent()
         stream_cb = get_langfuse_callback() if settings.langfuse_trace_streaming else None

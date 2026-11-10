@@ -35,3 +35,22 @@ class TestWorkspace:
 
     def test_enabled(self):
         assert workspace_enabled({"workspace": {"enabled": True}}) is True
+
+
+class TestToolRoundBudget:
+    def test_unset_keeps_the_old_unbounded_behaviour(self):
+        from qa_agent.agent_config import max_tool_rounds
+
+        assert max_tool_rounds(None) is None
+        assert max_tool_rounds({"orchestration": {}}) is None
+
+    def test_a_configured_budget_is_used(self):
+        from qa_agent.agent_config import max_tool_rounds
+
+        assert max_tool_rounds({"orchestration": {"max_tool_rounds": 4}}) == 4
+
+    def test_an_out_of_range_value_is_ignored(self):
+        from qa_agent.agent_config import max_tool_rounds
+
+        assert max_tool_rounds({"orchestration": {"max_tool_rounds": 0}}) is None
+        assert max_tool_rounds({"orchestration": {"max_tool_rounds": 500}}) is None
