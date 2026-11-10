@@ -1,6 +1,8 @@
 """Pydantic schemas for evaluation management."""
 from datetime import datetime
 
+from typing import Any
+
 from pydantic import BaseModel, Field
 
 
@@ -9,6 +11,9 @@ class EvaluationCreate(BaseModel):
     knowledge_base_id: str
     wiki_space_id: str | None = None
     description: str | None = None
+    #: A data-query evaluation judges a semantic model's answers (mutually exclusive with wiki in practice).
+    semantic_model_id: str | None = None
+    data_resource_id: str | None = None
 
 
 class EvaluationUpdate(BaseModel):
@@ -16,6 +21,8 @@ class EvaluationUpdate(BaseModel):
     description: str | None = None
     knowledge_base_id: str | None = None
     wiki_space_id: str | None = None
+    semantic_model_id: str | None = None
+    data_resource_id: str | None = None
 
 
 class EvaluationResponse(BaseModel):
@@ -25,6 +32,8 @@ class EvaluationResponse(BaseModel):
     knowledge_base_name: str | None = None
     wiki_space_id: str | None = None
     wiki_space_name: str | None = None
+    semantic_model_id: str | None = None
+    data_resource_id: str | None = None
     description: str | None = None
     item_count: int = 0
     created_at: datetime
@@ -45,6 +54,8 @@ class EvaluationItemCreate(BaseModel):
     expected_answer: str
     topic: str | None = None
     sort_order: int = 0
+    #: Data-query ground truth: every query the answer should have made.
+    expected_query: list[dict[str, Any]] | None = None
 
 
 class EvaluationItemUpdate(BaseModel):
@@ -52,6 +63,7 @@ class EvaluationItemUpdate(BaseModel):
     expected_answer: str | None = None
     topic: str | None = None
     sort_order: int | None = None
+    expected_query: list[dict[str, Any]] | None = None
 
 
 class EvaluationItemResponse(BaseModel):
@@ -61,6 +73,7 @@ class EvaluationItemResponse(BaseModel):
     expected_answer: str
     topic: str | None = None
     sort_order: int
+    expected_query: list[dict[str, Any]] | None = None
     created_at: datetime
 
     model_config = {"from_attributes": True}

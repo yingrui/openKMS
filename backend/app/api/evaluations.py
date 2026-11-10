@@ -13,6 +13,7 @@ from app.database import get_db
 from app.models.evaluation import Evaluation, EvaluationItem
 from app.models.evaluation_run import EvaluationRun, EvaluationRunItem
 from app.models.knowledge_base import KnowledgeBase
+from app.models.semantic_model import SemanticModel
 from app.models.wiki_models import WikiSpace
 from app.services.platform.boundaries import boundary
 from app.schemas.evaluation import (
@@ -252,11 +253,17 @@ async def create_evaluation(
             raise HTTPException(status_code=404, detail="Wiki space not found")
         wiki_name = ws.name
     uname = p.get("preferred_username") or p.get("name")
+    if body.semantic_model_id:
+        model = await db.get(SemanticModel, body.semantic_model_id)
+        if not model:
+            raise HTTPException(status_code=404, detail="Semantic model not found")
     ev = Evaluation(
         id=str(uuid.uuid4()),
         name=body.name,
         knowledge_base_id=body.knowledge_base_id,
         wiki_space_id=body.wiki_space_id,
+        semantic_model_id=body.semantic_model_id,
+        data_resource_id=body.data_resource_id,
         description=body.description,
         created_by=sub if isinstance(sub, str) else None,
         created_by_name=str(uname)[:256] if isinstance(uname, str) and uname.strip() else None,
@@ -373,6 +380,7 @@ async def create_evaluation_item(
         expected_answer=body.expected_answer,
         topic=body.topic,
         sort_order=body.sort_order,
+        expected_query=body.expected_query,
     )
     db.add(item)
     await db.flush()
