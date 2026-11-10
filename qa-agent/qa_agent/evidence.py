@@ -69,3 +69,26 @@ def ground(sources: list[SourceItem], answer: str) -> GroundingReport:
         ratio=report["ratio"],
         untraced=report["untraced"],
     )
+
+
+def grounding_warnings(report: GroundingReport, mode: str) -> list[str]:
+    """The warning a KB asked for, or none.
+
+    The ratio is always computed; `mark` and `enforce` are about saying something out loud. Neither edits the answer: a
+    number removed after the fact is a wrong number made invisible, and the reader cannot tell which happened.
+    """
+    if mode == "off" or report.total == 0 or report.traceable == report.total:
+        return []
+    missing = report.total - report.traceable
+    listed = ", ".join(_format_number(v) for v in report.untraced[:5]) if report.untraced else ""
+    return [
+        f"{missing} of {report.total} number(s) in this answer do not appear in any cited source"
+        + (f": {listed}" if listed else "")
+    ]
+
+
+def _format_number(value: float) -> str:
+    """A number a reader recognises: 20,010,827 rather than 2.00108e+07."""
+    if value == int(value):
+        return f"{int(value):,}"
+    return f"{value:,.2f}".rstrip("0").rstrip(".")

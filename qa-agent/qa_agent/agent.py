@@ -27,7 +27,7 @@ from .kb_answer_sources import (
     source_from_page_section_tool,
 )
 from . import agent_config as agent_config_module
-from .evidence import ground, label_sources
+from .evidence import ground, grounding_warnings, label_sources
 from .llm_chat import build_messages_for_generate, make_qa_chat_openai, text_from_lc_content
 from .request_context import (
     reset_request_access_token,
@@ -66,6 +66,8 @@ class AgentState(TypedDict):
     max_tool_rounds: int | None
     #: `always` | `never` | `on_miss`, from `orchestration.retrieve`.
     retrieve_mode: str
+    #: `answer_policy` from the KB's agent_config — the rules the KB switched on.
+    answer_policy: dict[str, Any]
 
 
 def retrieve_node(state: dict[str, Any]) -> dict[str, Any]:
@@ -90,7 +92,29 @@ def retrieve_node(state: dict[str, Any]) -> dict[str, Any]:
     return {"context": sources}
 
 
-def _build_system_prompt(context: list[SourceItem], skills: list[str] | None) -> str:
+def _policy_fragments(policy: dict[str, Any] | None) -> str:
+    """Rules the KB switched on. Empty when every policy is at its default, so an unconfigured KB reads exactly as before."""
+    parts: list[str] = []
+    if agent_config_module.unknown_measure_policy(policy and {"answer_policy": policy}) == "refuse":
+        parts.append(
+            "**Answerable measures.** Before answering a numeric question, compare what is being asked for against the "
+            "`available_measures` list returned by `get_semantic_model_tool`. If the asked measure is not in that list, do "
+            "**not** substitute a different field and do not answer a related question: say the measure is not in this model, "
+            "list the measures that are, and name the kind of table that would provide it."
+        )
+    if agent_config_module.require_schema_lookup(policy and {"answer_policy": policy}):
+        parts.append(
+            "**Look before you query.** Call `get_semantic_model_tool` and read its fields and measures before calling "
+            "`query_semantic_model_tool` or `sql_semantic_model_tool`."
+        )
+    return "\n\n".join(parts)
+
+
+def _build_system_prompt(
+    context: list[SourceItem],
+    skills: list[str] | None,
+    policy: dict[str, Any] | None = None,
+) -> str:
     def _source_ref(s: SourceItem) -> str:
         parts = []
         if s.document_id:
@@ -107,6 +131,7 @@ def _build_system_prompt(context: list[SourceItem], skills: list[str] | None) ->
     )
     skill_ids = normalize_skill_ids(skills)
     skill_prompt = get_skill_prompt_fragments(skill_ids)
+    rules = _policy_fragments(policy)
     return (
         "You are a helpful assistant answering questions based on **this** knowledge base "
         "(and only the skills enabled for it). Do not invent a different product domain "
@@ -115,7 +140,8 @@ def _build_system_prompt(context: list[SourceItem], skills: list[str] | None) ->
         "1. **Knowledge base** – Document chunks and FAQs (context below).\n"
         "2. **Enabled skills** – described next (only these tools are available).\n\n"
         f"{skill_prompt}\n\n"
-        "Context from the knowledge base:\n"
+        + (f"{rules}\n\n" if rules else "")
+        + "Context from the knowledge base:\n"
         f"{context_text}\n\n"
         "If the context or skills don't provide enough information, say so honestly. Cite sources when possible."
     )
@@ -143,7 +169,7 @@ def generate_node(state: dict[str, Any]) -> dict[str, Any]:
     llm_with_tools = llm.bind_tools(tools)
 
     messages = build_messages_for_generate(
-        context_prompt=_build_system_prompt(state["context"], skill_ids),
+        context_prompt=_build_system_prompt(state["context"], skill_ids, state.get("answer_policy")),
         conversation_history=state["conversation_history"],
         question=state["question"],
         existing_graph_messages=list(state.get("messages") or []),
@@ -240,7 +266,9 @@ def finalize_node(state: dict[str, Any]) -> dict[str, Any]:
         streaming=True,
     )
     messages = build_messages_for_generate(
-        context_prompt=_build_system_prompt(state["context"], normalize_skill_ids(state.get("agent_skills"))),
+        context_prompt=_build_system_prompt(
+            state["context"], normalize_skill_ids(state.get("agent_skills")), state.get("answer_policy")
+        ),
         conversation_history=state["conversation_history"],
         question=state["question"],
         existing_graph_messages=list(state.get("messages") or []),
@@ -350,6 +378,7 @@ def invoke_agent(
                 "top_k": retrieve_k,
                 "max_tool_rounds": agent_config_module.max_tool_rounds(agent_config),
                 "retrieve_mode": retrieve_mode,
+                "answer_policy": agent_config_module.answer_policy(agent_config),
             },
             config=config,
         )
@@ -367,6 +396,8 @@ def invoke_agent(
         # Label, do not filter: `used` when the answer's numbers came from a source, `consulted` when the query merely ran.
         display = label_sources(display, answer)
         grounding = ground(display, answer)
+        ground_mode = agent_config_module.require_grounded_numbers(agent_config)
+        warnings = grounding_warnings(grounding, ground_mode)
         msgs = list(result.get("messages") or [])
         logger.info(
             "invoke_agent done kb=%s elapsed=%.2fs answer_chars=%d sources=%d graph_messages=%d",
@@ -376,7 +407,14 @@ def invoke_agent(
             len(display),
             len(msgs),
         )
-        return {"answer": answer, "context": display, "grounding": grounding, "langfuse_trace_id": trace_id}
+        return {
+            "answer": answer,
+            "context": display,
+            "grounding": grounding,
+            "langfuse_trace_id": trace_id,
+            "warnings": warnings,
+            "verified": ground_mode != "enforce" or not warnings,
+        }
     except GraphRecursionError:
         logger.error(
             "invoke_agent recursion_limit kb=%s elapsed=%.2fs",
@@ -500,6 +538,7 @@ async def astream_agent_ndjson(
             "top_k": retrieve_k,
             "max_tool_rounds": agent_config_module.max_tool_rounds(agent_config),
             "retrieve_mode": retrieve_mode,
+            "answer_policy": agent_config_module.answer_policy(agent_config),
         }
         agent = get_agent()
         stream_cb = get_langfuse_callback() if settings.langfuse_trace_streaming else None
@@ -743,6 +782,8 @@ async def astream_agent_ndjson(
 
         sources_list = label_sources(sources_list, answer)
         grounding = ground(sources_list, answer)
+        ground_mode = agent_config_module.require_grounded_numbers(agent_config)
+        warnings = grounding_warnings(grounding, ground_mode)
         trace_id = current_trace_id(callback)
         elapsed = time.monotonic() - t0
         logger.info(
@@ -766,6 +807,8 @@ async def astream_agent_ndjson(
                 # Additive: the label and the ratio travel with the answer so a reader (or a score) can use them.
                 "grounding": grounding.model_dump(),
                 "langfuse_trace_id": trace_id,
+                "warnings": warnings,
+                "verified": ground_mode != "enforce" or not warnings,
             }
         )
         if callback and hasattr(callback, "flush"):

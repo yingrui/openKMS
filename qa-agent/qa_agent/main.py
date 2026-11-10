@@ -111,6 +111,8 @@ async def _ask_impl(kb_id: str, request: AskRequest) -> AskResponse:
         sources=sources,
         grounding=grounding,
         langfuse_trace_id=result.get("langfuse_trace_id"),
+        warnings=list(result.get("warnings") or []),
+        verified=bool(result.get("verified", True)),
     )
 
 

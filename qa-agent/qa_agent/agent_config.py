@@ -61,3 +61,22 @@ def retrieve_mode(config: dict[str, Any] | None) -> str:
     """
     raw = ((config or {}).get("orchestration") or {}).get("retrieve")
     return raw if raw in RETRIEVE_MODES else "always"
+
+
+def require_schema_lookup(config: dict[str, Any] | None) -> bool:
+    """Whether the model must read the model's schema before querying it."""
+    return bool(answer_policy(config).get("require_schema_lookup"))
+
+
+GROUNDING_MODES = ("off", "mark", "enforce")
+
+
+def require_grounded_numbers(config: dict[str, Any] | None) -> str:
+    """What to do with numbers that appear in no cited source.
+
+    `off` (default) computes and reports the ratio and says nothing more. `mark` adds a warning to the response. `enforce`
+    adds the warning and flags the answer, so a caller can refuse to present it as verified. None of them edits the prose:
+    rewriting an answer's numbers after the fact is how a wrong figure becomes an invisible one.
+    """
+    raw = answer_policy(config).get("require_grounded_numbers")
+    return raw if raw in GROUNDING_MODES else "off"

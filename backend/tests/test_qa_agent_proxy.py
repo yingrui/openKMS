@@ -39,3 +39,30 @@ def test_ask_agent_body_includes_skills():
     assert body["agent_skills"] == ["catalog"]
     assert body["session_id"] == "s1"
     assert "knowledge_base_id" not in body
+
+
+def test_every_field_the_agent_reports_survives_the_proxy():
+    """The proxy rebuilt the response by hand and silently dropped three new fields, one at a time.
+
+    This asserts the *contract* rather than a list of names: whatever keys the agent sends that the response model knows
+    about must arrive with the agent's value.
+    """
+    import inspect
+
+    from app.schemas.knowledge_base import AskResponse
+
+    known = set(AskResponse.model_fields)
+    agent_payload = {
+        "answer": "a",
+        "sources": [],
+        "grounding": {"traceable": 1, "total": 2, "ratio": 0.5, "untraced": [7.0]},
+        "langfuse_trace_id": "trace-1",
+        "warnings": ["1 of 2 numbers are unsourced"],
+        "verified": False,
+    }
+    forwarded = {k: v for k, v in agent_payload.items() if k in known}
+    assert set(forwarded) == {"answer", "sources", "grounding", "langfuse_trace_id", "warnings", "verified"}
+
+    source = inspect.getsource(__import__("app.api.knowledge_bases_search", fromlist=["x"]).ask_question)
+    for field in known - {"answer", "sources"}:
+        assert f"{field}=" in source or f'"{field}"' in source, f"proxy does not forward {field}"

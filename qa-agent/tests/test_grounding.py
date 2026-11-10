@@ -57,3 +57,26 @@ class TestTraceableNumbers:
     @pytest.mark.parametrize("answer", ["1007340", "1,007,340", "100.734万"])
     def test_the_same_value_written_three_ways_normalises_once(self, answer):
         assert traceable_numbers(answer, [{"n": 1007340}])["ratio"] == 1.0
+
+
+class TestWhatCountsAsAClaim:
+    """Structure is not a claim: a year, a list marker, a ticker. Counting them made every answer look ungrounded."""
+
+    @pytest.mark.parametrize("text", ["2026 年上半年", "1. 没有利润表", "2. 只有三张表", "600519.SH 是茅台"])
+    def test_structure_is_not_counted(self, text):
+        assert traceable_numbers(text, [{"x": 1}])["total"] == 0
+
+    @pytest.mark.parametrize("text,value", [("同比增长 12%", 12.0), ("IC_IR > 0.5", 0.5), ("营收 12.3亿", 1230000000.0)])
+    def test_a_figure_with_a_unit_is_a_claim(self, text, value):
+        result = traceable_numbers(text, [{"x": 1}])
+        assert result["total"] == 1
+        assert result["untraced"] == [value]
+
+
+class TestDatesAreNotQuantities:
+    def test_a_yyyymmdd_number_is_structure(self):
+        assert traceable_numbers("数据截止 20260630", [{"x": 1}])["total"] == 0
+
+    def test_a_real_count_of_the_same_shape_is_still_a_claim(self):
+        result = traceable_numbers("共 1,007,340 行", [{"n": 1007340}])
+        assert result["total"] == 1 and result["ratio"] == 1.0

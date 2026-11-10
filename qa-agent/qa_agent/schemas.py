@@ -60,6 +60,10 @@ class AskResponse(BaseModel):
     grounding: GroundingReport | None = None
     #: The Langfuse trace of this turn, when tracing is on. The handle an evaluation or a reviewer scores afterwards.
     langfuse_trace_id: str | None = None
+    #: Unsourced numbers, when the KB asks to be told about them (`answer_policy.require_grounded_numbers`).
+    warnings: list[str] = []
+    #: False when `enforce` is on and the answer contained numbers no cited source supports.
+    verified: bool = True
 
 
 class RetrieveRequest(BaseModel):
