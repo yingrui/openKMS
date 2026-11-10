@@ -75,6 +75,15 @@ The project runtime gives every **project** one directory (`project_fs.project_r
 `settings.projects_root`). The KB agent needs the same thing at **session** granularity: one directory per conversation,
 because a conversation is the unit a user works in, and two users (or the same user twice) must not see each other's files.
 
+### Where it lives in a deployment
+
+`OPENKMS_QA_AGENT_SESSIONS_ROOT` — `/app/sessions` in the image, mounted from the `qa_agent_sessions` volume in
+`docker/docker-compose.yml`. The directory holds both kinds of state: `{kb_id}/{session_id}/` per conversation, and
+`{kb_id}/skills/` shared by all of that KB's sessions.
+
+Two consequences: **the files are on one host** (two replicas would not see each other's sessions — run one, or use shared
+storage with sticky routing), and the volume is what makes a rebuild survivable.
+
 ### Shape
 
 ```

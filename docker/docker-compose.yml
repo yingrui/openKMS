@@ -272,6 +272,11 @@ services:
         <<: *build_mirror_args
     environment:
       <<: *qa_agent_env
+    # The conversations' files live here (`OPENKMS_QA_AGENT_SESSIONS_ROOT`): one directory per session, plus the skills
+    # shared by every session of a knowledge base. Without this mount they are inside the container, and a rebuild — or a
+    # recreate — takes every artifact a user was told to download with it.
+    volumes:
+      - qa_agent_sessions:/app/sessions
     ports:
       - "8103:8103"
     depends_on:
@@ -299,3 +304,4 @@ volumes:
   neo4j_data: {}
   projects_data: {}
   agent_skills_data: {}
+  qa_agent_sessions: {}

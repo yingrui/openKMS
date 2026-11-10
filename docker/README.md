@@ -109,6 +109,16 @@ Compose **`environment`** sets DB/MinIO URLs, local auth defaults, `OPENKMS_VLM_
 
 For KB Q&A in the UI, set each knowledge base **Agent URL** to **`http://qa-agent:8103`** (hostname on the Docker network, not `localhost`). The backend proxies `/ask` and `/ask/stream` to that URL.
 
+**The agent's sessions live on a volume (`qa_agent_sessions` → `/app/sessions`).** Two things are in there: one directory per
+conversation — the files the agent produced and the user was offered for download — and `{kb_id}/skills/`, shared by every
+conversation of a knowledge base. Without the mount they would sit in the container's own filesystem, and a rebuild or a
+recreate would take them with it.
+
+That has a consequence worth knowing before scaling: **the files are on one host.** Two replicas would each have their own, so
+a conversation that started on one would find nothing on the other. Run **one** `qa-agent` replica, or put the directory on shared
+storage and keep the routing sticky. Sessions are reclaimed after `OPENKMS_QA_AGENT_SESSION_TTL_MINUTES` (default 1440) of
+inactivity; the shared skills directory is not.
+
 **Ontology Function Service (ofs):** **http://localhost:8105** on the host; inside the stack the backend calls **`http://ontology-function-service:8105`**. Authors use **`openkms_functions.Client`** with string api names. Prefer **`127.0.0.1`** (not `localhost`) for local `OPENKMS_ONTOLOGY_FUNCTION_SERVICE_URL` / `OPENKMS_BACKEND_URL` so macOS IPv6 does not send execute to a Docker OFS while the API is IPv4-only. When OFS is in Docker and the API is on the host, set **`OPENKMS_FUNCTION_CLIENT_BASE_URL=http://host.docker.internal:8102`**. Live Preview / execute fail if this service is down.
 
 Local auth + metadata extraction: defaults **`OPENKMS_CLI_BASIC_*`** in compose (`openkms-cli` / `change-me`); override in **`docker/.env`** if needed.

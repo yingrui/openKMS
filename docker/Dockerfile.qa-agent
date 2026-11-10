@@ -29,6 +29,9 @@ RUN uv sync --frozen --no-dev
 
 ENV PATH="/app/.venv/bin:$PATH"
 
+# Where sessions live. Declared here as well as mounted, so the default and the mount cannot drift apart.
+ENV OPENKMS_QA_AGENT_SESSIONS_ROOT=/app/sessions
+
 EXPOSE 8103
 
 HEALTHCHECK --interval=15s --timeout=5s --start-period=30s --retries=5 \
