@@ -50,16 +50,14 @@ class TestSandbox:
     def test_code_execution_is_off_by_default(self):
         assert parse_agent_config(None).sandbox.enabled is False
 
-    def test_the_network_is_none_unless_asked(self):
-        assert parse_agent_config({"sandbox": {"enabled": True}}).sandbox.network == "none"
-        assert parse_agent_config({"sandbox": {"enabled": True, "network": "bridge"}}).sandbox.network == "bridge"
-
-    def test_ceilings_are_bounded(self):
+    def test_the_timeout_is_bounded(self):
         with pytest.raises(ValidationError):
             parse_agent_config({"sandbox": {"timeout_seconds": 1}})
-        with pytest.raises(ValidationError):
-            parse_agent_config({"sandbox": {"memory_mb": 32}})
+        assert parse_agent_config({"sandbox": {"timeout_seconds": 60}}).sandbox.timeout_seconds == 60
 
-    def test_an_invented_network_mode_is_refused(self):
+    def test_a_kb_may_add_commands(self):
+        assert parse_agent_config({"sandbox": {"allow_commands": ["csvkit"]}}).sandbox.allow_commands == ["csvkit"]
+
+    def test_it_cannot_name_a_container_any_more(self):
         with pytest.raises(ValidationError):
-            parse_agent_config({"sandbox": {"network": "host"}})
+            parse_agent_config({"sandbox": {"image": "python:3.12"}})

@@ -71,19 +71,18 @@ class WorkspaceConfig(BaseModel):
 class SandboxConfig(BaseModel):
     """Code execution for this KB — off by default, and the only capability that runs code.
 
-    `qa_agent/sandbox.py` runs each snippet in a container: no network (unless `bridge` is chosen explicitly), no credentials
-    in the environment, a read-only root filesystem with only the session directory mounted, and cpu/memory/wall-clock
-    ceilings. The image must already be present on the host — nothing is pulled at run time.
+    The runner is the project agent's shape, not a container: a subprocess of the qa-agent service, working in the
+    conversation's folder, with a timeout and an output cap. `qa_agent/sandbox.py` is explicit that this is a **guard rail,
+    not a sandbox** — the folder keeps conversations apart, the kernel does not.
+
+    `allow_commands` only **adds** to the built-in list; a KB cannot narrow it from here.
     """
 
     model_config = ConfigDict(extra="forbid")
 
     enabled: bool = False
-    image: str | None = Field(None, max_length=200)
     timeout_seconds: int | None = Field(None, ge=5, le=600)
-    memory_mb: int | None = Field(None, ge=128, le=8_192)
-    cpus: int | None = Field(None, ge=1, le=8)
-    network: Literal["none", "bridge"] = "none"
+    allow_commands: list[str] | None = Field(None, max_length=100)
 
 
 class OrchestrationConfig(BaseModel):

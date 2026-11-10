@@ -1,63 +1,94 @@
-"""Run Python for a conversation, in a container that belongs to the conversation.
+"""Run code for a conversation, in the conversation's own folder, as the user who asked.
 
-问策 needs computation the Catalog cannot express — indicators, rolling windows, cross-dataset comparisons, a chart. The KB
-agent could write a file but not produce one, and its prompt said so.
+The design follows the **project agent**, because that is the shape this product already has: a workspace directory, a
+subprocess of the service, a timeout, an output cap, and a command policy. It is a **guard rail, not a sandbox** — the
+project's own words — and this module says the same thing: code runs with the qa-agent process's OS user, so it can read what
+that user can read. The folder is what keeps sessions apart, not the kernel.
 
-**One container per session, not per execution.** Created on the session's first execution, destroyed with the session. What
-that buys, measured: **60 ms per run instead of 412 ms** (no container start), and a container that keeps everything the runs
-put on disk — `/workspace`, `/tmp`, anything installed into it.
+What the folder boundary is:
 
-What it does **not** buy: Python **variables do not survive between runs**. Each execution is `docker exec ... python -c`, a
-new interpreter, so `xs = [...]` in one run is gone in the next. A persistent kernel (Jupyter or a small exec server holding a
-namespace) is the only way to keep the interpreter alive across turns; until then the agent re-reads what it needs from
-`/workspace`, which is also what makes a run reproducible on its own.
+- the working directory is the **session** directory, so `out/`, `uploads/` and `tmp/` are this conversation's;
+- `..` and absolute paths outside it are refused by the file tools (`session_fs`), so another conversation's files are not
+  reachable *through the tools*;
+- **skills are per knowledge base, not per session**: `{sessions_root}/{kb_id}/skills/` is shared by every conversation of
+  that KB and outlives them. It is on `PYTHONPATH`, so a skill's scripts are importable the same way in every session.
 
-**Why a container and not `deep_agents/sandbox.py`:** that runner is `subprocess.run([sys.executable, ...])` as the backend's
-own OS user. A child started that way reads `../../backend/.env` and the server's whole environment, and
-`build_project_shell_env` puts the caller's bearer token into it. Inside a single-tenant project workspace that is a
-conscious trade; here it would be remote code execution for strangers.
-
-The guarantees are the `docker run` below: no network (unless a KB opts into `bridge`), **no credentials** (`--env` is never
-inherited; the container gets `HOME` and nothing else), a read-only root with only the session directory mounted, capabilities
-dropped, and cpu/memory ceilings. Executions are bounded by `timeout` inside the container, so a runaway loop dies and the
-container survives to be used again.
+Credentials: the subprocess gets the **user's own JWT** (`OPENKMS_API_KEY`), the same token every tool call carries, so code
+and skill CLIs reach internal services with exactly that user's permissions. It does **not** inherit the agent's environment —
+no model keys, no database URL.
 """
 from __future__ import annotations
 
-import hashlib
 import os
+import re
+import shlex
 import shutil
+import signal
 import subprocess
+import sys
 import time
 from dataclasses import dataclass
 from typing import Any
 
 __all__ = [
-    "DEFAULT_IMAGE",
+    "ALLOWED_COMMANDS",
+    "CommandNotAllowed",
     "ExecResult",
     "SandboxError",
-    "container_name",
-    "docker_available",
-    "remove_container",
+    "allowed_commands",
+    "check_command",
     "run_python",
+    "run_command",
     "sandbox_config",
 ]
 
-#: Present locally in this environment; anything with a Python interpreter works, so a KB may name its own.
-DEFAULT_IMAGE = "python:3.12-slim-bookworm"
-
-#: Captured output is truncated here. A loop printing forever must not fill the agent's context or this process's memory.
-MAX_OUTPUT_BYTES = 64_000
-
-#: Wall-clock ceiling for one execution when a KB names none. The container lives much longer than any single run.
+#: Wall-clock ceiling for one execution when a KB names none.
 DEFAULT_TIMEOUT_SECONDS = 60
 
-#: Idle containers are the cost of keeping one per session; the reaper removes them with their directory.
-CONTAINER_PREFIX = "okms-sbx-"
+#: Captured output is truncated here, per stream.
+MAX_OUTPUT_BYTES = 64_000
+
+#: What a shell command may start with. Python is separate (`run_python`); this list is for the shell tool, where a wrong
+#: command is a wrong *program*, not a wrong expression. Anything not here is refused before it runs.
+ALLOWED_COMMANDS: frozenset[str] = frozenset(
+    """
+    python python3 pip pip3
+    ls cat head tail wc sort uniq cut tr grep find xargs
+    mkdir cp mv rm rmdir touch ln
+    echo printf pwd seq date basename dirname realpath
+    awk sed jq
+    git make tar gzip gunzip unzip zip
+    """.split()
+)
+
+#: Shell separators: a command starts after each of them, so the check looks at positions rather than substrings.
+_SEPARATORS = frozenset({"&&", "||", ";", "|", "&", "\n", ";;", "(", ")"})
+
+#: Wrappers that put a new command at the following position: `sudo ls`, `env A=1 ls`, `nohup python x.py`.
+_WRAPPERS = frozenset({"sudo", "env", "nohup", "time", "command", "exec", "builtin", "xargs"})
+
+#: Interpretation happens inside a string, so the policy is re-run on the body.
+_INLINE_EXECUTORS = frozenset({"sh", "bash", "zsh", "dash", "ksh"})
+
+#: Variables passed through into the subprocess. A curated list, not `os.environ.copy()`: the agent holds model keys and a
+#: database URL, and none of that belongs in code a user asked for.
+_PASSTHROUGH_ENV = ("PATH", "LANG", "LC_ALL", "TZ", "TMPDIR", "SSL_CERT_FILE", "REQUESTS_CA_BUNDLE", "HTTP_PROXY", "HTTPS_PROXY", "NO_PROXY")
 
 
 class SandboxError(RuntimeError):
-    """The sandbox could not be started — a configuration problem, not the user's code failing."""
+    """The execution could not be started — a configuration problem, not the user's code failing."""
+
+
+class CommandNotAllowed(SandboxError):
+    """A command outside the allow list. Refused before it runs, with the allowed set named."""
+
+    def __init__(self, command: str, allowed: frozenset[str]) -> None:
+        self.command = command
+        super().__init__(
+            f"`{command}` is not in this knowledge base's command allow list. Allowed: "
+            + ", ".join(sorted(allowed))
+            + "."
+        )
 
 
 @dataclass(frozen=True)
@@ -71,98 +102,131 @@ class ExecResult:
 
 
 def sandbox_config(agent_config: dict[str, Any] | None) -> dict[str, Any]:
-    """The sandbox settings a KB asked for. `enabled` off means the tool is not offered at all."""
+    """The execution settings a KB asked for. `enabled` off means no code tools are offered."""
     raw = (agent_config or {}).get("sandbox")
     if not isinstance(raw, dict):
         return {"enabled": False}
     out: dict[str, Any] = {"enabled": bool(raw.get("enabled"))}
-    if isinstance(raw.get("image"), str) and raw["image"].strip():
-        out["image"] = raw["image"].strip()
-    for key, low, high in (("timeout_seconds", 5, 600), ("memory_mb", 128, 8_192), ("cpus", 1, 8)):
+    for key, low, high in (("timeout_seconds", 5, 600),):
         value = raw.get(key)
         if isinstance(value, int) and low <= value <= high:
             out[key] = value
-    if raw.get("network") in ("none", "bridge"):
-        out["network"] = raw["network"]
+    if isinstance(raw.get("allow_commands"), list):
+        extra = {str(c).strip() for c in raw["allow_commands"] if isinstance(c, str) and str(c).strip()}
+        if extra:
+            out["allow_commands"] = sorted(extra)
     return out
 
 
-def container_name(kb_id: str, session_id: str) -> str:
-    """Deterministic, so a session finds its container again after a restart — and can reap an orphan by name."""
-    digest = hashlib.sha256(f"{kb_id}:{session_id}".encode()).hexdigest()[:16]
-    return f"{CONTAINER_PREFIX}{digest}"
+def allowed_commands(settings: dict[str, Any], agent_config: dict[str, Any] | None = None) -> frozenset[str]:
+    """The built-in allow list, plus anything this KB added. Additive: a KB can widen, not narrow, without a code change."""
+    extra = settings.get("allow_commands")
+    if not extra:
+        raw = (agent_config or {}).get("sandbox") if isinstance(agent_config, dict) else None
+        extra = (raw or {}).get("allow_commands") if isinstance(raw, dict) else None
+    return ALLOWED_COMMANDS | {str(c) for c in (extra or []) if isinstance(c, str)}
 
 
-def _created_argv(session_dir: str, settings: dict[str, Any], name: str) -> list[str]:
-    """The command that creates a session's container. This list *is* the security boundary's definition."""
-    uid, gid = os.getuid(), os.getgid()
-    return [
-        "docker", "run", "--detach", "--rm",
-        "--name", name,
-        "--network", settings.get("network", "none"),
-        "--memory", f"{settings.get('memory_mb', 512)}m",
-        "--cpus", str(settings.get("cpus", 1)),
-        "--pids-limit", "128",
-        "--cap-drop", "ALL",
-        "--security-opt", "no-new-privileges",
-        "--read-only",
-        "--tmpfs", "/tmp:rw,size=256m",
-        # Only the session directory: the host filesystem, the repo and the server's environment are not visible.
-        "-v", f"{session_dir}:/workspace:rw",
-        "-w", "/workspace",
-        "--user", f"{uid}:{gid}",
-        "-e", "HOME=/tmp",
-        "-e", "PYTHONUNBUFFERED=1",
-        settings.get("image", DEFAULT_IMAGE),
-        # The container is a place to run things, not a thing that does something by itself.
-        "sleep", "infinity",
-    ]
+def check_command(command: str, allowed: frozenset[str]) -> None:
+    """Refuse a shell command whose program is not allowed. Matched **by position**, so `grep docker notes.md` is fine.
 
-
-def _exec_argv(name: str, code: str, timeout: int) -> list[str]:
-    """One execution inside the session's container.
-
-    `timeout` runs **inside** the container so a runaway loop is killed at its ceiling while the container survives for the
-    next attempt — the agent's loop is exactly "that went wrong, try again".
+    Wrappers (`sudo`, `env`, `nohup`) are looked past; `sh -c "…"` re-runs the policy on the string, because otherwise the
+    interpreter becomes a way around the list.
     """
-    return ["docker", "exec", "-w", "/workspace", name, "timeout", f"{timeout}s", "python", "-u", "-c", code]
+    for segment in re.split(r"(\n|&&|\|\||;|;;|\||&)", command or ""):
+        part = (segment or "").strip()
+        if not part or part in _SEPARATORS:
+            continue
+        try:
+            tokens = shlex.split(part)
+        except ValueError:
+            tokens = part.split()
+        if not tokens:
+            continue
+        head = tokens[0]
+        while head in _WRAPPERS and len(tokens) > 1:
+            tokens = tokens[1:]
+            # `env A=1 cmd` → skip the assignments
+            while tokens and "=" in tokens[0] and not tokens[0].startswith("-"):
+                tokens = tokens[1:]
+            if not tokens:
+                return
+            head = tokens[0]
+        if head not in allowed:
+            raise CommandNotAllowed(head, allowed)
+        if head in _INLINE_EXECUTORS and len(tokens) >= 3 and tokens[1] == "-c":
+            check_command(tokens[2], allowed)
 
 
-def _docker(*argv: str, timeout: int = 60) -> subprocess.CompletedProcess:
-    return subprocess.run(list(argv), capture_output=True, timeout=timeout, text=True, errors="replace")
+def _env(kb_id: str, session_id: str, access_token: str) -> dict[str, str]:
+    """A curated environment: the user's authority, and nothing of the agent's own."""
+    from . import session_fs
+    from .config import settings
+
+    env = {key: os.environ[key] for key in _PASSTHROUGH_ENV if key in os.environ}
+    env["HOME"] = str(session_fs.session_root(kb_id, session_id) / "tmp")
+    env["PYTHONUNBUFFERED"] = "1"
+    env["MPLBACKEND"] = "Agg"  # a chart is written to a file; there is no display
+    paths = [str(session_fs.session_root(kb_id, session_id))]
+    skills = session_fs.kb_skills_dir(kb_id)
+    if skills.is_dir():
+        paths.append(str(skills))
+        scripts = skills / "scripts"
+        if scripts.is_dir():
+            paths.append(str(scripts))
+    if existing := os.environ.get("PYTHONPATH"):
+        paths.append(existing)
+    env["PYTHONPATH"] = os.pathsep.join(paths)
+    if access_token:
+        # The same bearer the tool calls carry: code and skill CLIs act with the asking user's permissions, no more.
+        env["OPENKMS_API_KEY"] = access_token
+        env["OPENKMS_API_BASE_URL"] = settings.openkms_backend_url.rstrip("/")
+    return env
 
 
-def docker_available() -> bool:
-    return shutil.which("docker") is not None
-
-
-def _running(name: str) -> bool:
-    """Whether the session's container is up. `docker inspect` is the authority: a name is not a running container."""
+def _run(argv: list[str], *, cwd: str, env: dict[str, str], timeout: int) -> ExecResult:
+    started = time.monotonic()
     try:
-        result = _docker("docker", "inspect", "-f", "{{.State.Running}}", name, timeout=15)
+        proc = subprocess.Popen(  # no shell: the command is already tokenised and checked
+            argv,
+            cwd=cwd,
+            env=env,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+            errors="replace",
+            start_new_session=True,  # so a timeout can kill the whole process group, grandchildren included
+        )
     except FileNotFoundError as exc:
-        raise SandboxError("The code sandbox is not available on this host.") from exc
-    return result.returncode == 0 and result.stdout.strip() == "true"
+        raise SandboxError("The interpreter for this execution is not available.") from exc
 
-
-def _ensure_container(name: str, session_dir: str, settings: dict[str, Any]) -> None:
-    if _running(name):
-        return
-    # A stopped container with the same name would refuse the create; it is stale by definition (--rm normally removes it).
-    _docker("docker", "rm", "-f", name, timeout=20)
-    created = _docker(*_created_argv(session_dir, settings, name), timeout=120)
-    if created.returncode != 0:
-        raise SandboxError(f"Could not start the sandbox: {(created.stderr or '').strip()[:200] or 'unknown error'}")
-
-
-def remove_container(kb_id: str, session_id: str) -> bool:
-    """Destroy a session's container. Called with the session directory, not on a timer of its own."""
-    name = container_name(kb_id, session_id)
     try:
-        result = _docker("docker", "rm", "-f", name, timeout=20)
-    except FileNotFoundError:
-        return False
-    return result.returncode == 0
+        stdout, stderr = proc.communicate(timeout=timeout)
+    except subprocess.TimeoutExpired:
+        _kill_group(proc)
+        return ExecResult(
+            ok=False, exit_code=None, stdout="",
+            stderr=f"Stopped after {timeout}s.",
+            duration_ms=int((time.monotonic() - started) * 1000), timed_out=True,
+        )
+    return ExecResult(
+        ok=proc.returncode == 0,
+        exit_code=proc.returncode,
+        stdout=_truncate(stdout or ""),
+        stderr=_truncate(stderr or ""),
+        duration_ms=int((time.monotonic() - started) * 1000),
+    )
+
+
+def _kill_group(proc: subprocess.Popen) -> None:
+    try:
+        os.killpg(os.getpgid(proc.pid), signal.SIGKILL)
+    except (ProcessLookupError, PermissionError):
+        proc.kill()
+    try:
+        proc.communicate(timeout=5)
+    except (subprocess.TimeoutExpired, ValueError):
+        pass
 
 
 def run_python(
@@ -171,37 +235,44 @@ def run_python(
     kb_id: str,
     session_id: str,
     settings: dict[str, Any],
+    access_token: str = "",
 ) -> ExecResult:
-    """Run one snippet in the conversation's container, working in its `/workspace`."""
+    """Run one Python snippet in the conversation's folder."""
     from . import session_fs
 
     if not code.strip():
         raise SandboxError("Nothing to run.")
     session_dir = str(session_fs.ensure_session_dir(kb_id, session_id))
-    name = container_name(kb_id, session_id)
-    timeout = int(settings.get("timeout_seconds", DEFAULT_TIMEOUT_SECONDS))
-    _ensure_container(name, session_dir, settings)
+    if not shutil.which(sys.executable):
+        raise SandboxError("The interpreter for this execution is not available.")
+    return _run(
+        [sys.executable, "-u", "-c", code],
+        cwd=session_dir,
+        env=_env(kb_id, session_id, access_token),
+        timeout=int(settings.get("timeout_seconds", DEFAULT_TIMEOUT_SECONDS)),
+    )
 
-    started = time.monotonic()
-    try:
-        completed = _docker(*_exec_argv(name, code, timeout), timeout=timeout + 15)
-    except subprocess.TimeoutExpired:
-        # The outer guard: `timeout` inside should have fired first, but a wedged daemon must not wedge the agent.
-        return ExecResult(
-            ok=False, exit_code=None, stdout="",
-            stderr=f"Stopped after {timeout}s.",
-            duration_ms=int((time.monotonic() - started) * 1000), timed_out=True,
-        )
 
-    duration = int((time.monotonic() - started) * 1000)
-    timed_out = completed.returncode == 124  # `timeout`'s own exit code
-    return ExecResult(
-        ok=completed.returncode == 0,
-        exit_code=completed.returncode,
-        stdout=_truncate(completed.stdout or ""),
-        stderr=_truncate(completed.stderr or ""),
-        duration_ms=duration,
-        timed_out=timed_out,
+def run_command(
+    command: str,
+    *,
+    kb_id: str,
+    session_id: str,
+    settings: dict[str, Any],
+    access_token: str = "",
+    agent_config: dict[str, Any] | None = None,
+) -> ExecResult:
+    """Run one shell command, if every program it starts is on the allow list."""
+    from . import session_fs
+
+    allowed = allowed_commands(settings, agent_config)
+    check_command(command, allowed)
+    session_dir = str(session_fs.ensure_session_dir(kb_id, session_id))
+    return _run(
+        ["/bin/sh", "-c", command],
+        cwd=session_dir,
+        env=_env(kb_id, session_id, access_token),
+        timeout=int(settings.get("timeout_seconds", DEFAULT_TIMEOUT_SECONDS)),
     )
 
 

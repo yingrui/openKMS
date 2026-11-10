@@ -115,12 +115,32 @@ def _relative(root: Path, path: Path) -> str:
     return str(path.relative_to(root)).replace("\\", "/")
 
 
+def kb_skills_dir(kb_id: str) -> Path:
+    """Skills, shared by every conversation of one knowledge base.
+
+    A skill is part of the KB, not of a conversation: the same scripts must be importable in the second session as in the
+    first, and they must survive the first session being reclaimed. So this directory sits beside the sessions
+    (`{root}/{kb_id}/skills/`), and the reaper leaves it alone.
+    """
+    settings = _settings()
+    sessions = Path(settings.sessions_root).expanduser().resolve()
+    path = (sessions / _checked_id(kb_id, "knowledge base id") / "skills").resolve()
+    if not str(path).startswith(str(sessions)):
+        raise SessionPathError("Skills path escapes the sessions root.")
+    path.mkdir(parents=True, exist_ok=True)
+    return path
+
+
 def ensure_session_dir(kb_id: str, session_id: str, *, agents_md: str | None = None) -> Path:
     """Create the session directory and its subdirectories. Idempotent; never overwrites AGENTS.md."""
     root = session_root(kb_id, session_id)
     for name in SCAFFOLD_DIRS:
         (root / name).mkdir(parents=True, exist_ok=True)
     (root / ".openkms" / "skills").mkdir(parents=True, exist_ok=True)
+    # Deliberately **not** a symlink to the KB's skills: a path that resolves outside the session is refused by
+    # `resolve_session_path`, and that guard is worth more than the convenience. Sharing happens through `PYTHONPATH`
+    # (`sandbox._env`), where the same scripts are importable in every session of the KB.
+    kb_skills_dir(kb_id)
     if agents_md:
         path = root / "AGENTS.md"
         if not path.exists():
@@ -242,6 +262,10 @@ def reclaim_expired(ttl_minutes: int, *, now: float | None = None) -> list[str]:
             if newest < cutoff:
                 shutil.rmtree(session_dir)
                 removed.append(str(session_dir))
-        if not any(kb_dir.iterdir()):
+        # The KB directory also holds `skills/`, shared by its sessions; removing it fails while that is there, and failing
+        # to tidy an empty directory is not worth an exception in a sweeper.
+        try:
             kb_dir.rmdir()
+        except OSError:
+            pass
     return removed

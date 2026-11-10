@@ -78,34 +78,31 @@ concurrent conversations per KB, requests per minute, or token spend per day.
 Worth knowing when this comes back: the median `/ask` is 16 s and p90 is 32 s (228 measured calls), so a handful of concurrent
 callers saturate the service before anything dramatic happens. The four-question list above is the thing to answer first.
 
-### The sandbox cannot reuse `deep_agents/sandbox.py`
+### The execution runner is a copy of the project's shape, not a shared package
 
-The KB agent now runs Python for **问策** — an approach often needs computation the Catalog cannot express: indicators, rolling
-windows, cross-dataset comparisons, a chart. The runner is `qa_agent/sandbox.py`, a container per execution.
+The KB agent runs code for **问策**. The runner (`qa_agent/sandbox.py`) follows the project agent's design — a subprocess of
+the service in the workspace directory, a timeout, an output cap, a command policy — because that is the shape this product
+already has. It is a **guard rail, not a sandbox**, and both the project's command-policy docstring and this page say so.
 
-What could not be reused, and why:
+The duplication that follows is small but real, and it is the thing to revisit if an agent package ever exists:
 
-- `deep_agents/sandbox.py` runs `subprocess.run([sys.executable, "-c", code], cwd=project_root)` as the **backend's own OS
-  user**, with no container, namespaces, seccomp or network policy. Verified: a child can read `../../backend/.env` and the
-  server's environment.
-- `build_project_shell_env` puts `OPENKMS_API_KEY` — the caller's bearer token — into that process.
+| Piece | Project | qa-agent | Size |
+|---|---|---|---|
+| command policy (allow/deny by position, wrappers, `sh -c`) | `deep_agents/command_policy.py` | `qa_agent/sandbox.check_command` | ~80 lines |
+| workspace path guards | `platform/project_fs.py` | `qa_agent/session_fs.py` | ~60 lines (per session instead of per project) |
+| Python runner (cwd, env, timeout, output cap) | `deep_agents/sandbox.py` | `qa_agent/sandbox._run` | ~50 lines |
+| skills loading | `deep_agents/skills/loader.py` | `session_fs.kb_skills_dir` | ~20 lines |
 
-Inside a single-tenant project workspace that is a conscious trade. On an external service it is remote code execution plus
-credential exfiltration.
+Two differences are deliberate and should stay even if the code merges: the KB has **no shell `execute` with host tools**
+(it has an allow list), and its environment is **curated** rather than `os.environ.copy()` — the agent holds model keys and a
+database URL, and neither belongs in code a user asked for.
 
-Shipped instead: one container per session, with the guarantees in its command line (`--network none`, no `OPENKMS_*`,
-`--read-only` plus the session mount, `--cap-drop ALL`, quotas, host-uid user).
-
-Still open:
+Still open in the KB runner:
 
 - **Executions are not audited** beyond the agent's own log — `audit_events` has no record of what was run.
-- **The image must already be on the host**; nothing is pulled at run time, so a KB that names a missing image fails at the
-  first execution rather than at configuration.
-- **No persistent interpreter**: `docker exec python -c` is a new process per run, so variables do not survive between turns
-  and the agent re-reads from `/workspace`. A kernel (Jupyter, or a small exec server holding a namespace) would make the
-  loop cheaper; it is a different build, not a flag.
-
-## Architecture and coupling
+- **No process/memory ceiling**: the timeout bounds wall-clock, and nothing bounds how much memory a run allocates.
+- **No persistent interpreter**: each run is a new process, so variables do not survive between turns and the agent re-reads
+  from `/workspace`.
 
 ### Jobs API and Procrastinate internals
 

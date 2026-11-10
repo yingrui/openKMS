@@ -1,9 +1,21 @@
-"""The sandbox's guarantees are a docker command line, so most of them can be read without running anything."""
+"""Execution: the subprocess model the project agent uses, with an allow list for shell commands."""
 import os
+import sys
+import time
+from pathlib import Path
 
 import pytest
 
 from qa_agent import sandbox
+
+
+@pytest.fixture(autouse=True)
+def sessions_root(tmp_path, monkeypatch):
+    from qa_agent.config import settings
+
+    monkeypatch.setattr(settings, "sessions_root", str(tmp_path), raising=False)
+    monkeypatch.setattr(settings, "openkms_backend_url", "http://backend:8102", raising=False)
+    return tmp_path
 
 
 class TestConfig:
@@ -12,171 +24,108 @@ class TestConfig:
         assert sandbox.sandbox_config({"sandbox": {}}) == {"enabled": False}
         assert sandbox.sandbox_config({"sandbox": {"enabled": True}})["enabled"] is True
 
-    def test_ceilings_are_clamped_to_something_sane(self):
-        conf = sandbox.sandbox_config(
-            {"sandbox": {"enabled": True, "timeout_seconds": 99_999, "memory_mb": 1, "cpus": 99}}
+    def test_ceilings_are_bounded(self):
+        assert "timeout_seconds" not in sandbox.sandbox_config({"sandbox": {"enabled": True, "timeout_seconds": 1}})
+
+    def test_a_kb_may_add_commands_but_the_builtins_remain(self):
+        allowed = sandbox.allowed_commands({"allow_commands": ["csvkit"]})
+        assert "csvkit" in allowed
+        assert "python" in allowed and "cat" in allowed
+
+
+class TestCommandPolicy:
+    def test_an_allowed_program_passes(self):
+        sandbox.check_command("ls -la out", sandbox.ALLOWED_COMMANDS)
+
+    def test_an_unknown_program_is_refused_by_position(self):
+        with pytest.raises(sandbox.CommandNotAllowed, match="docker"):
+            sandbox.check_command("docker ps", sandbox.ALLOWED_COMMANDS)
+
+    def test_a_mention_mid_argument_is_not_a_command(self):
+        # `grep docker notes.md` is ordinary work that mentions a denied binary
+        sandbox.check_command("grep docker notes.md", sandbox.ALLOWED_COMMANDS)
+
+    def test_each_segment_is_checked(self):
+        with pytest.raises(sandbox.CommandNotAllowed):
+            sandbox.check_command("ls && kubectl get pods", sandbox.ALLOWED_COMMANDS)
+
+    def test_wrappers_are_looked_past(self):
+        with pytest.raises(sandbox.CommandNotAllowed):
+            sandbox.check_command("sudo docker ps", sandbox.ALLOWED_COMMANDS)
+        sandbox.check_command("env A=1 ls", sandbox.ALLOWED_COMMANDS)
+
+    def test_an_interpreter_cannot_smuggle_a_command(self):
+        with pytest.raises(sandbox.CommandNotAllowed):
+            sandbox.check_command('sh -c "docker ps"', sandbox.ALLOWED_COMMANDS)
+
+
+class TestRunPython:
+    def test_it_runs_in_the_session_folder_with_a_curated_environment(self):
+        result = sandbox.run_python(
+            "import os; print(os.getcwd()); print(os.environ.get('OPENKMS_API_KEY', '-'))",
+            kb_id="kb1", session_id="s1", settings={"enabled": True}, access_token="user-jwt",
         )
-        assert "timeout_seconds" not in conf   # out of range → ignored, defaults apply
-        assert "memory_mb" not in conf
-        assert "cpus" not in conf
+        assert result.ok
+        assert str(Path(result.stdout.splitlines()[0]).resolve()).endswith("/kb1/s1")
+        assert result.stdout.splitlines()[1] == "user-jwt"
 
-    def test_a_named_image_and_network_mode_are_taken(self):
-        conf = sandbox.sandbox_config(
-            {"sandbox": {"enabled": True, "image": "python:3.12-slim-bookworm", "network": "bridge"}}
+    def test_the_agents_own_environment_is_not_inherited(self, monkeypatch):
+        monkeypatch.setenv("OPENKMS_LLM_MODEL_API_KEY", "secret")
+        result = sandbox.run_python(
+            "import os; print(os.environ.get('OPENKMS_LLM_MODEL_API_KEY', '-'))",
+            kb_id="kb1", session_id="s1", settings={"enabled": True},
         )
-        assert conf["image"] == "python:3.12-slim-bookworm"
-        assert conf["network"] == "bridge"
+        assert result.stdout.strip() == "-"
 
+    def test_skills_of_the_kb_are_on_pythonpath_and_shared(self):
+        from qa_agent import session_fs
 
-class TestCommand:
-    def argv(self, **settings):
-        conf = {"enabled": True, **settings}
-        return sandbox._created_argv("/sessions/kb/s1", conf, "okms-sbx-test")
+        skills = session_fs.kb_skills_dir("kb1")
+        (skills / "shared_skill.py").write_text("VALUE = 42\n")
+        first = sandbox.run_python("import shared_skill; print(shared_skill.VALUE)", kb_id="kb1", session_id="s1",
+                                   settings={"enabled": True})
+        second = sandbox.run_python("import shared_skill; print(shared_skill.VALUE)", kb_id="kb1", session_id="s2",
+                                    settings={"enabled": True})
+        assert (first.stdout.strip(), second.stdout.strip()) == ("42", "42")
 
-    def test_the_session_directory_is_the_only_mount(self):
-        argv = self.argv()
-        mounts = [argv[i + 1] for i, a in enumerate(argv) if a == "-v"]
-        assert mounts == ["/sessions/kb/s1:/workspace:rw"]
+    def test_it_writes_an_artifact_into_the_session(self, sessions_root):
+        result = sandbox.run_python(
+            "import pathlib; pathlib.Path('out').mkdir(exist_ok=True); pathlib.Path('out/a.csv').write_text('a\\n1\\n')",
+            kb_id="kb1", session_id="s1", settings={"enabled": True},
+        )
+        assert result.ok
+        assert (Path(sessions_root) / "kb1" / "s1" / "out" / "a.csv").read_text() == "a\n1\n"
 
-    def test_no_credentials_are_passed(self):
-        argv = self.argv()
-        envs = [argv[i + 1] for i, a in enumerate(argv) if a == "-e"]
-        assert envs == ["HOME=/tmp", "PYTHONUNBUFFERED=1"]
-        assert not any("OPENKMS" in e for e in envs)
-
-    def test_the_network_is_off_by_default(self):
-        argv = self.argv()
-        assert argv[argv.index("--network") + 1] == "none"
-
-    def test_the_filesystem_is_read_only_except_the_mount(self):
-        argv = self.argv()
-        assert "--read-only" in argv
-        assert "--tmpfs" in argv
-
-    def test_capabilities_are_dropped_and_privileges_pinned(self):
-        argv = self.argv()
-        assert argv[argv.index("--cap-drop") + 1] == "ALL"
-        assert "no-new-privileges" in argv[argv.index("--security-opt") + 1]
-        assert argv[argv.index("--pids-limit") + 1] == "128"
-
-    def test_it_runs_as_the_host_user_so_artifacts_are_readable(self):
-        argv = self.argv()
-        assert argv[argv.index("--user") + 1] == f"{os.getuid()}:{os.getgid()}"
-
-    def test_the_container_is_detached_and_idles_between_runs(self):
-        argv = self.argv()
-        assert "--detach" in argv
-        assert argv[-2:] == ["sleep", "infinity"]
-
-    def test_an_execution_runs_inside_the_existing_container_with_its_own_timeout(self):
-        argv = sandbox._exec_argv("okms-sbx-test", "print(1)", 45)
-        assert argv[:3] == ["docker", "exec", "-w"]
-        assert "okms-sbx-test" in argv
-        assert "timeout" in argv and "45s" in argv
-
-    def test_quotas_come_from_the_configuration(self):
-        argv = self.argv(memory_mb=256, cpus=2)
-        assert "256m" in argv
-        assert argv[argv.index("--cpus") + 1] == "2"
-
-
-class TestOutput:
-    def test_long_output_is_truncated_not_swallowed(self):
-        text = sandbox._truncate("x" * (sandbox.MAX_OUTPUT_BYTES + 100))
-        assert text.endswith("…[truncated]")
-        assert len(text.encode()) <= sandbox.MAX_OUTPUT_BYTES + 32
-
-    def test_short_output_is_untouched(self):
-        assert sandbox._truncate("hello") == "hello"
-
-
-class TestFailurePaths:
-    def test_empty_code_is_refused(self, tmp_path, monkeypatch):
-        from qa_agent.config import settings
-
-        monkeypatch.setattr(settings, "sessions_root", str(tmp_path), raising=False)
-        with pytest.raises(sandbox.SandboxError, match="Nothing to run"):
-            sandbox.run_python("   ", kb_id="kb", session_id="s", settings={"enabled": True})
-
-    def test_a_timeout_reports_itself_and_leaves_the_container_alone(self, tmp_path, monkeypatch):
-        import subprocess
-
-        from qa_agent.config import settings
-
-        monkeypatch.setattr(settings, "sessions_root", str(tmp_path), raising=False)
-        calls: list[list[str]] = []
-
-        def fake_run(argv, **kwargs):
-            calls.append(list(argv))
-            if argv[:2] == ["docker", "inspect"]:
-                return type("R", (), {"returncode": 0, "stdout": "true\n", "stderr": ""})()
-            raise subprocess.TimeoutExpired(argv, kwargs.get("timeout"))
-
-        monkeypatch.setattr(sandbox.subprocess, "run", fake_run)
-        result = sandbox.run_python("while True: pass", kb_id="kb", session_id="s", settings={"enabled": True, "timeout_seconds": 5})
+    def test_a_timeout_kills_the_process_group(self):
+        started = time.monotonic()
+        result = sandbox.run_python(
+            "import time; time.sleep(30)", kb_id="kb1", session_id="s1",
+            settings={"enabled": True, "timeout_seconds": 5},
+        )
         assert result.timed_out is True
-        # The container is *not* removed: the next attempt reuses it, which is the point of one container per session.
-        assert not any(c[:2] == ["docker", "rm"] for c in calls)
+        assert time.monotonic() - started < 20
 
-    def test_missing_docker_is_a_configuration_error(self, tmp_path, monkeypatch):
-        from qa_agent.config import settings
-
-        monkeypatch.setattr(settings, "sessions_root", str(tmp_path), raising=False)
-
-        def boom(*a, **k):
-            raise FileNotFoundError("docker")
-
-        monkeypatch.setattr(sandbox.subprocess, "run", boom)
-        with pytest.raises(sandbox.SandboxError, match="not available"):
-            sandbox.run_python("print(1)", kb_id="kb", session_id="s", settings={"enabled": True})
-
-
-#: Integration: needs docker and a python image. Skipped by default so the suite stays fast and offline; run with
-#: `OPENKMS_QA_AGENT_SANDBOX_TEST=1 uv run pytest tests/test_sandbox.py -k live`.
-@pytest.mark.skipif(
-    os.environ.get("OPENKMS_QA_AGENT_SANDBOX_TEST") != "1" or not sandbox.docker_available(),
-    reason="set OPENKMS_QA_AGENT_SANDBOX_TEST=1 with docker available",
-)
-class TestLiveContainer:
-    def test_it_computes_writes_an_artifact_and_cannot_see_the_host(self, tmp_path, monkeypatch):
-        from pathlib import Path
-
-        from qa_agent.config import settings
-
-        monkeypatch.setattr(settings, "sessions_root", str(tmp_path), raising=False)
-        conf = {"enabled": True, "timeout_seconds": 30}
-
-        ran = sandbox.run_python("print(sum(range(10)))", kb_id="kb", session_id="s", settings=conf)
-        assert ran.ok and "45" in ran.stdout
-
-        wrote = sandbox.run_python(
-            "import pathlib; pathlib.Path('out').mkdir(exist_ok=True); "
-            "pathlib.Path('out/x.csv').write_text('a\\n1\\n'); print('ok')",
-            kb_id="kb", session_id="s", settings=conf,
+    def test_stdout_and_stderr_stay_apart(self):
+        result = sandbox.run_python(
+            "import sys; print('out'); print('err', file=sys.stderr)", kb_id="kb1", session_id="s1", settings={"enabled": True}
         )
-        assert wrote.ok
-        assert (Path(tmp_path) / "kb" / "s" / "out" / "x.csv").read_text() == "a\n1\n"
+        assert result.stdout.strip() == "out"
+        assert result.stderr.strip() == "err"
 
-        host_file = str(Path.cwd() / "pyproject.toml")
-        peek = sandbox.run_python(f"print(open({host_file!r}).read()[:20])", kb_id="kb", session_id="s", settings=conf)
-        assert not peek.ok, "the container must not read a host path"
-
-        net = sandbox.run_python(
-            "import urllib.request; urllib.request.urlopen('https://example.com', timeout=3)",
-            kb_id="kb", session_id="s", settings=conf,
-        )
-        assert not net.ok, "the network is off"
+    def test_empty_code_is_refused(self):
+        with pytest.raises(sandbox.SandboxError, match="Nothing to run"):
+            sandbox.run_python("  ", kb_id="kb1", session_id="s1", settings={"enabled": True})
 
 
-class TestWhatPerSessionMeans:
-    """A container per session buys startup and disk, not interpreter state — the distinction has to be written down."""
+class TestRunCommand:
+    def test_an_allowed_command_runs(self):
+        result = sandbox.run_command("echo hello", kb_id="kb1", session_id="s1", settings={"enabled": True})
+        assert result.ok and result.stdout.strip() == "hello"
 
-    def test_the_name_is_deterministic_so_a_session_finds_its_container(self):
-        assert sandbox.container_name("kb", "s") == sandbox.container_name("kb", "s")
-        assert sandbox.container_name("kb", "s") != sandbox.container_name("kb", "other")
-        assert sandbox.container_name("kb", "s").startswith("okms-sbx-")
+    def test_a_denied_command_never_starts(self):
+        with pytest.raises(sandbox.CommandNotAllowed):
+            sandbox.run_command("docker ps", kb_id="kb1", session_id="s1", settings={"enabled": True})
 
-    def test_each_execution_is_a_fresh_interpreter(self):
-        # `docker exec python -c` is a new process; the docstring says so, and this pins the command shape it refers to.
-        argv = sandbox._exec_argv("okms-sbx-x", "print(1)", 30)
-        assert argv[-3:] == ["-u", "-c", "print(1)"]
+    def test_it_runs_in_the_session_folder(self):
+        result = sandbox.run_command("pwd", kb_id="kb1", session_id="s1", settings={"enabled": True})
+        assert str(Path(result.stdout.strip()).resolve()).endswith("/kb1/s1")

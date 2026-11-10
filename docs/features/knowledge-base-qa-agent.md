@@ -122,46 +122,60 @@ does **not** give isolation from the host. That is the next section, and it is o
 ## Executing code
 
 The product direction is **问数 → 问策**: from answering with a number to proposing an approach. That needs computation the
-Catalog cannot express — indicators, rolling windows, cross-dataset comparisons, a chart, a file the user keeps. Answering
-"what should we do" without being able to compute is answering from rhetoric.
+Catalog cannot express — indicators, rolling windows, cross-dataset comparisons, a chart.
 
-So `execute` is in scope, and *that* is what requires a boundary — not the files. **Shipped**: `qa_agent/sandbox.py` runs
-each snippet in a container, and the table below is the command line it builds, not an intention. `run_python_tool` is bound
-only when `sandbox.enabled`, works in the session's `/workspace`, and the files it writes show up in the conversation's file
-list.
+**The design is the project agent's**, because that is the shape this product already has (`deep_agents/sandbox.py`,
+`project_backend.py`): a workspace directory, a **subprocess of the service**, a timeout, an output cap, and a command
+policy. Not a container.
 
-The requirement is about the **process**:
+> An earlier revision of this page specified a container per session. It was implemented and then replaced: the project agent —
+> the design this product already follows — runs a subprocess in its workspace and documents the trade it makes ("a guard rail,
+> not a sandbox"). Two designs for one capability is what this page argues against elsewhere, and the simpler one already
+> existed. What a container would buy: isolation from the host filesystem and the service's environment. What it cost,
+> measured: 412 ms of startup per run (60 ms for a container per session) plus a second lifecycle to operate.
 
-| Requirement | Detail |
-|---|---|
-| **Isolation** | container or microVM; read-only rootfs; the session directory is the only writable mount; never the Docker socket (a compromised backend would own the host) |
-| **No credentials** | zero `OPENKMS_*` variables in the sandbox. The Catalog is reached through **tool calls the agent makes**, not a key available to arbitrary code. `build_project_shell_env` injects `OPENKMS_API_KEY` today — that must not happen here |
-| **Network** | denied by default; anything a skill needs is baked into the image (no `pip install` at run time) |
-| **Quotas** | cpu, memory, disk, wall-clock, executions per turn; a kill is a **tool error** the model can react to, never a 500 |
-| **Lifecycle** | **one container per session**, created on its first execution and destroyed with the session (the reaper removes it with the directory); the directory outlives individual executions. Measured: 60 ms per run against 412 ms when the container was created per run. **Python variables do not survive between runs** — `docker exec python -c` is a new interpreter each time; only `/workspace`, `/tmp` and anything installed persist |
-| **Audit** | every execution recorded: code, exit status, duration, artifact sizes |
-| **No git** | explicitly out. Skills arrive as installed packages, not cloned repositories |
+### What the folder boundary is
 
-`ProjectWorkspaceBackend.execute` is the model for *how to run it safely from an async server* (off the event loop, kill the
-process group on timeout, stream partial output) — that part is reusable; the isolation around it is not, because there is
-none.
+- the process runs with its working directory set to the **session** directory, so `out/`, `uploads/` and `tmp/` are this
+  conversation's;
+- the file tools refuse `..` and anything resolving outside it, so another conversation's files are not reachable **through
+  the tools**;
+- **skills belong to the knowledge base, not the session**: `{sessions_root}/{kb_id}/skills/` is shared by every conversation
+  of that KB, outlives them being reclaimed, and sits on `PYTHONPATH` (`skills/` and `skills/scripts/`) so a skill's CLI is
+  importable in every session. Deliberately **not** a symlink into each session: that makes the path guard see a path outside
+  the session, and the guard is worth more than the convenience.
 
-### Runtime choice
+### What it is not
 
-| Option | Isolation | Start latency | Verdict |
-|---|---|---|---|
-| **Container per execution** (shipped) | clean: no network, no credentials, only the session mounted | ~0.4 s warm image | **what runs today** — `docker run` from the agent host |
-| k8s Pod per session | clean | 1–3 s cold | the next step if executions must be scheduled away from the agent host |
-| Warm pool | clean | low | later optimization, real maintenance cost |
-| Local Docker *socket* mounted into the backend | weak | fast | **no** — a backend compromise becomes a host compromise; this design never asks for that |
-| In-process subprocess (the project runner) | **none** | fastest | acceptable for the internal project agent only |
+**Not OS isolation.** The subprocess runs as the qa-agent process's own user, so it can read what that user can read. What
+makes it acceptable is that the code is asked for by an authenticated user and acts with **that user's** authority, not the
+service's.
+
+### Credentials: the user's own token
+
+The environment is **curated, not inherited**: `PATH`/locale/proxy passthrough plus `OPENKMS_API_KEY=<the asking user's JWT>`
+and `OPENKMS_API_BASE_URL`. Code and skill CLIs therefore call internal services with exactly the user's permissions — the same
+bearer every tool call already carries — while the agent's own secrets (model keys, database URL) never enter the process.
+
+### The command allow list
+
+`run_command` starts no program outside an allow list (`ALLOWED_COMMANDS` in `qa_agent/sandbox.py`; a KB may **add** to it,
+never narrow it). Matching is **by position**, like the project's policy: `grep docker notes.md` is ordinary work, `ls && docker ps`
+is not, and `sudo`/`env`/`nohup` wrappers and `sh -c "…"` are looked through. `run_python` needs no list — there is no command
+to allow — which is why the list guards the shell tool and the prompt steers to Python.
 
 ### Skills, now that execution exists
 
 | Skill kind | What it is | Where it runs |
 |---|---|---|
 | **Instructional** | a `SKILL.md`: which tool, in what order, with what checks | anywhere — it is text |
-| **Executable** | ships a CLI or script that must run | **only inside the execution boundary**, with the table above in force |
+| **Executable** | ships a CLI or script under `{kb}/skills/scripts/` | the session's folder, with the user's token and the allow list |
+
+### Shipped
+
+`qa_agent/sandbox.py` (runner), `qa_agent/skills/sandbox.py` (`run_python_tool`, `run_command_tool`),
+`session_fs.kb_skills_dir`. Off unless `sandbox.enabled`. Verified live: the agent computed a prime sum and wrote it to `out/`,
+ran `ls` in the session folder, and reported that `docker ps` was **refused by the allow list** with no output.
 
 ## Optional tool: web search
 
@@ -251,7 +265,7 @@ new columns.
 | **Answer policy** | `unknown_measure`, `require_grounded_numbers`, `evidence_labels`, `require_schema_lookup` (see "policies" below) |
 | **Orchestration** | `profile` (`rag_only` / `rag_tools` / `agent_loop` — an enum, not a graph), `max_tool_rounds`, `recursion_limit`, `retrieve` (`always` / `never` / `on_miss`) |
 | **Workspace (files)** | `workspace.enabled`, `.disk_mb`, `.session_ttl_minutes`, `.artifact_max_mb`, `.upload_max_mb`, `.skills_read_only` (default true) |
-| **Execution (process)** | `sandbox.enabled`, `.profile` (`container` / `microvm`), `.image`, `.cpu`, `.mem_mb`, `.wall_seconds`, `.max_exec_per_turn`, `.network` (`deny` / allowlist) |
+| **Execution** | `sandbox.enabled`, `.timeout_seconds`, `.allow_commands` (additive to the built-in list) |
 | **Observability** | `langfuse_credential_id` (a **reference**, never the secret), `langfuse_tags`, `sample_rate` |
 | **Model** | `agent_llm_model_id` |
 
@@ -452,7 +466,7 @@ a different question"). Those must not vary per knowledge base; they belong in c
 | Trace id and scores | `langfuse_client.py`, `evaluations/scores.py` | `/ask` names its trace; an evaluation posts `data_query_pass` / `data_query_coverage` onto it |
 | **Tenancy ceilings** | `qa_agent/limits.py`, `agent_config.limits` | requests/minute, in-flight, daily tokens — per KB, all off by default; a 429 carries its reason and `Retry-After` |
 | **Prompt store** | `models/agent_prompt.py`, `prompt_store.py`, `/agent-prompts` | versioned rows, **publish gated by an evaluation run made after the draft**, one live version per KB, rollback by republishing; each answer reports `prompt_version` |
-| **Code execution** | `qa_agent/sandbox.py`, `skills/sandbox.py` | **one container per session** (`docker exec` per run): no network, no credentials, read-only root with only the session mounted, quotas, host-uid user; off unless `sandbox.enabled` |
+| **Code execution** | `qa_agent/sandbox.py`, `skills/sandbox.py` | the project agent's model: a subprocess of qa-agent in the session folder, timeout + output cap, a command **allow list**, and the user's own JWT in a curated environment; KB-level shared skills on `PYTHONPATH`; off unless `sandbox.enabled` |
 
 Decided against: **per-KB tenant ceilings** — implemented, then removed, because who sets the numbers and what happens when they
 are hit had no answer; the reasoning is in `tech_debt.md`.
