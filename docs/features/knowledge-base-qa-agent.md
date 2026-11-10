@@ -9,6 +9,73 @@ The concrete failure that prompted this: asked *"贵州茅台 2026 年上半年�
 `SELECT ts_code, name, industry FROM tushare.stock_basic WHERE ts_code = '600519.SH'`, attached it as a source, and wrote
 1,386 characters about a company's name and industry. The semantic model has no revenue field at all.
 
+## Positioning: an external service, not an internal agent
+
+Two agent products, two postures. This is the frame every capability decision below hangs on.
+
+| | **KB Q&A agent** (`qa-agent`) | **Project agent** (`deep_agents`) |
+|---|---|---|
+| Who calls it | **outside** — any user holding a KB read grant, through the KB's public `/ask` | the operator, inside a workspace they own |
+| Trust in the caller | **low**: input is attacker-controlled by definition | medium: a workspace they chose |
+| Trust in content | **low**: retrieved text can contain injected instructions | low, but the blast radius is one project |
+| Data scope | one KB, read-only, multi-tenant | one project workspace, read-write |
+| Consequence of failure | a wrong or leaked answer served to the outside | a bad edit in one workspace |
+| Therefore | **no code execution · no writable filesystem · strict tool allowlist · read-only by construction** | may execute, may write, may delegate |
+
+Everything below follows from that row. A capability that is fine for the project agent is not automatically fine here.
+
+## File sandbox — unresolved, and for KB the answer is "none"
+
+**It is not settled.** What exists today in the project runtime is a tool named `run_python` (`deep_agents/sandbox.py`)
+that calls:
+
+```
+subprocess.run([sys.executable, "-c", code], cwd=project_root, timeout=…, env=…)
+```
+
+There is **no container, no namespace, no seccomp, no network policy** — the isolation is *the project directory and a
+timeout*. That is defensible for an internal, single-tenant workspace where the operator trusts the agent. It is **not** an
+isolation boundary, and calling it a sandbox sets the wrong expectation.
+
+For the KB agent, the positioning above settles it differently: **the KB agent should have no execution at all.** That in
+turn splits "skills" into two kinds, which is the part worth deciding explicitly:
+
+| Skill kind | What it is | KB agent | Project agent |
+|---|---|---|---|
+| **Instructional** | a `SKILL.md`: when to use which tool, in what order, with what checks | **allowed** — it is text, and it is the thing we want to make editable | allowed |
+| **Executable** | a skill that ships a CLI/script and runs it | **not allowed** — the delivery path must not gain a process | allowed |
+
+So the KB gains skills-as-files (§ configuration) without gaining a sandbox — because the skills it may load are the
+instructional kind. If executable skills are ever wanted there, that is a separate decision that requires a real isolation
+boundary (container or microVM, no network by default, per-tenant filesystem), and it should be argued against the
+positioning table, not slipped in with the skills loader.
+
+## External tools: bind connectors, do not hard-code providers
+
+The suggestion to expose a search connector as a tool is right, and the project runtime already has the pattern to copy:
+
+```
+deep_agents/factory.py:111
+  connector_id = project_settings.get("search_connector_id")
+  if project_settings.get("web_search") and connector_id:
+      tools += await make_web_search_tools(db, connector_id)
+```
+
+`tools/web_search.py` turns any enabled connector of category `search_tool` (e.g. Zhipu) into a `web_search` tool. The KB
+agent has **no search capability at all** today.
+
+Proposed: the same shape, bound **per KB** — `agent_config.tool_bindings.search_connector_id`. Notes that matter:
+
+- It is a **read** tool, so it does not touch the positioning row above. It is the one external capability that is cheap to
+  add and hard to misuse.
+- It answers exactly the questions the test set currently fails: *"市场情绪如何，利好消息多吗？"* is a refuse today only
+  because the agent has nowhere to look.
+- **Evidence needs a type.** A web result is not a `data_query`; `select_display_sources` and the evaluation's data-query
+  judge must not treat it as one. It becomes a `web` source, and a question answered from the web needs its own ground-truth
+  family in the test set (e.g. "must cite a web source", "must not cite the Catalog").
+- **Injection surface grows.** Retrieval already carries untrusted text; the open web is worse. A web source should be
+  labelled as such everywhere it is shown, and never be allowed to justify a number the Catalog could have produced.
+
 ## How an answer is produced today
 
 ```
@@ -215,6 +282,10 @@ series is the measurement.
    than by wording?
 5. **Framework: keep the hand-written graph or move to `create_deep_agent`?** Not an opinion to settle — the A/B above has
    three numbers that decide it. The open part is the retrieval fork: a node that always runs versus a tool the model calls.
+6. **Executable skills for the KB agent** — deliberately out today (see "File sandbox"). If the answer becomes yes, the
+   question is what the isolation boundary is, because `run_python` is a subprocess, not a sandbox.
+7. **Web answers and the evaluation**: a `web` source needs its own ground-truth family ("must cite a web source", "must not
+   cite the Catalog"), otherwise a question answered from the web scores as a data-query failure.
 
 ## Not proposed
 
