@@ -108,6 +108,73 @@ stance for both is the mistake in the first draft of this note.
 Each is measurable on the same test set: run both values, compare. That is the only honest way to pick a default — see
 "Open questions".
 
+## Should the KB agent be built on `create_deep_agent`?
+
+A different question from "should KB Q&A move into the project agent runtime": the **product stays** — a KB-scoped,
+read-only Q&A service — and only its internal graph changes. `deepagents` 0.7.21 is itself a prebuilt LangGraph
+(`deepagents/graph.py`), so this is "which graph builder", not "which product".
+
+### What it would give
+
+| Need | Parameter |
+|---|---|
+| configurable system prompt | `system_prompt=` |
+| **skills as files** (`.openkms/skills/<id>/SKILL.md`) | **`skills=`** — same format the project runtime uses |
+| **AGENTS.md / MEMORY.md** | **`memory=`** — `MemoryMiddleware` is built in |
+| tools | `tools=` — existing LangChain `@tool`s work unchanged |
+| conversation memory | `checkpointer=` |
+| escalation for hard questions | `subagents=` |
+| read-only posture | `permissions=` + replacing `FilesystemMiddleware` in `middleware=` |
+| **the mechanisms proposed above** | `middleware=` — a grounding check, an unknown-measure refusal and evidence labelling become first-class middleware instead of code wedged into `generate_node` |
+
+That last row is the strongest technical argument: today there is exactly one place to put a behaviour check, and it is
+inside the generate node.
+
+### What it costs — measured, not estimated
+
+The first draft of this page called streaming "the biggest cost". It is not. The two protocols are the same where it
+matters:
+
+| Event | qa-agent | `deepagents` | Frontend |
+|---|---|---|---|
+| `delta` `{t}` | ✓ | ✓ | ✓ |
+| `tool_start` `{run_id,name,input}` | ✓ | ✓ | ✓ |
+| `tool_end` `{run_id,name,output}` | ✓ | ✓ | ✓ |
+| `tool_error` `{run_id,name,error}` | ✓ | ✓ | ✓ |
+| `done` | `{answer, sources}` | `{assistant}` — **different payload** | — |
+| `error` | `{detail, answer?}` | **`fatal`** — different name | — |
+| `todo` / `interrupt` / `subagent_*` | — | ✓ | **ignored: the parser returns `null` for unknown types** |
+
+So the streaming delta is two things: assemble `done.sources` ourselves (already implemented in `kb_answer_sources.py`,
+and both sides carry LangChain messages), and map `fatal` → `error`. Extra event types cost nothing on the client.
+
+What actually costs:
+
+1. **Evidence assembly.** `select_display_sources` reads LangGraph messages; the shapes are compatible, but the
+   evaluation depends on this and it must be re-verified against a real run, not assumed.
+2. **Where retrieval sits — a real design fork.** Today retrieval is a node that always runs before generation. In a
+   prebuilt agent the natural shape is retrieval as a *tool* the model calls, which changes behaviour: the model decides
+   whether to search, and some answers will skip it. This needs a decision and a measurement, not a port.
+3. **Default middleware includes filesystem tools.** They must be excluded or restricted via `permissions`; the project
+   runtime already solved this (its `factory.py` replaces `FilesystemMiddleware` for plan mode, with a comment about
+   `NotImplementedError` in 0.7).
+
+Note on cost, corrected: `write_todos` is a **tool**, not a mandatory node, so the framework does not add a planning
+round-trip per question. The recurring overhead is per-turn middleware, plus planning only when the model chooses it.
+
+### How to decide
+
+Same `/ask` contract, two implementations, one comparison:
+
+```
+A: today's three-node graph      B: create_deep_agent (skills + memory + the same tools)
+run the same suites on both:  17-item data-query set  +  the existing RAG evaluations
+compare three numbers:  pass rate  ·  p50/p90 latency  ·  tool rounds per item
+```
+
+Adopt B if pass rate holds, latency stays inside what the product accepts, and tool rounds show the extra capability
+being used. Today's baseline to beat: **p50 15.9 s, p90 32.3 s, max 74.1 s** over 228 `/ask` calls.
+
 ## Proposal 3 — if prompt text must change without a deploy
 
 The operational objection is fair: when behaviour *is* text, a pull request per wording change is too slow. The objection
@@ -146,10 +213,14 @@ series is the measurement.
 3. **Do the two KBs want different defaults?** Likely yes; that is the argument for policies being configuration.
 4. **Is a prompt store wanted at all**, or is the deploy cadence acceptable once behaviour is enforced by mechanisms rather
    than by wording?
+5. **Framework: keep the hand-written graph or move to `create_deep_agent`?** Not an opinion to settle — the A/B above has
+   three numbers that decide it. The open part is the retrieval fork: a node that always runs versus a tool the model calls.
 
 ## Not proposed
 
 - Hiding intermediate queries. They stay; the labels in 1c are additive.
 - A free-text prompt field that changes behaviour with no test and no attribution.
 - Narrowing `agent_skills` for the quant KB — it genuinely needs the catalog skill; that was a wrong idea in an earlier draft.
+- Treating "replace the framework" and "move KB Q&A into the project runtime" as the same question. They are not: the first
+  keeps the product and swaps the graph builder (§ above), the second changes what the service is for.
 - Judging the returned numbers anywhere in this design. Data moves; the query does not.
