@@ -1,6 +1,9 @@
 """FastAPI application for the QA Agent Service."""
+import asyncio
 import logging
 import time
+from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager, suppress
 
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
@@ -23,10 +26,25 @@ silence_otel_export_loggers()
 logger = logging.getLogger(__name__)
 logger.info("qa-agent recursion_limit=%d", settings.agent_recursion_limit)
 
+@asynccontextmanager
+async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
+    """Sweep idle session workspaces for as long as the service runs."""
+    from .workspace_reaper import run_forever
+
+    task = asyncio.create_task(run_forever())
+    try:
+        yield
+    finally:
+        task.cancel()
+        with suppress(asyncio.CancelledError):
+            await task
+
+
 app = FastAPI(
     title="openKMS QA Agent",
     version="0.1.0",
     description="RAG-based question answering agent for openKMS knowledge bases",
+    lifespan=lifespan,
 )
 
 app.add_middleware(
