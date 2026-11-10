@@ -19,6 +19,11 @@ class SourceItem(BaseModel):
     retrieval_debug: dict[str, Any] | None = None
     #: Structured Catalog / SQL Lab evidence (mode, sql, columns, rows, …).
     data_query: dict[str, Any] | None = None
+    #: `used` when the answer's numbers came from this source, `consulted` when the query ran but nothing in the answer
+    #: traces to it. Every source is kept either way — the labels are added, not a filter.
+    usage: str | None = None
+    #: How many of the answer's numbers appear in this source's rows (only meaningful for Catalog evidence).
+    traceable_numbers: int | None = None
 
 
 class AskRequest(BaseModel):
@@ -38,9 +43,21 @@ class AskRequest(BaseModel):
     knowledge_base_id: str | None = None
 
 
+class GroundingReport(BaseModel):
+    """How many of the answer's numbers came from the cited results, as a ratio rather than a verdict."""
+
+    traceable: int = 0
+    total: int = 0
+    ratio: float = 1.0
+    untraced: list[float] = []
+
+
 class AskResponse(BaseModel):
     answer: str
     sources: list[SourceItem] = []
+    #: Present when the answer was judged against its own evidence. Always reported; whether anything acts on it is a
+    #: per-KB policy (`answer_policy.require_grounded_numbers`).
+    grounding: GroundingReport | None = None
 
 
 class RetrieveRequest(BaseModel):

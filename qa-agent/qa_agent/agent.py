@@ -27,6 +27,7 @@ from .kb_answer_sources import (
     source_from_page_section_tool,
 )
 from . import agent_config as agent_config_module
+from .evidence import ground, label_sources
 from .llm_chat import build_messages_for_generate, make_qa_chat_openai, text_from_lc_content
 from .request_context import (
     reset_request_access_token,
@@ -256,6 +257,9 @@ def invoke_agent(
             result.get("context", []),
             messages=list(result.get("messages") or []),
         )
+        # Label, do not filter: `used` when the answer's numbers came from a source, `consulted` when the query merely ran.
+        display = label_sources(display, answer)
+        grounding = ground(display, answer)
         msgs = list(result.get("messages") or [])
         logger.info(
             "invoke_agent done kb=%s elapsed=%.2fs answer_chars=%d sources=%d graph_messages=%d",
@@ -265,7 +269,7 @@ def invoke_agent(
             len(display),
             len(msgs),
         )
-        return {"answer": answer, "context": display}
+        return {"answer": answer, "context": display, "grounding": grounding}
     except GraphRecursionError:
         logger.error(
             "invoke_agent recursion_limit kb=%s elapsed=%.2fs",
@@ -602,6 +606,7 @@ async def astream_agent_ndjson(
                 access_token,
                 session_id,
                 skill_ids,
+                agent_config,
             )
             answer = result.get("answer", "") or ""
             sources_list = select_display_sources(
@@ -615,6 +620,8 @@ async def astream_agent_ndjson(
             if answer:
                 yield _ndjson_line({"type": "delta", "t": answer})
 
+        sources_list = label_sources(sources_list, answer)
+        grounding = ground(sources_list, answer)
         elapsed = time.monotonic() - t0
         logger.info(
             "astream_agent_ndjson done kb=%s elapsed=%.2fs graph_events=%d tool_starts=%d "
@@ -629,7 +636,15 @@ async def astream_agent_ndjson(
             len(sources_list),
             len(stream_cypher_runs),
         )
-        yield _ndjson_line({"type": "done", "answer": answer, "sources": _sources_to_jsonable(sources_list)})
+        yield _ndjson_line(
+            {
+                "type": "done",
+                "answer": answer,
+                "sources": _sources_to_jsonable(sources_list),
+                # Additive: the label and the ratio travel with the answer so a reader (or a score) can use them.
+                "grounding": grounding.model_dump(),
+            }
+        )
         if callback and hasattr(callback, "flush"):
             callback.flush()
     finally:

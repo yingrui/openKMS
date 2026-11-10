@@ -19,6 +19,7 @@ from pydantic import ValidationError
 from app.schemas.knowledge_base import (
     AskRequest,
     AskResponse,
+    GroundingReport,
     SearchRequest,
     SearchResponse,
     SearchResult,
@@ -114,9 +115,11 @@ async def ask_question(
             )
             resp.raise_for_status()
             data = resp.json()
+            grounding = data.get("grounding")
             return AskResponse(
                 answer=data.get("answer", ""),
                 sources=[SearchResult(**s) for s in data.get("sources", [])],
+                grounding=GroundingReport(**grounding) if isinstance(grounding, dict) else None,
             )
     except httpx.HTTPStatusError as e:
         logger.error("Agent returned error: %s %s", e.response.status_code, e.response.text[:200])

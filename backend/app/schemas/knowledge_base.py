@@ -318,6 +318,11 @@ class SearchResult(BaseModel):
     retrieval_debug: dict[str, Any] | None = None
     #: Catalog metric / SQL Lab evidence for KB Q&A (structured table + SQL).
     data_query: dict[str, Any] | None = None
+    #: `used` when the answer's numbers came from this source, `consulted` when the query ran but the answer did not draw
+    #: on it. Labelled by the agent; every source is kept either way.
+    usage: str | None = None
+    #: How many of the answer's numbers appear in this source's rows.
+    traceable_numbers: int | None = None
 
 
 class SearchResponse(BaseModel):
@@ -334,6 +339,17 @@ class AskRequest(BaseModel):
     session_id: str | None = None
 
 
+class GroundingReport(BaseModel):
+    """How many of the answer's numbers came from the cited results — a ratio, not a verdict."""
+
+    traceable: int = 0
+    total: int = 0
+    ratio: float = 1.0
+    untraced: list[float] = []
+
+
 class AskResponse(BaseModel):
     answer: str
     sources: list[SearchResult] = []
+    #: Reported by the agent on every answer; whether anything acts on it is a per-KB policy.
+    grounding: GroundingReport | None = None
