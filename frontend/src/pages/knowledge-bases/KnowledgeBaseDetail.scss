@@ -3167,15 +3167,21 @@ body.openkms-kb-qa-fullpage .kb-qa-shell {
 }
 
 .kb-qa-files {
-  &__toggle {
-    display: none; /* the rail's own header carries the title */
+  &__title {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    margin: 0 0 var(--space-2);
+    font-size: var(--font-size-sm);
+    font-weight: var(--font-weight-medium);
+    color: var(--color-text-secondary);
   }
 
   &__count {
     font-variant-numeric: tabular-nums;
   }
 
-  &__panel ul {
+  ul {
     list-style: none;
     margin: 0;
     padding: 0;

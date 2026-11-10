@@ -244,7 +244,7 @@ export function KnowledgeBaseDetail() {
             <FolderOpen size={18} aria-hidden />
             <span className="ds-compact-label">{t('detail.qaFiles')}</span>
           </button>
-          <div className="kb-qa-shell-body" id="kb-qa-files-rail">
+          <div className="kb-qa-shell-body">
             {isMobile ? (
               <div
                 id="kb-qa-sessions-drawer"
@@ -419,6 +419,7 @@ export function KnowledgeBaseDetail() {
             </main>
             {/* The conversation's files, as the project agent has them: a rail on the right that can be hidden. */}
             <aside
+              id="kb-qa-files-rail"
               className={`kb-qa-files-rail${qaFilesOpen ? ' is-open' : ''}`}
               aria-hidden={!qaFilesOpen}
             >
