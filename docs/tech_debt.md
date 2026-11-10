@@ -10,6 +10,18 @@ Open items only. Closed work lives in git history.
 
 ## Medium priority
 
+### The qa-agent has no CI, and its venv had no pytest
+
+`qa-agent/` is a separate service with its own `pyproject.toml`, and it is in **no** workflow (`.github/workflows/` has
+backend, frontend and docs). Its tests ran only when someone remembered to run them.
+
+Worse, `uv run pytest` in that directory silently used a **global anaconda pytest** with a different interpreter, so
+`import bm25s` — installed in the project venv — failed at collection. pytest is a dev dependency of the project now, and the
+suite (102 tests) runs in its own environment; but nothing enforces that it runs at all.
+
+The fix is one workflow file mirroring the backend's: `uv sync --group dev && uv run pytest`. Until then a qa-agent change
+is verified by whoever made it and nobody else.
+
 ### `services/` and `pages/` describe a layer, not an area
 
 `services/` is half the backend (251 files) behind one name, and `console/` is the last frontend directory that mixes four

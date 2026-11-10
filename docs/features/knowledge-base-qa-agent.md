@@ -1,6 +1,7 @@
 # Knowledge-base QA agent
 
-**Status:** design note for discussion. Nothing here is implemented beyond what the "Today" sections describe.
+**Status:** design note, partly implemented. The "Today" sections describe the code as it is; § "Proposal 1" carries a
+shipped/not-shipped table per mechanism. Nothing in Proposal 2 or 3 is wired to behaviour yet.
 
 How the KB Q&A agent answers, what it can be configured with today, and the open design decisions for making its
 answers checkable — kept deliberately separate: **what must exist in code** versus **what a deployment should be allowed to
@@ -295,6 +296,41 @@ and hiding them would make the process *less* transparent, not more — and labe
 "Consulted but unused" is exactly the thing a reader cannot see today, and it is the honest evidence for the failure above:
 the query exists, the answer did not use it.
 
+### Shipped: 1a, 1b, 1c
+
+| Piece | Where | What it does |
+|---|---|---|
+| 1a | `qa_agent/skills/catalog.py` | `get_semantic_model_tool` returns `available_measures` / `available_metrics` beside the full catalogue |
+| 1b | `qa_agent/grounding.py` | `traceable_numbers(answer, results)` → `{traceable, total, ratio, untraced}` |
+| 1c | `qa_agent/evidence.py` | each Catalog source gets `usage` (`used` / `consulted`) and `traceable_numbers`; the answer carries `grounding` |
+
+Both the ratio and the labels travel on `/ask` (JSON) and on the `done` event (NDJSON); the backend proxy forwards them.
+
+**What 1a changed, measured.** Asked for a company's revenue — the question that motivated this page — the agent now refuses
+the figure, says the model has no income-statement field, lists what the three tables do cover, offers one clearly-caveated
+TTM approximation, and names the table that would answer it. The mechanism did not change a prompt: it made "this model
+cannot answer that" a fact in the tool's output instead of something the model had to infer from a field list.
+
+**What 1b/1c changed.** A real answer reports `grounding 2/2` with both sources `used`; a lookup-only answer reports its
+ratio and leaves the queries it ran as `consulted` — kept, not hidden, which is the point.
+
+### 1d. The tool loop has a budget, and reaching it still answers
+
+`should_continue` routed to tools whenever the model asked, unbounded except by `recursion_limit` (200 supersteps).
+`orchestration.max_tool_rounds` caps the rounds, counted from the transcript so the count survives the fallback path that
+rebuilds graph state; unset keeps the old behaviour.
+
+**Ending the loop at the cap was wrong, and the first run showed it**: the model had just requested a tool, never spoke
+again, and the answer came back empty — worse than an incomplete one. Reaching the cap now routes to a `finalize` node, one
+model turn with no tools bound, told to answer from what it already has and to say what it could not check.
+
+That turn needs a transcript the model API accepts — an assistant message with `tool_calls` must be followed by tool results —
+so every unanswered call gets a result saying it was not executed because the budget ran out. More honest than dropping the
+message, and it tells the model why the data is missing.
+
+Measured at `max_tool_rounds: 1` on a question that needs several: **835 characters** naming what was not retrieved and which
+tables would answer it, against **0 characters** before.
+
 ## Proposal 2 — policies that should be configuration
 
 Mechanisms above are useless without defaults, and the defaults are a product decision that **varies by domain**: the
@@ -440,8 +476,8 @@ series is the measurement.
    answer — files can ship before code execution does.
 8. **问策 scoring in Langfuse**: which scores to push automatically (artifact produced? code read the right tables?) and which
    to leave to a reviewer, so the two are not confused on the same trace.
-9. **Tenancy limits**: per-KB request rate, per-session step budget and per-KB token ceiling — the abuse surface an external
-   endpoint opens. Not designed, listed in "Tenancy and abuse".
+9. **Tenancy limits**: per-KB request rate and per-KB token ceiling — the abuse surface an external endpoint opens. The
+   per-request step budget now exists (`max_tool_rounds`); the rate and spend ceilings do not.
 10. **Artifact access**: the bucket/prefix and ACL for `out/` artifacts, and their retention. "Copied to storage" is a
    location, not an access decision.
 
