@@ -103,7 +103,7 @@ function MainLayoutInner() {
     isOntologySuitePath(location.pathname) && !isFunctionEditorWorkspacePath(location.pathname);
   const isExplorePage = isObjectExplorerExplorePath(location.pathname);
   const isEditorWorkspace = isFunctionEditorWorkspacePath(location.pathname);
-  const isAppsRun = /^\/apps\/[^/]+$/.test(location.pathname);
+  const isAppsRun = /^\/chamber\/[^/]+$/.test(location.pathname);
 
   const sidebarCollapsed = true;
   const onArticles =

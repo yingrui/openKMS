@@ -4,7 +4,7 @@
 
 Experimental **A2UI App Builder** authoring (Source / Design / OntoObjectList) has been **removed**. Future A2UI experiments belong in **Agent Project** sessions, not this product surface.
 
-## Register {#module-hosted-services}
+## Register {#chamber-hosted-services}
 
 | Path | How |
 |------|-----|
@@ -15,15 +15,15 @@ Requires **`console:kubernetes`** and **`ontology:write`**. The app is **publish
 
 ## Run
 
-The **Chamber** app (`/apps`):
+The **Chamber** app (`/chamber`):
 
-- List / manage: `/apps`
-- Run: `/apps/{id}` → iframe → `GET/POST …/api/app-builder/apps/{id}/proxy/`
-- Settings (Service binding): `/apps/{id}/settings`
+- List / manage: `/chamber`
+- Run: `/chamber/{id}` → iframe → `GET/POST …/api/chamber/apps/{id}/proxy/`
+- Settings (Service binding): `/chamber/{id}/settings`
 
-Legacy `/app-builder` routes redirect here. WebSocket is not proxied. Prefer relative assets or a URL subpath.
+Legacy `/apps` and `/app-builder` routes redirect here. WebSocket is not proxied. Prefer relative assets or a URL subpath.
 
-## Module identity headers {#module-identity-headers}
+## Chamber identity headers {#chamber-identity-headers}
 
 On every proxied request openKMS sends (UTF-8 percent-encoded):
 
@@ -39,14 +39,14 @@ Key tenant data by `X-Openkms-User-Id`. Return `401` when it is missing. Do not 
 
 | Method | Path | Notes |
 |--------|------|--------|
-| GET/POST | `/api/app-builder/apps` | List / create module apps |
-| GET/PATCH/DELETE | `/api/app-builder/apps/{id}` | Run doc (published) / update / delete |
-| POST | `/api/app-builder/apps/{id}/publish` | New bindings snapshot |
-| POST | `/api/app-builder/apps/{id}/unpublish` | Unpublish |
-| GET | `/api/app-builder/apps/{id}/versions` | Version history |
-| * | `/api/app-builder/apps/{id}/proxy[/{path}]` | Session-cookie auth; strip Bearer |
+| GET/POST | `/api/chamber/apps` | List / create Chamber apps |
+| GET/PATCH/DELETE | `/api/chamber/apps/{id}` | Run doc (published) / update / delete |
+| POST | `/api/chamber/apps/{id}/publish` | New bindings snapshot |
+| POST | `/api/chamber/apps/{id}/unpublish` | Unpublish |
+| GET | `/api/chamber/apps/{id}/versions` | Version history |
+| * | `/api/chamber/apps/{id}/proxy[/{path}]` | Session-cookie auth; strip Bearer |
 
-Storage table remains `ontology_apps` (historical name). Draft A2UI table `app_components` is dropped.
+Storage tables: `chamber_apps` and `chamber_published_versions`. The A2UI `app_components` table is dropped.
 
 ## Related
 

@@ -77,7 +77,7 @@ python scripts/cli.py ontology functions execute-by-api-name \
 
 Author `stock_profile.py` per [functions-authoring.md](functions-authoring.md). Workbench types (Watchlist / ScreenRun): create instances via Explorer / `ontology objects` for **non-dataset** types if needed. Action execute **applies** create/modify/delete on those instances; dataset-backed synthetic ids remain deferred.
 
-**H. Register a hosted module App.**
+**H. Register a hosted Chamber app.**
 
 Read **[app-builder.md](app-builder.md)** then either:
 

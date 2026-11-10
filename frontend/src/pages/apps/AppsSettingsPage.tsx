@@ -119,7 +119,7 @@ export function AppsSettingsPage() {
     setError(null);
     try {
       await deleteApp(appId);
-      navigate('/apps', { replace: true });
+      navigate('/chamber', { replace: true });
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
       setDeleting(false);
@@ -135,7 +135,7 @@ export function AppsSettingsPage() {
 
   return (
     <div className="settings-page">
-      <Link to="/apps" className="settings-page-back">
+      <Link to="/chamber" className="settings-page-back">
         <ArrowLeft size={18} />
         <span>{t('backToGallery')}</span>
       </Link>

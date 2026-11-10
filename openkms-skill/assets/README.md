@@ -8,4 +8,4 @@
 
 Open in a browser (CDN once): **← →** slides, **↓** nested stacks, Esc overview, S notes. The first two are **tone + layout references** for real deliverables; the third is for explaining the platform. Guide: [references/research-report.md](../references/research-report.md).
 
-Apps are **module** (hosted Service) only; register via `kubernetes register-app` or `apps create` with `bindings.k8s`.
+Chamber apps are **hosted Service** only; register via `kubernetes register-app` or `apps create` with `bindings.k8s`.

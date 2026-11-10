@@ -41,7 +41,7 @@ def test_kubernetes_apply_yes(mock_api, tmp_path: Path):
 
 def test_kubernetes_register_app(mock_api):
     recorded, responses = mock_api
-    responses[("POST", "/api/app-builder/apps")] = (201, {"id": "oa-1", "template_id": "module"})
+    responses[("POST", "/api/chamber/apps")] = (201, {"id": "oa-1", "template_id": "module"})
     from openkms.commands.kubernetes import cmd_register_app
 
     cmd_register_app(
@@ -56,7 +56,7 @@ def test_kubernetes_register_app(mock_api):
             description=None,
         )
     )
-    assert recorded[-1].url.path == "/api/app-builder/apps"
+    assert recorded[-1].url.path == "/api/chamber/apps"
 
 
 def test_kubernetes_apply_missing_file():

@@ -26,4 +26,4 @@
 python scripts/cli.py ping
 ```
 
-Agent **只能**走 bundled CLI。按 `SKILL.md` 路由打开对应 `references/*.md`；写 Function / Action / Apps / k8s 前必须打开对应 authoring 文档。领域本体是**租户 DIY**（`references/workflows.md` G / H、[认识本体](../tutorials/understanding-ontology.md)、[Tushare 案例](../tutorials/tushare-market-ontology.md)），不是平台种子；Action 对可解析实例的 **create / update / delete apply** 已交付，dataset/Neo4j 合成 `object_id` 仍延后，见 [Manager 对齐说明](../research/ontology_manager_alignment.md)。
+Agent **只能**走 bundled CLI。按 `SKILL.md` 路由打开对应 `references/*.md`；写 Function / Action / 议事厅 / k8s 前必须打开对应 authoring 文档。领域本体是**租户 DIY**（`references/workflows.md` G / H、[认识本体](../tutorials/understanding-ontology.md)、[Tushare 案例](../tutorials/tushare-market-ontology.md)），不是平台种子；Action 对可解析实例的 **create / update / delete apply** 已交付，dataset/Neo4j 合成 `object_id` 仍延后，见 [Manager 对齐说明](../research/ontology_manager_alignment.md)。

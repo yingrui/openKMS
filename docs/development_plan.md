@@ -90,7 +90,7 @@ Shipped surfaces: [Connectors](features/connectors.md), [API reference — Conne
 | Broader tool coverage | user · org — Read/write with ACL: documents, articles, glossary, search, ontology (within explore limits) |
 | Maintenance workflows | user · org — From eval failures → suggested wiki/KB fixes (quality loop, contribution feedback) |
 | Parity with external skill | user — [openkms-skill](features/openkms-skill.md) capabilities reachable in-app where permissions allow |
-| K8s deploy from Agents | ✅ Console browse/apply/logs/Secret+env + Project deploy secrets sync; skill apply; hosted `module` Apps ([Kubernetes clusters](features/kubernetes-clusters.md), [Apps](features/app-builder.md#module-hosted-services)) |
+| K8s deploy from Agents | ✅ Console browse/apply/logs/Secret+env + Project deploy secrets sync; skill apply; hosted Chamber apps ([Kubernetes clusters](features/kubernetes-clusters.md), [Chamber](features/app-builder.md#chamber-hosted-services)) |
 
 Existing surfaces: [Wiki spaces](features/wiki-spaces.md), [Knowledge bases](features/knowledge-bases.md), [Knowledge map](features/knowledge-map.md).
 
@@ -153,7 +153,7 @@ Today: [Documents](features/documents.md) lifecycle + relationships; `is_current
 | Action `create` / `modify` / `delete` apply (resolvable instance ids) | **Shipped** — apply `output.edits` after Action OFS ok (`applied.created_ids` / `modified_ids` / `deleted_ids`). |
 | Dataset/Neo4j synthetic Action `object_id` + link create/delete edit ops | **Deferred** — see [Manager alignment](research/ontology_manager_alignment.md#capability-audit-shipped-vs-diy-blockers). |
 | Discover / Explorer Home by group / global draft chrome | P1–P2 UX — **decoupled** from domain DIY and from Action-write work |
-| Domain ontologies (Stock, screens, watchlists, …) | **Not backlog** — tenant DIY: [understanding ontology](tutorials/understanding-ontology.md) · [Tushare case](tutorials/tushare-market-ontology.md) · [openkms-skill](features/openkms-skill.md) `references/workflows.md` G; optional hosted board UI = workflow H + [Apps](features/app-builder.md) |
+| Domain ontologies (Stock, screens, watchlists, …) | **Not backlog** — tenant DIY: [understanding ontology](tutorials/understanding-ontology.md) · [Tushare case](tutorials/tushare-market-ontology.md) · [openkms-skill](features/openkms-skill.md) `references/workflows.md` G; optional hosted board UI = workflow H + [Chamber](features/app-builder.md) |
 
 Shipped: [Ontology](features/ontology.md) · [Ontology Functions](features/ontology-functions.md) · [Manager alignment](research/ontology_manager_alignment.md).
 

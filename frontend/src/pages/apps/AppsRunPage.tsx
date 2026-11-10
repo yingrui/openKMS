@@ -43,7 +43,7 @@ export function AppsRunPage() {
   const { appId = '' } = useParams();
   const { t } = useTranslation('apps');
   const { canAccessPath } = useAuth();
-  const canEdit = canAccessPath('/apps');
+  const canEdit = canAccessPath('/chamber');
   const [app, setApp] = useState<AppBuilderRunResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [fullscreen, setFullscreen] = useState(false);
@@ -156,7 +156,7 @@ export function AppsRunPage() {
     return (
       <div className="apps-page">
         <p className="apps-page__error">{error}</p>
-        <Link to="/apps">{t('backToGallery')}</Link>
+        <Link to="/chamber">{t('backToGallery')}</Link>
       </div>
     );
   }
@@ -184,7 +184,7 @@ export function AppsRunPage() {
         </button>
       ) : (
         <header className="apps-page__run-header">
-          <Link to="/apps" className="apps-page__back">
+          <Link to="/chamber" className="apps-page__back">
             <ArrowLeft size={18} aria-hidden />
             <span>{t('backToGallery')}</span>
           </Link>
@@ -195,7 +195,7 @@ export function AppsRunPage() {
           <div className="apps-page__run-actions">
             {canEdit ? (
               <Link
-                to={`/apps/${app.id}/settings`}
+                to={`/chamber/${app.id}/settings`}
                 className="apps-page__icon-btn"
                 title={t('editSettings')}
                 aria-label={t('editSettings')}
@@ -221,7 +221,7 @@ export function AppsRunPage() {
       {!fullscreen && app.bindings_stale ? (
         <div className="apps-page__banner" role="status">
           {t('staleBanner')}
-          {canEdit ? <Link to={`/apps/${app.id}/settings`}>{t('repair')}</Link> : null}
+          {canEdit ? <Link to={`/chamber/${app.id}/settings`}>{t('repair')}</Link> : null}
         </div>
       ) : null}
 

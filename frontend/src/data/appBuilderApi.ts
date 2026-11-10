@@ -34,7 +34,7 @@ export type AppBuilderAppResponse = {
 
 export type AppBuilderRunResponse = AppBuilderAppResponse;
 
-const base = `${config.apiUrl}/api/app-builder/apps`;
+const base = `${config.apiUrl}/api/chamber/apps`;
 
 export async function listApps(params?: { status?: string }): Promise<AppBuilderAppResponse[]> {
   const qs = new URLSearchParams();

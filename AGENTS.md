@@ -121,7 +121,7 @@ Agent 工作指南（原 `.cursor/rules/` 合并版）。
 
 - **仅** `template_id=module`：登记 Kubernetes Service → Apps 图库 iframe 代理；身份头见文档。
 - **已移除** 产品内 A2UI App 编创（Design / Source / synthesize / OntoObjectList / `app_components`）。Knowledge Map Overview 等其它 A2UI 面保留。未来 A2UI 实验放在 **Agent Project** 会话，不回 Apps 产品面。
-- API：`/api/app-builder/apps` + `…/proxy`；表名 `ontology_apps` 为历史命名。
+- API：`/api/chamber/apps` + `…/proxy`；表名 `chamber_apps` / `chamber_published_versions`。
 - FastAPI：`_register_routes(router)` 前 router **必须有 prefix**。
 
 **验收：** 动前端 `npm run build` · 动模型 `alembic upgrade head` · grep 无 `OntoObjectList` / `apps synthesize` / `pages/app-builder/`。

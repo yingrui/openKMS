@@ -1,15 +1,15 @@
 # Kubernetes 集群
 
-控制台中的 **已登记 Kubernetes 集群** 管理，供操作员与 Agent 使用。支持 **接入已有集群**（粘贴 kubeconfig、加密落库、连通性测试），并 **浏览** Namespace、Deployment、Service、Pod。控制台可 **apply** 白名单 YAML、**删除** 这些 kind、**查看 Pod 日志**，以及 **把 Service 登记到应用**。不包含云厂商建集群。
+控制台中的 **已登记 Kubernetes 集群** 管理，供操作员与 Agent 使用。支持 **接入已有集群**（粘贴 kubeconfig、加密落库、连通性测试），并 **浏览** Namespace、Deployment、Service、Pod。控制台可 **apply** 白名单 YAML、**删除** 这些 kind、**查看 Pod 日志**，以及 **把 Service 登记到议事厅**。不包含云厂商建集群。
 
-相关：[控制台与认证](console-and-auth.md)、[Agents](openkms-agents.md)、[应用（托管模块）](app-builder.md)、[API 参考](api-reference.md#kubernetes-clusters-consolekubernetes)、数据模型。
+相关：[控制台与认证](console-and-auth.md)、[Agents](openkms-agents.md)、[议事厅（Chamber）](app-builder.md)、[API 参考](api-reference.md#kubernetes-clusters-consolekubernetes)、数据模型。
 
 ## 控制台 UI
 
 - **列表：** `/console/kubernetes` — 登记、编辑、删除、测试连接；点击进入浏览
-- **详情：** `/console/kubernetes/{id}` — 选择命名空间；Deployment、Service、Pod、Secret、ConfigMap；Deployment 环境变量；Pod 日志；apply YAML；删除白名单对象；把 Service 登记到应用
+- **详情：** `/console/kubernetes/{id}` — 选择命名空间；Deployment、Service、Pod、Secret、ConfigMap；Deployment 环境变量；Pod 日志；apply YAML；删除白名单对象；把 Service 登记到议事厅
 - **权限：** `console:kubernetes`（或 `all` / admin）
-- 表单：名称、描述、默认命名空间、可选 **API Server**（后端实际连接集群的地址）、kubeconfig YAML、可选 **跳过 TLS 校验**（仅实验/自签名环境）、可选 **openKMS 运行在此集群内**（`options.direct_service_access`：托管应用直接访问 `*.svc.cluster.local`，不走 API Server 代理；见 [应用](app-builder.md#module-hosted-services)）
+- 表单：名称、描述、默认命名空间、可选 **API Server**（后端实际连接集群的地址）、kubeconfig YAML、可选 **跳过 TLS 校验**（仅实验/自签名环境）、可选 **openKMS 运行在此集群内**（`options.direct_service_access`：议事厅应用直接访问 `*.svc.cluster.local`，不走 API Server 代理；见 [议事厅](app-builder.md#chamber-hosted-services)）
 
 API 响应永不包含 kubeconfig 明文，仅返回 `kubeconfig_configured` 与非敏感字段。
 
@@ -40,7 +40,7 @@ API 响应永不包含 kubeconfig 明文，仅返回 `kubeconfig_configured` 与
 
 控制台行操作与 skill 一致：日志 Dialog、确认删除、apply Dialog、Secret/ConfigMap 编辑、Deployment **环境变量**。响应永不返回 kubeconfig。带 `openkms.io/project-id` 标签的 Secret 在控制台**只读**（请到「项目设置 → 部署」修改）。
 
-**登记到应用**（Service 行）：创建已发布的 `template_id=module` 应用，绑定 `cluster_id` / 命名空间 / Service / 端口。除 `console:kubernetes` 外还需 `ontology:write`。见 [应用](app-builder.md#module-hosted-services)。工作负载通过 openKMS 的[身份请求头](app-builder.md#module-identity-headers)获取当前用户，不应自建登录。
+**登记到议事厅**（Service 行）：创建已发布的 `template_id=module` 应用，绑定 `cluster_id` / 命名空间 / Service / 端口。除 `console:kubernetes` 外还需 `ontology:write`。见 [议事厅](app-builder.md#chamber-hosted-services)。工作负载通过 openKMS 的[身份请求头](app-builder.md#chamber-identity-headers)获取当前用户，不应自建登录。
 
 ## 部署密钥（项目） {#deploy-secrets-projects}
 
@@ -48,11 +48,11 @@ API 响应永不包含 kubeconfig 明文，仅返回 `kubeconfig_configured` 与
 
 ## 开发同步（项目） {#dev-sync}
 
-`POST /api/projects/{id}/kubernetes/dev-sync` 打包项目子树（相对路径 `local_path`），解压到 Deployment 下最新 Ready Pod 的 `container_path`。可选 `reload` 在容器内 POST 热重载接口。需要 **`projects:write`** 与 **`console:kubernetes`**。打包上限 32 MiB，并排除常见构建目录。Skill：`kubernetes dev-sync`。建议用独立的 **dev** Deployment（`replicas: 1`），与登记到应用的 Service 分开。kubeconfig 不离开服务端。Agent 不得用 `PUT /api/projects/{id}/files/content` 把外部仓库镜像进项目再同步——应在项目内改，或 git pull 后再 `dev-sync`（见 skill `references/kubernetes.md`）。
+`POST /api/projects/{id}/kubernetes/dev-sync` 打包项目子树（相对路径 `local_path`），解压到 Deployment 下最新 Ready Pod 的 `container_path`。可选 `reload` 在容器内 POST 热重载接口。需要 **`projects:write`** 与 **`console:kubernetes`**。打包上限 32 MiB，并排除常见构建目录。Skill：`kubernetes dev-sync`。建议用独立的 **dev** Deployment（`replicas: 1`），与登记到议事厅的 Service 分开。kubeconfig 不离开服务端。Agent 不得用 `PUT /api/projects/{id}/files/content` 把外部仓库镜像进项目再同步——应在项目内改，或 git pull 后再 `dev-sync`（见 skill `references/kubernetes.md`）。
 
 ## Agents
 
-**openkms** skill 可列出已登记集群、apply 白名单 kind（不含 Secret）、列出 secrets/configmaps/env、拉取日志、`kubernetes register-app`，以及 `kubernetes dev-sync`。API 密钥需要 **`console:kubernetes`**（dev-sync 还需要 **`projects:write`**；登记应用还需要 **`ontology:write`**）。kubeconfig 始终在服务端解密。
+**openkms** skill 可列出已登记集群、apply 白名单 kind（不含 Secret）、列出 secrets/configmaps/env、拉取日志、`kubernetes register-app`，以及 `kubernetes dev-sync`。API 密钥需要 **`console:kubernetes`**（dev-sync 还需要 **`projects:write`**；登记议事厅应用还需要 **`ontology:write`**）。kubeconfig 始终在服务端解密。
 
 ## 仍未覆盖
 

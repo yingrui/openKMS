@@ -58,7 +58,7 @@ export function KubernetesRegisterAppDialog({
       });
       toast.success(t('kubernetes.toastRegisteredApp'));
       onClose();
-      navigate(`/apps/${app.id}`);
+      navigate(`/chamber/${app.id}`);
     } catch (e) {
       toast.error(e instanceof Error ? e.message : t('kubernetes.toastRegisterFailed'));
     } finally {

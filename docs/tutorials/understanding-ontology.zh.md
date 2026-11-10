@@ -12,7 +12,7 @@
 
 **功能参考：** [本体](../features/ontology.md) · [Ontology Functions](../features/ontology-functions.md) · [目标](../goals.md)
 
-> openKMS **不在 Object Explorer 交付看板 UI**。「看板」= 带 **status/列** 的工作项，在 Explorer 浏览，可选 Neo4j 看依赖，用 FoO 决策，用 Actions **创建 / 更新 / 移动 / 删除**卡片（`edits` 写回）。可选托管 UI 见 **[应用](../features/app-builder.md)**（登记 Kubernetes Service）——产品内不再提供 A2UI 看板设计器。
+> openKMS **不在 Object Explorer 交付看板 UI**。「看板」= 带 **status/列** 的工作项，在 Explorer 浏览，可选 Neo4j 看依赖，用 FoO 决策，用 Actions **创建 / 更新 / 移动 / 删除**卡片（`edits` 写回）。可选托管 UI 见 **[议事厅](../features/app-builder.md)**（登记 Kubernetes Service）——产品内不再提供 A2UI 看板设计器。
 
 英文源：[Build a simple Kanban on the ontology](understanding-ontology.md)
 
@@ -46,7 +46,7 @@ Backlog → 进行中 → 评审 → 完成
 4. 用 **status** 当列，在 Explorer 里看到「板」。  
 5. 发布一个帮 AI **定优先级 / 析依赖 / 看产能** 的 FoO。  
 6. （可选）绑定 Actions，通过 `edits` **创建 / 更新 / 移动 / 删除**卡片（平台 apply `create` / `modify` / `delete`）。  
-7. （可选）知道 **[应用](../features/app-builder.md)** 可托管外部 UI 调用同一套本体 API；看板 DIY UI 不是 openKMS 内置能力。
+7. （可选）知道 **[议事厅](../features/app-builder.md)** 可托管外部 UI 调用同一套本体 API；看板 DIY UI 不是 openKMS 内置能力。
 
 ---
 
@@ -54,7 +54,7 @@ Backlog → 进行中 → 评审 → 完成
 
 ```text
 数据源 / 数据集（可选）→ 对象类型 → 实例（卡片）→ 链接 → Index（可选）→ FoO（决策）
-→ Action（写回）→ 应用（可选：登记外部托管 UI，见步骤 F）
+→ Action（写回）→ 议事厅（可选：登记外部托管 UI，见步骤 F）
 ```
 
 本实验可**不建数据集**，在 Object Explorer **直接建实例**（教学最快）。有 Jira/Linear 或 Postgres 种子表时再登记数据集并绑定。
@@ -110,7 +110,7 @@ Backlog → 进行中 → 评审 → 完成
 
 **E. Actions：创建 / 更新 / 移到 Done / 删除** — 在 **Ontology Manager → 操作类型** 为 WorkItem 创建内置规则（`object_create` / `object_modify` / `object_delete`），无需为简单 CRUD 绑定 Function。Rules 页可限制可写字段；`moveWorkItemToDone` 类动作可在 parameters 里设 `defaults`（如 `status: done`）。自定义逻辑仍用 Function 规则。执行后平台 **apply create / modify / delete**（响应含 `applied.*_ids`）。可在 Explorer 或 API 试写回。
 
-**F. 可选托管应用（外部 UI）** — Object Explorer（以及 Action / FoO API）对本实验已足够。若以后要**自定义看板 UI**，按普通 Web 应用开发，再登记到 **[应用](../features/app-builder.md)**（托管 Service + 身份头）。openKMS 不再提供产品内 A2UI 应用设计器来拼看板。
+**F. 可选议事厅应用（外部 UI）** — Object Explorer（以及 Action / FoO API）对本实验已足够。若以后要**自定义看板 UI**，按普通 Web 应用开发，再登记到 **[议事厅](../features/app-builder.md)**（托管 Service + 身份头）。openKMS 不再提供产品内 A2UI 应用设计器来拼看板。
 
 **记住：** 板**状态**与**规则**在本体里；任何可视化看板都是你自己的 UI，调用同一套 Action / Function。
 
@@ -155,4 +155,4 @@ Backlog → 进行中 → 评审 → 完成
 
 ## 9. 接下来
 
-加强同一块板上的 FoO · **[应用（托管模块）](../features/app-builder.md)**（登记自建看板 UI）· 接到真实跟踪工具的数据集 · [Tushare 案例](tushare-market-ontology.md) · [Ontology Functions](../features/ontology-functions.md)
+加强同一块板上的 FoO · **[议事厅（Chamber）](../features/app-builder.md)**（登记自建看板 UI）· 接到真实跟踪工具的数据集 · [Tushare 案例](tushare-market-ontology.md) · [Ontology Functions](../features/ontology-functions.md)

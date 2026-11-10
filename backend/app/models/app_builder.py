@@ -1,4 +1,4 @@
-"""Module Apps — hosted Kubernetes Service registry."""
+"""Chamber — hosted Kubernetes Service registry."""
 
 from datetime import datetime
 from uuid import uuid4
@@ -15,9 +15,9 @@ def _id() -> str:
 
 
 class AppBuilderApp(Base):
-    """A registered module app: identity + Kubernetes Service binding."""
+    """A registered Chamber app: identity + Kubernetes Service binding."""
 
-    __tablename__ = "ontology_apps"
+    __tablename__ = "chamber_apps"
 
     id: Mapped[str] = mapped_column(String(64), primary_key=True, default=_id)
     name: Mapped[str] = mapped_column(String(256), nullable=False)
@@ -37,13 +37,13 @@ class AppBuilderApp(Base):
 
 
 class AppBuilderPublishedVersion(Base):
-    """Immutable snapshot of a published module app (bindings) for history."""
+    """Immutable snapshot of a published Chamber app (bindings) for history."""
 
-    __tablename__ = "app_published_versions"
+    __tablename__ = "chamber_published_versions"
 
     id: Mapped[str] = mapped_column(String(64), primary_key=True, default=_id)
     app_id: Mapped[str] = mapped_column(
-        String(64), ForeignKey("ontology_apps.id", ondelete="CASCADE"), nullable=False, index=True
+        String(64), ForeignKey("chamber_apps.id", ondelete="CASCADE"), nullable=False, index=True
     )
     version: Mapped[int] = mapped_column(Integer, nullable=False)
     components: Mapped[list | dict | None] = mapped_column(JSONB, nullable=True)

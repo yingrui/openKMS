@@ -1,1 +1,1 @@
-"""Module Apps registry + Kubernetes Service proxy runtime."""
+"""Chamber registry + Kubernetes Service proxy runtime."""

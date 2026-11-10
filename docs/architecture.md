@@ -7,11 +7,11 @@
 ```mermaid
 flowchart TB
   subgraph Frontend["Frontend (React/Vite)"]
-    FE["Home (Agent composer or setup card when agents is on, plus Apps), Knowledge Map, Documents, Articles, Knowledge Bases, Wiki Spaces, Glossaries, Pipelines, Job runs, Models"]
+    FE["Home (Agent composer or setup card when agents is on, plus Chamber), Knowledge Map, Documents, Articles, Knowledge Bases, Wiki Spaces, Glossaries, Pipelines, Job runs, Models"]
   end
 
   subgraph Backend["Backend (FastAPI)"]
-    API["knowledge-map (/api/knowledge-map, incl. overview A2UI + NDJSON designer; legacy map-html), home, app-builder (/api/app-builder/apps), document-channels, article-channels, articles, documents, knowledge-bases, wiki-spaces, glossaries, pipelines, jobs, models, object-types, link-types, data-sources, datasets, feature-toggles"]
+    API["knowledge-map (/api/knowledge-map, incl. overview A2UI + NDJSON designer; legacy map-html), home, chamber (/api/chamber/apps), document-channels, article-channels, articles, documents, knowledge-bases, wiki-spaces, glossaries, pipelines, jobs, models, object-types, link-types, data-sources, datasets, feature-toggles"]
   end
 
   subgraph Storage["Data & Processing"]

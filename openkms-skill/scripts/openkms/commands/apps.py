@@ -1,4 +1,4 @@
-"""Module Apps — list / get / create / patch / publish / delete (hosted Kubernetes Services)."""
+"""Chamber apps — list / get / create / patch / publish / delete (hosted Kubernetes Services)."""
 from __future__ import annotations
 
 import argparse
@@ -22,14 +22,14 @@ def _parse_bindings_json(raw: str) -> dict[str, Any]:
 
 def cmd_list(_: argparse.Namespace) -> None:
     with client() as s:
-        r = s.get("/api/app-builder/apps")
+        r = s.get("/api/chamber/apps")
     r.raise_for_status()
     print_json(r.json())
 
 
 def cmd_get(ns: argparse.Namespace) -> None:
     with client() as s:
-        r = s.get(f"/api/app-builder/apps/{ns.id}")
+        r = s.get(f"/api/chamber/apps/{ns.id}")
     r.raise_for_status()
     print_json(r.json())
 
@@ -44,8 +44,8 @@ def cmd_create(ns: argparse.Namespace) -> None:
         body["description"] = ns.description
     if ns.bindings_json:
         body["bindings"] = _parse_bindings_json(ns.bindings_json)
-    path = "/api/app-builder/apps"
-    confirm_or_abort(f"create module app {ns.api_name}", "POST", path, body, ns.yes, ns.dry_run)
+    path = "/api/chamber/apps"
+    confirm_or_abort(f"create Chamber app {ns.api_name}", "POST", path, body, ns.yes, ns.dry_run)
     with client() as s:
         r = s.post(path, json=body)
     r.raise_for_status()
@@ -66,7 +66,7 @@ def cmd_patch(ns: argparse.Namespace) -> None:
             file=sys.stderr,
         )
         sys.exit(1)
-    path = f"/api/app-builder/apps/{ns.id}"
+    path = f"/api/chamber/apps/{ns.id}"
     confirm_or_abort(f"patch app {ns.id}", "PATCH", path, body, ns.yes, ns.dry_run)
     with client() as s:
         r = s.patch(path, json=body)
@@ -75,7 +75,7 @@ def cmd_patch(ns: argparse.Namespace) -> None:
 
 
 def cmd_publish(ns: argparse.Namespace) -> None:
-    path = f"/api/app-builder/apps/{ns.id}/publish"
+    path = f"/api/chamber/apps/{ns.id}/publish"
     confirm_or_abort(f"publish app {ns.id}", "POST", path, None, ns.yes, ns.dry_run)
     with client() as s:
         r = s.post(path, json={})
@@ -84,7 +84,7 @@ def cmd_publish(ns: argparse.Namespace) -> None:
 
 
 def cmd_delete(ns: argparse.Namespace) -> None:
-    path = f"/api/app-builder/apps/{ns.id}"
+    path = f"/api/chamber/apps/{ns.id}"
     confirm_or_abort(f"delete app {ns.id}", "DELETE", path, None, ns.yes, ns.dry_run)
     with client() as s:
         r = s.delete(path)
@@ -93,17 +93,17 @@ def cmd_delete(ns: argparse.Namespace) -> None:
 
 
 def add_subparser(sub: _SubParsersAction) -> None:
-    p = sub.add_parser("apps", help="Module Apps (hosted Kubernetes Services)")
+    p = sub.add_parser("apps", help="Chamber apps (hosted Kubernetes Services)")
     sp = p.add_subparsers(dest="apps_cmd", required=True)
 
-    ls = sp.add_parser("list", help="List apps (GET /api/app-builder/apps)")
+    ls = sp.add_parser("list", help="List apps (GET /api/chamber/apps)")
     ls.set_defaults(fn=cmd_list)
 
     gt = sp.add_parser("get", help="Get published app run doc")
     gt.add_argument("id", help="app id, e.g. oa-…")
     gt.set_defaults(fn=cmd_get)
 
-    cr = sp.add_parser("create", help="Register a module app (POST /api/app-builder/apps)")
+    cr = sp.add_parser("create", help="Register a Chamber app (POST /api/chamber/apps)")
     cr.add_argument("--name", required=True)
     cr.add_argument("--api-name", required=True)
     cr.add_argument("--description", default=None)

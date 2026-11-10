@@ -69,7 +69,7 @@ Domain market-analysis schemas and Functions are **not** openKMS product deliver
 | Manager top bar ⌘K / Discard·Save draft | P2 | Needs draft infra |
 | Global ontology Draft | Skipped | Function-level publish is enough |
 | OT wizard Action stubs without auto-bind | Soft | Bind Functions manually on Action types |
-| Kanban / board UI in Suite Apps | Out of product | Build your own UI; optionally register as a hosted **Apps** module — not Object Explorer |
+| Kanban / board UI in Suite Apps | Out of product | Build your own UI; optionally register as a hosted **Chamber** app — not Object Explorer |
 
 Do **not** schedule soft UX with market-analysis work.
 
@@ -160,7 +160,7 @@ Earlier (2026-08-16) `modify`-only shipping is superseded for object-instance ed
 
 - [x] Three App Rail icons; `check:app-modules` passes
 - [x] Old routes redirect
-- [x] Permission patterns include Apps routes (`/api/app-builder/apps`)
+- [x] Permission patterns include Chamber routes (`/api/chamber/apps`)
 - [x] Cypher page height (`check:app-layout`)
 - [x] No "Code Repository" user-facing copy
 - [x] Capability audit + DIY blockers documented (this page)

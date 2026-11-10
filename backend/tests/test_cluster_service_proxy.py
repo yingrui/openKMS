@@ -27,7 +27,7 @@ def _request(headers: dict[str, str], session: dict) -> Request:
     scope = {
         "type": "http",
         "method": "GET",
-        "path": "/api/app-builder/apps/a/proxy/",
+        "path": "/api/chamber/apps/a/proxy/",
         "headers": [(k.lower().encode(), v.encode()) for k, v in headers.items()],
         "session": session,
     }

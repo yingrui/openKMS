@@ -125,5 +125,5 @@ The method is only real if the platform enforces it:
 
 - [Goals](../goals.md) — the three promises and the declaration of this method.
 - [TRIZ analysis](triz-openkms.md) — which of these claims are supported by the current system.
-- [Data layer](../features/data-layer.md) · [Ontology](../features/ontology.md) · [Apps](../features/app-builder.md)
+- [Data layer](../features/data-layer.md) · [Ontology](../features/ontology.md) · [Chamber](../features/app-builder.md)
 - [Development plan](../development_plan.md)

@@ -28,7 +28,7 @@ def new_version_id() -> str:
 
 def bindings_as_dict(bindings: AppBuilderBindings | dict[str, Any] | None) -> dict[str, Any]:
     if bindings is None:
-        raise ValueError("module apps require bindings.k8s")
+        raise ValueError("Chamber apps require bindings.k8s")
     if isinstance(bindings, AppBuilderBindings):
         raw = bindings.model_dump(exclude_none=True)
     else:
@@ -72,7 +72,7 @@ def to_response_base(
 async def _require_k8s_cluster(db: AsyncSession, bindings: dict[str, Any]) -> dict[str, Any]:
     k8s = bindings.get("k8s") if isinstance(bindings, dict) else None
     if not isinstance(k8s, dict):
-        raise HTTPException(status_code=400, detail="module apps require bindings.k8s")
+        raise HTTPException(status_code=400, detail="Chamber apps require bindings.k8s")
     cluster_id = str(k8s.get("cluster_id") or "").strip()
     row = await db.get(KubernetesCluster, cluster_id) if cluster_id else None
     if not row:
@@ -153,7 +153,7 @@ async def create_app(
 
     template_id = (body.template_id or "module").strip() or "module"
     if template_id != "module":
-        raise HTTPException(status_code=400, detail="Only module apps are supported")
+        raise HTTPException(status_code=400, detail="Only Chamber apps are supported")
 
     try:
         bindings = bindings_as_dict(body.bindings)

@@ -317,15 +317,15 @@ The bundled **openkms-skill** CLI wraps **lifecycle** and **relationships** the 
 | GET | `/api/ontology/external-services/k8s-clusters` | Clusters a `k8s_service` entry can point at (`ontology:read`) |
 | POST | `/api/ontology/external-services/by-api-name/{api_name}/resolve` | Runtime-only: `kind` + `transport` (`direct`/`backend`), URL + decrypted secret for `http`, allowed paths (caller token required; recorded by the audit middleware) |
 | POST | `/api/ontology/external-services/by-api-name/{api_name}/call` | Relays a `k8s_service` call through the cluster's kubeconfig: `{method, path, query?, body?}` → `{status, body}`. Allowlist re-checked server-side; credential applied here; **502** when the cluster call fails |
-| GET | `/api/app-builder/apps` | List **module** apps (`?status=`); `ontology:read` |
-| POST | `/api/app-builder/apps` | Create module app (`bindings.k8s` required; publishes immediately; needs `console:kubernetes` + `ontology:write`) |
-| GET | `/api/app-builder/apps/{id}` | Published run document only (404 if draft) |
-| GET/POST/PUT/PATCH/DELETE | `/api/app-builder/apps/{id}/proxy/{path}` | HTTP proxy to the bound Kubernetes Service (`ontology:read`, session cookie) |
-| PATCH | `/api/app-builder/apps/{id}` | Update metadata / `bindings.k8s` |
-| DELETE | `/api/app-builder/apps/{id}` | Delete app |
-| POST | `/api/app-builder/apps/{id}/publish` | New bindings snapshot |
-| POST | `/api/app-builder/apps/{id}/unpublish` | Clear published; status → draft |
-| GET | `/api/app-builder/apps/{id}/versions` | List published versions |
+| GET | `/api/chamber/apps` | List **Chamber** apps (`?status=`); `ontology:read` |
+| POST | `/api/chamber/apps` | Create Chamber app (`bindings.k8s` required; publishes immediately; needs `console:kubernetes` + `ontology:write`) |
+| GET | `/api/chamber/apps/{id}` | Published run document only (404 if draft) |
+| GET/POST/PUT/PATCH/DELETE | `/api/chamber/apps/{id}/proxy/{path}` | HTTP proxy to the bound Kubernetes Service (`ontology:read`, session cookie) |
+| PATCH | `/api/chamber/apps/{id}` | Update metadata / `bindings.k8s` |
+| DELETE | `/api/chamber/apps/{id}` | Delete app |
+| POST | `/api/chamber/apps/{id}/publish` | New bindings snapshot |
+| POST | `/api/chamber/apps/{id}/unpublish` | Clear published; status → draft |
+| GET | `/api/chamber/apps/{id}/versions` | List published versions |
 | GET | `/api/data-sources` | List data sources (`limit`, `offset`; `console:data_sources`) |
 | POST | `/api/data-sources` | Create data source (`console:data_sources`) |
 | GET | `/api/data-sources/{id}` | Get data source (`console:data_sources`) |

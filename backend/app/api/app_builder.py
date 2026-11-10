@@ -1,4 +1,4 @@
-"""Module Apps registry + Service proxy API."""
+"""Chamber registry + Service proxy API."""
 
 from __future__ import annotations
 
@@ -74,7 +74,7 @@ def _register_routes(api: APIRouter) -> None:
 
     @api.get("/{app_id}", response_model=AppBuilderRunResponse, dependencies=_read_deps)
     async def get_app_run(app_id: str, db: AsyncSession = Depends(get_db)):
-        """Published module app only (404 if draft / unpublished)."""
+        """Published Chamber app only (404 if draft / unpublished)."""
         app = await apps_svc.get_app(db, app_id)
         if app.status != "published" or apps_svc.app_kind_of(app) != "module":
             raise HTTPException(status_code=404, detail="Published app not found")
@@ -155,10 +155,10 @@ def _register_routes(api: APIRouter) -> None:
             raise HTTPException(status_code=501, detail="WebSocket proxy is not supported")
         app = await apps_svc.get_app(db, app_id)
         if apps_svc.app_kind_of(app) != "module" or app.status != "published":
-            raise HTTPException(status_code=404, detail="Published module app not found")
+            raise HTTPException(status_code=404, detail="Published Chamber app not found")
         k8s = (app.bindings or {}).get("k8s") if isinstance(app.bindings, dict) else None
         if not isinstance(k8s, dict):
-            raise HTTPException(status_code=400, detail="module app is missing bindings.k8s")
+            raise HTTPException(status_code=400, detail="Chamber app is missing bindings.k8s")
         cluster_id = str(k8s.get("cluster_id") or "").strip()
         namespace = str(k8s.get("namespace") or "").strip()
         service = str(k8s.get("service") or "").strip()
@@ -217,7 +217,7 @@ def _register_routes(api: APIRouter) -> None:
         include_in_schema=True,
     )
     async def proxy_app_root(app_id: str, request: Request, db: AsyncSession = Depends(get_db)):
-        """Proxy HTTP to the registered Kubernetes Service (module apps)."""
+        """Proxy HTTP to the registered Kubernetes Service (Chamber apps)."""
         return await _proxy_module_app(app_id, request, "", db)
 
     @api.api_route(
@@ -235,5 +235,5 @@ def _register_routes(api: APIRouter) -> None:
         return await _proxy_module_app(app_id, request, path, db)
 
 
-router = APIRouter(prefix="/app-builder/apps", tags=["app-builder"])
+router = APIRouter(prefix="/chamber/apps", tags=["chamber"])
 _register_routes(router)

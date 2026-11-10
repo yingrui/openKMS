@@ -1,4 +1,4 @@
-"""Kubernetes Service binding stored on module apps (`bindings.k8s`)."""
+"""Kubernetes Service binding stored on Chamber apps (`bindings.k8s`)."""
 from __future__ import annotations
 
 from typing import Any
@@ -37,5 +37,5 @@ def normalize_module_bindings(raw: dict[str, Any] | None) -> dict[str, Any]:
     """Module apps only store ``bindings.k8s``."""
     k8s = normalize_k8s_binding((raw or {}).get("k8s"))
     if not k8s:
-        raise ValueError("module apps require bindings.k8s")
+        raise ValueError("Chamber apps require bindings.k8s")
     return {"k8s": k8s}

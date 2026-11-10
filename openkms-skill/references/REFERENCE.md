@@ -332,16 +332,16 @@ Requires **`knowledge_map:read`** (tree, link list) and **`knowledge_map:write`*
 | `evaluation-runs get` | GET | `/api/evaluations/{evaluation_id}/runs/{run_id}` | Full run with per-item results. |
 | `evaluation-runs compare` | GET | `/api/evaluations/{evaluation_id}/runs/compare?run_a=&run_b=` | Returns per-metric diffs between two runs. |
 
-### Module Apps — apps
+### Chamber apps — apps
 
 | CLI | Method | Path | Notes |
 |---|---|---|---|
-| `apps list` | GET | `/api/app-builder/apps` | Module apps only. |
-| `apps get` | GET | `/api/app-builder/apps/{id}` | Published run doc. |
-| `apps create` *(write)* | POST | `/api/app-builder/apps` | Requires `bindings.k8s`; publishes immediately. Prefer `kubernetes register-app`. |
-| `apps patch` *(write)* | PATCH | `/api/app-builder/apps/{id}` | Metadata / `bindings.k8s`. |
-| `apps publish` *(write)* | POST | `/api/app-builder/apps/{id}/publish` | New bindings snapshot. |
-| `apps delete` *(write)* | DELETE | `/api/app-builder/apps/{id}` | |
+| `apps list` | GET | `/api/chamber/apps` | Chamber apps only. |
+| `apps get` | GET | `/api/chamber/apps/{id}` | Published run doc. |
+| `apps create` *(write)* | POST | `/api/chamber/apps` | Requires `bindings.k8s`; publishes immediately. Prefer `kubernetes register-app`. |
+| `apps patch` *(write)* | PATCH | `/api/chamber/apps/{id}` | Metadata / `bindings.k8s`. |
+| `apps publish` *(write)* | POST | `/api/chamber/apps/{id}/publish` | New bindings snapshot. |
+| `apps delete` *(write)* | DELETE | `/api/chamber/apps/{id}` | |
 
 ### Kubernetes (`console:kubernetes`)
 
@@ -358,7 +358,7 @@ Kubeconfig is never returned. Register clusters in Console, not via this CLI.
 | `kubernetes logs` | GET | `/api/kubernetes-clusters/{id}/pods/{pod}/logs` | `--pod`, optional `--namespace`, `--tail`, `--container`, `--out`. |
 | `kubernetes apply` *(write)* | POST | `/api/kubernetes-clusters/{id}/apply` | Body `{yaml, namespace?}`. Kinds: Deployment, Service, Pod, ConfigMap. |
 | `kubernetes delete` *(write)* | POST | `/api/kubernetes-clusters/{id}/delete` | Body `{kind, name, namespace?}`. |
-| `kubernetes register-app` *(write)* | POST | `/api/app-builder/apps` | `template_id=module` + `bindings.k8s`. Also needs `ontology:write`. |
+| `kubernetes register-app` *(write)* | POST | `/api/chamber/apps` | `template_id=module` + `bindings.k8s`. Also needs `ontology:write`. |
 | `kubernetes secrets` | GET | `/api/kubernetes-clusters/{id}/secrets` | Keys only; values never returned. |
 | `kubernetes configmaps` | GET | `/api/kubernetes-clusters/{id}/configmaps` | Includes data values. |
 | `kubernetes env` | GET | `/api/kubernetes-clusters/{id}/deployments/{name}/env` | `--deployment`; secret refs unresolved. |

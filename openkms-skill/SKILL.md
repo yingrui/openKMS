@@ -4,9 +4,9 @@ description: >-
   Operates an openKMS deployment via personal API key using bundled scripts/cli.py only
   (no ad-hoc curl/HTTP). Covers search, documents/articles/wiki/KB, glossaries, knowledge-map,
   evaluations, data-sources/datasets/connectors/jobs, ontology (objects/links/functions/actions),
-  module Apps, and Kubernetes (apply, register-app, dev-sync, logs).
+  Chamber apps, and Kubernetes (apply, register-app, dev-sync, logs).
   Open references/functions-authoring.md for Function --source-code-file;
-  references/actions-authoring.md for ontology action-types; references/app-builder.md for module App
+  references/actions-authoring.md for ontology action-types; references/app-builder.md for Chamber app
   registration/patching; references/kubernetes.md for kubernetes apply/delete/dev-sync;
   references/datasets-authoring.md for dataset setup (register/upload, columns, keys, AI context,
   relationships, quality); references/stories.md for Data Insights stories and their findings;
@@ -40,8 +40,8 @@ Match the task, then open **one** guide. Skip rows that do not apply.
 | **Author/set up** datasets (register, upload, keys, `ai_context`, relationships, quality) | [references/datasets-authoring.md](references/datasets-authoring.md) |
 | **Publish a file dataset** (training slice: create → upload → publish → select rows) | [references/datasets-authoring.md](references/datasets-authoring.md#file-datasets-training-sets-and-other-immutable-artifacts) |
 | **Author / re-run** a Data Insights story (findings, each over its own dataset or model) | [references/stories.md](references/stories.md) |
-| Data sources / connectors / jobs / Apps list / Kubernetes browse | [references/commands-ops.md](references/commands-ops.md) |
-| Register or patch a **module App** (`apps …` / `kubernetes register-app`) | [references/app-builder.md](references/app-builder.md) (`bindings.k8s` only) |
+| Data sources / connectors / jobs / Chamber list / Kubernetes browse | [references/commands-ops.md](references/commands-ops.md) |
+| Register or patch a **Chamber app** (`apps …` / `kubernetes register-app`) | [references/app-builder.md](references/app-builder.md) (`bindings.k8s` only) |
 | Kubernetes **apply / delete / dev-sync** | [references/kubernetes.md](references/kubernetes.md) |
 | Domain gotchas (pipelines, KB ask vs search, eval update vs recreate, …) | [references/pitfalls.md](references/pitfalls.md) |
 | Multi-step recipes (A–I, Tushare DIY, register-app, research report) | [references/workflows.md](references/workflows.md) |
@@ -49,7 +49,7 @@ Match the task, then open **one** guide. Skip rows that do not apply.
 | Confirm CLI → HTTP (grep full CLI in backticks; never reimplement) | [references/REFERENCE.md](references/REFERENCE.md) |
 | **A route this skill does not wrap** — its parameters, body, or what it returns | `python scripts/cli.py api spec --path /api/<area>` (reads the generated `/openapi.json`; `--full` for the operation objects). Do **not** guess a path from this skill's prose — and **reading a route is not permission to call it**: if you need a route the CLI does not wrap, stop and report the gap (see the rule above) |
 
-Authoring / Apps / k8s mutate guides matter only for those write paths — inventing Function shape, A2UI Source, or omitting `bindings.k8s` is what goes wrong if you skip **that** row.
+Authoring / Chamber / k8s mutate guides matter only for those write paths — inventing Function shape, A2UI Source, or omitting `bindings.k8s` is what goes wrong if you skip **that** row.
 
 ## Quick start
 

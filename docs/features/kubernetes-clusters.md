@@ -1,15 +1,15 @@
 # Kubernetes clusters
 
-Console management for **registered Kubernetes clusters** that agents and operators can use. Operators can **bring your own cluster** (paste a kubeconfig, encrypt at rest, test connectivity) and **browse** namespaces, Deployments, Services, and Pods. The console can **apply** allowlisted YAML, **delete** those kinds, **read Pod logs**, and **register a Service in Apps**. Cloud provisioning is not included.
+Console management for **registered Kubernetes clusters** that agents and operators can use. Operators can **bring your own cluster** (paste a kubeconfig, encrypt at rest, test connectivity) and **browse** namespaces, Deployments, Services, and Pods. The console can **apply** allowlisted YAML, **delete** those kinds, **read Pod logs**, and **register a Service in Chamber**. Cloud provisioning is not included.
 
 Related: [Console & authentication](console-and-auth.md), [Agents](openkms-agents.md), [Chamber](app-builder.md), [API reference](api-reference.md#kubernetes-clusters-consolekubernetes), Data models.
 
 ## Console UI
 
 - **List:** `/console/kubernetes` — register, edit, delete, test connection; open a cluster for browse
-- **Detail:** `/console/kubernetes/{id}` — pick a namespace; Deployments, Services, Pods, Secrets, ConfigMaps; Deployment env; Pod logs; apply YAML; delete allowlisted objects; register a Service in Apps
+- **Detail:** `/console/kubernetes/{id}` — pick a namespace; Deployments, Services, Pods, Secrets, ConfigMaps; Deployment env; Pod logs; apply YAML; delete allowlisted objects; register a Service in Chamber
 - **Permission:** `console:kubernetes` (or `all` / admin)
-- Form fields: name, description, default namespace, optional **API server** (the URL the backend uses to reach the cluster), kubeconfig YAML, optional **skip TLS verification** (lab / self-signed only), optional **openKMS runs inside this cluster** (`options.direct_service_access`: hosted Apps call `*.svc.cluster.local` directly instead of the API-server proxy; see [Apps](app-builder.md#module-hosted-services))
+- Form fields: name, description, default namespace, optional **API server** (the URL the backend uses to reach the cluster), kubeconfig YAML, optional **skip TLS verification** (lab / self-signed only), optional **openKMS runs inside this cluster** (`options.direct_service_access`: Chamber apps call `*.svc.cluster.local` directly instead of the API-server proxy; see [Chamber](app-builder.md#chamber-hosted-services))
 
 API responses never include kubeconfig plaintext — only `kubeconfig_configured: true/false` plus non-secret fields (`api_server`, `default_namespace`, last test status).
 
@@ -42,7 +42,7 @@ Prefer kubeconfigs that use **token** or **client certificate** credentials. Cli
 
 Console row actions match the skill: logs Dialog, confirm delete, apply Dialog, Secret/ConfigMap editors, Deployment **Environment**. kubeconfig never returns in responses. Secrets labeled `openkms.io/project-id` are **read-only** in the console (edit from Project settings → Deploy).
 
-**Register in Chamber** (Service row): creates a published `template_id=module` app bound to `cluster_id` / namespace / service / port. Requires `ontology:write` in addition to `console:kubernetes`. See [Chamber](app-builder.md#module-hosted-services). The workload gets the signed-in user from openKMS [identity headers](app-builder.md#module-identity-headers) and should not implement its own login.
+**Register in Chamber** (Service row): creates a published `template_id=module` app bound to `cluster_id` / namespace / service / port. Requires `ontology:write` in addition to `console:kubernetes`. See [Chamber](app-builder.md#chamber-hosted-services). The workload gets the signed-in user from openKMS [identity headers](app-builder.md#chamber-identity-headers) and should not implement its own login.
 
 ## Deploy secrets (projects) {#deploy-secrets-projects}
 
@@ -50,11 +50,11 @@ Operators store encrypted key/values under **Project settings → Deploy**, then
 
 ## Dev sync (projects) {#dev-sync}
 
-`POST /api/projects/{id}/kubernetes/dev-sync` packs a project subtree (relative `local_path`) and extracts it into the newest Ready Pod of a Deployment (`container_path`). Optional `reload` POSTs a webhook inside the container. Requires **`projects:write`** and **`console:kubernetes`**. Packed size capped at 32 MiB; common build dirs are excluded. Skill: `kubernetes dev-sync`. Prefer a separate **dev** Deployment (`replicas: 1`) from the Service registered in Apps. Kubeconfig never leaves the server. Agents must not use `PUT /api/projects/{id}/files/content` to mirror an external checkout into the project before sync — edit in the project or git pull, then `dev-sync` (see skill `references/kubernetes.md`).
+`POST /api/projects/{id}/kubernetes/dev-sync` packs a project subtree (relative `local_path`) and extracts it into the newest Ready Pod of a Deployment (`container_path`). Optional `reload` POSTs a webhook inside the container. Requires **`projects:write`** and **`console:kubernetes`**. Packed size capped at 32 MiB; common build dirs are excluded. Skill: `kubernetes dev-sync`. Prefer a separate **dev** Deployment (`replicas: 1`) from the Service registered in Chamber. Kubeconfig never leaves the server. Agents must not use `PUT /api/projects/{id}/files/content` to mirror an external checkout into the project before sync — edit in the project or git pull, then `dev-sync` (see skill `references/kubernetes.md`).
 
 ## Agents
 
-The **openkms** skill lists registered clusters, applies allowlisted kinds (not Secret), lists secrets/configmaps/env, tails logs, can `kubernetes register-app`, and can `kubernetes dev-sync` into a Pod. The session API key needs **`console:kubernetes`** (plus **`projects:write`** for dev-sync; **`ontology:write`** to register Apps). Kubeconfig stays encrypted on the server.
+The **openkms** skill lists registered clusters, applies allowlisted kinds (not Secret), lists secrets/configmaps/env, tails logs, can `kubernetes register-app`, and can `kubernetes dev-sync` into a Pod. The session API key needs **`console:kubernetes`** (plus **`projects:write`** for dev-sync; **`ontology:write`** to register Chamber apps). Kubeconfig stays encrypted on the server.
 
 ## Out of scope (still open)
 

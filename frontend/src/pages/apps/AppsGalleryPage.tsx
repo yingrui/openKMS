@@ -12,7 +12,7 @@ export function AppsGalleryPage() {
   const { t } = useTranslation('apps');
   const confirm = useConfirm();
   const { canAccessPath } = useAuth();
-  const canManage = canAccessPath('/apps');
+  const canManage = canAccessPath('/chamber');
   const [apps, setApps] = useState<AppBuilderAppResponse[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -62,7 +62,7 @@ export function AppsGalleryPage() {
         <div className="apps-page__grid">
           {apps.map((app) => {
             const openTo =
-              app.status === 'published' ? `/apps/${app.id}` : `/apps/${app.id}/settings`;
+              app.status === 'published' ? `/chamber/${app.id}` : `/chamber/${app.id}/settings`;
             return (
               <div key={app.id} className="apps-page__card">
                 <div className="apps-page__card-top">
@@ -72,7 +72,7 @@ export function AppsGalleryPage() {
                   {canManage ? (
                     <div className="apps-page__card-actions">
                       <Link
-                        to={`/apps/${app.id}/settings`}
+                        to={`/chamber/${app.id}/settings`}
                         title={t('editSettings')}
                         aria-label={t('editSettings')}
                       >

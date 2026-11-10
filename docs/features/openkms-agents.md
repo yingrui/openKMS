@@ -15,7 +15,7 @@ In-product **Agents** area: personal **projects** with an on-disk workspace (`{O
 | Subagents (explore = workspace files; research = web + skills) | ✅ |
 | Local git | ✅ |
 | Remote git (HTTPS + PAT) | ✅ |
-| Console Kubernetes cluster browse + apply/logs + register Service in Apps | ✅ |
+| Console Kubernetes cluster browse + apply/logs + register Service in Chamber | ✅ |
 | Project deploy secrets (encrypted → sync Opaque Secret; Agent sees names/keys only) | ✅ |
 | Deploy via openkms skill (`kubernetes apply` / `register-app` / `dev-sync`) | ✅ (API key needs `console:kubernetes`; register-app also `ontology:write`; dev-sync also `projects:write`) |
 

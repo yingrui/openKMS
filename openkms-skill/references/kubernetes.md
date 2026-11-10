@@ -63,9 +63,9 @@ Normal authoring **inside** the project (deploy YAML, app code the user asked yo
 |------|---------|
 | First deploy / change image, ports, env | `kubernetes apply` |
 | Push **project workspace** edits into an existing **dev** Pod | `kubernetes dev-sync` |
-| Publish for end users in Apps | `kubernetes register-app` (stable Service; not the hot-sync target) |
+| Publish for end users in Chamber | `kubernetes register-app` (stable Service; not the hot-sync target) |
 
-**Remote expectations:** prefer a **dev** Deployment with `replicas: 1`, separate from the published module App. The container should either watch files (e.g. nodemon / `uvicorn --reload`) or expose `POST /-/reload` (override with `--reload-path` / `--reload-port`). Without a watcher or `--reload`, files land on disk but the process may keep old code in memory.
+**Remote expectations:** prefer a **dev** Deployment with `replicas: 1`, separate from the published Chamber app. The container should either watch files (e.g. nodemon / `uvicorn --reload`) or expose `POST /-/reload` (override with `--reload-path` / `--reload-port`). Without a watcher or `--reload`, files land on disk but the process may keep old code in memory.
 
 ## Deploy secrets (database passwords, etc.)
 
@@ -106,12 +106,12 @@ env:
 Non-secret config: `kubernetes configmaps --cluster-id ID --namespace NS` (includes values); reference with `configMapRef` / `configMapKeyRef` the same way.  
 Verify wiring after apply: `kubernetes env --cluster-id ID --deployment NAME --namespace NS` (shows refs, not secret values).
 
-## Register in Apps
+## Register in Chamber
 
-Register a Service as a **hosted App** (`template_id=module`, published immediately):
+Register a Service as a **Chamber app** (`template_id=module`, published immediately):
 
 `kubernetes register-app --cluster-id ID --namespace NS --service NAME --port 80 --name "Web" --api-name webApp --yes`
 
-Needs **`console:kubernetes`** and **`ontology:write`**. The app is opened in Apps via the API-server Service proxy (no kubeconfig in the browser). The workload must work under a URL subpath or use relative assets. WebSocket is not proxied.
+Needs **`console:kubernetes`** and **`ontology:write`**. The app is opened in Chamber via the API-server Service proxy (no kubeconfig in the browser). The workload must work under a URL subpath or use relative assets. WebSocket is not proxied.
 
-Hosted apps should **not** implement their own sign-in. openKMS authenticates the user and sends `X-Openkms-User-Id`, `X-Openkms-Username`, `X-Openkms-User-Name`, `X-Openkms-User-Email`, `X-Openkms-User-Admin` (values percent-encoded UTF-8) on every proxied request; read identity from those headers, key user data by `X-Openkms-User-Id`, return `401` when it is missing. Do not expose the Service via Ingress / NodePort. Full contract: `docs/features/app-builder.md#module-identity-headers`.
+Chamber apps should **not** implement their own sign-in. openKMS authenticates the user and sends `X-Openkms-User-Id`, `X-Openkms-Username`, `X-Openkms-User-Name`, `X-Openkms-User-Email`, `X-Openkms-User-Admin` (values percent-encoded UTF-8) on every proxied request; read identity from those headers, key user data by `X-Openkms-User-Id`, return `401` when it is missing. Do not expose the Service via Ingress / NodePort. Full contract: `docs/features/app-builder.md#chamber-identity-headers`.

@@ -20,13 +20,13 @@ Per-feature reference, split by topic under `docs/features/`. The table below is
 | [Ontology — objects, links, datasets](features/ontology.md) | Object/link types, instances, data sources, datasets |
 | [Catalog (Datasets · Semantic Model · Data Insights)](features/data-layer.md) | Catalog + semantic model: datasets, relationships (FK edges), quality rules, metrics, file ingest, profile/schema, row editing (`data:*`); Data Insights stories of findings, each with its own source (`explorer:*`) |
 | [Ontology Functions](features/ontology-functions.md) | Three Suite Apps (Manager, Object Explorer, Function Editor), PG-backed functions, ofs runtime |
-| [Chamber (decision systems)](features/app-builder.md) | Register and run decision-system UIs as hosted apps; API-server proxy + identity headers; gallery / run / registry settings |
+| [Chamber (decision systems)](features/app-builder.md) | Register and run decision-system UIs as Chamber apps; API-server proxy + identity headers; gallery / run / registry settings |
 | [Ontology Function Client](features/ontology-sdk.md) | `openkms_functions` Client / `@function` / edits; string api names |
 | [Object Explorer](features/object-explorer.md) | Cypher exploration, list view, instance graph layout and rendering |
 | [Pipelines, jobs & models](features/pipelines-and-jobs.md) | Pipeline templates, procrastinate jobs, provider/model registry (multimodal image/video models planned) |
 | [Data security](features/data-security.md) | Two-layer model (operation RBAC + resource ACL), groups, sharing, inheritance, enforcement |
 | [Console & authentication](features/console-and-auth.md) | Permission catalog, Console UX, OIDC/local auth, system settings, user Settings (API keys), feature toggles |
-| [Kubernetes clusters](features/kubernetes-clusters.md) | Console BYO cluster: browse Deployments/Services/Pods, logs, apply/delete; register a Service in Apps |
+| [Kubernetes clusters](features/kubernetes-clusters.md) | Console BYO cluster: browse Deployments/Services/Pods, logs, apply/delete; register a Service in Chamber |
 | [Connectors](features/connectors.md) | `/connectors` sync & search_tool kinds, dataset outputs, Tushare sync jobs, schedules, Agents `web_search` |
 | [Agents (project workspaces)](features/openkms-agents.md) | Deep Agents chat, files, local/remote git, plan mode, openKMS research tools |
 | [openkms-skill](features/openkms-skill.md) | Agent Skill + CLI (`openkms-skill/`); openKMS Agents, Claude Code, OpenCode, etc. — not a substitute for domain in-app assistants |

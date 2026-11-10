@@ -1,6 +1,6 @@
-# Apps (module only)
+# Chamber apps
 
-openKMS Apps are **hosted Kubernetes Services** (`template_id=module`). There is **no** A2UI Source / Design / synthesize / OntoObjectList authoring in this product.
+Chamber apps are **hosted Kubernetes Services** (`template_id=module`). There is **no** A2UI Source / Design / synthesize / OntoObjectList authoring in this product.
 
 ## Prefer
 
@@ -13,7 +13,7 @@ Needs **`console:kubernetes`** + **`ontology:write`**.
 
 | Command | Purpose |
 |---------|---------|
-| `apps list` | List module apps |
+| `apps list` | List Chamber apps |
 | `apps get <id>` | Published run document |
 | `apps create …` | Register (requires `bindings.k8s`) |
 | `apps patch <id> …` | Name / description / `bindings.k8s` |
@@ -25,4 +25,4 @@ Needs **`console:kubernetes`** + **`ontology:write`**.
 - Invent A2UI Source, `OntoObjectList`, `apps synthesize`, or `--a2ui-messages-file`
 - Use `PUT /api/projects/…/files/content` to mirror another clone for hot sync (see [kubernetes.md](kubernetes.md))
 
-Identity headers for hosted apps: see monorepo `docs/features/app-builder.md#module-identity-headers` or [kubernetes.md](kubernetes.md).
+Identity headers for Chamber apps: see monorepo `docs/features/app-builder.md#chamber-identity-headers` or [kubernetes.md](kubernetes.md).

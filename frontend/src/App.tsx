@@ -384,7 +384,13 @@ function LegacyLinksRedirect() {
 function LegacyAppBuilderSettingsRedirect() {
   const { appId = '' } = useParams();
   const location = useLocation();
-  return <Navigate to={`/apps/${appId}/settings${location.search}${location.hash}`} replace />;
+  return <Navigate to={`/chamber/${appId}/settings${location.search}${location.hash}`} replace />;
+}
+
+function LegacyAppsRedirect() {
+  const location = useLocation();
+  const rest = location.pathname.replace(/^\/apps/, '') + location.search + location.hash;
+  return <Navigate to={`/chamber${rest}`} replace />;
 }
 
 function WikiSpacePagesGate() {
@@ -566,10 +572,12 @@ function App() {
             <Route path="external-services" element={<Navigate to="/external-services" replace />} />
             <Route path=":functionId" element={<FunctionEditorWorkspacePage />} />
           </Route>
-          <Route path="app-builder" element={<Navigate to="/apps" replace />} />
+          <Route path="app-builder" element={<Navigate to="/chamber" replace />} />
           <Route path="app-builder/:appId/settings" element={<LegacyAppBuilderSettingsRedirect />} />
-          <Route path="app-builder/*" element={<Navigate to="/apps" replace />} />
-          <Route path="apps" element={<Outlet />}>
+          <Route path="app-builder/*" element={<Navigate to="/chamber" replace />} />
+          <Route path="apps" element={<LegacyAppsRedirect />} />
+          <Route path="apps/*" element={<LegacyAppsRedirect />} />
+          <Route path="chamber" element={<Outlet />}>
             <Route index element={<AppsGalleryPage />} />
             <Route path=":appId/settings" element={<AppsSettingsPage />} />
             <Route path=":appId" element={<AppsRunPage />} />

@@ -50,9 +50,9 @@ Definitions first; each concept is **authored in exactly one place**.
 
 ## Layer model (application → ontology → data)
 
-| Layer | Apps | Answers |
+| Layer | Application | Answers |
 |-------|------|---------|
-| **Application** | Agents · Documents · Articles · Wikis · KB · Media · Glossaries · Evaluations · Knowledge Map · Apps | *Knowledge work and delivery* |
+| **Application** | Agents · Documents · Articles · Wikis · KB · Media · Glossaries · Evaluations · Knowledge Map · Chamber | *Knowledge work and delivery* |
 | **Ontology** | Ontology Manager · Object Explorer · Function Editor | *What the business means and does* |
 | **Data** | **Datasets** (Catalog + **Model**), **Data Insights** | *What is the data, how trustworthy, how to analyze it* |
 

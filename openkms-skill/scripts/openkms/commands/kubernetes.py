@@ -216,9 +216,9 @@ def cmd_register_app(ns: argparse.Namespace) -> None:
     }
     if ns.description is not None:
         body["description"] = ns.description
-    api = "/api/app-builder/apps"
+    api = "/api/chamber/apps"
     confirm_or_abort(
-        action=f"register module app {ns.api_name} → {ns.service}:{ns.port}",
+        action=f"register Chamber app {ns.api_name} → {ns.service}:{ns.port}",
         method="POST",
         path=api,
         body=body,
@@ -291,7 +291,7 @@ def add_subparser(sub) -> None:
     add_write_flags(dl)
     dl.set_defaults(fn=cmd_delete)
 
-    ra = sp.add_parser("register-app", help="Register a Service as a published module App")
+    ra = sp.add_parser("register-app", help="Register a Service as a published Chamber app")
     ra.add_argument("--cluster-id", required=True)
     ra.add_argument("--namespace", required=True)
     ra.add_argument("--service", required=True)

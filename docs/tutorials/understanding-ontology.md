@@ -12,7 +12,7 @@
 
 **Product reference:** [Ontology](../features/ontology.md) · [Ontology Functions](../features/ontology-functions.md) · [Goals](../goals.md)
 
-> openKMS does **not** ship a Kanban board UI in Object Explorer. “Board” means: typed work items with a **status/column** property, browseable in Object Explorer, optionally graphed in Neo4j, with FoO for AI-assisted decisions and Actions to **create / update / move / delete** cards (`edits` apply). Optional hosted UIs live under **[Apps](../features/app-builder.md)** (registered Kubernetes Services)—not an in-product A2UI board designer.
+> openKMS does **not** ship a Kanban board UI in Object Explorer. “Board” means: typed work items with a **status/column** property, browseable in Object Explorer, optionally graphed in Neo4j, with FoO for AI-assisted decisions and Actions to **create / update / move / delete** cards (`edits` apply). Optional hosted UIs live under **[Chamber](../features/app-builder.md)** (registered Kubernetes Services)—not an in-product A2UI board designer.
 
 ---
 
@@ -46,7 +46,7 @@ By the end you can:
 4. Put a few cards in columns via a **status** property and find them in Object Explorer.  
 5. Publish one **FoO** that helps an AI decide (priority, dependencies, or capacity).  
 6. (Optional) Bind Actions that **create / update / move / delete** cards via `edits` (`create` / `modify` / `delete` apply).  
-7. (Optional) Know that **[Apps](../features/app-builder.md)** can host an external UI for the same ontology APIs (module registration)—board DIY UI is not built into openKMS.
+7. (Optional) Know that **[Chamber](../features/app-builder.md)** can host an external UI for the same ontology APIs (module registration)—board DIY UI is not built into openKMS.
 
 ---
 
@@ -61,7 +61,7 @@ Link type                  → belongsTo / assignedTo / dependsOn
 Index (Neo4j)              → Cypher (“what blocks WI-2?”)
 Function (FoO)             → suggestWorkItemPriority / workItemDependencyClosure
 Action                     → create / update / move / delete (edits create|modify|delete; platform applies)
-Apps (optional)            → hosted external UI registered to a Service (see Step F)
+Chamber (optional)         → hosted external UI registered to a Service (see Step F)
 ```
 
 **Dataset vs object type:** a dataset is a *table registration*; an object type says those rows (or hand-created instances) *mean* WorkItems. For this lab you may **skip datasets** and create instances directly in Object Explorer—fastest path for teaching. Add datasets when you sync from Jira/Linear or seed Postgres.
@@ -271,9 +271,9 @@ When creating a **WorkItem** object type, the Manager wizard can tick Create / E
 
 Try create from an App or API; try update / move / delete on a card in Object Explorer.
 
-### Step F — Optional hosted Apps (external UI)
+### Step F — Optional Chamber apps (external UI)
 
-Object Explorer (and Action / FoO APIs) are enough for this lab. If you later want a **custom board UI**, build it as a normal web app and **register** it under **[Apps](../features/app-builder.md)** (hosted Service + identity headers). openKMS no longer ships an in-product A2UI App designer for composing boards.
+Object Explorer (and Action / FoO APIs) are enough for this lab. If you later want a **custom board UI**, build it as a normal web app and **register** it under **[Chamber](../features/app-builder.md)** (hosted Service + identity headers). openKMS no longer ships an in-product A2UI App designer for composing boards.
 
 **Story to remember:** board **state** and **rules** live in the ontology; any visual board is your own UI calling the same Actions / Functions.
 
@@ -315,7 +315,7 @@ Object Explorer (and Action / FoO APIs) are enough for this lab. If you later wa
 | **dependsOn** | Blocker edge for analysis |
 | **FoO** | Decision helper on a card / project |
 | **Action** | Intentional write (create / modify / delete apply) |
-| **Apps** | Optional hosted external UI registered to a Service |
+| **Chamber** | Optional hosted external UI registered to a Service |
 | **Index** | Optional graph for dependency Cypher |
 
 Full stack glossary remains in older revisions’ spirit: data source, dataset, publish, Action, TSP—see [Ontology](../features/ontology.md).
@@ -327,7 +327,7 @@ Full stack glossary remains in older revisions’ spirit: data source, dataset, 
 | Path | When |
 |------|------|
 | Enrich FoO (`workItemDependencyClosure`, `teamCapacitySnapshot`) | You want stronger AI decisions on the same board |
-| [Chamber](../features/app-builder.md) | Register your own board UI as a hosted app |
+| [Chamber](../features/app-builder.md) | Register your own board UI as a Chamber app |
 | Bind datasets / connector sync from a real tracker | You outgrow hand-entered cards |
 | [Tushare market ontology DIY](tushare-market-ontology.md) | Practice the same pattern on market data |
 | [Ontology Functions](../features/ontology-functions.md) | Deeper authoring / SDK |

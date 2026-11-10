@@ -43,7 +43,7 @@ tools.
 |---|---|---|---|
 | **Sub-system** | people author wiki/docs | agents write the full stack through the skill; people correct | agents autonomous, people sample-review |
 | **System** | static document store | governed network for people **and** agents | self-maintaining knowledge/data layer |
-| **Super-system** | single tool | connectors / Apps (K8s) / external skill hosts | data mesh + agent ecosystem |
+| **Super-system** | single tool | connectors / Chamber (K8s) / external skill hosts | data mesh + agent ecosystem |
 
 **Observation:** the sub-system (agent writes) runs ahead of the system layer (oversight/attribution)
 and the super-system layer (downstream loops). That gap generates every contradiction below.
@@ -214,7 +214,7 @@ separation is **condition** — placing oversight at the write path instead of t
 | Transition to micro-level | documents → chunks → instances/triples → semantic model ✅ |
 | Increase dynamism/controllability | toggles / ACL / lifecycle active |
 | **Sub-system coordination** | two mismatches: implementation (agent-operated) ↔ docs (human KMS); agent surface (hand-written) ↔ API |
-| Transition to super-system | connectors / Apps (K8s) / external skill hosts, in progress |
+| Transition to super-system | connectors / Chamber (K8s) / external skill hosts, in progress |
 
 ---
 

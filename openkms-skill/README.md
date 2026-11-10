@@ -179,12 +179,12 @@ openkms-skill/
     pitfalls.md            # discovery, jobs, domain gotchas
     commands-content.md    # search / docs / wiki / KB / eval …
     commands-ontology.md   # objects / links / FoO / actions
-    commands-ops.md        # connectors / jobs / Apps / k8s
+    commands-ops.md        # connectors / jobs / Chamber / k8s
     workflows.md           # recipes A–I
     research-report.md     # research → Reveal + Plotly static HTML
     functions-authoring.md # Function source (mandatory before --source-code-file)
     actions-authoring.md   # Action types (mandatory before action-types writes)
-    app-builder.md         # Module Apps (bindings.k8s)
+    app-builder.md         # Chamber apps (bindings.k8s)
     kubernetes.md          # apply / register-app / dev-sync
     REFERENCE.md           # CLI ↔ HTTP (operators / review — not for agents to reimplement)
   scripts/
