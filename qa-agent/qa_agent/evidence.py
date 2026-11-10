@@ -4,7 +4,8 @@ Before this, `select_display_sources` returned a flat list: a query the agent ra
 query the answer's numbers came from. That is the difference a reader needs, and it is the difference an evaluation cannot
 see when everything looks the same.
 
-Nothing is dropped. A source is labelled `used` when at least one number in the answer traces to its rows, otherwise
+Nothing is dropped. A source is labelled `used` when at least one number in the answer traces to it (a query's rows, or a
+passage's own text), otherwise
 `consulted` — the query ran, the answer did not draw on it. For evidence with no rows (RAG chunks, Page Index sections) the
 label stays `None`: the notion does not apply, and inventing one would be worse than saying nothing.
 """
@@ -21,10 +22,16 @@ USED = "used"
 CONSULTED = "consulted"
 
 
-def _rows_of(source: SourceItem) -> list[Any]:
-    data_query = source.data_query or {}
-    rows = data_query.get("rows")
-    return rows if isinstance(rows, list) else []
+def _evidence_of(source: SourceItem) -> list[Any]:
+    """What this source can be traced against: a query's rows, or a passage's own text.
+
+    A RAG answer quoting "IC_IR > 0.5" is grounded in the chunk that says so. Tracing only against Catalog rows made every
+    prose answer score 0/9 — a false alarm that would have taught readers to ignore the number.
+    """
+    if source.data_query:
+        rows = source.data_query.get("rows")
+        return rows if isinstance(rows, list) else []
+    return [source.content] if source.content else []
 
 
 def label_sources(sources: list[SourceItem], answer: str) -> list[SourceItem]:
@@ -38,7 +45,7 @@ def label_sources(sources: list[SourceItem], answer: str) -> list[SourceItem]:
         if not source.data_query:
             labelled.append(source)
             continue
-        report = traceable_numbers(answer, _rows_of(source))
+        report = traceable_numbers(answer, _evidence_of(source))
         labelled.append(
             source.model_copy(
                 update={
@@ -52,10 +59,10 @@ def label_sources(sources: list[SourceItem], answer: str) -> list[SourceItem]:
 
 def ground(sources: list[SourceItem], answer: str) -> GroundingReport:
     """The answer's overall grounding: how many of its numbers appear in *any* cited result."""
-    rows: list[Any] = []
+    evidence: list[Any] = []
     for source in sources:
-        rows.extend(_rows_of(source))
-    report = traceable_numbers(answer, rows)
+        evidence.extend(_evidence_of(source))
+    report = traceable_numbers(answer, evidence)
     return GroundingReport(
         traceable=report["traceable"],
         total=report["total"],

@@ -58,6 +58,8 @@ class AskResponse(BaseModel):
     #: Present when the answer was judged against its own evidence. Always reported; whether anything acts on it is a
     #: per-KB policy (`answer_policy.require_grounded_numbers`).
     grounding: GroundingReport | None = None
+    #: The Langfuse trace of this turn, when tracing is on. The handle an evaluation or a reviewer scores afterwards.
+    langfuse_trace_id: str | None = None
 
 
 class RetrieveRequest(BaseModel):

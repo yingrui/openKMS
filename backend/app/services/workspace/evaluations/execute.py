@@ -14,6 +14,7 @@ from app.models.evaluation import EvaluationItem
 from app.models.knowledge_base import KnowledgeBase
 from app.services.platform.boundaries import boundary
 from app.services.content.knowledge_bases.kb_search import search_knowledge_base
+from app.services.workspace.evaluations.scores import score_data_query_item
 from app.services.workspace.evaluations.search_judge import judge_qa_answer, judge_search_results
 
 logger = logging.getLogger(__name__)
@@ -309,6 +310,8 @@ async def run_data_query_evaluation(
                         question=item.query,
                         conversation_history=[],
                         access_token=access_token,
+                        # One trace per item, grouped under the evaluation run: a score needs a trace to attach to.
+                        session_id=f"eval-{evaluation_id[:8]}-{item.id[:8]}",
                     ),
                 )
                 resp.raise_for_status()
@@ -373,6 +376,16 @@ async def run_data_query_evaluation(
                 # No expected query means the model cannot answer this, so citing anything is the failure.
                 cited = len(result["extra_sources"])
                 reasons = [f"should have refused, but cited {cited} quer{'y' if cited == 1 else 'ies'}"] if cited else []
+
+            # Best effort, and never fatal: the trace is where cost and latency already live, so the verdict belongs there
+            # too — the evaluation tables keep the reproducible record.
+            score_data_query_item(
+                data.get("langfuse_trace_id"),
+                passed=bool(result["passed"]),
+                coverage=float(result["coverage"]),
+                reasoning="; ".join(reasons) or "every expected query was cited",
+                kb_id=kb.id,
+            )
 
             out.append(
                 {

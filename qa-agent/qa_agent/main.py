@@ -106,7 +106,12 @@ async def _ask_impl(kb_id: str, request: AskRequest) -> AskResponse:
         len(sources),
     )
     grounding = result.get("grounding")
-    return AskResponse(answer=answer, sources=sources, grounding=grounding)
+    return AskResponse(
+        answer=answer,
+        sources=sources,
+        grounding=grounding,
+        langfuse_trace_id=result.get("langfuse_trace_id"),
+    )
 
 
 def _stream_response(kb_id: str, request: AskRequest) -> StreamingResponse:

@@ -131,3 +131,51 @@ def get_langfuse_callback() -> "CallbackHandler | None":
         return CallbackHandler()
     except ImportError:
         return None
+
+
+def current_trace_id(callback: "CallbackHandler | None" = None) -> str | None:
+    """The trace of the turn just served, or None when Langfuse is off.
+
+    Read from the **callback handler** (`last_trace_id`), not `get_client().get_current_trace_id()`: the graph's span is
+    closed by the time the answer exists, so the context-based call reliably returns None. The handler remembers the trace it
+    just produced, which is exactly the handle needed.
+
+    Read it *before* flushing: an answer that cannot name its own trace cannot be scored afterwards, and the id is the only
+    handle an evaluation (or a human reviewer) has on a conversation it did not run.
+    """
+    if not settings.langfuse_enabled or callback is None:
+        return None
+    trace_id = getattr(callback, "last_trace_id", None)
+    return trace_id if isinstance(trace_id, str) and trace_id else None
+
+
+def record_score(
+    trace_id: str | None,
+    name: str,
+    value: float,
+    *,
+    comment: str | None = None,
+    metadata: dict[str, Any] | None = None,
+) -> bool:
+    """Attach a score to a trace. Best effort: scoring must never fail a request.
+
+    Scores are how 问策 answers get judged at all (`docs/features/knowledge-base-qa-agent.md`: an assessment of an approach
+    is mostly human, per conversation, and the trace is where the conversation lives). They are also how an evaluation's
+    verdict reaches the same screen as cost and latency, instead of living only in the evaluation tables.
+    """
+    if not trace_id or not settings.langfuse_enabled:
+        return False
+    try:
+        from langfuse import get_client
+
+        get_client().create_score(
+            trace_id=trace_id,
+            name=name,
+            value=value,
+            comment=comment,
+            metadata=metadata or {},
+        )
+        return True
+    except (ImportError, RuntimeError, ValueError, TypeError) as exc:
+        logger.warning("langfuse score %s for %s failed: %s", name, trace_id, exc)
+        return False

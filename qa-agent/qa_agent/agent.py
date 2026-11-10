@@ -313,7 +313,7 @@ def invoke_agent(
     agent_config: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Invoke the agent and return answer + sources."""
-    from .langfuse_client import build_langgraph_trace_config
+    from .langfuse_client import build_langgraph_trace_config, current_trace_id
 
     skill_ids = normalize_skill_ids(agent_skills)
     retrieve_k = agent_config_module.top_k(agent_config)
@@ -354,6 +354,9 @@ def invoke_agent(
             config=config,
         )
         callback = (config.get("callbacks") or [None])[0]
+        # Read the trace id before flushing: it is the only handle a later score has on this turn.
+        trace_id = current_trace_id(callback)
+        logger.info("trace probe cb=%s last=%s", type(callback).__name__, getattr(callback, "last_trace_id", None))
         if callback and hasattr(callback, "flush"):
             callback.flush()
         answer = _extract_answer(result)
@@ -373,7 +376,7 @@ def invoke_agent(
             len(display),
             len(msgs),
         )
-        return {"answer": answer, "context": display, "grounding": grounding}
+        return {"answer": answer, "context": display, "grounding": grounding, "langfuse_trace_id": trace_id}
     except GraphRecursionError:
         logger.error(
             "invoke_agent recursion_limit kb=%s elapsed=%.2fs",
@@ -740,6 +743,7 @@ async def astream_agent_ndjson(
 
         sources_list = label_sources(sources_list, answer)
         grounding = ground(sources_list, answer)
+        trace_id = current_trace_id(callback)
         elapsed = time.monotonic() - t0
         logger.info(
             "astream_agent_ndjson done kb=%s elapsed=%.2fs graph_events=%d tool_starts=%d "
@@ -761,6 +765,7 @@ async def astream_agent_ndjson(
                 "sources": _sources_to_jsonable(sources_list),
                 # Additive: the label and the ratio travel with the answer so a reader (or a score) can use them.
                 "grounding": grounding.model_dump(),
+                "langfuse_trace_id": trace_id,
             }
         )
         if callback and hasattr(callback, "flush"):

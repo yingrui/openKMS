@@ -353,3 +353,5 @@ class AskResponse(BaseModel):
     sources: list[SearchResult] = []
     #: Reported by the agent on every answer; whether anything acts on it is a per-KB policy.
     grounding: GroundingReport | None = None
+    #: The Langfuse trace of this turn, when tracing is on — the handle used to score the answer afterwards.
+    langfuse_trace_id: str | None = None

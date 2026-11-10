@@ -120,6 +120,7 @@ async def ask_question(
                 answer=data.get("answer", ""),
                 sources=[SearchResult(**s) for s in data.get("sources", [])],
                 grounding=GroundingReport(**grounding) if isinstance(grounding, dict) else None,
+                langfuse_trace_id=data.get("langfuse_trace_id"),
             )
     except httpx.HTTPStatusError as e:
         logger.error("Agent returned error: %s %s", e.response.status_code, e.response.text[:200])
