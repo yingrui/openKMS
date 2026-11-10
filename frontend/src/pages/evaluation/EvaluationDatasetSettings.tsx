@@ -11,6 +11,7 @@ import {
 } from '../../data/evaluationsApi';
 import { fetchAllKnowledgeBases, type KnowledgeBaseResponse } from '../../data/knowledgeBasesApi';
 import { fetchAllWikiSpaces, type WikiSpaceResponse } from '../../data/wikiSpacesApi';
+import { fetchSemanticModels, type SemanticModelResponse } from '../../data/semanticModelsApi';
 import { ResourceSharePanel } from '../../components/ResourceSharePanel';
 import { RESOURCE_TYPES } from '../../data/resourceAclApi';
 import { useConfirm } from '../../contexts/ConfirmContext';
@@ -41,15 +42,18 @@ export function EvaluationDatasetSettings() {
   const [wikiSpaceIdField, setWikiSpaceIdField] = useState('');
   const [knowledgeBases, setKnowledgeBases] = useState<KnowledgeBaseResponse[]>([]);
   const [knowledgeBaseIdField, setKnowledgeBaseIdField] = useState('');
+  const [semanticModels, setSemanticModels] = useState<SemanticModelResponse[]>([]);
+  const [semanticModelIdField, setSemanticModelIdField] = useState('');
 
   const load = useCallback(async () => {
     if (!evaluationId) return;
     setLoading(true);
     try {
-      const [data, wikiList, kbList] = await Promise.all([
+      const [data, wikiList, kbList, modelList] = await Promise.all([
         fetchEvaluation(evaluationId),
         fetchAllWikiSpaces().catch(() => []),
         fetchAllKnowledgeBases().catch(() => []),
+        fetchSemanticModels().catch(() => ({ items: [] })),
       ]);
       setDataset(data);
       setNameField(data.name);
@@ -58,6 +62,8 @@ export function EvaluationDatasetSettings() {
       setWikiSpaceIdField(data.wiki_space_id ?? '');
       setWikiSpaces(wikiList ?? []);
       setKnowledgeBases(kbList ?? []);
+      setSemanticModels(modelList?.items ?? []);
+      setSemanticModelIdField(data.semantic_model_id ?? '');
     } catch (e: unknown) {
       toast.error(e instanceof Error ? e.message : t('evaluationSettings.loadFailed'));
       setDataset(null);
@@ -106,6 +112,7 @@ export function EvaluationDatasetSettings() {
         description: descriptionField.trim() || null,
         knowledge_base_id: knowledgeBaseIdField.trim(),
         wiki_space_id: wikiSpaceIdField.trim() || null,
+        semantic_model_id: semanticModelIdField.trim() || null,
       });
       setDataset(updated);
       setKnowledgeBaseIdField(updated.knowledge_base_id);
@@ -266,6 +273,30 @@ export function EvaluationDatasetSettings() {
           <p className="settings-page-hint eval-dataset-settings-kb-note">
             {t('evaluationSettings.knowledgeBaseNote')}
           </p>
+        </section>
+
+        <section className="settings-page-section">
+          <h2>{t('evaluationSettings.semanticModel')}</h2>
+          <p className="settings-page-hint">{t('evaluationSettings.semanticModelHint')}</p>
+          <div className="settings-page-field">
+            <label htmlFor="eval-settings-model">{t('evaluationSettings.semanticModelLabel')}</label>
+            <select
+              id="eval-settings-model"
+              className="ds-control"
+              value={semanticModelIdField}
+              onChange={(e) => setSemanticModelIdField(e.target.value)}
+            >
+              <option value="">{t('evaluationSettings.semanticModelNone')}</option>
+              {semanticModelIdField && !semanticModels.some((m) => m.id === semanticModelIdField) ? (
+                <option value={semanticModelIdField}>{semanticModelIdField}</option>
+              ) : null}
+              {semanticModels.map((m) => (
+                <option key={m.id} value={m.id}>
+                  {m.name}
+                </option>
+              ))}
+            </select>
+          </div>
         </section>
 
         <section className="settings-page-section">

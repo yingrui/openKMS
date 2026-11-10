@@ -640,3 +640,21 @@
   color: var(--color-text-muted);
   max-width: 52rem;
 }
+
+/* One cited query in a data-query run: the SQL is the evidence, so it gets room. */
+.eval-data-query {
+  margin-bottom: var(--space-3);
+}
+
+.eval-data-query-sql {
+  margin: var(--space-1) 0 0;
+  padding: var(--space-2);
+  background: var(--color-surface-sunken);
+  border-radius: var(--radius-sm);
+  font-family: var(--font-mono);
+  font-size: var(--font-size-sm);
+  white-space: pre-wrap;
+  word-break: break-word;
+  max-height: 220px;
+  overflow: auto;
+}

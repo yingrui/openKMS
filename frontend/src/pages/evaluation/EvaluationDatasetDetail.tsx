@@ -39,6 +39,7 @@ import { PanelToolbar } from '../../styles/design-system';
 const EVAL_TYPE_SEARCH = 'search_retrieval';
 const EVAL_TYPE_QA = 'qa_answer';
 const EVAL_TYPE_WIKI_COVERAGE = 'wiki_content_coverage';
+const EVAL_TYPE_DATA_QUERY = 'data_query';
 
 function evalShowsSearchSnippets(evaluationType: string): boolean {
   return evaluationType === EVAL_TYPE_SEARCH || evaluationType === EVAL_TYPE_WIKI_COVERAGE;
@@ -577,6 +578,9 @@ export function EvaluationDatasetDetail() {
                   <option value={EVAL_TYPE_WIKI_COVERAGE} disabled={!dataset.wiki_space_id}>
                     {t('evaluationDetail.evalTypeWikiCoverage')}
                   </option>
+                  <option value={EVAL_TYPE_DATA_QUERY} disabled={!dataset.semantic_model_id}>
+                    {t('evaluationDetail.evalTypeDataQuery')}
+                  </option>
                 </select>
               </label>
               <button
@@ -785,6 +789,24 @@ export function EvaluationDatasetDetail() {
                   <div className="eval-result-generated">
                     <strong>{t('evaluationDetail.generatedAnswer')}</strong>
                     <p>{r.generated_answer}</p>
+                  </div>
+                )}
+                {runView.evaluation_type === EVAL_TYPE_DATA_QUERY && (r.data_queries?.length ?? 0) > 0 && (
+                  <div className="eval-result-snippets">
+                    <strong>
+                      {t('evaluationDetail.dataQueriesLabel')}
+                      {r.coverage != null ? ` · ${t('evaluationDetail.coverageLabel', { percent: Math.round(r.coverage * 100) })}` : ''}
+                    </strong>
+                    {r.data_queries!.map((dq, i) => (
+                      <div key={i} className="eval-data-query">
+                        <span className="eval-snippet-meta">
+                          {dq.mode ?? 'sql'}
+                          {dq.metric ? ` · ${dq.metric}` : ''}
+                          {dq.model_id ? ` · ${dq.model_id.slice(0, 8)}…` : ''}
+                        </span>
+                        <pre className="eval-data-query-sql">{dq.sql}</pre>
+                      </div>
+                    ))}
                   </div>
                 )}
                 {runView.evaluation_type === EVAL_TYPE_QA && (r.qa_sources?.length ?? 0) > 0 && (

@@ -92,6 +92,15 @@ class SearchResultSnippet(BaseModel):
     source_type: str
 
 
+class DataQuerySource(BaseModel):
+    """One query the answer cited — the thing a data-query evaluation judges."""
+
+    mode: str | None = None
+    model_id: str | None = None
+    metric: str | None = None
+    sql: str | None = None
+
+
 class EvaluationRunResult(BaseModel):
     item_id: str
     query: str
@@ -99,6 +108,9 @@ class EvaluationRunResult(BaseModel):
     search_results: list[SearchResultSnippet] = []
     generated_answer: str | None = None
     qa_sources: list[SearchResultSnippet] = []
+    #: Data-query sources the answer cited (data_query evaluation only).
+    data_queries: list[DataQuerySource] = []
+    coverage: float | None = None
     pass_: bool = Field(False, alias="pass")
     score: float = 0.0
     reasoning: str = ""

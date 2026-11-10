@@ -27,6 +27,8 @@ def evaluation_to_response(
         knowledge_base_name=kb_name,
         wiki_space_id=ev.wiki_space_id,
         wiki_space_name=wiki_name,
+        semantic_model_id=ev.semantic_model_id,
+        data_resource_id=ev.data_resource_id,
         description=ev.description,
         item_count=item_count,
         created_at=ev.created_at,

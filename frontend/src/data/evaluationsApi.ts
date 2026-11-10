@@ -8,6 +8,9 @@ export interface EvaluationResponse {
   knowledge_base_name?: string | null;
   wiki_space_id?: string | null;
   wiki_space_name?: string | null;
+  /** A data-query evaluation judges this semantic model's answers. */
+  semantic_model_id?: string | null;
+  data_resource_id?: string | null;
   description?: string | null;
   item_count: number;
   created_at: string;
@@ -42,6 +45,21 @@ export interface SearchResultSnippet {
   source_type: string;
 }
 
+/** One query an answer cited — what a data-query evaluation judges (model id + SQL, never the rows). */
+/** One query an answer should have made. `sql` is either a feature dict (deterministic) or a raw SQL string (LLM). */
+export interface ExpectedQuery {
+  model_id?: string;
+  metric?: string;
+  sql?: { tables?: string[]; columns?: string[]; group_by?: string[]; forbid?: string[] } | string;
+}
+
+export interface DataQuerySource {
+  mode: string | null;
+  model_id: string | null;
+  metric: string | null;
+  sql: string | null;
+}
+
 export interface EvaluationRunResult {
   item_id: string;
   query: string;
@@ -49,6 +67,8 @@ export interface EvaluationRunResult {
   search_results: SearchResultSnippet[];
   generated_answer?: string | null;
   qa_sources?: SearchResultSnippet[];
+  data_queries?: DataQuerySource[];
+  coverage?: number | null;
   pass: boolean;
   score: number;
   reasoning: string;
@@ -139,6 +159,8 @@ export async function createEvaluation(data: {
   name: string;
   knowledge_base_id: string;
   wiki_space_id?: string | null;
+  semantic_model_id?: string | null;
+  data_resource_id?: string | null;
   description?: string | null;
 }): Promise<EvaluationResponse> {
   return request<EvaluationResponse>('/api/evaluations', {
@@ -155,6 +177,8 @@ export async function updateEvaluation(
     description?: string | null;
     knowledge_base_id?: string;
     wiki_space_id?: string | null;
+    semantic_model_id?: string | null;
+    data_resource_id?: string | null;
   }
 ): Promise<EvaluationResponse> {
   return request<EvaluationResponse>(`/api/evaluations/${id}`, {
@@ -184,6 +208,8 @@ export async function createEvaluationItem(
     expected_answer: string;
     topic?: string | null;
     sort_order?: number;
+    /** Data-query ground truth: every query the answer should have made (dict of features, or a raw SQL string). */
+    expected_query?: ExpectedQuery[] | null;
   }
 ): Promise<EvaluationItemResponse> {
   return request<EvaluationItemResponse>(`/api/evaluations/${evaluationId}/items`, {
@@ -201,6 +227,7 @@ export async function updateEvaluationItem(
     expected_answer?: string;
     topic?: string | null;
     sort_order?: number;
+    expected_query?: ExpectedQuery[] | null;
   }
 ): Promise<EvaluationItemResponse> {
   return request<EvaluationItemResponse>(`/api/evaluations/${evaluationId}/items/${itemId}`, {

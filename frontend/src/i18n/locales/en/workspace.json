@@ -235,7 +235,11 @@
     "deleting": "Deleting…",
     "deleteFailed": "Delete failed",
     "tabSharing": "Sharing",
-    "sharingTitle": "Who can access this evaluation"
+    "sharingTitle": "Who can access this evaluation",
+    "semanticModel": "Semantic model",
+    "semanticModelHint": "Required for a data-query evaluation: answers are judged by the queries they cite (model, metric, SQL), not by the numbers they return.",
+    "semanticModelLabel": "Model",
+    "semanticModelNone": "None (RAG evaluation)"
   },
   "evaluationDetail": {
     "toastLoadDatasetFailed": "Failed to load evaluation dataset",
@@ -340,7 +344,10 @@
     "cancel": "Cancel",
     "saving": "Saving…",
     "save": "Save",
-    "add": "Add"
+    "add": "Add",
+    "evalTypeDataQuery": "Data query (semantic model)",
+    "dataQueriesLabel": "Cited queries",
+    "coverageLabel": "{{percent}}% of expected queries covered"
   },
   "models": {
     "title": "Models",

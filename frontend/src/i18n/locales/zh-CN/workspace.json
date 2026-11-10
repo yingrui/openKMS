@@ -235,7 +235,11 @@
     "deleting": "删除中…",
     "deleteFailed": "删除失败",
     "tabSharing": "共享",
-    "sharingTitle": "谁可以访问此评测"
+    "sharingTitle": "谁可以访问此评测",
+    "semanticModel": "语义模型",
+    "semanticModelHint": "问数评估必填：按答案引用的查询（模型、指标、SQL）判定，不按返回的数字判定。",
+    "semanticModelLabel": "模型",
+    "semanticModelNone": "不使用（RAG 评估）"
   },
   "evaluationDetail": {
     "toastLoadDatasetFailed": "无法加载评测数据集",
@@ -340,7 +344,10 @@
     "cancel": "取消",
     "saving": "保存中…",
     "save": "保存",
-    "add": "添加"
+    "add": "添加",
+    "evalTypeDataQuery": "问数（语义模型）",
+    "dataQueriesLabel": "引用的查询",
+    "coverageLabel": "已覆盖 {{percent}}% 的期望查询"
   },
   "models": {
     "title": "模型",

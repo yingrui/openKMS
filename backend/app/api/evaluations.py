@@ -17,6 +17,7 @@ from app.models.semantic_model import SemanticModel
 from app.models.wiki_models import WikiSpace
 from app.services.platform.boundaries import boundary
 from app.schemas.evaluation import (
+    DataQuerySource,
     EvaluationCompareResponse,
     EvaluationCompareRow,
     EvaluationCreate,
@@ -126,6 +127,12 @@ def _result_dicts_to_schemas(evaluation_type: str, rows: list[dict]) -> list[Eva
                 search_results=srs if show_search else [],
                 generated_answer=detail.get("answer") if evaluation_type == EVALUATION_TYPE_QA_ANSWER else None,
                 qa_sources=qas if evaluation_type == EVALUATION_TYPE_QA_ANSWER else [],
+                data_queries=(
+                    [DataQuerySource(**dq) for dq in (detail.get("data_queries") or [])]
+                    if evaluation_type == EVALUATION_TYPE_DATA_QUERY
+                    else []
+                ),
+                coverage=detail.get("coverage") if evaluation_type == EVALUATION_TYPE_DATA_QUERY else None,
                 pass_=bool(r.get("passed")),
                 score=float(r.get("score", 0)),
                 reasoning=str(r.get("reasoning", "")),
@@ -148,6 +155,12 @@ def _run_item_to_result(
         search_results=srs if show_search else [],
         generated_answer=detail.get("answer") if evaluation_type == EVALUATION_TYPE_QA_ANSWER else None,
         qa_sources=qas if evaluation_type == EVALUATION_TYPE_QA_ANSWER else [],
+        data_queries=(
+            [DataQuerySource(**dq) for dq in (detail.get("data_queries") or [])]
+            if evaluation_type == EVALUATION_TYPE_DATA_QUERY
+            else []
+        ),
+        coverage=detail.get("coverage") if evaluation_type == EVALUATION_TYPE_DATA_QUERY else None,
         pass_=ri.passed,
         score=float(ri.score),
         reasoning=ri.reasoning or "",
