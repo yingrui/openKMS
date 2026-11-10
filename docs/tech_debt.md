@@ -93,10 +93,17 @@ What could not be reused, and why:
 Inside a single-tenant project workspace that is a conscious trade. On an external service it is remote code execution plus
 credential exfiltration.
 
-Shipped instead: the container above, with the guarantees in its command line (`--network none`, no `OPENKMS_*`, `--read-only`
-plus the session mount, `--cap-drop ALL`, quotas, host-uid user). Still open here: **executions are not audited** beyond the
-agent's own log, and the image must already be on the host — nothing is pulled at run time, so a KB that names a missing image
-fails at the first run rather than at configuration.
+Shipped instead: one container per session, with the guarantees in its command line (`--network none`, no `OPENKMS_*`,
+`--read-only` plus the session mount, `--cap-drop ALL`, quotas, host-uid user).
+
+Still open:
+
+- **Executions are not audited** beyond the agent's own log — `audit_events` has no record of what was run.
+- **The image must already be on the host**; nothing is pulled at run time, so a KB that names a missing image fails at the
+  first execution rather than at configuration.
+- **No persistent interpreter**: `docker exec python -c` is a new process per run, so variables do not survive between turns
+  and the agent re-reads from `/workspace`. A kernel (Jupyter, or a small exec server holding a namespace) would make the
+  loop cheaper; it is a different build, not a flag.
 
 ## Architecture and coupling
 

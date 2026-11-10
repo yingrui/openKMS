@@ -138,7 +138,7 @@ The requirement is about the **process**:
 | **No credentials** | zero `OPENKMS_*` variables in the sandbox. The Catalog is reached through **tool calls the agent makes**, not a key available to arbitrary code. `build_project_shell_env` injects `OPENKMS_API_KEY` today — that must not happen here |
 | **Network** | denied by default; anything a skill needs is baked into the image (no `pip install` at run time) |
 | **Quotas** | cpu, memory, disk, wall-clock, executions per turn; a kill is a **tool error** the model can react to, never a 500 |
-| **Lifecycle** | the sandbox is created with the session and destroyed with it; the directory outlives individual executions |
+| **Lifecycle** | **one container per session**, created on its first execution and destroyed with the session (the reaper removes it with the directory); the directory outlives individual executions. Measured: 60 ms per run against 412 ms when the container was created per run. **Python variables do not survive between runs** — `docker exec python -c` is a new interpreter each time; only `/workspace`, `/tmp` and anything installed persist |
 | **Audit** | every execution recorded: code, exit status, duration, artifact sizes |
 | **No git** | explicitly out. Skills arrive as installed packages, not cloned repositories |
 
@@ -452,7 +452,7 @@ a different question"). Those must not vary per knowledge base; they belong in c
 | Trace id and scores | `langfuse_client.py`, `evaluations/scores.py` | `/ask` names its trace; an evaluation posts `data_query_pass` / `data_query_coverage` onto it |
 | **Tenancy ceilings** | `qa_agent/limits.py`, `agent_config.limits` | requests/minute, in-flight, daily tokens — per KB, all off by default; a 429 carries its reason and `Retry-After` |
 | **Prompt store** | `models/agent_prompt.py`, `prompt_store.py`, `/agent-prompts` | versioned rows, **publish gated by an evaluation run made after the draft**, one live version per KB, rollback by republishing; each answer reports `prompt_version` |
-| **Code execution** | `qa_agent/sandbox.py`, `skills/sandbox.py` | a container per run: no network, no credentials, read-only root with only the session mounted, quotas, host-uid user; off unless `sandbox.enabled` |
+| **Code execution** | `qa_agent/sandbox.py`, `skills/sandbox.py` | **one container per session** (`docker exec` per run): no network, no credentials, read-only root with only the session mounted, quotas, host-uid user; off unless `sandbox.enabled` |
 
 Decided against: **per-KB tenant ceilings** — implemented, then removed, because who sets the numbers and what happens when they
 are hit had no answer; the reasoning is in `tech_debt.md`.
