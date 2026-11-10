@@ -72,6 +72,20 @@ class Settings(BaseSettings):
     rrf_k: int = Field(default=60, validation_alias="OPENKMS_RRF_K")
     hybrid_recall_top_k: int = Field(default=50, validation_alias="OPENKMS_HYBRID_RECALL_TOP_K")
 
+    # --- Per-session workspace (docs/features/knowledge-base-qa-agent.md) -------------------------------------------
+    #: Root of the per-conversation directories. One directory per session, keyed {kb_id}/{session_id}; the directory
+    #: layer only — it keeps paths inside a root and does not bound a process.
+    sessions_root: str = Field(
+        default=str(Path(__file__).resolve().parent.parent / "sessions"),
+        validation_alias="OPENKMS_QA_AGENT_SESSIONS_ROOT",
+    )
+    #: Reclaim a session directory after this many idle minutes (0 = never).
+    session_ttl_minutes: int = Field(default=1440, ge=0, validation_alias="OPENKMS_QA_AGENT_SESSION_TTL_MINUTES")
+    #: Disk quota per session (0 = unlimited).
+    session_disk_mb: int = Field(default=512, ge=0, validation_alias="OPENKMS_QA_AGENT_SESSION_DISK_MB")
+    #: Largest single write into a session (0 = unlimited).
+    session_upload_max_mb: int = Field(default=64, ge=0, validation_alias="OPENKMS_QA_AGENT_SESSION_UPLOAD_MAX_MB")
+
     host: str = "0.0.0.0"
     port: int = 8103
 

@@ -121,8 +121,15 @@ def get_semantic_model_tool(model_id: str, _config: RunnableConfig) -> str:
             if (model.get("access_mode") or "public") == "restricted"
             else []
         )
+        # What this model can answer, stated compactly. `fields` below is the full catalogue and is the right thing to read
+        # when building a query; this line is the right thing to read when deciding whether the question is answerable at
+        # all — the failure this exists for: asked for revenue, an agent picked a field it did have and answered anyway.
+        measures = sorted({str(f.get("name") or f.get("column_name") or "") for f in fields} - {""})
+        metric_names = sorted({str(m.get("name") or "") for m in metrics} - {""})
         return json.dumps(
             {
+                "available_measures": measures,
+                "available_metrics": metric_names,
                 "model": model,
                 "data_resources": [
                     {"id": r.get("id"), "name": r.get("name"), "rows": len(r.get("row_policy") or [])}
