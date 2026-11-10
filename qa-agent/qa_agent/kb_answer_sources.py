@@ -456,6 +456,46 @@ def sources_from_catalog_tools(messages: list[Any]) -> list[SourceItem] | None:
     return out or None
 
 
+KB_SEARCH_TOOL_NAME = "search_knowledge_base_tool"
+
+
+def sources_from_kb_search_tools(messages: list[Any]) -> list[SourceItem] | None:
+    """Passages a `search_knowledge_base_tool` call returned — in `on_miss` mode, the answer's evidence.
+
+    Read from the transcript rather than from a request-scoped accumulator: LangGraph runs a tool node in a copied context,
+    so anything the tool writes to a context variable never comes back to the caller. The transcript does.
+    """
+    out: list[SourceItem] = []
+    for message in messages or []:
+        name = str(getattr(message, "name", "") or "")
+        if name != KB_SEARCH_TOOL_NAME:
+            continue
+        text = getattr(message, "content", "")
+        if not isinstance(text, str) or not text.strip():
+            continue
+        try:
+            payload = json.loads(text)
+        except (json.JSONDecodeError, TypeError):
+            continue
+        for passage in (payload.get("passages") or []) if isinstance(payload, dict) else []:
+            if not isinstance(passage, dict):
+                continue
+            out.append(
+                SourceItem(
+                    id=str(passage.get("id") or f"kb-search:{len(out)}"),
+                    source_type=str(passage.get("source_type") or "document"),
+                    content=str(passage.get("content") or ""),
+                    score=float(passage.get("score") or 0.0),
+                    source_name=passage.get("source_name"),
+                    document_id=passage.get("document_id"),
+                    wiki_page_id=passage.get("wiki_page_id"),
+                    wiki_space_id=passage.get("wiki_space_id"),
+                    chunk_index=passage.get("chunk_index"),
+                )
+            )
+    return out or None
+
+
 def select_display_sources(
     retrieve_chunks: list[SourceItem],
     *,
@@ -476,6 +516,9 @@ def select_display_sources(
         onto = sources_from_ontology_tools(messages)
         if onto:
             return onto
+        searched = sources_from_kb_search_tools(messages)
+        if searched:
+            return searched
     if streamed_sections:
         return streamed_sections
     if streamed_catalog:

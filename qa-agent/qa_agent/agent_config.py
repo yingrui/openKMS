@@ -47,3 +47,17 @@ def agents_md(config: dict[str, Any] | None) -> str | None:
     if isinstance(raw, str) and raw.strip():
         return raw
     return None
+
+
+RETRIEVE_MODES = ("always", "never", "on_miss")
+
+
+def retrieve_mode(config: dict[str, Any] | None) -> str:
+    """Where context comes from.
+
+    `always` (default) pre-retrieves five passages into the prompt, which is what the agent has always done. `never` skips
+    retrieval entirely — tools only. `on_miss` skips the pre-retrieval and binds a search tool instead, so the model fetches
+    context when it decides it is missing.
+    """
+    raw = ((config or {}).get("orchestration") or {}).get("retrieve")
+    return raw if raw in RETRIEVE_MODES else "always"

@@ -64,6 +64,8 @@ class AgentState(TypedDict):
     top_k: int
     #: Tool rounds this request may use, from `orchestration.max_tool_rounds` (None = no bound).
     max_tool_rounds: int | None
+    #: `always` | `never` | `on_miss`, from `orchestration.retrieve`.
+    retrieve_mode: str
 
 
 def retrieve_node(state: dict[str, Any]) -> dict[str, Any]:
@@ -71,6 +73,11 @@ def retrieve_node(state: dict[str, Any]) -> dict[str, Any]:
     if state.get("context"):
         logger.debug("retrieve_node skip (context already set)")
         return {}
+    mode = state.get("retrieve_mode") or "always"
+    if mode != "always":
+        # `never` and `on_miss` both mean "no automatic retrieval"; `on_miss` differs by binding a search tool.
+        logger.debug("retrieve_node skipped (mode=%s)", mode)
+        return {"context": []}
     kb_id = state["knowledge_base_id"]
     sources = retrieve(
         state["knowledge_base_id"],
@@ -128,6 +135,11 @@ def generate_node(state: dict[str, Any]) -> dict[str, Any]:
     )
     skill_ids = normalize_skill_ids(state.get("agent_skills"))
     tools = get_all_skill_tools(skill_ids)
+    if state.get("retrieve_mode") == "on_miss":
+        # No pre-retrieval in this mode, so the model needs a way to fetch context when it decides it is missing.
+        from .skills.kb_search import kb_search_tools
+
+        tools = [*tools, *kb_search_tools]
     llm_with_tools = llm.bind_tools(tools)
 
     messages = build_messages_for_generate(
@@ -305,6 +317,7 @@ def invoke_agent(
 
     skill_ids = normalize_skill_ids(agent_skills)
     retrieve_k = agent_config_module.top_k(agent_config)
+    retrieve_mode = agent_config_module.retrieve_mode(agent_config)
     h = set_request_access_token(access_token or "")
     h_kb = set_request_knowledge_base_id(knowledge_base_id or "")
     # The workspace key. Tools read it from the request context, so a tool call cannot address another conversation.
@@ -336,6 +349,7 @@ def invoke_agent(
                 "agent_skills": skill_ids,
                 "top_k": retrieve_k,
                 "max_tool_rounds": agent_config_module.max_tool_rounds(agent_config),
+                "retrieve_mode": retrieve_mode,
             },
             config=config,
         )
@@ -438,6 +452,7 @@ async def astream_agent_ndjson(
 
     skill_ids = normalize_skill_ids(agent_skills)
     retrieve_k = agent_config_module.top_k(agent_config)
+    retrieve_mode = agent_config_module.retrieve_mode(agent_config)
     h = set_request_access_token(access_token or "")
     h_kb = set_request_knowledge_base_id(knowledge_base_id or "")
     # The workspace key. Tools read it from the request context, so a tool call cannot address another conversation.
@@ -455,13 +470,21 @@ async def astream_agent_ndjson(
     )
     logger.debug("astream_agent_ndjson question=%r", preview_text(question, 200))
     try:
-        ctx = retrieve(
+        if retrieve_mode == "always":
+            ctx = retrieve(
+                knowledge_base_id,
+                question,
+                access_token=access_token,
+                top_k=retrieve_k,
+            )
+        else:
+            ctx = []
+        logger.info(
+            "astream_agent_ndjson retrieve kb=%s mode=%s hits=%d",
             knowledge_base_id,
-            question,
-            access_token=access_token,
-            top_k=retrieve_k,
+            retrieve_mode,
+            len(ctx),
         )
-        logger.info("astream_agent_ndjson retrieve kb=%s hits=%d", knowledge_base_id, len(ctx))
         state: dict[str, Any] = {
             "knowledge_base_id": knowledge_base_id,
             "question": question,
@@ -473,6 +496,7 @@ async def astream_agent_ndjson(
             "agent_skills": skill_ids,
             "top_k": retrieve_k,
             "max_tool_rounds": agent_config_module.max_tool_rounds(agent_config),
+            "retrieve_mode": retrieve_mode,
         }
         agent = get_agent()
         stream_cb = get_langfuse_callback() if settings.langfuse_trace_streaming else None

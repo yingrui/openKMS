@@ -4,6 +4,7 @@ from __future__ import annotations
 from .catalog import catalog_tools
 from .insurance_calculator import calculator_tools
 from .ontology import ontology_tools
+from .kb_search import kb_search_tools
 from .page_index import page_index_tools
 from .workspace import workspace_tools
 from .premium_estimator import premium_tools
@@ -16,6 +17,7 @@ __all__ = [
     "ontology_tools",
     "catalog_tools",
     "page_index_tools",
+    "kb_search_tools",
     "workspace_tools",
     "calculator_tools",
     "premium_tools",
@@ -41,6 +43,8 @@ _SKILL_TOOLS: dict[str, list] = {
     "catalog": catalog_tools,
     "page_index": page_index_tools,
     "workspace": workspace_tools,
+    # Not a selectable skill: `ToolNode` must be able to execute it, while binding is the `retrieve` mode's decision.
+    "_kb_search": kb_search_tools,
     "insurance_calculator": calculator_tools,
     "premium_estimator": premium_tools,
     "product_comparator": comparator_tools,
@@ -74,10 +78,10 @@ def get_all_skill_tools(skills: list[str] | None = None) -> list:
 
 
 def get_union_skill_tools() -> list:
-    """Every registered skill tool (for ToolNode execution regardless of bind set)."""
+    """Every registered tool (for ToolNode execution regardless of bind set)."""
     tools: list = []
-    for sid in ALL_SKILL_IDS:
-        tools.extend(_SKILL_TOOLS[sid])
+    for sid, group in _SKILL_TOOLS.items():
+        tools.extend(group)
     return tools
 
 
