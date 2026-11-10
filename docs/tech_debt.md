@@ -65,13 +65,25 @@ Embedding columns are **dimensionless** `vector` on purpose (each KB/wiki space 
 
 ---
 
-### Executable skills for the KB agent (deferred by decision)
+### No per-KB ceilings on the QA endpoint (decided)
 
-The KB agent can write files but not run code, and its prompt says so ("writing a file is not executing one"). That is
-enough for 问数 — every number comes from a query — and not enough for **问策**, where an approach often needs computation
-the Catalog cannot express: indicators, rolling windows, cross-dataset comparisons, a chart.
+`/ask` has no rate limit, no concurrency cap and no token budget. Implemented once and removed by decision: the ceilings were
+configurable per KB with sane defaults, but an external endpoint that can be made to spend money is a product question before
+it is a code one — who sets the numbers, what happens when they are hit (queue? 429? downgrade to a cheaper model?), and who
+is told. None of those had an answer, and a knob nobody sets is not protection.
 
-It is deferred deliberately, not forgotten. What exists today cannot be reused:
+What exists: `max_tool_rounds` bounds one turn, the agent runs with a 120 s HTTP timeout, and the pool is shared. What does not:
+concurrent conversations per KB, requests per minute, or token spend per day.
+
+Worth knowing when this comes back: the median `/ask` is 16 s and p90 is 32 s (228 measured calls), so a handful of concurrent
+callers saturate the service before anything dramatic happens. The four-question list above is the thing to answer first.
+
+### The sandbox cannot reuse `deep_agents/sandbox.py`
+
+The KB agent now runs Python for **问策** — an approach often needs computation the Catalog cannot express: indicators, rolling
+windows, cross-dataset comparisons, a chart. The runner is `qa_agent/sandbox.py`, which uses a container per execution.
+
+What could not be reused, and why:
 
 - `deep_agents/sandbox.py` runs `subprocess.run([sys.executable, "-c", code], cwd=project_root)` as the **backend's own OS
   user**, with no container, namespaces, seccomp or network policy. Verified: a child can read `../../backend/.env` and the

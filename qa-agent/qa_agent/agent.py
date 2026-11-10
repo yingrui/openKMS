@@ -27,17 +27,19 @@ from .kb_answer_sources import (
     source_from_page_section_tool,
 )
 from . import agent_config as agent_config_module
+from . import sandbox as sandbox_runner
 from .evidence import ground, grounding_warnings, label_sources
-from .limits import limiter, tokens_from_message
 from .llm_chat import build_messages_for_generate, make_qa_chat_openai, text_from_lc_content
 from .request_context import (
     reset_request_access_token,
     reset_request_agents_md,
     reset_request_knowledge_base_id,
+    reset_request_sandbox,
     reset_request_session_id,
     set_request_access_token,
     set_request_agents_md,
     set_request_knowledge_base_id,
+    set_request_sandbox,
     set_request_session_id,
 )
 from .retriever import retrieve
@@ -73,6 +75,8 @@ class AgentState(TypedDict):
     system_prompt: str | None
     #: Which version that text is, echoed back so an answer can be attributed to it.
     prompt_version: str | None
+    #: Sandbox settings for this request (`sandbox.enabled` etc.); empty when the KB has not enabled code.
+    sandbox: dict[str, Any]
 
 
 def retrieve_node(state: dict[str, Any]) -> dict[str, Any]:
@@ -175,6 +179,10 @@ def generate_node(state: dict[str, Any]) -> dict[str, Any]:
     )
     skill_ids = normalize_skill_ids(state.get("agent_skills"))
     tools = get_all_skill_tools(skill_ids)
+    if (state.get("sandbox") or {}).get("enabled"):
+        from .skills.sandbox import sandbox_tools
+
+        tools = [*tools, *sandbox_tools]
     if state.get("retrieve_mode") == "on_miss":
         # No pre-retrieval in this mode, so the model needs a way to fetch context when it decides it is missing.
         from .skills.kb_search import kb_search_tools
@@ -192,8 +200,6 @@ def generate_node(state: dict[str, Any]) -> dict[str, Any]:
     )
 
     response = llm_with_tools.invoke(messages)
-    if (spent := tokens_from_message(response)) and (kb := state.get("knowledge_base_id")):
-        limiter.record_tokens(kb, spent)
 
     tool_calls = getattr(response, "tool_calls", None) or []
     if not tool_calls:
@@ -300,8 +306,6 @@ def finalize_node(state: dict[str, Any]) -> dict[str, Any]:
     messages = _answer_pending_tool_calls(messages)
     messages = [*messages, HumanMessage(content=FINALIZE_INSTRUCTION)]
     response = llm.invoke(messages)
-    if (spent := tokens_from_message(response)) and (kb := state.get("knowledge_base_id")):
-        limiter.record_tokens(kb, spent)
     answer_text = text_from_lc_content(response.content)
     logger.info("finalize_node answer_chars=%d", len(answer_text))
     return {"answer": answer_text, "messages": [*messages, response]}
@@ -371,12 +375,14 @@ def invoke_agent(
     skill_ids = normalize_skill_ids(agent_skills)
     retrieve_k = agent_config_module.top_k(agent_config)
     retrieve_mode = agent_config_module.retrieve_mode(agent_config)
+    sandbox_settings = sandbox_runner.sandbox_config(agent_config)
     h = set_request_access_token(access_token or "")
     h_kb = set_request_knowledge_base_id(knowledge_base_id or "")
     # The workspace key. Tools read it from the request context, so a tool call cannot address another conversation.
     h_sess = set_request_session_id(session_id or "")
     # The KB's own rules, for the session's AGENTS.md — also not something a tool call may supply.
     h_md = set_request_agents_md(agent_config_module.agents_md(agent_config) or "")
+    h_sbx = set_request_sandbox(sandbox_settings)
     t0 = time.monotonic()
     logger.info(
         "invoke_agent start kb=%s history=%d session=%s skills=%s top_k=%d",
@@ -406,8 +412,10 @@ def invoke_agent(
                 "answer_policy": agent_config_module.answer_policy(agent_config),
             "system_prompt": system_prompt,
             "prompt_version": prompt_version,
+            "sandbox": sandbox_settings,
                 "system_prompt": system_prompt,
                 "prompt_version": prompt_version,
+                "sandbox": sandbox_settings,
             },
             config=config,
         )
@@ -465,6 +473,7 @@ def invoke_agent(
         reset_request_knowledge_base_id(h_kb)
         reset_request_session_id(h_sess)
         reset_request_agents_md(h_md)
+        reset_request_sandbox(h_sbx)
         reset_request_access_token(h)
 
 
@@ -526,12 +535,14 @@ async def astream_agent_ndjson(
     skill_ids = normalize_skill_ids(agent_skills)
     retrieve_k = agent_config_module.top_k(agent_config)
     retrieve_mode = agent_config_module.retrieve_mode(agent_config)
+    sandbox_settings = sandbox_runner.sandbox_config(agent_config)
     h = set_request_access_token(access_token or "")
     h_kb = set_request_knowledge_base_id(knowledge_base_id or "")
     # The workspace key. Tools read it from the request context, so a tool call cannot address another conversation.
     h_sess = set_request_session_id(session_id or "")
     # The KB's own rules, for the session's AGENTS.md — also not something a tool call may supply.
     h_md = set_request_agents_md(agent_config_module.agents_md(agent_config) or "")
+    h_sbx = set_request_sandbox(sandbox_settings)
     t0 = time.monotonic()
     logger.info(
         "astream_agent_ndjson start kb=%s history=%d session=%s skills=%s top_k=%d",
@@ -850,4 +861,5 @@ async def astream_agent_ndjson(
         reset_request_knowledge_base_id(h_kb)
         reset_request_session_id(h_sess)
         reset_request_agents_md(h_md)
+        reset_request_sandbox(h_sbx)
         reset_request_access_token(h)

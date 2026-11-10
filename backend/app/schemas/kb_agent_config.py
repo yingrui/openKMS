@@ -68,6 +68,24 @@ class WorkspaceConfig(BaseModel):
     artifact_max_mb: int | None = Field(None, ge=0)
 
 
+class SandboxConfig(BaseModel):
+    """Code execution for this KB — off by default, and the only capability that runs code.
+
+    `qa_agent/sandbox.py` runs each snippet in a container: no network (unless `bridge` is chosen explicitly), no credentials
+    in the environment, a read-only root filesystem with only the session directory mounted, and cpu/memory/wall-clock
+    ceilings. The image must already be present on the host — nothing is pulled at run time.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    enabled: bool = False
+    image: str | None = Field(None, max_length=200)
+    timeout_seconds: int | None = Field(None, ge=5, le=600)
+    memory_mb: int | None = Field(None, ge=128, le=8_192)
+    cpus: int | None = Field(None, ge=1, le=8)
+    network: Literal["none", "bridge"] = "none"
+
+
 class OrchestrationConfig(BaseModel):
     """Knobs on a fixed graph — an enum for shape, never a graph."""
 
@@ -88,20 +106,6 @@ class ObservabilityConfig(BaseModel):
     sample_rate: float | None = Field(None, ge=0.0, le=1.0)
 
 
-class LimitsConfig(BaseModel):
-    """Ceilings for an external endpoint: how much of this service one KB may spend.
-
-    All off by default. The misuse this exists for is not malice — it is one script in a loop holding the agent and running
-    up a bill, which on a public endpoint is a budget, not a feature.
-    """
-
-    model_config = ConfigDict(extra="forbid")
-
-    requests_per_minute: int | None = Field(None, ge=1, le=10_000)
-    max_concurrent: int | None = Field(None, ge=1, le=100)
-    daily_tokens: int | None = Field(None, ge=1)
-
-
 class AgentConfig(BaseModel):
     """The whole object. Unknown keys are refused, so a typo in a field name is an error rather than a silent default."""
 
@@ -115,7 +119,7 @@ class AgentConfig(BaseModel):
     answer_policy: AnswerPolicy = AnswerPolicy()
     workspace: WorkspaceConfig = WorkspaceConfig()
     orchestration: OrchestrationConfig = OrchestrationConfig()
-    limits: LimitsConfig = LimitsConfig()
+    sandbox: SandboxConfig = SandboxConfig()
     observability: ObservabilityConfig = ObservabilityConfig()
 
 def parse_agent_config(raw: object) -> AgentConfig:

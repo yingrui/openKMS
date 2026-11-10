@@ -96,3 +96,25 @@ def get_tool_agents_md(config: dict[str, Any] | None = None) -> str | None:
         v = c.get("agents_md")
         return v if isinstance(v, str) and v.strip() else None
     return None
+
+
+_sandbox: ContextVar[dict] = ContextVar("qa_agent_sandbox", default={})
+
+
+def set_request_sandbox(settings: dict) -> Any:
+    return _sandbox.set(settings or {})
+
+
+def reset_request_sandbox(handle: Any) -> None:
+    _sandbox.reset(handle)
+
+
+def get_tool_sandbox(config: dict[str, Any] | None = None) -> dict:
+    """The sandbox settings for this request. Read from the context so a tool call cannot widen its own limits."""
+    ctx = _sandbox.get()
+    if ctx:
+        return dict(ctx)
+    c = (config or {}).get("configurable") or {}
+    if isinstance(c, dict) and isinstance(c.get("sandbox"), dict):
+        return dict(c["sandbox"])
+    return {}

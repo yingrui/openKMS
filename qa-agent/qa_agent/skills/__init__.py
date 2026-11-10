@@ -5,6 +5,7 @@ from .catalog import catalog_tools
 from .insurance_calculator import calculator_tools
 from .ontology import ontology_tools
 from .kb_search import kb_search_tools
+from .sandbox import SANDBOX_PROMPT, sandbox_tools
 from .page_index import page_index_tools
 from .workspace import workspace_tools
 from .premium_estimator import premium_tools
@@ -18,6 +19,7 @@ __all__ = [
     "catalog_tools",
     "page_index_tools",
     "kb_search_tools",
+    "sandbox_tools",
     "workspace_tools",
     "calculator_tools",
     "premium_tools",
@@ -43,8 +45,9 @@ _SKILL_TOOLS: dict[str, list] = {
     "catalog": catalog_tools,
     "page_index": page_index_tools,
     "workspace": workspace_tools,
-    # Not a selectable skill: `ToolNode` must be able to execute it, while binding is the `retrieve` mode's decision.
+    # Not selectable skills: `ToolNode` must be able to execute them, while binding is a config decision.
     "_kb_search": kb_search_tools,
+    "_sandbox": sandbox_tools,
     "insurance_calculator": calculator_tools,
     "premium_estimator": premium_tools,
     "product_comparator": comparator_tools,
@@ -100,6 +103,7 @@ def get_skill_prompt_fragments(skills: list[str] | None = None) -> str:
         "catalog": CATALOG_PROMPT,
         "page_index": PAGE_INDEX_PROMPT,
         "workspace": WORKSPACE_PROMPT,
+        "sandbox": SANDBOX_PROMPT,
         "insurance_calculator": CALCULATOR_PROMPT,
         "premium_estimator": PREMIUM_PROMPT,
         "product_comparator": COMPARATOR_PROMPT,

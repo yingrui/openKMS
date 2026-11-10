@@ -46,19 +46,20 @@ class TestValidation:
         assert parse_agent_config({"workspace": {"enabled": True}}).workspace.enabled is True
 
 
-class TestLimits:
-    def test_all_off_by_default(self):
-        limits = parse_agent_config(None).limits
-        assert limits.requests_per_minute is None
-        assert limits.max_concurrent is None
-        assert limits.daily_tokens is None
+class TestSandbox:
+    def test_code_execution_is_off_by_default(self):
+        assert parse_agent_config(None).sandbox.enabled is False
 
-    def test_ceilings_are_read(self):
-        limits = parse_agent_config({"limits": {"requests_per_minute": 30, "daily_tokens": 50_000}}).limits
-        assert limits.requests_per_minute == 30
-        assert limits.daily_tokens == 50_000
+    def test_the_network_is_none_unless_asked(self):
+        assert parse_agent_config({"sandbox": {"enabled": True}}).sandbox.network == "none"
+        assert parse_agent_config({"sandbox": {"enabled": True, "network": "bridge"}}).sandbox.network == "bridge"
 
-    @pytest.mark.parametrize("bad", [0, -1])
-    def test_a_zero_ceiling_is_refused_not_silently_unlimited(self, bad):
+    def test_ceilings_are_bounded(self):
         with pytest.raises(ValidationError):
-            parse_agent_config({"limits": {"requests_per_minute": bad}})
+            parse_agent_config({"sandbox": {"timeout_seconds": 1}})
+        with pytest.raises(ValidationError):
+            parse_agent_config({"sandbox": {"memory_mb": 32}})
+
+    def test_an_invented_network_mode_is_refused(self):
+        with pytest.raises(ValidationError):
+            parse_agent_config({"sandbox": {"network": "host"}})
