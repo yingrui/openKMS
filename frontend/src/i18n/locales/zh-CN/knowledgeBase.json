@@ -430,6 +430,9 @@
       "consulted": "仅查过",
       "usedHint": "答案中的数字来自这条来源。",
       "consultedHint": "查询执行过，但答案没有用到它。"
-    }
+    },
+    "qaFiles": "文件",
+    "qaFilesEmpty": "本次会话还没有产生文件。",
+    "qaFilesLoading": "加载中…"
   }
 }

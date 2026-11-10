@@ -158,6 +158,51 @@ def _retrieve_impl(kb_id: str, request: RetrieveRequest) -> RetrieveResponse:
     return RetrieveResponse(results=items)
 
 
+@app.get("/knowledge-bases/{kb_id}/sessions/{session_id}/files")
+async def list_session_files(kb_id: str, session_id: str):
+    """What this conversation produced and what it was given.
+
+    The workspace belonged to the agent until now: a user could be told "saved as industry_count.csv" and have no way to
+    reach the file. The list is flat with sizes; the download endpoint serves the bytes.
+
+    Trust: this service is called by the backend, which has already checked the caller's access to the KB — the same model as
+    `/ask`, which also forwards a token rather than verifying one.
+    """
+    from . import session_fs
+
+    try:
+        root = session_fs.session_root(kb_id, session_id)
+    except session_fs.SessionPathError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    if not root.is_dir():
+        return {"session_id": session_id, "files": []}
+    files: list[dict[str, object]] = []
+    for entry in session_fs.list_dir(kb_id, session_id):
+        if entry["is_dir"]:
+            for child in session_fs.list_dir(kb_id, session_id, str(entry["path"])):
+                if not child["is_dir"]:
+                    files.append(child)
+        else:
+            files.append(entry)
+    return {"session_id": session_id, "files": files}
+
+
+@app.get("/knowledge-bases/{kb_id}/sessions/{session_id}/files/download")
+async def download_session_file(kb_id: str, session_id: str, path: str):
+    """One artifact, as bytes. Text and binary are both served as-is; this is a download, not a preview."""
+    from fastapi.responses import FileResponse
+
+    from . import session_fs
+
+    try:
+        target = session_fs.resolve_session_path(kb_id, session_id, path)
+    except session_fs.SessionPathError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    if not target.is_file():
+        raise HTTPException(status_code=404, detail="File not found")
+    return FileResponse(target, filename=target.name)
+
+
 @app.post("/knowledge-bases/{kb_id}/ask", response_model=AskResponse)
 async def ask_for_kb(kb_id: str, request: AskRequest):
     """Answer a question against the knowledge base named in the path."""

@@ -9,7 +9,6 @@ class TestDefaults:
     def test_an_empty_config_changes_nothing(self):
         config = parse_agent_config(None)
         assert config.retrieval.top_k == 5           # the value that used to be hard-coded in the agent
-        assert config.tools == ["ontology", "catalog", "page_index"]
         assert config.workspace.enabled is False
         assert config.answer_policy.unknown_measure == "try_anyway"
         assert config.answer_policy.require_grounded_numbers == "off"
@@ -28,18 +27,16 @@ class TestValidation:
         with pytest.raises(ValidationError):
             parse_agent_config({"retrieval": {"topk": 5}})
 
-    def test_a_typo_in_a_tool_name_is_an_error(self):
-        with pytest.raises(ValidationError, match="Unknown agent tool"):
-            parse_agent_config({"tools": ["catalog", "workpsace"]})
+    def test_the_skill_list_is_not_in_this_object(self):
+        # It lives in `knowledge_bases.agent_skills`; a second copy here is how a screen shows a skill the agent lacks.
+        with pytest.raises(ValidationError):
+            parse_agent_config({"tools": ["catalog"]})
 
     def test_top_k_is_bounded(self):
         with pytest.raises(ValidationError):
             parse_agent_config({"retrieval": {"top_k": 0}})
         with pytest.raises(ValidationError):
             parse_agent_config({"retrieval": {"top_k": 51}})
-
-    def test_duplicate_tools_are_collapsed_and_order_kept(self):
-        assert parse_agent_config({"tools": ["catalog", "workspace", "catalog"]}).tools == ["catalog", "workspace"]
 
     def test_policy_values_are_an_enum(self):
         with pytest.raises(ValidationError):

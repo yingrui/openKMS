@@ -49,6 +49,7 @@ import {
   splitQaSources,
 } from './KnowledgeBaseDetail.qaUtils';
 import { KbAgentSettings } from './KbAgentSettings';
+import { KbQaFilesPanel } from './KbQaFilesPanel';
 import { TAB_ICONS, TAB_ORDER } from './KnowledgeBaseDetail.types';
 import { useKnowledgeBaseDetail } from './useKnowledgeBaseDetail';
 import { ContentCommentsShell } from '../../components/comments/ContentCommentsShell';
@@ -85,7 +86,7 @@ export function KnowledgeBaseDetail() {
     searchLabelFilters, searchMetadataFilters, setSearchMetadataFilters, searchTopK, setSearchTopK,
     searchForceDense, setSearchForceDense, searchRetrievalDiff,  qaInput,
     setQaInput, chatMessages,  qaFeedback,  qaLoading, 
-    beginQaTraceSession, clearQaTraceSession, kbQaConvId,
+    beginQaTraceSession, clearQaTraceSession, kbQaConvId, qaSessionId,
      kbQaConversations,  kbQaConvsLoading, 
     kbQaConvReady,  kbQaMainScrollRef, settingsAgentUrl, setSettingsAgentUrl,
     settingsAgentSkills, toggleSettingsAgentSkill,
@@ -370,6 +371,11 @@ export function KnowledgeBaseDetail() {
                   </div>
                 ) : null}
               </div>
+              {/* What this conversation produced, above the composer: the answer can say it wrote a file. */}
+              <div className="kb-qa-files-row">
+                <KbQaFilesPanel kbId={kb.id} sessionId={qaSessionId} />
+              </div>
+
               <div className="kb-qa-composer-outer">
                 <form className="kb-qa-composer" onSubmit={handleAsk}>
                   <textarea

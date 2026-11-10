@@ -1,5 +1,5 @@
 /** API for knowledge base management (backend). */
-import { request, requestRaw } from './apiClient';
+import { request, requestBlob, requestRaw } from './apiClient';
 import { sortAgentMessagesByCreatedAt, type AgentConversationResponse, type AgentMessageItem } from './agentApi';
 import type { JobResponse } from './jobsApi';
 
@@ -905,4 +905,44 @@ export async function enqueueKnowledgeBaseWikiSpaceIndexJob(
     `/api/knowledge-bases/${kbId}/wiki-spaces/${encodeURIComponent(wikiSpaceId)}/index-job`,
     { method: 'POST' },
   );
+}
+
+/** One artifact or attachment in a conversation's workspace. */
+export interface QaSessionFile {
+  name: string;
+  path: string;
+  is_dir: boolean;
+  size: number | null;
+  modified_at: string;
+}
+
+export async function fetchQaSessionFiles(
+  kbId: string,
+  sessionId: string
+): Promise<{ session_id: string; files: QaSessionFile[] }> {
+  return request(`/api/knowledge-bases/${kbId}/qa-sessions/${sessionId}/files`);
+}
+
+/**
+ * Fetch one artifact and hand it to the browser.
+ *
+ * Not an `<a href>`: the download endpoint is behind the same bearer token as everything else, and a navigation would arrive
+ * without it. Fetch as a blob, then save.
+ */
+export async function downloadQaSessionFile(kbId: string, sessionId: string, path: string): Promise<void> {
+  const blob = await requestBlob(
+    `/api/knowledge-bases/${kbId}/qa-sessions/${sessionId}/files/download`,
+    { query: { path } }
+  );
+  const url = URL.createObjectURL(blob);
+  try {
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = path.split('/').pop() || 'artifact';
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+  } finally {
+    URL.revokeObjectURL(url);
+  }
 }

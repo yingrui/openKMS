@@ -237,11 +237,16 @@ export function useKnowledgeBaseDetail() {
    *  Private: the page drives it through `beginQaTraceSession` / `clearQaTraceSession`, so
    *  no ref crosses into render (React's compiler rejects refs read off a view-model). */
   const qaTraceSessionRef = useRef<string | null>(null);
+  /** The same id as state, because the workspace panel needs it during render and a ref may not be read there. */
+  const [qaSessionId, setQaSessionId] = useState<string | null>(null);
   const beginQaTraceSession = useCallback(() => {
-    qaTraceSessionRef.current = crypto.randomUUID();
+    const id = crypto.randomUUID();
+    qaTraceSessionRef.current = id;
+    setQaSessionId(id);
   }, []);
   const clearQaTraceSession = useCallback(() => {
     qaTraceSessionRef.current = null;
+    setQaSessionId(null);
   }, []);
   /** Which source indexes are expanded (full detail), keyed by assistant ``replyKey``. */
   const kbIdRef = useRef(kbId);
@@ -1487,6 +1492,7 @@ export function useKnowledgeBaseDetail() {
     setQaLoading,
     beginQaTraceSession,
     clearQaTraceSession,
+    qaSessionId,
     kbQaConvId,
     setKbQaConvId,
     kbQaConversations,

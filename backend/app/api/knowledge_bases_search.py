@@ -132,6 +132,65 @@ async def ask_question(
         raise HTTPException(status_code=502, detail="Could not reach agent service") from e
 
 
+@router.get("/{kb_id}/qa-sessions/{session_id}/files")
+async def list_qa_session_files(
+    kb_id: str,
+    session_id: str,
+    kb: KnowledgeBase = Depends(get_kb_scoped),
+):
+    """What this conversation produced and what it was given.
+
+    The files live with the agent (they are its workspace), so this is a proxy — and the ACL check is here, because the agent
+    is not where a user's access to a knowledge base is decided.
+    """
+    if not kb.agent_url:
+        raise HTTPException(status_code=400, detail="No agent URL configured for this knowledge base")
+    from app.services.content.knowledge_bases.qa_agent_proxy import agent_kb_path
+
+    url = agent_kb_path(kb.agent_url, kb_id, f"sessions/{session_id}/files")
+    try:
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            resp = await client.get(url)
+            resp.raise_for_status()
+            return resp.json()
+    except httpx.HTTPStatusError as e:
+        raise HTTPException(status_code=502, detail="Agent service returned an error") from e
+    except httpx.HTTPError as e:
+        raise HTTPException(status_code=502, detail="Could not reach agent service") from e
+
+
+@router.get("/{kb_id}/qa-sessions/{session_id}/files/download")
+async def download_qa_session_file(
+    kb_id: str,
+    session_id: str,
+    path: str,
+    kb: KnowledgeBase = Depends(get_kb_scoped),
+):
+    """One artifact as bytes. The agent serves it; this decides whether the caller may have it."""
+    if not kb.agent_url:
+        raise HTTPException(status_code=400, detail="No agent URL configured for this knowledge base")
+    from app.services.content.knowledge_bases.qa_agent_proxy import agent_kb_path
+
+    url = agent_kb_path(kb.agent_url, kb_id, f"sessions/{session_id}/files/download")
+    try:
+        async with httpx.AsyncClient(timeout=60.0) as client:
+            upstream = await client.get(url, params={"path": path})
+    except httpx.HTTPError as e:
+        raise HTTPException(status_code=502, detail="Could not reach agent service") from e
+    if upstream.status_code == 404:
+        raise HTTPException(status_code=404, detail="File not found")
+    if upstream.status_code == 400:
+        raise HTTPException(status_code=400, detail="Invalid path")
+    if upstream.status_code >= 400:
+        raise HTTPException(status_code=502, detail="Agent service returned an error")
+    filename = path.rsplit("/", 1)[-1] or "artifact"
+    return StreamingResponse(
+        iter([upstream.content]),
+        media_type=upstream.headers.get("content-type", "application/octet-stream"),
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
+
+
 @router.post("/{kb_id}/ask/stream")
 async def ask_question_stream(
     kb_id: str,

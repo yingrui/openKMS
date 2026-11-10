@@ -430,6 +430,9 @@
       "consulted": "consulted",
       "usedHint": "Numbers in the answer come from this source.",
       "consultedHint": "The query ran, but the answer did not draw on it."
-    }
+    },
+    "qaFiles": "Files",
+    "qaFilesEmpty": "This conversation has not produced any files yet.",
+    "qaFilesLoading": "Loading…"
   }
 }

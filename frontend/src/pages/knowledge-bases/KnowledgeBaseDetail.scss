@@ -3123,3 +3123,90 @@ body.openkms-kb-qa-fullpage .kb-qa-shell {
   gap: var(--space-4);
   max-width: 60rem;
 }
+
+/* The conversation's files, directly above the composer. */
+.kb-qa-files-row {
+  display: flex;
+  justify-content: flex-end;
+  padding: 0 var(--space-4) var(--space-2);
+}
+
+.kb-qa-files {
+  position: relative;
+
+  &__toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-2);
+    padding: var(--space-1) var(--space-3);
+    border: 1px solid var(--color-border);
+    border-radius: 999px;
+    background: var(--color-surface);
+    color: var(--color-text-secondary);
+    font-size: var(--font-size-sm);
+    cursor: pointer;
+
+    &.is-active {
+      border-color: var(--color-accent, #2563eb);
+      color: var(--color-accent, #2563eb);
+    }
+  }
+
+  &__count {
+    font-variant-numeric: tabular-nums;
+  }
+
+  &__panel {
+    position: absolute;
+    right: 0;
+    bottom: calc(100% + var(--space-2));
+    min-width: 18rem;
+    max-width: 32rem;
+    max-height: 18rem;
+    overflow: auto;
+    padding: var(--space-2);
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    box-shadow: var(--shadow-md);
+    z-index: 20;
+
+    ul {
+      list-style: none;
+      margin: 0;
+      padding: 0;
+    }
+  }
+
+  &__link {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    width: 100%;
+    padding: var(--space-1) var(--space-2);
+    border: 0;
+    border-radius: var(--radius-sm);
+    background: none;
+    color: inherit;
+    font: inherit;
+    text-align: left;
+    cursor: pointer;
+
+    &:hover {
+      background: var(--color-surface-sunken);
+    }
+  }
+
+  &__name {
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  &__size {
+    color: var(--color-text-secondary);
+    font-size: var(--font-size-xs);
+    font-variant-numeric: tabular-nums;
+  }
+}
