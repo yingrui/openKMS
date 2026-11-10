@@ -327,7 +327,7 @@ Full stack glossary remains in older revisions’ spirit: data source, dataset, 
 | Path | When |
 |------|------|
 | Enrich FoO (`workItemDependencyClosure`, `teamCapacitySnapshot`) | You want stronger AI decisions on the same board |
-| [Apps (hosted modules)](../features/app-builder.md) | Register your own board UI as a hosted App |
+| [Chamber](../features/app-builder.md) | Register your own board UI as a hosted app |
 | Bind datasets / connector sync from a real tracker | You outgrow hand-entered cards |
 | [Tushare market ontology DIY](tushare-market-ontology.md) | Practice the same pattern on market data |
 | [Ontology Functions](../features/ontology-functions.md) | Deeper authoring / SDK |

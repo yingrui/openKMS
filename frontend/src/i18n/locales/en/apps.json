@@ -1,6 +1,6 @@
 {
-  "galleryTitle": "App Gallery",
-  "gallerySubtitle": "Open, configure, or manage your hosted apps.",
+  "galleryTitle": "Chamber",
+  "gallerySubtitle": "Manage decision making systems.",
   "loading": "Loading…",
   "emptyGallery": "No apps yet.",
   "emptyGalleryHint": "Register an app from Console → Kubernetes, or ask an agent to register one.",

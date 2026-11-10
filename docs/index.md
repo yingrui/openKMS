@@ -34,6 +34,7 @@ It is not an app generator, a document store, a chat window, or a BI tool. The l
 | **[Ontology](features/ontology.md) & [data layer](features/data-layer.md)** | Object/link types, instances, datasets, and semantic models; graph and relational queries. |
 | **[Functions & actions](features/ontology-functions.md)** | Published functions and typed actions on objects; execution and audit. |
 | **[Agents](features/openkms-agents.md) & [skill](features/openkms-skill.md)** | Deep Agents workspaces, and the openkms skill/CLI for agents calling the public API. |
+| **[Chamber](features/app-builder.md)** | Register and run decision-system UIs against a Kubernetes Service; identity headers and proxy. |
 
 **Foundations:** [operation permissions + resource ACL](features/data-security.md) (admin does not imply read-all data), and [evaluations](features/evaluation.md) for retrieval and wiki coverage.
 

@@ -1,6 +1,6 @@
 {
-  "galleryTitle": "应用库",
-  "gallerySubtitle": "打开、配置或管理你的托管应用。",
+  "galleryTitle": "议事厅",
+  "gallerySubtitle": "管理决策系统。",
   "loading": "加载中…",
   "emptyGallery": "还没有应用。",
   "emptyGalleryHint": "可在「控制台 → Kubernetes」登记，或由 Agent 登记。",

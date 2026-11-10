@@ -2,7 +2,7 @@
 
 Console management for **registered Kubernetes clusters** that agents and operators can use. Operators can **bring your own cluster** (paste a kubeconfig, encrypt at rest, test connectivity) and **browse** namespaces, Deployments, Services, and Pods. The console can **apply** allowlisted YAML, **delete** those kinds, **read Pod logs**, and **register a Service in Apps**. Cloud provisioning is not included.
 
-Related: [Console & authentication](console-and-auth.md), [Agents](openkms-agents.md), [Apps (hosted modules)](app-builder.md), [API reference](api-reference.md#kubernetes-clusters-consolekubernetes), Data models.
+Related: [Console & authentication](console-and-auth.md), [Agents](openkms-agents.md), [Chamber](app-builder.md), [API reference](api-reference.md#kubernetes-clusters-consolekubernetes), Data models.
 
 ## Console UI
 
@@ -42,7 +42,7 @@ Prefer kubeconfigs that use **token** or **client certificate** credentials. Cli
 
 Console row actions match the skill: logs Dialog, confirm delete, apply Dialog, Secret/ConfigMap editors, Deployment **Environment**. kubeconfig never returns in responses. Secrets labeled `openkms.io/project-id` are **read-only** in the console (edit from Project settings → Deploy).
 
-**Register in Apps** (Service row): creates a published `template_id=module` app bound to `cluster_id` / namespace / service / port. Requires `ontology:write` in addition to `console:kubernetes`. See [Apps](app-builder.md#module-hosted-services). The workload gets the signed-in user from openKMS [identity headers](app-builder.md#module-identity-headers) and should not implement its own login.
+**Register in Chamber** (Service row): creates a published `template_id=module` app bound to `cluster_id` / namespace / service / port. Requires `ontology:write` in addition to `console:kubernetes`. See [Chamber](app-builder.md#module-hosted-services). The workload gets the signed-in user from openKMS [identity headers](app-builder.md#module-identity-headers) and should not implement its own login.
 
 ## Deploy secrets (projects) {#deploy-secrets-projects}
 

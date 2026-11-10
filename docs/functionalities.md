@@ -20,7 +20,7 @@ Per-feature reference, split by topic under `docs/features/`. The table below is
 | [Ontology — objects, links, datasets](features/ontology.md) | Object/link types, instances, data sources, datasets |
 | [Catalog (Datasets · Semantic Model · Data Insights)](features/data-layer.md) | Catalog + semantic model: datasets, relationships (FK edges), quality rules, metrics, file ingest, profile/schema, row editing (`data:*`); Data Insights stories of findings, each with its own source (`explorer:*`) |
 | [Ontology Functions](features/ontology-functions.md) | Three Suite Apps (Manager, Object Explorer, Function Editor), PG-backed functions, ofs runtime |
-| [App Gallery (hosted modules)](features/app-builder.md) | Register Kubernetes Services as Apps; API-server proxy + identity headers; gallery / run / registry settings |
+| [Chamber (decision systems)](features/app-builder.md) | Register and run decision-system UIs as hosted apps; API-server proxy + identity headers; gallery / run / registry settings |
 | [Ontology Function Client](features/ontology-sdk.md) | `openkms_functions` Client / `@function` / edits; string api names |
 | [Object Explorer](features/object-explorer.md) | Cypher exploration, list view, instance graph layout and rendering |
 | [Pipelines, jobs & models](features/pipelines-and-jobs.md) | Pipeline templates, procrastinate jobs, provider/model registry (multimodal image/video models planned) |

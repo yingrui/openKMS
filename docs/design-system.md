@@ -36,7 +36,7 @@ Export surface for TSX: **`styles/design-system/index.ts`** (`Dialog`, `EmptySta
 
 ## A2UI platform surfaces
 
-**Google A2UI** renders in Light DOM. openKMS hosts (Knowledge Map overview, …) wrap content in **`.a2ui-platform-surface`** and call **`ensureA2uiPlatformStyles()`** once at startup (`src/a2uiPlatform.ts` → `@a2ui/react/styles` `injectStyles()`). Product **Apps** are hosted module iframes — they do not use A2UI.
+**Google A2UI** renders in Light DOM. openKMS hosts (Knowledge Map overview, …) wrap content in **`.a2ui-platform-surface`** and call **`ensureA2uiPlatformStyles()`** once at startup (`src/a2uiPlatform.ts` → `@a2ui/react/styles` `injectStyles()`). Product **Chamber** apps are module iframes — they do not use A2UI.
 
 | Piece | Role |
 |-------|------|

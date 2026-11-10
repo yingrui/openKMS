@@ -34,6 +34,7 @@
 | **[本体](features/ontology.md)与[数据层](features/data-layer.md)** | 对象/链接类型、实例、数据集、语义模型；图查询与关系查询。 |
 | **[函数与动作](features/ontology-functions.md)** | 已发布函数、对象上的类型化动作；执行与审计。 |
 | **[Agent](features/openkms-agents.md)与 [skill](features/openkms-skill.md)** | Deep Agents 工作区，以及供 Agent 调用公共 API 的 openkms skill/CLI。 |
+| **[议事厅（Chamber）](features/app-builder.md)** | 把决策系统 UI 登记到 Kubernetes Service 并运行；身份头与代理。 |
 
 **底座：** [操作权限 + 资源 ACL](features/data-security.md)（管理员不意味着可读全部数据）、面向检索与 wiki 覆盖的[评测](features/evaluation.md)。
 

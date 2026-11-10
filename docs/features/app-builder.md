@@ -1,6 +1,6 @@
-# App Gallery (hosted modules)
+# Chamber (decision systems)
 
-The **App Gallery** hosts HTTP UIs registered against a Kubernetes **Service**. They open via an iframe that proxies through the API server. openKMS authenticates the user and forwards identity headers; the Service does not need its own sign-in.
+**Chamber** hosts HTTP UIs registered against a Kubernetes **Service**. They open via an iframe that proxies through the API server. openKMS authenticates the user and forwards identity headers; the Service does not need its own sign-in.
 
 Experimental **A2UI App Builder** authoring (Source / Design / OntoObjectList) has been **removed**. Future A2UI experiments belong in **Agent Project** sessions, not this product surface.
 
@@ -8,14 +8,14 @@ Experimental **A2UI App Builder** authoring (Source / Design / OntoObjectList) h
 
 | Path | How |
 |------|-----|
-| Console → Kubernetes → cluster detail | **Register in App Gallery** |
+| Console → Kubernetes → cluster detail | **Register in Chamber** |
 | Skill | `kubernetes register-app …` or `apps create --bindings-json '{"k8s":{…}}'` |
 
 Requires **`console:kubernetes`** and **`ontology:write`**. The app is **published immediately** (`template_id=module`).
 
 ## Run
 
-The **App Gallery** app (`/apps`):
+The **Chamber** app (`/apps`):
 
 - List / manage: `/apps`
 - Run: `/apps/{id}` → iframe → `GET/POST …/api/app-builder/apps/{id}/proxy/`

@@ -167,4 +167,4 @@ Earlier (2026-08-16) `modify`-only shipping is superseded for object-instance ed
 - [x] Action `modify` apply on resolvable object instances (2026-08-16)
 - [x] Action `create` / `delete` apply on resolvable object instances (2026-08-17)
 - [ ] Link create/delete edit ops + dataset/Neo4j synthetic `object_id` — separate plan when needed
-- [x] Apps (hosted modules) — register Service + iframe proxy; A2UI App authoring removed
+- [x] Chamber — register Service + iframe proxy; A2UI App authoring removed
