@@ -25,6 +25,20 @@ DEFAULT_TOOLS = ("ontology", "catalog", "page_index")
 KNOWN_TOOLS = frozenset({*DEFAULT_TOOLS, "workspace"})
 
 
+class PromptsConfig(BaseModel):
+    """KB-wide instructions — not a prompt store.
+
+    `agents_md` is a single text field, copied into the session workspace as `AGENTS.md` at creation. It is deliberately not
+    section 3's versioned store: that needs a publish gate and an evaluation suite to be worth having, and neither exists
+    yet. `MEMORY.md` is absent on purpose — memory is per conversation and per user, and a KB-level one would let one
+    session's content into another's answers.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    agents_md: str | None = Field(None, max_length=20_000)
+
+
 class RetrievalConfig(BaseModel):
     """How much context the agent retrieves. Depth is a KB property: a dense quant KB and an FAQ-shaped KB want different
     numbers, and today both get the same hard-coded five."""
@@ -87,6 +101,7 @@ class AgentConfig(BaseModel):
 
     tools: list[str] = list(DEFAULT_TOOLS)
     model_id: str | None = None
+    prompts: PromptsConfig = PromptsConfig()
     retrieval: RetrievalConfig = RetrievalConfig()
     answer_policy: AnswerPolicy = AnswerPolicy()
     workspace: WorkspaceConfig = WorkspaceConfig()

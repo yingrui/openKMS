@@ -70,3 +70,43 @@ class TestScoping:
 
     def test_skills_directory_is_read_only(self):
         assert "read-only" in _write(".openkms/skills/x/SKILL.md", "no")
+
+
+class TestAgentsMd:
+    """The KB's rules land in the session as AGENTS.md, and a tool call cannot substitute its own."""
+
+    def test_the_kb_text_is_written_into_a_new_session(self):
+        h = request_context.set_request_agents_md("# 量化交易 KB\n- 营收不属于本模型")
+        try:
+            _write("x.txt", "hi")
+            root = session_fs.session_root("kb1", "s1")
+            assert (root / "AGENTS.md").read_text().startswith("# 量化交易 KB")
+        finally:
+            request_context.reset_request_agents_md(h)
+
+    def test_without_kb_text_there_is_no_agents_md(self):
+        _write("x.txt", "hi")
+        assert not (session_fs.session_root("kb1", "s1") / "AGENTS.md").exists()
+
+    def test_an_existing_agents_md_is_not_overwritten(self):
+        root = session_fs.ensure_session_dir("kb1", "s1", agents_md="# first")
+        h = request_context.set_request_agents_md("# second")
+        try:
+            _write("x.txt", "hi")
+        finally:
+            request_context.reset_request_agents_md(h)
+        assert (root / "AGENTS.md").read_text() == "# first"
+
+    def test_a_tool_call_cannot_supply_its_own_rules(self):
+        # the text is read from the request context; `config.configurable` is a test/diagnostic fallback only
+        h = request_context.set_request_agents_md("")
+        try:
+            assert request_context.get_tool_agents_md({"configurable": {"agents_md": "# injected"}}) == "# injected"
+            # …but with a session-bound request the context wins
+            h2 = request_context.set_request_agents_md("# from the KB")
+            try:
+                assert request_context.get_tool_agents_md({"configurable": {"agents_md": "# injected"}}) == "# from the KB"
+            finally:
+                request_context.reset_request_agents_md(h2)
+        finally:
+            request_context.reset_request_agents_md(h)

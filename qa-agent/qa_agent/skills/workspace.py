@@ -18,7 +18,7 @@ from langchain_core.runnables import RunnableConfig
 from langchain_core.tools import tool
 
 from .. import session_fs
-from ..request_context import get_tool_knowledge_base_id, get_tool_session_id
+from ..request_context import get_tool_agents_md, get_tool_knowledge_base_id, get_tool_session_id
 
 #: Where a write goes when the caller does not say. `out/` is the directory the product shows to the user.
 ARTIFACT_DIR = "out"
@@ -29,6 +29,9 @@ def _scope(config: RunnableConfig) -> tuple[str, str]:
     session_id = get_tool_session_id(config)
     if not kb_id or not session_id:
         raise ValueError("No session in scope: this conversation has no workspace.")
+    # Materialise on first use, with the KB's rules written in: `AGENTS.md` is what an agent reads to learn the conventions
+    # of the place it is working, and `ensure_session_dir` never overwrites one that exists.
+    session_fs.ensure_session_dir(kb_id, session_id, agents_md=get_tool_agents_md(config))
     return kb_id, session_id
 
 

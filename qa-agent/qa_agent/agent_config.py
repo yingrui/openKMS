@@ -39,3 +39,11 @@ def max_tool_rounds(config: dict[str, Any] | None) -> int | None:
     if isinstance(raw, int) and 1 <= raw <= 100:
         return raw
     return None
+
+
+def agents_md(config: dict[str, Any] | None) -> str | None:
+    """KB-wide instructions, copied into the session workspace as `AGENTS.md`. `None` when the KB has not written any."""
+    raw = ((config or {}).get("prompts") or {}).get("agents_md")
+    if isinstance(raw, str) and raw.strip():
+        return raw
+    return None

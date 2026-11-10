@@ -73,3 +73,26 @@ def get_tool_knowledge_base_id(config: dict[str, Any] | None = None) -> str:
         v = c.get("knowledge_base_id")
         return v if isinstance(v, str) else ""
     return ""
+
+
+_agents_md: ContextVar[str] = ContextVar("qa_agent_agents_md", default="")
+
+
+def set_request_agents_md(text: str) -> Any:
+    return _agents_md.set(text or "")
+
+
+def reset_request_agents_md(handle: Any) -> None:
+    _agents_md.reset(handle)
+
+
+def get_tool_agents_md(config: dict[str, Any] | None = None) -> str | None:
+    """The KB's `AGENTS.md` text for this request, or None. Read from the context so a tool call cannot supply its own."""
+    ctx = _agents_md.get()
+    if ctx:
+        return ctx
+    c = (config or {}).get("configurable") or {}
+    if isinstance(c, dict):
+        v = c.get("agents_md")
+        return v if isinstance(v, str) and v.strip() else None
+    return None
