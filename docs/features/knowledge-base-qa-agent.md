@@ -20,39 +20,86 @@ Two agent products, two postures. This is the frame every capability decision be
 | Trust in content | **low**: retrieved text can contain injected instructions | low, but the blast radius is one project |
 | Data scope | one KB, read-only, multi-tenant | one project workspace, read-write |
 | Consequence of failure | a wrong or leaked answer served to the outside | a bad edit in one workspace |
-| Therefore | **no code execution · no writable filesystem · strict tool allowlist · read-only by construction** | may execute, may write, may delegate |
+| Therefore | **execution only inside a real isolation boundary** (§ sandbox) · per-session filesystem · strict tool allowlist · data reads stay read-only | may execute, may write, may delegate, on the host |
 
-Everything below follows from that row. A capability that is fine for the project agent is not automatically fine here.
+Everything below follows from that row. A capability that is fine for the project agent is not automatically fine here — and
+conversely, a capability this service needs is not automatically fine *without a boundary*.
 
-## File sandbox — unresolved, and for KB the answer is "none"
+## Execution and the sandbox
 
-**It is not settled.** What exists today in the project runtime is a tool named `run_python` (`deep_agents/sandbox.py`)
-that calls:
+The product direction is **问数 → 问策**: from answering a question with a number to proposing an approach. That requires
+computation the Catalog cannot express — indicators, rolling windows, cross-dataset comparisons, a chart, a file the user
+keeps. Answering "what should we do" without the ability to compute is answering from rhetoric.
+
+So execution is **in scope**, and that makes the sandbox a **hard requirement**, not an optional capability. It also raises
+the bar rather than lowering it: this is an **external-facing** service, so a hole in the boundary is arbitrary code
+execution on the host, on behalf of a stranger.
+
+### The current implementation cannot be reused
+
+`deep_agents/sandbox.py` runs:
 
 ```
 subprocess.run([sys.executable, "-c", code], cwd=project_root, timeout=…, env=…)
 ```
 
-There is **no container, no namespace, no seccomp, no network policy** — the isolation is *the project directory and a
-timeout*. That is defensible for an internal, single-tenant workspace where the operator trusts the agent. It is **not** an
-isolation boundary, and calling it a sandbox sets the wrong expectation.
+Same OS user as the backend, no container, no namespaces, no seccomp, no network policy — the isolation is *a working
+directory and a timeout*. And `build_project_shell_env` (`deep_agents/env.py`) puts credentials into that process:
 
-For the KB agent, the positioning above settles it differently: **the KB agent should have no execution at all.** That in
-turn splits "skills" into two kinds, which is the part worth deciding explicitly:
+```
+OPENKMS_API_KEY=<the caller's bearer token>   OPENKMS_API_BASE_URL=<backend>
+```
 
-| Skill kind | What it is | KB agent | Project agent |
+Verified: a child process started this way can read files above its `cwd` (including `backend/.env`) and sees the backend's
+environment. For the internal project agent that is a conscious trade. For the KB service it is remote code execution plus
+credential exfiltration, so the KB path must not use it.
+
+### What the KB sandbox must guarantee
+
+| Requirement | Detail |
+|---|---|
+| **Isolation** | container (preferred) or microVM. Read-only root filesystem; the only writable mount is the session directory. Never the Docker socket on the backend host — a compromised backend would then own the host. |
+| **No credentials** | zero `OPENKMS_*` variables, no DB URL, no model keys. The sandbox queries the Catalog through **tool calls the agent makes**, not through a key available to arbitrary code. |
+| **Network** | **deny by default**. Anything a skill needs is baked into the image; no `pip install` at run time. An allowlist is a separate, per-KB decision. |
+| **Quotas** | cpu, memory, disk, wall-clock, and executions per turn. A killed process is a **tool error** the model can react to, never a 500. |
+| **Lifetime** | created lazily on the first execution, reclaimed after an idle TTL, destroyed with the conversation. |
+| **Audit** | every execution recorded: code, exit status, duration, artifact sizes (`audit_events` already exists). |
+| **No git** | explicitly out of scope. Skills arrive as installed packages (`.openkms/skills/<id>/SKILL.md` + files), not cloned repositories. |
+
+### Per-session workspace, not per-KB and not per-user
+
+```
+/workspace                  the only writable mount — one per conversation
+  uploads/                  data the session was explicitly given
+  out/                      artifacts: charts, CSV, notebooks, reports
+  tmp/
+```
+
+Session-scoped rather than user-scoped: two conversations with the same user do not see each other's files unless the user
+explicitly continues a conversation. Artifacts are copied out to object storage **before** the directory is reclaimed, and
+are returned as attachments together with the code that produced them — for 问策 the artifact *is* the evidence.
+
+### Runtime choice
+
+| Option | Isolation | Start latency | Verdict |
 |---|---|---|---|
-| **Instructional** | a `SKILL.md`: when to use which tool, in what order, with what checks | **allowed** — it is text, and it is the thing we want to make editable | allowed |
-| **Executable** | a skill that ships a CLI/script and runs it | **not allowed** — the delivery path must not gain a process | allowed |
+| k8s Pod per session | clean | 1–3 s cold | **start here** — the boundary is explicit and the cluster already exists |
+| Warm pool of sandboxes | clean | low | later optimization, real maintenance cost |
+| Local Docker socket | weak | fast | **no** — backend compromise becomes host compromise |
 
-So the KB gains skills-as-files (§ configuration) without gaining a sandbox — because the skills it may load are the
-instructional kind. If executable skills are ever wanted there, that is a separate decision that requires a real isolation
-boundary (container or microVM, no network by default, per-tenant filesystem), and it should be argued against the
-positioning table, not slipped in with the skills loader.
+### Skills, now that execution exists
 
-## External tools: bind connectors, do not hard-code providers
+| Skill kind | What it is | Where it runs |
+|---|---|---|
+| **Instructional** | a `SKILL.md`: which tool, in what order, with what checks | anywhere — it is text |
+| **Executable** | ships a CLI or script that must run | **only inside the sandbox**, with the table above in force |
 
-The suggestion to expose a search connector as a tool is right, and the project runtime already has the pattern to copy:
+That keeps the delivery path's properties that matter (no credentials reach code, no host filesystem, quotas, audit) while
+allowing the capability the product needs.
+
+## Optional tool: web search
+
+A read tool, optional per KB, and **explicitly outside the evaluation**. The project runtime already has the shape:
 
 ```
 deep_agents/factory.py:111
@@ -62,19 +109,19 @@ deep_agents/factory.py:111
 ```
 
 `tools/web_search.py` turns any enabled connector of category `search_tool` (e.g. Zhipu) into a `web_search` tool. The KB
-agent has **no search capability at all** today.
+agent has no search capability at all today.
 
-Proposed: the same shape, bound **per KB** — `agent_config.tool_bindings.search_connector_id`. Notes that matter:
+Design:
 
-- It is a **read** tool, so it does not touch the positioning row above. It is the one external capability that is cheap to
-  add and hard to misuse.
-- It answers exactly the questions the test set currently fails: *"市场情绪如何，利好消息多吗？"* is a refuse today only
-  because the agent has nowhere to look.
-- **Evidence needs a type.** A web result is not a `data_query`; `select_display_sources` and the evaluation's data-query
-  judge must not treat it as one. It becomes a `web` source, and a question answered from the web needs its own ground-truth
-  family in the test set (e.g. "must cite a web source", "must not cite the Catalog").
-- **Injection surface grows.** Retrieval already carries untrusted text; the open web is worse. A web source should be
-  labelled as such everywhere it is shown, and never be allowed to justify a number the Catalog could have produced.
+- Bound per KB: `agent_config.tool_bindings.search_connector_id`. Off unless a KB asks for it.
+- **Evidence gets a type.** A web result is not a `data_query`; it becomes a `web` source, labelled wherever it is shown. The
+  data-query judge must never treat it as one.
+- **Not evaluated.** We do not judge whether a web answer is accurate — not the search provider's ranking, not the
+  summarisation of the snippet. The evaluation suites cover two things only: the **query** a data answer cited, and
+  (later) the **artifact** an analysis produced. A web answer is reported as *unverified by evaluation*, and the label says
+  so; grading the open web would measure the search vendor, not this product.
+- **Injection surface grows.** Retrieved text is already untrusted; the open web is worse. A web source must never be
+  allowed to justify a number the Catalog could have produced.
 
 ## How an answer is produced today
 
@@ -119,6 +166,30 @@ Notable gaps:
 - `faq_prompt` is a per-KB prompt, but it is **FAQ style guidance** (`faq_generation.py:123`), not the QA agent's prompt.
   It is the one precedent in the system for "prompt text stored per KB".
 - Nothing records **which prompt produced an answer**, so a behaviour change cannot be attributed to a text change.
+
+## Proposed configuration: one `agent_config` JSONB per KB
+
+One grouped object with a strict schema validated on write — `chunk_config` is the existing precedent, and it beats a dozen
+new columns.
+
+| Group | Fields |
+|---|---|
+| **Prompts** | `system_prompt` (versioned text), `prompt_version_id`, `agents_md` (KB-wide rules: terminology, definitions, what must be refused) |
+| **Tools and skills** | `tools_enabled` (`catalog` / `ontology` / `page_index` — the meaning `agent_skills` has today), `skills_installed` (instructional `SKILL.md` packages), `tool_bindings.search_connector_id` (optional web search) |
+| **Retrieval** | `top_k`, `rerank`, `hybrid_weights`, `min_score` — today `top_k=5` is hard-coded in `agent.py` |
+| **Answer policy** | `unknown_measure`, `require_grounded_numbers`, `evidence_labels`, `require_schema_lookup` (see "policies" below) |
+| **Orchestration** | `profile` (`rag_only` / `rag_tools` / `agent_loop` — an enum, not a graph), `max_tool_rounds`, `recursion_limit`, `retrieve` (`always` / `never` / `on_miss`) |
+| **Execution** | `sandbox.enabled`, `.profile` (`container` / `microvm`), `.image`, `.cpu`, `.mem_mb`, `.disk_mb`, `.wall_seconds`, `.max_exec_per_turn`, `.network` (`deny` / allowlist), `.session_ttl_minutes`, `.artifact_max_mb` |
+| **Observability** | `langfuse_credential_id` (a **reference**, never the secret), `langfuse_tags`, `sample_rate` |
+| **Model** | `agent_llm_model_id` |
+
+Two rules on what may live here:
+
+- **References, not secrets.** A Langfuse project or a search connector is stored as an id pointing at the credential store;
+  a key never goes into the KB row.
+- **`MEMORY.md` is not on this list.** AGENTS.md is KB-wide and admin-curated; memory is per conversation and per user. A
+  shared KB-level memory would let one user's session leak into another's answers — the project runtime can have one workspace
+  per person, this service cannot.
 
 ## Proposal 1 — mechanisms that must exist in code
 
@@ -284,8 +355,10 @@ series is the measurement.
    three numbers that decide it. The open part is the retrieval fork: a node that always runs versus a tool the model calls.
 6. **Executable skills for the KB agent** — deliberately out today (see "File sandbox"). If the answer becomes yes, the
    question is what the isolation boundary is, because `run_python` is a subprocess, not a sandbox.
-7. **Web answers and the evaluation**: a `web` source needs its own ground-truth family ("must cite a web source", "must not
-   cite the Catalog"), otherwise a question answered from the web scores as a data-query failure.
+7. **Sandbox runtime**: k8s Pod per session (clean boundary, 1–3 s cold start) versus a warm pool (fast, more maintenance).
+   The Docker-socket option is rejected: it makes a backend compromise a host compromise.
+8. **问策 evaluation**: an artifact plus its code needs a third ground-truth family next to `data_query` — artifact shape and
+   the tables its code read are checkable; whether the *strategy* is sound is not, and stays a human review.
 
 ## Not proposed
 
@@ -295,3 +368,7 @@ series is the measurement.
 - Treating "replace the framework" and "move KB Q&A into the project runtime" as the same question. They are not: the first
   keeps the product and swaps the graph builder (§ above), the second changes what the service is for.
 - Judging the returned numbers anywhere in this design. Data moves; the query does not.
+- **Evaluating web search accuracy.** Web search is an optional read tool; grading the open web would measure the search
+  vendor, not this product. A web answer is reported as unverified rather than scored.
+- Reusing `deep_agents/sandbox.py` for the KB path — it runs as the backend's OS user and injects the caller's bearer token,
+  which is acceptable inside a trusted workspace and is remote code execution in an external service.
