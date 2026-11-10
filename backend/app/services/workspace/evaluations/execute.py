@@ -406,8 +406,10 @@ Actual SQL (what the agent ran):
 {actual_sql}
 
 The two may differ in formatting, aliases, join order, or `BETWEEN` vs two inequalities. Judge whether they are
-**semantically equivalent**: do they read the same tables, apply the same filters and the same grouping, and return the
-same measure? A difference in the *numbers' grain* or the *filters* is a real difference, not a formatting one.
+**semantically equivalent**: the actual query must answer the expected query's question. An actual query may return
+*additional* measures or columns — asking more is not an error, it is completeness — as long as the expected measure is
+present and computed the same way. A real difference is: the wrong table, a missing or changed filter, a different grain
+(GROUP BY), or the expected measure computed differently.
 
 Respond with JSON only: {{"pass": true|false, "score": 0.0-1.0, "reasoning": "one or two sentences"}}
 - pass: true if they are equivalent, false otherwise

@@ -65,6 +65,11 @@ ITEMS: list[tuple[str, list[dict]]] = [
         "各行业分别有多少只股票？",
         [{"model_id": MODEL_ID, "sql": {"tables": ["tushare.daily_basic"], "group_by": ["industry"]}}],
     ),
+    # 正向：期望写成了原始 SQL（写法不同、语义等价），由 LLM 判等价 — 验证阶段 3
+    (
+        "市场上一共有多少只股票？",
+        [{"model_id": MODEL_ID, "sql": "SELECT count(DISTINCT ts_code) FROM tushare.stock_basic"}],
+    ),
 ]
 
 
@@ -109,7 +114,7 @@ def main() -> int:
         return 1
 
     print(f"\n  pass {run.get('pass_count')}/{run.get('item_count')} · avg {run.get('avg_score')}\n")
-    expected = [True, True, False, False]
+    expected = [True, True, False, False, True]
     ok = True
     for i, (result, want) in enumerate(zip(run.get("results", []), expected)):
         mark = "✓" if result["pass"] == want else "✗ EXPECTED THE OPPOSITE"
