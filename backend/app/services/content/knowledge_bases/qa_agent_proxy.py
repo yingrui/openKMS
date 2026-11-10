@@ -40,6 +40,8 @@ def ask_agent_body(
     conversation_history: list[dict[str, str]],
     access_token: str,
     session_id: str | None = None,
+    system_prompt: str | None = None,
+    prompt_version: str | None = None,
 ) -> dict[str, Any]:
     body: dict[str, Any] = {
         "question": question,
@@ -47,6 +49,10 @@ def ask_agent_body(
         "access_token": access_token,
         "agent_skills": resolve_agent_skills(kb),
     }
+    # The published prompt version, resolved by the caller (it has the session). Absent means the built-in text.
+    if system_prompt:
+        body["system_prompt"] = system_prompt
+        body["prompt_version"] = prompt_version
     # Retrieval depth and answer policy live per KB now; an empty config resolves to today's behaviour on the agent side.
     agent_config = parse_agent_config(kb.agent_config).model_dump(exclude_none=True)
     if agent_config:

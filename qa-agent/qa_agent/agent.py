@@ -69,6 +69,10 @@ class AgentState(TypedDict):
     retrieve_mode: str
     #: `answer_policy` from the KB's agent_config — the rules the KB switched on.
     answer_policy: dict[str, Any]
+    #: The KB's published prompt text, if it published one; None means the built-in instruction.
+    system_prompt: str | None
+    #: Which version that text is, echoed back so an answer can be attributed to it.
+    prompt_version: str | None
 
 
 def retrieve_node(state: dict[str, Any]) -> dict[str, Any]:
@@ -111,10 +115,18 @@ def _policy_fragments(policy: dict[str, Any] | None) -> str:
     return "\n\n".join(parts)
 
 
+DEFAULT_BASE_INSTRUCTION = (
+    "You are a helpful assistant answering questions based on **this** knowledge base "
+    "(and only the skills enabled for it). Do not invent a different product domain "
+    "(e.g. insurance) unless the retrieved context or enabled skills are about that domain."
+)
+
+
 def _build_system_prompt(
     context: list[SourceItem],
     skills: list[str] | None,
     policy: dict[str, Any] | None = None,
+    state_prompt: str | None = None,
 ) -> str:
     def _source_ref(s: SourceItem) -> str:
         parts = []
@@ -133,10 +145,11 @@ def _build_system_prompt(
     skill_ids = normalize_skill_ids(skills)
     skill_prompt = get_skill_prompt_fragments(skill_ids)
     rules = _policy_fragments(policy)
+    # A KB's published prompt replaces the *base instruction* only: the skill descriptions, the policy rules and the
+    # retrieved context are assembled here and cannot be talked away by a prompt edit.
+    base = (state_prompt or "").strip() or DEFAULT_BASE_INSTRUCTION
     return (
-        "You are a helpful assistant answering questions based on **this** knowledge base "
-        "(and only the skills enabled for it). Do not invent a different product domain "
-        "(e.g. insurance) unless the retrieved context or enabled skills are about that domain.\n\n"
+        f"{base}\n\n"
         "Sources you may use:\n"
         "1. **Knowledge base** – Document chunks and FAQs (context below).\n"
         "2. **Enabled skills** – described next (only these tools are available).\n\n"
@@ -170,7 +183,9 @@ def generate_node(state: dict[str, Any]) -> dict[str, Any]:
     llm_with_tools = llm.bind_tools(tools)
 
     messages = build_messages_for_generate(
-        context_prompt=_build_system_prompt(state["context"], skill_ids, state.get("answer_policy")),
+        context_prompt=_build_system_prompt(
+            state["context"], skill_ids, state.get("answer_policy"), state.get("system_prompt")
+        ),
         conversation_history=state["conversation_history"],
         question=state["question"],
         existing_graph_messages=list(state.get("messages") or []),
@@ -270,7 +285,10 @@ def finalize_node(state: dict[str, Any]) -> dict[str, Any]:
     )
     messages = build_messages_for_generate(
         context_prompt=_build_system_prompt(
-            state["context"], normalize_skill_ids(state.get("agent_skills")), state.get("answer_policy")
+            state["context"],
+            normalize_skill_ids(state.get("agent_skills")),
+            state.get("answer_policy"),
+            state.get("system_prompt"),
         ),
         conversation_history=state["conversation_history"],
         question=state["question"],
@@ -344,6 +362,8 @@ def invoke_agent(
     session_id: str | None = None,
     agent_skills: list[str] | None = None,
     agent_config: dict[str, Any] | None = None,
+    system_prompt: str | None = None,
+    prompt_version: str | None = None,
 ) -> dict[str, Any]:
     """Invoke the agent and return answer + sources."""
     from .langfuse_client import build_langgraph_trace_config, current_trace_id
@@ -384,6 +404,10 @@ def invoke_agent(
                 "max_tool_rounds": agent_config_module.max_tool_rounds(agent_config),
                 "retrieve_mode": retrieve_mode,
                 "answer_policy": agent_config_module.answer_policy(agent_config),
+            "system_prompt": system_prompt,
+            "prompt_version": prompt_version,
+                "system_prompt": system_prompt,
+                "prompt_version": prompt_version,
             },
             config=config,
         )
@@ -417,6 +441,7 @@ def invoke_agent(
             "context": display,
             "grounding": grounding,
             "langfuse_trace_id": trace_id,
+            "prompt_version": prompt_version,
             "warnings": warnings,
             "verified": ground_mode != "enforce" or not warnings,
         }
@@ -492,6 +517,8 @@ async def astream_agent_ndjson(
     session_id: str | None = None,
     agent_skills: list[str] | None = None,
     agent_config: dict[str, Any] | None = None,
+    system_prompt: str | None = None,
+    prompt_version: str | None = None,
 ) -> AsyncIterator[bytes]:
     """NDJSON stream: ``delta`` / ``tool_*`` events (wiki-copilot-compatible), then ``done`` or ``error``."""
     from .langfuse_client import build_langgraph_trace_config, get_langfuse_callback
@@ -812,6 +839,7 @@ async def astream_agent_ndjson(
                 # Additive: the label and the ratio travel with the answer so a reader (or a score) can use them.
                 "grounding": grounding.model_dump(),
                 "langfuse_trace_id": trace_id,
+                "prompt_version": prompt_version,
                 "warnings": warnings,
                 "verified": ground_mode != "enforce" or not warnings,
             }

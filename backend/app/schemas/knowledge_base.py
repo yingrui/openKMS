@@ -359,3 +359,5 @@ class AskResponse(BaseModel):
     warnings: list[str] = []
     #: False when the KB enforces grounding and the answer contained numbers no cited source supports.
     verified: bool = True
+    #: Which prompt version produced this answer (`system@v3`), or None for the built-in text.
+    prompt_version: str | None = None

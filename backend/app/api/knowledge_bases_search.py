@@ -100,6 +100,9 @@ async def ask_question(
 
     from app.services.content.knowledge_bases.qa_agent_proxy import agent_error, agent_kb_path, ask_agent_body
 
+    from app.services.workspace.evaluations.prompt_store import resolve_system_prompt
+
+    prompt_text, prompt_version = await resolve_system_prompt(db, kb_id)
     url = agent_kb_path(kb.agent_url, kb_id, "ask")
     try:
         async with httpx.AsyncClient(timeout=120.0) as client:
@@ -111,6 +114,8 @@ async def ask_question(
                     conversation_history=body.conversation_history,
                     access_token=token,
                     session_id=body.session_id,
+                    system_prompt=prompt_text,
+                    prompt_version=prompt_version,
                 ),
             )
             resp.raise_for_status()
@@ -123,6 +128,7 @@ async def ask_question(
                 langfuse_trace_id=data.get("langfuse_trace_id"),
                 warnings=list(data.get("warnings") or []),
                 verified=bool(data.get("verified", True)),
+                prompt_version=data.get("prompt_version"),
             )
     except httpx.HTTPStatusError as e:
         logger.error("Agent returned error: %s %s", e.response.status_code, e.response.text[:200])

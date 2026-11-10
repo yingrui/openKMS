@@ -39,6 +39,10 @@ class AskRequest(BaseModel):
     #: The KB's agent configuration (`AgentConfig` on the backend, already validated there). Absent → defaults, which are
     #: today's behaviour: top_k 5, `try_anyway` answer policy, no workspace.
     agent_config: dict[str, Any] | None = None
+    #: The published prompt text for this KB, resolved by the backend. Absent → the built-in instruction.
+    system_prompt: str | None = None
+    #: Which version that text is (`system@v3`), so an answer can be attributed to it.
+    prompt_version: str | None = None
     #: Optional; must match path kb_id when both are set. Prefer path.
     knowledge_base_id: str | None = None
 
@@ -60,6 +64,8 @@ class AskResponse(BaseModel):
     grounding: GroundingReport | None = None
     #: The Langfuse trace of this turn, when tracing is on. The handle an evaluation or a reviewer scores afterwards.
     langfuse_trace_id: str | None = None
+    #: Which prompt version produced this answer (None = the built-in text).
+    prompt_version: str | None = None
     #: Unsourced numbers, when the KB asks to be told about them (`answer_policy.require_grounded_numbers`).
     warnings: list[str] = []
     #: False when `enforce` is on and the answer contained numbers no cited source supports.

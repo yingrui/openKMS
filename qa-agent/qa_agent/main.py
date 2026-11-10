@@ -114,6 +114,8 @@ async def _ask_impl(kb_id: str, request: AskRequest) -> AskResponse:
             session_id=request.session_id,
             agent_skills=request.agent_skills,
             agent_config=request.agent_config,
+            system_prompt=request.system_prompt,
+            prompt_version=request.prompt_version,
         )
     finally:
         limiter.release(kb_id)
@@ -139,6 +141,7 @@ async def _ask_impl(kb_id: str, request: AskRequest) -> AskResponse:
         sources=sources,
         grounding=grounding,
         langfuse_trace_id=result.get("langfuse_trace_id"),
+        prompt_version=result.get("prompt_version"),
         warnings=list(result.get("warnings") or []),
         verified=bool(result.get("verified", True)),
     )
@@ -175,6 +178,8 @@ def _stream_response(kb_id: str, request: AskRequest) -> StreamingResponse:
             session_id=request.session_id,
             agent_skills=request.agent_skills,
             agent_config=request.agent_config,
+            system_prompt=request.system_prompt,
+            prompt_version=request.prompt_version,
         )),
         media_type="application/x-ndjson",
         headers={
