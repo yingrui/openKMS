@@ -4,6 +4,8 @@ from typing import Any
 
 from pydantic import BaseModel, model_validator
 
+from app.schemas.kb_agent_config import AgentConfig
+
 
 # --- Knowledge Base ---
 
@@ -14,6 +16,7 @@ class KnowledgeBaseCreate(BaseModel):
     judge_model_id: str | None = None
     agent_url: str | None = None
     agent_skills: list[str] | None = None
+    agent_config: AgentConfig | None = None
     chunk_config: dict[str, Any] | None = None
     faq_prompt: str | None = None
     metadata_keys: list[str] | None = None
@@ -26,6 +29,7 @@ class KnowledgeBaseUpdate(BaseModel):
     judge_model_id: str | None = None
     agent_url: str | None = None
     agent_skills: list[str] | None = None
+    agent_config: AgentConfig | None = None
     chunk_config: dict[str, Any] | None = None
     faq_prompt: str | None = None
     metadata_keys: list[str] | None = None
@@ -39,6 +43,7 @@ class KnowledgeBaseResponse(BaseModel):
     judge_model_id: str | None = None
     agent_url: str | None = None
     agent_skills: list[str] | None = None
+    agent_config: AgentConfig | None = None
     chunk_config: dict[str, Any] | None = None
     faq_prompt: str | None = None
     metadata_keys: list[str] | None = None

@@ -26,6 +26,7 @@ from .kb_answer_sources import (
     source_from_catalog_tool,
     source_from_page_section_tool,
 )
+from . import agent_config as agent_config_module
 from .llm_chat import build_messages_for_generate, make_qa_chat_openai, text_from_lc_content
 from .request_context import (
     reset_request_access_token,
@@ -56,6 +57,8 @@ class AgentState(TypedDict):
     messages: Annotated[list, add_messages]
     answer: str
     agent_skills: list[str]
+    #: Retrieval depth for this request, from the KB's agent_config (defaults to 5).
+    top_k: int
 
 
 def retrieve_node(state: dict[str, Any]) -> dict[str, Any]:
@@ -68,7 +71,7 @@ def retrieve_node(state: dict[str, Any]) -> dict[str, Any]:
         state["knowledge_base_id"],
         state["question"],
         access_token=state["access_token"],
-        top_k=5,
+        top_k=int(state.get("top_k") or 5),
     )
     logger.info("retrieve_node kb=%s hits=%d", kb_id, len(sources))
     logger.debug("retrieve_node question=%r", preview_text(state.get("question"), 120))
@@ -207,22 +210,25 @@ def invoke_agent(
     access_token: str,
     session_id: str | None = None,
     agent_skills: list[str] | None = None,
+    agent_config: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Invoke the agent and return answer + sources."""
     from .langfuse_client import build_langgraph_trace_config
 
     skill_ids = normalize_skill_ids(agent_skills)
+    retrieve_k = agent_config_module.top_k(agent_config)
     h = set_request_access_token(access_token or "")
     h_kb = set_request_knowledge_base_id(knowledge_base_id or "")
     # The workspace key. Tools read it from the request context, so a tool call cannot address another conversation.
     h_sess = set_request_session_id(session_id or "")
     t0 = time.monotonic()
     logger.info(
-        "invoke_agent start kb=%s history=%d session=%s skills=%s",
+        "invoke_agent start kb=%s history=%d session=%s skills=%s top_k=%d",
         knowledge_base_id,
         len(conversation_history or []),
         session_id or "-",
         skill_ids,
+        retrieve_k,
     )
     logger.debug("invoke_agent question=%r", preview_text(question, 200))
     try:
@@ -238,6 +244,7 @@ def invoke_agent(
                 "messages": [],
                 "answer": "",
                 "agent_skills": skill_ids,
+                "top_k": retrieve_k,
             },
             config=config,
         )
@@ -329,22 +336,25 @@ async def astream_agent_ndjson(
     access_token: str,
     session_id: str | None = None,
     agent_skills: list[str] | None = None,
+    agent_config: dict[str, Any] | None = None,
 ) -> AsyncIterator[bytes]:
     """NDJSON stream: ``delta`` / ``tool_*`` events (wiki-copilot-compatible), then ``done`` or ``error``."""
     from .langfuse_client import build_langgraph_trace_config, get_langfuse_callback
 
     skill_ids = normalize_skill_ids(agent_skills)
+    retrieve_k = agent_config_module.top_k(agent_config)
     h = set_request_access_token(access_token or "")
     h_kb = set_request_knowledge_base_id(knowledge_base_id or "")
     # The workspace key. Tools read it from the request context, so a tool call cannot address another conversation.
     h_sess = set_request_session_id(session_id or "")
     t0 = time.monotonic()
     logger.info(
-        "astream_agent_ndjson start kb=%s history=%d session=%s skills=%s",
+        "astream_agent_ndjson start kb=%s history=%d session=%s skills=%s top_k=%d",
         knowledge_base_id,
         len(conversation_history or []),
         session_id or "-",
         skill_ids,
+        retrieve_k,
     )
     logger.debug("astream_agent_ndjson question=%r", preview_text(question, 200))
     try:
@@ -352,7 +362,7 @@ async def astream_agent_ndjson(
             knowledge_base_id,
             question,
             access_token=access_token,
-            top_k=5,
+            top_k=retrieve_k,
         )
         logger.info("astream_agent_ndjson retrieve kb=%s hits=%d", knowledge_base_id, len(ctx))
         state: dict[str, Any] = {
@@ -364,6 +374,7 @@ async def astream_agent_ndjson(
             "messages": [],
             "answer": "",
             "agent_skills": skill_ids,
+            "top_k": retrieve_k,
         }
         agent = get_agent()
         stream_cb = get_langfuse_callback() if settings.langfuse_trace_streaming else None

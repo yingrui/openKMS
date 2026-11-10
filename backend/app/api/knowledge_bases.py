@@ -109,6 +109,7 @@ async def create_knowledge_base(
         judge_model_id=body.judge_model_id,
         agent_url=body.agent_url,
         agent_skills=body.agent_skills,
+        agent_config=body.agent_config.model_dump(exclude_none=True) if body.agent_config else None,
         chunk_config=body.chunk_config,
         faq_prompt=body.faq_prompt,
         metadata_keys=body.metadata_keys,

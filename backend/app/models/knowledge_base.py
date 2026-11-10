@@ -26,6 +26,9 @@ class KnowledgeBase(Base):
     # qa-agent skill ids; null → core defaults (ontology, catalog, page_index).
     agent_skills: Mapped[list | None] = mapped_column(JSONB, nullable=True)
     chunk_config: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
+    #: Per-KB agent configuration (retrieval depth, answer policy, workspace, orchestration). Validated by
+    #: `app.schemas.kb_agent_config.AgentConfig` on write; empty means every default, i.e. today's behaviour.
+    agent_config: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
     faq_prompt: Mapped[str | None] = mapped_column(Text, nullable=True)
     metadata_keys: Mapped[list | None] = mapped_column(JSONB, nullable=True)
     created_by: Mapped[str | None] = mapped_column(String(512), nullable=True, index=True)

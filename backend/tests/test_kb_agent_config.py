@@ -1,0 +1,49 @@
+"""The per-KB agent config: defaults equal today's behaviour, and a typo is an error, not a default."""
+import pytest
+from pydantic import ValidationError
+
+from app.schemas.kb_agent_config import AgentConfig, parse_agent_config
+
+
+class TestDefaults:
+    def test_an_empty_config_changes_nothing(self):
+        config = parse_agent_config(None)
+        assert config.retrieval.top_k == 5           # the value that used to be hard-coded in the agent
+        assert config.tools == ["ontology", "catalog", "page_index"]
+        assert config.workspace.enabled is False
+        assert config.answer_policy.unknown_measure == "try_anyway"
+        assert config.answer_policy.require_grounded_numbers == "off"
+        assert config.orchestration.profile == "rag_tools"
+
+    def test_empty_json_and_none_agree(self):
+        assert parse_agent_config({}).model_dump() == parse_agent_config(None).model_dump()
+
+    def test_an_already_parsed_config_passes_through(self):
+        config = AgentConfig(retrieval={"top_k": 9})
+        assert parse_agent_config(config) is config
+
+
+class TestValidation:
+    def test_a_typo_in_a_field_name_is_an_error(self):
+        with pytest.raises(ValidationError):
+            parse_agent_config({"retrieval": {"topk": 5}})
+
+    def test_a_typo_in_a_tool_name_is_an_error(self):
+        with pytest.raises(ValidationError, match="Unknown agent tool"):
+            parse_agent_config({"tools": ["catalog", "workpsace"]})
+
+    def test_top_k_is_bounded(self):
+        with pytest.raises(ValidationError):
+            parse_agent_config({"retrieval": {"top_k": 0}})
+        with pytest.raises(ValidationError):
+            parse_agent_config({"retrieval": {"top_k": 51}})
+
+    def test_duplicate_tools_are_collapsed_and_order_kept(self):
+        assert parse_agent_config({"tools": ["catalog", "workspace", "catalog"]}).tools == ["catalog", "workspace"]
+
+    def test_policy_values_are_an_enum(self):
+        with pytest.raises(ValidationError):
+            parse_agent_config({"answer_policy": {"unknown_measure": "maybe"}})
+
+    def test_workspace_is_opt_in(self):
+        assert parse_agent_config({"workspace": {"enabled": True}}).workspace.enabled is True

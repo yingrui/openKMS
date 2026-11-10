@@ -87,6 +87,7 @@ async def _ask_impl(kb_id: str, request: AskRequest) -> AskResponse:
         access_token=request.access_token or "",
         session_id=request.session_id,
         agent_skills=request.agent_skills,
+        agent_config=request.agent_config,
     )
 
     sources: list[SourceItem] = []
@@ -126,6 +127,7 @@ def _stream_response(kb_id: str, request: AskRequest) -> StreamingResponse:
             access_token=request.access_token or "",
             session_id=request.session_id,
             agent_skills=request.agent_skills,
+            agent_config=request.agent_config,
         ),
         media_type="application/x-ndjson",
         headers={

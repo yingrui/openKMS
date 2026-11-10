@@ -31,6 +31,9 @@ class AskRequest(BaseModel):
     session_id: str | None = None
     #: Skill ids from the KB settings; null/omit → core skills only.
     agent_skills: list[str] | None = None
+    #: The KB's agent configuration (`AgentConfig` on the backend, already validated there). Absent → defaults, which are
+    #: today's behaviour: top_k 5, `try_anyway` answer policy, no workspace.
+    agent_config: dict[str, Any] | None = None
     #: Optional; must match path kb_id when both are set. Prefer path.
     knowledge_base_id: str | None = None
 

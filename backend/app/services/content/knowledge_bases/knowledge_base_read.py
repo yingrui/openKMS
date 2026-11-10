@@ -57,6 +57,7 @@ def kb_to_response(kb: KnowledgeBase, stats: dict[str, int]) -> KnowledgeBaseRes
         judge_model_id=kb.judge_model_id,
         agent_url=kb.agent_url,
         agent_skills=list(kb.agent_skills) if isinstance(kb.agent_skills, list) else kb.agent_skills,
+        agent_config=kb.agent_config,
         chunk_config=kb.chunk_config,
         faq_prompt=kb.faq_prompt,
         metadata_keys=kb.metadata_keys,

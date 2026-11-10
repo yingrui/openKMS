@@ -5,6 +5,7 @@ from __future__ import annotations
 from typing import Any
 
 from app.models.knowledge_base import KnowledgeBase
+from app.schemas.kb_agent_config import parse_agent_config
 
 CORE_AGENT_SKILLS = ("ontology", "catalog", "page_index")
 
@@ -38,6 +39,10 @@ def ask_agent_body(
         "access_token": access_token,
         "agent_skills": resolve_agent_skills(kb),
     }
+    # Retrieval depth and answer policy live per KB now; an empty config resolves to today's behaviour on the agent side.
+    agent_config = parse_agent_config(kb.agent_config).model_dump(exclude_none=True)
+    if agent_config:
+        body["agent_config"] = agent_config
     if session_id:
         body["session_id"] = session_id
     return body

@@ -1,0 +1,33 @@
+"""Read the KB's agent configuration on the agent side.
+
+The object is validated by the backend (`app/schemas/kb_agent_config.AgentConfig`) and arrives already shaped; this module
+only reads fields with the same defaults, so a request without a config behaves exactly as before it existed.
+"""
+from __future__ import annotations
+
+from typing import Any
+
+#: Matches `DEFAULT_TOP_K` on the backend and the value that used to be hard-coded here.
+DEFAULT_TOP_K = 5
+
+
+def top_k(config: dict[str, Any] | None) -> int:
+    raw = ((config or {}).get("retrieval") or {}).get("top_k")
+    if isinstance(raw, int) and 1 <= raw <= 50:
+        return raw
+    return DEFAULT_TOP_K
+
+
+def answer_policy(config: dict[str, Any] | None) -> dict[str, Any]:
+    policy = (config or {}).get("answer_policy")
+    return policy if isinstance(policy, dict) else {}
+
+
+def unknown_measure_policy(config: dict[str, Any] | None) -> str:
+    """`refuse` when the asked measure is not in the model's measures; `try_anyway` (the default) keeps today's behaviour."""
+    value = answer_policy(config).get("unknown_measure")
+    return value if value in ("refuse", "try_anyway") else "try_anyway"
+
+
+def workspace_enabled(config: dict[str, Any] | None) -> bool:
+    return bool(((config or {}).get("workspace") or {}).get("enabled"))

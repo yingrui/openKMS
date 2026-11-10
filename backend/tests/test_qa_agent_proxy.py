@@ -28,7 +28,7 @@ def test_agent_kb_path():
 
 
 def test_ask_agent_body_includes_skills():
-    kb = SimpleNamespace(agent_skills=["catalog"])
+    kb = SimpleNamespace(agent_skills=["catalog"], agent_config=None)
     body = ask_agent_body(
         kb=kb,
         question="q",
