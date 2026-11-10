@@ -183,3 +183,35 @@ class TestAuditReporting:
             code="print(1)", access_token="",
         )
         assert called == []
+
+
+class TestMemoryCeiling:
+    """A runaway allocation must fail itself, not take the service with it — where the host allows it."""
+
+    def test_the_ceiling_is_configurable_and_bounded(self):
+        assert sandbox.sandbox_config({"sandbox": {"enabled": True, "memory_mb": 1024}})["memory_mb"] == 1024
+        assert "memory_mb" not in sandbox.sandbox_config({"sandbox": {"enabled": True, "memory_mb": 32}})
+
+    def test_the_limiter_swallows_a_host_that_refuses(self, monkeypatch):
+        import resource
+
+        def refuse(*a, **k):
+            raise ValueError("cannot set below current usage")
+
+        monkeypatch.setattr(resource, "setrlimit", refuse)
+        sandbox._limit_memory(1024 * 1024)  # must not raise: the run proceeds unbounded instead
+
+    def test_the_limiter_sets_both_limits_equal(self, monkeypatch):
+        import resource
+
+        seen = {}
+        monkeypatch.setattr(resource, "setrlimit", lambda which, pair: seen.update(pair=pair))
+        sandbox._limit_memory(2 * 1024 * 1024)
+        assert seen["pair"] == (2 * 1024 * 1024, 2 * 1024 * 1024)
+
+    def test_a_normal_run_still_works_with_a_ceiling(self):
+        result = sandbox.run_python(
+            "import pandas as pd; print(len(pd.DataFrame({'a': range(100_000)})))",
+            kb_id="kb1", session_id="mem", settings={"enabled": True, "memory_mb": 1024, "timeout_seconds": 60},
+        )
+        assert result.ok and result.stdout.strip() == "100000"

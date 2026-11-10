@@ -19,6 +19,9 @@ dependencies = [
     "langfuse>=2.0.0",
     "bm25s>=0.2.0",
     "jieba>=0.42.0",
+    "pandas>=2.3.3",
+    "pyarrow>=25.0.1",
+    "matplotlib>=3.10.9",
 ]
 
 [build-system]

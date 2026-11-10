@@ -28,6 +28,7 @@ import subprocess
 import sys
 import time
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Any
 
 __all__ = [
@@ -44,6 +45,11 @@ __all__ = [
 
 #: Wall-clock ceiling for one execution when a KB names none.
 DEFAULT_TIMEOUT_SECONDS = 60
+
+#: Memory ceiling for one execution. Generous — a dataframe of a few million rows fits — because the point is not to police
+#: honest work; it is that a runaway allocation must fail *itself* instead of triggering the kernel's OOM killer, which takes
+#: the whole qa-agent process (and everyone else's conversations) with it.
+DEFAULT_MEMORY_MB = 2048
 
 #: Captured output is truncated here, per stream.
 MAX_OUTPUT_BYTES = 64_000
@@ -107,7 +113,7 @@ def sandbox_config(agent_config: dict[str, Any] | None) -> dict[str, Any]:
     if not isinstance(raw, dict):
         return {"enabled": False}
     out: dict[str, Any] = {"enabled": bool(raw.get("enabled"))}
-    for key, low, high in (("timeout_seconds", 5, 600),):
+    for key, low, high in (("timeout_seconds", 5, 600), ("memory_mb", 256, 8_192)):
         value = raw.get(key)
         if isinstance(value, int) and low <= value <= high:
             out[key] = value
@@ -167,6 +173,11 @@ def _env(kb_id: str, session_id: str, access_token: str) -> dict[str, str]:
     env["HOME"] = str(session_fs.session_root(kb_id, session_id) / "tmp")
     env["PYTHONUNBUFFERED"] = "1"
     env["MPLBACKEND"] = "Agg"  # a chart is written to a file; there is no display
+    # One font cache for the whole service. `HOME` is the session's `tmp/`, so the default location would rebuild it in every
+    # new conversation — measured at ~10 s per first chart.
+    cache = Path(settings.sessions_root).expanduser().resolve() / ".mplconfig"
+    cache.mkdir(parents=True, exist_ok=True)
+    env["MPLCONFIGDIR"] = str(cache)
     paths = [str(session_fs.session_root(kb_id, session_id))]
     skills = session_fs.kb_skills_dir(kb_id)
     if skills.is_dir():
@@ -184,13 +195,37 @@ def _env(kb_id: str, session_id: str, access_token: str) -> dict[str, str]:
     return env
 
 
-def _run(argv: list[str], *, cwd: str, env: dict[str, str], timeout: int) -> ExecResult:
+def _limit_memory(limit_bytes: int) -> None:
+    """Runs in the child, before the code does: an allocation past the ceiling raises MemoryError there.
+
+    `RLIMIT_AS` caps the address space, which is what a runaway list or dataframe grows. `RLIMIT_DATA` would miss numpy's
+    mappings; the kernel's OOM killer would take the whole service.
+
+    Not every host can do it: macOS refuses a limit below the address space already in use, so the cap silently does not
+    apply there. The service runs on Linux, where it does.
+    """
+    import resource
+
+    try:
+        # Soft and hard equal, so the child cannot raise its own ceiling back.
+        resource.setrlimit(resource.RLIMIT_AS, (limit_bytes, limit_bytes))
+    except (ValueError, OSError):
+        # macOS refuses a limit below the address space already in use, and Python is large before the first line of user
+        # code runs. The run proceeds **without** a ceiling rather than failing for a reason the model cannot act on; the cap
+        # is enforced where it is supported (Linux, which is where this service runs).
+        return
+
+
+def _run(
+    argv: list[str], *, cwd: str, env: dict[str, str], timeout: int, memory_mb: int = DEFAULT_MEMORY_MB
+) -> ExecResult:
     started = time.monotonic()
     try:
         proc = subprocess.Popen(  # no shell: the command is already tokenised and checked
             argv,
             cwd=cwd,
             env=env,
+            preexec_fn=(lambda: _limit_memory(memory_mb * 1024 * 1024)) if os.name == "posix" else None,
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
             text=True,
@@ -250,6 +285,7 @@ def run_python(
         cwd=session_dir,
         env=_env(kb_id, session_id, access_token),
         timeout=int(settings.get("timeout_seconds", DEFAULT_TIMEOUT_SECONDS)),
+        memory_mb=int(settings.get("memory_mb", DEFAULT_MEMORY_MB)),
     )
     report_execution(
         kb_id=kb_id, session_id=session_id, kind="python", result=result, code=code, access_token=access_token
@@ -277,6 +313,7 @@ def run_command(
         cwd=session_dir,
         env=_env(kb_id, session_id, access_token),
         timeout=int(settings.get("timeout_seconds", DEFAULT_TIMEOUT_SECONDS)),
+        memory_mb=int(settings.get("memory_mb", DEFAULT_MEMORY_MB)),
     )
     report_execution(
         kb_id=kb_id,

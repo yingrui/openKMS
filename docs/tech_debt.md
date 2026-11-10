@@ -99,9 +99,9 @@ database URL, and neither belongs in code a user asked for.
 
 Still open in the KB runner:
 
-- **No memory limit**: the timeout bounds how long a run may take, and nothing bounds how much memory it may use.
-- **No persistent interpreter**: each run is a new process, so variables do not survive between turns and the agent re-reads
-  from `/workspace`.
+- **The memory ceiling does not apply on macOS** (`RLIMIT_AS` cannot be set below the address space already in use). The
+  service runs on Linux, where it does; a developer on a Mac gets no cap and no error, which is the right trade but worth
+  knowing.
 
 ### Jobs API and Procrastinate internals
 
