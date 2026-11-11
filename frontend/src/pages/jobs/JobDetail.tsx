@@ -10,7 +10,6 @@ import {
   retryJob,
   isKbIndexingJob,
   isConnectorSyncJob,
-  isEvaluationRunJob,
   isScheduledAgentJob,
   type JobResponse,
 } from '../../data/jobsApi';
@@ -18,17 +17,9 @@ import { projectWorkspacePath } from '../../data/projectsApi';
 import { fetchPipelineById, type PipelineResponse } from '../../data/pipelinesApi';
 import { fetchModelById, type ApiModelResponse } from '../../data/modelsApi';
 import { JobsAreaNav } from '../../components/jobs/JobsAreaNav';
+import { JobArgsCard } from './JobArgsCard';
 import { useConfirm } from '../../contexts/ConfirmContext';
 import './JobDetail.scss';
-
-/** An argument's value is for a person, not a parser: an array reads as a list, never as JSON. */
-function renderArgValue(value: unknown): string {
-  if (value === null || value === undefined) return '—';
-  if (Array.isArray(value)) return value.length === 0 ? '—' : value.map((v) => String(v)).join(', ');
-  if (typeof value === 'string') return value === '' ? '—' : value;
-  if (typeof value === 'number' || typeof value === 'boolean') return String(value);
-  return JSON.stringify(value);
-}
 
 function formatDateTime(iso: string | undefined | null, dash: string): string {
   if (!iso) return dash;
@@ -178,7 +169,6 @@ export function JobDetail() {
   const isKbIndexingTask = isKbIndexingJob(job.task_name);
   const isConnectorSyncTask = isConnectorSyncJob(job.task_name);
   const isScheduledAgentTask = isScheduledAgentJob(job.task_name);
-  const isEvaluationRunTask = isEvaluationRunJob(job.task_name);
   const connectorId = String(job.args?.connector_id || '');
   const triggerId = String(job.args?.trigger_id || '');
   const scheduleProjectId = String(job.args?.project_id || '');
@@ -408,76 +398,8 @@ export function JobDetail() {
           </section>
         )}
 
-        <section className="job-detail-card">
-          <h2>
-            <ListTodo size={18} /> {t('jobDetail.taskInfo')}
-          </h2>
-          <dl className="job-detail-dl">
-            <dt>{t('jobDetail.taskName')}</dt>
-            <dd className="job-detail-mono">{job.task_name}</dd>
-            <dt>{t('jobDetail.queue')}</dt>
-            <dd>{job.queue_name}</dd>
-          </dl>
-        </section>
-
-        {isEvaluationRunTask && (
-          <section className="job-detail-card">
-            <h2>
-              <ListTodo size={18} /> {t('jobDetail.evaluationRun')}
-            </h2>
-            <dl className="job-detail-dl">
-              <dt>{t('jobDetail.evaluation')}</dt>
-              <dd>
-                {String(job.args?.evaluation_name || dash)}{' '}
-                <span className="job-detail-mono">{String(job.args?.evaluation_id || '')}</span>
-              </dd>
-              <dt>{t('jobDetail.evaluationScope')}</dt>
-              <dd className="job-detail-mono">
-                {(() => {
-                  // `null` means the whole set: say so, and the run row lists exactly what it covered.
-                  const ids = Array.isArray(job.args?.item_ids) ? (job.args?.item_ids as string[]) : null;
-                  if (!ids) return t('jobDetail.evaluationScopeAll', { count: Number(job.args?.item_count) || 0 });
-                  return ids.length === 0 ? dash : ids.join(', ');
-                })()}
-              </dd>
-              <dt>{t('jobDetail.evaluationType')}</dt>
-              <dd>{String(job.args?.evaluation_type || dash)}</dd>
-              <dt>{t('jobDetail.evaluationLanguage')}</dt>
-              <dd>{String(job.args?.language || dash)}</dd>
-              {job.args?.run_id && job.args?.evaluation_id ? (
-                <>
-                  <dt>{t('jobDetail.evaluationRunLink')}</dt>
-                  <dd>
-                    <Link
-                      to={`/evaluations/${String(job.args.evaluation_id)}?run=${String(job.args.run_id)}`}
-                      className="job-detail-link"
-                    >
-                      {String(job.args.run_id).slice(0, 8)}…
-                    </Link>
-                  </dd>
-                </>
-              ) : null}
-            </dl>
-          </section>
-        )}
-
-        {!isEvaluationRunTask && !isKbIndexingTask && !isConnectorSyncTask && !isScheduledAgentTask && !pipelineId && (
-          <section className="job-detail-card">
-            <h2>
-              <FileText size={18} /> {t('jobDetail.arguments')}
-            </h2>
-            <p className="job-detail-hint">{t('jobDetail.argumentsHint')}</p>
-            <dl className="job-detail-dl">
-              {Object.entries(job.args ?? {}).map(([key, value]) => (
-                <div key={key} className="job-detail-arg-row">
-                  <dt className="job-detail-mono">{key}</dt>
-                  <dd className="job-detail-mono" title={Array.isArray(value) ? value.join(', ') : undefined}>
-                    {renderArgValue(value)}
-                  </dd>
-                </div>
-              ))}
-            </dl>
-          </section>
+        {!isKbIndexingTask && !isConnectorSyncTask && !isScheduledAgentTask && !pipelineId && (
+          <JobArgsCard taskName={job.task_name} queueName={job.queue_name} args={(job.args ?? {}) as Record<string, unknown>} />
         )}
 
       </div>
