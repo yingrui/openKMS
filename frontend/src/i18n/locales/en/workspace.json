@@ -368,7 +368,27 @@
     "runPassChip": "{{count}} passed",
     "runFailChip": "{{count}} failed",
     "runUndecidedChip": "{{count}} undecided",
-    "runAvgShort": "avg {{avg}}"
+    "runAvgShort": "avg {{avg}}",
+    "runDialogTitle": "Run this evaluation",
+    "runScope": "Items",
+    "runScopeAll": "All {{count}} items",
+    "runScopeFailed": "Only the {{count}} that failed last time",
+    "runScopeFailedNone": "no earlier run",
+    "runJudgeModel": "Judge model",
+    "runJudgeDefault": "The knowledge base's own",
+    "runJudgeDefaultHint": "Uses the knowledge base's judge model, or the default chat model when it has none.",
+    "runJudgeOverride": "This run will be judged by {{model}}.",
+    "runJudgeLoading": "Loading models…",
+    "runCostHint": "{{count}} items; each one asks the agent and then judges the answer. It runs in this request, so keep the page open.",
+    "reportTitle": "What this run says",
+    "reportJumpToItem": "Jump to item #{{index}}",
+    "reportArea": {
+      "model_metadata": "Model metadata",
+      "expectation": "Expectation",
+      "skill": "Skill",
+      "agent": "Agent",
+      "harness": "Test set"
+    }
   },
   "models": {
     "title": "Models",

@@ -368,7 +368,27 @@
     "runPassChip": "{{count}} 通过",
     "runFailChip": "{{count}} 不通过",
     "runUndecidedChip": "{{count}} 待确认",
-    "runAvgShort": "平均 {{avg}}"
+    "runAvgShort": "平均 {{avg}}",
+    "runDialogTitle": "运行这次评测",
+    "runScope": "条目范围",
+    "runScopeAll": "全部 {{count}} 条",
+    "runScopeFailed": "只跑上次失败的 {{count}} 条",
+    "runScopeFailedNone": "还没有上次运行",
+    "runJudgeModel": "评判模型",
+    "runJudgeDefault": "用知识库的设置",
+    "runJudgeDefaultHint": "使用知识库配置的评判模型；未配置时用默认对话模型。",
+    "runJudgeOverride": "本次将由 {{model}} 评判。",
+    "runJudgeLoading": "正在加载模型…",
+    "runCostHint": "共 {{count}} 条；每条先问 agent，再评判答案。运行在这个请求里完成，请勿关闭页面。",
+    "reportTitle": "本次运行的结论",
+    "reportJumpToItem": "跳到第 {{index}} 条",
+    "reportArea": {
+      "model_metadata": "模型元数据",
+      "expectation": "期望",
+      "skill": "技能",
+      "agent": "Agent",
+      "harness": "题集"
+    }
   },
   "models": {
     "title": "模型",

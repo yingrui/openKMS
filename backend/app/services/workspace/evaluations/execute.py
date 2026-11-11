@@ -121,9 +121,17 @@ async def _run_items(
     db: AsyncSession,
     evaluation_id: str,
     run_one: Callable[[EvaluationItem], Awaitable[dict[str, Any]]],
+    item_ids: list[str] | None = None,
 ) -> list[dict[str, Any]]:
-    """Load the items and run one strategy step per item. The strategies differ only in `run_one`."""
-    return [await run_one(item) for item in await _load_evaluation_items(db, evaluation_id)]
+    """Load the items and run one strategy step per item. The strategies differ only in `run_one`.
+
+    `item_ids` runs a subset — the items that failed last time, or a first few while tuning — without touching the rest.
+    """
+    items = await _load_evaluation_items(db, evaluation_id)
+    if item_ids:
+        wanted = set(item_ids)
+        items = [item for item in items if item.id in wanted]
+    return [await run_one(item) for item in items]
 
 
 async def _ask_agent(
@@ -170,6 +178,7 @@ async def run_search_retrieval_evaluation(
     knowledge_base_id: str,
     evaluation_id: str,
     judge_config: dict[str, Any],
+    item_ids: list[str] | None = None,
 ) -> list[dict[str, Any]]:
     """Return one dict per item: item_id, query, expected_answer, passed, score, reasoning, detail."""
 
@@ -209,7 +218,7 @@ async def run_search_retrieval_evaluation(
             },
         )
 
-    return await _run_items(db, evaluation_id, run_one)
+    return await _run_items(db, evaluation_id, run_one, item_ids)
 
 
 async def run_qa_answer_evaluation(
@@ -218,6 +227,7 @@ async def run_qa_answer_evaluation(
     evaluation_id: str,
     judge_config: dict[str, Any],
     access_token: str,
+    item_ids: list[str] | None = None,
 ) -> list[dict[str, Any]]:
     """Call KB QA agent per item; judge answer vs expected."""
     if not kb.agent_url:
@@ -272,7 +282,7 @@ async def run_qa_answer_evaluation(
                 },
             )
 
-        return await _run_items(db, evaluation_id, run_one)
+        return await _run_items(db, evaluation_id, run_one, item_ids)
 
 
 async def run_data_query_evaluation(
@@ -281,6 +291,7 @@ async def run_data_query_evaluation(
     evaluation_id: str,
     judge_config: dict[str, Any],
     access_token: str,
+    item_ids: list[str] | None = None,
 ) -> list[dict[str, Any]]:
     """Ask the KB agent per item, then judge the queries it cited against the item's expectation.
 
@@ -411,7 +422,7 @@ async def run_data_query_evaluation(
                 },
             )
 
-        out = await _run_items(db, evaluation_id, run_one)
+        out = await _run_items(db, evaluation_id, run_one, item_ids)
     await asyncio.to_thread(flush_scores)   # one send for the whole run, not one per score
     return out
 

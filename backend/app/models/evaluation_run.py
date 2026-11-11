@@ -29,6 +29,9 @@ class EvaluationRun(Base):
     pass_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     avg_score: Mapped[float | None] = mapped_column(Float, nullable=True)
     config_snapshot: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
+    #: What the run says about the agent as a whole: the failures it groups, what they trace to, and where to fix it.
+    #: Commentary only — it never changes a verdict or a pass rate.
+    report: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     finished_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 

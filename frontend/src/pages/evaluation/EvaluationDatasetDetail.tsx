@@ -39,6 +39,7 @@ import {
 import type { TFunction } from 'i18next';
 import { PanelToolbar } from '../../styles/design-system';
 import { expectedQueryLines } from './expectedQueryText';
+import { RunEvaluationDialog, type RunOptions } from './RunEvaluationDialog';
 
 const EVAL_TYPE_SEARCH = 'search_retrieval';
 const EVAL_TYPE_QA = 'qa_answer';
@@ -72,7 +73,7 @@ function RunResultRow({ r, evaluationType, t }: { r: EvaluationRunResult; evalua
   const isDataQuery = evaluationType === EVAL_TYPE_DATA_QUERY;
 
   return (
-    <details className={`eval-result eval-result--${outcome}`} open={!r.pass}>
+    <details id={`eval-result-${r.item_id}`} className={`eval-result eval-result--${outcome}`} open={!r.pass}>
       <summary className="eval-result-summary">
         <span className={`eval-result-badge eval-result-${outcome}`}>
           {r.pass
@@ -223,6 +224,8 @@ export function EvaluationDatasetDetail() {
   const [importing, setImporting] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [running, setRunning] = useState(false);
+  const [runDialogOpen, setRunDialogOpen] = useState(false);
+  const [failedItemIds, setFailedItemIds] = useState<string[]>([]);
   const [evaluationType, setEvaluationType] = useState<string>(EVAL_TYPE_SEARCH);
   const [runView, setRunView] = useState<EvaluationRunResponse | null>(null);
   const [runs, setRuns] = useState<EvaluationRunListItem[]>([]);
@@ -443,12 +446,31 @@ export function EvaluationDatasetDetail() {
     }
   };
 
-  const handleRunEvaluation = async () => {
+  // Which items failed last time: the dialog offers to re-run just those, which is the common case while tuning.
+  const openRunDialog = async () => {
+    setRunDialogOpen(true);
+    setFailedItemIds([]);
+    const lastRun = runs[0];
+    if (!evaluationId || !lastRun) return;
+    try {
+      const detail = await getEvaluationRun(evaluationId, lastRun.id);
+      setFailedItemIds(detail.results.filter((r) => !r.pass).map((r) => r.item_id));
+    } catch {
+      setFailedItemIds([]);
+    }
+  };
+
+  const handleRunEvaluation = async ({ itemIds, judgeModelId }: RunOptions) => {
     if (!evaluationId) return;
+    setRunDialogOpen(false);
     setRunning(true);
     setRunView(null);
     try {
-      const res = await runEvaluation(evaluationId, { evaluation_type: evaluationType });
+      const res = await runEvaluation(evaluationId, {
+        evaluation_type: evaluationType,
+        item_ids: itemIds,
+        judge_model_id: judgeModelId,
+      });
       setRunView(res);
       setRunInUrl(res.run_id);
       toast.success(
@@ -764,7 +786,7 @@ export function EvaluationDatasetDetail() {
               <button
                 type="button"
                 className="btn btn-primary"
-                onClick={handleRunEvaluation}
+                onClick={() => void openRunDialog()}
                 disabled={running || itemsTotal === 0}
                 title={itemsTotal === 0 ? t('evaluationDetail.runNeedsItems') : undefined}
               >
@@ -959,6 +981,47 @@ export function EvaluationDatasetDetail() {
                   {judge?.model ? ` · ${t('evaluationDetail.judgedBy', { model: judge.model })}` : ''}
                   {judge?.prompt_version ? ` · ${judge.prompt_version}` : ''}
                 </p>
+                {runView.report && (runView.report.verdict || runView.report.findings.length > 0) ? (
+                  <div className="eval-run-report">
+                    <h3>{t('evaluationDetail.reportTitle')}</h3>
+                    {runView.report.verdict ? <p className="eval-run-report-verdict">{runView.report.verdict}</p> : null}
+                    {runView.report.findings.length > 0 ? (
+                      <ul className="eval-report-findings">
+                        {runView.report.findings.map((f, i) => (
+                          <li key={`finding-${i}`} className={`eval-report-finding eval-report-finding--${f.area}`}>
+                            <div className="eval-report-finding-head">
+                              <span className="eval-report-area">{t(`evaluationDetail.reportArea.${f.area}`)}</span>
+                              <span className="eval-report-items">
+                                {f.items.map((idx) => (
+                                  <button
+                                    key={`item-${idx}`}
+                                    type="button"
+                                    className="eval-report-item-link"
+                                    title={t('evaluationDetail.reportJumpToItem', { index: idx + 1 })}
+                                    onClick={() => {
+                                      document
+                                        .getElementById(`eval-result-${runView.results[idx]?.item_id ?? ''}`)
+                                        ?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                                    }}
+                                  >
+                                    #{idx + 1}
+                                  </button>
+                                ))}
+                              </span>
+                            </div>
+                            <p className="eval-report-claim">{f.claim}</p>
+                            {f.suggestion ? <p className="eval-report-suggestion">{f.suggestion}</p> : null}
+                          </li>
+                        ))}
+                      </ul>
+                    ) : null}
+                    <p className="eval-report-meta">
+                      {runView.report.model ? t('evaluationDetail.judgedBy', { model: runView.report.model }) : ''}
+                      {runView.report.prompt_version ? ` · ${runView.report.prompt_version}` : ''}
+                      {runView.report.error ? ` · ${runView.report.error}` : ''}
+                    </p>
+                  </div>
+                ) : null}
                 <div className="eval-results-list">
                   {runView.results.map((r) => (
                     <RunResultRow key={r.item_id} r={r} evaluationType={runView.evaluation_type} t={t} />
@@ -984,6 +1047,16 @@ export function EvaluationDatasetDetail() {
           </p>
         </section>
       )}
+
+      {runDialogOpen ? (
+        <RunEvaluationDialog
+          itemsTotal={itemsTotal}
+          failedItemIds={failedItemIds}
+          busy={running}
+          onCancel={() => setRunDialogOpen(false)}
+          onSubmit={(options) => void handleRunEvaluation(options)}
+        />
+      ) : null}
 
       {(showItemForm || editItem) && (
         <div className="eval-dialog-overlay" onClick={closeItemForm}>

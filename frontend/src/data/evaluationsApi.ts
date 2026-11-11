@@ -139,8 +139,26 @@ export interface EvaluationRunResult {
   reasoning: string;
 }
 
+export interface RunReportFinding {
+  area: 'model_metadata' | 'expectation' | 'skill' | 'agent' | 'harness';
+  claim: string;
+  /** Item positions (0-based) this finding was drawn from. */
+  items: number[];
+  suggestion?: string | null;
+}
+
+export interface RunReport {
+  verdict: string;
+  findings: RunReportFinding[];
+  model?: string | null;
+  prompt_version?: string | null;
+  error?: string | null;
+}
+
 export interface EvaluationRunResponse {
   run_id: string;
+  /** What the run says about the agent as a whole — commentary, never part of the score. */
+  report?: RunReport | null;
   evaluation_type: string;
   status: string;
   item_count: number;
@@ -320,7 +338,7 @@ export async function importEvaluationItems(
 
 export async function runEvaluation(
   evaluationId: string,
-  body?: { evaluation_type?: string }
+  body?: { evaluation_type?: string; item_ids?: string[] | null; judge_model_id?: string | null }
 ): Promise<EvaluationRunResponse> {
   return request<EvaluationRunResponse>(`/api/evaluations/${evaluationId}/run`, {
     method: 'POST',

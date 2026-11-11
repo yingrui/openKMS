@@ -3,6 +3,7 @@ import csv
 import io
 import uuid
 from datetime import datetime, timezone
+from typing import Any
 
 from fastapi import APIRouter, Body, Depends, File, HTTPException, Query, Request, UploadFile
 from sqlalchemy import func, select
@@ -10,6 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.auth import require_auth
 from app.database import get_db
+from app.models.api_model import ApiModel
 from app.models.evaluation import Evaluation, EvaluationItem
 from app.models.evaluation_run import EvaluationRun, EvaluationRunItem
 from app.models.knowledge_base import KnowledgeBase
@@ -106,6 +108,60 @@ def _aggregates(item_rows: list[dict]) -> tuple[int, int, float | None]:
     return n, pc, avg
 
 
+async def _resolve_run_judge(
+    db: AsyncSession, kb: KnowledgeBase, override_id: str | None
+) -> tuple[str, dict[str, Any]]:
+    """The judge for this run: the one asked for, else the KB's own (and its fallback)."""
+    if not override_id:
+        return await resolve_judge_config(db, kb)
+    model = await db.get(ApiModel, override_id)
+    if model is None or not model.provider_rel:
+        raise HTTPException(status_code=400, detail="Judge model not found")
+    return model.id, {
+        "base_url": model.provider_rel.base_url,
+        "api_key": model.provider_rel.api_key or "no-key",
+        "model_name": model.model_name or model.name,
+    }
+
+
+async def _run_report(
+    db: AsyncSession,
+    ev: Evaluation,
+    item_rows: list[dict],
+    judge_config: dict[str, Any],
+) -> dict | None:
+    """One report per run, from the verdicts it produced. Never fatal: a run without commentary is still a run."""
+    from app.services.workspace.evaluations.execute import _semantic_model_schema
+    from app.services.workspace.evaluations.report import summarize_run
+
+    items = []
+    for index, row in enumerate(item_rows):
+        judge = (row.get("detail") or {}).get("judge") or {}
+        failed = [
+            {"id": check.get("id"), "verdict": check.get("verdict"),
+             "expected": check.get("expected"), "actual": check.get("actual"), "reason": check.get("reason")}
+            for verdict in (judge.get("verdicts") or [])
+            for check in (verdict.get("checks") or [])
+            if check.get("verdict") != "pass"
+        ]
+        items.append(
+            {
+                "index": index,
+                "question": row.get("query"),
+                "expected": row.get("expected_query") or row.get("expected_answer"),
+                "ran": (row.get("detail") or {}).get("data_queries") or [],
+                "passed": bool(row.get("passed")),
+                "reasoning": row.get("reasoning"),
+                "failed_checks": failed,
+            }
+        )
+    try:
+        schema = await _semantic_model_schema(db, ev.semantic_model_id)
+    except Exception:  # noqa: BLE001 - a missing schema makes the report weaker, not the run broken
+        schema = {"fields": [], "datasets": []}
+    return await summarize_run(items=items, schema=schema, model_config=judge_config)
+
+
 def _snippet_model_from_dict(s: dict) -> SearchResultSnippet:
     return SearchResultSnippet(
         content=str(s.get("content", "")),
@@ -187,6 +243,7 @@ async def _persist_run(
     item_rows: list[dict],
     status: str = "completed",
     error_message: str | None = None,
+    report: dict | None = None,
 ) -> EvaluationRun:
     n, pc, avg = _aggregates(item_rows)
     run = EvaluationRun(
@@ -200,6 +257,7 @@ async def _persist_run(
         pass_count=pc,
         avg_score=avg,
         config_snapshot=config_snapshot,
+        report=report,
         finished_at=datetime.now(timezone.utc),
     )
     db.add(run)
@@ -224,6 +282,7 @@ async def _persist_run(
 def _run_to_response(run: EvaluationRun, results: list[EvaluationRunResult]) -> EvaluationRunResponse:
     return EvaluationRunResponse(
         run_id=run.id,
+        report=run.report,
         evaluation_type=run.evaluation_type,
         status=run.status,
         item_count=run.item_count,
@@ -714,7 +773,7 @@ async def run_evaluation(
                 detail="This evaluation type requires a linked wiki space. Set it under evaluation settings.",
             )
 
-    judge_model_id, judge_config = await resolve_judge_config(db, kb)
+    judge_model_id, judge_config = await _resolve_run_judge(db, kb, body.judge_model_id)
 
     wiki = await db.get(WikiSpace, ev.wiki_space_id) if ev.wiki_space_id else None
     if eval_type == EVALUATION_TYPE_WIKI_CONTENT_COVERAGE:
@@ -733,25 +792,30 @@ async def run_evaluation(
 
     # A run that blows up is persisted as failed and returned; an HTTP error still propagates.
     with boundary("run the evaluation", reraise=(HTTPException,)) as failed:
+        item_ids = body.item_ids or None
         if eval_type == EVALUATION_TYPE_SEARCH_RETRIEVAL:
             item_rows = await run_search_retrieval_evaluation(
-                db, ev.knowledge_base_id, evaluation_id, judge_config
+                db, ev.knowledge_base_id, evaluation_id, judge_config, item_ids
             )
         elif eval_type == EVALUATION_TYPE_QA_ANSWER:
             item_rows = await run_qa_answer_evaluation(
-                db, kb, evaluation_id, judge_config, token
+                db, kb, evaluation_id, judge_config, token, item_ids
             )
         elif eval_type == EVALUATION_TYPE_WIKI_CONTENT_COVERAGE:
             item_rows = await run_wiki_content_coverage_evaluation(
                 db, ev.wiki_space_id, evaluation_id, judge_config
             )
         elif eval_type == EVALUATION_TYPE_DATA_QUERY:
-            item_rows = await run_data_query_evaluation(db, kb, evaluation_id, judge_config, token)
+            item_rows = await run_data_query_evaluation(db, kb, evaluation_id, judge_config, token, item_ids)
         else:
             raise HTTPException(
                 status_code=500,
                 detail=f"Unhandled evaluation type: {eval_type}",
             )
+    report = None
+    if not failed and eval_type == EVALUATION_TYPE_DATA_QUERY and item_rows:
+        report = await _run_report(db, ev, item_rows, judge_config)
+
     if failed:
         run = await _persist_run(
             db,
@@ -762,6 +826,7 @@ async def run_evaluation(
             item_rows=[],
             status="failed",
             error_message=str(failed[0]),
+            report=None,
         )
         return _run_to_response(run, [])
 
@@ -774,6 +839,7 @@ async def run_evaluation(
         item_rows=item_rows,
         status="completed",
         error_message=None,
+        report=report,
     )
     schemas = _result_dicts_to_schemas(eval_type, item_rows)
     return _run_to_response(run, schemas)

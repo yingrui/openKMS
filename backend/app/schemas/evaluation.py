@@ -152,6 +152,20 @@ class EvaluationRunRequestBody(BaseModel):
     """Body for POST .../run."""
 
     evaluation_type: str = "search_retrieval"
+    #: Run only these items (the ones that failed last time, a first few while tuning). Omit to run the whole set.
+    item_ids: list[str] | None = None
+    #: Judge this run with a different model than the knowledge base's own — for a second opinion on the same answers.
+    judge_model_id: str | None = None
+
+
+class EvaluationRunReport(BaseModel):
+    """What a run says about the agent, as opposed to about one item."""
+
+    verdict: str = ""
+    findings: list[dict[str, Any]] = []
+    model: str | None = None
+    prompt_version: str | None = None
+    error: str | None = None
 
 
 class EvaluationRunResponse(BaseModel):
