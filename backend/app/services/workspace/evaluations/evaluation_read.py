@@ -23,6 +23,7 @@ def evaluation_to_response(
     return EvaluationResponse(
         id=ev.id,
         name=ev.name,
+        kind=ev.kind,
         knowledge_base_id=ev.knowledge_base_id,
         knowledge_base_name=kb_name,
         wiki_space_id=ev.wiki_space_id,

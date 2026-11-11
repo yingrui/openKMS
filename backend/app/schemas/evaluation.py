@@ -1,14 +1,24 @@
 """Pydantic schemas for evaluation management."""
 from datetime import datetime
 
-from typing import Any
+from typing import Any, Literal
 
 from pydantic import BaseModel, Field
+
+#: What an item holds. Decides the editor's columns and which run types are allowed.
+EvaluationKind = Literal["answer", "query", "content"]
+
+KIND_RUN_TYPES: dict[str, tuple[str, ...]] = {
+    "answer": ("search_retrieval", "qa_answer"),
+    "query": ("data_query",),
+    "content": ("wiki_content_coverage",),
+}
 
 
 class EvaluationCreate(BaseModel):
     name: str
     knowledge_base_id: str
+    kind: EvaluationKind = "answer"
     wiki_space_id: str | None = None
     description: str | None = None
     #: A data-query evaluation judges a semantic model's answers (mutually exclusive with wiki in practice).
@@ -28,6 +38,7 @@ class EvaluationUpdate(BaseModel):
 class EvaluationResponse(BaseModel):
     id: str
     name: str
+    kind: EvaluationKind = "answer"
     knowledge_base_id: str
     knowledge_base_name: str | None = None
     wiki_space_id: str | None = None
@@ -51,7 +62,8 @@ class EvaluationListResponse(BaseModel):
 
 class EvaluationItemCreate(BaseModel):
     query: str
-    expected_answer: str
+    #: Required for `answer`/`content` items; absent for `query` items, whose ground truth is `expected_query`.
+    expected_answer: str | None = None
     topic: str | None = None
     sort_order: int = 0
     #: Data-query ground truth: every query the answer should have made.
@@ -70,7 +82,7 @@ class EvaluationItemResponse(BaseModel):
     id: str
     evaluation_id: str
     query: str
-    expected_answer: str
+    expected_answer: str | None = None
     topic: str | None = None
     sort_order: int
     expected_query: list[dict[str, Any]] | None = None
@@ -104,7 +116,7 @@ class DataQuerySource(BaseModel):
 class EvaluationRunResult(BaseModel):
     item_id: str
     query: str
-    expected_answer: str
+    expected_answer: str | None = None
     search_results: list[SearchResultSnippet] = []
     generated_answer: str | None = None
     qa_sources: list[SearchResultSnippet] = []
@@ -157,7 +169,7 @@ class EvaluationRunListResponse(BaseModel):
 class EvaluationCompareRow(BaseModel):
     evaluation_item_id: str
     query: str
-    expected_answer: str
+    expected_answer: str | None = None
     pass_a: bool
     score_a: float
     pass_b: bool

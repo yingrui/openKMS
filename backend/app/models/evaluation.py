@@ -18,6 +18,10 @@ class Evaluation(Base):
     knowledge_base_id: Mapped[str] = mapped_column(
         String(64), ForeignKey("knowledge_bases.id", ondelete="CASCADE"), nullable=False, index=True
     )
+    #: What an item holds: `answer` (prose ground truth), `query` (the query an answer must cite), `content`
+    #: (text a wiki answer must cover). It decides which columns the editor shows and which run types are allowed,
+    #: so it is a property of the data set, not of a run.
+    kind: Mapped[str] = mapped_column(String(16), nullable=False, default="answer", server_default="answer")
     #: A data-query evaluation judges a semantic model's answers; null for the RAG types.
     semantic_model_id: Mapped[str | None] = mapped_column(
         String(64), ForeignKey("semantic_models.id", ondelete="SET NULL"), nullable=True, index=True
@@ -51,7 +55,8 @@ class EvaluationItem(Base):
         index=True,
     )
     query: Mapped[str] = mapped_column(Text, nullable=False)
-    expected_answer: Mapped[str] = mapped_column(Text, nullable=False)
+    #: Null for a `query` item: the ground truth is the query, not a sentence.
+    expected_answer: Mapped[str | None] = mapped_column(Text, nullable=True)
     #: Data-query ground truth: every query the answer should have made (see docs/features/data-query-evaluation.md).
     expected_query: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
     topic: Mapped[str | None] = mapped_column(String(256), nullable=True)

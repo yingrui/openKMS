@@ -25,6 +25,7 @@ from app.schemas.evaluation import (
     EvaluationItemListResponse,
     EvaluationItemResponse,
     EvaluationItemUpdate,
+    EvaluationKind,
     EvaluationListResponse,
     EvaluationResponse,
     EvaluationRunListItem,
@@ -34,6 +35,7 @@ from app.schemas.evaluation import (
     EvaluationRunResult,
     EvaluationUpdate,
     SearchResultSnippet,
+    KIND_RUN_TYPES,
 )
 from app.services.identity.acl.data_resource_policy import knowledge_base_visible, wiki_space_visible
 from app.services.identity.acl.data_scope import bootstrap_owner_acl
@@ -224,6 +226,24 @@ def _run_to_response(run: EvaluationRun, results: list[EvaluationRunResult]) -> 
     )
 
 
+def _validate_kind_inputs(kind: EvaluationKind, *, semantic_model_id: str | None, wiki_space_id: str | None) -> None:
+    """`kind` decides what the dataset is for, so it also decides what it must be attached to."""
+    if kind == "query" and not semantic_model_id:
+        raise HTTPException(status_code=400, detail="A query evaluation must name the semantic model it judges.")
+    if kind == "content" and not wiki_space_id:
+        raise HTTPException(status_code=400, detail="A content evaluation must name the wiki space it covers.")
+
+
+def _validate_item_for_kind(ev: Evaluation, *, expected_answer: str | None, expected_query: list | None) -> None:
+    """A query item is answered by a query; an answer item is answered by a sentence."""
+    if ev.kind == "query":
+        if not expected_query:
+            raise HTTPException(status_code=400, detail="A query item needs expected_query.")
+        return
+    if not (expected_answer or "").strip():
+        raise HTTPException(status_code=400, detail="This evaluation needs an expected answer for every item.")
+
+
 # --- CRUD ---
 
 
@@ -266,6 +286,7 @@ async def create_evaluation(
             raise HTTPException(status_code=404, detail="Wiki space not found")
         wiki_name = ws.name
     uname = p.get("preferred_username") or p.get("name")
+    _validate_kind_inputs(body.kind, semantic_model_id=body.semantic_model_id, wiki_space_id=body.wiki_space_id)
     if body.semantic_model_id:
         model = await db.get(SemanticModel, body.semantic_model_id)
         if not model:
@@ -273,6 +294,7 @@ async def create_evaluation(
     ev = Evaluation(
         id=str(uuid.uuid4()),
         name=body.name,
+        kind=body.kind,
         knowledge_base_id=body.knowledge_base_id,
         wiki_space_id=body.wiki_space_id,
         semantic_model_id=body.semantic_model_id,
@@ -386,11 +408,12 @@ async def create_evaluation_item(
     ev: Evaluation = Depends(get_evaluation_scoped_write),
     db: AsyncSession = Depends(get_db),
 ):
+    _validate_item_for_kind(ev, expected_answer=body.expected_answer, expected_query=body.expected_query)
     item = EvaluationItem(
         id=str(uuid.uuid4()),
         evaluation_id=evaluation_id,
         query=body.query,
-        expected_answer=body.expected_answer,
+        expected_answer=None if ev.kind == "query" else body.expected_answer,
         topic=body.topic,
         sort_order=body.sort_order,
         expected_query=body.expected_query,
@@ -412,7 +435,13 @@ async def update_evaluation_item(
     item = await db.get(EvaluationItem, item_id)
     if not item or item.evaluation_id != evaluation_id:
         raise HTTPException(status_code=404, detail="Evaluation item not found")
-    for field, value in body.model_dump(exclude_unset=True).items():
+    patch = body.model_dump(exclude_unset=True)
+    _validate_item_for_kind(
+        ev,
+        expected_answer=patch.get("expected_answer", item.expected_answer),
+        expected_query=patch.get("expected_query", item.expected_query),
+    )
+    for field, value in patch.items():
         setattr(item, field, value)
     await db.flush()
     await db.refresh(item)
@@ -427,6 +456,11 @@ async def import_evaluation_items(
     db: AsyncSession = Depends(get_db),
 ):
     """Import evaluation items from a CSV file. Expected columns: topic (optional), query, answer or expected_answer."""
+    if ev.kind == "query":
+        raise HTTPException(
+            status_code=400,
+            detail="A query evaluation is edited in the table: its items carry expected queries, not answers.",
+        )
     if not file.filename or not file.filename.lower().endswith(".csv"):
         raise HTTPException(status_code=400, detail="File must be a CSV")
 
@@ -643,6 +677,16 @@ async def run_evaluation(
         raise HTTPException(
             status_code=400,
             detail=f"Invalid evaluation_type. Allowed: {', '.join(sorted(ALLOWED_EVALUATION_TYPES))}",
+        )
+
+    allowed_for_kind = KIND_RUN_TYPES.get(ev.kind, ())
+    if allowed_for_kind and eval_type not in allowed_for_kind:
+        raise HTTPException(
+            status_code=400,
+            detail=(
+                f"This evaluation holds {ev.kind} items, so it can only be run as: "
+                f"{', '.join(allowed_for_kind)}."
+            ),
         )
 
     kb = await db.get(KnowledgeBase, ev.knowledge_base_id)
