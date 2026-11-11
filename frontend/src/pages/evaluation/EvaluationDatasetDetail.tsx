@@ -23,15 +23,11 @@ import {
   updateEvaluationItem,
   deleteEvaluationItem,
   importEvaluationItems,
-  runEvaluation,
-  listEvaluationRuns,
   getEvaluationRun,
   deleteEvaluationRun,
   compareEvaluationRuns,
   type EvaluationResponse,
   type EvaluationItemResponse,
-  type EvaluationRunResponse,
-  type EvaluationRunListItem,
   type EvaluationCompareResponse,
   type EvaluationRunResult,
   type JudgeCheck,
@@ -39,8 +35,8 @@ import {
 import type { TFunction } from 'i18next';
 import { PanelToolbar } from '../../styles/design-system';
 import { expectedQueryLines } from './expectedQueryText';
-import { RunRequestError, buildRunRequest } from './runRequest';
-import { RunEvaluationDialog, type RunOptions } from './RunEvaluationDialog';
+import { RunEvaluationDialog } from './RunEvaluationDialog';
+import { useEvaluationRun } from './useEvaluationRun';
 
 const EVAL_TYPE_SEARCH = 'search_retrieval';
 const EVAL_TYPE_QA = 'qa_answer';
@@ -247,16 +243,7 @@ export function EvaluationDatasetDetail() {
   const [itemSaving, setItemSaving] = useState(false);
   const [importing, setImporting] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const [running, setRunning] = useState(false);
-  const [runDialogOpen, setRunDialogOpen] = useState(false);
-  const [runStartedAt, setRunStartedAt] = useState<number | null>(null);
-  const [runElapsed, setRunElapsed] = useState(0);
-  /** The run this page is waiting on; polling stops when the worker closes it. */
-  const [activeRunId, setActiveRunId] = useState<string | null>(null);
   const [evaluationType, setEvaluationType] = useState<string>(EVAL_TYPE_SEARCH);
-  const [runView, setRunView] = useState<EvaluationRunResponse | null>(null);
-  const [runs, setRuns] = useState<EvaluationRunListItem[]>([]);
-  const [runsLoading, setRunsLoading] = useState(false);
   const [compareRunA, setCompareRunA] = useState('');
   const [compareRunB, setCompareRunB] = useState('');
   const [compareData, setCompareData] = useState<EvaluationCompareResponse | null>(null);
@@ -307,23 +294,6 @@ export function EvaluationDatasetDetail() {
     if (evaluationId) fetchItemsForPage(itemsPage);
   }, [evaluationId, itemsPage, itemsPageSize, fetchItemsForPage]);
 
-  const loadRuns = useCallback(async () => {
-    if (!evaluationId) return;
-    setRunsLoading(true);
-    try {
-      const res = await listEvaluationRuns(evaluationId, { limit: 100 });
-      setRuns(res.items);
-    } catch {
-      setRuns([]);
-    } finally {
-      setRunsLoading(false);
-    }
-  }, [evaluationId]);
-
-  useEffect(() => {
-    loadRuns();
-  }, [loadRuns]);
-
   // The kind decides which runs make sense; a query set defaulting to retrieval ran into a page of failures.
   useEffect(() => {
     if (!dataset) return;
@@ -337,33 +307,6 @@ export function EvaluationDatasetDetail() {
     if (a) setCompareRunA(a);
     if (b) setCompareRunB(b);
   }, [compareFromUrl]);
-
-  useEffect(() => {
-    if (!evaluationId || !runFromUrl) return;
-    if (runView?.run_id === runFromUrl) return;
-    let cancelled = false;
-    void (async () => {
-      try {
-        const res = await getEvaluationRun(evaluationId, runFromUrl);
-        if (!cancelled) setRunView(res);
-      } catch {
-        if (!cancelled) {
-          toast.error(t('evaluationDetail.toastLoadRunFailed'));
-          setSearchParams(
-            (prev) => {
-              const next = new URLSearchParams(prev);
-              next.delete('run');
-              return next;
-            },
-            { replace: true },
-          );
-        }
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [evaluationId, runFromUrl, runView?.run_id, setSearchParams, t]);
 
   const setRunInUrl = useCallback(
     (runId: string | null) => {
@@ -473,98 +416,11 @@ export function EvaluationDatasetDetail() {
     }
   };
 
-  // Which items failed last time: the dialog offers to re-run just those, which is the common case while tuning.
-  // Read them *before* opening — opening first left the dialog with an empty list, so "only failed" was disabled and the
-  // default scope was "everything", which is how a one-item re-run turns into seventeen.
-  // The dialog asks which run to base "the failures" on and reads that run itself; nothing is prefetched here.
-  const openRunDialog = () => setRunDialogOpen(true);
-
-  const handleRunEvaluation = async ({ itemIds, judgeModelId, language }: RunOptions) => {
-    if (!evaluationId) return;
-    // Checked before it leaves the page: a subset without ids would ask for the whole set, which is exactly the failure
-    // nobody notices until seventeen results come back.
-    let body;
-    try {
-      body = buildRunRequest({
-        scope: itemIds === null ? 'all' : 'failed',
-        failedItemIds: itemIds ?? [],
-        evaluationType,
-        judgeModelId,
-        language,
-      });
-    } catch (e: unknown) {
-      toast.error(e instanceof RunRequestError ? e.message : t('evaluationDetail.toastRunFailed'));
-      return;
-    }
-    setRunDialogOpen(false);
-    setRunning(true);
-    setRunStartedAt(Date.now());
-    setRunElapsed(0);
-    setRunView(null);
-    try {
-      // The request only queues the run; the worker executes it and the poll below follows the run row.
-      const queued = await runEvaluation(evaluationId, body);
-      setRunView(queued);
-      setRunInUrl(queued.run_id);
-      setActiveRunId(queued.run_id);
-    } catch (e: unknown) {
-      toast.error(e instanceof Error ? e.message : t('evaluationDetail.toastRunFailed'));
-      setRunning(false);
-      setRunStartedAt(null);
-    }
-  };
-
-  useEffect(() => {
-    if (!running || !runStartedAt) return;
-    const id = window.setInterval(() => setRunElapsed(Math.round((Date.now() - runStartedAt) / 1000)), 1000);
-    return () => window.clearInterval(id);
-  }, [running, runStartedAt]);
-
-  // Follow the queued run until the worker closes it. The job's own status lives at /api/jobs/{id}; the run row is what
-  // this page shows, so it is what gets polled.
-  useEffect(() => {
-    if (!activeRunId || !evaluationId) return;
-    let cancelled = false;
-    const poll = async () => {
-      try {
-        const res = await getEvaluationRun(evaluationId, activeRunId);
-        if (cancelled) return;
-        setRunView(res);
-        if (res.status !== 'running') {
-          setActiveRunId(null);
-          setRunning(false);
-          setRunStartedAt(null);
-          loadRuns();
-          void loadDataset();
-          if (res.status === 'completed') {
-            toast.success(
-              t('evaluationDetail.toastRunSuccess', {
-                runId: `${res.run_id.slice(0, 8)}…`,
-                pass: res.pass_count,
-                total: res.item_count,
-              }),
-            );
-          } else {
-            toast.error(res.error_message || t('evaluationDetail.toastRunFailed'));
-          }
-        }
-      } catch {
-        /* keep polling: a transient read failure should not abandon a run that is still going */
-      }
-    };
-    void poll();
-    const id = window.setInterval(() => void poll(), 3000);
-    return () => {
-      cancelled = true;
-      window.clearInterval(id);
-    };
-  }, [activeRunId, evaluationId, t, loadRuns, loadDataset]);
-
   const handleLoadRun = async (runId: string) => {
     if (!evaluationId) return;
     try {
       const res = await getEvaluationRun(evaluationId, runId);
-      setRunView(res);
+      run.showRun(res);
       setRunInUrl(runId);
       toast.success(t('evaluationDetail.toastLoadedRun'));
     } catch (e: unknown) {
@@ -577,8 +433,8 @@ export function EvaluationDatasetDetail() {
     setDeletingRunId(runId);
     try {
       await deleteEvaluationRun(evaluationId, runId);
-      if (runView?.run_id === runId) {
-        setRunView(null);
+      if (run.runView?.run_id === runId) {
+        run.showRun(null);
         setRunInUrl(null);
       }
       if (compareRunA === runId) setCompareRunA('');
@@ -590,13 +446,24 @@ export function EvaluationDatasetDetail() {
         setCompareData(null);
       }
       toast.success(t('evaluationDetail.toastRunDeleted'));
-      await loadRuns();
+      await run.loadRuns();
     } catch (e: unknown) {
       toast.error(e instanceof Error ? e.message : t('evaluationDetail.toastDeleteRunFailed'));
     } finally {
       setDeletingRunId(null);
     }
   };
+
+  const run = useEvaluationRun({
+    evaluationId,
+    evaluationType,
+    runFromUrl,
+    setRunInUrl,
+    onFinished: () => {
+      void loadDataset();
+      void fetchItemsForPage(itemsPage);
+    },
+  });
 
   const handleCompare = async () => {
     if (!evaluationId || !compareRunA || !compareRunB || compareRunA === compareRunB) {
@@ -839,7 +706,7 @@ export function EvaluationDatasetDetail() {
                 <select
                   value={evaluationType}
                   onChange={(e) => setEvaluationType(e.target.value)}
-                  disabled={running}
+                  disabled={run.running}
                   className="eval-detail-type-select"
                 >
                   {(RUN_TYPES_BY_KIND[dataset.kind ?? 'answer'] ?? [EVAL_TYPE_SEARCH]).map((type) => (
@@ -858,20 +725,20 @@ export function EvaluationDatasetDetail() {
               <button
                 type="button"
                 className="btn btn-primary"
-                onClick={openRunDialog}
-                disabled={running || itemsTotal === 0}
+                onClick={run.openDialog}
+                disabled={run.running || itemsTotal === 0}
                 title={itemsTotal === 0 ? t('evaluationDetail.runNeedsItems') : undefined}
               >
-                {running ? <Loader2 size={18} className="animate-spin" /> : <Play size={18} />}
-                <span>{running ? t('evaluationDetail.running') : t('evaluationDetail.runEvaluation')}</span>
+                {run.running ? <Loader2 size={18} className="animate-spin" /> : <Play size={18} />}
+                <span>{run.running ? t('evaluationDetail.running') : t('evaluationDetail.runEvaluation')}</span>
               </button>
               <button
                 type="button"
                 className="btn btn-secondary"
-                onClick={() => loadRuns()}
-                disabled={runsLoading}
+                onClick={() => run.loadRuns()}
+                disabled={run.runsLoading}
               >
-                {runsLoading ? <Loader2 size={18} className="animate-spin" /> : null}
+                {run.runsLoading ? <Loader2 size={18} className="animate-spin" /> : null}
                 <span>{t('shared.refresh')}</span>
               </button>
             </div>
@@ -880,13 +747,13 @@ export function EvaluationDatasetDetail() {
         {itemsTotal === 0 && (
           <p className="eval-run-hint">{t('evaluationDetail.runNeedsItems')}</p>
         )}
-        {running && runStartedAt ? (
+        {run.running ? (
           <p className="eval-run-hint eval-run-progress" role="status">
             <Loader2 size={14} className="animate-spin" aria-hidden />
-            {t('evaluationDetail.runInProgress', { seconds: runElapsed })}
+            {t('evaluationDetail.runInProgress', { seconds: run.elapsed })}
           </p>
         ) : null}
-        {runs.length === 0 ? (
+        {run.runs.length === 0 ? (
           <p className="eval-empty-text">{t('evaluationDetail.emptyRuns')}</p>
         ) : (
           <div className="ds-table-wrap">
@@ -902,7 +769,7 @@ export function EvaluationDatasetDetail() {
                 </tr>
               </thead>
               <tbody>
-                {runs.map((r) => (
+                {run.runs.map((r) => (
                   <tr key={r.id}>
                     <td className="eval-run-date">{new Date(r.created_at).toLocaleString()}</td>
                     <td>
@@ -959,7 +826,7 @@ export function EvaluationDatasetDetail() {
               className="eval-compare-select"
             >
               <option value="">{t('shared.dash')}</option>
-              {runs.map((r) => (
+              {run.runs.map((r) => (
                 <option key={r.id} value={r.id}>
                   {new Date(r.created_at).toLocaleString()} · {r.evaluation_type}
                 </option>
@@ -974,7 +841,7 @@ export function EvaluationDatasetDetail() {
               className="eval-compare-select"
             >
               <option value="">{t('shared.dash')}</option>
-              {runs.map((r) => (
+              {run.runs.map((r) => (
                 <option key={`b-${r.id}`} value={r.id}>
                   {new Date(r.created_at).toLocaleString()} · {r.evaluation_type}
                 </option>
@@ -1023,19 +890,20 @@ export function EvaluationDatasetDetail() {
         )}
       </section>
 
-      {runView && runView.results.length > 0 && (
+      {run.runView && run.runView.results.length > 0 && (
         <section className="eval-detail-section eval-results-section">
           {(() => {
-            const undecidedCount = runView.results.filter((r) => !r.pass && r.judge?.verdict === 'undecided').length;
-            const failCount = runView.results.filter((r) => !r.pass).length - undecidedCount;
-            const judge = runView.results.find((r) => r.judge?.model)?.judge;
+            const view = run.runView;
+            const undecidedCount = view.results.filter((r) => !r.pass && r.judge?.verdict === 'undecided').length;
+            const failCount = view.results.filter((r) => !r.pass).length - undecidedCount;
+            const judge = view.results.find((r) => r.judge?.model)?.judge;
             return (
               <>
                 <div className="eval-run-head">
                   <h2>{t('evaluationDetail.runDetail')}</h2>
                   <div className="eval-run-chips">
                     <span className="eval-result-badge eval-result-pass">
-                      {t('evaluationDetail.runPassChip', { count: runView.pass_count })}
+                      {t('evaluationDetail.runPassChip', { count: view.pass_count })}
                     </span>
                     {failCount > 0 ? (
                       <span className="eval-result-badge eval-result-fail">
@@ -1049,24 +917,24 @@ export function EvaluationDatasetDetail() {
                     ) : null}
                     <span className="eval-run-avg">
                       {t('evaluationDetail.runAvgShort', {
-                        avg: runView.avg_score != null ? runView.avg_score.toFixed(2) : t('shared.dash'),
+                        avg: view.avg_score != null ? view.avg_score.toFixed(2) : t('shared.dash'),
                       })}
                     </span>
                   </div>
                 </div>
                 <p className="eval-run-meta">
-                  <code>{runView.run_id}</code> · {runView.evaluation_type} · {runView.status} ·{' '}
-                  {t('evaluationDetail.runScopeLine', { count: runView.item_count, total: itemsTotal })}
+                  <code>{view.run_id}</code> · {view.evaluation_type} · {view.status} ·{' '}
+                  {t('evaluationDetail.runScopeLine', { count: view.item_count, total: itemsTotal })}
                   {judge?.model ? ` · ${t('evaluationDetail.judgedBy', { model: judge.model })}` : ''}
                   {judge?.prompt_version ? ` · ${judge.prompt_version}` : ''}
                 </p>
-                {runView.report && (runView.report.verdict || runView.report.findings.length > 0) ? (
+                {view.report && (view.report.verdict || view.report.findings.length > 0) ? (
                   <div className="eval-run-report">
                     <h3>{t('evaluationDetail.reportTitle')}</h3>
-                    {runView.report.verdict ? <p className="eval-run-report-verdict">{runView.report.verdict}</p> : null}
-                    {runView.report.findings.length > 0 ? (
+                    {view.report.verdict ? <p className="eval-run-report-verdict">{view.report.verdict}</p> : null}
+                    {view.report.findings.length > 0 ? (
                       <ul className="eval-report-findings">
-                        {runView.report.findings.map((f, i) => (
+                        {view.report.findings.map((f, i) => (
                           <li key={`finding-${i}`} className={`eval-report-finding eval-report-finding--${f.area}`}>
                             <div className="eval-report-finding-head">
                               <span className="eval-report-area">{t(`evaluationDetail.reportArea.${f.area}`)}</span>
@@ -1079,7 +947,7 @@ export function EvaluationDatasetDetail() {
                                     title={t('evaluationDetail.reportJumpToItem', { index: idx + 1 })}
                                     onClick={() => {
                                       document
-                                        .getElementById(`eval-result-${runView.results[idx]?.item_id ?? ''}`)
+                                        .getElementById(`eval-result-${view.results[idx]?.item_id ?? ''}`)
                                         ?.scrollIntoView({ behavior: 'smooth', block: 'center' });
                                     }}
                                   >
@@ -1095,19 +963,19 @@ export function EvaluationDatasetDetail() {
                       </ul>
                     ) : null}
                     <p className="eval-report-meta">
-                      {runView.report.model ? t('evaluationDetail.judgedBy', { model: runView.report.model }) : ''}
-                      {runView.report.prompt_version ? ` · ${runView.report.prompt_version}` : ''}
-                      {runView.report.error ? ` · ${runView.report.error}` : ''}
+                      {view.report.model ? t('evaluationDetail.judgedBy', { model: view.report.model }) : ''}
+                      {view.report.prompt_version ? ` · ${view.report.prompt_version}` : ''}
+                      {view.report.error ? ` · ${view.report.error}` : ''}
                     </p>
                   </div>
                 ) : null}
                 <div className="eval-results-list">
-                  {runView.results.map((r, index) => (
+                  {view.results.map((r, index) => (
                     <RunResultRow
                       key={r.item_id}
                       r={r}
-                      evaluationType={runView.evaluation_type}
-                      advice={(runView.report?.findings ?? [])
+                      evaluationType={view.evaluation_type}
+                      advice={(view.report?.findings ?? [])
                         .filter((f) => f.items.includes(index))
                         .map((f) => ({ area: f.area, claim: f.claim, suggestion: f.suggestion }))}
                       t={t}
@@ -1120,15 +988,15 @@ export function EvaluationDatasetDetail() {
         </section>
       )}
 
-      {runView && runView.results.length === 0 && (
+      {run.runView && run.runView.results.length === 0 && (
         <section className="eval-detail-section eval-results-section">
           <h2>{t('evaluationDetail.runDetail')}</h2>
           <p className="eval-empty-text">
-            {t('evaluationDetail.runEmpty', { runId: runView.run_id, status: runView.status })}
-            {runView.error_message ? (
+            {t('evaluationDetail.runEmpty', { runId: run.runView.run_id, status: run.runView.status })}
+            {run.runView.error_message ? (
               <>
                 {' '}
-                <span className="eval-run-error">{runView.error_message}</span>
+                <span className="eval-run-error">{run.runView.error_message}</span>
               </>
             ) : null}
           </p>
@@ -1136,15 +1004,15 @@ export function EvaluationDatasetDetail() {
       )}
 
       {/* Mounted per opening: the scope default is "only what failed last time", which is this opening's state. */}
-      {runDialogOpen ? (
+      {run.dialogOpen ? (
         <RunEvaluationDialog
           open
           evaluationId={evaluationId ?? ''}
           itemsTotal={itemsTotal}
-          runs={runs}
-          busy={running}
-          onCancel={() => setRunDialogOpen(false)}
-          onSubmit={(options) => void handleRunEvaluation(options)}
+          runs={run.runs}
+          busy={run.running}
+          onCancel={() => run.closeDialog()}
+          onSubmit={(options) => void run.submit(options)}
         />
       ) : null}
 

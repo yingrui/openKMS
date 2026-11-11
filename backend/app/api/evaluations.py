@@ -6,13 +6,11 @@ from typing import Any
 
 from fastapi import APIRouter, Body, Depends, File, HTTPException, Query, Request, UploadFile
 from sqlalchemy import func, select
-from sqlalchemy.orm import selectinload
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.auth import require_auth
 from app.database import get_db
 from app.jobs.defer import defer_task
-from app.models.api_model import ApiModel
 from app.models.evaluation import Evaluation, EvaluationItem
 from app.models.evaluation_run import EvaluationRun, EvaluationRunItem
 from app.models.knowledge_base import KnowledgeBase
@@ -55,7 +53,7 @@ from app.services.workspace.evaluations.execute import (
     EVALUATION_TYPE_SEARCH_RETRIEVAL,
     EVALUATION_TYPE_WIKI_CONTENT_COVERAGE,
     EVALUATION_TYPES_WITH_SEARCH_SNIPPETS,
-    resolve_judge_config,
+    resolve_judge_override,
 )
 from app.services.workspace.evaluations.evaluation_read import (
     evaluation_to_response,
@@ -640,41 +638,11 @@ async def run_evaluation(
 
     The response carries the run id and the job id; results arrive in the run, minutes later, and the page follows both.
     """
-    raw_type = (body.evaluation_type or "").strip()
-    eval_type = raw_type if raw_type else EVALUATION_TYPE_SEARCH_RETRIEVAL
-    if eval_type not in ALLOWED_EVALUATION_TYPES:
-        raise HTTPException(
-            status_code=400,
-            detail=f"Invalid evaluation_type. Allowed: {', '.join(sorted(ALLOWED_EVALUATION_TYPES))}",
-        )
-
-    allowed_for_kind = KIND_RUN_TYPES.get(ev.kind, ())
-    if allowed_for_kind and eval_type not in allowed_for_kind:
-        raise HTTPException(
-            status_code=400,
-            detail=(
-                f"This evaluation holds {ev.kind} items, so it can only be run as: "
-                f"{', '.join(allowed_for_kind)}."
-            ),
-        )
-
+    eval_type = _resolve_run_type(ev, body.evaluation_type)
     kb = await db.get(KnowledgeBase, ev.knowledge_base_id)
     if not kb:
         raise HTTPException(status_code=404, detail="Knowledge base not found")
-
-    if eval_type == EVALUATION_TYPE_SEARCH_RETRIEVAL and not kb.embedding_model_id:
-        raise HTTPException(
-            status_code=400,
-            detail="No embedding model configured for this knowledge base. Configure it in KB Settings.",
-        )
-
-    if eval_type == EVALUATION_TYPE_WIKI_CONTENT_COVERAGE:
-        if not ev.wiki_space_id:
-            raise HTTPException(
-                status_code=400,
-                detail="This evaluation type requires a linked wiki space. Set it under evaluation settings.",
-            )
-
+    _require_run_prerequisites(ev, kb, eval_type)
     judge_model_id, _judge_config = await resolve_judge_override(db, kb, body.judge_model_id)
     language = body.language or "en"
     wiki = await db.get(WikiSpace, ev.wiki_space_id) if ev.wiki_space_id else None
@@ -683,14 +651,7 @@ async def run_evaluation(
     from app.jobs.tasks import run_evaluation
     from app.services.workspace.evaluations.run_job import create_run
 
-    if body.item_scope == "subset" and not body.item_ids:
-        raise HTTPException(
-            status_code=400,
-            detail="A subset run needs item_ids; none were sent.",
-        )
-    if body.item_ids is not None and not body.item_ids:
-        raise HTTPException(status_code=400, detail="No items selected to run.")
-    item_ids = body.item_ids if body.item_scope == "subset" else None
+    item_ids = _resolve_item_scope(body)
 
     run = await create_run(
         db,
@@ -723,6 +684,49 @@ async def run_evaluation(
     return _run_to_response(run, []).model_copy(update={"job_id": int(job_id)})
 
 
+def _resolve_run_type(ev: Evaluation, requested: str | None) -> str:
+    """The run type asked for, checked against the kinds of both the dataset and the allowed set."""
+    eval_type = (requested or "").strip() or EVALUATION_TYPE_SEARCH_RETRIEVAL
+    if eval_type not in ALLOWED_EVALUATION_TYPES:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Invalid evaluation_type. Allowed: {', '.join(sorted(ALLOWED_EVALUATION_TYPES))}",
+        )
+    allowed_for_kind = KIND_RUN_TYPES.get(ev.kind, ())
+    if allowed_for_kind and eval_type not in allowed_for_kind:
+        raise HTTPException(
+            status_code=400,
+            detail=(
+                f"This evaluation holds {ev.kind} items, so it can only be run as: "
+                f"{', '.join(allowed_for_kind)}."
+            ),
+        )
+    return eval_type
+
+
+def _require_run_prerequisites(ev: Evaluation, kb: KnowledgeBase, eval_type: str) -> None:
+    """What the chosen run type needs to exist before it can start."""
+    if eval_type == EVALUATION_TYPE_SEARCH_RETRIEVAL and not kb.embedding_model_id:
+        raise HTTPException(
+            status_code=400,
+            detail="No embedding model configured for this knowledge base. Configure it in KB Settings.",
+        )
+    if eval_type == EVALUATION_TYPE_WIKI_CONTENT_COVERAGE and not ev.wiki_space_id:
+        raise HTTPException(
+            status_code=400,
+            detail="This evaluation type requires a linked wiki space. Set it under evaluation settings.",
+        )
+
+
+def _resolve_item_scope(body: EvaluationRunRequestBody) -> list[str] | None:
+    """Which items to run, and a refusal when the request contradicts itself (subset without ids)."""
+    if body.item_scope == "subset" and not body.item_ids:
+        raise HTTPException(status_code=400, detail="A subset run needs item_ids; none were sent.")
+    if body.item_ids is not None and not body.item_ids:
+        raise HTTPException(status_code=400, detail="No items selected to run.")
+    return body.item_ids if body.item_scope == "subset" else None
+
+
 def _config_snapshot(
     ev: Evaluation,
     eval_type: str,
@@ -739,66 +743,6 @@ def _config_snapshot(
             "semantic_similarity_threshold": wiki.semantic_similarity_threshold if wiki else None,
         }
     return {"judge_model_id": judge_model_id, "language": language, "top_k": 10, "search_type": "all"}
-
-
-async def resolve_judge_override(
-    db: AsyncSession, kb: KnowledgeBase, override_id: str | None
-) -> tuple[str, dict[str, Any]]:
-    """The judge for a run: the one asked for, else the knowledge base's own (and its fallback)."""
-    if not override_id:
-        return await resolve_judge_config(db, kb)
-    # Eager-load the provider: `ApiModel.provider_rel` is lazy, and touching it in an async worker raises MissingGreenlet.
-    model = (
-        await db.execute(
-            select(ApiModel).options(selectinload(ApiModel.provider_rel)).where(ApiModel.id == override_id)
-        )
-    ).scalar_one_or_none()
-    if model is None or not model.provider_rel:
-        raise HTTPException(status_code=400, detail="Judge model not found")
-    return model.id, {
-        "base_url": model.provider_rel.base_url,
-        "api_key": model.provider_rel.api_key or "no-key",
-        "model_name": model.model_name or model.name,
-    }
-
-
-async def build_run_report(
-    db: AsyncSession,
-    ev: Evaluation,
-    item_rows: list[dict],
-    judge_config: dict[str, Any],
-    language: str = "en",
-) -> dict | None:
-    """One report per run, from the verdicts it produced. Never fatal: a run without commentary is still a run."""
-    from app.services.workspace.evaluations.execute import _semantic_model_schema
-    from app.services.workspace.evaluations.report import summarize_run
-
-    items = []
-    for index, row in enumerate(item_rows):
-        judge = (row.get("detail") or {}).get("judge") or {}
-        failed = [
-            {"id": check.get("id"), "verdict": check.get("verdict"),
-             "expected": check.get("expected"), "actual": check.get("actual"), "reason": check.get("reason")}
-            for verdict in (judge.get("verdicts") or [])
-            for check in (verdict.get("checks") or [])
-            if check.get("verdict") != "pass"
-        ]
-        items.append(
-            {
-                "index": index,
-                "question": row.get("query"),
-                "expected": row.get("expected_query") or row.get("expected_answer"),
-                "ran": (row.get("detail") or {}).get("data_queries") or [],
-                "passed": bool(row.get("passed")),
-                "reasoning": row.get("reasoning"),
-                "failed_checks": failed,
-            }
-        )
-    try:
-        schema = await _semantic_model_schema(db, ev.semantic_model_id)
-    except Exception:  # noqa: BLE001 - a missing schema makes the report weaker, not the run broken
-        schema = {"fields": [], "datasets": []}
-    return await summarize_run(items=items, schema=schema, model_config=judge_config, language=language)
 
 
 from app.api.eval_agent_conversations import router as eval_agent_conversations_router

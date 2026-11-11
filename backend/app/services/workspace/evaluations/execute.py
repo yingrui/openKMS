@@ -83,6 +83,27 @@ async def resolve_judge_config(db: AsyncSession, kb: KnowledgeBase) -> tuple[str
     return judge_model_id, judge_config
 
 
+async def resolve_judge_override(
+    db: AsyncSession, kb: KnowledgeBase, override_id: str | None
+) -> tuple[str, dict[str, Any]]:
+    """The judge for a run: the one asked for, else the knowledge base's own (and its fallback)."""
+    if not override_id:
+        return await resolve_judge_config(db, kb)
+    # Eager-load the provider: `ApiModel.provider_rel` is lazy, and touching it in an async worker raises MissingGreenlet.
+    model = (
+        await db.execute(
+            select(ApiModel).options(selectinload(ApiModel.provider_rel)).where(ApiModel.id == override_id)
+        )
+    ).scalar_one_or_none()
+    if model is None or not model.provider_rel:
+        raise HTTPException(status_code=400, detail="Judge model not found")
+    return model.id, {
+        "base_url": model.provider_rel.base_url,
+        "api_key": model.provider_rel.api_key or "no-key",
+        "model_name": model.model_name or model.name,
+    }
+
+
 async def _load_evaluation_items(db: AsyncSession, evaluation_id: str) -> list[EvaluationItem]:
     result = await db.execute(
         select(EvaluationItem)
@@ -328,6 +349,52 @@ async def run_qa_answer_evaluation(
         return await _run_items(db, evaluation_id, run_one, item_ids, should_abort)
 
 
+async def _judge_expectations(
+    *,
+    question: str,
+    expected: list[Any],
+    cited: list[dict[str, Any]],
+    schema: dict[str, Any],
+    judge_config: dict[str, Any],
+    language: str,
+) -> tuple[list[dict[str, Any]], list[dict[str, Any]], float, bool, str, str]:
+    """Judge each expectation against the queries of the turn.
+
+    Returns `(verdicts, uncovered, coverage, passed, verdict, reasoning)`. One call per expectation with **all** the
+    queries in hand: an answer that explores first and counts second is one answer, not two candidates, and judging the
+    queries separately rejects it for the wrong reason.
+    """
+    from app.services.workspace.evaluations.judge import MAX_SOURCES_PER_EXPECTATION, judge_query
+
+    turn = cited[:MAX_SOURCES_PER_EXPECTATION]
+    verdicts: list[dict[str, Any]] = []
+    uncovered: list[dict[str, Any]] = []
+    for expected_index, expectation in enumerate(expected):
+        verdict = await judge_query(
+            question=question,
+            expected=expectation,
+            actual=turn,
+            schema=schema,
+            forbidden=None,
+            model_config=judge_config,
+            language=language,
+        )
+        entry = {"expected_index": expected_index, **verdict.to_detail()}
+        verdicts.append(entry)
+        if verdict.verdict != "pass":
+            uncovered.append(entry)
+
+    total = len(expected)
+    coverage = (total - len(uncovered)) / total if total else 0.0
+    passed = not uncovered
+    overall = "pass" if passed else ("undecided" if all(u.get("verdict") == "undecided" for u in uncovered) else "fail")
+    reasons = [
+        _text(language, "missed", index=u["expected_index"] + 1, reason=u.get("reasoning") or u.get("verdict"))
+        for u in uncovered
+    ]
+    return verdicts, uncovered, coverage, passed, overall, "; ".join(reasons) or _text(language, "covered")
+
+
 async def run_data_query_evaluation(
     db: AsyncSession,
     kb: KnowledgeBase,
@@ -352,7 +419,6 @@ async def run_data_query_evaluation(
         )
 
     from app.services.content.knowledge_bases.qa_agent_proxy import agent_kb_path
-    from app.services.workspace.evaluations.judge import MAX_SOURCES_PER_EXPECTATION, judge_query
 
     ask_url = agent_kb_path(kb.agent_url, kb.id, "ask")
     # The semantic model belongs to the evaluation, not to the knowledge base: a KB can hold several data sets.
@@ -380,11 +446,7 @@ async def run_data_query_evaluation(
                     detail={"data_queries": [], "coverage": 0.0, "uncovered": [], "extra_sources": 0, "judge": None},
                 )
 
-            cited: list[dict[str, Any]] = [
-                dq
-                for s in (data.get("sources") or [])
-                if isinstance(s, dict) and isinstance((dq := s.get("data_query")), dict) and dq.get("sql")
-            ]
+            cited = _cited_queries(data)
             expected = item.expected_query if isinstance(item.expected_query, list) else []
 
             # No expectation means "the model cannot answer this": any citation is the failure.
@@ -395,12 +457,7 @@ async def run_data_query_evaluation(
                     passed=cited_count == 0,
                     score=0.0 if cited_count else 1.0,
                     reasoning=(
-                        _text(
-                            language,
-                            "cited",
-                            count=cited_count,
-                            plural="" if cited_count == 1 else "ies",
-                        )
+                        _text(language, "cited", count=cited_count, plural="" if cited_count == 1 else "ies")
                         if cited_count
                         else _text(language, "refused")
                     ),
@@ -413,41 +470,14 @@ async def run_data_query_evaluation(
                     },
                 )
 
-            # One call per expectation, with every query of the turn in hand: an answer that explores first and counts
-            # second is one answer, not two candidates, and judging the queries separately rejects it for the wrong
-            # reason (the exploratory query does not match the question).
-            turn = cited[:MAX_SOURCES_PER_EXPECTATION]
-            verdicts: list[dict[str, Any]] = []
-            uncovered: list[dict[str, Any]] = []
-            for expected_index, expectation in enumerate(expected):
-                verdict = await judge_query(
-                    question=item.query,
-                    expected=expectation,
-                    actual=turn,
-                    schema=schema,
-                    forbidden=None,
-                    model_config=judge_config,
-                    language=language,
-                )
-                entry = {"expected_index": expected_index, **verdict.to_detail()}
-                verdicts.append(entry)
-                if verdict.verdict != "pass":
-                    uncovered.append(entry)
-
-            total = len(expected)
-            coverage = (total - len(uncovered)) / total if total else 0.0
-            passed = not uncovered
-            verdict = "pass" if passed else ("undecided" if all(u.get("verdict") == "undecided" for u in uncovered) else "fail")
-            reasons = [
-                _text(
-                    language,
-                    "missed",
-                    index=u["expected_index"] + 1,
-                    reason=u.get("reasoning") or u.get("verdict"),
-                )
-                for u in uncovered
-            ]
-            reasoning = "; ".join(reasons) or _text(language, "covered")
+            verdicts, uncovered, coverage, passed, verdict, reasoning = await _judge_expectations(
+                question=item.query,
+                expected=expected,
+                cited=cited,
+                schema=schema,
+                judge_config=judge_config,
+                language=language,
+            )
 
             # Best effort, and never fatal: the trace is where cost and latency already live, so the verdict belongs there
             # too — the evaluation tables keep the reproducible record. Off the loop: this is a network call.
@@ -482,6 +512,15 @@ async def run_data_query_evaluation(
         out = await _run_items(db, evaluation_id, run_one, item_ids, should_abort)
     await asyncio.to_thread(flush_scores)   # one send for the whole run, not one per score
     return out
+
+
+def _cited_queries(data: dict[str, Any]) -> list[dict[str, Any]]:
+    """The catalog queries an answer cited — a source without SQL was not a query, whatever else it carries."""
+    return [
+        dq
+        for source in (data.get("sources") or [])
+        if isinstance(source, dict) and isinstance((dq := source.get("data_query")), dict) and dq.get("sql")
+    ]
 
 
 def _cited_detail(cited: list[dict[str, Any]]) -> list[dict[str, Any]]:

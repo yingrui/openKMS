@@ -16,7 +16,12 @@ from __future__ import annotations
 
 import json
 import logging
-from typing import Any
+from typing import TYPE_CHECKING, Any
+
+if TYPE_CHECKING:
+    from sqlalchemy.ext.asyncio import AsyncSession
+
+    from app.models.evaluation import Evaluation
 
 logger = logging.getLogger(__name__)
 
@@ -157,3 +162,42 @@ async def summarize_run(
 
 def _empty(model_name: str, *, error: str | None) -> dict[str, Any]:
     return {"verdict": "", "findings": [], "model": model_name, "prompt_version": REPORT_PROMPT_VERSION, "error": error}
+
+
+async def build_run_report(
+    db: AsyncSession,
+    ev: Evaluation,
+    item_rows: list[dict],
+    judge_config: dict[str, Any],
+    language: str = "en",
+) -> dict | None:
+    """One report per run, from the verdicts it produced. Never fatal: a run without commentary is still a run."""
+    from app.services.workspace.evaluations.execute import _semantic_model_schema
+    from app.services.workspace.evaluations.report import summarize_run
+
+    items = []
+    for index, row in enumerate(item_rows):
+        judge = (row.get("detail") or {}).get("judge") or {}
+        failed = [
+            {"id": check.get("id"), "verdict": check.get("verdict"),
+             "expected": check.get("expected"), "actual": check.get("actual"), "reason": check.get("reason")}
+            for verdict in (judge.get("verdicts") or [])
+            for check in (verdict.get("checks") or [])
+            if check.get("verdict") != "pass"
+        ]
+        items.append(
+            {
+                "index": index,
+                "question": row.get("query"),
+                "expected": row.get("expected_query") or row.get("expected_answer"),
+                "ran": (row.get("detail") or {}).get("data_queries") or [],
+                "passed": bool(row.get("passed")),
+                "reasoning": row.get("reasoning"),
+                "failed_checks": failed,
+            }
+        )
+    try:
+        schema = await _semantic_model_schema(db, ev.semantic_model_id)
+    except Exception:  # noqa: BLE001 - a missing schema makes the report weaker, not the run broken
+        schema = {"fields": [], "datasets": []}
+    return await summarize_run(items=items, schema=schema, model_config=judge_config, language=language)

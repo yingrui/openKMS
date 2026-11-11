@@ -120,7 +120,7 @@ async def execute_run(run_id: str, *, should_abort: Callable[[], bool] | None = 
             )
             report = None
             if evaluation_type == "data_query" and item_rows:
-                from app.api.evaluations import build_run_report
+                from app.services.workspace.evaluations.report import build_run_report
 
                 report = await build_run_report(db, evaluation, item_rows, judge_config, language)
             await _finish_completed(db, run, item_rows, report)
@@ -164,7 +164,7 @@ async def _revoke(db: AsyncSession, key_id: str) -> None:
 
 
 async def _judge_config(db: AsyncSession, kb: KnowledgeBase, override_id: str | None) -> tuple[str, dict[str, Any]]:
-    from app.api.evaluations import resolve_judge_override
+    from app.services.workspace.evaluations.execute import resolve_judge_override
 
     return await resolve_judge_override(db, kb, override_id)
 
