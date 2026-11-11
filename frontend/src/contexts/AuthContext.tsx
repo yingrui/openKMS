@@ -11,6 +11,7 @@ import {
   setSessionRetryProvider,
 } from '../data/apiClient';
 import { applyLocaleFromAuthMe } from '../i18n/config';
+import { clearReturnTo, consumeReturnTo, rememberReturnTo } from './authReturnTo';
 import {
   buildFrontendPatternUnion,
   isSpaPublicPath,
@@ -267,7 +268,6 @@ async function fetchAuthMeWithBearer(accessToken: string): Promise<AuthUser | nu
  * user-initiated sign-in sets a marker that survives the IdP round trip and says `reason=login` exactly once.
  */
 const PENDING_SIGNIN = 'openkms:pending-signin';
-const SESSION_RETURN_TO = 'openkms:session-return-to';
 
 async function syncTokenToBackend(token: string): Promise<boolean> {
   const pending = sessionStorage.getItem(PENDING_SIGNIN) === '1';
@@ -473,9 +473,7 @@ function SessionAuthProvider({
     toast.dismiss();
     if (authMode === 'oidc') {
       const current = `${window.location.pathname}${window.location.search}`;
-      const stored = sessionStorage.getItem(SESSION_RETURN_TO);
-      const returnTo = stored || (current.startsWith('/login') ? '/' : current);
-      sessionStorage.removeItem(SESSION_RETURN_TO);
+      const returnTo = consumeReturnTo(current.startsWith('/login') ? '/' : current);
       window.location.assign(
         `${config.apiUrl}/api/auth/oidc/login?returnTo=${encodeURIComponent(returnTo)}`,
       );
@@ -489,7 +487,7 @@ function SessionAuthProvider({
     toast.dismiss();
     setUser(null);
     setIsAuthenticated(false);
-    sessionStorage.removeItem(SESSION_RETURN_TO);
+    clearReturnTo();
     if (authMode === 'oidc') {
       window.location.assign(`${config.apiUrl}/api/auth/oidc/logout`);
       return;
@@ -549,13 +547,22 @@ function SessionAuthProvider({
   const onApiSessionInvalid = useCallback(() => {
     setAuthError(null);
     toast.dismiss();
-    const current = `${window.location.pathname}${window.location.search}`;
-    if (!current.startsWith('/login')) {
-      sessionStorage.setItem(SESSION_RETURN_TO, current);
-    }
-    setUser(null);
-    setIsAuthenticated(false);
-    navigate('/login?notice=session_expired', { replace: true });
+    rememberReturnTo(`${window.location.pathname}${window.location.search}`);
+    void (async () => {
+      try {
+        // Do not leave a still-valid server-side session behind: reloading /login
+        // would otherwise call /me and sign the user straight back in.
+        await fetch(`${config.apiUrl}/api/auth/logout`, {
+          method: 'POST',
+          credentials: 'include',
+        });
+      } catch {
+        // local state is cleared below regardless
+      }
+      setUser(null);
+      setIsAuthenticated(false);
+      navigate('/login?notice=session_expired', { replace: true });
+    })();
   }, [navigate]);
 
   useEffect(() => {

@@ -7,12 +7,14 @@ sliding idle deadline and a hard absolute deadline, so activity can extend the f
 from __future__ import annotations
 
 import secrets
+import time
 from datetime import datetime, timedelta, timezone
 from typing import Any
 
 import httpx
 import jwt
-from sqlalchemy import select
+from sqlalchemy import delete, or_, select
+from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
@@ -59,6 +61,34 @@ async def get_session(db: AsyncSession, session_id: str) -> AuthSession | None:
     return await db.get(AuthSession, session_id)
 
 
+async def cleanup_expired_sessions(db: AsyncSession, *, retain_days: int = 30) -> int:
+    """Delete sessions that expired/revoked long ago; bounded by the next login's transaction."""
+    cutoff = utcnow() - timedelta(days=retain_days)
+    result = await db.execute(
+        delete(AuthSession).where(
+            or_(AuthSession.idle_expires_at < cutoff, AuthSession.revoked_at < cutoff)
+        )
+    )
+    return int(result.rowcount or 0)
+
+
+_LAST_CLEANUP_AT = 0.0
+
+
+async def _maybe_cleanup(db: AsyncSession) -> None:
+    global _LAST_CLEANUP_AT
+    now = time.monotonic()
+    if now - _LAST_CLEANUP_AT < 3600:
+        return
+    _LAST_CLEANUP_AT = now
+    try:
+        async with db.begin_nested():
+            await cleanup_expired_sessions(db)
+    except SQLAlchemyError:
+        # Housekeeping must never block a sign-in.
+        pass
+
+
 async def create_session(
     db: AsyncSession,
     *,
@@ -69,7 +99,9 @@ async def create_session(
     refresh_token: str | None,
     access_expires_at: datetime,
     absolute_expires_at: datetime | None = None,
+    rotated_from: str | None = None,
 ) -> AuthSession:
+    await _maybe_cleanup(db)
     now = utcnow()
     absolute = absolute_expires_at or (now + timedelta(hours=settings.session_absolute_hours))
     idle = min(now + timedelta(minutes=settings.session_idle_minutes), absolute)
@@ -83,6 +115,7 @@ async def create_session(
         access_expires_at=access_expires_at,
         idle_expires_at=idle,
         absolute_expires_at=absolute,
+        rotated_from=rotated_from,
         created_at=now,
         last_seen_at=now,
     )
@@ -126,8 +159,6 @@ async def revoke_session(db: AsyncSession, row: AuthSession) -> None:
 
 
 async def revoke_user_sessions(db: AsyncSession, user_sub: str) -> None:
-    from sqlalchemy import select
-
     rows = (
         await db.execute(select(AuthSession).where(AuthSession.user_sub == user_sub))
     ).scalars().all()
@@ -185,15 +216,19 @@ async def _refresh_local(db: AsyncSession, row: AuthSession) -> bool:
     return True
 
 
-async def refresh_session(db: AsyncSession, row: AuthSession) -> bool:
+async def refresh_session(db: AsyncSession, row: AuthSession, *, force: bool = False) -> bool:
     """Refresh the access token in place, serialized across concurrent requests.
 
-    Returns False when the session must be re-authenticated.
+    ``force`` is for an explicit user/API refresh. Automatic expiry checks skip a
+    refresh when another request already obtained a fresh token while we waited
+    on the row lock.
     """
     await db.execute(select(AuthSession).where(AuthSession.id == row.id).with_for_update())
     await db.refresh(row)
     if not session_active(row):
         return False
+    if not force and row.access_expires_at > utcnow() + timedelta(seconds=REFRESH_SKEW_SECONDS):
+        return True
     if row.auth_mode == "local":
         ok = await _refresh_local(db, row)
     else:

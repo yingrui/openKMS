@@ -5,6 +5,7 @@ import { config } from '../../config';
 import { getStoredLocale } from '../../i18n/config';
 import { formatApiErrorMessage } from '../../utils/apiError';
 import { useAuth } from '../../contexts/AuthContext';
+import { consumeReturnTo } from '../../contexts/authReturnTo';
 import './AuthLocal.scss';
 
 export function Login() {
@@ -51,9 +52,7 @@ export function Login() {
         return;
       }
       await completeLocalSession(data.access_token as string);
-      const returnTo = sessionStorage.getItem('openkms:session-return-to') || '/';
-      sessionStorage.removeItem('openkms:session-return-to');
-      navigate(returnTo, { replace: true });
+      navigate(consumeReturnTo('/'), { replace: true });
     } catch {
       setError(t('networkError'));
     } finally {

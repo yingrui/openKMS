@@ -311,11 +311,15 @@ def test_only_the_sign_out_that_had_a_session_is_recorded(monkeypatch):
         def __init__(self, token: str | None) -> None:
             self.session = {} if token is None else {"access_token": token}
 
+    class FakeDb:
+        async def commit(self) -> None:
+            pass
+
     monkeypatch.setattr(auth_module, "record_session_event_once", fake_record)
     monkeypatch.setattr(auth_module, "_verify_token_for_mode", lambda _t: {"sub": "u1", "email": "a@b.c"})
 
-    asyncio.run(auth_module.clear_session(FakeRequest("live-token")))   # the real sign-out
-    asyncio.run(auth_module.clear_session(FakeRequest(None)))           # the cleanup that follows
+    asyncio.run(auth_module.clear_session(FakeRequest("live-token"), db=FakeDb()))   # the real sign-out
+    asyncio.run(auth_module.clear_session(FakeRequest(None), db=FakeDb()))           # the cleanup that follows
     assert len(events) == 1
     assert events[0]["actor_sub"] == "u1"
     assert events[0]["detail"] == {"via": "clear-session"}

@@ -16,6 +16,7 @@ from fastapi.responses import JSONResponse
 from starlette.middleware.sessions import SessionMiddleware
 
 from app.api.auth import api_auth_router, router as auth_router
+from app.api.auth_oidc import router as auth_oidc_router
 from app.api.article_channels import router as article_channels_router
 from app.api.articles import router as articles_router
 from app.api.media_channels import router as media_channels_router
@@ -196,6 +197,7 @@ app.include_router(auth_router)
 # Outermost on purpose: it records the status of requests other middleware rejects (403s included).
 app.add_middleware(AuditMiddleware)
 app.include_router(api_auth_router)
+app.include_router(auth_oidc_router)
 app.include_router(system_public_router, prefix="/api")
 app.include_router(system_settings_router, prefix="/api")
 app.include_router(knowledge_map_router, prefix="/api")

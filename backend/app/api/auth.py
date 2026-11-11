@@ -3,6 +3,7 @@
 import asyncio
 import base64
 import binascii
+import hashlib
 import secrets
 import time
 from datetime import datetime, timedelta, timezone
@@ -50,13 +51,43 @@ def _frontend_base() -> str:
     return settings.frontend_url.rstrip("/")
 
 
-async def _revoke_current_auth_session(request: Request, db: AsyncSession) -> None:
+async def _revoke_current_auth_session(request: Request, db: AsyncSession) -> str | None:
     """Sign out a stale cookie session before replacing it at login/account switch."""
     session_id = request.session.get("auth_sid")
     if isinstance(session_id, str) and session_id:
         row = await auth_sessions.get_session(db, session_id)
         if row is not None:
             await auth_sessions.revoke_session(db, row)
+            return row.id
+    return None
+
+
+async def _revoke_session_from_cookie(request: Request, db: AsyncSession) -> str | None:
+    """Revoke the cookie's auth_sessions row (if any) and commit."""
+    old_session_id = await _revoke_current_auth_session(request, db)
+    await db.commit()
+    return old_session_id
+
+
+async def _create_local_session(request: Request, db: AsyncSession, user: User) -> str:
+    """Create the BFF local session and return the short access JWT."""
+    old_session_id = await _revoke_current_auth_session(request, db)
+    token = mint_local_user_jwt(user, ttl_minutes=settings.local_session_jwt_minutes)
+    row = await auth_sessions.create_session(
+        db,
+        auth_mode="local",
+        user_sub=str(user.id),
+        idp_sub=str(user.id),
+        access_token=token,
+        refresh_token=None,
+        access_expires_at=auth_sessions.utcnow()
+        + timedelta(minutes=settings.local_session_jwt_minutes),
+        rotated_from=old_session_id,
+    )
+    request.session.pop("access_token", None)
+    request.session["auth_sid"] = row.id
+    await db.commit()
+    return token
 
 
 def _require_same_origin(request: Request) -> None:
@@ -504,6 +535,7 @@ async def sync_session(
             )
             await auth_sessions.touch_session(db, row)
         else:
+            old_session_id = row.id if row is not None else None
             if row is not None:
                 await auth_sessions.revoke_session(db, row)
             row = await auth_sessions.create_session(
@@ -514,6 +546,7 @@ async def sync_session(
                 access_token=token,
                 refresh_token=None,
                 access_expires_at=expires_at,
+                rotated_from=old_session_id,
             )
         request.session.pop("access_token", None)
         request.session["auth_sid"] = row.id
@@ -547,8 +580,15 @@ async def _start_oidc_login(request: Request, return_to: str | None) -> Redirect
     if not auth_ep:
         raise http_error(request, 500, "OIDC_METADATA_MISSING_AUTH_ENDPOINT")
     state = secrets.token_urlsafe(32)
+    code_verifier = secrets.token_urlsafe(64)
+    code_challenge = (
+        base64.urlsafe_b64encode(hashlib.sha256(code_verifier.encode("utf-8")).digest())
+        .rstrip(b"=")
+        .decode("ascii")
+    )
     request.session["oauth_state"] = state
     request.session["oauth_return_to"] = _safe_return_to(return_to)
+    request.session["oauth_code_verifier"] = code_verifier
     scope = "openid profile email"
     if settings.auth_session_v2:
         scope += " offline_access"
@@ -558,6 +598,8 @@ async def _start_oidc_login(request: Request, return_to: str | None) -> Redirect
         "response_type": "code",
         "scope": scope,
         "state": state,
+        "code_challenge": code_challenge,
+        "code_challenge_method": "S256",
     }
     url = f"{auth_ep}?{urlencode(params)}"
     return RedirectResponse(url=url, status_code=302)
@@ -598,16 +640,20 @@ async def oauth2_callback(
         frontend = _frontend_base()
         return RedirectResponse(url=f"{frontend}/?error=no_token_endpoint", status_code=302)
 
+    code_verifier = request.session.pop("oauth_code_verifier", None)
+    token_data = {
+        "grant_type": "authorization_code",
+        "client_id": settings.oidc_client_id,
+        "client_secret": settings.oidc_client_secret,
+        "code": code,
+        "redirect_uri": settings.oidc_redirect_uri,
+    }
+    if isinstance(code_verifier, str) and code_verifier:
+        token_data["code_verifier"] = code_verifier
     async with httpx.AsyncClient() as client:
         token_res = await client.post(
             token_ep,
-            data={
-                "grant_type": "authorization_code",
-                "client_id": settings.oidc_client_id,
-                "client_secret": settings.oidc_client_secret,
-                "code": code,
-                "redirect_uri": settings.oidc_redirect_uri,
-            },
+            data=token_data,
             headers={"Content-Type": "application/x-www-form-urlencoded"},
         )
 
@@ -637,6 +683,7 @@ async def oauth2_callback(
         if not isinstance(sub, str) or not sub:
             frontend = _frontend_base()
             return RedirectResponse(url=f"{frontend}/?error=missing_subject", status_code=302)
+        old_session_id = await _revoke_current_auth_session(request, db)
         row = await auth_sessions.create_session(
             db,
             auth_mode="oidc",
@@ -645,6 +692,7 @@ async def oauth2_callback(
             access_token=access_token,
             refresh_token=refresh_token if isinstance(refresh_token, str) else None,
             access_expires_at=auth_sessions.token_expiry(access_token, data.get("expires_in")),
+            rotated_from=old_session_id,
         )
         request.session.clear()
         request.session["auth_sid"] = row.id
@@ -668,12 +716,7 @@ async def clear_session(request: Request, db: AsyncSession = Depends(get_db)) ->
     """
     _require_same_origin(request)
     payload, reason = _session_actor(request)
-    session_id = request.session.get("auth_sid")
-    if isinstance(session_id, str) and session_id:
-        row = await auth_sessions.get_session(db, session_id)
-        if row is not None:
-            await auth_sessions.revoke_session(db, row)
-            await db.commit()
+    await _revoke_session_from_cookie(request, db)
     request.session.clear()
     # One sign-out, one event. The SPA calls this again from its session-invalid handler, seconds later,
     # when the cookie is already gone — nothing was ended, so nothing is recorded. An expired or unverified
@@ -687,12 +730,7 @@ async def clear_session(request: Request, db: AsyncSession = Depends(get_db)) ->
 async def logout(request: Request, db: AsyncSession = Depends(get_db)) -> RedirectResponse:
     """Clear session; in oidc mode redirect to IdP logout."""
     payload, reason = _session_actor(request)
-    session_id = request.session.get("auth_sid")
-    if isinstance(session_id, str) and session_id:
-        row = await auth_sessions.get_session(db, session_id)
-        if row is not None:
-            await auth_sessions.revoke_session(db, row)
-            await db.commit()
+    await _revoke_session_from_cookie(request, db)
     request.session.clear()
     # A GET cannot carry a mutation to the middleware, but it is the end of a session — when there was one.
     if reason is None:
@@ -759,20 +797,6 @@ class TokenResponse(BaseModel):
 api_auth_router = APIRouter(prefix="/api/auth", tags=["auth"])
 
 
-@api_auth_router.get("/oidc/login")
-async def oidc_bff_login(request: Request, returnTo: str = "/") -> RedirectResponse:
-    """BFF OIDC entry point; the IdP returns to the backend callback, which sets the opaque session."""
-    if not settings.auth_session_v2:
-        raise http_error(request, 404, "AUTH_SESSION_V2_DISABLED")
-    return await _start_oidc_login(request, returnTo)
-
-
-@api_auth_router.get("/oidc/logout")
-async def oidc_bff_logout(request: Request, db: AsyncSession = Depends(get_db)) -> RedirectResponse:
-    """BFF logout: revoke the server-side session, then RP-initiated logout when available."""
-    return await logout(request, db)
-
-
 class PublicAuthConfig(BaseModel):
     """Unauthenticated discovery so clients align with OPENKMS_AUTH_MODE (local vs central OIDC IdP)."""
 
@@ -833,21 +857,7 @@ async def register(
 
     await sync_security_roles_for_user(db, user)
     if settings.auth_session_v2:
-        await _revoke_current_auth_session(request, db)
-        token = mint_local_user_jwt(user, ttl_minutes=settings.local_session_jwt_minutes)
-        row = await auth_sessions.create_session(
-            db,
-            auth_mode="local",
-            user_sub=str(user.id),
-            idp_sub=str(user.id),
-            access_token=token,
-            refresh_token=None,
-            access_expires_at=auth_sessions.utcnow()
-            + timedelta(minutes=settings.local_session_jwt_minutes),
-        )
-        request.session.pop("access_token", None)
-        request.session["auth_sid"] = row.id
-        await db.commit()
+        token = await _create_local_session(request, db, user)
     else:
         token = mint_local_user_jwt(user)
     roles = ["admin"] if user.is_admin else []
@@ -895,21 +905,7 @@ async def login_json(request: Request, body: LoginBody, db: AsyncSession = Depen
         via="local-login",
     )
     if settings.auth_session_v2:
-        await _revoke_current_auth_session(request, db)
-        token = mint_local_user_jwt(user, ttl_minutes=settings.local_session_jwt_minutes)
-        row = await auth_sessions.create_session(
-            db,
-            auth_mode="local",
-            user_sub=str(user.id),
-            idp_sub=str(user.id),
-            access_token=token,
-            refresh_token=None,
-            access_expires_at=auth_sessions.utcnow()
-            + timedelta(minutes=settings.local_session_jwt_minutes),
-        )
-        request.session.pop("access_token", None)
-        request.session["auth_sid"] = row.id
-        await db.commit()
+        token = await _create_local_session(request, db, user)
     else:
         token = mint_local_user_jwt(user)
     roles = ["admin"] if user.is_admin else []
@@ -1219,7 +1215,7 @@ async def refresh_auth_session(request: Request, db: AsyncSession = Depends(get_
             await auth_sessions.revoke_session(db, row)
         request.session.pop("auth_sid", None)
         raise http_error(request, 401, "AUTHENTICATION_REQUIRED")
-    if not await auth_sessions.refresh_session(db, row):
+    if not await auth_sessions.refresh_session(db, row, force=True):
         await auth_sessions.revoke_session(db, row)
         request.session.pop("auth_sid", None)
         raise http_error(request, 401, "AUTHENTICATION_REQUIRED")
@@ -1275,11 +1271,6 @@ async def patch_auth_me(request: Request, body: MePatchBody, db: AsyncSession = 
 async def logout_json(request: Request, db: AsyncSession = Depends(get_db)) -> dict:
     """Clear server session (local or oidc); client should discard Bearer token."""
     _require_same_origin(request)
-    session_id = request.session.get("auth_sid")
-    if isinstance(session_id, str) and session_id:
-        row = await auth_sessions.get_session(db, session_id)
-        if row is not None:
-            await auth_sessions.revoke_session(db, row)
-            await db.commit()
+    await _revoke_session_from_cookie(request, db)
     request.session.clear()
     return {"ok": True}
