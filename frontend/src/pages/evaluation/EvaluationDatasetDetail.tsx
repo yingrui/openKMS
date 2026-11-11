@@ -1076,7 +1076,8 @@ export function EvaluationDatasetDetail() {
                   </div>
                 </div>
                 <p className="eval-run-meta">
-                  <code>{runView.run_id}</code> · {runView.evaluation_type} · {runView.status}
+                  <code>{runView.run_id}</code> · {runView.evaluation_type} · {runView.status} ·{' '}
+                  {t('evaluationDetail.runScopeLine', { count: runView.item_count, total: itemsTotal })}
                   {judge?.model ? ` · ${t('evaluationDetail.judgedBy', { model: judge.model })}` : ''}
                   {judge?.prompt_version ? ` · ${judge.prompt_version}` : ''}
                 </p>

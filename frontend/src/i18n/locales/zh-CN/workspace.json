@@ -397,7 +397,8 @@
     "runLanguageZh": "中文",
     "runLanguageEn": "English",
     "preparingRun": "准备中…",
-    "runInProgress": "运行中 —— 已用 {{seconds}} 秒。每条都要先问 agent 再评判，需要几分钟；请保持页面打开。"
+    "runInProgress": "运行中 —— 已用 {{seconds}} 秒。每条都要先问 agent 再评判，需要几分钟；请保持页面打开。",
+    "runScopeLine": "本次运行 {{count}} 条（数据集共 {{total}} 条）"
   },
   "models": {
     "title": "模型",

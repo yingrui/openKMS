@@ -408,25 +408,27 @@ export function JobDetail() {
             <dd>{job.queue_name}</dd>
           </dl>
         </section>
-      </div>
 
-      {!isKbIndexingTask && !isConnectorSyncTask && !isScheduledAgentTask && !pipelineId && (
-        <section className="job-detail-card">
-          <h2>
-            <FileText size={18} /> {t('jobDetail.arguments')}
-          </h2>
-          <p className="job-detail-hint">{t('jobDetail.argumentsHint')}</p>
-          <dl className="job-detail-dl">
-            {Object.entries(job.args ?? {})
-              .map(([key, value]) => (
+        {!isKbIndexingTask && !isConnectorSyncTask && !isScheduledAgentTask && !pipelineId && (
+          <section className="job-detail-card">
+            <h2>
+              <FileText size={18} /> {t('jobDetail.arguments')}
+            </h2>
+            <p className="job-detail-hint">{t('jobDetail.argumentsHint')}</p>
+            <dl className="job-detail-dl">
+              {Object.entries(job.args ?? {}).map(([key, value]) => (
                 <div key={key} className="job-detail-arg-row">
                   <dt className="job-detail-mono">{key}</dt>
-                  <dd>{typeof value === 'string' || typeof value === 'number' ? String(value) : JSON.stringify(value)}</dd>
+                  <dd>
+                    {typeof value === 'string' || typeof value === 'number' ? String(value) : JSON.stringify(value)}
+                  </dd>
                 </div>
               ))}
-          </dl>
-        </section>
-      )}
+            </dl>
+          </section>
+        )}
+
+      </div>
 
       {job.worker_log != null && job.worker_log !== '' && (
         <section className="job-detail-card job-detail-worker-log">
