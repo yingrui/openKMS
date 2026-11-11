@@ -147,16 +147,12 @@
     "workerLogLimit": "最多保存 {{limit}} 个字符",
     "arguments": "任务参数",
     "argumentsHint": "这个任务被要求做什么。显示为 id 的值可以在对应的页面里查到。",
-    "evaluationRun": "评测运行",
     "evaluation": "评测",
     "evaluationScope": "条目范围",
     "evaluationScopeAll": "全部 {{count}} 条",
     "evaluationType": "运行类型",
     "evaluationLanguage": "判定语言",
-    "evaluationRunLink": "运行结果",
-    "taskTitle": {
-      "run_evaluation": "评测运行"
-    }
+    "evaluationRunLink": "运行结果"
   },
   "pipelines": {
     "title": "流水线",

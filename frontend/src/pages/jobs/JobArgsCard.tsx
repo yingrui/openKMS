@@ -126,22 +126,18 @@ export function JobArgsCard({
   args: Record<string, unknown>;
 }) {
   const { t } = useTranslation('workspace');
-  const hasSpecific = taskName in TASK_ROWS;
   const rows: Row[] = [
     { label: t('jobDetail.taskName'), value: <span className="job-detail-mono">{taskName}</span> },
     { label: t('jobDetail.queue'), value: queueName },
-    ...(hasSpecific ? TASK_ROWS[taskName](args, t) : genericRows(args, t)),
+    ...(taskName in TASK_ROWS ? TASK_ROWS[taskName](args, t) : genericRows(args, t)),
   ];
 
   return (
     <section className="job-detail-card">
       <h2>
-        <FileText size={18} />{' '}
-        {hasSpecific
-          ? t(`jobDetail.taskTitle.${taskName}`, { defaultValue: t('jobDetail.arguments') })
-          : t('jobDetail.arguments')}
+        <FileText size={18} /> {t('jobDetail.arguments')}
       </h2>
-      {hasSpecific ? null : <p className="job-detail-hint">{t('jobDetail.argumentsHint')}</p>}
+      <p className="job-detail-hint">{t('jobDetail.argumentsHint')}</p>
       <dl className="job-detail-dl">
         {rows.map((row) => (
           <div key={row.label} className="job-detail-arg-row">
