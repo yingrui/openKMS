@@ -135,6 +135,10 @@ def _result_dicts_to_schemas(evaluation_type: str, rows: list[dict]) -> list[Eva
                     else []
                 ),
                 coverage=detail.get("coverage") if evaluation_type == EVALUATION_TYPE_DATA_QUERY else None,
+                expected_query=r.get("expected_query"),
+                uncovered=detail.get("uncovered") or [],
+                extra_sources=int(detail.get("extra_sources") or 0),
+                judge=detail.get("judge"),
                 pass_=bool(r.get("passed")),
                 score=float(r.get("score", 0)),
                 reasoning=str(r.get("reasoning", "")),
@@ -163,6 +167,10 @@ def _run_item_to_result(
             else []
         ),
         coverage=detail.get("coverage") if evaluation_type == EVALUATION_TYPE_DATA_QUERY else None,
+        expected_query=item.expected_query,
+        uncovered=detail.get("uncovered") or [],
+        extra_sources=int(detail.get("extra_sources") or 0),
+        judge=detail.get("judge"),
         pass_=ri.passed,
         score=float(ri.score),
         reasoning=ri.reasoning or "",

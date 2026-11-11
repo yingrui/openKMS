@@ -72,3 +72,26 @@ def test_sources_from_sql_lab_tool():
     assert dq.get("columns") == ["n"]
     assert dq.get("rows") == [{"n": 1}]
     assert dq.get("row_count") == 1
+
+
+def test_metric_mode_source_keeps_the_arguments_it_was_asked_with():
+    """In metric mode the SQL is generated and its values are parameterised, so the arguments are the judgeable record."""
+    src = source_from_catalog_tool(
+        "query_semantic_model_tool",
+        {
+            "model_id": "m1",
+            "metric": "平均市盈率",
+            "group_by": [{"field": "industry"}],
+            "filters": [{"field": "list_status", "op": "=", "value": "L"}],
+            "base_dataset": "ds-1",
+            "joins": ["rel-1"],
+            "resource_id": "res-1",
+        },
+        _SQL_OUT,
+        index=0,
+    )
+    dq = (src.data_query if src else None) or {}
+    assert dq["mode"] == "metric"
+    assert dq["group_by"] == [{"field": "industry"}]
+    assert dq["filters"] == [{"field": "list_status", "op": "=", "value": "L"}]
+    assert (dq["base_dataset"], dq["joins"], dq["resource_id"]) == ("ds-1", ["rel-1"], "res-1")

@@ -1,6 +1,5 @@
 """Run evaluation strategies: search + judge, QA agent + judge."""
 import asyncio
-import json
 import logging
 from collections.abc import Awaitable, Callable
 from typing import Any
@@ -14,6 +13,7 @@ from sqlalchemy.orm import selectinload
 from app.models.api_model import ApiModel
 from app.models.evaluation import EvaluationItem
 from app.models.knowledge_base import KnowledgeBase
+from app.models.semantic_model_field import SemanticModelField
 from app.services.platform.boundaries import boundary
 from app.services.content.knowledge_bases.kb_search import search_knowledge_base
 from app.services.workspace.evaluations.scores import flush_scores, score_data_query_item
@@ -281,10 +281,12 @@ async def run_data_query_evaluation(
     judge_config: dict[str, Any],
     access_token: str,
 ) -> list[dict[str, Any]]:
-    """Ask the KB agent per item, then judge the ``data_query`` sources it cited.
+    """Ask the KB agent per item, then judge the queries it cited against the item's expectation.
 
-    The evaluated thing is the *query*, not the numbers: each answer's sources carry ``data_query`` (model id + SQL),
-    and the deterministic judge checks that against ``EvaluationItem.expected_query``. The SQL is never re-run.
+    The evaluated thing is the *query*, not the numbers. Every expectation is checked against every cited query by the
+    judge (judge.py), which reads the question, the expectation (metric definition or SQL), what was actually run, and the
+    model's fields. No shape comparison happens here: "does this column name appear" is not the question, and it rejects
+    correct SQL that happens to be spelled differently.
     """
     if not kb.agent_url:
         raise HTTPException(
@@ -293,9 +295,10 @@ async def run_data_query_evaluation(
         )
 
     from app.services.content.knowledge_bases.qa_agent_proxy import agent_kb_path
-    from app.services.workspace.evaluations.data_query_judge import match_sources_to_queries
+    from app.services.workspace.evaluations.judge import MAX_SOURCES_PER_EXPECTATION, judge_query
 
     ask_url = agent_kb_path(kb.agent_url, kb.id, "ask")
+    schema = await _semantic_model_schema(db, kb.semantic_model_id)
 
     async with httpx.AsyncClient(timeout=120.0) as client:
 
@@ -315,91 +318,109 @@ async def run_data_query_evaluation(
                     passed=False,
                     score=0.0,
                     reasoning=error or "Agent returned no answer",
-                    detail={"data_queries": [], "coverage": 0.0},
+                    detail={"data_queries": [], "coverage": 0.0, "uncovered": [], "extra_sources": 0, "judge": None},
                 )
 
-            data_queries: list[dict[str, Any]] = [
+            cited: list[dict[str, Any]] = [
                 dq
                 for s in (data.get("sources") or [])
                 if isinstance(s, dict) and isinstance((dq := s.get("data_query")), dict) and dq.get("sql")
             ]
             expected = item.expected_query if isinstance(item.expected_query, list) else []
-            result = match_sources_to_queries(expected, data_queries)
 
-            # A raw-SQL expectation is judged for equivalence, not structure. Resolve each pending query with the LLM
-            # and fold the verdicts back in, recomputing coverage.
-            if result["pending_llm"]:
-                by_query: dict[int, list[dict[str, Any]]] = {}
-                for pending in result["pending_llm"]:
-                    by_query.setdefault(pending["query_index"], []).append(pending)
-                for query_index, pendings in by_query.items():
-                    resolution = {"passed": False, "reasoning": "no equivalent SQL cited"}
-                    for pending in pendings:
-                        verdict = await judge_sql_equivalence(
-                            pending["verdict"]["expected_sql"], pending["verdict"]["actual_sql"], judge_config
-                        )
-                        if verdict["pass"]:
-                            resolution = {"passed": True, "reasoning": verdict["reasoning"]}
-                            break
-                        resolution["reasoning"] = verdict["reasoning"]
-                    if resolution["passed"]:
-                        result["matched"].append(
-                            {"query_index": query_index, "source_index": -1, "verdict": {"passed": True}}
-                        )
-                    else:
-                        result["uncovered"].append(
-                            {
-                                "query_index": query_index,
-                                "source_index": -1,
-                                "verdict": {"passed": False, "reasons": [resolution["reasoning"]], "checks": {}},
-                            }
-                        )
-                total = len(expected)
-                result["coverage"] = len(result["matched"]) / total if total else 0.0
-                result["passed"] = result["coverage"] == 1.0
+            # No expectation means "the model cannot answer this": any citation is the failure.
+            if not expected:
+                cited_count = len(cited)
+                return _item_result(
+                    item,
+                    passed=cited_count == 0,
+                    score=0.0 if cited_count else 1.0,
+                    reasoning=(
+                        f"should have refused, but cited {cited_count} quer{'y' if cited_count == 1 else 'ies'}"
+                        if cited_count
+                        else "refused, as required"
+                    ),
+                    detail={
+                        "data_queries": _cited_detail(cited),
+                        "coverage": 0.0,
+                        "uncovered": [],
+                        "extra_sources": cited_count,
+                        "judge": None,
+                    },
+                )
 
-            # The pass line is coverage: every expected query is covered. Extra sources are completeness — reported, and
-            # scored later (they must not fail an otherwise-correct answer).
-            reasons = [f"query {u['query_index'] + 1}: {'; '.join(u['verdict']['reasons'])}" for u in result["uncovered"]]
-            if result.get("expect_refusal"):
-                # No expected query means the model cannot answer this, so citing anything is the failure.
-                cited = len(result["extra_sources"])
-                reasons = [f"should have refused, but cited {cited} quer{'y' if cited == 1 else 'ies'}"] if cited else []
+            verdicts: list[dict[str, Any]] = []
+            uncovered: list[dict[str, Any]] = []
+            used_sources: set[int] = set()
+            for expected_index, expectation in enumerate(expected):
+                best: dict[str, Any] | None = None
+                first_failure: dict[str, Any] | None = None
+                for source_index, source in enumerate(cited[:MAX_SOURCES_PER_EXPECTATION]):
+                    verdict = await judge_query(
+                        question=item.query,
+                        expected=expectation,
+                        actual=source,
+                        schema=schema,
+                        forbidden=None,
+                        model_config=judge_config,
+                    )
+                    entry = {
+                        "expected_index": expected_index,
+                        "source_index": source_index,
+                        **verdict.to_detail(),
+                    }
+                    verdicts.append(entry)
+                    if verdict.verdict == "pass":
+                        best = entry
+                        used_sources.add(source_index)
+                        break
+                    if verdict.verdict == "fail" and first_failure is None:
+                        first_failure = entry
+                if best is None:
+                    uncovered.append(
+                        first_failure
+                        or next(
+                            (v for v in verdicts if v["expected_index"] == expected_index),
+                            {"expected_index": expected_index, "verdict": "undecided", "reasoning": "nothing cited"},
+                        )
+                    )
+
+            total = len(expected)
+            coverage = (total - len(uncovered)) / total if total else 0.0
+            passed = not uncovered
+            verdict = "pass" if passed else ("undecided" if all(u.get("verdict") == "undecided" for u in uncovered) else "fail")
+            reasons = [
+                f"query {u['expected_index'] + 1}: {u.get('reasoning') or u.get('verdict')}" for u in uncovered
+            ]
+            reasoning = "; ".join(reasons) or "every expected query was covered"
 
             # Best effort, and never fatal: the trace is where cost and latency already live, so the verdict belongs there
-            # too — the evaluation tables keep the reproducible record. Off the loop: this is a network call, and the
-            # verdict is not on the critical path of the run.
+            # too — the evaluation tables keep the reproducible record. Off the loop: this is a network call.
             await asyncio.to_thread(
                 score_data_query_item,
                 data.get("langfuse_trace_id"),
-                passed=bool(result["passed"]),
-                coverage=float(result["coverage"]),
-                reasoning="; ".join(reasons) or "every expected query was cited",
+                passed=passed,
+                coverage=coverage,
+                reasoning=reasoning,
                 kb_id=kb.id,
             )
 
             return _item_result(
                 item,
-                passed=result["passed"],
-                score=result["coverage"],
-                reasoning=(
-                    "; ".join(reasons)
-                    if reasons
-                    else ("refused, as required" if result.get("expect_refusal") else "every expected query was cited")
-                ),
+                passed=passed,
+                score=coverage,
+                reasoning=reasoning,
                 detail={
-                    "data_queries": [
-                        {
-                            "mode": dq.get("mode"),
-                            "model_id": dq.get("model_id"),
-                            "metric": dq.get("metric"),
-                            "sql": dq.get("sql"),
-                        }
-                        for dq in data_queries
-                    ],
-                    "coverage": result["coverage"],
-                    "matched": len(result["matched"]),
-                    "extra_sources": len(result["extra_sources"]),
+                    "data_queries": _cited_detail(cited),
+                    "coverage": coverage,
+                    "uncovered": uncovered,
+                    "extra_sources": max(0, len(cited) - len(used_sources)),
+                    "judge": {
+                        "verdict": verdict,
+                        "model": judge_config.get("model_name"),
+                        "prompt_version": verdicts[0]["prompt_version"] if verdicts else None,
+                        "verdicts": verdicts,
+                    },
                 },
             )
 
@@ -408,61 +429,47 @@ async def run_data_query_evaluation(
     return out
 
 
-SQL_EQUIVALENCE_PROMPT = """You are judging whether two SQL statements answer the same question.
-
-Expected SQL (ground truth):
-{expected_sql}
-
-Actual SQL (what the agent ran):
-{actual_sql}
-
-The two may differ in formatting, aliases, join order, or `BETWEEN` vs two inequalities. Judge whether they are
-**semantically equivalent**: the actual query must answer the expected query's question. An actual query may return
-*additional* measures or columns — asking more is not an error, it is completeness — as long as the expected measure is
-present and computed the same way. A real difference is: the wrong table, a missing or changed filter, a different grain
-(GROUP BY), or the expected measure computed differently.
-
-Respond with JSON only: {{"pass": true|false, "score": 0.0-1.0, "reasoning": "one or two sentences"}}
-- pass: true if they are equivalent, false otherwise
-- score: how close they are (1.0 identical meaning, 0.0 different question)
-- reasoning: what differs, if anything"""
-
-
-async def judge_sql_equivalence(
-    expected_sql: str,
-    actual_sql: str,
-    model_config: dict[str, Any],
-) -> dict[str, Any]:
-    """LLM judge for two SQLs that are not compared structurally (a SQL Lab source has only text)."""
-    from openai import AsyncOpenAI, OpenAIError
-
-    prompt = SQL_EQUIVALENCE_PROMPT.format(expected_sql=expected_sql, actual_sql=actual_sql)
-    base_url = model_config.get("base_url", "").rstrip("/")
-    if base_url and not base_url.endswith("/v1"):
-        base_url = f"{base_url}/v1"
-
-    client = AsyncOpenAI(base_url=base_url, api_key=model_config.get("api_key") or "no-key")
-    try:
-        response = await client.chat.completions.create(
-            model=model_config.get("model_name", "gpt-4o-mini"),
-            messages=[
-                {"role": "system", "content": "You are a SQL equivalence evaluator. Respond only with valid JSON."},
-                {"role": "user", "content": prompt},
-            ],
-            temperature=0.0,
-        )
-        content = (response.choices[0].message.content or "{}").strip()
-        if content.startswith("```"):
-            lines = content.split("\n")
-            content = "\n".join(lines[1:-1] if lines[-1].strip() == "```" else lines[1:])
-        data = json.loads(content)
-        if not isinstance(data, dict):
-            return {"pass": False, "score": 0.0, "reasoning": "Invalid judge response"}
-        return {
-            "pass": bool(data.get("pass", False)),
-            "score": float(data.get("score", 0.0)),
-            "reasoning": str(data.get("reasoning", "")),
+def _cited_detail(cited: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """What the answer ran, as stored on the run item: the arguments travel with the SQL (see DataQuerySource)."""
+    return [
+        {
+            "mode": dq.get("mode"),
+            "model_id": dq.get("model_id"),
+            "metric": dq.get("metric"),
+            "expression": dq.get("expression"),
+            "group_by": dq.get("group_by") or [],
+            "filters": dq.get("filters") or [],
+            "base_dataset": dq.get("base_dataset"),
+            "joins": dq.get("joins") or [],
+            "resource_id": dq.get("resource_id"),
+            "sql": dq.get("sql"),
         }
-    except (ValueError, OpenAIError) as exc:
-        logger.warning("SQL equivalence judge failed: %s", exc)
-        return {"pass": False, "score": 0.0, "reasoning": f"judge error: {exc}"}
+        for dq in cited
+    ]
+
+
+async def _semantic_model_schema(db: AsyncSession, semantic_model_id: str | None) -> list[dict[str, Any]]:
+    """The fields the judge needs to read a query: names plus what they mean.
+
+    Without this the judge cannot know that `pe` and `pe_ttm` are different indicators, or that `industry` belongs to
+    `stock_basic` — it would be comparing two strings it does not understand.
+    """
+    if not semantic_model_id:
+        return []
+    result = await db.execute(
+        select(SemanticModelField)
+        .where(SemanticModelField.semantic_model_id == semantic_model_id)
+        .order_by(SemanticModelField.ordinal)
+        .limit(200)
+    )
+    return [
+        {
+            "name": field.name,
+            "datatype": field.datatype,
+            "description": (field.description or field.label or "")[:300] or None,
+            "dataset_id": field.dataset_id,
+        }
+        for field in result.scalars().all()
+    ]
+
+
