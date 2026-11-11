@@ -34,6 +34,7 @@ import {
   type EvaluationRunListItem,
   type EvaluationCompareResponse,
   type EvaluationRunResult,
+  type JudgeCheck,
 } from '../../data/evaluationsApi';
 import type { TFunction } from 'i18next';
 import { PanelToolbar } from '../../styles/design-system';
@@ -54,9 +55,20 @@ function evalShowsSearchSnippets(evaluationType: string): boolean {
 function RunResultRow({ r, evaluationType, t }: { r: EvaluationRunResult; evaluationType: string; t: TFunction }) {
   const undecided = !r.pass && r.judge?.verdict === 'undecided';
   const outcome = r.pass ? 'pass' : undecided ? 'undecided' : 'fail';
-  const failing = (r.judge?.verdicts ?? []).flatMap((v) =>
-    (v.checks ?? []).filter((c) => c.verdict !== 'pass').map((c) => ({ expectedIndex: v.expected_index, check: c })),
-  );
+  // The same difference can be reported for several expectations; show it once, with how many times it was found.
+  const failing = (() => {
+    const seen = new Map<string, { expectedIndex: number; check: JudgeCheck; count: number }>();
+    for (const v of r.judge?.verdicts ?? []) {
+      for (const c of v.checks ?? []) {
+        if (c.verdict === 'pass') continue;
+        const key = `${c.id}|${c.expected ?? ''}|${c.actual ?? ''}`;
+        const hit = seen.get(key);
+        if (hit) hit.count += 1;
+        else seen.set(key, { expectedIndex: v.expected_index, check: c, count: 1 });
+      }
+    }
+    return [...seen.values()];
+  })();
   const isDataQuery = evaluationType === EVAL_TYPE_DATA_QUERY;
 
   return (
@@ -84,12 +96,12 @@ function RunResultRow({ r, evaluationType, t }: { r: EvaluationRunResult; evalua
         {failing.length > 0 ? (
           <div className="eval-diff-list">
             <span className="eval-body-label">{t('evaluationDetail.differencesLabel')}</span>
-            {failing.map(({ expectedIndex, check }) => (
-              <div key={`${expectedIndex}-${check.id}`} className={`eval-diff eval-diff--${check.verdict}`}>
+            {failing.map(({ expectedIndex, check, count }) => (
+              <div key={`${expectedIndex}-${check.id}-${check.expected ?? ''}`} className={`eval-diff eval-diff--${check.verdict}`}>
                 <span className="eval-diff-name">
-                  {failing.length > 1 || (r.judge?.verdicts?.length ?? 0) > 1
-                    ? `${t(`evaluationDetail.judge.${check.id}`)} · #${expectedIndex + 1}`
-                    : t(`evaluationDetail.judge.${check.id}`)}
+                  {t(`evaluationDetail.judge.${check.id}`)}
+                  {(r.judge?.verdicts?.length ?? 0) > 1 ? ` · #${expectedIndex + 1}` : ''}
+                  {count > 1 ? ` ×${count}` : ''}
                 </span>
                 <span className="eval-diff-reason">
                   {check.reason ||

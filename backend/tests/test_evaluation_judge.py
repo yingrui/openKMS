@@ -47,7 +47,7 @@ async def _judge(content: str, **kwargs):
             question="各行业的平均市盈率？",
             expected={"expected": {"metric": {"name": "平均市盈率"}, "dimensions": ["industry"]}},
             actual=[{"mode": "metric", "metric": "平均市盈率", "group_by": [{"field": "industry"}]}],
-            schema=[{"name": "industry", "datatype": "String"}],
+            schema={"fields": [{"name": "industry", "datatype": "String"}], "datasets": []},
             forbidden=None,
             model_config=CONFIG,
             **kwargs,
@@ -98,7 +98,7 @@ class TestVerdicts:
             client.return_value.chat.completions.create = AsyncMock(side_effect=TimeoutError("judge down"))
             verdict = asyncio.run(
                 judge_mod.judge_query(
-                    question="q", expected={}, actual=[], schema=[], forbidden=None, model_config=CONFIG
+                    question="q", expected={}, actual=[], schema={"fields": [], "datasets": []}, forbidden=None, model_config=CONFIG
                 )
             )
         assert verdict.verdict == "undecided"
@@ -143,7 +143,7 @@ class TestInputsAndCache:
                     question="各行业的平均市盈率？",
                     expected={"expected": {"metric": {"name": "平均市盈率"}}},
                     actual=[{"mode": "metric", "sql": "SELECT 1"}],
-                    schema=[{"name": "industry", "description": "行业"}],
+                    schema={"fields": [{"name": "industry", "description": "行业"}], "datasets": []},
                     forbidden=["daily_basic.amount"],
                     model_config=CONFIG,
                 )

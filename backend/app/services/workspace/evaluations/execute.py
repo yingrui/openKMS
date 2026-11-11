@@ -12,6 +12,7 @@ from sqlalchemy.orm import selectinload
 
 from app.models.api_model import ApiModel
 from app.models.evaluation import Evaluation, EvaluationItem
+from app.models.dataset import Dataset
 from app.models.knowledge_base import KnowledgeBase
 from app.models.semantic_model_field import SemanticModelField
 from app.services.platform.boundaries import boundary
@@ -434,28 +435,50 @@ def _cited_detail(cited: list[dict[str, Any]]) -> list[dict[str, Any]]:
     ]
 
 
-async def _semantic_model_schema(db: AsyncSession, semantic_model_id: str | None) -> list[dict[str, Any]]:
-    """The fields the judge needs to read a query: names plus what they mean.
+async def _semantic_model_schema(db: AsyncSession, semantic_model_id: str | None) -> dict[str, Any]:
+    """What the judge needs to read a query: the fields, and the row identity of each dataset.
 
-    Without this the judge cannot know that `pe` and `pe_ttm` are different indicators, or that `industry` belongs to
-    `stock_basic` — it would be comparing two strings it does not understand.
+    The fields say what `pe_ttm` means and that `industry` belongs to `stock_basic`. The keys say that `count(*)` and
+    `count(distinct ts_code)` are the same number on a table keyed by `ts_code` — without them the judge flags a correct
+    answer as a different measure.
     """
     if not semantic_model_id:
-        return []
-    result = await db.execute(
-        select(SemanticModelField)
-        .where(SemanticModelField.semantic_model_id == semantic_model_id)
-        .order_by(SemanticModelField.ordinal)
-        .limit(200)
-    )
-    return [
-        {
-            "name": field.name,
-            "datatype": field.datatype,
-            "description": (field.description or field.label or "")[:300] or None,
-            "dataset_id": field.dataset_id,
-        }
-        for field in result.scalars().all()
-    ]
+        return {"fields": [], "datasets": []}
 
+    rows = (
+        await db.execute(
+            select(SemanticModelField)
+            .where(SemanticModelField.semantic_model_id == semantic_model_id)
+            .order_by(SemanticModelField.ordinal)
+            .limit(200)
+        )
+    ).scalars().all()
+    dataset_ids = {row.dataset_id for row in rows}
+    datasets = (
+        (await db.execute(select(Dataset).where(Dataset.id.in_(dataset_ids)))).scalars().all()
+        if dataset_ids
+        else []
+    )
+    return {
+        "fields": [
+            {
+                "name": row.name,
+                "datatype": row.datatype,
+                "description": (row.description or row.label or "")[:300] or None,
+                "dataset_id": row.dataset_id,
+            }
+            for row in rows
+        ],
+        "datasets": [
+            {
+                "id": dataset.id,
+                "name": dataset.display_name
+                or (f"{dataset.schema_name}.{dataset.table_name}" if dataset.schema_name else dataset.table_name)
+                or dataset.id,
+                "primary_key": dataset.primary_key_columns or [],
+                "unique_keys": dataset.unique_keys or [],
+            }
+            for dataset in datasets
+        ],
+    }
 

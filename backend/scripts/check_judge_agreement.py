@@ -31,7 +31,10 @@ from app.services.workspace.evaluations.judge import judge_query  # noqa: E402
 
 KB_ID = os.environ.get("OPENKMS_QUANT_KB_ID", "0948e298-eed0-4168-86ee-e401ef65663c")
 
-SCHEMA = [
+#: The model as the judge receives it: fields with their meaning, and each dataset's row identity. The keys are what
+#: makes `count(*)` and `count(distinct ts_code)` the same number on `stock_basic`.
+SCHEMA = {
+    "fields": [
     {"name": "ts_code", "datatype": "String", "description": "股票代码"},
     {"name": "industry", "datatype": "String", "description": "所属行业，位于 stock_basic"},
     {"name": "trade_date", "datatype": "Date", "description": "交易日期，位于 daily_basic"},
@@ -39,7 +42,23 @@ SCHEMA = [
     {"name": "pe_ttm", "datatype": "Decimal", "description": "滚动市盈率（TTM）"},
     {"name": "total_mv", "datatype": "Decimal", "description": "总市值"},
     {"name": "list_status", "datatype": "String", "description": "上市状态：L 上市 / D 退市 / P 暂停"},
-]
+    ],
+    "datasets": [
+        {"id": "stock_basic", "name": "tushare.stock_basic", "primary_key": ["ts_code"], "unique_keys": [["ts_code"]]},
+        {
+            "id": "daily_basic",
+            "name": "tushare.daily_basic",
+            "primary_key": ["ts_code", "trade_date"],
+            "unique_keys": [["ts_code", "trade_date"]],
+        },
+        {
+            "id": "trade_calendar",
+            "name": "tushare.trade_calendar",
+            "primary_key": ["exchange", "cal_date"],
+            "unique_keys": [["exchange", "cal_date"]],
+        },
+    ],
+}
 
 
 @dataclass(frozen=True)
@@ -68,10 +87,12 @@ CASES: list[Case] = [
         "pass",
     ),
     Case(
+        # 行情表一天一行：`count(*)` 数的是"股票×交易日"，与"多少只股票"不同。
+        # 在 stock_basic 上两者相等（那张表 ts_code 唯一），所以这条必须放在 daily_basic 上才有意义。
         "数行 ≠ 数股票",
-        "市场上一共有多少只股票？",
-        sql("SELECT count(DISTINCT ts_code) FROM tushare.stock_basic"),
-        ran("SELECT count(*) FROM tushare.stock_basic"),
+        "市场上一共有多少只股票有行情数据？",
+        sql("SELECT count(DISTINCT ts_code) FROM tushare.daily_basic"),
+        ran("SELECT count(*) FROM tushare.daily_basic"),
         "fail",
     ),
     Case(

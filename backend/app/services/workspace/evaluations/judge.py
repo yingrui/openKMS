@@ -21,7 +21,7 @@ from typing import Any, Literal
 logger = logging.getLogger(__name__)
 
 #: Bump when the prompt changes. It is recorded with every verdict: numbers from different versions are not comparable.
-JUDGE_PROMPT_VERSION = "query-judge-2"
+JUDGE_PROMPT_VERSION = "query-judge-3"
 
 JUDGE_SYSTEM = (
     "You grade whether an answer to a data question used the right query. "
@@ -40,23 +40,29 @@ The JSON has four keys:
   actual     every query the agent ran in this turn, in order: mode (metric / expression / sql), metric name,
              dimensions, filters, and the SQL text. One turn may run several — an exploratory query to see which
              markets exist, then the count itself — and they are judged together.
-  schema     tables and fields of the semantic model, with their descriptions.
+  schema     the semantic model: `fields` (name, datatype, description) and `datasets` (name, primary_key,
+             unique_keys). Use the keys: on a dataset keyed by ts_code, count(*) and count(distinct ts_code) are the
+             same number, and a query that groups by a key adds no grain.
 
 The queries are one answer, not separate candidates: if together they produce what the question asked (a per-market
 breakdown that the answer sums, a discovery query followed by the real one), that is a pass. Judge each item
 independently and give every one of them a verdict:
   model      the semantic model cited is the one the expectation names
   scope      same population and same filters, including values and date ranges
-  measure    same quantity computed the same way: count(*) differs from count(distinct ts_code); sum(x)/count(x)
-             differs from avg(x) when NULLs exist; pe differs from pe_ttm; the latest value differs from an average
-  grain      same grouping and same time grain: per industry vs per date, daily vs monthly
+  measure    same quantity computed the same way: sum(x)/count(x) differs from avg(x) when NULLs exist; pe differs from
+             pe_ttm; the latest value differs from an average. count(*) and count(distinct key) are the SAME when the
+             key is unique in the dataset (see schema.datasets)
+  grain      same grouping and same time grain: per industry vs per date, daily vs monthly. Grouping by a column that
+             adds no distinct rows (a unique key, a constant filter) does not change the grain
   joins      anything joined means the same thing: industry must come from stock_basic
   forbidden  no forbidden table or column is used
 
 These are not errors: aliases; column order; selecting more columns than expected; LIMIT; a CTE instead of a subquery;
 BETWEEN vs two inequalities; equivalent unit conversions; SELECT * when every expected column is covered.
 
-Never judge by returned rows or numbers. If the inputs do not determine the answer, use "unknown" rather than guessing.
+Give each failing check ONE short sentence, not a paragraph, and do not repeat a reason you already gave for the same
+item. Never judge by returned rows or numbers. If the inputs do not determine the answer, use "unknown" rather than
+guessing.
 
 Input:
 {payload}
@@ -128,7 +134,7 @@ async def judge_query(
     question: str,
     expected: dict[str, Any],
     actual: list[dict[str, Any]],
-    schema: list[dict[str, Any]],
+    schema: dict[str, Any],
     forbidden: list[str] | None,
     model_config: dict[str, Any],
 ) -> JudgeVerdict:
