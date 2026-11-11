@@ -20,6 +20,15 @@ import { JobsAreaNav } from '../../components/jobs/JobsAreaNav';
 import { useConfirm } from '../../contexts/ConfirmContext';
 import './JobDetail.scss';
 
+/** An argument's value is for a person, not a parser: an array reads as a list, never as JSON. */
+function renderArgValue(value: unknown): string {
+  if (value === null || value === undefined) return '—';
+  if (Array.isArray(value)) return value.length === 0 ? '—' : value.map((v) => String(v)).join(', ');
+  if (typeof value === 'string') return value === '' ? '—' : value;
+  if (typeof value === 'number' || typeof value === 'boolean') return String(value);
+  return JSON.stringify(value);
+}
+
 function formatDateTime(iso: string | undefined | null, dash: string): string {
   if (!iso) return dash;
   return new Date(iso).toLocaleString(undefined, {
@@ -419,8 +428,8 @@ export function JobDetail() {
               {Object.entries(job.args ?? {}).map(([key, value]) => (
                 <div key={key} className="job-detail-arg-row">
                   <dt className="job-detail-mono">{key}</dt>
-                  <dd>
-                    {typeof value === 'string' || typeof value === 'number' ? String(value) : JSON.stringify(value)}
+                  <dd className="job-detail-mono" title={Array.isArray(value) ? value.join(', ') : undefined}>
+                    {renderArgValue(value)}
                   </dd>
                 </div>
               ))}

@@ -705,9 +705,12 @@ async def run_evaluation(
     job_id = await defer_task(
         run_evaluation,
         run_id=run.id,
-        # Carried in the job args so the Jobs page says what is running, not just which id it belongs to.
+        # Carried in the job args so the Jobs page says what is running — which evaluation, which items, in which
+        # language. The count alone cannot answer "which one".
         evaluation_id=ev.id,
+        evaluation_name=ev.name,
         evaluation_type=eval_type,
+        item_ids=body.item_ids,
         item_count=await run_item_count(db, ev.id, body.item_ids),
         language=language,
     )
