@@ -388,7 +388,8 @@
       "skill": "Skill",
       "agent": "Agent",
       "harness": "Test set"
-    }
+    },
+    "adviceLabel": "What to change"
   },
   "models": {
     "title": "Models",

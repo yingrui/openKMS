@@ -53,7 +53,18 @@ function evalShowsSearchSnippets(evaluationType: string): boolean {
 }
 
 /** One result row: the verdict on the summary line, the evidence inside it. Passing items stay closed. */
-function RunResultRow({ r, evaluationType, t }: { r: EvaluationRunResult; evaluationType: string; t: TFunction }) {
+function RunResultRow({
+  r,
+  evaluationType,
+  advice,
+  t,
+}: {
+  r: EvaluationRunResult;
+  evaluationType: string;
+  /** Findings from the run report that name this item: what to change, and where. */
+  advice: { area: string; claim: string; suggestion?: string | null }[];
+  t: TFunction;
+}) {
   const undecided = !r.pass && r.judge?.verdict === 'undecided';
   const outcome = r.pass ? 'pass' : undecided ? 'undecided' : 'fail';
   // The same difference can be reported for several expectations; show it once, with how many times it was found.
@@ -162,6 +173,18 @@ function RunResultRow({ r, evaluationType, t }: { r: EvaluationRunResult; evalua
           <div>
             <span className="eval-body-label">{t('evaluationDetail.generatedAnswer')}</span>
             <p className="eval-pair-text">{r.generated_answer}</p>
+          </div>
+        ) : null}
+
+        {advice.length > 0 ? (
+          <div className="eval-advice">
+            <span className="eval-body-label">{t('evaluationDetail.adviceLabel')}</span>
+            {advice.map((a, i) => (
+              <p key={`advice-${i}`} className="eval-advice-line">
+                <span className="eval-report-area">{t(`evaluationDetail.reportArea.${a.area}`)}</span>
+                {a.suggestion || a.claim}
+              </p>
+            ))}
           </div>
         ) : null}
 
@@ -1023,8 +1046,16 @@ export function EvaluationDatasetDetail() {
                   </div>
                 ) : null}
                 <div className="eval-results-list">
-                  {runView.results.map((r) => (
-                    <RunResultRow key={r.item_id} r={r} evaluationType={runView.evaluation_type} t={t} />
+                  {runView.results.map((r, index) => (
+                    <RunResultRow
+                      key={r.item_id}
+                      r={r}
+                      evaluationType={runView.evaluation_type}
+                      advice={(runView.report?.findings ?? [])
+                        .filter((f) => f.items.includes(index))
+                        .map((f) => ({ area: f.area, claim: f.claim, suggestion: f.suggestion }))}
+                      t={t}
+                    />
                   ))}
                 </div>
               </>

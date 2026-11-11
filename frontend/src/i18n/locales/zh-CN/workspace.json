@@ -388,7 +388,8 @@
       "skill": "技能",
       "agent": "Agent",
       "harness": "题集"
-    }
+    },
+    "adviceLabel": "建议"
   },
   "models": {
     "title": "模型",

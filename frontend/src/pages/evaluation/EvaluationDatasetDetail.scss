@@ -793,6 +793,23 @@
   word-break: break-word;
 }
 
+.eval-advice {
+  display: grid;
+  gap: var(--space-1);
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-sm);
+  background: var(--color-accent-subtle);
+}
+
+.eval-advice-line {
+  margin: 0;
+  font-size: var(--text-sm);
+
+  .eval-report-area {
+    margin-right: var(--space-2);
+  }
+}
+
 .eval-result-note {
   margin: 0;
   font-size: var(--text-sm);

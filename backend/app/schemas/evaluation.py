@@ -159,7 +159,7 @@ class EvaluationRunRequestBody(BaseModel):
 
 
 class EvaluationRunReport(BaseModel):
-    """What a run says about the agent, as opposed to about one item."""
+    """What a run says about the agent as a whole — commentary, never part of the score."""
 
     verdict: str = ""
     findings: list[dict[str, Any]] = []
@@ -172,6 +172,7 @@ class EvaluationRunResponse(BaseModel):
     """Response after running evaluation (also matches persisted run summary + items)."""
 
     run_id: str
+    report: EvaluationRunReport | None = None
     evaluation_type: str
     status: str
     item_count: int
