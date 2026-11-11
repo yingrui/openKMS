@@ -128,3 +128,40 @@ class TestPrompt:
             assert area in prompt
         assert "两市一共有多少只正在上市的股票" in prompt      # the questions are carried in
         assert '"counts"' in prompt                            # and the per-check tallies
+
+
+class TestAbort:
+    def test_a_run_stops_between_items_when_asked_to(self):
+        """Marking a job failed must stop the run at the next item, not after the last one."""
+        import pytest
+
+        from app.services.workspace.evaluations import execute as execute_mod
+        from app.services.workspace.evaluations.execute import RunAborted, _run_items
+
+        items = [SimpleNamespace(id="a"), SimpleNamespace(id="b")]
+        seen: list[str] = []
+
+        class FakeResult:
+            def scalars(self):
+                return SimpleNamespace(all=lambda: items)
+
+        class FakeDb:
+            async def execute(self, *_a, **_k):
+                return FakeResult()
+
+        async def run_one(item):
+            seen.append(item.id)
+            return {"evaluation_item_id": item.id}
+
+        with pytest.raises(RunAborted):
+            asyncio.run(
+                _run_items(
+                    FakeDb(),
+                    "ev",
+                    run_one,
+                    None,
+                    lambda: len(seen) >= 1,
+                )
+            )
+        assert seen == ["a"]
+        assert execute_mod.RunAborted is RunAborted

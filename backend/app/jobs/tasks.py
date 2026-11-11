@@ -921,7 +921,7 @@ async def run_evaluation(context: JobContext, run_id: str, **_meta: object) -> N
     """
     from app.services.workspace.evaluations.run_job import execute_run
 
-    await execute_run(run_id)
+    await execute_run(run_id, should_abort=context.should_abort)
 
 
 @audited_task(name="run_scheduled_project_agent", pass_context=True)

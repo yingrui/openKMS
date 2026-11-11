@@ -18,6 +18,7 @@ from __future__ import annotations
 import logging
 import uuid
 from datetime import datetime, timezone
+from collections.abc import Callable
 from typing import Any
 
 from fastapi import HTTPException
@@ -81,7 +82,7 @@ def _aggregate(item_rows: list[dict[str, Any]]) -> tuple[int, int, float | None]
     return n, passed, sum(float(r.get("score", 0)) for r in item_rows) / n
 
 
-async def execute_run(run_id: str) -> None:
+async def execute_run(run_id: str, *, should_abort: Callable[[], bool] | None = None) -> None:
     """Worker entry: run the strategy, write the results, close the row. Never raises to the worker."""
     async with async_session_maker() as db:
         run = await db.get(EvaluationRun, run_id)
@@ -115,6 +116,7 @@ async def execute_run(run_id: str) -> None:
                 access_token=token,
                 item_ids=item_ids,
                 language=language,
+                should_abort=should_abort,
             )
             report = None
             if evaluation_type == "data_query" and item_rows:
@@ -122,7 +124,7 @@ async def execute_run(run_id: str) -> None:
 
                 report = await build_run_report(db, evaluation, item_rows, judge_config, language)
             await _finish_completed(db, run, item_rows, report)
-        except Exception as exc:  # noqa: BLE001 - a failed run must be recorded, not thrown at the worker loop
+        except Exception as exc:  # noqa: BLE001 - recorded, never thrown at the worker loop  # noqa: BLE001 - a failed run must be recorded, not thrown at the worker loop
             logger.exception("evaluation run %s failed", run_id)
             await _finish_failed(db, run, str(exc) or type(exc).__name__)
         finally:
@@ -177,6 +179,7 @@ async def _execute_strategy(
     access_token: str,
     item_ids: list[str] | None,
     language: str,
+    should_abort: Callable[[], bool] | None = None,
 ) -> list[dict[str, Any]]:
     from app.services.workspace.evaluations.execute import (
         EVALUATION_TYPE_DATA_QUERY,
@@ -191,11 +194,11 @@ async def _execute_strategy(
 
     if evaluation_type == EVALUATION_TYPE_SEARCH_RETRIEVAL:
         return await run_search_retrieval_evaluation(
-            db, evaluation.knowledge_base_id, evaluation.id, judge_config, item_ids
+            db, evaluation.knowledge_base_id, evaluation.id, judge_config, item_ids, should_abort
         )
     if evaluation_type == EVALUATION_TYPE_QA_ANSWER:
         return await run_qa_answer_evaluation(
-            db, kb, evaluation.id, judge_config, access_token, item_ids
+            db, kb, evaluation.id, judge_config, access_token, item_ids, should_abort
         )
     if evaluation_type == EVALUATION_TYPE_WIKI_CONTENT_COVERAGE:
         return await run_wiki_content_coverage_evaluation(
@@ -203,7 +206,7 @@ async def _execute_strategy(
         )
     if evaluation_type == EVALUATION_TYPE_DATA_QUERY:
         return await run_data_query_evaluation(
-            db, kb, evaluation.id, judge_config, access_token, item_ids, language
+            db, kb, evaluation.id, judge_config, access_token, item_ids, language, should_abort
         )
     raise HTTPException(status_code=400, detail=f"Unhandled evaluation type: {evaluation_type}")
 

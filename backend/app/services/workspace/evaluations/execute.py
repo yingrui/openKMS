@@ -147,21 +147,32 @@ def _item_result(
     }
 
 
+class RunAborted(RuntimeError):
+    """The job was stopped by request (marked failed) before the run finished."""
+
+
 async def _run_items(
     db: AsyncSession,
     evaluation_id: str,
     run_one: Callable[[EvaluationItem], Awaitable[dict[str, Any]]],
     item_ids: list[str] | None = None,
+    should_abort: Callable[[], bool] | None = None,
 ) -> list[dict[str, Any]]:
     """Load the items and run one strategy step per item. The strategies differ only in `run_one`.
 
     `item_ids` runs a subset — the items that failed last time, or a first few while tuning — without touching the rest.
+    `should_abort` is checked between items: a run marked failed stops at the next item instead of finishing the set.
     """
     items = await _load_evaluation_items(db, evaluation_id)
     if item_ids:
         wanted = set(item_ids)
         items = [item for item in items if item.id in wanted]
-    return [await run_one(item) for item in items]
+    out: list[dict[str, Any]] = []
+    for item in items:
+        if should_abort is not None and should_abort():
+            raise RunAborted("stopped by request")
+        out.append(await run_one(item))
+    return out
 
 
 async def _ask_agent(
@@ -209,6 +220,7 @@ async def run_search_retrieval_evaluation(
     evaluation_id: str,
     judge_config: dict[str, Any],
     item_ids: list[str] | None = None,
+    should_abort: Callable[[], bool] | None = None,
 ) -> list[dict[str, Any]]:
     """Return one dict per item: item_id, query, expected_answer, passed, score, reasoning, detail."""
 
@@ -248,7 +260,7 @@ async def run_search_retrieval_evaluation(
             },
         )
 
-    return await _run_items(db, evaluation_id, run_one, item_ids)
+    return await _run_items(db, evaluation_id, run_one, item_ids, should_abort)
 
 
 async def run_qa_answer_evaluation(
@@ -258,6 +270,7 @@ async def run_qa_answer_evaluation(
     judge_config: dict[str, Any],
     access_token: str,
     item_ids: list[str] | None = None,
+    should_abort: Callable[[], bool] | None = None,
 ) -> list[dict[str, Any]]:
     """Call KB QA agent per item; judge answer vs expected."""
     if not kb.agent_url:
@@ -312,7 +325,7 @@ async def run_qa_answer_evaluation(
                 },
             )
 
-        return await _run_items(db, evaluation_id, run_one, item_ids)
+        return await _run_items(db, evaluation_id, run_one, item_ids, should_abort)
 
 
 async def run_data_query_evaluation(
@@ -323,6 +336,7 @@ async def run_data_query_evaluation(
     access_token: str,
     item_ids: list[str] | None = None,
     language: str = "en",
+    should_abort: Callable[[], bool] | None = None,
 ) -> list[dict[str, Any]]:
     """Ask the KB agent per item, then judge the queries it cited against the item's expectation.
 
@@ -465,7 +479,7 @@ async def run_data_query_evaluation(
                 },
             )
 
-        out = await _run_items(db, evaluation_id, run_one, item_ids)
+        out = await _run_items(db, evaluation_id, run_one, item_ids, should_abort)
     await asyncio.to_thread(flush_scores)   # one send for the whole run, not one per score
     return out
 
