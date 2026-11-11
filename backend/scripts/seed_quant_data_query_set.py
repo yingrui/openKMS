@@ -73,22 +73,23 @@ class Item:
 
 ITEMS: list[Item] = [
     # ── 股票数量 ───────────────────────────────────────────────────────────────────────────
-    Item("股票数量", "两市一共有多少只正在上市的股票？", [
-        Sql(f"SELECT count(*) FROM {SB} WHERE list_status = 'L'"),
+    # 两市 = 上交所 + 深交所. `stock_basic` also holds 北交所 (BSE), so `list_status = 'L'` alone counts a third market.
+    Item("股票数量", "两市（沪、深）一共有多少只正在上市的股票？", [
+        Sql(f"SELECT count(*) FROM {SB} WHERE list_status = 'L' AND exchange IN ('SSE', 'SZSE')"),
     ]),
-    Item("股票数量", "一共有多少个不同的行业？", [
-        Sql(f"SELECT count(DISTINCT industry) FROM {SB}"),
+    Item("行业分布", "一共有多少个不同的行业（全部上市股票）？", [
+        Sql(f"SELECT count(DISTINCT industry) FROM {SB} WHERE list_status = 'L'"),
     ]),
-    Item("股票数量", "一共有多少只股票？", [
+    Item("股票数量", "一共有多少个不同的股票代码（含已退市）？", [
         Sql(f"SELECT count(DISTINCT ts_code) FROM {SB}"),
     ]),
 
     # ── 行业与交易所分布 ───────────────────────────────────────────────────────────────────
-    Item("行业分布", "各行业分别有多少只股票？", [
-        Sql(f"SELECT industry, count(*) FROM {SB} GROUP BY industry"),
+    Item("行业分布", "各行业分别有多少只正在上市的股票？", [
+        Sql(f"SELECT industry, count(*) FROM {SB} WHERE list_status = 'L' GROUP BY industry"),
     ]),
-    Item("交易所分布", "按交易所统计，各有多少只股票？", [
-        Sql(f"SELECT exchange, count(*) FROM {SB} GROUP BY exchange"),
+    Item("交易所分布", "按交易所统计，各有多少只正在上市的股票？", [
+        Sql(f"SELECT exchange, count(*) FROM {SB} WHERE list_status = 'L' GROUP BY exchange"),
     ]),
     Item("上市状态", "上市状态（list_status）分别有多少只股票？", [
         Sql(f"SELECT list_status, count(*) FROM {SB} GROUP BY list_status"),
@@ -110,15 +111,15 @@ ITEMS: list[Item] = [
         Sql(f"SELECT count(*) FROM {SB}"),
         Sql(f"SELECT count(*) FROM {CAL}"),
     ]),
-    Item("时间粒度", "最近一个月每个交易日的总市值合计是多少？", [
-        Sql(f"SELECT trade_date, sum(total_mv) FROM {DB} GROUP BY trade_date ORDER BY trade_date DESC LIMIT 22"),
+    Item("时间粒度", "每个交易日的总市值合计是多少（按交易日分组）？", [
+        Sql(f"SELECT trade_date, sum(total_mv) FROM {DB} GROUP BY trade_date"),
     ]),
     Item("交易日历", "交易日历里最近的开市日期是哪一天？", [
         Sql(f"SELECT max(cal_date) FROM {CAL} WHERE is_open = 1"),
     ]),
 
     # ── 陷阱：看似合理、实际错了的查询 ─────────────────────────────────────────────────────
-    Item("陷阱·数行", "市场上一共有多少只股票？", [
+    Item("陷阱·数行", "市场上一共有多少只股票（按代码去重，含已退市）？", [
         Sql(f"SELECT count(DISTINCT ts_code) FROM {SB}"),
     ]),
     Item("陷阱·行业归属", "半导体行业最新交易日的平均市盈率是多少？", [
@@ -264,10 +265,13 @@ def repair() -> int:
         print(f"  cannot list items: {status} {existing}", file=sys.stderr)
         return 1
     by_question = {i["query"]: i for i in existing.get("items", [])}
+    # Match on position first: a question's wording gets fixed without leaving the old row behind as a duplicate.
+    by_order = {i["sort_order"]: i for i in existing.get("items", [])}
 
     fixed = added = 0
+    kept: set[str] = set()
     for index, item in enumerate(ITEMS):
-        row = by_question.get(item.question)
+        row = by_order.get(index) or by_question.get(item.question)
         body = item_body(item, index, definitions)
         if row is None:
             status, payload = call("POST", f"/api/evaluations/{target['id']}/items", body)
@@ -280,6 +284,7 @@ def repair() -> int:
         if status != 200:
             print(f"  item failed: {status} {payload}", file=sys.stderr)
             return 1
+        kept.add(row["id"])
         fixed += 1
 
     # The first version of this set asked one question the model cannot answer ("成交金额" is not a column); it is gone
@@ -289,7 +294,11 @@ def repair() -> int:
     wanted = {i.question for i in ITEMS}
     removed = 0
     for question, row in by_question.items():
-        if question in wanted or (row.get("expected_answer") or "") not in placeholders:
+        if row["id"] in kept or question in wanted:
+            continue
+        # A leftover from this set: no expectation of its own, or the placeholder the first version wrote.
+        if row.get("expected_query") and (row.get("expected_answer") or "") not in placeholders:
+            print(f"  kept an item this script does not know: {question[:32]}")
             continue
         status, _ = call("DELETE", f"/api/evaluations/{target['id']}/items/{row['id']}")
         if status in (200, 204):

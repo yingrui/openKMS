@@ -46,7 +46,7 @@ async def _judge(content: str, **kwargs):
         return await judge_mod.judge_query(
             question="各行业的平均市盈率？",
             expected={"expected": {"metric": {"name": "平均市盈率"}, "dimensions": ["industry"]}},
-            actual={"mode": "metric", "metric": "平均市盈率", "group_by": [{"field": "industry"}]},
+            actual=[{"mode": "metric", "metric": "平均市盈率", "group_by": [{"field": "industry"}]}],
             schema=[{"name": "industry", "datatype": "String"}],
             forbidden=None,
             model_config=CONFIG,
@@ -98,11 +98,37 @@ class TestVerdicts:
             client.return_value.chat.completions.create = AsyncMock(side_effect=TimeoutError("judge down"))
             verdict = asyncio.run(
                 judge_mod.judge_query(
-                    question="q", expected={}, actual={}, schema=[], forbidden=None, model_config=CONFIG
+                    question="q", expected={}, actual=[], schema=[], forbidden=None, model_config=CONFIG
                 )
             )
         assert verdict.verdict == "undecided"
         assert "judge down" in (verdict.error or "")
+
+
+class TestOneTurnIsOneAnswer:
+    def test_every_query_of_the_turn_is_judged_together(self):
+        """An answer that looks up which markets exist, then counts, is one answer — not two candidates."""
+        import asyncio
+
+        with patch("openai.AsyncOpenAI") as client:
+            create = AsyncMock(return_value=_reply(_checks(model="pass", scope="pass", grain="pass")))
+            client.return_value.chat.completions.create = create
+            asyncio.run(
+                judge_mod.judge_query(
+                    question="两市一共有多少只正在上市的股票？",
+                    expected={"expected": {"sql": "SELECT count(*) FROM tushare.stock_basic WHERE list_status = 'L'"}},
+                    actual=[
+                        {"mode": "sql", "sql": "SELECT exchange, count(*) FROM tushare.stock_basic WHERE list_status = 'L' GROUP BY exchange"},
+                        {"mode": "sql", "sql": "SELECT list_status, count(*) FROM tushare.stock_basic GROUP BY list_status"},
+                    ],
+                    schema=[],
+                    forbidden=None,
+                    model_config=CONFIG,
+                )
+            )
+        prompt = create.call_args.kwargs["messages"][1]["content"]
+        assert "GROUP BY exchange" in prompt and "GROUP BY list_status" in prompt
+        assert "one answer, not separate candidates" in prompt
 
 
 class TestInputsAndCache:
@@ -116,7 +142,7 @@ class TestInputsAndCache:
                 judge_mod.judge_query(
                     question="各行业的平均市盈率？",
                     expected={"expected": {"metric": {"name": "平均市盈率"}}},
-                    actual={"mode": "metric", "sql": "SELECT 1"},
+                    actual=[{"mode": "metric", "sql": "SELECT 1"}],
                     schema=[{"name": "industry", "description": "行业"}],
                     forbidden=["daily_basic.amount"],
                     model_config=CONFIG,

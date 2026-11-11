@@ -351,41 +351,25 @@ async def run_data_query_evaluation(
                     },
                 )
 
+            # One call per expectation, with every query of the turn in hand: an answer that explores first and counts
+            # second is one answer, not two candidates, and judging the queries separately rejects it for the wrong
+            # reason (the exploratory query does not match the question).
+            turn = cited[:MAX_SOURCES_PER_EXPECTATION]
             verdicts: list[dict[str, Any]] = []
             uncovered: list[dict[str, Any]] = []
-            used_sources: set[int] = set()
             for expected_index, expectation in enumerate(expected):
-                best: dict[str, Any] | None = None
-                first_failure: dict[str, Any] | None = None
-                for source_index, source in enumerate(cited[:MAX_SOURCES_PER_EXPECTATION]):
-                    verdict = await judge_query(
-                        question=item.query,
-                        expected=expectation,
-                        actual=source,
-                        schema=schema,
-                        forbidden=None,
-                        model_config=judge_config,
-                    )
-                    entry = {
-                        "expected_index": expected_index,
-                        "source_index": source_index,
-                        **verdict.to_detail(),
-                    }
-                    verdicts.append(entry)
-                    if verdict.verdict == "pass":
-                        best = entry
-                        used_sources.add(source_index)
-                        break
-                    if verdict.verdict == "fail" and first_failure is None:
-                        first_failure = entry
-                if best is None:
-                    uncovered.append(
-                        first_failure
-                        or next(
-                            (v for v in verdicts if v["expected_index"] == expected_index),
-                            {"expected_index": expected_index, "verdict": "undecided", "reasoning": "nothing cited"},
-                        )
-                    )
+                verdict = await judge_query(
+                    question=item.query,
+                    expected=expectation,
+                    actual=turn,
+                    schema=schema,
+                    forbidden=None,
+                    model_config=judge_config,
+                )
+                entry = {"expected_index": expected_index, **verdict.to_detail()}
+                verdicts.append(entry)
+                if verdict.verdict != "pass":
+                    uncovered.append(entry)
 
             total = len(expected)
             coverage = (total - len(uncovered)) / total if total else 0.0
@@ -416,7 +400,7 @@ async def run_data_query_evaluation(
                     "data_queries": _cited_detail(cited),
                     "coverage": coverage,
                     "uncovered": uncovered,
-                    "extra_sources": max(0, len(cited) - len(used_sources)),
+                    "extra_sources": 0,   # a turn is one answer: a query outside the expectation neither covers nor fails
                     "judge": {
                         "verdict": verdict,
                         "model": judge_config.get("model_name"),

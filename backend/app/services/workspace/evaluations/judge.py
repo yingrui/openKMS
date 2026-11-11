@@ -21,7 +21,7 @@ from typing import Any, Literal
 logger = logging.getLogger(__name__)
 
 #: Bump when the prompt changes. It is recorded with every verdict: numbers from different versions are not comparable.
-JUDGE_PROMPT_VERSION = "query-judge-1"
+JUDGE_PROMPT_VERSION = "query-judge-2"
 
 JUDGE_SYSTEM = (
     "You grade whether an answer to a data question used the right query. "
@@ -37,10 +37,14 @@ The JSON has four keys:
   expected   the query that should have been run: a saved metric (name + definition: expression, base dataset, default
              filters, joins, business definition) with the dimensions and filters, or a SQL statement. `refuse` means the
              question cannot be answered from this model.
-  actual     what the agent ran: mode (metric / expression / sql), metric name, dimensions, filters, and the SQL text.
+  actual     every query the agent ran in this turn, in order: mode (metric / expression / sql), metric name,
+             dimensions, filters, and the SQL text. One turn may run several — an exploratory query to see which
+             markets exist, then the count itself — and they are judged together.
   schema     tables and fields of the semantic model, with their descriptions.
 
-Judge each item independently and give every one of them a verdict:
+The queries are one answer, not separate candidates: if together they produce what the question asked (a per-market
+breakdown that the answer sums, a discovery query followed by the real one), that is a pass. Judge each item
+independently and give every one of them a verdict:
   model      the semantic model cited is the one the expectation names
   scope      same population and same filters, including values and date ranges
   measure    same quantity computed the same way: count(*) differs from count(distinct ts_code); sum(x)/count(x)
@@ -123,7 +127,7 @@ async def judge_query(
     *,
     question: str,
     expected: dict[str, Any],
-    actual: dict[str, Any],
+    actual: list[dict[str, Any]],
     schema: list[dict[str, Any]],
     forbidden: list[str] | None,
     model_config: dict[str, Any],

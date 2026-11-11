@@ -172,7 +172,7 @@ async def main() -> int:
         verdict = await judge_query(
             question=case.question,
             expected=case.expected,
-            actual=case.actual,
+            actual=[case.actual],
             schema=SCHEMA,
             forbidden=None,
             model_config=judge_config,
