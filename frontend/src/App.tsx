@@ -199,14 +199,14 @@ const FunctionEditorWorkspacePage = lazy(() =>
 const ExternalServicesPage = lazy(() =>
   import('./pages/ontology-manager/ExternalServicesPage').then((m) => ({ default: m.ExternalServicesPage })),
 );
-const AppsGalleryPage = lazy(() =>
-  import('./pages/apps/AppsGalleryPage').then((m) => ({ default: m.AppsGalleryPage })),
+const ChamberGalleryPage = lazy(() =>
+  import('./pages/chamber/ChamberGalleryPage').then((m) => ({ default: m.ChamberGalleryPage })),
 );
-const AppsRunPage = lazy(() =>
-  import('./pages/apps/AppsRunPage').then((m) => ({ default: m.AppsRunPage })),
+const ChamberRunPage = lazy(() =>
+  import('./pages/chamber/ChamberRunPage').then((m) => ({ default: m.ChamberRunPage })),
 );
-const AppsSettingsPage = lazy(() =>
-  import('./pages/apps/AppsSettingsPage').then((m) => ({ default: m.AppsSettingsPage })),
+const ChamberSettingsPage = lazy(() =>
+  import('./pages/chamber/ChamberSettingsPage').then((m) => ({ default: m.ChamberSettingsPage })),
 );
 const ObjectExplorer = lazy(() => import('./pages/ontology/ObjectExplorer').then((m) => ({ default: m.ObjectExplorer })));
 const DocumentDetail = lazy(() => import('./pages/documents/DocumentDetail').then((m) => ({ default: m.DocumentDetail })));
@@ -381,7 +381,7 @@ function LegacyLinksRedirect() {
   return <Navigate to={`/object-explorer${rest}`} replace />;
 }
 
-function LegacyAppBuilderSettingsRedirect() {
+function LegacyChamberSettingsRedirect() {
   const { appId = '' } = useParams();
   const location = useLocation();
   return <Navigate to={`/chamber/${appId}/settings${location.search}${location.hash}`} replace />;
@@ -573,14 +573,14 @@ function App() {
             <Route path=":functionId" element={<FunctionEditorWorkspacePage />} />
           </Route>
           <Route path="app-builder" element={<Navigate to="/chamber" replace />} />
-          <Route path="app-builder/:appId/settings" element={<LegacyAppBuilderSettingsRedirect />} />
+          <Route path="app-builder/:appId/settings" element={<LegacyChamberSettingsRedirect />} />
           <Route path="app-builder/*" element={<Navigate to="/chamber" replace />} />
           <Route path="apps" element={<LegacyAppsRedirect />} />
           <Route path="apps/*" element={<LegacyAppsRedirect />} />
           <Route path="chamber" element={<Outlet />}>
-            <Route index element={<AppsGalleryPage />} />
-            <Route path=":appId/settings" element={<AppsSettingsPage />} />
-            <Route path=":appId" element={<AppsRunPage />} />
+            <Route index element={<ChamberGalleryPage />} />
+            <Route path=":appId/settings" element={<ChamberSettingsPage />} />
+            <Route path=":appId" element={<ChamberRunPage />} />
           </Route>
           <Route path="ontology/*" element={<LegacyOntologyRedirect />} />
           <Route path="objects/*" element={<LegacyObjectsRedirect />} />

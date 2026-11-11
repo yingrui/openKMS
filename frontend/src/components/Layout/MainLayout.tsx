@@ -103,7 +103,7 @@ function MainLayoutInner() {
     isOntologySuitePath(location.pathname) && !isFunctionEditorWorkspacePath(location.pathname);
   const isExplorePage = isObjectExplorerExplorePath(location.pathname);
   const isEditorWorkspace = isFunctionEditorWorkspacePath(location.pathname);
-  const isAppsRun = /^\/chamber\/[^/]+$/.test(location.pathname);
+  const isChamberRun = /^\/chamber\/[^/]+$/.test(location.pathname);
 
   const sidebarCollapsed = true;
   const onArticles =
@@ -188,7 +188,7 @@ function MainLayoutInner() {
         {!showAuthRequired && !showPathDenied && (
           <SidebarLayoutProvider sidebarCollapsed={sidebarCollapsed}>
             <div
-              className={`app-content ${isDetailPage ? 'app-content--compact' : ''}${isHome ? ' app-content--home' : ''}${isSearchPage ? ' app-content--search' : ''}${isExplorePage ? ' app-content--object-explorer' : ''}${isEditorWorkspace ? ' app-content--function-editor-workspace' : ''}${isAppsRun ? ' app-content--apps-run' : ''}${showChannelRail ? ' app-content--with-channel-rail' : ''}${showRail ? ' app-content--with-rail' : ''}${ontologyRailModifier}`}
+              className={`app-content ${isDetailPage ? 'app-content--compact' : ''}${isHome ? ' app-content--home' : ''}${isSearchPage ? ' app-content--search' : ''}${isExplorePage ? ' app-content--object-explorer' : ''}${isEditorWorkspace ? ' app-content--function-editor-workspace' : ''}${isChamberRun ? ' app-content--chamber-run' : ''}${showChannelRail ? ' app-content--with-channel-rail' : ''}${showRail ? ' app-content--with-rail' : ''}${ontologyRailModifier}`}
             >
               {ontologyOutlet}
             </div>

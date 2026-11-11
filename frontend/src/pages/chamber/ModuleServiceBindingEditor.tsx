@@ -7,9 +7,9 @@ import {
   fetchClusterServices,
   fetchKubernetesClusters,
 } from '../../data/kubernetesClustersApi';
-import type { AppBuilderBindings } from '../../data/appBuilderApi';
+import type { ChamberBindings } from '../../data/chamberApi';
 
-type K8sBinding = NonNullable<AppBuilderBindings['k8s']>;
+type K8sBinding = NonNullable<ChamberBindings['k8s']>;
 
 type Props = {
   initial: K8sBinding | null | undefined;
@@ -18,7 +18,7 @@ type Props = {
 };
 
 export function ModuleServiceBindingEditor({ initial, saving, onSave }: Props) {
-  const { t } = useTranslation('apps');
+  const { t } = useTranslation('chamber');
   const [clusterId, setClusterId] = useState(initial?.cluster_id ?? '');
   const [namespace, setNamespace] = useState(initial?.namespace ?? 'default');
   const [service, setService] = useState(initial?.service ?? '');
@@ -81,7 +81,7 @@ export function ModuleServiceBindingEditor({ initial, saving, onSave }: Props) {
     port <= 65535;
 
   return (
-    <div className="app-builder-module-service">
+    <div className="chamber-module-service">
       <FormField label={t('settingsServiceCluster')} htmlFor="module-svc-cluster">
         <select
           id="module-svc-cluster"

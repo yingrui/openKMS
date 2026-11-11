@@ -20,7 +20,7 @@ backend/app/services/           38 top-level names → 7 areas
   data/        27  rows, entity_scope, model_sql, sql_scan, quality, metrics, … + connectors/
   content/      9  documents, articles, wiki, knowledge_bases, glossary, comments, media, channels, models
   workspace/    3  evaluations, global_search, schedules
-  runtime/      6  jobs, agent, deep_agents, kubernetes, app_builder, projects
+  runtime/      6  jobs, agent, deep_agents, kubernetes, chamber, projects
 ```
 
 ```
@@ -48,7 +48,7 @@ needed to move to make the others possible:
 3  data       rows entity_scope model_sql sql_scan … connectors
 4  content    documents articles wiki knowledge_bases glossary comments media channels models
 5  workspace  evaluations global_search schedules
-6  runtime    jobs agent deep_agents kubernetes app_builder projects
+6  runtime    jobs agent deep_agents kubernetes chamber projects
 ```
 
 `check_import_cycles.py` reads **0** at every commit. The granule is the **area**, which turned out to be the right question:

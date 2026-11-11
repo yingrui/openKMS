@@ -1,22 +1,22 @@
-.apps-page {
+.chamber-page {
   display: flex;
   flex-direction: column;
   gap: var(--space-4);
 }
 
-/* Gutter owner when .app-content--apps-run has padding: 0 (see App.scss / design-system). */
-.apps-page--run {
+/* Gutter owner when .app-content--chamber-run has padding: 0 (see App.scss / design-system). */
+.chamber-page--run {
   box-sizing: border-box;
   flex: 1;
   min-height: calc(100vh - var(--header-height, 56px));
   padding: var(--app-page-padding-y) var(--app-page-padding-x);
 }
 
-.apps-page--run-module {
+.chamber-page--run-module {
   min-height: 0;
 }
 
-.apps-page--run-fullscreen {
+.chamber-page--run-fullscreen {
   position: fixed;
   inset: 0;
   z-index: var(--z-modal);
@@ -28,14 +28,14 @@
   overflow: hidden;
 }
 
-.apps-page__run-actions {
+.chamber-page__run-actions {
   display: flex;
   align-items: center;
   gap: var(--space-2);
   margin-inline-start: auto;
 }
 
-.apps-page__icon-btn {
+.chamber-page__icon-btn {
   appearance: none;
   display: inline-flex;
   align-items: center;
@@ -52,12 +52,12 @@
   cursor: pointer;
 }
 
-.apps-page__icon-btn:hover {
+.chamber-page__icon-btn:hover {
   color: var(--color-text);
   border-color: var(--color-border);
 }
 
-.apps-page__fullscreen-exit {
+.chamber-page__fullscreen-exit {
   position: absolute;
   z-index: 1;
   appearance: none;
@@ -77,15 +77,15 @@
   user-select: none;
 }
 
-.apps-page__fullscreen-exit:hover {
+.chamber-page__fullscreen-exit:hover {
   background: var(--color-bg-elevated, #fff);
 }
 
-.apps-page__fullscreen-exit:active {
+.chamber-page__fullscreen-exit:active {
   cursor: grabbing;
 }
 
-.apps-page__module-frame {
+.chamber-page__module-frame {
   flex: 1;
   width: 100%;
   min-height: calc(100vh - var(--header-height, 56px) - 6rem);
@@ -94,21 +94,21 @@
   background: var(--color-bg, #fff);
 }
 
-.apps-page--run-fullscreen .apps-page__module-frame {
+.chamber-page--run-fullscreen .chamber-page__module-frame {
   min-height: 0;
   height: 100%;
   border: none;
   border-radius: 0;
 }
 
-.apps-page__grid {
+.chamber-page__grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(min(280px, 100%), 320px));
   gap: var(--space-5);
   justify-content: start;
 }
 
-.apps-page__card {
+.chamber-page__card {
   display: flex;
   flex-direction: column;
   padding: var(--space-6);
@@ -120,19 +120,19 @@
   color: var(--color-text);
 }
 
-.apps-page__card:hover {
+.chamber-page__card:hover {
   border-color: var(--color-border-strong);
   box-shadow: var(--shadow-md);
 }
 
-.apps-page__card-top {
+.chamber-page__card-top {
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
   margin-bottom: calc(var(--space-3) + var(--space-1) / 2);
 }
 
-.apps-page__card-icon {
+.chamber-page__card-icon {
   width: 48px;
   height: 48px;
   display: flex;
@@ -144,13 +144,13 @@
   text-decoration: none;
 }
 
-.apps-page__card-actions {
+.chamber-page__card-actions {
   display: flex;
   gap: var(--space-1);
 }
 
-.apps-page__card-actions a,
-.apps-page__card-actions button {
+.chamber-page__card-actions a,
+.chamber-page__card-actions button {
   appearance: none;
   display: flex;
   align-items: center;
@@ -165,17 +165,17 @@
   transition: color 0.15s, background 0.15s;
 }
 
-.apps-page__card-actions a:hover,
-.apps-page__card-actions button:hover {
+.chamber-page__card-actions a:hover,
+.chamber-page__card-actions button:hover {
   background: var(--color-bg-muted);
   color: var(--color-text);
 }
 
-.apps-page__card-actions button:hover {
+.chamber-page__card-actions button:hover {
   color: var(--color-danger, #b91c1c);
 }
 
-.apps-page__card-body {
+.chamber-page__card-body {
   display: flex;
   flex-direction: column;
   flex: 1;
@@ -185,24 +185,24 @@
   min-width: 0;
 }
 
-.apps-page__card-body h3 {
+.chamber-page__card-body h3 {
   font-size: 1.0625rem;
   font-weight: 600;
   margin: 0;
 }
 
-.apps-page__card-badges {
+.chamber-page__card-badges {
   display: flex;
   flex-wrap: wrap;
   gap: var(--space-1);
 }
 
-.apps-page__card-meta {
+.chamber-page__card-meta {
   font-size: var(--text-sm);
   color: var(--color-text-muted);
 }
 
-.apps-page__badge {
+.chamber-page__badge {
   font-size: 0.75rem;
   background: #fef3c7;
   color: #92400e;
@@ -210,35 +210,35 @@
   border-radius: 0.25rem;
 }
 
-.apps-page__badge--kind {
+.chamber-page__badge--kind {
   background: color-mix(in srgb, var(--color-accent, #2563eb) 12%, transparent);
   color: var(--color-text);
 }
 
-.apps-page__empty {
+.chamber-page__empty {
   display: flex;
   flex-direction: column;
   gap: 0.75rem;
   align-items: flex-start;
 }
 
-.apps-page__error {
+.chamber-page__error {
   color: var(--danger, #b91c1c);
 }
 
-.apps-page__run-header {
+.chamber-page__run-header {
   display: flex;
   justify-content: space-between;
   gap: 1rem;
   align-items: center;
 }
 
-.apps-page__run-title {
+.chamber-page__run-title {
   font-weight: 600;
   color: var(--color-text);
 }
 
-.apps-page__back {
+.chamber-page__back {
   display: inline-flex;
   align-items: center;
   gap: 0.35rem;
@@ -247,11 +247,11 @@
   text-decoration: none;
 }
 
-.apps-page__back:hover {
+.chamber-page__back:hover {
   color: var(--color-text);
 }
 
-.apps-page__banner {
+.chamber-page__banner {
   display: flex;
   gap: 0.75rem;
   align-items: center;
@@ -261,13 +261,13 @@
   border-radius: 0.35rem;
 }
 
-.apps-page__tabs {
+.chamber-page__tabs {
   display: flex;
   gap: var(--space-2);
   border-bottom: 1px solid var(--color-border);
 }
 
-.apps-page__tab {
+.chamber-page__tab {
   appearance: none;
   border: none;
   background: transparent;
@@ -279,7 +279,7 @@
   border-bottom: 2px solid transparent;
 }
 
-.apps-page__tab.is-active {
+.chamber-page__tab.is-active {
   color: var(--color-text);
   border-bottom-color: var(--color-accent);
   font-weight: 600;

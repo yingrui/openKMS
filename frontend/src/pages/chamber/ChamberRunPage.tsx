@@ -8,9 +8,9 @@ import {
 import { Link, useParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { ArrowLeft, Maximize2, Minimize2, Settings } from 'lucide-react';
-import { fetchAppRun, moduleAppProxyUrl, type AppBuilderRunResponse } from '../../data/appBuilderApi';
+import { fetchChamberRun, chamberAppProxyUrl, type ChamberRunResponse } from '../../data/chamberApi';
 import { useAuth } from '../../contexts/AuthContext';
-import './AppsPages.scss';
+import './ChamberPages.scss';
 
 const EXIT_BTN_MARGIN = 12;
 const DRAG_THRESHOLD_PX = 4;
@@ -39,12 +39,12 @@ function clampExitBtnPos(left: number, top: number, width: number, height: numbe
   };
 }
 
-export function AppsRunPage() {
+export function ChamberRunPage() {
   const { appId = '' } = useParams();
-  const { t } = useTranslation('apps');
+  const { t } = useTranslation('chamber');
   const { canAccessPath } = useAuth();
   const canEdit = canAccessPath('/chamber');
-  const [app, setApp] = useState<AppBuilderRunResponse | null>(null);
+  const [app, setApp] = useState<ChamberRunResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [fullscreen, setFullscreen] = useState(false);
   const [exitBtnPos, setExitBtnPos] = useState<ExitBtnPos | null>(null);
@@ -62,7 +62,7 @@ export function AppsRunPage() {
   useEffect(() => {
     void (async () => {
       try {
-        setApp(await fetchAppRun(appId));
+        setApp(await fetchChamberRun(appId));
       } catch (e) {
         setError(e instanceof Error ? e.message : String(e));
       }
@@ -154,23 +154,23 @@ export function AppsRunPage() {
 
   if (error) {
     return (
-      <div className="apps-page">
-        <p className="apps-page__error">{error}</p>
+      <div className="chamber-page">
+        <p className="chamber-page__error">{error}</p>
         <Link to="/chamber">{t('backToGallery')}</Link>
       </div>
     );
   }
-  if (!app) return <div className="apps-page">{t('loading')}</div>;
+  if (!app) return <div className="chamber-page">{t('loading')}</div>;
 
   return (
     <div
-      className={`apps-page apps-page--run apps-page--run-module${fullscreen ? ' apps-page--run-fullscreen' : ''}`}
+      className={`chamber-page chamber-page--run chamber-page--run-module${fullscreen ? ' chamber-page--run-fullscreen' : ''}`}
     >
       {fullscreen && exitBtnPos ? (
         <button
           ref={exitBtnRef}
           type="button"
-          className="apps-page__fullscreen-exit"
+          className="chamber-page__fullscreen-exit"
           style={{ left: exitBtnPos.left, top: exitBtnPos.top }}
           onPointerDown={onExitPointerDown}
           onPointerMove={onExitPointerMove}
@@ -183,20 +183,20 @@ export function AppsRunPage() {
           <span>{t('exitFullscreen')}</span>
         </button>
       ) : (
-        <header className="apps-page__run-header">
-          <Link to="/chamber" className="apps-page__back">
+        <header className="chamber-page__run-header">
+          <Link to="/chamber" className="chamber-page__back">
             <ArrowLeft size={18} aria-hidden />
             <span>{t('backToGallery')}</span>
           </Link>
-          <span className="apps-page__run-title">
+          <span className="chamber-page__run-title">
             {app.name}
             {app.published_version ? ` · v${app.published_version}` : ''}
           </span>
-          <div className="apps-page__run-actions">
+          <div className="chamber-page__run-actions">
             {canEdit ? (
               <Link
                 to={`/chamber/${app.id}/settings`}
-                className="apps-page__icon-btn"
+                className="chamber-page__icon-btn"
                 title={t('editSettings')}
                 aria-label={t('editSettings')}
               >
@@ -205,7 +205,7 @@ export function AppsRunPage() {
             ) : null}
             <button
               type="button"
-              className="apps-page__icon-btn"
+              className="chamber-page__icon-btn"
               onClick={() => {
                 setExitBtnPos(defaultExitBtnPos());
                 setFullscreen(true);
@@ -219,16 +219,16 @@ export function AppsRunPage() {
         </header>
       )}
       {!fullscreen && app.bindings_stale ? (
-        <div className="apps-page__banner" role="status">
+        <div className="chamber-page__banner" role="status">
           {t('staleBanner')}
           {canEdit ? <Link to={`/chamber/${app.id}/settings`}>{t('repair')}</Link> : null}
         </div>
       ) : null}
 
       <iframe
-        className="apps-page__module-frame"
+        className="chamber-page__module-frame"
         title={t('moduleFrameTitle')}
-        src={moduleAppProxyUrl(app.id)}
+        src={chamberAppProxyUrl(app.id)}
       />
     </div>
   );

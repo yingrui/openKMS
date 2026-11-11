@@ -81,7 +81,7 @@ import app.models.scheduled_trigger  # noqa: F401 - register models with Base.me
 import app.models.content_comment  # noqa: F401 - register models with Base.metadata
 import app.models.ontology_function  # noqa: F401 - register models with Base.metadata
 import app.models.external_service  # noqa: F401 - register models with Base.metadata
-import app.models.app_builder  # noqa: F401 - register models with Base.metadata
+import app.models.chamber  # noqa: F401 - register models with Base.metadata
 
 config = context.config
 

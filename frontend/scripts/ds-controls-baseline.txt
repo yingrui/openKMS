@@ -14,7 +14,7 @@ src/pages/UserSettings.tsx 2
 src/pages/agents/AgentSkillSettings.tsx 5
 src/pages/agents/AgentSkillsPage.tsx 5
 src/pages/agents/ProjectSettings.tsx 1
-src/pages/apps/AppsSettingsPage.tsx 2
+src/pages/chamber/ChamberSettingsPage.tsx 2
 src/pages/articles/ArticleChannel.tsx 4
 src/pages/articles/ArticleChannelSettings.tsx 6
 src/pages/articles/ArticleDetail.modals.tsx 3

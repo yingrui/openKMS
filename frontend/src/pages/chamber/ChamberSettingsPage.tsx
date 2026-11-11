@@ -4,12 +4,12 @@ import { useTranslation } from 'react-i18next';
 import { ArrowLeft, Server, Settings } from 'lucide-react';
 import { useConfirm } from '../../contexts/ConfirmContext';
 import {
-  deleteApp,
-  listApps,
-  updateApp,
-  type AppBuilderAppResponse,
-  type AppBuilderBindings,
-} from '../../data/appBuilderApi';
+  deleteChamberApp,
+  listChamberApps,
+  updateChamberApp,
+  type ChamberAppResponse,
+  type ChamberBindings,
+} from '../../data/chamberApi';
 import { ModuleServiceBindingEditor } from './ModuleServiceBindingEditor';
 import '../../styles/settings-page.scss';
 
@@ -22,13 +22,13 @@ function parseTab(raw: string | null): SettingsTab {
   return 'general';
 }
 
-export function AppsSettingsPage() {
+export function ChamberSettingsPage() {
   const { appId = '' } = useParams();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
-  const { t } = useTranslation('apps');
+  const { t } = useTranslation('chamber');
   const confirm = useConfirm();
-  const [app, setApp] = useState<AppBuilderAppResponse | null>(null);
+  const [app, setApp] = useState<ChamberAppResponse | null>(null);
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [saving, setSaving] = useState(false);
@@ -58,7 +58,7 @@ export function AppsSettingsPage() {
 
   const reload = useCallback(async () => {
     try {
-      const rows = await listApps();
+      const rows = await listChamberApps();
       const row = rows.find((a) => a.id === appId);
       if (!row) throw new Error('App not found');
       setApp(row);
@@ -77,16 +77,16 @@ export function AppsSettingsPage() {
     setSaving(true);
     setError(null);
     setSaved(false);
-    void updateApp(appId, { name: name.trim() || undefined, description: description.trim() || null })
+    void updateChamberApp(appId, { name: name.trim() || undefined, description: description.trim() || null })
       .then(() => setSaved(true))
       .catch((e) => setError(e instanceof Error ? e.message : String(e)))
       .finally(() => setSaving(false));
   };
 
-  const saveService = (k8s: NonNullable<AppBuilderBindings['k8s']>) => {
+  const saveService = (k8s: NonNullable<ChamberBindings['k8s']>) => {
     setServiceSaving(true);
     setError(null);
-    void updateApp(appId, { bindings: { k8s } })
+    void updateChamberApp(appId, { bindings: { k8s } })
       .then((updated) => {
         setApp((prev) =>
           prev
@@ -118,7 +118,7 @@ export function AppsSettingsPage() {
     setDeleting(true);
     setError(null);
     try {
-      await deleteApp(appId);
+      await deleteChamberApp(appId);
       navigate('/chamber', { replace: true });
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
@@ -169,18 +169,18 @@ export function AppsSettingsPage() {
             <h2>{t('tabGeneral')}</h2>
             <p className="settings-page-hint">{t('settingsGeneralHint')}</p>
             <div className="settings-page-field">
-              <label htmlFor="apps-name">{t('name')}</label>
+              <label htmlFor="chamber-name">{t('name')}</label>
               <input
-                id="apps-name"
+                id="chamber-name"
                 type="text"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
               />
             </div>
             <div className="settings-page-field">
-              <label htmlFor="apps-desc">{t('description')}</label>
+              <label htmlFor="chamber-desc">{t('description')}</label>
               <textarea
-                id="apps-desc"
+                id="chamber-desc"
                 rows={3}
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}

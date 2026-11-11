@@ -1,4 +1,4 @@
-"""Schemas for module Apps (hosted Kubernetes Service) registry + runtime."""
+"""Schemas for Chamber apps (hosted Kubernetes Service) registry + runtime."""
 
 from __future__ import annotations
 
@@ -8,7 +8,7 @@ from typing import Any, Literal
 from pydantic import BaseModel, Field
 
 
-class AppBuilderK8sBinding(BaseModel):
+class ChamberK8sBinding(BaseModel):
     """Hosted HTTP Service. Stored under bindings.k8s."""
 
     cluster_id: str
@@ -18,37 +18,36 @@ class AppBuilderK8sBinding(BaseModel):
     path: str | None = None
 
 
-class AppBuilderBindings(BaseModel):
+class ChamberBindings(BaseModel):
     """Module app bindings (Kubernetes Service only)."""
 
-    k8s: AppBuilderK8sBinding | None = None
+    k8s: ChamberK8sBinding | None = None
 
 
 AppKind = Literal["module"]
 
 
-class AppBuilderCreate(BaseModel):
+class ChamberCreate(BaseModel):
     name: str = Field(min_length=1, max_length=256)
     api_name: str = Field(min_length=1, max_length=128)
     description: str | None = None
-    template_id: str = "module"
-    """Must be ``module`` (hosted Service)."""
-    bindings: AppBuilderBindings | None = None
+    template_id: AppKind = "module"
+    """Only ``module`` (hosted Service) is supported."""
+    bindings: ChamberBindings | None = None
 
 
-class AppBuilderUpdate(BaseModel):
+class ChamberUpdate(BaseModel):
     name: str | None = None
     description: str | None = None
-    bindings: AppBuilderBindings | None = None
+    bindings: ChamberBindings | None = None
 
 
-class AppBuilderResponse(BaseModel):
+class ChamberResponse(BaseModel):
     id: str
     name: str
     api_name: str
     description: str | None = None
-    template_id: str
-    app_kind: str = "module"
+    template_id: AppKind
     bindings: dict[str, Any]
     status: str
     bindings_hash: str | None = None
@@ -63,7 +62,7 @@ class AppBuilderResponse(BaseModel):
     has_published: bool = False
 
 
-class AppBuilderVersionOut(BaseModel):
+class ChamberVersionOut(BaseModel):
     id: str
     version: int
     created_at: datetime
@@ -71,7 +70,7 @@ class AppBuilderVersionOut(BaseModel):
     is_current: bool = False
 
 
-class AppBuilderRunResponse(AppBuilderResponse):
-    """Runtime document for Apps Run (module iframe; no A2UI components)."""
+class ChamberRunResponse(ChamberResponse):
+    """Runtime document for Chamber Run (hosted iframe; no A2UI components)."""
 
     pass

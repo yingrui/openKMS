@@ -2,22 +2,22 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { LayoutGrid, Settings, Trash2 } from 'lucide-react';
-import { deleteApp, listApps, type AppBuilderAppResponse } from '../../data/appBuilderApi';
+import { deleteChamberApp, listChamberApps, type ChamberAppResponse } from '../../data/chamberApi';
 import { useAuth } from '../../contexts/AuthContext';
 import { useConfirm } from '../../contexts/ConfirmContext';
 import { EmptyState } from '../../styles/design-system';
-import './AppsPages.scss';
+import './ChamberPages.scss';
 
-export function AppsGalleryPage() {
-  const { t } = useTranslation('apps');
+export function ChamberGalleryPage() {
+  const { t } = useTranslation('chamber');
   const confirm = useConfirm();
   const { canAccessPath } = useAuth();
   const canManage = canAccessPath('/chamber');
-  const [apps, setApps] = useState<AppBuilderAppResponse[]>([]);
+  const [apps, setApps] = useState<ChamberAppResponse[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
-  const handleDeleteApp = async (app: AppBuilderAppResponse) => {
+  const handleDeleteApp = async (app: ChamberAppResponse) => {
     const ok = await confirm({
       title: t('delete'),
       message: t('confirmDelete'),
@@ -25,12 +25,12 @@ export function AppsGalleryPage() {
       danger: true,
     });
     if (!ok) return;
-    await deleteApp(app.id);
+    await deleteChamberApp(app.id);
     reload();
   };
 
   const reload = async () => {
-    setApps(await listApps(canManage ? undefined : { status: 'published' }));
+    setApps(await listChamberApps(canManage ? undefined : { status: 'published' }));
   };
 
   useEffect(() => {
@@ -40,13 +40,13 @@ export function AppsGalleryPage() {
   }, [canManage]);
 
   return (
-    <div className="apps-page">
+    <div className="chamber-page">
       <header className="page-header">
         <h1>{t('galleryTitle')}</h1>
         <p className="page-subtitle">{t('gallerySubtitle')}</p>
       </header>
       {loading ? <p>{t('loading')}</p> : null}
-      {error ? <p className="apps-page__error" role="alert">{error}</p> : null}
+      {error ? <p className="chamber-page__error" role="alert">{error}</p> : null}
       {!loading && !apps.length && !error ? (
         <EmptyState
           title={t('emptyGallery')}
@@ -59,18 +59,18 @@ export function AppsGalleryPage() {
         />
       ) : null}
       {!loading && apps.length > 0 ? (
-        <div className="apps-page__grid">
+        <div className="chamber-page__grid">
           {apps.map((app) => {
             const openTo =
               app.status === 'published' ? `/chamber/${app.id}` : `/chamber/${app.id}/settings`;
             return (
-              <div key={app.id} className="apps-page__card">
-                <div className="apps-page__card-top">
-                  <Link to={openTo} className="apps-page__card-icon" aria-hidden tabIndex={-1}>
+              <div key={app.id} className="chamber-page__card">
+                <div className="chamber-page__card-top">
+                  <Link to={openTo} className="chamber-page__card-icon" aria-hidden tabIndex={-1}>
                     <LayoutGrid size={26} strokeWidth={1.5} />
                   </Link>
                   {canManage ? (
-                    <div className="apps-page__card-actions">
+                    <div className="chamber-page__card-actions">
                       <Link
                         to={`/chamber/${app.id}/settings`}
                         title={t('editSettings')}
@@ -89,17 +89,17 @@ export function AppsGalleryPage() {
                     </div>
                   ) : null}
                 </div>
-                <Link to={openTo} className="apps-page__card-body">
+                <Link to={openTo} className="chamber-page__card-body">
                   <h3>{app.name}</h3>
-                  <div className="apps-page__card-badges">
-                    <span className="apps-page__badge apps-page__badge--kind">{t('kindModule')}</span>
-                    <span className="apps-page__badge">{app.status}</span>
+                  <div className="chamber-page__card-badges">
+                    <span className="chamber-page__badge chamber-page__badge--kind">{t('kindModule')}</span>
+                    <span className="chamber-page__badge">{app.status}</span>
                     {app.published_version ? (
-                      <span className="apps-page__badge">v{app.published_version}</span>
+                      <span className="chamber-page__badge">v{app.published_version}</span>
                     ) : null}
-                    {app.bindings_stale ? <span className="apps-page__badge">{t('stale')}</span> : null}
+                    {app.bindings_stale ? <span className="chamber-page__badge">{t('stale')}</span> : null}
                   </div>
-                  <span className="apps-page__card-meta">{app.api_name}</span>
+                  <span className="chamber-page__card-meta">{app.api_name}</span>
                 </Link>
               </div>
             );

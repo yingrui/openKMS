@@ -92,7 +92,7 @@ flowchart TB
   Providers --> Pages
 ```
 
-Ontology SPA sources live under `frontend/src/pages/ontology/`. **Chamber** lives under `frontend/src/pages/apps/`. Console admin screens live under `frontend/src/pages/console/`.
+Ontology SPA sources live under `frontend/src/pages/ontology/`. **Chamber** lives under `frontend/src/pages/chamber/`. Console admin screens live under `frontend/src/pages/console/`.
 
 ### Layout (`frontend/src/`)
 
@@ -114,7 +114,7 @@ frontend/src/
 ├── App.tsx, main.tsx, index.scss
 ├── pages/
 │   ├── documents/, articles/, wiki/, knowledge-bases/, knowledge-map/
-│   ├── evaluation/, glossaries/, ontology/, app-builder/, apps/, console/
+│   ├── evaluation/, glossaries/, ontology/, chamber/, console/
 │   ├── agents/, pipelines/, jobs/, models/, auth/, connectors/
 │   └── Home.tsx, Profile.tsx, UserSettings.tsx, GlobalSearch.tsx
 ├── components/

@@ -138,7 +138,7 @@ effects · 32 ease of manufacture · 34 ease of repair · 35 adaptability · 36 
 ### TC-2 Agent autonomy ↔ attribution / review **[code]**
 - **Improves:** 38 automation ↑, 25 loss of time ↓
 - **Worsens:** 37 difficulty of measurement ↑, 27 reliability ↓
-- **Evidence:** `created_by=<sub>` (`api/app_builder.py:72`, `api/knowledge_bases.py:105`, …);
+- **Evidence:** `created_by=<sub>` (`api/chamber.py:72`, `api/knowledge_bases.py:105`, …);
   `user_api_keys.purpose` used only at auth/list (`api/auth.py:781`), never propagated;
   `agent_session_api_key.py:43-44` sets `purpose="agent_session"` and `agent_conversation_id`;
   `hitl.py:14` empty; audit is local-only
@@ -149,8 +149,8 @@ effects · 32 ease of manufacture · 34 ease of repair · 35 adaptability · 36 
 ### TC-3 Publish-gate coverage is asymmetric (3 of 8) **[code]**
 - **Improves:** 27 reliability ↑ (controllable before publish)
 - **Worsens:** 39 productivity ↓, 25 loss of time ↑ (if the gate is rebuilt per type)
-- **Evidence:** `published_version_id` only on `app_builder.py:28` and `ontology_function.py:26`;
-  `status=draft` only on `app_builder.py:30` and `explorer_dashboard.py:26`; absent on
+- **Evidence:** `published_version_id` only on `models/chamber.py:28` and `ontology_function.py:26`;
+  `status=draft` only on `models/chamber.py:30` and `explorer_dashboard.py:26`; absent on
   `dataset`, `semantic_model`, `object_type`, `link_type`, `metric_definition`
 - **Principles:** 5 merging · 33 homogeneity — factor the publish gate into a **shared primitive**
   (the Function chain is the template).

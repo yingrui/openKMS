@@ -46,8 +46,8 @@ import enMedia from './locales/en/media.json';
 import zhMedia from './locales/zh-CN/media.json';
 import enOntology from './locales/en/ontology.json';
 import zhOntology from './locales/zh-CN/ontology.json';
-import enApps from './locales/en/apps.json';
-import zhApps from './locales/zh-CN/apps.json';
+import enChamber from './locales/en/chamber.json';
+import zhChamber from './locales/zh-CN/chamber.json';
 
 export const OPENKMS_LOCALE_STORAGE_KEY = 'openkms_locale';
 
@@ -110,7 +110,7 @@ void i18n
       'comments',
       'media',
       'ontology',
-      'apps',
+      'chamber',
     ],
     defaultNS: 'common',
     interpolation: { escapeValue: false },
@@ -143,7 +143,7 @@ void i18n
         comments: enComments,
         media: enMedia,
         ontology: enOntology,
-        apps: enApps,
+        chamber: enChamber,
       },
       'zh-CN': {
         common: zhCommon,
@@ -168,7 +168,7 @@ void i18n
         comments: zhComments,
         media: zhMedia,
         ontology: zhOntology,
-        apps: zhApps,
+        chamber: zhChamber,
       },
     },
   });

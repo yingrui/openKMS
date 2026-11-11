@@ -25,8 +25,8 @@ src/pages/Home.tsx uses .home-apps
 src/pages/agents/AgentSkillSettings.tsx uses .agent-skill-settings
 src/pages/agents/ProjectSettings.tsx uses .project-settings-skills-tab
 src/pages/agents/SessionReviewPage.tsx uses .sreview-btn--edit
-src/pages/apps/AppsSettingsPage.tsx uses .settings-page-danger
-src/pages/apps/ModuleServiceBindingEditor.tsx uses .app-builder-module-service
+src/pages/chamber/ChamberSettingsPage.tsx uses .settings-page-danger
+src/pages/chamber/ModuleServiceBindingEditor.tsx uses .chamber-module-service
 src/pages/articles/ArticleChannelSettings.tsx uses .settings-page-inline-actions
 src/pages/articles/ArticleDetail.modals.tsx uses .article-review-result
 src/pages/auth/OidcCallback.tsx uses .app-loading

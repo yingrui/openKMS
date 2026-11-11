@@ -14,7 +14,7 @@ def _id() -> str:
     return str(uuid4())
 
 
-class AppBuilderApp(Base):
+class ChamberApp(Base):
     """A registered Chamber app: identity + Kubernetes Service binding."""
 
     __tablename__ = "chamber_apps"
@@ -36,7 +36,7 @@ class AppBuilderApp(Base):
     )
 
 
-class AppBuilderPublishedVersion(Base):
+class ChamberPublishedVersion(Base):
     """Immutable snapshot of a published Chamber app (bindings) for history."""
 
     __tablename__ = "chamber_published_versions"

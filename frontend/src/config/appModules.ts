@@ -280,17 +280,18 @@ export const APP_MODULES: AppModule[] = [
     isActive: externalServicesActive,
   },
   {
-    id: 'apps',
+    id: 'chamber',
     kind: 'suite_app',
     layer: 'application',
     order: 83,
     homePath: '/chamber',
     icon: LayoutGrid,
-    labelKey: 'apps',
-    taglineKey: 'appTaglineApps',
+    labelKey: 'chamber',
+    taglineKey: 'appTaglineChamber',
     showInLauncher: true,
     showInMainSidebar: true,
     showInConsoleNav: false,
+    // /apps and /app-builder are legacy redirects to /chamber.
     isActive: (p) => p === '/chamber' || p.startsWith('/chamber/') || p === '/apps' || p.startsWith('/apps/') || p === '/app-builder' || p.startsWith('/app-builder/'),
   },
   {

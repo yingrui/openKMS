@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
-import { createApp } from '../../../data/appBuilderApi';
+import { createChamberApp } from '../../../data/chamberApi';
 import type { KubernetesServiceItem } from '../../../data/kubernetesClustersApi';
 import { Dialog, FormField } from '../../../styles/design-system/index';
 
@@ -19,7 +19,7 @@ function firstPort(svc: KubernetesServiceItem): number {
 }
 
 /**
- * Register a cluster Service as a module App — the flow, its state and its dialog, kept
+ * Register a cluster Service as a Chamber app — the flow, its state and its dialog, kept
  * out of the cluster detail page (which was over the file-length limit).
  */
 export function KubernetesRegisterAppDialog({
@@ -48,7 +48,7 @@ export function KubernetesRegisterAppDialog({
     }
     setSubmitting(true);
     try {
-      const app = await createApp({
+      const app = await createChamberApp({
         name: name.trim(),
         api_name: apiName.trim(),
         template_id: 'module',
