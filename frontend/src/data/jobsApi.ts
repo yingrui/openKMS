@@ -63,6 +63,11 @@ export function isScheduledAgentJob(taskName: string): boolean {
   return SCHEDULED_AGENT_TASK_NAMES.has(taskName);
 }
 
+/** A data-query evaluation run queued by the evaluation page. */
+export function isEvaluationRunJob(taskName: string): boolean {
+  return taskName === 'run_evaluation';
+}
+
 export function isMediaGenerationJob(taskName: string): boolean {
   return MEDIA_TASK_NAMES.has(taskName);
 }

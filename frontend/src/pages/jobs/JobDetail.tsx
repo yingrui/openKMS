@@ -10,6 +10,7 @@ import {
   retryJob,
   isKbIndexingJob,
   isConnectorSyncJob,
+  isEvaluationRunJob,
   isScheduledAgentJob,
   type JobResponse,
 } from '../../data/jobsApi';
@@ -177,6 +178,7 @@ export function JobDetail() {
   const isKbIndexingTask = isKbIndexingJob(job.task_name);
   const isConnectorSyncTask = isConnectorSyncJob(job.task_name);
   const isScheduledAgentTask = isScheduledAgentJob(job.task_name);
+  const isEvaluationRunTask = isEvaluationRunJob(job.task_name);
   const connectorId = String(job.args?.connector_id || '');
   const triggerId = String(job.args?.trigger_id || '');
   const scheduleProjectId = String(job.args?.project_id || '');
@@ -418,7 +420,48 @@ export function JobDetail() {
           </dl>
         </section>
 
-        {!isKbIndexingTask && !isConnectorSyncTask && !isScheduledAgentTask && !pipelineId && (
+        {isEvaluationRunTask && (
+          <section className="job-detail-card">
+            <h2>
+              <ListTodo size={18} /> {t('jobDetail.evaluationRun')}
+            </h2>
+            <dl className="job-detail-dl">
+              <dt>{t('jobDetail.evaluation')}</dt>
+              <dd>
+                {String(job.args?.evaluation_name || dash)}{' '}
+                <span className="job-detail-mono">{String(job.args?.evaluation_id || '')}</span>
+              </dd>
+              <dt>{t('jobDetail.evaluationScope')}</dt>
+              <dd className="job-detail-mono">
+                {(() => {
+                  // `null` means the whole set: say so, and the run row lists exactly what it covered.
+                  const ids = Array.isArray(job.args?.item_ids) ? (job.args?.item_ids as string[]) : null;
+                  if (!ids) return t('jobDetail.evaluationScopeAll', { count: Number(job.args?.item_count) || 0 });
+                  return ids.length === 0 ? dash : ids.join(', ');
+                })()}
+              </dd>
+              <dt>{t('jobDetail.evaluationType')}</dt>
+              <dd>{String(job.args?.evaluation_type || dash)}</dd>
+              <dt>{t('jobDetail.evaluationLanguage')}</dt>
+              <dd>{String(job.args?.language || dash)}</dd>
+              {job.args?.run_id && job.args?.evaluation_id ? (
+                <>
+                  <dt>{t('jobDetail.evaluationRunLink')}</dt>
+                  <dd>
+                    <Link
+                      to={`/evaluations/${String(job.args.evaluation_id)}?run=${String(job.args.run_id)}`}
+                      className="job-detail-link"
+                    >
+                      {String(job.args.run_id).slice(0, 8)}…
+                    </Link>
+                  </dd>
+                </>
+              ) : null}
+            </dl>
+          </section>
+        )}
+
+        {!isEvaluationRunTask && !isKbIndexingTask && !isConnectorSyncTask && !isScheduledAgentTask && !pipelineId && (
           <section className="job-detail-card">
             <h2>
               <FileText size={18} /> {t('jobDetail.arguments')}
