@@ -80,16 +80,13 @@ for res in output:
 
 ### Dev servers and auto-reload
 
-**`backend/dev.sh`** (port **8102**) and **`qa-agent/dev.sh`** (port **8103**) both restart on save, with uvicorn's
-`--reload` narrowed to the code: `--reload-dir app` / `--reload-dir qa_agent`. Editing `alembic/`, `scripts/`, or
-`.env` therefore needs a manual restart, and the agent writing into a QA session workspace does not restart the server
-mid-answer.
+**`backend/dev.sh`** (port **8102**) and **`qa-agent/dev.sh`** (port **8103**) restart on save. The watch covers code
+only (`--reload-dir app` / `--reload-dir qa_agent`), so editing `alembic/`, `scripts/`, or `.env` needs a manual restart.
+`OPENKMS_DEV_RELOAD=0` runs without a reloader, as production does.
 
-Set **`OPENKMS_DEV_RELOAD=0`** to run without a reloader (the production code path).
-
-One failure mode worth recognising: the reloader keeps the listening socket in the parent process, so a child that dies
-before accepting (a bad setting, an exception in `lifespan`) leaves a port that accepts connections and never answers.
-`lsof -nP -iTCP:8102 -sTCP:LISTEN` naming the reloader pid while the child is gone is the tell.
+The reloader keeps the listening socket in the parent, so a child that dies before accepting leaves a port that accepts
+connections and never answers; `lsof -nP -iTCP:8102 -sTCP:LISTEN` naming the reloader pid while the child is gone is the
+tell.
 
 ### Backend Integration
 

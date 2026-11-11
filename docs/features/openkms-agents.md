@@ -215,13 +215,12 @@ Feature toggle: **`agents`** (Console → Feature toggles).
 ## Files rail
 
 The workspace is a rail on the right of the chat, and **it can be collapsed**: the head's rightmost
-button hides it, the **Files** chip in the chat's top-right brings it back, and the choice is
-remembered per browser (`openkms_agents_files_rail_open_v1`). Drag the edge to resize;
-the width is remembered too (`openkms_agents_files_rail_width_px_v1`).
+button hides it and the **Files** chip in the chat's top-right brings it back. Both the folded state
+and the drag width are remembered per browser. On a phone the rail is a full-screen sheet opened
+from the toolbar, closed by the same head button.
 
-The head (title row, icon buttons, **All files** chip, resize handle) is shared with the KB
-conversation's files rail — `src/styles/files-rail.scss`, see [design system](../design-system.md#shared-layout-scss-frontendsrcstyles).
-On a phone the rail is a full-screen sheet opened from the toolbar, closed by the same head button.
+The head — title row, icon buttons, **All files** chip, resize handle — is the KB conversation's
+files rail too; see [design system](../design-system.md#shared-layout-scss-frontendsrcstyles).
 
 ## Git
 

@@ -101,8 +101,7 @@ Still open in the KB runner:
 
 - **The memory ceiling does not apply on macOS** (`ulimit -v` will not go below the address space already in use). The
   service runs on Linux, where it does; a developer on a Mac gets no cap and no error, which is the right trade but worth
-  knowing. The limit is set by a shell prologue in the child (`_with_memory_ceiling`), not `Popen(preexec_fn=…)` — that hook
-  is documented as unsafe once the parent has threads, which a tool pool does.
+  knowing. Mechanism and its limits: [KB Q&A agent](features/knowledge-base-qa-agent.md#the-command-allow-list).
 
 ### Jobs API and Procrastinate internals
 
