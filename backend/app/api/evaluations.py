@@ -775,6 +775,7 @@ async def run_evaluation(
             )
 
     judge_model_id, judge_config = await _resolve_run_judge(db, kb, body.judge_model_id)
+    language = body.language or "en"
 
     wiki = await db.get(WikiSpace, ev.wiki_space_id) if ev.wiki_space_id else None
     if eval_type == EVALUATION_TYPE_WIKI_CONTENT_COVERAGE:
@@ -787,7 +788,9 @@ async def run_evaluation(
     else:
         config_snapshot = {
             "judge_model_id": judge_model_id,
-            "language": body.language,
+            "language": language,
+            # Tells a stale client apart from one that chose English: the request is the only place this is knowable.
+            "language_from_request": body.language is not None,
             "top_k": 10,
             "search_type": "all",
         }
@@ -795,7 +798,6 @@ async def run_evaluation(
     # A run that blows up is persisted as failed and returned; an HTTP error still propagates.
     with boundary("run the evaluation", reraise=(HTTPException,)) as failed:
         item_ids = body.item_ids or None
-        language = body.language
         if eval_type == EVALUATION_TYPE_SEARCH_RETRIEVAL:
             item_rows = await run_search_retrieval_evaluation(
                 db, ev.knowledge_base_id, evaluation_id, judge_config, item_ids

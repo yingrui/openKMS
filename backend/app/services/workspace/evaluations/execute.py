@@ -97,6 +97,31 @@ def _snippet(content: str, max_len: int = SNIPPET_MAX_LEN) -> str:
     return c if len(c) <= max_len else c[:max_len]
 
 
+#: The few sentences this module writes itself, in the language the run asked for. Everything else a person reads comes
+#: from the judge, which is told the same language.
+_ITEM_TEXTS = {
+    "en": {
+        "covered": "every expected query was covered",
+        "missed": "query {index}: {reason}",
+        "refused": "refused, as required",
+        "cited": "should have refused, but cited {count} quer{plural}",
+        "nothing": "nothing cited",
+    },
+    "zh": {
+        "covered": "每条期望查询都被覆盖",
+        "missed": "第 {index} 条：{reason}",
+        "refused": "按要求拒答",
+        "cited": "应当拒答，但引用了 {count} 条查询",
+        "nothing": "没有引用任何查询",
+    },
+}
+
+
+def _text(language: str, key: str, **kwargs: Any) -> str:
+    table = _ITEM_TEXTS.get(language, _ITEM_TEXTS["en"])
+    return table[key].format(**kwargs) if kwargs else table[key]
+
+
 def _item_result(
     item: EvaluationItem,
     *,
@@ -105,11 +130,16 @@ def _item_result(
     reasoning: str,
     detail: dict[str, Any],
 ) -> dict[str, Any]:
-    """One row of a run, in the shape every strategy returns — the comparison view and the UI read one schema."""
+    """One row of a run, in the shape every strategy returns — the comparison view and the UI read one schema.
+
+    `expected_query` travels with the result: the run report reads the result rows, and without it every item looked as
+    though it had no expectation at all.
+    """
     return {
         "evaluation_item_id": item.id,
         "query": item.query,
         "expected_answer": item.expected_answer,
+        "expected_query": item.expected_query,
         "passed": bool(passed),
         "score": float(score),
         "reasoning": str(reasoning),
@@ -351,9 +381,14 @@ async def run_data_query_evaluation(
                     passed=cited_count == 0,
                     score=0.0 if cited_count else 1.0,
                     reasoning=(
-                        f"should have refused, but cited {cited_count} quer{'y' if cited_count == 1 else 'ies'}"
+                        _text(
+                            language,
+                            "cited",
+                            count=cited_count,
+                            plural="" if cited_count == 1 else "ies",
+                        )
                         if cited_count
-                        else "refused, as required"
+                        else _text(language, "refused")
                     ),
                     detail={
                         "data_queries": _cited_detail(cited),
@@ -390,9 +425,15 @@ async def run_data_query_evaluation(
             passed = not uncovered
             verdict = "pass" if passed else ("undecided" if all(u.get("verdict") == "undecided" for u in uncovered) else "fail")
             reasons = [
-                f"query {u['expected_index'] + 1}: {u.get('reasoning') or u.get('verdict')}" for u in uncovered
+                _text(
+                    language,
+                    "missed",
+                    index=u["expected_index"] + 1,
+                    reason=u.get("reasoning") or u.get("verdict"),
+                )
+                for u in uncovered
             ]
-            reasoning = "; ".join(reasons) or "every expected query was covered"
+            reasoning = "; ".join(reasons) or _text(language, "covered")
 
             # Best effort, and never fatal: the trace is where cost and latency already live, so the verdict belongs there
             # too — the evaluation tables keep the reproducible record. Off the loop: this is a network call.

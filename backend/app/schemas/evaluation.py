@@ -157,7 +157,8 @@ class EvaluationRunRequestBody(BaseModel):
     #: Judge this run with a different model than the knowledge base's own — for a second opinion on the same answers.
     judge_model_id: str | None = None
     #: Language for everything a person reads (check reasons, the run report). The verdicts themselves are unaffected.
-    language: Literal["en", "zh"] = "en"
+    #: Omitted means the caller did not choose; the run then says so in its snapshot instead of pretending it asked.
+    language: Literal["en", "zh"] | None = None
 
 
 class EvaluationRunReport(BaseModel):

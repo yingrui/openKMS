@@ -53,9 +53,8 @@ export function RunEvaluationDialog({
   // Mounted per opening, so this is this opening's default — no effect needed to reset it.
   const [scope, setScope] = useState<'all' | 'failed'>(() => (failedCount > 0 ? 'failed' : 'all'));
   const [judgeModelId, setJudgeModelId] = useState('');
-  const [language, setLanguage] = useState<'en' | 'zh'>(() =>
-    readLanguage(i18n.language.startsWith('zh') ? 'zh' : 'en'),
-  );
+  const uiLanguage = (i18n.resolvedLanguage ?? i18n.language ?? 'en').toLowerCase().startsWith('zh') ? 'zh' : 'en';
+  const [language, setLanguage] = useState<'en' | 'zh'>(() => readLanguage(uiLanguage));
 
   // Loaded through the shared hook: it owns the effect, so this component never sets state in one.
   const chatModels = useAsyncData(() => fetchAllModels({ api_kind: 'chat-completions' }), []);
