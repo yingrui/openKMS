@@ -6,8 +6,8 @@ import { useAsyncData } from '../../hooks/useAsyncData';
 import { Dialog, FormField } from '../../styles/design-system';
 
 export interface RunOptions {
-  /** Which items to run: the whole set, or whatever failed last time (resolved server-side). */
-  scope: 'all' | 'failed';
+  /** Items to run; `null` runs the whole set. */
+  itemIds: string[] | null;
   /** Judge with this model instead of the knowledge base's own. `null` keeps the KB's choice. */
   judgeModelId: string | null;
   /** Language for what a person reads: check reasons and the run report. */
@@ -90,7 +90,11 @@ export function RunEvaluationDialog({
               } catch {
                 /* ignore */
               }
-              onSubmit({ scope, judgeModelId: judgeModelId || null, language });
+              onSubmit({
+                itemIds: scope === 'failed' ? failedItemIds : null,
+                judgeModelId: judgeModelId || null,
+                language,
+              });
             }}
           >
             {busy ? <Loader2 size={16} className="animate-spin" aria-hidden /> : null}

@@ -686,13 +686,6 @@ async def run_evaluation(
     if body.item_ids is not None and not body.item_ids:
         raise HTTPException(status_code=400, detail="No items selected to run.")
     item_ids = body.item_ids
-    if item_ids is None and body.scope == "failed":
-        item_ids = await _failed_item_ids(db, ev.id)
-        if not item_ids:
-            raise HTTPException(
-                status_code=400,
-                detail="The last completed run has no failed items to re-run.",
-            )
 
     run = await create_run(
         db,
@@ -741,27 +734,6 @@ def _config_snapshot(
             "semantic_similarity_threshold": wiki.semantic_similarity_threshold if wiki else None,
         }
     return {"judge_model_id": judge_model_id, "language": language, "top_k": 10, "search_type": "all"}
-
-
-async def _failed_item_ids(db: AsyncSession, evaluation_id: str) -> list[str]:
-    """The items that did not pass the most recent completed run — what "run the failures" means."""
-    run = (
-        await db.execute(
-            select(EvaluationRun)
-            .where(EvaluationRun.evaluation_id == evaluation_id, EvaluationRun.status == "completed")
-            .order_by(EvaluationRun.created_at.desc())
-            .limit(1)
-        )
-    ).scalar_one_or_none()
-    if run is None:
-        return []
-    rows = await db.execute(
-        select(EvaluationRunItem.evaluation_item_id).where(
-            EvaluationRunItem.evaluation_run_id == run.id,
-            EvaluationRunItem.passed.is_(False),
-        )
-    )
-    return [row[0] for row in rows.all()]
 
 
 async def resolve_judge_override(

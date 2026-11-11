@@ -496,8 +496,10 @@ export function EvaluationDatasetDetail() {
     }
   };
 
-  const handleRunEvaluation = async ({ scope: runScope, judgeModelId, language }: RunOptions) => {
+  const handleRunEvaluation = async ({ itemIds, judgeModelId, language }: RunOptions) => {
     if (!evaluationId) return;
+    // An empty selection must never fall through to "run everything".
+    if (itemIds !== null && itemIds.length === 0) return;
     setRunDialogOpen(false);
     setRunning(true);
     setRunStartedAt(Date.now());
@@ -507,7 +509,7 @@ export function EvaluationDatasetDetail() {
       // The request only queues the run; the worker executes it and the poll below follows the run row.
       const queued = await runEvaluation(evaluationId, {
         evaluation_type: evaluationType,
-        scope: runScope,
+        item_ids: itemIds,
         judge_model_id: judgeModelId,
         language,
       });
