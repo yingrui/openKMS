@@ -405,7 +405,9 @@
     "runLanguageEn": "English",
     "preparingRun": "Preparing…",
     "runInProgress": "Running — {{seconds}}s elapsed. This request answers and judges every item, so it takes minutes; keep the page open.",
-    "runScopeLine": "{{count}} of {{total}} items this run"
+    "runScopeLine": "{{count}} of {{total}} items this run",
+    "runScopeFailedFrom": "Based on run",
+    "runOption": "{{id}}… · {{failed}} failed · {{at}}"
   },
   "models": {
     "title": "Models",

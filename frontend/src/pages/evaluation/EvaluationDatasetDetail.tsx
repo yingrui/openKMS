@@ -248,8 +248,6 @@ export function EvaluationDatasetDetail() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [running, setRunning] = useState(false);
   const [runDialogOpen, setRunDialogOpen] = useState(false);
-  const [failedItemIds, setFailedItemIds] = useState<string[]>([]);
-  const [preparingRun, setPreparingRun] = useState(false);
   const [runStartedAt, setRunStartedAt] = useState<number | null>(null);
   const [runElapsed, setRunElapsed] = useState(0);
   /** The run this page is waiting on; polling stops when the worker closes it. */
@@ -477,24 +475,8 @@ export function EvaluationDatasetDetail() {
   // Which items failed last time: the dialog offers to re-run just those, which is the common case while tuning.
   // Read them *before* opening — opening first left the dialog with an empty list, so "only failed" was disabled and the
   // default scope was "everything", which is how a one-item re-run turns into seventeen.
-  const openRunDialog = async () => {
-    const lastRun = runs[0];
-    if (!evaluationId || !lastRun) {
-      setFailedItemIds([]);
-      setRunDialogOpen(true);
-      return;
-    }
-    setPreparingRun(true);
-    try {
-      const detail = await getEvaluationRun(evaluationId, lastRun.id);
-      setFailedItemIds(detail.results.filter((r) => !r.pass).map((r) => r.item_id));
-    } catch {
-      setFailedItemIds([]);
-    } finally {
-      setPreparingRun(false);
-      setRunDialogOpen(true);
-    }
-  };
+  // The dialog asks which run to base "the failures" on and reads that run itself; nothing is prefetched here.
+  const openRunDialog = () => setRunDialogOpen(true);
 
   const handleRunEvaluation = async ({ itemIds, judgeModelId, language }: RunOptions) => {
     if (!evaluationId) return;
@@ -867,18 +849,12 @@ export function EvaluationDatasetDetail() {
               <button
                 type="button"
                 className="btn btn-primary"
-                onClick={() => void openRunDialog()}
-                disabled={running || preparingRun || itemsTotal === 0}
+                onClick={openRunDialog}
+                disabled={running || itemsTotal === 0}
                 title={itemsTotal === 0 ? t('evaluationDetail.runNeedsItems') : undefined}
               >
-                {running || preparingRun ? <Loader2 size={18} className="animate-spin" /> : <Play size={18} />}
-                <span>
-                  {running
-                    ? t('evaluationDetail.running')
-                    : preparingRun
-                      ? t('evaluationDetail.preparingRun')
-                      : t('evaluationDetail.runEvaluation')}
-                </span>
+                {running ? <Loader2 size={18} className="animate-spin" /> : <Play size={18} />}
+                <span>{running ? t('evaluationDetail.running') : t('evaluationDetail.runEvaluation')}</span>
               </button>
               <button
                 type="button"
@@ -1154,8 +1130,9 @@ export function EvaluationDatasetDetail() {
       {runDialogOpen ? (
         <RunEvaluationDialog
           open
+          evaluationId={evaluationId ?? ''}
           itemsTotal={itemsTotal}
-          failedItemIds={failedItemIds}
+          runs={runs}
           busy={running}
           onCancel={() => setRunDialogOpen(false)}
           onSubmit={(options) => void handleRunEvaluation(options)}

@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Loader2 } from 'lucide-react';
+import { getEvaluationRun, type EvaluationRunListItem } from '../../data/evaluationsApi';
 import { fetchAllModels } from '../../data/modelsApi';
 import { useAsyncData } from '../../hooks/useAsyncData';
 import { Dialog, FormField } from '../../styles/design-system';
@@ -34,24 +35,36 @@ function readLanguage(fallback: 'en' | 'zh'): 'en' | 'zh' {
  */
 export function RunEvaluationDialog({
   open,
+  evaluationId,
   itemsTotal,
-  failedItemIds,
+  runs,
   busy,
   onCancel,
   onSubmit,
 }: {
   open: boolean;
+  evaluationId: string;
   itemsTotal: number;
-  /** Items that did not pass the most recent run; empty when there is no earlier run. */
-  failedItemIds: string[];
+  /** Recent runs, newest first: "run the failures" is about a run the reader picks, not only the latest one. */
+  runs: EvaluationRunListItem[];
   busy: boolean;
   onCancel: () => void;
   onSubmit: (options: RunOptions) => void;
 }) {
   const { t, i18n } = useTranslation('workspace');
-  const failedCount = failedItemIds.length;
   // Mounted per opening, so this is this opening's default — no effect needed to reset it.
-  const [scope, setScope] = useState<'all' | 'failed'>(() => (failedCount > 0 ? 'failed' : 'all'));
+  const [scope, setScope] = useState<'all' | 'failed'>(() => (runs.length > 0 ? 'failed' : 'all'));
+  const [failedRunId, setFailedRunId] = useState<string>(() => runs[0]?.id ?? '');
+  // Which items failed in the chosen run: read from its results, so any run can be the base.
+  const chosenRun = useAsyncData(
+    () => (failedRunId ? getEvaluationRun(evaluationId, failedRunId) : Promise.resolve(null)),
+    [evaluationId, failedRunId],
+  );
+  const failedItemIds = useMemo(
+    () => (chosenRun.data?.results ?? []).filter((r) => !r.pass).map((r) => r.item_id),
+    [chosenRun.data],
+  );
+  const failedCount = failedItemIds.length;
   const [judgeModelId, setJudgeModelId] = useState('');
   const uiLanguage = (i18n.resolvedLanguage ?? i18n.language ?? 'en').toLowerCase().startsWith('zh') ? 'zh' : 'en';
   const [language, setLanguage] = useState<'en' | 'zh'>(() => readLanguage(uiLanguage));
@@ -83,7 +96,7 @@ export function RunEvaluationDialog({
           <button
             type="button"
             className="btn btn-primary"
-            disabled={busy || (scope === 'failed' && failedCount === 0)}
+            disabled={busy || (scope === 'failed' && (chosenRun.loading || failedCount === 0))}
             onClick={() => {
               try {
                 localStorage.setItem(LANGUAGE_KEY, language);
@@ -119,9 +132,30 @@ export function RunEvaluationDialog({
           />
           <span>
             {t('evaluationDetail.runScopeFailed', { count: failedCount })}
-            {failedCount === 0 ? ` · ${t('evaluationDetail.runScopeFailedNone')}` : ''}
+            {failedCount === 0 && !chosenRun.loading ? ` · ${t('evaluationDetail.runScopeFailedNone')}` : ''}
           </span>
         </label>
+        {scope === 'failed' && runs.length > 0 ? (
+          <label>
+            <span>{t('evaluationDetail.runScopeFailedFrom')}</span>
+            <select
+              className="ds-control"
+              value={failedRunId}
+              onChange={(e) => setFailedRunId(e.target.value)}
+              disabled={busy || chosenRun.loading}
+            >
+              {runs.map((r) => (
+                <option key={r.id} value={r.id}>
+                  {t('evaluationDetail.runOption', {
+                    id: r.id.slice(0, 8),
+                    failed: Math.max(0, r.item_count - r.pass_count),
+                    at: new Date(r.created_at).toLocaleString(),
+                  })}
+                </option>
+              ))}
+            </select>
+          </label>
+        ) : null}
       </fieldset>
 
       <FormField label={t('evaluationDetail.runJudgeModel')} hint={judgeHint}>
