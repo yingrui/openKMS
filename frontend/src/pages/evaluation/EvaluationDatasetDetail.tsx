@@ -39,6 +39,7 @@ import {
 import type { TFunction } from 'i18next';
 import { PanelToolbar } from '../../styles/design-system';
 import { expectedQueryLines } from './expectedQueryText';
+import { RunRequestError, buildRunRequest } from './runRequest';
 import { RunEvaluationDialog, type RunOptions } from './RunEvaluationDialog';
 
 const EVAL_TYPE_SEARCH = 'search_retrieval';
@@ -480,8 +481,21 @@ export function EvaluationDatasetDetail() {
 
   const handleRunEvaluation = async ({ itemIds, judgeModelId, language }: RunOptions) => {
     if (!evaluationId) return;
-    // An empty selection must never fall through to "run everything".
-    if (itemIds !== null && itemIds.length === 0) return;
+    // Checked before it leaves the page: a subset without ids would ask for the whole set, which is exactly the failure
+    // nobody notices until seventeen results come back.
+    let body;
+    try {
+      body = buildRunRequest({
+        scope: itemIds === null ? 'all' : 'failed',
+        failedItemIds: itemIds ?? [],
+        evaluationType,
+        judgeModelId,
+        language,
+      });
+    } catch (e: unknown) {
+      toast.error(e instanceof RunRequestError ? e.message : t('evaluationDetail.toastRunFailed'));
+      return;
+    }
     setRunDialogOpen(false);
     setRunning(true);
     setRunStartedAt(Date.now());
@@ -489,13 +503,7 @@ export function EvaluationDatasetDetail() {
     setRunView(null);
     try {
       // The request only queues the run; the worker executes it and the poll below follows the run row.
-      const queued = await runEvaluation(evaluationId, {
-        evaluation_type: evaluationType,
-        item_ids: itemIds,
-        item_scope: itemIds === null ? 'all' : 'subset',
-        judge_model_id: judgeModelId,
-        language,
-      });
+      const queued = await runEvaluation(evaluationId, body);
       setRunView(queued);
       setRunInUrl(queued.run_id);
       setActiveRunId(queued.run_id);

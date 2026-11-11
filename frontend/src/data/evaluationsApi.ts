@@ -338,23 +338,32 @@ export async function importEvaluationItems(
   });
 }
 
+/** Body of `POST /api/evaluations/{id}/run`. */
+export interface EvaluationRunRequestBody {
+  evaluation_type?: string;
+  /** Items to run; null/omitted runs the whole set. */
+  item_ids?: string[] | null;
+  /** What the caller meant: `subset` without ids is refused rather than widened to the whole set. */
+  item_scope?: 'all' | 'subset';
+  judge_model_id?: string | null;
+  language?: 'en' | 'zh';
+}
+
 export async function runEvaluation(
   evaluationId: string,
-  body?: {
-    evaluation_type?: string;
-    /** Items to run; null/omitted runs the whole set. */
-    item_ids?: string[] | null;
-    /** What the caller meant: `subset` without ids is refused rather than widened to the whole set. */
-    item_scope?: 'all' | 'subset';
-    judge_model_id?: string | null;
-    language?: 'en' | 'zh';
-  }
+  body?: EvaluationRunRequestBody
 ): Promise<EvaluationRunResponse> {
   return request<EvaluationRunResponse>(`/api/evaluations/${evaluationId}/run`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
+    // Every field the caller set travels: this used to serialise `evaluation_type` alone, so `item_ids`,
+    // `judge_model_id` and `language` were silently dropped and the run always covered the whole set.
     body: JSON.stringify({
       evaluation_type: body?.evaluation_type ?? 'search_retrieval',
+      ...(body?.item_scope !== undefined ? { item_scope: body.item_scope } : {}),
+      ...(body?.item_ids !== undefined ? { item_ids: body.item_ids } : {}),
+      ...(body?.judge_model_id !== undefined ? { judge_model_id: body.judge_model_id } : {}),
+      ...(body?.language !== undefined ? { language: body.language } : {}),
     }),
   });
 }
