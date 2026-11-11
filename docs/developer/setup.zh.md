@@ -81,6 +81,14 @@ for res in output:
     res.save_to_markdown(save_path="output")  ## save markdown for this page
 ```
 
+### 开发服务与热重载
+
+**`backend/dev.sh`**（端口 **8102**）与 **`qa-agent/dev.sh`**（端口 **8103**）都会在保存后自动重启，用的是 uvicorn 自带的 `--reload`，但把监听范围收窄到代码：`--reload-dir app` / `--reload-dir qa_agent`。因此改 `alembic/`、`scripts/`、`.env` 需要手动重启；agent 往问答会话目录写文件也不会在回答中途重启服务。
+
+设 **`OPENKMS_DEV_RELOAD=0`** 可关闭 reloader（走生产同一条代码路径）。
+
+一个值得认识的失效状态：reloader 把监听 socket 留在父进程，如果子进程在 accept 之前就退出（配置错、`lifespan` 抛异常），端口会接受连接却永不回应。此时 `lsof -nP -iTCP:8102 -sTCP:LISTEN` 显示 reloader 的 pid 而子进程已不在，这是判据。
+
 ### 与后端集成
 
 文档解析经 `openkms-cli` 流水线（由 procrastinate 任务调用），PaddleOCRVL 以 mlx-vlm-server 为 VLM 后端。流水线配置可关联 API 模型以获取 VLM URL 与模型名。后端本身不直接运行 PaddleOCR。

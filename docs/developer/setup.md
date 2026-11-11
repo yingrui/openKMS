@@ -78,6 +78,19 @@ for res in output:
     res.save_to_markdown(save_path="output")  ## save markdown for this page
 ```
 
+### Dev servers and auto-reload
+
+**`backend/dev.sh`** (port **8102**) and **`qa-agent/dev.sh`** (port **8103**) both restart on save, with uvicorn's
+`--reload` narrowed to the code: `--reload-dir app` / `--reload-dir qa_agent`. Editing `alembic/`, `scripts/`, or
+`.env` therefore needs a manual restart, and the agent writing into a QA session workspace does not restart the server
+mid-answer.
+
+Set **`OPENKMS_DEV_RELOAD=0`** to run without a reloader (the production code path).
+
+One failure mode worth recognising: the reloader keeps the listening socket in the parent process, so a child that dies
+before accepting (a bad setting, an exception in `lifespan`) leaves a port that accepts connections and never answers.
+`lsof -nP -iTCP:8102 -sTCP:LISTEN` naming the reloader pid while the child is gone is the tell.
+
 ### Backend Integration
 
 Document parsing runs via the `openkms-cli` pipeline (invoked by procrastinate jobs), which uses PaddleOCRVL with mlx-vlm-server as the VLM backend. Pipeline configurations can link to API models for VLM URL and model name. The backend itself does not run PaddleOCR directly.

@@ -230,14 +230,13 @@ async def retrieve_for_kb(kb_id: str, request: RetrieveRequest):
 
 
 def run():
-    """Run the server with uvicorn."""
+    """Run the server with uvicorn, without a reloader — the plain start, as in the container."""
     import uvicorn
 
     uvicorn.run(
         "qa_agent.main:app",
         host=settings.host,
         port=settings.port,
-        reload=True,
     )
 
 

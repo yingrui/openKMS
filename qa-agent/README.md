@@ -52,7 +52,8 @@ cp .env.example .env
 python -m qa_agent.main
 ```
 
-The server starts on port 8103 by default.
+The server starts on port 8103 by default (this is a plain start, no reloader). For day-to-day work use
+**`./dev.sh`**, which adds auto-reload on port 8103 and watches `qa_agent/` only.
 
 ## Configuration
 

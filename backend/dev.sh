@@ -13,7 +13,6 @@ fi
 # Allow default secret key in local development
 export OPENKMS_DEBUG="${OPENKMS_DEBUG:-true}"
 
-# Activate venv if present
 if [[ -d .venv ]]; then
   source .venv/bin/activate
 fi
@@ -60,13 +59,10 @@ else
   exit 1
 fi
 
-# Reload is **opt-in** (`OPENKMS_DEV_RELOAD=1`). It is off by default because on macOS the
-# watchfiles supervisor can restart the worker without handing it the listening socket: the
-# parent keeps `LISTEN`, the worker answers nothing, and every request — `/health` included —
-# hangs until the process is killed. That failure looks exactly like a stuck agent turn, so it
-# costs more than the convenience of auto-restart is worth.
-if [[ "${OPENKMS_DEV_RELOAD:-0}" == "1" ]]; then
-  exec python -m uvicorn app.main:app --reload --port 8102 \
-    --reload-exclude 'data/*'
+# Reload on save. `--reload-dir app` keeps `.venv`, `data/` and agent-written project files from triggering restarts.
+# `OPENKMS_DEV_RELOAD=0` runs without a reloader, as production does. See docs/developer/setup.md for the reloader's
+# one known failure mode (a child that dies before accepting leaves the port open but unanswered).
+if [[ "${OPENKMS_DEV_RELOAD:-1}" == "0" ]]; then
+  exec python -m uvicorn app.main:app --port 8102
 fi
-exec python -m uvicorn app.main:app --port 8102
+exec python -m uvicorn app.main:app --reload --reload-dir app --port 8102
