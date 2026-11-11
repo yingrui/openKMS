@@ -47,6 +47,7 @@ from app.services.workspace.evaluations.evaluation_scope import (
     require_evaluation_write,
 )
 from app.services.identity.acl.resource_acl_constants import PERM_READ, RT_EVALUATION
+from app.services.identity.permissions.permission_resolution import jwt_realm_role_names
 from app.services.workspace.evaluations.execute import (
     ALLOWED_EVALUATION_TYPES,
     EVALUATION_TYPE_DATA_QUERY,
@@ -265,6 +266,7 @@ async def create_evaluation(
         description=body.description,
         created_by=sub if isinstance(sub, str) else None,
         created_by_name=str(uname)[:256] if isinstance(uname, str) and uname.strip() else None,
+        created_by_roles=sorted(jwt_realm_role_names(p)),
     )
     db.add(ev)
     await db.flush()
@@ -698,7 +700,17 @@ async def run_evaluation(
 
     # The run itself happens in the worker; the request only queues it. Minutes of work leave no request open, and the
     # page follows the job (existing /api/jobs) and the run row rather than holding a connection.
-    job_id = await defer_task(run_evaluation, run_id=run.id)
+    from app.services.workspace.evaluations.run_job import run_item_count
+
+    job_id = await defer_task(
+        run_evaluation,
+        run_id=run.id,
+        # Carried in the job args so the Jobs page says what is running, not just which id it belongs to.
+        evaluation_id=ev.id,
+        evaluation_type=eval_type,
+        item_count=await run_item_count(db, ev.id, body.item_ids),
+        language=language,
+    )
     return _run_to_response(run, []).model_copy(update={"job_id": int(job_id)})
 
 

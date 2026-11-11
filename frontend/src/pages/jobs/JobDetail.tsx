@@ -410,6 +410,24 @@ export function JobDetail() {
         </section>
       </div>
 
+      {!isKbIndexingTask && !isConnectorSyncTask && !isScheduledAgentTask && !pipelineId && (
+        <section className="job-detail-card">
+          <h2>
+            <FileText size={18} /> {t('jobDetail.arguments')}
+          </h2>
+          <p className="job-detail-hint">{t('jobDetail.argumentsHint')}</p>
+          <dl className="job-detail-dl">
+            {Object.entries(job.args ?? {})
+              .map(([key, value]) => (
+                <div key={key} className="job-detail-arg-row">
+                  <dt className="job-detail-mono">{key}</dt>
+                  <dd>{typeof value === 'string' || typeof value === 'number' ? String(value) : JSON.stringify(value)}</dd>
+                </div>
+              ))}
+          </dl>
+        </section>
+      )}
+
       {job.worker_log != null && job.worker_log !== '' && (
         <section className="job-detail-card job-detail-worker-log">
           <div className="job-detail-worker-log-heading">

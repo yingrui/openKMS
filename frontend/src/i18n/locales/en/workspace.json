@@ -144,7 +144,9 @@
     "timestamp": "Timestamp",
     "workerLog": "Worker output",
     "workerLogTruncatedBadge": "Truncated",
-    "workerLogLimit": "Stored up to {{limit}} characters"
+    "workerLogLimit": "Stored up to {{limit}} characters",
+    "arguments": "Arguments",
+    "argumentsHint": "What this job was asked to do. A value shown as an id can be looked up in the screen that owns it."
   },
   "pipelines": {
     "title": "Pipelines",

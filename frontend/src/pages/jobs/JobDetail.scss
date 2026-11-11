@@ -86,6 +86,17 @@
   font-size: var(--text-md);
 }
 
+/* A job whose task has no dedicated panel: its arguments, one row each. */
+.job-detail-arg-row {
+  display: contents;
+}
+
+.job-detail-hint {
+  margin: 0 0 var(--space-2);
+  font-size: var(--text-sm);
+  color: var(--color-text-secondary);
+}
+
 .job-detail-dl dt {
   color: var(--color-text-muted);
   font-weight: var(--font-weight-medium);

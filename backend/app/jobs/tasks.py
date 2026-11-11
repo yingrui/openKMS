@@ -913,7 +913,7 @@ async def run_connector_sync(
 
 
 @audited_task(name="run_evaluation", pass_context=True)
-async def run_evaluation(context: JobContext, run_id: str) -> None:
+async def run_evaluation(context: JobContext, run_id: str, **_meta: object) -> None:
     """Run one evaluation (search, QA, wiki coverage or data query) and write its results.
 
     The API only queues this: a run is minutes of agent turns and judging calls, and holding an HTTP request open for it

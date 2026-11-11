@@ -144,7 +144,9 @@
     "timestamp": "时间戳",
     "workerLog": "Worker 输出",
     "workerLogTruncatedBadge": "已截断",
-    "workerLogLimit": "最多保存 {{limit}} 个字符"
+    "workerLogLimit": "最多保存 {{limit}} 个字符",
+    "arguments": "任务参数",
+    "argumentsHint": "这个任务被要求做什么。显示为 id 的值可以在对应的页面里查到。"
   },
   "pipelines": {
     "title": "流水线",

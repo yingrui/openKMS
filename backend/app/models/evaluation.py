@@ -35,6 +35,10 @@ class Evaluation(Base):
     )
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_by: Mapped[str | None] = mapped_column(String(512), nullable=True, index=True)
+    #: The creator's realm roles when the evaluation was created. A run acts as the creator, and in OIDC mode the roles
+    #: are what carry the permissions — they cannot be read back later, so they are recorded here (the same thing the
+    #: scheduled project agent does with `owner_sub` roles).
+    created_by_roles: Mapped[list | None] = mapped_column(JSONB, nullable=True)
     created_by_name: Mapped[str | None] = mapped_column(String(256), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(

@@ -136,10 +136,13 @@ async def _creator_token(db: AsyncSession, evaluation: Evaluation) -> tuple[str,
     owner = (evaluation.created_by or "").strip()
     if not owner:
         raise RuntimeError("This evaluation has no creator, so a run cannot act with anyone's authority.")
+    roles = [str(r) for r in (evaluation.created_by_roles or []) if str(r).strip()]
     _row, token = await mint_user_api_key(
         db,
         owner_sub=owner,
-        jwt_payload={"sub": owner},
+        # In OIDC mode the key's permissions come from the realm roles it was minted with. Minting with none produced
+        # `data:read` 403s on every dataset the answers needed — the run then failed for a reason that looked like ACL.
+        jwt_payload={"sub": owner, "realm_access": {"roles": roles}},
         name=f"evaluation-run:{evaluation.id[:8]}",
         purpose="evaluation_run",
     )
