@@ -22,6 +22,7 @@ from typing import Any
 
 from fastapi import HTTPException
 from sqlalchemy import select
+from sqlalchemy.orm.exc import StaleDataError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import async_session_maker
@@ -210,6 +211,8 @@ async def _execute_strategy(
 async def _finish_completed(
     db: AsyncSession, run: EvaluationRun, item_rows: list[dict[str, Any]], report: dict | None
 ) -> None:
+    if await _still_there(db, run) is False:
+        return
     n, passed, avg = _aggregate(item_rows)
     run.status = "completed"
     run.item_count = n
@@ -233,14 +236,34 @@ async def _finish_completed(
                 detail=r.get("detail"),
             )
         )
-    await db.commit()
+    await _commit_quietly(db, run)
 
 
 async def _finish_failed(db: AsyncSession, run: EvaluationRun, message: str) -> None:
+    if await _still_there(db, run) is False:
+        return
     run.status = "failed"
     run.error_message = message[:2000]
     run.finished_at = datetime.now(timezone.utc)
-    await db.commit()
+    await _commit_quietly(db, run)
+
+
+async def _still_there(db: AsyncSession, run: EvaluationRun) -> bool:
+    """A run the reader deleted mid-flight is not a failure to record — there is nothing left to record it on."""
+    exists = await db.get(EvaluationRun, run.id)
+    if exists is None:
+        logger.info("evaluation run %s disappeared before it finished; nothing to write", run.id)
+        return False
+    return True
+
+
+async def _commit_quietly(db: AsyncSession, run: EvaluationRun) -> None:
+    try:
+        await db.commit()
+    except StaleDataError:
+        # Deleted between the check above and the write: the row is gone, and so is the point of the update.
+        await db.rollback()
+        logger.info("evaluation run %s was removed while finishing", run.id)
 
 
 async def run_item_count(db: AsyncSession, evaluation_id: str, item_ids: list[str] | None) -> int:

@@ -111,7 +111,11 @@ export function RunEvaluationDialog({
             }}
           >
             {busy ? <Loader2 size={16} className="animate-spin" aria-hidden /> : null}
-            {busy ? t('evaluationDetail.running') : t('evaluationDetail.runEvaluation')}
+            {busy
+              ? t('evaluationDetail.running')
+              : t('evaluationDetail.runItems', {
+                  count: scope === 'failed' ? failedItemIds.length : itemsTotal,
+                })}
           </button>
         </>
       }
