@@ -1,9 +1,13 @@
 /** API for evaluations (KB search retrieval and QA evaluation). */
 import { request } from './apiClient';
 
+export type EvaluationKind = 'answer' | 'query' | 'content';
+
 export interface EvaluationResponse {
   id: string;
   name: string;
+  /** What the items hold. Decides the editor's columns and which runs are allowed. */
+  kind?: EvaluationKind;
   knowledge_base_id: string;
   knowledge_base_name?: string | null;
   wiki_space_id?: string | null;
@@ -28,9 +32,11 @@ export interface EvaluationItemResponse {
   id: string;
   evaluation_id: string;
   query: string;
-  expected_answer: string;
+  /** Null for a `query` item: its ground truth is `expected_query`. */
+  expected_answer: string | null;
   topic?: string | null;
   sort_order: number;
+  expected_query?: ExpectedQuery[] | null;
   created_at: string;
 }
 
@@ -47,8 +53,22 @@ export interface SearchResultSnippet {
 
 /** One query an answer cited — what a data-query evaluation judges (model id + SQL, never the rows). */
 /** One query an answer should have made. `sql` is either a feature dict (deterministic) or a raw SQL string (LLM). */
+/**
+ * One query the answer was expected to make.
+ *
+ * `expected` says what kind of expectation it is: a saved metric with the definition it had when the expectation was
+ * written, a SQL statement, or a requirement to refuse. `model_id` is the semantic model that should have answered.
+ */
 export interface ExpectedQuery {
   model_id?: string;
+  expected?: {
+    metric?: { name: string; definition?: Record<string, unknown> | null };
+    dimensions?: string[];
+    filters?: { field?: string; op?: string; value?: unknown }[];
+    sql?: string;
+    refuse?: boolean;
+  };
+  /** Legacy shape, kept for rows written before the expectation carried its kind. */
   metric?: string;
   sql?: { tables?: string[]; columns?: string[]; group_by?: string[]; forbid?: string[] } | string;
 }
@@ -63,7 +83,7 @@ export interface DataQuerySource {
 export interface EvaluationRunResult {
   item_id: string;
   query: string;
-  expected_answer: string;
+  expected_answer: string | null;
   search_results: SearchResultSnippet[];
   generated_answer?: string | null;
   qa_sources?: SearchResultSnippet[];
@@ -103,7 +123,7 @@ export interface EvaluationRunListResponse {
 export interface EvaluationCompareRow {
   evaluation_item_id: string;
   query: string;
-  expected_answer: string;
+  expected_answer: string | null;
   pass_a: boolean;
   score_a: number;
   pass_b: boolean;
@@ -205,7 +225,7 @@ export async function createEvaluationItem(
   evaluationId: string,
   data: {
     query: string;
-    expected_answer: string;
+    expected_answer?: string | null;
     topic?: string | null;
     sort_order?: number;
     /** Data-query ground truth: every query the answer should have made (dict of features, or a raw SQL string). */
@@ -224,7 +244,7 @@ export async function updateEvaluationItem(
   itemId: string,
   data: {
     query?: string;
-    expected_answer?: string;
+    expected_answer?: string | null;
     topic?: string | null;
     sort_order?: number;
     expected_query?: ExpectedQuery[] | null;

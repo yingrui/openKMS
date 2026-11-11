@@ -35,15 +35,25 @@ import {
   type EvaluationCompareResponse,
 } from '../../data/evaluationsApi';
 import { PanelToolbar } from '../../styles/design-system';
+import { expectedQueryLines } from './expectedQueryText';
 
 const EVAL_TYPE_SEARCH = 'search_retrieval';
 const EVAL_TYPE_QA = 'qa_answer';
 const EVAL_TYPE_WIKI_COVERAGE = 'wiki_content_coverage';
 const EVAL_TYPE_DATA_QUERY = 'data_query';
 
+const isQueryKind = (kind: string | undefined) => (kind ?? 'answer') === 'query';
+
 function evalShowsSearchSnippets(evaluationType: string): boolean {
   return evaluationType === EVAL_TYPE_SEARCH || evaluationType === EVAL_TYPE_WIKI_COVERAGE;
 }
+
+/** Which runs a dataset's items support. Mirrors `KIND_RUN_TYPES` on the backend. */
+const RUN_TYPES_BY_KIND: Record<string, string[]> = {
+  answer: [EVAL_TYPE_SEARCH, EVAL_TYPE_QA],
+  query: [EVAL_TYPE_DATA_QUERY],
+  content: [EVAL_TYPE_WIKI_COVERAGE],
+};
 
 const DEFAULT_ITEMS_PAGE_SIZE = 10;
 
@@ -142,14 +152,11 @@ export function EvaluationDatasetDetail() {
     loadRuns();
   }, [loadRuns]);
 
+  // The kind decides which runs make sense; a query set defaulting to retrieval ran into a page of failures.
   useEffect(() => {
-    if (
-      dataset &&
-      evaluationType === EVAL_TYPE_WIKI_COVERAGE &&
-      !dataset.wiki_space_id
-    ) {
-      setEvaluationType(EVAL_TYPE_SEARCH);
-    }
+    if (!dataset) return;
+    const allowed = RUN_TYPES_BY_KIND[dataset.kind ?? 'answer'] ?? [EVAL_TYPE_SEARCH];
+    if (!allowed.includes(evaluationType)) setEvaluationType(allowed[0]);
   }, [dataset, evaluationType]);
 
   useEffect(() => {
@@ -225,12 +232,13 @@ export function EvaluationDatasetDetail() {
   };
 
   const handleUpdateItem = async () => {
-    if (!evaluationId || !editItem || !itemQuery.trim() || !itemExpected.trim()) return;
+    if (!evaluationId || !editItem || !itemQuery.trim()) return;
+    if (!isQueryKind(dataset?.kind) && !itemExpected.trim()) return;
     setItemSaving(true);
     try {
       await updateEvaluationItem(evaluationId, editItem.id, {
         query: itemQuery.trim(),
-        expected_answer: itemExpected.trim(),
+        ...(isQueryKind(dataset?.kind) ? {} : { expected_answer: itemExpected.trim() }),
         topic: itemTopic.trim() || undefined,
       });
       setEditItem(null);
@@ -262,7 +270,7 @@ export function EvaluationDatasetDetail() {
   const openEditItem = (item: EvaluationItemResponse) => {
     setEditItem(item);
     setItemQuery(item.query);
-    setItemExpected(item.expected_answer);
+    setItemExpected(item.expected_answer ?? '');
     setItemTopic(item.topic ?? '');
   };
 
@@ -415,19 +423,21 @@ export function EvaluationDatasetDetail() {
               {importing ? <Loader2 size={18} className="animate-spin" /> : <Upload size={18} />}
               <span>{importing ? t('evaluationDetail.importing') : t('evaluationDetail.importData')}</span>
             </button>
-            <button
-              type="button"
-              className="btn btn-primary"
-              onClick={() => {
-                setShowItemForm(true);
-                setItemQuery('');
-                setItemExpected('');
-                setItemTopic('');
-              }}
-            >
-              <Plus size={18} />
-              <span>{t('evaluationDetail.addItem')}</span>
-            </button>
+            {isQueryKind(dataset.kind) ? null : (
+              <button
+                type="button"
+                className="btn btn-primary"
+                onClick={() => {
+                  setShowItemForm(true);
+                  setItemQuery('');
+                  setItemExpected('');
+                  setItemTopic('');
+                }}
+              >
+                <Plus size={18} />
+                <span>{t('evaluationDetail.addItem')}</span>
+              </button>
+            )}
           </div>
         </div>
         <p className="eval-detail-meta">
@@ -452,7 +462,7 @@ export function EvaluationDatasetDetail() {
             <tr>
               <th>{t('evaluationDetail.colTopic')}</th>
               <th>{t('evaluationDetail.colQuery')}</th>
-              <th>{t('evaluationDetail.colExpected')}</th>
+              <th>{isQueryKind(dataset.kind) ? t('evaluationDetail.colExpectedQuery') : t('evaluationDetail.colExpected')}</th>
               <th className="eval-items-actions-col" />
             </tr>
           </thead>
@@ -477,7 +487,27 @@ export function EvaluationDatasetDetail() {
                 <tr key={item.id}>
                   <td className="eval-item-topic">{item.topic ?? t('shared.dash')}</td>
                   <td className="eval-item-query">{item.query}</td>
-                  <td className="eval-item-expected">{item.expected_answer}</td>
+                  <td className="eval-item-expected">
+                    {isQueryKind(dataset.kind) ? (
+                      (() => {
+                        const lines = expectedQueryLines(item.expected_query);
+                        if (lines.length === 0) {
+                          return <span className="eval-item-expected-missing">{t('evaluationDetail.expectedQueryMissing')}</span>;
+                        }
+                        return (
+                          <ul className="eval-item-expected-list">
+                            {lines.map((line, i) => (
+                              <li key={`${item.id}-exp-${i}`} title={line}>
+                                {line}
+                              </li>
+                            ))}
+                          </ul>
+                        );
+                      })()
+                    ) : (
+                      item.expected_answer
+                    )}
+                  </td>
                   <td className="eval-items-actions-col">
                     <button
                       type="button"
@@ -573,14 +603,17 @@ export function EvaluationDatasetDetail() {
                   disabled={running}
                   className="eval-detail-type-select"
                 >
-                  <option value={EVAL_TYPE_SEARCH}>{t('evaluationDetail.evalTypeSearch')}</option>
-                  <option value={EVAL_TYPE_QA}>{t('evaluationDetail.evalTypeQa')}</option>
-                  <option value={EVAL_TYPE_WIKI_COVERAGE} disabled={!dataset.wiki_space_id}>
-                    {t('evaluationDetail.evalTypeWikiCoverage')}
-                  </option>
-                  <option value={EVAL_TYPE_DATA_QUERY} disabled={!dataset.semantic_model_id}>
-                    {t('evaluationDetail.evalTypeDataQuery')}
-                  </option>
+                  {(RUN_TYPES_BY_KIND[dataset.kind ?? 'answer'] ?? [EVAL_TYPE_SEARCH]).map((type) => (
+                    <option key={type} value={type}>
+                      {type === EVAL_TYPE_SEARCH
+                        ? t('evaluationDetail.evalTypeSearch')
+                        : type === EVAL_TYPE_QA
+                          ? t('evaluationDetail.evalTypeQa')
+                          : type === EVAL_TYPE_WIKI_COVERAGE
+                            ? t('evaluationDetail.evalTypeWikiCoverage')
+                            : t('evaluationDetail.evalTypeDataQuery')}
+                    </option>
+                  ))}
                 </select>
               </label>
               <button
@@ -901,15 +934,27 @@ export function EvaluationDatasetDetail() {
                   rows={3}
                 />
               </label>
-              <label>
-                <span>{t('evaluationDetail.expectedLabelForm')}</span>
-                <textarea
-                  value={itemExpected}
-                  onChange={(e) => setItemExpected(e.target.value)}
-                  placeholder={t('evaluationDetail.expectedPlaceholder')}
-                  rows={4}
-                />
-              </label>
+              {isQueryKind(dataset?.kind) ? (
+                <div className="eval-dialog-expected-readonly">
+                  <span>{t('evaluationDetail.expectedLabelForm')}</span>
+                  <ul>
+                    {expectedQueryLines(editItem?.expected_query).map((line, i) => (
+                      <li key={`dlg-exp-${i}`}>{line}</li>
+                    ))}
+                  </ul>
+                  <small>{t('evaluationDetail.expectedQueryEditHint')}</small>
+                </div>
+              ) : (
+                <label>
+                  <span>{t('evaluationDetail.expectedLabelForm')}</span>
+                  <textarea
+                    value={itemExpected}
+                    onChange={(e) => setItemExpected(e.target.value)}
+                    placeholder={t('evaluationDetail.expectedPlaceholder')}
+                    rows={4}
+                  />
+                </label>
+              )}
             </div>
             <div className="eval-dialog-footer">
               <button type="button" className="btn btn-secondary" onClick={closeItemForm}>
@@ -918,7 +963,9 @@ export function EvaluationDatasetDetail() {
               <button
                 type="button"
                 className="btn btn-primary"
-                disabled={!itemQuery.trim() || !itemExpected.trim() || itemSaving}
+                disabled={
+                  !itemQuery.trim() || (!isQueryKind(dataset?.kind) && !itemExpected.trim()) || itemSaving
+                }
                 onClick={editItem ? handleUpdateItem : handleAddItem}
               >
                 {itemSaving ? t('evaluationDetail.saving') : editItem ? t('evaluationDetail.save') : t('evaluationDetail.add')}
