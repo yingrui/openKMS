@@ -496,34 +496,26 @@ export function EvaluationDatasetDetail() {
     }
   };
 
-  const handleRunEvaluation = async ({ itemIds, judgeModelId, language }: RunOptions) => {
+  const handleRunEvaluation = async ({ scope: runScope, judgeModelId, language }: RunOptions) => {
     if (!evaluationId) return;
-    if (itemIds !== null && itemIds.length === 0) return;   // nothing selected: do not fall through to "run everything"
     setRunDialogOpen(false);
     setRunning(true);
     setRunStartedAt(Date.now());
     setRunElapsed(0);
     setRunView(null);
     try {
-      const res = await runEvaluation(evaluationId, {
+      // The request only queues the run; the worker executes it and the poll below follows the run row.
+      const queued = await runEvaluation(evaluationId, {
         evaluation_type: evaluationType,
-        item_ids: itemIds,
+        scope: runScope,
         judge_model_id: judgeModelId,
         language,
       });
-      setRunView(res);
-      setRunInUrl(res.run_id);
-      toast.success(
-        t('evaluationDetail.toastRunSuccess', {
-          runId: `${res.run_id.slice(0, 8)}…`,
-          pass: res.pass_count,
-          total: res.item_count,
-        }),
-      );
-      loadRuns();
+      setRunView(queued);
+      setRunInUrl(queued.run_id);
+      setActiveRunId(queued.run_id);
     } catch (e: unknown) {
       toast.error(e instanceof Error ? e.message : t('evaluationDetail.toastRunFailed'));
-    } finally {
       setRunning(false);
       setRunStartedAt(null);
     }

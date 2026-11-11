@@ -152,8 +152,11 @@ class EvaluationRunRequestBody(BaseModel):
     """Body for POST .../run."""
 
     evaluation_type: str = "search_retrieval"
-    #: Run only these items (the ones that failed last time, a first few while tuning). Omit to run the whole set.
+    #: Run only these items. Omit and use `scope` instead unless you already know the ids.
     item_ids: list[str] | None = None
+    #: `failed` re-runs whatever did not pass the last completed run — resolved on the server, so the client cannot send
+    #: a stale list (or, worse, an empty one that means "everything").
+    scope: Literal["all", "failed"] = "all"
     #: Judge this run with a different model than the knowledge base's own — for a second opinion on the same answers.
     judge_model_id: str | None = None
     #: Language for everything a person reads (check reasons, the run report). The verdicts themselves are unaffected.

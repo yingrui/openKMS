@@ -342,6 +342,8 @@ export async function runEvaluation(
   evaluationId: string,
   body?: {
     evaluation_type?: string;
+    /** `failed` re-runs whatever did not pass the last completed run; the server resolves the list. */
+    scope?: 'all' | 'failed';
     item_ids?: string[] | null;
     judge_model_id?: string | null;
     language?: 'en' | 'zh';
