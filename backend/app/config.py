@@ -226,6 +226,31 @@ class Settings(BaseSettings):
     auth_mode: str = Field(default="oidc", validation_alias="OPENKMS_AUTH_MODE")
     allow_signup: bool = Field(default=True, validation_alias="OPENKMS_ALLOW_SIGNUP")
     local_jwt_exp_hours: int = Field(default=168, validation_alias="OPENKMS_LOCAL_JWT_EXP_HOURS")
+    # Server-side browser sessions (BFF). Disabled by default for a safe rollout.
+    auth_session_v2: bool = Field(default=False, validation_alias="OPENKMS_AUTH_SESSION_V2")
+    session_idle_minutes: int = Field(
+        default=30,
+        ge=1,
+        validation_alias="OPENKMS_SESSION_IDLE_MINUTES",
+        description="Sliding idle timeout for a browser session.",
+    )
+    session_absolute_hours: int = Field(
+        default=12,
+        ge=1,
+        validation_alias="OPENKMS_SESSION_ABSOLUTE_HOURS",
+        description="Hard cap for a browser session; re-authentication is required at this point.",
+    )
+    local_session_jwt_minutes: int = Field(
+        default=30,
+        ge=1,
+        validation_alias="OPENKMS_LOCAL_SESSION_JWT_MINUTES",
+        description="Access JWT lifetime for local sessions created in auth_session_v2 mode.",
+    )
+    session_cookie_secure: bool = Field(
+        default=False,
+        validation_alias="OPENKMS_SESSION_COOKIE_SECURE",
+        description="Set the session cookie Secure flag (enable behind HTTPS).",
+    )
     cli_basic_user: str = Field(default="", validation_alias="OPENKMS_CLI_BASIC_USER")
     cli_basic_password: str = Field(default="", validation_alias="OPENKMS_CLI_BASIC_PASSWORD")
     cli_oidc_client_id: str = Field(

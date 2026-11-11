@@ -187,7 +187,8 @@ app.add_middleware(
     secret_key=settings.secret_key,
     session_cookie="openkms_session",
     same_site="lax",
-    max_age=86400 * 7,  # 7 days
+    https_only=settings.session_cookie_secure,
+    max_age=86400 * 7,  # 7 days; idle/absolute limits live in auth_sessions
 )
 
 app.include_router(auth_router)

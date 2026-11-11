@@ -38,7 +38,12 @@ Documents land under `documents/{file_hash}/` (legacy `{file_hash}/` still read 
 |---|---|---|
 | `OPENKMS_AUTH_MODE` | `oidc` | `oidc` (default) or `local` |
 | `OPENKMS_ALLOW_SIGNUP` | `true` | Local mode: allow self-signup; **first** registered user becomes admin |
-| `OPENKMS_LOCAL_JWT_EXP_HOURS` | `168` | Local-mode JWT lifetime |
+| `OPENKMS_LOCAL_JWT_EXP_HOURS` | `168` | Legacy local-mode JWT lifetime (when `OPENKMS_AUTH_SESSION_V2=false`) |
+| `OPENKMS_AUTH_SESSION_V2` | `false` | Enable opaque server-side sessions (BFF): browser holds only `openkms_session`; tokens are encrypted in `auth_sessions`. When off, the legacy SPA/`oidc-client-ts` or local-JWT path is used. |
+| `OPENKMS_SESSION_IDLE_MINUTES` | `30` | Sliding idle timeout for an `auth_sessions` row; activity extends it up to the absolute cap. |
+| `OPENKMS_SESSION_ABSOLUTE_HOURS` | `12` | Hard session cap; reaching it requires re-authentication even if active. |
+| `OPENKMS_LOCAL_SESSION_JWT_MINUTES` | `30` | Access JWT lifetime for local sessions created in `auth_session_v2` mode. |
+| `OPENKMS_SESSION_COOKIE_SECURE` | `false` | Set `Secure` on `openkms_session`; enable behind HTTPS in production. |
 | `OPENKMS_CLI_BASIC_USER` / `OPENKMS_CLI_BASIC_PASSWORD` | empty | Local mode: HTTP Basic for `openkms-cli` |
 | `OPENKMS_QA_AGENT_BASIC_USER` / `OPENKMS_QA_AGENT_BASIC_PASSWORD` | empty | Local mode: HTTP Basic for `qa-agent` (separate from CLI) |
 | `OPENKMS_SECRET_KEY` | dev value | Sign **`openkms_session`** cookie (local + OIDC) and local HS256 JWTs; dev fallback for data-source encryption — **rotate in production** |

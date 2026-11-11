@@ -9,6 +9,7 @@ Cross-cutting plumbing: container stack, tests, error boundaries, code splitting
 | Dev / observability | ✅ | SQLAlchemy **`echo`** only when **`OPENKMS_SQL_ECHO=true`** (not tied to **`OPENKMS_DEBUG`**) |
 | Frontend tests | ✅ | Vitest, @testing-library/react; `App` smoke; `src/data/apiClient.test.ts` (`isRejectedJwtResponse` including i18n auth codes, `authAwareFetch` retry + `SESSION_EXPIRED_API_DETAIL`; see Session vs API JWT row above) |
 | Error boundary | ✅ | React ErrorBoundary around routes; fallback with retry |
-| Session vs API JWT mismatch | ✅ | `authAwareFetch` wraps authenticated API calls; recoverable **`401`** runs one **silent session retry** (OIDC refresh + sync-session; local `/me` cookie check) then the session-expired handler; response body is replaced with a short **sign in again** message; user is sent to **`/login?notice=session_expired`**; explicit OIDC sign-in uses **`prompt=login`** |
+| Session vs API JWT mismatch | ✅ | `authAwareFetch` wraps authenticated API calls; recoverable **`401`** runs one retry (`session_v2`: `POST /api/auth/refresh` + `/me`; legacy: OIDC refresh + sync-session / local `/me` cookie check) then the session-expired handler; response body is replaced with a short **sign in again** message; user is sent to **`/login?notice=session_expired`**; explicit OIDC sign-in uses **`prompt=login`** |
+| Server-side auth sessions | ✅ | `auth_sessions` stores encrypted access/refresh tokens; opaque `openkms_session`; sliding idle + absolute cap; `POST /api/auth/refresh`; OIDC BFF callback; local session refresh; revoke on logout |
 | Route code splitting | ✅ | React.lazy for heavy routes (ObjectExplorer, Models, Pipelines, etc.) |
 | Typecheck | ✅ | `npm run typecheck` (tsc --noEmit) |

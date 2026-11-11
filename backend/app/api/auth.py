@@ -5,9 +5,9 @@ import base64
 import binascii
 import secrets
 import time
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from typing import Literal
-from urllib.parse import urlencode
+from urllib.parse import urlencode, urlparse
 
 import bcrypt
 import jwt
@@ -25,8 +25,17 @@ from app.models.user import User
 from app.models.user_api_key import UserApiKey
 from app.models.user_preference import UserPreference
 from app.services.platform.audit import record_session_event_once
+from app.services.platform.credentials.credential_encryption import DECRYPT_ERRORS
 from app.services.identity.permissions.permission_catalog import PERM_ALL
 from app.services.identity.permissions.security_permission_service import list_permissions_sorted, sorted_permission_keys
+from app.services.identity import auth_session as auth_sessions
+from app.services.identity.local_jwt import (
+    LOCAL_JWT_ALG,
+    LOCAL_JWT_ISS,
+    mint_local_cli_jwt,
+    mint_local_user_jwt,
+    user_claims as _user_claims,
+)
 from app.services.identity.permissions.permission_resolution import (
     resolve_oidc_permission_keys,
     resolve_user_permission_keys,
@@ -36,12 +45,32 @@ from app.i18n.errors import error_detail_no_request, http_error
 
 _JWKS_CLIENT: PyJWKClient | None = None
 
-LOCAL_JWT_ALG = "HS256"
-LOCAL_JWT_ISS = "openkms-local"
-
 
 def _frontend_base() -> str:
     return settings.frontend_url.rstrip("/")
+
+
+async def _revoke_current_auth_session(request: Request, db: AsyncSession) -> None:
+    """Sign out a stale cookie session before replacing it at login/account switch."""
+    session_id = request.session.get("auth_sid")
+    if isinstance(session_id, str) and session_id:
+        row = await auth_sessions.get_session(db, session_id)
+        if row is not None:
+            await auth_sessions.revoke_session(db, row)
+
+
+def _require_same_origin(request: Request) -> None:
+    """Reject cookie-auth mutations from another origin (SameSite is not the only line of defence)."""
+    headers = getattr(request, "headers", None)
+    if headers is None:
+        return
+    origin = headers.get("origin") or headers.get("referer")
+    if not origin:
+        return
+    parsed = urlparse(origin)
+    allowed = {urlparse(settings.frontend_url).netloc, headers.get("host", "")}
+    if parsed.netloc and parsed.netloc not in allowed:
+        raise http_error(request, 403, "CROSS_ORIGIN_REQUEST_REJECTED")
 
 
 def _get_jwks_client() -> PyJWKClient:
@@ -93,41 +122,6 @@ def _verify_token_for_mode(token: str) -> dict:
     if settings.auth_mode == "local":
         return _verify_local_jwt(token)
     return _verify_oidc_jwt(token)
-
-
-def _user_claims(user: User) -> dict:
-    roles = ["admin"] if user.is_admin else []
-    return {
-        "sub": str(user.id),
-        "preferred_username": user.username,
-        "name": user.username,
-        "email": user.email,
-        "realm_access": {"roles": roles},
-    }
-
-
-def mint_local_user_jwt(user: User) -> str:
-    now = int(time.time())
-    exp = now + int(settings.local_jwt_exp_hours * 3600)
-    payload = {**_user_claims(user), "iss": LOCAL_JWT_ISS, "iat": now, "exp": exp}
-    return jwt.encode(payload, settings.secret_key, algorithm=LOCAL_JWT_ALG)
-
-
-def mint_local_cli_jwt() -> str:
-    now = int(time.time())
-    exp = now + 3600
-    payload = {
-        "sub": "local-cli",
-        "preferred_username": "openkms-cli",
-        "name": "openkms-cli",
-        "email": None,
-        "realm_access": {"roles": []},
-        "azp": settings.primary_internal_service_client_id,
-        "iss": LOCAL_JWT_ISS,
-        "iat": now,
-        "exp": exp,
-    }
-    return jwt.encode(payload, settings.secret_key, algorithm=LOCAL_JWT_ALG)
 
 
 def _parse_basic_auth(header: str) -> tuple[str, str] | None:
@@ -256,6 +250,32 @@ async def authenticate_request(request: Request, db: AsyncSession, *, session_on
                 payload = _verify_local_jwt(token)
                 _set_auth_state(request, payload, token)
                 return token
+
+    if settings.auth_session_v2:
+        session_id = request.session.get("auth_sid")
+        if isinstance(session_id, str) and session_id:
+            row = await auth_sessions.get_session(db, session_id)
+            if row is not None and auth_sessions.session_active(row):
+                now = auth_sessions.utcnow()
+                if row.access_expires_at <= now + timedelta(seconds=auth_sessions.REFRESH_SKEW_SECONDS):
+                    if not await auth_sessions.refresh_session(db, row):
+                        await auth_sessions.revoke_session(db, row)
+                        request.session.pop("auth_sid", None)
+                        raise http_error(request, 401, "AUTHENTICATION_REQUIRED")
+                try:
+                    token = auth_sessions.access_token_of(row)
+                except DECRYPT_ERRORS:
+                    await auth_sessions.revoke_session(db, row)
+                    request.session.pop("auth_sid", None)
+                    raise http_error(request, 401, "AUTHENTICATION_REQUIRED") from None
+                payload = _verify_token_for_mode(token)
+                _set_auth_state(request, payload, token)
+                await auth_sessions.touch_session(db, row)
+                await db.commit()
+                return token
+            if row is not None:
+                await auth_sessions.revoke_session(db, row)
+            request.session.pop("auth_sid", None)
 
     token = request.session.get("access_token")
     if token and isinstance(token, str):
@@ -467,7 +487,38 @@ async def sync_session(
     if reason == "login" or session_identity(payload) != session_identity(previous):
         await record_session_event("login", payload, via="sync-session")
 
-    request.session["access_token"] = token
+    if settings.auth_session_v2:
+        sub = payload.get("sub")
+        if not isinstance(sub, str) or not sub:
+            raise http_error(request, 401, "INVALID_TOKEN")
+        current_id = request.session.get("auth_sid")
+        row = await auth_sessions.get_session(db, current_id) if isinstance(current_id, str) and current_id else None
+        expires_at = auth_sessions.token_expiry(token)
+        if (
+            row is not None
+            and auth_sessions.session_active(row)
+            and row.user_sub == sub
+        ):
+            await auth_sessions.update_session_access_token(
+                db, row, access_token=token, access_expires_at=expires_at
+            )
+            await auth_sessions.touch_session(db, row)
+        else:
+            if row is not None:
+                await auth_sessions.revoke_session(db, row)
+            row = await auth_sessions.create_session(
+                db,
+                auth_mode="oidc" if settings.auth_mode == "oidc" else "local",
+                user_sub=sub,
+                idp_sub=sub,
+                access_token=token,
+                refresh_token=None,
+                access_expires_at=expires_at,
+            )
+        request.session.pop("access_token", None)
+        request.session["auth_sid"] = row.id
+    else:
+        request.session["access_token"] = token
     from app.services.identity.users.oidc_identity_service import upsert_oidc_identity_from_jwt
 
     await upsert_oidc_identity_from_jwt(db, payload)
@@ -475,9 +526,20 @@ async def sync_session(
     return {"ok": True}
 
 
-@router.get("/login")
-async def login(request: Request) -> RedirectResponse:
-    """Redirect to OIDC authorization endpoint (oidc mode only)."""
+def _safe_return_to(raw: str | None) -> str:
+    """Only allow same-origin relative paths; never an open redirect."""
+    if not raw:
+        return "/"
+    value = raw.strip()
+    if not value.startswith("/") or value.startswith("//") or "\\" in value:
+        return "/"
+    parsed = urlparse(value)
+    if parsed.scheme or parsed.netloc:
+        return "/"
+    return value
+
+
+async def _start_oidc_login(request: Request, return_to: str | None) -> RedirectResponse:
     if settings.auth_mode == "local":
         return RedirectResponse(url=f"{_frontend_base()}/login?notice=local_auth", status_code=302)
     meta = get_oidc_provider_metadata()
@@ -486,15 +548,25 @@ async def login(request: Request) -> RedirectResponse:
         raise http_error(request, 500, "OIDC_METADATA_MISSING_AUTH_ENDPOINT")
     state = secrets.token_urlsafe(32)
     request.session["oauth_state"] = state
+    request.session["oauth_return_to"] = _safe_return_to(return_to)
+    scope = "openid profile email"
+    if settings.auth_session_v2:
+        scope += " offline_access"
     params = {
         "client_id": settings.oidc_client_id,
         "redirect_uri": settings.oidc_redirect_uri,
         "response_type": "code",
-        "scope": "openid",
+        "scope": scope,
         "state": state,
     }
     url = f"{auth_ep}?{urlencode(params)}"
     return RedirectResponse(url=url, status_code=302)
+
+
+@router.get("/login")
+async def login(request: Request, returnTo: str = "/") -> RedirectResponse:
+    """Redirect to OIDC authorization endpoint (oidc mode only)."""
+    return await _start_oidc_login(request, returnTo)
 
 
 @router.get("/login/oauth2/code/oidc")
@@ -545,32 +617,63 @@ async def oauth2_callback(
 
     data = token_res.json()
     access_token = data.get("access_token")
-    request.session["access_token"] = access_token
-    request.session["refresh_token"] = data.get("refresh_token")
-    if "oauth_state" in request.session:
-        del request.session["oauth_state"]
+    refresh_token = data.get("refresh_token")
+    return_to = _safe_return_to(request.session.get("oauth_return_to", "/"))
+    if not isinstance(access_token, str) or not access_token.strip():
+        frontend = _frontend_base()
+        return RedirectResponse(url=f"{frontend}/?error=no_access_token", status_code=302)
+    access_token = access_token.strip()
 
-    if isinstance(access_token, str) and access_token.strip():
-        from app.services.identity.users.oidc_identity_service import upsert_oidc_identity_from_jwt
+    from app.services.identity.users.oidc_identity_service import upsert_oidc_identity_from_jwt
 
-        payload = _verify_oidc_jwt(access_token.strip())
-        await upsert_oidc_identity_from_jwt(db, payload)
+    payload = _verify_oidc_jwt(access_token)
+    await upsert_oidc_identity_from_jwt(db, payload)
+    await db.commit()
+    # Signing in is the security event; the callback is a GET, so the mutation middleware never saw it.
+    await record_session_event("login", payload, via="oidc-callback")
+
+    if settings.auth_session_v2:
+        sub = payload.get("sub")
+        if not isinstance(sub, str) or not sub:
+            frontend = _frontend_base()
+            return RedirectResponse(url=f"{frontend}/?error=missing_subject", status_code=302)
+        row = await auth_sessions.create_session(
+            db,
+            auth_mode="oidc",
+            user_sub=sub,
+            idp_sub=sub,
+            access_token=access_token,
+            refresh_token=refresh_token if isinstance(refresh_token, str) else None,
+            access_expires_at=auth_sessions.token_expiry(access_token, data.get("expires_in")),
+        )
+        request.session.clear()
+        request.session["auth_sid"] = row.id
         await db.commit()
-        # Signing in is the security event; the callback is a GET, so the mutation middleware never saw it.
-        await record_session_event("login", payload, via="oidc-callback")
+    else:
+        request.session["access_token"] = access_token
+        request.session["refresh_token"] = refresh_token
+        if "oauth_state" in request.session:
+            del request.session["oauth_state"]
 
     frontend = _frontend_base()
-    return RedirectResponse(url=frontend, status_code=302)
+    return RedirectResponse(url=f"{frontend}{return_to}", status_code=302)
 
 
 @router.post("/clear-session")
-async def clear_session(request: Request) -> dict:
+async def clear_session(request: Request, db: AsyncSession = Depends(get_db)) -> dict:
     """Sign out of the SPA: the token lives in this cookie, so clearing it ends the session.
 
     Recorded as the same `auth/logout` event as `GET /logout` — it is the same act, and one act should not
     read as two kinds of thing. Excluded from the generic middleware for that reason (`NOT_AUDITED`).
     """
+    _require_same_origin(request)
     payload, reason = _session_actor(request)
+    session_id = request.session.get("auth_sid")
+    if isinstance(session_id, str) and session_id:
+        row = await auth_sessions.get_session(db, session_id)
+        if row is not None:
+            await auth_sessions.revoke_session(db, row)
+            await db.commit()
     request.session.clear()
     # One sign-out, one event. The SPA calls this again from its session-invalid handler, seconds later,
     # when the cookie is already gone — nothing was ended, so nothing is recorded. An expired or unverified
@@ -581,9 +684,15 @@ async def clear_session(request: Request) -> dict:
 
 
 @router.get("/logout")
-async def logout(request: Request) -> RedirectResponse:
+async def logout(request: Request, db: AsyncSession = Depends(get_db)) -> RedirectResponse:
     """Clear session; in oidc mode redirect to IdP logout."""
     payload, reason = _session_actor(request)
+    session_id = request.session.get("auth_sid")
+    if isinstance(session_id, str) and session_id:
+        row = await auth_sessions.get_session(db, session_id)
+        if row is not None:
+            await auth_sessions.revoke_session(db, row)
+            await db.commit()
     request.session.clear()
     # A GET cannot carry a mutation to the middleware, but it is the end of a session — when there was one.
     if reason is None:
@@ -650,18 +759,33 @@ class TokenResponse(BaseModel):
 api_auth_router = APIRouter(prefix="/api/auth", tags=["auth"])
 
 
+@api_auth_router.get("/oidc/login")
+async def oidc_bff_login(request: Request, returnTo: str = "/") -> RedirectResponse:
+    """BFF OIDC entry point; the IdP returns to the backend callback, which sets the opaque session."""
+    if not settings.auth_session_v2:
+        raise http_error(request, 404, "AUTH_SESSION_V2_DISABLED")
+    return await _start_oidc_login(request, returnTo)
+
+
+@api_auth_router.get("/oidc/logout")
+async def oidc_bff_logout(request: Request, db: AsyncSession = Depends(get_db)) -> RedirectResponse:
+    """BFF logout: revoke the server-side session, then RP-initiated logout when available."""
+    return await logout(request, db)
+
+
 class PublicAuthConfig(BaseModel):
     """Unauthenticated discovery so clients align with OPENKMS_AUTH_MODE (local vs central OIDC IdP)."""
 
     auth_mode: Literal["oidc", "local"]
     allow_signup: bool
+    session_v2: bool = False
 
 
 @api_auth_router.get("/public-config", response_model=PublicAuthConfig)
 async def public_auth_config() -> PublicAuthConfig:
     mode: Literal["oidc", "local"] = "local" if settings.auth_mode == "local" else "oidc"
     allow = bool(mode == "local" and settings.allow_signup)
-    return PublicAuthConfig(auth_mode=mode, allow_signup=allow)
+    return PublicAuthConfig(auth_mode=mode, allow_signup=allow, session_v2=settings.auth_session_v2)
 
 
 def _hash_password(password: str) -> str:
@@ -708,7 +832,24 @@ async def register(
     from app.services.identity.users.user_roles_sync import sync_security_roles_for_user
 
     await sync_security_roles_for_user(db, user)
-    token = mint_local_user_jwt(user)
+    if settings.auth_session_v2:
+        await _revoke_current_auth_session(request, db)
+        token = mint_local_user_jwt(user, ttl_minutes=settings.local_session_jwt_minutes)
+        row = await auth_sessions.create_session(
+            db,
+            auth_mode="local",
+            user_sub=str(user.id),
+            idp_sub=str(user.id),
+            access_token=token,
+            refresh_token=None,
+            access_expires_at=auth_sessions.utcnow()
+            + timedelta(minutes=settings.local_session_jwt_minutes),
+        )
+        request.session.pop("access_token", None)
+        request.session["auth_sid"] = row.id
+        await db.commit()
+    else:
+        token = mint_local_user_jwt(user)
     roles = ["admin"] if user.is_admin else []
     perm_set = await resolve_user_permission_keys(db, str(user.id))
     return TokenResponse(
@@ -753,7 +894,24 @@ async def login_json(request: Request, body: LoginBody, db: AsyncSession = Depen
         },
         via="local-login",
     )
-    token = mint_local_user_jwt(user)
+    if settings.auth_session_v2:
+        await _revoke_current_auth_session(request, db)
+        token = mint_local_user_jwt(user, ttl_minutes=settings.local_session_jwt_minutes)
+        row = await auth_sessions.create_session(
+            db,
+            auth_mode="local",
+            user_sub=str(user.id),
+            idp_sub=str(user.id),
+            access_token=token,
+            refresh_token=None,
+            access_expires_at=auth_sessions.utcnow()
+            + timedelta(minutes=settings.local_session_jwt_minutes),
+        )
+        request.session.pop("access_token", None)
+        request.session["auth_sid"] = row.id
+        await db.commit()
+    else:
+        token = mint_local_user_jwt(user)
     roles = ["admin"] if user.is_admin else []
     perm_set = await resolve_user_permission_keys(db, str(user.id))
     return TokenResponse(
@@ -1046,6 +1204,33 @@ async def build_auth_user_out(request: Request, db: AsyncSession) -> AuthUserOut
     )
 
 
+@api_auth_router.post("/refresh")
+async def refresh_auth_session(request: Request, db: AsyncSession = Depends(get_db)) -> dict:
+    """Rotate/refresh the server-side session before the access token expires."""
+    _require_same_origin(request)
+    if not settings.auth_session_v2:
+        raise http_error(request, 404, "AUTH_SESSION_V2_DISABLED")
+    session_id = request.session.get("auth_sid")
+    if not isinstance(session_id, str) or not session_id:
+        raise http_error(request, 401, "AUTHENTICATION_REQUIRED")
+    row = await auth_sessions.get_session(db, session_id)
+    if row is None or not auth_sessions.session_active(row):
+        if row is not None:
+            await auth_sessions.revoke_session(db, row)
+        request.session.pop("auth_sid", None)
+        raise http_error(request, 401, "AUTHENTICATION_REQUIRED")
+    if not await auth_sessions.refresh_session(db, row):
+        await auth_sessions.revoke_session(db, row)
+        request.session.pop("auth_sid", None)
+        raise http_error(request, 401, "AUTHENTICATION_REQUIRED")
+    await db.commit()
+    return {
+        "ok": True,
+        "idle_expires_at": row.idle_expires_at.isoformat(),
+        "absolute_expires_at": row.absolute_expires_at.isoformat(),
+    }
+
+
 @api_auth_router.get("/me", response_model=AuthUserOut)
 async def auth_me(request: Request, db: AsyncSession = Depends(get_db)):
     await authenticate_request(request, db)
@@ -1087,7 +1272,14 @@ async def patch_auth_me(request: Request, body: MePatchBody, db: AsyncSession = 
 
 
 @api_auth_router.post("/logout")
-async def logout_json(request: Request) -> dict:
+async def logout_json(request: Request, db: AsyncSession = Depends(get_db)) -> dict:
     """Clear server session (local or oidc); client should discard Bearer token."""
+    _require_same_origin(request)
+    session_id = request.session.get("auth_sid")
+    if isinstance(session_id, str) and session_id:
+        row = await auth_sessions.get_session(db, session_id)
+        if row is not None:
+            await auth_sessions.revoke_session(db, row)
+            await db.commit()
     request.session.clear()
     return {"ok": True}

@@ -40,7 +40,7 @@ Clients may send **`Accept-Language`** (the SPA sends `en` or `zh-CN`). Many aut
 | GET | `/login` | OIDC mode: redirect to IdP. Local mode: redirect to frontend `/login` |
 | GET | `/login/oauth2/code/oidc` | OAuth2 callback (backend confidential client; register on IdP) |
 | GET | `/login/oauth2/code/keycloak` | Same as above (legacy callback path) |
-| GET | `/api/auth/public-config` | No auth: `auth_mode`, `allow_signup` only |
+| GET | `/api/auth/public-config` | No auth: `auth_mode`, `allow_signup`, and `session_v2` (whether the BFF session path is enabled) |
 | GET | `/internal-api/models/document-parse-defaults` | **Internal service client only**; query `model_name` optional — named model with **`document-parse`** capability or default; JSON `base_url`, `model_name`, `api_key` for openkms-cli |
 | GET | `/internal-api/models/config-by-name` | **Internal service client only**; query **`model_name`** (required), **`api_kind`** (default `chat-completions`); JSON `base_url`, `model_name`, `api_key` for openkms-cli (e.g. pipeline metadata extraction) |
 | GET | `/internal-api/models/llm-defaults` | **Internal service client only**; JSON `base_url`, `model_name`, `api_key` for **qa-agent** (default **`chat-completions`** model; same as embedded wiki agent) |
@@ -62,8 +62,11 @@ Clients may send **`Accept-Language`** (the SPA sends `en` or `zh-CN`). Many aut
 | GET | `/api/system/settings` | Authenticated `console:settings` (or admin): `system_name`, `default_timezone`, `api_base_url_note` |
 | PUT | `/api/system/settings` | Authenticated `console:settings` (or admin): update system-wide display settings |
 | POST | `/api/auth/register` | Local mode only: create user, returns JWT + user |
-| POST | `/api/auth/login` | Local mode only: body `{ "login", "password" }` — `login` is username or email; returns JWT + user |
-| GET | `/api/auth/me` | Current user from Bearer, session, (local) CLI Basic, or **personal API key** (`okms.*`); includes `permissions` (resolved keys), optional `ui_locale` (`en` \| `zh-CN`), and optional `default_agent_project_id` from `user_preferences` (cleared in the response when the project is missing or not owned) |
+| POST | `/api/auth/login` | Local mode only: body `{ "login", "password" }` — `login` is username or email; returns JWT + user. In `auth_session_v2` mode it also creates the server-side session cookie |
+| POST | `/api/auth/refresh` | `auth_session_v2` only: refresh the opaque session and rotate its access token; returns idle/absolute expiry. Requires the session cookie and a same-origin request |
+| GET | `/api/auth/oidc/login` | `auth_session_v2` only: redirect to the IdP; optional `returnTo` must be a same-origin relative path |
+| GET | `/api/auth/oidc/logout` | `auth_session_v2` only: revoke the server session and redirect to IdP logout (or the SPA) |
+| GET | `/api/auth/me` | Current user from Bearer, opaque/legacy session, (local) CLI Basic, or **personal API key** (`okms.*`); includes `permissions` (resolved keys), optional `ui_locale` (`en` \| `zh-CN`), and optional `default_agent_project_id` from `user_preferences` (cleared in the response when the project is missing or not owned) |
 | PATCH | `/api/auth/me` | Authenticated user: body may include `ui_locale` (`en` \| `zh-CN`), and/or `default_agent_project_id` (project id or `null` to clear — field must be present to update). Saves to `user_preferences` (keyed by JWT `sub`; local and OIDC). Setting a project id requires an owned Agent Project |
 | POST | `/api/auth/api-keys` | Authenticated user: create personal API key; response includes plaintext `token` once |
 | GET | `/api/auth/api-keys` | List caller's keys (metadata only; query `include_revoked=true` optional) |
@@ -92,9 +95,9 @@ Clients may send **`Accept-Language`** (the SPA sends `en` or `zh-CN`). Many aut
 | GET | `/api/admin/resource-acl/{resource_type}/{resource_id}/owner-candidates` | `console:groups`: local auth user list for owner picker in Console audit |
 | GET/PUT | `/api/resource-acl/{resource_type}/{resource_id}` | Authenticated: get/replace sharing grants (`r`/`w`/`m`) on a securable resource. `data_resource` is securable but **read is the only meaningful bit** — it names a row-scoped slice of one semantic model, so a write grant on it authorizes nothing; `semantic_model` is **not** securable yet (model visibility is `data:read` only). See [Catalog data access](catalog-data-access.md). Response includes `created_by` (document/article channels, wiki spaces, knowledge bases), `owner_subject`, `owner_label`; when no owner ACL exists but `created_by` is set, GET returns a default owner grant (rwm) for the creator. PUT preserves owner when omitted; if none exists, defaults owner to `created_by` when set. |
 | GET | `/api/resource-acl/{resource_type}/{resource_id}/owner-candidates` | Requires **manage** on the resource. Returns `{subject, label}` for owner assignment: local auth lists DB users; OIDC lists API-key identities, mapped local users, and access-group member subjects. |
-| POST | `/api/auth/logout` | Clear server session |
-| POST | `/sync-session` | Sync frontend JWT to backend session (Bearer required) |
-| POST | `/clear-session` | Clear backend session (called before logout) |
+| POST | `/api/auth/logout` | Revoke the server-side session (if any) and clear the session cookie |
+| POST | `/sync-session` | Sync frontend JWT to backend session (Bearer required); in `auth_session_v2` mode it creates/updates the opaque session row |
+| POST | `/clear-session` | Revoke the server-side session (if any) and clear the legacy cookie (called before logout) |
 | GET | `/logout` | Clear session; OIDC: redirect to IdP logout; local: redirect to frontend |
 | GET | `/api/home/hub` | Any authenticated user. Returns **`site_summary`**: `{ document_count, kb_count, wiki_page_count, article_count }` and optional **`default_agent_project`**: `{ id, name }` when the user’s Home default Agent Project is set and still owned. (Phase 2 may add **`recent_activity`** from audit logs.) |
 | GET | `/api/search` | Authenticated unified metadata search: query `q`, `types` (`all` or comma-list: `documents`, `articles`, `wiki_spaces`, `knowledge_bases`), optional `document_channel_id`, `article_channel_id`, `updated_after` / `updated_before` (ISO 8601), `limit` (1–100, default 30). Returns sections with `items` (`id`, `name`, `title`, `kind`, `url_path`, `channel_id`, `channel_name`, `updated_at`) and `total` per type; types the user cannot read are empty; **403** if none of the requested types are allowed; **404** if a channel id is unknown. Scoped like list APIs (documents, articles, wiki spaces, KB visibility). **`wiki_spaces`** items use **`url_path`** **`/wikis/{id}/pages/graph`**. |

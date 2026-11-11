@@ -6,9 +6,6 @@ pass/fail and a sentence. Both used to be inline in a 117-line `run_one`, where 
 from __future__ import annotations
 
 import asyncio
-from types import SimpleNamespace
-
-import pytest
 
 from app.services.workspace.evaluations import execute as execute_mod
 from app.services.workspace.evaluations import judge as judge_mod

@@ -338,7 +338,7 @@ sequenceDiagram
 
 ## 认证（`OPENKMS_AUTH_MODE`）
 
-两种模式（默认 **`oidc`**）。部署须保持 **backend** `OPENKMS_AUTH_MODE` 与 **frontend** 一致：SPA 调用 **`GET /api/auth/public-config`**（无 auth）取 **`auth_mode`**、**`allow_signup`**。**openkms-cli** 与 **qa-agent** 仅用 **internal service** auth 访问 **`/internal-api/models/...`**（`sub=local-cli` 的 Basic，或 **`azp`** 在 **`OPENKMS_INTERNAL_SERVICE_CLIENT_IDS`** 的 OIDC client credentials）；人类 SPA token 拒绝。**`/internal-api`** 不在可选严格 permission 中间件内（仅查 **`/api/...`**）。SPA 可 **`GET /api/public/system`** 取 **`system_name`**。应用据 API 在 **OIDC（Authorization Code + PKCE，`oidc-client-ts`）** 与本地表单间切换；`VITE_AUTH_MODE` 仅 API 失败时回退，且与 backend 不一致时横幅提示。
+两种模式（默认 **`oidc`**）。部署须保持 **backend** `OPENKMS_AUTH_MODE` 与 **frontend** 一致：SPA 调用 **`GET /api/auth/public-config`**（无 auth）取 **`auth_mode`**、**`allow_signup`**、**`session_v2`**。**`session_v2=true`** 时浏览器只持 opaque `openkms_session`，token 加密存 `auth_sessions`，OIDC 走 BFF 登录/回调和 **`POST /api/auth/refresh`**；`false` 时保留 `oidc-client-ts` / 本地 JWT 旧路径。**openkms-cli** 与 **qa-agent** 仅用 **internal service** auth 访问 **`/internal-api/models/...`**（`sub=local-cli` 的 Basic，或 **`azp`** 在 **`OPENKMS_INTERNAL_SERVICE_CLIENT_IDS`** 的 OIDC client credentials）；人类 SPA token 拒绝。**`/internal-api`** 不在可选严格 permission 中间件内（仅查 **`/api/...`**）。SPA 可 **`GET /api/public/system`** 取 **`system_name`**。应用据 API 在 **OIDC（Authorization Code + PKCE，`oidc-client-ts`）** 与本地表单间切换；`VITE_AUTH_MODE` 仅 API 失败时回退，且与 backend 不一致时横幅提示。
 
 ### OIDC 模式
 
@@ -376,7 +376,7 @@ flowchart LR
 
 ### 共用
 
-- **API 上无效 JWT**：**`authAwareFetch`** 对 session 类 **401** 先静默重试（OIDC `signinSilent` + sync-session；local 查 me）；仍失败则清 session、丢弃缓存的 OIDC 用户，跳转 **`/login?notice=session_expired`**，不自动发起 OIDC 重定向；显式登录使用 `prompt=login`；返回合成 **401**（`SESSION_EXPIRED_API_DETAIL`）
+- **API 上无效 JWT**：**`authAwareFetch`** 对 session 类 **401** 先静默重试（`session_v2` 用 `POST /api/auth/refresh` + `/me`；旧路径 OIDC `signinSilent` + sync-session / local 查 me）；仍失败则清 session、丢弃缓存的 OIDC 用户，跳转 **`/login?notice=session_expired`**，不自动发起 OIDC 重定向；显式登录使用 `prompt=login`；返回合成 **401**（`SESSION_EXPIRED_API_DETAIL`）
 - **路由保护**：**`/`** 对访客公开；其余 **MainLayout** 页需认证
 - **Console**：OIDC `admin` 或 local `is_admin` / `user_security_roles`
 - `POST /clear-session` 清 cookie

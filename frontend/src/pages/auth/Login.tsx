@@ -51,7 +51,9 @@ export function Login() {
         return;
       }
       await completeLocalSession(data.access_token as string);
-      navigate('/', { replace: true });
+      const returnTo = sessionStorage.getItem('openkms:session-return-to') || '/';
+      sessionStorage.removeItem('openkms:session-return-to');
+      navigate(returnTo, { replace: true });
     } catch {
       setError(t('networkError'));
     } finally {
