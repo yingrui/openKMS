@@ -154,6 +154,9 @@ class EvaluationRunRequestBody(BaseModel):
     evaluation_type: str = "search_retrieval"
     #: Run only these items. Omit (or null) to run the whole set.
     item_ids: list[str] | None = None
+    #: What the caller intends. `subset` requires ids, so a client that meant "just the failures" but sent none is an
+    #: error instead of silently running everything.
+    item_scope: Literal["all", "subset"] = "all"
     #: Judge this run with a different model than the knowledge base's own — for a second opinion on the same answers.
     judge_model_id: str | None = None
     #: Language for everything a person reads (check reasons, the run report). The verdicts themselves are unaffected.

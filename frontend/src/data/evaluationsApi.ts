@@ -344,6 +344,8 @@ export async function runEvaluation(
     evaluation_type?: string;
     /** Items to run; null/omitted runs the whole set. */
     item_ids?: string[] | null;
+    /** What the caller meant: `subset` without ids is refused rather than widened to the whole set. */
+    item_scope?: 'all' | 'subset';
     judge_model_id?: string | null;
     language?: 'en' | 'zh';
   }

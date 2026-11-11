@@ -683,9 +683,14 @@ async def run_evaluation(
     from app.jobs.tasks import run_evaluation
     from app.services.workspace.evaluations.run_job import create_run
 
+    if body.item_scope == "subset" and not body.item_ids:
+        raise HTTPException(
+            status_code=400,
+            detail="A subset run needs item_ids; none were sent.",
+        )
     if body.item_ids is not None and not body.item_ids:
         raise HTTPException(status_code=400, detail="No items selected to run.")
-    item_ids = body.item_ids
+    item_ids = body.item_ids if body.item_scope == "subset" else None
 
     run = await create_run(
         db,

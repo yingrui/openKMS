@@ -492,6 +492,7 @@ export function EvaluationDatasetDetail() {
       const queued = await runEvaluation(evaluationId, {
         evaluation_type: evaluationType,
         item_ids: itemIds,
+        item_scope: itemIds === null ? 'all' : 'subset',
         judge_model_id: judgeModelId,
         language,
       });
