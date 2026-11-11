@@ -352,10 +352,6 @@
     "dataQueriesLabel": "引用的查询",
     "coverageLabel": "已覆盖 {{percent}}% 的期望查询",
     "undecided": "待确认",
-    "judgeLabel": "评判",
-    "judgeAllPass": "六项判定全部通过。",
-    "uncoveredCount": "{{count}} 条期望查询未被覆盖",
-    "extraSources": "多引用了 {{count}} 条查询",
     "judge": {
       "model": "模型",
       "scope": "范围",
@@ -363,7 +359,16 @@
       "grain": "粒度",
       "joins": "关联",
       "forbidden": "禁用项"
-    }
+    },
+    "differencesLabel": "差异",
+    "expectedQueryLabel": "期望查询",
+    "citedQueriesLabel": "实际引用的查询（{{count}}）",
+    "noQueriesCited": "没有引用任何查询。",
+    "judgedBy": "评判：{{model}}",
+    "runPassChip": "{{count}} 通过",
+    "runFailChip": "{{count}} 不通过",
+    "runUndecidedChip": "{{count}} 待确认",
+    "runAvgShort": "平均 {{avg}}"
   },
   "models": {
     "title": "模型",

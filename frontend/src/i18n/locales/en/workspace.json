@@ -352,10 +352,6 @@
     "dataQueriesLabel": "Cited queries",
     "coverageLabel": "{{percent}}% of expected queries covered",
     "undecided": "Undecided",
-    "judgeLabel": "Judged by",
-    "judgeAllPass": "All six checks passed.",
-    "uncoveredCount": "{{count}} expected queries not covered",
-    "extraSources": "{{count}} extra queries cited",
     "judge": {
       "model": "Model",
       "scope": "Scope",
@@ -363,7 +359,16 @@
       "grain": "Grain",
       "joins": "Joins",
       "forbidden": "Forbidden"
-    }
+    },
+    "differencesLabel": "What differs",
+    "expectedQueryLabel": "Expected query",
+    "citedQueriesLabel": "Cited queries ({{count}})",
+    "noQueriesCited": "No query was cited.",
+    "judgedBy": "judged by {{model}}",
+    "runPassChip": "{{count}} passed",
+    "runFailChip": "{{count}} failed",
+    "runUndecidedChip": "{{count}} undecided",
+    "runAvgShort": "avg {{avg}}"
   },
   "models": {
     "title": "Models",

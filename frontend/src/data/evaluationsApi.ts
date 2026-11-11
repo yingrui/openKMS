@@ -96,10 +96,9 @@ export interface JudgeCheck {
   reason?: string | null;
 }
 
-/** One expectation checked against one cited query. */
-export interface JudgePairVerdict {
+/** One expectation checked against the queries of the turn. */
+export interface JudgeExpectationVerdict {
   expected_index: number;
-  source_index: number;
   verdict: 'pass' | 'fail' | 'undecided';
   checks: JudgeCheck[];
   reasoning?: string;
@@ -114,7 +113,8 @@ export interface JudgeVerdict {
   verdict: 'pass' | 'fail' | 'undecided';
   model?: string | null;
   prompt_version?: string | null;
-  verdicts?: JudgePairVerdict[];
+  /** One entry per expectation; the queries of the turn are judged together. */
+  verdicts?: JudgeExpectationVerdict[];
 }
 
 export interface EvaluationRunResult {

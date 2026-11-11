@@ -129,27 +129,9 @@
   margin-top: var(--space-2);
 }
 
-.eval-results-meta {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-4) var(--space-6);
-  margin-bottom: var(--space-3);
-  font-size: var(--text-md);
-  color: var(--color-text-secondary);
-}
 
-.eval-results-meta code {
-  font-size: var(--text-sm);
-}
 
-.eval-result-generated {
-  margin-top: calc(var(--space-2) + var(--space-1) / 2);
-}
 
-.eval-result-generated p {
-  margin: 6px 0 0 0;
-  white-space: pre-wrap;
-}
 
 .eval-run-error {
   display: block;
@@ -325,66 +307,12 @@
 }
 
 /* The judge's verdict, item by item: only what differs is listed. */
-.eval-result-judge {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-2);
-  font-size: var(--font-size-sm);
-}
 
-.eval-judge-checks {
-  margin: 0;
-  padding: 0;
-  list-style: none;
-  display: grid;
-  gap: var(--space-1);
-}
 
-.eval-judge-check {
-  display: grid;
-  grid-template-columns: 6rem 5rem 1fr;
-  gap: var(--space-2);
-  align-items: baseline;
-  padding: var(--space-1) var(--space-2);
-  border-left: 3px solid var(--color-border);
-  background: var(--color-surface-sunken);
-  border-radius: var(--radius-sm);
 
-  &--fail {
-    border-left-color: var(--color-danger, #dc2626);
-  }
 
-  &--unknown {
-    border-left-color: var(--color-warning, #b45309);
-  }
 
-  code {
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-}
 
-.eval-judge-check-id,
-.eval-judge-check-verdict {
-  font-weight: 500;
-}
-
-.eval-judge-check-reason {
-  grid-column: 3;
-  color: var(--color-text-secondary);
-}
-
-.eval-judge-ok {
-  margin: 0;
-  color: var(--color-text-secondary);
-}
-
-.eval-judge-uncovered,
-.eval-judge-extra {
-  margin: 0;
-  color: var(--color-warning, #b45309);
-}
 
 .eval-result-badge.eval-result-undecided {
   background: var(--color-surface-sunken);
@@ -529,36 +457,114 @@
   margin: 0 0 var(--space-2) 0;
 }
 
-.eval-results-summary {
-  font-size: var(--text-base);
-  color: var(--color-text-secondary);
-  margin-bottom: var(--space-4);
-}
 
 .eval-results-list {
   display: flex;
   flex-direction: column;
-  gap: var(--space-4);
+  gap: var(--space-2);
 }
 
-.eval-result-item {
-  padding: var(--space-4);
-  background: var(--color-bg-muted);
+/* Run header: counts on the left of the eye, provenance in small print underneath. */
+.eval-run-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+  margin-bottom: var(--space-2);
+}
+
+.eval-run-head h2 {
+  margin: 0;
+}
+
+.eval-run-chips {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--text-sm);
+}
+
+.eval-run-avg {
+  color: var(--color-text-muted);
+}
+
+.eval-run-meta {
+  margin: 0 0 var(--space-3);
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+}
+
+.eval-run-meta code {
+  font-size: inherit;
+}
+
+/* One row per item: the summary line answers "did it pass", the body holds the evidence. */
+.eval-result {
   border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
+  background: var(--color-surface);
+
+  &[open] {
+    background: var(--color-bg-muted);
+  }
 }
 
-.eval-result-header {
+.eval-result-summary {
   display: flex;
   align-items: center;
   gap: var(--space-3);
-  margin-bottom: var(--space-3);
+  padding: var(--space-2) var(--space-3);
+  cursor: pointer;
+  list-style: none;
+
+  &::-webkit-details-marker {
+    display: none;
+  }
+
+  &:hover {
+    background: var(--color-bg-hover);
+    border-radius: var(--radius-md);
+  }
+}
+
+.eval-result-question {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: var(--text-md);
+}
+
+.eval-result-coverage,
+.eval-result-score {
+  flex-shrink: 0;
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.eval-result-body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: 0 var(--space-3) var(--space-3);
+}
+
+.eval-body-label {
+  display: block;
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+  text-transform: uppercase;
+  margin-bottom: var(--space-1);
 }
 
 .eval-result-badge {
+  flex-shrink: 0;
   font-size: var(--text-xs);
   font-weight: 600;
-  padding: var(--space-1) calc(var(--space-2) + var(--space-1) / 2);
+  padding: 2px var(--space-2);
   border-radius: var(--radius-sm);
 }
 
@@ -572,60 +578,130 @@
   color: var(--color-error);
 }
 
-.eval-result-score {
-  font-size: var(--text-sm);
-  color: var(--color-text-muted);
-}
-
-.eval-result-query {
-  font-size: var(--text-md);
-  margin-bottom: var(--space-2);
-}
-
-.eval-result-query strong {
+.eval-result-undecided {
+  background: var(--color-surface-sunken);
   color: var(--color-text-secondary);
 }
 
-.eval-result-expected,
-.eval-result-reasoning,
-.eval-result-snippets {
-  font-size: var(--text-md);
-  margin-top: var(--space-3);
+/* What differs: one line per failing check, the reason next to it, the fragments under it. */
+.eval-diff-list {
+  display: grid;
+  gap: var(--space-2);
 }
 
-.eval-result-expected strong,
-.eval-result-reasoning strong,
-.eval-result-snippets strong {
-  display: block;
+.eval-diff {
+  display: grid;
+  grid-template-columns: minmax(5rem, auto) 1fr;
+  gap: var(--space-1) var(--space-3);
+  padding-left: var(--space-2);
+  border-left: 3px solid var(--color-border);
+
+  &--fail {
+    border-left-color: var(--color-error);
+  }
+
+  &--unknown {
+    border-left-color: var(--color-warning, #b45309);
+  }
+}
+
+.eval-diff-name {
+  font-size: var(--text-sm);
+  font-weight: 600;
+}
+
+.eval-diff-reason {
+  font-size: var(--text-sm);
+  color: var(--color-text-secondary);
+}
+
+.eval-diff-fragments {
+  grid-column: 2;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
   font-size: var(--text-xs);
   color: var(--color-text-muted);
-  text-transform: uppercase;
-  margin-bottom: var(--space-1);
+  min-width: 0;
+
+  code {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
 }
 
-.eval-result-expected p,
-.eval-result-reasoning p {
+/* Expected vs cited, side by side when there is room. */
+.eval-pair {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 20rem), 1fr));
+  gap: var(--space-4);
+}
+
+.eval-pair-col {
+  min-width: 0;
+}
+
+.eval-pair-text {
   margin: 0;
+  font-size: var(--text-sm);
   white-space: pre-wrap;
   word-break: break-word;
 }
 
-.eval-result-snippets ul {
-  margin: 8px 0 0 0;
-  padding-left: 20px;
+.eval-data-query + .eval-data-query {
+  margin-top: var(--space-2);
 }
 
-.eval-result-snippets li {
-  margin-bottom: var(--space-2);
+.eval-data-query-meta {
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+}
+
+.eval-data-query-sql {
+  margin: var(--space-1) 0 0;
+  padding: var(--space-2);
+  max-height: 7rem;
+  overflow: auto;
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  font-size: var(--text-xs);
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.eval-result-note {
+  margin: 0;
   font-size: var(--text-sm);
   color: var(--color-text-secondary);
 }
 
+.eval-snippets {
+  font-size: var(--text-sm);
+
+  summary {
+    cursor: pointer;
+    color: var(--color-text-muted);
+    font-size: var(--text-xs);
+    text-transform: uppercase;
+  }
+
+  ol {
+    margin: var(--space-2) 0 0;
+    padding-left: var(--space-4);
+  }
+}
+
 .eval-snippet-meta {
-  display: inline-block;
+  display: block;
   font-size: var(--text-xs);
   color: var(--color-text-muted);
-  margin-right: var(--space-2);
+}
+
+.eval-snippets li {
+  margin-bottom: var(--space-2);
+  color: var(--color-text-secondary);
 }
 
 .eval-dialog {

@@ -33,7 +33,9 @@ import {
   type EvaluationRunResponse,
   type EvaluationRunListItem,
   type EvaluationCompareResponse,
+  type EvaluationRunResult,
 } from '../../data/evaluationsApi';
+import type { TFunction } from 'i18next';
 import { PanelToolbar } from '../../styles/design-system';
 import { expectedQueryLines } from './expectedQueryText';
 
@@ -46,6 +48,134 @@ const isQueryKind = (kind: string | undefined) => (kind ?? 'answer') === 'query'
 
 function evalShowsSearchSnippets(evaluationType: string): boolean {
   return evaluationType === EVAL_TYPE_SEARCH || evaluationType === EVAL_TYPE_WIKI_COVERAGE;
+}
+
+/** One result row: the verdict on the summary line, the evidence inside it. Passing items stay closed. */
+function RunResultRow({ r, evaluationType, t }: { r: EvaluationRunResult; evaluationType: string; t: TFunction }) {
+  const undecided = !r.pass && r.judge?.verdict === 'undecided';
+  const outcome = r.pass ? 'pass' : undecided ? 'undecided' : 'fail';
+  const failing = (r.judge?.verdicts ?? []).flatMap((v) =>
+    (v.checks ?? []).filter((c) => c.verdict !== 'pass').map((c) => ({ expectedIndex: v.expected_index, check: c })),
+  );
+  const isDataQuery = evaluationType === EVAL_TYPE_DATA_QUERY;
+
+  return (
+    <details className={`eval-result eval-result--${outcome}`} open={!r.pass}>
+      <summary className="eval-result-summary">
+        <span className={`eval-result-badge eval-result-${outcome}`}>
+          {r.pass
+            ? t('evaluationDetail.pass')
+            : undecided
+              ? t('evaluationDetail.undecided')
+              : t('evaluationDetail.fail')}
+        </span>
+        <span className="eval-result-question" title={r.query}>
+          {r.query}
+        </span>
+        {isDataQuery && r.coverage != null ? (
+          <span className="eval-result-coverage">
+            {t('evaluationDetail.coverageLabel', { percent: Math.round(r.coverage * 100) })}
+          </span>
+        ) : null}
+        <span className="eval-result-score">{t('evaluationDetail.scoreShort', { score: r.score.toFixed(2) })}</span>
+      </summary>
+
+      <div className="eval-result-body">
+        {failing.length > 0 ? (
+          <div className="eval-diff-list">
+            <span className="eval-body-label">{t('evaluationDetail.differencesLabel')}</span>
+            {failing.map(({ expectedIndex, check }) => (
+              <div key={`${expectedIndex}-${check.id}`} className={`eval-diff eval-diff--${check.verdict}`}>
+                <span className="eval-diff-name">
+                  {failing.length > 1 || (r.judge?.verdicts?.length ?? 0) > 1
+                    ? `${t(`evaluationDetail.judge.${check.id}`)} · #${expectedIndex + 1}`
+                    : t(`evaluationDetail.judge.${check.id}`)}
+                </span>
+                <span className="eval-diff-reason">
+                  {check.reason ||
+                    (check.verdict === 'unknown' ? t('evaluationDetail.undecided') : t('evaluationDetail.fail'))}
+                </span>
+                {check.expected || check.actual ? (
+                  <span className="eval-diff-fragments">
+                    {check.expected ? <code title={check.expected}>{check.expected}</code> : null}
+                    {check.expected && check.actual ? <span aria-hidden>→</span> : null}
+                    {check.actual ? <code title={check.actual}>{check.actual}</code> : null}
+                  </span>
+                ) : null}
+              </div>
+            ))}
+          </div>
+        ) : null}
+
+        <div className="eval-pair">
+          <div className="eval-pair-col">
+            <span className="eval-body-label">
+              {isDataQuery ? t('evaluationDetail.expectedQueryLabel') : t('evaluationDetail.expectedLabel')}
+            </span>
+            {isDataQuery ? (
+              <ul className="eval-item-expected-list">
+                {expectedQueryLines(r.expected_query).map((line, i) => (
+                  <li key={`exp-${i}`} title={line}>
+                    {line}
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="eval-pair-text">{r.expected_answer}</p>
+            )}
+          </div>
+          {isDataQuery ? (
+            <div className="eval-pair-col">
+              <span className="eval-body-label">
+                {t('evaluationDetail.citedQueriesLabel', { count: r.data_queries?.length ?? 0 })}
+              </span>
+              {(r.data_queries ?? []).map((dq, i) => (
+                <div key={`dq-${i}`} className="eval-data-query">
+                  <span className="eval-data-query-meta">
+                    {dq.metric ?? dq.mode ?? 'sql'}
+                    {dq.model_id ? ` · ${dq.model_id.slice(0, 8)}…` : ''}
+                  </span>
+                  <pre className="eval-data-query-sql">{dq.sql}</pre>
+                </div>
+              ))}
+              {(r.data_queries?.length ?? 0) === 0 ? (
+                <p className="eval-pair-text">{t('evaluationDetail.noQueriesCited')}</p>
+              ) : null}
+            </div>
+          ) : null}
+        </div>
+
+        {evaluationType === EVAL_TYPE_QA && r.generated_answer ? (
+          <div>
+            <span className="eval-body-label">{t('evaluationDetail.generatedAnswer')}</span>
+            <p className="eval-pair-text">{r.generated_answer}</p>
+          </div>
+        ) : null}
+
+        {failing.length === 0 ? (
+          <p className="eval-result-note">{r.reasoning}</p>
+        ) : null}
+
+        {evalShowsSearchSnippets(evaluationType) && r.search_results.length > 0 ? (
+          <details className="eval-snippets">
+            <summary>
+              {t('evaluationDetail.topSearchResults')} · {r.search_results.length}
+            </summary>
+            <ol>
+              {r.search_results.map((sn, i) => (
+                <li key={`sn-${i}`}>
+                  <span className="eval-snippet-meta">
+                    {t('evaluationDetail.snippetMeta', { type: sn.source_type, score: sn.score.toFixed(2) })}
+                  </span>
+                  {sn.content}
+                </li>
+              ))}
+            </ol>
+          </details>
+        ) : null}
+      </div>
+    </details>
+  );
 }
 
 /** Which runs a dataset's items support. Mirrors `KIND_RUN_TYPES` on the backend. */
@@ -783,173 +913,48 @@ export function EvaluationDatasetDetail() {
 
       {runView && runView.results.length > 0 && (
         <section className="eval-detail-section eval-results-section">
-          <h2>{t('evaluationDetail.runDetail')}</h2>
-          <div className="eval-results-meta">
-            <span>
-              <strong>{t('evaluationDetail.runMetaRun')}</strong> <code>{runView.run_id}</code>
-            </span>
-            <span>
-              <strong>{t('evaluationDetail.runMetaType')}</strong> <code>{runView.evaluation_type}</code>
-            </span>
-            <span>
-              <strong>{t('evaluationDetail.runMetaStatus')}</strong> {runView.status}
-            </span>
-          </div>
-          <div className="eval-results-summary">
-            {t('evaluationDetail.resultsSummary', {
-              pass: runView.pass_count,
-              total: runView.item_count,
-              avg:
-                runView.avg_score != null ? runView.avg_score.toFixed(2) : t('shared.dash'),
-            })}
-          </div>
-          <div className="eval-results-list">
-            {runView.results.map((r) => (
-              <div key={r.item_id} className="eval-result-item">
-                <div className="eval-result-header">
-                  {(() => {
-                    // "undecided" is a real outcome: the judge could not tell, so this item is not a failure.
-                    const undecided = !r.pass && r.judge?.verdict === 'undecided';
-                    const cls = r.pass ? 'eval-result-pass' : undecided ? 'eval-result-undecided' : 'eval-result-fail';
-                    const label = r.pass
-                      ? t('evaluationDetail.pass')
-                      : undecided
-                        ? t('evaluationDetail.undecided')
-                        : t('evaluationDetail.fail');
-                    return <span className={`eval-result-badge ${cls}`}>{label}</span>;
-                  })()}
-                  <span className="eval-result-score">
-                    {t('evaluationDetail.scoreShort', { score: r.score.toFixed(2) })}
-                  </span>
-                </div>
-                <div className="eval-result-query">
-                  <strong>{t('evaluationDetail.queryLabel')}</strong> {r.query}
-                </div>
-                {runView.evaluation_type === EVAL_TYPE_DATA_QUERY ? (
-                  <div className="eval-result-expected">
-                    <strong>{t('evaluationDetail.colExpectedQuery')}</strong>
-                    <ul className="eval-item-expected-list">
-                      {expectedQueryLines(r.expected_query).map((line, i) => (
-                        <li key={`exp-${i}`} title={line}>
-                          {line}
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                ) : (
-                  <div className="eval-result-expected">
-                    <strong>{t('evaluationDetail.expectedLabel')}</strong>
-                    <p>{r.expected_answer}</p>
-                  </div>
-                )}
-                {runView.evaluation_type === EVAL_TYPE_QA && r.generated_answer != null && r.generated_answer !== '' && (
-                  <div className="eval-result-generated">
-                    <strong>{t('evaluationDetail.generatedAnswer')}</strong>
-                    <p>{r.generated_answer}</p>
-                  </div>
-                )}
-                {runView.evaluation_type === EVAL_TYPE_DATA_QUERY && r.judge && (
-                  <div className="eval-result-judge">
-                    <strong>
-                      {t('evaluationDetail.judgeLabel')}
-                      {r.judge.model ? ` · ${r.judge.model}` : ''}
-                      {r.judge.prompt_version ? ` · ${r.judge.prompt_version}` : ''}
-                    </strong>
-                    <ul className="eval-judge-checks">
-                      {(r.judge.verdicts ?? [])
-                        .filter((v) => v.verdict !== 'pass')
-                        .flatMap((v) =>
-                          v.checks
-                            .filter((c) => c.verdict !== 'pass')
-                            .map((c) => (
-                              <li key={`${v.expected_index}-${v.source_index}-${c.id}`} className={`eval-judge-check eval-judge-check--${c.verdict}`}>
-                                <span className="eval-judge-check-id">
-                                  {t(`evaluationDetail.judge.${c.id}`)}
-                                </span>
-                                <span className="eval-judge-check-verdict">
-                                  {c.verdict === 'unknown' ? t('evaluationDetail.undecided') : t('evaluationDetail.fail')}
-                                </span>
-                                {c.expected ? <code title={c.expected}>{c.expected}</code> : null}
-                                {c.actual ? <code title={c.actual}>{c.actual}</code> : null}
-                                {c.reason ? <span className="eval-judge-check-reason">{c.reason}</span> : null}
-                              </li>
-                            ))
-                        )}
-                    </ul>
-                    {(r.judge.verdicts ?? []).every((v) => v.verdict === 'pass') ? (
-                      <p className="eval-judge-ok">{t('evaluationDetail.judgeAllPass')}</p>
+          {(() => {
+            const undecidedCount = runView.results.filter((r) => !r.pass && r.judge?.verdict === 'undecided').length;
+            const failCount = runView.results.filter((r) => !r.pass).length - undecidedCount;
+            const judge = runView.results.find((r) => r.judge?.model)?.judge;
+            return (
+              <>
+                <div className="eval-run-head">
+                  <h2>{t('evaluationDetail.runDetail')}</h2>
+                  <div className="eval-run-chips">
+                    <span className="eval-result-badge eval-result-pass">
+                      {t('evaluationDetail.runPassChip', { count: runView.pass_count })}
+                    </span>
+                    {failCount > 0 ? (
+                      <span className="eval-result-badge eval-result-fail">
+                        {t('evaluationDetail.runFailChip', { count: failCount })}
+                      </span>
                     ) : null}
-                    {(r.uncovered?.length ?? 0) > 0 ? (
-                      <p className="eval-judge-uncovered">
-                        {t('evaluationDetail.uncoveredCount', { count: r.uncovered!.length })}
-                      </p>
+                    {undecidedCount > 0 ? (
+                      <span className="eval-result-badge eval-result-undecided">
+                        {t('evaluationDetail.runUndecidedChip', { count: undecidedCount })}
+                      </span>
                     ) : null}
-                    {(r.extra_sources ?? 0) > 0 ? (
-                      <p className="eval-judge-extra">{t('evaluationDetail.extraSources', { count: r.extra_sources! })}</p>
-                    ) : null}
+                    <span className="eval-run-avg">
+                      {t('evaluationDetail.runAvgShort', {
+                        avg: runView.avg_score != null ? runView.avg_score.toFixed(2) : t('shared.dash'),
+                      })}
+                    </span>
                   </div>
-                )}
-                {runView.evaluation_type === EVAL_TYPE_DATA_QUERY && (r.data_queries?.length ?? 0) > 0 && (
-                  <div className="eval-result-snippets">
-                    <strong>
-                      {t('evaluationDetail.dataQueriesLabel')}
-                      {r.coverage != null ? ` · ${t('evaluationDetail.coverageLabel', { percent: Math.round(r.coverage * 100) })}` : ''}
-                    </strong>
-                    {r.data_queries!.map((dq, i) => (
-                      <div key={i} className="eval-data-query">
-                        <span className="eval-snippet-meta">
-                          {dq.mode ?? 'sql'}
-                          {dq.metric ? ` · ${dq.metric}` : ''}
-                          {dq.model_id ? ` · ${dq.model_id.slice(0, 8)}…` : ''}
-                        </span>
-                        <pre className="eval-data-query-sql">{dq.sql}</pre>
-                      </div>
-                    ))}
-                  </div>
-                )}
-                {runView.evaluation_type === EVAL_TYPE_QA && (r.qa_sources?.length ?? 0) > 0 && (
-                  <div className="eval-result-snippets">
-                    <strong>{t('evaluationDetail.sourcesLabel')}</strong>
-                    <ul>
-                      {(r.qa_sources ?? []).map((s, i) => (
-                        <li key={i}>
-                          <span className="eval-snippet-meta">
-                            {t('evaluationDetail.snippetMeta', {
-                              type: s.source_type,
-                              score: s.score.toFixed(2),
-                            })}
-                          </span>
-                          {s.content}
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
-                <div className="eval-result-reasoning">
-                  <strong>{t('evaluationDetail.judgeReasoning')}</strong>
-                  <p>{r.reasoning}</p>
                 </div>
-                {evalShowsSearchSnippets(runView.evaluation_type) && r.search_results.length > 0 && (
-                  <div className="eval-result-snippets">
-                    <strong>{t('evaluationDetail.topSearchResults')}</strong>
-                    <ul>
-                      {r.search_results.map((s, i) => (
-                        <li key={i}>
-                          <span className="eval-snippet-meta">
-                            {t('evaluationDetail.snippetMeta', {
-                              type: s.source_type,
-                              score: s.score.toFixed(2),
-                            })}
-                          </span>
-                          {s.content}
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
-              </div>
-            ))}
-          </div>
+                <p className="eval-run-meta">
+                  <code>{runView.run_id}</code> · {runView.evaluation_type} · {runView.status}
+                  {judge?.model ? ` · ${t('evaluationDetail.judgedBy', { model: judge.model })}` : ''}
+                  {judge?.prompt_version ? ` · ${judge.prompt_version}` : ''}
+                </p>
+                <div className="eval-results-list">
+                  {runView.results.map((r) => (
+                    <RunResultRow key={r.item_id} r={r} evaluationType={runView.evaluation_type} t={t} />
+                  ))}
+                </div>
+              </>
+            );
+          })()}
         </section>
       )}
 
