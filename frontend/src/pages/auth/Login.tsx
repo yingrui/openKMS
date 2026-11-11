@@ -10,13 +10,20 @@ import './AuthLocal.scss';
 export function Login() {
   const { t } = useTranslation('auth');
   const navigate = useNavigate();
-  const { authMode, authModeReady, allowSignup, completeLocalSession } = useAuth();
+  const {
+    authMode,
+    authModeReady,
+    allowSignup,
+    completeLocalSession,
+    isAuthenticated,
+    authError,
+    login: startLogin,
+  } = useAuth();
   useEffect(() => {
-    if (!authModeReady) return;
-    if (authMode !== 'local') {
+    if (authModeReady && isAuthenticated) {
       navigate('/', { replace: true });
     }
-  }, [authMode, authModeReady, navigate]);
+  }, [authModeReady, isAuthenticated, navigate]);
   const [login, setLogin] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -57,6 +64,27 @@ export function Login() {
       <div className="auth-local-page">
         <div className="auth-local-card">
           <p className="auth-local-sub">{t('detectingAuth')}</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (authMode !== 'local') {
+    return (
+      <div className="auth-local-page">
+        <div className="auth-local-card">
+          <Link to="/" className="auth-local-back">
+            {t('backHome')}
+          </Link>
+          <h1>{t('signInTitle')}</h1>
+          <p className="auth-local-sub">{t('signInSubOidc')}</p>
+          {notice === 'session_expired' && (
+            <p className="auth-local-error">{t('sessionExpired')}</p>
+          )}
+          {authError && <p className="auth-local-error">{authError}</p>}
+          <button type="button" className="auth-local-submit" onClick={startLogin}>
+            {t('signInButton')}
+          </button>
         </div>
       </div>
     );

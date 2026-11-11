@@ -238,7 +238,9 @@ function useFrontendPermissionGate(
 
 async function fetchAuthMeWithBearer(accessToken: string): Promise<AuthUser | null> {
   try {
-    const res = await authAwareFetch(`${config.apiUrl}/api/auth/me`, {
+    // Bootstrap profile fetch: do not run the generic 401 recovery here (it can
+    // start a silent renew or redirect while the session is still being established).
+    const res = await fetch(`${config.apiUrl}/api/auth/me`, {
       headers: { Authorization: `Bearer ${accessToken}` },
       credentials: 'include',
     });
@@ -266,10 +268,12 @@ async function fetchAuthMeWithBearer(accessToken: string): Promise<AuthUser | nu
  */
 const PENDING_SIGNIN = 'openkms:pending-signin';
 
-async function syncTokenToBackend(token: string) {
+async function syncTokenToBackend(token: string): Promise<boolean> {
   const pending = sessionStorage.getItem(PENDING_SIGNIN) === '1';
   try {
-    await authAwareFetch(
+    // Bootstrap-only call; a rejected token must fail here, not trigger the
+    // session-expiry recovery flow (that would recurse through silent renew).
+    const res = await fetch(
       `${config.apiUrl}/sync-session${pending ? '?reason=login' : ''}`,
       {
         method: 'POST',
@@ -277,9 +281,10 @@ async function syncTokenToBackend(token: string) {
         credentials: 'include',
       },
     );
-    if (pending) sessionStorage.removeItem(PENDING_SIGNIN);
+    if (pending && res.ok) sessionStorage.removeItem(PENDING_SIGNIN);
+    return res.ok;
   } catch {
-    // Ignore; API may still work via Bearer on each request
+    return false;
   }
 }
 
@@ -306,7 +311,11 @@ async function resolveOidcSessionProfile(u: User): Promise<AuthUser | null> {
 
   oidcSessionSyncInflight = (async () => {
     try {
-      await syncTokenToBackend(token);
+      // Do not surface an IdP profile if the backend rejected this token: that
+      // would mark the SPA authenticated while every API call still 401s.
+      if (!(await syncTokenToBackend(token))) {
+        return null;
+      }
       const me = await fetchAuthMeWithBearer(token);
       const profile = me ?? parseUserFromOidc(u);
       if (profile) {
@@ -314,7 +323,7 @@ async function resolveOidcSessionProfile(u: User): Promise<AuthUser | null> {
       }
       return profile;
     } catch {
-      return parseUserFromOidc(u);
+      return null;
     } finally {
       oidcSessionSyncInflight = null;
     }
@@ -628,7 +637,8 @@ function OidcAuthProvider({
       if (u && !u.expired) {
         const profile = await resolveOidcSessionProfile(u);
         setUser(profile);
-        setIsAuthenticated(true);
+        setIsAuthenticated(Boolean(profile));
+        if (!profile) resetOidcSessionSyncState();
       } else {
         resetOidcSessionSyncState();
         setUser(null);
@@ -659,7 +669,7 @@ function OidcAuthProvider({
       void (async () => {
         const profile = await resolveOidcSessionProfile(u);
         setUser(profile);
-        setIsAuthenticated(true);
+        setIsAuthenticated(Boolean(profile));
       })();
     };
     const onUnloaded = () => {
@@ -709,7 +719,9 @@ function OidcAuthProvider({
       }
       // Mark the sign-in: the callback lands on the app origin and this marker survives the IdP round trip.
       sessionStorage.setItem(PENDING_SIGNIN, '1');
-      await mgr.signinRedirect();
+      // Explicit sign-in must not silently reuse the IdP SSO session; otherwise a
+      // user who was logged out is put straight back in without entering credentials.
+      await mgr.signinRedirect({ prompt: 'login' });
     })();
   }, []);
 
@@ -729,8 +741,7 @@ function OidcAuthProvider({
       if (!u?.access_token) {
         return false;
       }
-      await syncTokenToBackend(u.access_token);
-      return true;
+      return await syncTokenToBackend(u.access_token);
     } catch {
       return false;
     }
@@ -739,6 +750,9 @@ function OidcAuthProvider({
   const logout = useCallback(async () => {
     setAuthError(null);
     resetOidcSessionSyncState();
+    sessionStorage.removeItem(PENDING_SIGNIN);
+    setUser(null);
+    setIsAuthenticated(false);
     try {
       await fetch(`${config.apiUrl}/clear-session`, {
         method: 'POST',
@@ -780,8 +794,28 @@ function OidcAuthProvider({
   const onApiSessionInvalid = useCallback(() => {
     setAuthError(null);
     toast.dismiss();
-    void login();
-  }, [login]);
+    void (async () => {
+      resetOidcSessionSyncState();
+      try {
+        await fetch(`${config.apiUrl}/clear-session`, {
+          method: 'POST',
+          credentials: 'include',
+        });
+      } catch {
+        // clear local state even if the cookie is already gone
+      }
+      try {
+        await getUserManager().removeUser();
+      } catch {
+        // ignore stale local user cache cleanup failures
+      }
+      setUser(null);
+      setIsAuthenticated(false);
+      // Do not start an OIDC redirect here. The user decides when to sign in
+      // again, and `login()` forces a fresh credential prompt.
+      navigate('/login?notice=session_expired', { replace: true });
+    })();
+  }, [navigate]);
 
   useEffect(() => {
     setSessionRetryProvider(sessionRetry);

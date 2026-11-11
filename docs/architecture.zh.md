@@ -376,7 +376,7 @@ flowchart LR
 
 ### 共用
 
-- **API 上无效 JWT**：**`authAwareFetch`** 对 session 类 **401** 先静默重试（OIDC `signinSilent` + sync-session；local 查 me）；仍失败则清 session、toast、跳转登录；返回合成 **401**（`SESSION_EXPIRED_API_DETAIL`）
+- **API 上无效 JWT**：**`authAwareFetch`** 对 session 类 **401** 先静默重试（OIDC `signinSilent` + sync-session；local 查 me）；仍失败则清 session、丢弃缓存的 OIDC 用户，跳转 **`/login?notice=session_expired`**，不自动发起 OIDC 重定向；显式登录使用 `prompt=login`；返回合成 **401**（`SESSION_EXPIRED_API_DETAIL`）
 - **路由保护**：**`/`** 对访客公开；其余 **MainLayout** 页需认证
 - **Console**：OIDC `admin` 或 local `is_admin` / `user_security_roles`
 - `POST /clear-session` 清 cookie
