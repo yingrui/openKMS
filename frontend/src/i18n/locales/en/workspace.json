@@ -393,7 +393,9 @@
     "runLanguage": "Judgement language",
     "runLanguageHint": "Applies to the check reasons and the run report. Verdicts do not change.",
     "runLanguageZh": "Chinese",
-    "runLanguageEn": "English"
+    "runLanguageEn": "English",
+    "preparingRun": "Preparing…",
+    "runInProgress": "Running — {{seconds}}s elapsed. This request answers and judges every item, so it takes minutes; keep the page open."
   },
   "models": {
     "title": "Models",

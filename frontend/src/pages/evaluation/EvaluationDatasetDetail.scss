@@ -603,6 +603,12 @@
   color: var(--color-text-muted);
 }
 
+.eval-run-progress {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
 .eval-run-cost {
   margin: 0;
   font-size: var(--text-sm);

@@ -249,6 +249,9 @@ export function EvaluationDatasetDetail() {
   const [running, setRunning] = useState(false);
   const [runDialogOpen, setRunDialogOpen] = useState(false);
   const [failedItemIds, setFailedItemIds] = useState<string[]>([]);
+  const [preparingRun, setPreparingRun] = useState(false);
+  const [runStartedAt, setRunStartedAt] = useState<number | null>(null);
+  const [runElapsed, setRunElapsed] = useState(0);
   const [evaluationType, setEvaluationType] = useState<string>(EVAL_TYPE_SEARCH);
   const [runView, setRunView] = useState<EvaluationRunResponse | null>(null);
   const [runs, setRuns] = useState<EvaluationRunListItem[]>([]);
@@ -470,23 +473,34 @@ export function EvaluationDatasetDetail() {
   };
 
   // Which items failed last time: the dialog offers to re-run just those, which is the common case while tuning.
+  // Read them *before* opening — opening first left the dialog with an empty list, so "only failed" was disabled and the
+  // default scope was "everything", which is how a one-item re-run turns into seventeen.
   const openRunDialog = async () => {
-    setRunDialogOpen(true);
-    setFailedItemIds([]);
     const lastRun = runs[0];
-    if (!evaluationId || !lastRun) return;
+    if (!evaluationId || !lastRun) {
+      setFailedItemIds([]);
+      setRunDialogOpen(true);
+      return;
+    }
+    setPreparingRun(true);
     try {
       const detail = await getEvaluationRun(evaluationId, lastRun.id);
       setFailedItemIds(detail.results.filter((r) => !r.pass).map((r) => r.item_id));
     } catch {
       setFailedItemIds([]);
+    } finally {
+      setPreparingRun(false);
+      setRunDialogOpen(true);
     }
   };
 
   const handleRunEvaluation = async ({ itemIds, judgeModelId, language }: RunOptions) => {
     if (!evaluationId) return;
+    if (itemIds !== null && itemIds.length === 0) return;   // nothing selected: do not fall through to "run everything"
     setRunDialogOpen(false);
     setRunning(true);
+    setRunStartedAt(Date.now());
+    setRunElapsed(0);
     setRunView(null);
     try {
       const res = await runEvaluation(evaluationId, {
@@ -509,8 +523,15 @@ export function EvaluationDatasetDetail() {
       toast.error(e instanceof Error ? e.message : t('evaluationDetail.toastRunFailed'));
     } finally {
       setRunning(false);
+      setRunStartedAt(null);
     }
   };
+
+  useEffect(() => {
+    if (!running || !runStartedAt) return;
+    const id = window.setInterval(() => setRunElapsed(Math.round((Date.now() - runStartedAt) / 1000)), 1000);
+    return () => window.clearInterval(id);
+  }, [running, runStartedAt]);
 
   const handleLoadRun = async (runId: string) => {
     if (!evaluationId) return;
@@ -811,11 +832,17 @@ export function EvaluationDatasetDetail() {
                 type="button"
                 className="btn btn-primary"
                 onClick={() => void openRunDialog()}
-                disabled={running || itemsTotal === 0}
+                disabled={running || preparingRun || itemsTotal === 0}
                 title={itemsTotal === 0 ? t('evaluationDetail.runNeedsItems') : undefined}
               >
-                {running ? <Loader2 size={18} className="animate-spin" /> : <Play size={18} />}
-                <span>{running ? t('evaluationDetail.running') : t('evaluationDetail.runEvaluation')}</span>
+                {running || preparingRun ? <Loader2 size={18} className="animate-spin" /> : <Play size={18} />}
+                <span>
+                  {running
+                    ? t('evaluationDetail.running')
+                    : preparingRun
+                      ? t('evaluationDetail.preparingRun')
+                      : t('evaluationDetail.runEvaluation')}
+                </span>
               </button>
               <button
                 type="button"
@@ -832,6 +859,12 @@ export function EvaluationDatasetDetail() {
         {itemsTotal === 0 && (
           <p className="eval-run-hint">{t('evaluationDetail.runNeedsItems')}</p>
         )}
+        {running && runStartedAt ? (
+          <p className="eval-run-hint eval-run-progress" role="status">
+            <Loader2 size={14} className="animate-spin" aria-hidden />
+            {t('evaluationDetail.runInProgress', { seconds: runElapsed })}
+          </p>
+        ) : null}
         {runs.length === 0 ? (
           <p className="eval-empty-text">{t('evaluationDetail.emptyRuns')}</p>
         ) : (

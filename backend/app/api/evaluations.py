@@ -797,7 +797,9 @@ async def run_evaluation(
 
     # A run that blows up is persisted as failed and returned; an HTTP error still propagates.
     with boundary("run the evaluation", reraise=(HTTPException,)) as failed:
-        item_ids = body.item_ids or None
+        if body.item_ids is not None and not body.item_ids:
+            raise HTTPException(status_code=400, detail="No items selected to run.")
+        item_ids = body.item_ids
         if eval_type == EVALUATION_TYPE_SEARCH_RETRIEVAL:
             item_rows = await run_search_retrieval_evaluation(
                 db, ev.knowledge_base_id, evaluation_id, judge_config, item_ids
