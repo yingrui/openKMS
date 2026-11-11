@@ -350,7 +350,20 @@
     "add": "添加",
     "evalTypeDataQuery": "问数（语义模型）",
     "dataQueriesLabel": "引用的查询",
-    "coverageLabel": "已覆盖 {{percent}}% 的期望查询"
+    "coverageLabel": "已覆盖 {{percent}}% 的期望查询",
+    "undecided": "待确认",
+    "judgeLabel": "评判",
+    "judgeAllPass": "六项判定全部通过。",
+    "uncoveredCount": "{{count}} 条期望查询未被覆盖",
+    "extraSources": "多引用了 {{count}} 条查询",
+    "judge": {
+      "model": "模型",
+      "scope": "范围",
+      "measure": "指标",
+      "grain": "粒度",
+      "joins": "关联",
+      "forbidden": "禁用项"
+    }
   },
   "models": {
     "title": "模型",

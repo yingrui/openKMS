@@ -350,7 +350,20 @@
     "add": "Add",
     "evalTypeDataQuery": "Data query (semantic model)",
     "dataQueriesLabel": "Cited queries",
-    "coverageLabel": "{{percent}}% of expected queries covered"
+    "coverageLabel": "{{percent}}% of expected queries covered",
+    "undecided": "Undecided",
+    "judgeLabel": "Judged by",
+    "judgeAllPass": "All six checks passed.",
+    "uncoveredCount": "{{count}} expected queries not covered",
+    "extraSources": "{{count}} extra queries cited",
+    "judge": {
+      "model": "Model",
+      "scope": "Scope",
+      "measure": "Measure",
+      "grain": "Grain",
+      "joins": "Joins",
+      "forbidden": "Forbidden"
+    }
   },
   "models": {
     "title": "Models",

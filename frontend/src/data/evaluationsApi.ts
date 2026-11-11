@@ -77,7 +77,44 @@ export interface DataQuerySource {
   mode: string | null;
   model_id: string | null;
   metric: string | null;
+  expression?: string | null;
+  /** The arguments the query was made with — in metric mode the SQL is generated and its values are parameterised. */
+  group_by?: Record<string, unknown>[] | null;
+  filters?: Record<string, unknown>[] | null;
+  base_dataset?: string | null;
+  joins?: string[] | null;
+  resource_id?: string | null;
   sql: string | null;
+}
+
+/** One of the six things a data-query verdict compares. */
+export interface JudgeCheck {
+  id: 'model' | 'scope' | 'measure' | 'grain' | 'joins' | 'forbidden';
+  verdict: 'pass' | 'fail' | 'unknown';
+  expected?: string;
+  actual?: string;
+  reason?: string | null;
+}
+
+/** One expectation checked against one cited query. */
+export interface JudgePairVerdict {
+  expected_index: number;
+  source_index: number;
+  verdict: 'pass' | 'fail' | 'undecided';
+  checks: JudgeCheck[];
+  reasoning?: string;
+  model?: string;
+  prompt_version?: string;
+  error?: string | null;
+  cache_hit?: boolean;
+}
+
+/** The verdict for one item: every pair the judge looked at, and the item's overall outcome. */
+export interface JudgeVerdict {
+  verdict: 'pass' | 'fail' | 'undecided';
+  model?: string | null;
+  prompt_version?: string | null;
+  verdicts?: JudgePairVerdict[];
 }
 
 export interface EvaluationRunResult {
@@ -89,6 +126,14 @@ export interface EvaluationRunResult {
   qa_sources?: SearchResultSnippet[];
   data_queries?: DataQuerySource[];
   coverage?: number | null;
+  /** What the item expected, so a result can be read without opening the item. */
+  expected_query?: ExpectedQuery[] | null;
+  /** Expected queries nothing covered, each with the verdict that explains why. */
+  uncovered?: Record<string, unknown>[];
+  /** Queries cited that covered no expectation. */
+  extra_sources?: number;
+  /** The judge's structured verdict. */
+  judge?: JudgeVerdict | null;
   pass: boolean;
   score: number;
   reasoning: string;

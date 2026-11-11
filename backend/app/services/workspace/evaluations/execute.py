@@ -11,7 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.models.api_model import ApiModel
-from app.models.evaluation import EvaluationItem
+from app.models.evaluation import Evaluation, EvaluationItem
 from app.models.knowledge_base import KnowledgeBase
 from app.models.semantic_model_field import SemanticModelField
 from app.services.platform.boundaries import boundary
@@ -298,7 +298,9 @@ async def run_data_query_evaluation(
     from app.services.workspace.evaluations.judge import MAX_SOURCES_PER_EXPECTATION, judge_query
 
     ask_url = agent_kb_path(kb.agent_url, kb.id, "ask")
-    schema = await _semantic_model_schema(db, kb.semantic_model_id)
+    # The semantic model belongs to the evaluation, not to the knowledge base: a KB can hold several data sets.
+    evaluation = await db.get(Evaluation, evaluation_id)
+    schema = await _semantic_model_schema(db, evaluation.semantic_model_id if evaluation else None)
 
     async with httpx.AsyncClient(timeout=120.0) as client:
 

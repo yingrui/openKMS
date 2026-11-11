@@ -413,16 +413,19 @@ export function EvaluationDatasetDetail() {
               <Settings size={18} />
               <span>{t('evaluationDetail.settings')}</span>
             </Link>
-            <button
-              type="button"
-              className="btn btn-secondary"
-              onClick={handleImportClick}
-              disabled={importing}
-              title={t('evaluationDetail.importData')}
-            >
-              {importing ? <Loader2 size={18} className="animate-spin" /> : <Upload size={18} />}
-              <span>{importing ? t('evaluationDetail.importing') : t('evaluationDetail.importData')}</span>
-            </button>
+            {/* A CSV carries answers; a query item's ground truth is a query. */}
+            {isQueryKind(dataset.kind) ? null : (
+              <button
+                type="button"
+                className="btn btn-secondary"
+                onClick={handleImportClick}
+                disabled={importing}
+                title={t('evaluationDetail.importData')}
+              >
+                {importing ? <Loader2 size={18} className="animate-spin" /> : <Upload size={18} />}
+                <span>{importing ? t('evaluationDetail.importing') : t('evaluationDetail.importData')}</span>
+              </button>
+            )}
             {isQueryKind(dataset.kind) ? null : (
               <button
                 type="button"
@@ -804,9 +807,17 @@ export function EvaluationDatasetDetail() {
             {runView.results.map((r) => (
               <div key={r.item_id} className="eval-result-item">
                 <div className="eval-result-header">
-                  <span className={`eval-result-badge ${r.pass ? 'eval-result-pass' : 'eval-result-fail'}`}>
-                    {r.pass ? t('evaluationDetail.pass') : t('evaluationDetail.fail')}
-                  </span>
+                  {(() => {
+                    // "undecided" is a real outcome: the judge could not tell, so this item is not a failure.
+                    const undecided = !r.pass && r.judge?.verdict === 'undecided';
+                    const cls = r.pass ? 'eval-result-pass' : undecided ? 'eval-result-undecided' : 'eval-result-fail';
+                    const label = r.pass
+                      ? t('evaluationDetail.pass')
+                      : undecided
+                        ? t('evaluationDetail.undecided')
+                        : t('evaluationDetail.fail');
+                    return <span className={`eval-result-badge ${cls}`}>{label}</span>;
+                  })()}
                   <span className="eval-result-score">
                     {t('evaluationDetail.scoreShort', { score: r.score.toFixed(2) })}
                   </span>
@@ -814,14 +825,68 @@ export function EvaluationDatasetDetail() {
                 <div className="eval-result-query">
                   <strong>{t('evaluationDetail.queryLabel')}</strong> {r.query}
                 </div>
-                <div className="eval-result-expected">
-                  <strong>{t('evaluationDetail.expectedLabel')}</strong>
-                  <p>{r.expected_answer}</p>
-                </div>
+                {runView.evaluation_type === EVAL_TYPE_DATA_QUERY ? (
+                  <div className="eval-result-expected">
+                    <strong>{t('evaluationDetail.colExpectedQuery')}</strong>
+                    <ul className="eval-item-expected-list">
+                      {expectedQueryLines(r.expected_query).map((line, i) => (
+                        <li key={`exp-${i}`} title={line}>
+                          {line}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                ) : (
+                  <div className="eval-result-expected">
+                    <strong>{t('evaluationDetail.expectedLabel')}</strong>
+                    <p>{r.expected_answer}</p>
+                  </div>
+                )}
                 {runView.evaluation_type === EVAL_TYPE_QA && r.generated_answer != null && r.generated_answer !== '' && (
                   <div className="eval-result-generated">
                     <strong>{t('evaluationDetail.generatedAnswer')}</strong>
                     <p>{r.generated_answer}</p>
+                  </div>
+                )}
+                {runView.evaluation_type === EVAL_TYPE_DATA_QUERY && r.judge && (
+                  <div className="eval-result-judge">
+                    <strong>
+                      {t('evaluationDetail.judgeLabel')}
+                      {r.judge.model ? ` · ${r.judge.model}` : ''}
+                      {r.judge.prompt_version ? ` · ${r.judge.prompt_version}` : ''}
+                    </strong>
+                    <ul className="eval-judge-checks">
+                      {(r.judge.verdicts ?? [])
+                        .filter((v) => v.verdict !== 'pass')
+                        .flatMap((v) =>
+                          v.checks
+                            .filter((c) => c.verdict !== 'pass')
+                            .map((c) => (
+                              <li key={`${v.expected_index}-${v.source_index}-${c.id}`} className={`eval-judge-check eval-judge-check--${c.verdict}`}>
+                                <span className="eval-judge-check-id">
+                                  {t(`evaluationDetail.judge.${c.id}`)}
+                                </span>
+                                <span className="eval-judge-check-verdict">
+                                  {c.verdict === 'unknown' ? t('evaluationDetail.undecided') : t('evaluationDetail.fail')}
+                                </span>
+                                {c.expected ? <code title={c.expected}>{c.expected}</code> : null}
+                                {c.actual ? <code title={c.actual}>{c.actual}</code> : null}
+                                {c.reason ? <span className="eval-judge-check-reason">{c.reason}</span> : null}
+                              </li>
+                            ))
+                        )}
+                    </ul>
+                    {(r.judge.verdicts ?? []).every((v) => v.verdict === 'pass') ? (
+                      <p className="eval-judge-ok">{t('evaluationDetail.judgeAllPass')}</p>
+                    ) : null}
+                    {(r.uncovered?.length ?? 0) > 0 ? (
+                      <p className="eval-judge-uncovered">
+                        {t('evaluationDetail.uncoveredCount', { count: r.uncovered!.length })}
+                      </p>
+                    ) : null}
+                    {(r.extra_sources ?? 0) > 0 ? (
+                      <p className="eval-judge-extra">{t('evaluationDetail.extraSources', { count: r.extra_sources! })}</p>
+                    ) : null}
                   </div>
                 )}
                 {runView.evaluation_type === EVAL_TYPE_DATA_QUERY && (r.data_queries?.length ?? 0) > 0 && (

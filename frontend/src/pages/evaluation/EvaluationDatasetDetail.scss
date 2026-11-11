@@ -324,6 +324,73 @@
   }
 }
 
+/* The judge's verdict, item by item: only what differs is listed. */
+.eval-result-judge {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  font-size: var(--font-size-sm);
+}
+
+.eval-judge-checks {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: var(--space-1);
+}
+
+.eval-judge-check {
+  display: grid;
+  grid-template-columns: 6rem 5rem 1fr;
+  gap: var(--space-2);
+  align-items: baseline;
+  padding: var(--space-1) var(--space-2);
+  border-left: 3px solid var(--color-border);
+  background: var(--color-surface-sunken);
+  border-radius: var(--radius-sm);
+
+  &--fail {
+    border-left-color: var(--color-danger, #dc2626);
+  }
+
+  &--unknown {
+    border-left-color: var(--color-warning, #b45309);
+  }
+
+  code {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+}
+
+.eval-judge-check-id,
+.eval-judge-check-verdict {
+  font-weight: 500;
+}
+
+.eval-judge-check-reason {
+  grid-column: 3;
+  color: var(--color-text-secondary);
+}
+
+.eval-judge-ok {
+  margin: 0;
+  color: var(--color-text-secondary);
+}
+
+.eval-judge-uncovered,
+.eval-judge-extra {
+  margin: 0;
+  color: var(--color-warning, #b45309);
+}
+
+.eval-result-badge.eval-result-undecided {
+  background: var(--color-surface-sunken);
+  color: var(--color-text-secondary);
+}
+
 .eval-item-expected-missing {
   color: var(--color-warning, #b45309);
   font-size: var(--font-size-sm);
