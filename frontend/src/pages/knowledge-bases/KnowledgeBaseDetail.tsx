@@ -89,8 +89,7 @@ export function KnowledgeBaseDetail() {
     setQaInput, chatMessages,  qaFeedback,  qaLoading, 
     beginQaTraceSession, clearQaTraceSession, kbQaConvId, qaSessionId,
      kbQaConversations,  kbQaConvsLoading, 
-    kbQaConvReady,  kbQaMainScrollRef, settingsAgentUrl, setSettingsAgentUrl,
-    settingsAgentSkills, toggleSettingsAgentSkill,
+    kbQaConvReady,  kbQaMainScrollRef,
     settingsEmbeddingModelId, setSettingsEmbeddingModelId, settingsFaqPrompt, setSettingsFaqPrompt,
     settingsChunkStrategy, setSettingsChunkStrategy, settingsChunkSize, setSettingsChunkSize,
     settingsChunkOverlap, setSettingsChunkOverlap, settingsMetadataKeys, setSettingsMetadataKeys,
@@ -1417,61 +1416,6 @@ export function KnowledgeBaseDetail() {
             <div className="kb-settings-form">
               <div className="kb-settings-layout">
                 <div className="kb-settings-col kb-settings-col-models">
-                  <label>
-                    <span>{t('detail.qaAgentUrl')}</span>
-                    <input
-                      type="url"
-                      placeholder={t('detail.qaAgentUrlPlaceholder')}
-                      value={settingsAgentUrl}
-                      onChange={(e) => setSettingsAgentUrl(e.target.value)}
-                    />
-                    <small>{t('detail.qaAgentUrlHelp')}</small>
-                  </label>
-
-                  <fieldset className="kb-settings-fieldset">
-                    <legend>{t('detail.agentSkillsFieldset')}</legend>
-                    <small className="kb-settings-agent-skills-help">{t('detail.agentSkillsHelp')}</small>
-                    {(
-                      [
-                        ['ontology', 'agentSkillOntology', 'agentSkillOntologyHelp'],
-                        ['catalog', 'agentSkillCatalog', 'agentSkillCatalogHelp'],
-                        ['page_index', 'agentSkillPageIndex', 'agentSkillPageIndexHelp'],
-                      ] as const
-                    ).map(([id, labelKey, helpKey]) => (
-                      <label key={id} className="kb-settings-skill-row">
-                        <input
-                          type="checkbox"
-                          checked={settingsAgentSkills.includes(id)}
-                          onChange={() => toggleSettingsAgentSkill(id)}
-                        />
-                        <span>
-                          <span className="kb-settings-skill-name">{t(`detail.${labelKey}`)}</span>
-                          <small>{t(`detail.${helpKey}`)}</small>
-                        </span>
-                      </label>
-                    ))}
-                    <p className="kb-settings-skills-demo-legend">{t('detail.agentSkillsDemoLegend')}</p>
-                    {(
-                      [
-                        ['insurance_calculator', 'agentSkillInsuranceCalculator', 'agentSkillInsuranceCalculatorHelp'],
-                        ['premium_estimator', 'agentSkillPremiumEstimator', 'agentSkillPremiumEstimatorHelp'],
-                        ['product_comparator', 'agentSkillProductComparator', 'agentSkillProductComparatorHelp'],
-                      ] as const
-                    ).map(([id, labelKey, helpKey]) => (
-                      <label key={id} className="kb-settings-skill-row">
-                        <input
-                          type="checkbox"
-                          checked={settingsAgentSkills.includes(id)}
-                          onChange={() => toggleSettingsAgentSkill(id)}
-                        />
-                        <span>
-                          <span className="kb-settings-skill-name">{t(`detail.${labelKey}`)}</span>
-                          <small>{t(`detail.${helpKey}`)}</small>
-                        </span>
-                      </label>
-                    ))}
-                  </fieldset>
-
                   <label>
                     <span>{t('detail.embeddingModel')}</span>
                     <select value={settingsEmbeddingModelId} onChange={(e) => setSettingsEmbeddingModelId(e.target.value)}>

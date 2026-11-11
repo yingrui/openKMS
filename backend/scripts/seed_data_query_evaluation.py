@@ -116,7 +116,7 @@ def main() -> int:
     print(f"\n  pass {run.get('pass_count')}/{run.get('item_count')} · avg {run.get('avg_score')}\n")
     expected = [True, True, False, False, True]
     ok = True
-    for i, (result, want) in enumerate(zip(run.get("results", []), expected)):
+    for result, want in zip(run.get("results", []), expected, strict=False):
         mark = "✓" if result["pass"] == want else "✗ EXPECTED THE OPPOSITE"
         ok = ok and result["pass"] == want
         print(f"  {mark}  {result['query'][:26]:28} pass={result['pass']}  {result['reasoning'][:70]}")

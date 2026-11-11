@@ -1,6 +1,8 @@
 """Run evaluation strategies: search + judge, QA agent + judge."""
+import asyncio
 import json
 import logging
+from collections.abc import Awaitable, Callable
 from typing import Any
 
 import httpx
@@ -14,7 +16,7 @@ from app.models.evaluation import EvaluationItem
 from app.models.knowledge_base import KnowledgeBase
 from app.services.platform.boundaries import boundary
 from app.services.content.knowledge_bases.kb_search import search_knowledge_base
-from app.services.workspace.evaluations.scores import score_data_query_item
+from app.services.workspace.evaluations.scores import flush_scores, score_data_query_item
 from app.services.workspace.evaluations.search_judge import judge_qa_answer, judge_search_results
 
 logger = logging.getLogger(__name__)
@@ -94,6 +96,74 @@ def _snippet(content: str, max_len: int = SNIPPET_MAX_LEN) -> str:
     return c if len(c) <= max_len else c[:max_len]
 
 
+def _item_result(
+    item: EvaluationItem,
+    *,
+    passed: bool,
+    score: float,
+    reasoning: str,
+    detail: dict[str, Any],
+) -> dict[str, Any]:
+    """One row of a run, in the shape every strategy returns — the comparison view and the UI read one schema."""
+    return {
+        "evaluation_item_id": item.id,
+        "query": item.query,
+        "expected_answer": item.expected_answer,
+        "passed": bool(passed),
+        "score": float(score),
+        "reasoning": str(reasoning),
+        "detail": detail,
+    }
+
+
+async def _run_items(
+    db: AsyncSession,
+    evaluation_id: str,
+    run_one: Callable[[EvaluationItem], Awaitable[dict[str, Any]]],
+) -> list[dict[str, Any]]:
+    """Load the items and run one strategy step per item. The strategies differ only in `run_one`."""
+    return [await run_one(item) for item in await _load_evaluation_items(db, evaluation_id)]
+
+
+async def _ask_agent(
+    client: httpx.AsyncClient,
+    ask_url: str,
+    kb: KnowledgeBase,
+    item: EvaluationItem,
+    access_token: str,
+    *,
+    session_id: str | None = None,
+) -> tuple[dict[str, Any] | None, str | None]:
+    """One answer for one item: the body, or the reason there is none.
+
+    Returned rather than raised: an unreachable answer is recorded against its own item, while a missing agent URL (a
+    configuration mistake) still surfaces as the caller's HTTPException.
+    """
+    from app.services.content.knowledge_bases.qa_agent_proxy import ask_agent_body
+
+    try:
+        resp = await client.post(
+            ask_url,
+            json=ask_agent_body(
+                kb=kb,
+                question=item.query,
+                conversation_history=[],
+                access_token=access_token,
+                session_id=session_id,
+            ),
+        )
+        resp.raise_for_status()
+        return resp.json(), None
+    except httpx.HTTPStatusError as e:
+        err_text = e.response.text[:300] if e.response is not None else str(e)
+        logger.warning("QA agent HTTP error: %s", err_text)
+        status = e.response.status_code if e.response is not None else ""
+        return None, f"Agent error: {status} {err_text}".strip()
+    except (httpx.HTTPError, KeyError, TypeError, ValueError) as e:
+        logger.warning("QA agent error: %s", e)
+        return None, f"Agent error: {e}"
+
+
 async def run_search_retrieval_evaluation(
     db: AsyncSession,
     knowledge_base_id: str,
@@ -101,9 +171,8 @@ async def run_search_retrieval_evaluation(
     judge_config: dict[str, Any],
 ) -> list[dict[str, Any]]:
     """Return one dict per item: item_id, query, expected_answer, passed, score, reasoning, detail."""
-    items = await _load_evaluation_items(db, evaluation_id)
-    out: list[dict[str, Any]] = []
-    for item in items:
+
+    async def run_one(item: EvaluationItem) -> dict[str, Any]:
         # A failing item is recorded and skipped; an HTTP error (bad KB) still reaches the client.
         with boundary("search for an evaluation item", reraise=(HTTPException,)) as failed:
             search_resp = await search_knowledge_base(
@@ -114,52 +183,32 @@ async def run_search_retrieval_evaluation(
                 db=db,
             )
         if failed:
-            out.append(
-                {
-                    "evaluation_item_id": item.id,
-                    "query": item.query,
-                    "expected_answer": item.expected_answer,
-                    "passed": False,
-                    "score": 0.0,
-                    "reasoning": str(failed[0]),
-                    "detail": {"search_results": []},
-                }
+            return _item_result(
+                item, passed=False, score=0.0, reasoning=str(failed[0]), detail={"search_results": []}
             )
-            continue
 
         search_list = [
-            {"content": r.content, "score": r.score, "source_type": r.source_type}
-            for r in search_resp.results
+            {"content": r.content, "score": r.score, "source_type": r.source_type} for r in search_resp.results
         ]
-
-        verdict = await judge_search_results(
-            item.query,
-            item.expected_answer,
-            search_list,
-            judge_config,
+        verdict = await judge_search_results(item.query, item.expected_answer, search_list, judge_config)
+        return _item_result(
+            item,
+            passed=bool(verdict["pass"]),
+            score=float(verdict["score"]),
+            reasoning=str(verdict["reasoning"]),
+            detail={
+                "search_results": [
+                    {
+                        "content": _snippet(r.get("content", "")),
+                        "score": float(r.get("score", 0)),
+                        "source_type": str(r.get("source_type", "unknown")),
+                    }
+                    for r in search_list[:5]
+                ]
+            },
         )
 
-        snippets = [
-            {
-                "content": _snippet(r.get("content", "")),
-                "score": float(r.get("score", 0)),
-                "source_type": str(r.get("source_type", "unknown")),
-            }
-            for r in search_list[:5]
-        ]
-
-        out.append(
-            {
-                "evaluation_item_id": item.id,
-                "query": item.query,
-                "expected_answer": item.expected_answer,
-                "passed": bool(verdict["pass"]),
-                "score": float(verdict["score"]),
-                "reasoning": str(verdict["reasoning"]),
-                "detail": {"search_results": snippets},
-            }
-        )
-    return out
+    return await _run_items(db, evaluation_id, run_one)
 
 
 async def run_qa_answer_evaluation(
@@ -176,103 +225,53 @@ async def run_qa_answer_evaluation(
             detail="No agent URL configured for this knowledge base. QA evaluation requires KB agent_url.",
         )
 
-    from app.services.content.knowledge_bases.qa_agent_proxy import agent_kb_path, ask_agent_body
+    from app.services.content.knowledge_bases.qa_agent_proxy import agent_kb_path
 
     ask_url = agent_kb_path(kb.agent_url, kb.id, "ask")
-    items = await _load_evaluation_items(db, evaluation_id)
-    out: list[dict[str, Any]] = []
 
     async with httpx.AsyncClient(timeout=120.0) as client:
-        for item in items:
-            try:
-                resp = await client.post(
-                    ask_url,
-                    json=ask_agent_body(
-                        kb=kb,
-                        question=item.query,
-                        conversation_history=[],
-                        access_token=access_token,
-                    ),
+
+        async def run_one(item: EvaluationItem) -> dict[str, Any]:
+            data, error = await _ask_agent(client, ask_url, kb, item, access_token)
+            if data is None:
+                return _item_result(
+                    item,
+                    passed=False,
+                    score=0.0,
+                    reasoning=error or "Agent returned no answer",
+                    detail={"answer": "", "sources": []},
                 )
-                resp.raise_for_status()
-                data = resp.json()
-            except httpx.HTTPStatusError as e:
-                err_text = e.response.text[:300] if e.response else str(e)
-                logger.warning("QA agent HTTP error: %s", err_text)
-                out.append(
-                    {
-                        "evaluation_item_id": item.id,
-                        "query": item.query,
-                        "expected_answer": item.expected_answer,
-                        "passed": False,
-                        "score": 0.0,
-                        "reasoning": f"Agent error: {e.response.status_code if e.response else ''} {err_text}",
-                        "detail": {"answer": "", "sources": []},
-                    }
-                )
-                continue
-            except (httpx.HTTPError, KeyError, TypeError, ValueError) as e:
-                out.append(
-                    {
-                        "evaluation_item_id": item.id,
-                        "query": item.query,
-                        "expected_answer": item.expected_answer,
-                        "passed": False,
-                        "score": 0.0,
-                        "reasoning": str(e),
-                        "detail": {"answer": "", "sources": []},
-                    }
-                )
-                continue
 
             answer = (data.get("answer") or "").strip()
-            raw_sources = data.get("sources") or []
-            sources_for_judge: list[dict[str, Any]] = []
-            for s in raw_sources[:10]:
-                if isinstance(s, dict):
-                    sources_for_judge.append(
-                        {
-                            "content": s.get("content") or "",
-                            "score": float(s.get("score", 0)),
-                            "source_type": s.get("source_type") or "unknown",
-                        }
-                    )
-
-            verdict = await judge_qa_answer(
-                item.query,
-                item.expected_answer,
-                answer,
-                sources_for_judge,
-                judge_config,
-            )
-
-            stored_sources = [
+            sources_for_judge = [
                 {
-                    "content": _snippet(x.get("content", "")),
-                    "score": float(x.get("score", 0)),
-                    "source_type": str(x.get("source_type", "unknown")),
+                    "content": s.get("content") or "",
+                    "score": float(s.get("score", 0)),
+                    "source_type": s.get("source_type") or "unknown",
                 }
-                for x in sources_for_judge[:5]
+                for s in (data.get("sources") or [])[:10]
+                if isinstance(s, dict)
             ]
-
-            out.append(
-                {
-                    "evaluation_item_id": item.id,
-                    "query": item.query,
-                    "expected_answer": item.expected_answer,
-                    "passed": bool(verdict["pass"]),
-                    "score": float(verdict["score"]),
-                    "reasoning": str(verdict["reasoning"]),
-                    "detail": {
-                        "answer": _snippet(answer, 8000),
-                        "sources": stored_sources,
-                    },
-                }
+            verdict = await judge_qa_answer(item.query, item.expected_answer, answer, sources_for_judge, judge_config)
+            return _item_result(
+                item,
+                passed=bool(verdict["pass"]),
+                score=float(verdict["score"]),
+                reasoning=str(verdict["reasoning"]),
+                detail={
+                    "answer": _snippet(answer, 8000),
+                    "sources": [
+                        {
+                            "content": _snippet(x.get("content", "")),
+                            "score": float(x.get("score", 0)),
+                            "source_type": str(x.get("source_type", "unknown")),
+                        }
+                        for x in sources_for_judge[:5]
+                    ],
+                },
             )
-    return out
 
-
-EVALUATION_TYPE_DATA_QUERY = "data_query"
+        return await _run_items(db, evaluation_id, run_one)
 
 
 async def run_data_query_evaluation(
@@ -293,93 +292,85 @@ async def run_data_query_evaluation(
             detail="No agent URL configured for this knowledge base. Data-query evaluation requires KB agent_url.",
         )
 
-    from app.services.content.knowledge_bases.qa_agent_proxy import agent_kb_path, ask_agent_body
+    from app.services.content.knowledge_bases.qa_agent_proxy import agent_kb_path
     from app.services.workspace.evaluations.data_query_judge import match_sources_to_queries
 
     ask_url = agent_kb_path(kb.agent_url, kb.id, "ask")
-    items = await _load_evaluation_items(db, evaluation_id)
-    out: list[dict[str, Any]] = []
 
     async with httpx.AsyncClient(timeout=120.0) as client:
-        for item in items:
-            try:
-                resp = await client.post(
-                    ask_url,
-                    json=ask_agent_body(
-                        kb=kb,
-                        question=item.query,
-                        conversation_history=[],
-                        access_token=access_token,
-                        # One trace per item, grouped under the evaluation run: a score needs a trace to attach to.
-                        session_id=f"eval-{evaluation_id[:8]}-{item.id[:8]}",
-                    ),
-                )
-                resp.raise_for_status()
-                data = resp.json()
-            except (httpx.HTTPError, ValueError) as e:
-                logger.warning("QA agent error: %s", e)
-                out.append(
-                    {
-                        "evaluation_item_id": item.id,
-                        "query": item.query,
-                        "expected_answer": item.expected_answer,
-                        "passed": False,
-                        "score": 0.0,
-                        "reasoning": f"Agent error: {e}",
-                        "detail": {"data_queries": [], "coverage": 0.0},
-                    }
-                )
-                continue
 
-            sources = data.get("sources") or []
-            data_queries: list[dict[str, Any]] = []
-            for s in sources:
-                dq = (s or {}).get("data_query") if isinstance(s, dict) else None
-                if isinstance(dq, dict) and dq.get("sql"):
-                    data_queries.append(dq)
+        async def run_one(item: EvaluationItem) -> dict[str, Any]:
+            # One trace per item, grouped under the evaluation run: a score needs a trace to attach to.
+            data, error = await _ask_agent(
+                client,
+                ask_url,
+                kb,
+                item,
+                access_token,
+                session_id=f"eval-{evaluation_id[:8]}-{item.id[:8]}",
+            )
+            if data is None:
+                return _item_result(
+                    item,
+                    passed=False,
+                    score=0.0,
+                    reasoning=error or "Agent returned no answer",
+                    detail={"data_queries": [], "coverage": 0.0},
+                )
 
-            expected = item.expected_query
-            if not isinstance(expected, list):
-                expected = []
+            data_queries: list[dict[str, Any]] = [
+                dq
+                for s in (data.get("sources") or [])
+                if isinstance(s, dict) and isinstance((dq := s.get("data_query")), dict) and dq.get("sql")
+            ]
+            expected = item.expected_query if isinstance(item.expected_query, list) else []
             result = match_sources_to_queries(expected, data_queries)
 
             # A raw-SQL expectation is judged for equivalence, not structure. Resolve each pending query with the LLM
             # and fold the verdicts back in, recomputing coverage.
             if result["pending_llm"]:
                 by_query: dict[int, list[dict[str, Any]]] = {}
-                for p in result["pending_llm"]:
-                    by_query.setdefault(p["query_index"], []).append(p)
+                for pending in result["pending_llm"]:
+                    by_query.setdefault(pending["query_index"], []).append(pending)
                 for query_index, pendings in by_query.items():
                     resolution = {"passed": False, "reasoning": "no equivalent SQL cited"}
-                    for p in pendings:
+                    for pending in pendings:
                         verdict = await judge_sql_equivalence(
-                            p["verdict"]["expected_sql"], p["verdict"]["actual_sql"], judge_config
+                            pending["verdict"]["expected_sql"], pending["verdict"]["actual_sql"], judge_config
                         )
                         if verdict["pass"]:
                             resolution = {"passed": True, "reasoning": verdict["reasoning"]}
                             break
                         resolution["reasoning"] = verdict["reasoning"]
                     if resolution["passed"]:
-                        result["matched"].append({"query_index": query_index, "source_index": -1, "verdict": {"passed": True}})
+                        result["matched"].append(
+                            {"query_index": query_index, "source_index": -1, "verdict": {"passed": True}}
+                        )
                     else:
-                        result["uncovered"].append({"query_index": query_index, "source_index": -1, "verdict": {"passed": False, "reasons": [resolution["reasoning"]], "checks": {}}})
+                        result["uncovered"].append(
+                            {
+                                "query_index": query_index,
+                                "source_index": -1,
+                                "verdict": {"passed": False, "reasons": [resolution["reasoning"]], "checks": {}},
+                            }
+                        )
                 total = len(expected)
                 result["coverage"] = len(result["matched"]) / total if total else 0.0
                 result["passed"] = result["coverage"] == 1.0
 
             # The pass line is coverage: every expected query is covered. Extra sources are completeness — reported, and
             # scored later (they must not fail an otherwise-correct answer).
-            reasons: list[str] = []
-            for u in result["uncovered"]:
-                reasons.append(f"query {u['query_index'] + 1}: {'; '.join(u['verdict']['reasons'])}")
+            reasons = [f"query {u['query_index'] + 1}: {'; '.join(u['verdict']['reasons'])}" for u in result["uncovered"]]
             if result.get("expect_refusal"):
                 # No expected query means the model cannot answer this, so citing anything is the failure.
                 cited = len(result["extra_sources"])
                 reasons = [f"should have refused, but cited {cited} quer{'y' if cited == 1 else 'ies'}"] if cited else []
 
             # Best effort, and never fatal: the trace is where cost and latency already live, so the verdict belongs there
-            # too — the evaluation tables keep the reproducible record.
-            score_data_query_item(
+            # too — the evaluation tables keep the reproducible record. Off the loop: this is a network call, and the
+            # verdict is not on the critical path of the run.
+            await asyncio.to_thread(
+                score_data_query_item,
                 data.get("langfuse_trace_id"),
                 passed=bool(result["passed"]),
                 coverage=float(result["coverage"]),
@@ -387,34 +378,33 @@ async def run_data_query_evaluation(
                 kb_id=kb.id,
             )
 
-            out.append(
-                {
-                    "evaluation_item_id": item.id,
-                    "query": item.query,
-                    "expected_answer": item.expected_answer,
-                    "passed": result["passed"],
-                    "score": result["coverage"],
-                    "reasoning": (
-                        "; ".join(reasons)
-                        if reasons
-                        else ("refused, as required" if result.get("expect_refusal") else "every expected query was cited")
-                    ),
-                    "detail": {
-                        "data_queries": [
-                            {
-                                "mode": dq.get("mode"),
-                                "model_id": dq.get("model_id"),
-                                "metric": dq.get("metric"),
-                                "sql": dq.get("sql"),
-                            }
-                            for dq in data_queries
-                        ],
-                        "coverage": result["coverage"],
-                        "matched": len(result["matched"]),
-                        "extra_sources": len(result["extra_sources"]),
-                    },
-                }
+            return _item_result(
+                item,
+                passed=result["passed"],
+                score=result["coverage"],
+                reasoning=(
+                    "; ".join(reasons)
+                    if reasons
+                    else ("refused, as required" if result.get("expect_refusal") else "every expected query was cited")
+                ),
+                detail={
+                    "data_queries": [
+                        {
+                            "mode": dq.get("mode"),
+                            "model_id": dq.get("model_id"),
+                            "metric": dq.get("metric"),
+                            "sql": dq.get("sql"),
+                        }
+                        for dq in data_queries
+                    ],
+                    "coverage": result["coverage"],
+                    "matched": len(result["matched"]),
+                    "extra_sources": len(result["extra_sources"]),
+                },
             )
+
+        out = await _run_items(db, evaluation_id, run_one)
+    await asyncio.to_thread(flush_scores)   # one send for the whole run, not one per score
     return out
 
 

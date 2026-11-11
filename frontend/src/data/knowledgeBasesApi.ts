@@ -5,17 +5,6 @@ import type { JobResponse } from './jobsApi';
 
 // --- Types ---
 
-/** qa-agent skill ids stored on the knowledge base (null → core only). */
-export const CORE_AGENT_SKILL_IDS = ['ontology', 'catalog', 'page_index'] as const;
-export const DEMO_AGENT_SKILL_IDS = [
-  'insurance_calculator',
-  'premium_estimator',
-  'product_comparator',
-] as const;
-export type AgentSkillId =
-  | (typeof CORE_AGENT_SKILL_IDS)[number]
-  | (typeof DEMO_AGENT_SKILL_IDS)[number];
-
 /** Per-KB agent configuration. Every field defaults to today's behaviour; see docs/features/knowledge-base-qa-agent.md. */
 export interface KbAgentConfig {
   prompts?: { agents_md?: string | null };
@@ -31,6 +20,14 @@ export interface KbAgentConfig {
     profile?: 'rag_only' | 'rag_tools' | 'agent_loop';
     max_tool_rounds?: number | null;
     retrieve?: 'always' | 'never' | 'on_miss';
+  };
+  /** Code execution. A guard rail, not a sandbox — see `qa-agent/qa_agent/sandbox.py`. */
+  sandbox?: {
+    enabled?: boolean;
+    timeout_seconds?: number | null;
+    memory_mb?: number | null;
+    /** Only adds to the agent's built-in allow list; a KB cannot narrow it. */
+    allow_commands?: string[] | null;
   };
   observability?: { langfuse_credential_id?: string | null; langfuse_tags?: string[]; sample_rate?: number | null };
   model_id?: string | null;

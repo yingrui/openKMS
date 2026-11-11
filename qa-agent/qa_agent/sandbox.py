@@ -124,13 +124,14 @@ def sandbox_config(agent_config: dict[str, Any] | None) -> dict[str, Any]:
     return out
 
 
-def allowed_commands(settings: dict[str, Any], agent_config: dict[str, Any] | None = None) -> frozenset[str]:
-    """The built-in allow list, plus anything this KB added. Additive: a KB can widen, not narrow, without a code change."""
-    extra = settings.get("allow_commands")
-    if not extra:
-        raw = (agent_config or {}).get("sandbox") if isinstance(agent_config, dict) else None
-        extra = (raw or {}).get("allow_commands") if isinstance(raw, dict) else None
-    return ALLOWED_COMMANDS | {str(c) for c in (extra or []) if isinstance(c, str)}
+def allowed_commands(settings: dict[str, Any]) -> frozenset[str]:
+    """The built-in allow list, plus anything this KB added. Additive: a KB can widen, not narrow, without a code change.
+
+    `settings` is `sandbox_config(agent_config)`, which already lifted the KB's `allow_commands` out of the config — passing
+    the config again looked like a second source and was never used.
+    """
+    extra = settings.get("allow_commands") or []
+    return ALLOWED_COMMANDS | {str(c) for c in extra if isinstance(c, str)}
 
 
 def check_command(command: str, allowed: frozenset[str]) -> None:
@@ -195,37 +196,34 @@ def _env(kb_id: str, session_id: str, access_token: str) -> dict[str, str]:
     return env
 
 
-def _limit_memory(limit_bytes: int) -> None:
-    """Runs in the child, before the code does: an allocation past the ceiling raises MemoryError there.
+def _with_memory_ceiling(argv: list[str], memory_mb: int) -> list[str]:
+    """Prefix a command with a virtual-memory limit, applied by the child's own shell before it execs.
 
-    `RLIMIT_AS` caps the address space, which is what a runaway list or dataframe grows. `RLIMIT_DATA` would miss numpy's
-    mappings; the kernel's OOM killer would take the whole service.
+    `ulimit -v` (KiB) is set soft **then** hard: a soft limit must never exceed the hard one, so lowering the hard limit first
+    is refused while the soft limit is still unlimited — and if only the soft limit were set, the code could raise it back.
+    A host that refuses (macOS will not go below the address space already in use) prints to stderr and the run proceeds
+    without a ceiling, rather than failing for a reason the model cannot act on.
 
-    Not every host can do it: macOS refuses a limit below the address space already in use, so the cap silently does not
-    apply there. The service runs on Linux, where it does.
+    Deliberately not `subprocess.Popen(preexec_fn=…)`: Python documents that hook as unsafe when the parent has threads, and
+    tool calls run in a thread pool, so the old version could deadlock the service to set a limit. A shell prologue has no
+    such hazard and the same effect — `exec` keeps the pid, so the timeout still kills the whole group.
     """
-    import resource
-
-    try:
-        # Soft and hard equal, so the child cannot raise its own ceiling back.
-        resource.setrlimit(resource.RLIMIT_AS, (limit_bytes, limit_bytes))
-    except (ValueError, OSError):
-        # macOS refuses a limit below the address space already in use, and Python is large before the first line of user
-        # code runs. The run proceeds **without** a ceiling rather than failing for a reason the model cannot act on; the cap
-        # is enforced where it is supported (Linux, which is where this service runs).
-        return
+    kib = memory_mb * 1024
+    prologue = f"ulimit -S -v {kib} 2>/dev/null; ulimit -H -v {kib} 2>/dev/null; exec \"$@\""
+    return ["/bin/sh", "-c", prologue, "sh", *argv]
 
 
 def _run(
     argv: list[str], *, cwd: str, env: dict[str, str], timeout: int, memory_mb: int = DEFAULT_MEMORY_MB
 ) -> ExecResult:
     started = time.monotonic()
+    if os.name == "posix" and memory_mb > 0:
+        argv = _with_memory_ceiling(argv, memory_mb)
     try:
-        proc = subprocess.Popen(  # no shell: the command is already tokenised and checked
+        proc = subprocess.Popen(  # no shell of its own; the prologue below is the only one, and it only execs
             argv,
             cwd=cwd,
             env=env,
-            preexec_fn=(lambda: _limit_memory(memory_mb * 1024 * 1024)) if os.name == "posix" else None,
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
             text=True,
@@ -300,12 +298,11 @@ def run_command(
     session_id: str,
     settings: dict[str, Any],
     access_token: str = "",
-    agent_config: dict[str, Any] | None = None,
 ) -> ExecResult:
     """Run one shell command, if every program it starts is on the allow list."""
     from . import session_fs
 
-    allowed = allowed_commands(settings, agent_config)
+    allowed = allowed_commands(settings)
     check_command(command, allowed)
     session_dir = str(session_fs.ensure_session_dir(kb_id, session_id))
     result = _run(

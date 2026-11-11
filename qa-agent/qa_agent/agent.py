@@ -4,6 +4,7 @@ import json
 import logging
 import time
 from collections.abc import AsyncIterator
+from dataclasses import dataclass, field
 from typing import Annotated, Any, Literal
 
 from langchain_core.messages import AIMessage, HumanMessage, ToolMessage
@@ -518,6 +519,174 @@ def _sources_to_jsonable(sources: list[SourceItem]) -> list[dict[str, Any]]:
     return [s.model_dump(mode="json") for s in sources]
 
 
+@dataclass
+class _StreamCollector:
+    """What the event stream accumulates, and the NDJSON line each event becomes.
+
+    Split out of the generator so the translation is testable from a list of events instead of a live graph — the loop that
+    drives it stays four lines. Order matters: `on_tool_end` is what turns a tool call into evidence.
+    """
+
+    buf: list[str] = field(default_factory=list)
+    sections: list[SourceItem] = field(default_factory=list)
+    seen_section_ids: set[str] = field(default_factory=set)
+    catalog: list[SourceItem] = field(default_factory=list)
+    schema_names: list[str] = field(default_factory=list)
+    schema_seen: set[str] = field(default_factory=set)
+    cypher_runs: list[tuple[str, dict[str, Any]]] = field(default_factory=list)
+    tool_inputs_by_run: dict[str, Any] = field(default_factory=dict)
+    graph_events: int = 0
+    tool_starts: int = 0
+    tool_ends: int = 0
+    tool_errors: int = 0
+    last_event_at: float = 0.0
+
+    def observe(self, ev: dict[str, Any]) -> bytes | None:
+        """One graph event → one line for the client, or nothing."""
+        self.graph_events += 1
+        now = time.monotonic()
+        ename = (ev.get("event") or "") if isinstance(ev, dict) else ""
+        if logger.isEnabledFor(logging.DEBUG):
+            logger.debug(
+                "astream_events #%d event=%s name=%s gap=%.2fs",
+                self.graph_events,
+                ename,
+                (ev.get("name") or "") if isinstance(ev, dict) else "",
+                now - self.last_event_at,
+            )
+        self.last_event_at = now
+        if ename == "on_chat_model_stream":
+            text = _stream_chunk_text((ev.get("data") or {}).get("chunk"))
+            if not text:
+                return None
+            self.buf.append(text)
+            return _ndjson_line({"type": "delta", "t": text})
+        if ename == "on_tool_start":
+            return self._on_tool_start(ev)
+        if ename == "on_tool_end":
+            return self._on_tool_end(ev)
+        if ename == "on_tool_error":
+            return self._on_tool_error(ev)
+        if ename == "on_chain_error":
+            err = (ev.get("data") or {}).get("error")
+            logger.error(
+                "astream_events chain_error event=%s error=%r",
+                ename,
+                preview_text(str(err) if err is not None else "", 500),
+                exc_info=err if isinstance(err, BaseException) else False,
+            )
+        return None
+
+    def _on_tool_start(self, ev: dict[str, Any]) -> bytes:
+        self.tool_starts += 1
+        name = (ev.get("name") or "tool").split("/")[-1]
+        data = ev.get("data") or {}
+        inp = data.get("input")
+        run_id = str(ev.get("run_id") or "")
+        if run_id:
+            self.tool_inputs_by_run[run_id] = inp
+        logger.info("tool_start #%d name=%s run_id=%s", self.tool_starts, name, run_id[:8] if run_id else "-")
+        logger.debug("tool_start #%d input=%r", self.tool_starts, preview_text(_tool_io_preview(inp, 400), 400))
+        return _ndjson_line(
+            {"type": "tool_start", "run_id": run_id, "name": name, "input": _tool_io_preview(inp, 6_000)}
+        )
+
+    def _on_tool_end(self, ev: dict[str, Any]) -> bytes:
+        self.tool_ends += 1
+        data = ev.get("data") or {}
+        out = data.get("output")
+        run_id = str(ev.get("run_id") or "")
+        name = (ev.get("name") or "tool").split("/")[-1]
+        out_raw = _tool_io_preview(out, 500)
+        logger.info(
+            "tool_end #%d name=%s run_id=%s output_chars=%d",
+            self.tool_ends,
+            name,
+            run_id[:8] if run_id else "-",
+            len(out_raw),
+        )
+        logger.debug("tool_end #%d preview=%r", self.tool_ends, preview_text(out_raw, 500))
+        self._collect_evidence(name, data.get("input"), out, run_id)
+        return _ndjson_line({"type": "tool_end", "run_id": run_id, "name": name, "output": _tool_io_preview(out, 10_000)})
+
+    def _collect_evidence(self, name: str, tool_inp: Any, out: Any, run_id: str) -> None:
+        """A tool that returns evidence becomes a source. The rest of the tools are not evidence and are only logged."""
+        if tool_inp is None and run_id:
+            tool_inp = self.tool_inputs_by_run.get(run_id)
+        if name == PAGE_SECTION_TOOL_NAME:
+            src = source_from_page_section_tool(tool_inp, out)
+            if src is not None and src.id not in self.seen_section_ids:
+                self.seen_section_ids.add(src.id)
+                self.sections.append(src)
+        elif name == ONTOLOGY_SCHEMA_TOOL_NAME:
+            for n in extract_schema_names_from_tool_output(out):
+                if n not in self.schema_seen:
+                    self.schema_seen.add(n)
+                    self.schema_names.append(n)
+        elif name == RUN_CYPHER_TOOL_NAME:
+            pair = extract_cypher_run_from_tool(tool_inp, out)
+            if pair is not None:
+                self.cypher_runs.append(pair)
+        else:
+            cat = source_from_catalog_tool(name, tool_inp, out, index=len(self.catalog))
+            if cat is not None:
+                self.catalog.append(cat)
+
+    def _on_tool_error(self, ev: dict[str, Any]) -> bytes:
+        self.tool_errors += 1
+        err = (ev.get("data") or {}).get("error")
+        err_s = str(err) if err is not None else "Tool error"
+        run_id = str(ev.get("run_id") or "")
+        name = (ev.get("name") or "tool").split("/")[-1]
+        logger.warning("tool_error #%d name=%s run_id=%s", self.tool_errors, name, run_id[:8] if run_id else "-")
+        logger.debug("tool_error #%d error=%r", self.tool_errors, preview_text(err_s, 300))
+        return _ndjson_line(
+            {"type": "tool_error", "run_id": run_id, "name": name, "error": _tool_io_preview(err_s, 2_000)}
+        )
+
+    @property
+    def delta_chars(self) -> int:
+        return sum(len(x) for x in self.buf)
+
+    def sources(self, ctx: list[Any]) -> list[SourceItem]:
+        return select_display_sources(
+            ctx,
+            messages=None,
+            streamed_sections=self.sections or None,
+            streamed_catalog=self.catalog or None,
+            streamed_ontology_schema_names=self.schema_names or None,
+            streamed_ontology_cypher_runs=self.cypher_runs or None,
+        )
+
+
+def _turn_state(
+    *,
+    knowledge_base_id: str,
+    question: str,
+    conversation_history: list[dict[str, str]],
+    access_token: str,
+    skill_ids: list[str],
+    retrieve_k: int,
+    retrieve_mode: str,
+    agent_config: dict[str, Any] | None,
+    ctx: list[Any],
+) -> dict[str, Any]:
+    return {
+        "knowledge_base_id": knowledge_base_id,
+        "question": question,
+        "conversation_history": conversation_history,
+        "access_token": access_token,
+        "context": ctx,
+        "messages": [],
+        "answer": "",
+        "agent_skills": skill_ids,
+        "top_k": retrieve_k,
+        "max_tool_rounds": agent_config_module.max_tool_rounds(agent_config),
+        "retrieve_mode": retrieve_mode,
+        "answer_policy": agent_config_module.answer_policy(agent_config),
+    }
+
+
 async def astream_agent_ndjson(
     knowledge_base_id: str,
     question: str,
@@ -530,7 +699,7 @@ async def astream_agent_ndjson(
     prompt_version: str | None = None,
 ) -> AsyncIterator[bytes]:
     """NDJSON stream: ``delta`` / ``tool_*`` events (wiki-copilot-compatible), then ``done`` or ``error``."""
-    from .langfuse_client import build_langgraph_trace_config, get_langfuse_callback
+    from .langfuse_client import build_langgraph_trace_config, current_trace_id, get_langfuse_callback
 
     skill_ids = normalize_skill_ids(agent_skills)
     retrieve_k = agent_config_module.top_k(agent_config)
@@ -554,206 +723,47 @@ async def astream_agent_ndjson(
     )
     logger.debug("astream_agent_ndjson question=%r", preview_text(question, 200))
     try:
-        if retrieve_mode == "always":
-            ctx = retrieve(
-                knowledge_base_id,
-                question,
-                access_token=access_token,
-                top_k=retrieve_k,
-            )
-        else:
-            ctx = []
-        logger.info(
-            "astream_agent_ndjson retrieve kb=%s mode=%s hits=%d",
-            knowledge_base_id,
-            retrieve_mode,
-            len(ctx),
+        ctx = (
+            retrieve(knowledge_base_id, question, access_token=access_token, top_k=retrieve_k)
+            if retrieve_mode == "always"
+            else []
         )
-        state: dict[str, Any] = {
-            "knowledge_base_id": knowledge_base_id,
-            "question": question,
-            "conversation_history": conversation_history,
-            "access_token": access_token,
-            "context": ctx,
-            "messages": [],
-            "answer": "",
-            "agent_skills": skill_ids,
-            "top_k": retrieve_k,
-            "max_tool_rounds": agent_config_module.max_tool_rounds(agent_config),
-            "retrieve_mode": retrieve_mode,
-            "answer_policy": agent_config_module.answer_policy(agent_config),
-        }
+        logger.info("astream_agent_ndjson retrieve kb=%s mode=%s hits=%d", knowledge_base_id, retrieve_mode, len(ctx))
+        state = _turn_state(
+            knowledge_base_id=knowledge_base_id,
+            question=question,
+            conversation_history=conversation_history,
+            access_token=access_token,
+            skill_ids=skill_ids,
+            retrieve_k=retrieve_k,
+            retrieve_mode=retrieve_mode,
+            agent_config=agent_config,
+            ctx=ctx,
+        )
         agent = get_agent()
         stream_cb = get_langfuse_callback() if settings.langfuse_trace_streaming else None
-        config = build_langgraph_trace_config(
-            session_id,
-            streaming=True,
-            include_callback=bool(stream_cb),
-        )
+        config = build_langgraph_trace_config(session_id, streaming=True, include_callback=bool(stream_cb))
         callback = (config.get("callbacks") or [None])[0]
 
-        buf: list[str] = []
-        streamed_sections: list[SourceItem] = []
-        seen_section_ids: set[str] = set()
-        streamed_catalog: list[SourceItem] = []
-        stream_schema_names: list[str] = []
-        stream_schema_seen: set[str] = set()
-        stream_cypher_runs: list[tuple[str, dict[str, Any]]] = []
-        # tool_start input by run_id — catalog evidence needs args (metric / model_id / sql).
-        tool_inputs_by_run: dict[str, Any] = {}
-        graph_events = 0
-        tool_starts = 0
-        tool_ends = 0
-        tool_errors = 0
-        last_event_at = t0
+        collector = _StreamCollector(last_event_at=t0)
         try:
             async for ev in agent.astream_events(state, config, version="v2"):  # type: ignore[union-attr]
-                graph_events += 1
-                now = time.monotonic()
-                ename = (ev.get("event") or "") if isinstance(ev, dict) else ""
-                if logger.isEnabledFor(logging.DEBUG):
-                    logger.debug(
-                        "astream_events #%d event=%s name=%s gap=%.2fs",
-                        graph_events,
-                        ename,
-                        (ev.get("name") or "") if isinstance(ev, dict) else "",
-                        now - last_event_at,
-                    )
-                last_event_at = now
-                if ename == "on_chat_model_stream":
-                    ch = (ev.get("data") or {}).get("chunk")
-                    t = _stream_chunk_text(ch)
-                    if t:
-                        buf.append(t)
-                        yield _ndjson_line({"type": "delta", "t": t})
-                elif ename == "on_tool_start":
-                    tool_starts += 1
-                    name = (ev.get("name") or "tool").split("/")[-1]
-                    data = ev.get("data") or {}
-                    inp = data.get("input")
-                    run_id = str(ev.get("run_id") or "")
-                    if run_id:
-                        tool_inputs_by_run[run_id] = inp
-                    inp_preview = preview_text(_tool_io_preview(inp, 400), 400)
-                    logger.info(
-                        "tool_start #%d name=%s run_id=%s",
-                        tool_starts,
-                        name,
-                        run_id[:8] if run_id else "-",
-                    )
-                    logger.debug(
-                        "tool_start #%d input=%r",
-                        tool_starts,
-                        inp_preview,
-                    )
-                    yield _ndjson_line(
-                        {
-                            "type": "tool_start",
-                            "run_id": run_id,
-                            "name": name,
-                            "input": _tool_io_preview(inp, 6_000),
-                        }
-                    )
-                elif ename == "on_tool_end":
-                    tool_ends += 1
-                    data = ev.get("data") or {}
-                    out = data.get("output")
-                    run_id = str(ev.get("run_id") or "")
-                    name = (ev.get("name") or "tool").split("/")[-1]
-                    out_raw = _tool_io_preview(out, 500)
-                    out_preview = preview_text(out_raw, 500)
-                    logger.info(
-                        "tool_end #%d name=%s run_id=%s output_chars=%d",
-                        tool_ends,
-                        name,
-                        run_id[:8] if run_id else "-",
-                        len(out_raw),
-                    )
-                    logger.debug(
-                        "tool_end #%d preview=%r",
-                        tool_ends,
-                        out_preview,
-                    )
-                    yield _ndjson_line(
-                        {
-                            "type": "tool_end",
-                            "run_id": run_id,
-                            "name": name,
-                            "output": _tool_io_preview(out, 10_000),
-                        }
-                    )
-                    tool_inp = data.get("input")
-                    if tool_inp is None and run_id:
-                        tool_inp = tool_inputs_by_run.get(run_id)
-                    if name == PAGE_SECTION_TOOL_NAME:
-                        src = source_from_page_section_tool(tool_inp, out)
-                        if src is not None and src.id not in seen_section_ids:
-                            seen_section_ids.add(src.id)
-                            streamed_sections.append(src)
-                    elif name == ONTOLOGY_SCHEMA_TOOL_NAME:
-                        for n in extract_schema_names_from_tool_output(out):
-                            if n not in stream_schema_seen:
-                                stream_schema_seen.add(n)
-                                stream_schema_names.append(n)
-                    elif name == RUN_CYPHER_TOOL_NAME:
-                        pair = extract_cypher_run_from_tool(tool_inp, out)
-                        if pair is not None:
-                            stream_cypher_runs.append(pair)
-                    else:
-                        cat = source_from_catalog_tool(
-                            name, tool_inp, out, index=len(streamed_catalog)
-                        )
-                        if cat is not None:
-                            streamed_catalog.append(cat)
-                elif ename == "on_tool_error":
-                    tool_errors += 1
-                    data = ev.get("data") or {}
-                    err = data.get("error")
-                    err_s = str(err) if err is not None else "Tool error"
-                    run_id = str(ev.get("run_id") or "")
-                    name = (ev.get("name") or "tool").split("/")[-1]
-                    logger.warning(
-                        "tool_error #%d name=%s run_id=%s",
-                        tool_errors,
-                        name,
-                        run_id[:8] if run_id else "-",
-                    )
-                    logger.debug(
-                        "tool_error #%d error=%r",
-                        tool_errors,
-                        preview_text(err_s, 300),
-                    )
-                    yield _ndjson_line(
-                        {
-                            "type": "tool_error",
-                            "run_id": run_id,
-                            "name": name,
-                            "error": _tool_io_preview(err_s, 2_000),
-                        }
-                    )
-                elif ename == "on_chain_error":
-                    data = ev.get("data") or {}
-                    err = data.get("error")
-                    logger.error(
-                        "astream_events chain_error event=%s error=%r",
-                        ename,
-                        preview_text(str(err) if err is not None else "", 500),
-                        exc_info=err if isinstance(err, BaseException) else False,
-                    )
+                line = collector.observe(ev)
+                if line is not None:
+                    yield line
         except GraphRecursionError as e:
-            elapsed = time.monotonic() - t0
             limit = settings.agent_recursion_limit
             logger.error(
                 "astream_agent_ndjson recursion_limit kb=%s limit=%d elapsed=%.2fs graph_events=%d "
                 "tool_starts=%d tool_ends=%d delta_chars=%d cypher_runs=%d: %s",
                 knowledge_base_id,
                 limit,
-                elapsed,
-                graph_events,
-                tool_starts,
-                tool_ends,
-                sum(len(x) for x in buf),
-                len(stream_cypher_runs),
+                time.monotonic() - t0,
+                collector.graph_events,
+                collector.tool_starts,
+                collector.tool_ends,
+                collector.delta_chars,
+                len(collector.cypher_runs),
                 e,
                 exc_info=True,
             )
@@ -761,45 +771,39 @@ async def astream_agent_ndjson(
                 f"Recursion limit exceeded ({limit} steps, "
                 f"OPENKMS_QA_AGENT_RECURSION_LIMIT / OPENKMS_AGENT_RECURSION_LIMIT): {e!s}"
             )
-            yield _ndjson_line({"type": "error", "detail": detail, "answer": "".join(buf)})
+            yield _ndjson_line({"type": "error", "detail": detail, "answer": "".join(collector.buf)})
             if callback and hasattr(callback, "flush"):
                 callback.flush()
             return
         except Exception as e:
-            elapsed = time.monotonic() - t0
             logger.error(
                 "astream_agent_ndjson failed kb=%s elapsed=%.2fs graph_events=%d "
                 "tool_starts=%d tool_ends=%d delta_chars=%d: %s",
                 knowledge_base_id,
-                elapsed,
-                graph_events,
-                tool_starts,
-                tool_ends,
-                sum(len(x) for x in buf),
+                time.monotonic() - t0,
+                collector.graph_events,
+                collector.tool_starts,
+                collector.tool_ends,
+                collector.delta_chars,
                 e,
                 exc_info=True,
             )
-            yield _ndjson_line({"type": "error", "detail": str(e) or type(e).__name__, "answer": "".join(buf)})
+            yield _ndjson_line(
+                {"type": "error", "detail": str(e) or type(e).__name__, "answer": "".join(collector.buf)}
+            )
             if callback and hasattr(callback, "flush"):
                 callback.flush()
             return
 
-        answer = "".join(buf)
-        sources_list = select_display_sources(
-            ctx,
-            messages=None,
-            streamed_sections=streamed_sections if streamed_sections else None,
-            streamed_catalog=streamed_catalog if streamed_catalog else None,
-            streamed_ontology_schema_names=stream_schema_names if stream_schema_names else None,
-            streamed_ontology_cypher_runs=stream_cypher_runs if stream_cypher_runs else None,
-        )
+        answer = "".join(collector.buf)
+        sources_list = collector.sources(ctx)
         if not answer.strip():
+            # A graph that streamed no tokens (a tool-only turn) still owes the client the answer it produced.
             logger.info(
-                "astream_agent_ndjson no streamed tokens; fallback invoke_agent kb=%s "
-                "(tool_starts=%d tool_ends=%d)",
+                "astream_agent_ndjson no streamed tokens; fallback invoke_agent kb=%s (tool_starts=%d tool_ends=%d)",
                 knowledge_base_id,
-                tool_starts,
-                tool_ends,
+                collector.tool_starts,
+                collector.tool_ends,
             )
             result = await asyncio.to_thread(
                 invoke_agent,
@@ -815,10 +819,10 @@ async def astream_agent_ndjson(
             sources_list = select_display_sources(
                 list(result.get("context") or ctx),
                 messages=list(result.get("messages") or []),
-                streamed_sections=streamed_sections if streamed_sections else None,
-                streamed_catalog=streamed_catalog if streamed_catalog else None,
-                streamed_ontology_schema_names=stream_schema_names if stream_schema_names else None,
-                streamed_ontology_cypher_runs=stream_cypher_runs if stream_cypher_runs else None,
+                streamed_sections=collector.sections or None,
+                streamed_catalog=collector.catalog or None,
+                streamed_ontology_schema_names=collector.schema_names or None,
+                streamed_ontology_cypher_runs=collector.cypher_runs or None,
             )
             if answer:
                 yield _ndjson_line({"type": "delta", "t": answer})
@@ -827,20 +831,18 @@ async def astream_agent_ndjson(
         grounding = ground(sources_list, answer)
         ground_mode = agent_config_module.require_grounded_numbers(agent_config)
         warnings = grounding_warnings(grounding, ground_mode)
-        trace_id = current_trace_id(callback)
-        elapsed = time.monotonic() - t0
         logger.info(
             "astream_agent_ndjson done kb=%s elapsed=%.2fs graph_events=%d tool_starts=%d "
             "tool_ends=%d tool_errors=%d answer_chars=%d sources=%d cypher_runs=%d",
             knowledge_base_id,
-            elapsed,
-            graph_events,
-            tool_starts,
-            tool_ends,
-            tool_errors,
+            time.monotonic() - t0,
+            collector.graph_events,
+            collector.tool_starts,
+            collector.tool_ends,
+            collector.tool_errors,
             len(answer or ""),
             len(sources_list),
-            len(stream_cypher_runs),
+            len(collector.cypher_runs),
         )
         yield _ndjson_line(
             {
@@ -849,7 +851,7 @@ async def astream_agent_ndjson(
                 "sources": _sources_to_jsonable(sources_list),
                 # Additive: the label and the ratio travel with the answer so a reader (or a score) can use them.
                 "grounding": grounding.model_dump(),
-                "langfuse_trace_id": trace_id,
+                "langfuse_trace_id": current_trace_id(callback),
                 "prompt_version": prompt_version,
                 "warnings": warnings,
                 "verified": ground_mode != "enforce" or not warnings,

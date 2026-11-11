@@ -7,6 +7,16 @@ from app.config import settings
 from app.services.workspace.evaluations import scores
 
 
+@pytest.fixture(autouse=True)
+def fresh_client_cache():
+    """The client is a process-wide singleton now; a test that configured (or failed) one must not leak into the next."""
+    scores._client_cache = None
+    scores._client_unavailable = False
+    yield
+    scores._client_cache = None
+    scores._client_unavailable = False
+
+
 @pytest.fixture
 def configured(monkeypatch):
     monkeypatch.setattr(settings, "langfuse_secret_key", "sk", raising=False)
@@ -53,3 +63,14 @@ class TestScoreDataQueryItem:
         assert names == [scores.SCORE_DATA_QUERY_PASS, scores.SCORE_DATA_QUERY_COVERAGE]
         assert [c.kwargs["value"] for c in instance.create_score.call_args_list] == [0.0, 0.5]
         assert wrote == 2
+
+    def test_one_client_serves_the_whole_run_and_is_flushed_once(self, configured):
+        with patch("langfuse.Langfuse") as client:
+            instance = MagicMock()
+            client.return_value = instance
+            for i in range(5):
+                scores.score_data_query_item(f"t{i}", passed=True, coverage=1.0, reasoning="ok", kb_id="kb")
+            assert client.call_count == 1              # not one client per score
+            instance.flush.assert_not_called()         # batching is the point
+            scores.flush_scores()
+        instance.flush.assert_called_once()

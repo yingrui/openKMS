@@ -183,8 +183,14 @@ to allow — which is why the list guards the shell tool and the prompt steers t
 ### Shipped
 
 `qa_agent/sandbox.py` (runner), `qa_agent/skills/sandbox.py` (`run_python_tool`, `run_command_tool`),
-`session_fs.kb_skills_dir`. Off unless `sandbox.enabled`. Verified live: the agent computed a prime sum and wrote it to `out/`,
+`session_fs.kb_skills_dir`. Off unless `sandbox.enabled`, which the **Agent tab** now offers (with the time limit and the
+extra commands) rather than leaving it to an API call. Verified live: the agent computed a prime sum and wrote it to `out/`,
 ran `ls` in the session folder, and reported that `docker ps` was **refused by the allow list** with no output.
+
+The **memory ceiling** is set by a shell prologue in the child process (`ulimit -v`, soft and hard), not by
+`Popen(preexec_fn=…)`: that hook is documented as unsafe once the parent has threads, and tool calls run in a pool. A host that
+refuses the limit (macOS, below the address space already in use) lets the run proceed uncapped rather than failing the code —
+see [tech debt](../tech_debt.md).
 
 ## Optional tool: web search
 
@@ -469,7 +475,7 @@ a different question"). Those must not vary per knowledge base; they belong in c
 |---|---|---|
 | Session workspace + file tools | `qa_agent/session_fs.py`, `skills/workspace.py` | one directory per conversation; `AGENTS.md` from the KB, `.openkms/` read-only, quota, TTL reaping |
 | Workspace reachable by the user | `qa_agent/main.py`, backend proxy, `KbQaFilesPanel` | list + download, scoped to the conversation's session id. A rail on the right, docked and collapsed exactly as the project agent's — one shared head (`src/styles/files-rail.scss`), refresh because files appear while the conversation runs. Its chip lives in the chat's top-right and is hidden while the Sources drawer is open — that corner is the drawer's |
-| `agent_config` + Agent tab | `app/schemas/kb_agent_config.py`, `KbAgentSettings` | validated JSONB; every default equals the old behaviour |
+| `agent_config` + Agent tab | `app/schemas/kb_agent_config.py`, `KbAgentSettings` | validated JSONB; every default equals the old behaviour. The tab renders a subset and **merges** its edit onto the stored object (`KbAgentSettings.utils.ts`) — the API replaces `agent_config` wholesale, so building it from the form alone silently cleared the keys the form does not draw (`sandbox`, the Langfuse credential). `agent_url` and `agent_skills` are edited **only** here — the General settings tab stopped offering them, because two screens for one field is how they end up disagreeing |
 | `retrieve` modes, tool-round budget + `finalize` | `qa_agent/agent.py` | see 1d above; wrapping up beats an empty answer |
 | Answer policies | `_policy_fragments`, `evidence.py` | `unknown_measure`, `require_schema_lookup`, `require_grounded_numbers` |
 | Trace id and scores | `langfuse_client.py`, `evaluations/scores.py` | `/ask` names its trace; an evaluation posts `data_query_pass` / `data_query_coverage` onto it |

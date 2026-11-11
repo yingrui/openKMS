@@ -29,7 +29,6 @@ import {
   saveFAQs,
   searchKnowledgeBase,
   updateKnowledgeBase,
-  CORE_AGENT_SKILL_IDS,
   updateChunk,
   enqueueKnowledgeBaseIndexJob,
   enqueueKnowledgeBaseWikiSpaceIndexJob,
@@ -257,9 +256,8 @@ export function useKnowledgeBaseDetail() {
   const [kbQaConvReady, setKbQaConvReady] = useState(false);
   const kbQaMainScrollRef = useRef<HTMLDivElement | null>(null);
 
-  // Settings
-  const [settingsAgentUrl, setSettingsAgentUrl] = useState('');
-  const [settingsAgentSkills, setSettingsAgentSkills] = useState<string[]>([...CORE_AGENT_SKILL_IDS]);
+  // Settings (the agent's own fields live in the Agent tab, which owns `agent_url`/`agent_skills`/`agent_config` — one
+  // editor per field, so saving one screen cannot revert what was set on another).
   const [settingsEmbeddingModelId, setSettingsEmbeddingModelId] = useState('');
   const [settingsFaqPrompt, setSettingsFaqPrompt] = useState('');
   const [settingsChunkStrategy, setSettingsChunkStrategy] = useState('fixed_size');
@@ -287,12 +285,6 @@ export function useKnowledgeBaseDetail() {
     try {
       const data = await fetchKnowledgeBase(kbId);
       setKb(data);
-      setSettingsAgentUrl(data.agent_url || '');
-      setSettingsAgentSkills(
-        Array.isArray(data.agent_skills) && data.agent_skills.length > 0
-          ? data.agent_skills.filter((s): s is string => typeof s === 'string' && s.trim().length > 0)
-          : [...CORE_AGENT_SKILL_IDS],
-      );
       setSettingsEmbeddingModelId(data.embedding_model_id || '');
       const cc = (data.chunk_config || {}) as Record<string, unknown>;
       setSettingsChunkStrategy((cc.strategy as string) || 'fixed_size');
@@ -1305,12 +1297,6 @@ export function useKnowledgeBaseDetail() {
     }
   };
 
-  const toggleSettingsAgentSkill = (skillId: string) => {
-    setSettingsAgentSkills((prev) =>
-      prev.includes(skillId) ? prev.filter((s) => s !== skillId) : [...prev, skillId],
-    );
-  };
-
   // --- Settings ---
   const handleSaveSettings = async () => {
     if (!kbId) return;
@@ -1321,8 +1307,6 @@ export function useKnowledgeBaseDetail() {
         .map((s) => s.trim())
         .filter(Boolean);
       await updateKnowledgeBase(kbId, {
-        agent_url: settingsAgentUrl || null,
-        agent_skills: settingsAgentSkills.length > 0 ? settingsAgentSkills : null,
         embedding_model_id: settingsEmbeddingModelId || null,
         chunk_config: {
           strategy: settingsChunkStrategy,
@@ -1508,10 +1492,6 @@ export function useKnowledgeBaseDetail() {
     kbQaConvReady,
     setKbQaConvReady,
     kbQaMainScrollRef,
-    settingsAgentUrl,
-    setSettingsAgentUrl,
-    settingsAgentSkills,
-    toggleSettingsAgentSkill,
     settingsEmbeddingModelId,
     setSettingsEmbeddingModelId,
     settingsFaqPrompt,

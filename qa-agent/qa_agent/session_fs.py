@@ -51,6 +51,10 @@ MAX_READ_BYTES = 2_000_000
 #: Directories the agent may read but never write. Installed skills are the KB's, not the conversation's.
 READ_ONLY_DIRS = frozenset({".openkms"})
 
+#: Sits beside a KB's sessions, not among them (`{sessions_root}/{kb_id}/skills`). Named here so the sweeper cannot mistake
+#: a KB's shared skills for one idle conversation — which it did, and deleted them a day after the last use.
+SKILLS_DIR = "skills"
+
 #: Created lazily on first use.
 SCAFFOLD_DIRS = ("uploads", "out", "tmp")
 
@@ -124,7 +128,7 @@ def kb_skills_dir(kb_id: str) -> Path:
     """
     settings = _settings()
     sessions = Path(settings.sessions_root).expanduser().resolve()
-    path = (sessions / _checked_id(kb_id, "knowledge base id") / "skills").resolve()
+    path = (sessions / _checked_id(kb_id, "knowledge base id") / SKILLS_DIR).resolve()
     if not str(path).startswith(str(sessions)):
         raise SessionPathError("Skills path escapes the sessions root.")
     path.mkdir(parents=True, exist_ok=True)
@@ -256,8 +260,14 @@ def reclaim_expired(ttl_minutes: int, *, now: float | None = None) -> list[str]:
         return []
     cutoff = (now if now is not None else time.time()) - ttl_minutes * 60
     removed: list[str] = []
-    for kb_dir in sorted(p for p in sessions.iterdir() if p.is_dir()):
-        for session_dir in sorted(p for p in kb_dir.iterdir() if p.is_dir()):
+    for kb_dir in sorted(sessions.iterdir()):
+        if not kb_dir.is_dir() or not _ID.match(kb_dir.name):
+            continue
+        for session_dir in sorted(kb_dir.iterdir()):
+            # Only directories named like a session. `skills/` is the KB's and outlives its conversations; the shared font
+            # cache is not a KB at all. Deleting either was a bug, not a design.
+            if not session_dir.is_dir() or not _ID.match(session_dir.name) or session_dir.name == SKILLS_DIR:
+                continue
             newest = max((p.stat().st_mtime for p in session_dir.rglob("*")), default=session_dir.stat().st_mtime)
             if newest < cutoff:
                 shutil.rmtree(session_dir)

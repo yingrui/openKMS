@@ -2,15 +2,10 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import Any
 
 import httpx
 from fastapi import HTTPException
-
-if TYPE_CHECKING:
-    pass
-
-from typing import Any
 
 from app.models.knowledge_base import KnowledgeBase
 from app.schemas.kb_agent_config import parse_agent_config

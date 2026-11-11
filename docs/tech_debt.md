@@ -99,9 +99,10 @@ database URL, and neither belongs in code a user asked for.
 
 Still open in the KB runner:
 
-- **The memory ceiling does not apply on macOS** (`RLIMIT_AS` cannot be set below the address space already in use). The
+- **The memory ceiling does not apply on macOS** (`ulimit -v` will not go below the address space already in use). The
   service runs on Linux, where it does; a developer on a Mac gets no cap and no error, which is the right trade but worth
-  knowing.
+  knowing. The limit is set by a shell prologue in the child (`_with_memory_ceiling`), not `Popen(preexec_fn=…)` — that hook
+  is documented as unsafe once the parent has threads, which a tool pool does.
 
 ### Jobs API and Procrastinate internals
 

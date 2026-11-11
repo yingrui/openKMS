@@ -6,6 +6,8 @@ import {
   type KbAgentConfig,
   type KnowledgeBaseResponse,
 } from '../../data/knowledgeBasesApi';
+import { CORE_AGENT_SKILLS, OPTIONAL_AGENT_SKILLS } from '../../data/kbAgentSkills';
+import { mergeAgentConfig } from './KbAgentSettings.utils';
 
 /**
  * The Agent tab: how this knowledge base's QA agent behaves.
@@ -16,78 +18,104 @@ import {
  * tests, per the design note.
  *
  * The skill list is not in this object. Which skills exist is `agent_skills`, one source, edited here.
+ *
+ * **Saving merges.** The form renders a subset of `agent_config`, and the API replaces the object it is given, so a version
+ * of this page that built the config from scratch silently cleared the keys it did not draw (`sandbox`, the Langfuse
+ * credential, `rerank`) — enabling code execution in one place and switching it off by pressing Save in another. The draft
+ * is merged onto what the KB already has; keys this page does not render survive it.
  */
 
-const CORE_SKILLS = [
-  ['ontology', 'agentSkillOntology', 'agentSkillOntologyHelp'],
-  ['catalog', 'agentSkillCatalog', 'agentSkillCatalogHelp'],
-  ['page_index', 'agentSkillPageIndex', 'agentSkillPageIndexHelp'],
-] as const;
+/** The form's own shape: strings for inputs, so a half-typed number is not silently coerced. */
+interface Draft {
+  agentUrl: string;
+  skills: string[];
+  agentsMd: string;
+  topK: string;
+  unknownMeasure: 'try_anyway' | 'refuse';
+  grounding: 'off' | 'mark' | 'enforce';
+  schemaLookup: boolean;
+  retrieve: 'always' | 'never' | 'on_miss';
+  maxToolRounds: string;
+  workspace: boolean;
+  sandbox: boolean;
+  sandboxTimeout: string;
+  sandboxCommands: string;
+}
 
-const OPTIONAL_SKILLS = [
-  ['workspace', 'agentSkillWorkspace', 'agentSkillWorkspaceHelp'],
-  ['insurance_calculator', 'agentSkillInsuranceCalculator', 'agentSkillInsuranceCalculatorHelp'],
-  ['premium_estimator', 'agentSkillPremiumEstimator', 'agentSkillPremiumEstimatorHelp'],
-  ['product_comparator', 'agentSkillProductComparator', 'agentSkillProductComparatorHelp'],
-] as const;
+function draftFrom(kb: KnowledgeBaseResponse): Draft {
+  const cfg: KbAgentConfig = kb.agent_config ?? {};
+  return {
+    agentUrl: kb.agent_url ?? '',
+    skills: Array.isArray(kb.agent_skills) ? kb.agent_skills : [],
+    agentsMd: cfg.prompts?.agents_md ?? '',
+    topK: String(cfg.retrieval?.top_k ?? 5),
+    unknownMeasure: cfg.answer_policy?.unknown_measure ?? 'try_anyway',
+    grounding: cfg.answer_policy?.require_grounded_numbers ?? 'off',
+    schemaLookup: Boolean(cfg.answer_policy?.require_schema_lookup),
+    retrieve: cfg.orchestration?.retrieve ?? 'always',
+    maxToolRounds: cfg.orchestration?.max_tool_rounds ? String(cfg.orchestration.max_tool_rounds) : '',
+    workspace: Boolean(cfg.workspace?.enabled),
+    sandbox: Boolean(cfg.sandbox?.enabled),
+    sandboxTimeout: cfg.sandbox?.timeout_seconds ? String(cfg.sandbox.timeout_seconds) : '',
+    sandboxCommands: (cfg.sandbox?.allow_commands ?? []).join(', '),
+  };
+}
+
+/** The part of `agent_config` this form owns. Anything absent stays as the KB has it. */
+function draftToPatch(d: Draft): KbAgentConfig {
+  const rounds = Number.parseInt(d.maxToolRounds, 10);
+  const k = Number.parseInt(d.topK, 10);
+  const timeout = Number.parseInt(d.sandboxTimeout, 10);
+  const commands = d.sandboxCommands
+    .split(',')
+    .map((c) => c.trim())
+    .filter(Boolean);
+  return {
+    prompts: { agents_md: d.agentsMd.trim() ? d.agentsMd : null },
+    retrieval: { top_k: Number.isFinite(k) ? Math.min(50, Math.max(1, k)) : 5 },
+    answer_policy: {
+      unknown_measure: d.unknownMeasure,
+      require_grounded_numbers: d.grounding,
+      require_schema_lookup: d.schemaLookup,
+    },
+    orchestration: {
+      retrieve: d.retrieve,
+      max_tool_rounds: Number.isFinite(rounds) && rounds > 0 ? rounds : null,
+    },
+    workspace: { enabled: d.workspace },
+    sandbox: {
+      enabled: d.sandbox,
+      timeout_seconds: Number.isFinite(timeout) && timeout >= 5 ? timeout : null,
+      allow_commands: commands.length > 0 ? commands : null,
+    },
+  };
+}
 
 export function KbAgentSettings({ kb, onSaved }: { kb: KnowledgeBaseResponse; onSaved: () => void }) {
   const { t } = useTranslation('knowledgeBase');
   const [saving, setSaving] = useState(false);
-
-  const [agentUrl, setAgentUrl] = useState('');
-  const [skills, setSkills] = useState<string[]>([]);
-  const [agentsMd, setAgentsMd] = useState('');
-  const [topK, setTopK] = useState('5');
-  const [unknownMeasure, setUnknownMeasure] = useState<'try_anyway' | 'refuse'>('try_anyway');
-  const [grounding, setGrounding] = useState<'off' | 'mark' | 'enforce'>('off');
-  const [schemaLookup, setSchemaLookup] = useState(false);
-  const [retrieve, setRetrieve] = useState<'always' | 'never' | 'on_miss'>('always');
-  const [maxToolRounds, setMaxToolRounds] = useState('');
-  const [workspace, setWorkspace] = useState(false);
+  const [draft, setDraft] = useState<Draft>(() => draftFrom(kb));
 
   useEffect(() => {
-    const cfg: KbAgentConfig = kb.agent_config ?? {};
-    setAgentUrl(kb.agent_url ?? '');
-    setSkills(Array.isArray(kb.agent_skills) ? kb.agent_skills : []);
-    setAgentsMd(cfg.prompts?.agents_md ?? '');
-    setTopK(String(cfg.retrieval?.top_k ?? 5));
-    setUnknownMeasure(cfg.answer_policy?.unknown_measure ?? 'try_anyway');
-    setGrounding(cfg.answer_policy?.require_grounded_numbers ?? 'off');
-    setSchemaLookup(Boolean(cfg.answer_policy?.require_schema_lookup));
-    setRetrieve(cfg.orchestration?.retrieve ?? 'always');
-    setMaxToolRounds(cfg.orchestration?.max_tool_rounds ? String(cfg.orchestration.max_tool_rounds) : '');
-    setWorkspace(Boolean(cfg.workspace?.enabled));
+    setDraft(draftFrom(kb));
   }, [kb]);
 
-  const config = useMemo<KbAgentConfig>(() => {
-    const rounds = Number.parseInt(maxToolRounds, 10);
-    const k = Number.parseInt(topK, 10);
-    return {
-      prompts: { agents_md: agentsMd.trim() ? agentsMd : null },
-      retrieval: { top_k: Number.isFinite(k) ? Math.min(50, Math.max(1, k)) : 5 },
-      answer_policy: {
-        unknown_measure: unknownMeasure,
-        require_grounded_numbers: grounding,
-        require_schema_lookup: schemaLookup,
-      },
-      orchestration: {
-        retrieve,
-        max_tool_rounds: Number.isFinite(rounds) && rounds > 0 ? rounds : null,
-      },
-      workspace: { enabled: workspace },
-    };
-  }, [agentsMd, topK, unknownMeasure, grounding, schemaLookup, retrieve, maxToolRounds, workspace]);
+  const patch = (values: Partial<Draft>) => setDraft((d) => ({ ...d, ...values }));
+
+  const config = useMemo<KbAgentConfig>(
+    () => mergeAgentConfig(kb.agent_config, draftToPatch(draft)),
+    [draft, kb.agent_config],
+  );
 
   const toggleSkill = (id: string) =>
-    setSkills((prev) => (prev.includes(id) ? prev.filter((s) => s !== id) : [...prev, id]));
+    patch({ skills: draft.skills.includes(id) ? draft.skills.filter((s) => s !== id) : [...draft.skills, id] });
 
   const save = async () => {
     setSaving(true);
     try {
       await updateKnowledgeBase(kb.id, {
-        agent_url: agentUrl.trim() || null,
-        agent_skills: skills,
+        agent_url: draft.agentUrl.trim() || null,
+        agent_skills: draft.skills,
         agent_config: config,
       });
       toast.success(t('detail.agentSaved'));
@@ -98,6 +126,16 @@ export function KbAgentSettings({ kb, onSaved }: { kb: KnowledgeBaseResponse; on
       setSaving(false);
     }
   };
+
+  const skillRow = (skill: (typeof CORE_AGENT_SKILLS)[number]) => (
+    <label key={skill.id} className="kb-settings-skill-row">
+      <input type="checkbox" checked={draft.skills.includes(skill.id)} onChange={() => toggleSkill(skill.id)} />
+      <span>
+        <span className="kb-settings-skill-name">{t(`detail.${skill.labelKey}`)}</span>
+        <small>{t(`detail.${skill.helpKey}`)}</small>
+      </span>
+    </label>
+  );
 
   return (
     <div className="kb-agent-settings">
@@ -118,8 +156,8 @@ export function KbAgentSettings({ kb, onSaved }: { kb: KnowledgeBaseResponse; on
             type="url"
             className="ds-control"
             placeholder={t('detail.qaAgentUrlPlaceholder')}
-            value={agentUrl}
-            onChange={(e) => setAgentUrl(e.target.value)}
+            value={draft.agentUrl}
+            onChange={(e) => patch({ agentUrl: e.target.value })}
           />
           <small>{t('detail.qaAgentUrlHelp')}</small>
         </div>
@@ -128,25 +166,9 @@ export function KbAgentSettings({ kb, onSaved }: { kb: KnowledgeBaseResponse; on
       <section className="settings-page-section">
         <h2>{t('detail.agentSkillsFieldset')}</h2>
         <p className="settings-page-hint">{t('detail.agentSkillsHelp')}</p>
-        {CORE_SKILLS.map(([id, labelKey, helpKey]) => (
-          <label key={id} className="kb-settings-skill-row">
-            <input type="checkbox" checked={skills.includes(id)} onChange={() => toggleSkill(id)} />
-            <span>
-              <span className="kb-settings-skill-name">{t(`detail.${labelKey}`)}</span>
-              <small>{t(`detail.${helpKey}`)}</small>
-            </span>
-          </label>
-        ))}
+        {CORE_AGENT_SKILLS.map(skillRow)}
         <p className="kb-settings-skills-demo-legend">{t('detail.agentSkillsOptionalLegend')}</p>
-        {OPTIONAL_SKILLS.map(([id, labelKey, helpKey]) => (
-          <label key={id} className="kb-settings-skill-row">
-            <input type="checkbox" checked={skills.includes(id)} onChange={() => toggleSkill(id)} />
-            <span>
-              <span className="kb-settings-skill-name">{t(`detail.${labelKey}`)}</span>
-              <small>{t(`detail.${helpKey}`)}</small>
-            </span>
-          </label>
-        ))}
+        {OPTIONAL_AGENT_SKILLS.map(skillRow)}
       </section>
 
       <section className="settings-page-section">
@@ -159,8 +181,8 @@ export function KbAgentSettings({ kb, onSaved }: { kb: KnowledgeBaseResponse; on
             rows={6}
             className="ds-control"
             placeholder={t('detail.agentAgentsMdPlaceholder')}
-            value={agentsMd}
-            onChange={(e) => setAgentsMd(e.target.value)}
+            value={draft.agentsMd}
+            onChange={(e) => patch({ agentsMd: e.target.value })}
           />
           <small>{t('detail.agentAgentsMdHelp')}</small>
         </div>
@@ -177,8 +199,8 @@ export function KbAgentSettings({ kb, onSaved }: { kb: KnowledgeBaseResponse; on
             min={1}
             max={50}
             className="ds-control"
-            value={topK}
-            onChange={(e) => setTopK(e.target.value)}
+            value={draft.topK}
+            onChange={(e) => patch({ topK: e.target.value })}
           />
           <small>{t('detail.agentTopKHelp')}</small>
         </div>
@@ -187,8 +209,8 @@ export function KbAgentSettings({ kb, onSaved }: { kb: KnowledgeBaseResponse; on
           <select
             id="kb-agent-retrieve"
             className="ds-control"
-            value={retrieve}
-            onChange={(e) => setRetrieve(e.target.value as typeof retrieve)}
+            value={draft.retrieve}
+            onChange={(e) => patch({ retrieve: e.target.value as Draft['retrieve'] })}
           >
             <option value="always">{t('detail.agentRetrieveAlways')}</option>
             <option value="on_miss">{t('detail.agentRetrieveOnMiss')}</option>
@@ -205,8 +227,8 @@ export function KbAgentSettings({ kb, onSaved }: { kb: KnowledgeBaseResponse; on
             max={100}
             className="ds-control"
             placeholder={t('detail.agentMaxToolRoundsPlaceholder')}
-            value={maxToolRounds}
-            onChange={(e) => setMaxToolRounds(e.target.value)}
+            value={draft.maxToolRounds}
+            onChange={(e) => patch({ maxToolRounds: e.target.value })}
           />
           <small>{t('detail.agentMaxToolRoundsHelp')}</small>
         </div>
@@ -220,8 +242,8 @@ export function KbAgentSettings({ kb, onSaved }: { kb: KnowledgeBaseResponse; on
           <select
             id="kb-agent-unknown"
             className="ds-control"
-            value={unknownMeasure}
-            onChange={(e) => setUnknownMeasure(e.target.value as typeof unknownMeasure)}
+            value={draft.unknownMeasure}
+            onChange={(e) => patch({ unknownMeasure: e.target.value as Draft['unknownMeasure'] })}
           >
             <option value="try_anyway">{t('detail.agentUnknownMeasureTry')}</option>
             <option value="refuse">{t('detail.agentUnknownMeasureRefuse')}</option>
@@ -233,8 +255,8 @@ export function KbAgentSettings({ kb, onSaved }: { kb: KnowledgeBaseResponse; on
           <select
             id="kb-agent-grounding"
             className="ds-control"
-            value={grounding}
-            onChange={(e) => setGrounding(e.target.value as typeof grounding)}
+            value={draft.grounding}
+            onChange={(e) => patch({ grounding: e.target.value as Draft['grounding'] })}
           >
             <option value="off">{t('detail.agentGroundingOff')}</option>
             <option value="mark">{t('detail.agentGroundingMark')}</option>
@@ -243,7 +265,7 @@ export function KbAgentSettings({ kb, onSaved }: { kb: KnowledgeBaseResponse; on
           <small>{t('detail.agentGroundingHelp')}</small>
         </div>
         <label className="kb-settings-skill-row">
-          <input type="checkbox" checked={schemaLookup} onChange={() => setSchemaLookup((v) => !v)} />
+          <input type="checkbox" checked={draft.schemaLookup} onChange={() => patch({ schemaLookup: !draft.schemaLookup })} />
           <span>
             <span className="kb-settings-skill-name">{t('detail.agentSchemaLookup')}</span>
             <small>{t('detail.agentSchemaLookupHelp')}</small>
@@ -255,12 +277,49 @@ export function KbAgentSettings({ kb, onSaved }: { kb: KnowledgeBaseResponse; on
         <h2>{t('detail.agentWorkspace')}</h2>
         <p className="settings-page-hint">{t('detail.agentWorkspaceHint')}</p>
         <label className="kb-settings-skill-row">
-          <input type="checkbox" checked={workspace} onChange={() => setWorkspace((v) => !v)} />
+          <input type="checkbox" checked={draft.workspace} onChange={() => patch({ workspace: !draft.workspace })} />
           <span>
             <span className="kb-settings-skill-name">{t('detail.agentWorkspaceEnabled')}</span>
             <small>{t('detail.agentWorkspaceEnabledHelp')}</small>
           </span>
         </label>
+      </section>
+
+      <section className="settings-page-section">
+        <h2>{t('detail.agentSandbox')}</h2>
+        <p className="settings-page-hint">{t('detail.agentSandboxHint')}</p>
+        <label className="kb-settings-skill-row">
+          <input type="checkbox" checked={draft.sandbox} onChange={() => patch({ sandbox: !draft.sandbox })} />
+          <span>
+            <span className="kb-settings-skill-name">{t('detail.agentSandboxEnabled')}</span>
+            <small>{t('detail.agentSandboxEnabledHelp')}</small>
+          </span>
+        </label>
+        <div className="settings-page-field">
+          <label htmlFor="kb-agent-sandbox-timeout">{t('detail.agentSandboxTimeout')}</label>
+          <input
+            id="kb-agent-sandbox-timeout"
+            type="number"
+            min={5}
+            max={600}
+            className="ds-control"
+            placeholder="60"
+            value={draft.sandboxTimeout}
+            onChange={(e) => patch({ sandboxTimeout: e.target.value })}
+          />
+          <small>{t('detail.agentSandboxTimeoutHelp')}</small>
+        </div>
+        <div className="settings-page-field">
+          <label htmlFor="kb-agent-sandbox-commands">{t('detail.agentSandboxCommands')}</label>
+          <input
+            id="kb-agent-sandbox-commands"
+            className="ds-control"
+            placeholder="git, jq, sed"
+            value={draft.sandboxCommands}
+            onChange={(e) => patch({ sandboxCommands: e.target.value })}
+          />
+          <small>{t('detail.agentSandboxCommandsHelp')}</small>
+        </div>
       </section>
     </div>
   );

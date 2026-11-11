@@ -17,8 +17,12 @@ from typing import Literal
 
 from fastapi import APIRouter, Depends, Request
 from pydantic import BaseModel, Field
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.auth import require_auth
+from app.database import get_db
+from app.services.content.knowledge_bases.kb_scope import load_knowledge_base_scoped
+from app.services.identity.acl.resource_acl_constants import PERM_READ
 from app.services.platform.audit import record_audit_event
 
 router = APIRouter(
@@ -49,8 +53,14 @@ class ExecutionEvent(BaseModel):
 async def record_execution(
     body: ExecutionEvent,
     request: Request,
+    db: AsyncSession = Depends(get_db),
 ):
     """One execution. Called by the agent after each run; the actor is the token's user."""
+    # The caller's token, so this is an ordinary ACL check: an execution row is written against a real session, and a user
+    # who cannot read the knowledge base must not be able to put rows on it. (The agent's own `/files` surface relies on the
+    # proxy for this; here there is no proxy in between.)
+    await load_knowledge_base_scoped(db, request, body.knowledge_base_id, PERM_READ)
+
     payload = getattr(request.state, "openkms_jwt_payload", None) or {}
     uname = payload.get("preferred_username") or payload.get("name")
     sub = payload.get("sub")

@@ -192,22 +192,23 @@ class TestMemoryCeiling:
         assert sandbox.sandbox_config({"sandbox": {"enabled": True, "memory_mb": 1024}})["memory_mb"] == 1024
         assert "memory_mb" not in sandbox.sandbox_config({"sandbox": {"enabled": True, "memory_mb": 32}})
 
-    def test_the_limiter_swallows_a_host_that_refuses(self, monkeypatch):
-        import resource
+    def test_the_ceiling_is_a_shell_prologue_not_a_preexec_hook(self):
+        """`preexec_fn` is unsafe with threads, and tool calls run in a pool: the limit is set by the child's own shell."""
+        argv = sandbox._with_memory_ceiling(["/usr/bin/python3", "-u", "-c", "print(1)"], 1_024)
+        assert argv[:3] == ["/bin/sh", "-c", argv[2]]
+        # soft before hard: the kernel refuses a hard limit below the current soft one (unlimited by default)
+        assert argv[2].index("ulimit -S -v 1048576") < argv[2].index("ulimit -H -v 1048576")
+        assert 'exec "$@"' in argv[2]
+        assert argv[4:] == ["/usr/bin/python3", "-u", "-c", "print(1)"]
 
-        def refuse(*a, **k):
-            raise ValueError("cannot set below current usage")
-
-        monkeypatch.setattr(resource, "setrlimit", refuse)
-        sandbox._limit_memory(1024 * 1024)  # must not raise: the run proceeds unbounded instead
-
-    def test_the_limiter_sets_both_limits_equal(self, monkeypatch):
-        import resource
-
-        seen = {}
-        monkeypatch.setattr(resource, "setrlimit", lambda which, pair: seen.update(pair=pair))
-        sandbox._limit_memory(2 * 1024 * 1024)
-        assert seen["pair"] == (2 * 1024 * 1024, 2 * 1024 * 1024)
+    @pytest.mark.skipif(not sys.platform.startswith("linux"), reason="Linux enforces RLIMIT_AS; macOS refuses it")
+    def test_an_allocation_past_the_ceiling_fails_the_run_not_the_service(self):
+        result = sandbox.run_python(
+            "x = bytearray(3 * 1024 * 1024 * 1024); print(len(x))",
+            kb_id="kb1", session_id="mem", settings={"enabled": True, "memory_mb": 256, "timeout_seconds": 30},
+        )
+        assert not result.ok
+        assert "MemoryError" in result.stderr or "Cannot allocate memory" in result.stderr
 
     def test_a_normal_run_still_works_with_a_ceiling(self):
         result = sandbox.run_python(

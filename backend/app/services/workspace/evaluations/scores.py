@@ -23,12 +23,22 @@ SCORE_DATA_QUERY_PASS = "data_query_pass"
 SCORE_GROUNDING_RATIO = "grounding_ratio"
 
 
+#: One client for the process. It was built per score — two per evaluated answer — which meant a new HTTP client and a
+#: flush for every number written. A run now creates it once and flushes once.
+_client_cache: Any | None = None
+_client_unavailable = False
+
+
 def _client() -> Any | None:
+    global _client_cache, _client_unavailable
+    if _client_cache is not None or _client_unavailable:
+        return _client_cache
     if not (
         (settings.langfuse_secret_key or "").strip()
         and (settings.langfuse_public_key or "").strip()
         and (settings.langfuse_base_url or "").strip()
     ):
+        _client_unavailable = True
         return None
     os.environ.setdefault("LANGFUSE_SECRET_KEY", settings.langfuse_secret_key or "")
     os.environ.setdefault("LANGFUSE_PUBLIC_KEY", settings.langfuse_public_key or "")
@@ -36,14 +46,25 @@ def _client() -> Any | None:
     try:
         from langfuse import Langfuse
 
-        return Langfuse(
+        _client_cache = Langfuse(
             public_key=settings.langfuse_public_key,
             secret_key=settings.langfuse_secret_key,
             host=settings.langfuse_base_url,
         )
     except (ImportError, RuntimeError, ValueError) as exc:
         logger.debug("langfuse client unavailable: %s", exc)
-        return None
+        _client_unavailable = True
+    return _client_cache
+
+
+def flush_scores() -> None:
+    """Send what the batch client is holding. A run calls this once, at the end; per-score flushing was 2N round trips."""
+    if _client_cache is None:
+        return
+    try:
+        _client_cache.flush()
+    except (RuntimeError, ValueError, OSError) as exc:
+        logger.debug("langfuse flush failed: %s", exc)
 
 
 def score_trace(
@@ -68,7 +89,6 @@ def score_trace(
             comment=comment,
             metadata=metadata or {},
         )
-        client.flush()
         return True
     except (RuntimeError, ValueError, TypeError, OSError) as exc:
         logger.warning("langfuse score %s for %s failed: %s", name, trace_id, exc)
