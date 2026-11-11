@@ -389,7 +389,11 @@
       "agent": "Agent",
       "harness": "Test set"
     },
-    "adviceLabel": "What to change"
+    "adviceLabel": "What to change",
+    "runLanguage": "Judgement language",
+    "runLanguageHint": "Applies to the check reasons and the run report. Verdicts do not change.",
+    "runLanguageZh": "Chinese",
+    "runLanguageEn": "English"
   },
   "models": {
     "title": "Models",

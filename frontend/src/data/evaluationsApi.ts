@@ -338,7 +338,12 @@ export async function importEvaluationItems(
 
 export async function runEvaluation(
   evaluationId: string,
-  body?: { evaluation_type?: string; item_ids?: string[] | null; judge_model_id?: string | null }
+  body?: {
+    evaluation_type?: string;
+    item_ids?: string[] | null;
+    judge_model_id?: string | null;
+    language?: 'en' | 'zh';
+  }
 ): Promise<EvaluationRunResponse> {
   return request<EvaluationRunResponse>(`/api/evaluations/${evaluationId}/run`, {
     method: 'POST',

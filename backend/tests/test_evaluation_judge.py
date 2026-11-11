@@ -155,6 +155,33 @@ class TestInputsAndCache:
         assert "daily_basic.amount" in prompt         # the forbidden list
         assert create.call_args.kwargs["temperature"] == 0.0
 
+    def test_reasons_are_written_in_the_requested_language(self):
+        import asyncio
+
+        with patch("openai.AsyncOpenAI") as client:
+            create = AsyncMock(return_value=_reply(_checks(model="pass")))
+            client.return_value.chat.completions.create = create
+            asyncio.run(
+                judge_mod.judge_query(
+                    question="q",
+                    expected={},
+                    actual=[],
+                    schema={"fields": [], "datasets": []},
+                    forbidden=None,
+                    model_config=CONFIG,
+                    language="zh",
+                )
+            )
+        assert "Simplified Chinese" in create.call_args.kwargs["messages"][1]["content"]
+
+    def test_the_cache_keeps_languages_apart(self):
+        import asyncio
+
+        first = asyncio.run(_judge(_checks(model="pass"), language="en"))
+        second = asyncio.run(_judge(_checks(model="pass"), language="zh"))
+        assert first.cache_hit is False
+        assert second.cache_hit is False
+
     def test_a_repeat_question_is_answered_from_cache(self):
         import asyncio
 

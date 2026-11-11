@@ -483,7 +483,7 @@ export function EvaluationDatasetDetail() {
     }
   };
 
-  const handleRunEvaluation = async ({ itemIds, judgeModelId }: RunOptions) => {
+  const handleRunEvaluation = async ({ itemIds, judgeModelId, language }: RunOptions) => {
     if (!evaluationId) return;
     setRunDialogOpen(false);
     setRunning(true);
@@ -493,6 +493,7 @@ export function EvaluationDatasetDetail() {
         evaluation_type: evaluationType,
         item_ids: itemIds,
         judge_model_id: judgeModelId,
+        language,
       });
       setRunView(res);
       setRunInUrl(res.run_id);
@@ -1079,8 +1080,10 @@ export function EvaluationDatasetDetail() {
         </section>
       )}
 
+      {/* Mounted per opening: the scope default is "only what failed last time", which is this opening's state. */}
       {runDialogOpen ? (
         <RunEvaluationDialog
+          open
           itemsTotal={itemsTotal}
           failedItemIds={failedItemIds}
           busy={running}

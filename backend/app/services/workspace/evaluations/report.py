@@ -20,10 +20,12 @@ from typing import Any
 
 logger = logging.getLogger(__name__)
 
-REPORT_PROMPT_VERSION = "run-report-1"
+REPORT_PROMPT_VERSION = "run-report-2"
 
 #: Where a fix can go. Each one has an owner, which is what makes a finding actionable.
 AREAS = ("model_metadata", "expectation", "skill", "agent", "harness")
+
+_LANGUAGES = {"en": "English", "zh": "Simplified Chinese"}
 
 REPORT_SYSTEM = (
     "You review an evaluation run of a data-answering agent and say what to improve. "
@@ -58,7 +60,8 @@ Answer with JSON only:
   ]}}
 
 Rules: cite item numbers in every finding; do not invent a finding without items behind it; at most 5 findings; if a
-failure is the expectation's fault, say so instead of blaming the agent.
+failure is the expectation's fault, say so instead of blaming the agent. Write `verdict`, `claim` and `suggestion` in
+{language}; keep identifiers, SQL and field names as they are.
 
 Run:
 {payload}
@@ -80,11 +83,13 @@ async def summarize_run(
     items: list[dict[str, Any]],
     schema: dict[str, Any],
     model_config: dict[str, Any],
+    language: str = "en",
 ) -> dict[str, Any]:
     """One call. Never raises: a missing report is not a failed run."""
     from openai import AsyncOpenAI, OpenAIError
 
     payload = {"items": items, "schema": schema, "counts": _counts(items)}
+    language_name = _LANGUAGES.get(language, _LANGUAGES["en"])
     model_name = str(model_config.get("model_name") or "judge")
     base_url = str(model_config.get("base_url") or "").rstrip("/")
     if base_url and not base_url.endswith("/v1"):
@@ -98,7 +103,9 @@ async def summarize_run(
                 {
                     "role": "user",
                     "content": REPORT_PROMPT.format(
-                        count=len(items), payload=json.dumps(payload, ensure_ascii=False, default=str)
+                        count=len(items),
+                        payload=json.dumps(payload, ensure_ascii=False, default=str),
+                        language=language_name,
                     ),
                 },
             ],

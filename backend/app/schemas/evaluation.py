@@ -156,6 +156,8 @@ class EvaluationRunRequestBody(BaseModel):
     item_ids: list[str] | None = None
     #: Judge this run with a different model than the knowledge base's own — for a second opinion on the same answers.
     judge_model_id: str | None = None
+    #: Language for everything a person reads (check reasons, the run report). The verdicts themselves are unaffected.
+    language: Literal["en", "zh"] = "en"
 
 
 class EvaluationRunReport(BaseModel):

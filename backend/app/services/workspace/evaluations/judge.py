@@ -21,7 +21,7 @@ from typing import Any, Literal
 logger = logging.getLogger(__name__)
 
 #: Bump when the prompt changes. It is recorded with every verdict: numbers from different versions are not comparable.
-JUDGE_PROMPT_VERSION = "query-judge-3"
+JUDGE_PROMPT_VERSION = "query-judge-4"
 
 JUDGE_SYSTEM = (
     "You grade whether an answer to a data question used the right query. "
@@ -29,6 +29,9 @@ JUDGE_SYSTEM = (
 )
 
 _CHECK_IDS = ("model", "scope", "measure", "grain", "joins", "forbidden")
+
+#: What a person reads (each check's reason) is written in the reader's language. The verdicts are language-free.
+_LANGUAGES = {"en": "English", "zh": "Simplified Chinese"}
 
 JUDGE_PROMPT = """Judge whether the query an answer ran is the query the question needed.
 
@@ -62,7 +65,7 @@ BETWEEN vs two inequalities; equivalent unit conversions; SELECT * when every ex
 
 Give each failing check ONE short sentence, not a paragraph, and do not repeat a reason you already gave for the same
 item. Never judge by returned rows or numbers. If the inputs do not determine the answer, use "unknown" rather than
-guessing.
+guessing. Write every "reason" in {language}; keep SQL, identifiers and the JSON keys as they are.
 
 Input:
 {payload}
@@ -108,8 +111,12 @@ class JudgeVerdict:
 _cache: dict[str, JudgeVerdict] = {}
 
 
-def _cache_key(payload: dict[str, Any], model: str) -> str:
-    blob = json.dumps({"payload": payload, "model": model, "prompt": JUDGE_PROMPT_VERSION}, sort_keys=True, default=str)
+def _cache_key(payload: dict[str, Any], model: str, language: str) -> str:
+    blob = json.dumps(
+        {"payload": payload, "model": model, "language": language, "prompt": JUDGE_PROMPT_VERSION},
+        sort_keys=True,
+        default=str,
+    )
     return hashlib.sha256(blob.encode()).hexdigest()
 
 
@@ -137,6 +144,7 @@ async def judge_query(
     schema: dict[str, Any],
     forbidden: list[str] | None,
     model_config: dict[str, Any],
+    language: str = "en",
 ) -> JudgeVerdict:
     """Judge one expectation against one cited query. Never raises: a judge that fails is `undecided`, not a failure."""
     payload = {
@@ -147,7 +155,8 @@ async def judge_query(
         "forbidden": forbidden or [],
     }
     model_name = str(model_config.get("model_name") or "judge")
-    key = _cache_key(payload, model_name)
+    language = language if language in _LANGUAGES else "en"
+    key = _cache_key(payload, model_name, language)
     cached = _cache.get(key)
     if cached is not None:
         return JudgeVerdict(
@@ -169,7 +178,13 @@ async def judge_query(
             model=model_name,
             messages=[
                 {"role": "system", "content": JUDGE_SYSTEM},
-                {"role": "user", "content": JUDGE_PROMPT.format(payload=json.dumps(payload, ensure_ascii=False, default=str))},
+                {
+                    "role": "user",
+                    "content": JUDGE_PROMPT.format(
+                        payload=json.dumps(payload, ensure_ascii=False, default=str),
+                        language=_LANGUAGES[language],
+                    ),
+                },
             ],
             temperature=0.0,
             response_format={"type": "json_object"},

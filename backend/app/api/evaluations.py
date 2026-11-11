@@ -129,6 +129,7 @@ async def _run_report(
     ev: Evaluation,
     item_rows: list[dict],
     judge_config: dict[str, Any],
+    language: str = "en",
 ) -> dict | None:
     """One report per run, from the verdicts it produced. Never fatal: a run without commentary is still a run."""
     from app.services.workspace.evaluations.execute import _semantic_model_schema
@@ -159,7 +160,7 @@ async def _run_report(
         schema = await _semantic_model_schema(db, ev.semantic_model_id)
     except Exception:  # noqa: BLE001 - a missing schema makes the report weaker, not the run broken
         schema = {"fields": [], "datasets": []}
-    return await summarize_run(items=items, schema=schema, model_config=judge_config)
+    return await summarize_run(items=items, schema=schema, model_config=judge_config, language=language)
 
 
 def _snippet_model_from_dict(s: dict) -> SearchResultSnippet:
@@ -786,6 +787,7 @@ async def run_evaluation(
     else:
         config_snapshot = {
             "judge_model_id": judge_model_id,
+            "language": body.language,
             "top_k": 10,
             "search_type": "all",
         }
@@ -793,6 +795,7 @@ async def run_evaluation(
     # A run that blows up is persisted as failed and returned; an HTTP error still propagates.
     with boundary("run the evaluation", reraise=(HTTPException,)) as failed:
         item_ids = body.item_ids or None
+        language = body.language
         if eval_type == EVALUATION_TYPE_SEARCH_RETRIEVAL:
             item_rows = await run_search_retrieval_evaluation(
                 db, ev.knowledge_base_id, evaluation_id, judge_config, item_ids
@@ -806,7 +809,9 @@ async def run_evaluation(
                 db, ev.wiki_space_id, evaluation_id, judge_config
             )
         elif eval_type == EVALUATION_TYPE_DATA_QUERY:
-            item_rows = await run_data_query_evaluation(db, kb, evaluation_id, judge_config, token, item_ids)
+            item_rows = await run_data_query_evaluation(
+                db, kb, evaluation_id, judge_config, token, item_ids, language
+            )
         else:
             raise HTTPException(
                 status_code=500,
@@ -814,7 +819,7 @@ async def run_evaluation(
             )
     report = None
     if not failed and eval_type == EVALUATION_TYPE_DATA_QUERY and item_rows:
-        report = await _run_report(db, ev, item_rows, judge_config)
+        report = await _run_report(db, ev, item_rows, judge_config, language)
 
     if failed:
         run = await _persist_run(

@@ -292,6 +292,7 @@ async def run_data_query_evaluation(
     judge_config: dict[str, Any],
     access_token: str,
     item_ids: list[str] | None = None,
+    language: str = "en",
 ) -> list[dict[str, Any]]:
     """Ask the KB agent per item, then judge the queries it cited against the item's expectation.
 
@@ -377,6 +378,7 @@ async def run_data_query_evaluation(
                     schema=schema,
                     forbidden=None,
                     model_config=judge_config,
+                    language=language,
                 )
                 entry = {"expected_index": expected_index, **verdict.to_detail()}
                 verdicts.append(entry)

@@ -389,7 +389,11 @@
       "agent": "Agent",
       "harness": "题集"
     },
-    "adviceLabel": "建议"
+    "adviceLabel": "建议",
+    "runLanguage": "判定语言",
+    "runLanguageHint": "用于检查项的理由和本次运行的结论；判定结果本身不变。",
+    "runLanguageZh": "中文",
+    "runLanguageEn": "English"
   },
   "models": {
     "title": "模型",

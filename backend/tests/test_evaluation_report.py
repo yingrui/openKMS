@@ -95,6 +95,22 @@ class TestFailures:
         assert out["error"]
 
 
+class TestLanguage:
+    def test_the_report_is_written_in_the_requested_language(self):
+        seen: dict = {}
+
+        def capture(**kwargs):
+            seen.update(kwargs)
+            return _reply(_report([{"area": "agent", "claim": "x", "items": [0]}]))
+
+        with patch("openai.AsyncOpenAI") as client:
+            client.return_value.chat.completions.create = AsyncMock(side_effect=capture)
+            asyncio.run(
+                report_mod.summarize_run(items=ITEMS, schema={}, model_config=CONFIG, language="zh")
+            )
+        assert "Simplified Chinese" in seen["messages"][1]["content"]
+
+
 class TestPrompt:
     def test_the_prompt_lists_the_five_areas_and_the_items(self):
         seen: dict = {}
