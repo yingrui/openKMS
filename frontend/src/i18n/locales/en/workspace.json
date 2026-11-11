@@ -146,13 +146,7 @@
     "workerLogTruncatedBadge": "Truncated",
     "workerLogLimit": "Stored up to {{limit}} characters",
     "arguments": "Arguments",
-    "argumentsHint": "What this job was asked to do. A value shown as an id can be looked up in the screen that owns it.",
-    "evaluation": "Evaluation",
-    "evaluationScope": "Items",
-    "evaluationScopeAll": "All {{count}} items",
-    "evaluationType": "Run type",
-    "evaluationLanguage": "Language",
-    "evaluationRunLink": "Results"
+    "argumentsHint": "What this job was asked to do. A value shown as an id can be looked up in the screen that owns it."
   },
   "pipelines": {
     "title": "Pipelines",
