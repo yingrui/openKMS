@@ -157,6 +157,8 @@ export interface RunReport {
 
 export interface EvaluationRunResponse {
   run_id: string;
+  /** The worker job running it; null when reading a stored run. */
+  job_id?: number | null;
   /** What the run says about the agent as a whole — commentary, never part of the score. */
   report?: RunReport | null;
   evaluation_type: string;

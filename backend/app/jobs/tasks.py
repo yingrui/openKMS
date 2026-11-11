@@ -912,6 +912,18 @@ async def run_connector_sync(
         await persist_job_run_worker_log_best_effort(job_id, None, "\n".join(log_lines), "")
 
 
+@audited_task(name="run_evaluation", pass_context=True)
+async def run_evaluation(context: JobContext, run_id: str) -> None:
+    """Run one evaluation (search, QA, wiki coverage or data query) and write its results.
+
+    The API only queues this: a run is minutes of agent turns and judging calls, and holding an HTTP request open for it
+    meant a closed tab could not see the results that were still being written.
+    """
+    from app.services.workspace.evaluations.run_job import execute_run
+
+    await execute_run(run_id)
+
+
 @audited_task(name="run_scheduled_project_agent", pass_context=True)
 async def run_scheduled_project_agent(
     context: JobContext,

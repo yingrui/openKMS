@@ -252,6 +252,8 @@ export function EvaluationDatasetDetail() {
   const [preparingRun, setPreparingRun] = useState(false);
   const [runStartedAt, setRunStartedAt] = useState<number | null>(null);
   const [runElapsed, setRunElapsed] = useState(0);
+  /** The run this page is waiting on; polling stops when the worker closes it. */
+  const [activeRunId, setActiveRunId] = useState<string | null>(null);
   const [evaluationType, setEvaluationType] = useState<string>(EVAL_TYPE_SEARCH);
   const [runView, setRunView] = useState<EvaluationRunResponse | null>(null);
   const [runs, setRuns] = useState<EvaluationRunListItem[]>([]);
@@ -532,6 +534,46 @@ export function EvaluationDatasetDetail() {
     const id = window.setInterval(() => setRunElapsed(Math.round((Date.now() - runStartedAt) / 1000)), 1000);
     return () => window.clearInterval(id);
   }, [running, runStartedAt]);
+
+  // Follow the queued run until the worker closes it. The job's own status lives at /api/jobs/{id}; the run row is what
+  // this page shows, so it is what gets polled.
+  useEffect(() => {
+    if (!activeRunId || !evaluationId) return;
+    let cancelled = false;
+    const poll = async () => {
+      try {
+        const res = await getEvaluationRun(evaluationId, activeRunId);
+        if (cancelled) return;
+        setRunView(res);
+        if (res.status !== 'running') {
+          setActiveRunId(null);
+          setRunning(false);
+          setRunStartedAt(null);
+          loadRuns();
+          void loadDataset();
+          if (res.status === 'completed') {
+            toast.success(
+              t('evaluationDetail.toastRunSuccess', {
+                runId: `${res.run_id.slice(0, 8)}…`,
+                pass: res.pass_count,
+                total: res.item_count,
+              }),
+            );
+          } else {
+            toast.error(res.error_message || t('evaluationDetail.toastRunFailed'));
+          }
+        }
+      } catch {
+        /* keep polling: a transient read failure should not abandon a run that is still going */
+      }
+    };
+    void poll();
+    const id = window.setInterval(() => void poll(), 3000);
+    return () => {
+      cancelled = true;
+      window.clearInterval(id);
+    };
+  }, [activeRunId, evaluationId, t, loadRuns, loadDataset]);
 
   const handleLoadRun = async (runId: string) => {
     if (!evaluationId) return;

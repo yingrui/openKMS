@@ -138,6 +138,20 @@ async def job_args_allowed(
             return False
     if args.get("trigger_id"):
         return await _scheduled_agent_job_visible(request, db, args, require_write=require_write)
+    run_id = args.get("run_id")
+    if run_id and isinstance(run_id, str):
+        # An evaluation run is visible to whoever may read its evaluation — the run row names it.
+        from app.models.evaluation_run import EvaluationRun
+        from app.services.workspace.evaluations.evaluation_scope import load_evaluation_scoped
+
+        run = await db.get(EvaluationRun, run_id)
+        if run is None:
+            return False
+        try:
+            await load_evaluation_scoped(db, request, run.evaluation_id, perm)
+            return True
+        except HTTPException:
+            return False
     return False
 
 

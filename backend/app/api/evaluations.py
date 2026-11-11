@@ -2,22 +2,22 @@
 import csv
 import io
 import uuid
-from datetime import datetime, timezone
 from typing import Any
 
 from fastapi import APIRouter, Body, Depends, File, HTTPException, Query, Request, UploadFile
 from sqlalchemy import func, select
+from sqlalchemy.orm import selectinload
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.auth import require_auth
 from app.database import get_db
+from app.jobs.defer import defer_task
 from app.models.api_model import ApiModel
 from app.models.evaluation import Evaluation, EvaluationItem
 from app.models.evaluation_run import EvaluationRun, EvaluationRunItem
 from app.models.knowledge_base import KnowledgeBase
 from app.models.semantic_model import SemanticModel
 from app.models.wiki_models import WikiSpace
-from app.services.platform.boundaries import boundary
 from app.schemas.evaluation import (
     DataQuerySource,
     EvaluationCompareResponse,
@@ -48,7 +48,6 @@ from app.services.workspace.evaluations.evaluation_scope import (
 )
 from app.services.identity.acl.resource_acl_constants import PERM_READ, RT_EVALUATION
 from app.services.workspace.evaluations.execute import (
-    run_data_query_evaluation,
     ALLOWED_EVALUATION_TYPES,
     EVALUATION_TYPE_DATA_QUERY,
     EVALUATION_TYPE_QA_ANSWER,
@@ -56,10 +55,7 @@ from app.services.workspace.evaluations.execute import (
     EVALUATION_TYPE_WIKI_CONTENT_COVERAGE,
     EVALUATION_TYPES_WITH_SEARCH_SNIPPETS,
     resolve_judge_config,
-    run_qa_answer_evaluation,
-    run_search_retrieval_evaluation,
 )
-from app.services.workspace.evaluations.wiki_execute import run_wiki_content_coverage_evaluation
 from app.services.workspace.evaluations.evaluation_read import (
     evaluation_to_response,
     item_count,
@@ -106,61 +102,6 @@ def _aggregates(item_rows: list[dict]) -> tuple[int, int, float | None]:
     pc = sum(1 for r in item_rows if r.get("passed"))
     avg = sum(float(r.get("score", 0)) for r in item_rows) / n
     return n, pc, avg
-
-
-async def _resolve_run_judge(
-    db: AsyncSession, kb: KnowledgeBase, override_id: str | None
-) -> tuple[str, dict[str, Any]]:
-    """The judge for this run: the one asked for, else the KB's own (and its fallback)."""
-    if not override_id:
-        return await resolve_judge_config(db, kb)
-    model = await db.get(ApiModel, override_id)
-    if model is None or not model.provider_rel:
-        raise HTTPException(status_code=400, detail="Judge model not found")
-    return model.id, {
-        "base_url": model.provider_rel.base_url,
-        "api_key": model.provider_rel.api_key or "no-key",
-        "model_name": model.model_name or model.name,
-    }
-
-
-async def _run_report(
-    db: AsyncSession,
-    ev: Evaluation,
-    item_rows: list[dict],
-    judge_config: dict[str, Any],
-    language: str = "en",
-) -> dict | None:
-    """One report per run, from the verdicts it produced. Never fatal: a run without commentary is still a run."""
-    from app.services.workspace.evaluations.execute import _semantic_model_schema
-    from app.services.workspace.evaluations.report import summarize_run
-
-    items = []
-    for index, row in enumerate(item_rows):
-        judge = (row.get("detail") or {}).get("judge") or {}
-        failed = [
-            {"id": check.get("id"), "verdict": check.get("verdict"),
-             "expected": check.get("expected"), "actual": check.get("actual"), "reason": check.get("reason")}
-            for verdict in (judge.get("verdicts") or [])
-            for check in (verdict.get("checks") or [])
-            if check.get("verdict") != "pass"
-        ]
-        items.append(
-            {
-                "index": index,
-                "question": row.get("query"),
-                "expected": row.get("expected_query") or row.get("expected_answer"),
-                "ran": (row.get("detail") or {}).get("data_queries") or [],
-                "passed": bool(row.get("passed")),
-                "reasoning": row.get("reasoning"),
-                "failed_checks": failed,
-            }
-        )
-    try:
-        schema = await _semantic_model_schema(db, ev.semantic_model_id)
-    except Exception:  # noqa: BLE001 - a missing schema makes the report weaker, not the run broken
-        schema = {"fields": [], "datasets": []}
-    return await summarize_run(items=items, schema=schema, model_config=judge_config, language=language)
 
 
 def _snippet_model_from_dict(s: dict) -> SearchResultSnippet:
@@ -232,52 +173,6 @@ def _run_item_to_result(
         score=float(ri.score),
         reasoning=ri.reasoning or "",
     )
-
-
-async def _persist_run(
-    db: AsyncSession,
-    *,
-    evaluation_id: str,
-    knowledge_base_id: str,
-    evaluation_type: str,
-    config_snapshot: dict | None,
-    item_rows: list[dict],
-    status: str = "completed",
-    error_message: str | None = None,
-    report: dict | None = None,
-) -> EvaluationRun:
-    n, pc, avg = _aggregates(item_rows)
-    run = EvaluationRun(
-        id=str(uuid.uuid4()),
-        evaluation_id=evaluation_id,
-        knowledge_base_id=knowledge_base_id,
-        evaluation_type=evaluation_type,
-        status=status,
-        error_message=error_message,
-        item_count=n,
-        pass_count=pc,
-        avg_score=avg,
-        config_snapshot=config_snapshot,
-        report=report,
-        finished_at=datetime.now(timezone.utc),
-    )
-    db.add(run)
-    await db.flush()
-    for r in item_rows:
-        db.add(
-            EvaluationRunItem(
-                id=str(uuid.uuid4()),
-                evaluation_run_id=run.id,
-                evaluation_item_id=r["evaluation_item_id"],
-                passed=bool(r.get("passed")),
-                score=float(r.get("score", 0)),
-                reasoning=str(r.get("reasoning", "")),
-                detail=r.get("detail"),
-            )
-        )
-    await db.flush()
-    await db.refresh(run)
-    return run
 
 
 def _run_to_response(run: EvaluationRun, results: list[EvaluationRunResult]) -> EvaluationRunResponse:
@@ -733,12 +628,16 @@ async def delete_evaluation_run(
 @router.post("/{evaluation_id}/run", response_model=EvaluationRunResponse)
 async def run_evaluation(
     evaluation_id: str,
+    request: Request,
     body: EvaluationRunRequestBody = Body(default_factory=EvaluationRunRequestBody),
     token: str = Depends(require_auth),
     ev: Evaluation = Depends(get_evaluation_scoped_write),
     db: AsyncSession = Depends(get_db),
 ):
-    """Run evaluation (search retrieval or QA), persist report, return full results."""
+    """Queue a run: validate, write the run row, hand the work to the worker.
+
+    The response carries the run id and the job id; results arrive in the run, minutes later, and the page follows both.
+    """
     raw_type = (body.evaluation_type or "").strip()
     eval_type = raw_type if raw_type else EVALUATION_TYPE_SEARCH_RETRIEVAL
     if eval_type not in ALLOWED_EVALUATION_TYPES:
@@ -774,84 +673,111 @@ async def run_evaluation(
                 detail="This evaluation type requires a linked wiki space. Set it under evaluation settings.",
             )
 
-    judge_model_id, judge_config = await _resolve_run_judge(db, kb, body.judge_model_id)
+    judge_model_id, _judge_config = await resolve_judge_override(db, kb, body.judge_model_id)
     language = body.language or "en"
-
     wiki = await db.get(WikiSpace, ev.wiki_space_id) if ev.wiki_space_id else None
+    requested_by = getattr(request.state, "openkms_jwt_payload", {}).get("sub")
+
+    from app.jobs.tasks import run_evaluation
+    from app.services.workspace.evaluations.run_job import create_run
+
+    if body.item_ids is not None and not body.item_ids:
+        raise HTTPException(status_code=400, detail="No items selected to run.")
+
+    run = await create_run(
+        db,
+        evaluation=ev,
+        evaluation_type=eval_type,
+        judge_model_id=judge_model_id,
+        item_ids=body.item_ids,
+        language=language,
+        requested_by=requested_by if isinstance(requested_by, str) else None,
+        config_snapshot=_config_snapshot(ev, eval_type, judge_model_id, language, wiki),
+    )
+    await db.commit()
+
+    # The run itself happens in the worker; the request only queues it. Minutes of work leave no request open, and the
+    # page follows the job (existing /api/jobs) and the run row rather than holding a connection.
+    job_id = await defer_task(run_evaluation, run_id=run.id)
+    return _run_to_response(run, []).model_copy(update={"job_id": int(job_id)})
+
+
+def _config_snapshot(
+    ev: Evaluation,
+    eval_type: str,
+    judge_model_id: str,
+    language: str,
+    wiki: WikiSpace | None,
+) -> dict[str, Any]:
     if eval_type == EVALUATION_TYPE_WIKI_CONTENT_COVERAGE:
-        config_snapshot = {
+        return {
             "judge_model_id": judge_model_id,
+            "language": language,
             "wiki_space_id": ev.wiki_space_id,
             "semantic_match_top_k": wiki.semantic_match_top_k if wiki else None,
             "semantic_similarity_threshold": wiki.semantic_similarity_threshold if wiki else None,
         }
-    else:
-        config_snapshot = {
-            "judge_model_id": judge_model_id,
-            "language": language,
-            # Tells a stale client apart from one that chose English: the request is the only place this is knowable.
-            "language_from_request": body.language is not None,
-            "top_k": 10,
-            "search_type": "all",
-        }
+    return {"judge_model_id": judge_model_id, "language": language, "top_k": 10, "search_type": "all"}
 
-    # A run that blows up is persisted as failed and returned; an HTTP error still propagates.
-    with boundary("run the evaluation", reraise=(HTTPException,)) as failed:
-        if body.item_ids is not None and not body.item_ids:
-            raise HTTPException(status_code=400, detail="No items selected to run.")
-        item_ids = body.item_ids
-        if eval_type == EVALUATION_TYPE_SEARCH_RETRIEVAL:
-            item_rows = await run_search_retrieval_evaluation(
-                db, ev.knowledge_base_id, evaluation_id, judge_config, item_ids
-            )
-        elif eval_type == EVALUATION_TYPE_QA_ANSWER:
-            item_rows = await run_qa_answer_evaluation(
-                db, kb, evaluation_id, judge_config, token, item_ids
-            )
-        elif eval_type == EVALUATION_TYPE_WIKI_CONTENT_COVERAGE:
-            item_rows = await run_wiki_content_coverage_evaluation(
-                db, ev.wiki_space_id, evaluation_id, judge_config
-            )
-        elif eval_type == EVALUATION_TYPE_DATA_QUERY:
-            item_rows = await run_data_query_evaluation(
-                db, kb, evaluation_id, judge_config, token, item_ids, language
-            )
-        else:
-            raise HTTPException(
-                status_code=500,
-                detail=f"Unhandled evaluation type: {eval_type}",
-            )
-    report = None
-    if not failed and eval_type == EVALUATION_TYPE_DATA_QUERY and item_rows:
-        report = await _run_report(db, ev, item_rows, judge_config, language)
 
-    if failed:
-        run = await _persist_run(
-            db,
-            evaluation_id=evaluation_id,
-            knowledge_base_id=ev.knowledge_base_id,
-            evaluation_type=eval_type,
-            config_snapshot=config_snapshot,
-            item_rows=[],
-            status="failed",
-            error_message=str(failed[0]),
-            report=None,
+async def resolve_judge_override(
+    db: AsyncSession, kb: KnowledgeBase, override_id: str | None
+) -> tuple[str, dict[str, Any]]:
+    """The judge for a run: the one asked for, else the knowledge base's own (and its fallback)."""
+    if not override_id:
+        return await resolve_judge_config(db, kb)
+    # Eager-load the provider: `ApiModel.provider_rel` is lazy, and touching it in an async worker raises MissingGreenlet.
+    model = (
+        await db.execute(
+            select(ApiModel).options(selectinload(ApiModel.provider_rel)).where(ApiModel.id == override_id)
         )
-        return _run_to_response(run, [])
+    ).scalar_one_or_none()
+    if model is None or not model.provider_rel:
+        raise HTTPException(status_code=400, detail="Judge model not found")
+    return model.id, {
+        "base_url": model.provider_rel.base_url,
+        "api_key": model.provider_rel.api_key or "no-key",
+        "model_name": model.model_name or model.name,
+    }
 
-    run = await _persist_run(
-        db,
-        evaluation_id=evaluation_id,
-        knowledge_base_id=ev.knowledge_base_id,
-        evaluation_type=eval_type,
-        config_snapshot=config_snapshot,
-        item_rows=item_rows,
-        status="completed",
-        error_message=None,
-        report=report,
-    )
-    schemas = _result_dicts_to_schemas(eval_type, item_rows)
-    return _run_to_response(run, schemas)
+
+async def build_run_report(
+    db: AsyncSession,
+    ev: Evaluation,
+    item_rows: list[dict],
+    judge_config: dict[str, Any],
+    language: str = "en",
+) -> dict | None:
+    """One report per run, from the verdicts it produced. Never fatal: a run without commentary is still a run."""
+    from app.services.workspace.evaluations.execute import _semantic_model_schema
+    from app.services.workspace.evaluations.report import summarize_run
+
+    items = []
+    for index, row in enumerate(item_rows):
+        judge = (row.get("detail") or {}).get("judge") or {}
+        failed = [
+            {"id": check.get("id"), "verdict": check.get("verdict"),
+             "expected": check.get("expected"), "actual": check.get("actual"), "reason": check.get("reason")}
+            for verdict in (judge.get("verdicts") or [])
+            for check in (verdict.get("checks") or [])
+            if check.get("verdict") != "pass"
+        ]
+        items.append(
+            {
+                "index": index,
+                "question": row.get("query"),
+                "expected": row.get("expected_query") or row.get("expected_answer"),
+                "ran": (row.get("detail") or {}).get("data_queries") or [],
+                "passed": bool(row.get("passed")),
+                "reasoning": row.get("reasoning"),
+                "failed_checks": failed,
+            }
+        )
+    try:
+        schema = await _semantic_model_schema(db, ev.semantic_model_id)
+    except Exception:  # noqa: BLE001 - a missing schema makes the report weaker, not the run broken
+        schema = {"fields": [], "datasets": []}
+    return await summarize_run(items=items, schema=schema, model_config=judge_config, language=language)
 
 
 from app.api.eval_agent_conversations import router as eval_agent_conversations_router

@@ -15,7 +15,7 @@ from app.models.user import User
 from app.models.user_api_key import UserApiKey
 from app.services.identity.permissions.permission_resolution import jwt_realm_role_names
 
-ApiKeyPurpose = Literal["personal", "agent_session"]
+ApiKeyPurpose = Literal["personal", "agent_session", "evaluation_run"]
 
 
 def hash_api_key_secret(secret: str) -> str:

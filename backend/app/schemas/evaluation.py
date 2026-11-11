@@ -175,6 +175,8 @@ class EvaluationRunResponse(BaseModel):
     """Response after running evaluation (also matches persisted run summary + items)."""
 
     run_id: str
+    #: The worker job that runs it (see `/api/jobs/{id}`). Present on a queued run, null when reading a stored one.
+    job_id: int | None = None
     report: EvaluationRunReport | None = None
     evaluation_type: str
     status: str
