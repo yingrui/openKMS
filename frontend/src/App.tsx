@@ -459,17 +459,6 @@ function App() {
           <Route path="wikis/:id/pages/:pageId" element={<WikiSpacePagesGate />} />
           <Route path="wikis/:id/settings" element={<WikiSpaceSettings />} />
           <Route path="wikis/:id" element={<WikiSpaceRootToGraph />} />
-          <Route path="evaluations" element={<FeatureGate feature="evaluations"><EvaluationDatasetList /></FeatureGate>} />
-          <Route
-            path="evaluations/:id"
-            element={<FeatureGate feature="evaluations"><EvaluationDatasetDetailPage /></FeatureGate>}
-          >
-            <Route index element={<EvaluationOverviewTab />} />
-            <Route path="items" element={<EvaluationItemsTab />} />
-            <Route path="runs" element={<EvaluationRunsTab />} />
-            <Route path="runs/:runId" element={<EvaluationRunDetailPage />} />
-            <Route path="settings" element={<EvaluationDatasetSettings />} />
-          </Route>
           <Route path="glossaries" element={<GlossaryList />} />
           <Route path="glossaries/:id/settings" element={<GlossarySettings />} />
           <Route path="glossaries/:id" element={<GlossaryDetail />} />
@@ -513,11 +502,23 @@ function App() {
               <Route path="settings" element={<DatasetSettingsTab />} />
               <Route path="sharing" element={<DatasetSharingTab />} />
             </Route>
+            {/* app-layout-exception: entity detail needs the pane (gutter + scroll + full height) */}
+            <Route path="data-insights/:id" element={<StoryDetailPage />} />
+            <Route
+              path="evaluations/:id"
+              element={<FeatureGate feature="evaluations"><EvaluationDatasetDetailPage /></FeatureGate>}
+            >
+              <Route index element={<EvaluationOverviewTab />} />
+              <Route path="items" element={<EvaluationItemsTab />} />
+              <Route path="runs" element={<EvaluationRunsTab />} />
+              <Route path="runs/:runId" element={<EvaluationRunDetailPage />} />
+              <Route path="settings" element={<EvaluationDatasetSettings />} />
+            </Route>
           </Route>
           <Route path="data-insights" element={<DataInsightsPage />} />
+          <Route path="evaluations" element={<FeatureGate feature="evaluations"><EvaluationDatasetList /></FeatureGate>} />
           <Route path="datasets/sources" element={<DatasetSourcesPage />} />
           <Route path="datasets/quality-issues" element={<QualityIssuesPage />} />
-          <Route path="data-insights/:id" element={<StoryDetailPage />} />
           <Route path="datasets" element={<DatasetsListPage />} />
           <Route path="ontology-manager" element={<Outlet />}>
             <Route index element={<OntologyList />} />

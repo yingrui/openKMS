@@ -102,6 +102,12 @@ the strip already draws the top edge of the card — a page-local rule therefore
 own padding and border (`:has(+ .settings-page-tabs)`, `:has(+ .settings-page)` in `entity-view.scss`).
 Two adjacent dividers plus two paddings is what reads as "a large unexplained gap".
 
+**Every routed tab of an `EntityViewShell` page opens the same way.** `EntityViewHeader` — the tab's name and one line
+saying what it holds — then `EntityViewPanel` cards beneath it. The header takes at most one primary action on the
+right; anything a reader adjusts between looks at the same data (a type filter, refresh) belongs in a light toolbar
+*inside* the panel, and the table itself is `.ds-table-wrap--flush` + `.console-table` with its `Pagination` in the
+same wrap. A page-level `PanelToolbar` as the top of a tab is what makes one tab look unlike the next.
+
 **A tab strip and its panel are one card.** `EntityViewShell` puts page children in `.account-stack`
 (`gap: var(--space-5)`). Render `.settings-page-tabs` and `.settings-page-form` as siblings there and
 the ancestor's gap opens a 25px hole between the two halves of the card — no page rule can cancel a
@@ -174,6 +180,7 @@ With the header gone, the left rail is the only chrome: brand → Home at the to
 | `body.openkms-kb-qa-fullpage` / `openkms-agents-fullpage` | Hide header (rail keeps Home + account — see **Immersive views**); phone IA (≤ `$bp-md-min`) is chat-primary + full-width Sessions / Chats panel (Agents also has Files) — not a stacked rail that eats chat height |
 | `.app-content--object-explorer` | Flex fill, token padding |
 | `.app-page-pane:has(> .entity-view)` | Ontology Manager entity detail fills the pane; scroll inside `.entity-view__main` only |
+| Route rendering `EntityViewShell` outside a pane | A shell only fills the window when a `.app-page-pane` is above it; without one the sidebar's right rule stops at the end of its own content. Put the route in `PagePaneLayout` (or the ontology rail layout) — `scripts/check-entity-view-routes.py` fails otherwise |
 | `body:has(.app-page-pane > .entity-view)` (entity-view.scss) | Data-layer entity detail (`/datasets/:id`, `/data-model/:modelId`) has no rail marker to opt into the full-height chain, so the shell asks for it; `.app-content` gives up its padding to the pane |
 
 New exceptions: one-line SCSS comment + row here.

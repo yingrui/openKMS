@@ -53,4 +53,8 @@ if ! grep -A 5 'body:has(\.app-page-pane > \.entity-view) {' src/styles/entity-v
   fail "entity-view.scss must pin the document height for entity detail pages"
 fi
 
+# Every route that renders the entity shell must be inside that pane (or the ontology rail layout,
+# which supplies one) — otherwise the shell never fills the window and the sidebar's rule stops short.
+python3 scripts/check-entity-view-routes.py
+
 echo "check-app-page-gutters: OK"
