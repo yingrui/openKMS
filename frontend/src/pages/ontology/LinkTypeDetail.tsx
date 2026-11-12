@@ -14,6 +14,11 @@ import {
   type LinkInstanceResponse,
 } from '../../data/ontologyApi';
 import { GraphReadNotice } from '../../components/ontology/GraphReadNotice';
+import {
+  TableRowActionButton,
+  TableRowActionCell,
+  TableRowActions,
+} from '../../styles/design-system';
 import './LinkTypeDetail.scss';
 
 function objectLabel(
@@ -199,7 +204,7 @@ export function LinkTypeDetail() {
             <tr>
               <th>{t('ontology.linkTypeDetail.colSource')}</th>
               <th>{t('ontology.linkTypeDetail.colTarget')}</th>
-              {isAdmin && !linkType.dataset_id && <th className="link-type-actions-col" />}
+              {isAdmin && !linkType.dataset_id && <TableRowActionCell as="th">{null}</TableRowActionCell>}
             </tr>
           </thead>
           <tbody>
@@ -219,16 +224,17 @@ export function LinkTypeDetail() {
                   <td>{objectLabel(inst.source_data, inst.source_key_value, t('shared.dash'))}</td>
                   <td>{objectLabel(inst.target_data, inst.target_key_value, t('shared.dash'))}</td>
                   {isAdmin && !linkType.dataset_id && (
-                    <td className="link-type-actions-col">
-                      <button
-                        type="button"
-                        title={t('ontology.linkTypeDetail.deleteTitle')}
-                        aria-label={t('ontology.linkTypeDetail.deleteTitle')}
-                        onClick={() => handleDelete(inst)}
-                      >
-                        <Trash2 size={14} />
-                      </button>
-                    </td>
+                    <TableRowActionCell>
+                      <TableRowActions>
+                        <TableRowActionButton
+                          title={t('ontology.linkTypeDetail.deleteTitle')}
+                          aria-label={t('ontology.linkTypeDetail.deleteTitle')}
+                          icon={<Trash2 size={16} aria-hidden />}
+                          variant="danger"
+                          onClick={() => handleDelete(inst)}
+                        />
+                      </TableRowActions>
+                    </TableRowActionCell>
                   )}
                 </tr>
               ))

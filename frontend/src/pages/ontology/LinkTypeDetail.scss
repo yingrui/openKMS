@@ -84,28 +84,6 @@
   background: var(--color-bg-muted);
 }
 
-.link-type-actions-col {
-  width: 80px;
-}
-
-.link-type-actions-col button {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  padding: 6px;
-  background: none;
-  border: none;
-  color: var(--color-text-muted);
-  cursor: pointer;
-  border-radius: var(--radius-sm);
-  transition: color 0.15s, background 0.15s;
-}
-
-.link-type-actions-col button:hover {
-  background: var(--color-bg-muted);
-  color: var(--color-error);
-}
-
 .link-type-empty {
   text-align: center;
   padding: 32px 16px !important;

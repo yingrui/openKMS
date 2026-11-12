@@ -492,7 +492,7 @@ export function useAgentFiles({
         <span className="agents-file-badge" title={title}>
           {short}
         </span>
-        <span className="agents-scm-row-actions">
+        <span className="agents-scm-row-btns">
           <button
             type="button"
             className="agents-scm-row-btn"

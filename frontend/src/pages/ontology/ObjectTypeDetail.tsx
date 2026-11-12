@@ -1,4 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import {
+  TableRowActionButton,
+  TableRowActionCell,
+  TableRowActions,
+} from '../../styles/design-system';
 import { useParams, Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { ArrowLeft, Plus, Pencil, Trash2, X, Search as SearchIcon, Loader2, Zap } from 'lucide-react';
@@ -295,7 +300,7 @@ export function ObjectTypeDetail() {
                 <th key={p.name}>{p.name}</th>
               ))}
               {showActionsCol && (
-                <th className="object-type-actions-col">{t('ontology.objectTypeDetail.actionsCol')}</th>
+                <TableRowActionCell as="th">{t('ontology.objectTypeDetail.actionsCol')}</TableRowActionCell>
               )}
             </tr>
           </thead>
@@ -333,8 +338,8 @@ export function ObjectTypeDetail() {
                     <td key={p.name}>{cellValue(inst, p.name)}</td>
                   ))}
                   {showActionsCol && (
-                    <td className="object-type-actions-col">
-                      <div className="object-type-row-actions">
+                    <TableRowActionCell>
+                      <TableRowActions>
                         {runnableActions.map((action) => {
                           const key = `${action.id}:${inst.id}`;
                           const running = runningActionKey === key;
@@ -359,26 +364,23 @@ export function ObjectTypeDetail() {
                         })}
                         {isAdmin && (
                           <>
-                            <button
-                              type="button"
+                            <TableRowActionButton
                               title={t('ontology.objectTypeDetail.editTitle')}
                               aria-label={t('ontology.objectTypeDetail.editTitle')}
+                              icon={<Pencil size={16} aria-hidden />}
                               onClick={() => openEdit(inst)}
-                            >
-                              <Pencil size={14} />
-                            </button>
-                            <button
-                              type="button"
+                            />
+                            <TableRowActionButton
                               title={t('ontology.objectTypeDetail.deleteTitle')}
                               aria-label={t('ontology.objectTypeDetail.deleteTitle')}
+                              icon={<Trash2 size={16} aria-hidden />}
+                              variant="danger"
                               onClick={() => handleDelete(inst)}
-                            >
-                              <Trash2 size={14} />
-                            </button>
+                            />
                           </>
                         )}
-                      </div>
-                    </td>
+                      </TableRowActions>
+                    </TableRowActionCell>
                   )}
                 </tr>
               ))

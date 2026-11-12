@@ -23,7 +23,12 @@ import {
   type ApiProviderResponse,
 } from '../../data/providersApi';
 import { useConfirm } from '../../contexts/ConfirmContext';
-import { Pagination } from '../../styles/design-system';
+import {
+  Pagination,
+  TableRowActionButton,
+  TableRowActionCell,
+  TableRowActions,
+} from '../../styles/design-system';
 import './Models.scss';
 
 const MODELS_PAGE_SIZE_DEFAULT = 25;
@@ -403,7 +408,7 @@ export function Models() {
                     <th>{t('models.colCapabilities')}</th>
                     <th>{t('models.colDefault')}</th>
                     <th>{t('models.colBaseUrl')}</th>
-                    <th className="models-table-actions-col">{t('shared.actions')}</th>
+                    <TableRowActionCell as="th">{t('shared.actions')}</TableRowActionCell>
                   </tr>
                 </thead>
                 <tbody>
@@ -465,24 +470,23 @@ export function Models() {
                           )}
                         </td>
                         <td className="models-table-url">{m.base_url}</td>
-                        <td className="models-table-actions-col">
-                          <div className="models-table-btns">
-                            <button
-                              type="button"
+                        <TableRowActionCell>
+                          <TableRowActions>
+                            <TableRowActionButton
                               title={t('shared.edit')}
+                              aria-label={t('shared.edit')}
+                              icon={<Pencil size={16} aria-hidden />}
                               onClick={(e) => { e.stopPropagation(); openEditModel(m); }}
-                            >
-                              <Pencil size={16} />
-                            </button>
-                            <button
-                              type="button"
+                            />
+                            <TableRowActionButton
                               title={t('shared.delete')}
+                              aria-label={t('shared.delete')}
+                              icon={<Trash2 size={16} aria-hidden />}
+                              variant="danger"
                               onClick={(e) => { e.stopPropagation(); handleDeleteModel(m.id); }}
-                            >
-                              <Trash2 size={16} />
-                            </button>
-                          </div>
-                        </td>
+                            />
+                          </TableRowActions>
+                        </TableRowActionCell>
                       </tr>
                     ))
                   )}

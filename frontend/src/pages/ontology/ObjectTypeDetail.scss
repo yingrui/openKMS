@@ -108,11 +108,6 @@
   background: var(--color-bg-muted);
 }
 
-.object-type-actions-col {
-  min-width: 140px;
-  max-width: 280px;
-}
-
 .object-type-id-col {
   max-width: 12rem;
   vertical-align: top;
@@ -145,13 +140,6 @@
   }
 }
 
-.object-type-row-actions {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 4px;
-}
-
 .object-type-action-btn {
   display: inline-flex;
   align-items: center;
@@ -181,29 +169,6 @@
   text-overflow: ellipsis;
   white-space: nowrap;
   max-width: 120px;
-}
-
-.object-type-actions-col button:not(.object-type-action-btn) {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  padding: 6px;
-  margin: 0 4px;
-  background: none;
-  border: none;
-  color: var(--color-text-muted);
-  cursor: pointer;
-  border-radius: var(--radius-sm);
-  transition: color 0.15s, background 0.15s;
-}
-
-.object-type-actions-col button:hover {
-  background: var(--color-bg-muted);
-  color: var(--color-text);
-}
-
-.object-type-actions-col button[aria-label="Delete"]:hover {
-  color: var(--color-error);
 }
 
 .object-type-empty {

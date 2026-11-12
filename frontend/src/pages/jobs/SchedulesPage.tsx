@@ -7,7 +7,11 @@ import { ErrorBanner } from '../../components/ErrorBanner';
 import { JobsAreaNav } from '../../components/jobs/JobsAreaNav';
 import { fetchSchedules, patchSchedule, runScheduleNow, scheduleKindLabel, scheduleSessionId, type Schedule } from '../../data/schedulesApi';
 import { projectWorkspacePath } from '../../data/projectsApi';
-import { Pagination } from '../../styles/design-system';
+import {
+  Pagination,
+  TableRowActionCell,
+  TableRowActions,
+} from '../../styles/design-system';
 import './Jobs.scss';
 
 const SCHEDULES_PAGE_SIZE_DEFAULT = 25;
@@ -132,7 +136,7 @@ export function SchedulesPage() {
                   <th>{t('schedules.colNextRun')}</th>
                   <th>{t('schedules.colLastRun')}</th>
                   <th>{t('schedules.colStatus')}</th>
-                  <th className="jobs-table-actions-col jobs-table-actions-col--inline">{t('shared.actions')}</th>
+                  <TableRowActionCell as="th">{t('shared.actions')}</TableRowActionCell>
                 </tr>
               </thead>
               <tbody>
@@ -172,8 +176,8 @@ export function SchedulesPage() {
                         {row.last_status ?? dash}
                       </span>
                     </td>
-                    <td className="jobs-table-actions-col jobs-table-actions-col--inline">
-                      <div className="jobs-table-actions-inline">
+                    <TableRowActionCell>
+                      <TableRowActions>
                         {row.project_id && scheduleSessionId(row) ? (
                           <Link
                             to={projectWorkspacePath(row.project_id, scheduleSessionId(row))}
@@ -196,8 +200,8 @@ export function SchedulesPage() {
                             #{row.last_job_id}
                           </Link>
                         ) : null}
-                      </div>
-                    </td>
+                      </TableRowActions>
+                    </TableRowActionCell>
                   </tr>
                 ))}
               </tbody>

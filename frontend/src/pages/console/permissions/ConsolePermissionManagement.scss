@@ -432,38 +432,6 @@
   line-height: 1.45;
 }
 
-.console-perm-table-actions-col {
-  width: 148px;
-  min-width: 148px;
-  text-align: left;
-  white-space: nowrap;
-}
-
-.console-perm-table-btns {
-  display: flex;
-  gap: var(--space-2);
-  justify-content: flex-start;
-  flex-wrap: nowrap;
-}
-
-.console-perm-table-btns button {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 30px;
-  height: 30px;
-  border-radius: var(--radius-sm);
-  border: 1px solid var(--color-border);
-  background: transparent;
-  color: var(--color-text-secondary);
-  cursor: pointer;
-  transition: background 0.15s, color 0.15s;
-}
-
-.console-perm-table-btns button:hover {
-  background: var(--color-bg-muted);
-  color: var(--color-text);
-}
 
 .console-perm-onboarding {
   margin-bottom: 1.25rem;
@@ -825,11 +793,6 @@
 
   .console-perm-table td {
     font-size: var(--text-sm);
-  }
-
-  .console-perm-table-actions-col {
-    min-width: 132px;
-    width: 132px;
   }
 
   .console-perm-table-assign-col {

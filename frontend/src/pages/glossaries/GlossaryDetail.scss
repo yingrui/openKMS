@@ -131,34 +131,6 @@
   background: var(--color-bg-muted);
 }
 
-.glossary-terms-actions-col {
-  width: 80px;
-  white-space: nowrap;
-}
-
-.glossary-terms-actions-col button {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  padding: var(--gap-compact);
-  margin-right: 4px;
-  border: none;
-  background: none;
-  color: var(--color-text-muted);
-  cursor: pointer;
-  border-radius: var(--radius-sm);
-  transition: color 0.15s, background 0.15s;
-}
-
-.glossary-terms-actions-col button:hover {
-  background: var(--color-bg-elevated);
-  color: var(--color-text);
-}
-
-.glossary-terms-actions-col button[aria-label="Delete"]:hover {
-  color: var(--color-error);
-}
-
 .glossary-terms-empty {
   text-align: center;
   color: var(--color-text-muted);

@@ -17,7 +17,12 @@ import {
 } from '../../data/jobsApi';
 import { fetchAllPipelines, type PipelineResponse } from '../../data/pipelinesApi';
 import { useConfirm } from '../../contexts/ConfirmContext';
-import { Pagination } from '../../styles/design-system';
+import {
+  Pagination,
+  TableRowActionButton,
+  TableRowActionCell,
+  TableRowActions,
+} from '../../styles/design-system';
 import { JobsAreaNav } from '../../components/jobs/JobsAreaNav';
 import './Jobs.scss';
 
@@ -224,7 +229,7 @@ export function JobRuns() {
                     <th>{t('jobs.colStatus')}</th>
                     <th>{t('jobs.colCreated')}</th>
                     <th>{t('jobs.colAttempts')}</th>
-                    <th className="jobs-table-actions-col">{t('shared.actions')}</th>
+                    <TableRowActionCell as="th">{t('shared.actions')}</TableRowActionCell>
                   </tr>
                 </thead>
                 <tbody>
@@ -273,49 +278,44 @@ export function JobRuns() {
                           </td>
                           <td>{formatDate(job.created_at, dash)}</td>
                           <td>{job.attempts}</td>
-                          <td className="jobs-table-actions-col">
-                            <div className="jobs-table-actions-btns">
+                          <TableRowActionCell>
+                            <TableRowActions>
                               {job.status === 'failed' && (
-                                <button
-                                  type="button"
-                                  className="btn btn-secondary btn-sm"
+                                <TableRowActionButton
+                                  title={t('shared.retry')}
+                                  aria-label={t('shared.retry')}
+                                  icon={<RefreshCw size={16} aria-hidden />}
                                   onClick={(e) => {
                                     e.stopPropagation();
                                     void handleRetry(job.id);
                                   }}
-                                  title={t('shared.retry')}
-                                >
-                                  <RefreshCw size={14} />
-                                </button>
+                                />
                               )}
                               {(job.status === 'running' || job.status === 'pending') && (
-                                <button
-                                  type="button"
-                                  className="btn btn-secondary btn-sm"
+                                <TableRowActionButton
+                                  title={t('jobs.markFailedTitle')}
+                                  aria-label={t('jobs.markFailedTitle')}
+                                  icon={<CircleX size={16} aria-hidden />}
                                   onClick={(e) => {
                                     e.stopPropagation();
                                     void handleMarkFailed(job.id);
                                   }}
-                                  title={t('jobs.markFailedTitle')}
-                                >
-                                  <CircleX size={14} />
-                                </button>
+                                />
                               )}
                               {job.status !== 'running' && (
-                                <button
-                                  type="button"
-                                  className="btn btn-secondary btn-sm jobs-delete-btn"
+                                <TableRowActionButton
+                                  title={t('shared.delete')}
+                                  aria-label={t('shared.delete')}
+                                  icon={<Trash2 size={16} aria-hidden />}
+                                  variant="danger"
                                   onClick={(e) => {
                                     e.stopPropagation();
                                     void handleDelete(job.id);
                                   }}
-                                  title={t('shared.delete')}
-                                >
-                                  <Trash2 size={14} />
-                                </button>
+                                />
                               )}
-                            </div>
-                          </td>
+                            </TableRowActions>
+                          </TableRowActionCell>
                         </tr>
                       );
                     })

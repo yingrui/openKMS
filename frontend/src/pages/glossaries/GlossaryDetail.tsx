@@ -27,6 +27,11 @@ import {
   type GlossaryResponse,
   type GlossaryTermResponse,
 } from '../../data/glossariesApi';
+import {
+  TableRowActionButton,
+  TableRowActionCell,
+  TableRowActions,
+} from '../../styles/design-system';
 import { useDebouncedValue } from '../../hooks/useDebouncedValue';
 import { useListFetch } from '../../hooks/useListFetch';
 import './GlossaryDetail.scss';
@@ -365,7 +370,7 @@ export function GlossaryDetail() {
                     <th>{t('glossary.detail.colDefinition')}</th>
                     <th>{t('glossary.detail.colSynonymsCn')}</th>
                     <th>{t('glossary.detail.colSynonymsEn')}</th>
-                    <th className="glossary-terms-actions-col" />
+                    <TableRowActionCell as="th">{null}</TableRowActionCell>
                   </tr>
                 </thead>
           <tbody>
@@ -392,24 +397,23 @@ export function GlossaryDetail() {
                   <td className="glossary-term-definition">{term.definition || t('glossary.detail.dash')}</td>
                   <td>{term.synonyms_cn?.length ? term.synonyms_cn.join(', ') : t('glossary.detail.dash')}</td>
                   <td>{term.synonyms_en?.length ? term.synonyms_en.join(', ') : t('glossary.detail.dash')}</td>
-                  <td className="glossary-terms-actions-col">
-                    <button
-                      type="button"
-                      title={t('glossary.detail.editTitle')}
-                      aria-label={t('glossary.detail.editTitle')}
-                      onClick={() => openEditTerm(term)}
-                    >
-                      <Pencil size={14} />
-                    </button>
-                    <button
-                      type="button"
-                      title={t('glossary.detail.deleteTitle')}
-                      aria-label={t('glossary.detail.deleteTitle')}
-                      onClick={() => handleDeleteTerm(term.id)}
-                    >
-                      <Trash2 size={14} />
-                    </button>
-                  </td>
+                  <TableRowActionCell>
+                    <TableRowActions>
+                      <TableRowActionButton
+                        title={t('glossary.detail.editTitle')}
+                        aria-label={t('glossary.detail.editTitle')}
+                        icon={<Pencil size={16} aria-hidden />}
+                        onClick={() => openEditTerm(term)}
+                      />
+                      <TableRowActionButton
+                        title={t('glossary.detail.deleteTitle')}
+                        aria-label={t('glossary.detail.deleteTitle')}
+                        icon={<Trash2 size={16} aria-hidden />}
+                        variant="danger"
+                        onClick={() => handleDeleteTerm(term.id)}
+                      />
+                    </TableRowActions>
+                  </TableRowActionCell>
                 </tr>
               ))
             )}

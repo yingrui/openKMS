@@ -394,38 +394,6 @@
   font-size: var(--text-md);
 }
 
-.models-table-actions-col {
-  width: 100px;
-  text-align: center;
-}
-
-.models-table-btns {
-  display: flex;
-  gap: var(--gap-compact);
-  justify-content: center;
-}
-
-.models-table-btns button {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: var(--space-8);
-  height: var(--space-8);
-  border-radius: var(--radius-sm);
-  border: 1px solid var(--color-border);
-  background: transparent;
-  color: var(--color-text-secondary);
-  cursor: pointer;
-  transition:
-    background var(--duration-fast) var(--ease-standard),
-    color var(--duration-fast) var(--ease-standard);
-}
-
-.models-table-btns button:hover {
-  background: var(--color-bg-muted);
-  color: var(--color-text);
-}
-
 /* Modal */
 .models-modal {
   background: var(--color-bg-elevated);

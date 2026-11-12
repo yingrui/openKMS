@@ -13,7 +13,12 @@ import {
 import { useAuth } from '../../../contexts/AuthContext';
 import { PERM_ALL, PERM_CONSOLE_PERMISSIONS } from '../../../config/permissions';
 import '../../ontology/ontology-admin.scss';
-import { Pagination } from '../../../styles/design-system/index';
+import {
+  Pagination,
+  TableRowActionButton,
+  TableRowActionCell,
+  TableRowActions,
+} from '../../../styles/design-system/index';
 import { useConsolePermissionManagement } from './useConsolePermissionManagement';
 import { ConsolePermissionManagementModals } from './ConsolePermissionManagement.modals.tsx';
 import './ConsolePermissionManagement.scss';
@@ -317,7 +322,7 @@ export function ConsolePermissionManagement() {
                         <th>Permission</th>
                         <th>Category</th>
                         <th>Patterns</th>
-                        <th className="console-perm-table-actions-col">Actions</th>
+                        <TableRowActionCell as="th">Actions</TableRowActionCell>
                       </tr>
                     </thead>
                     <tbody>
@@ -371,38 +376,33 @@ export function ConsolePermissionManagement() {
                               <td className="console-perm-table-patterns">
                                 {patternParts.length ? patternParts.join(' · ') : '—'}
                               </td>
-                              <td className="console-perm-table-actions-col">
-                                <div className="console-perm-table-btns">
-                                  <button
-                                    type="button"
+                              <TableRowActionCell>
+                                <TableRowActions>
+                                  <TableRowActionButton
                                     title="Details"
-                                    onClick={() => setDetailEntry(row)}
                                     aria-label={`Details for ${row.key}`}
-                                  >
-                                    <FileText size={15} />
-                                  </button>
+                                    icon={<FileText size={16} aria-hidden />}
+                                    onClick={() => setDetailEntry(row)}
+                                  />
                                   {catalogEditable && row.key !== PERM_ALL ? (
-                                    <button
-                                      type="button"
+                                    <TableRowActionButton
                                       title="Edit"
-                                      onClick={() => openEditPermission(row)}
                                       aria-label={`Edit ${row.key}`}
-                                    >
-                                      <Pencil size={15} />
-                                    </button>
+                                      icon={<Pencil size={16} aria-hidden />}
+                                      onClick={() => openEditPermission(row)}
+                                    />
                                   ) : null}
                                   {catalogEditable && row.key !== PERM_ALL ? (
-                                    <button
-                                      type="button"
+                                    <TableRowActionButton
                                       title="Delete"
-                                      onClick={() => void confirmDeletePermission(row)}
                                       aria-label={`Delete ${row.key}`}
-                                    >
-                                      <Trash2 size={15} />
-                                    </button>
+                                      icon={<Trash2 size={16} aria-hidden />}
+                                      variant="danger"
+                                      onClick={() => void confirmDeletePermission(row)}
+                                    />
                                   ) : null}
-                                </div>
-                              </td>
+                                </TableRowActions>
+                              </TableRowActionCell>
                             </tr>
                           );
                         })
