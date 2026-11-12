@@ -55,6 +55,7 @@ export function AgentFilesPanel({
       {/* fileOpen ⇒ selected is set; `?? ''` only satisfies the prop type */}
       {fileOpen && !diffPath ? (
         <AgentFileViewer
+          projectId={projectId}
           path={selected ?? ''}
           content={preview ?? ''}
           isBinary={previewBinary}

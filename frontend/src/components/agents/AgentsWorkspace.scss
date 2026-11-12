@@ -869,23 +869,32 @@
   }
 }
 
+.agents-file-viewer-download,
 .agents-file-viewer-close {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   width: 26px;
   height: 26px;
-  margin-left: auto;
   border: none;
   border-radius: var(--radius-sm);
   background: transparent;
   color: var(--color-text-muted);
   cursor: pointer;
+  text-decoration: none;
 
   &:hover {
     background: var(--color-bg-hover);
     color: var(--color-text);
   }
+}
+
+.agents-file-viewer-download {
+  margin-left: auto;
+}
+
+.agents-file-viewer-close {
+  margin-left: 0;
 }
 
 .agents-file-viewer-body {

@@ -248,6 +248,8 @@
     "selectFile": "Select a file to preview",
     "viewer": "Viewing {{name}}",
     "closeFile": "Close file",
+    "download": "Download",
+    "downloadHint": "Download file",
     "viewMode": "View mode",
     "preview": "Preview",
     "source": "Source",

@@ -1,6 +1,7 @@
 import { useMemo, useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
-import { X } from 'lucide-react';
+import { projectFileDownloadUrl } from '../../data/projectsApi';
+import { Download, X } from 'lucide-react';
 import {
   RichMarkdown,
 } from '../markdown/richMarkdown';
@@ -48,6 +49,7 @@ function previewKindForExt(ext: string): PreviewKind {
 }
 
 interface Props {
+  projectId: string;
   path: string;
   content: string;
   isBinary: boolean;
@@ -58,6 +60,7 @@ interface Props {
 }
 
 export function AgentFileViewer({
+  projectId,
   path,
   content,
   isBinary,
@@ -157,6 +160,14 @@ export function AgentFileViewer({
             </button>
           </div>
         ) : null}
+        <a
+          className="agents-file-viewer-download"
+          href={projectFileDownloadUrl(projectId, path)}
+          title={t('files.downloadHint')}
+          aria-label={t('files.download')}
+        >
+          <Download size={14} />
+        </a>
         <button
           type="button"
           className="agents-file-viewer-close"

@@ -248,6 +248,8 @@
     "selectFile": "选择文件以预览",
     "viewer": "查看 {{name}}",
     "closeFile": "关闭文件",
+    "download": "下载",
+    "downloadHint": "下载文件",
     "viewMode": "查看模式",
     "preview": "预览",
     "source": "源码",

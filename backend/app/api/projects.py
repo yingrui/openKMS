@@ -6,6 +6,7 @@ import shutil
 from typing import Any
 
 from fastapi import APIRouter, Depends, File, HTTPException, Query, Request, UploadFile
+from fastapi.responses import FileResponse
 from sqlalchemy import delete, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -61,6 +62,7 @@ from app.services.platform.project_fs import (
     make_slug,
     project_root,
     read_file,
+    resolve_project_path,
     scaffold_project_dir,
     write_file,
 )
@@ -294,6 +296,24 @@ async def list_files(
     await _get_owned_project(db, project_id, sub)
     entries = list_dir(project_id, path)
     return ProjectFileListResponse(path=path, entries=entries)
+
+
+@router.get(
+    "/{project_id}/files/download",
+    dependencies=[Depends(require_permission(PERM_PROJECTS_READ))],
+)
+async def download_project_file(
+    project_id: str,
+    request: Request,
+    path: str = Query(min_length=1),
+    db: AsyncSession = Depends(get_db),
+):
+    sub = get_jwt_sub(request)
+    await _get_owned_project(db, project_id, sub)
+    target = resolve_project_path(project_id, path)
+    if not target.is_file():
+        raise HTTPException(status_code=404, detail="File not found")
+    return FileResponse(target, filename=target.name)
 
 
 @router.get(

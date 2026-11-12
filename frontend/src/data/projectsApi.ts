@@ -175,6 +175,10 @@ export async function getProjectFileContent(
   );
 }
 
+export function projectFileDownloadUrl(projectId: string, path: string): string {
+  return `${config.apiUrl}/api/projects/${projectId}/files/download?path=${encodeURIComponent(path)}`;
+}
+
 function joinProjectPath(dir: string, filePath: string): string {
   const d = dir.replace(/\\/g, '/').replace(/^\/+|\/+$/g, '');
   const f = filePath.replace(/\\/g, '/').replace(/^\/+/, '');
