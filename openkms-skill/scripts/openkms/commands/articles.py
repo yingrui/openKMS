@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import argparse
+import pathlib
 import re
 import sys
 from pathlib import Path
@@ -123,6 +124,22 @@ def cmd_markdown(ns: argparse.Namespace) -> None:
         print(f"article {ns.id} has no markdown field in response", file=sys.stderr)
         sys.exit(1)
     write_or_print(md, ns.out or None)
+
+
+def cmd_put_markdown(ns: argparse.Namespace) -> None:
+    if ns.file:
+        markdown = pathlib.Path(ns.file).read_text(encoding="utf-8")
+    elif ns.markdown is not None:
+        markdown = ns.markdown
+    else:
+        print("articles put-markdown: pass --file or --markdown", file=sys.stderr)
+        sys.exit(2)
+    path = f"/api/articles/{ns.id}/markdown"
+    confirm_or_abort("replace article markdown", "PUT", path, {"chars": len(markdown)}, ns.yes, ns.dry_run)
+    with client() as s:
+        r = s.put(path, json={"markdown": markdown})
+    r.raise_for_status()
+    print_json(r.json())
 
 
 def cmd_relationships_list(ns: argparse.Namespace) -> None:
@@ -311,6 +328,16 @@ def add_subparser(sub) -> None:
     md.add_argument("--id", required=True)
     md.add_argument("--out", default="", help="Output file path; omit to print to stdout")
     md.set_defaults(fn=cmd_markdown)
+
+    pmd = sp.add_parser(
+        "put-markdown",
+        help="Replace article markdown (PUT /api/articles/{id}/markdown)",
+    )
+    pmd.add_argument("--id", required=True)
+    pmd.add_argument("--file", default="", help="Read markdown from a file")
+    pmd.add_argument("--markdown", default=None, help="Inline markdown string")
+    add_write_flags(pmd)
+    pmd.set_defaults(fn=cmd_put_markdown)
 
     rev = sp.add_parser(
         "review",

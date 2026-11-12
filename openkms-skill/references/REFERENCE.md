@@ -67,6 +67,7 @@ Create keys in the openKMS web app: **Settings** (header user menu → **Setting
 | `articles list` | GET | `/api/articles` | Query: `channel_id?`, `search?`, `limit?`, `offset?`. If `--channel-id` is omitted, `default_article_channel_id` from `config.yml` is used when set. Returns `{items, total}`. |
 | `articles get` | GET | `/api/articles/{id}` | Full article, including `markdown`. |
 | `articles markdown` | GET | `/api/articles/{id}` | Extracts `.markdown` for stdout/file. |
+| `articles put-markdown` *(write)* | PUT | `/api/articles/{id}/markdown` | Body `{markdown}`. CLI accepts `--file` or `--markdown`. Use it to refresh an article the CLI created earlier. |
 | `articles create` | POST | `/api/articles` | Body `{channel_id, name, markdown, origin_article_id?}`. CLI accepts `--markdown` inline or `--markdown-file`. |
 | `articles delete` *(write)* | DELETE | `/api/articles/{id}` | 204. |
 | `articles from-url` | GET (external) + POST | `/api/articles` | CLI fetches the URL, simplifies HTML to text via regex heuristic, then POSTs. Sets `origin_article_id` to the source URL (truncated 512). |

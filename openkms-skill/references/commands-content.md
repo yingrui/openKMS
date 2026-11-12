@@ -49,7 +49,7 @@ Prefix every invocation with `python scripts/cli.py` (or the project-agent path 
 | Lifecycle / lineage | `documents lifecycle patch --id DOC_ID … --yes` · `documents relationships create\|delete … --yes` |
 | Put markdown / export zip | `documents put-markdown --id DOC --file ./x.md --yes` · `documents export --id DOC --out ./doc.zip --yes` |
 | Create / update / delete article channel | `article-channels create --name "…" --yes` · `article-channels update --id AC_ID … --yes` · `article-channels delete --id AC_ID --yes` |
-| Create / delete article · from URL | `articles create --channel-id ID --name "…" --markdown-file ./x.md --yes` · `articles delete --id ART_ID --yes` · `articles from-url --channel-id ID --url … --yes` |
+| Create / edit / delete article · from URL | `articles create --channel-id ID --name "…" --markdown-file ./x.md --yes` · `articles put-markdown --id ART_ID --file ./x.md --yes` · `articles delete --id ART_ID --yes` · `articles from-url --channel-id ID --url … --yes` |
 | Attach a file to an article | `articles attachments upload --id ART_ID --file ./deck.html --yes` (any content type; `attachments delete --id ART_ID --attachment-id ATT_ID --yes`) |
 | Run content review | `articles review run --id ART_ID --yes` |
 | Article lineage | `articles relationships create\|delete … --yes` |

@@ -219,3 +219,25 @@ def test_articles_attachments_delete(mock_api, capsys):
     )
     assert recorded[-1].method == "DELETE"
     assert "att1" in capsys.readouterr().out
+
+
+def test_articles_put_markdown(mock_api, tmp_path):
+    recorded, responses = mock_api
+    responses[("PUT", "/api/articles/a1/markdown")] = (200, {"id": "a1"})
+    source = tmp_path / "note.md"
+    source.write_text("# Hello\n", encoding="utf-8")
+
+    from openkms.commands.articles import cmd_put_markdown
+
+    cmd_put_markdown(argparse.Namespace(id="a1", file=str(source), markdown=None, yes=True, dry_run=False))
+    req = recorded[-1]
+    assert req.method == "PUT"
+    assert req.url.path == "/api/articles/a1/markdown"
+    assert json.loads(req.content) == {"markdown": "# Hello\n"}
+
+
+def test_articles_put_markdown_requires_content(mock_api):
+    from openkms.commands.articles import cmd_put_markdown
+
+    with pytest.raises(SystemExit):
+        cmd_put_markdown(argparse.Namespace(id="a1", file="", markdown=None, yes=True, dry_run=False))
