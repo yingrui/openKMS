@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
-import { BookOpen, Plus, Trash2, Pencil, X } from 'lucide-react';
+import { BookOpen, Plus, Trash2, Pencil } from 'lucide-react';
 import { toast } from 'sonner';
 import {
   fetchGlossaries,
@@ -16,7 +16,7 @@ import {
   useStoredViewMode,
   type CardListViewMode,
 } from '../../hooks/useStoredViewMode';
-import { Pagination, ResourceViewToggle } from '../../styles/design-system';
+import { Dialog, FormField, Pagination, ResourceViewToggle } from '../../styles/design-system';
 import './GlossaryList.scss';
 
 const VIEW_STORAGE_KEY = 'glossaries-list-view';
@@ -261,52 +261,45 @@ export function GlossaryList() {
         </>
       ) : null}
 
-      {(showCreate || editGlossary) && (
-        <div className="glossary-dialog-overlay" onClick={closeDialog}>
-          <div className="glossary-dialog" onClick={(e) => e.stopPropagation()}>
-            <div className="glossary-dialog-header">
-              <h2>{editGlossary ? t('glossary.dialogEdit') : t('glossary.dialogNew')}</h2>
-              <button type="button" className="glossary-dialog-close" aria-label={t('shared.close')} onClick={closeDialog}>
-                <X size={20} />
-              </button>
-            </div>
-            <div className="glossary-dialog-body">
-              <label>
-                <span>{t('shared.name')}</span>
-                <input
-                  type="text"
-                  value={formName}
-                  onChange={(e) => setFormName(e.target.value)}
-                  placeholder={t('glossary.placeholderName')}
-                  autoFocus
-                />
-              </label>
-              <label>
-                <span>{t('shared.description')}</span>
-                <textarea
-                  value={formDesc}
-                  onChange={(e) => setFormDesc(e.target.value)}
-                  placeholder={t('glossary.placeholderDesc')}
-                  rows={3}
-                />
-              </label>
-            </div>
-            <div className="glossary-dialog-footer">
-              <button type="button" className="btn btn-secondary" onClick={closeDialog}>
-                {t('shared.cancel')}
-              </button>
-              <button
-                type="button"
-                className="btn btn-primary"
-                disabled={!formName.trim() || saving}
-                onClick={() => void (editGlossary ? handleEdit() : handleCreate())}
-              >
-                {saving ? t('shared.saving') : editGlossary ? t('shared.save') : t('shared.create')}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <Dialog
+        open={showCreate || editGlossary != null}
+        onClose={closeDialog}
+        title={editGlossary ? t('glossary.dialogEdit') : t('glossary.dialogNew')}
+        closeAriaLabel={t('shared.close')}
+        size="md"
+        footer={
+          <>
+            <button type="button" className="btn btn-secondary" onClick={closeDialog}>
+              {t('shared.cancel')}
+            </button>
+            <button
+              type="button"
+              className="btn btn-primary"
+              disabled={!formName.trim() || saving}
+              onClick={() => void (editGlossary ? handleEdit() : handleCreate())}
+            >
+              {saving ? t('shared.saving') : editGlossary ? t('shared.save') : t('shared.create')}
+            </button>
+          </>
+        }
+      >
+        <FormField label={t('shared.name')}>
+          <input
+            type="text"
+            value={formName}
+            onChange={(e) => setFormName(e.target.value)}
+            placeholder={t('glossary.placeholderName')}
+          />
+        </FormField>
+        <FormField label={t('shared.description')}>
+          <textarea
+            value={formDesc}
+            onChange={(e) => setFormDesc(e.target.value)}
+            placeholder={t('glossary.placeholderDesc')}
+            rows={3}
+          />
+        </FormField>
+      </Dialog>
     </div>
   );
 }
