@@ -18,21 +18,6 @@
 }
 
 /* New-article modal body */
-.articles-new-modal-fields {
-  display: flex;
-  flex-direction: column;
-  gap: calc(var(--space-3) + var(--space-1) / 2);
-  margin-top: var(--space-2);
-}
-
-.articles-new-modal-field label {
-  display: block;
-  font-size: var(--text-sm);
-  font-weight: 500;
-  color: var(--color-text-secondary);
-  margin-bottom: var(--gap-compact);
-}
-
 .articles-new-modal-field input,
 .articles-new-modal-field textarea {
   width: 100%;
@@ -44,14 +29,6 @@
   border-radius: var(--radius-sm);
   background: var(--color-bg);
   color: var(--color-text);
-}
-
-.articles-new-modal-field textarea {
-  resize: vertical;
-  min-height: 120px;
-  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
-  font-size: var(--text-md);
-  line-height: 1.5;
 }
 
 .articles-new-modal-field input:focus,

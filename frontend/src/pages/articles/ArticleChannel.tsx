@@ -14,6 +14,7 @@ import { useDebouncedValue } from '../../hooks/useDebouncedValue';
 import { useListFetch } from '../../hooks/useListFetch';
 import { createArticle, deleteArticle, fetchArticles, patchArticle } from '../../data/articlesApi';
 import { useConfirm } from '../../contexts/ConfirmContext';
+import { Dialog, FormField } from '../../styles/design-system';
 import '../../styles/channel-page.scss';
 import './Articles.scss';
 
@@ -555,145 +556,107 @@ export function ArticleChannel() {
         </div>
       </div>
 
-      {moveModalArticleIds && moveModalArticleIds.length > 0 && (
-        <div
-          className="channel-page-modal-overlay"
-          onClick={closeMoveModal}
-          onKeyDown={(e) => e.key === 'Escape' && closeMoveModal()}
-          role="dialog"
-          aria-modal="true"
-          aria-labelledby="article-move-title"
-        >
-          <div className="channel-page-modal" onClick={(e) => e.stopPropagation()}>
-            <div className="channel-page-modal-header">
-              <h2 id="article-move-title">
-                {moveModalArticleIds.length === 1 ? t('channel.moveModalTitle') : t('channel.moveModalTitleBulk')}
-              </h2>
-              <button
-                type="button"
-                className="channel-page-modal-close"
-                onClick={closeMoveModal}
-                disabled={moveLoading}
-                aria-label={t('channel.closeAria')}
-              >
-                <X size={20} />
-              </button>
-            </div>
-            <p className="channel-page-modal-hint">
-              {moveModalArticleIds.length === 1
-                ? t('channel.moveModalHint', {
-                    name: items.find((a) => a.id === moveModalArticleIds[0])?.name ?? '',
-                  })
-                : t('channel.moveModalHintBulk', { count: moveModalArticleIds.length })}
-            </p>
-            <div className="channel-page-move-form">
-              <label htmlFor="article-move-channel">{t('channel.targetChannel')}</label>
-              <select
-                id="article-move-channel"
-                className="channel-page-move-select"
-                value={moveTargetChannelId}
-                onChange={(e) => setMoveTargetChannelId(e.target.value)}
-                disabled={moveLoading || moveChannelOptions.length === 0}
-              >
-                {moveChannelOptions.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div className="channel-page-modal-actions">
-              <button type="button" className="btn btn-secondary" onClick={closeMoveModal} disabled={moveLoading}>
-                {t('channel.cancel')}
-              </button>
-              <button
-                type="button"
-                className="btn btn-primary"
-                onClick={() => void confirmMove()}
-                disabled={moveLoading || !moveTargetChannelId}
-              >
-                {moveLoading ? t('channel.moving') : t('channel.move')}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <Dialog
+        open={moveModalArticleIds != null && moveModalArticleIds.length > 0}
+        onClose={closeMoveModal}
+        closeDisabled={moveLoading}
+        title={
+          moveModalArticleIds && moveModalArticleIds.length === 1
+            ? t('channel.moveModalTitle')
+            : t('channel.moveModalTitleBulk')
+        }
+        closeAriaLabel={t('channel.closeAria')}
+        size="md"
+        footer={
+          <>
+            <button type="button" className="btn btn-secondary" onClick={closeMoveModal} disabled={moveLoading}>
+              {t('channel.cancel')}
+            </button>
+            <button
+              type="button"
+              className="btn btn-primary"
+              onClick={() => void confirmMove()}
+              disabled={moveLoading || !moveTargetChannelId}
+            >
+              {moveLoading ? t('channel.moving') : t('channel.move')}
+            </button>
+          </>
+        }
+      >
+        <p className="document-detail-muted">
+          {moveModalArticleIds && moveModalArticleIds.length === 1
+            ? t('channel.moveModalHint', {
+                name: items.find((a) => a.id === moveModalArticleIds[0])?.name ?? '',
+              })
+            : t('channel.moveModalHintBulk', { count: moveModalArticleIds?.length ?? 0 })}
+        </p>
+        <FormField label={t('channel.targetChannel')}>
+          <select
+            value={moveTargetChannelId}
+            onChange={(e) => setMoveTargetChannelId(e.target.value)}
+            disabled={moveLoading || moveChannelOptions.length === 0}
+          >
+            {moveChannelOptions.map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.name}
+              </option>
+            ))}
+          </select>
+        </FormField>
+      </Dialog>
 
-      {newArticleOpen && (
-        <div
-          className="channel-page-modal-overlay"
-          onClick={closeNewArticleModal}
-          onKeyDown={(e) => e.key === 'Escape' && closeNewArticleModal()}
-          role="dialog"
-          aria-modal="true"
-          aria-labelledby="article-new-title"
-        >
-          <div className="channel-page-modal" onClick={(e) => e.stopPropagation()}>
-            <div className="channel-page-modal-header">
-              <h2 id="article-new-title">{t('channel.modalTitle')}</h2>
-              <button
-                type="button"
-                className="channel-page-modal-close"
-                onClick={closeNewArticleModal}
-                disabled={newCreating}
-                aria-label={t('channel.closeAria')}
-              >
-                <X size={20} />
-              </button>
-            </div>
-            <p className="channel-page-modal-hint">{t('channel.modalHint')}</p>
-            <div className="articles-new-modal-fields">
-              <div className="articles-new-modal-field">
-                <label htmlFor="article-new-name">{t('channel.titleLabel')}</label>
-                <input
-                  id="article-new-name"
-                  type="text"
-                  value={newTitle}
-                  onChange={(e) => setNewTitle(e.target.value)}
-                  placeholder={t('channel.titlePlaceholder')}
-                  autoFocus
-                  disabled={newCreating}
-                />
-              </div>
-              <div className="articles-new-modal-field">
-                <label htmlFor="article-new-source">{t('channel.sourceLabel')}</label>
-                <input
-                  id="article-new-source"
-                  type="text"
-                  value={newSourceRef}
-                  onChange={(e) => setNewSourceRef(e.target.value)}
-                  placeholder={t('channel.sourcePlaceholder')}
-                  disabled={newCreating}
-                />
-              </div>
-              <div className="articles-new-modal-field">
-                <label htmlFor="article-new-md">{t('channel.initialContentLabel')}</label>
-                <textarea
-                  id="article-new-md"
-                  value={newMarkdown}
-                  onChange={(e) => setNewMarkdown(e.target.value)}
-                  placeholder={t('channel.markdownPlaceholder')}
-                  rows={6}
-                  disabled={newCreating}
-                />
-              </div>
-            </div>
-            <div className="channel-page-modal-actions">
-              <button type="button" className="btn btn-secondary" onClick={closeNewArticleModal} disabled={newCreating}>
-                {t('channel.cancel')}
-              </button>
-              <button
-                type="button"
-                className="btn btn-primary"
-                onClick={() => void submitNewArticle()}
-                disabled={newCreating || !newTitle.trim()}
-              >
-                {newCreating ? t('channel.creating') : t('channel.create')}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <Dialog
+        open={newArticleOpen}
+        onClose={closeNewArticleModal}
+        closeDisabled={newCreating}
+        title={t('channel.modalTitle')}
+        closeAriaLabel={t('channel.closeAria')}
+        size="md"
+        footer={
+          <>
+            <button type="button" className="btn btn-secondary" onClick={closeNewArticleModal} disabled={newCreating}>
+              {t('channel.cancel')}
+            </button>
+            <button
+              type="button"
+              className="btn btn-primary"
+              onClick={() => void submitNewArticle()}
+              disabled={newCreating || !newTitle.trim()}
+            >
+              {newCreating ? t('channel.creating') : t('channel.create')}
+            </button>
+          </>
+        }
+      >
+        <p className="document-detail-muted">{t('channel.modalHint')}</p>
+        <FormField label={t('channel.titleLabel')}>
+          <input
+            type="text"
+            value={newTitle}
+            onChange={(e) => setNewTitle(e.target.value)}
+            placeholder={t('channel.titlePlaceholder')}
+            disabled={newCreating}
+          />
+        </FormField>
+        <FormField label={t('channel.sourceLabel')}>
+          <input
+            type="text"
+            value={newSourceRef}
+            onChange={(e) => setNewSourceRef(e.target.value)}
+            placeholder={t('channel.sourcePlaceholder')}
+            disabled={newCreating}
+          />
+        </FormField>
+        <FormField label={t('channel.initialContentLabel')}>
+          <textarea
+            value={newMarkdown}
+            onChange={(e) => setNewMarkdown(e.target.value)}
+            placeholder={t('channel.markdownPlaceholder')}
+            rows={6}
+            disabled={newCreating}
+          />
+        </FormField>
+      </Dialog>
     </div>
   );
 }

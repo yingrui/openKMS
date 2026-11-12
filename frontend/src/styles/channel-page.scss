@@ -389,66 +389,7 @@
   padding: var(--space-6);
 }
 
-.channel-page-modal-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: var(--space-2);
-}
-
-.channel-page-modal-header h2 {
-  margin: 0;
-  font-size: 1.25rem;
-  font-weight: 600;
-  color: var(--color-text);
-}
-
-.channel-page-modal-close {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 8px;
-  border: none;
-  background: none;
-  color: var(--color-text-muted);
-  border-radius: var(--radius-sm);
-  cursor: pointer;
-  transition: color 0.15s, background 0.15s;
-}
-
-.channel-page-modal-close:hover:not(:disabled) {
-  background: var(--color-bg-muted);
-  color: var(--color-text);
-}
-
-.channel-page-modal-hint {
-  font-size: var(--text-md);
-  color: var(--color-text-secondary);
-  margin: 0 0 var(--space-4) 0;
-}
-
-.channel-page-modal-actions {
-  display: flex;
-  justify-content: flex-end;
-  gap: var(--space-3);
-  margin-top: var(--space-6);
-  padding-top: var(--space-4);
-  border-top: 1px solid var(--color-border);
-}
-
 /* --- Move form (move to channel, generate-to-channel) --- */
-
-.channel-page-move-form {
-  margin-bottom: var(--space-5);
-}
-
-.channel-page-move-form label {
-  display: block;
-  font-size: var(--text-md);
-  font-weight: 500;
-  color: var(--color-text-secondary);
-  margin-bottom: var(--gap-compact);
-}
 
 .channel-page-move-select {
   width: 100%;
