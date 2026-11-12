@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
-import { Database, Plus, MessageCircle, Trash2, Pencil, X } from 'lucide-react';
+import { Database, Plus, MessageCircle, Trash2, Pencil } from 'lucide-react';
 import { toast } from 'sonner';
 import {
   fetchKnowledgeBases,
@@ -16,7 +16,7 @@ import {
   useStoredViewMode,
   type CardListViewMode,
 } from '../../hooks/useStoredViewMode';
-import { Pagination, ResourceViewToggle, EmptyState } from '../../styles/design-system';
+import { Dialog, FormField, Pagination, ResourceViewToggle, EmptyState } from '../../styles/design-system';
 import '../../styles/resource-list.scss';
 import './KnowledgeBaseList.scss';
 
@@ -283,52 +283,45 @@ export function KnowledgeBaseList() {
         </>
       ) : null}
 
-      {(showCreate || editKb) && (
-        <div className="resource-list-dialog-overlay" onClick={closeDialog}>
-          <div className="resource-list-dialog" onClick={(e) => e.stopPropagation()}>
-            <div className="resource-list-dialog-header">
-              <h2>{editKb ? t('dialogEdit') : t('dialogNew')}</h2>
-              <button type="button" className="resource-list-dialog-close" aria-label={ts('shared.close')} onClick={closeDialog}>
-                <X size={20} />
-              </button>
-            </div>
-            <div className="resource-list-dialog-body">
-              <label>
-                <span>{ts('shared.name')}</span>
-                <input
-                  type="text"
-                  value={formName}
-                  onChange={(e) => setFormName(e.target.value)}
-                  placeholder={t('placeholderName')}
-                  autoFocus
-                />
-              </label>
-              <label>
-                <span>{ts('shared.description')}</span>
-                <textarea
-                  value={formDesc}
-                  onChange={(e) => setFormDesc(e.target.value)}
-                  placeholder={t('placeholderDesc')}
-                  rows={3}
-                />
-              </label>
-            </div>
-            <div className="resource-list-dialog-footer">
-              <button type="button" className="btn btn-secondary" onClick={closeDialog}>
-                {ts('shared.cancel')}
-              </button>
-              <button
-                type="button"
-                className="btn btn-primary"
-                disabled={!formName.trim() || saving}
-                onClick={() => void (editKb ? handleEdit() : handleCreate())}
-              >
-                {saving ? ts('shared.saving') : editKb ? ts('shared.save') : ts('shared.create')}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <Dialog
+        open={showCreate || editKb != null}
+        onClose={closeDialog}
+        title={editKb ? t('dialogEdit') : t('dialogNew')}
+        closeAriaLabel={ts('shared.close')}
+        size="md"
+        footer={
+          <>
+            <button type="button" className="btn btn-secondary" onClick={closeDialog}>
+              {ts('shared.cancel')}
+            </button>
+            <button
+              type="button"
+              className="btn btn-primary"
+              disabled={!formName.trim() || saving}
+              onClick={() => void (editKb ? handleEdit() : handleCreate())}
+            >
+              {saving ? ts('shared.saving') : editKb ? ts('shared.save') : ts('shared.create')}
+            </button>
+          </>
+        }
+      >
+        <FormField label={ts('shared.name')}>
+          <input
+            type="text"
+            value={formName}
+            onChange={(e) => setFormName(e.target.value)}
+            placeholder={t('placeholderName')}
+          />
+        </FormField>
+        <FormField label={ts('shared.description')}>
+          <textarea
+            value={formDesc}
+            onChange={(e) => setFormDesc(e.target.value)}
+            placeholder={t('placeholderDesc')}
+            rows={3}
+          />
+        </FormField>
+      </Dialog>
     </div>
   );
 }

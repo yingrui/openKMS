@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
-import { BookOpen, Plus, Trash2, Pencil, X } from 'lucide-react';
+import { BookOpen, Plus, Trash2, Pencil } from 'lucide-react';
 import { toast } from 'sonner';
 import { ErrorBanner } from '../../components/ErrorBanner';
 import {
@@ -10,7 +10,7 @@ import {
   useStoredViewMode,
   type CardListViewMode,
 } from '../../hooks/useStoredViewMode';
-import { Pagination, ResourceViewToggle } from '../../styles/design-system';
+import { Dialog, FormField, Pagination, ResourceViewToggle } from '../../styles/design-system';
 import {
   fetchWikiSpaces,
   createWikiSpace,
@@ -288,52 +288,45 @@ export function WikiSpaceList() {
         </>
       ) : null}
 
-      {(showCreate || editSp) && (
-        <div className="resource-list-dialog-overlay" role="presentation" onClick={closeDialog}>
-          <div className="resource-list-dialog" role="dialog" aria-modal="true" onClick={(e) => e.stopPropagation()}>
-            <div className="resource-list-dialog-header">
-              <h2>{editSp ? t('wiki.dialogEdit') : t('wiki.dialogNew')}</h2>
-              <button type="button" className="resource-list-dialog-close" aria-label={t('shared.close')} onClick={closeDialog}>
-                <X size={20} />
-              </button>
-            </div>
-            <div className="resource-list-dialog-body">
-              <label>
-                <span>{t('shared.name')}</span>
-                <input
-                  type="text"
-                  value={formName}
-                  onChange={(e) => setFormName(e.target.value)}
-                  placeholder={t('wiki.placeholderName')}
-                  autoFocus
-                />
-              </label>
-              <label>
-                <span>{t('shared.description')}</span>
-                <textarea
-                  value={formDesc}
-                  onChange={(e) => setFormDesc(e.target.value)}
-                  placeholder={t('shared.optional')}
-                  rows={3}
-                />
-              </label>
-            </div>
-            <div className="resource-list-dialog-footer">
-              <button type="button" className="btn btn-secondary" onClick={closeDialog}>
-                {t('shared.cancel')}
-              </button>
-              <button
-                type="button"
-                className="btn btn-primary"
-                disabled={saving || !formName.trim()}
-                onClick={() => void (editSp ? handleEdit() : handleCreate())}
-              >
-                {saving ? t('shared.saving') : editSp ? t('shared.save') : t('shared.create')}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <Dialog
+        open={showCreate || editSp != null}
+        onClose={closeDialog}
+        title={editSp ? t('wiki.dialogEdit') : t('wiki.dialogNew')}
+        closeAriaLabel={t('shared.close')}
+        size="md"
+        footer={
+          <>
+            <button type="button" className="btn btn-secondary" onClick={closeDialog}>
+              {t('shared.cancel')}
+            </button>
+            <button
+              type="button"
+              className="btn btn-primary"
+              disabled={saving || !formName.trim()}
+              onClick={() => void (editSp ? handleEdit() : handleCreate())}
+            >
+              {saving ? t('shared.saving') : editSp ? t('shared.save') : t('shared.create')}
+            </button>
+          </>
+        }
+      >
+        <FormField label={t('shared.name')}>
+          <input
+            type="text"
+            value={formName}
+            onChange={(e) => setFormName(e.target.value)}
+            placeholder={t('wiki.placeholderName')}
+          />
+        </FormField>
+        <FormField label={t('shared.description')}>
+          <textarea
+            value={formDesc}
+            onChange={(e) => setFormDesc(e.target.value)}
+            placeholder={t('shared.optional')}
+            rows={3}
+          />
+        </FormField>
+      </Dialog>
     </div>
   );
 }

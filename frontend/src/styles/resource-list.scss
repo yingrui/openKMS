@@ -69,7 +69,6 @@
 
 /* empty: see .ds-empty-state / .resource-list-empty alias */
 
-
 /* Fixed-ish column width so cards do not balloon when the nav rail is collapsed (wider main column). */
 .resource-list-grid {
   display: grid;
@@ -174,64 +173,6 @@
 }
 
 /* Dialog – matches documents-upload-modal */
-.resource-list-dialog {
-  background: var(--color-bg);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-lg);
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
-  max-width: 480px;
-  width: 100%;
-  padding: var(--space-6);
-}
-
-.resource-list-dialog-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: var(--space-2);
-}
-
-.resource-list-dialog-header h2 {
-  margin: 0;
-  font-size: var(--text-xl);
-  font-weight: 600;
-  color: var(--color-text);
-}
-
-.resource-list-dialog-close {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 8px;
-  background: none;
-  border: none;
-  color: var(--color-text-muted);
-  cursor: pointer;
-  border-radius: var(--radius-sm);
-  transition: color 0.15s, background 0.15s;
-}
-
-.resource-list-dialog-close:hover {
-  background: var(--color-bg-muted);
-  color: var(--color-text);
-}
-
-.resource-list-dialog-body {
-  padding: var(--space-4) 0;
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-4);
-}
-
-.resource-list-dialog-body label {
-  display: flex;
-  flex-direction: column;
-  gap: var(--gap-compact);
-  font-size: var(--text-md);
-  font-weight: 500;
-  color: var(--color-text-secondary);
-}
-
 .resource-list-dialog-body input,
 .resource-list-dialog-body textarea,
 .resource-list-dialog-body select {
@@ -248,15 +189,6 @@
 .resource-list-dialog-body select:focus {
   outline: none;
   border-color: var(--color-accent);
-}
-
-.resource-list-dialog-footer {
-  display: flex;
-  justify-content: flex-end;
-  gap: var(--space-3);
-  margin-top: var(--space-6);
-  padding-top: var(--space-4);
-  border-top: 1px solid var(--color-border);
 }
 
 /* Phone: dense rows instead of tall gallery cards. */
