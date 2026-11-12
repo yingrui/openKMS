@@ -43,7 +43,7 @@ Do **not** pass `--function-id` for these three.
 ## Execute
 
 - Target instance: prefer top-level `--object-id OI` (App host maps A2UI `objectId` the same way). `input.object_id` also works for modify/delete.
-- `input` is property values. Built-in schemas are derived from the object type: **required object-type properties are required on execute** (including modify/delete). Fill them via `loadObjectForEdit` in Apps, or pass the full required set in `--input-json`.
+- `input` is property values. Built-in schemas are derived from the object type: **required object-type properties are required on execute** (including modify/delete) — pass the full required set in `--input-json`.
 
 ```bash
 python scripts/cli.py ontology action-types execute \

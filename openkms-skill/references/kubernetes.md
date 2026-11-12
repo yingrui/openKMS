@@ -12,7 +12,7 @@ Requires **`console:kubernetes`** (or `all`) on the API key. Register clusters i
 4. `kubernetes apply --cluster-id ID --file ./deploy.yaml --namespace NS --yes`
 5. `kubernetes pods --cluster-id ID --namespace NS` then `kubernetes logs --cluster-id ID --pod NAME --namespace NS`
 
-Allowed kinds: **Deployment**, **Service**, **Pod**, **ConfigMap**. Cluster-scoped objects (ClusterRole, PV, …) and **Secret** are rejected — do not put passwords in apply YAML or ConfigMaps.
+Allowed kinds: **Deployment**, **Service**, **Pod**, **ConfigMap**. Everything else is rejected — including **Secret** (passwords belong in Project deploy secrets or the cluster) and **PersistentVolumeClaim** (namespaced, but not in the allowlist; create it with `kubectl` and reference the claim from the Deployment). Cluster-scoped objects (Namespace, ClusterRole, PV, …) are rejected too.
 
 `apply` creates or patches. Service **ports are replaced** on patch (changing `port: 80` → `3200` does not stack both). Delete with `kubernetes delete --kind Service --name NAME --yes`.
 
@@ -106,12 +106,34 @@ env:
 Non-secret config: `kubernetes configmaps --cluster-id ID --namespace NS` (includes values); reference with `configMapRef` / `configMapKeyRef` the same way.  
 Verify wiring after apply: `kubernetes env --cluster-id ID --deployment NAME --namespace NS` (shows refs, not secret values).
 
+### App with its own database (StatefulSet-free demo)
+
+A namespaced DB is three objects the allowlist only partly covers: the **PVC** and the **Secret** are created out of band, then one `apply` carries the Deployment + Service.
+
+```bash
+kubectl apply -f namespace.yaml                       # Namespace: cluster-scoped
+kubectl apply -f postgres-storage.yaml                # PersistentVolumeClaim
+kubectl -n NS create secret generic app-secrets \
+  --from-literal=POSTGRES_PASSWORD=… \
+  --from-literal=DATABASE_URL=postgresql+psycopg://app:…@app-db:5432/app
+kubernetes apply --cluster-id ID --namespace NS --file app.yaml --yes   # ConfigMap + Deployment + Service
+```
+
+Use `strategy: Recreate` with a `ReadWriteOnce` claim, run migrations in the container's entrypoint, and make seeding idempotent — a rollout then needs no manual step.
+
 ## Register in Chamber
 
 Register a Service as a **Chamber app** (`template_id=module`, published immediately):
 
 `kubernetes register-app --cluster-id ID --namespace NS --service NAME --port 80 --name "Web" --api-name webApp --yes`
 
-Needs **`console:kubernetes`** and **`ontology:write`**. The app is opened in Chamber via the API-server Service proxy (no kubeconfig in the browser). The workload must work under a URL subpath or use relative assets. WebSocket is not proxied.
+Needs **`console:kubernetes`** and **`ontology:write`**. The app is opened in Chamber via the API-server Service proxy (no kubeconfig in the browser). WebSocket is not proxied.
+
+The iframe URL is `/api/chamber/apps/<id>/proxy/` and openKMS **strips that prefix** before the request reaches the Service:
+
+- serve `index.html` at `/`; build assets relative (`vite base: './'`) so `./assets/x.js` resolves under the proxy;
+- call the backend with document-relative URLs (`api/overview`) — an absolute `/api/…` would hit openKMS itself;
+- keep client routes in the hash (`#/…`) so deep links need no server-side rewrite;
+- SPA history routing without a `try_files`-style fallback 404s on refresh.
 
 Chamber apps should **not** implement their own sign-in. openKMS authenticates the user and sends `X-Openkms-User-Id`, `X-Openkms-Username`, `X-Openkms-User-Name`, `X-Openkms-User-Email`, `X-Openkms-User-Admin` (values percent-encoded UTF-8) on every proxied request; read identity from those headers, key user data by `X-Openkms-User-Id`, return `401` when it is missing. Do not expose the Service via Ingress / NodePort. Full contract: `docs/features/app-builder.md#chamber-identity-headers`.
