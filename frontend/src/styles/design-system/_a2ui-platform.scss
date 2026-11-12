@@ -47,22 +47,6 @@
 
 @mixin platform-components {
   /* Card — white elevated panel (COMPOSER-style soft shadow + large radius) */
-  .a2ui-card {
-    border: var(--a2ui-card-border);
-    border-radius: var(--a2ui-card-border-radius);
-    background: var(--a2ui-card-background);
-    box-shadow: var(--a2ui-card-box-shadow);
-    padding: var(--a2ui-card-padding);
-    margin: var(--a2ui-card-margin);
-    transition: box-shadow 0.18s ease;
-
-    &:hover {
-      box-shadow:
-        0 2px 4px rgba(44, 41, 37, 0.05),
-        0 12px 28px rgba(44, 41, 37, 0.08);
-    }
-  }
-
   /* Text hierarchy */
   .a2uiText,
   .a2uiCaption,
@@ -140,59 +124,10 @@
     gap: var(--a2ui-list-gap);
   }
 
-  .a2ui-platform-hidden-trigger {
-    position: absolute;
-    width: 1px;
-    height: 1px;
-    padding: 0;
-    margin: -1px;
-    overflow: hidden;
-    clip: rect(0, 0, 0, 0);
-    white-space: nowrap;
-    border: 0;
-  }
-
   /*
    * Modal / TextField / Button — @a2ui/react v0.9 CSS modules often empty;
    * polish known catalog hosts only (not board/list layout recipes).
    */
-  .a2ui-modal-overlay {
-    padding: var(--space-4);
-    background: color-mix(in srgb, var(--a2ui-modal-overlay-color) 88%, transparent) !important;
-    backdrop-filter: blur(4px);
-
-    > div {
-      box-sizing: border-box;
-      width: min(28rem, calc(100vw - 2rem));
-      max-width: 100%;
-      padding: var(--a2ui-modal-padding) !important;
-      border-radius: var(--a2ui-modal-border-radius) !important;
-      box-shadow:
-        0 4px 16px rgba(44, 41, 37, 0.08),
-        0 24px 48px rgba(44, 41, 37, 0.12);
-      border: 1px solid color-mix(in srgb, var(--color-border) 50%, transparent);
-      gap: var(--space-3);
-      background: #fff !important;
-    }
-  }
-
-  .a2ui-modal-close {
-    width: var(--tap-min, 2.5rem);
-    height: var(--tap-min, 2.5rem);
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    border-radius: 999px;
-    color: var(--color-text-muted) !important;
-    font-size: 1.25rem !important;
-    line-height: 1;
-
-    &:hover {
-      background: var(--color-bg-muted);
-      color: var(--color-text) !important;
-    }
-  }
-
   label {
     display: block;
     margin: 0 0 var(--space-1);

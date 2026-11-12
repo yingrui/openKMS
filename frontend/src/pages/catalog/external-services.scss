@@ -1,12 +1,6 @@
 @use '../../styles/design-system/mixins' as *;
 @use '../../styles/design-system/tokens' as ds;
 
-.external-services__hint {
-  margin: 0 0 var(--space-3);
-  color: var(--color-text-muted);
-  font-size: 0.875rem;
-}
-
 .external-services__name {
   color: var(--color-text-muted);
   font-size: 0.8125rem;
@@ -36,11 +30,6 @@
   background: var(--color-bg-elevated);
   font-size: 0.75rem;
   white-space: nowrap;
-}
-
-.external-services__kind--k8s_service {
-  border-color: var(--color-accent);
-  color: var(--color-accent);
 }
 
 /* The page reuses the list chrome; only the sheet's own name has to exist. */

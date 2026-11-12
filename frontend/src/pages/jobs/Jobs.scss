@@ -113,26 +113,6 @@
   font-weight: var(--font-weight-medium);
 }
 
-.job-status-running {
-  background: var(--status-doc-running-bg);
-  color: var(--status-doc-running-fg);
-}
-
-.job-status-completed {
-  background: var(--status-doc-completed-bg);
-  color: var(--status-doc-completed-fg);
-}
-
-.job-status-pending {
-  background: var(--status-doc-pending-bg);
-  color: var(--status-doc-pending-fg);
-}
-
-.job-status-failed {
-  background: var(--status-doc-failed-bg);
-  color: var(--status-doc-failed-fg);
-}
-
 .jobs-header-actions {
   display: flex;
   gap: var(--space-2);
@@ -194,10 +174,6 @@
   font-weight: var(--font-weight-medium);
 }
 
-.jobs-delete-btn:hover {
-  color: var(--color-error) !important;
-}
-
 .jobs-table-docid {
   font-family: monospace;
   font-size: var(--text-sm);
@@ -206,13 +182,6 @@
 .btn-sm {
   padding: var(--space-1) var(--space-2);
   font-size: var(--text-xs);
-}
-
-.jobs-error {
-  padding: var(--space-2) var(--space-3);
-  color: var(--color-error);
-  font-size: var(--text-md);
-  margin-bottom: var(--space-3);
 }
 
 .jobs-loading {

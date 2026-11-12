@@ -17,16 +17,6 @@
   font-weight: 500;
 }
 
-.article-status-published {
-  background: var(--status-doc-completed-bg);
-  color: var(--status-doc-completed-fg);
-}
-
-.article-status-draft {
-  background: var(--status-doc-pending-bg);
-  color: var(--status-doc-pending-fg);
-}
-
 /* New-article modal body */
 .articles-new-modal-fields {
   display: flex;

@@ -320,10 +320,6 @@
   grid-column: 1 / -1;
 }
 
-.document-detail-info-list--with-hash {
-  grid-template-columns: 1fr 1fr;
-}
-
 .document-detail-info-item {
   display: flex;
   flex-direction: row;
@@ -455,13 +451,6 @@
 }
 
 /* Metadata subsection (inside combined info section) */
-.document-detail-labels-body {
-  margin-top: 0;
-  padding: var(--space-4);
-  background: color-mix(in srgb, var(--color-accent) 4%, transparent);
-  border-radius: var(--radius-md);
-}
-
 .document-detail-labels-list .document-detail-info-item {
   display: grid;
   grid-template-columns: minmax(120px, auto) 1fr;
@@ -685,9 +674,6 @@
   margin-top: var(--space-3);
 }
 
-
-
-
 @include max-width(ds.$bp-md-min) {
   .document-detail {
     min-height: 0;
@@ -783,13 +769,6 @@
 .document-detail-panel-header > span {
   flex: 1;
   min-width: 0;
-}
-
-.document-detail-panel-tabs {
-  display: flex;
-  align-items: center;
-  gap: var(--space-1);
-  flex: 1;
 }
 
 .document-detail-panel-tab {
@@ -1220,12 +1199,6 @@
   border-color: color-mix(in srgb, var(--color-accent) 30%, transparent);
 }
 
-.document-detail-edit-toggle--active {
-  color: var(--color-accent);
-  border-color: color-mix(in srgb, var(--color-accent) 40%, transparent);
-  background: color-mix(in srgb, var(--color-accent) 8%, transparent);
-}
-
 .document-detail-markdown-edit {
   display: flex;
   flex-direction: column;
@@ -1340,24 +1313,6 @@
 
 .document-detail-large-doc-btn {
   align-self: flex-start;
-}
-
-.document-detail-page-group {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-3);
-}
-
-.document-detail-img-block {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-2);
-}
-
-.document-detail-img-label {
-  font-size: var(--text-sm);
-  font-weight: 500;
-  color: var(--color-text-secondary);
 }
 
 .document-detail-page-item {
@@ -1769,27 +1724,6 @@
   font-weight: 600;
   white-space: nowrap;
   letter-spacing: 0.02em;
-}
-
-.doc-status-uploaded {
-  background: var(--status-doc-uploaded-bg);
-  color: var(--status-doc-uploaded-fg);
-}
-.doc-status-pending {
-  background: var(--status-doc-pending-bg);
-  color: var(--status-doc-pending-fg);
-}
-.doc-status-running {
-  background: var(--status-doc-running-bg);
-  color: var(--status-doc-running-fg);
-}
-.doc-status-completed {
-  background: var(--status-doc-completed-bg);
-  color: var(--status-doc-completed-fg);
-}
-.doc-status-failed {
-  background: var(--status-doc-failed-bg);
-  color: var(--status-doc-failed-fg);
 }
 
 .document-detail-lineage {

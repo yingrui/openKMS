@@ -53,10 +53,6 @@
   text-overflow: ellipsis;
 }
 
-.header-exit-brand {
-  flex-shrink: 0;
-}
-
 .header-search {
   flex: 1;
   max-width: 480px;
@@ -138,11 +134,6 @@
 .header-console-link:hover {
   background: var(--color-bg-muted);
   color: var(--color-text);
-}
-
-.header-console-link-active {
-  background: var(--color-accent-subtle);
-  color: var(--color-accent);
 }
 
 .header-console-link--exit {

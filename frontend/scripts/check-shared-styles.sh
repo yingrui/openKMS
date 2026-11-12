@@ -203,6 +203,13 @@ if ! python3 scripts/check-global-classes.py; then
   status=1
 fi
 
+# --- 23. Rules that style nothing (ratchet) -----------------------------------
+# A sheet rots one direction only: the component changes, its rules stay. Baseline:
+# scripts/dead-classes-baseline.txt, currently 0 — 272 dead blocks were removed across 128 sheets.
+if ! python3 scripts/check-dead-classes.py; then
+  status=1
+fi
+
 # --- 17. Hand-rolled modal chrome (ratchet) -----------------------------------
 # Any `*-overlay` element that is not the DS dialog: the shape is what matters, not the name —
 # the previous gate grepped `console-modal-overlay` alone, so renaming the markup hid 35 copies.

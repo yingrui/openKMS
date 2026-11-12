@@ -1,0 +1,1 @@
+# Rules that style nothing — known debt, ratchets down only.

@@ -216,11 +216,6 @@ button.wiki-workspace-toolbar-icon-link {
   color: inherit;
 }
 
-.wiki-workspace-toolbar-icon-link--active {
-  color: var(--color-accent);
-  background: var(--color-bg-muted);
-}
-
 @include max-width(ds.$km-layout-max) {
   .wiki-workspace-layout--split .wiki-page-editor-shell {
     padding-right: 0;

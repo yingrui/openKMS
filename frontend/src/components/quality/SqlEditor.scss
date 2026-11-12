@@ -51,26 +51,3 @@
     background: var(--color-selection);
   }
 }
-
-.sql-editor__keyword {
-  color: var(--sql-keyword);
-  font-weight: 600;
-}
-
-.sql-editor__string {
-  color: var(--sql-string);
-}
-
-.sql-editor__number {
-  color: var(--sql-number);
-}
-
-.sql-editor__comment {
-  color: var(--sql-comment);
-  font-style: italic;
-}
-
-.sql-editor__placeholder {
-  color: var(--sql-placeholder);
-  font-weight: 600;
-}

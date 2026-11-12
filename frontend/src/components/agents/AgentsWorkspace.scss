@@ -444,16 +444,6 @@
 }
 
 /* The tool currently executing: named, so "in progress" is distinguishable from "stuck". */
-.agents-chat-typing__tool {
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  color: var(--color-text);
-  font-family: var(--font-mono, ui-monospace, SFMono-Regular, Menlo, monospace);
-  font-size: 0.75rem;
-}
-
 .agents-chat-typing__more,
 .agents-chat-typing__done {
   flex-shrink: 0;
@@ -1588,12 +1578,6 @@
   padding: 10px 12px 12px;
   border-top: 1px solid var(--color-border);
   background: var(--color-bg-elevated);
-}
-
-.agents-scm-commit-label {
-  font-size: 0.75rem;
-  font-weight: 500;
-  color: var(--color-text-secondary);
 }
 
 .agents-scm-commit-msg {

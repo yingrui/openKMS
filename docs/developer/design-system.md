@@ -329,6 +329,8 @@ npm run check   # typecheck → check:app-layout → check:app-modules → check
 
 | 22 | A `<label>` laid out as a flex **row** with its control and a text `<span>`, without **`white-space: nowrap`** | The row shrinks the label to its minimum content width before it shrinks the select, so a Chinese label breaks between characters — 类型 rendered as 类 / 型, one per line, in the run-history toolbar. Latin text overflows instead, which is why it goes unnoticed in review. Column labels and checkbox / radio / file labels are exempt: they are meant to wrap. `scripts/check-inline-labels.py`, baseline **0** |
 
+| 23 | A rule whose selector classes appear nowhere in `src/**/*.ts(x)` | delete it. CSS rots one way: the component changes and the rules stay, so a sheet keeps a dead half and the next reader cannot tell which half is real — `EvaluationDatasetDetail.scss` was 897 lines, 41 rules deep into a page that no longer existed, and 272 such blocks were spread over 128 sheets. A class is used if it appears as a token, as the base of a `--modifier` / `__element`, or as a template-literal prefix (`` `eval-report-finding--${area}` ``); `&` rules and vendor classes (`.cm-editor`, `.a2ui*`) are exempt. `scripts/check-dead-classes.py`, baseline **0** |
+
 **`check:styles` is currently clean** (all pre-existing findings cleared: the two over-long files were split, the raw `px` media query / `rgba` backdrop / `window.confirm` / A2UI overlay allowlist entry are gone or justified). Keep it that way — a new finding should be fixed, not allowlisted.
 
 Run **`check:app-layout`** when editing **`App.scss`**, **`app-page.scss`**, **`ChannelSectionLayout*`**, **`MainLayout.tsx`**.

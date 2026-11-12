@@ -54,17 +54,3 @@
 .app-page-section:last-child {
   margin-bottom: 0;
 }
-
-.app-page-section-title {
-  margin: 0 0 var(--space-2);
-  font-size: var(--text-lg);
-  font-weight: 600;
-  color: var(--color-text);
-}
-
-.app-page-section-desc {
-  margin: 0 0 var(--space-4);
-  font-size: var(--text-sm);
-  line-height: 1.45;
-  color: var(--color-text-muted);
-}

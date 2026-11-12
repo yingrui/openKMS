@@ -56,16 +56,6 @@
   font-weight: 600;
 }
 
-.console-health-overall--ok {
-  background: color-mix(in srgb, var(--color-success, #16a34a) 12%, transparent);
-  color: var(--color-success, #16a34a);
-}
-
-.console-health-overall--error {
-  background: color-mix(in srgb, var(--color-danger, #dc2626) 12%, transparent);
-  color: var(--color-danger, #dc2626);
-}
-
 .console-health-overall--degraded,
 .console-health-overall--skipped {
   background: color-mix(in srgb, var(--color-warning, #ca8a04) 12%, transparent);
@@ -111,18 +101,6 @@
   align-items: center;
   gap: var(--gap-compact);
   font-weight: 500;
-}
-
-.console-health-status--ok {
-  color: var(--color-success, #16a34a);
-}
-
-.console-health-status--error {
-  color: var(--color-danger, #dc2626);
-}
-
-.console-health-status--skipped {
-  color: var(--color-text-muted);
 }
 
 .console-health-message {

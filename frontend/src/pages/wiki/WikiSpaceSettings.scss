@@ -31,41 +31,6 @@
   min-width: 0;
 }
 
-.wiki-space-settings-tabs {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-1);
-  margin-bottom: calc(var(--space-2) + var(--space-1) / 2);
-  border-bottom: 1px solid var(--color-border);
-}
-
-.wiki-space-settings-tab {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--gap-compact);
-  padding: var(--gap-compact) calc(var(--space-2) + var(--space-1) / 2);
-  margin-bottom: -1px;
-  border: 1px solid transparent;
-  border-radius: var(--radius-md) var(--radius-sm) 0 0;
-  background: transparent;
-  font-size: var(--text-md);
-  font-weight: 500;
-  color: var(--color-text-muted);
-  cursor: pointer;
-}
-
-.wiki-space-settings-tab:hover {
-  color: var(--color-text);
-  background: var(--color-bg-muted);
-}
-
-.wiki-space-settings-tab--active {
-  color: var(--color-text);
-  border-color: var(--color-border);
-  border-bottom-color: var(--color-surface);
-  background: var(--color-surface);
-}
-
 .wiki-space-settings-section-title {
   font-size: var(--text-lg);
   margin: 0 0 var(--space-3);
@@ -88,14 +53,6 @@
 
 .wiki-space-settings-documents-head .wiki-space-settings-section-title {
   margin: 0;
-}
-
-.wiki-space-settings-code {
-  font-family: ui-monospace, monospace;
-  font-size: var(--text-sm);
-  padding: calc(var(--space-1) / 4) var(--space-1);
-  border-radius: var(--radius-sm);
-  background: var(--color-bg-muted);
 }
 
 .wiki-space-settings-doc-picker {
@@ -172,7 +129,6 @@
   white-space: nowrap;
 }
 
-
 .wiki-space-settings-back {
   display: inline-flex;
   align-items: center;
@@ -184,15 +140,6 @@
 
 .wiki-space-settings-back:hover {
   color: var(--color-accent);
-}
-
-.wiki-space-settings-header {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: var(--space-3) 1rem;
-  margin-bottom: calc(var(--space-3) + var(--space-1) / 2);
 }
 
 .wiki-space-settings-actions {
@@ -228,17 +175,6 @@
   opacity: 0;
   cursor: pointer;
   font-size: 0.001px;
-}
-
-.wiki-space-settings-header h1 {
-  margin: 0 0 var(--space-1);
-  font-size: 1.5rem;
-  line-height: 1.2;
-}
-
-.wiki-space-settings-desc {
-  margin: 0;
-  color: var(--color-text-muted);
 }
 
 .wiki-space-settings-muted {

@@ -169,13 +169,6 @@
   margin-bottom: var(--space-5);
 }
 
-.account-create-fields {
-  display: grid;
-  gap: calc(var(--space-2) + var(--space-1) / 2);
-  max-width: ds.$account-form-max-width;
-  margin-top: var(--space-2);
-}
-
 .account-form-grid {
   display: grid;
   gap: var(--space-3);
@@ -287,11 +280,6 @@
   padding-top: calc(var(--space-3) + var(--space-2));
 }
 
-.account-section--flush {
-  border-top: none;
-  padding-top: 0;
-}
-
 .account-create-panel--last {
   margin-bottom: 0;
 }
@@ -326,21 +314,6 @@
   padding: calc(var(--space-6) + var(--space-1)) var(--space-4);
   font-size: var(--text-md);
   color: var(--color-text-secondary);
-}
-
-.account-empty {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: calc(var(--space-2) + var(--space-1) / 2);
-  padding: var(--space-6) var(--space-4);
-  text-align: center;
-  color: var(--color-text-muted);
-}
-
-.account-empty p {
-  margin: 0;
-  font-size: var(--text-md);
 }
 
 .account-list {

@@ -432,7 +432,6 @@
   line-height: 1.45;
 }
 
-
 .console-perm-onboarding {
   margin-bottom: 1.25rem;
   padding: 1rem 1.25rem;
@@ -555,12 +554,6 @@
   font-size: var(--text-md);
 }
 
-.console-perm-delete-catalog-btn {
-  color: var(--color-error);
-  border-color: var(--color-error);
-  background: transparent;
-}
-
 .console-perm-edit-key {
   margin: 0 0 var(--space-3);
   font-size: var(--text-md);
@@ -581,11 +574,6 @@
   background: var(--color-bg-muted);
   color: var(--color-text-secondary);
   line-height: 1.5;
-}
-
-.console-perm-notice--info {
-  margin-bottom: 1rem;
-  border: 1px solid var(--color-border);
 }
 
 .console-perm-detail-modal {

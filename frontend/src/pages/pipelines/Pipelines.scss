@@ -181,13 +181,6 @@
   background: var(--color-bg-muted);
 }
 
-.pipelines-error {
-  padding: var(--space-2) var(--space-3);
-  color: var(--color-error);
-  font-size: var(--text-md);
-  margin-bottom: var(--space-3);
-}
-
 .pipelines-loading {
   display: flex;
   flex-direction: column;

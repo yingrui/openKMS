@@ -103,12 +103,6 @@
   overflow: visible;
 }
 
-.resource-share-owner-picker {
-  display: block;
-  margin-top: 0.35rem;
-  min-width: 14rem;
-}
-
 .resource-share-owner-pick {
   display: flex;
   flex-wrap: wrap;
@@ -184,18 +178,6 @@
   color: var(--color-text-muted);
   font-family: ui-monospace, monospace;
   word-break: break-all;
-}
-
-.resource-share-owner-oidc {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem;
-  margin-top: 0.35rem;
-
-  input {
-    flex: 1 1 12rem;
-    min-width: 10rem;
-  }
 }
 
 .resource-share-grantee-primary {

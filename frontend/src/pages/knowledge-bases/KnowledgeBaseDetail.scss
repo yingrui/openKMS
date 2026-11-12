@@ -265,17 +265,6 @@
 }
 
 /* Inline forms */
-.kb-inline-form {
-  display: flex;
-  flex-direction: column;
-  gap: var(--padding-compact-y);
-  padding: var(--space-4);
-  margin-bottom: var(--space-4);
-  background: var(--color-bg-muted);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
-}
-
 .kb-inline-form input,
 .kb-inline-form textarea,
 .kb-inline-form select {
@@ -292,21 +281,6 @@
 .kb-inline-form select:focus {
   outline: none;
   border-color: var(--color-accent);
-}
-
-.kb-inline-form label {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-1);
-  font-size: var(--text-md);
-  font-weight: 500;
-  color: var(--color-text-secondary);
-}
-
-.kb-inline-form-actions {
-  display: flex;
-  gap: var(--space-2);
-  padding-top: var(--space-1);
 }
 
 /* Tables – match documents-table */
@@ -587,43 +561,6 @@
   margin-bottom: var(--space-5);
 }
 
-.kb-search-filters-toggle {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-2);
-  padding: var(--space-2) var(--space-3);
-  background: var(--color-bg-muted);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
-  font-size: var(--text-md);
-  color: var(--color-text-secondary);
-  cursor: pointer;
-  transition: background 0.15s, border-color 0.15s;
-}
-
-.kb-search-filters-toggle:hover {
-  background: var(--color-bg-elevated);
-  border-color: var(--color-accent);
-  color: var(--color-accent);
-}
-
-.kb-search-filters-badge {
-  font-size: var(--text-xs);
-  padding: calc(var(--space-1) / 2) var(--gap-compact);
-  background: var(--color-accent);
-  color: var(--color-on-accent);
-  border-radius: var(--radius-sm);
-  margin-left: var(--space-1);
-}
-
-.kb-search-filters-panel {
-  margin-top: var(--space-3);
-  padding: var(--space-4);
-  background: var(--color-bg-muted);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
-}
-
 .kb-search-filters-hint {
   font-size: var(--text-sm);
   color: var(--color-text-muted);
@@ -636,14 +573,6 @@
 
 .kb-search-filters-group:last-child {
   margin-bottom: 0;
-}
-
-.kb-search-filters-group-label {
-  display: block;
-  font-size: var(--text-sm);
-  font-weight: 500;
-  color: var(--color-text-secondary);
-  margin-bottom: var(--space-2);
 }
 
 .kb-search-filter-row {
@@ -668,12 +597,6 @@
   background: var(--color-bg-elevated);
   font-size: var(--text-md);
   color: var(--color-text);
-}
-
-.kb-search-filters-empty-hint {
-  font-size: var(--text-sm);
-  color: var(--color-text-muted);
-  margin: calc(var(--space-2) * -1) 0 var(--space-5) 0;
 }
 
 .kb-search-results-panel {
@@ -1190,15 +1113,6 @@ body.openkms-kb-qa-fullpage .kb-qa-shell {
 }
 
 /* QA Chat (message bubbles & sources — shared) */
-.kb-qa-warning {
-  padding: var(--space-3) var(--space-4);
-  background: var(--color-warning-bg);
-  color: var(--color-warning-fg);
-  border-radius: var(--radius-md);
-  font-size: var(--text-md);
-  margin-bottom: var(--space-4);
-}
-
 .kb-qa-messages {
   flex: 1;
   overflow-y: auto;
@@ -1206,20 +1120,6 @@ body.openkms-kb-qa-fullpage .kb-qa-shell {
   display: flex;
   flex-direction: column;
   gap: var(--space-3);
-}
-
-.kb-qa-empty {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  height: 100%;
-  color: var(--color-text-muted);
-  gap: var(--space-2);
-}
-
-.kb-qa-empty svg {
-  opacity: 0.3;
 }
 
 .kb-qa-msg {
@@ -1233,15 +1133,6 @@ body.openkms-kb-qa-fullpage .kb-qa-shell {
   font-size: var(--text-xs);
   font-weight: 500;
   color: var(--color-text-muted);
-}
-
-.kb-qa-msg-user {
-  align-self: flex-end;
-  align-items: flex-end;
-}
-
-.kb-qa-msg-assistant {
-  align-self: flex-start;
 }
 
 .kb-qa-msg-bubble--user {
@@ -1300,14 +1191,6 @@ body.openkms-kb-qa-fullpage .kb-qa-shell {
   border-top: 1px solid var(--color-border);
 }
 
-.kb-qa-sources-heading {
-  font-size: var(--text-xs);
-  font-weight: 600;
-  color: var(--color-text);
-  letter-spacing: 0.02em;
-  margin: 0;
-}
-
 .kb-qa-msg-actions {
   display: flex;
   flex-wrap: wrap;
@@ -1354,21 +1237,6 @@ body.openkms-kb-qa-fullpage .kb-qa-shell {
   background: color-mix(in srgb, var(--color-danger) 12%, var(--color-bg-muted));
 }
 
-.kb-qa-sources-toolbar {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--gap-compact) calc(var(--space-2) + var(--space-1) / 2);
-  margin-bottom: var(--space-2);
-}
-
-.kb-qa-sources-actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--gap-compact);
-}
-
 .kb-qa-sources-action-btn {
   font: inherit;
   font-size: var(--text-xs);
@@ -1385,13 +1253,6 @@ body.openkms-kb-qa-fullpage .kb-qa-shell {
   background: var(--color-bg-elevated);
   color: var(--color-text);
   border-color: var(--color-accent);
-}
-
-.kb-qa-sources-chips {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--gap-compact);
-  align-items: center;
 }
 
 .kb-qa-source-chip {
@@ -1413,37 +1274,6 @@ body.openkms-kb-qa-fullpage .kb-qa-shell {
 
 .kb-qa-source-chip:hover {
   border-color: var(--color-accent);
-}
-
-.kb-qa-source-chip--open {
-  border-color: var(--color-accent);
-  box-shadow: 0 0 0 2px var(--color-accent-muted);
-}
-
-.kb-qa-source-chip__kind {
-  flex-shrink: 0;
-  font-size: 0.5625rem;
-  font-weight: 700;
-  letter-spacing: 0.03em;
-  color: var(--color-text-muted);
-}
-
-.kb-qa-source-chip__title {
-  flex: 1 1 auto;
-  min-width: 0;
-  font-size: var(--text-xs);
-  font-weight: 500;
-  color: var(--color-text);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.kb-qa-source-chip__score {
-  flex-shrink: 0;
-  font-size: 0.5625rem;
-  font-weight: 600;
-  color: var(--color-accent);
 }
 
 .kb-qa-source-chip--chunk {
@@ -1769,13 +1599,6 @@ body.openkms-kb-qa-fullpage .kb-qa-shell {
   overflow-y: auto;
 }
 
-.kb-qa-sources-panels {
-  margin-top: var(--space-3);
-  display: flex;
-  flex-direction: column;
-  gap: calc(var(--space-2) + var(--space-1) / 2);
-}
-
 .kb-qa-source-card {
   border-radius: var(--radius-md);
   border: 1px solid var(--color-border-strong);
@@ -1921,50 +1744,6 @@ body.openkms-kb-qa-fullpage .kb-qa-shell {
     color-mix(in srgb, var(--color-success) 18%, var(--color-bg-elevated)),
     var(--color-bg-elevated)
   );
-}
-
-.kb-qa-input-form {
-  display: flex;
-  padding: var(--space-3) var(--space-4);
-  border-top: 1px solid var(--color-border);
-  gap: var(--space-2);
-  background: var(--color-bg-elevated);
-}
-
-.kb-qa-input-form input {
-  flex: 1;
-  padding: var(--padding-compact-y) var(--padding-compact-x);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
-  font-size: var(--text-base);
-  background: var(--color-bg);
-  color: var(--color-text);
-}
-
-.kb-qa-input-form input:focus {
-  outline: none;
-  border-color: var(--color-accent);
-}
-
-.kb-qa-input-form button {
-  display: inline-flex;
-  align-items: center;
-  padding: var(--padding-compact-y) var(--padding-compact-x);
-  background: var(--color-accent);
-  color: var(--color-on-accent);
-  border: none;
-  border-radius: var(--radius-md);
-  cursor: pointer;
-  transition: background 0.15s;
-}
-
-.kb-qa-input-form button:hover:not(:disabled) {
-  background: var(--color-accent-hover);
-}
-
-.kb-qa-input-form button:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
 }
 
 /* Settings — sub-tabs (general / sharing) + panels */
@@ -2179,14 +1958,6 @@ body.openkms-kb-qa-fullpage .kb-qa-shell {
   font-weight: 600;
   padding: 0 8px;
   color: var(--color-text-secondary);
-}
-
-.kb-settings-agent-skills-help {
-  display: block;
-  margin: 0;
-  color: var(--color-text-secondary);
-  font-size: var(--text-sm);
-  line-height: 1.4;
 }
 
 .kb-settings-skill-row {
@@ -2625,28 +2396,6 @@ body.openkms-kb-qa-fullpage .kb-qa-shell {
   min-width: 0;
 }
 
-.kb-kv-remove {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 8px;
-  background: none;
-  border: none;
-  color: var(--color-text-muted);
-  cursor: pointer;
-  border-radius: var(--radius-md);
-  flex-shrink: 0;
-}
-
-.kb-kv-remove:hover {
-  color: var(--color-danger);
-  background: var(--color-bg-muted);
-}
-
-.kb-kv-add {
-  align-self: flex-start;
-}
-
 .kb-chunk-dialog {
   min-width: 0;
   width: min(800px, calc(100vw - 2rem));
@@ -2657,11 +2406,6 @@ body.openkms-kb-qa-fullpage .kb-qa-shell {
   background: var(--color-bg-muted);
   color: var(--color-text-muted);
   cursor: default;
-}
-
-.kb-chunk-dialog-json {
-  font-family: ui-monospace, monospace;
-  font-size: var(--text-sm);
 }
 
 .kb-doc-picker-hint {

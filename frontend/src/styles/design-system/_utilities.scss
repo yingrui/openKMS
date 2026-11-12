@@ -17,10 +17,6 @@
   color: var(--color-text-muted);
 }
 
-.openkms-inline-code {
-  font-size: var(--text-md);
-}
-
 .document-detail-extract-warnings {
   margin-top: var(--space-2);
 }
@@ -55,14 +51,6 @@
   margin-top: var(--space-2);
 }
 
-.openkms-mt-4 {
-  margin-top: var(--space-4);
-}
-
-.openkms-mt-0 {
-  margin-top: 0;
-}
-
 .openkms-link-spaced {
   margin-top: var(--space-4);
   display: inline-flex;
@@ -88,13 +76,6 @@
 }
 
 /* Ensure icon-only controls stay comfortably tappable on touch screens. */
-.ds-tap-target {
-  @include max-width(ds.$bp-md-min) {
-    min-width: var(--tap-min);
-    min-height: var(--tap-min);
-  }
-}
-
 /* Error surfaces */
 .error-banner {
   padding: var(--space-3) var(--space-4);

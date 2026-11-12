@@ -251,10 +251,6 @@
   gap: var(--space-1);
 }
 
-.playground-msg-user {
-  align-self: flex-end;
-}
-
 .playground-msg-assistant,
 .playground-msg-error {
   align-self: flex-start;
@@ -495,19 +491,6 @@
 }
 
 /* VL form playground variant */
-.playground-vl-form {
-  padding: var(--space-5);
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-6);
-}
-
-.playground-vl-inputs {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-4);
-}
-
 .playground-vl-image-section,
 .playground-vl-prompt-section {
   display: flex;
@@ -520,134 +503,6 @@
   font-size: var(--text-md);
   font-weight: var(--font-weight-semibold);
   color: var(--color-text-secondary);
-}
-
-.playground-vl-upload-btn {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: var(--space-2);
-  padding: var(--space-8) var(--space-4);
-  border: 2px dashed var(--color-border);
-  border-radius: var(--radius-lg);
-  background: var(--color-bg-muted);
-  color: var(--color-text-muted);
-  cursor: pointer;
-  transition: border-color 0.15s, color 0.15s, background 0.15s;
-}
-
-.playground-vl-upload-btn:hover {
-  border-color: var(--color-accent);
-  color: var(--color-accent);
-  background: var(--color-bg-elevated);
-}
-
-.playground-vl-upload-btn span {
-  font-size: var(--text-md);
-}
-
-.playground-vl-image-preview {
-  display: flex;
-  align-items: flex-start;
-  gap: var(--space-4);
-}
-
-.playground-vl-image-preview img {
-  max-width: 240px;
-  max-height: 200px;
-  object-fit: contain;
-  border-radius: var(--radius-md);
-  border: 1px solid var(--color-border);
-}
-
-.playground-vl-image-actions {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-  flex-wrap: wrap;
-}
-
-.playground-vl-image-name {
-  font-size: var(--text-sm);
-  color: var(--color-text-secondary);
-  word-break: break-all;
-}
-
-.playground-vl-image-actions button {
-  cursor: pointer;
-}
-
-.playground-vl-image-actions button:first-of-type {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 22px;
-  height: 22px;
-  border-radius: 50%;
-  border: none;
-  background: var(--color-border);
-  color: var(--color-text-secondary);
-}
-
-.playground-vl-image-actions button:first-of-type:hover {
-  background: var(--color-text-muted);
-  color: var(--color-bg-elevated);
-}
-
-.playground-vl-prompt-section textarea {
-  padding: var(--padding-compact-y) var(--padding-compact-x);
-  border-radius: var(--radius-md);
-  border: 1px solid var(--color-border);
-  background: var(--color-bg-muted);
-  font-size: var(--text-md);
-  resize: vertical;
-  font-family: inherit;
-  line-height: 1.4;
-}
-
-.playground-vl-prompt-section textarea:focus {
-  outline: var(--focus-ring-width) solid var(--color-accent);
-  outline-offset: -1px;
-}
-
-.playground-vl-submit {
-  align-self: flex-start;
-  display: flex;
-  align-items: center;
-  gap: var(--gap-compact);
-}
-
-.playground-vl-result {
-  border-top: 1px solid var(--color-border);
-  padding-top: var(--space-5);
-}
-
-.playground-vl-result h3 {
-  margin: 0 0 var(--space-3);
-  font-size: var(--text-md);
-  font-weight: var(--font-weight-semibold);
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-}
-
-.playground-vl-markdown {
-  padding: var(--space-4);
-  background: var(--color-bg-muted);
-  border-radius: var(--radius-md);
-  font-size: var(--text-md);
-  line-height: 1.6;
-  white-space: pre-wrap;
-  word-break: break-word;
-}
-
-.playground-vl-error {
-  padding: var(--space-4);
-  background: var(--color-error-bg);
-  color: var(--color-error);
-  border-radius: var(--radius-md);
-  font-size: var(--text-md);
 }
 
 /* Embedding playground variant */
@@ -725,4 +580,3 @@
   background: var(--color-error-bg);
   color: var(--color-error);
 }
-

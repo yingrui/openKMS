@@ -191,17 +191,6 @@
   gap: 12px;
 }
 
-.sreview-event-divider {
-  padding: 10px 0 2px;
-  font-size: 0.6875rem;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-  color: var(--color-text-muted);
-  border-top: 1px solid var(--color-border);
-  margin-top: 4px;
-}
-
 /* ===== Event card ===== */
 .sreview-card {
   border: 1px solid var(--color-border);
@@ -564,12 +553,6 @@
     color: var(--color-text);
     border-color: var(--color-accent);
   }
-}
-
-.sreview-chat-msg {
-  padding: 8px 14px;
-
-  &:first-child { padding-top: 14px; }
 }
 
 .sreview-chat-typing {

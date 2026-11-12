@@ -215,13 +215,6 @@
   color: var(--color-text);
 }
 
-.chamber-page__empty {
-  display: flex;
-  flex-direction: column;
-  gap: 0.75rem;
-  align-items: flex-start;
-}
-
 .chamber-page__error {
   color: var(--danger, #b91c1c);
 }
@@ -259,24 +252,6 @@
   background: #fffbeb;
   border: 1px solid #fcd34d;
   border-radius: 0.35rem;
-}
-
-.chamber-page__tabs {
-  display: flex;
-  gap: var(--space-2);
-  border-bottom: 1px solid var(--color-border);
-}
-
-.chamber-page__tab {
-  appearance: none;
-  border: none;
-  background: transparent;
-  padding: var(--space-2) var(--space-3);
-  font: inherit;
-  font-size: var(--text-sm);
-  color: var(--color-text-muted);
-  cursor: pointer;
-  border-bottom: 2px solid transparent;
 }
 
 .chamber-page__tab.is-active {

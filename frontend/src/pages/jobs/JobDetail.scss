@@ -209,31 +209,6 @@
   color: var(--color-text-secondary);
 }
 
-.job-event-type-started {
-  background: var(--status-doc-running-bg);
-  color: var(--status-doc-running-fg);
-}
-
-.job-event-type-deferred {
-  background: var(--status-doc-pending-bg);
-  color: var(--status-doc-pending-fg);
-}
-
-.job-event-type-succeeded {
-  background: var(--status-doc-completed-bg);
-  color: var(--status-doc-completed-fg);
-}
-
-.job-event-type-failed {
-  background: var(--status-doc-failed-bg);
-  color: var(--status-doc-failed-fg);
-}
-
-.job-event-type-cancelled {
-  background: var(--color-bg-muted);
-  color: var(--color-text-secondary);
-}
-
 .job-detail-loading {
   display: flex;
   flex-direction: column;

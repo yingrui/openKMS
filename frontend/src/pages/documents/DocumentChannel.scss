@@ -98,28 +98,3 @@
   white-space: nowrap;
   letter-spacing: 0.02em;
 }
-
-.doc-status-uploaded {
-  background: var(--status-doc-uploaded-bg);
-  color: var(--status-doc-uploaded-fg);
-}
-
-.doc-status-pending {
-  background: var(--status-doc-pending-bg);
-  color: var(--status-doc-pending-fg);
-}
-
-.doc-status-running {
-  background: var(--status-doc-running-bg);
-  color: var(--status-doc-running-fg);
-}
-
-.doc-status-completed {
-  background: var(--status-doc-completed-bg);
-  color: var(--status-doc-completed-fg);
-}
-
-.doc-status-failed {
-  background: var(--status-doc-failed-bg);
-  color: var(--status-doc-failed-fg);
-}
