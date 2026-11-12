@@ -311,11 +311,13 @@ export function EvaluationDatasetSettings() {
         </div>
       </EntityViewPanel>
 
-      <EntityViewPanel title={t('evaluationSettings.sharingTitle')}>
+      {/* Same shape as Catalog's sharing tabs: the panel head is the section's name, drawn by the
+          share panel itself — not a second heading above it. */}
+      <EntityViewPanel>
         <ResourceSharePanel
           resourceType={RESOURCE_TYPES.evaluation}
           resourceId={evaluationId}
-          title={t('evaluationSettings.sharingTitle')}
+          title={t('evaluationSettings.sharing')}
         />
       </EntityViewPanel>
 
