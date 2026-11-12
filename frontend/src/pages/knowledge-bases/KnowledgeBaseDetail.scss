@@ -2215,39 +2215,6 @@ body.openkms-kb-qa-fullpage .kb-qa-shell {
   gap: var(--space-2);
 }
 
-.kb-doc-picker-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: var(--space-6) 24px 0;
-  margin-bottom: var(--space-2);
-}
-
-.kb-doc-picker-header h2 {
-  margin: 0;
-  font-size: 1.25rem;
-  font-weight: 600;
-  color: var(--color-text);
-}
-
-.kb-doc-picker-close {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 8px;
-  border: none;
-  background: none;
-  color: var(--color-text-muted);
-  border-radius: var(--radius-sm);
-  cursor: pointer;
-  transition: color 0.15s, background 0.15s;
-}
-
-.kb-doc-picker-close:hover:not(:disabled) {
-  background: var(--color-bg-muted);
-  color: var(--color-text);
-}
-
 .kb-faq-dialog {
   min-width: 0;
   width: min(640px, calc(100vw - 2rem));
@@ -2589,15 +2556,6 @@ body.openkms-kb-qa-fullpage .kb-qa-shell {
   background: var(--color-bg-muted);
   color: var(--color-text-muted);
   white-space: nowrap;
-}
-
-.kb-doc-picker-footer {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: var(--space-4) 24px;
-  margin-top: var(--space-2);
-  border-top: 1px solid var(--color-border);
 }
 
 .kb-doc-picker-count {
