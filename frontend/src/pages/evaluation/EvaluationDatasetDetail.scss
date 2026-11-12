@@ -236,36 +236,6 @@
   background: var(--color-bg-muted);
 }
 
-.eval-items-actions-col {
-  width: 80px;
-  white-space: nowrap;
-}
-
-.eval-items-actions-col button {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  padding: var(--gap-compact);
-  margin-right: 4px;
-  border: none;
-  background: none;
-  color: var(--color-text-muted);
-  cursor: pointer;
-  border-radius: var(--radius-sm);
-  transition: color 0.15s, background 0.15s;
-}
-
-.eval-items-actions-col button:hover {
-  background: var(--color-bg-elevated);
-  color: var(--color-text);
-}
-
-.eval-items-actions-col button[aria-label*='delete' i]:hover,
-.eval-items-actions-col button[title*='Delete' i]:hover,
-.eval-items-actions-col button[title*='删除' i]:hover {
-  color: var(--color-error);
-}
-
 .eval-items-empty {
   text-align: center;
   color: var(--color-text-muted);
@@ -1015,8 +985,5 @@
   }
 }
 
-.eval-run-row-actions {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-}
+/* The runs table's last cell holds a button *and* an icon: the items table's fixed 80px squeezes both out of view. */
+

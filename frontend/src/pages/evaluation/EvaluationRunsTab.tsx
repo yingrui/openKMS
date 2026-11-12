@@ -5,7 +5,14 @@ import { Loader2, Play, RefreshCw, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { deleteEvaluationRun, listEvaluationRuns, type EvaluationRunListItem } from '../../data/evaluationsApi';
 import { useConfirm } from '../../contexts/ConfirmContext';
-import { EmptyState, PanelToolbar, StatusChip } from '../../styles/design-system';
+import {
+  EmptyState,
+  PanelToolbar,
+  StatusChip,
+  TableRowActionButton,
+  TableRowActionCell,
+  TableRowActions,
+} from '../../styles/design-system';
 import { RunEvaluationDialog } from './RunEvaluationDialog';
 import { RUN_TYPES_BY_KIND, useEvaluationDetail } from './EvaluationDetailContext';
 import { useEvaluationRun } from './useEvaluationRun';
@@ -149,7 +156,7 @@ export function EvaluationRunsTab() {
                 <th>{t('evaluationDetail.runColType')}</th>
                 <th>{t('evaluationDetail.runColStatus')}</th>
                 <th>{t('evaluationDetail.runColResult')}</th>
-                <th className="eval-items-actions-col" />
+                <TableRowActionCell as="th">{null}</TableRowActionCell>
               </tr>
             </thead>
             <tbody>
@@ -163,20 +170,21 @@ export function EvaluationRunsTab() {
                   <td>
                     {r.pass_count}/{r.item_count}
                   </td>
-                  <td className="eval-items-actions-col eval-run-row-actions">
-                    <Link to={`/evaluations/${evaluationId}/runs/${r.id}`} className="btn btn-secondary btn-sm">
-                      {t('evaluationDetail.openRun')}
-                    </Link>
-                    <button
-                      type="button"
-                      title={t('shared.delete')}
-                      aria-label={t('shared.delete')}
-                      disabled={deletingRunId === r.id}
-                      onClick={() => void removeRun(r.id)}
-                    >
-                      {deletingRunId === r.id ? <Loader2 size={14} className="animate-spin" /> : <Trash2 size={14} />}
-                    </button>
-                  </td>
+                  <TableRowActionCell>
+                    <TableRowActions>
+                      <Link to={`/evaluations/${evaluationId}/runs/${r.id}`} className="btn btn-secondary btn-sm">
+                        {t('evaluationDetail.openRun')}
+                      </Link>
+                      <TableRowActionButton
+                        title={t('shared.delete')}
+                        aria-label={t('shared.delete')}
+                        icon={<Trash2 size={16} aria-hidden />}
+                        loading={deletingRunId === r.id}
+                        variant="danger"
+                        onClick={() => void removeRun(r.id)}
+                      />
+                    </TableRowActions>
+                  </TableRowActionCell>
                 </tr>
               ))}
             </tbody>

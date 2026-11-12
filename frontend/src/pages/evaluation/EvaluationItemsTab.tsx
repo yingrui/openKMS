@@ -10,7 +10,15 @@ import {
   updateEvaluationItem,
   type EvaluationItemResponse,
 } from '../../data/evaluationsApi';
-import { Dialog, FormField, Pagination, PanelToolbar } from '../../styles/design-system';
+import {
+  Dialog,
+  FormField,
+  Pagination,
+  PanelToolbar,
+  TableRowActionButton,
+  TableRowActionCell,
+  TableRowActions,
+} from '../../styles/design-system';
 import { useEvaluationDetail } from './EvaluationDetailContext';
 import { isQueryKind } from './EvaluationDetailContext';
 import { expectedQueryLines } from './expectedQueryText';
@@ -173,7 +181,7 @@ export function EvaluationItemsTab() {
               <th>{t('evaluationDetail.colTopic')}</th>
               <th>{t('evaluationDetail.colQuery')}</th>
               <th>{isQuery ? t('evaluationDetail.colExpectedQuery') : t('evaluationDetail.colExpected')}</th>
-              <th className="eval-items-actions-col" />
+              <TableRowActionCell as="th">{null}</TableRowActionCell>
             </tr>
           </thead>
           <tbody>
@@ -214,19 +222,23 @@ export function EvaluationItemsTab() {
                       item.expected_answer
                     )}
                   </td>
-                  <td className="eval-items-actions-col">
-                    <button type="button" title={t('shared.edit')} aria-label={t('shared.edit')} onClick={() => openEdit(item)}>
-                      <Pencil size={14} />
-                    </button>
-                    <button
-                      type="button"
-                      title={t('shared.delete')}
-                      aria-label={t('shared.delete')}
-                      onClick={() => void remove(item)}
-                    >
-                      <Trash2 size={14} />
-                    </button>
-                  </td>
+                  <TableRowActionCell>
+                    <TableRowActions>
+                      <TableRowActionButton
+                        title={t('shared.edit')}
+                        aria-label={t('shared.edit')}
+                        icon={<Pencil size={16} aria-hidden />}
+                        onClick={() => openEdit(item)}
+                      />
+                      <TableRowActionButton
+                        title={t('shared.delete')}
+                        aria-label={t('shared.delete')}
+                        icon={<Trash2 size={16} aria-hidden />}
+                        variant="danger"
+                        onClick={() => void remove(item)}
+                      />
+                    </TableRowActions>
+                  </TableRowActionCell>
                 </tr>
               ))
             )}
