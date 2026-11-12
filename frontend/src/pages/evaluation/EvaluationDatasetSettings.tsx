@@ -13,6 +13,7 @@ import { fetchAllKnowledgeBases, type KnowledgeBaseResponse } from '../../data/k
 import { fetchAllWikiSpaces, type WikiSpaceResponse } from '../../data/wikiSpacesApi';
 import { fetchSemanticModels, type SemanticModelResponse } from '../../data/semanticModelsApi';
 import { ResourceSharePanel } from '../../components/ResourceSharePanel';
+import { EntityViewHeader } from '../shared/EntityViewShell';
 import { RESOURCE_TYPES } from '../../data/resourceAclApi';
 import { useConfirm } from '../../contexts/ConfirmContext';
 import '../../styles/settings-page.scss';
@@ -176,9 +177,12 @@ export function EvaluationDatasetSettings() {
   const kbInList = knowledgeBases.some((k) => k.id === knowledgeBaseIdField);
 
   return (
-    // Rendered inside the dataset shell, which already says where you are and how to go back.
-    <div className="eval-dataset-settings">
-      <p className="page-subtitle">{t('evaluationSettings.configureSubtitle', { name: dataset.name })}</p>
+    // Rendered inside the dataset shell, which already names the dataset and says how to go back.
+    <div className="eval-dataset-settings settings-page">
+      <EntityViewHeader
+        title={t('evaluationDetail.settings')}
+        subtitle={t('evaluationSettings.settingsHint')}
+      />
 
       <div className="settings-page-tabs eval-dataset-settings-tabs">
         {settingsTabs.map((tab) => (

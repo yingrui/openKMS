@@ -210,7 +210,6 @@
   },
   "evaluationSettings": {
     "pageTitle": "Dataset settings",
-    "configureSubtitle": "Configure \"{{name}}\"",
     "backToDataset": "Back to dataset",
     "loading": "Loading…",
     "loadFailed": "Failed to load evaluation dataset",
@@ -241,7 +240,8 @@
     "semanticModel": "Semantic model",
     "semanticModelHint": "Required for a data-query evaluation: answers are judged by the queries they cite (model, metric, SQL), not by the numbers they return.",
     "semanticModelLabel": "Model",
-    "semanticModelNone": "None (RAG evaluation)"
+    "semanticModelNone": "None (RAG evaluation)",
+    "settingsHint": "Name, description, knowledge base and sharing."
   },
   "evaluationDetail": {
     "toastLoadDatasetFailed": "Failed to load evaluation dataset",
