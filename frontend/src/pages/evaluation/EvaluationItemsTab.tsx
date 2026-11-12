@@ -14,11 +14,11 @@ import {
   Dialog,
   FormField,
   Pagination,
-  PanelToolbar,
   TableRowActionButton,
   TableRowActionCell,
   TableRowActions,
 } from '../../styles/design-system';
+import { EntityViewHeader, EntityViewPanel } from '../shared/EntityViewShell';
 import { useEvaluationDetail } from './EvaluationDetailContext';
 import { isQueryKind } from './EvaluationDetailContext';
 import { expectedQueryLines } from './expectedQueryText';
@@ -140,33 +140,31 @@ export function EvaluationItemsTab() {
   };
 
   return (
-    <div className="eval-tab">
-      <PanelToolbar
-        as="div"
-        leading={
-          <span>{isQuery ? t('evaluationDetail.itemsLeadQuery') : t('evaluationDetail.itemsLeadAnswer')}</span>
-        }
+    <>
+      <EntityViewHeader
+        title={t('evaluationDetail.tabItems')}
+        subtitle={isQuery ? t('evaluationDetail.itemsLeadQuery') : t('evaluationDetail.itemsLeadAnswer')}
         actions={
           <>
             {isQuery ? null : (
               <label className="btn btn-secondary eval-import-btn">
-              {importing ? <Loader2 size={16} className="animate-spin" /> : <Upload size={16} />}
-              <span>{importing ? t('evaluationDetail.importing') : t('evaluationDetail.importData')}</span>
-              <input
-                type="file"
-                accept=".csv"
-                hidden
-                onChange={(e) => {
-                  const file = e.target.files?.[0];
-                  e.target.value = '';
-                  if (file) void importCsv(file);
-                }}
-              />
-            </label>
-          )}
+                {importing ? <Loader2 size={16} className="animate-spin" /> : <Upload size={16} aria-hidden />}
+                <span>{importing ? t('evaluationDetail.importing') : t('evaluationDetail.importData')}</span>
+                <input
+                  type="file"
+                  accept=".csv"
+                  hidden
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    e.target.value = '';
+                    if (file) void importCsv(file);
+                  }}
+                />
+              </label>
+            )}
             {isQuery ? null : (
               <button type="button" className="btn btn-primary" onClick={openAdd}>
-                <Plus size={16} />
+                <Plus size={16} aria-hidden />
                 <span>{t('evaluationDetail.addItem')}</span>
               </button>
             )}
@@ -174,89 +172,91 @@ export function EvaluationItemsTab() {
         }
       />
 
-      <div className={`ds-table-wrap${loading ? ' ds-table-wrap--loading' : ''}`}>
-        <table className="eval-items-table">
-          <thead>
-            <tr>
-              <th>{t('evaluationDetail.colTopic')}</th>
-              <th>{t('evaluationDetail.colQuery')}</th>
-              <th>{isQuery ? t('evaluationDetail.colExpectedQuery') : t('evaluationDetail.colExpected')}</th>
-              <TableRowActionCell as="th">{null}</TableRowActionCell>
-            </tr>
-          </thead>
-          <tbody>
-            {loading && items.length === 0 ? (
+      <EntityViewPanel>
+        <div className={`ds-table-wrap ds-table-wrap--flush${loading ? ' ds-table-wrap--loading' : ''}`}>
+          <table className="console-table">
+            <thead>
               <tr>
-                <td colSpan={4} className="eval-items-empty">
-                  <Loader2 size={18} className="animate-spin" /> {t('evaluationDetail.loadingItems')}
-                </td>
+                <th>{t('evaluationDetail.colTopic')}</th>
+                <th>{t('evaluationDetail.colQuery')}</th>
+                <th>{isQuery ? t('evaluationDetail.colExpectedQuery') : t('evaluationDetail.colExpected')}</th>
+                <TableRowActionCell as="th">{null}</TableRowActionCell>
               </tr>
-            ) : total === 0 ? (
-              <tr>
-                <td colSpan={4} className="eval-items-empty">
-                  {t('evaluationDetail.emptyItems')}
-                </td>
-              </tr>
-            ) : (
-              items.map((item) => (
-                <tr key={item.id}>
-                  <td className="eval-item-topic">{item.topic ?? t('shared.dash')}</td>
-                  <td className="eval-item-query">{item.query}</td>
-                  <td className="eval-item-expected">
-                    {isQuery ? (
-                      (() => {
-                        const lines = expectedQueryLines(item.expected_query);
-                        return lines.length === 0 ? (
-                          <span className="eval-item-expected-missing">{t('evaluationDetail.expectedQueryMissing')}</span>
-                        ) : (
-                          <ul className="eval-item-expected-list">
-                            {lines.map((line, i) => (
-                              <li key={`${item.id}-${i}`} title={line}>
-                                {line}
-                              </li>
-                            ))}
-                          </ul>
-                        );
-                      })()
-                    ) : (
-                      item.expected_answer
-                    )}
+            </thead>
+            <tbody>
+              {loading && items.length === 0 ? (
+                <tr>
+                  <td colSpan={4} className="console-table-empty">
+                    <Loader2 size={18} className="animate-spin" aria-hidden /> {t('evaluationDetail.loadingItems')}
                   </td>
-                  <TableRowActionCell>
-                    <TableRowActions>
-                      <TableRowActionButton
-                        title={t('shared.edit')}
-                        aria-label={t('shared.edit')}
-                        icon={<Pencil size={16} aria-hidden />}
-                        onClick={() => openEdit(item)}
-                      />
-                      <TableRowActionButton
-                        title={t('shared.delete')}
-                        aria-label={t('shared.delete')}
-                        icon={<Trash2 size={16} aria-hidden />}
-                        variant="danger"
-                        onClick={() => void remove(item)}
-                      />
-                    </TableRowActions>
-                  </TableRowActionCell>
                 </tr>
-              ))
-            )}
-          </tbody>
-        </table>
-      </div>
-
-      <Pagination
-        total={total}
-        page={page}
-        pageSize={pageSize}
-        loading={loading}
-        onPageChange={setPage}
-        onPageSizeChange={(size) => {
-          setPageSize(size);
-          setPage(0);
-        }}
-      />
+              ) : total === 0 ? (
+                <tr>
+                  <td colSpan={4} className="console-table-empty">
+                    {t('evaluationDetail.emptyItems')}
+                  </td>
+                </tr>
+              ) : (
+                items.map((item) => (
+                  <tr key={item.id}>
+                    <td className="eval-item-topic">{item.topic ?? t('shared.dash')}</td>
+                    <td className="eval-item-query">{item.query}</td>
+                    <td className="eval-item-expected">
+                      {isQuery ? (
+                        (() => {
+                          const lines = expectedQueryLines(item.expected_query);
+                          return lines.length === 0 ? (
+                            <span className="eval-item-expected-missing">{t('evaluationDetail.expectedQueryMissing')}</span>
+                          ) : (
+                            <ul className="eval-item-expected-list">
+                              {lines.map((line, i) => (
+                                <li key={`${item.id}-${i}`} title={line}>
+                                  {line}
+                                </li>
+                              ))}
+                            </ul>
+                          );
+                        })()
+                      ) : (
+                        item.expected_answer
+                      )}
+                    </td>
+                    <TableRowActionCell>
+                      <TableRowActions>
+                        <TableRowActionButton
+                          title={t('shared.edit')}
+                          aria-label={t('shared.edit')}
+                          icon={<Pencil size={16} aria-hidden />}
+                          onClick={() => openEdit(item)}
+                        />
+                        <TableRowActionButton
+                          title={t('shared.delete')}
+                          aria-label={t('shared.delete')}
+                          icon={<Trash2 size={16} aria-hidden />}
+                          variant="danger"
+                          onClick={() => void remove(item)}
+                        />
+                      </TableRowActions>
+                    </TableRowActionCell>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+          {/* The pager belongs to the table it pages, as it does on every Catalog tab. */}
+          <Pagination
+            total={total}
+            page={page}
+            pageSize={pageSize}
+            loading={loading}
+            onPageChange={setPage}
+            onPageSizeChange={(size) => {
+              setPageSize(size);
+              setPage(0);
+            }}
+          />
+        </div>
+      </EntityViewPanel>
 
       <Dialog
         open={formOpen}
@@ -302,6 +302,6 @@ export function EvaluationItemsTab() {
           </FormField>
         )}
       </Dialog>
-    </div>
+    </>
   );
 }

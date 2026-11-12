@@ -7,12 +7,12 @@ import { deleteEvaluationRun, listEvaluationRuns, type EvaluationRunListItem } f
 import { useConfirm } from '../../contexts/ConfirmContext';
 import {
   EmptyState,
-  PanelToolbar,
   StatusChip,
   TableRowActionButton,
   TableRowActionCell,
   TableRowActions,
 } from '../../styles/design-system';
+import { EntityViewHeader, EntityViewPanel } from '../shared/EntityViewShell';
 import { RunEvaluationDialog } from './RunEvaluationDialog';
 import { RUN_TYPES_BY_KIND, useEvaluationDetail } from './EvaluationDetailContext';
 import { useEvaluationRun } from './useEvaluationRun';
@@ -92,12 +92,27 @@ export function EvaluationRunsTab() {
   };
 
   return (
-    <div className="eval-tab">
-      <PanelToolbar
-        as="div"
-        leading={<span>{t('evaluationDetail.runsLead')}</span>}
+    <>
+      <EntityViewHeader
+        title={t('evaluationDetail.tabRuns')}
+        subtitle={t('evaluationDetail.runsLead')}
         actions={
-          <>
+          <button
+            type="button"
+            className="btn btn-primary"
+            onClick={run.openDialog}
+            disabled={run.running || itemTotal === 0}
+            title={itemTotal === 0 ? t('evaluationDetail.runNeedsItems') : undefined}
+          >
+            {run.running ? <Loader2 size={16} className="animate-spin" /> : <Play size={16} aria-hidden />}
+            <span>{run.running ? t('evaluationDetail.running') : t('evaluationDetail.runEvaluation')}</span>
+          </button>
+        }
+      />
+
+      <EntityViewPanel>
+        {/* The controls a reader changes between looks at the same history: which test, and now. */}
+        <div className="eval-panel-toolbar">
           <label className="eval-run-type">
             <span>{t('evaluationDetail.typeLabel')}</span>
             <select
@@ -121,82 +136,76 @@ export function EvaluationRunsTab() {
           </label>
           <button
             type="button"
-            className="btn btn-primary"
-            onClick={run.openDialog}
-            disabled={run.running || itemTotal === 0}
-            title={itemTotal === 0 ? t('evaluationDetail.runNeedsItems') : undefined}
+            className="btn btn-secondary btn-sm"
+            onClick={() => void loadRuns()}
+            disabled={runsLoading}
           >
-            {run.running ? <Loader2 size={16} className="animate-spin" /> : <Play size={16} />}
-            <span>{run.running ? t('evaluationDetail.running') : t('evaluationDetail.runEvaluation')}</span>
-          </button>
-          <button type="button" className="btn btn-secondary" onClick={() => void loadRuns()} disabled={runsLoading}>
-            {runsLoading ? <Loader2 size={16} className="animate-spin" /> : <RefreshCw size={16} />}
+            {runsLoading ? <Loader2 size={14} className="animate-spin" aria-hidden /> : <RefreshCw size={14} aria-hidden />}
             <span>{t('shared.refresh')}</span>
           </button>
-          </>
-        }
-      />
-
-      {itemTotal === 0 ? <p className="eval-run-hint">{t('evaluationDetail.runNeedsItems')}</p> : null}
-      {run.running ? (
-        <p className="eval-run-hint eval-run-progress" role="status">
-          <Loader2 size={14} className="animate-spin" aria-hidden />
-          {t('evaluationDetail.runInProgress', { seconds: run.elapsed })}
-        </p>
-      ) : null}
-
-      {runs.length === 0 ? (
-        <EmptyState title={t('evaluationDetail.emptyRuns')} description={t('evaluationDetail.emptyRunsHint')} />
-      ) : (
-        <div className="ds-table-wrap">
-          <table className="eval-items-table eval-runs-table">
-            <thead>
-              <tr>
-                <th>{t('evaluationDetail.runColWhen')}</th>
-                <th>{t('evaluationDetail.runColType')}</th>
-                <th>{t('evaluationDetail.runColStatus')}</th>
-                <th>{t('evaluationDetail.runColResult')}</th>
-                <TableRowActionCell as="th">{null}</TableRowActionCell>
-              </tr>
-            </thead>
-            <tbody>
-              {runs.map((r) => (
-                <tr
-                  key={r.id}
-                  className="eval-run-row"
-                  onClick={() => navigate(`/evaluations/${evaluationId}/runs/${r.id}`)}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter') navigate(`/evaluations/${evaluationId}/runs/${r.id}`);
-                  }}
-                  role="link"
-                  tabIndex={0}
-                >
-                  <td>{new Date(r.created_at).toLocaleString()}</td>
-                  <td>{r.evaluation_type}</td>
-                  <td>
-                    <StatusChip tone={RUN_STATUS_TONE[r.status] ?? 'neutral'}>{r.status}</StatusChip>
-                  </td>
-                  <td>
-                    {r.pass_count}/{r.item_count}
-                  </td>
-                  <TableRowActionCell>
-                    <TableRowActions>
-                      <TableRowActionButton
-                        title={t('shared.delete')}
-                        aria-label={t('shared.delete')}
-                        icon={<Trash2 size={16} aria-hidden />}
-                        loading={deletingRunId === r.id}
-                        variant="danger"
-                        onClick={() => void removeRun(r.id)}
-                      />
-                    </TableRowActions>
-                  </TableRowActionCell>
-                </tr>
-              ))}
-            </tbody>
-          </table>
         </div>
-      )}
+
+        {itemTotal === 0 ? <p className="eval-run-hint">{t('evaluationDetail.runNeedsItems')}</p> : null}
+        {run.running ? (
+          <p className="eval-run-hint eval-run-progress" role="status">
+            <Loader2 size={14} className="animate-spin" aria-hidden />
+            {t('evaluationDetail.runInProgress', { seconds: run.elapsed })}
+          </p>
+        ) : null}
+
+        {runs.length === 0 ? (
+          <EmptyState title={t('evaluationDetail.emptyRuns')} description={t('evaluationDetail.emptyRunsHint')} />
+        ) : (
+          <div className="ds-table-wrap ds-table-wrap--flush">
+            <table className="console-table eval-runs-table">
+              <thead>
+                <tr>
+                  <th>{t('evaluationDetail.runColWhen')}</th>
+                  <th>{t('evaluationDetail.runColType')}</th>
+                  <th>{t('evaluationDetail.runColStatus')}</th>
+                  <th>{t('evaluationDetail.runColResult')}</th>
+                  <TableRowActionCell as="th">{null}</TableRowActionCell>
+                </tr>
+              </thead>
+              <tbody>
+                {runs.map((r) => (
+                  <tr
+                    key={r.id}
+                    className="eval-run-row"
+                    onClick={() => navigate(`/evaluations/${evaluationId}/runs/${r.id}`)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') navigate(`/evaluations/${evaluationId}/runs/${r.id}`);
+                    }}
+                    role="link"
+                    tabIndex={0}
+                  >
+                    <td>{new Date(r.created_at).toLocaleString()}</td>
+                    <td>{r.evaluation_type}</td>
+                    <td>
+                      <StatusChip tone={RUN_STATUS_TONE[r.status] ?? 'neutral'}>{r.status}</StatusChip>
+                    </td>
+                    <td>
+                      {r.pass_count}/{r.item_count}
+                    </td>
+                    <TableRowActionCell>
+                      <TableRowActions>
+                        <TableRowActionButton
+                          title={t('shared.delete')}
+                          aria-label={t('shared.delete')}
+                          icon={<Trash2 size={16} aria-hidden />}
+                          loading={deletingRunId === r.id}
+                          variant="danger"
+                          onClick={() => void removeRun(r.id)}
+                        />
+                      </TableRowActions>
+                    </TableRowActionCell>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </EntityViewPanel>
 
       {run.dialogOpen ? (
         <RunEvaluationDialog
@@ -209,6 +218,6 @@ export function EvaluationRunsTab() {
           onSubmit={(options) => void run.submit(options)}
         />
       ) : null}
-    </div>
+    </>
   );
 }

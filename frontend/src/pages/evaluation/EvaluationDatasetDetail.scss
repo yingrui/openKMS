@@ -20,8 +20,8 @@
   gap: var(--space-2);
   color: var(--color-text-muted);
   font-size: var(--text-base);
-  margin-bottom: var(--space-3);
   text-decoration: none;
+  align-self: flex-start;
   transition: color 0.15s;
 }
 
@@ -195,57 +195,19 @@
 }
 
 .eval-run-hint {
-  margin: -8px 0 12px 0;
+  margin: 0 0 var(--space-3);
   font-size: var(--text-sm);
   color: var(--color-text-muted);
 }
 
-.eval-detail .ds-table-wrap {
-  margin-bottom: var(--space-4);
-}
-
-.eval-items-table {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: var(--text-base);
-}
-
-.eval-items-table th,
-.eval-items-table td {
-  padding: var(--space-3) var(--space-4);
-  text-align: left;
-  border-bottom: 1px solid var(--color-border);
-}
-
-.eval-items-table th {
-  font-weight: 600;
-  color: var(--color-text-secondary);
-  background: var(--color-bg-muted);
-}
-
-.eval-items-table th:first-child,
-.eval-items-table td:first-child {
-  padding-left: 20px;
-}
-
-.eval-items-table tbody tr:last-child td {
-  border-bottom: none;
-}
-
-.eval-items-table tbody tr:hover {
-  background: var(--color-bg-muted);
-}
-
-.eval-items-empty {
-  text-align: center;
-  color: var(--color-text-muted);
-  padding: 48px 20px !important;
-}
-
-.eval-items-loading {
-  display: inline-flex;
+/* Inside a panel: the card draws the frame, `console-table` draws the rows. */
+.eval-panel-toolbar {
+  display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  gap: var(--space-2);
+  justify-content: space-between;
+  gap: var(--space-3);
+  margin-bottom: var(--space-4);
 }
 
 .eval-item-query,
@@ -347,68 +309,6 @@
 .eval-empty-text {
   color: var(--color-text-muted);
   padding: 20px 0;
-}
-
-.eval-table {
-  width: 100%;
-  border-collapse: collapse;
-}
-
-.eval-table th,
-.eval-table td {
-  padding: var(--space-3) var(--space-4);
-  text-align: left;
-  border-bottom: 1px solid var(--color-border);
-}
-
-.eval-table th {
-  font-weight: 500;
-  color: var(--color-text-secondary);
-  background: var(--color-bg-muted);
-}
-
-.eval-table tr:last-child td {
-  border-bottom: none;
-}
-
-.eval-table-topic {
-  max-width: 120px;
-  font-size: var(--text-md);
-  color: var(--color-text-secondary);
-}
-
-.eval-table-query {
-  max-width: 300px;
-  font-size: var(--text-md);
-}
-
-.eval-table-expected {
-  max-width: 350px;
-  font-size: var(--text-md);
-  color: var(--color-text-secondary);
-}
-
-.eval-table-actions {
-  width: 80px;
-}
-
-.eval-table-btns {
-  display: flex;
-  gap: var(--space-2);
-}
-
-.eval-table-btns button {
-  padding: var(--gap-compact);
-  background: none;
-  border: none;
-  color: var(--color-text-muted);
-  cursor: pointer;
-  border-radius: var(--radius-sm);
-}
-
-.eval-table-btns button:hover {
-  color: var(--color-accent);
-  background: var(--color-bg-muted);
 }
 
 .eval-results-section h2 {
@@ -939,12 +839,6 @@
 }
 
 /* One tab: a lead line, its actions, then the content — the shell above it already says what the page is. */
-.eval-tab {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-4);
-}
-
 .eval-import-btn {
   cursor: pointer;
 }

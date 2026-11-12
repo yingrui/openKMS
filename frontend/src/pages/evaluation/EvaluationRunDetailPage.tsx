@@ -10,8 +10,8 @@ import {
   type EvaluationRunListItem,
   type EvaluationRunResponse,
 } from '../../data/evaluationsApi';
-import { PanelToolbar, StatusChip } from '../../styles/design-system';
-import { EntityViewPanel } from '../shared/EntityViewShell';
+import { StatusChip } from '../../styles/design-system';
+import { EntityViewHeader, EntityViewPanel } from '../shared/EntityViewShell';
 import { RunResultRow } from './EvaluationRunResultRow';
 import { useEvaluationDetail } from './EvaluationDetailContext';
 
@@ -74,16 +74,18 @@ export function EvaluationRunDetailPage() {
   const judge = run.results.find((r) => r.judge?.model)?.judge;
 
   return (
-    <div className="eval-tab">
-      <PanelToolbar
-        as="div"
-        leading={
-          <div>
-          <Link to={`/evaluations/${evaluationId}/runs`} className="eval-back">
-            <ArrowLeft size={16} />
-            <span>{t('evaluationDetail.tabRuns')}</span>
-          </Link>
-          <p className="page-subtitle">
+    <>
+      {/* The shell's rail belongs to the dataset; this page is one run inside it, so it says how to
+          get back rather than pretending to be another tab. */}
+      <Link to={`/evaluations/${evaluationId}/runs`} className="eval-back">
+        <ArrowLeft size={16} aria-hidden />
+        <span>{t('evaluationDetail.tabRuns')}</span>
+      </Link>
+
+      <EntityViewHeader
+        title={t('evaluationDetail.runDetail')}
+        subtitle={
+          <>
             <StatusChip tone={run.status === 'completed' ? 'ok' : run.status === 'failed' ? 'warn' : 'accent'}>
               {run.status}
             </StatusChip>{' '}
@@ -91,52 +93,52 @@ export function EvaluationRunDetailPage() {
             {t('evaluationDetail.passLabel', { pass: run.pass_count, total: run.item_count })}
             {failed > 0 ? ` · ${t('evaluationDetail.runFailChip', { count: failed })}` : ''}
             {undecided > 0 ? ` · ${t('evaluationDetail.runUndecidedChip', { count: undecided })}` : ''}
-          </p>
-          <p className="eval-run-meta">
-            <code>{run.run_id}</code> · {run.evaluation_type}
-            {judge?.model ? ` · ${t('evaluationDetail.judgedBy', { model: judge.model })}` : ''}
-            {judge?.prompt_version ? ` · ${judge.prompt_version}` : ''}
-          </p>
-          </div>
+          </>
         }
         actions={
           others.length > 0 ? (
             <>
-            <label className="eval-run-type">
-              <span>{t('evaluationDetail.compareWith')}</span>
-              <select
-                className="ds-control"
-                value={compareWith}
-                onChange={(e) => {
-                  setCompareWith(e.target.value);
-                  setCompare(null);
-                }}
+              <label className="eval-run-type">
+                <span>{t('evaluationDetail.compareWith')}</span>
+                <select
+                  className="ds-control"
+                  value={compareWith}
+                  onChange={(e) => {
+                    setCompareWith(e.target.value);
+                    setCompare(null);
+                  }}
+                >
+                  <option value="">{t('shared.dash')}</option>
+                  {others.map((r) => (
+                    <option key={r.id} value={r.id}>
+                      {new Date(r.created_at).toLocaleString()} · {r.pass_count}/{r.item_count}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <button
+                type="button"
+                className="btn btn-secondary"
+                disabled={!compareWith || comparing}
+                onClick={() => void runCompare()}
               >
-                <option value="">{t('shared.dash')}</option>
-                {others.map((r) => (
-                  <option key={r.id} value={r.id}>
-                    {new Date(r.created_at).toLocaleString()} · {r.pass_count}/{r.item_count}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <button
-              type="button"
-              className="btn btn-secondary"
-              disabled={!compareWith || comparing}
-              onClick={() => void runCompare()}
-            >
-              {comparing ? <Loader2 size={16} className="animate-spin" /> : null}
-              <span>{t('evaluationDetail.compareRuns')}</span>
+                {comparing ? <Loader2 size={16} className="animate-spin" aria-hidden /> : null}
+                <span>{t('evaluationDetail.compareRuns')}</span>
               </button>
             </>
           ) : null
         }
       />
 
+      <p className="eval-run-meta">
+        <code>{run.run_id}</code> · {run.evaluation_type}
+        {judge?.model ? ` · ${t('evaluationDetail.judgedBy', { model: judge.model })}` : ''}
+        {judge?.prompt_version ? ` · ${judge.prompt_version}` : ''}
+      </p>
+
       {compare ? (
         <EntityViewPanel title={t('evaluationDetail.compareRuns')}>
-          <table className="eval-items-table eval-runs-table">
+          <table className="console-table eval-runs-table">
             <thead>
               <tr>
                 <th>{t('evaluationDetail.colQuery')}</th>
@@ -193,6 +195,6 @@ export function EvaluationRunDetailPage() {
           </div>
         )}
       </EntityViewPanel>
-    </div>
+    </>
   );
 }

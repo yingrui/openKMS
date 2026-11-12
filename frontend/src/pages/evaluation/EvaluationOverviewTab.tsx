@@ -9,7 +9,12 @@ import {
   type EvaluationRunResponse,
 } from '../../data/evaluationsApi';
 import { EmptyState, StatusChip } from '../../styles/design-system';
-import { EntityViewPanel, EntityViewStat, EntityViewStats } from '../shared/EntityViewShell';
+import {
+  EntityViewHeader,
+  EntityViewPanel,
+  EntityViewStat,
+  EntityViewStats,
+} from '../shared/EntityViewShell';
 import { useEvaluationDetail } from './EvaluationDetailContext';
 
 /** What this dataset is, and how the last run went. Everything else has its own page. */
@@ -47,7 +52,12 @@ export function EvaluationOverviewTab() {
         : t('evaluationDetail.kindAnswer');
 
   return (
-    <div className="eval-tab">
+    <>
+      <EntityViewHeader
+        title={t('evaluationDetail.tabOverview')}
+        subtitle={t('evaluationDetail.overviewHint')}
+      />
+
       <EntityViewStats>
         <EntityViewStat label={t('evaluationDetail.statItems')} value={itemTotal} />
         <EntityViewStat label={t('evaluationDetail.statKind')} value={kind} />
@@ -110,6 +120,6 @@ export function EvaluationOverviewTab() {
           </Link>
         </p>
       </EntityViewPanel>
-    </div>
+    </>
   );
 }

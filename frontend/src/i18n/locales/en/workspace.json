@@ -432,7 +432,8 @@
     "compareOtherRun": "Other run",
     "toastRunQueued": "Run {{runId}} queued.",
     "notFound": "This evaluation no longer exists.",
-    "emptyRunsHint": "Runs appear here once you start one."
+    "emptyRunsHint": "Runs appear here once you start one.",
+    "overviewHint": "What this test set is, and how the last run went."
   },
   "models": {
     "title": "Models",
