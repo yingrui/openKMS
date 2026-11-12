@@ -7,8 +7,15 @@ import { AgentChatMain } from '../../components/agents/AgentChatMain';
 import { AgentFilesPanel } from '../../components/agents/AgentFilesPanel';
 import { AgentSessionSidebar } from '../../components/agents/AgentSessionSidebar';
 import { AgentsWorkspaceSkeleton } from '../../components/agents/AgentsPageSkeleton';
-import { getProject, deleteProjectAttachment, uploadProjectAttachment } from '../../data/projectsApi';
+import {
+  createProjectConversation,
+  deleteProjectAttachment,
+  getProject,
+  projectWorkspacePath,
+  uploadProjectAttachment,
+} from '../../data/projectsApi';
 import type { ProjectResponse } from '../../data/projectsApi';
+import type { AgentAttachment } from '../../data/agentApi';
 import { useIsMobile } from '../../hooks/useIsMobile';
 import { useFilesRailWidth } from '../../hooks/useFilesRailWidth';
 import { PanelToolbar } from '../../styles/design-system';
@@ -18,7 +25,7 @@ import { useProjectSessionRouting } from './useProjectSessionRouting';
 import '../../components/agents/AgentsWorkspace.scss';
 import '../../styles/files-rail.scss';
 
-type HomeHandoffState = { homeDraft?: string };
+type HomeHandoffState = { homeDraft?: string; homeAttachments?: AgentAttachment[] };
 
 const SESSIONS_WIDTH_PX = 240;
 const CHAT_MIN_PX = 300;
@@ -81,19 +88,47 @@ export function ProjectWorkspace() {
     onSendRef.current = stream.onSend;
   }, [stream.onSend]);
 
+  /**
+   * Send from the project-home composer (no session in the URL yet).
+   *
+   * Creating the conversation navigates to `/projects/:id/sessions/:cid`, which is a different
+   * route element — this component unmounts. Posting the turn from *here* then updates state on
+   * a dead instance: the request reaches the server but the UI shows nothing until a refresh.
+   * So create the session, hand the draft to the destination instance, and let that one send.
+   */
+  const handleSend = useCallback(
+    async (text: string, attachments: AgentAttachment[] = []) => {
+      const activeConv = session.convId ?? sessionId ?? null;
+      if (activeConv) {
+        await stream.onSend(text, attachments);
+        return;
+      }
+      try {
+        const conv = await createProjectConversation(projectId);
+        navigate(projectWorkspacePath(projectId, conv.id), {
+          state: { homeDraft: text, homeAttachments: attachments },
+        });
+      } catch (e) {
+        toast.error(e instanceof Error ? e.message : String(e));
+      }
+    },
+    [session.convId, sessionId, stream, projectId, navigate],
+  );
+
   // Home composer: create session then land here with `{ homeDraft }` to send once.
   useEffect(() => {
     if (homeDraftConsumedRef.current) return;
     if (!session.conversationsReady || !session.convId) return;
     if (sessionId && session.convId !== sessionId) return;
-    const draft = (location.state as HomeHandoffState | null)?.homeDraft?.trim();
+    const handoff = location.state as HomeHandoffState | null;
+    const draft = handoff?.homeDraft?.trim();
     if (!draft) return;
     homeDraftConsumedRef.current = true;
     navigate(
       { pathname: location.pathname, search: location.search },
       { replace: true, state: {} },
     );
-    void onSendRef.current(draft);
+    void onSendRef.current(draft, handoff?.homeAttachments ?? []);
   }, [
     session.conversationsReady,
     session.convId,
@@ -200,7 +235,7 @@ export function ProjectWorkspace() {
       stalled={stalledVisible}
       planMode={planMode}
       onPlanModeChange={setPlanMode}
-      onSend={stream.onSend}
+      onSend={handleSend}
       onUploadAttachment={async (file) => {
         const cid = await session.ensureConv();
         return uploadProjectAttachment(projectId, cid, file);

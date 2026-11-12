@@ -405,18 +405,16 @@ export function KnowledgeBaseDetail() {
                     autoComplete="off"
                     aria-label={t('detail.qaPlaceholder')}
                   />
-                  <div className="kb-qa-composer-bar">
-                    <p className="kb-qa-composer-hint">{t('detail.qaComposerHint')}</p>
-                    <button
-                      type="submit"
-                      className="kb-qa-composer-send"
-                      disabled={qaLoading || !qaInput.trim() || !kbQaConvReady}
-                      aria-label={t('detail.qaSendAria')}
-                    >
-                      <ArrowUp size={18} strokeWidth={2.25} aria-hidden />
-                    </button>
-                  </div>
+                  <button
+                    type="submit"
+                    className="kb-qa-composer-send"
+                    disabled={qaLoading || !qaInput.trim() || !kbQaConvReady}
+                    aria-label={t('detail.qaSendAria')}
+                  >
+                    <ArrowUp size={18} strokeWidth={2.25} aria-hidden />
+                  </button>
                 </form>
+                <p className="kb-qa-composer-hint">{t('detail.qaComposerHint')}</p>
               </div>
             </main>
             {/* The conversation's files, as the project agent has them: a rail on the right that can be hidden. */}
