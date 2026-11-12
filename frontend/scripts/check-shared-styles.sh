@@ -203,6 +203,12 @@ if ! python3 scripts/check-global-classes.py; then
   status=1
 fi
 
+# --- 24. Hardcoded user-visible copy (ratchet) --------------------------------
+# English (or Chinese) in JSX renders one language inside another. `check-hardcoded-text.py`, baseline 0.
+if ! python3 scripts/check-hardcoded-text.py; then
+  status=1
+fi
+
 # --- 23. Rules that style nothing (ratchet) -----------------------------------
 # A sheet rots one direction only: the component changes, its rules stay. Baseline:
 # scripts/dead-classes-baseline.txt, currently 0 — 272 dead blocks were removed across 128 sheets.

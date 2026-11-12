@@ -236,7 +236,7 @@ export function LinkTypesPage() {
     <div className="ontology-admin">
       <div className="page-header">
         <div>
-          <h1>Link Types</h1>
+          <h1>{t('linkTypes.title')}</h1>
           <p className="page-subtitle">
             Define relationships between object types (e.g. Disease → InsuranceProduct). Admin only.
           </p>
@@ -246,7 +246,7 @@ export function LinkTypesPage() {
             <button
               type="button"
               className="btn btn-secondary"
-              title="Index links to knowledge graph"
+              title={t('linkTypes.indexLinksTitle')}
               disabled={indexing || indexingLinkId !== null || showIndexOneDialog || showIndexDialog}
               onClick={() => {
                 setIndexNeo4jId(neo4jDataSources[0]?.id || '');
@@ -254,7 +254,7 @@ export function LinkTypesPage() {
               }}
             >
               <Database size={18} />
-              <span>Index Links</span>
+              <span>{t('linkTypes.indexLinks')}</span>
             </button>
           )}
           <button
@@ -341,7 +341,7 @@ export function LinkTypesPage() {
                         neo4jDataSources.length > 0 ? (
                           <button
                             type="button"
-                            title="Index links to knowledge graph"
+                            title={t('linkTypes.indexLinksTitle')}
                             disabled={
                               indexing || indexingLinkId !== null || showIndexOneDialog || showIndexDialog
                             }
@@ -396,7 +396,7 @@ export function LinkTypesPage() {
                 onClick={() => !submitting && setShowForm(false)}
                 disabled={submitting}
               >
-                Cancel
+                {t('linkTypes.cancel')}
               </button>
               <button
                 type="button"
@@ -423,7 +423,7 @@ export function LinkTypesPage() {
                   type="text"
                   value={formName}
                   onChange={(e) => setFormName(e.target.value)}
-                  placeholder="e.g. covers"
+                  placeholder={t('linkTypes.labelPlaceholder')}
                 />
 </FormField>
               <FormField
@@ -437,7 +437,7 @@ export function LinkTypesPage() {
                     setFormApiNameTouched(true);
                     setFormApiName(e.target.value);
                   }}
-                  placeholder="e.g. covers"
+                  placeholder={t('linkTypes.labelPlaceholder')}
                   aria-invalid={apiNameInvalid}
                 />
 </FormField>
@@ -446,7 +446,7 @@ export function LinkTypesPage() {
                   type="text"
                   value={formDescription}
                   onChange={(e) => setFormDescription(e.target.value)}
-                  placeholder="Optional"
+                  placeholder={t('linkTypes.optionalPlaceholder')}
                 />
 </FormField>
               <FormField label="Source object type">
@@ -454,7 +454,7 @@ export function LinkTypesPage() {
                   value={formSourceId}
                   onChange={(e) => setFormSourceId(e.target.value)}
                 >
-                  <option value="">Select…</option>
+                  <option value="">{t('linkTypes.selectPlaceholder')}</option>
                   {objectTypes.map((o) => (
                     <option key={o.id} value={o.id}>{o.name}</option>
                   ))}
@@ -465,7 +465,7 @@ export function LinkTypesPage() {
                   value={formTargetId}
                   onChange={(e) => setFormTargetId(e.target.value)}
                 >
-                  <option value="">Select…</option>
+                  <option value="">{t('linkTypes.selectPlaceholder')}</option>
                   {objectTypes.map((o) => (
                     <option key={o.id} value={o.id}>{o.name}</option>
                   ))}
@@ -494,7 +494,7 @@ export function LinkTypesPage() {
                       setFormTargetDatasetColumn('');
                     }}
                   >
-                    <option value="">Select dataset…</option>
+                    <option value="">{t('linkTypes.selectDatasetPlaceholder')}</option>
                     {datasets.map((d) => (
                       <option key={d.id} value={d.id}>
                         {datasetLabel(d)}
@@ -515,7 +515,7 @@ export function LinkTypesPage() {
                       value={formSourceKeyProperty}
                       onChange={(e) => setFormSourceKeyProperty(e.target.value)}
                     >
-                      <option value="">— Select —</option>
+                      <option value="">{t('linkTypes.selectDash')}</option>
                       {sourceProperties.map((p) => (
                         <option key={p.name} value={p.name}>{p.name}</option>
                       ))}
@@ -529,7 +529,7 @@ export function LinkTypesPage() {
                           value={formSourceDatasetColumn}
                           onChange={(e) => setFormSourceDatasetColumn(e.target.value)}
                         >
-                          <option value="">— Select —</option>
+                          <option value="">{t('linkTypes.selectDash')}</option>
                           {datasetColumns.map((c) => (
                             <option key={c.column_name} value={c.column_name}>{c.column_name}</option>
                           ))}
@@ -541,7 +541,7 @@ export function LinkTypesPage() {
                           value={formTargetDatasetColumn}
                           onChange={(e) => setFormTargetDatasetColumn(e.target.value)}
                         >
-                          <option value="">— Select —</option>
+                          <option value="">{t('linkTypes.selectDash')}</option>
                           {datasetColumns.map((c) => (
                             <option key={c.column_name} value={c.column_name}>{c.column_name}</option>
                           ))}
@@ -555,7 +555,7 @@ export function LinkTypesPage() {
                       value={formTargetKeyProperty}
                       onChange={(e) => setFormTargetKeyProperty(e.target.value)}
                     >
-                      <option value="">— Select —</option>
+                      <option value="">{t('linkTypes.selectDash')}</option>
                       {targetProperties.map((p) => (
                         <option key={p.name} value={p.name}>{p.name}</option>
                       ))}
@@ -574,7 +574,7 @@ export function LinkTypesPage() {
         open={showIndexDialog}
         onClose={() => !indexing && !indexingLinkId && setShowIndexDialog(false)}
         closeDisabled={indexing || indexingLinkId !== null}
-        title="Index Links to Knowledge Graph"
+        title={t('linkTypes.indexLinksTitle')}
         closeAriaLabel="Close"
         size="md"
         footer={
@@ -585,7 +585,7 @@ export function LinkTypesPage() {
                 onClick={() => !indexing && !indexingLinkId && setShowIndexDialog(false)}
                 disabled={indexing || indexingLinkId !== null}
               >
-                Cancel
+                {t('linkTypes.cancel')}
               </button>
               <button
                 type="button"
@@ -596,7 +596,7 @@ export function LinkTypesPage() {
                 {indexing ? (
                   <>
                     <Loader2 size={18} className="console-loading-spinner" />
-                    <span>Indexing…</span>
+                    <span>{t('linkTypes.indexing')}</span>
                   </>
                 ) : (
                   'Confirm & Index'
@@ -616,7 +616,7 @@ export function LinkTypesPage() {
                   onChange={(e) => setIndexNeo4jId(e.target.value)}
                   disabled={indexing || indexingLinkId !== null}
                 >
-                  <option value="">Select…</option>
+                  <option value="">{t('linkTypes.selectPlaceholder')}</option>
                   {neo4jDataSources.map((ds) => (
                     <option key={ds.id} value={ds.id}>
                       {ds.name} ({ds.host}:{ds.port ?? 7687})
@@ -654,7 +654,7 @@ export function LinkTypesPage() {
                 }}
                 disabled={!!indexingLinkId}
               >
-                Cancel
+                {t('linkTypes.cancel')}
               </button>
               <button
                 type="button"
@@ -665,7 +665,7 @@ export function LinkTypesPage() {
                 {indexingLinkId ? (
                   <>
                     <Loader2 size={18} className="console-loading-spinner" />
-                    <span>Indexing…</span>
+                    <span>{t('linkTypes.indexing')}</span>
                   </>
                 ) : linkTypeUsesDatasetIndexing(indexOneLink, objectTypes) ? (
                   'Index from dataset'
@@ -708,7 +708,7 @@ export function LinkTypesPage() {
                   onChange={(e) => setIndexNeo4jId(e.target.value)}
                   disabled={!!indexingLinkId}
                 >
-                  <option value="">Select…</option>
+                  <option value="">{t('linkTypes.selectPlaceholder')}</option>
                   {neo4jDataSources.map((ds) => (
                     <option key={ds.id} value={ds.id}>
                       {ds.name} ({ds.host}:{ds.port ?? 7687})

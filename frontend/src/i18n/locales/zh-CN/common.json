@@ -55,5 +55,19 @@
     "addEveryone": "所有已登录用户",
     "save": "保存共享设置",
     "saving": "保存中…"
+  },
+  "graphAria": "知识地图关系图",
+  "graph3dAria": "知识地图 3D 关系图",
+  "controlsAria": "图表控制",
+  "reheat": "重新布局",
+  "fitCluster": "聚焦主集群",
+  "zoomIn": "放大",
+  "zoomOut": "缩小",
+  "preparing": "正在准备图形…",
+  "loadingGraph": "正在加载关系图…",
+  "dismissError": "关闭错误提示",
+  "errors": {
+    "somethingWrong": "出了点问题",
+    "tryAgain": "重试"
   }
 }

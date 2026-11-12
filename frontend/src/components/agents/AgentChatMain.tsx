@@ -105,6 +105,7 @@ const MessageRow = memo(function MessageRow({
   tRevertTitle,
   tRevertAria,
 }: MessageRowProps) {
+  const { t } = useTranslation('agents');
   const time = formatTime(message.created_at);
 
   if (message.role === 'user') {
@@ -166,7 +167,7 @@ const MessageRow = memo(function MessageRow({
           <button
             type="button"
             className="agents-chat-copy-btn"
-            title="Copy message"
+            title={t('chat.copyMessage')}
             onClick={() => {
               void navigator.clipboard.writeText(message.content);
             }}

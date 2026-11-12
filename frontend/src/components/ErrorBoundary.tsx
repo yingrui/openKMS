@@ -1,4 +1,5 @@
 import { Component, type ErrorInfo, type ReactNode } from 'react';
+import i18n from '../i18n/config';
 
 interface Props {
   children: ReactNode;
@@ -35,10 +36,12 @@ export class ErrorBoundary extends Component<Props, State> {
       }
       return (
         <div className="openkms-error-boundary">
-          <h2 className="openkms-error-boundary__title">Something went wrong</h2>
+          <h2 className="openkms-error-boundary__title">
+            {i18n.t('errors.somethingWrong', { ns: 'common' })}
+          </h2>
           <pre className="openkms-error-boundary__pre">{this.state.error.message}</pre>
           <button type="button" className="openkms-error-boundary__retry" onClick={this.handleRetry}>
-            Try again
+            {i18n.t('errors.tryAgain', { ns: 'common' })}
           </button>
         </div>
       );

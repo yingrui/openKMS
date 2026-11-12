@@ -433,7 +433,8 @@
     "resourceAccessEmpty": "Nobody has access yet. Add the first reader.",
     "resourceAccessNoMatch": "No grantee matches that filter.",
     "resourceAccessNoCandidate": "No matching identity.",
-    "resourceAccessNotManager": "Only someone who manages this resource can see or change who may read it."
+    "resourceAccessNotManager": "Only someone who manages this resource can see or change who may read it.",
+    "metricTypePlaceholder": "number / string / datetime"
   },
   "datasets": {
     "title": "Datasets",
@@ -972,7 +973,10 @@
     "apiName": "API name",
     "apiNameHint": "The name code and Cypher use (client(\"WorkItem\"), MATCH (n:WorkItem)). Fixed after creation; the name above is what people see.",
     "apiNameInvalid": "Start with a letter; use only letters, digits and underscores.",
-    "apiNameFixed": "Fixed at creation — published Functions call this type by it."
+    "apiNameFixed": "Fixed at creation — published Functions call this type by it.",
+    "cancel": "Cancel",
+    "selectPlaceholder": "Select…",
+    "indexObjectsTitle": "Index objects to knowledge graph"
   },
   "linkTypes": {
     "title": "Link Types",
@@ -1007,7 +1011,16 @@
     "emptyList": "No link types yet. Create one to get started.",
     "apiName": "API name",
     "apiNameHint": "The name code and Cypher use (client(\"governed_by\")). Fixed after creation; Name is the label people see.",
-    "apiNameFixed": "Fixed at creation — published Functions reference this link type by it."
+    "apiNameFixed": "Fixed at creation — published Functions reference this link type by it.",
+    "indexLinks": "Index Links",
+    "indexLinksTitle": "Index links to knowledge graph",
+    "cancel": "Cancel",
+    "selectPlaceholder": "Select…",
+    "selectDatasetPlaceholder": "Select dataset…",
+    "selectDash": "— Select —",
+    "indexing": "Indexing…",
+    "labelPlaceholder": "e.g. covers",
+    "optionalPlaceholder": "Optional"
   },
   "actions": {
     "title": "Action types",
@@ -1259,5 +1272,8 @@
     "runFailed_one": "{{count}} rule could not run",
     "runFailed_other": "{{count}} rules could not run",
     "severity": "Severity"
+  },
+  "objectTypeWizard": {
+    "namePlaceholder": "e.g. Disease"
   }
 }

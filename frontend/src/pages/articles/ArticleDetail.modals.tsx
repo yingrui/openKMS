@@ -46,6 +46,7 @@ export function ArticleRelationshipsPanel({
   relSaving,
   onAddRelationship,
 }: ArticleRelationshipsPanelProps) {
+  const { t } = useTranslation('articles');
   return (
     <div className="document-detail-lineage document-detail-lineage--article">
       <button
@@ -57,12 +58,12 @@ export function ArticleRelationshipsPanel({
         id="article-relationships-heading"
       >
         <GitBranch size={16} aria-hidden />
-        <span>Relationships</span>
+        <span>{t('detail.relationships')}</span>
         {relSectionOpen ? <ChevronUp size={18} aria-hidden /> : <ChevronDown size={18} aria-hidden />}
       </button>
       {!relSectionOpen && (
         <p className="document-detail-lineage-hint document-detail-muted">
-          Link this article to others (supersedes, amends, see also, …). Click to expand.
+          {t('detail.relationshipsHint')}
         </p>
       )}
       {relSectionOpen && (
@@ -74,7 +75,7 @@ export function ArticleRelationshipsPanel({
         >
           <div className="document-detail-lineage-rel-block">
             {lineageLoading ? (
-              <p className="document-detail-muted">Loading…</p>
+              <p className="document-detail-muted">{t('detail.loading')}</p>
             ) : (
               <>
                 <div className="document-detail-lineage-tables">
@@ -84,8 +85,8 @@ export function ArticleRelationshipsPanel({
                       <table className="document-detail-lineage-table">
                         <thead>
                           <tr>
-                            <th>Type</th>
-                            <th>Other article</th>
+                            <th>{t('detail.colType')}</th>
+                            <th>{t('detail.colOtherArticle')}</th>
                             <th />
                           </tr>
                         </thead>
@@ -102,7 +103,7 @@ export function ArticleRelationshipsPanel({
                                 <button
                                   type="button"
                                   className="document-detail-lineage-rm"
-                                  title="Remove"
+                                  title={t('detail.remove')}
                                   onClick={() => onDeleteRelationship(r.id)}
                                 >
                                   <Trash2 size={14} />
@@ -113,17 +114,17 @@ export function ArticleRelationshipsPanel({
                         </tbody>
                       </table>
                     ) : (
-                      <p className="document-detail-muted document-detail-lineage-empty">No outgoing links.</p>
+                      <p className="document-detail-muted document-detail-lineage-empty">{t('detail.noOutgoingLinks')}</p>
                     )}
                   </div>
                   <div>
-                    <div className="document-detail-lineage-dir">Incoming (other → this)</div>
+                    <div className="document-detail-lineage-dir">{t('detail.incoming')}</div>
                     {lineageRels && lineageRels.incoming.length > 0 ? (
                       <table className="document-detail-lineage-table">
                         <thead>
                           <tr>
-                            <th>Type</th>
-                            <th>Other article</th>
+                            <th>{t('detail.colType')}</th>
+                            <th>{t('detail.colOtherArticle')}</th>
                           </tr>
                         </thead>
                         <tbody>
@@ -140,18 +141,18 @@ export function ArticleRelationshipsPanel({
                         </tbody>
                       </table>
                     ) : (
-                      <p className="document-detail-muted document-detail-lineage-empty">No incoming links.</p>
+                      <p className="document-detail-muted document-detail-lineage-empty">{t('detail.noIncomingLinks')}</p>
                     )}
                   </div>
                 </div>
                 <div className="document-detail-lineage-add">
-                  <span className="document-detail-lineage-dir">Add outgoing edge</span>
+                  <span className="document-detail-lineage-dir">{t('detail.addOutgoingEdge')}</span>
                   <div className="document-detail-lineage-add-row">
                     <select
                       value={newRelType}
                       onChange={(e) => onNewRelTypeChange(e.target.value)}
                       className="document-detail-info-input"
-                      aria-label="Relation type"
+                      aria-label={t('detail.relationTypeAria')}
                     >
                       {ARTICLE_RELATION_TYPES.map((t) => (
                         <option key={t} value={t}>
@@ -162,18 +163,18 @@ export function ArticleRelationshipsPanel({
                     <input
                       type="text"
                       className="document-detail-info-input"
-                      placeholder="Target article ID"
+                      placeholder={t('detail.targetArticlePlaceholder')}
                       value={newRelTarget}
                       onChange={(e) => onNewRelTargetChange(e.target.value)}
-                      aria-label="Target article ID"
+                      aria-label={t('detail.targetArticleAria')}
                     />
                     <input
                       type="text"
                       className="document-detail-info-input"
-                      placeholder="Note (optional)"
+                      placeholder={t('detail.notePlaceholder')}
                       value={newRelNote}
                       onChange={(e) => onNewRelNoteChange(e.target.value)}
-                      aria-label="Note"
+                      aria-label={t('detail.noteAria')}
                     />
                     <button
                       type="button"
@@ -353,6 +354,7 @@ export function ArticleAttachmentsPanel({
   onInsertAttachmentRef,
   onDeleteAttachment,
 }: ArticleAttachmentsPanelProps) {
+  const { t } = useTranslation('articles');
   if (attachments.length === 0) return null;
   return (
     <div className="document-detail-lineage document-detail-lineage--article">
@@ -366,10 +368,10 @@ export function ArticleAttachmentsPanel({
       >
         <Paperclip size={16} aria-hidden />
         <span className="article-detail-attachments-label">
-          Attachments
+          {t('detail.attachments')}
           <span
             className="document-detail-lineage-count"
-            aria-label={`${attachments.length} file${attachments.length === 1 ? '' : 's'}`}
+            aria-label={t('detail.attachmentCount', { count: attachments.length })}
           >
             {attachments.length}
           </span>
@@ -396,16 +398,16 @@ export function ArticleAttachmentsPanel({
                       type="button"
                       className="article-detail-attachment-btn"
                       onClick={() => onInsertAttachmentRef(att.storage_path, att.original_filename)}
-                      title="Insert link in markdown"
+                      title={t('detail.insertLinkTitle')}
                     >
-                      Insert link
+                      {t('detail.insertLink')}
                     </button>
                     <button
                       type="button"
                       className="article-detail-attachment-btn article-detail-attachment-btn--danger"
                       onClick={() => onDeleteAttachment(att)}
-                      title="Remove attachment"
-                      aria-label="Remove attachment"
+                      title={t('detail.removeAttachment')}
+                      aria-label={t('detail.removeAttachment')}
                     >
                       <Trash2 size={12} />
                     </button>

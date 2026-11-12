@@ -309,7 +309,7 @@ export function ObjectTypesPage() {
         open={showIndexDialog}
         onClose={() => !indexing && !indexingTypeId && setShowIndexDialog(false)}
         closeDisabled={indexing || indexingTypeId !== null}
-        title="Index Objects to Knowledge Graph"
+        title={t('objectTypes.indexObjectsTitle')}
         closeAriaLabel="Close"
         size="md"
         footer={
@@ -320,7 +320,7 @@ export function ObjectTypesPage() {
                 onClick={() => !indexing && !indexingTypeId && setShowIndexDialog(false)}
                 disabled={indexing || indexingTypeId !== null}
               >
-                Cancel
+                {t('objectTypes.cancel')}
               </button>
               <button
                 type="button"
@@ -331,7 +331,7 @@ export function ObjectTypesPage() {
                 {indexing ? (
                   <>
                     <Loader2 size={18} className="console-loading-spinner" />
-                    <span>Indexing…</span>
+                    <span>{t('objectTypes.indexing')}</span>
                   </>
                 ) : (
                   'Confirm & Index'
@@ -351,7 +351,7 @@ export function ObjectTypesPage() {
                   onChange={(e) => setIndexNeo4jId(e.target.value)}
                   disabled={indexing || indexingTypeId !== null}
                 >
-                  <option value="">Select…</option>
+                  <option value="">{t('objectTypes.selectPlaceholder')}</option>
                   {neo4jDataSources.map((ds) => (
                     <option key={ds.id} value={ds.id}>
                       {ds.name} ({ds.host}:{ds.port ?? 7687})
@@ -385,7 +385,7 @@ export function ObjectTypesPage() {
                 }}
                 disabled={!!indexingTypeId}
               >
-                Cancel
+                {t('objectTypes.cancel')}
               </button>
               <button
                 type="button"
@@ -396,7 +396,7 @@ export function ObjectTypesPage() {
                 {indexingTypeId ? (
                   <>
                     <Loader2 size={18} className="console-loading-spinner" />
-                    <span>Indexing…</span>
+                    <span>{t('objectTypes.indexing')}</span>
                   </>
                 ) : indexOneType.dataset_id ? (
                   'Index from dataset'
@@ -438,7 +438,7 @@ export function ObjectTypesPage() {
                   onChange={(e) => setIndexNeo4jId(e.target.value)}
                   disabled={!!indexingTypeId}
                 >
-                  <option value="">Select…</option>
+                  <option value="">{t('objectTypes.selectPlaceholder')}</option>
                   {neo4jDataSources.map((ds) => (
                     <option key={ds.id} value={ds.id}>
                       {ds.name} ({ds.host}:{ds.port ?? 7687})

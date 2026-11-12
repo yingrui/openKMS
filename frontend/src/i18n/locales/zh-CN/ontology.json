@@ -428,7 +428,8 @@
     "resourceAccessEmpty": "还没有授权对象，先添加一个可读取的人。",
     "resourceAccessNoMatch": "没有匹配的授权对象。",
     "resourceAccessNoCandidate": "没有匹配的身份。",
-    "resourceAccessNotManager": "只有管理这个资源的人才能查看或修改谁可以读取它。"
+    "resourceAccessNotManager": "只有管理这个资源的人才能查看或修改谁可以读取它。",
+    "metricTypePlaceholder": "number / string / datetime"
   },
   "datasets": {
     "title": "数据集",
@@ -965,7 +966,10 @@
     "apiName": "API 名称",
     "apiNameHint": "代码和 Cypher 使用的名称（client(\"WorkItem\")、MATCH (n:WorkItem)）。创建后不可修改；上面的名称才是给人看的显示名。",
     "apiNameInvalid": "需以字母开头，且只能包含字母、数字和下划线。",
-    "apiNameFixed": "创建时固定 —— 已发布的 Function 用它调用该类型。"
+    "apiNameFixed": "创建时固定 —— 已发布的 Function 用它调用该类型。",
+    "cancel": "取消",
+    "selectPlaceholder": "请选择…",
+    "indexObjectsTitle": "把对象索引进知识图谱"
   },
   "linkTypes": {
     "title": "链接类型",
@@ -1000,7 +1004,16 @@
     "emptyList": "暂无链接类型。创建一个以开始。",
     "apiName": "API 名称",
     "apiNameHint": "代码和 Cypher 使用的名称（client(\"governed_by\")）。创建后不可修改；名称才是给人看的显示名。",
-    "apiNameFixed": "创建时固定 —— 已发布的 Function 用它引用该链接类型。"
+    "apiNameFixed": "创建时固定 —— 已发布的 Function 用它引用该链接类型。",
+    "indexLinks": "索引链接",
+    "indexLinksTitle": "把链接索引进知识图谱",
+    "cancel": "取消",
+    "selectPlaceholder": "请选择…",
+    "selectDatasetPlaceholder": "选择数据集…",
+    "selectDash": "— 请选择 —",
+    "indexing": "索引中…",
+    "labelPlaceholder": "例如：覆盖",
+    "optionalPlaceholder": "可选"
   },
   "actions": {
     "title": "操作类型",
@@ -1252,5 +1265,8 @@
     "runFailed_one": "{{count}} 条规则无法运行",
     "runFailed_other": "{{count}} 条规则无法运行",
     "severity": "严重程度"
+  },
+  "objectTypeWizard": {
+    "namePlaceholder": "例如：Disease"
   }
 }

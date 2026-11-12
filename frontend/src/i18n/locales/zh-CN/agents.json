@@ -174,7 +174,8 @@
     "attachRemove": "移除图片",
     "attaching": "图片上传中…",
     "attachFailed": "图片上传失败",
-    "turnStalled": "已有一段时间没有进展，这次执行可能卡住了；几分钟后会自动释放。"
+    "turnStalled": "已有一段时间没有进展，这次执行可能卡住了；几分钟后会自动释放。",
+    "copyMessage": "复制消息"
   },
   "stream": {
     "replyAria": "助手回复",
@@ -472,6 +473,37 @@
     "generateSkill": "生成技能",
     "saveSkill": "保存技能",
     "skillSlug": "技能标识",
-    "skillContent": "SKILL.md 内容"
+    "skillContent": "SKILL.md 内容",
+    "occurredIn_one": "在 {{count}} 次会话中出现",
+    "occurredIn_other": "在 {{count}} 次会话中出现",
+    "approved": "✓ 已采纳",
+    "rejected": "✗ 已拒绝",
+    "type": "类型",
+    "typeError": "错误",
+    "typeLesson": "经验",
+    "typePattern": "模式",
+    "typeSkillCandidate": "技能候选",
+    "severity": "严重程度",
+    "severityLow": "低",
+    "severityMedium": "中",
+    "severityHigh": "高",
+    "whatWentWrong": "出了什么问题",
+    "whatFixedIt": "怎么解决的",
+    "workflow": "工作流",
+    "problem": "问题",
+    "whyReusable": "为何可复用",
+    "fix": "修复",
+    "context": "上下文",
+    "generating": "生成中…",
+    "approve": "采纳",
+    "reject": "拒绝",
+    "unapprove": "取消采纳",
+    "edit": "编辑",
+    "refreshFromDisk": "从磁盘刷新",
+    "lessonFileMissing": "文件还不存在。创建后可把项目经验留存下来。"
+  },
+  "shared": {
+    "cancel": "取消",
+    "edit": "编辑"
   }
 }

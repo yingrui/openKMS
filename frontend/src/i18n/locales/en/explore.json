@@ -295,5 +295,8 @@
     "notIndexed": "This type has rows to index but none in the graph yet. Index it from Ontology Manager, then reload.",
     "notIndexedCta": "Open in Ontology Manager",
     "failed": "Could not read from the ontology graph."
-  }
+  },
+  "treeEmpty": "No pages in this space.",
+  "treeAria": "Pages in this wiki space",
+  "treeLoading": "Loading…"
 }

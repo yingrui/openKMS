@@ -386,10 +386,10 @@ export function KnowledgeMapForceGraph3D({
   }
 
   return (
-    <div className={scrollClass} role="application" aria-label="Knowledge Map 3D graph">
+    <div className={scrollClass} role="application" aria-label={t('graph3dAria')}>
       <p className="km-map-graph-hint">{t('graph3dHint')}</p>
       <div className="km-map-graph-body">
-        <div className="km-map-graph-controls" role="toolbar" aria-label="Graph controls">
+        <div className="km-map-graph-controls" role="toolbar" aria-label={t('controlsAria')}>
           <button
             type="button"
             className="km-map-graph-icon-btn"
@@ -397,8 +397,8 @@ export function KnowledgeMapForceGraph3D({
               zoomedRef.current = false;
               graphRef.current?.d3ReheatSimulation?.();
             }}
-            title="Reheat layout"
-            aria-label="Reheat layout"
+            title={t('reheat')}
+            aria-label={t('reheat')}
           >
             <RotateCcw size={16} />
           </button>
@@ -410,8 +410,8 @@ export function KnowledgeMapForceGraph3D({
               if (!g) return;
               zoomToFitMainCluster3d(g, graphData.nodes, 420, 44, selectedNodeId);
             }}
-            title="Fit main cluster"
-            aria-label="Fit main cluster"
+            title={t('fitCluster')}
+            aria-label={t('fitCluster')}
           >
             <Expand size={16} />
           </button>
@@ -450,7 +450,7 @@ export function KnowledgeMapForceGraph3D({
           ) : (
             <p className="km-map-graph-hint km-map-graph-loading km-map-graph-loading--padded">
               <Loader2 className="km-map-graph-spin" size={20} aria-hidden />
-              Preparing graph…
+              {t('preparing')}
             </p>
           )}
         </div>

@@ -1,0 +1,1 @@
+# Hardcoded user-visible copy — known debt, ratchets down only.

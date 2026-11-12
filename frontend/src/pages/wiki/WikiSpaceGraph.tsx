@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, startTransition } from 'react';
 import { forceCollide } from 'd3-force';
 import { useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import ForceGraph2D, { type ForceGraphMethods } from 'react-force-graph-2d';
 import { Expand, Loader2, RotateCcw, ZoomIn, ZoomOut } from 'lucide-react';
 import { toast } from 'sonner';
@@ -220,6 +221,7 @@ function useDataTheme(): 'light' | 'dark' {
 }
 
 export function WikiSpaceGraphPanel({ spaceId, focusPageId }: WikiSpaceGraphPanelProps) {
+  const { t } = useTranslation('wikiSpace');
   const navigate = useNavigate();
   const graphRef = useRef<ForceGraphMethods<GNode, GLink> | undefined>(undefined);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -398,12 +400,12 @@ export function WikiSpaceGraphPanel({ spaceId, focusPageId }: WikiSpaceGraphPane
       {loading && (
         <p className="wiki-space-graph-status">
           <Loader2 className="wiki-space-graph-spin" size={18} aria-hidden />
-          Loading graph…
+          {t('graphLoading')}
         </p>
       )}
       {!loading && data && (
         <div className="wiki-space-graph-body">
-          <div className="wiki-space-graph-controls" role="toolbar" aria-label="Graph controls">
+          <div className="wiki-space-graph-controls" role="toolbar" aria-label={t('graphControlsAria')}>
             <button
               type="button"
               className="wiki-space-graph-icon-btn"
@@ -411,8 +413,8 @@ export function WikiSpaceGraphPanel({ spaceId, focusPageId }: WikiSpaceGraphPane
                 zoomedRef.current = false;
                 graphRef.current?.d3ReheatSimulation?.();
               }}
-              title="Reheat layout"
-              aria-label="Reheat layout"
+              title={t('graphReheat')}
+              aria-label={t('graphReheat')}
             >
               <RotateCcw size={16} />
             </button>
@@ -425,7 +427,7 @@ export function WikiSpaceGraphPanel({ spaceId, focusPageId }: WikiSpaceGraphPane
                 zoomToFitMainCluster(g, 420, 44, focusPageId);
               }}
               title="Fit main cluster (ignore distant notes)"
-              aria-label="Fit main cluster"
+              aria-label={t('graphFitCluster')}
             >
               <Expand size={16} />
             </button>
@@ -436,8 +438,8 @@ export function WikiSpaceGraphPanel({ spaceId, focusPageId }: WikiSpaceGraphPane
                 const g = graphRef.current;
                 if (g && typeof g.zoom === 'function') g.zoom(g.zoom() * 1.3, 200);
               }}
-              title="Zoom in"
-              aria-label="Zoom in"
+              title={t('graphZoomIn')}
+              aria-label={t('graphZoomIn')}
             >
               <ZoomIn size={16} />
             </button>
@@ -448,8 +450,8 @@ export function WikiSpaceGraphPanel({ spaceId, focusPageId }: WikiSpaceGraphPane
                 const g = graphRef.current;
                 if (g && typeof g.zoom === 'function') g.zoom(g.zoom() / 1.3, 200);
               }}
-              title="Zoom out"
-              aria-label="Zoom out"
+              title={t('graphZoomOut')}
+              aria-label={t('graphZoomOut')}
             >
               <ZoomOut size={16} />
             </button>
@@ -480,7 +482,7 @@ export function WikiSpaceGraphPanel({ spaceId, focusPageId }: WikiSpaceGraphPane
             ) : (
               !loading && (
                 <p className="wiki-space-graph-hint wiki-space-graph-hint--empty">
-                  No pages in this space yet. Add pages or import a vault to see links here.
+                  {t('graphEmpty')}
                 </p>
               )
             )}

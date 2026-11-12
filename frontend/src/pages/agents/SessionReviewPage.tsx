@@ -483,7 +483,7 @@ export function SessionReviewPage() {
             <button
               type="button"
               className="sreview-col-refresh-btn"
-              title="Refresh from disk"
+              title={t('sessionReview.refreshFromDisk')}
               disabled={refreshingArtifacts}
               onClick={() => {
                 setRefreshingArtifacts(true);
@@ -524,6 +524,7 @@ function ArtifactPanel({
   projectId: string;
   onSaved: (content: string) => void;
 }) {
+  const { t } = useTranslation('agents');
   const [open, setOpen] = useState(true);
   const [editing, setEditing] = useState(false);
   const [editContent, setEditContent] = useState(artifact.content);
@@ -576,14 +577,14 @@ function ArtifactPanel({
                   {saving ? 'Saving…' : 'Save'}
                 </button>
                 <button type="button" className="sreview-btn sreview-btn--cancel" onClick={() => { setEditContent(artifact.content); setEditing(false); }}>
-                  Cancel
+                  {t('shared.cancel')}
                 </button>
               </div>
             </div>
           ) : (
             <div className="sreview-artifact-preview">
               {isNew ? (
-                <p className="sreview-artifact-empty">Does not exist yet. Create it to persist project knowledge.</p>
+                <p className="sreview-artifact-empty">{t('sessionReview.lessonFileMissing')}</p>
               ) : (
                 <pre className="sreview-artifact-content">{artifact.content.slice(0, 1500)}{artifact.content.length > 1500 ? '\n…' : ''}</pre>
               )}
@@ -592,7 +593,7 @@ function ArtifactPanel({
                 className="sreview-btn sreview-btn--edit"
                 onClick={() => { setEditContent(artifact.content); setEditing(true); }}
               >
-                Edit
+                {t('shared.edit')}
               </button>
             </div>
           )}

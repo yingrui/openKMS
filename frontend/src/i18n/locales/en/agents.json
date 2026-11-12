@@ -174,7 +174,8 @@
     "attachRemove": "Remove image",
     "attaching": "Uploading image…",
     "attachFailed": "Could not upload image",
-    "turnStalled": "No progress for a while — this turn may be stuck. It will free up in a few minutes."
+    "turnStalled": "No progress for a while — this turn may be stuck. It will free up in a few minutes.",
+    "copyMessage": "Copy message"
   },
   "stream": {
     "replyAria": "Agent reply",
@@ -472,6 +473,37 @@
     "generateSkill": "Generate Skill",
     "saveSkill": "Save Skill",
     "skillSlug": "Skill slug",
-    "skillContent": "SKILL.md content"
+    "skillContent": "SKILL.md content",
+    "occurredIn_one": "Occurred in {{count}} session",
+    "occurredIn_other": "Occurred in {{count}} sessions",
+    "approved": "✓ Approved",
+    "rejected": "✗ Rejected",
+    "type": "Type",
+    "typeError": "Error",
+    "typeLesson": "Lesson",
+    "typePattern": "Pattern",
+    "typeSkillCandidate": "Skill Candidate",
+    "severity": "Severity",
+    "severityLow": "Low",
+    "severityMedium": "Medium",
+    "severityHigh": "High",
+    "whatWentWrong": "What went wrong",
+    "whatFixedIt": "What fixed it",
+    "workflow": "Workflow",
+    "problem": "Problem",
+    "whyReusable": "Why reusable",
+    "fix": "Fix",
+    "context": "Context",
+    "generating": "Generating…",
+    "approve": "Approve",
+    "reject": "Reject",
+    "unapprove": "Un-approve",
+    "edit": "Edit",
+    "refreshFromDisk": "Refresh from disk",
+    "lessonFileMissing": "Does not exist yet. Create it to persist project knowledge."
+  },
+  "shared": {
+    "cancel": "Cancel",
+    "edit": "Edit"
   }
 }

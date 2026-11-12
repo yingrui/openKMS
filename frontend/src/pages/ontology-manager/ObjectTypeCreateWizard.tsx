@@ -328,7 +328,7 @@ export function ObjectTypeCreateWizard({
                   type="text"
                   value={name}
                   onChange={(e) => setName(e.target.value)}
-                  placeholder="e.g. Disease"
+                  placeholder={t('objectTypeWizard.namePlaceholder')}
                   autoFocus
                   disabled={submitting}
                 />
@@ -362,7 +362,7 @@ export function ObjectTypeCreateWizard({
                   setApiNameTouched(true);
                   setApiName(e.target.value);
                 }}
-                placeholder="e.g. Disease"
+                placeholder={t('objectTypeWizard.namePlaceholder')}
                 disabled={submitting}
                 aria-invalid={apiNameInvalid}
               />

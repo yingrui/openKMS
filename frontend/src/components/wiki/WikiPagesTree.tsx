@@ -131,7 +131,7 @@ export function WikiPagesTree({
 
   const renderNode = (node: WikiTreeNode, depth: number): ReactNode => {
     if (node.segment === '' && node.children.size === 0) {
-      return <p className="wiki-pages-tree-empty">No pages in this space.</p>;
+      return <p className="wiki-pages-tree-empty">{t('treeEmpty')}</p>;
     }
     if (node.segment === '') {
       return <>{sortedChildEntries(node).map(([, child]) => renderNode(child, depth))}</>;
@@ -195,7 +195,7 @@ export function WikiPagesTree({
   };
 
   return (
-    <aside className="wiki-pages-tree" aria-label="Pages in this wiki space">
+    <aside className="wiki-pages-tree" aria-label={t('treeAria')}>
       <div className="wiki-pages-tree-search">
         <Search size={15} className="wiki-pages-tree-search-icon" aria-hidden />
         <input
@@ -209,7 +209,7 @@ export function WikiPagesTree({
       </div>
       <div className="wiki-pages-tree-scroll">
         {loading ? (
-          <p className="wiki-pages-tree-muted">Loading…</p>
+          <p className="wiki-pages-tree-muted">{t('treeLoading')}</p>
         ) : (
           <>
             {pageTreeMatchPending && filterLen2Plus ? (

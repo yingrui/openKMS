@@ -113,5 +113,12 @@
   "pathRequired": "路径",
   "pathPlaceholder": "例如 guides/onboarding",
   "create": "创建",
-  "dashDate": "—"
+  "dashDate": "—",
+  "graphControlsAria": "图表控制",
+  "graphReheat": "重新布局",
+  "graphFitCluster": "聚焦主集群",
+  "graphZoomIn": "放大",
+  "graphZoomOut": "缩小",
+  "graphLoading": "正在加载关系图…",
+  "graphEmpty": "这个空间还没有页面。添加页面或导入仓库后就能看到关系。"
 }

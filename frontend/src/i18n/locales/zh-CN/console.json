@@ -905,7 +905,7 @@
     "reset": "重置",
     "saving": "保存中…",
     "saveRole": "保存角色权限",
-    "loading": "正在加载权限…",
+    "loading": "加载中…",
     "emptyCatalog": "还没有权限目录行。点「添加权限」创建。",
     "selectAllTitle": "为当前角色勾选或清空列表中的全部权限",
     "selectAllAria": "为该角色勾选或清空当前可见的全部权限",
@@ -954,7 +954,12 @@
     "creating": "创建中…",
     "createPermission": "创建权限",
     "createRole": "创建角色",
-    "close": "关闭"
+    "close": "关闭",
+    "edit": "编辑",
+    "delete": "删除",
+    "builtinReadonly": "这是内置权限，不能编辑或删除。",
+    "selectAllToEdit": "在角色中选中「<bold>全部</bold>」才能编辑或删除目录行。",
+    "keyReadonly": "操作键 <code>{{key}}</code>（只读）"
   },
   "shared": {
     "edit": "编辑",

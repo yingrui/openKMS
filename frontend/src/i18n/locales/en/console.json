@@ -906,7 +906,7 @@
     "reset": "Reset",
     "saving": "Saving…",
     "saveRole": "Save role permissions",
-    "loading": "Loading permissions…",
+    "loading": "Loading…",
     "emptyCatalog": "No permission rows yet. Click “Add permission” to create catalog entries.",
     "selectAllTitle": "Select or clear all permissions in the current list for the selected role",
     "selectAllAria": "Select or clear all visible permissions for this role",
@@ -955,7 +955,12 @@
     "creating": "Creating…",
     "createPermission": "Create permission",
     "createRole": "Create role",
-    "close": "Close"
+    "close": "Close",
+    "edit": "Edit",
+    "delete": "Delete",
+    "builtinReadonly": "This built-in permission cannot be edited or deleted.",
+    "selectAllToEdit": "Select <bold>All</bold> under Roles to edit or delete catalog entries.",
+    "keyReadonly": "Key <code>{{key}}</code> (read-only)"
   },
   "shared": {
     "edit": "Edit",

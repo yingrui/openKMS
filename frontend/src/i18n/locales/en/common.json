@@ -55,5 +55,19 @@
     "addEveryone": "Everyone signed in",
     "save": "Save sharing",
     "saving": "Saving…"
+  },
+  "graphAria": "Knowledge Map graph",
+  "graph3dAria": "Knowledge Map 3D graph",
+  "controlsAria": "Graph controls",
+  "reheat": "Reheat layout",
+  "fitCluster": "Fit main cluster",
+  "zoomIn": "Zoom in",
+  "zoomOut": "Zoom out",
+  "preparing": "Preparing graph…",
+  "loadingGraph": "Loading graph…",
+  "dismissError": "Dismiss error",
+  "errors": {
+    "somethingWrong": "Something went wrong",
+    "tryAgain": "Try again"
   }
 }

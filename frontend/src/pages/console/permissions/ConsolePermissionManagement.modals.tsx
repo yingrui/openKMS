@@ -1,4 +1,4 @@
-import { useTranslation } from 'react-i18next';
+import { Trans, useTranslation } from 'react-i18next';
 import { PERM_ALL } from '../../../config/permissions';
 import { Dialog, FormField } from '../../../styles/design-system/index';
 import type {
@@ -145,19 +145,19 @@ export function ConsolePermissionManagementModals({
                     className="btn btn-secondary"
                     onClick={() => onEditPermission(detailEntry)}
                   >
-                    Edit
+                    {tm('edit')}
                   </button>
                   <button
                     type="button"
                     className="btn btn-danger"
                     onClick={() => onDeletePermission(detailEntry)}
                   >
-                    Delete
+                    {tm('delete')}
                   </button>
                 </>
               ) : null}
               <button type="button" className="btn btn-secondary" onClick={onCloseDetail}>
-                Close
+                {tm('close')}
               </button>
             </>
           }
@@ -168,11 +168,11 @@ export function ConsolePermissionManagementModals({
             </p>
             {detailEntry.key === PERM_ALL ? (
               <p className="console-perm-detail-system-note">
-                This built-in permission cannot be edited or deleted.
+                {tm('builtinReadonly')}
               </p>
             ) : !catalogEditable ? (
               <p className="console-perm-detail-system-note">
-                Select <strong>{tm('all')}</strong> under Roles to edit or delete catalog entries.
+                <Trans tm={tm} i18nKey="permissions.selectAllToEdit" components={{ bold: <strong /> }} />
               </p>
             ) : null}
             {detailEntry.description ? (
@@ -242,8 +242,9 @@ export function ConsolePermissionManagementModals({
           }
         >
           <p className="console-perm-edit-key">
-            Key <code>{catalog.find((c) => c.id === editingPermissionId)?.key ?? ''}</code>{' '}
-            (read-only)
+            {tm('keyReadonly', {
+              key: catalog.find((c) => c.id === editingPermissionId)?.key ?? '',
+            })}
           </p>
           <FormField label={tm('labelLabel')}>
             <input
@@ -292,12 +293,12 @@ export function ConsolePermissionManagementModals({
         bodyClassName="console-perm-ref-body"
         footer={
           <button type="button" className="btn btn-secondary" onClick={onCloseRef}>
-            Close
+            {tm('close')}
           </button>
         }
       >
         {refLoading ? (
-          <p className="console-perm-muted">Loading…</p>
+          <p className="console-perm-muted">{tm('loading')}</p>
         ) : refData ? (
           <>
             <p className="console-perm-ref-hint">{refData.hint}</p>

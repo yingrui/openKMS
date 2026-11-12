@@ -541,8 +541,8 @@ export function ModelPlaygroundSection() {
                           })
                         }
                       >
-                        <option value="desc">↓ desc</option>
-                        <option value="asc">↑ asc</option>
+                        <option value="desc">{t('dataModel.sortDesc')}</option>
+                        <option value="asc">{t('dataModel.sortAsc')}</option>
                       </select>
                     </div>
                   </div>

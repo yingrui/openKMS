@@ -110,47 +110,47 @@ export function SessionReviewEventCard({
             {SEVERITY_ICON[event.severity] ?? '⚪'} {TYPE_LABEL[event.type] ?? event.type} · {event.severity}
           </span>
           {event.occurrence_count && event.occurrence_count > 1 ? (
-            <span className="sreview-card-occurrence" title={`Occurred in ${event.occurrence_count} sessions`}>
+            <span className="sreview-card-occurrence" title={t('sessionReview.occurredIn', { count: event.occurrence_count })}>
               ×{event.occurrence_count}
             </span>
           ) : null}
-          {isApproved && <span className="sreview-card-status sreview-card-status--approved">✓ Approved</span>}
-          {isRejected && <span className="sreview-card-status sreview-card-status--rejected">✗ Rejected</span>}
+          {isApproved && <span className="sreview-card-status sreview-card-status--approved">{t('sessionReview.approved')}</span>}
+          {isRejected && <span className="sreview-card-status sreview-card-status--rejected">{t('sessionReview.rejected')}</span>}
         </div>
 
         {editing ? (
           <div className="sreview-card-edit">
             <label className="sreview-card-field">
-              Type
+              {t('sessionReview.type')}
               <select value={editType} onChange={(e) => setEditType(e.target.value as LessonEvent['type'])}>
-                <option value="error">Error</option>
-                <option value="lesson">Lesson</option>
-                <option value="pattern">Pattern</option>
-                <option value="skill_candidate">Skill Candidate</option>
+                <option value="error">{t('sessionReview.typeError')}</option>
+                <option value="lesson">{t('sessionReview.typeLesson')}</option>
+                <option value="pattern">{t('sessionReview.typePattern')}</option>
+                <option value="skill_candidate">{t('sessionReview.typeSkillCandidate')}</option>
               </select>
             </label>
             <label className="sreview-card-field">
-              Severity
+              {t('sessionReview.severity')}
               <select value={editSeverity} onChange={(e) => setEditSeverity(e.target.value as LessonEvent['severity'])}>
-                <option value="low">Low</option>
-                <option value="medium">Medium</option>
-                <option value="high">High</option>
+                <option value="low">{t('sessionReview.severityLow')}</option>
+                <option value="medium">{t('sessionReview.severityMedium')}</option>
+                <option value="high">{t('sessionReview.severityHigh')}</option>
               </select>
             </label>
             <label className="sreview-card-field">
-              What went wrong
+              {t('sessionReview.whatWentWrong')}
               <textarea value={editWww} onChange={(e) => setEditWww(e.target.value)} rows={3} />
             </label>
             <label className="sreview-card-field">
-              What fixed it
+              {t('sessionReview.whatFixedIt')}
               <textarea value={editWfi} onChange={(e) => setEditWfi(e.target.value)} rows={2} />
             </label>
             <div className="sreview-card-edit-actions">
               <button type="button" className="sreview-btn sreview-btn--save" onClick={handleSave}>
-                Save
+                {t('shared.save')}
               </button>
               <button type="button" className="sreview-btn sreview-btn--cancel" onClick={() => setEditing(false)}>
-                Cancel
+                {t('shared.cancel')}
               </button>
             </div>
           </div>
@@ -158,17 +158,17 @@ export function SessionReviewEventCard({
           <>
             <div className="sreview-card-body">
               <div className="sreview-card-field-read">
-                <span className="sreview-card-label">{isSkillCandidate ? 'Workflow' : 'Problem'}</span>
+                <span className="sreview-card-label">{isSkillCandidate ? t('sessionReview.workflow') : t('sessionReview.problem')}</span>
                 <p>{event.what_went_wrong}</p>
               </div>
               {event.what_fixed_it ? (
                 <div className="sreview-card-field-read">
-                  <span className="sreview-card-label">{isSkillCandidate ? 'Why reusable' : 'Fix'}</span>
+                  <span className="sreview-card-label">{isSkillCandidate ? t('sessionReview.whyReusable') : t('sessionReview.fix')}</span>
                   <p>{event.what_fixed_it}</p>
                 </div>
               ) : null}
               <div className="sreview-card-field-read">
-                <span className="sreview-card-label">Context</span>
+                <span className="sreview-card-label">{t('sessionReview.context')}</span>
                 <blockquote className="sreview-card-quote">{event.context}</blockquote>
               </div>
             </div>
@@ -182,7 +182,7 @@ export function SessionReviewEventCard({
                   onClick={handleGenerateSkill}
                 >
                   <Wand size={14} />
-                  {generating ? 'Generating…' : 'Generate Skill'}
+                  {generating ? t('sessionReview.generating') : t('sessionReview.generateSkill')}
                 </button>
               ) : null}
               {!isRejected ? (
@@ -193,14 +193,14 @@ export function SessionReviewEventCard({
                     disabled={isApproved}
                     onClick={() => onApprove(event, 'approved')}
                   >
-                    <Check size={14} /> Approve
+                    <Check size={14} /> {t('sessionReview.approve')}
                   </button>
                   <button
                     type="button"
                     className="sreview-btn sreview-btn--edit"
                     onClick={() => setEditing(true)}
                   >
-                    <Pencil size={14} /> Edit
+                    <Pencil size={14} /> {t('sessionReview.edit')}
                   </button>
                 </>
               ) : null}
@@ -211,7 +211,7 @@ export function SessionReviewEventCard({
                   disabled={isRejected}
                   onClick={onReject}
                 >
-                  <X size={14} /> Reject
+                  <X size={14} /> {t('sessionReview.reject')}
                 </button>
               ) : (
                 <button
@@ -219,7 +219,7 @@ export function SessionReviewEventCard({
                   className="sreview-btn sreview-btn--edit"
                   onClick={() => { onApprove(event, 'pending'); }}
                 >
-                  Un-approve
+                  {t('sessionReview.unapprove')}
                 </button>
               )}
             </div>

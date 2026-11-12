@@ -58,7 +58,7 @@ export function ArticleDetail() {
       {error ? (
         <div className="document-detail-error">{error}</div>
       ) : !article ? (
-        <div className="document-detail-loading">Loading…</div>
+        <div className="document-detail-loading">{t('detail.loading')}</div>
       ) : (
         <>
           <section className={`document-detail-info document-detail-info-combined ${infoVisible ? '' : 'document-detail-info--collapsed'}`}>
@@ -121,7 +121,7 @@ export function ArticleDetail() {
                               onClick={handleCancelTitleEdit}
                               disabled={savingTitle}
                             >
-                              Cancel
+                              {t('detail.cancel')}
                             </button>
                           </div>
                         </div>
@@ -184,7 +184,7 @@ export function ArticleDetail() {
                                   onClick={handleCancelSourceEdit}
                                   disabled={savingSource}
                                 >
-                                  Cancel
+                                  {t('detail.cancel')}
                                 </button>
                               </div>
                             </div>
@@ -428,7 +428,7 @@ export function ArticleDetail() {
                       {dragActive && (
                         <div className="article-detail-editor-dropzone-overlay" aria-hidden>
                           <Upload size={28} />
-                          <span>Drop to upload — images embed inline, others become attachments</span>
+                          <span>{t('detail.dropToUpload')}</span>
                         </div>
                       )}
                       <input

@@ -113,5 +113,12 @@
   "pathRequired": "Path",
   "pathPlaceholder": "e.g. guides/onboarding",
   "create": "Create",
-  "dashDate": "—"
+  "dashDate": "—",
+  "graphControlsAria": "Graph controls",
+  "graphReheat": "Reheat layout",
+  "graphFitCluster": "Fit main cluster",
+  "graphZoomIn": "Zoom in",
+  "graphZoomOut": "Zoom out",
+  "graphLoading": "Loading graph…",
+  "graphEmpty": "No pages in this space yet. Add pages or import a vault to see links here."
 }

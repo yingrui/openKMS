@@ -315,7 +315,7 @@ export function ModelMetricsSection() {
                   type="text"
                   value={datatype}
                   onChange={(e) => setDatatype(e.target.value)}
-                  placeholder="number / string / datetime"
+                  placeholder={t('dataModel.metricTypePlaceholder')}
                 />
               </FormField>
               {baseJoins.length > 0 && (

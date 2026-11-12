@@ -331,6 +331,8 @@ npm run check   # typecheck → check:app-layout → check:app-modules → check
 
 | 23 | A rule whose selector classes appear nowhere in `src/**/*.ts(x)` | delete it. CSS rots one way: the component changes and the rules stay, so a sheet keeps a dead half and the next reader cannot tell which half is real — `EvaluationDatasetDetail.scss` was 897 lines, 41 rules deep into a page that no longer existed, and 272 such blocks were spread over 128 sheets. A class is used if it appears as a token, as the base of a `--modifier` / `__element`, or as a template-literal prefix (`` `eval-report-finding--${area}` ``); `&` rules and vendor classes (`.cm-editor`, `.a2ui*`) are exempt. `scripts/check-dead-classes.py`, baseline **0** |
 
+| 24 | Hardcoded user-visible copy in JSX — a text node, or a literal `title` / `aria-label` / `placeholder` / `alt` | **`t()`**, with `<Trans>` where the sentence carries markup. The page then renders one language inside another's chrome; for attributes the audience is a screen reader or a tooltip, which nobody reviews. `<Trans>` children (the English fallback for a key), data values (timezone ids, file names, sample ids) and identifier-shaped placeholders are exempt. `scripts/check-hardcoded-text.py`, baseline **0** |
+
 **`check:styles` is currently clean** (all pre-existing findings cleared: the two over-long files were split, the raw `px` media query / `rgba` backdrop / `window.confirm` / A2UI overlay allowlist entry are gone or justified). Keep it that way — a new finding should be fixed, not allowlisted.
 
 Run **`check:app-layout`** when editing **`App.scss`**, **`app-page.scss`**, **`ChannelSectionLayout*`**, **`MainLayout.tsx`**.

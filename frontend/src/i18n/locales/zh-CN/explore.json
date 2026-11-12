@@ -295,5 +295,8 @@
     "notIndexed": "该类型已有数据待索引，但图中还没有。请先在本体管理器中索引，然后刷新。",
     "notIndexedCta": "前往本体管理器",
     "failed": "无法从本体图读取数据。"
-  }
+  },
+  "treeEmpty": "这个空间还没有页面。",
+  "treeAria": "该 wiki 空间的页面",
+  "treeLoading": "加载中…"
 }

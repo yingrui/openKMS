@@ -89,21 +89,16 @@ export function ConsolePermissionManagement() {
               </div>
               <ol className="console-perm-onboarding-steps">
                 <li>
-                  Review <strong>operation keys</strong> the app understands (see suggested keys below or the{' '}
-                  <strong>Operation keys</strong> tab in Route &amp; API reference).
+                  <Trans t={t} i18nKey="permissions.step1" components={{ bold: <strong /> }} />
                 </li>
                 <li>
-                  <strong>Add catalog rows</strong> for each key you need (or use &quot;Add all suggested keys&quot;),
-                  then fill route/API patterns using <strong>Route &amp; API reference</strong>.
+                  <Trans t={t} i18nKey="permissions.step2" components={{ bold: <strong /> }} />
                 </li>
                 <li>
-                  <strong>Create roles</strong>, select one under <strong>Roles</strong>, adjust checkboxes, then{' '}
-                  <strong>Save role permissions</strong> to persist assignments. Use <strong>All</strong> to edit the
-                  catalog (add/edit/delete rows).
+                  <Trans t={t} i18nKey="permissions.step3" components={{ bold: <strong /> }} />
                 </li>
                 <li>
-                  <strong>OIDC:</strong> each IdP realm role name must match a <code>security_roles.name</code> row
-                  exactly.
+                  <Trans t={t} i18nKey="permissions.step4" components={{ bold: <strong />, code: <code /> }} />
                 </li>
               </ol>
               {missingOperationKeyHints.length > 0 ? (
