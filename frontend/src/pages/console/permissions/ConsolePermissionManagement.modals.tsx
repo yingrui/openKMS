@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import { PERM_ALL } from '../../../config/permissions';
 import { Dialog, FormField } from '../../../styles/design-system/index';
 import type {
@@ -124,6 +125,7 @@ export function ConsolePermissionManagementModals({
   onCloseAddRole,
   onSubmitAddRole,
 }: ConsolePermissionManagementModalsProps) {
+  const { t: tm } = useTranslation('console');
   return (
     <>
       {detailEntry ? (
@@ -131,7 +133,7 @@ export function ConsolePermissionManagementModals({
           open
           onClose={onCloseDetail}
           title={detailEntry.label}
-          closeAriaLabel="Close"
+          closeAriaLabel={tm('close')}
           size="md"
           className="console-perm-detail-modal"
           footer={
@@ -170,16 +172,16 @@ export function ConsolePermissionManagementModals({
               </p>
             ) : !catalogEditable ? (
               <p className="console-perm-detail-system-note">
-                Select <strong>All</strong> under Roles to edit or delete catalog entries.
+                Select <strong>{tm('all')}</strong> under Roles to edit or delete catalog entries.
               </p>
             ) : null}
             {detailEntry.description ? (
               <p className="console-perm-detail-desc-text">{detailEntry.description}</p>
             ) : (
-              <p className="console-perm-muted">No description.</p>
+              <p className="console-perm-muted">{tm('noDescription')}</p>
             )}
             <section className="console-perm-detail-section">
-              <h3 className="console-perm-detail-section-title">Frontend route patterns</h3>
+              <h3 className="console-perm-detail-section-title">{tm('frontendPatterns')}</h3>
               {detailEntry.frontend_route_patterns.length ? (
                 <ul className="console-perm-pattern-list">
                   {detailEntry.frontend_route_patterns.map((p, i) => (
@@ -189,11 +191,11 @@ export function ConsolePermissionManagementModals({
                   ))}
                 </ul>
               ) : (
-                <p className="console-perm-muted">None listed (see description).</p>
+                <p className="console-perm-muted">{tm('noneListed')}</p>
               )}
             </section>
             <section className="console-perm-detail-section">
-              <h3 className="console-perm-detail-section-title">Backend API path patterns</h3>
+              <h3 className="console-perm-detail-section-title">{tm('backendPatterns')}</h3>
               {detailEntry.backend_api_patterns.length ? (
                 <ul className="console-perm-pattern-list">
                   {detailEntry.backend_api_patterns.map((p, i) => (
@@ -203,7 +205,7 @@ export function ConsolePermissionManagementModals({
                   ))}
                 </ul>
               ) : (
-                <p className="console-perm-muted">None listed (see description).</p>
+                <p className="console-perm-muted">{tm('noneListed')}</p>
               )}
             </section>
           </div>
@@ -215,8 +217,8 @@ export function ConsolePermissionManagementModals({
           open
           onClose={onCloseEditPerm}
           closeDisabled={editPermSubmitting}
-          title="Edit permission"
-          closeAriaLabel="Close"
+          title={tm('editPermission')}
+          closeAriaLabel={tm('close')}
           size="lg"
           footer={
             <>
@@ -226,7 +228,7 @@ export function ConsolePermissionManagementModals({
                 disabled={editPermSubmitting}
                 onClick={onCloseEditPerm}
               >
-                Cancel
+                {tm('cancel')}
               </button>
               <button
                 type="button"
@@ -234,7 +236,7 @@ export function ConsolePermissionManagementModals({
                 disabled={editPermSubmitting}
                 onClick={onSubmitEditPerm}
               >
-                {editPermSubmitting ? 'Saving…' : 'Save'}
+                {editPermSubmitting ? tm('saving') : tm('save')}
               </button>
             </>
           }
@@ -243,7 +245,7 @@ export function ConsolePermissionManagementModals({
             Key <code>{catalog.find((c) => c.id === editingPermissionId)?.key ?? ''}</code>{' '}
             (read-only)
           </p>
-          <FormField label="Label">
+          <FormField label={tm('labelLabel')}>
             <input
               type="text"
               value={editPermLabel}
@@ -252,7 +254,7 @@ export function ConsolePermissionManagementModals({
               autoFocus
             />
           </FormField>
-          <FormField label="Description (optional)">
+          <FormField label={tm('descriptionOptional')}>
             <textarea
               value={editPermDesc}
               onChange={(e) => onEditPermDescChange(e.target.value)}
@@ -260,7 +262,7 @@ export function ConsolePermissionManagementModals({
               className="console-perm-modal-textarea"
             />
           </FormField>
-          <FormField label="Frontend route patterns (one per line)">
+          <FormField label={tm('frontendPatternsLabel')}>
             <textarea
               value={editPermFe}
               onChange={(e) => onEditPermFeChange(e.target.value)}
@@ -268,7 +270,7 @@ export function ConsolePermissionManagementModals({
               className="console-perm-modal-textarea"
             />
           </FormField>
-          <FormField label="Backend API patterns (one per line)">
+          <FormField label={tm('backendPatternsLabel')}>
             <textarea
               value={editPermBe}
               onChange={(e) => onEditPermBeChange(e.target.value)}
@@ -283,8 +285,8 @@ export function ConsolePermissionManagementModals({
         open={showRefModal}
         onClose={onCloseRef}
         closeDisabled={refLoading}
-        title="Route & API reference"
-        closeAriaLabel="Close"
+        title={tm('referenceTitle')}
+        closeAriaLabel={tm('close')}
         size="lg"
         className="console-perm-ref-modal"
         bodyClassName="console-perm-ref-body"
@@ -330,12 +332,12 @@ export function ConsolePermissionManagementModals({
             </div>
             {/* ds-control-exempt: `.console-perm-ref-search` styles this input */}
             <label className="console-perm-ref-search">
-              <span className="sr-only">Filter</span>
+              <span className="sr-only">{tm('filter')}</span>
               <input
                 type="search"
                 value={refSearch}
                 onChange={(e) => onRefSearchChange(e.target.value)}
-                placeholder="Filter by path, label, tag…"
+                placeholder={tm('filterPlaceholder')}
               />
             </label>
             <div className="console-perm-ref-scroll" role="tabpanel">
@@ -347,7 +349,7 @@ export function ConsolePermissionManagementModals({
                         type="button"
                         className="console-perm-ref-row"
                         onClick={() => onCopyText(h.key)}
-                        title="Click to copy key"
+                        title={tm('copyKey')}
                       >
                         <span className="console-perm-ref-path">
                           <code>{h.key}</code>
@@ -369,7 +371,7 @@ export function ConsolePermissionManagementModals({
                         type="button"
                         className="console-perm-ref-row"
                         onClick={() => onCopyText(r.path_pattern)}
-                        title="Click to copy path pattern"
+                        title={tm('copyPath')}
                       >
                         <span className="console-perm-ref-path">
                           <code>{r.path_pattern}</code>
@@ -391,7 +393,7 @@ export function ConsolePermissionManagementModals({
                         type="button"
                         className="console-perm-ref-row"
                         onClick={() => onCopyText(`${r.method} ${r.path}`)}
-                        title="Click to copy method + path"
+                        title={tm('copyMethodPath')}
                       >
                         <span className="console-perm-ref-path">
                           <code>
@@ -414,7 +416,7 @@ export function ConsolePermissionManagementModals({
             </div>
           </>
         ) : (
-          <p className="console-perm-muted">No data.</p>
+          <p className="console-perm-muted">{tm('noData')}</p>
         )}
       </Dialog>
 
@@ -422,8 +424,8 @@ export function ConsolePermissionManagementModals({
         open={showAddPermModal}
         onClose={onCloseAddPerm}
         closeDisabled={permSubmitting}
-        title="Add permission"
-        closeAriaLabel="Close"
+        title={tm('addPermission')}
+        closeAriaLabel={tm('close')}
         size="lg"
         footer={
           <>
@@ -433,7 +435,7 @@ export function ConsolePermissionManagementModals({
               disabled={permSubmitting}
               onClick={onCloseAddPerm}
             >
-              Cancel
+              {tm('cancel')}
             </button>
             <button
               type="button"
@@ -441,40 +443,40 @@ export function ConsolePermissionManagementModals({
               disabled={permSubmitting}
               onClick={onSubmitAddPerm}
             >
-              {permSubmitting ? 'Saving…' : 'Create permission'}
+              {permSubmitting ? tm('saving') : tm('createPermission')}
             </button>
           </>
         }
       >
-        <FormField label="Key">
+        <FormField label={tm('keyLabel')}>
           <input
             type="text"
             value={permKey}
             onChange={(e) => onPermKeyChange(e.target.value)}
             maxLength={128}
             autoFocus
-            placeholder="e.g. console:users"
+            placeholder={tm('keyPlaceholder')}
           />
         </FormField>
-        <FormField label="Label">
+        <FormField label={tm('labelLabel')}>
           <input
             type="text"
             value={permLabel}
             onChange={(e) => onPermLabelChange(e.target.value)}
             maxLength={512}
-            placeholder="Short display name"
+            placeholder={tm('labelPlaceholder')}
           />
         </FormField>
-        <FormField label="Description (optional)">
+        <FormField label={tm('descriptionOptional')}>
           <textarea
             value={permDesc}
             onChange={(e) => onPermDescChange(e.target.value)}
             rows={2}
             className="console-perm-modal-textarea"
-            placeholder="What this permission covers"
+            placeholder={tm('descriptionPlaceholder')}
           />
         </FormField>
-        <FormField label="Frontend route patterns (one per line)">
+        <FormField label={tm('frontendPatternsLabel')}>
           <textarea
             value={permFe}
             onChange={(e) => onPermFeChange(e.target.value)}
@@ -483,7 +485,7 @@ export function ConsolePermissionManagementModals({
             placeholder={'/console/users\n/console/*'}
           />
         </FormField>
-        <FormField label="Backend API patterns (one per line)">
+        <FormField label={tm('backendPatternsLabel')}>
           <textarea
             value={permBe}
             onChange={(e) => onPermBeChange(e.target.value)}
@@ -498,8 +500,8 @@ export function ConsolePermissionManagementModals({
         open={showAddModal}
         onClose={onCloseAddRole}
         closeDisabled={addSubmitting}
-        title="Add role"
-        closeAriaLabel="Close"
+        title={tm('addRole')}
+        closeAriaLabel={tm('close')}
         size="md"
         footer={
           <>
@@ -509,7 +511,7 @@ export function ConsolePermissionManagementModals({
               disabled={addSubmitting}
               onClick={onCloseAddRole}
             >
-              Cancel
+              {tm('cancel')}
             </button>
             <button
               type="button"
@@ -517,27 +519,27 @@ export function ConsolePermissionManagementModals({
               disabled={addSubmitting}
               onClick={onSubmitAddRole}
             >
-              {addSubmitting ? 'Creating…' : 'Create role'}
+              {addSubmitting ? tm('creating') : tm('createRole')}
             </button>
           </>
         }
       >
-        <FormField label="Name">
+        <FormField label={tm('nameLabel')}>
           <input
             type="text"
             value={addName}
             onChange={(e) => onAddNameChange(e.target.value)}
             maxLength={128}
             autoFocus
-            placeholder="e.g. content-editor"
+            placeholder={tm('namePlaceholder')}
           />
         </FormField>
-        <FormField label="Description (optional)">
+        <FormField label={tm('descriptionOptional')}>
           <textarea
             value={addDescription}
             onChange={(e) => onAddDescriptionChange(e.target.value)}
             rows={2}
-            placeholder="Short note for administrators"
+            placeholder={tm('roleDescriptionPlaceholder')}
             className="console-perm-modal-textarea"
           />
         </FormField>

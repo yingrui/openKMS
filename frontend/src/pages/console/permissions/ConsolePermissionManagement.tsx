@@ -1,4 +1,5 @@
 import { Navigate } from 'react-router-dom';
+import { Trans, useTranslation } from 'react-i18next';
 import {
   FileText,
   KeyRound,
@@ -38,6 +39,7 @@ function formatCategoryLabel(id: string): string {
 }
 
 export function ConsolePermissionManagement() {
+  const { t } = useTranslation('console');
   const { hasPermission } = useAuth();
   const {
     catalog, permTotal, permPage, setPermPage, permPageSize, setPermPageSize, operationKeyHints,
@@ -65,26 +67,24 @@ export function ConsolePermissionManagement() {
     <div className="console-perm-page">
       <div className="page-header console-perm-header">
         <div>
-          <h1>Permissions</h1>
+          <h1>{t('permissions.pageTitle')}</h1>
           <p className="page-subtitle">
-            Manage the operation-key catalog and assign keys per role. With OIDC, IdP realm role names must match{' '}
-            <code>security_roles.name</code>. The database seeds only <code>all</code>; use Route &amp; API reference for
-            path patterns.
+            <Trans t={t} i18nKey="permissions.pageHint" components={{ code: <code /> }} />
           </p>
         </div>
       </div>
       {!managed ? (
         <div className="console-perm-notice" role="status">
-          Role permissions are not available for this auth mode.
+          {t('permissions.notAvailable')}
         </div>
       ) : (
         <>
           {!onboardingDismissed ? (
-            <section className="console-perm-onboarding" aria-label="Getting started">
+            <section className="console-perm-onboarding" aria-label={t('permissions.onboardingTitle')}>
               <div className="console-perm-onboarding-head">
-                <h2 className="console-perm-onboarding-title">Getting started</h2>
+                <h2 className="console-perm-onboarding-title">{t('permissions.onboardingTitle')}</h2>
                 <button type="button" className="console-perm-onboarding-dismiss" onClick={dismissOnboarding}>
-                  Dismiss
+                  {t('permissions.dismiss')}
                 </button>
               </div>
               <ol className="console-perm-onboarding-steps">
@@ -109,8 +109,7 @@ export function ConsolePermissionManagement() {
               {missingOperationKeyHints.length > 0 ? (
                 <div className="console-perm-onboarding-missing">
                   <p className="console-perm-onboarding-missing-intro">
-                    <strong>{missingOperationKeyHints.length}</strong> built-in operation key
-                    {missingOperationKeyHints.length === 1 ? '' : 's'} not in the catalog yet.
+                    {t('permissions.missingKeys', { count: missingOperationKeyHints.length })}
                   </p>
                   <div className="console-perm-onboarding-actions">
                     <button
@@ -119,7 +118,9 @@ export function ConsolePermissionManagement() {
                       disabled={bulkAddingHints}
                       onClick={() => void addAllMissingSuggestedKeys()}
                     >
-                      {bulkAddingHints ? 'Adding…' : `Add all ${missingOperationKeyHints.length} suggested keys`}
+                      {bulkAddingHints
+                        ? t('permissions.adding')
+                        : t('permissions.addAllSuggested', { count: missingOperationKeyHints.length })}
                     </button>
                   </div>
                   <ul className="console-perm-onboarding-hint-list">
@@ -133,7 +134,7 @@ export function ConsolePermissionManagement() {
                           disabled={addingHintKey === h.key || bulkAddingHints}
                           onClick={() => void addSuggestedPermission(h)}
                         >
-                          {addingHintKey === h.key ? '…' : 'Add'}
+                          {addingHintKey === h.key ? '…' : t('permissions.add')}
                         </button>
                       </li>
                     ))}
@@ -141,19 +142,19 @@ export function ConsolePermissionManagement() {
                 </div>
               ) : operationKeyHints.length > 0 ? (
                 <p className="console-perm-muted console-perm-onboarding-done">
-                  All suggested operation keys are already in the catalog.
+                  {t('permissions.allKeysPresent')}
                 </p>
               ) : null}
             </section>
           ) : null}
 
           <div className="console-perm-main">
-            <div className="console-perm-categories" aria-label="Security roles">
+            <div className="console-perm-categories" aria-label={t('permissions.rolesAria')}>
               <div className="console-perm-categories-header">
-                <h3>Roles</h3>
+                <h3>{t('permissions.rolesTitle')}</h3>
                 <button type="button" className="btn btn-secondary btn-sm" onClick={() => setShowAddModal(true)}>
                   <Plus size={14} />
-                  Add
+                  {t('permissions.add')}
                 </button>
               </div>
               <div className="console-perm-category-list-scroll">
@@ -163,7 +164,7 @@ export function ConsolePermissionManagement() {
                     onClick={() => void trySetSelectedRoleId(null)}
                   >
                     <LayoutGrid size={16} />
-                    <span>All</span>
+                    <span>{t('permissions.all')}</span>
                   </li>
                   {roles.map((r) => (
                     <li
@@ -180,10 +181,10 @@ export function ConsolePermissionManagement() {
                         <div className="console-perm-role-sidebar-actions" onClick={(e) => e.stopPropagation()}>
                           <button
                             type="button"
-                            title="Delete role"
+                            title={t('permissions.deleteRoleTitle')}
                             disabled={deletingId === r.id}
                             onClick={() => void confirmDeleteRole(r)}
-                            aria-label={`Delete role ${r.name}`}
+                            aria-label={t('permissions.deleteRoleAria', { name: r.name })}
                           >
                             <Trash2 size={12} />
                           </button>
@@ -194,7 +195,7 @@ export function ConsolePermissionManagement() {
                 </ul>
               </div>
               {roles.length === 0 ? (
-                <p className="console-perm-roles-sidebar-hint console-perm-muted">No roles yet. Use Add to create one.</p>
+                <p className="console-perm-roles-sidebar-hint console-perm-muted">{t('permissions.noRoles')}</p>
               ) : null}
             </div>
 
@@ -205,8 +206,8 @@ export function ConsolePermissionManagement() {
                     <Search size={18} />
                     <input
                       type="search"
-                      aria-label="Search permissions"
-                      placeholder="Search permissions..."
+                      aria-label={t('permissions.searchAria')}
+                      placeholder={t('permissions.searchPlaceholder')}
                       value={permSearch}
                       onChange={(e) => setPermSearch(e.target.value)}
                     />
@@ -217,7 +218,7 @@ export function ConsolePermissionManagement() {
                       className={`console-perm-filter-btn ${activeCategory === null ? 'active' : ''}`}
                       onClick={() => setActiveCategory(null)}
                     >
-                      All
+                      {t('permissions.all')}
                     </button>
                     {permissionCategories.map((cat) => (
                       <button
@@ -232,38 +233,41 @@ export function ConsolePermissionManagement() {
                   </div>
                   <div className="console-perm-toolbar-actions">
                     <button type="button" className="btn btn-secondary" onClick={() => void openReference()}>
-                      Route &amp; API reference
+                      {t('permissions.reference')}
                     </button>
                     <button type="button" className="btn btn-primary console-perm-toolbar-add" onClick={() => setShowAddPermModal(true)}>
                       <Plus size={18} />
-                      <span>Add permission</span>
+                      <span>{t('permissions.addPermission')}</span>
                     </button>
                   </div>
                 </div>
                 {selectedRole ? (
                   <p className="console-perm-assign-hint">
-                    Editing assignments for <strong>{selectedRole.name}</strong>
+                    <Trans
+                      t={t}
+                      i18nKey="permissions.assignHint"
+                      components={{ bold: <strong /> }}
+                      values={{ role: selectedRole.name, save: t('permissions.saveRole') }}
+                    />
                     {selectedRole.description ? (
                       <>
                         {' '}
                         <span className="console-perm-muted">— {selectedRole.description}</span>
                       </>
                     ) : null}
-                    . Changes are saved when you click <strong>Save role permissions</strong>.
                   </p>
                 ) : (
                   <p className="console-perm-assign-hint console-perm-assign-hint--muted">
-                    Choose <strong>All</strong> to manage the permission catalog (edit/delete rows). Select a role to
-                    assign keys—use Save when done.
+                    <Trans t={t} i18nKey="permissions.assignHintAll" components={{ bold: <strong /> }} />
                   </p>
                 )}
                 {selectedRole ? (
                   <div className="console-perm-draft-bar">
                     {isDraftDirty ? (
-                      <span className="console-perm-draft-bar-status">Unsaved changes</span>
+                      <span className="console-perm-draft-bar-status">{t('permissions.unsaved')}</span>
                     ) : (
                       <span className="console-perm-draft-bar-status console-perm-draft-bar-status--saved">
-                        In sync with server
+                        {t('permissions.inSync')}
                       </span>
                     )}
                     <div className="console-perm-draft-bar-actions">
@@ -273,7 +277,7 @@ export function ConsolePermissionManagement() {
                         disabled={!isDraftDirty || savingRoleId === selectedRole.id}
                         onClick={resetRoleDraft}
                       >
-                        Reset
+                        {t('permissions.reset')}
                       </button>
                       <button
                         type="button"
@@ -281,7 +285,7 @@ export function ConsolePermissionManagement() {
                         disabled={!isDraftDirty || savingRoleId === selectedRole.id}
                         onClick={() => void saveRoleDraft()}
                       >
-                        {savingRoleId === selectedRole.id ? 'Saving…' : 'Save role permissions'}
+                        {savingRoleId === selectedRole.id ? t('permissions.saving') : t('permissions.saveRole')}
                       </button>
                     </div>
                   </div>
@@ -292,20 +296,20 @@ export function ConsolePermissionManagement() {
                 {loading ? (
                   <div className="console-perm-loading">
                     <Loader2 size={32} className="console-perm-loading-spinner" />
-                    <p>Loading permissions…</p>
+                    <p>{t('permissions.loading')}</p>
                   </div>
                 ) : permTotal === 0 && !permSearch.trim() && !activeCategory ? (
-                  <p className="console-perm-table-empty">No permission rows yet. Click &quot;Add permission&quot; to create catalog entries.</p>
+                  <p className="console-perm-table-empty">{t('permissions.emptyCatalog')}</p>
                 ) : (
                   <table className="console-perm-table">
                     <thead>
                       <tr>
                         <th
                           className="console-perm-table-assign-col"
-                          title="Select or clear all permissions in the current list for the selected role"
+                          title={t('permissions.selectAllTitle')}
                         >
                           <label className="console-perm-select-all-label">
-                            <span className="sr-only">Select or clear all visible permissions for this role</span>
+                            <span className="sr-only">{t('permissions.selectAllAria')}</span>
                             <input
                               ref={selectAllCheckboxRef}
                               type="checkbox"
@@ -319,17 +323,17 @@ export function ConsolePermissionManagement() {
                             />
                           </label>
                         </th>
-                        <th>Permission</th>
-                        <th>Category</th>
-                        <th>Patterns</th>
-                        <TableRowActionCell as="th">Actions</TableRowActionCell>
+                        <th>{t('permissions.colPermission')}</th>
+                        <th>{t('permissions.colCategory')}</th>
+                        <th>{t('permissions.colPatterns')}</th>
+                        <TableRowActionCell as="th">{t('permissions.colActions')}</TableRowActionCell>
                       </tr>
                     </thead>
                     <tbody>
                       {catalog.length === 0 ? (
                         <tr>
                           <td colSpan={5} className="console-perm-table-empty-cell">
-                            No permissions match your search or filter.
+                            {t('permissions.noMatch')}
                           </td>
                         </tr>
                       ) : (
@@ -341,8 +345,8 @@ export function ConsolePermissionManagement() {
                           const nFe = row.frontend_route_patterns.length;
                           const nBe = row.backend_api_patterns.length;
                           const patternParts: string[] = [];
-                          if (nFe) patternParts.push(`${nFe} route${nFe === 1 ? '' : 's'}`);
-                          if (nBe) patternParts.push(`${nBe} API${nBe === 1 ? '' : 's'}`);
+                          if (nFe) patternParts.push(t('permissions.routeCount', { count: nFe }));
+                          if (nBe) patternParts.push(t('permissions.apiCount', { count: nBe }));
                           return (
                             <tr key={row.id}>
                               <td className="console-perm-table-assign-col">
@@ -355,8 +359,11 @@ export function ConsolePermissionManagement() {
                                     onChange={() => toggleDraftPerm(row.key)}
                                     aria-label={
                                       selectedRole
-                                        ? `${on ? 'Remove' : 'Assign'} ${row.key} for role ${selectedRole.name}`
-                                        : `Assign ${row.key}`
+                                        ? t(on ? 'permissions.unassignAria' : 'permissions.assignAria', {
+                                            key: row.key,
+                                            role: selectedRole.name,
+                                          })
+                                        : t('permissions.assignAriaNoRole', { key: row.key })
                                     }
                                   />
                                 ) : (
@@ -379,23 +386,23 @@ export function ConsolePermissionManagement() {
                               <TableRowActionCell>
                                 <TableRowActions>
                                   <TableRowActionButton
-                                    title="Details"
-                                    aria-label={`Details for ${row.key}`}
+                                    title={t('permissions.details')}
+                                    aria-label={t('permissions.detailsAria', { key: row.key })}
                                     icon={<FileText size={16} aria-hidden />}
                                     onClick={() => setDetailEntry(row)}
                                   />
                                   {catalogEditable && row.key !== PERM_ALL ? (
                                     <TableRowActionButton
-                                      title="Edit"
-                                      aria-label={`Edit ${row.key}`}
+                                      title={t('shared.edit')}
+                                      aria-label={t('permissions.editAria', { key: row.key })}
                                       icon={<Pencil size={16} aria-hidden />}
                                       onClick={() => openEditPermission(row)}
                                     />
                                   ) : null}
                                   {catalogEditable && row.key !== PERM_ALL ? (
                                     <TableRowActionButton
-                                      title="Delete"
-                                      aria-label={`Delete ${row.key}`}
+                                      title={t('shared.delete')}
+                                      aria-label={t('permissions.deleteAria', { key: row.key })}
                                       icon={<Trash2 size={16} aria-hidden />}
                                       variant="danger"
                                       onClick={() => void confirmDeletePermission(row)}
