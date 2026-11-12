@@ -1,12 +1,13 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
+  Dialog,
   TableRowActionButton,
   TableRowActionCell,
   TableRowActions,
 } from '../../styles/design-system';
 import { useParams, Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { ArrowLeft, Plus, Pencil, Trash2, X, Search as SearchIcon, Loader2, Zap } from 'lucide-react';
+import { ArrowLeft, Plus, Pencil, Trash2, Search as SearchIcon, Loader2, Zap } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuth } from '../../contexts/AuthContext';
 import {
@@ -389,101 +390,97 @@ export function ObjectTypeDetail() {
         </table>
       </div>
 
-      {showForm && (
-        <div className="object-type-dialog-overlay" onClick={closeForm}>
-          <div className="object-type-dialog" onClick={(e) => e.stopPropagation()}>
-            <div className="object-type-dialog-header">
-              <h2>{editInstance ? t('ontology.objectTypeDetail.dialogEditObject') : t('ontology.objectTypeDetail.dialogAddObject')}</h2>
-              <button
-          type="button"
-          className="object-type-dialog-close"
-          aria-label={t('shared.close')} onClick={closeForm}>
-                <X size={20} />
-              </button>
-            </div>
-            <div className="object-type-dialog-body">
-              {!objectType.dataset_id && editInstance ? (
-                <label className="object-type-system-id-field">
-                  <span>{t('ontology.objectTypeDetail.systemIdCol')}</span>
-                  <input type="text" value={editInstance.id} readOnly disabled />
-                  <span className="object-type-field-hint">{t('ontology.objectTypeDetail.systemIdHint')}</span>
-                </label>
-              ) : null}
-              {properties.map((p) => (
-                <label key={p.name}>
-                  <span>{p.name}{p.required ? ' *' : ''}</span>
-                  {p.type === 'boolean' ? (
-                    <select
-                      value={String(formData[p.name] ?? false)}
-                      onChange={(e) => updateFormField(p.name, e.target.value === 'true')}
-                    >
-                      <option value="false">{t('ontology.objectTypeDetail.booleanNo')}</option>
-                      <option value="true">{t('ontology.objectTypeDetail.booleanYes')}</option>
-                    </select>
-                  ) : p.type === 'number' ? (
-                    <input
-                      type="number"
-                      value={String(formData[p.name] ?? '')}
-                      onChange={(e) => {
-                        const v = e.target.value;
-                        updateFormField(p.name, v === '' ? undefined : Number(v));
-                      }}
-                      placeholder={p.required ? t('ontology.objectTypeDetail.placeholderRequired') : t('ontology.objectTypeDetail.placeholderOptional')}
-                    />
-                  ) : p.type === 'date' ? (
-                    <input
-                      type="date"
-                      value={String(formData[p.name] ?? '')}
-                      onChange={(e) => updateFormField(p.name, e.target.value)}
-                    />
-                  ) : p.type === 'datetime' ? (
-                    <input
-                      type="datetime-local"
-                      value={String(formData[p.name] ?? '').slice(0, 16)}
-                      onChange={(e) => updateFormField(p.name, e.target.value)}
-                    />
-                  ) : p.type === 'uuid' ? (
-                    <input
-                      type="text"
-                      inputMode="text"
-                      spellCheck={false}
-                      autoComplete="off"
-                      pattern="[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}"
-                      title="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
-                      value={String(formData[p.name] ?? '')}
-                      onChange={(e) => updateFormField(p.name, e.target.value)}
-                      placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
-                    />
-                  ) : (
-                    <input
-                      type="text"
-                      value={String(formData[p.name] ?? '')}
-                      onChange={(e) => updateFormField(p.name, e.target.value)}
-                      placeholder={p.required ? t('ontology.objectTypeDetail.placeholderRequired') : t('ontology.objectTypeDetail.placeholderOptional')}
-                    />
-                  )}
-                </label>
-              ))}
-              {properties.length === 0 && (
-                <p className="object-type-no-props">{t('ontology.objectTypeDetail.noPropertiesHint')}</p>
-              )}
-            </div>
-            <div className="object-type-dialog-footer">
-              <button type="button" className="btn btn-secondary" onClick={closeForm}>
-                {t('ontology.objectTypeDetail.cancel')}
-              </button>
-              <button
-                type="button"
-                className="btn btn-primary"
-                disabled={saving}
-                onClick={handleSave}
+      <Dialog
+        open={showForm}
+        onClose={closeForm}
+        title={
+          editInstance
+            ? t('ontology.objectTypeDetail.dialogEditObject')
+            : t('ontology.objectTypeDetail.dialogAddObject')
+        }
+        closeAriaLabel={t('shared.close')}
+        size="md"
+        footer={
+          <>
+            <button type="button" className="btn btn-secondary" onClick={closeForm}>
+              {t('ontology.objectTypeDetail.cancel')}
+            </button>
+            <button type="button" className="btn btn-primary" disabled={saving} onClick={handleSave}>
+              {saving
+                ? t('ontology.objectTypeDetail.saving')
+                : editInstance
+                  ? t('ontology.objectTypeDetail.save')
+                  : t('ontology.objectTypeDetail.create')}
+            </button>
+          </>
+        }
+      >
+        {!objectType.dataset_id && editInstance ? (
+          <label className="object-type-system-id-field">
+            <span>{t('ontology.objectTypeDetail.systemIdCol')}</span>
+            <input type="text" value={editInstance.id} readOnly disabled />
+            <span className="object-type-field-hint">{t('ontology.objectTypeDetail.systemIdHint')}</span>
+          </label>
+        ) : null}
+        {properties.map((p) => (
+          <label key={p.name}>
+            <span>{p.name}{p.required ? ' *' : ''}</span>
+            {p.type === 'boolean' ? (
+              <select
+                value={String(formData[p.name] ?? false)}
+                onChange={(e) => updateFormField(p.name, e.target.value === 'true')}
               >
-                {saving ? t('ontology.objectTypeDetail.saving') : editInstance ? t('ontology.objectTypeDetail.save') : t('ontology.objectTypeDetail.create')}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+                <option value="false">{t('ontology.objectTypeDetail.booleanNo')}</option>
+                <option value="true">{t('ontology.objectTypeDetail.booleanYes')}</option>
+              </select>
+            ) : p.type === 'number' ? (
+              <input
+                type="number"
+                value={String(formData[p.name] ?? '')}
+                onChange={(e) => {
+                  const v = e.target.value;
+                  updateFormField(p.name, v === '' ? undefined : Number(v));
+                }}
+                placeholder={p.required ? t('ontology.objectTypeDetail.placeholderRequired') : t('ontology.objectTypeDetail.placeholderOptional')}
+              />
+            ) : p.type === 'date' ? (
+              <input
+                type="date"
+                value={String(formData[p.name] ?? '')}
+                onChange={(e) => updateFormField(p.name, e.target.value)}
+              />
+            ) : p.type === 'datetime' ? (
+              <input
+                type="datetime-local"
+                value={String(formData[p.name] ?? '').slice(0, 16)}
+                onChange={(e) => updateFormField(p.name, e.target.value)}
+              />
+            ) : p.type === 'uuid' ? (
+              <input
+                type="text"
+                inputMode="text"
+                spellCheck={false}
+                autoComplete="off"
+                pattern="[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}"
+                title="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+                value={String(formData[p.name] ?? '')}
+                onChange={(e) => updateFormField(p.name, e.target.value)}
+                placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+              />
+            ) : (
+              <input
+                type="text"
+                value={String(formData[p.name] ?? '')}
+                onChange={(e) => updateFormField(p.name, e.target.value)}
+                placeholder={p.required ? t('ontology.objectTypeDetail.placeholderRequired') : t('ontology.objectTypeDetail.placeholderOptional')}
+              />
+            )}
+          </label>
+        ))}
+        {properties.length === 0 && (
+          <p className="object-type-no-props">{t('ontology.objectTypeDetail.noPropertiesHint')}</p>
+        )}
+      </Dialog>
     </div>
   );
 }

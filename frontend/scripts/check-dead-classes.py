@@ -33,7 +33,14 @@ def source_text() -> tuple[str, list[str]]:
     code = "\n".join(
         path.read_text() for path in [*SRC.rglob("*.tsx"), *SRC.rglob("*.ts")]
     )
-    templates = [t.split("${")[0] for t in re.findall(r"`[^`]*\$\{[^`]*`", code)]
+    # A template may contain several classes before ${...}; keep each token, not the
+    # whole "class-a class-b--" prefix (which never matches a startswith check).
+    templates = [
+        part
+        for t in re.findall(r"`[^`]*\$\{[^`]*`", code)
+        for part in t.split("${")[0].split()
+        if part
+    ]
     return code, templates
 
 

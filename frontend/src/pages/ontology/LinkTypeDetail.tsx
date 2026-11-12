@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { ArrowLeft, Plus, Trash2, X } from 'lucide-react';
+import { ArrowLeft, Plus, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuth } from '../../contexts/AuthContext';
 import {
@@ -15,6 +15,8 @@ import {
 } from '../../data/ontologyApi';
 import { GraphReadNotice } from '../../components/ontology/GraphReadNotice';
 import {
+  Dialog,
+  FormField,
   TableRowActionButton,
   TableRowActionCell,
   TableRowActions,
@@ -243,70 +245,55 @@ export function LinkTypeDetail() {
         </table>
       </div>
 
-      {showForm && (
-        <div className="link-type-dialog-overlay" onClick={closeForm}>
-          <div className="link-type-dialog" onClick={(e) => e.stopPropagation()}>
-            <div className="link-type-dialog-header">
-              <h2>{t('ontology.linkTypeDetail.dialogAddLink')}</h2>
-              <button
-          type="button"
-          className="link-type-dialog-close"
-          aria-label={t('shared.close')} onClick={closeForm}>
-                <X size={20} />
-              </button>
-            </div>
-            <div className="link-type-dialog-body">
-              <label>
-                <span>{t('ontology.linkTypeDetail.sourceLabel', { type: linkType.source_object_type_name })}</span>
-                <select
-                  value={formSourceId}
-                  onChange={(e) => setFormSourceId(e.target.value)}
-                >
-                  <option value="">{t('ontology.linkTypeDetail.selectSource')}</option>
-                  {sourceOptions.map((o) => (
-                    <option key={o.id} value={o.id}>{o.label}</option>
-                  ))}
-                </select>
-              </label>
-              <label>
-                <span>{t('ontology.linkTypeDetail.targetLabel', { type: linkType.target_object_type_name })}</span>
-                <select
-                  value={formTargetId}
-                  onChange={(e) => setFormTargetId(e.target.value)}
-                >
-                  <option value="">{t('ontology.linkTypeDetail.selectTarget')}</option>
-                  {targetOptions.map((o) => (
-                    <option key={o.id} value={o.id}>{o.label}</option>
-                  ))}
-                </select>
-              </label>
-              {sourceOptions.length === 0 && (
-                <p className="link-type-no-objects">
-                  {t('ontology.linkTypeDetail.noInstances', { type: linkType.source_object_type_name })}
-                </p>
-              )}
-              {targetOptions.length === 0 && sourceOptions.length > 0 && (
-                <p className="link-type-no-objects">
-                  {t('ontology.linkTypeDetail.noInstances', { type: linkType.target_object_type_name })}
-                </p>
-              )}
-            </div>
-            <div className="link-type-dialog-footer">
-              <button type="button" className="btn btn-secondary" onClick={closeForm}>
-                {t('ontology.linkTypeDetail.cancel')}
-              </button>
-              <button
-                type="button"
-                className="btn btn-primary"
-                disabled={!formSourceId || !formTargetId || formSourceId === formTargetId || saving}
-                onClick={handleCreate}
-              >
-                {saving ? t('ontology.linkTypeDetail.creating') : t('ontology.linkTypeDetail.create')}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <Dialog
+        open={showForm}
+        onClose={closeForm}
+        title={t('ontology.linkTypeDetail.dialogAddLink')}
+        closeAriaLabel={t('shared.close')}
+        size="md"
+        footer={
+          <>
+            <button type="button" className="btn btn-secondary" onClick={closeForm}>
+              {t('ontology.linkTypeDetail.cancel')}
+            </button>
+            <button
+              type="button"
+              className="btn btn-primary"
+              disabled={!formSourceId || !formTargetId || formSourceId === formTargetId || saving}
+              onClick={handleCreate}
+            >
+              {saving ? t('ontology.linkTypeDetail.creating') : t('ontology.linkTypeDetail.create')}
+            </button>
+          </>
+        }
+      >
+        <FormField label={t('ontology.linkTypeDetail.sourceLabel', { type: linkType.source_object_type_name })}>
+          <select value={formSourceId} onChange={(e) => setFormSourceId(e.target.value)}>
+            <option value="">{t('ontology.linkTypeDetail.selectSource')}</option>
+            {sourceOptions.map((o) => (
+              <option key={o.id} value={o.id}>{o.label}</option>
+            ))}
+          </select>
+        </FormField>
+        <FormField label={t('ontology.linkTypeDetail.targetLabel', { type: linkType.target_object_type_name })}>
+          <select value={formTargetId} onChange={(e) => setFormTargetId(e.target.value)}>
+            <option value="">{t('ontology.linkTypeDetail.selectTarget')}</option>
+            {targetOptions.map((o) => (
+              <option key={o.id} value={o.id}>{o.label}</option>
+            ))}
+          </select>
+        </FormField>
+        {sourceOptions.length === 0 && (
+          <p className="link-type-no-objects">
+            {t('ontology.linkTypeDetail.noInstances', { type: linkType.source_object_type_name })}
+          </p>
+        )}
+        {targetOptions.length === 0 && sourceOptions.length > 0 && (
+          <p className="link-type-no-objects">
+            {t('ontology.linkTypeDetail.noInstances', { type: linkType.target_object_type_name })}
+          </p>
+        )}
+      </Dialog>
     </div>
   );
 }
