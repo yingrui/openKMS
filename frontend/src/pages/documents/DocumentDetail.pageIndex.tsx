@@ -1,11 +1,12 @@
 import { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ChevronDown, ChevronRight, FileText, Loader2, X as XIcon } from 'lucide-react';
+import { ChevronDown, ChevronRight, FileText, Loader2 } from 'lucide-react';
 import {
   RichMarkdown,
 } from '../../components/markdown/richMarkdown';
 import type { Components } from 'react-markdown';
 import type { PageIndexNode } from '../../data/documentsApi';
+import { Dialog } from '../../styles/design-system';
 import type { ExampleDocumentConfig } from './DocumentDetail.types';
 
 /** For each node, endLine = next sibling's startLine - 1 (or parent's end if last child).
@@ -153,37 +154,18 @@ export function PageIndexTree({
 
   return (
     <div className="document-detail-pageindex">
-      {contentPopover && (
-        <div
-          className="document-detail-pageindex-dialog-overlay"
-          onClick={() => setContentPopover(null)}
-        >
-          <div
-            className="document-detail-pageindex-dialog"
-            onClick={(e) => e.stopPropagation()}
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="pageindex-dialog-title"
-          >
-            <div className="document-detail-pageindex-dialog-header">
-              <h2 id="pageindex-dialog-title">{contentPopover.title}</h2>
-              <button
-                type="button"
-                className="document-detail-pageindex-dialog-close"
-                onClick={() => setContentPopover(null)}
-                aria-label={t('common.close')}
-              >
-                <XIcon size={18} />
-              </button>
-            </div>
-            <div className="document-detail-pageindex-dialog-body">
-              <RichMarkdown components={markdownComponents}>
-                {contentPopover.content || t('detail.popoverNoContent')}
-              </RichMarkdown>
-            </div>
-          </div>
-        </div>
-      )}
+      <Dialog
+        open={contentPopover != null}
+        onClose={() => setContentPopover(null)}
+        title={contentPopover?.title}
+        closeAriaLabel={t('common.close')}
+        size="lg"
+      >
+        <RichMarkdown components={markdownComponents}>
+          {contentPopover?.content || t('detail.popoverNoContent')}
+        </RichMarkdown>
+      </Dialog>
+
       {pageIndex.structure.map((node, i) => (
         <PageIndexTreeNode
           key={node.node_id ?? i}

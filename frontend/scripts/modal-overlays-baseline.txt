@@ -20,10 +20,3 @@ src/pages/knowledge-bases/KnowledgeBaseDetail.dialogs.faq.tsx .kb-doc-picker-ove
 src/pages/knowledge-bases/KnowledgeBaseDetail.dialogs.faq.tsx .kb-doc-picker-overlay
 src/pages/ontology/ObjectTypeDetail.tsx .object-type-dialog-overlay
 src/pages/ontology/LinkTypeDetail.tsx .link-type-dialog-overlay
-src/pages/documents/DocumentDetail.modals.tsx .document-detail-pageindex-dialog-overlay
-src/pages/documents/DocumentDetail.modals.tsx .document-detail-pageindex-dialog-overlay
-src/pages/documents/DocumentDetail.modals.tsx .document-detail-pageindex-dialog-overlay
-src/pages/documents/DocumentDetail.modals.tsx .document-detail-pageindex-dialog-overlay
-src/pages/documents/DocumentDetail.pageIndex.tsx .document-detail-pageindex-dialog-overlay
-src/pages/documents/DocumentChannel.modals.tsx .channel-page-modal-overlay
-src/pages/documents/DocumentChannel.modals.tsx .channel-page-modal-overlay
