@@ -418,7 +418,7 @@ function App() {
         <Route path="/signup" element={<Signup />} />
         <Route path="/" element={<MainLayout />}>
           <Route index element={<Home />} />
-          <Route path="knowledge-map" element={<KnowledgeMap />} />
+          <Route path="knowledge-map" element={<FeatureGate feature="knowledge_map"><KnowledgeMap /></FeatureGate>} />
           <Route path="search" element={<GlobalSearch />} />
           <Route path="documents" element={<DocumentsSectionLayout />}>
             <Route index element={<DocumentsIndex />} />

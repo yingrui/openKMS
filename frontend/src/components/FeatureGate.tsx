@@ -1,7 +1,8 @@
 import { Navigate } from 'react-router-dom';
 import { useFeatureToggles } from '../contexts/FeatureTogglesContext';
+import type { FeatureToggleKey } from '../data/featureTogglesApi';
 
-type FeatureId = 'evaluations' | 'connectors' | 'agents' | 'media';
+type FeatureId = FeatureToggleKey;
 
 export function FeatureGate({
   feature,

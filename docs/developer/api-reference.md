@@ -496,7 +496,7 @@ object-type binding on purpose.
 
 | Method | Path | Description |
 |--------|------|-------------|
-| GET | `/api/feature-toggles` | Get feature toggle state (`evaluations`, `connectors`, `agents`, `media`, `hasNeo4jDataSource`; authenticated) |
+| GET | `/api/feature-toggles` | Get feature toggle state (`evaluations`, `connectors`, `agents`, `media`, `knowledge_map`, `hasNeo4jDataSource`; authenticated) |
 | PUT | `/api/feature-toggles` | Update feature toggles (admin-only) |
 
 ### Console object storage

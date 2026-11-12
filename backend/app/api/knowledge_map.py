@@ -51,9 +51,13 @@ from app.services.ontology.knowledge_map.knowledge_map_html_designer_session imp
     persist_designer_turn_safe,
 )
 from app.services.identity.permissions.permission_catalog import PERM_KNOWLEDGE_MAP_READ, PERM_KNOWLEDGE_MAP_WRITE
-from app.services.platform.feature_toggles import is_feature_enabled
+from app.services.platform.feature_toggles import is_feature_enabled, require_knowledge_map_feature
 
-router = APIRouter(prefix="/knowledge-map", tags=["knowledge-map"])
+router = APIRouter(
+    prefix="/knowledge-map",
+    tags=["knowledge-map"],
+    dependencies=[Depends(require_knowledge_map_feature)],
+)
 logger = logging.getLogger(__name__)
 
 RESOURCE_TYPES: frozenset[str] = frozenset({"document_channel", "article_channel", "media_channel", "wiki_space"})

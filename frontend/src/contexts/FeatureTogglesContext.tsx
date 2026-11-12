@@ -15,6 +15,7 @@ const defaults: FeatureToggles = {
   connectors: true,
   agents: true,
   media: false,
+  knowledge_map: true,
   hasNeo4jDataSource: false,
 };
 

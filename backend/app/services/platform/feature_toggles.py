@@ -14,6 +14,7 @@ DEFAULTS: dict[str, bool] = {
     "connectors": True,
     "agents": True,
     "media": False,
+    "knowledge_map": True,
 }
 
 
@@ -36,3 +37,8 @@ async def require_agents_feature(db: AsyncSession = Depends(get_db)) -> None:
 async def require_media_feature(db: AsyncSession = Depends(get_db)) -> None:
     if not await is_feature_enabled(db, "media"):
         raise HTTPException(status_code=404, detail="Media feature is disabled")
+
+
+async def require_knowledge_map_feature(db: AsyncSession = Depends(get_db)) -> None:
+    if not await is_feature_enabled(db, "knowledge_map"):
+        raise HTTPException(status_code=404, detail="Knowledge map feature is disabled")

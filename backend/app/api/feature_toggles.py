@@ -1,7 +1,8 @@
 """Feature toggles API – read for all authenticated users, write for admins."""
 from fastapi import APIRouter, Depends
 from pydantic import BaseModel
-from sqlalchemy import select
+from sqlalchemy import func, select
+from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.auth import require_auth, require_permission
@@ -19,6 +20,7 @@ class FeatureTogglesResponse(BaseModel):
     connectors: bool = True
     agents: bool = True
     media: bool = False
+    knowledge_map: bool = True
     hasNeo4jDataSource: bool = False
 
 
@@ -27,6 +29,7 @@ class FeatureTogglesUpdate(BaseModel):
     connectors: bool | None = None
     agents: bool | None = None
     media: bool | None = None
+    knowledge_map: bool | None = None
 
 
 async def _load_toggles(db: AsyncSession) -> dict[str, bool]:
@@ -51,11 +54,13 @@ async def update_feature_toggles(
     for key, enabled in updates.items():
         if key not in allowed:
             continue
-        toggle = await db.get(FeatureToggle, key)
-        if toggle:
-            toggle.enabled = enabled
-        else:
-            db.add(FeatureToggle(key=key, enabled=enabled))
+        stmt = pg_insert(FeatureToggle).values(key=key, enabled=enabled)
+        await db.execute(
+            stmt.on_conflict_do_update(
+                index_elements=[FeatureToggle.key],
+                set_={"enabled": stmt.excluded.enabled, "updated_at": func.now()},
+            )
+        )
     await db.flush()
     toggles = await _load_toggles(db)
     return FeatureTogglesResponse(**toggles)

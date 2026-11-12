@@ -175,6 +175,10 @@
       "media": {
         "name": "Media library",
         "description": "Image and video collections with metadata, upload, and AI generation (experimental)."
+      },
+      "knowledge_map": {
+        "name": "Knowledge map",
+        "description": "Hierarchical map of terms and their links to documents, articles, wikis, and media."
       }
     }
   },

@@ -321,6 +321,7 @@ export const APP_MODULES: AppModule[] = [
     showInLauncher: true,
     showInMainSidebar: true,
     showInConsoleNav: false,
+    featureToggle: 'knowledge_map',
     isActive: knowledgeMapActive,
   },
 ];
