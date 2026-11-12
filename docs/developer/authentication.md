@@ -1,126 +1,26 @@
-# Authentication and sessions
+# Authentication configuration
 
-Canonical implementation: `backend/app/api/auth.py`, `backend/app/api/auth_oidc.py`,
-`backend/app/services/identity/auth_session.py`, `backend/app/models/auth_session.py`, and
-`frontend/src/contexts/`.
+openKMS has one browser authentication path and one machine/API credential path:
 
-This page describes the **current** implementation. The original rollout plan is no longer a second
-supported mode: there is one browser authentication path and one machine/API credential path.
+- **Browser:** opaque `openkms_session` cookie backed by the server-side `auth_sessions` table. The browser never receives OIDC or local JWTs.
+- **CLI / API / internal service:** `Authorization: Bearer` with an OIDC JWT, local JWT, or `okms.*` personal API key. Local CLI may also use HTTP Basic.
 
-## Two entry points, not two browser modes
+There is no second browser mode and no feature flag to switch between implementations.
 
-| Caller | Credential | Backend path |
-|---|---|---|
-| Browser | opaque `openkms_session` cookie | `auth_sessions` row → decrypted access token |
-| CLI / API client / internal service | `Authorization: Bearer` (OIDC JWT, local JWT, or `okms.*` API key) | stateless verification |
-| Local CLI | `Authorization: Basic` (optional) | minted `local-cli` JWT |
+## Choose the mode
 
-The browser never receives an access or refresh token. JWT remains for machines and automation; it is not a
-second browser session implementation.
-
-`authenticate_request()` checks credentials in this order:
-
-1. `Authorization: Bearer` → OIDC JWKS or local HS256 verification
-2. `okms.*` personal API key
-3. local-mode HTTP Basic (CLI)
-4. `openkms_session` → `auth_sessions`
-5. otherwise `401 AUTHENTICATION_REQUIRED`
-
-`session_only=True` (used by the Chamber proxy) skips the `Authorization` header, because that header belongs
-to the hosted app, not to openKMS.
-
-## Server-side browser session
-
-`auth_sessions` stores:
-
-| Column | Meaning |
+| `OPENKMS_AUTH_MODE` | Use when |
 |---|---|
-| `id` | random opaque session id; this is what the signed cookie carries |
-| `user_sub`, `idp_sub` | identity |
-| `auth_mode` | `oidc` or `local` |
-| `access_token_enc` | encrypted access token |
-| `refresh_token_enc` | encrypted OIDC refresh token (null in local mode) |
-| `access_expires_at` | access-token expiry |
-| `idle_expires_at` | sliding inactivity deadline |
-| `absolute_expires_at` | hard session deadline |
-| `rotated_from`, `replaced_by` | session replacement chain |
-| `revoked_at`, `created_at`, `last_seen_at` | lifecycle |
+| `oidc` | Users authenticate through an OIDC IdP (Keycloak, Entra ID, Okta, …) |
+| `local` | Users are stored in openKMS PostgreSQL and sign in with username/email + password |
 
-Tokens are encrypted with the existing credential-encryption key (`OPENKMS_DATASOURCE_ENCRYPTION_KEY`, or a
-key derived from `OPENKMS_SECRET_KEY`). The cookie is signed by `OPENKMS_SECRET_KEY` and contains only the
-opaque id. Changing either key invalidates existing sessions and forces re-login.
+The frontend reads `auth_mode` from `GET /api/auth/public-config`. `VITE_AUTH_MODE` is only a fallback when that request fails.
 
-### Timeouts
+## OIDC configuration
 
-- **Idle:** `OPENKMS_SESSION_IDLE_MINUTES` (default 30). Activity extends it, but the write is throttled to at
-  most once per minute.
-- **Absolute:** `OPENKMS_SESSION_ABSOLUTE_HOURS` (default 12). Refresh never extends it; reaching it requires
-  re-authentication.
-- The cookie's `max_age` is 7 days, but the database deadlines are authoritative. A still-present cookie is not
-  a still-valid session.
+### 1. Create the IdP client
 
-### Refresh and rotation
-
-- Automatic refresh happens when an authenticated request sees `access_expires_at` within 60 seconds.
-- `POST /api/auth/refresh` explicitly refreshes, rotates the access token, creates a successor session id,
-  revokes the old row, and records `replaced_by` / `rotated_from`.
-- The old session id remains usable for 15 seconds after rotation so concurrent in-flight requests do not get
-  logged out.
-- Refresh takes a row lock; a request that waited behind another refresh re-checks the new expiry instead of
-  refreshing again.
-- OIDC refresh uses the encrypted refresh token at the IdP `token_endpoint`. Local refresh re-mints a short
-  HS256 JWT (`OPENKMS_LOCAL_SESSION_JWT_MINUTES`, default 30).
-- Expired/revoked rows older than 30 days are pruned opportunistically when a session is created.
-
-## OIDC flow
-
-Browser:
-
-```text
-GET /api/auth/oidc/login?returnTo=...
-  -> IdP authorization endpoint (PKCE S256, state, prompt=login)
-  -> GET /login/oauth2/code/oidc?code=...&state=...
-  -> backend code exchange
-  -> auth_sessions + openkms_session cookie
-  -> 302 to frontend returnTo
-```
-
-Rules:
-
-- `returnTo` must be a same-origin relative path; absolute URLs, `//host`, and backslash variants are rejected.
-- The backend uses a confidential client (`OPENKMS_OIDC_CLIENT_ID` / `OPENKMS_OIDC_CLIENT_SECRET`).
-- `offline_access` is **not** requested by default. Set `OPENKMS_OIDC_REQUEST_OFFLINE_ACCESS=true` only when
-  the IdP client and user are allowed to use offline tokens. Keycloak otherwise rejects code exchange with
-  `CODE_TO_TOKEN_ERROR not_allowed`.
-- Without `offline_access`, normal authorization-code refresh tokens are still used while the IdP session
-  allows refresh.
-- The callback path must exactly match `OPENKMS_OIDC_REDIRECT_URI` and the IdP client's Valid Redirect URI.
-
-Logout:
-
-- `POST /api/auth/logout` revokes the session and clears the cookie.
-- `GET /api/auth/oidc/logout` revokes, then performs RP-initiated logout when the IdP exposes
-  `end_session_endpoint`.
-- `OPENKMS_OIDC_POST_LOGOUT_CLIENT_ID` defaults to `openkms-backend`; the client needs
-  `OPENKMS_FRONTEND_URL` as its post-logout redirect URI.
-
-## Local flow
-
-```text
-POST /api/auth/login
-  -> verify password
-  -> create auth_sessions (short local JWT)
-  -> openkms_session cookie
-  -> frontend GET /api/auth/me
-```
-
-- Registration (`POST /api/auth/register`) does the same when `OPENKMS_ALLOW_SIGNUP=true`.
-- `OPENKMS_LOCAL_JWT_EXP_HOURS` remains for non-browser local credentials (for example personal API keys);
-  browser sessions use `OPENKMS_LOCAL_SESSION_JWT_MINUTES`.
-
-## Keycloak: minimal client
-
-Use one confidential client for the browser BFF:
+Use one **confidential** client for the browser BFF:
 
 | Setting | Value |
 |---|---|
@@ -131,71 +31,97 @@ Use one confidential client for the browser BFF:
 | Implicit flow | off |
 | Direct access grants | off |
 | Service accounts | off |
-| Valid redirect URI | `${OPENKMS_OIDC_REDIRECT_URI}` (e.g. `http://localhost:8102/login/oauth2/code/oidc`) |
-| Valid post logout redirect URI | `OPENKMS_FRONTEND_URL` |
+| Valid redirect URI | exact value of `OPENKMS_OIDC_REDIRECT_URI` |
+| Valid post-logout redirect URI | exact value of `OPENKMS_FRONTEND_URL` |
 | PKCE | S256 (sent by the backend) |
-| `offline_access` | optional; only if `OPENKMS_OIDC_REQUEST_OFFLINE_ACCESS=true` |
+| `offline_access` | optional; only when `OPENKMS_OIDC_REQUEST_OFFLINE_ACCESS=true` |
 
-The old public `openkms-frontend` client is no longer used by the SPA; delete it once no other client depends on it.
+The browser redirects to the IdP, but the token exchange happens on the backend. The SPA never holds OIDC tokens.
 
-`openkms-cli` needs its own confidential client with service accounts enabled and no redirect URI.
-`qa-agent` and the worker use their own client credentials as configured.
+The old public `openkms-frontend` client is no longer used by the SPA. Delete it when no other application depends on it.
 
-## Configuration
+`openkms-cli` needs its own confidential client with service accounts enabled and no redirect URI. `qa-agent` and the worker use their own client credentials.
 
-| Variable | Default | Purpose |
+### 2. Configure the backend
+
+```bash
+OPENKMS_AUTH_MODE=oidc
+
+OPENKMS_OIDC_ISSUER=http://localhost:8081/realms/openkms
+OPENKMS_OIDC_CLIENT_ID=openkms-backend
+OPENKMS_OIDC_CLIENT_SECRET=...
+OPENKMS_OIDC_REDIRECT_URI=http://localhost:8102/login/oauth2/code/oidc
+
+OPENKMS_FRONTEND_URL=http://localhost:5173
+OPENKMS_OIDC_POST_LOGOUT_CLIENT_ID=openkms-backend
+```
+
+The backend discovers the IdP endpoints from `${OPENKMS_OIDC_ISSUER}/.well-known/openid-configuration`.
+
+Important:
+
+- `OPENKMS_OIDC_REDIRECT_URI` and the IdP's Valid Redirect URI must match **character for character**.
+- Leave `OPENKMS_OIDC_REQUEST_OFFLINE_ACCESS=false` unless the IdP client and user are allowed to use offline tokens. Keycloak may reject the code exchange with `CODE_TO_TOKEN_ERROR not_allowed` when that scope is not permitted.
+- Normal authorization-code refresh tokens are still used while the IdP session allows refresh.
+- Use HTTPS and set `OPENKMS_SESSION_COOKIE_SECURE=true` in production.
+
+### 3. Configure the frontend
+
+No OIDC client ID, secret, or redirect URI belongs in the frontend. Only the fallback mode is optional:
+
+```bash
+VITE_AUTH_MODE=oidc
+```
+
+## Local configuration
+
+```bash
+OPENKMS_AUTH_MODE=local
+OPENKMS_ALLOW_SIGNUP=true
+OPENKMS_LOCAL_SESSION_JWT_MINUTES=30
+OPENKMS_LOCAL_JWT_EXP_HOURS=168
+```
+
+- `OPENKMS_ALLOW_SIGNUP` exposes `POST /api/auth/register`; the first registered user becomes admin.
+- `OPENKMS_LOCAL_SESSION_JWT_MINUTES` controls the short access JWT used by browser sessions.
+- `OPENKMS_LOCAL_JWT_EXP_HOURS` remains for non-browser local credentials, such as personal API keys.
+- Disable self-signup after creating the first admin if registration should be closed.
+
+## Session behavior
+
+| Setting | Default | Effect |
 |---|---|---|
-| `OPENKMS_AUTH_MODE` | `oidc` | `oidc` or `local` |
-| `OPENKMS_SESSION_IDLE_MINUTES` | `30` | sliding idle timeout |
-| `OPENKMS_SESSION_ABSOLUTE_HOURS` | `12` | hard session cap |
-| `OPENKMS_LOCAL_SESSION_JWT_MINUTES` | `30` | local browser access JWT |
-| `OPENKMS_SESSION_COOKIE_SECURE` | `false` | set `Secure` on the cookie; enable behind HTTPS |
-| `OPENKMS_OIDC_REDIRECT_URI` | `http://localhost:8102/login/oauth2/code/oidc` | exact backend callback |
-| `OPENKMS_OIDC_REQUEST_OFFLINE_ACCESS` | `false` | request the optional offline scope |
-| `OPENKMS_OIDC_POST_LOGOUT_CLIENT_ID` | `openkms-backend` | client id sent to `end_session_endpoint` |
-| `OPENKMS_FRONTEND_URL` | `http://localhost:5173` | frontend return and post-logout origin |
+| `OPENKMS_SESSION_IDLE_MINUTES` | `30` | Sliding inactivity timeout; activity extends it |
+| `OPENKMS_SESSION_ABSOLUTE_HOURS` | `12` | Hard session limit; refresh cannot extend it |
+| `OPENKMS_SESSION_COOKIE_SECURE` | `false` | Sets `Secure` on the session cookie; enable behind HTTPS |
 
-Full list: [Configuration](configuration.md).
+The browser cookie's `max_age` is seven days, but the database idle/absolute deadlines are authoritative. A cookie that is still present may already represent an expired session.
 
-## Security properties and intentional limits
+When the access token is close to expiry, openKMS refreshes it server-side. An explicit `POST /api/auth/refresh` also rotates the session id; the old id remains usable for a short grace window for concurrent requests. Logout revokes the session.
 
-Implemented:
+## Logout
 
-- opaque cookie; no access/refresh token in browser storage or URLs
-- encrypted tokens at rest
-- `HttpOnly`, `SameSite=Lax`, optional `Secure`
-- Origin/Referer check on cookie-auth mutations (`/api/auth/refresh`, `/api/auth/logout`)
-- same-origin-only `returnTo`
-- PKCE S256 + `state` + `prompt=login`
-- idle + absolute deadlines; refresh cannot extend absolute
-- session id rotation on explicit refresh with a short grace window
-- login/account switch revokes the previous session
-- logout/`auth/refresh` revocation and audit events
-- opportunistic cleanup of old rows
+- `POST /api/auth/logout` revokes the server-side session and clears the cookie.
+- `GET /api/auth/oidc/logout` revokes the session and performs RP-initiated logout when the IdP exposes `end_session_endpoint`.
+- `OPENKMS_OIDC_POST_LOGOUT_CLIENT_ID` must identify a client whose post-logout redirect URI includes `OPENKMS_FRONTEND_URL`.
 
-Deliberate boundaries:
+## Security checklist
 
-- The cookie name is `openkms_session`, not `__Host-openkms_session`; a future migration can adopt the prefix.
-- Refresh-token reuse detection is delegated to the IdP; openKMS never accepts a client-supplied refresh token.
-  IdP rotation/reuse policy is therefore the authority.
-- There is no OIDC `nonce` validation because the backend consumes the access token, not the ID token. PKCE and
-  `state` cover the browser callback.
-- Login/refresh rate limiting is not implemented in this module; put it at the ingress or add a dedicated
-  limiter before exposing the backend publicly.
-- CSRF uses Origin/Referer rather than a double-submit token; keep `SameSite=Lax` and do not add cross-site
-  cookie-auth POSTs.
-- Revoking a session does not revoke an already-issued Bearer JWT; Bearer credentials expire by their own
-  `exp` (or API-key revocation).
+- Serve the frontend and backend over HTTPS in production.
+- Set `OPENKMS_SESSION_COOKIE_SECURE=true` behind HTTPS.
+- Register only exact redirect URIs; do not use wildcards for production.
+- Do not enable `offline_access` unless the IdP explicitly allows it.
+- Keep `OPENKMS_SECRET_KEY` and `OPENKMS_DATASOURCE_ENCRYPTION_KEY` stable and secret. Changing either invalidates existing sessions.
+- Revoking a session does not revoke an already-issued Bearer JWT; Bearer credentials expire by their own `exp`, or by API-key revocation.
+- Put login/refresh rate limiting at the ingress or a dedicated gateway before exposing the backend publicly.
 
-## Removed legacy paths
+## Common errors
 
-The following were removed when the single BFF path was adopted:
+| Symptom | Check |
+|---|---|
+| `Invalid parameter: redirect_uri` | `OPENKMS_OIDC_REDIRECT_URI` exactly matches the IdP client's Valid Redirect URI |
+| `CODE_TO_TOKEN_ERROR not_allowed` | Stop requesting `offline_access`, or allow it for the client and user |
+| Logout uses an old client id | The running backend still has an exported `OPENKMS_OIDC_POST_LOGOUT_CLIENT_ID`; unset it and restart so `.env` is read |
+| Login succeeds but logout returns an IdP redirect error | The client's post-logout redirect URI must exactly match `OPENKMS_FRONTEND_URL` |
 
-- `OPENKMS_AUTH_SESSION_V2` and `public-config.session_v2`
-- `/sync-session`
-- `/clear-session`
-- `/login/oauth2/code/keycloak`
-- SPA `oidc-client-ts`, `/auth/callback`, `/auth/silent-renew`
-- legacy `access_token` cookie fallback
-
-Existing legacy cookies are invalid after this change; users sign in once again.
+Full environment list: [Configuration](configuration.md).

@@ -127,7 +127,7 @@ reloader 把监听 socket 留在父进程：子进程在 accept 之前退出时�
 3. 可选：首个管理员存在后设 `OPENKMS_ALLOW_SIGNUP=false` 关闭公开注册。**首次**注册始终为管理员。
 4. **openkms-cli**：`OPENKMS_AUTH_MODE=local`，`OPENKMS_CLI_BASIC_USER`、`OPENKMS_CLI_BASIC_PASSWORD`（须与后端一致）。仅在可信且无 TLS 的网络使用。
 
-#### OIDC 搭建（任意符合标准的 IdP）
+#### OIDC 搭建（任意符合标准的 IdP） {#oidc-setup-any-standards-compliant-idp}
 
 浏览器认证由后端 BFF 处理，SPA 不持有 OIDC token。完整模型见[认证](authentication.md)。后端是**机密 OIDC client**，使用 Authorization Code + PKCE、state 和可选的 `offline_access`（服务端 refresh）。
 
