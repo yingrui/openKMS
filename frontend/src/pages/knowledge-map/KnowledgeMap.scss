@@ -294,65 +294,12 @@
   padding: var(--space-6);
 }
 
-.knowledge-map-dialog-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: var(--space-2);
-}
-
-.knowledge-map-dialog-header h2 {
-  margin: 0;
-  font-size: var(--text-xl);
-  font-weight: 600;
-  color: var(--color-text);
-}
-
-.knowledge-map-dialog-close {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 8px;
-  background: none;
-  border: none;
-  color: var(--color-text-muted);
-  cursor: pointer;
-  border-radius: var(--radius-sm);
-  transition: color 0.15s, background 0.15s;
-}
-
-.knowledge-map-dialog-close:hover:not(:disabled) {
-  background: var(--color-bg-muted);
-  color: var(--color-text);
-}
-
-.knowledge-map-dialog-close:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-.knowledge-map-dialog-body {
-  padding: var(--space-4) 0;
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-4);
-}
-
 .knowledge-map-dialog-error {
   padding: var(--padding-compact-y) var(--space-3);
   font-size: var(--text-md);
   color: var(--color-error-contrast);
   background: var(--color-error);
   border-radius: var(--radius-md);
-}
-
-.knowledge-map-dialog-body label {
-  display: flex;
-  flex-direction: column;
-  gap: var(--gap-compact);
-  font-size: var(--text-md);
-  font-weight: 500;
-  color: var(--color-text-secondary);
 }
 
 .knowledge-map-dialog-body input,
@@ -366,25 +313,11 @@
   font-size: var(--text-base);
 }
 
-.knowledge-map-dialog-body textarea {
-  resize: vertical;
-  min-height: 56px;
-}
-
 .knowledge-map-dialog-body input:focus,
 .knowledge-map-dialog-body textarea:focus,
 .knowledge-map-dialog-body select:focus {
   outline: none;
   border-color: var(--color-accent);
-}
-
-.knowledge-map-dialog-footer {
-  display: flex;
-  justify-content: flex-end;
-  gap: var(--space-3);
-  margin-top: var(--space-6);
-  padding-top: var(--space-4);
-  border-top: 1px solid var(--color-border);
 }
 
 .knowledge-map-empty {
@@ -739,4 +672,3 @@
   color: var(--color-text-muted);
   margin-top: 2px;
 }
-

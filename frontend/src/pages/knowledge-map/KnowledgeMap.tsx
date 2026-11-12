@@ -12,7 +12,6 @@ import {
   ChevronDown,
   ArrowRightLeft,
   Pencil,
-  X,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuth } from '../../contexts/AuthContext';
@@ -31,7 +30,7 @@ import {
 } from '../../data/knowledgeMapApi';
 import { fetchAllWikiSpaces } from '../../data/wikiSpacesApi';
 import { useConfirm } from '../../contexts/ConfirmContext';
-import { PanelToolbar } from '../../styles/design-system';
+import { Dialog, FormField, PanelToolbar } from '../../styles/design-system';
 import './KnowledgeMap.scss';
 import { KnowledgeMapOverview } from './KnowledgeMapOverview';
 import { KnowledgeMapForceGraph } from '../../components/KnowledgeMapForceGraph';
@@ -1001,80 +1000,61 @@ export function KnowledgeMap() {
             </section>
           )}
 
-          {showNewTermModal && (
-            <div className="knowledge-map-dialog-overlay" role="presentation" onClick={closeNewTermModal}>
-              <div
-                className="knowledge-map-dialog"
-                role="dialog"
-                aria-modal="true"
-                aria-labelledby="knowledge-map-new-node-title"
-                onClick={(e) => e.stopPropagation()}
-              >
-                <div className="knowledge-map-dialog-header">
-                  <h2 id="knowledge-map-new-node-title">{t('modalNewNodeTitle')}</h2>
-                  <button
-                    type="button"
-                    className="knowledge-map-dialog-close"
-                    aria-label={t('closeAria')}
-                    onClick={closeNewTermModal}
-                    disabled={creating}
-                  >
-                    <X size={20} />
-                  </button>
-                </div>
-                <div className="knowledge-map-dialog-body">
-                  {createError && (
-                    <div className="knowledge-map-dialog-error" role="alert">
-                      {createError}
-                    </div>
-                  )}
-                  <label>
-                    <span>{t('modalNameLabel')}</span>
-                    <input
-                      type="text"
-                      value={createName}
-                      onChange={(e) => setCreateName(e.target.value)}
-                      placeholder={t('modalNamePlaceholder')}
-                      autoFocus
-                    />
-                  </label>
-                  <label>
-                    <span>{t('modalDescriptionLabel')}</span>
-                    <textarea
-                      value={createDescription}
-                      onChange={(e) => setCreateDescription(e.target.value)}
-                      placeholder={t('modalDescriptionPlaceholder')}
-                      rows={2}
-                    />
-                  </label>
-                  <label>
-                    <span>{t('modalParentLabel')}</span>
-                    <select value={createParentId} onChange={(e) => setCreateParentId(e.target.value)}>
-                      <option value="">{t('parentNoneTopLevel')}</option>
-                      {parentOptions.map((p) => (
-                        <option key={p.id} value={p.id}>
-                          {'—'.repeat(p.depth)} {p.name}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-                </div>
-                <div className="knowledge-map-dialog-footer">
-                  <button type="button" className="btn btn-secondary" onClick={closeNewTermModal} disabled={creating}>
-                    {t('cancel')}
-                  </button>
-                  <button
-                    type="button"
-                    className="btn btn-primary"
-                    disabled={creating || !createName.trim()}
-                    onClick={() => void handleCreateTerm()}
-                  >
-                    {creating ? t('creating') : t('create')}
-                  </button>
-                </div>
+          <Dialog
+            open={showNewTermModal}
+            onClose={closeNewTermModal}
+            closeDisabled={creating}
+            title={t('modalNewNodeTitle')}
+            closeAriaLabel={t('closeAria')}
+            size="md"
+            footer={
+              <>
+                <button type="button" className="btn btn-secondary" onClick={closeNewTermModal} disabled={creating}>
+                  {t('cancel')}
+                </button>
+                <button
+                  type="button"
+                  className="btn btn-primary"
+                  disabled={creating || !createName.trim()}
+                  onClick={() => void handleCreateTerm()}
+                >
+                  {creating ? t('creating') : t('create')}
+                </button>
+              </>
+            }
+          >
+            {createError && (
+              <div className="knowledge-map-dialog-error" role="alert">
+                {createError}
               </div>
-            </div>
-          )}
+            )}
+            <FormField label={t('modalNameLabel')}>
+              <input
+                type="text"
+                value={createName}
+                onChange={(e) => setCreateName(e.target.value)}
+                placeholder={t('modalNamePlaceholder')}
+              />
+            </FormField>
+            <FormField label={t('modalDescriptionLabel')}>
+              <textarea
+                value={createDescription}
+                onChange={(e) => setCreateDescription(e.target.value)}
+                placeholder={t('modalDescriptionPlaceholder')}
+                rows={2}
+              />
+            </FormField>
+            <FormField label={t('modalParentLabel')}>
+              <select value={createParentId} onChange={(e) => setCreateParentId(e.target.value)}>
+                <option value="">{t('parentNoneTopLevel')}</option>
+                {parentOptions.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {'—'.repeat(p.depth)} {p.name}
+                  </option>
+                ))}
+              </select>
+            </FormField>
+          </Dialog>
         </>
       )}
     </div>
