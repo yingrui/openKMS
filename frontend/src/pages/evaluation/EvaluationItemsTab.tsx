@@ -287,7 +287,7 @@ export function EvaluationItemsTab() {
           <textarea rows={3} className="ds-control" value={query} onChange={(e) => setQuery(e.target.value)} />
         </FormField>
         {isQuery ? (
-          <div className="eval-dialog-expected-readonly">
+          <div className="eval-expected-readonly">
             <span>{t('evaluationDetail.colExpectedQuery')}</span>
             <ul>
               {expectedQueryLines(editing?.expected_query).map((line, i) => (

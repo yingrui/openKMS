@@ -1,19 +1,6 @@
 @use '../../styles/design-system/mixins' as *;
 @use '../../styles/design-system/tokens' as ds;
 
-.eval-detail {
-  width: 100%;
-}
-
-.eval-detail-loading {
-  color: var(--color-text-secondary);
-  padding: 40px 0;
-}
-
-.eval-detail-header {
-  margin-bottom: var(--space-6);
-}
-
 .eval-back {
   display: inline-flex;
   align-items: center;
@@ -27,27 +14,6 @@
 
 .eval-back:hover {
   color: var(--color-text);
-}
-
-.eval-detail-title-row {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  flex-wrap: wrap;
-  gap: var(--space-4);
-}
-
-.eval-detail-title-row h1 {
-  font-size: var(--text-2xl);
-  font-weight: 600;
-  margin: 0;
-}
-
-.eval-detail-actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: calc(var(--space-2) + var(--space-1) / 2);
-  align-items: center;
 }
 
 .eval-detail-actions .btn {
@@ -71,69 +37,8 @@
   color: var(--color-text);
 }
 
-.eval-detail-meta {
-  margin: 8px 0 0;
-  font-size: var(--text-md);
-  color: var(--color-text-muted);
-}
-
-.eval-detail-desc {
-  margin: 8px 0 0;
-  font-size: var(--text-base);
-  color: var(--color-text-secondary);
-}
-
 .eval-runs-table code.eval-run-type {
   font-size: var(--text-xs);
-}
-
-.eval-run-date {
-  white-space: nowrap;
-  font-size: var(--text-sm);
-}
-
-.eval-compare-hint {
-  font-size: var(--text-md);
-  color: var(--color-text-secondary);
-  margin: 0 0 var(--space-3) 0;
-}
-
-.eval-compare-controls {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: flex-end;
-  gap: var(--space-4);
-  margin-bottom: var(--space-4);
-}
-
-.eval-compare-controls label {
-  display: flex;
-  flex-direction: column;
-  gap: var(--gap-compact);
-  font-size: var(--text-sm);
-  font-weight: 500;
-  color: var(--color-text-secondary);
-}
-
-.eval-compare-select {
-  min-width: 280px;
-  padding: var(--space-2) calc(var(--space-2) + var(--space-1) / 2);
-  font-size: var(--text-sm);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
-  background: var(--color-bg);
-  color: var(--color-text);
-}
-
-.eval-compare-table-wrap {
-  margin-top: var(--space-2);
-}
-
-.eval-run-error {
-  display: block;
-  margin-top: var(--space-2);
-  color: var(--color-error);
-  font-size: var(--text-md);
 }
 
 .animate-spin {
@@ -145,30 +50,6 @@
   to { transform: rotate(360deg); }
 }
 
-.eval-detail-subsection {
-  margin-top: var(--space-8);
-}
-
-.eval-detail-subsection > h2 {
-  font-size: var(--text-lg);
-  font-weight: 600;
-  margin: 0 0 var(--space-3) 0;
-}
-
-.eval-detail-subsection-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: var(--space-3);
-  margin-bottom: var(--space-4);
-}
-
-.eval-detail-subsection-header .eval-detail-subsection-title {
-  font-size: var(--text-lg);
-  font-weight: 600;
-}
-
 .eval-detail-subsection-header .btn {
   display: inline-flex;
   align-items: center;
@@ -176,13 +57,6 @@
   padding: var(--space-2) calc(var(--space-3) + var(--space-1) / 2);
   font-size: var(--text-md);
   font-weight: 500;
-}
-
-.eval-run-controls {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: calc(var(--space-2) + var(--space-1) / 2);
 }
 
 .eval-run-type {
@@ -223,6 +97,30 @@
 }
 
 /* A query item has one or more expected queries; each is a sentence, not a paragraph. */
+/* Read-only 期望查询 inside the item dialog: a value the reader cannot edit there. */
+.eval-expected-readonly {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap-compact);
+  font-size: var(--text-md);
+
+  > span {
+    font-weight: 500;
+  }
+
+  ul {
+    margin: 0;
+    padding-left: var(--space-4);
+    display: grid;
+    gap: var(--space-1);
+    font-size: var(--font-size-sm);
+  }
+
+  small {
+    color: var(--color-text-secondary);
+  }
+}
+
 .eval-item-expected-list {
   margin: 0;
   padding-left: var(--space-4);
@@ -255,70 +153,8 @@
   color: var(--color-text-secondary);
 }
 
-.eval-items-pagination-info {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: var(--space-4) 20px;
-  min-width: 0;
-}
-
-.eval-items-page-size {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-  font-size: var(--text-md);
-  color: var(--color-text-secondary);
-}
-
-.eval-items-page-size select {
-  padding: var(--space-1) var(--space-2);
-  font-size: var(--text-md);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
-  background: var(--color-bg);
-  color: var(--color-text);
-}
-
-.eval-items-pagination {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-3);
-  margin-top: 14px;
-  font-size: var(--text-md);
-  color: var(--color-text-secondary);
-}
-
-.eval-items-pagination-range {
-  min-width: 0;
-}
-
-.eval-items-pagination-nav {
-  display: flex;
-  align-items: center;
-  gap: calc(var(--space-2) + var(--space-1) / 2);
-}
-
-.eval-items-pagination-page {
-  font-variant-numeric: tabular-nums;
-  color: var(--color-text);
-}
-
 .eval-items-pagination-nav .btn-sm {
   padding: var(--gap-compact) calc(var(--space-2) + var(--space-1) / 2);
-}
-
-.eval-empty-text {
-  color: var(--color-text-muted);
-  padding: 20px 0;
-}
-
-.eval-results-section h2 {
-  font-size: var(--text-lg);
-  font-weight: 600;
-  margin: 0 0 var(--space-2) 0;
 }
 
 .eval-results-list {
@@ -328,30 +164,6 @@
 }
 
 /* Run header: counts on the left of the eye, provenance in small print underneath. */
-.eval-run-head {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: var(--space-3);
-  flex-wrap: wrap;
-  margin-bottom: var(--space-2);
-}
-
-.eval-run-head h2 {
-  margin: 0;
-}
-
-.eval-run-chips {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-  font-size: var(--text-sm);
-}
-
-.eval-run-avg {
-  color: var(--color-text-muted);
-}
-
 .eval-run-meta {
   margin: 0 0 var(--space-3);
   font-size: var(--text-xs);
@@ -363,26 +175,6 @@
 }
 
 /* The run's own conclusion: what the batch shows, and where the fix goes. */
-.eval-run-report {
-  margin-bottom: var(--space-4);
-  padding: var(--space-3) var(--space-4);
-  border: 1px solid var(--color-border);
-  border-left: 3px solid var(--color-accent);
-  border-radius: var(--radius-md);
-  background: var(--color-bg-elevated);
-
-  h3 {
-    margin: 0 0 var(--space-2);
-    font-size: var(--text-base);
-    font-weight: 600;
-  }
-}
-
-.eval-run-report-verdict {
-  margin: 0 0 var(--space-3);
-  font-size: var(--text-md);
-}
-
 .eval-report-findings {
   margin: 0;
   padding: 0;
@@ -415,15 +207,6 @@
   gap: var(--space-1);
 }
 
-.eval-report-item-link {
-  border: none;
-  background: none;
-  padding: 0;
-  font-size: var(--text-xs);
-  color: var(--color-accent);
-  cursor: pointer;
-}
-
 .eval-report-claim {
   margin: var(--space-1) 0 0;
   font-size: var(--text-sm);
@@ -433,12 +216,6 @@
   margin: var(--space-1) 0 0;
   font-size: var(--text-sm);
   color: var(--color-text-secondary);
-}
-
-.eval-report-meta {
-  margin: var(--space-2) 0 0;
-  font-size: var(--text-xs);
-  color: var(--color-text-muted);
 }
 
 /* Run dialog: the scope radios; everything else is the design system's. */
@@ -545,21 +322,6 @@
   font-weight: 600;
   padding: 2px var(--space-2);
   border-radius: var(--radius-sm);
-}
-
-.eval-result-pass {
-  background: var(--color-accent-subtle);
-  color: var(--color-accent);
-}
-
-.eval-result-fail {
-  background: color-mix(in srgb, var(--color-error) 15%, transparent);
-  color: var(--color-error);
-}
-
-.eval-result-undecided {
-  background: var(--color-surface-sunken);
-  color: var(--color-text-secondary);
 }
 
 /* What differs: one line per failing check, the reason next to it, the fragments under it. */
@@ -700,111 +462,6 @@
   color: var(--color-text-secondary);
 }
 
-.eval-dialog {
-  background: var(--color-bg-elevated);
-  border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-elevated);
-  width: 100%;
-  max-width: #{ds.$bp-phone-max};
-}
-
-.eval-dialog-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: var(--space-5) var(--space-6);
-  border-bottom: 1px solid var(--color-border);
-}
-
-.eval-dialog-header h2 {
-  font-size: var(--text-xl);
-  font-weight: 600;
-  margin: 0;
-}
-
-.eval-dialog-close {
-  padding: var(--space-1);
-  background: none;
-  border: none;
-  color: var(--color-text-muted);
-  cursor: pointer;
-  border-radius: var(--radius-sm);
-}
-
-.eval-dialog-close:hover {
-  color: var(--color-text);
-  background: var(--color-bg-muted);
-}
-
-.eval-dialog-body {
-  padding: var(--space-6);
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-4);
-}
-
-.eval-dialog-body label {
-  display: flex;
-  flex-direction: column;
-  gap: var(--gap-compact);
-  font-size: var(--text-md);
-}
-
-.eval-dialog-expected-readonly {
-  display: flex;
-  flex-direction: column;
-  gap: var(--gap-compact);
-  font-size: var(--text-md);
-
-  > span {
-    font-weight: 500;
-  }
-
-  ul {
-    margin: 0;
-    padding-left: var(--space-4);
-    display: grid;
-    gap: var(--space-1);
-    font-size: var(--font-size-sm);
-  }
-
-  small {
-    color: var(--color-text-secondary);
-  }
-}
-
-.eval-dialog-body label span {
-  font-weight: 500;
-  color: var(--color-text-secondary);
-}
-
-.eval-dialog-body input[type="text"] {
-  padding: var(--padding-compact-y) calc(var(--space-3) + var(--space-1) / 2);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
-  background: var(--color-bg);
-  font-size: var(--text-base);
-  color: var(--color-text);
-}
-
-.eval-dialog-body textarea {
-  padding: var(--padding-compact-y) calc(var(--space-3) + var(--space-1) / 2);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
-  background: var(--color-bg);
-  font-size: var(--text-base);
-  color: var(--color-text);
-  resize: vertical;
-}
-
-.eval-dialog-footer {
-  display: flex;
-  justify-content: flex-end;
-  gap: var(--space-3);
-  padding: var(--space-4) 24px;
-  border-top: 1px solid var(--color-border);
-}
-
 .eval-dialog-footer .btn-secondary {
   background: var(--color-bg-muted);
   color: var(--color-text);
@@ -815,13 +472,6 @@
   background: var(--color-bg);
   border-color: var(--color-accent);
   color: var(--color-accent);
-}
-
-.eval-import-csv-hint {
-  margin: 0 0 var(--space-3);
-  font-size: var(--text-sm);
-  color: var(--color-text-muted);
-  max-width: 52rem;
 }
 
 /* One cited query in a data-query run: the SQL is the evidence, so it gets room. */

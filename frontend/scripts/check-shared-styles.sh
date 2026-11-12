@@ -203,13 +203,12 @@ if ! python3 scripts/check-global-classes.py; then
   status=1
 fi
 
-# --- 17. Legacy modal markup (ratchet) ----------------------------------------
-# `console-modal-overlay` markup is the hand-rolled dialog we are migrating to <Dialog>.
-# Baseline: scripts/legacy-modals-baseline.txt (a count). Lower it as you migrate.
-LEGACY_MODAL_BASELINE=$(cat scripts/legacy-modals-baseline.txt 2>/dev/null || echo 0)
-LEGACY_MODAL_NOW=$( (rg -c --no-heading 'console-modal-overlay' src --glob '*.tsx' 2>/dev/null || true) | awk -F: '{s+=$2} END {print s+0}')
-if [ "${LEGACY_MODAL_NOW:-0}" -gt "${LEGACY_MODAL_BASELINE:-0}" ]; then
-  report "hand-rolled modal markup grew ($LEGACY_MODAL_NOW > $LEGACY_MODAL_BASELINE); use <Dialog> and lower scripts/legacy-modals-baseline.txt"
+# --- 17. Hand-rolled modal chrome (ratchet) -----------------------------------
+# Any `*-overlay` element that is not the DS dialog: the shape is what matters, not the name —
+# the previous gate grepped `console-modal-overlay` alone, so renaming the markup hid 35 copies.
+# Baseline: scripts/modal-overlays-baseline.txt (a count). Lower it as you migrate to <Dialog>.
+if ! python3 scripts/check-modal-overlays.py; then
+  status=1
 fi
 
 # --- 11. Classes that style nothing ------------------------------------------

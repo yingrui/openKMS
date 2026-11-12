@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
-import { ClipboardList, Plus, Trash2, Pencil, X } from 'lucide-react';
+import { ClipboardList, Plus, Trash2, Pencil } from 'lucide-react';
 import { toast } from 'sonner';
 import {
   fetchEvaluations,
@@ -18,7 +18,7 @@ import {
   useStoredViewMode,
   type CardListViewMode,
 } from '../../hooks/useStoredViewMode';
-import { Pagination, ResourceViewToggle } from '../../styles/design-system';
+import { Dialog, FormField, Pagination, ResourceViewToggle } from '../../styles/design-system';
 import './EvaluationDatasetList.scss';
 
 const VIEW_STORAGE_KEY = 'evaluations-list-view';
@@ -304,81 +304,69 @@ export function EvaluationDatasetList() {
         </>
       ) : null}
 
-      {(showCreate || editDs) && (
-        <div className="eval-dialog-overlay" onClick={closeDialog}>
-          <div className="eval-dialog" onClick={(e) => e.stopPropagation()}>
-            <div className="eval-dialog-header">
-              <h2>{editDs ? t('evaluation.dialogEdit') : t('evaluation.dialogNew')}</h2>
-              <button type="button" className="eval-dialog-close" aria-label={t('shared.close')} onClick={closeDialog}>
-                <X size={20} />
-              </button>
-            </div>
-            <div className="eval-dialog-body">
-              <label>
-                <span>{t('shared.name')}</span>
-                <input
-                  type="text"
-                  value={formName}
-                  onChange={(e) => setFormName(e.target.value)}
-                  placeholder={t('evaluation.namePlaceholder')}
-                  autoFocus
-                />
-              </label>
-              {showCreate && (
-                <label>
-                  <span>{t('evaluation.knowledgeBase')}</span>
-                  <select value={formKbId} onChange={(e) => setFormKbId(e.target.value)} required>
-                    <option value="">{t('evaluation.selectKb')}</option>
-                    {kbs.map((kb) => (
-                      <option key={kb.id} value={kb.id}>
-                        {kb.name}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-              )}
-              {showCreate && (
-                <label>
-                  <span>{t('evaluation.wikiSpaceOptional')}</span>
-                  <select
-                    value={formWikiSpaceId}
-                    onChange={(e) => setFormWikiSpaceId(e.target.value)}
-                  >
-                    <option value="">{t('evaluation.noWikiSpace')}</option>
-                    {wikiSpaces.map((w) => (
-                      <option key={w.id} value={w.id}>
-                        {w.name}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-              )}
-              <label>
-                <span>{t('shared.description')}</span>
-                <textarea
-                  value={formDesc}
-                  onChange={(e) => setFormDesc(e.target.value)}
-                  placeholder={t('evaluation.descPlaceholder')}
-                  rows={3}
-                />
-              </label>
-            </div>
-            <div className="eval-dialog-footer">
-              <button type="button" className="btn btn-secondary" onClick={closeDialog}>
-                {t('shared.cancel')}
-              </button>
-              <button
-                type="button"
-                className="btn btn-primary"
-                disabled={!formName.trim() || (showCreate && !formKbId) || saving}
-                onClick={() => void (editDs ? handleEdit() : handleCreate())}
-              >
-                {saving ? t('evaluation.saving') : editDs ? t('shared.save') : t('shared.create')}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <Dialog
+        open={showCreate || editDs != null}
+        onClose={closeDialog}
+        title={editDs ? t('evaluation.dialogEdit') : t('evaluation.dialogNew')}
+        closeAriaLabel={t('shared.close')}
+        size="md"
+        footer={
+          <>
+            <button type="button" className="btn btn-secondary" onClick={closeDialog}>
+              {t('shared.cancel')}
+            </button>
+            <button
+              type="button"
+              className="btn btn-primary"
+              disabled={!formName.trim() || (showCreate && !formKbId) || saving}
+              onClick={() => void (editDs ? handleEdit() : handleCreate())}
+            >
+              {saving ? t('evaluation.saving') : editDs ? t('shared.save') : t('shared.create')}
+            </button>
+          </>
+        }
+      >
+        <FormField label={t('shared.name')}>
+          <input
+            type="text"
+            value={formName}
+            onChange={(e) => setFormName(e.target.value)}
+            placeholder={t('evaluation.namePlaceholder')}
+          />
+        </FormField>
+        {showCreate ? (
+          <FormField label={t('evaluation.knowledgeBase')}>
+            <select value={formKbId} onChange={(e) => setFormKbId(e.target.value)} required>
+              <option value="">{t('evaluation.selectKb')}</option>
+              {kbs.map((kb) => (
+                <option key={kb.id} value={kb.id}>
+                  {kb.name}
+                </option>
+              ))}
+            </select>
+          </FormField>
+        ) : null}
+        {showCreate ? (
+          <FormField label={t('evaluation.wikiSpaceOptional')}>
+            <select value={formWikiSpaceId} onChange={(e) => setFormWikiSpaceId(e.target.value)}>
+              <option value="">{t('evaluation.noWikiSpace')}</option>
+              {wikiSpaces.map((w) => (
+                <option key={w.id} value={w.id}>
+                  {w.name}
+                </option>
+              ))}
+            </select>
+          </FormField>
+        ) : null}
+        <FormField label={t('shared.description')}>
+          <textarea
+            value={formDesc}
+            onChange={(e) => setFormDesc(e.target.value)}
+            placeholder={t('evaluation.descPlaceholder')}
+            rows={3}
+          />
+        </FormField>
+      </Dialog>
     </div>
   );
 }
