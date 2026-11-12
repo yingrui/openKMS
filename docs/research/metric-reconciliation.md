@@ -1,270 +1,504 @@
-# Metric reconciliation (指标勾稽) — market research
+# 指标勾稽（metric reconciliation）调研
 
-Research note on **metric reconciliation**: the identities that must hold *between* metrics — `毛利 = 收入 − 成本`,
-`资产 = 负债 + 所有者权益`, `期末余额 = 期初余额 + 本期净增`, `毛利率 = 毛利 / 收入` — and whether treating them as
-edges in a graph (rather than prose in a definition) is something the market does, what it is called there, and what an
-implementation in our Catalog **Metrics** would have to carry that the existing products do not.
+围绕**指标之间必须成立的恒等式**——`毛利 = 收入 − 成本`、`资产 = 负债 + 所有者权益`、`期末余额 = 期初余额 + 本期净增`、
+`毛利率 = 毛利 ÷ 收入`——调研市面上的既有实践、产品形态与可借鉴的实现，判断：把这些关系当作**图上的边**、
+而不是写在指标说明里的散文，是否已有成熟范式；如果放进 Catalog 的 **Metrics**，需要携带哪些语义才不只是画一张漂亮的图。
 
-**Why it matters:** the metric layer we ship ([data layer](../features/data-layer.md)) stores each metric as an
-independent aggregate expression. Two metrics that must agree are related **only by convention in someone's head** — so an
-agent (or a dashboard) can produce two numbers that contradict each other and nothing notices. Reconciliation edges would
-turn "these must add up" into something a query engine can **check** and an LLM can **read**.
+**为什么值得做：** 我们现在的指标是一个**独立的聚合表达式**（`metric_definitions`：`type` / `expression` /
+`filters` / `joins` / `ai_context`），两个本应互相印证的指标之间**没有任何登记在案的关系**。后果是：仪表盘和 AI
+可以同时给出两个互相矛盾的数字，而没有任何东西会察觉。"这些数必须对得上"目前只存在于某个人的脑子里。
 
-**Status:** research only — no model, no schema, no code chosen. Companion to
-[Apache Ossie semantic layer](ossie_semantic_layer.md), [data layer](../features/data-layer.md) and
-[data-query evaluation](../features/data-query-evaluation.md).
+**状态：** 仅调研，未定模型、未定表结构、未写代码。与 [Apache Ossie 语义层](ossie_semantic_layer.md)、
+[数据层](../features/data-layer.md)、[问数评测](../features/data-query-evaluation.md) 互为参照。
 
 ---
 
-## 1. Terminology: what is actually being modelled
+## 0. 结论先行
 
-The Chinese term **勾稽** covers several distinct relations that the English literature splits. Naming them separately is
-the first design decision, because they have different validation semantics:
-
-| # | Relation | Example | What must hold | Needs |
-|---|----------|---------|----------------|-------|
-| R1 | **Total ↔ components** (decompose) | 总资产 = 流动资产 + 非流动资产 | Σ parts = whole, **at one grain** | signed weights, grain |
-| R2 | **Difference / derived** | 毛利 = 收入 − 成本 | linear identity | weights |
-| R3 | **Stock ↔ flow** (期初/期末) | 期末库存 = 期初 + 入库 − 出库 | integral over a period | **period semantics**, not just weights |
-| R4 | **Ratio** | 毛利率 = 毛利 / 收入 | numerator ÷ denominator, and *never* an average of ratios | ratio role (not a weighted sum) |
-| R5 | **Cross-source agreement** | 数仓 `revenue` vs 财务系统 `revenue` | equality within tolerance | tolerance, two sources |
-| R6 | **Same-as / mapping** | `GMV(新口径)` ≈ `GMV(旧口径)` | equivalence, declared, often one-way | direction, deprecation |
-
-R1–R2 are what a **calculation graph** (XBRL, derived metrics) already does well. R3 is where most real reconciliation
-lives and where simple "sum of children" models break. R4 is the one everybody gets wrong: an average of per-day ratios is
-not the period ratio, which is why metric layers model ratio metrics with an explicit numerator and denominator rather
-than as a formula over results. R5–R6 are the ones **no semantic layer models at all** — they are the gap.
+1. **市场能力是劈开的。** 财务报告体系（XBRL、EPM）有**机器可校验的带权重恒等式**，但与数仓指标层、与 LLM 完全脱节；
+   语义层（dbt / Cube / Databricks / Snowflake）有**指标准入图**，但那是"先算谁"的**依赖图**，不是"算完必须相等"的**断言图**；
+   目录与可观测性工具知道**指标从哪来**、**值有没有异常**，但不知道**两个指标是否还自洽**。
+2. **没有任何产品同时具备"LLM 可读的指标语义"与"可执行的恒等式校验"。** 这正是机会所在。
+3. **"勾稽"不是一种关系，而是六类**，校验算法各不相同（见 §2）。把这些混成"一个加总关系"是大多数自研实现翻车的地方。
+4. **每条关系至少要带六件东西**：符号权重、比率角色（分子/分母）、期间语义、粒度约束、容差、严重级别。
+   少任何一件，校验都会在真实数据上产出噪音，然后被静音。
+5. **勾稽最自然的落地形态是"finding"，而不是"图表"**：`pass | fail | unknown`，附差异值与下钻路径。
+   监管报送与 EPM 都是这么做的——发现问题、报告问题，**绝不自动修数**。
 
 ---
 
-## 2. Where reconciliation is already formal and machine-checked: financial reporting
+## 1. 定义：我们说的"勾稽"到底指什么
 
-This is the oldest and most rigorous practice, and it is a **graph with weights**.
+"勾稽"在中文财务语境里指**报表项目之间、报表之间必须成立的对应关系**；在数据治理语境里它被扩展为
+**指标之间由业务逻辑决定的一致性约束**。它与几个相邻概念必须区分清楚，否则模型会变形：
 
-### 2.1 XBRL calculation linkbase
+| 概念 | 回答的问题 | 典型形态 | 与勾稽的关系 |
+|------|-----------|----------|--------------|
+| **指标血缘（lineage）** | 这个指标由哪些字段/表算出来 | 列级血缘图 | 上游依赖，**不是**恒等式；血缘对不代表数对 |
+| **指标推导（derivation）** | 先算 A 再算 B | 指标 DAG | 只说明计算顺序，**不校验结果** |
+| **勾稽（reconciliation）** | A、B、C 之间是否满足某等式 | 带权重的等式约束 + 校验 | 本文主题 |
+| **数据质量规则（quality rule）** | 某一列/表是否符合约束 | 非空、唯一、范围、外键 | 行级/表级；勾稽是**指标级** |
+| **对账（account reconciliation）** | 两个系统的账是否一致，谁签字 | 流程 + 匹配 + 审批 | 流程型，见 §3.3 |
+| **异常检测（anomaly detection）** | 这个值是否偏离历史 | 统计模型 | 单指标时间序列，**不跨指标** |
 
-An XBRL taxonomy carries a `calculationLinkbase` whose `calculationArc`s state, per statement: `Assets =
-LiabilitiesAndEquity` (weight `1`), `GrossProfit = Revenues − CostOfRevenue` (weights `1` and `−1`), `NetIncome =
-...` — i.e. **edges between reported facts with signed weights**, plus `order` for presentation and `role` for the
-statement. Validators (Arelle, and the checks inside every national filing gateway) recompute the identity and raise a
-**calculation inconsistency** when submitted figures disagree, typically reported per item with the difference.
-
-Three properties are worth copying:
-
-1. **Weight, not prose** — `+1 / −1` makes the check mechanical.
-2. **Context scoping** — an arc applies in a reporting *context* (entity, period, dimension). Our equivalent is metric
-   **grain** and **period mode**: `期末 = 期初 + 净增` is true per account per month, not across accounts or years.
-3. **Tolerance is a filing-gateway setting**, not a fact of the identity: gateways accept `≤ ε` (often a rounding unit)
-   before refusing, because rounding makes exact equality wrong.
-
-Adoption: US SEC EDGAR and EU ESEF require XBRL; 财政部《企业会计准则通用分类标准》 ships the same linkbases for Chinese
-filings, and 证监会/交易所 gateways run the same inconsistency checks before accepting a report.
-
-### 2.2 Financial consolidation / EPM (enterprise performance management)
-
-| Product | Mechanism | Checkable | Notes |
-|---------|-----------|-----------|-------|
-| **Oracle EPM Cloud** (FCCS/EPBCS) | <br>“check rules”, tie-out and validation reports in Data Integration / consolidation | yes — blocks or flags a consolidation | reconciliation is a **process step** with a report, not a query-time assertion |
-| **SAP Analytics Cloud** | validation rules on planning models; data actions with post-conditions | yes, at save/submit time | rules live with the model, run on write |
-| **Anaplan** | **boolean “check” line items** as model-integrity assertions (documented practice: a module of checks that must be all-true) | yes, recomputed on every recalculation | closest thing to “the model asserts its own identities” |
-| **Jedox** | integrity checks on the model/cube | yes | same family |
-| **Wolters Kluwer Tagetik** | reconciliation/“controllo” reports for statutory and management figures | report-oriented | strong in 财务报表勾稽 reporting |
-
-Shared pattern: **the identity is a rule owned by the model, evaluated when data is written or consolidated**, and it
-produces a *finding* (pass/fail + difference) — never a silent correction. Nobody computes it at query time, because the
-authoritative moment is the close.
-
-### 2.3 Reconciliation *workflow* products (a different problem)
-
-**BlackLine**, **Trintech Cadency**, **FloQast**, **Oracle Account Reconciliation** run the *human* process: balance-sheet
-accounts get a preparer, a reviewer, supporting evidence and a sign-off, with automatic matching of transactions. This is
-worth knowing as a boundary: those products reconcile **accounts over time**, not **metrics in a semantic layer**, and
-they do not expose anything an LLM could reason over. Referenced here so the term “reconciliation” is not confused.
+一句话：**血缘说明"从哪来"，勾稽说明"必须等于什么"。**
 
 ---
 
-## 3. Semantic / metric layers: derivation is modelled, validation is not
+## 2. 六类勾稽关系：形式化与校验算法
 
-| Product | Metric-to-metric expression | Weighted sum | Ratio role | Identity check | Exposed to AI |
-|---------|------------------------------|--------------|-----------|----------------|---------------|
-| **dbt Semantic Layer (MetricFlow)** | ✅ `type: derived` — `expr` references other metrics (`1 - ${expenses} / ${revenue}`); the layer builds a **metric DAG** and validates references | ⚠️ via expression, no explicit weight | ✅ `type: ratio` with numerator/denominator | ❌ | ✅ (dbt MCP / partner integrations) |
-| **Cube** | ✅ calculated measures referencing other measures (`{measure}`) | ⚠️ via expression | ✅ ratio measures | ❌ | ✅ Cube AI / MCP |
-| **Looker (LookML)** | ✅ measure `sql` may reference other measures | ⚠️ expression | ⚠️ manual | ❌ | ⚠️ Conversational Analytics |
-| **Power BI / Fabric** | ✅ DAX measures reference measures; model dependency view | ⚠️ expression | ⚠️ manual | ❌ | ✅ Copilot |
-| **Databricks Unity Catalog metric views** | ✅ derived measures referencing other measures, plus joins | ⚠️ expression | ⚠️ | ❌ | ✅ Genie |
-| **Snowflake semantic views (Cortex Analyst)** | ✅ metrics + verified queries | ⚠️ expression | ⚠️ | ❌ | ✅ Cortex Analyst |
-| **AtScale** | ✅ calculated metrics | ⚠️ | ✅ | ❌ | ✅ MCP |
-| **Malloy** | ✅ measures/dimensions graph with `refinements` | ⚠️ | ⚠️ | ❌ | — |
+把关系分类的意义在于：**每一类的数学形式不同，校验算法不同，出错方式也不同。**
 
-Two conclusions from this table:
+### R1 总量 ↔ 分项（decompose / rollup）
 
-1. **A metric DAG already exists** in most modern layers — but it is a *dependency* graph (what to compute first), never
-   an *assertion* graph (what must come out equal). dbt's `derived` metric says “compute this from those”, not “these must
-   reconcile”.
-2. **Ratio handling is the one place the industry agreed on semantics** — numerator/denominator beats “formula over
-   results” for aggregations. Any reconciliation model we build must keep that distinction, or it will accept
-   `AVG(daily_ratio)` as a valid `period_ratio`.
+**语义**：整体等于各分项之和，且分项互斥、覆盖完整（MECE）。
 
-**Standardisation:** [Ossie](ossie_semantic_layer.md) (formerly OSI) defines datasets, relationships and metrics with
-expressions and AI context — metric **relationships** of the R1–R6 kind are not in the spec as of the version we vendored,
-so anything we add there is an extension, and should be shaped so it can be exported as one.
+```
+Σᵢ wᵢ · mᵢ = m_parent,   wᵢ ∈ {+1, −1}
+```
 
----
+**例子**：`总资产 = 流动资产 + 非流动资产`；`营业收入 = 主营 + 其他`；`GMV = 自营 + 平台`。
 
-## 4. Catalog / observability: they monitor values, not identities
+**校验**：把两侧指标在**同一粒度、同一期间、同一过滤条件**下求解，比较差值。
 
-| Product | What it does with metrics | Reconciliation? |
-|---------|---------------------------|-----------------|
-| **DataHub** | metric/glossary entities, column-level lineage, **assertions** (freshness, volume, schema, custom SQL) | assertions are per-dataset; no metric-vs-metric identity |
-| **Atlan** | metric assets with lineage, certification, “metric governance” | lineage, not identity |
-| **Collibra / Select Star / Castor / Secoda** | metric definitions in the catalog, lineage to source columns | definition governance only |
-| **Monte Carlo / Metaplane / Anomalo** | monitors on metric values (freshness, volume, distribution, drift) | per-metric anomaly, not cross-metric equality |
-| **Datafold** | **value-level data diffing** between systems after a migration | closest commercial analogue to R5, but batch/one-off, not a standing relation |
-| **LinkedIn ThirdEye** | anomaly detection over time-series metrics (open sourced) | no reconciliation |
+**陷阱**：
+- **分项不 MECE**：既重复又遗漏，等式看起来"差不多对"，误差在容差内被放过；
+- **维度层级加总**（SKU → 品类 → 部门）本质是 R1 在维度上的展开，必须显式声明**在哪一层维度上加总**，
+  否则跨层相加会得到毫无意义的数；
+- 存在**残差项**（其他/调整/未分配）时，等式应写成 `Σ分项 + 残差 = 整体`，并把残差当作**一等指标**，
+  而不是让容差吸收它——容差吸收掉的往往是真实的分类错误。
 
-The market splits cleanly: **catalogs know where a metric comes from** (upstream lineage), **observability knows whether a
-metric moved** (statistics), and **nobody knows whether two metrics still agree** (identities). That is the hole.
+### R2 派生 / 差额（derived）
 
----
+**语义**：一个指标是其它指标的线性组合，但**不声明覆盖完整性**。
 
-## 5. Knowledge graph / ontology vendors: expressive, but nothing packaged
+```
+m = Σᵢ wᵢ · mᵢ
+```
 
-| Product / standard | Fit for metric reconciliation |
-|--------------------|-------------------------------|
-| **Palantir Foundry Ontology + AIP** | object types + **link types** + functions; a metric is a function/object and its dependency is a link. Fully expressive; the reconciliation *semantics* (weights, tolerance, period mode) are yours to encode. |
-| **Stardog** | RDF/OWL + virtual graphs over warehouses, SHACL for constraints, Voicebox for NL→SPARQL. SHACL is a real constraint language — a reconciliation edge becomes a shape. |
-| **FIBO** (financial industry ontology) | accounting/industry concepts for 财务报表勾稽, OWL; a vocabulary, not a metric model |
-| **ISDA CDM + Rosetta DSL** | financial contracts as a formal model where **validation is code** (eligible-collateral, day-count rules); the strongest precedent that “financial relationships as executable rules” works at scale |
-| **Neo4j / Neptune Analytics + GraphRAG** | graph retrieval for LLM context; no metric semantics |
+**例子**：`毛利 = 收入 − 成本`；`净利 = 毛利 − 费用 − 税`；`净增 = 流入 − 流出`。
 
-Lesson: knowledge-graph tooling can *represent* 勾稽 in a dozen ways, which is exactly why a product needs to **choose one
-shape** and make it executable. Expressiveness without a validator produces a diagram, not a check.
+与 R1 的差别只有一点，但很关键：R1 断言"分项穷尽了整体"，R2 只说"这个数由那几个数算出来"。
+校验强度不同——R1 失败往往意味着分类或口径问题，R2 失败往往意味着源数据或计算逻辑问题。
 
----
+### R3 存量 ↔ 流量（stock_flow）
 
-## 6. The Chinese enterprise practice: 指标体系 and 报送校验
+**语义**：**时点指标**在一个期间内的变化，等于该期间的**流量指标**净额。
 
-Two practice streams are more mature in China than the “semantic layer” framing:
+```
+m_close(t) = m_open(t−Δ) + Σ_τ∈(t−Δ, t] net_flow(τ)
+```
 
-1. **指标体系 / OneData-style modelling** (Alibaba's 原子指标 → 派生指标 → 复合指标; widely copied in banks and consumer
-   internet): 原子指标 = 业务过程 + 度量 + 聚合逻辑; 派生指标 = 原子指标 + 修饰词 + 时间周期; 复合指标 = 指标运算.
-   The derivation chain is documented and governed as **口径** (definition/scope), and the hard problem is named
-   **口径一致性** — the same metric name meaning different grain/filter combinations in different departments. Note what
-   this gives us: the industry already thinks of metrics as a **graph with weights and period modifiers**, just without a
-   machine-checkable identity.
-2. **监管报送勾稽校验** (EAST/1104 and similar bank reporting regimes, 交易所 XBRL filings): the regulator publishes
-   cross-item and cross-table check rules — 表内校验, 表间校验, 总分校验 — and a submission is rejected when they fail.
-   This is 勾稽 as a **rule library with severities**, owned by the receiving authority, versioned, and reported as a list
-   of violations. It is the closest existing thing to what an agent needs at query time.
+**例子**：`期末库存 = 期初库存 + 入库 − 出库`；`期末现金 = 期初现金 + 经营 + 投资 + 筹资净现金流`；
+`期末用户数 = 期初 + 新增 − 流失`。
 
----
+**这是最容易做错的一类**，因为它同时依赖：
+- **期间语义**：时点（point-in-time）与期间（over-period）指标不能直接相加；
+- **期间桶**（bucket）：日、周、月、季、年，且月≠30 天、季≠3 月；
+- **边界口径**：期初取的是 `t−Δ` 的**期末**还是 `t` 当日的**开盘前**？跨年、跨财年、时区（如美股收盘 vs 北京时间）都会在这里出错。
 
-## 7. Classic methodology worth borrowing
+一个只在**日粒度**成立的勾稽，在月粒度会因为跨月调整项而失败——**这不是数据错，是关系的作用域没说清。**
 
-| Source | Contribution |
-|--------|--------------|
-| **Kimball** — conformed dimensions, fact-table consistency | reconciliation presupposes a shared grain and conformed dimensions; drill-across only reconciles when the grain matches — the reason a relation needs a **grain constraint** |
-| **Kaplan & Norton** — strategy maps / cause chains; the KPI-tree consulting practice | metrics as a **directed graph with directional claims** (driver → outcome); distinguished from arithmetic identities, which is a distinction our model should keep |
-| **Dimensional analysis** | a cheap, deterministic subset of reconciliation: units/currencies/percent-vs-ratio mismatches are checkable without any data |
-| **ISA 520 analytical procedures** (audit) | practitioners check *plausibility* (ratios, expectations, trend breaks, cross-statement consistency) rather than exact identities — a reminder that some reconciliation must be tolerance- or expectation-based, not exact |
+### R4 比率（ratio）
 
----
+**语义**：分子与分母的比值，且**期间比率 ≠ 期间内比率的平均**。
 
-## 8. Capability matrix of the reference products
+```
+ratio(t) = Σ num(τ) / Σ den(τ)      (τ ∈ 期间)
+```
 
-Legend: ✅ documented · ⚠️ possible but manual/indirect · ❌ not offered.
+**例子**：`毛利率 = 毛利 ÷ 收入`；`转化率 = 下单用户 ÷ 访问用户`；`人均产出 = 产出 ÷ 人数`；
+金融场景：`市盈率(PE) = 总市值 ÷ 净利润(TTM)`、`TTM市盈率` 用滚动四季净利。
 
-| Capability | XBRL toolchain | EPM (Anaplan/Oracle/SAP) | dbt/Cube/Databricks/Snowflake SL | Catalog (DataHub/Atlan) | Observability | KG (Palantir/Stardog) |
-|---|---|---|---|---|---|---|
-| Metric-to-metric edges | ✅ | ✅ (model formulas) | ✅ (derived) | ❌ | ❌ | ✅ |
-| **Signed weights** | ✅ `weight` | ⚠️ in formulas | ⚠️ in expressions | ❌ | ❌ | ⚠️ |
-| **Period / grain scoping of the identity** | ✅ contexts | ✅ (dimensions) | ❌ | ❌ | ❌ | ⚠️ |
-| **Ratio semantics** | ⚠️ (facts, not ratios) | ✅ | ✅ | ❌ | ❌ | ⚠️ |
-| **Tolerance** | ✅ gateway setting | ✅ rounding tolerances | ❌ | ❌ | ⚠️ thresholds | ⚠️ |
-| **Executable check at query time** | ✅ (validator) | ✅ (at consolidation) | ❌ | ❌ | ⚠️ (per-metric) | ⚠️ (SHACL) |
-| **LLM-consumable** | ⚠️ (via validators) | ❌ | ✅ | ⚠️ | ❌ | ✅ |
+**陷阱（行业级通病）**：`AVG(日毛利率)` 不等于 `月毛利率`。语义层用 **ratio 类型 + 显式分子分母** 来解决，
+而不是"用表达式对结果再算一遍"。任何勾稽模型都必须保留这个区分，否则会把错的算法判成通过。
 
-The empty column is the point: **no product combines “LLM-consumable metric semantics” with “machine-checked identities”.**
+另有一类**复合比率**（`ROE = 净利率 × 周转率 × 权益乘数`，杜邦分解）：这是 R4 与 R2 的组合，
+校验时应当**分层**——先校验各因子，再校验乘积，否则一处错误会被多层放大掩盖。
+
+### R5 跨源一致（cross_source）
+
+**语义**：同一个业务事实在两个系统里各有一份指标，二者应当一致（通常允许容差与时滞）。
+
+**例子**：数仓 `revenue` vs 财务系统 `revenue`（差异来自退货计提与汇率）；
+CRM 成交额 vs 订单库成交额（差异来自拆单/合并与退款口径）。
+
+**校验**：带容差（绝对/相对）与时滞窗口的比较，输出**差异值**而非布尔值——差异本身就是最有价值的信号。
+
+这一类**几乎没有任何语义层产品支持**（Datafold 的 value-level diff 是最接近的商业实现，但它是迁移场景的一次性比对）。
+
+### R6 同义 / 映射（same_as）
+
+**语义**：两个指标在新旧口径、不同粒度或不同命名体系下**被视为同一事物**，需要显式登记、可追溯、可弃用。
+
+**例子**：`GMV(新口径，含取消订单)` ≈ `GMV(旧口径)`；`活跃用户(自然月)` vs `活跃用户(滚动30天)`；
+部门重组后的 `部门收入` 与历史口径。
+
+**校验**：不做等式校验，而是做**转换/覆盖校验**：声明转换方式（缩放、过滤条件差异、时间平移），
+并在并存期给出**差异监控**，让口径迁移可以收口，而不是永久共存。
+
+> 这六类之外，还有一类**不涉及数值**的勾稽：**结构一致性**（维度成员是否齐全、时间维度是否连续、
+> 币种/单位是否一致）。它对 AI 分析同样关键——量纲不一致的结论一眼就是错的——但校验成本极低，属于"前置检查"。
 
 ---
 
-## 9. What this suggests for Catalog → Metrics
+## 3. 实践一：财务报告体系（最成熟，也是勾稽概念的源头）
 
-Our current metric is an **Ossie aggregate expression anchored on a dataset** (`metric_definitions`: `type`, `expression`,
-`filters`, `joins`, `ai_context`) with no reference to another metric. Adding reconciliation means adding edges; the
-research says what those edges must carry.
+### 3.1 XBRL 的 calculation linkbase —— 真正可执行的勾稽图
 
-### 9.1 Edge shape (minimum that survives real use)
+XBRL 分类标准（taxonomy）把财务报表拆成**事实（fact）+ 上下文（context）+ 关系（linkbase）**，其中
+`calculationLinkbase` 用 `calculationArc` 声明项目之间的加总关系：
 
-| Field | Why the market says so |
-|-------|------------------------|
-| `kind` — `decompose` · `derived` · `stock_flow` · `ratio` · `cross_source` · `same_as` | the six relations have different check algorithms (§1) |
-| `weight` (+1/−1) on each member | XBRL `calculationArc`; makes R1/R2 a linear check, not a formula parser |
-| `numerator` / `denominator` roles for `ratio` | dbt `type: ratio`, Cube ratio measures |
-| `period_mode` — `point_in_time` vs `over_period`, and the bucket (`day`/`month`) | R3 only holds for stock/flow pairs over a declared period; Anaplan/Oracle scope rules by dimension |
-| `grain` — the dimensions the identity holds at (e.g. per account, per month, **not** across accounts) | Kimball conformed grain; XBRL contexts |
-| `tolerance` — absolute and/or relative | XBRL gateways, EPM rounding tolerances |
-| `severity` — what a violation means (`P0` blocks a decision / `P1` look / `P2` knowing) | 报送校验 severity lists; our quality rules already use P0–P2 |
+| 属性 | 作用 | 对我们的映射 |
+|------|------|--------------|
+| `weight`（+1 / −1） | 符号权重，使等式可机械校验 | 边的权重 |
+| `order` | 展示顺序，不影响校验 | 排序 |
+| `priority` | 同一项目存在多条加总路径时的优先级 | 冲突消解 |
+| `use = optional / prohibited` | 关系是否必须成立 | 校验强度（告警/阻断） |
+| 所在 `role` + `context`（entity / period / dimension） | **关系的作用域** | 粒度 + 期间语义 |
 
-### 9.2 Where it plugs in
+校验器（Arelle，以及各申报网关内置的检查）会重算等式，不成立时抛出 **calculation inconsistency**，
+并按项目给出差异。这套机制的真实约束力在于**它是准入门槛**：SEC EDGAR、EU ESEF、中国财政部
+《企业会计准则通用分类标准》与交易所披露，都会在受理前跑同样的检查。
 
-1. **Check, not just store.** A relation is only worth having if something runs it: both sides' SQL (they already exist
-   through the metric engine), plus the tolerance/grain/period, produce a **finding** — `pass | fail | unknown(diff)`.
-   Unknown matters: a metric that cannot be computed at the requested grain is not a failure (`unknown` is also how our
-   data-query judge already treats undecidable checks).
-2. **The graph as prompt context.** Reconciliation edges are exactly the “what must be true” the model otherwise has to
-   infer from prose: an agent that plans a query can be told *these metrics are expected to add up*, and an agent that
-   reports a number can be told to **check** it before asserting a conclusion.
-3. **An evaluation dimension** — [data-query evaluation](../features/data-query-evaluation.md) judges `model`, `scope`,
-   `measure`, `grain`, `joins`, `forbidden`. A `reconcile` check is the natural seventh: “the answer's number and the
-   metric it decomposes into are consistent”. Deterministic (it is arithmetic), so it would be the first **non-LLM** check
-   in that list — which is a feature: a cheap, unarguable signal next to semantic judgement.
-4. **Export.** Keep the shape serialisable as an Ossie extension (e.g. `metric.links`), so a model export carries its
-   identities; do not invent a DSL.
+**三个必须照抄的设计点**：
 
-### 9.3 Known failure modes to design against
+1. **权重不是散文**——`+1/−1` 让校验变成算术而不是解析公式；
+2. **关系有作用域**——同一条边只在特定期间/维度上下文里成立；
+3. **容差属于网关而不是等式**——四舍五入让"完全相等"在现实中永不成立，
+   受理方给出 rounding tolerance，不通过时才拒收。
 
-- **Grain drift** — an identity that holds per account fails when grouped across accounts; without `grain` the check
-  produces noise and gets muted.
-- **Period drift** — comparing a `point_in_time` metric with an `over_period` one as if both were the same bucket.
-- **Ratio averaging** — the layer must refuse `AVG(ratio)` as a substitute for `ratio(Σnum, Σden)`.
-- **Circular definitions** — A derived from B, B derived from A; needs a cycle check at write time (dbt's metric DAG has
-  the same requirement).
-- **Tolerance theatre** — a tolerance so wide it always passes. Better to report the **observed difference** and let the
-  evaluation/report show it than to declare pass.
-- **Semantic corruption by “fix”** — never auto-adjust a metric to satisfy an identity (the EPM lesson: flag, don't
-  correct).
+**局限也很明确**：taxonomy 只覆盖**报表科目**，不覆盖业务口径；维护 taxonomy 本身就是一项专职工作；
+它描述的是"报表结构"而不是"指标定义"，因此与数仓里的 `revenue` 是两套东西。
 
----
+### 3.2 EPM / 财务合并产品：规则归模型所有，在写入时校验
 
-## 10. Open questions for the design phase
+| 产品 | 机制 | 生效时机 | 产物 | 局限 |
+|------|------|----------|------|------|
+| **Oracle EPM Cloud**（FCCS/EPBCS） | 数据集成/合并中的校验规则、tie-out 报告 | 合并、提交时 | 报告 + 阻断 | 与数仓语义层脱节 |
+| **SAP Analytics Cloud** | 计划模型的 validation rules；data action 的后置校验 | 保存/提交时 | 告警/阻断 | 同上 |
+| **Anaplan** | 用**布尔行项目**组成的 checks 模块，模型每次重算都断言自身完整性 | 每次重算 | 布尔 + 计数 | 只在自己的模型域内 |
+| **Jedox / Board / IBM Planning Analytics** | 模型内置校验/规则（integrity check、business rules） | 写入/重算 | 告警 | 同上 |
+| **OneStream** | 业务规则（business rules）中内置校验与平衡检查 | 数据加载/合并 | 告警/阻断 | 同上 |
+| **Wolters Kluwer Tagetik** | 勾稽/复核报表（controllo） | 结账期 | 报告 | 偏报表层 |
 
-1. Is a relation **scoped to a semantic model** (like a metric) or cross-model? 勾稽 between a model and a legacy
-   definition is the `same_as` case, which argues for cross-model edges.
-2. Does a relation belong in **Catalog** (governance artifact) or **Ontology** (object/link types with Actions)? The
-   research suggests Catalog — it is a property of the metric definition, evaluated by the metric engine — with an
-   Ontology export if an agent needs to traverse it as objects.
-3. Should the **check run on write** (metric definition changes) or **at query time**? Both, with different severities:
-   write-time catches a broken definition before anyone reads a number; query-time catches a broken *period* (data not
-   loaded yet).
-4. How much do we need `same_as` before a metric-versioning story exists?
+**共同范式（值得直接采用）**：等式**归模型所有**，在**数据写入或合并时**求值，
+产出**发现（finding）**——通过/失败 + 差异，**永不自动改数**。
+校验时点选在"结账"，因为那是数字被权威化的时刻。
+
+### 3.3 流程型对账产品（明确边界，避免概念混淆）
+
+**BlackLine**、**Trintech Cadency**、**FloQast**、**Oracle Account Reconciliation** 解决的是**人的流程**：
+科目余额由谁编制、谁复核、凭证与匹配证据、签字留痕，以及交易自动匹配。
+它们对账的是**科目随时间的余额**，不是**语义层里的指标**，也不产出可被 LLM 消费的语义结构。
+列在这里是为了划清边界：这类产品的"reconciliation"与我们讨论的"指标勾稽"不是一回事。
 
 ---
 
-## References
+## 4. 实践二：语义层 / 指标层（有推导，无断言）
 
-- XBRL calculation linkbase & inconsistency checks — XBRL 2.1 specification (`calculationArc`, `weight`, contexts); Arelle
-  validator; SEC EDGAR and EU ESEF filing rules; 财政部《企业会计准则通用分类标准》.
-- dbt Semantic Layer / MetricFlow metric types (`simple`, `ratio`, `derived`, `cumulative`, `conversion`) and the metric
-  DAG — dbt Labs documentation.
-- Cube measure/ratio-measure reference; Looker LookML `measure`; Power BI DAX measure dependencies; Databricks Unity
-  Catalog metric views; Snowflake semantic views / Cortex Analyst; AtScale metric catalog + MCP — vendor documentation.
-- Anaplan “checks” as model-integrity assertions; Oracle EPM Cloud validation/tie-out; SAP Analytics Cloud validation
-  rules; Jedox integrity checks; Tagetik reconciliation — vendor documentation and practitioner material.
-- BlackLine, Trintech Cadency, FloQast — account-reconciliation workflows (process, not semantics).
-- DataHub assertions & lineage; Atlan metric governance; Collibra/Select Star metric catalogs; Monte Carlo metric
-  monitors; Datafold value-level diffing; LinkedIn ThirdEye — product documentation.
-- Palantir Foundry Ontology; Stardog SHACL/Voicebox; FIBO; ISDA CDM + Rosetta DSL — vendor/spec documentation.
-- Kimball & Ross, *The Data Warehouse Toolkit* (conformed dimensions, grain); Kaplan & Norton, strategy maps; ISA 520
-  analytical procedures.
-- [Apache Ossie semantic layer](ossie_semantic_layer.md) — the metric shape we already implement.
+| 产品 | 指标↔指标表达式 | 带符号加总 | 比率角色 | 恒等式校验 | 暴露给 AI |
+|------|-----------------|-----------|---------|-----------|-----------|
+| **dbt Semantic Layer (MetricFlow)** | ✅ `type: derived`，`expr` 引用其它指标（`1 - ${expenses} / ${revenue}`），并据此构建**指标 DAG** 与引用校验 | ⚠️ 靠表达式，无显式权重 | ✅ `type: ratio` 显式分子/分母 | ❌ | ✅（dbt MCP 与生态集成） |
+| **Cube** | ✅ 计算度量引用其它度量（`{measure}`） | ⚠️ 表达式内 | ✅ ratio measure | ❌ | ✅ Cube AI / MCP |
+| **Looker（LookML）** | ✅ measure 的 `sql` 可引用其它 measure | ⚠️ 表达式内 | ⚠️ 手写 | ❌ | ⚠️ Conversational Analytics |
+| **Power BI / Fabric** | ✅ DAX 度量互引，模型依赖视图 | ⚠️ 表达式内 | ⚠️ 手写（`DIVIDE`） | ❌ | ✅ Copilot |
+| **Databricks Unity Catalog metric views**（2025） | ✅ derived measures 引用其它 measure + joins | ⚠️ 表达式内 | ⚠️ | ❌ | ✅ Genie |
+| **Snowflake semantic views + Cortex Analyst** | ✅ metrics 定义 + verified queries | ⚠️ | ⚠️ | ❌ | ✅ Cortex Analyst |
+| **AtScale** | ✅ calculated metric | ⚠️ | ✅ | ❌ | ✅ MCP |
+| **Malloy** | ✅ 度量/维度图，`refinements` | ⚠️ | ⚠️ | ❌ | — |
+
+从这张表能得出两个结论：
+
+1. **指标 DAG 早就存在**，但它是**依赖图**（先算谁），从来不是**断言图**（算完必须相等）。
+   dbt 的 `derived` 说的是"由那些算出这个"，而不是"这些之间必须对得上"。
+2. **比率语义是全行业唯一收敛的部分**——分子/分母胜过"对结果再套公式"。任何勾稽模型必须保留这个区分，
+   否则会把 `AVG(日比率)` 判为合法。
+
+**标准化进展：** [Ossie](ossie_semantic_layer.md)（原 OSI）定义数据集、数据集之间的 relationship、以及带
+`expression` 与 `ai_context` 的 metrics。截至我们 vendored 的 spec 版本，**没有任何指标↔指标的断言关系**；
+`relationship` 指的是数据集间外键。我们要加的东西属于**扩展**，应当设计成可以随模型一起导出的形状。
+
+---
+
+## 5. 实践三：目录与可观测性（监控"值"，不监控"关系"）
+
+| 产品 | 与指标相关的功能 | 是否做指标级勾稽 |
+|------|-----------------|-----------------|
+| **DataHub** | 指标/术语实体、列级血缘、**assertions**（新鲜度、行数、schema、自定义 SQL） | ❌ assertions 以数据集为对象 |
+| **Atlan** | 指标资产、指标血缘、认证（certification）、"指标治理" | ❌ 只到血缘与定义 |
+| **Collibra** | 业务指标/KPI 作为资产、数据质量规则、审批流 | ❌ |
+| **Select Star / Castor / Secoda** | 指标目录 + 字段血缘 | ❌ |
+| **Monte Carlo / Metaplane / Anomalo** | 指标值监控：新鲜度、行数、分布漂移、异常 | ⚠️ 单指标异常，非跨指标等式 |
+| **Datafold** | **value-level diff**：迁移前后、跨库逐值比对 | ⚠️ 最接近 R5，但属一次性比对，不是常驻关系 |
+| **LinkedIn ThirdEye**（开源） | 时间序列异常检测 | ❌ |
+
+**被忽视的一环是"表级/行级恒等式"其实已经很成熟**，只是没有被提升到指标级：
+
+- **Great Expectations**：`expect_multicolumn_sum_to_equal`（多列之和等于另一列）、
+  `expect_column_pair_values_A_to_be_greater_than_B` 等，天然表达表内勾稽；
+- **dbt 测试**：`dbt_utils.expression_is_true`、`relationships`（外键）可在表内表达等式；
+- **Soda（SodaCL）**：SQL 指标 + failed-rows 检查，可在 SQL 里写跨表比对；
+- **Datafold**：跨库逐值比对。
+
+也就是说：**行级恒等式有成熟工具，指标级恒等式几乎空白。** 这是把现有能力"往上提一层"的机会，
+而不是要发明一套全新的校验理论。
+
+---
+
+## 6. 实践四：知识图谱 / 本体（能表达，但不开箱）
+
+| 产品 / 标准 | 与指标勾稽的关系 |
+|------------|-----------------|
+| **Palantir Foundry Ontology + AIP** | object type + **link type** + function/action；指标可实现为 function/object，勾稽即 link。表达能力足够，但权重、容差、期间语义要自己编码 |
+| **Stardog** | RDF/OWL + 虚拟图直连数仓，**SHACL** 做约束校验，Voicebox 做自然语言查询；SHACL shape 可以表达等式约束 |
+| **FIBO**（金融业务本体） | 提供会计/金融概念词汇（含财务报表科目结构），是**词表**不是指标模型 |
+| **ISDA CDM + Rosetta DSL** | 把金融合约建模为**可执行规则**（合格担保品、计息天数等），是"金融关系即代码"最成功的先例 |
+| **Neo4j / Neptune Analytics + GraphRAG** | 图检索给 LLM 提供上下文；不含指标语义 |
+
+**教训**：图技术能把勾稽表达成十几种样子——这恰恰说明**产品必须选定一种形状并让它可执行**。
+只有表达力没有校验器，产出的是图，不是检查。
+
+---
+
+## 7. 实践五：AI / LLM 语义层（2024–2025 的主流形态）
+
+| 方案 | 提供给模型的"语义" | 是否提供"约束" |
+|------|-------------------|---------------|
+| **Snowflake Cortex Analyst**（semantic views + verified queries） | 表、维度、事实、指标、经审核的查询样例 | 只到"合格示例" |
+| **Databricks Genie + metric views** | 指标视图（measures/dimensions/joins） | 同上 |
+| **Looker Conversational Analytics** | LookML 语义模型 | 同上 |
+| **Cube / AtScale / dbt 的 MCP Server** | 指标目录与查询能力作为工具暴露给 agent | 同上 |
+| **Google BigQuery + Looker 语义模型** | 语义 + 受控查询生成 | 同上 |
+
+**关键观察**：这一代产品把**定义**喂给了模型，但没有把**约束**喂进去。
+于是 LLM 在"数字幻觉"之外，还多了一种更隐蔽的错误——**口径幻觉**：
+它按定义算出了数，但不知道这个数本该与另一个数对得上，于是给出一个自洽却与既有事实冲突的结论。
+
+对依赖 AI 做数据分析的产品，这是一条明确的产品机会：**把"必须成立的关系"作为可读、可执行的上下文交给模型。**
+
+---
+
+## 8. 实践六：中国语境（监管报送与指标体系）
+
+中国的两个实践流派，比"语义层"叙事更成熟，也更接近我们需要的形态。
+
+### 8.1 监管报送的勾稽校验（规则库 + 严重级别）
+
+银行业 EAST（检查分析系统）、1104 非现场监管报表、人行金融统计，以及交易所 XBRL 披露，
+都要求报送数据通过**成体系的校验规则**：
+
+| 规则类型 | 含义 | 对应本文分类 |
+|---------|------|-------------|
+| **表内校验** | 同一张报表内部项目之间的等式/不等式 | R1、R2、R4 |
+| **表间校验** | 跨报表的对应关系（如资产负债表未分配利润 vs 利润表净利润） | R2、R3 |
+| **总分校验** | 明细合计 = 汇总数（机构层、科目层） | R1（层级加总） |
+| **跨期校验** | 期初 = 上期期末；本期 = 上期 + 变动 | R3 |
+| **逻辑校验** | 业务上不应出现的关系（如负数余额、子项大于总项） | R6 + 结构性约束 |
+
+工程特征值得照搬：**规则由接收方维护、版本化发布、带严重级别（阻断/告警）、失败后输出逐条差异并支持逐层下钻**。
+
+### 8.2 指标体系建设（原子指标 → 派生指标 → 复合指标）
+
+以阿里 OneData 为代表的建模方法论，把指标分成：
+
+- **原子指标** = 业务过程 + 度量 + 聚合逻辑（不可再分）；
+- **派生指标** = 原子指标 + 修饰词（维度限定）+ 时间周期；
+- **复合/衍生指标** = 指标之间的运算。
+
+其核心治理目标是**口径一致性**——“同一个指标名在不同部门代表不同粒度、不同过滤条件”是行业公认的最大痛点。
+注意它已经隐含了本文的关键要素：**指标是带权重与时间周期修饰的图**，只是缺少**可执行的等式断言**。
+
+**小结**：中国实践强在「规则库 + 严重级别 + 口径治理」，弱在「运行时校验 + AI 可读」。
+把两者接起来，正是我们要做的事。
+
+---
+
+## 9. 横向能力矩阵
+
+✅ 有文档化能力 · ⚠️ 可做但需手工/间接 · ❌ 无
+
+| 能力 | XBRL 工具链 | EPM（Anaplan/Oracle/SAP） | 语义层（dbt/Cube/Databricks/Snowflake） | 目录（DataHub/Atlan） | 可观测性（MC/Datafold） | 表级校验（GE/dbt tests/Soda） | 图（Palantir/Stardog） |
+|---|---|---|---|---|---|---|---|
+| 指标↔指标边 | ✅ | ✅（模型公式） | ✅（derived） | ❌ | ❌ | ⚠️（表内） | ✅ |
+| **带符号权重** | ✅ `weight` | ⚠️ 公式内 | ⚠️ 表达式内 | ❌ | ❌ | ⚠️ | ⚠️ |
+| **期间/粒度作用域** | ✅ context | ✅ 维度 | ❌ | ❌ | ❌ | ⚠️（分区/分组） | ⚠️ |
+| **比率语义** | ⚠️（科目非比率） | ✅ | ✅ | ❌ | ❌ | ❌ | ⚠️ |
+| **容差** | ✅ 网关设定 | ✅ 舍入容差 | ❌ | ❌ | ⚠️ 阈值 | ⚠️ | ⚠️ |
+| **运行时可执行校验** | ✅ 校验器 | ✅ 合并/重算时 | ❌ | ❌ | ⚠️ 单指标 | ✅ 表级 | ⚠️ SHACL |
+| **LLM 可消费** | ⚠️ | ❌ | ✅ | ⚠️ | ❌ | ❌ | ✅ |
+
+**空出来的那一列，就是产品空间：同时具备"LLM 可读的指标语义"与"机器可校验的指标恒等式"。**
+
+---
+
+## 10. 案例与反例
+
+### 案例 A：监管报表总分校验失败，逐层下钻
+
+现象：汇总层 `贷款余额` 与分机构明细合计差 37 万。
+过程：按机构校验 → 定位到两家分行；按产品校验 → 定位到"贴现"；最终发现贴现业务在汇总口径里按净额记、
+在明细里按全额记。
+启示：**总分校验的价值不在"发现差"，而在"差异可下钻"**。因此关系边必须能关联到**校验粒度上的分组**，
+finding 要携带分组维度与差异值，否则运维只会看到"对不上"。
+
+### 案例 B：GMV 口径并存（R6）
+
+现象：`GMV` 在新看板比旧看板高 4%，两边都"没算错"。
+原因：新口径含未支付订单，旧口径含取消订单，含与不含互相不通告。
+启示：`same_as` 关系在并存期必须记录**差异构成**（哪些过滤条件不同、预期影响多大），并设**迁移截止日期**；
+否则挂三年后，没人知道哪个数字可以对外说。
+
+### 案例 C：库存勾稽在月粒度失败（R3）
+
+现象：`期末库存 = 期初 + 入库 − 出库` 在日粒度全部通过，在月粒度有 3% 的天数失败。
+原因：月内存在跨月调拨与盘点调整，被计入了"其它调整"而未在关系里声明。
+启示：**关系的期间语义必须显式声明为"是否含调整项"**；如果含，等式要写成
+`期末 = 期初 + 净增 + 调整`，并让调整本身可追踪。让容差吸收调整，等于放弃该类校验。
+
+### 案例 D：比率平均化（R4）
+
+现象：月度毛利率 = 日毛利率的平均，比真实值高 0.8 个百分点。
+原因：高毛利的天数恰好收入低，简单平均给了每天相同权重。
+启示：**比率必须按分子分母各自聚合后相除**。这正是语义层把 `ratio` 单列的原因；
+勾稽校验如果只用"表达式重算"，会把错误算法判为通过——**因为两边用的是同一个错误公式**。
+
+### 反例 E：容差剧场
+
+现象：为了让告警清零，容差被调到 5%，从此再也没报过。
+启示：容差应当由**单位与舍入**决定（如分→元、四舍五入一位），而不是由"希望它通过"决定。
+更好的做法：**始终输出观测差值**，让报表显示"差值 0.02（阈值 0.01）"，
+而不是只给"通过"——差值趋势本身就是数据质量的信号。
+
+### 反例 F：自动修数
+
+现象：某系统为让勾稽通过，把差额自动记入"其他"。
+启示：EPM 与监管报送一律**只报不改**。自动修数会把口径问题埋进数据，且不可追溯。
+
+---
+
+## 11. 对 Catalog Metrics 的设计启示
+
+### 11.1 关系边的最小字段集
+
+| 字段 | 为什么必须有（市场依据） |
+|------|------------------------|
+| `kind` — `decompose` / `derived` / `stock_flow` / `ratio` / `cross_source` / `same_as` | 六类关系校验算法不同（§2） |
+| 每个成员的 `weight`（+1/−1） | XBRL `calculationArc`；让 R1/R2 变成线性校验而非公式解析 |
+| `ratio` 的分子/分母角色 | dbt `type: ratio`；避免比率平均化 |
+| `period_mode`（时点/期间）+ `bucket`（日/月/季/年）+ 是否含调整项 | R3 只在声明的期间语义下成立；EPM 用维度限定 |
+| `grain`（在哪些维度上成立） | Kimball 一致性维度；XBRL context |
+| `tolerance`（绝对值 + 相对值） | XBRL 网关舍入容差、EPM 舍入容差 |
+| `severity`（P0 阻断决策 / P1 需要看 / P2 知道即可） | 监管报送的严重级别；与现有质量规则的 P0–P2 对齐 |
+| `scope`（模型内 / 跨模型） | R6 同义关系天然跨模型 |
+
+### 11.2 校验算法（按 kind 分派）
+
+```text
+check(edge, grain, period):
+    lhs = evaluate(edge.target,   grain, period)          # 已有指标引擎
+    rhs = Σ wᵢ · evaluate(edge.memberᵢ, grain, period)
+    if any side is None:            return unknown(reason)   # 算不出来 ≠ 失败
+    diff = lhs − rhs
+    if |diff| ≤ tolerance_abs  or  |diff| / max(|lhs|, ε) ≤ tolerance_rel:
+        return pass(diff)                                 # 差值始终记录
+    return fail(diff, drilldown=grain.members_where_broken)
+```
+
+设计要点：
+
+1. **`unknown` 必须是一等状态**——某指标在当前粒度算不出来（缺维度、缺数据、权限不足）不是"勾稽失败"，
+   这与我们问数评测里 judge 对 `undecided` 的处理一致；
+2. **失败要能下钻**——按 `grain` 的分组成员找出最大贡献者，否则 finding 无法被使用（案例 A）；
+3. **写入时校验与查询时校验分开**：定义变更时校验能抓"关系写错"，查询时校验能抓"数据没到齐"，两者严重级别不同；
+4. **禁止修数**——只产出 finding，与 EPM/监管报送的范式一致。
+
+### 11.3 三个落点
+
+1. **校验器**：勾稽关系只有被跑起来才有价值。产物是 finding（`pass | fail | unknown` + 差异 + 下钻），
+   可直接复用现有质量规则的严重级别与历史记录形态。
+2. **AI 上下文**：勾稽边正是模型本来只能从散文里猜的"什么必须为真"。
+   规划阶段告诉它"这些指标应当加得起来"，回答阶段要求它**先自检再下结论**。
+3. **评测维度**：[问数评测](../features/data-query-evaluation.md) 现在判 `model` / `scope` / `measure` / `grain` /
+   `joins` / `forbidden` 六项。`reconcile` 是天然的第七项——而且是**第一个非 LLM 的检查**（纯算术），
+   在语义判断之外提供一个便宜、无可争辩的信号。
+
+### 11.4 需要防住的失败模式
+
+| 失败模式 | 表现 | 缓解 |
+|---------|------|------|
+| **粒度漂移** | 按科目成立的关系，跨科目加总后误报 | 边必须声明 `grain`，越界即 `unknown` |
+| **期间漂移** | 时点指标与期间指标当作同桶比较 | `period_mode` 强制声明，混用直接拒绝 |
+| **比率平均化** | `AVG(ratio)` 被当作期间比率 | `ratio` 关系只做"分子分母各自聚合后相除" |
+| **循环定义** | A 由 B 派生、B 由 A 派生 | 写入时对指标图做环检测（dbt 的指标 DAG 同样需要） |
+| **容差剧场** | 阈值越调越宽，永不报警 | 容差按单位/舍入设定；始终输出观测差值 |
+| **口径污染** | 为通过校验而调数 | 只报不改 |
+| **关系腐烂** | 指标改名/改口径后关系仍指向旧语义 | 关系随指标版本走；改口径触发写入时校验与关系复核 |
+
+### 11.5 分期建议
+
+| 阶段 | 范围 | 价值 |
+|------|------|------|
+| **P1** | 关系定义（六类 + 权重/grain/period/tolerance/severity）+ 查询时校验 + finding 列表 | 立刻能在真实指标上发现矛盾，且为 AI 提供上下文 |
+| **P2** | 写入时校验（定义变更）+ 指标图可视化（谁该等于谁）+ 与质量规则共用历史 | 关系变成可治理的资产 |
+| **P3** | 作为问数评测的 `reconcile` 检查项 + agent 回答自检 + Ossie 导出扩展 | 从"治理"走到"业务结论可信" |
+
+---
+
+## 12. 开放问题
+
+1. **关系属于 Catalog 还是 Ontology？** 调研倾向于 Catalog（它是指标定义的属性，由指标引擎求值），
+   但若 agent 需要把指标当对象遍历，则需要一条到 Ontology 的导出路径。
+2. **关系作用域是模型内还是跨模型？** R6 同义关系天然跨模型，而跨模型校验会牵出权限问题
+   （两个模型的读权限可能不同）——校验应当以**运行者身份**执行，还是以**关系所有者的服务身份**执行？
+3. **校验时点**：写入时（抓定义错）与查询时（抓数据未到齐）都需要，但严重级别与展示位置不同，如何避免告警疲劳？
+4. **容差由谁定**：指标所有者、模型所有者，还是平台按单位/精度自动推导？监管实践是"接收方定"，我们没有接收方。
+5. **是否需要指标版本**：`same_as` 与口径迁移迟早要求指标可版本化，这会牵动整个 Metrics 的数据模型，是否能推迟？
+
+---
+
+## 13. 参考资料
+
+**标准与规范**
+
+- XBRL 2.1 规范：`calculationLinkbase` / `calculationArc`（`weight`、`order`、`priority`、`use`）与 context 语义；
+  Arelle 校验器；SEC EDGAR、EU ESEF 申报规则；财政部《企业会计准则通用分类标准》。
+- 中国银行业监管报送（EAST / 1104 非现场监管报表）校验规则体系；交易所 XBRL 披露规则。
+- [Apache Ossie 语义层](ossie_semantic_layer.md)（原 OSI）：数据集、relationship、metrics、`ai_context` 的规范形状。
+
+**语义层产品文档**
+
+- dbt Semantic Layer / MetricFlow：metric `type`（`simple` / `ratio` / `derived` / `cumulative` / `conversion`）、
+  指标 DAG 与引用校验。
+- Cube（measure / ratio measure / calculated measure）、Looker LookML（measure 互引）、
+  Power BI DAX（度量依赖）、Databricks Unity Catalog metric views、
+  Snowflake semantic views / Cortex Analyst、AtScale metric catalog + MCP、Malloy。
+
+**EPM / 财务合并**
+
+- Anaplan checks（布尔断言）；Oracle EPM Cloud 校验与 tie-out；SAP Analytics Cloud validation rules；
+  Jedox / Board / IBM Planning Analytics 内置校验；OneStream business rules；Tagetik 勾稽复核报表。
+
+**流程型对账（边界参考）**
+
+- BlackLine、Trintech Cadency、FloQast、Oracle Account Reconciliation。
+
+**目录 / 可观测性 / 表级校验**
+
+- DataHub assertions 与列级血缘；Atlan 指标治理；Collibra 指标资产与质量规则；Select Star / Castor / Secoda。
+- Monte Carlo / Metaplane / Anomalo 指标监控；Datafold value-level diff；LinkedIn ThirdEye。
+- Great Expectations（`expect_multicolumn_sum_to_equal` 等）、dbt tests（`expression_is_true` / `relationships`）、
+  Soda SodaCL。
+
+**知识图谱与本体**
+
+- Palantir Foundry Ontology + AIP；Stardog（SHACL、虚拟图、Voicebox）；FIBO；ISDA CDM + Rosetta DSL；
+  Neo4j / Neptune Analytics + GraphRAG。
+
+**方法论**
+
+- Kimball & Ross《The Data Warehouse Toolkit》：一致性维度与粒度（勾稽的前提）。
+- Kaplan & Norton 战略地图 / KPI 树：指标作为有方向的因果图（区别于算术恒等式）。
+- 量纲分析：单位、币种、百分比与比率的廉价前置校验。
+- ISA 520 分析性程序：审计实践中对"合理性"而非"完全相等"的判定方式。
+- 阿里 OneData 指标体系：原子指标 / 派生指标 / 复合指标与口径治理。
