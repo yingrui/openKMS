@@ -327,6 +327,8 @@ npm run check   # typecheck → check:app-layout → check:app-modules → check
 
 | 21 | A page/component sheet defining its own table row-actions cell (`*-actions-col`, `*-row-actions`, `*-actions-cell`) | **`TableRowActionCell` / `TableRowActions` / `TableRowActionButton`**. The DS cell is `width: 1%; nowrap`, so it takes exactly what it holds; a page-local copy cannot know that in advance — `.eval-items-actions-col` was 80 px, right for two icon buttons and too narrow for a labelled button plus an icon, whose actions then ran off the right edge with no scrollbar to say so. `scripts/check-row-actions.py`, baseline **0** — the seven copies that existed were migrated; `src/styles/**` may define shared ones |
 
+| 22 | A `<label>` laid out as a flex **row** with its control and a text `<span>`, without **`white-space: nowrap`** | The row shrinks the label to its minimum content width before it shrinks the select, so a Chinese label breaks between characters — 类型 rendered as 类 / 型, one per line, in the run-history toolbar. Latin text overflows instead, which is why it goes unnoticed in review. Column labels and checkbox / radio / file labels are exempt: they are meant to wrap. `scripts/check-inline-labels.py`, baseline **0** |
+
 **`check:styles` is currently clean** (all pre-existing findings cleared: the two over-long files were split, the raw `px` media query / `rgba` backdrop / `window.confirm` / A2UI overlay allowlist entry are gone or justified). Keep it that way — a new finding should be fixed, not allowlisted.
 
 Run **`check:app-layout`** when editing **`App.scss`**, **`app-page.scss`**, **`ChannelSectionLayout*`**, **`MainLayout.tsx`**.

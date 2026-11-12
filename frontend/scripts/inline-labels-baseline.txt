@@ -1,0 +1,1 @@
+# Flex-row labels without white-space: nowrap — known debt, ratchets down only.

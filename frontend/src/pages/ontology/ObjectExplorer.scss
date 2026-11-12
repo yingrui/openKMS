@@ -582,6 +582,7 @@
   display: inline-flex;
   align-items: center;
   gap: var(--space-2);
+  white-space: nowrap;
 }
 
 .object-explorer-list-pagination__size select {

@@ -186,9 +186,13 @@
 }
 
 .eval-run-type {
-  display: flex;
+  display: inline-flex;
   align-items: center;
   gap: var(--space-2);
+  /* A toolbar row will squeeze this label before it squeezes the select; without nowrap the
+     Chinese label then breaks between every character and reads as a vertical line. */
+  flex-shrink: 0;
+  white-space: nowrap;
   font-size: var(--text-md);
   font-weight: 500;
   color: var(--color-text-secondary);

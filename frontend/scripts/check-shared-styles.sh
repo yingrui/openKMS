@@ -265,6 +265,10 @@ fi
 #     (the ancestor's `gap` splits one card into two), and
 #   * a local margin on a `.page-subtitle` that ties with the global `margin: 0` and loses by
 #     load order, leaving a hint flush against the toolbar below it.
+if ! python3 scripts/check-inline-labels.py; then
+  status=1
+fi
+
 if ! python3 scripts/check-page-chrome.py; then
   status=1
 fi
