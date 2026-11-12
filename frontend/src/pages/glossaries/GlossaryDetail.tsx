@@ -30,6 +30,7 @@ import {
 import {
   Dialog,
   FormField,
+  Pagination,
   TableRowActionButton,
   TableRowActionCell,
   TableRowActions,
@@ -133,16 +134,25 @@ export function GlossaryDetail() {
 
   const {
     items: terms,
+    total: termsTotal,
+    page: termsPage,
+    setPage: setTermsPage,
+    pageSize: termsPageSize,
+    setPageSize: setTermsPageSize,
     loading: termsLoading,
     reload: loadTerms,
   } = useListFetch({
-    fetcher: async ({ glossaryId, search }) => {
+    fetcher: async ({ glossaryId, search, offset, limit }) => {
       if (!glossaryId) return { items: [], total: 0 };
-      const data = await fetchGlossaryTerms(glossaryId, { search: search.trim() || undefined });
+      const data = await fetchGlossaryTerms(glossaryId, {
+        search: search.trim() || undefined,
+        limit,
+        offset,
+      });
       return { items: data.items, total: data.total };
     },
     filters: termsFilters,
-    pageSize: 1000,
+    pageSize: 25,
   });
 
   useEffect(() => {
@@ -367,7 +377,7 @@ export function GlossaryDetail() {
       </div>
 
       <div className="ds-table-wrap">
-        <table className="glossary-terms-table">
+        <table className="glossary-terms-table" aria-busy={termsLoading}>
                 <thead>
                   <tr>
                     <th>{t('glossary.detail.colPrimaryCn')}</th>
@@ -424,6 +434,17 @@ export function GlossaryDetail() {
             )}
           </tbody>
         </table>
+        <Pagination
+          total={termsTotal}
+          page={termsPage}
+          pageSize={termsPageSize}
+          loading={termsLoading}
+          onPageChange={setTermsPage}
+          onPageSizeChange={(size) => {
+            setTermsPageSize(size);
+            setTermsPage(0);
+          }}
+        />
       </div>
 
       <Dialog

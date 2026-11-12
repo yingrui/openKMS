@@ -109,10 +109,10 @@ export async function deleteGlossary(glossaryId: string): Promise<void> {
 
 export async function fetchGlossaryTerms(
   glossaryId: string,
-  params?: { search?: string }
+  params?: { search?: string; limit?: number; offset?: number }
 ): Promise<GlossaryTermListResponse> {
   return request<GlossaryTermListResponse>(`/api/glossaries/${glossaryId}/terms`, {
-    query: { search: params?.search },
+    query: { search: params?.search, limit: params?.limit, offset: params?.offset },
   });
 }
 

@@ -3,7 +3,7 @@ import uuid
 from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
-from sqlalchemy import String, cast, delete, or_, select
+from sqlalchemy import String, cast, delete, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.auth import require_auth
@@ -155,6 +155,8 @@ async def delete_glossary(
 
 @router.get("/{glossary_id}/terms", response_model=GlossaryTermListResponse)
 async def list_glossary_terms(
+    limit: int = Query(50, ge=1, le=500),
+    offset: int = Query(0, ge=0),
     search: str | None = Query(None),
     glossary: Glossary = Depends(get_glossary_scoped),
     db: AsyncSession = Depends(get_db),
@@ -173,12 +175,14 @@ async def list_glossary_terms(
             )
         )
 
-    query = query.order_by(GlossaryTerm.created_at.desc())
+    # `total` counts the filtered set, not the page: the pager needs both numbers.
+    total = await db.scalar(select(func.count()).select_from(query.subquery())) or 0
+    query = query.order_by(GlossaryTerm.created_at.desc()).limit(limit).offset(offset)
     result = await db.execute(query)
     terms = result.scalars().all()
 
     items = [_term_to_response(t) for t in terms]
-    return GlossaryTermListResponse(items=items, total=len(items))
+    return GlossaryTermListResponse(items=items, total=int(total))
 
 
 @router.post("/{glossary_id}/terms/suggest", response_model=GlossaryTermSuggestResponse)
