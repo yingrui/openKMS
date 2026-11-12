@@ -389,52 +389,6 @@
 }
 
 /* Modal */
-.models-modal {
-  background: var(--color-bg-elevated);
-  border-radius: var(--radius-lg);
-  width: 100%;
-  max-width: ds.$bp-phone-max;
-  max-height: 90vh;
-  overflow-y: auto;
-  box-shadow: var(--shadow-elevated);
-}
-
-.models-modal-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: var(--space-5) var(--space-6) var(--space-3);
-}
-
-.models-modal-header h2 {
-  font-size: var(--text-lg);
-  margin: 0;
-}
-
-.models-modal-header button {
-  background: none;
-  border: none;
-  color: var(--color-text-secondary);
-  cursor: pointer;
-  padding: var(--space-1);
-}
-
-.models-modal-body {
-  padding: var(--space-2) var(--space-6) var(--space-6);
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-4);
-}
-
-.models-modal-body label {
-  display: flex;
-  flex-direction: column;
-  gap: var(--gap-compact);
-  font-size: var(--text-md);
-  font-weight: var(--font-weight-medium);
-  color: var(--color-text-secondary);
-}
-
 .models-modal-body input,
 .models-modal-body select,
 .models-modal-body textarea {
@@ -453,12 +407,6 @@
   outline-offset: -1px;
 }
 
-.models-modal-body textarea {
-  font-family: var(--font-mono, ui-monospace, monospace);
-  font-size: var(--text-md);
-  resize: vertical;
-}
-
 .models-checkbox-label {
   flex-direction: row !important;
   align-items: center;
@@ -469,11 +417,4 @@
   width: auto;
   margin-right: var(--space-2);
   cursor: pointer;
-}
-
-.models-modal-actions {
-  display: flex;
-  gap: var(--space-3);
-  justify-content: flex-end;
-  padding: 0 var(--space-6) var(--space-5);
 }

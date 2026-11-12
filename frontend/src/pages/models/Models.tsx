@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
-import { Plus, Cpu, Search, Trash2, Pencil, X, Loader2, Server } from 'lucide-react';
+import { Plus, Cpu, Search, Trash2, Pencil, Loader2, Server } from 'lucide-react';
 import { toast } from 'sonner';
 import { ErrorBanner } from '../../components/ErrorBanner';
 import {
@@ -24,6 +24,8 @@ import {
 } from '../../data/providersApi';
 import { useConfirm } from '../../contexts/ConfirmContext';
 import {
+  Dialog,
+  FormField,
   Pagination,
   TableRowActionButton,
   TableRowActionCell,
@@ -509,159 +511,142 @@ export function Models() {
         </div>
       </div>
 
-      {modalMode === 'provider' && (
-        <div className="models-modal-overlay" onClick={closeModal}>
-          <div className="models-modal" onClick={(e) => e.stopPropagation()}>
-            <div className="models-modal-header">
-              <h2>{editProvider ? t('models.modalProviderEdit') : t('models.modalProviderAdd')}</h2>
-              <button type="button" onClick={closeModal} disabled={submitting} aria-label={t('shared.close')}>
-                <X size={20} />
-              </button>
-            </div>
-            <div className="models-modal-body">
-              <label>
-                {t('models.provName')}
-                <input
-                  type="text"
-                  value={provFormName}
-                  onChange={(e) => setProvFormName(e.target.value)}
-                  placeholder={t('models.provNamePlaceholder')}
-                />
-              </label>
-              <label>
-                {t('models.provBaseUrl')}
-                <input
-                  type="text"
-                  value={provFormBaseUrl}
-                  onChange={(e) => setProvFormBaseUrl(e.target.value)}
-                  placeholder={t('models.provBasePlaceholder')}
-                />
-              </label>
-              <label>
-                {t('models.provApiKey')}
-                <input
-                  type="password"
-                  value={provFormApiKey}
-                  onChange={(e) => setProvFormApiKey(e.target.value)}
-                  placeholder={editProvider ? t('models.provApiKeyPlaceholderEdit') : t('models.provApiKeyPlaceholderNew')}
-                />
-              </label>
-            </div>
-            <div className="models-modal-actions">
-              <button type="button" className="btn btn-secondary" onClick={closeModal} disabled={submitting}>
-                {t('shared.cancel')}
-              </button>
-              <button
-                type="button"
-                className="btn btn-primary"
-                onClick={handleProviderSubmit}
-                disabled={!provFormName.trim() || !provFormBaseUrl.trim() || submitting}
-              >
-                {submitting ? t('shared.saving') : editProvider ? t('shared.update') : t('shared.add')}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <Dialog
+        open={modalMode === 'provider'}
+        onClose={closeModal}
+        title={editProvider ? t('models.modalProviderEdit') : t('models.modalProviderAdd')}
+        closeAriaLabel={t('shared.close')}
+        closeDisabled={submitting}
+        size="md"
+        footer={
+          <>
+            <button type="button" className="btn btn-secondary" onClick={closeModal} disabled={submitting}>
+              {t('shared.cancel')}
+            </button>
+            <button
+              type="button"
+              className="btn btn-primary"
+              onClick={handleProviderSubmit}
+              disabled={!provFormName.trim() || !provFormBaseUrl.trim() || submitting}
+            >
+              {submitting ? t('shared.saving') : editProvider ? t('shared.update') : t('shared.add')}
+            </button>
+          </>
+        }
+      >
+        <FormField label={t('models.provName')}>
+          <input
+            type="text"
+            value={provFormName}
+            onChange={(e) => setProvFormName(e.target.value)}
+            placeholder={t('models.provNamePlaceholder')}
+          />
+        </FormField>
+        <FormField label={t('models.provBaseUrl')}>
+          <input
+            type="text"
+            value={provFormBaseUrl}
+            onChange={(e) => setProvFormBaseUrl(e.target.value)}
+            placeholder={t('models.provBasePlaceholder')}
+          />
+        </FormField>
+        <FormField label={t('models.provApiKey')}>
+          <input
+            type="password"
+            value={provFormApiKey}
+            onChange={(e) => setProvFormApiKey(e.target.value)}
+            placeholder={editProvider ? t('models.provApiKeyPlaceholderEdit') : t('models.provApiKeyPlaceholderNew')}
+          />
+        </FormField>
+      </Dialog>
 
-      {modalMode === 'model' && (
-        <div className="models-modal-overlay" onClick={closeModal}>
-          <div className="models-modal" onClick={(e) => e.stopPropagation()}>
-            <div className="models-modal-header">
-              <h2>{editModel ? t('models.modalModelEdit') : t('models.modalModelAdd')}</h2>
-              <button type="button" onClick={closeModal} disabled={submitting} aria-label={t('shared.close')}>
-                <X size={20} />
-              </button>
-            </div>
-            <div className="models-modal-body">
-              <label>
-                {t('models.modelProvider')}
-                <select
-                  value={formProviderId}
-                  onChange={(e) => setFormProviderId(e.target.value)}
-                >
-                  <option value="">{t('models.selectProvider')}</option>
-                  {providers.map((p) => (
-                    <option key={p.id} value={p.id}>{p.name}</option>
-                  ))}
-                </select>
-              </label>
-              <label>
-                {t('models.modelName')}
-                <input
-                  type="text"
-                  value={formName}
-                  onChange={(e) => setFormName(e.target.value)}
-                  placeholder={t('models.modelNamePlaceholder')}
-                />
-              </label>
-              <label>
-                {t('models.apiKind')}
-                <select value={formApiKind} onChange={(e) => setFormApiKind(e.target.value)}>
-                  <option value="">{t('models.selectApiKind')}</option>
-                  {apiKinds.map((k) => (
-                    <option key={k.id} value={k.id}>{k.label}</option>
-                  ))}
-                </select>
-              </label>
-              <fieldset className="models-capabilities-fieldset">
-                <legend>{t('models.capabilities')}</legend>
-                <div className="models-capabilities-checkboxes">
-                  {capabilityOptions.map((c) => (
-                    <label key={c.id} className="models-checkbox-label">
-                      <input
-                        type="checkbox"
-                        checked={formCapabilities.includes(c.id)}
-                        onChange={() => toggleFormCapability(c.id)}
-                      />
-                      <span>{c.label}</span>
-                    </label>
-                  ))}
-                </div>
-              </fieldset>
-              <label className="models-checkbox-label">
+      <Dialog
+        open={modalMode === 'model'}
+        onClose={closeModal}
+        title={editModel ? t('models.modalModelEdit') : t('models.modalModelAdd')}
+        closeAriaLabel={t('shared.close')}
+        closeDisabled={submitting}
+        size="md"
+        footer={
+          <>
+            <button type="button" className="btn btn-secondary" onClick={closeModal} disabled={submitting}>
+              {t('shared.cancel')}
+            </button>
+            <button
+              type="button"
+              className="btn btn-primary"
+              onClick={handleModelSubmit}
+              disabled={!formName.trim() || !formProviderId || !formApiKind || submitting}
+            >
+              {submitting ? t('shared.saving') : editModel ? t('shared.update') : t('shared.add')}
+            </button>
+          </>
+        }
+      >
+        <FormField label={t('models.modelProvider')}>
+          <select value={formProviderId} onChange={(e) => setFormProviderId(e.target.value)}>
+            <option value="">{t('models.selectProvider')}</option>
+            {providers.map((p) => (
+              <option key={p.id} value={p.id}>{p.name}</option>
+            ))}
+          </select>
+        </FormField>
+        <FormField label={t('models.modelName')}>
+          <input
+            type="text"
+            value={formName}
+            onChange={(e) => setFormName(e.target.value)}
+            placeholder={t('models.modelNamePlaceholder')}
+          />
+        </FormField>
+        <FormField label={t('models.apiKind')}>
+          <select value={formApiKind} onChange={(e) => setFormApiKind(e.target.value)}>
+            <option value="">{t('models.selectApiKind')}</option>
+            {apiKinds.map((k) => (
+              <option key={k.id} value={k.id}>{k.label}</option>
+            ))}
+          </select>
+        </FormField>
+        <fieldset className="models-capabilities-fieldset">
+          <legend>{t('models.capabilities')}</legend>
+          <div className="models-capabilities-checkboxes">
+            {capabilityOptions.map((c) => (
+              <label key={c.id} className="models-checkbox-label">
                 <input
                   type="checkbox"
-                  checked={formIsDefaultInCategory}
-                  onChange={(e) => setFormIsDefaultInCategory(e.target.checked)}
+                  checked={formCapabilities.includes(c.id)}
+                  onChange={() => toggleFormCapability(c.id)}
                 />
-                <span>{t('models.defaultInApiKind')}</span>
+                <span>{c.label}</span>
               </label>
-              <label>
-                {t('models.modelApiName')}
-                <input
-                  type="text"
-                  value={formModelName}
-                  onChange={(e) => setFormModelName(e.target.value)}
-                  placeholder={t('models.modelApiPlaceholder')}
-                />
-              </label>
-              <label>
-                {t('models.configJson')}
-                <textarea
-                  rows={3}
-                  value={formConfig}
-                  onChange={(e) => setFormConfig(e.target.value)}
-                  placeholder={t('models.configPlaceholder')}
-                />
-              </label>
-            </div>
-            <div className="models-modal-actions">
-              <button type="button" className="btn btn-secondary" onClick={closeModal} disabled={submitting}>
-                {t('shared.cancel')}
-              </button>
-              <button
-                type="button"
-                className="btn btn-primary"
-                onClick={handleModelSubmit}
-                disabled={!formName.trim() || !formProviderId || !formApiKind || submitting}
-              >
-                {submitting ? t('shared.saving') : editModel ? t('shared.update') : t('shared.add')}
-              </button>
-            </div>
+            ))}
           </div>
-        </div>
-      )}
+        </fieldset>
+        <label className="models-checkbox-label">
+          <input
+            type="checkbox"
+            checked={formIsDefaultInCategory}
+            onChange={(e) => setFormIsDefaultInCategory(e.target.checked)}
+          />
+          <span>{t('models.defaultInApiKind')}</span>
+        </label>
+        <FormField label={t('models.modelApiName')}>
+          <input
+            type="text"
+            value={formModelName}
+            onChange={(e) => setFormModelName(e.target.value)}
+            placeholder={t('models.modelApiPlaceholder')}
+          />
+        </FormField>
+        <FormField label={t('models.configJson')}>
+          <textarea
+            rows={3}
+            value={formConfig}
+            onChange={(e) => setFormConfig(e.target.value)}
+            placeholder={t('models.configPlaceholder')}
+          />
+        </FormField>
+      </Dialog>
     </div>
   );
 }
