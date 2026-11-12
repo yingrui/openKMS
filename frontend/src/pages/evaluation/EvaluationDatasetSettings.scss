@@ -1,3 +1,17 @@
+/* The tab strip and everything it switches are their own column under the header — see
+   `entity-view.scss`: the header keeps its divider because the strip is not its card head. */
+.eval-settings-body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+}
+
+/* Standalone card here (it starts its own box under the header), not the top half of a form card. */
+.eval-settings-tabs {
+  border-radius: var(--radius-lg);
+  border-bottom: 1px solid var(--color-border);
+}
+
 /* Beside the header's save button: says why it is enabled, not that it exists. */
 .eval-settings-unsaved {
   font-size: var(--text-md);

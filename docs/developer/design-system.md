@@ -106,9 +106,10 @@ Two adjacent dividers plus two paddings is what reads as "a large unexplained ga
 saying what it holds — then `EntityViewPanel` cards beneath it. The header takes at most one primary action on the
 right; anything a reader adjusts between looks at the same data (a type filter, refresh) belongs in a light toolbar
 *inside* the panel, and the table itself is `.ds-table-wrap--flush` + `.console-table` with its `Pagination` in the
-same wrap. A page-level `PanelToolbar` as the top of a tab is what makes one tab look unlike the next. Where the header carries the
-tab's primary action (Settings → Save), the header keeps its own divider: a `settings-page-tabs` strip directly under it
-cancels that divider, because there the strip *is* the top of a card.
+same wrap. A page-level `PanelToolbar` as the top of a tab is what makes one tab look unlike the next. A tab strip directly under the header
+is the header's own card head — `entity-view.scss` cancels the header's divider for it (`:has(+ .settings-page-tabs)`).
+When the header is a real header (Settings → Save on the right, `EntityViewHeader`), put the strip and what it switches
+in a wrapper div so the strip is not the header's next sibling: the divider stays, and the strip becomes its own card.
 
 **A tab strip and its panel are one card.** `EntityViewShell` puts page children in `.account-stack`
 (`gap: var(--space-5)`). Render `.settings-page-tabs` and `.settings-page-form` as siblings there and
