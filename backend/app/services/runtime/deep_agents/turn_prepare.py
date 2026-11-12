@@ -6,6 +6,7 @@ import logging
 from typing import Any
 
 from langchain_core.messages import BaseMessage
+from langgraph.types import Overwrite
 
 from app.models.agent_models import AgentMessage
 from app.services.runtime.deep_agents.context_compaction import compact_project_context_if_needed
@@ -45,11 +46,16 @@ async def repair_checkpoint_pairing(agent: Any, cfg: dict[str, Any]) -> int:
     if not messages:
         return 0
     repaired_messages, repaired = repair_tool_call_pairing(messages)
-    if not repaired:
+    # The repair also *reorders* tool results that were separated from their request (e.g. by
+    # the budget warning), which inserts no placeholder — persist whenever the list changed.
+    if not repaired and repaired_messages == messages:
         return 0
     logger.info(
-        "Persisting repair for %s unanswered tool call(s) on the checkpoint thread",
+        "Persisting tool-call repair on the checkpoint thread (%s placeholder(s), %s message(s))",
         repaired,
+        len(repaired_messages) - len(messages),
     )
-    await agent.aupdate_state(cfg, {"messages": repaired_messages})
+    # `Overwrite` replaces the channel; a plain list would be merged by `add_messages`, which
+    # keeps the original order (and so cannot move a tool result back next to its request).
+    await agent.aupdate_state(cfg, {"messages": Overwrite(repaired_messages)})
     return repaired

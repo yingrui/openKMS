@@ -56,13 +56,7 @@ class BudgetAwareTodoMiddleware(TodoListMiddleware):
         budget_turns = int(self.recursion_limit * WARN_AT_FRACTION) // 2
         return max(1, budget_turns - _MIN_HEADROOM)
 
-    def after_model(self, state: Any, runtime: Any) -> dict[str, Any] | None:
-        base = super().after_model(state, runtime)
-        self._turns += 1
-        if self._warned or self._turns < self.warn_at_turn:
-            return base
-
-        self._warned = True
+    def _warning(self) -> SystemMessage:
         estimate = min(self._turns * 2, self.recursion_limit)
         logger.info(
             "agent_budget_warning turn=%s limit=%s estimated_steps=%s",
@@ -70,14 +64,31 @@ class BudgetAwareTodoMiddleware(TodoListMiddleware):
             self.recursion_limit,
             estimate,
         )
-        update = dict(base or {})
-        update["messages"] = [
-            *(update.get("messages") or []),
-            SystemMessage(
-                content=_WARNING.format(used=estimate, limit=self.recursion_limit)
-            ),
-        ]
-        return update
+        return SystemMessage(
+            content=_WARNING.format(used=estimate, limit=self.recursion_limit)
+        )
+
+    def before_model(self, state: Any, runtime: Any) -> dict[str, Any] | None:
+        """Warn **before** the model call, never between a tool call and its result.
+
+        Appending the warning from `after_model` looked natural but produced an invalid
+        transcript when the model had just requested tools: the `SystemMessage` landed
+        between the assistant's `tool_calls` and the `tool` messages, and providers reject
+        that with *insufficient tool messages following tool_calls message*. Before the
+        model sees the turn, the warning is the last message before its own response —
+        always safe, and the model still has all remaining steps to act on it.
+        """
+        base = dict(super().before_model(state, runtime) or {})
+        if self._warned or self._turns < self.warn_at_turn:
+            return base
+        self._warned = True
+        base["messages"] = [*(base.get("messages") or []), self._warning()]
+        return base
+
+    def after_model(self, state: Any, runtime: Any) -> dict[str, Any] | None:
+        base = super().after_model(state, runtime)
+        self._turns += 1
+        return base
 
 
 def make_budget_middleware(recursion_limit: int) -> TodoListMiddleware:

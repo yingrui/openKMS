@@ -15,7 +15,7 @@ the model keeps its own reasoning and the transcript stays truthful.
 
 from __future__ import annotations
 
-from langchain_core.messages import AIMessage, HumanMessage, ToolMessage
+from langchain_core.messages import AIMessage, HumanMessage, SystemMessage, ToolMessage
 
 from app.services.runtime.deep_agents.tool_call_repair import (
     INTERRUPTED_TOOL_CONTENT,
@@ -93,9 +93,46 @@ def test_an_empty_thread_is_a_no_op():
     assert repair_tool_call_pairing([]) == ([], 0)
 
 
-def test_a_response_before_the_request_still_counts_as_answered():
-    """A moved tool message should not trigger a duplicate placeholder."""
+def test_a_response_before_the_request_is_moved_back():
+    """A tool message that ended up above its request is still *the* response."""
     messages = [_tool("c1"), HumanMessage("q"), _ai("c1")]
     fixed, repaired = repair_tool_call_pairing(messages)
+
+    assert repaired == 0, "no placeholder: the response exists"
+    assert [type(m).__name__ for m in fixed] == [
+        "HumanMessage",
+        "AIMessage",
+        "ToolMessage",
+    ]
+    assert fixed[-1].tool_call_id == "c1"
+
+
+def test_a_message_between_the_request_and_its_result_is_ordered_out():
+    """The real 400: the budget warning's SystemMessage sat between the pair."""
+    warning = SystemMessage(content="【步数预算预警】")
+    messages = [HumanMessage("q"), _ai("c1"), warning, _tool("c1"), HumanMessage("next")]
+    fixed, repaired = repair_tool_call_pairing(messages)
+
     assert repaired == 0
-    assert fixed == messages
+    assert [type(m).__name__ for m in fixed] == [
+        "HumanMessage",
+        "AIMessage",
+        "ToolMessage",
+        "SystemMessage",
+        "HumanMessage",
+    ]
+    assert assert_tool_call_pairing(fixed) is None
+
+
+def test_duplicate_responses_are_collapsed():
+    messages = [HumanMessage("q"), _ai("c1"), _tool("c1"), _tool("c1")]
+    fixed, repaired = repair_tool_call_pairing(messages)
+    assert repaired == 0
+    assert sum(isinstance(m, ToolMessage) for m in fixed) == 1
+
+
+def test_orphan_tool_messages_are_dropped():
+    messages = [HumanMessage("q"), _tool("nobody-asked")]
+    fixed, repaired = repair_tool_call_pairing(messages)
+    assert repaired == 0
+    assert not any(isinstance(m, ToolMessage) for m in fixed)

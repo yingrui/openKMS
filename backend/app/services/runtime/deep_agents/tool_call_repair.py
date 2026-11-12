@@ -48,39 +48,50 @@ def _tool_call_ids(message: BaseMessage) -> list[str]:
 
 
 def repair_tool_call_pairing(messages: list[BaseMessage]) -> tuple[list[BaseMessage], int]:
-    """Insert a placeholder `ToolMessage` for every tool call left unanswered.
+    """Make every assistant `tool_calls` block valid for the provider.
 
-    Returns `(messages, repaired)` where `repaired` counts the messages inserted, so callers can
-    log — a non-zero count means a previous turn died mid-tool, which is worth knowing.
+    Two defects are repaired, both produced by us rather than by the model:
+
+    * **unanswered** — the turn died between the request and its result (crash, restart, a
+      killed backend). A placeholder tool message is inserted.
+    * **interleaved** — another message (e.g. the budget warning's `SystemMessage`) landed
+      between the request and its result, or a result was persisted after a later turn. The
+      provider requires the `tool` messages to *immediately* follow, so each result is moved
+      back next to its request. This is why `N` calls can all be "answered" and the request
+      still fails with `insufficient tool messages following tool_calls message`.
+
+    Orphan tool messages (no request) and duplicate responses are dropped: the API rejects
+    both. Returns `(messages, repaired)` where `repaired` counts placeholders inserted.
     """
     if not messages:
         return messages, 0
 
-    # Which tool_call_ids already have a response anywhere in the thread. A response may sit
-    # after another assistant message in an interleaved transcript, so collect globally.
-    answered: set[str] = {
-        m.tool_call_id
-        for m in messages
-        if isinstance(m, ToolMessage) and isinstance(m.tool_call_id, str) and m.tool_call_id
-    }
+    responses: dict[str, ToolMessage] = {}
+    for message in messages:
+        if isinstance(message, ToolMessage) and isinstance(message.tool_call_id, str) and message.tool_call_id:
+            responses[message.tool_call_id] = message  # last wins; duplicates are invalid
 
+    requested: set[str] = set()
+    body = [m for m in messages if not isinstance(m, ToolMessage)]
     out: list[BaseMessage] = []
     repaired = 0
-    for message in messages:
+    for message in body:
         out.append(message)
-        for call_id in _tool_call_ids(message):
-            if call_id in answered:
-                continue
-            out.append(
-                ToolMessage(
+        call_ids = _tool_call_ids(message)
+        if not call_ids:
+            continue
+        requested.update(call_ids)
+        for call_id in call_ids:
+            response = responses.get(call_id)
+            if response is None:
+                response = ToolMessage(
                     content=INTERRUPTED_TOOL_CONTENT,
                     tool_call_id=call_id,
                     name="interrupted",
                     status="error",
                 )
-            )
-            answered.add(call_id)
-            repaired += 1
+                repaired += 1
+            out.append(response)
 
     if repaired:
         logger.warning(
@@ -89,10 +100,16 @@ def repair_tool_call_pairing(messages: list[BaseMessage]) -> tuple[list[BaseMess
             repaired,
             len(messages),
         )
-    elif _has_unanswered_tail(messages):
-        # Defensive: the global pass above is authoritative, so reaching here means the
-        # accounting is wrong. Loud, because the next request would fail with a 400.
-        logger.error("Tool-call pairing repair reported no work but the thread still looks broken")
+    moved = len(out) - len(body) - len(requested)
+    if moved:
+        logger.info(
+            "Reordered %s tool message(s) to sit directly after their request (%s-message thread)",
+            moved,
+            len(messages),
+        )
+    orphaned = set(responses) - requested
+    if orphaned:
+        logger.warning("Dropped %s orphan tool message(s): %s", len(orphaned), sorted(orphaned)[:5])
 
     return out, repaired
 
@@ -114,12 +131,22 @@ def _has_unanswered_tail(messages: list[BaseMessage]) -> bool:
 
 
 def assert_tool_call_pairing(messages: list[BaseMessage]) -> None:
-    """Guard for tests: every requested call id has a response."""
-    answered = {m.tool_call_id for m in messages if isinstance(m, ToolMessage)}
-    for message in messages:
-        missing = set(_tool_call_ids(message)) - answered
-        if missing:
-            raise AssertionError(f"unanswered tool_calls: {sorted(missing)}")
+    """Guard for tests: every request is answered *immediately* by its tool messages."""
+    for index, message in enumerate(messages):
+        requested = _tool_call_ids(message)
+        if not requested:
+            continue
+        following: list[str] = []
+        cursor = index + 1
+        while cursor < len(messages) and isinstance(messages[cursor], ToolMessage):
+            tool_call_id = messages[cursor].tool_call_id
+            if isinstance(tool_call_id, str):
+                following.append(tool_call_id)
+            cursor += 1
+        if sorted(following) != sorted(requested):
+            raise AssertionError(
+                f"tool_calls at {index} answered by {following}, expected {requested}"
+            )
 
 
 def summarize_unpaired(messages: list[BaseMessage]) -> list[str]:

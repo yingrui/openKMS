@@ -30,17 +30,26 @@ def test_warning_lands_early_enough_to_act_on() -> None:
 
 def test_warning_fires_once_and_includes_budget() -> None:
     mw = BudgetAwareTodoMiddleware(recursion_limit=200)
-    # `after_model` delegates to TodoListMiddleware, which reads state["messages"].
     state = _State(messages=[HumanMessage(content="hi")])
     updates: list[dict[str, Any] | None] = []
     for _ in range(mw.warn_at_turn + 5):
-        updates.append(mw.after_model(state, None))
+        updates.append(mw.before_model(state, None))
+        mw.after_model(state, None)
 
     warned = [u for u in updates if u and u.get("messages")]
     assert len(warned) == 1, "warn exactly once, not on every turn"
     content = str(warned[0]["messages"][0].content)
     assert "200" in content
     assert isinstance(warned[0]["messages"][0], SystemMessage)
+
+
+def test_warning_is_never_injected_after_a_tool_call() -> None:
+    """Regression: a `SystemMessage` there breaks the provider's tool-call pairing rule."""
+    mw = BudgetAwareTodoMiddleware(recursion_limit=200)
+    state = _State(messages=[HumanMessage(content="hi")])
+    for _ in range(mw.warn_at_turn + 5):
+        after = mw.after_model(state, None)
+        assert not (after and after.get("messages")), "after_model must not add messages"
 
 
 def test_middleware_keeps_todo_behaviour() -> None:
