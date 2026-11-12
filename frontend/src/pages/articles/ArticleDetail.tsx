@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import {
   ArrowLeft,
   ChevronDown,
@@ -30,6 +31,7 @@ import './ArticleDetail.scss';
 const MARKDOWN_SPLIT_GUTTER_PX = 6;
 
 export function ArticleDetail() {
+  const { t } = useTranslation('articles');
   const {
     id, article, attachments, error, backTo, channelLabel, infoVisible, setInfoVisible, editName,
     setEditName, editSourceRef, setEditSourceRef, editMarkdown, setEditMarkdown, titleEditMode,
@@ -51,7 +53,7 @@ export function ArticleDetail() {
     <div className="document-detail article-detail-page">
       <Link to={backTo} className="document-detail-back">
         <ArrowLeft size={18} />
-        <span>Back to Articles</span>
+        <span>{t('detail.back')}</span>
       </Link>
       {error ? (
         <div className="document-detail-error">{error}</div>
@@ -69,7 +71,7 @@ export function ArticleDetail() {
               aria-expanded={infoVisible}
             >
               <Info size={20} />
-              <span>Article information</span>
+              <span>{t('detail.info')}</span>
               <button
                 type="button"
                 className="document-detail-info-toggle-btn"
@@ -86,7 +88,7 @@ export function ArticleDetail() {
               <div className="document-detail-info-body">
                 <dl className="document-detail-info-list document-detail-info-list--name-row">
                   <div className="document-detail-info-item document-detail-info-item--name">
-                    <dt>Title</dt>
+                    <dt>{t('detail.title')}</dt>
                     <dd>
                       {titleEditMode ? (
                         <div className="article-detail-inline-edit">
@@ -95,8 +97,8 @@ export function ArticleDetail() {
                             className="document-detail-info-input article-detail-inline-edit-input"
                             value={editName}
                             onChange={(e) => setEditName(e.target.value)}
-                            aria-label="Article title"
-                            placeholder="Title"
+                            aria-label={t('detail.titleAria')}
+                            placeholder={t('detail.titlePlaceholder')}
                             autoFocus
                             onKeyDown={(e) => {
                               if (e.key === 'Enter' && editName.trim()) void handleSaveTitle();
@@ -130,8 +132,8 @@ export function ArticleDetail() {
                             type="button"
                             className="document-detail-info-edit-btn"
                             onClick={() => setTitleEditMode(true)}
-                            title="Edit title"
-                            aria-label="Edit title"
+                            title={t('detail.editTitle')}
+                            aria-label={t('detail.editTitle')}
                           >
                             <Edit3 size={12} />
                           </button>
@@ -145,11 +147,11 @@ export function ArticleDetail() {
                   <div className="document-detail-info-stats-col">
                     <dl className="document-detail-info-list document-detail-info-list--col">
                       <div className="document-detail-info-item document-detail-info-item--compact">
-                        <dt>Channel</dt>
+                        <dt>{t('detail.channel')}</dt>
                         <dd>{channelLabel}</dd>
                       </div>
                       <div className="document-detail-info-item document-detail-info-item--compact">
-                        <dt>Source</dt>
+                        <dt>{t('detail.source')}</dt>
                         <dd className="article-detail-source-dd">
                           {sourceEditMode ? (
                             <div className="article-detail-inline-edit">
@@ -158,8 +160,8 @@ export function ArticleDetail() {
                                 className="document-detail-info-input article-detail-inline-edit-input"
                                 value={editSourceRef}
                                 onChange={(e) => setEditSourceRef(e.target.value)}
-                                aria-label="Source ID or URL"
-                                placeholder="External ID or URL"
+                                aria-label={t('detail.sourceAria')}
+                                placeholder={t('detail.sourcePlaceholder')}
                                 autoFocus
                                 onKeyDown={(e) => {
                                   if (e.key === 'Enter') void handleSaveSource();
@@ -203,8 +205,8 @@ export function ArticleDetail() {
                                 type="button"
                                 className="document-detail-info-edit-btn"
                                 onClick={() => setSourceEditMode(true)}
-                                title="Edit source"
-                                aria-label="Edit source"
+                                title={t('detail.editSource')}
+                                aria-label={t('detail.editSource')}
                               >
                                 <Edit3 size={12} />
                               </button>
@@ -213,7 +215,7 @@ export function ArticleDetail() {
                         </dd>
                       </div>
                       <div className="document-detail-info-item document-detail-info-item--compact">
-                        <dt>Lifecycle</dt>
+                        <dt>{t('detail.lifecycle')}</dt>
                         <dd>{article.lifecycle_status ?? '—'}</dd>
                       </div>
                     </dl>
@@ -221,11 +223,11 @@ export function ArticleDetail() {
                   <div className="document-detail-info-stats-col">
                     <dl className="document-detail-info-list document-detail-info-list--col">
                       <div className="document-detail-info-item document-detail-info-item--compact">
-                        <dt>Applicable</dt>
-                        <dd>{article.is_current_for_rag ? 'Yes' : 'No'}</dd>
+                        <dt>{t('detail.applicable')}</dt>
+                        <dd>{article.is_current_for_rag ? t('detail.yes') : t('detail.no')}</dd>
                       </div>
                       <div className="document-detail-info-item document-detail-info-item--compact">
-                        <dt>Updated</dt>
+                        <dt>{t('detail.updated')}</dt>
                         <dd>{new Date(article.updated_at).toLocaleString()}</dd>
                       </div>
                     </dl>
@@ -293,7 +295,7 @@ export function ArticleDetail() {
                 leading={
                   <>
                     <FileText size={16} />
-                    <span>Markdown</span>
+                    <span>{t('detail.markdown')}</span>
                   </>
                 }
                 actions={
@@ -314,30 +316,30 @@ export function ArticleDetail() {
                         className="document-detail-edit-toggle"
                         onClick={() => imageInputRef.current?.click()}
                         disabled={uploadingMedia}
-                        title="Insert image"
-                        aria-label="Insert image"
+                        title={t('detail.insertImage')}
+                        aria-label={t('detail.insertImage')}
                       >
                         {uploadingMedia ? <Loader2 size={14} className="doc-detail-spinner" /> : <ImageIcon size={14} />}
-                        <span className="ds-compact-label">Image</span>
+                        <span className="ds-compact-label">{t('detail.image')}</span>
                       </button>
                       <button
                         type="button"
                         className="document-detail-edit-toggle"
                         onClick={() => attachmentInputRef.current?.click()}
                         disabled={uploadingMedia}
-                        title="Add attachment"
-                        aria-label="Add attachment"
+                        title={t('detail.addAttachment')}
+                        aria-label={t('detail.addAttachment')}
                       >
                         <Paperclip size={14} />
-                        <span className="ds-compact-label">Attachment</span>
+                        <span className="ds-compact-label">{t('detail.attachment')}</span>
                       </button>
                       <button
                         type="button"
                         className="document-detail-edit-toggle document-detail-save-btn"
                         onClick={() => void handleSaveMarkdown()}
                         disabled={savingMarkdown}
-                        title="Save content"
-                        aria-label="Save content"
+                        title={t('detail.saveContent')}
+                        aria-label={t('detail.saveContent')}
                       >
                         {savingMarkdown ? (
                           <Loader2 size={14} className="doc-detail-spinner" aria-hidden />
@@ -351,11 +353,11 @@ export function ArticleDetail() {
                         className="document-detail-edit-toggle"
                         onClick={handleCancelMarkdownEdit}
                         disabled={savingMarkdown}
-                        title="Discard changes"
-                        aria-label="Discard changes"
+                        title={t('detail.discard')}
+                        aria-label={t('detail.discard')}
                       >
                         <XIcon size={14} />
-                        <span className="ds-compact-label">Cancel</span>
+                        <span className="ds-compact-label">{t('detail.cancel')}</span>
                       </button>
                     </>
                   ) : (
@@ -364,22 +366,22 @@ export function ArticleDetail() {
                         type="button"
                         className="document-detail-edit-toggle"
                         onClick={() => window.print()}
-                        title="Print markdown"
-                        aria-label="Print markdown"
+                        title={t('detail.print')}
+                        aria-label={t('detail.print')}
                       >
                         <Printer size={14} />
-                        <span className="ds-compact-label">Print</span>
+                        <span className="ds-compact-label">{t('detail.print')}</span>
                       </button>
                       <button
                         type="button"
                         className="document-detail-edit-toggle"
                         onClick={() => setMarkdownEditMode(true)}
-                        title="Edit markdown"
-                        aria-label="Edit markdown"
+                        title={t('detail.editMarkdown')}
+                        aria-label={t('detail.editMarkdown')}
                         aria-pressed={false}
                       >
                         <Edit3 size={14} />
-                        <span className="ds-compact-label">Edit</span>
+                        <span className="ds-compact-label">{t('detail.edit')}</span>
                       </button>
                     </>
                   )
@@ -417,8 +419,8 @@ export function ArticleDetail() {
                       <textarea
                         ref={textareaRef}
                         className="article-detail-markdown-textarea"
-                        aria-label="Article body in Markdown"
-                        placeholder="Write Markdown here. Paste or drop an image to upload, or use the toolbar."
+                        aria-label={t('detail.bodyAria')}
+                        placeholder={t('detail.bodyPlaceholder')}
                         value={editMarkdown}
                         onChange={(e) => setEditMarkdown(e.target.value)}
                         onPaste={(e) => void handleEditorPaste(e)}
@@ -451,10 +453,10 @@ export function ArticleDetail() {
                           className="article-detail-markdown-splitter"
                           role="separator"
                           aria-orientation="vertical"
-                          aria-label="Resize editor and preview"
+                          aria-label={t('detail.resizeAria')}
                           onPointerDown={handleMarkdownSplitPointerDown}
                         />
-                        <aside className="article-detail-markdown-preview-pane" aria-label="Markdown preview">
+                        <aside className="article-detail-markdown-preview-pane" aria-label={t('detail.previewAria')}>
                           <div className="article-detail-markdown-preview-scroll article-detail-markdown-read">
                             <RichMarkdown components={mdComponents}>
                               {editMarkdown.trim() ? editMarkdown : ' '}
@@ -477,7 +479,7 @@ export function ArticleDetail() {
                     </RichMarkdown>
                   </div>
                 ) : (
-                  <p className="document-detail-muted">No content yet. Choose Edit to add Markdown.</p>
+                  <p className="document-detail-muted">{t('detail.emptyContent')}</p>
                 )}
               </div>
             </section>
