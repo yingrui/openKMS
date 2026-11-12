@@ -17,6 +17,18 @@ def test_document_channels_list_json(mock_api):
     assert recorded[-1].url.path == "/api/document-channels"
 
 
+def test_document_channels_list_tree_accepts_items_envelope(mock_api, capsys):
+    """The list endpoint answers {"items": [...]}; --tree used to iterate the dict keys."""
+    _, responses = mock_api
+    responses[("GET", "/api/document-channels")] = (200, {"items": [{"id": "a", "name": "A", "children": []}]})
+
+    from openkms.commands.document_channels import cmd_list
+
+    cmd_list(argparse.Namespace(tree=True))
+    out = capsys.readouterr().out
+    assert "A" in out and "(a)" in out
+
+
 def test_document_channels_list_tree(mock_api, capsys):
     _, responses = mock_api
     responses[("GET", "/api/document-channels")] = (
@@ -134,3 +146,14 @@ def test_document_channels_create_dry_run_shows_pipeline_step(mock_api, capsys):
     out = capsys.readouterr().out
     assert "pipeline_paddleocr" in out
     assert "PUT" in out
+
+
+def test_document_channels_delete(mock_api):
+    recorded, responses = mock_api
+    responses[("DELETE", "/api/document-channels/dc1")] = (204, None)
+
+    from openkms.commands.document_channels import cmd_delete
+
+    cmd_delete(argparse.Namespace(id="dc1", yes=True, dry_run=False))
+    assert recorded[-1].method == "DELETE"
+    assert recorded[-1].url.path == "/api/document-channels/dc1"

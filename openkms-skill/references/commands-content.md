@@ -43,13 +43,13 @@ Prefix every invocation with `python scripts/cli.py` (or the project-agent path 
 
 | Goal | Command |
 |------|---------|
-| Create / update document channel | `document-channels create --name "Inbox" --yes` · `document-channels update --id DC_ID … --yes` |
+| Create / update / delete document channel | `document-channels create --name "Inbox" --yes` · `document-channels update --id DC_ID … --yes` · `document-channels delete --id DC_ID --yes` |
 | Channel with parse pipeline | `pipelines list --table` then `document-channels create --name "…" --pipeline-id pipeline_… --yes` |
-| Upload document | `documents upload --channel-id ID --file /path/to/doc.pdf --yes` |
+| Upload / delete document | `documents upload --channel-id ID --file /path/to/doc.pdf --yes` · `documents delete --id DOC_ID --yes` |
 | Lifecycle / lineage | `documents lifecycle patch --id DOC_ID … --yes` · `documents relationships create\|delete … --yes` |
 | Put markdown / export zip | `documents put-markdown --id DOC --file ./x.md --yes` · `documents export --id DOC --out ./doc.zip --yes` |
-| Create / update article channel | `article-channels create --name "…" --yes` · `article-channels update --id AC_ID … --yes` |
-| Create article / from URL | `articles create --channel-id ID --name "…" --markdown-file ./x.md --yes` · `articles from-url --channel-id ID --url … --yes` |
+| Create / update / delete article channel | `article-channels create --name "…" --yes` · `article-channels update --id AC_ID … --yes` · `article-channels delete --id AC_ID --yes` |
+| Create / delete article · from URL | `articles create --channel-id ID --name "…" --markdown-file ./x.md --yes` · `articles delete --id ART_ID --yes` · `articles from-url --channel-id ID --url … --yes` |
 | Attach a file to an article | `articles attachments upload --id ART_ID --file ./deck.html --yes` (any content type; `attachments delete --id ART_ID --attachment-id ATT_ID --yes`) |
 | Run content review | `articles review run --id ART_ID --yes` |
 | Article lineage | `articles relationships create\|delete … --yes` |

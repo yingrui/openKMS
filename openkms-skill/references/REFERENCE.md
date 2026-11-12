@@ -38,10 +38,12 @@ Create keys in the openKMS web app: **Settings** (header user menu → **Setting
 |---|---|---|---|
 | `document-channels list` | GET | `/api/document-channels` | Default: JSON tree. Pass `--tree` for indented human-readable names + ids. |
 | `document-channels create` | POST | `/api/document-channels` | Body `{name, sort_order, description?, parent_id?}`. Optional CLI `--pipeline-id` (or `default_pipeline_id` in config) triggers a follow-up PUT to set `pipeline_id`. Requires `--yes` / `--dry-run` on non-TTY. |
+| `document-channels delete` *(write)* | DELETE | `/api/document-channels/{id}` | Deletes the channel; delete children (or move them) first. 204. |
 | `document-channels update` | PUT | `/api/document-channels/{id}` | Partial body: `name`, `description`, `parent_id`, `sort_order`, `pipeline_id`, `auto_process`, `extraction_model_id`, `extraction_schema` (CLI: `--extraction-schema-json`). Gated. |
 | `pipelines list` | GET | `/api/pipelines` | JSON `{items, total}`; each item has `id`, `name`, `description`, `is_active`, `command`, … CLI `--table` prints `id`, `name`, and active/inactive. Read-only. |
 | `article-channels list` | GET | `/api/article-channels` | Default: JSON. `--tree` for human-readable. |
 | `article-channels create` | POST | `/api/article-channels` | Same create shape as document channels. Gated. |
+| `article-channels delete` *(write)* | DELETE | `/api/article-channels/{id}` | 204. Articles inside are not moved for you — reparent or delete them first. |
 | `article-channels update` | PUT | `/api/article-channels/{id}` | Partial: `name`, `description`, `parent_id`, `sort_order`. Gated. |
 
 ### Documents
@@ -52,6 +54,7 @@ Create keys in the openKMS web app: **Settings** (header user menu → **Setting
 | `documents get` | GET | `/api/documents/{id}` | Full document, including `markdown`, `series_id`, `effective_from` / `effective_to`, `lifecycle_status`, `is_current_for_rag`. 404 if user lacks access to the document's channel. |
 | `documents markdown` | GET | `/api/documents/{id}` | Same as `get`; CLI extracts `.markdown` and writes to stdout (or `--out FILE`). |
 | `documents upload` | POST multipart | `/api/documents/upload` | Fields: `file`, `channel_id`. For `.xlsx` the server builds a sheet preview synchronously; for other types it enqueues the channel pipeline if `auto_process` is on. |
+| `documents delete` *(write)* | DELETE | `/api/documents/{id}` | Removes the document and its versions. Use `documents lifecycle patch --lifecycle-status withdrawn` instead when the record must stay. |
 | `documents relationships list` | GET | `/api/documents/{id}/relationships` | `{outgoing:[{id, relation_type, peer_document_id, peer_document_name, note, created_at}], incoming:[…]}`. |
 | `documents lifecycle patch` *(write)* | PATCH | `/api/documents/{id}/lifecycle` | Partial JSON: `series_id`, `effective_from`, `effective_to`, `lifecycle_status`; CLI mirrors document-detail fields. `--clear-effective-from` / `--clear-effective-to` send JSON `null`. |
 | `documents relationships create` *(write)* | POST | `/api/documents/{id}/relationships` | Body `{target_document_id, relation_type, note?}`. `relation_type ∈ {supersedes, amends, implements, see_also}`. Edge is **source** = path `id` → **target**. |
@@ -65,6 +68,7 @@ Create keys in the openKMS web app: **Settings** (header user menu → **Setting
 | `articles get` | GET | `/api/articles/{id}` | Full article, including `markdown`. |
 | `articles markdown` | GET | `/api/articles/{id}` | Extracts `.markdown` for stdout/file. |
 | `articles create` | POST | `/api/articles` | Body `{channel_id, name, markdown, origin_article_id?}`. CLI accepts `--markdown` inline or `--markdown-file`. |
+| `articles delete` *(write)* | DELETE | `/api/articles/{id}` | 204. |
 | `articles from-url` | GET (external) + POST | `/api/articles` | CLI fetches the URL, simplifies HTML to text via regex heuristic, then POSTs. Sets `origin_article_id` to the source URL (truncated 512). |
 | `articles reviews latest` | GET | `/api/articles/{id}/reviews/latest` | Latest persisted LLM rubric review. `result`: `{overall_score, pass, summary, criteria[{id,label,score,notes}], suggestions[]}`. 404 when none yet. |
 | `articles reviews list` | GET | `/api/articles/{id}/reviews` | Query `limit?` (1–50, default 20). `{items:[ArticleReviewResponse…]}`. |

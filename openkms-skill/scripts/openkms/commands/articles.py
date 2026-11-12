@@ -247,6 +247,15 @@ def cmd_attachments_delete(ns: argparse.Namespace) -> None:
     print(f"deleted attachment {ns.attachment_id} from article {ns.id}")
 
 
+def cmd_delete(ns: argparse.Namespace) -> None:
+    path = f"/api/articles/{ns.id}"
+    confirm_or_abort("delete article", "DELETE", path, None, ns.yes, ns.dry_run)
+    with client() as s:
+        r = s.delete(path)
+    r.raise_for_status()
+    print(f"deleted article {ns.id}")
+
+
 def add_subparser(sub) -> None:
     p = sub.add_parser("articles", help="Articles")
     sp = p.add_subparsers(dest="ar_cmd", required=True)
@@ -285,6 +294,11 @@ def add_subparser(sub) -> None:
     ls.add_argument("--limit", type=int, default=0)
     ls.add_argument("--offset", type=int, default=0)
     ls.set_defaults(fn=cmd_list)
+
+    dl = sp.add_parser("delete", help="Delete an article (DELETE /api/articles/{id})")
+    dl.add_argument("--id", required=True)
+    add_write_flags(dl)
+    dl.set_defaults(fn=cmd_delete)
 
     gt = sp.add_parser("get", help="Get article by ID (GET /api/articles/{id})")
     gt.add_argument("--id", required=True)

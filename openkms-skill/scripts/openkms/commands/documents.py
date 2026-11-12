@@ -237,6 +237,15 @@ def cmd_relationships_delete(ns: argparse.Namespace) -> None:
     print(f"deleted relationship {ns.relationship_id} from document {ns.id}")
 
 
+def cmd_delete(ns: argparse.Namespace) -> None:
+    path = f"/api/documents/{ns.id}"
+    confirm_or_abort("delete document", "DELETE", path, None, ns.yes, ns.dry_run)
+    with client() as s:
+        r = s.delete(path)
+    r.raise_for_status()
+    print(f"deleted document {ns.id}")
+
+
 def cmd_lifecycle_patch(ns: argparse.Namespace) -> None:
     body: dict[str, Any] = {}
     if ns.series_id is not None:
@@ -309,6 +318,11 @@ def add_subparser(sub) -> None:
     md.add_argument("--id", required=True)
     md.add_argument("--out", default="", help="Output file path; omit to print to stdout")
     md.set_defaults(fn=cmd_markdown)
+
+    dl = sp.add_parser("delete", help="Delete a document (DELETE /api/documents/{id})")
+    dl.add_argument("--id", required=True)
+    add_write_flags(dl)
+    dl.set_defaults(fn=cmd_delete)
 
     pmd = sp.add_parser("put-markdown", help="Replace document markdown (PUT …/markdown)")
     pmd.add_argument("--id", required=True)

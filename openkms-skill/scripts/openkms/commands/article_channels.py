@@ -25,7 +25,8 @@ def cmd_list(ns: argparse.Namespace) -> None:
     r.raise_for_status()
     data = r.json()
     if ns.tree:
-        _print_tree(data)
+        # The list endpoint answers {"items": [...]}; older builds answered a bare list.
+        _print_tree(data.get("items", []) if isinstance(data, dict) else data)
     else:
         print_json(data)
 
@@ -48,6 +49,15 @@ def cmd_create(ns: argparse.Namespace) -> None:
         r = s.post("/api/article-channels", json=body)
     r.raise_for_status()
     print_json(r.json())
+
+
+def cmd_delete(ns: argparse.Namespace) -> None:
+    path = f"/api/article-channels/{ns.id}"
+    confirm_or_abort("delete article channel", "DELETE", path, None, ns.yes, ns.dry_run)
+    with client() as s:
+        r = s.delete(path)
+    r.raise_for_status()
+    print(f"deleted article channel {ns.id}")
 
 
 def _article_update_body(ns: argparse.Namespace) -> dict[str, Any]:
@@ -106,6 +116,10 @@ def add_subparser(sub) -> None:
     c.add_argument("--sort-order", type=int, default=0)
     add_write_flags(c)
     c.set_defaults(fn=cmd_create)
+    dl = sp.add_parser("delete", help="Delete an article channel (DELETE /api/article-channels/{id})")
+    dl.add_argument("--id", required=True)
+    add_write_flags(dl)
+    dl.set_defaults(fn=cmd_delete)
     u = sp.add_parser(
         "update",
         help="Update channel (rename, reparent, review model/prompt/criteria)",

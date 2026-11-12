@@ -72,7 +72,8 @@ def cmd_list(ns: argparse.Namespace) -> None:
     r.raise_for_status()
     data = r.json()
     if ns.tree:
-        _print_tree(data)
+        # The list endpoint answers {"items": [...]}; older builds answered a bare list.
+        _print_tree(data.get("items", []) if isinstance(data, dict) else data)
     else:
         print_json(data)
 
@@ -141,6 +142,15 @@ def cmd_update(ns: argparse.Namespace) -> None:
     print_json(r.json())
 
 
+def cmd_delete(ns: argparse.Namespace) -> None:
+    path = f"/api/document-channels/{ns.id}"
+    confirm_or_abort("delete document channel", "DELETE", path, None, ns.yes, ns.dry_run)
+    with client() as s:
+        r = s.delete(path)
+    r.raise_for_status()
+    print(f"deleted document channel {ns.id}")
+
+
 def add_subparser(sub) -> None:
     p = sub.add_parser("document-channels", help="Document channels")
     sp = p.add_subparsers(dest="dcl_cmd", required=True)
@@ -159,6 +169,10 @@ def add_subparser(sub) -> None:
     )
     add_write_flags(c)
     c.set_defaults(fn=cmd_create)
+    dl = sp.add_parser("delete", help="Delete a document channel (DELETE /api/document-channels/{id})")
+    dl.add_argument("--id", required=True)
+    add_write_flags(dl)
+    dl.set_defaults(fn=cmd_delete)
     u = sp.add_parser("update", help="Update channel (rename, reparent, pipeline, extraction, etc.)")
     u.add_argument("--id", required=True)
     u.add_argument("--name", default=None)

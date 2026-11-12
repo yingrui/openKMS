@@ -192,3 +192,14 @@ def test_documents_lifecycle_patch_dry_run(mock_api):
         )
     assert ei.value.code == 0
     assert not recorded
+
+
+def test_documents_delete(mock_api):
+    recorded, responses = mock_api
+    responses[("DELETE", "/api/documents/doc1")] = (204, None)
+
+    from openkms.commands.documents import cmd_delete
+
+    cmd_delete(argparse.Namespace(id="doc1", yes=True, dry_run=False))
+    assert recorded[-1].method == "DELETE"
+    assert recorded[-1].url.path == "/api/documents/doc1"
