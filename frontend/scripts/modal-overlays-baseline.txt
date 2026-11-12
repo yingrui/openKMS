@@ -1,11 +1,4 @@
 # Hand-rolled modal overlays — known debt, ratchets down only.
-src/pages/wiki/WikiSpaceSettings.tsx .wiki-space-settings-file-input-overlay
-src/pages/wiki/WikiSpaceSettings.modals.tsx .wiki-space-settings-modal-overlay
-src/pages/wiki/WikiSpaceSettings.modals.tsx .wiki-space-settings-modal-overlay
-src/pages/wiki/WikiSpaceSettings.modals.tsx .wiki-space-settings-vault-options-overlay
-src/pages/wiki/WikiSpaceSettings.modals.tsx .wiki-space-settings-file-input-overlay
-src/pages/wiki/WikiSpaceSettings.modals.tsx .wiki-space-settings-import-overlay
-src/pages/wiki/WikiSpaceSettings.modals.tsx .wiki-space-settings-modal-overlay
 src/pages/wiki/WikiSpaceList.tsx .resource-list-dialog-overlay
 src/pages/knowledge-bases/KnowledgeBaseDetail.dialogs.pickers.tsx .kb-doc-picker-overlay
 src/pages/knowledge-bases/KnowledgeBaseDetail.dialogs.pickers.tsx .kb-doc-picker-overlay

@@ -59,12 +59,6 @@
   max-width: 520px;
 }
 
-.wiki-space-settings-doc-picker-hint {
-  margin: 0 0 var(--space-4);
-  font-size: var(--text-sm);
-  line-height: 1.45;
-}
-
 .wiki-space-settings-doc-picker-filters {
   display: flex;
   flex-wrap: wrap;
@@ -306,32 +300,6 @@
   color: var(--color-error);
 }
 
-.wiki-space-settings-import-overlay {
-  position: fixed;
-  inset: 0;
-  background: var(--overlay-backdrop);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: ds.$z-settings-import-overlay;
-  padding: var(--space-4);
-}
-
-.wiki-space-settings-import-dialog {
-  width: 100%;
-  max-width: 420px;
-  padding: calc(var(--space-4) + var(--space-1) / 4) calc(var(--space-4) + var(--space-1) / 2);
-  background: var(--color-bg-elevated);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
-  box-shadow: var(--shadow-lg);
-}
-
-.wiki-space-settings-import-title {
-  margin: 0 0 var(--space-3);
-  font-size: var(--text-lg);
-}
-
 .wiki-space-settings-import-phase {
   margin: 0 0 calc(var(--space-1) + var(--space-1) / 4);
   font-size: var(--text-sm);
@@ -380,84 +348,11 @@
   transition: width 0.12s ease-out;
 }
 
-.wiki-space-settings-modal-overlay {
-  position: fixed;
-  inset: 0;
-  background: var(--overlay-backdrop);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: ds.$z-settings-modal-overlay;
-  padding: var(--space-4);
-}
-
 /* Above import progress overlay (z-index 60) so folder options stay visible. */
-.wiki-space-settings-vault-options-overlay {
-  z-index: var(--z-dropdown);
-}
-
 .wiki-space-settings-import-folder-btn {
   display: inline-flex;
   align-items: center;
   gap: var(--gap-compact);
-}
-
-.wiki-space-settings-modal-folder-label {
-  position: relative;
-  margin: 0;
-  min-height: 2.25rem;
-  min-width: 11rem;
-  justify-content: center;
-}
-
-.wiki-space-settings-vault-modal-actions {
-  flex-wrap: wrap;
-  align-items: center;
-}
-
-.wiki-space-settings-modal {
-  background: var(--color-surface);
-  border-radius: var(--radius-lg);
-  padding: 1.25rem;
-  width: 100%;
-  max-width: 420px;
-  box-shadow: var(--shadow-lg);
-}
-
-.wiki-space-settings-modal h3 {
-  margin: 0 0 var(--space-4);
-}
-
-.wiki-space-settings-modal label {
-  display: block;
-  margin-bottom: var(--space-3);
-  font-size: var(--text-md);
-}
-
-.wiki-space-settings-modal input {
-  width: 100%;
-  margin-top: var(--gap-compact);
-  padding: var(--space-2) calc(var(--space-2) + var(--space-1) / 2);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-sm);
-}
-
-.wiki-space-settings-req {
-  color: #dc2626;
-}
-
-.wiki-space-settings-modal-actions {
-  display: flex;
-  justify-content: flex-end;
-  gap: var(--space-2);
-  margin-top: var(--space-4);
-}
-
-.wiki-space-settings-vault-options-hint {
-  margin: 0 0 var(--space-3);
-  font-size: var(--text-md);
-  color: var(--color-muted);
-  line-height: 1.45;
 }
 
 .wiki-space-settings-vault-options-list {

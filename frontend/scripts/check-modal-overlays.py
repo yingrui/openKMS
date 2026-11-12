@@ -26,7 +26,9 @@ BASELINE = Path(__file__).resolve().parent / "modal-overlays-baseline.txt"
 CLASS_ATTR = re.compile(r"""className=(?:"([^"]*)"|'([^']*)'|\{`([^`]*)`\}|\{['"]([^'"]*)['"]\})""")
 
 # Not modal chrome: the DS dialog itself, and overlays that sit on top of an editor or dropzone.
-EXEMPT_SUFFIXES = ("ds-dialog-overlay", "dropzone-overlay")
+# `...-file-input-overlay` is a file input stretched over a label's button (the native picker behind
+# a styled button) — an input, not modal chrome. The DS dialog itself, and editor dropzones, likewise.
+EXEMPT_SUFFIXES = ("ds-dialog-overlay", "dropzone-overlay", "file-input-overlay")
 
 
 def main(argv: list[str]) -> int:
