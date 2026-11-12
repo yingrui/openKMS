@@ -53,6 +53,12 @@ while IFS= read -r hit; do
   report "$hit uses @include max/min-width with a raw px value; pass ds.\$bp-* / ds.\$km-layout-max"
 done < <(rg -n --no-heading '@include (max|min)-width\(\s*[0-9]+px' src --glob '*.scss' || true)
 
+# --- 3b. A page-local copy of the table row-actions cell -----------------------
+# The design system owns that cell (TableRowActionCell: width 1%, nowrap). A page-local copy cannot know
+# what it will hold: `.eval-items-actions-col` was 80px, fine for two icon buttons and too narrow for a
+# labelled button plus an icon, whose actions then ran off the right edge. Ratcheted, only shrinks.
+python3 scripts/check-row-actions.py || status=1
+
 # --- 4. JS / Sass mobile breakpoint stay in sync ------------------------------
 sass_bp=$(rg -oN '\$bp-md-min:\s*([0-9]+)px' src/styles/design-system/_tokens.scss --replace '$1' | head -1)
 js_bp=$(rg -oN 'MOBILE_BREAKPOINT_PX\s*=\s*([0-9]+)' src/hooks/useIsMobile.ts --replace '$1' | head -1)

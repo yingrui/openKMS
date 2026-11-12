@@ -1,0 +1,9 @@
+# Page-local table row-actions cells — accepted debt, not permission.
+# Each one is a copy of what TableRowActionCell/TableRowActions already do; this file only shrinks.
+components/agents/AgentsWorkspace.scss 1
+pages/console/permissions/ConsolePermissionManagement.scss 1
+pages/glossaries/GlossaryDetail.scss 1
+pages/jobs/Jobs.scss 2
+pages/models/Models.scss 1
+pages/ontology/LinkTypeDetail.scss 1
+pages/ontology/ObjectTypeDetail.scss 2
