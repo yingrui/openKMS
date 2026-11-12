@@ -81,6 +81,7 @@ export function EvaluationDatasetDetailPage() {
           { to: `${base}/items`, label: t('evaluationDetail.tabItems') },
           { to: `${base}/runs`, label: t('evaluationDetail.tabRuns') },
           { to: `${base}/settings`, label: t('evaluationDetail.settings') },
+          { to: `${base}/sharing`, label: t('evaluationSettings.sharing') },
         ]}
       >
         <Outlet />

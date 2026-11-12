@@ -45,6 +45,7 @@ import { ConsoleAccessGroups } from './pages/console/permissions/ConsoleAccessGr
 import { ConsoleDataSecurityIssues } from './pages/console/data/ConsoleDataSecurityIssues';
 import { EvaluationDatasetList } from './pages/evaluation/EvaluationDatasetList';
 import { EvaluationDatasetDetailPage } from './pages/evaluation/EvaluationDatasetDetailPage';
+import { EvaluationSharingTab } from './pages/evaluation/EvaluationSharingTab';
 import { EvaluationOverviewTab } from './pages/evaluation/EvaluationOverviewTab';
 import { EvaluationItemsTab } from './pages/evaluation/EvaluationItemsTab';
 import { EvaluationRunsTab } from './pages/evaluation/EvaluationRunsTab';
@@ -513,6 +514,7 @@ function App() {
               <Route path="runs" element={<EvaluationRunsTab />} />
               <Route path="runs/:runId" element={<EvaluationRunDetailPage />} />
               <Route path="settings" element={<EvaluationDatasetSettings />} />
+              <Route path="sharing" element={<EvaluationSharingTab />} />
             </Route>
           </Route>
           <Route path="data-insights" element={<DataInsightsPage />} />

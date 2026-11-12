@@ -241,7 +241,8 @@
     "semanticModelNone": "None (RAG evaluation)",
     "settingsHint": "Name, description, knowledge base and sharing.",
     "unsaved": "Unsaved changes",
-    "sharing": "Sharing"
+    "sharing": "Sharing",
+    "sharingHint": "Who can see and run this test set."
   },
   "evaluationDetail": {
     "toastLoadDatasetFailed": "Failed to load evaluation dataset",

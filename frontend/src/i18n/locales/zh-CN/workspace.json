@@ -241,7 +241,8 @@
     "semanticModelNone": "不使用（RAG 评估）",
     "settingsHint": "名称与说明、知识库，以及共享。",
     "unsaved": "有未保存的改动",
-    "sharing": "共享"
+    "sharing": "共享",
+    "sharingHint": "谁可以查看并运行这个测试集。"
   },
   "evaluationDetail": {
     "toastLoadDatasetFailed": "无法加载评测数据集",

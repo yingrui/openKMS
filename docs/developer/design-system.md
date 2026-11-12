@@ -108,8 +108,9 @@ right; anything a reader adjusts between looks at the same data (a type filter, 
 *inside* the panel, and the table itself is `.ds-table-wrap--flush` + `.console-table` with its `Pagination` in the
 same wrap. A page-level `PanelToolbar` as the top of a tab is what makes one tab look unlike the next. A tab strip directly under the header
 is the header's own card head — `entity-view.scss` cancels the header's divider for it (`:has(+ .settings-page-tabs)`).
-When the header is a real header (Settings → Save on the right, `EntityViewHeader`), put the strip and what it switches
-in a wrapper div so the strip is not the header's next sibling: the divider stays, and the strip becomes its own card.
+Do not fight that rule by wrapping the strip in a div: a strip that no longer touches the card it switches is the one
+shape that reads as broken. If a page's header is a real header (Save on the right) and the sections are not siblings of
+one form, make the section a `navItems` entry in the shell's rail instead — that is what Catalog does with Sharing.
 
 **A tab strip and its panel are one card.** `EntityViewShell` puts page children in `.account-stack`
 (`gap: var(--space-5)`). Render `.settings-page-tabs` and `.settings-page-form` as siblings there and
