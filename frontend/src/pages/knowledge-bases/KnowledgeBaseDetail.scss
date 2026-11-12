@@ -2079,13 +2079,9 @@ body.openkms-kb-qa-fullpage .kb-qa-shell {
   max-height: 80vh;
 }
 
-.kb-doc-picker--narrow {
-  max-width: ds.$bp-phone-max;
-}
-
-.kb-doc-picker-split {
-  max-width: 720px;
-  min-height: 480px;
+/* The picker body is a two-column split; inside a <Dialog> it must reach the edges. */
+.ds-dialog__body:has(> .kb-doc-picker-body) {
+  padding: 0;
 }
 
 .kb-doc-picker-body {
@@ -2825,11 +2821,12 @@ body.openkms-kb-qa-fullpage .kb-qa-shell {
     max-height: 90vh;
   }
 
-  .kb-doc-picker-split {
-    min-height: 0;
-  }
+  /* The picker body is a two-column split; inside a <Dialog> it must reach the edges. */
+.ds-dialog__body:has(> .kb-doc-picker-body) {
+  padding: 0;
+}
 
-  .kb-doc-picker-body {
+.kb-doc-picker-body {
     flex-direction: column;
   }
 

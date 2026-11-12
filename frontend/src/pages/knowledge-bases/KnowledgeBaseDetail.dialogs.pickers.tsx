@@ -1,10 +1,11 @@
-import { Check, ChevronLeft, ChevronRight, FileText, Loader2, Plus, Search as SearchIcon, X } from 'lucide-react';
+import { Check, ChevronLeft, ChevronRight, FileText, Loader2, Plus, Search as SearchIcon } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import type { ChannelNode } from '../../data/channelsApi';
 import type { DocumentListItemResponse } from '../../data/documentsApi';
 import type { WikiSpaceResponse } from '../../data/wikiSpacesApi';
 import type { KBWikiSpaceResponse } from '../../data/knowledgeBasesApi';
 import { DocPickerChannelTree } from './KnowledgeBaseDetail.docPickerTree';
+import { Dialog } from '../../styles/design-system';
 
 export interface KbDocPickerDialogProps {
   show: boolean;
@@ -61,27 +62,56 @@ export function KbDocPickerDialog({
   if (!show) return null;
 
   return (
-    <div
-      className="kb-doc-picker-overlay"
-      onClick={onClose}
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="doc-picker-title"
+    <Dialog
+      open={show}
+      onClose={onClose}
+      closeDisabled={pickerAdding}
+      title={t('detail.docPickerTitle')}
+      closeAriaLabel={t('detail.closeAria')}
+      size="lg"
+      footer={
+        <>
+          <span className="kb-doc-picker-count">
+            {pickerSelected.size > 0
+              ? t('detail.pickerSelected', { count: pickerSelected.size })
+              : t('detail.pickerNoneSelected')}
+          </span>
+          <div className="kb-doc-picker-actions">
+            <button
+              type="button"
+              className="btn btn-secondary"
+              onClick={onClose}
+              disabled={pickerAdding}
+            >
+              {t('detail.cancel')}
+            </button>
+            <button
+              type="button"
+              className="btn btn-primary"
+              onClick={onAddSelectedDocuments}
+              disabled={pickerSelected.size === 0 || pickerAdding}
+            >
+              {pickerAdding ? (
+                <>
+                  <Loader2 size={18} className="kb-doc-picker-spinner" />
+                  <span>{t('detail.adding')}</span>
+                </>
+              ) : (
+                <>
+                  <Plus size={18} />
+                  <span>
+                    {pickerSelected.size > 0
+                      ? t('detail.addButtonWithCount', { count: pickerSelected.size })
+                      : t('detail.addButton')}
+                  </span>
+                </>
+              )}
+            </button>
+          </div>
+        </>
+      }
     >
-      <div className="kb-doc-picker kb-doc-picker-split" onClick={(e) => e.stopPropagation()}>
-        <div className="kb-doc-picker-header">
-          <h2 id="doc-picker-title">{t('detail.docPickerTitle')}</h2>
-          <button
-            type="button"
-            className="kb-doc-picker-close"
-            onClick={onClose}
-            disabled={pickerAdding}
-            aria-label={t('detail.closeAria')}
-          >
-            <X size={20} />
-          </button>
-        </div>
-        <div className="kb-doc-picker-body">
+      <div className="kb-doc-picker-body">
           <aside className="kb-doc-picker-sidebar">
             <span className="kb-doc-picker-sidebar-label">{t('detail.channels')}</span>
             <ul className="kb-doc-picker-channel-tree">
@@ -198,47 +228,7 @@ export function KbDocPickerDialog({
             )}
           </div>
         </div>
-        <div className="kb-doc-picker-footer">
-          <span className="kb-doc-picker-count">
-            {pickerSelected.size > 0
-              ? t('detail.pickerSelected', { count: pickerSelected.size })
-              : t('detail.pickerNoneSelected')}
-          </span>
-          <div className="kb-doc-picker-actions">
-            <button
-              type="button"
-              className="btn btn-secondary"
-              onClick={onClose}
-              disabled={pickerAdding}
-            >
-              {t('detail.cancel')}
-            </button>
-            <button
-              type="button"
-              className="btn btn-primary"
-              onClick={onAddSelectedDocuments}
-              disabled={pickerSelected.size === 0 || pickerAdding}
-            >
-              {pickerAdding ? (
-                <>
-                  <Loader2 size={18} className="kb-doc-picker-spinner" />
-                  <span>{t('detail.adding')}</span>
-                </>
-              ) : (
-                <>
-                  <Plus size={18} />
-                  <span>
-                    {pickerSelected.size > 0
-                      ? t('detail.addButtonWithCount', { count: pickerSelected.size })
-                      : t('detail.addButton')}
-                  </span>
-                </>
-              )}
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>
+    </Dialog>
   );
 }
 
@@ -267,58 +257,43 @@ export function KbWikiSpacePickerDialog({
   const unlinkedItems = wikiSpacePickerItems.filter((w) => !kbWikiSpaces.some((k) => k.wiki_space_id === w.id));
 
   return (
-    <div
-      className="kb-doc-picker-overlay"
-      onClick={onClose}
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="wiki-picker-title"
+    <Dialog
+      open={show}
+      onClose={onClose}
+      closeDisabled={Boolean(wikiSpaceBusyId)}
+      title={t('detail.wikiPickerTitle')}
+      closeAriaLabel={t('detail.closeAria')}
+      size="md"
     >
-      <div className="kb-doc-picker kb-doc-picker--narrow" onClick={(e) => e.stopPropagation()}>
-        <div className="kb-doc-picker-header">
-          <h2 id="wiki-picker-title">{t('detail.wikiPickerTitle')}</h2>
-          <button
-            type="button"
-            className="kb-doc-picker-close"
-            onClick={onClose}
-            disabled={Boolean(wikiSpaceBusyId)}
-            aria-label={t('detail.closeAria')}
-          >
-            <X size={20} />
-          </button>
-        </div>
-        <div className="kb-doc-picker-body">
-          {wikiSpacePickerLoading ? (
-            <p className="kb-empty-text">{t('detail.loading')}</p>
-          ) : (
-            <>
-              <ul className="kb-wiki-picker-list">
-                {unlinkedItems.map((w) => (
-                  <li key={w.id} className="kb-wiki-picker-row">
-                    <span className="kb-wiki-picker-name">{w.name}</span>
-                    <button
-                      type="button"
-                      className="btn btn-primary btn-sm"
-                      disabled={wikiSpaceBusyId !== null}
-                      onClick={() => onAddWikiSpaceToKb(w.id)}
-                    >
-                      {wikiSpaceBusyId === w.id ? (
-                        <Loader2 size={16} className="kb-doc-picker-spinner" />
-                      ) : (
-                        <Plus size={16} />
-                      )}
-                      <span>{t('detail.linkWikiSpace')}</span>
-                    </button>
-                  </li>
-                ))}
-              </ul>
-              {unlinkedItems.length === 0 && (
-                <p className="kb-empty-text">{t('detail.wikiPickerEmpty')}</p>
-              )}
-            </>
-          )}
-        </div>
+      <div className="kb-doc-picker-body">
+        {wikiSpacePickerLoading ? (
+          <p className="kb-empty-text">{t('detail.loading')}</p>
+        ) : (
+          <>
+            <ul className="kb-wiki-picker-list">
+              {unlinkedItems.map((w) => (
+                <li key={w.id} className="kb-wiki-picker-row">
+                  <span className="kb-wiki-picker-name">{w.name}</span>
+                  <button
+                    type="button"
+                    className="btn btn-primary btn-sm"
+                    disabled={wikiSpaceBusyId !== null}
+                    onClick={() => onAddWikiSpaceToKb(w.id)}
+                  >
+                    {wikiSpaceBusyId === w.id ? (
+                      <Loader2 size={16} className="kb-doc-picker-spinner" />
+                    ) : (
+                      <Plus size={16} />
+                    )}
+                    <span>{t('detail.linkWikiSpace')}</span>
+                  </button>
+                </li>
+              ))}
+            </ul>
+            {unlinkedItems.length === 0 && <p className="kb-empty-text">{t('detail.wikiPickerEmpty')}</p>}
+          </>
+        )}
       </div>
-    </div>
+    </Dialog>
   );
 }

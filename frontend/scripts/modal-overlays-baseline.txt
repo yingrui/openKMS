@@ -1,6 +1,4 @@
 # Hand-rolled modal overlays — known debt, ratchets down only.
-src/pages/knowledge-bases/KnowledgeBaseDetail.dialogs.pickers.tsx .kb-doc-picker-overlay
-src/pages/knowledge-bases/KnowledgeBaseDetail.dialogs.pickers.tsx .kb-doc-picker-overlay
 src/pages/knowledge-bases/KnowledgeBaseDetail.dialogs.chunk.tsx .kb-doc-picker-overlay
 src/pages/knowledge-bases/KnowledgeBaseDetail.dialogs.faq.tsx .kb-doc-picker-overlay
 src/pages/knowledge-bases/KnowledgeBaseDetail.dialogs.faq.tsx .kb-doc-picker-overlay
