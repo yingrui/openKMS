@@ -3,6 +3,7 @@ import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next';
 import { ArrowLeft, Settings, Users } from 'lucide-react';
 import { toast } from 'sonner';
+import { FormField } from '../../styles/design-system';
 import {
   fetchEvaluation,
   updateEvaluation,
@@ -13,7 +14,7 @@ import { fetchAllKnowledgeBases, type KnowledgeBaseResponse } from '../../data/k
 import { fetchAllWikiSpaces, type WikiSpaceResponse } from '../../data/wikiSpacesApi';
 import { fetchSemanticModels, type SemanticModelResponse } from '../../data/semanticModelsApi';
 import { ResourceSharePanel } from '../../components/ResourceSharePanel';
-import { EntityViewHeader } from '../shared/EntityViewShell';
+import { EntityViewHeader, EntityViewLoading } from '../shared/EntityViewShell';
 import { RESOURCE_TYPES } from '../../data/resourceAclApi';
 import { useConfirm } from '../../contexts/ConfirmContext';
 import '../../styles/settings-page.scss';
@@ -27,7 +28,7 @@ export function EvaluationDatasetSettings() {
   const navigate = useNavigate();
   const confirm = useConfirm();
   const { id: evaluationId = '' } = useParams<{ id: string }>();
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const tabParam = searchParams.get('tab');
   const [activeTab, setActiveTab] = useState<SettingsTabId>(
     tabParam === 'sharing' ? 'sharing' : 'general'
@@ -95,6 +96,16 @@ export function EvaluationDatasetSettings() {
     [t]
   );
 
+  /** Nothing changed → nothing to save. Saving an untouched form used to write and toast anyway.
+   *  Compared on the trimmed values the API receives, so trailing spaces are not "a change". */
+  const dirty =
+    dataset != null &&
+    (nameField.trim() !== dataset.name ||
+      descriptionField.trim() !== (dataset.description ?? '') ||
+      knowledgeBaseIdField.trim() !== dataset.knowledge_base_id ||
+      semanticModelIdField.trim() !== (dataset.semantic_model_id ?? '') ||
+      wikiSpaceIdField.trim() !== (dataset.wiki_space_id ?? ''));
+
   const handleSave = async () => {
     if (!evaluationId || !dataset) return;
     const name = nameField.trim();
@@ -115,9 +126,14 @@ export function EvaluationDatasetSettings() {
         wiki_space_id: wikiSpaceIdField.trim() || null,
         semantic_model_id: semanticModelIdField.trim() || null,
       });
+      // Reset the form to what was stored: the server trims and nulls empties, so without this a
+      // saved form can still look dirty.
       setDataset(updated);
+      setNameField(updated.name);
+      setDescriptionField(updated.description ?? '');
       setKnowledgeBaseIdField(updated.knowledge_base_id);
       setWikiSpaceIdField(updated.wiki_space_id ?? '');
+      setSemanticModelIdField(updated.semantic_model_id ?? '');
       toast.success(t('evaluation.updatedToast'));
     } catch (e: unknown) {
       toast.error(e instanceof Error ? e.message : t('evaluation.updateFailed'));
@@ -153,15 +169,15 @@ export function EvaluationDatasetSettings() {
 
   if (loading) {
     return (
-      <div className="eval-dataset-settings settings-page">
-        <p className="page-subtitle">{t('evaluationSettings.loading')}</p>
+      <div className="settings-page">
+        <EntityViewLoading label={t('evaluationSettings.loading')} />
       </div>
     );
   }
 
   if (!dataset) {
     return (
-      <div className="eval-dataset-settings settings-page">
+      <div className="settings-page">
         <Link to="/evaluations" className="settings-page-back">
           <ArrowLeft size={18} />
           <span>{t('evaluationDetail.back')}</span>
@@ -178,7 +194,7 @@ export function EvaluationDatasetSettings() {
 
   return (
     // Rendered inside the dataset shell, which already names the dataset and says how to go back.
-    <div className="eval-dataset-settings settings-page">
+    <div className="settings-page">
       <EntityViewHeader
         title={t('evaluationDetail.settings')}
         subtitle={t('evaluationSettings.settingsHint')}
@@ -190,7 +206,10 @@ export function EvaluationDatasetSettings() {
             key={tab.id}
             type="button"
             className={`settings-page-tab ${activeTab === tab.id ? 'active' : ''}`}
-            onClick={() => setActiveTab(tab.id)}
+            onClick={() => {
+              setActiveTab(tab.id);
+              setSearchParams({ tab: tab.id }, { replace: true });
+            }}
           >
             <tab.icon size={16} />
             <span>{tab.label}</span>
@@ -199,7 +218,7 @@ export function EvaluationDatasetSettings() {
       </div>
 
       {activeTab === 'sharing' && evaluationId ? (
-        <div className="settings-page-form eval-dataset-settings-panel">
+        <div className="settings-page-form">
           <ResourceSharePanel
             resourceType={RESOURCE_TYPES.evaluation}
             resourceId={evaluationId}
@@ -210,39 +229,48 @@ export function EvaluationDatasetSettings() {
 
       {activeTab === 'general' ? (
       <>
-      <div className="settings-page-form eval-dataset-settings-panel">
+      <div className="settings-page-form">
         <section className="settings-page-section">
           <h2>{t('evaluationSettings.general')}</h2>
           <p className="settings-page-hint">{t('evaluationSettings.generalHint')}</p>
-          <div className="settings-page-field">
-            <label htmlFor="eval-settings-name">{t('shared.name')}</label>
+          <FormField label={t('shared.name')}>
             <input
-              id="eval-settings-name"
               type="text"
               value={nameField}
               onChange={(e) => setNameField(e.target.value)}
               placeholder={t('evaluation.namePlaceholder')}
             />
-          </div>
-          <div className="settings-page-field">
-            <label htmlFor="eval-settings-description">{t('shared.description')}</label>
+          </FormField>
+          <FormField label={t('shared.description')}>
             <textarea
-              id="eval-settings-description"
               value={descriptionField}
               onChange={(e) => setDescriptionField(e.target.value)}
               placeholder={t('evaluation.descPlaceholder')}
               rows={3}
             />
-          </div>
+          </FormField>
         </section>
 
         <section className="settings-page-section">
           <h2>{t('evaluationSettings.knowledgeBase')}</h2>
           <p className="settings-page-hint">{t('evaluationSettings.knowledgeBaseHint')}</p>
-          <div className="settings-page-field">
-            <label htmlFor="eval-settings-kb">{t('evaluationSettings.knowledgeBaseLabel')}</label>
+          <FormField
+            label={t('evaluationSettings.knowledgeBaseLabel')}
+            hint={
+              <>
+                {t('evaluationSettings.knowledgeBaseNote')}{' '}
+                {knowledgeBaseIdField.trim() ? (
+                  <Link
+                    to={`/knowledge-bases/${knowledgeBaseIdField.trim()}?tab=search`}
+                    className="eval-dataset-settings-link"
+                  >
+                    {t('evaluationSettings.openKnowledgeBase')}
+                  </Link>
+                ) : null}
+              </>
+            }
+          >
             <select
-              id="eval-settings-kb"
               value={knowledgeBaseIdField}
               onChange={(e) => setKnowledgeBaseIdField(e.target.value)}
             >
@@ -257,28 +285,14 @@ export function EvaluationDatasetSettings() {
                 </option>
               ))}
             </select>
-          </div>
-          {knowledgeBaseIdField.trim() ? (
-            <Link
-              to={`/knowledge-bases/${knowledgeBaseIdField.trim()}?tab=search`}
-              className="eval-dataset-settings-kb-link"
-            >
-              {t('evaluationSettings.openKnowledgeBase')}
-            </Link>
-          ) : null}
-          <p className="settings-page-hint eval-dataset-settings-kb-note">
-            {t('evaluationSettings.knowledgeBaseNote')}
-          </p>
+          </FormField>
         </section>
 
         <section className="settings-page-section">
           <h2>{t('evaluationSettings.semanticModel')}</h2>
           <p className="settings-page-hint">{t('evaluationSettings.semanticModelHint')}</p>
-          <div className="settings-page-field">
-            <label htmlFor="eval-settings-model">{t('evaluationSettings.semanticModelLabel')}</label>
+          <FormField label={t('evaluationSettings.semanticModelLabel')}>
             <select
-              id="eval-settings-model"
-              className="ds-control"
               value={semanticModelIdField}
               onChange={(e) => setSemanticModelIdField(e.target.value)}
             >
@@ -292,42 +306,57 @@ export function EvaluationDatasetSettings() {
                 </option>
               ))}
             </select>
-          </div>
+          </FormField>
         </section>
 
         <section className="settings-page-section">
           <h2>{t('evaluationSettings.wikiSpace')}</h2>
           <p className="settings-page-hint">{t('evaluationSettings.wikiSpaceHint')}</p>
-          <div className="settings-page-field">
-            <label htmlFor="eval-settings-wiki">{t('evaluationSettings.wikiSpaceLabel')}</label>
+          <FormField
+            label={t('evaluationSettings.wikiSpaceLabel')}
+            hint={
+              <>
+                {t('evaluationSettings.wikiSemanticIndexNote')}{' '}
+                {wikiSpaceIdField.trim() ? (
+                  <Link
+                    to={`/wikis/${wikiSpaceIdField.trim()}/settings`}
+                    className="eval-dataset-settings-link"
+                  >
+                    {t('evaluationSettings.openWikiSpace')}
+                  </Link>
+                ) : null}
+              </>
+            }
+          >
             <select
-              id="eval-settings-wiki"
               value={wikiSpaceIdField}
               onChange={(e) => setWikiSpaceIdField(e.target.value)}
             >
               <option value="">{t('evaluationSettings.wikiSpaceNone')}</option>
+              {/* A space the dataset points at but this reader cannot list: show it, never silently
+                  swap the choice to none. */}
+              {wikiSpaceIdField && !wikiSpaces.some((w) => w.id === wikiSpaceIdField) ? (
+                <option value={wikiSpaceIdField}>{wikiSpaceIdField}</option>
+              ) : null}
               {wikiSpaces.map((w) => (
                 <option key={w.id} value={w.id}>
                   {w.name}
                 </option>
               ))}
             </select>
-          </div>
-          <p className="settings-page-hint">{t('evaluationSettings.wikiSemanticIndexNote')}</p>
-          {wikiSpaceIdField.trim() ? (
-            <Link
-              to={`/wikis/${wikiSpaceIdField.trim()}/settings`}
-              className="eval-dataset-settings-kb-link"
-            >
-              {t('evaluationSettings.openWikiSpace')}
-            </Link>
-          ) : null}
+          </FormField>
         </section>
 
         <div className="settings-page-actions">
-          <button type="button" className="btn btn-primary" onClick={() => void handleSave()} disabled={saving}>
+          <button
+            type="button"
+            className="btn btn-primary"
+            onClick={() => void handleSave()}
+            disabled={saving || !dirty}
+          >
             {saving ? t('evaluation.saving') : t('shared.save')}
           </button>
+          {dirty ? <span className="settings-page-unsaved">{t('evaluationSettings.unsaved')}</span> : null}
         </div>
       </div>
 

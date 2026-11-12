@@ -241,7 +241,8 @@
     "semanticModelHint": "问数评估必填：按答案引用的查询（模型、指标、SQL）判定，不按返回的数字判定。",
     "semanticModelLabel": "模型",
     "semanticModelNone": "不使用（RAG 评估）",
-    "settingsHint": "名称与说明、知识库，以及共享。"
+    "settingsHint": "名称与说明、知识库，以及共享。",
+    "unsaved": "有未保存的改动"
   },
   "evaluationDetail": {
     "toastLoadDatasetFailed": "无法加载评测数据集",

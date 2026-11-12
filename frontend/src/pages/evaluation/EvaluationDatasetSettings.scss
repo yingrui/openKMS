@@ -1,53 +1,39 @@
-@use '../../styles/design-system/mixins' as *;
 @use '../../styles/design-system/tokens' as ds;
 
-.eval-dataset-settings {
-  width: 100%;
-  max-width: ds.$km-layout-max;
-}
-
+/* `.settings-page` already sets the width cap; this class only carries what is specific to the
+   evaluation settings card (tabs joined to the form, the danger card at the end). */
 .eval-dataset-settings-tabs {
   margin-bottom: 0;
 }
 
-.eval-dataset-settings-panel {
-  border-top-left-radius: 0;
-  border-top-right-radius: 0;
-  margin-bottom: 24px;
-
-  .resource-share-panel {
-    margin-top: 0;
-  }
-}
-
-.eval-dataset-settings-kb-link {
-  font-size: 0.9375rem;
+.eval-dataset-settings-link {
+  font-size: var(--text-base);
   color: var(--color-accent);
   text-decoration: none;
 }
 
-.eval-dataset-settings-kb-link:hover {
+.eval-dataset-settings-link:hover {
   text-decoration: underline;
 }
 
-.eval-dataset-settings-kb-note {
-  margin-top: 12px;
+/* Sits beside the save button, in the same row: says why the button is on, not that it exists. */
+.settings-page-unsaved {
+  font-size: var(--text-md);
+  color: var(--color-text-muted);
 }
 
+/* Same heading scale as the sections above it; only the frame and the action say "danger". */
 .eval-dataset-settings-danger {
-  margin-top: 24px;
+  margin-top: var(--space-6);
   border-color: color-mix(in srgb, var(--color-error) 35%, var(--color-border));
 }
 
 .eval-dataset-settings-danger h2 {
-  font-size: 0.9375rem;
-  font-weight: 600;
-  margin: 0 0 12px 0;
   color: var(--color-error);
 }
 
 .eval-dataset-settings-delete {
-  margin-top: 8px;
+  margin-top: var(--space-2);
   background: transparent;
   color: var(--color-error);
   border: 1px solid color-mix(in srgb, var(--color-error) 50%, var(--color-border));

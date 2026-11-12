@@ -241,7 +241,8 @@
     "semanticModelHint": "Required for a data-query evaluation: answers are judged by the queries they cite (model, metric, SQL), not by the numbers they return.",
     "semanticModelLabel": "Model",
     "semanticModelNone": "None (RAG evaluation)",
-    "settingsHint": "Name, description, knowledge base and sharing."
+    "settingsHint": "Name, description, knowledge base and sharing.",
+    "unsaved": "Unsaved changes"
   },
   "evaluationDetail": {
     "toastLoadDatasetFailed": "Failed to load evaluation dataset",
