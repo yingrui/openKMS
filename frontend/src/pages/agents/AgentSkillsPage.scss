@@ -63,22 +63,6 @@
   }
 }
 
-.agent-skills-dialog .agents-dialog-body textarea {
-  padding: var(--padding-compact-y) calc(var(--space-3) + var(--space-1) / 2);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
-  background: var(--color-bg-elevated);
-  color: var(--color-text);
-  font-size: var(--text-base);
-  resize: vertical;
-  min-height: 4rem;
-}
-
-.agent-skills-dialog .agents-dialog-body textarea:focus {
-  outline: none;
-  border-color: var(--color-accent);
-}
-
 .agent-skills-spin {
   animation: agent-skills-spin var(--duration-medium) linear infinite;
 }

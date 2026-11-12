@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { Loader2, Plus, Puzzle, Settings, Trash2, Upload, X } from 'lucide-react';
+import { Loader2, Plus, Puzzle, Settings, Trash2, Upload } from 'lucide-react';
 import { toast } from 'sonner';
 import { AgentsAreaNav } from '../../components/agents/AgentsAreaNav';
 import { AgentsListSkeleton } from '../../components/agents/AgentsPageSkeleton';
@@ -14,6 +14,7 @@ import {
 } from '../../data/agentSkillsApi';
 import { useConfirm } from '../../contexts/ConfirmContext';
 import './ProjectList.scss';
+import { Dialog, FormField } from '../../styles/design-system';
 import './AgentSkillsPage.scss';
 
 export function AgentSkillsPage() {
@@ -130,32 +131,28 @@ export function AgentSkillsPage() {
 
   const uploadFields = (
     <>
-      <label>
-        <span>{t('skills.skillId')}</span>
+      <FormField label={t('skills.skillId')}>
         <input
           value={skillId}
           onChange={(e) => setSkillId(e.target.value)}
           placeholder="my-skill"
           autoComplete="off"
         />
-      </label>
-      <label>
-        <span>{t('skills.version')}</span>
+      </FormField>
+      <FormField label={t('skills.version')}>
         <input
           value={version}
           onChange={(e) => setVersion(e.target.value)}
           placeholder="1.0.0"
           autoComplete="off"
         />
-      </label>
-      <label>
-        <span>{t('skills.displayName')}</span>
+      </FormField>
+      <FormField label={t('skills.displayName')}>
         <input value={displayName} onChange={(e) => setDisplayName(e.target.value)} autoComplete="off" />
-      </label>
-      <label>
-        <span>{t('skills.notes')}</span>
+      </FormField>
+      <FormField label={t('skills.notes')}>
         <textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={2} />
-      </label>
+      </FormField>
     </>
   );
 
@@ -307,28 +304,16 @@ export function AgentSkillsPage() {
         </div>
       ) : null}
 
-      {showUpload ? (
-        <div className="agents-dialog-overlay" onClick={resetUploadForm} role="presentation">
-          <div
-            className="agents-dialog agent-skills-dialog"
-            onClick={(e) => e.stopPropagation()}
-            role="dialog"
-            aria-modal
-            aria-labelledby="agent-skills-upload-title"
-          >
-            <div className="agents-dialog-header">
-              <h2 id="agent-skills-upload-title">{t('skills.dialogUpload')}</h2>
-              <button type="button" className="agents-dialog-close" aria-label={ts('shared.close')} onClick={resetUploadForm}>
-                <X size={20} />
-              </button>
-            </div>
-            <div className="agents-dialog-body">
-              {uploadFields}
-              {uploadActions()}
-            </div>
-          </div>
-        </div>
-      ) : null}
+      <Dialog
+        open={showUpload}
+        onClose={resetUploadForm}
+        title={t('skills.dialogUpload')}
+        closeAriaLabel={ts('shared.close')}
+        size="md"
+        footer={uploadActions(true)}
+      >
+        {uploadFields}
+      </Dialog>
     </div>
   );
 }

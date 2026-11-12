@@ -467,5 +467,11 @@
     "token": "令牌",
     "add": "添加凭据",
     "delete": "删除"
+  },
+  "sessionReview": {
+    "generateSkill": "生成技能",
+    "saveSkill": "保存技能",
+    "skillSlug": "技能标识",
+    "skillContent": "SKILL.md 内容"
   }
 }

@@ -1,8 +1,10 @@
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Check, Pencil, Wand, X } from 'lucide-react';
 import { toast } from 'sonner';
 import type { LessonEvent } from '../../data/sessionReviewApi';
 import { generateSkill, saveArtifact } from '../../data/sessionReviewApi';
+import { Dialog, FormField } from '../../styles/design-system';
 import './SessionReview.scss';
 
 type EventStatus = 'pending' | 'approved' | 'rejected';
@@ -37,6 +39,7 @@ export function SessionReviewEventCard({
   onReject,
   projectId,
 }: Props) {
+  const { t } = useTranslation(['agents', 'workspace']);
   const [editing, setEditing] = useState(false);
   const [editWww, setEditWww] = useState(event.what_went_wrong);
   const [editWfi, setEditWfi] = useState(event.what_fixed_it ?? '');
@@ -224,48 +227,49 @@ export function SessionReviewEventCard({
         )}
       </div>
 
-      {skillModal ? (
-        <div className="sreview-modal-overlay" onClick={() => setSkillModal(false)}>
-          <div className="sreview-modal" onClick={(e) => e.stopPropagation()}>
-            <h3 className="sreview-modal-title">Generate Skill</h3>
-            <label className="sreview-card-field">
-              Skill slug
-              <div className="sreview-skill-slug-wrap">
-                <span className="sreview-skill-slug-prefix">.openkms/skills/</span>
-                <input
-                  className="sreview-skill-slug-input"
-                  value={skillSlug}
-                  onChange={(e) => setSkillSlug(e.target.value.replace(/[^a-z0-9-]/g, ''))}
-                  placeholder="my-skill"
-                />
-                <span className="sreview-skill-slug-suffix">/SKILL.md</span>
-              </div>
-            </label>
-            <label className="sreview-card-field">
-              SKILL.md content
-              <textarea
-                value={skillContent}
-                onChange={(e) => setSkillContent(e.target.value)}
-                rows={16}
-                className="sreview-skill-content-textarea"
-              />
-            </label>
-            <div className="sreview-modal-actions">
-              <button type="button" className="sreview-btn sreview-btn--cancel" onClick={() => setSkillModal(false)}>
-                Cancel
-              </button>
-              <button
-                type="button"
-                className="sreview-btn sreview-btn--save"
-                disabled={saving || !skillSlug.trim() || !skillContent.trim()}
-                onClick={handleSaveSkill}
-              >
-                {saving ? 'Saving…' : 'Save Skill'}
-              </button>
-            </div>
+      <Dialog
+        open={skillModal}
+        onClose={() => setSkillModal(false)}
+        title={t('sessionReview.generateSkill')}
+        closeAriaLabel={t('shared.close')}
+        size="lg"
+        footer={
+          <>
+            <button type="button" className="btn btn-secondary" onClick={() => setSkillModal(false)}>
+              {t('shared.cancel')}
+            </button>
+            <button
+              type="button"
+              className="btn btn-primary"
+              disabled={saving || !skillSlug.trim() || !skillContent.trim()}
+              onClick={handleSaveSkill}
+            >
+              {saving ? t('shared.saving') : t('sessionReview.saveSkill')}
+            </button>
+          </>
+        }
+      >
+        <FormField label={t('sessionReview.skillSlug')}>
+          <div className="sreview-skill-slug-wrap">
+            <span className="sreview-skill-slug-prefix">.openkms/skills/</span>
+            <input
+              className="sreview-skill-slug-input"
+              value={skillSlug}
+              onChange={(e) => setSkillSlug(e.target.value.replace(/[^a-z0-9-]/g, ''))}
+              placeholder="my-skill"
+            />
+            <span className="sreview-skill-slug-suffix">/SKILL.md</span>
           </div>
-        </div>
-      ) : null}
+        </FormField>
+        <FormField label={t('sessionReview.skillContent')}>
+          <textarea
+            value={skillContent}
+            onChange={(e) => setSkillContent(e.target.value)}
+            rows={16}
+            className="sreview-skill-content-textarea"
+          />
+        </FormField>
+      </Dialog>
     </>
   );
 }

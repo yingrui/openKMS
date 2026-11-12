@@ -467,5 +467,11 @@
     "token": "Token",
     "add": "Add credential",
     "delete": "Remove"
+  },
+  "sessionReview": {
+    "generateSkill": "Generate Skill",
+    "saveSkill": "Save Skill",
+    "skillSlug": "Skill slug",
+    "skillContent": "SKILL.md content"
   }
 }

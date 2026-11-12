@@ -644,33 +644,6 @@
 }
 
 /* ===== Skill generation modal ===== */
-.sreview-modal {
-  background: var(--color-bg-elevated);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-lg);
-  padding: 24px;
-  width: min(640px, 90vw);
-  max-height: 90vh;
-  overflow-y: auto;
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-}
-
-.sreview-modal-title {
-  margin: 0;
-  font-size: 1rem;
-  font-weight: 600;
-  color: var(--color-text);
-}
-
-.sreview-modal-actions {
-  display: flex;
-  gap: 8px;
-  justify-content: flex-end;
-}
-
 .sreview-skill-slug-wrap {
   display: flex;
   align-items: center;

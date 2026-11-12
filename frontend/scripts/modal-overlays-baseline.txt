@@ -1,6 +1,4 @@
 # Hand-rolled modal overlays — known debt, ratchets down only.
-src/components/agents/SessionReviewEventCard.tsx .sreview-modal-overlay
-src/pages/agents/AgentSkillsPage.tsx .agents-dialog-overlay
 src/pages/wiki/WikiSpaceSettings.tsx .wiki-space-settings-file-input-overlay
 src/pages/wiki/WikiSpaceSettings.modals.tsx .wiki-space-settings-modal-overlay
 src/pages/wiki/WikiSpaceSettings.modals.tsx .wiki-space-settings-modal-overlay
