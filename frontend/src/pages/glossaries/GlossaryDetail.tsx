@@ -28,6 +28,8 @@ import {
   type GlossaryTermResponse,
 } from '../../data/glossariesApi';
 import {
+  Dialog,
+  FormField,
   TableRowActionButton,
   TableRowActionCell,
   TableRowActions,
@@ -37,11 +39,13 @@ import { useListFetch } from '../../hooks/useListFetch';
 import './GlossaryDetail.scss';
 
 function TagInput({
+  id,
   tags,
   onChange,
   placeholder,
   removeAriaLabel,
 }: {
+  id?: string;
   tags: string[];
   onChange: (tags: string[]) => void;
   placeholder?: string;
@@ -73,6 +77,7 @@ function TagInput({
           </span>
         ))}
         <input
+          id={id}
           type="text"
           value={input}
           onChange={(e) => setInput(e.target.value)}
@@ -421,143 +426,123 @@ export function GlossaryDetail() {
         </table>
       </div>
 
-      {showTermForm && (
-        <div className="glossary-dialog-overlay" onClick={closeTermForm}>
-          <div className="glossary-dialog" onClick={(e) => e.stopPropagation()}>
-            <div className="glossary-dialog-header">
-              <h2>{editTerm ? t('glossary.detail.dialogEditTerm') : t('glossary.detail.dialogAddTerm')}</h2>
-              <button
-          type="button"
-          className="glossary-dialog-close"
-          aria-label={t('shared.close')} onClick={closeTermForm}>
-                <X size={20} />
-              </button>
-            </div>
-            <div className="glossary-dialog-body">
-              <label>
-                <span>{t('glossary.detail.primaryCn')}</span>
-                <input
-                  type="text"
-                  value={termPrimaryCn}
-                  onChange={(e) => setTermPrimaryCn(e.target.value)}
-                  placeholder={t('glossary.detail.primaryCnPlaceholder')}
-                />
-              </label>
-              <label>
-                <span>{t('glossary.detail.primaryEn')}</span>
-                <input
-                  type="text"
-                  value={termPrimaryEn}
-                  onChange={(e) => setTermPrimaryEn(e.target.value)}
-                  placeholder={t('glossary.detail.primaryEnPlaceholder')}
-                />
-              </label>
-              <label>
-                <span>{t('glossary.detail.definitionLabel')}</span>
-                <textarea
-                  rows={2}
-                  value={termDefinition}
-                  onChange={(e) => setTermDefinition(e.target.value)}
-                  placeholder={t('glossary.detail.definitionPlaceholder')}
-                />
-              </label>
-              <label>
-                <span>{t('glossary.detail.synonymsCn')}</span>
-                <TagInput
-                  tags={termSynonymsCn}
-                  onChange={setTermSynonymsCn}
-                  placeholder={t('glossary.detail.synonymPlaceholder')}
-                  removeAriaLabel={t('glossary.detail.removeTagAria')}
-                />
-              </label>
-              <label>
-                <span>{t('glossary.detail.synonymsEn')}</span>
-                <TagInput
-                  tags={termSynonymsEn}
-                  onChange={setTermSynonymsEn}
-                  placeholder={t('glossary.detail.synonymPlaceholder')}
-                  removeAriaLabel={t('glossary.detail.removeTagAria')}
-                />
-              </label>
-            </div>
-            <div className="glossary-dialog-footer">
-              <button type="button" className="btn btn-secondary" onClick={closeTermForm}>
-                {t('glossary.detail.cancel')}
-              </button>
-              {(termPrimaryEn.trim() || termPrimaryCn.trim()) && (
-                <button
-                  type="button"
-                  className="btn btn-secondary glossary-ai-suggestion-btn"
-                  onClick={handleAiSuggestion}
-                  disabled={termSuggesting}
-                >
-                  {termSuggesting ? (
-                    <Loader2 size={18} className="glossary-ai-spinner" />
-                  ) : (
-                    <Sparkles size={18} />
-                  )}
-                  <span>{termSuggesting ? t('glossary.detail.aiSuggesting') : t('glossary.detail.aiSuggestion')}</span>
-                </button>
-              )}
+      <Dialog
+        open={showTermForm}
+        onClose={closeTermForm}
+        title={editTerm ? t('glossary.detail.dialogEditTerm') : t('glossary.detail.dialogAddTerm')}
+        closeAriaLabel={t('shared.close')}
+        size="md"
+        footer={
+          <>
+            <button type="button" className="btn btn-secondary" onClick={closeTermForm}>
+              {t('glossary.detail.cancel')}
+            </button>
+            {(termPrimaryEn.trim() || termPrimaryCn.trim()) && (
               <button
                 type="button"
-                className="btn btn-primary"
-                disabled={(!termPrimaryEn.trim() && !termPrimaryCn.trim()) || termSaving}
-                onClick={handleSaveTerm}
+                className="btn btn-secondary glossary-ai-suggestion-btn"
+                onClick={handleAiSuggestion}
+                disabled={termSuggesting}
               >
-                {termSaving ? t('glossary.detail.saving') : editTerm ? t('glossary.detail.save') : t('glossary.detail.add')}
+                {termSuggesting ? (
+                  <Loader2 size={18} className="glossary-ai-spinner" />
+                ) : (
+                  <Sparkles size={18} />
+                )}
+                <span>{termSuggesting ? t('glossary.detail.aiSuggesting') : t('glossary.detail.aiSuggestion')}</span>
               </button>
-            </div>
-          </div>
-        </div>
-      )}
+            )}
+            <button
+              type="button"
+              className="btn btn-primary"
+              disabled={(!termPrimaryEn.trim() && !termPrimaryCn.trim()) || termSaving}
+              onClick={handleSaveTerm}
+            >
+              {termSaving ? t('glossary.detail.saving') : editTerm ? t('glossary.detail.save') : t('glossary.detail.add')}
+            </button>
+          </>
+        }
+      >
+        <FormField label={t('glossary.detail.primaryCn')}>
+          <input
+            type="text"
+            value={termPrimaryCn}
+            onChange={(e) => setTermPrimaryCn(e.target.value)}
+            placeholder={t('glossary.detail.primaryCnPlaceholder')}
+          />
+        </FormField>
+        <FormField label={t('glossary.detail.primaryEn')}>
+          <input
+            type="text"
+            value={termPrimaryEn}
+            onChange={(e) => setTermPrimaryEn(e.target.value)}
+            placeholder={t('glossary.detail.primaryEnPlaceholder')}
+          />
+        </FormField>
+        <FormField label={t('glossary.detail.definitionLabel')}>
+          <textarea
+            rows={2}
+            value={termDefinition}
+            onChange={(e) => setTermDefinition(e.target.value)}
+            placeholder={t('glossary.detail.definitionPlaceholder')}
+          />
+        </FormField>
+        <FormField label={t('glossary.detail.synonymsCn')}>
+          <TagInput
+            tags={termSynonymsCn}
+            onChange={setTermSynonymsCn}
+            placeholder={t('glossary.detail.synonymPlaceholder')}
+            removeAriaLabel={t('glossary.detail.removeTagAria')}
+          />
+        </FormField>
+        <FormField label={t('glossary.detail.synonymsEn')}>
+          <TagInput
+            tags={termSynonymsEn}
+            onChange={setTermSynonymsEn}
+            placeholder={t('glossary.detail.synonymPlaceholder')}
+            removeAriaLabel={t('glossary.detail.removeTagAria')}
+          />
+        </FormField>
+      </Dialog>
 
-      {showImport && (
-        <div className="glossary-dialog-overlay" onClick={() => !importing && setShowImport(false)}>
-          <div className="glossary-dialog" onClick={(e) => e.stopPropagation()}>
-            <div className="glossary-dialog-header">
-              <h2>{t('glossary.detail.importTermsTitle')}</h2>
-              <button
-                type="button"
-                className="glossary-dialog-close"
-                onClick={() => !importing && setShowImport(false)}
-              >
-                <X size={20} />
-              </button>
-            </div>
-            <div className="glossary-dialog-body">
-              <label>
-                <span>{t('glossary.detail.importMode')}</span>
-                <select value={importMode} onChange={(e) => setImportMode(e.target.value as 'append' | 'replace')}>
-                  <option value="append">{t('glossary.detail.importAppend')}</option>
-                  <option value="replace">{t('glossary.detail.importReplace')}</option>
-                </select>
-              </label>
-              <label>
-                <span>{t('glossary.detail.jsonFile')}</span>
-                <input
-                  type="file"
-                  accept=".json,application/json"
-                  onChange={(e) => setImportFile(e.target.files?.[0] || null)}
-                />
-              </label>
-            </div>
-            <div className="glossary-dialog-footer">
-              <button type="button" className="btn btn-secondary" onClick={() => !importing && setShowImport(false)}>
-                {t('glossary.detail.cancel')}
-              </button>
-              <button
-                type="button"
-                className="btn btn-primary"
-                disabled={!importFile || importing}
-                onClick={handleImport}
-              >
-                {importing ? t('glossary.detail.importing') : t('glossary.detail.importVerb')}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <Dialog
+        open={showImport}
+        onClose={() => !importing && setShowImport(false)}
+        title={t('glossary.detail.importTermsTitle')}
+        closeAriaLabel={t('shared.close')}
+        closeDisabled={importing}
+        size="md"
+        footer={
+          <>
+            <button type="button" className="btn btn-secondary" onClick={() => !importing && setShowImport(false)}>
+              {t('glossary.detail.cancel')}
+            </button>
+            <button
+              type="button"
+              className="btn btn-primary"
+              disabled={!importFile || importing}
+              onClick={handleImport}
+            >
+              {importing ? t('glossary.detail.importing') : t('glossary.detail.importVerb')}
+            </button>
+          </>
+        }
+      >
+        <FormField label={t('glossary.detail.importMode')}>
+          <select value={importMode} onChange={(e) => setImportMode(e.target.value as 'append' | 'replace')}>
+            <option value="append">{t('glossary.detail.importAppend')}</option>
+            <option value="replace">{t('glossary.detail.importReplace')}</option>
+          </select>
+        </FormField>
+        <FormField label={t('glossary.detail.jsonFile')}>
+          <input
+            type="file"
+            accept=".json,application/json"
+            onChange={(e) => setImportFile(e.target.files?.[0] || null)}
+          />
+        </FormField>
+      </Dialog>
+
     </div>
   );
 }

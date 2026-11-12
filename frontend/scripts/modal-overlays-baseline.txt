@@ -1,8 +1,6 @@
 # Hand-rolled modal overlays — known debt, ratchets down only.
 src/components/agents/SessionReviewEventCard.tsx .sreview-modal-overlay
 src/pages/knowledge-map/KnowledgeMap.tsx .knowledge-map-dialog-overlay
-src/pages/glossaries/GlossaryDetail.tsx .glossary-dialog-overlay
-src/pages/glossaries/GlossaryDetail.tsx .glossary-dialog-overlay
 src/pages/glossaries/GlossaryList.tsx .glossary-dialog-overlay
 src/pages/articles/ArticleChannel.tsx .channel-page-modal-overlay
 src/pages/articles/ArticleChannel.tsx .channel-page-modal-overlay
