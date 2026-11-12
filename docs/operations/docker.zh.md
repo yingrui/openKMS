@@ -57,5 +57,5 @@ OPENKMS_VLM_URL=http://host.docker.internal:8101
 ## 另见
 
 - [`docker/README.md`](https://github.com/yingrui/openKMS/blob/main/docker/README.md) — 与 Compose 同目录的权威短参考。
-- [架构](../architecture.md) — 服务如何协作。
-- [安全设计](../security.md) — 原则；[控制台与认证](../features/console-and-auth.md) — 部署中的 auth 模式与密钥。
+- [架构](../developer/architecture.md) — 服务如何协作。
+- [安全设计](../developer/security.md) — 原则；[控制台与认证](../features/console-and-auth.md) — 部署中的 auth 模式与密钥。

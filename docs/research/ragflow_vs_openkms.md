@@ -2,7 +2,7 @@
 
 Comparative research for product and architecture decisions. **openKMS** is described from this repository’s docs and code (as of 2026-06). **RAGFlow** is described from its public README, documentation site, and release notes ([infiniflow/ragflow](https://github.com/infiniflow/ragflow), [ragflow.io](https://ragflow.io/)).
 
-**Related:** [Goals (vision)](../goals.md) · [Architecture](../architecture.md) · [Functionalities](../functionalities.md) · [Development plan](../development_plan.md) · [LLM wiki vs openKMS](llm_wiki_comparison.md)
+**Related:** [Goals (vision)](../goals.md) · [Architecture](../developer/architecture.md) · [Functionalities](../functionalities.md) · [Development plan](../development_plan.md) · [LLM wiki vs openKMS](llm_wiki_comparison.md)
 
 ---
 
@@ -151,10 +151,10 @@ flowchart LR
 |------------|---------|---------|
 | Auth | Product auth model (see RAGFlow docs) | **OIDC** or **local**; session + Bearer |
 | Feature permissions | Role/team features in product | **Operation RBAC** (`security_permissions`) + optional strict API patterns |
-| Data-plane isolation | Dataset/team scoped (product-dependent) | **Resource ACL** (r/w/m), groups, container inheritance; admin ≠ data superuser ([Security design](../security.md)) |
+| Data-plane isolation | Dataset/team scoped (product-dependent) | **Resource ACL** (r/w/m), groups, container inheritance; admin ≠ data superuser ([Security design](../developer/security.md)) |
 | Evaluation / quality gates | Less emphasized in positioning | **Evaluation** datasets/runs (experimental); wiki coverage checks |
 
-See [Data security](../features/data-security.md) for openKMS’s two-layer model.
+See [Data security](../developer/data-security.md) for openKMS’s two-layer model.
 
 ### Operations and maturity
 
@@ -237,7 +237,7 @@ Without implying implementation commitment:
 | RAGFlow repository | https://github.com/infiniflow/ragflow |
 | RAGFlow documentation | https://ragflow.io/docs/dev/ |
 | RAGFlow roadmap 2026 | https://github.com/infiniflow/ragflow/issues/12241 |
-| openKMS architecture | [architecture.md](../architecture.md) |
+| openKMS architecture | [architecture.md](../developer/architecture.md) |
 | openKMS knowledge bases | [knowledge-bases.md](../features/knowledge-bases.md) |
 | openKMS goals | [goals.md](../goals.md) |
 

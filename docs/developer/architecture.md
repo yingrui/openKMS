@@ -56,7 +56,7 @@ flowchart TB
 | **Worker** | procrastinate worker runs deferred jobs (document parse, KB index, …) by spawning **openkms-cli**; updates status in PostgreSQL. |
 | **LLM providers** | External OpenAI-compatible APIs configured as **api_providers** / **api_models** — metadata extraction, FAQ generation, embeddings, playground. |
 | **QA Agent** | Separate FastAPI + LangGraph service per knowledge base; searches via backend API only (no direct DB). |
-| **In-app agents** | Run in the **main** API process: Deep Agents [project workspaces](features/openkms-agents.md) (`backend/app/services/runtime/deep_agents/`) and the knowledge map designer. Not the QA Agent. |
+| **In-app agents** | Run in the **main** API process: Deep Agents [project workspaces](../features/openkms-agents.md) (`backend/app/services/runtime/deep_agents/`) and the knowledge map designer. Not the QA Agent. |
 
 ## Frontend Structure
 
@@ -136,7 +136,7 @@ frontend/src/
 
 ### Data layer & hooks
 
-- **API calls** — Domain modules in **`data/*Api.ts`** call **`request<T>(path, { query, …init })`**, which merges auth headers, locale, `credentials: 'include'`, serializes query params (skips `undefined` / `''`), throws readable errors, and returns `undefined` on **204**. Use **`requestRaw`** / **`requestText`** when headers or non-JSON bodies are needed. Low-level **`authAwareFetch`** stays inside `apiClient.ts` (401 silent retry, session expiry). **Exception:** pre-login pages (`Login`, `Signup`, `OidcCallback`) use bare `fetch`.
+- **API calls** — Domain modules in **`data/*Api.ts`** call **`request<T>(path, { query, …init })`**, which merges auth headers, locale, `credentials: 'include'`, serializes query params (skips `undefined` / `''`), throws readable errors, and returns `undefined` on **204**. Use **`requestRaw`** / **`requestText`** when headers or non-JSON bodies are needed. Low-level **`authAwareFetch`** stays inside `apiClient.ts` (401 silent retry, session expiry). **Exception:** pre-login pages (`Login`, `Signup`) use bare `fetch`.
 - **List pages** — **`useDebouncedValue(value, ms)`** for search input; **`useListFetch({ fetcher, filters, pageSize })`** for offset/limit lists (resets page when filters change). Used by document/article/media channels and glossary detail; prefer over hand-rolled pagination state.
 - **Shell providers** — **`ConfirmProvider`** (`contexts/ConfirmContext.tsx`, mounted in **`MainLayout`**) powers **`useConfirm()`** for i18n-friendly confirms. **`OntologyMobileRailContext`** is ontology-rail-only (not channel rails).
 
@@ -244,7 +244,7 @@ openkms-cli/
 
 Optional repo folder **`openkms-skill/`** (not part of the Docker stack) packages a small **Python CLI** plus **`SKILL.md`** per [agentskills.io](https://agentskills.io/specification). It calls the **same public `/api/...` routes** as the SPA, using a **personal API key** (**Settings → API keys**). Install via **`./install.sh`** (Claude Code / OpenCode) or **`./package.sh`** for **Agents → Skills** upload.
 
-Full how-to: **[openkms-skill](features/openkms-skill.md)**. Distinct from **`openkms-cli`** (worker subprocess, env-based auth to internal + public APIs).
+Full how-to: **[openkms-skill](../features/openkms-skill.md)**. Distinct from **`openkms-cli`** (worker subprocess, env-based auth to internal + public APIs).
 
 ## QA Agent Service
 
@@ -358,53 +358,47 @@ sequenceDiagram
 
 ## Authentication (`OPENKMS_AUTH_MODE`)
 
-Two modes (default **`oidc`**). Deployments should keep **backend** `OPENKMS_AUTH_MODE` and **frontend** behavior in sync: the SPA calls **`GET /api/auth/public-config`** (no auth) for **`auth_mode`**, **`allow_signup`**, and **`session_v2`** (no infrastructure hints). **openkms-cli** and **qa-agent** call **`/internal-api/models/...`** with **internal service** auth only (`sub=local-cli` from HTTP Basic, or OIDC client credentials whose **`azp`** is on **`OPENKMS_INTERNAL_SERVICE_CLIENT_IDS`**); human SPA tokens are rejected. **`document-parse-defaults`** supplies VLM **`base_url`**, **`model_name`**, and **`api_key`** (optional query **`model_name`** for a row with **`document-parse`** capability). **`kb-index`** uses **`kb-embedding-credentials?knowledge_base_id=…`** for embedding credentials. The **`/internal-api`** prefix is outside optional strict permission-pattern middleware (which only inspects **`/api/...`** today), so operators can attach separate ingress or policy later without mixing worker/CLI surfaces with catalog-governed **`/api`** routes. The SPA may call **`GET /api/public/system`** (no auth) for **`system_name`** (trimmed from DB, possibly empty; the sidebar stays blank until the response, then shows **`openKMS`** when empty). The app also reads **`session_v2`** from that response. When true, auth uses the server-side session path: the browser holds only the opaque **`openkms_session`** cookie, tokens live encrypted in **`auth_sessions`**, and OIDC uses the backend BFF login/callback plus **`POST /api/auth/refresh`**. When false, the legacy SPA **`oidc-client-ts`** / local-JWT path remains. The app shows a banner if `VITE_AUTH_MODE` is set and disagrees; that variable is only a fallback when `public-config` fails.
+Two modes (default **`oidc`**). Deployments keep **backend** `OPENKMS_AUTH_MODE` and **frontend** behavior in sync: the SPA calls **`GET /api/auth/public-config`** (no auth) for **`auth_mode`** and **`allow_signup`** (no infrastructure hints). The browser always uses the server-side session path: an opaque **`openkms_session`** cookie, tokens encrypted in **`auth_sessions`**, BFF OIDC login/callback, and **`POST /api/auth/refresh`**. The JWT Bearer path remains for **openkms-cli**, **qa-agent**, API clients, and internal services (`sub=local-cli` from HTTP Basic, OIDC client credentials whose **`azp`** is on **`OPENKMS_INTERNAL_SERVICE_CLIENT_IDS`**, or personal API keys); human browser tokens are never exposed to the SPA. **`document-parse-defaults`** supplies VLM **`base_url`**, **`model_name`**, and **`api_key`** (optional query **`model_name`** for a row with **`document-parse`** capability). **`kb-index`** uses **`kb-embedding-credentials?knowledge_base_id=…`** for embedding credentials. The **`/internal-api`** prefix is outside optional strict permission-pattern middleware (which only inspects **`/api/...`** today), so operators can attach separate ingress or policy later without mixing worker/CLI surfaces with catalog-governed **`/api`** routes. The SPA may call **`GET /api/public/system`** (no auth) for **`system_name`** (trimmed from DB, possibly empty; the sidebar stays blank until the response, then shows **`openKMS`** when empty). The app shows a banner if `VITE_AUTH_MODE` is set and disagrees; that variable is only a fallback when `public-config` fails.
 
 ### OIDC mode (standards-compliant OpenID Connect IdP)
 
 ```mermaid
 flowchart LR
-  subgraph UserFlow["User auth flow"]
-    U[User] -->|"kc.login()"| KC[OIDC IdP]
-    KC -->|"Auth Code + PKCE"| FE[Frontend]
-    FE -->|"Bearer JWT"| BE[Backend API]
-    FE -->|"POST /sync-session"| BE
-  end
-
-  subgraph BackendAuth["Backend accepts"]
-    BE
-    BE -->|"JWT or session cookie"| JWKS[IdP JWKS]
+  subgraph Browser["Browser"]
+    U[User] -->|"/api/auth/oidc/login"| BE[Backend]
+    BE -->|"PKCE + state"| KC[OIDC IdP]
+    KC -->|"code"| BE
+    BE -->|"auth_sessions + opaque cookie"| U
+    U -->|"openkms_session"| BE
   end
 
   subgraph CLIAuth["openkms-cli (worker)"]
     CLI[openkms-cli] -->|"Client credentials"| KC
     CLI -->|"Bearer token"| BE
   end
+
+  BE -->|"JWKS"| KC
 ```
 
 - **Backend**: Resolves **`OPENKMS_OIDC_ISSUER`** or **`{OPENKMS_OIDC_AUTH_SERVER_BASE_URL}/realms/{OPENKMS_OIDC_REALM}`**, fetches **`{issuer}/.well-known/openid-configuration`**, validates JWTs with **`jwks_uri`**, and uses discovery **`authorization_endpoint`**, **`token_endpoint`**, **`end_session_endpoint`**.
-- **BFF path (`OPENKMS_AUTH_SESSION_V2=true`)**: the SPA sends the browser to **`GET /api/auth/oidc/login?returnTo=…`**; the backend redirects to the IdP with PKCE + state, the callback exchanges the code, creates an **`auth_sessions`** row (access + refresh token encrypted), and sets the opaque cookie. **`POST /api/auth/refresh`** refreshes the access token server-side (with `offline_access` when the IdP supports it); **`GET /api/auth/oidc/logout`** revokes the row and performs RP-initiated logout. The SPA never receives the tokens.
-- **Legacy path (`OPENKMS_AUTH_SESSION_V2=false`)**: **`oidc-client-ts`** (`UserManager`) in the SPA; redirect URIs **`/auth/callback`** and **`/auth/silent-renew`**; `POST /sync-session` after login.
-- `GET /login` / `GET /login/oauth2/code/oidc` (and legacy `/login/oauth2/code/keycloak`) – backend OAuth redirect and callback for the confidential client.
+- The SPA sends the browser to **`GET /api/auth/oidc/login?returnTo=…`**; the backend redirects to the IdP with PKCE + state, the callback exchanges the code, creates an **`auth_sessions`** row (access + refresh token encrypted), and sets the opaque cookie. **`POST /api/auth/refresh`** refreshes the access token server-side (with `offline_access` when the IdP supports it); **`GET /api/auth/oidc/logout`** revokes the row and performs RP-initiated logout. The SPA never receives the tokens.
+- `GET /login/oauth2/code/oidc` – backend OAuth callback for the confidential client. Register this URI on the IdP.
 - `GET /logout` – clears session; redirects to IdP logout when configured.
 
 ### Local mode (PostgreSQL users)
 
 - **Backend**: `OPENKMS_AUTH_MODE=local`. Users in `users` table; passwords hashed (bcrypt); access tokens are HS256 JWTs signed with `OPENKMS_SECRET_KEY` (claims mirror OIDC-style `sub`, `realm_access.roles`, etc.).
-- **Endpoints**: `POST /api/auth/register`, `POST /api/auth/login`, `GET /api/auth/me` (returns `is_admin` and `roles` from `realm_access.roles`), `POST /api/auth/logout`. `POST /sync-session` accepts local JWT for cookie-backed requests.
-- **BFF path (`OPENKMS_AUTH_SESSION_V2=true`)**: register/login create an **`auth_sessions`** row with a short local access JWT; **`POST /api/auth/refresh`** mints a new JWT, extends the idle deadline, and never exceeds the absolute cap. Logout revokes the row.
-- **Legacy path**: the fixed `OPENKMS_LOCAL_JWT_EXP_HOURS` JWT and legacy cookie remain.
+- **Endpoints**: `POST /api/auth/register`, `POST /api/auth/login`, `GET /api/auth/me` (returns `is_admin` and `roles` from `realm_access.roles`), `POST /api/auth/logout`. Register/login create an **`auth_sessions`** row with a short local access JWT; **`POST /api/auth/refresh`** mints a new JWT, extends the idle deadline, and never exceeds the absolute cap. Logout revokes the row.
 - **CLI**: `OPENKMS_CLI_BASIC_USER` / `OPENKMS_CLI_BASIC_PASSWORD` → `Authorization: Basic` (use only on trusted networks without TLS).
 - **Frontend**: `/login` and `/signup` when `public-config` reports `local`; signup link hidden if `allow_signup` is false; API calls use `credentials: 'include'`.
 - OIDC redirect routes redirect to `/login?notice=local_auth` when hit in local mode.
 
 ### Shared
 
-- **Invalid JWT on API calls**: Authenticated SPA requests use **`authAwareFetch`** (`frontend/src/data/apiClient.ts`) for backend `fetch`es. A **`401`** whose body indicates session/auth failure (legacy **`Invalid or expired token`** / **`Invalid token`**, localized **`detail.code`** values such as **`AUTHENTICATION_REQUIRED`**, **`BEARER_TOKEN_REQUIRED`**, **`INVALID_OR_EXPIRED_TOKEN`**, **`INVALID_TOKEN`**, or JWT parse phrases) first runs **one silent retry** registered from **`AuthContext`**: in **`session_v2`**, **`POST /api/auth/refresh`** then **`GET /api/auth/me`**; in the legacy path, OIDC **`signinSilent`** + **`POST /sync-session`** or local cookie **`/me`**. The request is retried once. If it is still a session-type **`401`**, the session-expired handler clears local state, revokes/clears the server session, and sends the user to **`/login?notice=session_expired`**. It does not start an OIDC redirect automatically; explicit sign-in uses OIDC **`prompt=login`**, so an existing IdP SSO session cannot silently re-enter. The fetch resolves to a **synthetic 401** JSON body with user-facing copy (`SESSION_EXPIRED_API_DETAIL`). Protected paths still show the **Authentication Required** screen while signed out.
-- **Server-side sessions (`auth_sessions`)**: the cookie is an opaque 256-bit id; access/refresh tokens are encrypted at rest (Fernet via the credential-encryption key). `idle_expires_at` slides on activity (write-throttled to once per minute); `absolute_expires_at` is fixed by `OPENKMS_SESSION_ABSOLUTE_HOURS` and cannot be extended by refresh. `OPENKMS_SESSION_IDLE_MINUTES` controls the idle window. The cookie is `HttpOnly`, `SameSite=Lax`, and `Secure` when `OPENKMS_SESSION_COOKIE_SECURE=true`. Cookie-auth mutations (`/api/auth/refresh`, `/clear-session`, `/api/auth/logout`) check `Origin`/`Referer`. `returnTo` only accepts same-origin relative paths. Login creates a fresh session id and revokes the old row; `rotated_from` records the replacement chain. Expired/revoked rows are pruned opportunistically at session creation (30-day retention).
+- **Invalid JWT/session on API calls**: Authenticated SPA requests use **`authAwareFetch`** (`frontend/src/data/apiClient.ts`) for backend `fetch`es. A session-type **`401`** first runs **one retry** registered from **`AuthContext`**: **`POST /api/auth/refresh`** then **`GET /api/auth/me`**. If it is still a session-type **`401`**, the session-expired handler clears local state, revokes the server session, and sends the user to **`/login?notice=session_expired`**. It does not start an OIDC redirect automatically; explicit sign-in uses OIDC **`prompt=login`**, so an existing IdP SSO session cannot silently re-enter. The fetch resolves to a **synthetic 401** JSON body with user-facing copy (`SESSION_EXPIRED_API_DETAIL`). Protected paths still show the **Authentication Required** screen while signed out.
+- **Server-side sessions (`auth_sessions`)**: the cookie is an opaque 256-bit id; access/refresh tokens are encrypted at rest (Fernet via the credential-encryption key). `idle_expires_at` slides on activity (write-throttled to once per minute); `absolute_expires_at` is fixed by `OPENKMS_SESSION_ABSOLUTE_HOURS` and cannot be extended by refresh. `OPENKMS_SESSION_IDLE_MINUTES` controls the idle window. The cookie is `HttpOnly`, `SameSite=Lax`, and `Secure` when `OPENKMS_SESSION_COOKIE_SECURE=true`. Cookie-auth mutations (`/api/auth/refresh`, `/api/auth/logout`) check `Origin`/`Referer`. `returnTo` only accepts same-origin relative paths. Login creates a fresh session id and revokes the old row; `rotated_from` records the replacement chain. An explicit `POST /api/auth/refresh` also rotates the session id, revokes the old row, and keeps it usable for a short grace window (`replaced_by`, 15s) so concurrent in-flight requests do not get logged out. Expired/revoked rows are pruned opportunistically at session creation (30-day retention).
 - **Route protection**: **`/`** (home) is public for guests (static marketing shell); all other **`MainLayout`** pages require auth (and `/login`, `/signup` in local mode live outside that shell). **`/profile`** shows the current user from `GET /api/auth/me` (administrator flag, role list, header user menu).
 - **Console**: `admin` in `realm_access.roles` (OIDC) grants full permissions (all keys from `security_permissions`). Other OIDC users: each JWT realm role whose **name equals** a `security_roles.name` row contributes that role’s permission keys (union). Local: `is_admin` or `user_security_roles`.
-- `POST /clear-session` – revokes the `auth_sessions` row (when present) and clears the session cookie.
 
 ## Configuration
 
@@ -415,7 +409,7 @@ flowchart LR
 | Backend | `OPENKMS_AUTH_MODE` – `oidc` (default) or `local`; `OPENKMS_ALLOW_SIGNUP`, `OPENKMS_CLI_BASIC_*`, `OPENKMS_LOCAL_JWT_EXP_HOURS` |
 | Backend | `OPENKMS_OIDC_*`, `OPENKMS_FRONTEND_URL` – issuer, confidential client, SPA origin, post-logout client id, service client id (`azp`) for CLI JWT |
 | Backend | `AWS_*` – S3/MinIO for file storage (optional) |
-| Frontend | `config/index.ts` – `apiUrl`, `authMode` (fallback), `oidc` (`VITE_OIDC_*`). Runtime mode from `GET /api/auth/public-config`. Optional `VITE_AUTH_MODE` fallback if the API is unreachable |
-| Vite dev | Proxy **`/api`**, **`/internal-api`**, **`/sync-session`**, **`/clear-session`** → backend (**8102**); **`/buckets/openkms`** → MinIO (**9000** when MinIO is published on the host) |
+| Frontend | `config/index.ts` – `apiUrl`, `authMode` (fallback). Runtime mode from `GET /api/auth/public-config`. Optional `VITE_AUTH_MODE` fallback if the API is unreachable |
+| Vite dev | Proxy **`/api`**, **`/internal-api`** → backend (**8102**); **`/buckets/openkms`** → MinIO (**9000** when MinIO is published on the host) |
 | Alembic | `alembic.ini` – uses `settings.database_url_sync` |
 | AI agents | `AGENTS.md` (repo root) – coding, docs-before-commit, Alembic, frontend verification rules |

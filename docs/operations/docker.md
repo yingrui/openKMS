@@ -14,7 +14,7 @@ The full stack ships as a single `docker compose` file. This page is a runtime /
 
 The browser only ever talks to nginx on **`http://localhost:8082`**, which proxies `/api`, `/internal-api`, the auth routes, and the MinIO bucket path through to the backend.
 
-In production, a **host reverse proxy** (TLS, domain) often sits in front of `:8082`. Project agent streams are long-lived NDJSON; set **`proxy_read_timeout`** high enough on **both** nginx hops (see [Agents — Troubleshooting](../features/openkms-agents.md#troubleshooting) and [`docker/README.md`](https://github.com/yingrui/openKMS/blob/main/docker/README.md)).
+In production, a **host reverse proxy** (TLS, domain) often sits in front of `:8082`. Project agent streams are long-lived NDJSON; set **`proxy_read_timeout`** high enough on **both** nginx hops (see [Agents — Troubleshooting](../developer/project-agent-runtime.md#troubleshooting) and [`docker/README.md`](https://github.com/yingrui/openKMS/blob/main/docker/README.md)).
 
 ## Bring it up
 
@@ -59,5 +59,5 @@ The frontend image is built with `VITE_AUTH_MODE` baked in. Compose defaults are
 ## See also
 
 - [`docker/README.md`](https://github.com/yingrui/openKMS/blob/main/docker/README.md) — canonical short reference, kept next to the Compose file.
-- [Architecture](../architecture.md) — how the services fit together.
-- [Security design](../security.md) — principles; [Console & authentication](../features/console-and-auth.md) — auth mode and secrets in deploy.
+- [Architecture](../developer/architecture.md) — how the services fit together.
+- [Security design](../developer/security.md) — principles; [Console & authentication](../features/console-and-auth.md) — auth mode and secrets in deploy.

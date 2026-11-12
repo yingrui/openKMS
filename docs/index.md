@@ -36,7 +36,7 @@ It is not an app generator, a document store, a chat window, or a BI tool. The l
 | **[Agents](features/openkms-agents.md) & [skill](features/openkms-skill.md)** | Deep Agents workspaces, and the openkms skill/CLI for agents calling the public API. |
 | **[Chamber](features/app-builder.md)** | Register and run decision-system UIs against a Kubernetes Service; identity headers and proxy. |
 
-**Foundations:** [operation permissions + resource ACL](features/data-security.md) (admin does not imply read-all data), and [evaluations](features/evaluation.md) for retrieval and wiki coverage.
+**Foundations:** [operation permissions + resource ACL](developer/data-security.md) (admin does not imply read-all data), and [evaluations](features/evaluation.md) for retrieval and wiki coverage.
 
 ## Where to start
 
@@ -46,18 +46,18 @@ It is not an app generator, a document store, a chat window, or a BI tool. The l
 | Try it locally with Docker or on the host | [Quickstart](quickstart.md) |
 | Learn ontology by building a mini Kanban | [Tutorial: Understanding the ontology (Kanban lab)](tutorials/understanding-ontology.md) |
 | DIY a Tushare → Stock → Function case study | [Tutorial: Tushare market ontology](tutorials/tushare-market-ontology.md) |
-| Understand the system | [Architecture](architecture.md) · [Functionalities](functionalities.md) |
+| Understand the system | [Architecture](developer/architecture.md) · [Functionalities](functionalities.md) |
 | Find a specific feature or API | [Functionalities](functionalities.md) → `features/*.md` |
-| HTTP or schema reference | [API reference](features/api-reference.md) · Data models |
+| HTTP or schema reference | [API reference](developer/api-reference.md) · Data models |
 | Knowledge artifact types | [Knowledge types](features/knowledge-types.md) |
-| Sharing and resource ACL | [Data security](features/data-security.md) |
+| Sharing and resource ACL | [Data security](developer/data-security.md) |
 | Use openKMS from an agent (skill + CLI) | [openkms-skill](features/openkms-skill.md) |
 | Set up a dev environment | [Developer setup](developer/setup.md) |
 | Deploy with Docker | [Operations · Docker](operations/docker.md) |
-| Review security design (principles) | [Security](security.md) · [Data security](features/data-security.md) · [Console & auth](features/console-and-auth.md) |
+| Review security design (principles) | [Security](developer/security.md) · [Data security](developer/data-security.md) · [Console & auth](features/console-and-auth.md) |
 | See what's planned next | [Roadmap · Development plan](development_plan.md) |
 | Compare openKMS to other stacks or read KM frameworks | [Research](#research) (below) |
-| Edit the docs (human or AI agent) | [Doc conventions for AI agents](agents.md) |
+| Edit the docs (human or AI agent) | [Doc conventions for AI agents](developer/doc-conventions.md) |
 
 ## Research {#research}
 

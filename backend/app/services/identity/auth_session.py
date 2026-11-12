@@ -25,6 +25,7 @@ from app.services.platform.credentials.credential_encryption import decrypt, enc
 
 TOUCH_INTERVAL_SECONDS = 60
 REFRESH_SKEW_SECONDS = 60
+SESSION_ROTATION_GRACE_SECONDS = 15
 
 
 def utcnow() -> datetime:
@@ -150,6 +151,42 @@ async def touch_session(db: AsyncSession, row: AuthSession) -> None:
         row.absolute_expires_at,
     )
     await db.flush()
+
+
+async def rotated_successor(db: AsyncSession, row: AuthSession) -> AuthSession | None:
+    """Follow a just-rotated session id so concurrent in-flight requests do not get logged out."""
+    if row.revoked_at is None or not row.replaced_by:
+        return None
+    if (utcnow() - row.revoked_at).total_seconds() > SESSION_ROTATION_GRACE_SECONDS:
+        return None
+    successor = await get_session(db, row.replaced_by)
+    return successor if successor is not None and session_active(successor) else None
+
+
+async def rotate_session(db: AsyncSession, row: AuthSession) -> AuthSession | None:
+    """Create a successor row for an explicit refresh and revoke the old row."""
+    if not session_active(row):
+        return None
+    now = utcnow()
+    successor = AuthSession(
+        id=new_session_id(),
+        user_sub=row.user_sub,
+        idp_sub=row.idp_sub,
+        auth_mode=row.auth_mode,
+        access_token_enc=row.access_token_enc,
+        refresh_token_enc=row.refresh_token_enc,
+        access_expires_at=row.access_expires_at,
+        idle_expires_at=min(now + timedelta(minutes=settings.session_idle_minutes), row.absolute_expires_at),
+        absolute_expires_at=row.absolute_expires_at,
+        created_at=now,
+        last_seen_at=now,
+        rotated_from=row.id,
+    )
+    row.revoked_at = now
+    row.replaced_by = successor.id
+    db.add(successor)
+    await db.flush()
+    return successor
 
 
 async def revoke_session(db: AsyncSession, row: AuthSession) -> None:

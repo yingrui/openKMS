@@ -226,8 +226,6 @@ class Settings(BaseSettings):
     auth_mode: str = Field(default="oidc", validation_alias="OPENKMS_AUTH_MODE")
     allow_signup: bool = Field(default=True, validation_alias="OPENKMS_ALLOW_SIGNUP")
     local_jwt_exp_hours: int = Field(default=168, validation_alias="OPENKMS_LOCAL_JWT_EXP_HOURS")
-    # Server-side browser sessions (BFF). Disabled by default for a safe rollout.
-    auth_session_v2: bool = Field(default=False, validation_alias="OPENKMS_AUTH_SESSION_V2")
     session_idle_minutes: int = Field(
         default=30,
         ge=1,
@@ -244,7 +242,7 @@ class Settings(BaseSettings):
         default=30,
         ge=1,
         validation_alias="OPENKMS_LOCAL_SESSION_JWT_MINUTES",
-        description="Access JWT lifetime for local sessions created in auth_session_v2 mode.",
+        description="Access JWT lifetime for browser local sessions.",
     )
     session_cookie_secure: bool = Field(
         default=False,
@@ -306,6 +304,11 @@ class Settings(BaseSettings):
     )
     oidc_realm: str = Field(default="openkms", validation_alias="OPENKMS_OIDC_REALM")
     oidc_client_id: str = Field(default="openkms-backend", validation_alias="OPENKMS_OIDC_CLIENT_ID")
+    oidc_request_offline_access: bool = Field(
+        default=False,
+        validation_alias="OPENKMS_OIDC_REQUEST_OFFLINE_ACCESS",
+        description="Request the offline_access scope. Some IdPs (e.g. Keycloak without the offline_access role) reject code exchange with it.",
+    )
     oidc_client_secret: str = Field(default="", validation_alias="OPENKMS_OIDC_CLIENT_SECRET")
     oidc_redirect_uri: str = Field(
         default="http://localhost:8102/login/oauth2/code/oidc",
@@ -348,7 +351,7 @@ class Settings(BaseSettings):
         validation_alias="OPENKMS_BAIDU_BOS_PRESIGN_TTL_SECONDS",
     )
     oidc_post_logout_client_id: str = Field(
-        default="openkms-frontend",
+        default="openkms-backend",
         validation_alias="OPENKMS_OIDC_POST_LOGOUT_CLIENT_ID",
     )
     oidc_token_url: str = Field(default="", validation_alias="OPENKMS_OIDC_TOKEN_URL")

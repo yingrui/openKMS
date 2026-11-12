@@ -1,10 +1,12 @@
 # openKMS Developer Environment Setup
 
+Full environment reference: [Configuration](configuration.md).
+
 ## Overview
 
 - **Backend** (`backend/`): FastAPI service with PostgreSQL, uses PaddleOCRVL for document parsing
 - **VLM Server** (`vlm-server/`): MLX-VLM server at `http://localhost:8101` – required by PaddleOCRVL as VLM backend
-- **Frontend** (`frontend/`): React/Vite app; **`frontend/src/index.scss`** loads **`_css-variables`**, **`_global`**, and **`_utilities`**. Compile-time **`_tokens`** / **`_mixins`**. See [design-system.md](../design-system.md).
+- **Frontend** (`frontend/`): React/Vite app; **`frontend/src/index.scss`** loads **`_css-variables`**, **`_global`**, and **`_utilities`**. Compile-time **`_tokens`** / **`_mixins`**. See [design-system.md](design-system.md).
 
 ### Database Setup
 Login to postgres as superuser and run:
@@ -128,22 +130,31 @@ Document parsing runs via the `openkms-cli` pipeline (invoked by procrastinate j
 
 #### OIDC setup (any standards-compliant IdP)
 
-The SPA uses **`oidc-client-ts`** (Authorization Code + PKCE) when the backend reports `oidc` mode. Set **`VITE_OIDC_ISSUER`** to your IdP’s issuer URL (same value as token `iss` / discovery document parent). Example for **Keycloak**: `http://localhost:8081/realms/openkms`.
+Browser authentication is handled by the backend BFF; the SPA never holds OIDC tokens. Full model: [Authentication](authentication.md). The backend is a **confidential OIDC client** using Authorization Code + PKCE, state, and optional `offline_access` (for server-side refresh).
 
-1. **Public browser client** (e.g. `openkms-frontend` in Keycloak):
-   - Enable authorization code flow; **PKCE** (S256) required by `oidc-client-ts`.
-   - **Redirect URIs**: `http://localhost:5173/auth/callback`, `http://localhost:5173/auth/silent-renew` (and production equivalents).
-   - **Post-logout redirect**: your SPA origin (e.g. `http://localhost:5173`).
-   - **Web origins / CORS**: SPA origin as required by your IdP.
+1. **IdP client** (e.g. `openkms-backend` in Keycloak):
+   - Enable authorization code flow; PKCE is sent by the backend.
+   - **Redirect URI**: `OPENKMS_OIDC_REDIRECT_URI` (default `http://localhost:8102/login/oauth2/code/oidc`).
+   - **Post-logout redirect**: the SPA origin (e.g. `http://localhost:5173`).
+   - Allow `offline_access` only if the client/user is allowed to use it, then set `OPENKMS_OIDC_REQUEST_OFFLINE_ACCESS=true`; otherwise leave the default `false` (Keycloak may reject code exchange with `not_allowed`).
 
-2. **Frontend env** (`.env` or `frontend/.env`):
+2. **Backend env** (`.env`):
    ```
-   VITE_OIDC_ISSUER=http://localhost:8081/realms/openkms
-   VITE_OIDC_CLIENT_ID=openkms-frontend
+   OPENKMS_AUTH_MODE=oidc
+   OPENKMS_OIDC_ISSUER=http://localhost:8081/realms/openkms
+   OPENKMS_OIDC_CLIENT_ID=openkms-backend
+   OPENKMS_OIDC_CLIENT_SECRET=...
+   OPENKMS_OIDC_REDIRECT_URI=http://localhost:8102/login/oauth2/code/oidc
+   OPENKMS_OIDC_POST_LOGOUT_CLIENT_ID=openkms-backend
+   OPENKMS_FRONTEND_URL=http://localhost:5173
    ```
-   If **`VITE_OIDC_ISSUER`** is unset, set **`VITE_OIDC_AUTH_SERVER_BASE_URL`** and **`VITE_OIDC_REALM`** so the SPA builds `{base}/realms/{realm}` as authority.
+   The backend loads `{issuer}/.well-known/openid-configuration` for JWKS and OAuth endpoints.
 
-3. **Backend env**: prefer **`OPENKMS_OIDC_ISSUER`** (full issuer URL). Otherwise set **`OPENKMS_OIDC_AUTH_SERVER_BASE_URL`** + **`OPENKMS_OIDC_REALM`**. The backend loads **`{issuer}/.well-known/openid-configuration`** for JWKS and OAuth endpoints. See `backend/.env.example` for confidential client id, secret, and redirect URI (`/login/oauth2/code/oidc`).
+3. **Frontend env**: only the fallback matters, and only when `public-config` is unreachable:
+   ```
+   VITE_AUTH_MODE=oidc
+   ```
+   No OIDC client id/secret or redirect URI lives in the SPA.
 
 4. **openkms-cli client** (machine / client credentials):
 
@@ -151,6 +162,6 @@ The SPA uses **`oidc-client-ts`** (Authorization Code + PKCE) when the backend r
    - **Client ID**: `openkms-cli` (must be listed in backend **`OPENKMS_INTERNAL_SERVICE_CLIENT_IDS`**)
    - Set **`OPENKMS_OIDC_TOKEN_URL`** (IdP `token_endpoint`), **`OPENKMS_CLI_OIDC_CLIENT_ID`**, and **`OPENKMS_CLI_OIDC_CLIENT_SECRET`** in `openkms-cli/.env` (**qa-agent** uses the same **`OPENKMS_AUTH_MODE`** and **`OPENKMS_OIDC_TOKEN_URL`** plus **`OPENKMS_QA_AGENT_OIDC_CLIENT_*`**).
 
-**Logout errors from the IdP**: ensure the SPA origin is allowed as a post-logout redirect for the browser client.
+**Logout errors from the IdP**: ensure the SPA origin is allowed as a post-logout redirect for the backend client.
 
 **Console access (OIDC)**: Realm role **`admin`** in JWT `realm_access.roles` still grants full console access (all keys from `security_permissions`). For other users, each string in `realm_access.roles` must match a **`security_roles.name`** row in PostgreSQL; that role’s permission keys (from **Permission management**) apply. Align IdP role names with security role names (e.g. `member`, `content-editor`). Other IdPs with different claim shapes may require extending JWT parsing in `auth.py` / `permission_resolution.py`.

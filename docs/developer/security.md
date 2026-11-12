@@ -8,7 +8,7 @@ How openKMS thinks about security: principles and trust boundaries. For **mechan
 
 1. **Authenticate before data** — Product APIs require a known principal. The public surface is intentionally small (marketing home, health, `public-config`, system name).
 
-2. **Two layers, both must pass** — **Operation permissions** answer “may this user use Documents / Console / …?” **Resource ACL** answers “may this user see *this* channel, KB, or wiki?” Coarse gates do not replace per-resource sharing. See [Data security](features/data-security.md).
+2. **Two layers, both must pass** — **Operation permissions** answer “may this user use Documents / Console / …?” **Resource ACL** answers “may this user see *this* channel, KB, or wiki?” Coarse gates do not replace per-resource sharing. See [Data security](data-security.md).
 
 3. **Restrict data by explicit choice** — With **no** ACL rows on a resource or its container chain, any authenticated user who holds the right operation key can access it. Turning on sharing is **opt-in closure**, not opt-in openness.
 
@@ -50,13 +50,12 @@ question "what changed this dataset, and did it work?" belongs to anyone who can
   `SQLAlchemyError`/`OSError`, loudly: an audit outage must not turn a successful write into a 500.
 - **A sign-out names its actor** from the cookie's token, **verified**: an unverified decode would let a
   forged token name itself in the log, which is the misattribution an audit log exists to prevent.
-- **One session event, one row.** The SPA syncs the token twice after a sign-in and calls `clear-session` twice
-  after a sign-out; each pair lands in the same second. The writer serialises the same `(path, actor)` pair
-  under `pg_advisory_xact_lock` and drops a repeat inside five seconds — a client cannot be relied on to be
-  careful, so the idempotence lives where the write happens.
-- **One sign-out, one event.** The SPA calls `clear-session` once deliberately and again from its
-  session-invalid handler seconds later; by then the cookie is gone. Nothing was ended, so nothing is
-  recorded — the same for an expired or unverified token. Only a live session produces a row.
+- **One session event, one row.** Retries around a sign-in or sign-out land in the same second. The writer
+  serialises the same `(path, actor)` pair under `pg_advisory_xact_lock` and drops a repeat inside five
+  seconds — a client cannot be relied on to be careful, so the idempotence lives where the write happens.
+- **One sign-out, one event.** A session-invalid handler may also try to clear the cookie seconds later; by
+  then it is gone. Nothing was ended, so nothing is recorded — the same for an expired or unverified token.
+  Only a live session produces a row.
 - **No request bodies** — they carry secrets. Response bodies are buffered only for `application/json` under
   32 KB, and only to read an `id`.
 - Read it three ways: the app's **user menu → Audit log** (`/audit-log`; the item appears only to
@@ -70,7 +69,7 @@ question "what changed this dataset, and did it work?" belongs to anyone who can
 |---|---|
 | Every POST / PUT / PATCH / DELETE over HTTP — 2xx, 4xx, 5xx, authenticated or not | **Reads** — deliberate: volume without a destruction story |
 | **Worker runs** (`job_app.task` wraps each task, so this cannot be forgotten): `JOB job/<task>`, the job id as subject, 500 with the exception type when it raises | **Direct database access** and **migrations** — an app-level log cannot see those; that is what a database audit log is for |
-| **Sign-in and sign-out**: `AUTH auth/login` (`POST /api/auth/login` for local auth; for the SPA's PKCE flow, `POST /sync-session?reason=login` — the only call the backend sees from a browser sign-in, marked once by the client), `AUTH auth/login-failed` (with the account *attempted* as data — nobody authenticated), `AUTH auth/logout` (`GET /logout` **and** `POST /clear-session` — one act, one event) | `/sync-session` — a cookie copy that fires on every app load and changes nothing after the first |
+| **Sign-in and sign-out**: `AUTH auth/login` (`POST /api/auth/login` for local auth; the backend OIDC callback for browser OIDC), `AUTH auth/login-failed` (with the account *attempted* as data — nobody authenticated), `AUTH auth/logout` (`POST /api/auth/logout` **and** `GET /logout` — one act, one event) | JSON reads and idempotent refreshes |
 
 A worker run and the HTTP call that enqueued it are two rows with the same `detail.job_id`: "asked by X" and
 "ran, and here is how it ended".
@@ -186,10 +185,10 @@ flowchart TB
 
 | Layer | Question | Detail |
 |-------|----------|--------|
-| **Operation RBAC** | Can the user open this *feature* or Console tool? | [Data security — Layer 1](features/data-security.md#layer-1-operation-rbac), [Console & authentication](features/console-and-auth.md) |
-| **Resource ACL** | Can the user read/write *this instance*? | [Data security — Layer 2](features/data-security.md#layer-2-resource-acl) |
+| **Operation RBAC** | Can the user open this *feature* or Console tool? | [Data security — Layer 1](data-security.md#layer-1-operation-rbac), [Console & authentication](../features/console-and-auth.md) |
+| **Resource ACL** | Can the user read/write *this instance*? | [Data security — Layer 2](data-security.md#layer-2-resource-acl) |
 
-Optional strict mode (`OPENKMS_ENFORCE_PERMISSION_PATTERNS_STRICT`) tightens Layer 1 so every `/api/*` path must match catalog patterns—documented in [Configuration](features/configuration.md).
+Optional strict mode (`OPENKMS_ENFORCE_PERMISSION_PATTERNS_STRICT`) tightens Layer 1 so every `/api/*` path must match catalog patterns—documented in [Configuration](configuration.md).
 
 ---
 
@@ -200,7 +199,7 @@ Optional strict mode (`OPENKMS_ENFORCE_PERMISSION_PATTERNS_STRICT`) tightens Lay
 | **OIDC** (default) | Enterprise SSO | Single sign-on; map IdP realm roles to openKMS roles; no passwords in openKMS. |
 | **Local** | Dev, air-gapped, small installs | openKMS stores users and issues JWTs; still require TLS and strong secrets in production. |
 
-Login behaviour, API keys, and token examples: [Console & authentication](features/console-and-auth.md#authentication).
+Login behaviour, API keys, and token examples: [Console & authentication](../features/console-and-auth.md#authentication).
 
 ---
 
@@ -208,7 +207,7 @@ Login behaviour, API keys, and token examples: [Console & authentication](featur
 
 - **No** implicit “admin sees every channel” for regulated tenants.
 - **No** automatic ACL filtering on arbitrary Object Explorer Cypher—gate with operation permissions and deployment policy instead.
-- **No** committed secrets or long-lived tokens treated as low risk—see [Tech debt — API tokens](tech_debt.md#api-tokens-machine-auth).
+- **No** committed secrets or long-lived tokens treated as low risk—see [Tech debt — API tokens](../tech_debt.md#api-tokens-machine-auth).
 
 ---
 
@@ -216,10 +215,10 @@ Login behaviour, API keys, and token examples: [Console & authentication](featur
 
 | You need… | Read |
 |-----------|------|
-| Sharing, groups, inheritance, enforcement code | [Data security](features/data-security.md) |
-| Console, catalog, OIDC/local login, **obtaining tokens** | [Console & authentication](features/console-and-auth.md) |
-| Env vars and toggles | [Configuration](features/configuration.md) |
-| Deploy and auth-mode alignment | [Docker operations](operations/docker.md) |
+| Sharing, groups, inheritance, enforcement code | [Data security](data-security.md) |
+| Console, catalog, OIDC/local login, **obtaining tokens** | [Console & authentication](../features/console-and-auth.md) |
+| Env vars and toggles | [Configuration](configuration.md) |
+| Deploy and auth-mode alignment | [Docker operations](../operations/docker.md) |
 | Schemas | Data models — Data security |
 
 ---

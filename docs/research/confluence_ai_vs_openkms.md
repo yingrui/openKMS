@@ -2,7 +2,7 @@
 
 Comparative research on **Atlassian Confluence** with **Atlassian Intelligence** and **Rovo**, versus **openKMS** as a self-hosted knowledge platform. Sources: Atlassian product and support pages (2025–2026), openKMS repository docs (as of 2026-06).
 
-**Related:** [Goals (vision)](../goals.md) · [Architecture](../architecture.md) · [Functionalities](../functionalities.md) · [RAGFlow vs openKMS](ragflow_vs_openkms.md) · [Operational Knowledge Fitness](km_dimension_operational_fitness.md)
+**Related:** [Goals (vision)](../goals.md) · [Architecture](../developer/architecture.md) · [Functionalities](../functionalities.md) · [RAGFlow vs openKMS](ragflow_vs_openkms.md) · [Operational Knowledge Fitness](km_dimension_operational_fitness.md)
 
 ---
 
@@ -177,7 +177,7 @@ flowchart TB
 
 | Capability | Confluence + AI | openKMS |
 |------------|-----------------|---------|
-| Permissions | Space/page restrictions; Guard (add-on) for advanced | **Operation RBAC** + **resource ACL** ([Security design](../security.md)) |
+| Permissions | Space/page restrictions; Guard (add-on) for advanced | **Operation RBAC** + **resource ACL** ([Security design](../developer/security.md)) |
 | Admin ≠ read-all data | Confluence admin models differ by tier | **Admin does not bypass data ACL** for read/write |
 | AI opt-out | Org-level AI deactivate | Self-hosted: control model endpoints and keys |
 | Audit | Atlassian cloud audit logs | Your logging; API keys revocable in-app |
@@ -273,7 +273,7 @@ Using the [OKF facets](km_dimension_operational_fitness.md):
 | Rovo MCP gallery (blog) | https://www.atlassian.com/blog/announcements/rovo-mcp-gallery |
 | Atlassian Rovo MCP Server | https://support.atlassian.com/atlassian-rovo-mcp-server/docs/use-atlassian-rovo-mcp-server/ |
 | Confluence pricing (credits tiers) | https://www.atlassian.com/software/confluence/pricing |
-| openKMS architecture | [architecture.md](../architecture.md) |
+| openKMS architecture | [architecture.md](../developer/architecture.md) |
 | openKMS wiki / agents | [wiki-spaces.md](../features/wiki-spaces.md) |
 
 ---

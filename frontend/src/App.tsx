@@ -19,8 +19,6 @@ import { BuildStamp } from './components/Layout/BuildStamp';
 import { Profile } from './pages/Profile';
 import { UserSettings } from './pages/UserSettings';
 import { Login } from './pages/auth/Login';
-import { OidcCallback } from './pages/auth/OidcCallback';
-import { OidcSilentRenew } from './pages/auth/OidcSilentRenew';
 import { Signup } from './pages/auth/Signup';
 import { KnowledgeBaseList } from './pages/knowledge-bases/KnowledgeBaseList';
 import { WikiSpaceList } from './pages/wiki/WikiSpaceList';
@@ -418,8 +416,6 @@ function App() {
       <Routes>
         <Route path="/login" element={<Login />} />
         <Route path="/signup" element={<Signup />} />
-        <Route path="/auth/callback" element={<OidcCallback />} />
-        <Route path="/auth/silent-renew" element={<OidcSilentRenew />} />
         <Route path="/" element={<MainLayout />}>
           <Route index element={<Home />} />
           <Route path="knowledge-map" element={<KnowledgeMap />} />

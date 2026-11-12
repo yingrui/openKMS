@@ -1,5 +1,7 @@
 # Configuration
 
+Developer/operator reference. For the session model and IdP client registration, see [Authentication](authentication.md) and [Setup — OIDC setup](setup.md#oidc-setup-any-standards-compliant-idp).
+
 Cross-cutting configuration that doesn't belong to one feature page. Canonical source: [`backend/app/config.py`](https://github.com/yingrui/openKMS/blob/main/backend/app/config.py); ready-to-edit example: [`backend/.env.example`](https://github.com/yingrui/openKMS/blob/main/backend/.env.example).
 
 ## Backend dependencies
@@ -38,11 +40,10 @@ Documents land under `documents/{file_hash}/` (legacy `{file_hash}/` still read 
 |---|---|---|
 | `OPENKMS_AUTH_MODE` | `oidc` | `oidc` (default) or `local` |
 | `OPENKMS_ALLOW_SIGNUP` | `true` | Local mode: allow self-signup; **first** registered user becomes admin |
-| `OPENKMS_LOCAL_JWT_EXP_HOURS` | `168` | Legacy local-mode JWT lifetime (when `OPENKMS_AUTH_SESSION_V2=false`) |
-| `OPENKMS_AUTH_SESSION_V2` | `false` | Enable opaque server-side sessions (BFF): browser holds only `openkms_session`; tokens are encrypted in `auth_sessions`. When off, the legacy SPA/`oidc-client-ts` or local-JWT path is used. |
+| `OPENKMS_LOCAL_JWT_EXP_HOURS` | `168` | Local JWT lifetime for non-browser credentials (e.g. personal API keys); browser local sessions use `OPENKMS_LOCAL_SESSION_JWT_MINUTES` |
 | `OPENKMS_SESSION_IDLE_MINUTES` | `30` | Sliding idle timeout for an `auth_sessions` row; activity extends it up to the absolute cap. |
 | `OPENKMS_SESSION_ABSOLUTE_HOURS` | `12` | Hard session cap; reaching it requires re-authentication even if active. |
-| `OPENKMS_LOCAL_SESSION_JWT_MINUTES` | `30` | Access JWT lifetime for local sessions created in `auth_session_v2` mode. |
+| `OPENKMS_LOCAL_SESSION_JWT_MINUTES` | `30` | Access JWT lifetime for local browser sessions. |
 | `OPENKMS_SESSION_COOKIE_SECURE` | `false` | Set `Secure` on `openkms_session`; enable behind HTTPS in production. |
 | `OPENKMS_CLI_BASIC_USER` / `OPENKMS_CLI_BASIC_PASSWORD` | empty | Local mode: HTTP Basic for `openkms-cli` |
 | `OPENKMS_QA_AGENT_BASIC_USER` / `OPENKMS_QA_AGENT_BASIC_PASSWORD` | empty | Local mode: HTTP Basic for `qa-agent` (separate from CLI) |
@@ -57,8 +58,9 @@ Documents land under `documents/{file_hash}/` (legacy `{file_hash}/` still read 
 | `OPENKMS_OIDC_REALM` | `openkms` | |
 | `OPENKMS_OIDC_CLIENT_ID` | `openkms-backend` | Confidential client used by the backend |
 | `OPENKMS_OIDC_CLIENT_SECRET` | empty | |
+| `OPENKMS_OIDC_REQUEST_OFFLINE_ACCESS` | `false` | Request `offline_access` (offline token). Keycloak may return `CODE_TO_TOKEN_ERROR not_allowed` when the client/user lacks the offline_access role. |
 | `OPENKMS_OIDC_REDIRECT_URI` | `http://localhost:8102/login/oauth2/code/oidc` | Must match the IdP registration |
-| `OPENKMS_OIDC_POST_LOGOUT_CLIENT_ID` | `openkms-frontend` | Sent on RP-initiated logout |
+| `OPENKMS_OIDC_POST_LOGOUT_CLIENT_ID` | `openkms-backend` | Sent on RP-initiated logout; must match the backend client |
 | `OPENKMS_INTERNAL_SERVICE_CLIENT_IDS` | `openkms-cli,qa-agent` | Comma-separated OIDC client ids allowed on `/internal-api`; first id is `local-cli` JWT `azp` |
 | `OPENKMS_FRONTEND_URL` | `http://localhost:5173` | SPA origin (CORS, redirects) |
 | `OPENKMS_BAIDU_BOS_BUCKET` | *(required for baidu-doc-parse)* | Private Baidu BOS bucket for temporary document staging |
@@ -88,7 +90,7 @@ Documents land under `documents/{file_hash}/` (legacy `{file_hash}/` still read 
 | `OPENKMS_AGENT_MODEL_ID` | unset | `api_models.id` for in-app agent LLM calls (knowledge map designer, ontology explore, Deep Agents) when `OPENKMS_DEEP_AGENT_MODEL_ID` is unset; else the first available LLM |
 | `OPENKMS_AGENT_MAX_OUTPUT_TOKENS` | `65537` | Upper bound on completion length passed as `max_tokens`; raise if your model supports more |
 | `OPENKMS_AGENT_RECURSION_LIMIT` | `200` | Max LangGraph supersteps per turn (each tool+model cycle uses steps; bulk get/upsert needs a high value) |
-| `OPENKMS_AGENT_LOG_LEVEL` | `INFO` | Project Deep Agents turn logs (`agent_turn_start` / `agent_turn_done`; **`agent_turn_failed` at ERROR**). See [Agents — Observability](openkms-agents.md#observability-without-langfuse). |
+| `OPENKMS_AGENT_LOG_LEVEL` | `INFO` | Project Deep Agents turn logs (`agent_turn_start` / `agent_turn_done`; **`agent_turn_failed` at ERROR**). See [Agents — Observability](project-agent-runtime.md#observability-without-langfuse). |
 | `OPENKMS_BACKEND_LOG_LEVEL` | — | Optional root log level for all `app.*` loggers when set |
 | `OPENKMS_AGENT_SANDBOX_TIMEOUT_SECONDS` | `60` | Python sandbox in project workspace (Deep Agents `execute`) |
 | `OPENKMS_AGENT_LLM_EXTRA_BODY` | unset | Optional JSON merged into OpenAI-compat **`extra_body`**. Used independently by **Knowledge Map Designer** (`agent.shared` wrappers) and **Deep Agents** (`deep_agents.llm_chat`). **enable_thinking** is always forced to **false** after merge — these paths do not support thinking / full **`reasoning_content`** round-trip beyond what the shim echoes. Shared primitives live in **`app.services.openai_compat`**. |
@@ -168,4 +170,4 @@ Set on **`backend/.env`**. The worker injects **`OPENKMS_CLI_*`** into every **o
 
 ## Contributor / AI agent rules
 
-`AGENTS.md` at the repo root (coding behavior, docs-before-commit, Alembic, frontend verification). Doc editing conventions: [Doc conventions for AI agents](../agents.md).
+`AGENTS.md` at the repo root (coding behavior, docs-before-commit, Alembic, frontend verification). Doc editing conventions: [Doc conventions for AI agents](doc-conventions.md).

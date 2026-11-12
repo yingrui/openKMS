@@ -209,21 +209,9 @@ def test_the_label_prefers_a_display_name_over_a_machine_name(recorded):
     assert recorded[0]["response_label"] == "每日行情入库"
 
 
-def test_a_session_cookie_sync_is_not_an_event(recorded):
-    """`/sync-session` fires on every app load and changes nothing after the first — noise, not a login."""
-    app = _fake_app()
-
-    @app.post("/sync-session")
-    async def sync() -> dict[str, bool]:
-        return {"ok": True}
-
-    TestClient(app).post("/sync-session")
-    assert recorded == []
-
-
 class TestSessionEvents:
     """Sign-in and sign-out are GETs and a cookie POST, so they record themselves — and the call must match
-    `record_audit_event`'s signature. It did not, and `/logout` and `/clear-session` answered 500."""
+    `record_audit_event`'s signature. It did not, and `/logout` answered 500."""
 
     def test_logout_is_recorded_as_auth_logout(self, monkeypatch):
         import asyncio
@@ -238,7 +226,7 @@ class TestSessionEvents:
         monkeypatch.setattr(auth_module, "record_session_event_once", fake_record)
         asyncio.run(
             auth_module.record_session_event(
-                "logout", {"sub": "u1", "email": "a@b.c", "auth_mode": "api_key"}, via="clear-session"
+                "logout", {"sub": "u1", "email": "a@b.c", "auth_mode": "api_key"}, via="logout"
             )
         )
         assert events == [
@@ -247,7 +235,7 @@ class TestSessionEvents:
                 "actor_sub": "u1",
                 "actor_name": "a@b.c",
                 "auth_mode": "api_key",
-                "detail": {"via": "clear-session"},
+                "detail": {"via": "logout"},
             }
         ]
 
@@ -263,66 +251,49 @@ class TestSessionEvents:
 
         monkeypatch.setattr(auth_module, "record_session_event_once", fake_record)
         asyncio.run(
-            auth_module.record_session_event("logout", {}, via="clear-session", reason="no_session_token")
+            auth_module.record_session_event("logout", {}, via="logout", reason="no_session_token")
         )
         assert events[0]["actor_sub"] is None
         assert events[0]["path"] == "auth/logout"
         # "anonymous" is an answer only when it says why it could not name anyone.
-        assert events[0]["detail"] == {"via": "clear-session", "reason": "no_session_token"}
+        assert events[0]["detail"] == {"via": "logout", "reason": "no_session_token"}
 
 
 def test_a_forged_or_expired_cookie_yields_no_actor(monkeypatch):
     """A logout still records; it just cannot say who. An unverified decode would let a forged token
     misattribute itself in the log — the one thing an audit log exists to prevent."""
+    import asyncio
+
     from fastapi import HTTPException
 
     from app.api import auth as auth_module
 
-    class FakeSession(dict):
+    class FakeRequest:
+        def __init__(self, session_id: str | None) -> None:
+            self.session = {} if session_id is None else {"auth_sid": session_id}
+
+    class FakeDb:
         pass
 
-    class FakeRequest:
-        def __init__(self, token: str | None) -> None:
-            self.session = FakeSession({} if token is None else {"access_token": token})
+    async def no_row(_db, _sid):
+        return None
+
+    async def active_row(_db, _sid):
+        return object()
 
     def boom(_token: str) -> dict:
         raise HTTPException(status_code=401, detail="expired")
 
     monkeypatch.setattr(auth_module, "_verify_token_for_mode", boom)
-    assert auth_module._session_actor(FakeRequest("junk")) == ({}, "token_not_verified")
-    assert auth_module._session_actor(FakeRequest(None)) == ({}, "no_session_token")
+    assert asyncio.run(auth_module._session_actor(FakeRequest(None), FakeDb())) == ({}, "no_session")
+    monkeypatch.setattr(auth_module.auth_sessions, "get_session", no_row)
+    assert asyncio.run(auth_module._session_actor(FakeRequest("sid"), FakeDb())) == ({}, "session_not_active")
+    monkeypatch.setattr(auth_module.auth_sessions, "get_session", active_row)
+    monkeypatch.setattr(auth_module.auth_sessions, "session_active", lambda _row: True)
+    monkeypatch.setattr(auth_module.auth_sessions, "access_token_of", lambda _row: "junk")
+    assert asyncio.run(auth_module._session_actor(FakeRequest("sid"), FakeDb())) == ({}, "token_not_verified")
     monkeypatch.setattr(auth_module, "_verify_token_for_mode", lambda _t: {"sub": "u1"})
-    assert auth_module._session_actor(FakeRequest("ok")) == ({"sub": "u1"}, None)
-
-
-def test_only_the_sign_out_that_had_a_session_is_recorded(monkeypatch):
-    """The SPA calls `clear-session` once deliberately and again from the session-invalid handler, seconds
-    later. The second call has no cookie — nothing was ended, so it must not be a second event."""
-    import asyncio
-
-    from app.api import auth as auth_module
-
-    events: list[dict] = []
-
-    async def fake_record(**kwargs) -> None:
-        events.append(kwargs)
-
-    class FakeRequest:
-        def __init__(self, token: str | None) -> None:
-            self.session = {} if token is None else {"access_token": token}
-
-    class FakeDb:
-        async def commit(self) -> None:
-            pass
-
-    monkeypatch.setattr(auth_module, "record_session_event_once", fake_record)
-    monkeypatch.setattr(auth_module, "_verify_token_for_mode", lambda _t: {"sub": "u1", "email": "a@b.c"})
-
-    asyncio.run(auth_module.clear_session(FakeRequest("live-token"), db=FakeDb()))   # the real sign-out
-    asyncio.run(auth_module.clear_session(FakeRequest(None), db=FakeDb()))           # the cleanup that follows
-    assert len(events) == 1
-    assert events[0]["actor_sub"] == "u1"
-    assert events[0]["detail"] == {"via": "clear-session"}
+    assert asyncio.run(auth_module._session_actor(FakeRequest("sid"), FakeDb())) == ({"sub": "u1"}, None)
 
 
 class TestLocalLogin:
@@ -358,7 +329,12 @@ class TestLocalLogin:
 
         monkeypatch.setattr(auth_module, "record_session_event_once", fake_record)
         monkeypatch.setattr(auth_module, "_verify_password", lambda *_: True)
-        monkeypatch.setattr(auth_module, "mint_local_user_jwt", lambda _u: "token")
+
+        async def fake_create_session(request, _db, _user):
+            request.session["auth_sid"] = "sid"
+            return "token"
+
+        monkeypatch.setattr(auth_module, "_create_local_session", fake_create_session)
 
         async def permissions(*_a, **_k):
             return {"data:read"}
@@ -419,63 +395,6 @@ class TestLocalLogin:
         assert events[0]["detail"] == {"via": "local-login", "attempted": "Mallory"}
 
 
-class TestSignInThroughSyncSession:
-    """The SPA signs in with the IdP itself (PKCE) and hands the token to `sync-session` — so that call, not
-    the backend's OAuth callback, is where a browser login becomes visible. It also fires on every load, so
-    the decision is by session identity, not by the call."""
-
-    def test_auth_time_identifies_the_sign_in_not_the_token(self):
-        from app.api.auth import session_identity
-
-        first = session_identity({"sub": "u1", "auth_time": 100, "sid": "s1"})
-        refreshed = session_identity({"sub": "u1", "auth_time": 100, "sid": "s1"})
-        second_login = session_identity({"sub": "u1", "auth_time": 900, "sid": "s2"})
-        assert first == refreshed          # a token refresh is the same sign-in
-        assert first != second_login       # signing in again is not
-        assert session_identity({"sub": "u1"}) is None   # nothing to compare: do not guess
-
-    def test_sync_session_records_a_login_when_the_session_is_new(self, monkeypatch):
-        import asyncio
-        from types import SimpleNamespace
-
-        from app.api import auth as auth_module
-
-        events: list[dict] = []
-
-        async def fake_record(**kwargs) -> None:
-            events.append(kwargs)
-
-        class FakeRequest:
-            session: dict = {}
-            state = SimpleNamespace()
-            headers: dict = {}
-
-        class FakeDb:
-            async def commit(self) -> None: ...
-
-        async def upsert(*_a, **_k) -> None: ...
-
-        # The route imports this inside the function, so the patch belongs on the service module.
-        from app.services.identity.users import oidc_identity_service
-
-        monkeypatch.setattr(oidc_identity_service, "upsert_oidc_identity_from_jwt", upsert)
-        monkeypatch.setattr(auth_module, "record_session_event_once", fake_record)
-        monkeypatch.setattr(auth_module, "_verify_token_for_mode",
-                            lambda _t: {"sub": "u1", "email": "a@b.c", "auth_time": 100, "sid": "s1"})
-
-        request = FakeRequest()
-        request.headers = {"Authorization": "Bearer tok"}
-        asyncio.run(auth_module.sync_session(request, reason=None, db=FakeDb()))
-        assert [e["path"] for e in events] == ["auth/login"]
-        assert events[0]["detail"] == {"via": "sync-session"}
-
-        # The same session syncing again (a reload) is not a second login.
-        events.clear()
-        request.headers = {"Authorization": "Bearer tok"}
-        asyncio.run(auth_module.sync_session(request, reason=None, db=FakeDb()))
-        assert events == []
-
-
 class TestSessionEventDedupe:
     """The SPA syncs the token twice after a sign-in (the init and the user-loaded hook). One act, one row —
     enforced where it must be, in the writer, because a client cannot be relied on to be careful.
@@ -497,7 +416,7 @@ class TestSessionEventDedupe:
 
         async def scenario() -> tuple[bool, bool, bool, bool]:
             base = dict(
-                path=probe_path, actor_name="probe", auth_mode="oidc", detail={"via": "sync-session"}
+                path=probe_path, actor_name="probe", auth_mode="oidc", detail={"via": "oidc-callback"}
             )
             first = await record_session_event_once(actor_sub=actor, **base)
             repeat = await record_session_event_once(actor_sub=actor, **base)

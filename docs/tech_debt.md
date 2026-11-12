@@ -26,7 +26,7 @@ is verified by whoever made it and nobody else.
 
 `services/` is half the backend (251 files) behind one name, and `console/` is the last frontend directory that mixes four
 areas. Both have a staged plan with measured dependency levels and the two scripting traps the last split hit:
-[Package layout](features/packages-layout.md). Not debt for its own sake — the code is where it is because each file is
+[Package layout](developer/packages-layout.md). Not debt for its own sake — the code is where it is because each file is
 where it needed to be, twice — but a map nobody can read is expensive in a way that never shows up as a bug.
 
 ### Cache the model graph in SQL Lab

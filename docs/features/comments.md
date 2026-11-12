@@ -21,7 +21,7 @@ User comments and 0–5 ratings on shared content. Distinct from **article LLM r
 
 ## API
 
-See [API reference — Comments](api-reference.md#comments).
+See [API reference — Comments](../developer/api-reference.md#comments).
 
 ## UI
 

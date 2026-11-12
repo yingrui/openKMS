@@ -94,12 +94,15 @@ plugins:
             Chamber: 议事厅（Chamber）
             Pipelines, jobs & models: 流水线、任务与模型
             Data security: 数据安全
+            Catalog data access (resources · grants · rows · how to use): 数据资源访问（模型 · 资源 · 行权限）
             Console & authentication: 控制台与认证
             openkms-skill: openkms-skill
             Agents (project workspaces): Agent（项目工作区）
             API reference: API 参考
             Data models: 数据模型
             Configuration: 配置
+            Authentication: 认证
+            Project agent runtime: 项目 Agent 运行时
             Security: 安全
             Operations: 运维
             Docker: Docker
@@ -166,11 +169,9 @@ nav:
   - Tutorials:
       - Understanding the ontology (Kanban lab): tutorials/understanding-ontology.md
       - Tushare market ontology (DIY): tutorials/tushare-market-ontology.md
-  - Architecture: architecture.md
   - Features:
       - Index: functionalities.md
       - Knowledge types: features/knowledge-types.md
-      - Infrastructure & quality: features/infrastructure.md
       - Documents: features/documents.md
       - Articles: features/articles.md
       - Media library: features/media.md
@@ -191,26 +192,30 @@ nav:
       - Object Explorer: features/object-explorer.md
       - Connectors: features/connectors.md
       - Pipelines, jobs & models: features/pipelines-and-jobs.md
-      - Data security: features/data-security.md
       - Console & authentication: features/console-and-auth.md
       - Kubernetes clusters: features/kubernetes-clusters.md
       - Agents (project workspaces): features/openkms-agents.md
       - openkms-skill: features/openkms-skill.md
-      - API reference: features/api-reference.md
       - Data layer (Datasets · Data Model · Data Insights): features/data-layer.md
       - Data layer — design notes: features/data-layer-design-notes.md
       - Data layer — semantic model (Ossie): features/data-layer-semantic-model.md
-      - Catalog data access (resources · grants · rows · how to use): features/catalog-data-access.md
       - Data layer — Data Insights (design): features/data-layer-insights.md
-      - Configuration: features/configuration.md
-  - Security: security.md
   - Operations:
       - Docker: operations/docker.md
   - Developer:
       - Setup: developer/setup.md
-      - Design system: design-system.md
-      - Package layout: features/packages-layout.md
-      - Doc conventions for AI agents: agents.md
+      - Configuration: developer/configuration.md
+      - Authentication: developer/authentication.md
+      - Project agent runtime: developer/project-agent-runtime.md
+      - Architecture: developer/architecture.md
+      - Security: developer/security.md
+      - Data security: developer/data-security.md
+      - Catalog data access (resources · grants · rows · how to use): developer/catalog-data-access.md
+      - API reference: developer/api-reference.md
+      - Infrastructure & quality: developer/infrastructure.md
+      - Design system: developer/design-system.md
+      - Package layout: developer/packages-layout.md
+      - Doc conventions for AI agents: developer/doc-conventions.md
   - Roadmap:
       - Development plan: development_plan.md
       - Shipped history: shipped-history.md

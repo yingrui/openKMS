@@ -46,7 +46,7 @@ def should_upsert_oidc_identity(payload: dict[str, Any]) -> bool:
 
 
 async def upsert_oidc_identity_from_jwt(db: AsyncSession, payload: dict[str, Any]) -> None:
-    """Upsert identity row from a verified OIDC access token (browser login / sync-session /me)."""
+    """Upsert identity row from a verified OIDC access token (browser login / OIDC callback / /me)."""
     if not should_upsert_oidc_identity(payload):
         return
     sub = str(payload["sub"]).strip()

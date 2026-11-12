@@ -21,7 +21,7 @@
 
 ## API
 
-见 [API 参考 — 评论](api-reference.md#comments)。
+见 [API 参考 — 评论](../developer/api-reference.md#comments)。
 
 ## 界面
 

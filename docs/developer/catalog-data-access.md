@@ -3,8 +3,8 @@
 How openKMS decides **who may read which rows of which tables** through the Catalog — including
 intranet services that are not openKMS users.
 
-**Related:** [Data security](data-security.md) (resource ACL mechanics), [Security design](../security.md)
-(principles), [Data layer](data-layer.md) (semantic models, Playground, SQL Lab), [API reference](api-reference.md).
+**Related:** [Data security](data-security.md) (resource ACL mechanics), [Security design](security.md)
+(principles), [Data layer](../features/data-layer.md) (semantic models, Playground, SQL Lab), [API reference](api-reference.md).
 
 ---
 

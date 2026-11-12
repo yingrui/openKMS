@@ -8,7 +8,7 @@ openKMS 的安全思路：原则与信任边界。关于**机制**（登录流�
 
 1. **先认证再访问数据** — 产品 API 要求已知主体。公开面 intentionally 很小（营销首页、健康检查、`public-config`、系统名称）。
 
-2. **两层都要通过** — **操作权限**回答「该用户能否使用文档 / Console / …？」**资源 ACL** 回答「该用户能否看到*这一*通道、知识库或维基？」粗粒度门控不能替代按资源共享。见 [数据安全](features/data-security.md)。
+2. **两层都要通过** — **操作权限**回答「该用户能否使用文档 / Console / …？」**资源 ACL** 回答「该用户能否看到*这一*通道、知识库或维基？」粗粒度门控不能替代按资源共享。见 [数据安全](data-security.md)。
 
 3. **默认开放、显式收紧** — 资源或其容器链上**没有** ACL 行时，持有正确操作键的任意已认证用户可访问。开启共享是**主动收窄**，而非主动开放。
 
@@ -61,10 +61,10 @@ flowchart TB
 
 | 层 | 问题 | 详情 |
 |----|------|------|
-| **操作 RBAC** | 用户能否打开该*功能*或 Console 工具？ | [数据安全 — 第 1 层](features/data-security.md#layer-1-operation-rbac)、[控制台与认证](features/console-and-auth.md) |
-| **资源 ACL** | 用户能否读/写*该实例*？ | [数据安全 — 第 2 层](features/data-security.md#layer-2-resource-acl) |
+| **操作 RBAC** | 用户能否打开该*功能*或 Console 工具？ | [数据安全 — 第 1 层](data-security.md#layer-1-operation-rbac)、[控制台与认证](../features/console-and-auth.md) |
+| **资源 ACL** | 用户能否读/写*该实例*？ | [数据安全 — 第 2 层](data-security.md#layer-2-resource-acl) |
 
-可选严格模式（`OPENKMS_ENFORCE_PERMISSION_PATTERNS_STRICT`）收紧第 1 层，要求每个 `/api/*` 路径匹配目录模式——见 [配置](features/configuration.md)。
+可选严格模式（`OPENKMS_ENFORCE_PERMISSION_PATTERNS_STRICT`）收紧第 1 层，要求每个 `/api/*` 路径匹配目录模式——见 [配置](configuration.md)。
 
 ---
 
@@ -75,7 +75,7 @@ flowchart TB
 | **OIDC**（默认） | 企业 SSO | 单点登录；IdP realm 角色映射 openKMS 角色；openKMS 不存密码。 |
 | **Local** | 开发、隔离网、小型安装 | openKMS 存用户并签发 JWT；生产仍须 TLS 与强密钥。 |
 
-登录行为、API 密钥与 token 示例：[控制台与认证](features/console-and-auth.md#authentication)。
+登录行为、API 密钥与 token 示例：[控制台与认证](../features/console-and-auth.md#authentication)。
 
 ---
 
@@ -83,7 +83,7 @@ flowchart TB
 
 - **没有** 受监管租户下隐式「管理员可见所有通道」。
 - **没有** 对任意 Object Explorer Cypher 自动 ACL 过滤——用操作权限与部署策略门控。
-- **没有** 将已提交密钥或长期 token 视为低风险——见 [技术债 — API token](tech_debt.md#api-tokens-machine-auth)。
+- **没有** 将已提交密钥或长期 token 视为低风险——见 [技术债 — API token](../tech_debt.md#api-tokens-machine-auth)。
 
 ---
 
@@ -91,10 +91,10 @@ flowchart TB
 
 | 你需要… | 阅读 |
 |---------|------|
-| 共享、组、继承、enforcement 代码 | [数据安全](features/data-security.md) |
-| Console、目录、OIDC/本地登录、**获取 token** | [控制台与认证](features/console-and-auth.md) |
-| 环境变量与开关 | [配置](features/configuration.md) |
-| 部署与 auth 模式对齐 | [Docker 运维](operations/docker.md) |
+| 共享、组、继承、enforcement 代码 | [数据安全](data-security.md) |
+| Console、目录、OIDC/本地登录、**获取 token** | [控制台与认证](../features/console-and-auth.md) |
+| 环境变量与开关 | [配置](configuration.md) |
+| 部署与 auth 模式对齐 | [Docker 运维](../operations/docker.md) |
 | Schema | 数据模型 — 数据安全 |
 
 ---

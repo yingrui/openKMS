@@ -1,8 +1,8 @@
 # Data security
 
-**Mechanics** for resource ACL, sharing UI, list filters, and resolver code. For principles (default-open, admin vs data access, trust boundaries, identity modes), see [Security design](../security.md).
+**Mechanics** for resource ACL, sharing UI, list filters, and resolver code. For principles (default-open, admin vs data access, trust boundaries, identity modes), see [Security design](security.md).
 
-**Related:** [Console & authentication](console-and-auth.md) (login, catalog keys, tokens), Data models — Data security (schemas), [API reference — resource ACL](api-reference.md) (HTTP).
+**Related:** [Console & authentication](../features/console-and-auth.md) (login, catalog keys, tokens), Data models — Data security (schemas), [API reference — resource ACL](api-reference.md) (HTTP).
 
 ---
 
@@ -40,7 +40,7 @@ Gates features and Console tools — not individual channels or documents.
 | `OPENKMS_ENFORCE_PERMISSION_PATTERNS_STRICT` | `false` | Layer 1: every `/api` call must match a catalog pattern and permission key |
 | `OPENKMS_ENFORCE_RESOURCE_ACL` | `false` | Layer 2 default-closed: deny resources with no ACL rows until sharing is set |
 
-Canonical keys: [Console & authentication — Permission catalog](console-and-auth.md#permission-catalog-canonical-keys).
+Canonical keys: [Console & authentication — Permission catalog](../features/console-and-auth.md#permission-catalog-canonical-keys).
 
 ---
 
@@ -123,7 +123,7 @@ Per-resource sharing applies when ACL rows exist. Set **`OPENKMS_ENFORCE_RESOURC
 - **New** document/article channels: owner-only (no **Others** row).
 - **Pre-migration** channels: Alembic backfilled **Others** `rwm` (`y7z8a9b0c1d2`, `b2c3d4e5f6a9`).
 
-**OIDC display:** Owner label resolves from **`oidc_identities`** (upsert on login / sync-session / `GET /me`), then `created_by_name`, group-member aliases, `users`, or legacy `grantee_label` on ACL rows. Access checks use JWT `sub` via `normalize_user_grantee_id` / `user_grant_matches`. Migrations **`d4e5f6a7b8c1`**, **`e5f6a7b8c9d0`** fix legacy grantee ids; **`j9k0l1m2n3o4`** adds the identity directory.
+**OIDC display:** Owner label resolves from **`oidc_identities`** (upsert on login / OIDC callback / `GET /me`), then `created_by_name`, group-member aliases, `users`, or legacy `grantee_label` on ACL rows. Access checks use JWT `sub` via `normalize_user_grantee_id` / `user_grant_matches`. Migrations **`d4e5f6a7b8c1`**, **`e5f6a7b8c9d0`** fix legacy grantee ids; **`j9k0l1m2n3o4`** adds the identity directory.
 
 ### Caller matrix
 
@@ -234,7 +234,7 @@ Owner `bob` `rwm`, group **QA** `rwm`, **Others** empty → user **alice** with 
 | OIDC owner picker directory | API keys + group members, not full IdP sync |
 | List filter performance | Standalone + channel trees batched; restricted channels still per-id `check_resource_access` |
 
-Policy non-goals (admin read-all, Object Explorer Cypher): [Security design — Deliberate non-goals](../security.md#deliberate-non-goals-today).
+Policy non-goals (admin read-all, Object Explorer Cypher): [Security design — Deliberate non-goals](security.md#deliberate-non-goals-today).
 
 ---
 

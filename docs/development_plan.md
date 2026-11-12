@@ -21,7 +21,7 @@ Track these **separately** — see [Goals — agent service](goals.md#goals-agen
 
 ## Current State {#current-state}
 
-Shipped scope is indexed in [Functionalities](./functionalities.md); each linked feature page is the source of truth for APIs, UI, and behavior. Status that spans several features:
+Shipped scope is indexed in [Functionalities](functionalities.md); each linked feature page is the source of truth for APIs, UI, and behavior. Status that spans several features:
 
 | Area | Status |
 |---|---|
@@ -77,7 +77,7 @@ Aligns with [Goals — retrieve and contribute](goals.md#goals-user-value) and [
 | Kind expansion | Additional **sync** catalogs beyond Tushare (`run_connector_sync_for_row` is kind-dispatched) |
 | Downstream | Optional hooks: refresh datasets → re-index linked KBs or notify operators |
 
-Shipped surfaces: [Connectors](features/connectors.md), [API reference — Connectors](features/api-reference.md).
+Shipped surfaces: [Connectors](features/connectors.md), [API reference — Connectors](developer/api-reference.md).
 
 ### In-product agents (high) {#in-product-agents-high}
 
@@ -164,9 +164,9 @@ Shipped: [Ontology](features/ontology.md) · [Ontology Functions](features/ontol
 | Documents | Advanced filter in channel document list | [Documents](features/documents.md) |
 | Articles | Editor / detail UX polish | [Articles](features/articles.md) |
 | Jobs | Job logs / stdout capture; configurable worker concurrency | [Pipelines, jobs & models](features/pipelines-and-jobs.md) |
-| Data security | Hierarchical list batching for document/article channels | [Data security](features/data-security.md) |
+| Data security | Hierarchical list batching for document/article channels | [Data security](developer/data-security.md) |
 
-Active UX / quality gaps: [Tech debt](./tech_debt.md).
+Active UX / quality gaps: [Tech debt](tech_debt.md).
 
 ## Long-Term
 
@@ -182,7 +182,7 @@ Shipped work and design history: [Shipped history](shipped-history.md).
 
 ## Conventions
 
-- **Before commit**: Update the matching `docs/features/*.md` page, [API reference](features/api-reference.md) / Data models when needed; add or remove rows in [Functionalities](./functionalities.md) only when a feature page is added or removed. See `AGENTS.md` (docs before commit).
+- **Before commit**: Update the matching `docs/features/*.md` page, [API reference](developer/api-reference.md) / Data models when needed; add or remove rows in [Functionalities](functionalities.md) only when a feature page is added or removed. See `AGENTS.md` (docs before commit).
 
 ## Open Questions
 

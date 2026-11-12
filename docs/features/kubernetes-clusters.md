@@ -2,7 +2,7 @@
 
 Console management for **registered Kubernetes clusters** that agents and operators can use. Operators can **bring your own cluster** (paste a kubeconfig, encrypt at rest, test connectivity) and **browse** namespaces, Deployments, Services, and Pods. The console can **apply** allowlisted YAML, **delete** those kinds, **read Pod logs**, and **register a Service in Chamber**. Cloud provisioning is not included.
 
-Related: [Console & authentication](console-and-auth.md), [Agents](openkms-agents.md), [Chamber](app-builder.md), [API reference](api-reference.md#kubernetes-clusters-consolekubernetes), Data models.
+Related: [Console & authentication](console-and-auth.md), [Agents](openkms-agents.md), [Chamber](app-builder.md), [API reference](../developer/api-reference.md#kubernetes-clusters-consolekubernetes), Data models.
 
 ## Console UI
 

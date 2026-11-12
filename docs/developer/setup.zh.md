@@ -1,10 +1,12 @@
 # openKMS 开发者环境搭建
 
+完整环境变量参考：[配置](configuration.md)。
+
 ## 概览
 
 - **后端**（`backend/`）：FastAPI 服务 + PostgreSQL，文档解析使用 PaddleOCRVL
 - **VLM 服务**（`vlm-server/`）：MLX-VLM 服务 `http://localhost:8101` — PaddleOCRVL 的 VLM 后端
-- **前端**（`frontend/`）：React/Vite；**`frontend/src/index.scss`** 加载 **`_css-variables`**、**`_global`**、**`_utilities`**。编译期 **`_tokens`** / **`_mixins`**。见 [design-system.md](../design-system.md)。
+- **前端**（`frontend/`）：React/Vite；**`frontend/src/index.scss`** 加载 **`_css-variables`**、**`_global`**、**`_utilities`**。编译期 **`_tokens`** / **`_mixins`**。见 [design-system.md](design-system.md)。
 
 ### 数据库搭建
 
@@ -127,29 +129,38 @@ reloader 把监听 socket 留在父进程：子进程在 accept 之前退出时�
 
 #### OIDC 搭建（任意符合标准的 IdP）
 
-后端报告 `oidc` 模式时，SPA 使用 **`oidc-client-ts`**（Authorization Code + PKCE）。**`VITE_OIDC_ISSUER`** 设为 IdP issuer URL（与 token `iss` / discovery 文档一致）。**Keycloak** 示例：`http://localhost:8081/realms/openkms`。
+浏览器认证由后端 BFF 处理，SPA 不持有 OIDC token。完整模型见[认证](authentication.md)。后端是**机密 OIDC client**，使用 Authorization Code + PKCE、state 和可选的 `offline_access`（服务端 refresh）。
 
-1. **公开浏览器客户端**（如 Keycloak 中 `openkms-frontend`）：
-   - 启用 authorization code；**PKCE**（S256，`oidc-client-ts` 要求）。
-   - **Redirect URI**：`http://localhost:5173/auth/callback`、`http://localhost:5173/auth/silent-renew`（及生产等价地址）。
+1. **IdP client**（如 Keycloak 中 `openkms-backend`）：
+   - 启用 authorization code flow；PKCE 由后端发送。
+   - **Redirect URI**：`OPENKMS_OIDC_REDIRECT_URI`（默认 `http://localhost:8102/login/oauth2/code/oidc`）。
    - **登出后重定向**：SPA 源（如 `http://localhost:5173`）。
-   - **Web origins / CORS**：按 IdP 要求配置 SPA 源。
+   - 只有 client/user 被允许时才启用 `offline_access`，并设置 `OPENKMS_OIDC_REQUEST_OFFLINE_ACCESS=true`；默认 `false`（否则 Keycloak 可能以 `not_allowed` 拒绝 code exchange）。
 
-2. **前端环境**（`.env` 或 `frontend/.env`）：
+2. **后端环境**（`.env`）：
    ```
-   VITE_OIDC_ISSUER=http://localhost:8081/realms/openkms
-   VITE_OIDC_CLIENT_ID=openkms-frontend
+   OPENKMS_AUTH_MODE=oidc
+   OPENKMS_OIDC_ISSUER=http://localhost:8081/realms/openkms
+   OPENKMS_OIDC_CLIENT_ID=openkms-backend
+   OPENKMS_OIDC_CLIENT_SECRET=...
+   OPENKMS_OIDC_REDIRECT_URI=http://localhost:8102/login/oauth2/code/oidc
+   OPENKMS_OIDC_POST_LOGOUT_CLIENT_ID=openkms-backend
+   OPENKMS_FRONTEND_URL=http://localhost:5173
    ```
-   若未设 **`VITE_OIDC_ISSUER`**，可设 **`VITE_OIDC_AUTH_SERVER_BASE_URL`** 与 **`VITE_OIDC_REALM`**，SPA 将 `{base}/realms/{realm}` 作为 authority。
+   后端从 `{issuer}/.well-known/openid-configuration` 加载 JWKS 与 OAuth 端点。
 
-3. **后端环境**：优先 **`OPENKMS_OIDC_ISSUER`**（完整 issuer URL）。否则 **`OPENKMS_OIDC_AUTH_SERVER_BASE_URL`** + **`OPENKMS_OIDC_REALM`**。后端从 **`{issuer}/.well-known/openid-configuration`** 加载 JWKS 与 OAuth 端点。机密 client id、secret、redirect URI（`/login/oauth2/code/oidc`）见 `backend/.env.example`。
+3. **前端环境**：只有 `public-config` 不可达时的回退有意义：
+   ```
+   VITE_AUTH_MODE=oidc
+   ```
+   SPA 不再保存 OIDC client id/secret 或 redirect URI。
 
 4. **openkms-cli 客户端**（机器 / client credentials）：
 
    在 IdP 创建**机密**客户端（Keycloak 示例：启用 client credentials、service account）：
    - **Client ID**：`openkms-cli`（须在 backend **`OPENKMS_INTERNAL_SERVICE_CLIENT_IDS`** 中）
-   - 在 `openkms-cli/.env` 设置 **`OPENKMS_OIDC_TOKEN_URL`**（IdP `token_endpoint`）、**`OPENKMS_CLI_OIDC_CLIENT_ID`**、**`OPENKMS_CLI_OIDC_CLIENT_SECRET`**（**qa-agent** 共用 **`OPENKMS_AUTH_MODE`**、**`OPENKMS_OIDC_TOKEN_URL`**，另加 **`OPENKMS_QA_AGENT_OIDC_CLIENT_*`**）。
+   - 在 `openkms-cli/.env` 设置 **`OPENKMS_OIDC_TOKEN_URL`**、**`OPENKMS_CLI_OIDC_CLIENT_ID`**、**`OPENKMS_CLI_OIDC_CLIENT_SECRET`**（**qa-agent** 共用 **`OPENKMS_AUTH_MODE`**、**`OPENKMS_OIDC_TOKEN_URL`**，另加 **`OPENKMS_QA_AGENT_OIDC_CLIENT_*`**）。
 
-**IdP 登出错误**：确保 SPA 源在浏览器客户端的 post-logout redirect 允许列表中。
+**IdP 登出错误**：确保 SPA 源在后端 client 的 post-logout redirect 允许列表中。
 
 **Console 访问（OIDC）**：JWT `realm_access.roles` 中的 realm 角色 **`admin`** 仍授予完整 Console（`security_permissions` 全部键）。其他用户：`realm_access.roles` 中每个字符串须匹配 PostgreSQL 的 **`security_roles.name`** 行；该角色的权限键（来自**权限管理**）生效。将 IdP 角色名与安全角色名对齐（如 `member`、`content-editor`）。claim 形状不同的 IdP 可能需扩展 `auth.py` / `permission_resolution.py` 中的 JWT 解析。

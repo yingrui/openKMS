@@ -81,11 +81,11 @@ Agent 工作指南（原 `.cursor/rules/` 合并版）。
 
 | 文件 | 何时 |
 |------|------|
-| `docs/architecture.md` | 新模块/流程/布局/配置 |
+| `docs/developer/architecture.md` | 新模块/流程/布局/配置 |
 | `docs/development_plan.md` | 任务完成/计划变更 |
 | `docs/features/<area>.md` | 功能/UI 变更 |
-| `docs/features/api-reference.md` | HTTP 路由变更 |
-| `docs/design-system.md` | 共享 SCSS/token/布局原语 |
+| `docs/developer/api-reference.md` | HTTP 路由变更 |
+| `docs/developer/design-system.md` | 共享 SCSS/token/布局原语 |
 
 `docs/functionalities.md` 仅增删功能页时改。英文 `docs/**/*.md` 为源；有 `.zh.md` 则英先中后；链接不带 `.zh` 后缀。  
 动 `docs/**` / `mkdocs.yml` → 提交前 `mkdocs build --strict --site-dir _site`。
@@ -107,7 +107,7 @@ Agent 工作指南（原 `.cursor/rules/` 合并版）。
 
 - 动 `frontend/src/**` → **`cd frontend && npm run check`**（typecheck → app-layout → app-modules → check:styles → check:lint → vitest → build）
 - CI 跑同一条命令：`.github/workflows/frontend.yml`
-- 具体规则、棘轮基线、允许清单见 `docs/design-system.md` 与 `frontend/scripts/`
+- 具体规则、棘轮基线、允许清单见 `docs/developer/design-system.md` 与 `frontend/scripts/`
 
 ## 后端验证
 

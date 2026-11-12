@@ -10,7 +10,7 @@ let sessionExpiredHandler: (() => void) | null = null;
 
 let sessionExpiredNotifyLock = false;
 
-/** One silent recover attempt (OIDC `signinSilent` + sync-session; local cookie `/me` check). */
+/** One recovery attempt: server-side session refresh, then `/me`. */
 let sessionRetryProvider: (() => Promise<boolean>) | null = null;
 
 /** Replaces backend `Invalid or expired token` in the `Response` so UI layers (toasts, banners) show copy meant for humans. */

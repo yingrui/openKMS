@@ -10,8 +10,8 @@ trimming. Ends with the highest-leverage moves the contradictions point to.
 from executable facts — route tables, model columns, defaults — not from the vision narrative.
 See [Goals](../goals.md) for the narrative and [Development plan](../development_plan.md) for status.
 
-**Related:** [Goals](../goals.md) · [Development plan](../development_plan.md) · [Architecture](../architecture.md) ·
-[Tech debt](../tech_debt.md) · [Security](../security.md) · [Agents](../features/openkms-agents.md) ·
+**Related:** [Goals](../goals.md) · [Development plan](../development_plan.md) · [Architecture](../developer/architecture.md) ·
+[Tech debt](../tech_debt.md) · [Security](../developer/security.md) · [Agents](../features/openkms-agents.md) ·
 [openkms-skill](../features/openkms-skill.md) · [Ontology Manager alignment](ontology_manager_alignment.md)
 
 ---
@@ -30,12 +30,12 @@ tools.
 
 | Layer | Components | Evidence |
 |-------|------------|----------|
-| Write surface | `/api/*` (people + agents), `/internal-api/*` (worker/CLI) | `backend/app/main.py`; [Security](../security.md) |
+| Write surface | `/api/*` (people + agents), `/internal-api/*` (worker/CLI) | `backend/app/main.py`; [Security](../developer/security.md) |
 | Agent surface | openkms skill CLI (**31 command modules + `__init__.py`**), reached by in-app agents through the shell | `openkms-skill/scripts/openkms/commands/`; `deep_agents/sandbox.py`, `prompts.py` |
 | Source of record | PostgreSQL; pgvector (`Vector(None)`); S3/MinIO | `backend/app/models/chunk.py:37`, `faq.py:26`, `wiki_models.py:82` |
 | Projection | Neo4j — reads go through `asyncio.to_thread`, the index **write** path does not | `ontology/neo4j_async.py:45,55` vs `api/object_types.py:515,536` |
-| Control | two-layer RBAC + resource ACL, feature toggles, lifecycle | [Security](../security.md); `models/document.py` |
-| Generation fields | LLM (extraction/FAQ/review/map designer/agents), VLM (parse) | [Architecture](../architecture.md) |
+| Control | two-layer RBAC + resource ACL, feature toggles, lifecycle | [Security](../developer/security.md); `models/document.py` |
+| Generation fields | LLM (extraction/FAQ/review/map designer/agents), VLM (parse) | [Architecture](../developer/architecture.md) |
 
 **Nine windows:**
 

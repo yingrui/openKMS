@@ -205,7 +205,7 @@ How the product supports each facet **now** vs **on the roadmap** ([Development 
 
 Running eval suites after corpus changes and **comparing runs** is a concrete Level **4** practice.
 
-**Security model** ([Security design](../security.md), [Data security](../features/data-security.md)) affects OKF measurement: metrics must be computed **per access scope** (ACL), or aggregates will overstate fitness for restricted domains.
+**Security model** ([Security design](../developer/security.md), [Data security](../developer/data-security.md)) affects OKF measurement: metrics must be computed **per access scope** (ACL), or aggregates will overstate fitness for restricted domains.
 
 ---
 

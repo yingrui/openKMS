@@ -4,7 +4,7 @@ import { resourceLabel } from './auditFormat';
 describe('resourceLabel', () => {
   it('turns a path segment into something a person reads', () => {
     expect(resourceLabel('object-types')).toBe('Object types');
-    expect(resourceLabel('sync-session')).toBe('Sync session');
+    expect(resourceLabel('auth-refresh')).toBe('Auth refresh');
     expect(resourceLabel('datasets')).toBe('Datasets');
   });
 

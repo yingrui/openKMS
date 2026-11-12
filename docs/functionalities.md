@@ -6,7 +6,6 @@ Per-feature reference, split by topic under `docs/features/`. The table below is
 
 | Page | Covers |
 |---|---|
-| [Infrastructure & quality](features/infrastructure.md) | Compose, tests, error handling, code splitting, typecheck |
 | [Documents](features/documents.md) | Document channels, upload, parsing pipeline (PaddleOCR-VL, Baidu Cloud), `openkms-cli` |
 | [Articles](features/articles.md) | Article channels, CRUD, relationships, lifecycle, attachments, bulk import |
 | [Media library](features/media.md) | Media channels, image/video assets, metadata, upload, Zhipu AI generation ( **`media`** toggle, default off) |
@@ -24,7 +23,6 @@ Per-feature reference, split by topic under `docs/features/`. The table below is
 | [Ontology Function Client](features/ontology-sdk.md) | `openkms_functions` Client / `@function` / edits; string api names |
 | [Object Explorer](features/object-explorer.md) | Cypher exploration, list view, instance graph layout and rendering |
 | [Pipelines, jobs & models](features/pipelines-and-jobs.md) | Pipeline templates, procrastinate jobs, provider/model registry (multimodal image/video models planned) |
-| [Data security](features/data-security.md) | Two-layer model (operation RBAC + resource ACL), groups, sharing, inheritance, enforcement |
 | [Console & authentication](features/console-and-auth.md) | Permission catalog, Console UX, OIDC/local auth, system settings, user Settings (API keys), feature toggles |
 | [Kubernetes clusters](features/kubernetes-clusters.md) | Console BYO cluster: browse Deployments/Services/Pods, logs, apply/delete; register a Service in Chamber |
 | [Connectors](features/connectors.md) | `/connectors` sync & search_tool kinds, dataset outputs, Tushare sync jobs, schedules, Agents `web_search` |
@@ -38,16 +36,13 @@ Per-feature reference, split by topic under `docs/features/`. The table below is
 | Page | Covers |
 |---|---|
 | [Knowledge types](features/knowledge-types.md) | Taxonomy (artifacts, indexes, dimensions); **insect-research** workflow table; **when to add a Recordings/Video functionality** ([anchor](features/knowledge-types.md#video-as-functionality)) |
-| [API reference](features/api-reference.md) | One table of every HTTP endpoint, grouped by area |
 | Data models | Schema for every persisted table |
-| [Configuration](features/configuration.md) | Backend deps, pgvector, S3/MinIO, contributor rules |
 
 ## Where to add new content
 
 When something changes in code, edit the most specific page in the table above:
 
-- **New endpoint** → matching feature page **and** [API reference](features/api-reference.md).
 - **New schema column** → Data models **and** the feature page that uses it.
 - **New feature surface** → its dedicated feature page; if no page fits, add a new file under `docs/features/`, link it here, and add a `nav:` entry in `mkdocs.yml`.
 
-See [Doc conventions for AI agents](agents.md) for the full editing checklist.
+See [Doc conventions for AI agents](developer/doc-conventions.md) for the full editing checklist.

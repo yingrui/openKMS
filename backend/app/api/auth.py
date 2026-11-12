@@ -12,7 +12,7 @@ from urllib.parse import urlencode, urlparse
 
 import bcrypt
 import jwt
-from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response
+from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from fastapi.responses import RedirectResponse
 from jwt import PyJWKClient
 from pydantic import BaseModel, EmailStr, Field
@@ -282,38 +282,35 @@ async def authenticate_request(request: Request, db: AsyncSession, *, session_on
                 _set_auth_state(request, payload, token)
                 return token
 
-    if settings.auth_session_v2:
-        session_id = request.session.get("auth_sid")
-        if isinstance(session_id, str) and session_id:
-            row = await auth_sessions.get_session(db, session_id)
-            if row is not None and auth_sessions.session_active(row):
-                now = auth_sessions.utcnow()
-                if row.access_expires_at <= now + timedelta(seconds=auth_sessions.REFRESH_SKEW_SECONDS):
-                    if not await auth_sessions.refresh_session(db, row):
-                        await auth_sessions.revoke_session(db, row)
-                        request.session.pop("auth_sid", None)
-                        raise http_error(request, 401, "AUTHENTICATION_REQUIRED")
-                try:
-                    token = auth_sessions.access_token_of(row)
-                except DECRYPT_ERRORS:
+    session_id = request.session.get("auth_sid")
+    if isinstance(session_id, str) and session_id:
+        row = await auth_sessions.get_session(db, session_id)
+        if row is not None and not auth_sessions.session_active(row):
+            successor = await auth_sessions.rotated_successor(db, row)
+            if successor is not None:
+                row = successor
+                request.session["auth_sid"] = row.id
+        if row is not None and auth_sessions.session_active(row):
+            now = auth_sessions.utcnow()
+            if row.access_expires_at <= now + timedelta(seconds=auth_sessions.REFRESH_SKEW_SECONDS):
+                if not await auth_sessions.refresh_session(db, row):
                     await auth_sessions.revoke_session(db, row)
                     request.session.pop("auth_sid", None)
-                    raise http_error(request, 401, "AUTHENTICATION_REQUIRED") from None
-                payload = _verify_token_for_mode(token)
-                _set_auth_state(request, payload, token)
-                await auth_sessions.touch_session(db, row)
-                await db.commit()
-                return token
-            if row is not None:
+                    raise http_error(request, 401, "AUTHENTICATION_REQUIRED")
+            try:
+                token = auth_sessions.access_token_of(row)
+            except DECRYPT_ERRORS:
                 await auth_sessions.revoke_session(db, row)
-            request.session.pop("auth_sid", None)
-
-    token = request.session.get("access_token")
-    if token and isinstance(token, str):
-        payload = _verify_token_for_mode(token)
-        _set_auth_state(request, payload, token)
-        return token
-
+                request.session.pop("auth_sid", None)
+                raise http_error(request, 401, "AUTHENTICATION_REQUIRED") from None
+            payload = _verify_token_for_mode(token)
+            _set_auth_state(request, payload, token)
+            await auth_sessions.touch_session(db, row)
+            await db.commit()
+            return token
+        if row is not None:
+            await auth_sessions.revoke_session(db, row)
+        request.session.pop("auth_sid", None)
     raise http_error(request, 401, "AUTHENTICATION_REQUIRED")
 
 
@@ -428,21 +425,26 @@ require_service_client = require_internal_client
 router = APIRouter(tags=["auth"])
 
 
-def _session_actor(request: Request) -> tuple[dict, str | None]:
-    """Who is signing out — read from the cookie's token **before** it is cleared, and verified.
+async def _session_actor(request: Request, db: AsyncSession) -> tuple[dict, str | None]:
+    """Best-effort actor for a sign-out.
 
-    An unverified decode would let anyone set the name in the audit log by handing us a forged token, which
-    is precisely the misattribution an audit log exists to prevent. An expired token is normal at logout, so
-    this is best effort: no answer is better than a wrong one.
+    The browser session is an opaque id; read its row and verify the stored access token. An unverified
+    decode would let a forged token name itself in the audit log, which is the misattribution the log exists
+    to prevent. Expiry at logout is normal, so "no actor" is preferred to a wrong one.
     """
-    token = request.session.get("access_token")
-    if not isinstance(token, str) or not token.strip():
-        return {}, "no_session_token"
+    session_id = request.session.get("auth_sid")
+    if not isinstance(session_id, str) or not session_id:
+        return {}, "no_session"
+    row = await auth_sessions.get_session(db, session_id)
+    if row is None or not auth_sessions.session_active(row):
+        return {}, "session_not_active"
     try:
-        return _verify_token_for_mode(token.strip()), None
+        token = auth_sessions.access_token_of(row)
+    except DECRYPT_ERRORS:
+        return {}, "token_not_verified"
+    try:
+        return _verify_token_for_mode(token), None
     except HTTPException:
-        # The verifiers already turn every failure into an HTTPException (expired, wrong issuer, bad
-        # signature), so this is the whole failure surface — not a blanket catch.
         return {}, "token_not_verified"
 
 
@@ -451,14 +453,12 @@ async def record_session_event(
 ) -> None:
     """Record a sign-in / sign-out. Best effort: an audit outage must not block logging in or out.
 
-    `via` names the entry point (`clear-session`, `logout`, `oidc-callback`) and `reason` says why there is no
-    actor — "anonymous" on a logout is usually *correct*: the SPA also clears the cookie when the API has
-    already rejected it, and a dead token cannot name anyone. Saying which case it was is the difference
-    between an explained event and a suspicious one.
+    `via` names the entry point (`logout`, `oidc-callback`) and `reason` says why there is no actor —
+    "anonymous" on a logout is usually *correct*: the session may already be gone, and a dead token cannot
+    name anyone. Saying which case it was is the difference between an explained event and a suspicious one.
     """
     sub = payload.get("sub")
-    # One sign-in, one row: the SPA syncs the token twice (the init and the user-loaded hook), milliseconds
-    # apart, and both say `reason=login`. A repeated identical session event inside the window is the same act.
+    # One sign-in, one row: retries inside the dedupe window are the same act.
     await record_session_event_once(
         path=f"auth/{kind}",
         actor_sub=sub if isinstance(sub, str) else None,
@@ -475,88 +475,6 @@ async def record_session_event(
             **({"attempted": attempted} if attempted else {}),
         },
     )
-
-
-def session_identity(payload: dict) -> tuple | None:
-    """Who the session belongs to, and when they authenticated — stable across token refreshes.
-
-    The SPA signs in with the IdP itself (oidc-client-ts, PKCE) and then hands the token here, so this call is
-    the only place the backend sees a login — but it also fires on every load. `auth_time` is the claim that
-    distinguishes them: it is the moment the user actually signed in and does **not** move when the token is
-    refreshed, while a new `sid` (Keycloak) means a new session. Returns None when there is nothing to compare.
-    """
-    sub = payload.get("sub")
-    if not isinstance(sub, str) or not sub:
-        return None
-    auth_time = payload.get("auth_time")
-    sid = payload.get("sid")
-    session_state = payload.get("session_state")
-    if auth_time is None and sid is None and session_state is None:
-        return None
-    return (sub, auth_time, sid or session_state)
-
-
-@router.post("/sync-session")
-async def sync_session(
-    request: Request,
-    reason: str | None = Query(None, description="`login` when the client just signed in"),
-    db: AsyncSession = Depends(get_db),
-) -> dict:
-    """Sync browser JWT to backend session (cookie) for credentialed img/object requests."""
-    auth_header = request.headers.get("Authorization")
-    if not auth_header or not auth_header.lower().startswith("bearer "):
-        raise http_error(request, 401, "BEARER_TOKEN_REQUIRED")
-    token = auth_header[7:].strip()
-    if not token:
-        raise http_error(request, 401, "BEARER_TOKEN_REQUIRED")
-    payload = _verify_token_for_mode(token)
-
-    # A sign-in, one of two ways: the client says so (`?reason=login`, set by the SPA when *it* started the
-    # login and cleared once recorded), or the session differs from the one the cookie held. The second
-    # depends on claims the IdP may not put in an access token, so the explicit signal is the reliable one.
-    previous = _session_actor(request)[0]
-    if reason == "login" or session_identity(payload) != session_identity(previous):
-        await record_session_event("login", payload, via="sync-session")
-
-    if settings.auth_session_v2:
-        sub = payload.get("sub")
-        if not isinstance(sub, str) or not sub:
-            raise http_error(request, 401, "INVALID_TOKEN")
-        current_id = request.session.get("auth_sid")
-        row = await auth_sessions.get_session(db, current_id) if isinstance(current_id, str) and current_id else None
-        expires_at = auth_sessions.token_expiry(token)
-        if (
-            row is not None
-            and auth_sessions.session_active(row)
-            and row.user_sub == sub
-        ):
-            await auth_sessions.update_session_access_token(
-                db, row, access_token=token, access_expires_at=expires_at
-            )
-            await auth_sessions.touch_session(db, row)
-        else:
-            old_session_id = row.id if row is not None else None
-            if row is not None:
-                await auth_sessions.revoke_session(db, row)
-            row = await auth_sessions.create_session(
-                db,
-                auth_mode="oidc" if settings.auth_mode == "oidc" else "local",
-                user_sub=sub,
-                idp_sub=sub,
-                access_token=token,
-                refresh_token=None,
-                access_expires_at=expires_at,
-                rotated_from=old_session_id,
-            )
-        request.session.pop("access_token", None)
-        request.session["auth_sid"] = row.id
-    else:
-        request.session["access_token"] = token
-    from app.services.identity.users.oidc_identity_service import upsert_oidc_identity_from_jwt
-
-    await upsert_oidc_identity_from_jwt(db, payload)
-    await db.commit()
-    return {"ok": True}
 
 
 def _safe_return_to(raw: str | None) -> str:
@@ -590,7 +508,7 @@ async def _start_oidc_login(request: Request, return_to: str | None) -> Redirect
     request.session["oauth_return_to"] = _safe_return_to(return_to)
     request.session["oauth_code_verifier"] = code_verifier
     scope = "openid profile email"
-    if settings.auth_session_v2:
+    if settings.oidc_request_offline_access:
         scope += " offline_access"
     params = {
         "client_id": settings.oidc_client_id,
@@ -598,6 +516,7 @@ async def _start_oidc_login(request: Request, return_to: str | None) -> Redirect
         "response_type": "code",
         "scope": scope,
         "state": state,
+        "prompt": "login",
         "code_challenge": code_challenge,
         "code_challenge_method": "S256",
     }
@@ -605,14 +524,7 @@ async def _start_oidc_login(request: Request, return_to: str | None) -> Redirect
     return RedirectResponse(url=url, status_code=302)
 
 
-@router.get("/login")
-async def login(request: Request, returnTo: str = "/") -> RedirectResponse:
-    """Redirect to OIDC authorization endpoint (oidc mode only)."""
-    return await _start_oidc_login(request, returnTo)
-
-
 @router.get("/login/oauth2/code/oidc")
-@router.get("/login/oauth2/code/keycloak", include_in_schema=False)
 async def oauth2_callback(
     request: Request,
     response: Response,
@@ -678,58 +590,33 @@ async def oauth2_callback(
     # Signing in is the security event; the callback is a GET, so the mutation middleware never saw it.
     await record_session_event("login", payload, via="oidc-callback")
 
-    if settings.auth_session_v2:
-        sub = payload.get("sub")
-        if not isinstance(sub, str) or not sub:
-            frontend = _frontend_base()
-            return RedirectResponse(url=f"{frontend}/?error=missing_subject", status_code=302)
-        old_session_id = await _revoke_current_auth_session(request, db)
-        row = await auth_sessions.create_session(
-            db,
-            auth_mode="oidc",
-            user_sub=sub,
-            idp_sub=sub,
-            access_token=access_token,
-            refresh_token=refresh_token if isinstance(refresh_token, str) else None,
-            access_expires_at=auth_sessions.token_expiry(access_token, data.get("expires_in")),
-            rotated_from=old_session_id,
-        )
-        request.session.clear()
-        request.session["auth_sid"] = row.id
-        await db.commit()
-    else:
-        request.session["access_token"] = access_token
-        request.session["refresh_token"] = refresh_token
-        if "oauth_state" in request.session:
-            del request.session["oauth_state"]
+    sub = payload.get("sub")
+    if not isinstance(sub, str) or not sub:
+        frontend = _frontend_base()
+        return RedirectResponse(url=f"{frontend}/?error=missing_subject", status_code=302)
+    old_session_id = await _revoke_current_auth_session(request, db)
+    row = await auth_sessions.create_session(
+        db,
+        auth_mode="oidc",
+        user_sub=sub,
+        idp_sub=sub,
+        access_token=access_token,
+        refresh_token=refresh_token if isinstance(refresh_token, str) else None,
+        access_expires_at=auth_sessions.token_expiry(access_token, data.get("expires_in")),
+        rotated_from=old_session_id,
+    )
+    request.session.clear()
+    request.session["auth_sid"] = row.id
+    await db.commit()
 
     frontend = _frontend_base()
     return RedirectResponse(url=f"{frontend}{return_to}", status_code=302)
 
 
-@router.post("/clear-session")
-async def clear_session(request: Request, db: AsyncSession = Depends(get_db)) -> dict:
-    """Sign out of the SPA: the token lives in this cookie, so clearing it ends the session.
-
-    Recorded as the same `auth/logout` event as `GET /logout` — it is the same act, and one act should not
-    read as two kinds of thing. Excluded from the generic middleware for that reason (`NOT_AUDITED`).
-    """
-    _require_same_origin(request)
-    payload, reason = _session_actor(request)
-    await _revoke_session_from_cookie(request, db)
-    request.session.clear()
-    # One sign-out, one event. The SPA calls this again from its session-invalid handler, seconds later,
-    # when the cookie is already gone — nothing was ended, so nothing is recorded. An expired or unverified
-    # token is the same case: there was no live session to end.
-    if reason is None:
-        await record_session_event("logout", payload, via="clear-session")
-    return {"ok": True}
-
-
 @router.get("/logout")
 async def logout(request: Request, db: AsyncSession = Depends(get_db)) -> RedirectResponse:
     """Clear session; in oidc mode redirect to IdP logout."""
-    payload, reason = _session_actor(request)
+    payload, reason = await _session_actor(request, db)
     await _revoke_session_from_cookie(request, db)
     request.session.clear()
     # A GET cannot carry a mutation to the middleware, but it is the end of a session — when there was one.
@@ -802,14 +689,13 @@ class PublicAuthConfig(BaseModel):
 
     auth_mode: Literal["oidc", "local"]
     allow_signup: bool
-    session_v2: bool = False
 
 
 @api_auth_router.get("/public-config", response_model=PublicAuthConfig)
 async def public_auth_config() -> PublicAuthConfig:
     mode: Literal["oidc", "local"] = "local" if settings.auth_mode == "local" else "oidc"
     allow = bool(mode == "local" and settings.allow_signup)
-    return PublicAuthConfig(auth_mode=mode, allow_signup=allow, session_v2=settings.auth_session_v2)
+    return PublicAuthConfig(auth_mode=mode, allow_signup=allow)
 
 
 def _hash_password(password: str) -> str:
@@ -856,10 +742,7 @@ async def register(
     from app.services.identity.users.user_roles_sync import sync_security_roles_for_user
 
     await sync_security_roles_for_user(db, user)
-    if settings.auth_session_v2:
-        token = await _create_local_session(request, db, user)
-    else:
-        token = mint_local_user_jwt(user)
+    token = await _create_local_session(request, db, user)
     roles = ["admin"] if user.is_admin else []
     perm_set = await resolve_user_permission_keys(db, str(user.id))
     return TokenResponse(
@@ -904,10 +787,7 @@ async def login_json(request: Request, body: LoginBody, db: AsyncSession = Depen
         },
         via="local-login",
     )
-    if settings.auth_session_v2:
-        token = await _create_local_session(request, db, user)
-    else:
-        token = mint_local_user_jwt(user)
+    token = await _create_local_session(request, db, user)
     roles = ["admin"] if user.is_admin else []
     perm_set = await resolve_user_permission_keys(db, str(user.id))
     return TokenResponse(
@@ -1204,26 +1084,44 @@ async def build_auth_user_out(request: Request, db: AsyncSession) -> AuthUserOut
 async def refresh_auth_session(request: Request, db: AsyncSession = Depends(get_db)) -> dict:
     """Rotate/refresh the server-side session before the access token expires."""
     _require_same_origin(request)
-    if not settings.auth_session_v2:
-        raise http_error(request, 404, "AUTH_SESSION_V2_DISABLED")
     session_id = request.session.get("auth_sid")
     if not isinstance(session_id, str) or not session_id:
         raise http_error(request, 401, "AUTHENTICATION_REQUIRED")
     row = await auth_sessions.get_session(db, session_id)
-    if row is None or not auth_sessions.session_active(row):
-        if row is not None:
-            await auth_sessions.revoke_session(db, row)
+    if row is None:
+        request.session.pop("auth_sid", None)
+        raise http_error(request, 401, "AUTHENTICATION_REQUIRED")
+    if not auth_sessions.session_active(row):
+        successor = await auth_sessions.rotated_successor(db, row)
+        if successor is not None:
+            request.session["auth_sid"] = successor.id
+            await db.commit()
+            return {
+                "ok": True,
+                "idle_expires_at": successor.idle_expires_at.isoformat(),
+                "absolute_expires_at": successor.absolute_expires_at.isoformat(),
+            }
+        await auth_sessions.revoke_session(db, row)
+        await db.commit()
         request.session.pop("auth_sid", None)
         raise http_error(request, 401, "AUTHENTICATION_REQUIRED")
     if not await auth_sessions.refresh_session(db, row, force=True):
         await auth_sessions.revoke_session(db, row)
+        await db.commit()
         request.session.pop("auth_sid", None)
         raise http_error(request, 401, "AUTHENTICATION_REQUIRED")
+    successor = await auth_sessions.rotate_session(db, row)
+    if successor is None:
+        await auth_sessions.revoke_session(db, row)
+        await db.commit()
+        request.session.pop("auth_sid", None)
+        raise http_error(request, 401, "AUTHENTICATION_REQUIRED")
+    request.session["auth_sid"] = successor.id
     await db.commit()
     return {
         "ok": True,
-        "idle_expires_at": row.idle_expires_at.isoformat(),
-        "absolute_expires_at": row.absolute_expires_at.isoformat(),
+        "idle_expires_at": successor.idle_expires_at.isoformat(),
+        "absolute_expires_at": successor.absolute_expires_at.isoformat(),
     }
 
 

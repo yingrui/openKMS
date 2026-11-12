@@ -91,4 +91,4 @@ AI 的风险不在于能力不足，而在于能力不足时仍给出高度自�
 
 仍有两项工作待完成：每次修改能够说明原因；对象能够表达可依赖状态。
 
-这些原则的稳定版本：[产品原则](agents.md#product-principles)。
+这些原则的稳定版本：[产品原则](developer/doc-conventions.md#product-principles)。

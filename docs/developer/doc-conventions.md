@@ -26,9 +26,9 @@
 
 三层：
 
-1. **顶层参考文件** — `architecture.md`（模块/流程/配置）、`functionalities.md`（路由）、`development_plan.md`（进度）、`security.md`、`tech_debt.md`
-2. **功能页** — `features/` 下每个产品领域一页，加上 `api-reference.md`、`configuration.md`。大部分代码变更落在这里
-3. **入口页** — `index.md`、`quickstart.md`、`operations/docker.md`、`developer/setup.md`
+1. **系统/开发参考** — `developer/architecture.md`（模块/流程）、`developer/security.md`、`developer/api-reference.md`、`developer/configuration.md`、`developer/authentication.md`、`developer/data-security.md`、`developer/catalog-data-access.md`
+2. **功能页** — `features/` 下每个产品领域一页。大部分产品行为变更落在这里
+3. **入口页** — `index.md`、`quickstart.md`、`functionalities.md`、`development_plan.md`、`operations/docker.md`、`developer/setup.md`
 
 不确定改哪里时，先改最具体的 feature page，再更新交叉引用。
 
@@ -36,9 +36,9 @@
 
 | 代码变更 | 文档更新 |
 |---|---|
-| 新模块/流程/布局/配置 | `architecture.md` |
+| 新模块/流程/布局/配置 | `developer/architecture.md` |
 | 新功能/UI | 对应 `features/` 页面 |
-| 新 HTTP 端点 | feature page + `features/api-reference.md` |
+| 新 HTTP 端点 | feature page + `developer/api-reference.md` |
 | 新表/字段 | feature page（+ 模型 docstring / 迁移注释里的“为什么”） |
 | 完成的任务/计划调整 | `development_plan.md` |
 | 新领域 | 新建 `features/xxx.md`，链入 `functionalities.md`，加入 `mkdocs.yml` |
@@ -50,11 +50,11 @@
 - Feature page 用统一的 `Feature | Status | Description` 表格
 - `functionalities.md` 只做路由，不写详细内容
 - Mermaid 块只用 ` ```mermaid `，不换其他 fence
-- GitHub 编辑链接依赖于 `docs/<file>.md` 路径，不要移动文件
+- GitHub 编辑链接依赖于 `docs/<path>.md` 路径；移动系统参考页时一次性更新导航和所有链接
 
 ## 多语言文档
 
-英文页面（`page.md`）是源，中文翻译为同目录的 `page.zh.md`。链接省略 locale——在 `index.md` 和 `index.zh.md` 里都写 `[Quickstart](quickstart.md)`。未翻译页面自动回退英文。中文导航标签在 `mkdocs.yml` → `plugins → i18n → languages → zh → nav_translations` 里加。
+英文页面（`page.md`）是源，中文翻译为同目录的 `page.zh.md`。链接省略 locale——在 `index.md` 和 `index.zh.md` 里都写 `[Quickstart](../quickstart.md)`。未翻译页面自动回退英文。中文导航标签在 `mkdocs.yml` → `plugins → i18n → languages → zh → nav_translations` 里加。
 
 ## 构建与部署
 

@@ -91,4 +91,4 @@ Features outside these standards are not included.
 
 Two things remain: every change can explain why; objects can express a dependable state.
 
-The stable version of these principles: [Product principles](agents.md#product-principles).
+The stable version of these principles: [Product principles](developer/doc-conventions.md#product-principles).

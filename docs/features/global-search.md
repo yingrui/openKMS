@@ -29,4 +29,4 @@ JSON with `query`, `types_requested`, and four objects `{ "items": [...], "total
 - **Tabs:** **`tab`** query string (optional): `all` (default), `documents`, `articles`, `wiki_spaces`, `knowledge_bases`. Each tab shows a **result count** from the latest search (All = sum across enabled types). Tabs for disabled features are omitted; an invalid or disabled **`tab`** is removed from the URL.
 - **Filters** panel for channels and dates; **Apply filters** updates the URL. The SPA maps **All** to the same enabled-type set as the API’s `types=all`; a single tab sets **`types`** to that resource only.
 
-See [API reference](api-reference.md) for the canonical route table.
+See [API reference](../developer/api-reference.md) for the canonical route table.

@@ -6,7 +6,6 @@
 
 | 页面 | 涵盖内容 |
 |------|----------|
-| [基础设施与质量](features/infrastructure.md) | Compose、测试、错误处理、代码分割、类型检查 |
 | [文档](features/documents.md) | 文档通道、上传、解析流水线（PaddleOCR-VL、百度云）、`openkms-cli` |
 | [文章](features/articles.md) | 文章通道、CRUD、关系、生命周期、附件、批量导入 |
 | [评论](features/comments.md) | 用户对文章、文档、知识库、维基空间、Agent 项目的评论与 0–5 分评分 |
@@ -19,7 +18,6 @@
 | [本体 — 对象、关系与数据集](features/ontology.md) | 对象/关系类型、实例、Object Explorer、数据源、数据集 |
 | [议事厅（Chamber）](features/app-builder.md) | 将 Kubernetes Service 登记为议事厅应用；API 代理 + 身份头；列表 / 运行 / 设置 |
 | [流水线、任务与模型](features/pipelines-and-jobs.md) | 流水线模板、procrastinate 任务、Provider/模型注册（多模态图像/视频模型规划中） |
-| [数据安全](features/data-security.md) | 双层模型（操作 RBAC + 资源 ACL）、组、共享、继承、 enforcement |
 | [控制台与认证](features/console-and-auth.md) | 权限目录、Console UX、OIDC/本地认证、系统设置、用户设置（API 密钥）、功能开关 |
 | [Kubernetes 集群](features/kubernetes-clusters.md) | 控制台接入集群：浏览 Deployment/Service/Pod、日志、apply/delete；把 Service 登记到议事厅 |
 | [连接器](features/connectors.md) | `/connectors` 同步与 search_tool 种类、数据集输出、Tushare 同步任务、计划任务、Agent `web_search` |
@@ -33,16 +31,13 @@
 | 页面 | 涵盖内容 |
 |------|----------|
 | [知识类型](features/knowledge-types.md) | 分类（制品、索引、维度）；**昆虫研究**工作流表；**何时新增 Recordings/Video 功能**（[锚点](features/knowledge-types.md#video-as-functionality)） |
-| [API 参考](features/api-reference.md) | 按领域分组的 HTTP 端点总表 |
 | 数据模型 | 各持久化表的 schema |
-| [配置](features/configuration.md) | 后端依赖、pgvector、S3/MinIO、贡献者规则 |
 
 ## 新增内容放哪里
 
 代码变更时，编辑上表中最具体的页面：
 
-- **新端点** → 对应功能页 **以及** [API 参考](features/api-reference.md)。
 - **新 schema 列** → 数据模型 **以及** 使用该列的功能页。
 - **新功能面** → 专用功能页；若无合适页面，在 `docs/features/` 下新增文件、在此链接，并在 `mkdocs.yml` 的 `nav:` 中登记。
 
-完整编辑清单见 [AI 代理文档规范](agents.md)。
+完整编辑清单见 [AI 代理文档规范](developer/doc-conventions.md)。

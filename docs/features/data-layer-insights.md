@@ -192,7 +192,7 @@ tile's own actions (edit, reorder, remove) are revealed on hover/focus, so a rea
 four buttons per tile — but they stay in the tab order, and a touch device shows them always. The
 rule behind the styles: a view's classes live in `src/styles/finding-view.scss`, because the same
 components render in the editor, which other routes open (see
-[design system](../design-system.md) rule 16).
+[design system](../developer/design-system.md) rule 16).
 
 ## Permissions
 

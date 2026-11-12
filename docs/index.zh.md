@@ -36,7 +36,7 @@
 | **[Agent](features/openkms-agents.md)与 [skill](features/openkms-skill.md)** | Deep Agents 工作区，以及供 Agent 调用公共 API 的 openkms skill/CLI。 |
 | **[议事厅（Chamber）](features/app-builder.md)** | 把决策系统 UI 登记到 Kubernetes Service 并运行；身份头与代理。 |
 
-**底座：** [操作权限 + 资源 ACL](features/data-security.md)（管理员不意味着可读全部数据）、面向检索与 wiki 覆盖的[评测](features/evaluation.md)。
+**底座：** [操作权限 + 资源 ACL](developer/data-security.md)（管理员不意味着可读全部数据）、面向检索与 wiki 覆盖的[评测](features/evaluation.md)。
 
 ## 从哪里开始
 
@@ -46,18 +46,18 @@
 | 用 Docker 或本机快速试用 | [快速开始](quickstart.md) |
 | 通过搭迷你看板学习本体 | [教程：认识本体（看板实验）](tutorials/understanding-ontology.md) |
 | 自己动手：Tushare → Stock → Function 案例 | [教程：Tushare 市场分析本体](tutorials/tushare-market-ontology.md) |
-| 理解系统整体 | [架构](architecture.md) · [功能索引](functionalities.md) |
+| 理解系统整体 | [架构](developer/architecture.md) · [功能索引](functionalities.md) |
 | 查找具体功能或 API | [功能索引](functionalities.md) → `features/*.md` |
-| HTTP 或 schema 参考 | [API 参考](features/api-reference.md) · 数据模型 |
+| HTTP 或 schema 参考 | [API 参考](developer/api-reference.md) · 数据模型 |
 | 知识制品类型 | [知识类型](features/knowledge-types.md) |
-| 共享与资源 ACL | [数据安全](features/data-security.md) |
+| 共享与资源 ACL | [数据安全](developer/data-security.md) |
 | 用 Agent Skill / CLI 访问 openKMS | [openkms-skill](features/openkms-skill.md) |
 | 搭建开发环境 | [开发者环境搭建](developer/setup.md) |
 | 用 Docker 部署 | [运维 · Docker](operations/docker.md) |
-| 审阅安全设计（原则） | [安全](security.md) · [数据安全](features/data-security.md) · [控制台与认证](features/console-and-auth.md) |
+| 审阅安全设计（原则） | [安全](developer/security.md) · [数据安全](developer/data-security.md) · [控制台与认证](features/console-and-auth.md) |
 | 查看后续计划 | [路线图 · 开发计划](development_plan.md) |
 | 与其他技术栈对比或阅读 KM 框架 | [研究](#research)（见下） |
-| 编辑文档（人或 AI Agent） | [AI 代理文档规范](agents.md) |
+| 编辑文档（人或 AI Agent） | [AI 代理文档规范](developer/doc-conventions.md) |
 
 ## 研究 {#research}
 

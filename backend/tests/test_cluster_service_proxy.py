@@ -1,3 +1,6 @@
+from datetime import datetime, timedelta, timezone
+from types import SimpleNamespace
+
 import httpx
 import pytest
 from fastapi import HTTPException
@@ -36,9 +39,30 @@ def _request(headers: dict[str, str], session: dict) -> Request:
 
 @pytest.mark.asyncio
 async def test_session_only_auth_ignores_hosted_app_bearer(monkeypatch):
+    row = SimpleNamespace(
+        access_expires_at=datetime.now(timezone.utc) + timedelta(minutes=30),
+        revoked_at=None,
+        idle_expires_at=datetime.now(timezone.utc) + timedelta(minutes=30),
+        absolute_expires_at=datetime.now(timezone.utc) + timedelta(hours=12),
+    )
+
+    async def get_session(_db, _sid):
+        return row
+
+    async def touch(_db, _row):
+        return None
+
+    class FakeDb:
+        async def commit(self):
+            return None
+
     monkeypatch.setattr(auth, "_verify_token_for_mode", lambda token: {"sub": "u1", "tok": token})
-    req = _request({"Authorization": "Bearer app-token"}, {"access_token": "openkms-session"})
-    token = await auth.authenticate_request(req, db=None, session_only=True)
+    monkeypatch.setattr(auth.auth_sessions, "get_session", get_session)
+    monkeypatch.setattr(auth.auth_sessions, "session_active", lambda _row: True)
+    monkeypatch.setattr(auth.auth_sessions, "access_token_of", lambda _row: "openkms-session")
+    monkeypatch.setattr(auth.auth_sessions, "touch_session", touch)
+    req = _request({"Authorization": "Bearer app-token"}, {"auth_sid": "sid"})
+    token = await auth.authenticate_request(req, db=FakeDb(), session_only=True)
     assert token == "openkms-session"
 
 

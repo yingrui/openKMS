@@ -33,3 +33,4 @@ class AuthSession(Base):
     last_seen_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     revoked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     rotated_from: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    replaced_by: Mapped[str | None] = mapped_column(String(128), nullable=True)

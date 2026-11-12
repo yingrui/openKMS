@@ -159,7 +159,6 @@ pgvector service — see `.github/workflows/backend.yml`.
 - `GET /health` – Health check
 - `GET /login` – Redirect to OIDC authorization endpoint (oidc mode)
 - `GET /login/oauth2/code/oidc` – OAuth2 callback (preferred redirect URI)
-- `GET /login/oauth2/code/keycloak` – Same callback (legacy path for existing IdP configs)
 - `GET /logout` – Clear session; oidc mode redirects to IdP end-session when configured
 - `POST /api/documents/upload` – Upload document (PDF/image), parse via VLM, store in DB
 - `GET /api/documents/{id}` – Get document metadata

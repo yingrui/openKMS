@@ -20,15 +20,10 @@ logger = logging.getLogger(__name__)
 
 MUTATING = frozenset({"POST", "PUT", "PATCH", "DELETE"})
 
-#: Mutating paths that are not a change worth logging. `/sync-session` copies the browser's token into the
-#: session cookie on **every** app load — idempotent, and it buried the real operations in the rail's counts.
-#: Login and logout are recorded where they actually happen (the OIDC callback and `/logout`).
 NOT_AUDITED = frozenset({
     # Records itself, with the user as the actor and the fields that matter. A generic row for this POST would say
     # "someone posted to /internal-api/executions" and nothing else.
     "/internal-api/executions",
-    "/sync-session",
-    "/clear-session",
     # Sign-in records itself (`AUTH auth/login` / `auth/login-failed`, with the account); a generic
     # `POST /api/auth/login` row would be the same act in an anonymous-looking shape.
     "/api/auth/login",

@@ -29,8 +29,6 @@ src/pages/chamber/ChamberSettingsPage.tsx uses .settings-page-danger
 src/pages/chamber/ModuleServiceBindingEditor.tsx uses .chamber-module-service
 src/pages/articles/ArticleChannelSettings.tsx uses .settings-page-inline-actions
 src/pages/articles/ArticleDetail.modals.tsx uses .article-review-result
-src/pages/auth/OidcCallback.tsx uses .app-loading
-src/pages/auth/OidcSilentRenew.tsx uses .app-loading
 src/pages/connectors/ConnectorFormFields.tsx uses .connector-input-boolean
 src/pages/connectors/ConnectorOutputDatasetsFields.tsx uses .connector-output-datasets-fields
 src/pages/connectors/ConnectorsPage.tsx uses .console-table-row-link

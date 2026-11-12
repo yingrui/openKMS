@@ -56,7 +56,7 @@ flowchart TB
 | **Worker** | procrastinate worker 执行延迟任务（文档解析、知识库索引等），拉起 **openkms-cli**；在 PostgreSQL 中更新状态。 |
 | **LLM 提供商** | 外部 OpenAI 兼容 API，配置为 **api_providers** / **api_models** — 元数据抽取、FAQ 生成、embedding、模型 playground。 |
 | **QA Agent** | 按知识库配置的独立 FastAPI + LangGraph 服务；仅经后端 API 检索（不直连数据库）。 |
-| **应用内 Agent** | 运行在**主** API 进程内：Deep Agents [项目工作区](features/openkms-agents.md)（`backend/app/services/runtime/deep_agents/`）与知识地图设计器。与 QA Agent 不同。 |
+| **应用内 Agent** | 运行在**主** API 进程内：Deep Agents [项目工作区](../features/openkms-agents.md)（`backend/app/services/runtime/deep_agents/`）与知识地图设计器。与 QA Agent 不同。 |
 
 ## 前端结构
 
@@ -136,7 +136,7 @@ frontend/src/
 
 ### 数据层与 hooks
 
-- **API 调用** — **`data/*Api.ts`** 使用 **`request<T>(path, { query, …init })`**：合并 auth/locale、`credentials: 'include'`、query 序列化、统一错误、**204** 返回 `undefined`。需 header 或非 JSON 时用 **`requestRaw`** / **`requestText`**。**`authAwareFetch`** 仅在 `apiClient.ts` 内（401 静默重试、session 过期）。**例外：** 登录前页面（`Login`、`Signup`、`OidcCallback`）用裸 `fetch`。
+- **API 调用** — **`data/*Api.ts`** 使用 **`request<T>(path, { query, …init })`**：合并 auth/locale、`credentials: 'include'`、query 序列化、统一错误、**204** 返回 `undefined`。需 header 或非 JSON 时用 **`requestRaw`** / **`requestText`**。**`authAwareFetch`** 仅在 `apiClient.ts` 内（401 静默重试、session 过期）。**例外：** 登录前页面（`Login`、`Signup`）用裸 `fetch`。
 - **列表页** — 搜索防抖：**`useDebouncedValue`**；分页列表：**`useListFetch`**（筛选变化自动重置页码）。文档/文章/媒体通道与 glossary 详情已接入。
 - **Shell Provider** — **`ConfirmProvider`**（`MainLayout`）提供 **`useConfirm()`**；**`OntologyMobileRailContext`** 仅用于本体论侧栏，不用于通道。
 
@@ -234,7 +234,7 @@ openkms-cli/
 
 可选目录 **`openkms-skill/`**（不在 Docker 栈）按 [agentskills.io](https://agentskills.io/specification) 打包 Python CLI + **`SKILL.md`**，调用与 SPA 相同的 **`/api/...`**，使用**个人 API 密钥**（**Settings → API keys**）。安装：`./install.sh`（Claude Code / OpenCode）或 `./package.sh` 上传到 **Agents → Skills**。
 
-完整说明：**[openkms-skill](features/openkms-skill.md)**。与 **`openkms-cli`**（worker 子进程、internal + public API 环境认证）不同。
+完整说明：**[openkms-skill](../features/openkms-skill.md)**。与 **`openkms-cli`**（worker 子进程、internal + public API 环境认证）不同。
 
 ## QA Agent 服务
 
@@ -338,7 +338,7 @@ sequenceDiagram
 
 ## 认证（`OPENKMS_AUTH_MODE`）
 
-两种模式（默认 **`oidc`**）。部署须保持 **backend** `OPENKMS_AUTH_MODE` 与 **frontend** 一致：SPA 调用 **`GET /api/auth/public-config`**（无 auth）取 **`auth_mode`**、**`allow_signup`**、**`session_v2`**。**`session_v2=true`** 时浏览器只持 opaque `openkms_session`，token 加密存 `auth_sessions`，OIDC 走 BFF 登录/回调（PKCE + state）和 **`POST /api/auth/refresh`**；`false` 时保留 `oidc-client-ts` / 本地 JWT 旧路径。**openkms-cli** 与 **qa-agent** 仅用 **internal service** auth 访问 **`/internal-api/models/...`**（`sub=local-cli` 的 Basic，或 **`azp`** 在 **`OPENKMS_INTERNAL_SERVICE_CLIENT_IDS`** 的 OIDC client credentials）；人类 SPA token 拒绝。**`/internal-api`** 不在可选严格 permission 中间件内（仅查 **`/api/...`**）。SPA 可 **`GET /api/public/system`** 取 **`system_name`**。应用据 API 在 **OIDC（Authorization Code + PKCE，`oidc-client-ts`）** 与本地表单间切换；`VITE_AUTH_MODE` 仅 API 失败时回退，且与 backend 不一致时横幅提示。
+两种模式（默认 **`oidc`**）。部署须保持 **backend** `OPENKMS_AUTH_MODE` 与 **frontend** 一致：SPA 调用 **`GET /api/auth/public-config`**（无 auth）取 **`auth_mode`**、**`allow_signup`**。浏览器始终只持 opaque `openkms_session`，token 加密存 `auth_sessions`，OIDC 走 BFF 登录/回调（PKCE + state）和 **`POST /api/auth/refresh`**；JWT Bearer 仅用于 CLI/API/internal。**openkms-cli** 与 **qa-agent** 仅用 **internal service** auth 访问 **`/internal-api/models/...`**（`sub=local-cli` 的 Basic，或 **`azp`** 在 **`OPENKMS_INTERNAL_SERVICE_CLIENT_IDS`** 的 OIDC client credentials）；人类 SPA token 拒绝。**`/internal-api`** 不在可选严格 permission 中间件内（仅查 **`/api/...`**）。SPA 可 **`GET /api/public/system`** 取 **`system_name`**。应用据 API 在 **OIDC（BFF Authorization Code + PKCE）** 与本地表单间切换；`VITE_AUTH_MODE` 仅 API 失败时回退，且与 backend 不一致时横幅提示。
 
 ### OIDC 模式
 
@@ -348,7 +348,6 @@ flowchart LR
     U[用户] -->|"kc.login()"| KC[OIDC IdP]
     KC -->|"Auth Code + PKCE"| FE[前端]
     FE -->|"Bearer JWT"| BE[后端 API]
-    FE -->|"POST /sync-session"| BE
   end
 
   subgraph BackendAuth["后端接受"]
@@ -362,24 +361,23 @@ flowchart LR
   end
 ```
 
-- **后端**：解析 issuer、discovery、JWKS 校验 JWT；可选 session cookie（`POST /sync-session`）
-- **前端**：**`oidc-client-ts`**；redirect **`/auth/callback`**、**`/auth/silent-renew`**
+- **后端**：解析 issuer、discovery、JWKS 校验 JWT；opaque session cookie + `auth_sessions`
+- **前端**：`/api/auth/oidc/login` 跳后端；不在浏览器保存 token
 - `GET /login`、OAuth callback、`GET /logout` 等
 
 ### Local 模式
 
 - **后端**：`users` 表、bcrypt、HS256 JWT（`OPENKMS_SECRET_KEY`）
-- **端点**：register、login、me、logout、sync-session
+- **端点**：register、login、me、refresh、logout
 - **CLI**：`OPENKMS_CLI_BASIC_*` → Basic（仅可信网络）
 - **前端**：`/login`、`/signup`；`allow_signup` 控制注册
 - OIDC 路由在 local 模式重定向到 `/login?notice=local_auth`
 
 ### 共用
 
-- **API 上无效 JWT**：**`authAwareFetch`** 对 session 类 **401** 先静默重试（`session_v2` 用 `POST /api/auth/refresh` + `/me`；旧路径 OIDC `signinSilent` + sync-session / local 查 me）；仍失败则清 session、丢弃缓存的 OIDC 用户，跳转 **`/login?notice=session_expired`**，不自动发起 OIDC 重定向；显式登录使用 `prompt=login`；返回合成 **401**（`SESSION_EXPIRED_API_DETAIL`）
+- **API 上无效 JWT/session**：**`authAwareFetch`** 对 session 类 **401** 先重试 `POST /api/auth/refresh` + `/me`；仍失败则清 session、跳转 **`/login?notice=session_expired`**，不自动发起 OIDC 重定向；显式登录使用 `prompt=login`；返回合成 **401**（`SESSION_EXPIRED_API_DETAIL`）
 - **路由保护**：**`/`** 对访客公开；其余 **MainLayout** 页需认证
 - **Console**：OIDC `admin` 或 local `is_admin` / `user_security_roles`
-- `POST /clear-session` 清 cookie
 
 ## 配置
 
@@ -389,7 +387,7 @@ flowchart LR
 | Backend | `OPENKMS_DEBUG`、**`OPENKMS_SQL_ECHO`**、**`OPENKMS_PERMISSION_CATALOG_CACHE_SECONDS`** |
 | Backend | `OPENKMS_AUTH_MODE`、`OPENKMS_ALLOW_SIGNUP`、`OPENKMS_CLI_BASIC_*`、`OPENKMS_LOCAL_JWT_EXP_HOURS` |
 | Backend | `OPENKMS_OIDC_*`、`OPENKMS_FRONTEND_URL`、`AWS_*`（S3/MinIO） |
-| Frontend | `config/index.ts` — `apiUrl`、`authMode` 回退、`oidc`（`VITE_OIDC_*`）；运行时来自 public-config |
+| Frontend | `config/index.ts` — `apiUrl`、`authMode` 回退；运行时来自 public-config |
 | Vite dev | 代理 **`/api`**、**`/internal-api`**、session 路由 → **8102**；**`/buckets/openkms`** → MinIO **9000** |
 | Alembic | `alembic.ini` — `settings.database_url_sync` |
 | AI agents | 仓库根目录 `AGENTS.md` — 编码、提交前文档、Alembic、前端验证规则 |

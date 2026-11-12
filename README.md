@@ -57,7 +57,7 @@ Detailed setup: [`docs/developer/setup.md`](docs/developer/setup.md). Docker por
 | Vision and direction | [`docs/goals.md`](docs/goals.md) |
 | Run locally | [`docs/quickstart.md`](docs/quickstart.md) · [`docs/developer/setup.md`](docs/developer/setup.md) |
 | Features & APIs | [`docs/functionalities.md`](docs/functionalities.md) |
-| Security design | [`docs/security.md`](docs/security.md) · [`docs/features/data-security.md`](docs/features/data-security.md) |
+| Security design | [`docs/developer/security.md`](docs/developer/security.md) · [`docs/developer/data-security.md`](docs/features/data-security.md) |
 | Roadmap | [`docs/development_plan.md`](docs/development_plan.md) |
 | Comparisons and research | [`docs/research/`](docs/research/) |
 
