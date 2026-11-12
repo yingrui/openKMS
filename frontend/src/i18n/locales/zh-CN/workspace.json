@@ -235,7 +235,6 @@
     "deleteDataset": "删除数据集",
     "deleting": "删除中…",
     "deleteFailed": "删除失败",
-    "tabSharing": "共享",
     "sharingTitle": "谁可以访问此评测",
     "semanticModel": "语义模型",
     "semanticModelHint": "问数评估必填：按答案引用的查询（模型、指标、SQL）判定，不按返回的数字判定。",

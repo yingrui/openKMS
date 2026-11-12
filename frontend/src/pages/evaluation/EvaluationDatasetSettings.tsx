@@ -1,7 +1,7 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
+import { useCallback, useEffect, useState } from 'react';
+import { Link, useNavigate, useParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { ArrowLeft, Settings, Users } from 'lucide-react';
+import { ArrowLeft } from 'lucide-react';
 import { toast } from 'sonner';
 import { FormField } from '../../styles/design-system';
 import {
@@ -14,25 +14,17 @@ import { fetchAllKnowledgeBases, type KnowledgeBaseResponse } from '../../data/k
 import { fetchAllWikiSpaces, type WikiSpaceResponse } from '../../data/wikiSpacesApi';
 import { fetchSemanticModels, type SemanticModelResponse } from '../../data/semanticModelsApi';
 import { ResourceSharePanel } from '../../components/ResourceSharePanel';
-import { EntityViewHeader, EntityViewLoading } from '../shared/EntityViewShell';
+import { EntityViewHeader, EntityViewLoading, EntityViewPanel } from '../shared/EntityViewShell';
 import { RESOURCE_TYPES } from '../../data/resourceAclApi';
 import { useConfirm } from '../../contexts/ConfirmContext';
-import '../../styles/settings-page.scss';
 import './EvaluationDatasetDetail.scss';
 import './EvaluationDatasetSettings.scss';
-
-type SettingsTabId = 'general' | 'sharing';
 
 export function EvaluationDatasetSettings() {
   const { t } = useTranslation('workspace');
   const navigate = useNavigate();
   const confirm = useConfirm();
   const { id: evaluationId = '' } = useParams<{ id: string }>();
-  const [searchParams, setSearchParams] = useSearchParams();
-  const tabParam = searchParams.get('tab');
-  const [activeTab, setActiveTab] = useState<SettingsTabId>(
-    tabParam === 'sharing' ? 'sharing' : 'general'
-  );
 
   const [dataset, setDataset] = useState<EvaluationResponse | null>(null);
   const [loading, setLoading] = useState(true);
@@ -81,20 +73,6 @@ export function EvaluationDatasetSettings() {
     }
     void load();
   }, [evaluationId, load, navigate]);
-
-  useEffect(() => {
-    if (tabParam === 'sharing' || tabParam === 'general') {
-      setActiveTab(tabParam);
-    }
-  }, [tabParam]);
-
-  const settingsTabs = useMemo(
-    () => [
-      { id: 'general' as const, label: t('evaluationSettings.general'), icon: Settings },
-      { id: 'sharing' as const, label: t('evaluationSettings.tabSharing'), icon: Users },
-    ],
-    [t]
-  );
 
   /** Nothing changed → nothing to save. Saving an untouched form used to write and toast anyway.
    *  Compared on the trimmed values the API receives, so trailing spaces are not "a change". */
@@ -191,48 +169,33 @@ export function EvaluationDatasetSettings() {
   }
 
   const kbInList = knowledgeBases.some((k) => k.id === knowledgeBaseIdField);
+  const wikiInList = wikiSpaces.some((w) => w.id === wikiSpaceIdField);
 
   return (
     // Rendered inside the dataset shell, which already names the dataset and says how to go back.
-    <div className="settings-page">
+    // No second tab strip: a dataset has one settings page, and its parts read as panels under it —
+    // the shape every other tab of this shell uses.
+    <>
       <EntityViewHeader
         title={t('evaluationDetail.settings')}
         subtitle={t('evaluationSettings.settingsHint')}
+        actions={
+          <>
+            {dirty ? <span className="eval-settings-unsaved">{t('evaluationSettings.unsaved')}</span> : null}
+            <button
+              type="button"
+              className="btn btn-primary"
+              onClick={() => void handleSave()}
+              disabled={saving || !dirty}
+            >
+              {saving ? t('evaluation.saving') : t('shared.save')}
+            </button>
+          </>
+        }
       />
 
-      <div className="settings-page-tabs eval-dataset-settings-tabs">
-        {settingsTabs.map((tab) => (
-          <button
-            key={tab.id}
-            type="button"
-            className={`settings-page-tab ${activeTab === tab.id ? 'active' : ''}`}
-            onClick={() => {
-              setActiveTab(tab.id);
-              setSearchParams({ tab: tab.id }, { replace: true });
-            }}
-          >
-            <tab.icon size={16} />
-            <span>{tab.label}</span>
-          </button>
-        ))}
-      </div>
-
-      {activeTab === 'sharing' && evaluationId ? (
-        <div className="settings-page-form">
-          <ResourceSharePanel
-            resourceType={RESOURCE_TYPES.evaluation}
-            resourceId={evaluationId}
-            title={t('evaluationSettings.sharingTitle')}
-          />
-        </div>
-      ) : null}
-
-      {activeTab === 'general' ? (
-      <>
-      <div className="settings-page-form">
-        <section className="settings-page-section">
-          <h2>{t('evaluationSettings.general')}</h2>
-          <p className="settings-page-hint">{t('evaluationSettings.generalHint')}</p>
+      <EntityViewPanel title={t('evaluationSettings.general')} description={t('evaluationSettings.generalHint')}>
+        <div className="entity-view__form">
           <FormField label={t('shared.name')}>
             <input
               type="text"
@@ -249,11 +212,14 @@ export function EvaluationDatasetSettings() {
               rows={3}
             />
           </FormField>
-        </section>
+        </div>
+      </EntityViewPanel>
 
-        <section className="settings-page-section">
-          <h2>{t('evaluationSettings.knowledgeBase')}</h2>
-          <p className="settings-page-hint">{t('evaluationSettings.knowledgeBaseHint')}</p>
+      <EntityViewPanel
+        title={t('evaluationSettings.knowledgeBase')}
+        description={t('evaluationSettings.knowledgeBaseHint')}
+      >
+        <div className="entity-view__form">
           <FormField
             label={t('evaluationSettings.knowledgeBaseLabel')}
             hint={
@@ -262,7 +228,7 @@ export function EvaluationDatasetSettings() {
                 {knowledgeBaseIdField.trim() ? (
                   <Link
                     to={`/knowledge-bases/${knowledgeBaseIdField.trim()}?tab=search`}
-                    className="eval-dataset-settings-link"
+                    className="eval-settings-link"
                   >
                     {t('evaluationSettings.openKnowledgeBase')}
                   </Link>
@@ -270,10 +236,7 @@ export function EvaluationDatasetSettings() {
               </>
             }
           >
-            <select
-              value={knowledgeBaseIdField}
-              onChange={(e) => setKnowledgeBaseIdField(e.target.value)}
-            >
+            <select value={knowledgeBaseIdField} onChange={(e) => setKnowledgeBaseIdField(e.target.value)}>
               {!kbInList && knowledgeBaseIdField ? (
                 <option value={knowledgeBaseIdField}>
                   {dataset.knowledge_base_name || knowledgeBaseIdField}
@@ -286,11 +249,14 @@ export function EvaluationDatasetSettings() {
               ))}
             </select>
           </FormField>
-        </section>
+        </div>
+      </EntityViewPanel>
 
-        <section className="settings-page-section">
-          <h2>{t('evaluationSettings.semanticModel')}</h2>
-          <p className="settings-page-hint">{t('evaluationSettings.semanticModelHint')}</p>
+      <EntityViewPanel
+        title={t('evaluationSettings.semanticModel')}
+        description={t('evaluationSettings.semanticModelHint')}
+      >
+        <div className="entity-view__form">
           <FormField label={t('evaluationSettings.semanticModelLabel')}>
             <select
               value={semanticModelIdField}
@@ -307,11 +273,11 @@ export function EvaluationDatasetSettings() {
               ))}
             </select>
           </FormField>
-        </section>
+        </div>
+      </EntityViewPanel>
 
-        <section className="settings-page-section">
-          <h2>{t('evaluationSettings.wikiSpace')}</h2>
-          <p className="settings-page-hint">{t('evaluationSettings.wikiSpaceHint')}</p>
+      <EntityViewPanel title={t('evaluationSettings.wikiSpace')} description={t('evaluationSettings.wikiSpaceHint')}>
+        <div className="entity-view__form">
           <FormField
             label={t('evaluationSettings.wikiSpaceLabel')}
             hint={
@@ -320,7 +286,7 @@ export function EvaluationDatasetSettings() {
                 {wikiSpaceIdField.trim() ? (
                   <Link
                     to={`/wikis/${wikiSpaceIdField.trim()}/settings`}
-                    className="eval-dataset-settings-link"
+                    className="eval-settings-link"
                   >
                     {t('evaluationSettings.openWikiSpace')}
                   </Link>
@@ -328,14 +294,11 @@ export function EvaluationDatasetSettings() {
               </>
             }
           >
-            <select
-              value={wikiSpaceIdField}
-              onChange={(e) => setWikiSpaceIdField(e.target.value)}
-            >
+            <select value={wikiSpaceIdField} onChange={(e) => setWikiSpaceIdField(e.target.value)}>
               <option value="">{t('evaluationSettings.wikiSpaceNone')}</option>
               {/* A space the dataset points at but this reader cannot list: show it, never silently
                   swap the choice to none. */}
-              {wikiSpaceIdField && !wikiSpaces.some((w) => w.id === wikiSpaceIdField) ? (
+              {wikiSpaceIdField && !wikiInList ? (
                 <option value={wikiSpaceIdField}>{wikiSpaceIdField}</option>
               ) : null}
               {wikiSpaces.map((w) => (
@@ -345,35 +308,33 @@ export function EvaluationDatasetSettings() {
               ))}
             </select>
           </FormField>
-        </section>
-
-        <div className="settings-page-actions">
-          <button
-            type="button"
-            className="btn btn-primary"
-            onClick={() => void handleSave()}
-            disabled={saving || !dirty}
-          >
-            {saving ? t('evaluation.saving') : t('shared.save')}
-          </button>
-          {dirty ? <span className="settings-page-unsaved">{t('evaluationSettings.unsaved')}</span> : null}
         </div>
-      </div>
+      </EntityViewPanel>
 
-      <section className="eval-dataset-settings-danger settings-page-form">
-        <h2>{t('evaluationSettings.dangerZone')}</h2>
-        <p className="settings-page-hint">{t('evaluationSettings.dangerHint')}</p>
+      <EntityViewPanel title={t('evaluationSettings.sharingTitle')}>
+        <ResourceSharePanel
+          resourceType={RESOURCE_TYPES.evaluation}
+          resourceId={evaluationId}
+          title={t('evaluationSettings.sharingTitle')}
+        />
+      </EntityViewPanel>
+
+      <section className="account-card eval-settings-danger">
+        <div className="account-card-head">
+          <div>
+            <h2 className="account-card-title">{t('evaluationSettings.dangerZone')}</h2>
+            <p className="account-card-desc">{t('evaluationSettings.dangerHint')}</p>
+          </div>
+        </div>
         <button
           type="button"
-          className="btn eval-dataset-settings-delete"
+          className="btn eval-settings-delete"
           onClick={() => void handleDelete()}
           disabled={deleting}
         >
           {deleting ? t('evaluationSettings.deleting') : t('evaluationSettings.deleteDataset')}
         </button>
       </section>
-      </>
-      ) : null}
-    </div>
+    </>
   );
 }

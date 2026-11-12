@@ -235,7 +235,6 @@
     "deleteDataset": "Delete dataset",
     "deleting": "Deleting…",
     "deleteFailed": "Delete failed",
-    "tabSharing": "Sharing",
     "sharingTitle": "Who can access this evaluation",
     "semanticModel": "Semantic model",
     "semanticModelHint": "Required for a data-query evaluation: answers are judged by the queries they cite (model, metric, SQL), not by the numbers they return.",

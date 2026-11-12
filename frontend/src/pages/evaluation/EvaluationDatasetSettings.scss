@@ -1,44 +1,34 @@
-@use '../../styles/design-system/tokens' as ds;
-
-/* `.settings-page` already sets the width cap; this class only carries what is specific to the
-   evaluation settings card (tabs joined to the form, the danger card at the end). */
-.eval-dataset-settings-tabs {
-  margin-bottom: 0;
+/* Beside the header's save button: says why it is enabled, not that it exists. */
+.eval-settings-unsaved {
+  font-size: var(--text-md);
+  color: var(--color-text-muted);
 }
 
-.eval-dataset-settings-link {
+.eval-settings-link {
   font-size: var(--text-base);
   color: var(--color-accent);
   text-decoration: none;
 }
 
-.eval-dataset-settings-link:hover {
+.eval-settings-link:hover {
   text-decoration: underline;
 }
 
-/* Sits beside the save button, in the same row: says why the button is on, not that it exists. */
-.settings-page-unsaved {
-  font-size: var(--text-md);
-  color: var(--color-text-muted);
-}
-
-/* Same heading scale as the sections above it; only the frame and the action say "danger". */
-.eval-dataset-settings-danger {
-  margin-top: var(--space-6);
+/* Same surface as an `EntityViewPanel`; only the frame and the action say "danger". */
+.eval-settings-danger {
   border-color: color-mix(in srgb, var(--color-error) 35%, var(--color-border));
 }
 
-.eval-dataset-settings-danger h2 {
+.eval-settings-danger .account-card-title,
+.eval-settings-delete {
   color: var(--color-error);
 }
 
-.eval-dataset-settings-delete {
-  margin-top: var(--space-2);
+.eval-settings-delete {
   background: transparent;
-  color: var(--color-error);
   border: 1px solid color-mix(in srgb, var(--color-error) 50%, var(--color-border));
 }
 
-.eval-dataset-settings-delete:hover:not(:disabled) {
+.eval-settings-delete:hover:not(:disabled) {
   background: color-mix(in srgb, var(--color-error) 12%, transparent);
 }
