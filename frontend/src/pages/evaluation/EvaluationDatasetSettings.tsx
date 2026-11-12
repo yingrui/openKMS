@@ -176,17 +176,9 @@ export function EvaluationDatasetSettings() {
   const kbInList = knowledgeBases.some((k) => k.id === knowledgeBaseIdField);
 
   return (
+    // Rendered inside the dataset shell, which already says where you are and how to go back.
     <div className="eval-dataset-settings">
-      <div className="eval-detail-header">
-        <Link to={`/evaluations/${evaluationId}`} className="eval-back">
-          <ArrowLeft size={18} />
-          <span>{t('evaluationSettings.backToDataset')}</span>
-        </Link>
-        <div className="eval-detail-title-row">
-          <h1>{t('evaluationSettings.pageTitle')}</h1>
-        </div>
-        <p className="eval-detail-desc">{t('evaluationSettings.configureSubtitle', { name: dataset.name })}</p>
-      </div>
+      <p className="page-subtitle">{t('evaluationSettings.configureSubtitle', { name: dataset.name })}</p>
 
       <div className="settings-page-tabs eval-dataset-settings-tabs">
         {settingsTabs.map((tab) => (

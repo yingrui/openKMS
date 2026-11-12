@@ -1,13 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
-import {
-  getEvaluationRun,
-  listEvaluationRuns,
-  runEvaluation,
-  type EvaluationRunListItem,
-  type EvaluationRunResponse,
-} from '../../data/evaluationsApi';
+import { listEvaluationRuns, runEvaluation, type EvaluationRunListItem } from '../../data/evaluationsApi';
 import { RunRequestError, buildRunRequest } from './runRequest';
 import type { RunOptions } from './RunEvaluationDialog';
 
@@ -20,28 +14,20 @@ import type { RunOptions } from './RunEvaluationDialog';
 export function useEvaluationRun({
   evaluationId,
   evaluationType,
-  runFromUrl,
-  setRunInUrl,
-  onFinished,
+  onQueued,
 }: {
   evaluationId: string | undefined;
   /** The run type last chosen; the dialog does not change it, the toolbar does. */
   evaluationType: string;
-  /** `?run=<id>` — the run this URL points at, so a link can be shared. */
-  runFromUrl: string | null;
-  setRunInUrl: (runId: string | null) => void;
-  /** Called when a run finishes (reload items, counts, the report). */
-  onFinished: () => void;
+  /** Called with the new run's id — the runs page opens it rather than polling here. */
+  onQueued: (runId: string) => void;
 }) {
   const { t } = useTranslation('workspace');
   const [runs, setRuns] = useState<EvaluationRunListItem[]>([]);
   const [runsLoading, setRunsLoading] = useState(false);
-  const [runView, setRunView] = useState<EvaluationRunResponse | null>(null);
   const [running, setRunning] = useState(false);
   const [startedAt, setStartedAt] = useState<number | null>(null);
   const [elapsed, setElapsed] = useState(0);
-  /** The run this page is waiting on; polling stops when the worker closes it. */
-  const [activeRunId, setActiveRunId] = useState<string | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
 
   const loadRuns = useCallback(async () => {
@@ -61,69 +47,11 @@ export function useEvaluationRun({
     void loadRuns();
   }, [loadRuns]);
 
-  // A run in the URL is the one to show (a shared link, or the one just queued).
-  useEffect(() => {
-    if (!evaluationId || !runFromUrl || runView?.run_id === runFromUrl) return;
-    let cancelled = false;
-    void (async () => {
-      try {
-        const res = await getEvaluationRun(evaluationId, runFromUrl);
-        if (!cancelled) setRunView(res);
-      } catch {
-        if (!cancelled) {
-          toast.error(t('evaluationDetail.toastLoadRunFailed'));
-          setRunInUrl(null);
-        }
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [evaluationId, runFromUrl, runView?.run_id, setRunInUrl, t]);
-
   useEffect(() => {
     if (!running || !startedAt) return;
     const id = window.setInterval(() => setElapsed(Math.round((Date.now() - startedAt) / 1000)), 1000);
     return () => window.clearInterval(id);
   }, [running, startedAt]);
-
-  // Follow the queued run until the worker closes it: the run row is what this page shows, so it is what gets polled.
-  useEffect(() => {
-    if (!activeRunId || !evaluationId) return;
-    let cancelled = false;
-    const poll = async () => {
-      try {
-        const res = await getEvaluationRun(evaluationId, activeRunId);
-        if (cancelled) return;
-        setRunView(res);
-        if (res.status === 'running') return;
-        setActiveRunId(null);
-        setRunning(false);
-        setStartedAt(null);
-        void loadRuns();
-        onFinished();
-        if (res.status === 'completed') {
-          toast.success(
-            t('evaluationDetail.toastRunSuccess', {
-              runId: `${res.run_id.slice(0, 8)}…`,
-              pass: res.pass_count,
-              total: res.item_count,
-            }),
-          );
-        } else {
-          toast.error(res.error_message || t('evaluationDetail.toastRunFailed'));
-        }
-      } catch {
-        /* keep polling: a transient read failure should not abandon a run that is still going */
-      }
-    };
-    void poll();
-    const id = window.setInterval(() => void poll(), 3000);
-    return () => {
-      cancelled = true;
-      window.clearInterval(id);
-    };
-  }, [activeRunId, evaluationId, loadRuns, onFinished, t]);
 
   const openDialog = () => setDialogOpen(true);
   const closeDialog = () => setDialogOpen(false);
@@ -149,19 +77,17 @@ export function useEvaluationRun({
       setRunning(true);
       setStartedAt(Date.now());
       setElapsed(0);
-      setRunView(null);
       try {
         const queued = await runEvaluation(evaluationId, body);
-        setRunView(queued);
-        setRunInUrl(queued.run_id);
-        setActiveRunId(queued.run_id);
+        onQueued(queued.run_id);
+        toast.success(t('evaluationDetail.toastRunQueued', { runId: `${queued.run_id.slice(0, 8)}…` }));
       } catch (e: unknown) {
         toast.error(e instanceof Error ? e.message : t('evaluationDetail.toastRunFailed'));
         setRunning(false);
         setStartedAt(null);
       }
     },
-    [evaluationId, evaluationType, setRunInUrl, t],
+    [evaluationId, evaluationType, onQueued, t],
   );
 
   return useMemo(
@@ -169,15 +95,13 @@ export function useEvaluationRun({
       runs,
       runsLoading,
       loadRuns,
-      runView,
       running,
       elapsed,
       dialogOpen,
       openDialog,
       closeDialog,
       submit,
-      showRun: setRunView,
     }),
-    [runs, runsLoading, loadRuns, runView, running, elapsed, dialogOpen, submit],
+    [runs, runsLoading, loadRuns, running, elapsed, dialogOpen, submit],
   );
 }

@@ -44,7 +44,11 @@ import { ConsolePermissionManagement } from './pages/console/permissions/Console
 import { ConsoleAccessGroups } from './pages/console/permissions/ConsoleAccessGroups';
 import { ConsoleDataSecurityIssues } from './pages/console/data/ConsoleDataSecurityIssues';
 import { EvaluationDatasetList } from './pages/evaluation/EvaluationDatasetList';
-import { EvaluationDatasetDetail } from './pages/evaluation/EvaluationDatasetDetail';
+import { EvaluationDatasetDetailPage } from './pages/evaluation/EvaluationDatasetDetailPage';
+import { EvaluationOverviewTab } from './pages/evaluation/EvaluationOverviewTab';
+import { EvaluationItemsTab } from './pages/evaluation/EvaluationItemsTab';
+import { EvaluationRunsTab } from './pages/evaluation/EvaluationRunsTab';
+import { EvaluationRunDetailPage } from './pages/evaluation/EvaluationRunDetailPage';
 import { EvaluationDatasetSettings } from './pages/evaluation/EvaluationDatasetSettings';
 import { FeatureGate } from './components/FeatureGate';
 import { ErrorBoundary } from './components/ErrorBoundary';
@@ -335,11 +339,6 @@ const AgentSkillsPage = lazy(() => import('./pages/agents/AgentSkillsPage').then
 const AgentSkillSettings = lazy(() =>
   import('./pages/agents/AgentSkillSettings').then((m) => ({ default: m.AgentSkillSettings })),
 );
-function EvaluationDatasetDetailPage() {
-  const { id } = useParams();
-  return <EvaluationDatasetDetail key={id ?? ''} />;
-}
-
 function LegacyConsoleDatasetRedirect() {
   const { id } = useParams();
   return <Navigate to={`/datasets/${id ?? ''}`} replace />;
@@ -461,8 +460,16 @@ function App() {
           <Route path="wikis/:id/settings" element={<WikiSpaceSettings />} />
           <Route path="wikis/:id" element={<WikiSpaceRootToGraph />} />
           <Route path="evaluations" element={<FeatureGate feature="evaluations"><EvaluationDatasetList /></FeatureGate>} />
-          <Route path="evaluations/:id/settings" element={<FeatureGate feature="evaluations"><EvaluationDatasetSettings /></FeatureGate>} />
-          <Route path="evaluations/:id" element={<FeatureGate feature="evaluations"><EvaluationDatasetDetailPage /></FeatureGate>} />
+          <Route
+            path="evaluations/:id"
+            element={<FeatureGate feature="evaluations"><EvaluationDatasetDetailPage /></FeatureGate>}
+          >
+            <Route index element={<EvaluationOverviewTab />} />
+            <Route path="items" element={<EvaluationItemsTab />} />
+            <Route path="runs" element={<EvaluationRunsTab />} />
+            <Route path="runs/:runId" element={<EvaluationRunDetailPage />} />
+            <Route path="settings" element={<EvaluationDatasetSettings />} />
+          </Route>
           <Route path="glossaries" element={<GlossaryList />} />
           <Route path="glossaries/:id/settings" element={<GlossarySettings />} />
           <Route path="glossaries/:id" element={<GlossaryDetail />} />

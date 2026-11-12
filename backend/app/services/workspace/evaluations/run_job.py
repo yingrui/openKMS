@@ -30,6 +30,7 @@ from app.database import async_session_maker
 from app.models.evaluation import Evaluation, EvaluationItem
 from app.models.evaluation_run import EvaluationRun, EvaluationRunItem
 from app.models.knowledge_base import KnowledgeBase
+from app.services.platform.boundaries import boundary
 
 logger = logging.getLogger(__name__)
 
@@ -104,7 +105,9 @@ async def execute_run(run_id: str, *, should_abort: Callable[[], bool] | None = 
             return
 
         key_id: str | None = None
-        try:
+        # A worker task is the case `boundary` exists for: whatever the agent, the judge or the network does, the run row
+        # records it and the job does not crash the worker loop.
+        with boundary("run the evaluation", logger=logger, reraise=(HTTPException,)) as failed:
             token, key_id = await _creator_token(db, evaluation)
             judge_model_id, judge_config = await _judge_config(db, kb, params.get("judge_model_id"))
             item_rows = await _execute_strategy(
@@ -124,12 +127,11 @@ async def execute_run(run_id: str, *, should_abort: Callable[[], bool] | None = 
 
                 report = await build_run_report(db, evaluation, item_rows, judge_config, language)
             await _finish_completed(db, run, item_rows, report)
-        except Exception as exc:  # noqa: BLE001 - recorded, never thrown at the worker loop  # noqa: BLE001 - a failed run must be recorded, not thrown at the worker loop
-            logger.exception("evaluation run %s failed", run_id)
-            await _finish_failed(db, run, str(exc) or type(exc).__name__)
-        finally:
-            if key_id:
-                await _revoke(db, key_id)
+        if failed:
+            logger.exception("evaluation run %s failed: %s", run_id, failed[0])
+            await _finish_failed(db, run, str(failed[0]) or type(failed[0]).__name__)
+        if key_id:
+            await _revoke(db, key_id)
 
 
 async def _creator_token(db: AsyncSession, evaluation: Evaluation) -> tuple[str, str]:
@@ -156,11 +158,11 @@ async def _creator_token(db: AsyncSession, evaluation: Evaluation) -> tuple[str,
 async def _revoke(db: AsyncSession, key_id: str) -> None:
     from app.services.identity.users.user_api_key_service import revoke_user_api_key
 
-    try:
+    with boundary("revoke the evaluation run key", logger=logger) as failed:
         await revoke_user_api_key(db, key_id)
         await db.commit()
-    except Exception:  # noqa: BLE001 - a key that outlives a failed revoke is a cron's problem, not the run's
-        logger.warning("could not revoke evaluation run key %s", key_id)
+    if failed:
+        logger.warning("could not revoke evaluation run key %s: %s", key_id, failed[0])
 
 
 async def _judge_config(db: AsyncSession, kb: KnowledgeBase, override_id: str | None) -> tuple[str, dict[str, Any]]:

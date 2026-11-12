@@ -978,3 +978,100 @@
   max-height: 220px;
   overflow: auto;
 }
+
+/* One tab: a lead line, its actions, then the content — the shell above it already says what the page is. */
+.eval-tab {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.eval-tab-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-4);
+  flex-wrap: wrap;
+}
+
+.eval-tab-head .page-subtitle {
+  margin: 0;
+}
+
+.eval-tab-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+
+.eval-import-btn {
+  cursor: pointer;
+}
+
+.eval-overview-line {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin: 0 0 var(--space-2);
+  font-size: var(--text-md);
+}
+
+.eval-overview-verdict {
+  margin: 0 0 var(--space-2);
+  font-size: var(--text-md);
+  line-height: 1.55;
+}
+
+.eval-overview-actions {
+  display: flex;
+  gap: var(--space-2);
+  margin: 0;
+}
+
+.eval-overview-facts {
+  display: grid;
+  grid-template-columns: minmax(6rem, auto) 1fr;
+  gap: var(--space-1) var(--space-4);
+  margin: 0 0 var(--space-3);
+  font-size: var(--text-md);
+
+  dt {
+    color: var(--color-text-muted);
+  }
+
+  dd {
+    margin: 0;
+  }
+}
+
+.eval-run-status {
+  display: inline-block;
+  padding: 2px var(--space-2);
+  border-radius: var(--radius-sm);
+  font-size: var(--text-xs);
+  font-weight: 600;
+  background: var(--color-bg-muted);
+  color: var(--color-text-secondary);
+
+  &--completed {
+    background: var(--color-accent-subtle);
+    color: var(--color-accent);
+  }
+
+  &--failed {
+    background: color-mix(in srgb, var(--color-error) 15%, transparent);
+    color: var(--color-error);
+  }
+
+  &--running {
+    background: var(--color-surface-sunken);
+    color: var(--color-text);
+  }
+}
+
+.eval-run-row-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
