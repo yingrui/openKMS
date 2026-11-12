@@ -34,9 +34,11 @@ TEMPLATE_VARIABLES = {
     "model_name": "Model identifier (from linked model or settings)",
     "document_id": "Document UUID",
     "api_url": "Backend API URL for metadata PUT",
-    "extraction_model_name": "LLM model name (e.g. qwen3.5) for metadata extraction (from channel)",
-    "extraction_schema": "Extraction schema as JSON string (from channel)",
-    "extraction_args": "Full extraction flags when channel has extraction; empty otherwise",
+    "extraction_args": (
+        "The whole extraction block (--extract-metadata --extraction-model-name … --extraction-schema …) "
+        "when the channel has an extraction model and schema; empty otherwise. Append it to the command; "
+        "do not spell the flags out yourself."
+    ),
 }
 
 
@@ -177,6 +179,13 @@ async def run_pipeline(
         doc = await session.get(Document, document_id)
         if doc and doc.channel_id:
             channel = await session.get(DocumentChannel, doc.channel_id)
+            if channel and channel.extraction_schema and not channel.extraction_model_id:
+                logger.warning(
+                    "Channel %s has an extraction schema but no extraction model; metadata extraction "
+                    "is skipped for document %s. Set the channel's extraction model in the console.",
+                    channel.id,
+                    document_id,
+                )
             if channel and channel.extraction_model_id and channel.extraction_schema:
                 extraction_schema_data = channel.extraction_schema
                 ext_result = await session.execute(

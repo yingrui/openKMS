@@ -8,7 +8,7 @@ Pipelines define how a document is processed (command template + linked model). 
 |---------|--------|-------------|
 | Pipeline management | ✅ | CRUD via `/api/pipelines`; Pipelines.tsx with create/edit/delete |
 | Command templates | ✅ | Pipeline `command` field supports `{variable}` placeholders (e.g. `{input}`, `{s3_prefix}`) resolved at runtime |
-| Template variables API | ✅ | `GET /api/pipelines/template-variables` returns available placeholders with descriptions |
+| Template variables API | ✅ | `GET /api/pipelines/template-variables` returns available placeholders with descriptions. Metadata extraction is **one** placeholder: `{extraction_args}` expands to `--extract-metadata --extraction-model-name … --extraction-schema …` when the document's channel has **both** an extraction model and a schema, and to nothing otherwise. Spelling those flags out in a template is rejected on create/update (`EXTRACTION_FLAG_LITERALS`): with no extraction configured the placeholders they read render empty, and the CLI then receives `--extraction-schema` with no value (exit 1: `--extract-metadata requires --document-id and --extraction-schema`). A channel with a schema but no model logs a warning and skips extraction |
 | Channel-pipeline link | ✅ | Each channel can have a pipeline_id and auto_process flag |
 | Default pipeline | ✅ | "PaddleOCR Document Parse" seeded in migration with command template |
 | Baidu Cloud pipeline | ✅ | "Baidu Cloud Document Parse" seeded (`pipeline_baidu_doc_parse`; `baidu-doc-parse`) |
