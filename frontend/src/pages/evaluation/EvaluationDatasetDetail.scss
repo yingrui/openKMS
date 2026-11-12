@@ -949,6 +949,16 @@
   cursor: pointer;
 }
 
+/* A run row opens the run: the whole row is the target, so there is no "open" button to miss. */
+.eval-run-row {
+  cursor: pointer;
+}
+
+.eval-run-row:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: -2px;
+}
+
 .eval-overview-line {
   display: flex;
   align-items: center;

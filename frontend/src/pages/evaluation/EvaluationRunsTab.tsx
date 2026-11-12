@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { Loader2, Play, RefreshCw, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
@@ -161,7 +161,16 @@ export function EvaluationRunsTab() {
             </thead>
             <tbody>
               {runs.map((r) => (
-                <tr key={r.id}>
+                <tr
+                  key={r.id}
+                  className="eval-run-row"
+                  onClick={() => navigate(`/evaluations/${evaluationId}/runs/${r.id}`)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') navigate(`/evaluations/${evaluationId}/runs/${r.id}`);
+                  }}
+                  role="link"
+                  tabIndex={0}
+                >
                   <td>{new Date(r.created_at).toLocaleString()}</td>
                   <td>{r.evaluation_type}</td>
                   <td>
@@ -172,9 +181,6 @@ export function EvaluationRunsTab() {
                   </td>
                   <TableRowActionCell>
                     <TableRowActions>
-                      <Link to={`/evaluations/${evaluationId}/runs/${r.id}`} className="btn btn-secondary btn-sm">
-                        {t('evaluationDetail.openRun')}
-                      </Link>
                       <TableRowActionButton
                         title={t('shared.delete')}
                         aria-label={t('shared.delete')}
