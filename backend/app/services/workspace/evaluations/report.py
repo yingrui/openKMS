@@ -18,6 +18,8 @@ import json
 import logging
 from typing import TYPE_CHECKING, Any
 
+from sqlalchemy.exc import SQLAlchemyError
+
 if TYPE_CHECKING:
     from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -198,6 +200,13 @@ async def build_run_report(
         )
     try:
         schema = await _semantic_model_schema(db, ev.semantic_model_id)
-    except Exception:  # noqa: BLE001 - a missing schema makes the report weaker, not the run broken
+    except (SQLAlchemyError, OSError) as exc:
+        # The run's own results are already stored; an unreadable model schema makes the advice
+        # poorer, so it must not turn a finished run into a failed one.
+        logger.warning(
+            "Run report continues without the model schema (%s: %s)",
+            type(exc).__name__,
+            exc,
+        )
         schema = {"fields": [], "datasets": []}
     return await summarize_run(items=items, schema=schema, model_config=judge_config, language=language)
