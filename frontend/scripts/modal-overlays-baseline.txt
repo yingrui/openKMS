@@ -12,7 +12,6 @@ src/pages/wiki/WikiSpaceSettings.modals.tsx .wiki-space-settings-file-input-over
 src/pages/wiki/WikiSpaceSettings.modals.tsx .wiki-space-settings-import-overlay
 src/pages/wiki/WikiSpaceSettings.modals.tsx .wiki-space-settings-modal-overlay
 src/pages/wiki/WikiSpaceList.tsx .resource-list-dialog-overlay
-src/pages/pipelines/Pipelines.tsx .pipelines-modal-overlay
 src/pages/knowledge-bases/KnowledgeBaseDetail.dialogs.pickers.tsx .kb-doc-picker-overlay
 src/pages/knowledge-bases/KnowledgeBaseDetail.dialogs.pickers.tsx .kb-doc-picker-overlay
 src/pages/knowledge-bases/KnowledgeBaseList.tsx .resource-list-dialog-overlay
@@ -28,4 +27,3 @@ src/pages/documents/DocumentDetail.modals.tsx .document-detail-pageindex-dialog-
 src/pages/documents/DocumentDetail.pageIndex.tsx .document-detail-pageindex-dialog-overlay
 src/pages/documents/DocumentChannel.modals.tsx .channel-page-modal-overlay
 src/pages/documents/DocumentChannel.modals.tsx .channel-page-modal-overlay
-src/pages/jobs/JobRuns.tsx .jobs-modal-overlay

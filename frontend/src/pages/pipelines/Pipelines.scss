@@ -206,42 +206,6 @@
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
 }
 
-.pipelines-modal-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: var(--space-4) var(--space-5);
-  border-bottom: 1px solid var(--color-border);
-}
-
-.pipelines-modal-header h2 {
-  margin: 0;
-  font-size: var(--text-lg);
-}
-
-.pipelines-modal-header button {
-  background: none;
-  border: none;
-  cursor: pointer;
-  color: var(--color-text-muted);
-  padding: var(--space-1);
-}
-
-.pipelines-modal-body {
-  padding: 20px;
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-4);
-}
-
-.pipelines-modal-body label {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-1);
-  font-size: var(--text-md);
-  font-weight: 500;
-}
-
 .pipelines-modal-body input,
 .pipelines-modal-body textarea {
   padding: var(--space-2) var(--space-3);
@@ -251,19 +215,6 @@
   background: var(--color-bg);
   color: var(--color-text);
   font-family: inherit;
-}
-
-.pipelines-modal-body textarea {
-  font-family: monospace;
-  resize: vertical;
-}
-
-.pipelines-modal-actions {
-  display: flex;
-  justify-content: flex-end;
-  gap: var(--space-2);
-  padding: var(--space-4) var(--space-5);
-  border-top: 1px solid var(--color-border);
 }
 
 .pipelines-template-help {

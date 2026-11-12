@@ -211,31 +211,6 @@
   box-shadow: var(--shadow-elevated);
 }
 
-.jobs-modal-header {
-  padding: var(--space-4) var(--space-5);
-  border-bottom: 1px solid var(--color-border);
-}
-
-.jobs-modal-header h2 {
-  margin: 0;
-  font-size: var(--text-lg);
-}
-
-.jobs-modal-body {
-  padding: var(--space-5);
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-4);
-}
-
-.jobs-modal-body label {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-1);
-  font-size: var(--text-md);
-  font-weight: var(--font-weight-medium);
-}
-
 .jobs-modal-body input,
 .jobs-modal-body select {
   padding: var(--space-2) var(--space-3);
@@ -257,12 +232,4 @@
 .jobs-modal-body label.jobs-modal-checkbox input {
   width: auto;
   margin: 0;
-}
-
-.jobs-modal-actions {
-  display: flex;
-  justify-content: flex-end;
-  gap: var(--space-2);
-  padding: var(--space-4) var(--space-5);
-  border-top: 1px solid var(--color-border);
 }

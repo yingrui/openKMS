@@ -18,6 +18,8 @@ import {
 import { fetchAllPipelines, type PipelineResponse } from '../../data/pipelinesApi';
 import { useConfirm } from '../../contexts/ConfirmContext';
 import {
+  Dialog,
+  FormField,
   Pagination,
   TableRowActionButton,
   TableRowActionCell,
@@ -338,59 +340,57 @@ export function JobRuns() {
         </div>
       </div>
 
-      {showCreate && (
-        <div className="jobs-modal-overlay" onClick={() => !submitting && setShowCreate(false)}>
-          <div className="jobs-modal" onClick={(e) => e.stopPropagation()}>
-            <div className="jobs-modal-header">
-              <h2>{t('jobs.modalTitle')}</h2>
-            </div>
-            <div className="jobs-modal-body">
-              <label>
-                {t('jobs.documentId')}
-                <input
-                  type="text"
-                  value={docIdInput}
-                  onChange={(e) => setDocIdInput(e.target.value)}
-                  placeholder={t('jobs.documentPlaceholder')}
-                />
-              </label>
-              <label>
-                {t('jobs.pipeline')}
-                <select value={pipelineIdInput} onChange={(e) => setPipelineIdInput(e.target.value)}>
-                  <option value="">{t('jobs.pipelineDefault')}</option>
-                  {pipelines.filter((p) => p.is_active).map((p) => (
-                    <option key={p.id} value={p.id}>
-                      {p.name}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <label className="jobs-modal-checkbox">
-                <input
-                  type="checkbox"
-                  checked={forceReparseCreate}
-                  onChange={(e) => setForceReparseCreate(e.target.checked)}
-                  disabled={submitting}
-                />
-                <span title={t('jobs.forceFullReparseTitle')}>{t('jobs.forceFullReparse')}</span>
-              </label>
-            </div>
-            <div className="jobs-modal-actions">
-              <button type="button" className="btn btn-secondary" onClick={() => setShowCreate(false)} disabled={submitting}>
-                {t('shared.cancel')}
-              </button>
-              <button
-                type="button"
-                className="btn btn-primary"
-                onClick={() => void handleCreate()}
-                disabled={!docIdInput.trim() || submitting}
-              >
-                {submitting ? t('shared.creating') : t('jobs.createJob')}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <Dialog
+        open={showCreate}
+        onClose={() => !submitting && setShowCreate(false)}
+        title={t('jobs.modalTitle')}
+        closeAriaLabel={t('shared.close')}
+        closeDisabled={submitting}
+        size="md"
+        footer={
+          <>
+            <button type="button" className="btn btn-secondary" onClick={() => setShowCreate(false)} disabled={submitting}>
+              {t('shared.cancel')}
+            </button>
+            <button
+              type="button"
+              className="btn btn-primary"
+              onClick={() => void handleCreate()}
+              disabled={!docIdInput.trim() || submitting}
+            >
+              {submitting ? t('shared.creating') : t('jobs.createJob')}
+            </button>
+          </>
+        }
+      >
+        <FormField label={t('jobs.documentId')}>
+          <input
+            type="text"
+            value={docIdInput}
+            onChange={(e) => setDocIdInput(e.target.value)}
+            placeholder={t('jobs.documentPlaceholder')}
+          />
+        </FormField>
+        <FormField label={t('jobs.pipeline')}>
+          <select value={pipelineIdInput} onChange={(e) => setPipelineIdInput(e.target.value)}>
+            <option value="">{t('jobs.pipelineDefault')}</option>
+            {pipelines.filter((p) => p.is_active).map((p) => (
+              <option key={p.id} value={p.id}>
+                {p.name}
+              </option>
+            ))}
+          </select>
+        </FormField>
+        <label className="jobs-modal-checkbox">
+          <input
+            type="checkbox"
+            checked={forceReparseCreate}
+            onChange={(e) => setForceReparseCreate(e.target.checked)}
+            disabled={submitting}
+          />
+          <span title={t('jobs.forceFullReparseTitle')}>{t('jobs.forceFullReparse')}</span>
+        </label>
+      </Dialog>
     </div>
   );
 }

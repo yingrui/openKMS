@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Plus, GitBranch, Search, Trash2, Pencil, X, Loader2, Info } from 'lucide-react';
+import { Plus, GitBranch, Search, Trash2, Pencil, Loader2, Info } from 'lucide-react';
 import { toast } from 'sonner';
 import { ErrorBanner } from '../../components/ErrorBanner';
 import {
@@ -13,6 +13,7 @@ import {
 } from '../../data/pipelinesApi';
 import { fetchAllModels, type ApiModelResponse } from '../../data/modelsApi';
 import { useConfirm } from '../../contexts/ConfirmContext';
+import { Dialog, FormField } from '../../styles/design-system';
 import './Pipelines.scss';
 
 export function Pipelines() {
@@ -274,87 +275,79 @@ export function Pipelines() {
         </div>
       </div>
 
-      {showCreate && (
-        <div className="pipelines-modal-overlay" onClick={closeForm}>
-          <div className="pipelines-modal" onClick={(e) => e.stopPropagation()}>
-            <div className="pipelines-modal-header">
-              <h2>{editPipeline ? t('pipelines.modalEdit') : t('pipelines.modalNew')}</h2>
-              <button type="button" onClick={closeForm} disabled={submitting} aria-label={t('shared.close')}>
-                <X size={20} />
-              </button>
+      <Dialog
+        open={showCreate}
+        onClose={closeForm}
+        title={editPipeline ? t('pipelines.modalEdit') : t('pipelines.modalNew')}
+        closeAriaLabel={t('shared.close')}
+        closeDisabled={submitting}
+        size="md"
+        footer={
+          <>
+            <button type="button" className="btn btn-secondary" onClick={closeForm} disabled={submitting}>
+              {t('shared.cancel')}
+            </button>
+            <button
+              type="button"
+              className="btn btn-primary"
+              onClick={() => void handleSubmit()}
+              disabled={!formName.trim() || submitting}
+            >
+              {submitting ? t('shared.saving') : editPipeline ? t('shared.update') : t('shared.create')}
+            </button>
+          </>
+        }
+      >
+        <FormField label={t('shared.name')}>
+          <input type="text" value={formName} onChange={(e) => setFormName(e.target.value)} />
+        </FormField>
+        <FormField label={t('shared.description')}>
+          <input type="text" value={formDescription} onChange={(e) => setFormDescription(e.target.value)} />
+        </FormField>
+        <FormField label={t('pipelines.commandTemplate')}>
+          <input type="text" value={formCommand} onChange={(e) => setFormCommand(e.target.value)} />
+        </FormField>
+        <div className="pipelines-template-help">
+          <button type="button" className="pipelines-template-toggle" onClick={() => setShowVarHelp((v) => !v)}>
+            <Info size={14} />
+            <span>{showVarHelp ? t('pipelines.templateVarsHide') : t('pipelines.templateVarsShow')}</span>
+          </button>
+          {showVarHelp && Object.keys(templateVars).length > 0 && (
+            <div className="pipelines-template-vars">
+              {Object.entries(templateVars).map(([key, desc]) => (
+                <div key={key} className="pipelines-template-var">
+                  <code>{`{${key}}`}</code>
+                  <span>{desc}</span>
+                </div>
+              ))}
             </div>
-            <div className="pipelines-modal-body">
-              <label>
-                {t('shared.name')}
-                <input type="text" value={formName} onChange={(e) => setFormName(e.target.value)} />
-              </label>
-              <label>
-                {t('shared.description')}
-                <input type="text" value={formDescription} onChange={(e) => setFormDescription(e.target.value)} />
-              </label>
-              <label>
-                {t('pipelines.commandTemplate')}
-                <input type="text" value={formCommand} onChange={(e) => setFormCommand(e.target.value)} />
-              </label>
-              <div className="pipelines-template-help">
-                <button type="button" className="pipelines-template-toggle" onClick={() => setShowVarHelp((v) => !v)}>
-                  <Info size={14} />
-                  <span>{showVarHelp ? t('pipelines.templateVarsHide') : t('pipelines.templateVarsShow')}</span>
-                </button>
-                {showVarHelp && Object.keys(templateVars).length > 0 && (
-                  <div className="pipelines-template-vars">
-                    {Object.entries(templateVars).map(([key, desc]) => (
-                      <div key={key} className="pipelines-template-var">
-                        <code>{`{${key}}`}</code>
-                        <span>{desc}</span>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-              <label>
-                {t('pipelines.modelOptional')}
-                <select value={formModelId} onChange={(e) => setFormModelId(e.target.value)}>
-                  <option value="">{t('pipelines.noModelLinked')}</option>
-                  {allModels.map((m) => (
-                    <option key={m.id} value={m.id}>
-                      {m.name} ({m.provider_name})
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <div className="pipelines-modal-active">
-                <span>{t('pipelines.colActive')}</span>
-                <label className="pipelines-switch">
-                  <input
-                    type="checkbox"
-                    checked={formIsActive}
-                    onChange={(e) => setFormIsActive(e.target.checked)}
-                  />
-                  <span className="pipelines-switch-slider" />
-                </label>
-              </div>
-              <label>
-                {t('pipelines.defaultArgsJson')}
-                <textarea rows={4} value={formArgs} onChange={(e) => setFormArgs(e.target.value)} />
-              </label>
-            </div>
-            <div className="pipelines-modal-actions">
-              <button type="button" className="btn btn-secondary" onClick={closeForm} disabled={submitting}>
-                {t('shared.cancel')}
-              </button>
-              <button
-                type="button"
-                className="btn btn-primary"
-                onClick={() => void handleSubmit()}
-                disabled={!formName.trim() || submitting}
-              >
-                {submitting ? t('shared.saving') : editPipeline ? t('shared.update') : t('shared.create')}
-              </button>
-            </div>
-          </div>
+          )}
         </div>
-      )}
+        <FormField label={t('pipelines.modelOptional')}>
+          <select value={formModelId} onChange={(e) => setFormModelId(e.target.value)}>
+            <option value="">{t('pipelines.noModelLinked')}</option>
+            {allModels.map((m) => (
+              <option key={m.id} value={m.id}>
+                {m.name} ({m.provider_name})
+              </option>
+            ))}
+          </select>
+        </FormField>
+        <div className="pipelines-modal-active">
+          <span>{t('pipelines.colActive')}</span>
+          <label className="pipelines-switch">
+            <input
+              type="checkbox"
+              checked={formIsActive}
+              onChange={(e) => setFormIsActive(e.target.checked)}
+            />
+            <span className="pipelines-switch-slider" />
+          </label>
+        </div>
+        <FormField label={t('pipelines.defaultArgsJson')}>
+          <textarea rows={4} value={formArgs} onChange={(e) => setFormArgs(e.target.value)} />
+        </FormField>
+      </Dialog>
     </div>
   );
 }
