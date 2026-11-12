@@ -104,3 +104,14 @@ def test_wiki_page_avoids_mid_line_cut_without_headers():
     for c in chunks:
         tail = c["content"][-40:]
         assert not (tail.count("[[") > tail.count("]]")), f"chunk ends mid-wikilink: ...{tail!r}"
+
+
+def test_run_indexer_accepts_the_knowledge_base_id_the_cli_passes() -> None:
+    """`pipeline_cli` calls run_indexer(knowledge_base_id=…); the signature must keep it."""
+    import inspect
+
+    from openkms_cli.kb_indexer import run_indexer
+
+    params = inspect.signature(run_indexer).parameters
+    assert "knowledge_base_id" in params
+    assert params["knowledge_base_id"].default is inspect.Parameter.empty

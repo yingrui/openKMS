@@ -43,6 +43,16 @@ def cmd_get_page(ns: argparse.Namespace) -> None:
     print_json(r.json())
 
 
+def cmd_delete_page(ns: argparse.Namespace) -> None:
+    path_enc = quote(ns.path.strip("/").lstrip("/"), safe="")
+    api_path = f"/api/wiki-spaces/{ns.space_id}/pages/by-path/{path_enc}"
+    confirm_or_abort("delete wiki page", "DELETE", api_path, None, ns.yes, ns.dry_run)
+    with client() as s:
+        r = s.delete(api_path)
+    r.raise_for_status()
+    print(f"deleted wiki page {ns.path} in space {ns.space_id}")
+
+
 def cmd_pages_semantic_matches(ns: argparse.Namespace) -> None:
     """GET …/pages/semantic-matches — title/path substring first; else vector similarity when indexed."""
     params: dict[str, str | int] = {"q": ns.q}
@@ -104,6 +114,12 @@ def add_subparser(sub) -> None:
     gp.add_argument("--space-id", required=True)
     gp.add_argument("--path", required=True, help="Obsidian-style path, e.g. notes/hello")
     gp.set_defaults(fn=cmd_get_page)
+
+    dp = sp.add_parser("delete-page", help="Delete a page by path (DELETE by-path)")
+    dp.add_argument("--space-id", required=True)
+    dp.add_argument("--path", required=True, help="Page path, e.g. 算法/注水算法")
+    add_write_flags(dp)
+    dp.set_defaults(fn=cmd_delete_page)
 
     pg = sp.add_parser(
         "pages",

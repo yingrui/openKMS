@@ -541,6 +541,7 @@ def run_wiki_space_indexer(
 
 
 def run_indexer(
+    knowledge_base_id: str,
     api_url: str,
     auth_headers: Optional[dict[str, str]] = None,
     basic: Optional[tuple[str, str]] = None,

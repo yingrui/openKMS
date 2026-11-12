@@ -28,6 +28,7 @@ Prefix every invocation with `python scripts/cli.py` (or the project-agent path 
 | Wiki space files (full vault) | `wiki files list --space-id SP_ID` |
 | Docs linked to a wiki space | `wiki-spaces documents list --space-id SP_ID` |
 | One wiki page by path | `wiki get-page --space-id SP_ID --path notes/onboarding` |
+| Create / delete a KB, link wiki space / semantic model / ontology group | `kb create --name "…" --embedding-model-id model_… --wiki-space-ids-json '["…"]' --semantic-model-ids-json '["…"]' --ontology-group-ids-json '["…"]' --yes` · `kb delete --id KB --yes` · `kb semantic-models add --kb-id KB --semantic-model-id SM --yes` · `kb ontology-groups add --kb-id KB --ontology-group-id OG --yes` |
 | List KBs | `kb list` |
 | Wiki spaces on a KB | `kb wiki-spaces list --kb-id KB_ID` |
 | KB hybrid search | `kb search --id KB_ID --q "…" --limit 10` |
@@ -54,7 +55,7 @@ Prefix every invocation with `python scripts/cli.py` (or the project-agent path 
 | Run content review | `articles review run --id ART_ID --yes` |
 | Article lineage | `articles relationships create\|delete … --yes` |
 | Wiki space / link docs | `wiki-spaces create --name "…" --yes` · `wiki-spaces documents link\|unlink … --yes` |
-| Upsert wiki page | `wiki put-page --space-id ID --path my/page --title "T" --file ./note.md --yes` |
+| Upsert / delete wiki page | `wiki put-page --space-id ID --path my/page --title "T" --file ./note.md --yes` · `wiki delete-page --space-id ID --path my/page --yes` |
 | Delete wiki stored file | `wiki files delete --space-id SP_ID --file-id FILE_ID --yes` |
 | Wiki semantic index | `wiki-spaces semantic-index --id SP --yes` |
 | Link wiki → KB / reindex | `kb wiki-spaces link --kb-id KB --space-id SP --yes` · `kb wiki-spaces reindex --kb-id KB --space-id SP --yes` · `kb index --id KB --yes` |

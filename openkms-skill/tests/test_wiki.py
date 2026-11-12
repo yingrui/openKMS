@@ -49,3 +49,14 @@ def test_wiki_put_page_body(mock_api, tmp_path):
     assert str(req.url).endswith("/api/wiki-spaces/sp1/pages/by-path/my%2Fpage")
     body = json.loads(req.content)
     assert body == {"title": "T", "body": "hello world", "metadata": None}
+
+
+def test_wiki_delete_page_encodes_the_path(mock_api):
+    recorded, responses = mock_api
+    responses[("DELETE", "/api/wiki-spaces/sp1/pages/by-path/%E7%AE%97%E6%B3%95/%E6%B3%A8%E6%B0%B4%E7%AE%97%E6%B3%95")] = (204, None)
+
+    from openkms.commands.wiki import cmd_delete_page
+
+    cmd_delete_page(argparse.Namespace(space_id="sp1", path="算法/注水算法", yes=True, dry_run=False))
+    assert recorded[-1].method == "DELETE"
+    assert recorded[-1].url.path == "/api/wiki-spaces/sp1/pages/by-path/算法/注水算法"
