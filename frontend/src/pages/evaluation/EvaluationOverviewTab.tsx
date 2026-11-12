@@ -8,6 +8,7 @@ import {
   type EvaluationRunListItem,
   type EvaluationRunResponse,
 } from '../../data/evaluationsApi';
+import { EmptyState, StatusChip } from '../../styles/design-system';
 import { EntityViewPanel, EntityViewStat, EntityViewStats } from '../shared/EntityViewShell';
 import { useEvaluationDetail } from './EvaluationDetailContext';
 
@@ -67,7 +68,9 @@ export function EvaluationOverviewTab() {
         ) : latest ? (
           <>
             <p className="eval-overview-line">
-              <span className={`eval-run-status eval-run-status--${latest.status}`}>{latest.status}</span>
+              <StatusChip tone={latest.status === 'completed' ? 'ok' : latest.status === 'failed' ? 'warn' : 'accent'}>
+                {latest.status}
+              </StatusChip>
               <span>
                 {t('evaluationDetail.runScopeLine', { count: latest.item_count, total: itemTotal })} ·{' '}
                 {t('evaluationDetail.passLabel', { pass: latest.pass_count, total: latest.item_count })}
@@ -81,7 +84,7 @@ export function EvaluationOverviewTab() {
             </p>
           </>
         ) : (
-          <p className="page-subtitle">{t('evaluationDetail.emptyRuns')}</p>
+          <EmptyState title={t('evaluationDetail.emptyRuns')} description={t('evaluationDetail.emptyRunsHint')} />
         )}
       </EntityViewPanel>
 

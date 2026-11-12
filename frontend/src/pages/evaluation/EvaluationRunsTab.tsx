@@ -4,15 +4,25 @@ import { useTranslation } from 'react-i18next';
 import { Loader2, Play, RefreshCw, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { deleteEvaluationRun, listEvaluationRuns, type EvaluationRunListItem } from '../../data/evaluationsApi';
+import { useConfirm } from '../../contexts/ConfirmContext';
+import { EmptyState, PanelToolbar, StatusChip } from '../../styles/design-system';
 import { RunEvaluationDialog } from './RunEvaluationDialog';
 import { RUN_TYPES_BY_KIND, useEvaluationDetail } from './EvaluationDetailContext';
 import { useEvaluationRun } from './useEvaluationRun';
+
+/** A run's state as a chip tone: only the states that mean something get a colour. */
+const RUN_STATUS_TONE: Record<string, 'neutral' | 'accent' | 'ok' | 'warn'> = {
+  completed: 'ok',
+  running: 'accent',
+  failed: 'warn',
+};
 
 /** The history, and the one button that adds to it. A run's results live on their own page. */
 export function EvaluationRunsTab() {
   const { t } = useTranslation('workspace');
   const { evaluationId, dataset, itemTotal, reload } = useEvaluationDetail();
   const navigate = useNavigate();
+  const confirm = useConfirm();
   const allowedTypes = RUN_TYPES_BY_KIND[dataset.kind ?? 'answer'] ?? ['search_retrieval'];
   const [evaluationType, setEvaluationType] = useState<string>(allowedTypes[0]);
 
@@ -52,6 +62,16 @@ export function EvaluationRunsTab() {
   });
 
   const removeRun = async (runId: string) => {
+    if (
+      !(await confirm({
+        title: t('shared.delete'),
+        message: t('evaluationDetail.deleteRunConfirm'),
+        confirmLabel: t('shared.delete'),
+        danger: true,
+      }))
+    ) {
+      return;
+    }
     setDeletingRunId(runId);
     try {
       await deleteEvaluationRun(evaluationId, runId);
@@ -66,9 +86,11 @@ export function EvaluationRunsTab() {
 
   return (
     <div className="eval-tab">
-      <div className="eval-tab-head">
-        <p className="page-subtitle">{t('evaluationDetail.runsLead')}</p>
-        <div className="eval-tab-actions">
+      <PanelToolbar
+        as="div"
+        leading={<span>{t('evaluationDetail.runsLead')}</span>}
+        actions={
+          <>
           <label className="eval-run-type">
             <span>{t('evaluationDetail.typeLabel')}</span>
             <select
@@ -104,8 +126,9 @@ export function EvaluationRunsTab() {
             {runsLoading ? <Loader2 size={16} className="animate-spin" /> : <RefreshCw size={16} />}
             <span>{t('shared.refresh')}</span>
           </button>
-        </div>
-      </div>
+          </>
+        }
+      />
 
       {itemTotal === 0 ? <p className="eval-run-hint">{t('evaluationDetail.runNeedsItems')}</p> : null}
       {run.running ? (
@@ -116,7 +139,7 @@ export function EvaluationRunsTab() {
       ) : null}
 
       {runs.length === 0 ? (
-        <p className="page-subtitle">{t('evaluationDetail.emptyRuns')}</p>
+        <EmptyState title={t('evaluationDetail.emptyRuns')} description={t('evaluationDetail.emptyRunsHint')} />
       ) : (
         <div className="ds-table-wrap">
           <table className="eval-items-table eval-runs-table">
@@ -135,7 +158,7 @@ export function EvaluationRunsTab() {
                   <td>{new Date(r.created_at).toLocaleString()}</td>
                   <td>{r.evaluation_type}</td>
                   <td>
-                    <span className={`eval-run-status eval-run-status--${r.status}`}>{r.status}</span>
+                    <StatusChip tone={RUN_STATUS_TONE[r.status] ?? 'neutral'}>{r.status}</StatusChip>
                   </td>
                   <td>
                     {r.pass_count}/{r.item_count}

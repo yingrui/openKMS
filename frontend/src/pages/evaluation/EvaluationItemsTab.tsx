@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ChevronLeft, ChevronRight, Loader2, Pencil, Plus, Trash2, Upload, X } from 'lucide-react';
+import { Loader2, Pencil, Plus, Trash2, Upload } from 'lucide-react';
 import { toast } from 'sonner';
 import {
   createEvaluationItem,
@@ -10,6 +10,7 @@ import {
   updateEvaluationItem,
   type EvaluationItemResponse,
 } from '../../data/evaluationsApi';
+import { Dialog, FormField, Pagination, PanelToolbar } from '../../styles/design-system';
 import { useEvaluationDetail } from './EvaluationDetailContext';
 import { isQueryKind } from './EvaluationDetailContext';
 import { expectedQueryLines } from './expectedQueryText';
@@ -25,7 +26,7 @@ export function EvaluationItemsTab() {
   const [items, setItems] = useState<EvaluationItemResponse[]>([]);
   const [total, setTotal] = useState(itemTotal);
   const [page, setPage] = useState(0);
-  const pageSize = PAGE_SIZE_DEFAULT;
+  const [pageSize, setPageSize] = useState(PAGE_SIZE_DEFAULT);
   const [loading, setLoading] = useState(false);
   const [importing, setImporting] = useState(false);
 
@@ -130,17 +131,17 @@ export function EvaluationItemsTab() {
     }
   };
 
-  const totalPages = Math.max(1, Math.ceil(total / pageSize));
-
   return (
     <div className="eval-tab">
-      <div className="eval-tab-head">
-        <p className="page-subtitle">
-          {isQuery ? t('evaluationDetail.itemsLeadQuery') : t('evaluationDetail.itemsLeadAnswer')}
-        </p>
-        <div className="eval-tab-actions">
-          {isQuery ? null : (
-            <label className="btn btn-secondary eval-import-btn">
+      <PanelToolbar
+        as="div"
+        leading={
+          <span>{isQuery ? t('evaluationDetail.itemsLeadQuery') : t('evaluationDetail.itemsLeadAnswer')}</span>
+        }
+        actions={
+          <>
+            {isQuery ? null : (
+              <label className="btn btn-secondary eval-import-btn">
               {importing ? <Loader2 size={16} className="animate-spin" /> : <Upload size={16} />}
               <span>{importing ? t('evaluationDetail.importing') : t('evaluationDetail.importData')}</span>
               <input
@@ -155,14 +156,15 @@ export function EvaluationItemsTab() {
               />
             </label>
           )}
-          {isQuery ? null : (
-            <button type="button" className="btn btn-primary" onClick={openAdd}>
-              <Plus size={16} />
-              <span>{t('evaluationDetail.addItem')}</span>
-            </button>
-          )}
-        </div>
-      </div>
+            {isQuery ? null : (
+              <button type="button" className="btn btn-primary" onClick={openAdd}>
+                <Plus size={16} />
+                <span>{t('evaluationDetail.addItem')}</span>
+              </button>
+            )}
+          </>
+        }
+      />
 
       <div className={`ds-table-wrap${loading ? ' ds-table-wrap--loading' : ''}`}>
         <table className="eval-items-table">
@@ -183,7 +185,9 @@ export function EvaluationItemsTab() {
               </tr>
             ) : total === 0 ? (
               <tr>
-                <td colSpan={4} className="eval-items-empty">{t('evaluationDetail.emptyItems')}</td>
+                <td colSpan={4} className="eval-items-empty">
+                  {t('evaluationDetail.emptyItems')}
+                </td>
               </tr>
             ) : (
               items.map((item) => (
@@ -230,90 +234,62 @@ export function EvaluationItemsTab() {
         </table>
       </div>
 
-      {total > pageSize ? (
-        <div className="eval-items-pagination">
-          <span>
-            {t('evaluationDetail.paginationRange', {
-              from: page * pageSize + 1,
-              to: Math.min((page + 1) * pageSize, total),
-              total,
-            })}
-          </span>
-          <div className="eval-items-pagination-nav">
-            <button
-              type="button"
-              className="btn btn-secondary"
-              disabled={page <= 0 || loading}
-              aria-label={t('evaluationDetail.prevPageAria')}
-              onClick={() => setPage((p) => Math.max(0, p - 1))}
-            >
-              <ChevronLeft size={18} />
-            </button>
-            <span>{t('evaluationDetail.pageOf', { current: page + 1, total: totalPages })}</span>
-            <button
-              type="button"
-              className="btn btn-secondary"
-              disabled={page >= totalPages - 1 || loading}
-              aria-label={t('evaluationDetail.nextPageAria')}
-              onClick={() => setPage((p) => p + 1)}
-            >
-              <ChevronRight size={18} />
-            </button>
-          </div>
-        </div>
-      ) : null}
+      <Pagination
+        total={total}
+        page={page}
+        pageSize={pageSize}
+        loading={loading}
+        onPageChange={setPage}
+        onPageSizeChange={(size) => {
+          setPageSize(size);
+          setPage(0);
+        }}
+      />
 
-      {formOpen ? (
-        <div className="eval-dialog-overlay" onClick={resetForm}>
-          <div className="eval-dialog" onClick={(e) => e.stopPropagation()}>
-            <div className="eval-dialog-header">
-              <h2>{editing ? t('evaluationDetail.dialogEditItem') : t('evaluationDetail.dialogAddItem')}</h2>
-              <button type="button" className="eval-dialog-close" aria-label={t('shared.close')} onClick={resetForm}>
-                <X size={20} />
-              </button>
-            </div>
-            <div className="eval-dialog-body">
-              <label>
-                <span>{t('evaluationDetail.topicOptional')}</span>
-                <input type="text" className="ds-control" value={topic} onChange={(e) => setTopic(e.target.value)} />
-              </label>
-              <label>
-                <span>{t('evaluationDetail.queryLabelForm')}</span>
-                <textarea rows={3} className="ds-control" value={query} onChange={(e) => setQuery(e.target.value)} />
-              </label>
-              {isQuery ? (
-                <div className="eval-dialog-expected-readonly">
-                  <span>{t('evaluationDetail.colExpectedQuery')}</span>
-                  <ul>
-                    {expectedQueryLines(editing?.expected_query).map((line, i) => (
-                      <li key={i}>{line}</li>
-                    ))}
-                  </ul>
-                  <small>{t('evaluationDetail.expectedQueryEditHint')}</small>
-                </div>
-              ) : (
-                <label>
-                  <span>{t('evaluationDetail.expectedLabelForm')}</span>
-                  <textarea rows={4} className="ds-control" value={expected} onChange={(e) => setExpected(e.target.value)} />
-                </label>
-              )}
-            </div>
-            <div className="eval-dialog-footer">
-              <button type="button" className="btn btn-secondary" onClick={resetForm}>
-                {t('evaluationDetail.cancel')}
-              </button>
-              <button
-                type="button"
-                className="btn btn-primary"
-                disabled={!query.trim() || (!isQuery && !expected.trim()) || saving}
-                onClick={() => void save()}
-              >
-                {saving ? t('evaluationDetail.saving') : editing ? t('evaluationDetail.save') : t('evaluationDetail.add')}
-              </button>
-            </div>
+      <Dialog
+        open={formOpen}
+        onClose={resetForm}
+        title={editing ? t('evaluationDetail.dialogEditItem') : t('evaluationDetail.dialogAddItem')}
+        closeAriaLabel={t('shared.close')}
+        size="md"
+        footer={
+          <>
+            <button type="button" className="btn btn-secondary" onClick={resetForm}>
+              {t('evaluationDetail.cancel')}
+            </button>
+            <button
+              type="button"
+              className="btn btn-primary"
+              disabled={!query.trim() || (!isQuery && !expected.trim()) || saving}
+              onClick={() => void save()}
+            >
+              {saving ? t('evaluationDetail.saving') : editing ? t('evaluationDetail.save') : t('evaluationDetail.add')}
+            </button>
+          </>
+        }
+      >
+        <FormField label={t('evaluationDetail.topicOptional')}>
+          <input type="text" className="ds-control" value={topic} onChange={(e) => setTopic(e.target.value)} />
+        </FormField>
+        <FormField label={t('evaluationDetail.queryLabelForm')}>
+          <textarea rows={3} className="ds-control" value={query} onChange={(e) => setQuery(e.target.value)} />
+        </FormField>
+        {isQuery ? (
+          <div className="eval-dialog-expected-readonly">
+            <span>{t('evaluationDetail.colExpectedQuery')}</span>
+            <ul>
+              {expectedQueryLines(editing?.expected_query).map((line, i) => (
+                <li key={i}>{line}</li>
+              ))}
+            </ul>
+            <small>{t('evaluationDetail.expectedQueryEditHint')}</small>
           </div>
-        </div>
-      ) : null}
+        ) : (
+          <FormField label={t('evaluationDetail.expectedLabelForm')}>
+            <textarea rows={4} className="ds-control" value={expected} onChange={(e) => setExpected(e.target.value)} />
+          </FormField>
+        )}
+      </Dialog>
     </div>
   );
 }

@@ -10,6 +10,8 @@ import {
   type EvaluationRunListItem,
   type EvaluationRunResponse,
 } from '../../data/evaluationsApi';
+import { PanelToolbar, StatusChip } from '../../styles/design-system';
+import { EntityViewPanel } from '../shared/EntityViewShell';
 import { RunResultRow } from './EvaluationRunResultRow';
 import { useEvaluationDetail } from './EvaluationDetailContext';
 
@@ -73,14 +75,18 @@ export function EvaluationRunDetailPage() {
 
   return (
     <div className="eval-tab">
-      <div className="eval-tab-head">
-        <div>
+      <PanelToolbar
+        as="div"
+        leading={
+          <div>
           <Link to={`/evaluations/${evaluationId}/runs`} className="eval-back">
             <ArrowLeft size={16} />
             <span>{t('evaluationDetail.tabRuns')}</span>
           </Link>
           <p className="page-subtitle">
-            <span className={`eval-run-status eval-run-status--${run.status}`}>{run.status}</span>{' '}
+            <StatusChip tone={run.status === 'completed' ? 'ok' : run.status === 'failed' ? 'warn' : 'accent'}>
+              {run.status}
+            </StatusChip>{' '}
             {t('evaluationDetail.runScopeLine', { count: run.item_count, total: itemTotal })} ·{' '}
             {t('evaluationDetail.passLabel', { pass: run.pass_count, total: run.item_count })}
             {failed > 0 ? ` · ${t('evaluationDetail.runFailChip', { count: failed })}` : ''}
@@ -91,9 +97,11 @@ export function EvaluationRunDetailPage() {
             {judge?.model ? ` · ${t('evaluationDetail.judgedBy', { model: judge.model })}` : ''}
             {judge?.prompt_version ? ` · ${judge.prompt_version}` : ''}
           </p>
-        </div>
-        {others.length > 0 ? (
-          <div className="eval-tab-actions">
+          </div>
+        }
+        actions={
+          others.length > 0 ? (
+            <>
             <label className="eval-run-type">
               <span>{t('evaluationDetail.compareWith')}</span>
               <select
@@ -120,13 +128,14 @@ export function EvaluationRunDetailPage() {
             >
               {comparing ? <Loader2 size={16} className="animate-spin" /> : null}
               <span>{t('evaluationDetail.compareRuns')}</span>
-            </button>
-          </div>
-        ) : null}
-      </div>
+              </button>
+            </>
+          ) : null
+        }
+      />
 
       {compare ? (
-        <section className="account-card entity-view__panel">
+        <EntityViewPanel title={t('evaluationDetail.compareRuns')}>
           <table className="eval-items-table eval-runs-table">
             <thead>
               <tr>
@@ -145,14 +154,11 @@ export function EvaluationRunDetailPage() {
               ))}
             </tbody>
           </table>
-        </section>
+        </EntityViewPanel>
       ) : null}
 
       {run.report && (run.report.verdict || run.report.findings.length > 0) ? (
-        <section className="account-card entity-view__panel">
-          <div className="account-card-head">
-            <h2 className="account-card-title">{t('evaluationDetail.reportTitle')}</h2>
-          </div>
+        <EntityViewPanel title={t('evaluationDetail.reportTitle')}>
           {run.report.verdict ? <p className="eval-overview-verdict">{run.report.verdict}</p> : null}
           <ul className="eval-report-findings">
             {run.report.findings.map((f, i) => (
@@ -166,13 +172,10 @@ export function EvaluationRunDetailPage() {
               </li>
             ))}
           </ul>
-        </section>
+        </EntityViewPanel>
       ) : null}
 
-      <section className="account-card entity-view__panel">
-        <div className="account-card-head">
-          <h2 className="account-card-title">{t('evaluationDetail.runDetail')}</h2>
-        </div>
+      <EntityViewPanel title={t('evaluationDetail.runDetail')}>
         {run.results.length === 0 ? (
           <p className="page-subtitle">{t('evaluationDetail.runEmpty', { runId: run.run_id, status: run.status })}</p>
         ) : (
@@ -189,7 +192,7 @@ export function EvaluationRunDetailPage() {
             ))}
           </div>
         )}
-      </section>
+      </EntityViewPanel>
     </div>
   );
 }

@@ -431,7 +431,8 @@
     "compareThisRun": "本次",
     "compareOtherRun": "对比的另一次",
     "toastRunQueued": "已排队运行 {{runId}}。",
-    "notFound": "这个评测已不存在。"
+    "notFound": "这个评测已不存在。",
+    "emptyRunsHint": "开始运行后，这里会列出每一次运行。"
   },
   "models": {
     "title": "模型",
