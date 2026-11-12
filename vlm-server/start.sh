@@ -11,7 +11,16 @@
 set -e
 cd "$(dirname "$0")"
 
-export HF_ENDPOINT="https://hf-mirror.com"
+export HF_ENDPOINT="${HF_ENDPOINT:-https://hf-mirror.com}"
+
+# The server resolves the repo id on the **first request**, not at startup: with no network that is a
+# ReadTimeout and a 500 per request, which reads like "the VLM is broken". Serve from the cache —
+# `VLM_ALLOW_DOWNLOAD=1 ./start.sh` for the very first run (or prefetch with `hf download …` once).
+if [[ "${VLM_ALLOW_DOWNLOAD:-0}" == "1" ]]; then
+  export HF_HUB_OFFLINE=0
+else
+  export HF_HUB_OFFLINE="${HF_HUB_OFFLINE:-1}"
+fi
 
 # Activate venv if present
 if [[ -d .venv ]]; then
