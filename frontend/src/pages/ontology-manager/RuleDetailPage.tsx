@@ -33,8 +33,8 @@ import { EntityViewPanel } from '../shared/EntityViewShell';
 import { RulesEventsTable } from './RulesEventsTable';
 import { RunRulesDialog, type RunParams } from './RunRulesDialog';
 import { conditionLabel, valueRows } from './rulesLabels';
-import { fromBuilder, toBuilder, type BuilderCondition } from './conditionModel';
-import { ConditionBuilder } from './ConditionRows';
+import { fromTree, toTree, type GroupNode } from './conditionModel';
+import { ConditionTree } from './ConditionTree';
 import '../../styles/settings-page.scss';
 import '../ontology/ontology-admin.scss';
 import '../../styles/rules.scss';
@@ -124,7 +124,7 @@ export function RuleDetailPage() {
   /** The condition as stored/sent — the form builder is a view over this, not a parallel copy. */
   const [conditionJson, setConditionJson] = useState('');
   const [conditionMode, setConditionMode] = useState<'form' | 'json'>('form');
-  const [builder, setBuilder] = useState<BuilderCondition>({ mode: 'all', rows: [] });
+  const [tree, setTree] = useState<GroupNode | null>(null);
   const [conditionError, setConditionError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [running, setRunning] = useState(false);
@@ -168,11 +168,12 @@ export function RuleDetailPage() {
       setEvents(eventPage.items);
       setForm(formFromRule(current, pickers.metrics, pickers.datasets));
       setConditionJson(JSON.stringify(current.condition ?? {}, null, 2));
-      const converted = toBuilder(current.condition);
-      if (converted.builder) {
-        setBuilder(converted.builder);
+      const converted = toTree(current.condition);
+      if (converted.tree) {
+        setTree(converted.tree);
         setConditionMode('form');
       } else {
+        setTree(null);
         setConditionMode('json');
       }
     } catch (e: unknown) {
@@ -195,25 +196,29 @@ export function RuleDetailPage() {
         datasetId: pickers.datasets[0]?.id ?? '',
       };
       setForm(next);
-      const empty: BuilderCondition = {
+      const empty: GroupNode = {
+        id: 'root',
+        kind: 'group',
         mode: 'all',
-        rows: [
+        children: [
           {
+            id: 'first',
+            kind: 'cmp',
             operand: { kind: 'metric', metricId: pickers.metrics[0]?.id ?? '' },
             op: '>',
             value: '0',
           },
         ],
       };
-      setBuilder(empty);
-      setConditionJson(JSON.stringify(fromBuilder(empty), null, 2));
+      setTree(empty);
+      setConditionJson(JSON.stringify(fromTree(empty), null, 2));
     });
   }, [isNew, loadPickers]);
 
-  /** The builder is the form's source of truth; the JSON view edits the same object. */
-  const updateBuilder = (next: BuilderCondition) => {
-    setBuilder(next);
-    setConditionJson(JSON.stringify(fromBuilder(next), null, 2));
+  /** The tree is the form's source of truth; the JSON view edits the same object. */
+  const updateTree = (next: GroupNode) => {
+    setTree(next);
+    setConditionJson(JSON.stringify(fromTree(next), null, 2));
     setConditionError(null);
   };
 
@@ -221,7 +226,11 @@ export function RuleDetailPage() {
     if (!form.name.trim()) return;
     let condition: RuleCondition;
     if (conditionMode === 'form') {
-      condition = fromBuilder(builder);
+      if (!tree) {
+        setConditionError(t('rules.conditionFormCannotRepresent'));
+        return;
+      }
+      condition = fromTree(tree);
     } else {
       try {
         condition = JSON.parse(conditionJson) as RuleCondition;
@@ -272,11 +281,12 @@ export function RuleDetailPage() {
     if (rule) {
       setForm(formFromRule(rule, metrics, datasets));
       setConditionJson(JSON.stringify(rule.condition ?? {}, null, 2));
-      const converted = toBuilder(rule.condition);
-      if (converted.builder) {
-        setBuilder(converted.builder);
+      const converted = toTree(rule.condition);
+      if (converted.tree) {
+        setTree(converted.tree);
         setConditionMode('form');
       } else {
+        setTree(null);
         setConditionMode('json');
       }
     }
@@ -333,7 +343,6 @@ export function RuleDetailPage() {
   };
 
   const conditionText = conditionLabel(rule?.condition ?? null, { metricName, datasetName });
-  const formCanRepresent = toBuilder(rule?.condition ?? null).builder !== null;
 
   if (loading) {
     return (
@@ -452,13 +461,14 @@ export function RuleDetailPage() {
             </EntityViewPanel>
 
             <EntityViewPanel title={t('rules.panelCondition')} description={t('rules.panelConditionHint')}>
-              <p className="rules-condition-current">{formCanRepresent ? conditionLabel(fromBuilder(builder), { metricName, datasetName }) : conditionText}</p>
-              <ConditionBuilder
-                value={builder}
-                onChange={updateBuilder}
-                metrics={metrics}
-                datasets={datasets}
-              />
+              <p className="rules-condition-current">
+                {tree ? conditionLabel(fromTree(tree), { metricName, datasetName }) : conditionText}
+              </p>
+              {tree ? (
+                <ConditionTree value={tree} onChange={updateTree} metrics={metrics} datasets={datasets} />
+              ) : (
+                <p className="rules-condition-warning">{t('rules.conditionFormCannotRepresent')}</p>
+              )}
               <details className="condition-advanced" open={conditionMode === 'json'}>
                 <summary
                   onClick={(event) => {
@@ -466,12 +476,12 @@ export function RuleDetailPage() {
                     if (conditionMode === 'json') {
                       // Leaving the JSON view adopts it into the builder — or refuses, because the
                       // builder cannot draw it and saving the stale builder would lose the edit.
-                      const converted = toBuilder(safeParse(conditionJson));
-                      if (!converted.builder) {
+                      const converted = toTree(safeParse(conditionJson));
+                      if (!converted.tree) {
                         setConditionError(t('rules.conditionFormCannotRepresent'));
                         return;
                       }
-                      setBuilder(converted.builder);
+                      setTree(converted.tree);
                     }
                     setConditionError(null);
                     setConditionMode(conditionMode === 'json' ? 'form' : 'json');
@@ -490,8 +500,8 @@ export function RuleDetailPage() {
                         onChange={(event) => {
                           setConditionJson(event.target.value);
                           setConditionError(null);
-                          const converted = toBuilder(safeParse(event.target.value));
-                          if (converted.builder) setBuilder(converted.builder);
+                          const converted = toTree(safeParse(event.target.value));
+                          if (converted.tree) setTree(converted.tree);
                         }}
                       />
                     </FormField>

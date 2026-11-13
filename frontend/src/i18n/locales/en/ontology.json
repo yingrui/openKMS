@@ -1412,6 +1412,11 @@
     "conditionJoinAll": "all comparisons hold",
     "conditionJoinAny": "any comparison holds",
     "conditionAdvanced": "Advanced: condition JSON",
-    "conditionAdvancedHint": "The same object the builder edits. Use it only for shapes the builder does not draw — it is not a second way to author."
+    "conditionAdvancedHint": "The same object the builder edits. Use it only for shapes the builder does not draw — it is not a second way to author.",
+    "conditionTreeHint": "nesting reads outward, like the stored JSON",
+    "conditionEmptyGroup": "No comparisons yet — add one below.",
+    "conditionAddComparison": "Add comparison",
+    "conditionAddGroup": "Add nested group",
+    "conditionRemove": "Remove"
   }
 }

@@ -1405,6 +1405,11 @@
     "conditionJoinAll": "所有比较都成立",
     "conditionJoinAny": "任一比较成立",
     "conditionAdvanced": "高级：条件 JSON",
-    "conditionAdvancedHint": "与构建器编辑的是同一个对象。只在构建器画不出来的形状时使用——它不是第二种写法。"
+    "conditionAdvancedHint": "与构建器编辑的是同一个对象。只在构建器画不出来的形状时使用——它不是第二种写法。",
+    "conditionTreeHint": "嵌套层级与库里的 JSON 一一对应",
+    "conditionEmptyGroup": "还没有比较项——在下面添加。",
+    "conditionAddComparison": "添加比较",
+    "conditionAddGroup": "添加嵌套分组",
+    "conditionRemove": "删除"
   }
 }

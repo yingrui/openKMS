@@ -1,113 +1,220 @@
 /**
- * Condition ⇄ builder conversion.
+ * The condition as a tree — and the conversion to and from the stored JSON.
  *
- * The builder covers everything the evaluator accepts for a *rule author*: one or more comparisons
- * joined by AND (`all`) or OR (`any`), where each left value is a metric, a dataset aggregate, or a
- * ratio/difference of those two. Anything else (an aggregate of an aggregate, a comparison whose right
- * side is not a constant) is not representable in a form — `toBuilder` returns `null` with a reason and
- * the editor keeps the JSON view, rather than dropping what it cannot draw.
+ * A condition is a tree with two node kinds:
  *
- * Pure functions on purpose: the shape rules live in one testable place, not in JSX.
+ *   group        `{all: [...]}` / `{any: [...]}` — a node with children
+ *   comparison   `{left: <operand tree>, op, right: {value}}`
+ *
+ * and an **operand** is itself a small tree (metric | dataset aggregate | diff of two | ratio of two).
+ * The editor draws the whole thing recursively; this module is the only place that knows the JSON
+ * shape, so the UI never has to think about `all`/`any` merging or about operand nesting.
+ *
+ * `fromTree` collapses a group with a single child (the API accepts either shape, and a one-child group
+ * is noise). `toTree` returns `null` with a reason for anything the editor cannot draw — a right-hand
+ * side that is not a constant, an unknown operand kind — and the editor then shows the JSON view rather
+ * than flattening the condition into something else.
  */
 
 import type { RuleCondition, RuleOperand } from '../../data/rulesApi';
 
-export type LeafOperand =
-  | { kind: 'metric'; metricId: string }
-  | { kind: 'dataset_agg'; datasetId: string; fn: string; column: string };
-
-export type BuilderOperand =
-  | LeafOperand
-  | { kind: 'ratio' | 'diff'; left: LeafOperand; right: LeafOperand };
-
-export type BuilderRow = { operand: BuilderOperand; op: string; value: string };
-export type BuilderCondition = { mode: 'all' | 'any'; rows: BuilderRow[] };
-
 export const BUILDER_OPS = ['<', '<=', '>', '>=', '==', '!='] as const;
 export const AGG_FNS = ['count', 'sum', 'avg', 'min', 'max'] as const;
+export type AggFn = (typeof AGG_FNS)[number];
 
-function toLeaf(operand: RuleOperand): LeafOperand | null {
+export type LeafOperand =
+  | { kind: 'metric'; metricId: string }
+  | { kind: 'dataset_agg'; datasetId: string; fn: AggFn; column: string };
+
+export type OperandNode =
+  | LeafOperand
+  | { kind: 'ratio' | 'diff'; left: OperandNode; right: OperandNode };
+
+export type ComparisonNode = {
+  id: string;
+  kind: 'cmp';
+  operand: OperandNode;
+  op: string;
+  value: string;
+};
+
+export type GroupNode = {
+  id: string;
+  kind: 'group';
+  mode: 'all' | 'any';
+  children: ConditionNode[];
+};
+
+export type ConditionNode = ComparisonNode | GroupNode;
+
+let nextId = 1;
+function id(): string {
+  nextId += 1;
+  return `n${nextId}`;
+}
+
+export function makeComparison(operand: OperandNode): ComparisonNode {
+  return { id: id(), kind: 'cmp', operand, op: '>', value: '0' };
+}
+
+export function makeGroup(mode: 'all' | 'any' = 'all', children: ConditionNode[] = []): GroupNode {
+  return { id: id(), kind: 'group', mode, children };
+}
+
+export function makeLeafMetric(metricId: string): LeafOperand {
+  return { kind: 'metric', metricId };
+}
+
+export function makeLeafDataset(datasetId: string): LeafOperand {
+  return { kind: 'dataset_agg', datasetId, fn: 'count', column: '' };
+}
+
+// --- JSON → tree -------------------------------------------------------------
+
+function toOperandNode(operand: RuleOperand): OperandNode | null {
   if ('metric' in operand) return { kind: 'metric', metricId: operand.metric };
   if ('dataset_agg' in operand) {
     const agg = operand.dataset_agg;
     return {
       kind: 'dataset_agg',
       datasetId: agg.dataset_id,
-      fn: agg.fn,
+      fn: (AGG_FNS.includes(agg.fn as AggFn) ? agg.fn : 'count') as AggFn,
       column: agg.column ?? '',
     };
   }
-  return null;
-}
-
-function toOperand(operand: RuleOperand): BuilderOperand | null {
-  const leaf = toLeaf(operand);
-  if (leaf) return leaf;
   if ('ratio' in operand) {
-    const left = toLeaf(operand.ratio[0]);
-    const right = toLeaf(operand.ratio[1]);
+    const left = toOperandNode(operand.ratio[0]);
+    const right = toOperandNode(operand.ratio[1]);
     return left && right ? { kind: 'ratio', left, right } : null;
   }
   if ('diff' in operand) {
-    const left = toLeaf(operand.diff[0]);
-    const right = toLeaf(operand.diff[1]);
+    const left = toOperandNode(operand.diff[0]);
+    const right = toOperandNode(operand.diff[1]);
     return left && right ? { kind: 'diff', left, right } : null;
   }
   return null;
 }
 
-function fromOperand(operand: BuilderOperand | LeafOperand): RuleOperand {
+/** `null` when the condition has a shape the tree editor cannot draw. */
+export function toTree(
+  condition: RuleCondition | null,
+): { tree: GroupNode; reason?: undefined } | { tree: null; reason: string } {
+  if (!condition) return { tree: null, reason: 'empty' };
+
+  const parseComparison = (node: RuleCondition): ComparisonNode | string => {
+    if (!('left' in node)) return 'unsupported comparison';
+    const operand = toOperandNode(node.left);
+    if (!operand) return 'unsupported operand';
+    const op = String(node.op);
+    if (!BUILDER_OPS.includes(op as (typeof BUILDER_OPS)[number])) return 'unsupported operator';
+    const right = node.right as { value?: unknown } | undefined;
+    if (!right || typeof right.value !== 'number') return 'right side is not a constant';
+    return { id: id(), kind: 'cmp', operand, op, value: String(right.value) };
+  };
+
+  const fill = (group: GroupNode, entries: RuleCondition[]): string | null => {
+    for (const entry of entries) {
+      if ('all' in entry || 'any' in entry) {
+        const nested = makeGroup('all' in entry ? 'all' : 'any');
+        const problem = fill(nested, 'all' in entry ? entry.all : entry.any);
+        if (problem) return problem;
+        group.children.push(nested);
+        continue;
+      }
+      const parsed = parseComparison(entry);
+      if (typeof parsed === 'string') return parsed;
+      group.children.push(parsed);
+    }
+    return null;
+  };
+
+  if ('all' in condition || 'any' in condition) {
+    const root = makeGroup('all' in condition ? 'all' : 'any');
+    const problem = fill(root, 'all' in condition ? condition.all : condition.any);
+    if (problem) return { tree: null, reason: problem };
+    return root.children.length === 0 ? { tree: null, reason: 'empty' } : { tree: root };
+  }
+
+  const parsed = parseComparison(condition);
+  if (typeof parsed === 'string') return { tree: null, reason: parsed };
+  return { tree: makeGroup('all', [parsed]) };
+}
+
+// --- tree → JSON -------------------------------------------------------------
+
+function fromOperandNode(operand: OperandNode): RuleOperand {
   if (operand.kind === 'metric') return { metric: operand.metricId };
   if (operand.kind === 'dataset_agg') {
     return {
       dataset_agg: {
         dataset_id: operand.datasetId,
-        fn: operand.fn as 'count' | 'sum' | 'avg' | 'min' | 'max',
+        fn: operand.fn,
         column: operand.fn === 'count' ? null : operand.column,
       },
     };
   }
-  return { [operand.kind]: [fromOperand(operand.left), fromOperand(operand.right)] } as RuleOperand;
+  return { [operand.kind]: [fromOperandNode(operand.left), fromOperandNode(operand.right)] } as RuleOperand;
 }
 
-/** `null` when the condition has a shape the form cannot draw (the editor then shows JSON). */
-export function toBuilder(condition: RuleCondition | null): { builder: BuilderCondition; reason?: undefined } | { builder: null; reason: string } {
-  if (!condition) return { builder: null, reason: 'empty' };
-  const isGroup = 'all' in condition || 'any' in condition;
-  const comparisons = isGroup ? ('all' in condition ? condition.all : condition.any) : [condition];
-  const rows: BuilderRow[] = [];
-  for (const comparison of comparisons) {
-    if (!('left' in comparison)) {
-      // A nested group: the evaluator flattens these, but drawing them as one flat list would change
-      // the meaning (mixed AND/OR), so the form declines and JSON stays.
-      return { builder: null, reason: 'nested group' };
-    }
-    const operand = toOperand(comparison.left);
-    if (!operand) return { builder: null, reason: 'unsupported operand' };
-    const op = String(comparison.op);
-    if (!BUILDER_OPS.includes(op as (typeof BUILDER_OPS)[number])) {
-      return { builder: null, reason: 'unsupported operator' };
-    }
-    rows.push({ operand, op, value: String(comparison.right.value) });
+function fromNode(node: ConditionNode): RuleCondition {
+  if (node.kind === 'cmp') {
+    return {
+      left: fromOperandNode(node.operand),
+      op: node.op,
+      right: { value: Number(node.value) },
+    };
   }
-  return { builder: { mode: 'any' in condition ? 'any' : 'all', rows } };
+  const children = node.children.map(fromNode);
+  if (children.length === 1) return children[0];
+  return { [node.mode]: children } as RuleCondition;
 }
 
-export function fromBuilder(builder: BuilderCondition): RuleCondition {
-  const comparisons = builder.rows.map((row) => ({
-    left: fromOperand(row.operand),
-    op: row.op,
-    right: { value: Number(row.value) },
-  }));
-  if (comparisons.length === 1) return comparisons[0] as RuleCondition;
-  return { [builder.mode]: comparisons } as RuleCondition;
+export function fromTree(tree: GroupNode): RuleCondition {
+  return fromNode(tree);
 }
 
-/** Default row for "add comparison" — keeps the builder usable without opening a picker first. */
-export function emptyRow(metricId: string, datasetId = ''): BuilderRow {
-  return {
-    operand: metricId ? { kind: 'metric', metricId } : { kind: 'dataset_agg', datasetId, fn: 'count', column: '' },
-    op: '>',
-    value: '0',
+// --- tree utilities ----------------------------------------------------------
+
+export function countComparisons(node: ConditionNode): number {
+  if (node.kind === 'cmp') return 1;
+  return node.children.reduce((total, child) => total + countComparisons(child), 0);
+}
+
+/** Replace a node anywhere in the tree; returns a new tree (no mutation). */
+export function replaceNode(root: GroupNode, targetId: string, next: ConditionNode): GroupNode {
+  const walk = (node: ConditionNode): ConditionNode => {
+    if (node.id === targetId) return next;
+    if (node.kind === 'group') return { ...node, children: node.children.map(walk) };
+    return node;
   };
+  return walk(root) as GroupNode;
+}
+
+/** Remove a node; the root group itself cannot be removed. */
+export function removeNode(root: GroupNode, targetId: string): GroupNode {
+  const walk = (node: ConditionNode): ConditionNode => {
+    if (node.kind === 'group') {
+      return { ...node, children: node.children.filter((child) => child.id !== targetId).map(walk) };
+    }
+    return node;
+  };
+  return walk(root) as GroupNode;
+}
+
+export function appendChild(root: GroupNode, groupId: string, child: ConditionNode): GroupNode {
+  const walk = (node: ConditionNode): ConditionNode => {
+    if (node.kind !== 'group') return node;
+    if (node.id === groupId) return { ...node, children: [...node.children, child] };
+    return { ...node, children: node.children.map(walk) };
+  };
+  return walk(root) as GroupNode;
+}
+
+export function setGroupMode(root: GroupNode, groupId: string, mode: 'all' | 'any'): GroupNode {
+  const walk = (node: ConditionNode): ConditionNode => {
+    if (node.kind !== 'group') return node;
+    if (node.id === groupId) return { ...node, mode };
+    return { ...node, children: node.children.map(walk) };
+  };
+  return walk(root) as GroupNode;
 }

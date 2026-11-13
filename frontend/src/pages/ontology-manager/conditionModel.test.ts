@@ -1,118 +1,119 @@
 import { describe, expect, it } from 'vitest';
-import { emptyRow, fromBuilder, toBuilder, type BuilderCondition } from './conditionModel';
+import {
+  appendChild,
+  countComparisons,
+  fromTree,
+  makeComparison,
+  makeGroup,
+  makeLeafDataset,
+  makeLeafMetric,
+  removeNode,
+  replaceNode,
+  setGroupMode,
+  toTree,
+} from './conditionModel';
 import type { RuleCondition } from '../../data/rulesApi';
 
-const METRIC = (id: string) => ({ metric: id });
+const metric = (id: string) => ({ metric: id });
 
-describe('toBuilder', () => {
-  it('reads a single comparison', () => {
-    const condition: RuleCondition = { left: METRIC('m1'), op: '>', right: { value: 1 } };
-    const result = toBuilder(condition);
-    expect(result.builder).toEqual({
-      mode: 'all',
-      rows: [{ operand: { kind: 'metric', metricId: 'm1' }, op: '>', value: '1' }],
-    });
+describe('toTree / fromTree', () => {
+  it('reads a single comparison without wrapping it in a group', () => {
+    const { tree } = toTree({ left: metric('m1'), op: '>', right: { value: 1 } });
+    expect(tree?.children).toHaveLength(1);
+    expect(tree?.children[0]).toMatchObject({ kind: 'cmp', op: '>', value: '1' });
   });
 
-  it('reads an all/any group and keeps its mode', () => {
+  it('keeps the all/any of a group and nests groups recursively', () => {
     const condition: RuleCondition = {
-      any: [
-        { left: METRIC('m1'), op: '>', right: { value: 1 } },
-        { left: { dataset_agg: { dataset_id: 'd1', fn: 'count' } }, op: '<', right: { value: 10 } },
+      all: [
+        { left: metric('a'), op: '>', right: { value: 1 } },
+        { any: [{ left: metric('b'), op: '<', right: { value: 5 } }] },
       ],
     };
-    const result = toBuilder(condition);
-    expect(result.builder?.mode).toBe('any');
-    expect(result.builder?.rows).toHaveLength(2);
-    expect(result.builder?.rows[1].operand).toEqual({
-      kind: 'dataset_agg',
-      datasetId: 'd1',
-      fn: 'count',
-      column: '',
+    const { tree } = toTree(condition);
+    const group = tree?.children.find((child) => child.kind === 'group' && child.mode === 'any');
+    expect(group).toMatchObject({ kind: 'group', mode: 'any' });
+    expect(countComparisons(tree!)).toBe(2);
+  });
+
+  it('round-trips a real rule (all of a ratio and a comparison)', () => {
+    const original: RuleCondition = {
+      all: [
+        { left: { ratio: [metric('a'), { dataset_agg: { dataset_id: 'd', fn: 'sum', column: 'gap' } }] }, op: '>', right: { value: 1 } },
+        { left: metric('c'), op: '>', right: { value: 0 } },
+      ],
+    };
+    const { tree } = toTree(original);
+    expect(tree).not.toBeNull();
+    expect(fromTree(tree!)).toEqual(original);
+  });
+
+  it('round-trips nested groups', () => {
+    const original: RuleCondition = {
+      all: [
+        { any: [{ left: metric('a'), op: '>', right: { value: 1 } }] },
+        { left: metric('b'), op: '<', right: { value: 9 } },
+      ],
+    };
+    const { tree } = toTree(original);
+    // A single-child `any` collapses when written back — the API accepts either shape.
+    expect(fromTree(tree!)).toEqual({
+      all: [
+        { left: metric('a'), op: '>', right: { value: 1 } },
+        { left: metric('b'), op: '<', right: { value: 9 } },
+      ],
     });
   });
 
-  it('reads a ratio of a metric and a dataset aggregate', () => {
-    const condition: RuleCondition = {
-      left: { ratio: [METRIC('a'), { dataset_agg: { dataset_id: 'd', fn: 'sum', column: 'gap' } }] },
+  it('declines a non-constant right side instead of dropping it', () => {
+    const { tree, reason } = toTree({ left: metric('a'), op: '>', right: { metric: 'b' } } as unknown as RuleCondition);
+    expect(tree).toBeNull();
+    expect(reason).toContain('constant');
+  });
+
+  it('declines an unknown operand kind', () => {
+    const { tree } = toTree({
+      left: { sql: 'select 1' },
       op: '>',
       right: { value: 1 },
-    };
-    const result = toBuilder(condition);
-    expect(result.builder?.rows[0].operand).toEqual({
-      kind: 'ratio',
-      left: { kind: 'metric', metricId: 'a' },
-      right: { kind: 'dataset_agg', datasetId: 'd', fn: 'sum', column: 'gap' },
-    });
-  });
-
-  it('declines a ratio of ratios instead of flattening it', () => {
-    const nested = { ratio: [{ metric: 'a' }, { ratio: [{ metric: 'b' }, { metric: 'c' }] }] };
-    const result = toBuilder({ left: nested, op: '>', right: { value: 1 } } as RuleCondition);
-    expect(result.builder).toBeNull();
-    expect(result.reason).toContain('unsupported operand');
-  });
-
-  it('declines a mixed group (all of a group) rather than changing its meaning', () => {
-    const condition = {
-      all: [
-        { left: METRIC('a'), op: '>', right: { value: 1 } },
-        { any: [{ left: METRIC('b'), op: '>', right: { value: 1 } }] },
-      ],
-    } as unknown as RuleCondition;
-    expect(toBuilder(condition).builder).toBeNull();
+    } as unknown as RuleCondition);
+    expect(tree).toBeNull();
   });
 });
 
-describe('fromBuilder', () => {
-  it('round-trips a single comparison', () => {
-    const builder: BuilderCondition = {
-      mode: 'all',
-      rows: [{ operand: { kind: 'metric', metricId: 'm1' }, op: '<=', value: '0.5' }],
-    };
-    expect(fromBuilder(builder)).toEqual({
-      left: { metric: 'm1' },
-      op: '<=',
-      right: { value: 0.5 },
-    });
+describe('tree edits', () => {
+  const tree = () => {
+    let root = makeGroup('all', []);
+    root = appendChild(root, root.id, makeComparison(makeLeafMetric('m1')));
+    const nested = makeGroup('any', [makeComparison(makeLeafDataset('d1'))]);
+    root = appendChild(root, root.id, nested);
+    return { root, nested };
+  };
+
+  it('appends a child to a nested group', () => {
+    const { root, nested } = tree();
+    const next = appendChild(root, nested.id, makeComparison(makeLeafMetric('m2')));
+    expect(countComparisons(next)).toBe(3);
   });
 
-  it('emits `all` for several rows and `any` when the mode says so', () => {
-    const builder: BuilderCondition = {
-      mode: 'any',
-      rows: [
-        emptyRow('m1'),
-        { operand: { kind: 'dataset_agg', datasetId: 'd', fn: 'sum', column: 'gap' }, op: '>', value: '3' },
-      ],
-    };
-    const condition = fromBuilder(builder) as { any: Array<{ left: unknown }> };
-    expect(condition.any).toHaveLength(2);
-    expect(condition.any[1].left).toEqual({
-      dataset_agg: { dataset_id: 'd', fn: 'sum', column: 'gap' },
-    });
+  it('removes a node by id without touching siblings', () => {
+    const { root, nested } = tree();
+    const next = removeNode(root, nested.id);
+    expect(next.children).toHaveLength(1);
   });
 
-  it('drops the column for a count aggregate', () => {
-    const builder: BuilderCondition = {
-      mode: 'all',
-      rows: [{ operand: { kind: 'dataset_agg', datasetId: 'd', fn: 'count', column: 'ignored' }, op: '>', value: '0' }],
-    };
-    expect(fromBuilder(builder)).toEqual({
-      left: { dataset_agg: { dataset_id: 'd', fn: 'count', column: null } },
-      op: '>',
-      right: { value: 0 },
-    });
+  it('replaces a node by id', () => {
+    const { root } = tree();
+    const first = root.children[0];
+    const next = replaceNode(root, first.id, makeComparison(makeLeafMetric('m9')));
+    // Two children remain, so the tree still writes back as a group whose first entry is the edit.
+    const written = fromTree(next) as { all: Array<{ left?: { metric?: string } }> };
+    expect(written.all).toHaveLength(2);
+    expect(written.all[0].left).toEqual({ metric: 'm9' });
   });
 
-  it('survives a toBuilder → fromBuilder round trip for a real rule', () => {
-    const original: RuleCondition = {
-      all: [
-        { left: { ratio: [{ metric: 'a' }, { metric: 'b' }] }, op: '>', right: { value: 1 } },
-        { left: { metric: 'c' }, op: '>', right: { value: 0 } },
-      ],
-    };
-    const { builder } = toBuilder(original);
-    expect(builder).not.toBeNull();
-    expect(fromBuilder(builder!)).toEqual(original);
+  it('flips a group between all and any', () => {
+    const { root, nested } = tree();
+    expect(setGroupMode(root, nested.id, 'all').children[1]).toMatchObject({ mode: 'all' });
   });
 });
