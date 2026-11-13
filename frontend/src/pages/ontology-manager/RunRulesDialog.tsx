@@ -17,11 +17,14 @@ export function RunRulesDialog({
   busy,
   onClose,
   onRun,
+  requiredParam,
 }: {
   open: boolean;
   busy: boolean;
   onClose: () => void;
   onRun: (params: RunParams) => void;
+  /** The rule's own name for the value a run must supply (`scope_label`), if it declares one. */
+  requiredParam?: string | null;
 }) {
   const { t } = useTranslation('ontology');
   const [period, setPeriod] = useState('');
@@ -43,7 +46,12 @@ export function RunRulesDialog({
           <button type="button" className="btn btn-secondary" onClick={onClose} disabled={busy}>
             {t('shared.cancel')}
           </button>
-          <button type="button" className="btn btn-primary" onClick={submit} disabled={busy}>
+          <button
+            type="button"
+            className="btn btn-primary"
+            onClick={submit}
+            disabled={busy || (Boolean(requiredParam) && !scope.trim())}
+          >
             {busy ? t('rules.running') : t('rules.run')}
           </button>
         </>
@@ -57,7 +65,10 @@ export function RunRulesDialog({
           placeholder={t('rules.periodPlaceholder')}
         />
       </FormField>
-      <FormField label={t('rules.runScope')} hint={t('rules.runScopeHint')}>
+      <FormField
+        label={requiredParam ? t('rules.runParamNamed', { name: requiredParam }) : t('rules.runScope')}
+        hint={requiredParam ? t('rules.runParamRequired') : t('rules.runScopeHint')}
+      >
         <input
           type="text"
           value={scope}

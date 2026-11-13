@@ -1422,6 +1422,8 @@
     "joinOr": "OR",
     "scopePrefix": "Scope",
     "scopeAtRunTime": "one object at a time, chosen when you run it",
-    "scopeAtRunTimeNamed": "one {{name}} at a time, chosen when you run it"
+    "scopeAtRunTimeNamed": "one {{name}} at a time, chosen when you run it",
+    "runParamNamed": "{{name}}",
+    "runParamRequired": "This rule is computed per {{name}}; pick one — without it the run is “undetermined”, not a number."
   }
 }

@@ -644,7 +644,13 @@ export function RuleDetailPage() {
         )}
       </div>
 
-      <RunRulesDialog open={runOpen} busy={running} onClose={() => setRunOpen(false)} onRun={(params) => void run(params)} />
+      <RunRulesDialog
+        open={runOpen}
+        busy={running}
+        onClose={() => setRunOpen(false)}
+        onRun={(params) => void run(params)}
+        requiredParam={scopeName}
+      />
     </div>
   );
 }

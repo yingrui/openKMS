@@ -64,6 +64,19 @@ as when the event was raised — `scope`, `evidence` (the values that produced i
 Events themselves remain ordinary objects: the same rows are in Object Explorer, and each is linked to
 the business object it is about.
 
+## What "scope" actually is
+
+For 分货额度, `scenario` is **not an object the metric belongs to** — it is a *dimension of the rows*:
+`分货明细` holds five candidate allocation plans side by side, distinguished by `scenario_id`. Summing
+`allocated_qty` across all five plans adds plans that were never intended to coexist, so the metric is
+only meaningful **per scenario**.
+
+That is why the value is a **run parameter**, not part of the rule and not a property of the metric: the
+rule says *which column* the value goes into (`scope_field`) and what to call the thing (`scope_label`),
+and each run supplies one value. A run that supplies nothing returns `unknown` with
+`missing run value for scenario_id` — deliberately not a number, because "all five plans at once" is not
+a bigger answer, it is a different question.
+
 ## Rules are not snapshots
 
 A condition must not hard-code one row's id. "This period's allocation is over-allocated" is a statement

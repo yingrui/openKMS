@@ -357,6 +357,7 @@ export function RulesPage() {
         busy={running}
         onClose={() => setRunOpen(false)}
         onRun={(params) => void runAll(params)}
+        requiredParam={rules.map((rule) => scopeLabelOf(rule.condition)).find(Boolean) ?? null}
       />
     </div>
   );

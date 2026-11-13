@@ -63,6 +63,28 @@ def _now() -> str:
     return datetime.now(timezone.utc).isoformat()
 
 
+def _required_scope_fields(condition: Any) -> list[str]:
+    """Columns the condition asks the run to supply (`scope_field`), deduplicated.
+
+    A metric like 分货额度 is only meaningful *per scenario* — scenario is a dimension of the rows, not
+    an object the metric belongs to. So the value comes from the run, and a run without it must say so
+    rather than quietly summing five plans together.
+    """
+    from app.services.ontology.rules.conditions import flatten_operands
+
+    fields: list[str] = []
+    for operand in flatten_operands(condition):
+        record: dict = operand
+        field = record.get("scope_field")
+        if not field:
+            agg = record.get("dataset_agg")
+            if isinstance(agg, dict):
+                field = agg.get("scope_field")
+        if isinstance(field, str) and field and field not in fields:
+            fields.append(field)
+    return fields
+
+
 def _json_field(value: Any) -> Any:
     """A rule property that is conceptually JSON but stored in the object's string property."""
     if isinstance(value, str):
@@ -284,6 +306,19 @@ async def evaluate_rule(
         except json.JSONDecodeError as exc:
             raise ConditionError(f"condition is not valid JSON: {exc}") from exc
     validate_condition(condition)
+
+    required_scope = _required_scope_fields(condition)
+    if required_scope and not scope:
+        # Not a failure and not a number: the rule cannot be judged without its parameter.
+        data = dict(rule.data or {})
+        data.update({"last_run_at": _now(), "last_status": "unknown", "last_values": "{}"})
+        rule.data = data
+        await db.flush()
+        return EvalResult(
+            rule_id=rule.id,
+            status="unknown",
+            reason=f"missing run value for {', '.join(required_scope)}",
+        )
 
     resolved: dict[str, float | None] = {}
     reasons: list[str] = []

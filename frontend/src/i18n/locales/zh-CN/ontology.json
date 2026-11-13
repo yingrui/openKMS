@@ -1415,6 +1415,8 @@
     "joinOr": "或",
     "scopePrefix": "范围",
     "scopeAtRunTime": "每次运行检查一个对象，运行时选择",
-    "scopeAtRunTimeNamed": "每次运行检查一个{{name}}，运行时选择"
+    "scopeAtRunTimeNamed": "每次运行检查一个{{name}}，运行时选择",
+    "runParamNamed": "{{name}}",
+    "runParamRequired": "这条规则按{{name}}分别计算；不选就只会得到“无法判定”，不会算出一个数。"
   }
 }
