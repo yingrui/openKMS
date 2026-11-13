@@ -38,6 +38,11 @@ class ObjectType(Base):
     properties: Mapped[list[dict] | None] = mapped_column(
         JSONB, nullable=True, default=list
     )  # e.g. [{"name": "icd_code", "type": "string", "required": False}]
+    # Event semantics (Vertex-style): which properties mark the start/end of an event. NULL on a
+    # type that is not an event type. An individual instance may leave its end empty = still open.
+    event_config: Mapped[dict | None] = mapped_column(
+        JSONB, nullable=True
+    )  # {"start_property": "event_start_time", "end_property": "event_end_time"}
     created_by: Mapped[str | None] = mapped_column(String(512), nullable=True, index=True)
     created_by_name: Mapped[str | None] = mapped_column(String(256), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())

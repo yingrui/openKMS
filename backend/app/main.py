@@ -64,6 +64,7 @@ from app.api.dataset_rows import router as dataset_rows_router
 from app.api.dataset_joins import router as dataset_joins_router
 from app.api.quality_rules import router as quality_rules_router
 from app.api.metrics import router as metrics_router
+from app.api.rules import router as rules_router
 from app.api.admin.audit_log import router as audit_log_router
 from app.api.stories import router as stories_router
 from app.api.quality_issues import router as quality_issues_router
@@ -98,7 +99,31 @@ logger = logging.getLogger(__name__)
 DEFAULT_SECRET_KEY = "openkms-dev-secret-change-in-production"
 
 
-@asynccontextmanager
+async def _ensure_builtin_ontology() -> None:
+    """Create the Rules app's object types (`Rule`, `Event`) when the deployment lacks them.
+
+    Idempotent and non-fatal: a failure here must not stop the API from starting — the Rules API
+    answers 409 with a "restart to run the bootstrap" hint instead.
+    """
+    from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
+
+    from app.config import settings
+    from app.services.ontology.rules.builtin import ensure_builtin_ontology
+
+    # A throwaway engine: the app's pool must not inherit a connection created during startup,
+    # which would later be reused on a different event loop (TestClient, worker loops).
+    engine = create_async_engine(settings.database_url, pool_pre_ping=True)
+    try:
+        async with async_sessionmaker(engine, expire_on_commit=False)() as session:
+            created = await ensure_builtin_ontology(session)
+        if created:
+            logger.info("Built-in ontology types created: %s", ", ".join(created))
+    except Exception as exc:  # noqa: BLE001 - startup must not fail on a bootstrap nicety
+        logger.warning("Built-in ontology bootstrap skipped: %s", exc)
+    finally:
+        await engine.dispose()
+
+
 async def lifespan(app: FastAPI):
     """Create tables, storage bucket, and procrastinate schema on startup."""
     if not settings.debug and settings.secret_key == DEFAULT_SECRET_KEY:
@@ -110,6 +135,7 @@ async def lifespan(app: FastAPI):
     from app.services.platform.storage import ensure_bucket
 
     ensure_bucket()
+    await _ensure_builtin_ontology()
 
     try:
         from app.jobs import job_app
@@ -250,6 +276,7 @@ app.include_router(semantic_model_fields_router, prefix="/api")
 app.include_router(dataset_joins_router, prefix="/api")
 app.include_router(quality_rules_router, prefix="/api")
 app.include_router(metrics_router, prefix="/api")
+app.include_router(rules_router, prefix="/api")
 app.include_router(stories_router, prefix="/api")
 app.include_router(audit_log_router, prefix="/api")
 app.include_router(quality_issues_router, prefix="/api")
