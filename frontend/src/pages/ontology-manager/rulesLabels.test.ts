@@ -82,7 +82,7 @@ describe('conditionLabel', () => {
     );
   });
 
-  it('says the run picks the parameter when the rule declares one', () => {
+  it('says the rule is computed per group when it declares one', () => {
     const condition: RuleCondition = {
       all: [
         {
@@ -96,11 +96,11 @@ describe('conditionLabel', () => {
       ],
     };
     expect(
-      conditionLabel(condition, { ...lookups, scopeAtRunTime: '每次运行针对一个方案' }, {
+      conditionLabel(condition, { ...lookups, scopeAtRunTime: '按方案分别计算' }, {
         field: 'scenario_id',
         label: '方案',
       }),
-    ).toBe('范围：每次运行针对一个方案 ｜ (分货额度 ÷ 分货明细：sum(gap)) > 1 且 仍缺货明细数 > 0');
+    ).toBe('范围：按方案分别计算 ｜ (分货额度 ÷ 分货明细：sum(gap)) > 1 且 仍缺货明细数 > 0');
   });
 
   it('parenthesises a nested group whose joiner differs', () => {
@@ -120,14 +120,14 @@ describe('conditionScopeNote', () => {
     expect(conditionScopeNote(condition, lookups)).toBeNull();
   });
 
-  it('says the run picks the parameter when the rule declares one', () => {
+  it('says the rule is computed per group when it declares one', () => {
     const condition: RuleCondition = { left: { metric: 'm1' }, op: '>', right: { value: 1 } };
     expect(
-      conditionScopeNote(condition, { ...lookups, scopeAtRunTime: '每次运行检查一个方案，运行时选择' }, {
+      conditionScopeNote(condition, { ...lookups, scopeAtRunTime: '按方案分别计算' }, {
         field: 'scenario_id',
         label: '方案',
       }),
-    ).toBe('范围：每次运行检查一个方案，运行时选择');
+    ).toBe('范围：按方案分别计算');
   });
 
   it('states a shared concrete scope once, with labels', () => {

@@ -1423,6 +1423,14 @@
     "paramLabel": "运行参数 —— 名称",
     "paramLabelHint": "读者怎么称呼它（“方案”），用于条件文本与运行对话框。",
     "paramLabelPlaceholder": "如 方案",
-    "paramRequired": "必填：运行时不给值就判为“无法判定”，不会算出一个数"
+    "paramRequired": "必填：运行时不给值就判为“无法判定”，不会算出一个数",
+    "groupedBy": "按分组分别计算",
+    "groupedByNamed": "按{{name}}分别计算",
+    "groupField": "评估维度 —— 字段",
+    "groupFieldHint": "按哪个列分组（如 scenario_id）。一次运行覆盖所有分组，并告诉你哪些不成立。",
+    "groupLabel": "评估维度 —— 名称",
+    "groupLabelHint": "读者怎么称呼它（“方案”），用于条件文本与每个事件。",
+    "groupLabelPlaceholder": "如 方案",
+    "groupedRunSummary": "共 {{groups}} 组，{{failed}} 组触发"
   }
 }

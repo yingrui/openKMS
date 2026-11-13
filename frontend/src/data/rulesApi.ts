@@ -28,7 +28,7 @@ export type RuleCondition =
   | { all: RuleCondition[] }
   | { any: RuleCondition[] };
 
-export type RuleParam = { field: string; label?: string | null; required?: boolean };
+export type RuleGroupBy = { field: string; label?: string | null };
 
 export type RuleOut = {
   object_id: string;
@@ -47,7 +47,9 @@ export type RuleOut = {
   last_values: Record<string, number | null> | null;
   ai_context: string | null;
   about_object_type: string | null;
-  param: RuleParam | null;
+  group_by: RuleGroupBy | null;
+  last_groups: number | null;
+  last_failed_groups: string[] | null;
 };
 
 export type RuleWritePayload = {
@@ -61,7 +63,7 @@ export type RuleWritePayload = {
   owner?: string | null;
   ai_context?: string | null;
   about_object_type?: string | null;
-  param?: RuleParam | null;
+  group_by?: RuleGroupBy | null;
   status?: string;
 };
 
@@ -71,6 +73,7 @@ export type RuleEvalResult = {
   values: Record<string, number | null>;
   event_id: string | null;
   reason: string | null;
+  group: { field: string; value: string | null } | null;
 };
 
 export type RulesEvaluateResponse = {
@@ -124,9 +127,9 @@ export async function updateRule(
 
 export async function evaluateRule(
   ruleId: string,
-  params: { period_start?: string; period_end?: string; scope?: string } = {},
-): Promise<RuleEvalResult> {
-  return request<RuleEvalResult>(`/api/rules/${ruleId}/evaluate`, {
+  params: { period_start?: string; period_end?: string } = {},
+): Promise<RulesEvaluateResponse> {
+  return request<RulesEvaluateResponse>(`/api/rules/${ruleId}/evaluate`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(params),

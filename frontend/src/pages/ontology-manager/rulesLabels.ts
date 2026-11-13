@@ -172,13 +172,13 @@ function sharedScope(condition: RuleCondition): string[] | null {
 export function conditionScopeNote(
   condition: RuleCondition | null,
   lookups: LabelLookups,
-  param?: { field: string; label?: string | null } | null,
+  group?: { field: string; label?: string | null } | null,
 ): string | null {
   if (!condition) return null;
   const prefix = lookups.scopePrefix ?? 'scope';
-  // A run parameter is declared once, on the rule — that is the answer to "what does this apply to?".
-  if (param?.field) {
-    return `${prefix}：${lookups.scopeAtRunTime ?? 'one object per run, chosen when you run it'}`;
+  // A group-by is declared once, on the rule — that is the answer to "what does this apply to?".
+  if (group?.field) {
+    return `${prefix}：${lookups.scopeAtRunTime ?? 'computed per group'}`;
   }
   const shared = sharedScope(condition);
   return shared ? `${prefix}：${shared.join('，')}` : null;
@@ -188,7 +188,7 @@ export function conditionScopeNote(
 export function conditionLabel(
   condition: RuleCondition | null,
   lookups: LabelLookups,
-  param?: { field: string; label?: string | null } | null,
+  group?: { field: string; label?: string | null } | null,
 ): string {
   const and = lookups.and ?? 'AND';
   const or = lookups.or ?? 'OR';
@@ -227,7 +227,7 @@ export function conditionLabel(
   };
 
   const formula = walk(condition);
-  const note = conditionScopeNote(condition, lookups, param);
+  const note = conditionScopeNote(condition, lookups, group);
   return note ? `${note} ｜ ${formula}` : formula;
 }
 

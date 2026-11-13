@@ -125,7 +125,12 @@ export function RulesPage() {
     setRunningId(rule.object_id);
     try {
       const result = await evaluateRule(rule.object_id, {});
-      toast.success(t(`rules.status.${result.status}`));
+      const first = result.results[0];
+      toast.success(
+        result.results.length > 1
+          ? t('rules.toastRanAll', { count: result.results.length, failed: result.failed })
+          : t(`rules.status.${first?.status ?? 'pass'}`),
+      );
       await load();
     } catch (e: unknown) {
       toast.error(e instanceof Error ? e.message : t('rules.toastRunFailed'));
@@ -256,10 +261,10 @@ export function RulesPage() {
                               and: t('rules.joinAnd'),
                               or: t('rules.joinOr'),
                               scopePrefix: t('rules.scopePrefix'),
-                              scopeAtRunTime: rule.param?.label
-                                ? t('rules.scopeAtRunTimeNamed', { name: rule.param.label })
-                                : t('rules.scopeAtRunTime'),
-                            }, rule.param)}
+                              scopeAtRunTime: rule.group_by?.label
+                                ? t('rules.groupedByNamed', { name: rule.group_by.label })
+                                : t('rules.groupedBy'),
+                            }, rule.group_by)}
                           </td>
                           <td>
                             <StatusChip tone={severityTone(rule.severity)}>{rule.severity ?? '—'}</StatusChip>
@@ -357,7 +362,7 @@ export function RulesPage() {
         busy={running}
         onClose={() => setRunOpen(false)}
         onRun={(params) => void runAll(params)}
-        requiredParam={rules.map((rule) => rule.param?.label).find(Boolean) ?? null}
+
       />
     </div>
   );

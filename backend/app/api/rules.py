@@ -58,12 +58,11 @@ class RuleSubject(BaseModel):
     ref: str
 
 
-class RuleParam(BaseModel):
-    """The value a run must supply: which column it filters, what to call it, whether it is required."""
+class RuleGroup(BaseModel):
+    """The dimension a rule is evaluated per: `scenario_id`, called "方案" for a reader."""
 
     field: str = Field(min_length=1)
     label: str | None = None
-    required: bool = True
 
 
 class RuleWrite(BaseModel):
@@ -77,7 +76,7 @@ class RuleWrite(BaseModel):
     owner: str | None = None
     ai_context: str | None = None
     about_object_type: str | None = None
-    param: RuleParam | None = None
+    group_by: RuleGroup | None = None
     status: str = Field(default="active", pattern="^(active|paused)$")
 
 
@@ -91,7 +90,7 @@ class RulePatch(BaseModel):
     owner: str | None = None
     ai_context: str | None = None
     about_object_type: str | None = None
-    param: RuleParam | None = None
+    group_by: RuleGroup | None = None
     status: str | None = Field(default=None, pattern="^(active|paused)$")
 
 
@@ -110,15 +109,16 @@ class RuleOut(BaseModel):
     last_run_at: str | None = None
     last_status: str | None = None
     last_values: dict | None = None
+    last_groups: int | None = None
+    last_failed_groups: list[str] | None = None
     ai_context: str | None = None
     about_object_type: str | None = None
-    param: dict | None = None
+    group_by: dict | None = None
 
 
 class RuleEvaluateRequest(BaseModel):
     period_start: str = ""
     period_end: str = ""
-    scope: str = ""
 
 
 class RulesEvaluateRequest(RuleEvaluateRequest):
@@ -132,6 +132,7 @@ class EvalOut(BaseModel):
     values: dict[str, float | None] = {}
     event_id: str | None = None
     reason: str | None = None
+    group: dict | None = None
 
 
 class EventOut(BaseModel):
@@ -203,9 +204,11 @@ def _rule_out(instance: ObjectInstance) -> RuleOut:
         last_run_at=data.get("last_run_at"),
         last_status=data.get("last_status"),
         last_values=_parse_maybe_json(data.get("last_values")),
+        last_groups=int(data["last_groups"]) if data.get("last_groups") is not None else None,
+        last_failed_groups=_parse_maybe_json(data.get("last_failed_groups")),
         ai_context=data.get("ai_context"),
         about_object_type=data.get("about_object_type"),
-        param=_parse_maybe_json(data.get("param")) if data.get("param") else None,
+        group_by=_parse_maybe_json(data.get("group_by")) if data.get("group_by") else None,
     )
 
 
@@ -216,6 +219,7 @@ def _eval_out(result: EvalResult) -> EvalOut:
         values=result.values,
         event_id=result.event_id,
         reason=result.reason,
+        group=result.group,
     )
 
 
@@ -256,7 +260,7 @@ def _write_values(payload: RuleWrite, request: Request) -> dict[str, Any]:
         "status": payload.status,
         "version": 1,
         "about_object_type": payload.about_object_type,
-        "param": json.dumps(payload.param.model_dump(), ensure_ascii=False) if payload.param else None,
+        "group_by": json.dumps(payload.group_by.model_dump(), ensure_ascii=False) if payload.group_by else None,
         "ai_context": payload.ai_context,
         "created_by_name": str(uname) if uname else None,
     }
@@ -325,9 +329,9 @@ async def update_rule(
         data["domain"] = body.subject.kind
     if body.about_object_type is not None:
         data["about_object_type"] = body.about_object_type
-    if "param" in body.model_fields_set:
-        data["param"] = (
-            json.dumps(body.param.model_dump(), ensure_ascii=False) if body.param else None
+    if "group_by" in body.model_fields_set:
+        data["group_by"] = (
+            json.dumps(body.group_by.model_dump(), ensure_ascii=False) if body.group_by else None
         )
     if changed_condition:
         data["version"] = int(data.get("version") or 1) + 1
@@ -370,7 +374,7 @@ async def list_rule_events(
     return EventListResponse(items=[EventOut(**item) for item in items], total=total)
 
 
-@router.post("/{rule_id}/evaluate", response_model=EvalOut, dependencies=[Depends(require_auth)])
+@router.post("/{rule_id}/evaluate", response_model=EvaluateResponse, dependencies=[Depends(require_auth)])
 async def evaluate_one(
     rule_id: str,
     request: Request,
@@ -380,18 +384,21 @@ async def evaluate_one(
     rule_type, _event_type = await _rule_type_or_409(db)
     instance = await _load_rule(db, rule_id, rule_type)
     try:
-        result = await evaluate_rule(
+        results = await evaluate_rule(
             db,
             request,
             rule=instance,
             period_start=body.period_start,
             period_end=body.period_end,
-            scope=body.scope,
         )
     except ConditionError as exc:
         raise HTTPException(status_code=400, detail=f"Invalid condition: {exc}") from exc
     await db.commit()
-    return _eval_out(result)
+    return EvaluateResponse(
+        results=[_eval_out(result) for result in results],
+        failed=sum(1 for result in results if result.status == "fail"),
+        unknown=sum(1 for result in results if result.status == "unknown"),
+    )
 
 
 @router.post("/evaluate", response_model=EvaluateResponse, dependencies=[Depends(require_auth)])
@@ -408,7 +415,6 @@ async def evaluate_many(
         subject_id=body.subject_id,
         period_start=body.period_start,
         period_end=body.period_end,
-        scope=body.scope,
     )
     await db.commit()
     return EvaluateResponse(

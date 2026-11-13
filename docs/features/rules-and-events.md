@@ -77,21 +77,30 @@ and each run supplies one value. A run that supplies nothing returns `unknown` w
 `missing run value for scenario_id` — deliberately not a number, because "all five plans at once" is not
 a bigger answer, it is a different question.
 
+### Why a group-by and not a run parameter
+
+Palantir's Foundry Rules shape a rule as a row pipeline (inputs → filter / expression / aggregate / join →
+output rows), so a dimension like `scenario_id` is either a filter or a group-by **inside** the rule. Our
+rules produce one verdict per subject, so the same need is met by a group-by: "for each scenario, does
+this hold?" — one run, every scenario, and the failing ones become events. A run parameter (an earlier
+draft) would have made the platform ask a question the rule could answer itself.
+
 ## Rules are not snapshots
 
 A condition must not hard-code one row's id. "This period's allocation is over-allocated" is a statement
 about *whichever* scenario you are looking at, so the id belongs to the **run**:
 
-The parameter is declared **once, on the rule** — the field is a column both the metric and the dataset
-can be filtered by, so the choice belongs to whoever writes the rule:
+The rule is **evaluated per group**, declared once on the rule — the field is a column both the metric and
+the dataset can be filtered by, so the choice belongs to whoever writes the rule:
 
 ```json
-{"param": {"field": "scenario_id", "label": "方案", "required": true}}
+{"group_by": {"field": "scenario_id", "label": "方案"}}
 ```
 
-`field` is the column the run's value filters on; `label` is the author's word for it (a 方案, a stock, a
-region) and only affects the sentence; `required` means a run without the value is `undetermined` rather
-than a number computed over everything. Operands do not repeat it — one rule, one value.
+One run then covers **every** group and reports which ones fail, with one event per failing group
+(`方案 5 · 本期分货额度错配…`). `label` is the author's word for it (a 方案, a stock, a region) and only
+affects the sentence. There is no run parameter: nothing has to be supplied before the rule can be
+judged, and a missing group is `undetermined` rather than a number computed over everything.
 
 `evaluate(rule, scope=…)` appends `scenario_id = <scope>` to that operand's filters. Without a scope the
 rule runs over everything (a different, usually meaningless, number: for the demo rule, 1.29 across all

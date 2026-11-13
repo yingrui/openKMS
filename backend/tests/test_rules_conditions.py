@@ -11,6 +11,7 @@ import pytest
 
 from app.services.ontology.rules.conditions import (
     ConditionError,
+    evaluate_groups,
     collect_datasets,
     collect_metrics,
     evaluate_condition,
@@ -92,6 +93,45 @@ def test_evaluates_all_and_any():
 def test_undecidable_operand_makes_the_whole_condition_unknown():
     condition = {"left": METRIC_A, "op": ">", "right": {"value": 1}}
     assert evaluate_condition(condition, {operand_key(METRIC_A): None}) is None
+
+
+def test_groups_are_unioned_and_a_missing_operand_makes_the_group_undecidable():
+    condition = {
+        "all": [
+            {"left": METRIC_A, "op": ">", "right": {"value": 1}},
+            {"left": METRIC_B, "op": ">", "right": {"value": 0}},
+        ]
+    }
+    resolved = {
+        operand_key(METRIC_A): {"s1": 2.0, "s2": 0.5, "s3": 3.0},
+        operand_key(METRIC_B): {"s1": 1.0, "s2": 1.0},  # s3 missing here
+    }
+    grouped = {group: (hit, values) for group, hit, values in evaluate_groups(condition, resolved, "scenario_id")}
+    assert set(grouped) == {"s1", "s2", "s3"}
+    assert grouped["s1"][0] is True
+    assert grouped["s2"][0] is False
+    assert grouped["s3"][0] is None  # undecidable, not "pass"
+
+
+def test_a_rule_without_a_group_evaluates_once():
+    condition = {"left": METRIC_A, "op": ">", "right": {"value": 1}}
+    grouped = evaluate_groups(condition, {operand_key(METRIC_A): 2.0}, None)
+    assert len(grouped) == 1
+    assert grouped[0][0] is None
+    assert grouped[0][1] is True
+
+
+def test_group_evaluation_keeps_operands_per_group():
+    condition = {
+        "left": {"ratio": [METRIC_A, METRIC_B]},
+        "op": ">",
+        "right": {"value": 1},
+    }
+    resolved = {
+        operand_key({"ratio": [METRIC_A, METRIC_B]}): {"s1": 1.5, "s2": 0.5},
+    }
+    grouped = {group: hit for group, hit, _ in evaluate_groups(condition, resolved, "scenario_id")}
+    assert grouped == {"s1": True, "s2": False}
 
 
 def test_operator_semantics():

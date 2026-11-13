@@ -179,6 +179,37 @@ def flatten_operands(condition: Any) -> list[dict]:
     return list(seen.values())
 
 
+def evaluate_groups(
+    condition: Any,
+    resolved: dict[str, float | None | dict[str, float | None]],
+    group_field: str | None,
+) -> list[tuple[str | None, bool | None, dict[str, float | None]]]:
+    """Evaluate the condition per group (or once, when `group_field` is None).
+
+    `resolved` maps an operand key to either one value or one value per group value. The union of the
+    group keys is used, so a group that one operand knows and another does not becomes `None` — an
+    undecidable group, never a silently smaller number.
+
+    Pure: the querying happens in `evaluator.py`, so this part is testable without a database.
+    """
+    group_values: list[str | None] = [None]
+    if group_field:
+        keys: set[str] = set()
+        for value in resolved.values():
+            if isinstance(value, dict):
+                keys.update(key for key in value if key is not None)
+        group_values = sorted(keys)
+
+    out: list[tuple[str | None, bool | None, dict[str, float | None]]] = []
+    for group_value in group_values:
+        values = {
+            key: (value.get(group_value) if isinstance(value, dict) else value)
+            for key, value in resolved.items()
+        }
+        out.append((group_value, evaluate_condition(condition, values), values))
+    return out
+
+
 def compare(left: float, op: str, right: float) -> bool:
     if op == "<":
         return left < right

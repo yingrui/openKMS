@@ -10,28 +10,24 @@ import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Dialog, FormField } from '../../styles/design-system';
 
-export type RunParams = { period_start: string; period_end: string; scope: string };
+export type RunParams = { period_start: string; period_end: string };
 
 export function RunRulesDialog({
   open,
   busy,
   onClose,
   onRun,
-  requiredParam,
 }: {
   open: boolean;
   busy: boolean;
   onClose: () => void;
   onRun: (params: RunParams) => void;
-  /** The rule's own name for the value a run must supply (`scope_label`), if it declares one. */
-  requiredParam?: string | null;
 }) {
   const { t } = useTranslation('ontology');
   const [period, setPeriod] = useState('');
-  const [scope, setScope] = useState('');
 
   const submit = () => {
-    onRun({ period_start: period, period_end: period, scope });
+    onRun({ period_start: period, period_end: period });
   };
 
   return (
@@ -50,7 +46,7 @@ export function RunRulesDialog({
             type="button"
             className="btn btn-primary"
             onClick={submit}
-            disabled={busy || (Boolean(requiredParam) && !scope.trim())}
+            disabled={busy}
           >
             {busy ? t('rules.running') : t('rules.run')}
           </button>
@@ -65,15 +61,12 @@ export function RunRulesDialog({
           placeholder={t('rules.periodPlaceholder')}
         />
       </FormField>
-      <FormField
-        label={requiredParam ? t('rules.runParamNamed', { name: requiredParam }) : t('rules.runScope')}
-        hint={requiredParam ? t('rules.runParamRequired') : t('rules.runScopeHint')}
-      >
+      <FormField label={t('rules.runPeriod')} hint={t('rules.runPeriodHint')}>
         <input
           type="text"
-          value={scope}
-          onChange={(e) => setScope(e.target.value)}
-          placeholder={t('rules.runScopePlaceholder')}
+          value={period}
+          onChange={(event) => setPeriod(event.target.value)}
+          placeholder={t('rules.periodPlaceholder')}
         />
       </FormField>
     </Dialog>

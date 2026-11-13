@@ -1430,6 +1430,14 @@
     "paramLabel": "Run parameter — name",
     "paramLabelHint": "What a reader calls it (“scenario”); used in the condition text and in the run dialog.",
     "paramLabelPlaceholder": "e.g. scenario",
-    "paramRequired": "Required: a run without it is undetermined, not a number"
+    "paramRequired": "Required: a run without it is undetermined, not a number",
+    "groupedBy": "computed per group",
+    "groupedByNamed": "computed per {{name}}",
+    "groupField": "Evaluated per — field",
+    "groupFieldHint": "A column to group by (e.g. scenario_id). One run then reports every group, so you see which ones fail.",
+    "groupLabel": "Evaluated per — name",
+    "groupLabelHint": "What a reader calls it (“scenario”); used in the condition text and on each event.",
+    "groupLabelPlaceholder": "e.g. scenario",
+    "groupedRunSummary": "{{groups}} groups, {{failed}} triggered"
   }
 }

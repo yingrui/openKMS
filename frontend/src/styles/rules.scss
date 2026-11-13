@@ -371,12 +371,3 @@
   font-size: var(--text-sm);
   color: var(--color-text-muted);
 }
-
-/* A checkbox inside a form column: same line as its label, not a full-width row. */
-.rules-checkbox {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-  font-size: var(--text-sm);
-  color: var(--color-text-secondary);
-}

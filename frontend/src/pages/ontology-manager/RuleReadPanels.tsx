@@ -96,7 +96,16 @@ export function RuleReadPanels({
                     <dd>{rule.last_run_at ? new Date(rule.last_run_at).toLocaleString() : '—'}</dd>
                     <dt>{t('rules.fieldValues')}</dt>
                     <dd>
-                      {valueRows(rule.last_values, lookups).length === 0 ? (
+                      {rule.last_groups ? (
+                        // A grouped run has one number per group per operand — the numbers live on each
+                        // event; here the reader needs the shape: how many groups, how many failed.
+                        <span>
+                          {t('rules.groupedRunSummary', {
+                            groups: rule.last_groups,
+                            failed: (rule.last_failed_groups ?? []).length,
+                          })}
+                        </span>
+                      ) : valueRows(rule.last_values, lookups).length === 0 ? (
                         '—'
                       ) : (
                         <ul className="rules-values">

@@ -54,9 +54,8 @@ type FormState = {
   suggestion: string;
   aboutObjectType: string;
   status: 'active' | 'paused';
-  paramField: string;
-  paramLabel: string;
-  paramRequired: boolean;
+  groupField: string;
+  groupLabel: string;
 };
 
 const EMPTY_FORM: FormState = {
@@ -73,9 +72,8 @@ const EMPTY_FORM: FormState = {
   suggestion: '',
   aboutObjectType: '',
   status: 'active',
-  paramField: '',
-  paramLabel: '',
-  paramRequired: true,
+  groupField: '',
+  groupLabel: '', 
 };
 
 function formFromRule(rule: RuleOut, metrics: MetricResponse[], datasets: DatasetResponse[]): FormState {
@@ -96,9 +94,8 @@ function formFromRule(rule: RuleOut, metrics: MetricResponse[], datasets: Datase
     suggestion: rule.suggestion ?? '',
     aboutObjectType: rule.about_object_type ?? '',
     status: rule.status === 'paused' ? 'paused' : 'active',
-    paramField: rule.param?.field ?? '',
-    paramLabel: rule.param?.label ?? '',
-    paramRequired: rule.param?.required ?? true,
+    groupField: rule.group_by?.field ?? '',
+    groupLabel: rule.group_by?.label ?? '',
   };
 }
 
@@ -291,12 +288,8 @@ export function RuleDetailPage() {
         suggestion: form.suggestion.trim(),
         about_object_type: form.aboutObjectType.trim() || null,
         status: form.status,
-        param: form.paramField.trim()
-          ? {
-              field: form.paramField.trim(),
-              label: form.paramLabel.trim() || null,
-              required: form.paramRequired,
-            }
+        group_by: form.groupField.trim()
+          ? { field: form.groupField.trim(), label: form.groupLabel.trim() || null }
           : null,
       };
       if (isNew) {
@@ -344,7 +337,12 @@ export function RuleDetailPage() {
     setRunning(true);
     try {
       const result = await evaluateRule(rule.object_id, params);
-      toast.success(t(`rules.status.${result.status}`));
+      const first = result.results[0];
+      toast.success(
+        result.results.length > 1
+          ? t('rules.toastRanAll', { count: result.results.length, failed: result.failed })
+          : t(`rules.status.${first?.status ?? 'pass'}`),
+      );
       await load();
       setRunOpen(false);
     } catch (e: unknown) {
@@ -389,18 +387,18 @@ export function RuleDetailPage() {
 
   // The author's own word for what a run picks ("方案") makes the sentence concrete; without one the
   // sentence stays domain-neutral ("one object at a time"). Neither ever says "scenario".
-  const scopeName = rule?.param?.label ?? null;
+  const groupLabel = rule?.group_by?.label ?? null;
   const joiners = {
     and: t('rules.joinAnd'),
     or: t('rules.joinOr'),
     scopePrefix: t('rules.scopePrefix'),
-    scopeAtRunTime: scopeName
-      ? t('rules.scopeAtRunTimeNamed', { name: scopeName })
-      : t('rules.scopeAtRunTime'),
+    scopeAtRunTime: groupLabel
+      ? t('rules.groupedByNamed', { name: groupLabel })
+      : t('rules.groupedBy'),
   };
   const readTree = useMemo(() => toTree(rule?.condition ?? null).tree, [rule]);
-  const conditionText = conditionLabel(rule?.condition ?? null, { metricName, datasetName, ...joiners }, rule?.param);
-  const scopeNote = conditionScopeNote(rule?.condition ?? null, { metricName, datasetName, ...joiners }, rule?.param);
+  const conditionText = conditionLabel(rule?.condition ?? null, { metricName, datasetName, ...joiners }, rule?.group_by);
+  const scopeNote = conditionScopeNote(rule?.condition ?? null, { metricName, datasetName, ...joiners }, rule?.group_by);
 
   if (loading) {
     return (
@@ -515,46 +513,36 @@ export function RuleDetailPage() {
                     <option value="paused">{t('rules.paused')}</option>
                   </select>
                 </FormField>
-                <FormField label={t('rules.paramField')} hint={t('rules.paramFieldHint')}>
+                <FormField label={t('rules.groupField')} hint={t('rules.groupFieldHint')}>
                   <input
                     type="text"
-                    value={form.paramField}
-                    onChange={(e) => setForm({ ...form, paramField: e.target.value })}
+                    value={form.groupField}
+                    onChange={(e) => setForm({ ...form, groupField: e.target.value })}
                     placeholder="scenario_id"
-                    list="rule-param-fields"
+                    list="rule-group-fields"
                   />
-                  <datalist id="rule-param-fields">
+                  <datalist id="rule-group-fields">
                     {paramCandidates.map((name) => (
                       <option key={name} value={name} />
                     ))}
                   </datalist>
                 </FormField>
-                {form.paramField.trim() ? (
-                  <>
-                    <FormField label={t('rules.paramLabel')} hint={t('rules.paramLabelHint')}>
-                      <input
-                        type="text"
-                        value={form.paramLabel}
-                        onChange={(e) => setForm({ ...form, paramLabel: e.target.value })}
-                        placeholder={t('rules.paramLabelPlaceholder')}
-                      />
-                    </FormField>
-                    <label className="rules-checkbox">
-                      <input
-                        type="checkbox"
-                        checked={form.paramRequired}
-                        onChange={(e) => setForm({ ...form, paramRequired: e.target.checked })}
-                      />
-                      <span>{t('rules.paramRequired')}</span>
-                    </label>
-                  </>
+                {form.groupField.trim() ? (
+                  <FormField label={t('rules.groupLabel')} hint={t('rules.groupLabelHint')}>
+                    <input
+                      type="text"
+                      value={form.groupLabel}
+                      onChange={(e) => setForm({ ...form, groupLabel: e.target.value })}
+                      placeholder={t('rules.groupLabelPlaceholder')}
+                    />
+                  </FormField>
                 ) : null}
               </div>
             </EntityViewPanel>
 
             <EntityViewPanel title={t('rules.panelCondition')} description={t('rules.panelConditionHint')}>
               <p className="rules-condition-current">
-                {tree ? conditionLabel(fromTree(tree), { metricName, datasetName, ...joiners }, rule?.param) : conditionText}
+                {tree ? conditionLabel(fromTree(tree), { metricName, datasetName, ...joiners }, rule?.group_by) : conditionText}
               </p>
               {tree ? (
                 <ConditionTree
@@ -658,7 +646,6 @@ export function RuleDetailPage() {
         busy={running}
         onClose={() => setRunOpen(false)}
         onRun={(params) => void run(params)}
-        requiredParam={scopeName}
       />
     </div>
   );

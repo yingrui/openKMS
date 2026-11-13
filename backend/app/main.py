@@ -2,7 +2,6 @@
 
 import logging
 import traceback
-from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, Request
 from fastapi.openapi.docs import get_swagger_ui_html

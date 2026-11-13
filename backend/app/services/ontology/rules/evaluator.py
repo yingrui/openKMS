@@ -37,7 +37,7 @@ from app.services.ontology.rules.conditions import (
     ConditionError,
     collect_datasets,
     collect_metrics,
-    evaluate_condition,
+    evaluate_groups,
     flatten_operands,
     operand_key,
     validate_condition,
@@ -57,6 +57,7 @@ class EvalResult:
     values: dict[str, float | None] = field(default_factory=dict)
     event_id: str | None = None
     reason: str | None = None
+    group: dict | None = None
 
 
 def _now() -> str:
@@ -82,43 +83,48 @@ def _as_float(value: Any) -> float | None:
         return None
 
 
-def _rule_param(rule_data: dict) -> dict | None:
-    """The rule's run parameter: `{"field": "scenario_id", "label": "方案", "required": true}`.
+def _rule_group_by(rule_data: dict) -> dict | None:
+    """The dimension a rule is evaluated **per**: `{"field": "scenario_id", "label": "方案"}`.
 
-    The field is a column both the metric and the dataset are queried by, so the choice belongs to the
-    **rule** (its author knows which dimension this check is about), not to the metric definition and not
-    to each operand.
+    Palantir's rules are row pipelines: the dimension is a filter or a group-by *inside* the rule. Ours
+    produce one verdict per subject, so a dimension the check is computed per is a group-by here too —
+    and the run needs no parameter: one run covers every group and reports which ones fail.
     """
-    param = _json_field(rule_data.get("param"))
-    if not isinstance(param, dict) or not str(param.get("field") or "").strip():
+    group = _json_field(rule_data.get("group_by"))
+    if not isinstance(group, dict) or not str(group.get("field") or "").strip():
         return None
-    return param
-
-
-def _scope_filters(param: dict | None, scope: str) -> list[dict]:
-    if not param or not scope:
-        return []
-    return [{"field": str(param["field"]), "op": "=", "value": scope}]
+    return group
 
 
 async def _metric_value(
-    db: AsyncSession, request: Request, metric_id: str, filters: list | None = None
-) -> tuple[float | None, str]:
+    db: AsyncSession,
+    request: Request,
+    metric_id: str,
+    filters: list | None = None,
+    group_field: str | None = None,
+) -> tuple[float | None | dict[str, float | None], str]:
     metric = await db.get(MetricDefinition, metric_id)
     if metric is None:
         return None, f"metric {metric_id} not found"
     await require_model_read(metric.semantic_model_id, request, db)
     _sql, _columns, rows, _capped, _ms = await run_query(
-        db, model_id=metric.semantic_model_id, metric=metric_id, filters=filters or None, limit=1
+        db,
+        model_id=metric.semantic_model_id,
+        metric=metric_id,
+        filters=filters or None,
+        group_by=[{"field": group_field}] if group_field else None,
+        limit=500 if group_field else 1,
     )
     if not rows:
         return None, f"metric {metric_id} returned no rows"
+    if group_field:
+        return {str(row.get(group_field)): _as_float(row.get("value")) for row in rows}, ""
     return _as_float(rows[0].get("value")), ""
 
 
 async def _dataset_agg_value(
-    db: AsyncSession, request: Request, spec: dict, scope: str, param: dict | None = None
-) -> tuple[float | None, str]:
+    db: AsyncSession, request: Request, spec: dict, group_field: str | None = None
+) -> tuple[float | None | dict[str, float | None], str]:
     dataset_id = str(spec.get("dataset_id"))
     # Same resource gate as the data grid: a rule may only read what the runner may read.
     await load_dataset_scoped(db, request, dataset_id, PERM_READ)
@@ -129,39 +135,60 @@ async def _dataset_agg_value(
         db,
         dataset_id,
         aggregates=[{"fn": fn, "column": column, "name": name}],
-        filters=[*(spec.get("filters") or []), *_scope_filters(param, scope)],
-        limit=1,
+        filters=spec.get("filters") or [],
+        group_by=[group_field] if group_field else None,
+        limit=500 if group_field else 1,
     )
     if not summary.rows:
         return None, f"dataset {dataset_id} returned no rows"
+    if group_field:
+        return {str(row.get(group_field)): _as_float(row.get(name)) for row in summary.rows}, ""
     return _as_float(summary.rows[0].get(name)), ""
 
 
 async def _resolve_operand(
-    db: AsyncSession, request: Request, operand: dict, scope: str = "", param: dict | None = None
-) -> tuple[float | None, str]:
+    db: AsyncSession,
+    request: Request,
+    operand: dict,
+    group_field: str | None = None,
+) -> tuple[float | None | dict[str, float | None], str]:
     kind = next(key for key in operand if key != "filters")
     if kind == "metric":
-        filters = [*(operand.get("filters") or []), *_scope_filters(param, scope)]
-        return await _metric_value(db, request, str(operand["metric"]), filters)
+        return await _metric_value(
+            db, request, str(operand["metric"]), operand.get("filters"), group_field
+        )
     if kind == "dataset_agg":
-        spec = dict(operand["dataset_agg"])
-        return await _dataset_agg_value(db, request, spec, scope, param)
-    left, reason = await _resolve_operand(db, request, operand[kind][0], scope, param)
+        return await _dataset_agg_value(db, request, dict(operand["dataset_agg"]), group_field)
+    pair = (operand[kind][0], operand[kind][1])
+    left, left_reason = await _resolve_operand(db, request, pair[0], group_field)
     if left is None:
-        return None, reason
-    right, reason = await _resolve_operand(db, request, operand[kind][1], scope, param)
+        return None, left_reason
+    right, right_reason = await _resolve_operand(db, request, pair[1], group_field)
     if right is None:
-        return None, reason
+        return None, right_reason
+    if group_field:
+        merged: dict[str, float | None] = {}
+        for key in {**left, **right}:  # type: ignore[arg-type]
+            a = left.get(key)  # type: ignore[union-attr]
+            b = right.get(key)  # type: ignore[union-attr]
+            if kind == "diff":
+                merged[key] = None if a is None or b is None else a - b
+            else:
+                merged[key] = None if a is None or not b else a / b
+        return merged, ""
     if kind == "diff":
-        return left - right, ""
-    if right == 0:
+        return left - right, ""  # type: ignore[operator]
+    if not right:
         return None, "ratio denominator is zero"
-    return left / right, ""
+    return left / right, ""  # type: ignore[operator]
 
 
 def _rule_payload(instance: ObjectInstance) -> dict:
     return dict(instance.data or {})
+
+
+def _group_key(value: Any) -> str:
+    return "" if value is None else str(value)
 
 
 async def _find_open_event(
@@ -182,20 +209,38 @@ async def _find_open_event(
     return rows[0] if rows else None
 
 
-async def _close_open_events(
-    db: AsyncSession, event_type: ObjectType, *, rule_id: str, scope: str, period_start: str, period_end: str
-) -> int:
-    open_event = await _find_open_event(
-        db, event_type, rule_id=rule_id, scope=scope, period_start=period_start, period_end=period_end
-    )
-    if open_event is None:
-        return 0
-    data = dict(open_event.data or {})
+def _close(db_event: ObjectInstance) -> None:
+    data = dict(db_event.data or {})
     data.update({"event_end_time": _now(), "status": "resolved", "intent": "success"})
-    open_event.data = data
-    await db.flush()
-    await sync_queue_ids_to_neo4j(db, event_type, upsert_ids=[open_event.id], delete_ids=[])
-    return 1
+    db_event.data = data
+
+
+async def _close_open_events(
+    db: AsyncSession, event_type: ObjectType, *, rule: str, scopes: list[str], period_start: str, period_end: str
+) -> int:
+    """Close the events of `rule` whose group is not among `scopes` (or every one when empty)."""
+    rows = (
+        await db.execute(
+            select(ObjectInstance).where(
+                ObjectInstance.object_type_id == event_type.id,
+                ObjectInstance.data["rule_id"].astext == rule,
+                ObjectInstance.data["period_start"].astext == period_start,
+                ObjectInstance.data["period_end"].astext == period_end,
+                ObjectInstance.data["event_end_time"].astext.is_(None),
+            )
+        )
+    ).scalars().all()
+    closed = 0
+    for event in rows:
+        scope = str((event.data or {}).get("scope") or "")
+        if scopes and scope in scopes:
+            continue
+        _close(event)
+        closed += 1
+    if closed:
+        await db.flush()
+        await sync_queue_ids_to_neo4j(db, event_type, upsert_ids=[e.id for e in rows], delete_ids=[])
+    return closed
 
 
 async def _upsert_event(
@@ -206,6 +251,7 @@ async def _upsert_event(
     rule_data: dict,
     event_type: ObjectType,
     scope: str,
+    group: dict | None,
     period_start: str,
     period_end: str,
     values: dict[str, float | None],
@@ -216,6 +262,7 @@ async def _upsert_event(
     evidence = {
         "rule_id": rule.id,
         "rule_version": rule_data.get("version", 1),
+        "group": group,
         "values": values,
         "at": _now(),
     }
@@ -231,9 +278,12 @@ async def _upsert_event(
     subject_type = subject.get("kind") if isinstance(subject, dict) else None
     subject_id = subject.get("ref") if isinstance(subject, dict) else None
     severity = str(rule_data.get("severity") or "P1")
+    label = str((group or {}).get("label") or "")
+    value = str((group or {}).get("value") or "")
+    title = str(rule_data.get("conclusion") or rule_data.get("name") or "rule hit")
     data = {
-        "event_id": rule.id + ":" + (period_start or "") + ":" + (scope or ""),
-        "title": str(rule_data.get("conclusion") or rule_data.get("name") or "rule hit"),
+        "event_id": "|".join([rule.id, scope, period_start]),
+        "title": f"{label} {value} · {title}".strip(" ·") if label else title,
         "domain": str(rule_data.get("domain") or "metric"),
         "intent": INTENT_BY_SEVERITY.get(severity, "warning"),
         "severity": severity,
@@ -250,7 +300,7 @@ async def _upsert_event(
         "rule_version": rule_data.get("version", 1),
         "subject_type": subject_type,
         "subject_id": subject_id,
-        "dedupe_key": "|".join([rule.id, scope or "", period_start or "", period_end or ""]),
+        "dedupe_key": "|".join([rule.id, scope, period_start, period_end]),
     }
     instance = ObjectInstance(id=__import__("uuid").uuid4().hex, object_type_id=event_type.id, data=data)
     db.add(instance)
@@ -261,7 +311,7 @@ async def _upsert_event(
         event_type=event_type,
         event_instance_id=instance.id,
         target_api_name=rule_data.get("about_object_type"),
-        scope=scope or None,
+        scope=None,
     )
     return instance.id
 
@@ -273,10 +323,14 @@ async def evaluate_rule(
     rule: ObjectInstance,
     period_start: str = "",
     period_end: str = "",
-    scope: str = "",
-) -> EvalResult:
+) -> list[EvalResult]:
+    """Evaluate one rule — once per group when it declares `group_by`, otherwise once.
+
+    A grouped rule asks "for each scenario, does this hold?" and answers per scenario, so one run shows
+    *which* groups are broken instead of the caller having to pick one and run again.
+    """
     rule_data = _rule_payload(rule)
-    rule_type, event_type = await builtin_types(db)
+    _rule_type, event_type = await builtin_types(db)
     if event_type is None:
         raise RuntimeError("Event object type is missing — restart the backend to run the bootstrap")
 
@@ -288,78 +342,92 @@ async def evaluate_rule(
             raise ConditionError(f"condition is not valid JSON: {exc}") from exc
     validate_condition(condition)
 
-    param = _rule_param(rule_data)
-    required_scope = [str(param["field"])] if param and param.get("required") and param.get("field") else []
-    if required_scope and not scope:
-        # Not a failure and not a number: the rule cannot be judged without its parameter.
-        data = dict(rule.data or {})
-        data.update({"last_run_at": _now(), "last_status": "unknown", "last_values": "{}"})
-        rule.data = data
-        await db.flush()
-        return EvalResult(
-            rule_id=rule.id,
-            status="unknown",
-            reason=f"missing run value for {', '.join(required_scope)}",
-        )
+    group = _rule_group_by(rule_data)
+    group_field = str(group["field"]) if group else None
+    operands = flatten_operands(condition)
 
-    resolved: dict[str, float | None] = {}
+    resolved_by_operand: dict[str, float | None | dict[str, float | None]] = {}
     reasons: list[str] = []
-    for operand in flatten_operands(condition):
-        value, reason = await _resolve_operand(db, request, operand, scope, param)
-        resolved[operand_key(operand)] = value
+    for operand in operands:
+        value, reason = await _resolve_operand(db, request, operand, group_field)
+        resolved_by_operand[operand_key(operand)] = value
         if value is None and reason:
             reasons.append(reason)
 
-    hit = evaluate_condition(condition, resolved)
-    values = {operand_key(op): resolved.get(operand_key(op)) for op in flatten_operands(condition)}
-
-    status = "unknown" if hit is None else ("fail" if hit else "pass")
-    event_id: str | None = None
-
-    if hit is False:
-        await _close_open_events(
-            db, event_type, rule_id=rule.id, scope=scope, period_start=period_start, period_end=period_end
-        )
-    elif hit is True:
-        severity = str(rule_data.get("severity") or "P1")
-        if rule_data.get("suggestion") and severity in PUBLISHING_SEVERITIES:
-            event_id = await _upsert_event(
-                db,
-                request,
-                rule=rule,
-                rule_data=rule_data,
-                event_type=event_type,
-                scope=scope,
-                period_start=period_start,
-                period_end=period_end,
-                values=values,
+    grouped = evaluate_groups(condition, resolved_by_operand, group_field)
+    results: list[EvalResult] = []
+    failing_scopes: list[str] = []
+    statuses: list[str] = []
+    for group_value, hit, resolved in grouped:
+        statuses.append("unknown" if hit is None else ("fail" if hit else "pass"))
+        results.append(
+            EvalResult(
+                rule_id=rule.id,
+                status=statuses[-1],
+                values=resolved,
+                group=({"field": group_field, "value": group_value} if group_field else None),
+                reason="; ".join(reasons) if reasons else None,
             )
-        else:
-            status = "pass"  # hit, but not worth an event: it stays in last_status only
+        )
+        if hit is True:
+            severity = str(rule_data.get("severity") or "P1")
+            scope_value = _group_key(group_value)
+            if rule_data.get("suggestion") and severity in PUBLISHING_SEVERITIES:
+                failing_scopes.append(scope_value)
+                results[-1].event_id = await _upsert_event(
+                    db,
+                    request,
+                    rule=rule,
+                    rule_data=rule_data,
+                    event_type=event_type,
+                    scope=scope_value,
+                    group=({"field": group_field, "label": (group or {}).get("label"), "value": group_value}
+                           if group_field else None),
+                    period_start=period_start,
+                    period_end=period_end,
+                    values=resolved,
+                )
+            else:
+                results[-1].status = "pass"  # a hit without advice is not an event
 
+    if group_field:
+        await _close_open_events(
+            db,
+            event_type,
+            rule=rule.id,
+            scopes=failing_scopes,
+            period_start=period_start,
+            period_end=period_end,
+        )
+
+    overall = "fail" if "fail" in statuses else ("unknown" if "unknown" in statuses else "pass")
+    failed_groups = [
+        str(result.group.get("value")) for result in results
+        if result.status == "fail" and result.group
+    ]
     data = dict(rule.data or {})
     data.update(
         {
             "last_run_at": _now(),
-            "last_status": status,
-            "last_values": json.dumps(values, ensure_ascii=False, default=str),
-            "last_scope": scope,
+            "last_status": overall,
+            # A grouped run has one number per group per operand: that is a table, not a value list.
+            # The per-group numbers live on each event's evidence; here we keep counts.
+            "last_values": json.dumps(
+                {} if group_field else resolved_by_operand,
+                ensure_ascii=False,
+                default=str,
+            ),
             "last_period_start": period_start,
             "last_period_end": period_end,
+            "last_groups": len(grouped) if group_field else 0,
+            "last_failed_groups": failed_groups,
         }
     )
     rule.data = data
     await db.flush()
-    if rule_type is not None:
-        await sync_queue_ids_to_neo4j(db, rule_type, upsert_ids=[rule.id], delete_ids=[])
-
-    return EvalResult(
-        rule_id=rule.id,
-        status=status,
-        values=values,
-        event_id=event_id,
-        reason="; ".join(reasons) if reasons else None,
-    )
+    if _rule_type is not None:
+        await sync_queue_ids_to_neo4j(db, _rule_type, upsert_ids=[rule.id], delete_ids=[])
+    return results
 
 
 async def evaluate_rules_for_subject(
@@ -370,7 +438,6 @@ async def evaluate_rules_for_subject(
     subject_id: str | None = None,
     period_start: str = "",
     period_end: str = "",
-    scope: str = "",
     limit: int = 100,
 ) -> list[EvalResult]:
     """Every active rule, optionally narrowed to one subject (a metric or a dataset)."""
@@ -390,21 +457,14 @@ async def evaluate_rules_for_subject(
         data = _rule_payload(rule)
         if str(data.get("status") or "active") != "active":
             continue
-        subject = data.get("subject") or {}
-        if isinstance(subject, str):
-            try:
-                subject = json.loads(subject)
-            except json.JSONDecodeError:
-                subject = {}
+        subject = _json_field(data.get("subject")) or {}
         if subject_type and str(subject.get("kind")) != subject_type:
             continue
         if subject_id and str(subject.get("ref")) != subject_id:
             continue
         try:
-            results.append(
-                await evaluate_rule(
-                    db, request, rule=rule, period_start=period_start, period_end=period_end, scope=scope
-                )
+            results.extend(
+                await evaluate_rule(db, request, rule=rule, period_start=period_start, period_end=period_end)
             )
         except ConditionError as exc:
             results.append(EvalResult(rule_id=rule.id, status="skipped", reason=str(exc)))
