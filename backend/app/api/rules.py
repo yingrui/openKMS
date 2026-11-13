@@ -39,8 +39,16 @@ from app.services.ontology.rules.evaluator import (
     evaluate_rule,
     evaluate_rules_for_subject,
 )
+from app.services.ontology.rules.events import (
+    STATUSES,
+    counts_by_subject,
+    list_events,
+    transition,
+)
 
 router = APIRouter(prefix="/rules", tags=["rules"])
+events_router = APIRouter(prefix="/events", tags=["rules"])
+
 
 WRITE_DEPS = [Depends(require_any_permission(PERM_CONSOLE_OBJECT_TYPES, PERM_ONTOLOGY_WRITE))]
 
@@ -113,6 +121,43 @@ class EvalOut(BaseModel):
     values: dict[str, float | None] = {}
     event_id: str | None = None
     reason: str | None = None
+
+
+class EventOut(BaseModel):
+    id: str
+    title: str | None = None
+    severity: str | None = None
+    intent: str | None = None
+    status: str | None = None
+    event_start_time: str | None = None
+    event_end_time: str | None = None
+    period_start: str | None = None
+    period_end: str | None = None
+    scope: str | None = None
+    description: str | None = None
+    evidence: str | None = None
+    rule_id: str | None = None
+    rule_version: int | None = None
+    subject_type: str | None = None
+    subject_id: str | None = None
+    assignee: str | None = None
+
+
+class EventListResponse(BaseModel):
+    items: list[EventOut]
+    total: int
+
+
+class EventCount(BaseModel):
+    subject_id: str
+    total: int
+    open: int
+
+
+class EventTransition(BaseModel):
+    status: str | None = Field(default=None, pattern="^(open|acknowledged|dismissed|resolved)$")
+    assignee: str | None = None
+    note: str | None = None
 
 
 class EvaluateResponse(BaseModel):
@@ -277,6 +322,37 @@ async def update_rule(
     return _rule_out(instance)
 
 
+@router.get("/{rule_id}", response_model=RuleOut, dependencies=[Depends(require_auth)])
+async def get_rule(rule_id: str, db: AsyncSession = Depends(get_db)):
+    rule_type, _event_type = await _rule_type_or_409(db)
+    return _rule_out(await _load_rule(db, rule_id, rule_type))
+
+
+@router.delete("/{rule_id}", status_code=204, dependencies=WRITE_DEPS)
+async def delete_rule(rule_id: str, db: AsyncSession = Depends(get_db)):
+    """Delete the rule object. Its events stay: they are history, not a cascade."""
+    rule_type, _event_type = await _rule_type_or_409(db)
+    instance = await _load_rule(db, rule_id, rule_type)
+    await db.delete(instance)
+    await db.commit()
+
+
+@router.get("/{rule_id}/events", response_model=EventListResponse, dependencies=[Depends(require_auth)])
+async def list_rule_events(
+    rule_id: str,
+    status: str | None = None,
+    limit: int = Query(50, ge=1, le=200),
+    offset: int = Query(0, ge=0),
+    db: AsyncSession = Depends(get_db),
+):
+    rule_type, event_type = await _rule_type_or_409(db)
+    await _load_rule(db, rule_id, rule_type)
+    items, total = await list_events(
+        db, event_type, rule_id=rule_id, status=status, limit=limit, offset=offset
+    )
+    return EventListResponse(items=[EventOut(**item) for item in items], total=total)
+
+
 @router.post("/{rule_id}/evaluate", response_model=EvalOut, dependencies=[Depends(require_auth)])
 async def evaluate_one(
     rule_id: str,
@@ -325,4 +401,73 @@ async def evaluate_many(
     )
 
 
-__all__ = ["router", "collect_datasets", "collect_metrics"]
+@events_router.get("", response_model=EventListResponse, dependencies=[Depends(require_auth)])
+async def list_all_events(
+    subject_type: str | None = Query(None, pattern="^(metric|dataset)$"),
+    subject_id: str | None = None,
+    rule_id: str | None = None,
+    status: str | None = Query(None, pattern="^(open|acknowledged|dismissed|resolved)$"),
+    severity: str | None = Query(None, pattern="^P[0-2]$"),
+    open_only: bool = False,
+    limit: int = Query(50, ge=1, le=200),
+    offset: int = Query(0, ge=0),
+    db: AsyncSession = Depends(get_db),
+):
+    """Events, newest first — the tab behind a rule, and behind a metric or a dataset."""
+    _rule_type, event_type = await _rule_type_or_409(db)
+    items, total = await list_events(
+        db,
+        event_type,
+        subject_type=subject_type,
+        subject_id=subject_id,
+        rule_id=rule_id,
+        status=status,
+        severity=severity,
+        open_only=open_only,
+        limit=limit,
+        offset=offset,
+    )
+    return EventListResponse(items=[EventOut(**item) for item in items], total=total)
+
+
+@events_router.get("/summary", response_model=list[EventCount], dependencies=[Depends(require_auth)])
+async def event_summary(
+    subject_type: str | None = Query(None, pattern="^(metric|dataset)$"),
+    db: AsyncSession = Depends(get_db),
+):
+    """Open/total events per subject, for a badge on a metric or dataset row."""
+    _rule_type, event_type = await _rule_type_or_409(db)
+    rows = await counts_by_subject(db, event_type, subject_type=subject_type)
+    return [EventCount(**row) for row in rows]
+
+
+@events_router.patch("/{event_id}", response_model=EventOut, dependencies=[Depends(require_auth)])
+async def transition_event(event_id: str, body: EventTransition, request: Request, db: AsyncSession = Depends(get_db)):
+    """Acknowledge / dismiss / resolve / reopen. Closing writes an end time; reopening clears it."""
+    _rule_type, event_type = await _rule_type_or_409(db)
+    instance = await db.get(ObjectInstance, event_id)
+    if instance is None or instance.object_type_id != event_type.id:
+        raise HTTPException(status_code=404, detail="Event not found")
+    payload = body.model_dump(exclude_unset=True)
+    if payload.get("status") is None and "assignee" not in payload and payload.get("note") is None:
+        raise HTTPException(status_code=400, detail="Nothing to change")
+    if payload.get("assignee") is None and body.status in ("acknowledged", "resolved"):
+        p = request.state.openkms_jwt_payload
+        uname = p.get("preferred_username") or p.get("name")
+        payload["assignee"] = str(uname) if uname else None
+    try:
+        data = await transition(
+            db,
+            instance,
+            status=payload.get("status"),
+            assignee=payload.get("assignee"),
+            note=payload.get("note"),
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    await sync_queue_ids_to_neo4j(db, event_type, upsert_ids=[instance.id], delete_ids=[])
+    await db.commit()
+    return EventOut(**data)
+
+
+__all__ = ["router", "events_router", "collect_datasets", "collect_metrics", "STATUSES"]

@@ -434,7 +434,8 @@
     "resourceAccessNoMatch": "No grantee matches that filter.",
     "resourceAccessNoCandidate": "No matching identity.",
     "resourceAccessNotManager": "Only someone who manages this resource can see or change who may read it.",
-    "metricTypePlaceholder": "number / string / datetime"
+    "metricTypePlaceholder": "number / string / datetime",
+    "metricOpenEvents": "{{count}} open event(s)"
   },
   "datasets": {
     "title": "Datasets",
@@ -818,7 +819,13 @@
     "severityP1": "P1",
     "severityP1Meaning": "Look at it — wrong data in a field decisions use",
     "severityP2": "P2",
-    "severityP2Meaning": "Worth knowing — an anomaly, not a fault"
+    "severityP2Meaning": "Worth knowing — an anomaly, not a fault",
+    "rulesAndEvents": "Rules and events",
+    "rulesAndEventsHint": "What the Rules app watches on this dataset, and what it found.",
+    "openRules": "Open in Rules",
+    "ruleCount_one": "{{count}} rule watches this dataset",
+    "ruleCount_other": "{{count}} rules watch this dataset",
+    "noEvents": "No events. A rule that holds and carries advice appears here."
   },
   "groups": {
     "title": "Groups",
@@ -1316,7 +1323,7 @@
     "fieldSuggestionHint": "Leave empty and the rule only records its last status: a hit without advice does not become an event.",
     "fieldAbout": "Related object type",
     "fieldAboutHint": "Optional API name of an object type (e.g. AllocationScenario). The event is linked to the instance whose key equals the run scope.",
-    "eventsHint": "Events are ontology objects — open Object Explorer and pick the Event type to see them.",
+    "eventsHint": "Events are ontology objects: the same rows are visible in Object Explorer, and each is linked to the business object it is about.",
     "toastLoadFailed": "Could not load rules",
     "toastCreated": "Rule created",
     "toastUpdated": "Rule updated",
@@ -1329,6 +1336,34 @@
       "unknown": "undetermined",
       "skipped": "skipped"
     },
-    "fieldAboutPlaceholder": "AllocationScenario"
+    "fieldAboutPlaceholder": "AllocationScenario",
+    "tabRules": "Rules",
+    "tabEvents": "Events",
+    "filterStatus": "State",
+    "statusFilterOpen": "Open only",
+    "statusFilterAll": "All",
+    "colEvent": "Event",
+    "colPeriod": "Period",
+    "colState": "State",
+    "acknowledge": "Acknowledge",
+    "resolve": "Resolve",
+    "dismiss": "Dismiss as false alarm",
+    "emptyEvents": "No events yet. An event appears here when a rule holds and carries advice.",
+    "panelDefinition": "Definition",
+    "panelDefinitionHint": "What the rule asserts, and what to do when it holds.",
+    "panelLastRun": "Last run",
+    "panelEvents": "Events raised",
+    "panelEventsHint": "Each row is one occurrence; closing one sets its end time.",
+    "fieldValues": "Computed values",
+    "fieldStatus": "State",
+    "active": "active",
+    "noSuggestion": "none — this rule records its last status only, and never raises an event",
+    "deleteRule": "Delete rule",
+    "deleteTitle": "Delete rule",
+    "deleteConfirm": "The rule will stop running. Events it already raised stay.",
+    "toastDeleted": "Rule deleted",
+    "toastEventFailed": "Could not update the event",
+    "backToList": "All rules",
+    "notFound": "Rule not found"
   }
 }

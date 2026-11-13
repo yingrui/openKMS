@@ -134,6 +134,9 @@ const GroupsListPage = lazy(() =>
 const RulesPage = lazy(() =>
   import('./pages/ontology-manager/RulesPage').then((m) => ({ default: m.RulesPage })),
 );
+const RuleDetailPage = lazy(() =>
+  import('./pages/ontology-manager/RuleDetailPage').then((m) => ({ default: m.RuleDetailPage })),
+);
 const ActionsListPage = lazy(() =>
   import('./pages/ontology-manager/ActionsListPage').then((m) => ({ default: m.ActionsListPage })),
 );
@@ -550,6 +553,8 @@ function App() {
             </Route>
             <Route path="groups" element={<GroupsListPage />} />
             <Route path="rules" element={<RulesPage />} />
+            <Route path="rules/new" element={<RuleDetailPage />} />
+            <Route path="rules/:ruleId" element={<RuleDetailPage />} />
             <Route path="groups/:groupId" element={<GroupDetailPage />}>
               <Route index element={<GroupOverviewTab />} />
               <Route path="related" element={<GroupRelatedTab />} />

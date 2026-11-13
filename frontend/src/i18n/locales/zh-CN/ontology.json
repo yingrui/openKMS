@@ -429,7 +429,8 @@
     "resourceAccessNoMatch": "没有匹配的授权对象。",
     "resourceAccessNoCandidate": "没有匹配的身份。",
     "resourceAccessNotManager": "只有管理这个资源的人才能查看或修改谁可以读取它。",
-    "metricTypePlaceholder": "number / string / datetime"
+    "metricTypePlaceholder": "number / string / datetime",
+    "metricOpenEvents": "{{count}} 个未关闭事件"
   },
   "datasets": {
     "title": "数据集",
@@ -811,7 +812,13 @@
     "severityP1": "P1",
     "severityP1Meaning": "需要处理 —— 决策会读的字段里有错",
     "severityP2": "P2",
-    "severityP2Meaning": "知道就好 —— 是异常，不是错误"
+    "severityP2Meaning": "知道就好 —— 是异常，不是错误",
+    "rulesAndEvents": "规则与事件",
+    "rulesAndEventsHint": "Rules 应用在这个数据集上看着什么，以及它发现了什么。",
+    "openRules": "在 Rules 中打开",
+    "ruleCount_one": "{{count}} 条规则在监视这个数据集",
+    "ruleCount_other": "{{count}} 条规则在监视这个数据集",
+    "noEvents": "暂无事件。规则命中且带有建议时会出现在这里。"
   },
   "groups": {
     "title": "分组",
@@ -1309,7 +1316,7 @@
     "fieldSuggestionHint": "留空则只记录最近状态：没有建议的命中不会产生事件。",
     "fieldAbout": "关联对象类型",
     "fieldAboutHint": "可选，填对象类型的 API 名称（如 AllocationScenario）。运行 scope 与该对象主键相等时，事件会链接到它。",
-    "eventsHint": "事件本身就是本体对象——在 Object Explorer 里选择 Event 类型即可查看。",
+    "eventsHint": "事件本身就是本体对象：同样的记录在 Object Explorer 里也能看到，并链接到它所属的业务对象。",
     "toastLoadFailed": "加载规则失败",
     "toastCreated": "规则已创建",
     "toastUpdated": "规则已更新",
@@ -1322,6 +1329,34 @@
       "unknown": "无法判定",
       "skipped": "已跳过"
     },
-    "fieldAboutPlaceholder": "AllocationScenario"
+    "fieldAboutPlaceholder": "AllocationScenario",
+    "tabRules": "规则",
+    "tabEvents": "事件",
+    "filterStatus": "状态",
+    "statusFilterOpen": "仅未关闭",
+    "statusFilterAll": "全部",
+    "colEvent": "事件",
+    "colPeriod": "期间",
+    "colState": "状态",
+    "acknowledge": "认领",
+    "resolve": "解决",
+    "dismiss": "标为误报",
+    "emptyEvents": "还没有事件。规则命中且带有建议时，事件会出现在这里。",
+    "panelDefinition": "定义",
+    "panelDefinitionHint": "这条规则断言什么，以及命中时该怎么办。",
+    "panelLastRun": "最近运行",
+    "panelEvents": "产生的事件",
+    "panelEventsHint": "每一行是一次发生；关闭时会写入结束时间。",
+    "fieldValues": "计算值",
+    "fieldStatus": "状态",
+    "active": "启用",
+    "noSuggestion": "未填写——该规则只记录最近状态，不会产生事件",
+    "deleteRule": "删除规则",
+    "deleteTitle": "删除规则",
+    "deleteConfirm": "规则将不再运行；它已产生的事件会保留。",
+    "toastDeleted": "规则已删除",
+    "toastEventFailed": "更新事件失败",
+    "backToList": "全部规则",
+    "notFound": "规则不存在"
   }
 }

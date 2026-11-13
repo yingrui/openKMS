@@ -90,6 +90,23 @@ export async function createRule(payload: RuleWritePayload): Promise<RuleOut> {
   });
 }
 
+export async function fetchRule(ruleId: string): Promise<RuleOut> {
+  return request<RuleOut>(`/api/rules/${ruleId}`);
+}
+
+export async function deleteRule(ruleId: string): Promise<void> {
+  return request<void>(`/api/rules/${ruleId}`, { method: 'DELETE' });
+}
+
+export async function fetchRuleEvents(
+  ruleId: string,
+  params: { status?: string; limit?: number } = {},
+): Promise<import('./eventsApi').EventListResponse> {
+  return request<import('./eventsApi').EventListResponse>(`/api/rules/${ruleId}/events`, {
+    query: { status: params.status, limit: params.limit },
+  });
+}
+
 export async function updateRule(
   ruleId: string,
   payload: Partial<RuleWritePayload>,

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Loader2, Pencil, Play, Plus, Trash2 } from 'lucide-react';
+import { BellRing, Loader2, Pencil, Play, Plus, Trash2 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { toast } from 'sonner';
 import { fetchDatasets, type DatasetResponse } from '../../../data/datasetsApi';
@@ -17,6 +17,7 @@ import {
 import { useConfirm } from '../../../contexts/ConfirmContext';
 import { Dialog, FormField } from '../../../styles/design-system/index';
 import { EntityViewHeader, EntityViewPanel } from '../../shared/EntityViewShell';
+import { fetchEventSummary } from '../../../data/eventsApi';
 import { useSemanticModelDetail } from './useSemanticModelDetail';
 import { datasetLabel } from '../datasetLabel';
 
@@ -34,6 +35,7 @@ export function ModelMetricsSection() {
   const [datasets, setDatasets] = useState<DatasetResponse[]>([]);
   const [joins, setJoins] = useState<DatasetJoinResponse[]>([]);
   const [loading, setLoading] = useState(true);
+  const [openEvents, setOpenEvents] = useState<Record<string, number>>({});
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState<MetricResponse | null>(null);
   const [name, setName] = useState('');
@@ -63,6 +65,17 @@ export function ModelMetricsSection() {
       setLoading(false);
     }
   }, [semanticModelId, datasetIds, t]);
+
+  useEffect(() => {
+    // Open events per metric: one summary call, so a row can show a badge without N+1 requests.
+    void fetchEventSummary('metric')
+      .then((counts) => {
+        const next: Record<string, number> = {};
+        for (const count of counts) if (count.open > 0) next[count.subject_id] = count.open;
+        setOpenEvents(next);
+      })
+      .catch(() => setOpenEvents({}));
+  }, []);
 
   useEffect(() => {
     void load();
@@ -210,6 +223,16 @@ export function ModelMetricsSection() {
                 <tr key={m.id}>
                   <td>
                     <strong>{m.name}</strong>
+                    {openEvents[m.id] ? (
+                      <Link
+                        className="metric-events-badge"
+                        to={`/ontology-manager/rules?tab=events&subject_type=metric&subject_id=${m.id}`}
+                        title={t('dataModel.metricOpenEvents', { count: openEvents[m.id] })}
+                      >
+                        <BellRing size={12} aria-hidden />
+                        {openEvents[m.id]}
+                      </Link>
+                    ) : null}
                   </td>
                   <td>{m.base_dataset_name ?? datasetNameById(m.base_dataset_id)}</td>
                   <td>{m.type}</td>

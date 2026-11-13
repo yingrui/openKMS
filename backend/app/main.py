@@ -64,6 +64,7 @@ from app.api.dataset_rows import router as dataset_rows_router
 from app.api.dataset_joins import router as dataset_joins_router
 from app.api.quality_rules import router as quality_rules_router
 from app.api.metrics import router as metrics_router
+from app.api.rules import events_router as rules_events_router
 from app.api.rules import router as rules_router
 from app.api.admin.audit_log import router as audit_log_router
 from app.api.stories import router as stories_router
@@ -277,6 +278,7 @@ app.include_router(dataset_joins_router, prefix="/api")
 app.include_router(quality_rules_router, prefix="/api")
 app.include_router(metrics_router, prefix="/api")
 app.include_router(rules_router, prefix="/api")
+app.include_router(rules_events_router, prefix="/api")
 app.include_router(stories_router, prefix="/api")
 app.include_router(audit_log_router, prefix="/api")
 app.include_router(quality_issues_router, prefix="/api")

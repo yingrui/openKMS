@@ -48,6 +48,18 @@ separate). Plus `period_start`/`period_end` — the **data** period checked, whi
 as when the event was raised — `scope`, `evidence` (the values that produced it), `rule_id`,
 `rule_version`, `subject_type`/`subject_id` and `status`.
 
+## Where you see it
+
+| Surface | What it answers |
+|---------|-----------------|
+| **Ontology Manager → Rules** (`/ontology-manager/rules`) | Two tabs: **规则** (author, run, pause) and **事件** (the inbox: acknowledge / resolve / dismiss, filtered by state and severity) |
+| **One rule** (`/ontology-manager/rules/:id`) | The definition, the last run with its computed values, and the events this rule raised — a page, not a dialog, like every other ontology object |
+| **A metric** (model → Metrics) | A badge with its open-event count, linking to that metric's events |
+| **A dataset** (Catalog → dataset → Overview) | "Rules and events": how many rules watch it, and the three most recent events |
+
+Events themselves remain ordinary objects: the same rows are in Object Explorer, and each is linked to
+the business object it is about.
+
 ## Running
 
 ```text
@@ -80,8 +92,17 @@ Running it publishes `Event(P1, warning)` titled *"本期分货额度错配：�
 the condition still holds refreshes the evidence and leaves `event_start_time` alone; when the
 scenario is re-planned and the condition stops holding, the event gets an end time and `resolved`.
 
+## Status transitions, and why not Action types yet
+
+Moving an event (acknowledge / resolve / dismiss) is a plain audited `PATCH` on the object instance:
+closing writes `event_end_time`, reopening clears it. An **Ontology Action type** would be the reusable
+form of the same move — a declared, permission-checked write with submission criteria, webhook and
+action log, shareable across pages and agents. It is worth doing when there are *effects* to attach
+(notify a channel, assign from a queue, call an external system) or a second consumer of the move;
+until then an Action type would be an extra declaration around one `status` field.
+
 ## Not in this version
 
-Time-axis and event badges, notifications, acknowledge/dismiss as action types, rule proposals,
-inference, cross-model subjects. See `tmp/plan/metric-reconciliation-plan.md` for the current scope and
+Time-axis and event badges, notifications, action types, rule proposals, inference, cross-model
+subjects. See `tmp/plan/metric-reconciliation-plan.md` for the current scope and
 `tmp/plan/rules-events-vision.md` for why these are deliberately deferred.

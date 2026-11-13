@@ -63,6 +63,16 @@ def _now() -> str:
     return datetime.now(timezone.utc).isoformat()
 
 
+def _json_field(value: Any) -> Any:
+    """A rule property that is conceptually JSON but stored in the object's string property."""
+    if isinstance(value, str):
+        try:
+            return json.loads(value)
+        except json.JSONDecodeError:
+            return None
+    return value
+
+
 def _as_float(value: Any) -> float | None:
     if value is None or isinstance(value, bool):
         return None
@@ -196,7 +206,7 @@ async def _upsert_event(
         await sync_queue_ids_to_neo4j(db, event_type, upsert_ids=[existing.id], delete_ids=[])
         return existing.id
 
-    subject = rule_data.get("subject") or {}
+    subject = _json_field(rule_data.get("subject")) or {}
     subject_type = subject.get("kind") if isinstance(subject, dict) else None
     subject_id = subject.get("ref") if isinstance(subject, dict) else None
     severity = str(rule_data.get("severity") or "P1")
