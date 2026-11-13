@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { conditionLabel, operandLabel, valueRows } from './rulesLabels';
+import { conditionLabel, conditionScopeNote, operandLabel, scopeLabelOf, valueRows } from './rulesLabels';
 import type { RuleCondition } from '../../data/rulesApi';
 
 const SEL = 'a97503a9-52bd-4ea7-887c-892a1233e5ae';
@@ -98,8 +98,8 @@ describe('conditionLabel', () => {
         { left: { metric: 'm2', scope_field: 'scenario_id' }, op: '>', right: { value: 0 } },
       ],
     } as unknown as RuleCondition;
-    expect(conditionLabel(condition, { ...lookups, scopeAtRunTime: '运行时指定' })).toBe(
-      '范围：运行时指定（scenario_id） ｜ (分货额度 ÷ 分货明细：sum(gap)) > 1 且 仍缺货明细数 > 0',
+    expect(conditionLabel(condition, { ...lookups, scopeAtRunTime: '每次运行针对一个方案' })).toBe(
+      '范围：每次运行针对一个方案 ｜ (分货额度 ÷ 分货明细：sum(gap)) > 1 且 仍缺货明细数 > 0',
     );
   });
 
@@ -111,6 +111,45 @@ describe('conditionLabel', () => {
       ],
     } as unknown as RuleCondition;
     expect(conditionLabel(condition, lookups)).toBe('分货额度 > 1 且 (仍缺货明细数 > 0)');
+  });
+});
+
+describe('conditionScopeNote', () => {
+  it('says the run picks the object when an operand declares scope_field', () => {
+    const condition = {
+      left: { metric: 'm1', scope_field: 'scenario_id' },
+      op: '>',
+      right: { value: 1 },
+    } as unknown as RuleCondition;
+    expect(conditionScopeNote(condition, { ...lookups, scopeAtRunTime: '每次运行针对一个方案' })).toBe(
+      '范围：每次运行针对一个方案',
+    );
+  });
+
+  it('uses the author\'s word for the run-selected object when one is given', () => {
+    const condition = {
+      left: { metric: 'm1', scope_field: 'scenario_id', scope_label: '方案' },
+      op: '>',
+      right: { value: 1 },
+    } as unknown as RuleCondition;
+    expect(scopeLabelOf(condition)).toBe('方案');
+    expect(conditionScopeNote(condition, { ...lookups, scopeAtRunTime: '每次运行检查一个方案，运行时选择' })).toBe(
+      '范围：每次运行检查一个方案，运行时选择',
+    );
+  });
+
+  it('states a shared concrete scope once, with labels', () => {
+    const labelled = [{ field: 'scenario_id', op: '=', value: SEL, label: '推荐方案 · 2026-W46' }];
+    const condition: RuleCondition = {
+      left: { metric: 'm1', filters: labelled },
+      op: '>',
+      right: { value: 1 },
+    };
+    expect(conditionScopeNote(condition, lookups)).toBe('范围：推荐方案 · 2026-W46');
+  });
+
+  it('returns nothing when the operands differ or carry no filters', () => {
+    expect(conditionScopeNote({ left: { metric: 'm1' }, op: '>', right: { value: 1 } }, lookups)).toBeNull();
   });
 });
 

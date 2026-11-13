@@ -1414,6 +1414,7 @@
     "joinAnd": "且",
     "joinOr": "或",
     "scopePrefix": "范围",
-    "scopeAtRunTime": "运行时指定"
+    "scopeAtRunTime": "每次运行检查一个对象，运行时选择",
+    "scopeAtRunTimeNamed": "每次运行检查一个{{name}}，运行时选择"
   }
 }

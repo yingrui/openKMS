@@ -70,8 +70,12 @@ A condition must not hard-code one row's id. "This period's allocation is over-a
 about *whichever* scenario you are looking at, so the id belongs to the **run**:
 
 ```json
-{"metric": "…", "scope_field": "scenario_id"}
+{"metric": "…", "scope_field": "scenario_id", "scope_label": "方案"}
 ```
+
+`scope_field` is the column the run's scope filters on; `scope_label` is the author's word for what that
+column names (a 方案, a stock, a region) and only affects the sentence — without it the condition says
+"one object at a time", never a domain word the platform guessed.
 
 `evaluate(rule, scope=…)` appends `scenario_id = <scope>` to that operand's filters. Without a scope the
 rule runs over everything (a different, usually meaningless, number: for the demo rule, 1.29 across all

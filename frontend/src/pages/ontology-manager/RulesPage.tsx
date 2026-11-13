@@ -19,7 +19,7 @@ import {
   TableRowActionCell,
   TableRowActions,
 } from '../../styles/design-system';
-import { conditionLabel } from './rulesLabels';
+import { conditionLabel, scopeLabelOf } from './rulesLabels';
 import { evaluateRule, evaluateRules, fetchRules, updateRule, type RuleOut } from '../../data/rulesApi';
 import { fetchEvents, transitionEvent, type EventOut } from '../../data/eventsApi';
 import { RulesEventsTable } from './RulesEventsTable';
@@ -256,7 +256,9 @@ export function RulesPage() {
                               and: t('rules.joinAnd'),
                               or: t('rules.joinOr'),
                               scopePrefix: t('rules.scopePrefix'),
-    scopeAtRunTime: t('rules.scopeAtRunTime'),
+    scopeAtRunTime: scopeLabelOf(rule.condition)
+      ? t('rules.scopeAtRunTimeNamed', { name: scopeLabelOf(rule.condition) })
+      : t('rules.scopeAtRunTime'),
                             })}
                           </td>
                           <td>

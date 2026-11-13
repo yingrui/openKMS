@@ -364,3 +364,10 @@
   font-weight: 600;
   color: var(--color-text-secondary);
 }
+
+/* The scope of the whole condition: one muted line above the tree, same words as the inline summary. */
+.condition-scope {
+  margin: 0 0 var(--space-2);
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+}

@@ -32,7 +32,7 @@ import { useConfirm } from '../../contexts/ConfirmContext';
 import { EntityViewPanel } from '../shared/EntityViewShell';
 import { RulesEventsTable } from './RulesEventsTable';
 import { RunRulesDialog, type RunParams } from './RunRulesDialog';
-import { conditionLabel, valueRows } from './rulesLabels';
+import { conditionLabel, conditionScopeNote, scopeLabelOf, valueRows } from './rulesLabels';
 import { fromTree, toTree, type GroupNode } from './conditionModel';
 import { ConditionTree } from './ConditionTree';
 import '../../styles/settings-page.scss';
@@ -342,10 +342,20 @@ export function RuleDetailPage() {
     }
   };
 
-  const joiners = { and: t('rules.joinAnd'), or: t('rules.joinOr'), scopePrefix: t('rules.scopePrefix'),
-    scopeAtRunTime: t('rules.scopeAtRunTime') };
+  // The author's own word for what a run picks ("方案") makes the sentence concrete; without one the
+  // sentence stays domain-neutral ("one object at a time"). Neither ever says "scenario".
+  const scopeName = scopeLabelOf(rule?.condition ?? null);
+  const joiners = {
+    and: t('rules.joinAnd'),
+    or: t('rules.joinOr'),
+    scopePrefix: t('rules.scopePrefix'),
+    scopeAtRunTime: scopeName
+      ? t('rules.scopeAtRunTimeNamed', { name: scopeName })
+      : t('rules.scopeAtRunTime'),
+  };
   const readTree = useMemo(() => toTree(rule?.condition ?? null).tree, [rule]);
   const conditionText = conditionLabel(rule?.condition ?? null, { metricName, datasetName, ...joiners });
+  const scopeNote = conditionScopeNote(rule?.condition ?? null, { metricName, datasetName, ...joiners });
 
   if (loading) {
     return (
@@ -468,7 +478,13 @@ export function RuleDetailPage() {
                 {tree ? conditionLabel(fromTree(tree), { metricName, datasetName, ...joiners }) : conditionText}
               </p>
               {tree ? (
-                <ConditionTree value={tree} onChange={updateTree} metrics={metrics} datasets={datasets} />
+                <ConditionTree
+                  value={tree}
+                  onChange={updateTree}
+                  metrics={metrics}
+                  datasets={datasets}
+                  scopeNote={scopeNote}
+                />
               ) : (
                 <p className="rules-condition-warning">{t('rules.conditionFormCannotRepresent')}</p>
               )}
@@ -547,7 +563,6 @@ export function RuleDetailPage() {
               <dl className="rules-facts">
                 <dt>{t('rules.colCondition')}</dt>
                 <dd>
-                  <code className="rules-condition">{conditionText}</code>
                   {readTree ? (
                     <ConditionTree
                       value={readTree}
@@ -555,8 +570,11 @@ export function RuleDetailPage() {
                       metrics={metrics}
                       datasets={datasets}
                       readOnly
+                      scopeNote={scopeNote}
                     />
-                  ) : null}
+                  ) : (
+                    <code className="rules-condition">{conditionText}</code>
+                  )}
                 </dd>
                 <dt>{t('rules.fieldConclusion')}</dt>
                 <dd>{rule?.conclusion || '—'}</dd>

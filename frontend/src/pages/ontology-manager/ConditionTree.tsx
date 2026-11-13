@@ -36,6 +36,8 @@ type Props = {
   datasets: DatasetResponse[];
   /** Read view: the same drawing, without controls — so both views show the same structure. */
   readOnly?: boolean;
+  /** The scope of the whole condition, drawn above the tree (same sentence as the inline summary). */
+  scopeNote?: string | null;
 };
 
 function LeafPicker({
@@ -208,7 +210,7 @@ function appendTo(node: GroupNode, groupId: string, child: ConditionNode): Group
   };
 }
 
-export function ConditionTree({ value, onChange, metrics, datasets, readOnly = false }: Props) {
+export function ConditionTree({ value, onChange, metrics, datasets, readOnly = false, scopeNote }: Props) {
   const { t } = useTranslation('ontology');
   const lookups = {
     metricName: (id: string) => metrics.find((metric) => metric.id === id)?.name ?? id.slice(0, 8),
@@ -345,5 +347,10 @@ export function ConditionTree({ value, onChange, metrics, datasets, readOnly = f
     );
   };
 
-  return <div className="condition-tree">{renderNode(value, true)}</div>;
+  return (
+    <div className="condition-tree">
+      {scopeNote ? <p className="condition-scope">{scopeNote}</p> : null}
+      {renderNode(value, true)}
+    </div>
+  );
 }

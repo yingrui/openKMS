@@ -58,7 +58,8 @@ OPERAND_KINDS = ("metric", "dataset_agg", "diff", "ratio")
 def _operand_kind(operand: Any) -> str:
     if not isinstance(operand, dict):
         raise ConditionError("an operand must be an object")
-    keys = [key for key in operand if key not in ("filters", "scope_field")]
+    # `filters` / `scope_field` / `scope_label` are operand modifiers, not operand kinds.
+    keys = [key for key in operand if key not in ("filters", "scope_field", "scope_label")]
     if len(keys) != 1:
         raise ConditionError("an operand must have exactly one of metric / dataset_agg / diff / ratio")
     key = keys[0]
@@ -68,6 +69,8 @@ def _operand_kind(operand: Any) -> str:
         raise ConditionError("filters only apply to metric and dataset_agg operands")
     if "scope_field" in operand and key not in ("metric", "dataset_agg"):
         raise ConditionError("scope_field only applies to metric and dataset_agg operands")
+    if "scope_label" in operand and "scope_field" not in operand:
+        raise ConditionError("scope_label needs scope_field")
     return key
 
 

@@ -26,7 +26,7 @@ export type LabelLookups = {
   and?: string;
   or?: string;
   scopePrefix?: string;
-  /** How a condition says "the run picks the object" — e.g. 运行时指定. */
+  /** How a condition says "one object per run, picked when you run it" — a whole phrase, not a field name. */
   scopeAtRunTime?: string;
 };
 
@@ -163,6 +163,29 @@ function sharedScope(condition: RuleCondition): string[] | null {
   return sets.every((set) => set.join('|') === key) ? first : null;
 }
 
+/** The author's own word for the thing a run picks (`scope_label`, e.g. "方案"), when they gave one. */
+export function scopeLabelOf(condition: RuleCondition | null): string | null {
+  let label: string | null = null;
+  const inspect = (operand: unknown): void => {
+    const node = operand as Record<string, unknown>;
+    if (typeof node.scope_label === 'string' && node.scope_label.trim()) label = node.scope_label.trim();
+    const agg = node.dataset_agg as Record<string, unknown> | undefined;
+    if (agg && typeof agg.scope_label === 'string' && agg.scope_label.trim()) {
+      label = agg.scope_label.trim();
+    }
+    for (const key of ['ratio', 'diff'] as const) {
+      const pair = node[key] as unknown[] | undefined;
+      if (pair) pair.forEach(inspect);
+    }
+    if (node.kind === 'ratio' || node.kind === 'diff') {
+      inspect(node.left);
+      inspect(node.right);
+    }
+  };
+  if (condition) comparisonsOf(condition).forEach(inspect);
+  return label;
+}
+
 /** Does any operand take its value from the run's scope (`scope_field`)? */
 function usesRunScope(condition: RuleCondition): string | null {
   let field: string | null = null;
@@ -182,6 +205,22 @@ function usesRunScope(condition: RuleCondition): string | null {
   };
   comparisonsOf(condition).forEach(inspect);
   return field;
+}
+
+/**
+ * The scope of a condition, as one line — `范围：每次运行针对一个方案` or `范围：推荐方案 · 2026-W46`.
+ *
+ * Both renderers (the tree and the one-line summary) show this line from the same function, so the two
+ * views cannot describe a rule differently.
+ */
+export function conditionScopeNote(condition: RuleCondition | null, lookups: LabelLookups): string | null {
+  if (!condition) return null;
+  const prefix = lookups.scopePrefix ?? 'scope';
+  if (usesRunScope(condition)) {
+    return `${prefix}：${lookups.scopeAtRunTime ?? 'one object per run, chosen when you run it'}`;
+  }
+  const shared = sharedScope(condition);
+  return shared ? `${prefix}：${shared.join('，')}` : null;
 }
 
 /** A whole condition: shared scope first (said once), then the formula. */
@@ -223,16 +262,8 @@ export function conditionLabel(condition: RuleCondition | null, lookups: LabelLo
   };
 
   const formula = walk(condition);
-  const runScopeField = usesRunScope(condition);
-  if (runScopeField) {
-    // The rule is not tied to one object; the run says which one. Saying "runtime" is the truth.
-    const prefix = lookups.scopePrefix ?? 'scope';
-    const runtime = lookups.scopeAtRunTime ?? 'chosen when run';
-    return `${prefix}：${runtime}（${runScopeField}） ｜ ${formula}`;
-  }
-  if (!shared) return formula;
-  const prefix = lookups.scopePrefix ?? 'scope';
-  return `${prefix}：${shared.join('，')} ｜ ${formula}`;
+  const note = conditionScopeNote(condition, lookups);
+  return note ? `${note} ｜ ${formula}` : formula;
 }
 
 /** Whether a stored condition is something the tree editor can draw. */
