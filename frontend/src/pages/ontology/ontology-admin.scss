@@ -1683,3 +1683,69 @@
   white-space: pre-wrap;
   overflow-x: auto;
 }
+
+/* Rules page — the app sits in the ontology suite, so it only adds what the table cannot express. */
+.rules-period {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--text-sm);
+  color: var(--color-text-secondary);
+  white-space: nowrap;
+
+  /* The skin comes from `.ds-control` (and is enforced); only the width is ours. */
+  input {
+    width: 9rem;
+  }
+}
+
+.rules-name-btn {
+  padding: 0;
+  border: none;
+  background: none;
+  font-weight: 600;
+  color: var(--color-text);
+  cursor: pointer;
+  text-align: left;
+
+  &:hover {
+    color: var(--color-accent);
+  }
+}
+
+.rules-paused {
+  margin-left: var(--space-2);
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+}
+
+.rules-condition {
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-size: var(--text-sm);
+  color: var(--color-text-secondary);
+}
+
+.rules-last-run {
+  margin-left: var(--space-2);
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+}
+
+.rules-comparison {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+
+  select {
+    width: 6rem;
+  }
+}
+
+.rules-hint {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin: var(--space-4) 0 0;
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+}

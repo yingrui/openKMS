@@ -111,5 +111,6 @@
   "appTaglineDataInsights": "Saved analyses of your data",
   "auditLog": "Audit log",
   "externalServices": "External services",
-  "appTaglineExternalServices": "Endpoints the ontology may call: Functions, and Action webhooks"
+  "appTaglineExternalServices": "Endpoints the ontology may call: Functions, and Action webhooks",
+  "ontologyRules": "Rules"
 }

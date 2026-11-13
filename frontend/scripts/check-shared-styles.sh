@@ -30,10 +30,12 @@ while IFS= read -r hit; do
 done < <(rg -n --no-heading "import '\.\./[a-z-]+/[A-Za-z]+\.scss'" src/pages --glob '*.tsx' || true)
 
 # --- 2. Viewport checks in JS -------------------------------------------------
+# `src/theme.ts` asks about the *colour scheme* (`prefers-color-scheme`), not a viewport width — the
+# mobile hook is the answer to the latter only, so that file is excluded on purpose.
 while IFS= read -r hit; do
   [ -z "$hit" ] && continue
   report "$hit calls matchMedia directly; use useIsMobile() from src/hooks/useIsMobile.ts"
-done < <(rg -n --no-heading 'matchMedia' src --glob '*.ts' --glob '*.tsx' -g '!src/hooks/useIsMobile.ts' -g '!src/test/setup.ts' -g '!**/*.test.ts' -g '!**/*.test.tsx' -g '!**/*.spec.ts' -g '!**/*.spec.tsx' || true)
+done < <(rg -n --no-heading 'matchMedia' src --glob '*.ts' --glob '*.tsx' -g '!src/hooks/useIsMobile.ts' -g '!src/test/setup.ts' -g '!src/theme.ts' -g '!**/*.test.ts' -g '!**/*.test.tsx' -g '!**/*.spec.ts' -g '!**/*.spec.tsx' || true)
 
 # --- 3. Magic-pixel breakpoints in SCSS ---------------------------------------
 # Prefer tokens via @include max-width(ds.$bp-*). Keep this allowlist empty.

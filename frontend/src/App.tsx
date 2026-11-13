@@ -131,6 +131,9 @@ const FunctionObservabilityTab = lazy(() =>
 const GroupsListPage = lazy(() =>
   import('./pages/ontology-manager/GroupsListPage').then((m) => ({ default: m.GroupsListPage })),
 );
+const RulesPage = lazy(() =>
+  import('./pages/ontology-manager/RulesPage').then((m) => ({ default: m.RulesPage })),
+);
 const ActionsListPage = lazy(() =>
   import('./pages/ontology-manager/ActionsListPage').then((m) => ({ default: m.ActionsListPage })),
 );
@@ -546,6 +549,7 @@ function App() {
               <Route path="observability" element={<FunctionObservabilityTab />} />
             </Route>
             <Route path="groups" element={<GroupsListPage />} />
+            <Route path="rules" element={<RulesPage />} />
             <Route path="groups/:groupId" element={<GroupDetailPage />}>
               <Route index element={<GroupOverviewTab />} />
               <Route path="related" element={<GroupRelatedTab />} />

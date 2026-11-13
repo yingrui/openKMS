@@ -111,5 +111,6 @@
   "appTaglineDataInsights": "已保存的分析与报告",
   "auditLog": "审计日志",
   "externalServices": "外部接口",
-  "appTaglineExternalServices": "本体可调用的外部端点：Function 与 Action 的 webhook"
+  "appTaglineExternalServices": "本体可调用的外部端点：Function 与 Action 的 webhook",
+  "ontologyRules": "规则"
 }

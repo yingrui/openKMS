@@ -181,6 +181,7 @@ nav:
       - Wiki spaces: features/wiki-spaces.md
       - Evaluation: features/evaluation.md
       - Data-query evaluation (design): features/data-query-evaluation.md
+      - Rules and events: features/rules-and-events.md
       - Glossaries: features/glossaries.md
       - Knowledge map & home: features/knowledge-map.md
       - Global search: features/global-search.md
