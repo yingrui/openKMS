@@ -77,7 +77,9 @@ export function RulesEventsTable({
                   <StatusChip tone={severityTone(event.severity)}>{event.severity ?? '—'}</StatusChip>
                 </td>
                 <td>
-                  <StatusChip tone={stateTone(event.status)}>{event.status ?? '—'}</StatusChip>
+                  <StatusChip tone={stateTone(event.status)}>
+                    {event.status ? t(`rules.eventStatus.${event.status}`) : '—'}
+                  </StatusChip>
                   <span className="rules-last-run">
                     {event.event_start_time ? new Date(event.event_start_time).toLocaleString() : '—'}
                   </span>

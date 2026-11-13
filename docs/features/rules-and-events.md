@@ -38,7 +38,7 @@ Both types are created on startup if missing (`ensure_builtin_ontology`, idempot
 | `severity` | `P0` / `P1` / `P2`, the same scale as quality rules |
 | `conclusion` / `suggestion` | One sentence each. **A hit with no suggestion does not become an event** |
 | `owner` / `status` / `version` | Who owns the opinion, whether it runs, and which revision fired |
-| `last_run_at` / `last_status` / `last_values` | Written back by the engine; there is no separate run table |
+| `last_run_at` / `last_status` / `last_values` | Written back by the engine; there is no separate run table. `last_status` is `pass` (the condition held), `fail` (it did not — the rule **fired**), `unknown` (an operand could not be computed) or `skipped`; the UI says **triggered** for `fail`, because "failed" reads like an error |
 
 ## Event
 
@@ -53,6 +53,7 @@ as when the event was raised — `scope`, `evidence` (the values that produced i
 | Surface | What it answers |
 |---------|-----------------|
 | **Ontology Manager → Rules** (`/ontology-manager/rules`) | Two tabs: **规则** (author, run, pause) and **事件** (the inbox: acknowledge / resolve / dismiss, filtered by state and severity) |
+| **Run parameters** | The period and scope belong to the *run*, not to the rule: both entry points ("run all" and a rule's own Run button) open the same dialog, so the two cannot drift |
 | **One rule** (`/ontology-manager/rules/:id`) | The definition, the last run with its computed values, and the events this rule raised — a page, not a dialog, like every other ontology object |
 | **A metric** (model → Metrics) | A badge with its open-event count, linking to that metric's events |
 | **A dataset** (Catalog → dataset → Overview) | "Rules and events": how many rules watch it, and the three most recent events |

@@ -26,6 +26,8 @@ import {
 import { transitionEvent, type EventOut } from '../../data/eventsApi';
 import { fetchMetrics, type MetricResponse } from '../../data/metricsApi';
 import { RulesEventsTable } from './RulesEventsTable';
+import { RunRulesDialog, type RunParams } from './RunRulesDialog';
+import { conditionLabel, valueRows } from './rulesLabels';
 import { fetchDatasets, type DatasetResponse } from '../../data/datasetsApi';
 import { useConfirm } from '../../contexts/ConfirmContext';
 import { EntityViewPanel } from '../shared/EntityViewShell';
@@ -120,6 +122,7 @@ export function RuleDetailPage() {
   const [form, setForm] = useState<FormState>(EMPTY_FORM);
   const [saving, setSaving] = useState(false);
   const [running, setRunning] = useState(false);
+  const [runOpen, setRunOpen] = useState(false);
   const [busyEventId, setBusyEventId] = useState<string | null>(null);
 
   const load = useCallback(async () => {
@@ -194,13 +197,14 @@ export function RuleDetailPage() {
     }
   };
 
-  const run = async () => {
+  const run = async (params: RunParams) => {
     if (!rule) return;
     setRunning(true);
     try {
-      const result = await evaluateRule(rule.object_id, {});
+      const result = await evaluateRule(rule.object_id, params);
       toast.success(t(`rules.status.${result.status}`));
       await load();
+      setRunOpen(false);
     } catch (e: unknown) {
       toast.error(e instanceof Error ? e.message : t('rules.toastRunFailed'));
     } finally {
@@ -241,18 +245,17 @@ export function RuleDetailPage() {
     }
   };
 
-  const conditionText = useMemo(() => {
-    if (!rule?.condition || !('left' in rule.condition)) return '—';
-    const left = rule.condition.left;
-    if ('metric' in left) {
-      const name = metrics.find((metric) => metric.id === left.metric)?.name ?? left.metric.slice(0, 8);
-      return `${name} ${rule.condition.op} ${rule.condition.right.value}`;
-    }
-    if ('dataset_agg' in left) {
-      return `${left.dataset_agg.fn}(${left.dataset_agg.column ?? '*'}) ${rule.condition.op} ${rule.condition.right.value}`;
-    }
-    return `${'diff' in left ? 'diff' : 'ratio'} ${rule.condition.op} ${rule.condition.right.value}`;
-  }, [rule, metrics]);
+  const metricName = useMemo(() => {
+    const byId = new Map(metrics.map((metric) => [metric.id, metric.name]));
+    return (id: string) => byId.get(id) ?? id.slice(0, 8);
+  }, [metrics]);
+  const datasetName = useMemo(() => {
+    const byId = new Map(
+      datasets.map((dataset) => [dataset.id, dataset.display_name || dataset.table_name || dataset.id.slice(0, 8)]),
+    );
+    return (id: string) => byId.get(id) ?? id.slice(0, 8);
+  }, [datasets]);
+  const conditionText = conditionLabel(rule?.condition ?? null, { metricName, datasetName });
 
   if (loading) {
     return (
@@ -295,7 +298,12 @@ export function RuleDetailPage() {
               <Pencil size={16} aria-hidden />
               {t('shared.edit')}
             </button>
-            <button type="button" className="btn btn-primary" onClick={() => void run()} disabled={running}>
+            <button
+              type="button"
+              className="btn btn-primary"
+              onClick={() => setRunOpen(true)}
+              disabled={running}
+            >
               {running ? <Loader2 size={16} className="animate-spin" aria-hidden /> : <Play size={16} aria-hidden />}
               {t('rules.run')}
             </button>
@@ -304,7 +312,7 @@ export function RuleDetailPage() {
       </div>
 
       {rule ? (
-        <>
+        <div className="account-stack">
           <EntityViewPanel title={t('rules.panelDefinition')} description={t('rules.panelDefinitionHint')}>
             <dl className="rules-facts">
               <dt>{t('rules.colCondition')}</dt>
@@ -334,11 +342,25 @@ export function RuleDetailPage() {
                   <StatusChip tone={rule.last_status === 'fail' ? 'warn' : rule.last_status === 'pass' ? 'ok' : 'neutral'}>
                     {t(`rules.status.${rule.last_status}`)}
                   </StatusChip>
+                  <span className="rules-status-meaning">{t('rules.statusMeaning')}</span>
                 </dd>
                 <dt>{t('rules.colLastRun')}</dt>
                 <dd>{rule.last_run_at ? new Date(rule.last_run_at).toLocaleString() : '—'}</dd>
                 <dt>{t('rules.fieldValues')}</dt>
-                <dd className="rules-condition">{JSON.stringify(rule.last_values ?? {})}</dd>
+                <dd>
+                  {valueRows(rule.last_values, { metricName }).length === 0 ? (
+                    '—'
+                  ) : (
+                    <ul className="rules-values">
+                      {valueRows(rule.last_values, { metricName }).map((row) => (
+                        <li key={row.label}>
+                          <span className="rules-values-label">{row.label}</span>
+                          <span className="rules-values-value">{row.value}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </dd>
               </dl>
             ) : (
               <p className="page-subtitle">{t('rules.neverRun')}</p>
@@ -357,8 +379,15 @@ export function RuleDetailPage() {
               />
             )}
           </EntityViewPanel>
-        </>
+        </div>
       ) : null}
+
+      <RunRulesDialog
+        open={runOpen}
+        busy={running}
+        onClose={() => setRunOpen(false)}
+        onRun={(params) => void run(params)}
+      />
 
       <Dialog
         open={editorOpen}

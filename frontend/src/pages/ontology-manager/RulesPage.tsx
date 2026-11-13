@@ -19,27 +19,15 @@ import {
   TableRowActionCell,
   TableRowActions,
 } from '../../styles/design-system';
+import { conditionLabel } from './rulesLabels';
 import { evaluateRule, evaluateRules, fetchRules, updateRule, type RuleOut } from '../../data/rulesApi';
 import { fetchEvents, transitionEvent, type EventOut } from '../../data/eventsApi';
 import { RulesEventsTable } from './RulesEventsTable';
+import { RunRulesDialog, type RunParams } from './RunRulesDialog';
 import { fetchMetrics, type MetricResponse } from '../../data/metricsApi';
 import '../../styles/settings-page.scss';
 import '../ontology/ontology-admin.scss';
 import '../../styles/rules.scss';
-
-function describeCondition(rule: RuleOut, metricName: (id: string) => string): string {
-  const condition = rule.condition;
-  if (!condition) return '—';
-  if (!('left' in condition)) return '—';
-  const left = condition.left;
-  if ('metric' in left) return `${metricName(left.metric)} ${condition.op} ${condition.right.value}`;
-  if ('dataset_agg' in left) {
-    const agg = left.dataset_agg;
-    return `${agg.fn}(${agg.column ?? '*'}) ${condition.op} ${condition.right.value}`;
-  }
-  const kind = 'diff' in left ? 'diff' : 'ratio';
-  return `${kind} ${condition.op} ${condition.right.value}`;
-}
 
 function severityTone(severity: string | null): 'warn' | 'accent' | 'neutral' {
   if (severity === 'P0') return 'warn';
@@ -67,7 +55,7 @@ export function RulesPage() {
   const [running, setRunning] = useState(false);
   const [runningId, setRunningId] = useState<string | null>(null);
   const [busyEventId, setBusyEventId] = useState<string | null>(null);
-  const [period, setPeriod] = useState('');
+  const [runOpen, setRunOpen] = useState(false);
   const [statusFilter, setStatusFilter] = useState<'open' | ''>('open');
   const [severityFilter, setSeverityFilter] = useState<'P0' | 'P1' | 'P2' | ''>('');
   // Read as primitives so the loader's dependency list is complete without a memoised object.
@@ -119,16 +107,13 @@ export function RulesPage() {
     void load();
   }, [load]);
 
-  const runAll = async () => {
+  const runAll = async (params: RunParams) => {
     setRunning(true);
     try {
-      const result = await evaluateRules({
-        period_start: period,
-        period_end: period,
-        scope: searchParams.get('scope') ?? '',
-      });
+      const result = await evaluateRules(params);
       toast.success(t('rules.toastRanAll', { count: result.results.length, failed: result.failed }));
       await load();
+      setRunOpen(false);
     } catch (e: unknown) {
       toast.error(e instanceof Error ? e.message : t('rules.toastRunFailed'));
     } finally {
@@ -139,7 +124,7 @@ export function RulesPage() {
   const runOne = async (rule: RuleOut) => {
     setRunningId(rule.object_id);
     try {
-      const result = await evaluateRule(rule.object_id, { period_start: period, period_end: period });
+      const result = await evaluateRule(rule.object_id, {});
       toast.success(t(`rules.status.${result.status}`));
       await load();
     } catch (e: unknown) {
@@ -178,6 +163,15 @@ export function RulesPage() {
           <p className="page-subtitle">{t('rules.subtitle')}</p>
         </div>
         <div className="page-header-actions">
+          <button
+            type="button"
+            className="btn btn-secondary"
+            onClick={() => setRunOpen(true)}
+            disabled={running || rules.length === 0}
+          >
+            {running ? <Loader2 size={16} className="animate-spin" aria-hidden /> : <Play size={16} aria-hidden />}
+            <span>{running ? t('rules.running') : t('rules.runAll')}</span>
+          </button>
           <Link to="/ontology-manager/rules/new" className="btn btn-primary">
             <Plus size={16} aria-hidden />
             {t('rules.create')}
@@ -185,7 +179,7 @@ export function RulesPage() {
         </div>
       </div>
 
-      <div className="settings-page">
+      <div className="rules-panel">
         <div className="settings-page-tabs" role="tablist">
           <button
             type="button"
@@ -217,28 +211,6 @@ export function RulesPage() {
             </div>
           ) : tab === 'rules' ? (
             <>
-              <div className="console-datasets-toolbar">
-                <label className="console-datasets-filter">
-                  {t('rules.period')}
-                  <input
-                    type="text"
-                    className="ds-control"
-                    value={period}
-                    onChange={(e) => setPeriod(e.target.value)}
-                    placeholder={t('rules.periodPlaceholder')}
-                  />
-                </label>
-                <button
-                  type="button"
-                  className="btn btn-secondary"
-                  onClick={() => void runAll()}
-                  disabled={running || rules.length === 0}
-                >
-                  {running ? <Loader2 size={16} className="animate-spin" aria-hidden /> : <Play size={16} aria-hidden />}
-                  <span>{running ? t('rules.running') : t('rules.runAll')}</span>
-                </button>
-              </div>
-
               {rules.length === 0 ? (
                 <EmptyState
                   icon={<BellRing size={32} aria-hidden />}
@@ -278,7 +250,7 @@ export function RulesPage() {
                               ? t('rules.subjectDataset')
                               : t('rules.subjectMetric')}
                           </td>
-                          <td className="rules-condition">{describeCondition(rule, metricName)}</td>
+                          <td className="rules-condition">{conditionLabel(rule.condition, { metricName })}</td>
                           <td>
                             <StatusChip tone={severityTone(rule.severity)}>{rule.severity ?? '—'}</StatusChip>
                           </td>
@@ -369,6 +341,13 @@ export function RulesPage() {
           )}
         </div>
       </div>
+
+      <RunRulesDialog
+        open={runOpen}
+        busy={running}
+        onClose={() => setRunOpen(false)}
+        onRun={(params) => void runAll(params)}
+      />
     </div>
   );
 }

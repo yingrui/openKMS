@@ -1331,8 +1331,8 @@
     "toastRanAll": "Ran {{count}} rule(s): {{failed}} failed",
     "toastRunFailed": "Could not run the rule",
     "status": {
-      "pass": "passed",
-      "fail": "failed",
+      "pass": "held",
+      "fail": "triggered",
       "unknown": "undetermined",
       "skipped": "skipped"
     },
@@ -1364,6 +1364,19 @@
     "toastDeleted": "Rule deleted",
     "toastEventFailed": "Could not update the event",
     "backToList": "All rules",
-    "notFound": "Rule not found"
+    "notFound": "Rule not found",
+    "eventStatus": {
+      "open": "open",
+      "acknowledged": "acknowledged",
+      "resolved": "resolved",
+      "dismissed": "dismissed"
+    },
+    "runDialogTitle": "Run",
+    "runPeriod": "Period",
+    "runPeriodHint": "What the check applies to, e.g. 2026-W46. Leave empty to check the defaults.",
+    "runScope": "Scope",
+    "runScopeHint": "Optional key the rules are scoped to (e.g. a scenario id). Events are de-duplicated by rule + scope + period.",
+    "runScopePlaceholder": "e.g. a97503a9…",
+    "statusMeaning": "“triggered” means the condition held — the rule fired. A run that could not compute an operand shows “undetermined”."
   }
 }

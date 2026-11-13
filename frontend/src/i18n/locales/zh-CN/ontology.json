@@ -1324,8 +1324,8 @@
     "toastRanAll": "已运行 {{count}} 条规则，其中 {{failed}} 条失败",
     "toastRunFailed": "运行规则失败",
     "status": {
-      "pass": "通过",
-      "fail": "失败",
+      "pass": "成立",
+      "fail": "已触发",
       "unknown": "无法判定",
       "skipped": "已跳过"
     },
@@ -1357,6 +1357,19 @@
     "toastDeleted": "规则已删除",
     "toastEventFailed": "更新事件失败",
     "backToList": "全部规则",
-    "notFound": "规则不存在"
+    "notFound": "规则不存在",
+    "eventStatus": {
+      "open": "未处理",
+      "acknowledged": "已认领",
+      "resolved": "已解决",
+      "dismissed": "已标误报"
+    },
+    "runDialogTitle": "运行",
+    "runPeriod": "期间",
+    "runPeriodHint": "这次检查针对的期间，如 2026-W46；留空则按默认。",
+    "runScope": "作用域",
+    "runScopeHint": "可选，规则作用的对象键（如方案 id）。事件按 规则 + 作用域 + 期间 去重。",
+    "runScopePlaceholder": "如 a97503a9…",
+    "statusMeaning": "“已触发”表示条件成立、规则命中；算不出操作数时显示“无法判定”。"
   }
 }
