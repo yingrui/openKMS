@@ -348,3 +348,19 @@
     color: var(--color-text-secondary);
   }
 }
+
+/* Read view: the same tree, without controls — structure visible, nothing to click. */
+.condition-node--cmp.is-readonly {
+  padding: var(--space-1) 0;
+}
+
+.condition-cmp-text {
+  font-size: var(--text-sm);
+  color: var(--color-text);
+}
+
+.condition-group-mode {
+  font-size: var(--text-sm);
+  font-weight: 600;
+  color: var(--color-text-secondary);
+}

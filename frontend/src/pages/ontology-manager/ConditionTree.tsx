@@ -10,6 +10,7 @@
  * readable at the width of a page instead of a dialog.
  */
 
+import { operandLabel } from './rulesLabels';
 import { useTranslation } from 'react-i18next';
 import { CopyPlus, Plus, Trash2 } from 'lucide-react';
 import type { MetricResponse } from '../../data/metricsApi';
@@ -33,6 +34,8 @@ type Props = {
   onChange: (next: GroupNode) => void;
   metrics: MetricResponse[];
   datasets: DatasetResponse[];
+  /** Read view: the same drawing, without controls — so both views show the same structure. */
+  readOnly?: boolean;
 };
 
 function LeafPicker({
@@ -205,11 +208,30 @@ function appendTo(node: GroupNode, groupId: string, child: ConditionNode): Group
   };
 }
 
-export function ConditionTree({ value, onChange, metrics, datasets }: Props) {
+export function ConditionTree({ value, onChange, metrics, datasets, readOnly = false }: Props) {
   const { t } = useTranslation('ontology');
+  const lookups = {
+    metricName: (id: string) => metrics.find((metric) => metric.id === id)?.name ?? id.slice(0, 8),
+    datasetName: (id: string) =>
+      (() => {
+        const dataset = datasets.find((entry) => entry.id === id);
+        return dataset ? dataset.display_name || dataset.table_name || id.slice(0, 8) : id.slice(0, 8);
+      })(),
+    and: t('rules.joinAnd'),
+    or: t('rules.joinOr'),
+  };
 
   const renderNode = (node: ConditionNode, isRoot: boolean): React.ReactNode => {
     if (node.kind === 'cmp') {
+      if (readOnly) {
+        return (
+          <li key={node.id} className="condition-node condition-node--cmp is-readonly">
+            <code className="condition-cmp-text">
+              {operandLabel(node.operand as never, lookups)} {node.op} {node.value}
+            </code>
+          </li>
+        );
+      }
       return (
         <li key={node.id} className="condition-node condition-node--cmp">
           <div className="condition-cmp">
@@ -256,6 +278,11 @@ export function ConditionTree({ value, onChange, metrics, datasets }: Props) {
     return (
       <li key={node.id} className={`condition-node condition-node--group${isRoot ? ' is-root' : ''}`}>
         <div className="condition-group-head">
+          {readOnly ? (
+            <span className="condition-group-mode">
+              {node.mode === 'any' ? t('rules.conditionJoinAny') : t('rules.conditionJoinAll')}
+            </span>
+          ) : (
           <select
             className="ds-control condition-field condition-field--narrow"
             aria-label={t('rules.conditionJoin')}
@@ -267,7 +294,8 @@ export function ConditionTree({ value, onChange, metrics, datasets }: Props) {
             <option value="all">{t('rules.conditionJoinAll')}</option>
             <option value="any">{t('rules.conditionJoinAny')}</option>
           </select>
-          {!isRoot ? (
+          )}
+          {!isRoot && !readOnly ? (
             <button
               type="button"
               className="condition-node-remove"
@@ -277,9 +305,9 @@ export function ConditionTree({ value, onChange, metrics, datasets }: Props) {
             >
               <Trash2 size={14} aria-hidden />
             </button>
-          ) : (
+          ) : !readOnly ? (
             <span className="condition-group-hint">{t('rules.conditionTreeHint')}</span>
-          )}
+          ) : null}
         </div>
 
         <ul className="condition-children">
@@ -289,6 +317,7 @@ export function ConditionTree({ value, onChange, metrics, datasets }: Props) {
           ) : null}
         </ul>
 
+        {readOnly ? null : (
         <div className="condition-group-actions">
           <button
             type="button"
@@ -311,6 +340,7 @@ export function ConditionTree({ value, onChange, metrics, datasets }: Props) {
             </button>
           ) : null}
         </div>
+        )}
       </li>
     );
   };

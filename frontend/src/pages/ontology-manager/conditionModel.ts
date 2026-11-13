@@ -22,9 +22,12 @@ export const BUILDER_OPS = ['<', '<=', '>', '>=', '==', '!='] as const;
 export const AGG_FNS = ['count', 'sum', 'avg', 'min', 'max'] as const;
 export type AggFn = (typeof AGG_FNS)[number];
 
+/** The data layer's own filter shape — kept verbatim: editing it is a JSON-view job, losing it is not. */
+export type OperandFilter = Record<string, unknown>;
+
 export type LeafOperand =
-  | { kind: 'metric'; metricId: string }
-  | { kind: 'dataset_agg'; datasetId: string; fn: AggFn; column: string };
+  | { kind: 'metric'; metricId: string; filters?: OperandFilter[] }
+  | { kind: 'dataset_agg'; datasetId: string; fn: AggFn; column: string; filters?: OperandFilter[] };
 
 export type OperandNode =
   | LeafOperand
@@ -72,7 +75,9 @@ export function makeLeafDataset(datasetId: string): LeafOperand {
 // --- JSON → tree -------------------------------------------------------------
 
 function toOperandNode(operand: RuleOperand): OperandNode | null {
-  if ('metric' in operand) return { kind: 'metric', metricId: operand.metric };
+  if ('metric' in operand) {
+    return { kind: 'metric', metricId: operand.metric, filters: operand.filters };
+  }
   if ('dataset_agg' in operand) {
     const agg = operand.dataset_agg;
     return {
@@ -80,6 +85,7 @@ function toOperandNode(operand: RuleOperand): OperandNode | null {
       datasetId: agg.dataset_id,
       fn: (AGG_FNS.includes(agg.fn as AggFn) ? agg.fn : 'count') as AggFn,
       column: agg.column ?? '',
+      filters: agg.filters,
     };
   }
   if ('ratio' in operand) {
@@ -143,13 +149,18 @@ export function toTree(
 // --- tree → JSON -------------------------------------------------------------
 
 function fromOperandNode(operand: OperandNode): RuleOperand {
-  if (operand.kind === 'metric') return { metric: operand.metricId };
+  if (operand.kind === 'metric') {
+    return operand.filters?.length
+      ? { metric: operand.metricId, filters: operand.filters }
+      : { metric: operand.metricId };
+  }
   if (operand.kind === 'dataset_agg') {
     return {
       dataset_agg: {
         dataset_id: operand.datasetId,
         fn: operand.fn,
         column: operand.fn === 'count' ? null : operand.column,
+        ...(operand.filters?.length ? { filters: operand.filters } : {}),
       },
     };
   }

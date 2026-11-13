@@ -65,6 +65,22 @@ describe('toTree / fromTree', () => {
     });
   });
 
+  it('keeps operand filters through the round trip (editing must not drop the scope)', () => {
+    const filters = [{ field: 'scenario_id', op: '=', value: 'a97503a9' }];
+    const condition: RuleCondition = {
+      left: {
+        ratio: [
+          { metric: 'a', filters },
+          { dataset_agg: { dataset_id: 'd', fn: 'sum', column: 'gap', filters } },
+        ],
+      },
+      op: '>',
+      right: { value: 1 },
+    };
+    const { tree } = toTree(condition);
+    expect(fromTree(tree!)).toEqual(condition);
+  });
+
   it('declines a non-constant right side instead of dropping it', () => {
     const { tree, reason } = toTree({ left: metric('a'), op: '>', right: { metric: 'b' } } as unknown as RuleCondition);
     expect(tree).toBeNull();

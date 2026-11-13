@@ -342,7 +342,9 @@ export function RuleDetailPage() {
     }
   };
 
-  const conditionText = conditionLabel(rule?.condition ?? null, { metricName, datasetName });
+  const joiners = { and: t('rules.joinAnd'), or: t('rules.joinOr') };
+  const readTree = useMemo(() => toTree(rule?.condition ?? null).tree, [rule]);
+  const conditionText = conditionLabel(rule?.condition ?? null, { metricName, datasetName, ...joiners });
 
   if (loading) {
     return (
@@ -462,7 +464,7 @@ export function RuleDetailPage() {
 
             <EntityViewPanel title={t('rules.panelCondition')} description={t('rules.panelConditionHint')}>
               <p className="rules-condition-current">
-                {tree ? conditionLabel(fromTree(tree), { metricName, datasetName }) : conditionText}
+                {tree ? conditionLabel(fromTree(tree), { metricName, datasetName, ...joiners }) : conditionText}
               </p>
               {tree ? (
                 <ConditionTree value={tree} onChange={updateTree} metrics={metrics} datasets={datasets} />
@@ -543,7 +545,18 @@ export function RuleDetailPage() {
             <EntityViewPanel title={t('rules.panelDefinition')} description={t('rules.panelDefinitionHint')}>
               <dl className="rules-facts">
                 <dt>{t('rules.colCondition')}</dt>
-                <dd className="rules-condition">{conditionText}</dd>
+                <dd>
+                  <code className="rules-condition">{conditionText}</code>
+                  {readTree ? (
+                    <ConditionTree
+                      value={readTree}
+                      onChange={() => undefined}
+                      metrics={metrics}
+                      datasets={datasets}
+                      readOnly
+                    />
+                  ) : null}
+                </dd>
                 <dt>{t('rules.fieldConclusion')}</dt>
                 <dd>{rule?.conclusion || '—'}</dd>
                 <dt>{t('rules.fieldSuggestion')}</dt>
