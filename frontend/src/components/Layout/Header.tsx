@@ -10,6 +10,7 @@ import { useIsMobile } from '../../hooks/useIsMobile';
 import { isConsoleShellPath } from '../../config/appModules';
 import logo from '../../assets/logo.svg';
 import { UserMenu } from './UserMenu';
+import { applyTheme, currentTheme, type Theme } from '../../theme';
 import './Header.scss';
 
 export function Header() {
@@ -21,7 +22,7 @@ export function Header() {
   const { systemName } = useSystemPublic();
   const { ontologyRailAvailable, ontologyRailOpen, toggleOntologyRail } = useOntologyMobileRail();
   const { consoleNavOpen, toggleConsoleNav } = useConsoleMobileNav();
-  const [theme, setTheme] = useState<'light' | 'dark'>('light');
+  const [theme, setTheme] = useState<Theme>(currentTheme);
   const searchInputRef = useRef<HTMLInputElement>(null);
   const [headerQuery, setHeaderQuery] = useState('');
   const isMobile = useIsMobile();
@@ -54,7 +55,7 @@ export function Header() {
   const toggleTheme = () => {
     const next = theme === 'light' ? 'dark' : 'light';
     setTheme(next);
-    document.documentElement.setAttribute('data-theme', next);
+    applyTheme(next);
   };
 
   const brandName = systemName || 'openKMS';

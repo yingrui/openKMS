@@ -10,6 +10,7 @@ import { useTranslation } from 'react-i18next';
 import { ArrowLeft, Maximize2, Minimize2, Settings } from 'lucide-react';
 import { fetchChamberRun, chamberAppProxyUrl, type ChamberRunResponse } from '../../data/chamberApi';
 import { useAuth } from '../../contexts/AuthContext';
+import { useDocumentTheme } from '../../hooks/useDocumentTheme';
 import './ChamberPages.scss';
 
 const EXIT_BTN_MARGIN = 12;
@@ -40,6 +41,16 @@ function clampExitBtnPos(left: number, top: number, width: number, height: numbe
 }
 
 export function ChamberRunPage() {
+  const theme = useDocumentTheme();
+  const frameRef = useRef<HTMLIFrameElement>(null);
+  const [initialTheme] = useState(theme);
+
+  useEffect(() => {
+    frameRef.current?.contentWindow?.postMessage(
+      { type: 'openkms:theme', theme },
+      window.location.origin,
+    );
+  }, [theme]);
   const { appId = '' } = useParams();
   const { t } = useTranslation('chamber');
   const { canAccessPath } = useAuth();
@@ -226,9 +237,16 @@ export function ChamberRunPage() {
       ) : null}
 
       <iframe
+        ref={frameRef}
         className="chamber-page__module-frame"
         title={t('moduleFrameTitle')}
-        src={chamberAppProxyUrl(app.id)}
+        src={`${chamberAppProxyUrl(app.id)}?theme=${initialTheme}`}
+        onLoad={() =>
+          frameRef.current?.contentWindow?.postMessage(
+            { type: 'openkms:theme', theme },
+            window.location.origin,
+          )
+        }
       />
     </div>
   );

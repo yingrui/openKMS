@@ -1,7 +1,7 @@
 import CodeMirror from '@uiw/react-codemirror';
 import { python } from '@codemirror/lang-python';
 import { githubDark, githubLight } from '@uiw/codemirror-theme-github';
-import { useDocumentTheme } from './useDocumentTheme';
+import { useDocumentTheme } from '../../hooks/useDocumentTheme';
 
 type FunctionCodeEditorProps = {
   value: string;
