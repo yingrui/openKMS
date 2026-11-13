@@ -24,7 +24,6 @@ import {
   updateRule,
   type RuleCondition,
   type RuleOut,
-  type RuleOperand,
 } from '../../data/rulesApi';
 import { transitionEvent, type EventOut } from '../../data/eventsApi';
 import { fetchMetrics, type MetricResponse } from '../../data/metricsApi';
@@ -33,7 +32,9 @@ import { useConfirm } from '../../contexts/ConfirmContext';
 import { EntityViewPanel } from '../shared/EntityViewShell';
 import { RulesEventsTable } from './RulesEventsTable';
 import { RunRulesDialog, type RunParams } from './RunRulesDialog';
-import { conditionLabel, isSimpleCondition, valueRows } from './rulesLabels';
+import { conditionLabel, valueRows } from './rulesLabels';
+import { fromBuilder, toBuilder, type BuilderCondition } from './conditionModel';
+import { ConditionBuilder } from './ConditionRows';
 import '../../styles/settings-page.scss';
 import '../ontology/ontology-admin.scss';
 import '../../styles/rules.scss';
@@ -54,7 +55,6 @@ type FormState = {
   status: 'active' | 'paused';
 };
 
-const OPS = ['<', '<=', '>', '>=', '==', '!='];
 const EMPTY_FORM: FormState = {
   name: '',
   subjectKind: 'metric',
@@ -70,20 +70,6 @@ const EMPTY_FORM: FormState = {
   aboutObjectType: '',
   status: 'active',
 };
-
-function buildCondition(form: FormState): RuleCondition {
-  const left: RuleOperand =
-    form.subjectKind === 'metric'
-      ? { metric: form.metricId }
-      : {
-          dataset_agg: {
-            dataset_id: form.datasetId,
-            fn: form.aggFn,
-            column: form.aggFn === 'count' ? null : form.aggColumn,
-          },
-        };
-  return { left, op: form.op, right: { value: Number(form.threshold) } };
-}
 
 function formFromRule(rule: RuleOut, metrics: MetricResponse[], datasets: DatasetResponse[]): FormState {
   const condition = rule.condition;
@@ -104,6 +90,14 @@ function formFromRule(rule: RuleOut, metrics: MetricResponse[], datasets: Datase
     aboutObjectType: rule.about_object_type ?? '',
     status: rule.status === 'paused' ? 'paused' : 'active',
   };
+}
+
+function safeParse(text: string): RuleCondition | null {
+  try {
+    return JSON.parse(text) as RuleCondition;
+  } catch {
+    return null;
+  }
 }
 
 function severityTone(severity: string | null): 'warn' | 'accent' | 'neutral' {
@@ -130,6 +124,7 @@ export function RuleDetailPage() {
   /** The condition as stored/sent — the form builder is a view over this, not a parallel copy. */
   const [conditionJson, setConditionJson] = useState('');
   const [conditionMode, setConditionMode] = useState<'form' | 'json'>('form');
+  const [builder, setBuilder] = useState<BuilderCondition>({ mode: 'all', rows: [] });
   const [conditionError, setConditionError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [running, setRunning] = useState(false);
@@ -173,7 +168,13 @@ export function RuleDetailPage() {
       setEvents(eventPage.items);
       setForm(formFromRule(current, pickers.metrics, pickers.datasets));
       setConditionJson(JSON.stringify(current.condition ?? {}, null, 2));
-      setConditionMode(isSimpleCondition(current.condition) ? 'form' : 'json');
+      const converted = toBuilder(current.condition);
+      if (converted.builder) {
+        setBuilder(converted.builder);
+        setConditionMode('form');
+      } else {
+        setConditionMode('json');
+      }
     } catch (e: unknown) {
       toast.error(e instanceof Error ? e.message : t('rules.toastLoadFailed'));
     } finally {
@@ -194,26 +195,40 @@ export function RuleDetailPage() {
         datasetId: pickers.datasets[0]?.id ?? '',
       };
       setForm(next);
-      setConditionJson(JSON.stringify(buildCondition(next), null, 2));
+      const empty: BuilderCondition = {
+        mode: 'all',
+        rows: [
+          {
+            operand: { kind: 'metric', metricId: pickers.metrics[0]?.id ?? '' },
+            op: '>',
+            value: '0',
+          },
+        ],
+      };
+      setBuilder(empty);
+      setConditionJson(JSON.stringify(fromBuilder(empty), null, 2));
     });
   }, [isNew, loadPickers]);
 
-  const updateForm = (patch: Partial<FormState>) => {
-    const next = { ...form, ...patch };
-    setForm(next);
-    // A form edit rewrites the condition; the JSON view then edits that same object.
-    setConditionJson(JSON.stringify(buildCondition(next), null, 2));
+  /** The builder is the form's source of truth; the JSON view edits the same object. */
+  const updateBuilder = (next: BuilderCondition) => {
+    setBuilder(next);
+    setConditionJson(JSON.stringify(fromBuilder(next), null, 2));
     setConditionError(null);
   };
 
   const save = async () => {
     if (!form.name.trim()) return;
     let condition: RuleCondition;
-    try {
-      condition = JSON.parse(conditionJson) as RuleCondition;
-    } catch {
-      setConditionError(t('rules.conditionJsonInvalid'));
-      return;
+    if (conditionMode === 'form') {
+      condition = fromBuilder(builder);
+    } else {
+      try {
+        condition = JSON.parse(conditionJson) as RuleCondition;
+      } catch {
+        setConditionError(t('rules.conditionJsonInvalid'));
+        return;
+      }
     }
     setSaving(true);
     try {
@@ -257,7 +272,13 @@ export function RuleDetailPage() {
     if (rule) {
       setForm(formFromRule(rule, metrics, datasets));
       setConditionJson(JSON.stringify(rule.condition ?? {}, null, 2));
-      setConditionMode(isSimpleCondition(rule.condition) ? 'form' : 'json');
+      const converted = toBuilder(rule.condition);
+      if (converted.builder) {
+        setBuilder(converted.builder);
+        setConditionMode('form');
+      } else {
+        setConditionMode('json');
+      }
     }
     setConditionError(null);
     setEditing(false);
@@ -312,13 +333,7 @@ export function RuleDetailPage() {
   };
 
   const conditionText = conditionLabel(rule?.condition ?? null, { metricName, datasetName });
-  const formCanRepresent = useMemo(() => {
-    try {
-      return isSimpleCondition(JSON.parse(conditionJson || 'null') as RuleCondition);
-    } catch {
-      return false;
-    }
-  }, [conditionJson]);
+  const formCanRepresent = toBuilder(rule?.condition ?? null).builder !== null;
 
   if (loading) {
     return (
@@ -437,112 +452,52 @@ export function RuleDetailPage() {
             </EntityViewPanel>
 
             <EntityViewPanel title={t('rules.panelCondition')} description={t('rules.panelConditionHint')}>
-              <p className="rules-condition-current">{conditionText}</p>
-              <div className="rules-mode-toggle" role="tablist">
-                <button
-                  type="button"
-                  role="tab"
-                  aria-selected={conditionMode === 'form'}
-                  className={`btn btn-sm ${conditionMode === 'form' ? 'btn-primary' : 'btn-secondary'}`}
-                  onClick={() => {
-                    setConditionMode('form');
+              <p className="rules-condition-current">{formCanRepresent ? conditionLabel(fromBuilder(builder), { metricName, datasetName }) : conditionText}</p>
+              <ConditionBuilder
+                value={builder}
+                onChange={updateBuilder}
+                metrics={metrics}
+                datasets={datasets}
+              />
+              <details className="condition-advanced" open={conditionMode === 'json'}>
+                <summary
+                  onClick={(event) => {
+                    event.preventDefault();
+                    if (conditionMode === 'json') {
+                      // Leaving the JSON view adopts it into the builder — or refuses, because the
+                      // builder cannot draw it and saving the stale builder would lose the edit.
+                      const converted = toBuilder(safeParse(conditionJson));
+                      if (!converted.builder) {
+                        setConditionError(t('rules.conditionFormCannotRepresent'));
+                        return;
+                      }
+                      setBuilder(converted.builder);
+                    }
                     setConditionError(null);
+                    setConditionMode(conditionMode === 'json' ? 'form' : 'json');
                   }}
                 >
-                  {t('rules.conditionModeForm')}
-                </button>
-                <button
-                  type="button"
-                  role="tab"
-                  aria-selected={conditionMode === 'json'}
-                  className={`btn btn-sm ${conditionMode === 'json' ? 'btn-primary' : 'btn-secondary'}`}
-                  onClick={() => setConditionMode('json')}
-                >
-                  {t('rules.conditionModeJson')}
-                </button>
-              </div>
-
-              {conditionMode === 'form' ? (
-                <div className="rules-form">
-                  {!formCanRepresent ? (
-                    <p className="rules-condition-warning">{t('rules.conditionFormCannotRepresent')}</p>
-                  ) : null}
-                  {form.subjectKind === 'metric' ? (
-                    <FormField label={t('rules.conditionLeftMetric')}>
-                      <select value={form.metricId} onChange={(e) => updateForm({ metricId: e.target.value })}>
-                        {metrics.map((metric) => (
-                          <option key={metric.id} value={metric.id}>
-                            {metric.name}
-                          </option>
-                        ))}
-                      </select>
-                    </FormField>
-                  ) : (
-                    <>
-                      <FormField label={t('rules.conditionLeftDataset')}>
-                        <select value={form.datasetId} onChange={(e) => updateForm({ datasetId: e.target.value })}>
-                          {datasets.map((dataset) => (
-                            <option key={dataset.id} value={dataset.id}>
-                              {dataset.display_name || dataset.table_name || dataset.id.slice(0, 8)}
-                            </option>
-                          ))}
-                        </select>
-                      </FormField>
-                      <FormField label={t('rules.fieldAggregate')}>
-                        <select
-                          value={form.aggFn}
-                          onChange={(e) => updateForm({ aggFn: e.target.value as FormState['aggFn'] })}
-                        >
-                          {['count', 'sum', 'avg', 'min', 'max'].map((fn) => (
-                            <option key={fn} value={fn}>
-                              {fn}
-                            </option>
-                          ))}
-                        </select>
-                      </FormField>
-                      {form.aggFn === 'count' ? null : (
-                        <FormField label={t('rules.fieldColumn')}>
-                          <input
-                            type="text"
-                            value={form.aggColumn}
-                            onChange={(e) => updateForm({ aggColumn: e.target.value })}
-                            placeholder={t('rules.fieldColumnPlaceholder')}
-                          />
-                        </FormField>
-                      )}
-                    </>
-                  )}
-                  <FormField label={t('rules.fieldComparison')}>
-                    <div className="rules-comparison">
-                      <select className="ds-control" value={form.op} onChange={(e) => updateForm({ op: e.target.value })}>
-                        {OPS.map((op) => (
-                          <option key={op} value={op}>
-                            {op}
-                          </option>
-                        ))}
-                      </select>
-                      <input
-                        type="number"
-                        className="ds-control"
-                        value={form.threshold}
-                        onChange={(e) => updateForm({ threshold: e.target.value })}
+                  {t('rules.conditionAdvanced')}
+                </summary>
+                {conditionMode === 'json' ? (
+                  <>
+                    <p className="settings-page-hint">{t('rules.conditionAdvancedHint')}</p>
+                    <FormField label={t('rules.conditionJson')} hint={t('rules.conditionJsonHint')}>
+                      <textarea
+                        rows={16}
+                        className="ds-control rules-json-editor"
+                        value={conditionJson}
+                        onChange={(event) => {
+                          setConditionJson(event.target.value);
+                          setConditionError(null);
+                          const converted = toBuilder(safeParse(event.target.value));
+                          if (converted.builder) setBuilder(converted.builder);
+                        }}
                       />
-                    </div>
-                  </FormField>
-                </div>
-              ) : (
-                <FormField label={t('rules.conditionJson')} hint={t('rules.conditionJsonHint')}>
-                  <textarea
-                    rows={16}
-                    className="ds-control rules-json-editor"
-                    value={conditionJson}
-                    onChange={(e) => {
-                      setConditionJson(e.target.value);
-                      setConditionError(null);
-                    }}
-                  />
-                </FormField>
-              )}
+                    </FormField>
+                  </>
+                ) : null}
+              </details>
               {conditionError ? <p className="rules-condition-warning">{conditionError}</p> : null}
             </EntityViewPanel>
 

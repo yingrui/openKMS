@@ -34,7 +34,7 @@ Both types are created on startup if missing (`ensure_builtin_ontology`, idempot
 | Property | Meaning |
 |----------|---------|
 | `subject` | `{kind: metric\|dataset, ref}` — what the rule watches, and therefore which evaluator and permissions apply |
-| `condition` | One comparison, or `all`/`any` of comparisons. Operands: `{metric}`, `{dataset_agg}`, `{diff:[a,b]}`, `{ratio:[a,b]}`; each may carry the data layer's own `filters`. The editor always shows the stored condition verbatim and offers two views of the same object: a **form** (one comparison) and **condition JSON** (anything). A condition the form cannot express opens in JSON, and switching to the form warns that an edit would replace it |
+| `condition` | One comparison, or `all`/`any` of comparisons. Operands: `{metric}`, `{dataset_agg}`, `{diff:[a,b]}`, `{ratio:[a,b]}`; each may carry the data layer's own `filters`. The editor always shows the stored condition verbatim. Conditions are authored with a **builder**: one row per comparison, each left value being a metric, a dataset aggregate, or a ratio/difference of those two, rows joined by AND or OR. **Condition JSON** is an advanced view for shapes the builder does not draw (nested groups, an aggregate of an aggregate) — leaving it adopts the JSON back into the builder, and refuses if the builder cannot represent it, so an edit is never silently dropped |
 | `severity` | `P0` / `P1` / `P2`, the same scale as quality rules |
 | `conclusion` / `suggestion` | One sentence each. **A hit with no suggestion does not become an event** |
 | `owner` / `status` / `version` | Who owns the opinion, whether it runs, and which revision fired |

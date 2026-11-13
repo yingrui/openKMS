@@ -94,16 +94,6 @@
   color: var(--color-text-muted);
 }
 
-.rules-comparison {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-
-  select {
-    width: 6rem;
-  }
-}
-
 .rules-hint {
   display: flex;
   align-items: center;
@@ -215,11 +205,6 @@
   overflow-wrap: anywhere;
 }
 
-.rules-mode-toggle {
-  display: flex;
-  gap: var(--space-2);
-}
-
 .rules-condition-warning {
   margin: 0;
   font-size: var(--text-sm);
@@ -240,4 +225,83 @@
   font-size: var(--text-sm);
   line-height: 1.5;
   resize: vertical;
+}
+
+/* Condition builder: one row per comparison, stacked; the JSON view lives under Advanced. */
+.condition-builder {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  margin: var(--space-3) 0;
+}
+
+.condition-builder-mode {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--text-sm);
+  color: var(--color-text-secondary);
+  white-space: nowrap;
+
+  select {
+    width: auto;
+  }
+}
+
+.condition-rows {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.condition-row {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-3);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-bg-muted);
+}
+
+.condition-row-operand,
+.condition-row-compare {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+
+.condition-row-compare {
+  input[type='number'] {
+    width: 8rem;
+  }
+}
+
+.condition-row-pair {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+
+.condition-row-sep {
+  color: var(--color-text-muted);
+}
+
+.condition-builder-add {
+  align-self: flex-start;
+}
+
+.condition-advanced {
+  margin-top: var(--space-3);
+
+  summary {
+    cursor: pointer;
+    font-size: var(--text-sm);
+    color: var(--color-text-secondary);
+  }
 }
