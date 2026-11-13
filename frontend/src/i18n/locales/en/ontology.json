@@ -1384,6 +1384,14 @@
     "conditionJson": "Condition JSON",
     "conditionJsonHint": "The same object the form edits. Use this for conditions the form cannot express — combined conditions (all/any), ratio or diff operands.",
     "conditionFormCannotRepresent": "This condition has several comparisons, or a ratio/diff operand, so the form cannot represent it — switching to the form would replace it. Edit the JSON instead.",
-    "conditionJsonInvalid": "The condition is not valid JSON — nothing was saved."
+    "conditionJsonInvalid": "The condition is not valid JSON — nothing was saved.",
+    "panelBasics": "Rule",
+    "panelCondition": "Condition",
+    "panelConditionHint": "The stored condition, and two ways to edit it: a form for one comparison, JSON for anything else.",
+    "conditionLeftMetric": "Left value — metric",
+    "conditionLeftDataset": "Left value — dataset",
+    "panelMeaning": "What it means",
+    "panelMeaningHint": "What a reader sees on the event when the condition holds.",
+    "fieldSubjectHint": "What the rule watches. It also decides which permission the run needs."
   }
 }

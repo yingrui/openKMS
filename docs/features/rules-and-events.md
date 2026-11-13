@@ -54,7 +54,7 @@ as when the event was raised — `scope`, `evidence` (the values that produced i
 |---------|-----------------|
 | **Ontology Manager → Rules** (`/ontology-manager/rules`) | Two tabs: **规则** (author, run, pause) and **事件** (the inbox: acknowledge / resolve / dismiss, filtered by state and severity) |
 | **Run parameters** | The period and scope belong to the *run*, not to the rule: both entry points ("run all" and a rule's own Run button) open the same dialog, so the two cannot drift |
-| **One rule** (`/ontology-manager/rules/:id`) | The definition, the last run with its computed values, and the events this rule raised — a page, not a dialog, like every other ontology object |
+| **One rule** (`/ontology-manager/rules/:id`, `/rules/new`) | A page with two modes: **read** (definition, last run with its computed values, events raised) and **edit** (rule / condition / meaning panels, Save and Cancel in the header). The condition needs a page — a summary of what is stored, a form view for one comparison, and a 16-row JSON view for everything else. Creating a rule is the same page in edit mode, so the two cannot drift |
 | **A metric** (model → Metrics) | A badge with its open-event count, linking to that metric's events |
 | **A dataset** (Catalog → dataset → Overview) | "Rules and events": how many rules watch it, and the three most recent events |
 

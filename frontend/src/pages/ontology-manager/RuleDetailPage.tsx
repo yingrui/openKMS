@@ -1,9 +1,12 @@
 /**
- * One rule, in full — and the place a rule is created.
+ * One rule: read it, run it, edit it — on a page, not in a dialog.
  *
- * The list page answers "what runs and did it hold"; this page answers "what exactly does it assert,
- * what did it last compute, and which events did it raise". Editing is a dialog here (a rule is a
- * handful of fields), but the rule itself is a page, like every other ontology object.
+ * A rule is a handful of metadata plus a condition, and the condition needs room: a summary of what is
+ * stored, a form view, and a JSON view for the shapes the form cannot express. That is a page's worth
+ * of work ("both views at once serves neither" was the same conclusion the quality-rule page reached),
+ * so the page has two modes — read and edit — and the header carries the mode's actions.
+ *
+ * `/rules/new` is the same page in edit mode, so creating and editing cannot drift apart.
  */
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -11,7 +14,7 @@ import { Link, useNavigate, useParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { ArrowLeft, BellRing, Loader2, Pencil, Play, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
-import { Dialog, EmptyState, FormField, StatusChip } from '../../styles/design-system';
+import { EmptyState, FormField, StatusChip } from '../../styles/design-system';
 import {
   createRule,
   deleteRule,
@@ -25,12 +28,12 @@ import {
 } from '../../data/rulesApi';
 import { transitionEvent, type EventOut } from '../../data/eventsApi';
 import { fetchMetrics, type MetricResponse } from '../../data/metricsApi';
-import { RulesEventsTable } from './RulesEventsTable';
-import { RunRulesDialog, type RunParams } from './RunRulesDialog';
-import { conditionLabel, isSimpleCondition, valueRows } from './rulesLabels';
 import { fetchDatasets, type DatasetResponse } from '../../data/datasetsApi';
 import { useConfirm } from '../../contexts/ConfirmContext';
 import { EntityViewPanel } from '../shared/EntityViewShell';
+import { RulesEventsTable } from './RulesEventsTable';
+import { RunRulesDialog, type RunParams } from './RunRulesDialog';
+import { conditionLabel, isSimpleCondition, valueRows } from './rulesLabels';
 import '../../styles/settings-page.scss';
 import '../ontology/ontology-admin.scss';
 import '../../styles/rules.scss';
@@ -48,6 +51,7 @@ type FormState = {
   conclusion: string;
   suggestion: string;
   aboutObjectType: string;
+  status: 'active' | 'paused';
 };
 
 const OPS = ['<', '<=', '>', '>=', '==', '!='];
@@ -64,6 +68,7 @@ const EMPTY_FORM: FormState = {
   conclusion: '',
   suggestion: '',
   aboutObjectType: '',
+  status: 'active',
 };
 
 function buildCondition(form: FormState): RuleCondition {
@@ -97,6 +102,7 @@ function formFromRule(rule: RuleOut, metrics: MetricResponse[], datasets: Datase
     conclusion: rule.conclusion ?? '',
     suggestion: rule.suggestion ?? '',
     aboutObjectType: rule.about_object_type ?? '',
+    status: rule.status === 'paused' ? 'paused' : 'active',
   };
 }
 
@@ -118,7 +124,8 @@ export function RuleDetailPage() {
   const [metrics, setMetrics] = useState<MetricResponse[]>([]);
   const [datasets, setDatasets] = useState<DatasetResponse[]>([]);
   const [loading, setLoading] = useState(!isNew);
-  const [editorOpen, setEditorOpen] = useState(isNew);
+  const [editing, setEditing] = useState(isNew);
+
   const [form, setForm] = useState<FormState>(EMPTY_FORM);
   /** The condition as stored/sent — the form builder is a view over this, not a parallel copy. */
   const [conditionJson, setConditionJson] = useState('');
@@ -129,21 +136,42 @@ export function RuleDetailPage() {
   const [runOpen, setRunOpen] = useState(false);
   const [busyEventId, setBusyEventId] = useState<string | null>(null);
 
+  const metricName = useMemo(() => {
+    const byId = new Map(metrics.map((metric) => [metric.id, metric.name]));
+    return (id: string) => byId.get(id) ?? id.slice(0, 8);
+  }, [metrics]);
+  const datasetName = useMemo(() => {
+    const byId = new Map(
+      datasets.map((dataset) => [dataset.id, dataset.display_name || dataset.table_name || dataset.id.slice(0, 8)]),
+    );
+    return (id: string) => byId.get(id) ?? id.slice(0, 8);
+  }, [datasets]);
+
+  const loadPickers = useCallback(async () => {
+    const [metricPage, datasetPage] = await Promise.all([
+      fetchMetrics().catch(() => ({ items: [] as MetricResponse[], total: 0 })),
+      fetchDatasets({ limit: 200 }).catch(() => ({ items: [] as DatasetResponse[], total: 0 })),
+    ]);
+    setMetrics(metricPage.items);
+    setDatasets(datasetPage.items);
+    return { metrics: metricPage.items, datasets: datasetPage.items };
+  }, []);
+
   const load = useCallback(async () => {
     if (isNew) return;
     setLoading(true);
     try {
-      const [current, eventPage, metricPage, datasetPage] = await Promise.all([
+      const [current, eventPage, pickers] = await Promise.all([
         fetchRule(ruleId ?? ''),
         fetchRuleEvents(ruleId ?? '', { limit: 50 }).catch(() => ({ items: [] as EventOut[], total: 0 })),
-        fetchMetrics().catch(() => ({ items: [] as MetricResponse[], total: 0 })),
-        fetchDatasets({ limit: 200 }).catch(() => ({ items: [] as DatasetResponse[], total: 0 })),
+        loadPickers(),
       ]);
       setRule(current);
+      // Creating a rule navigates here with the editor state still "on"; loading a stored rule is
+      // always a read view, so entering the page never starts half-edited.
+      setEditing(false);
       setEvents(eventPage.items);
-      setMetrics(metricPage.items);
-      setDatasets(datasetPage.items);
-      setForm(formFromRule(current, metricPage.items, datasetPage.items));
+      setForm(formFromRule(current, pickers.metrics, pickers.datasets));
       setConditionJson(JSON.stringify(current.condition ?? {}, null, 2));
       setConditionMode(isSimpleCondition(current.condition) ? 'form' : 'json');
     } catch (e: unknown) {
@@ -151,7 +179,7 @@ export function RuleDetailPage() {
     } finally {
       setLoading(false);
     }
-  }, [isNew, ruleId, t]);
+  }, [isNew, ruleId, t, loadPickers]);
 
   useEffect(() => {
     void load();
@@ -159,33 +187,26 @@ export function RuleDetailPage() {
 
   useEffect(() => {
     if (!isNew) return;
-    // The editor for a new rule needs the pickers even though there is no rule to fetch.
-    void Promise.all([
-      fetchMetrics().catch(() => ({ items: [] as MetricResponse[], total: 0 })),
-      fetchDatasets({ limit: 200 }).catch(() => ({ items: [] as DatasetResponse[], total: 0 })),
-    ]).then(([metricPage, datasetPage]) => {
-      setMetrics(metricPage.items);
-      setDatasets(datasetPage.items);
+    void loadPickers().then((pickers) => {
       const next: FormState = {
         ...EMPTY_FORM,
-        metricId: metricPage.items[0]?.id ?? '',
-        datasetId: datasetPage.items[0]?.id ?? '',
+        metricId: pickers.metrics[0]?.id ?? '',
+        datasetId: pickers.datasets[0]?.id ?? '',
       };
       setForm(next);
       setConditionJson(JSON.stringify(buildCondition(next), null, 2));
-      setConditionMode('form');
     });
-  }, [isNew]);
+  }, [isNew, loadPickers]);
 
   const updateForm = (patch: Partial<FormState>) => {
     const next = { ...form, ...patch };
     setForm(next);
-    // A simple form edit rewrites the condition; switching to JSON afterwards edits the same object.
+    // A form edit rewrites the condition; the JSON view then edits that same object.
     setConditionJson(JSON.stringify(buildCondition(next), null, 2));
     setConditionError(null);
   };
 
-  const submit = async () => {
+  const save = async () => {
     if (!form.name.trim()) return;
     let condition: RuleCondition;
     try {
@@ -207,6 +228,7 @@ export function RuleDetailPage() {
         conclusion: form.conclusion.trim(),
         suggestion: form.suggestion.trim(),
         about_object_type: form.aboutObjectType.trim() || null,
+        status: form.status,
       };
       if (isNew) {
         const created = await createRule(payload);
@@ -215,7 +237,9 @@ export function RuleDetailPage() {
       } else if (rule) {
         const updated = await updateRule(rule.object_id, payload);
         setRule(updated);
-        setEditorOpen(false);
+        setForm(formFromRule(updated, metrics, datasets));
+        setConditionJson(JSON.stringify(updated.condition ?? {}, null, 2));
+        setEditing(false);
         toast.success(t('rules.toastUpdated'));
       }
     } catch (e: unknown) {
@@ -223,6 +247,20 @@ export function RuleDetailPage() {
     } finally {
       setSaving(false);
     }
+  };
+
+  const cancelEdit = () => {
+    if (isNew) {
+      navigate('/ontology-manager/rules');
+      return;
+    }
+    if (rule) {
+      setForm(formFromRule(rule, metrics, datasets));
+      setConditionJson(JSON.stringify(rule.condition ?? {}, null, 2));
+      setConditionMode(isSimpleCondition(rule.condition) ? 'form' : 'json');
+    }
+    setConditionError(null);
+    setEditing(false);
   };
 
   const run = async (params: RunParams) => {
@@ -273,18 +311,8 @@ export function RuleDetailPage() {
     }
   };
 
-  const metricName = useMemo(() => {
-    const byId = new Map(metrics.map((metric) => [metric.id, metric.name]));
-    return (id: string) => byId.get(id) ?? id.slice(0, 8);
-  }, [metrics]);
-  const datasetName = useMemo(() => {
-    const byId = new Map(
-      datasets.map((dataset) => [dataset.id, dataset.display_name || dataset.table_name || dataset.id.slice(0, 8)]),
-    );
-    return (id: string) => byId.get(id) ?? id.slice(0, 8);
-  }, [datasets]);
   const conditionText = conditionLabel(rule?.condition ?? null, { metricName, datasetName });
-  const isSimpleConditionForForm = useMemo(() => {
+  const formCanRepresent = useMemo(() => {
     try {
       return isSimpleCondition(JSON.parse(conditionJson || 'null') as RuleCondition);
     } catch {
@@ -327,290 +355,299 @@ export function RuleDetailPage() {
             </p>
           ) : null}
         </div>
-        {rule ? (
-          <div className="page-header-actions">
-            <button type="button" className="btn btn-secondary" onClick={() => setEditorOpen(true)}>
-              <Pencil size={16} aria-hidden />
-              {t('shared.edit')}
-            </button>
-            <button
-              type="button"
-              className="btn btn-primary"
-              onClick={() => setRunOpen(true)}
-              disabled={running}
-            >
-              {running ? <Loader2 size={16} className="animate-spin" aria-hidden /> : <Play size={16} aria-hidden />}
-              {t('rules.run')}
-            </button>
-          </div>
-        ) : null}
+        <div className="page-header-actions">
+          {editing ? (
+            <>
+              <button type="button" className="btn btn-secondary" onClick={cancelEdit} disabled={saving}>
+                {t('shared.cancel')}
+              </button>
+              <button
+                type="button"
+                className="btn btn-primary"
+                onClick={() => void save()}
+                disabled={saving || !form.name.trim()}
+              >
+                {saving ? t('rules.saving') : isNew ? t('shared.create') : t('shared.save')}
+              </button>
+            </>
+          ) : rule ? (
+            <>
+              <button type="button" className="btn btn-secondary" onClick={() => setEditing(true)}>
+                <Pencil size={16} aria-hidden />
+                {t('shared.edit')}
+              </button>
+              <button
+                type="button"
+                className="btn btn-primary"
+                onClick={() => setRunOpen(true)}
+                disabled={running}
+              >
+                {running ? <Loader2 size={16} className="animate-spin" aria-hidden /> : <Play size={16} aria-hidden />}
+                {t('rules.run')}
+              </button>
+            </>
+          ) : null}
+        </div>
       </div>
 
-      {rule ? (
-        <div className="account-stack">
-          <EntityViewPanel title={t('rules.panelDefinition')} description={t('rules.panelDefinitionHint')}>
-            <dl className="rules-facts">
-              <dt>{t('rules.colCondition')}</dt>
-              <dd className="rules-condition">{conditionText}</dd>
-              <dt>{t('rules.fieldConclusion')}</dt>
-              <dd>{rule.conclusion || '—'}</dd>
-              <dt>{t('rules.fieldSuggestion')}</dt>
-              <dd>{rule.suggestion || t('rules.noSuggestion')}</dd>
-              <dt>{t('rules.fieldAbout')}</dt>
-              <dd>{rule.about_object_type || '—'}</dd>
-              <dt>{t('rules.fieldStatus')}</dt>
-              <dd>{rule.status === 'paused' ? t('rules.paused') : t('rules.active')}</dd>
-            </dl>
-            <div className="rules-danger-row">
-              <button type="button" className="btn btn-secondary" onClick={() => void remove()}>
-                <Trash2 size={16} aria-hidden />
-                {t('rules.deleteRule')}
-              </button>
-            </div>
-          </EntityViewPanel>
-
-          <EntityViewPanel title={t('rules.panelLastRun')}>
-            {rule.last_status ? (
-              <dl className="rules-facts">
-                <dt>{t('rules.fieldStatus')}</dt>
-                <dd>
-                  <StatusChip tone={rule.last_status === 'fail' ? 'warn' : rule.last_status === 'pass' ? 'ok' : 'neutral'}>
-                    {t(`rules.status.${rule.last_status}`)}
-                  </StatusChip>
-                  <span className="rules-status-meaning">{t('rules.statusMeaning')}</span>
-                </dd>
-                <dt>{t('rules.colLastRun')}</dt>
-                <dd>{rule.last_run_at ? new Date(rule.last_run_at).toLocaleString() : '—'}</dd>
-                <dt>{t('rules.fieldValues')}</dt>
-                <dd>
-                  {valueRows(rule.last_values, { metricName }).length === 0 ? (
-                    '—'
-                  ) : (
-                    <ul className="rules-values">
-                      {valueRows(rule.last_values, { metricName }).map((row) => (
-                        <li key={row.label}>
-                          <span className="rules-values-label">{row.label}</span>
-                          <span className="rules-values-value">{row.value}</span>
-                        </li>
-                      ))}
-                    </ul>
-                  )}
-                </dd>
-              </dl>
-            ) : (
-              <p className="page-subtitle">{t('rules.neverRun')}</p>
-            )}
-          </EntityViewPanel>
-
-          <EntityViewPanel title={t('rules.panelEvents')} description={t('rules.panelEventsHint')}>
-            {events.length === 0 ? (
-              <EmptyState icon={<BellRing size={32} aria-hidden />} title={t('rules.emptyEvents')} />
-            ) : (
-              <RulesEventsTable
-                events={events}
-                busyEventId={busyEventId}
-                showPeriod
-                onTransition={(event, status) => void moveEvent(event, status)}
-              />
-            )}
-          </EntityViewPanel>
-        </div>
-      ) : null}
-
-      <RunRulesDialog
-        open={runOpen}
-        busy={running}
-        onClose={() => setRunOpen(false)}
-        onRun={(params) => void run(params)}
-      />
-
-      <Dialog
-        open={editorOpen}
-        onClose={() => (isNew ? navigate('/ontology-manager/rules') : setEditorOpen(false))}
-        title={isNew ? t('rules.dialogCreate') : t('rules.dialogEdit')}
-        closeAriaLabel={t('shared.close')}
-        size="md"
-        footer={
+      <div className="account-stack">
+        {editing ? (
           <>
-            <button
-              type="button"
-              className="btn btn-secondary"
-              onClick={() => (isNew ? navigate('/ontology-manager/rules') : setEditorOpen(false))}
-            >
-              {t('shared.cancel')}
-            </button>
-            <button
-              type="button"
-              className="btn btn-primary"
-              onClick={() => void submit()}
-              disabled={saving || !form.name.trim()}
-            >
-              {saving ? t('rules.saving') : isNew ? t('shared.create') : t('shared.save')}
-            </button>
-          </>
-        }
-      >
-        <FormField label={t('rules.fieldName')}>
-          <input
-            type="text"
-            value={form.name}
-            onChange={(e) => updateForm({ name: e.target.value })}
-            placeholder={t('rules.fieldNamePlaceholder')}
-          />
-        </FormField>
-        <FormField label={t('rules.fieldSubject')}>
-          <select
-            value={form.subjectKind}
-            onChange={(e) => updateForm({ subjectKind: e.target.value as FormState['subjectKind'] })}
-          >
-            <option value="metric">{t('rules.subjectMetric')}</option>
-            <option value="dataset">{t('rules.subjectDataset')}</option>
-          </select>
-        </FormField>
-        {form.subjectKind === 'metric' ? (
-          <FormField label={t('rules.fieldMetric')}>
-            <select value={form.metricId} onChange={(e) => updateForm({ metricId: e.target.value })}>
-              {metrics.map((metric) => (
-                <option key={metric.id} value={metric.id}>
-                  {metric.name}
-                </option>
-              ))}
-            </select>
-          </FormField>
-        ) : (
-          <>
-            <FormField label={t('rules.fieldDataset')}>
-              <select value={form.datasetId} onChange={(e) => updateForm({ datasetId: e.target.value })}>
-                {datasets.map((dataset) => (
-                  <option key={dataset.id} value={dataset.id}>
-                    {dataset.display_name || dataset.table_name || dataset.id.slice(0, 8)}
-                  </option>
-                ))}
-              </select>
-            </FormField>
-            <FormField label={t('rules.fieldAggregate')}>
-              <select
-                value={form.aggFn}
-                onChange={(e) => updateForm({ aggFn: e.target.value as FormState['aggFn'] })}
-              >
-                {['count', 'sum', 'avg', 'min', 'max'].map((fn) => (
-                  <option key={fn} value={fn}>
-                    {fn}
-                  </option>
-                ))}
-              </select>
-            </FormField>
-            {form.aggFn === 'count' ? null : (
-              <FormField label={t('rules.fieldColumn')}>
-                <input
-                  type="text"
-                  value={form.aggColumn}
-                  onChange={(e) => updateForm({ aggColumn: e.target.value })}
-                  placeholder={t('rules.fieldColumnPlaceholder')}
-                />
-              </FormField>
-            )}
-          </>
-        )}
-        <div className="rules-condition-block">
-          <span className="account-field-label">{t('rules.currentCondition')}</span>
-          <code className="rules-condition-current">{conditionText}</code>
-          <div className="rules-mode-toggle" role="tablist">
-            <button
-              type="button"
-              role="tab"
-              aria-selected={conditionMode === 'form'}
-              className={`btn btn-sm ${conditionMode === 'form' ? 'btn-primary' : 'btn-secondary'}`}
-              onClick={() => {
-                // Switching views must not rewrite anything: the JSON stays authoritative until a
-                // form field is actually edited (the warning above says what an edit would do).
-                setConditionMode('form');
-                setConditionError(null);
-              }}
-            >
-              {t('rules.conditionModeForm')}
-            </button>
-            <button
-              type="button"
-              role="tab"
-              aria-selected={conditionMode === 'json'}
-              className={`btn btn-sm ${conditionMode === 'json' ? 'btn-primary' : 'btn-secondary'}`}
-              onClick={() => setConditionMode('json')}
-            >
-              {t('rules.conditionModeJson')}
-            </button>
-          </div>
-          {conditionMode === 'form' ? (
-            <>
-              {!isSimpleConditionForForm ? (
-                <p className="rules-condition-warning">{t('rules.conditionFormCannotRepresent')}</p>
-              ) : null}
-              <FormField label={t('rules.fieldComparison')}>
-                <div className="rules-comparison">
-                  <select className="ds-control" value={form.op} onChange={(e) => updateForm({ op: e.target.value })}>
-                    {OPS.map((op) => (
-                      <option key={op} value={op}>
-                        {op}
+            <EntityViewPanel title={t('rules.panelBasics')}>
+              <div className="rules-form">
+                <FormField label={t('rules.fieldName')}>
+                  <input
+                    type="text"
+                    value={form.name}
+                    onChange={(e) => setForm({ ...form, name: e.target.value })}
+                    placeholder={t('rules.fieldNamePlaceholder')}
+                  />
+                </FormField>
+                <FormField label={t('rules.fieldSubject')} hint={t('rules.fieldSubjectHint')}>
+                  <select
+                    value={form.subjectKind}
+                    onChange={(e) => setForm({ ...form, subjectKind: e.target.value as FormState['subjectKind'] })}
+                  >
+                    <option value="metric">{t('rules.subjectMetric')}</option>
+                    <option value="dataset">{t('rules.subjectDataset')}</option>
+                  </select>
+                </FormField>
+                <FormField label={t('rules.fieldSeverity')}>
+                  <select
+                    value={form.severity}
+                    onChange={(e) => setForm({ ...form, severity: e.target.value as FormState['severity'] })}
+                  >
+                    {['P0', 'P1', 'P2'].map((severity) => (
+                      <option key={severity} value={severity}>
+                        {severity}
                       </option>
                     ))}
                   </select>
-                  <input
-                    type="number"
-                    className="ds-control"
-                    value={form.threshold}
-                    onChange={(e) => updateForm({ threshold: e.target.value })}
-                  />
+                </FormField>
+                <FormField label={t('rules.fieldStatus')}>
+                  <select
+                    value={form.status}
+                    onChange={(e) => setForm({ ...form, status: e.target.value as FormState['status'] })}
+                  >
+                    <option value="active">{t('rules.active')}</option>
+                    <option value="paused">{t('rules.paused')}</option>
+                  </select>
+                </FormField>
+              </div>
+            </EntityViewPanel>
+
+            <EntityViewPanel title={t('rules.panelCondition')} description={t('rules.panelConditionHint')}>
+              <p className="rules-condition-current">{conditionText}</p>
+              <div className="rules-mode-toggle" role="tablist">
+                <button
+                  type="button"
+                  role="tab"
+                  aria-selected={conditionMode === 'form'}
+                  className={`btn btn-sm ${conditionMode === 'form' ? 'btn-primary' : 'btn-secondary'}`}
+                  onClick={() => {
+                    setConditionMode('form');
+                    setConditionError(null);
+                  }}
+                >
+                  {t('rules.conditionModeForm')}
+                </button>
+                <button
+                  type="button"
+                  role="tab"
+                  aria-selected={conditionMode === 'json'}
+                  className={`btn btn-sm ${conditionMode === 'json' ? 'btn-primary' : 'btn-secondary'}`}
+                  onClick={() => setConditionMode('json')}
+                >
+                  {t('rules.conditionModeJson')}
+                </button>
+              </div>
+
+              {conditionMode === 'form' ? (
+                <div className="rules-form">
+                  {!formCanRepresent ? (
+                    <p className="rules-condition-warning">{t('rules.conditionFormCannotRepresent')}</p>
+                  ) : null}
+                  {form.subjectKind === 'metric' ? (
+                    <FormField label={t('rules.conditionLeftMetric')}>
+                      <select value={form.metricId} onChange={(e) => updateForm({ metricId: e.target.value })}>
+                        {metrics.map((metric) => (
+                          <option key={metric.id} value={metric.id}>
+                            {metric.name}
+                          </option>
+                        ))}
+                      </select>
+                    </FormField>
+                  ) : (
+                    <>
+                      <FormField label={t('rules.conditionLeftDataset')}>
+                        <select value={form.datasetId} onChange={(e) => updateForm({ datasetId: e.target.value })}>
+                          {datasets.map((dataset) => (
+                            <option key={dataset.id} value={dataset.id}>
+                              {dataset.display_name || dataset.table_name || dataset.id.slice(0, 8)}
+                            </option>
+                          ))}
+                        </select>
+                      </FormField>
+                      <FormField label={t('rules.fieldAggregate')}>
+                        <select
+                          value={form.aggFn}
+                          onChange={(e) => updateForm({ aggFn: e.target.value as FormState['aggFn'] })}
+                        >
+                          {['count', 'sum', 'avg', 'min', 'max'].map((fn) => (
+                            <option key={fn} value={fn}>
+                              {fn}
+                            </option>
+                          ))}
+                        </select>
+                      </FormField>
+                      {form.aggFn === 'count' ? null : (
+                        <FormField label={t('rules.fieldColumn')}>
+                          <input
+                            type="text"
+                            value={form.aggColumn}
+                            onChange={(e) => updateForm({ aggColumn: e.target.value })}
+                            placeholder={t('rules.fieldColumnPlaceholder')}
+                          />
+                        </FormField>
+                      )}
+                    </>
+                  )}
+                  <FormField label={t('rules.fieldComparison')}>
+                    <div className="rules-comparison">
+                      <select className="ds-control" value={form.op} onChange={(e) => updateForm({ op: e.target.value })}>
+                        {OPS.map((op) => (
+                          <option key={op} value={op}>
+                            {op}
+                          </option>
+                        ))}
+                      </select>
+                      <input
+                        type="number"
+                        className="ds-control"
+                        value={form.threshold}
+                        onChange={(e) => updateForm({ threshold: e.target.value })}
+                      />
+                    </div>
+                  </FormField>
                 </div>
-              </FormField>
-            </>
-          ) : (
-            <FormField label={t('rules.conditionJson')} hint={t('rules.conditionJsonHint')}>
-              <textarea
-                rows={8}
-                className="ds-control"
-                value={conditionJson}
-                onChange={(e) => {
-                  setConditionJson(e.target.value);
-                  setConditionError(null);
-                }}
-              />
-            </FormField>
-          )}
-          {conditionError ? <p className="rules-condition-warning">{conditionError}</p> : null}
-        </div>
+              ) : (
+                <FormField label={t('rules.conditionJson')} hint={t('rules.conditionJsonHint')}>
+                  <textarea
+                    rows={16}
+                    className="ds-control rules-json-editor"
+                    value={conditionJson}
+                    onChange={(e) => {
+                      setConditionJson(e.target.value);
+                      setConditionError(null);
+                    }}
+                  />
+                </FormField>
+              )}
+              {conditionError ? <p className="rules-condition-warning">{conditionError}</p> : null}
+            </EntityViewPanel>
 
+            <EntityViewPanel title={t('rules.panelMeaning')} description={t('rules.panelMeaningHint')}>
+              <div className="rules-form">
+                <FormField label={t('rules.fieldConclusion')} hint={t('rules.fieldConclusionHint')}>
+                  <input
+                    type="text"
+                    value={form.conclusion}
+                    onChange={(e) => setForm({ ...form, conclusion: e.target.value })}
+                  />
+                </FormField>
+                <FormField label={t('rules.fieldSuggestion')} hint={t('rules.fieldSuggestionHint')}>
+                  <textarea
+                    rows={3}
+                    value={form.suggestion}
+                    onChange={(e) => setForm({ ...form, suggestion: e.target.value })}
+                  />
+                </FormField>
+                <FormField label={t('rules.fieldAbout')} hint={t('rules.fieldAboutHint')}>
+                  <input
+                    type="text"
+                    value={form.aboutObjectType}
+                    onChange={(e) => setForm({ ...form, aboutObjectType: e.target.value })}
+                    placeholder={t('rules.fieldAboutPlaceholder')}
+                  />
+                </FormField>
+              </div>
+            </EntityViewPanel>
+          </>
+        ) : (
+          <>
+            <EntityViewPanel title={t('rules.panelDefinition')} description={t('rules.panelDefinitionHint')}>
+              <dl className="rules-facts">
+                <dt>{t('rules.colCondition')}</dt>
+                <dd className="rules-condition">{conditionText}</dd>
+                <dt>{t('rules.fieldConclusion')}</dt>
+                <dd>{rule?.conclusion || '—'}</dd>
+                <dt>{t('rules.fieldSuggestion')}</dt>
+                <dd>{rule?.suggestion || t('rules.noSuggestion')}</dd>
+                <dt>{t('rules.fieldAbout')}</dt>
+                <dd>{rule?.about_object_type || '—'}</dd>
+                <dt>{t('rules.fieldStatus')}</dt>
+                <dd>{rule?.status === 'paused' ? t('rules.paused') : t('rules.active')}</dd>
+              </dl>
+              <div className="rules-danger-row">
+                <button type="button" className="btn btn-secondary" onClick={() => void remove()}>
+                  <Trash2 size={16} aria-hidden />
+                  {t('rules.deleteRule')}
+                </button>
+              </div>
+            </EntityViewPanel>
 
-        <FormField label={t('rules.fieldSeverity')}>
-          <select
-            value={form.severity}
-            onChange={(e) => updateForm({ severity: e.target.value as FormState['severity'] })}
-          >
-            {['P0', 'P1', 'P2'].map((severity) => (
-              <option key={severity} value={severity}>
-                {severity}
-              </option>
-            ))}
-          </select>
-        </FormField>
-        <FormField label={t('rules.fieldConclusion')} hint={t('rules.fieldConclusionHint')}>
-          <input type="text" value={form.conclusion} onChange={(e) => updateForm({ conclusion: e.target.value })} />
-        </FormField>
-        <FormField label={t('rules.fieldSuggestion')} hint={t('rules.fieldSuggestionHint')}>
-          <input
-            type="text"
-            value={form.suggestion}
-            onChange={(e) => updateForm({ suggestion: e.target.value })}
-          />
-        </FormField>
-        <FormField label={t('rules.fieldAbout')} hint={t('rules.fieldAboutHint')}>
-          <input
-            type="text"
-            value={form.aboutObjectType}
-            onChange={(e) => updateForm({ aboutObjectType: e.target.value })}
-            placeholder={t('rules.fieldAboutPlaceholder')}
-          />
-        </FormField>
-      </Dialog>
+            <EntityViewPanel title={t('rules.panelLastRun')}>
+              {rule?.last_status ? (
+                <dl className="rules-facts">
+                  <dt>{t('rules.fieldStatus')}</dt>
+                  <dd>
+                    <StatusChip
+                      tone={rule.last_status === 'fail' ? 'warn' : rule.last_status === 'pass' ? 'ok' : 'neutral'}
+                    >
+                      {t(`rules.status.${rule.last_status}`)}
+                    </StatusChip>
+                    <span className="rules-status-meaning">{t('rules.statusMeaning')}</span>
+                  </dd>
+                  <dt>{t('rules.colLastRun')}</dt>
+                  <dd>{rule.last_run_at ? new Date(rule.last_run_at).toLocaleString() : '—'}</dd>
+                  <dt>{t('rules.fieldValues')}</dt>
+                  <dd>
+                    {valueRows(rule.last_values, { metricName }).length === 0 ? (
+                      '—'
+                    ) : (
+                      <ul className="rules-values">
+                        {valueRows(rule.last_values, { metricName }).map((row) => (
+                          <li key={row.label}>
+                            <span className="rules-values-label">{row.label}</span>
+                            <span className="rules-values-value">{row.value}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                  </dd>
+                </dl>
+              ) : (
+                <p className="page-subtitle">{t('rules.neverRun')}</p>
+              )}
+            </EntityViewPanel>
+
+            <EntityViewPanel title={t('rules.panelEvents')} description={t('rules.panelEventsHint')}>
+              {events.length === 0 ? (
+                <EmptyState icon={<BellRing size={32} aria-hidden />} title={t('rules.emptyEvents')} />
+              ) : (
+                <RulesEventsTable
+                  events={events}
+                  busyEventId={busyEventId}
+                  showPeriod
+                  onTransition={(event, status) => void moveEvent(event, status)}
+                />
+              )}
+            </EntityViewPanel>
+          </>
+        )}
+      </div>
+
+      <RunRulesDialog open={runOpen} busy={running} onClose={() => setRunOpen(false)} onRun={(params) => void run(params)} />
     </div>
   );
 }

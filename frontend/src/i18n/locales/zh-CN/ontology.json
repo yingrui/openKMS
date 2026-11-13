@@ -1377,6 +1377,14 @@
     "conditionJson": "条件 JSON",
     "conditionJsonHint": "表单编辑的就是这个对象。表单表达不了的条件（all/any 组合、ratio、diff）在这里改。",
     "conditionFormCannotRepresent": "这个条件包含多个比较项，或含 ratio/diff，表单无法表达——切到表单会用单条件替换它。请直接改 JSON。",
-    "conditionJsonInvalid": "条件不是合法 JSON，未保存。"
+    "conditionJsonInvalid": "条件不是合法 JSON，未保存。",
+    "panelBasics": "规则",
+    "panelCondition": "条件",
+    "panelConditionHint": "上面是库里的条件原文；下面两种改法：表单（一个比较项）或 JSON（任意条件）。",
+    "conditionLeftMetric": "左值 —— 指标",
+    "conditionLeftDataset": "左值 —— 数据集",
+    "panelMeaning": "命中时说什么",
+    "panelMeaningHint": "条件成立时，事件上给读者看的结论与建议。",
+    "fieldSubjectHint": "规则监视什么；也决定运行需要哪种权限。"
   }
 }
