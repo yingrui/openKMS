@@ -27,7 +27,7 @@ import { transitionEvent, type EventOut } from '../../data/eventsApi';
 import { fetchMetrics, type MetricResponse } from '../../data/metricsApi';
 import { RulesEventsTable } from './RulesEventsTable';
 import { RunRulesDialog, type RunParams } from './RunRulesDialog';
-import { conditionLabel, valueRows } from './rulesLabels';
+import { conditionLabel, isSimpleCondition, valueRows } from './rulesLabels';
 import { fetchDatasets, type DatasetResponse } from '../../data/datasetsApi';
 import { useConfirm } from '../../contexts/ConfirmContext';
 import { EntityViewPanel } from '../shared/EntityViewShell';
@@ -120,6 +120,10 @@ export function RuleDetailPage() {
   const [loading, setLoading] = useState(!isNew);
   const [editorOpen, setEditorOpen] = useState(isNew);
   const [form, setForm] = useState<FormState>(EMPTY_FORM);
+  /** The condition as stored/sent — the form builder is a view over this, not a parallel copy. */
+  const [conditionJson, setConditionJson] = useState('');
+  const [conditionMode, setConditionMode] = useState<'form' | 'json'>('form');
+  const [conditionError, setConditionError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [running, setRunning] = useState(false);
   const [runOpen, setRunOpen] = useState(false);
@@ -140,6 +144,8 @@ export function RuleDetailPage() {
       setMetrics(metricPage.items);
       setDatasets(datasetPage.items);
       setForm(formFromRule(current, metricPage.items, datasetPage.items));
+      setConditionJson(JSON.stringify(current.condition ?? {}, null, 2));
+      setConditionMode(isSimpleCondition(current.condition) ? 'form' : 'json');
     } catch (e: unknown) {
       toast.error(e instanceof Error ? e.message : t('rules.toastLoadFailed'));
     } finally {
@@ -160,12 +166,34 @@ export function RuleDetailPage() {
     ]).then(([metricPage, datasetPage]) => {
       setMetrics(metricPage.items);
       setDatasets(datasetPage.items);
-      setForm({ ...EMPTY_FORM, metricId: metricPage.items[0]?.id ?? '', datasetId: datasetPage.items[0]?.id ?? '' });
+      const next: FormState = {
+        ...EMPTY_FORM,
+        metricId: metricPage.items[0]?.id ?? '',
+        datasetId: datasetPage.items[0]?.id ?? '',
+      };
+      setForm(next);
+      setConditionJson(JSON.stringify(buildCondition(next), null, 2));
+      setConditionMode('form');
     });
   }, [isNew]);
 
+  const updateForm = (patch: Partial<FormState>) => {
+    const next = { ...form, ...patch };
+    setForm(next);
+    // A simple form edit rewrites the condition; switching to JSON afterwards edits the same object.
+    setConditionJson(JSON.stringify(buildCondition(next), null, 2));
+    setConditionError(null);
+  };
+
   const submit = async () => {
     if (!form.name.trim()) return;
+    let condition: RuleCondition;
+    try {
+      condition = JSON.parse(conditionJson) as RuleCondition;
+    } catch {
+      setConditionError(t('rules.conditionJsonInvalid'));
+      return;
+    }
     setSaving(true);
     try {
       const payload = {
@@ -174,7 +202,7 @@ export function RuleDetailPage() {
           kind: form.subjectKind,
           ref: form.subjectKind === 'metric' ? form.metricId : form.datasetId,
         },
-        condition: buildCondition(form),
+        condition,
         severity: form.severity,
         conclusion: form.conclusion.trim(),
         suggestion: form.suggestion.trim(),
@@ -256,6 +284,13 @@ export function RuleDetailPage() {
     return (id: string) => byId.get(id) ?? id.slice(0, 8);
   }, [datasets]);
   const conditionText = conditionLabel(rule?.condition ?? null, { metricName, datasetName });
+  const isSimpleConditionForForm = useMemo(() => {
+    try {
+      return isSimpleCondition(JSON.parse(conditionJson || 'null') as RuleCondition);
+    } catch {
+      return false;
+    }
+  }, [conditionJson]);
 
   if (loading) {
     return (
@@ -419,14 +454,14 @@ export function RuleDetailPage() {
           <input
             type="text"
             value={form.name}
-            onChange={(e) => setForm({ ...form, name: e.target.value })}
+            onChange={(e) => updateForm({ name: e.target.value })}
             placeholder={t('rules.fieldNamePlaceholder')}
           />
         </FormField>
         <FormField label={t('rules.fieldSubject')}>
           <select
             value={form.subjectKind}
-            onChange={(e) => setForm({ ...form, subjectKind: e.target.value as FormState['subjectKind'] })}
+            onChange={(e) => updateForm({ subjectKind: e.target.value as FormState['subjectKind'] })}
           >
             <option value="metric">{t('rules.subjectMetric')}</option>
             <option value="dataset">{t('rules.subjectDataset')}</option>
@@ -434,7 +469,7 @@ export function RuleDetailPage() {
         </FormField>
         {form.subjectKind === 'metric' ? (
           <FormField label={t('rules.fieldMetric')}>
-            <select value={form.metricId} onChange={(e) => setForm({ ...form, metricId: e.target.value })}>
+            <select value={form.metricId} onChange={(e) => updateForm({ metricId: e.target.value })}>
               {metrics.map((metric) => (
                 <option key={metric.id} value={metric.id}>
                   {metric.name}
@@ -445,7 +480,7 @@ export function RuleDetailPage() {
         ) : (
           <>
             <FormField label={t('rules.fieldDataset')}>
-              <select value={form.datasetId} onChange={(e) => setForm({ ...form, datasetId: e.target.value })}>
+              <select value={form.datasetId} onChange={(e) => updateForm({ datasetId: e.target.value })}>
                 {datasets.map((dataset) => (
                   <option key={dataset.id} value={dataset.id}>
                     {dataset.display_name || dataset.table_name || dataset.id.slice(0, 8)}
@@ -456,7 +491,7 @@ export function RuleDetailPage() {
             <FormField label={t('rules.fieldAggregate')}>
               <select
                 value={form.aggFn}
-                onChange={(e) => setForm({ ...form, aggFn: e.target.value as FormState['aggFn'] })}
+                onChange={(e) => updateForm({ aggFn: e.target.value as FormState['aggFn'] })}
               >
                 {['count', 'sum', 'avg', 'min', 'max'].map((fn) => (
                   <option key={fn} value={fn}>
@@ -470,34 +505,85 @@ export function RuleDetailPage() {
                 <input
                   type="text"
                   value={form.aggColumn}
-                  onChange={(e) => setForm({ ...form, aggColumn: e.target.value })}
+                  onChange={(e) => updateForm({ aggColumn: e.target.value })}
                   placeholder={t('rules.fieldColumnPlaceholder')}
                 />
               </FormField>
             )}
           </>
         )}
-        <FormField label={t('rules.fieldComparison')}>
-          <div className="rules-comparison">
-            <select className="ds-control" value={form.op} onChange={(e) => setForm({ ...form, op: e.target.value })}>
-              {OPS.map((op) => (
-                <option key={op} value={op}>
-                  {op}
-                </option>
-              ))}
-            </select>
-            <input
-              type="number"
-              className="ds-control"
-              value={form.threshold}
-              onChange={(e) => setForm({ ...form, threshold: e.target.value })}
-            />
+        <div className="rules-condition-block">
+          <span className="account-field-label">{t('rules.currentCondition')}</span>
+          <code className="rules-condition-current">{conditionText}</code>
+          <div className="rules-mode-toggle" role="tablist">
+            <button
+              type="button"
+              role="tab"
+              aria-selected={conditionMode === 'form'}
+              className={`btn btn-sm ${conditionMode === 'form' ? 'btn-primary' : 'btn-secondary'}`}
+              onClick={() => {
+                // Switching views must not rewrite anything: the JSON stays authoritative until a
+                // form field is actually edited (the warning above says what an edit would do).
+                setConditionMode('form');
+                setConditionError(null);
+              }}
+            >
+              {t('rules.conditionModeForm')}
+            </button>
+            <button
+              type="button"
+              role="tab"
+              aria-selected={conditionMode === 'json'}
+              className={`btn btn-sm ${conditionMode === 'json' ? 'btn-primary' : 'btn-secondary'}`}
+              onClick={() => setConditionMode('json')}
+            >
+              {t('rules.conditionModeJson')}
+            </button>
           </div>
-        </FormField>
+          {conditionMode === 'form' ? (
+            <>
+              {!isSimpleConditionForForm ? (
+                <p className="rules-condition-warning">{t('rules.conditionFormCannotRepresent')}</p>
+              ) : null}
+              <FormField label={t('rules.fieldComparison')}>
+                <div className="rules-comparison">
+                  <select className="ds-control" value={form.op} onChange={(e) => updateForm({ op: e.target.value })}>
+                    {OPS.map((op) => (
+                      <option key={op} value={op}>
+                        {op}
+                      </option>
+                    ))}
+                  </select>
+                  <input
+                    type="number"
+                    className="ds-control"
+                    value={form.threshold}
+                    onChange={(e) => updateForm({ threshold: e.target.value })}
+                  />
+                </div>
+              </FormField>
+            </>
+          ) : (
+            <FormField label={t('rules.conditionJson')} hint={t('rules.conditionJsonHint')}>
+              <textarea
+                rows={8}
+                className="ds-control"
+                value={conditionJson}
+                onChange={(e) => {
+                  setConditionJson(e.target.value);
+                  setConditionError(null);
+                }}
+              />
+            </FormField>
+          )}
+          {conditionError ? <p className="rules-condition-warning">{conditionError}</p> : null}
+        </div>
+
+
         <FormField label={t('rules.fieldSeverity')}>
           <select
             value={form.severity}
-            onChange={(e) => setForm({ ...form, severity: e.target.value as FormState['severity'] })}
+            onChange={(e) => updateForm({ severity: e.target.value as FormState['severity'] })}
           >
             {['P0', 'P1', 'P2'].map((severity) => (
               <option key={severity} value={severity}>
@@ -507,20 +593,20 @@ export function RuleDetailPage() {
           </select>
         </FormField>
         <FormField label={t('rules.fieldConclusion')} hint={t('rules.fieldConclusionHint')}>
-          <input type="text" value={form.conclusion} onChange={(e) => setForm({ ...form, conclusion: e.target.value })} />
+          <input type="text" value={form.conclusion} onChange={(e) => updateForm({ conclusion: e.target.value })} />
         </FormField>
         <FormField label={t('rules.fieldSuggestion')} hint={t('rules.fieldSuggestionHint')}>
           <input
             type="text"
             value={form.suggestion}
-            onChange={(e) => setForm({ ...form, suggestion: e.target.value })}
+            onChange={(e) => updateForm({ suggestion: e.target.value })}
           />
         </FormField>
         <FormField label={t('rules.fieldAbout')} hint={t('rules.fieldAboutHint')}>
           <input
             type="text"
             value={form.aboutObjectType}
-            onChange={(e) => setForm({ ...form, aboutObjectType: e.target.value })}
+            onChange={(e) => updateForm({ aboutObjectType: e.target.value })}
             placeholder={t('rules.fieldAboutPlaceholder')}
           />
         </FormField>

@@ -1370,6 +1370,13 @@
     "runScope": "作用域",
     "runScopeHint": "可选，规则作用的对象键（如方案 id）。事件按 规则 + 作用域 + 期间 去重。",
     "runScopePlaceholder": "如 a97503a9…",
-    "statusMeaning": "“已触发”表示条件成立、规则命中；算不出操作数时显示“无法判定”。"
+    "statusMeaning": "“已触发”表示条件成立、规则命中；算不出操作数时显示“无法判定”。",
+    "currentCondition": "当前条件（库里的原文）",
+    "conditionModeForm": "表单",
+    "conditionModeJson": "条件 JSON",
+    "conditionJson": "条件 JSON",
+    "conditionJsonHint": "表单编辑的就是这个对象。表单表达不了的条件（all/any 组合、ratio、diff）在这里改。",
+    "conditionFormCannotRepresent": "这个条件包含多个比较项，或含 ratio/diff，表单无法表达——切到表单会用单条件替换它。请直接改 JSON。",
+    "conditionJsonInvalid": "条件不是合法 JSON，未保存。"
   }
 }

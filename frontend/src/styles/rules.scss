@@ -204,3 +204,31 @@
   font-size: var(--text-sm);
   color: var(--color-text-muted);
 }
+
+/* Condition editing: the stored condition is always shown, then either the form or the JSON. */
+.rules-condition-block {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin-bottom: var(--space-4);
+}
+
+.rules-condition-current {
+  display: block;
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-sm);
+  background: var(--color-bg-muted);
+  font-size: var(--text-sm);
+  overflow-wrap: anywhere;
+}
+
+.rules-mode-toggle {
+  display: flex;
+  gap: var(--space-2);
+}
+
+.rules-condition-warning {
+  margin: 0;
+  font-size: var(--text-sm);
+  color: var(--color-warning, #d97706);
+}

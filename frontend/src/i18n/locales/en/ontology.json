@@ -1377,6 +1377,13 @@
     "runScope": "Scope",
     "runScopeHint": "Optional key the rules are scoped to (e.g. a scenario id). Events are de-duplicated by rule + scope + period.",
     "runScopePlaceholder": "e.g. a97503a9…",
-    "statusMeaning": "“triggered” means the condition held — the rule fired. A run that could not compute an operand shows “undetermined”."
+    "statusMeaning": "“triggered” means the condition held — the rule fired. A run that could not compute an operand shows “undetermined”.",
+    "currentCondition": "Current condition (as stored)",
+    "conditionModeForm": "Form",
+    "conditionModeJson": "Condition JSON",
+    "conditionJson": "Condition JSON",
+    "conditionJsonHint": "The same object the form edits. Use this for conditions the form cannot express — combined conditions (all/any), ratio or diff operands.",
+    "conditionFormCannotRepresent": "This condition has several comparisons, or a ratio/diff operand, so the form cannot represent it — switching to the form would replace it. Edit the JSON instead.",
+    "conditionJsonInvalid": "The condition is not valid JSON — nothing was saved."
   }
 }

@@ -50,6 +50,13 @@ export function conditionLabel(condition: RuleCondition | null, lookups: LabelLo
   return `${operandLabel(condition.left, lookups)} ${op} ${condition.right.value}`;
 }
 
+/** Whether the form builder can represent this condition (one comparison, metric or dataset_agg left). */
+export function isSimpleCondition(condition: RuleCondition | null): boolean {
+  if (!condition || !('left' in condition)) return false;
+  const left = condition.left;
+  return 'metric' in left || 'dataset_agg' in left;
+}
+
 /**
  * `last_values` is keyed by the operand's canonical JSON. Rebuild a readable label from that key so a
  * reader sees `ratio(分货额度 / sum(gap)) = 1.1776` instead of a serialized object.
