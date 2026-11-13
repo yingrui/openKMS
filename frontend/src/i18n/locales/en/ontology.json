@@ -1382,7 +1382,7 @@
     "conditionModeForm": "Form",
     "conditionModeJson": "Condition JSON",
     "conditionJson": "Condition JSON",
-    "conditionJsonHint": "The same object the form edits. Use this for conditions the form cannot express — combined conditions (all/any), ratio or diff operands.",
+    "conditionJsonHint": "The same object the form edits. Use this for conditions the form cannot express — combined conditions (all/any), ratio or diff operands. A filter may carry \"label\": \"…\" — what the reader sees instead of the id.",
     "conditionFormCannotRepresent": "The builder cannot draw this condition (nested groups or an aggregate of an aggregate). Edit the JSON under Advanced instead.",
     "conditionJsonInvalid": "The condition is not valid JSON — nothing was saved.",
     "panelBasics": "Rule",
@@ -1419,6 +1419,7 @@
     "conditionAddGroup": "Add nested group",
     "conditionRemove": "Remove",
     "joinAnd": "AND",
-    "joinOr": "OR"
+    "joinOr": "OR",
+    "scopePrefix": "Scope"
   }
 }

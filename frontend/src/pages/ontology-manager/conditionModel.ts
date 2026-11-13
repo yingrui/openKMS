@@ -22,7 +22,12 @@ export const BUILDER_OPS = ['<', '<=', '>', '>=', '==', '!='] as const;
 export const AGG_FNS = ['count', 'sum', 'avg', 'min', 'max'] as const;
 export type AggFn = (typeof AGG_FNS)[number];
 
-/** The data layer's own filter shape — kept verbatim: editing it is a JSON-view job, losing it is not. */
+/**
+ * The data layer's own filter shape — kept verbatim: editing it is a JSON-view job, losing it is not.
+ *
+ * Besides `field` / `op` / `value` the engine ignores extra keys, and `label` is the one that earns its
+ * keep: it is what the reader sees instead of a UUID (`"label": "推荐方案 · 2026-W46"`).
+ */
 export type OperandFilter = Record<string, unknown>;
 
 export type LeafOperand =

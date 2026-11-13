@@ -1375,7 +1375,7 @@
     "conditionModeForm": "表单",
     "conditionModeJson": "条件 JSON",
     "conditionJson": "条件 JSON",
-    "conditionJsonHint": "表单编辑的就是这个对象。表单表达不了的条件（all/any 组合、ratio、diff）在这里改。",
+    "conditionJsonHint": "表单编辑的就是这个对象。表单表达不了的条件（all/any 组合、ratio、diff）在这里改。 过滤条件可以带 \"label\": \"…\"，它就代替 id 显示给读者。",
     "conditionFormCannotRepresent": "构建器画不出这个条件（嵌套的组合或聚合套聚合）。请用下面的「高级：条件 JSON」编辑。",
     "conditionJsonInvalid": "条件不是合法 JSON，未保存。",
     "panelBasics": "规则",
@@ -1412,6 +1412,7 @@
     "conditionAddGroup": "添加嵌套分组",
     "conditionRemove": "删除",
     "joinAnd": "且",
-    "joinOr": "或"
+    "joinOr": "或",
+    "scopePrefix": "范围"
   }
 }

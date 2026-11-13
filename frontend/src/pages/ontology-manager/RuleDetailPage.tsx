@@ -342,7 +342,7 @@ export function RuleDetailPage() {
     }
   };
 
-  const joiners = { and: t('rules.joinAnd'), or: t('rules.joinOr') };
+  const joiners = { and: t('rules.joinAnd'), or: t('rules.joinOr'), scopePrefix: t('rules.scopePrefix') };
   const readTree = useMemo(() => toTree(rule?.condition ?? null).tree, [rule]);
   const conditionText = conditionLabel(rule?.condition ?? null, { metricName, datasetName, ...joiners });
 

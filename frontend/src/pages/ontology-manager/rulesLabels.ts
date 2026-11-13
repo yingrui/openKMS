@@ -1,10 +1,19 @@
 /**
- * Rendering a condition and its computed values as words.
+ * Rendering a condition as a sentence a person can check.
  *
- * The rendering must be readable *and* honest: it shows the operand structure (a ratio is drawn as a
- * division, a difference as a subtraction, nested ones in parentheses), the dataset a value aggregates,
- * and the filters that scope it — because a reader's first question is "is this the formula I meant?".
- * Anything the text leaves out is a lie about what the rule does.
+ * Three rules, learned from a scope that repeated a 36-character id three times and became unreadable:
+ *
+ * 1. **Ids are noise.** A filter may carry a `label` (`"label": "推荐方案 · 2026-W46"`) — that is what a
+ *    reader needs, and it is the author's own words. Without a label, a long value is shortened to
+ *    `a97503a9…`, so at least the field is named honestly instead of printing 36 characters.
+ * 2. **A shared scope is said once.** When every operand carries the same filters, they are hoisted in
+ *    front of the formula (`范围：scenario_id = a97503a9…`) instead of printed per operand. When they
+ *    differ, each operand keeps its own (shortened).
+ * 3. **Business words, not call syntax.** A metric is its name; a dataset aggregate is
+ *    `分货明细：sum(gap)`; a ratio is `a ÷ b` in parentheses; groups are `且` / `或` with parentheses only
+ *    where a nested group's joiner differs.
+ *
+ * Everything here is derived from the stored JSON, so the sentence cannot drift from the rule.
  */
 
 import type { RuleCondition, RuleOperand } from '../../data/rulesApi';
@@ -13,36 +22,62 @@ import { AGG_FNS, type AggFn, type OperandFilter } from './conditionModel';
 export type LabelLookups = {
   metricName: (id: string) => string;
   datasetName?: (id: string) => string;
-  /** Localised joiners; defaults keep the module usable outside React (tests, logs). */
+  /** Localised words; defaults keep the module usable outside React (tests, logs). */
   and?: string;
   or?: string;
+  scopePrefix?: string;
 };
 
-function filterText(filters: OperandFilter[] | undefined): string {
-  if (!filters?.length) return '';
-  const parts = filters.map((filter) => {
+const MAX_ID_CHARS = 14;
+
+function shortValue(value: unknown): string {
+  const text = String(value ?? '');
+  return text.length > MAX_ID_CHARS ? `${text.slice(0, 8)}…` : text;
+}
+
+function filtersOf(node: unknown): OperandFilter[] | undefined {
+  const record = node as Record<string, unknown>;
+  const own = record.filters as OperandFilter[] | undefined;
+  if (own?.length) return own;
+  const agg = record.dataset_agg as { filters?: OperandFilter[] } | undefined;
+  return agg?.filters?.length ? agg.filters : undefined;
+}
+
+function filterParts(filters: OperandFilter[] | undefined): string[] {
+  return (filters ?? []).map((filter) => {
+    // `filter.label` is the author's words for the value ("推荐方案 · 2026-W46"); without it we can only
+    // be precise (`field = a97503a9…`), never friendly.
+    const label = typeof filter.label === 'string' ? filter.label.trim() : '';
+    if (label) return label;
     const field = String(filter.field ?? filter.column ?? '?');
     const op = String(filter.op ?? '=');
-    return `${field} ${op} ${String(filter.value ?? '')}`.trim();
+    return `${field} ${op} ${shortValue(filter.value)}`;
   });
-  return `（${parts.join('，')}）`;
 }
+
+function filterText(filters: OperandFilter[] | undefined, show: boolean): string {
+  if (!show) return '';
+  const parts = filterParts(filters);
+  return parts.length ? `（${parts.join('，')}）` : '';
+}
+
+type RenderCtx = LabelLookups & { showFilters: boolean };
 
 function leafLabel(
   kind: 'metric' | 'dataset_agg',
   id: string,
   filters: OperandFilter[] | undefined,
   agg: { fn: AggFn; column: string } | null,
-  lookups: LabelLookups,
+  ctx: RenderCtx,
 ): string {
-  if (kind === 'metric') return `${lookups.metricName(id)}${filterText(filters)}`;
-  const dataset = lookups.datasetName?.(id) ?? id.slice(0, 8);
-  const call = agg ? `${dataset}.${agg.fn}(${agg.column || '*'})` : `${dataset}.*`;
-  return `${call}${filterText(filters)}`;
+  if (kind === 'metric') return `${ctx.metricName(id)}${filterText(filters, ctx.showFilters)}`;
+  const dataset = ctx.datasetName?.(id) ?? shortValue(id);
+  const call = agg ? `${dataset}：${agg.fn}(${agg.column || '*'})` : `${dataset}：*`;
+  return `${call}${filterText(filters, ctx.showFilters)}`;
 }
 
-function operandLabelWith(operand: RuleOperand, lookups: LabelLookups, depth: number): string {
-  if ('metric' in operand) return leafLabel('metric', operand.metric, operand.filters, null, lookups);
+function operandLabelWith(operand: RuleOperand, ctx: RenderCtx): string {
+  if ('metric' in operand) return leafLabel('metric', operand.metric, operand.filters, null, ctx);
   if ('dataset_agg' in operand) {
     const agg = operand.dataset_agg;
     return leafLabel(
@@ -50,24 +85,29 @@ function operandLabelWith(operand: RuleOperand, lookups: LabelLookups, depth: nu
       agg.dataset_id,
       agg.filters,
       { fn: (AGG_FNS.includes(agg.fn as AggFn) ? agg.fn : 'count') as AggFn, column: agg.column ?? '' },
-      lookups,
+      ctx,
     );
   }
   if ('ratio' in operand) {
-    return `(${operandLabelWith(operand.ratio[0], lookups, depth + 1)} ÷ ${operandLabelWith(operand.ratio[1], lookups, depth + 1)})`;
+    return `(${operandLabelWith(operand.ratio[0], ctx)} ÷ ${operandLabelWith(operand.ratio[1], ctx)})`;
   }
   if ('diff' in operand) {
-    return `(${operandLabelWith(operand.diff[0], lookups, depth + 1)} − ${operandLabelWith(operand.diff[1], lookups, depth + 1)})`;
+    return `(${operandLabelWith(operand.diff[0], ctx)} − ${operandLabelWith(operand.diff[1], ctx)})`;
   }
   return '?';
 }
 
-/** One operand: `分货额度`, `分货明细.sum(gap)（scenario_id = …）`, `(a ÷ b)`. */
+/** One operand (`分货额度`, `分货明细：sum(gap)`, `(a ÷ b)`). Filters are hidden — they are a scope, not a term. */
 export function operandLabel(operand: RuleOperand | { kind: string }, lookups: LabelLookups): string {
-  // Builder/tree nodes (leaf with `metricId`) and stored operands (`{metric: id}`) both reach here.
-  const node = operand as unknown as Record<string, unknown>;
+  const ctx: RenderCtx = { ...lookups, showFilters: false };
+  return renderAnyOperand(operand, ctx);
+}
+
+function renderAnyOperand(operand: unknown, ctx: RenderCtx): string {
+  const node = operand as Record<string, unknown>;
+  // Tree/editor leaf (`{kind, metricId | datasetId}`) …
   if (typeof node.metricId === 'string') {
-    return leafLabel('metric', node.metricId, node.filters as OperandFilter[] | undefined, null, lookups);
+    return leafLabel('metric', node.metricId, node.filters as OperandFilter[] | undefined, null, ctx);
   }
   if (typeof node.datasetId === 'string') {
     return leafLabel(
@@ -75,50 +115,94 @@ export function operandLabel(operand: RuleOperand | { kind: string }, lookups: L
       node.datasetId,
       node.filters as OperandFilter[] | undefined,
       { fn: node.fn as AggFn, column: String(node.column ?? '') },
-      lookups,
+      ctx,
     );
   }
   if (node.kind === 'ratio' || node.kind === 'diff') {
-    const left = operandLabel(node.left as RuleOperand, lookups);
-    const right = operandLabel(node.right as RuleOperand, lookups);
+    const left = renderAnyOperand(node.left, ctx);
+    const right = renderAnyOperand(node.right, ctx);
     return `(${left} ${node.kind === 'ratio' ? '÷' : '−'} ${right})`;
   }
-  return operandLabelWith(operand as RuleOperand, lookups, 0);
+  // … or a stored operand (`{metric}`, `{dataset_agg}`, `{ratio}`, `{diff}`).
+  return operandLabelWith(operand as RuleOperand, ctx);
 }
 
-/** A whole condition, parenthesising a nested group whose joiner differs from its parent's. */
+function comparisonsOf(condition: RuleCondition): RuleOperand[] {
+  const out: RuleOperand[] = [];
+  const walk = (node: RuleCondition): void => {
+    if ('all' in node) node.all.forEach(walk);
+    else if ('any' in node) node.any.forEach(walk);
+    else if ('left' in node) out.push(node.left);
+  };
+  walk(condition);
+  return out;
+}
+
+/** The single filter set every operand shares, or null when they differ. */
+function sharedScope(condition: RuleCondition): string[] | null {
+  const sets: string[][] = [];
+  const collect = (operand: unknown): void => {
+    const node = operand as Record<string, unknown>;
+    const own = filtersOf(node);
+    if (own) sets.push(filterParts(own));
+    for (const key of ['ratio', 'diff'] as const) {
+      const pair = node[key] as unknown[] | undefined;
+      if (pair) pair.forEach(collect);
+    }
+    if (node.kind === 'ratio' || node.kind === 'diff') {
+      collect(node.left);
+      collect(node.right);
+    }
+  };
+  comparisonsOf(condition).forEach(collect);
+  if (sets.length === 0) return null;
+  const [first] = sets;
+  const key = first.join('|');
+  return sets.every((set) => set.join('|') === key) ? first : null;
+}
+
+/** A whole condition: shared scope first (said once), then the formula. */
 export function conditionLabel(condition: RuleCondition | null, lookups: LabelLookups): string {
   const and = lookups.and ?? 'AND';
   const or = lookups.or ?? 'OR';
   if (!condition) return '—';
 
-  const walk = (node: RuleCondition | { kind: string }, parentJoiner?: string): string => {
-    const anyNode = node as unknown as Record<string, unknown>;
-    const group = anyNode.all ? 'all' : anyNode.any ? 'any' : null;
-    if (group) {
-      const joiner = group === 'all' ? and : or;
-      const entries = (anyNode[group] as Array<RuleCondition | { kind: string }>) ?? [];
+  const shared = sharedScope(condition);
+  const ctx: RenderCtx = { ...lookups, showFilters: shared === null };
+
+  const walk = (node: unknown, parentJoiner?: string): string => {
+    const record = node as Record<string, unknown>;
+    const mode = record.all ? 'all' : record.any ? 'any' : null;
+    if (mode) {
+      const joiner = mode === 'all' ? and : or;
+      const entries = (record[mode] as unknown[]) ?? [];
       const inner = entries.map((entry) => walk(entry, joiner)).join(` ${joiner} `);
       return parentJoiner && parentJoiner !== joiner ? `(${inner})` : inner;
     }
-    if ('left' in (node as RuleCondition)) {
-      const comparison = node as RuleCondition & { left: RuleOperand; op: string; right: { value: number } };
-      return `${operandLabel(comparison.left, lookups)} ${comparison.op} ${comparison.right.value}`;
+    if ('left' in record) {
+      const comparison = record as unknown as {
+        left: RuleOperand;
+        op: string;
+        right: { value: number };
+      };
+      return `${renderAnyOperand(comparison.left, ctx)} ${comparison.op} ${comparison.right.value}`;
     }
-    // Tree nodes: `{kind:'cmp', operand, op, value}`.
-    if (anyNode.kind === 'cmp') {
-      return `${operandLabel(anyNode.operand as RuleOperand, lookups)} ${String(anyNode.op)} ${String(anyNode.value)}`;
+    if (record.kind === 'cmp') {
+      return `${renderAnyOperand(record.operand, ctx)} ${String(record.op)} ${String(record.value)}`;
     }
-    if (anyNode.kind === 'group') {
-      const joiner = anyNode.mode === 'any' ? or : and;
-      const entries = (anyNode.children as Array<{ kind: string }>) ?? [];
-      const inner = entries.map((entry) => walk(entry as never, joiner)).join(` ${joiner} `);
+    if (record.kind === 'group') {
+      const joiner = record.mode === 'any' ? or : and;
+      const entries = (record.children as unknown[]) ?? [];
+      const inner = entries.map((entry) => walk(entry, joiner)).join(` ${joiner} `);
       return parentJoiner && parentJoiner !== joiner ? `(${inner})` : inner;
     }
     return '?';
   };
 
-  return walk(condition);
+  const formula = walk(condition);
+  if (!shared) return formula;
+  const prefix = lookups.scopePrefix ?? 'scope';
+  return `${prefix}：${shared.join('，')} ｜ ${formula}`;
 }
 
 /** Whether a stored condition is something the tree editor can draw. */

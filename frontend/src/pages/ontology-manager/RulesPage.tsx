@@ -250,7 +250,14 @@ export function RulesPage() {
                               ? t('rules.subjectDataset')
                               : t('rules.subjectMetric')}
                           </td>
-                          <td className="rules-condition">{conditionLabel(rule.condition, { metricName })}</td>
+                          <td className="rules-condition">
+                            {conditionLabel(rule.condition, {
+                              metricName,
+                              and: t('rules.joinAnd'),
+                              or: t('rules.joinOr'),
+                              scopePrefix: t('rules.scopePrefix'),
+                            })}
+                          </td>
                           <td>
                             <StatusChip tone={severityTone(rule.severity)}>{rule.severity ?? '—'}</StatusChip>
                           </td>
