@@ -1417,6 +1417,12 @@
     "scopeAtRunTime": "每次运行检查一个对象，运行时选择",
     "scopeAtRunTimeNamed": "每次运行检查一个{{name}}，运行时选择",
     "runParamNamed": "{{name}}",
-    "runParamRequired": "这条规则按{{name}}分别计算；不选就只会得到“无法判定”，不会算出一个数。"
+    "runParamRequired": "这条规则按{{name}}分别计算；不选就只会得到“无法判定”，不会算出一个数。",
+    "paramField": "运行参数 —— 字段",
+    "paramFieldHint": "这条检查按哪个字段分别计算（如 scenario_id）。运行时该字段会作为过滤条件加到每个操作数上。",
+    "paramLabel": "运行参数 —— 名称",
+    "paramLabelHint": "读者怎么称呼它（“方案”），用于条件文本与运行对话框。",
+    "paramLabelPlaceholder": "如 方案",
+    "paramRequired": "必填：运行时不给值就判为“无法判定”，不会算出一个数"
   }
 }

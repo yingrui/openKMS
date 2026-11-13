@@ -58,6 +58,14 @@ class RuleSubject(BaseModel):
     ref: str
 
 
+class RuleParam(BaseModel):
+    """The value a run must supply: which column it filters, what to call it, whether it is required."""
+
+    field: str = Field(min_length=1)
+    label: str | None = None
+    required: bool = True
+
+
 class RuleWrite(BaseModel):
     name: str
     subject: RuleSubject
@@ -69,6 +77,7 @@ class RuleWrite(BaseModel):
     owner: str | None = None
     ai_context: str | None = None
     about_object_type: str | None = None
+    param: RuleParam | None = None
     status: str = Field(default="active", pattern="^(active|paused)$")
 
 
@@ -82,6 +91,7 @@ class RulePatch(BaseModel):
     owner: str | None = None
     ai_context: str | None = None
     about_object_type: str | None = None
+    param: RuleParam | None = None
     status: str | None = Field(default=None, pattern="^(active|paused)$")
 
 
@@ -102,6 +112,7 @@ class RuleOut(BaseModel):
     last_values: dict | None = None
     ai_context: str | None = None
     about_object_type: str | None = None
+    param: dict | None = None
 
 
 class RuleEvaluateRequest(BaseModel):
@@ -194,6 +205,7 @@ def _rule_out(instance: ObjectInstance) -> RuleOut:
         last_values=_parse_maybe_json(data.get("last_values")),
         ai_context=data.get("ai_context"),
         about_object_type=data.get("about_object_type"),
+        param=_parse_maybe_json(data.get("param")) if data.get("param") else None,
     )
 
 
@@ -244,6 +256,7 @@ def _write_values(payload: RuleWrite, request: Request) -> dict[str, Any]:
         "status": payload.status,
         "version": 1,
         "about_object_type": payload.about_object_type,
+        "param": json.dumps(payload.param.model_dump(), ensure_ascii=False) if payload.param else None,
         "ai_context": payload.ai_context,
         "created_by_name": str(uname) if uname else None,
     }
@@ -312,6 +325,10 @@ async def update_rule(
         data["domain"] = body.subject.kind
     if body.about_object_type is not None:
         data["about_object_type"] = body.about_object_type
+    if "param" in body.model_fields_set:
+        data["param"] = (
+            json.dumps(body.param.model_dump(), ensure_ascii=False) if body.param else None
+        )
     if changed_condition:
         data["version"] = int(data.get("version") or 1) + 1
     instance.data = data

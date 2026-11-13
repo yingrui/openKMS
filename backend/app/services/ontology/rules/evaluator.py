@@ -63,28 +63,6 @@ def _now() -> str:
     return datetime.now(timezone.utc).isoformat()
 
 
-def _required_scope_fields(condition: Any) -> list[str]:
-    """Columns the condition asks the run to supply (`scope_field`), deduplicated.
-
-    A metric like 分货额度 is only meaningful *per scenario* — scenario is a dimension of the rows, not
-    an object the metric belongs to. So the value comes from the run, and a run without it must say so
-    rather than quietly summing five plans together.
-    """
-    from app.services.ontology.rules.conditions import flatten_operands
-
-    fields: list[str] = []
-    for operand in flatten_operands(condition):
-        record: dict = operand
-        field = record.get("scope_field")
-        if not field:
-            agg = record.get("dataset_agg")
-            if isinstance(agg, dict):
-                field = agg.get("scope_field")
-        if isinstance(field, str) and field and field not in fields:
-            fields.append(field)
-    return fields
-
-
 def _json_field(value: Any) -> Any:
     """A rule property that is conceptually JSON but stored in the object's string property."""
     if isinstance(value, str):
@@ -104,17 +82,23 @@ def _as_float(value: Any) -> float | None:
         return None
 
 
-def _scope_filters(spec: dict, scope: str) -> list[dict]:
-    """Filters a run's `scope` contributes: the operand says *which field* the scope is.
+def _rule_param(rule_data: dict) -> dict | None:
+    """The rule's run parameter: `{"field": "scenario_id", "label": "方案", "required": true}`.
 
-    A rule should not hard-code one scenario's id — "this period's allocation is over-allocated" is a
-    rule about whichever scenario you are looking at. Hard-coding the id makes it a one-off snapshot.
-    So the operand declares `scope_field` (e.g. `scenario_id`) and the run supplies the value.
+    The field is a column both the metric and the dataset are queried by, so the choice belongs to the
+    **rule** (its author knows which dimension this check is about), not to the metric definition and not
+    to each operand.
     """
-    field = spec.get("scope_field")
-    if not field or not scope:
+    param = _json_field(rule_data.get("param"))
+    if not isinstance(param, dict) or not str(param.get("field") or "").strip():
+        return None
+    return param
+
+
+def _scope_filters(param: dict | None, scope: str) -> list[dict]:
+    if not param or not scope:
         return []
-    return [{"field": str(field), "op": "=", "value": scope}]
+    return [{"field": str(param["field"]), "op": "=", "value": scope}]
 
 
 async def _metric_value(
@@ -133,7 +117,7 @@ async def _metric_value(
 
 
 async def _dataset_agg_value(
-    db: AsyncSession, request: Request, spec: dict, scope: str
+    db: AsyncSession, request: Request, spec: dict, scope: str, param: dict | None = None
 ) -> tuple[float | None, str]:
     dataset_id = str(spec.get("dataset_id"))
     # Same resource gate as the data grid: a rule may only read what the runner may read.
@@ -145,7 +129,7 @@ async def _dataset_agg_value(
         db,
         dataset_id,
         aggregates=[{"fn": fn, "column": column, "name": name}],
-        filters=[*(spec.get("filters") or []), *_scope_filters(spec, scope)],
+        filters=[*(spec.get("filters") or []), *_scope_filters(param, scope)],
         limit=1,
     )
     if not summary.rows:
@@ -154,22 +138,19 @@ async def _dataset_agg_value(
 
 
 async def _resolve_operand(
-    db: AsyncSession, request: Request, operand: dict, scope: str = ""
+    db: AsyncSession, request: Request, operand: dict, scope: str = "", param: dict | None = None
 ) -> tuple[float | None, str]:
-    kind = next(key for key in operand if key not in ("filters", "scope_field"))
+    kind = next(key for key in operand if key != "filters")
     if kind == "metric":
-        filters = [*(operand.get("filters") or []), *_scope_filters(operand, scope)]
+        filters = [*(operand.get("filters") or []), *_scope_filters(param, scope)]
         return await _metric_value(db, request, str(operand["metric"]), filters)
     if kind == "dataset_agg":
-        spec = operand["dataset_agg"]
-        # `scope_field` may sit on the operand or inside the aggregate spec; both are the author's.
-        if operand.get("scope_field") and not spec.get("scope_field"):
-            spec = {**spec, "scope_field": operand["scope_field"]}
-        return await _dataset_agg_value(db, request, spec, scope)
-    left, reason = await _resolve_operand(db, request, operand[kind][0], scope)
+        spec = dict(operand["dataset_agg"])
+        return await _dataset_agg_value(db, request, spec, scope, param)
+    left, reason = await _resolve_operand(db, request, operand[kind][0], scope, param)
     if left is None:
         return None, reason
-    right, reason = await _resolve_operand(db, request, operand[kind][1], scope)
+    right, reason = await _resolve_operand(db, request, operand[kind][1], scope, param)
     if right is None:
         return None, reason
     if kind == "diff":
@@ -307,7 +288,8 @@ async def evaluate_rule(
             raise ConditionError(f"condition is not valid JSON: {exc}") from exc
     validate_condition(condition)
 
-    required_scope = _required_scope_fields(condition)
+    param = _rule_param(rule_data)
+    required_scope = [str(param["field"])] if param and param.get("required") and param.get("field") else []
     if required_scope and not scope:
         # Not a failure and not a number: the rule cannot be judged without its parameter.
         data = dict(rule.data or {})
@@ -323,7 +305,7 @@ async def evaluate_rule(
     resolved: dict[str, float | None] = {}
     reasons: list[str] = []
     for operand in flatten_operands(condition):
-        value, reason = await _resolve_operand(db, request, operand, scope)
+        value, reason = await _resolve_operand(db, request, operand, scope, param)
         resolved[operand_key(operand)] = value
         if value is None and reason:
             reasons.append(reason)

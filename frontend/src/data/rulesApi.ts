@@ -28,6 +28,8 @@ export type RuleCondition =
   | { all: RuleCondition[] }
   | { any: RuleCondition[] };
 
+export type RuleParam = { field: string; label?: string | null; required?: boolean };
+
 export type RuleOut = {
   object_id: string;
   name: string | null;
@@ -45,6 +47,7 @@ export type RuleOut = {
   last_values: Record<string, number | null> | null;
   ai_context: string | null;
   about_object_type: string | null;
+  param: RuleParam | null;
 };
 
 export type RuleWritePayload = {
@@ -58,6 +61,7 @@ export type RuleWritePayload = {
   owner?: string | null;
   ai_context?: string | null;
   about_object_type?: string | null;
+  param?: RuleParam | null;
   status?: string;
 };
 

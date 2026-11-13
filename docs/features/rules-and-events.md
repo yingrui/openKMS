@@ -82,13 +82,16 @@ a bigger answer, it is a different question.
 A condition must not hard-code one row's id. "This period's allocation is over-allocated" is a statement
 about *whichever* scenario you are looking at, so the id belongs to the **run**:
 
+The parameter is declared **once, on the rule** — the field is a column both the metric and the dataset
+can be filtered by, so the choice belongs to whoever writes the rule:
+
 ```json
-{"metric": "…", "scope_field": "scenario_id", "scope_label": "方案"}
+{"param": {"field": "scenario_id", "label": "方案", "required": true}}
 ```
 
-`scope_field` is the column the run's scope filters on; `scope_label` is the author's word for what that
-column names (a 方案, a stock, a region) and only affects the sentence — without it the condition says
-"one object at a time", never a domain word the platform guessed.
+`field` is the column the run's value filters on; `label` is the author's word for it (a 方案, a stock, a
+region) and only affects the sentence; `required` means a run without the value is `undetermined` rather
+than a number computed over everything. Operands do not repeat it — one rule, one value.
 
 `evaluate(rule, scope=…)` appends `scenario_id = <scope>` to that operand's filters. Without a scope the
 rule runs over everything (a different, usually meaningless, number: for the demo rule, 1.29 across all

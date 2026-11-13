@@ -19,7 +19,7 @@ import {
   TableRowActionCell,
   TableRowActions,
 } from '../../styles/design-system';
-import { conditionLabel, scopeLabelOf } from './rulesLabels';
+import { conditionLabel } from './rulesLabels';
 import { evaluateRule, evaluateRules, fetchRules, updateRule, type RuleOut } from '../../data/rulesApi';
 import { fetchEvents, transitionEvent, type EventOut } from '../../data/eventsApi';
 import { RulesEventsTable } from './RulesEventsTable';
@@ -256,10 +256,10 @@ export function RulesPage() {
                               and: t('rules.joinAnd'),
                               or: t('rules.joinOr'),
                               scopePrefix: t('rules.scopePrefix'),
-    scopeAtRunTime: scopeLabelOf(rule.condition)
-      ? t('rules.scopeAtRunTimeNamed', { name: scopeLabelOf(rule.condition) })
-      : t('rules.scopeAtRunTime'),
-                            })}
+                              scopeAtRunTime: rule.param?.label
+                                ? t('rules.scopeAtRunTimeNamed', { name: rule.param.label })
+                                : t('rules.scopeAtRunTime'),
+                            }, rule.param)}
                           </td>
                           <td>
                             <StatusChip tone={severityTone(rule.severity)}>{rule.severity ?? '—'}</StatusChip>
@@ -357,7 +357,7 @@ export function RulesPage() {
         busy={running}
         onClose={() => setRunOpen(false)}
         onRun={(params) => void runAll(params)}
-        requiredParam={rules.map((rule) => scopeLabelOf(rule.condition)).find(Boolean) ?? null}
+        requiredParam={rules.map((rule) => rule.param?.label).find(Boolean) ?? null}
       />
     </div>
   );

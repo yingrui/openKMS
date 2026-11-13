@@ -1424,6 +1424,12 @@
     "scopeAtRunTime": "one object at a time, chosen when you run it",
     "scopeAtRunTimeNamed": "one {{name}} at a time, chosen when you run it",
     "runParamNamed": "{{name}}",
-    "runParamRequired": "This rule is computed per {{name}}; pick one — without it the run is “undetermined”, not a number."
+    "runParamRequired": "This rule is computed per {{name}}; pick one — without it the run is “undetermined”, not a number.",
+    "paramField": "Run parameter — field",
+    "paramFieldHint": "A column this check is computed per (e.g. scenario_id). Every operand is filtered by it at run time.",
+    "paramLabel": "Run parameter — name",
+    "paramLabelHint": "What a reader calls it (“scenario”); used in the condition text and in the run dialog.",
+    "paramLabelPlaceholder": "e.g. scenario",
+    "paramRequired": "Required: a run without it is undetermined, not a number"
   }
 }

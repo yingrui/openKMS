@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { conditionLabel, conditionScopeNote, operandLabel, scopeLabelOf, valueRows } from './rulesLabels';
+import { conditionLabel, conditionScopeNote, operandLabel, valueRows } from './rulesLabels';
 import type { RuleCondition } from '../../data/rulesApi';
 
 const SEL = 'a97503a9-52bd-4ea7-887c-892a1233e5ae';
@@ -82,25 +82,25 @@ describe('conditionLabel', () => {
     );
   });
 
-  it('says the scope is chosen at run time when an operand declares scope_field', () => {
-    const condition = {
+  it('says the run picks the parameter when the rule declares one', () => {
+    const condition: RuleCondition = {
       all: [
         {
           left: {
-            ratio: [
-              { metric: 'm1', scope_field: 'scenario_id' },
-              { dataset_agg: { dataset_id: 'd1', fn: 'sum', column: 'gap', scope_field: 'scenario_id' } },
-            ],
+            ratio: [{ metric: 'm1' }, { dataset_agg: { dataset_id: 'd1', fn: 'sum', column: 'gap' } }],
           },
           op: '>',
           right: { value: 1 },
         },
-        { left: { metric: 'm2', scope_field: 'scenario_id' }, op: '>', right: { value: 0 } },
+        { left: { metric: 'm2' }, op: '>', right: { value: 0 } },
       ],
-    } as unknown as RuleCondition;
-    expect(conditionLabel(condition, { ...lookups, scopeAtRunTime: '每次运行针对一个方案' })).toBe(
-      '范围：每次运行针对一个方案 ｜ (分货额度 ÷ 分货明细：sum(gap)) > 1 且 仍缺货明细数 > 0',
-    );
+    };
+    expect(
+      conditionLabel(condition, { ...lookups, scopeAtRunTime: '每次运行针对一个方案' }, {
+        field: 'scenario_id',
+        label: '方案',
+      }),
+    ).toBe('范围：每次运行针对一个方案 ｜ (分货额度 ÷ 分货明细：sum(gap)) > 1 且 仍缺货明细数 > 0');
   });
 
   it('parenthesises a nested group whose joiner differs', () => {
@@ -115,27 +115,19 @@ describe('conditionLabel', () => {
 });
 
 describe('conditionScopeNote', () => {
-  it('says the run picks the object when an operand declares scope_field', () => {
-    const condition = {
-      left: { metric: 'm1', scope_field: 'scenario_id' },
-      op: '>',
-      right: { value: 1 },
-    } as unknown as RuleCondition;
-    expect(conditionScopeNote(condition, { ...lookups, scopeAtRunTime: '每次运行针对一个方案' })).toBe(
-      '范围：每次运行针对一个方案',
-    );
+  it('says nothing about a run parameter when the rule has none', () => {
+    const condition: RuleCondition = { left: { metric: 'm1' }, op: '>', right: { value: 1 } };
+    expect(conditionScopeNote(condition, lookups)).toBeNull();
   });
 
-  it('uses the author\'s word for the run-selected object when one is given', () => {
-    const condition = {
-      left: { metric: 'm1', scope_field: 'scenario_id', scope_label: '方案' },
-      op: '>',
-      right: { value: 1 },
-    } as unknown as RuleCondition;
-    expect(scopeLabelOf(condition)).toBe('方案');
-    expect(conditionScopeNote(condition, { ...lookups, scopeAtRunTime: '每次运行检查一个方案，运行时选择' })).toBe(
-      '范围：每次运行检查一个方案，运行时选择',
-    );
+  it('says the run picks the parameter when the rule declares one', () => {
+    const condition: RuleCondition = { left: { metric: 'm1' }, op: '>', right: { value: 1 } };
+    expect(
+      conditionScopeNote(condition, { ...lookups, scopeAtRunTime: '每次运行检查一个方案，运行时选择' }, {
+        field: 'scenario_id',
+        label: '方案',
+      }),
+    ).toBe('范围：每次运行检查一个方案，运行时选择');
   });
 
   it('states a shared concrete scope once, with labels', () => {

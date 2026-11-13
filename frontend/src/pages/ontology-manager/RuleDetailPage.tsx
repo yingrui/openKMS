@@ -12,9 +12,9 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { ArrowLeft, BellRing, Loader2, Pencil, Play, Trash2 } from 'lucide-react';
+import { ArrowLeft, Loader2, Pencil, Play } from 'lucide-react';
 import { toast } from 'sonner';
-import { EmptyState, FormField, StatusChip } from '../../styles/design-system';
+import { FormField, StatusChip } from '../../styles/design-system';
 import {
   createRule,
   deleteRule,
@@ -27,12 +27,13 @@ import {
 } from '../../data/rulesApi';
 import { transitionEvent, type EventOut } from '../../data/eventsApi';
 import { fetchMetrics, type MetricResponse } from '../../data/metricsApi';
-import { fetchDatasets, type DatasetResponse } from '../../data/datasetsApi';
+import { fetchDatasetMetadata, fetchDatasets, type DatasetResponse } from '../../data/datasetsApi';
+import { fetchModelFields, type SemanticModelFieldResponse } from '../../data/semanticModelFieldsApi';
 import { useConfirm } from '../../contexts/ConfirmContext';
 import { EntityViewPanel } from '../shared/EntityViewShell';
-import { RulesEventsTable } from './RulesEventsTable';
+import { RuleReadPanels } from './RuleReadPanels';
 import { RunRulesDialog, type RunParams } from './RunRulesDialog';
-import { conditionLabel, conditionScopeNote, scopeLabelOf, valueRows } from './rulesLabels';
+import { conditionLabel, conditionScopeNote } from './rulesLabels';
 import { fromTree, toTree, type GroupNode } from './conditionModel';
 import { ConditionTree } from './ConditionTree';
 import '../../styles/settings-page.scss';
@@ -53,6 +54,9 @@ type FormState = {
   suggestion: string;
   aboutObjectType: string;
   status: 'active' | 'paused';
+  paramField: string;
+  paramLabel: string;
+  paramRequired: boolean;
 };
 
 const EMPTY_FORM: FormState = {
@@ -69,6 +73,9 @@ const EMPTY_FORM: FormState = {
   suggestion: '',
   aboutObjectType: '',
   status: 'active',
+  paramField: '',
+  paramLabel: '',
+  paramRequired: true,
 };
 
 function formFromRule(rule: RuleOut, metrics: MetricResponse[], datasets: DatasetResponse[]): FormState {
@@ -89,6 +96,9 @@ function formFromRule(rule: RuleOut, metrics: MetricResponse[], datasets: Datase
     suggestion: rule.suggestion ?? '',
     aboutObjectType: rule.about_object_type ?? '',
     status: rule.status === 'paused' ? 'paused' : 'active',
+    paramField: rule.param?.field ?? '',
+    paramLabel: rule.param?.label ?? '',
+    paramRequired: rule.param?.required ?? true,
   };
 }
 
@@ -130,6 +140,7 @@ export function RuleDetailPage() {
   const [running, setRunning] = useState(false);
   const [runOpen, setRunOpen] = useState(false);
   const [busyEventId, setBusyEventId] = useState<string | null>(null);
+  const [paramCandidates, setParamCandidates] = useState<string[]>([]);
 
   const metricName = useMemo(() => {
     const byId = new Map(metrics.map((metric) => [metric.id, metric.name]));
@@ -141,6 +152,33 @@ export function RuleDetailPage() {
     );
     return (id: string) => byId.get(id) ?? id.slice(0, 8);
   }, [datasets]);
+
+  /** Fields a run parameter can filter on: the metric's model fields, or the dataset's columns. */
+  useEffect(() => {
+    let cancelled = false;
+    const metric = metrics.find((entry) => entry.id === form.metricId);
+    const dataset = datasets.find((entry) => entry.id === form.datasetId);
+    void (async () => {
+      try {
+        if (form.subjectKind === 'metric' && metric) {
+          const fields = await fetchModelFields(metric.semantic_model_id);
+          if (!cancelled) {
+            setParamCandidates(fields.items.map((field: SemanticModelFieldResponse) => field.name));
+          }
+        } else if (form.subjectKind === 'dataset' && dataset) {
+          const columns = await fetchDatasetMetadata(dataset.id);
+          if (!cancelled) setParamCandidates(columns.map((column) => column.column_name));
+        } else if (!cancelled) {
+          setParamCandidates([]);
+        }
+      } catch {
+        if (!cancelled) setParamCandidates([]);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [form.subjectKind, form.metricId, form.datasetId, metrics, datasets]);
 
   const loadPickers = useCallback(async () => {
     const [metricPage, datasetPage] = await Promise.all([
@@ -253,6 +291,13 @@ export function RuleDetailPage() {
         suggestion: form.suggestion.trim(),
         about_object_type: form.aboutObjectType.trim() || null,
         status: form.status,
+        param: form.paramField.trim()
+          ? {
+              field: form.paramField.trim(),
+              label: form.paramLabel.trim() || null,
+              required: form.paramRequired,
+            }
+          : null,
       };
       if (isNew) {
         const created = await createRule(payload);
@@ -344,7 +389,7 @@ export function RuleDetailPage() {
 
   // The author's own word for what a run picks ("方案") makes the sentence concrete; without one the
   // sentence stays domain-neutral ("one object at a time"). Neither ever says "scenario".
-  const scopeName = scopeLabelOf(rule?.condition ?? null);
+  const scopeName = rule?.param?.label ?? null;
   const joiners = {
     and: t('rules.joinAnd'),
     or: t('rules.joinOr'),
@@ -354,8 +399,8 @@ export function RuleDetailPage() {
       : t('rules.scopeAtRunTime'),
   };
   const readTree = useMemo(() => toTree(rule?.condition ?? null).tree, [rule]);
-  const conditionText = conditionLabel(rule?.condition ?? null, { metricName, datasetName, ...joiners });
-  const scopeNote = conditionScopeNote(rule?.condition ?? null, { metricName, datasetName, ...joiners });
+  const conditionText = conditionLabel(rule?.condition ?? null, { metricName, datasetName, ...joiners }, rule?.param);
+  const scopeNote = conditionScopeNote(rule?.condition ?? null, { metricName, datasetName, ...joiners }, rule?.param);
 
   if (loading) {
     return (
@@ -470,12 +515,46 @@ export function RuleDetailPage() {
                     <option value="paused">{t('rules.paused')}</option>
                   </select>
                 </FormField>
+                <FormField label={t('rules.paramField')} hint={t('rules.paramFieldHint')}>
+                  <input
+                    type="text"
+                    value={form.paramField}
+                    onChange={(e) => setForm({ ...form, paramField: e.target.value })}
+                    placeholder="scenario_id"
+                    list="rule-param-fields"
+                  />
+                  <datalist id="rule-param-fields">
+                    {paramCandidates.map((name) => (
+                      <option key={name} value={name} />
+                    ))}
+                  </datalist>
+                </FormField>
+                {form.paramField.trim() ? (
+                  <>
+                    <FormField label={t('rules.paramLabel')} hint={t('rules.paramLabelHint')}>
+                      <input
+                        type="text"
+                        value={form.paramLabel}
+                        onChange={(e) => setForm({ ...form, paramLabel: e.target.value })}
+                        placeholder={t('rules.paramLabelPlaceholder')}
+                      />
+                    </FormField>
+                    <label className="rules-checkbox">
+                      <input
+                        type="checkbox"
+                        checked={form.paramRequired}
+                        onChange={(e) => setForm({ ...form, paramRequired: e.target.checked })}
+                      />
+                      <span>{t('rules.paramRequired')}</span>
+                    </label>
+                  </>
+                ) : null}
               </div>
             </EntityViewPanel>
 
             <EntityViewPanel title={t('rules.panelCondition')} description={t('rules.panelConditionHint')}>
               <p className="rules-condition-current">
-                {tree ? conditionLabel(fromTree(tree), { metricName, datasetName, ...joiners }) : conditionText}
+                {tree ? conditionLabel(fromTree(tree), { metricName, datasetName, ...joiners }, rule?.param) : conditionText}
               </p>
               {tree ? (
                 <ConditionTree
@@ -558,89 +637,19 @@ export function RuleDetailPage() {
             </EntityViewPanel>
           </>
         ) : (
-          <>
-            <EntityViewPanel title={t('rules.panelDefinition')} description={t('rules.panelDefinitionHint')}>
-              <dl className="rules-facts">
-                <dt>{t('rules.colCondition')}</dt>
-                <dd>
-                  {readTree ? (
-                    <ConditionTree
-                      value={readTree}
-                      onChange={() => undefined}
-                      metrics={metrics}
-                      datasets={datasets}
-                      readOnly
-                      scopeNote={scopeNote}
-                    />
-                  ) : (
-                    <code className="rules-condition">{conditionText}</code>
-                  )}
-                </dd>
-                <dt>{t('rules.fieldConclusion')}</dt>
-                <dd>{rule?.conclusion || '—'}</dd>
-                <dt>{t('rules.fieldSuggestion')}</dt>
-                <dd>{rule?.suggestion || t('rules.noSuggestion')}</dd>
-                <dt>{t('rules.fieldAbout')}</dt>
-                <dd>{rule?.about_object_type || '—'}</dd>
-                <dt>{t('rules.fieldStatus')}</dt>
-                <dd>{rule?.status === 'paused' ? t('rules.paused') : t('rules.active')}</dd>
-              </dl>
-              <div className="rules-danger-row">
-                <button type="button" className="btn btn-secondary" onClick={() => void remove()}>
-                  <Trash2 size={16} aria-hidden />
-                  {t('rules.deleteRule')}
-                </button>
-              </div>
-            </EntityViewPanel>
-
-            <EntityViewPanel title={t('rules.panelLastRun')}>
-              {rule?.last_status ? (
-                <dl className="rules-facts">
-                  <dt>{t('rules.fieldStatus')}</dt>
-                  <dd>
-                    <StatusChip
-                      tone={rule.last_status === 'fail' ? 'warn' : rule.last_status === 'pass' ? 'ok' : 'neutral'}
-                    >
-                      {t(`rules.status.${rule.last_status}`)}
-                    </StatusChip>
-                    <span className="rules-status-meaning">{t('rules.statusMeaning')}</span>
-                  </dd>
-                  <dt>{t('rules.colLastRun')}</dt>
-                  <dd>{rule.last_run_at ? new Date(rule.last_run_at).toLocaleString() : '—'}</dd>
-                  <dt>{t('rules.fieldValues')}</dt>
-                  <dd>
-                    {valueRows(rule.last_values, { metricName }).length === 0 ? (
-                      '—'
-                    ) : (
-                      <ul className="rules-values">
-                        {valueRows(rule.last_values, { metricName }).map((row) => (
-                          <li key={row.label}>
-                            <span className="rules-values-label">{row.label}</span>
-                            <span className="rules-values-value">{row.value}</span>
-                          </li>
-                        ))}
-                      </ul>
-                    )}
-                  </dd>
-                </dl>
-              ) : (
-                <p className="page-subtitle">{t('rules.neverRun')}</p>
-              )}
-            </EntityViewPanel>
-
-            <EntityViewPanel title={t('rules.panelEvents')} description={t('rules.panelEventsHint')}>
-              {events.length === 0 ? (
-                <EmptyState icon={<BellRing size={32} aria-hidden />} title={t('rules.emptyEvents')} />
-              ) : (
-                <RulesEventsTable
-                  events={events}
-                  busyEventId={busyEventId}
-                  showPeriod
-                  onTransition={(event, status) => void moveEvent(event, status)}
-                />
-              )}
-            </EntityViewPanel>
-          </>
+          <RuleReadPanels
+            rule={rule!}
+            readTree={readTree}
+            conditionText={conditionText}
+            scopeNote={scopeNote}
+            events={events}
+            busyEventId={busyEventId}
+            onTransition={(event, status) => void moveEvent(event, status)}
+            onDelete={() => void remove()}
+            lookups={{ metricName, datasetName, ...joiners }}
+            metrics={metrics}
+            datasets={datasets}
+          />
         )}
       </div>
 
