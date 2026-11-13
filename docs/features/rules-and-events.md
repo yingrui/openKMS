@@ -34,7 +34,7 @@ Both types are created on startup if missing (`ensure_builtin_ontology`, idempot
 | Property | Meaning |
 |----------|---------|
 | `subject` | `{kind: metric\|dataset, ref}` — what the rule watches, and therefore which evaluator and permissions apply |
-| `condition` | One comparison, or `all`/`any` of comparisons. Operands: `{metric}`, `{dataset_agg}`, `{diff:[a,b]}`, `{ratio:[a,b]}`; each may carry the data layer's own `filters` (dataset operands use `{"field": …, "op": …, "value": …}` — the same shape the dataset grid's API takes; the engine also tolerates `column`, but `field` is the documented one). A filter may also carry **`"label": "推荐方案 · 2026-W46"`**, which is what the condition text shows instead of the UUID — the engine ignores the key, the reader needs it |. The editor always shows the stored condition verbatim. Conditions are authored **as the tree they are**: an `all`/`any` group is a heading with an indented, guide-lined list of children (groups nest), and a comparison is one line — a value (metric, dataset aggregate, or a ratio/difference, itself nestable), an operator and a constant. That drawing maps one-to-one onto the stored JSON, so nothing is lost in either direction — including operand
+| `condition` | One comparison, or `all`/`any` of comparisons. Operands: `{metric}`, `{dataset_agg}`, `{diff:[a,b]}`, `{ratio:[a,b]}`; each may carry the data layer's own `filters` (dataset operands use `{"field": …, "op": …, "value": …}` — the same shape the dataset grid's API takes; the engine also tolerates `column`, but `field` is the documented one). A filter may also carry **`"label": "推荐方案 · 2026-W46"`**, which is what the condition text shows instead of the UUID — the engine ignores the key, the reader needs it. Better still: an operand can declare **`"scope_field": "scenario_id"`**, meaning "the run says which scenario" — the value then comes from `scope` at run time, and the rule is not pinned to one object's id |. The editor always shows the stored condition verbatim. Conditions are authored **as the tree they are**: an `all`/`any` group is a heading with an indented, guide-lined list of children (groups nest), and a comparison is one line — a value (metric, dataset aggregate, or a ratio/difference, itself nestable), an operator and a constant. That drawing maps one-to-one onto the stored JSON, so nothing is lost in either direction — including operand
 filters, which stay on the operand (shown as `分货额度（scenario_id = …）`) and survive an edit through the form. The read view
 draws the same tree without controls, and the one-line summary spells the structure out —
 `(分货额度 ÷ 分货明细.sum(gap)) > 1 且 仍缺货明细数 > 0` — so "is this the formula I meant?" is answered by looking, not by trusting. **Condition JSON** is an advanced view for shapes the builder does not draw (nested groups, an aggregate of an aggregate) — leaving it adopts the JSON back into the builder, and refuses if the builder cannot represent it, so an edit is never silently dropped |
@@ -63,6 +63,19 @@ as when the event was raised — `scope`, `evidence` (the values that produced i
 
 Events themselves remain ordinary objects: the same rows are in Object Explorer, and each is linked to
 the business object it is about.
+
+## Rules are not snapshots
+
+A condition must not hard-code one row's id. "This period's allocation is over-allocated" is a statement
+about *whichever* scenario you are looking at, so the id belongs to the **run**:
+
+```json
+{"metric": "…", "scope_field": "scenario_id"}
+```
+
+`evaluate(rule, scope=…)` appends `scenario_id = <scope>` to that operand's filters. Without a scope the
+rule runs over everything (a different, usually meaningless, number: for the demo rule, 1.29 across all
+five plans instead of 1.18 for the selected one), and the condition text says so — `范围：运行时指定（scenario_id）`.
 
 ## Running
 

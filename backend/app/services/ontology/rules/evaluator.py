@@ -82,6 +82,19 @@ def _as_float(value: Any) -> float | None:
         return None
 
 
+def _scope_filters(spec: dict, scope: str) -> list[dict]:
+    """Filters a run's `scope` contributes: the operand says *which field* the scope is.
+
+    A rule should not hard-code one scenario's id — "this period's allocation is over-allocated" is a
+    rule about whichever scenario you are looking at. Hard-coding the id makes it a one-off snapshot.
+    So the operand declares `scope_field` (e.g. `scenario_id`) and the run supplies the value.
+    """
+    field = spec.get("scope_field")
+    if not field or not scope:
+        return []
+    return [{"field": str(field), "op": "=", "value": scope}]
+
+
 async def _metric_value(
     db: AsyncSession, request: Request, metric_id: str, filters: list | None = None
 ) -> tuple[float | None, str]:
@@ -98,7 +111,7 @@ async def _metric_value(
 
 
 async def _dataset_agg_value(
-    db: AsyncSession, request: Request, spec: dict
+    db: AsyncSession, request: Request, spec: dict, scope: str
 ) -> tuple[float | None, str]:
     dataset_id = str(spec.get("dataset_id"))
     # Same resource gate as the data grid: a rule may only read what the runner may read.
@@ -110,7 +123,7 @@ async def _dataset_agg_value(
         db,
         dataset_id,
         aggregates=[{"fn": fn, "column": column, "name": name}],
-        filters=spec.get("filters") or [],
+        filters=[*(spec.get("filters") or []), *_scope_filters(spec, scope)],
         limit=1,
     )
     if not summary.rows:
@@ -119,17 +132,22 @@ async def _dataset_agg_value(
 
 
 async def _resolve_operand(
-    db: AsyncSession, request: Request, operand: dict
+    db: AsyncSession, request: Request, operand: dict, scope: str = ""
 ) -> tuple[float | None, str]:
-    kind = next(key for key in operand if key != "filters")
+    kind = next(key for key in operand if key not in ("filters", "scope_field"))
     if kind == "metric":
-        return await _metric_value(db, request, str(operand["metric"]), operand.get("filters"))
+        filters = [*(operand.get("filters") or []), *_scope_filters(operand, scope)]
+        return await _metric_value(db, request, str(operand["metric"]), filters)
     if kind == "dataset_agg":
-        return await _dataset_agg_value(db, request, operand["dataset_agg"])
-    left, reason = await _resolve_operand(db, request, operand[kind][0])
+        spec = operand["dataset_agg"]
+        # `scope_field` may sit on the operand or inside the aggregate spec; both are the author's.
+        if operand.get("scope_field") and not spec.get("scope_field"):
+            spec = {**spec, "scope_field": operand["scope_field"]}
+        return await _dataset_agg_value(db, request, spec, scope)
+    left, reason = await _resolve_operand(db, request, operand[kind][0], scope)
     if left is None:
         return None, reason
-    right, reason = await _resolve_operand(db, request, operand[kind][1])
+    right, reason = await _resolve_operand(db, request, operand[kind][1], scope)
     if right is None:
         return None, reason
     if kind == "diff":
@@ -270,7 +288,7 @@ async def evaluate_rule(
     resolved: dict[str, float | None] = {}
     reasons: list[str] = []
     for operand in flatten_operands(condition):
-        value, reason = await _resolve_operand(db, request, operand)
+        value, reason = await _resolve_operand(db, request, operand, scope)
         resolved[operand_key(operand)] = value
         if value is None and reason:
             reasons.append(reason)

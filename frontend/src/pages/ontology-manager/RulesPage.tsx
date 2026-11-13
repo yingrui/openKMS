@@ -256,6 +256,7 @@ export function RulesPage() {
                               and: t('rules.joinAnd'),
                               or: t('rules.joinOr'),
                               scopePrefix: t('rules.scopePrefix'),
+    scopeAtRunTime: t('rules.scopeAtRunTime'),
                             })}
                           </td>
                           <td>

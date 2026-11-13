@@ -1420,6 +1420,7 @@
     "conditionRemove": "Remove",
     "joinAnd": "AND",
     "joinOr": "OR",
-    "scopePrefix": "Scope"
+    "scopePrefix": "Scope",
+    "scopeAtRunTime": "chosen when run"
   }
 }

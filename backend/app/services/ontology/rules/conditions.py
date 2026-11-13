@@ -8,7 +8,7 @@ A condition is one comparison or a boolean combination of comparisons:
 
 An operand is one of four shapes — the same four for either side of a comparison:
 
-    {"metric": "<metric_id>", "filters": [...]?}          # filters narrow the metric's rows
+    {"metric": "<metric_id>", "filters": [...]?, "scope_field": "scenario_id"?}   # see below
     {"dataset_agg": {"dataset_id": "...", "fn": "count", "column": null, "filters": [...]}}
     {"diff": [<operand>, <operand>]}
     {"ratio": [<operand>, <operand>]}
@@ -58,7 +58,7 @@ OPERAND_KINDS = ("metric", "dataset_agg", "diff", "ratio")
 def _operand_kind(operand: Any) -> str:
     if not isinstance(operand, dict):
         raise ConditionError("an operand must be an object")
-    keys = [key for key in operand if key != "filters"]
+    keys = [key for key in operand if key not in ("filters", "scope_field")]
     if len(keys) != 1:
         raise ConditionError("an operand must have exactly one of metric / dataset_agg / diff / ratio")
     key = keys[0]
@@ -66,6 +66,8 @@ def _operand_kind(operand: Any) -> str:
         raise ConditionError(f"unknown operand '{key}'")
     if "filters" in operand and key not in ("metric", "dataset_agg"):
         raise ConditionError("filters only apply to metric and dataset_agg operands")
+    if "scope_field" in operand and key not in ("metric", "dataset_agg"):
+        raise ConditionError("scope_field only applies to metric and dataset_agg operands")
     return key
 
 

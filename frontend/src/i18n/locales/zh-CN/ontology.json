@@ -1413,6 +1413,7 @@
     "conditionRemove": "删除",
     "joinAnd": "且",
     "joinOr": "或",
-    "scopePrefix": "范围"
+    "scopePrefix": "范围",
+    "scopeAtRunTime": "运行时指定"
   }
 }

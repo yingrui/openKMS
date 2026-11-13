@@ -82,6 +82,27 @@ describe('conditionLabel', () => {
     );
   });
 
+  it('says the scope is chosen at run time when an operand declares scope_field', () => {
+    const condition = {
+      all: [
+        {
+          left: {
+            ratio: [
+              { metric: 'm1', scope_field: 'scenario_id' },
+              { dataset_agg: { dataset_id: 'd1', fn: 'sum', column: 'gap', scope_field: 'scenario_id' } },
+            ],
+          },
+          op: '>',
+          right: { value: 1 },
+        },
+        { left: { metric: 'm2', scope_field: 'scenario_id' }, op: '>', right: { value: 0 } },
+      ],
+    } as unknown as RuleCondition;
+    expect(conditionLabel(condition, { ...lookups, scopeAtRunTime: '运行时指定' })).toBe(
+      '范围：运行时指定（scenario_id） ｜ (分货额度 ÷ 分货明细：sum(gap)) > 1 且 仍缺货明细数 > 0',
+    );
+  });
+
   it('parenthesises a nested group whose joiner differs', () => {
     const condition = {
       all: [
