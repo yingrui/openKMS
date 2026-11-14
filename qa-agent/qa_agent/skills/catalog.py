@@ -140,7 +140,10 @@ def get_semantic_model_tool(model_id: str, _config: RunnableConfig) -> str:
                     {
                         "id": m.get("id"),
                         "name": m.get("name"),
-                        "type": m.get("type"),
+                        "additivity": m.get("additivity"),
+                        "depends_on": [
+                            d.get("name") for d in (m.get("depends_on") or []) if d.get("name")
+                        ],
                         "expression": m.get("expression"),
                         "base_dataset_id": m.get("base_dataset_id"),
                         "joins": m.get("joins"),
@@ -267,7 +270,10 @@ CATALOG_PROMPT = (
     "2. Call **get_semantic_model_tool** for metrics, fields, and **tables** "
     "(``schema.table`` allowlist for SQL Lab).\n"
     "3. Prefer **query_semantic_model_tool** with `metric=<saved name>` (or `expression` + "
-    "`base_dataset` / joins / filters) when a metric-style aggregate fits.\n"
+    "`base_dataset` / joins / filters) when a metric-style aggregate fits. "
+    "A metric marked ``additivity: non_additive`` is a ratio or a rate: ask the query for it "
+    "at the grain you need (group_by) and never add up its values — summing parts of a ratio "
+    "is wrong even when the parts are correct.\n"
     "4. Use **sql_semantic_model_tool** for ad-hoc analysis: one SELECT/WITH against "
     "``tables[].qualified_name`` only (JOINs, windows, samples, custom columns). "
     "Never mutate data; never query tables outside the model.\n"

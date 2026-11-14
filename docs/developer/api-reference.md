@@ -450,8 +450,8 @@ Encrypted values; **never returned**. Write/sync/delete reject personal API key 
 | GET | `/api/datasets/{id}/quality-rules/{rule_id}/runs` | The rule's runs, newest first: `{status, checked_count, failed_count, detail, error_message}`. Keyset paging with `?limit=` (the page size) and `?before=&before_id=` — the `created_at` **and** id of the last row you have, because two runs can share an instant; one without the other is a `400` | `detail` carries what the check measured (`{latest, max_age_days}` for freshness) | Run a quality rule (`data:write`) |
 | GET | `/api/datasets/{id}/quality-rules/{rule_id}/runs` | Rule run history (`data:read`) |
 | GET | `/api/metrics` | List metrics, filtered to models the caller may read (public, or restricted with a grant) (`semantic_model_id` / `base_dataset_id` filter). **Data plane** |
-| POST | `/api/metrics` | Create a metric `{name, semantic_model_id, base_dataset_id, type, expression:{dialects:[{dialect, expression}]}, datatype?, filters?, joins?, ai_context?}` (`data:write`; base dataset must be in the model's scope) |
-| GET | `/api/metrics/{metric_id}` | Get a metric (`data:read`) |
+| POST | `/api/metrics` | Create a metric `{name, semantic_model_id, base_dataset_id, additivity, expression:{dialects:[{dialect, expression}]}, datatype?, filters?, joins?, ai_context?}` (`data:write`; base dataset must be in the model's scope). `additivity` is `additive` \| `non_additive`; an expression may reference another metric as `{{name}}` — it is inlined, and an unknown name, a cycle, another base dataset or a missing relationship is a 400 |
+| GET | `/api/metrics/{metric_id}` | Get a metric (`data:read`) — carries `additivity` and `depends_on` (the metrics its expression names) |
 | PUT | `/api/metrics/{metric_id}` | Update a metric (`data:write`) |
 | DELETE | `/api/metrics/{metric_id}` | Delete a metric (`data:write`) |
 | GET | `/api/metrics/{metric_id}/compute` | Compute a metric — read-only, statement timeout + row cap; records a run (`data:read`) |

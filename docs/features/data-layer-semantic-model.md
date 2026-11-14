@@ -80,8 +80,10 @@ The **shared base** (datasets, their physical columns, relationships) lives in *
 
 ### 3. Metrics
 - **Model-level** aggregate **expressions** (metrics span datasets via relationships; not per-dataset). ✅ Stage 4.
-- Author: name, **definition/description**, `expression` (an aggregate over fields/measures — e.g. `SUM(orders.amount)`), `datatype`, `ai_context`. The list is **definition-only** (edit/delete) — running happens in the **Playground**; each run is read-only (timeout + row cap) and audited (`metric_runs` — the audit is served by the API/skill, the Playground does not surface it).
+- Author: name, **definition/description**, `expression` (an aggregate over fields/measures — e.g. `SUM(orders.amount)`), `datatype`, **`additivity`**, `ai_context`. The list is **definition-only** (edit/delete) — running happens in the **Playground**; each run is read-only (timeout + row cap) and audited (`metric_runs` — the audit is served by the API/skill, the Playground does not surface it).
 - **No dimensions here**: in Ossie a *dimension* is a **field role**; grouping is a **consumption** concern. The metric itself is a **SQL expression** (§Metrics below).
+- **`additivity` replaces a metric "type".** The old `simple | ratio | derived | cumulative | conversion` label was exported and never read — it could not change a single thing the system did. `additive | non_additive` does: a ratio, a rate or a per-unit number must be **recomputed at the target grain**, never summed. The value reaches agents (`get_semantic_model_tool` → `additivity`) and the prompt says so in words, because "sum of monthly fulfilment rates" is a correct-looking wrong answer that no schema can catch afterwards.
+- **A derived metric is a shape, not a kind.** The expression names other metrics — `{{分货额度}} / NULLIF({{预测需求}}, 0)` — and the engine **inlines** them (`SUM(allocated_qty) / NULLIF(SUM(forecast_qty), 0)`), so a denominator is defined once. The dependency is read off the expression (`depends_on` in the API), never stored beside it; a component must sit on the same base dataset and its relationships must be a subset, or the save is a 400 (`Circular metric reference` / `another dataset` / `relationship(s) this metric does not join`). Deleting the concept of "metric type" is what makes this safe: there is one expression, one graph, one place to be wrong.
 - **Dialect:** every expression is labelled `ANSI_SQL` (decision #25) — our datasets are PostgreSQL-only, so fragments may use PostgreSQL syntax and are then not portable.
 - **Anchor:** the core spec has no `base_dataset` (its engine derives the `FROM`/joins from the expression). Ours keeps an explicit anchor in the `OPENKMS` `custom_extensions`; deriving it is deferred to the agent auto-query phase (decision #24).
 
@@ -95,6 +97,20 @@ The **shared base** (datasets, their physical columns, relationships) lives in *
 - The **Ossie `datasets`** section of a model's document: `source` (a dotted string), `primary_key`, `unique_keys`, **`columns`** (with descriptions), **`fields`** (the model's), `ai_context`.
 
 ### 5. Playground
+**Worked example (分货, 2026-W46).** Three metrics on one base dataset (`allocation_lines`) say more than a paragraph:
+
+| metric | expression | additivity | value |
+|---|---|---|---|
+| 分货额度 | `SUM(allocated_qty)` | additive | 128,273 |
+| 预测需求 | `SUM(forecast_qty)` | additive | 201,912 |
+| 分货满足率 | `{{分货额度}} * 1.0 / NULLIF({{预测需求}}, 0)` | **non-additive** | 0.635292 |
+| 分货缺口 | `{{预测需求}} - {{分货额度}}` | additive | 73,639 |
+| 分货缺口率 | `{{分货缺口}} * 1.0 / NULLIF({{预测需求}}, 0)` | **non-additive** | 0.364708 |
+
+Two facts hold by construction, not by convention: `满足率 = 额度 / 需求`, and `缺口率 = 1 − 满足率` (grouped by `scenario_id`: 0.692301 + 0.307699 = 1, 0.578793 + 0.421207 = 1). The denominator is defined once — edit 预测需求 and all four derived numbers move together, because the expression *is* the dependency, and the API reports it (`depends_on: 分货缺口, 预测需求`).
+
+Two traps the example exposed, both now recorded: `(SUM(forecast_qty) - SUM(allocated_qty)) / SUM(forecast_qty)` with integer columns returns **0** (Postgres truncates), so a ratio needs `* 1.0`; and the demo rules layer reads the same definitions — `分货额度错配` evaluates six scenario groups and fails all six, which is what a reconcile check looks like once the metric is a definition rather than a sentence in a spreadsheet.
+
 - **Playground** is its own route (`/data-model/{id}/playground`) and a **nav item** of the model's entity shell. Three modes: **Builder** (metric + group-by + structured filters), **Advanced** (`expression` / `where` / `having` on `/query`), **SQL Lab** (free SELECT on `/sql`). Ad-hoc and read-only: it saves nothing (a kept answer belongs in Data Insights), it draws no charts (the Explorer does) and it has no pivot. Builder/Advanced specs travel in `?q=` (+ `?mode=`); SQL stays in the editor. The metric's **definition** is one disclosure away in Builder. Time dimensions aggregate with `date_trunc('<granularity>', …)`, the **granularity chosen at query time**.
 - It returns the rows **and the generated SQL**. Saving a query is a **consumption** concern → **Data Insights** (`saved_queries` was removed).
 
@@ -109,7 +125,7 @@ The **shared base** (datasets, their physical columns, relationships) lives in *
 |----|--------|-----|
 | Dataset | `{"columns": {"<col>": "<description>"}}` | physical-column notes are Catalog-owned; the spec's `fields` are model-scoped |
 | Relationship | `{"required": true}` | INNER vs LEFT — the spec has no such field (false is our default, so it is omitted) |
-| Metric | `{"base_dataset": "…", "joins": ["…"]}` (+ `type`/`filters` when set) | the FROM/join anchor — the spec derives it from the expression (decision #24) |
+| Metric | `{"base_dataset": "…", "joins": ["…"], "additivity": "non_additive"?, "depends_on": ["…"]?}` | the FROM/join anchor — the spec derives it from the expression (decision #24) |
 
 No stable ids: everything is referenced **by name** (`source` for datasets), so a round-trip matches by name and an import into another instance creates the entities. The exported document is validated against the vendored [`ossie-schema.json`](../research/ossie/spec.md).
 
