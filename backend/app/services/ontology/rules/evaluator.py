@@ -243,6 +243,16 @@ async def _close_open_events(
     return closed
 
 
+def _event_title(rule_data: dict, group: dict | None) -> str:
+    """`方案 a97503a9… · <conclusion>` — the group first, because it is what the reader scans for."""
+    conclusion = str(rule_data.get("conclusion") or rule_data.get("name") or "rule hit")
+    label = str((group or {}).get("label") or "")
+    raw_value = str((group or {}).get("value") or "")
+    # A group value is often a UUID: eight characters identify it in a title, thirty-six drown it.
+    value = raw_value if len(raw_value) <= 14 else f"{raw_value[:8]}…"
+    return f"{label} {value} · {conclusion}".strip(" ·") if label else conclusion
+
+
 async def _upsert_event(
     db: AsyncSession,
     request: Request,
@@ -269,6 +279,9 @@ async def _upsert_event(
     if existing is not None:
         data = dict(existing.data or {})
         data["evidence"] = json.dumps(evidence, ensure_ascii=False)
+        # The rule's wording or the group's identity may have changed since the event opened.
+        data["title"] = _event_title(rule_data, group)
+        data["description"] = str(rule_data.get("suggestion") or "")
         existing.data = data
         await db.flush()
         await sync_queue_ids_to_neo4j(db, event_type, upsert_ids=[existing.id], delete_ids=[])
@@ -278,12 +291,10 @@ async def _upsert_event(
     subject_type = subject.get("kind") if isinstance(subject, dict) else None
     subject_id = subject.get("ref") if isinstance(subject, dict) else None
     severity = str(rule_data.get("severity") or "P1")
-    label = str((group or {}).get("label") or "")
-    value = str((group or {}).get("value") or "")
-    title = str(rule_data.get("conclusion") or rule_data.get("name") or "rule hit")
+    title = _event_title(rule_data, group)
     data = {
         "event_id": "|".join([rule.id, scope, period_start]),
-        "title": f"{label} {value} · {title}".strip(" ·") if label else title,
+        "title": title,
         "domain": str(rule_data.get("domain") or "metric"),
         "intent": INTENT_BY_SEVERITY.get(severity, "warning"),
         "severity": severity,
