@@ -1446,6 +1446,14 @@
     "groupedRunSummary": "共 {{groups}} 组，{{failed}} 组触发",
     "fieldRuleId": "规则 ID",
     "fieldRuleIdHint": "稳定标识（如 allocation-overcheck），事件与导出都引用它；留空则按名称自动生成。",
-    "fieldRuleIdPlaceholder": "如 allocation-overcheck"
+    "fieldRuleIdPlaceholder": "如 allocation-overcheck",
+    "trial": "试算",
+    "trialHint": "用真实数据算一遍：不产生事件，也不改动规则",
+    "trialSummary": "检查 {{count}} 个分组 · {{failed}} 个不成立 · {{unknown}} 个无法判断。未产生任何事件。",
+    "trialGroup": "分组",
+    "trialStatus": "结论",
+    "trialValues": "数值",
+    "trialNoGroup": "整个对象",
+    "trialWouldPublish": "会生成事件"
   }
 }

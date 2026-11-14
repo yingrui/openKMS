@@ -122,6 +122,40 @@
   }
 }
 
+/* 试算: the numbers a run would produce, before anything is published. */
+.rules-trial {
+  margin-top: var(--space-3);
+
+  &__summary {
+    margin: 0 0 var(--space-2);
+    font-size: var(--text-sm);
+    color: var(--color-text-muted);
+  }
+
+  &__values {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    font-size: var(--text-sm);
+
+    li {
+      display: flex;
+      gap: var(--space-2);
+      justify-content: space-between;
+    }
+  }
+
+  &__publish {
+    margin: var(--space-1) 0 0;
+    font-size: var(--text-xs);
+    color: var(--color-text-muted);
+  }
+
+  &__empty {
+    color: var(--color-text-muted);
+  }
+}
+
 /* Additivity: the one metric property that changes what a consumer may do with the number. */
 .metric-additivity {
   display: inline-block;

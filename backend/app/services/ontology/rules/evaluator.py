@@ -58,6 +58,8 @@ class EvalResult:
     event_id: str | None = None
     reason: str | None = None
     group: dict | None = None
+    #: Dry runs only: whether this hit carries advice and a publishable severity (so it *would* open one).
+    would_publish: bool = False
 
 
 def _now() -> str:
@@ -336,11 +338,16 @@ async def evaluate_rule(
     rule: ObjectInstance,
     period_start: str = "",
     period_end: str = "",
+    dry_run: bool = False,
 ) -> list[EvalResult]:
     """Evaluate one rule — once per group when it declares `group_by`, otherwise once.
 
     A grouped rule asks "for each scenario, does this hold?" and answers per scenario, so one run shows
     *which* groups are broken instead of the caller having to pick one and run again.
+
+    ``dry_run`` is the 试算: same numbers, same guardrails, but it publishes nothing, closes nothing and
+    leaves the rule untouched. Writing a condition is iterative; the first three tries are wrong, and none
+    of them should reach the inbox.
     """
     rule_data = _rule_payload(rule)
     _rule_type, event_type = await builtin_types(db)
@@ -382,7 +389,13 @@ async def evaluate_rule(
                 reason="; ".join(reasons) if reasons else None,
             )
         )
-        if hit is True:
+        if hit is True and dry_run:
+            # A trial reports the verdict it *would* have published, and stops there.
+            results[-1].would_publish = bool(
+                rule_data.get("suggestion")
+                and str(rule_data.get("severity") or "P1") in PUBLISHING_SEVERITIES
+            )
+        elif hit is True:
             severity = str(rule_data.get("severity") or "P1")
             scope_value = _group_key(group_value)
             if rule_data.get("suggestion") and severity in PUBLISHING_SEVERITIES:
@@ -403,7 +416,7 @@ async def evaluate_rule(
             else:
                 results[-1].status = "pass"  # a hit without advice is not an event
 
-    if group_field:
+    if group_field and not dry_run:
         await _close_open_events(
             db,
             event_type,
@@ -418,6 +431,9 @@ async def evaluate_rule(
         str(result.group.get("value")) for result in results
         if result.status == "fail" and result.group
     ]
+    if dry_run:
+        return results
+
     data = dict(rule.data or {})
     data.update(
         {

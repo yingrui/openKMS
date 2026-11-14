@@ -24,6 +24,7 @@ import {
   updateRule,
   type RuleCondition,
   type RuleOut,
+  type RulesEvaluateResponse,
 } from '../../../data/rulesApi';
 import { transitionEvent, type EventOut } from '../../../data/eventsApi';
 import { fetchMetrics, type MetricResponse } from '../../../data/metricsApi';
@@ -139,6 +140,8 @@ export function RuleDetailPage() {
   const [saving, setSaving] = useState(false);
   const [running, setRunning] = useState(false);
   const [runOpen, setRunOpen] = useState(false);
+  // A trial's result lives here, not on the rule: 试算 publishes nothing, so there is nothing to reload.
+  const [trial, setTrial] = useState<RulesEvaluateResponse | null>(null);
   const [busyEventId, setBusyEventId] = useState<string | null>(null);
   const [paramCandidates, setParamCandidates] = useState<string[]>([]);
 
@@ -349,6 +352,18 @@ export function RuleDetailPage() {
       );
       await load();
       setRunOpen(false);
+    } catch (e: unknown) {
+      toast.error(e instanceof Error ? e.message : t('rules.toastRunFailed'));
+    } finally {
+      setRunning(false);
+    }
+  };
+
+  const trialRun = async (params: RunParams) => {
+    if (!rule) return;
+    setRunning(true);
+    try {
+      setTrial(await evaluateRule(rule.object_id, { ...params, dry_run: true }));
     } catch (e: unknown) {
       toast.error(e instanceof Error ? e.message : t('rules.toastRunFailed'));
     } finally {
@@ -658,8 +673,14 @@ export function RuleDetailPage() {
       <RunRulesDialog
         open={runOpen}
         busy={running}
-        onClose={() => setRunOpen(false)}
+        onClose={() => {
+          setRunOpen(false);
+          setTrial(null);
+        }}
         onRun={(params) => void run(params)}
+        onTrial={(params) => void trialRun(params)}
+        trial={trial}
+        lookups={{ metricName, datasetName, ...joiners }}
       />
     </div>
   );

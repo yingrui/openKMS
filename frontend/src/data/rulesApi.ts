@@ -76,6 +76,8 @@ export type RuleEvalResult = {
   event_id: string | null;
   reason: string | null;
   group: { field: string; value: string | null } | null;
+  /** Dry runs only: this hit carries advice and a publishable severity, so it *would* open one. */
+  would_publish: boolean;
 };
 
 export type RulesEvaluateResponse = {
@@ -129,7 +131,7 @@ export async function updateRule(
 
 export async function evaluateRule(
   ruleId: string,
-  params: { period_start?: string; period_end?: string } = {},
+  params: { period_start?: string; period_end?: string; dry_run?: boolean } = {},
 ): Promise<RulesEvaluateResponse> {
   return request<RulesEvaluateResponse>(`/api/rules/${ruleId}/evaluate`, {
     method: 'POST',

@@ -113,22 +113,22 @@ rules produce one verdict per subject, so the same need is met by a group-by: "f
 this hold?" — one run, every scenario, and the failing ones become events. A run parameter (an earlier
 draft) would have made the platform ask a question the rule could answer itself.
 
-## Object identity (read this before querying by id)
+## Trying a rule before it exists
 
-Both types are **hand-created** (no dataset). For such a type the platform's identity is `__rid` — the
-`object_instances.id`, exposed as `object_id` in the API and as `__rid` in the graph. `key_properties` is
-display metadata there, not identity; `object_key_properties()` returns `[__rid]` whenever `dataset_id`
-is null.
+Writing a condition is iterative: the first attempts are wrong, and none of them belong in the inbox. A
+rule's own page therefore offers **试算 (dry run)** next to **运行**:
 
-| | identity used by the platform | business identifier |
-|---|---|---|
-| `Rule` | `__rid` (`object_id`) | none — the rule's name is its label (`display_property = name`) |
-| `Event` | `__rid` (`object_id`) | `event_id` = `rule_id\|scope\|period`, used for dedupe and cited in evidence |
+- the same numbers, the same guards, the same guardrails (no second query engine);
+- **nothing is published** — no event is opened, none is closed;
+- **nothing is written back** — `last_run_at` / `last_status` / `last_values` stay as they were, so the rule
+  keeps showing its last *real* run;
+- each verdict says whether it *would* have opened an event (`would_publish`), which is the question a
+  publisher-with-no-suggestion needs answered;
+- the response carries per-group values, so a grouped rule shows six numbers and six verdicts instead of
+  six events.
 
-So: link, fetch and dedupe by `object_id`; use `event_id` only as the human/evidence-level identifier. An
-earlier version declared `Rule.id` as a required property and never wrote it — a required property no
-instance carried, and a key property that identified nothing; the bootstrap now drops it (additively: it
-only prunes properties this module itself declared and never wrote).
+`POST /api/rules/{id}/evaluate` takes `dry_run: true`. The list-level "run all" has no trial: a trial has
+one subject by definition.
 
 ## Rules are not snapshots
 

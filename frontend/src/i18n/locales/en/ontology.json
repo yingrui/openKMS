@@ -1453,6 +1453,14 @@
     "groupedRunSummary": "{{groups}} groups, {{failed}} triggered",
     "fieldRuleId": "Rule id",
     "fieldRuleIdHint": "A stable slug (allocation-overcheck): cited on events and exports; generated from the name when empty.",
-    "fieldRuleIdPlaceholder": "e.g. allocation-overcheck"
+    "fieldRuleIdPlaceholder": "e.g. allocation-overcheck",
+    "trial": "Dry run",
+    "trialHint": "Evaluate against live data without publishing events or changing the rule",
+    "trialSummary": "{{count}} groups checked · {{failed}} failing · {{unknown}} undecided. Nothing was published.",
+    "trialGroup": "Group",
+    "trialStatus": "Verdict",
+    "trialValues": "Values",
+    "trialNoGroup": "Whole subject",
+    "trialWouldPublish": "would open an event"
   }
 }

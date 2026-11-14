@@ -140,6 +140,8 @@ class RuleOut(BaseModel):
 class RuleEvaluateRequest(BaseModel):
     period_start: str = ""
     period_end: str = ""
+    #: 试算 — compute the numbers, publish nothing, keep `last_*` untouched.
+    dry_run: bool = False
 
 
 class RulesEvaluateRequest(RuleEvaluateRequest):
@@ -154,6 +156,7 @@ class EvalOut(BaseModel):
     event_id: str | None = None
     reason: str | None = None
     group: dict | None = None
+    would_publish: bool = False
 
 
 class EventOut(BaseModel):
@@ -240,6 +243,7 @@ def _eval_out(result: EvalResult) -> EvalOut:
         rule_id=result.rule_id,
         status=result.status,
         values=result.values,
+        would_publish=result.would_publish,
         event_id=result.event_id,
         reason=result.reason,
         group=result.group,
@@ -433,6 +437,7 @@ async def evaluate_one(
             rule=instance,
             period_start=body.period_start,
             period_end=body.period_end,
+            dry_run=body.dry_run,
         )
     except ConditionError as exc:
         raise HTTPException(status_code=400, detail=f"Invalid condition: {exc}") from exc
