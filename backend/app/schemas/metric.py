@@ -16,7 +16,7 @@ class MetricCreate(BaseModel):
     semantic_model_id: str
     base_dataset_id: str
     business_definition: str | None = None
-    type: str = "simple"
+    additivity: str = "additive"
     expression: dict[str, Any]
     datatype: str | None = None
     filters: list[MetricFilter] | None = None
@@ -29,7 +29,7 @@ class MetricUpdate(BaseModel):
     semantic_model_id: str | None = None
     base_dataset_id: str | None = None
     business_definition: str | None = None
-    type: str | None = None
+    additivity: str | None = None
     expression: dict[str, Any] | None = None
     datatype: str | None = None
     filters: list[MetricFilter] | None = None
@@ -44,7 +44,8 @@ class MetricResponse(BaseModel):
     base_dataset_name: str | None = None
     name: str
     business_definition: str | None = None
-    type: str
+    additivity: str
+    depends_on: list["MetricRef"] = []
     expression: dict[str, Any] | None = None
     datatype: str | None = None
     filters: list[MetricFilter] | None = None
@@ -53,6 +54,13 @@ class MetricResponse(BaseModel):
     created_by_name: str | None = None
     created_at: datetime
     updated_at: datetime
+
+
+class MetricRef(BaseModel):
+    """A metric this one is computed from (the expression names it)."""
+
+    id: str
+    name: str
 
 
 class MetricListResponse(BaseModel):

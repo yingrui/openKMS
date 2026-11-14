@@ -23,6 +23,9 @@ ANSI = "ANSI_SQL"
 
 def dialect_sql(expression: dict | None, dialect: str = ANSI) -> str | None:
     """The SQL fragment for a dialect (list form, with legacy map fallback)."""
+    if isinstance(expression, list):
+        # A bare dialect list — imported documents may carry the dialects without the wrapper.
+        expression = {"dialects": expression}
     if not isinstance(expression, dict):
         return None
     dialects = expression.get("dialects")

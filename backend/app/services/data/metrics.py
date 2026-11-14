@@ -19,7 +19,11 @@ from app.services.data.expressions import ANSI, dialect_sql
 from app.services.data.sql_build import VALID_OPS
 from app.services.ontology.dataset_tables import is_valid_identifier
 
-METRIC_TYPES = ("simple", "ratio", "derived", "cumulative", "conversion")
+#: Whether the number may be summed over a finer grain. This is the only metric property that
+#: changes what a consumer is allowed to do — and the one that prevents summing ratios.
+ADDITIVITY = ("additive", "non_additive")
+#: `ai_context` keys a consumer (agent, judge, export) can rely on; anything else passes through.
+AI_CONTEXT_LISTS = ("synonyms", "examples", "not_for")
 DEFAULT_ROW_CAP = 1000
 DEFAULT_TIMEOUT_MS = 10_000
 
@@ -49,16 +53,40 @@ def validate_sql_fragment(sql: str, *, what: str = "expression") -> str:
     return text
 
 
-def validate_metric_definition(*, name: str | None, type: str, expression: dict | None) -> str:
+def validate_metric_definition(
+    *, name: str | None, additivity: str, expression: dict | None
+) -> str:
     """Validate a metric definition and return its expression fragment."""
     if not (name or "").strip():
         raise MetricError("A metric needs a name.")
-    if type not in METRIC_TYPES:
-        raise MetricError(f"type must be one of: {', '.join(METRIC_TYPES)}.")
+    if additivity not in ADDITIVITY:
+        raise MetricError(f"additivity must be one of: {', '.join(ADDITIVITY)}.")
     sql = metric_expression_sql(expression)
     if not sql or not sql.strip():
         raise MetricError("The metric needs an expression (its aggregate SQL fragment).")
     return validate_sql_fragment(sql, what="expression")
+
+
+def validate_ai_context(value: dict[str, Any] | None) -> dict[str, Any] | None:
+    """`synonyms` / `examples` / `not_for` are string lists; unknown keys are kept as given."""
+    if value is None:
+        return None
+    if not isinstance(value, dict):
+        raise MetricError("ai_context must be an object.")
+    out: dict[str, Any] = dict(value)
+    instructions = out.get("instructions")
+    if instructions is not None and not isinstance(instructions, str):
+        raise MetricError("ai_context.instructions must be a string.")
+    for key in AI_CONTEXT_LISTS:
+        items = out.get(key)
+        if items is None:
+            continue
+        if isinstance(items, str):
+            items = [items]
+        if not isinstance(items, list) or not all(isinstance(x, str) for x in items):
+            raise MetricError(f"ai_context.{key} must be a list of strings.")
+        out[key] = [x.strip() for x in items if x.strip()]
+    return out
 
 
 def validate_metric_filters(filters: list[dict[str, Any]] | list[Any] | None) -> list[dict[str, Any]]:

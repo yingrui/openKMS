@@ -31,13 +31,16 @@ class MetricDefinition(Base):
     )
     name: Mapped[str] = mapped_column(String(256), nullable=False)
     business_definition: Mapped[str | None] = mapped_column(Text, nullable=True)
-    # Ossie metric type (metadata): simple | ratio | derived | cumulative | conversion.
-    type: Mapped[str] = mapped_column(String(32), nullable=False, default="simple")
+    # May this number be summed? `non_additive` (a ratio, a rate, a per-unit price) must be
+    # recomputed at the target grain, never added up. Derived metrics need no flag of their own:
+    # the expression names the metrics it is computed from (see `metric_refs`).
+    additivity: Mapped[str] = mapped_column(String(32), nullable=False, default="additive")
     # Ossie expression: {"dialects": {"ANSI_SQL": "<aggregate fragment>"}}.
     expression: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
     datatype: Mapped[str | None] = mapped_column(String(32), nullable=True)
     filters: Mapped[list | None] = mapped_column(JSONB, nullable=True)  # [{column, op, value}]
     joins: Mapped[list | None] = mapped_column(JSONB, nullable=True)  # [dataset_join id]
+    # Agent grounding: {instructions, synonyms[], examples[], not_for[]}.
     ai_context: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
     created_by: Mapped[str | None] = mapped_column(String(512), nullable=True)
     created_by_name: Mapped[str | None] = mapped_column(String(256), nullable=True)

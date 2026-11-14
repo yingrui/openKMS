@@ -29,6 +29,7 @@ from app.models.metric_definition import MetricDefinition
 from app.models.semantic_model import SemanticModel
 from app.models.semantic_model_field import SemanticModelField
 from app.services.data.expressions import ANSI, dialect_sql, normalize_expression
+from app.services.data.metric_refs import metric_references
 from app.services.data.semantic_model_fields import OSSIE_DATATYPES
 from app.services.data.semantic_models import member_ids, set_members
 from app.services.ontology.dataset_tables import is_valid_identifier
@@ -223,7 +224,9 @@ async def export_semantic_model(db: AsyncSession, model: SemanticModel) -> dict[
         mentry["custom_extensions"] = _extension(
             {
                 "base_dataset": name_by_id.get(m.base_dataset_id),
-                "type": m.type if m.type and m.type != "simple" else None,
+                # Ossie has no additivity field; a consumer must still see it (§ export).
+                "additivity": m.additivity if m.additivity != "additive" else None,
+                "depends_on": metric_refs_by_name(m, metrics),
                 "filters": m.filters,
                 "joins": [rel_name(r) for r in relationships if r.id in (m.joins or [])],
             }
@@ -231,6 +234,15 @@ async def export_semantic_model(db: AsyncSession, model: SemanticModel) -> dict[
         doc["metrics"].append(mentry)
 
     return doc
+
+
+def metric_refs_by_name(metric, metrics) -> list[str]:
+    """The names of the metrics this expression references (Ossie: a metric may reference metrics)."""
+    sql = dialect_sql(metric.expression, ANSI)
+    if not isinstance(sql, str):
+        return []
+    known = {m.name for m in metrics}
+    return [ref for ref in metric_references(sql) if ref in known and ref != metric.name]
 
 
 async def _dataset_index(
@@ -436,7 +448,11 @@ async def import_semantic_model(db: AsyncSession, doc: dict[str, Any]) -> dict[s
         row.semantic_model_id = model.id
         row.base_dataset_id = base_id
         row.name = m.get("name") or "metric"
-        row.type = mext.get("type") or "simple"
+        # Older documents carried a free-form `type`; only the behaviour-changing value survives.
+        row.additivity = (
+            mext.get("additivity")
+            or ("non_additive" if mext.get("type") in ("ratio", "conversion") else "additive")
+        )
         row.business_definition = m.get("description")
         row.expression = normalize_expression(m.get("expression"))
         row.datatype = m.get("datatype")

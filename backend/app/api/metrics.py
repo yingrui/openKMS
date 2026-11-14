@@ -6,6 +6,7 @@ from __future__ import annotations
 
 import time
 import uuid
+from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy import select
@@ -27,9 +28,12 @@ from app.schemas.metric import (
     MetricUpdate,
 )
 from app.services.data.expressions import normalize_expression
+from app.services.data.metric_refs import MetricRefError, expand, metric_references
 from app.services.data.metrics import (
     MetricError,
+    metric_expression_sql,
     resolve_joins,
+    validate_ai_context,
     validate_metric_definition,
     validate_metric_filters,
 )
@@ -51,7 +55,23 @@ async def _name_map(db: AsyncSession, ids: set[str]) -> dict[str, str]:
     return {d.id: dataset_label(d) for d in rows}
 
 
-def _metric_response(m: MetricDefinition, base_name: str | None) -> MetricResponse:
+def _depends_on(m: MetricDefinition, model_metrics: list[MetricDefinition]) -> list[dict]:
+    """The metrics this one names in its expression — read from the SQL, not a second field."""
+    sql = metric_expression_sql(m.expression)
+    peers = [x for x in model_metrics if x.semantic_model_id == m.semantic_model_id]
+    index = {x.name: x for x in peers}
+    index.update({x.id: x for x in peers})
+    out: list[dict] = []
+    for ref in metric_references(sql if isinstance(sql, str) else None):
+        hit = index.get(ref)
+        if hit and hit.id != m.id:
+            out.append({"id": hit.id, "name": hit.name})
+    return out
+
+
+def _metric_response(
+    m: MetricDefinition, base_name: str | None, model_metrics: list[MetricDefinition] | None = None
+) -> MetricResponse:
     return MetricResponse(
         id=m.id,
         semantic_model_id=m.semantic_model_id,
@@ -59,7 +79,8 @@ def _metric_response(m: MetricDefinition, base_name: str | None) -> MetricRespon
         base_dataset_name=base_name,
         name=m.name,
         business_definition=m.business_definition,
-        type=m.type,
+        additivity=m.additivity,
+        depends_on=_depends_on(m, model_metrics or []),
         expression=m.expression,
         datatype=m.datatype,
         filters=m.filters,
@@ -68,6 +89,57 @@ def _metric_response(m: MetricDefinition, base_name: str | None) -> MetricRespon
         created_by_name=m.created_by_name,
         created_at=m.created_at,
         updated_at=m.updated_at,
+    )
+
+
+async def _validate_refs(
+    db: AsyncSession,
+    model_id: str,
+    payload: Any,
+    *,
+    metric_id: str | None,
+    current: MetricDefinition | None = None,
+) -> None:
+    """Expand the expression against the model's metrics as they will be after this save."""
+    data = payload if isinstance(payload, dict) else payload.model_dump()
+    expression = data.get("expression", current.expression if current else None)
+    sql = metric_expression_sql(expression)
+    if not isinstance(sql, str) or not metric_references(sql):
+        return
+    peers = [
+        m
+        for m in (
+            await db.execute(
+                select(MetricDefinition).where(MetricDefinition.semantic_model_id == model_id)
+            )
+        ).scalars().all()
+        if m.id != metric_id
+    ]
+    candidate = MetricDefinition(
+        id=metric_id or "new",
+        semantic_model_id=model_id,
+        base_dataset_id=data.get("base_dataset_id", current.base_dataset_id if current else ""),
+        name=str(data.get("name", current.name if current else "")).strip(),
+        expression=expression,
+    )
+    expand(
+        sql,
+        [*peers, candidate],
+        base_dataset_id=candidate.base_dataset_id,
+        joins=data.get("joins", current.joins if current else None),
+    )
+
+
+async def _peers(db: AsyncSession, m: MetricDefinition) -> list[MetricDefinition]:
+    """A metric's siblings — the names its `{{references}}` may resolve to."""
+    return list(
+        (
+            await db.execute(
+                select(MetricDefinition).where(
+                    MetricDefinition.semantic_model_id == m.semantic_model_id
+                )
+            )
+        ).scalars().all()
     )
 
 
@@ -137,7 +209,11 @@ async def list_metrics(
     rows = (await db.execute(query)).scalars().all()
     names = await _name_map(db, {m.base_dataset_id for m in rows})
     return MetricListResponse(
-        items=[_metric_response(m, names.get(m.base_dataset_id)) for m in rows], total=len(rows)
+        # `depends_on` needs the model's other metrics, so the list is resolved once, not per row.
+        items=[
+            _metric_response(m, names.get(m.base_dataset_id), rows) for m in rows
+        ],
+        total=len(rows),
     )
 
 
@@ -163,13 +239,17 @@ async def create_metric(
             status_code=400, detail="The base dataset is not in this semantic model."
         )
     try:
-        validate_metric_definition(name=body.name, type=body.type, expression=body.expression)
+        validate_metric_definition(
+            name=body.name, additivity=body.additivity, expression=body.expression
+        )
         validate_datatype(body.datatype)
+        body.ai_context = validate_ai_context(body.ai_context)
         cleaned_filters = validate_metric_filters(
             [f.model_dump() for f in body.filters] if body.filters else None
         )
         await resolve_joins(db, base, body.joins, member_dataset_ids=members)
-    except (MetricError, FieldError) as exc:
+        await _validate_refs(db, body.semantic_model_id, body, metric_id=None)
+    except (MetricError, FieldError, MetricRefError) as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
     p = request.state.openkms_jwt_payload
@@ -180,7 +260,7 @@ async def create_metric(
         base_dataset_id=body.base_dataset_id,
         name=body.name.strip(),
         business_definition=body.business_definition,
-        type=body.type,
+        additivity=body.additivity,
         expression=normalize_expression(body.expression),
         datatype=body.datatype,
         filters=cleaned_filters or None,
@@ -193,7 +273,7 @@ async def create_metric(
     await db.commit()
     await db.refresh(metric)
     names = await _name_map(db, {metric.base_dataset_id})
-    return _metric_response(metric, names.get(metric.base_dataset_id))
+    return _metric_response(metric, names.get(metric.base_dataset_id), await _peers(db, metric))
 
 
 @router.get(
@@ -204,7 +284,7 @@ async def create_metric(
 async def get_metric(metric_id: str, db: AsyncSession = Depends(get_db)):
     m = await _load_metric(db, metric_id)
     names = await _name_map(db, {m.base_dataset_id})
-    return _metric_response(m, names.get(m.base_dataset_id))
+    return _metric_response(m, names.get(m.base_dataset_id), await _peers(db, m))
 
 
 @router.put(
@@ -237,16 +317,19 @@ async def update_metric(
     try:
         validate_metric_definition(
             name=data.get("name", m.name),
-            type=data.get("type", m.type),
+            additivity=data.get("additivity", m.additivity),
             expression=data.get("expression", m.expression),
         )
         validate_datatype(data.get("datatype", m.datatype))
+        if "ai_context" in data:
+            data["ai_context"] = validate_ai_context(data["ai_context"])
         if "filters" in data:
             data["filters"] = validate_metric_filters(data["filters"]) or None
         await resolve_joins(
             db, base, data.get("joins", m.joins), member_dataset_ids=members
         )
-    except (MetricError, FieldError) as exc:
+        await _validate_refs(db, new_model_id, data, metric_id=metric_id, current=m)
+    except (MetricError, FieldError, MetricRefError) as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
     if "expression" in data:
@@ -258,7 +341,7 @@ async def update_metric(
         "semantic_model_id",
         "base_dataset_id",
         "business_definition",
-        "type",
+        "additivity",
         "expression",
         "datatype",
         "filters",
@@ -270,7 +353,7 @@ async def update_metric(
     await db.commit()
     await db.refresh(m)
     names = await _name_map(db, {m.base_dataset_id})
-    return _metric_response(m, names.get(m.base_dataset_id))
+    return _metric_response(m, names.get(m.base_dataset_id), await _peers(db, m))
 
 
 @router.delete(

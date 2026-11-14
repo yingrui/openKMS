@@ -21,6 +21,7 @@ from app.models.dataset import Dataset
 from app.models.metric_definition import MetricDefinition
 from app.models.semantic_model_field import SemanticModelField
 from app.services.data.expressions import ANSI, dialect_sql
+from app.services.data.metric_refs import MetricRefError, expand, metric_references
 from app.services.data.metrics import (
     DEFAULT_ROW_CAP,
     DEFAULT_TIMEOUT_MS,
@@ -199,15 +200,21 @@ def resolve_field(
     return candidates[0]
 
 
+async def _model_metrics(db: AsyncSession, model_id: str) -> list[MetricDefinition]:
+    return list(
+        (
+            await db.execute(
+                select(MetricDefinition).where(MetricDefinition.semantic_model_id == model_id)
+            )
+        ).scalars().all()
+    )
+
+
 async def _load_metric(
     db: AsyncSession, model_id: str, ref: str
 ) -> MetricDefinition:
     """A metric of this model, addressed by id **or** name (agents prefer names)."""
-    rows = (
-        await db.execute(
-            select(MetricDefinition).where(MetricDefinition.semantic_model_id == model_id)
-        )
-    ).scalars().all()
+    rows = await _model_metrics(db, model_id)
     for m in rows:
         if m.id == ref or m.name == ref:
             return m
@@ -215,6 +222,29 @@ async def _load_metric(
         f"Metric '{ref}' not found in this model.",
         QueryFailure("QUERY_UNKNOWN_METRIC", REQUEST),
     )
+
+
+async def _expand_metric_refs(
+    db: AsyncSession,
+    model_id: str,
+    sql: str,
+    base_dataset_id: str,
+    joins: list[str] | None,
+    *,
+    kind: str,
+) -> str:
+    """Inline `{{metric}}` references so a derived metric computes from other definitions."""
+    if not metric_references(sql):
+        return sql
+    metrics = await _model_metrics(db, model_id)
+    try:
+        expanded, _used = expand(
+            sql, metrics, base_dataset_id=base_dataset_id, joins=joins
+        )
+    except MetricRefError as exc:
+        raise QueryError(str(exc), QueryFailure("QUERY_DEFINITION_INVALID", kind)) from exc
+    # The inlined fragment must still be a single aggregate fragment.
+    return validate_sql_fragment(expanded, what="expression")
 
 
 def _definition_filters(
@@ -285,7 +315,12 @@ async def run_query(
         metric_filters = list(definition.filters or []) if definition.filters else None
         try:
             metric_expr = validate_metric_definition(
-                name=definition.name, type=definition.type, expression=definition.expression
+                name=definition.name,
+                additivity=definition.additivity,
+                expression=definition.expression,
+            )
+            metric_expr = await _expand_metric_refs(
+                db, model_id, metric_expr, base_id, join_ids, kind=DEFINITION
             )
         except MetricError as exc:
             raise QueryError(
@@ -307,7 +342,10 @@ async def run_query(
             expr_payload = expression  # type: ignore[assignment]
         try:
             metric_expr = validate_metric_definition(
-                name="adhoc", type="simple", expression=expr_payload
+                name="adhoc", additivity="additive", expression=expr_payload
+            )
+            metric_expr = await _expand_metric_refs(
+                db, model_id, metric_expr, base_id, join_ids, kind=REQUEST
             )
         except MetricError as exc:
             raise QueryError(
