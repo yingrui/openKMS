@@ -29,56 +29,76 @@ BASELINE = Path(__file__).resolve().parent / "dead-classes-baseline.txt"
 VENDOR_PREFIXES = ("cm-", "a2ui", "monaco")
 
 
-def source_text() -> tuple[str, list[str]]:
-    code = "\n".join(
-        path.read_text() for path in [*SRC.rglob("*.tsx"), *SRC.rglob("*.ts")]
+class Usage:
+    """What the sources mention, indexed once.
+
+    The old form ran a regex over the whole source for every class in every sheet — the gate got
+    slower as the codebase grew, and at ~3.5 MB of TSX it reached for gigabytes of transient memory.
+    One pass over the tokens answers the same questions.
+    """
+
+    def __init__(self, code: str) -> None:
+        self.tokens = set(re.findall(r"[A-Za-z][A-Za-z0-9_-]*", code))
+        # `story-finding__meta` proves `.story-finding` is used: keep every prefix that ends at a
+        # `-` / `_` boundary.
+        self.bases: set[str] = set()
+        for token in self.tokens:
+            for boundary in re.finditer(r"[-_]", token):
+                self.bases.add(token[: boundary.start()])
+        # A template may contain several classes before ${...}; keep each token, not the whole
+        # "class-a class-b--" string (which never matches a startswith check).
+        self.templates = [
+            part
+            for t in re.findall(r"`[^`]*\$\{[^`]*`", code)
+            for part in t.split("${")[0].split()
+            if part
+        ]
+
+    def is_used(self, cls: str) -> bool:
+        if cls.startswith(VENDOR_PREFIXES):
+            return True
+        return (
+            cls in self.tokens
+            or cls in self.bases
+            or any(prefix and cls.startswith(prefix) for prefix in self.templates)
+        )
+
+
+def source_usage() -> Usage:
+    return Usage(
+        "\n".join(path.read_text() for path in [*SRC.rglob("*.tsx"), *SRC.rglob("*.ts")])
     )
-    # A template may contain several classes before ${...}; keep each token, not the
-    # whole "class-a class-b--" prefix (which never matches a startswith check).
-    templates = [
-        part
-        for t in re.findall(r"`[^`]*\$\{[^`]*`", code)
-        for part in t.split("${")[0].split()
-        if part
-    ]
-    return code, templates
 
 
-def is_used(cls: str, code: str, templates: list[str]) -> bool:
-    if cls.startswith(VENDOR_PREFIXES):
-        return True
-    if re.search(r"(?<![A-Za-z0-9_])" + re.escape(cls) + r"(?![A-Za-z0-9_-])", code):
-        return True
-    if re.search(r"(?<![A-Za-z0-9_-])" + re.escape(cls) + r"[-_]", code):
-        return True
-    return any(prefix and cls.startswith(prefix) for prefix in templates)
-
-
-def dead_selectors(path: Path, code: str, templates: list[str]) -> list[str]:
+def dead_selectors(path: Path, usage: Usage) -> list[str]:
     lines = path.read_text().split("\n")
     found: list[str] = []
-    for index, line in enumerate(lines):
+    previous = ""
+    for line in lines:
         stripped = line.strip()
-        previous = next((l for l in reversed(lines[:index]) if l.strip()), "")
+        if stripped:
+            previous_text, previous = previous, stripped
+        else:
+            previous_text = previous
         if not stripped.startswith(".") or not stripped.endswith("{"):
             continue
         # A selector list spans lines: `.a,\n.b {` — the owning block is the first line.
-        if previous.rstrip().endswith(","):
+        if previous_text.rstrip().endswith(","):
             continue
         classes = re.findall(r"\.([A-Za-z0-9_-]+)", stripped)
         if not classes or "&" in stripped:
             continue
-        if any(is_used(cls, code, templates) for cls in classes):
+        if any(usage.is_used(cls) for cls in classes):
             continue
         found.append(stripped[:70])
     return found
 
 
 def main(argv: list[str]) -> int:
-    code, templates = source_text()
+    usage = source_usage()
     hits: list[tuple[str, str]] = []
     for sheet in sorted(SRC.rglob("*.scss")):
-        for selector in dead_selectors(sheet, code, templates):
+        for selector in dead_selectors(sheet, usage):
             hits.append((str(sheet.relative_to(ROOT)), selector))
 
     if "--list" in argv:
