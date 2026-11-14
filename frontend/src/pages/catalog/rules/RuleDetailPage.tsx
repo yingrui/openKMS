@@ -42,6 +42,7 @@ import '../../../styles/rules.scss';
 
 type FormState = {
   name: string;
+  ruleId: string;
   subjectKind: 'metric' | 'dataset';
   metricId: string;
   datasetId: string;
@@ -60,6 +61,7 @@ type FormState = {
 
 const EMPTY_FORM: FormState = {
   name: '',
+  ruleId: '',
   subjectKind: 'metric',
   metricId: '',
   datasetId: '',
@@ -82,6 +84,7 @@ function formFromRule(rule: RuleOut, metrics: MetricResponse[], datasets: Datase
   const left = single?.left;
   return {
     name: rule.name ?? '',
+    ruleId: rule.rule_id ?? '',
     subjectKind: rule.subject?.kind ?? 'metric',
     metricId: left && 'metric' in left ? left.metric : (metrics[0]?.id ?? ''),
     datasetId: left && 'dataset_agg' in left ? left.dataset_agg.dataset_id : (datasets[0]?.id ?? ''),
@@ -278,6 +281,7 @@ export function RuleDetailPage() {
     try {
       const payload = {
         name: form.name.trim(),
+        rule_id: form.ruleId.trim() || null,
         subject: {
           kind: form.subjectKind,
           ref: form.subjectKind === 'metric' ? form.metricId : form.datasetId,
@@ -431,6 +435,7 @@ export function RuleDetailPage() {
             <p className="page-subtitle">
               <StatusChip tone={severityTone(rule.severity)}>{rule.severity ?? '—'}</StatusChip>{' '}
               {rule.subject?.kind === 'dataset' ? t('rules.subjectDataset') : t('rules.subjectMetric')}
+              {rule.rule_id ? ` · ${rule.rule_id}` : ''}
               {rule.owner ? ` · ${rule.owner}` : ''} · v{rule.version ?? 1}
             </p>
           ) : null}
@@ -481,6 +486,15 @@ export function RuleDetailPage() {
                     value={form.name}
                     onChange={(e) => setForm({ ...form, name: e.target.value })}
                     placeholder={t('rules.fieldNamePlaceholder')}
+                  />
+                </FormField>
+                <FormField label={t('rules.fieldRuleId')} hint={t('rules.fieldRuleIdHint')}>
+                  <input
+                    type="text"
+                    value={form.ruleId}
+                    onChange={(e) => setForm({ ...form, ruleId: e.target.value })}
+                    placeholder={t('rules.fieldRuleIdPlaceholder')}
+                    autoComplete="off"
                   />
                 </FormField>
                 <FormField label={t('rules.fieldSubject')} hint={t('rules.fieldSubjectHint')}>

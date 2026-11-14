@@ -42,6 +42,7 @@ def event_out(instance: ObjectInstance) -> dict[str, Any]:
         "description": data.get("description"),
         "evidence": data.get("evidence"),
         "rule_id": data.get("rule_id"),
+        "rule_object_id": data.get("rule_object_id"),
         "rule_version": data.get("rule_version"),
         "subject_type": data.get("subject_type"),
         "subject_id": data.get("subject_id"),
@@ -50,7 +51,7 @@ def event_out(instance: ObjectInstance) -> dict[str, Any]:
 
 
 def _filters(*, subject_type: str | None, subject_id: str | None, rule_id: str | None,
-             status: str | None, severity: str | None, open_only: bool) -> list:
+             rule_object_id: str | None, status: str | None, severity: str | None, open_only: bool) -> list:
     clauses = []
     if subject_type:
         clauses.append(ObjectInstance.data["subject_type"].astext == subject_type)
@@ -58,6 +59,8 @@ def _filters(*, subject_type: str | None, subject_id: str | None, rule_id: str |
         clauses.append(ObjectInstance.data["subject_id"].astext == subject_id)
     if rule_id:
         clauses.append(ObjectInstance.data["rule_id"].astext == rule_id)
+    if rule_object_id:
+        clauses.append(ObjectInstance.data["rule_object_id"].astext == rule_object_id)
     if status:
         clauses.append(ObjectInstance.data["status"].astext == status)
     if severity:
@@ -74,6 +77,7 @@ async def list_events(
     subject_type: str | None = None,
     subject_id: str | None = None,
     rule_id: str | None = None,
+    rule_object_id: str | None = None,
     status: str | None = None,
     severity: str | None = None,
     open_only: bool = False,
@@ -84,6 +88,7 @@ async def list_events(
         subject_type=subject_type,
         subject_id=subject_id,
         rule_id=rule_id,
+        rule_object_id=rule_object_id,
         status=status,
         severity=severity,
         open_only=open_only,

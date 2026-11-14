@@ -28,6 +28,7 @@ EVENT_END_PROPERTY = "event_end_time"
 #: Property definitions written on first creation. Types are `string|number|datetime|boolean`
 #: (see the object-type schema); anything richer (conditions, evidence) is stored as JSON text.
 RULE_PROPERTIES: list[dict] = [
+    {"name": "rule_id", "type": "string", "required": True},
     {"name": "name", "type": "string", "required": True},
     {"name": "domain", "type": "string", "required": False},
     {"name": "subject", "type": "string", "required": False},
@@ -62,7 +63,8 @@ EVENT_PROPERTIES: list[dict] = [
     {"name": "evidence", "type": "string", "required": False},
     {"name": "status", "type": "string", "required": False},
     {"name": "assignee", "type": "string", "required": False},
-    {"name": "rule_id", "type": "string", "required": False},
+    {"name": "rule_id", "type": "string", "required": True},
+    {"name": "rule_object_id", "type": "string", "required": False},
     {"name": "rule_version", "type": "number", "required": False},
     {"name": "subject_type", "type": "string", "required": False},
     {"name": "subject_id", "type": "string", "required": False},

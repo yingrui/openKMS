@@ -43,15 +43,19 @@ Both types are **hand-created** (no dataset). For such a type the platform's ide
 display metadata there, not identity; `object_key_properties()` returns `[__rid]` whenever `dataset_id`
 is null.
 
-| | identity used by the platform | business identifier |
-|---|---|---|
-| `Rule` | `__rid` (`object_id`) | none — the rule's name is its label (`display_property = name`) |
-| `Event` | `__rid` (`object_id`) | `event_id` = `rule_id\|scope\|period`, used for dedupe and cited in evidence |
+A rule therefore carries two identifiers, and they answer different questions:
 
-So: link, fetch and dedupe by `object_id`; use `event_id` only as the human/evidence-level identifier. An
-earlier version declared `Rule.id` as a required property and never wrote it — a required property no
-instance carried, and a key property that identified nothing; the bootstrap now drops it (additively: it
-only prunes properties this module itself declared and never wrote).
+| | what it is | stable across |
+|---|---|---|
+| `rule_id` (on `Rule`) | the business identifier — a slug such as `allocation-overcheck`; unique, generated from the name when left empty | delete + recreate, export/import |
+| `object_id` (`__rid`) | the platform identity used by links, actions, ACL and every path parameter | this deployment only |
+
+Events record both: `rule_id` (the slug, what a human reads in an inbox, a log line or an export) and
+`rule_object_id` (the pointer used to join back to the object). `event_id` = `rule_id|scope|period` is the
+event's own business identifier — it is what dedupe keys on and what evidence cites.
+
+Renaming a rule's display name does not touch `rule_id`: the slug is the contract. Changing the slug itself
+is allowed but re-points future events, so treat it like renaming a published API.
 
 ## Rule
 

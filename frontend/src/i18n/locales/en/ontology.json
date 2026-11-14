@@ -1439,6 +1439,9 @@
     "groupLabel": "Evaluated per — name",
     "groupLabelHint": "What a reader calls it (“scenario”); used in the condition text and on each event.",
     "groupLabelPlaceholder": "e.g. scenario",
-    "groupedRunSummary": "{{groups}} groups, {{failed}} triggered"
+    "groupedRunSummary": "{{groups}} groups, {{failed}} triggered",
+    "fieldRuleId": "Rule id",
+    "fieldRuleIdHint": "A stable slug (allocation-overcheck): cited on events and exports; generated from the name when empty.",
+    "fieldRuleIdPlaceholder": "e.g. allocation-overcheck"
   }
 }

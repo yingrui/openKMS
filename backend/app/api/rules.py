@@ -11,6 +11,7 @@ dataset summaries) — never the other way round.
 from __future__ import annotations
 
 import json
+import re
 import uuid
 from typing import Any
 
@@ -72,8 +73,19 @@ class RuleGroup(BaseModel):
     label: str | None = None
 
 
+SLUG = r"^[a-z][a-z0-9-]{1,63}$"
+
+
+def _slugify(name: str) -> str:
+    """An ASCII slug from a name; a name with no ASCII (e.g. Chinese) gets a stable short fallback."""
+    slug = re.sub(r"[^a-z0-9]+", "-", name.lower()).strip("-")
+    slug = re.sub(r"-{2,}", "-", slug)[:48].strip("-")
+    return slug if len(slug) >= 2 else "rule"
+
+
 class RuleWrite(BaseModel):
     name: str
+    rule_id: str | None = Field(default=None, pattern=SLUG)
     subject: RuleSubject
     condition: dict[str, Any]
     severity: str = Field(default="P1", pattern="^P[0-2]$")
@@ -89,6 +101,7 @@ class RuleWrite(BaseModel):
 
 class RulePatch(BaseModel):
     name: str | None = None
+    rule_id: str | None = Field(default=None, pattern=SLUG)
     subject: RuleSubject | None = None
     condition: dict[str, Any] | None = None
     severity: str | None = Field(default=None, pattern="^P[0-2]$")
@@ -103,6 +116,7 @@ class RulePatch(BaseModel):
 
 class RuleOut(BaseModel):
     object_id: str
+    rule_id: str | None = None
     name: str | None = None
     domain: str | None = None
     subject: dict | None = None
@@ -156,6 +170,7 @@ class EventOut(BaseModel):
     description: str | None = None
     evidence: str | None = None
     rule_id: str | None = None
+    rule_object_id: str | None = None
     rule_version: int | None = None
     subject_type: str | None = None
     subject_id: str | None = None
@@ -198,6 +213,7 @@ def _rule_out(instance: ObjectInstance) -> RuleOut:
     data = dict(instance.data or {})
     return RuleOut(
         object_id=instance.id,
+        rule_id=data.get("rule_id"),
         name=data.get("name"),
         domain=data.get("domain"),
         subject=_parse_maybe_json(data.get("subject")),
@@ -247,6 +263,18 @@ async def _load_rule(db: AsyncSession, rule_id: str, rule_type) -> ObjectInstanc
     return instance
 
 
+async def _rule_id_taken(db: AsyncSession, rule_type, rule_id: str, *, exclude: str | None = None) -> bool:
+    rows = (
+        await db.execute(
+            select(ObjectInstance.id).where(
+                ObjectInstance.object_type_id == rule_type.id,
+                ObjectInstance.data["rule_id"].astext == rule_id,
+            )
+        )
+    ).scalars().all()
+    return any(row != exclude for row in rows)
+
+
 def _write_values(payload: RuleWrite, request: Request) -> dict[str, Any]:
     try:
         validate_condition(payload.condition)
@@ -254,7 +282,9 @@ def _write_values(payload: RuleWrite, request: Request) -> dict[str, Any]:
         raise HTTPException(status_code=400, detail=f"Invalid condition: {exc}") from exc
     p = request.state.openkms_jwt_payload
     uname = p.get("preferred_username") or p.get("name")
+    rule_id = (payload.rule_id or "").strip() or _slugify(payload.name)
     return {
+        "rule_id": rule_id,
         "name": payload.name.strip(),
         "domain": payload.domain,
         "subject": json.dumps(payload.subject.model_dump(), ensure_ascii=False),
@@ -303,6 +333,8 @@ async def list_rules(
 async def create_rule(request: Request, body: RuleWrite, db: AsyncSession = Depends(get_db)):
     rule_type, event_type = await _rule_type_or_409(db)
     data = _write_values(body, request)
+    if await _rule_id_taken(db, rule_type, data["rule_id"]):
+        raise HTTPException(status_code=409, detail=f"rule_id '{data['rule_id']}' is taken")
     instance = ObjectInstance(id=uuid.uuid4().hex, object_type_id=rule_type.id, data=data)
     db.add(instance)
     await db.flush()
@@ -335,6 +367,10 @@ async def update_rule(
         data["domain"] = body.subject.kind
     if body.about_object_type is not None:
         data["about_object_type"] = body.about_object_type
+    if body.rule_id is not None and body.rule_id != data.get("rule_id"):
+        if await _rule_id_taken(db, rule_type, body.rule_id, exclude=rule_id):
+            raise HTTPException(status_code=409, detail=f"rule_id '{body.rule_id}' is taken")
+        data["rule_id"] = body.rule_id
     if "group_by" in body.model_fields_set:
         data["group_by"] = (
             json.dumps(body.group_by.model_dump(), ensure_ascii=False) if body.group_by else None
@@ -374,8 +410,9 @@ async def list_rule_events(
 ):
     rule_type, event_type = await _rule_type_or_409(db)
     await _load_rule(db, rule_id, rule_type)
+    # The path id is the rule's object id; events point at it through `rule_object_id`.
     items, total = await list_events(
-        db, event_type, rule_id=rule_id, status=status, limit=limit, offset=offset
+        db, event_type, rule_object_id=rule_id, status=status, limit=limit, offset=offset
     )
     return EventListResponse(items=[EventOut(**item) for item in items], total=total)
 

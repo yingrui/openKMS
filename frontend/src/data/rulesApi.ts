@@ -32,6 +32,7 @@ export type RuleGroupBy = { field: string; label?: string | null };
 
 export type RuleOut = {
   object_id: string;
+  rule_id: string | null;
   name: string | null;
   domain: string | null;
   subject: RuleSubject | null;
@@ -54,6 +55,7 @@ export type RuleOut = {
 
 export type RuleWritePayload = {
   name: string;
+  rule_id?: string | null;
   subject: RuleSubject;
   condition: RuleCondition;
   severity: string;

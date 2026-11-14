@@ -192,13 +192,13 @@ def _group_key(value: Any) -> str:
 
 
 async def _find_open_event(
-    db: AsyncSession, event_type: ObjectType, *, rule_id: str, scope: str, period_start: str, period_end: str
+    db: AsyncSession, event_type: ObjectType, *, rule: str, scope: str, period_start: str, period_end: str
 ) -> ObjectInstance | None:
     rows = (
         await db.execute(
             select(ObjectInstance).where(
                 ObjectInstance.object_type_id == event_type.id,
-                ObjectInstance.data["rule_id"].astext == rule_id,
+                ObjectInstance.data["rule_object_id"].astext == rule,
                 ObjectInstance.data["scope"].astext == scope,
                 ObjectInstance.data["period_start"].astext == period_start,
                 ObjectInstance.data["period_end"].astext == period_end,
@@ -223,7 +223,7 @@ async def _close_open_events(
         await db.execute(
             select(ObjectInstance).where(
                 ObjectInstance.object_type_id == event_type.id,
-                ObjectInstance.data["rule_id"].astext == rule,
+                ObjectInstance.data["rule_object_id"].astext == rule,
                 ObjectInstance.data["period_start"].astext == period_start,
                 ObjectInstance.data["period_end"].astext == period_end,
                 ObjectInstance.data["event_end_time"].astext.is_(None),
@@ -267,10 +267,11 @@ async def _upsert_event(
     values: dict[str, float | None],
 ) -> str:
     existing = await _find_open_event(
-        db, event_type, rule_id=rule.id, scope=scope, period_start=period_start, period_end=period_end
+        db, event_type, rule=rule.id, scope=scope, period_start=period_start, period_end=period_end
     )
     evidence = {
-        "rule_id": rule.id,
+        "rule_id": str(rule_data.get("rule_id") or ""),
+        "rule_object_id": rule.id,
         "rule_version": rule_data.get("version", 1),
         "group": group,
         "values": values,
@@ -293,7 +294,7 @@ async def _upsert_event(
     severity = str(rule_data.get("severity") or "P1")
     title = _event_title(rule_data, group)
     data = {
-        "event_id": "|".join([rule.id, scope, period_start]),
+        "event_id": "|".join([str(rule_data.get("rule_id") or rule.id), scope, period_start]),
         "title": title,
         "domain": str(rule_data.get("domain") or "metric"),
         "intent": INTENT_BY_SEVERITY.get(severity, "warning"),
@@ -307,11 +308,12 @@ async def _upsert_event(
         "evidence": json.dumps(evidence, ensure_ascii=False),
         "status": "open",
         "assignee": None,
-        "rule_id": rule.id,
+        "rule_id": str(rule_data.get("rule_id") or ""),
+        "rule_object_id": rule.id,
         "rule_version": rule_data.get("version", 1),
         "subject_type": subject_type,
         "subject_id": subject_id,
-        "dedupe_key": "|".join([rule.id, scope, period_start, period_end]),
+        "dedupe_key": "|".join([str(rule_data.get("rule_id") or rule.id), scope, period_start, period_end]),
     }
     instance = ObjectInstance(id=__import__("uuid").uuid4().hex, object_type_id=event_type.id, data=data)
     db.add(instance)

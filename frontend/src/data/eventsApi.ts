@@ -15,6 +15,7 @@ export type EventOut = {
   description: string | null;
   evidence: string | null;
   rule_id: string | null;
+  rule_object_id: string | null;
   rule_version: number | null;
   subject_type: string | null;
   subject_id: string | null;
