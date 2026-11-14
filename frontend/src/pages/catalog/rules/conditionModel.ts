@@ -16,7 +16,7 @@
  * than flattening the condition into something else.
  */
 
-import type { RuleCondition, RuleOperand } from '../../data/rulesApi';
+import type { RuleCondition, RuleOperand } from '../../../data/rulesApi';
 
 export const BUILDER_OPS = ['<', '<=', '>', '>=', '==', '!='] as const;
 export const AGG_FNS = ['count', 'sum', 'avg', 'min', 'max'] as const;

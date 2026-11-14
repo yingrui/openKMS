@@ -39,6 +39,9 @@ RULE_PROPERTIES: list[dict] = [
     {"name": "owner", "type": "string", "required": False},
     {"name": "status", "type": "string", "required": False},
     {"name": "version", "type": "number", "required": False},
+    {"name": "group_by", "type": "string", "required": False},
+    {"name": "last_groups", "type": "number", "required": False},
+    {"name": "last_failed_groups", "type": "string", "required": False},
     {"name": "last_run_at", "type": "datetime", "required": False},
     {"name": "last_status", "type": "string", "required": False},
     {"name": "last_values", "type": "string", "required": False},
@@ -89,7 +92,16 @@ async def ensure_builtin_ontology(db: AsyncSession) -> list[str]:
         (EVENT_TYPE_NAME, "事件：带着开始/结束时间的对象", EVENT_PROPERTIES, EVENT_CONFIG, "title"),
     )
     for api_name, description, properties, event_config, display_property in specs:
-        if await _by_api_name(db, api_name):
+        existing = await _by_api_name(db, api_name)
+        if existing:
+            # Additive only: a property declared after the type shipped is appended when missing; an
+            # admin's edits (type, required, removal) are never rewritten.
+            declared = {str(p.get("name")) for p in (existing.properties or [])}
+            missing = [p for p in properties if str(p.get("name")) not in declared]
+            if missing:
+                existing.properties = [*(existing.properties or []), *missing]
+                await db.flush()
+                created.append(f"{api_name}+{len(missing)} props")
             continue
         db.add(
             ObjectType(

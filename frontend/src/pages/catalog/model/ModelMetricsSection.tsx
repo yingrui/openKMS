@@ -226,7 +226,7 @@ export function ModelMetricsSection() {
                     {openEvents[m.id] ? (
                       <Link
                         className="metric-events-badge"
-                        to={`/ontology-manager/rules?tab=events&subject_type=metric&subject_id=${m.id}`}
+                        to={`/data-rules?tab=events&subject_type=metric&subject_id=${m.id}`}
                         title={t('dataModel.metricOpenEvents', { count: openEvents[m.id] })}
                       >
                         <BellRing size={12} aria-hidden />

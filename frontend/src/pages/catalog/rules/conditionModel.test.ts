@@ -12,7 +12,7 @@ import {
   setGroupMode,
   toTree,
 } from './conditionModel';
-import type { RuleCondition } from '../../data/rulesApi';
+import type { RuleCondition } from '../../../data/rulesApi';
 
 const metric = (id: string) => ({ metric: id });
 

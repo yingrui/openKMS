@@ -825,7 +825,8 @@
     "openRules": "Open in Rules",
     "ruleCount_one": "{{count}} rule watches this dataset",
     "ruleCount_other": "{{count}} rules watch this dataset",
-    "noEvents": "No events. A rule that holds and carries advice appears here."
+    "noEvents": "No events. A rule that holds and carries advice appears here.",
+    "tabRules": "Rules"
   },
   "groups": {
     "title": "Groups",

@@ -13,8 +13,8 @@
 import { operandLabel } from './rulesLabels';
 import { useTranslation } from 'react-i18next';
 import { CopyPlus, Plus, Trash2 } from 'lucide-react';
-import type { MetricResponse } from '../../data/metricsApi';
-import type { DatasetResponse } from '../../data/datasetsApi';
+import type { MetricResponse } from '../../../data/metricsApi';
+import type { DatasetResponse } from '../../../data/datasetsApi';
 import {
   AGG_FNS,
   BUILDER_OPS,

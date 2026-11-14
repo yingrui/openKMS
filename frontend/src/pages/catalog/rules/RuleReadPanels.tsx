@@ -7,12 +7,12 @@
 
 import { useTranslation } from 'react-i18next';
 import { BellRing, Trash2 } from 'lucide-react';
-import { EmptyState, StatusChip } from '../../styles/design-system';
-import { EntityViewPanel } from '../shared/EntityViewShell';
-import type { EventOut } from '../../data/eventsApi';
-import type { DatasetResponse } from '../../data/datasetsApi';
-import type { MetricResponse } from '../../data/metricsApi';
-import type { RuleOut } from '../../data/rulesApi';
+import { EmptyState, StatusChip } from '../../../styles/design-system';
+import { EntityViewPanel } from '../../shared/EntityViewShell';
+import type { EventOut } from '../../../data/eventsApi';
+import type { DatasetResponse } from '../../../data/datasetsApi';
+import type { MetricResponse } from '../../../data/metricsApi';
+import type { RuleOut } from '../../../data/rulesApi';
 import type { GroupNode } from './conditionModel';
 import { ConditionTree } from './ConditionTree';
 import { RulesEventsTable } from './RulesEventsTable';

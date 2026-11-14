@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { conditionLabel, conditionScopeNote, operandLabel, valueRows } from './rulesLabels';
-import type { RuleCondition } from '../../data/rulesApi';
+import type { RuleCondition } from '../../../data/rulesApi';
 
 const SEL = 'a97503a9-52bd-4ea7-887c-892a1233e5ae';
 const FILTER = [{ field: 'scenario_id', op: '=', value: SEL }];

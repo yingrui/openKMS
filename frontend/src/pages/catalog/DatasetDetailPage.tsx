@@ -199,6 +199,10 @@ export function DatasetDetailPage() {
                 { to: `${base}/columns`, label: t('datasets.columns') },
                 { to: `${base}/relationships`, label: t('datasets.relationships') },
                 { to: `${base}/quality`, label: t('datasets.quality') },
+                {
+                  to: `/data-rules?tab=events&subject_type=dataset&subject_id=${dataset.id}`,
+                  label: t('datasets.tabRules'),
+                },
                 { to: `${base}/settings`, label: t('datasets.settings') },
                 { to: `${base}/sharing`, label: t('datasets.sharing') },
               ]
@@ -245,7 +249,7 @@ function DatasetRulesEventsPanel({ datasetId }: { datasetId: string }) {
       description={t('datasets.rulesAndEventsHint')}
       actions={
         <Link
-          to={`/ontology-manager/rules?tab=events&subject_type=dataset&subject_id=${datasetId}`}
+          to={`/data-rules?tab=events&subject_type=dataset&subject_id=${datasetId}`}
           className="btn btn-secondary btn-sm"
         >
           {t('datasets.openRules')}

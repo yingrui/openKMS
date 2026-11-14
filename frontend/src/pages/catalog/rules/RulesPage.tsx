@@ -18,16 +18,17 @@ import {
   TableRowActionButton,
   TableRowActionCell,
   TableRowActions,
-} from '../../styles/design-system';
+} from '../../../styles/design-system';
 import { conditionLabel } from './rulesLabels';
-import { evaluateRule, evaluateRules, fetchRules, updateRule, type RuleOut } from '../../data/rulesApi';
-import { fetchEvents, transitionEvent, type EventOut } from '../../data/eventsApi';
+import { evaluateRule, evaluateRules, fetchRules, updateRule, type RuleOut } from '../../../data/rulesApi';
+import { fetchEvents, transitionEvent, type EventOut } from '../../../data/eventsApi';
 import { RulesEventsTable } from './RulesEventsTable';
 import { RunRulesDialog, type RunParams } from './RunRulesDialog';
-import { fetchMetrics, type MetricResponse } from '../../data/metricsApi';
-import '../../styles/settings-page.scss';
-import '../ontology/ontology-admin.scss';
-import '../../styles/rules.scss';
+import { fetchMetrics, type MetricResponse } from '../../../data/metricsApi';
+import { DatasetAppTabs } from '../../../components/ontology/DatasetAppTabs';
+import '../../../styles/settings-page.scss';
+import '../../ontology/ontology-admin.scss';
+import '../../../styles/rules.scss';
 
 function severityTone(severity: string | null): 'warn' | 'accent' | 'neutral' {
   if (severity === 'P0') return 'warn';
@@ -177,12 +178,14 @@ export function RulesPage() {
             {running ? <Loader2 size={16} className="animate-spin" aria-hidden /> : <Play size={16} aria-hidden />}
             <span>{running ? t('rules.running') : t('rules.runAll')}</span>
           </button>
-          <Link to="/ontology-manager/rules/new" className="btn btn-primary">
+          <Link to="/data-rules/new" className="btn btn-primary">
             <Plus size={16} aria-hidden />
             {t('rules.create')}
           </Link>
         </div>
       </div>
+
+      <DatasetAppTabs />
 
       <div className="rules-panel">
         <div className="settings-page-tabs" role="tablist">
@@ -221,7 +224,7 @@ export function RulesPage() {
                   icon={<BellRing size={32} aria-hidden />}
                   title={t('rules.empty')}
                   action={
-                    <Link to="/ontology-manager/rules/new" className="btn btn-primary">
+                    <Link to="/data-rules/new" className="btn btn-primary">
                       {t('rules.create')}
                     </Link>
                   }
@@ -243,7 +246,7 @@ export function RulesPage() {
                       {rules.map((rule) => (
                         <tr key={rule.object_id}>
                           <td>
-                            <Link to={`/ontology-manager/rules/${rule.object_id}`} className="rules-name-btn">
+                            <Link to={`/data-rules/${rule.object_id}`} className="rules-name-btn">
                               {rule.name ?? '—'}
                             </Link>
                             {rule.status === 'paused' ? (

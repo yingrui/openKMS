@@ -21,6 +21,7 @@ export function DatasetAppTabs() {
     !pathname.startsWith('/datasets/sources');
   const onModel = pathname.startsWith('/data-model');
   const onMetrics = pathname.startsWith('/data-metrics');
+  const onRules = pathname.startsWith('/data-rules');
 
   return (
     <nav className="dataset-app-tabs" aria-label={t('datasets.title')}>
@@ -44,6 +45,13 @@ export function DatasetAppTabs() {
         aria-current={onMetrics ? 'page' : undefined}
       >
         {t('datasets.tabMetrics')}
+      </Link>
+      <Link
+        to="/data-rules"
+        className={`dataset-app-tab${onRules ? ' dataset-app-tab--active' : ''}`}
+        aria-current={onRules ? 'page' : undefined}
+      >
+        {t('datasets.tabRules')}
       </Link>
       <Link
         to="/datasets/quality-issues"

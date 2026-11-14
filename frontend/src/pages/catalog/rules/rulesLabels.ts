@@ -16,7 +16,7 @@
  * Everything here is derived from the stored JSON, so the sentence cannot drift from the rule.
  */
 
-import type { RuleCondition, RuleOperand } from '../../data/rulesApi';
+import type { RuleCondition, RuleOperand } from '../../../data/rulesApi';
 import { AGG_FNS, type AggFn, type OperandFilter } from './conditionModel';
 
 export type LabelLookups = {

@@ -818,7 +818,8 @@
     "openRules": "在 Rules 中打开",
     "ruleCount_one": "{{count}} 条规则在监视这个数据集",
     "ruleCount_other": "{{count}} 条规则在监视这个数据集",
-    "noEvents": "暂无事件。规则命中且带有建议时会出现在这里。"
+    "noEvents": "暂无事件。规则命中且带有建议时会出现在这里。",
+    "tabRules": "规则"
   },
   "groups": {
     "title": "分组",

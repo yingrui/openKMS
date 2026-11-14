@@ -1,6 +1,6 @@
 import { NavLink, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { BellRing, Box, Code2, FolderTree, Link2, Network, Zap } from 'lucide-react';
+import { Box, Code2, FolderTree, Link2, Network, Zap } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 
 type NavItem = {
@@ -46,13 +46,6 @@ const MANAGER_NAV: NavItem[] = [
     icon: Code2,
     match: (p) => p.startsWith('/ontology-manager/functions'),
     canPath: '/ontology-manager/functions',
-  },
-  {
-    to: '/ontology-manager/rules',
-    labelKey: 'ontologyRules',
-    icon: BellRing,
-    match: (p) => p.startsWith('/ontology-manager/rules'),
-    canPath: '/ontology-manager/rules',
   },
   {
     to: '/ontology-manager/action-types',

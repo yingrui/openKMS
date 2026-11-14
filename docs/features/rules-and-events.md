@@ -8,9 +8,16 @@ the condition holds, and closes that event when it stops holding.
 thing you can link, triage and cite.* Metrics are the first people to write rules — quality rules,
 schema changes and pipeline failures are meant to use the same objects.
 
-**Where it lives:** Ontology (`/ontology-manager/rules`), next to object types, link types, functions
-and action types — **not** in Catalog. The dependency runs one way: the ontology layer reads the data
-layer (`run_query`, dataset summaries); the data layer never calls into rules.
+**Where it lives:** **Catalog** (`/data-rules`) — the app's tab bar lists it beside Datasets · Semantic
+Model · Metrics · Quality Issues. The *objects* still live in the ontology (`Rule` / `Event`, so they
+inherit ACLs, search, the graph and Actions) but the *work* — writing a rule, reading what it found —
+happens where the analyst already is. Ontology Manager shows the two object types as schema and nothing
+else; its Rules rail item is gone.
+
+Entry points follow the thing being checked: a metric row carries its open-event badge, a table dataset
+offers a 规则 entry beside Quality, and both link into `/data-rules` pre-filtered by that subject.
+Writes need `data:write` (analysts) or `ontology:write` (admins) — the old `ontology:write`-only gate was
+wrong for the audience.
 
 ---
 

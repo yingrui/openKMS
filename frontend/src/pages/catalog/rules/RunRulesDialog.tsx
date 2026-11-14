@@ -8,7 +8,7 @@
 
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Dialog, FormField } from '../../styles/design-system';
+import { Dialog, FormField } from '../../../styles/design-system';
 
 export type RunParams = { period_start: string; period_end: string };
 

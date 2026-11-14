@@ -13,9 +13,9 @@ import {
   TableRowActionButton,
   TableRowActionCell,
   TableRowActions,
-} from '../../styles/design-system';
-import type { EventOut } from '../../data/eventsApi';
-import '../../styles/rules.scss';
+} from '../../../styles/design-system';
+import type { EventOut } from '../../../data/eventsApi';
+import '../../../styles/rules.scss';
 
 function severityTone(severity: string | null): 'warn' | 'accent' | 'neutral' {
   if (severity === 'P0') return 'warn';

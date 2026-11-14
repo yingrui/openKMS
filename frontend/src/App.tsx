@@ -132,10 +132,10 @@ const GroupsListPage = lazy(() =>
   import('./pages/ontology-manager/GroupsListPage').then((m) => ({ default: m.GroupsListPage })),
 );
 const RulesPage = lazy(() =>
-  import('./pages/ontology-manager/RulesPage').then((m) => ({ default: m.RulesPage })),
+  import('./pages/catalog/rules/RulesPage').then((m) => ({ default: m.RulesPage })),
 );
 const RuleDetailPage = lazy(() =>
-  import('./pages/ontology-manager/RuleDetailPage').then((m) => ({ default: m.RuleDetailPage })),
+  import('./pages/catalog/rules/RuleDetailPage').then((m) => ({ default: m.RuleDetailPage })),
 );
 const ActionsListPage = lazy(() =>
   import('./pages/ontology-manager/ActionsListPage').then((m) => ({ default: m.ActionsListPage })),
@@ -525,6 +525,9 @@ function App() {
           </Route>
           <Route path="data-insights" element={<DataInsightsPage />} />
           <Route path="evaluations" element={<FeatureGate feature="evaluations"><EvaluationDatasetList /></FeatureGate>} />
+          <Route path="data-rules" element={<RulesPage />} />
+          <Route path="data-rules/new" element={<RuleDetailPage />} />
+          <Route path="data-rules/:ruleId" element={<RuleDetailPage />} />
           <Route path="datasets/sources" element={<DatasetSourcesPage />} />
           <Route path="datasets/quality-issues" element={<QualityIssuesPage />} />
           <Route path="datasets" element={<DatasetsListPage />} />
@@ -552,9 +555,7 @@ function App() {
               <Route path="observability" element={<FunctionObservabilityTab />} />
             </Route>
             <Route path="groups" element={<GroupsListPage />} />
-            <Route path="rules" element={<RulesPage />} />
-            <Route path="rules/new" element={<RuleDetailPage />} />
-            <Route path="rules/:ruleId" element={<RuleDetailPage />} />
+
             <Route path="groups/:groupId" element={<GroupDetailPage />}>
               <Route index element={<GroupOverviewTab />} />
               <Route path="related" element={<GroupRelatedTab />} />

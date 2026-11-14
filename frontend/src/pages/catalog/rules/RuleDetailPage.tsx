@@ -14,7 +14,7 @@ import { Link, useNavigate, useParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { ArrowLeft, Loader2, Pencil, Play } from 'lucide-react';
 import { toast } from 'sonner';
-import { FormField, StatusChip } from '../../styles/design-system';
+import { FormField, StatusChip } from '../../../styles/design-system';
 import {
   createRule,
   deleteRule,
@@ -24,21 +24,21 @@ import {
   updateRule,
   type RuleCondition,
   type RuleOut,
-} from '../../data/rulesApi';
-import { transitionEvent, type EventOut } from '../../data/eventsApi';
-import { fetchMetrics, type MetricResponse } from '../../data/metricsApi';
-import { fetchDatasetMetadata, fetchDatasets, type DatasetResponse } from '../../data/datasetsApi';
-import { fetchModelFields, type SemanticModelFieldResponse } from '../../data/semanticModelFieldsApi';
-import { useConfirm } from '../../contexts/ConfirmContext';
-import { EntityViewPanel } from '../shared/EntityViewShell';
+} from '../../../data/rulesApi';
+import { transitionEvent, type EventOut } from '../../../data/eventsApi';
+import { fetchMetrics, type MetricResponse } from '../../../data/metricsApi';
+import { fetchDatasetMetadata, fetchDatasets, type DatasetResponse } from '../../../data/datasetsApi';
+import { fetchModelFields, type SemanticModelFieldResponse } from '../../../data/semanticModelFieldsApi';
+import { useConfirm } from '../../../contexts/ConfirmContext';
+import { EntityViewPanel } from '../../shared/EntityViewShell';
 import { RuleReadPanels } from './RuleReadPanels';
 import { RunRulesDialog, type RunParams } from './RunRulesDialog';
 import { conditionLabel, conditionScopeNote } from './rulesLabels';
 import { fromTree, toTree, type GroupNode } from './conditionModel';
 import { ConditionTree } from './ConditionTree';
-import '../../styles/settings-page.scss';
-import '../ontology/ontology-admin.scss';
-import '../../styles/rules.scss';
+import '../../../styles/settings-page.scss';
+import '../../ontology/ontology-admin.scss';
+import '../../../styles/rules.scss';
 
 type FormState = {
   name: string;
@@ -295,7 +295,7 @@ export function RuleDetailPage() {
       if (isNew) {
         const created = await createRule(payload);
         toast.success(t('rules.toastCreated'));
-        navigate(`/ontology-manager/rules/${created.object_id}`, { replace: true });
+        navigate(`/data-rules/${created.object_id}`, { replace: true });
       } else if (rule) {
         const updated = await updateRule(rule.object_id, payload);
         setRule(updated);
@@ -313,7 +313,7 @@ export function RuleDetailPage() {
 
   const cancelEdit = () => {
     if (isNew) {
-      navigate('/ontology-manager/rules');
+      navigate('/data-rules');
       return;
     }
     if (rule) {
@@ -367,7 +367,7 @@ export function RuleDetailPage() {
     try {
       await deleteRule(rule.object_id);
       toast.success(t('rules.toastDeleted'));
-      navigate('/ontology-manager/rules');
+      navigate('/data-rules');
     } catch (e: unknown) {
       toast.error(e instanceof Error ? e.message : t('rules.toastSaveFailed'));
     }
@@ -422,7 +422,7 @@ export function RuleDetailPage() {
     <div className="ontology-admin">
       <div className="page-header">
         <div>
-          <Link to="/ontology-manager/rules" className="rules-back">
+          <Link to="/data-rules" className="rules-back">
             <ArrowLeft size={16} aria-hidden />
             {t('rules.backToList')}
           </Link>

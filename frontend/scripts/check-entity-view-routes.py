@@ -32,11 +32,16 @@ def resolve_modules(app: str) -> dict[str, str]:
     return modules
 
 
+#: The *component*, not the module path: `import { EntityViewPanel } from '../shared/EntityViewShell'`
+#: must not count — only pages that render the shell need the pane.
+SHELL_USAGE = re.compile(r"(?<![\w/.])EntityViewShell\b(?!\.)")
+
+
 def uses_entity_shell(spec: str) -> bool:
     base = (ROOT / "src" / spec.removeprefix("./")).resolve()
     for candidate in (base, base.with_suffix(".tsx"), base.with_suffix(".ts")):
         if candidate.is_file():
-            return "EntityViewShell" in candidate.read_text()
+            return bool(SHELL_USAGE.search(candidate.read_text()))
     return False
 
 

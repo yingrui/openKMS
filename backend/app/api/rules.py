@@ -23,9 +23,11 @@ from app.database import get_db
 from app.models.object_instance import ObjectInstance
 from app.services.identity.permissions.permission_catalog import (
     PERM_CONSOLE_OBJECT_TYPES,
+    PERM_DATA_READ,
+    PERM_DATA_WRITE,
     PERM_ONTOLOGY_WRITE,
 )
-from app.api.auth import require_any_permission, require_auth
+from app.api.auth import require_any_permission
 from app.services.ontology.object_neo4j_store import sync_queue_ids_to_neo4j
 from app.services.ontology.rules.builtin import builtin_types
 from app.services.ontology.rules.conditions import (
@@ -50,7 +52,12 @@ router = APIRouter(prefix="/rules", tags=["rules"])
 events_router = APIRouter(prefix="/events", tags=["rules"])
 
 
-WRITE_DEPS = [Depends(require_any_permission(PERM_CONSOLE_OBJECT_TYPES, PERM_ONTOLOGY_WRITE))]
+# Catalog's own permissions: writing a rule is a data-layer act (analysts do it), while an ontology
+# admin may still do it — the objects live in the ontology, the work lives in Catalog.
+WRITE_DEPS = [
+    Depends(require_any_permission(PERM_DATA_WRITE, PERM_ONTOLOGY_WRITE, PERM_CONSOLE_OBJECT_TYPES))
+]
+READ_DEPS = [Depends(require_any_permission(PERM_DATA_READ, PERM_DATA_WRITE, PERM_ONTOLOGY_WRITE))]
 
 
 class RuleSubject(BaseModel):
@@ -266,7 +273,7 @@ def _write_values(payload: RuleWrite, request: Request) -> dict[str, Any]:
     }
 
 
-@router.get("", response_model=list[RuleOut], dependencies=[Depends(require_auth)])
+@router.get("", response_model=list[RuleOut], dependencies=READ_DEPS)
 async def list_rules(
     request: Request,
     subject_type: str | None = Query(None, pattern="^(metric|dataset)$"),
@@ -343,7 +350,7 @@ async def update_rule(
     return _rule_out(instance)
 
 
-@router.get("/{rule_id}", response_model=RuleOut, dependencies=[Depends(require_auth)])
+@router.get("/{rule_id}", response_model=RuleOut, dependencies=READ_DEPS)
 async def get_rule(rule_id: str, db: AsyncSession = Depends(get_db)):
     rule_type, _event_type = await _rule_type_or_409(db)
     return _rule_out(await _load_rule(db, rule_id, rule_type))
@@ -358,7 +365,7 @@ async def delete_rule(rule_id: str, db: AsyncSession = Depends(get_db)):
     await db.commit()
 
 
-@router.get("/{rule_id}/events", response_model=EventListResponse, dependencies=[Depends(require_auth)])
+@router.get("/{rule_id}/events", response_model=EventListResponse, dependencies=READ_DEPS)
 async def list_rule_events(
     rule_id: str,
     status: str | None = None,
@@ -374,7 +381,7 @@ async def list_rule_events(
     return EventListResponse(items=[EventOut(**item) for item in items], total=total)
 
 
-@router.post("/{rule_id}/evaluate", response_model=EvaluateResponse, dependencies=[Depends(require_auth)])
+@router.post("/{rule_id}/evaluate", response_model=EvaluateResponse, dependencies=READ_DEPS)
 async def evaluate_one(
     rule_id: str,
     request: Request,
@@ -401,7 +408,7 @@ async def evaluate_one(
     )
 
 
-@router.post("/evaluate", response_model=EvaluateResponse, dependencies=[Depends(require_auth)])
+@router.post("/evaluate", response_model=EvaluateResponse, dependencies=READ_DEPS)
 async def evaluate_many(
     request: Request,
     body: RulesEvaluateRequest,
@@ -424,7 +431,7 @@ async def evaluate_many(
     )
 
 
-@events_router.get("", response_model=EventListResponse, dependencies=[Depends(require_auth)])
+@events_router.get("", response_model=EventListResponse, dependencies=READ_DEPS)
 async def list_all_events(
     subject_type: str | None = Query(None, pattern="^(metric|dataset)$"),
     subject_id: str | None = None,
@@ -453,7 +460,7 @@ async def list_all_events(
     return EventListResponse(items=[EventOut(**item) for item in items], total=total)
 
 
-@events_router.get("/summary", response_model=list[EventCount], dependencies=[Depends(require_auth)])
+@events_router.get("/summary", response_model=list[EventCount], dependencies=READ_DEPS)
 async def event_summary(
     subject_type: str | None = Query(None, pattern="^(metric|dataset)$"),
     db: AsyncSession = Depends(get_db),
@@ -464,7 +471,7 @@ async def event_summary(
     return [EventCount(**row) for row in rows]
 
 
-@events_router.patch("/{event_id}", response_model=EventOut, dependencies=[Depends(require_auth)])
+@events_router.patch("/{event_id}", response_model=EventOut, dependencies=READ_DEPS)
 async def transition_event(event_id: str, body: EventTransition, request: Request, db: AsyncSession = Depends(get_db)):
     """Acknowledge / dismiss / resolve / reopen. Closing writes an end time; reopening clears it."""
     _rule_type, event_type = await _rule_type_or_409(db)
