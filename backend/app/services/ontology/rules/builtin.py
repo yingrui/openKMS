@@ -28,7 +28,6 @@ EVENT_END_PROPERTY = "event_end_time"
 #: Property definitions written on first creation. Types are `string|number|datetime|boolean`
 #: (see the object-type schema); anything richer (conditions, evidence) is stored as JSON text.
 RULE_PROPERTIES: list[dict] = [
-    {"name": "id", "type": "string", "required": True},
     {"name": "name", "type": "string", "required": True},
     {"name": "domain", "type": "string", "required": False},
     {"name": "subject", "type": "string", "required": False},
@@ -72,6 +71,9 @@ EVENT_PROPERTIES: list[dict] = [
 
 EVENT_CONFIG = {"start_property": EVENT_START_PROPERTY, "end_property": EVENT_END_PROPERTY}
 
+#: Builtin properties that were declared once and never written, so removing them cannot lose data.
+PRUNED_PROPERTIES: dict[str, tuple[str, ...]] = {RULE_TYPE_NAME: ("id",)}
+
 
 async def _by_api_name(db: AsyncSession, api_name: str) -> ObjectType | None:
     return (
@@ -98,10 +100,28 @@ async def ensure_builtin_ontology(db: AsyncSession) -> list[str]:
             # admin's edits (type, required, removal) are never rewritten.
             declared = {str(p.get("name")) for p in (existing.properties or [])}
             missing = [p for p in properties if str(p.get("name")) not in declared]
-            if missing:
-                existing.properties = [*(existing.properties or []), *missing]
+            # A property this module once declared and never wrote (`Rule.id`) is dropped: a required
+            # property that no instance carries makes the schema lie.
+            pruned = [
+                p for p in (existing.properties or [])
+                if str(p.get("name")) in PRUNED_PROPERTIES.get(api_name, ())
+            ]
+            kept = [
+                p for p in (existing.properties or [])
+                if str(p.get("name")) not in PRUNED_PROPERTIES.get(api_name, ())
+            ]
+            stale_keys = [
+                k for k in (existing.key_properties or []) if str(k) in PRUNED_PROPERTIES.get(api_name, ())
+            ]
+            if missing or pruned or stale_keys:
+                existing.properties = [*kept, *missing]
+                if stale_keys:
+                    # A key property that is no longer declared cannot identify anything.
+                    existing.key_properties = [
+                        k for k in (existing.key_properties or []) if str(k) not in stale_keys
+                    ]
                 await db.flush()
-                created.append(f"{api_name}+{len(missing)} props")
+                created.append(f"{api_name}{'+' + str(len(missing)) if missing else ''}{'-' + str(len(pruned)) if pruned else ''} props")
             continue
         db.add(
             ObjectType(
@@ -111,7 +131,10 @@ async def ensure_builtin_ontology(db: AsyncSession) -> list[str]:
                 neo4j_label=api_name,
                 description=description,
                 dataset_id=None,
-                key_properties=["id"] if api_name == RULE_TYPE_NAME else ["event_id"],
+                # A hand-created type is identified by `__rid` (the instance id); `key_properties` is
+                # display metadata here. `Event.event_id` is a real business id (rule|group|period) and
+                # is kept; a rule has no business key of its own — its name is its label.
+                key_properties=[] if api_name == RULE_TYPE_NAME else ["event_id"],
                 properties=properties,
                 display_property=display_property,
                 event_config=event_config,

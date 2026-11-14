@@ -255,7 +255,6 @@ def _write_values(payload: RuleWrite, request: Request) -> dict[str, Any]:
     p = request.state.openkms_jwt_payload
     uname = p.get("preferred_username") or p.get("name")
     return {
-        "id": uuid.uuid4().hex,
         "name": payload.name.strip(),
         "domain": payload.domain,
         "subject": json.dumps(payload.subject.model_dump(), ensure_ascii=False),
@@ -304,7 +303,7 @@ async def list_rules(
 async def create_rule(request: Request, body: RuleWrite, db: AsyncSession = Depends(get_db)):
     rule_type, event_type = await _rule_type_or_409(db)
     data = _write_values(body, request)
-    instance = ObjectInstance(id=data.pop("id"), object_type_id=rule_type.id, data=data)
+    instance = ObjectInstance(id=uuid.uuid4().hex, object_type_id=rule_type.id, data=data)
     db.add(instance)
     await db.flush()
     await sync_queue_ids_to_neo4j(db, rule_type, upsert_ids=[instance.id], delete_ids=[])
