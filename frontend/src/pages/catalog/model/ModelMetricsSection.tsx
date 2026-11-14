@@ -12,6 +12,7 @@ import {
   makeMetricExpression,
   metricExpressionSql,
   updateMetric,
+  type MetricAdditivity,
   type MetricResponse,
 } from '../../../data/metricsApi';
 import { useConfirm } from '../../../contexts/ConfirmContext';
@@ -20,8 +21,9 @@ import { EntityViewHeader, EntityViewPanel } from '../../shared/EntityViewShell'
 import { fetchEventSummary } from '../../../data/eventsApi';
 import { useSemanticModelDetail } from './useSemanticModelDetail';
 import { datasetLabel } from '../datasetLabel';
+import { aiContextFields, aiContextPayload } from './metricAiContext';
 
-const METRIC_TYPES = ['simple', 'ratio', 'derived', 'cumulative', 'conversion'] as const;
+const ADDITIVITY = ['additive', 'non_additive'] as const;
 
 /** Model → Metrics: author model-level metrics (Ossie SQL expressions). Running is **Try**. */
 export function ModelMetricsSection() {
@@ -40,12 +42,16 @@ export function ModelMetricsSection() {
   const [editing, setEditing] = useState<MetricResponse | null>(null);
   const [name, setName] = useState('');
   const [baseDatasetId, setBaseDatasetId] = useState('');
-  const [type, setType] = useState<string>('simple');
+  const [additivity, setAdditivity] = useState<MetricAdditivity>('additive');
   const [expression, setExpression] = useState('');
   const [datatype, setDatatype] = useState('');
   const [selectedJoins, setSelectedJoins] = useState<string[]>([]);
   const [definition, setDefinition] = useState('');
   const [aiInstructions, setAiInstructions] = useState('');
+  // The three keys a consumer can rely on; the editor keeps them as plain lists, not free-form JSON.
+  const [aiSynonyms, setAiSynonyms] = useState('');
+  const [aiExamples, setAiExamples] = useState('');
+  const [aiNotFor, setAiNotFor] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
   const load = useCallback(async () => {
@@ -97,7 +103,7 @@ export function ModelMetricsSection() {
     setEditing(null);
     setName('');
     setBaseDatasetId(datasets[0]?.id ?? '');
-    setType('simple');
+    setAdditivity('additive');
     setExpression('');
     setDatatype('');
     setSelectedJoins([]);
@@ -110,14 +116,16 @@ export function ModelMetricsSection() {
     setEditing(m);
     setName(m.name);
     setBaseDatasetId(m.base_dataset_id);
-    setType(m.type);
+    setAdditivity(m.additivity);
     setExpression(metricExpressionSql(m));
     setDatatype(m.datatype ?? '');
     setSelectedJoins((m.joins as string[] | null) ?? []);
     setDefinition(m.business_definition ?? '');
-    setAiInstructions(
-      typeof m.ai_context?.instructions === 'string' ? String(m.ai_context.instructions) : '',
-    );
+    const ai = aiContextFields(m.ai_context);
+    setAiInstructions(ai.instructions);
+    setAiSynonyms(ai.synonyms);
+    setAiExamples(ai.examples);
+    setAiNotFor(ai.notFor);
     setShowForm(true);
   };
 
@@ -139,11 +147,12 @@ export function ModelMetricsSection() {
       semantic_model_id: semanticModelId,
       base_dataset_id: baseDatasetId,
       business_definition: definition.trim() || null,
-      type,
+      additivity,
       expression: makeMetricExpression(expression.trim()),
       datatype: datatype.trim() || null,
       joins: selectedJoins,
-      ai_context: aiInstructions.trim() ? { instructions: aiInstructions.trim() } : null,
+      // Only the keys that carry something are sent; an empty list is not context.
+      ai_context: aiContextPayload(aiInstructions, aiSynonyms, aiExamples, aiNotFor),
     };
     setSubmitting(true);
     try {
@@ -235,9 +244,20 @@ export function ModelMetricsSection() {
                     ) : null}
                   </td>
                   <td>{m.base_dataset_name ?? datasetNameById(m.base_dataset_id)}</td>
-                  <td>{m.type}</td>
+                  <td>
+                    <span className={`metric-additivity metric-additivity--${m.additivity}`}>
+                      {m.additivity === 'non_additive'
+                        ? t('datasets.metricNonAdditive')
+                        : t('datasets.metricAdditive')}
+                    </span>
+                  </td>
                   <td>
                     <code>{metricExpressionSql(m)}</code>
+                    {(m.depends_on ?? []).length > 0 ? (
+                      <p className="metric-depends-on">
+                        {t('datasets.metricDependsOn')}: {(m.depends_on ?? []).map((d) => d.name).join(' · ')}
+                      </p>
+                    ) : null}
                   </td>
                   <td className="dataset-field-row__actions">
                     <Link
@@ -316,11 +336,16 @@ export function ModelMetricsSection() {
                   ))}
                 </select>
               </FormField>
-              <FormField label={t('datasets.metricType')}>
-                <select value={type} onChange={(e) => setType(e.target.value)}>
-                  {METRIC_TYPES.map((mt) => (
-                    <option key={mt} value={mt}>
-                      {mt}
+              <FormField label={t('datasets.metricType')} hint={t('datasets.metricAdditivityHint')}>
+                <select
+                  value={additivity}
+                  onChange={(e) => setAdditivity(e.target.value as MetricAdditivity)}
+                >
+                  {ADDITIVITY.map((value) => (
+                    <option key={value} value={value}>
+                      {value === 'non_additive'
+                        ? t('datasets.metricNonAdditive')
+                        : t('datasets.metricAdditive')}
                     </option>
                   ))}
                 </select>
@@ -381,6 +406,30 @@ export function ModelMetricsSection() {
                   rows={2}
                   value={aiInstructions}
                   onChange={(e) => setAiInstructions(e.target.value)}
+                />
+              </FormField>
+              <FormField label={t('datasets.aiSynonyms')} hint={t('datasets.aiListsHint')}>
+                <input
+                  type="text"
+                  value={aiSynonyms}
+                  onChange={(e) => setAiSynonyms(e.target.value)}
+                  placeholder={t('datasets.aiSynonymsPlaceholder')}
+                />
+              </FormField>
+              <FormField label={t('datasets.aiExamples')} hint={t('datasets.aiExamplesHint')}>
+                <input
+                  type="text"
+                  value={aiExamples}
+                  onChange={(e) => setAiExamples(e.target.value)}
+                  placeholder={t('datasets.aiExamplesPlaceholder')}
+                />
+              </FormField>
+              <FormField label={t('datasets.aiNotFor')} hint={t('datasets.aiNotForHint')}>
+                <input
+                  type="text"
+                  value={aiNotFor}
+                  onChange={(e) => setAiNotFor(e.target.value)}
+                  placeholder={t('datasets.aiNotForPlaceholder')}
                 />
               </FormField>
       </Dialog>

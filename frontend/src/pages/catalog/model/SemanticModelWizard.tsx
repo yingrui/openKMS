@@ -110,7 +110,7 @@ export function SemanticModelWizard({
             name: m.name.trim(),
             semantic_model_id: model.id,
             base_dataset_id: m.baseDatasetId,
-            type: 'simple',
+            additivity: 'additive',
             expression: makeMetricExpression(m.expression.trim()),
           });
         } catch (e) {

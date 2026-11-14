@@ -582,7 +582,16 @@ export function ModelPlaygroundSection() {
                 <dt>{t('dataModel.playgroundBaseDataset')}</dt>
                 <dd>{metric.base_dataset_name ?? metric.base_dataset_id}</dd>
                 <dt>{t('datasets.metricType')}</dt>
-                <dd>{metric.type}</dd>
+                <dd>
+                  {metric.additivity === 'non_additive'
+                    ? t('datasets.metricNonAdditive')
+                    : t('datasets.metricAdditive')}
+                  {(metric.depends_on ?? []).length > 0
+                    ? ` · ${t('datasets.metricDependsOn')}: ${(metric.depends_on ?? [])
+                        .map((d) => d.name)
+                        .join(' · ')}`
+                    : ''}
+                </dd>
                 <dt>{t('dataModel.playgroundJoins')}</dt>
                 <dd>
                   {usedJoins.length

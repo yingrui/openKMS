@@ -45,7 +45,14 @@ export function MetricsListPage() {
     return metrics.filter(
       (m) =>
         !needle ||
-        [m.name, m.business_definition ?? '', name(m.semantic_model_id)]
+        [
+          m.name,
+          m.business_definition ?? '',
+          name(m.semantic_model_id),
+          // Someone searching "满足率" is looking for the metric whose synonyms say so.
+          ...(m.ai_context?.synonyms ?? []),
+          ...(m.ai_context?.examples ?? []),
+        ]
           .join(' ')
           .toLowerCase()
           .includes(needle),
@@ -115,11 +122,23 @@ export function MetricsListPage() {
                         {modelName(metric.semantic_model_id)}
                       </Link>
                     </td>
-                    <td>{metric.type}</td>
+                    <td>
+                      <span className={`metric-additivity metric-additivity--${metric.additivity}`}>
+                        {metric.additivity === 'non_additive'
+                          ? t('datasets.metricNonAdditive')
+                          : t('datasets.metricAdditive')}
+                      </span>
+                    </td>
                     <td>{metric.datatype ?? t('datasets.dash')}</td>
                     <td>{metric.base_dataset_name ?? t('datasets.dash')}</td>
                     <td>
                       <code>{metricExpressionSql(metric)}</code>
+                      {(metric.depends_on ?? []).length > 0 ? (
+                        <p className="metric-depends-on">
+                          {t('datasets.metricDependsOn')}:{' '}
+                          {(metric.depends_on ?? []).map((d) => d.name).join(' · ')}
+                        </p>
+                      ) : null}
                     </td>
                   </tr>
                 ))}

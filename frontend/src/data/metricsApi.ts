@@ -16,6 +16,23 @@ export interface MetricExpression {
   dialects?: MetricDialect[];
 }
 
+/** May the number be summed? `non_additive` (a ratio, a rate) must be recomputed, never added. */
+export type MetricAdditivity = 'additive' | 'non_additive';
+
+/** What the expression names: the metrics this one is computed from. */
+export interface MetricRef {
+  id: string;
+  name: string;
+}
+
+export interface MetricAiContext {
+  instructions?: string;
+  synonyms?: string[];
+  examples?: string[];
+  not_for?: string[];
+  [key: string]: unknown;
+}
+
 export interface MetricResponse {
   id: string;
   /** The model that defines it — the API has always sent this; the type was missing it. */
@@ -24,12 +41,13 @@ export interface MetricResponse {
   base_dataset_name: string | null;
   name: string;
   business_definition: string | null;
-  type: string;
+  additivity: MetricAdditivity;
+  depends_on: MetricRef[];
   expression: MetricExpression | null;
   datatype: string | null;
   filters: MetricFilter[] | null;
   joins: string[] | null;
-  ai_context: Record<string, unknown> | null;
+  ai_context: MetricAiContext | null;
   created_by_name: string | null;
   created_at: string;
   updated_at: string;
@@ -45,12 +63,12 @@ export interface MetricPayload {
   semantic_model_id: string;
   base_dataset_id: string;
   business_definition?: string | null;
-  type: string;
+  additivity: MetricAdditivity;
   expression: MetricExpression;
   datatype?: string | null;
   filters?: MetricFilter[] | null;
   joins?: string[] | null;
-  ai_context?: Record<string, unknown> | null;
+  ai_context?: MetricAiContext | null;
 }
 
 export async function fetchMetrics(semanticModelId?: string): Promise<MetricListResponse> {
