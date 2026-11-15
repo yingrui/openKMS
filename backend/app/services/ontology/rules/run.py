@@ -45,7 +45,6 @@ async def evaluate_rule_in_snapshot(
     dry_run: bool = False,
 ) -> list[EvalResult]:
     """Evaluate one rule; the caller keeps its own session for loading and serialising."""
-    key = f"{rule_id}|{period_start}|{period_end}"
     for attempt in range(1, MAX_ATTEMPTS + 1):
         session = async_session_maker()
         try:
@@ -85,7 +84,6 @@ async def evaluate_subject_in_snapshot(
     limit: int = 100,
 ) -> list[EvalResult]:
     """Every active rule of a subject, all against the same snapshot."""
-    key = f"{subject_type or 'all'}|{subject_id or ''}|{period_start}|{period_end}"
     for attempt in range(1, MAX_ATTEMPTS + 1):
         session = async_session_maker()
         try:
