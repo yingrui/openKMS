@@ -408,7 +408,6 @@ export function ModelMetricsSection() {
         open={showForm}
         onClose={() => !submitting && setShowForm(false)}
         closeDisabled={submitting}
-        dismissOnOverlay={false}
         title={editing ? t('datasets.editMetric') : t('datasets.addMetric')}
         closeAriaLabel={t('datasets.closeAria')}
         size="md"

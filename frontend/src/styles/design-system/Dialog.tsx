@@ -28,9 +28,8 @@ export type DialogProps = {
   /** When true, Escape / overlay click / close button do nothing. */
   closeDisabled?: boolean;
   /**
-   * Whether a click on the backdrop closes the dialog. Default **true** for short dialogs (pick, confirm),
-   * but a form with several fields should not vanish because the pointer landed a few pixels outside it —
-   * pass `false` there, so closing is a deliberate act.
+   * Whether a click on the backdrop closes the dialog. **Off by default**: an accidental click just outside
+   * a form must not discard it. A dialog that is only a pick-or-confirm (no input to lose) may opt in.
    */
   dismissOnOverlay?: boolean;
   /** Hide the default header close button (e.g. custom chrome). */
@@ -58,7 +57,7 @@ export function Dialog({
   bodyClassName,
   footer,
   closeDisabled = false,
-  dismissOnOverlay = true,
+  dismissOnOverlay = false,
   hideCloseButton = false,
   'aria-label': ariaLabel,
   closeAriaLabel = 'Close',

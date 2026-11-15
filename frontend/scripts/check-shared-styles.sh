@@ -211,6 +211,20 @@ if ! python3 scripts/check-hardcoded-text.py; then
   status=1
 fi
 
+# --- 26. Retired Chinese terms (ratchet) --------------------------------------
+# One word per thing: 演练场 / 查询台 named the same page, 质量问题 was a dataset-checks list beside 指标勾稽.
+# `check-terminology.py` reads the glossary of retired words; baseline 0.
+if ! python3 scripts/check-terminology.py; then
+  status=1
+fi
+
+# --- 27. Operand-to-words calls need both name lookups (ratchet) ---------------
+# `conditionLabel(…)` without `datasetName` prints `b77c2c08…` where a name belongs — a structural object
+# with an optional field, so no type-checker sees it. `check-label-lookups.py`, baseline 0.
+if ! python3 scripts/check-label-lookups.py; then
+  status=1
+fi
+
 # --- 23. Rules that style nothing (ratchet) -----------------------------------
 # A sheet rots one direction only: the component changes, its rules stay. Baseline:
 # scripts/dead-classes-baseline.txt, currently 0 — 272 dead blocks were removed across 128 sheets.
