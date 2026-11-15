@@ -21,7 +21,10 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
+from app.models.dataset_column import DatasetColumn
+from app.models.metric_definition import MetricDefinition
 from app.models.object_instance import ObjectInstance
+from app.models.semantic_model_field import SemanticModelField
 from app.services.identity.permissions.permission_catalog import (
     PERM_CONSOLE_OBJECT_TYPES,
     PERM_DATA_READ,
@@ -267,6 +270,63 @@ async def _load_rule(db: AsyncSession, rule_id: str, rule_type) -> ObjectInstanc
     return instance
 
 
+async def _group_field_known(
+    db: AsyncSession, subject: dict | None, field: str
+) -> tuple[bool, list[str]]:
+    """Is `group_by.field` something the subject can actually group by?
+
+    A metric rule asks its model; a dataset rule asks the dataset's columns. An unknown field used to
+    surface at run time as "条件无法判断" (a `None` operand), which reads like a data problem rather than
+    a typo — so it is a save-time 400 with the names that do exist.
+    """
+    kind = (subject or {}).get("kind")
+    ref = (subject or {}).get("ref")
+    if kind == "metric" and ref:
+        metric = await db.get(MetricDefinition, str(ref))
+        if metric is None:
+            metric = (
+                await db.execute(
+                    select(MetricDefinition).where(
+                        MetricDefinition.semantic_model_id == str(ref),
+                        MetricDefinition.name == str(ref),
+                    )
+                )
+            ).scalars().first()
+        if metric is not None:
+            rows = (
+                await db.execute(
+                    select(SemanticModelField.name, SemanticModelField.column_name).where(
+                        SemanticModelField.semantic_model_id == metric.semantic_model_id
+                    )
+                )
+            ).all()
+            names = sorted({str(n) for name_col in rows for n in name_col if n})
+            return field in names, names
+    if kind == "dataset" and ref:
+        rows = (
+            await db.execute(
+                select(DatasetColumn.column_name).where(DatasetColumn.dataset_id == str(ref))
+            )
+        ).scalars().all()
+        names = sorted({str(n) for n in rows if n})
+        return field in names, names
+    # An unresolvable subject is not this check's business — the evaluate step reports it.
+    return True, []
+
+
+async def _validate_group_by(db: AsyncSession, subject: dict | None, group: RuleGroup | None) -> None:
+    if group is None:
+        return
+    ok, names = await _group_field_known(db, subject, group.field)
+    if ok:
+        return
+    hint = ", ".join(names[:12]) if names else "nothing is declared"
+    raise HTTPException(
+        status_code=400,
+        detail=f"group_by.field '{group.field}' is not a field of this subject (known: {hint}).",
+    )
+
+
 async def _rule_id_taken(db: AsyncSession, rule_type, rule_id: str, *, exclude: str | None = None) -> bool:
     rows = (
         await db.execute(
@@ -337,6 +397,7 @@ async def list_rules(
 async def create_rule(request: Request, body: RuleWrite, db: AsyncSession = Depends(get_db)):
     rule_type, event_type = await _rule_type_or_409(db)
     data = _write_values(body, request)
+    await _validate_group_by(db, body.subject.model_dump(), body.group_by)
     if await _rule_id_taken(db, rule_type, data["rule_id"]):
         raise HTTPException(status_code=409, detail=f"rule_id '{data['rule_id']}' is taken")
     instance = ObjectInstance(id=uuid.uuid4().hex, object_type_id=rule_type.id, data=data)
@@ -376,6 +437,10 @@ async def update_rule(
             raise HTTPException(status_code=409, detail=f"rule_id '{body.rule_id}' is taken")
         data["rule_id"] = body.rule_id
     if "group_by" in body.model_fields_set:
+        subject = (
+            body.subject.model_dump() if body.subject else _parse_maybe_json(data.get("subject"))
+        )
+        await _validate_group_by(db, subject if isinstance(subject, dict) else None, body.group_by)
         data["group_by"] = (
             json.dumps(body.group_by.model_dump(), ensure_ascii=False) if body.group_by else None
         )

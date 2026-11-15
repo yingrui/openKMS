@@ -64,7 +64,30 @@ def validate_metric_definition(
     sql = metric_expression_sql(expression)
     if not sql or not sql.strip():
         raise MetricError("The metric needs an expression (its aggregate SQL fragment).")
-    return validate_sql_fragment(sql, what="expression")
+    fragment = validate_sql_fragment(sql, what="expression")
+    validate_additivity(fragment, additivity)
+    return fragment
+
+
+#: An aggregate whose value is a *mean* over rows can be recomputed at a coarser grain but never added:
+#: `AVG` over three scenarios is not the average of their averages.
+_MEAN_FUNCTIONS = ("AVG", "MEDIAN", "PERCENTILE_CONT", "PERCENTILE_DISC")
+
+
+def validate_additivity(sql: str, additivity: str) -> None:
+    """Reject the one contradiction a machine can see: a mean declared as additive.
+
+    `AVG(wos_after)` per scenario cannot be summed into a total — the engine recomputes it from rows,
+    which is correct; a consumer adding the group values is not. This is a lint, not a proof: a mean
+    written as `SUM(a) / COUNT(b)` slips through, because reading intent out of SQL is guesswork.
+    """
+    text = (sql or "").strip()
+    outer = text.upper()
+    if additivity == "additive" and any(outer.startswith(f) for f in _MEAN_FUNCTIONS):
+        raise MetricError(
+            "An average cannot be added across groups — mark this metric non_additive "
+            "(recompute it at the grain you need instead of summing the parts)."
+        )
 
 
 def validate_ai_context(value: dict[str, Any] | None) -> dict[str, Any] | None:

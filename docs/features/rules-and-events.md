@@ -130,6 +130,17 @@ rule's own page therefore offers **试算 (dry run)** next to **运行**:
 `POST /api/rules/{id}/evaluate` takes `dry_run: true`. The list-level "run all" has no trial: a trial has
 one subject by definition.
 
+## Grouping by a field that exists
+
+`group_by.field` is checked against the subject at save time: a metric rule against its model's fields, a
+dataset rule against the dataset's columns. An unknown name used to surface at run time as "条件无法判断"
+(a `None` operand), which reads like a data problem rather than a typo — now it is a 400 that lists the
+fields that do exist:
+
+```
+group_by.field 'scenario' is not a field of this subject (known: above_max, allocated_qty, …)
+```
+
 ## Rules are not snapshots
 
 A condition must not hard-code one row's id. "This period's allocation is over-allocated" is a statement

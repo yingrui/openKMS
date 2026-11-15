@@ -63,3 +63,27 @@ def test_ai_context_rejects_a_list_of_non_strings():
 
 def test_ai_context_passes_unknown_keys_through():
     assert validate_ai_context({"owner_note": "x"}) == {"owner_note": "x"}
+
+
+def test_a_mean_cannot_be_declared_additive():
+    with pytest.raises(MetricError) as exc:
+        validate_metric_definition(
+            name="平均 WOS",
+            additivity="additive",
+            expression={"dialects": {"ANSI_SQL": "AVG(wos_after)"}},
+        )
+    assert "cannot be added" in str(exc.value)
+    # The same metric declared honestly is fine.
+    validate_metric_definition(
+        name="平均 WOS",
+        additivity="non_additive",
+        expression={"dialects": {"ANSI_SQL": "AVG(wos_after)"}},
+    )
+
+
+def test_a_sum_is_still_additive():
+    validate_metric_definition(
+        name="额度",
+        additivity="additive",
+        expression={"dialects": {"ANSI_SQL": "SUM(allocated_qty)"}},
+    )
