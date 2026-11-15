@@ -454,7 +454,10 @@
     "timeDimensionNone": "这个模型还没有时间维度字段。到「数据集 → 字段」把某个字段的时间角色设为「是」（时间维度），再回来选择。",
     "timeDimensionStale": "⚠ {{name}}（已不是时间维度）",
     "timeDimensionsAvailable": "时间维度：{{names}}",
-    "timeDimensionsNone": "本模型没有时间维度，周期只作运行标识"
+    "timeDimensionsNone": "本模型没有时间维度，周期只作运行标识",
+    "timeBasis": "周期口径",
+    "timeBasisHint": "这个指标和时间的关系：决定“数据周期”只是标识，还是真的过滤数据。",
+    "timeBasisOnDimension": "按时间维度取数：{{name}}"
   },
   "datasets": {
     "title": "数据集",

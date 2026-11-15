@@ -459,7 +459,10 @@
     "timeDimensionNone": "This model has no time dimension yet. Set a field’s time role to “time dimension” under Dataset → Fields, then come back.",
     "timeDimensionStale": "⚠ {{name}} (no longer a time dimension)",
     "timeDimensionsAvailable": "Time dimensions: {{names}}",
-    "timeDimensionsNone": "No time dimension in this model — a period only identifies the run"
+    "timeDimensionsNone": "No time dimension in this model — a period only identifies the run",
+    "timeBasis": "How a period applies",
+    "timeBasisHint": "Whether a period only labels the run, cannot apply at all, or filters the data.",
+    "timeBasisOnDimension": "Filter by time dimension: {{name}}"
   },
   "datasets": {
     "title": "Datasets",

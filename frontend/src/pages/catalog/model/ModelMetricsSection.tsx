@@ -499,46 +499,45 @@ export function ModelMetricsSection() {
                   ))}
                 </select>
               </FormField>
-              <FormField label={t('dataModel.timeMode')} hint={t('dataModel.timeModeHint')}>
+              {/* One question — "how does this metric relate to time?" — instead of a mode select that
+                  reveals a second control only after you pick the right option. */}
+              <FormField label={t('dataModel.timeBasis')} hint={t('dataModel.timeBasisHint')}>
                 <select
-                  value={timeMode}
-                  onChange={(e) => setTimeMode(e.target.value as typeof timeMode)}
+                  className="ds-control"
+                  value={timeMode === 'period' ? `period:${timeDimension}` : timeMode}
+                  onChange={(e) => {
+                    const next = e.target.value;
+                    if (next.startsWith('period:')) {
+                      setTimeMode('period');
+                      setTimeDimension(next.slice('period:'.length));
+                    } else {
+                      setTimeMode(next as typeof timeMode);
+                      setTimeDimension('');
+                    }
+                  }}
                 >
                   <option value="none">{t('dataModel.timeModeNone')}</option>
-                  <option value="period">{t('dataModel.timeModePeriod')}</option>
                   <option value="snapshot">{t('dataModel.timeModeSnapshot')}</option>
+                  {timeDimensions.map((field) => (
+                    <option key={field.id} value={`period:${field.name}`}>
+                      {t('dataModel.timeBasisOnDimension', {
+                        name: field.label ?? field.name,
+                      })}
+                    </option>
+                  ))}
+                  {/* Stored binding that no longer resolves: keep it visible, and let the server explain. */}
+                  {timeMode === 'period' &&
+                  timeDimension &&
+                  !timeDimensions.some((field) => field.name === timeDimension) ? (
+                    <option value={`period:${timeDimension}`}>
+                      {t('dataModel.timeDimensionStale', { name: timeDimension })}
+                    </option>
+                  ) : null}
                 </select>
+                {timeDimensions.length === 0 ? (
+                  <p className="page-subtitle">{t('dataModel.timeDimensionNone')}</p>
+                ) : null}
               </FormField>
-              {timeMode === 'period' ? (
-                <FormField label={t('dataModel.timeDimension')} hint={t('dataModel.timeDimensionHint')}>
-                  {timeDimensions.length > 0 ? (
-                    <select
-                      className="ds-control"
-                      value={timeDimension}
-                      onChange={(e) => setTimeDimension(e.target.value)}
-                    >
-                      <option value="">{t('dataModel.timeDimensionPick')}</option>
-                      {timeDimensions.map((field) => (
-                        <option key={field.id} value={field.name}>
-                          {field.label ?? field.name}
-                          {field.datatype ? ` · ${field.datatype}` : ''}
-                        </option>
-                      ))}
-                      {/* A stored column that stopped being a time dimension must not vanish silently. */}
-                      {timeDimension &&
-                      !timeDimensions.some((field) => field.name === timeDimension) ? (
-                        <option value={timeDimension}>
-                          {t('dataModel.timeDimensionStale', { name: timeDimension })}
-                        </option>
-                      ) : null}
-                    </select>
-                  ) : (
-                    // Nothing to pick from: say where to create one instead of offering a text box the
-                    // server will reject.
-                    <p className="page-subtitle">{t('dataModel.timeDimensionNone')}</p>
-                  )}
-                </FormField>
-              ) : null}
               <FormField label={t('datasets.metricExpression')} hint={t('datasets.metricExpressionHint')}>
                 <textarea
                   rows={3}
