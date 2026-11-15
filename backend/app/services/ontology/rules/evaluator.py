@@ -20,7 +20,7 @@ from datetime import datetime, timezone
 from typing import Any
 
 from fastapi import Request
-from sqlalchemy import select
+from sqlalchemy import select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.catalog_scoped import require_model_read
@@ -300,6 +300,11 @@ async def _upsert_event(
     period_end: str,
     values: dict[str, float | None],
 ) -> str:
+    # Two runs of the same rule for the same scope and period must not both "find nothing" and insert.
+    # A transaction-scoped advisory lock serialises them; the run already owns its transaction (snapshot),
+    # so the lock is released at commit and cannot leak.
+    key = "|".join([str(rule_data.get("rule_id") or rule.id), scope, period_start, period_end])
+    await db.execute(text("SELECT pg_advisory_xact_lock(hashtext(:key))"), {"key": key})
     existing = await _find_open_event(
         db, event_type, rule=rule.id, scope=scope, period_start=period_start, period_end=period_end
     )
