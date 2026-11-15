@@ -216,6 +216,10 @@ def evaluate_groups(
     return out
 
 
+#: Monetary sums arrive as floats; comparing them exactly reports inequality for equal amounts.
+EQUALITY_EPSILON = 1e-9
+
+
 def compare(left: float, op: str, right: float) -> bool:
     if op == "<":
         return left < right
@@ -225,9 +229,10 @@ def compare(left: float, op: str, right: float) -> bool:
         return left > right
     if op == ">=":
         return left >= right
+    tolerance = EQUALITY_EPSILON * max(1.0, abs(left), abs(right))
     if op == "==":
-        return left == right
-    return left != right
+        return abs(left - right) <= tolerance
+    return abs(left - right) > tolerance
 
 
 def evaluate_condition(condition: Any, resolved: dict[str, float | None]) -> bool | None:

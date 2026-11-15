@@ -25,9 +25,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.catalog_scoped import require_model_read
 from app.models.metric_definition import MetricDefinition
+from app.models.semantic_model import SemanticModel
 from app.models.object_instance import ObjectInstance
 from app.models.object_type import ObjectType
 from app.services.data.dataset_rows import query_dataset_summary
+from app.services.ontology.rules.scoping import restricted_models_for_dataset, run_entity_scope
 from app.services.data.query import run_query
 from app.services.identity.acl.resource_acl_constants import PERM_READ
 from app.services.ontology.object_neo4j_store import sync_queue_ids_to_neo4j
@@ -52,7 +54,11 @@ from app.services.ontology.rules.conditions import (
 )
 from app.services.ontology.rules.links import link_event_about
 
+#: One run fetches at most this many groups; beyond it the verdict is "cannot decide", never a partial set.
 #: Severities that are worth a human's attention. P2 is "worth knowing" and stays in last_status.
+#: One run fetches at most this many groups; beyond it the verdict is "cannot decide", never a partial set.
+GROUP_LIMIT = 500
+
 PUBLISHING_SEVERITIES = ("P0", "P1")
 
 INTENT_BY_SEVERITY = {"P0": "danger", "P1": "warning", "P2": "primary"}
@@ -117,14 +123,23 @@ async def _metric_value(
     if metric is None:
         return None, f"metric {metric_id} not found"
     await require_model_read(metric.semantic_model_id, request, db)
-    _sql, _columns, rows, _capped, _ms = await run_query(
+    model = await db.get(SemanticModel, metric.semantic_model_id)
+    if model is None:
+        return None, f"metric {metric_id} has no semantic model"
+    entity_scope, reason = await run_entity_scope(db, request, model)
+    if reason:
+        return None, reason
+    _sql, _columns, rows, capped, _ms = await run_query(
         db,
         model_id=metric.semantic_model_id,
         metric=metric_id,
         filters=filters or None,
         group_by=[{"field": group_field}] if group_field else None,
-        limit=500 if group_field else 1,
+        limit=GROUP_LIMIT if group_field else 1,
+        entity_scope=entity_scope,
     )
+    if capped:
+        return None, f"more than {GROUP_LIMIT} groups — the run cannot decide on a partial set"
     if not rows:
         return None, f"metric {metric_id} returned no rows"
     if group_field:
@@ -138,6 +153,13 @@ async def _dataset_agg_value(
     dataset_id = str(spec.get("dataset_id"))
     # Same resource gate as the data grid: a rule may only read what the runner may read.
     await load_dataset_scoped(db, request, dataset_id, PERM_READ)
+    restricted = await restricted_models_for_dataset(db, dataset_id)
+    if restricted:
+        # A dataset aggregate has no row policy (policies live on a model's data resources), so a rule over
+        # a restricted model's dataset would read more rows than its author may see.
+        return None, (
+            "dataset aggregate over a restricted model does not apply row policies — use a metric instead"
+        )
     fn = str(spec.get("fn"))
     column = spec.get("column")
     name = fn if not column else f"{fn}_{column}"
@@ -147,8 +169,10 @@ async def _dataset_agg_value(
         aggregates=[{"fn": fn, "column": column, "name": name}],
         filters=spec.get("filters") or [],
         group_by=[group_field] if group_field else None,
-        limit=500 if group_field else 1,
+        limit=GROUP_LIMIT if group_field else 1,
     )
+    if summary.capped:
+        return None, f"more than {GROUP_LIMIT} groups — the run cannot decide on a partial set"
     if not summary.rows:
         return None, f"dataset {dataset_id} returned no rows"
     if group_field:
@@ -647,7 +671,6 @@ async def evaluate_rules_for_subject(
 
 __all__ = [
     "EvalResult",
-    "PUBLISHING_SEVERITIES",
     "collect_datasets",
     "collect_metrics",
     "evaluate_rule",

@@ -120,9 +120,13 @@ def residual(target: float, members: list[tuple[float, float]], *, kind: str = "
     return float(target) - sum(weight * value for weight, value in members)
 
 
+#: An exact identity (`abs: 0`) on float sums fails at random; the floor is relative to the target.
+EXACT_EPSILON = 1e-9
+
+
 def within_tolerance(residual_value: float, target: float, tolerance: dict[str, float]) -> bool:
     """`abs` is absolute; `rel` is a share of the target (never of the residual, which can be zero)."""
-    if abs(residual_value) <= tolerance.get("abs", 0.0):
+    if abs(residual_value) <= max(tolerance.get("abs", 0.0), EXACT_EPSILON * max(1.0, abs(target))):
         return True
     limit = abs(target) * tolerance.get("rel", 0.0)
     return abs(residual_value) <= limit
