@@ -74,20 +74,8 @@ export function MetricsListPage() {
       {/* The app's own tab bar, in the same place its siblings put it: title, tabs, content. */}
       <DatasetAppTabs />
       <div className="ontology-admin-content">
-        <div className="console-datasets-toolbar">
-          <label className="console-datasets-filter">
-            {t('dataModel.coverageFilter')}
-            <select
-              className="ds-control"
-              value={coverage}
-              onChange={(e) => setCoverage(e.target.value as typeof coverage)}
-            >
-              <option value="all">{t('dataModel.coverageAll')}</option>
-              <option value="covered">{t('dataModel.coverageCovered')}</option>
-              <option value="uncovered">{t('dataModel.coverageUncovered')}</option>
-            </select>
-          </label>
-          <label className="console-datasets-search">
+        <div className="metrics-toolbar">
+          <label className="console-datasets-search metrics-toolbar__search">
             <Search size={18} aria-hidden />
             {/* ds-control-exempt: `.console-datasets-search` styles this input (its own sheet) */}
             <input
@@ -98,6 +86,20 @@ export function MetricsListPage() {
               aria-label={t('dataModel.metricsSearchPlaceholder')}
             />
           </label>
+          <div className="metrics-toolbar__filters">
+            <label className="metrics-toolbar__label">
+              {t('dataModel.coverageFilter')}
+              <select
+                className="ds-control"
+                value={coverage}
+                onChange={(e) => setCoverage(e.target.value as typeof coverage)}
+              >
+                <option value="all">{t('dataModel.coverageAll')}</option>
+                <option value="covered">{t('dataModel.coverageCovered')}</option>
+                <option value="uncovered">{t('dataModel.coverageUncovered')}</option>
+              </select>
+            </label>
+          </div>
         </div>
 
         {loading ? (

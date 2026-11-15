@@ -27,7 +27,7 @@ import {
 } from '../../../data/rulesApi';
 import { transitionEvent, type EventOut } from '../../../data/eventsApi';
 import { fetchMetrics, type MetricResponse } from '../../../data/metricsApi';
-import { fetchDatasetMetadata, fetchDatasets, type DatasetResponse } from '../../../data/datasetsApi';
+import { fetchDatasets, type DatasetResponse } from '../../../data/datasetsApi';
 import { fetchModelFields, type SemanticModelFieldResponse } from '../../../data/semanticModelFieldsApi';
 import { useConfirm } from '../../../contexts/ConfirmContext';
 import { EntityViewPanel } from '../../shared/EntityViewShell';
@@ -54,7 +54,6 @@ type FormState = {
   toleranceValue: string;
   name: string;
   ruleId: string;
-  subjectKind: 'metric' | 'dataset';
   metricId: string;
   datasetId: string;
   aggFn: 'count' | 'sum' | 'avg' | 'min' | 'max';
@@ -76,7 +75,6 @@ const EMPTY_FORM: FormState = {
   toleranceValue: '0',
   name: '',
   ruleId: '',
-  subjectKind: 'metric',
   metricId: '',
   datasetId: '',
   aggFn: 'count',
@@ -111,7 +109,6 @@ function formFromRule(rule: RuleOut, metrics: MetricResponse[], datasets: Datase
     ),
     name: rule.name ?? '',
     ruleId: rule.rule_id ?? '',
-    subjectKind: rule.subject?.kind ?? 'metric',
     metricId: left && 'metric' in left ? left.metric : (metrics[0]?.id ?? ''),
     datasetId: left && 'dataset_agg' in left ? left.dataset_agg.dataset_id : (datasets[0]?.id ?? ''),
     aggFn: left && 'dataset_agg' in left ? left.dataset_agg.fn : 'count',
@@ -168,23 +165,21 @@ export function RuleDetailPage() {
     return (id: string) => byId.get(id) ?? id.slice(0, 8);
   }, [datasets]);
 
-  /** Fields a run parameter can filter on: the metric's model fields, or the dataset's columns. */
+  /** Fields a group-by can use: the model fields of the metric this rule watches. */
   useEffect(() => {
     let cancelled = false;
     const metric = metrics.find((entry) => entry.id === form.metricId);
-    const dataset = datasets.find((entry) => entry.id === form.datasetId);
+    if (!metric) {
+      setParamCandidates([]);
+      return () => {
+        cancelled = true;
+      };
+    }
     void (async () => {
       try {
-        if (form.subjectKind === 'metric' && metric) {
-          const fields = await fetchModelFields(metric.semantic_model_id);
-          if (!cancelled) {
-            setParamCandidates(fields.items.map((field: SemanticModelFieldResponse) => field.name));
-          }
-        } else if (form.subjectKind === 'dataset' && dataset) {
-          const columns = await fetchDatasetMetadata(dataset.id);
-          if (!cancelled) setParamCandidates(columns.map((column) => column.column_name));
-        } else if (!cancelled) {
-          setParamCandidates([]);
+        const fields = await fetchModelFields(metric.semantic_model_id);
+        if (!cancelled) {
+          setParamCandidates(fields.items.map((field: SemanticModelFieldResponse) => field.name));
         }
       } catch {
         if (!cancelled) setParamCandidates([]);
@@ -193,7 +188,7 @@ export function RuleDetailPage() {
     return () => {
       cancelled = true;
     };
-  }, [form.subjectKind, form.metricId, form.datasetId, metrics, datasets]);
+  }, [form.metricId, metrics]);
 
   const loadPickers = useCallback(async () => {
     const [metricPage, datasetPage] = await Promise.all([
@@ -271,8 +266,8 @@ export function RuleDetailPage() {
         name: form.name.trim(),
         rule_id: form.ruleId.trim() || null,
         subject: {
-          kind: form.subjectKind,
-          ref: form.subjectKind === 'metric' ? form.metricId : form.datasetId,
+          kind: 'metric' as const,
+          ref: form.metricId,
         },
         ...(relation ? { relation } : { condition }),
         severity: form.severity,
@@ -423,7 +418,6 @@ export function RuleDetailPage() {
           {rule ? (
             <p className="page-subtitle">
               <StatusChip tone={severityTone(rule.severity)}>{rule.severity ?? '—'}</StatusChip>{' '}
-              {rule.subject?.kind === 'dataset' ? t('rules.subjectDataset') : t('rules.subjectMetric')}
               {rule.rule_id ? ` · ${rule.rule_id}` : ''}
               {rule.owner ? ` · ${rule.owner}` : ''} · v{rule.version ?? 1}
             </p>
@@ -472,7 +466,6 @@ export function RuleDetailPage() {
                 value={{
                   name: form.name,
                   ruleId: form.ruleId,
-                  subjectKind: form.subjectKind,
                   severity: form.severity,
                   status: form.status,
                   groupField: form.groupField,

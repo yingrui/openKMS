@@ -21,7 +21,6 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
-from app.models.dataset_column import DatasetColumn
 from app.models.metric_definition import MetricDefinition
 from app.models.object_instance import ObjectInstance
 from app.models.semantic_model_field import SemanticModelField
@@ -66,7 +65,12 @@ READ_DEPS = [Depends(require_any_permission(PERM_DATA_READ, PERM_DATA_WRITE, PER
 
 
 class RuleSubject(BaseModel):
-    kind: str = Field(pattern="^(metric|dataset)$")
+    """A rule watches a **metric**: reconciliation is about numbers agreeing, not about a table's shape.
+
+    Dataset-level checks (row counts, nulls, ranges) are *quality rules*, on the dataset's own page.
+    """
+
+    kind: str = Field(pattern="^metric$", description="A rule's subject is always a metric.")
     ref: str
 
 
@@ -312,14 +316,6 @@ async def _group_field_known(
             ).all()
             names = sorted({str(n) for name_col in rows for n in name_col if n})
             return field in names, names
-    if kind == "dataset" and ref:
-        rows = (
-            await db.execute(
-                select(DatasetColumn.column_name).where(DatasetColumn.dataset_id == str(ref))
-            )
-        ).scalars().all()
-        names = sorted({str(n) for n in rows if n})
-        return field in names, names
     # An unresolvable subject is not this check's business — the evaluate step reports it.
     return True, []
 

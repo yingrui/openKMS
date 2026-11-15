@@ -39,6 +39,38 @@
   }
 }
 
+/* One toolbar rule for both metric screens: search on the left, filters on the right, one baseline. */
+.metrics-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+  flex-wrap: wrap;
+  margin-bottom: var(--space-5);
+}
+
+.metrics-toolbar__search {
+  max-width: 360px;
+  flex: 1 1 240px;
+}
+
+.metrics-toolbar__filters {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+}
+
+/* Label and control on one line, both centred — the misalignment came from a label styled as a block. */
+.metrics-toolbar__label {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--text-sm);
+  color: var(--color-text-secondary);
+  white-space: nowrap;
+}
+
 /* Additivity: the one metric property that changes what a consumer may do with the number. */
 .metric-additivity {
   display: inline-block;

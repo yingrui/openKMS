@@ -27,6 +27,12 @@ export type DialogProps = {
   footer?: ReactNode;
   /** When true, Escape / overlay click / close button do nothing. */
   closeDisabled?: boolean;
+  /**
+   * Whether a click on the backdrop closes the dialog. Default **true** for short dialogs (pick, confirm),
+   * but a form with several fields should not vanish because the pointer landed a few pixels outside it —
+   * pass `false` there, so closing is a deliberate act.
+   */
+  dismissOnOverlay?: boolean;
   /** Hide the default header close button (e.g. custom chrome). */
   hideCloseButton?: boolean;
   /** Accessible name when title is not text / no titleId. */
@@ -52,6 +58,7 @@ export function Dialog({
   bodyClassName,
   footer,
   closeDisabled = false,
+  dismissOnOverlay = true,
   hideCloseButton = false,
   'aria-label': ariaLabel,
   closeAriaLabel = 'Close',
@@ -126,6 +133,7 @@ export function Dialog({
   if (!open || typeof document === 'undefined') return null;
 
   const onOverlayClick = (e: ReactMouseEvent<HTMLDivElement>) => {
+    if (!dismissOnOverlay) return;
     if (e.target === e.currentTarget) requestClose();
   };
 

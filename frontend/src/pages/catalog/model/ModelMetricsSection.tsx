@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { CircleCheck, CircleHelp, CircleX, Loader2, Pencil, Play, Plus, Trash2 } from 'lucide-react';
+import { CircleCheck, CircleHelp, CircleX, ListChecks, Loader2, Pencil, Plus, Terminal, Trash2 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { toast } from 'sonner';
 import { fetchDatasets, type DatasetResponse } from '../../../data/datasetsApi';
@@ -248,16 +248,6 @@ export function ModelMetricsSection() {
         title={t('dataModel.metrics')}
         actions={
           <>
-            <select
-              className="ds-control"
-              value={coverage}
-              onChange={(e) => setCoverage(e.target.value as typeof coverage)}
-              aria-label={t('dataModel.coverageFilter')}
-            >
-              <option value="all">{t('dataModel.coverageAll')}</option>
-              <option value="covered">{t('dataModel.coverageCovered')}</option>
-              <option value="uncovered">{t('dataModel.coverageUncovered')}</option>
-            </select>
             <button type="button" className="btn btn-primary" onClick={openCreate}>
             <Plus size={16} aria-hidden />
             {t('datasets.addMetric')}
@@ -265,6 +255,27 @@ export function ModelMetricsSection() {
           </>
         }
       />
+
+      {/* Content toolbar under the divider: the filter changes what the list shows, so it lives with it. */}
+      <div className="metrics-toolbar">
+        <span className="metrics-toolbar__label">
+          {t('dataModel.metricCount', { count: shownMetrics.length })}
+        </span>
+        <div className="metrics-toolbar__filters">
+          <label className="metrics-toolbar__label">
+            {t('dataModel.coverageFilter')}
+            <select
+              className="ds-control"
+              value={coverage}
+              onChange={(e) => setCoverage(e.target.value as typeof coverage)}
+            >
+              <option value="all">{t('dataModel.coverageAll')}</option>
+              <option value="covered">{t('dataModel.coverageCovered')}</option>
+              <option value="uncovered">{t('dataModel.coverageUncovered')}</option>
+            </select>
+          </label>
+        </div>
+      </div>
 
       <EntityViewPanel>
         {loading ? (
@@ -349,7 +360,7 @@ export function ModelMetricsSection() {
                       title={t('dataModel.checksRunShort')}
                       aria-label={t('dataModel.checksRunShort')}
                     >
-                      <Play size={14} aria-hidden />
+                      <ListChecks size={14} aria-hidden />
                     </button>
                     <Link
                       className="btn btn-secondary btn-sm"
@@ -357,8 +368,9 @@ export function ModelMetricsSection() {
                         JSON.stringify({ metric: m.id }),
                       )}`}
                       title={t('dataModel.playgroundOpen')}
+                      aria-label={t('dataModel.playgroundOpen')}
                     >
-                      <Play size={14} aria-hidden />
+                      <Terminal size={14} aria-hidden />
                     </Link>
                     <button
                       type="button"
@@ -396,6 +408,7 @@ export function ModelMetricsSection() {
         open={showForm}
         onClose={() => !submitting && setShowForm(false)}
         closeDisabled={submitting}
+        dismissOnOverlay={false}
         title={editing ? t('datasets.editMetric') : t('datasets.addMetric')}
         closeAriaLabel={t('datasets.closeAria')}
         size="md"

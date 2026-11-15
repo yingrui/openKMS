@@ -8,7 +8,7 @@
 
 import { request } from './apiClient';
 
-export type RuleSubject = { kind: 'metric' | 'dataset'; ref: string };
+export type RuleSubject = { kind: 'metric'; ref: string };
 
 export type RuleOperand =
   | { metric: string; filters?: Array<Record<string, unknown>> }

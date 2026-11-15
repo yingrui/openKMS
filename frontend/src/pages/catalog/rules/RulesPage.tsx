@@ -25,6 +25,8 @@ import { fetchEvents, transitionEvent, type EventOut } from '../../../data/event
 import { RulesEventsTable } from './RulesEventsTable';
 import { RunRulesDialog, type RunParams } from './RunRulesDialog';
 import { fetchMetrics, type MetricResponse } from '../../../data/metricsApi';
+import { fetchDatasets, type DatasetResponse } from '../../../data/datasetsApi';
+import { datasetLabel } from '../datasetLabel';
 import { DatasetAppTabs } from '../../../components/ontology/DatasetAppTabs';
 import '../../../styles/settings-page.scss';
 import '../../ontology/ontology-admin.scss';
@@ -52,6 +54,7 @@ export function RulesPage() {
   const [events, setEvents] = useState<EventOut[]>([]);
   const [eventTotal, setEventTotal] = useState(0);
   const [metrics, setMetrics] = useState<MetricResponse[]>([]);
+  const [datasets, setDatasets] = useState<DatasetResponse[]>([]);
   const [loading, setLoading] = useState(true);
   const [running, setRunning] = useState(false);
   const [runningId, setRunningId] = useState<string | null>(null);
@@ -68,6 +71,12 @@ export function RulesPage() {
     return (id: string) => byId.get(id) ?? id.slice(0, 8);
   }, [metrics]);
 
+  // Dataset operands print their name, not their id: a rule's condition text is read by people.
+  const datasetName = useMemo(() => {
+    const byId = new Map(datasets.map((dataset) => [dataset.id, datasetLabel(dataset)]));
+    return (id: string) => byId.get(id) ?? id.slice(0, 8);
+  }, [datasets]);
+
   const setTab = (next: 'rules' | 'events') => {
     setSearchParams(
       (prev) => {
@@ -82,9 +91,10 @@ export function RulesPage() {
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const [ruleList, metricPage, eventPage] = await Promise.all([
+      const [ruleList, metricPage, datasetPage, eventPage] = await Promise.all([
         fetchRules({ subject_type: subjectType, subject_id: subjectId }),
         fetchMetrics().catch(() => ({ items: [] as MetricResponse[], total: 0 })),
+        fetchDatasets({ limit: 200 }).catch(() => ({ items: [] as DatasetResponse[], total: 0 })),
         fetchEvents({
           subject_type: subjectType,
           subject_id: subjectId,
@@ -95,6 +105,7 @@ export function RulesPage() {
       ]);
       setRules(ruleList);
       setMetrics(metricPage.items);
+      setDatasets(datasetPage.items);
       setEvents(eventPage.items);
       setEventTotal(eventPage.total);
     } catch (e: unknown) {
@@ -253,20 +264,15 @@ export function RulesPage() {
                               <span className="rules-paused">{t('rules.paused')}</span>
                             ) : null}
                           </td>
-                          <td>
-                            {rule.subject?.kind === 'dataset'
-                              ? t('rules.subjectDataset')
-                              : t('rules.subjectMetric')}
-                          </td>
+                          <td>{metricName((rule.subject?.ref as string) ?? '')}</td>
                           <td className="rules-condition">
                             {conditionLabel(rule.condition, {
                               metricName,
+                              datasetName,
                               and: t('rules.joinAnd'),
                               or: t('rules.joinOr'),
                               scopePrefix: t('rules.scopePrefix'),
-                              scopeAtRunTime: rule.group_by?.label
-                                ? t('rules.groupedByNamed', { name: rule.group_by.label })
-                                : t('rules.groupedBy'),
+                              scopeAtRunTime: t('rules.groupedBy'),
                             }, rule.group_by)}
                           </td>
                           <td>

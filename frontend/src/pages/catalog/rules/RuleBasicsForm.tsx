@@ -10,7 +10,6 @@ import { FormField } from '../../../styles/design-system';
 export type BasicsValue = {
   name: string;
   ruleId: string;
-  subjectKind: 'metric' | 'dataset';
   severity: 'P0' | 'P1' | 'P2';
   status: 'active' | 'paused';
   groupField: string;
@@ -45,15 +44,6 @@ export function RuleBasicsForm({
           placeholder={t('rules.fieldRuleIdPlaceholder')}
           autoComplete="off"
         />
-      </FormField>
-      <FormField label={t('rules.fieldSubject')} hint={t('rules.fieldSubjectHint')}>
-        <select
-          value={value.subjectKind}
-          onChange={(e) => onChange({ subjectKind: e.target.value as BasicsValue['subjectKind'] })}
-        >
-          <option value="metric">{t('rules.subjectMetric')}</option>
-          <option value="dataset">{t('rules.subjectDataset')}</option>
-        </select>
       </FormField>
       <FormField label={t('rules.fieldSeverity')}>
         <select
