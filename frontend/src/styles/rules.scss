@@ -180,6 +180,67 @@
   }
 }
 
+/* Metric dependencies, drawn: a deterministic layered DAG, base metrics at the bottom. */
+.metric-dag {
+  padding-top: var(--space-2);
+}
+
+.metric-dag__canvas {
+  overflow-x: auto;
+  padding: var(--space-2) 0 var(--space-4);
+
+  svg {
+    height: auto;
+    min-height: 240px;
+    max-height: 520px;
+  }
+}
+
+.metric-dag__node {
+  fill: var(--color-surface);
+  stroke: var(--color-border);
+  stroke-width: 1;
+
+  &--non-additive {
+    stroke: var(--color-warning, #d97706);
+    stroke-dasharray: 4 3;
+  }
+}
+
+.metric-dag__label {
+  font-size: var(--text-xs);
+  fill: var(--color-text);
+}
+
+.metric-dag__edge {
+  fill: none;
+
+  &--derived {
+    stroke: var(--color-border-strong, var(--color-border));
+    stroke-width: 1.25;
+  }
+
+  /* An assertion is a claim, not structure — dashed, and it turns red when the last run failed. */
+  &--assertion {
+    stroke: var(--color-accent, #2563eb);
+    stroke-width: 1.5;
+    stroke-dasharray: 5 4;
+  }
+
+  &--failing {
+    stroke: var(--color-danger, #dc2626);
+  }
+}
+
+.metric-dag__arrow {
+  fill: var(--color-border-strong, var(--color-border));
+}
+
+.metric-dag__edge-label {
+  font-size: var(--text-xs);
+  fill: var(--color-text-muted);
+}
+
 /* Metric dependencies: two lists, because a definition and an assertion are different claims. */
 .metric-graph__heading {
   margin: var(--space-4) 0 var(--space-1);

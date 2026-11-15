@@ -19,10 +19,11 @@ import { useConfirm } from '../../../contexts/ConfirmContext';
 import { Dialog, FormField } from '../../../styles/design-system/index';
 import { EntityViewHeader, EntityViewPanel } from '../../shared/EntityViewShell';
 import { fetchEventSummary } from '../../../data/eventsApi';
+import { fetchMetricGraph, type MetricGraph } from '../../../data/metricsApi';
 import { useSemanticModelDetail } from './useSemanticModelDetail';
 import { datasetLabel } from '../datasetLabel';
 import { aiContextFields, aiContextPayload } from './metricAiContext';
-import { MetricGraphDialog } from './MetricGraphDialog';
+import { MetricDependencyGraph } from './MetricDependencyGraph';
 
 const ADDITIVITY = ['additive', 'non_additive'] as const;
 
@@ -40,7 +41,9 @@ export function ModelMetricsSection() {
   const [loading, setLoading] = useState(true);
   const [openEvents, setOpenEvents] = useState<Record<string, number>>({});
   const [showForm, setShowForm] = useState(false);
-  const [graphOpen, setGraphOpen] = useState(false);
+  const [view, setView] = useState<'list' | 'graph'>('list');
+  const [graph, setGraph] = useState<MetricGraph | null>(null);
+  const [graphError, setGraphError] = useState<string | null>(null);
   const [editing, setEditing] = useState<MetricResponse | null>(null);
   const [name, setName] = useState('');
   const [baseDatasetId, setBaseDatasetId] = useState('');
@@ -100,6 +103,22 @@ export function ModelMetricsSection() {
       ),
     [joins, baseDatasetId, datasetIds],
   );
+
+  // The graph is a view over definitions, so it is read when the view is opened — not kept in sync.
+  useEffect(() => {
+    if (view !== 'graph') return;
+    let cancelled = false;
+    void fetchMetricGraph(semanticModelId)
+      .then((next) => {
+        if (!cancelled) setGraph(next);
+      })
+      .catch((e: unknown) => {
+        if (!cancelled) setGraphError(e instanceof Error ? e.message : String(e));
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [view, semanticModelId]);
 
   const openCreate = () => {
     setEditing(null);
@@ -206,16 +225,6 @@ export function ModelMetricsSection() {
         subtitle={t('dataModel.metricCount', { count: metrics.length })}
         actions={
           <>
-            <button
-              type="button"
-              className="btn btn-secondary"
-              onClick={() => setGraphOpen(true)}
-              disabled={metrics.length === 0}
-              title={t('dataModel.graphOpenHint')}
-            >
-              <Network size={16} aria-hidden />
-              {t('dataModel.graphOpen')}
-            </button>
             <button type="button" className="btn btn-primary" onClick={openCreate}>
               <Plus size={16} aria-hidden />
               {t('datasets.addMetric')}
@@ -225,7 +234,37 @@ export function ModelMetricsSection() {
       />
 
       <EntityViewPanel>
-        {loading ? (
+        <div className="rules-mode" role="tablist" aria-label={t('dataModel.graphOpen')}>
+          <button
+            type="button"
+            role="tab"
+            aria-selected={view === 'list'}
+            className={`settings-page-tab ${view === 'list' ? 'active' : ''}`}
+            onClick={() => setView('list')}
+          >
+            {t('dataModel.metricViewList')}
+          </button>
+          <button
+            type="button"
+            role="tab"
+            aria-selected={view === 'graph'}
+            className={`settings-page-tab ${view === 'graph' ? 'active' : ''}`}
+            onClick={() => setView('graph')}
+          >
+            <Network size={14} aria-hidden />
+            {t('dataModel.metricViewGraph')}
+          </button>
+        </div>
+
+        {view === 'graph' ? (
+          graphError ? (
+            <p className="rules-condition-warning">{graphError}</p>
+          ) : graph ? (
+            <MetricDependencyGraph graph={graph} />
+          ) : (
+            <p className="entity-view__readonly">{t('shared.loading')}</p>
+          )
+        ) : loading ? (
           <p className="entity-view__readonly">{t('shared.loading')}</p>
         ) : metrics.length === 0 ? (
           <p className="entity-view__readonly">{t('datasets.metricEmpty')}</p>
@@ -448,11 +487,6 @@ export function ModelMetricsSection() {
               </FormField>
       </Dialog>
 
-      <MetricGraphDialog
-        open={graphOpen}
-        onClose={() => setGraphOpen(false)}
-        semanticModelId={semanticModelId}
-      />
     </>
   );
 }

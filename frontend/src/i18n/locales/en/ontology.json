@@ -448,7 +448,10 @@
     "graphNoDerived": "No metric is computed from another metric.",
     "graphDefinition": "from the expression",
     "graphOpenRule": "Open rule",
-    "graphFooter": "The graph is computed on every open: there is no stored edge to go stale. A cross-source identity (two datasets, one number) must be declared as a rule — the expression cannot know about it."
+    "graphFooter": "The graph is computed on every open: there is no stored edge to go stale. A cross-source identity (two datasets, one number) must be declared as a rule — the expression cannot know about it.",
+    "metricViewList": "List",
+    "metricViewGraph": "Dependencies",
+    "graphAria": "Metric dependency graph"
   },
   "datasets": {
     "title": "Datasets",

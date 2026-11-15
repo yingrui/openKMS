@@ -188,8 +188,11 @@ one subject by definition.
 
 ## The dependency view: definitions vs assertions
 
-Model → Metrics → **依赖关系** opens the graph for one model. It lists two kinds of edge and never mixes
-them, because they are different claims:
+Model → Metrics → **依赖图** draws the graph inline (a segmented control beside 列表, no dialog). The layout
+is deterministic — base metrics at the bottom, everything computed from them above, each row centred — so
+the picture is a reference rather than something that rearranges itself on every open; the geometry lives in
+`metricGraphLayout.ts` and is unit-tested. Under the drawing, the same facts appear as two lists (what a
+screen reader gets, and where the rule links live):
 
 | edge | where it comes from | can it fail? | what it is for |
 |---|---|---|---|
