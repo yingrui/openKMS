@@ -114,6 +114,25 @@ metric whose numbers are **written by each run** — the scenario table's `kpis`
 snapshot (Kimball's *periodic snapshot fact*) cannot be recomputed for a past period, so a historical run is
 refused rather than serving today's value under last week's label.
 
+**A time dimension declares a calendar.** `dimension.is_time` says *that* a field is a time dimension; it does
+not say what one period is. The field now also carries `period_kind` — `day` / `week` / `month` / `quarter` /
+`year` / `custom` — and, for `custom`, a `period_format` (the label's shape). A **period** is one instance of
+that calendar, and a run's filter is compiled in the field's own vocabulary:
+
+| field | calendar | a run for 2026-W46 filters |
+|---|---|---|
+| `trade_date` (Date) | `week` | `trade_date >= 2026-11-09 AND <= 2026-11-15` (ISO week, Monday) |
+| `cycle` (String) | `custom` | `cycle = '2026-W46'` — the label *is* the period; converting it to dates would compare incomparable values |
+| `month_id` (Integer) | `month` | `month_id = 202611` |
+
+Labels are validated against the calendar before they reach SQL, so `2026-11-09` against a week dimension is
+a 422 naming the expected format, not an empty result. `custom` is explicit about what we do not know: no
+derived previous period, no arithmetic — a fiscal or allocation cycle needs a calendar table, which we do not
+have yet.
+
+Since the spec's `dimension` allows only `is_time`, `period_kind`/`period_format` travel in the field's
+`custom_extensions` and are read back on import.
+
 **Worked example (分货, 2026-W46).** Three metrics on one base dataset (`allocation_lines`) say more than a paragraph:
 
 | metric | expression | additivity | value |

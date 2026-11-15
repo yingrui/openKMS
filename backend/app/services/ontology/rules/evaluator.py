@@ -27,6 +27,7 @@ from app.api.catalog_scoped import require_model_read
 from app.models.metric_definition import MetricDefinition
 from app.models.metric_rule import MetricEvent, MetricRule
 from app.models.semantic_model import SemanticModel
+from app.models.semantic_model_field import SemanticModelField
 from app.services.data.dataset_rows import query_dataset_summary
 from app.services.ontology.rules.scoping import restricted_models_for_dataset, run_entity_scope
 from app.services.data.query import run_query
@@ -40,6 +41,7 @@ from app.services.ontology.rules.relations import (
     weight_of,
     within_tolerance,
 )
+from app.services.ontology.rules.periods import filter_for_period, kind_of_dimension
 from app.services.ontology.rules.conditions import (
     ConditionError,
     collect_datasets,
@@ -109,7 +111,7 @@ def _rule_group_by(rule_data: dict) -> dict | None:
 
 
 def period_filters(period_field: str | None, period_start: str, period_end: str) -> list[dict]:
-    """`period_field` bound to the run's dates — the one place a period becomes a data scope."""
+    """A date range filter — kept for callers that already know the column is date-typed."""
     if not period_field or not (period_start or period_end):
         return []
     out: list[dict] = []
@@ -123,18 +125,23 @@ def period_filters(period_field: str | None, period_start: str, period_end: str)
 def period_binding(
     metric: MetricDefinition | None,
     operand_field: str | None,
+    period_label: str,
     period_start: str,
     period_end: str,
+    *,
+    field_datatype: str | None = None,
+    field_dimension: dict | None = None,
 ) -> tuple[list[dict], str]:
     """`(filters, reason)` — how one operand relates to the run's period.
 
-    Three cases, and the difference between them is the point:
+    Three cases:
 
     * **period** — a time dimension carries the period (the operand's own `period_field`, else the metric's
-      `time_dimension`): filter this run to those rows;
+      `time_dimension`). The filter is compiled in *that field's* vocabulary: a date column ranges over the
+      period's two dates, a key column (`cycle` text, `202611` integer) matches the label.
     * **snapshot** — the number is written by each run (a stored snapshot, e.g. a scenario table's KPIs), so a
       run aimed at a past period is refused (`reason`): it cannot be recomputed, and serving today's value
-      under yesterday's label would be worse than saying so;
+      under yesterday's label would be worse than saying so.
     * **none** — no time concept: the period is a label on the run, and the alert says so.
     """
     field = (operand_field or "").strip() or (metric.time_dimension if metric else None)
@@ -148,7 +155,18 @@ def period_binding(
         return [], ""
     if mode == "none" or not field:
         return [], ""
-    return period_filters(field, period_start, period_end), ""
+    kind = kind_of_dimension(field_dimension, field_datatype)
+    return (
+        filter_for_period(
+            field,
+            datatype=field_datatype,
+            kind=kind,
+            label=period_label,
+            start=period_start,
+            end=period_end,
+        ),
+        "",
+    )
 
 
 def _today() -> str:
@@ -163,7 +181,7 @@ async def _metric_value(
     group_field: str | None = None,
     *,
     period_field: str | None = None,
-    period: tuple[str, str] = ("", ""),
+    period: tuple[str, str, str] = ("", "", ""),
 ) -> tuple[float | None | dict[str, float | None], str]:
     metric = await db.get(MetricDefinition, metric_id)
     if metric is None:
@@ -175,7 +193,25 @@ async def _metric_value(
     entity_scope, reason = await run_entity_scope(db, request, model)
     if reason:
         return None, reason
-    period_scope, period_reason = period_binding(metric, period_field, *period)
+    label, start, end = period
+    bound = (period_field or "").strip() or (metric.time_dimension or "")
+    field_meta = (
+        await db.execute(
+            select(SemanticModelField).where(
+                SemanticModelField.semantic_model_id == metric.semantic_model_id,
+                SemanticModelField.name == bound,
+            )
+        )
+    ).scalars().first() if bound else None
+    period_scope, period_reason = period_binding(
+        metric,
+        period_field,
+        label,
+        start,
+        end,
+        field_datatype=field_meta.datatype if field_meta else None,
+        field_dimension=field_meta.dimension if field_meta else None,
+    )
     if period_reason:
         return None, period_reason
     filters = [*(filters or []), *period_scope] if period_scope else filters
@@ -204,7 +240,7 @@ async def _dataset_agg_value(
     group_field: str | None = None,
     *,
     period_field: str | None = None,
-    period: tuple[str, str] = ("", ""),
+    period: tuple[str, str, str] = ("", "", ""),
 ) -> tuple[float | None | dict[str, float | None], str]:
     dataset_id = str(spec.get("dataset_id"))
     # Same resource gate as the data grid: a rule may only read what the runner may read.
@@ -216,8 +252,13 @@ async def _dataset_agg_value(
         return None, (
             "dataset aggregate over a restricted model does not apply row policies — use a metric instead"
         )
-    # A dataset aggregate has no declared time semantics; it filters only when the operand names a column.
-    period_scope = period_filters(period_field, *period)
+    # A dataset aggregate declares no calendar; when the operand names a column we match the label.
+    label, start, end = period
+    period_scope = (
+        [{"field": period_field, "op": "=", "value": label or start}]
+        if period_field and (label or start)
+        else []
+    )
     if period_scope:
         spec = {**spec, "filters": [*(spec.get("filters") or []), *period_scope]}
     fn = str(spec.get("fn"))
@@ -245,7 +286,7 @@ async def _resolve_operand(
     request: Request,
     operand: dict,
     group_field: str | None = None,
-    period: tuple[str, str] = ("", ""),
+    period: tuple[str, str, str] = ("", "", ""),
 ) -> tuple[float | None | dict[str, float | None], str]:
     kind = next(key for key in operand if key not in ("filters", "period_field"))
     operand_period = operand.get("period_field")
@@ -471,7 +512,7 @@ async def evaluate_rule(
 
     group = _rule_group_by(rule_data)
     group_field = str(group["field"]) if group else None
-    period = (period_start, period_end)
+    period = (period_label or "", period_start, period_end)
     operands = flatten_operands(condition)
 
     resolved_by_operand: dict[str, float | None | dict[str, float | None]] = {}
@@ -608,7 +649,7 @@ async def _evaluate_relation(
 
     group = _rule_group_by(rule_data)
     group_field = str(group["field"]) if group else None
-    period = (period_start, period_end)
+    period = (period_label or "", period_start, period_end)
     tolerance = tolerance_of(relation)
 
     target = dict(relation["target"])

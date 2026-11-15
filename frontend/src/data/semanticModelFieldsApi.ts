@@ -8,6 +8,9 @@ export interface SemanticModelFieldDialect {
 
 /** The spec's `Dimension`: `{is_time}` and nothing else. */
 export interface SemanticModelFieldDimension {
+  /** Ours, not the spec's: the calendar this time dimension's periods belong to. */
+  period_kind?: 'day' | 'week' | 'month' | 'quarter' | 'year' | 'custom';
+  period_format?: string | null;
   is_time?: boolean;
 }
 

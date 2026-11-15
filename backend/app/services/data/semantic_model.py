@@ -184,8 +184,16 @@ async def export_semantic_model(db: AsyncSession, model: SemanticModel) -> dict[
                 or {"dialects": [{"dialect": "ANSI_SQL", "expression": f.column_name or f.name}]}
             )
             fentry: dict[str, Any] = {"name": f.name, "expression": fexpr}
-            if f.dimension:
-                fentry["dimension"] = f.dimension
+            dimension = dict(f.dimension or {})
+            period_kind = dimension.pop("period_kind", None)
+            period_format = dimension.pop("period_format", None)
+            if dimension:
+                fentry["dimension"] = dimension
+            if period_kind or period_format:
+                # Ossie's `dimension` allows only `is_time`; the calendar is ours.
+                fentry["custom_extensions"] = _extension(
+                    {"period": {"kind": period_kind, "format": period_format}}
+                )
             if f.label:
                 fentry["label"] = f.label
             if f.description:
@@ -402,7 +410,21 @@ async def import_semantic_model(db: AsyncSession, doc: dict[str, Any]) -> dict[s
             row.datatype = f.get("datatype")
             row.label = f.get("label")
             row.description = f.get("description")
-            row.dimension = f.get("dimension")
+            period = (next(
+                (
+                    ext.get("data")
+                    for ext in (f.get("custom_extensions") or [])
+                    if isinstance(ext, dict) and ext.get("data")
+                ),
+                None,
+            ) or {})
+            period_meta = json.loads(period) if isinstance(period, str) else (period or {})
+            calendar = period_meta.get("period") or {}
+            row.dimension = {
+                **(f.get("dimension") or {}),
+                **({"period_kind": calendar["kind"]} if calendar.get("kind") else {}),
+                **({"period_format": calendar["format"]} if calendar.get("format") else {}),
+            } or None
             row.ai_context = f.get("ai_context")
             field_count += 1
 

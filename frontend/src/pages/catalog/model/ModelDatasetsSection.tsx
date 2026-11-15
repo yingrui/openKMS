@@ -9,7 +9,6 @@ import {
   deleteModelField,
   fetchModelFields,
   fieldExpressionSql,
-  isTemporalDatatype,
   OSSIE_DATATYPES,
   updateModelField,
   type SemanticModelFieldResponse,
@@ -25,6 +24,8 @@ import {
 } from '../../../styles/design-system/index';
 import { EntityViewHeader, EntityViewPanel } from '../../shared/EntityViewShell';
 import { fieldCoverage } from '../fieldCoverage';
+import { ModelFieldPeriodFields } from './ModelFieldPeriodFields';
+import { fieldTimeLabel } from './fieldTimeLabel';
 import { useSemanticModelDetail } from './useSemanticModelDetail';
 import { datasetLabel } from '../datasetLabel';
 
@@ -67,6 +68,9 @@ export function ModelDatasetsSection() {
   const [label, setLabel] = useState('');
   const [description, setDescription] = useState('');
   const [dimensionMode, setDimensionMode] = useState<'auto' | 'time' | 'regular'>('auto');
+  /** The calendar a time dimension holds — a period is an instance of it. */
+  const [periodKind, setPeriodKind] = useState<'day' | 'week' | 'month' | 'quarter' | 'year' | 'custom'>('day');
+  const [periodFormat, setPeriodFormat] = useState('');
   const [ai, setAi] = useState<AiContext>({ instructions: '', synonyms: '', examples: '' });
   const [submitting, setSubmitting] = useState(false);
 
@@ -191,12 +195,9 @@ export function ModelDatasetsSection() {
     }
   };
 
-  /** Only the *time* role is modelled by the spec (`dimension.is_time`). */
-  const dimensionLabel = (f: SemanticModelFieldResponse) => {
-    if (f.dimension?.is_time === true) return t('dataModel.dimensionYes');
-    if (f.dimension?.is_time === false) return t('datasets.dash');
-    return isTemporalDatatype(f.datatype) ? t('dataModel.dimensionTimeByType') : t('datasets.dash');
-  };
+  /** The spec models the *role* (`is_time`); the calendar is ours, and it is what a period is written in. */
+  const dimensionLabel = (f: SemanticModelFieldResponse) =>
+    fieldTimeLabel(f, t('dataModel.dimensionYes'), t('dataModel.dimensionTimeByType'), t('datasets.dash'));
 
   const openCreate = (datasetId: string) => {
     setEditing(null);
@@ -209,6 +210,8 @@ export function ModelDatasetsSection() {
     setLabel('');
     setDescription('');
     setDimensionMode('auto');
+    setPeriodKind('day');
+    setPeriodFormat('');
     setAi({ instructions: '', synonyms: '', examples: '' });
   };
 
@@ -229,6 +232,8 @@ export function ModelDatasetsSection() {
           : 'regular'
         : 'auto',
     );
+    setPeriodKind((f.dimension?.period_kind as typeof periodKind) ?? 'day');
+    setPeriodFormat((f.dimension?.period_format as string) ?? '');
     setAi({
       instructions: String((f.ai_context?.instructions as string) ?? ''),
       synonyms: ((f.ai_context?.synonyms as string[]) ?? []).join(', '),
@@ -267,7 +272,18 @@ export function ModelDatasetsSection() {
       datatype: datatype || null,
       label: label.trim() || null,
       description: description.trim() || null,
-      dimension: dimensionMode === 'auto' ? null : { is_time: dimensionMode === 'time' },
+      dimension:
+        dimensionMode === 'auto'
+          ? null
+          : dimensionMode === 'regular'
+            ? { is_time: false }
+            : {
+                is_time: true,
+                period_kind: periodKind,
+                ...(periodKind === 'custom' && periodFormat.trim()
+                  ? { period_format: periodFormat.trim() }
+                  : {}),
+              },
       ai_context: hasAi ? { instructions: ai.instructions.trim(), synonyms, examples } : null,
     };
     setSubmitting(true);
@@ -641,6 +657,16 @@ export function ModelDatasetsSection() {
               <option value="regular">{t('dataModel.dimensionNo')}</option>
             </select>
           </FormField>
+          {dimensionMode === 'time' ? (
+            <ModelFieldPeriodFields
+              kind={periodKind}
+              format={periodFormat}
+              onChange={(next) => {
+                if (next.kind) setPeriodKind(next.kind);
+                if (next.format !== undefined) setPeriodFormat(next.format);
+              }}
+            />
+          ) : null}
           <FormField label={t('datasets.aiInstructions')}>
             <textarea
               rows={2}

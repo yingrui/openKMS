@@ -121,16 +121,38 @@ def resolve_is_time(dimension: dict | None, datatype: str | None) -> bool:
     return is_temporal_datatype(datatype)
 
 
+#: What kind of period instance a time dimension holds. `custom` is a calendar we do not interpret: the
+#: field's own labels *are* the periods (`cycle` = "2026-W46", a season, a settlement round).
+PERIOD_KINDS = ("day", "week", "month", "quarter", "year", "custom")
+#: Extra `dimension` keys. Ossie's schema allows only `is_time`, so these travel in `custom_extensions`.
+PERIOD_DIMENSION_KEYS = ("period_kind", "period_format")
+
+
 def validate_dimension(dimension: dict | None) -> None:
     """Ossie `Dimension`: `additionalProperties: false` and **no required keys** — so an
     absent `dimension` *or* `dimension: {}` is valid; both mean "`is_time` not declared"
-    and the role then follows `datatype`. When `is_time` is present it must be a boolean."""
+    and the role then follows `datatype`. When `is_time` is present it must be a boolean.
+
+    `period_kind` / `period_format` are ours: a time dimension's *calendar*. A period is an instance of that
+    calendar (`2026-W46` of a week calendar, `2026-11-09` of a day calendar, `Q3 FY26` of a custom one), and
+    the run filter must be compiled in the field's own vocabulary — a `cycle` column is not comparable to a
+    date.
+    """
     if dimension is None:
         return
     if not isinstance(dimension, dict):
         raise FieldError("dimension must be an object.")
-    unknown = set(dimension) - {"is_time"}
+    unknown = set(dimension) - {"is_time", *PERIOD_DIMENSION_KEYS}
     if unknown:
         raise FieldError(f"dimension has unknown keys: {', '.join(sorted(unknown))}.")
     if "is_time" in dimension and not isinstance(dimension["is_time"], bool):
         raise FieldError("dimension.is_time must be a boolean.")
+    kind = dimension.get("period_kind")
+    if kind is not None:
+        if kind not in PERIOD_KINDS:
+            raise FieldError(f"dimension.period_kind must be one of: {', '.join(PERIOD_KINDS)}.")
+        if kind != "custom" and dimension.get("period_format"):
+            raise FieldError("dimension.period_format only applies to period_kind 'custom'.")
+    fmt = dimension.get("period_format")
+    if fmt is not None and (not isinstance(fmt, str) or not fmt.strip()):
+        raise FieldError("dimension.period_format must be a non-empty string.")
