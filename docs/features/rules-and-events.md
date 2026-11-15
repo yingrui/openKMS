@@ -142,10 +142,24 @@ Weights are the definition, not decoration: a decomposition is a member with wei
 a member with weight −1. A member may carry its own `group_field` when the two sides name the same key
 differently (明细 groups by `scenario_id`, 方案 by `id`).
 
-Live example (分货, 2026-W46): `分货额度 = 方案累计额度 ±1` passes (128,273 = 128,273, residual 0). Changing
-the member weight to 1.01 — a deliberate 1% drift — fails with residual −1,282.73 and opens an event;
-restoring the weight closes it on the next run. That is the whole point: the check is cheap once the
-identity is declared, and the identity is written once, next to the rule that runs it.
+Live example (分货, 2026-W46), **per scenario**, two sources:
+
+| | side A | side B |
+|---|---|---|
+| metric | 分货额度 — `SUM(allocated_qty)` over `allocation_lines` | 方案累计额度 — `SUM((kpis->>'allocated_qty')::numeric)` over `allocation_scenarios` |
+| group key | `scenario_id` | `scenario_key` (the scenario table's `id`, declared as a model field to make it addressable) |
+| tolerance | `{abs: 1}` | |
+
+```
+分货额度 = 方案累计额度 × 1（±1）      group_by scenario_id, member.group_field scenario_key
+→ 6 groups, all pass, residual 0.00 in each
+```
+
+The two sides name the same object differently and are still aligned, because a member may carry its own
+`group_field`. Whole-set first: the same identity without grouping passed at 128,273 = 128,273. A deliberate
+1% drift (member weight 1.01) failed with residual −1,282.73 and opened an event; restoring the weight
+closed it on the next run. That is the point — the check is cheap once the identity is declared, and the
+identity is written once, next to the rule that runs it.
 
 Why the relation lives on a `Rule` rather than in a type of its own: a relation nobody runs is a comment.
 The rule already owns severity, advice, the publish gate, the period argument, grouping and the event
