@@ -5,6 +5,7 @@ from app.services.ontology.rules.relations import (
     RelationError,
     explain,
     residual,
+    solve,
     validate_relation,
     weight_of,
     within_tolerance,
@@ -92,3 +93,73 @@ def test_explain_reads_like_an_identity():
         ["a", "b", "c"],
     )
     assert weighted == "a = b + c × -1（±0.1%）"
+
+
+# --- 推算 (solve): an identity that is checked can also fill in the one number it did not receive ------
+
+GAP = {
+    "target": {"metric": "gap"},
+    "members": [{"metric": "demand", "weight": 1}, {"metric": "alloc", "weight": -1}],
+    "tolerance": {"abs": 1},
+}
+RATE = {
+    "kind": "ratio",
+    "target": {"metric": "rate"},
+    "members": [{"metric": "alloc"}, {"metric": "demand"}],
+    "tolerance": {"rel": 0.001},
+}
+
+
+def test_decomposition_infers_the_missing_target():
+    out = solve(GAP, {"demand": 201912.0, "alloc": 128273.0})
+    assert out["status"] == "inferred"
+    assert out["metric"] == "gap"
+    assert out["value"] == 73639.0
+    assert "measured" in out["assumption"]
+
+
+def test_decomposition_infers_a_missing_member_with_its_weight():
+    # gap = demand − alloc  ⇒  alloc = (demand − gap) / 1 … with weight −1 that is demand − gap.
+    out = solve(GAP, {"demand": 201912.0, "gap": 73639.0})
+    assert out["metric"] == "alloc"
+    assert out["value"] == 128273.0
+
+
+def test_two_missing_numbers_are_undetermined_not_guessed():
+    out = solve(GAP, {"demand": 201912.0})
+    assert out["status"] == "undetermined"
+    assert set(out["missing"]) == {"gap", "alloc"}
+
+
+def test_a_full_set_that_disagrees_is_contradictory():
+    out = solve(GAP, {"demand": 201912.0, "alloc": 128273.0, "gap": 70000.0})
+    assert out["status"] == "contradictory"
+    assert out["residual"] == -3639.0
+
+
+def test_ratio_infers_each_of_its_three_roles():
+    rate = solve(RATE, {"alloc": 128273.0, "demand": 201912.0})
+    assert rate["status"] == "inferred" and rate["metric"] == "rate"
+    assert round(rate["value"], 6) == 0.635292
+
+    alloc = solve(RATE, {"rate": 0.6353, "demand": 201912.0})
+    assert alloc["metric"] == "alloc" and round(alloc["value"], 1) == 128274.7
+
+    demand = solve(RATE, {"rate": 0.6353, "alloc": 128273.0})
+    assert demand["metric"] == "demand" and round(demand["value"], 1) == 201909.3
+
+
+def test_ratio_with_a_zero_denominator_is_undetermined():
+    out = solve(RATE, {"alloc": 10.0, "demand": 0.0})
+    assert out["status"] == "undetermined"
+
+
+def test_ratio_disagreement_reports_the_residual():
+    out = solve(RATE, {"rate": 0.9, "alloc": 128273.0, "demand": 201912.0})
+    assert out["status"] == "contradictory"
+    assert out["residual"] > 0.2
+
+
+def test_a_ratio_relation_needs_exactly_two_members():
+    with pytest.raises(RelationError):
+        validate_relation({**RATE, "members": [{"metric": "alloc"}]})

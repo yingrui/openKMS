@@ -186,6 +186,27 @@ rule's own page therefore offers **试算 (dry run)** next to **运行**:
 `POST /api/rules/{id}/evaluate` takes `dry_run: true`. The list-level "run all" has no trial: a trial has
 one subject by definition.
 
+## 推算: an identity that is checked can also fill in a number
+
+勾稽 is not only "do these agree?" — an identity is an equation, so once most of it is measured, the last
+number is arithmetic, not a guess. `POST /api/rules/{id}/infer {infer: <metric>, known?, period?, group?}`
+resolves every other metric through the usual engine, then solves:
+
+| identity | asked | answer |
+|---|---|---|
+| `分货缺口 = 预测需求 − 分货额度` | 缺口 | 73,639 (measured sides: 201,912 − 128,273) |
+| the same | 需求 | 201,912 (given 缺口 73,639 + 额度 128,273) |
+| `分货满足率 = 分货额度 / 预测需求` (`kind: ratio`) | 满足率 | 0.635292 |
+| the same | 分货额度 | 128,274.7 (rate × demand) |
+
+Three outcomes, and the honest ones matter: `inferred` (with the identity it came from and an explicit
+`assumption`), `undetermined` (two numbers missing, or a zero denominator — never a guess), and
+`contradictory` (everything present and disagreeing, reported with the residual). A ratio relation takes
+exactly two members and divides; a decomposition takes weights and sums.
+
+That is the difference between an alarm and an application: an alarm says "these disagree", an application
+says "you are missing 缺口 — here it is, from this identity, assuming the other two are right".
+
 ## What reaches the agent (the point of the whole layer)
 
 The reason relations exist is not a prettier diagram — it is that an agent answering "how much did we

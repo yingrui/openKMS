@@ -34,7 +34,7 @@ from app.services.identity.permissions.permission_catalog import (
 from app.api.auth import require_any_permission
 from app.services.ontology.object_neo4j_store import sync_queue_ids_to_neo4j
 from app.services.ontology.rules.builtin import builtin_types
-from app.services.ontology.rules.relations import RelationError, validate_relation
+from app.services.ontology.rules.relations import RelationError, solve, validate_relation
 from app.services.ontology.rules.conditions import (
     ConditionError,
     collect_datasets,
@@ -43,6 +43,7 @@ from app.services.ontology.rules.conditions import (
 )
 from app.services.ontology.rules.evaluator import (
     EvalResult,
+    _resolve_operand,
     evaluate_rule,
     evaluate_rules_for_subject,
 )
@@ -512,6 +513,79 @@ async def delete_rule(rule_id: str, db: AsyncSession = Depends(get_db)):
     instance = await _load_rule(db, rule_id, rule_type)
     await db.delete(instance)
     await db.commit()
+
+
+class InferBody(BaseModel):
+    """Fill in one number the caller does not have, using an identity they do."""
+
+    #: Which metric to infer — the one the caller is missing. Everything else is measured.
+    infer: str
+    period_start: str = ""
+    period_end: str = ""
+    known: dict[str, float] = Field(default_factory=dict)
+    group: str | None = None
+
+
+class InferOut(BaseModel):
+    status: str
+    metric: str | None = None
+    value: float | None = None
+    residual: float | None = None
+    missing: list[str] = []
+    kind: str | None = None
+    known: dict[str, float] = {}
+    assumption: str | None = None
+
+
+@router.post("/{rule_id}/infer", response_model=InferOut, dependencies=READ_DEPS)
+async def infer_from_rule(
+    rule_id: str,
+    request: Request,
+    body: InferBody,
+    db: AsyncSession = Depends(get_db),
+):
+    """推算: `分货缺口 = 预测需求 − 分货额度`, so a missing 缺口 is computed, not guessed.
+
+    The caller names the metric they lack and (optionally) the numbers they already have; everything else is
+    measured through the usual engine at the same period and group. The identity then yields the missing
+    number — and `assumption` is part of the answer on purpose: an inferred value is only as good as the
+    identity and the measured inputs it came out of. A number that cannot be inferred (a second missing
+    member, a zero denominator) comes back `undetermined` rather than as a guess.
+    """
+    rule_type, _event_type = await _rule_type_or_409(db)
+    instance = await _load_rule(db, rule_id, rule_type)
+    rule_data = dict(instance.data or {})
+    relation = _parse_maybe_json(rule_data.get("relation"))
+    if not isinstance(relation, dict):
+        raise HTTPException(status_code=400, detail="This rule is a threshold, not an identity.")
+    try:
+        validate_relation(relation)
+    except RelationError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+    target_ref = relation["target"]["metric"]
+    members = {m["metric"]: m for m in relation["members"]}
+    if body.infer not in (target_ref, *members):
+        raise HTTPException(status_code=400, detail="`infer` is not a metric of this identity.")
+
+    group = _parse_maybe_json(rule_data.get("group_by")) or {}
+    group_field = str(group["field"]) if isinstance(group, dict) and group.get("field") else None
+    known: dict[str, float] = dict(body.known)
+    for ref in (target_ref, *members):
+        if ref == body.infer or ref in known:
+            continue
+        operand = {"metric": ref}
+        try:
+            value, _reason = await _resolve_operand(db, request, operand, group_field)
+        except Exception:  # noqa: BLE001 - an uncomputable member simply stays unknown
+            value = None
+        if isinstance(value, dict) and body.group is not None:
+            value = value.get(body.group)
+        if isinstance(value, (int, float)):
+            known[ref] = float(value)
+
+    outcome = solve(relation, known)
+    return InferOut(**{k: v for k, v in outcome.items() if k in InferOut.model_fields})
 
 
 @router.get("/{rule_id}/events", response_model=EventListResponse, dependencies=READ_DEPS)
