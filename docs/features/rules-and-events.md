@@ -79,6 +79,16 @@ separate). Plus `period_start`/`period_end` — the **data** period checked, whi
 as when the event was raised — `scope`, `evidence` (the values that produced it), `rule_id`,
 `rule_version`, `subject_type`/`subject_id` and `status`.
 
+## The inbox groups by rule
+
+Six scenarios of one broken check are one problem, not six rows: the events tab lists a header per rule
+(name, how many events, which scopes) with the events under it, so "分货额度错配 — 6 个事件 — 064895a1 · 73ec880b
+· …" is one line instead of six. A rule's own page turns the grouping off — everything there already belongs
+to the same rule.
+
+Folding is display only: each row still carries its own title, severity, state and the three moves, because
+acknowledging is per occurrence (`方案 73ec880b` may be the one being fixed today).
+
 ## Where you see it
 
 | Surface | What it answers |

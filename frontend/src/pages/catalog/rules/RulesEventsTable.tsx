@@ -6,6 +6,7 @@
  * view over `Event`, not a second store.
  */
 
+import { Fragment } from 'react';
 import { useTranslation } from 'react-i18next';
 import { BellRing, CheckCircle2, XCircle } from 'lucide-react';
 import {
@@ -30,18 +31,42 @@ function stateTone(status: string | null): 'ok' | 'warn' | 'neutral' | 'accent' 
   return 'warn';
 }
 
+/**
+ * Group by rule: six scenarios of one broken check are one problem, not six. A rule's own page turns
+ * this off — everything there already belongs to the same rule.
+ */
+function groupByRule(events: EventOut[]): Array<{ ruleId: string; events: EventOut[] }> {
+  const groups = new Map<string, EventOut[]>();
+  for (const event of events) {
+    const key = event.rule_id ?? '';
+    const bucket = groups.get(key);
+    if (bucket) bucket.push(event);
+    else groups.set(key, [event]);
+  }
+  return [...groups].map(([ruleId, bucket]) => ({ ruleId, events: bucket }));
+}
+
 export function RulesEventsTable({
   events,
   busyEventId,
   onTransition,
   showPeriod = true,
+  grouped = false,
+  ruleNames = {},
 }: {
   events: EventOut[];
   busyEventId: string | null;
   onTransition: (event: EventOut, status: 'acknowledged' | 'resolved' | 'dismissed') => void;
   showPeriod?: boolean;
+  /** Collapse the inbox by rule (the list page); a rule's own page leaves it off. */
+  grouped?: boolean;
+  ruleNames?: Record<string, string>;
 }) {
   const { t } = useTranslation('ontology');
+  const columnCount = showPeriod ? 5 : 4;
+  const groups = grouped
+    ? groupByRule(events)
+    : [{ ruleId: '', events }];
   return (
     <div className="ds-table-wrap ds-table-wrap--flush">
       <table className="console-table">
@@ -55,7 +80,30 @@ export function RulesEventsTable({
           </tr>
         </thead>
         <tbody>
-          {events.map((event) => {
+          {groups.map((group) => (
+            <Fragment key={group.ruleId || 'all'}>
+              {grouped && group.ruleId ? (
+                <tr className="rules-events-group">
+                  <td colSpan={columnCount}>
+                    {/* A div inside the cell: `display: flex` on a `td` would take it out of the table. */}
+                    <div className="rules-events-group__head">
+                      <span className="rules-events-group__name">
+                        {ruleNames[group.ruleId] ?? group.ruleId}
+                      </span>
+                      <span className="rules-events-group__count">
+                        {t('rules.groupEventCount', { count: group.events.length })}
+                      </span>
+                      <span className="rules-events-group__scopes">
+                        {group.events
+                          .filter((event) => event.scope)
+                          .map((event) => event.scope!.slice(0, 8))
+                          .join(' · ')}
+                      </span>
+                    </div>
+                  </td>
+                </tr>
+              ) : null}
+          {group.events.map((event) => {
             const closed = Boolean(event.event_end_time);
             return (
               <tr key={event.id}>
@@ -114,6 +162,8 @@ export function RulesEventsTable({
               </tr>
             );
           })}
+            </Fragment>
+          ))}
         </tbody>
       </table>
     </div>

@@ -351,6 +351,8 @@ export function RulesPage() {
                   events={events}
                   busyEventId={busyEventId}
                   onTransition={(event, status) => void moveEvent(event, status)}
+                  grouped
+                  ruleNames={Object.fromEntries(rules.map((rule) => [rule.rule_id, rule.name]))}
                 />
               )}
 

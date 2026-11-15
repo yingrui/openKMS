@@ -122,6 +122,33 @@
   }
 }
 
+/* Inbox grouping: one header per rule, because six scenarios are one broken check. */
+.rules-events-group td {
+  padding-top: var(--space-3);
+  background: color-mix(in srgb, currentcolor 4%, transparent);
+}
+
+.rules-events-group__head {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-3);
+
+  .rules-events-group__name {
+    font-weight: 600;
+  }
+
+  .rules-events-group__count {
+    font-size: var(--text-xs);
+    color: var(--color-text-muted);
+  }
+
+  .rules-events-group__scopes {
+    font-size: var(--text-xs);
+    color: var(--color-text-muted);
+    font-family: var(--font-mono, monospace);
+  }
+}
+
 /* 试算: the numbers a run would produce, before anything is published. */
 .rules-trial {
   margin-top: var(--space-3);

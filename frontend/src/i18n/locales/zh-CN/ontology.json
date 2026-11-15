@@ -1454,6 +1454,7 @@
     "trialStatus": "结论",
     "trialValues": "数值",
     "trialNoGroup": "整个对象",
-    "trialWouldPublish": "会生成事件"
+    "trialWouldPublish": "会生成事件",
+    "groupEventCount": "{{count}} 个事件"
   }
 }
