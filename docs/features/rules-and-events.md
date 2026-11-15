@@ -62,10 +62,7 @@ is allowed but re-points future events, so treat it like renaming a published AP
 | Property | Meaning |
 |----------|---------|
 | `subject` | `{kind: metric\|dataset, ref}` — what the rule watches, and therefore which evaluator and permissions apply |
-| `condition` | One comparison, or `all`/`any` of comparisons. Operands: `{metric}`, `{dataset_agg}`, `{diff:[a,b]}`, `{ratio:[a,b]}`; each may carry the data layer's own `filters` (dataset operands use `{"field": …, "op": …, "value": …}` — the same shape the dataset grid's API takes; the engine also tolerates `column`, but `field` is the documented one). A filter may also carry **`"label": "推荐方案 · 2026-W46"`**, which is what the condition text shows instead of the UUID — the engine ignores the key, the reader needs it. Better still: an operand can declare **`"scope_field": "scenario_id"`**, meaning "the run says which scenario" — the value then comes from `scope` at run time, and the rule is not pinned to one object's id |. The editor always shows the stored condition verbatim. Conditions are authored **as the tree they are**: an `all`/`any` group is a heading with an indented, guide-lined list of children (groups nest), and a comparison is one line — a value (metric, dataset aggregate, or a ratio/difference, itself nestable), an operator and a constant. That drawing maps one-to-one onto the stored JSON, so nothing is lost in either direction — including operand
-filters, which stay on the operand (shown as `分货额度（scenario_id = …）`) and survive an edit through the form. The read view
-draws the same tree without controls, and the one-line summary spells the structure out —
-`(分货额度 ÷ 分货明细.sum(gap)) > 1 且 仍缺货明细数 > 0` — so "is this the formula I meant?" is answered by looking, not by trusting. **Condition JSON** is an advanced view for shapes the builder does not draw (nested groups, an aggregate of an aggregate) — leaving it adopts the JSON back into the builder, and refuses if the builder cannot represent it, so an edit is never silently dropped |
+| `condition` | One comparison `{left, op, right: {value}}`, or `{all: [comparison, …]}` where every comparison must hold. Operands: `{metric}`, `{dataset_agg}`, `{diff:[a,b]}`, `{ratio:[a,b]}`; metric and dataset operands may carry the data layer's own `filters` (`{"field", "op", "value"}`). **No `any`, no nesting** — the editor is a flat list of comparisons and validation accepts exactly that, so the editor cannot express something the server refuses; a condition stored with nesting still *reads* but is rejected on the next write. The read view spells it out in one line — `(分货额度 ÷ 分货明细.sum(gap)) > 1 且 仍缺货明细数 > 0` |
 | `severity` | `P0` / `P1` / `P2`, the same scale as quality rules |
 | `conclusion` / `suggestion` | One sentence each. **A hit with no suggestion does not become an event** |
 | `owner` / `status` / `version` | Who owns the opinion, whether it runs, and which revision fired |
@@ -76,7 +73,9 @@ draws the same tree without controls, and the one-line summary spells the struct
 A Vertex-style event object: `event_start_time`, `event_end_time` (**empty = still open**),
 `intent` (`danger`/`warning`/`primary`/`success`, the colour) and `severity` (the triage level, kept
 separate). Plus `period_start`/`period_end` — the **data** period checked, which is not the same thing
-as when the event was raised — `scope`, `evidence` (the values that produced it), `rule_id`,
+as when the event was raised. The run is given **one period label** (`2026-W46`, `2026-11`, `2026-11-15`)
+and the label is parsed into these dates, so the same week cannot be spelled two ways and split its history.
+Also `scope`, `evidence` (the values that produced it), `rule_id`,
 `rule_version`, `subject_type`/`subject_id` and `status`.
 
 ## The inbox groups by rule
@@ -94,13 +93,30 @@ acknowledging is per occurrence (`方案 73ec880b` may be the one being fixed to
 | Surface | What it answers |
 |---------|-----------------|
 | **Ontology Manager → Rules** (`/ontology-manager/rules`) | Two tabs: **规则** (author, run, pause) and **事件** (the inbox: acknowledge / resolve / dismiss, filtered by state and severity) |
-| **Run parameters** | The period and scope belong to the *run*, not to the rule: both entry points ("run all" and a rule's own Run button) open the same dialog, so the two cannot drift |
+| **Run parameters** | The period belongs to the *run*, not to the rule (`2026-W46`, `2026-11` or `2026-11-15`; anything else is a 422). Both entry points — "run all" and a metric's own play button — use the same dialog, so the two cannot drift |
 | **One rule** (`/ontology-manager/rules/:id`, `/rules/new`) | A page with two modes: **read** (definition, last run with its computed values, events raised) and **edit** (rule / condition / meaning panels, Save and Cancel in the header). The condition needs a page — a summary of what is stored, a form view for one comparison, and a 16-row JSON view for everything else. Creating a rule is the same page in edit mode, so the two cannot drift |
 | **A metric** (model → Metrics) | A badge with its open-event count, linking to that metric's events |
 | **A dataset** (Catalog → dataset → Overview) | "Rules and events": how many rules watch it, and the three most recent events |
 
 Events themselves remain ordinary objects: the same rows are in Object Explorer, and each is linked to
 the business object it is about.
+
+## Reading a number: the check status on the metric row
+
+The relationship canvas was removed (it restated what the row already says — see the Catalog plan's deletion
+list). What a reader needs is one line next to the number: **是否一致**.
+
+| what the row shows | meaning |
+|---|---|
+| 一致 / inconsistent? → **一致** | every rule referencing the metric passed for its last run |
+| **不一致** | at least one failed |
+| **无法判定** | none could decide (missing grant, too many groups, a missing operand) — hover for the reason |
+| **未运行** | rules exist but none has been run |
+| **未覆盖** | no rule references this metric — deliberately neutral, so it never looks like a pass |
+
+The badge aggregates the rules that reference the metric (`rule_metric_refs`), worst-first, with the period,
+the run time and any reason in the tooltip. The play button on the row runs exactly those rules for one
+period label; the same coverage information filters both metric lists (全部 / 已覆盖 / 未覆盖).
 
 ## What "scope" actually is
 
@@ -186,27 +202,6 @@ rule's own page therefore offers **试算 (dry run)** next to **运行**:
 `POST /api/rules/{id}/evaluate` takes `dry_run: true`. The list-level "run all" has no trial: a trial has
 one subject by definition.
 
-## 推算: an identity that is checked can also fill in a number
-
-勾稽 is not only "do these agree?" — an identity is an equation, so once most of it is measured, the last
-number is arithmetic, not a guess. `POST /api/rules/{id}/infer {infer: <metric>, known?, period?, group?}`
-resolves every other metric through the usual engine, then solves:
-
-| identity | asked | answer |
-|---|---|---|
-| `分货缺口 = 预测需求 − 分货额度` | 缺口 | 73,639 (measured sides: 201,912 − 128,273) |
-| the same | 需求 | 201,912 (given 缺口 73,639 + 额度 128,273) |
-| `分货满足率 = 分货额度 / 预测需求` (`kind: ratio`) | 满足率 | 0.635292 |
-| the same | 分货额度 | 128,274.7 (rate × demand) |
-
-Three outcomes, and the honest ones matter: `inferred` (with the identity it came from and an explicit
-`assumption`), `undetermined` (two numbers missing, or a zero denominator — never a guess), and
-`contradictory` (everything present and disagreeing, reported with the residual). A ratio relation takes
-exactly two members and divides; a decomposition takes weights and sums.
-
-That is the difference between an alarm and an application: an alarm says "these disagree", an application
-says "you are missing 缺口 — here it is, from this identity, assuming the other two are right".
-
 ## What reaches the agent (the point of the whole layer)
 
 The reason relations exist is not a prettier diagram — it is that an agent answering "how much did we
@@ -228,59 +223,6 @@ that fact and the rule's name; a passing or absent assertion is not worth mentio
 The distinction the layer keeps: a *definition* edge is structure (the expression already says it, and
 checking it would be tautological); an *assertion* edge is a claim about the world, which is what makes an
 answer either trustworthy or not.
-
-## The dependency view: definitions vs assertions
-
-Model → Metrics → **关系** draws the graph inline. The switch sits on a toolbar row *under* the header
-divider, right-aligned, with the counts on its left — a view control belongs to the content it changes, and
-the header keeps the one thing a page can create (新建指标).
-
-**The graph is a surface you walk, not a form you fill in.** The navigation is a breadcrumb
-(`整个模型 › 分货满足率`), not a dropdown: nobody starts from "choose a metric", they start from a metric they
-are looking at. One click on a node **selects** it — a detail panel answers what it is, what it is computed
-from, what uses it and what is asserted about it — and a second step drills in (the chevron on the card), so
-the picture never jumps away from under the pointer. Pan by dragging, zoom with the wheel or the floating
-controls, fit on demand; wheel zoom is safe because this view does not page-scroll. Definitions are solid and
-labelled `× w` only when the weight is not 1; assertions are dashed, carry their tolerance, take the colour of
-their last verdict, and are the link into the rule. Everything is a design token — node cards use the type
-scale and theme colours, so dark mode and both languages come for free (a canvas-drawn graph would lose all
-of it).
-
-In graph mode the view fills the pane the way the Knowledge Map and the wiki graph do — no inner scroll,
-the canvas as the surface (muted, bordered, rounded), legend above it and the assertion chips pinned below.
-The canvas scales the diagram to fit (`preserveAspectRatio`) instead of stretching or cropping it: this is a
-reference, so the whole of it stays visible at any pane size. Below 768 px the page goes back to scrolling
-with a shorter canvas. **Relationships**, not "dependencies": the picture holds two kinds of edge and only one of them is
-a dependency. Layout is deterministic — base metrics at the bottom, everything computed from them above,
-each row centred — so the picture is a reference rather than something that rearranges on every open; the
-geometry lives in `metricGraphLayout.ts` and is unit-tested.
-
-The drawing explains itself: a **legend** names the two edge kinds once (a definition is a solid line, an
-assertion a dashed one), and the only thing repeated as text is the assertions — as chips, because each one
-opens the rule that runs it. Definitions are not listed: the graph *is* that list, and printing it twice
-teaches nobody anything. The table:
-
-| edge | where it comes from | can it fail? | what it is for |
-|---|---|---|---|
-| **definition** (`分货满足率 ← 分货额度 · 预测需求`) | the expression's `{{references}}` | no | reading: how a number is made |
-| **assertion** (`分货额度 = 方案累计额度 ±1`) | a rule's `relation` | yes, with a period and severity | checking: whether two numbers agree |
-
-The graph is **computed on every read** — nothing is stored, so nothing can go stale. When metrics become
-ontology objects this can be mirrored as a `derived_from` link type; until then the view is the honest
-form.
-
-**A warning that came out of building it.** The obvious next step — "generate a reconcile rule from a
-derived edge" — is a trap, and it was implemented and then removed. A relation built from the definition
-(`分货缺口率 = 分货缺口 + 预测需求`) restates the expression the engine already runs: with the right
-weights it always passes, with the wrong ones it always fails, and either way it says nothing about the
-data. The comparisons worth checking are exactly those the graph **cannot** derive — two sources, one
-number (`分货额度` from `allocation_lines` vs `方案累计额度` from `allocation_scenarios`). What the graph is
-good for is telling those apart: definition edges are structure, assertion edges are claims.
-
-The honest generators, when we want them: (a) suggest cross-source candidates (same metric name or shared
-synonym on a different base dataset) and let a person confirm one before it becomes a rule; (b) an
-additivity rollup check — an `additive` metric's total must equal the sum of its groups, which catches
-double counting from joins. Neither is a restatement of an expression.
 
 ## Grouping by a field that exists
 
@@ -348,7 +290,7 @@ scenario is re-planned and the condition stops holding, the event gets an end ti
 
 ## Status transitions, and why not Action types yet
 
-Moving an event (acknowledge / resolve / dismiss) is a plain audited `PATCH` on the object instance:
+Moving an event (resolve / dismiss) is a plain audited `PATCH` on the object instance:
 closing writes `event_end_time`, reopening clears it. An **Ontology Action type** would be the reusable
 form of the same move — a declared, permission-checked write with submission criteria, webhook and
 action log, shareable across pages and agents. It is worth doing when there are *effects* to attach
@@ -357,11 +299,21 @@ until then an Action type would be an extra declaration around one `status` fiel
 
 ## Not in this version
 
-Time-axis and event badges, notifications, action types, rule proposals, cross-model subjects.
+Time-axis and event badges, notifications, action types, rule proposals, cross-model subjects,
+record-level reconciliation (two datasets by key), period offsets (`stock_flow`), variance decomposition,
+metric definition versions. Each has a trigger in the Catalog plan's "after this" list.
 
-**Inference is shipped** (`POST /api/rules/{id}/infer`, see above) but has no consumer yet — the agent
-work that would use it is not built. **Periods are still free-text** (`period_start` / `period_end`), so a
-verdict cannot be looked up per period. That, and the per-period verdict record itself, are the next
-increment: a badge that says **口径一致 / 不一致 / 未覆盖 / 未完成** next to the number, backed by a ledger
-written on every evaluation. Until it exists, treat `last_status` as "when someone last ran this" rather
-than "this period is verified".
+**Removed rather than deferred**: the dependency canvas, the nested condition editor with its JSON view,
+the `infer` endpoint, `acknowledged` as an event state, and the unused rule fields (`ai_context`,
+`about_object_type`, `group_by.label`, `domain`). Reasons in the Catalog plan's deletion list.
+
+**Inference** was removed: a solver and an endpoint, with no consumer (the agent work does not exist yet).
+The equation is ~50 lines to re-add when something calls it.
+
+What *is* shipped for reading a number: a metric row shows **一致 / 不一致 / 无法判定 / 未运行 / 未覆盖** from
+the rules that reference it, with the period and the reason in the tooltip, and a play button runs exactly
+those rules for one period label. A metric with no rule says so (`未覆盖`) instead of looking clean.
+
+**Periods are labels, not objects**: `2026-W46`, `2026-11`, `2026-11-15` are parsed to start/end dates (ISO
+weeks, Monday), anything else is a 422. There is no per-period result history yet — `last_*` on the rule is
+the latest run, and the run's period is shown next to it.
