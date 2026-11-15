@@ -357,6 +357,11 @@ until then an Action type would be an extra declaration around one `status` fiel
 
 ## Not in this version
 
-Time-axis and event badges, notifications, action types, rule proposals, inference, cross-model
-subjects. See `tmp/plan/metric-reconciliation-plan.md` for the current scope and
-`tmp/plan/rules-events-vision.md` for why these are deliberately deferred.
+Time-axis and event badges, notifications, action types, rule proposals, cross-model subjects.
+
+**Inference is shipped** (`POST /api/rules/{id}/infer`, see above) but has no consumer yet — the agent
+work that would use it is not built. **Periods are still free-text** (`period_start` / `period_end`), so a
+verdict cannot be looked up per period. That, and the per-period verdict record itself, are the next
+increment: a badge that says **口径一致 / 不一致 / 未覆盖 / 未完成** next to the number, backed by a ledger
+written on every evaluation. Until it exists, treat `last_status` as "when someone last ran this" rather
+than "this period is verified".
