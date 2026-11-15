@@ -81,16 +81,21 @@
 }
 
 
+/* A filter is a label *and* its control on one line. `.ds-control` is a block (it fills a form field), so a
+   bare inline label would push the control onto the next line — the row is the layout, not the control. */
 .console-datasets-filter {
-  font-size: var(--text-md);
-}
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--text-sm);
+  color: var(--color-text-secondary);
+  white-space: nowrap;
 
-.console-datasets-filter select {
-  margin-left: 8px;
-  padding: var(--gap-compact) calc(var(--space-2) + var(--space-1) / 2);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
-  background: var(--color-bg-elevated);
+  select {
+    width: auto;
+    min-width: 9rem;
+    margin-left: 0;
+  }
 }
 
 .console-table {

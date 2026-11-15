@@ -60,6 +60,16 @@ select.ds-control {
   cursor: pointer;
 }
 
+/* `.ds-control` is a block because a form field stacks label over control. A custom `<label>` that puts text
+   beside its control is a row — and a block control there pushes itself onto the next line, which is the bug
+   this prevents at the primitive rather than at every call site. `<FormField>` renders `label.ds-field`, so
+   fields keep their stacked layout. */
+label:not(.ds-field) > .ds-control {
+  display: inline-block;
+  width: auto;
+  min-width: 8rem;
+}
+
 .ds-field textarea,
 textarea.ds-control {
   min-height: calc(var(--space-12) + var(--space-1) * 3);
