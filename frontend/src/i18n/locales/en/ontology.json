@@ -452,8 +452,9 @@
     "timeModeNone": "No time concept",
     "timeModePeriod": "Filter by period",
     "timeModeSnapshot": "Current value only",
-    "timeField": "Period column",
-    "timeFieldHint": "The column that carries the period (trade_date, cycle)."
+    "timeFieldHint": "The column that carries the period (trade_date, cycle).",
+    "timeDimension": "Time dimension",
+    "timeDimensionHint": "A model field whose `dimension.is_time` is true; a run’s period filters on it."
   },
   "datasets": {
     "title": "Datasets",

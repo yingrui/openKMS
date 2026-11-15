@@ -447,8 +447,9 @@
     "timeModeNone": "无时间概念",
     "timeModePeriod": "按周期取数",
     "timeModeSnapshot": "只能取当前值",
-    "timeField": "周期字段",
-    "timeFieldHint": "承载周期的列（如 trade_date、cycle）。"
+    "timeFieldHint": "承载周期的列（如 trade_date、cycle）。",
+    "timeDimension": "时间维度",
+    "timeDimensionHint": "模型里被标记为时间维度的字段（dimension.is_time）。周期运行会在它上面过滤。"
   },
   "datasets": {
     "title": "数据集",

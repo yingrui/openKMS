@@ -212,9 +212,15 @@ Whether a period *filters the data* is a property of the **metric**, not of the 
 
 | `time_mode` | meaning | a run for a past period |
 |---|---|---|
-| `period` (+ `time_field`) | a column carries the period (`trade_date`, `cycle`) | filters `time_field >= start AND <= end` |
+| `period` (+ `time_dimension`) | a **time dimension** carries the period (`trade_date`, a `cycle` field) | filters `time_dimension >= start AND <= end` |
 | `snapshot` | only the current state can be computed | **refused** with a reason — never today's numbers under yesterday's label |
 | `none` | no time concept | the period is a label on the run; the alert says so |
+
+Ossie has no metric period: the spec's metric is name + expression + description + datatype + ai_context +
+custom_extensions, and time exists as a **field role** (`dimension.is_time`), with grain decided at query time.
+So the run's period is a *filter on that field*, and `time_mode` / `time_dimension` are our metadata (exported
+in `custom_extensions`). `time_dimension` must resolve to a time dimension — using `scenario_id` as the period
+column is a 400, not a silently wrong filter.
 
 An operand may override the column (`{metric: …, period_field: …}`), because two metrics in one identity can
 carry time differently. A `dataset_agg` operand filters only when it names a column itself: a dataset has no

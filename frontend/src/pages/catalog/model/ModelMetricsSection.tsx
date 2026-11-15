@@ -55,7 +55,7 @@ export function ModelMetricsSection() {
   const [baseDatasetId, setBaseDatasetId] = useState('');
   const [additivity, setAdditivity] = useState<MetricAdditivity>('additive');
   const [timeMode, setTimeMode] = useState<'period' | 'snapshot' | 'none'>('none');
-  const [timeField, setTimeField] = useState('');
+  const [timeDimension, setTimeDimension] = useState('');
   const [expression, setExpression] = useState('');
   const [datatype, setDatatype] = useState('');
   const [selectedJoins, setSelectedJoins] = useState<string[]>([]);
@@ -157,7 +157,7 @@ export function ModelMetricsSection() {
     setBaseDatasetId(datasets[0]?.id ?? '');
     setAdditivity('additive');
     setTimeMode('none');
-    setTimeField('');
+    setTimeDimension('');
     setExpression('');
     setDatatype('');
     setSelectedJoins([]);
@@ -172,7 +172,7 @@ export function ModelMetricsSection() {
     setBaseDatasetId(m.base_dataset_id);
     setAdditivity(m.additivity);
     setTimeMode(m.time_mode);
-    setTimeField(m.time_field ?? '');
+    setTimeDimension(m.time_dimension ?? '');
     setExpression(metricExpressionSql(m));
     setDatatype(m.datatype ?? '');
     setSelectedJoins((m.joins as string[] | null) ?? []);
@@ -205,7 +205,7 @@ export function ModelMetricsSection() {
       business_definition: definition.trim() || null,
       additivity,
       time_mode: timeMode,
-      time_field: timeMode === 'period' ? timeField.trim() || null : null,
+      time_dimension: timeMode === 'period' ? timeDimension.trim() || null : null,
       expression: makeMetricExpression(expression.trim()),
       datatype: datatype.trim() || null,
       joins: selectedJoins,
@@ -354,7 +354,7 @@ export function ModelMetricsSection() {
                     {m.time_mode !== 'none' ? (
                       <span className={`metric-additivity metric-additivity--${m.time_mode}`}>
                         {m.time_mode === 'period'
-                          ? `${t('dataModel.timeModePeriod')} · ${m.time_field ?? ''}`
+                          ? `${t('dataModel.timeModePeriod')} · ${m.time_dimension ?? ''}`
                           : t('dataModel.timeModeSnapshot')}
                       </span>
                     ) : null}
@@ -488,11 +488,11 @@ export function ModelMetricsSection() {
                 </select>
               </FormField>
               {timeMode === 'period' ? (
-                <FormField label={t('dataModel.timeField')} hint={t('dataModel.timeFieldHint')}>
+                <FormField label={t('dataModel.timeDimension')} hint={t('dataModel.timeDimensionHint')}>
                   <input
                     type="text"
-                    value={timeField}
-                    onChange={(e) => setTimeField(e.target.value)}
+                    value={timeDimension}
+                    onChange={(e) => setTimeDimension(e.target.value)}
                     placeholder="trade_date"
                   />
                 </FormField>

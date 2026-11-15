@@ -11,7 +11,7 @@ def _metric(mode: str, field: str | None = None) -> MetricDefinition:
         name="m",
         additivity="additive",
         time_mode=mode,
-        time_field=field,
+        time_dimension=field,
     )
 
 

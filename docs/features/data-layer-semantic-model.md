@@ -98,6 +98,21 @@ The **shared base** (datasets, their physical columns, relationships) lives in *
 - The **Ossie `datasets`** section of a model's document: `source` (a dotted string), `primary_key`, `unique_keys`, **`columns`** (with descriptions), **`fields`** (the model's), `ai_context`.
 
 ### 5. Playground
+**Time is a field role, never a metric property.** The spec's metric has six fields — `name`, `expression`,
+`description`, `datatype`, `ai_context`, `custom_extensions` — and none of them is a period, a grain or a
+calendar. What it does define is a **time dimension**: a field with `dimension: {is_time: true}`, defaulting
+from a temporal `datatype` and overridable (an `Integer` year or a `"Q1"` string can be a time dimension; an
+audit `created_at` opts out). Grain is a *consumption-time* choice — `GROUP BY` is "controlled by grain
+specification", and `expression_language.md` calls grain calculations a future proposal. Whole-model grain is
+expressed as a field with a `DATE_TRUNC(...)` expression plus `is_time`.
+
+So "this run covers 2026-W46" is not a metric fact at all: it is a **filter on the time dimension** at query
+time. Our metrics therefore carry `time_mode` (`period` / `snapshot` / `none`) and `time_dimension` — the
+*field* a run filters on, which must resolve to a time dimension (a status column is refused) — and they travel
+in `custom_extensions` on export, because the spec has no place for them. `snapshot` is the honest mode for a
+metric whose numbers are stored per run (the scenario table's `kpis`): replaying it for a past week would
+otherwise serve today's value under last week's label.
+
 **Worked example (分货, 2026-W46).** Three metrics on one base dataset (`allocation_lines`) say more than a paragraph:
 
 | metric | expression | additivity | value |

@@ -19,6 +19,7 @@ from app.models.metric_definition import MetricDefinition
 from app.models.metric_rule import MetricRule
 from app.models.metric_run import MetricRun
 from app.models.semantic_model import SemanticModel
+from app.models.semantic_model_field import SemanticModelField
 from app.services.data.semantic_models import member_ids
 from app.schemas.metric import (
     RuleRefOut,
@@ -46,7 +47,11 @@ from app.services.ontology.rules.relations import list_relation_rules
 from app.api.query_errors import query_failure_detail
 from app.services.data.query_errors import DEFINITION, QueryFailure
 from app.services.data.query import QueryError, run_query
-from app.services.data.semantic_model_fields import FieldError, validate_datatype
+from app.services.data.semantic_model_fields import (
+    FieldError,
+    resolve_is_time,
+    validate_datatype,
+)
 from app.services.identity.permissions.permission_catalog import PERM_DATA_WRITE
 from app.services.platform.dataset_label import dataset_label
 
@@ -63,13 +68,51 @@ async def _name_map(db: AsyncSession, ids: set[str]) -> dict[str, str]:
 TIME_MODES = ("period", "snapshot", "none")
 
 
-def _validate_time_mode(mode: str | None, field: str | None) -> None:
-    """`period` needs a column; `snapshot`/`none` must not claim one."""
+def _validate_time_mode(mode: str | None, dimension: str | None) -> None:
+    """`period` names a **time dimension**; `snapshot`/`none` must not claim one.
+
+    Ossie has no metric period. What it has is a *field* whose `dimension.is_time` resolves true, and grain
+    is a consumption-time choice. So `time_dimension` is the field a run's period filters on — it must exist
+    in the model *and* be a time dimension, otherwise "this period" would silently filter on a status code.
+    """
     resolved = str(mode or "none")
     if resolved not in TIME_MODES:
         raise HTTPException(status_code=400, detail=f"time_mode must be one of: {', '.join(TIME_MODES)}.")
-    if resolved == "period" and not (field or "").strip():
-        raise HTTPException(status_code=400, detail="time_mode 'period' needs a time_field.")
+    if resolved != "period":
+        return
+    name = (dimension or "").strip()
+    if not name:
+        raise HTTPException(status_code=400, detail="time_mode 'period' needs a time_dimension.")
+    # Checked against the model's fields below (it needs the metric), see `_validate_time_dimension`.
+
+
+async def _validate_time_dimension(
+    db: AsyncSession, semantic_model_id: str, dimension: str | None
+) -> None:
+    name = (dimension or "").strip()
+    if not name:
+        return
+    field = (
+        await db.execute(
+            select(SemanticModelField).where(
+                SemanticModelField.semantic_model_id == semantic_model_id,
+                SemanticModelField.name == name,
+            )
+        )
+    ).scalars().first()
+    if field is None:
+        raise HTTPException(
+            status_code=400,
+            detail=f"time_dimension '{name}' is not a field of this metric's model.",
+        )
+    if not resolve_is_time(field.dimension, field.datatype):
+        raise HTTPException(
+            status_code=400,
+            detail=(
+                f"'{name}' is not a time dimension — mark the field `dimension.is_time` (or give it a "
+                "temporal datatype) before using it as the period column."
+            ),
+        )
 
 
 def _depends_on(m: MetricDefinition, model_metrics: list[MetricDefinition]) -> list[dict]:
@@ -101,7 +144,7 @@ def _metric_response(
         business_definition=m.business_definition,
         additivity=m.additivity,
         time_mode=m.time_mode,
-        time_field=m.time_field,
+        time_dimension=m.time_dimension,
         depends_on=_depends_on(m, model_metrics or []),
         assertions=(assertions or {}).get(m.id, []),
         expression=m.expression,
@@ -292,7 +335,8 @@ async def create_metric(
             name=body.name, additivity=body.additivity, expression=body.expression
         )
         validate_datatype(body.datatype)
-        _validate_time_mode(body.time_mode, body.time_field)
+        _validate_time_mode(body.time_mode, body.time_dimension)
+        await _validate_time_dimension(db, body.semantic_model_id, body.time_dimension)
         body.ai_context = validate_ai_context(body.ai_context)
         cleaned_filters = validate_metric_filters(
             [f.model_dump() for f in body.filters] if body.filters else None
@@ -312,7 +356,7 @@ async def create_metric(
         business_definition=body.business_definition,
         additivity=body.additivity,
         time_mode=body.time_mode,
-        time_field=(body.time_field or "").strip() or None,
+        time_dimension=(body.time_dimension or "").strip() or None,
         expression=normalize_expression(body.expression),
         datatype=body.datatype,
         filters=cleaned_filters or None,
@@ -378,7 +422,10 @@ async def update_metric(
         )
         validate_datatype(data.get("datatype", m.datatype))
         _validate_time_mode(
-            data.get("time_mode", m.time_mode), data.get("time_field", m.time_field)
+            data.get("time_mode", m.time_mode), data.get("time_dimension", m.time_dimension)
+        )
+        await _validate_time_dimension(
+            db, new_model_id, data.get("time_dimension", m.time_dimension)
         )
         if "ai_context" in data:
             data["ai_context"] = validate_ai_context(data["ai_context"])
@@ -402,7 +449,7 @@ async def update_metric(
         "business_definition",
         "additivity",
         "time_mode",
-        "time_field",
+        "time_dimension",
         "expression",
         "datatype",
         "filters",

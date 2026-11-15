@@ -44,7 +44,7 @@ class MetricDefinition(Base):
     #: `snapshot` = only the current value can be computed (never replayable); `none` = no time concept.
     time_mode: Mapped[str] = mapped_column(String(16), nullable=False, default="none")
     #: The column that carries the period, when `time_mode = period` (`trade_date`, `cycle`, …).
-    time_field: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    time_dimension: Mapped[str | None] = mapped_column(String(128), nullable=True)
     # Agent grounding: {instructions, synonyms[], examples[], not_for[]}.
     ai_context: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
     created_by: Mapped[str | None] = mapped_column(String(512), nullable=True)

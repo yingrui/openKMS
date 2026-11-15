@@ -130,13 +130,13 @@ def period_binding(
 
     Three cases, and the difference between them is the point:
 
-    * **period** — a column carries the period (the operand's own `period_field`, else the metric's
-      `time_field`): filter this run to those rows;
+    * **period** — a time dimension carries the period (the operand's own `period_field`, else the metric's
+      `time_dimension`): filter this run to those rows;
     * **snapshot** — only the current state can be computed, so a run aimed at a past period is refused
       (`reason`), never silently served today's numbers under yesterday's label;
     * **none** — no time concept: the period is a label on the run, and the alert says so.
     """
-    field = (operand_field or "").strip() or (metric.time_field if metric else None)
+    field = (operand_field or "").strip() or (metric.time_dimension if metric else None)
     mode = metric.time_mode if metric and metric.time_mode else ("period" if field else "none")
     if mode == "snapshot":
         if period_end and period_end < _today():
