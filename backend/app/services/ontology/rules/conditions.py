@@ -1,10 +1,13 @@
 """Rule conditions: validation, operand collection and comparison.
 
-A condition is one comparison or a boolean combination of comparisons:
+A condition is **one comparison, or a list of comparisons that must all hold**:
 
     {"left": <operand>, "op": ">", "right": {"value": 1}}
     {"all": [<comparison>, ...]}
-    {"any": [<comparison>, ...]}
+
+No nesting and no `any`: in practice rules are one comparison, or two that must both hold, and the removed
+combinations doubled both the editor and the validation surface without a single rule using them. Conditions
+stored before this narrowing are still *read* fine (the flattening below is generic); new writes are rejected.
 
 An operand is one of four shapes — the same four for either side of a comparison:
 
@@ -35,18 +38,21 @@ class ConditionError(ValueError):
 
 
 def comparisons(condition: Any) -> list[dict]:
-    """Flatten `all` / `any` into the list of comparisons it is made of."""
+    """The comparisons a condition is made of. Flattens `all`; rejects `any` and nesting on write."""
     if not isinstance(condition, dict):
         raise ConditionError("condition must be an object")
-    if "all" in condition or "any" in condition:
-        key = "all" if "all" in condition else "any"
-        entries = condition.get(key)
+    if "any" in condition:
+        raise ConditionError("conditions are combined with `all` only — `any` is not supported")
+    if "all" in condition:
+        entries = condition.get("all")
         if not isinstance(entries, list) or not entries:
-            raise ConditionError(f"condition.{key} must be a non-empty list")
+            raise ConditionError("condition.all must be a non-empty list")
         if len(entries) > MAX_COMPARISONS:
             raise ConditionError(f"too many comparisons ({len(entries)} > {MAX_COMPARISONS})")
         out: list[dict] = []
         for entry in entries:
+            if isinstance(entry, dict) and ("all" in entry or "any" in entry):
+                raise ConditionError("conditions cannot be nested — list the comparisons in one `all`")
             out.extend(comparisons(entry))
         return out
     return [condition]

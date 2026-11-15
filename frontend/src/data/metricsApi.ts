@@ -77,39 +77,6 @@ export async function fetchMetrics(semanticModelId?: string): Promise<MetricList
   });
 }
 
-/** Structure, not storage: derived edges come from expressions, assertion edges from rules. */
-export type MetricGraphNode = {
-  id: string;
-  name: string;
-  additivity: MetricAdditivity;
-  base_dataset_id: string;
-  expression: string | null;
-};
-
-export type MetricGraphEdge = {
-  from: string;
-  to: string;
-  kind: 'derived' | 'assertion';
-  weight: number;
-  tolerance: { abs?: number; rel?: number } | null;
-  source: 'expression' | 'rule';
-  rule_id: string | null;
-  rule_object_id: string | null;
-  health: string | null;
-  checked?: boolean;
-};
-
-export type MetricGraph = {
-  nodes: MetricGraphNode[];
-  edges: MetricGraphEdge[];
-  derived_count: number;
-  assertion_count: number;
-};
-
-export async function fetchMetricGraph(semanticModelId: string): Promise<MetricGraph> {
-  return request<MetricGraph>(`/api/semantic-models/${semanticModelId}/metric-graph`);
-}
-
 export async function createMetric(data: MetricPayload): Promise<MetricResponse> {
   return request<MetricResponse>('/api/metrics', {
     method: 'POST',

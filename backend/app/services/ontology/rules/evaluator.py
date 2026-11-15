@@ -494,10 +494,6 @@ async def _finish(
         )
 
     overall = "fail" if "fail" in statuses else ("unknown" if "unknown" in statuses else "pass")
-    failed_groups = [
-        str(result.group.get("value")) for result in results
-        if result.status == "fail" and result.group
-    ]
     if dry_run:
         return results
 
@@ -506,17 +502,11 @@ async def _finish(
         {
             "last_run_at": _now(),
             "last_status": overall,
-            # A grouped run has one number per group per operand: that is a table, not a value list.
-            # The per-group numbers live on each event's evidence; here we keep counts.
-            "last_values": json.dumps(
-                {} if group_field else (grouped[0][2] if grouped else {}),
-                ensure_ascii=False,
-                default=str,
-            ),
             "last_period_start": period_start,
             "last_period_end": period_end,
-            "last_groups": len(grouped) if group_field else 0,
-            "last_failed_groups": failed_groups,
+            # Why a run could not decide (`unknown`), or a one-line note for a failure. Empty on pass:
+            # the numbers themselves stay in the event evidence, not on the rule.
+            "last_reason": "; ".join(reasons) if reasons else None,
         }
     )
     rule.data = data

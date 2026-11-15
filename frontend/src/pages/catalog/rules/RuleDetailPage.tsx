@@ -22,7 +22,6 @@ import {
   fetchRule,
   fetchRuleEvents,
   updateRule,
-  type RuleCondition,
   type RuleOut,
   type RulesEvaluateResponse,
 } from '../../../data/rulesApi';
@@ -35,8 +34,8 @@ import { EntityViewPanel } from '../../shared/EntityViewShell';
 import { RuleReadPanels } from './RuleReadPanels';
 import { RunRulesDialog, type RunParams } from './RunRulesDialog';
 import { conditionLabel, conditionScopeNote } from './rulesLabels';
-import { fromTree, toTree, type GroupNode } from './conditionModel';
-import { ConditionPanel } from './ConditionPanel';
+import { ConditionRows } from './ConditionRows';
+import { conditionFromRows, newRow, rowsFromCondition, type ConditionRow } from './conditionRowsModel';
 import { RuleBasicsForm } from './RuleBasicsForm';
 import { RelationEditor } from './RelationEditor';
 import { relationPayload } from './relationDraft';
@@ -65,10 +64,8 @@ type FormState = {
   severity: 'P0' | 'P1' | 'P2';
   conclusion: string;
   suggestion: string;
-  aboutObjectType: string;
   status: 'active' | 'paused';
   groupField: string;
-  groupLabel: string;
 };
 
 const EMPTY_FORM: FormState = {
@@ -89,10 +86,8 @@ const EMPTY_FORM: FormState = {
   severity: 'P1',
   conclusion: '',
   suggestion: '',
-  aboutObjectType: '',
   status: 'active',
   groupField: '',
-  groupLabel: '', 
 };
 
 function formFromRule(rule: RuleOut, metrics: MetricResponse[], datasets: DatasetResponse[]): FormState {
@@ -126,19 +121,9 @@ function formFromRule(rule: RuleOut, metrics: MetricResponse[], datasets: Datase
     severity: (rule.severity as FormState['severity']) ?? 'P1',
     conclusion: rule.conclusion ?? '',
     suggestion: rule.suggestion ?? '',
-    aboutObjectType: rule.about_object_type ?? '',
     status: rule.status === 'paused' ? 'paused' : 'active',
     groupField: rule.group_by?.field ?? '',
-    groupLabel: rule.group_by?.label ?? '',
   };
-}
-
-function safeParse(text: string): RuleCondition | null {
-  try {
-    return JSON.parse(text) as RuleCondition;
-  } catch {
-    return null;
-  }
 }
 
 function severityTone(severity: string | null): 'warn' | 'accent' | 'neutral' {
@@ -162,10 +147,7 @@ export function RuleDetailPage() {
   const [editing, setEditing] = useState(isNew);
 
   const [form, setForm] = useState<FormState>(EMPTY_FORM);
-  /** The condition as stored/sent — the form builder is a view over this, not a parallel copy. */
-  const [conditionJson, setConditionJson] = useState('');
-  const [conditionMode, setConditionMode] = useState<'form' | 'json'>('form');
-  const [tree, setTree] = useState<GroupNode | null>(null);
+  const [conditionRows, setConditionRows] = useState<ConditionRow[]>([]);
   const [conditionError, setConditionError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [running, setRunning] = useState(false);
@@ -238,15 +220,9 @@ export function RuleDetailPage() {
       setEditing(false);
       setEvents(eventPage.items);
       setForm(formFromRule(current, pickers.metrics, pickers.datasets));
-      setConditionJson(JSON.stringify(current.condition ?? {}, null, 2));
-      const converted = toTree(current.condition);
-      if (converted.tree) {
-        setTree(converted.tree);
-        setConditionMode('form');
-      } else {
-        setTree(null);
-        setConditionMode('json');
-      }
+      // A stored condition the flat editor cannot show (a nested group) leaves the rows empty and the
+      // page says so; nothing is silently rewritten.
+      setConditionRows(rowsFromCondition(current.condition) ?? []);
     } catch (e: unknown) {
       toast.error(e instanceof Error ? e.message : t('rules.toastLoadFailed'));
     } finally {
@@ -267,48 +243,18 @@ export function RuleDetailPage() {
         datasetId: pickers.datasets[0]?.id ?? '',
       };
       setForm(next);
-      const empty: GroupNode = {
-        id: 'root',
-        kind: 'group',
-        mode: 'all',
-        children: [
-          {
-            id: 'first',
-            kind: 'cmp',
-            operand: { kind: 'metric', metricId: pickers.metrics[0]?.id ?? '' },
-            op: '>',
-            value: '0',
-          },
-        ],
-      };
-      setTree(empty);
-      setConditionJson(JSON.stringify(fromTree(empty), null, 2));
+      setConditionRows([
+        newRow({ metricId: pickers.metrics[0]?.id ?? '', datasetId: pickers.datasets[0]?.id ?? '' }),
+      ]);
     });
   }, [isNew, loadPickers]);
 
-  /** The tree is the form's source of truth; the JSON view edits the same object. */
-  const updateTree = (next: GroupNode) => {
-    setTree(next);
-    setConditionJson(JSON.stringify(fromTree(next), null, 2));
-    setConditionError(null);
-  };
-
   const save = async () => {
     if (!form.name.trim()) return;
-    let condition: RuleCondition;
-    if (conditionMode === 'form') {
-      if (!tree) {
-        setConditionError(t('rules.conditionFormCannotRepresent'));
-        return;
-      }
-      condition = fromTree(tree);
-    } else {
-      try {
-        condition = JSON.parse(conditionJson) as RuleCondition;
-      } catch {
-        setConditionError(t('rules.conditionJsonInvalid'));
-        return;
-      }
+    const condition = conditionFromRows(conditionRows);
+    if (!condition) {
+      setConditionError(t('rules.conditionIncomplete'));
+      return;
     }
     setSaving(true);
     try {
@@ -332,11 +278,8 @@ export function RuleDetailPage() {
         severity: form.severity,
         conclusion: form.conclusion.trim(),
         suggestion: form.suggestion.trim(),
-        about_object_type: form.aboutObjectType.trim() || null,
         status: form.status,
-        group_by: form.groupField.trim()
-          ? { field: form.groupField.trim(), label: form.groupLabel.trim() || null }
-          : null,
+        group_by: form.groupField.trim() ? { field: form.groupField.trim() } : null,
       };
       if (isNew) {
         const created = await createRule(payload);
@@ -346,7 +289,6 @@ export function RuleDetailPage() {
         const updated = await updateRule(rule.object_id, payload);
         setRule(updated);
         setForm(formFromRule(updated, metrics, datasets));
-        setConditionJson(JSON.stringify(updated.condition ?? {}, null, 2));
         setEditing(false);
         toast.success(t('rules.toastUpdated'));
       }
@@ -364,15 +306,7 @@ export function RuleDetailPage() {
     }
     if (rule) {
       setForm(formFromRule(rule, metrics, datasets));
-      setConditionJson(JSON.stringify(rule.condition ?? {}, null, 2));
-      const converted = toTree(rule.condition);
-      if (converted.tree) {
-        setTree(converted.tree);
-        setConditionMode('form');
-      } else {
-        setTree(null);
-        setConditionMode('json');
-      }
+      setConditionRows(rowsFromCondition(rule.condition) ?? []);
     }
     setConditionError(null);
     setEditing(false);
@@ -431,7 +365,7 @@ export function RuleDetailPage() {
     }
   };
 
-  const moveEvent = async (event: EventOut, status: 'acknowledged' | 'resolved' | 'dismissed') => {
+  const moveEvent = async (event: EventOut, status: 'resolved' | 'dismissed') => {
     setBusyEventId(event.id);
     try {
       await transitionEvent(event.id, { status });
@@ -454,7 +388,6 @@ export function RuleDetailPage() {
       ? t('rules.groupedByNamed', { name: groupLabel })
       : t('rules.groupedBy'),
   };
-  const readTree = useMemo(() => toTree(rule?.condition ?? null).tree, [rule]);
   const conditionText =
     conditionLabel(rule?.condition ?? null, { metricName, datasetName, ...joiners }, rule?.group_by) ??
     '';
@@ -543,7 +476,6 @@ export function RuleDetailPage() {
                   severity: form.severity,
                   status: form.status,
                   groupField: form.groupField,
-                  groupLabel: form.groupLabel,
                 }}
                 onChange={(next) => setForm({ ...form, ...next })}
                 fields={paramCandidates}
@@ -601,38 +533,15 @@ export function RuleDetailPage() {
               ) : null}
 
               {form.mode === 'condition' ? (
-                <ConditionPanel
-                  tree={tree}
-                  conditionText={conditionText}
-                  conditionMode={conditionMode}
-                  conditionJson={conditionJson}
-                  conditionError={conditionError}
-                  groupBy={rule?.group_by ?? null}
+                <ConditionRows
+                  rows={conditionRows}
+                  onChange={(next) => {
+                    setConditionRows(next);
+                    setConditionError(null);
+                  }}
                   metrics={metrics}
                   datasets={datasets}
-                  scopeNote={scopeNote}
-                  lookups={{ metricName, datasetName, ...joiners }}
-                  onTreeChange={updateTree}
-                  onJsonChange={(text) => {
-                    setConditionJson(text);
-                    setConditionError(null);
-                    const converted = toTree(safeParse(text));
-                    if (converted.tree) setTree(converted.tree);
-                  }}
-                  onToggleJson={() => {
-                    if (conditionMode === 'json') {
-                      // Leaving JSON adopts it into the builder — or refuses, because the builder
-                      // cannot draw it and saving the stale builder would lose the edit.
-                      const converted = toTree(safeParse(conditionJson));
-                      if (!converted.tree) {
-                        setConditionError(t('rules.conditionFormCannotRepresent'));
-                        return;
-                      }
-                      setTree(converted.tree);
-                    }
-                    setConditionError(null);
-                    setConditionMode(conditionMode === 'json' ? 'form' : 'json');
-                  }}
+                  error={conditionError}
                 />
               ) : null}
             </EntityViewPanel>
@@ -653,21 +562,12 @@ export function RuleDetailPage() {
                     onChange={(e) => setForm({ ...form, suggestion: e.target.value })}
                   />
                 </FormField>
-                <FormField label={t('rules.fieldAbout')} hint={t('rules.fieldAboutHint')}>
-                  <input
-                    type="text"
-                    value={form.aboutObjectType}
-                    onChange={(e) => setForm({ ...form, aboutObjectType: e.target.value })}
-                    placeholder={t('rules.fieldAboutPlaceholder')}
-                  />
-                </FormField>
               </div>
             </EntityViewPanel>
           </>
         ) : (
           <RuleReadPanels
             rule={rule!}
-            readTree={readTree}
             conditionText={conditionText}
             scopeNote={scopeNote}
             events={events}
@@ -675,8 +575,6 @@ export function RuleDetailPage() {
             onTransition={(event, status) => void moveEvent(event, status)}
             onDelete={() => void remove()}
             lookups={{ metricName, datasetName, ...joiners }}
-            metrics={metrics}
-            datasets={datasets}
           />
         )}
       </div>

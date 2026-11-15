@@ -90,7 +90,7 @@ def test_trial_publishes_nothing_and_leaves_the_rule_alone(monkeypatch, dry_run)
         assert published == ["s1", "s2"]
         assert closed and closed[0]["scopes"] == ["s1", "s2"]
         assert rule.data["last_status"] == "fail"
-        assert rule.data["last_failed_groups"] == ["s1", "s2"]
+        assert rule.data["last_period_start"] == "2026-W46"
 
 
 @pytest.mark.parametrize("value,expected", [(1.0, [[]]), (None, [])])

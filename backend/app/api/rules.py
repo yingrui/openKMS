@@ -34,7 +34,7 @@ from app.services.identity.permissions.permission_catalog import (
 from app.api.auth import require_any_permission
 from app.services.ontology.object_neo4j_store import sync_queue_ids_to_neo4j
 from app.services.ontology.rules.builtin import builtin_types
-from app.services.ontology.rules.relations import RelationError, solve, validate_relation
+from app.services.ontology.rules.relations import RelationError, validate_relation
 from app.services.ontology.rules.conditions import (
     ConditionError,
     collect_datasets,
@@ -43,7 +43,6 @@ from app.services.ontology.rules.conditions import (
 )
 from app.services.ontology.rules.evaluator import (
     EvalResult,
-    _resolve_operand,
     evaluate_rule,
     evaluate_rules_for_subject,
 )
@@ -72,10 +71,9 @@ class RuleSubject(BaseModel):
 
 
 class RuleGroup(BaseModel):
-    """The dimension a rule is evaluated per: `scenario_id`, called "方案" for a reader."""
+    """The dimension a rule is evaluated per: `scenario_id`."""
 
     field: str = Field(min_length=1)
-    label: str | None = None
 
 
 SLUG = r"^[a-z][a-z0-9-]{1,63}$"
@@ -98,10 +96,7 @@ class RuleWrite(BaseModel):
     severity: str = Field(default="P1", pattern="^P[0-2]$")
     conclusion: str = ""
     suggestion: str = ""
-    domain: str = "metric"
     owner: str | None = None
-    ai_context: str | None = None
-    about_object_type: str | None = None
     group_by: RuleGroup | None = None
     status: str = Field(default="active", pattern="^(active|paused)$")
 
@@ -116,8 +111,6 @@ class RulePatch(BaseModel):
     conclusion: str | None = None
     suggestion: str | None = None
     owner: str | None = None
-    ai_context: str | None = None
-    about_object_type: str | None = None
     group_by: RuleGroup | None = None
     status: str | None = Field(default=None, pattern="^(active|paused)$")
 
@@ -126,7 +119,6 @@ class RuleOut(BaseModel):
     object_id: str
     rule_id: str | None = None
     name: str | None = None
-    domain: str | None = None
     subject: dict | None = None
     condition: dict | None = None
     relation: dict | None = None
@@ -138,11 +130,9 @@ class RuleOut(BaseModel):
     version: int | None = None
     last_run_at: str | None = None
     last_status: str | None = None
-    last_values: dict | None = None
-    last_groups: int | None = None
-    last_failed_groups: list[str] | None = None
-    ai_context: str | None = None
-    about_object_type: str | None = None
+    last_period_start: str | None = None
+    last_period_end: str | None = None
+    last_reason: str | None = None
     group_by: dict | None = None
 
 
@@ -201,7 +191,7 @@ class EventCount(BaseModel):
 
 
 class EventTransition(BaseModel):
-    status: str | None = Field(default=None, pattern="^(open|acknowledged|dismissed|resolved)$")
+    status: str | None = Field(default=None, pattern="^(open|dismissed|resolved)$")
     assignee: str | None = None
     note: str | None = None
 
@@ -239,11 +229,6 @@ def _rule_out(instance: ObjectInstance) -> RuleOut:
         version=int(data.get("version") or 1),
         last_run_at=data.get("last_run_at"),
         last_status=data.get("last_status"),
-        last_values=_parse_maybe_json(data.get("last_values")),
-        last_groups=int(data["last_groups"]) if data.get("last_groups") is not None else None,
-        last_failed_groups=_parse_maybe_json(data.get("last_failed_groups")),
-        ai_context=data.get("ai_context"),
-        about_object_type=data.get("about_object_type"),
         group_by=_parse_maybe_json(data.get("group_by")) if data.get("group_by") else None,
     )
 
@@ -377,7 +362,6 @@ def _write_values(payload: RuleWrite, request: Request) -> dict[str, Any]:
     return {
         "rule_id": rule_id,
         "name": payload.name.strip(),
-        "domain": payload.domain,
         "subject": json.dumps(payload.subject.model_dump(), ensure_ascii=False),
         "condition": (
             json.dumps(payload.condition, ensure_ascii=False) if payload.condition else None
@@ -391,9 +375,7 @@ def _write_values(payload: RuleWrite, request: Request) -> dict[str, Any]:
         "owner": payload.owner or (str(uname) if uname else None),
         "status": payload.status,
         "version": 1,
-        "about_object_type": payload.about_object_type,
         "group_by": json.dumps(payload.group_by.model_dump(), ensure_ascii=False) if payload.group_by else None,
-        "ai_context": payload.ai_context,
         "created_by_name": str(uname) if uname else None,
     }
 
@@ -469,15 +451,12 @@ async def update_rule(
             raise HTTPException(status_code=400, detail=f"Invalid relation: {exc}") from exc
         data["relation"] = json.dumps(body.relation, ensure_ascii=False)
         data["condition"] = None
-    for field_name in ("name", "severity", "conclusion", "suggestion", "owner", "ai_context", "status"):
+    for field_name in ("name", "severity", "conclusion", "suggestion", "owner", "status"):
         value = getattr(body, field_name)
         if value is not None:
             data[field_name] = value
     if body.subject is not None:
         data["subject"] = json.dumps(body.subject.model_dump(), ensure_ascii=False)
-        data["domain"] = body.subject.kind
-    if body.about_object_type is not None:
-        data["about_object_type"] = body.about_object_type
     if body.rule_id is not None and body.rule_id != data.get("rule_id"):
         if await _rule_id_taken(db, rule_type, body.rule_id, exclude=rule_id):
             raise HTTPException(status_code=409, detail=f"rule_id '{body.rule_id}' is taken")
@@ -513,79 +492,6 @@ async def delete_rule(rule_id: str, db: AsyncSession = Depends(get_db)):
     instance = await _load_rule(db, rule_id, rule_type)
     await db.delete(instance)
     await db.commit()
-
-
-class InferBody(BaseModel):
-    """Fill in one number the caller does not have, using an identity they do."""
-
-    #: Which metric to infer — the one the caller is missing. Everything else is measured.
-    infer: str
-    period_start: str = ""
-    period_end: str = ""
-    known: dict[str, float] = Field(default_factory=dict)
-    group: str | None = None
-
-
-class InferOut(BaseModel):
-    status: str
-    metric: str | None = None
-    value: float | None = None
-    residual: float | None = None
-    missing: list[str] = []
-    kind: str | None = None
-    known: dict[str, float] = {}
-    assumption: str | None = None
-
-
-@router.post("/{rule_id}/infer", response_model=InferOut, dependencies=READ_DEPS)
-async def infer_from_rule(
-    rule_id: str,
-    request: Request,
-    body: InferBody,
-    db: AsyncSession = Depends(get_db),
-):
-    """推算: `分货缺口 = 预测需求 − 分货额度`, so a missing 缺口 is computed, not guessed.
-
-    The caller names the metric they lack and (optionally) the numbers they already have; everything else is
-    measured through the usual engine at the same period and group. The identity then yields the missing
-    number — and `assumption` is part of the answer on purpose: an inferred value is only as good as the
-    identity and the measured inputs it came out of. A number that cannot be inferred (a second missing
-    member, a zero denominator) comes back `undetermined` rather than as a guess.
-    """
-    rule_type, _event_type = await _rule_type_or_409(db)
-    instance = await _load_rule(db, rule_id, rule_type)
-    rule_data = dict(instance.data or {})
-    relation = _parse_maybe_json(rule_data.get("relation"))
-    if not isinstance(relation, dict):
-        raise HTTPException(status_code=400, detail="This rule is a threshold, not an identity.")
-    try:
-        validate_relation(relation)
-    except RelationError as exc:
-        raise HTTPException(status_code=400, detail=str(exc)) from exc
-
-    target_ref = relation["target"]["metric"]
-    members = {m["metric"]: m for m in relation["members"]}
-    if body.infer not in (target_ref, *members):
-        raise HTTPException(status_code=400, detail="`infer` is not a metric of this identity.")
-
-    group = _parse_maybe_json(rule_data.get("group_by")) or {}
-    group_field = str(group["field"]) if isinstance(group, dict) and group.get("field") else None
-    known: dict[str, float] = dict(body.known)
-    for ref in (target_ref, *members):
-        if ref == body.infer or ref in known:
-            continue
-        operand = {"metric": ref}
-        try:
-            value, _reason = await _resolve_operand(db, request, operand, group_field)
-        except Exception:  # noqa: BLE001 - an uncomputable member simply stays unknown
-            value = None
-        if isinstance(value, dict) and body.group is not None:
-            value = value.get(body.group)
-        if isinstance(value, (int, float)):
-            known[ref] = float(value)
-
-    outcome = solve(relation, known)
-    return InferOut(**{k: v for k, v in outcome.items() if k in InferOut.model_fields})
 
 
 @router.get("/{rule_id}/events", response_model=EventListResponse, dependencies=READ_DEPS)
@@ -661,7 +567,7 @@ async def list_all_events(
     subject_type: str | None = Query(None, pattern="^(metric|dataset)$"),
     subject_id: str | None = None,
     rule_id: str | None = None,
-    status: str | None = Query(None, pattern="^(open|acknowledged|dismissed|resolved)$"),
+    status: str | None = Query(None, pattern="^(open|dismissed|resolved)$"),
     severity: str | None = Query(None, pattern="^P[0-2]$"),
     open_only: bool = False,
     limit: int = Query(50, ge=1, le=200),
@@ -706,7 +612,7 @@ async def transition_event(event_id: str, body: EventTransition, request: Reques
     payload = body.model_dump(exclude_unset=True)
     if payload.get("status") is None and "assignee" not in payload and payload.get("note") is None:
         raise HTTPException(status_code=400, detail="Nothing to change")
-    if payload.get("assignee") is None and body.status in ("acknowledged", "resolved"):
+    if payload.get("assignee") is None and body.status == "resolved":
         p = request.state.openkms_jwt_payload
         uname = p.get("preferred_username") or p.get("name")
         payload["assignee"] = str(uname) if uname else None

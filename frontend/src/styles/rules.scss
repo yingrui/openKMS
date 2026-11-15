@@ -230,33 +230,6 @@
 }
 
 /* Computed values from the last run: one line per operand, label left, number right. */
-.rules-values {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-1);
-  margin: 0;
-  padding: 0;
-  list-style: none;
-
-  li {
-    display: flex;
-    align-items: baseline;
-    gap: var(--space-3);
-  }
-}
-
-.rules-values-label {
-  min-width: 0;
-  flex: 1;
-  font-family: var(--font-mono, ui-monospace, monospace);
-  font-size: var(--text-sm);
-  color: var(--color-text-muted);
-  overflow-wrap: anywhere;
-}
-
-.rules-values-value {
-  font-variant-numeric: tabular-nums;
-  font-weight: 600;
 }
 
 .rules-status-meaning {
@@ -291,154 +264,83 @@
 }
 
 /* Condition JSON gets the room a dialog could never give it. */
-.rules-json-editor {
-  font-family: var(--font-mono, ui-monospace, monospace);
-  font-size: var(--text-sm);
-  line-height: 1.5;
-  resize: vertical;
-}
 
 /* Condition tree: a group is a heading + indented, guide-lined children; a comparison is one line. */
-.condition-tree {
-  margin: var(--space-3) 0;
-}
 
-.condition-node {
-  list-style: none;
-}
 
 /* A comparison row is a single line; its children (none) keep the same box as a group heading. */
-.condition-node--cmp {
-  margin: 0;
-}
 
-.condition-children {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-2);
-  margin: var(--space-2) 0 var(--space-2) 0;
-  padding-left: var(--space-5);
-  border-left: 1px solid var(--color-border);
-  list-style: none;
-}
 
-.condition-group-head {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-}
 
-.condition-group-hint {
-  font-size: var(--text-xs);
-  color: var(--color-text-muted);
-}
 
-.condition-group-actions {
-  display: flex;
-  gap: var(--space-2);
-  margin-left: var(--space-5);
-}
 
-.condition-cmp {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-  flex-wrap: wrap;
-}
 
-.condition-field {
-  width: auto;
-  min-width: 8rem;
-}
 
-.condition-field--narrow {
-  min-width: 5rem;
-  width: auto;
-}
 
-.condition-operand {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-2);
-  flex-wrap: wrap;
-}
 
-.condition-operand-pair {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-2);
-  padding: 2px var(--space-2);
-  border: 1px dashed var(--color-border);
-  border-radius: var(--radius-md);
-}
 
-.condition-operand-sep {
-  color: var(--color-text-muted);
-}
 
-.condition-dataset-leaf {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-2);
-}
 
-.condition-node-remove {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  padding: var(--space-1);
-  border: none;
-  background: none;
-  color: var(--color-text-muted);
-  cursor: pointer;
-  border-radius: var(--radius-sm);
 
-  &:hover:not(:disabled) {
-    background: var(--color-bg-muted);
-    color: var(--color-error);
-  }
 
-  &:disabled {
-    opacity: 0.4;
-    cursor: default;
-  }
-}
-
-.condition-empty {
-  list-style: none;
-  font-size: var(--text-sm);
-  color: var(--color-text-muted);
-}
-
-.condition-advanced {
-  margin-top: var(--space-3);
-
-  summary {
-    cursor: pointer;
-    font-size: var(--text-sm);
-    color: var(--color-text-secondary);
-  }
-}
 
 /* Read view: the same tree, without controls — structure visible, nothing to click. */
-.condition-node--cmp.is-readonly {
-  padding: var(--space-1) 0;
-}
 
-.condition-cmp-text {
-  font-size: var(--text-sm);
-  color: var(--color-text);
-}
 
-.condition-group-mode {
-  font-size: var(--text-sm);
-  font-weight: 600;
-  color: var(--color-text-secondary);
-}
 
 /* The scope of the whole condition: one muted line above the tree, same words as the inline summary. */
-.condition-scope {
-  margin: 0 0 var(--space-2);
-  font-size: var(--text-sm);
+
+/* Condition editor: a flat list of comparisons, all of which must hold. */
+.rules-conditions {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.rules-conditions__row {
+  display: grid;
+  grid-template-columns: 1fr 14rem auto;
+  gap: var(--space-3);
+  align-items: end;
+}
+
+.rules-conditions__operand {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  align-items: center;
+
+  select,
+  input {
+    min-width: 8rem;
+  }
+}
+
+.rules-conditions__compare {
+  display: flex;
+  gap: var(--space-2);
+
+  select {
+    width: 5rem;
+  }
+
+  input {
+    flex: 1;
+    min-width: 5rem;
+  }
+}
+
+.rules-conditions__sep {
   color: var(--color-text-muted);
+}
+
+.rules-conditions__remove {
+  margin-bottom: var(--space-3);
+}
+
+.rules-conditions__footer {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  flex-wrap: wrap;
 }

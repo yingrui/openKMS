@@ -8,7 +8,7 @@
 
 import { Fragment } from 'react';
 import { useTranslation } from 'react-i18next';
-import { BellRing, CheckCircle2, XCircle } from 'lucide-react';
+import { CheckCircle2, XCircle } from 'lucide-react';
 import {
   StatusChip,
   TableRowActionButton,
@@ -56,7 +56,7 @@ export function RulesEventsTable({
 }: {
   events: EventOut[];
   busyEventId: string | null;
-  onTransition: (event: EventOut, status: 'acknowledged' | 'resolved' | 'dismissed') => void;
+  onTransition: (event: EventOut, status: 'resolved' | 'dismissed') => void;
   showPeriod?: boolean;
   /** Collapse the inbox by rule (the list page); a rule's own page leaves it off. */
   grouped?: boolean;
@@ -135,18 +135,11 @@ export function RulesEventsTable({
                 <TableRowActionCell>
                   <TableRowActions>
                     <TableRowActionButton
-                      title={t('rules.acknowledge')}
-                      aria-label={t('rules.acknowledge')}
-                      icon={<BellRing size={16} aria-hidden />}
-                      disabled={closed || event.status === 'acknowledged'}
-                      loading={busyEventId === event.id}
-                      onClick={() => onTransition(event, 'acknowledged')}
-                    />
-                    <TableRowActionButton
                       title={t('rules.resolve')}
                       aria-label={t('rules.resolve')}
                       icon={<CheckCircle2 size={16} aria-hidden />}
                       disabled={closed}
+                      loading={busyEventId === event.id}
                       onClick={() => onTransition(event, 'resolved')}
                     />
                     <TableRowActionButton

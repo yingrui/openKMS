@@ -46,12 +46,10 @@ export type RuleOut = {
   version: number | null;
   last_run_at: string | null;
   last_status: string | null;
-  last_values: Record<string, number | null> | null;
-  ai_context: string | null;
-  about_object_type: string | null;
+  last_period_start: string | null;
+  last_period_end: string | null;
+  last_reason: string | null;
   group_by: RuleGroupBy | null;
-  last_groups: number | null;
-  last_failed_groups: string[] | null;
 };
 
 /** An identity between metrics: `target = Σ weight × member`, within a tolerance. */
@@ -70,10 +68,7 @@ export type RuleWritePayload = {
   severity: string;
   conclusion: string;
   suggestion: string;
-  domain?: string;
   owner?: string | null;
-  ai_context?: string | null;
-  about_object_type?: string | null;
   group_by?: RuleGroupBy | null;
   status?: string;
 };

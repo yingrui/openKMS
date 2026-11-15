@@ -17,7 +17,7 @@
  */
 
 import type { RuleCondition, RuleOperand, RuleRelation } from '../../../data/rulesApi';
-import { AGG_FNS, type AggFn, type OperandFilter } from './conditionModel';
+import { AGG_FNS, type AggFn, type OperandFilter } from './conditionRowsModel';
 
 export type LabelLookups = {
   metricName: (id: string) => string;
@@ -41,8 +41,8 @@ function filtersOf(node: unknown): OperandFilter[] | undefined {
   const record = node as Record<string, unknown>;
   const own = record.filters as OperandFilter[] | undefined;
   if (own?.length) return own;
-  const agg = record.dataset_agg as { filters?: OperandFilter[] } | undefined;
-  return agg?.filters?.length ? agg.filters : undefined;
+  const agg = record.dataset_agg as { filters?: Record<string, unknown>[] } | undefined;
+  return agg?.filters?.length ? (agg.filters as OperandFilter[]) : undefined;
 }
 
 function filterParts(filters: OperandFilter[] | undefined): string[] {

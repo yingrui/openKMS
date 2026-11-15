@@ -13,7 +13,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.auth import require_any_permission, require_permission
 from app.database import get_db
-from app.models.metric_definition import MetricDefinition
 from app.models.semantic_model import ACCESS_PUBLIC, ACCESS_RESTRICTED, SemanticModel
 from app.schemas.semantic_model import (
     QueryRequest,
@@ -28,7 +27,6 @@ from app.schemas.semantic_model import (
 from app.api.catalog_scoped import require_model_access
 from app.api.query_errors import query_failure_detail
 from app.services.data.catalog_access import resolve_catalog_scope
-from app.services.data.metric_graph import build_graph
 from app.services.data.model_sql import run_model_sql
 from app.services.data.query import QueryError, run_query
 from app.services.data.semantic_model import (
@@ -44,7 +42,6 @@ from app.services.data.semantic_models import (
     members_map,
 )
 from app.services.identity.permissions.permission_catalog import PERM_DATA_READ, PERM_DATA_WRITE
-from app.services.ontology.rules.relations import list_relation_rules
 
 # Read/query routes are restricted by the **data resource grant** (`require_model_access`), not by
 # an operation key: `data:read` is "may use the Data Model feature", which is a different
@@ -195,28 +192,6 @@ async def update_semantic_model_endpoint(
 async def delete_semantic_model_endpoint(model_id: str, db: AsyncSession = Depends(get_db)):
     model = await _load(db, model_id)
     await db.delete(model)
-
-
-@router.get(
-    "/{model_id}/metric-graph",
-    dependencies=[Depends(require_model_access())],
-)
-async def metric_graph_endpoint(model_id: str, db: AsyncSession = Depends(get_db)):
-    """The metrics of this model as a graph: derived edges (from expressions) + assertion edges (rules).
-
-    Read-only and computed — the graph is a view over definitions that already exist, so it cannot drift
-    from them. `unchecked` lists the derived edges no rule verifies.
-    """
-    await _load(db, model_id)
-    metrics = list(
-        (
-            await db.execute(
-                select(MetricDefinition).where(MetricDefinition.semantic_model_id == model_id)
-            )
-        ).scalars().all()
-    )
-    rules = await list_relation_rules(db, [m.id for m in metrics])
-    return build_graph(metrics, rules)
 
 
 @router.get(

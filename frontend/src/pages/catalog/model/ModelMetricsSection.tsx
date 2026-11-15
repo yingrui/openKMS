@@ -16,15 +16,13 @@ import {
   type MetricResponse,
 } from '../../../data/metricsApi';
 import { useConfirm } from '../../../contexts/ConfirmContext';
-import { Dialog, FormField, ResourceViewToggle } from '../../../styles/design-system/index';
+import { Dialog, FormField } from '../../../styles/design-system/index';
 import { EntityViewHeader, EntityViewPanel } from '../../shared/EntityViewShell';
 import { fetchEventSummary } from '../../../data/eventsApi';
-import { fetchMetricGraph, type MetricGraph } from '../../../data/metricsApi';
 import { useSemanticModelDetail } from './useSemanticModelDetail';
 import { datasetLabel } from '../datasetLabel';
 import '../../../styles/metrics.scss';
 import { aiContextFields, aiContextPayload } from './metricAiContext';
-import { MetricDependencyGraph } from './MetricDependencyGraph';
 
 const ADDITIVITY = ['additive', 'non_additive'] as const;
 
@@ -42,9 +40,6 @@ export function ModelMetricsSection() {
   const [loading, setLoading] = useState(true);
   const [openEvents, setOpenEvents] = useState<Record<string, number>>({});
   const [showForm, setShowForm] = useState(false);
-  const [view, setView] = useState<'list' | 'graph'>('list');
-  const [graph, setGraph] = useState<MetricGraph | null>(null);
-  const [graphError, setGraphError] = useState<string | null>(null);
   const [editing, setEditing] = useState<MetricResponse | null>(null);
   const [name, setName] = useState('');
   const [baseDatasetId, setBaseDatasetId] = useState('');
@@ -104,22 +99,6 @@ export function ModelMetricsSection() {
       ),
     [joins, baseDatasetId, datasetIds],
   );
-
-  // The graph is a view over definitions, so it is read when the view is opened — not kept in sync.
-  useEffect(() => {
-    if (view !== 'graph') return;
-    let cancelled = false;
-    void fetchMetricGraph(semanticModelId)
-      .then((next) => {
-        if (!cancelled) setGraph(next);
-      })
-      .catch((e: unknown) => {
-        if (!cancelled) setGraphError(e instanceof Error ? e.message : String(e));
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [view, semanticModelId]);
 
   const openCreate = () => {
     setEditing(null);
@@ -231,31 +210,6 @@ export function ModelMetricsSection() {
         }
       />
 
-      {/* The switch is a content control, so it sits under the header divider, on the content's right
-          edge — the header stays about the page (its identity and the one thing you can create). */}
-      <div className={`metric-view${view === 'graph' ? ' metric-view--graph' : ''}`}>
-        <div className={`metric-view__bar${view === 'graph' ? ' metric-view__bar--end' : ''}`}>
-          {/* In graph mode the count lives on the canvas (shown / total), so the toolbar says nothing. */}
-          {view === 'list' ? (
-            <p className="metric-view__summary">{t('dataModel.metricCount', { count: metrics.length })}</p>
-          ) : null}
-          <ResourceViewToggle
-            modes={['list', 'graph'] as const}
-            value={view}
-            onChange={(next) => setView(next)}
-            labels={{ list: t('dataModel.metricViewList'), graph: t('dataModel.metricViewGraph') }}
-          />
-        </div>
-
-        {view === 'graph' ? (
-          graphError ? (
-            <p className="rules-condition-warning">{graphError}</p>
-          ) : graph ? (
-            <MetricDependencyGraph graph={graph} />
-          ) : (
-            <p className="entity-view__readonly">{t('shared.loading')}</p>
-          )
-        ) : (
       <EntityViewPanel>
         {loading ? (
           <p className="entity-view__readonly">{t('shared.loading')}</p>
@@ -339,8 +293,6 @@ export function ModelMetricsSection() {
         </div>
         )}
       </EntityViewPanel>
-        )}
-      </div>
 
       <Dialog
         open={showForm}

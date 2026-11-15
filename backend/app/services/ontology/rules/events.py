@@ -17,7 +17,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.models.object_instance import ObjectInstance
 from app.models.object_type import ObjectType
 
-STATUSES = ("open", "acknowledged", "dismissed", "resolved")
+#: `acknowledged` is no longer produced — it changed nothing (no block, no notification).
+#: Legacy rows keep the value and still render; nothing can transition into it.
+STATUSES = ("open", "dismissed", "resolved")
 #: Moving to one of these closes the event; moving back out of them reopens it.
 CLOSING_STATUSES = ("dismissed", "resolved")
 

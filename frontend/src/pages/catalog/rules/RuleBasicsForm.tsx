@@ -14,7 +14,6 @@ export type BasicsValue = {
   severity: 'P0' | 'P1' | 'P2';
   status: 'active' | 'paused';
   groupField: string;
-  groupLabel: string;
 };
 
 export function RuleBasicsForm({
@@ -91,16 +90,6 @@ export function RuleBasicsForm({
           ))}
         </datalist>
       </FormField>
-      {value.groupField.trim() ? (
-        <FormField label={t('rules.groupLabel')} hint={t('rules.groupLabelHint')}>
-          <input
-            type="text"
-            value={value.groupLabel}
-            onChange={(e) => onChange({ groupLabel: e.target.value })}
-            placeholder={t('rules.groupLabelPlaceholder')}
-          />
-        </FormField>
-      ) : null}
     </div>
   );
 }

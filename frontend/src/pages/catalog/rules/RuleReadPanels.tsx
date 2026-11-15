@@ -11,38 +11,27 @@ import { EmptyState, StatusChip } from '../../../styles/design-system';
 import { EntityViewPanel } from '../../shared/EntityViewShell';
 import { relationLabel } from './rulesLabels';
 import type { EventOut } from '../../../data/eventsApi';
-import type { DatasetResponse } from '../../../data/datasetsApi';
-import type { MetricResponse } from '../../../data/metricsApi';
 import type { RuleOut } from '../../../data/rulesApi';
-import type { GroupNode } from './conditionModel';
-import { ConditionTree } from './ConditionTree';
 import { RulesEventsTable } from './RulesEventsTable';
-import { valueRows, type LabelLookups } from './rulesLabels';
+import type { LabelLookups } from './rulesLabels';
 
 export function RuleReadPanels({
   rule,
-  readTree,
   conditionText,
-  scopeNote,
   events,
   busyEventId,
   onTransition,
   onDelete,
   lookups,
-  metrics,
-  datasets,
 }: {
   rule: RuleOut;
-  readTree: GroupNode | null;
   conditionText: string;
   scopeNote: string | null;
   events: EventOut[];
   busyEventId: string | null;
-  onTransition: (event: EventOut, status: 'acknowledged' | 'resolved' | 'dismissed') => void;
+  onTransition: (event: EventOut, status: 'resolved' | 'dismissed') => void;
   onDelete: () => void;
   lookups: LabelLookups & { metricName: (id: string) => string };
-  metrics: MetricResponse[];
-  datasets: DatasetResponse[];
 }) {
   const { t } = useTranslation('ontology');
   return (
@@ -60,15 +49,6 @@ export function RuleReadPanels({
                           <p className="rules-hint">{rule.relation.note}</p>
                         ) : null}
                       </>
-                    ) : readTree ? (
-                      <ConditionTree
-                        value={readTree}
-                        onChange={() => undefined}
-                        metrics={metrics}
-                        datasets={datasets}
-                        readOnly
-                        scopeNote={scopeNote}
-                      />
                     ) : (
                       <code className="rules-condition">{conditionText}</code>
                     )}
@@ -77,8 +57,6 @@ export function RuleReadPanels({
                   <dd>{rule?.conclusion || '—'}</dd>
                   <dt>{t('rules.fieldSuggestion')}</dt>
                   <dd>{rule?.suggestion || t('rules.noSuggestion')}</dd>
-                  <dt>{t('rules.fieldAbout')}</dt>
-                  <dd>{rule?.about_object_type || '—'}</dd>
                   <dt>{t('rules.fieldStatus')}</dt>
                   <dd>{rule?.status === 'paused' ? t('rules.paused') : t('rules.active')}</dd>
                 </dl>
@@ -104,30 +82,19 @@ export function RuleReadPanels({
                     </dd>
                     <dt>{t('rules.colLastRun')}</dt>
                     <dd>{rule.last_run_at ? new Date(rule.last_run_at).toLocaleString() : '—'}</dd>
-                    <dt>{t('rules.fieldValues')}</dt>
+                    <dt>{t('rules.colPeriod')}</dt>
                     <dd>
-                      {rule.last_groups ? (
-                        // A grouped run has one number per group per operand — the numbers live on each
-                        // event; here the reader needs the shape: how many groups, how many failed.
-                        <span>
-                          {t('rules.groupedRunSummary', {
-                            groups: rule.last_groups,
-                            failed: (rule.last_failed_groups ?? []).length,
-                          })}
-                        </span>
-                      ) : valueRows(rule.last_values, lookups).length === 0 ? (
-                        '—'
-                      ) : (
-                        <ul className="rules-values">
-                          {valueRows(rule.last_values, lookups).map((row) => (
-                            <li key={row.label}>
-                              <span className="rules-values-label">{row.label}</span>
-                              <span className="rules-values-value">{row.value}</span>
-                            </li>
-                          ))}
-                        </ul>
-                      )}
+                      {rule.last_period_start || '—'}
+                      {rule.last_period_end && rule.last_period_end !== rule.last_period_start
+                        ? ` – ${rule.last_period_end}`
+                        : ''}
                     </dd>
+                    {rule.last_reason ? (
+                      <>
+                        <dt>{t('rules.fieldReason')}</dt>
+                        <dd>{rule.last_reason}</dd>
+                      </>
+                    ) : null}
                   </dl>
                 ) : (
                   <p className="page-subtitle">{t('rules.neverRun')}</p>
