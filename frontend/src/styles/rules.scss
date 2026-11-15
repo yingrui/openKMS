@@ -193,37 +193,6 @@
   }
 }
 
-/* Dataset overview: the three most recent events, as a list under the summary. */
-.dataset-events-list {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-2);
-  margin: var(--space-3) 0 0;
-  padding: 0;
-  list-style: none;
-
-  li {
-    display: flex;
-    align-items: baseline;
-    gap: var(--space-2);
-    font-size: var(--text-base);
-  }
-}
-
-.dataset-events-title {
-  min-width: 0;
-  flex: 1;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.dataset-events-time {
-  font-size: var(--text-xs);
-  color: var(--color-text-muted);
-  white-space: nowrap;
-}
-
 /* Full-width tab strip: `.settings-page` caps at 900px, which is right for a form and wrong for a table. */
 .rules-panel {
   width: 100%;
@@ -264,26 +233,9 @@
 
 /* Condition tree: a group is a heading + indented, guide-lined children; a comparison is one line. */
 
-
 /* A comparison row is a single line; its children (none) keep the same box as a group heading. */
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 /* Read view: the same tree, without controls — structure visible, nothing to click. */
-
-
 
 /* The scope of the whole condition: one muted line above the tree, same words as the inline summary. */
 

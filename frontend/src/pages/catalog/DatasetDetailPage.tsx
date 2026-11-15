@@ -16,11 +16,8 @@ import {
   type DatasetResponse,
 } from '../../data/datasetsApi';
 import { ResourceSharePanel } from '../../components/ResourceSharePanel';
-import { fetchRules } from '../../data/rulesApi';
-import { fetchEvents, type EventOut } from '../../data/eventsApi';
 import { RESOURCE_TYPES } from '../../data/resourceAclApi';
 import { useConfirm } from '../../contexts/ConfirmContext';
-import { StatusChip } from '../../styles/design-system';
 import {
   EntityViewHeader,
   EntityViewLoading,
@@ -199,10 +196,6 @@ export function DatasetDetailPage() {
                 { to: `${base}/columns`, label: t('datasets.columns') },
                 { to: `${base}/relationships`, label: t('datasets.relationships') },
                 { to: `${base}/quality`, label: t('datasets.quality') },
-                {
-                  to: `/data-rules?tab=events&subject_type=dataset&subject_id=${dataset.id}`,
-                  label: t('datasets.tabRules'),
-                },
                 { to: `${base}/settings`, label: t('datasets.settings') },
                 { to: `${base}/sharing`, label: t('datasets.sharing') },
               ]
@@ -211,74 +204,6 @@ export function DatasetDetailPage() {
         <Outlet />
       </EntityViewShell>
     </DatasetDetailCtx.Provider>
-  );
-}
-
-/**
- * Rules and events for this dataset — the ontology layer's view of it.
- *
- * A rule with a `dataset` subject watches this table (row count, nulls, a value range); what it found
- * is an event. The panel is a pointer, not a second inbox: the work happens in the Rules app.
- */
-function DatasetRulesEventsPanel({ datasetId }: { datasetId: string }) {
-  const { t } = useTranslation('ontology');
-  const [ruleCount, setRuleCount] = useState<number | null>(null);
-  const [events, setEvents] = useState<EventOut[]>([]);
-
-  useEffect(() => {
-    let cancelled = false;
-    void Promise.all([
-      fetchRules({ subject_type: 'dataset', subject_id: datasetId }).catch(() => []),
-      fetchEvents({ subject_type: 'dataset', subject_id: datasetId, limit: 3 }).catch(() => ({
-        items: [],
-        total: 0,
-      })),
-    ]).then(([rules, page]) => {
-      if (cancelled) return;
-      setRuleCount(rules.length);
-      setEvents(page.items);
-    });
-    return () => {
-      cancelled = true;
-    };
-  }, [datasetId]);
-
-  return (
-    <EntityViewPanel
-      title={t('datasets.rulesAndEvents')}
-      description={t('datasets.rulesAndEventsHint')}
-      actions={
-        <Link
-          to={`/data-rules?tab=events&subject_type=dataset&subject_id=${datasetId}`}
-          className="btn btn-secondary btn-sm"
-        >
-          {t('datasets.openRules')}
-        </Link>
-      }
-    >
-      <p className="page-subtitle">
-        {ruleCount == null ? t('shared.loading') : t('datasets.ruleCount', { count: ruleCount })}
-      </p>
-      {events.length === 0 ? (
-        <p className="entity-view__readonly">{t('datasets.noEvents')}</p>
-      ) : (
-        <ul className="dataset-events-list">
-          {events.map((event) => (
-            <li key={event.id}>
-              <StatusChip
-                tone={event.event_end_time ? 'neutral' : event.severity === 'P0' ? 'warn' : 'accent'}
-              >
-                {event.status ?? '—'}
-              </StatusChip>
-              <span className="dataset-events-title">{event.title ?? '—'}</span>
-              <span className="dataset-events-time">
-                {event.event_start_time ? new Date(event.event_start_time).toLocaleString() : '—'}
-              </span>
-            </li>
-          ))}
-        </ul>
-      )}
-    </EntityViewPanel>
   );
 }
 
@@ -327,7 +252,7 @@ export function DatasetOverviewTab() {
           </>
         )}
       </EntityViewStats>
-      <DatasetRulesEventsPanel datasetId={dataset.id} />
+      
       {/* Read-only summary: everything editable lives in Settings, so this page never saves. */}
       <EntityViewPanel>
         <dl className="entity-view__dl">

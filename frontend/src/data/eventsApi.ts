@@ -27,8 +27,7 @@ export type EventListResponse = { items: EventOut[]; total: number };
 export type EventCount = { subject_id: string; total: number; open: number };
 
 export async function fetchEvents(params: {
-  subject_type?: 'metric' | 'dataset';
-  subject_id?: string;
+  metric_id?: string;
   rule_id?: string;
   status?: 'open' | 'acknowledged' | 'dismissed' | 'resolved';
   severity?: 'P0' | 'P1' | 'P2';
@@ -36,10 +35,9 @@ export async function fetchEvents(params: {
   limit?: number;
   offset?: number;
 } = {}): Promise<EventListResponse> {
-  return request<EventListResponse>('/api/events', {
+  return request<EventListResponse>('/api/metric-events', {
     query: {
-      subject_type: params.subject_type,
-      subject_id: params.subject_id,
+      metric_id: params.metric_id,
       rule_id: params.rule_id,
       status: params.status,
       severity: params.severity,
@@ -50,17 +48,15 @@ export async function fetchEvents(params: {
   });
 }
 
-export async function fetchEventSummary(
-  subjectType: 'metric' | 'dataset',
-): Promise<EventCount[]> {
-  return request<EventCount[]>('/api/events/summary', { query: { subject_type: subjectType } });
+export async function fetchEventSummary(): Promise<EventCount[]> {
+  return request<EventCount[]>('/api/metric-events/summary');
 }
 
 export async function transitionEvent(
   eventId: string,
   payload: { status?: 'open' | 'acknowledged' | 'dismissed' | 'resolved'; assignee?: string | null; note?: string },
 ): Promise<EventOut> {
-  return request<EventOut>(`/api/events/${eventId}`, {
+  return request<EventOut>(`/api/metric-events/${eventId}`, {
     method: 'PATCH',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(payload),

@@ -8,8 +8,6 @@
 
 import { request } from './apiClient';
 
-export type RuleSubject = { kind: 'metric'; ref: string };
-
 export type RuleOperand =
   | { metric: string; filters?: Array<Record<string, unknown>> }
   | {
@@ -31,11 +29,10 @@ export type RuleCondition =
 export type RuleGroupBy = { field: string; label?: string | null };
 
 export type RuleOut = {
-  object_id: string;
+  id: string;
   rule_id: string | null;
   name: string | null;
-  domain: string | null;
-  subject: RuleSubject | null;
+  metric_id: string | null;
   condition: RuleCondition | null;
   relation: RuleRelation | null;
   severity: string | null;
@@ -65,7 +62,7 @@ export type RuleRelation = {
 export type RuleWritePayload = {
   name: string;
   rule_id?: string | null;
-  subject: RuleSubject;
+  metric_id: string;
   condition?: RuleCondition | null;
   severity: string;
   conclusion: string;
@@ -92,15 +89,12 @@ export type RulesEvaluateResponse = {
   unknown: number;
 };
 
-export async function fetchRules(params?: {
-  subject_type?: 'metric' | 'dataset';
-  subject_id?: string;
-}): Promise<RuleOut[]> {
-  return request<RuleOut[]>('/api/rules', { query: params });
+export async function fetchRules(params?: { metric_id?: string }): Promise<RuleOut[]> {
+  return request<RuleOut[]>('/api/metric-rules', { query: params });
 }
 
 export async function createRule(payload: RuleWritePayload): Promise<RuleOut> {
-  return request<RuleOut>('/api/rules', {
+  return request<RuleOut>('/api/metric-rules', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(payload),
@@ -108,18 +102,18 @@ export async function createRule(payload: RuleWritePayload): Promise<RuleOut> {
 }
 
 export async function fetchRule(ruleId: string): Promise<RuleOut> {
-  return request<RuleOut>(`/api/rules/${ruleId}`);
+  return request<RuleOut>(`/api/metric-rules/${ruleId}`);
 }
 
 export async function deleteRule(ruleId: string): Promise<void> {
-  return request<void>(`/api/rules/${ruleId}`, { method: 'DELETE' });
+  return request<void>(`/api/metric-rules/${ruleId}`, { method: 'DELETE' });
 }
 
 export async function fetchRuleEvents(
   ruleId: string,
   params: { status?: string; limit?: number } = {},
 ): Promise<import('./eventsApi').EventListResponse> {
-  return request<import('./eventsApi').EventListResponse>(`/api/rules/${ruleId}/events`, {
+  return request<import('./eventsApi').EventListResponse>(`/api/metric-rules/${ruleId}/events`, {
     query: { status: params.status, limit: params.limit },
   });
 }
@@ -128,7 +122,7 @@ export async function updateRule(
   ruleId: string,
   payload: Partial<RuleWritePayload>,
 ): Promise<RuleOut> {
-  return request<RuleOut>(`/api/rules/${ruleId}`, {
+  return request<RuleOut>(`/api/metric-rules/${ruleId}`, {
     method: 'PATCH',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(payload),
@@ -139,7 +133,7 @@ export async function evaluateRule(
   ruleId: string,
   params: { period_start?: string; period_end?: string; dry_run?: boolean } = {},
 ): Promise<RulesEvaluateResponse> {
-  return request<RulesEvaluateResponse>(`/api/rules/${ruleId}/evaluate`, {
+  return request<RulesEvaluateResponse>(`/api/metric-rules/${ruleId}/evaluate`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(params),
@@ -147,13 +141,12 @@ export async function evaluateRule(
 }
 
 export async function evaluateRules(params: {
-  subject_type?: 'metric' | 'dataset';
-  subject_id?: string;
+  metric_id?: string;
   period_start?: string;
   period_end?: string;
   scope?: string;
 }): Promise<RulesEvaluateResponse> {
-  return request<RulesEvaluateResponse>('/api/rules/evaluate', {
+  return request<RulesEvaluateResponse>('/api/metric-rules/evaluate', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(params),
@@ -162,7 +155,7 @@ export async function evaluateRules(params: {
 
 /** A rule that references one metric, with its last run — what the metric page shows beside the number. */
 export type MetricRuleRef = {
-  object_id: string;
+  id: string;
   rule_id: string | null;
   name: string | null;
   last_status: 'pass' | 'fail' | 'unknown' | null;

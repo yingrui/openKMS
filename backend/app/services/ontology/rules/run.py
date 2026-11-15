@@ -14,7 +14,7 @@ from sqlalchemy import text
 from sqlalchemy.exc import DBAPIError
 
 from app.database import async_session_maker
-from app.models.object_instance import ObjectInstance
+from app.models.metric_rule import MetricRule
 from app.services.ontology.rules.evaluator import EvalResult, evaluate_rule, evaluate_rules_for_subject
 
 
@@ -42,6 +42,7 @@ async def evaluate_rule_in_snapshot(
     rule_id: str,
     period_start: str = "",
     period_end: str = "",
+    period_label: str | None = None,
     dry_run: bool = False,
 ) -> list[EvalResult]:
     """Evaluate one rule; the caller keeps its own session for loading and serialising."""
@@ -49,7 +50,7 @@ async def evaluate_rule_in_snapshot(
         session = async_session_maker()
         try:
             await session.execute(text("SET TRANSACTION ISOLATION LEVEL REPEATABLE READ"))
-            rule = await session.get(ObjectInstance, rule_id)
+            rule = await session.get(MetricRule, rule_id)
             if rule is None:
                 return []
             results = await evaluate_rule(
@@ -58,6 +59,7 @@ async def evaluate_rule_in_snapshot(
                 rule=rule,
                 period_start=period_start,
                 period_end=period_end,
+                period_label=period_label,
                 dry_run=dry_run,
             )
             await session.commit()
@@ -77,10 +79,10 @@ async def evaluate_rule_in_snapshot(
 async def evaluate_subject_in_snapshot(
     request: Request,
     *,
-    subject_type: str | None = None,
-    subject_id: str | None = None,
+    metric_id: str | None = None,
     period_start: str = "",
     period_end: str = "",
+    period_label: str | None = None,
     limit: int = 100,
 ) -> list[EvalResult]:
     """Every active rule of a subject, all against the same snapshot."""
@@ -91,10 +93,10 @@ async def evaluate_subject_in_snapshot(
             results = await evaluate_rules_for_subject(
                 session,
                 request,
-                subject_type=subject_type,
-                subject_id=subject_id,
+                subject_id=metric_id,
                 period_start=period_start,
                 period_end=period_end,
+                period_label=period_label,
                 limit=limit,
             )
             await session.commit()

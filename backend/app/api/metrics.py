@@ -16,7 +16,7 @@ from app.api.auth import require_permission
 from app.database import get_db
 from app.models.dataset import Dataset
 from app.models.metric_definition import MetricDefinition
-from app.models.object_instance import ObjectInstance
+from app.models.metric_rule import MetricRule
 from app.models.metric_run import MetricRun
 from app.models.semantic_model import SemanticModel
 from app.services.data.semantic_models import member_ids
@@ -139,11 +139,11 @@ async def _validate_refs(
     )
 
 
-async def _rule_rows(db: AsyncSession, rule_ids: list[str]) -> list[ObjectInstance]:
+async def _rule_rows(db: AsyncSession, rule_ids: list[str]) -> list[MetricRule]:
     if not rule_ids:
         return []
     return list(
-        (await db.execute(select(ObjectInstance).where(ObjectInstance.id.in_(rule_ids)))).scalars().all()
+        (await db.execute(select(MetricRule).where(MetricRule.id.in_(rule_ids)))).scalars().all()
     )
 
 
@@ -428,14 +428,14 @@ async def list_metric_rules(metric_id: str, db: AsyncSession = Depends(get_db)):
     rows = await _rule_rows(db, rule_ids)
     return [
         RuleRefOut(
-            object_id=row.id,
-            rule_id=(row.data or {}).get("rule_id"),
-            name=(row.data or {}).get("name"),
-            last_status=(row.data or {}).get("last_status"),
-            last_period_start=(row.data or {}).get("last_period_start"),
-            last_period_end=(row.data or {}).get("last_period_end"),
-            last_run_at=(row.data or {}).get("last_run_at"),
-            last_reason=(row.data or {}).get("last_reason"),
+            id=row.id,
+            rule_id=row.slug,
+            name=row.name,
+            last_status=row.last_status,
+            last_period_start=row.last_period_start,
+            last_period_end=row.last_period_end,
+            last_run_at=row.last_run_at,
+            last_reason=row.last_reason,
         )
         for row in rows
     ]

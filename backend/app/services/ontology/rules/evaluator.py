@@ -25,16 +25,13 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.catalog_scoped import require_model_read
 from app.models.metric_definition import MetricDefinition
+from app.models.metric_rule import MetricEvent, MetricRule
 from app.models.semantic_model import SemanticModel
-from app.models.object_instance import ObjectInstance
-from app.models.object_type import ObjectType
 from app.services.data.dataset_rows import query_dataset_summary
 from app.services.ontology.rules.scoping import restricted_models_for_dataset, run_entity_scope
 from app.services.data.query import run_query
 from app.services.identity.acl.resource_acl_constants import PERM_READ
-from app.services.ontology.object_neo4j_store import sync_queue_ids_to_neo4j
 from app.services.workspace.evaluations.dataset_scope import load_dataset_scoped
-from app.services.ontology.rules.builtin import builtin_types
 from app.services.ontology.rules.relations import (
     RelationError,
     residual,
@@ -52,12 +49,11 @@ from app.services.ontology.rules.conditions import (
     operand_key,
     validate_condition,
 )
-from app.services.ontology.rules.links import link_event_about
 
 #: One run fetches at most this many groups; beyond it the verdict is "cannot decide", never a partial set.
-#: Severities that are worth a human's attention. P2 is "worth knowing" and stays in last_status.
-#: One run fetches at most this many groups; beyond it the verdict is "cannot decide", never a partial set.
 GROUP_LIMIT = 500
+
+#: Severities that are worth a human's attention. P2 is "worth knowing" and stays in last_status.
 
 PUBLISHING_SEVERITIES = ("P0", "P1")
 
@@ -217,8 +213,8 @@ async def _resolve_operand(
     return left / right, ""  # type: ignore[operator]
 
 
-def _rule_payload(instance: ObjectInstance) -> dict:
-    return dict(instance.data or {})
+def _rule_payload(rule: MetricRule) -> dict:
+    return rule.payload
 
 
 def _group_key(value: Any) -> str:
@@ -226,54 +222,50 @@ def _group_key(value: Any) -> str:
 
 
 async def _find_open_event(
-    db: AsyncSession, event_type: ObjectType, *, rule: str, scope: str, period_start: str, period_end: str
-) -> ObjectInstance | None:
+    db: AsyncSession, *, rule: str, scope: str, period_start: str, period_end: str
+) -> MetricEvent | None:
     rows = (
         await db.execute(
-            select(ObjectInstance).where(
-                ObjectInstance.object_type_id == event_type.id,
-                ObjectInstance.data["rule_object_id"].astext == rule,
-                ObjectInstance.data["scope"].astext == scope,
-                ObjectInstance.data["period_start"].astext == period_start,
-                ObjectInstance.data["period_end"].astext == period_end,
-                ObjectInstance.data["event_end_time"].astext.is_(None),
+            select(MetricEvent).where(
+                MetricEvent.rule_id == rule,
+                MetricEvent.scope == scope,
+                MetricEvent.period_start == period_start,
+                MetricEvent.period_end == period_end,
+                MetricEvent.event_end_time.is_(None),
             )
         )
     ).scalars().all()
     return rows[0] if rows else None
 
 
-def _close(db_event: ObjectInstance) -> None:
-    data = dict(db_event.data or {})
-    data.update({"event_end_time": _now(), "status": "resolved", "intent": "success"})
-    db_event.data = data
+def _close(event: MetricEvent) -> None:
+    event.event_end_time = _now()
+    event.status = "resolved"
+    event.intent = "success"
 
 
 async def _close_open_events(
-    db: AsyncSession, event_type: ObjectType, *, rule: str, scopes: list[str], period_start: str, period_end: str
+    db: AsyncSession, *, rule: str, scopes: list[str], period_start: str, period_end: str
 ) -> int:
-    """Close the events of `rule` whose group is not among `scopes` (or every one when empty)."""
+    """Close the alerts of `rule` whose scope is not among `scopes` (or every one when empty)."""
     rows = (
         await db.execute(
-            select(ObjectInstance).where(
-                ObjectInstance.object_type_id == event_type.id,
-                ObjectInstance.data["rule_object_id"].astext == rule,
-                ObjectInstance.data["period_start"].astext == period_start,
-                ObjectInstance.data["period_end"].astext == period_end,
-                ObjectInstance.data["event_end_time"].astext.is_(None),
+            select(MetricEvent).where(
+                MetricEvent.rule_id == rule,
+                MetricEvent.period_start == period_start,
+                MetricEvent.period_end == period_end,
+                MetricEvent.event_end_time.is_(None),
             )
         )
     ).scalars().all()
     closed = 0
     for event in rows:
-        scope = str((event.data or {}).get("scope") or "")
-        if scopes and scope in scopes:
+        if scopes and event.scope in scopes:
             continue
         _close(event)
         closed += 1
     if closed:
         await db.flush()
-        await sync_queue_ids_to_neo4j(db, event_type, upsert_ids=[e.id for e in rows], delete_ids=[])
     return closed
 
 
@@ -289,92 +281,76 @@ def _event_title(rule_data: dict, group: dict | None) -> str:
 
 async def _upsert_event(
     db: AsyncSession,
-    request: Request,
     *,
-    rule: ObjectInstance,
+    rule: MetricRule,
     rule_data: dict,
-    event_type: ObjectType,
     scope: str,
     group: dict | None,
     period_start: str,
     period_end: str,
+    period_label: str | None,
     values: dict[str, float | None],
 ) -> str:
-    # Two runs of the same rule for the same scope and period must not both "find nothing" and insert.
-    # A transaction-scoped advisory lock serialises them; the run already owns its transaction (snapshot),
-    # so the lock is released at commit and cannot leak.
-    key = "|".join([str(rule_data.get("rule_id") or rule.id), scope, period_start, period_end])
+    # Two runs of the same rule for the same scope and period must not both "find nothing" and insert:
+    # a transaction-scoped lock on the dedupe key serialises them (the run owns its transaction).
+    key = "|".join([rule.slug, scope, period_start, period_end])
     await db.execute(text("SELECT pg_advisory_xact_lock(hashtext(:key))"), {"key": key})
     existing = await _find_open_event(
-        db, event_type, rule=rule.id, scope=scope, period_start=period_start, period_end=period_end
+        db, rule=rule.id, scope=scope, period_start=period_start, period_end=period_end
     )
     evidence = {
-        "rule_id": str(rule_data.get("rule_id") or ""),
+        "rule_id": rule.slug,
         "rule_object_id": rule.id,
-        "rule_version": rule_data.get("version", 1),
+        "rule_version": rule.version,
         "group": group,
         "values": values,
         "at": _now(),
     }
+    title = _event_title(rule_data, group)
+    description = str(rule_data.get("suggestion") or "")
     if existing is not None:
-        data = dict(existing.data or {})
-        data["evidence"] = json.dumps(evidence, ensure_ascii=False)
-        # The rule's wording or the group's identity may have changed since the event opened.
-        data["title"] = _event_title(rule_data, group)
-        data["description"] = str(rule_data.get("suggestion") or "")
-        existing.data = data
+        # The rule's wording may have changed since the alert opened; refresh what the reader sees.
+        existing.evidence = evidence
+        existing.title = title
+        existing.description = description
+        existing.period_label = period_label
         await db.flush()
-        await sync_queue_ids_to_neo4j(db, event_type, upsert_ids=[existing.id], delete_ids=[])
         return existing.id
 
-    subject = _json_field(rule_data.get("subject")) or {}
-    subject_type = subject.get("kind") if isinstance(subject, dict) else None
-    subject_id = subject.get("ref") if isinstance(subject, dict) else None
-    severity = str(rule_data.get("severity") or "P1")
-    title = _event_title(rule_data, group)
-    data = {
-        "event_id": "|".join([str(rule_data.get("rule_id") or rule.id), scope, period_start]),
-        "title": title,
-        "domain": str(rule_data.get("domain") or "metric"),
-        "intent": INTENT_BY_SEVERITY.get(severity, "warning"),
-        "severity": severity,
-        "description": str(rule_data.get("suggestion") or ""),
-        "event_start_time": _now(),
-        "event_end_time": None,
-        "period_start": period_start,
-        "period_end": period_end,
-        "scope": scope,
-        "evidence": json.dumps(evidence, ensure_ascii=False),
-        "status": "open",
-        "assignee": None,
-        "rule_id": str(rule_data.get("rule_id") or ""),
-        "rule_object_id": rule.id,
-        "rule_version": rule_data.get("version", 1),
-        "subject_type": subject_type,
-        "subject_id": subject_id,
-        "dedupe_key": "|".join([str(rule_data.get("rule_id") or rule.id), scope, period_start, period_end]),
-    }
-    instance = ObjectInstance(id=__import__("uuid").uuid4().hex, object_type_id=event_type.id, data=data)
-    db.add(instance)
-    await db.flush()
-    await sync_queue_ids_to_neo4j(db, event_type, upsert_ids=[instance.id], delete_ids=[])
-    await link_event_about(
-        db,
-        event_type=event_type,
-        event_instance_id=instance.id,
-        target_api_name=rule_data.get("about_object_type"),
-        scope=None,
+    severity = rule.severity or "P1"
+    event = MetricEvent(
+        id=__import__("uuid").uuid4().hex,
+        rule_id=rule.id,
+        metric_id=rule.metric_id,
+        event_id="|".join([rule.slug, scope, period_start]),
+        dedupe_key=key,
+        title=title,
+        description=description,
+        severity=severity,
+        intent=INTENT_BY_SEVERITY.get(severity, "warning"),
+        status="open",
+        scope=scope,
+        group_field=(group or {}).get("field"),
+        period_start=period_start,
+        period_end=period_end,
+        period_label=period_label,
+        evidence=evidence,
+        event_start_time=_now(),
+        rule_version=rule.version,
     )
-    return instance.id
+    db.add(event)
+    await db.flush()
+    return event.id
 
 
 async def evaluate_rule(
     db: AsyncSession,
     request: Request,
     *,
-    rule: ObjectInstance,
+    rule: MetricRule,
     period_start: str = "",
     period_end: str = "",
+    period_label: str | None = None,
     dry_run: bool = False,
 ) -> list[EvalResult]:
     """Evaluate one rule — once per group when it declares `group_by`, otherwise once.
@@ -387,9 +363,6 @@ async def evaluate_rule(
     of them should reach the inbox.
     """
     rule_data = _rule_payload(rule)
-    _rule_type, event_type = await builtin_types(db)
-    if event_type is None:
-        raise RuntimeError("Event object type is missing — restart the backend to run the bootstrap")
 
     relation = rule_data.get("relation")
     if isinstance(relation, str):
@@ -403,10 +376,9 @@ async def evaluate_rule(
             request,
             rule=rule,
             rule_data={**rule_data, "relation": relation},
-            event_type=event_type,
-            rule_type=_rule_type,
             period_start=period_start,
             period_end=period_end,
+            period_label=period_label,
             dry_run=dry_run,
         )
 
@@ -436,14 +408,13 @@ async def evaluate_rule(
         request,
         rule=rule,
         rule_data=rule_data,
-        rule_type=_rule_type,
-        event_type=event_type,
         grouped=grouped,
         reasons=reasons,
         group=group,
         group_field=group_field,
         period_start=period_start,
         period_end=period_end,
+        period_label=period_label,
         dry_run=dry_run,
     )
 
@@ -452,16 +423,15 @@ async def _finish(
     db: AsyncSession,
     request: Request,
     *,
-    rule: ObjectInstance,
+    rule: MetricRule,
     rule_data: dict,
-    rule_type: ObjectType | None,
-    event_type: ObjectType,
     grouped: list[tuple[Any, bool | None, dict[str, Any]]],
     reasons: list[str],
     group: dict | None,
     group_field: str | None,
     period_start: str,
     period_end: str,
+    period_label: str | None,
     dry_run: bool,
 ) -> list[EvalResult]:
     """Turn per-group verdicts into results, events and `last_*` — the part every check shares.
@@ -496,15 +466,14 @@ async def _finish(
                 failing_scopes.append(scope_value)
                 results[-1].event_id = await _upsert_event(
                     db,
-                    request,
                     rule=rule,
                     rule_data=rule_data,
-                    event_type=event_type,
                     scope=scope_value,
                     group=({"field": group_field, "label": (group or {}).get("label"), "value": group_value}
                            if group_field else None),
                     period_start=period_start,
                     period_end=period_end,
+                    period_label=period_label,
                     values=resolved,
                 )
             else:
@@ -515,7 +484,6 @@ async def _finish(
     if not dry_run and any(status in ("pass", "fail") for status in statuses):
         await _close_open_events(
             db,
-            event_type,
             rule=rule.id,
             scopes=failing_scopes,
             period_start=period_start,
@@ -526,22 +494,17 @@ async def _finish(
     if dry_run:
         return results
 
-    data = dict(rule.data or {})
-    data.update(
-        {
-            "last_run_at": _now(),
-            "last_status": overall,
-            "last_period_start": period_start,
-            "last_period_end": period_end,
-            # Why a run could not decide (`unknown`), or a one-line note for a failure. Empty on pass:
-            # the numbers themselves stay in the event evidence, not on the rule.
-            "last_reason": "; ".join(reasons) if reasons else None,
-        }
-    )
-    rule.data = data
+    data: dict[str, Any] = {
+        "last_run_at": _now(),
+        "last_status": overall,
+        "last_period_start": period_start,
+        "last_period_end": period_end,
+        # Why a run could not decide (`unknown`), or a one-line note for a failure. Empty on pass:
+        # the numbers themselves stay in the alert's evidence, not on the rule.
+        "last_reason": "; ".join(reasons) if reasons else None,
+    }
+    rule.apply_payload(data)
     await db.flush()
-    if rule_type is not None:
-        await sync_queue_ids_to_neo4j(db, rule_type, upsert_ids=[rule.id], delete_ids=[])
     return results
 
 
@@ -549,12 +512,11 @@ async def _evaluate_relation(
     db: AsyncSession,
     request: Request,
     *,
-    rule: ObjectInstance,
+    rule: MetricRule,
     rule_data: dict,
-    rule_type: ObjectType | None,
-    event_type: ObjectType,
     period_start: str,
     period_end: str,
+    period_label: str | None,
     dry_run: bool,
 ) -> list[EvalResult]:
     """Check an identity: `target` vs the weighted sum of its `members`, within a tolerance."""
@@ -621,14 +583,13 @@ async def _evaluate_relation(
         request,
         rule=rule,
         rule_data=rule_data,
-        rule_type=rule_type,
-        event_type=event_type,
         grouped=grouped,
         reasons=reasons,
         group=group,
         group_field=group_field,
         period_start=period_start,
         period_end=period_end,
+        period_label=period_label,
         dry_run=dry_run,
     )
 
@@ -641,33 +602,29 @@ async def evaluate_rules_for_subject(
     subject_id: str | None = None,
     period_start: str = "",
     period_end: str = "",
+    period_label: str | None = None,
     limit: int = 100,
 ) -> list[EvalResult]:
-    """Every active rule, optionally narrowed to one subject (a metric or a dataset)."""
-    rule_type, _event_type = await builtin_types(db)
-    if rule_type is None:
+    """Every active rule, optionally narrowed to one metric."""
+    query = select(MetricRule).where(MetricRule.status == "active").order_by(MetricRule.created_at.desc())
+    if subject_id:
+        query = query.where(MetricRule.metric_id == subject_id)
+    elif subject_type and subject_type != "metric":
+        # Alerts are about metrics only; a dataset filter matches nothing.
         return []
-    rows = (
-        await db.execute(
-            select(ObjectInstance)
-            .where(ObjectInstance.object_type_id == rule_type.id)
-            .order_by(ObjectInstance.created_at.desc())
-            .limit(limit)
-        )
-    ).scalars().all()
+    rules = (await db.execute(query.limit(limit))).scalars().all()
     results: list[EvalResult] = []
-    for rule in rows:
-        data = _rule_payload(rule)
-        if str(data.get("status") or "active") != "active":
-            continue
-        subject = _json_field(data.get("subject")) or {}
-        if subject_type and str(subject.get("kind")) != subject_type:
-            continue
-        if subject_id and str(subject.get("ref")) != subject_id:
-            continue
+    for rule in rules:
         try:
             results.extend(
-                await evaluate_rule(db, request, rule=rule, period_start=period_start, period_end=period_end)
+                await evaluate_rule(
+                    db,
+                    request,
+                    rule=rule,
+                    period_start=period_start,
+                    period_end=period_end,
+                    period_label=period_label,
+                )
             )
         except ConditionError as exc:
             results.append(EvalResult(rule_id=rule.id, status="skipped", reason=str(exc)))

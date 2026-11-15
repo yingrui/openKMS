@@ -117,8 +117,7 @@ export function ModelMetricsSection() {
     setRunning(true);
     try {
       const result = await evaluateRules({
-        subject_type: 'metric',
-        subject_id: runMetric.id,
+        metric_id: runMetric.id,
         period_start: params.period_start,
         period_end: params.period_end,
       });

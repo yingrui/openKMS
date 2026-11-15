@@ -273,10 +273,7 @@ export function RuleDetailPage() {
       const payload = {
         name: form.name.trim(),
         rule_id: form.ruleId.trim() || null,
-        subject: {
-          kind: 'metric' as const,
-          ref: form.metricId,
-        },
+        metric_id: form.metricId,
         ...(relation ? { relation } : { condition }),
         severity: form.severity,
         conclusion: form.conclusion.trim(),
@@ -287,9 +284,9 @@ export function RuleDetailPage() {
       if (isNew) {
         const created = await createRule(payload);
         toast.success(t('rules.toastCreated'));
-        navigate(`/data-rules/${created.object_id}`, { replace: true });
+        navigate(`/data-rules/${created.id}`, { replace: true });
       } else if (rule) {
-        const updated = await updateRule(rule.object_id, payload);
+        const updated = await updateRule(rule.id, payload);
         setRule(updated);
         setForm(formFromRule(updated, metrics, datasets));
         setEditing(false);
@@ -321,7 +318,7 @@ export function RuleDetailPage() {
     if (!rule) return;
     setRunning(true);
     try {
-      const result = await evaluateRule(rule.object_id, params);
+      const result = await evaluateRule(rule.id, params);
       const first = result.results[0];
       toast.success(
         result.results.length > 1
@@ -341,7 +338,7 @@ export function RuleDetailPage() {
     if (!rule) return;
     setRunning(true);
     try {
-      setTrial(await evaluateRule(rule.object_id, { ...params, dry_run: true }));
+      setTrial(await evaluateRule(rule.id, { ...params, dry_run: true }));
     } catch (e: unknown) {
       toast.error(e instanceof Error ? e.message : t('rules.toastRunFailed'));
     } finally {
@@ -362,7 +359,7 @@ export function RuleDetailPage() {
       return;
     }
     try {
-      await deleteRule(rule.object_id);
+      await deleteRule(rule.id);
       toast.success(t('rules.toastDeleted'));
       navigate('/data-rules');
     } catch (e: unknown) {

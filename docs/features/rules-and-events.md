@@ -1,61 +1,39 @@
-# Rules and events
+# Metric rules and alerts
 
-The ontology-layer app that turns "these numbers must be consistent" into something the platform
-checks. A **Rule** is a condition plus a one-line conclusion; running it produces an **Event** when
-the condition holds, and closes that event when it stops holding.
+Catalog's check layer: it turns "these numbers must be consistent" into something the platform runs. A
+**rule** watches one metric and states what must hold — an identity with other metrics, or a threshold —
+plus a one-line conclusion; running it yields **pass / fail / undecidable** for a period, and a failure that
+carries advice opens an **alert** (事件).
 
-**Positioning:** *A rule is an opinion the platform can execute; an event is that opinion becoming a
-thing you can link, triage and cite.* Metrics are the first people to write rules — quality rules,
-schema changes and pipeline failures are meant to use the same objects.
+**Where it lives:** **Catalog** → **指标勾稽** (`/data-rules`), beside Datasets · Semantic Model · Metrics ·
+数据质量. Two tabs: **勾稽规则** (the rules) and **告警事件** (what they raised). Writes need `data:write`
+(analysts) or `ontology:write` (admins).
 
-**Where it lives:** **Catalog** (`/data-rules`) — the app's tab bar lists it beside Datasets · Semantic
-Model · 指标勾稽 · 数据质量. The *objects* still live in the ontology (`Rule` / `Event`, so they
-inherit ACLs, search, the graph and Actions) but the *work* — writing a rule, reading what it found —
-happens where the analyst already is. Ontology Manager shows the two object types as schema and nothing
-else; its Rules rail item is gone.
-
-Entry points follow the thing being checked: a metric row carries its open-event badge, a table dataset
-offers a 指标勾稽 entry beside 数据质量, and both link into `/data-rules` pre-filtered by that subject.
-Writes need `data:write` (analysts) or `ontology:write` (admins) — the old `ontology:write`-only gate was
-wrong for the audience.
+Entry points follow the metric: a metric row carries its check status and a run button; a dataset's own
+checks are **quality rules** on the dataset page (a table's shape is not a reconciliation).
 
 ---
 
-## Why objects, not tables
+## Why tables, not objects
 
-`Rule` and `Event` are **object types with no dataset** (instances live in `object_instances`, projected
-into the graph like any hand-created type). That buys, with no new store:
+Rules and alerts were ontology objects (`Rule` / `Event`, JSONB in `object_instances`, projected to Neo4j).
+Nothing ever traversed them as a graph, while the costs were real:
 
-| Need | Already provided by the ontology |
-|------|----------------------------------|
-| Permissions | `RT_OBJECT_TYPE` sharing on the two types |
-| Find them | Object Explorer, search, graph |
-| Attach to business data | link types (`about`) to `AllocationScenario`, `Stock`, … |
-| Audit and history | object updates + `audit_events` |
+| Cost | Consequence |
+|---|---|
+| No schema, no foreign keys | A deleted metric left rules pointing at nothing; a separate projection table (`rule_metric_refs`) was needed just to answer "which rules touch this metric" |
+| JSON-only querying | Filtering by period or last status meant `data->>` expressions |
+| Neo4j in the write path | Evaluation failed when the graph database was down |
+| Generic names | `Rule` / `Event` / `/api/rules` would collide with quality rules, business events, audit events |
 
-Both types are created on startup if missing (`ensure_builtin_ontology`, idempotent, keyed by
-`api_name`); an existing type is never modified.
+They are now `metric_rules` / `metric_events` (`app/models/metric_rule.py`), with `metric_id` foreign keys,
+`dedupe_key` indexed, and alerts cascading from their rule. The API lives at `/api/metric-rules` and
+`/api/metric-events`; the rule→metric reference set is the `metric_rule_metric_refs` table (a real
+foreign key, so a referenced metric cannot be deleted — the API turns that into a 409 naming the rules).
 
-## Object identity (read this before querying by id)
-
-Both types are **hand-created** (no dataset). For such a type the platform's identity is `__rid` — the
-`object_instances.id`, exposed as `object_id` in the API and as `__rid` in the graph. `key_properties` is
-display metadata there, not identity; `object_key_properties()` returns `[__rid]` whenever `dataset_id`
-is null.
-
-A rule therefore carries two identifiers, and they answer different questions:
-
-| | what it is | stable across |
-|---|---|---|
-| `rule_id` (on `Rule`) | the business identifier — a slug such as `allocation-overcheck`; unique, generated from the name when left empty | delete + recreate, export/import |
-| `object_id` (`__rid`) | the platform identity used by links, actions, ACL and every path parameter | this deployment only |
-
-Events record both: `rule_id` (the slug, what a human reads in an inbox, a log line or an export) and
-`rule_object_id` (the pointer used to join back to the object). `event_id` = `rule_id|scope|period` is the
-event's own business identifier — it is what dedupe keys on and what evidence cites.
-
-Renaming a rule's display name does not touch `rule_id`: the slug is the contract. Changing the slug itself
-is allowed but re-points future events, so treat it like renaming a published API.
+A rule has two identifiers: `id` (row identity, used in URLs) and `rule_id` (the slug — `allocation-overcheck`
+— unique, generated from the name, and what alerts, logs and exports cite). Changing the slug re-points
+future alerts, so treat it like renaming a published API.
 
 ## Rule
 
@@ -199,7 +177,7 @@ rule's own page therefore offers **试算 (dry run)** next to **运行**:
 - the response carries per-group values, so a grouped rule shows six numbers and six verdicts instead of
   six events.
 
-`POST /api/rules/{id}/evaluate` takes `dry_run: true`. The list-level "run all" has no trial: a trial has
+`POST /api/metric-rules/{id}/evaluate` takes `dry_run: true`. The list-level "run all" has no trial: a trial has
 one subject by definition.
 
 ## What reaches the agent (the point of the whole layer)
@@ -213,7 +191,7 @@ allocate, and why?" needs three things the metric's name and SQL do not carry:
 | may the number be summed? | `additivity` | ✅ field + an explicit prompt rule ("never add up a ratio") |
 | how is it built, so "why" can be answered | `depends_on` (the expression's `{{references}}`) | ✅ field; prompt: decompose and compare components instead of guessing |
 | **is the number trustworthy right now?** | the metric's `assertions` (identity, tolerance, last verdict, rule) | ✅ since this change — previously invisible to the agent |
-| which objects does it describe | `about_*` link types from events | ⛔ not needed for answering |
+| which objects does it describe | — (alerts name their metric; business-object links were removed with the ontology storage) | ⛔ not needed for answering |
 
 `GET /api/metrics` now returns `assertions` per metric — both directions, with the counterpart's *name*, the
 tolerance and the last `health`. The skill prints it next to the metric and the prompt draws the line that
@@ -304,7 +282,8 @@ metric definition versions. Each has a trigger in the Catalog plan's "after this
 
 **Removed rather than deferred**: the dependency canvas, the nested condition editor with its JSON view,
 the `infer` endpoint, `acknowledged` as an event state, and the unused rule fields (`ai_context`,
-`about_object_type`, `group_by.label`, `domain`). Reasons in the Catalog plan's deletion list.
+`about_object_type`, `group_by.label`, `domain`, and the ontology storage itself). Reasons in the
+Catalog plan's deletion list.
 
 **Inference** was removed: a solver and an endpoint, with no consumer (the agent work does not exist yet).
 The equation is ~50 lines to re-add when something calls it.

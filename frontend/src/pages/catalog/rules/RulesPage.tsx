@@ -63,8 +63,8 @@ export function RulesPage() {
   const [statusFilter, setStatusFilter] = useState<'open' | ''>('open');
   const [severityFilter, setSeverityFilter] = useState<'P0' | 'P1' | 'P2' | ''>('');
   // Read as primitives so the loader's dependency list is complete without a memoised object.
-  const subjectType = (searchParams.get('subject_type') as 'metric' | 'dataset' | null) ?? undefined;
-  const subjectId = searchParams.get('subject_id') ?? undefined;
+  // A rule watches a metric, so the only filter a link can carry is that metric.
+  const metricFilter = searchParams.get('metric_id') ?? undefined;
 
   const metricName = useMemo(() => {
     const byId = new Map(metrics.map((metric) => [metric.id, metric.name]));
@@ -92,12 +92,11 @@ export function RulesPage() {
     setLoading(true);
     try {
       const [ruleList, metricPage, datasetPage, eventPage] = await Promise.all([
-        fetchRules({ subject_type: subjectType, subject_id: subjectId }),
+        fetchRules(metricFilter ? { metric_id: metricFilter } : undefined),
         fetchMetrics().catch(() => ({ items: [] as MetricResponse[], total: 0 })),
         fetchDatasets({ limit: 200 }).catch(() => ({ items: [] as DatasetResponse[], total: 0 })),
         fetchEvents({
-          subject_type: subjectType,
-          subject_id: subjectId,
+          metric_id: metricFilter,
           status: statusFilter || undefined,
           severity: severityFilter || undefined,
           limit: 100,
@@ -113,7 +112,7 @@ export function RulesPage() {
     } finally {
       setLoading(false);
     }
-  }, [t, statusFilter, severityFilter, subjectType, subjectId]);
+  }, [t, statusFilter, severityFilter, metricFilter]);
 
   useEffect(() => {
     void load();
@@ -134,9 +133,9 @@ export function RulesPage() {
   };
 
   const runOne = async (rule: RuleOut) => {
-    setRunningId(rule.object_id);
+    setRunningId(rule.id);
     try {
-      const result = await evaluateRule(rule.object_id, {});
+      const result = await evaluateRule(rule.id, {});
       const first = result.results[0];
       toast.success(
         result.results.length > 1
@@ -153,7 +152,7 @@ export function RulesPage() {
 
   const togglePause = async (rule: RuleOut) => {
     try {
-      await updateRule(rule.object_id, { status: rule.status === 'paused' ? 'active' : 'paused' });
+      await updateRule(rule.id, { status: rule.status === 'paused' ? 'active' : 'paused' });
       await load();
     } catch (e: unknown) {
       toast.error(e instanceof Error ? e.message : t('rules.toastSaveFailed'));
@@ -255,16 +254,16 @@ export function RulesPage() {
                     </thead>
                     <tbody>
                       {rules.map((rule) => (
-                        <tr key={rule.object_id}>
+                        <tr key={rule.id}>
                           <td>
-                            <Link to={`/data-rules/${rule.object_id}`} className="rules-name-btn">
+                            <Link to={`/data-rules/${rule.id}`} className="rules-name-btn">
                               {rule.name ?? '—'}
                             </Link>
                             {rule.status === 'paused' ? (
                               <span className="rules-paused">{t('rules.paused')}</span>
                             ) : null}
                           </td>
-                          <td>{metricName((rule.subject?.ref as string) ?? '')}</td>
+                          <td>{metricName(rule.metric_id ?? '')}</td>
                           <td className="rules-condition">
                             {conditionLabel(rule.condition, {
                               metricName,
@@ -305,7 +304,7 @@ export function RulesPage() {
                                 title={t('rules.run')}
                                 aria-label={t('rules.run')}
                                 icon={<Play size={16} aria-hidden />}
-                                loading={runningId === rule.object_id}
+                                loading={runningId === rule.id}
                                 disabled={rule.status === 'paused'}
                                 onClick={() => void runOne(rule)}
                               />

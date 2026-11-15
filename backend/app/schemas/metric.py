@@ -53,7 +53,7 @@ class MetricAssertion(BaseModel):
 class RuleRefOut(BaseModel):
     """A rule that references a metric, with the result of its last run."""
 
-    object_id: str
+    id: str
     rule_id: str | None = None
     name: str | None = None
     last_status: str | None = None
