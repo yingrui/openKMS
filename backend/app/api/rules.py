@@ -233,7 +233,6 @@ def _rule_out(instance: ObjectInstance) -> RuleOut:
         object_id=instance.id,
         rule_id=data.get("rule_id"),
         name=data.get("name"),
-        domain=data.get("domain"),
         subject=_parse_maybe_json(data.get("subject")),
         condition=_parse_maybe_json(data.get("condition")),
         relation=_parse_maybe_json(data.get("relation")),
@@ -245,6 +244,9 @@ def _rule_out(instance: ObjectInstance) -> RuleOut:
         version=int(data.get("version") or 1),
         last_run_at=data.get("last_run_at"),
         last_status=data.get("last_status"),
+        last_period_start=data.get("last_period_start"),
+        last_period_end=data.get("last_period_end"),
+        last_reason=data.get("last_reason"),
         group_by=_parse_maybe_json(data.get("group_by")) if data.get("group_by") else None,
     )
 
