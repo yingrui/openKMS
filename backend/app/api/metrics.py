@@ -28,6 +28,7 @@ from app.schemas.metric import (
     MetricUpdate,
 )
 from app.services.data.expressions import normalize_expression
+from app.services.data.metric_graph import assertions_by_metric, build_graph
 from app.services.data.metric_refs import MetricRefError, expand, metric_references
 from app.services.data.metrics import (
     MetricError,
@@ -38,6 +39,7 @@ from app.services.data.metrics import (
     validate_metric_filters,
 )
 from app.api.catalog_scoped import require_metric_access, readable_model_ids
+from app.services.ontology.rules.relations import list_relation_rules
 from app.api.query_errors import query_failure_detail
 from app.services.data.query_errors import DEFINITION, QueryFailure
 from app.services.data.query import QueryError, run_query
@@ -70,7 +72,10 @@ def _depends_on(m: MetricDefinition, model_metrics: list[MetricDefinition]) -> l
 
 
 def _metric_response(
-    m: MetricDefinition, base_name: str | None, model_metrics: list[MetricDefinition] | None = None
+    m: MetricDefinition,
+    base_name: str | None,
+    model_metrics: list[MetricDefinition] | None = None,
+    assertions: dict[str, list[dict]] | None = None,
 ) -> MetricResponse:
     return MetricResponse(
         id=m.id,
@@ -81,6 +86,7 @@ def _metric_response(
         business_definition=m.business_definition,
         additivity=m.additivity,
         depends_on=_depends_on(m, model_metrics or []),
+        assertions=(assertions or {}).get(m.id, []),
         expression=m.expression,
         datatype=m.datatype,
         filters=m.filters,
@@ -128,6 +134,16 @@ async def _validate_refs(
         base_dataset_id=candidate.base_dataset_id,
         joins=data.get("joins", current.joins if current else None),
     )
+
+
+async def _metric_assertions(
+    db: AsyncSession, peers: list[MetricDefinition]
+) -> dict[str, list[dict]]:
+    """The identities each metric takes part in — same source as the graph view, shaped for a consumer."""
+    if not peers:
+        return {}
+    rules = await list_relation_rules(db, [m.id for m in peers])
+    return assertions_by_metric(build_graph(peers, rules))
 
 
 async def _peers(db: AsyncSession, m: MetricDefinition) -> list[MetricDefinition]:
@@ -208,10 +224,13 @@ async def list_metrics(
         query = query.where(MetricDefinition.base_dataset_id == base_dataset_id)
     rows = (await db.execute(query)).scalars().all()
     names = await _name_map(db, {m.base_dataset_id for m in rows})
+    assertions = await _metric_assertions(db, rows)
     return MetricListResponse(
-        # `depends_on` needs the model's other metrics, so the list is resolved once, not per row.
+        # `depends_on` and the assertions need the model's other metrics and its rules, so both are
+        # resolved once for the whole list instead of per row.
         items=[
-            _metric_response(m, names.get(m.base_dataset_id), rows) for m in rows
+            _metric_response(m, names.get(m.base_dataset_id), rows, assertions)
+            for m in rows
         ],
         total=len(rows),
     )
@@ -273,7 +292,10 @@ async def create_metric(
     await db.commit()
     await db.refresh(metric)
     names = await _name_map(db, {metric.base_dataset_id})
-    return _metric_response(metric, names.get(metric.base_dataset_id), await _peers(db, metric))
+    peers = await _peers(db, metric)
+    return _metric_response(
+        metric, names.get(metric.base_dataset_id), peers, await _metric_assertions(db, peers)
+    )
 
 
 @router.get(
@@ -284,7 +306,8 @@ async def create_metric(
 async def get_metric(metric_id: str, db: AsyncSession = Depends(get_db)):
     m = await _load_metric(db, metric_id)
     names = await _name_map(db, {m.base_dataset_id})
-    return _metric_response(m, names.get(m.base_dataset_id), await _peers(db, m))
+    peers = await _peers(db, m)
+    return _metric_response(m, names.get(m.base_dataset_id), peers, await _metric_assertions(db, peers))
 
 
 @router.put(
@@ -353,7 +376,8 @@ async def update_metric(
     await db.commit()
     await db.refresh(m)
     names = await _name_map(db, {m.base_dataset_id})
-    return _metric_response(m, names.get(m.base_dataset_id), await _peers(db, m))
+    peers = await _peers(db, m)
+    return _metric_response(m, names.get(m.base_dataset_id), peers, await _metric_assertions(db, peers))
 
 
 @router.delete(

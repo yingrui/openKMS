@@ -2,7 +2,7 @@
 import pytest
 
 from app.models.metric_definition import MetricDefinition
-from app.services.data.metric_graph import build_graph
+from app.services.data.metric_graph import assertions_by_metric, build_graph
 
 
 def _metric(name: str, sql: str, *, additivity: str = "additive") -> MetricDefinition:
@@ -61,3 +61,32 @@ def test_relations_pointing_outside_the_model_are_ignored():
     }
     graph = build_graph([ALLOC, DEMAND], [rule])
     assert [edge for edge in graph["edges"] if edge["kind"] == "assertion"] == []
+
+
+def test_assertions_are_shaped_for_a_consumer_that_cannot_paint():
+    rule = {
+        "object_id": "rule-1",
+        "rule_id": "allocation-total-reconcile",
+        "last_status": "fail",
+        "relation": {
+            "target": {"metric": ALLOC.id},
+            "members": [{"metric": DEMAND.id, "weight": -1}],
+            "tolerance": {"abs": 1},
+        },
+    }
+    shaped = assertions_by_metric(build_graph([ALLOC, DEMAND], [rule]))
+
+    target = shaped[ALLOC.id][0]
+    assert target["direction"] == "asserts"
+    assert target["counterpart"] == DEMAND.id
+    assert target["weight"] == -1
+    assert target["tolerance"] == {"abs": 1}
+    assert target["rule_id"] == "allocation-total-reconcile"
+    assert target["health"] == "fail"
+    # The other side of the same identity is reported too, so a question about either metric is qualified.
+    assert shaped[DEMAND.id][0]["direction"] == "asserted_by"
+
+
+def test_definitions_are_not_assertions():
+    shaped = assertions_by_metric(build_graph([ALLOC, DEMAND, RATE], []))
+    assert shaped == {}  # no rules, so no claims — the expressions are not claims

@@ -144,6 +144,20 @@ def get_semantic_model_tool(model_id: str, _config: RunnableConfig) -> str:
                         "depends_on": [
                             d.get("name") for d in (m.get("depends_on") or []) if d.get("name")
                         ],
+                        # Identities this metric takes part in, with their last verdict. A check that is
+                        # failing means the number itself is not verified — say so instead of answering
+                        # as if it were.
+                        "assertions": [
+                            {
+                                "direction": a.get("direction"),
+                                "counterpart": a.get("counterpart_name") or a.get("counterpart"),
+                                "weight": a.get("weight"),
+                                "tolerance": a.get("tolerance"),
+                                "health": a.get("health"),
+                                "rule_id": a.get("rule_id"),
+                            }
+                            for a in (m.get("assertions") or [])
+                        ],
                         "expression": m.get("expression"),
                         "base_dataset_id": m.get("base_dataset_id"),
                         "joins": m.get("joins"),
@@ -274,6 +288,12 @@ CATALOG_PROMPT = (
     "A metric marked ``additivity: non_additive`` is a ratio or a rate: ask the query for it "
     "at the grain you need (group_by) and never add up its values — summing parts of a ratio "
     "is wrong even when the parts are correct.\n"
+    "3b. Use each metric's ``ai_context`` (synonyms / examples / not_for) to resolve what the user "
+    "called it, and ``depends_on`` when asked **why** a number moved: query the components at the "
+    "same grain and compare, instead of guessing a cause.\n"
+    "3c. When a metric has ``assertions`` and one has ``health: fail``, the number is **not verified** "
+    "right now: answer with it only alongside that fact, naming the identity (e.g. 分货额度 = 方案累计"
+    "额度 ±1) and the rule. Do not raise it for a passing or absent assertion.\n"
     "4. Use **sql_semantic_model_tool** for ad-hoc analysis: one SELECT/WITH against "
     "``tables[].qualified_name`` only (JOINs, windows, samples, custom columns). "
     "Never mutate data; never query tables outside the model.\n"

@@ -186,6 +186,28 @@ rule's own page therefore offers **试算 (dry run)** next to **运行**:
 `POST /api/rules/{id}/evaluate` takes `dry_run: true`. The list-level "run all" has no trial: a trial has
 one subject by definition.
 
+## What reaches the agent (the point of the whole layer)
+
+The reason relations exist is not a prettier diagram — it is that an agent answering "how much did we
+allocate, and why?" needs three things the metric's name and SQL do not carry:
+
+| the agent needs | where it comes from | reaches the agent? |
+|---|---|---|
+| which metric the user means | `ai_context`: synonyms, examples, `not_for` | ✅ in the metric payload; the skill prompt says to use it |
+| may the number be summed? | `additivity` | ✅ field + an explicit prompt rule ("never add up a ratio") |
+| how is it built, so "why" can be answered | `depends_on` (the expression's `{{references}}`) | ✅ field; prompt: decompose and compare components instead of guessing |
+| **is the number trustworthy right now?** | the metric's `assertions` (identity, tolerance, last verdict, rule) | ✅ since this change — previously invisible to the agent |
+| which objects does it describe | `about_*` link types from events | ⛔ not needed for answering |
+
+`GET /api/metrics` now returns `assertions` per metric — both directions, with the counterpart's *name*, the
+tolerance and the last `health`. The skill prints it next to the metric and the prompt draws the line that
+matters: **a failing assertion means the number is not verified**, so it may be quoted only together with
+that fact and the rule's name; a passing or absent assertion is not worth mentioning.
+
+The distinction the layer keeps: a *definition* edge is structure (the expression already says it, and
+checking it would be tautological); an *assertion* edge is a claim about the world, which is what makes an
+answer either trustworthy or not.
+
 ## The dependency view: definitions vs assertions
 
 Model → Metrics → **关系** draws the graph inline. The switch sits on a toolbar row *under* the header

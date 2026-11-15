@@ -60,6 +60,35 @@ def _relation_edges(rules: list[dict[str, Any]], by_ref: dict[str, MetricDefinit
     return edges
 
 
+def assertions_by_metric(graph: dict[str, Any]) -> dict[str, list[dict[str, Any]]]:
+    """Per metric, the identities it takes part in — what an agent needs to *qualify* its answer.
+
+    `build_graph` is for the eye; this is the same edges shaped for a consumer that must not paint a graph:
+    "分货额度 is asserted equal to 方案累计额度 ±1, and that check is currently failing". Derived edges are
+    deliberately absent — they are the definition, and the expression already carries them.
+    """
+    names = {node["id"]: node["name"] for node in graph["nodes"]}
+    out: dict[str, list[dict[str, Any]]] = {}
+    for edge in graph["edges"]:
+        if edge["kind"] != "assertion":
+            continue
+        for side in ("from", "to"):
+            entry = {
+                "direction": "asserts" if side == "from" else "asserted_by",
+                "counterpart": edge["to"] if side == "from" else edge["from"],
+                # The reader of this payload is a model, not a UI: a name it can print beats an id it has
+                # to look up in a second structure.
+                "counterpart_name": names.get(edge["to"] if side == "from" else edge["from"]),
+                "weight": edge["weight"],
+                "tolerance": edge["tolerance"],
+                "rule_id": edge["rule_id"],
+                "rule_object_id": edge["rule_object_id"],
+                "health": edge["health"],
+            }
+            out.setdefault(edge[side], []).append(entry)
+    return out
+
+
 def build_graph(
     metrics: list[MetricDefinition],
     rules: list[dict[str, Any]],

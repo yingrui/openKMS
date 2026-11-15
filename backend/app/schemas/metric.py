@@ -37,6 +37,26 @@ class MetricUpdate(BaseModel):
     ai_context: dict[str, Any] | None = None
 
 
+class MetricAssertion(BaseModel):
+    """An identity this metric takes part in — `分货额度 = 方案累计额度 ±1`, and its last verdict."""
+
+    direction: str
+    counterpart: str
+    counterpart_name: str | None = None
+    weight: float = 1
+    tolerance: dict[str, float] | None = None
+    rule_id: str | None = None
+    rule_object_id: str | None = None
+    health: str | None = None
+
+
+class MetricRef(BaseModel):
+    """A metric this one is computed from (the expression names it)."""
+
+    id: str
+    name: str
+
+
 class MetricResponse(BaseModel):
     id: str
     semantic_model_id: str
@@ -46,6 +66,7 @@ class MetricResponse(BaseModel):
     business_definition: str | None = None
     additivity: str
     depends_on: list["MetricRef"] = []
+    assertions: list[MetricAssertion] = []
     expression: dict[str, Any] | None = None
     datatype: str | None = None
     filters: list[MetricFilter] | None = None
@@ -54,13 +75,6 @@ class MetricResponse(BaseModel):
     created_by_name: str | None = None
     created_at: datetime
     updated_at: datetime
-
-
-class MetricRef(BaseModel):
-    """A metric this one is computed from (the expression names it)."""
-
-    id: str
-    name: str
 
 
 class MetricListResponse(BaseModel):
