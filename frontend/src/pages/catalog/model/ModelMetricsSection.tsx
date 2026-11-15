@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { BellRing, Loader2, Pencil, Play, Plus, Trash2 } from 'lucide-react';
+import { CircleCheck, CircleHelp, CircleX, Loader2, Pencil, Play, Plus, Trash2 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { toast } from 'sonner';
 import { fetchDatasets, type DatasetResponse } from '../../../data/datasetsApi';
@@ -18,7 +18,8 @@ import {
 import { useConfirm } from '../../../contexts/ConfirmContext';
 import { Dialog, FormField } from '../../../styles/design-system/index';
 import { EntityViewHeader, EntityViewPanel } from '../../shared/EntityViewShell';
-import { fetchEventSummary } from '../../../data/eventsApi';
+import { evaluateRules, fetchRules, type RuleOut } from '../../../data/rulesApi';
+import { RunRulesDialog, type RunParams } from '../rules/RunRulesDialog';
 import { useSemanticModelDetail } from './useSemanticModelDetail';
 import { datasetLabel } from '../datasetLabel';
 import '../../../styles/metrics.scss';
@@ -38,7 +39,10 @@ export function ModelMetricsSection() {
   const [datasets, setDatasets] = useState<DatasetResponse[]>([]);
   const [joins, setJoins] = useState<DatasetJoinResponse[]>([]);
   const [loading, setLoading] = useState(true);
-  const [openEvents, setOpenEvents] = useState<Record<string, number>>({});
+  const [rules, setRules] = useState<RuleOut[]>([]);
+  const [coverage, setCoverage] = useState<'all' | 'covered' | 'uncovered'>('all');
+  const [runMetric, setRunMetric] = useState<MetricResponse | null>(null);
+  const [running, setRunning] = useState(false);
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState<MetricResponse | null>(null);
   const [name, setName] = useState('');
@@ -58,12 +62,14 @@ export function ModelMetricsSection() {
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const [m, ds, j] = await Promise.all([
+      const [m, ds, j, r] = await Promise.all([
         fetchMetrics(semanticModelId),
         fetchDatasets(),
         fetchDatasetJoins(),
+        fetchRules(),
       ]);
       setMetrics(m.items);
+      setRules(r);
       setDatasets(ds.items.filter((d) => datasetIds.includes(d.id)));
       setJoins(j.items);
     } catch (e) {
@@ -74,19 +80,57 @@ export function ModelMetricsSection() {
   }, [semanticModelId, datasetIds, t]);
 
   useEffect(() => {
-    // Open events per metric: one summary call, so a row can show a badge without N+1 requests.
-    void fetchEventSummary('metric')
-      .then((counts) => {
-        const next: Record<string, number> = {};
-        for (const count of counts) if (count.open > 0) next[count.subject_id] = count.open;
-        setOpenEvents(next);
-      })
-      .catch(() => setOpenEvents({}));
-  }, []);
-
-  useEffect(() => {
     void load();
   }, [load]);
+
+  /** Which rules reference each metric, and the worst last result among them. */
+  const checksByMetric = useMemo(() => {
+    const map = new Map<string, { rules: RuleOut[]; worst: 'fail' | 'unknown' | 'pass' | null }>();
+    for (const rule of rules) {
+      for (const metricId of rule.metric_ids ?? []) {
+        const entry = map.get(metricId) ?? { rules: [], worst: null as null | 'fail' | 'unknown' | 'pass' };
+        entry.rules.push(rule);
+        const status = (rule.last_status as 'fail' | 'unknown' | 'pass' | null) ?? null;
+        const rank = { fail: 3, unknown: 2, pass: 1 } as const;
+        if (status && (!entry.worst || rank[status] > rank[entry.worst])) entry.worst = status;
+        map.set(metricId, entry);
+      }
+    }
+    return map;
+  }, [rules]);
+
+  const shownMetrics = useMemo(() => {
+    if (coverage === 'all') return metrics;
+    return metrics.filter((metric) =>
+      coverage === 'covered' ? checksByMetric.has(metric.id) : !checksByMetric.has(metric.id),
+    );
+  }, [metrics, coverage, checksByMetric]);
+
+  const runChecks = async (params: RunParams) => {
+    if (!runMetric) return;
+    setRunning(true);
+    try {
+      const result = await evaluateRules({
+        subject_type: 'metric',
+        subject_id: runMetric.id,
+        period_start: params.period_start,
+        period_end: params.period_end,
+      });
+      toast.success(
+        t('dataModel.checksRun', {
+          count: result.results.length,
+          failed: result.failed,
+          unknown: result.unknown,
+        }),
+      );
+      setRunMetric(null);
+      await load();
+    } catch (e: unknown) {
+      toast.error(e instanceof Error ? e.message : t('rules.toastRunFailed'));
+    } finally {
+      setRunning(false);
+    }
+  };
 
   // Relationships touching the selected base dataset (the metric's join graph).
   const baseJoins = useMemo(
@@ -203,10 +247,22 @@ export function ModelMetricsSection() {
       <EntityViewHeader
         title={t('dataModel.metrics')}
         actions={
-          <button type="button" className="btn btn-primary" onClick={openCreate}>
+          <>
+            <select
+              className="ds-control"
+              value={coverage}
+              onChange={(e) => setCoverage(e.target.value as typeof coverage)}
+              aria-label={t('dataModel.coverageFilter')}
+            >
+              <option value="all">{t('dataModel.coverageAll')}</option>
+              <option value="covered">{t('dataModel.coverageCovered')}</option>
+              <option value="uncovered">{t('dataModel.coverageUncovered')}</option>
+            </select>
+            <button type="button" className="btn btn-primary" onClick={openCreate}>
             <Plus size={16} aria-hidden />
             {t('datasets.addMetric')}
-          </button>
+            </button>
+          </>
         }
       />
 
@@ -228,20 +284,46 @@ export function ModelMetricsSection() {
               </tr>
             </thead>
             <tbody>
-              {metrics.map((m) => (
+              {shownMetrics.map((m) => (
                 <tr key={m.id}>
                   <td>
                     <strong>{m.name}</strong>
-                    {openEvents[m.id] ? (
-                      <Link
-                        className="metric-events-badge"
-                        to={`/data-rules?tab=events&subject_type=metric&subject_id=${m.id}`}
-                        title={t('dataModel.metricOpenEvents', { count: openEvents[m.id] })}
-                      >
-                        <BellRing size={12} aria-hidden />
-                        {openEvents[m.id]}
-                      </Link>
-                    ) : null}
+                    {(() => {
+                      const entry = checksByMetric.get(m.id);
+                      if (!entry) {
+                        return (
+                          <span
+                            className="metric-check metric-check--none"
+                            title={t('dataModel.checkUncovered')}
+                          >
+                            <CircleHelp size={12} aria-hidden />
+                            {t('dataModel.checkUncoveredShort')}
+                          </span>
+                        );
+                      }
+                      const Icon =
+                        entry.worst === 'fail' ? CircleX : entry.worst === 'pass' ? CircleCheck : CircleHelp;
+                      const tone =
+                        entry.worst === 'fail' ? 'fail' : entry.worst === 'pass' ? 'pass' : 'unknown';
+                      return (
+                        <span
+                          className={`metric-check metric-check--${tone}`}
+                          title={entry.rules
+                            .map(
+                              (rule) =>
+                                `${rule.name ?? rule.rule_id}：${rule.last_period_start ?? '—'} ${
+                                  rule.last_status ?? t('rules.neverRun')
+                                }${rule.last_reason ? `（${rule.last_reason}）` : ''}`,
+                            )
+                            .join('\n')}
+                        >
+                          <Icon size={12} aria-hidden />
+                          {entry.worst
+                            ? t(`dataModel.check${entry.worst === 'fail' ? 'Fail' : entry.worst === 'pass' ? 'Pass' : 'Unknown'}`)
+                            : t('dataModel.checkNeverRun')}
+                        </span>
+                      );
+                    })()}
                   </td>
                   <td>{m.base_dataset_name ?? datasetNameById(m.base_dataset_id)}</td>
                   <td>
@@ -260,6 +342,15 @@ export function ModelMetricsSection() {
                     ) : null}
                   </td>
                   <td className="dataset-field-row__actions">
+                    <button
+                      type="button"
+                      className="btn btn-secondary btn-sm"
+                      onClick={() => setRunMetric(m)}
+                      title={t('dataModel.checksRunShort')}
+                      aria-label={t('dataModel.checksRunShort')}
+                    >
+                      <Play size={14} aria-hidden />
+                    </button>
                     <Link
                       className="btn btn-secondary btn-sm"
                       to={`/data-model/${model.id}/playground?q=${encodeURIComponent(
@@ -293,6 +384,13 @@ export function ModelMetricsSection() {
         </div>
         )}
       </EntityViewPanel>
+
+      <RunRulesDialog
+        open={runMetric !== null}
+        busy={running}
+        onClose={() => !running && setRunMetric(null)}
+        onRun={(params) => void runChecks(params)}
+      />
 
       <Dialog
         open={showForm}

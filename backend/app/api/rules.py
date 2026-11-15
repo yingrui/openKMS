@@ -147,6 +147,8 @@ class RuleOut(BaseModel):
     last_period_start: str | None = None
     last_period_end: str | None = None
     last_reason: str | None = None
+    #: Metric ids this rule references (projection) — lets a list answer "which metrics are covered".
+    metric_ids: list[str] = []
     group_by: dict | None = None
 
 
@@ -410,9 +412,14 @@ async def list_rules(
             .order_by(ObjectInstance.created_at.desc())
         )
     ).scalars().all()
+    by_rule: dict[str, list[str]] = {}
+    for rule_id, metric_id in (
+        await db.execute(select(RuleMetricRef.rule_id, RuleMetricRef.metric_id))
+    ).all():
+        by_rule.setdefault(rule_id, []).append(metric_id)
     out: list[RuleOut] = []
     for instance in rows:
-        item = _rule_out(instance)
+        item = _rule_out(instance).model_copy(update={"metric_ids": by_rule.get(instance.id, [])})
         if subject_type and (item.subject or {}).get("kind") != subject_type:
             continue
         if subject_id and (item.subject or {}).get("ref") != subject_id:

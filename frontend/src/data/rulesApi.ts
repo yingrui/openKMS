@@ -49,6 +49,8 @@ export type RuleOut = {
   last_period_start: string | null;
   last_period_end: string | null;
   last_reason: string | null;
+  /** Metric ids this rule references — a list can answer "covered" without N calls. */
+  metric_ids: string[];
   group_by: RuleGroupBy | null;
 };
 
@@ -156,4 +158,20 @@ export async function evaluateRules(params: {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(params),
   });
+}
+
+/** A rule that references one metric, with its last run — what the metric page shows beside the number. */
+export type MetricRuleRef = {
+  object_id: string;
+  rule_id: string | null;
+  name: string | null;
+  last_status: 'pass' | 'fail' | 'unknown' | null;
+  last_period_start: string | null;
+  last_period_end: string | null;
+  last_run_at: string | null;
+  last_reason: string | null;
+};
+
+export async function fetchMetricRules(metricId: string): Promise<MetricRuleRef[]> {
+  return request<MetricRuleRef[]>(`/api/metrics/${metricId}/rules`);
 }

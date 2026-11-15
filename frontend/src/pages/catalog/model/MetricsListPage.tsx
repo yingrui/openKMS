@@ -22,10 +22,12 @@ export function MetricsListPage() {
   const [models, setModels] = useState<SemanticModelResponse[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
+  const [coverage, setCoverage] = useState<'all' | 'covered' | 'uncovered'>('all');
 
   useEffect(() => {
     let cancelled = false;
-    void Promise.all([fetchMetrics(), fetchSemanticModels()])
+    const coverageParam = coverage === 'all' ? undefined : coverage;
+    void Promise.all([fetchMetrics(undefined, coverageParam), fetchSemanticModels()])
       .then(([metricPage, modelPage]) => {
         if (cancelled) return;
         setMetrics(metricPage.items);
@@ -37,7 +39,7 @@ export function MetricsListPage() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [coverage]);
 
   const needle = search.trim().toLowerCase();
   const shown = useMemo(() => {
@@ -73,6 +75,18 @@ export function MetricsListPage() {
       <DatasetAppTabs />
       <div className="ontology-admin-content">
         <div className="console-datasets-toolbar">
+          <label className="console-datasets-filter">
+            {t('dataModel.coverageFilter')}
+            <select
+              className="ds-control"
+              value={coverage}
+              onChange={(e) => setCoverage(e.target.value as typeof coverage)}
+            >
+              <option value="all">{t('dataModel.coverageAll')}</option>
+              <option value="covered">{t('dataModel.coverageCovered')}</option>
+              <option value="uncovered">{t('dataModel.coverageUncovered')}</option>
+            </select>
+          </label>
           <label className="console-datasets-search">
             <Search size={18} aria-hidden />
             {/* ds-control-exempt: `.console-datasets-search` styles this input (its own sheet) */}

@@ -435,7 +435,18 @@
     "resourceAccessNoCandidate": "No matching identity.",
     "resourceAccessNotManager": "Only someone who manages this resource can see or change who may read it.",
     "metricTypePlaceholder": "number / string / datetime",
-    "metricOpenEvents": "{{count}} open event(s)"
+    "checkPass": "consistent",
+    "checkFail": "inconsistent",
+    "checkUnknown": "undecided",
+    "checkNeverRun": "not run",
+    "checkUncovered": "No rule references this metric",
+    "checkUncoveredShort": "uncovered",
+    "checksRun": "Ran {{count}} rule(s): {{failed}} failed, {{unknown}} undecided",
+    "checksRunShort": "Run the rules on this metric",
+    "coverageFilter": "Coverage",
+    "coverageAll": "All metrics",
+    "coverageCovered": "Checked",
+    "coverageUncovered": "Unchecked"
   },
   "datasets": {
     "title": "Datasets",

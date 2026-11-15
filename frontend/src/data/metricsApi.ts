@@ -71,9 +71,15 @@ export interface MetricPayload {
   ai_context?: MetricAiContext | null;
 }
 
-export async function fetchMetrics(semanticModelId?: string): Promise<MetricListResponse> {
+export async function fetchMetrics(
+  semanticModelId?: string,
+  coverage?: 'covered' | 'uncovered',
+): Promise<MetricListResponse> {
+  const query: Record<string, string> = {};
+  if (semanticModelId) query.semantic_model_id = semanticModelId;
+  if (coverage) query.coverage = coverage;
   return request<MetricListResponse>('/api/metrics', {
-    query: semanticModelId ? { semantic_model_id: semanticModelId } : undefined,
+    query: Object.keys(query).length ? query : undefined,
   });
 }
 
