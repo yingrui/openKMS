@@ -1,9 +1,12 @@
 /**
  * The condition editor: a flat list of comparisons, all of which must hold.
  *
- * Deliberately not a tree — but a row's left side is an *operand*, and the engine's operands are a metric,
- * a dataset aggregate, or a ratio / difference of two of those. Showing only a metric is how the real rule
- * `分货额度 ÷ 分货明细.sum(gap) > 1` became invisible.
+ * The shape of a row is the old one, because it was the readable one: **one line per comparison** —
+ * `[operand] [op] [value] [×]` — and the operand editor is where the kind is chosen (metric, dataset
+ * aggregate, a ratio of two operands, a difference of two). No separate "form" field: picking "ratio" there
+ * and then having to fill two more selects was a step backwards for the one rule that is a ratio.
+ *
+ * Groups are not drawn (no nesting, no `any` — the engine rejects them); a flat list is the whole structure.
  */
 import { useTranslation } from 'react-i18next';
 import { Plus, Trash2 } from 'lucide-react';
@@ -17,38 +20,83 @@ import {
   newRow,
   type ConditionRow,
   type OperandDraft,
-  type RowShape,
 } from './conditionRowsModel';
 
-function OperandPicker({
+const MAX_OPERAND_DEPTH = 2;
+
+function OperandEditor({
   value,
   onChange,
   metrics,
   datasets,
-  ariaLabel,
+  depth = 0,
 }: {
   value: OperandDraft;
   onChange: (next: OperandDraft) => void;
   metrics: MetricResponse[];
   datasets: DatasetResponse[];
-  ariaLabel: string;
+  depth?: number;
 }) {
   const { t } = useTranslation('ontology');
+  const paired = value.kind === 'ratio' || value.kind === 'diff';
+  const leaf = value.kind === 'metric' || value.kind === 'dataset_agg' ? value : null;
+
+  const changeKind = (kind: OperandDraft['kind']) => {
+    if (kind === 'metric' || kind === 'dataset_agg') {
+      onChange({
+        kind,
+        ...(kind === 'metric' ? { metricId: '' } : { datasetId: '', aggFn: 'count', aggColumn: '' }),
+      } as OperandDraft);
+      return;
+    }
+    onChange({ kind, left: { kind: 'metric', metricId: '' }, right: { kind: 'metric', metricId: '' } });
+  };
+
   return (
-    <div className="rules-conditions__operand" aria-label={ariaLabel}>
-      <select className="ds-control"
+    <span className="rules-conditions__operand">
+      <select
+        className="ds-control rules-conditions__op-kind"
         value={value.kind}
-        onChange={(e) => onChange({ ...value, kind: e.target.value as OperandDraft['kind'] })}
-        aria-label={t('rules.conditionOperandKind')}
+        onChange={(e) => changeKind(e.target.value as OperandDraft['kind'])}
+        aria-label={t('rules.conditionKind')}
       >
-        <option value="metric">{t('rules.conditionKindMetric')}</option>
-        <option value="dataset_agg">{t('rules.conditionKindDataset')}</option>
+        <option value="metric">{t('rules.conditionOperandMetric')}</option>
+        <option value="dataset_agg">{t('rules.conditionOperandDataset')}</option>
+        {depth < MAX_OPERAND_DEPTH ? (
+          <option value="ratio">{t('rules.conditionOperandRatio')}</option>
+        ) : null}
+        {depth < MAX_OPERAND_DEPTH ? (
+          <option value="diff">{t('rules.conditionOperandDiff')}</option>
+        ) : null}
       </select>
-      {value.kind === 'metric' ? (
+
+      {paired ? (
+        <span className="rules-conditions__pair">
+          <OperandEditor
+            value={value.left}
+            onChange={(left) => onChange({ ...value, left })}
+            metrics={metrics}
+            datasets={datasets}
+            depth={depth + 1}
+          />
+          <span className="rules-conditions__sep" aria-hidden>
+            {value.kind === 'ratio' ? '÷' : '−'}
+          </span>
+          <OperandEditor
+            value={value.right}
+            onChange={(right) => onChange({ ...value, right })}
+            metrics={metrics}
+            datasets={datasets}
+            depth={depth + 1}
+          />
+        </span>
+      ) : null}
+
+      {leaf?.kind === 'metric' ? (
         <select
-        className="ds-control"
-          value={value.metricId}
-          onChange={(e) => onChange({ ...value, metricId: e.target.value })}
+          className="ds-control"
+          value={leaf.metricId}
+          onChange={(e) => onChange({ ...leaf, metricId: e.target.value })}
           aria-label={t('rules.conditionMetric')}
         >
           <option value="">{t('rules.conditionPick')}</option>
@@ -58,12 +106,14 @@ function OperandPicker({
             </option>
           ))}
         </select>
-      ) : (
+      ) : null}
+
+      {leaf?.kind === 'dataset_agg' ? (
         <>
           <select
-        className="ds-control"
-            value={value.datasetId}
-            onChange={(e) => onChange({ ...value, datasetId: e.target.value })}
+            className="ds-control"
+            value={leaf.datasetId}
+            onChange={(e) => onChange({ ...leaf, datasetId: e.target.value })}
             aria-label={t('rules.conditionDataset')}
           >
             <option value="">{t('rules.conditionPick')}</option>
@@ -74,9 +124,9 @@ function OperandPicker({
             ))}
           </select>
           <select
-        className="ds-control"
-            value={value.aggFn}
-            onChange={(e) => onChange({ ...value, aggFn: e.target.value as OperandDraft['aggFn'] })}
+            className="ds-control rules-conditions__agg"
+            value={leaf.aggFn}
+            onChange={(e) => onChange({ ...leaf, aggFn: e.target.value as (typeof AGG_FNS)[number] })}
             aria-label={t('rules.conditionAgg')}
           >
             {AGG_FNS.map((fn) => (
@@ -85,18 +135,19 @@ function OperandPicker({
               </option>
             ))}
           </select>
-          {value.aggFn !== 'count' ? (
-            <input className="ds-control"
+          {leaf.aggFn !== 'count' ? (
+            <input
+              className="ds-control rules-conditions__column"
               type="text"
-              value={value.aggColumn}
-              onChange={(e) => onChange({ ...value, aggColumn: e.target.value })}
+              value={leaf.aggColumn}
+              onChange={(e) => onChange({ ...leaf, aggColumn: e.target.value })}
               placeholder={t('rules.conditionColumn')}
               aria-label={t('rules.conditionColumn')}
             />
           ) : null}
         </>
-      )}
-    </div>
+      ) : null}
+    </span>
   );
 }
 
@@ -119,70 +170,50 @@ export function ConditionRows({
 
   return (
     <div className="rules-conditions">
-      {/* Two conditions are an AND. Say so once, then number them: a bare list of rows reads like
-          alternatives, and this rule is a conjunction. */}
+      {/* Two comparisons are an AND. Say it once; the rows themselves stay one line each. */}
       {rows.length > 1 ? (
         <p className="rules-conditions__all">{t('rules.conditionAllOf')}</p>
       ) : null}
+
       {rows.map((row, index) => (
-        <fieldset key={row.id} className="rules-conditions__row">
-          <legend className="rules-conditions__legend">
-            {t('rules.conditionRow', { index: index + 1 })}
-          </legend>
-
-          <FormField label={t('rules.conditionShape')}>
-            <select className="ds-control"
-              value={row.shape}
-              onChange={(e) => set(index, { shape: e.target.value as RowShape })}
-              aria-label={t('rules.conditionShape')}
-            >
-              <option value="single">{t('rules.conditionShapeSingle')}</option>
-              <option value="ratio">{t('rules.conditionShapeRatio')}</option>
-              <option value="diff">{t('rules.conditionShapeDiff')}</option>
-            </select>
-          </FormField>
-
-          <FormField label={t('rules.conditionOperand')}>
-            <OperandPicker
-              value={row.left}
-              onChange={(left) => set(index, { left })}
+        <div key={row.id} className="rules-conditions__row">
+          {rows.length > 1 ? (
+            <span className="rules-conditions__index">{index + 1}</span>
+          ) : (
+            <span className="rules-conditions__index" aria-hidden />
+          )}
+          <FormField label={index === 0 ? t('rules.conditionOperand') : ' '}>
+            <OperandEditor
+              value={row.operand}
+              onChange={(operand) => set(index, { operand })}
               metrics={metrics}
               datasets={datasets}
-              ariaLabel={t('rules.conditionOperand')}
             />
           </FormField>
-
-          {row.shape !== 'single' ? (
-            <FormField label={t('rules.conditionOperandRight')}>
-              <OperandPicker
-                value={row.right}
-                onChange={(right) => set(index, { right })}
-                metrics={metrics}
-                datasets={datasets}
-                ariaLabel={t('rules.conditionOperandRight')}
-              />
-            </FormField>
-          ) : null}
-
-          <FormField label={t('rules.colComparison')}>
-            <div className="rules-conditions__compare">
-              <select className="ds-control" value={row.op} onChange={(e) => set(index, { op: e.target.value })}>
+          <FormField label={index === 0 ? t('rules.colComparison') : ' '}>
+            <span className="rules-conditions__compare">
+              <select
+                className="ds-control"
+                value={row.op}
+                onChange={(e) => set(index, { op: e.target.value })}
+                aria-label={t('rules.colComparison')}
+              >
                 {OPS.map((op) => (
                   <option key={op} value={op}>
                     {op}
                   </option>
                 ))}
               </select>
-              <input className="ds-control"
+              <input
+                className="ds-control"
                 type="number"
                 step="any"
                 value={row.value}
                 onChange={(e) => set(index, { value: e.target.value })}
                 aria-label={t('rules.conditionValue')}
               />
-            </div>
+            </span>
           </FormField>
-
           <button
             type="button"
             className="btn btn-secondary btn-sm rules-conditions__remove"
@@ -193,7 +224,7 @@ export function ConditionRows({
           >
             <Trash2 size={14} aria-hidden />
           </button>
-        </fieldset>
+        </div>
       ))}
 
       <div className="rules-conditions__footer">

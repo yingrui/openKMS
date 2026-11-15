@@ -1409,8 +1409,8 @@
     "conditionOperandKind": "操作数类型",
     "conditionOperandMetric": "指标",
     "conditionOperandDataset": "数据集聚合",
-    "conditionOperandRatio": "两个之比",
-    "conditionOperandDiff": "两个之差",
+    "conditionOperandRatio": "比值（相除）",
+    "conditionOperandDiff": "差值（相减）",
     "conditionValueKind": "取值类型",
     "conditionKindMetric": "指标",
     "conditionKindDataset": "数据集聚合",
@@ -1479,7 +1479,6 @@
     "toleranceRel": "相对百分比",
     "fieldReason": "原因",
     "conditionOperand": "数值",
-    "conditionKindRatio": "两个指标的比值",
     "conditionMetric": "指标",
     "conditionDataset": "数据集",
     "conditionAgg": "聚合",
@@ -1493,11 +1492,7 @@
     "conditionAllHint": "所有条件需同时成立。",
     "conditionIncomplete": "请补全条件（指标或数据集 + 阈值）",
     "conditionAllOf": "以下条件需同时成立",
-    "conditionShape": "形式",
-    "conditionShapeSingle": "单个数值",
-    "conditionShapeRatio": "比值",
-    "conditionShapeDiff": "差值",
-    "conditionOperandRight": "右侧数值",
-    "conditionUnrepresentable": "这条条件包含编辑器暂不支持的结构（例如比值里再套比值）。为免误改，保存已禁用；如需改造请用 API 重建条件。"
+    "conditionUnrepresentable": "这条条件包含编辑器暂不支持的结构（例如比值里再套比值）。为免误改，保存已禁用；如需改造请用 API 重建条件。",
+    "conditionKind": "类型"
   }
 }

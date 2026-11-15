@@ -1416,8 +1416,8 @@
     "conditionOperandKind": "Operand kind",
     "conditionOperandMetric": "Metric",
     "conditionOperandDataset": "Dataset aggregate",
-    "conditionOperandRatio": "Ratio of two",
-    "conditionOperandDiff": "Difference of two",
+    "conditionOperandRatio": "Ratio (divide)",
+    "conditionOperandDiff": "Difference (subtract)",
     "conditionValueKind": "value type",
     "conditionKindMetric": "Metric",
     "conditionKindDataset": "Dataset aggregate",
@@ -1486,7 +1486,6 @@
     "toleranceRel": "Relative %",
     "fieldReason": "Why",
     "conditionOperand": "Number",
-    "conditionKindRatio": "Ratio of two metrics",
     "conditionMetric": "Metric",
     "conditionDataset": "Dataset",
     "conditionAgg": "Aggregate",
@@ -1500,11 +1499,7 @@
     "conditionAllHint": "All conditions must hold.",
     "conditionIncomplete": "Complete the condition: an operand and a value",
     "conditionAllOf": "All of these must hold",
-    "conditionShape": "Form",
-    "conditionShapeSingle": "Single value",
-    "conditionShapeRatio": "Ratio",
-    "conditionShapeDiff": "Difference",
-    "conditionOperandRight": "Right operand",
-    "conditionUnrepresentable": "This condition contains a shape the editor does not draw (a ratio of a ratio, say). Saving is disabled so the rule cannot be rewritten by accident; recreate the condition through the API."
+    "conditionUnrepresentable": "This condition contains a shape the editor does not draw (a ratio of a ratio, say). Saving is disabled so the rule cannot be rewritten by accident; recreate the condition through the API.",
+    "conditionKind": "Type"
   }
 }

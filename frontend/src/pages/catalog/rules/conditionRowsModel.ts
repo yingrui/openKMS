@@ -17,22 +17,16 @@ export type OperandFilter = { field?: string; column?: string; op?: string; valu
 
 export const OPS = ['>', '>=', '<', '<=', '==', '!='] as const;
 
-export type OperandDraft = {
-  kind: 'metric' | 'dataset_agg';
-  metricId: string;
-  datasetId: string;
-  aggFn: AggFn;
-  aggColumn: string;
-};
+export type LeafOperandDraft =
+  | { kind: 'metric'; metricId: string }
+  | { kind: 'dataset_agg'; datasetId: string; aggFn: AggFn; aggColumn: string };
 
-export type RowShape = 'single' | 'ratio' | 'diff';
+/** An operand, as the engine sees it: a leaf, or a ratio / difference of two operands. */
+export type OperandDraft = LeafOperandDraft | { kind: 'ratio' | 'diff'; left: OperandDraft; right: OperandDraft };
 
 export type ConditionRow = {
   id: string;
-  shape: RowShape;
-  left: OperandDraft;
-  /** The right operand of a ratio / difference; unused for `single`. */
-  right: OperandDraft;
+  operand: OperandDraft;
   op: string;
   value: string;
 };
@@ -42,70 +36,59 @@ function newId() {
 }
 
 export function newOperand(seed: { metricId?: string; datasetId?: string } = {}): OperandDraft {
-  return {
-    kind: 'metric',
-    metricId: seed.metricId ?? '',
-    datasetId: seed.datasetId ?? '',
-    aggFn: 'count',
-    aggColumn: '',
-  };
+  if (seed.datasetId && !seed.metricId) {
+    return { kind: 'dataset_agg', datasetId: seed.datasetId, aggFn: 'count', aggColumn: '' };
+  }
+  return { kind: 'metric', metricId: seed.metricId ?? '' };
 }
 
 export function newRow(seed: { metricId?: string; datasetId?: string } = {}): ConditionRow {
-  return {
-    id: newId(),
-    shape: 'single',
-    left: newOperand(seed),
-    right: newOperand(seed),
-    op: '>',
-    value: '0',
-  };
+  return { id: newId(), operand: newOperand(seed), op: '>', value: '0' };
 }
 
 function operandOf(draft: OperandDraft): RuleOperand | null {
   if (draft.kind === 'metric') {
     return draft.metricId ? ({ metric: draft.metricId } as RuleOperand) : null;
   }
-  if (!draft.datasetId) return null;
-  const agg: Record<string, unknown> = { dataset_id: draft.datasetId, fn: draft.aggFn };
-  if (draft.aggColumn.trim() && draft.aggFn !== 'count') agg.column = draft.aggColumn.trim();
-  return { dataset_agg: agg } as RuleOperand;
+  if (draft.kind === 'dataset_agg') {
+    if (!draft.datasetId) return null;
+    const agg: Record<string, unknown> = { dataset_id: draft.datasetId, fn: draft.aggFn };
+    if (draft.aggColumn.trim() && draft.aggFn !== 'count') agg.column = draft.aggColumn.trim();
+    return { dataset_agg: agg } as RuleOperand;
+  }
+  const left = operandOf(draft.left);
+  const right = operandOf(draft.right);
+  if (!left || !right) return null;
+  return { [draft.kind]: [left, right] } as RuleOperand;
 }
 
-function operandFromJson(node: unknown): OperandDraft | null {
+function operandFromJson(node: unknown, depth = 0): OperandDraft | null {
   if (!node || typeof node !== 'object') return null;
   const record = node as Record<string, unknown>;
-  const draft = newOperand();
   if (typeof record.metric === 'string') {
-    draft.kind = 'metric';
-    draft.metricId = record.metric;
-    return draft;
+    return { kind: 'metric', metricId: record.metric };
   }
   const agg = record.dataset_agg as { dataset_id?: string; fn?: AggFn; column?: string } | undefined;
   if (agg?.dataset_id && agg.fn) {
-    draft.kind = 'dataset_agg';
-    draft.datasetId = agg.dataset_id;
-    draft.aggFn = agg.fn;
-    draft.aggColumn = agg.column ?? '';
-    return draft;
+    return { kind: 'dataset_agg', datasetId: agg.dataset_id, aggFn: agg.fn, aggColumn: agg.column ?? '' };
   }
-  return null; // a nested ratio/diff, or an operand shape this editor does not draw
-}
-
-function leftOperand(row: ConditionRow): RuleOperand | null {
-  const left = operandOf(row.left);
-  if (!left) return null;
-  if (row.shape === 'single') return left;
-  const right = operandOf(row.right);
-  if (!right) return null;
-  return { [row.shape]: [left, right] } as RuleOperand;
+  for (const pair of ['ratio', 'diff'] as const) {
+    const parts = record[pair];
+    if (Array.isArray(parts) && depth < 2) {
+      const left = operandFromJson(parts[0], depth + 1);
+      const right = operandFromJson(parts[1], depth + 1);
+      if (left && right) return { kind: pair, left, right };
+      return null; // deeper nesting: the editor does not draw it, and approximating would lose meaning
+    }
+  }
+  return null;
 }
 
 /** Rows → the wire shape: one comparison, or `all` of them. Empty rows are dropped. */
 export function conditionFromRows(rows: ConditionRow[]): RuleCondition | null {
   const comparisons = rows
     .map((row) => {
-      const left = leftOperand(row);
+      const left = operandOf(row.operand);
       const value = Number(row.value);
       if (!left || !Number.isFinite(value)) return null;
       return { left, op: row.op, right: { value } };
@@ -134,24 +117,12 @@ export function rowsFromCondition(
     const cmp = item as { left?: Record<string, unknown>; op?: string; right?: { value?: unknown } };
     const left = cmp.left;
     if (!left || typeof cmp.op !== 'string') return null;
+    const operand = operandFromJson(left);
+    if (!operand) return null;
     const row = newRow(seed);
     row.op = cmp.op;
     row.value = String(cmp.right?.value ?? 0);
-    const direct = operandFromJson(left);
-    if (direct) {
-      row.shape = 'single';
-      row.left = direct;
-    } else {
-      const pair = (['ratio', 'diff'] as const).find((key) => Array.isArray(left[key]));
-      if (!pair) return null;
-      const [a, b] = left[pair] as unknown[];
-      const leftDraft = operandFromJson(a);
-      const rightDraft = operandFromJson(b);
-      if (!leftDraft || !rightDraft) return null;
-      row.shape = pair;
-      row.left = leftDraft;
-      row.right = rightDraft;
-    }
+    row.operand = operand;
     rows.push(row);
   }
   return rows.length > 0 ? rows : [newRow(seed)];

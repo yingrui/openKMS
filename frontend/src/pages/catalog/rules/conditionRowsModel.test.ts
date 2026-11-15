@@ -30,10 +30,10 @@ describe('condition rows', () => {
     const rows = rowsFromCondition(OVERCHECK);
     expect(rows).not.toBeNull();
     expect(rows).toHaveLength(2);
-    expect(rows![0].shape).toBe('ratio');
-    expect(rows![0].left).toMatchObject({ kind: 'metric', metricId: 'alloc' });
-    expect(rows![0].right).toMatchObject({ kind: 'dataset_agg', datasetId: 'lines', aggFn: 'sum' });
-    expect(rows![1].shape).toBe('single');
+    expect(rows![0].operand.kind).toBe('ratio');
+    expect((rows![0].operand as { left: unknown }).left).toMatchObject({ kind: 'metric', metricId: 'alloc' });
+    expect((rows![0].operand as { right: unknown }).right).toMatchObject({ kind: 'dataset_agg', datasetId: 'lines', aggFn: 'sum' });
+    expect(rows![1].operand.kind).toBe('metric');
   });
 
   it('round-trips that condition without losing anything', () => {
@@ -48,23 +48,43 @@ describe('condition rows', () => {
       right: { value: 0 },
     } as unknown as RuleCondition;
     const rows = rowsFromCondition(condition)!;
-    expect(rows[0].shape).toBe('diff');
+    expect(rows[0].operand.kind).toBe('diff');
     expect(conditionFromRows(rows)).toEqual(condition);
   });
 
-  it('refuses shapes it cannot draw, rather than approximating them', () => {
+  it('draws one level of nesting, and refuses what is deeper', () => {
+    // ratio(ratio(a, b), c) is two steps of the same rule — the editor recurses one level, as before.
     const nested = {
-      all: [{ left: { ratio: [{ ratio: [{ metric: 'a' }, { metric: 'b' }] }, { metric: 'c' }] }, op: '>', right: { value: 1 } }],
+      left: { ratio: [{ ratio: [{ metric: 'a' }, { metric: 'b' }] }, { metric: 'c' }] },
+      op: '>',
+      right: { value: 1 },
     } as unknown as RuleCondition;
-    expect(rowsFromCondition(nested)).toBeNull();
+    expect(rowsFromCondition(nested)).not.toBeNull();
+
+    const tooDeep = {
+      left: {
+        ratio: [
+          { ratio: [{ ratio: [{ metric: 'a' }, { metric: 'b' }] }, { metric: 'c' }] },
+          { metric: 'd' },
+        ],
+      },
+      op: '>',
+      right: { value: 1 },
+    } as unknown as RuleCondition;
+    expect(rowsFromCondition(tooDeep)).toBeNull();
+  });
+
+  it('refuses an `any` group, which rules do not have', () => {
+    const any = { any: [{ left: { metric: 'a' }, op: '>', right: { value: 1 } }] } as unknown as RuleCondition;
+    expect(rowsFromCondition(any)).toBeNull();
   });
 
   it('drops incomplete rows and reports an empty condition', () => {
-    const row: ConditionRow = { ...newRow(), left: newOperand(), value: '1' };
+    const row: ConditionRow = { ...newRow(), operand: newOperand(), value: '1' };
     expect(conditionFromRows([row])).toBeNull();
     const complete: ConditionRow = {
       ...newRow(),
-      left: { ...newOperand(), metricId: 'm1' },
+      operand: { kind: 'metric', metricId: 'm1' },
       value: '2',
     };
     expect(conditionFromRows([complete])).toEqual({
