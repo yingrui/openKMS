@@ -9,13 +9,13 @@ thing you can link, triage and cite.* Metrics are the first people to write rule
 schema changes and pipeline failures are meant to use the same objects.
 
 **Where it lives:** **Catalog** (`/data-rules`) — the app's tab bar lists it beside Datasets · Semantic
-Model · Metrics · Quality Issues. The *objects* still live in the ontology (`Rule` / `Event`, so they
+Model · 指标勾稽 · 数据质量. The *objects* still live in the ontology (`Rule` / `Event`, so they
 inherit ACLs, search, the graph and Actions) but the *work* — writing a rule, reading what it found —
 happens where the analyst already is. Ontology Manager shows the two object types as schema and nothing
 else; its Rules rail item is gone.
 
 Entry points follow the thing being checked: a metric row carries its open-event badge, a table dataset
-offers a 规则 entry beside Quality, and both link into `/data-rules` pre-filtered by that subject.
+offers a 指标勾稽 entry beside 数据质量, and both link into `/data-rules` pre-filtered by that subject.
 Writes need `data:write` (analysts) or `ontology:write` (admins) — the old `ontology:write`-only gate was
 wrong for the audience.
 
@@ -61,7 +61,7 @@ is allowed but re-points future events, so treat it like renaming a published AP
 
 | Property | Meaning |
 |----------|---------|
-| `subject` | `{kind: metric\|dataset, ref}` — what the rule watches, and therefore which evaluator and permissions apply |
+| `subject` | `{kind: metric, ref}` — the metric the rule watches, and therefore which permissions apply. **A rule's subject is always a metric**: a dataset's shape (row counts, nulls, ranges) is a *quality rule* on the dataset's own page, not a reconciliation |
 | `condition` | One comparison `{left, op, right: {value}}`, or `{all: [comparison, …]}` where every comparison must hold. Operands: `{metric}`, `{dataset_agg}`, `{diff:[a,b]}`, `{ratio:[a,b]}`; metric and dataset operands may carry the data layer's own `filters` (`{"field", "op", "value"}`). **No `any`, no nesting** — the editor is a flat list of comparisons and validation accepts exactly that, so the editor cannot express something the server refuses; a condition stored with nesting still *reads* but is rejected on the next write. The read view spells it out in one line — `(分货额度 ÷ 分货明细.sum(gap)) > 1 且 仍缺货明细数 > 0` |
 | `severity` | `P0` / `P1` / `P2`, the same scale as quality rules |
 | `conclusion` / `suggestion` | One sentence each. **A hit with no suggestion does not become an event** |
@@ -226,8 +226,7 @@ answer either trustworthy or not.
 
 ## Grouping by a field that exists
 
-`group_by.field` is checked against the subject at save time: a metric rule against its model's fields, a
-dataset rule against the dataset's columns. An unknown name used to surface at run time as "条件无法判断"
+`group_by.field` is checked against the subject's model fields at save time. An unknown name used to surface at run time as "条件无法判断"
 (a `None` operand), which reads like a data problem rather than a typo — now it is a 400 that lists the
 fields that do exist:
 
