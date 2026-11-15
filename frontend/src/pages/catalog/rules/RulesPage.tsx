@@ -363,6 +363,8 @@ export function RulesPage() {
                   onTransition={(event, status) => void moveEvent(event, status)}
                   grouped
                   ruleNames={Object.fromEntries(rules.map((rule) => [rule.rule_id, rule.name]))}
+                  metricNames={Object.fromEntries(metrics.map((metric) => [metric.id, metric.name]))}
+                  lookups={{ metricName, datasetName, and: t('rules.joinAnd'), or: t('rules.joinOr') }}
                 />
               )}
 

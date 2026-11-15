@@ -13,6 +13,7 @@ export type BasicsValue = {
   severity: 'P0' | 'P1' | 'P2';
   status: 'active' | 'paused';
   groupField: string;
+  periodField: string;
 };
 
 export function RuleBasicsForm({

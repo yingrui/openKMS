@@ -11,9 +11,10 @@ export type EventOut = {
   event_end_time: string | null;
   period_start: string | null;
   period_end: string | null;
+  period_label: string | null;
   scope: string | null;
   description: string | null;
-  evidence: string | null;
+  evidence: Record<string, unknown> | null;
   rule_id: string | null;
   rule_object_id: string | null;
   rule_version: number | null;

@@ -1493,6 +1493,16 @@
     "conditionIncomplete": "请补全条件（指标或数据集 + 阈值）",
     "conditionAllOf": "以下条件需同时成立",
     "conditionUnrepresentable": "这条条件包含编辑器暂不支持的结构（例如比值里再套比值）。为免误改，保存已禁用；如需改造请用 API 重建条件。",
-    "conditionKind": "类型"
+    "conditionKind": "类型",
+    "showEvidence": "展开证据",
+    "hideEvidence": "收起证据",
+    "evidenceTitle": "本次判定的数值",
+    "evidenceEmpty": "这次判定没有留下数值。",
+    "evidenceResidual": "残差 {{residual}}，容差 {{tolerance}}",
+    "evidenceMeta": "规则版本 v{{version}} · 计算于 {{at}}",
+    "openRule": "打开勾稽规则",
+    "periodField": "周期字段",
+    "periodFieldHint": "用哪个字段把“本期”变成过滤条件（如 trade_date、cycle）。留空则周期只是一个标识，不参与取数。",
+    "periodUnbound": "未绑定周期字段：期间的日期不参与取数"
   }
 }

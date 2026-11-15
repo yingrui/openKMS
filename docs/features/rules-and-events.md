@@ -74,7 +74,7 @@ acknowledging is per occurrence (`方案 73ec880b` may be the one being fixed to
 | **Run parameters** | The period belongs to the *run*, not to the rule (`2026-W46`, `2026-11` or `2026-11-15`; anything else is a 422). Both entry points — "run all" and a metric's own play button — use the same dialog, so the two cannot drift |
 | **One rule** (`/ontology-manager/rules/:id`, `/rules/new`) | A page with two modes: **read** (definition, last run with its computed values, events raised) and **edit** (rule / condition / meaning panels, Save and Cancel in the header). The condition needs a page — a summary of what is stored, a form view for one comparison, and a 16-row JSON view for everything else. Creating a rule is the same page in edit mode, so the two cannot drift |
 | **A metric** (model → Metrics) | A badge with its open-event count, linking to that metric's events |
-| **A dataset** (Catalog → dataset → Overview) | "Rules and events": how many rules watch it, and the three most recent events |
+| **A dataset** (Catalog → dataset → Overview) | (removed — a rule watches a metric; a table's own checks are quality rules): how many rules watch it, and the three most recent events |
 
 Events themselves remain ordinary objects: the same rows are in Object Explorer, and each is linked to
 the business object it is about.
@@ -201,6 +201,23 @@ that fact and the rule's name; a passing or absent assertion is not worth mentio
 The distinction the layer keeps: a *definition* edge is structure (the expression already says it, and
 checking it would be tautological); an *assertion* edge is a claim about the world, which is what makes an
 answer either trustworthy or not.
+
+## What a period is — and what it is not
+
+A run is given **one period label** (`2026-W46`, `2026-11`, `2026-11-15`). The label is parsed into two dates
+(`2026-W46` → `2026-11-09` … `2026-11-15`, ISO weeks starting Monday), and those dates are what the alert
+records and what the dedupe key uses, so the same week cannot be spelled two ways and split its history.
+
+**A label alone does not scope the numbers.** A rule may name a **`period_field`** — a column of its metric's
+model (`trade_date`, `cycle`, …) — and then a run appends `period_field >= start` and `<= end` to every
+operand's filters, which is what makes "this period" mean "these rows". Without a period field the run is a
+label on the run: the UI says so (`未绑定周期字段：期间的日期不参与取数`), because an alert filed under a week
+whose numbers came from all weeks is worse than no period at all. The column is validated at save time against
+the model's fields, like `group_by.field`.
+
+There is no period table and no close calendar yet: periods are labels with derived dates, not objects. That
+is enough for "this run covers W46"; it is not enough for 期初/期末 (which needs period offsets) — that is a
+separate, later step.
 
 ## Grouping by a field that exists
 

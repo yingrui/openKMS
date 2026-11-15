@@ -65,6 +65,7 @@ type FormState = {
   suggestion: string;
   status: 'active' | 'paused';
   groupField: string;
+  periodField: string;
 };
 
 const EMPTY_FORM: FormState = {
@@ -86,6 +87,7 @@ const EMPTY_FORM: FormState = {
   suggestion: '',
   status: 'active',
   groupField: '',
+  periodField: '',
 };
 
 function formFromRule(rule: RuleOut, metrics: MetricResponse[], datasets: DatasetResponse[]): FormState {
@@ -120,6 +122,7 @@ function formFromRule(rule: RuleOut, metrics: MetricResponse[], datasets: Datase
     suggestion: rule.suggestion ?? '',
     status: rule.status === 'paused' ? 'paused' : 'active',
     groupField: rule.group_by?.field ?? '',
+    periodField: rule.period_field ?? '',
   };
 }
 
@@ -280,6 +283,7 @@ export function RuleDetailPage() {
         suggestion: form.suggestion.trim(),
         status: form.status,
         group_by: form.groupField.trim() ? { field: form.groupField.trim() } : null,
+        period_field: form.periodField.trim() || null,
       };
       if (isNew) {
         const created = await createRule(payload);
@@ -476,6 +480,7 @@ export function RuleDetailPage() {
                   severity: form.severity,
                   status: form.status,
                   groupField: form.groupField,
+                  periodField: form.periodField,
                 }}
                 onChange={(next) => setForm({ ...form, ...next })}
                 fields={paramCandidates}

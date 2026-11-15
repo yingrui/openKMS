@@ -49,6 +49,7 @@ export type RuleOut = {
   /** Metric ids this rule references — a list can answer "covered" without N calls. */
   metric_ids: string[];
   group_by: RuleGroupBy | null;
+  period_field: string | null;
 };
 
 /** An identity between metrics: `target = Σ weight × member`, within a tolerance. */
@@ -69,6 +70,7 @@ export type RuleWritePayload = {
   suggestion: string;
   owner?: string | null;
   group_by?: RuleGroupBy | null;
+  period_field?: string | null;
   status?: string;
 };
 

@@ -108,6 +108,21 @@ def _rule_group_by(rule_data: dict) -> dict | None:
     return group
 
 
+def period_filters(period_field: str | None, period_start: str, period_end: str) -> list[dict]:
+    """`period_field` bound to the run's dates — the one place a period becomes a data scope.
+
+    A rule without a period field is not filtered: its "period" is a label on the run, and the UI says so.
+    """
+    if not period_field or not (period_start or period_end):
+        return []
+    out: list[dict] = []
+    if period_start:
+        out.append({"field": period_field, "op": ">=", "value": period_start})
+    if period_end:
+        out.append({"field": period_field, "op": "<=", "value": period_end})
+    return out
+
+
 async def _metric_value(
     db: AsyncSession,
     request: Request,
@@ -181,19 +196,26 @@ async def _resolve_operand(
     request: Request,
     operand: dict,
     group_field: str | None = None,
+    scope_filters: list[dict] | None = None,
 ) -> tuple[float | None | dict[str, float | None], str]:
     kind = next(key for key in operand if key != "filters")
     if kind == "metric":
         return await _metric_value(
-            db, request, str(operand["metric"]), operand.get("filters"), group_field
+            db,
+            request,
+            str(operand["metric"]),
+            [*(operand.get("filters") or []), *(scope_filters or [])],
+            group_field,
         )
     if kind == "dataset_agg":
-        return await _dataset_agg_value(db, request, dict(operand["dataset_agg"]), group_field)
+        spec = dict(operand["dataset_agg"])
+        spec["filters"] = [*(spec.get("filters") or []), *(scope_filters or [])]
+        return await _dataset_agg_value(db, request, spec, group_field)
     pair = (operand[kind][0], operand[kind][1])
-    left, left_reason = await _resolve_operand(db, request, pair[0], group_field)
+    left, left_reason = await _resolve_operand(db, request, pair[0], group_field, scope_filters)
     if left is None:
         return None, left_reason
-    right, right_reason = await _resolve_operand(db, request, pair[1], group_field)
+    right, right_reason = await _resolve_operand(db, request, pair[1], group_field, scope_filters)
     if right is None:
         return None, right_reason
     if group_field:
@@ -392,12 +414,13 @@ async def evaluate_rule(
 
     group = _rule_group_by(rule_data)
     group_field = str(group["field"]) if group else None
+    scope_filters = period_filters(rule_data.get("period_field"), period_start, period_end)
     operands = flatten_operands(condition)
 
     resolved_by_operand: dict[str, float | None | dict[str, float | None]] = {}
     reasons: list[str] = []
     for operand in operands:
-        value, reason = await _resolve_operand(db, request, operand, group_field)
+        value, reason = await _resolve_operand(db, request, operand, group_field, scope_filters)
         resolved_by_operand[operand_key(operand)] = value
         if value is None and reason:
             reasons.append(reason)
@@ -528,18 +551,21 @@ async def _evaluate_relation(
 
     group = _rule_group_by(rule_data)
     group_field = str(group["field"]) if group else None
+    scope_filters = period_filters(rule_data.get("period_field"), period_start, period_end)
     tolerance = tolerance_of(relation)
 
     target = dict(relation["target"])
     target_group = target.pop("group_field", None) or group_field
-    target_value, reason = await _resolve_operand(db, request, target, target_group)
+    target_value, reason = await _resolve_operand(db, request, target, target_group, scope_filters)
     reasons = [reason] if (target_value is None and reason) else []
 
     resolved_members: list[tuple[dict, Any]] = []
     for raw in relation["members"]:
         member = dict(raw)
         member_group = member.pop("group_field", None) or group_field
-        value, member_reason = await _resolve_operand(db, request, member, member_group)
+        value, member_reason = await _resolve_operand(
+            db, request, member, member_group, scope_filters
+        )
         if value is None and member_reason:
             reasons.append(member_reason)
         resolved_members.append((raw, value))

@@ -41,7 +41,7 @@ def test_trial_publishes_nothing_and_leaves_the_rule_alone(monkeypatch, dry_run)
     published: list[str] = []
     closed: list[dict] = []
 
-    async def fake_resolve(_db, _request, operand, group_field=None):
+    async def fake_resolve(_db, _request, operand, group_field=None, _scope_filters=None):
         # Two scenarios, both over the threshold: a real run would open one alert per group.
         return {"s1": 1.4, "s2": 1.2}, ""
 
@@ -90,7 +90,7 @@ def test_an_ungrouped_run_closes_its_alert_only_when_it_decided(monkeypatch, val
     """A passing run must retire the alert; a run where nothing was computable must not."""
     closed: list[list[str]] = []
 
-    async def fake_resolve(_db, _request, operand, group_field=None):
+    async def fake_resolve(_db, _request, operand, group_field=None, _scope_filters=None):
         return value, "" if value is None else ""
 
     async def fake_close(_db, *, rule, scopes, period_start, period_end):
