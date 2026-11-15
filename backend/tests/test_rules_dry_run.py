@@ -91,3 +91,42 @@ def test_trial_publishes_nothing_and_leaves_the_rule_alone(monkeypatch, dry_run)
         assert closed and closed[0]["scopes"] == ["s1", "s2"]
         assert rule.data["last_status"] == "fail"
         assert rule.data["last_failed_groups"] == ["s1", "s2"]
+
+
+@pytest.mark.parametrize("value,expected", [(1.0, [[]]), (None, [])])
+def test_an_ungrouped_run_closes_its_event_only_when_it_decided(monkeypatch, value, expected):
+    """A passing run must retire the event; a run where nothing was computable must not."""
+    closed: list[list[str]] = []
+
+    async def fake_builtin_types(_db):
+        return object(), object()
+
+    async def fake_resolve(_db, _request, operand, group_field=None):
+        return value, "" if value is None else ""
+
+    async def fake_close(_db, _event_type, *, rule, scopes, period_start, period_end):
+        closed.append(list(scopes))
+        return 1
+
+    async def fake_sync(*_a, **_kw):
+        return None
+
+    monkeypatch.setattr(ev, "builtin_types", fake_builtin_types)
+    monkeypatch.setattr(ev, "_resolve_operand", fake_resolve)
+    monkeypatch.setattr(ev, "_close_open_events", fake_close)
+    monkeypatch.setattr(ev, "sync_queue_ids_to_neo4j", fake_sync)
+
+    rule = ObjectInstance(
+        id="rule-1",
+        object_type_id="type-rule",
+        data={
+            "rule_id": "ungrouped",
+            "condition": {"left": {"metric": "m"}, "op": ">", "right": {"value": 5}},
+        },
+    )
+    results = asyncio.run(ev.evaluate_rule(_FakeDB(), request=None, rule=rule))
+
+    assert results[0].status == ("unknown" if value is None else "pass")
+    # A pass closes with no scopes to spare (every event of that rule+period is stale); an undecidable
+    # run closes nothing at all.
+    assert closed == expected
