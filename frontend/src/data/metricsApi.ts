@@ -42,6 +42,9 @@ export interface MetricResponse {
   name: string;
   business_definition: string | null;
   additivity: MetricAdditivity;
+  /** period | snapshot | none — how the metric relates to time. */
+  time_mode: 'period' | 'snapshot' | 'none';
+  time_field: string | null;
   depends_on: MetricRef[];
   expression: MetricExpression | null;
   datatype: string | null;
@@ -64,6 +67,9 @@ export interface MetricPayload {
   base_dataset_id: string;
   business_definition?: string | null;
   additivity: MetricAdditivity;
+  /** period | snapshot | none — how the metric relates to time. */
+  time_mode?: 'period' | 'snapshot' | 'none';
+  time_field?: string | null;
   expression: MetricExpression;
   datatype?: string | null;
   filters?: MetricFilter[] | null;

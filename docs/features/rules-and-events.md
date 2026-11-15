@@ -204,20 +204,25 @@ answer either trustworthy or not.
 
 ## What a period is — and what it is not
 
-A run is given **one period label** (`2026-W46`, `2026-11`, `2026-11-15`). The label is parsed into two dates
-(`2026-W46` → `2026-11-09` … `2026-11-15`, ISO weeks starting Monday), and those dates are what the alert
-records and what the dedupe key uses, so the same week cannot be spelled two ways and split its history.
+A run is given **one period label** (`2026-W46`, `2026-11`, `2026-11-15`), parsed into two dates (ISO weeks,
+Monday). Those dates are what the alert records and what the dedupe key uses, so the same week cannot be
+spelled two ways.
 
-**A label alone does not scope the numbers.** A rule may name a **`period_field`** — a column of its metric's
-model (`trade_date`, `cycle`, …) — and then a run appends `period_field >= start` and `<= end` to every
-operand's filters, which is what makes "this period" mean "these rows". Without a period field the run is a
-label on the run: the UI says so (`未绑定周期字段：期间的日期不参与取数`), because an alert filed under a week
-whose numbers came from all weeks is worse than no period at all. The column is validated at save time against
-the model's fields, like `group_by.field`.
+Whether a period *filters the data* is a property of the **metric**, not of the rule — three modes:
 
-There is no period table and no close calendar yet: periods are labels with derived dates, not objects. That
-is enough for "this run covers W46"; it is not enough for 期初/期末 (which needs period offsets) — that is a
-separate, later step.
+| `time_mode` | meaning | a run for a past period |
+|---|---|---|
+| `period` (+ `time_field`) | a column carries the period (`trade_date`, `cycle`) | filters `time_field >= start AND <= end` |
+| `snapshot` | only the current state can be computed | **refused** with a reason — never today's numbers under yesterday's label |
+| `none` | no time concept | the period is a label on the run; the alert says so |
+
+An operand may override the column (`{metric: …, period_field: …}`), because two metrics in one identity can
+carry time differently. A `dataset_agg` operand filters only when it names a column itself: a dataset has no
+declared time semantics.
+
+There is no period table and no close calendar: periods are labels with derived dates. That is enough for
+"this run covers W46", not for 期初/期末 (period offsets) — a later step, together with the `stock_flow`
+identity.
 
 ## Grouping by a field that exists
 

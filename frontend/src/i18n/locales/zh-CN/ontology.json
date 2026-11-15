@@ -441,7 +441,14 @@
     "coverageFilter": "检查覆盖",
     "coverageAll": "全部指标",
     "coverageCovered": "有规则检查",
-    "coverageUncovered": "没有规则检查"
+    "coverageUncovered": "没有规则检查",
+    "timeMode": "时间语义",
+    "timeModeHint": "这个指标和时间的关系：决定“数据周期”能否落在数据上。",
+    "timeModeNone": "无时间概念",
+    "timeModePeriod": "按周期取数",
+    "timeModeSnapshot": "只能取当前值",
+    "timeField": "周期字段",
+    "timeFieldHint": "承载周期的列（如 trade_date、cycle）。"
   },
   "datasets": {
     "title": "数据集",

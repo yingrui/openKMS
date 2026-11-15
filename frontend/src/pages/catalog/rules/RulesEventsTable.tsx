@@ -15,6 +15,8 @@ import { Link } from 'react-router-dom';
 import { CheckCircle2, ChevronDown, ChevronRight, XCircle } from 'lucide-react';
 import {
   StatusChip,
+  StatusLine,
+  StatusLineNote,
   TableRowActionButton,
   TableRowActionCell,
   TableRowActions,
@@ -77,7 +79,7 @@ export function RulesEventsTable({
 }) {
   const { t } = useTranslation('ontology');
   const [open, setOpen] = useState<Set<string>>(new Set());
-  const columnCount = showPeriod ? 5 : 4;
+  const columnCount = showPeriod ? 4 : 3;
   const groups = grouped ? groupByRule(events) : [{ ruleId: '', events }];
 
   const toggle = (id: string) =>
@@ -95,7 +97,7 @@ export function RulesEventsTable({
           <tr>
             <th>{t('rules.colEvent')}</th>
             {showPeriod ? <th>{t('rules.colPeriod')}</th> : null}
-            <th>{t('rules.colSeverity')}</th>
+            {/* Severity and state are one fact about the alert: one column, one row. */}
             <th>{t('rules.colState')}</th>
             <TableRowActionCell as="th">{t('shared.actions')}</TableRowActionCell>
           </tr>
@@ -175,19 +177,19 @@ export function RulesEventsTable({
                         </td>
                       ) : null}
                       <td>
-                        <StatusChip tone={severityTone(event.severity)}>
-                          {event.severity ?? '—'}
-                        </StatusChip>
-                      </td>
-                      <td>
-                        <StatusChip tone={stateTone(event.status)}>
-                          {event.status ? t(`rules.eventStatus.${event.status}`) : '—'}
-                        </StatusChip>
-                        <span className="rules-last-run">
-                          {event.event_start_time
-                            ? new Date(event.event_start_time).toLocaleString()
-                            : '—'}
-                        </span>
+                        <StatusLine>
+                          <StatusChip tone={severityTone(event.severity)}>
+                            {event.severity ?? '—'}
+                          </StatusChip>
+                          <StatusChip tone={stateTone(event.status)}>
+                            {event.status ? t(`rules.eventStatus.${event.status}`) : '—'}
+                          </StatusChip>
+                          <StatusLineNote>
+                            {event.event_start_time
+                              ? new Date(event.event_start_time).toLocaleString()
+                              : '—'}
+                          </StatusLineNote>
+                        </StatusLine>
                       </td>
                       <TableRowActionCell>
                         <TableRowActions>

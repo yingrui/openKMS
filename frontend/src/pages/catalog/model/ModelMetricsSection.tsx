@@ -54,6 +54,8 @@ export function ModelMetricsSection() {
   const [name, setName] = useState('');
   const [baseDatasetId, setBaseDatasetId] = useState('');
   const [additivity, setAdditivity] = useState<MetricAdditivity>('additive');
+  const [timeMode, setTimeMode] = useState<'period' | 'snapshot' | 'none'>('none');
+  const [timeField, setTimeField] = useState('');
   const [expression, setExpression] = useState('');
   const [datatype, setDatatype] = useState('');
   const [selectedJoins, setSelectedJoins] = useState<string[]>([]);
@@ -154,6 +156,8 @@ export function ModelMetricsSection() {
     setName('');
     setBaseDatasetId(datasets[0]?.id ?? '');
     setAdditivity('additive');
+    setTimeMode('none');
+    setTimeField('');
     setExpression('');
     setDatatype('');
     setSelectedJoins([]);
@@ -167,6 +171,8 @@ export function ModelMetricsSection() {
     setName(m.name);
     setBaseDatasetId(m.base_dataset_id);
     setAdditivity(m.additivity);
+    setTimeMode(m.time_mode);
+    setTimeField(m.time_field ?? '');
     setExpression(metricExpressionSql(m));
     setDatatype(m.datatype ?? '');
     setSelectedJoins((m.joins as string[] | null) ?? []);
@@ -198,6 +204,8 @@ export function ModelMetricsSection() {
       base_dataset_id: baseDatasetId,
       business_definition: definition.trim() || null,
       additivity,
+      time_mode: timeMode,
+      time_field: timeMode === 'period' ? timeField.trim() || null : null,
       expression: makeMetricExpression(expression.trim()),
       datatype: datatype.trim() || null,
       joins: selectedJoins,
@@ -343,6 +351,13 @@ export function ModelMetricsSection() {
                   </td>
                   <td>{m.base_dataset_name ?? datasetNameById(m.base_dataset_id)}</td>
                   <td>
+                    {m.time_mode !== 'none' ? (
+                      <span className={`metric-additivity metric-additivity--${m.time_mode}`}>
+                        {m.time_mode === 'period'
+                          ? `${t('dataModel.timeModePeriod')} · ${m.time_field ?? ''}`
+                          : t('dataModel.timeModeSnapshot')}
+                      </span>
+                    ) : null}
                     <span className={`metric-additivity metric-additivity--${m.additivity}`}>
                       {m.additivity === 'non_additive'
                         ? t('datasets.metricNonAdditive')
@@ -462,6 +477,26 @@ export function ModelMetricsSection() {
                   ))}
                 </select>
               </FormField>
+              <FormField label={t('dataModel.timeMode')} hint={t('dataModel.timeModeHint')}>
+                <select
+                  value={timeMode}
+                  onChange={(e) => setTimeMode(e.target.value as typeof timeMode)}
+                >
+                  <option value="none">{t('dataModel.timeModeNone')}</option>
+                  <option value="period">{t('dataModel.timeModePeriod')}</option>
+                  <option value="snapshot">{t('dataModel.timeModeSnapshot')}</option>
+                </select>
+              </FormField>
+              {timeMode === 'period' ? (
+                <FormField label={t('dataModel.timeField')} hint={t('dataModel.timeFieldHint')}>
+                  <input
+                    type="text"
+                    value={timeField}
+                    onChange={(e) => setTimeField(e.target.value)}
+                    placeholder="trade_date"
+                  />
+                </FormField>
+              ) : null}
               <FormField label={t('datasets.metricExpression')} hint={t('datasets.metricExpressionHint')}>
                 <textarea
                   rows={3}

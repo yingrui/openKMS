@@ -28,3 +28,17 @@
     color: var(--color-warning-fg);
   }
 }
+
+/* One row for state: chips and their timestamps, wrapping as a unit. */
+.ds-status-line {
+  display: inline-flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.ds-status-line__note {
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+  white-space: nowrap;
+}

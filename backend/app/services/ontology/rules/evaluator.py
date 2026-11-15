@@ -109,10 +109,7 @@ def _rule_group_by(rule_data: dict) -> dict | None:
 
 
 def period_filters(period_field: str | None, period_start: str, period_end: str) -> list[dict]:
-    """`period_field` bound to the run's dates — the one place a period becomes a data scope.
-
-    A rule without a period field is not filtered: its "period" is a label on the run, and the UI says so.
-    """
+    """`period_field` bound to the run's dates — the one place a period becomes a data scope."""
     if not period_field or not (period_start or period_end):
         return []
     out: list[dict] = []
@@ -123,12 +120,49 @@ def period_filters(period_field: str | None, period_start: str, period_end: str)
     return out
 
 
+def period_binding(
+    metric: MetricDefinition | None,
+    operand_field: str | None,
+    period_start: str,
+    period_end: str,
+) -> tuple[list[dict], str]:
+    """`(filters, reason)` — how one operand relates to the run's period.
+
+    Three cases, and the difference between them is the point:
+
+    * **period** — a column carries the period (the operand's own `period_field`, else the metric's
+      `time_field`): filter this run to those rows;
+    * **snapshot** — only the current state can be computed, so a run aimed at a past period is refused
+      (`reason`), never silently served today's numbers under yesterday's label;
+    * **none** — no time concept: the period is a label on the run, and the alert says so.
+    """
+    field = (operand_field or "").strip() or (metric.time_field if metric else None)
+    mode = metric.time_mode if metric and metric.time_mode else ("period" if field else "none")
+    if mode == "snapshot":
+        if period_end and period_end < _today():
+            return [], (
+                "this metric is a snapshot — it can only be computed for the current period, "
+                f"not for {period_start or period_end}"
+            )
+        return [], ""
+    if mode == "none" or not field:
+        return [], ""
+    return period_filters(field, period_start, period_end), ""
+
+
+def _today() -> str:
+    return datetime.now(timezone.utc).date().isoformat()
+
+
 async def _metric_value(
     db: AsyncSession,
     request: Request,
     metric_id: str,
     filters: list | None = None,
     group_field: str | None = None,
+    *,
+    period_field: str | None = None,
+    period: tuple[str, str] = ("", ""),
 ) -> tuple[float | None | dict[str, float | None], str]:
     metric = await db.get(MetricDefinition, metric_id)
     if metric is None:
@@ -140,6 +174,10 @@ async def _metric_value(
     entity_scope, reason = await run_entity_scope(db, request, model)
     if reason:
         return None, reason
+    period_scope, period_reason = period_binding(metric, period_field, *period)
+    if period_reason:
+        return None, period_reason
+    filters = [*(filters or []), *period_scope] if period_scope else filters
     _sql, _columns, rows, capped, _ms = await run_query(
         db,
         model_id=metric.semantic_model_id,
@@ -159,7 +197,13 @@ async def _metric_value(
 
 
 async def _dataset_agg_value(
-    db: AsyncSession, request: Request, spec: dict, group_field: str | None = None
+    db: AsyncSession,
+    request: Request,
+    spec: dict,
+    group_field: str | None = None,
+    *,
+    period_field: str | None = None,
+    period: tuple[str, str] = ("", ""),
 ) -> tuple[float | None | dict[str, float | None], str]:
     dataset_id = str(spec.get("dataset_id"))
     # Same resource gate as the data grid: a rule may only read what the runner may read.
@@ -171,6 +215,10 @@ async def _dataset_agg_value(
         return None, (
             "dataset aggregate over a restricted model does not apply row policies — use a metric instead"
         )
+    # A dataset aggregate has no declared time semantics; it filters only when the operand names a column.
+    period_scope = period_filters(period_field, *period)
+    if period_scope:
+        spec = {**spec, "filters": [*(spec.get("filters") or []), *period_scope]}
     fn = str(spec.get("fn"))
     column = spec.get("column")
     name = fn if not column else f"{fn}_{column}"
@@ -196,26 +244,34 @@ async def _resolve_operand(
     request: Request,
     operand: dict,
     group_field: str | None = None,
-    scope_filters: list[dict] | None = None,
+    period: tuple[str, str] = ("", ""),
 ) -> tuple[float | None | dict[str, float | None], str]:
-    kind = next(key for key in operand if key != "filters")
+    kind = next(key for key in operand if key not in ("filters", "period_field"))
+    operand_period = operand.get("period_field")
     if kind == "metric":
         return await _metric_value(
             db,
             request,
             str(operand["metric"]),
-            [*(operand.get("filters") or []), *(scope_filters or [])],
+            operand.get("filters") or None,
             group_field,
+            period_field=operand_period,
+            period=period,
         )
     if kind == "dataset_agg":
-        spec = dict(operand["dataset_agg"])
-        spec["filters"] = [*(spec.get("filters") or []), *(scope_filters or [])]
-        return await _dataset_agg_value(db, request, spec, group_field)
+        return await _dataset_agg_value(
+            db,
+            request,
+            dict(operand["dataset_agg"]),
+            group_field,
+            period_field=operand_period,
+            period=period,
+        )
     pair = (operand[kind][0], operand[kind][1])
-    left, left_reason = await _resolve_operand(db, request, pair[0], group_field, scope_filters)
+    left, left_reason = await _resolve_operand(db, request, pair[0], group_field, period)
     if left is None:
         return None, left_reason
-    right, right_reason = await _resolve_operand(db, request, pair[1], group_field, scope_filters)
+    right, right_reason = await _resolve_operand(db, request, pair[1], group_field, period)
     if right is None:
         return None, right_reason
     if group_field:
@@ -414,13 +470,13 @@ async def evaluate_rule(
 
     group = _rule_group_by(rule_data)
     group_field = str(group["field"]) if group else None
-    scope_filters = period_filters(rule_data.get("period_field"), period_start, period_end)
+    period = (period_start, period_end)
     operands = flatten_operands(condition)
 
     resolved_by_operand: dict[str, float | None | dict[str, float | None]] = {}
     reasons: list[str] = []
     for operand in operands:
-        value, reason = await _resolve_operand(db, request, operand, group_field, scope_filters)
+        value, reason = await _resolve_operand(db, request, operand, group_field, period)
         resolved_by_operand[operand_key(operand)] = value
         if value is None and reason:
             reasons.append(reason)
@@ -551,21 +607,19 @@ async def _evaluate_relation(
 
     group = _rule_group_by(rule_data)
     group_field = str(group["field"]) if group else None
-    scope_filters = period_filters(rule_data.get("period_field"), period_start, period_end)
+    period = (period_start, period_end)
     tolerance = tolerance_of(relation)
 
     target = dict(relation["target"])
     target_group = target.pop("group_field", None) or group_field
-    target_value, reason = await _resolve_operand(db, request, target, target_group, scope_filters)
+    target_value, reason = await _resolve_operand(db, request, target, target_group, period)
     reasons = [reason] if (target_value is None and reason) else []
 
     resolved_members: list[tuple[dict, Any]] = []
     for raw in relation["members"]:
         member = dict(raw)
         member_group = member.pop("group_field", None) or group_field
-        value, member_reason = await _resolve_operand(
-            db, request, member, member_group, scope_filters
-        )
+        value, member_reason = await _resolve_operand(db, request, member, member_group, period)
         if value is None and member_reason:
             reasons.append(member_reason)
         resolved_members.append((raw, value))

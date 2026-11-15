@@ -18,6 +18,8 @@ import {
   TableRowActionButton,
   TableRowActionCell,
   TableRowActions,
+  StatusLine,
+  StatusLineNote,
 } from '../../../styles/design-system';
 import { conditionLabel } from './rulesLabels';
 import { evaluateRule, evaluateRules, fetchRules, updateRule, type RuleOut } from '../../../data/rulesApi';
@@ -279,21 +281,16 @@ export function RulesPage() {
                           </td>
                           <td>
                             {rule.last_status ? (
-                              <>
+                              <StatusLine title={rule.last_reason ?? undefined}>
                                 <StatusChip tone={statusTone(rule.last_status)}>
                                   {t(`rules.status.${rule.last_status}`)}
                                 </StatusChip>
                                 {/* The period matters as much as the verdict: "passed" for which one? */}
-                                <span className="rules-last-run">
+                                <StatusLineNote>
                                   {rule.last_period_start || '—'}
                                   {rule.last_run_at ? ` · ${new Date(rule.last_run_at).toLocaleString()}` : ''}
-                                </span>
-                                {rule.last_reason ? (
-                                  <span className="rules-last-run" title={rule.last_reason}>
-                                    {rule.last_reason}
-                                  </span>
-                                ) : null}
-                              </>
+                                </StatusLineNote>
+                              </StatusLine>
                             ) : (
                               t('rules.neverRun')
                             )}

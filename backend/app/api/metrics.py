@@ -60,6 +60,18 @@ async def _name_map(db: AsyncSession, ids: set[str]) -> dict[str, str]:
     return {d.id: dataset_label(d) for d in rows}
 
 
+TIME_MODES = ("period", "snapshot", "none")
+
+
+def _validate_time_mode(mode: str | None, field: str | None) -> None:
+    """`period` needs a column; `snapshot`/`none` must not claim one."""
+    resolved = str(mode or "none")
+    if resolved not in TIME_MODES:
+        raise HTTPException(status_code=400, detail=f"time_mode must be one of: {', '.join(TIME_MODES)}.")
+    if resolved == "period" and not (field or "").strip():
+        raise HTTPException(status_code=400, detail="time_mode 'period' needs a time_field.")
+
+
 def _depends_on(m: MetricDefinition, model_metrics: list[MetricDefinition]) -> list[dict]:
     """The metrics this one names in its expression — read from the SQL, not a second field."""
     sql = metric_expression_sql(m.expression)
@@ -88,6 +100,8 @@ def _metric_response(
         name=m.name,
         business_definition=m.business_definition,
         additivity=m.additivity,
+        time_mode=m.time_mode,
+        time_field=m.time_field,
         depends_on=_depends_on(m, model_metrics or []),
         assertions=(assertions or {}).get(m.id, []),
         expression=m.expression,
@@ -278,6 +292,7 @@ async def create_metric(
             name=body.name, additivity=body.additivity, expression=body.expression
         )
         validate_datatype(body.datatype)
+        _validate_time_mode(body.time_mode, body.time_field)
         body.ai_context = validate_ai_context(body.ai_context)
         cleaned_filters = validate_metric_filters(
             [f.model_dump() for f in body.filters] if body.filters else None
@@ -296,6 +311,8 @@ async def create_metric(
         name=body.name.strip(),
         business_definition=body.business_definition,
         additivity=body.additivity,
+        time_mode=body.time_mode,
+        time_field=(body.time_field or "").strip() or None,
         expression=normalize_expression(body.expression),
         datatype=body.datatype,
         filters=cleaned_filters or None,
@@ -360,6 +377,9 @@ async def update_metric(
             expression=data.get("expression", m.expression),
         )
         validate_datatype(data.get("datatype", m.datatype))
+        _validate_time_mode(
+            data.get("time_mode", m.time_mode), data.get("time_field", m.time_field)
+        )
         if "ai_context" in data:
             data["ai_context"] = validate_ai_context(data["ai_context"])
         if "filters" in data:
@@ -381,6 +401,8 @@ async def update_metric(
         "base_dataset_id",
         "business_definition",
         "additivity",
+        "time_mode",
+        "time_field",
         "expression",
         "datatype",
         "filters",

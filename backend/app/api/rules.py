@@ -70,8 +70,6 @@ class RuleWrite(BaseModel):
     suggestion: str = ""
     owner: str | None = None
     group_by: RuleGroup | None = None
-    #: Column that turns the run's period into a filter (`trade_date`, `cycle`, …). Optional.
-    period_field: str | None = None
     status: str = Field(default="active", pattern="^(active|paused)$")
 
 
@@ -86,7 +84,6 @@ class RulePatch(BaseModel):
     suggestion: str | None = None
     owner: str | None = None
     group_by: RuleGroup | None = None
-    period_field: str | None = None
     status: str | None = Field(default=None, pattern="^(active|paused)$")
 
 
@@ -104,7 +101,6 @@ class RuleOut(BaseModel):
     status: str | None = None
     version: int | None = None
     group_by: dict | None = None
-    period_field: str | None = None
     last_run_at: str | None = None
     last_status: str | None = None
     last_period_start: str | None = None
@@ -230,7 +226,6 @@ def _rule_out(rule: MetricRule) -> RuleOut:
         status=rule.status,
         version=rule.version,
         group_by=rule.group_by,
-        period_field=rule.period_field,
         last_run_at=rule.last_run_at,
         last_status=rule.last_status,
         last_period_start=rule.last_period_start,
@@ -256,29 +251,6 @@ async def _metric_or_400(db: AsyncSession, metric_id: str) -> MetricDefinition:
 async def _slug_taken(db: AsyncSession, slug: str, *, exclude: str | None = None) -> bool:
     rows = (await db.execute(select(MetricRule.id).where(MetricRule.slug == slug))).scalars().all()
     return any(row != exclude for row in rows)
-
-
-async def _validate_period_field(
-    db: AsyncSession, metric: MetricDefinition, field: str | None
-) -> None:
-    """A period field must be a field of the metric's model — otherwise the period silently does nothing."""
-    name = (field or "").strip()
-    if not name:
-        return
-    known = (
-        await db.execute(
-            select(SemanticModelField.name, SemanticModelField.column_name).where(
-                SemanticModelField.semantic_model_id == metric.semantic_model_id
-            )
-        )
-    ).all()
-    names = {str(value) for row in known for value in row if value}
-    if name not in names:
-        hint = ", ".join(sorted(names)[:12]) if names else "nothing is declared"
-        raise HTTPException(
-            status_code=400,
-            detail=f"period_field '{name}' is not a field of this subject (known: {hint}).",
-        )
 
 
 async def _validate_group_by(db: AsyncSession, metric: MetricDefinition, group: RuleGroup | None) -> None:
@@ -347,7 +319,6 @@ async def create_rule(request: Request, body: RuleWrite, db: AsyncSession = Depe
     metric = await _metric_or_400(db, body.metric_id)
     condition, relation = _validate_definition(body)
     await _validate_group_by(db, metric, body.group_by)
-    await _validate_period_field(db, metric, body.period_field)
 
     slug = (body.rule_id or "").strip() or _slugify(body.name)
     if await _slug_taken(db, slug):
@@ -368,7 +339,6 @@ async def create_rule(request: Request, body: RuleWrite, db: AsyncSession = Depe
         status=body.status,
         version=1,
         group_by=body.group_by.model_dump() if body.group_by else None,
-        period_field=(body.period_field or "").strip() or None,
         created_by_name=str(uname) if uname else None,
     )
     db.add(rule)
@@ -402,10 +372,6 @@ async def update_rule(rule_id: str, body: RulePatch, db: AsyncSession = Depends(
         metric = await _metric_or_400(db, rule.metric_id)
         await _validate_group_by(db, metric, body.group_by)
         rule.group_by = body.group_by.model_dump() if body.group_by else None
-    if "period_field" in body.model_fields_set:
-        metric = await _metric_or_400(db, rule.metric_id)
-        await _validate_period_field(db, metric, body.period_field)
-        rule.period_field = (body.period_field or "").strip() or None
 
     if body.rule_id is not None and body.rule_id != rule.slug:
         if await _slug_taken(db, body.rule_id, exclude=rule.id):

@@ -57,8 +57,6 @@ class MetricRule(Base):
     status: Mapped[str] = mapped_column(String(16), nullable=False, default="active")
     version: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
     group_by: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
-    #: The column a run filters on to mean "this period". Empty = the period is only a label.
-    period_field: Mapped[str | None] = mapped_column(String(128), nullable=True)
     ai_context: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
     last_run_at: Mapped[str | None] = mapped_column(String(40), nullable=True)
     last_status: Mapped[str | None] = mapped_column(String(16), nullable=True)
@@ -87,7 +85,6 @@ class MetricRule(Base):
             "status": self.status,
             "version": self.version,
             "group_by": _dumps(self.group_by),
-            "period_field": self.period_field,
             "last_run_at": self.last_run_at,
             "last_status": self.last_status,
             "last_period_start": self.last_period_start,

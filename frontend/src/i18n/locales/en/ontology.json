@@ -446,7 +446,14 @@
     "coverageFilter": "Rule coverage",
     "coverageAll": "All metrics",
     "coverageCovered": "Has rules",
-    "coverageUncovered": "No rules"
+    "coverageUncovered": "No rules",
+    "timeMode": "Time semantics",
+    "timeModeHint": "How the metric relates to time — this is what lets a period filter the data.",
+    "timeModeNone": "No time concept",
+    "timeModePeriod": "Filter by period",
+    "timeModeSnapshot": "Current value only",
+    "timeField": "Period column",
+    "timeFieldHint": "The column that carries the period (trade_date, cycle)."
   },
   "datasets": {
     "title": "Datasets",
