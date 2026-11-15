@@ -188,11 +188,16 @@ one subject by definition.
 
 ## The dependency view: definitions vs assertions
 
-Model → Metrics → **依赖图** draws the graph inline (a segmented control beside 列表, no dialog). The layout
-is deterministic — base metrics at the bottom, everything computed from them above, each row centred — so
-the picture is a reference rather than something that rearranges itself on every open; the geometry lives in
-`metricGraphLayout.ts` and is unit-tested. Under the drawing, the same facts appear as two lists (what a
-screen reader gets, and where the rule links live):
+Model → Metrics → **关系** (the view switch sits in the page header, next to 新建指标) draws the graph
+inline. **Relationships**, not "dependencies": the picture holds two kinds of edge and only one of them is
+a dependency. Layout is deterministic — base metrics at the bottom, everything computed from them above,
+each row centred — so the picture is a reference rather than something that rearranges on every open; the
+geometry lives in `metricGraphLayout.ts` and is unit-tested.
+
+The drawing explains itself: a **legend** names the two edge kinds once (a definition is a solid line, an
+assertion a dashed one), and the only thing repeated as text is the assertions — as chips, because each one
+opens the rule that runs it. Definitions are not listed: the graph *is* that list, and printing it twice
+teaches nobody anything. The table:
 
 | edge | where it comes from | can it fail? | what it is for |
 |---|---|---|---|

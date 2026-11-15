@@ -39,6 +39,21 @@ export function MetricDependencyGraph({ graph }: { graph: MetricGraph }) {
         })}
       </p>
 
+      <ul className="metric-dag__legend">
+        <li>
+          <svg viewBox="0 0 24 8" className="metric-dag__legend-swatch" aria-hidden>
+            <line x1="1" y1="4" x2="23" y2="4" className="metric-dag__edge metric-dag__edge--derived" />
+          </svg>
+          {t('dataModel.graphDerived')}
+        </li>
+        <li>
+          <svg viewBox="0 0 24 8" className="metric-dag__legend-swatch" aria-hidden>
+            <line x1="1" y1="4" x2="23" y2="4" className="metric-dag__edge metric-dag__edge--assertion" />
+          </svg>
+          {t('dataModel.graphAssertions')}
+        </li>
+      </ul>
+
       <div className="metric-dag__canvas">
         <svg viewBox={`0 0 ${width} ${height}`} width="100%" role="img" aria-label={t('dataModel.graphAria')}>
           {definition.map((edge) => {
@@ -128,57 +143,36 @@ export function MetricDependencyGraph({ graph }: { graph: MetricGraph }) {
         </svg>
       </div>
 
-      {/* The picture is the overview; these lists are the facts, and they are what a screen reader gets. */}
-      <h3 className="metric-graph__heading">{t('dataModel.graphAssertions')}</h3>
-      <p className="settings-page-hint">{t('dataModel.graphAssertionsHint')}</p>
-      {assertions.length === 0 ? (
-        <p className="entity-view__readonly">{t('dataModel.graphNoAssertions')}</p>
-      ) : (
-        <ul className="metric-graph__list">
+      {/* Assertions are the only part worth repeating in text: each is a claim you can open and act on.
+          Definitions are the drawing — repeating them as a list is the same information twice. */}
+      {assertions.length > 0 ? (
+        <ul className="metric-dag__assertions">
           {assertions.map((edge) => (
-            <li key={`${edge.from}-${edge.to}-${edge.rule_id}`} className="metric-graph__row">
-              <code>
-                {nameOf(edge.from)} = {nameOf(edge.to)}
-                {edge.weight === 1 ? '' : ` × ${edge.weight}`}
-              </code>
-              <span className="metric-graph__note">
-                {edge.tolerance?.rel
-                  ? `±${edge.tolerance.rel * 100}%`
-                  : edge.tolerance?.abs
-                    ? `±${edge.tolerance.abs}`
-                    : ''}
-              </span>
-              {edge.health ? (
-                <StatusChip tone={edge.health === 'fail' ? 'warn' : 'ok'}>{edge.health}</StatusChip>
-              ) : null}
-              {edge.rule_object_id ? (
-                <Link to={`/data-rules/${edge.rule_object_id}`} className="console-table-link">
-                  {t('dataModel.graphOpenRule')}
-                </Link>
-              ) : null}
+            <li key={`${edge.from}-${edge.to}-${edge.rule_id}`}>
+              <Link
+                to={edge.rule_object_id ? `/data-rules/${edge.rule_object_id}` : '/data-rules'}
+                className="metric-dag__assertion-chip"
+                title={t('dataModel.graphOpenRule')}
+              >
+                <span className="metric-dag__assertion-text">
+                  {nameOf(edge.from)} = {nameOf(edge.to)}
+                  {edge.weight === 1 ? '' : ` × ${edge.weight}`}
+                  {edge.tolerance?.rel
+                    ? ` ±${(edge.tolerance.rel * 100).toLocaleString(undefined, { maximumFractionDigits: 4 })}%`
+                    : edge.tolerance?.abs
+                      ? ` ±${edge.tolerance.abs}`
+                      : ''}
+                </span>
+                {edge.health ? (
+                  <StatusChip tone={edge.health === 'fail' ? 'warn' : 'ok'}>{edge.health}</StatusChip>
+                ) : null}
+              </Link>
             </li>
           ))}
         </ul>
-      )}
-
-      <h3 className="metric-graph__heading">{t('dataModel.graphDerived')}</h3>
-      <p className="settings-page-hint">{t('dataModel.graphDerivedHint')}</p>
-      {definition.length === 0 ? (
-        <p className="entity-view__readonly">{t('dataModel.graphNoDerived')}</p>
       ) : (
-        <ul className="metric-graph__list">
-          {definition.map((edge) => (
-            <li key={`${edge.from}-${edge.to}`} className="metric-graph__row">
-              <code>
-                {nameOf(edge.from)} ← {nameOf(edge.to)}
-              </code>
-              <span className="metric-graph__note">{t('dataModel.graphDefinition')}</span>
-            </li>
-          ))}
-        </ul>
+        <p className="settings-page-hint">{t('dataModel.graphNoAssertions')}</p>
       )}
-
-      <p className="settings-page-hint">{t('dataModel.graphFooter')}</p>
     </div>
   );
 }

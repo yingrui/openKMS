@@ -226,6 +226,14 @@ export function ModelMetricsSection() {
         subtitle={t('dataModel.metricCount', { count: metrics.length })}
         actions={
           <>
+            {/* The view switch belongs with the actions, not above the content: it changes what the page
+                shows, and the header is where a page says "you can look at this differently". */}
+            <ResourceViewToggle
+              modes={['list', 'graph'] as const}
+              value={view}
+              onChange={(next) => setView(next)}
+              labels={{ list: t('dataModel.metricViewList'), graph: t('dataModel.metricViewGraph') }}
+            />
             <button type="button" className="btn btn-primary" onClick={openCreate}>
               <Plus size={16} aria-hidden />
               {t('datasets.addMetric')}
@@ -235,15 +243,6 @@ export function ModelMetricsSection() {
       />
 
       <EntityViewPanel>
-        <div className="metric-view-toggle">
-          <ResourceViewToggle
-            modes={['list', 'graph'] as const}
-            value={view}
-            onChange={(next) => setView(next)}
-            labels={{ list: t('dataModel.metricViewList'), graph: t('dataModel.graphOpen') }}
-          />
-        </div>
-
         {view === 'graph' ? (
           graphError ? (
             <p className="rules-condition-warning">{graphError}</p>
