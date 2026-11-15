@@ -526,16 +526,27 @@ export function RuleDetailPage() {
               ) : null}
 
               {form.mode === 'condition' ? (
-                <ConditionRows
+                <>
+                  {/* The logic, in words, as the rows are edited — the editor shows fields, this shows the
+                      sentence a reader would have to reconstruct from them. */}
+                  <p className="rules-condition-current">
+                    {conditionLabel(
+                      conditionFromRows(conditionRows),
+                      { metricName, datasetName, ...joiners },
+                      form.groupField.trim() ? { field: form.groupField.trim() } : null,
+                    ) ?? t('rules.conditionIncomplete')}
+                  </p>
+                  <ConditionRows
                   rows={conditionRows}
                   onChange={(next) => {
                     setConditionRows(next);
                     setConditionError(null);
                   }}
                   metrics={metrics}
-                  datasets={datasets}
-                  error={conditionError}
-                />
+                    datasets={datasets}
+                    error={conditionError}
+                  />
+                </>
               ) : null}
             </EntityViewPanel>
 

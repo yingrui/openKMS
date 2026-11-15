@@ -1412,7 +1412,7 @@
     "panelMeaning": "What it means",
     "panelMeaningHint": "What a reader sees on the event when the condition holds.",
     "fieldSubjectHint": "What the rule watches. It also decides which permission the run needs.",
-    "conditionRow": "Comparison {{index}}",
+    "conditionRow": "Condition {{index}}",
     "conditionOperandKind": "Operand kind",
     "conditionOperandMetric": "Metric",
     "conditionOperandDataset": "Dataset aggregate",
@@ -1498,6 +1498,7 @@
     "conditionValue": "Value",
     "conditionAdd": "Add condition",
     "conditionAllHint": "All conditions must hold.",
-    "conditionIncomplete": "Fill in every condition: a metric or dataset, and a value."
+    "conditionIncomplete": "Complete the condition: an operand and a value",
+    "conditionAllOf": "All of these must hold"
   }
 }

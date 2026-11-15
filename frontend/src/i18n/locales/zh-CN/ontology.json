@@ -1405,7 +1405,7 @@
     "panelMeaning": "命中时说什么",
     "panelMeaningHint": "条件成立时，事件上给读者看的结论与建议。",
     "fieldSubjectHint": "规则监视什么；也决定运行需要哪种权限。",
-    "conditionRow": "比较 {{index}}",
+    "conditionRow": "条件 {{index}}",
     "conditionOperandKind": "操作数类型",
     "conditionOperandMetric": "指标",
     "conditionOperandDataset": "数据集聚合",
@@ -1491,6 +1491,7 @@
     "conditionValue": "阈值",
     "conditionAdd": "添加条件",
     "conditionAllHint": "所有条件需同时成立。",
-    "conditionIncomplete": "请填写每个条件：指标或数据集，以及阈值。"
+    "conditionIncomplete": "请补全条件（指标或数据集 + 阈值）",
+    "conditionAllOf": "以下条件需同时成立"
   }
 }

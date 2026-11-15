@@ -31,9 +31,17 @@ export function ConditionRows({
 
   return (
     <div className="rules-conditions">
+      {/* Two conditions are an AND. Say so once, then number them: a bare list of rows reads like
+          alternatives, and this rule is a conjunction. */}
+      {rows.length > 1 ? (
+        <p className="rules-conditions__all">{t('rules.conditionAllOf')}</p>
+      ) : null}
       {rows.map((row, index) => (
-        <div key={row.id} className="rules-conditions__row">
-          <FormField label={index === 0 ? t('rules.conditionOperand') : ' '}>
+        <fieldset key={row.id} className="rules-conditions__row">
+          <legend className="rules-conditions__legend">
+            {t('rules.conditionRow', { index: index + 1 })}
+          </legend>
+          <FormField label={t('rules.conditionOperand')}>
             <div className="rules-conditions__operand">
               <select
                 value={row.kind}
@@ -131,7 +139,7 @@ export function ConditionRows({
             </div>
           </FormField>
 
-          <FormField label={index === 0 ? t('rules.colComparison') : ' '}>
+          <FormField label={t('rules.colComparison')}>
             <div className="rules-conditions__compare">
               <select value={row.op} onChange={(e) => set(index, { op: e.target.value })}>
                 {OPS.map((op) => (
@@ -160,7 +168,7 @@ export function ConditionRows({
           >
             <Trash2 size={14} aria-hidden />
           </button>
-        </div>
+        </fieldset>
       ))}
 
       <div className="rules-conditions__footer">

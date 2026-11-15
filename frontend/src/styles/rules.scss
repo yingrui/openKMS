@@ -294,11 +294,30 @@
   gap: var(--space-3);
 }
 
+/* One condition is a fieldset: the legend numbers it, and the box makes the AND visible. */
 .rules-conditions__row {
   display: grid;
   grid-template-columns: 1fr 14rem auto;
   gap: var(--space-3);
   align-items: end;
+  margin: 0;
+  padding: var(--space-3) var(--space-4) var(--space-4);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-bg-muted);
+}
+
+.rules-conditions__legend {
+  padding: 0 var(--space-2);
+  font-size: var(--text-xs);
+  font-weight: 600;
+  color: var(--color-text-muted);
+}
+
+.rules-conditions__all {
+  margin: 0;
+  font-size: var(--text-sm);
+  color: var(--color-text-secondary);
 }
 
 .rules-conditions__operand {
