@@ -1492,6 +1492,12 @@
     "conditionAdd": "添加条件",
     "conditionAllHint": "所有条件需同时成立。",
     "conditionIncomplete": "请补全条件（指标或数据集 + 阈值）",
-    "conditionAllOf": "以下条件需同时成立"
+    "conditionAllOf": "以下条件需同时成立",
+    "conditionShape": "形式",
+    "conditionShapeSingle": "单个数值",
+    "conditionShapeRatio": "比值",
+    "conditionShapeDiff": "差值",
+    "conditionOperandRight": "右侧数值",
+    "conditionUnrepresentable": "这条条件包含编辑器暂不支持的结构（例如比值里再套比值）。为免误改，保存已禁用；如需改造请用 API 重建条件。"
   }
 }

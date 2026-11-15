@@ -1499,6 +1499,12 @@
     "conditionAdd": "Add condition",
     "conditionAllHint": "All conditions must hold.",
     "conditionIncomplete": "Complete the condition: an operand and a value",
-    "conditionAllOf": "All of these must hold"
+    "conditionAllOf": "All of these must hold",
+    "conditionShape": "Form",
+    "conditionShapeSingle": "Single value",
+    "conditionShapeRatio": "Ratio",
+    "conditionShapeDiff": "Difference",
+    "conditionOperandRight": "Right operand",
+    "conditionUnrepresentable": "This condition contains a shape the editor does not draw (a ratio of a ratio, say). Saving is disabled so the rule cannot be rewritten by accident; recreate the condition through the API."
   }
 }

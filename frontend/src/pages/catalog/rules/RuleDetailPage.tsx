@@ -145,6 +145,8 @@ export function RuleDetailPage() {
 
   const [form, setForm] = useState<FormState>(EMPTY_FORM);
   const [conditionRows, setConditionRows] = useState<ConditionRow[]>([]);
+  /** The stored condition has a shape this editor cannot draw — editing would silently rewrite it. */
+  const [conditionUnrepresentable, setConditionUnrepresentable] = useState(false);
   const [conditionError, setConditionError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [running, setRunning] = useState(false);
@@ -217,7 +219,9 @@ export function RuleDetailPage() {
       setForm(formFromRule(current, pickers.metrics, pickers.datasets));
       // A stored condition the flat editor cannot show (a nested group) leaves the rows empty and the
       // page says so; nothing is silently rewritten.
-      setConditionRows(rowsFromCondition(current.condition) ?? []);
+      const rows = rowsFromCondition(current.condition);
+      setConditionRows(rows ?? []);
+      setConditionUnrepresentable(rows === null);
     } catch (e: unknown) {
       toast.error(e instanceof Error ? e.message : t('rules.toastLoadFailed'));
     } finally {
@@ -246,6 +250,10 @@ export function RuleDetailPage() {
 
   const save = async () => {
     if (!form.name.trim()) return;
+    if (conditionUnrepresentable) {
+      setConditionError(t('rules.conditionUnrepresentable'));
+      return;
+    }
     const condition = conditionFromRows(conditionRows);
     if (!condition) {
       setConditionError(t('rules.conditionIncomplete'));
@@ -301,7 +309,9 @@ export function RuleDetailPage() {
     }
     if (rule) {
       setForm(formFromRule(rule, metrics, datasets));
-      setConditionRows(rowsFromCondition(rule.condition) ?? []);
+      const rows = rowsFromCondition(rule.condition);
+      setConditionRows(rows ?? []);
+      setConditionUnrepresentable(rows === null);
     }
     setConditionError(null);
     setEditing(false);
@@ -536,6 +546,9 @@ export function RuleDetailPage() {
                       form.groupField.trim() ? { field: form.groupField.trim() } : null,
                     ) ?? t('rules.conditionIncomplete')}
                   </p>
+                  {conditionUnrepresentable ? (
+                    <p className="rules-condition-warning">{t('rules.conditionUnrepresentable')}</p>
+                  ) : null}
                   <ConditionRows
                   rows={conditionRows}
                   onChange={(next) => {

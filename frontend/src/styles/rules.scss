@@ -297,9 +297,9 @@
 /* One condition is a fieldset: the legend numbers it, and the box makes the AND visible. */
 .rules-conditions__row {
   display: grid;
-  grid-template-columns: 1fr 14rem auto;
+  grid-template-columns: 9rem 1fr auto;
   gap: var(--space-3);
-  align-items: end;
+  align-items: start;
   margin: 0;
   padding: var(--space-3) var(--space-4) var(--space-4);
   border: 1px solid var(--color-border);
@@ -344,10 +344,6 @@
     flex: 1;
     min-width: 5rem;
   }
-}
-
-.rules-conditions__sep {
-  color: var(--color-text-muted);
 }
 
 .rules-conditions__remove {
