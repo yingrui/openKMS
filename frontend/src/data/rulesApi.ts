@@ -37,6 +37,7 @@ export type RuleOut = {
   domain: string | null;
   subject: RuleSubject | null;
   condition: RuleCondition | null;
+  relation: RuleRelation | null;
   severity: string | null;
   conclusion: string | null;
   suggestion: string | null;
@@ -53,11 +54,19 @@ export type RuleOut = {
   last_failed_groups: string[] | null;
 };
 
+/** An identity between metrics: `target = Σ weight × member`, within a tolerance. */
+export type RuleRelation = {
+  target: { metric: string; group_field?: string | null };
+  members: Array<{ metric: string; weight?: number; group_field?: string | null }>;
+  tolerance?: { abs?: number; rel?: number } | null;
+  note?: string | null;
+};
+
 export type RuleWritePayload = {
   name: string;
   rule_id?: string | null;
   subject: RuleSubject;
-  condition: RuleCondition;
+  condition?: RuleCondition | null;
   severity: string;
   conclusion: string;
   suggestion: string;

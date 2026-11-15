@@ -34,6 +34,7 @@ from app.services.identity.permissions.permission_catalog import (
 from app.api.auth import require_any_permission
 from app.services.ontology.object_neo4j_store import sync_queue_ids_to_neo4j
 from app.services.ontology.rules.builtin import builtin_types
+from app.services.ontology.rules.relations import RelationError, validate_relation
 from app.services.ontology.rules.conditions import (
     ConditionError,
     collect_datasets,
@@ -90,7 +91,9 @@ class RuleWrite(BaseModel):
     name: str
     rule_id: str | None = Field(default=None, pattern=SLUG)
     subject: RuleSubject
-    condition: dict[str, Any]
+    #: One of the two, not both: a threshold check, or an identity between metrics.
+    condition: dict[str, Any] | None = None
+    relation: dict[str, Any] | None = None
     severity: str = Field(default="P1", pattern="^P[0-2]$")
     conclusion: str = ""
     suggestion: str = ""
@@ -107,6 +110,7 @@ class RulePatch(BaseModel):
     rule_id: str | None = Field(default=None, pattern=SLUG)
     subject: RuleSubject | None = None
     condition: dict[str, Any] | None = None
+    relation: dict[str, Any] | None = None
     severity: str | None = Field(default=None, pattern="^P[0-2]$")
     conclusion: str | None = None
     suggestion: str | None = None
@@ -124,6 +128,7 @@ class RuleOut(BaseModel):
     domain: str | None = None
     subject: dict | None = None
     condition: dict | None = None
+    relation: dict | None = None
     severity: str | None = None
     conclusion: str | None = None
     suggestion: str | None = None
@@ -224,6 +229,7 @@ def _rule_out(instance: ObjectInstance) -> RuleOut:
         domain=data.get("domain"),
         subject=_parse_maybe_json(data.get("subject")),
         condition=_parse_maybe_json(data.get("condition")),
+        relation=_parse_maybe_json(data.get("relation")),
         severity=data.get("severity"),
         conclusion=data.get("conclusion"),
         suggestion=data.get("suggestion"),
@@ -339,11 +345,31 @@ async def _rule_id_taken(db: AsyncSession, rule_type, rule_id: str, *, exclude: 
     return any(row != exclude for row in rows)
 
 
+def _validate_relation_refs(relation: dict) -> None:
+    """Every member names a metric — the evaluator resolves it, and a typo is a 400, not an `unknown`."""
+    refs = [relation["target"]["metric"], *(m["metric"] for m in relation["members"])]
+    for ref in refs:
+        if not str(ref).strip():
+            raise RelationError("relation references an empty metric.")
+
+
 def _write_values(payload: RuleWrite, request: Request) -> dict[str, Any]:
-    try:
-        validate_condition(payload.condition)
-    except ConditionError as exc:
-        raise HTTPException(status_code=400, detail=f"Invalid condition: {exc}") from exc
+    if bool(payload.condition) == bool(payload.relation):
+        raise HTTPException(
+            status_code=400,
+            detail="A rule needs exactly one of `condition` (a threshold) and `relation` (an identity).",
+        )
+    if payload.condition:
+        try:
+            validate_condition(payload.condition)
+        except ConditionError as exc:
+            raise HTTPException(status_code=400, detail=f"Invalid condition: {exc}") from exc
+    if payload.relation:
+        try:
+            validate_relation(payload.relation)
+            _validate_relation_refs(payload.relation)
+        except RelationError as exc:
+            raise HTTPException(status_code=400, detail=f"Invalid relation: {exc}") from exc
     p = request.state.openkms_jwt_payload
     uname = p.get("preferred_username") or p.get("name")
     rule_id = (payload.rule_id or "").strip() or _slugify(payload.name)
@@ -352,7 +378,12 @@ def _write_values(payload: RuleWrite, request: Request) -> dict[str, Any]:
         "name": payload.name.strip(),
         "domain": payload.domain,
         "subject": json.dumps(payload.subject.model_dump(), ensure_ascii=False),
-        "condition": json.dumps(payload.condition, ensure_ascii=False),
+        "condition": (
+            json.dumps(payload.condition, ensure_ascii=False) if payload.condition else None
+        ),
+        "relation": (
+            json.dumps(payload.relation, ensure_ascii=False) if payload.relation else None
+        ),
         "severity": payload.severity,
         "conclusion": payload.conclusion,
         "suggestion": payload.suggestion,
@@ -416,13 +447,27 @@ async def update_rule(
     rule_type, _event_type = await _rule_type_or_409(db)
     instance = await _load_rule(db, rule_id, rule_type)
     data = dict(instance.data or {})
-    changed_condition = body.condition is not None
-    if changed_condition:
+    changed_condition = body.condition is not None or body.relation is not None
+    if body.condition is not None and body.relation is not None:
+        raise HTTPException(
+            status_code=400,
+            detail="A rule needs exactly one of `condition` (a threshold) and `relation` (an identity).",
+        )
+    if body.condition is not None:
         try:
             validate_condition(body.condition)
         except ConditionError as exc:
             raise HTTPException(status_code=400, detail=f"Invalid condition: {exc}") from exc
         data["condition"] = json.dumps(body.condition, ensure_ascii=False)
+        data["relation"] = None
+    if body.relation is not None:
+        try:
+            validate_relation(body.relation)
+            _validate_relation_refs(body.relation)
+        except RelationError as exc:
+            raise HTTPException(status_code=400, detail=f"Invalid relation: {exc}") from exc
+        data["relation"] = json.dumps(body.relation, ensure_ascii=False)
+        data["condition"] = None
     for field_name in ("name", "severity", "conclusion", "suggestion", "owner", "ai_context", "status"):
         value = getattr(body, field_name)
         if value is not None:

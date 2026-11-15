@@ -33,6 +33,7 @@ RULE_PROPERTIES: list[dict] = [
     {"name": "domain", "type": "string", "required": False},
     {"name": "subject", "type": "string", "required": False},
     {"name": "condition", "type": "string", "required": False},
+    {"name": "relation", "type": "string", "required": False},
     {"name": "severity", "type": "string", "required": False},
     {"name": "conclusion", "type": "string", "required": False},
     {"name": "suggestion", "type": "string", "required": False},

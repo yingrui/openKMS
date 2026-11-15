@@ -33,6 +33,14 @@ from app.services.identity.acl.resource_acl_constants import PERM_READ
 from app.services.ontology.object_neo4j_store import sync_queue_ids_to_neo4j
 from app.services.workspace.evaluations.dataset_scope import load_dataset_scoped
 from app.services.ontology.rules.builtin import builtin_types
+from app.services.ontology.rules.relations import (
+    RelationError,
+    residual,
+    tolerance_of,
+    validate_relation,
+    weight_of,
+    within_tolerance,
+)
 from app.services.ontology.rules.conditions import (
     ConditionError,
     collect_datasets,
@@ -354,6 +362,25 @@ async def evaluate_rule(
     if event_type is None:
         raise RuntimeError("Event object type is missing — restart the backend to run the bootstrap")
 
+    relation = rule_data.get("relation")
+    if isinstance(relation, str):
+        try:
+            relation = json.loads(relation)
+        except json.JSONDecodeError as exc:
+            raise ConditionError(f"relation is not valid JSON: {exc}") from exc
+    if relation:
+        return await _evaluate_relation(
+            db,
+            request,
+            rule=rule,
+            rule_data={**rule_data, "relation": relation},
+            event_type=event_type,
+            rule_type=_rule_type,
+            period_start=period_start,
+            period_end=period_end,
+            dry_run=dry_run,
+        )
+
     condition = rule_data.get("condition")
     if isinstance(condition, str):
         try:
@@ -375,6 +402,44 @@ async def evaluate_rule(
             reasons.append(reason)
 
     grouped = evaluate_groups(condition, resolved_by_operand, group_field)
+    return await _finish(
+        db,
+        request,
+        rule=rule,
+        rule_data=rule_data,
+        rule_type=_rule_type,
+        event_type=event_type,
+        grouped=grouped,
+        reasons=reasons,
+        group=group,
+        group_field=group_field,
+        period_start=period_start,
+        period_end=period_end,
+        dry_run=dry_run,
+    )
+
+
+async def _finish(
+    db: AsyncSession,
+    request: Request,
+    *,
+    rule: ObjectInstance,
+    rule_data: dict,
+    rule_type: ObjectType | None,
+    event_type: ObjectType,
+    grouped: list[tuple[Any, bool | None, dict[str, Any]]],
+    reasons: list[str],
+    group: dict | None,
+    group_field: str | None,
+    period_start: str,
+    period_end: str,
+    dry_run: bool,
+) -> list[EvalResult]:
+    """Turn per-group verdicts into results, events and `last_*` — the part every check shares.
+
+    `grouped` is `(group value, hit, values)`: the condition history and a metric relation both end here,
+    which is what keeps the publish gate, the dedupe and the closing rule in one place.
+    """
     results: list[EvalResult] = []
     failing_scopes: list[str] = []
     statuses: list[str] = []
@@ -416,7 +481,9 @@ async def evaluate_rule(
             else:
                 results[-1].status = "pass"  # a hit without advice is not an event
 
-    if group_field and not dry_run:
+    # A run that decided at least one group says which events no longer hold — grouped or not. A run
+    # where every operand was uncomputable decides nothing and must not close anything.
+    if not dry_run and any(status in ("pass", "fail") for status in statuses):
         await _close_open_events(
             db,
             event_type,
@@ -442,7 +509,7 @@ async def evaluate_rule(
             # A grouped run has one number per group per operand: that is a table, not a value list.
             # The per-group numbers live on each event's evidence; here we keep counts.
             "last_values": json.dumps(
-                {} if group_field else resolved_by_operand,
+                {} if group_field else (grouped[0][2] if grouped else {}),
                 ensure_ascii=False,
                 default=str,
             ),
@@ -454,9 +521,97 @@ async def evaluate_rule(
     )
     rule.data = data
     await db.flush()
-    if _rule_type is not None:
-        await sync_queue_ids_to_neo4j(db, _rule_type, upsert_ids=[rule.id], delete_ids=[])
+    if rule_type is not None:
+        await sync_queue_ids_to_neo4j(db, rule_type, upsert_ids=[rule.id], delete_ids=[])
     return results
+
+
+async def _evaluate_relation(
+    db: AsyncSession,
+    request: Request,
+    *,
+    rule: ObjectInstance,
+    rule_data: dict,
+    rule_type: ObjectType | None,
+    event_type: ObjectType,
+    period_start: str,
+    period_end: str,
+    dry_run: bool,
+) -> list[EvalResult]:
+    """Check an identity: `target` vs the weighted sum of its `members`, within a tolerance."""
+    relation = rule_data["relation"]
+    try:
+        validate_relation(relation)
+    except RelationError as exc:
+        raise ConditionError(str(exc)) from exc
+
+    group = _rule_group_by(rule_data)
+    group_field = str(group["field"]) if group else None
+    tolerance = tolerance_of(relation)
+
+    target = dict(relation["target"])
+    target_group = target.pop("group_field", None) or group_field
+    target_value, reason = await _resolve_operand(db, request, target, target_group)
+    reasons = [reason] if (target_value is None and reason) else []
+
+    resolved_members: list[tuple[dict, Any]] = []
+    for raw in relation["members"]:
+        member = dict(raw)
+        member_group = member.pop("group_field", None) or group_field
+        value, member_reason = await _resolve_operand(db, request, member, member_group)
+        if value is None and member_reason:
+            reasons.append(member_reason)
+        resolved_members.append((raw, value))
+
+    keys: list[Any] = [None]
+    if group_field:
+        seen: set[str] = set()
+        for value in [target_value, *(value for _member, value in resolved_members)]:
+            if isinstance(value, dict):
+                seen.update(key for key in value if key is not None)
+        keys = sorted(seen)
+
+    grouped: list[tuple[Any, bool | None, dict[str, Any]]] = []
+    for key in keys:
+        target_at = target_value.get(key) if isinstance(target_value, dict) else target_value
+        member_at: list[tuple[float, float]] = []
+        missing = target_at is None
+        for raw, value in resolved_members:
+            member_value = value.get(key) if isinstance(value, dict) else value
+            if member_value is None:
+                missing = True
+                break
+            member_at.append((weight_of(raw), float(member_value)))
+        values: dict[str, Any] = {"target": None if target_at is None else float(target_at)}
+        for raw, value in resolved_members:
+            values[str(raw["metric"])] = (
+                value.get(key) if isinstance(value, dict) else value
+            )
+        if missing or target_at is None:
+            values["residual"] = None
+            grouped.append((key, None, values))
+            continue
+        residual_value = residual(float(target_at), member_at)
+        limit = max(tolerance.get("abs", 0.0), abs(float(target_at)) * tolerance.get("rel", 0.0))
+        values["residual"] = residual_value
+        values["tolerance"] = limit
+        grouped.append((key, not within_tolerance(residual_value, float(target_at), tolerance), values))
+
+    return await _finish(
+        db,
+        request,
+        rule=rule,
+        rule_data=rule_data,
+        rule_type=rule_type,
+        event_type=event_type,
+        grouped=grouped,
+        reasons=reasons,
+        group=group,
+        group_field=group_field,
+        period_start=period_start,
+        period_end=period_end,
+        dry_run=dry_run,
+    )
 
 
 async def evaluate_rules_for_subject(

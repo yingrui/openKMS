@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { conditionLabel, conditionScopeNote, operandLabel, valueRows } from './rulesLabels';
+import {
+  conditionLabel,
+  conditionScopeNote,
+  operandLabel,
+  relationLabel,
+  valueRows,
+} from './rulesLabels';
 import type { RuleCondition } from '../../../data/rulesApi';
 
 const SEL = 'a97503a9-52bd-4ea7-887c-892a1233e5ae';
@@ -158,5 +164,40 @@ describe('valueRows', () => {
       { label: '分货额度', value: '19,386' },
       { label: '(分货额度 ÷ 仍缺货明细数)', value: '1.1776' },
     ]);
+  });
+});
+
+
+describe('relationLabel', () => {
+  const name = (id: string) => ({ alloc: '分货额度', kpi: '方案累计额度', demand: '预测需求', gap: '分货缺口' })[id] ?? id;
+
+  it('reads a decomposition with a tolerance in rows', () => {
+    const text = relationLabel(
+      {
+        target: { metric: 'alloc' },
+        members: [{ metric: 'kpi', weight: 1 }],
+        tolerance: { abs: 1 },
+      },
+      name,
+    );
+    // weight 1 is the default and is not worth printing.
+    expect(text).toBe('分货额度 = 方案累计额度（±1）');
+  });
+
+  it('shows negative weights — that is how an additive check reads', () => {
+    const text = relationLabel(
+      {
+        target: { metric: 'gap' },
+        members: [{ metric: 'demand', weight: 1 }, { metric: 'alloc', weight: -1 }],
+        tolerance: { rel: 0.001 },
+      },
+      name,
+    );
+    expect(text).toBe('分货缺口 = 预测需求 + 分货额度 × -1（±0.1%）');
+  });
+
+  it('is null without a relation, so a condition rule keeps its own text', () => {
+    expect(relationLabel(null, name)).toBeNull();
+    expect(relationLabel(undefined, name)).toBeNull();
   });
 });

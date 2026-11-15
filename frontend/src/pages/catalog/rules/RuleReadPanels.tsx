@@ -9,6 +9,7 @@ import { useTranslation } from 'react-i18next';
 import { BellRing, Trash2 } from 'lucide-react';
 import { EmptyState, StatusChip } from '../../../styles/design-system';
 import { EntityViewPanel } from '../../shared/EntityViewShell';
+import { relationLabel } from './rulesLabels';
 import type { EventOut } from '../../../data/eventsApi';
 import type { DatasetResponse } from '../../../data/datasetsApi';
 import type { MetricResponse } from '../../../data/metricsApi';
@@ -48,9 +49,18 @@ export function RuleReadPanels({
     <>
               <EntityViewPanel title={t('rules.panelDefinition')} description={t('rules.panelDefinitionHint')}>
                 <dl className="rules-facts">
-                  <dt>{t('rules.colCondition')}</dt>
+                  <dt>{rule?.relation ? t('rules.relationLabel') : t('rules.colCondition')}</dt>
                   <dd>
-                    {readTree ? (
+                    {rule?.relation ? (
+                      <>
+                        <code className="rules-condition">
+                          {relationLabel(rule.relation, lookups.metricName)}
+                        </code>
+                        {rule.relation.note ? (
+                          <p className="rules-hint">{rule.relation.note}</p>
+                        ) : null}
+                      </>
+                    ) : readTree ? (
                       <ConditionTree
                         value={readTree}
                         onChange={() => undefined}

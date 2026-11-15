@@ -123,6 +123,38 @@ rules produce one verdict per subject, so the same need is met by a group-by: "f
 this hold?" — one run, every scenario, and the failing ones become events. A run parameter (an earlier
 draft) would have made the platform ask a question the rule could answer itself.
 
+## A rule can be an identity, not a threshold
+
+A condition answers "is this number in range?". A relation answers a different question: **do these two
+numbers agree?** — `分货额度 (明细) = 方案累计额度 (方案表)`, each side computed from its own source, within a
+tolerance. That is a reconciliation; an alert would not catch it, because neither number is wrong on its own.
+
+A rule therefore carries **exactly one** of `condition` and `relation`:
+
+| | condition | relation |
+|---|---|---|
+| shape | a comparison tree over operands | `target = Σ weight × member` |
+| verdict | a hit is a failure | deviating beyond the tolerance is a failure |
+| group_by | one verdict per group | one verdict per group |
+| tolerance | expressed by the threshold | `{abs: 1}` (rows/units) or `{rel: 0.001}` (share of the target) |
+
+Weights are the definition, not decoration: a decomposition is a member with weight 1, an additive check is
+a member with weight −1. A member may carry its own `group_field` when the two sides name the same key
+differently (明细 groups by `scenario_id`, 方案 by `id`).
+
+Live example (分货, 2026-W46): `分货额度 = 方案累计额度 ±1` passes (128,273 = 128,273, residual 0). Changing
+the member weight to 1.01 — a deliberate 1% drift — fails with residual −1,282.73 and opens an event;
+restoring the weight closes it on the next run. That is the whole point: the check is cheap once the
+identity is declared, and the identity is written once, next to the rule that runs it.
+
+Why the relation lives on a `Rule` rather than in a type of its own: a relation nobody runs is a comment.
+The rule already owns severity, advice, the publish gate, the period argument, grouping and the event
+lifecycle. Promote relations to their own asset when they gain a second consumer (inference, drill-down).
+
+A run that decided at least one group now closes events whose group no longer fails — **including
+ungrouped rules**, which previously never closed. A run where every operand was uncomputable decides
+nothing and closes nothing.
+
 ## Trying a rule before it exists
 
 Writing a condition is iterative: the first attempts are wrong, and none of them belong in the inbox. A

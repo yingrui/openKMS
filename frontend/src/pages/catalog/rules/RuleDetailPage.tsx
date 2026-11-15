@@ -36,12 +36,23 @@ import { RuleReadPanels } from './RuleReadPanels';
 import { RunRulesDialog, type RunParams } from './RunRulesDialog';
 import { conditionLabel, conditionScopeNote } from './rulesLabels';
 import { fromTree, toTree, type GroupNode } from './conditionModel';
-import { ConditionTree } from './ConditionTree';
+import { ConditionPanel } from './ConditionPanel';
+import { RuleBasicsForm } from './RuleBasicsForm';
+import { RelationEditor } from './RelationEditor';
+import { relationPayload } from './relationDraft';
 import '../../../styles/settings-page.scss';
 import '../../ontology/ontology-admin.scss';
 import '../../../styles/rules.scss';
 
+import type { RelationMemberDraft as RelationMember } from './relationDraft';
+
 type FormState = {
+  /** A threshold check, or an identity between metrics — exactly one is sent. */
+  mode: 'condition' | 'relation';
+  relationTarget: string;
+  relationMembers: RelationMember[];
+  toleranceKind: 'abs' | 'rel';
+  toleranceValue: string;
   name: string;
   ruleId: string;
   subjectKind: 'metric' | 'dataset';
@@ -61,6 +72,11 @@ type FormState = {
 };
 
 const EMPTY_FORM: FormState = {
+  mode: 'condition',
+  relationTarget: '',
+  relationMembers: [{ metricId: '', weight: '1' }],
+  toleranceKind: 'abs',
+  toleranceValue: '0',
   name: '',
   ruleId: '',
   subjectKind: 'metric',
@@ -83,7 +99,21 @@ function formFromRule(rule: RuleOut, metrics: MetricResponse[], datasets: Datase
   const condition = rule.condition;
   const single = condition && 'left' in condition ? condition : null;
   const left = single?.left;
+  const relation = rule.relation;
   return {
+    mode: relation ? 'relation' : 'condition',
+    relationTarget: relation?.target?.metric ?? '',
+    relationMembers:
+      relation && relation.members.length > 0
+        ? relation.members.map((member) => ({
+            metricId: member.metric,
+            weight: String(member.weight ?? 1),
+          }))
+        : [{ metricId: '', weight: '1' }],
+    toleranceKind: relation?.tolerance?.rel ? 'rel' : 'abs',
+    toleranceValue: String(
+      relation?.tolerance?.rel ?? relation?.tolerance?.abs ?? 0,
+    ),
     name: rule.name ?? '',
     ruleId: rule.rule_id ?? '',
     subjectKind: rule.subject?.kind ?? 'metric',
@@ -282,6 +312,15 @@ export function RuleDetailPage() {
     }
     setSaving(true);
     try {
+      const relation =
+        form.mode === 'relation'
+          ? relationPayload({
+              target: form.relationTarget,
+              members: form.relationMembers,
+              toleranceKind: form.toleranceKind,
+              toleranceValue: form.toleranceValue,
+            })
+          : null;
       const payload = {
         name: form.name.trim(),
         rule_id: form.ruleId.trim() || null,
@@ -289,7 +328,7 @@ export function RuleDetailPage() {
           kind: form.subjectKind,
           ref: form.subjectKind === 'metric' ? form.metricId : form.datasetId,
         },
-        condition,
+        ...(relation ? { relation } : { condition }),
         severity: form.severity,
         conclusion: form.conclusion.trim(),
         suggestion: form.suggestion.trim(),
@@ -416,7 +455,9 @@ export function RuleDetailPage() {
       : t('rules.groupedBy'),
   };
   const readTree = useMemo(() => toTree(rule?.condition ?? null).tree, [rule]);
-  const conditionText = conditionLabel(rule?.condition ?? null, { metricName, datasetName, ...joiners }, rule?.group_by);
+  const conditionText =
+    conditionLabel(rule?.condition ?? null, { metricName, datasetName, ...joiners }, rule?.group_by) ??
+    '';
   const scopeNote = conditionScopeNote(rule?.condition ?? null, { metricName, datasetName, ...joiners }, rule?.group_by);
 
   if (loading) {
@@ -494,103 +535,94 @@ export function RuleDetailPage() {
         {editing ? (
           <>
             <EntityViewPanel title={t('rules.panelBasics')}>
-              <div className="rules-form">
-                <FormField label={t('rules.fieldName')}>
-                  <input
-                    type="text"
-                    value={form.name}
-                    onChange={(e) => setForm({ ...form, name: e.target.value })}
-                    placeholder={t('rules.fieldNamePlaceholder')}
-                  />
-                </FormField>
-                <FormField label={t('rules.fieldRuleId')} hint={t('rules.fieldRuleIdHint')}>
-                  <input
-                    type="text"
-                    value={form.ruleId}
-                    onChange={(e) => setForm({ ...form, ruleId: e.target.value })}
-                    placeholder={t('rules.fieldRuleIdPlaceholder')}
-                    autoComplete="off"
-                  />
-                </FormField>
-                <FormField label={t('rules.fieldSubject')} hint={t('rules.fieldSubjectHint')}>
-                  <select
-                    value={form.subjectKind}
-                    onChange={(e) => setForm({ ...form, subjectKind: e.target.value as FormState['subjectKind'] })}
-                  >
-                    <option value="metric">{t('rules.subjectMetric')}</option>
-                    <option value="dataset">{t('rules.subjectDataset')}</option>
-                  </select>
-                </FormField>
-                <FormField label={t('rules.fieldSeverity')}>
-                  <select
-                    value={form.severity}
-                    onChange={(e) => setForm({ ...form, severity: e.target.value as FormState['severity'] })}
-                  >
-                    {['P0', 'P1', 'P2'].map((severity) => (
-                      <option key={severity} value={severity}>
-                        {severity}
-                      </option>
-                    ))}
-                  </select>
-                </FormField>
-                <FormField label={t('rules.fieldStatus')}>
-                  <select
-                    value={form.status}
-                    onChange={(e) => setForm({ ...form, status: e.target.value as FormState['status'] })}
-                  >
-                    <option value="active">{t('rules.active')}</option>
-                    <option value="paused">{t('rules.paused')}</option>
-                  </select>
-                </FormField>
-                <FormField label={t('rules.groupField')} hint={t('rules.groupFieldHint')}>
-                  <input
-                    type="text"
-                    value={form.groupField}
-                    onChange={(e) => setForm({ ...form, groupField: e.target.value })}
-                    placeholder="scenario_id"
-                    list="rule-group-fields"
-                  />
-                  <datalist id="rule-group-fields">
-                    {paramCandidates.map((name) => (
-                      <option key={name} value={name} />
-                    ))}
-                  </datalist>
-                </FormField>
-                {form.groupField.trim() ? (
-                  <FormField label={t('rules.groupLabel')} hint={t('rules.groupLabelHint')}>
-                    <input
-                      type="text"
-                      value={form.groupLabel}
-                      onChange={(e) => setForm({ ...form, groupLabel: e.target.value })}
-                      placeholder={t('rules.groupLabelPlaceholder')}
-                    />
-                  </FormField>
-                ) : null}
-              </div>
+              <RuleBasicsForm
+                value={{
+                  name: form.name,
+                  ruleId: form.ruleId,
+                  subjectKind: form.subjectKind,
+                  severity: form.severity,
+                  status: form.status,
+                  groupField: form.groupField,
+                  groupLabel: form.groupLabel,
+                }}
+                onChange={(next) => setForm({ ...form, ...next })}
+                fields={paramCandidates}
+              />
             </EntityViewPanel>
 
-            <EntityViewPanel title={t('rules.panelCondition')} description={t('rules.panelConditionHint')}>
-              <p className="rules-condition-current">
-                {tree ? conditionLabel(fromTree(tree), { metricName, datasetName, ...joiners }, rule?.group_by) : conditionText}
-              </p>
-              {tree ? (
-                <ConditionTree
-                  value={tree}
-                  onChange={updateTree}
+            <EntityViewPanel
+              title={form.mode === 'relation' ? t('rules.panelRelation') : t('rules.panelCondition')}
+              description={
+                form.mode === 'relation' ? t('rules.panelRelationHint') : t('rules.panelConditionHint')
+              }
+            >
+              {/* Two kinds of check, one place: a threshold, or an identity between metrics. */}
+              <div className="rules-mode" role="tablist" aria-label={t('rules.modeAria')}>
+                <button
+                  type="button"
+                  role="tab"
+                  aria-selected={form.mode === 'condition'}
+                  className={`settings-page-tab ${form.mode === 'condition' ? 'active' : ''}`}
+                  onClick={() => setForm({ ...form, mode: 'condition' })}
+                >
+                  {t('rules.modeCondition')}
+                </button>
+                <button
+                  type="button"
+                  role="tab"
+                  aria-selected={form.mode === 'relation'}
+                  className={`settings-page-tab ${form.mode === 'relation' ? 'active' : ''}`}
+                  onClick={() => setForm({ ...form, mode: 'relation' })}
+                >
+                  {t('rules.modeRelation')}
+                </button>
+              </div>
+
+              {form.mode === 'relation' ? (
+                <RelationEditor
+                  value={{
+                    target: form.relationTarget,
+                    members: form.relationMembers,
+                    toleranceKind: form.toleranceKind,
+                    toleranceValue: form.toleranceValue,
+                  }}
+                  onChange={(next) =>
+                    setForm({
+                      ...form,
+                      relationTarget: next.target,
+                      relationMembers: next.members,
+                      toleranceKind: next.toleranceKind,
+                      toleranceValue: next.toleranceValue,
+                    })
+                  }
+                  metrics={metrics}
+                  metricName={metricName}
+                />
+              ) : null}
+
+              {form.mode === 'condition' ? (
+                <ConditionPanel
+                  tree={tree}
+                  conditionText={conditionText}
+                  conditionMode={conditionMode}
+                  conditionJson={conditionJson}
+                  conditionError={conditionError}
+                  groupBy={rule?.group_by ?? null}
                   metrics={metrics}
                   datasets={datasets}
                   scopeNote={scopeNote}
-                />
-              ) : (
-                <p className="rules-condition-warning">{t('rules.conditionFormCannotRepresent')}</p>
-              )}
-              <details className="condition-advanced" open={conditionMode === 'json'}>
-                <summary
-                  onClick={(event) => {
-                    event.preventDefault();
+                  lookups={{ metricName, datasetName, ...joiners }}
+                  onTreeChange={updateTree}
+                  onJsonChange={(text) => {
+                    setConditionJson(text);
+                    setConditionError(null);
+                    const converted = toTree(safeParse(text));
+                    if (converted.tree) setTree(converted.tree);
+                  }}
+                  onToggleJson={() => {
                     if (conditionMode === 'json') {
-                      // Leaving the JSON view adopts it into the builder — or refuses, because the
-                      // builder cannot draw it and saving the stale builder would lose the edit.
+                      // Leaving JSON adopts it into the builder — or refuses, because the builder
+                      // cannot draw it and saving the stale builder would lose the edit.
                       const converted = toTree(safeParse(conditionJson));
                       if (!converted.tree) {
                         setConditionError(t('rules.conditionFormCannotRepresent'));
@@ -601,29 +633,8 @@ export function RuleDetailPage() {
                     setConditionError(null);
                     setConditionMode(conditionMode === 'json' ? 'form' : 'json');
                   }}
-                >
-                  {t('rules.conditionAdvanced')}
-                </summary>
-                {conditionMode === 'json' ? (
-                  <>
-                    <p className="settings-page-hint">{t('rules.conditionAdvancedHint')}</p>
-                    <FormField label={t('rules.conditionJson')} hint={t('rules.conditionJsonHint')}>
-                      <textarea
-                        rows={16}
-                        className="ds-control rules-json-editor"
-                        value={conditionJson}
-                        onChange={(event) => {
-                          setConditionJson(event.target.value);
-                          setConditionError(null);
-                          const converted = toTree(safeParse(event.target.value));
-                          if (converted.tree) setTree(converted.tree);
-                        }}
-                      />
-                    </FormField>
-                  </>
-                ) : null}
-              </details>
-              {conditionError ? <p className="rules-condition-warning">{conditionError}</p> : null}
+                />
+              ) : null}
             </EntityViewPanel>
 
             <EntityViewPanel title={t('rules.panelMeaning')} description={t('rules.panelMeaningHint')}>

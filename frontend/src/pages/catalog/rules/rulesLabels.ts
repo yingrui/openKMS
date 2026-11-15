@@ -16,7 +16,7 @@
  * Everything here is derived from the stored JSON, so the sentence cannot drift from the rule.
  */
 
-import type { RuleCondition, RuleOperand } from '../../../data/rulesApi';
+import type { RuleCondition, RuleOperand, RuleRelation } from '../../../data/rulesApi';
 import { AGG_FNS, type AggFn, type OperandFilter } from './conditionModel';
 
 export type LabelLookups = {
@@ -169,6 +169,31 @@ function sharedScope(condition: RuleCondition): string[] | null {
  * Both renderers (the tree and the one-line summary) show this line from the same function, so the two
  * views cannot describe a rule differently.
  */
+/**
+ * An identity as one sentence: `分货额度 = 方案累计额度 × 1（±1）`.
+ *
+ * The weights are the whole point — a decomposition (+1 members) and an additive check (−1 member) read
+ * differently, and a tolerance with no unit (`±0.1%`) is not the same as one in rows (`±1`).
+ */
+export function relationLabel(
+  relation: RuleRelation | null | undefined,
+  metricName: (id: string) => string,
+): string | null {
+  if (!relation || !relation.target?.metric) return null;
+  const member = (ref: string, weight?: number) => {
+    const name = metricName(ref);
+    return weight === undefined || weight === 1 ? name : `${name} × ${weight}`;
+  };
+  const right = relation.members
+    .map((m) => member(m.metric, m.weight))
+    .join(' + ');
+  const tolerance = relation.tolerance ?? {};
+  const tail: string[] = [];
+  if (tolerance.abs) tail.push(`±${tolerance.abs}`);
+  if (tolerance.rel) tail.push(`±${(tolerance.rel * 100).toLocaleString(undefined, { maximumFractionDigits: 4 })}%`);
+  return `${metricName(relation.target.metric)} = ${right || '—'}${tail.length ? `（${tail.join('，')}）` : ''}`;
+}
+
 export function conditionScopeNote(
   condition: RuleCondition | null,
   lookups: LabelLookups,

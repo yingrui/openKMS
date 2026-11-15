@@ -1462,6 +1462,24 @@
     "trialValues": "Values",
     "trialNoGroup": "Whole subject",
     "trialWouldPublish": "would open an event",
-    "groupEventCount": "{{count}} events"
+    "groupEventCount": "{{count}} events",
+    "modeAria": "Kind of check",
+    "modeCondition": "Threshold",
+    "modeRelation": "Identity",
+    "panelRelation": "Identity",
+    "panelRelationHint": "Do these numbers agree? Each side is computed from its own source.",
+    "relationLabel": "Identity",
+    "relationIntro": "The target is the metric that must be explained; the members explain it, each with a weight. A decomposition adds members with weight 1; an additive check has one with −1.",
+    "relationTarget": "Target metric",
+    "relationTargetHint": "What must be explained — its value is compared with the weighted members.",
+    "relationPickMetric": "Pick a metric",
+    "relationMember": "Members",
+    "relationWeight": "Weight",
+    "relationAddMember": "Add member",
+    "relationRemoveMember": "Remove member",
+    "relationTolerance": "Tolerance",
+    "relationToleranceHint": "How far apart the two sides may be: rows/units (absolute) or a share of the target (relative).",
+    "toleranceAbs": "Absolute",
+    "toleranceRel": "Relative %"
   }
 }

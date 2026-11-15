@@ -122,6 +122,37 @@
   }
 }
 
+/* A rule is a threshold or an identity; the two editors share one panel. */
+.rules-mode {
+  display: flex;
+  gap: var(--space-1);
+  margin-bottom: var(--space-4);
+  border-bottom: 1px solid var(--color-border);
+}
+
+/* Members are rows: metric, weight, remove — three columns, aligned with the form's labels. */
+.rules-relation-member {
+  display: grid;
+  grid-template-columns: 1fr 8rem auto;
+  gap: var(--space-3);
+  align-items: end;
+
+  .rules-relation-remove {
+    margin-bottom: var(--space-3);
+  }
+}
+
+.rules-relation-add {
+  align-self: start;
+  margin-bottom: var(--space-4);
+}
+
+.rules-relation-tolerance {
+  display: flex;
+  gap: var(--space-2);
+  align-items: center;
+}
+
 /* Inbox grouping: one header per rule, because six scenarios are one broken check. */
 .rules-events-group td {
   padding-top: var(--space-3);

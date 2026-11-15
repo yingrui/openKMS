@@ -1455,6 +1455,24 @@
     "trialValues": "数值",
     "trialNoGroup": "整个对象",
     "trialWouldPublish": "会生成事件",
-    "groupEventCount": "{{count}} 个事件"
+    "groupEventCount": "{{count}} 个事件",
+    "modeAria": "检查类型",
+    "modeCondition": "阈值条件",
+    "modeRelation": "指标勾稽",
+    "panelRelation": "勾稽恒等式",
+    "panelRelationHint": "这两个数对得上吗？两边各自从自己的来源算出来。",
+    "relationLabel": "勾稽恒等式",
+    "relationIntro": "目标是需要被解释的指标；成员是关键指标，各带权重。拆解关系用权重 1 的成员；相减关系用一个权重 −1 的成员。",
+    "relationTarget": "目标指标",
+    "relationTargetHint": "需要解释的那个数：拿它和加权成员之和比较。",
+    "relationPickMetric": "选择指标",
+    "relationMember": "成员指标",
+    "relationWeight": "权重",
+    "relationAddMember": "添加成员",
+    "relationRemoveMember": "移除成员",
+    "relationTolerance": "容差",
+    "relationToleranceHint": "两边允许差多少：按行/单位（绝对）或按目标的比例（相对）。",
+    "toleranceAbs": "绝对值",
+    "toleranceRel": "相对百分比"
   }
 }
