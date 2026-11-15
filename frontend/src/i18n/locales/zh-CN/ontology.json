@@ -438,7 +438,12 @@
     "graphOpenRule": "打开规则",
     "metricViewList": "列表",
     "metricViewGraph": "关系",
-    "graphAria": "指标依赖图"
+    "graphAria": "指标依赖图",
+    "graphFocus": "聚焦",
+    "graphShowing": "{{shown}} / {{total}} 个指标",
+    "graphShowAll": "显示全部",
+    "graphShowNeighborhood": "只看相关",
+    "graphShowAllHint": "指标多时一次全画反而看不清：聚焦只画它由什么算出来、以及有什么依赖它。"
   },
   "datasets": {
     "title": "数据集",

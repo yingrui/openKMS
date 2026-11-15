@@ -192,6 +192,13 @@ Model → Metrics → **关系** draws the graph inline. The switch sits on a to
 divider, right-aligned, with the counts on its left — a view control belongs to the content it changes, and
 the header keeps the one thing a page can create (新建指标).
 
+**A model can hold a hundred metrics, so the picture focuses.** Above 24 metrics the view opens on one
+metric's neighborhood — what it is computed from, what is computed from it, and the assertions touching it —
+with the metric picker and a `显示全部` escape in the toolbar (`N / M 个指标` says what you are looking at).
+Focus defaults to the most connected metric, with the tie broken by name so it does not move between opens.
+Below 24 metrics the whole model is drawn; the focus control is still there, because "what depends on this
+one?" is a question you ask at any size.
+
 In graph mode the view fills the pane the way the Knowledge Map and the wiki graph do — no inner scroll,
 the canvas as the surface (muted, bordered, rounded), legend above it and the assertion chips pinned below.
 The canvas scales the diagram to fit (`preserveAspectRatio`) instead of stretching or cropping it: this is a

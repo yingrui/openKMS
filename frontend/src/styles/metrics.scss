@@ -154,6 +154,29 @@
   fill: var(--color-text-muted);
 }
 
+/* Focus row: which metric's neighborhood is drawn, and the way back to the whole model. */
+.metric-dag__focus {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+  flex-shrink: 0;
+}
+
+.metric-dag__focus-field {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+  white-space: nowrap;
+}
+
+.metric-dag__focus-count {
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+}
+
 /* Legend: two edge kinds, named once, so the drawing does not need a caption under it. */
 .metric-dag__legend {
   display: flex;

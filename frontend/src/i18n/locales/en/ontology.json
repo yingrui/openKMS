@@ -443,7 +443,12 @@
     "graphOpenRule": "Open rule",
     "metricViewList": "List",
     "metricViewGraph": "Relationships",
-    "graphAria": "Metric dependency graph"
+    "graphAria": "Metric dependency graph",
+    "graphFocus": "Focus",
+    "graphShowing": "{{shown}} of {{total}} metrics",
+    "graphShowAll": "Show all",
+    "graphShowNeighborhood": "Show neighborhood",
+    "graphShowAllHint": "A large model reads better one metric at a time: focus shows what it is computed from and what depends on it."
   },
   "datasets": {
     "title": "Datasets",
