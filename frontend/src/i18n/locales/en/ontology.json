@@ -454,7 +454,12 @@
     "timeModeSnapshot": "Current value only",
     "timeFieldHint": "The column that carries the period (trade_date, cycle).",
     "timeDimension": "Time dimension",
-    "timeDimensionHint": "A model field whose `dimension.is_time` is true; a run’s period filters on it."
+    "timeDimensionHint": "A model field whose `dimension.is_time` is true; a run’s period filters on it.",
+    "timeDimensionPick": "Pick a time dimension",
+    "timeDimensionNone": "This model has no time dimension yet. Set a field’s time role to “time dimension” under Dataset → Fields, then come back.",
+    "timeDimensionStale": "⚠ {{name}} (no longer a time dimension)",
+    "timeDimensionsAvailable": "Time dimensions: {{names}}",
+    "timeDimensionsNone": "No time dimension in this model — a period only identifies the run"
   },
   "datasets": {
     "title": "Datasets",

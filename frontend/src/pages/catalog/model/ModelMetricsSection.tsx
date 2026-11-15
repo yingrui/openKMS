@@ -4,6 +4,11 @@ import { CircleCheck, CircleHelp, CircleX, ListChecks, Loader2, Pencil, Plus, Te
 import { Link } from 'react-router-dom';
 import { toast } from 'sonner';
 import { fetchDatasets, type DatasetResponse } from '../../../data/datasetsApi';
+import {
+  fetchModelFields,
+  isTimeDimension,
+  type SemanticModelFieldResponse,
+} from '../../../data/semanticModelFieldsApi';
 import { fetchDatasetJoins, type DatasetJoinResponse } from '../../../data/joinsApi';
 import {
   createMetric,
@@ -46,6 +51,8 @@ export function ModelMetricsSection() {
   const [joins, setJoins] = useState<DatasetJoinResponse[]>([]);
   const [loading, setLoading] = useState(true);
   const [rules, setRules] = useState<RuleOut[]>([]);
+  /** The model's time dimensions — the only fields a "period" can filter on. */
+  const [timeDimensions, setTimeDimensions] = useState<SemanticModelFieldResponse[]>([]);
   const [coverage, setCoverage] = useState<'all' | 'covered' | 'uncovered'>('all');
   const [runMetric, setRunMetric] = useState<MetricResponse | null>(null);
   const [running, setRunning] = useState(false);
@@ -70,14 +77,16 @@ export function ModelMetricsSection() {
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const [m, ds, j, r] = await Promise.all([
+      const [m, ds, j, r, fields] = await Promise.all([
         fetchMetrics(semanticModelId),
         fetchDatasets(),
         fetchDatasetJoins(),
         fetchRules(),
+        fetchModelFields(semanticModelId).catch(() => ({ items: [] })),
       ]);
       setMetrics(m.items);
       setRules(r);
+      setTimeDimensions(fields.items.filter((field) => isTimeDimension(field)));
       setDatasets(ds.items.filter((d) => datasetIds.includes(d.id)));
       setJoins(j.items);
     } catch (e) {
@@ -275,6 +284,19 @@ export function ModelMetricsSection() {
           {t('dataModel.metricCount', { count: shownMetrics.length })}
         </span>
         <div className="metrics-toolbar__filters">
+          {/* The model's time dimensions are what a period can filter on — say whether any exist. */}
+          {timeDimensions.length > 0 ? (
+            <span className="metrics-toolbar__label" title={t('dataModel.timeDimensionHint')}>
+              {t('dataModel.timeDimensionsAvailable', {
+                count: timeDimensions.length,
+                names: timeDimensions.map((field) => field.name).join(' · '),
+              })}
+            </span>
+          ) : (
+            <span className="metrics-toolbar__label" title={t('dataModel.timeDimensionNone')}>
+              {t('dataModel.timeDimensionsNone')}
+            </span>
+          )}
           <label className="metrics-toolbar__label">
             {t('dataModel.coverageFilter')}
             <select
@@ -489,12 +511,32 @@ export function ModelMetricsSection() {
               </FormField>
               {timeMode === 'period' ? (
                 <FormField label={t('dataModel.timeDimension')} hint={t('dataModel.timeDimensionHint')}>
-                  <input
-                    type="text"
-                    value={timeDimension}
-                    onChange={(e) => setTimeDimension(e.target.value)}
-                    placeholder="trade_date"
-                  />
+                  {timeDimensions.length > 0 ? (
+                    <select
+                      className="ds-control"
+                      value={timeDimension}
+                      onChange={(e) => setTimeDimension(e.target.value)}
+                    >
+                      <option value="">{t('dataModel.timeDimensionPick')}</option>
+                      {timeDimensions.map((field) => (
+                        <option key={field.id} value={field.name}>
+                          {field.label ?? field.name}
+                          {field.datatype ? ` · ${field.datatype}` : ''}
+                        </option>
+                      ))}
+                      {/* A stored column that stopped being a time dimension must not vanish silently. */}
+                      {timeDimension &&
+                      !timeDimensions.some((field) => field.name === timeDimension) ? (
+                        <option value={timeDimension}>
+                          {t('dataModel.timeDimensionStale', { name: timeDimension })}
+                        </option>
+                      ) : null}
+                    </select>
+                  ) : (
+                    // Nothing to pick from: say where to create one instead of offering a text box the
+                    // server will reject.
+                    <p className="page-subtitle">{t('dataModel.timeDimensionNone')}</p>
+                  )}
                 </FormField>
               ) : null}
               <FormField label={t('datasets.metricExpression')} hint={t('datasets.metricExpressionHint')}>
