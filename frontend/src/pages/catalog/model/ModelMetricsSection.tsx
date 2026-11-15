@@ -236,13 +236,7 @@ export function ModelMetricsSection() {
       <div className={`metric-view${view === 'graph' ? ' metric-view--graph' : ''}`}>
         <div className="metric-view__bar">
           <p className="metric-view__summary">
-            {view === 'graph' && graph
-              ? t('dataModel.graphSummary', {
-                  metrics: graph.nodes.length,
-                  derived: graph.derived_count,
-                  assertions: graph.assertion_count,
-                })
-              : t('dataModel.metricCount', { count: metrics.length })}
+            {t('dataModel.metricCount', { count: metrics.length })}
           </p>
           <ResourceViewToggle
             modes={['list', 'graph'] as const}

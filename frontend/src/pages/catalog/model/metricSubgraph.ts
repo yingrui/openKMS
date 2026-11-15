@@ -1,17 +1,14 @@
 /**
- * Which part of a model's metric graph is worth drawing.
+ * Which part of a model's metric graph is worth drawing — always one metric's neighborhood.
  *
- * A semantic model can declare a hundred metrics, and a hundred-node picture is not a reference — it is a
- * hairball. So the view focuses: one metric, everything it is computed from (one level down), everything
- * computed from it (one level up), and the assertions that touch it. The full graph stays one click away
- * and is the default while the model is small enough to read.
+ * A semantic model can declare eleven metrics or a hundred; a hundred-node picture is a hairball either
+ * way, and a threshold ("draw everything under N") is two behaviors to maintain and two pictures to
+ * explain. One rule instead: the focused metric, everything it is computed from, everything computed from
+ * it, and the assertions that touch it. Same at any size.
  */
 import type { MetricGraph, MetricGraphEdge, MetricGraphNode } from '../../../data/metricsApi';
 
-/** Above this many metrics an all-at-once picture stops being readable, so the view starts focused. */
-export const ALL_NODES_LIMIT = 24;
-
-export function incidentEdgeCount(nodes: MetricGraphNode[], edges: MetricGraphEdge[]): Map<string, number> {
+function incidentEdgeCount(nodes: MetricGraphNode[], edges: MetricGraphEdge[]): Map<string, number> {
   const counts = new Map<string, number>(nodes.map((node) => [node.id, 0]));
   for (const edge of edges) {
     counts.set(edge.from, (counts.get(edge.from) ?? 0) + 1);

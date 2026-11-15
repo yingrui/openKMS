@@ -436,9 +436,7 @@
     "resourceAccessNotManager": "Only someone who manages this resource can see or change who may read it.",
     "metricTypePlaceholder": "number / string / datetime",
     "metricOpenEvents": "{{count}} open event(s)",
-    "graphSummary": "{{metrics}} metrics · {{derived}} definition · {{assertions}} assertion",
     "graphAssertions": "Assertion — must agree (a rule checks it)",
-    "graphNoAssertions": "No identity is checked yet. A cross-source identity is a rule: two datasets, one number.",
     "graphDerived": "Definition — computed from (from the expression)",
     "graphOpenRule": "Open rule",
     "metricViewList": "List",
@@ -446,9 +444,7 @@
     "graphAria": "Metric dependency graph",
     "graphFocus": "Focus",
     "graphShowing": "{{shown}} of {{total}} metrics",
-    "graphShowAll": "Show all",
-    "graphShowNeighborhood": "Show neighborhood",
-    "graphShowAllHint": "A large model reads better one metric at a time: focus shows what it is computed from and what depends on it."
+    "graphNoAssertionsForMetric": "No identity is checked for this metric."
   },
   "datasets": {
     "title": "Datasets",

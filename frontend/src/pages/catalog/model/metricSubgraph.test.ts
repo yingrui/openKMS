@@ -82,10 +82,7 @@ describe('metric subgraph', () => {
     expect(view.derived_count).toBe(2);
   });
 
-  it('shows a small model whole', () => {
-    // 4 metrics, 24-node limit: the view opens unfocused, so every node must survive `neighborhood`
-    // only when the caller asks for the whole graph.
-    expect(LIVE.nodes.length).toBeLessThanOrEqual(24);
+  it("draws one metric's neighborhood, not the whole model", () => {
     const view = neighborhood(LIVE, '额度');
     expect(view.nodes.length).toBeLessThan(LIVE.nodes.length);
   });

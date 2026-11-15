@@ -431,9 +431,7 @@
     "resourceAccessNotManager": "只有管理这个资源的人才能查看或修改谁可以读取它。",
     "metricTypePlaceholder": "number / string / datetime",
     "metricOpenEvents": "{{count}} 个未关闭事件",
-    "graphSummary": "{{metrics}} 个指标 · {{derived}} 条定义 · {{assertions}} 条断言",
     "graphAssertions": "断言 — 必须一致（由规则校验）",
-    "graphNoAssertions": "还没有恒等式被校验。跨来源的恒等式需要写成规则：两张表、一个数。",
     "graphDerived": "定义 — 由这些指标计算（来自表达式）",
     "graphOpenRule": "打开规则",
     "metricViewList": "列表",
@@ -441,9 +439,7 @@
     "graphAria": "指标依赖图",
     "graphFocus": "聚焦",
     "graphShowing": "{{shown}} / {{total}} 个指标",
-    "graphShowAll": "显示全部",
-    "graphShowNeighborhood": "只看相关",
-    "graphShowAllHint": "指标多时一次全画反而看不清：聚焦只画它由什么算出来、以及有什么依赖它。"
+    "graphNoAssertionsForMetric": "这个指标没有勾稽断言。"
   },
   "datasets": {
     "title": "数据集",

@@ -14,7 +14,7 @@
  * links to the rule where the assertion is actually defined.
  */
 import { layout, NODE_H, NODE_W } from './metricGraphLayout';
-import { ALL_NODES_LIMIT, defaultFocus, neighborhood } from './metricSubgraph';
+import { defaultFocus, neighborhood } from './metricSubgraph';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
@@ -26,12 +26,11 @@ import type { MetricGraph } from '../../../data/metricsApi';
 export function MetricDependencyGraph({ graph }: { graph: MetricGraph }) {
   const { t } = useTranslation('ontology');
   // A model can hold a hundred metrics; draw the selected one's neighborhood until asked for everything.
-  const [pickedFocus, setPickedFocus] = useState<string | null>(null);
-  const [showAll, setShowAll] = useState(graph.nodes.length <= ALL_NODES_LIMIT);
   // No effect and no stored default: the focus is either what the reader picked or the most connected
   // metric, computed from the graph it belongs to.
+  const [pickedFocus, setPickedFocus] = useState<string | null>(null);
   const focusId = pickedFocus ?? defaultFocus(graph);
-  const drawn = showAll ? graph : neighborhood(graph, focusId);
+  const drawn = neighborhood(graph, focusId);
   const { placed, width, height } = layout(drawn);
   const at = new Map(placed.map((node) => [node.id, node]));
   const definition = drawn.edges.filter((edge) => edge.kind === 'derived');
@@ -46,11 +45,7 @@ export function MetricDependencyGraph({ graph }: { graph: MetricGraph }) {
           <select
             className="ds-control"
             value={focusId ?? ''}
-            onChange={(event) => {
-              setPickedFocus(event.target.value);
-              setShowAll(false);
-            }}
-            disabled={showAll}
+            onChange={(event) => setPickedFocus(event.target.value)}
           >
             {graph.nodes.map((node) => (
               <option key={node.id} value={node.id}>
@@ -62,14 +57,6 @@ export function MetricDependencyGraph({ graph }: { graph: MetricGraph }) {
         <span className="metric-dag__focus-count">
           {t('dataModel.graphShowing', { shown: drawn.nodes.length, total: graph.nodes.length })}
         </span>
-        <button
-          type="button"
-          className="btn btn-secondary btn-sm"
-          onClick={() => setShowAll((current) => !current)}
-          title={t('dataModel.graphShowAllHint')}
-        >
-          {showAll ? t('dataModel.graphShowNeighborhood') : t('dataModel.graphShowAll')}
-        </button>
       </div>
 
       <ul className="metric-dag__legend">
@@ -204,7 +191,7 @@ export function MetricDependencyGraph({ graph }: { graph: MetricGraph }) {
           ))}
         </ul>
       ) : (
-        <p className="settings-page-hint">{t('dataModel.graphNoAssertions')}</p>
+        <p className="settings-page-hint">{t('dataModel.graphNoAssertionsForMetric')}</p>
       )}
     </div>
   );
