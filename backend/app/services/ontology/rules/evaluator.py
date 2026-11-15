@@ -132,8 +132,9 @@ def period_binding(
 
     * **period** — a time dimension carries the period (the operand's own `period_field`, else the metric's
       `time_dimension`): filter this run to those rows;
-    * **snapshot** — only the current state can be computed, so a run aimed at a past period is refused
-      (`reason`), never silently served today's numbers under yesterday's label;
+    * **snapshot** — the number is written by each run (a stored snapshot, e.g. a scenario table's KPIs), so a
+      run aimed at a past period is refused (`reason`): it cannot be recomputed, and serving today's value
+      under yesterday's label would be worse than saying so;
     * **none** — no time concept: the period is a label on the run, and the alert says so.
     """
     field = (operand_field or "").strip() or (metric.time_dimension if metric else None)
@@ -141,8 +142,8 @@ def period_binding(
     if mode == "snapshot":
         if period_end and period_end < _today():
             return [], (
-                "this metric is a snapshot — it can only be computed for the current period, "
-                f"not for {period_start or period_end}"
+                "this metric is a stored snapshot (written by each run), so it cannot be recomputed for "
+                f"{period_start or period_end} — read the record of the run that produced it"
             )
         return [], ""
     if mode == "none" or not field:

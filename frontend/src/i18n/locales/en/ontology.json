@@ -449,9 +449,9 @@
     "coverageUncovered": "No rules",
     "timeMode": "Time semantics",
     "timeModeHint": "How the metric relates to time — this is what lets a period filter the data.",
-    "timeModeNone": "No time concept",
-    "timeModePeriod": "Filter by period",
-    "timeModeSnapshot": "Current value only",
+    "timeModeNone": "No time dimension",
+    "timeModePeriod": "Filtered by time dimension",
+    "timeModeSnapshot": "Stored snapshot",
     "timeFieldHint": "The column that carries the period (trade_date, cycle).",
     "timeDimension": "Time dimension",
     "timeDimensionHint": "A model field whose `dimension.is_time` is true; a run’s period filters on it.",
@@ -461,7 +461,7 @@
     "timeDimensionsAvailable": "Time dimensions: {{names}}",
     "timeDimensionsNone": "No time dimension in this model — a period only identifies the run",
     "timeBasis": "How a period applies",
-    "timeBasisHint": "Whether a period only labels the run, cannot apply at all, or filters the data.",
+    "timeBasisHint": "How this metric relates to time: none, a stored snapshot written by each run, or filtered on a time dimension.",
     "timeBasisOnDimension": "Filter by time dimension: {{name}}"
   },
   "datasets": {

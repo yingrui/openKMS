@@ -110,8 +110,9 @@ So "this run covers 2026-W46" is not a metric fact at all: it is a **filter on t
 time. Our metrics therefore carry `time_mode` (`period` / `snapshot` / `none`) and `time_dimension` — the
 *field* a run filters on, which must resolve to a time dimension (a status column is refused) — and they travel
 in `custom_extensions` on export, because the spec has no place for them. `snapshot` is the honest mode for a
-metric whose numbers are stored per run (the scenario table's `kpis`): replaying it for a past week would
-otherwise serve today's value under last week's label.
+metric whose numbers are **written by each run** — the scenario table's `kpis`, a period-end balance: a stored
+snapshot (Kimball's *periodic snapshot fact*) cannot be recomputed for a past period, so a historical run is
+refused rather than serving today's value under last week's label.
 
 **Worked example (分货, 2026-W46).** Three metrics on one base dataset (`allocation_lines`) say more than a paragraph:
 

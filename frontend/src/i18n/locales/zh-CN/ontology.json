@@ -444,9 +444,9 @@
     "coverageUncovered": "没有规则检查",
     "timeMode": "时间语义",
     "timeModeHint": "这个指标和时间的关系：决定“数据周期”能否落在数据上。",
-    "timeModeNone": "无时间概念",
-    "timeModePeriod": "按周期取数",
-    "timeModeSnapshot": "只能取当前值",
+    "timeModeNone": "无时间维度",
+    "timeModePeriod": "按时间维度过滤",
+    "timeModeSnapshot": "存档快照",
     "timeFieldHint": "承载周期的列（如 trade_date、cycle）。",
     "timeDimension": "时间维度",
     "timeDimensionHint": "模型里被标记为时间维度的字段（dimension.is_time）。周期运行会在它上面过滤。",
@@ -456,7 +456,7 @@
     "timeDimensionsAvailable": "时间维度：{{names}}",
     "timeDimensionsNone": "本模型没有时间维度，周期只作运行标识",
     "timeBasis": "周期口径",
-    "timeBasisHint": "这个指标和时间的关系：决定“数据周期”只是标识，还是真的过滤数据。",
+    "timeBasisHint": "这个指标的数和时间的关系：不带时间、由每期运行写入的存档快照、还是在某个时间维度上过滤。",
     "timeBasisOnDimension": "按时间维度取数：{{name}}"
   },
   "datasets": {

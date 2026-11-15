@@ -213,7 +213,7 @@ Whether a period *filters the data* is a property of the **metric**, not of the 
 | `time_mode` | meaning | a run for a past period |
 |---|---|---|
 | `period` (+ `time_dimension`) | a **time dimension** carries the period (`trade_date`, a `cycle` field) | filters `time_dimension >= start AND <= end` |
-| `snapshot` | only the current state can be computed | **refused** with a reason — never today's numbers under yesterday's label |
+| `snapshot` | a **stored snapshot**: the number is written by each run (Kimball's *periodic snapshot fact* — a scenario table's KPIs, a period-end balance) | **refused** with a reason — a snapshot cannot be recomputed for a past period, and today's value under yesterday's label would be worse than saying so |
 | `none` | no time concept | the period is a label on the run; the alert says so |
 
 Ossie has no metric period: the spec's metric is name + expression + description + datatype + ai_context +

@@ -29,10 +29,11 @@ def test_an_operand_may_override_the_column():
     assert filters[0]["field"] == "cycle"
 
 
-def test_a_snapshot_metric_refuses_a_past_period_instead_of_serving_today():
+def test_a_stored_snapshot_refuses_a_past_period_instead_of_serving_today():
+    """A snapshot is written by each run (a scenario table's KPIs); it cannot be recomputed for a past week."""
     filters, reason = period_binding(_metric("snapshot"), None, "2020-01-06", "2020-01-12")
     assert filters == []
-    assert "snapshot" in reason and "not for" in reason
+    assert "stored snapshot" in reason and "2020-01-06" in reason
 
 
 def test_a_metric_without_time_concept_is_a_label_only():
