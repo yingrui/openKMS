@@ -103,31 +103,10 @@
   color: var(--color-text-muted);
 }
 
-/* A metric row that has open events: quiet at zero, visible at one. */
-.metric-events-badge {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-1);
-  margin-left: var(--space-2);
-  padding: 0 var(--space-2);
-  border-radius: var(--radius-sm);
-  background: color-mix(in srgb, var(--color-warning, #d97706) 12%, transparent);
-  color: var(--color-warning, #d97706);
-  font-size: var(--text-xs);
-  font-weight: 600;
-  text-decoration: none;
-
-  &:hover {
-    background: color-mix(in srgb, var(--color-warning, #d97706) 20%, transparent);
-  }
-}
-
-/* A rule is a threshold or an identity; the two editors share one panel. */
+/* A rule is a threshold or an identity; the two editors share one panel. The control itself is the
+   design system's view toggle — this only spaces it inside the panel. */
 .rules-mode {
-  display: flex;
-  gap: var(--space-1);
   margin-bottom: var(--space-4);
-  border-bottom: 1px solid var(--color-border);
 }
 
 /* Members are rows: metric, weight, remove — three columns, aligned with the form's labels. */
@@ -180,96 +159,6 @@
   }
 }
 
-/* Metric dependencies, drawn: a deterministic layered DAG, base metrics at the bottom. */
-.metric-dag {
-  padding-top: var(--space-2);
-}
-
-.metric-dag__canvas {
-  overflow-x: auto;
-  padding: var(--space-2) 0 var(--space-4);
-
-  svg {
-    height: auto;
-    min-height: 240px;
-    max-height: 520px;
-  }
-}
-
-.metric-dag__node {
-  fill: var(--color-surface);
-  stroke: var(--color-border);
-  stroke-width: 1;
-
-  &--non-additive {
-    stroke: var(--color-warning, #d97706);
-    stroke-dasharray: 4 3;
-  }
-}
-
-.metric-dag__label {
-  font-size: var(--text-xs);
-  fill: var(--color-text);
-}
-
-.metric-dag__edge {
-  fill: none;
-
-  &--derived {
-    stroke: var(--color-border-strong, var(--color-border));
-    stroke-width: 1.25;
-  }
-
-  /* An assertion is a claim, not structure — dashed, and it turns red when the last run failed. */
-  &--assertion {
-    stroke: var(--color-accent, #2563eb);
-    stroke-width: 1.5;
-    stroke-dasharray: 5 4;
-  }
-
-  &--failing {
-    stroke: var(--color-danger, #dc2626);
-  }
-}
-
-.metric-dag__arrow {
-  fill: var(--color-border-strong, var(--color-border));
-}
-
-.metric-dag__edge-label {
-  font-size: var(--text-xs);
-  fill: var(--color-text-muted);
-}
-
-/* Metric dependencies: two lists, because a definition and an assertion are different claims. */
-.metric-graph__heading {
-  margin: var(--space-4) 0 var(--space-1);
-  font-size: var(--text-sm);
-  font-weight: 600;
-}
-
-.metric-graph__list {
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-
-.metric-graph__row {
-  display: flex;
-  align-items: center;
-  gap: var(--space-3);
-  padding: var(--space-1) 0;
-
-  code {
-    flex: 1;
-  }
-}
-
-.metric-graph__note {
-  font-size: var(--text-xs);
-  color: var(--color-text-muted);
-}
-
 /* 试算: the numbers a run would produce, before anything is published. */
 .rules-trial {
   margin-top: var(--space-3);
@@ -302,33 +191,6 @@
   &__empty {
     color: var(--color-text-muted);
   }
-}
-
-/* Additivity: the one metric property that changes what a consumer may do with the number. */
-.metric-additivity {
-  display: inline-block;
-  padding: 0 var(--space-2);
-  border-radius: var(--radius-sm);
-  font-size: var(--text-xs);
-  font-weight: 600;
-  white-space: nowrap;
-
-  &--additive {
-    color: var(--color-text-muted);
-    background: color-mix(in srgb, currentcolor 10%, transparent);
-  }
-
-  &--non_additive {
-    color: var(--color-warning, #d97706);
-    background: color-mix(in srgb, var(--color-warning, #d97706) 12%, transparent);
-  }
-}
-
-/* "Computed from A · B" — the dependency read off the expression, shown where the SQL is. */
-.metric-depends-on {
-  margin: var(--space-1) 0 0;
-  font-size: var(--text-xs);
-  color: var(--color-text-muted);
 }
 
 /* Dataset overview: the three most recent events, as a list under the summary. */

@@ -1,36 +1,98 @@
 #!/usr/bin/env python3
-"""Guardrail: a component's stylesheet must be imported by something.
+"""Guardrail: a stylesheet must be imported by something — directly or through a Sass partial.
 
-The third shape of the same mistake this codebase keeps making (a rename, a move, a deletion — and
-now a *creation*): `ChipPicker.scss` was written, the component was written, and nothing imported the
-sheet. The checks passed, the build passed, and every `.chip-picker*` class was defined in a file that
-no bundle ever loaded — which is only visible in the built CSS.
+Two shapes of the same mistake this codebase keeps making (a rename, a move, a deletion — and now a
+*creation*): `ChipPicker.scss` was written, the component was written, and nothing imported the sheet. The
+checks passed, the build passed, and every `.chip-picker*` class was defined in a file that no bundle ever
+loaded — which is only visible in the built CSS.
 
-A sheet in `src/components/**` has to be imported *somewhere* under `src` — not necessarily by a
-sibling (the app catalog's grid sheet is imported by the Home page). What every other check is blind to
-is a sheet nothing imports at all: its rules are correct and no bundle loads them.
+Then it happened again with `src/styles/metrics.scss`: the classes were used, the gates were green, and
+every SVG `<rect>` in the metric dependency graph painted **black** — an unstyled rect has no fill and no
+stroke. So the reachability check now covers `src/styles/**` too, and resolves Sass partials properly:
+`@use './styles/design-system/dialog'` means `_dialog.scss` (or `dialog/_index.scss`), which a plain
+"does this file name appear anywhere" grep cannot see.
 
 Usage (from frontend/): python3 scripts/check-component-sheets.py [--list]
 """
 from __future__ import annotations
 
+import re
 import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
-COMPONENTS = ROOT / "src" / "components"
+SRC = ROOT / "src"
+CHECKED = (SRC / "components", SRC / "styles")
+
+_TS_IMPORT = re.compile(r"""from\s+['"]([^'"]+\.scss)['"]|import\s+['"]([^'"]+\.scss)['"]""")
+_SCSS_IMPORT = re.compile(r"""@(?:use|forward|import)\s+['"]([^'"]+)['"]""")
+
+
+def _sources() -> list[Path]:
+    # Explicit extensions: `*.ts*` also matches `X.tsx.bak`, and a stray copy that still names the sheet
+    # would make an unimported stylesheet look imported.
+    return [
+        path
+        for pattern in ("*.ts", "*.tsx")
+        for path in SRC.rglob(pattern)
+        if ".test." not in path.name and ".spec." not in path.name
+    ]
+
+
+def _resolve(base: Path, spec: str) -> Path | None:
+    """Sass-style resolution: exact, `_partial.scss`, `dir/_index.scss`, `dir/index.scss`."""
+    if spec.startswith(("sass:", "http:", "https:", "url(")):
+        return None
+    target = (base.parent / spec).resolve()
+    candidates = [
+        target,
+        target.with_suffix(".scss") if target.suffix != ".scss" else target,
+        target.parent / f"_{target.name}.scss",
+        target / "_index.scss",
+        target / "index.scss",
+    ]
+    for candidate in candidates:
+        if candidate.is_file() and candidate.suffix == ".scss":
+            return candidate
+    return None
+
+
+def reachable_sheets() -> set[Path]:
+    """Sheets a bundle actually loads: TS imports are roots, Sass imports are edges."""
+    loaded: set[Path] = set()
+    queue: list[Path] = []
+
+    for source in _sources():
+        text = source.read_text(errors="ignore")
+        for match in _TS_IMPORT.finditer(text):
+            spec = match.group(1) or match.group(2)
+            resolved = _resolve(source, spec)
+            if resolved:
+                queue.append(resolved)
+
+    while queue:
+        sheet = queue.pop()
+        if sheet in loaded:
+            continue
+        loaded.add(sheet)
+        for spec in _SCSS_IMPORT.findall(sheet.read_text(errors="ignore")):
+            resolved = _resolve(sheet, spec)
+            if resolved:
+                queue.append(resolved)
+    return loaded
 
 
 def offenders() -> list[str]:
+    loaded = reachable_sheets()
     out: list[str] = []
-    sources = [
-        p for p in (ROOT / "src").rglob("*.ts*") if ".test." not in p.name and ".spec." not in p.name
-    ]
-    for sheet in sorted(COMPONENTS.rglob("*.scss")):
-        # The name alone: an import reads `'./Sidebar.scss'`, so a quoted match would miss it.
-        importers = [p for p in sources if sheet.name in p.read_text(errors="ignore")]
-        if not importers:
-            out.append(f"{sheet.relative_to(ROOT)} is imported nowhere under src/")
+    for folder in CHECKED:
+        for sheet in sorted(folder.rglob("*.scss")):
+            # A Sass module barrel (`_index.scss` re-exporting tokens + mixins) emits no CSS, so an
+            # unimported one cannot paint anything — it is a convenience, not a rule sheet.
+            if sheet.name == "_index.scss":
+                continue
+            if sheet not in loaded:
+                out.append(f"{sheet.relative_to(ROOT)} is imported nowhere under src/")
     return out
 
 
@@ -43,8 +105,8 @@ def main() -> int:
         for line in found:
             print(line)
         print(
-            f"check-shared-styles: {len(found)} component stylesheet(s) above are never imported — "
-            "the rules exist but no bundle loads them",
+            f"check-shared-styles: {len(found)} stylesheet(s) above are never imported — "
+            "the rules exist but no bundle loads them (an unimported SVG rule paints black)",
             file=sys.stderr,
         )
         return 1

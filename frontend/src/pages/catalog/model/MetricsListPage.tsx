@@ -7,6 +7,7 @@ import { fetchSemanticModels, type SemanticModelResponse } from '../../../data/s
 import { EmptyState } from '../../../styles/design-system/index';
 import { DatasetAppTabs } from '../../../components/ontology/DatasetAppTabs';
 import '../../ontology/ontology-admin.scss';
+import '../../../styles/metrics.scss';
 
 /**
  * Every metric, and the model it belongs to — **read-only on purpose**.

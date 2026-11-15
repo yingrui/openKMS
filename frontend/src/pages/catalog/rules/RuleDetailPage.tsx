@@ -557,12 +557,12 @@ export function RuleDetailPage() {
               }
             >
               {/* Two kinds of check, one place: a threshold, or an identity between metrics. */}
-              <div className="rules-mode" role="tablist" aria-label={t('rules.modeAria')}>
+              <div className="ds-view-toggle rules-mode" role="tablist" aria-label={t('rules.modeAria')}>
                 <button
                   type="button"
                   role="tab"
                   aria-selected={form.mode === 'condition'}
-                  className={`settings-page-tab ${form.mode === 'condition' ? 'active' : ''}`}
+                  className={`ds-view-toggle__btn ${form.mode === 'condition' ? 'active' : ''}`}
                   onClick={() => setForm({ ...form, mode: 'condition' })}
                 >
                   {t('rules.modeCondition')}
@@ -571,7 +571,7 @@ export function RuleDetailPage() {
                   type="button"
                   role="tab"
                   aria-selected={form.mode === 'relation'}
-                  className={`settings-page-tab ${form.mode === 'relation' ? 'active' : ''}`}
+                  className={`ds-view-toggle__btn ${form.mode === 'relation' ? 'active' : ''}`}
                   onClick={() => setForm({ ...form, mode: 'relation' })}
                 >
                   {t('rules.modeRelation')}

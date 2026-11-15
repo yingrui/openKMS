@@ -16,6 +16,8 @@
 import { layout, NODE_H, NODE_W } from './metricGraphLayout';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
+import '../../../styles/settings-page.scss';
+import '../../../styles/metrics.scss';
 import { StatusChip } from '../../../styles/design-system';
 import type { MetricGraph } from '../../../data/metricsApi';
 
@@ -111,13 +113,15 @@ export function MetricDependencyGraph({ graph }: { graph: MetricGraph }) {
                   node.additivity === 'non_additive' ? 'metric-dag__node--non-additive' : ''
                 }`}
               />
+              {/* The full name is in the <title>: a box is 168px, a metric name can be longer. */}
+              <title>{node.name}</title>
               <text
                 x={node.x + NODE_W / 2}
                 y={node.y + NODE_H / 2 + 5}
                 textAnchor="middle"
                 className="metric-dag__label"
               >
-                {node.name}
+                {node.name.length > 14 ? `${node.name.slice(0, 13)}…` : node.name}
               </text>
             </g>
           ))}

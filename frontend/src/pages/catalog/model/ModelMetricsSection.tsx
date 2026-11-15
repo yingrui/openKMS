@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { BellRing, Loader2, Network, Pencil, Play, Plus, Trash2 } from 'lucide-react';
+import { BellRing, Loader2, Pencil, Play, Plus, Trash2 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { toast } from 'sonner';
 import { fetchDatasets, type DatasetResponse } from '../../../data/datasetsApi';
@@ -16,12 +16,13 @@ import {
   type MetricResponse,
 } from '../../../data/metricsApi';
 import { useConfirm } from '../../../contexts/ConfirmContext';
-import { Dialog, FormField } from '../../../styles/design-system/index';
+import { Dialog, FormField, ResourceViewToggle } from '../../../styles/design-system/index';
 import { EntityViewHeader, EntityViewPanel } from '../../shared/EntityViewShell';
 import { fetchEventSummary } from '../../../data/eventsApi';
 import { fetchMetricGraph, type MetricGraph } from '../../../data/metricsApi';
 import { useSemanticModelDetail } from './useSemanticModelDetail';
 import { datasetLabel } from '../datasetLabel';
+import '../../../styles/metrics.scss';
 import { aiContextFields, aiContextPayload } from './metricAiContext';
 import { MetricDependencyGraph } from './MetricDependencyGraph';
 
@@ -234,26 +235,13 @@ export function ModelMetricsSection() {
       />
 
       <EntityViewPanel>
-        <div className="rules-mode" role="tablist" aria-label={t('dataModel.graphOpen')}>
-          <button
-            type="button"
-            role="tab"
-            aria-selected={view === 'list'}
-            className={`settings-page-tab ${view === 'list' ? 'active' : ''}`}
-            onClick={() => setView('list')}
-          >
-            {t('dataModel.metricViewList')}
-          </button>
-          <button
-            type="button"
-            role="tab"
-            aria-selected={view === 'graph'}
-            className={`settings-page-tab ${view === 'graph' ? 'active' : ''}`}
-            onClick={() => setView('graph')}
-          >
-            <Network size={14} aria-hidden />
-            {t('dataModel.metricViewGraph')}
-          </button>
+        <div className="metric-view-toggle">
+          <ResourceViewToggle
+            modes={['list', 'graph'] as const}
+            value={view}
+            onChange={(next) => setView(next)}
+            labels={{ list: t('dataModel.metricViewList'), graph: t('dataModel.graphOpen') }}
+          />
         </div>
 
         {view === 'graph' ? (

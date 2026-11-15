@@ -14,6 +14,11 @@ export type ResourceViewToggleProps<M extends ResourceViewToggleMode = ResourceV
   value: M;
   onChange: (mode: M) => void;
   className?: string;
+  /**
+   * Override a mode's word when the page has a better one (`依赖图` instead of `图谱`). The title and the
+   * aria label follow `viewMode.*` unless overridden here too — a page-local word still ships one label.
+   */
+  labels?: Partial<Record<M, string>>;
 };
 
 export function ResourceViewToggle<const M extends ResourceViewToggleMode>({
@@ -21,6 +26,7 @@ export function ResourceViewToggle<const M extends ResourceViewToggleMode>({
   value,
   onChange,
   className,
+  labels,
 }: ResourceViewToggleProps<M>) {
   const { t } = useTranslation('common');
   return (
@@ -37,11 +43,11 @@ export function ResourceViewToggle<const M extends ResourceViewToggleMode>({
             type="button"
             className={`ds-view-toggle__btn${value === mode ? ' active' : ''}`}
             onClick={() => onChange(mode)}
-            title={t(`viewMode.${mode}Title`)}
+            title={labels?.[mode] ?? t(`viewMode.${mode}Title`)}
             aria-pressed={value === mode}
           >
             <Icon size={16} aria-hidden />
-            <span>{t(`viewMode.${mode}`)}</span>
+            <span>{labels?.[mode] ?? t(`viewMode.${mode}`)}</span>
           </button>
         );
       })}
