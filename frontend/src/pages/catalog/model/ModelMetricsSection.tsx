@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { BellRing, Loader2, Pencil, Play, Plus, Trash2 } from 'lucide-react';
+import { BellRing, Loader2, Network, Pencil, Play, Plus, Trash2 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { toast } from 'sonner';
 import { fetchDatasets, type DatasetResponse } from '../../../data/datasetsApi';
@@ -22,6 +22,7 @@ import { fetchEventSummary } from '../../../data/eventsApi';
 import { useSemanticModelDetail } from './useSemanticModelDetail';
 import { datasetLabel } from '../datasetLabel';
 import { aiContextFields, aiContextPayload } from './metricAiContext';
+import { MetricGraphDialog } from './MetricGraphDialog';
 
 const ADDITIVITY = ['additive', 'non_additive'] as const;
 
@@ -39,6 +40,7 @@ export function ModelMetricsSection() {
   const [loading, setLoading] = useState(true);
   const [openEvents, setOpenEvents] = useState<Record<string, number>>({});
   const [showForm, setShowForm] = useState(false);
+  const [graphOpen, setGraphOpen] = useState(false);
   const [editing, setEditing] = useState<MetricResponse | null>(null);
   const [name, setName] = useState('');
   const [baseDatasetId, setBaseDatasetId] = useState('');
@@ -203,10 +205,22 @@ export function ModelMetricsSection() {
         title={t('dataModel.metrics')}
         subtitle={t('dataModel.metricCount', { count: metrics.length })}
         actions={
-          <button type="button" className="btn btn-primary" onClick={openCreate}>
-            <Plus size={16} aria-hidden />
-            {t('datasets.addMetric')}
-          </button>
+          <>
+            <button
+              type="button"
+              className="btn btn-secondary"
+              onClick={() => setGraphOpen(true)}
+              disabled={metrics.length === 0}
+              title={t('dataModel.graphOpenHint')}
+            >
+              <Network size={16} aria-hidden />
+              {t('dataModel.graphOpen')}
+            </button>
+            <button type="button" className="btn btn-primary" onClick={openCreate}>
+              <Plus size={16} aria-hidden />
+              {t('datasets.addMetric')}
+            </button>
+          </>
         }
       />
 
@@ -433,6 +447,12 @@ export function ModelMetricsSection() {
                 />
               </FormField>
       </Dialog>
+
+      <MetricGraphDialog
+        open={graphOpen}
+        onClose={() => setGraphOpen(false)}
+        semanticModelId={semanticModelId}
+      />
     </>
   );
 }

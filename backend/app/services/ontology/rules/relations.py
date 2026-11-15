@@ -17,7 +17,14 @@ consumer (inference, drill-down); not before.
 """
 from __future__ import annotations
 
+import json
 from typing import Any
+
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.models.object_instance import ObjectInstance
+from app.services.ontology.rules.builtin import builtin_types
 
 #: A relation that deviates more than this is a finding; an exact identity is `abs: 0`.
 DEFAULT_TOLERANCE = {"abs": 0.0}
@@ -113,3 +120,53 @@ def explain(relation: dict, labels: list[str]) -> str:
     if tolerance.get("rel"):
         tail.append(f"±{tolerance['rel'] * 100:g}%")
     return f"{target} = {' + '.join(parts)}" + (f"（{'，'.join(tail)}）" if tail else "")
+
+
+async def list_relation_rules(
+    db: AsyncSession, metric_ids: list[str]
+) -> list[dict[str, Any]]:
+    """Relation-bearing rules whose subject is one of these metrics — the graph's assertion edges.
+
+    One query, not one per metric: the graph is a read path and must stay cheap enough to open.
+    """
+    if not metric_ids:
+        return []
+    rule_type, _event_type = await builtin_types(db)
+    if rule_type is None:
+        return []
+    wanted = set(metric_ids)
+    rows = (
+        await db.execute(
+            select(ObjectInstance).where(ObjectInstance.object_type_id == rule_type.id)
+        )
+    ).scalars().all()
+    out: list[dict[str, Any]] = []
+    for row in rows:
+        data = dict(row.data or {})
+        relation = data.get("relation")
+        if isinstance(relation, str):
+            try:
+                relation = json.loads(relation)
+            except json.JSONDecodeError:
+                continue
+        if not isinstance(relation, dict):
+            continue
+        subject = data.get("subject")
+        if isinstance(subject, str):
+            try:
+                subject = json.loads(subject)
+            except json.JSONDecodeError:
+                subject = None
+        refs = {(relation.get("target") or {}).get("metric")}
+        refs.update((member or {}).get("metric") for member in relation.get("members") or [])
+        if not (refs & wanted) and (subject or {}).get("ref") not in wanted:
+            continue
+        out.append(
+            {
+                "object_id": row.id,
+                "rule_id": data.get("rule_id"),
+                "relation": relation,
+                "last_status": data.get("last_status"),
+            }
+        )
+    return out

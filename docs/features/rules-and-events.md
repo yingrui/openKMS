@@ -186,6 +186,33 @@ rule's own page therefore offers **试算 (dry run)** next to **运行**:
 `POST /api/rules/{id}/evaluate` takes `dry_run: true`. The list-level "run all" has no trial: a trial has
 one subject by definition.
 
+## The dependency view: definitions vs assertions
+
+Model → Metrics → **依赖关系** opens the graph for one model. It lists two kinds of edge and never mixes
+them, because they are different claims:
+
+| edge | where it comes from | can it fail? | what it is for |
+|---|---|---|---|
+| **definition** (`分货满足率 ← 分货额度 · 预测需求`) | the expression's `{{references}}` | no | reading: how a number is made |
+| **assertion** (`分货额度 = 方案累计额度 ±1`) | a rule's `relation` | yes, with a period and severity | checking: whether two numbers agree |
+
+The graph is **computed on every read** — nothing is stored, so nothing can go stale. When metrics become
+ontology objects this can be mirrored as a `derived_from` link type; until then the view is the honest
+form.
+
+**A warning that came out of building it.** The obvious next step — "generate a reconcile rule from a
+derived edge" — is a trap, and it was implemented and then removed. A relation built from the definition
+(`分货缺口率 = 分货缺口 + 预测需求`) restates the expression the engine already runs: with the right
+weights it always passes, with the wrong ones it always fails, and either way it says nothing about the
+data. The comparisons worth checking are exactly those the graph **cannot** derive — two sources, one
+number (`分货额度` from `allocation_lines` vs `方案累计额度` from `allocation_scenarios`). What the graph is
+good for is telling those apart: definition edges are structure, assertion edges are claims.
+
+The honest generators, when we want them: (a) suggest cross-source candidates (same metric name or shared
+synonym on a different base dataset) and let a person confirm one before it becomes a rule; (b) an
+additivity rollup check — an `additive` metric's total must equal the sum of its groups, which catches
+double counting from joins. Neither is a restatement of an expression.
+
 ## Grouping by a field that exists
 
 `group_by.field` is checked against the subject at save time: a metric rule against its model's fields, a

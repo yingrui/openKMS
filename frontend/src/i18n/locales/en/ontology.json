@@ -435,7 +435,20 @@
     "resourceAccessNoCandidate": "No matching identity.",
     "resourceAccessNotManager": "Only someone who manages this resource can see or change who may read it.",
     "metricTypePlaceholder": "number / string / datetime",
-    "metricOpenEvents": "{{count}} open event(s)"
+    "metricOpenEvents": "{{count}} open event(s)",
+    "graphOpen": "Dependencies",
+    "graphOpenHint": "What the metrics are defined from, and which identities are checked",
+    "graphTitle": "Metric dependencies",
+    "graphSummary": "{{metrics}} metrics · {{derived}} definition edges · {{assertions}} assertion edges",
+    "graphAssertions": "Assertions",
+    "graphAssertionsHint": "Rules that say these numbers must agree. Each can fail, and each links to its rule.",
+    "graphNoAssertions": "No metric identity is checked yet.",
+    "graphDerived": "Definitions",
+    "graphDerivedHint": "Read off the expressions. Checking one would restate its definition — that is why they are not rules.",
+    "graphNoDerived": "No metric is computed from another metric.",
+    "graphDefinition": "from the expression",
+    "graphOpenRule": "Open rule",
+    "graphFooter": "The graph is computed on every open: there is no stored edge to go stale. A cross-source identity (two datasets, one number) must be declared as a rule — the expression cannot know about it."
   },
   "datasets": {
     "title": "Datasets",

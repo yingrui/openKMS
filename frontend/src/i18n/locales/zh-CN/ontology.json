@@ -430,7 +430,20 @@
     "resourceAccessNoCandidate": "没有匹配的身份。",
     "resourceAccessNotManager": "只有管理这个资源的人才能查看或修改谁可以读取它。",
     "metricTypePlaceholder": "number / string / datetime",
-    "metricOpenEvents": "{{count}} 个未关闭事件"
+    "metricOpenEvents": "{{count}} 个未关闭事件",
+    "graphOpen": "依赖关系",
+    "graphOpenHint": "指标由什么定义出来，以及哪些恒等式被校验",
+    "graphTitle": "指标依赖关系",
+    "graphSummary": "{{metrics}} 个指标 · {{derived}} 条定义关系 · {{assertions}} 条勾稽断言",
+    "graphAssertions": "勾稽断言",
+    "graphAssertionsHint": "声明“这两个数必须一致”的规则。它会不成立，也能点进对应的规则。",
+    "graphNoAssertions": "还没有任何指标恒等式被校验。",
+    "graphDerived": "定义关系",
+    "graphDerivedHint": "从表达式直接读出。校验它等于重述定义，所以它们不是规则。",
+    "graphNoDerived": "没有指标由其它指标计算而来。",
+    "graphDefinition": "来自表达式",
+    "graphOpenRule": "打开规则",
+    "graphFooter": "这张图每次打开都重新算：没有存下来的边可以变旧。跨来源的恒等式（两张表、一个数）必须声明成规则——表达式不可能知道它。"
   },
   "datasets": {
     "title": "数据集",

@@ -180,6 +180,35 @@
   }
 }
 
+/* Metric dependencies: two lists, because a definition and an assertion are different claims. */
+.metric-graph__heading {
+  margin: var(--space-4) 0 var(--space-1);
+  font-size: var(--text-sm);
+  font-weight: 600;
+}
+
+.metric-graph__list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.metric-graph__row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-1) 0;
+
+  code {
+    flex: 1;
+  }
+}
+
+.metric-graph__note {
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+}
+
 /* 试算: the numbers a run would produce, before anything is published. */
 .rules-trial {
   margin-top: var(--space-3);

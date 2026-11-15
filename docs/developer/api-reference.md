@@ -452,6 +452,7 @@ Encrypted values; **never returned**. Write/sync/delete reject personal API key 
 | GET | `/api/metrics` | List metrics, filtered to models the caller may read (public, or restricted with a grant) (`semantic_model_id` / `base_dataset_id` filter). **Data plane** |
 | POST | `/api/metrics` | Create a metric `{name, semantic_model_id, base_dataset_id, additivity, expression:{dialects:[{dialect, expression}]}, datatype?, filters?, joins?, ai_context?}` (`data:write`; base dataset must be in the model's scope). `additivity` is `additive` \| `non_additive`; an expression may reference another metric as `{{name}}` — it is inlined, and an unknown name, a cycle, another base dataset or a missing relationship is a 400 |
 | GET | `/api/metrics/{metric_id}` | Get a metric (`data:read`) — carries `additivity` and `depends_on` (the metrics its expression names) |
+| GET | `/api/semantic-models/{id}/metric-graph` | The model's metrics as a **computed** graph (`data:read`): `nodes`, `edges` (`kind: derived` from expressions / `assertion` from rules, with `weight`, `tolerance`, `rule_id`, `health`), `derived_count`, `assertion_count`. Nothing is stored |
 | PUT | `/api/metrics/{metric_id}` | Update a metric (`data:write`) |
 | DELETE | `/api/metrics/{metric_id}` | Delete a metric (`data:write`) |
 | GET | `/api/metrics/{metric_id}/compute` | Compute a metric — read-only, statement timeout + row cap; records a run (`data:read`) |
