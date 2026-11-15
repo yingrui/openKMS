@@ -171,7 +171,7 @@ export function ObjectTypesPage() {
           <div className="console-datasets-toolbar">
             <label className="console-datasets-filter">
               {t('objectTypes.filterByGroup')}
-              <select
+              <select className="ds-control"
                 value={filterGroupId}
                 onChange={(e) => setFilterGroupId(e.target.value)}
                 aria-label={t('objectTypes.filterByGroup')}
@@ -346,7 +346,7 @@ export function ObjectTypesPage() {
                 nodes.
               </p>
               <FormField label="Neo4j Data Source">
-                <select
+                <select className="ds-control"
                   value={indexNeo4jId}
                   onChange={(e) => setIndexNeo4jId(e.target.value)}
                   disabled={indexing || indexingTypeId !== null}
@@ -433,7 +433,7 @@ export function ObjectTypesPage() {
                 </>
               )}
               <FormField label="Neo4j Data Source">
-                <select
+                <select className="ds-control"
                   value={indexNeo4jId}
                   onChange={(e) => setIndexNeo4jId(e.target.value)}
                   disabled={!!indexingTypeId}

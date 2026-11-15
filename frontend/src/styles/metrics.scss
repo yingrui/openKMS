@@ -49,6 +49,11 @@
   margin-bottom: var(--space-5);
 }
 
+/* Inside the entity stack the gap between rows already separates them; a margin here doubled it. */
+.account-stack > .metrics-toolbar {
+  margin-bottom: 0;
+}
+
 .metrics-toolbar__search {
   max-width: 360px;
   flex: 1 1 240px;

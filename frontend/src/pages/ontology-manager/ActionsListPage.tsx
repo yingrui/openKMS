@@ -113,7 +113,7 @@ export function ActionsListPage() {
           <div className="console-datasets-toolbar">
             <label className="console-datasets-filter">
               {t('actions.filterByObjectType')}
-              <select
+              <select className="ds-control"
                 value={filterObjectTypeId}
                 onChange={(e) => setFilterObjectTypeId(e.target.value)}
                 aria-label={t('actions.filterByObjectType')}

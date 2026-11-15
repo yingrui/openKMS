@@ -166,8 +166,7 @@ function FileDatasetColumns({ datasetId }: { datasetId: string }) {
           versions.length > 0 ? (
             <label className="console-datasets-filter">
               {t('datasets.version')}
-              {/* ds-control-exempt: `.console-datasets-filter` styles this select (its own sheet) */}
-              <select value={version ?? ''} onChange={(e) => setVersion(Number(e.target.value))}>
+              <select className="ds-control" value={version ?? ''} onChange={(e) => setVersion(Number(e.target.value))}>
                 {[...versions].reverse().map((v) => (
                   <option key={v.version} value={v.version}>
                     v{v.version}

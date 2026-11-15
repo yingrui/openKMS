@@ -218,8 +218,7 @@ export function AuditLogPage() {
             </div>
             <label className="console-datasets-filter">
               {t('auditLog.filterMethod')}
-              {/* ds-control-exempt: `.console-datasets-filter` styles this select (its own sheet) */}
-              <select value={draftMethod} onChange={(e) => setDraftMethod(e.target.value)}>
+              <select className="ds-control" value={draftMethod} onChange={(e) => setDraftMethod(e.target.value)}>
                 <option value="">{t('auditLog.filterAll')}</option>
                 {['POST', 'PUT', 'PATCH', 'DELETE'].map((m) => (
                   <option key={m} value={m}>

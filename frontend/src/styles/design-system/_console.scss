@@ -54,6 +54,9 @@
 /* The app's search field: a bordered pill with the magnifier inside, used by every list toolbar. */
 .console-datasets-search {
   max-width: 360px;
+  /* Match the DS control height, so a search box beside a filter select is one line, not two heights. */
+  min-height: 2.25rem;
+  box-sizing: border-box;
   display: flex;
   align-items: center;
   gap: calc(var(--space-2) + var(--space-1) / 2);

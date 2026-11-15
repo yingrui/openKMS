@@ -60,6 +60,16 @@ select.ds-control {
   cursor: pointer;
 }
 
+/* One control height for inputs and selects. A native `<select>` lays its text out differently from an
+   `<input>` (padding vs intrinsic line box), so a row that mixes them — a search box beside two filters —
+   ends up visibly uneven. Fixing the height at the primitive removes the per-page nudging. */
+.ds-control:not(textarea),
+.ds-field input:not([type='checkbox']):not([type='radio']):not([type='file']),
+.ds-field select {
+  height: 2.25rem;
+  padding-block: 0;
+}
+
 /* `.ds-control` is a block because a form field stacks label over control. A custom `<label>` that puts text
    beside its control is a row — and a block control there pushes itself onto the next line, which is the bug
    this prevents at the primitive rather than at every call site. `<FormField>` renders `label.ds-field`, so

@@ -183,8 +183,7 @@ export function DatasetSourcesPage() {
             <div className="console-datasets-toolbar">
               <label className="console-datasets-filter">
                 {t('dataSources.pick')}
-                {/* ds-control-exempt: `.console-datasets-filter` styles this select (its own sheet) */}
-                <select value={sourceId} onChange={(e) => setSourceId(e.target.value)}>
+                <select className="ds-control" value={sourceId} onChange={(e) => setSourceId(e.target.value)}>
                   {sources.map((source) => (
                     <option key={source.id} value={source.id}>
                       {source.name} · {source.kind}

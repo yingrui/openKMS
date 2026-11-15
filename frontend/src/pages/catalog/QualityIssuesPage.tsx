@@ -153,8 +153,7 @@ export function QualityIssuesPage() {
               </span>
               <label className="console-datasets-filter">
                 {t('qualityIssues.filter')}
-                {/* ds-control-exempt: `.console-datasets-filter` styles this select (its own sheet) */}
-                <select value={filter} onChange={(e) => setFilter(e.target.value as Filter)}>
+                <select className="ds-control" value={filter} onChange={(e) => setFilter(e.target.value as Filter)}>
                   <option value="all">{t('qualityIssues.filterAll')}</option>
                   <option value="failing">{t('qualityIssues.filterFailing')}</option>
                   <option value="never">{t('qualityIssues.filterNever')}</option>

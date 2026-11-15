@@ -295,7 +295,7 @@ export function DatasetsListPage() {
             {dataSources.length > 0 && (
               <label className="console-datasets-filter">
                 {t('datasets.filterLabel')}
-                <select
+                <select className="ds-control"
                   value={filterDataSourceId}
                   onChange={(e) => setFilterDataSourceId(e.target.value)}
                 >
@@ -311,8 +311,7 @@ export function DatasetsListPage() {
             {facets.domains.length > 0 && (
               <label className="console-datasets-filter">
                 {t('datasets.filterDomain')}
-                {/* ds-control-exempt: `.console-datasets-filter` styles this select (its own sheet) */}
-                <select value={filterDomain} onChange={(e) => setFilterDomain(e.target.value)}>
+                <select className="ds-control" value={filterDomain} onChange={(e) => setFilterDomain(e.target.value)}>
                   <option value="">{t('datasets.filterAll')}</option>
                   {facets.domains.map((f) => (
                     <option key={f.value} value={f.value}>
@@ -325,8 +324,7 @@ export function DatasetsListPage() {
             {facets.tags.length > 0 && (
               <label className="console-datasets-filter">
                 {t('datasets.filterTag')}
-                {/* ds-control-exempt: `.console-datasets-filter` styles this select (its own sheet) */}
-                <select value={filterTag} onChange={(e) => setFilterTag(e.target.value)}>
+                <select className="ds-control" value={filterTag} onChange={(e) => setFilterTag(e.target.value)}>
                   <option value="">{t('datasets.filterAll')}</option>
                   {facets.tags.map((f) => (
                     <option key={f.value} value={f.value}>
@@ -492,7 +490,7 @@ export function DatasetsListPage() {
         }
       >
         <FormField label={t('datasets.fieldDataSource')}>
-          <select
+          <select className="ds-control"
             value={formDataSourceId}
             onChange={(e) => handleDataSourceChange(e.target.value)}
             disabled={!!editItem || submitting}
@@ -519,7 +517,7 @@ export function DatasetsListPage() {
                 }
               }}
               disabled={!formDataSourceId || loadingTables || tables.length === 0 || submitting}
-              className="openkms-flex-1"
+              className="ds-control openkms-flex-1"
             >
               <option value="">
                 {loadingTables ? t('datasets.loadingTables') : t('datasets.selectTable')}
