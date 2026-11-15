@@ -16,7 +16,13 @@ import {
   type MetricResponse,
 } from '../../../data/metricsApi';
 import { useConfirm } from '../../../contexts/ConfirmContext';
-import { Dialog, FormField } from '../../../styles/design-system/index';
+import {
+  Dialog,
+  FormField,
+  TableRowActionButton,
+  TableRowActionCell,
+  TableRowActions,
+} from '../../../styles/design-system/index';
 import { EntityViewHeader, EntityViewPanel } from '../../shared/EntityViewShell';
 import { evaluateRules, fetchRules, type RuleOut } from '../../../data/rulesApi';
 import { RunRulesDialog, type RunParams } from '../rules/RunRulesDialog';
@@ -352,43 +358,40 @@ export function ModelMetricsSection() {
                       </p>
                     ) : null}
                   </td>
-                  <td className="dataset-field-row__actions">
-                    <button
-                      type="button"
-                      className="btn btn-secondary btn-sm"
-                      onClick={() => setRunMetric(m)}
-                      title={t('dataModel.checksRunShort')}
-                      aria-label={t('dataModel.checksRunShort')}
-                    >
-                      <ListChecks size={14} aria-hidden />
-                    </button>
-                    <Link
-                      className="btn btn-secondary btn-sm"
-                      to={`/data-model/${model.id}/playground?q=${encodeURIComponent(
-                        JSON.stringify({ metric: m.id }),
-                      )}`}
-                      title={t('dataModel.playgroundOpen')}
-                      aria-label={t('dataModel.playgroundOpen')}
-                    >
-                      <Terminal size={14} aria-hidden />
-                    </Link>
-                    <button
-                      type="button"
-                      className="btn btn-secondary btn-sm"
-                      onClick={() => openEdit(m)}
-                      title={t('datasets.editMetric')}
-                    >
-                      <Pencil size={14} aria-hidden />
-                    </button>
-                    <button
-                      type="button"
-                      className="btn btn-secondary btn-sm"
-                      onClick={() => void handleDelete(m)}
-                      title={t('shared.delete')}
-                    >
-                      <Trash2 size={14} aria-hidden />
-                    </button>
-                  </td>
+                  <TableRowActionCell>
+                    <TableRowActions>
+                      <TableRowActionButton
+                        title={t('dataModel.checksRunShort')}
+                        aria-label={t('dataModel.checksRunShort')}
+                        icon={<ListChecks size={16} aria-hidden />}
+                        onClick={() => setRunMetric(m)}
+                      />
+                      {/* A link, not a button: it navigates, and the DS class gives it the same skin. */}
+                      <Link
+                        className="ds-table-row-action"
+                        to={`/data-model/${model.id}/playground?q=${encodeURIComponent(
+                          JSON.stringify({ metric: m.id }),
+                        )}`}
+                        title={t('dataModel.playgroundOpen')}
+                        aria-label={t('dataModel.playgroundOpen')}
+                      >
+                        <Terminal size={16} aria-hidden />
+                      </Link>
+                      <TableRowActionButton
+                        title={t('datasets.editMetric')}
+                        aria-label={t('datasets.editMetric')}
+                        icon={<Pencil size={16} aria-hidden />}
+                        onClick={() => openEdit(m)}
+                      />
+                      <TableRowActionButton
+                        title={t('shared.delete')}
+                        aria-label={t('shared.delete')}
+                        variant="danger"
+                        icon={<Trash2 size={16} aria-hidden />}
+                        onClick={() => void handleDelete(m)}
+                      />
+                    </TableRowActions>
+                  </TableRowActionCell>
                 </tr>
               ))}
             </tbody>

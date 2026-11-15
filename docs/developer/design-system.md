@@ -65,6 +65,7 @@ Use these instead of per-page copies. **`npm run check:styles`** blocks regressi
 | **`.ds-checkbox`** | Opt-in checkbox skin (accent fill + focus ring). Prefer over bare native checkboxes. |
 | **`<CheckRow>`** (`.ds-check-row`) | Card-style checkbox with title + optional hint (settings / entity toggles). |
 | **`<QueryFailureNotice>`** (`.query-failure*`) | A query failure — anywhere a query can fail. Pass the classified cause (`kind`) so a definition problem never reads like a data one; the label is localized by the caller. |
+| **Icon actions in a table row** | use **`TableRowActionCell` → `TableRowActions` → `TableRowActionButton`** (16px icon, borderless, `variant="danger"` for delete). A cluster of `btn btn-secondary btn-sm` icon buttons — what the metric list had — reads as four competing buttons per row; the DS cell is `width: 1%` so it takes exactly the width of its icons. A navigating action is a `Link` with `className="ds-table-row-action"`, not a button |
 | **`<StatusChip>`** (`.ds-status`) | A state word in a list or a header. Neutral by default; only reach for `ok` / `warn` when the state really is one. |
 | **`<EntityViewPanel actions>`** | What acts on a section (edit / reorder / remove) belongs in the card head, not above the card — and it reveals on hover/focus-within so a reader is not looking at a button wall. |
 | **`<CheckList>` / `<CheckListItem>`** (`.ds-check-list*`) | Dense multi-select lists (e.g. group ↔ object-type membership). |

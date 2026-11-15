@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
-import { ExternalLink, Loader2, Plus, RefreshCw, Trash2 } from 'lucide-react';
+import { ExternalLink, Loader2, Pencil, Plus, RefreshCw, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { fetchDatasetMetadata, type ColumnMetadata } from '../../../data/datasetsApi';
 import {
@@ -15,7 +15,14 @@ import {
   type SemanticModelFieldResponse,
 } from '../../../data/semanticModelFieldsApi';
 import { useConfirm } from '../../../contexts/ConfirmContext';
-import { Dialog, FormField, Pagination } from '../../../styles/design-system/index';
+import {
+  Dialog,
+  FormField,
+  Pagination,
+  TableRowActionButton,
+  TableRowActionCell,
+  TableRowActions,
+} from '../../../styles/design-system/index';
 import { EntityViewHeader, EntityViewPanel } from '../../shared/EntityViewShell';
 import { fieldCoverage } from '../fieldCoverage';
 import { useSemanticModelDetail } from './useSemanticModelDetail';
@@ -491,24 +498,23 @@ export function ModelDatasetsSection() {
                                 ? String(f.ai_context.instructions)
                                 : t('datasets.dash')}
                             </td>
-                            <td className="dataset-field-row__actions">
-                              <button
-                                type="button"
-                                className="btn btn-secondary btn-sm"
-                                onClick={() => openEdit(f)}
-                                title={t('datasets.editField')}
-                              >
-                                {t('shared.edit')}
-                              </button>
-                              <button
-                                type="button"
-                                className="btn btn-secondary btn-sm"
-                                onClick={() => void handleDelete(f)}
-                                title={t('shared.delete')}
-                              >
-                                <Trash2 size={14} aria-hidden />
-                              </button>
-                            </td>
+                            <TableRowActionCell>
+                              <TableRowActions>
+                                <TableRowActionButton
+                                  title={t('datasets.editField')}
+                                  aria-label={t('datasets.editField')}
+                                  icon={<Pencil size={16} aria-hidden />}
+                                  onClick={() => openEdit(f)}
+                                />
+                                <TableRowActionButton
+                                  title={t('shared.delete')}
+                                  aria-label={t('shared.delete')}
+                                  variant="danger"
+                                  icon={<Trash2 size={16} aria-hidden />}
+                                  onClick={() => void handleDelete(f)}
+                                />
+                              </TableRowActions>
+                            </TableRowActionCell>
                           </tr>
                         ))}
                       </tbody>

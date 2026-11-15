@@ -6,6 +6,10 @@ import { toast } from 'sonner';
 import { useAsyncData } from '../../../hooks/useAsyncData';
 import { fetchDatasetJoins, type DatasetJoinResponse } from '../../../data/joinsApi';
 import { EntityViewHeader, EntityViewPanel } from '../../shared/EntityViewShell';
+import {
+  TableRowActionCell,
+  TableRowActions,
+} from '../../../styles/design-system/index';
 import { useSemanticModelDetail } from './useSemanticModelDetail';
 
 /**
@@ -100,15 +104,18 @@ export function ModelRelationshipsSection() {
                       {j.required ? t('datasets.joinRequired') : t('dataModel.joinOptional')}
                     </td>
                     <td>{aiText(j.ai_context)}</td>
-                    <td className="dataset-field-row__actions">
-                      <Link
-                        to={`/datasets/${j.from_dataset_id}/relationships`}
-                        className="btn btn-secondary btn-sm"
-                        title={t('dataModel.manageInCatalog')}
-                      >
-                        {t('dataModel.openInCatalog')}
-                      </Link>
-                    </td>
+                    <TableRowActionCell>
+                      <TableRowActions>
+                        <Link
+                          to={`/datasets/${j.from_dataset_id}/relationships`}
+                          className="ds-table-row-action"
+                          title={t('dataModel.openInCatalog')}
+                          aria-label={t('dataModel.openInCatalog')}
+                        >
+                          <ExternalLink size={16} aria-hidden />
+                        </Link>
+                      </TableRowActions>
+                    </TableRowActionCell>
                   </tr>
                 ))}
               </tbody>
