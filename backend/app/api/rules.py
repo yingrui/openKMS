@@ -33,19 +33,19 @@ from app.services.identity.permissions.permission_catalog import (
 )
 from app.api.auth import require_any_permission
 from app.services.ontology.object_neo4j_store import sync_queue_ids_to_neo4j
+from app.models.rule_metric_ref import RuleMetricRef
 from app.services.ontology.rules.builtin import builtin_types
 from app.services.ontology.rules.relations import RelationError, validate_relation
+from app.services.ontology.rules.periods import PeriodError, parse_period
+from app.services.ontology.rules.refs import sync_rule_refs
+from app.services.ontology.rules.run import evaluate_rule_in_snapshot, evaluate_subject_in_snapshot
 from app.services.ontology.rules.conditions import (
     ConditionError,
     collect_datasets,
     collect_metrics,
     validate_condition,
 )
-from app.services.ontology.rules.evaluator import (
-    EvalResult,
-    evaluate_rule,
-    evaluate_rules_for_subject,
-)
+from app.services.ontology.rules.evaluator import EvalResult
 from app.services.ontology.rules.events import (
     STATUSES,
     counts_by_subject,
@@ -77,6 +77,20 @@ class RuleGroup(BaseModel):
 
 
 SLUG = r"^[a-z][a-z0-9-]{1,63}$"
+
+
+def _canonical_period(period_start: str, period_end: str) -> tuple[str, str]:
+    """One period label in, one canonical date pair out (`YYYY-Www` / `YYYY-MM` / `YYYY-MM-DD`)."""
+    if (period_start or "").strip() and (period_end or "").strip() and period_start != period_end:
+        raise HTTPException(
+            status_code=422,
+            detail="Give one period label (`period_start`); its end is derived, not supplied.",
+        )
+    label = (period_start or period_end or "").strip()
+    try:
+        return parse_period(label)
+    except PeriodError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
 
 
 def _slugify(name: str) -> str:
@@ -417,6 +431,7 @@ async def create_rule(request: Request, body: RuleWrite, db: AsyncSession = Depe
     instance = ObjectInstance(id=uuid.uuid4().hex, object_type_id=rule_type.id, data=data)
     db.add(instance)
     await db.flush()
+    await sync_rule_refs(db, instance.id, data)
     await sync_queue_ids_to_neo4j(db, rule_type, upsert_ids=[instance.id], delete_ids=[])
     await db.commit()
     await db.refresh(instance)
@@ -473,6 +488,7 @@ async def update_rule(
         data["version"] = int(data.get("version") or 1) + 1
     instance.data = data
     await db.flush()
+    await sync_rule_refs(db, instance.id, data)
     await sync_queue_ids_to_neo4j(db, rule_type, upsert_ids=[instance.id], delete_ids=[])
     await db.commit()
     await db.refresh(instance)
@@ -490,6 +506,7 @@ async def delete_rule(rule_id: str, db: AsyncSession = Depends(get_db)):
     """Delete the rule object. Its events stay: they are history, not a cascade."""
     rule_type, _event_type = await _rule_type_or_409(db)
     instance = await _load_rule(db, rule_id, rule_type)
+    await db.execute(RuleMetricRef.__table__.delete().where(RuleMetricRef.rule_id == instance.id))
     await db.delete(instance)
     await db.commit()
 
@@ -520,18 +537,19 @@ async def evaluate_one(
 ):
     rule_type, _event_type = await _rule_type_or_409(db)
     instance = await _load_rule(db, rule_id, rule_type)
+    period_start, period_end = _canonical_period(body.period_start, body.period_end)
     try:
-        results = await evaluate_rule(
-            db,
+        results = await evaluate_rule_in_snapshot(
             request,
-            rule=instance,
-            period_start=body.period_start,
-            period_end=body.period_end,
+            rule_id=instance.id,
+            period_start=period_start,
+            period_end=period_end,
             dry_run=body.dry_run,
         )
     except ConditionError as exc:
         raise HTTPException(status_code=400, detail=f"Invalid condition: {exc}") from exc
-    await db.commit()
+    # The run wrote in its own transaction; refresh so the caller sees the new last_* fields.
+    await db.refresh(instance)
     return EvaluateResponse(
         results=[_eval_out(result) for result in results],
         failed=sum(1 for result in results if result.status == "fail"),
@@ -546,15 +564,14 @@ async def evaluate_many(
     db: AsyncSession = Depends(get_db),
 ):
     await _rule_type_or_409(db)
-    results = await evaluate_rules_for_subject(
-        db,
+    period_start, period_end = _canonical_period(body.period_start, body.period_end)
+    results = await evaluate_subject_in_snapshot(
         request,
         subject_type=body.subject_type,
         subject_id=body.subject_id,
-        period_start=body.period_start,
-        period_end=body.period_end,
+        period_start=period_start,
+        period_end=period_end,
     )
-    await db.commit()
     return EvaluateResponse(
         results=[_eval_out(result) for result in results],
         failed=sum(1 for result in results if result.status == "fail"),

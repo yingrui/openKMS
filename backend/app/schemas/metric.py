@@ -50,6 +50,19 @@ class MetricAssertion(BaseModel):
     health: str | None = None
 
 
+class RuleRefOut(BaseModel):
+    """A rule that references a metric, with the result of its last run."""
+
+    object_id: str
+    rule_id: str | None = None
+    name: str | None = None
+    last_status: str | None = None
+    last_period_start: str | None = None
+    last_period_end: str | None = None
+    last_run_at: str | None = None
+    last_reason: str | None = None
+
+
 class MetricRef(BaseModel):
     """A metric this one is computed from (the expression names it)."""
 

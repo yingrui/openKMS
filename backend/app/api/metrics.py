@@ -8,7 +8,7 @@ import time
 import uuid
 from typing import Any
 
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -16,10 +16,12 @@ from app.api.auth import require_permission
 from app.database import get_db
 from app.models.dataset import Dataset
 from app.models.metric_definition import MetricDefinition
+from app.models.object_instance import ObjectInstance
 from app.models.metric_run import MetricRun
 from app.models.semantic_model import SemanticModel
 from app.services.data.semantic_models import member_ids
 from app.schemas.metric import (
+    RuleRefOut,
     MetricComputeResponse,
     MetricCreate,
     MetricListResponse,
@@ -39,6 +41,7 @@ from app.services.data.metrics import (
     validate_metric_filters,
 )
 from app.api.catalog_scoped import require_metric_access, readable_model_ids
+from app.services.ontology.rules.refs import metrics_with_rules, rules_for_metric
 from app.services.ontology.rules.relations import list_relation_rules
 from app.api.query_errors import query_failure_detail
 from app.services.data.query_errors import DEFINITION, QueryFailure
@@ -136,6 +139,14 @@ async def _validate_refs(
     )
 
 
+async def _rule_rows(db: AsyncSession, rule_ids: list[str]) -> list[ObjectInstance]:
+    if not rule_ids:
+        return []
+    return list(
+        (await db.execute(select(ObjectInstance).where(ObjectInstance.id.in_(rule_ids)))).scalars().all()
+    )
+
+
 async def _metric_assertions(
     db: AsyncSession, peers: list[MetricDefinition]
 ) -> dict[str, list[dict]]:
@@ -196,6 +207,7 @@ async def list_metrics(
     request: Request,
     semantic_model_id: str | None = None,
     base_dataset_id: str | None = None,
+    coverage: str | None = Query(None, pattern="^(covered|uncovered)$"),
     db: AsyncSession = Depends(get_db),
 ):
     """List metrics, scoped to a semantic model and/or anchored on a base dataset.
@@ -223,6 +235,10 @@ async def list_metrics(
     if base_dataset_id:
         query = query.where(MetricDefinition.base_dataset_id == base_dataset_id)
     rows = (await db.execute(query)).scalars().all()
+    if coverage:
+        # Coverage is a definition-side fact: a metric is covered when some rule references it.
+        covered = await metrics_with_rules(db)
+        rows = [m for m in rows if (m.id in covered) == (coverage == "covered")]
     names = await _name_map(db, {m.base_dataset_id for m in rows})
     assertions = await _metric_assertions(db, rows)
     return MetricListResponse(
@@ -386,8 +402,43 @@ async def update_metric(
     dependencies=[Depends(require_permission(PERM_DATA_WRITE))],
 )
 async def delete_metric(metric_id: str, db: AsyncSession = Depends(get_db)):
+    """Delete a metric — unless a rule references it, which would leave that rule undecidable."""
     m = await _load_metric(db, metric_id)
+    rule_ids = await rules_for_metric(db, metric_id)
+    if rule_ids:
+        raise HTTPException(
+            status_code=409,
+            detail=(
+                f"{len(rule_ids)} rule(s) reference this metric; update or delete them first "
+                f"({', '.join(rule_ids[:5])})."
+            ),
+        )
     await db.delete(m)
+
+
+@router.get(
+    "/{metric_id}/rules",
+    response_model=list[RuleRefOut],
+    dependencies=[Depends(require_metric_access)],
+)
+async def list_metric_rules(metric_id: str, db: AsyncSession = Depends(get_db)):
+    """The rules that reference this metric — what "run the checks on this number" means."""
+    await _load_metric(db, metric_id)  # 404 when the metric does not exist
+    rule_ids = await rules_for_metric(db, metric_id)
+    rows = await _rule_rows(db, rule_ids)
+    return [
+        RuleRefOut(
+            object_id=row.id,
+            rule_id=(row.data or {}).get("rule_id"),
+            name=(row.data or {}).get("name"),
+            last_status=(row.data or {}).get("last_status"),
+            last_period_start=(row.data or {}).get("last_period_start"),
+            last_period_end=(row.data or {}).get("last_period_end"),
+            last_run_at=(row.data or {}).get("last_run_at"),
+            last_reason=(row.data or {}).get("last_reason"),
+        )
+        for row in rows
+    ]
 
 
 @router.get(

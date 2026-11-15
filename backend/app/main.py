@@ -116,8 +116,14 @@ async def _ensure_builtin_ontology() -> None:
     try:
         async with async_sessionmaker(engine, expire_on_commit=False)() as session:
             created = await ensure_builtin_ontology(session)
+            # The rule→metric reference projection is derived; rebuild it for rules that predate it.
+            from app.services.ontology.rules.refs import backfill_rule_refs
+
+            rebuilt = await backfill_rule_refs(session)
         if created:
             logger.info("Built-in ontology updated: %s", ", ".join(created))
+        if rebuilt:
+            logger.info("Rule reference projection rebuilt for %s rule(s)", rebuilt)
     except Exception as exc:  # noqa: BLE001 - startup must not fail on a bootstrap nicety
         logger.warning("Built-in ontology bootstrap skipped: %s", exc)
     finally:
