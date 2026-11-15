@@ -192,11 +192,16 @@ Model → Metrics → **关系** draws the graph inline. The switch sits on a to
 divider, right-aligned, with the counts on its left — a view control belongs to the content it changes, and
 the header keeps the one thing a page can create (新建指标).
 
-**One control decides the picture, and it is the same control at any size.** The picker holds 整个模型 and
-every metric: no focus means the whole graph, a focus means that metric's neighborhood — what it is computed
-from, what is computed from it, and the assertions touching it, with `N / M 个指标` saying which you are
-looking at. No threshold, no second mode, no "show all" button: the panorama and the close-up are two values
-of one input.
+**The graph is a surface you walk, not a form you fill in.** The navigation is a breadcrumb
+(`整个模型 › 分货满足率`), not a dropdown: nobody starts from "choose a metric", they start from a metric they
+are looking at. One click on a node **selects** it — a detail panel answers what it is, what it is computed
+from, what uses it and what is asserted about it — and a second step drills in (the chevron on the card), so
+the picture never jumps away from under the pointer. Pan by dragging, zoom with the wheel or the floating
+controls, fit on demand; wheel zoom is safe because this view does not page-scroll. Definitions are solid and
+labelled `× w` only when the weight is not 1; assertions are dashed, carry their tolerance, take the colour of
+their last verdict, and are the link into the rule. Everything is a design token — node cards use the type
+scale and theme colours, so dark mode and both languages come for free (a canvas-drawn graph would lose all
+of it).
 
 In graph mode the view fills the pane the way the Knowledge Map and the wiki graph do — no inner scroll,
 the canvas as the surface (muted, bordered, rounded), legend above it and the assertion chips pinned below.

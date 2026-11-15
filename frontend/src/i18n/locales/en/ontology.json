@@ -442,10 +442,17 @@
     "metricViewList": "List",
     "metricViewGraph": "Relationships",
     "graphAria": "Metric dependency graph",
-    "graphFocus": "View",
     "graphShowing": "{{shown}} of {{total}} metrics",
-    "graphNoAssertionsForMetric": "No identity is checked for this metric.",
-    "graphAllMetrics": "Whole model ({{count}} metrics)"
+    "graphCrumbs": "Metric relationship path",
+    "graphRoot": "Whole model ({{count}})",
+    "graphAsserted": "asserted",
+    "graphZoomIn": "Zoom in",
+    "graphZoomOut": "Zoom out",
+    "graphFit": "Fit to view",
+    "graphCloseDetail": "Close details",
+    "graphFocusNode": "Focus on this metric",
+    "graphComponents": "Computed from",
+    "graphDependents": "Used by"
   },
   "datasets": {
     "title": "Datasets",

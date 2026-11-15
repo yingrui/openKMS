@@ -234,10 +234,11 @@ export function ModelMetricsSection() {
       {/* The switch is a content control, so it sits under the header divider, on the content's right
           edge — the header stays about the page (its identity and the one thing you can create). */}
       <div className={`metric-view${view === 'graph' ? ' metric-view--graph' : ''}`}>
-        <div className="metric-view__bar">
-          <p className="metric-view__summary">
-            {t('dataModel.metricCount', { count: metrics.length })}
-          </p>
+        <div className={`metric-view__bar${view === 'graph' ? ' metric-view__bar--end' : ''}`}>
+          {/* In graph mode the count lives on the canvas (shown / total), so the toolbar says nothing. */}
+          {view === 'list' ? (
+            <p className="metric-view__summary">{t('dataModel.metricCount', { count: metrics.length })}</p>
+          ) : null}
           <ResourceViewToggle
             modes={['list', 'graph'] as const}
             value={view}

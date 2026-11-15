@@ -42,6 +42,10 @@
   padding: var(--space-3) 0;
 }
 
+.metric-view__bar--end {
+  justify-content: flex-end;
+}
+
 .metric-view__summary {
   margin: 0;
   font-size: var(--text-sm);
@@ -80,158 +84,328 @@
   }
 }
 
-/* Metric dependencies, drawn: a deterministic layered DAG, base metrics at the bottom. */
+/* ── The relationship canvas ─────────────────────────────────────────────────────────────────────
+   A surface, not a diagram: dot grid to say "you can drag here", cards that lift on hover, a selection
+   ring, and a detail panel that answers "what is this" without hiding the picture. */
+
 .metric-dag {
   display: flex;
   flex-direction: column;
   flex: 1;
   min-height: 0;
   gap: var(--space-2);
-  padding-bottom: var(--space-4);
+  padding-bottom: var(--space-3);
+}
+
+/* Breadcrumb + count: the navigation is the path, not a dropdown. */
+.metric-dag__bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  flex-shrink: 0;
+  min-height: 28px;
+}
+
+.metric-dag__crumbs {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  min-width: 0;
+  font-size: var(--text-sm);
+}
+
+.metric-dag__crumb {
+  padding: var(--space-1) var(--space-2);
+  border: none;
+  border-radius: var(--radius-sm);
+  background: none;
+  color: var(--color-text-secondary);
+  font: inherit;
+  cursor: pointer;
+
+  &:hover {
+    background: var(--color-bg-muted);
+    color: var(--color-text);
+  }
+
+  &--current {
+    color: var(--color-text);
+    font-weight: 600;
+    cursor: default;
+
+    &:hover {
+      background: none;
+    }
+  }
+}
+
+.metric-dag__crumb-sep {
+  color: var(--color-text-muted);
+  flex-shrink: 0;
+}
+
+.metric-dag__count {
+  flex-shrink: 0;
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
 }
 
 .metric-dag__canvas {
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  position: relative;
   flex: 1;
-  min-height: 260px;
-  padding: var(--space-4);
+  min-height: 300px;
   border: 1px solid var(--color-border);
   border-radius: var(--radius-lg);
-  background: var(--color-bg-muted);
+  background-color: var(--color-bg-muted);
+  /* A 1px dot grid, barely there: it says "draggable surface" without competing with the cards. */
+  background-image: radial-gradient(circle, var(--color-border) 1px, transparent 1px);
+  background-size: 22px 22px;
   overflow: hidden;
+}
 
-  /* Fit, do not crop: the diagram is a reference, so the whole of it stays visible at any pane size. */
-  svg {
-    width: 100%;
-    height: 100%;
+.metric-dag__svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+  cursor: grab;
+  touch-action: none;
+
+  &.is-dragging {
+    cursor: grabbing;
   }
 }
 
-.metric-dag__node {
-  fill: var(--color-surface);
-  stroke: var(--color-border);
-  stroke-width: 1;
-
-  &--non-additive {
-    stroke: var(--color-warning, #d97706);
-    stroke-dasharray: 4 3;
-  }
-}
-
-.metric-dag__label {
-  font-size: var(--text-xs);
-  fill: var(--color-text);
-}
-
+/* Edges ---------------------------------------------------------------------------------------- */
 .metric-dag__edge {
   fill: none;
 
   &--derived {
-    stroke: var(--color-border-strong, var(--color-border));
-    stroke-width: 1.25;
+    stroke: var(--color-border-strong);
+    stroke-width: 1.4;
   }
 
-  /* An assertion is a claim, not structure — dashed, and it turns red when the last run failed. */
+  /* An assertion is a claim, not a structure: dashed, accent, and red when it last failed. */
   &--assertion {
-    stroke: var(--color-accent, #2563eb);
-    stroke-width: 1.5;
-    stroke-dasharray: 5 4;
+    stroke: var(--color-accent);
+    stroke-width: 1.6;
+    stroke-dasharray: 6 4;
+    cursor: pointer;
   }
 
   &--failing {
-    stroke: var(--color-danger, #dc2626);
+    stroke: var(--color-danger);
   }
 }
 
 .metric-dag__arrow {
-  fill: var(--color-border-strong, var(--color-border));
+  fill: var(--color-border-strong);
 }
 
-.metric-dag__edge-label {
+.metric-dag__edge-group {
+  transition: opacity 0.15s ease;
+
+  &.is-dimmed {
+    opacity: 0.25;
+  }
+}
+
+.metric-dag__edge-tag {
+  rect {
+    fill: var(--color-bg-elevated);
+    stroke: var(--color-border);
+  }
+
+  text {
+    font-size: var(--text-xs);
+    fill: var(--color-text-secondary);
+  }
+}
+
+/* Nodes ---------------------------------------------------------------------------------------- */
+.metric-dag__node-group {
+  cursor: pointer;
+  transition: opacity 0.15s ease;
+  outline: none;
+
+  &.is-dimmed {
+    opacity: 0.3;
+  }
+
+  &:hover .metric-dag__card,
+  &:focus-visible .metric-dag__card {
+    stroke: var(--color-accent);
+    filter: drop-shadow(0 2px 6px rgb(0 0 0 / 12%));
+  }
+
+  &:focus-visible {
+    /* Keyboard users get the same ring a mouse gets on hover. */
+    .metric-dag__card {
+      stroke-width: 2;
+    }
+  }
+
+  &.is-selected .metric-dag__card {
+    stroke: var(--color-accent);
+    stroke-width: 2;
+  }
+}
+
+.metric-dag__card {
+  fill: var(--color-bg-elevated);
+  stroke: var(--color-border);
+  stroke-width: 1;
+  transition: stroke 0.15s ease, filter 0.15s ease;
+}
+
+.metric-dag__card-accent {
+  fill: transparent;
+
+  .is-failing & {
+    fill: var(--color-danger);
+  }
+
+  .metric-dag__node-group:has(+ .metric-dag__detail) & {
+    fill: transparent;
+  }
+}
+
+.metric-dag__card-name {
+  font-size: var(--text-sm);
+  font-weight: 600;
+  fill: var(--color-text);
+}
+
+.metric-dag__card-meta {
   font-size: var(--text-xs);
   fill: var(--color-text-muted);
 }
 
-/* Focus row: which metric's neighborhood is drawn, and the way back to the whole model. */
-.metric-dag__focus {
+/* Floating zoom controls: small, bottom-right, always reachable. */
+.metric-dag__zoom {
+  position: absolute;
+  right: var(--space-3);
+  bottom: var(--space-3);
   display: flex;
-  align-items: center;
-  gap: var(--space-3);
-  flex-wrap: wrap;
-  flex-shrink: 0;
-}
+  flex-direction: column;
+  gap: 1px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-bg-elevated);
+  box-shadow: 0 2px 8px rgb(0 0 0 / 8%);
+  overflow: hidden;
 
-.metric-dag__focus-field {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-  font-size: var(--text-sm);
-  color: var(--color-text-muted);
-  white-space: nowrap;
-}
-
-.metric-dag__focus-count {
-  font-size: var(--text-xs);
-  color: var(--color-text-muted);
-}
-
-/* Legend: two edge kinds, named once, so the drawing does not need a caption under it. */
-.metric-dag__legend {
-  display: flex;
-  flex-wrap: wrap;
-  flex-shrink: 0;
-  gap: var(--space-4);
-  margin: var(--space-1) 0 var(--space-2);
-  padding: 0;
-  list-style: none;
-  font-size: var(--text-xs);
-  color: var(--color-text-muted);
-
-  li {
+  button {
     display: flex;
     align-items: center;
-    gap: var(--space-2);
+    justify-content: center;
+    width: 30px;
+    height: 30px;
+    border: none;
+    background: none;
+    color: var(--color-text-secondary);
+    cursor: pointer;
+
+    &:hover {
+      background: var(--color-bg-muted);
+      color: var(--color-text);
+    }
   }
 }
 
-.metric-dag__legend-swatch {
-  width: 24px;
-  height: 8px;
-  flex-shrink: 0;
-}
-
-/* Assertions as chips: the one part of the picture worth repeating in text, because each opens a rule. */
-.metric-dag__assertions {
+/* Detail panel --------------------------------------------------------------------------------- */
+.metric-dag__detail {
+  position: absolute;
+  top: var(--space-3);
+  right: var(--space-3);
+  bottom: var(--space-3);
+  width: 280px;
   display: flex;
-  flex-wrap: wrap;
-  flex-shrink: 0;
-  gap: var(--space-2);
-  margin: var(--space-2) 0 0;
-  padding: 0;
-  list-style: none;
-}
-
-.metric-dag__assertion-chip {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-2);
-  padding: var(--space-1) var(--space-3);
-  border: 1px dashed var(--color-accent);
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  border: 1px solid var(--color-border);
   border-radius: var(--radius-lg);
-  font-size: var(--text-sm);
-  color: var(--color-text);
-  text-decoration: none;
+  background: var(--color-bg-elevated);
+  box-shadow: 0 8px 24px rgb(0 0 0 / 10%);
+  overflow-y: auto;
 
-  &:hover {
-    background: var(--color-accent-subtle);
+  header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: var(--space-2);
+
+    h3 {
+      margin: 0;
+      font-size: var(--text-base);
+    }
+
+    button {
+      border: none;
+      background: none;
+      color: var(--color-text-muted);
+      cursor: pointer;
+      flex-shrink: 0;
+
+      &:hover {
+        color: var(--color-text);
+      }
+    }
+  }
+
+  h4 {
+    margin: var(--space-1) 0 0;
+    font-size: var(--text-xs);
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--color-text-muted);
+  }
+
+  ul {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-1);
+
+    li {
+      display: flex;
+      align-items: center;
+      gap: var(--space-2);
+      font-size: var(--text-sm);
+    }
+
+    button {
+      padding: 0;
+      border: none;
+      background: none;
+      color: var(--color-accent);
+      font: inherit;
+      cursor: pointer;
+
+      &:hover {
+        text-decoration: underline;
+      }
+    }
   }
 }
 
-.metric-dag__assertion-text {
+.metric-dag__detail-meta {
+  margin: var(--space-1) 0 0;
+}
+
+.metric-dag__detail-sql {
+  display: block;
+  padding: var(--space-2);
+  border-radius: var(--radius-sm);
+  background: var(--color-bg-muted);
   font-family: var(--font-mono, monospace);
   font-size: var(--text-xs);
+  color: var(--color-text-secondary);
+  overflow-wrap: anywhere;
 }
 
 /* Additivity: the one metric property that changes what a consumer may do with the number. */
@@ -249,8 +423,8 @@
   }
 
   &--non_additive {
-    color: var(--color-warning, #d97706);
-    background: color-mix(in srgb, var(--color-warning, #d97706) 12%, transparent);
+    color: var(--color-warning);
+    background: color-mix(in srgb, var(--color-warning) 12%, transparent);
   }
 }
 

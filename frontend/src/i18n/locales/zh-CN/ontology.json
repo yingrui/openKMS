@@ -437,10 +437,17 @@
     "metricViewList": "列表",
     "metricViewGraph": "关系",
     "graphAria": "指标依赖图",
-    "graphFocus": "视图",
     "graphShowing": "{{shown}} / {{total}} 个指标",
-    "graphNoAssertionsForMetric": "这个指标没有勾稽断言。",
-    "graphAllMetrics": "整个模型（{{count}} 个指标）"
+    "graphCrumbs": "指标关系路径",
+    "graphRoot": "整个模型（{{count}}）",
+    "graphAsserted": "有断言",
+    "graphZoomIn": "放大",
+    "graphZoomOut": "缩小",
+    "graphFit": "适配画布",
+    "graphCloseDetail": "关闭详情",
+    "graphFocusNode": "只看这个指标",
+    "graphComponents": "由这些指标计算",
+    "graphDependents": "被这些指标使用"
   },
   "datasets": {
     "title": "数据集",
