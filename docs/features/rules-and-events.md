@@ -188,8 +188,15 @@ one subject by definition.
 
 ## The dependency view: definitions vs assertions
 
-Model → Metrics → **关系** (the view switch sits in the page header, next to 新建指标) draws the graph
-inline. **Relationships**, not "dependencies": the picture holds two kinds of edge and only one of them is
+Model → Metrics → **关系** draws the graph inline. The switch sits on a toolbar row *under* the header
+divider, right-aligned, with the counts on its left — a view control belongs to the content it changes, and
+the header keeps the one thing a page can create (新建指标).
+
+In graph mode the view fills the pane the way the Knowledge Map and the wiki graph do — no inner scroll,
+the canvas as the surface (muted, bordered, rounded), legend above it and the assertion chips pinned below.
+The canvas scales the diagram to fit (`preserveAspectRatio`) instead of stretching or cropping it: this is a
+reference, so the whole of it stays visible at any pane size. Below 768 px the page goes back to scrolling
+with a shorter canvas. **Relationships**, not "dependencies": the picture holds two kinds of edge and only one of them is
 a dependency. Layout is deterministic — base metrics at the bottom, everything computed from them above,
 each row centred — so the picture is a reference rather than something that rearranges on every open; the
 geometry lives in `metricGraphLayout.ts` and is unit-tested.

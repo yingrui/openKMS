@@ -223,26 +223,35 @@ export function ModelMetricsSection() {
     <>
       <EntityViewHeader
         title={t('dataModel.metrics')}
-        subtitle={t('dataModel.metricCount', { count: metrics.length })}
         actions={
-          <>
-            {/* The view switch belongs with the actions, not above the content: it changes what the page
-                shows, and the header is where a page says "you can look at this differently". */}
-            <ResourceViewToggle
-              modes={['list', 'graph'] as const}
-              value={view}
-              onChange={(next) => setView(next)}
-              labels={{ list: t('dataModel.metricViewList'), graph: t('dataModel.metricViewGraph') }}
-            />
-            <button type="button" className="btn btn-primary" onClick={openCreate}>
-              <Plus size={16} aria-hidden />
-              {t('datasets.addMetric')}
-            </button>
-          </>
+          <button type="button" className="btn btn-primary" onClick={openCreate}>
+            <Plus size={16} aria-hidden />
+            {t('datasets.addMetric')}
+          </button>
         }
       />
 
-      <EntityViewPanel>
+      {/* The switch is a content control, so it sits under the header divider, on the content's right
+          edge — the header stays about the page (its identity and the one thing you can create). */}
+      <div className={`metric-view${view === 'graph' ? ' metric-view--graph' : ''}`}>
+        <div className="metric-view__bar">
+          <p className="metric-view__summary">
+            {view === 'graph' && graph
+              ? t('dataModel.graphSummary', {
+                  metrics: graph.nodes.length,
+                  derived: graph.derived_count,
+                  assertions: graph.assertion_count,
+                })
+              : t('dataModel.metricCount', { count: metrics.length })}
+          </p>
+          <ResourceViewToggle
+            modes={['list', 'graph'] as const}
+            value={view}
+            onChange={(next) => setView(next)}
+            labels={{ list: t('dataModel.metricViewList'), graph: t('dataModel.metricViewGraph') }}
+          />
+        </div>
+
         {view === 'graph' ? (
           graphError ? (
             <p className="rules-condition-warning">{graphError}</p>
@@ -251,7 +260,9 @@ export function ModelMetricsSection() {
           ) : (
             <p className="entity-view__readonly">{t('shared.loading')}</p>
           )
-        ) : loading ? (
+        ) : (
+      <EntityViewPanel>
+        {loading ? (
           <p className="entity-view__readonly">{t('shared.loading')}</p>
         ) : metrics.length === 0 ? (
           <p className="entity-view__readonly">{t('datasets.metricEmpty')}</p>
@@ -333,6 +344,8 @@ export function ModelMetricsSection() {
         </div>
         )}
       </EntityViewPanel>
+        )}
+      </div>
 
       <Dialog
         open={showForm}

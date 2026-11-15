@@ -1,3 +1,6 @@
+@use 'design-system/mixins' as *;
+@use 'design-system/tokens' as ds;
+
 /**
  * Metric-side chrome: the additivity chip, the dependency read off an expression, and the dependency graph.
  *
@@ -24,19 +27,85 @@
   }
 }
 
+/* The metrics view is a column: a content toolbar, then the surface (a table card or the graph). */
+.metric-view {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.metric-view__bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+  padding: var(--space-3) 0;
+}
+
+.metric-view__summary {
+  margin: 0;
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+}
+
+/* The graph view takes the pane's height — the same "fill the pane, scroll nothing" shape the Knowledge
+   Map and the wiki graph use. The section asks the shell for it, because the scroll container is an
+   ancestor (`:has` is already how the shell states its own rules — see entity-view.scss). */
+.metric-view--graph {
+  /* `flex: 1`, not `height: 100%`: the shell's inner stack also holds the page header, so 100% would
+     overflow by exactly the header's height. */
+  flex: 1;
+  min-height: 0;
+}
+
+.entity-view__main:has(.metric-view--graph) {
+  overflow: hidden;
+  padding-bottom: 0;
+}
+
+.entity-view__main:has(.metric-view--graph) .entity-view__main-inner {
+  height: 100%;
+  min-height: 0;
+}
+
+@include max-width(ds.$bp-md-min) {
+  .entity-view__main:has(.metric-view--graph) {
+    overflow-y: auto;
+    padding-bottom: var(--space-8);
+  }
+
+  .metric-view--graph {
+    flex: none;
+    min-height: 0;
+  }
+}
+
 /* Metric dependencies, drawn: a deterministic layered DAG, base metrics at the bottom. */
 .metric-dag {
-  padding-top: var(--space-2);
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  gap: var(--space-2);
+  padding-bottom: var(--space-4);
 }
 
 .metric-dag__canvas {
-  overflow-x: auto;
-  padding: var(--space-2) 0 var(--space-4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 1;
+  min-height: 260px;
+  padding: var(--space-4);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  background: var(--color-bg-muted);
+  overflow: hidden;
 
+  /* Fit, do not crop: the diagram is a reference, so the whole of it stays visible at any pane size. */
   svg {
-    height: auto;
-    min-height: 240px;
-    max-height: 520px;
+    width: 100%;
+    height: 100%;
   }
 }
 
@@ -89,6 +158,7 @@
 .metric-dag__legend {
   display: flex;
   flex-wrap: wrap;
+  flex-shrink: 0;
   gap: var(--space-4);
   margin: var(--space-1) 0 var(--space-2);
   padding: 0;
@@ -113,6 +183,7 @@
 .metric-dag__assertions {
   display: flex;
   flex-wrap: wrap;
+  flex-shrink: 0;
   gap: var(--space-2);
   margin: var(--space-2) 0 0;
   padding: 0;

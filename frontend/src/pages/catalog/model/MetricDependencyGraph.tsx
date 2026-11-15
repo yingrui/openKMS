@@ -31,14 +31,6 @@ export function MetricDependencyGraph({ graph }: { graph: MetricGraph }) {
 
   return (
     <div className="metric-dag">
-      <p className="settings-page-hint">
-        {t('dataModel.graphSummary', {
-          metrics: graph.nodes.length,
-          derived: graph.derived_count,
-          assertions: graph.assertion_count,
-        })}
-      </p>
-
       <ul className="metric-dag__legend">
         <li>
           <svg viewBox="0 0 24 8" className="metric-dag__legend-swatch" aria-hidden>
