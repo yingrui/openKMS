@@ -14,7 +14,7 @@
  * links to the rule where the assertion is actually defined.
  */
 import { layout, NODE_H, NODE_W } from './metricGraphLayout';
-import { defaultFocus, neighborhood } from './metricSubgraph';
+import { neighborhood } from './metricSubgraph';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
@@ -26,10 +26,8 @@ import type { MetricGraph } from '../../../data/metricsApi';
 export function MetricDependencyGraph({ graph }: { graph: MetricGraph }) {
   const { t } = useTranslation('ontology');
   // A model can hold a hundred metrics; draw the selected one's neighborhood until asked for everything.
-  // No effect and no stored default: the focus is either what the reader picked or the most connected
-  // metric, computed from the graph it belongs to.
-  const [pickedFocus, setPickedFocus] = useState<string | null>(null);
-  const focusId = pickedFocus ?? defaultFocus(graph);
+  // One state, one rule: no focus is the whole model; a metric is its neighborhood.
+  const [focusId, setFocusId] = useState<string | null>(null);
   const drawn = neighborhood(graph, focusId);
   const { placed, width, height } = layout(drawn);
   const at = new Map(placed.map((node) => [node.id, node]));
@@ -45,8 +43,9 @@ export function MetricDependencyGraph({ graph }: { graph: MetricGraph }) {
           <select
             className="ds-control"
             value={focusId ?? ''}
-            onChange={(event) => setPickedFocus(event.target.value)}
+            onChange={(event) => setFocusId(event.target.value || null)}
           >
+            <option value="">{t('dataModel.graphAllMetrics', { count: graph.nodes.length })}</option>
             {graph.nodes.map((node) => (
               <option key={node.id} value={node.id}>
                 {node.name}

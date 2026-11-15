@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { defaultFocus, neighborhood } from './metricSubgraph';
+import { neighborhood } from './metricSubgraph';
 import type { MetricGraph, MetricGraphEdge, MetricGraphNode } from '../../../data/metricsApi';
 
 const node = (id: string, name = id): MetricGraphNode => ({
@@ -54,17 +54,10 @@ const LIVE = graph([
 ]);
 
 describe('metric subgraph', () => {
-  it('focuses a most-connected metric by default', () => {
-    // 额度 / 需求 / 缺口 tie at three incident edges; the tie breaks by name so the default is stable
-    // across opens — a focus that moves would make the picture useless as a reference.
-    const focus = defaultFocus(LIVE);
-    const counts = new Map<string, number>();
-    for (const edge of LIVE.edges) {
-      counts.set(edge.from, (counts.get(edge.from) ?? 0) + 1);
-      counts.set(edge.to, (counts.get(edge.to) ?? 0) + 1);
-    }
-    expect(counts.get(focus!)).toBe(Math.max(...counts.values()));
-    expect(defaultFocus(LIVE)).toBe(defaultFocus(LIVE));
+  it('no focus means the whole model — the picker holds both views', () => {
+    const whole = neighborhood(LIVE, null);
+    expect(whole.nodes.length).toBe(LIVE.nodes.length);
+    expect(whole.edges.length).toBe(LIVE.edges.length);
   });
 
   it('keeps the focus, its components, its dependents and its assertion partners', () => {

@@ -437,9 +437,10 @@
     "metricViewList": "列表",
     "metricViewGraph": "关系",
     "graphAria": "指标依赖图",
-    "graphFocus": "聚焦",
+    "graphFocus": "视图",
     "graphShowing": "{{shown}} / {{total}} 个指标",
-    "graphNoAssertionsForMetric": "这个指标没有勾稽断言。"
+    "graphNoAssertionsForMetric": "这个指标没有勾稽断言。",
+    "graphAllMetrics": "整个模型（{{count}} 个指标）"
   },
   "datasets": {
     "title": "数据集",

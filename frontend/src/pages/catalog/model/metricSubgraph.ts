@@ -1,32 +1,11 @@
 /**
- * Which part of a model's metric graph is worth drawing — always one metric's neighborhood.
+ * Which part of a model's metric graph is worth drawing.
  *
- * A semantic model can declare eleven metrics or a hundred; a hundred-node picture is a hairball either
- * way, and a threshold ("draw everything under N") is two behaviors to maintain and two pictures to
- * explain. One rule instead: the focused metric, everything it is computed from, everything computed from
- * it, and the assertions that touch it. Same at any size.
+ * One control decides it, and it is the same control at any size: the picker holds "the whole model" and
+ * every metric. No focus means everything; a focus means that metric's neighborhood — what it is computed
+ * from, what is computed from it, and the assertions touching it. No thresholds, no second mode.
  */
-import type { MetricGraph, MetricGraphEdge, MetricGraphNode } from '../../../data/metricsApi';
-
-function incidentEdgeCount(nodes: MetricGraphNode[], edges: MetricGraphEdge[]): Map<string, number> {
-  const counts = new Map<string, number>(nodes.map((node) => [node.id, 0]));
-  for (const edge of edges) {
-    counts.set(edge.from, (counts.get(edge.from) ?? 0) + 1);
-    counts.set(edge.to, (counts.get(edge.to) ?? 0) + 1);
-  }
-  return counts;
-}
-
-/** The most connected metric — the one whose neighborhood says the most about this model. */
-export function defaultFocus(graph: MetricGraph): string | null {
-  if (graph.nodes.length === 0) return null;
-  const counts = incidentEdgeCount(graph.nodes, graph.edges);
-  return [...graph.nodes]
-    .sort((a, b) => {
-      const delta = (counts.get(b.id) ?? 0) - (counts.get(a.id) ?? 0);
-      return delta !== 0 ? delta : a.name.localeCompare(b.name);
-    })[0].id;
-}
+import type { MetricGraph } from '../../../data/metricsApi';
 
 /** A metric, its components, its dependents and its assertion partners — depth one, both ways. */
 export function neighborhood(graph: MetricGraph, focusId: string | null): MetricGraph {

@@ -442,9 +442,10 @@
     "metricViewList": "List",
     "metricViewGraph": "Relationships",
     "graphAria": "Metric dependency graph",
-    "graphFocus": "Focus",
+    "graphFocus": "View",
     "graphShowing": "{{shown}} of {{total}} metrics",
-    "graphNoAssertionsForMetric": "No identity is checked for this metric."
+    "graphNoAssertionsForMetric": "No identity is checked for this metric.",
+    "graphAllMetrics": "Whole model ({{count}} metrics)"
   },
   "datasets": {
     "title": "Datasets",

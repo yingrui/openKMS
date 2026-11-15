@@ -192,11 +192,11 @@ Model → Metrics → **关系** draws the graph inline. The switch sits on a to
 divider, right-aligned, with the counts on its left — a view control belongs to the content it changes, and
 the header keeps the one thing a page can create (新建指标).
 
-**One rule, at any size: the picture is one metric's neighborhood.** What it is computed from, what is
-computed from it, and the assertions touching it — with a metric picker and `N / M 个指标`. A threshold
-("draw everything under N, focus above it") would be two behaviours to maintain and two pictures to explain,
-and a hundred-node diagram is a hairball regardless. Focus defaults to the most connected metric with the tie
-broken by name, so the picture does not move between opens.
+**One control decides the picture, and it is the same control at any size.** The picker holds 整个模型 and
+every metric: no focus means the whole graph, a focus means that metric's neighborhood — what it is computed
+from, what is computed from it, and the assertions touching it, with `N / M 个指标` saying which you are
+looking at. No threshold, no second mode, no "show all" button: the panorama and the close-up are two values
+of one input.
 
 In graph mode the view fills the pane the way the Knowledge Map and the wiki graph do — no inner scroll,
 the canvas as the surface (muted, bordered, rounded), legend above it and the assertion chips pinned below.
