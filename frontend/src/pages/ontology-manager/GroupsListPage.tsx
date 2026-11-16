@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { FolderKanban, Loader2, Plus } from 'lucide-react';
 import { toast } from 'sonner';
-import { Dialog, EmptyState, FormField } from '../../styles/design-system';
+import { Dialog, EmptyState, FormField, ListPage } from '../../styles/design-system';
 import { createOntologyGroup, fetchOntologyGroups, type OntologyGroupResponse } from '../../data/ontologyFunctionsApi';
 import '../ontology/ontology-admin.scss';
 
@@ -64,19 +64,17 @@ export function GroupsListPage() {
   };
 
   return (
-    <div className="ontology-admin">
-      <header className="page-header">
-        <div>
-          <h1>{t('groups.title')}</h1>
-          <p className="page-subtitle">{t('groups.subtitle')}</p>
-        </div>
+    <>
+    <ListPage
+      title={t('groups.title')}
+      subtitle={t('groups.subtitle')}
+      actions={
         <button type="button" className="btn btn-primary" onClick={openCreate}>
           <Plus size={16} aria-hidden />
           {t('groups.create')}
         </button>
-      </header>
-
-      <div className="ontology-admin-content">
+      }
+    >
         {loading ? (
           <div className="ds-loading">
             <Loader2 size={32} className="ds-loading__spinner" aria-hidden />
@@ -117,7 +115,7 @@ export function GroupsListPage() {
             </table>
           </div>
         )}
-      </div>
+    </ListPage>
 
       <Dialog
         open={showCreate}
@@ -164,6 +162,6 @@ export function GroupsListPage() {
           </FormField>
         </form>
       </Dialog>
-    </div>
+    </>
   );
 }
