@@ -92,13 +92,23 @@ export function DatasetsListPage() {
 
   const graphNodes: ErGraphNode[] = useMemo(
     () =>
-      items.map((d) => ({
-        id: d.id,
-        name: datasetLabel(d),
-        joins: joins.filter(
+      items.map((d) => {
+        const touching = joins.filter(
           (j) => j.from_dataset_id === d.id || j.to_dataset_id === d.id,
-        ).length,
-      })),
+        );
+        /* Key columns first, then whatever the registered joins use — that is what a reader traces. */
+        const used = new Set<string>(d.primary_key_columns ?? []);
+        for (const join of touching) {
+          const own = join.from_dataset_id === d.id ? join.from_columns : join.to_columns;
+          for (const column of own) used.add(column);
+        }
+        return {
+          id: d.id,
+          name: datasetLabel(d),
+          joins: touching.length,
+          columns: [...used],
+        };
+      }),
     [items, joins],
   );
   const graphLinks: ErGraphLink[] = useMemo(
@@ -106,6 +116,7 @@ export function DatasetsListPage() {
       joins.map((j) => ({
         source: j.from_dataset_id,
         target: j.to_dataset_id,
+        targetOptional: !j.required,
         label: `${j.required ? t("datasets.requiredLabel") : t("datasets.optionalLabel")} · ${j.from_columns
           .map((c, i) => `${c} = ${j.to_columns[i] ?? ""}`)
           .join(", ")}`,

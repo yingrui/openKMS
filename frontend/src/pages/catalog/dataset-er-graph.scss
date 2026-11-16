@@ -27,7 +27,8 @@
 }
 
 .dataset-er-graph__edge-end {
-  fill: var(--color-border-strong);
+  stroke: var(--color-border-strong);
+  stroke-width: 1.5;
 }
 
 /* The join's meaning, written on the line — the star diagram in a dataset's 关联 tab labels its edges the
@@ -43,6 +44,8 @@
 
 .dataset-er-graph__node {
   position: absolute;
+  cursor: grab;
+  touch-action: none;
   display: flex;
   flex-direction: column;
   justify-content: center;
@@ -60,6 +63,29 @@
   &:focus-visible {
     border-color: var(--color-accent);
   }
+
+  &:active {
+    cursor: grabbing;
+    z-index: 1;
+  }
+}
+
+/* The dataset's key and join columns: what makes the box a table rather than a label. */
+.dataset-er-graph__node-columns {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  margin-top: var(--space-1);
+  overflow: hidden;
+}
+
+.dataset-er-graph__node-column {
+  overflow: hidden;
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  color: var(--color-text-secondary);
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .dataset-er-graph__node-name {
