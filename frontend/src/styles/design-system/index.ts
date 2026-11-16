@@ -12,6 +12,7 @@ export {
   type ResourceViewToggleProps,
 } from './ResourceViewToggle';
 export { PanelToolbar } from './PanelToolbar';
+export { ListPage } from './ListPage';
 export { Dialog, type DialogProps, type DialogSize } from './Dialog';
 export { EmptyState, type EmptyStateProps } from './EmptyState';
 export { Metric, MetricGrid, type MetricProps } from './Metric';

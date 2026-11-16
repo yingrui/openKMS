@@ -99,3 +99,16 @@
   font-size: var(--text-base);
 }
 
+
+/* The list page's toolbar row and body: one row of controls above the table, the table below it. */
+.ds-list-toolbar {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  flex-wrap: wrap;
+  margin-bottom: var(--space-5);
+}
+
+.ds-list-page__body {
+  width: 100%;
+}

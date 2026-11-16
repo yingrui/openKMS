@@ -40,6 +40,7 @@ import { fetchMetrics, type MetricResponse } from "../../../data/metricsApi";
 import { fetchDatasets, type DatasetResponse } from "../../../data/datasetsApi";
 import { datasetLabel } from "../datasetLabel";
 import { DatasetAppTabs } from "../../../components/ontology/DatasetAppTabs";
+import { ListPage } from "../../../styles/design-system";
 import "../../ontology/ontology-admin.scss";
 import "../../../styles/rules.scss";
 
@@ -268,13 +269,11 @@ export function RulesPage() {
   };
 
   return (
-    <div className="ontology-admin">
-      <div className="page-header">
-        <div>
-          <h1>{t("rules.title")}</h1>
-          <p className="page-subtitle">{t("rules.subtitle")}</p>
-        </div>
-        <div className="page-header-actions">
+    <ListPage
+      title={t("rules.title")}
+      subtitle={t("rules.subtitle")}
+      actions={
+        <>
           <button
             type="button"
             className="btn btn-secondary"
@@ -292,295 +291,281 @@ export function RulesPage() {
             <Plus size={16} aria-hidden />
             {t("rules.create")}
           </Link>
+        </>
+      }
+      tabs={<DatasetAppTabs />}
+      toolbar={
+        <div className="rules-view-switch" role="tablist">
+          <button
+            type="button"
+            role="tab"
+            aria-selected={tab === "rules"}
+            className={`rules-view-switch__btn ${tab === "rules" ? "is-active" : ""}`}
+            onClick={() => setTab("rules")}
+          >
+            {t("rules.tabRules")}
+            <span className="rules-tab-count">{rules.length}</span>
+          </button>
+          <button
+            type="button"
+            role="tab"
+            aria-selected={tab === "events"}
+            className={`rules-view-switch__btn ${tab === "events" ? "is-active" : ""}`}
+            onClick={() => setTab("events")}
+          >
+            {t("rules.tabEvents")}
+            <span className="rules-tab-count">{openEventTotal}</span>
+          </button>
         </div>
-      </div>
-
-      <DatasetAppTabs />
-
-      <div className="ontology-admin-content">
-        <div className="console-datasets-toolbar">
-            <div className="rules-view-switch" role="tablist">
-              <button
-                type="button"
-                role="tab"
-                aria-selected={tab === "rules"}
-                className={`rules-view-switch__btn ${tab === "rules" ? "is-active" : ""}`}
-                onClick={() => setTab("rules")}
-              >
-                {t("rules.tabRules")}
-                <span className="rules-tab-count">{rules.length}</span>
-              </button>
-              <button
-                type="button"
-                role="tab"
-                aria-selected={tab === "events"}
-                className={`rules-view-switch__btn ${tab === "events" ? "is-active" : ""}`}
-                onClick={() => setTab("events")}
-              >
-                {t("rules.tabEvents")}
-                <span className="rules-tab-count">{openEventTotal}</span>
-              </button>
-            </div>
-        </div>
-
-        <div className="rules-list-stack">
-          {loading ? (
-            <div className="console-loading">
-              <Loader2
-                size={32}
-                className="console-loading-spinner"
-                aria-hidden
+      }
+    >
+      <div className="rules-list-stack">
+        {loading ? (
+          <div className="console-loading">
+            <Loader2
+              size={32}
+              className="console-loading-spinner"
+              aria-hidden
+            />
+            <p>{t("shared.loading")}</p>
+          </div>
+        ) : tab === "rules" ? (
+          <>
+            {rules.length === 0 ? (
+              <EmptyState
+                icon={<BellRing size={32} aria-hidden />}
+                title={t("rules.empty")}
+                action={
+                  <Link to="/data-rules/new" className="btn btn-primary">
+                    {t("rules.create")}
+                  </Link>
+                }
               />
-              <p>{t("shared.loading")}</p>
-            </div>
-          ) : tab === "rules" ? (
-            <>
-              {rules.length === 0 ? (
-                <EmptyState
-                  icon={<BellRing size={32} aria-hidden />}
-                  title={t("rules.empty")}
-                  action={
-                    <Link to="/data-rules/new" className="btn btn-primary">
-                      {t("rules.create")}
-                    </Link>
-                  }
-                />
-              ) : (
-                <>
-                  {/* The three questions an operator asks of a list of checks: enabled? on fire?
+            ) : (
+              <>
+                {/* The three questions an operator asks of a list of checks: enabled? on fire?
                     ever actually run? Each is a filter, not a column to squint at. */}
-                  <div className="console-datasets-toolbar">
-                    <label className="console-datasets-filter">
-                      {t("rules.colState")}
-                      <select
-                        className="ds-control"
-                        value={ruleState}
-                        onChange={(e) =>
-                          setRuleState(
-                            e.target.value as "all" | "active" | "paused",
-                          )
-                        }
-                      >
-                        <option value="all">
-                          {t("rules.statusFilterAll")}
-                        </option>
-                        <option value="active">{t("rules.active")}</option>
-                        <option value="paused">{t("rules.paused")}</option>
-                      </select>
-                    </label>
-                    <label className="rules-check-filter">
-                      <input
-                        type="checkbox"
-                        checked={onlyWithIncidents}
-                        onChange={(e) => setOnlyWithIncidents(e.target.checked)}
-                      />
-                      {t("rules.filterOpenIncidents")}
-                    </label>
-                    <label className="rules-check-filter">
-                      <input
-                        type="checkbox"
-                        checked={onlyNeverRun}
-                        onChange={(e) => setOnlyNeverRun(e.target.checked)}
-                      />
-                      {t("rules.filterNeverRun")}
-                    </label>
-                  </div>
-                  <div className="ds-table-wrap">
-                    <table className="ds-table">
-                      <thead>
-                        <tr>
-                          <th>{t("rules.colName")}</th>
-                          <th>{t("rules.colSubject")}</th>
-                          <th>{t("rules.colCondition")}</th>
-                          <th>{t("rules.colSeverity")}</th>
-                          <th>{t("rules.colLastRun")}</th>
-                          <th>{t("rules.colOpenEvents")}</th>
-                          <TableRowActionCell as="th">
-                            {t("shared.actions")}
+                <div className="console-datasets-toolbar">
+                  <label className="console-datasets-filter">
+                    {t("rules.colState")}
+                    <select
+                      className="ds-control"
+                      value={ruleState}
+                      onChange={(e) =>
+                        setRuleState(
+                          e.target.value as "all" | "active" | "paused",
+                        )
+                      }
+                    >
+                      <option value="all">{t("rules.statusFilterAll")}</option>
+                      <option value="active">{t("rules.active")}</option>
+                      <option value="paused">{t("rules.paused")}</option>
+                    </select>
+                  </label>
+                  <label className="rules-check-filter">
+                    <input
+                      type="checkbox"
+                      checked={onlyWithIncidents}
+                      onChange={(e) => setOnlyWithIncidents(e.target.checked)}
+                    />
+                    {t("rules.filterOpenIncidents")}
+                  </label>
+                  <label className="rules-check-filter">
+                    <input
+                      type="checkbox"
+                      checked={onlyNeverRun}
+                      onChange={(e) => setOnlyNeverRun(e.target.checked)}
+                    />
+                    {t("rules.filterNeverRun")}
+                  </label>
+                </div>
+                <div className="ds-table-wrap">
+                  <table className="ds-table">
+                    <thead>
+                      <tr>
+                        <th>{t("rules.colName")}</th>
+                        <th>{t("rules.colSubject")}</th>
+                        <th>{t("rules.colCondition")}</th>
+                        <th>{t("rules.colSeverity")}</th>
+                        <th>{t("rules.colLastRun")}</th>
+                        <th>{t("rules.colOpenEvents")}</th>
+                        <TableRowActionCell as="th">
+                          {t("shared.actions")}
+                        </TableRowActionCell>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {shownRules.map((rule) => (
+                        <tr key={rule.id}>
+                          <td>
+                            <Link
+                              to={`/data-rules/${rule.id}`}
+                              className="ds-table-primary"
+                            >
+                              {rule.name ?? "—"}
+                            </Link>
+                            {rule.status === "paused" ? (
+                              <span className="rules-paused">
+                                {t("rules.paused")}
+                              </span>
+                            ) : null}
+                          </td>
+                          <td>{metricName(rule.metric_id ?? "")}</td>
+                          <td className="rules-condition">
+                            <span className="rules-kind">
+                              {(rule.identities?.length ?? 0) > 0
+                                ? t("rules.modeRelation")
+                                : t("rules.modeCondition")}
+                            </span>
+                            {checkSummary(rule)}
+                          </td>
+                          <td>
+                            <StatusChip tone={severityTone(rule.severity)}>
+                              {rule.severity ?? "—"}
+                            </StatusChip>
+                          </td>
+                          <td>
+                            {rule.last_status ? (
+                              <StatusLine title={rule.last_reason ?? undefined}>
+                                <StatusChip tone={statusTone(rule.last_status)}>
+                                  {t(`rules.status.${rule.last_status}`)}
+                                </StatusChip>
+                                {/* The period matters as much as the verdict: "passed" for which one? */}
+                                <StatusLineNote>
+                                  {rule.last_period_start || "—"}
+                                  {rule.last_run_at
+                                    ? ` · ${new Date(rule.last_run_at).toLocaleString()}`
+                                    : ""}
+                                </StatusLineNote>
+                              </StatusLine>
+                            ) : (
+                              t("rules.neverRun")
+                            )}
+                          </td>
+                          <td>
+                            {(openByRule[rule.rule_id ?? ""] ?? 0) > 0 ? (
+                              <button
+                                type="button"
+                                className="rules-open-events"
+                                onClick={() => setTab("events")}
+                                title={t("rules.openEventsHint")}
+                              >
+                                {openByRule[rule.rule_id ?? ""]}
+                              </button>
+                            ) : (
+                              <span className="rules-open-events rules-open-events--none">
+                                {t("datasets.dash")}
+                              </span>
+                            )}
+                          </td>
+                          <TableRowActionCell>
+                            <TableRowActions>
+                              <TableRowActionButton
+                                title={t("rules.run")}
+                                aria-label={t("rules.run")}
+                                icon={<Play size={16} aria-hidden />}
+                                loading={runningId === rule.id}
+                                disabled={rule.status === "paused"}
+                                onClick={() => void runOne(rule)}
+                              />
+                              <TableRowActionButton
+                                title={
+                                  rule.status === "paused"
+                                    ? t("rules.resume")
+                                    : t("rules.pause")
+                                }
+                                aria-label={
+                                  rule.status === "paused"
+                                    ? t("rules.resume")
+                                    : t("rules.pause")
+                                }
+                                icon={<BellRing size={16} aria-hidden />}
+                                onClick={() => void togglePause(rule)}
+                              />
+                            </TableRowActions>
                           </TableRowActionCell>
                         </tr>
-                      </thead>
-                      <tbody>
-                        {shownRules.map((rule) => (
-                          <tr key={rule.id}>
-                            <td>
-                              <Link
-                                to={`/data-rules/${rule.id}`}
-                                className="ds-table-primary"
-                              >
-                                {rule.name ?? "—"}
-                              </Link>
-                              {rule.status === "paused" ? (
-                                <span className="rules-paused">
-                                  {t("rules.paused")}
-                                </span>
-                              ) : null}
-                            </td>
-                            <td>{metricName(rule.metric_id ?? "")}</td>
-                            <td className="rules-condition">
-                              <span className="rules-kind">
-                                {(rule.identities?.length ?? 0) > 0
-                                  ? t("rules.modeRelation")
-                                  : t("rules.modeCondition")}
-                              </span>
-                              {checkSummary(rule)}
-                            </td>
-                            <td>
-                              <StatusChip tone={severityTone(rule.severity)}>
-                                {rule.severity ?? "—"}
-                              </StatusChip>
-                            </td>
-                            <td>
-                              {rule.last_status ? (
-                                <StatusLine
-                                  title={rule.last_reason ?? undefined}
-                                >
-                                  <StatusChip
-                                    tone={statusTone(rule.last_status)}
-                                  >
-                                    {t(`rules.status.${rule.last_status}`)}
-                                  </StatusChip>
-                                  {/* The period matters as much as the verdict: "passed" for which one? */}
-                                  <StatusLineNote>
-                                    {rule.last_period_start || "—"}
-                                    {rule.last_run_at
-                                      ? ` · ${new Date(rule.last_run_at).toLocaleString()}`
-                                      : ""}
-                                  </StatusLineNote>
-                                </StatusLine>
-                              ) : (
-                                t("rules.neverRun")
-                              )}
-                            </td>
-                            <td>
-                              {(openByRule[rule.rule_id ?? ""] ?? 0) > 0 ? (
-                                <button
-                                  type="button"
-                                  className="rules-open-events"
-                                  onClick={() => setTab("events")}
-                                  title={t("rules.openEventsHint")}
-                                >
-                                  {openByRule[rule.rule_id ?? ""]}
-                                </button>
-                              ) : (
-                                <span className="rules-open-events rules-open-events--none">
-                                  {t("datasets.dash")}
-                                </span>
-                              )}
-                            </td>
-                            <TableRowActionCell>
-                              <TableRowActions>
-                                <TableRowActionButton
-                                  title={t("rules.run")}
-                                  aria-label={t("rules.run")}
-                                  icon={<Play size={16} aria-hidden />}
-                                  loading={runningId === rule.id}
-                                  disabled={rule.status === "paused"}
-                                  onClick={() => void runOne(rule)}
-                                />
-                                <TableRowActionButton
-                                  title={
-                                    rule.status === "paused"
-                                      ? t("rules.resume")
-                                      : t("rules.pause")
-                                  }
-                                  aria-label={
-                                    rule.status === "paused"
-                                      ? t("rules.resume")
-                                      : t("rules.pause")
-                                  }
-                                  icon={<BellRing size={16} aria-hidden />}
-                                  onClick={() => void togglePause(rule)}
-                                />
-                              </TableRowActions>
-                            </TableRowActionCell>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                </>
-              )}
-            </>
-          ) : (
-            <>
-              <div className="console-datasets-toolbar">
-                <label className="console-datasets-filter">
-                  {t("rules.filterStatus")}
-                  <select
-                    className="ds-control"
-                    value={statusFilter}
-                    onChange={(e) =>
-                      setStatusFilter(e.target.value as "open" | "")
-                    }
-                  >
-                    <option value="open">{t("rules.statusFilterOpen")}</option>
-                    <option value="">{t("rules.statusFilterAll")}</option>
-                  </select>
-                </label>
-                <label className="console-datasets-filter">
-                  {t("rules.colSeverity")}
-                  <select
-                    className="ds-control"
-                    value={severityFilter}
-                    onChange={(e) =>
-                      setSeverityFilter(
-                        e.target.value as "P0" | "P1" | "P2" | "",
-                      )
-                    }
-                  >
-                    <option value="">{t("rules.statusFilterAll")}</option>
-                    {["P0", "P1", "P2"].map((severity) => (
-                      <option key={severity} value={severity}>
-                        {severity}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-              </div>
-
-              {events.length === 0 ? (
-                <EmptyState
-                  icon={<BellRing size={32} aria-hidden />}
-                  title={t("rules.emptyEvents")}
-                />
-              ) : (
-                <RulesEventsTable
-                  events={events}
-                  busyEventId={busyEventId}
-                  onTransition={(event, status) =>
-                    void moveEvent(event, status)
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </>
+            )}
+          </>
+        ) : (
+          <>
+            <div className="console-datasets-toolbar">
+              <label className="console-datasets-filter">
+                {t("rules.filterStatus")}
+                <select
+                  className="ds-control"
+                  value={statusFilter}
+                  onChange={(e) =>
+                    setStatusFilter(e.target.value as "open" | "")
                   }
-                  grouped
-                  ruleNames={Object.fromEntries(
-                    rules.map((rule) => [rule.rule_id, rule.name]),
-                  )}
-                  metricNames={Object.fromEntries(
-                    metrics.map((metric) => [metric.id, metric.name]),
-                  )}
-                  lookups={{
-                    metricName,
-                    datasetName,
-                    and: t("rules.joinAnd"),
-                    or: t("rules.joinOr"),
-                    derivedWord: (word) =>
-                      t(
-                        `rules.evidence${
-                          {
-                            target: "Target",
-                            residual: "Residual",
-                            tolerance: "Tolerance",
-                          }[word]
-                        }`,
-                      ),
-                  }}
-                />
-              )}
+                >
+                  <option value="open">{t("rules.statusFilterOpen")}</option>
+                  <option value="">{t("rules.statusFilterAll")}</option>
+                </select>
+              </label>
+              <label className="console-datasets-filter">
+                {t("rules.colSeverity")}
+                <select
+                  className="ds-control"
+                  value={severityFilter}
+                  onChange={(e) =>
+                    setSeverityFilter(e.target.value as "P0" | "P1" | "P2" | "")
+                  }
+                >
+                  <option value="">{t("rules.statusFilterAll")}</option>
+                  {["P0", "P1", "P2"].map((severity) => (
+                    <option key={severity} value={severity}>
+                      {severity}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            </div>
 
-              <p className="rules-hint">{t("rules.eventsHint")}</p>
-            </>
-          )}
-        </div>
+            {events.length === 0 ? (
+              <EmptyState
+                icon={<BellRing size={32} aria-hidden />}
+                title={t("rules.emptyEvents")}
+              />
+            ) : (
+              <RulesEventsTable
+                events={events}
+                busyEventId={busyEventId}
+                onTransition={(event, status) => void moveEvent(event, status)}
+                grouped
+                ruleNames={Object.fromEntries(
+                  rules.map((rule) => [rule.rule_id, rule.name]),
+                )}
+                metricNames={Object.fromEntries(
+                  metrics.map((metric) => [metric.id, metric.name]),
+                )}
+                lookups={{
+                  metricName,
+                  datasetName,
+                  and: t("rules.joinAnd"),
+                  or: t("rules.joinOr"),
+                  derivedWord: (word) =>
+                    t(
+                      `rules.evidence${
+                        {
+                          target: "Target",
+                          residual: "Residual",
+                          tolerance: "Tolerance",
+                        }[word]
+                      }`,
+                    ),
+                }}
+              />
+            )}
+
+            <p className="rules-hint">{t("rules.eventsHint")}</p>
+          </>
+        )}
       </div>
 
       <RunRulesDialog
@@ -589,6 +574,6 @@ export function RulesPage() {
         onClose={() => setRunOpen(false)}
         onRun={(params) => void runAll(params)}
       />
-    </div>
+    </ListPage>
   );
 }
