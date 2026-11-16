@@ -32,16 +32,20 @@ The app answers three questions, and each has one page. They are ordered by what
 | Which number is wrong? | **→ 告警事件** (`?tab=events`) | Incidents, one per rule × scope, grouped by rule, with the evidence inline (each identity's residual, the tolerance, the rule version), filtered by state and severity, actionable (resolve / dismiss) |
 | What does this rule claim, and why? | **A rule** (`/data-rules/:ruleId`) | An entity page: the rail carries identity (**name**, `rule_id`, owner, version, severity, enabled) and the four sections below; the **description is the page's subtitle**, and the page's actions (编辑 / 立即运行) sit in the page header — the rail is for who this is and where to go |
 
-A rule is defined in steps, and the page is split the same way — one card per intent, so a reader can find the
-field they came to change instead of scrolling one giant form:
+A rule is defined in steps, and the page is split the same way — **one route per step**, like a semantic model
+(`/data-rules/:ruleId` · `/events` · `/settings`), so a step has its own address, the
+rail highlights it, and browser back/forward work. Inside a step there is one card, not a scrolling page of
+cards:
 
 | Section | Answers | Read / edit |
 |---|---|---|
-| **概览** | what does it watch, per what, and is it enabled | subject metric and last run as facts, then the **basic information form** (name, description, rule id, severity, status) |
-| **检查内容** | what must hold (every identity, or the threshold) | sentence / editor |
-| **运行参数** | which field carries the period, which slice a run may narrow | facts / form |
-| **告警内容** | what a reader sees when it fires (conclusion, advice) | facts / form |
-| **告警事件** | what actually happened (incidents, evidence, triage) | table, read-only |
+| **概览** (`/`) | the whole definition as a record: subject and grouping, **every identity** (or the threshold), the run parameters, the alert copy, and the last verdict | read-only; 在设置中修改 |
+| **告警事件** (`/events`) | what actually happened (incidents, evidence, triage) | table, read-only |
+| **设置** (`/settings`) | **the only place a rule is edited**, and the only place it can be deleted | name, description, rule id, severity, status · check · run parameters · alert copy — one card each with its own save — plus a danger zone |
+
+The rail follows the rest of the product: **settings owns identity and deletion** (a model and a dataset do the
+same), so the page header carries no edit/delete action — only 运行, which is an action on the rule, not on its
+definition.
 
 "Last run" is not a section: it is part of the verdict's state, shown in the list row and on the event, not a
 place to go.

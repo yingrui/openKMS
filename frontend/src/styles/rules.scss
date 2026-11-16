@@ -279,12 +279,6 @@
   max-width: 640px;
 }
 
-/* A card's own save: two small buttons in the panel head, inert until that card differs from the server. */
-.rules-section-save {
-  display: inline-flex;
-  gap: var(--space-2);
-}
-
 /* The rules/incidents switch: a plain two-way toggle in the panel head, not the settings page's tab bar. */
 .rules-view-switch {
   display: flex;
@@ -305,6 +299,15 @@
   &.is-active {
     color: var(--color-text);
   }
+}
+
+/* Read view of a rule's identities: one line each, so "which one failed" can be matched to the event. */
+.rules-identities {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin: 0;
+  padding-left: var(--space-4);
 }
 
 /* What a rule asserts: the kind first (等式 / 阈值), then the sentence — the column reads in one pass. */

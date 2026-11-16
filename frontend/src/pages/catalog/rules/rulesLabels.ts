@@ -182,12 +182,14 @@ export function relationLabel(
   metricName: (id: string) => string,
 ): string | null {
   if (!relation || !relation.target?.metric) return null;
-  const member = (ref: string, weight?: number) => {
+  const member = (ref: string, weight?: number, groupField?: string | null) => {
     const name = metricName(ref);
-    return weight === undefined || weight === 1 ? name : `${name} × ${weight}`;
+    const sized = weight === undefined || weight === 1 ? name : `${name} × ${weight}`;
+    // Two datasets in one identity usually name the key differently; the sentence has to say so.
+    return groupField ? `${sized}（按 ${groupField}）` : sized;
   };
   const right = relation.members
-    .map((m) => member(m.metric, m.weight))
+    .map((m) => member(m.metric, m.weight, m.group_field))
     .join(' + ');
   const tolerance = relation.tolerance ?? {};
   const tail: string[] = [];

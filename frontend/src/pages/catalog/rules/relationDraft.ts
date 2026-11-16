@@ -1,5 +1,10 @@
 /** The relation draft, and its wire shape — the empty rows are dropped, weights default to 1. */
-export type RelationMemberDraft = { metricId: string; weight: string };
+export type RelationMemberDraft = {
+  metricId: string;
+  weight: string;
+  /** The member's own grouping key when the two sides name the same key differently (明细 scenario_id ↔ 方案 id). */
+  groupField: string;
+};
 
 export type RelationDraft = {
   target: string;
@@ -21,7 +26,11 @@ export function relationPayload(draft: RelationDraft) {
     target: { metric: draft.target },
     members: draft.members
       .filter((member) => member.metricId)
-      .map((member) => ({ metric: member.metricId, weight: Number(member.weight) || 1 })),
+      .map((member) => ({
+        metric: member.metricId,
+        weight: Number(member.weight) || 1,
+        ...(member.groupField.trim() ? { group_field: member.groupField.trim() } : {}),
+      })),
     tolerance: toTolerance(draft),
     ...(suggestion ? { suggestion } : {}),
   };
@@ -31,7 +40,7 @@ export function relationPayload(draft: RelationDraft) {
 export function emptyRelationDraft(): RelationDraft {
   return {
     target: '',
-    members: [{ metricId: '', weight: '1' }],
+    members: [{ metricId: '', weight: '1', groupField: '' }],
     toleranceKind: 'abs',
     toleranceValue: '0',
     suggestion: '',

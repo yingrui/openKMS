@@ -44,7 +44,6 @@ export function RuleScopeForm({
           type="text"
           value={value.groupField}
           onChange={(e) => onChange({ groupField: e.target.value })}
-          placeholder="scenario_id"
           list="rule-group-fields"
         />
         <datalist id="rule-group-fields">

@@ -10,13 +10,12 @@
  */
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { Outlet, useParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import { BellRing, Loader2, Play } from "lucide-react";
+import { Loader2, Play } from "lucide-react";
 import { toast } from "sonner";
-import { EmptyState, StatusChip, StatusLine } from "../../../styles/design-system";
+import { StatusChip, StatusLine } from "../../../styles/design-system";
 import {
-  createRule,
   fetchRule,
   fetchRuleEvents,
   updateRule,
@@ -31,57 +30,35 @@ import {
   fetchModelFields,
   type SemanticModelFieldResponse,
 } from "../../../data/semanticModelFieldsApi";
-import { EntityViewPanel, EntityViewShell } from "../../shared/EntityViewShell";
+import { EntityViewShell } from "../../shared/EntityViewShell";
 import { RunRulesDialog } from "./RunRulesDialog";
-import { conditionLabel } from "./rulesLabels";
-import { ConditionRows } from "./ConditionRows";
 import {
   conditionFromRows,
-  newRow,
   rowsFromCondition,
   type ConditionRow,
 } from "./conditionRowsModel";
 import { useRuleActions } from "./useRuleActions";
-import { RulesEventsTable } from "./RulesEventsTable";
-import { RuleBasicsForm } from "./RuleBasicsForm";
-import { RuleScopeForm } from "./RuleScopeForm";
-import { RuleAlertForm } from "./RuleAlertForm";
-import { SectionSave } from "./SectionSave";
-import { RelationEditor } from "./RelationEditor";
 import {
   buildRulePayload,
   EMPTY_FORM,
   formFromRule,
   type FormState,
 } from "./ruleForm";
-import { identitiesPayload } from "./relationDraft";
+import type { RuleDetailCtx } from "./ruleDetailContext";
+import { severityTone } from "./ruleTones";
 import "../../../styles/settings-page.scss";
 import "../../ontology/ontology-admin.scss";
 import "../../../styles/rules.scss";
 
-function statusTone(status: string | null): "ok" | "warn" | "neutral" | "accent" {
-  if (status === "fail") return "warn";
-  if (status === "pass") return "ok";
-  return "neutral";
-}
-
-function severityTone(severity: string | null): "warn" | "accent" | "neutral" {
-  if (severity === "P0") return "warn";
-  if (severity === "P1") return "accent";
-  return "neutral";
-}
-
 export function RuleDetailPage() {
   const { t } = useTranslation("ontology");
   const { ruleId } = useParams<{ ruleId: string }>();
-  const navigate = useNavigate();
-  const isNew = ruleId === "new";
 
   const [rule, setRule] = useState<RuleOut | null>(null);
   const [events, setEvents] = useState<EventOut[]>([]);
   const [metrics, setMetrics] = useState<MetricResponse[]>([]);
   const [datasets, setDatasets] = useState<DatasetResponse[]>([]);
-  const [loading, setLoading] = useState(!isNew);
+  const [loading, setLoading] = useState(true);
   /** Every card saves its own fields; there is no page-wide edit mode. */
   const [baseline, setBaseline] = useState<FormState>(EMPTY_FORM);
 
@@ -102,6 +79,8 @@ export function RuleDetailPage() {
   const [trial, setTrial] = useState<RulesEvaluateResponse | null>(null);
   const [busyEventId, setBusyEventId] = useState<string | null>(null);
   const [paramCandidates, setParamCandidates] = useState<string[]>([]);
+  /** The metric list failed to load: an editor without options would look like a broken rule. */
+  const [pickersMissing, setPickersMissing] = useState(false);
 
   const metricName = useMemo(() => {
     const byId = new Map(metrics.map((metric) => [metric.id, metric.name]));
@@ -154,11 +133,11 @@ export function RuleDetailPage() {
     ]);
     setMetrics(metricPage.items);
     setDatasets(datasetPage.items);
+    setPickersMissing(metricPage.items.length === 0);
     return { metrics: metricPage.items, datasets: datasetPage.items };
   }, []);
 
   const load = useCallback(async () => {
-    if (isNew) return;
     setLoading(true);
     try {
       const [current, eventPage, pickers] = await Promise.all([
@@ -184,29 +163,11 @@ export function RuleDetailPage() {
     } finally {
       setLoading(false);
     }
-  }, [isNew, ruleId, t, loadPickers]);
+  }, [ruleId, t, loadPickers]);
 
   useEffect(() => {
     void load();
   }, [load]);
-
-  useEffect(() => {
-    if (!isNew) return;
-    void loadPickers().then((pickers) => {
-      const next: FormState = {
-        ...EMPTY_FORM,
-        metricId: pickers.metrics[0]?.id ?? "",
-        datasetId: pickers.datasets[0]?.id ?? "",
-      };
-      setForm(next);
-      setConditionRows([
-        newRow({
-          metricId: pickers.metrics[0]?.id ?? "",
-          datasetId: pickers.datasets[0]?.id ?? "",
-        }),
-      ]);
-    });
-  }, [isNew, loadPickers]);
 
   /** One card's fields, compared against what the server last returned. */
   const dirty = (...keys: (keyof FormState)[]) =>
@@ -233,86 +194,32 @@ export function RuleDetailPage() {
     }
   };
 
-  const saveBasics = () =>
-    void patchSection({
-      name: form.name.trim(),
-      description: form.description.trim(),
-      rule_id: form.ruleId.trim() || null,
-      severity: form.severity,
-      status: form.status,
-    });
-
-  const saveCheck = () => {
-    if (conditionUnrepresentable) return;
-    const identities =
-      form.mode === "relation" ? identitiesPayload(form.relations) : null;
-    const condition =
-      form.mode === "relation" ? null : conditionFromRows(conditionRows);
-    if (!identities && !condition) {
-      setConditionError(t("rules.conditionIncomplete"));
-      return;
-    }
-    setConditionError(null);
-    void patchSection(identities ? { identities } : { condition });
-  };
-
-  const saveParams = () =>
-    void patchSection({
-      group_by: form.groupField.trim()
-        ? { field: form.groupField.trim() }
-        : null,
-      run_params: buildRulePayload(form, null).run_params,
-    });
-
-  const saveAlert = () =>
-    void patchSection({
-      conclusion: form.conclusion.trim(),
-      suggestion: form.suggestion.trim(),
-    });
-
-  const checkDirty = () =>
-    form.mode === "relation"
-      ? JSON.stringify(identitiesPayload(form.relations)) !==
-        JSON.stringify((rule?.identities ?? []).map((identity) => identity))
-      : JSON.stringify(conditionFromRows(conditionRows)) !==
-        JSON.stringify(rule?.condition ?? null);
-
-  /** Creating a rule is the one place that saves everything at once — it has no sections to update yet. */
-  const create = async () => {
-    if (!form.name.trim()) return;
+  /** One save for the whole definition: the settings page is one form, like a model's. */
+  const saveAll = () => {
+    if (!rule) return;
     if (conditionUnrepresentable) {
       setConditionError(t("rules.conditionUnrepresentable"));
       return;
     }
     const condition = conditionFromRows(conditionRows);
-    if (!condition) {
+    if (form.mode === "condition" && !condition) {
       setConditionError(t("rules.conditionIncomplete"));
       return;
     }
-    setSaving(true);
-    try {
-      const created = await createRule(buildRulePayload(form, condition));
-      toast.success(t("rules.toastCreated"));
-      navigate(`/data-rules/${created.id}`, { replace: true });
-    } catch (e: unknown) {
-      toast.error(e instanceof Error ? e.message : t("rules.toastSaveFailed"));
-    } finally {
-      setSaving(false);
-    }
+    const payload = buildRulePayload(form, condition);
+    void patchSection(payload as unknown as Record<string, unknown>);
   };
 
-  /** Undo every unsaved card: the baseline is what the server last returned. */
+  const dirtyAll = () =>
+    JSON.stringify(buildRulePayload(form, conditionFromRows(conditionRows))) !==
+    JSON.stringify(buildRulePayload(baseline, rule?.condition ?? null));
+
+  /** Undo the draft: back to what the server last returned. */
   const revert = () => {
-    if (isNew) {
-      navigate("/data-rules");
-      return;
-    }
-    if (rule) {
-      setForm(formFromRule(rule, metrics, datasets));
-      const rows = rowsFromCondition(rule.condition);
-      setConditionRows(rows ?? []);
-      setConditionUnrepresentable(rows === null);
-    }
+    setForm(baseline);
+    const rows = rowsFromCondition(rule?.condition ?? null);
+    setConditionRows(rows ?? []);
+    setConditionUnrepresentable(rows === null);
     setConditionError(null);
   };
 
@@ -350,7 +257,7 @@ export function RuleDetailPage() {
     );
   }
 
-  if (!isNew && !rule) {
+  if (!rule) {
     return (
       <div className="ontology-admin">
         <p className="page-subtitle">{t("rules.notFound")}</p>
@@ -358,33 +265,14 @@ export function RuleDetailPage() {
     );
   }
 
-  const shellTitle = isNew ? t("rules.dialogCreate") : (rule?.name ?? "—");
+  const shellTitle = rule?.name ?? "—";
   const shellMeta = rule ? (
     <>
       {rule.rule_id ?? ""}
       {rule.owner ? ` · ${rule.owner}` : ""} · v{rule.version ?? 1}
     </>
   ) : null;
-  const shellActions = isNew ? (
-    <>
-      <button
-        type="button"
-        className="btn btn-secondary"
-        onClick={() => navigate("/data-rules")}
-        disabled={saving}
-      >
-        {t("shared.cancel")}
-      </button>
-      <button
-        type="button"
-        className="btn btn-primary"
-        onClick={() => void create()}
-        disabled={saving || !form.name.trim()}
-      >
-        {saving ? t("rules.saving") : t("shared.create")}
-      </button>
-    </>
-  ) : rule ? (
+  const shellActions = rule ? (
     <>
       <button
         type="button"
@@ -409,6 +297,35 @@ export function RuleDetailPage() {
     </>
   ) : null;
 
+  const base = `/data-rules/${rule?.id ?? ""}`;
+  const ctx: RuleDetailCtx = {
+    rule,
+    form,
+    setForm,
+    saving,
+    events,
+    metricName,
+    datasetName,
+    paramCandidates,
+    periodSpec: rulePeriodArgument,
+    conditionRows,
+    setConditionRows,
+    conditionUnrepresentable,
+    conditionError,
+    setConditionError,
+    metrics,
+    datasets,
+    joinerWords: joiners,
+    dirty,
+    revert,
+    moveEvent: actions.moveEvent,
+    busyEventId,
+    remove: actions.remove,
+    saveAll,
+    dirtyAll,
+    pickersMissing,
+  };
+
   return (
     <EntityViewShell
       backTo="/data-rules"
@@ -428,11 +345,9 @@ export function RuleDetailPage() {
         ) : null
       }
       navItems={[
-        { sectionId: "overview", label: t("rules.navOverview") },
-        { sectionId: "check", label: t("rules.navCheck") },
-        { sectionId: "run-params", label: t("rules.navRunParams") },
-        { sectionId: "alert-copy", label: t("rules.navAlertCopy") },
-        ...(rule ? [{ sectionId: "events", label: t("rules.navEvents") }] : []),
+        { to: base, label: t("rules.navOverview"), end: true },
+        { to: `${base}/events`, label: t("rules.navEvents") },
+        { to: `${base}/settings`, label: t("rules.navSettings") },
       ]}
     >
       <header className="page-header">
@@ -444,219 +359,7 @@ export function RuleDetailPage() {
         <div className="page-header-actions">{shellActions}</div>
       </header>
 
-      <div className="account-stack">
-        {/* One card per intent: what it is, what must hold, how it runs, what it says. Each saves itself. */}
-        <EntityViewPanel
-          id="overview"
-          title={t("rules.navOverview")}
-          actions={
-            rule && !isNew ? (
-              <SectionSave
-                dirty={dirty(
-                  "name",
-                  "description",
-                  "ruleId",
-                  "severity",
-                  "status",
-                )}
-                saving={saving}
-                onSave={saveBasics}
-                onRevert={revert}
-              />
-            ) : null
-          }
-        >
-          {/* What the rule watches is a fact, not a form field: the subject is chosen when it is created. */}
-          <dl className="rules-facts">
-            <dt>{t("rules.fieldSubject")}</dt>
-            <dd>{metricName(form.metricId)}</dd>
-            <dt>{t("rules.colLastRun")}</dt>
-            <dd>
-              {rule?.last_status ? (
-                <StatusLine>
-                  <StatusChip tone={statusTone(rule.last_status)}>
-                    {t(`rules.status.${rule.last_status}`)}
-                  </StatusChip>
-                  <StatusLine>
-                    {rule.last_period_start || "—"}
-                    {rule.last_run_at ? ` · ${new Date(rule.last_run_at).toLocaleString()}` : ""}
-                  </StatusLine>
-                </StatusLine>
-              ) : (
-                t("rules.neverRun")
-              )}
-            </dd>
-          </dl>
-          <RuleBasicsForm
-            value={{
-              name: form.name,
-              description: form.description,
-              ruleId: form.ruleId,
-              severity: form.severity,
-              status: form.status,
-            }}
-            onChange={(next) => setForm({ ...form, ...next })}
-          />
-        </EntityViewPanel>
-
-        <EntityViewPanel
-          id="check"
-          title={
-            form.mode === "relation"
-              ? t("rules.panelRelation")
-              : t("rules.panelCondition")
-          }
-          description={
-            form.mode === "relation"
-              ? t("rules.panelRelationHint")
-              : t("rules.panelConditionHint")
-          }
-          actions={
-            rule && !isNew ? (
-              <SectionSave
-                dirty={checkDirty()}
-                saving={saving}
-                onSave={saveCheck}
-                onRevert={revert}
-              />
-            ) : null
-          }
-        >
-          {/* Two kinds of check, one place: a threshold, or an identity between metrics. */}
-          <div
-            className="ds-view-toggle rules-mode"
-            role="tablist"
-            aria-label={t("rules.modeAria")}
-          >
-            <button
-              type="button"
-              role="tab"
-              aria-selected={form.mode === "condition"}
-              className={`ds-view-toggle__btn ${form.mode === "condition" ? "active" : ""}`}
-              onClick={() => setForm({ ...form, mode: "condition" })}
-            >
-              {t("rules.modeCondition")}
-            </button>
-            <button
-              type="button"
-              role="tab"
-              aria-selected={form.mode === "relation"}
-              className={`ds-view-toggle__btn ${form.mode === "relation" ? "active" : ""}`}
-              onClick={() => setForm({ ...form, mode: "relation" })}
-            >
-              {t("rules.modeRelation")}
-            </button>
-          </div>
-
-          {form.mode === "relation" ? (
-            <RelationEditor
-              value={form.relations}
-              onChange={(relations) => setForm({ ...form, relations })}
-              metrics={metrics}
-              metricName={metricName}
-            />
-          ) : null}
-
-          {form.mode === "condition" ? (
-            <>
-              {/* The logic, in words, as the rows are edited — the editor shows fields, this shows the
-                      sentence a reader would have to reconstruct from them. */}
-              <p className="rules-condition-current">
-                {conditionLabel(
-                  conditionFromRows(conditionRows),
-                  { metricName, datasetName, ...joiners },
-                  form.groupField.trim()
-                    ? { field: form.groupField.trim() }
-                    : null,
-                ) ?? t("rules.conditionIncomplete")}
-              </p>
-              {conditionUnrepresentable ? (
-                <p className="rules-condition-warning">
-                  {t("rules.conditionUnrepresentable")}
-                </p>
-              ) : null}
-              <ConditionRows
-                rows={conditionRows}
-                onChange={(next) => {
-                  setConditionRows(next);
-                  setConditionError(null);
-                }}
-                metrics={metrics}
-                datasets={datasets}
-                error={conditionError}
-              />
-            </>
-          ) : null}
-        </EntityViewPanel>
-
-        <EntityViewPanel
-          id="run-params"
-          title={t("rules.navRunParams")}
-          description={t("rules.scopeHint")}
-          actions={
-            rule && !isNew ? (
-              <SectionSave
-                dirty={dirty("groupField", "runArgs")}
-                saving={saving}
-                onSave={saveParams}
-                onRevert={revert}
-              />
-            ) : null
-          }
-        >
-          <RuleScopeForm
-            value={{ groupField: form.groupField, runArgs: form.runArgs }}
-            onChange={(next) => setForm({ ...form, ...next })}
-            fields={paramCandidates}
-            periodSpec={rulePeriodArgument}
-          />
-        </EntityViewPanel>
-
-        <EntityViewPanel
-          id="alert-copy"
-          title={t("rules.navAlertCopy")}
-          description={t("rules.panelMeaningHint")}
-          actions={
-            rule && !isNew ? (
-              <SectionSave
-                dirty={dirty("conclusion", "suggestion")}
-                saving={saving}
-                onSave={saveAlert}
-                onRevert={revert}
-              />
-            ) : null
-          }
-        >
-          <RuleAlertForm
-            value={{ conclusion: form.conclusion, suggestion: form.suggestion }}
-            onChange={(next) => setForm({ ...form, ...next })}
-          />
-        </EntityViewPanel>
-
-        {rule ? (
-          <EntityViewPanel
-            id="events"
-            title={t("rules.navEvents")}
-            description={t("rules.panelEventsHint")}
-          >
-            {events.length === 0 ? (
-              <EmptyState
-                icon={<BellRing size={32} aria-hidden />}
-                title={t("rules.emptyEvents")}
-              />
-            ) : (
-              <RulesEventsTable
-                events={events}
-                busyEventId={busyEventId}
-                showPeriod
-                onTransition={(event, status) =>
-                  void actions.moveEvent(event, status)
-                }
-              />
-            )}
-          </EntityViewPanel>
-        ) : null}
-      </div>
+      <Outlet context={ctx} />
 
       <RunRulesDialog
         open={runOpen}

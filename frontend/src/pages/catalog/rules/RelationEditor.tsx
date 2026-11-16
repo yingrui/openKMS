@@ -135,7 +135,7 @@ export function RelationEditor({
             className="btn btn-secondary btn-sm rules-relation-add"
             onClick={() =>
               patch(at, {
-                members: [...draft.members, { metricId: "", weight: "1" }],
+                members: [...draft.members, { metricId: "", weight: "1", groupField: "" }],
               })
             }
           >

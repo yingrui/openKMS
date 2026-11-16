@@ -78,6 +78,7 @@ export function formFromRule(
             members: identity.members.map((member) => ({
               metricId: member.metric,
               weight: String(member.weight ?? 1),
+              groupField: member.group_field ?? '',
             })),
             toleranceKind: identity.tolerance?.rel
               ? ("rel" as const)

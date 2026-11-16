@@ -31,7 +31,6 @@ export function RuleBasicsForm({
           type="text"
           value={value.name}
           onChange={(e) => onChange({ name: e.target.value })}
-          placeholder={t("rules.fieldNamePlaceholder")}
         />
       </FormField>
       <FormField
@@ -42,7 +41,21 @@ export function RuleBasicsForm({
           type="text"
           value={value.ruleId}
           onChange={(e) => onChange({ ruleId: e.target.value })}
-          placeholder={t("rules.fieldRuleIdPlaceholder")}
+          autoComplete="off"
+        />
+      </FormField>
+      <FormField label={t("rules.fieldDescription")} hint={t("rules.fieldDescriptionHint")}>
+        <textarea
+          rows={2}
+          value={value.description}
+          onChange={(e) => onChange({ description: e.target.value })}
+        />
+      </FormField>
+      <FormField label={t("rules.fieldRuleId")} hint={t("rules.fieldRuleIdHint")}>
+        <input
+          type="text"
+          value={value.ruleId}
+          onChange={(e) => onChange({ ruleId: e.target.value })}
           autoComplete="off"
         />
       </FormField>

@@ -137,6 +137,18 @@ const RulesPage = lazy(() =>
 const RuleDetailPage = lazy(() =>
   import('./pages/catalog/rules/RuleDetailPage').then((m) => ({ default: m.RuleDetailPage })),
 );
+const RuleNewPage = lazy(() =>
+  import('./pages/catalog/rules/RuleNewPage').then((m) => ({ default: m.RuleNewPage })),
+);
+const RuleOverviewTab = lazy(() =>
+  import('./pages/catalog/rules/RuleOverviewTab').then((m) => ({ default: m.RuleOverviewTab })),
+);
+const RuleEventsTab = lazy(() =>
+  import('./pages/catalog/rules/RuleEventsTab').then((m) => ({ default: m.RuleEventsTab })),
+);
+const RuleSettingsTab = lazy(() =>
+  import('./pages/catalog/rules/RuleSettingsTab').then((m) => ({ default: m.RuleSettingsTab })),
+);
 const ActionsListPage = lazy(() =>
   import('./pages/ontology-manager/ActionsListPage').then((m) => ({ default: m.ActionsListPage })),
 );
@@ -497,8 +509,12 @@ function App() {
               <Route path="sharing" element={<ModelSharingTab />} />
               <Route path="settings" element={<ModelSettingsTab />} />
             </Route>
-            <Route path="data-rules/new" element={<RuleDetailPage />} />
-            <Route path="data-rules/:ruleId" element={<RuleDetailPage />} />
+            <Route path="data-rules/new" element={<RuleNewPage />} />
+            <Route path="data-rules/:ruleId" element={<RuleDetailPage />}>
+              <Route index element={<RuleOverviewTab />} />
+              <Route path="events" element={<RuleEventsTab />} />
+              <Route path="settings" element={<RuleSettingsTab />} />
+            </Route>
             <Route path="datasets/:id" element={<DatasetManagerDetailPage />}>
               <Route index element={<DatasetOverviewTab />} />
               <Route path="data" element={<DatasetDataRoute />} />
