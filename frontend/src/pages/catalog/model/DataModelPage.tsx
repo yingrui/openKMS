@@ -1,21 +1,21 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
-import { useTranslation } from 'react-i18next';
-import { Link, useNavigate } from 'react-router-dom';
-import { Boxes, Loader2, MoreHorizontal, Plus } from 'lucide-react';
-import { toast } from 'sonner';
+import { useCallback, useEffect, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
+import { Link, useNavigate } from "react-router-dom";
+import { Boxes, Loader2, MoreHorizontal, Plus } from "lucide-react";
+import { toast } from "sonner";
 import {
   fetchSemanticModels,
   importSemanticModel,
   type SemanticModelResponse,
-} from '../../../data/semanticModelsApi';
-import { EmptyState } from '../../../styles/design-system/index';
-import { DatasetAppTabs } from '../../../components/ontology/DatasetAppTabs';
-import { SemanticModelWizard } from './SemanticModelWizard';
-import '../../ontology/ontology-admin.scss';
+} from "../../../data/semanticModelsApi";
+import { EmptyState, ListPage } from "../../../styles/design-system/index";
+import { DatasetAppTabs } from "../../../components/ontology/DatasetAppTabs";
+import { SemanticModelWizard } from "./SemanticModelWizard";
+import "../../ontology/ontology-admin.scss";
 
 /** Model tab: the list of semantic models. Open one to edit its scope, fields, and metrics. */
 export function DataModelPage() {
-  const { t } = useTranslation('ontology');
+  const { t } = useTranslation("ontology");
   const navigate = useNavigate();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [models, setModels] = useState<SemanticModelResponse[]>([]);
@@ -28,7 +28,7 @@ export function DataModelPage() {
     try {
       setModels((await fetchSemanticModels()).items);
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : t('datasets.loadFailed'));
+      toast.error(e instanceof Error ? e.message : t("datasets.loadFailed"));
     } finally {
       setLoading(false);
     }
@@ -44,55 +44,63 @@ export function DataModelPage() {
       const doc = JSON.parse(await file.text()) as unknown;
       const summary = await importSemanticModel(doc);
       toast.success(
-        t('dataModel.importDone', {
+        t("dataModel.importDone", {
           r: summary.relationships,
           m: summary.metrics,
           f: summary.fields,
         }),
       );
       if (summary.warnings.length) {
-        toast.message(t('dataModel.importWarnings', { n: summary.warnings.length }));
+        toast.message(
+          t("dataModel.importWarnings", { n: summary.warnings.length }),
+        );
       }
       await load();
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : t('dataModel.importFailed'));
+      toast.error(e instanceof Error ? e.message : t("dataModel.importFailed"));
     } finally {
       setImporting(false);
-      if (fileInputRef.current) fileInputRef.current.value = '';
+      if (fileInputRef.current) fileInputRef.current.value = "";
     }
   };
 
   return (
-    <div className="ontology-admin">
-      <div className="page-header model-page-header">
-        <div>
-          <h1>{t('dataModel.title')}</h1>
-          <p className="page-subtitle">{t('dataModel.subtitle')}</p>
-        </div>
-        <div className="page-header-actions">
-          <details className="model-menu">
-            <summary className="btn btn-secondary" aria-label={t('dataModel.more')}>
-              <MoreHorizontal size={18} aria-hidden />
-            </summary>
-            <div className="model-menu__panel">
-              <button
-                type="button"
-                onClick={() => fileInputRef.current?.click()}
-                disabled={importing}
+    <>
+      <ListPage
+        headerClassName="model-page-header"
+        title={t("dataModel.title")}
+        subtitle={t("dataModel.subtitle")}
+        actions={
+          <>
+            <details className="model-menu">
+              <summary
+                className="btn btn-secondary"
+                aria-label={t("dataModel.more")}
               >
-                {t('dataModel.importModel')}
-              </button>
-            </div>
-          </details>
-          <button
-            type="button"
-            className="btn btn-primary"
-            onClick={() => setShowWizard(true)}
-          >
-            <Plus size={18} aria-hidden />
-            <span>{t('dataModel.newModel')}</span>
-          </button>
-        </div>
+                <MoreHorizontal size={18} aria-hidden />
+              </summary>
+              <div className="model-menu__panel">
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={importing}
+                >
+                  {t("dataModel.importModel")}
+                </button>
+              </div>
+            </details>
+            <button
+              type="button"
+              className="btn btn-primary"
+              onClick={() => setShowWizard(true)}
+            >
+              <Plus size={18} aria-hidden />
+              <span>{t("dataModel.newModel")}</span>
+            </button>
+          </>
+        }
+        tabs={<DatasetAppTabs />}
+      >
         <input
           ref={fileInputRef}
           type="file"
@@ -103,19 +111,20 @@ export function DataModelPage() {
             if (file) void handleImportFile(file);
           }}
         />
-      </div>
-      <DatasetAppTabs />
-      <div className="ontology-admin-content">
         {loading ? (
           <div className="console-loading">
-            <Loader2 size={32} className="console-loading-spinner" aria-hidden />
-            <p>{t('shared.loading')}</p>
+            <Loader2
+              size={32}
+              className="console-loading-spinner"
+              aria-hidden
+            />
+            <p>{t("shared.loading")}</p>
           </div>
         ) : models.length === 0 ? (
           <EmptyState
             icon={<Boxes size={32} aria-hidden />}
-            title={t('dataModel.modelsEmpty')}
-            description={t('dataModel.modelsEmptyHint')}
+            title={t("dataModel.modelsEmpty")}
+            description={t("dataModel.modelsEmptyHint")}
             action={
               <button
                 type="button"
@@ -123,7 +132,7 @@ export function DataModelPage() {
                 onClick={() => setShowWizard(true)}
               >
                 <Plus size={16} aria-hidden />
-                {t('dataModel.newModel')}
+                {t("dataModel.newModel")}
               </button>
             }
           />
@@ -132,9 +141,9 @@ export function DataModelPage() {
             <table className="ds-table">
               <thead>
                 <tr>
-                  <th>{t('dataModel.colModel')}</th>
-                  <th>{t('dataModel.colDatasets')}</th>
-                  <th>{t('dataModel.modelDescription')}</th>
+                  <th>{t("dataModel.colModel")}</th>
+                  <th>{t("dataModel.colDatasets")}</th>
+                  <th>{t("dataModel.modelDescription")}</th>
                 </tr>
               </thead>
               <tbody>
@@ -146,14 +155,16 @@ export function DataModelPage() {
                       </Link>
                     </td>
                     <td>{m.datasets.length}</td>
-                    <td className="ds-table-muted">{m.description ?? t('datasets.dash')}</td>
+                    <td className="ds-table-muted">
+                      {m.description ?? t("datasets.dash")}
+                    </td>
                   </tr>
                 ))}
               </tbody>
             </table>
           </div>
         )}
-      </div>
+      </ListPage>
 
       <SemanticModelWizard
         open={showWizard}
@@ -164,6 +175,6 @@ export function DataModelPage() {
           navigate(`/data-model/${model.id}`);
         }}
       />
-    </div>
+    </>
   );
 }

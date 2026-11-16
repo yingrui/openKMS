@@ -8,6 +8,7 @@
 import type { ReactNode } from 'react';
 
 export function ListPage({
+  headerClassName,
   title,
   subtitle,
   actions,
@@ -15,6 +16,8 @@ export function ListPage({
   toolbar,
   children,
 }: {
+  /** A modifier for the header (`model-page-header` and friends). */
+  headerClassName?: string;
   title?: ReactNode;
   subtitle?: ReactNode;
   actions?: ReactNode;
@@ -27,7 +30,7 @@ export function ListPage({
   return (
     <div className="ontology-admin">
       {title || subtitle || actions ? (
-        <header className="page-header">
+        <header className={`page-header${headerClassName ? ` ${headerClassName}` : ""}`}>
           <div>
             {title ? <h1>{title}</h1> : null}
             {subtitle ? <p className="page-subtitle">{subtitle}</p> : null}
