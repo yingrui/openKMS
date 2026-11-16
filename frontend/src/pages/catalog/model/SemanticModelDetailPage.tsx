@@ -48,9 +48,7 @@ export function SemanticModelDetailPage() {
   }
   if (!model) {
     return (
-      <div className="ontology-admin">
-        <p className="entity-view__readonly">{t('dataModel.modelNotFound')}</p>
-      </div>
+      <p className="entity-view__readonly">{t('dataModel.modelNotFound')}</p>
     );
   }
 

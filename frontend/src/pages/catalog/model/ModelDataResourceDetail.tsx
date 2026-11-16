@@ -103,9 +103,7 @@ export function ModelDataResourceDetail() {
   }
   if (!resource) {
     return (
-      <div className="ontology-admin">
-        <p className="entity-view__readonly">{t('dataModel.resourceNotFound')}</p>
-      </div>
+      <p className="entity-view__readonly">{t('dataModel.resourceNotFound')}</p>
     );
   }
 

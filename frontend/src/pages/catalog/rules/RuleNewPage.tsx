@@ -90,7 +90,7 @@ export function RuleNewPage() {
   };
 
   return (
-    <div className="ontology-admin">
+    <div className="ds-page">
       <header className="page-header">
         <div>
           <h1>{t('rules.dialogCreate')}</h1>

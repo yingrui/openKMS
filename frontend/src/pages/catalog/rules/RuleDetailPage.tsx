@@ -30,7 +30,7 @@ import {
   fetchModelFields,
   type SemanticModelFieldResponse,
 } from "../../../data/semanticModelFieldsApi";
-import { EntityViewShell } from "../../shared/EntityViewShell";
+import { EntityViewLoading, EntityViewShell } from "../../shared/EntityViewShell";
 import { RunRulesDialog } from "./RunRulesDialog";
 import {
   conditionFromRows,
@@ -247,22 +247,11 @@ export function RuleDetailPage() {
       : t("rules.groupedBy"),
   };
   if (loading) {
-    return (
-      <div className="ontology-admin">
-        <p className="page-subtitle">
-          <Loader2 size={16} className="animate-spin" aria-hidden />{" "}
-          {t("shared.loading")}
-        </p>
-      </div>
-    );
+    return <EntityViewLoading label={t("shared.loading")} />;
   }
 
   if (!rule) {
-    return (
-      <div className="ontology-admin">
-        <p className="page-subtitle">{t("rules.notFound")}</p>
-      </div>
-    );
+    return <p className="entity-view__readonly">{t("rules.notFound")}</p>;
   }
 
   const shellTitle = rule?.name ?? "—";
