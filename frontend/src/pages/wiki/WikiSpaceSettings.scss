@@ -574,3 +574,11 @@
   align-items: center;
   margin-top: var(--space-6);
 }
+
+/* The vault-import dialog: a hint and the option list, stacked. Its list rows are styled; the container
+   was not, so the hint sat against the first row. */
+.wiki-space-settings-vault-options {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}

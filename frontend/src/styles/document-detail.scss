@@ -2033,3 +2033,7 @@
   cursor: pointer;
 }
 
+/* Loading skeleton for the split view: same columns as the real one, no height jump when it swaps. */
+.document-detail-loading-split {
+  min-height: 60vh;
+}
