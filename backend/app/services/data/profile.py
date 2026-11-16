@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import uuid
+from datetime import UTC, datetime
 from typing import Any
 
 from sqlalchemy import select, text
@@ -80,6 +81,9 @@ async def store_profile(
         db.add(row)
     row.row_count = row_count
     row.column_stats = column_stats
+    # `computed_at` has a server default but no `onupdate`, so a refresh of an existing row kept the first
+    # computation's timestamp — the one number that says whether the statistics are current.
+    row.computed_at = datetime.now(UTC)
     await db.flush()
     return row
 

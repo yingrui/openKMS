@@ -890,7 +890,8 @@
     "aiExamplesPlaceholder": "各方案的分货满足率是多少？· 哪个方案超配了？",
     "aiNotFor": "不适用于",
     "aiNotForHint": "容易与它混淆的邻近指标，帮模型区分。",
-    "aiNotForPlaceholder": "缺口率, 缺货数"
+    "aiNotForPlaceholder": "缺口率, 缺货数",
+    "profileRows": "{{count}} 行"
   },
   "groups": {
     "title": "分组",

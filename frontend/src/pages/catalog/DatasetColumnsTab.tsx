@@ -93,7 +93,10 @@ export function DatasetColumnsTab() {
           <div className="dataset-columns__toolbar">
             <span>
               {profile?.computed_at
-                ? t('datasets.profileComputedAt', { time: profile.computed_at })
+                ? [
+                    t('datasets.profileRows', { count: profile.row_count ?? 0 }),
+                    t('datasets.profileComputedAt', { time: profile.computed_at }),
+                  ].join(' · ')
                 : t('datasets.profileEmpty')}
             </span>
             <button
