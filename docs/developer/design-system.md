@@ -120,6 +120,13 @@ one form, make the section a `navItems` entry in the shell's rail instead — th
 the ancestor's gap opens a 25px hole between the two halves of the card — no page rule can cancel a
 flex `gap`. Wrap both in one `<div className="settings-page">`. Pages living in
 `.ontology-admin-content` (e.g. `ConnectorDetailPage`) have no such gap and may keep them as siblings.
+**`ontology-admin` is a class name, not an owner.** It now has exactly one writer — `ListPage` — and that is
+not an accident: the class is what a *list page* renders, and every page-shaped shell above it (`ListPage`,
+EntityViewShell, `.ds-page`) is a design-system component. The name is legacy and would read better as
+`.ds-page`; renaming it is a one-component change plus the selectors that scope under it (`_console.scss`,
+`ontology-admin.scss`, `app-page.scss`), and it is deliberately not mixed into a behaviour change: the class
+still carries the list page's padding and max-width, so the rename is safe only with a rendered check.
+
 **A class used by more than one area belongs to the design system.** The name is the address: a shared
 capability called `console-*` or `ontology-admin-*` records which page needed it first, and the next page
 copies the markup instead of the object. `scripts/check-shared-classes.py` fails when a non-`ds-*` class
