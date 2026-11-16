@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
-import { Plus, Cpu, Search, Trash2, Pencil, Loader2, Server } from 'lucide-react';
+import { Plus, Cpu, Trash2, Pencil, Loader2, Server } from 'lucide-react';
 import { toast } from 'sonner';
 import { ErrorBanner } from '../../components/ErrorBanner';
 import {
@@ -27,6 +27,7 @@ import {
   Dialog,
   FormField,
   Pagination,
+  SearchField,
   TableRowActionButton,
   TableRowActionCell,
   TableRowActions,
@@ -358,16 +359,12 @@ export function Models() {
         <div className="models-content">
           <div className="models-toolbar">
             <div className="models-toolbar-row">
-              <div className="models-search">
-                <Search size={18} />
-                <input
-                  type="search"
-                  aria-label={t('models.searchAria')}
-                  placeholder={t('models.searchPlaceholder')}
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                />
-              </div>
+              <SearchField
+                value={search}
+                onChange={setSearch}
+                label={t('models.searchAria')}
+                placeholder={t('models.searchPlaceholder')}
+              />
               <div className="models-category-filters">
                 <button
                   type="button"

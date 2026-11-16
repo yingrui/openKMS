@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { Image, Video, Upload, Trash2, Settings, Sparkles, Loader2, Search, X, Folder, ArrowLeft } from 'lucide-react';
+import { Image, Video, Upload, Trash2, Settings, Sparkles, Loader2, X, Folder, ArrowLeft } from 'lucide-react';
 import { toast } from 'sonner';
 import { useEnsureMediaChannels } from '../../contexts/MediaChannelsContext';
 import {
@@ -21,6 +21,7 @@ import {
 import { useConfirm } from '../../contexts/ConfirmContext';
 import { useDebouncedValue } from '../../hooks/useDebouncedValue';
 import { useListFetch } from '../../hooks/useListFetch';
+import { SearchField } from '../../styles/design-system';
 import '../../styles/channel-page.scss';
 import './Media.scss';
 
@@ -210,16 +211,12 @@ export function MediaChannel() {
 
       <div className="channel-page-main">
         <div className="channel-page-toolbar">
-          <div className="channel-page-search">
-            <Search size={18} />
-            <input
-              type="search"
-              aria-label={t('channel.searchAria')}
-              placeholder={t('channel.searchPlaceholder')}
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-            />
-          </div>
+          <SearchField
+            value={search}
+            onChange={setSearch}
+            label={t('channel.searchAria')}
+            placeholder={t('channel.searchPlaceholder')}
+          />
           <select
             aria-label={t('channel.filterKindAria')}
             value={kindFilter}

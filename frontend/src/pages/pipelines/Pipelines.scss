@@ -22,32 +22,6 @@
   margin-bottom: var(--space-5);
 }
 
-.pipelines-search {
-  max-width: 360px;
-  display: flex;
-  align-items: center;
-  gap: calc(var(--space-2) + var(--space-1) / 2);
-  padding: var(--padding-compact-y) calc(var(--space-3) + var(--space-1) / 2);
-  background: var(--color-bg-elevated);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
-}
-
-.pipelines-search svg {
-  color: var(--color-text-muted);
-}
-
-.pipelines-search input {
-  flex: 1;
-  border: none;
-  background: none;
-  font-size: var(--text-base);
-}
-
-.pipelines-search input:focus {
-  outline: none;
-}
-
 .pipelines-table {
   width: 100%;
   border-collapse: collapse;

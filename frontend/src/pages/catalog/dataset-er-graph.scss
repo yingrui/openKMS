@@ -30,6 +30,17 @@
   fill: var(--color-border-strong);
 }
 
+/* The join's meaning, written on the line — the star diagram in a dataset's 关联 tab labels its edges the
+   same way, so the two readings of the same joins agree. */
+.dataset-er-graph__edge-label {
+  fill: var(--color-text-muted);
+  font-size: var(--text-xs);
+  paint-order: stroke;
+  stroke: var(--color-bg-elevated);
+  stroke-width: 3px;
+  stroke-linejoin: round;
+}
+
 .dataset-er-graph__node {
   position: absolute;
   display: flex;
@@ -43,6 +54,7 @@
   border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
   box-shadow: var(--shadow-sm);
+  transition: border-color 120ms ease;
 
   &:hover,
   &:focus-visible {
@@ -61,5 +73,5 @@
 
 .dataset-er-graph__node-meta {
   font-size: var(--text-xs);
-  color: var(--color-text-secondary);
+  color: var(--color-text-muted);
 }

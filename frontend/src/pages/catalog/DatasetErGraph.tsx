@@ -1,4 +1,5 @@
 import { useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import './dataset-er-graph.scss';
 
 export type ErGraphNode = { id: string; name: string; joins: number };
@@ -30,6 +31,7 @@ export function DatasetErGraph({
   /** Let the diagram claim the page's remaining height instead of a fixed box. */
   fill?: boolean;
 }) {
+  const { t } = useTranslation('ontology');
   const { boxes, width, height } = useMemo(() => {
     const columns = Math.max(1, Math.ceil(Math.sqrt(nodes.length)));
     const byId = new Map<string, { x: number; y: number }>();
@@ -85,6 +87,16 @@ export function DatasetErGraph({
                 y2={edge.y2}
               />
               <circle className="dataset-er-graph__edge-end" cx={edge.x2} cy={edge.y2} r={3} />
+              {edge.label ? (
+                <text
+                  className="dataset-er-graph__edge-label"
+                  x={(edge.x1 + edge.x2) / 2}
+                  y={(edge.y1 + edge.y2) / 2 - 8}
+                  textAnchor="middle"
+                >
+                  {edge.label}
+                </text>
+              ) : null}
             </g>
           ))}
         </svg>
@@ -98,7 +110,9 @@ export function DatasetErGraph({
             title={box.node.name}
           >
             <span className="dataset-er-graph__node-name">{box.node.name}</span>
-            <span className="dataset-er-graph__node-meta">{box.node.joins}</span>
+            <span className="dataset-er-graph__node-meta">
+              {t('dataModel.erJoins', { count: box.node.joins })}
+            </span>
           </button>
         ))}
       </div>

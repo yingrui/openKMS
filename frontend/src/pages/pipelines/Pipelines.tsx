@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Plus, GitBranch, Search, Trash2, Pencil, Loader2, Info } from 'lucide-react';
+import { Plus, GitBranch, Trash2, Pencil, Loader2, Info } from 'lucide-react';
 import { toast } from 'sonner';
 import { ErrorBanner } from '../../components/ErrorBanner';
 import {
@@ -13,7 +13,7 @@ import {
 } from '../../data/pipelinesApi';
 import { fetchAllModels, type ApiModelResponse } from '../../data/modelsApi';
 import { useConfirm } from '../../contexts/ConfirmContext';
-import { Dialog, FormField } from '../../styles/design-system';
+import { Dialog, FormField, SearchField } from '../../styles/design-system';
 import './Pipelines.scss';
 
 export function Pipelines() {
@@ -188,16 +188,12 @@ export function Pipelines() {
       </div>
       <div className="pipelines-content">
         <div className="pipelines-toolbar">
-          <div className="pipelines-search">
-            <Search size={18} />
-            <input
-              type="search"
-              aria-label={t('pipelines.searchAria')}
-              placeholder={t('pipelines.searchPlaceholder')}
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-            />
-          </div>
+          <SearchField
+            value={search}
+            onChange={setSearch}
+            label={t('pipelines.searchAria')}
+            placeholder={t('pipelines.searchPlaceholder')}
+          />
         </div>
         {error && <ErrorBanner message={error} onDismiss={() => setError(null)} />}
         <div className="ds-table-wrap">

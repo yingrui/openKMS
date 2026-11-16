@@ -25,7 +25,6 @@ channel-page-header-actions	pages/articles,pages/documents,pages/media
 channel-page-header-title	pages/articles,pages/documents,pages/media
 channel-page-main	pages/articles,pages/documents,pages/media
 channel-page-modal-spinner	pages/documents,pages/media
-channel-page-search	pages/articles,pages/documents,pages/media
 channel-page-spinner	pages/articles,pages/documents,pages/media
 channel-page-toolbar	pages/articles,pages/documents,pages/media
 channel-table	pages/articles,pages/documents

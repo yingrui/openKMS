@@ -1,12 +1,13 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { FileText, Plus, Search, Folder, Settings, X, FolderInput, Trash2, Loader2, ArrowLeft } from 'lucide-react';
+import { FileText, Plus, Folder, Settings, X, FolderInput, Trash2, Loader2, ArrowLeft } from 'lucide-react';
 import { toast } from 'sonner';
 import {
   TableRowActionButton,
   TableRowActions,
   Pagination,
+  SearchField,
 } from '../../styles/design-system';
 import { useEnsureArticleChannels } from '../../contexts/ArticleChannelsContext';
 import { flattenChannels, getDocumentChannelDescription, getDocumentChannelName } from '../../data/channelUtils';
@@ -348,16 +349,12 @@ export function ArticleChannel() {
 
       <div className="channel-page-main">
         <div className="channel-page-toolbar">
-          <div className="channel-page-search">
-            <Search size={18} />
-            <input
-              type="search"
-              aria-label={t('channel.searchAria')}
-              placeholder={t('channel.searchPlaceholder')}
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-            />
-          </div>
+          <SearchField
+            value={search}
+            onChange={setSearch}
+            label={t('channel.searchAria')}
+            placeholder={t('channel.searchPlaceholder')}
+          />
         </div>
         {selectedCount > 0 && (
           <div className="channel-page-bulk-bar" role="toolbar" aria-label={t('channel.selectedCount', { count: selectedCount })}>

@@ -474,7 +474,10 @@
     "periodKind_custom": "自定义",
     "periodFormat": "周期格式",
     "periodFormatHint": "自定义周期的标签形态，例如 YYYY-Www、YYYYMM、Qn FYyy。仅作文档与提示。",
-    "periodFormatPlaceholder": "YYYY-Www"
+    "periodFormatPlaceholder": "YYYY-Www",
+    "viewErDiagram": "ER 图",
+    "viewErDiagramTitle": "实体关系图：数据集与已登记的关联",
+    "erJoins": "{{count}} 条关联"
   },
   "datasets": {
     "title": "数据集",

@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
-import { Plus, ListTodo, Search, RefreshCw, Loader2, Trash2, CircleX } from 'lucide-react';
+import { Plus, ListTodo, RefreshCw, Loader2, Trash2, CircleX } from 'lucide-react';
 import { toast } from 'sonner';
 import { ErrorBanner } from '../../components/ErrorBanner';
 import { Link } from 'react-router-dom';
@@ -21,6 +21,7 @@ import {
   Dialog,
   FormField,
   Pagination,
+  SearchField,
   TableRowActionButton,
   TableRowActionCell,
   TableRowActions,
@@ -194,16 +195,12 @@ export function JobRuns() {
       </div>
       <div className="jobs-main">
         <div className="jobs-toolbar">
-          <div className="jobs-search">
-            <Search size={18} />
-            <input
-              type="search"
-              aria-label={t('jobs.searchAria')}
-              placeholder={t('jobs.searchPlaceholder')}
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-            />
-          </div>
+          <SearchField
+            value={search}
+            onChange={setSearch}
+            label={t('jobs.searchAria')}
+            placeholder={t('jobs.searchPlaceholder')}
+          />
           <select aria-label={t('jobs.filterStatusAria')} value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className="ds-control">
             <option value="">{t('jobs.statusAll')}</option>
             <option value="pending">{t('jobs.statusPending')}</option>

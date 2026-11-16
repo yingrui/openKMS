@@ -2,7 +2,6 @@ import { useParams, useNavigate, Link } from 'react-router-dom';
 import {
   FileText,
   Upload,
-  Search,
   FolderInput,
   Download,
   Trash2,
@@ -26,6 +25,7 @@ import {
   TableRowActions,
   Pagination,
   EmptyState,
+  SearchField,
 } from '../../styles/design-system';
 import { useDocumentChannel, DOCUMENT_STATUS_FILTER_VALUES, APPLICABLE_FILTER_VALUES } from './useDocumentChannel';
 import { DocumentChannelModals } from './DocumentChannel.modals';
@@ -153,16 +153,12 @@ export function DocumentChannel() {
 
       <div className="channel-page-main">
         <div className="channel-page-toolbar">
-          <div className="channel-page-search">
-            <Search size={18} />
-            <input
-              type="search"
-              aria-label={t('channel.searchAria')}
-              placeholder={t('channel.searchPlaceholder')}
-              value={v.search}
-              onChange={(e) => v.setSearch(e.target.value)}
-            />
-          </div>
+          <SearchField
+            value={v.search}
+            onChange={v.setSearch}
+            label={t('channel.searchAria')}
+            placeholder={t('channel.searchPlaceholder')}
+          />
           <select
             aria-label={t('channel.filterStatusAria')}
             value={v.statusFilter}

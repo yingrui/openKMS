@@ -397,6 +397,9 @@ export function DatasetsListPage() {
                 modes={["list", "graph"]}
                 value={view}
                 onChange={setView}
+                labels={{
+                  graph: t("dataModel.viewErDiagram"),
+                }}
               />
             </>
           ) : null
