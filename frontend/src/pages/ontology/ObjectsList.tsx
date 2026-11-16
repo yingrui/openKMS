@@ -28,7 +28,7 @@ export function ObjectsList() {
 
   return (
     <div className="objects-list">
-      <div className="page-header objects-header">
+      <div className="page-header">
         <div>
           <h1>{t('objects.title')}</h1>
           <p className="page-subtitle">{t('objects.subtitle')}</p>

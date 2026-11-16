@@ -28,7 +28,7 @@ export function LinksList() {
 
   return (
     <div className="links-list">
-      <div className="page-header links-header">
+      <div className="page-header">
         <div>
           <h1>{t('links.title')}</h1>
           <p className="page-subtitle">{t('links.subtitle')}</p>

@@ -55,7 +55,7 @@ export function DatasetErDiagram({ centerLabel, nodes, emptyLabel }: Props) {
         width={184}
         height={56}
         rx={10}
-        className="dataset-er__node dataset-er__node--center"
+        className="dataset-er__node"
       />
       <text x={cx} y={cy + 2} className="dataset-er__node-label" textAnchor="middle">
         {centerLabel}

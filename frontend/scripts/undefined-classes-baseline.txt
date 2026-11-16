@@ -1,7 +1,6 @@
 # Classes used in JSX that no stylesheet defines — accepted debt, not permission.
 # Each one styles nothing: either dead markup, or a real gap. This file only shrinks.
 src/components/Layout/UserMenu.tsx uses .user-menu-login-label
-src/components/agents/AgentsPageSkeleton.tsx uses .page
 src/pages/GlobalSearch.tsx uses .global-search-tab-text
 src/pages/agents/AgentSkillSettings.tsx uses .agent-skill-settings
 src/pages/agents/ProjectSettings.tsx uses .project-settings-skills-tab
@@ -23,9 +22,4 @@ src/pages/knowledge-bases/KnowledgeBaseDetail.tsx uses .kb-qa-msg-bubble
 src/pages/knowledge-bases/KnowledgeBaseDetail.tsx uses .kb-qa-msg-feedback
 src/pages/knowledge-bases/KnowledgeBaseDetail.tsx uses .kb-settings-col-models
 src/pages/knowledge-bases/KnowledgeBaseDetail.tsx uses .kb-settings-section
-src/pages/catalog/DatasetErDiagram.tsx uses .dataset-er__node--center
-src/pages/ontology/LinkTypesPage.tsx uses .page-subtitle--block
-src/pages/ontology/LinksList.tsx uses .links-header
-src/pages/ontology/ObjectsList.tsx uses .objects-header
-src/pages/ontology/OntologyList.tsx uses .ontology-header
 src/pages/wiki/WikiSpaceSettings.modals.tsx uses .wiki-space-settings-vault-options

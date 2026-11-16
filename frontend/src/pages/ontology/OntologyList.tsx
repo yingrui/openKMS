@@ -394,7 +394,7 @@ export function OntologyList() {
 
   return (
     <div className="ontology-list">
-      <div className="page-header ontology-header">
+      <div className="page-header">
         <div>
           <h1>{t('ontology.title')}</h1>
           <p className="page-subtitle">{t('ontology.subtitle')}</p>

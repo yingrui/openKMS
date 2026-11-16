@@ -36,6 +36,11 @@
   margin-left: auto;
 }
 
+/* A subtitle used as a block inside a cell (a `<span>` that must occupy its own line). */
+.page-subtitle--block {
+  display: block;
+}
+
 .page-subtitle {
   font-size: var(--text-base);
   line-height: var(--text-base--line);

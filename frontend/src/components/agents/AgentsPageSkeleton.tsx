@@ -57,7 +57,7 @@ export function AgentsWorkspaceSkeleton() {
 
 export function AgentsListSkeleton() {
   return (
-    <div className="agents-list page agents-page-skeleton" aria-busy="true" aria-live="polite">
+    <div className="agents-list agents-page-skeleton" aria-busy="true" aria-live="polite">
       <LoadingLabel />
       <div className="agents-loading-list-head">
         <Sk className="agents-sk--list-title" />
