@@ -367,7 +367,7 @@ npm run check   # typecheck → check:app-layout → check:app-modules → check
 | 26 | A **retired Chinese term** reappearing (演练场 / 查询台 / 操场 / 质量问题) | the word that replaced it (`即席查询`, `数据质量`). Terminology is not cosmetic: 演练场 and 查询台 named the same page, and 质量问题 was a dataset-checks list sitting beside 指标勾稽. `scripts/check-terminology.py`, baseline **0** — adding a retired word is a one-line, deliberate decision |
 | 27 | An operand-to-words call (`conditionLabel`, `conditionScopeNote`) **without both** `metricName` and `datasetName` | the missing one. A page that passed only `metricName` printed `b77c2c08…: count(*) != 1620` for a dataset operand — a lookup object's optional field, invisible to the type-checker. `scripts/check-label-lookups.py`, baseline **0** |
 | 28 | A dialog whose body is a form, closing on a backdrop click | `<Dialog dismissOnOverlay={false}>` — which is now the **default**: a form with six fields must not vanish because the pointer landed a few pixels outside it. Short pick-or-confirm dialogs may opt in |
-| 30 | A class used by **two or more areas** that is not named `ds-*` | move the object into the design system (or keep it page-local — one area, one owner). The name is the address: `console-table`, `console-loading`, `console-datasets-toolbar`, `console-form-control`, `console-modal-*`, `resource-list` were all shared capabilities named after the page that first needed them; each became `ds-table`, `ds-loading`, `ListToolbar`/`SearchField`/`FilterSelect`, `.ds-control`, `ds-dialog__*`, `ds-resource-list*`. `scripts/check-shared-classes.py`, baseline **116** — all feature-level styles three apps share on purpose (`channel-*`, `agents-*`, `files-rail-*`) — renaming those to `ds-*` would claim they are generic primitives |
+| 30 | A class used by **two or more areas** that is not named `ds-*` | move the object into the design system (or keep it page-local — one area, one owner). The name is the address: `console-table`, `console-loading`, `console-datasets-toolbar`, `console-form-control`, `console-modal-*`, `resource-list` were all shared capabilities named after the page that first needed them; each became `ds-table`, `ds-loading`, `ListToolbar`/`SearchField`/`FilterSelect`, `.ds-control`, `ds-dialog__*`, `ds-resource-list*`. `scripts/check-shared-classes.py`, baseline **115** — all feature-level styles three apps share on purpose (`channel-*`, `agents-*`, `files-rail-*`) — renaming those to `ds-*` would claim they are generic primitives |
 | 31 | A **list** page that spells out the shell (`.ds-page` + `page-header` + tab strip + `ontology-admin-content`) | **`<ListPage title subtitle actions tabs toolbar>`** — five Catalog lists had drifted into five variants of it (one wrapped its table in the settings card, one put its switch at a different size, two borrowed another page's name style). `scripts/check-page-chrome.py`, baseline **0**; the one listed exception is a detail page (its own in-page tabs), which the entity-view guard owns |
 | 32 | A Catalog list's name cell styled by hand (`<strong>`, a page-local link class, another area's class) | **`.ds-table-primary`** (14px / 600 / text colour). The dataset and model lists had borrowed `.ontology-manager-list__api-link` — the ontology manager's 13px monospace API-name style — so their names were a size smaller than every sibling list's |
 | 24 | Hardcoded user-visible copy in JSX — a text node, or a literal `title` / `aria-label` / `placeholder` / `alt` | **`t()`**, with `<Trans>` where the sentence carries markup. The page then renders one language inside another's chrome; for attributes the audience is a screen reader or a tooltip, which nobody reviews. `<Trans>` children (the English fallback for a key), data values (timezone ids, file names, sample ids) and identifier-shaped placeholders are exempt. `scripts/check-hardcoded-text.py`, baseline **0** |
@@ -375,6 +375,23 @@ npm run check   # typecheck → check:app-layout → check:app-modules → check
 **`check:styles` is currently clean** (all pre-existing findings cleared: the two over-long files were split, the raw `px` media query / `rgba` backdrop / `window.confirm` / A2UI overlay allowlist entry are gone or justified). Keep it that way — a new finding should be fixed, not allowlisted.
 
 Run **`check:app-layout`** when editing **`App.scss`**, **`app-page.scss`**, **`ChannelSectionLayout*`**, **`MainLayout.tsx`**.
+
+### Local visual review
+
+Screenshots are **review artifacts**, not a CI gate and not committed. `npm run screenshot` drives the
+system Chrome over CDP (no Playwright dependency) and writes to **`tmp/visual/`**, which `.gitignore`
+excludes via `**/tmp`:
+
+```bash
+cd frontend
+npm run screenshot -- --cookie "$OPENKMS_SESSION_COOKIE" --path / --path /datasets
+npm run screenshot -- --path /settings --viewport desktop --full-page
+```
+
+The script renders desktop (1440×900) and mobile (390×844) by default; pass `--base-url` when Vite is
+not on `http://localhost:5173`, `--check-overflow` to print pages wider than the viewport, and `--help`
+for every option. A logged-out run still captures public or login pages. Because the baseline images are deliberately outside git, this is **not** a CI visual
+regression check; a real gate would need an external baseline store or a visual-testing service.
 
 ## Which control do I use?
 
