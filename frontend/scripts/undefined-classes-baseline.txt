@@ -1,8 +1,5 @@
 # Classes used in JSX that no stylesheet defines — accepted debt, not permission.
 # Each one styles nothing: either dead markup, or a real gap. This file only shrinks.
-src/pages/articles/ArticleDetail.modals.tsx uses .article-review-result
-src/pages/connectors/ConnectorFormFields.tsx uses .connector-input-boolean
 src/pages/connectors/ConnectorOutputDatasetsFields.tsx uses .connector-output-datasets-fields
 src/pages/console/permissions/ConsolePermissionManagement.tsx uses .console-perm-onboarding-missing
-src/pages/evaluation/EvaluationDatasetDetail.tsx uses .eval-detail-section
 src/pages/function-editor/FunctionEditorWorkspacePage.tsx uses .function-editor-workspace__schema-field
