@@ -357,7 +357,7 @@ export function GroupRelatedTab() {
         subtitle={t('groups.relatedResourcesHint')}
       />
       {loading ? (
-        <p className="ontology-admin-loading">
+        <p className="page-subtitle">
           <Loader2 className="spin" size={18} aria-hidden /> {t('shared.loading')}
         </p>
       ) : !related || related.object_type_ids.length === 0 ? (

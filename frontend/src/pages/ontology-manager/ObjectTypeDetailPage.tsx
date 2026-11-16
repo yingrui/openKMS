@@ -326,7 +326,7 @@ export function ObjectTypeDetailPage() {
 
   if (!objectType || !value) {
     return (
-      <p className="ontology-admin-loading">
+      <p className="page-subtitle">
         {t('objectTypes.notFound')}{' '}
         <Link to="/ontology-manager/object-types">{t('objectTypes.backToList')}</Link>
       </p>

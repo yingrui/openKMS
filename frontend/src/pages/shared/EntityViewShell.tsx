@@ -35,7 +35,7 @@ type EntityViewShellProps = {
 
 export function EntityViewLoading({ label }: { label: string }) {
   return (
-    <p className="ontology-admin-loading">
+    <p className="page-subtitle">
       <Loader2 className="spin" size={18} aria-hidden /> {label}
     </p>
   );

@@ -241,7 +241,7 @@ export function LinkTypeDetailPage() {
 
   if (!linkType || !value) {
     return (
-      <p className="ontology-admin-loading">
+      <p className="page-subtitle">
         {t('linkTypes.notFound')}{' '}
         <Link to="/ontology-manager/link-types">{t('linkTypes.backToList')}</Link>
       </p>
