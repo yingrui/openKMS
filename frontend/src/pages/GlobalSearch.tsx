@@ -267,7 +267,7 @@ export function GlobalSearch() {
                 aria-label={aria}
                 onClick={() => setTab(id)}
               >
-                <span className="global-search-tab-text">{label}</span>
+                <span>{label}</span>
                 {count !== null && <span className="global-search-tab-count">{count}</span>}
               </button>
             );

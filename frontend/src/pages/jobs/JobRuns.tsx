@@ -265,7 +265,6 @@ export function JobRuns() {
                             {isConnectorSyncJob(job.task_name) && targetId !== dash ? (
                               <Link
                                 to={`/connectors/${targetId}`}
-                                className="jobs-table-target-link"
                                 onClick={(e) => e.stopPropagation()}
                               >
                                 {targetId.length > 12 ? `${targetId.slice(0, 10)}…` : targetId}

@@ -36,7 +36,7 @@ export function UserMenu({ placement = 'down' }: Props) {
     return (
       <button type="button" onClick={login} className="user-menu-login" aria-label={t('logIn')}>
         <LogIn size={20} strokeWidth={1.75} />
-        <span className="user-menu-login-label ds-compact-label">{t('logIn')}</span>
+        <span className="ds-compact-label">{t('logIn')}</span>
       </button>
     );
   }

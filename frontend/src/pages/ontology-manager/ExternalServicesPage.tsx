@@ -98,8 +98,7 @@ export function ExternalServicesPage() {
   return (
     <>
       <ListPage
-        className="function-editor-list"
-        title={t("editor.external.title")}
+          title={t("editor.external.title")}
         subtitle={t("editor.external.pageSubtitle")}
         actions={
           <>

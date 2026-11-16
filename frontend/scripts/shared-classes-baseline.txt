@@ -91,7 +91,6 @@ filter-rail	components/ontology,pages/console
 filter-rail__head	components/ontology,pages/console
 filter-rail__nav	components/ontology,pages/console
 filter-rail__title	components/ontology,pages/console
-function-editor-list	pages/function-editor,pages/ontology-manager
 id	pages,pages/agents,pages/articles
 model-scope-add	pages/catalog,pages/shared
 null	pages/console,pages/models

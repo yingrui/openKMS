@@ -203,7 +203,7 @@ export function AgentSkillSettings() {
 
   if (loading) {
     return (
-      <div className="agent-skill-settings settings-page">
+      <div className="settings-page">
         <p className="page-subtitle">{t('skills.settings.loading')}</p>
       </div>
     );
@@ -211,7 +211,7 @@ export function AgentSkillSettings() {
 
   if (!skill) {
     return (
-      <div className="agent-skill-settings settings-page">
+      <div className="settings-page">
         <Link to="/agents/skills" className="settings-page-back">
           <ArrowLeft size={18} />
           <span>{t('skills.settings.backToSkills')}</span>
@@ -231,7 +231,7 @@ export function AgentSkillSettings() {
   });
 
   return (
-    <div className="agent-skill-settings settings-page">
+    <div className="settings-page">
       <Link to="/agents/skills" className="settings-page-back">
         <ArrowLeft size={18} />
         <span>{t('skills.settings.backToSkills')}</span>

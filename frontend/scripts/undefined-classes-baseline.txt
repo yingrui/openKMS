@@ -1,8 +1,5 @@
 # Classes used in JSX that no stylesheet defines — accepted debt, not permission.
 # Each one styles nothing: either dead markup, or a real gap. This file only shrinks.
-src/components/Layout/UserMenu.tsx uses .user-menu-login-label
-src/pages/GlobalSearch.tsx uses .global-search-tab-text
-src/pages/agents/AgentSkillSettings.tsx uses .agent-skill-settings
 src/pages/agents/ProjectSettings.tsx uses .project-settings-skills-tab
 src/pages/chamber/ModuleServiceBindingEditor.tsx uses .chamber-module-service
 src/pages/articles/ArticleDetail.modals.tsx uses .article-review-result
@@ -15,9 +12,7 @@ src/pages/console/kubernetes/KubernetesSecretsSection.tsx uses .console-k8s-deta
 src/pages/documents/DocumentChannelSettings.tsx uses .dcs-schema-object-type
 src/pages/documents/DocumentDetail.loading.tsx uses .document-detail-loading-split
 src/pages/evaluation/EvaluationDatasetDetail.tsx uses .eval-detail-section
-src/pages/function-editor/FunctionEditorListPage.tsx uses .function-editor-list
 src/pages/function-editor/FunctionEditorWorkspacePage.tsx uses .function-editor-workspace__schema-field
-src/pages/jobs/JobRuns.tsx uses .jobs-table-target-link
 src/pages/knowledge-bases/KnowledgeBaseDetail.tsx uses .kb-qa-msg-feedback
 src/pages/knowledge-bases/KnowledgeBaseDetail.tsx uses .kb-settings-col-models
 src/pages/knowledge-bases/KnowledgeBaseDetail.tsx uses .kb-settings-section
