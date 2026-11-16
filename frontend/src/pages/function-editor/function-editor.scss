@@ -475,3 +475,20 @@
   }
 }
 
+/* A schema field inside the function editor's sidebar: the compact density the editor uses, not the page
+   form's rhythm. */
+.function-editor-workspace__schema-field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+
+  > span:first-child {
+    font-size: var(--text-sm);
+    color: var(--color-text-secondary);
+  }
+
+  input,
+  select {
+    font-size: var(--text-sm);
+  }
+}

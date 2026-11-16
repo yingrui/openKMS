@@ -1722,3 +1722,11 @@
   max-height: 24rem;
   overflow: auto;
 }
+
+/* The connector form's output-datasets group: a hint over the schedule and dataset fields. */
+.connector-output-datasets-fields {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  min-width: 0;
+}

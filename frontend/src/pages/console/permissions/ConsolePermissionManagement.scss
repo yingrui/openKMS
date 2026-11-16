@@ -793,3 +793,19 @@
     max-width: 120px;
   }
 }
+
+/* The onboarding block shown when no access group exists yet: a hint with its intro line. */
+.console-perm-onboarding-missing {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-4);
+  border: 1px dashed var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-bg-muted);
+}
+
+.console-perm-onboarding-missing-intro {
+  margin: 0;
+  color: var(--color-text-secondary);
+}
