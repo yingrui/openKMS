@@ -94,8 +94,6 @@ filter-rail__title	components/ontology,pages/console
 id	pages,pages/agents,pages/articles
 model-scope-add	pages/catalog,pages/shared
 null	pages/console,pages/models
-ontology-admin	pages/catalog,pages/connectors,pages/console,pages/function-editor,pages/ontology,pages/ontology-manager,styles/design-system
-ontology-admin-content	pages/catalog,pages/connectors,pages/console,pages/function-editor,pages/ontology,pages/ontology-manager
 ontology-danger-zone	pages/catalog,pages/ontology-manager
 ontology-manager-list__api-link	pages/ontology,pages/ontology-manager
 openkms-flex-row-gap	pages/catalog,pages/insights

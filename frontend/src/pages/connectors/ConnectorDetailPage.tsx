@@ -88,7 +88,7 @@ export function ConnectorDetailPage() {
 
   if (loading) {
     return (
-      <div className="ontology-admin">
+      <div className="ds-page">
         <div className="ds-loading">
           <Loader2 size={32} className="ds-loading__spinner" />
           <p>{t('connectors.loading')}</p>
@@ -99,7 +99,7 @@ export function ConnectorDetailPage() {
 
   if (!connector) {
     return (
-      <div className="ontology-admin">
+      <div className="ds-page">
         <p>{t('connectors.detailNotFound')}</p>
         <Link to="/connectors" className="btn btn-secondary">
           {t('connectors.backToList')}
@@ -123,7 +123,7 @@ export function ConnectorDetailPage() {
   const showSave = canWrite && activeTab !== 'playground' && activeTab !== 'probe';
 
   return (
-    <div className="ontology-admin">
+    <div className="ds-page">
       <div className="page-header">
         <div>
           <Link to="/connectors" className="connector-detail-back">
@@ -161,7 +161,7 @@ export function ConnectorDetailPage() {
       </div>
 
       <div
-        className={`ontology-admin-content connector-detail-panel${isTabbedDetail ? ' connector-detail-panel--tabbed' : ''}`}
+        className={`connector-detail-panel${isTabbedDetail ? ' connector-detail-panel--tabbed' : ''}`}
       >
         {isTabbedDetail ? (
           <>

@@ -192,7 +192,7 @@ export function ConsoleKubernetesDetail() {
 
   if (loadingCluster) {
     return (
-      <div className="ontology-admin">
+      <div className="ds-page">
         <div className="ds-loading">
           <Loader2 size={32} className="ds-loading__spinner" aria-hidden />
           <p>{t('kubernetes.loading')}</p>
@@ -203,7 +203,7 @@ export function ConsoleKubernetesDetail() {
 
   if (!cluster) {
     return (
-      <div className="ontology-admin">
+      <div className="ds-page">
         <EmptyState
           title={t('kubernetes.detailNotFound')}
           action={
@@ -218,7 +218,7 @@ export function ConsoleKubernetesDetail() {
   }
 
   return (
-    <div className="ontology-admin">
+    <div className="ds-page">
       <header className="page-header">
         <div>
           <Link to="/console/kubernetes" className="btn btn-secondary btn-sm">
@@ -262,7 +262,7 @@ export function ConsoleKubernetesDetail() {
 
       {error && <ErrorBanner message={error} onDismiss={() => setError(null)} />}
 
-      <div className="ontology-admin-content">
+      <div className="ds-page__body">
         <div className="console-k8s-toolbar">
           <FormField label={t('kubernetes.browseNamespace')} htmlFor="k8s-browse-ns">
             <select
