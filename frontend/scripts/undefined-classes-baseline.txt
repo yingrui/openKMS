@@ -8,10 +8,6 @@ src/components/agents/AgentMessageBody.tsx uses .agents-md__code
 src/components/agents/AgentMessageBody.tsx uses .agents-md__em
 src/components/agents/AgentMessageBody.tsx uses .agents-md__strong
 src/components/agents/AgentsPageSkeleton.tsx uses .page
-src/components/agents/ProjectSchedulesTab.tsx uses .project-settings-checkbox
-src/components/agents/ProjectSchedulesTab.tsx uses .project-settings-field
-src/components/agents/ProjectSchedulesTab.tsx uses .project-settings-schedules
-src/components/agents/ProjectSchedulesTab.tsx uses .project-settings-schedules-form
 src/components/agents/SessionReviewEventCard.tsx uses .sreview-btn--edit
 src/components/channels/ChannelIndexPage.tsx uses .list-index-stat-content
 src/components/channels/ChannelTreeManager.tsx uses .channel-tree-item-li

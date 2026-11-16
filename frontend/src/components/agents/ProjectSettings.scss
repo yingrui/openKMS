@@ -340,3 +340,53 @@
     grid-template-columns: 1fr;
   }
 }
+
+/* The schedule form's field rows and its enable checkbox: written by the tab, styled by nothing, so the
+   inputs rendered as naked browser controls next to fully styled settings fields. */
+.project-settings-field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin-bottom: var(--space-4);
+  font-size: var(--text-sm);
+
+  label {
+    font-weight: 500;
+    color: var(--color-text-secondary);
+  }
+
+  input:not([type='checkbox']),
+  select {
+    width: 100%;
+    font: inherit;
+    font-size: var(--text-base);
+    padding: var(--padding-compact-y) var(--space-3);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    background: var(--color-bg-muted);
+    color: var(--color-text);
+  }
+}
+
+.project-settings-checkbox {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  cursor: pointer;
+}
+
+.project-settings-schedules {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.project-settings-schedules-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-4);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-bg-elevated);
+}
