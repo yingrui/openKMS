@@ -127,6 +127,16 @@ is used by two or more areas and is not in its (shrinking) baseline — the entr
 moves into the design system, not when the name changes. Page-local classes are unaffected: one area, one
 owner.
 
+The baseline separates two kinds of debt, and only one of them is a mistake to fix:
+
+* **Legacy page-era names** (`console-*`, `ontology-admin-*`): the name records which page needed the thing
+  first. When the object moves to the design system the name goes with it — that is what `ds-table`,
+  `ds-loading`, `ListPage` and `ds-resource-list` did.
+* **Feature-level shared styles** (`channel-page*`, `channel-table*`, `agents-*`, `files-rail-*`): a *product
+  concept* three apps share (channels, agent workspaces), already in one shared stylesheet under `styles/`.
+  Renaming those to `ds-*` would say they are generic primitives, which they are not; they stay recorded in
+  the baseline so that a new area reaching for them is still a deliberate decision.
+
 `scripts/check-page-chrome.py` flags the entity-view case, and — the other half of the same rule — a page
 that renders `DatasetAppTabs` (a Catalog **list**) must not wrap its content in `settings-page-form`: that
 is an elevated card with its own padding, so the same table and the same 14px text sit in a card on one
