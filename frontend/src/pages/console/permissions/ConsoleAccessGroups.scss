@@ -46,33 +46,11 @@
   gap: var(--gap-compact);
 }
 
+/* The sidebar is a column; `.ds-search` must not take its remaining height. */
 .console-access-groups-search {
-  display: flex;
-  align-items: center;
-  gap: calc(var(--space-2) + var(--space-1) / 2);
+  flex: 0 0 auto;
   max-width: none;
-  padding: var(--padding-compact-y) calc(var(--space-3) + var(--space-1) / 2);
   margin-bottom: var(--space-3);
-  background: var(--color-bg-elevated);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
-}
-
-.console-access-groups-search svg {
-  color: var(--color-text-muted);
-  flex-shrink: 0;
-}
-
-.console-access-groups-search input {
-  flex: 1;
-  min-width: 0;
-  border: none;
-  background: none;
-  font-size: var(--text-base);
-}
-
-.console-access-groups-search input:focus {
-  outline: none;
 }
 
 .console-access-groups-list-scroll {

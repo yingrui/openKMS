@@ -2421,6 +2421,7 @@ body.openkms-kb-qa-fullpage .kb-qa-shell {
 }
 
 .kb-doc-picker-search {
+  flex: 0 0 auto;
   width: 100%;
   max-width: none;
   margin: 0 0 var(--space-3);

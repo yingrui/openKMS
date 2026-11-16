@@ -28,7 +28,9 @@
   border: none;
   border-bottom: 1px solid var(--color-border);
   border-radius: 0;
-  flex-shrink: 0;
+  /* `.ds-search` is a growing item in a row toolbar; this search sits in a column, so it must not
+     take the tree's remaining height. */
+  flex: 0 0 auto;
 }
 
 .wiki-pages-tree-search input {

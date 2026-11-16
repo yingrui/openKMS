@@ -47,6 +47,7 @@ export function DatasetRelationshipsTab() {
   const [aiExamples, setAiExamples] = useState('');
   const [targetColumns, setTargetColumns] = useState<ColumnMetadata[]>([]);
   const [submitting, setSubmitting] = useState(false);
+  const [formError, setFormError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -150,9 +151,12 @@ export function DatasetRelationshipsTab() {
       });
       toast.success(t('datasets.joinCreated'));
       setShowForm(false);
+      setFormError(null);
       await load();
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : t('datasets.joinCreateFailed'));
+      /* A refused relationship is a statement about the *fields just chosen*, so it stays in the form:
+         a toast disappears while the reader is still looking for what to change. */
+      setFormError(e instanceof Error ? e.message : t('datasets.joinCreateFailed'));
     } finally {
       setSubmitting(false);
     }
@@ -260,6 +264,11 @@ export function DatasetRelationshipsTab() {
         }
       >
         <div className="entity-view__form">
+          {formError ? (
+            <p className="dataset-joins__error" role="alert">
+              {formError}
+            </p>
+          ) : null}
           <FormField label={t('datasets.joinTargetDataset')}>
             <select value={targetId} onChange={(e) => setTargetId(e.target.value)}>
               <option value="">{t('datasets.selectTable')}</option>

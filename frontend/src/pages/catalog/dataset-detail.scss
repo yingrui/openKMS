@@ -122,6 +122,13 @@
   }
 }
 
+/* A refused relationship names the column that is not unique; the message has to sit by the fields. */
+.dataset-joins__error {
+  margin: 0;
+  font-size: var(--text-sm);
+  color: var(--color-warning-fg);
+}
+
 .dataset-joins {
   display: flex;
   flex-direction: column;
