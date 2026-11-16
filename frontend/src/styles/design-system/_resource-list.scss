@@ -3,37 +3,8 @@
 @use './mixins' as *;
 @use './tokens' as ds;
 
-.ds-resource-list {
-  width: 100%;
-}
-
-.ds-resource-list .page-header {
-  margin-bottom: var(--space-8);
-}
-
 /* The list's own controls, on a row above it — the same place the catalog puts its search. */
 /* Wide enough to type a name, not a toolbar's worth of space. */
-.ds-resource-list-header .btn {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-2);
-  padding: var(--padding-compact-y) var(--space-4);
-  font-size: var(--text-base);
-  font-weight: 500;
-  border-radius: var(--radius-md);
-  transition: background 0.15s, color 0.15s;
-}
-
-.ds-resource-list-header .btn-primary {
-  background: var(--color-accent);
-  color: white;
-  border: none;
-}
-
-.ds-resource-list-header .btn-primary:hover {
-  background: var(--color-accent-hover);
-}
-
 .ds-resource-list-loading {
   color: var(--color-text-secondary);
   padding: 40px 0;
