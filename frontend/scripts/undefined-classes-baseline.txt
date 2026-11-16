@@ -1,6 +1,5 @@
 # Classes used in JSX that no stylesheet defines — accepted debt, not permission.
 # Each one styles nothing: either dead markup, or a real gap. This file only shrinks.
-src/App.tsx uses .app-loading
 src/components/HomeStaticLanding.tsx uses .home
 src/components/HomeStaticLanding.tsx uses .home--public
 src/components/Layout/AppCatalogGrid.tsx uses .app-catalog--home
@@ -18,7 +17,6 @@ src/components/channels/ChannelIndexPage.tsx uses .list-index-stat-content
 src/components/channels/ChannelTreeManager.tsx uses .channel-tree-item-li
 src/components/comments/CommentThreadItem.tsx uses .comment-thread-item__rank
 src/components/wiki/WikiPagesTree.tsx uses .wiki-pages-tree-icon-file
-src/contexts/AuthContext.tsx uses .app-loading
 src/pages/GlobalSearch.tsx uses .global-search-tab-text
 src/pages/Home.tsx uses .home
 src/pages/Home.tsx uses .home-apps

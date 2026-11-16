@@ -43,6 +43,19 @@
   margin: 0;
 }
 
+/* The boot state: the app shell has not mounted yet, so this is the whole screen. It has always been
+   written by App.tsx and AuthContext.tsx and styled by nothing — the loading line sat flush in the corner. */
+.app-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-3);
+  min-height: 100vh;
+  color: var(--color-text-muted);
+  font-size: var(--text-base);
+}
+
 /* Scrollable main column inside channel / ontology layouts */
 .app-page-pane {
   flex: 1;
