@@ -483,7 +483,9 @@
     "viewErDiagram": "ER diagram",
     "viewErDiagramTitle": "Entity-relationship diagram: datasets and their registered joins",
     "erJoins": "{{count}} joins",
-    "erOpen": "Open"
+    "erOpen": "Open",
+    "erCollapse": "Hide columns",
+    "erExpand": "Show columns"
   },
   "datasets": {
     "title": "Datasets",

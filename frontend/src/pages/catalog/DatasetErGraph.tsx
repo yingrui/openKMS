@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { ArrowUpRight } from 'lucide-react';
+import { ArrowUpRight, ChevronDown, ChevronRight } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { layoutEr } from './erLayout';
 import './dataset-er-graph.scss';
@@ -30,6 +30,8 @@ const GAP_X = 80;
 const GAP_Y = 64;
 const PADDING = 24;
 const MAX_COLUMNS = 6;
+/** A collapsed box: the dataset's name only, so the picture becomes the logical view of who joins whom. */
+const COLLAPSED_HEIGHT = 40;
 const DRAG_THRESHOLD = 4;
 const ROW_HEIGHT_ESTIMATE = ROW_HEIGHT;
 
@@ -38,6 +40,9 @@ type Position = { x: number; y: number };
 const boxHeight = (columns: number) =>
   BOX_HEAD + Math.min(columns, MAX_COLUMNS) * ROW_HEIGHT + BOX_FOOT;
 
+const boxHeightFor = (node: { columns?: string[] }, collapsed: boolean) =>
+  collapsed ? COLLAPSED_HEIGHT : boxHeight(node.columns?.length ?? 0);
+
 /**
  * The y of a column's row inside a box. Measured from the DOM when the row has rendered — the head is a name, a
  * count and a gap whose heights come from the type scale, so arithmetic on constants drifts by a few pixels and
@@ -45,13 +50,13 @@ const boxHeight = (columns: number) =>
  */
 const columnAnchorY = (
   top: number,
+  height: number,
   node: ErGraphNode,
   column: string | undefined,
   rowOffsets: Record<string, Record<string, number>>,
 ) => {
   const measured = column ? rowOffsets[node.id]?.[column] : undefined;
   if (measured !== undefined) return top + measured;
-  const height = boxHeight(node.columns?.length ?? 0);
   const index = column ? (node.columns ?? []).indexOf(column) : -1;
   if (index < 0 || index >= MAX_COLUMNS) return top + height / 2;
   return top + BOX_HEAD + index * ROW_HEIGHT_ESTIMATE + ROW_HEIGHT_ESTIMATE / 2;
@@ -94,6 +99,7 @@ export function DatasetErGraph({
   const wrapRef = useRef<HTMLDivElement>(null);
   const [size, setSize] = useState({ width: 0, height: 0 });
   const [rowOffsets, setRowOffsets] = useState<Record<string, Record<string, number>>>({});
+  const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
   const nodeRefs = useRef(new Map<string, HTMLElement>());
 
   useEffect(() => {
@@ -126,9 +132,9 @@ export function DatasetErGraph({
         gapX: GAP_X,
         gapY: GAP_Y,
         padding: PADDING,
-        height: (node) => boxHeight(node.columns?.length ?? 0),
+        height: (node) => boxHeightFor(node, collapsed.has(node.id)),
       }),
-    [nodes, links],
+    [nodes, links, collapsed],
   );
   const grid = layout.positions;
 
@@ -207,7 +213,9 @@ export function DatasetErGraph({
     Math.max(...nodes.map((node) => (positions[node.id]?.x ?? 0) + BOX_WIDTH)) + PADDING;
   const contentHeight =
     Math.max(
-      ...nodes.map((node) => (positions[node.id]?.y ?? 0) + boxHeight(node.columns?.length ?? 0)),
+      ...nodes.map(
+        (node) => (positions[node.id]?.y ?? 0) + boxHeightFor(node, collapsed.has(node.id)),
+      ),
     ) + PADDING;
   const width = Math.max(contentWidth, size.width);
   const height = Math.max(contentHeight, size.height);
@@ -219,8 +227,10 @@ export function DatasetErGraph({
     const toNode = nodes.find((node) => node.id === link.target);
     if (!from || !to || !fromNode || !toNode) return [];
     /* Leave the box at the row's edge, so the line reads as leaving that field rather than the box's centre. */
-    const fromY = columnAnchorY(from.y, fromNode, link.fromColumn, rowOffsets);
-    const toY = columnAnchorY(to.y, toNode, link.toColumn, rowOffsets);
+    const fromHeight = boxHeightFor(fromNode, collapsed.has(fromNode.id));
+    const toHeight = boxHeightFor(toNode, collapsed.has(toNode.id));
+    const fromY = columnAnchorY(from.y, fromHeight, fromNode, link.fromColumn, rowOffsets);
+    const toY = columnAnchorY(to.y, toHeight, toNode, link.toColumn, rowOffsets);
     const toLeft = to.x + BOX_WIDTH / 2 < from.x + BOX_WIDTH / 2;
     return [
       {
@@ -295,16 +305,46 @@ export function DatasetErGraph({
                 if (element) nodeRefs.current.set(node.id, element);
                 else nodeRefs.current.delete(node.id);
               }}
-              className="dataset-er-graph__node"
+              className={`dataset-er-graph__node${
+                collapsed.has(node.id) ? ' dataset-er-graph__node--collapsed' : ''
+              }`}
               style={{
                 left: position.x,
                 top: position.y,
                 width: BOX_WIDTH,
-                height: boxHeight(node.columns?.length ?? 0),
+                height: boxHeightFor(node, collapsed.has(node.id)),
               }}
               onPointerDown={(event) => startDrag(event, node.id)}
             >
               <span className="dataset-er-graph__node-head">
+                {columns.length > 0 ? (
+                  <button
+                    type="button"
+                    className="dataset-er-graph__node-toggle"
+                    onPointerDown={(event) => event.stopPropagation()}
+                    onClick={() =>
+                      setCollapsed((current) => {
+                        const next = new Set(current);
+                        if (next.has(node.id)) next.delete(node.id);
+                        else next.add(node.id);
+                        return next;
+                      })
+                    }
+                    title={t(
+                      collapsed.has(node.id) ? 'dataModel.erExpand' : 'dataModel.erCollapse',
+                    )}
+                    aria-label={t(
+                      collapsed.has(node.id) ? 'dataModel.erExpand' : 'dataModel.erCollapse',
+                    )}
+                    aria-expanded={!collapsed.has(node.id)}
+                  >
+                    {collapsed.has(node.id) ? (
+                      <ChevronRight size={13} aria-hidden />
+                    ) : (
+                      <ChevronDown size={13} aria-hidden />
+                    )}
+                  </button>
+                ) : null}
                 <span className="dataset-er-graph__node-name">{node.name}</span>
                 <button
                   type="button"
@@ -317,10 +357,12 @@ export function DatasetErGraph({
                   <ArrowUpRight size={14} aria-hidden />
                 </button>
               </span>
-              <span className="dataset-er-graph__node-meta">
-                {t('dataModel.erJoins', { count: node.joins })}
-              </span>
-              {columns.length > 0 ? (
+              {collapsed.has(node.id) ? null : (
+                <span className="dataset-er-graph__node-meta">
+                  {t('dataModel.erJoins', { count: node.joins })}
+                </span>
+              )}
+              {!collapsed.has(node.id) && columns.length > 0 ? (
                 <span className="dataset-er-graph__node-columns">
                   {columns.map((column) => (
                     <span

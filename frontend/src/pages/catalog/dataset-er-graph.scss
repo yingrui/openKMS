@@ -95,6 +95,26 @@
 
 /* The one action a box carries: open it. Dragging must never navigate, and a click on the body is a drag
    gesture waiting to happen. */
+.dataset-er-graph__node-toggle {
+  flex: none;
+  padding: 0;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  background: none;
+  border: 0;
+
+  &:hover,
+  &:focus-visible {
+    color: var(--color-accent);
+  }
+}
+
+/* Collapsed: the name only — the logical view of who joins whom. */
+.dataset-er-graph__node--collapsed {
+  justify-content: center;
+  padding-block: 0;
+}
+
 .dataset-er-graph__node-open {
   flex: none;
   padding: 0;
@@ -113,7 +133,27 @@
 }
 
 .dataset-er-graph__node:hover .dataset-er-graph__node-open,
-.dataset-er-graph__node:focus-within .dataset-er-graph__node-open {
+.dataset-er-graph__node:focus-within .dataset-er-graph__node-toggle {
+  flex: none;
+  padding: 0;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  background: none;
+  border: 0;
+
+  &:hover,
+  &:focus-visible {
+    color: var(--color-accent);
+  }
+}
+
+/* Collapsed: the name only — the logical view of who joins whom. */
+.dataset-er-graph__node--collapsed {
+  justify-content: center;
+  padding-block: 0;
+}
+
+.dataset-er-graph__node-open {
   opacity: 1;
 }
 
