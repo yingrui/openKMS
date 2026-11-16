@@ -132,7 +132,6 @@ export function DatasetErGraph({
       startY: event.clientY,
     };
     movedRef.current = false;
-    (event.currentTarget as HTMLElement).setPointerCapture?.(event.pointerId);
   };
 
   const width = Math.max(
@@ -236,6 +235,7 @@ export function DatasetErGraph({
                 <button
                   type="button"
                   className="dataset-er-graph__node-open"
+                  onPointerDown={(event) => event.stopPropagation()}
                   onClick={() => onOpen(node.id)}
                   title={t('dataModel.erOpen')}
                   aria-label={`${t('dataModel.erOpen')} ${node.name}`}
