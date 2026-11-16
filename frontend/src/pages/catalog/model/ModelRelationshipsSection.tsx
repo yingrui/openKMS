@@ -73,7 +73,7 @@ export function ModelRelationshipsSection() {
           <p className="entity-view__readonly">{t('dataModel.noRelationships')}</p>
         ) : (
           <div className="ds-table-wrap ds-table-wrap--flush">
-            <table className="console-table">
+            <table className="ds-table">
               <thead>
                 <tr>
                   <th>{t('datasets.fieldName')}</th>

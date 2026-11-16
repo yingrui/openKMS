@@ -174,7 +174,7 @@ export function EvaluationItemsTab() {
 
       <EntityViewPanel>
         <div className={`ds-table-wrap ds-table-wrap--flush${loading ? ' ds-table-wrap--loading' : ''}`}>
-          <table className="console-table">
+          <table className="ds-table">
             <thead>
               <tr>
                 <th>{t('evaluationDetail.colTopic')}</th>
@@ -186,13 +186,13 @@ export function EvaluationItemsTab() {
             <tbody>
               {loading && items.length === 0 ? (
                 <tr>
-                  <td colSpan={4} className="console-table-empty">
+                  <td colSpan={4} className="ds-table-empty">
                     <Loader2 size={18} className="animate-spin" aria-hidden /> {t('evaluationDetail.loadingItems')}
                   </td>
                 </tr>
               ) : total === 0 ? (
                 <tr>
-                  <td colSpan={4} className="console-table-empty">
+                  <td colSpan={4} className="ds-table-empty">
                     {t('evaluationDetail.emptyItems')}
                   </td>
                 </tr>

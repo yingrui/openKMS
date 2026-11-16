@@ -215,7 +215,7 @@ export function ObjectTypesPage() {
           />
         ) : (
           <div className="ds-table-wrap">
-            <table className="console-table">
+            <table className="ds-table">
               <thead>
                 <tr>
                   <th>{t('objectTypes.name')}</th>
@@ -225,7 +225,7 @@ export function ObjectTypesPage() {
                   <th>{t('objectTypes.displayProperty')}</th>
                   <th>{t('objectTypes.properties')}</th>
                   <th>{t('objectTypes.instances')}</th>
-                  <th className="console-table-actions">{t('shared.actions')}</th>
+                  <th className="ds-table-actions">{t('shared.actions')}</th>
                 </tr>
               </thead>
               <tbody>
@@ -245,8 +245,8 @@ export function ObjectTypesPage() {
                     <td>{row.display_property || '—'}</td>
                     <td>{(row.properties || []).length}</td>
                     <td>{row.instance_count}</td>
-                    <td className="console-table-actions">
-                      <div className="console-table-btns">
+                    <td className="ds-table-actions">
+                      <div className="ds-table-btns">
                         {(row.dataset_id || row.instance_count > 0) && neo4jDataSources.length > 0 ? (
                           <button
                             type="button"
@@ -268,7 +268,7 @@ export function ObjectTypesPage() {
                         <Link
                           to={`/ontology-manager/object-types/${row.id}/sharing`}
                           title={t('objectTypes.sharing')}
-                          className="console-table-icon-link"
+                          className="ds-table-icon-link"
                         >
                           <Users size={16} />
                         </Link>

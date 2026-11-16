@@ -138,7 +138,7 @@ export function EvaluationRunDetailPage() {
 
       {compare ? (
         <EntityViewPanel title={t('evaluationDetail.compareRuns')}>
-          <table className="console-table eval-runs-table">
+          <table className="ds-table eval-runs-table">
             <thead>
               <tr>
                 <th>{t('evaluationDetail.colQuery')}</th>

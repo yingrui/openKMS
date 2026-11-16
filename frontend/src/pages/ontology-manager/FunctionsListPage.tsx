@@ -67,7 +67,7 @@ export function FunctionsListPage() {
           />
         ) : (
           <div className="ds-table-wrap">
-            <table className="console-table">
+            <table className="ds-table">
               <thead>
                 <tr>
                   <th>{t('functions.apiName')}</th>
@@ -76,7 +76,7 @@ export function FunctionsListPage() {
                   <th>{t('functions.publishedVersion')}</th>
                   <th>{t('functions.latestVersion')}</th>
                   <th>{t('functions.status')}</th>
-                  <th className="console-table-actions">{t('shared.actions')}</th>
+                  <th className="ds-table-actions">{t('shared.actions')}</th>
                 </tr>
               </thead>
               <tbody>
@@ -88,21 +88,21 @@ export function FunctionsListPage() {
                       </Link>
                     </td>
                     <td>{fn.display_name}</td>
-                    <td className="console-table-muted">
+                    <td className="ds-table-muted">
                       {fn.object_type_id
                         ? objectTypeNameById.get(fn.object_type_id) ?? fn.object_type_id
                         : '—'}
                     </td>
-                    <td className="console-table-muted">{fn.published_version ?? '—'}</td>
-                    <td className="console-table-muted">{fn.latest_version ?? '—'}</td>
+                    <td className="ds-table-muted">{fn.published_version ?? '—'}</td>
+                    <td className="ds-table-muted">{fn.latest_version ?? '—'}</td>
                     <td>
                       <span className={statusBadgeClass(fn.status)}>{fn.status}</span>
                     </td>
-                    <td className="console-table-actions">
-                      <div className="console-table-btns">
+                    <td className="ds-table-actions">
+                      <div className="ds-table-btns">
                         <Link
                           to={`/function-editor/${fn.id}`}
-                          className="console-table-icon-link"
+                          className="ds-table-icon-link"
                           title={t('functions.openInEditor')}
                           aria-label={t('functions.openInEditor')}
                         >

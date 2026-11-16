@@ -113,7 +113,7 @@ export function DatasetColumnsTab() {
             </div>
           ) : (
             <div className="ds-table-wrap ds-table-wrap--flush">
-              <table className="console-table">
+              <table className="ds-table">
                 <thead>
                   <tr>
                     <th>{t('datasets.colColumn')}</th>
@@ -130,7 +130,7 @@ export function DatasetColumnsTab() {
                 <tbody>
                   {metadata.length === 0 ? (
                     <tr>
-                      <td colSpan={9} className="console-table-empty">
+                      <td colSpan={9} className="ds-table-empty">
                         {t('datasets.emptyColumns')}
                       </td>
                     </tr>

@@ -156,7 +156,7 @@ export function RunRulesDialog({
             })}
           </p>
           <div className="ds-table-wrap ds-table-wrap--flush">
-            <table className="console-table">
+            <table className="ds-table">
               <thead>
                 <tr>
                   <th>{t("rules.trialGroup")}</th>

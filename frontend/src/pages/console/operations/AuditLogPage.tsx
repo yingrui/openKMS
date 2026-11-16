@@ -272,7 +272,7 @@ export function AuditLogPage() {
                   footer (top border, muted background, no radius). Outside, it floats as a bar with one border
                   and no sides — which is what made this page's paging look unlike the Documents list's. */}
               <div className="ds-table-wrap">
-                <table className="console-table">
+                <table className="ds-table">
                   <thead>
                     <tr>
                       <th>{t('auditLog.when')}</th>

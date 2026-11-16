@@ -580,7 +580,7 @@ export function QualityRuleEditorPage() {
               )}
               {runs.length > 1 && (
                 <div className="ds-table-wrap ds-table-wrap--flush">
-                  <table className="console-table">
+                  <table className="ds-table">
                     <thead>
                       <tr>
                         <th>{t('datasets.qualityWhen')}</th>

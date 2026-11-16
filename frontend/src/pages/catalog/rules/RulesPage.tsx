@@ -386,7 +386,7 @@ export function RulesPage() {
                     </label>
                   </div>
                   <div className="ds-table-wrap">
-                    <table className="console-table">
+                    <table className="ds-table">
                       <thead>
                         <tr>
                           <th>{t("rules.colName")}</th>
@@ -406,7 +406,7 @@ export function RulesPage() {
                             <td>
                               <Link
                                 to={`/data-rules/${rule.id}`}
-                                className="console-table-primary"
+                                className="ds-table-primary"
                               >
                                 {rule.name ?? "—"}
                               </Link>

@@ -89,7 +89,7 @@ export function FileDatasetData({ datasetId }: { datasetId: string }) {
           // as one control rather than a card floating inside a card.
           <div className="dataset-detail-data">
             <div className="ds-table-wrap ds-table-wrap--flush">
-              <table className="console-table">
+              <table className="ds-table">
                 <thead>
                   <tr>
                     {rows.columns.map((c) => (
@@ -183,7 +183,7 @@ function FileDatasetColumns({ datasetId }: { datasetId: string }) {
         ) : (
           <div className="dataset-detail-data">
             <div className="ds-table-wrap ds-table-wrap--flush">
-              <table className="console-table">
+              <table className="ds-table">
                 <thead>
                   <tr>
                     <th>{t('datasets.colName')}</th>

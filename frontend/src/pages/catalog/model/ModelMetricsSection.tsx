@@ -318,7 +318,7 @@ export function ModelMetricsSection() {
           <p className="entity-view__readonly">{t('datasets.metricEmpty')}</p>
         ) : (
         <div className="ds-table-wrap ds-table-wrap--flush">
-          <table className="console-table">
+          <table className="ds-table">
             <thead>
               <tr>
                 <th>{t('datasets.metricName')}</th>

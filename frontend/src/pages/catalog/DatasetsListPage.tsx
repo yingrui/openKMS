@@ -372,19 +372,19 @@ export function DatasetsListPage() {
           />
         ) : (
           <div className="ds-table-wrap">
-            <table className="console-table">
+            <table className="ds-table">
               <thead>
                 <tr>
                   <th>{t('datasets.displayName')}</th>
                   <th>{t('datasets.dataSource')}</th>
                   <th>{t('datasets.schemaTable')}</th>
-                  <th className="console-table-actions">{t('shared.actions')}</th>
+                  <th className="ds-table-actions">{t('shared.actions')}</th>
                 </tr>
               </thead>
               <tbody>
                 {items.length === 0 ? (
                   <tr>
-                    <td colSpan={4} className="console-table-empty">
+                    <td colSpan={4} className="ds-table-empty">
                       {search.trim() ? t('datasets.emptyNoMatch') : t('datasets.emptyList')}
                     </td>
                   </tr>
@@ -393,19 +393,19 @@ export function DatasetsListPage() {
                     <tr key={d.id}>
                       <td>
                         <Link to={`/datasets/${d.id}`}>
-                          <span className="console-table-primary">{datasetLabel(d)}</span>
+                          <span className="ds-table-primary">{datasetLabel(d)}</span>
                         </Link>
                       </td>
                       <td>{d.data_source_name ?? t('datasets.dash')}</td>
-                      <td className="console-table-muted">
+                      <td className="ds-table-muted">
                         {d.schema_name}.{d.table_name}
                       </td>
-                      <td className="console-table-actions">
-                        <div className="console-table-btns">
+                      <td className="ds-table-actions">
+                        <div className="ds-table-btns">
                           <Link
                             to={`/datasets/${d.id}/sharing`}
                             title={t('datasets.sharing')}
-                            className="console-table-icon-link"
+                            className="ds-table-icon-link"
                             aria-label={t('datasets.sharing')}
                           >
                             <Users size={16} aria-hidden />

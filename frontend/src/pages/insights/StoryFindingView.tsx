@@ -172,7 +172,7 @@ export function StoryFindingView({
             </>
           ) : (
             <div className="ds-table-wrap ds-table-wrap--flush">
-              <table className="console-table">
+              <table className="ds-table">
                 <thead>
                   <tr>
                     {columns.map((c) => (

@@ -1,5 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import { Link, Outlet, useParams } from 'react-router-dom';
+import { TableRowActionButton } from '../../styles/design-system';
 import { useTranslation } from 'react-i18next';
 import { ExternalLink, Plus, Save, Trash2, Upload } from 'lucide-react';
 import { toast } from 'sonner';
@@ -298,7 +299,7 @@ function SchemaFieldsEditor({
     <EntityViewPanel title={title}>
       <div className="entity-view__embedded-table">
         <div className="ds-table-wrap ds-table-wrap--flush">
-          <table className="console-table">
+          <table className="ds-table">
             <thead>
               <tr>
                 <th>{t('functions.schemaField')}</th>
@@ -312,7 +313,7 @@ function SchemaFieldsEditor({
             <tbody>
               {fields.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="console-table-empty">
+                  <td colSpan={6} className="ds-table-empty">
                     {t('functions.schemaEmpty')}
                   </td>
                 </tr>
@@ -404,14 +405,13 @@ function SchemaFieldsEditor({
                       />
                     </td>
                     <td>
-                      <button
-                        type="button"
-                        className="console-table-icon-btn"
-                        onClick={() => setFields((prev) => prev.filter((_, i) => i !== index))}
+                      <TableRowActionButton
+                        title={t('shared.delete')}
                         aria-label={t('shared.delete')}
-                      >
-                        <Trash2 size={14} aria-hidden />
-                      </button>
+                        icon={<Trash2 size={16} aria-hidden />}
+                        variant="danger"
+                        onClick={() => setFields((prev) => prev.filter((_, i) => i !== index))}
+                      />
                     </td>
                   </tr>
                 ))
@@ -643,7 +643,7 @@ export function FunctionObservabilityTab() {
       <EntityViewPanel>
         <div className="entity-view__embedded-table">
           <div className="ds-table-wrap ds-table-wrap--flush">
-            <table className="console-table">
+            <table className="ds-table">
               <thead>
                 <tr>
                   <th>{t('functions.execStatus')}</th>
@@ -655,7 +655,7 @@ export function FunctionObservabilityTab() {
               <tbody>
                 {executions.length === 0 ? (
                   <tr>
-                    <td colSpan={4} className="console-table-empty">
+                    <td colSpan={4} className="ds-table-empty">
                       {t('functions.noExecutions')}
                     </td>
                   </tr>
@@ -663,11 +663,11 @@ export function FunctionObservabilityTab() {
                   executions.map((ex) => (
                     <tr key={ex.id}>
                       <td>{ex.status}</td>
-                      <td className="console-table-muted">
+                      <td className="ds-table-muted">
                         {ex.duration_ms != null ? `${ex.duration_ms}ms` : '—'}
                       </td>
-                      <td className="console-table-muted">{new Date(ex.created_at).toLocaleString()}</td>
-                      <td className="console-table-muted">{ex.error_message || '—'}</td>
+                      <td className="ds-table-muted">{new Date(ex.created_at).toLocaleString()}</td>
+                      <td className="ds-table-muted">{ex.error_message || '—'}</td>
                     </tr>
                   ))
                 )}

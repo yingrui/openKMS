@@ -120,7 +120,7 @@ export function ModelDataResourcesSection() {
           <p className="page-subtitle">{t('dataModel.resourceEmpty')}</p>
         ) : (
           <div className="ds-table-wrap ds-table-wrap--flush">
-            <table className="console-table">
+            <table className="ds-table">
               <thead>
                 <tr>
                   <th>{t('dataModel.resourceName')}</th>

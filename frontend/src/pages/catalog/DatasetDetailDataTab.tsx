@@ -496,7 +496,7 @@ export function DatasetDataTab() {
             {/* The app's table card: a border, and the pager as its footer. `--flush`/`--scroll` made this the one
                 Data page with different edges and a scrolling footer. */}
             <div className="ds-table-wrap ds-table-wrap--flush">
-              <table className="console-table dataset-data-table">
+              <table className="ds-table dataset-data-table">
                 <thead>
                   {table.getHeaderGroups().map((hg) => (
                     <tr key={hg.id}>
@@ -527,7 +527,7 @@ export function DatasetDataTab() {
                 <tbody>
                   {rows.length === 0 ? (
                     <tr>
-                      <td colSpan={columns.length || 1} className="console-table-empty">
+                      <td colSpan={columns.length || 1} className="ds-table-empty">
                         {appliedFilters.length > 0 ? (
                           <span className="dataset-filter-empty">
                             {t('datasets.filterNoMatch')}

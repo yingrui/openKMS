@@ -129,7 +129,7 @@ export function DataModelPage() {
           />
         ) : (
           <div className="ds-table-wrap">
-            <table className="console-table">
+            <table className="ds-table">
               <thead>
                 <tr>
                   <th>{t('dataModel.colModel')}</th>
@@ -142,11 +142,11 @@ export function DataModelPage() {
                   <tr key={m.id}>
                     <td>
                       <Link to={`/data-model/${m.id}`}>
-                        <span className="console-table-primary">{m.name}</span>
+                        <span className="ds-table-primary">{m.name}</span>
                       </Link>
                     </td>
                     <td>{m.datasets.length}</td>
-                    <td className="console-table-muted">{m.description ?? t('datasets.dash')}</td>
+                    <td className="ds-table-muted">{m.description ?? t('datasets.dash')}</td>
                   </tr>
                 ))}
               </tbody>

@@ -127,7 +127,7 @@ export function DatasetVersionsTab() {
       <EntityViewHeader title={t('datasets.versions')} subtitle={t('datasets.versionsHint')} />
       <EntityViewPanel>
         <div className="ds-table-wrap ds-table-wrap--flush">
-          <table className="console-table">
+          <table className="ds-table">
             <thead>
               <tr>
                 <th>{t('datasets.version')}</th>
@@ -200,14 +200,14 @@ export function DatasetVersionsTab() {
             <p className="page-subtitle">{t('datasets.noFiles')}</p>
           ) : (
             <div className="ds-table-wrap ds-table-wrap--flush">
-              <table className="console-table">
+              <table className="ds-table">
                 <thead>
                   <tr>
                     <th>{t('datasets.fileName')}</th>
                     <th>{t('datasets.fileDescription')}</th>
                     <th>{t('datasets.versionRows')}</th>
                     <th>{t('datasets.versionSize')}</th>
-                    <th className="console-table-actions">{t('shared.actions')}</th>
+                    <th className="ds-table-actions">{t('shared.actions')}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -219,7 +219,7 @@ export function DatasetVersionsTab() {
                       </td>
                       <td>{file.rows.toLocaleString()}</td>
                       <td>{bytes(file.bytes)}</td>
-                      <td className="console-table-actions">
+                      <td className="ds-table-actions">
                         <button
                           type="button"
                           title={t('datasets.download')}

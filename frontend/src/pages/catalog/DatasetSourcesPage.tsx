@@ -232,7 +232,7 @@ export function DatasetSourcesPage() {
               <EmptyState title={t('dataSources.noTables')} description={t('dataSources.noTablesHint')} />
             ) : (
               <div className="ds-table-wrap">
-                <table className="console-table">
+                <table className="ds-table">
                   <thead>
                     <tr>
                       <th>{t('dataSources.register')}</th>
@@ -264,7 +264,7 @@ export function DatasetSourcesPage() {
                           </td>
                           <td>
                             {datasetId ? (
-                              <Link to={`/datasets/${datasetId}`} className="console-table-link">
+                              <Link to={`/datasets/${datasetId}`} className="ds-table-link">
                                 {t('dataSources.alreadyRegistered')}
                               </Link>
                             ) : (

@@ -206,7 +206,7 @@ export function ConsoleDataSources() {
               <p>{t('dataSources.loading')}</p>
             </div>
           ) : (
-            <table className="console-table">
+            <table className="ds-table">
             <thead>
               <tr>
                 <th>{t('dataSources.colName')}</th>
@@ -215,13 +215,13 @@ export function ConsoleDataSources() {
                 <th>{t('dataSources.colHost')}</th>
                 <th>{t('dataSources.colPort')}</th>
                 <th>{t('dataSources.colDatabase')}</th>
-                <th className="console-table-actions">{t('dataSources.colActions')}</th>
+                <th className="ds-table-actions">{t('dataSources.colActions')}</th>
               </tr>
             </thead>
             <tbody>
               {items.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="console-table-empty">
+                  <td colSpan={7} className="ds-table-empty">
                     {t('dataSources.empty')}
                   </td>
                 </tr>
@@ -238,8 +238,8 @@ export function ConsoleDataSources() {
                     <td>{d.host}</td>
                     <td>{d.port ?? t('dataSources.dash')}</td>
                     <td>{d.database ?? t('dataSources.dash')}</td>
-                    <td className="console-table-actions">
-                      <div className="console-table-btns">
+                    <td className="ds-table-actions">
+                      <div className="ds-table-btns">
                         <button
                           type="button"
                           title={t('dataSources.testTitle')}

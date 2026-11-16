@@ -290,7 +290,7 @@ export function ConsoleKubernetesDetail() {
             {t('kubernetes.deploymentsHeading')}
           </h2>
           <div className="ds-table-wrap">
-            <table className="console-table">
+            <table className="ds-table">
               <thead>
                 <tr>
                   <th>{t('kubernetes.colResourceName')}</th>
@@ -303,13 +303,13 @@ export function ConsoleKubernetesDetail() {
               <tbody>
                 {loadingResources ? (
                   <tr>
-                    <td colSpan={5} className="console-table-empty">
+                    <td colSpan={5} className="ds-table-empty">
                       {t('kubernetes.loading')}
                     </td>
                   </tr>
                 ) : deployments.length === 0 ? (
                   <tr>
-                    <td colSpan={5} className="console-table-empty">
+                    <td colSpan={5} className="ds-table-empty">
                       {t('kubernetes.deploymentsEmpty')}
                     </td>
                   </tr>
@@ -357,7 +357,7 @@ export function ConsoleKubernetesDetail() {
             {t('kubernetes.servicesHeading')}
           </h2>
           <div className="ds-table-wrap">
-            <table className="console-table">
+            <table className="ds-table">
               <thead>
                 <tr>
                   <th>{t('kubernetes.colResourceName')}</th>
@@ -370,13 +370,13 @@ export function ConsoleKubernetesDetail() {
               <tbody>
                 {loadingResources ? (
                   <tr>
-                    <td colSpan={5} className="console-table-empty">
+                    <td colSpan={5} className="ds-table-empty">
                       {t('kubernetes.loading')}
                     </td>
                   </tr>
                 ) : services.length === 0 ? (
                   <tr>
-                    <td colSpan={5} className="console-table-empty">
+                    <td colSpan={5} className="ds-table-empty">
                       {t('kubernetes.servicesEmpty')}
                     </td>
                   </tr>
@@ -415,7 +415,7 @@ export function ConsoleKubernetesDetail() {
             {t('kubernetes.podsHeading')}
           </h2>
           <div className="ds-table-wrap">
-            <table className="console-table">
+            <table className="ds-table">
               <thead>
                 <tr>
                   <th>{t('kubernetes.colResourceName')}</th>
@@ -429,13 +429,13 @@ export function ConsoleKubernetesDetail() {
               <tbody>
                 {loadingResources ? (
                   <tr>
-                    <td colSpan={6} className="console-table-empty">
+                    <td colSpan={6} className="ds-table-empty">
                       {t('kubernetes.loading')}
                     </td>
                   </tr>
                 ) : pods.length === 0 ? (
                   <tr>
-                    <td colSpan={6} className="console-table-empty">
+                    <td colSpan={6} className="ds-table-empty">
                       {t('kubernetes.podsEmpty')}
                     </td>
                   </tr>

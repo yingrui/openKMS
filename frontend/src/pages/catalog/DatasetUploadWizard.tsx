@@ -182,7 +182,7 @@ export function DatasetUploadWizard({ open, onClose, dataSources, onLoaded }: Pr
             </select>
           </FormField>
           <div className="ds-table-wrap">
-            <table className="console-table">
+            <table className="ds-table">
               <thead>
                 <tr>
                   {preview.columns.map((c) => (

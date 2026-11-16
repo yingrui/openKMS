@@ -271,7 +271,7 @@ export function KubernetesSecretsSection({ clusterId, namespace, loadingResource
         </div>
         <p className="page-subtitle">{t('kubernetes.secretsHint')}</p>
         <div className="ds-table-wrap">
-          <table className="console-table">
+          <table className="ds-table">
             <thead>
               <tr>
                 <th>{t('kubernetes.colResourceName')}</th>
@@ -283,13 +283,13 @@ export function KubernetesSecretsSection({ clusterId, namespace, loadingResource
             <tbody>
               {busy ? (
                 <tr>
-                  <td colSpan={4} className="console-table-empty">
+                  <td colSpan={4} className="ds-table-empty">
                     {t('kubernetes.loading')}
                   </td>
                 </tr>
               ) : secrets.length === 0 ? (
                 <tr>
-                  <td colSpan={4} className="console-table-empty">
+                  <td colSpan={4} className="ds-table-empty">
                     {t('kubernetes.secretsEmpty')}
                   </td>
                 </tr>
@@ -343,7 +343,7 @@ export function KubernetesSecretsSection({ clusterId, namespace, loadingResource
           </button>
         </div>
         <div className="ds-table-wrap">
-          <table className="console-table">
+          <table className="ds-table">
             <thead>
               <tr>
                 <th>{t('kubernetes.colResourceName')}</th>
@@ -354,13 +354,13 @@ export function KubernetesSecretsSection({ clusterId, namespace, loadingResource
             <tbody>
               {busy ? (
                 <tr>
-                  <td colSpan={3} className="console-table-empty">
+                  <td colSpan={3} className="ds-table-empty">
                     {t('kubernetes.loading')}
                   </td>
                 </tr>
               ) : configmaps.length === 0 ? (
                 <tr>
-                  <td colSpan={3} className="console-table-empty">
+                  <td colSpan={3} className="ds-table-empty">
                     {t('kubernetes.configmapsEmpty')}
                   </td>
                 </tr>

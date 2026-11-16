@@ -111,7 +111,7 @@ export function MetricsListPage() {
           <EmptyState title={t('dataModel.metricsEmpty')} description={t('dataModel.metricsEmptyHint')} />
         ) : (
           <div className="ds-table-wrap">
-            <table className="console-table">
+            <table className="ds-table">
               <thead>
                 <tr>
                   <th>{t('datasets.metricName')}</th>
@@ -126,7 +126,7 @@ export function MetricsListPage() {
                 {shown.map((metric) => (
                   <tr key={metric.id}>
                     <td>
-                      <Link to={`/data-model/${metric.semantic_model_id}`} className="console-table-primary">
+                      <Link to={`/data-model/${metric.semantic_model_id}`} className="ds-table-primary">
                         {metric.name}
                       </Link>
                       {metric.business_definition ? (

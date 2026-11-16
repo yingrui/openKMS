@@ -95,7 +95,7 @@ export function GroupsListPage() {
           />
         ) : (
           <div className="ds-table-wrap">
-            <table className="console-table">
+            <table className="ds-table">
               <thead>
                 <tr>
                   <th>{t('groups.displayName')}</th>
@@ -110,7 +110,7 @@ export function GroupsListPage() {
                         {g.display_name}
                       </Link>
                     </td>
-                    <td className="console-table-muted">{g.object_type_ids.length}</td>
+                    <td className="ds-table-muted">{g.object_type_ids.length}</td>
                   </tr>
                 ))}
               </tbody>

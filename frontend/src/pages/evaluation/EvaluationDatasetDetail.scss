@@ -78,7 +78,7 @@
   color: var(--color-text-muted);
 }
 
-/* Inside a panel: the card draws the frame, `console-table` draws the rows. */
+/* Inside a panel: the card draws the frame, `ds-table` draws the rows. */
 .eval-panel-toolbar {
   display: flex;
   flex-wrap: wrap;

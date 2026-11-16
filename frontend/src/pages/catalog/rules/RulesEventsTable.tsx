@@ -99,7 +99,7 @@ export function RulesEventsTable({
 
   return (
     <div className="ds-table-wrap ds-table-wrap--flush">
-      <table className="console-table">
+      <table className="ds-table">
         <thead>
           <tr>
             <th>{t("rules.colEvent")}</th>

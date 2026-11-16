@@ -294,7 +294,7 @@ export function LinkTypesPage() {
           />
         ) : (
           <div className="ds-table-wrap">
-            <table className="console-table">
+            <table className="ds-table">
               <thead>
                 <tr>
                   <th>{t('linkTypes.name')}</th>
@@ -304,7 +304,7 @@ export function LinkTypesPage() {
                   <th>{t('linkTypes.cardinality')}</th>
                   <th>{t('linkTypes.junctionDataset')}</th>
                   <th>{t('linkTypes.instances')}</th>
-                  <th className="console-table-actions">{t('shared.actions')}</th>
+                  <th className="ds-table-actions">{t('shared.actions')}</th>
                 </tr>
               </thead>
               <tbody>
@@ -335,8 +335,8 @@ export function LinkTypesPage() {
                     <td>{row.cardinality || 'one-to-many'}</td>
                     <td>{row.cardinality === 'many-to-many' ? (row.dataset_name || '—') : '—'}</td>
                     <td>{row.link_count}</td>
-                    <td className="console-table-actions">
-                      <div className="console-table-btns">
+                    <td className="ds-table-actions">
+                      <div className="ds-table-btns">
                         {(linkTypeUsesDatasetIndexing(row, objectTypes) || row.link_count > 0) &&
                         neo4jDataSources.length > 0 ? (
                           <button
@@ -361,7 +361,7 @@ export function LinkTypesPage() {
                         <Link
                           to={`/ontology-manager/link-types/${row.id}/sharing`}
                           title={t('linkTypes.sharing')}
-                          className="console-table-icon-link"
+                          className="ds-table-icon-link"
                         >
                           <Users size={16} />
                         </Link>

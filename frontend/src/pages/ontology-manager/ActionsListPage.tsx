@@ -147,7 +147,7 @@ export function ActionsListPage() {
           />
         ) : (
           <div className="ds-table-wrap">
-            <table className="console-table">
+            <table className="ds-table">
               <thead>
                 <tr>
                   <th>{t('actions.apiName')}</th>
@@ -157,7 +157,7 @@ export function ActionsListPage() {
                   <th>{t('actions.webhookTarget')}</th>
                   <th>{t('actions.webhookLastDelivery')}</th>
                   <th>{t('actions.status')}</th>
-                  <th className="console-table-actions">{t('shared.actions')}</th>
+                  <th className="ds-table-actions">{t('shared.actions')}</th>
                 </tr>
               </thead>
               <tbody>
@@ -172,10 +172,10 @@ export function ActionsListPage() {
                       </Link>
                     </td>
                     <td>{action.display_name}</td>
-                    <td className="console-table-muted">
+                    <td className="ds-table-muted">
                       {objectTypeNameById.get(action.object_type_id) ?? action.object_type_id}
                     </td>
-                    <td className="console-table-muted">
+                    <td className="ds-table-muted">
                       {isBuiltinObjectRule(action.rule_type)
                         ? t(`actions.ruleTypeLabel.${action.rule_type}`, { defaultValue: action.rule_type })
                         : action.function_id
@@ -193,13 +193,13 @@ export function ActionsListPage() {
                           </code>
                         </Link>
                       ) : (action.function_external_services?.length ?? 0) > 0 ? (
-                        <span className="console-table-muted">
+                        <span className="ds-table-muted">
                           {t('actions.webhookViaFunctionShort', {
                             services: action.function_external_services?.join(', '),
                           })}
                         </span>
                       ) : (
-                        <span className="console-table-muted">—</span>
+                        <span className="ds-table-muted">—</span>
                       )}
                     </td>
                     <td>
@@ -215,14 +215,14 @@ export function ActionsListPage() {
                           {action.last_webhook.status ?? (action.last_webhook.ok ? 'ok' : 'failed')}
                         </span>
                       ) : (
-                        <span className="console-table-muted">—</span>
+                        <span className="ds-table-muted">—</span>
                       )}
                     </td>
                     <td>
                       <span className={statusBadgeClass(action.status)}>{action.status}</span>
                     </td>
-                    <td className="console-table-actions">
-                      <div className="console-table-btns">
+                    <td className="ds-table-actions">
+                      <div className="ds-table-btns">
                         <button
                           type="button"
                           onClick={() => void onDelete(action)}

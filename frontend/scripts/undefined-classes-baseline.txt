@@ -31,7 +31,6 @@ src/pages/articles/ArticleChannelSettings.tsx uses .settings-page-inline-actions
 src/pages/articles/ArticleDetail.modals.tsx uses .article-review-result
 src/pages/connectors/ConnectorFormFields.tsx uses .connector-input-boolean
 src/pages/connectors/ConnectorOutputDatasetsFields.tsx uses .connector-output-datasets-fields
-src/pages/connectors/ConnectorsPage.tsx uses .console-table-row-link
 src/pages/console/data/ConsoleDataSecurityIssues.tsx uses .console-group-access
 src/pages/console/permissions/ConsolePermissionManagement.tsx uses .console-perm-onboarding-missing
 src/pages/console/kubernetes/KubernetesResourceYamlPanel.tsx uses .console-k8s-yaml
@@ -56,7 +55,6 @@ src/pages/knowledge-bases/KnowledgeBaseDetail.tsx uses .kb-settings-section
 src/pages/ontology-manager/ActionTypeCreateWizard.tsx uses .object-type-create-wizard__step-label
 src/pages/catalog/DatasetErDiagram.tsx uses .dataset-er__node--center
 src/pages/shared/EntityViewShell.tsx uses .ontology-admin-loading
-src/pages/ontology-manager/FunctionDetailPage.tsx uses .console-table-icon-btn
 src/pages/ontology-manager/FunctionDetailPage.tsx uses .entity-view__field-hint
 src/pages/ontology-manager/GroupDetailPage.tsx uses .entity-view__field-hint
 src/pages/ontology-manager/GroupDetailPage.tsx uses .entity-view__related-block

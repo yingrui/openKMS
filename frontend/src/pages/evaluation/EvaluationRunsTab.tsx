@@ -157,7 +157,7 @@ export function EvaluationRunsTab() {
           <EmptyState title={t('evaluationDetail.emptyRuns')} description={t('evaluationDetail.emptyRunsHint')} />
         ) : (
           <div className="ds-table-wrap ds-table-wrap--flush">
-            <table className="console-table eval-runs-table">
+            <table className="ds-table eval-runs-table">
               <thead>
                 <tr>
                   <th>{t('evaluationDetail.runColWhen')}</th>

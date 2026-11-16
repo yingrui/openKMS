@@ -305,7 +305,7 @@
 }
 
 /* In a table the check is prose, not code: mono and 13px belong to the editor, not to a list cell. */
-.console-table .rules-condition {
+.ds-table .rules-condition {
   font-family: inherit;
   font-size: var(--text-base);
   color: var(--color-text-secondary);

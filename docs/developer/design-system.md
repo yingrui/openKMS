@@ -108,7 +108,7 @@ Two adjacent dividers plus two paddings is what reads as "a large unexplained ga
 **Every routed tab of an `EntityViewShell` page opens the same way.** `EntityViewHeader` — the tab's name and one line
 saying what it holds — then `EntityViewPanel` cards beneath it. The header takes at most one primary action on the
 right; anything a reader adjusts between looks at the same data (a type filter, refresh) belongs in a light toolbar
-*inside* the panel, and the table itself is `.ds-table-wrap--flush` + `.console-table` with its `Pagination` in the
+*inside* the panel, and the table itself is `.ds-table-wrap--flush` + `.ds-table` with its `Pagination` in the
 same wrap. A page-level `PanelToolbar` as the top of a tab is what makes one tab look unlike the next. A tab strip directly under the header
 is the header's own card head — `entity-view.scss` cancels the header's divider for it (`:has(+ .settings-page-tabs)`).
 Do not fight that rule by wrapping the strip in a div: a strip that no longer touches the card it switches is the one
@@ -124,7 +124,7 @@ flex `gap`. Wrap both in one `<div className="settings-page">`. Pages living in
 that renders `DatasetAppTabs` (a Catalog **list**) must not wrap its content in `settings-page-form`: that
 is an elevated card with its own padding, so the same table and the same 14px text sit in a card on one
 list page and on the page itself on the four beside it. A Catalog list is `page-header` + `DatasetAppTabs`
-+ `.ontology-admin-content` + `.console-datasets-toolbar` + `.ds-table-wrap > .console-table`.
++ `.ontology-admin-content` + `.console-datasets-toolbar` + `.ds-table-wrap > .ds-table`.
 
 **Buttons in one group share one size.** `.btn` and `.btn-sm` differ in padding (10px vs 6px) *and*
 line height (`--text-md--line` vs `--text-sm--line`). Under `align-items: center` their boxes centre
@@ -373,7 +373,7 @@ Reach for a **shared primitive** before writing markup. The list below is the an
 | Empty / loading state | **`<EmptyState>`** / `console-loading` | |
 | Search box | **`.console-datasets-search`** (list) or `ds-control` (in a header) | no primitive; do not invent a third |
 | Row actions | **`<TableRowActions>`** / **`.table-row-actions`** | |
-| Table | **`.ds-table-wrap`** (+ `.ds-table-wrap--flush`) + `.console-table` | |
+| Table | **`.ds-table-wrap`** (+ `.ds-table-wrap--flush`) + `.ds-table` (a row's name: `.ds-table-primary`) | |
 | Overlay backdrop / stacking | **`var(--overlay-backdrop)`**, **`var(--z-*)`** | |
 
 **No primitive exists yet** — build it, but keep it honest:

@@ -215,7 +215,7 @@ export function ConsoleKubernetes() {
           />
         ) : (
           <div className="ds-table-wrap">
-            <table className="console-table">
+            <table className="ds-table">
               <thead>
                 <tr>
                   <th>{t('kubernetes.colName')}</th>
@@ -229,11 +229,11 @@ export function ConsoleKubernetes() {
                 {items.map((row) => (
                   <tr key={row.id}>
                     <td>
-                      <Link to={`/console/kubernetes/${row.id}`} className="console-table-link">
+                      <Link to={`/console/kubernetes/${row.id}`} className="ds-table-link">
                         <strong>{row.name}</strong>
                       </Link>
                       {row.description ? (
-                        <div className="console-table-muted">{row.description}</div>
+                        <div className="ds-table-muted">{row.description}</div>
                       ) : null}
                     </td>
                     <td>{row.api_server ?? t('kubernetes.dash')}</td>

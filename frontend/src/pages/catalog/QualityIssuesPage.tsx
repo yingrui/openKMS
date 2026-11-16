@@ -161,7 +161,7 @@ export function QualityIssuesPage() {
               </label>
             </div>
             <div className="ds-table-wrap">
-              <table className="console-table">
+              <table className="ds-table">
                 <thead>
                   <tr>
                     <th>{t('qualityIssues.dataset')}</th>
@@ -179,7 +179,7 @@ export function QualityIssuesPage() {
                         {/* The fix lives on the dataset's Quality tab; this is where you notice it. */}
                         <Link
                           to={`/datasets/${issue.dataset_id}/quality`}
-                          className="console-table-primary"
+                          className="ds-table-primary"
                         >
                           {issue.dataset_name}
                         </Link>

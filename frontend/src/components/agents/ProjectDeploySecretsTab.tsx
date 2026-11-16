@@ -253,7 +253,7 @@ export function ProjectDeploySecretsTab({ projectId }: { projectId: string }) {
             <tbody>
               {items.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="console-table-empty">
+                  <td colSpan={6} className="ds-table-empty">
                     {t('settings.deployEmpty')}
                   </td>
                 </tr>

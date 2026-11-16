@@ -437,7 +437,7 @@ export function ActionWebhookTab() {
           </EntityViewField>
           {!webhookServiceId && (action.function_external_services?.length ?? 0) > 0 ? (
             <EntityViewField label={t('actions.webhookViaFunction')}>
-              <span className="console-table-muted">
+              <span className="ds-table-muted">
                 {action.function_external_services?.join(', ')}
               </span>
             </EntityViewField>
@@ -619,7 +619,7 @@ export function ActionLogTab() {
       <EntityViewPanel>
         <div className="entity-view__embedded-table">
           <div className="ds-table-wrap ds-table-wrap--flush">
-            <table className="console-table">
+            <table className="ds-table">
               <thead>
                 <tr>
                   <th>{t('actions.logObject')}</th>
@@ -632,7 +632,7 @@ export function ActionLogTab() {
               <tbody>
                 {logs.length === 0 ? (
                   <tr>
-                    <td colSpan={5} className="console-table-empty">
+                    <td colSpan={5} className="ds-table-empty">
                       {t('actions.noLogs')}
                     </td>
                   </tr>
@@ -652,14 +652,14 @@ export function ActionLogTab() {
                             </div>
                           </>
                         ) : (
-                          <span className="console-table-muted">—</span>
+                          <span className="ds-table-muted">—</span>
                         )}
                       </td>
                       <td>{log.status}</td>
-                      <td className="console-table-muted">{new Date(log.created_at).toLocaleString()}</td>
+                      <td className="ds-table-muted">{new Date(log.created_at).toLocaleString()}</td>
                       <td>
                         {log.webhook_ok == null ? (
-                          <span className="console-table-muted">—</span>
+                          <span className="ds-table-muted">—</span>
                         ) : log.webhook_ok ? (
                           <span className="ds-status ds-status--ok">{log.webhook_status ?? 'ok'}</span>
                         ) : (
@@ -671,7 +671,7 @@ export function ActionLogTab() {
                           </span>
                         )}
                       </td>
-                      <td className="console-table-muted">{log.error_message ?? '—'}</td>
+                      <td className="ds-table-muted">{log.error_message ?? '—'}</td>
                     </tr>
                   ))
                 )}

@@ -173,7 +173,7 @@ export function ConnectorsPage() {
               <p>{t('connectors.loading')}</p>
             </div>
           ) : (
-            <table className="console-table">
+            <table className="ds-table">
               <thead>
                 <tr>
                   <th>{t('connectors.colName')}</th>
@@ -186,7 +186,7 @@ export function ConnectorsPage() {
               <tbody>
                 {items.length === 0 ? (
                   <tr>
-                    <td colSpan={5} className="console-table-empty">
+                    <td colSpan={5} className="ds-table-empty">
                       {t('connectors.empty')}
                     </td>
                   </tr>
@@ -202,7 +202,7 @@ export function ConnectorsPage() {
                             .map((k) => `${k}: ${configured[k] ? t('connectors.secretSet') : t('connectors.secretUnset')}`)
                             .join(' · ');
                     return (
-                      <tr key={row.id} className="console-table-row-link">
+                      <tr key={row.id}>
                         <td>
                           <Link to={`/connectors/${row.id}`} className="connector-list-name-link">
                             {row.name}
@@ -210,7 +210,7 @@ export function ConnectorsPage() {
                         </td>
                         <td>{kindMeta ? t(`connectors.category.${kindMeta.category}`) : '—'}</td>
                         <td>{kindMeta?.label ?? row.kind}</td>
-                        <td className="console-table-muted">{summary}</td>
+                        <td className="ds-table-muted">{summary}</td>
                         <td>{row.enabled ? t('connectors.yes') : t('connectors.no')}</td>
                       </tr>
                     );

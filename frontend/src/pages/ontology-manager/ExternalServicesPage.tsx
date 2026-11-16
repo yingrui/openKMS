@@ -119,7 +119,7 @@ export function ExternalServicesPage() {
           />
         ) : (
           <div className="ds-table-wrap">
-            <table className="console-table">
+            <table className="ds-table">
               <thead>
                 <tr>
                   <th>{t('editor.external.apiName')}</th>
@@ -128,7 +128,7 @@ export function ExternalServicesPage() {
                   <th>{t('editor.external.auth')}</th>
                   <th>{t('editor.external.allowedPaths')}</th>
                   <th>{t('editor.external.usedBy')}</th>
-                  <th className="console-table-actions">{t('shared.actions')}</th>
+                  <th className="ds-table-actions">{t('shared.actions')}</th>
                 </tr>
               </thead>
               <tbody>
@@ -176,8 +176,8 @@ export function ExternalServicesPage() {
                         ))
                       )}
                     </td>
-                    <td className="console-table-actions">
-                      <div className="console-table-btns">
+                    <td className="ds-table-actions">
+                      <div className="ds-table-btns">
                         <button
                           type="button"
                           className="btn btn-secondary btn-sm"

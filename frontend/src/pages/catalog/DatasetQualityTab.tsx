@@ -106,7 +106,7 @@ export function DatasetQualityTab() {
           <EmptyState title={t('datasets.qualityEmpty')} description={t('datasets.qualityHint')} />
         ) : (
           <div className="ds-table-wrap ds-table-wrap--flush">
-            <table className="console-table">
+            <table className="ds-table">
               <thead>
                 <tr>
                   <th>{t('datasets.colName')}</th>
@@ -114,7 +114,7 @@ export function DatasetQualityTab() {
                   <th>{t('datasets.qualityType')}</th>
                   <th>{t('datasets.colColumn')}</th>
                   <th>{t('datasets.qualityStatus')}</th>
-                  <th className="console-table-actions">{t('datasets.colActions')}</th>
+                  <th className="ds-table-actions">{t('datasets.colActions')}</th>
                 </tr>
               </thead>
               <tbody>
@@ -122,7 +122,7 @@ export function DatasetQualityTab() {
                   <tr key={r.id}>
                     <td>
                       {/* The name is the way into the rule — a row is a thing you can open. */}
-                      <Link to={`${base}/quality/${r.id}`} className="console-table-link">
+                      <Link to={`${base}/quality/${r.id}`} className="ds-table-link">
                         {r.name}
                       </Link>
                     </td>
@@ -142,8 +142,8 @@ export function DatasetQualityTab() {
                         t('datasets.qualityNotRun')
                       )}
                     </td>
-                    <td className="console-table-actions">
-                      <div className="console-table-btns">
+                    <td className="ds-table-actions">
+                      <div className="ds-table-btns">
                         <button
                           type="button"
                           title={t('datasets.editQualityRule')}
