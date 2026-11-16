@@ -95,6 +95,14 @@ def scss_margin_declarations() -> dict[str, str]:
 
 SHELL_BASELINE = Path(__file__).resolve().parent / "list-shell-baseline.txt"
 
+#: Not lists, whatever they render: a detail page has an identity route and its own tab strip, so the
+#: entity-view shell owns its chrome (see `check-entity-view-routes.py`). Listed here with the reason,
+#: not left in the baseline as if it were an unmigrated list.
+SHELL_NOT_LISTS = {
+    "src/pages/console/kubernetes/ConsoleKubernetesDetail.tsx":
+        "detail page: in-page tabs over a node table; entity-view shell is its follow-up",
+}
+
 
 def shell_users() -> set[str]:
     users = set()
@@ -104,7 +112,11 @@ def shell_users() -> set[str]:
         text = path.read_text(errors="ignore")
         # The check is about **lists**: a page that renders a table. Detail pages (a form and its own tab
         # strip) are a different shell — the entity view — and are tracked by the entity-view guard.
-        if "ontology-admin-content" in text and "ds-table" in text:
+        if (
+            "ontology-admin-content" in text
+            and "ds-table" in text
+            and str(path.relative_to(ROOT)) not in SHELL_NOT_LISTS
+        ):
             users.add(str(path.relative_to(ROOT)))
     return users
 

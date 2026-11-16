@@ -1,3 +1,2 @@
 # List pages that still spell out the shell instead of using `ListPage`.
-# A ratchet: a page leaves this list when it is migrated, and no page may join it.
-src/pages/console/kubernetes/ConsoleKubernetesDetail.tsx
+# Empty: every list page renders through `ListPage`. A new page doing it by hand fails.
