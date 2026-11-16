@@ -168,8 +168,8 @@ export function ObjectTypesPage() {
 
       <div className="ontology-admin-content">
         {!loading && types.length > 0 && groups.length > 0 && (
-          <div className="console-datasets-toolbar">
-            <label className="console-datasets-filter">
+          <div className="ds-list-toolbar">
+            <label className="ds-filter">
               {t('objectTypes.filterByGroup')}
               <select className="ds-control"
                 value={filterGroupId}

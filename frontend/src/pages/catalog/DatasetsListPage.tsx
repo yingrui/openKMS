@@ -281,8 +281,8 @@ export function DatasetsListPage() {
 
       <div className="ontology-admin-content">
         {!showEmptyState && (
-          <div className="console-datasets-toolbar">
-            <div className="console-datasets-search">
+          <div className="ds-list-toolbar">
+            <div className="ds-search">
               <Search size={18} aria-hidden />
               <input
                 type="search"
@@ -293,7 +293,7 @@ export function DatasetsListPage() {
               />
             </div>
             {dataSources.length > 0 && (
-              <label className="console-datasets-filter">
+              <label className="ds-filter">
                 {t('datasets.filterLabel')}
                 <select className="ds-control"
                   value={filterDataSourceId}
@@ -309,7 +309,7 @@ export function DatasetsListPage() {
               </label>
             )}
             {facets.domains.length > 0 && (
-              <label className="console-datasets-filter">
+              <label className="ds-filter">
                 {t('datasets.filterDomain')}
                 <select className="ds-control" value={filterDomain} onChange={(e) => setFilterDomain(e.target.value)}>
                   <option value="">{t('datasets.filterAll')}</option>
@@ -322,7 +322,7 @@ export function DatasetsListPage() {
               </label>
             )}
             {facets.tags.length > 0 && (
-              <label className="console-datasets-filter">
+              <label className="ds-filter">
                 {t('datasets.filterTag')}
                 <select className="ds-control" value={filterTag} onChange={(e) => setFilterTag(e.target.value)}>
                   <option value="">{t('datasets.filterAll')}</option>

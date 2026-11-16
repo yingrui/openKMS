@@ -31,9 +31,6 @@ channel-page-toolbar	pages/articles,pages/documents,pages/media
 channel-table	pages/articles,pages/documents
 channel-table-select-col	pages/articles,pages/documents
 channel-table-wrap	pages/articles,pages/documents
-console-datasets-filter	pages/catalog,pages/console,pages/ontology,pages/ontology-manager
-console-datasets-search	pages/catalog,pages/console
-console-datasets-toolbar	pages/catalog,pages/console,pages/ontology,pages/ontology-manager
 console-form-control	pages/connectors,pages/function-editor,pages/ontology-manager
 console-modal-hint	pages/connectors,pages/ontology-manager
 console-modal-section	pages/connectors,pages/ontology-manager

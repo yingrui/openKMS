@@ -164,7 +164,7 @@ function FileDatasetColumns({ datasetId }: { datasetId: string }) {
         subtitle={t('datasets.fileColumnsHint')}
         actions={
           versions.length > 0 ? (
-            <label className="console-datasets-filter">
+            <label className="ds-filter">
               {t('datasets.version')}
               <select className="ds-control" value={version ?? ''} onChange={(e) => setVersion(Number(e.target.value))}>
                 {[...versions].reverse().map((v) => (

@@ -110,8 +110,8 @@ export function ActionsListPage() {
 
       <div className="ontology-admin-content">
         {objectTypes.length > 0 ? (
-          <div className="console-datasets-toolbar">
-            <label className="console-datasets-filter">
+          <div className="ds-list-toolbar">
+            <label className="ds-filter">
               {t('actions.filterByObjectType')}
               <select className="ds-control"
                 value={filterObjectTypeId}

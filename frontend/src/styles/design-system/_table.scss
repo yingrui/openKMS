@@ -112,3 +112,50 @@
 .ds-list-page__body {
   width: 100%;
 }
+
+/* The list page's toolbar: search, filters and a view switch, on one line above the table. */
+.ds-search {
+  max-width: 360px;
+  /* Match the DS control height, so a search box beside a filter select is one line, not two heights. */
+  min-height: 2.25rem;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  gap: calc(var(--space-2) + var(--space-1) / 2);
+  padding: var(--padding-compact-y) calc(var(--space-3) + var(--space-1) / 2);
+  background: var(--color-bg-elevated);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  flex: 1;
+  min-width: 200px;
+}
+
+.ds-search svg {
+  color: var(--color-text-muted);
+}
+
+.ds-search input {
+  flex: 1;
+  border: none;
+  background: none;
+  font-size: var(--text-base);
+}
+
+.ds-search input:focus {
+  outline: none;
+}
+
+.ds-filter {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--text-sm);
+  color: var(--color-text-secondary);
+  white-space: nowrap;
+
+  select {
+    width: auto;
+    min-width: 9rem;
+    margin-left: 0;
+  }
+}

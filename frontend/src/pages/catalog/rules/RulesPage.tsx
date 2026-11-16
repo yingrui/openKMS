@@ -345,8 +345,8 @@ export function RulesPage() {
               <>
                 {/* The three questions an operator asks of a list of checks: enabled? on fire?
                     ever actually run? Each is a filter, not a column to squint at. */}
-                <div className="console-datasets-toolbar">
-                  <label className="console-datasets-filter">
+                <div className="ds-list-toolbar">
+                  <label className="ds-filter">
                     {t("rules.colState")}
                     <select
                       className="ds-control"
@@ -494,8 +494,8 @@ export function RulesPage() {
           </>
         ) : (
           <>
-            <div className="console-datasets-toolbar">
-              <label className="console-datasets-filter">
+            <div className="ds-list-toolbar">
+              <label className="ds-filter">
                 {t("rules.filterStatus")}
                 <select
                   className="ds-control"
@@ -508,7 +508,7 @@ export function RulesPage() {
                   <option value="">{t("rules.statusFilterAll")}</option>
                 </select>
               </label>
-              <label className="console-datasets-filter">
+              <label className="ds-filter">
                 {t("rules.colSeverity")}
                 <select
                   className="ds-control"

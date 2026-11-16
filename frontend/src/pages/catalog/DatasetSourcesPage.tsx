@@ -180,8 +180,8 @@ export function DatasetSourcesPage() {
           />
         ) : (
           <>
-            <div className="console-datasets-toolbar">
-              <label className="console-datasets-filter">
+            <div className="ds-list-toolbar">
+              <label className="ds-filter">
                 {t('dataSources.pick')}
                 <select className="ds-control" value={sourceId} onChange={(e) => setSourceId(e.target.value)}>
                   {sources.map((source) => (

@@ -83,9 +83,9 @@ export function MetricsListPage() {
       tabs={<DatasetAppTabs />}
     >
       <div className="metrics-toolbar">
-        <label className="console-datasets-search metrics-toolbar__search">
+        <label className="ds-search metrics-toolbar__search">
           <Search size={18} aria-hidden />
-          {/* ds-control-exempt: `.console-datasets-search` styles this input (its own sheet) */}
+          {/* ds-control-exempt: `.ds-search` styles this input (its own sheet) */}
           <input
             type="search"
             value={search}

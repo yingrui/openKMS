@@ -201,10 +201,10 @@ export function AuditLogPage() {
             </div>
           </header>
 
-          <div className="console-datasets-toolbar">
-            <div className="console-datasets-search">
+          <div className="ds-list-toolbar">
+            <div className="ds-search">
               <Search size={18} aria-hidden />
-              {/* ds-control-exempt: `.console-datasets-search input` styles it (design-system/_console.scss) */}
+              {/* ds-control-exempt: `.ds-search input` styles it (design-system/_console.scss) */}
               <input
                 type="search"
                 aria-label={t('auditLog.filterPath')}
@@ -216,7 +216,7 @@ export function AuditLogPage() {
                 }}
               />
             </div>
-            <label className="console-datasets-filter">
+            <label className="ds-filter">
               {t('auditLog.filterMethod')}
               <select className="ds-control" value={draftMethod} onChange={(e) => setDraftMethod(e.target.value)}>
                 <option value="">{t('auditLog.filterAll')}</option>

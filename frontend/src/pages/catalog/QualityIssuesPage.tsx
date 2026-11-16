@@ -166,7 +166,7 @@ export function QualityIssuesPage() {
         />
       ) : (
         <>
-          <div className="console-datasets-toolbar">
+          <div className="ds-list-toolbar">
             <span className="openkms-flex-row-gap">
               <span className="page-subtitle">
                 {t("qualityIssues.summary", {
@@ -180,7 +180,7 @@ export function QualityIssuesPage() {
                 </StatusChip>
               )}
             </span>
-            <label className="console-datasets-filter">
+            <label className="ds-filter">
               {t("qualityIssues.filter")}
               <select
                 className="ds-control"
