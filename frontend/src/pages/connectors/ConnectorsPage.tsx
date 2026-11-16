@@ -23,7 +23,7 @@ import {
   settingsRowsForKind,
   type KvRow,
 } from './connectorFormUtils';
-import { Dialog } from '../../styles/design-system';
+import { Dialog, ListPage } from '../../styles/design-system';
 import '../ontology/ontology-admin.scss';
 
 export function ConnectorsPage() {
@@ -151,21 +151,19 @@ export function ConnectorsPage() {
   };
 
   return (
-    <div className="ontology-admin">
-      <div className="page-header">
-        <div>
-          <h1>{t('connectors.pageTitle')}</h1>
-          <p className="page-subtitle">{t('connectors.subtitle')}</p>
-        </div>
-        {canWrite ? (
+    <>
+    <ListPage
+      title={t('connectors.pageTitle')}
+      subtitle={t('connectors.subtitle')}
+      actions={
+        canWrite ? (
           <button type="button" className="btn btn-primary" onClick={openCreate} disabled={kinds.length === 0}>
             <Plus size={18} />
             <span>{t('connectors.newConnector')}</span>
           </button>
-        ) : null}
-      </div>
-
-      <div className="ontology-admin-content">
+        ) : null
+      }
+    >
         <div className="ds-table-wrap">
           {loading ? (
             <div className="ds-loading">
@@ -220,7 +218,7 @@ export function ConnectorsPage() {
             </table>
           )}
         </div>
-      </div>
+    </ListPage>
 
       <Dialog
         open={showCreate}
@@ -278,6 +276,6 @@ export function ConnectorsPage() {
                 readOnly={false}
               />
       </Dialog>
-    </div>
+    </>
   );
 }
