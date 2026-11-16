@@ -577,7 +577,7 @@
     "joinDirection": "方向（谁持有外键？）",
     "joinCreated": "关联已添加",
     "joinCreateFailed": "添加关联失败",
-    "joinDeleteConfirm": "删除此关联？",
+    "joinDeleteConfirm": "删除 {{from}} → {{to}} 这条关系？以这两个数据集为基础对象的指标不再自动连表，用到它的查询与规则会失败或口径变化。",
     "joinDeleted": "关联已删除",
     "joinDeleteFailed": "删除关联失败",
     "joinTargetRequired": "请选择目标数据集",

@@ -239,18 +239,21 @@ export function DatasetRelationshipsTab() {
     }
   };
 
-  const handleDelete = async (id: string) => {
+  const handleDelete = async (join: DatasetJoinResponse) => {
     if (
       !(await confirm({
         title: t('shared.delete'),
-        message: t('datasets.joinDeleteConfirm'),
+        message: t('datasets.joinDeleteConfirm', {
+          from: join.from_dataset_name ?? join.from_dataset_id,
+          to: join.to_dataset_name ?? join.to_dataset_id,
+        }),
         confirmLabel: t('shared.delete'),
         danger: true,
       }))
     )
       return;
     try {
-      await deleteDatasetJoin(id);
+      await deleteDatasetJoin(join.id);
       toast.success(t('datasets.joinDeleted'));
       await load();
     } catch (e) {
@@ -310,7 +313,7 @@ export function DatasetRelationshipsTab() {
                   <button
                     type="button"
                     className="btn btn-secondary"
-                    onClick={() => void handleDelete(j.id)}
+                    onClick={() => void handleDelete(j)}
                     title={t('shared.delete')}
                   >
                     <Trash2 size={16} aria-hidden />

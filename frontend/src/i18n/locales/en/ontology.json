@@ -584,7 +584,7 @@
     "joinDirection": "Direction (who holds the FK?)",
     "joinCreated": "Relationship added",
     "joinCreateFailed": "Failed to add relationship",
-    "joinDeleteConfirm": "Delete this relationship?",
+    "joinDeleteConfirm": "Delete {{from}} → {{to}}? Metrics anchored on either dataset will no longer join them, and queries or rules that relied on the join will fail or change their numbers.",
     "joinDeleted": "Relationship deleted",
     "joinDeleteFailed": "Failed to delete relationship",
     "joinTargetRequired": "Pick a target dataset",
