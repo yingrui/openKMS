@@ -1,8 +1,18 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
-import { useTranslation } from 'react-i18next';
-import { Link, useNavigate } from 'react-router-dom';
-import { Database, Loader2, Pencil, Plus, RefreshCw, Search, Trash2, Upload, Users } from 'lucide-react';
-import { toast } from 'sonner';
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
+import { Link, useNavigate } from "react-router-dom";
+import {
+  Database,
+  Loader2,
+  Pencil,
+  Plus,
+  RefreshCw,
+  Search,
+  Trash2,
+  Upload,
+  Users,
+} from "lucide-react";
+import { toast } from "sonner";
 import {
   createDataset,
   deleteDataset,
@@ -13,19 +23,36 @@ import {
   type DatasetFacets,
   type DatasetResponse,
   type TableInfo,
-} from '../../data/datasetsApi';
-import { fetchAllDataSources, type DataSourceResponse } from '../../data/dataSourcesApi';
-import { fetchDatasetJoins, type DatasetJoinResponse } from '../../data/joinsApi';
-import { DatasetUploadWizard } from './DatasetUploadWizard';
-import { DatasetAppTabs } from '../../components/ontology/DatasetAppTabs';
-import { DatasetErGraph, type ErGraphLink, type ErGraphNode } from './DatasetErGraph';
-import { useConfirm } from '../../contexts/ConfirmContext';
-import { Dialog, EmptyState, FormField, Pagination, ResourceViewToggle } from '../../styles/design-system/index';
-import '../ontology/ontology-admin.scss';
-import { datasetLabel } from './datasetLabel';
+} from "../../data/datasetsApi";
+import {
+  fetchAllDataSources,
+  type DataSourceResponse,
+} from "../../data/dataSourcesApi";
+import {
+  fetchDatasetJoins,
+  type DatasetJoinResponse,
+} from "../../data/joinsApi";
+import { DatasetUploadWizard } from "./DatasetUploadWizard";
+import { DatasetAppTabs } from "../../components/ontology/DatasetAppTabs";
+import { ListPage } from "../../styles/design-system";
+import {
+  DatasetErGraph,
+  type ErGraphLink,
+  type ErGraphNode,
+} from "./DatasetErGraph";
+import { useConfirm } from "../../contexts/ConfirmContext";
+import {
+  Dialog,
+  EmptyState,
+  FormField,
+  Pagination,
+  ResourceViewToggle,
+} from "../../styles/design-system/index";
+import "../ontology/ontology-admin.scss";
+import { datasetLabel } from "./datasetLabel";
 
 export function DatasetsListPage() {
-  const { t } = useTranslation('ontology');
+  const { t } = useTranslation("ontology");
   const navigate = useNavigate();
   const confirm = useConfirm();
   const [items, setItems] = useState<DatasetResponse[]>([]);
@@ -33,36 +60,44 @@ export function DatasetsListPage() {
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [editItem, setEditItem] = useState<DatasetResponse | null>(null);
-  const [formDataSourceId, setFormDataSourceId] = useState('');
-  const [formSchema, setFormSchema] = useState('');
-  const [formTable, setFormTable] = useState('');
-  const [formDisplayName, setFormDisplayName] = useState('');
+  const [formDataSourceId, setFormDataSourceId] = useState("");
+  const [formSchema, setFormSchema] = useState("");
+  const [formTable, setFormTable] = useState("");
+  const [formDisplayName, setFormDisplayName] = useState("");
   const [tables, setTables] = useState<TableInfo[]>([]);
   const [loadingTables, setLoadingTables] = useState(false);
-  const [filterDataSourceId, setFilterDataSourceId] = useState('');
-  const [filterDomain, setFilterDomain] = useState('');
-  const [filterTag, setFilterTag] = useState('');
-  const [facets, setFacets] = useState<DatasetFacets>({ domains: [], tags: [], sources: [] });
-  const [search, setSearch] = useState('');
+  const [filterDataSourceId, setFilterDataSourceId] = useState("");
+  const [filterDomain, setFilterDomain] = useState("");
+  const [filterTag, setFilterTag] = useState("");
+  const [facets, setFacets] = useState<DatasetFacets>({
+    domains: [],
+    tags: [],
+    sources: [],
+  });
+  const [search, setSearch] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [showUpload, setShowUpload] = useState(false);
-  const [view, setView] = useState<'list' | 'graph'>('list');
+  const [view, setView] = useState<"list" | "graph">("list");
   const [joins, setJoins] = useState<DatasetJoinResponse[]>([]);
-  const [debouncedSearch, setDebouncedSearch] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState("");
   const [page, setPage] = useState(0);
   const [pageSize, setPageSize] = useState(25);
   const [total, setTotal] = useState(0);
 
-  const pgDataSources = dataSources.filter((ds) => ds.kind === 'postgresql');
+  const pgDataSources = dataSources.filter((ds) => ds.kind === "postgresql");
   // PostgreSQL sources back datasets; only sources explicitly tagged `ontology` are excluded.
-  const dataLayerSources = pgDataSources.filter((ds) => ds.layer !== 'ontology');
+  const dataLayerSources = pgDataSources.filter(
+    (ds) => ds.layer !== "ontology",
+  );
 
   const graphNodes: ErGraphNode[] = useMemo(
     () =>
       items.map((d) => ({
         id: d.id,
         name: datasetLabel(d),
-        joins: joins.filter((j) => j.from_dataset_id === d.id || j.to_dataset_id === d.id).length,
+        joins: joins.filter(
+          (j) => j.from_dataset_id === d.id || j.to_dataset_id === d.id,
+        ).length,
       })),
     [items, joins],
   );
@@ -71,9 +106,9 @@ export function DatasetsListPage() {
       joins.map((j) => ({
         source: j.from_dataset_id,
         target: j.to_dataset_id,
-        label: `${j.required ? t('datasets.requiredLabel') : t('datasets.optionalLabel')} · ${j.from_columns
-          .map((c, i) => `${c} = ${j.to_columns[i] ?? ''}`)
-          .join(', ')}`,
+        label: `${j.required ? t("datasets.requiredLabel") : t("datasets.optionalLabel")} · ${j.from_columns
+          .map((c, i) => `${c} = ${j.to_columns[i] ?? ""}`)
+          .join(", ")}`,
       })),
     [joins, t],
   );
@@ -81,7 +116,7 @@ export function DatasetsListPage() {
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const isGraph = view === 'graph';
+      const isGraph = view === "graph";
       const [dsRes, dRes, jRes] = await Promise.all([
         fetchDatasets({
           data_source_id: filterDataSourceId || undefined,
@@ -99,11 +134,20 @@ export function DatasetsListPage() {
       setDataSources(dRes);
       if (jRes) setJoins(jRes.items);
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : t('datasets.loadFailed'));
+      toast.error(e instanceof Error ? e.message : t("datasets.loadFailed"));
     } finally {
       setLoading(false);
     }
-  }, [filterDataSourceId, filterDomain, filterTag, debouncedSearch, page, pageSize, view, t]);
+  }, [
+    filterDataSourceId,
+    filterDomain,
+    filterTag,
+    debouncedSearch,
+    page,
+    pageSize,
+    view,
+    t,
+  ]);
 
   useEffect(() => {
     void load();
@@ -139,7 +183,9 @@ export function DatasetsListPage() {
     try {
       setTables(await fetchTablesFromSource(dataSourceId));
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : t('datasets.loadTablesFailed'));
+      toast.error(
+        e instanceof Error ? e.message : t("datasets.loadTablesFailed"),
+      );
       setTables([]);
     } finally {
       setLoadingTables(false);
@@ -148,11 +194,11 @@ export function DatasetsListPage() {
 
   const openCreate = () => {
     setEditItem(null);
-    const defaultPg = dataLayerSources[0]?.id ?? '';
+    const defaultPg = dataLayerSources[0]?.id ?? "";
     setFormDataSourceId(defaultPg);
-    setFormSchema('');
-    setFormTable('');
-    setFormDisplayName('');
+    setFormSchema("");
+    setFormTable("");
+    setFormDisplayName("");
     setTables([]);
     if (defaultPg) void loadTables(defaultPg);
     setShowForm(true);
@@ -161,9 +207,9 @@ export function DatasetsListPage() {
   const openEdit = (d: DatasetResponse) => {
     setEditItem(d);
     setFormDataSourceId(d.data_source_id);
-    setFormSchema(d.schema_name ?? '');
-    setFormTable(d.table_name ?? '');
-    setFormDisplayName(d.display_name ?? '');
+    setFormSchema(d.schema_name ?? "");
+    setFormTable(d.table_name ?? "");
+    setFormDisplayName(d.display_name ?? "");
     setTables(
       d.schema_name && d.table_name
         ? [{ schema_name: d.schema_name, table_name: d.table_name }]
@@ -179,15 +225,15 @@ export function DatasetsListPage() {
 
   const handleDataSourceChange = (id: string) => {
     setFormDataSourceId(id);
-    setFormSchema('');
-    setFormTable('');
+    setFormSchema("");
+    setFormTable("");
     if (id) void loadTables(id);
     else setTables([]);
   };
 
   const handleSubmit = async () => {
     if (!formDataSourceId || !formSchema.trim() || !formTable.trim()) {
-      toast.error(t('datasets.requiredFields'));
+      toast.error(t("datasets.requiredFields"));
       return;
     }
     setSubmitting(true);
@@ -198,7 +244,7 @@ export function DatasetsListPage() {
           table_name: formTable.trim(),
           display_name: formDisplayName.trim() || undefined,
         });
-        toast.success(t('datasets.updated'));
+        toast.success(t("datasets.updated"));
       } else {
         await createDataset({
           data_source_id: formDataSourceId,
@@ -206,12 +252,14 @@ export function DatasetsListPage() {
           table_name: formTable.trim(),
           display_name: formDisplayName.trim() || undefined,
         });
-        toast.success(t('datasets.created'));
+        toast.success(t("datasets.created"));
       }
       setShowForm(false);
       await load();
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : t('datasets.operationFailed'));
+      toast.error(
+        e instanceof Error ? e.message : t("datasets.operationFailed"),
+      );
     } finally {
       setSubmitting(false);
     }
@@ -220,128 +268,144 @@ export function DatasetsListPage() {
   const handleDelete = async (id: string) => {
     if (
       !(await confirm({
-        title: t('shared.delete'),
-        message: t('datasets.deleteConfirm'),
-        confirmLabel: t('shared.delete'),
+        title: t("shared.delete"),
+        message: t("datasets.deleteConfirm"),
+        confirmLabel: t("shared.delete"),
         danger: true,
       }))
     )
       return;
     try {
       await deleteDataset(id);
-      toast.success(t('datasets.deleted'));
+      toast.success(t("datasets.deleted"));
       await load();
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : t('datasets.deleteFailed'));
+      toast.error(e instanceof Error ? e.message : t("datasets.deleteFailed"));
     }
   };
 
   const showEmptyState =
-    !loading && total === 0 && !search.trim() && !filterDataSourceId && !filterDomain && !filterTag;
+    !loading &&
+    total === 0 &&
+    !search.trim() &&
+    !filterDataSourceId &&
+    !filterDomain &&
+    !filterTag;
 
   return (
-    <div className="ontology-admin">
-      <header className="page-header">
-        <div>
-          <h1>{t('datasets.title')}</h1>
-          <p className="page-subtitle">{t('datasets.subtitle')}</p>
-        </div>
-        <div className="page-header-actions">
-          {/* One table at a time is "Create"; a whole source is this — and the hint says so. */}
-          <Link
-            to="/datasets/sources"
-            className="btn btn-secondary"
-            title={t('datasets.fromSourceHint')}
-          >
-            <Database size={18} aria-hidden />
-            <span>{t('datasets.fromSource')}</span>
-          </Link>
-          <button
-            type="button"
-            className="btn btn-secondary"
-            onClick={() => setShowUpload(true)}
-            disabled={dataLayerSources.length === 0}
-          >
-            <Upload size={18} aria-hidden />
-            <span>{t('datasets.uploadButton')}</span>
-          </button>
-          <button
-            type="button"
-            className="btn btn-primary"
-            onClick={openCreate}
-            disabled={dataLayerSources.length === 0}
-          >
-            <Plus size={18} aria-hidden />
-            <span>{t('datasets.create')}</span>
-          </button>
-        </div>
-      </header>
-
-      <DatasetAppTabs />
-
-      <div className="ontology-admin-content">
-        {!showEmptyState && (
-          <div className="ds-list-toolbar">
-            <div className="ds-search">
-              <Search size={18} aria-hidden />
-              <input
-                type="search"
-                aria-label={t('datasets.searchAria')}
-                placeholder={t('datasets.searchPlaceholder')}
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
+    <>
+      <ListPage
+        title={t("datasets.title")}
+        subtitle={t("datasets.subtitle")}
+        tabs={<DatasetAppTabs />}
+        actions={
+          <>
+            {/* One table at a time is "Create"; a whole source is this — and the hint says so. */}
+            <Link
+              to="/datasets/sources"
+              className="btn btn-secondary"
+              title={t("datasets.fromSourceHint")}
+            >
+              <Database size={18} aria-hidden />
+              <span>{t("datasets.fromSource")}</span>
+            </Link>
+            <button
+              type="button"
+              className="btn btn-secondary"
+              onClick={() => setShowUpload(true)}
+              disabled={dataLayerSources.length === 0}
+            >
+              <Upload size={18} aria-hidden />
+              <span>{t("datasets.uploadButton")}</span>
+            </button>
+            <button
+              type="button"
+              className="btn btn-primary"
+              onClick={openCreate}
+              disabled={dataLayerSources.length === 0}
+            >
+              <Plus size={18} aria-hidden />
+              <span>{t("datasets.create")}</span>
+            </button>
+          </>
+        }
+        toolbar={
+          !showEmptyState ? (
+            <>
+              <div className="ds-search">
+                <Search size={18} aria-hidden />
+                <input
+                  type="search"
+                  aria-label={t("datasets.searchAria")}
+                  placeholder={t("datasets.searchPlaceholder")}
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                />
+              </div>
+              {dataSources.length > 0 && (
+                <label className="ds-filter">
+                  {t("datasets.filterLabel")}
+                  <select
+                    className="ds-control"
+                    value={filterDataSourceId}
+                    onChange={(e) => setFilterDataSourceId(e.target.value)}
+                  >
+                    <option value="">{t("datasets.filterAll")}</option>
+                    {dataSources.map((ds) => (
+                      <option key={ds.id} value={ds.id}>
+                        {ds.name}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              )}
+              {facets.domains.length > 0 && (
+                <label className="ds-filter">
+                  {t("datasets.filterDomain")}
+                  <select
+                    className="ds-control"
+                    value={filterDomain}
+                    onChange={(e) => setFilterDomain(e.target.value)}
+                  >
+                    <option value="">{t("datasets.filterAll")}</option>
+                    {facets.domains.map((f) => (
+                      <option key={f.value} value={f.value}>
+                        {f.value} ({f.count})
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              )}
+              {facets.tags.length > 0 && (
+                <label className="ds-filter">
+                  {t("datasets.filterTag")}
+                  <select
+                    className="ds-control"
+                    value={filterTag}
+                    onChange={(e) => setFilterTag(e.target.value)}
+                  >
+                    <option value="">{t("datasets.filterAll")}</option>
+                    {facets.tags.map((f) => (
+                      <option key={f.value} value={f.value}>
+                        {f.value} ({f.count})
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              )}
+              <ResourceViewToggle
+                modes={["list", "graph"]}
+                value={view}
+                onChange={setView}
               />
-            </div>
-            {dataSources.length > 0 && (
-              <label className="ds-filter">
-                {t('datasets.filterLabel')}
-                <select className="ds-control"
-                  value={filterDataSourceId}
-                  onChange={(e) => setFilterDataSourceId(e.target.value)}
-                >
-                  <option value="">{t('datasets.filterAll')}</option>
-                  {dataSources.map((ds) => (
-                    <option key={ds.id} value={ds.id}>
-                      {ds.name}
-                    </option>
-                  ))}
-                </select>
-              </label>
-            )}
-            {facets.domains.length > 0 && (
-              <label className="ds-filter">
-                {t('datasets.filterDomain')}
-                <select className="ds-control" value={filterDomain} onChange={(e) => setFilterDomain(e.target.value)}>
-                  <option value="">{t('datasets.filterAll')}</option>
-                  {facets.domains.map((f) => (
-                    <option key={f.value} value={f.value}>
-                      {f.value} ({f.count})
-                    </option>
-                  ))}
-                </select>
-              </label>
-            )}
-            {facets.tags.length > 0 && (
-              <label className="ds-filter">
-                {t('datasets.filterTag')}
-                <select className="ds-control" value={filterTag} onChange={(e) => setFilterTag(e.target.value)}>
-                  <option value="">{t('datasets.filterAll')}</option>
-                  {facets.tags.map((f) => (
-                    <option key={f.value} value={f.value}>
-                      {f.value} ({f.count})
-                    </option>
-                  ))}
-                </select>
-              </label>
-            )}
-            <ResourceViewToggle modes={['list', 'graph']} value={view} onChange={setView} />
-          </div>
-        )}
-
+            </>
+          ) : null
+        }
+      >
         {loading ? (
           <div className="ds-loading">
             <Loader2 size={32} className="ds-loading__spinner" aria-hidden />
-            <p>{t('shared.loading')}</p>
+            <p>{t("shared.loading")}</p>
           </div>
         ) : showEmptyState ? (
           <EmptyState
@@ -349,25 +413,29 @@ export function DatasetsListPage() {
             title={
               dataLayerSources.length === 0
                 ? pgDataSources.length > 0
-                  ? t('datasets.emptyNeedDataLayer')
-                  : t('datasets.emptyNeedPg')
-                : t('datasets.emptyList')
+                  ? t("datasets.emptyNeedDataLayer")
+                  : t("datasets.emptyNeedPg")
+                : t("datasets.emptyList")
             }
             action={
               dataLayerSources.length > 0 ? (
-                <button type="button" className="btn btn-primary" onClick={openCreate}>
+                <button
+                  type="button"
+                  className="btn btn-primary"
+                  onClick={openCreate}
+                >
                   <Plus size={16} aria-hidden />
-                  {t('datasets.create')}
+                  {t("datasets.create")}
                 </button>
               ) : undefined
             }
           />
-        ) : view === 'graph' ? (
+        ) : view === "graph" ? (
           <DatasetErGraph
             nodes={graphNodes}
             links={graphLinks}
             onOpen={(id) => navigate(`/datasets/${id}`)}
-            emptyLabel={t('datasets.emptyList')}
+            emptyLabel={t("datasets.emptyList")}
             fill
           />
         ) : (
@@ -375,17 +443,19 @@ export function DatasetsListPage() {
             <table className="ds-table">
               <thead>
                 <tr>
-                  <th>{t('datasets.displayName')}</th>
-                  <th>{t('datasets.dataSource')}</th>
-                  <th>{t('datasets.schemaTable')}</th>
-                  <th className="ds-table-actions">{t('shared.actions')}</th>
+                  <th>{t("datasets.displayName")}</th>
+                  <th>{t("datasets.dataSource")}</th>
+                  <th>{t("datasets.schemaTable")}</th>
+                  <th className="ds-table-actions">{t("shared.actions")}</th>
                 </tr>
               </thead>
               <tbody>
                 {items.length === 0 ? (
                   <tr>
                     <td colSpan={4} className="ds-table-empty">
-                      {search.trim() ? t('datasets.emptyNoMatch') : t('datasets.emptyList')}
+                      {search.trim()
+                        ? t("datasets.emptyNoMatch")
+                        : t("datasets.emptyList")}
                     </td>
                   </tr>
                 ) : (
@@ -393,10 +463,12 @@ export function DatasetsListPage() {
                     <tr key={d.id}>
                       <td>
                         <Link to={`/datasets/${d.id}`}>
-                          <span className="ds-table-primary">{datasetLabel(d)}</span>
+                          <span className="ds-table-primary">
+                            {datasetLabel(d)}
+                          </span>
                         </Link>
                       </td>
-                      <td>{d.data_source_name ?? t('datasets.dash')}</td>
+                      <td>{d.data_source_name ?? t("datasets.dash")}</td>
                       <td className="ds-table-muted">
                         {d.schema_name}.{d.table_name}
                       </td>
@@ -404,24 +476,24 @@ export function DatasetsListPage() {
                         <div className="ds-table-btns">
                           <Link
                             to={`/datasets/${d.id}/sharing`}
-                            title={t('datasets.sharing')}
+                            title={t("datasets.sharing")}
                             className="ds-table-icon-link"
-                            aria-label={t('datasets.sharing')}
+                            aria-label={t("datasets.sharing")}
                           >
                             <Users size={16} aria-hidden />
                           </Link>
                           <button
                             type="button"
-                            title={t('datasets.edit')}
-                            aria-label={t('datasets.edit')}
+                            title={t("datasets.edit")}
+                            aria-label={t("datasets.edit")}
                             onClick={() => openEdit(d)}
                           >
                             <Pencil size={16} aria-hidden />
                           </button>
                           <button
                             type="button"
-                            title={t('shared.delete')}
-                            aria-label={t('shared.delete')}
+                            title={t("shared.delete")}
+                            aria-label={t("shared.delete")}
                             onClick={() => void handleDelete(d.id)}
                           >
                             <Trash2 size={16} aria-hidden />
@@ -450,7 +522,7 @@ export function DatasetsListPage() {
             ) : null}
           </div>
         )}
-      </div>
+      </ListPage>
 
       <DatasetUploadWizard
         open={showUpload}
@@ -467,32 +539,49 @@ export function DatasetsListPage() {
         open={showForm}
         onClose={closeForm}
         closeDisabled={submitting}
-        title={editItem ? t('datasets.modalEditTitle') : t('datasets.modalNewTitle')}
-        closeAriaLabel={t('shared.cancel')}
+        title={
+          editItem ? t("datasets.modalEditTitle") : t("datasets.modalNewTitle")
+        }
+        closeAriaLabel={t("shared.cancel")}
         size="sm"
         footer={
           <>
-            <button type="button" className="btn btn-secondary" onClick={closeForm} disabled={submitting}>
-              {t('shared.cancel')}
+            <button
+              type="button"
+              className="btn btn-secondary"
+              onClick={closeForm}
+              disabled={submitting}
+            >
+              {t("shared.cancel")}
             </button>
             <button
               type="button"
               className="btn btn-primary"
               onClick={() => void handleSubmit()}
-              disabled={!formDataSourceId || !formSchema.trim() || !formTable.trim() || submitting}
+              disabled={
+                !formDataSourceId ||
+                !formSchema.trim() ||
+                !formTable.trim() ||
+                submitting
+              }
             >
-              {submitting ? t('shared.saving') : editItem ? t('datasets.update') : t('datasets.create')}
+              {submitting
+                ? t("shared.saving")
+                : editItem
+                  ? t("datasets.update")
+                  : t("datasets.create")}
             </button>
           </>
         }
       >
-        <FormField label={t('datasets.fieldDataSource')}>
-          <select className="ds-control"
+        <FormField label={t("datasets.fieldDataSource")}>
+          <select
+            className="ds-control"
             value={formDataSourceId}
             onChange={(e) => handleDataSourceChange(e.target.value)}
             disabled={!!editItem || submitting}
           >
-            <option value="">{t('datasets.selectDataSource')}</option>
+            <option value="">{t("datasets.selectDataSource")}</option>
             {dataLayerSources.map((ds) => (
               <option key={ds.id} value={ds.id}>
                 {ds.name} ({ds.kind})
@@ -500,24 +589,31 @@ export function DatasetsListPage() {
             ))}
           </select>
         </FormField>
-        <FormField label={t('datasets.fieldTable')} htmlFor="om-dataset-table">
+        <FormField label={t("datasets.fieldTable")} htmlFor="om-dataset-table">
           <div className="openkms-table-picker-row">
             <select
               id="om-dataset-table"
-              value={tables.length ? `${formSchema}.${formTable}` : ''}
+              value={tables.length ? `${formSchema}.${formTable}` : ""}
               onChange={(e) => {
                 const v = e.target.value;
                 if (v) {
-                  const [s, tbl] = v.split('.');
+                  const [s, tbl] = v.split(".");
                   setFormSchema(s);
                   setFormTable(tbl);
                 }
               }}
-              disabled={!formDataSourceId || loadingTables || tables.length === 0 || submitting}
+              disabled={
+                !formDataSourceId ||
+                loadingTables ||
+                tables.length === 0 ||
+                submitting
+              }
               className="ds-control openkms-flex-1"
             >
               <option value="">
-                {loadingTables ? t('datasets.loadingTables') : t('datasets.selectTable')}
+                {loadingTables
+                  ? t("datasets.loadingTables")
+                  : t("datasets.selectTable")}
               </option>
               {tables.map((tbl) => (
                 <option
@@ -534,23 +630,23 @@ export function DatasetsListPage() {
                 className="btn btn-secondary btn-sm"
                 onClick={() => void loadTables(formDataSourceId)}
                 disabled={loadingTables || submitting}
-                aria-label={t('datasets.refreshTables')}
+                aria-label={t("datasets.refreshTables")}
               >
                 <RefreshCw size={14} aria-hidden />
               </button>
             )}
           </div>
         </FormField>
-        <FormField label={t('datasets.fieldDisplayName')}>
+        <FormField label={t("datasets.fieldDisplayName")}>
           <input
             type="text"
             value={formDisplayName}
             onChange={(e) => setFormDisplayName(e.target.value)}
-            placeholder={t('datasets.displayNamePlaceholder')}
+            placeholder={t("datasets.displayNamePlaceholder")}
             disabled={submitting}
           />
         </FormField>
       </Dialog>
-    </div>
+    </>
   );
 }
