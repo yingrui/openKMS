@@ -78,10 +78,42 @@ export function DatasetErGraph({
   /* Set once a drag actually moves the box; a pointer-down that never moves does not rearrange anything. */
   const movedRef = useRef(false);
   const canvasRef = useRef<HTMLDivElement>(null);
+  const wrapRef = useRef<HTMLDivElement>(null);
+  const [size, setSize] = useState({ width: 0, height: 0 });
+
+  useEffect(() => {
+    const el = wrapRef.current;
+    if (!el) return;
+    const measure = () =>
+      setSize({
+        width: el.clientWidth,
+        /* `fill` → the space left in the viewport below the diagram, so it reaches the page's bottom edge. */
+        height: fill
+          ? Math.max(320, window.innerHeight - el.getBoundingClientRect().top - 24)
+          : el.clientHeight,
+      });
+    const observer = new ResizeObserver(measure);
+    observer.observe(el);
+    window.addEventListener('resize', measure);
+    measure();
+    return () => {
+      observer.disconnect();
+      window.removeEventListener('resize', measure);
+    };
+  }, [fill]);
 
   /* A grid until the reader moves something; the grid is deterministic so a catalog always opens the same way. */
   const grid = useMemo(() => {
-    const columns = Math.max(1, Math.ceil(Math.sqrt(nodes.length)));
+    const perRow = Math.max(1, Math.floor((size.width - PADDING * 2 + GAP_X) / (BOX_WIDTH + GAP_X)));
+    const columns = Math.min(nodes.length || 1, Math.max(perRow, Math.ceil(Math.sqrt(nodes.length))));
+    /* Spread the row across the width instead of stacking it at the left edge. */
+    const stretch =
+      columns > 1 && size.width > 0
+        ? Math.max(
+            GAP_X,
+            (size.width - PADDING * 2 - columns * BOX_WIDTH) / (columns - 1),
+          )
+        : GAP_X;
     const out: Record<string, Position> = {};
     let y = PADDING;
     nodes.forEach((node, index) => {
@@ -90,10 +122,10 @@ export function DatasetErGraph({
         const previousRow = nodes.slice(index - columns, index);
         y += Math.max(...previousRow.map((n) => boxHeight(n.columns?.length ?? 0))) + GAP_Y;
       }
-      out[node.id] = { x: PADDING + column * (BOX_WIDTH + GAP_X), y };
+      out[node.id] = { x: PADDING + column * (BOX_WIDTH + stretch), y };
     });
     return out;
-  }, [nodes]);
+  }, [nodes, size.width]);
 
   useEffect(() => {
     setPositions(grid);
@@ -112,8 +144,14 @@ export function DatasetErGraph({
       setPositions((current) => ({
         ...current,
         [drag.id]: {
-          x: Math.max(0, event.clientX - rect.left - drag.dx),
-          y: Math.max(0, event.clientY - rect.top - drag.dy),
+          x: Math.min(
+            Math.max(0, event.clientX - rect.left - drag.dx),
+            Math.max(0, rect.width - BOX_WIDTH),
+          ),
+          y: Math.min(
+            Math.max(0, event.clientY - rect.top - drag.dy),
+            Math.max(0, rect.height - BOX_HEAD - BOX_FOOT),
+          ),
         },
       }));
     };
@@ -144,12 +182,14 @@ export function DatasetErGraph({
     movedRef.current = false;
   };
 
-  const width = Math.max(
-    ...nodes.map((node) => (positions[node.id]?.x ?? 0) + BOX_WIDTH),
-  ) + PADDING;
-  const height = Math.max(
-    ...nodes.map((node) => (positions[node.id]?.y ?? 0) + boxHeight(node.columns?.length ?? 0)),
-  ) + PADDING;
+  const contentWidth =
+    Math.max(...nodes.map((node) => (positions[node.id]?.x ?? 0) + BOX_WIDTH)) + PADDING;
+  const contentHeight =
+    Math.max(
+      ...nodes.map((node) => (positions[node.id]?.y ?? 0) + boxHeight(node.columns?.length ?? 0)),
+    ) + PADDING;
+  const width = Math.max(contentWidth, size.width);
+  const height = Math.max(contentHeight, size.height);
 
   const edges = links.flatMap((link) => {
     const from = positions[link.source];
@@ -177,7 +217,7 @@ export function DatasetErGraph({
   });
 
   return (
-    <div className={`dataset-er-graph${fill ? ' dataset-er-graph--fill' : ''}`}>
+    <div ref={wrapRef} className={`dataset-er-graph${fill ? ' dataset-er-graph--fill' : ''}`}>
       <div ref={canvasRef} className="dataset-er-graph__canvas" style={{ width, height }}>
         <svg className="dataset-er-graph__edges" width={width} height={height} aria-hidden>
           {edges.map((edge) => {

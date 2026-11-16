@@ -2,6 +2,9 @@
 .dataset-er-graph {
   width: 100%;
   overflow: auto;
+  /* The canvas is at least the container's size, so a box can be dragged into the empty space beside the grid. */
+  display: flex;
+  align-items: flex-start;
 }
 
 /* Catalog Map view: the diagram claims the space left in the viewport instead of a fixed height. */
@@ -12,7 +15,7 @@
 
 .dataset-er-graph__canvas {
   position: relative;
-  margin: 0 auto;
+  flex: none;
 }
 
 .dataset-er-graph__edges {
