@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { ArrowUpRight } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
+import { layoutEr } from './erLayout';
 import './dataset-er-graph.scss';
 
 export type ErGraphNode = {
@@ -102,30 +103,20 @@ export function DatasetErGraph({
     };
   }, [fill]);
 
-  /* A grid until the reader moves something; the grid is deterministic so a catalog always opens the same way. */
-  const grid = useMemo(() => {
-    const perRow = Math.max(1, Math.floor((size.width - PADDING * 2 + GAP_X) / (BOX_WIDTH + GAP_X)));
-    const columns = Math.min(nodes.length || 1, Math.max(perRow, Math.ceil(Math.sqrt(nodes.length))));
-    /* Spread the row across the width instead of stacking it at the left edge. */
-    const stretch =
-      columns > 1 && size.width > 0
-        ? Math.max(
-            GAP_X,
-            (size.width - PADDING * 2 - columns * BOX_WIDTH) / (columns - 1),
-          )
-        : GAP_X;
-    const out: Record<string, Position> = {};
-    let y = PADDING;
-    nodes.forEach((node, index) => {
-      const column = index % columns;
-      if (column === 0 && index > 0) {
-        const previousRow = nodes.slice(index - columns, index);
-        y += Math.max(...previousRow.map((n) => boxHeight(n.columns?.length ?? 0))) + GAP_Y;
-      }
-      out[node.id] = { x: PADDING + column * (BOX_WIDTH + stretch), y };
-    });
-    return out;
-  }, [nodes, size.width]);
+  /* Relationships decide the arrangement: a dataset that owns the key sits under the one it points at, so the
+     picture reads top-down along the joins. The reader can still drag any box away from it. */
+  const layout = useMemo(
+    () =>
+      layoutEr(nodes, links, {
+        boxWidth: BOX_WIDTH,
+        gapX: GAP_X,
+        gapY: GAP_Y,
+        padding: PADDING,
+        height: (node) => boxHeight(node.columns?.length ?? 0),
+      }),
+    [nodes, links],
+  );
+  const grid = layout.positions;
 
   useEffect(() => {
     setPositions(grid);

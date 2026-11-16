@@ -398,7 +398,7 @@ export function Models() {
               </div>
             ) : (
               <>
-              <table className="models-table">
+              <table className="ds-table models-table">
                 <thead>
                   <tr>
                     <th>{t('models.colModel')}</th>
@@ -413,7 +413,7 @@ export function Models() {
                 <tbody>
                   {models.length === 0 ? (
                     <tr>
-                      <td colSpan={7} className="table-empty">
+                      <td colSpan={7} className="ds-table-empty">
                         {providers.length === 0
                           ? t('models.emptyNoProviders')
                           : modelsTotal === 0 && !searchDebounced.trim() && !activeApiKind && !activeProvider
