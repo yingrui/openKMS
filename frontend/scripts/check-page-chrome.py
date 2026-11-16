@@ -101,7 +101,10 @@ def shell_users() -> set[str]:
     for path in SRC.rglob("*.tsx"):
         if ".test." in path.name:
             continue
-        if "ontology-admin-content" in path.read_text(errors="ignore"):
+        text = path.read_text(errors="ignore")
+        # The check is about **lists**: a page that renders a table. Detail pages (a form and its own tab
+        # strip) are a different shell — the entity view — and are tracked by the entity-view guard.
+        if "ontology-admin-content" in text and "ds-table" in text:
             users.add(str(path.relative_to(ROOT)))
     return users
 
