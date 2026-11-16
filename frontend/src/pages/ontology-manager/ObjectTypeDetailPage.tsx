@@ -443,7 +443,7 @@ export function ObjectTypeDatasourcesTab() {
         <div className="entity-view__form">
           <EntityViewField label={t('objectTypes.dataset')}>
             <select
-              className="console-form-control"
+              className="ds-control"
               value={datasetId}
               onChange={(e) => setDatasetId(e.target.value)}
             >

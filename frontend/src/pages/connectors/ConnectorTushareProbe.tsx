@@ -151,7 +151,7 @@ export function ConnectorTushareProbe({
             <input
               id="connector-probe-ts_code"
               type="text"
-              className="console-form-control"
+              className="ds-control"
               value={tsCode}
               placeholder="000001.SZ"
               onChange={(e) => setTsCode(e.target.value)}
@@ -169,7 +169,7 @@ export function ConnectorTushareProbe({
             <input
               id="connector-probe-trade_date"
               type="date"
-              className="console-form-control"
+              className="ds-control"
               value={tradeDate}
               onChange={(e) => setTradeDate(e.target.value)}
               onKeyDown={onEnterSend}
@@ -185,7 +185,7 @@ export function ConnectorTushareProbe({
             <input
               id="connector-probe-start_date"
               type="date"
-              className="console-form-control"
+              className="ds-control"
               value={startDate}
               onChange={(e) => setStartDate(e.target.value)}
               onKeyDown={onEnterSend}
@@ -201,7 +201,7 @@ export function ConnectorTushareProbe({
             <input
               id="connector-probe-end_date"
               type="date"
-              className="console-form-control"
+              className="ds-control"
               value={endDate}
               onChange={(e) => setEndDate(e.target.value)}
               onKeyDown={onEnterSend}
@@ -218,7 +218,7 @@ export function ConnectorTushareProbe({
               id="connector-probe-limit"
               type="number"
               min={1}
-              className="console-form-control"
+              className="ds-control"
               value={limit}
               placeholder="5000"
               onChange={(e) => setLimit(e.target.value)}
@@ -236,7 +236,7 @@ export function ConnectorTushareProbe({
               id="connector-probe-offset"
               type="number"
               min={0}
-              className="console-form-control"
+              className="ds-control"
               value={offset}
               onChange={(e) => setOffset(e.target.value)}
               onKeyDown={onEnterSend}

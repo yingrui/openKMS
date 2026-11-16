@@ -30,28 +30,7 @@
   width: 100%;
 }
 
-.console-form-control {
-  display: block;
-  width: 100%;
-  padding: var(--padding-compact-y) calc(var(--space-3) + var(--space-1) / 2);
-  font-size: var(--text-base);
-  background: var(--color-bg-muted);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
-  color: var(--color-text);
-
-  &:focus {
-    outline: none;
-    border-color: var(--color-accent);
-  }
-
-  &:disabled {
-    opacity: 0.7;
-    cursor: not-allowed;
-  }
-}
-
-select.console-form-control {
+select.ds-control {
   cursor: pointer;
 }
 

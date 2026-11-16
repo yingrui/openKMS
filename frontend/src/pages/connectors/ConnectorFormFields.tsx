@@ -87,7 +87,7 @@ export function ConnectorFormFields({
           <label htmlFor={fieldId}>{f.label}</label>
           <select
             id={fieldId}
-            className="console-form-control"
+            className="ds-control"
             value={value}
             onChange={(e) => onChange(e.target.value)}
             disabled={readOnly}
@@ -107,7 +107,7 @@ export function ConnectorFormFields({
         <input
           id={fieldId}
           type={f.field_type === 'url' ? 'url' : f.field_type === 'integer' ? 'number' : 'text'}
-          className="console-form-control"
+          className="ds-control"
           value={value}
           placeholder={f.placeholder ?? undefined}
           onChange={(e) => onChange(e.target.value)}
@@ -133,7 +133,7 @@ export function ConnectorFormFields({
         <input
           id={nameFieldId}
           type="text"
-          className="console-form-control"
+          className="ds-control"
           value={formName}
           onChange={(e) => onFormNameChange(e.target.value)}
           autoComplete="off"
@@ -144,7 +144,7 @@ export function ConnectorFormFields({
         <label htmlFor={kindFieldId}>{t('connectors.fieldKind')}</label>
         <select
           id={kindFieldId}
-          className="console-form-control"
+          className="ds-control"
           value={formKind}
           onChange={(e) => onFormKindChange(e.target.value)}
           disabled={readOnly || kindLocked}

@@ -209,7 +209,7 @@ export function ExternalServiceFormDialog({
       <div className="external-services__form">
         <FormField label={t('editor.external.apiName')}>
           <input
-            className="console-form-control"
+            className="ds-control"
             value={draft.api_name}
             onChange={(e) => setDraft({ ...draft, api_name: e.target.value })}
             placeholder="turtle"
@@ -218,14 +218,14 @@ export function ExternalServiceFormDialog({
         </FormField>
         <FormField label={t('editor.external.displayName')}>
           <input
-            className="console-form-control"
+            className="ds-control"
             value={draft.display_name}
             onChange={(e) => setDraft({ ...draft, display_name: e.target.value })}
           />
         </FormField>
         <FormField label={t('editor.external.kind')} hint={t('editor.external.kindHint')}>
           <select
-            className="console-form-control"
+            className="ds-control"
             value={draft.kind}
             onChange={(e) => setDraft({ ...draft, kind: e.target.value as Draft['kind'] })}
           >
@@ -236,7 +236,7 @@ export function ExternalServiceFormDialog({
         {draft.kind === 'http' ? (
           <FormField label={t('editor.external.baseUrl')}>
             <input
-              className="console-form-control"
+              className="ds-control"
               value={draft.base_url}
               onChange={(e) => setDraft({ ...draft, base_url: e.target.value })}
               placeholder="http://backend:8200"
@@ -246,7 +246,7 @@ export function ExternalServiceFormDialog({
           <>
             <FormField label={t('editor.external.cluster')}>
               <select
-                className="console-form-control"
+                className="ds-control"
                 value={draft.cluster_id}
                 onChange={(e) => {
                   const cluster = clusters.find((c) => c.id === e.target.value);
@@ -267,7 +267,7 @@ export function ExternalServiceFormDialog({
             </FormField>
             <FormField label={t('editor.external.namespace')}>
               <input
-                className="console-form-control"
+                className="ds-control"
                 value={draft.namespace}
                 onChange={(e) => setDraft({ ...draft, namespace: e.target.value })}
                 placeholder="stock"
@@ -275,7 +275,7 @@ export function ExternalServiceFormDialog({
             </FormField>
             <FormField label={t('editor.external.serviceName')}>
               <input
-                className="console-form-control"
+                className="ds-control"
                 value={draft.service}
                 onChange={(e) => setDraft({ ...draft, service: e.target.value })}
                 placeholder="backend"
@@ -283,7 +283,7 @@ export function ExternalServiceFormDialog({
             </FormField>
             <FormField label={t('editor.external.port')}>
               <input
-                className="console-form-control"
+                className="ds-control"
                 type="number"
                 min={1}
                 max={65535}
@@ -296,7 +296,7 @@ export function ExternalServiceFormDialog({
         )}
         <FormField label={t('editor.external.basePath')} hint={t('editor.external.basePathHint')}>
           <input
-            className="console-form-control"
+            className="ds-control"
             value={draft.base_path}
             onChange={(e) => setDraft({ ...draft, base_path: e.target.value })}
             placeholder="/"
@@ -304,7 +304,7 @@ export function ExternalServiceFormDialog({
         </FormField>
         <FormField label={t('editor.external.auth')}>
           <select
-            className="console-form-control"
+            className="ds-control"
             value={draft.auth_kind}
             onChange={(e) =>
               setDraft({ ...draft, auth_kind: e.target.value as Draft['auth_kind'] })
@@ -319,7 +319,7 @@ export function ExternalServiceFormDialog({
         {draft.auth_kind === 'header' || draft.auth_kind === 'hmac' ? (
           <FormField label={t('editor.external.authHeaderName')}>
             <input
-              className="console-form-control"
+              className="ds-control"
               value={draft.auth_header_name}
               onChange={(e) => setDraft({ ...draft, auth_header_name: e.target.value })}
               placeholder={draft.auth_kind === 'hmac' ? 'X-OpenKMS-Signature' : 'X-API-Key'}
@@ -332,7 +332,7 @@ export function ExternalServiceFormDialog({
             hint={service?.has_secret ? t('editor.external.secretKeepHint') : undefined}
           >
             <input
-              className="console-form-control"
+              className="ds-control"
               type="password"
               value={draft.secret}
               onChange={(e) => setDraft({ ...draft, secret: e.target.value })}
@@ -345,7 +345,7 @@ export function ExternalServiceFormDialog({
           hint={t('editor.external.allowedPathsHint')}
         >
           <textarea
-            className="console-form-control"
+            className="ds-control"
             rows={3}
             value={draft.allowed_paths}
             onChange={(e) => setDraft({ ...draft, allowed_paths: e.target.value })}
@@ -353,7 +353,7 @@ export function ExternalServiceFormDialog({
         </FormField>
         <FormField label={t('editor.external.timeout')}>
           <input
-            className="console-form-control"
+            className="ds-control"
             type="number"
             min={1}
             max={60}
@@ -363,7 +363,7 @@ export function ExternalServiceFormDialog({
         </FormField>
         <FormField label={t('editor.external.description')}>
           <input
-            className="console-form-control"
+            className="ds-control"
             value={draft.description}
             onChange={(e) => setDraft({ ...draft, description: e.target.value })}
           />

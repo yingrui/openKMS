@@ -100,7 +100,7 @@ export function ConnectorOutputSlotField({
       ) : null}
       <select
         id={fieldId}
-        className="console-form-control"
+        className="ds-control"
         value={value}
         onChange={(e) => onSelect(e.target.value)}
         disabled={readOnly}
@@ -125,7 +125,7 @@ export function ConnectorOutputSlotField({
               <label className="connector-output-provision-label">
                 {t('connectors.provisionDataSource')}
                 <select
-                  className="console-form-control"
+                  className="ds-control"
                   value={dataSourceId}
                   onChange={(e) => setDataSourceId(e.target.value)}
                 >
@@ -145,7 +145,7 @@ export function ConnectorOutputSlotField({
                   {t('connectors.provisionSchema')}
                   <input
                     type="text"
-                    className="console-form-control"
+                    className="ds-control"
                     value={schemaName}
                     onChange={(e) => setSchemaName(e.target.value)}
                     autoComplete="off"
@@ -155,7 +155,7 @@ export function ConnectorOutputSlotField({
                   {t('connectors.provisionTable')}
                   <input
                     type="text"
-                    className="console-form-control"
+                    className="ds-control"
                     value={tableName}
                     onChange={(e) => setTableName(e.target.value)}
                     autoComplete="off"
@@ -166,7 +166,7 @@ export function ConnectorOutputSlotField({
                 {t('connectors.provisionDisplayName')}
                 <input
                   type="text"
-                  className="console-form-control"
+                  className="ds-control"
                   value={displayName}
                   onChange={(e) => setDisplayName(e.target.value)}
                   autoComplete="off"

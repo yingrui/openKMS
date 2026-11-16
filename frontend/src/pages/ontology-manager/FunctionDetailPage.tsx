@@ -322,14 +322,14 @@ function SchemaFieldsEditor({
                   <tr key={`${row.key}-${index}`}>
                     <td>
                       <input
-                        className="console-form-control"
+                        className="ds-control"
                         value={row.key}
                         onChange={(e) => updateRow(index, { key: e.target.value })}
                       />
                     </td>
                     <td>
                       <select
-                        className="console-form-control"
+                        className="ds-control"
                         value={row.kind}
                         onChange={(e) => {
                           const kind = e.target.value as OntologySchemaFieldKind;
@@ -349,7 +349,7 @@ function SchemaFieldsEditor({
                     <td>
                       {row.kind === 'primitive' ? (
                         <select
-                          className="console-form-control"
+                          className="ds-control"
                           value={row.jsonType}
                           onChange={(e) => updateRow(index, { jsonType: e.target.value })}
                         >
@@ -361,7 +361,7 @@ function SchemaFieldsEditor({
                         </select>
                       ) : row.kind === 'object_type' ? (
                         <select
-                          className="console-form-control"
+                          className="ds-control"
                           value={row.typeName}
                           onChange={(e) => updateRow(index, { typeName: e.target.value })}
                         >
@@ -374,7 +374,7 @@ function SchemaFieldsEditor({
                         </select>
                       ) : (
                         <select
-                          className="console-form-control"
+                          className="ds-control"
                           value={row.typeName}
                           onChange={(e) => updateRow(index, { typeName: e.target.value })}
                         >
@@ -519,7 +519,7 @@ export function FunctionOverviewTab() {
         <div className="entity-view__form">
           <EntityViewField label={t('functions.objectType')}>
             <select
-              className="console-form-control"
+              className="ds-control"
               value={objectTypeId}
               onChange={(e) => setObjectTypeId(e.target.value)}
             >

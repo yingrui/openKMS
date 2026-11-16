@@ -145,7 +145,7 @@ export function ObjectTypeOverviewTab() {
       <EntityViewPanel title={t('objectTypes.general')} description={t('objectTypes.generalHint')}>
         <div className="entity-view__form">
           <EntityViewField label={t('objectTypes.name')}>
-            <input className="console-form-control" value={name} onChange={(e) => setName(e.target.value)} />
+            <input className="ds-control" value={name} onChange={(e) => setName(e.target.value)} />
           </EntityViewField>
           <EntityViewField label={t('objectTypes.apiName')}>
             {objectType.api_name ? (
@@ -154,7 +154,7 @@ export function ObjectTypeOverviewTab() {
               </code>
             ) : (
               <input
-                className="console-form-control"
+                className="ds-control"
                 value={apiName}
                 onChange={(e) => setApiName(e.target.value)}
                 placeholder={t('objectTypes.apiName')}
@@ -164,7 +164,7 @@ export function ObjectTypeOverviewTab() {
           </EntityViewField>
           <EntityViewField label={t('objectTypes.description')}>
             <textarea
-              className="console-form-control"
+              className="ds-control"
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               rows={3}
@@ -178,7 +178,7 @@ export function ObjectTypeOverviewTab() {
           />
           <EntityViewField label={t('objectTypes.displayProperty')}>
             <select
-              className="console-form-control"
+              className="ds-control"
               value={displayProperty}
               onChange={(e) => setDisplayProperty(e.target.value)}
             >
@@ -213,7 +213,7 @@ export function ObjectTypeOverviewTab() {
           <div className="entity-view__form">
             <EntityViewField label={t('objectTypes.neo4jSource')}>
               <select
-                className="console-form-control"
+                className="ds-control"
                 value={neo4jId}
                 onChange={(e) => setNeo4jId(e.target.value)}
                 disabled={indexing}
@@ -237,7 +237,7 @@ export function ObjectTypeOverviewTab() {
           {neo4jDataSources.length > 0 ? (
             <EntityViewField label={t('objectTypes.neo4jSource')}>
               <select
-                className="console-form-control"
+                className="ds-control"
                 value={neo4jId}
                 onChange={(e) => setNeo4jId(e.target.value)}
                 disabled={purging}
@@ -252,7 +252,7 @@ export function ObjectTypeOverviewTab() {
           ) : null}
           <EntityViewField label={t('objectTypes.purgeTypeConfirm', { phrase: purgePhrase })}>
             <input
-              className="console-form-control"
+              className="ds-control"
               type="text"
               value={purgeConfirm}
               onChange={(e) => setPurgeConfirm(e.target.value)}

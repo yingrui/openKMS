@@ -338,7 +338,7 @@ export function LinkTypeOverviewTab() {
       <EntityViewPanel title={t('linkTypes.general')} description={t('linkTypes.generalHint')}>
         <div className="entity-view__form">
           <EntityViewField label={t('linkTypes.name')}>
-            <input className="console-form-control" value={name} onChange={(e) => setName(e.target.value)} />
+            <input className="ds-control" value={name} onChange={(e) => setName(e.target.value)} />
           </EntityViewField>
           <EntityViewField label={t('linkTypes.apiName')}>
             {linkType.api_name ? (
@@ -347,7 +347,7 @@ export function LinkTypeOverviewTab() {
               </code>
             ) : (
               <input
-                className="console-form-control"
+                className="ds-control"
                 value={apiName}
                 onChange={(e) => setApiName(e.target.value)}
                 placeholder={t('linkTypes.apiName')}
@@ -357,7 +357,7 @@ export function LinkTypeOverviewTab() {
           </EntityViewField>
           <EntityViewField label={t('linkTypes.description')}>
             <textarea
-              className="console-form-control"
+              className="ds-control"
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               rows={3}
@@ -365,7 +365,7 @@ export function LinkTypeOverviewTab() {
           </EntityViewField>
           <EntityViewField label={t('linkTypes.source')}>
             <select
-              className="console-form-control"
+              className="ds-control"
               value={sourceId}
               onChange={(e) => setSourceId(e.target.value)}
             >
@@ -378,7 +378,7 @@ export function LinkTypeOverviewTab() {
           </EntityViewField>
           <EntityViewField label={t('linkTypes.target')}>
             <select
-              className="console-form-control"
+              className="ds-control"
               value={targetId}
               onChange={(e) => setTargetId(e.target.value)}
             >
@@ -391,7 +391,7 @@ export function LinkTypeOverviewTab() {
           </EntityViewField>
           <EntityViewField label={t('linkTypes.cardinality')}>
             <select
-              className="console-form-control"
+              className="ds-control"
               value={cardinality}
               onChange={(e) => setCardinality(e.target.value)}
             >
@@ -406,7 +406,7 @@ export function LinkTypeOverviewTab() {
             <>
               <EntityViewField label={t('linkTypes.sourceKeyProperty')}>
                 <select
-                  className="console-form-control"
+                  className="ds-control"
                   value={sourceKeyProperty}
                   onChange={(e) => setSourceKeyProperty(e.target.value)}
                 >
@@ -420,7 +420,7 @@ export function LinkTypeOverviewTab() {
               </EntityViewField>
               <EntityViewField label={t('linkTypes.targetKeyProperty')}>
                 <select
-                  className="console-form-control"
+                  className="ds-control"
                   value={targetKeyProperty}
                   onChange={(e) => setTargetKeyProperty(e.target.value)}
                 >
@@ -475,7 +475,7 @@ export function LinkTypeDatasourcesTab() {
             hint={cardinality !== 'many-to-many' ? t('linkTypes.datasetOnlyM2M') : undefined}
           >
             <select
-              className="console-form-control"
+              className="ds-control"
               value={datasetId}
               onChange={(e) => setDatasetId(e.target.value)}
               disabled={cardinality !== 'many-to-many'}
@@ -492,7 +492,7 @@ export function LinkTypeDatasourcesTab() {
             <>
               <EntityViewField label={t('linkTypes.sourceDatasetColumn')}>
                 <select
-                  className="console-form-control"
+                  className="ds-control"
                   value={sourceDatasetColumn}
                   onChange={(e) => setSourceDatasetColumn(e.target.value)}
                 >
@@ -506,7 +506,7 @@ export function LinkTypeDatasourcesTab() {
               </EntityViewField>
               <EntityViewField label={t('linkTypes.targetDatasetColumn')}>
                 <select
-                  className="console-form-control"
+                  className="ds-control"
                   value={targetDatasetColumn}
                   onChange={(e) => setTargetDatasetColumn(e.target.value)}
                 >

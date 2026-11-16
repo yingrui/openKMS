@@ -22,7 +22,7 @@ export function PlaygroundParamField({
         </label>
         <select
           id={fieldId}
-          className="console-form-control"
+          className="ds-control"
           value={value === 'true' || value === '1' ? 'true' : 'false'}
           onChange={(e) => onChange(e.target.value)}
         >
@@ -46,7 +46,7 @@ export function PlaygroundParamField({
         <p className="connector-playground-field-desc">{field.label}</p>
         <select
           id={fieldId}
-          className="console-form-control"
+          className="ds-control"
           value={value}
           onChange={(e) => onChange(e.target.value)}
         >
@@ -73,7 +73,7 @@ export function PlaygroundParamField({
       <input
         id={fieldId}
         type={field.field_type === 'integer' ? 'number' : 'text'}
-        className="console-form-control"
+        className="ds-control"
         value={value}
         placeholder={field.placeholder ?? undefined}
         min={field.field_type === 'integer' ? 1 : undefined}

@@ -248,14 +248,14 @@ export function GroupOverviewTab() {
         <div className="entity-view__form">
           <EntityViewField label={t('groups.displayName')}>
             <input
-              className="console-form-control"
+              className="ds-control"
               value={displayName}
               onChange={(e) => setDisplayName(e.target.value)}
             />
           </EntityViewField>
           <EntityViewField label={t('groups.description')}>
             <textarea
-              className="console-form-control"
+              className="ds-control"
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               rows={3}

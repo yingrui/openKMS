@@ -62,7 +62,7 @@ export function ConnectorCronSettings({
           <input
             id="connector-cron-time"
             type="time"
-            className="console-form-control"
+            className="ds-control"
             value={timeValue}
             disabled={readOnly || !value.enabled}
             onChange={(e) => {
@@ -77,7 +77,7 @@ export function ConnectorCronSettings({
           <label htmlFor="connector-cron-timezone">{t('connectors.cronTimezone')}</label>
           <select
             id="connector-cron-timezone"
-            className="console-form-control"
+            className="ds-control"
             value={value.timezone}
             disabled={readOnly || !value.enabled}
             onChange={(e) => onChange({ ...value, timezone: e.target.value })}

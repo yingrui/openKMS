@@ -331,21 +331,21 @@ export function ActionOverviewTab() {
         <div className="entity-view__form">
           <EntityViewField label={t('actions.displayName')}>
             <input
-              className="console-form-control"
+              className="ds-control"
               value={displayName}
               onChange={(e) => setDisplayName(e.target.value)}
             />
           </EntityViewField>
           <EntityViewField label={t('actions.description')}>
             <textarea
-              className="console-form-control"
+              className="ds-control"
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               rows={3}
             />
           </EntityViewField>
           <EntityViewField label={t('actions.status')}>
-            <select className="console-form-control" value={status} onChange={(e) => setStatus(e.target.value)}>
+            <select className="ds-control" value={status} onChange={(e) => setStatus(e.target.value)}>
               <option value="active">{t('actions.statusActive')}</option>
               <option value="inactive">{t('actions.statusInactive')}</option>
             </select>
@@ -419,7 +419,7 @@ export function ActionWebhookTab() {
           <EntityViewField label={t('actions.webhookService')}>
             <div className="entity-view__inline-controls">
               <select
-                className="console-form-control"
+                className="ds-control"
                 value={webhookServiceId}
                 onChange={(e) => setWebhookServiceId(e.target.value)}
               >
@@ -473,7 +473,7 @@ export function ActionWebhookTab() {
               </EntityViewField>
               <EntityViewField label={t('actions.webhookBody')} hint={t('actions.webhookBodyHint')}>
                 <select
-                  className="console-form-control"
+                  className="ds-control"
                   value={webhookBody}
                   onChange={(e) => setWebhookBody(e.target.value as 'envelope' | 'object')}
                 >
@@ -589,7 +589,7 @@ export function ActionRulesTab() {
               hint={publishedFunctions.length === 0 ? t('actions.publishFirstHint') : undefined}
             >
               <select
-                className="console-form-control"
+                className="ds-control"
                 value={functionId}
                 onChange={(e) => setFunctionId(e.target.value)}
               >

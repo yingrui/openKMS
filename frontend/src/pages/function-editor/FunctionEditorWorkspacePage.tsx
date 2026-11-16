@@ -96,18 +96,18 @@ export function FunctionEditorWorkspacePage() {
           <>
             <label>
               {t('editor.apiName')}
-              <input value={apiName} onChange={(e) => setApiName(e.target.value)} className="console-form-control" />
+              <input value={apiName} onChange={(e) => setApiName(e.target.value)} className="ds-control" />
             </label>
             <label>
               {t('editor.displayName')}
-              <input value={displayName} onChange={(e) => setDisplayName(e.target.value)} className="console-form-control" />
+              <input value={displayName} onChange={(e) => setDisplayName(e.target.value)} className="ds-control" />
             </label>
             <label>
               {t('editor.objectType')}
               <select
                 value={objectTypeId}
                 onChange={(e) => setObjectTypeId(e.target.value)}
-                className="console-form-control"
+                className="ds-control"
               >
                 <option value="">{t('editor.objectTypeNone')}</option>
                 {objectTypes.map((ot) => (
@@ -124,7 +124,7 @@ export function FunctionEditorWorkspacePage() {
           <textarea
             value={inputSchemaText}
             onChange={(e) => setInputSchemaText(e.target.value)}
-            className="console-form-control"
+            className="ds-control"
             rows={4}
             placeholder={t('editor.schemaPlaceholder')}
             spellCheck={false}
@@ -135,7 +135,7 @@ export function FunctionEditorWorkspacePage() {
           <textarea
             value={outputSchemaText}
             onChange={(e) => setOutputSchemaText(e.target.value)}
-            className="console-form-control"
+            className="ds-control"
             rows={4}
             placeholder={t('editor.schemaPlaceholder')}
             spellCheck={false}

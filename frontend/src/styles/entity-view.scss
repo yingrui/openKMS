@@ -437,12 +437,12 @@ body:has(.app-page-pane > .entity-view) .app-main {
   color: var(--color-text-muted);
 }
 
-.entity-view__form .console-form-control,
-.entity-view__form textarea.console-form-control {
+.entity-view__form .ds-control,
+.entity-view__form textarea.ds-control {
   width: 100%;
 }
 
-.entity-view__form textarea.console-form-control {
+.entity-view__form textarea.ds-control {
   min-height: 88px;
   resize: vertical;
   font-family: inherit;

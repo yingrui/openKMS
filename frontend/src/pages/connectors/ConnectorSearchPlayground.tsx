@@ -130,7 +130,7 @@ export function ConnectorSearchPlayground({
             <input
               id="connector-playground-search_query"
               type="text"
-              className="console-form-control"
+              className="ds-control"
               value={searchQuery}
               maxLength={70}
               placeholder={t('connectors.testSearchPlaceholder')}
