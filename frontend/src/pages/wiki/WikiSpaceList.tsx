@@ -18,7 +18,6 @@ import {
   updateWikiSpace,
   type WikiSpaceResponse,
 } from '../../data/wikiSpacesApi';
-import '../../styles/resource-list.scss';
 
 const VIEW_STORAGE_KEY = 'wiki-spaces-list-view';
 
@@ -140,13 +139,13 @@ export function WikiSpaceList() {
   };
 
   return (
-    <div className="resource-list">
-      <div className="page-header resource-list-header">
+    <div className="ds-resource-list">
+      <div className="page-header ds-resource-list-header">
         <div>
           <h1>{t('wiki.title')}</h1>
           <p className="page-subtitle">{t('wiki.subtitle')}</p>
         </div>
-        <div className="resource-list-header-actions">
+        <div className="ds-resource-list-header-actions">
           {!loading ? (
             <ResourceViewToggle modes={['card', 'list']} value={viewMode} onChange={switchView} />
           ) : null}
@@ -167,10 +166,10 @@ export function WikiSpaceList() {
 
       {error && <ErrorBanner message={error} onDismiss={() => setError(null)} />}
 
-      {loading && <p className="resource-list-loading">{t('shared.loading')}</p>}
+      {loading && <p className="ds-resource-list-loading">{t('shared.loading')}</p>}
 
       {!loading && total === 0 && (
-        <div className="resource-list-empty">
+        <div className="ds-resource-list-empty">
           <BookOpen size={48} strokeWidth={1} />
           <p>{t('wiki.empty')}</p>
         </div>
@@ -186,14 +185,14 @@ export function WikiSpaceList() {
       ) : null}
 
       {!loading && total > 0 && isCardView ? (
-        <div className="resource-list-grid">
+        <div className="ds-resource-list-grid">
           {spaces.map((sp) => (
-            <Link key={sp.id} to={`/wikis/${sp.id}/pages/graph`} className="resource-list-card">
-              <div className="resource-list-card-top">
-                <div className="resource-list-icon">
+            <Link key={sp.id} to={`/wikis/${sp.id}/pages/graph`} className="ds-resource-list-card">
+              <div className="ds-resource-list-card-top">
+                <div className="ds-resource-list-icon">
                   <BookOpen size={28} strokeWidth={1.5} />
                 </div>
-                <div className="resource-list-card-actions">
+                <div className="ds-resource-list-card-actions">
                   <button
                     type="button"
                     title={t('shared.edit')}
@@ -214,12 +213,12 @@ export function WikiSpaceList() {
               </div>
               <h3>{sp.name}</h3>
               <p
-                className="resource-list-desc"
+                className="ds-resource-list-desc"
                 title={sp.description?.trim() || undefined}
               >
                 {sp.description || t('shared.noDescription')}
               </p>
-              <div className="resource-list-meta">
+              <div className="ds-resource-list-meta">
                 <span>{t('wiki.pageCount', { count: sp.page_count })}</span>
               </div>
             </Link>

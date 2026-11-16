@@ -1,17 +1,17 @@
-// Shared card-list chrome for Knowledge Bases and Wiki spaces.
+// Shared card-list chrome: a page of resource cards (stories, knowledge bases, wiki spaces).
 
-@use './design-system/mixins' as *;
-@use './design-system/tokens' as ds;
+@use './mixins' as *;
+@use './tokens' as ds;
 
-.resource-list {
+.ds-resource-list {
   width: 100%;
 }
 
-.resource-list .page-header {
+.ds-resource-list .page-header {
   margin-bottom: var(--space-8);
 }
 
-.resource-list-header {
+.ds-resource-list-header {
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
@@ -20,7 +20,7 @@
 }
 
 /* The list's own controls, on a row above it — the same place the catalog puts its search. */
-.resource-list-toolbar {
+.ds-resource-list-toolbar {
   display: flex;
   align-items: center;
   flex-wrap: wrap;
@@ -29,19 +29,19 @@
 }
 
 /* Wide enough to type a name, not a toolbar's worth of space. */
-.resource-list-search {
+.ds-resource-list-search {
   width: 18rem;
   max-width: 100%;
 }
 
-.resource-list-header-actions {
+.ds-resource-list-header-actions {
   display: flex;
   align-items: center;
   flex-wrap: wrap;
   gap: var(--space-3);
 }
 
-.resource-list-header .btn {
+.ds-resource-list-header .btn {
   display: inline-flex;
   align-items: center;
   gap: var(--space-2);
@@ -52,32 +52,32 @@
   transition: background 0.15s, color 0.15s;
 }
 
-.resource-list-header .btn-primary {
+.ds-resource-list-header .btn-primary {
   background: var(--color-accent);
   color: white;
   border: none;
 }
 
-.resource-list-header .btn-primary:hover {
+.ds-resource-list-header .btn-primary:hover {
   background: var(--color-accent-hover);
 }
 
-.resource-list-loading {
+.ds-resource-list-loading {
   color: var(--color-text-secondary);
   padding: 40px 0;
 }
 
-/* empty: see .ds-empty-state / .resource-list-empty alias */
+/* empty: see .ds-empty-state / .ds-resource-list-empty alias */
 
 /* Fixed-ish column width so cards do not balloon when the nav rail is collapsed (wider main column). */
-.resource-list-grid {
+.ds-resource-list-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(min(280px, 100%), 320px));
   gap: var(--space-5);
   justify-content: start;
 }
 
-.resource-list-card {
+.ds-resource-list-card {
   display: flex;
   flex-direction: column;
   padding: var(--space-6);
@@ -89,30 +89,30 @@
   color: var(--color-text);
 }
 
-.resource-list-card:hover {
+.ds-resource-list-card:hover {
   border-color: var(--color-border-strong);
   box-shadow: var(--shadow-md);
 }
 
-.resource-list-card-top {
+.ds-resource-list-card-top {
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
   margin-bottom: var(--space-3);
 }
 
-.resource-list-card-actions {
+.ds-resource-list-card-actions {
   display: flex;
   gap: var(--space-1);
   opacity: 0;
   transition: opacity 0.15s;
 }
 
-.resource-list-card:hover .resource-list-card-actions {
+.ds-resource-list-card:hover .ds-resource-list-card-actions {
   opacity: 1;
 }
 
-.resource-list-card-actions button {
+.ds-resource-list-card-actions button {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -125,16 +125,16 @@
   transition: color 0.15s, background 0.15s;
 }
 
-.resource-list-card-actions button:hover {
+.ds-resource-list-card-actions button:hover {
   background: var(--color-bg-muted);
   color: var(--color-text);
 }
 
-.resource-list-card-actions button[aria-label="Delete"]:hover {
+.ds-resource-list-card-actions button[aria-label="Delete"]:hover {
   color: var(--color-error);
 }
 
-.resource-list-icon {
+.ds-resource-list-icon {
   width: 48px;
   height: 48px;
   display: flex;
@@ -145,13 +145,13 @@
   border-radius: var(--radius-md);
 }
 
-.resource-list-card h3 {
+.ds-resource-list-card h3 {
   font-size: 1.0625rem;
   font-weight: 600;
   margin-bottom: var(--space-2);
 }
 
-.resource-list-desc {
+.ds-resource-list-desc {
   font-size: var(--text-base);
   color: var(--color-text-secondary);
   line-height: 1.5;
@@ -164,7 +164,7 @@
   word-break: break-word;
 }
 
-.resource-list-meta {
+.ds-resource-list-meta {
   display: flex;
   align-items: center;
   gap: var(--space-3);
@@ -173,9 +173,9 @@
 }
 
 /* Dialog – matches documents-upload-modal */
-.resource-list-dialog-body input,
-.resource-list-dialog-body textarea,
-.resource-list-dialog-body select {
+.ds-resource-list-dialog-body input,
+.ds-resource-list-dialog-body textarea,
+.ds-resource-list-dialog-body select {
   padding: var(--padding-compact-y) calc(var(--space-3) + var(--space-1) / 2);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
@@ -184,21 +184,21 @@
   font-size: var(--text-base);
 }
 
-.resource-list-dialog-body input:focus,
-.resource-list-dialog-body textarea:focus,
-.resource-list-dialog-body select:focus {
+.ds-resource-list-dialog-body input:focus,
+.ds-resource-list-dialog-body textarea:focus,
+.ds-resource-list-dialog-body select:focus {
   outline: none;
   border-color: var(--color-accent);
 }
 
 /* Phone: dense rows instead of tall gallery cards. */
 @include max-width(ds.$bp-md-min) {
-  .resource-list-grid {
+  .ds-resource-list-grid {
     grid-template-columns: 1fr;
     gap: var(--space-2);
   }
 
-  .resource-list-card {
+  .ds-resource-list-card {
     display: grid;
     grid-template-columns: auto 1fr auto;
     column-gap: var(--space-3);
@@ -208,12 +208,12 @@
     box-shadow: none;
   }
 
-  .resource-list-card-top {
+  .ds-resource-list-card-top {
     display: contents;
     margin: 0;
   }
 
-  .resource-list-icon {
+  .ds-resource-list-icon {
     grid-column: 1;
     grid-row: 1 / span 3;
     width: 40px;
@@ -226,19 +226,19 @@
     }
   }
 
-  .resource-list-card-actions {
+  .ds-resource-list-card-actions {
     grid-column: 3;
     grid-row: 1 / span 3;
     opacity: 1;
     align-self: center;
   }
 
-  .resource-list-card-actions button {
+  .ds-resource-list-card-actions button {
     min-width: var(--tap-min);
     min-height: var(--tap-min);
   }
 
-  .resource-list-card h3 {
+  .ds-resource-list-card h3 {
     grid-column: 2;
     grid-row: 1;
     margin: 0;
@@ -247,7 +247,7 @@
     @include text-truncate;
   }
 
-  .resource-list-desc {
+  .ds-resource-list-desc {
     grid-column: 2;
     grid-row: 2;
     margin: 0;
@@ -260,7 +260,7 @@
     flex: none;
   }
 
-  .resource-list-meta {
+  .ds-resource-list-meta {
     grid-column: 2;
     grid-row: 3;
     margin: 0;

@@ -17,7 +17,6 @@ import {
   type CardListViewMode,
 } from '../../hooks/useStoredViewMode';
 import { Dialog, FormField, Pagination, ResourceViewToggle, EmptyState } from '../../styles/design-system';
-import '../../styles/resource-list.scss';
 import './KnowledgeBaseList.scss';
 
 const VIEW_STORAGE_KEY = 'knowledge-bases-list-view';
@@ -139,13 +138,13 @@ export function KnowledgeBaseList() {
   };
 
   return (
-    <div className="resource-list">
-      <div className="page-header resource-list-header">
+    <div className="ds-resource-list">
+      <div className="page-header ds-resource-list-header">
         <div>
           <h1>{t('title')}</h1>
           <p className="page-subtitle">{t('subtitle')}</p>
         </div>
-        <div className="resource-list-header-actions">
+        <div className="ds-resource-list-header-actions">
           {!loading ? (
             <ResourceViewToggle modes={['card', 'list']} value={viewMode} onChange={switchView} />
           ) : null}
@@ -165,7 +164,7 @@ export function KnowledgeBaseList() {
         </div>
       </div>
 
-      {loading && <p className="resource-list-loading">{ts('shared.loading')}</p>}
+      {loading && <p className="ds-resource-list-loading">{ts('shared.loading')}</p>}
 
       {!loading && total === 0 && (
         <EmptyState icon={<Database size={48} strokeWidth={1} />} description={t('empty')} />
@@ -181,14 +180,14 @@ export function KnowledgeBaseList() {
       ) : null}
 
       {!loading && total > 0 && isCardView ? (
-        <div className="resource-list-grid">
+        <div className="ds-resource-list-grid">
           {kbs.map((kb) => (
-            <Link key={kb.id} to={`/knowledge-bases/${kb.id}`} className="resource-list-card">
-              <div className="resource-list-card-top">
-                <div className="resource-list-icon">
+            <Link key={kb.id} to={`/knowledge-bases/${kb.id}`} className="ds-resource-list-card">
+              <div className="ds-resource-list-card-top">
+                <div className="ds-resource-list-icon">
                   <Database size={28} strokeWidth={1.5} />
                 </div>
-                <div className="resource-list-card-actions">
+                <div className="ds-resource-list-card-actions">
                   <button type="button" title={ts('shared.edit')} aria-label={ts('shared.edit')} onClick={(e) => openEdit(kb, e)}>
                     <Pencil size={15} />
                   </button>
@@ -199,12 +198,12 @@ export function KnowledgeBaseList() {
               </div>
               <h3>{kb.name}</h3>
               <p
-                className="resource-list-desc"
+                className="ds-resource-list-desc"
                 title={kb.description?.trim() || undefined}
               >
                 {kb.description || ts('shared.noDescription')}
               </p>
-              <div className="resource-list-meta">
+              <div className="ds-resource-list-meta">
                 <span>{t('metaDocs', { count: kb.document_count })}</span>
                 <span>{t('metaWikiSpaces', { count: kb.wiki_space_count ?? 0 })}</span>
                 <span>{t('metaFaqs', { count: kb.faq_count })}</span>

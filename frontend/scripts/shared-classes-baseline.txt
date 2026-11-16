@@ -112,17 +112,6 @@ project-settings-skills-empty	components/agents,pages/agents
 project-settings-skills-table	components/agents,pages/agents
 project-settings-skills-table-actions	components/agents,pages/agents
 project-settings-spinner	components/agents,pages/agents
-resource-list	pages/insights,pages/knowledge-bases,pages/wiki
-resource-list-card	pages/insights,pages/knowledge-bases,pages/wiki
-resource-list-card-actions	pages/knowledge-bases,pages/wiki
-resource-list-card-top	pages/insights,pages/knowledge-bases,pages/wiki
-resource-list-desc	pages/insights,pages/knowledge-bases,pages/wiki
-resource-list-grid	pages/insights,pages/knowledge-bases,pages/wiki
-resource-list-header	pages/insights,pages/knowledge-bases,pages/wiki
-resource-list-header-actions	pages/insights,pages/knowledge-bases,pages/wiki
-resource-list-icon	pages/insights,pages/knowledge-bases,pages/wiki
-resource-list-loading	pages/insights,pages/knowledge-bases,pages/wiki
-resource-list-meta	pages/insights,pages/knowledge-bases,pages/wiki
 settings-page	pages/agents,pages/articles,pages/catalog,pages/chamber,pages/documents,pages/evaluation,pages/glossaries,pages/media
 settings-page-actions	pages/agents,pages/articles,pages/catalog,pages/chamber,pages/documents,pages/glossaries,pages/media
 settings-page-back	pages/agents,pages/articles,pages/chamber,pages/documents,pages/evaluation,pages/glossaries,pages/media

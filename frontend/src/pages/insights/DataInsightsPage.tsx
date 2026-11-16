@@ -5,10 +5,9 @@ import { Loader2, Plus, Sparkles } from 'lucide-react';
 import { toast } from 'sonner';
 import { createStory, fetchStories, type StorySummary } from '../../data/storiesApi';
 import { Dialog, EmptyState, FormField, StatusChip } from '../../styles/design-system/index';
-import '../../styles/resource-list.scss';
 
 /**
- * All stories — the app's shared card list (`resource-list.scss`, the same chrome as Knowledge
+ * All stories — the app's shared card list (`ds-resource-list.scss`, the same chrome as Knowledge
  * Bases and Wiki spaces): one page header with the primary action, a card grid, and a card whose
  * top row is an icon, then a title, a description and a meta line.
  *
@@ -75,13 +74,13 @@ export function DataInsightsPage() {
   };
 
   return (
-    <div className="resource-list">
-      <div className="page-header resource-list-header">
+    <div className="ds-resource-list">
+      <div className="page-header ds-resource-list-header">
         <div>
           <h1>{t('dataInsights.title')}</h1>
           <p className="page-subtitle">{t('dataInsights.subtitle')}</p>
         </div>
-        <div className="resource-list-header-actions">
+        <div className="ds-resource-list-header-actions">
           <button type="button" className="btn btn-primary" onClick={openCreate}>
             <Plus size={18} aria-hidden />
             <span>{t('dataInsights.newStory')}</span>
@@ -93,10 +92,10 @@ export function DataInsightsPage() {
           inside the header's action cluster it wrapped under the "new" button. */}
       {/* Also while a search finds nothing: otherwise the box that would let you clear it disappears. */}
       {!loading && (stories.length > 0 || debouncedSearch.trim() !== '') && (
-        <div className="resource-list-toolbar">
+        <div className="ds-resource-list-toolbar">
           <input
             type="search"
-            className="ds-control resource-list-search"
+            className="ds-control ds-resource-list-search"
             aria-label={t('dataInsights.searchAria')}
             placeholder={t('dataInsights.searchPlaceholder')}
             value={search}
@@ -106,7 +105,7 @@ export function DataInsightsPage() {
       )}
 
       {loading && (
-        <p className="resource-list-loading">
+        <p className="ds-resource-list-loading">
           <Loader2 size={18} className="spin" aria-hidden /> {t('shared.loading')}
         </p>
       )}
@@ -130,28 +129,28 @@ export function DataInsightsPage() {
       )}
 
       {!loading && stories.length > 0 && (
-        <div className="resource-list-grid">
+        <div className="ds-resource-list-grid">
           {stories.map((story) => {
             const sources = story.sources.map((s) => s.label);
             return (
               <Link
                 key={story.id}
                 to={`/data-insights/${story.id}`}
-                className="resource-list-card"
+                className="ds-resource-list-card"
               >
-                <div className="resource-list-card-top">
-                  <div className="resource-list-icon">
+                <div className="ds-resource-list-card-top">
+                  <div className="ds-resource-list-icon">
                     <Sparkles size={28} strokeWidth={1.5} />
                   </div>
                 </div>
                 <h3>{story.name}</h3>
                 <p
-                  className="resource-list-desc"
+                  className="ds-resource-list-desc"
                   title={story.question?.trim() || undefined}
                 >
                   {story.question || t('dataInsights.noQuestion')}
                 </p>
-                <div className="resource-list-meta">
+                <div className="ds-resource-list-meta">
                   <StatusChip tone={story.status === 'ready' ? 'ok' : 'neutral'}>
                     {t(`dataInsights.status_${story.status}`, { defaultValue: story.status })}
                   </StatusChip>
