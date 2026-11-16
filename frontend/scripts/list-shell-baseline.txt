@@ -1,6 +1,5 @@
 # Pages that still spell out the list shell instead of using `ListPage`.
 # A ratchet: a page leaves this list when it is migrated, and no page may join it.
-src/pages/catalog/DatasetSourcesPage.tsx
 src/pages/connectors/ConnectorDetailPage.tsx
 src/pages/connectors/ConnectorsPage.tsx
 src/pages/console/kubernetes/ConsoleKubernetes.tsx

@@ -1,22 +1,27 @@
-import { useEffect, useMemo, useState } from 'react';
-import { useTranslation } from 'react-i18next';
-import { Link } from 'react-router-dom';
-import { Database, ExternalLink, Loader2, Plus } from 'lucide-react';
-import { toast } from 'sonner';
+import { useEffect, useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
+import { Link } from "react-router-dom";
+import { Database, ExternalLink, Loader2, Plus } from "lucide-react";
+import { toast } from "sonner";
 import {
   createDataset,
   fetchDatasets,
   fetchTablesFromSource,
   type DatasetResponse,
   type TableInfo,
-} from '../../data/datasetsApi';
-import { fetchAllDataSources, type DataSourceResponse } from '../../data/dataSourcesApi';
-import { useAuth } from '../../contexts/AuthContext';
-import { useConfirm } from '../../contexts/ConfirmContext';
-import { EmptyState } from '../../styles/design-system/index';
-import '../ontology/ontology-admin.scss';
+} from "../../data/datasetsApi";
+import {
+  fetchAllDataSources,
+  type DataSourceResponse,
+} from "../../data/dataSourcesApi";
+import { useAuth } from "../../contexts/AuthContext";
+import { useConfirm } from "../../contexts/ConfirmContext";
+import { EmptyState } from "../../styles/design-system/index";
+import "../ontology/ontology-admin.scss";
+import { ListPage } from "../../styles/design-system";
 
-const tableKey = (source: string, table: TableInfo) => `${source}/${table.schema_name}.${table.table_name}`;
+const tableKey = (source: string, table: TableInfo) =>
+  `${source}/${table.schema_name}.${table.table_name}`;
 
 /**
  * Register datasets **in bulk, from the source they live in**.
@@ -29,14 +34,14 @@ const tableKey = (source: string, table: TableInfo) => `${source}/${table.schema
  * checkboxes are simply disabled without it.
  */
 export function DatasetSourcesPage() {
-  const { t } = useTranslation('ontology');
+  const { t } = useTranslation("ontology");
   const { hasPermission } = useAuth();
   const confirm = useConfirm();
-  const canWrite = hasPermission('data:write');
+  const canWrite = hasPermission("data:write");
 
   const [sources, setSources] = useState<DataSourceResponse[]>([]);
   const [datasets, setDatasets] = useState<DatasetResponse[]>([]);
-  const [sourceId, setSourceId] = useState('');
+  const [sourceId, setSourceId] = useState("");
   const [tables, setTables] = useState<TableInfo[] | null>(null);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
@@ -49,12 +54,14 @@ export function DatasetSourcesPage() {
         if (cancelled) return;
         // Only a source this layer can register from: everything else is not an error to show, it is
         // simply not a place datasets come from (a graph store, say).
-        const sourceList = allSources.filter((s) => s.kind === 'postgresql');
+        const sourceList = allSources.filter((s) => s.kind === "postgresql");
         setSources(sourceList);
         setDatasets(datasetPage.items);
         if (sourceList.length > 0) setSourceId(sourceList[0].id);
       })
-      .catch((e) => toast.error(e instanceof Error ? e.message : t('datasets.loadFailed')))
+      .catch((e) =>
+        toast.error(e instanceof Error ? e.message : t("datasets.loadFailed")),
+      )
       .finally(() => {
         if (!cancelled) setLoading(false);
       });
@@ -67,7 +74,10 @@ export function DatasetSourcesPage() {
   const registered = useMemo(() => {
     const map = new Map<string, string>();
     for (const dataset of datasets) {
-      map.set(`${dataset.data_source_id}/${dataset.schema_name}.${dataset.table_name}`, dataset.id);
+      map.set(
+        `${dataset.data_source_id}/${dataset.schema_name}.${dataset.table_name}`,
+        dataset.id,
+      );
     }
     return map;
   }, [datasets]);
@@ -85,14 +95,19 @@ export function DatasetSourcesPage() {
         if (!cancelled) setTables(rows);
       })
       .catch((e) => {
-        if (!cancelled) toast.error(e instanceof Error ? e.message : t('datasets.loadTablesFailed'));
+        if (!cancelled)
+          toast.error(
+            e instanceof Error ? e.message : t("datasets.loadTablesFailed"),
+          );
       });
     return () => {
       cancelled = true;
     };
   }, [sourceId, t]);
 
-  const pending = (tables ?? []).filter((table) => !registered.has(tableKey(sourceId, table)));
+  const pending = (tables ?? []).filter(
+    (table) => !registered.has(tableKey(sourceId, table)),
+  );
   const toggle = (key: string) =>
     setSelected((prev) => {
       const next = new Set(prev);
@@ -109,12 +124,12 @@ export function DatasetSourcesPage() {
     // a jobs queue). The count and the source name are what a person needs to see before one click.
     if (
       !(await confirm({
-        title: t('dataSources.addSelected', { count: selected.size }),
-        message: t('dataSources.addConfirm', {
+        title: t("dataSources.addSelected", { count: selected.size }),
+        message: t("dataSources.addConfirm", {
           count: selected.size,
-          source: current?.name ?? '',
+          source: current?.name ?? "",
         }),
-        confirmLabel: t('shared.create'),
+        confirmLabel: t("shared.create"),
       }))
     ) {
       return;
@@ -134,156 +149,173 @@ export function DatasetSourcesPage() {
           });
           added += 1;
         } catch (e) {
-          failures.push(`${table.schema_name}.${table.table_name}: ${e instanceof Error ? e.message : ''}`);
+          failures.push(
+            `${table.schema_name}.${table.table_name}: ${e instanceof Error ? e.message : ""}`,
+          );
         }
       }
       if (added > 0) {
-        toast.success(t('dataSources.added', { count: added }));
+        toast.success(t("dataSources.added", { count: added }));
         setDatasets((await fetchDatasets({ limit: 500 })).items);
         setSelected(new Set());
       }
-      if (failures.length > 0) toast.error(failures[0], { description: t('dataSources.failed', { count: failures.length }) });
+      if (failures.length > 0)
+        toast.error(failures[0], {
+          description: t("dataSources.failed", { count: failures.length }),
+        });
     } finally {
       setBusy(false);
     }
   };
 
-
   return (
-    <div className="ontology-admin">
-      <header className="page-header">
-        <div>
-          <h1>{t('dataSources.title')}</h1>
-          <p className="page-subtitle">{t('dataSources.subtitle')}</p>
-        </div>
-        <div className="page-header-actions">
+    <ListPage
+      title={t("dataSources.title")}
+      subtitle={t("dataSources.subtitle")}
+      actions={
+        <>
           <Link to="/datasets" className="btn btn-secondary">
-            {t('datasets.title')}
+            {t("datasets.title")}
           </Link>
           <Link to="/console/data-sources" className="btn btn-secondary">
             <ExternalLink size={16} aria-hidden />
-            {t('dataSources.manage')}
+            {t("dataSources.manage")}
           </Link>
+        </>
+      }
+    >
+      {loading ? (
+        <div className="ds-loading">
+          <Loader2 size={32} className="ds-loading__spinner" aria-hidden />
+          <p>{t("shared.loading")}</p>
         </div>
-      </header>
-      <div className="ontology-admin-content">
-        {loading ? (
-          <div className="ds-loading">
-            <Loader2 size={32} className="ds-loading__spinner" aria-hidden />
-            <p>{t('shared.loading')}</p>
-          </div>
-        ) : sources.length === 0 ? (
-          <EmptyState
-            icon={<Database size={48} strokeWidth={1} />}
-            title={t('dataSources.empty')}
-            description={t('dataSources.emptyHint')}
-          />
-        ) : (
-          <>
-            <div className="ds-list-toolbar">
-              <label className="ds-filter">
-                {t('dataSources.pick')}
-                <select className="ds-control" value={sourceId} onChange={(e) => setSourceId(e.target.value)}>
-                  {sources.map((source) => (
-                    <option key={source.id} value={source.id}>
-                      {source.name} · {source.kind}
-                      {source.database ? ` · ${source.database}` : ''}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <div className="openkms-flex-row-gap">
-                <span className="page-subtitle">
-                  {t('dataSources.tableCount', {
-                    total: (tables ?? []).length,
-                    pending: pending.length,
-                  })}
-                </span>
-                <button
-                  type="button"
-                  className="btn btn-secondary btn-sm"
-                  onClick={() => setSelected(new Set(pending.map((table) => tableKey(sourceId, table))))}
-                  disabled={!canWrite || busy || pending.length === 0}
-                >
-                  {t('dataSources.selectAll')}
-                </button>
-                <button
-                  type="button"
-                  className="btn btn-primary btn-sm"
-                  onClick={() => void addSelected()}
-                  disabled={!canWrite || busy || selected.size === 0}
-                  title={canWrite ? undefined : t('dataSources.needWrite')}
-                >
-                  {busy ? (
-                    <Loader2 size={14} className="spin" aria-hidden />
-                  ) : (
-                    <Plus size={14} aria-hidden />
-                  )}
-                  {t('dataSources.addSelected', { count: selected.size })}
-                </button>
-              </div>
+      ) : sources.length === 0 ? (
+        <EmptyState
+          icon={<Database size={48} strokeWidth={1} />}
+          title={t("dataSources.empty")}
+          description={t("dataSources.emptyHint")}
+        />
+      ) : (
+        <>
+          <div className="ds-list-toolbar">
+            <label className="ds-filter">
+              {t("dataSources.pick")}
+              <select
+                className="ds-control"
+                value={sourceId}
+                onChange={(e) => setSourceId(e.target.value)}
+              >
+                {sources.map((source) => (
+                  <option key={source.id} value={source.id}>
+                    {source.name} · {source.kind}
+                    {source.database ? ` · ${source.database}` : ""}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <div className="openkms-flex-row-gap">
+              <span className="page-subtitle">
+                {t("dataSources.tableCount", {
+                  total: (tables ?? []).length,
+                  pending: pending.length,
+                })}
+              </span>
+              <button
+                type="button"
+                className="btn btn-secondary btn-sm"
+                onClick={() =>
+                  setSelected(
+                    new Set(pending.map((table) => tableKey(sourceId, table))),
+                  )
+                }
+                disabled={!canWrite || busy || pending.length === 0}
+              >
+                {t("dataSources.selectAll")}
+              </button>
+              <button
+                type="button"
+                className="btn btn-primary btn-sm"
+                onClick={() => void addSelected()}
+                disabled={!canWrite || busy || selected.size === 0}
+                title={canWrite ? undefined : t("dataSources.needWrite")}
+              >
+                {busy ? (
+                  <Loader2 size={14} className="spin" aria-hidden />
+                ) : (
+                  <Plus size={14} aria-hidden />
+                )}
+                {t("dataSources.addSelected", { count: selected.size })}
+              </button>
             </div>
+          </div>
 
-            {tables === null ? (
-              <div className="ds-loading">
-                <Loader2 size={28} className="ds-loading__spinner" aria-hidden />
-              </div>
-            ) : tables.length === 0 ? (
-              <EmptyState title={t('dataSources.noTables')} description={t('dataSources.noTablesHint')} />
-            ) : (
-              <div className="ds-table-wrap">
-                <table className="ds-table">
-                  <thead>
-                    <tr>
-                      <th>{t('dataSources.register')}</th>
-                      {/* The rows are tables, not columns — the Catalog calls this column the same. */}
-                      <th>{t('datasets.schemaTable')}</th>
-                      <th>{t('dataSources.dataset')}</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {tables.map((table) => {
-                      const key = tableKey(sourceId, table);
-                      const datasetId = registered.get(key);
-                      return (
-                        <tr key={key}>
-                          <td>
-                            <input
-                              type="checkbox"
-                              className="ds-checkbox"
-                              checked={selected.has(key)}
-                              disabled={!canWrite || Boolean(datasetId)}
-                              aria-label={t('dataSources.registerTable', {
-                                table: `${table.schema_name}.${table.table_name}`,
-                              })}
-                              onChange={() => toggle(key)}
-                            />
-                          </td>
-                          <td>
-                            {table.schema_name}.{table.table_name}
-                          </td>
-                          <td>
-                            {datasetId ? (
-                              <Link to={`/datasets/${datasetId}`} className="ds-table-link">
-                                {t('dataSources.alreadyRegistered')}
-                              </Link>
-                            ) : (
-                              <span className="page-subtitle">{t('dataSources.notRegistered')}</span>
-                            )}
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
-            )}
-            {current?.database ? (
-              <p className="page-subtitle">{`${current.host}${current.port ? `:${current.port}` : ''} · ${current.database}`}</p>
-            ) : null}
-          </>
-        )}
-      </div>
-    </div>
+          {tables === null ? (
+            <div className="ds-loading">
+              <Loader2 size={28} className="ds-loading__spinner" aria-hidden />
+            </div>
+          ) : tables.length === 0 ? (
+            <EmptyState
+              title={t("dataSources.noTables")}
+              description={t("dataSources.noTablesHint")}
+            />
+          ) : (
+            <div className="ds-table-wrap">
+              <table className="ds-table">
+                <thead>
+                  <tr>
+                    <th>{t("dataSources.register")}</th>
+                    {/* The rows are tables, not columns — the Catalog calls this column the same. */}
+                    <th>{t("datasets.schemaTable")}</th>
+                    <th>{t("dataSources.dataset")}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {tables.map((table) => {
+                    const key = tableKey(sourceId, table);
+                    const datasetId = registered.get(key);
+                    return (
+                      <tr key={key}>
+                        <td>
+                          <input
+                            type="checkbox"
+                            className="ds-checkbox"
+                            checked={selected.has(key)}
+                            disabled={!canWrite || Boolean(datasetId)}
+                            aria-label={t("dataSources.registerTable", {
+                              table: `${table.schema_name}.${table.table_name}`,
+                            })}
+                            onChange={() => toggle(key)}
+                          />
+                        </td>
+                        <td>
+                          {table.schema_name}.{table.table_name}
+                        </td>
+                        <td>
+                          {datasetId ? (
+                            <Link
+                              to={`/datasets/${datasetId}`}
+                              className="ds-table-link"
+                            >
+                              {t("dataSources.alreadyRegistered")}
+                            </Link>
+                          ) : (
+                            <span className="page-subtitle">
+                              {t("dataSources.notRegistered")}
+                            </span>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
+          {current?.database ? (
+            <p className="page-subtitle">{`${current.host}${current.port ? `:${current.port}` : ""} · ${current.database}`}</p>
+          ) : null}
+        </>
+      )}
+    </ListPage>
   );
 }
