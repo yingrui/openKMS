@@ -5,6 +5,8 @@ import { toast } from 'sonner';
 import { useDatasetDetail } from './useDatasetDetail';
 import {
   fetchDatasetMetadata,
+  fetchDatasetProfile,
+  type DatasetProfileResponse,
   fetchDatasets,
   type ColumnMetadata,
   type DatasetResponse,
@@ -16,7 +18,7 @@ import {
   type DatasetJoinResponse,
 } from '../../data/joinsApi';
 import { useConfirm } from '../../contexts/ConfirmContext';
-import { Dialog, EmptyState, FormField } from '../../styles/design-system/index';
+import { Dialog, EmptyState, StatusChip, FormField } from '../../styles/design-system/index';
 import { EntityViewHeader, EntityViewPanel, EntityViewLoading } from '../shared/EntityViewShell';
 import { DatasetErDiagram, type ErNode } from './DatasetErDiagram';
 import { datasetLabel } from './datasetLabel';
@@ -38,7 +40,7 @@ export function DatasetRelationshipsTab() {
   const [showForm, setShowForm] = useState(false);
   const [targetId, setTargetId] = useState('');
   const [direction, setDirection] = useState<'from' | 'to'>('from');
-  const [required, setRequired] = useState(false);
+  const [required, setRequired] = useState(true);
   const [pairs, setPairs] = useState<ColumnPair[]>([{ from: '', to: '' }]);
   const [joinName, setJoinName] = useState('');
   const [description, setDescription] = useState('');
@@ -48,6 +50,7 @@ export function DatasetRelationshipsTab() {
   const [targetColumns, setTargetColumns] = useState<ColumnMetadata[]>([]);
   const [submitting, setSubmitting] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
+  const [toProfile, setToProfile] = useState<DatasetProfileResponse | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -92,6 +95,37 @@ export function DatasetRelationshipsTab() {
 
   // The `from` side holds the FK. When this dataset holds it, `from` columns come
   // from here; otherwise the selected dataset does.
+  /* The `to` side is what a join multiplies by, so its uniqueness is the number that matters while filling the
+     form — not an error the reader meets after ten fields. */
+  const toDatasetId = direction === 'from' ? targetId : datasetId;
+
+  useEffect(() => {
+    if (!toDatasetId) {
+      setToProfile(null);
+      return;
+    }
+    let cancelled = false;
+    void fetchDatasetProfile(toDatasetId)
+      .then((p) => !cancelled && setToProfile(p))
+      .catch(() => !cancelled && setToProfile(null));
+    return () => {
+      cancelled = true;
+    };
+  }, [toDatasetId]);
+
+  const uniquenessOf = (column: string) => {
+    const stat = (toProfile?.column_stats ?? []).find((entry) => entry.column === column);
+    if (!toProfile?.computed_at || !stat || stat.distinct_count === null || toProfile.row_count === null) {
+      return { state: 'unknown' as const };
+    }
+    const rows = toProfile.row_count - (stat.null_count ?? 0);
+    return {
+      state: stat.distinct_count === rows ? ('unique' as const) : ('repeated' as const),
+      rows,
+      distinct: stat.distinct_count,
+    };
+  };
+
   const pairFromCols = direction === 'from' ? thisColumns : targetColumns;
   const pairToCols = direction === 'from' ? targetColumns : thisColumns;
 
@@ -112,7 +146,7 @@ export function DatasetRelationshipsTab() {
   const openCreate = () => {
     setTargetId('');
     setDirection('from');
-    setRequired(false);
+    setRequired(true);
     setPairs([{ from: '', to: '' }]);
     setJoinName('');
     setDescription('');
@@ -130,6 +164,10 @@ export function DatasetRelationshipsTab() {
     const usable = pairs.filter((p) => p.from && p.to);
     if (usable.length === 0) {
       toast.error(t('datasets.joinColumnsRequired'));
+      return;
+    }
+    if (new Set(usable.map((p) => p.from)).size !== usable.length) {
+      setFormError(t('datasets.joinDuplicateColumns'));
       return;
     }
     setSubmitting(true);
@@ -290,9 +328,9 @@ export function DatasetRelationshipsTab() {
           </FormField>
           <label className="ds-check-row">
             <input type="checkbox" checked={required} onChange={(e) => setRequired(e.target.checked)} />
-            <span>{t('datasets.joinRequired')}</span>
+            <span>{t('datasets.joinCardinality')}</span>
           </label>
-          <p className="page-subtitle">{t('datasets.joinRequiredHint')}</p>
+          <p className="page-subtitle">{t('datasets.joinCardinalityHint')}</p>
           <div className="dataset-joins__pairs">
             <span>{t('datasets.joinColumns')}</span>
             {pairs.map((pair, idx) => (
@@ -351,6 +389,29 @@ export function DatasetRelationshipsTab() {
               {t('datasets.joinAddPair')}
             </button>
           </div>
+          {pairs.filter((p) => p.to).length > 0 ? (
+            <div className="dataset-joins__uniqueness">
+              <span className="dataset-joins__uniqueness-label">{t('datasets.joinTargetUnique')}</span>
+              {[...new Set(pairs.map((p) => p.to).filter(Boolean))].map((column) => {
+                const check = uniquenessOf(column);
+                return (
+                  <span
+                    key={column}
+                    className={`dataset-joins__uniqueness-item dataset-joins__uniqueness-item--${check.state}`}
+                  >
+                    <StatusChip tone={check.state === 'unique' ? 'ok' : check.state === 'repeated' ? 'warn' : undefined}>
+                      {column}
+                    </StatusChip>
+                    {check.state === 'unique'
+                      ? t('datasets.joinUniqueOk')
+                      : check.state === 'repeated'
+                        ? t('datasets.joinNotUnique', { rows: check.rows, distinct: check.distinct })
+                        : t('datasets.joinUniqueUnknown')}
+                  </span>
+                );
+              })}
+            </div>
+          ) : null}
           <FormField label={t('datasets.joinName')}>
             <input type="text" value={joinName} onChange={(e) => setJoinName(e.target.value)} />
           </FormField>

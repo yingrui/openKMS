@@ -891,7 +891,14 @@
     "aiNotFor": "不适用于",
     "aiNotForHint": "容易与它混淆的邻近指标，帮模型区分。",
     "aiNotForPlaceholder": "缺口率, 缺货数",
-    "profileRows": "{{count}} 行"
+    "profileRows": "{{count}} 行",
+    "joinCardinality": "目标行必须存在（1）",
+    "joinCardinalityHint": "关闭：目标行可以不存在（0..1），本数据集的行仍然保留。外键一侧永远是\"多\"，这一项只决定目标侧是 1 还是 0..1。",
+    "joinDuplicateColumns": "同一列不能出现在两行里：复合关系要用不同的列。",
+    "joinTargetUnique": "目标侧唯一性",
+    "joinUniqueOk": "唯一",
+    "joinNotUnique": "不唯一：{{rows}} 行里 {{distinct}} 个不同值，这条关系会把行数放大",
+    "joinUniqueUnknown": "未统计，无法校验——请先刷新该数据集的统计"
   },
   "groups": {
     "title": "分组",
