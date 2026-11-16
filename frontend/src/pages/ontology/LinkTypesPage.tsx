@@ -1,9 +1,17 @@
-import { useCallback, useEffect, useState } from 'react';
-import { Plus, Pencil, Trash2, Loader2, Database, Users, Link2 } from 'lucide-react';
-import { Link, useNavigate } from 'react-router-dom';
-import { useTranslation } from 'react-i18next';
-import { toast } from 'sonner';
-import { Dialog, FormField, EmptyState } from '../../styles/design-system';
+import { useCallback, useEffect, useState } from "react";
+import {
+  Plus,
+  Pencil,
+  Trash2,
+  Loader2,
+  Database,
+  Users,
+  Link2,
+} from "lucide-react";
+import { Link, useNavigate } from "react-router-dom";
+import { useTranslation } from "react-i18next";
+import { toast } from "sonner";
+import { Dialog, FormField, EmptyState } from "../../styles/design-system";
 import {
   fetchLinkTypes,
   fetchObjectTypes,
@@ -15,18 +23,32 @@ import {
   CARDINALITY_OPTIONS,
   type LinkTypeResponse,
   type ObjectTypeResponse,
-} from '../../data/ontologyApi';
-import { fetchDatasets, fetchDatasetMetadata, type DatasetResponse } from '../../data/datasetsApi';
-import { fetchAllDataSources, type DataSourceResponse } from '../../data/dataSourcesApi';
-import { useConfirm } from '../../contexts/ConfirmContext';
-import { isValidApiName, toPascalCaseApiName } from '../ontology-manager/objectTypeNaming';
-import './ontology-admin.scss';
-import { datasetLabel } from '../catalog/datasetLabel';
+} from "../../data/ontologyApi";
+import {
+  fetchDatasets,
+  fetchDatasetMetadata,
+  type DatasetResponse,
+} from "../../data/datasetsApi";
+import {
+  fetchAllDataSources,
+  type DataSourceResponse,
+} from "../../data/dataSourcesApi";
+import { useConfirm } from "../../contexts/ConfirmContext";
+import {
+  isValidApiName,
+  toPascalCaseApiName,
+} from "../ontology-manager/objectTypeNaming";
+import "./ontology-admin.scss";
+import { ListPage } from "../../styles/design-system";
+import { datasetLabel } from "../catalog/datasetLabel";
 
 /** True when indexing reads from a junction or source-side dataset (not only saved links). */
-function linkTypeUsesDatasetIndexing(t: LinkTypeResponse, objectTypes: ObjectTypeResponse[]): boolean {
+function linkTypeUsesDatasetIndexing(
+  t: LinkTypeResponse,
+  objectTypes: ObjectTypeResponse[],
+): boolean {
   if (
-    t.cardinality === 'many-to-many' &&
+    t.cardinality === "many-to-many" &&
     t.dataset_id &&
     t.source_dataset_column &&
     t.target_dataset_column
@@ -34,7 +56,7 @@ function linkTypeUsesDatasetIndexing(t: LinkTypeResponse, objectTypes: ObjectTyp
     return true;
   }
   if (
-    (t.cardinality === 'many-to-one' || t.cardinality === 'one-to-many') &&
+    (t.cardinality === "many-to-one" || t.cardinality === "one-to-many") &&
     t.source_key_property
   ) {
     const src = objectTypes.find((o) => o.id === t.source_object_type_id);
@@ -44,7 +66,7 @@ function linkTypeUsesDatasetIndexing(t: LinkTypeResponse, objectTypes: ObjectTyp
 }
 
 export function LinkTypesPage() {
-  const { t } = useTranslation('ontology');
+  const { t } = useTranslation("ontology");
   const navigate = useNavigate();
   const confirm = useConfirm();
   const [linkTypes, setLinkTypes] = useState<LinkTypeResponse[]>([]);
@@ -52,31 +74,35 @@ export function LinkTypesPage() {
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [editType, setEditType] = useState<LinkTypeResponse | null>(null);
-  const [formName, setFormName] = useState('');
+  const [formName, setFormName] = useState("");
   // The frozen identifier code/Cypher use; prefilled from the name until edited.
-  const [formApiName, setFormApiName] = useState('');
+  const [formApiName, setFormApiName] = useState("");
   const [formApiNameTouched, setFormApiNameTouched] = useState(false);
-  const [formDescription, setFormDescription] = useState('');
-  const [formSourceId, setFormSourceId] = useState('');
-  const [formTargetId, setFormTargetId] = useState('');
-  const [formCardinality, setFormCardinality] = useState<string>('one-to-many');
-  const [formDatasetId, setFormDatasetId] = useState('');
-  const [formSourceKeyProperty, setFormSourceKeyProperty] = useState('');
-  const [formTargetKeyProperty, setFormTargetKeyProperty] = useState('');
-  const [formSourceDatasetColumn, setFormSourceDatasetColumn] = useState('');
-  const [formTargetDatasetColumn, setFormTargetDatasetColumn] = useState('');
+  const [formDescription, setFormDescription] = useState("");
+  const [formSourceId, setFormSourceId] = useState("");
+  const [formTargetId, setFormTargetId] = useState("");
+  const [formCardinality, setFormCardinality] = useState<string>("one-to-many");
+  const [formDatasetId, setFormDatasetId] = useState("");
+  const [formSourceKeyProperty, setFormSourceKeyProperty] = useState("");
+  const [formTargetKeyProperty, setFormTargetKeyProperty] = useState("");
+  const [formSourceDatasetColumn, setFormSourceDatasetColumn] = useState("");
+  const [formTargetDatasetColumn, setFormTargetDatasetColumn] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [datasets, setDatasets] = useState<DatasetResponse[]>([]);
-  const [datasetColumns, setDatasetColumns] = useState<{ column_name: string }[]>([]);
+  const [datasetColumns, setDatasetColumns] = useState<
+    { column_name: string }[]
+  >([]);
   const [dataSources, setDataSources] = useState<DataSourceResponse[]>([]);
   const [showIndexDialog, setShowIndexDialog] = useState(false);
   const [showIndexOneDialog, setShowIndexOneDialog] = useState(false);
-  const [indexOneLink, setIndexOneLink] = useState<LinkTypeResponse | null>(null);
-  const [indexNeo4jId, setIndexNeo4jId] = useState('');
+  const [indexOneLink, setIndexOneLink] = useState<LinkTypeResponse | null>(
+    null,
+  );
+  const [indexNeo4jId, setIndexNeo4jId] = useState("");
   const [indexing, setIndexing] = useState(false);
   const [indexingLinkId, setIndexingLinkId] = useState<string | null>(null);
 
-  const neo4jDataSources = dataSources.filter((ds) => ds.kind === 'neo4j');
+  const neo4jDataSources = dataSources.filter((ds) => ds.kind === "neo4j");
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -92,7 +118,7 @@ export function LinkTypesPage() {
       setDatasets(dsRes.items);
       setDataSources(dsSourcesRes);
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'Failed to load link types');
+      toast.error(e instanceof Error ? e.message : "Failed to load link types");
     } finally {
       setLoading(false);
     }
@@ -104,18 +130,18 @@ export function LinkTypesPage() {
 
   const openCreate = () => {
     setEditType(null);
-    setFormName('');
-    setFormApiName('');
+    setFormName("");
+    setFormApiName("");
     setFormApiNameTouched(false);
-    setFormDescription('');
-    setFormSourceId(objectTypes[0]?.id || '');
-    setFormTargetId(objectTypes[0]?.id || '');
-    setFormCardinality('one-to-many');
-    setFormDatasetId('');
-    setFormSourceKeyProperty('');
-    setFormTargetKeyProperty('');
-    setFormSourceDatasetColumn('');
-    setFormTargetDatasetColumn('');
+    setFormDescription("");
+    setFormSourceId(objectTypes[0]?.id || "");
+    setFormTargetId(objectTypes[0]?.id || "");
+    setFormCardinality("one-to-many");
+    setFormDatasetId("");
+    setFormSourceKeyProperty("");
+    setFormTargetKeyProperty("");
+    setFormSourceDatasetColumn("");
+    setFormTargetDatasetColumn("");
     setShowForm(true);
   };
 
@@ -124,7 +150,7 @@ export function LinkTypesPage() {
   };
 
   useEffect(() => {
-    if (formCardinality === 'many-to-many' && formDatasetId) {
+    if (formCardinality === "many-to-many" && formDatasetId) {
       fetchDatasetMetadata(formDatasetId)
         .then((cols) => setDatasetColumns(cols))
         .catch(() => setDatasetColumns([]));
@@ -138,11 +164,15 @@ export function LinkTypesPage() {
   const sourceProperties = sourceObjectType?.properties ?? [];
   const targetProperties = targetObjectType?.properties ?? [];
 
-  const effectiveApiName = (formApiNameTouched ? formApiName : toPascalCaseApiName(formName)).trim();
-  const apiNameInvalid = effectiveApiName.length > 0 && !isValidApiName(effectiveApiName);
+  const effectiveApiName = (
+    formApiNameTouched ? formApiName : toPascalCaseApiName(formName)
+  ).trim();
+  const apiNameInvalid =
+    effectiveApiName.length > 0 && !isValidApiName(effectiveApiName);
 
   const handleSubmit = async () => {
-    if (!formName.trim() || !formSourceId || !formTargetId || apiNameInvalid) return;
+    if (!formName.trim() || !formSourceId || !formTargetId || apiNameInvalid)
+      return;
     setSubmitting(true);
     try {
       if (editType) {
@@ -152,13 +182,16 @@ export function LinkTypesPage() {
           source_object_type_id: formSourceId,
           target_object_type_id: formTargetId,
           cardinality: formCardinality,
-          dataset_id: formCardinality === 'many-to-many' ? formDatasetId || undefined : undefined,
+          dataset_id:
+            formCardinality === "many-to-many"
+              ? formDatasetId || undefined
+              : undefined,
           source_key_property: formSourceKeyProperty || undefined,
           target_key_property: formTargetKeyProperty || undefined,
           source_dataset_column: formSourceDatasetColumn || undefined,
           target_dataset_column: formTargetDatasetColumn || undefined,
         });
-        toast.success('Link type updated');
+        toast.success("Link type updated");
       } else {
         await createLinkType({
           name: formName.trim(),
@@ -167,18 +200,21 @@ export function LinkTypesPage() {
           source_object_type_id: formSourceId,
           target_object_type_id: formTargetId,
           cardinality: formCardinality,
-          dataset_id: formCardinality === 'many-to-many' ? formDatasetId || undefined : undefined,
+          dataset_id:
+            formCardinality === "many-to-many"
+              ? formDatasetId || undefined
+              : undefined,
           source_key_property: formSourceKeyProperty || undefined,
           target_key_property: formTargetKeyProperty || undefined,
           source_dataset_column: formSourceDatasetColumn || undefined,
           target_dataset_column: formTargetDatasetColumn || undefined,
         });
-        toast.success('Link type created');
+        toast.success("Link type created");
       }
       setShowForm(false);
       await load();
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'Operation failed');
+      toast.error(e instanceof Error ? e.message : "Operation failed");
     } finally {
       setSubmitting(false);
     }
@@ -189,10 +225,12 @@ export function LinkTypesPage() {
     setIndexing(true);
     try {
       const res = await indexLinkTypesToNeo4j(indexNeo4jId);
-      toast.success(`Indexed ${res.link_types_indexed} link types, ${res.relationships_created} relationships created`);
+      toast.success(
+        `Indexed ${res.link_types_indexed} link types, ${res.relationships_created} relationships created`,
+      );
       setShowIndexDialog(false);
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'Index failed');
+      toast.error(e instanceof Error ? e.message : "Index failed");
     } finally {
       setIndexing(false);
     }
@@ -203,11 +241,13 @@ export function LinkTypesPage() {
     setIndexingLinkId(indexOneLink.id);
     try {
       const res = await indexLinkTypeToNeo4j(indexOneLink.id, indexNeo4jId);
-      toast.success(`Indexed ${res.link_types_indexed} link type, ${res.relationships_created} relationships created`);
+      toast.success(
+        `Indexed ${res.link_types_indexed} link type, ${res.relationships_created} relationships created`,
+      );
       setShowIndexOneDialog(false);
       setIndexOneLink(null);
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'Index failed');
+      toast.error(e instanceof Error ? e.message : "Index failed");
     } finally {
       setIndexingLinkId(null);
     }
@@ -216,70 +256,75 @@ export function LinkTypesPage() {
   const handleDelete = async (id: string) => {
     if (
       !(await confirm({
-        title: 'Delete link type',
-        message: 'Delete this link type? All link instances will be deleted.',
-        confirmLabel: 'Delete',
+        title: "Delete link type",
+        message: "Delete this link type? All link instances will be deleted.",
+        confirmLabel: "Delete",
         danger: true,
       }))
     )
       return;
     try {
       await deleteLinkType(id);
-      toast.success('Link type deleted');
+      toast.success("Link type deleted");
       await load();
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'Delete failed');
+      toast.error(e instanceof Error ? e.message : "Delete failed");
     }
   };
 
   return (
-    <div className="ontology-admin">
-      <div className="page-header">
-        <div>
-          <h1>{t('linkTypes.title')}</h1>
-          <p className="page-subtitle">
-            Define relationships between object types (e.g. Disease → InsuranceProduct). Admin only.
-          </p>
-        </div>
-        <div className="page-header-actions">
-          {neo4jDataSources.length > 0 && (
+    <>
+      <ListPage
+        title={t("linkTypes.title")}
+        subtitle={t("linkTypes.subtitle")}
+        actions={
+          <>
+            {neo4jDataSources.length > 0 && (
+              <button
+                type="button"
+                className="btn btn-secondary"
+                title={t("linkTypes.indexLinksTitle")}
+                disabled={
+                  indexing ||
+                  indexingLinkId !== null ||
+                  showIndexOneDialog ||
+                  showIndexDialog
+                }
+                onClick={() => {
+                  setIndexNeo4jId(neo4jDataSources[0]?.id || "");
+                  setShowIndexDialog(true);
+                }}
+              >
+                <Database size={18} />
+                <span>{t("linkTypes.indexLinks")}</span>
+              </button>
+            )}
             <button
               type="button"
-              className="btn btn-secondary"
-              title={t('linkTypes.indexLinksTitle')}
-              disabled={indexing || indexingLinkId !== null || showIndexOneDialog || showIndexDialog}
-              onClick={() => {
-                setIndexNeo4jId(neo4jDataSources[0]?.id || '');
-                setShowIndexDialog(true);
-              }}
+              className="btn btn-primary"
+              onClick={openCreate}
+              disabled={objectTypes.length < 2}
+              title={
+                objectTypes.length < 2
+                  ? "Create at least 2 object types first"
+                  : ""
+              }
             >
-              <Database size={18} />
-              <span>{t('linkTypes.indexLinks')}</span>
+              <Plus size={18} />
+              <span>{t("linkTypes.create")}</span>
             </button>
-          )}
-          <button
-            type="button"
-            className="btn btn-primary"
-            onClick={openCreate}
-            disabled={objectTypes.length < 2}
-            title={objectTypes.length < 2 ? 'Create at least 2 object types first' : ''}
-          >
-            <Plus size={18} />
-            <span>{t('linkTypes.create')}</span>
-          </button>
-        </div>
-      </div>
-
-      <div className="ontology-admin-content">
+          </>
+        }
+      >
         {loading ? (
           <div className="ds-loading">
             <Loader2 size={32} className="ds-loading__spinner" />
-            <p>{t('shared.loading')}</p>
+            <p>{t("shared.loading")}</p>
           </div>
         ) : linkTypes.length === 0 ? (
           <EmptyState
             icon={<Link2 size={32} aria-hidden />}
-            title={t('linkTypes.emptyList')}
+            title={t("linkTypes.emptyList")}
             action={
               <button
                 type="button"
@@ -288,7 +333,7 @@ export function LinkTypesPage() {
                 disabled={objectTypes.length < 2}
               >
                 <Plus size={16} aria-hidden />
-                {t('linkTypes.create')}
+                {t("linkTypes.create")}
               </button>
             }
           />
@@ -297,14 +342,14 @@ export function LinkTypesPage() {
             <table className="ds-table">
               <thead>
                 <tr>
-                  <th>{t('linkTypes.name')}</th>
-                  <th>{t('linkTypes.description')}</th>
-                  <th>{t('linkTypes.relationship')}</th>
+                  <th>{t("linkTypes.name")}</th>
+                  <th>{t("linkTypes.description")}</th>
+                  <th>{t("linkTypes.relationship")}</th>
                   <th>FK</th>
-                  <th>{t('linkTypes.cardinality')}</th>
-                  <th>{t('linkTypes.junctionDataset')}</th>
-                  <th>{t('linkTypes.instances')}</th>
-                  <th className="ds-table-actions">{t('shared.actions')}</th>
+                  <th>{t("linkTypes.cardinality")}</th>
+                  <th>{t("linkTypes.junctionDataset")}</th>
+                  <th>{t("linkTypes.instances")}</th>
+                  <th className="ds-table-actions">{t("shared.actions")}</th>
                 </tr>
               </thead>
               <tbody>
@@ -318,41 +363,61 @@ export function LinkTypesPage() {
                         <strong>{row.name}</strong>
                       </Link>
                     </td>
-                    <td>{row.description || '—'}</td>
+                    <td>{row.description || "—"}</td>
                     <td>
-                      {row.source_object_type_name || row.source_object_type_id} →{' '}
+                      {row.source_object_type_name || row.source_object_type_id}{" "}
+                      →{" "}
                       {row.target_object_type_name || row.target_object_type_id}
                     </td>
                     <td>
-                      {[row.source_key_property, row.source_dataset_column, row.target_dataset_column, row.target_key_property]
-                        .filter(Boolean)
-                        .length > 0
-                        ? [row.source_key_property, row.source_dataset_column, row.target_dataset_column, row.target_key_property]
+                      {[
+                        row.source_key_property,
+                        row.source_dataset_column,
+                        row.target_dataset_column,
+                        row.target_key_property,
+                      ].filter(Boolean).length > 0
+                        ? [
+                            row.source_key_property,
+                            row.source_dataset_column,
+                            row.target_dataset_column,
+                            row.target_key_property,
+                          ]
                             .filter(Boolean)
-                            .join(' — ')
-                        : '—'}
+                            .join(" — ")
+                        : "—"}
                     </td>
-                    <td>{row.cardinality || 'one-to-many'}</td>
-                    <td>{row.cardinality === 'many-to-many' ? (row.dataset_name || '—') : '—'}</td>
+                    <td>{row.cardinality || "one-to-many"}</td>
+                    <td>
+                      {row.cardinality === "many-to-many"
+                        ? row.dataset_name || "—"
+                        : "—"}
+                    </td>
                     <td>{row.link_count}</td>
                     <td className="ds-table-actions">
                       <div className="ds-table-btns">
-                        {(linkTypeUsesDatasetIndexing(row, objectTypes) || row.link_count > 0) &&
+                        {(linkTypeUsesDatasetIndexing(row, objectTypes) ||
+                          row.link_count > 0) &&
                         neo4jDataSources.length > 0 ? (
                           <button
                             type="button"
-                            title={t('linkTypes.indexLinksTitle')}
+                            title={t("linkTypes.indexLinksTitle")}
                             disabled={
-                              indexing || indexingLinkId !== null || showIndexOneDialog || showIndexDialog
+                              indexing ||
+                              indexingLinkId !== null ||
+                              showIndexOneDialog ||
+                              showIndexDialog
                             }
                             onClick={() => {
                               setIndexOneLink(row);
-                              setIndexNeo4jId(neo4jDataSources[0]?.id || '');
+                              setIndexNeo4jId(neo4jDataSources[0]?.id || "");
                               setShowIndexOneDialog(true);
                             }}
                           >
                             {indexingLinkId === row.id ? (
-                              <Loader2 size={16} className="ds-loading__spinner" />
+                              <Loader2
+                                size={16}
+                                className="ds-loading__spinner"
+                              />
                             ) : (
                               <Database size={16} />
                             )}
@@ -360,15 +425,23 @@ export function LinkTypesPage() {
                         ) : null}
                         <Link
                           to={`/ontology-manager/link-types/${row.id}/sharing`}
-                          title={t('linkTypes.sharing')}
+                          title={t("linkTypes.sharing")}
                           className="ds-table-icon-link"
                         >
                           <Users size={16} />
                         </Link>
-                        <button type="button" title={t('linkTypes.overview')} onClick={() => openEdit(row)}>
+                        <button
+                          type="button"
+                          title={t("linkTypes.overview")}
+                          onClick={() => openEdit(row)}
+                        >
                           <Pencil size={16} />
                         </button>
-                        <button type="button" title={t('shared.delete')} onClick={() => handleDelete(row.id)}>
+                        <button
+                          type="button"
+                          title={t("shared.delete")}
+                          onClick={() => handleDelete(row.id)}
+                        >
                           <Trash2 size={16} />
                         </button>
                       </div>
@@ -379,271 +452,301 @@ export function LinkTypesPage() {
             </table>
           </div>
         )}
-      </div>
+      </ListPage>
 
       <Dialog
         open={showForm}
         onClose={() => !submitting && setShowForm(false)}
         closeDisabled={submitting}
-        title={editType ? 'Edit Link Type' : 'New Link Type'}
+        title={editType ? "Edit Link Type" : "New Link Type"}
         closeAriaLabel="Close"
         size="lg"
         footer={
           <>
-              <button
-                type="button"
-                className="btn btn-secondary"
-                onClick={() => !submitting && setShowForm(false)}
-                disabled={submitting}
-              >
-                {t('linkTypes.cancel')}
-              </button>
-              <button
-                type="button"
-                className="btn btn-primary"
-                onClick={handleSubmit}
-                disabled={
-                  !formName.trim() ||
-                  !effectiveApiName ||
-                  apiNameInvalid ||
-                  !formSourceId ||
-                  !formTargetId ||
-                  (formCardinality === 'many-to-many' && (!formDatasetId || !formSourceDatasetColumn || !formTargetDatasetColumn)) ||
-                  submitting
-                }
-              >
-                {submitting ? 'Saving…' : editType ? 'Update' : 'Create'}
-              </button>
-            
+            <button
+              type="button"
+              className="btn btn-secondary"
+              onClick={() => !submitting && setShowForm(false)}
+              disabled={submitting}
+            >
+              {t("linkTypes.cancel")}
+            </button>
+            <button
+              type="button"
+              className="btn btn-primary"
+              onClick={handleSubmit}
+              disabled={
+                !formName.trim() ||
+                !effectiveApiName ||
+                apiNameInvalid ||
+                !formSourceId ||
+                !formTargetId ||
+                (formCardinality === "many-to-many" &&
+                  (!formDatasetId ||
+                    !formSourceDatasetColumn ||
+                    !formTargetDatasetColumn)) ||
+                submitting
+              }
+            >
+              {submitting ? "Saving…" : editType ? "Update" : "Create"}
+            </button>
           </>
         }
       >
-              <FormField label="Name">
-<input
-                  type="text"
-                  value={formName}
-                  onChange={(e) => setFormName(e.target.value)}
-                  placeholder={t('linkTypes.labelPlaceholder')}
-                />
-</FormField>
-              <FormField
-                label="API name"
-                hint={apiNameInvalid ? 'Start with a letter; use only letters, digits and underscores.' : 'What code and Cypher call it (client("covers")). Fixed after creation; Name is the label people see.'}
+        <FormField label="Name">
+          <input
+            type="text"
+            value={formName}
+            onChange={(e) => setFormName(e.target.value)}
+            placeholder={t("linkTypes.labelPlaceholder")}
+          />
+        </FormField>
+        <FormField
+          label="API name"
+          hint={
+            apiNameInvalid
+              ? "Start with a letter; use only letters, digits and underscores."
+              : 'What code and Cypher call it (client("covers")). Fixed after creation; Name is the label people see.'
+          }
+        >
+          <input
+            type="text"
+            value={effectiveApiName}
+            onChange={(e) => {
+              setFormApiNameTouched(true);
+              setFormApiName(e.target.value);
+            }}
+            placeholder={t("linkTypes.labelPlaceholder")}
+            aria-invalid={apiNameInvalid}
+          />
+        </FormField>
+        <FormField label="Description">
+          <input
+            type="text"
+            value={formDescription}
+            onChange={(e) => setFormDescription(e.target.value)}
+            placeholder={t("linkTypes.optionalPlaceholder")}
+          />
+        </FormField>
+        <FormField label="Source object type">
+          <select
+            value={formSourceId}
+            onChange={(e) => setFormSourceId(e.target.value)}
+          >
+            <option value="">{t("linkTypes.selectPlaceholder")}</option>
+            {objectTypes.map((o) => (
+              <option key={o.id} value={o.id}>
+                {o.name}
+              </option>
+            ))}
+          </select>
+        </FormField>
+        <FormField label="Target object type">
+          <select
+            value={formTargetId}
+            onChange={(e) => setFormTargetId(e.target.value)}
+          >
+            <option value="">{t("linkTypes.selectPlaceholder")}</option>
+            {objectTypes.map((o) => (
+              <option key={o.id} value={o.id}>
+                {o.name}
+              </option>
+            ))}
+          </select>
+        </FormField>
+        <FormField label="Cardinality">
+          <select
+            value={formCardinality}
+            onChange={(e) => setFormCardinality(e.target.value)}
+          >
+            {CARDINALITY_OPTIONS.map((c) => (
+              <option key={c} value={c}>
+                {c}
+              </option>
+            ))}
+          </select>
+          <span className="page-subtitle page-subtitle--block">
+            One-to-one: indicator only (not enforced). Many-to-many: link to
+            junction table dataset.
+          </span>
+        </FormField>
+        {formCardinality === "many-to-many" && (
+          <FormField label="Dataset (junction table)">
+            <select
+              value={formDatasetId}
+              onChange={(e) => {
+                setFormDatasetId(e.target.value);
+                setFormSourceDatasetColumn("");
+                setFormTargetDatasetColumn("");
+              }}
+            >
+              <option value="">
+                {t("linkTypes.selectDatasetPlaceholder")}
+              </option>
+              {datasets.map((d) => (
+                <option key={d.id} value={d.id}>
+                  {datasetLabel(d)}
+                </option>
+              ))}
+            </select>
+          </FormField>
+        )}
+        <div className="console-modal-fk-section">
+          <span className="console-modal-fk-label">
+            {formCardinality === "many-to-many" && formDatasetId
+              ? "Source Key Property — Link Dataset Source Key Property — Link Dataset Target Key Property — Target Key Property"
+              : "Foreign key (connect properties)"}
+          </span>
+          <div className="console-modal-fk-chain">
+            <FormField label="Source Key Property">
+              <select
+                value={formSourceKeyProperty}
+                onChange={(e) => setFormSourceKeyProperty(e.target.value)}
               >
-<input
-                  type="text"
-                  value={effectiveApiName}
-                  onChange={(e) => {
-                    setFormApiNameTouched(true);
-                    setFormApiName(e.target.value);
-                  }}
-                  placeholder={t('linkTypes.labelPlaceholder')}
-                  aria-invalid={apiNameInvalid}
-                />
-</FormField>
-              <FormField label="Description">
-<input
-                  type="text"
-                  value={formDescription}
-                  onChange={(e) => setFormDescription(e.target.value)}
-                  placeholder={t('linkTypes.optionalPlaceholder')}
-                />
-</FormField>
-              <FormField label="Source object type">
-<select
-                  value={formSourceId}
-                  onChange={(e) => setFormSourceId(e.target.value)}
-                >
-                  <option value="">{t('linkTypes.selectPlaceholder')}</option>
-                  {objectTypes.map((o) => (
-                    <option key={o.id} value={o.id}>{o.name}</option>
-                  ))}
-                </select>
-</FormField>
-              <FormField label="Target object type">
-<select
-                  value={formTargetId}
-                  onChange={(e) => setFormTargetId(e.target.value)}
-                >
-                  <option value="">{t('linkTypes.selectPlaceholder')}</option>
-                  {objectTypes.map((o) => (
-                    <option key={o.id} value={o.id}>{o.name}</option>
-                  ))}
-                </select>
-</FormField>
-              <FormField label="Cardinality">
-                <select
-                  value={formCardinality}
-                  onChange={(e) => setFormCardinality(e.target.value)}
-                >
-                  {CARDINALITY_OPTIONS.map((c) => (
-                    <option key={c} value={c}>{c}</option>
-                  ))}
-                </select>
-                <span className="page-subtitle page-subtitle--block">
-                  One-to-one: indicator only (not enforced). Many-to-many: link to junction table dataset.
-                </span>
-</FormField>
-              {formCardinality === 'many-to-many' && (
-                <FormField label="Dataset (junction table)">
-                  <select
-                    value={formDatasetId}
-                    onChange={(e) => {
-                      setFormDatasetId(e.target.value);
-                      setFormSourceDatasetColumn('');
-                      setFormTargetDatasetColumn('');
-                    }}
-                  >
-                    <option value="">{t('linkTypes.selectDatasetPlaceholder')}</option>
-                    {datasets.map((d) => (
-                      <option key={d.id} value={d.id}>
-                        {datasetLabel(d)}
-                      </option>
-                    ))}
-                  </select>
-</FormField>
-              )}
-              <div className="console-modal-fk-section">
-                <span className="console-modal-fk-label">
-                  {formCardinality === 'many-to-many' && formDatasetId
-                    ? 'Source Key Property — Link Dataset Source Key Property — Link Dataset Target Key Property — Target Key Property'
-                    : 'Foreign key (connect properties)'}
-                </span>
-                <div className="console-modal-fk-chain">
-                  <FormField label="Source Key Property">
-                    <select
-                      value={formSourceKeyProperty}
-                      onChange={(e) => setFormSourceKeyProperty(e.target.value)}
-                    >
-                      <option value="">{t('linkTypes.selectDash')}</option>
-                      {sourceProperties.map((p) => (
-                        <option key={p.name} value={p.name}>{p.name}</option>
-                      ))}
-                    </select>
-</FormField>
-                  {formCardinality === 'many-to-many' && formDatasetId && datasetColumns.length > 0 && (
-                    <>
-                      <span className="console-modal-fk-arrow">—</span>
-                      <FormField label="Link Dataset Source Key Property">
-                        <select
-                          value={formSourceDatasetColumn}
-                          onChange={(e) => setFormSourceDatasetColumn(e.target.value)}
-                        >
-                          <option value="">{t('linkTypes.selectDash')}</option>
-                          {datasetColumns.map((c) => (
-                            <option key={c.column_name} value={c.column_name}>{c.column_name}</option>
-                          ))}
-                        </select>
-</FormField>
-                      <span className="console-modal-fk-arrow">—</span>
-                      <FormField label="Link Dataset Target Key Property">
-                        <select
-                          value={formTargetDatasetColumn}
-                          onChange={(e) => setFormTargetDatasetColumn(e.target.value)}
-                        >
-                          <option value="">{t('linkTypes.selectDash')}</option>
-                          {datasetColumns.map((c) => (
-                            <option key={c.column_name} value={c.column_name}>{c.column_name}</option>
-                          ))}
-                        </select>
-</FormField>
-                    </>
-                  )}
+                <option value="">{t("linkTypes.selectDash")}</option>
+                {sourceProperties.map((p) => (
+                  <option key={p.name} value={p.name}>
+                    {p.name}
+                  </option>
+                ))}
+              </select>
+            </FormField>
+            {formCardinality === "many-to-many" &&
+              formDatasetId &&
+              datasetColumns.length > 0 && (
+                <>
                   <span className="console-modal-fk-arrow">—</span>
-                  <FormField label="Target Key Property">
+                  <FormField label="Link Dataset Source Key Property">
                     <select
-                      value={formTargetKeyProperty}
-                      onChange={(e) => setFormTargetKeyProperty(e.target.value)}
+                      value={formSourceDatasetColumn}
+                      onChange={(e) =>
+                        setFormSourceDatasetColumn(e.target.value)
+                      }
                     >
-                      <option value="">{t('linkTypes.selectDash')}</option>
-                      {targetProperties.map((p) => (
-                        <option key={p.name} value={p.name}>{p.name}</option>
+                      <option value="">{t("linkTypes.selectDash")}</option>
+                      {datasetColumns.map((c) => (
+                        <option key={c.column_name} value={c.column_name}>
+                          {c.column_name}
+                        </option>
                       ))}
                     </select>
-</FormField>
-                </div>
-                <span className="page-subtitle page-subtitle--block">
-                  {formCardinality === 'many-to-many' && formDatasetId
-                    ? 'Which property/column maps source → target through the junction table.'
-                    : 'Which property in source/target object types forms the link (e.g. id, icd_code).'}
-                </span>
-              </div>
-            
+                  </FormField>
+                  <span className="console-modal-fk-arrow">—</span>
+                  <FormField label="Link Dataset Target Key Property">
+                    <select
+                      value={formTargetDatasetColumn}
+                      onChange={(e) =>
+                        setFormTargetDatasetColumn(e.target.value)
+                      }
+                    >
+                      <option value="">{t("linkTypes.selectDash")}</option>
+                      {datasetColumns.map((c) => (
+                        <option key={c.column_name} value={c.column_name}>
+                          {c.column_name}
+                        </option>
+                      ))}
+                    </select>
+                  </FormField>
+                </>
+              )}
+            <span className="console-modal-fk-arrow">—</span>
+            <FormField label="Target Key Property">
+              <select
+                value={formTargetKeyProperty}
+                onChange={(e) => setFormTargetKeyProperty(e.target.value)}
+              >
+                <option value="">{t("linkTypes.selectDash")}</option>
+                {targetProperties.map((p) => (
+                  <option key={p.name} value={p.name}>
+                    {p.name}
+                  </option>
+                ))}
+              </select>
+            </FormField>
+          </div>
+          <span className="page-subtitle page-subtitle--block">
+            {formCardinality === "many-to-many" && formDatasetId
+              ? "Which property/column maps source → target through the junction table."
+              : "Which property in source/target object types forms the link (e.g. id, icd_code)."}
+          </span>
+        </div>
       </Dialog>
       <Dialog
         open={showIndexDialog}
-        onClose={() => !indexing && !indexingLinkId && setShowIndexDialog(false)}
+        onClose={() =>
+          !indexing && !indexingLinkId && setShowIndexDialog(false)
+        }
         closeDisabled={indexing || indexingLinkId !== null}
-        title={t('linkTypes.indexLinksTitle')}
+        title={t("linkTypes.indexLinksTitle")}
         closeAriaLabel="Close"
         size="md"
         footer={
           <>
-              <button
-                type="button"
-                className="btn btn-secondary"
-                onClick={() => !indexing && !indexingLinkId && setShowIndexDialog(false)}
-                disabled={indexing || indexingLinkId !== null}
-              >
-                {t('linkTypes.cancel')}
-              </button>
-              <button
-                type="button"
-                className="btn btn-primary"
-                onClick={handleIndexConfirm}
-                disabled={!indexNeo4jId || indexing || indexingLinkId !== null}
-              >
-                {indexing ? (
-                  <>
-                    <Loader2 size={18} className="ds-loading__spinner" />
-                    <span>{t('linkTypes.indexing')}</span>
-                  </>
-                ) : (
-                  'Confirm & Index'
-                )}
-              </button>
-            
+            <button
+              type="button"
+              className="btn btn-secondary"
+              onClick={() =>
+                !indexing && !indexingLinkId && setShowIndexDialog(false)
+              }
+              disabled={indexing || indexingLinkId !== null}
+            >
+              {t("linkTypes.cancel")}
+            </button>
+            <button
+              type="button"
+              className="btn btn-primary"
+              onClick={handleIndexConfirm}
+              disabled={!indexNeo4jId || indexing || indexingLinkId !== null}
+            >
+              {indexing ? (
+                <>
+                  <Loader2 size={18} className="ds-loading__spinner" />
+                  <span>{t("linkTypes.indexing")}</span>
+                </>
+              ) : (
+                "Confirm & Index"
+              )}
+            </button>
           </>
         }
       >
-              <p className="page-subtitle">
-                Index every link type that has a junction or source-side dataset, or saved links, to the selected Neo4j
-                database as relationships.
-              </p>
-              <FormField label="Neo4j Data Source">
-                <select
-                  value={indexNeo4jId}
-                  onChange={(e) => setIndexNeo4jId(e.target.value)}
-                  disabled={indexing || indexingLinkId !== null}
-                >
-                  <option value="">{t('linkTypes.selectPlaceholder')}</option>
-                  {neo4jDataSources.map((ds) => (
-                    <option key={ds.id} value={ds.id}>
-                      {ds.name} ({ds.host}:{ds.port ?? 7687})
-                    </option>
-                  ))}
-                </select>
-</FormField>
-            
+        <p className="page-subtitle">
+          Index every link type that has a junction or source-side dataset, or
+          saved links, to the selected Neo4j database as relationships.
+        </p>
+        <FormField label="Neo4j Data Source">
+          <select
+            value={indexNeo4jId}
+            onChange={(e) => setIndexNeo4jId(e.target.value)}
+            disabled={indexing || indexingLinkId !== null}
+          >
+            <option value="">{t("linkTypes.selectPlaceholder")}</option>
+            {neo4jDataSources.map((ds) => (
+              <option key={ds.id} value={ds.id}>
+                {ds.name} ({ds.host}:{ds.port ?? 7687})
+              </option>
+            ))}
+          </select>
+        </FormField>
       </Dialog>
-            {showIndexOneDialog && indexOneLink ? (
-<Dialog
-        open={showIndexOneDialog && Boolean(indexOneLink)}
-        onClose={() => {
-          if (indexingLinkId) return;
-          setShowIndexOneDialog(false);
-          setIndexOneLink(null);
-        }}
-        closeDisabled={Boolean(indexingLinkId)}
-        title={
-          linkTypeUsesDatasetIndexing(indexOneLink, objectTypes)
-            ? 'Index from linked data'
-            : 'Index from saved links'
-        }
-        closeAriaLabel="Close"
-        size="md"
-        footer={
-          <>
+      {showIndexOneDialog && indexOneLink ? (
+        <Dialog
+          open={showIndexOneDialog && Boolean(indexOneLink)}
+          onClose={() => {
+            if (indexingLinkId) return;
+            setShowIndexOneDialog(false);
+            setIndexOneLink(null);
+          }}
+          closeDisabled={Boolean(indexingLinkId)}
+          title={
+            linkTypeUsesDatasetIndexing(indexOneLink, objectTypes)
+              ? "Index from linked data"
+              : "Index from saved links"
+          }
+          closeAriaLabel="Close"
+          size="md"
+          footer={
+            <>
               <button
                 type="button"
                 className="btn btn-secondary"
@@ -654,7 +757,7 @@ export function LinkTypesPage() {
                 }}
                 disabled={!!indexingLinkId}
               >
-                {t('linkTypes.cancel')}
+                {t("linkTypes.cancel")}
               </button>
               <button
                 type="button"
@@ -665,59 +768,68 @@ export function LinkTypesPage() {
                 {indexingLinkId ? (
                   <>
                     <Loader2 size={18} className="ds-loading__spinner" />
-                    <span>{t('linkTypes.indexing')}</span>
+                    <span>{t("linkTypes.indexing")}</span>
                   </>
                 ) : linkTypeUsesDatasetIndexing(indexOneLink, objectTypes) ? (
-                  'Index from dataset'
+                  "Index from dataset"
                 ) : (
-                  'Index saved links'
+                  "Index saved links"
                 )}
               </button>
-            
-          </>
-        }
-      >
-              {linkTypeUsesDatasetIndexing(indexOneLink, objectTypes) ? (
-                <>
-                  <p className="console-modal-index-lead">
-                    <strong>{indexOneLink.name}</strong> is configured to read from database tables (junction or
-                    source-side foreign key). Choose where to write relationships, then confirm.
-                  </p>
-                  <div className="console-modal-index-callout console-modal-index-callout--dataset" role="note">
-                    {indexOneLink.cardinality === 'many-to-many'
-                      ? 'Rows come from the junction table you linked. Each row creates one relationship between the two object types.'
-                      : 'Rows come from the source object type’s linked table. The foreign-key column points at the target object id on each relationship.'}
-                  </div>
-                </>
-              ) : (
-                <>
-                  <p className="console-modal-index-lead">
-                    <strong>{indexOneLink.name}</strong> is not driven by a linked table for indexing. This run uses{' '}
-                    <strong>{indexOneLink.link_count}</strong>{' '}
-                    {indexOneLink.link_count === 1 ? 'saved link' : 'saved links'} you created in the app.
-                  </p>
-                  <div className="console-modal-index-callout console-modal-index-callout--instances" role="note">
-                    Each saved link connects two object instances. Endpoints are matched to graph nodes using the same
-                    keys as object indexing (primary key or key property on each side).
-                  </div>
-                </>
-              )}
-              <FormField label="Neo4j Data Source">
-                <select
-                  value={indexNeo4jId}
-                  onChange={(e) => setIndexNeo4jId(e.target.value)}
-                  disabled={!!indexingLinkId}
-                >
-                  <option value="">{t('linkTypes.selectPlaceholder')}</option>
-                  {neo4jDataSources.map((ds) => (
-                    <option key={ds.id} value={ds.id}>
-                      {ds.name} ({ds.host}:{ds.port ?? 7687})
-                    </option>
-                  ))}
-                </select>
-</FormField>
-            
-      </Dialog>      ) : null}
-    </div>
+            </>
+          }
+        >
+          {linkTypeUsesDatasetIndexing(indexOneLink, objectTypes) ? (
+            <>
+              <p className="console-modal-index-lead">
+                <strong>{indexOneLink.name}</strong> is configured to read from
+                database tables (junction or source-side foreign key). Choose
+                where to write relationships, then confirm.
+              </p>
+              <div
+                className="console-modal-index-callout console-modal-index-callout--dataset"
+                role="note"
+              >
+                {indexOneLink.cardinality === "many-to-many"
+                  ? "Rows come from the junction table you linked. Each row creates one relationship between the two object types."
+                  : "Rows come from the source object type’s linked table. The foreign-key column points at the target object id on each relationship."}
+              </div>
+            </>
+          ) : (
+            <>
+              <p className="console-modal-index-lead">
+                <strong>{indexOneLink.name}</strong> is not driven by a linked
+                table for indexing. This run uses{" "}
+                <strong>{indexOneLink.link_count}</strong>{" "}
+                {indexOneLink.link_count === 1 ? "saved link" : "saved links"}{" "}
+                you created in the app.
+              </p>
+              <div
+                className="console-modal-index-callout console-modal-index-callout--instances"
+                role="note"
+              >
+                Each saved link connects two object instances. Endpoints are
+                matched to graph nodes using the same keys as object indexing
+                (primary key or key property on each side).
+              </div>
+            </>
+          )}
+          <FormField label="Neo4j Data Source">
+            <select
+              value={indexNeo4jId}
+              onChange={(e) => setIndexNeo4jId(e.target.value)}
+              disabled={!!indexingLinkId}
+            >
+              <option value="">{t("linkTypes.selectPlaceholder")}</option>
+              {neo4jDataSources.map((ds) => (
+                <option key={ds.id} value={ds.id}>
+                  {ds.name} ({ds.host}:{ds.port ?? 7687})
+                </option>
+              ))}
+            </select>
+          </FormField>
+        </Dialog>
+      ) : null}
+    </>
   );
 }
