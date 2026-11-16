@@ -305,26 +305,30 @@ export function DatasetErGraph({
           <span>{t('dataModel.erResetLayout')}</span>
         </button>
         <span className="dataset-er-graph__legend" title={t('dataModel.erLegendHint')}>
+          {/* Left edge = the dataset; the line runs off to the right, exactly as it does on the canvas. */}
           <span className="dataset-er-graph__legend-item">
-            <svg width="26" height="12" aria-hidden>
-              <circle cx="4" cy="6" r="2.5" className="dataset-er-graph__edge-end" fill="none" />
-              <line x1="22" y1="6" x2="10" y2="1" className="dataset-er-graph__edge-end" />
-              <line x1="22" y1="6" x2="10" y2="6" className="dataset-er-graph__edge-end" />
-              <line x1="22" y1="6" x2="10" y2="11" className="dataset-er-graph__edge-end" />
+            <svg width="36" height="12" aria-hidden>
+              <line x1="16" y1="6" x2="4" y2="1" className="dataset-er-graph__edge-end" />
+              <line x1="16" y1="6" x2="4" y2="6" className="dataset-er-graph__edge-end" />
+              <line x1="16" y1="6" x2="4" y2="11" className="dataset-er-graph__edge-end" />
+              <circle cx="22" cy="6" r="2.5" className="dataset-er-graph__edge-end" fill="none" />
+              <line x1="26" y1="6" x2="34" y2="6" className="dataset-er-graph__edge-end" />
             </svg>
             {t('dataModel.erMany')}
           </span>
           <span className="dataset-er-graph__legend-item">
-            <svg width="16" height="12" aria-hidden>
-              <line x1="6" y1="1" x2="6" y2="11" className="dataset-er-graph__edge-end" />
-              <line x1="11" y1="1" x2="11" y2="11" className="dataset-er-graph__edge-end" />
+            <svg width="36" height="12" aria-hidden>
+              <line x1="4" y1="1" x2="4" y2="11" className="dataset-er-graph__edge-end" />
+              <line x1="9" y1="1" x2="9" y2="11" className="dataset-er-graph__edge-end" />
+              <line x1="13" y1="6" x2="34" y2="6" className="dataset-er-graph__edge-end" />
             </svg>
             {t('dataModel.erOneOnly')}
           </span>
           <span className="dataset-er-graph__legend-item">
-            <svg width="16" height="12" aria-hidden>
-              <circle cx="4" cy="6" r="2.5" className="dataset-er-graph__edge-end" fill="none" />
-              <line x1="11" y1="1" x2="11" y2="11" className="dataset-er-graph__edge-end" />
+            <svg width="36" height="12" aria-hidden>
+              <line x1="4" y1="1" x2="4" y2="11" className="dataset-er-graph__edge-end" />
+              <circle cx="12" cy="6" r="2.5" className="dataset-er-graph__edge-end" fill="none" />
+              <line x1="16" y1="6" x2="34" y2="6" className="dataset-er-graph__edge-end" />
             </svg>
             {t('dataModel.erZeroOrOne')}
           </span>
