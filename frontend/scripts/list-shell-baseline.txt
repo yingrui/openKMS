@@ -7,7 +7,6 @@ src/pages/console/kubernetes/ConsoleKubernetes.tsx
 src/pages/console/kubernetes/ConsoleKubernetesDetail.tsx
 src/pages/function-editor/FunctionEditorListPage.tsx
 src/pages/ontology-manager/ActionsListPage.tsx
-src/pages/ontology-manager/ExternalServicesPage.tsx
 src/pages/ontology-manager/FunctionsListPage.tsx
 src/pages/ontology-manager/GroupsListPage.tsx
 src/pages/ontology/LinkTypesPage.tsx

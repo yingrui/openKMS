@@ -5,9 +5,10 @@
  * another borrowed the ontology manager's API-name style for its name column, a third put its view switch
  * at a different size than the others' search boxes. The skeleton is one shape, so it is one component.
  */
-import type { ReactNode } from 'react';
+import type { ReactNode } from "react";
 
 export function ListPage({
+  className,
   headerClassName,
   title,
   subtitle,
@@ -16,6 +17,8 @@ export function ListPage({
   toolbar,
   children,
 }: {
+  /** A modifier for the page root (`function-editor-list` and friends). */
+  className?: string;
   /** A modifier for the header (`model-page-header` and friends). */
   headerClassName?: string;
   title?: ReactNode;
@@ -28,14 +31,20 @@ export function ListPage({
   children: ReactNode;
 }) {
   return (
-    <div className="ontology-admin">
+    <div
+      className={className ? `ontology-admin ${className}` : "ontology-admin"}
+    >
       {title || subtitle || actions ? (
-        <header className={`page-header${headerClassName ? ` ${headerClassName}` : ""}`}>
+        <header
+          className={`page-header${headerClassName ? ` ${headerClassName}` : ""}`}
+        >
           <div>
             {title ? <h1>{title}</h1> : null}
             {subtitle ? <p className="page-subtitle">{subtitle}</p> : null}
           </div>
-          {actions ? <div className="page-header-actions">{actions}</div> : null}
+          {actions ? (
+            <div className="page-header-actions">{actions}</div>
+          ) : null}
         </header>
       ) : null}
       {tabs}
