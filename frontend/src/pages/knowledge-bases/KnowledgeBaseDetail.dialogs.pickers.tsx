@@ -1,11 +1,11 @@
-import { Check, ChevronLeft, ChevronRight, FileText, Loader2, Plus, Search as SearchIcon } from 'lucide-react';
+import { Check, ChevronLeft, ChevronRight, FileText, Loader2, Plus } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import type { ChannelNode } from '../../data/channelsApi';
 import type { DocumentListItemResponse } from '../../data/documentsApi';
 import type { WikiSpaceResponse } from '../../data/wikiSpacesApi';
 import type { KBWikiSpaceResponse } from '../../data/knowledgeBasesApi';
 import { DocPickerChannelTree } from './KnowledgeBaseDetail.docPickerTree';
-import { Dialog } from '../../styles/design-system';
+import { Dialog, SearchField } from '../../styles/design-system';
 
 export interface KbDocPickerDialogProps {
   show: boolean;
@@ -135,17 +135,14 @@ export function KbDocPickerDialog({
             </ul>
           </aside>
           <div className="kb-doc-picker-main">
-            <div className="kb-doc-picker-search">
-              <SearchIcon size={18} />
-              <input
-                type="search"
-                placeholder={t('detail.searchDocsPlaceholder')}
-                value={pickerSearch}
-                onChange={(e) => onPickerSearch(e.target.value)}
-                disabled={!pickerSelectedChannel}
-                autoFocus
-              />
-            </div>
+            <SearchField
+              value={pickerSearch}
+              onChange={onPickerSearch}
+              label={t('detail.searchDocsPlaceholder')}
+              className="kb-doc-picker-search"
+              disabled={!pickerSelectedChannel}
+              autoFocus
+            />
             <div className="kb-doc-picker-list">
               {!pickerSelectedChannel ? (
                 <div className="kb-doc-picker-empty">

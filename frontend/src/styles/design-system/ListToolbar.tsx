@@ -19,6 +19,8 @@ export function SearchField({
   label,
   placeholder,
   className,
+  disabled,
+  autoFocus,
 }: {
   value: string;
   onChange: (value: string) => void;
@@ -26,6 +28,8 @@ export function SearchField({
   label: string;
   placeholder?: string;
   className?: string;
+  disabled?: boolean;
+  autoFocus?: boolean;
 }) {
   const id = useDsFieldId('search');
   return (
@@ -39,6 +43,8 @@ export function SearchField({
         placeholder={placeholder ?? label}
         value={value}
         onChange={(e) => onChange(e.target.value)}
+        disabled={disabled}
+        autoFocus={autoFocus}
       />
     </div>
   );

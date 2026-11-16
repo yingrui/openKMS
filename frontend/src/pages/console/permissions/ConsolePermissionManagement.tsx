@@ -7,7 +7,6 @@ import {
   Loader2,
   Pencil,
   Plus,
-  Search,
   Shield,
   Trash2,
 } from 'lucide-react';
@@ -16,6 +15,7 @@ import { PERM_ALL, PERM_CONSOLE_PERMISSIONS } from '../../../config/permissions'
 import '../../ontology/ontology-admin.scss';
 import {
   Pagination,
+  SearchField,
   TableRowActionButton,
   TableRowActionCell,
   TableRowActions,
@@ -197,16 +197,13 @@ export function ConsolePermissionManagement() {
             <div className="console-perm-content">
               <div className="console-perm-toolbar">
                 <div className="console-perm-toolbar-row">
-                  <div className="console-perm-search">
-                    <Search size={18} />
-                    <input
-                      type="search"
-                      aria-label={t('permissions.searchAria')}
-                      placeholder={t('permissions.searchPlaceholder')}
-                      value={permSearch}
-                      onChange={(e) => setPermSearch(e.target.value)}
-                    />
-                  </div>
+                  <SearchField
+                    value={permSearch}
+                    onChange={setPermSearch}
+                    label={t('permissions.searchAria')}
+                    placeholder={t('permissions.searchPlaceholder')}
+                    className="console-perm-search"
+                  />
                   <div className="console-perm-category-filters">
                     <button
                       type="button"

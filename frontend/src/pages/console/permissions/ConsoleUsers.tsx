@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Plus, Search, Users, Shield } from 'lucide-react';
+import { Plus, Users, Shield } from 'lucide-react';
 import { toast } from 'sonner';
 import {
   createLocalUser,
@@ -12,7 +12,7 @@ import {
 } from '../../../data/adminUsersApi';
 import { useConfirm } from '../../../contexts/ConfirmContext';
 import './ConsoleUsers.scss';
-import { FormField } from '../../../styles/design-system/index';
+import { FormField, SearchField } from '../../../styles/design-system/index';
 
 export function ConsoleUsers() {
   const { t } = useTranslation('console');
@@ -143,18 +143,14 @@ export function ConsoleUsers() {
           )}
 
           <div className="console-users-toolbar">
-            <div className="console-users-search">
-              <Search size={18} />
-              <input
-                type="search"
-                aria-label={t('users.searchAria')}
-                placeholder={
-                  page.managed_in_console ? t('users.searchPlaceholder') : t('users.searchPlaceholderOidc')
-                }
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-              />
-            </div>
+            <SearchField
+              value={search}
+              onChange={setSearch}
+              label={t('users.searchAria')}
+              placeholder={
+                page.managed_in_console ? t('users.searchPlaceholder') : t('users.searchPlaceholderOidc')
+              }
+            />
           </div>
           <div className="ds-table-wrap">
             <table className="console-users-table">

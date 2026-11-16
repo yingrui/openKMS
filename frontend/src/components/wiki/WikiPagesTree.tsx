@@ -1,9 +1,10 @@
 import { useCallback, useEffect, useMemo, useState, startTransition, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { NavLink } from 'react-router-dom';
-import { ChevronDown, ChevronRight, FileText, Folder, Search, Sparkles, Type } from 'lucide-react';
+import { ChevronDown, ChevronRight, FileText, Folder, Sparkles, Type } from 'lucide-react';
 import type { WikiPageListItem } from '../../data/wikiSpacesApi';
 import { buildWikiTree, type WikiTreeNode } from './wikiTreeUtils';
+import { SearchField } from '../../styles/design-system';
 import './WikiPagesTree.scss';
 
 function sortedChildEntries(node: WikiTreeNode): [string, WikiTreeNode][] {
@@ -196,17 +197,14 @@ export function WikiPagesTree({
 
   return (
     <aside className="wiki-pages-tree" aria-label={t('treeAria')}>
-      <div className="wiki-pages-tree-search">
-        <Search size={15} className="wiki-pages-tree-search-icon" aria-hidden />
-        <input
-          type="search"
-          placeholder={t('wiki.workspace.pageTreeFilterPlaceholder')}
-          value={filterText}
-          onChange={(e) => onFilterTextChange(e.target.value)}
-          aria-label={t('wiki.workspace.pageTreeFilterAria')}
-          disabled={loading}
-        />
-      </div>
+      <SearchField
+        value={filterText}
+        onChange={onFilterTextChange}
+        label={t('wiki.workspace.pageTreeFilterAria')}
+        placeholder={t('wiki.workspace.pageTreeFilterPlaceholder')}
+        className="wiki-pages-tree-search"
+        disabled={loading}
+      />
       <div className="wiki-pages-tree-scroll">
         {loading ? (
           <p className="wiki-pages-tree-muted">{t('treeLoading')}</p>

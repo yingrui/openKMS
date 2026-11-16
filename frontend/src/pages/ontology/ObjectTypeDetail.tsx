@@ -1,13 +1,14 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   Dialog,
+  SearchField,
   TableRowActionButton,
   TableRowActionCell,
   TableRowActions,
 } from '../../styles/design-system';
 import { useParams, Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { ArrowLeft, Plus, Pencil, Trash2, Search as SearchIcon, Loader2, Zap } from 'lucide-react';
+import { ArrowLeft, Plus, Pencil, Trash2, Loader2, Zap } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuth } from '../../contexts/AuthContext';
 import {
@@ -270,16 +271,12 @@ export function ObjectTypeDetail() {
         )}
       </div>
 
-      <div className="object-type-search-bar">
-        <SearchIcon size={18} className="object-type-search-icon" />
-        <input
-          type="text"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          placeholder={t('ontology.objectTypeDetail.searchPlaceholder')}
-          className="object-type-search-input"
-        />
-      </div>
+      <SearchField
+        value={search}
+        onChange={setSearch}
+        label={t('ontology.objectTypeDetail.searchPlaceholder')}
+        className="object-type-search-bar"
+      />
 
       <div className="ds-table-wrap">
         {graphNotice ? (

@@ -3,7 +3,6 @@ import { useParams, Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import {
   ArrowLeft,
-  Search as SearchIcon,
   Plus,
   Pencil,
   Trash2,
@@ -31,6 +30,7 @@ import {
   Dialog,
   FormField,
   Pagination,
+  SearchField,
   TableRowActionButton,
   TableRowActionCell,
   TableRowActions,
@@ -365,16 +365,12 @@ export function GlossaryDetail() {
         )}
       </div>
 
-      <div className="glossary-search-bar">
-        <SearchIcon size={18} className="glossary-search-icon" />
-        <input
-          type="text"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          placeholder={t('glossary.detail.searchPlaceholder')}
-          className="glossary-search-input"
-        />
-      </div>
+      <SearchField
+        value={search}
+        onChange={setSearch}
+        label={t('glossary.detail.searchPlaceholder')}
+        className="glossary-search-bar"
+      />
 
       <div className="ds-table-wrap">
         <table className="glossary-terms-table" aria-busy={termsLoading}>

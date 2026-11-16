@@ -21,7 +21,7 @@ import {
   type GroupSharedResourceOut,
   type MemberBrief,
 } from '../../../data/securityAdminApi';
-import { Pagination } from '../../../styles/design-system/index';
+import { Pagination, SearchField } from '../../../styles/design-system/index';
 import { useConfirm } from '../../../contexts/ConfirmContext';
 import './ConsoleAccessGroups.scss';
 
@@ -376,16 +376,13 @@ export function ConsoleAccessGroups() {
               {t('accessGroups.add')}
             </button>
           </div>
-          <div className="console-access-groups-search">
-            <Search size={18} />
-            <input
-              type="search"
-              value={groupSearch}
-              onChange={(e) => setGroupSearch(e.target.value)}
-              placeholder={t('accessGroups.searchGroups')}
-              aria-label={t('accessGroups.searchGroups')}
-            />
-          </div>
+          <SearchField
+            value={groupSearch}
+            onChange={setGroupSearch}
+            label={t('accessGroups.searchGroups')}
+            placeholder={t('accessGroups.searchGroups')}
+            className="console-access-groups-search"
+          />
           {listLoading ? (
             <p className="console-access-groups-muted">{t('accessGroups.loading')}</p>
           ) : groups.length === 0 ? (

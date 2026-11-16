@@ -2,7 +2,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useState } 
 import { useAsyncData } from '../../hooks/useAsyncData';
 import { Link, Outlet, useNavigate, useParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { Loader2, Save, Search, Trash2, X } from 'lucide-react';
+import { Loader2, Save, Trash2, X } from 'lucide-react';
 import { toast } from 'sonner';
 import { fetchObjectTypes, type ObjectTypeResponse } from '../../data/ontologyApi';
 import {
@@ -13,7 +13,7 @@ import {
   type OntologyGroupResponse,
 } from '../../data/ontologyFunctionsApi';
 import { useConfirm } from '../../contexts/ConfirmContext';
-import { CheckList, CheckListItem } from '../../styles/design-system';
+import { CheckList, CheckListItem, SearchField } from '../../styles/design-system';
 import {
   EntityViewField,
   EntityViewHeader,
@@ -300,16 +300,13 @@ export function GroupOverviewTab() {
               </div>
             )}
 
-            <div className="entity-view__assign-search">
-              <Search size={16} aria-hidden />
-              <input
-                type="search"
-                value={typeQuery}
-                onChange={(e) => setTypeQuery(e.target.value)}
-                placeholder={t('groups.searchObjectTypesPlaceholder')}
-                aria-label={t('groups.searchObjectTypes')}
-              />
-            </div>
+            <SearchField
+              value={typeQuery}
+              onChange={setTypeQuery}
+              label={t('groups.searchObjectTypes')}
+              placeholder={t('groups.searchObjectTypesPlaceholder')}
+              className="entity-view__assign-search"
+            />
 
             {filteredTypes.length === 0 ? (
               <p className="entity-view__field-hint">{t('groups.noMatchingTypes')}</p>

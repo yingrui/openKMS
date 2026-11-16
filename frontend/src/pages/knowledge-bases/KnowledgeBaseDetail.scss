@@ -2421,31 +2421,9 @@ body.openkms-kb-qa-fullpage .kb-qa-shell {
 }
 
 .kb-doc-picker-search {
-  display: flex;
-  align-items: center;
-  gap: calc(var(--space-2) + var(--space-1) / 2);
+  width: 100%;
+  max-width: none;
   margin: 0 0 var(--space-3);
-  padding: var(--padding-compact-y) var(--padding-compact-x);
-  background: var(--color-bg-elevated);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
-}
-
-.kb-doc-picker-search svg {
-  color: var(--color-text-muted);
-  flex-shrink: 0;
-}
-
-.kb-doc-picker-search input {
-  flex: 1;
-  border: none;
-  background: none;
-  font-size: var(--text-base);
-  color: var(--color-text);
-}
-
-.kb-doc-picker-search input:focus {
-  outline: none;
 }
 
 .kb-doc-picker-main .kb-doc-picker-list {
