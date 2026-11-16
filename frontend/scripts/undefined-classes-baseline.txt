@@ -18,7 +18,6 @@ src/pages/evaluation/EvaluationDatasetDetail.tsx uses .eval-detail-section
 src/pages/function-editor/FunctionEditorListPage.tsx uses .function-editor-list
 src/pages/function-editor/FunctionEditorWorkspacePage.tsx uses .function-editor-workspace__schema-field
 src/pages/jobs/JobRuns.tsx uses .jobs-table-target-link
-src/pages/knowledge-bases/KnowledgeBaseDetail.tsx uses .kb-qa-msg-bubble
 src/pages/knowledge-bases/KnowledgeBaseDetail.tsx uses .kb-qa-msg-feedback
 src/pages/knowledge-bases/KnowledgeBaseDetail.tsx uses .kb-settings-col-models
 src/pages/knowledge-bases/KnowledgeBaseDetail.tsx uses .kb-settings-section

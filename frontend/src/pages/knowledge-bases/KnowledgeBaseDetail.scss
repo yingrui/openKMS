@@ -1157,12 +1157,18 @@ body.openkms-kb-qa-fullpage .kb-qa-shell {
   color: var(--color-text-muted);
 }
 
+/* Every bubble is one of the two variants; what they share is the bubble itself — the box, its padding and
+   its width limit. Each variant then only sets colour and which corner is "open". */
+.kb-qa-msg-bubble {
+  padding: var(--padding-compact-y) var(--padding-compact-x);
+  max-width: 100%;
+  min-width: 0;
+}
+
 .kb-qa-msg-bubble--user {
   background: var(--color-accent);
   color: var(--color-on-accent);
   border-radius: var(--radius-md) var(--radius-md) var(--space-1) var(--radius-md);
-  padding: var(--padding-compact-y) var(--padding-compact-x);
-  max-width: 100%;
 }
 
 .kb-qa-msg-bubble--user .agents-md {
