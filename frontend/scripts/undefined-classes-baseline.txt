@@ -1,6 +1,5 @@
 # Classes used in JSX that no stylesheet defines — accepted debt, not permission.
 # Each one styles nothing: either dead markup, or a real gap. This file only shrinks.
-src/pages/chamber/ModuleServiceBindingEditor.tsx uses .chamber-module-service
 src/pages/articles/ArticleDetail.modals.tsx uses .article-review-result
 src/pages/connectors/ConnectorFormFields.tsx uses .connector-input-boolean
 src/pages/connectors/ConnectorOutputDatasetsFields.tsx uses .connector-output-datasets-fields
@@ -10,7 +9,6 @@ src/pages/documents/DocumentChannelSettings.tsx uses .dcs-schema-object-type
 src/pages/documents/DocumentDetail.loading.tsx uses .document-detail-loading-split
 src/pages/evaluation/EvaluationDatasetDetail.tsx uses .eval-detail-section
 src/pages/function-editor/FunctionEditorWorkspacePage.tsx uses .function-editor-workspace__schema-field
-src/pages/knowledge-bases/KnowledgeBaseDetail.tsx uses .kb-qa-msg-feedback
 src/pages/knowledge-bases/KnowledgeBaseDetail.tsx uses .kb-settings-col-models
 src/pages/knowledge-bases/KnowledgeBaseDetail.tsx uses .kb-settings-section
 src/pages/wiki/WikiSpaceSettings.modals.tsx uses .wiki-space-settings-vault-options

@@ -2912,3 +2912,11 @@ body.openkms-kb-qa-fullpage .kb-qa-shell {
   gap: var(--space-4);
   max-width: 60rem;
 }
+
+/* The feedback row under an assistant turn: two icon buttons, aligned with the bubble edge. */
+.kb-qa-msg-feedback {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  margin-top: var(--space-1);
+}

@@ -259,3 +259,11 @@
   border-bottom-color: var(--color-accent);
   font-weight: 600;
 }
+
+/* The module service binding form: a stack of fields inside the settings panel. */
+.chamber-module-service {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  min-width: 0;
+}
