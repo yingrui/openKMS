@@ -201,8 +201,8 @@ export function ConsoleDataSources() {
       <div className="ontology-admin-content">
         <div className="ds-table-wrap">
           {loading ? (
-            <div className="console-loading">
-              <Loader2 size={32} className="console-loading-spinner" />
+            <div className="ds-loading">
+              <Loader2 size={32} className="ds-loading__spinner" />
               <p>{t('dataSources.loading')}</p>
             </div>
           ) : (
@@ -256,7 +256,7 @@ export function ConsoleDataSources() {
                             disabled={deletingAll === d.id}
                           >
                             {deletingAll === d.id ? (
-                              <Loader2 size={16} className="console-loading-spinner" />
+                              <Loader2 size={16} className="ds-loading__spinner" />
                             ) : (
                               <Eraser size={16} />
                             )}
@@ -408,7 +408,7 @@ export function ConsoleDataSources() {
               >
                 {deletingAll ? (
                   <>
-                    <Loader2 size={18} className="console-loading-spinner" />
+                    <Loader2 size={18} className="ds-loading__spinner" />
                     <span>{t('dataSources.deleting')}</span>
                   </>
                 ) : (

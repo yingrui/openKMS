@@ -254,7 +254,7 @@ export function DatasetRelationshipsTab() {
             onClick={() => void handleCreate()}
             disabled={submitting || !targetId}
           >
-            {submitting ? <Loader2 size={16} className="console-loading-spinner" /> : t('datasets.joinCreate')}
+            {submitting ? <Loader2 size={16} className="ds-loading__spinner" /> : t('datasets.joinCreate')}
           </button>
           </>
         }

@@ -102,13 +102,13 @@ export function DatasetColumnsTab() {
               onClick={() => void refreshProfile()}
               disabled={profiling}
             >
-              {profiling ? <Loader2 size={14} className="console-loading-spinner" aria-hidden /> : null}
+              {profiling ? <Loader2 size={14} className="ds-loading__spinner" aria-hidden /> : null}
               {t('datasets.refreshProfile')}
             </button>
           </div>
           {loading ? (
-            <div className="console-loading">
-              <Loader2 size={32} className="console-loading-spinner" aria-hidden />
+            <div className="ds-loading">
+              <Loader2 size={32} className="ds-loading__spinner" aria-hidden />
               <p>{t('shared.loading')}</p>
             </div>
           ) : (

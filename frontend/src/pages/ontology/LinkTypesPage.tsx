@@ -272,8 +272,8 @@ export function LinkTypesPage() {
 
       <div className="ontology-admin-content">
         {loading ? (
-          <div className="console-loading">
-            <Loader2 size={32} className="console-loading-spinner" />
+          <div className="ds-loading">
+            <Loader2 size={32} className="ds-loading__spinner" />
             <p>{t('shared.loading')}</p>
           </div>
         ) : linkTypes.length === 0 ? (
@@ -352,7 +352,7 @@ export function LinkTypesPage() {
                             }}
                           >
                             {indexingLinkId === row.id ? (
-                              <Loader2 size={16} className="console-loading-spinner" />
+                              <Loader2 size={16} className="ds-loading__spinner" />
                             ) : (
                               <Database size={16} />
                             )}
@@ -595,7 +595,7 @@ export function LinkTypesPage() {
               >
                 {indexing ? (
                   <>
-                    <Loader2 size={18} className="console-loading-spinner" />
+                    <Loader2 size={18} className="ds-loading__spinner" />
                     <span>{t('linkTypes.indexing')}</span>
                   </>
                 ) : (
@@ -664,7 +664,7 @@ export function LinkTypesPage() {
               >
                 {indexingLinkId ? (
                   <>
-                    <Loader2 size={18} className="console-loading-spinner" />
+                    <Loader2 size={18} className="ds-loading__spinner" />
                     <span>{t('linkTypes.indexing')}</span>
                   </>
                 ) : linkTypeUsesDatasetIndexing(indexOneLink, objectTypes) ? (

@@ -92,19 +92,6 @@
   }
 }
 
-.console-loading {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  padding: var(--space-12) var(--space-6);
-  gap: var(--space-3);
-  color: var(--color-text-muted);
-}
-
-.console-loading-spinner {
-  animation: console-spin 1s linear infinite;
-}
-
 .console-form-control {
   display: block;
   width: 100%;

@@ -168,8 +168,8 @@ export function ConnectorsPage() {
       <div className="ontology-admin-content">
         <div className="ds-table-wrap">
           {loading ? (
-            <div className="console-loading">
-              <Loader2 size={32} className="console-loading-spinner" />
+            <div className="ds-loading">
+              <Loader2 size={32} className="ds-loading__spinner" />
               <p>{t('connectors.loading')}</p>
             </div>
           ) : (

@@ -221,7 +221,7 @@ export function ModelPlaygroundSection() {
               disabled={runDisabled}
             >
               {running ? (
-                <Loader2 size={16} className="console-loading-spinner" aria-hidden />
+                <Loader2 size={16} className="ds-loading__spinner" aria-hidden />
               ) : (
                 <Play size={16} aria-hidden />
               )}

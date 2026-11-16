@@ -228,6 +228,10 @@ fi
 # --- 23. Rules that style nothing (ratchet) -----------------------------------
 # A sheet rots one direction only: the component changes, its rules stay. Baseline:
 # scripts/dead-classes-baseline.txt, currently 0 — 272 dead blocks were removed across 128 sheets.
+if ! python3 scripts/check-shared-classes.py; then
+  exit 1
+fi
+
 if ! python3 scripts/check-dead-classes.py; then
   status=1
 fi

@@ -120,6 +120,13 @@ one form, make the section a `navItems` entry in the shell's rail instead — th
 the ancestor's gap opens a 25px hole between the two halves of the card — no page rule can cancel a
 flex `gap`. Wrap both in one `<div className="settings-page">`. Pages living in
 `.ontology-admin-content` (e.g. `ConnectorDetailPage`) have no such gap and may keep them as siblings.
+**A class used by more than one area belongs to the design system.** The name is the address: a shared
+capability called `console-*` or `ontology-admin-*` records which page needed it first, and the next page
+copies the markup instead of the object. `scripts/check-shared-classes.py` fails when a non-`ds-*` class
+is used by two or more areas and is not in its (shrinking) baseline — the entry disappears when the object
+moves into the design system, not when the name changes. Page-local classes are unaffected: one area, one
+owner.
+
 `scripts/check-page-chrome.py` flags the entity-view case, and — the other half of the same rule — a page
 that renders `DatasetAppTabs` (a Catalog **list**) must not wrap its content in `settings-page-form`: that
 is an elevated card with its own padding, so the same table and the same 14px text sit in a card on one

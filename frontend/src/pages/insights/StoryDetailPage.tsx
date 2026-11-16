@@ -195,7 +195,7 @@ export function StoryDetailPage() {
             disabled={running || findings.length === 0}
           >
             {running ? (
-              <Loader2 size={14} className="console-loading-spinner" aria-hidden />
+              <Loader2 size={14} className="ds-loading__spinner" aria-hidden />
             ) : (
               <Play size={14} aria-hidden />
             )}

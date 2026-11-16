@@ -89,8 +89,8 @@ export function ConnectorDetailPage() {
   if (loading) {
     return (
       <div className="ontology-admin">
-        <div className="console-loading">
-          <Loader2 size={32} className="console-loading-spinner" />
+        <div className="ds-loading">
+          <Loader2 size={32} className="ds-loading__spinner" />
           <p>{t('connectors.loading')}</p>
         </div>
       </div>
@@ -147,7 +147,7 @@ export function ConnectorDetailPage() {
                 title={!hasOutputDatasetsConfigured ? t('connectors.syncRequiresOutputs') : undefined}
                 onClick={openSyncDialog}
               >
-                {syncing ? <Loader2 size={18} className="console-loading-spinner" /> : <Play size={18} />}
+                {syncing ? <Loader2 size={18} className="ds-loading__spinner" /> : <Play size={18} />}
                 <span>{syncing ? t('connectors.syncRunning') : t('connectors.syncRunNow')}</span>
               </button>
             ) : null}

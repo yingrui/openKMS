@@ -172,7 +172,7 @@ export function SemanticModelWizard({
               onClick={() => void handleCreate()}
               disabled={submitting}
             >
-              {submitting ? <Loader2 size={16} className="console-loading-spinner" /> : t('dataModel.create')}
+              {submitting ? <Loader2 size={16} className="ds-loading__spinner" /> : t('dataModel.create')}
             </button>
           )}
         </>
@@ -235,7 +235,7 @@ export function SemanticModelWizard({
           </div>
           <div className="model-wizard__datasets">
             {loading ? (
-              <Loader2 size={20} className="console-loading-spinner" aria-hidden />
+              <Loader2 size={20} className="ds-loading__spinner" aria-hidden />
             ) : filtered.length === 0 ? (
               <EmptyState
                 title={t('dataModel.noDatasets')}

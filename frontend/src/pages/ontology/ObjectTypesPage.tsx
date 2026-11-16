@@ -188,8 +188,8 @@ export function ObjectTypesPage() {
         )}
 
         {loading ? (
-          <div className="console-loading">
-            <Loader2 size={32} className="console-loading-spinner" />
+          <div className="ds-loading">
+            <Loader2 size={32} className="ds-loading__spinner" />
             <p>{t('shared.loading')}</p>
           </div>
         ) : types.length === 0 ? (
@@ -259,7 +259,7 @@ export function ObjectTypesPage() {
                             }}
                           >
                             {indexingTypeId === row.id ? (
-                              <Loader2 size={16} className="console-loading-spinner" />
+                              <Loader2 size={16} className="ds-loading__spinner" />
                             ) : (
                               <Database size={16} />
                             )}
@@ -330,7 +330,7 @@ export function ObjectTypesPage() {
               >
                 {indexing ? (
                   <>
-                    <Loader2 size={18} className="console-loading-spinner" />
+                    <Loader2 size={18} className="ds-loading__spinner" />
                     <span>{t('objectTypes.indexing')}</span>
                   </>
                 ) : (
@@ -395,7 +395,7 @@ export function ObjectTypesPage() {
               >
                 {indexingTypeId ? (
                   <>
-                    <Loader2 size={18} className="console-loading-spinner" />
+                    <Loader2 size={18} className="ds-loading__spinner" />
                     <span>{t('objectTypes.indexing')}</span>
                   </>
                 ) : indexOneType.dataset_id ? (

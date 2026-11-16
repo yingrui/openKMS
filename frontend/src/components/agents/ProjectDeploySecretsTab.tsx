@@ -234,8 +234,8 @@ export function ProjectDeploySecretsTab({ projectId }: { projectId: string }) {
       </div>
 
       {loading ? (
-        <div className="console-loading">
-          <Loader2 size={24} className="console-loading-spinner" aria-hidden />
+        <div className="ds-loading">
+          <Loader2 size={24} className="ds-loading__spinner" aria-hidden />
         </div>
       ) : (
         <div className="ds-table-wrap">
@@ -282,7 +282,7 @@ export function ProjectDeploySecretsTab({ projectId }: { projectId: string }) {
                           aria-label={t('settings.deploySync')}
                           icon={
                             syncingId === row.id ? (
-                              <Loader2 size={16} className="console-loading-spinner" aria-hidden />
+                              <Loader2 size={16} className="ds-loading__spinner" aria-hidden />
                             ) : (
                               <RefreshCw size={16} aria-hidden />
                             )

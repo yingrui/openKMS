@@ -181,7 +181,7 @@ export function ConnectorOutputSlotField({
                 >
                   {provisioning ? (
                     <>
-                      <Loader2 size={14} className="console-loading-spinner" />
+                      <Loader2 size={14} className="ds-loading__spinner" />
                       <span>{t('connectors.provisioning')}</span>
                     </>
                   ) : (

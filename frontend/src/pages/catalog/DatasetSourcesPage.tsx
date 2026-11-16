@@ -168,8 +168,8 @@ export function DatasetSourcesPage() {
       </header>
       <div className="ontology-admin-content">
         {loading ? (
-          <div className="console-loading">
-            <Loader2 size={32} className="console-loading-spinner" aria-hidden />
+          <div className="ds-loading">
+            <Loader2 size={32} className="ds-loading__spinner" aria-hidden />
             <p>{t('shared.loading')}</p>
           </div>
         ) : sources.length === 0 ? (
@@ -225,8 +225,8 @@ export function DatasetSourcesPage() {
             </div>
 
             {tables === null ? (
-              <div className="console-loading">
-                <Loader2 size={28} className="console-loading-spinner" aria-hidden />
+              <div className="ds-loading">
+                <Loader2 size={28} className="ds-loading__spinner" aria-hidden />
               </div>
             ) : tables.length === 0 ? (
               <EmptyState title={t('dataSources.noTables')} description={t('dataSources.noTablesHint')} />

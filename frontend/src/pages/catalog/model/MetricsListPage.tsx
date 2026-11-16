@@ -113,8 +113,8 @@ export function MetricsListPage() {
       </div>
 
       {loading ? (
-        <div className="console-loading">
-          <Loader2 size={32} className="console-loading-spinner" aria-hidden />
+        <div className="ds-loading">
+          <Loader2 size={32} className="ds-loading__spinner" aria-hidden />
           <p>{t("shared.loading")}</p>
         </div>
       ) : shown.length === 0 ? (

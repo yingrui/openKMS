@@ -122,7 +122,7 @@ export function ConnectorTushareProbe({
         >
           {sending ? (
             <>
-              <Loader2 size={16} className="console-loading-spinner" />
+              <Loader2 size={16} className="ds-loading__spinner" />
               <span>{t('connectors.probeSending')}</span>
             </>
           ) : (

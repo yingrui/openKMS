@@ -193,8 +193,8 @@ export function ConsoleKubernetesDetail() {
   if (loadingCluster) {
     return (
       <div className="ontology-admin">
-        <div className="console-loading">
-          <Loader2 size={32} className="console-loading-spinner" aria-hidden />
+        <div className="ds-loading">
+          <Loader2 size={32} className="ds-loading__spinner" aria-hidden />
           <p>{t('kubernetes.loading')}</p>
         </div>
       </div>
@@ -251,7 +251,7 @@ export function ConsoleKubernetesDetail() {
             disabled={loadingResources}
           >
             {loadingResources ? (
-              <Loader2 size={18} className="console-loading-spinner" aria-hidden />
+              <Loader2 size={18} className="ds-loading__spinner" aria-hidden />
             ) : (
               <RefreshCw size={18} aria-hidden />
             )}

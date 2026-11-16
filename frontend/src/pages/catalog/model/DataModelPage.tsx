@@ -112,10 +112,10 @@ export function DataModelPage() {
           }}
         />
         {loading ? (
-          <div className="console-loading">
+          <div className="ds-loading">
             <Loader2
               size={32}
-              className="console-loading-spinner"
+              className="ds-loading__spinner"
               aria-hidden
             />
             <p>{t("shared.loading")}</p>
