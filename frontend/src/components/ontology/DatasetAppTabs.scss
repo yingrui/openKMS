@@ -1,5 +1,6 @@
 .dataset-app-tabs {
   display: flex;
+  flex-wrap: wrap;
   gap: var(--space-1);
   margin-bottom: var(--space-4);
   border-bottom: 1px solid var(--color-border);
@@ -10,6 +11,7 @@
   font-size: var(--text-base);
   color: var(--color-text-muted);
   text-decoration: none;
+  white-space: nowrap;
   border-bottom: 2px solid transparent;
   margin-bottom: -1px;
 

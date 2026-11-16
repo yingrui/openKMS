@@ -116,12 +116,11 @@ export function DatasetsListPage() {
       joins.map((j) => ({
         source: j.from_dataset_id,
         target: j.to_dataset_id,
-        targetOptional: !j.required,
-        label: `${j.required ? t("datasets.requiredLabel") : t("datasets.optionalLabel")} · ${j.from_columns
-          .map((c, i) => `${c} = ${j.to_columns[i] ?? ""}`)
-          .join(", ")}`,
+        fromColumn: j.from_columns[0],
+        toColumn: j.to_columns[0],
+        required: j.required,
       })),
-    [joins, t],
+    [joins],
   );
 
   const load = useCallback(async () => {

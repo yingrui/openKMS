@@ -31,15 +31,9 @@
   stroke-width: 1.5;
 }
 
-/* The join's meaning, written on the line — the star diagram in a dataset's 关联 tab labels its edges the
-   same way, so the two readings of the same joins agree. */
-.dataset-er-graph__edge-label {
-  fill: var(--color-text-muted);
-  font-size: var(--text-xs);
-  paint-order: stroke;
-  stroke: var(--color-bg-elevated);
-  stroke-width: 3px;
-  stroke-linejoin: round;
+/* Optional joins dash; required ones are solid. The endpoint already says which field, so the line carries no text. */
+.dataset-er-graph__edge--optional {
+  stroke-dasharray: 5 4;
 }
 
 .dataset-er-graph__node {

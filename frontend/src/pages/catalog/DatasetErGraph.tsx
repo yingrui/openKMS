@@ -14,9 +14,11 @@ export type ErGraphNode = {
 export type ErGraphLink = {
   source: string;
   target: string;
-  label: string;
-  /** The join's target side is optional (`0..1`); a required join is `1..1`. */
-  targetOptional?: boolean;
+  /** The columns the join is written on — the line runs field to field, not box to box. */
+  fromColumn?: string;
+  toColumn?: string;
+  /** A required join draws a solid line; an optional one dashes it. */
+  required?: boolean;
 };
 
 const BOX_WIDTH = 208;
@@ -33,6 +35,14 @@ type Position = { x: number; y: number };
 
 const boxHeight = (columns: number) =>
   BOX_HEAD + Math.min(columns, MAX_COLUMNS) * ROW_HEIGHT + BOX_FOOT;
+
+/** The y of a column's row inside a box, or the box's middle when that column is not one of the shown rows. */
+const columnAnchorY = (top: number, columns: string[] | undefined, column: string | undefined) => {
+  const height = boxHeight(columns?.length ?? 0);
+  const index = column ? (columns ?? []).indexOf(column) : -1;
+  if (index < 0 || index >= MAX_COLUMNS) return top + height / 2;
+  return top + BOX_HEAD + index * ROW_HEIGHT + ROW_HEIGHT / 2;
+};
 
 /**
  * ER diagram of the catalog's datasets: one box per dataset with the columns its joins use, one line per
@@ -147,15 +157,21 @@ export function DatasetErGraph({
     const fromNode = nodes.find((node) => node.id === link.source);
     const toNode = nodes.find((node) => node.id === link.target);
     if (!from || !to || !fromNode || !toNode) return [];
+    /* Leave the box at the row's edge, so the line reads as leaving that field rather than the box's centre. */
+    const fromY = columnAnchorY(from.y, fromNode.columns, link.fromColumn);
+    const toY = columnAnchorY(to.y, toNode.columns, link.toColumn);
+    const toLeft = to.x + BOX_WIDTH / 2 < from.x + BOX_WIDTH / 2;
     return [
       {
-        key: `${link.source}->${link.target}`,
-        x1: from.x + BOX_WIDTH / 2,
-        y1: from.y + boxHeight(fromNode.columns?.length ?? 0) / 2,
-        x2: to.x + BOX_WIDTH / 2,
-        y2: to.y + boxHeight(toNode.columns?.length ?? 0) / 2,
-        label: link.label,
-        targetOptional: link.targetOptional,
+        key: `${link.source}-${link.fromColumn ?? ''}->${link.target}-${link.toColumn ?? ''}`,
+        x1: toLeft ? from.x : from.x + BOX_WIDTH,
+        y1: fromY,
+        x2: toLeft ? to.x + BOX_WIDTH : to.x,
+        y2: toY,
+        /* Horizontal control points: the line leaves the row and enters the other row level, so it reads as
+           field → field rather than box → box. */
+        direction: toLeft ? -1 : 1,
+        required: link.required !== false,
       },
     ];
   });
@@ -165,22 +181,24 @@ export function DatasetErGraph({
       <div ref={canvasRef} className="dataset-er-graph__canvas" style={{ width, height }}>
         <svg className="dataset-er-graph__edges" width={width} height={height} aria-hidden>
           {edges.map((edge) => {
-            const angle = Math.atan2(edge.y2 - edge.y1, edge.x2 - edge.x1);
+            const angle = edge.direction > 0 ? 0 : Math.PI;
             const foot = Array.from({ length: 3 }, (_, i) => {
-              const spread = (i - 1) * 0.32;
+              const spread = (i - 1) * 0.42;
               return {
-                x: edge.x1 + Math.cos(angle + spread) * 12,
-                y: edge.y1 + Math.sin(angle + spread) * 12,
+                x: edge.x1 + Math.cos(angle + spread) * 11,
+                y: edge.y1 + Math.sin(angle + spread) * 11,
               };
             });
+            const bend = Math.max(36, Math.abs(edge.x2 - edge.x1) / 2);
+            const path = `M ${edge.x1} ${edge.y1} C ${edge.x1 + edge.direction * bend} ${edge.y1}, ${
+              edge.x2 - edge.direction * bend
+            } ${edge.y2}, ${edge.x2} ${edge.y2}`;
             return (
               <g key={edge.key}>
-                <line
-                  className="dataset-er-graph__edge"
-                  x1={edge.x1}
-                  y1={edge.y1}
-                  x2={edge.x2}
-                  y2={edge.y2}
+                <path
+                  className={`dataset-er-graph__edge${edge.required ? '' : ' dataset-er-graph__edge--optional'}`}
+                  d={path}
+                  fill="none"
                 />
                 {/* many side: crow's foot */}
                 {foot.map((point, i) => (
@@ -196,21 +214,12 @@ export function DatasetErGraph({
                 {/* one side: a bar, dashed when the join is optional */}
                 <line
                   className="dataset-er-graph__edge-end"
-                  x1={edge.x2 - Math.cos(angle) * 8}
-                  y1={edge.y2 - Math.sin(angle) * 8}
-                  x2={edge.x2 - Math.cos(angle) * 8 + Math.cos(angle + Math.PI / 2) * 6}
-                  y2={edge.y2 - Math.sin(angle) * 8 + Math.sin(angle + Math.PI / 2) * 6}
+                  x1={edge.x2 - edge.direction * 9}
+                  y1={edge.y2 - 5}
+                  x2={edge.x2 - edge.direction * 9}
+                  y2={edge.y2 + 5}
                 />
-                {edge.label ? (
-                  <text
-                    className="dataset-er-graph__edge-label"
-                    x={(edge.x1 + edge.x2) / 2}
-                    y={(edge.y1 + edge.y2) / 2 - 8}
-                    textAnchor="middle"
-                  >
-                    {edge.label}
-                  </text>
-                ) : null}
+
               </g>
             );
           })}

@@ -37,6 +37,8 @@ Options:
   --out <dir>            Output directory (default: <repo>/tmp/visual)
   --wait <ms>            Extra settle time after load (default: 1500)
   --full-page            Capture the whole scrollable page
+  --check-overflow       Warn when the page is wider than the viewport
+  --eval <expression>    Evaluate JS after settling and print the result (debugging)
   --chrome <path>        Chrome/Chromium executable (or CHROME_PATH)
   --keep-profile         Keep the temporary Chrome profile for debugging
   -h, --help             Show this help
@@ -57,6 +59,8 @@ function parseArgs(argv) {
     out: join(REPO_ROOT, 'tmp', 'visual'),
     wait: 1500,
     fullPage: false,
+    checkOverflow: false,
+    evalExpression: '',
     chrome: process.env.CHROME_PATH || '',
     keepProfile: false,
   };
@@ -80,6 +84,8 @@ function parseArgs(argv) {
     else if (arg === '--out') out.out = next();
     else if (arg === '--wait') out.wait = Number(next());
     else if (arg === '--full-page') out.fullPage = true;
+    else if (arg === '--check-overflow') out.checkOverflow = true;
+    else if (arg === '--eval') out.evalExpression = next();
     else if (arg === '--chrome') out.chrome = next();
     else if (arg === '--keep-profile') out.keepProfile = true;
     else if (arg === '--viewport') {
@@ -249,6 +255,32 @@ async function main() {
         }).catch(() => {});
         await sleep(args.wait);
 
+        if (args.evalExpression) {
+          const result = await cdp.send('Runtime.evaluate', {
+            expression: args.evalExpression,
+            returnByValue: true,
+            awaitPromise: true,
+          });
+          console.log(JSON.stringify(result.result.value, null, 2));
+        }
+
+        if (args.checkOverflow) {
+          const result = await cdp.send('Runtime.evaluate', {
+            expression: `({
+              scrollWidth: document.documentElement.scrollWidth,
+              clientWidth: document.documentElement.clientWidth,
+              bodyScrollWidth: document.body.scrollWidth,
+            })`,
+            returnByValue: true,
+          });
+          const size = result.result.value;
+          if (size && size.scrollWidth > size.clientWidth + 1) {
+            console.warn(
+              `overflow: ${url} is ${size.scrollWidth}px wide in a ${size.clientWidth}px viewport`,
+            );
+          }
+        }
+
         let clip;
         if (args.fullPage) {
           const metrics = await cdp.send('Page.getLayoutMetrics');
@@ -298,7 +330,7 @@ async function main() {
   }
 
   if (chromeError) {
-    const noise = /CVDisplayLink|gpu_memory_buffer|Fontconfig|dbus|Crashpad|RLZ/i;
+    const noise = /CVDisplayLink|gpu_memory_buffer|Fontconfig|dbus|Crashpad|RLZ|ssl_client_socket_impl/i;
     const lines = chromeError.split('\n').filter((line) => /error/i.test(line) && !noise.test(line));
     if (lines.length) console.error(lines.slice(0, 5).join('\n'));
   }

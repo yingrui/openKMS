@@ -266,6 +266,7 @@
 
 .models-table {
   width: 100%;
+  min-width: 860px;
   border-collapse: collapse;
   font-size: var(--text-md);
 }
@@ -324,6 +325,7 @@
 
 .models-default-badge {
   display: inline-block;
+  white-space: nowrap;
   padding: var(--space-1) var(--space-2);
   font-size: var(--text-xs);
   font-weight: var(--font-weight-medium);
@@ -333,6 +335,7 @@
 }
 
 .models-set-default-btn {
+  white-space: nowrap;
   padding: var(--space-1) var(--padding-compact-y);
   font-size: var(--text-sm);
   border: 1px solid var(--color-border);
@@ -389,4 +392,53 @@
   width: auto;
   margin-right: var(--space-2);
   cursor: pointer;
+}
+
+/* Phone: the provider rail is a filter, not a second column. Stack it above the list and let the
+   table scroll inside its wrap instead of squeezing every column into the viewport. */
+@include max-width(ds.$bp-md-min) {
+  .models-main {
+    flex-direction: column;
+    align-items: stretch;
+    gap: var(--space-5);
+  }
+
+  .models-categories {
+    width: 100%;
+  }
+
+  .models-category-list-scroll {
+    max-height: none;
+    overflow: visible;
+    margin-right: 0;
+    padding-right: 0;
+  }
+
+  .models-category-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-2);
+  }
+
+  .models-category-item {
+    flex: 1 1 10rem;
+    min-width: 0;
+  }
+
+  .models-toolbar-row > .ds-search {
+    flex-basis: 100%;
+    max-width: none;
+  }
+
+  .models-category-filters {
+    flex: 1 1 100%;
+    min-width: 0;
+  }
+
+  .models-toolbar-add {
+    flex: 1 1 100%;
+    width: 100%;
+    justify-content: center;
+    margin-left: 0;
+  }
 }
