@@ -70,11 +70,11 @@
 /* Hovering a dataset answers "what does this one touch?"; everything else steps back — the line *and* its
    cardinality marks, which belong to that line. */
 .dataset-er-graph__edge-group--dim {
-  opacity: 0.25;
+  opacity: 0.1;
 }
 
 .dataset-er-graph__node--dim {
-  opacity: 0.35;
+  opacity: 0.2;
 }
 
 /* The notation is not self-evident to everyone who reads a catalog; the legend is three symbols and one hint. */
