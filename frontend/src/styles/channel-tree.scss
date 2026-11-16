@@ -135,6 +135,11 @@
   padding: 0;
 }
 
+/* The row itself (the inline padding is set by depth in JSX); the inner block is .channel-tree-item. */
+.channel-tree-item-row {
+  list-style: none;
+}
+
 .channel-tree-item {
   display: flex;
   align-items: center;

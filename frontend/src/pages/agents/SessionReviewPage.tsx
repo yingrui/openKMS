@@ -590,7 +590,7 @@ function ArtifactPanel({
               )}
               <button
                 type="button"
-                className="sreview-btn sreview-btn--edit"
+                className="sreview-btn"
                 onClick={() => { setEditContent(artifact.content); setEditing(true); }}
               >
                 {t('shared.edit')}

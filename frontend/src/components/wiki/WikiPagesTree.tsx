@@ -164,7 +164,7 @@ export function WikiPagesTree({
           {hasKids ? (
             <Folder size={15} className="wiki-pages-tree-icon wiki-pages-tree-icon-folder" strokeWidth={2} />
           ) : (
-            <FileText size={15} className="wiki-pages-tree-icon wiki-pages-tree-icon-file" strokeWidth={2} />
+            <FileText size={15} className="wiki-pages-tree-icon" strokeWidth={2} />
           )}
           {node.page ? (
             <NavLink

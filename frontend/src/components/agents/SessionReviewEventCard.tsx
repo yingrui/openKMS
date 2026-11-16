@@ -197,7 +197,7 @@ export function SessionReviewEventCard({
                   </button>
                   <button
                     type="button"
-                    className="sreview-btn sreview-btn--edit"
+                    className="sreview-btn"
                     onClick={() => setEditing(true)}
                   >
                     <Pencil size={14} /> {t('sessionReview.edit')}
@@ -216,7 +216,7 @@ export function SessionReviewEventCard({
               ) : (
                 <button
                   type="button"
-                  className="sreview-btn sreview-btn--edit"
+                  className="sreview-btn"
                   onClick={() => { onApprove(event, 'pending'); }}
                 >
                   {t('sessionReview.unapprove')}

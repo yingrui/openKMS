@@ -305,7 +305,7 @@ function ChannelTreeItem({
   };
 
   return (
-    <li style={{ paddingLeft: depth * 20 }} className="channel-tree-item-li">
+    <li style={{ paddingLeft: depth * 20 }} className="channel-tree-item-row">
       <span className="channel-tree-item">
         <Folder size={16} />
         {ctx.linkChannelNames ? <Link to={`${ctx.basePath}/channels/${node.id}`}>{node.name}</Link> : node.name}

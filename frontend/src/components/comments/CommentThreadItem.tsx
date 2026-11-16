@@ -93,7 +93,7 @@ function CommentRow({ comment, isReply = false, currentSub, onReply, onPatch, on
           <span className="comment-thread-item__author">{comment.created_by_name || comment.created_by}</span>
           <span className="comment-thread-item__time">{formatWhen(comment.created_at)}</span>
           {!isReply && comment.rank != null ? (
-            <span className="comment-thread-item__rank">
+            <span>
               <CommentRankStars value={comment.rank} readonly size={12} />
             </span>
           ) : null}

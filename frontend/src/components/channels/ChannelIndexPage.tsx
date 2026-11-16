@@ -61,7 +61,7 @@ export function ChannelIndexPage({
           <div className="list-index-stat-icon">
             <Folder size={24} strokeWidth={1.75} />
           </div>
-          <div className="list-index-stat-content">
+          <div>
             <span className="list-index-stat-value">{flattenChannels(channels).length}</span>
             <span className="list-index-stat-label">{labels.statChannels}</span>
           </div>
@@ -70,7 +70,7 @@ export function ChannelIndexPage({
           <div className="list-index-stat-icon">
             <ItemIcon size={24} strokeWidth={1.75} />
           </div>
-          <div className="list-index-stat-content">
+          <div>
             <span className="list-index-stat-value">{itemCount ?? '–'}</span>
             <span className="list-index-stat-label">{labels.statItems}</span>
           </div>
