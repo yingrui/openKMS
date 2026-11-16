@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { ArrowUpRight } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import './dataset-er-graph.scss';
 
@@ -64,7 +65,7 @@ export function DatasetErGraph({
     startX: number;
     startY: number;
   } | null>(null);
-  /* Set while a drag actually moves the box, so the pointer-up click does not also open the dataset. */
+  /* Set once a drag actually moves the box; a pointer-down that never moves does not rearrange anything. */
   const movedRef = useRef(false);
   const canvasRef = useRef<HTMLDivElement>(null);
 
@@ -89,7 +90,6 @@ export function DatasetErGraph({
   }, [grid]);
 
   useEffect(() => {
-    if (!dragRef.current) return;
     const onMove = (event: PointerEvent) => {
       const drag = dragRef.current;
       if (!drag) return;
@@ -220,9 +220,8 @@ export function DatasetErGraph({
           const position = positions[node.id] ?? grid[node.id];
           const columns = (node.columns ?? []).slice(0, MAX_COLUMNS);
           return (
-            <button
+            <div
               key={node.id}
-              type="button"
               className="dataset-er-graph__node"
               style={{
                 left: position.x,
@@ -231,16 +230,19 @@ export function DatasetErGraph({
                 height: boxHeight(node.columns?.length ?? 0),
               }}
               onPointerDown={(event) => startDrag(event, node.id)}
-              onClick={() => {
-                if (movedRef.current) {
-                  movedRef.current = false;
-                  return;
-                }
-                onOpen(node.id);
-              }}
-              title={node.name}
             >
-              <span className="dataset-er-graph__node-name">{node.name}</span>
+              <span className="dataset-er-graph__node-head">
+                <span className="dataset-er-graph__node-name">{node.name}</span>
+                <button
+                  type="button"
+                  className="dataset-er-graph__node-open"
+                  onClick={() => onOpen(node.id)}
+                  title={t('dataModel.erOpen')}
+                  aria-label={`${t('dataModel.erOpen')} ${node.name}`}
+                >
+                  <ArrowUpRight size={14} aria-hidden />
+                </button>
+              </span>
               <span className="dataset-er-graph__node-meta">
                 {t('dataModel.erJoins', { count: node.joins })}
               </span>
@@ -253,7 +255,7 @@ export function DatasetErGraph({
                   ))}
                 </span>
               ) : null}
-            </button>
+            </div>
           );
         })}
       </div>

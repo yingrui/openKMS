@@ -477,7 +477,8 @@
     "periodFormatPlaceholder": "YYYY-Www",
     "viewErDiagram": "ER 图",
     "viewErDiagramTitle": "实体关系图：数据集与已登记的关联",
-    "erJoins": "{{count}} 条关联"
+    "erJoins": "{{count}} 条关联",
+    "erOpen": "打开"
   },
   "datasets": {
     "title": "数据集",
