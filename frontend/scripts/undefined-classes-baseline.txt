@@ -34,12 +34,7 @@ src/pages/knowledge-bases/KnowledgeBaseDetail.tsx uses .kb-settings-col-models
 src/pages/knowledge-bases/KnowledgeBaseDetail.tsx uses .kb-settings-section
 src/pages/ontology-manager/ActionTypeCreateWizard.tsx uses .object-type-create-wizard__step-label
 src/pages/catalog/DatasetErDiagram.tsx uses .dataset-er__node--center
-src/pages/ontology-manager/FunctionDetailPage.tsx uses .entity-view__field-hint
-src/pages/ontology-manager/GroupDetailPage.tsx uses .entity-view__field-hint
-src/pages/ontology-manager/GroupDetailPage.tsx uses .entity-view__related-block
-src/pages/ontology-manager/LinkTypeDetailPage.tsx uses .entity-view__field-hint
 src/pages/ontology-manager/ObjectTypeCreateWizard.tsx uses .object-type-create-wizard__step-label
-src/pages/ontology-manager/ObjectTypeDetailPage.tsx uses .entity-view__field-hint
 src/pages/ontology/LinkTypesPage.tsx uses .page-subtitle--block
 src/pages/ontology/LinksList.tsx uses .links-header
 src/pages/ontology/ObjectsList.tsx uses .objects-header

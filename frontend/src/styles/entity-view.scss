@@ -289,6 +289,22 @@ body:has(.app-page-pane > .entity-view) .app-main {
   }
 }
 
+/* A field's hint inside the entity view — the muted line under an input in a settings panel. It was
+   written by four detail pages and styled by none, so it rendered as body text next to styled hints. */
+.entity-view__field-hint {
+  margin: var(--space-1) 0 0;
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+  line-height: 1.4;
+}
+
+/* A related-objects block inside a panel (a group's members, a type's links). */
+.entity-view__related-block {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
 .entity-view__form {
   display: flex;
   flex-direction: column;
